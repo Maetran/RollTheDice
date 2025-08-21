@@ -1,0 +1,47 @@
+[
+  {
+    "punkte": 312,
+    "name": "Manuel",
+    "spielname": "Sonntagabend-Runde",
+    "gegnername": "Markus",
+    "gegnerpunkte": 280,
+    "differenz": 32,
+    "timestamp": "2025-08-18T20:15:00"
+  },
+  {
+    "punkte": 298,
+    "name": "Sophie",
+    "spielname": "Familienrunde",
+    "gegnername": "Vivienne",
+    "gegnerpunkte": 270,
+    "differenz": 28,
+    "timestamp": "2025-08-19T18:45:00"
+  },
+  {
+    "punkte": 287,
+    "name": "Jonathan",
+    "spielname": "Mittagsmatch",
+    "gegnername": "Papa",
+    "gegnerpunkte": 260,
+    "differenz": 27,
+    "timestamp": "2025-08-20T12:30:00"
+  },
+  {
+    "punkte": 275,
+    "name": "Mirka",
+    "spielname": "Kaffeepause",
+    "gegnername": "Manuel",
+    "gegnerpunkte": 255,
+    "differenz": 20,
+    "timestamp": "2025-08-20T15:00:00"
+  },
+  {
+    "punkte": 268,
+    "name": "Markus",
+    "spielname": "Freitagsrunde",
+    "gegnername": "Sophie",
+    "gegnerpunkte": 240,
+    "differenz": 28,
+    "timestamp": "2025-08-21T19:00:00"
+  }
+]

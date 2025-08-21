@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>RollTheDice – Spiel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    /* Kopfbereich mit Spielname + Spielerbubbles */
+    .room-header {
+      display: flex;
+      align-items: baseline;
+      gap: .6rem;
+      margin: .8rem 1rem .3rem;
+      flex-wrap: wrap;
+    }
+    #roomGameName {
+      margin: 0;
+      font-size: 1.28rem;
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
+    #roomPlayerBubbles {
+      display: inline-flex;
+      gap: .35rem;
+      flex-wrap: wrap;
+    }
+    /* Statuszeile (Turn/Ansage) über den Tabellen */
+    .room-statusline {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin: 0 1rem .6rem;
+      flex-wrap: wrap;
+    }
+    #scoreOut { margin: 0 1rem 1rem; position: relative; }
+    /* Nur Optik: alten Titel in der Renderfläche ausblenden */
+    ._migrated-title { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Neuer Header: Spielname + Spieler-Badges -->
+  <div class="room-header">
+    <h1 id="roomGameName"></h1>
+    <div id="roomPlayerBubbles"></div>
+  </div>
+
+  <!-- Neue Statuszeile: zwei getrennte Chips -->
+  <div id="roomStatusLine" class="room-statusline">
+    <div id="turnChip"></div>
+    <div id="announceChip"></div>
+  </div>
+
+  <!-- Inhalt aus scoreboard.js (Würfel, Buttons, Tabellen) -->
+  <div id="scoreOut"></div>
+
+  <!-- Scripts: KEINE Module, beide mit defer; Reihenfolge: scoreboard vor game -->
+  <script src="/static/scoreboard.js" defer></script>
+  <script src="/static/game.js" defer></script>
+
+  <!-- DOM-Spiegel: klont nur Titel/Badges/Chips nach oben; #scoreOut bleibt unberührt -->
+  <script>
+    (function () {
+      const scoreOut        = document.getElementById('scoreOut');
+      const gameNameEl      = document.getElementById('roomGameName');
+      const playerBubblesEl = document.getElementById('roomPlayerBubbles');
+
+      // NEU: getrennte Chip-Container
+      const turnChipEl      = document.getElementById('turnChip');
+      const announceChipEl  = document.getElementById('announceChip');
+
+      let rafPending = false;
+      function schedule(fn){
+        if (rafPending) return;
+        rafPending = true;
+        requestAnimationFrame(() => { rafPending = false; fn(); });
+      }
+
+      function cloneHeaderBits() {
+        if (!scoreOut) return;
+
+        // 1) Spielname aus <h2 id="gameTitle">Spiel – {name}</h2>
+        const h2 = scoreOut.querySelector('h2#gameTitle');
+        if (h2) {
+          const raw = (h2.textContent || '').trim();
+          const nameOnly = raw.replace(/^\s*Spiel\s*–\s*/i, '').trim();
+          gameNameEl.textContent = nameOnly || raw;
+          if (!h2.classList.contains('_migrated-title')) {
+            h2.classList.add('_migrated-title');
+          }
+        }
+
+        // 2) Spieler-Badges klonen
+        const playersInline = scoreOut.querySelector('.players-inline');
+        if (playersInline) {
+          const badges = playersInline.querySelectorAll('.badge');
+          if (badges.length) {
+            playerBubblesEl.replaceChildren(...Array.from(badges, b => b.cloneNode(true)));
+          }
+
+          // 3) Status-Chips klonen – getrennt: [0] Turn/Warte, [1] Ansage
+          const chips = playersInline.querySelectorAll('.chip');
+          if (turnChipEl) {
+            if (chips[0]) {
+              turnChipEl.replaceChildren(chips[0].cloneNode(true));
+            } else {
+              turnChipEl.replaceChildren(); // leer
+            }
+          }
+          if (announceChipEl) {
+            if (chips[1]) {
+              announceChipEl.replaceChildren(chips[1].cloneNode(true));
+            } else {
+              announceChipEl.replaceChildren(); // leer
+            }
+          }
+        }
+      }
+
+      window.addEventListener('load', () => schedule(cloneHeaderBits));
+      document.addEventListener('DOMContentLoaded', () => schedule(cloneHeaderBits));
+
+      const obs = new MutationObserver(() => schedule(cloneHeaderBits));
+      if (scoreOut) obs.observe(scoreOut, { childList: true, subtree: true });
+    })();
+  </script>
+</body>
+</html>

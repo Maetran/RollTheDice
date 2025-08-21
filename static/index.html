@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Würfler – Lobby</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .wrap { max-width: 980px; margin: 1.2rem auto; }
+    .card { background:#fff; border:1px solid var(--border,#e0e0e0); border-radius:12px; padding:1rem; margin:.8rem 0; }
+    .row { display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; }
+    .row input[type="text"]{ padding:.5rem .7rem; border:1px solid var(--border,#e0e0e0); border-radius:.45rem; min-width:18ch; }
+    select { padding:.45rem .6rem; border:1px solid var(--border,#e0e0e0); border-radius:.45rem; }
+    .games { display:flex; flex-direction:column; gap:.6rem; }
+    .game-row { display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border,#e0e0e0); border-radius:.6rem; padding:.7rem .9rem; background:#fff; }
+    .game-row .meta .name { font-weight:700; }
+    .game-row .meta .sub { margin-top:.15rem; font-size:.92rem; color:#666; }
+    .muted.small { font-size:.85rem; color:#666; }
+    .title { display:flex; align-items:center; gap:.5rem; justify-content:space-between; }
+    .title .logo { font-size:1.6rem; }
+    .leaderboard table { border-collapse: collapse; width: 100%; margin-top:.6rem; }
+    .leaderboard th, .leaderboard td { border:1px solid #ddd; padding:.4rem .6rem; text-align:left; font-size:.9rem; }
+    .leaderboard th { background:#f7f7f7; font-weight:600; }
+    .stats { font-size:.9rem; color:#444; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">
+      <div style="display:flex; align-items:center; gap:.5rem;">
+        <div class="logo">🎲</div>
+        <h1 style="margin:.2rem 0;">Würfler – Lobby</h1>
+      </div>
+      <div class="stats">Würfelspiele beendet: <span id="gamesPlayed">0</span></div>
+    </div>
+
+    <!-- 1) Wer bist du? -->
+    <div class="card">
+      <h2>Wer bist du?</h2>
+      <div class="row">
+        <input id="playerName" type="text" placeholder="Dein Name">
+        <span class="muted small">Wird für den Beitritt verwendet.</span>
+      </div>
+    </div>
+
+    <!-- 2) Neues Spiel -->
+    <div class="card">
+      <h2>Neues Spiel erstellen</h2>
+      <div class="row">
+        <input id="gameName" type="text" placeholder="Spielname" value="Neues Spiel">
+        <select id="gameMode" title="Spielmodus">
+          <option value="2">2 Spieler</option>
+          <option value="3">3 Spieler</option>
+          <option value="2v2">2 vs 2</option>
+        </select>
+        <button id="createBtn">Erstellen &amp; beitreten</button>
+      </div>
+      <div id="createErr" class="muted small" style="margin-top:.4rem; color:#b71c1c;"></div>
+    </div>
+
+    <!-- 3) Offene Spiele -->
+    <div class="card">
+      <h2>Offene Spiele</h2>
+      <div class="row" style="margin-bottom:.5rem;">
+        <button id="refreshBtn">Aktualisieren</button>
+        <span class="muted small">Klicke auf „Beitreten“, um in den Spielraum zu wechseln.</span>
+      </div>
+      <div id="gamesList" class="games"></div>
+    </div>
+
+    <!-- 4) Leaderboard -->
+    <h2>Leaderboard</h2>
+    <div class="leaderboards" style="display:flex; gap:1.2rem; flex-wrap:wrap;">
+      <div class="leaderboard-box" style="flex:1; min-width:320px;">
+        <h3>Top 10 (letzte 7 Tage)</h3>
+        <table id="recentTable">
+          <thead>
+            <tr>
+              <th>Punkte</th>
+              <th>Sieger</th>
+              <th>Spiel</th>
+              <th>Gegner</th>
+              <th>Gegner Punkte</th>
+              <th>Diff</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="leaderboard-box" style="flex:1; min-width:320px;">
+        <h3>Top 10 Alltime</h3>
+        <table id="alltimeTable">
+          <thead>
+            <tr>
+              <th>Punkte</th>
+              <th>Sieger</th>
+              <th>Spiel</th>
+              <th>Gegner</th>
+              <th>Gegner Punkte</th>
+              <th>Diff</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    const nameInput  = document.getElementById('playerName');
+    const modeSel    = document.getElementById('gameMode');
+    const gameInput  = document.getElementById('gameName');
+    const createBtn  = document.getElementById('createBtn');
+    const createErr  = document.getElementById('createErr');
+    const listEl     = document.getElementById('gamesList');
+    const refreshBtn = document.getElementById('refreshBtn');
+
+    const recentTable = document.querySelector("#recentTable tbody");
+    const alltimeTable = document.querySelector("#alltimeTable tbody");
+    const gamesPlayedEl = document.getElementById("gamesPlayed");
+
+    // Name merken/laden
+    const NAME_KEY = 'wuerfler_name';
+    nameInput.value = localStorage.getItem(NAME_KEY) || '';
+    nameInput.addEventListener('input', () => {
+      localStorage.setItem(NAME_KEY, nameInput.value.trim());
+    });
+
+    // Spiele holen
+    async function fetchGames() {
+      try {
+        const res = await fetch('/api/games', {cache: 'no-store'});
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const games = Array.isArray(data.games) ? data.games : [];
+        renderList(games.filter(g => !g.started && !g.finished));
+      } catch (e) {
+        listEl.innerHTML = `<div class="muted">Konnte Spiele nicht laden: ${escapeHtml(String(e.message||e))}</div>`;
+      }
+    }
+
+    function renderList(games) {
+      if (!games.length) {
+        listEl.innerHTML = `<div class="muted">Keine offenen Spiele. Erstelle ein neues!</div>`;
+        return;
+      }
+
+      listEl.innerHTML = games.map(g => {
+        const joined   = (g.joined ?? g.players ?? 0);
+        const expected = (g.expected ?? g.capacity ?? g.mode ?? '?');
+        const gid      = g.id || '';
+        const status   = g.started ? 'läuft' : (g.finished ? 'fertig' : 'wartet');
+        const disabled = (joined >= expected) || g.started || g.finished ? 'disabled' : '';
+        const modeTxt  = (g.mode === '2v2') ? '2 vs 2' : `${g.mode || expected}`;
+
+        const waiting = Array.isArray(g.waiting) ? g.waiting : [];
+        const waitingBadges = waiting.length
+          ? waiting.map(n => `<span class="badge">${escapeHtml(n)}</span>`).join(' ')
+          : `<span class="muted small">Noch keine Spieler</span>`;
+
+        return `
+          <div class="game-row">
+            <div class="meta">
+              <div class="name">${escapeHtml(g.name || '(ohne Titel)')}</div>
+              <div class="sub">
+                Spieler: <b>${joined}/${expected}</b> • Modus: ${modeTxt} • Status: ${status}
+              </div>
+              <div class="sub" style="margin-top:.25rem;">
+                Wartende: ${waitingBadges}
+              </div>
+            </div>
+            <div class="actions">
+              <button class="joinBtn" data-id="${escapeAttr(gid)}" ${disabled}>Beitreten</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Beitreten
+    listEl.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.joinBtn');
+      if (!btn) return;
+      const gid = btn.dataset.id;
+      const pname = (nameInput.value || 'Gast').trim() || 'Gast';
+      if (!gid) { alert('Ungültige Spiel-ID. Bitte aktualisieren.'); return; }
+      try {
+        const chk = await fetch(`/api/games/${encodeURIComponent(gid)}`, {cache:'no-store'}).then(r=>r.ok?r.json():{exists:false});
+        if (chk && chk.exists === false) { alert('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
+      } catch {}
+      const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
+      location.href = `/static/room.html?${qs}`;
+    });
+
+    // Neues Spiel erstellen
+    createBtn.addEventListener('click', async () => {
+      createErr.textContent = '';
+      const pname = (nameInput.value || 'Gast').trim() || 'Gast';
+      const gname = (gameInput.value || '').trim() || 'Neues Spiel';
+      const mode  = modeSel.value || '2';
+      localStorage.setItem(NAME_KEY, pname);
+      try {
+        const res = await fetch('/api/games', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ name: gname, mode, owner: pname })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const gid = data.game_id || data.id;
+        if (!gid) throw new Error('Antwort ohne game_id');
+        const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
+        location.href = `/static/room.html?${qs}`;
+      } catch (e) {
+        createErr.textContent = `Fehler: ${String(e.message || e)}`;
+      }
+    });
+
+    // Leaderboard laden
+    async function loadLeaderboard() {
+      try {
+        const res = await fetch("/api/leaderboard", {cache:"no-store"});
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        gamesPlayedEl.textContent = data.games_played ?? 0;
+
+        function fillTable(tbody, entries) {
+          tbody.innerHTML = "";
+          entries.forEach(e => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${e.punkte}</td>
+              <td>${escapeHtml(e.name)}</td>
+              <td>${escapeHtml(e.spielname)}</td>
+              <td>${escapeHtml(e.gegnername)}</td>
+              <td>${e.gegnerpunkte}</td>
+              <td>${e.differenz}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+        fillTable(recentTable, data.recent || []);
+        fillTable(alltimeTable, data.alltime || []);
+      } catch (e) {
+        console.warn("Leaderboard konnte nicht geladen werden", e);
+      }
+    }
+
+    // Refresh Buttons
+    refreshBtn.addEventListener('click', fetchGames);
+
+    // initial
+    fetchGames();
+    loadLeaderboard();
+    setInterval(fetchGames, 4000);
+    setInterval(loadLeaderboard, 10000);
+
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
+    function escapeAttr(s){ return String(s).replace(/"/g, '&quot;'); }
+  </script>
+</body>
+</html>

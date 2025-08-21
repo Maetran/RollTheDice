@@ -1,0 +1,42 @@
+[
+  {
+    "punkte": 352,
+    "name": "Manuel",
+    "spielname": "Perfektes Spiel",
+    "gegnername": "Jonathan",
+    "gegnerpunkte": 280,
+    "differenz": 72
+  },
+  {
+    "punkte": 340,
+    "name": "Markus",
+    "spielname": "Nachtduell",
+    "gegnername": "Manuel",
+    "gegnerpunkte": 300,
+    "differenz": 40
+  },
+  {
+    "punkte": 325,
+    "name": "Sophie",
+    "spielname": "Urlaubsspiel",
+    "gegnername": "Vivienne",
+    "gegnerpunkte": 299,
+    "differenz": 26
+  },
+  {
+    "punkte": 319,
+    "name": "Vivienne",
+    "spielname": "Oma gegen Enkel",
+    "gegnername": "Oma",
+    "gegnerpunkte": 295,
+    "differenz": 24
+  },
+  {
+    "punkte": 312,
+    "name": "Mirka",
+    "spielname": "Feierabendrunde",
+    "gegnername": "Markus",
+    "gegnerpunkte": 285,
+    "differenz": 27
+  }
+]
