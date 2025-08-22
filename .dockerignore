@@ -29,6 +29,7 @@ Thumbs.db
 
 # Node/Front (falls mal dazukommt)
 node_modules/
+Dockerfile
 
 # Wir WOLLEN app/data mitkopieren, damit Default-Dateien im Image sind.
 # Persistenz passiert über den Bind-Mount beim Run (siehe oben).
