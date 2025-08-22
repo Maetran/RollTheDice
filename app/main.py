@@ -2,68 +2,142 @@ from __future__ import annotations
 
 import uuid
 import random
+import json
 from collections import Counter
 from typing import Dict, Any
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+import os
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from .rules import compute_overall
 
-# WICHTIG: keine Imports aus app.models / .models mehr!
-# Wir benutzen ein einziges In-Memory-Registry:
+# App zuerst erstellen
+app = FastAPI()
+# ---------------- Pfade robust auflösen (static/ und data/) ----------------
+from pathlib import Path
+import os
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+HERE = Path(__file__).resolve().parent           # .../RollTheDice/app
+BASE = HERE.parent                               # .../RollTheDice
+
+# Kandidaten für 'static'
+STATIC_CANDIDATES = [
+    BASE / "static",         # .../RollTheDice/static  (Repo-Root)
+    HERE / "static",         # .../RollTheDice/app/static
+    Path.cwd() / "static",   # aktuelles Arbeitsverzeichnis
+]
+STATIC_DIR = next((p for p in STATIC_CANDIDATES if p.exists()), None)
+if not STATIC_DIR:
+    raise RuntimeError("Kein 'static' Ordner gefunden. Erwartete Orte: "
+                       + ", ".join(str(p) for p in STATIC_CANDIDATES))
+
+# Kandidaten für 'data' (Leaderboard/Stats)
+DATA_CANDIDATES = [
+    BASE / "data",           # .../RollTheDice/data  (empfohlen)
+    HERE / "data",           # .../RollTheDice/app/data
+]
+DATA_DIR = next((p for p in DATA_CANDIDATES if p.exists()), HERE)
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# Dateien relativ zu DATA_DIR
+RECENT_FILE  = DATA_DIR / "leaderboard_recent.json"
+ALLTIME_FILE = DATA_DIR / "leaderboard_alltime.json"
+STATS_FILE   = DATA_DIR / "stats.json"
+
+# Static korrekt mounten – jetzt existiert app
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+# Zentrales Game-Registry + Typalias
 GameDict = Dict[str, Any]
 games: Dict[str, GameDict] = {}
-
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Schreibbare Zeilen-Indices (entsprechend Tabelle)
+# -----------------------------
+# Schreibbare Felder (Index -> Feldname)
+# -----------------------------
 WRITABLE_ROWS = [0, 1, 2, 3, 4, 5, 9, 10, 12, 13, 14, 15]
 WRITABLE_MAP = {
     0: "1", 1: "2", 2: "3", 3: "4", 4: "5", 5: "6",
     9: "max", 10: "min", 12: "kenter", 13: "full", 14: "poker", 15: "60",
 }
 KEY_TO_ROW = {v: k for k, v in WRITABLE_MAP.items()}
+WRITABLE_CELLS_PER_PLAYER = len(WRITABLE_ROWS) * 4  # 12*4 = 48
 
+# --- Team-Mode Helpers (2v2: Spieler 1&3 = Team A, 2&4 = Team B) ---
+
+def is_team_mode(g: GameDict) -> bool:
+    m = str(g.get("_mode"))
+    return m.lower() == "2v2"
+
+def assign_team_for_join(g: GameDict, player_id: str):
+    """Zuweisung in Join-Reihenfolge: 1->A, 2->B, 3->A, 4->B."""
+    order = [p["id"] for p in g["_players"]]
+    idx = order.index(player_id) if player_id in order else len(order)
+    team = "A" if idx % 2 == 0 else "B"
+    g.setdefault("_team_of", {})[player_id] = team
+    teams = g.setdefault("_teams", {"A":{"name":"Team A","members":[]}, "B":{"name":"Team B","members":[]}})
+    if player_id not in teams[team]["members"]:
+        teams[team]["members"].append(player_id)
+    # Team-Scoreboard anlegen
+    g.setdefault("_scoreboards_by_team", {}).setdefault(team, {})
+
+def board_key_for_actor(g: GameDict, pid: str) -> str:
+    """Welche Scoreboard-ID wird beschrieben? Team-ID (2v2) oder pid (2/3 Spieler)."""
+    if is_team_mode(g):
+        team = g.get("_team_of", {}).get(pid)
+        return team or "A"
+    return pid
 
 def new_game(gid: str, name: str, mode) -> GameDict:
     if isinstance(mode, str) and mode.isdigit():
         mode = int(mode)
-    expected = 4 if mode == "2v2" else int(mode)
+    expected = 4 if str(mode).lower() == "2v2" else int(mode)
+    if str(mode).lower() == "2v2":
+        # explizit Teams & Team-Scoreboards anlegen (optional)
+        pass  # (dein Einfügeblock würde hier stehen)
     g: GameDict = {
         "_id": gid,
         "_name": name,
-        "_mode": mode,
+        "_mode": str(mode),
         "_expected": expected,
         "_started": False,
         "_finished": False,
 
-        "_players": [],
-        "_turn": None,
+        "_players": [],                        # [{id,name,ws}]
+        "_turn": None,                         # {"player_id": ...}
         "_dice": [0, 0, 0, 0, 0],
         "_holds": [False] * 5,
         "_rolls_used": 0,
         "_rolls_max": 3,
 
-        "_scoreboards": {},
-        "_announced_row4": None,
-        "_correction": {"active": False},
+        "_scoreboards": {},                    # pid -> {"row,col": score} (Einzel/3P)
+        # Team-Boards im 2v2:
+        "_team_of": {},                        # pid -> "A"/"B"
+        "_teams": {"A":{"name":"Team A","members":[]}, "B":{"name":"Team B","members":[]}},
+        "_scoreboards_by_team": {},            # "A"/"B" -> {"row,col": score}
 
-        "_results": None,
+        "_announced_row4": None,               # "1".."6","max","min","kenter","full","poker","60"
+        "_correction": {"active": False},      # {"active":True,"player_id":pid,"dice":[...]}
 
-        "_last_write": {},
-        "_last_dice": {},
-        "_last_meta": {},
+        "_results": None,                      # Ergebnisliste (nur am Ende)
+
+        "_last_write": {},                     # pid -> (row, col)
+        "_last_dice": {},                      # pid -> [d1..d5]
+        "_last_meta": {},                      # pid -> {"announced": ...}
     }
     games[gid] = g
     return g
 
+# -----------------------------
+# Scoring & Helpers
+# -----------------------------
 
 def _counts(dice):
     return Counter(d for d in dice if d)
-
 
 def score_field_value(field_key: str, dice) -> int:
     cnt = _counts(dice)
@@ -100,9 +174,12 @@ def score_field_value(field_key: str, dice) -> int:
 
     return 0
 
-
 def _filled_rows_for(g: GameDict, pid: str, col: str) -> set[int]:
-    board = g["_scoreboards"].get(pid, {})
+    if is_team_mode(g):
+        team = board_key_for_actor(g, pid)
+        board = g.get("_scoreboards_by_team", {}).get(team, {})
+    else:
+        board = g["_scoreboards"].get(pid, {})
     out = set()
     for k in board.keys():
         if isinstance(k, str) and "," in k:
@@ -112,7 +189,6 @@ def _filled_rows_for(g: GameDict, pid: str, col: str) -> set[int]:
                 out.add(r)
     return out
 
-
 def _next_required_row(col: str, filled: set[int]) -> int | None:
     order = WRITABLE_ROWS if col == "down" else list(reversed(WRITABLE_ROWS))
     for r in order:
@@ -120,6 +196,23 @@ def _next_required_row(col: str, filled: set[int]) -> int | None:
             return r
     return None
 
+def _remaining_cells_for(g: GameDict, pid: str) -> int:
+    """Verbleibende Zellen für 'letzter Wurf' – im Team-Modus zählt das gemeinsame Blatt."""
+    if is_team_mode(g):
+        team = board_key_for_actor(g, pid)
+        sb = g.get("_scoreboards_by_team", {}).get(team, {}) or {}
+    else:
+        sb = g["_scoreboards"].get(pid, {}) or {}
+    return WRITABLE_CELLS_PER_PLAYER - len(sb)
+
+def _is_last_turn_for(g: GameDict, pid: str) -> bool:
+    return _remaining_cells_for(g, pid) == 1
+
+def _set_roll_cap_for_current_turn(g: GameDict):
+    """Setzt _rolls_max je nach 'letzter Wurf' auf 5, sonst 3."""
+    cur = g.get("_turn", {}) or {}
+    pid = cur.get("player_id")
+    g["_rolls_max"] = 5 if (pid and _is_last_turn_for(g, pid)) else 3
 
 def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_announce: str | None) -> tuple[bool, str]:
     if row not in WRITABLE_ROWS:
@@ -131,6 +224,13 @@ def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_anno
         return True, ""
 
     if col == "ang":
+        # Ausnahme: im letzten Zug darf ohne Ansage in ❗ geschrieben werden
+        if _is_last_turn_for(g, pid):
+            return True, ""
+        # NEU: direkt nach dem 1. Wurf darf ohne Dropdown-Ansage in ❗ geschrieben werden
+        # (solange das Ziel-Feld noch leer ist; das prüfen wir im Schreibpfad ohnehin)
+        if g.get("_rolls_used", 0) == 1:
+            return True, ""
         if not during_turn_announce:
             return False, "Keine Ansage aktiv"
         if during_turn_announce != field_key:
@@ -148,7 +248,6 @@ def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_anno
 
     return False, "Unbekannte Spalte"
 
-
 def _serialize_scoreboards(g: GameDict) -> Dict[str, Dict[str, int]]:
     out: Dict[str, Dict[str, int]] = {}
     for pid, board in g["_scoreboards"].items():
@@ -159,8 +258,15 @@ def _serialize_scoreboards(g: GameDict) -> Dict[str, Dict[str, int]]:
         out[pid] = sb
     return out
 
+# -----------------------------
+# Snapshot / Broadcast
+# -----------------------------
 
 def snapshot(g: GameDict) -> Dict[str, Any]:
+    # Ergebnisse (falls abgeschlossen) berechnen
+    if g["_finished"] and not g.get("_results"):
+        g["_results"] = _compute_results_for_snapshot(g)
+
     return {
         "_name": g["_name"],
         "_players": [{"id": p["id"], "name": p["name"]} for p in g["_players"]],
@@ -173,13 +279,31 @@ def snapshot(g: GameDict) -> Dict[str, Any]:
         "_holds": g["_holds"],
         "_rolls_used": g["_rolls_used"],
         "_rolls_max": g["_rolls_max"],
-        "_scoreboards": _serialize_scoreboards(g),
-        "_announced_row4": g["_announced_row4"],
+        "_scoreboards": ({} if is_team_mode(g) else _serialize_scoreboards(g)),        "_announced_row4": g["_announced_row4"],
         "_correction": g["_correction"],
+
+        # Team-Infos für 2v2
+        "_mode": g.get("_mode"),
+        "_teams": (
+            [
+              {
+                "id": "A",
+                "name": g.get("_teams", {}).get("A", {}).get("name", "Team A"),
+                # Nur IDs liefern – der Client mappt Namen aus _players
+                "members": g.get("_teams", {}).get("A", {}).get("members", [])
+              },
+              {
+                "id": "B",
+                "name": g.get("_teams", {}).get("B", {}).get("name", "Team B"),
+                "members": g.get("_teams", {}).get("B", {}).get("members", [])
+              }
+            ] if is_team_mode(g) else []
+        ),
+        "_scoreboards_by_team": (g.get("_scoreboards_by_team", {}) if is_team_mode(g) else {}),
+
         "_results": g.get("_results"),
         "_has_last": {pid: bool(g["_last_write"].get(pid)) for pid in g["_scoreboards"].keys()},
     }
-
 
 async def broadcast(g: GameDict, msg: Dict[str, Any]) -> None:
     for p in g["_players"]:
@@ -191,7 +315,6 @@ async def broadcast(g: GameDict, msg: Dict[str, Any]) -> None:
         except Exception:
             pass
 
-
 def next_turn(g: GameDict, current_pid: str | None) -> str | None:
     ids = [p["id"] for p in g["_players"]]
     if not ids:
@@ -201,17 +324,18 @@ def next_turn(g: GameDict, current_pid: str | None) -> str | None:
         return ids[i]
     return ids[0]
 
+# -----------------------------
+# HTTP API
+# -----------------------------
 
 @app.get("/")
 async def root():
-    return FileResponse("static/index.html")
-
+    return FileResponse(str(STATIC_DIR / "index.html"))
 
 class CreateReq(BaseModel):
     name: str
     mode: str | int
     owner: str | None = None
-
 
 def game_list_payload() -> list[dict]:
     out = []
@@ -227,8 +351,7 @@ def game_list_payload() -> list[dict]:
         })
     return out
 
-
-# --- Games API (kompatibel + 'waiting') ---
+# --- Games API (mit wartenden Spielern) ---
 @app.get("/api/games")
 def api_games():
     lst = []
@@ -240,16 +363,15 @@ def api_games():
                 "id": gid,
                 "name": g["_name"],
                 "mode": g["_mode"],
-                "players": joined,              # ALT (Kompatibilität)
-                "expected": g["_expected"],     # ALT (Kompatibilität)
+                "players": joined,
+                "expected": g["_expected"],
                 "started": g["_started"],
                 "finished": g["_finished"],
-                "waiting": waiting_names,       # NEU
+                "waiting": waiting_names,
             })
         except Exception:
             continue
     return {"games": lst}
-
 
 @app.get("/api/games/{game_id}")
 def game_info(game_id: str):
@@ -261,52 +383,39 @@ def game_info(game_id: str):
         "id": game_id,
         "name": g["_name"],
         "mode": g["_mode"],
-        "players": len(g["_players"]),     # ALT
-        "expected": g["_expected"],        # ALT
+        "players": len(g["_players"]),
+        "expected": g["_expected"],
         "started": g["_started"],
         "finished": g["_finished"],
-        "waiting": [p.get("name", "Player") for p in g["_players"]],  # NEU
+        "waiting": [p.get("name", "Player") for p in g["_players"]],
     }
-
-
-# Leaderboard + Stats
-import json
-from pathlib import Path
-DATA_DIR = Path(__file__).parent
-
 
 @app.get("/api/leaderboard")
 async def get_leaderboard():
-    recent_file = DATA_DIR / "leaderboard_recent.json"
-    alltime_file = DATA_DIR / "leaderboard_alltime.json"
-    stats_file = DATA_DIR / "stats.json"
-
-    def read_json(path, default):
+    def read_json(path: Path, default):
         if path.exists():
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+            try:
+                return json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                return default
         return default
 
     return {
-        "recent": read_json(recent_file, []),
-        "alltime": read_json(alltime_file, []),
-        "stats": read_json(stats_file, {"games_played": 0}),
+        "recent": read_json(RECENT_FILE, []),
+        "alltime": read_json(ALLTIME_FILE, []),
+        "stats": read_json(STATS_FILE, {"games_played": 0}),
     }
 
-
-# Spiel erstellen (neue API, die dein Frontend nutzt)
 @app.post("/api/games")
 async def api_games_create(req: CreateReq):
     gid = str(uuid.uuid4())[:8]
     new_game(gid, req.name, req.mode)
     return {"game_id": gid}
 
-
-# Legacy-Endpoints (bleiben erhalten, aber auch auf 'games' dict!)
+# Legacy-Endpoints
 @app.get("/games")
 async def legacy_list():
     return game_list_payload()
-
 
 @app.post("/create_game")
 async def legacy_create_game(mode: str, name: str):
@@ -314,14 +423,205 @@ async def legacy_create_game(mode: str, name: str):
     new_game(gid, name, mode)
     return {"id": gid}
 
-
 # Brave/Chromium DevTools Ping unterdrücken
 @app.get("/.well-known/appspecific/com.chrome.devtools.json")
 async def chrome_devtools_placeholder():
     return {}
 
+# -----------------------------
+# Leaderboard/Stats Hilfsfunktionen
+# -----------------------------
+def _rows_from_scoreboard(sb: Dict[str, int]) -> Dict[int, Dict[str, int]]:
+    rows = {1: {}, 2: {}, 3: {}, 4: {}}
+    for k, v in (sb or {}).items():
+        if not isinstance(k, str) or "," not in k:
+            continue
+        r_str, col = k.split(",", 1)
+        try:
+            r = int(r_str)
+        except ValueError:
+            continue
+        field_key = WRITABLE_MAP.get(r)
+        if not field_key:
+            continue
+        target = rows[1 if col == "down" else 2 if col == "free" else 3 if col == "up" else 4]
+        target.setdefault(field_key, int(v))
+    return rows
 
-# --- WebSocket ---
+def _compute_final_totals(g: GameDict) -> Dict[str,int]:
+    totals: Dict[str,int] = {}
+    if is_team_mode(g):
+        # Team-Boards
+        for team_id, board in g.get("_scoreboards_by_team", {}).items():
+            rows = _rows_from_scoreboard(board)
+            ov = compute_overall(rows)
+            totals[team_id] = int(ov["overall"]["overall_total"])
+    else:
+        # Spieler-Boards
+        for p in g["_players"]:
+            pid = p["id"]
+            sb = g["_scoreboards"].get(pid, {})
+            rows = _rows_from_scoreboard(sb)
+            ov = compute_overall(rows)
+            totals[pid] = int(ov["overall"]["overall_total"])
+    return totals
+
+def _is_game_finished(g: GameDict) -> bool:
+    if not g["_players"]:
+        return False
+    if is_team_mode(g):
+        boards = g.get("_scoreboards_by_team", {})
+        # beide Teams müssen voll sein (48 Einträge je Team)
+        return all(len(boards.get(team_id, {})) >= WRITABLE_CELLS_PER_PLAYER for team_id in ("A","B"))
+    # Einzel/3P: jeder Spieler voll
+    for p in g["_players"]:
+        pid = p["id"]
+        if WRITABLE_CELLS_PER_PLAYER - len(g["_scoreboards"].get(pid, {})) != 0:
+            return False
+    return True
+
+def _append_json(path: Path, mutate_fn):
+    data = []
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            data = []
+    new_data = mutate_fn(data)
+    path.write_text(json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+def _mutate_stats(incr_games=False):
+    stats = {"games_played": 0}
+    if STATS_FILE.exists():
+        try:
+            stats = json.loads(STATS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    if incr_games:
+        stats["games_played"] = int(stats.get("games_played", 0)) + 1
+    STATS_FILE.write_text(json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8")
+
+def _finalize_and_log_results(g: GameDict):
+    totals = _compute_final_totals(g)
+    mode = str(g["_mode"]).lower()
+    players = g["_players"]
+
+    def _name(pid):
+        for pp in players:
+            if pp["id"] == pid:
+                return pp.get("name", "Player")
+        return "Player"
+
+    entry_time = datetime.now(timezone.utc).isoformat()
+    game_name = g["_name"]
+
+    entries_for_recent = []
+    entries_for_alltime = []
+
+    if mode == "2v2":
+        teams = g.get("_teams", {})
+        mA = teams.get("A", {}).get("members", []) or []
+        mB = teams.get("B", {}).get("members", []) or []
+
+        # Teamtotale aus Team-Boards holen (keys: "A","B")
+        teamA_total = int(totals.get("A", 0))
+        teamB_total = int(totals.get("B", 0))
+        winner_team = "A" if teamA_total >= teamB_total else "B"
+        wt_total = teamA_total if winner_team == "A" else teamB_total
+        lt_total = teamB_total if winner_team == "A" else teamA_total
+        diff = wt_total - lt_total
+
+        def _name(pid):
+            for pp in players:
+                if pp["id"] == pid:
+                    return pp.get("name", "Player")
+            return str(pid)
+
+        winners = ", ".join(_name(pid) for pid in (mA if winner_team == "A" else mB))
+        losers  = ", ".join(_name(pid) for pid in (mB if winner_team == "A" else mA))
+
+        rec = {
+            "ts": entry_time,
+            "points": wt_total,
+            "name": winners,
+            "gamename": game_name,
+            "opponent": losers,
+            "opp_points": lt_total,
+            "diff": diff
+        }
+        entries_for_recent.append(rec)
+        entries_for_alltime.append(rec)
+    else:
+        ordered = sorted(players, key=lambda p: totals.get(p["id"], 0), reverse=True)
+        if not ordered:
+            return
+        winner = ordered[0]
+        winner_pts = totals.get(winner["id"], 0)
+        if len(ordered) >= 2:
+            second = ordered[1]
+            opp_name = second["name"]
+            opp_pts = totals.get(second["id"], 0)
+            diff = winner_pts - opp_pts
+        else:
+            opp_name = "-"
+            opp_pts = 0
+            diff = winner_pts
+        rec = {
+            "ts": entry_time,
+            "points": winner_pts,
+            "name": winner["name"],
+            "gamename": game_name,
+            "opponent": opp_name,
+            "opp_points": opp_pts,
+            "diff": diff
+        }
+        entries_for_recent.append(rec)
+        entries_for_alltime.append(rec)
+
+    def mutate_recent(data):
+        cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+        kept = []
+        for x in data:
+            try:
+                ts = datetime.fromisoformat(x.get("ts"))
+            except Exception:
+                continue
+            if ts >= cutoff:
+                kept.append(x)
+        kept.extend(entries_for_recent)
+        kept.sort(key=lambda x: int(x.get("points", 0)), reverse=True)
+        return kept[:10]
+
+    def mutate_alltime(data):
+        arr = list(data) if isinstance(data, list) else []
+        arr.extend(entries_for_alltime)
+        arr.sort(key=lambda x: int(x.get("points", 0)), reverse=True)
+        return arr[:10]
+
+    _append_json(RECENT_FILE, mutate_recent)
+    _append_json(ALLTIME_FILE, mutate_alltime)
+    _mutate_stats(incr_games=True)
+
+def _compute_results_for_snapshot(g: GameDict):
+    totals = _compute_final_totals(g)
+    res = []
+    if is_team_mode(g):
+        # Teams im Snapshot anzeigen
+        for tid in ("A","B"):
+            res.append({"player": g.get("_teams", {}).get(tid, {}).get("name", f"Team {tid}"),
+                        "total": int(totals.get(tid, 0))})
+        res.sort(key=lambda x: x["total"], reverse=True)
+        return res
+    # Einzel/3P
+    for p in g["_players"]:
+        pid = p["id"]
+        res.append({"player": p.get("name", "Player"), "total": int(totals.get(pid, 0))})
+    res.sort(key=lambda x: x["total"], reverse=True)
+    return res
+
+# -----------------------------
+# WebSocket
+# -----------------------------
 @app.websocket("/ws/{game_id}")
 async def ws_game(websocket: WebSocket, game_id: str):
     await websocket.accept()
@@ -333,7 +633,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
     g = games[game_id]
     player_id: str | None = None
 
-    # Initialen Snapshot sofort schicken (damit UI immer etwas hat)
+    # Direkt initialen Snapshot senden
     await websocket.send_json({"scoreboard": snapshot(g)})
 
     try:
@@ -346,9 +646,13 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 player = {"id": player_id, "name": data.get("name") or "Gast", "ws": websocket}
                 g["_players"].append(player)
                 g["_scoreboards"][player_id] = {}
+                # 2v2: Spieler dem Team zuordnen (1&3 -> A, 2&4 -> B)
+                if is_team_mode(g):
+                    assign_team_for_join(g, player_id)
                 if len(g["_players"]) == g["_expected"] and not g["_started"]:
                     g["_started"] = True
                     g["_turn"] = {"player_id": g["_players"][0]["id"]}
+                    _set_roll_cap_for_current_turn(g)
                 await websocket.send_json({"player_id": player_id})
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
@@ -383,7 +687,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "announce_row4":
-                # Ansage ODER Um-Ansage: nur direkt nach Wurf 1
+                # nur direkt nach Wurf 1; Änderung erlaubt (Um-Ansage)
                 if not (g["_turn"] and g["_turn"]["player_id"] == player_id):
                     await websocket.send_json({"error": "Nicht an der Reihe"})
                     continue
@@ -399,9 +703,13 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     await websocket.send_json({"error": "Ungültiges Ansage-Feld"})
                     continue
 
-                # Feld in ❗ bereits befüllt? Dann blocken (sonst Deadlock)
+                # Feld in ❗ schon befüllt?
                 row_for_field = KEY_TO_ROW.get(field)
-                board = g["_scoreboards"].get(player_id, {})
+                # prüfen gegen Zielboard (Team/Spieler)
+                if is_team_mode(g):
+                    board = g.get("_scoreboards_by_team", {}).get(board_key_for_actor(g, player_id), {})
+                else:
+                    board = g["_scoreboards"].get(player_id, {})
                 if row_for_field is not None and f"{row_for_field},ang" in board:
                     await websocket.send_json({"error": f"Ansage nicht möglich: Feld {field} in ❗ bereits befüllt"})
                     continue
@@ -438,22 +746,37 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     continue
 
                 key = f"{row},{col}"
-                if key in g["_scoreboards"].get(player_id, {}):
+                # Ziel-Board: Team oder Spieler
+                if is_team_mode(g):
+                    board = g.setdefault("_scoreboards_by_team", {}).setdefault(board_key_for_actor(g, player_id), {})
+                else:
+                    board = g.setdefault("_scoreboards", {}).setdefault(player_id, {})
+
+                if key in board:
                     await websocket.send_json({"error": "Dieses Feld ist bereits befüllt"})
                     continue
 
                 value = score_field_value(fld, g["_dice"] or [0, 0, 0, 0, 0])
-                g["_scoreboards"][player_id][key] = value
+                board[key] = value
 
                 g["_last_write"][player_id] = (row, col)
                 g["_last_dice"][player_id] = (g["_dice"] or [0, 0, 0, 0, 0])[:]
                 g["_last_meta"][player_id] = {"announced": g["_announced_row4"]}
 
+                # Turn Ende
                 g["_dice"] = [0, 0, 0, 0, 0]
                 g["_holds"] = [False] * 5
                 g["_rolls_used"] = 0
                 g["_announced_row4"] = None
                 g["_turn"] = {"player_id": next_turn(g, player_id)}
+                _set_roll_cap_for_current_turn(g)
+
+                # Spielende?
+                if _is_game_finished(g):
+                    g["_started"] = False
+                    g["_finished"] = True
+                    _finalize_and_log_results(g)
+
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "request_correction":
@@ -488,12 +811,13 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "write_field_correction":
-                # Nur erlaubt, wenn Korrektur aktiv ist und du der Anforderer bist
+                # --- Preconditions ---
                 corr = g["_correction"]
                 if not corr.get("active") or corr.get("player_id") != player_id:
                     await websocket.send_json({"error": "Keine Korrektur aktiv"})
                     continue
 
+                # Zielzeile/-spalte aus dem Request
                 try:
                     row = int(data["row"])
                 except Exception:
@@ -509,44 +833,71 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     await websocket.send_json({"error": "Dieses Feld ist nicht beschreibbar"})
                     continue
 
-                # alten Eintrag (der korrigiert werden soll) entfernen
+                # Es darf nur der letzte Eintrag dieses Spielers korrigiert werden
                 last = g["_last_write"].get(player_id)
                 if not last:
                     await websocket.send_json({"error": "Kein letzter Eintrag vorhanden"})
                     continue
                 old_row, old_col = last
-                old_key = f"{old_row},{old_col}"
-                g["_scoreboards"].setdefault(player_id, {}).pop(old_key, None)
 
-                # neuen Wert aus den Korrekturwürfeln berechnen und schreiben
-                dice_for_eval = (g["_correction"].get("dice") or g["_dice"] or [0, 0, 0, 0, 0])[:]
+                # Würfel für die Neubewertung sind die gemerkten Korrekturwürfel
+                dice_for_eval = (corr.get("dice") or g.get("_dice") or [0, 0, 0, 0, 0])[:]
+
+                # --- Altes Zielboard (Team/Spieler) bestimmen und alten Eintrag entfernen ---
+                if is_team_mode(g):
+                    old_board = g.setdefault("_scoreboards_by_team", {}).setdefault(
+                        board_key_for_actor(g, player_id), {}
+                    )
+                else:
+                    old_board = g.setdefault("_scoreboards", {}).setdefault(player_id, {})
+
+                old_key = f"{old_row},{old_col}"
+                old_board.pop(old_key, None)
+
+                # --- Neues Zielboard (Team/Spieler) bestimmen ---
+                if is_team_mode(g):
+                    new_board = g.setdefault("_scoreboards_by_team", {}).setdefault(
+                        board_key_for_actor(g, player_id), {}
+                    )
+                else:
+                    new_board = g.setdefault("_scoreboards", {}).setdefault(player_id, {})
+
                 new_key = f"{row},{col}"
-                if new_key in g["_scoreboards"].setdefault(player_id, {}):
+                if new_key in new_board:
                     await websocket.send_json({"error": "Ziel-Feld bereits befüllt"})
                     continue
 
+                # Punkte neu berechnen und schreiben
                 val = score_field_value(fld, dice_for_eval)
-                g["_scoreboards"][player_id][new_key] = val
+                new_board[new_key] = val
                 g["_last_write"][player_id] = (row, col)
 
-                # Korrektur beenden und Wurf zurücksetzen
+                # Korrektur beenden, Würfel zurücksetzen und broadcasten
                 g["_correction"] = {"active": False}
                 g["_dice"] = [0, 0, 0, 0, 0]
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
+            elif act == "end_game":
+                # Spiel für alle beenden + Ergebnisse loggen
+                if not g["_finished"]:
+                    _finalize_and_log_results(g)
+                g["_started"] = False
+                g["_finished"] = True
+                await broadcast(g, {"scoreboard": snapshot(g)})
+
             else:
-                # Unbekannte Aktion ignorieren
                 await websocket.send_json({"error": f"Unbekannte Aktion: {act}"})
 
     except WebSocketDisconnect:
-        # Spieler trennt Verbindung: WS-Referenz entfernen, Spiel bleibt bestehen
+        # Spieler trennt Verbindung: WS-Referenz entfernen (Rejoin möglich)
         if game_id in games and player_id:
             g = games[game_id]
             for p in g["_players"]:
                 if p.get("id") == player_id:
                     p["ws"] = None
-        # Kein Broadcast nötig; Rejoin ist möglich
 
-
+# -----------------------------
+# Run
+# -----------------------------
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

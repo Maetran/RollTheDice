@@ -1,10 +1,5 @@
 // static/scoreboard.js
-// Rendert direkt in room.html-Container + Live-Subtotals:
-// - #roomGameName (nur Name)
-// - #roomPlayerBubbles (Spieler-Badges)
-// - #roomStatusLine (Status-Chips)
-// - #scoreOut (Dicebar, Ansage-Slot, Tabellen)
-// Live-Berechnungen: ZwSumme, ZwTotalOben, Diff, ZwTotalUnten, Reihentotal, Overall (im Header)
+// Einzel- & Team-Mode (2v2) – robust gegen verschiedene Snapshot-Formate
 
 const ROW_LABELS = [
   "1","2","3","4","5","6",
@@ -24,7 +19,7 @@ const ROW_FIELD_KEYS = [
 ];
 
 const ANNOUNCE_FIELDS = ["1","2","3","4","5","6","max","min","kenter","full","poker","60"];
-const COMPUTE_ROWS = new Set([6,7,8,11,16,17]); // 7=Bonus wird live gerechnet
+const COMPUTE_ROWS = new Set([6,7,8,11,16,17]);
 
 function rowGroupMeta(ri){
   if (ri >= 6 && ri <= 8)   return { group: "top",    start: ri === 6,  end: ri === 8  };
@@ -33,38 +28,28 @@ function rowGroupMeta(ri){
   return { group: null, start: false, end: false };
 }
 
-// ---------- Utils ----------
 const num = (v) => {
   if (v === "" || v === null || v === undefined) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 };
 
-// Werte aus sc lesen
-function getCell(sc, ri, colKey){
-  return sc[`${ri},${colKey}`];
-}
+function getCell(sc, ri, colKey){ return sc[`${ri},${colKey}`]; }
 
-// Live-Berechnung pro Spalte (down/free/up/ang)
 function computeColumnTotals(sc, colKey){
-  // Top (1..6)
   let sumTop = 0;
   for (let ri=0; ri<=5; ri++){
     const v = num(getCell(sc, ri, colKey));
     if (v !== null) sumTop += v;
   }
-
-  // BONUS: live rechnen (>=60 => 30), NICHT mehr aus Zelle lesen
   const bonusVal = (sumTop >= 60) ? 30 : 0;
   const totalTop = sumTop + bonusVal;
 
-  // Diff: nur wenn 1, Max, Min vorhanden
   const one  = num(getCell(sc, 0,  colKey));
   const vmax = num(getCell(sc, 9,  colKey));
   const vmin = num(getCell(sc, 10, colKey));
   const diff = (one !== null && vmax !== null && vmin !== null) ? (one * (vmax - vmin)) : null;
 
-  // Bottom (Kenter, Full, Poker, 60)
   const kenter = num(getCell(sc,12, colKey)) || 0;
   const full   = num(getCell(sc,13, colKey)) || 0;
   const poker  = num(getCell(sc,14, colKey)) || 0;
@@ -72,23 +57,59 @@ function computeColumnTotals(sc, colKey){
   const sumBottom = kenter + full + poker + sixty;
 
   const totalColumn = totalTop + (diff ?? 0) + sumBottom;
-
   return { sumTop, bonusVal, totalTop, diff, sumBottom, totalColumn };
 }
 
-// Gesamttotal (Summe aller 4 Spalten-Reihentotale)
 function computeOverall(sc){
   const cols = ["down","free","up","ang"];
   return cols.reduce((acc, c) => acc + computeColumnTotals(sc, c).totalColumn, 0);
 }
 
+// -------- Team-Helpers --------
+function isTeamModeSnapshot(sb){
+  // ausschließlich per _mode, um Fehl-Erkennungen zu vermeiden
+  const m = sb && sb._mode != null ? String(sb._mode).toLowerCase() : "";
+  return m === "2v2";
+}
+
+function normalizeTeams(sb){
+  // Liefert [{id:"A",name:"Team A",members:[pid,...]}, {id:"B",...}]
+  if (!sb) return [];
+  if (Array.isArray(sb._teams)) return sb._teams.map(t => ({
+    id: t.id, name: t.name || `Team ${t.id}`, members: t.members || []
+  }));
+  if (sb._teams && typeof sb._teams === "object"){
+    return Object.keys(sb._teams).map(k => {
+      const t = sb._teams[k] || {};
+      return { id: t.id || k, name: t.name || `Team ${k}`, members: t.members || [] };
+    });
+  }
+  // Fallback: nur anhand _scoreboards_by_team
+  const keys = Object.keys(sb._scoreboards_by_team || {});
+  return keys.map(k => ({ id: k, name: `Team ${k}`, members: [] }));
+}
+
+function teamIdForPlayer(sb, pid){
+  const teams = normalizeTeams(sb);
+  for (const t of teams){
+    if ((t.members||[]).some(m => String(m) === String(pid))) return t.id;
+  }
+  return null;
+}
+
+// -------- Announce-UI --------
 function renderAnnounceSlot(sb, myId, iAmTurn, rollsUsed){
   const ann = sb._announced_row4 || null;
   const correctionActive = !!(sb?._correction?.active);
   const showSelector = iAmTurn && rollsUsed === 1 && !correctionActive;
 
-  // Belegte ❗ auf meinem Board sammeln
-  const myBoard = (sb?._scoreboards && sb._scoreboards[myId]) || {};
+  const isTeamMode = isTeamModeSnapshot(sb);
+  const boardKey = isTeamMode ? (teamIdForPlayer(sb, myId) || "A") : myId;
+
+  const myBoard = isTeamMode
+    ? (sb._scoreboards_by_team?.[boardKey] || {})
+    : (sb._scoreboards?.[boardKey] || {});
+
   const taken = new Set();
   for (const k of Object.keys(myBoard)) {
     const [rStr, col] = k.split(",", 2);
@@ -120,41 +141,30 @@ function renderAnnounceSlot(sb, myId, iAmTurn, rollsUsed){
   return `<div id="announceSlot" class="announce-slot">${inner}</div>`;
 }
 
-function numOrEmpty(v){
-  const n = num(v);
-  return (n === null) ? "" : String(n);
-}
-
-// Helpers
+// -------- Misc Utils --------
+function numOrEmpty(v){ const n = num(v); return (n === null) ? "" : String(n); }
 function dieFace(v){ const f=["","⚀","⚁","⚂","⚃","⚄","⚅"]; return f[v]||"·"; }
 function esc(s){
   return String(s).replace(/[&<>"]/g, c => ({
-    "&":"&amp;",
-    "<":"&lt;",
-    ">":"&gt;",
-    '"':"&quot;"
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"
   }[c]));
 }
 
-/**
- * öffentlicher Renderer (jetzt als global, nicht als ES-Modul)
- */
+// -------- Haupt-Renderer --------
 function renderScoreboard(mount, sb, {
   myPlayerId, iAmTurn, rollsUsed, rollsMax, announcedRow4, canRequestCorrection = false
 } = {}) {
   if (!sb) { if (mount) mount.innerHTML = ""; return; }
 
-  // ---- Header-/Status-Container im room.html ----
+  const isTeamMode = isTeamModeSnapshot(sb);
+
   const nameEl   = document.getElementById("roomGameName");
   const bubblesEl= document.getElementById("roomPlayerBubbles");
   const statusEl = document.getElementById("roomStatusLine");
-
-  // ---- Dice/Buttons/Tables Container ----
-  const contentEl = mount || document.getElementById("scoreOut");
+  const contentEl= mount || document.getElementById("scoreOut");
 
   const dice  = sb._dice  || [];
   const holds = sb._holds || [false,false,false,false,false];
-
   const turnPid  = sb?._turn?.player_id || null;
   const turnName = (sb?._players || []).find(p => String(p.id) === String(turnPid))?.name || "—";
 
@@ -164,46 +174,45 @@ function renderScoreboard(mount, sb, {
 
   const ann = announcedRow4 || sb._announced_row4 || null;
 
-  // --------- Header: Spielname + Spielerbadges ----------
-  if (nameEl) {
-    nameEl.textContent = sb?._name || "";
+  if (nameEl) nameEl.textContent = sb?._name || "";
+
+  // Entities = Teams oder Spieler
+  const teams = isTeamMode ? normalizeTeams(sb) : [];
+  let entities = isTeamMode ? teams : (sb._players || []);
+
+  // Eigene Einheit (Team oder Spieler) links
+  if (isTeamMode) {
+    const myTeam = teamIdForPlayer(sb, myPlayerId);
+    entities = entities.slice().sort((a,b) =>
+      (a.id === myTeam ? -1 : (b.id === myTeam ? 1 : 0))
+    );
+  } else {
+    entities = entities.slice().sort((a,b) =>
+      (String(a.id) === String(myPlayerId) ? -1 :
+       (String(b.id) === String(myPlayerId) ? 1 : 0))
+    );
   }
 
-  // Wir bauen die Grids zuerst, damit wir pro Spieler das Overall berechnen und im Kopf zeigen können
-  const pids = (sb._players||[]).map(p=>p.id);
-  pids.sort((a,b)=>{
-    if (String(a)===String(myPlayerId)) return -1;
-    if (String(b)===String(myPlayerId)) return 1;
-    return 0;
-  });
-
-  // Spieler-Bubbles
   if (bubblesEl) {
-    bubblesEl.innerHTML = (sb._players||[]).map(p =>
-      `<span class="badge">${esc(p.name)}${String(p.id)===String(myPlayerId) ? " (du)" : ""}</span>`
-    ).join(" ");
+    // Obere Bubbles werden nicht mehr angezeigt – Team/Spieler-Chips wandern in die Cards
+    bubblesEl.innerHTML = "";
   }
 
-  // --------- Status-Zeile über Tabellen ----------
   if (statusEl) {
     const turnChip = iAmTurn
       ? `<span class="chip ok">Du bist dran</span>`
       : `<span class="chip wait">Warte auf Gegner</span>`;
-
     const annChip = ann
       ? `<span class="chip warn">❗ nur Feld ${esc(ann)} erlaubt</span>`
       : `<span class="chip info">❗ Nichts wurde angesagt</span>`;
-
     const corrChip = correctionActive
       ? (correctionForMe
           ? `<span class="chip warn">Korrekturmodus aktiv (du)</span>`
           : `<span class="chip warn">Gegner korrigiert – bitte warten</span>`)
       : ``;
-
     statusEl.innerHTML = `${turnChip} ${annChip} ${corrChip}`;
   }
 
-  // --------- Hauptbereich: Dicebar + Ansage + Tabellen ----------
   const requestBtnHTML = canRequestCorrection
     ? `<button id="requestCorrectionBtn" class="small" style="margin-left:.5rem;">Letzten Eintrag ändern</button>`
     : ``;
@@ -223,23 +232,33 @@ function renderScoreboard(mount, sb, {
     </div>
   `;
 
-  // Grids rendern
   let grid = `<div class="players-grid">`;
-  for (const pid of pids) {
-    const p = (sb._players||[]).find(x=>String(x.id)===String(pid));
-    if (!p) continue;
-    const isTurn = String(turnPid||"")===String(pid);
-    const sc = sb._scoreboards?.[pid] || {};
-
-    // Gesamt über alle 4 Spalten
+  for (const ent of entities) {
+    const id = ent.id;
+    const sc = isTeamMode
+      ? (sb._scoreboards_by_team?.[id] || {})
+      : (sb._scoreboards?.[id] || {});
+    const isTurn = isTeamMode
+      ? (teamIdForPlayer(sb, turnPid) === id)
+      : (String(turnPid) === String(id));
     const overall = computeOverall(sc);
 
+      // Team-Mitglieder-Namen für Chips zusammensetzen (nur 2v2)
+    let membersHTML = "";
+    if (isTeamMode) {
+      const memberNames = (ent.members || [])
+        .map(pid => sb._players.find(p => String(p.id) === String(pid))?.name || pid)
+        .filter(Boolean);
+      membersHTML = memberNames.map(n => `<span class="badge">${esc(n)}</span>`).join(" ");
+    }
+
     grid += `
-      <div class="player-card ${isTurn ? "turn" : ""}">
+      <div class="player-card ${isTurn ? "turn": ""}">
         <div class="pc-head">
-          <div class="pc-name">${esc(p.name || "Spieler")}</div>
+          <div class="pc-name">${esc(ent.name || "—")}</div>
           <div class="pc-total">Total: ${overall}</div>
         </div>
+        ${isTeamMode ? `<div class="pc-members" style="margin: .25rem 0 .5rem 0;">${membersHTML}</div>` : ``}
         <div class="table-wrap">
           <table class="grid compact">
             <thead>
@@ -252,7 +271,7 @@ function renderScoreboard(mount, sb, {
               </tr>
             </thead>
             <tbody>
-              ${renderRows(sc, sb, { myPlayerId, pid, iAmTurn, rollsUsed, correctionActive })}
+              ${renderRows(sc, sb, { myPlayerId, pid: id, iAmTurn, rollsUsed, correctionActive })}
             </tbody>
           </table>
         </div>
@@ -261,19 +280,16 @@ function renderScoreboard(mount, sb, {
   }
   grid += `</div>`;
 
-  // Announce-Slot separat (bleibt oberhalb der Tabellen)
   const announceSlot = renderAnnounceSlot(sb, myPlayerId, iAmTurn, rollsUsed);
-
   (contentEl || mount).innerHTML = dicebar + announceSlot + `<div id="overlayMount"></div>` + grid;
 }
 
 function renderRows(sc, sb, ctx){
   const announced = sb._announced_row4 || null;
   const rolledYet = (ctx.rollsUsed ?? 0) > 0;
-  const isMe = String(ctx.pid) === String(ctx.myPlayerId);
+  const isMe = String(ctx.pid) === String(ctx.myPlayerId); // bei Team-Mode: pid = teamId -> dann false, und das ist OK (Schreiben regelt der Server)
   const correctionForMe = !!(ctx.correctionActive && sb?._correction?.player_id && String(sb._correction.player_id) === String(ctx.myPlayerId));
 
-  // Live-Berechnungen für jede Spalte vorbereiten
   const cols = ["down","free","up","ang"];
   const live = {};
   for (const c of cols) live[c] = computeColumnTotals(sc, c);
@@ -306,13 +322,13 @@ function renderRows(sc, sb, ctx){
         !ctx.correctionActive &&
         !isCompute &&
         !hasRaw &&
-        isMe &&
+        // isMe bleibt bei Team-Mode i.d.R. false; Klickbarkeit wird nicht mehr allein hier entschieden,
+        // sondern der Server validiert. Wir lassen Klick trotzdem zu, wenn ich am Zug bin:
         ctx.iAmTurn &&
         rolledYet &&
         (!announced ? true : isAnnouncedCell);
 
-      const mayClickCorrection =
-        correctionForMe && !isCompute && !hasRaw;
+      const mayClickCorrection = correctionForMe && !isCompute && !hasRaw;
 
       const clickable = (mayClickNormal || mayClickCorrection);
 
@@ -343,5 +359,4 @@ function renderRows(sc, sb, ctx){
   }).join("");
 }
 
-// --- global export für game.js ---
 window.renderScoreboard = renderScoreboard;

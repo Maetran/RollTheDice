@@ -1,5 +1,5 @@
 // static/game.js
-// Client-Logik für den Spielraum (WebSocket, UI, Click-Handling, Confirm bei 0-Punkten)
+// Client-Logik für den Spielraum (WebSocket, UI, Click-Handling, Confirm bei 0-Punkten, Keybindings)
 
 (() => {
   // ===== Helpers =====
@@ -20,6 +20,7 @@
   const gameTitleH       = document.getElementById("gameTitle") || document.getElementById("roomGameName");
   const correctionBanner = document.getElementById("correctionBanner");
   const scoreOut         = document.getElementById("scoreOut") || document.body;
+  const backBtn          = document.getElementById("backToLobbyBtn");     // optional: „Zurück zur Lobby“
 
   // ===== Spielzustand (Client) =====
   let ws = null;
@@ -50,7 +51,7 @@
     9: "max", 10: "min", 12: "kenter", 13: "full", 14: "poker", 15: "60",
   };
 
-  // ===== Punkteberechnung (Client) =====
+  // ===== Punkteberechnung (Client) – nur für Zero-Confirm / UX =====
   function calculatePoints(fieldKey, dice) {
     const cnt = {};
     let total = 0;
@@ -130,6 +131,20 @@
         }
         if (msg.scoreboard) {
           applySnapshot(msg.scoreboard);
+          // Game-Ende: Sieger anzeigen + zur Lobby
+          if (S.finished) {
+            try {
+              const res = (S._raw && (S._raw._results || S._raw.results)) || [];
+              if (Array.isArray(res) && res.length > 0) {
+                const top = res[0];
+                alert(`Spiel beendet – Sieger: ${top.player} (${top.total} Punkte)`);
+              } else {
+                alert("Spiel beendet.");
+              }
+            } catch(e){}
+            setTimeout(() => { window.location.href = "index.html"; }, 600);
+            return;
+          }
           render();
         }
       } catch (e) {
@@ -195,8 +210,6 @@
       correctionBanner.style.display = show ? "block" : "none";
     }
 
-
-
     if (undoBtn) {
       const canUndo = !!S.hasLast?.[myPlayerId] && !iAmTurn && S.rollsUsed === 0 && !(S.correction?.active);
       undoBtn.disabled = !canUndo;
@@ -258,7 +271,7 @@
       const next = S.holds.slice();
       next[i] = !next[i];
       ws.send(JSON.stringify({ action: "set_hold", holds: next }));
-    };
+    }
 
     // Inline-Button aus scoreboard.js verwenden
     const rollInline = document.getElementById("rollBtnInline");
@@ -273,9 +286,14 @@
     }
   }
 
+  function canRollNow() {
+    const iAmTurn = S.turn && String(S.turn.player_id) === String(myPlayerId);
+    return iAmTurn && !S.correction?.active && (S.rollsUsed < S.rollsMax);
+  }
+
   // ===== Ansage (UI) =====
   function renderAnnounce() {
-    // Elemente JETZT (nach Render) frisch holen – …
+    // Elemente JETZT (nach Render) frisch holen
     const announceSel  = document.getElementById("announceSelect");
     const announceBtn  = document.getElementById("announceBtn");
     const announceSlot = document.getElementById("announceSlot"); // Container aus scoreboard.js
@@ -304,7 +322,7 @@
     };
   }
 
-  // ===== Delegierter Handler für Scoreboard-Zellen =====
+  // ===== Delegierter Handler für Scoreboard-Zellen + Buttons + Keybindings =====
   let delegatedBound = false;
   function ensureDelegatedHandlers(iAmTurn) {
     if (delegatedBound) return;
@@ -352,10 +370,75 @@
       }
     });
 
-    // Korrektur abbrechen per Escape
+    // „Zurück zur Lobby“ – beendet Spiel für alle (Serverseite loggt Leaderboard/Stats)
+    if (backBtn) {
+      backBtn.addEventListener("click", () => {
+        if (confirm("Spiel für alle beenden und zur Lobby zurückkehren?")) {
+          ws.send(JSON.stringify({ action: "end_game" }));
+          // Redirect folgt nach Snapshot mit _finished=true in ws.onmessage
+        }
+      });
+    }
+
+    // Keybindings: 1..5 = Dice hold togglen, Space = würfeln, a = ansagen, k = Korrektur anfragen, Esc = Korrektur abbrechen
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && S.correction?.active && String(S.correction.player_id) === String(myPlayerId)) {
-        ws.send(JSON.stringify({ action: "cancel_correction" }));
+      const key = e.key.toLowerCase();
+
+      // Korrektur abbrechen
+      if (key === "escape") {
+        if (S.correction?.active && String(S.correction.player_id) === String(myPlayerId)) {
+          ws.send(JSON.stringify({ action: "cancel_correction" }));
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // Falls ein Input/Select fokussiert ist, Keys nicht hijacken
+      const tag = (document.activeElement && document.activeElement.tagName) || "";
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      // 1..5: Toggle Hold (nur im eigenen Zug oder im eigenen Korrekturmodus)
+      if (["1","2","3","4","5"].includes(key)) {
+        const idx = parseInt(key, 10) - 1;
+        const iAmTurn = S.turn && String(S.turn.player_id) === String(myPlayerId);
+        const iCorrectingMine = !!(S.correction?.active && String(S.correction.player_id) === String(myPlayerId));
+        if (!iAmTurn && !iCorrectingMine) return;
+
+        const next = S.holds.slice();
+        next[idx] = !next[idx];
+        ws.send(JSON.stringify({ action: "set_hold", holds: next }));
+        e.preventDefault();
+        return;
+      }
+
+      // Space: rollen (wenn erlaubt)
+      if (key === " " || key === "spacebar") {
+        if (canRollNow()) {
+          ws.send(JSON.stringify({ action: "roll_dice" }));
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // a: Ansage (falls Select + Button existieren und enabled)
+      if (key === "a") {
+        const btn = document.getElementById("announceBtn");
+        const sel = document.getElementById("announceSelect");
+        if (btn && sel && !btn.disabled && !sel.disabled) {
+          btn.click();
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // k: Korrektur anfragen (wenn Button existiert & enabled)
+      if (key === "k") {
+        const btn = document.getElementById("requestCorrectionBtn");
+        if (btn && !btn.disabled) {
+          btn.click();
+          e.preventDefault();
+        }
+        return;
       }
     });
   }
