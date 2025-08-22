@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+
+# Virtual env
+.venv/
+env/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Build
+build/
+dist/
+
+# IDE
+.vscode/
+.idea/
+/app/leaderboard_alltime.json
+/app/leaderboard_recent.json
+/app/stats.json

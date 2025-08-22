@@ -1,0 +1,34 @@
+# Venv & IDE
+.venv/
+.env
+*.code-workspace
+.vscode/
+.idea/
+
+# Versionskontrolle & CI
+.git
+.gitignore
+.github/
+
+# Tests & Artefakte
+tests/
+dist/
+build/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# OS-Kleinkram
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node/Front (falls mal dazukommt)
+node_modules/
+
+# Wir WOLLEN app/data mitkopieren, damit Default-Dateien im Image sind.
+# Persistenz passiert über den Bind-Mount beim Run (siehe oben).
