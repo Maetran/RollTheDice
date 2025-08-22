@@ -4,7 +4,11 @@
   <meta charset="utf-8">
   <title>Würfler – Lobby</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css">
+
+  <!-- FIX: relative auf die echte CSS-Datei unter /static/ -->
+  <!-- Da index.html selbst unter /static liegt, reicht "style.css" -->
+  <link rel="stylesheet" href="style.css">
+
   <style>
     .wrap { max-width: 980px; margin: 1.2rem auto; }
     .card { background:#fff; border:1px solid var(--border,#e0e0e0); border-radius:12px; padding:1rem; margin:.8rem 0; }
@@ -111,7 +115,10 @@
     const nameInput  = document.getElementById('playerName');
     const modeSel    = document.getElementById('gameMode');
     const gameInput  = document.getElementById('gameName');
+
+    /* FIX: variable war zerrissen – muss createBtn heißen */
     const createBtn  = document.getElementById('createBtn');
+
     const createErr  = document.getElementById('createErr');
     const listEl     = document.getElementById('gamesList');
     const refreshBtn = document.getElementById('refreshBtn');
@@ -190,7 +197,9 @@
         if (chk && chk.exists === false) { alert('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
       } catch {}
       const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
-      location.href = `/static/room.html?${qs}`;
+
+      /* FIX: Querystring wurde gebaut, aber nicht verwendet */
+      location.href = `room.html?${qs}`;
     });
 
     // Neues Spiel erstellen
@@ -211,7 +220,9 @@
         const gid = data.game_id || data.id;
         if (!gid) throw new Error('Antwort ohne game_id');
         const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
-        location.href = `/static/room.html?${qs}`;
+
+        /* FIX: Querystring wurde gebaut, aber nicht verwendet */
+        location.href = `room.html?${qs}`;
       } catch (e) {
         createErr.textContent = `Fehler: ${String(e.message || e)}`;
       }
@@ -256,7 +267,7 @@
     setInterval(fetchGames, 4000);
     setInterval(loadLeaderboard, 10000);
 
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
     function escapeAttr(s){ return String(s).replace(/"/g, '&quot;'); }
   </script>
 </body>

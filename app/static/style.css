@@ -72,6 +72,7 @@ button.die{
   font-size:2rem; width:2.6rem; height:2.6rem; border-radius:.6rem;
   font-variant-numeric: tabular-nums;
   display:inline-flex; align-items:center; justify-content:center; /* leer/zentriert */
+  background:#fff; color:#000; border:1px solid var(--border);
 }
 button.die.held{ background:#d4efdf; border-color:#27ae60; }
 
@@ -122,7 +123,7 @@ td.cell.announced{ background:#ffe9e9 !important; font-weight:700; }
 td.cell.compute, td.desc.compute{ background:#f2f3f5; color:#444; font-weight:600; }
 td.cell.compute{ font-size:.86rem; }
 
-/* === Blockrahmen NUR horizontal === */
+/* === Blockrahmen NUR horizontal (keine vertikale Dicke zwischen Spalten) === */
 tr.grp-top td{ border-top:3px solid var(--border-strong); }
 tr.grp-top.grp-end td{ border-bottom:3px solid var(--border-strong); }
 

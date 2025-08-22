@@ -1,7 +1,7 @@
-# app/models.py
+# models.py
 from typing import Dict, Optional, Tuple, List
 import random
-from .rules import score_field, compute_overall
+from rules import score_field, compute_overall  # <- absoluter Import (rules.py liegt im selben Ordner)
 
 MODE_EXPECTED = {"2": 2, "3": 3, "2v2": 4}
 FIELD_KEYS = ["1","2","3","4","5","6","max","min","kenter","full","poker","60"]
@@ -21,6 +21,7 @@ class Player:
         self.row2: Dict[str,int] = {}
         self.row3: Dict[str,int] = {}
         self.row4: Dict[str,int] = {}
+
     def row_by_idx(self, idx:int) -> Dict[str,int]:
         return {1:self.row1,2:self.row2,3:self.row3,4:self.row4}[idx]
 
@@ -52,7 +53,7 @@ class Game:
 
         # Korrekturmodus
         self.correction_active: bool = False
-        self.correction_player: Optional[str] = None
+               self.correction_player: Optional[str] = None
         self.correction_dice: Optional[List[int]] = None
         # Snapshot der Player-rows VOR dem ursprünglichen Schreibvorgang
         self.correction_rows_before: Optional[Dict[str, Dict[str,int]]] = None
@@ -61,8 +62,10 @@ class Game:
     @property
     def expected_players(self) -> int:
         return MODE_EXPECTED.get(self.mode, 2)
+
     def _is_turn_of(self, pid: str) -> bool:
         return bool(self.turn_order) and self.turn_order[self.turn_index] == pid
+
     def can_join(self) -> bool:
         return (not self.started) and (len(self.players) < self.expected_players)
 
@@ -77,16 +80,19 @@ class Game:
         if len(self.players) >= self.expected_players:
             self._start_game()
         return True
+
     def reconnect_player(self, pid: str, ws):
         if pid in self.players:
             self.players[pid].ws = ws
+
     def disconnect_player(self, pid: str):
         if pid in self.players:
             self.players[pid].ws = None
 
     # ---- lifecycle
     def _start_game(self):
-        if self.started: return
+        if self.started:
+            return
         self.started = True
         self.finished = False
         self.turn_index = 0
@@ -102,8 +108,10 @@ class Game:
     # ---- finish helpers
     def _row_full(self, row: Dict[str,int]) -> bool:
         return sum(1 for k in FIELD_KEYS if k in row) == len(FIELD_KEYS)
+
     def _player_sheet_full(self, p: Player) -> bool:
         return self._row_full(p.row1) and self._row_full(p.row2) and self._row_full(p.row3) and self._row_full(p.row4)
+
     def _game_finished(self) -> bool:
         if not self.players:
             return False
@@ -111,35 +119,47 @@ class Game:
 
     # ---- actions (nur erlaubt, wenn keine Korrektur läuft)
     def set_hold(self, pid: str, holds: List[bool]):
-        if not self.started or not self._is_turn_of(pid) or self.finished or self.correction_active: return
-        if len(holds) != 5: return
+        if not self.started or not self._is_turn_of(pid) or self.finished or self.correction_active:
+            return
+        if len(holds) != 5:
+            return
         self.holds = [bool(x) for x in holds]
 
     def roll_dice(self, pid: str):
-        if not self.started or not self._is_turn_of(pid) or self.finished or self.correction_active: return
-        if self.rolls_used >= self.max_rolls_per_turn: return
+        if not self.started or not self._is_turn_of(pid) or self.finished or self.correction_active:
+            return
+        if self.rolls_used >= self.max_rolls_per_turn:
+            return
         for i in range(5):
             if not self.holds[i]:
                 self.current_dice[i] = random.randint(1,6)
         self.rolls_used += 1
 
     def announce_row4(self, pid: str, field: str):
-        if not self.started or not self._is_turn_of(pid) or self.finished or self.correction_active: return
-        if self.rolls_used != 1: return
-        if field not in FIELD_KEYS: return
+        if not self.started or not self._is_turn_of(pid) or self.finished or self.correction_active:
+            return
+        if self.rolls_used != 1:
+            return
+        if field not in FIELD_KEYS:
+            return
         self.announced_row4 = field
 
     # ---- reihen-regeln
     def _allowed_row1(self, row: Dict[str,int], field:str) -> bool:
         for k in FIELD_KEYS:
-            if k not in row: return k == field
+            if k not in row:
+                return k == field
         return False
+
     def _allowed_row2(self, row: Dict[str,int], field:str) -> bool:
         return field not in row
+
     def _allowed_row3(self, row: Dict[str,int], field:str) -> bool:
         for k in reversed(FIELD_KEYS):
-            if k not in row: return k == field
+            if k not in row:
+                return k == field
         return False
+
     def _allowed_row4(self, row: Dict[str,int], field:str) -> bool:
         return (self.announced_row4 == field) and (field not in row)
 
@@ -159,9 +179,12 @@ class Game:
                 return field not in row
             return self._allowed_row4(row, field)
 
-        if row_idx == 1: return self._allowed_row1(row, field)
-        if row_idx == 2: return self._allowed_row2(row, field)
-        if row_idx == 3: return self._allowed_row3(row, field)
+        if row_idx == 1:
+            return self._allowed_row1(row, field)
+        if row_idx == 2:
+            return self._allowed_row2(row, field)
+        if row_idx == 3:
+            return self._allowed_row3(row, field)
         return False
 
     def write_field(self, pid: str, row_idx:int, field:str, strike:bool):
@@ -209,13 +232,12 @@ class Game:
     # ---- Korrekturmodus
     def can_request_correction(self, pid: str) -> bool:
         lw = self.last_write.get(pid)
-        if not lw: return False
+        if not lw:
+            return False
         # keine Korrektur, wenn der Eintrag mit Ansage-Zwang entstand
         if lw.get("announced_row4"):
             return False
-        if self.correction_active or not self.started and not self.finished:
-            # ok: Korrektur darf auch bei laufendem Spiel; blockt nur vorübergehend die anderen
-            pass
+        # Korrektur ist grundsätzlich erlaubt, blockiert aber temporär andere Aktionen
         return True
 
     def start_correction(self, pid: str) -> bool:
@@ -225,8 +247,8 @@ class Game:
         self.correction_active = True
         self.correction_player = pid
         self.correction_dice = list(lw["dice"])
-        # Keine globale Rückabwicklung nötig – wir erlauben einfach ein überschreiben an einer anderen Stelle,
-        # d.h. Spieler darf erneut "schreiben", und wir löschen den alten Eintrag beim Commit.
+        # Keine globale Rückabwicklung nötig – wir erlauben Überschreiben woanders,
+        # und löschen den alten Eintrag beim Commit.
         return True
 
     def cancel_correction(self):
@@ -245,8 +267,7 @@ class Game:
 
         player = self.players[pid]
 
-        # Regeln gelten weiterhin (Reihen-Logik ohne Ansage-Zwang)
-        # Wir simulieren "rolls_used=1" und keine Ansage
+        # Regeln weiterhin prüfen (ohne Ansage-Zwang): simuliere Wurf 1, keine Ansage
         saved_rolls = self.rolls_used
         saved_ann = self.announced_row4
         self.rolls_used = 1
@@ -256,15 +277,20 @@ class Game:
             self.rolls_used = saved_rolls
             self.announced_row4 = saved_ann
 
-        # Validieren
         if field not in FIELD_KEYS:
             _restore(); return
+
         row = player.row_by_idx(row_idx)
         allowed = False
-        if row_idx == 1: allowed = self._allowed_row1(row, field)
-        elif row_idx == 2: allowed = self._allowed_row2(row, field)
-        elif row_idx == 3: allowed = self._allowed_row3(row, field)
-        elif row_idx == 4: allowed = (field not in row)  # Ansage spielt hier keine Rolle; Korrektur ist Sonderfall
+        if row_idx == 1:
+            allowed = self._allowed_row1(row, field)
+        elif row_idx == 2:
+            allowed = self._allowed_row2(row, field)
+        elif row_idx == 3:
+            allowed = self._allowed_row3(row, field)
+        elif row_idx == 4:
+            allowed = (field not in row)  # Ansage spielt hier keine Rolle; Korrektur ist Sonderfall
+
         _restore()
         if not allowed:
             return
@@ -276,14 +302,14 @@ class Game:
         if old_field in old_dest:
             del old_dest[old_field]
 
-        # neuenScore aus gespeicherten Würfeln berechnen
+        # neuen Score aus gespeicherten Würfeln berechnen
         dice_tuple = tuple(self.correction_dice or lw["dice"])
         poker_now = _has_four_kind(dice_tuple)
         dest = player.row_by_idx(row_idx)
         new_score = 0 if strike else score_field(field, dice_tuple, poker_allowed=poker_now)
         dest[field] = new_score
 
-        # last_write updaten (damit ggf. erneut – falls du später erlauben willst – erkennbar)
+        # last_write updaten
         self.last_write[pid] = {
             "row": row_idx,
             "field": field,
@@ -329,7 +355,8 @@ class Game:
         if self.finished:
             results: List[Dict[str,int]] = []
             for pid2, entry in out.items():
-                if pid2.startswith("_"): continue
+                if isinstance(pid2, str) and pid2.startswith("_"):
+                    continue
                 total = entry["subtotals"]["overall"]["overall_total"]
                 results.append({"player": out[pid2]["player"], "total": int(total)})
             results.sort(key=lambda x: x["total"], reverse=True)

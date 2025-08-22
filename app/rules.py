@@ -15,17 +15,15 @@ def _sum_dice(dice: Tuple[int, int, int, int, int]) -> int:
     return sum(dice)
 
 def _counts(dice: Tuple[int, int, int, int, int]) -> Dict[int, int]:
-    c: Dict[int, int] = {}
+    c: Dict[int,int] = {}
     for d in dice:
         c[d] = c.get(d, 0) + 1
     return c
 
-
 def score_field(field_name: str, dice: Tuple[int, int, int, int, int], *, poker_allowed: bool) -> int:
     """Berechnet die Punkte fuer genau EIN Feld gemaess der Spielregeln.
-    - Die Logik ist streng serverseitig. Der Client gibt nur die Intent (Feld) an.
-    - poker_allowed entspricht der Sequenz‑Sperrregel: Vierling muss sofort geschrieben werden,
-      sonst in dieser Sequenz gesperrt – ausser es faellt spaeter erneut ein Vierling.
+    - Logik ist streng serverseitig. Der Client gibt nur das Feld an.
+    - poker_allowed: Vierling muss sofort eingetragen werden, sonst gesperrt bis erneut Vierling faellt.
     """
     if field_name not in ROW_FIELDS:
         raise ValueError("ungueltiges Feld")
@@ -49,10 +47,10 @@ def score_field(field_name: str, dice: Tuple[int, int, int, int, int], *, poker_
         return 35 if len(cnt.keys()) == 5 else 0
 
     if field_name == "full":
-        # Full House (3+2) ODER 5 gleiche
+        # Full House (3+2) oder 5 gleiche
         most_face = Counter(dice).most_common(1)[0][0]
         if len(cnt.keys()) == 2:
-            # 3+2 erlaubt, 4+1 NICHT
+            # 3+2 erlaubt, 4+1 nicht
             if 4 not in cnt.values():
                 return 40 + 3 * most_face
             return 0
@@ -62,7 +60,6 @@ def score_field(field_name: str, dice: Tuple[int, int, int, int, int], *, poker_
 
     if field_name == "poker":
         # Vierling: 50 + (Augensumme des Vierlings) = 50 + 4 * wert
-        # Nur gueltig, wenn poker_allowed True (Sperrlogik der Sequenz)
         if not poker_allowed:
             return 0
         for face, n in cnt.items():
@@ -79,20 +76,17 @@ def score_field(field_name: str, dice: Tuple[int, int, int, int, int], *, poker_
 
     raise ValueError("unbekanntes Feld")
 
-
 # -----------------------------
-# Zwischensummen pro Reihe (on the fly)
+# Zwischensummen pro Reihe
 # -----------------------------
 
 def compute_row_subtotals(row: Dict[str, int]) -> Dict[str, int]:
-    """Berechnet alle Zwischensummen fuer EINE Reihe (12 Felder). Fehlende Felder = 0.
-    Rueckgabe enthaelt Keys:
-      - sum_top: Summe(1..6)
-      - bonus_top: 30 wenn sum_top >= 60, sonst 0
-      - total_top: sum_top + bonus_top
-      - sum_maxmin: falls "1","max","min" vorhanden: row["1"] * (row["max"] - row["min"]) sonst 0
-      - sum_bottom: Summe(kenter, full, poker, 60)
-      - total_column: total_top + sum_maxmin + sum_bottom
+    """Berechnet Zwischensummen fuer EINE Reihe (12 Felder). Fehlende Felder = 0.
+    Keys:
+      - sum_top, bonus_top, total_top
+      - sum_maxmin
+      - sum_bottom
+      - total_column
     """
     def g(key: str) -> int:
         return int(row.get(key, 0))
@@ -107,7 +101,6 @@ def compute_row_subtotals(row: Dict[str, int]) -> Dict[str, int]:
         sum_maxmin = 0
 
     sum_bottom = g("kenter") + g("full") + g("poker") + g("60")
-
     total_column = total_top + sum_maxmin + sum_bottom
 
     return {
@@ -119,14 +112,13 @@ def compute_row_subtotals(row: Dict[str, int]) -> Dict[str, int]:
         "total_column": total_column,
     }
 
-
 # -----------------------------
 # Gesamtzusammenzug fuer 4 Reihen
 # -----------------------------
 
 def compute_overall(scoresheet: Dict[int, Dict[str, int]]) -> Dict[str, Dict[str, int]]:
-    """scoresheet muss ein Dict {1: row1, 2: row2, 3: row3, 4: row4} sein.
-    Liefert pro Reihe die Subtotale und zusaetzlich overall_total (Summe der 4 total_column).
+    """scoresheet: {1: row1, 2: row2, 3: row3, 4: row4}.
+    Liefert pro Reihe Subtotale + overall_total.
     """
     result: Dict[str, Dict[str, int]] = {}
     overall_total = 0

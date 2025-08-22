@@ -27,9 +27,9 @@ const ANNOUNCE_FIELDS = ["1","2","3","4","5","6","max","min","kenter","full","po
 const COMPUTE_ROWS = new Set([6,7,8,11,16,17]); // 7=Bonus wird live gerechnet
 
 function rowGroupMeta(ri){
-  if (ri >= 6 && ri <= 8)  return { group: "top",    start: ri === 6,  end: ri === 8  };
-  if (ri === 11)           return { group: "diff",   start: true,      end: true      };
-  if (ri >= 16 && ri <= 18) return { group: "bottom", start: ri === 16, end: ri === 18 };
+  if (ri >= 6 && ri <= 8)   return { group: "top",    start: ri === 6,  end: ri === 8  };
+  if (ri === 11)            return { group: "diff",   start: true,      end: true      };
+  if (ri >= 16 && ri <= 17) return { group: "bottom", start: ri === 16, end: ri === 17 };
   return { group: null, start: false, end: false };
 }
 
@@ -127,10 +127,17 @@ function numOrEmpty(v){
 
 // Helpers
 function dieFace(v){ const f=["","⚀","⚁","⚂","⚃","⚄","⚅"]; return f[v]||"·"; }
-function esc(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c])); }
+function esc(s){
+  return String(s).replace(/[&<>"]/g, c => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;"
+  }[c]));
+}
 
 /**
- * öffentlicher Renderer (jetzt als global, nicht als ES‑Modul)
+ * öffentlicher Renderer (jetzt als global, nicht als ES-Modul)
  */
 function renderScoreboard(mount, sb, {
   myPlayerId, iAmTurn, rollsUsed, rollsMax, announcedRow4, canRequestCorrection = false

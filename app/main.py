@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 # WICHTIG: keine Imports aus app.models / .models mehr!
-# Wir benutzen ein einziges In‑Memory-Registry:
+# Wir benutzen ein einziges In-Memory-Registry:
 GameDict = Dict[str, Any]
 games: Dict[str, GameDict] = {}
 
@@ -26,6 +26,7 @@ WRITABLE_MAP = {
     9: "max", 10: "min", 12: "kenter", 13: "full", 14: "poker", 15: "60",
 }
 KEY_TO_ROW = {v: k for k, v in WRITABLE_MAP.items()}
+
 
 def new_game(gid: str, name: str, mode) -> GameDict:
     if isinstance(mode, str) and mode.isdigit():
@@ -59,8 +60,10 @@ def new_game(gid: str, name: str, mode) -> GameDict:
     games[gid] = g
     return g
 
+
 def _counts(dice):
     return Counter(d for d in dice if d)
+
 
 def score_field_value(field_key: str, dice) -> int:
     cnt = _counts(dice)
@@ -97,6 +100,7 @@ def score_field_value(field_key: str, dice) -> int:
 
     return 0
 
+
 def _filled_rows_for(g: GameDict, pid: str, col: str) -> set[int]:
     board = g["_scoreboards"].get(pid, {})
     out = set()
@@ -108,12 +112,14 @@ def _filled_rows_for(g: GameDict, pid: str, col: str) -> set[int]:
                 out.add(r)
     return out
 
+
 def _next_required_row(col: str, filled: set[int]) -> int | None:
     order = WRITABLE_ROWS if col == "down" else list(reversed(WRITABLE_ROWS))
     for r in order:
         if r not in filled:
             return r
     return None
+
 
 def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_announce: str | None) -> tuple[bool, str]:
     if row not in WRITABLE_ROWS:
@@ -142,6 +148,7 @@ def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_anno
 
     return False, "Unbekannte Spalte"
 
+
 def _serialize_scoreboards(g: GameDict) -> Dict[str, Dict[str, int]]:
     out: Dict[str, Dict[str, int]] = {}
     for pid, board in g["_scoreboards"].items():
@@ -151,6 +158,7 @@ def _serialize_scoreboards(g: GameDict) -> Dict[str, Dict[str, int]]:
                 sb[k] = v
         out[pid] = sb
     return out
+
 
 def snapshot(g: GameDict) -> Dict[str, Any]:
     return {
@@ -172,6 +180,7 @@ def snapshot(g: GameDict) -> Dict[str, Any]:
         "_has_last": {pid: bool(g["_last_write"].get(pid)) for pid in g["_scoreboards"].keys()},
     }
 
+
 async def broadcast(g: GameDict, msg: Dict[str, Any]) -> None:
     for p in g["_players"]:
         ws = p.get("ws")
@@ -182,6 +191,7 @@ async def broadcast(g: GameDict, msg: Dict[str, Any]) -> None:
         except Exception:
             pass
 
+
 def next_turn(g: GameDict, current_pid: str | None) -> str | None:
     ids = [p["id"] for p in g["_players"]]
     if not ids:
@@ -191,14 +201,17 @@ def next_turn(g: GameDict, current_pid: str | None) -> str | None:
         return ids[i]
     return ids[0]
 
+
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
+
 
 class CreateReq(BaseModel):
     name: str
     mode: str | int
     owner: str | None = None
+
 
 def game_list_payload() -> list[dict]:
     out = []
@@ -213,6 +226,7 @@ def game_list_payload() -> list[dict]:
             "finished": g["_finished"],
         })
     return out
+
 
 # --- Games API (kompatibel + 'waiting') ---
 @app.get("/api/games")
@@ -236,6 +250,7 @@ def api_games():
             continue
     return {"games": lst}
 
+
 @app.get("/api/games/{game_id}")
 def game_info(game_id: str):
     g = games.get(game_id)
@@ -250,13 +265,15 @@ def game_info(game_id: str):
         "expected": g["_expected"],        # ALT
         "started": g["_started"],
         "finished": g["_finished"],
-        "waiting": [p.get("name","Player") for p in g["_players"]],  # NEU
+        "waiting": [p.get("name", "Player") for p in g["_players"]],  # NEU
     }
+
 
 # Leaderboard + Stats
 import json
 from pathlib import Path
 DATA_DIR = Path(__file__).parent
+
 
 @app.get("/api/leaderboard")
 async def get_leaderboard():
@@ -276,6 +293,7 @@ async def get_leaderboard():
         "stats": read_json(stats_file, {"games_played": 0}),
     }
 
+
 # Spiel erstellen (neue API, die dein Frontend nutzt)
 @app.post("/api/games")
 async def api_games_create(req: CreateReq):
@@ -283,10 +301,12 @@ async def api_games_create(req: CreateReq):
     new_game(gid, req.name, req.mode)
     return {"game_id": gid}
 
+
 # Legacy-Endpoints (bleiben erhalten, aber auch auf 'games' dict!)
 @app.get("/games")
 async def legacy_list():
     return game_list_payload()
+
 
 @app.post("/create_game")
 async def legacy_create_game(mode: str, name: str):
@@ -294,10 +314,12 @@ async def legacy_create_game(mode: str, name: str):
     new_game(gid, name, mode)
     return {"id": gid}
 
+
 # Brave/Chromium DevTools Ping unterdrücken
 @app.get("/.well-known/appspecific/com.chrome.devtools.json")
 async def chrome_devtools_placeholder():
     return {}
+
 
 # --- WebSocket ---
 @app.websocket("/ws/{game_id}")
@@ -466,8 +488,10 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "write_field_correction":
-                if not (g["_correction"]["active"] and g["_correction"].get("player_id") == player_id):
-                    await websocket.send_json({"error": "Keine aktive Korrektur für dich"})
+                # Nur erlaubt, wenn Korrektur aktiv ist und du der Anforderer bist
+                corr = g["_correction"]
+                if not corr.get("active") or corr.get("player_id") != player_id:
+                    await websocket.send_json({"error": "Keine Korrektur aktiv"})
                     continue
 
                 try:
@@ -485,43 +509,44 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     await websocket.send_json({"error": "Dieses Feld ist nicht beschreibbar"})
                     continue
 
+                # alten Eintrag (der korrigiert werden soll) entfernen
                 last = g["_last_write"].get(player_id)
-                if last:
-                    last_key = f"{last[0]},{last[1]}"
-                    g["_scoreboards"][player_id].pop(last_key, None)
+                if not last:
+                    await websocket.send_json({"error": "Kein letzter Eintrag vorhanden"})
+                    continue
+                old_row, old_col = last
+                old_key = f"{old_row},{old_col}"
+                g["_scoreboards"].setdefault(player_id, {}).pop(old_key, None)
 
-                ok, why = can_write_now(g, player_id, row, col, during_turn_announce=None)
-                if not ok:
-                    await websocket.send_json({"error": why})
+                # neuen Wert aus den Korrekturwürfeln berechnen und schreiben
+                dice_for_eval = (g["_correction"].get("dice") or g["_dice"] or [0, 0, 0, 0, 0])[:]
+                new_key = f"{row},{col}"
+                if new_key in g["_scoreboards"].setdefault(player_id, {}):
+                    await websocket.send_json({"error": "Ziel-Feld bereits befüllt"})
                     continue
 
-                corr_dice = g["_correction"].get("dice", []) or [0, 0, 0, 0, 0]
-                value = score_field_value(fld, corr_dice)
-                key = f"{row},{col}"
-                g["_scoreboards"][player_id][key] = value
-
+                val = score_field_value(fld, dice_for_eval)
+                g["_scoreboards"][player_id][new_key] = val
                 g["_last_write"][player_id] = (row, col)
-                g["_last_dice"][player_id] = corr_dice[:]
-                g["_last_meta"][player_id] = {"announced": None}
 
+                # Korrektur beenden und Wurf zurücksetzen
                 g["_correction"] = {"active": False}
                 g["_dice"] = [0, 0, 0, 0, 0]
-                g["_holds"] = [False] * 5
-                g["_rolls_used"] = 0
-                g["_announced_row4"] = None
-                g["_turn"] = {"player_id": next_turn(g, player_id)}
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             else:
-                await websocket.send_json({"error": f"Unbekannte Action: {act}"})
+                # Unbekannte Aktion ignorieren
+                await websocket.send_json({"error": f"Unbekannte Aktion: {act}"})
 
     except WebSocketDisconnect:
-        try:
+        # Spieler trennt Verbindung: WS-Referenz entfernen, Spiel bleibt bestehen
+        if game_id in games and player_id:
+            g = games[game_id]
             for p in g["_players"]:
-                if p["id"] == player_id:
+                if p.get("id") == player_id:
                     p["ws"] = None
-        except Exception:
-            pass
+        # Kein Broadcast nötig; Rejoin ist möglich
+
 
 if __name__ == "__main__":
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -30,7 +30,7 @@ function gameCard(g) {
 }
 
 async function listGames() {
-  const res = await fetch("/games");
+  const res = await fetch("/api/games");   // FIX
   if (!res.ok) return;
   const data = await res.json();
   const grid = $("#gamesGrid");
@@ -42,8 +42,8 @@ async function listGames() {
     btn.addEventListener("click", () => {
       const gid = btn.getAttribute("data-join");
       const name = ($("#playerName").value || "").trim() || "Gast";
-      // Wechsel in den Spielraum – WS macht den eigentlichen Join
-      location.href = `/static/room.html?game_id=${encodeURIComponent(gid)}&name=${encodeURIComponent(name)}`;
+      const qs = new URLSearchParams({ game_id: gid, name }).toString();
+      location.href = `room.html?${qs}`;   // FIX: mit Querystring
     });
   });
 }
@@ -57,15 +57,20 @@ $("#createBtn").addEventListener("click", async () => {
   const mode = $("#gameMode").value || "2";
   msg.textContent = "Spiel wird erstellt…";
   try {
-    const res = await fetch(`/create_game?mode=${encodeURIComponent(mode)}&name=${encodeURIComponent(gname)}`, { method: "POST" });
+    const res = await fetch(`/api/games`, {   // FIX
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: gname, mode, owner: name })
+    });
     if (!res.ok) {
       msg.textContent = "Fehler: " + (await res.text());
       return;
     }
     const data = await res.json();
-    const gid = data.game_id;
+    const gid = data.game_id || data.id;
     msg.textContent = "Weiterleitung…";
-    location.href = `/static/room.html?game_id=${encodeURIComponent(gid)}&name=${encodeURIComponent(name)}`;
+    const qs = new URLSearchParams({ game_id: gid, name }).toString();
+    location.href = `room.html?${qs}`;   // FIX: mit Querystring
   } catch (e) {
     msg.textContent = "Netzwerkfehler: " + e.message;
   }

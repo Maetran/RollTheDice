@@ -248,8 +248,12 @@
     bar.onclick = (ev) => {
       const b = ev.target.closest("button.die");
       if (!b) return;
-      // Während Korrektur darf nur der Korrektur-Spieler togglen
-      if (S.correction?.active && S.correction?.player_id && String(S.correction.player_id) !== String(myPlayerId)) return;
+
+      const iAmTurn = S.turn && String(S.turn.player_id) === String(myPlayerId);
+      const iCorrectingMine = !!(S.correction?.active && String(S.correction.player_id) === String(myPlayerId));
+
+      if (!iAmTurn && !iCorrectingMine) return; // nur Zuginhaber ODER Korrektur-Inhaber
+
       const i = parseInt(b.dataset.i, 10);
       const next = S.holds.slice();
       next[i] = !next[i];
@@ -307,7 +311,6 @@
     delegatedBound = true;
 
     // Klick auf Score-Felder (inkl. Confirm bei 0)
-    // Klick auf Score-Felder (inkl. Confirm bei 0)
     document.addEventListener("click", (ev) => {
       const td = ev.target.closest("td.cell.clickable");
       if (!td) return;
@@ -358,7 +361,14 @@
   }
 
   // ===== Utilities =====
-  function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;"}[c])); }
+  function esc(s){
+    return String(s).replace(/[&<>"]/g, c => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;"
+    }[c]));
+  }
 
   // ===== Start =====
   if (!GAME_ID) {
