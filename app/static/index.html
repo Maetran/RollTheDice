@@ -258,7 +258,15 @@
     setInterval(fetchGames, 4000);
     setInterval(loadLeaderboard, 10000);
 
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;"
+      }[c]));
+    }
     function escapeAttr(s){ return String(s).replace(/"/g, '&quot;'); }
   </script>
 </body>
