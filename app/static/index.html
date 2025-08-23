@@ -192,7 +192,7 @@
         if (chk && chk.exists === false) { alert('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
       } catch {}
       const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
-      location.href = `room.html?${qs}`;
+      location.href = `/static/room.html?${qs}`;   // FIX
     });
 
     // Neues Spiel erstellen
@@ -213,7 +213,7 @@
         const gid = data.game_id || data.id;
         if (!gid) throw new Error('Antwort ohne game_id');
         const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
-        location.href = `room.html?${qs}`;
+        location.href = `/static/room.html?${qs}`;   // FIX
       } catch (e) {
         createErr.textContent = `Fehler: ${String(e.message || e)}`;
       }

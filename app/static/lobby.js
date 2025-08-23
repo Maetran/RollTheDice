@@ -30,7 +30,7 @@ function gameCard(g) {
 }
 
 async function listGames() {
-  const res = await fetch("/api/games");   // FIX
+  const res = await fetch("/api/games");
   if (!res.ok) return;
   const data = await res.json();
   const grid = $("#gamesGrid");
@@ -43,7 +43,7 @@ async function listGames() {
       const gid = btn.getAttribute("data-join");
       const name = ($("#playerName").value || "").trim() || "Gast";
       const qs = new URLSearchParams({ game_id: gid, name }).toString();
-      location.href = `room.html?${qs}`;   // FIX: mit Querystring
+      location.href = `/static/room.html?${qs}`;   // FIX
     });
   });
 }
@@ -57,7 +57,7 @@ $("#createBtn").addEventListener("click", async () => {
   const mode = $("#gameMode").value || "2";
   msg.textContent = "Spiel wird erstellt…";
   try {
-    const res = await fetch(`/api/games`, {   // FIX
+    const res = await fetch(`/api/games`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: gname, mode, owner: name })
@@ -70,7 +70,7 @@ $("#createBtn").addEventListener("click", async () => {
     const gid = data.game_id || data.id;
     msg.textContent = "Weiterleitung…";
     const qs = new URLSearchParams({ game_id: gid, name }).toString();
-    location.href = `room.html?${qs}`;   // FIX: mit Querystring
+    location.href = `/static/room.html?${qs}`;   // FIX
   } catch (e) {
     msg.textContent = "Netzwerkfehler: " + e.message;
   }
