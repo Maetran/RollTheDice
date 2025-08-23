@@ -91,9 +91,3 @@ If you run this on a Raspberry Pi in your local network, replace `localhost` wit
 \## 🤝 Contributing
 
 Contributions are welcome\! Please fork the repo and submit a pull request.  
-
----
-
-\## 📄 License
-
-MIT License. See \[LICENSE\]\(LICENSE\) for details.
