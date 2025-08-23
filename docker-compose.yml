@@ -1,16 +1,14 @@
-# docker-compose.yml
-name: rollthedice
+version: "3.8"
 
 services:
-  app:
+  rollthedice:
     build: .
     container_name: rollthedice
     restart: unless-stopped
     ports:
-      - "8000:8000"         # lokal erreichbar unter http://localhost:8000
+      - "8000:8000"
     volumes:
-      - ./data:/app/data    # behält Leaderboard/Stats persistent
-
+      - ./data:/app/data
 
 # git clone https://github.com/Maetran/RollTheDice.git
 # cd RollTheDice
