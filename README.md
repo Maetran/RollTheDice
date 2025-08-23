@@ -1,76 +1,118 @@
-\# 🎲 RollTheDice
+# 🎲 RollTheDice
 
-RollTheDice is a small web application to play dice games with multiple teams.  
-It is built with **FastAPI**, **Uvicorn**, and a lightweight static frontend.  
-The app is designed to run easily inside a Docker container \(works on Raspberry Pi and Docker Desktop\).
-
----
-
-\## 🚀 Features
-
-\- Web interface with interactive tables for Team A and Team B  
-\- Static frontend served directly by FastAPI  
-\- Player buttons below each team table  
-\- Data persisted inside `/app/data` \(can be mounted as a volume\)  
-\- Ready to run on Raspberry Pi \(arm64\) or any x86\_64 machine  
+RollTheDice is a lightweight multiplayer dice game.  
+It uses **FastAPI** (Python) for the backend and serves a static HTML/JS frontend.  
+Runs easily in Docker – on Raspberry Pi, Hetzner, or Docker Desktop.
 
 ---
 
-\## 📦 Requirements
+## 🚀 Features
 
-\- \[Docker\]\(https://www.docker.com/\) installed  
-\- Git installed \(if you want to clone the repo directly on the server\)  
+- Web lobby to create/join games with multiple players or teams  
+- Interactive frontend (HTML/JS) served by FastAPI  
+- REST API + WebSocket support  
+- Persistent data in `./data` (leaderboards, stats)  
+- Runs on x86_64 and arm64 (Raspberry Pi)
 
 ---
 
-\## 🔨 Build Instructions
+## 📦 Requirements
 
-Clone the repository:
+- [Docker](https://www.docker.com/) with **Compose** plugin  
+- Git (if cloning directly from GitHub)
+
+---
+
+## 🔨 Setup & Run (Docker Compose)
+
+Clone the repository and start the app:
 
 \```bash
 git clone https://github.com/Maetran/RollTheDice.git
 cd RollTheDice
+docker compose up -d --build
 \```
 
-Build the Docker image:
-
-\```bash
-docker build -t wuerfler .
-\```
+This will:
+- build the image from the included `Dockerfile`
+- start the container
+- mount `./data` as a persistent volume
 
 ---
 
-\## ▶️ Run the Container
+## 🌐 Access the App
 
-Run with data volume mounted:
+Open your browser:
 
-Build image: docker build -t wuerfler .
-Exchange image: (after git pull) docker stop wuerfler && docker rm wuerfler
-Rerun image and bind to 8000: docker run -d --name wuerfler --restart=unless-stopped -p 8000:8000 -v ~/RollTheDice/data:/app/data wuerfler
+- Game lobby: `http://localhost:8000/`  
+- API docs (Swagger UI): `http://localhost:8000/docs`
 
----
-
-\## 🌐 Access the App
-
-Open your browser at:
-
-\- `http://localhost:8000/` → serves `index.html`  
-\- `http://localhost:8000/docs` → interactive API docs \(FastAPI Swagger UI\)  
-
-If you run this on a Raspberry Pi in your local network, replace `localhost` with the Pi’s IP, e.g.:  
+👉 On Raspberry Pi / server: replace `localhost` with the device’s IP, e.g.  
 `http://192.168.1.64:8000/`
 
 ---
 
-\## 🛠 Development Notes
+## 🔄 Update Workflow
 
-\- The application code lives under `app/`  
-\- Static frontend files are in `app/static/`  
-\- Data \(e.g. game state\) is written to `data/`  
-\- `.dockerignore` excludes unnecessary files \(e.g. venv, git, etc.\)  
+After pulling new changes:
+
+\```bash
+git pull
+docker compose up -d --build
+\```
+
+This rebuilds the image and restarts the container while keeping existing data in `./data`.
 
 ---
 
-\## 🤝 Contributing
+## 📁 Project Structure
 
-Contributions are welcome\! Please fork the repo and submit a pull request.  
+\```
+RollTheDice/
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── app/
+│   ├── main.py
+│   ├── models.py
+│   ├── rules.py
+│   ├── static/
+│   │   ├── index.html
+│   │   ├── room.html
+│   │   ├── lobby.js
+│   │   ├── game.js
+│   │   ├── scoreboard.js
+│   │   └── style.css
+│   └── ...
+└── data/                # persisted: leaderboard, stats, etc.
+\```
+
+---
+
+## 🛠 Development Notes
+
+- Source code: `app/`  
+- Static frontend: `app/static/`  
+- Persistent data: `data/`  
+- `.dockerignore` excludes unnecessary files (e.g. venv, git, etc.)
+
+---
+
+## 🧪 Optional: Run without Compose
+
+If you prefer plain Docker:
+
+\```bash
+docker build -t rollthedice .
+docker run -d --name rollthedice --restart=unless-stopped \
+  -p 8000:8000 \
+  -v "$(pwd)/data:/app/data" \
+  rollthedice
+\```
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome!  
+Fork the repo, implement your feature/fix, and open a Pull Request.
