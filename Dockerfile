@@ -1,24 +1,24 @@
-# Basisimage
-FROM python:3.11-slim
+FROM python:3.13-slim
 
-# Arbeitsverzeichnis
+# kleine Init-Binary fuer saubere Signals (optional)
+RUN apt-get update && apt-get install -y --no-install-recommends tini && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Systemabhängigkeiten (nur minimal nötig)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Dependencies installieren
+# Dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Projektdateien kopieren (ohne data/, siehe .dockerignore)
-COPY main.py models.py rules.py ./
-COPY static ./static
+# **Hier korrekt kopieren: kompletter Ordner app/**
+COPY app /app/app
 
-# Port für HTTP & WS
+# Datenverzeichnis im Container (wird gemountet)
+RUN mkdir -p /app/data
+
+# Python findet das Paket "app"
+ENV PYTHONPATH=/app
+
 EXPOSE 8000
 
-# Startkommando
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+ENTRYPOINT ["/usr/bin/tini","-g","--"]
+CMD ["uvicorn","app.main:app","--host","0.0.0.0","--port","8000"]
