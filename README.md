@@ -44,26 +44,9 @@ docker build -t wuerfler .
 
 Run with data volume mounted:
 
-\```bash
-docker run -d \
-  --name wuerfler \
-  -p 8000:8000 \
-  -v "\$(pwd)/data:/app/data" \
-  wuerfler
-\```
-
-Check logs:
-
-\```bash
-docker logs -f wuerfler
-\```
-
-Stop the container:
-
-\```bash
-docker stop wuerfler
-docker rm wuerfler
-\```
+Build image: docker build -t wuerfler .
+Exchange image: (after git pull) docker stop wuerfler && docker rm wuerfler
+Rerun image and bind to 8000: docker run -d --name wuerfler --restart=unless-stopped -p 8000:8000 -v ~/RollTheDice/data:/app/data wuerfler
 
 ---
 

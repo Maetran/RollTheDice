@@ -6,8 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- FIX: relative auf die echte CSS-Datei unter /static/ -->
-  <!-- Da index.html selbst unter /static liegt, reicht "style.css" -->
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="/static/style.css">
 
   <style>
     .wrap { max-width: 980px; margin: 1.2rem auto; }
@@ -115,14 +114,10 @@
     const nameInput  = document.getElementById('playerName');
     const modeSel    = document.getElementById('gameMode');
     const gameInput  = document.getElementById('gameName');
-
-    /* FIX: variable war zerrissen – muss createBtn heißen */
     const createBtn  = document.getElementById('createBtn');
-
     const createErr  = document.getElementById('createErr');
     const listEl     = document.getElementById('gamesList');
     const refreshBtn = document.getElementById('refreshBtn');
-
     const recentTable = document.querySelector("#recentTable tbody");
     const alltimeTable = document.querySelector("#alltimeTable tbody");
     const gamesPlayedEl = document.getElementById("gamesPlayed");
@@ -197,8 +192,6 @@
         if (chk && chk.exists === false) { alert('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
       } catch {}
       const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
-
-      /* FIX: Querystring wurde gebaut, aber nicht verwendet */
       location.href = `room.html?${qs}`;
     });
 
@@ -220,8 +213,6 @@
         const gid = data.game_id || data.id;
         if (!gid) throw new Error('Antwort ohne game_id');
         const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
-
-        /* FIX: Querystring wurde gebaut, aber nicht verwendet */
         location.href = `room.html?${qs}`;
       } catch (e) {
         createErr.textContent = `Fehler: ${String(e.message || e)}`;
@@ -234,19 +225,19 @@
         const res = await fetch("/api/leaderboard", {cache:"no-store"});
         if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
-        gamesPlayedEl.textContent = data.games_played ?? 0;
+        gamesPlayedEl.textContent = (data.stats && data.stats.games_played) ?? 0;
 
         function fillTable(tbody, entries) {
           tbody.innerHTML = "";
           entries.forEach(e => {
             const tr = document.createElement("tr");
             tr.innerHTML = `
-              <td>${e.punkte}</td>
+              <td>${e.points}</td>
               <td>${escapeHtml(e.name)}</td>
-              <td>${escapeHtml(e.spielname)}</td>
-              <td>${escapeHtml(e.gegnername)}</td>
-              <td>${e.gegnerpunkte}</td>
-              <td>${e.differenz}</td>
+              <td>${escapeHtml(e.gamename)}</td>
+              <td>${escapeHtml(e.opponent)}</td>
+              <td>${e.opp_points}</td>
+              <td>${e.diff}</td>
             `;
             tbody.appendChild(tr);
           });
@@ -267,7 +258,7 @@
     setInterval(fetchGames, 4000);
     setInterval(loadLeaderboard, 10000);
 
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;","">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
     function escapeAttr(s){ return String(s).replace(/"/g, '&quot;'); }
   </script>
 </body>
