@@ -2,6 +2,7 @@
 const $ = s => document.querySelector(s);
 
 function modeLabel(m) {
+  if (m === "1") return "1 Spieler";
   if (m === "2") return "2 Spieler";
   if (m === "3") return "3 Spieler";
   if (m === "2v2") return "2 + 2 (Teams)";
@@ -20,10 +21,10 @@ function gameCard(g) {
       </div>
       <div class="muted" style="margin:.35rem 0;">
         Spieler: <b>${g.players}/${g.expected}</b> • Status: <b>${started ? "läuft" : (full ? "voll" : "wartet")}</b><br>
-        ID: <code>${g.game_id}</code>
+        ID: <code>${g.id}</code>
       </div>
       <div class="row">
-        <button data-join="${g.game_id}" ${canJoin ? "" : "disabled"}>Beitreten</button>
+        <button data-join="${g.id}" data-pass="${g.locked ? '1' : '0'}" ${canJoin ? "" : "disabled"}>Beitreten</button>
       </div>
     </div>
   `;
@@ -39,11 +40,26 @@ async function listGames() {
 
   // join handler
   grid.querySelectorAll("button[data-join]").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const gid = btn.getAttribute("data-join");
       const name = ($("#playerName").value || "").trim() || "Gast";
-      const qs = new URLSearchParams({ game_id: gid, name }).toString();
-      location.href = `/static/room.html?${qs}`;   // FIX
+      let pass = "";
+      const needsPass = btn.dataset.pass === "1";
+      if (needsPass) {
+        pass = (prompt("Dieses Spiel ist passwortgeschützt. Bitte Passphrase eingeben:") || "").trim();
+        try {
+          const check = await fetch(`/api/games/${encodeURIComponent(gid)}?check=1&pass=${encodeURIComponent(pass)}`, { cache: 'no-store' });
+          if (!check.ok) {
+            alert("Falsche Passphrase – bitte erneut versuchen.");
+            return;
+          }
+        } catch(e) {
+          alert("Fehler beim Prüfen der Passphrase.");
+          return;
+        }
+      }
+      const qs = new URLSearchParams({ game_id: gid, name, pass }).toString();
+      location.href = `/static/room.html?${qs}`;
     });
   });
 }
@@ -55,12 +71,13 @@ $("#createBtn").addEventListener("click", async () => {
   const name = ($("#playerName").value || "").trim() || "Gast";
   const gname = ($("#gameName").value || "").trim();
   const mode = $("#gameMode").value || "2";
+  const pass = (document.getElementById("passInput")?.value || "");
   msg.textContent = "Spiel wird erstellt…";
   try {
     const res = await fetch(`/api/games`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: gname, mode, owner: name })
+      body: JSON.stringify({ name: gname, mode, owner: name, pass })
     });
     if (!res.ok) {
       msg.textContent = "Fehler: " + (await res.text());
@@ -68,8 +85,7 @@ $("#createBtn").addEventListener("click", async () => {
     }
     const data = await res.json();
     const gid = data.game_id || data.id;
-    msg.textContent = "Weiterleitung…";
-    const qs = new URLSearchParams({ game_id: gid, name }).toString();
+    const qs = new URLSearchParams({ game_id: gid, name, pass }).toString();
     location.href = `/static/room.html?${qs}`;   // FIX
   } catch (e) {
     msg.textContent = "Netzwerkfehler: " + e.message;

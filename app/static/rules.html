@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RollTheDice – Spielanleitung</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Seiteninterne, leichte Ergänzungen für die Doku */
+    .doc { max-width: 880px; margin: 1rem auto 2rem; padding: 0 1rem; }
+    .doc h1 { margin: .5rem 0 0.25rem; font-size: 1.6rem; }
+    .doc h2 { margin-top: 1.25rem; }
+    .doc h3 { margin-top: 1rem; }
+    .doc p  { line-height: 1.45; }
+    .pill { display:inline-block; font-weight:600; padding: .1rem .45rem; border-radius: 12px; background:#eef3ff; border:1px solid #cfe0ff; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:.92em; padding:.05rem .35rem; border:1px solid #ddd; border-bottom-width:2px; border-radius:4px; background:#fafafa; }
+    .grid-fields { width:100%; border-collapse: separate; border-spacing:0; margin:.5rem 0; font-variant-numeric: tabular-nums; }
+    .grid-fields th, .grid-fields td { border:1px solid var(--border); padding:.35rem .45rem; text-align:left; vertical-align: top; }
+    .grid-fields thead th { background:#f7f7f7; }
+    .note { background:#fff7d6; border:1px solid #ffdc73; padding:.5rem .6rem; border-radius:8px; }
+    details { border:1px solid #e5e7eb; border-radius:8px; padding:.5rem .6rem; background:#fcfcfd; }
+    details + details { margin-top:.5rem; }
+    summary { cursor:pointer; font-weight:600; }
+    .back { margin: .75rem 1rem; display:inline-block; }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="back">← Zurück zur Lobby</a>
+  <div class="doc">
+    <h1>Spielanleitung</h1>
+    <p>
+      <strong>Ziel:</strong> Sammle möglichst viele Punkte über vier Spalten –
+      <span class="pill">⬇︎ Abwärts</span>, <span class="pill">／ Freireihe</span>,
+      <span class="pill">⬆︎ Aufwärts</span> und <span class="pill">❗ Angesagt</span> –
+      indem du pro Zug bis zu drei (im letzten Zug fünf) Würfe nutzt.
+    </p>
+
+    <h2>Rundenablauf</h2>
+    <ol>
+      <li>Du bist am Zug und kannst zu Beginn Würfel halten/lösen.</li>
+      <li>Würfle (Taste <span class="kbd">Leertaste</span> oder <span class="kbd">R</span>). Nicht gehaltene Würfel werden neu geworfen.</li>
+      <li>Max. <strong>3 Würfe</strong> pro Zug. Im <strong>letzten freien Feld</strong> hast du <strong>5 Würfe</strong>.</li>
+      <li>Trage anschließend das Ergebnis in genau <em>ein</em> freies Feld deiner Wahl (gemäß Reihen‑Regeln) ein.</li>
+    </ol>
+
+    <details>
+      <summary>Reihen‑Regeln (Spalten)</summary>
+      <p>
+        <span class="pill">⬇︎ Abwärts</span>: Felder müssen in der Reihenfolge von oben ("1") nach unten ("60") befüllt werden.<br/>
+        <span class="pill">⬆︎ Aufwärts</span>: umgekehrte Reihenfolge – von unten nach oben.<br/>
+        <span class="pill">／ Freireihe</span>: freie Reihenfolge, beliebige Felder.<br/>
+        <span class="pill">❗ Angesagt</span>: nach dem <strong>ersten Wurf</strong> kann (und darf) ein Ziel‑Feld angesagt werden.
+        Die Ansage kann <strong>im ersten Wurf</strong> geändert oder auch <strong>aufgehoben</strong> werden. Danach gilt sie bis zum Eintrag.
+        Im <strong>allerletzten Zug</strong> (nur noch 1 Feld frei) darf in ❗ auch <em>ohne Ansage</em> geschrieben werden.
+      </p>
+    </details>
+
+    <h2>Felder & Wertung</h2>
+    <table class="grid-fields">
+      <thead>
+        <tr><th>Feld</th><th>Wertung</th><th>Hinweis</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>1 … 6</strong></td><td>Summe aller Würfel mit der jeweiligen Augenzahl.</td><td>Beispiel: bei drei 5ern → 15 Punkte.</td></tr>
+        <tr><td><strong>Max</strong></td><td>Summe aller fünf Würfel.</td><td>—</td></tr>
+        <tr><td><strong>Min</strong></td><td>Summe aller fünf Würfel.</td><td>—</td></tr>
+        <tr><td><strong>Diff</strong></td><td><code>1 × (Max − Min)</code></td><td><em>Nie negativ:</em> negative Differenzen werden zu 0 gekappt.</td></tr>
+        <tr><td><strong>Kenter</strong></td><td><code>35</code> Punkte</td><td>Genau fünf unterschiedliche Augen (1–5 oder 2–6).</td></tr>
+        <tr><td><strong>Full</strong></td><td><code>40 + 3×(Wert der Drilling‑Augen)</code></td><td>3 gleiche + 2 gleiche <em>oder</em> 5 gleiche.</td></tr>
+        <tr><td><strong>Poker</strong></td><td><code>50 + 4×(Wert der Vierling‑Augen)</code></td><td><strong>Nur</strong> in dem Wurf eintragbar, in dem der Vierling das erste Mal erreicht wurde – außer bei fünf Gleichen, dann jederzeit im Zug.</td></tr>
+        <tr><td><strong>60</strong></td><td><code>60 + 5×(Wert der Fünfling‑Augen)</code></td><td>Fünf gleiche.</td></tr>
+        <tr><td><strong>ZwSumme</strong></td><td>Summe der Felder 1–6.</td><td>Automatisch berechnet.</td></tr>
+        <tr><td><strong>Bonus</strong></td><td><code>+30</code> bei ZwSumme ≥ 60.</td><td>Automatisch berechnet.</td></tr>
+        <tr><td><strong>ZwTotalOben</strong></td><td>ZwSumme + Bonus.</td><td>Automatisch berechnet.</td></tr>
+        <tr><td><strong>ZwTotalUnten</strong></td><td>Kenter + Full + Poker + 60.</td><td>Automatisch berechnet.</td></tr>
+        <tr><td><strong>Reihentotal</strong></td><td>ZwTotalOben + Diff + ZwTotalUnten.</td><td>Pro Spalte (⬇︎／⬆︎/❗).</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Besondere Regeln</h2>
+    <ul>
+      <li><strong>Ansage ändern/aufheben:</strong> Im <em>ersten Wurf</em> (und nur dort) darf die Ansage beliebig geändert oder entfernt werden.</li>
+      <li><strong>Streichen (0 Punkte):</strong> Einträge mit 0 Punkten werden vor dem Schreiben bestätigt.</li>
+      <li><strong>Letzter Wurf:</strong> Wenn nur noch ein Feld frei ist, sind bis zu <strong>5 Würfe</strong> erlaubt.</li>
+      <li><strong>Korrekturmodus:</strong> Den letzten Eintrag kannst du (sofern er kein Ansage‑Zug war) direkt danach korrigieren –
+        Taste <span class="kbd">K</span>. Abbrechen mit <span class="kbd">Esc</span>.</li>
+      <li><strong>Single‑Player:</strong> Der erste Wurf eines Zuges startet automatisch. Korrekturen sind auch im eigenen Zug erlaubt, solange noch nicht erneut gewürfelt wurde.</li>
+      <li><strong>Abbrechen:</strong> „Zurück zur Lobby“ beendet das Spiel als <em>abgebrochen</em> – es erscheint nicht in Alltime/7‑Tage‑Listen.</li>
+      <li><strong>Auto‑Timeout:</strong> Spiele ohne Aktivität werden nach 10 Minuten automatisch abgebrochen.</li>
+    </ul>
+
+    <h2>Spielmodi</h2>
+    <details>
+      <summary>1 Spieler</summary>
+      <p>Alle vier Spalten auf einem eigenen Board. Auto‑Roll zu Beginn jedes Zugs.</p>
+    </details>
+    <details>
+      <summary>2 oder 3 Spieler</summary>
+      <p>Jeder spielt sein eigenes Board. Der Zug wechselt reihum.</p>
+    </details>
+    <details>
+      <summary>2 v 2 (Team‑Modus)</summary>
+      <p>Spieler 1 &amp; 3 bilden Team A, 2 &amp; 4 Team B. Teams teilen sich je ein gemeinsames Board. Gewertet wird das Team‑Total.</p>
+    </details>
+
+    <h2>Steuerung & Shortcuts</h2>
+    <ul>
+      <li><span class="kbd">1…5</span> Würfel halten/lösen</li>
+      <li><span class="kbd">Leertaste</span> oder <span class="kbd">R</span> würfeln</li>
+      <li><span class="kbd">A</span> ansagen (falls möglich), <span class="kbd">U</span> Ansage aufheben</li>
+      <li><span class="kbd">K</span> Korrektur anfragen, <span class="kbd">Esc</span> Korrektur abbrechen</li>
+    </ul>
+
+    <p class="note"><strong>Tipp:</strong> In der ❗‑Spalte werden auf dem eigenen Board die erlaubten Zellen hervorgehoben. Bei 0‑Punkten fragt das Spiel nach einer Bestätigung.</p>
+  </div>
+</body>
+</html>
