@@ -18,8 +18,55 @@ const ROW_FIELD_KEYS = [
   null, null, null
 ];
 
+const ROW_TOOLTIPS = [
+  "Summe der ⚀ (nur Einsen)",
+  "Summe der ⚁ (nur Zweien)",
+  "Summe der ⚂ (nur Dreien)",
+  "Summe der ⚃ (nur Vieren)",
+  "Summe der ⚄ (nur Fünfen)",
+  "Summe der ⚅ (nur Sechsen)",
+  "Zwischensumme oben (1–6)",
+  "Bonus +30, wenn ZwSumme ≥ 60",
+  "ZwTotalOben = ZwSumme + Bonus",
+  "Max: Summe aller 5 Würfel (höchster Wurf)",
+  "Min: Summe aller 5 Würfel (niedrigster Wurf)",
+  "Diff = Einsen × (Max − Min), niemals negativ",
+  "Kenter: immer 35 Punkte, wenn alle 5 Augen verschieden",
+  "Full House: 3 gleiche + 2 gleiche → 40 + 3×Augenzahl der Drilling-Augen",
+  "Poker (Vierling): genau 4 gleiche im Wurf → 50 + 4×Augenzahl; 5 gleiche zählt separat",
+  "60 (Fünfling): 5 gleiche → 60 + 5×Augenzahl",
+  "ZwTotalUnten = Kenter + Full + Poker + 60",
+  "Reihentotal = ZwTotalOben + Diff + ZwTotalUnten"
+];
+
 const ANNOUNCE_FIELDS = ["1","2","3","4","5","6","max","min","kenter","full","poker","60"];
 const COMPUTE_ROWS = new Set([6,7,8,11,16,17]);
+
+// Kurzerklärung je Feld (für Mouseover/On-Tap)
+const FIELD_HINTS = {
+  "1": "Summe aller 1er",
+  "2": "Summe aller 2er",
+  "3": "Summe aller 3er",
+  "4": "Summe aller 4er",
+  "5": "Summe aller 5er",
+  "6": "Summe aller 6er",
+  "ZwSumme": "Summe der Felder 1–6",
+  "Bonus": "+30 bei ZwSumme ≥ 60",
+  "ZwTotalOben": "ZwSumme + Bonus",
+  "Max": "Summe aller fünf Würfel",
+  "Min": "Summe aller fünf Würfel",
+  "Diff": "1 × (Max − Min), nie negativ",
+  "Kenter": "Fünf unterschiedliche (35 Punkte)",
+  "Full": "40 + 3×Wert der Drilling-Augen",
+  "Poker": "50 + 4×Wert der Vierling-Augen (nur im Wurf erreicht; bei 5 gleichen jederzeit)",
+  "60": "60 + 5×Wert der Fünfling-Augen",
+  "ZwTotalUnten": "Kenter + Full + Poker + 60",
+  "Reihentotal": "ZwTotalOben + Diff + ZwTotalUnten"
+};
+
+function hintForLabel(lbl){
+  return FIELD_HINTS[lbl] || "";
+}
 
 function rowGroupMeta(ri){
   if (ri >= 6 && ri <= 8)   return { group: "top",    start: ri === 6,  end: ri === 8  };
@@ -48,7 +95,8 @@ function computeColumnTotals(sc, colKey){
   const one  = num(getCell(sc, 0,  colKey));
   const vmax = num(getCell(sc, 9,  colKey));
   const vmin = num(getCell(sc, 10, colKey));
-  const diff = (one !== null && vmax !== null && vmin !== null) ? (one * (vmax - vmin)) : null;
+  let diff = (one !== null && vmax !== null && vmin !== null) ? (one * (vmax - vmin)) : null;
+  if (diff !== null && diff < 0) diff = 0;
 
   const kenter = num(getCell(sc,12, colKey)) || 0;
   const full   = num(getCell(sc,13, colKey)) || 0;
@@ -134,6 +182,7 @@ function renderAnnounceSlot(sb, myId, iAmTurn, rollsUsed){
          <label for="announceSelect">❗ Ansage:</label>
          ${selectorHTML}
          ${options.length ? `<button id="announceBtn" class="small">${btnLabel}</button>` : ``}
+         ${ann ? `<button id="unannounceBtn" class="small danger" style="margin-left:.4rem;">Aufheben</button>` : ``}
          <span class="muted">nur direkt nach dem 1. Wurf</span>
        </div>`
     : `<div class="announce-status"><span class="label">Angesagt:</span> <span class="value">${ann ? esc(ann) : "—"}</span></div>`;
@@ -149,11 +198,35 @@ function esc(s){
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"
   }[c]));
 }
+// function colIndexFromKey(k){ return k === "down" ? 1 : k === "free" ? 2 : k === "up" ? 3 : k === "ang" ? 4 : null; }
+
+// -------- Inline CSS (injected once) --------
+function ensureInlineScoreboardCSS(){
+  if (document.getElementById('scoreboard-inline-css')) return;
+  const css = `
+    /* prevent table overflow and improve layout */
+    .players-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+    .player-card .table-wrap { overflow: auto; max-width: 100%; }
+    table.grid.compact { width: 100%; table-layout: fixed; border-collapse: collapse; }
+    table.grid.compact th, table.grid.compact td { padding: 4px 6px; }
+    /* highlight opponent's last write */
+    td.cell.last-write { box-shadow: inset 0 0 0 2px rgba(255, 165, 0, 0.95); }
+    /* announced field emphasis only on own board already handled by JS classes */
+    td.cell.announced { outline: 2px solid rgba(0, 120, 255, 0.8); }
+    /* make announce selector responsive */
+    #announceSlot select { max-width: 100%; }
+  `;
+  const style = document.createElement('style');
+  style.id = 'scoreboard-inline-css';
+  style.textContent = css;
+  document.head.appendChild(style);
+}
 
 // -------- Haupt-Renderer --------
 function renderScoreboard(mount, sb, {
   myPlayerId, iAmTurn, rollsUsed, rollsMax, announcedRow4, canRequestCorrection = false
 } = {}) {
+  ensureInlineScoreboardCSS();
   if (!sb) { if (mount) mount.innerHTML = ""; return; }
 
   const isTeamMode = isTeamModeSnapshot(sb);
@@ -243,7 +316,12 @@ function renderScoreboard(mount, sb, {
       : (String(turnPid) === String(id));
     const overall = computeOverall(sc);
 
-      // Team-Mitglieder-Namen für Chips zusammensetzen (nur 2v2)
+    // NEU: Bestimmen, ob dieses Board "meins" ist (Player vs Team)
+    const isMyBoard = isTeamMode
+      ? (teamIdForPlayer(sb, myPlayerId) === id)
+      : (String(id) === String(myPlayerId));
+
+    // Team-Mitglieder-Namen für Chips zusammensetzen (nur 2v2)
     let membersHTML = "";
     if (isTeamMode) {
       const memberNames = (ent.members || [])
@@ -263,7 +341,7 @@ function renderScoreboard(mount, sb, {
           <table class="grid compact">
             <thead>
               <tr>
-                <th class="sticky"></th>
+                <th class="sticky" title="Feld"></th>
                 <th title="Abwärts">⬇︎</th>
                 <th title="Freireihe">／</th>
                 <th title="Aufwärts">⬆︎</th>
@@ -271,7 +349,14 @@ function renderScoreboard(mount, sb, {
               </tr>
             </thead>
             <tbody>
-              ${renderRows(sc, sb, { myPlayerId, pid: id, iAmTurn, rollsUsed, correctionActive })}
+              ${renderRows(sc, sb, {
+                myPlayerId,
+                pid: id,
+                iAmTurn,
+                rollsUsed,
+                correctionActive,
+                highlightAnnounce: isMyBoard   // << nur eigenes Board hervorgehoben + klickbar
+              })}
             </tbody>
           </table>
         </div>
@@ -287,16 +372,27 @@ function renderScoreboard(mount, sb, {
 function renderRows(sc, sb, ctx){
   const announced = sb._announced_row4 || null;
   const rolledYet = (ctx.rollsUsed ?? 0) > 0;
-  const isMe = String(ctx.pid) === String(ctx.myPlayerId); // bei Team-Mode: pid = teamId -> dann false, und das ist OK (Schreiben regelt der Server)
   const correctionForMe = !!(ctx.correctionActive && sb?._correction?.player_id && String(sb._correction.player_id) === String(ctx.myPlayerId));
+  // Normalize and guard last-write logic
+  const lastWrites = (!isTeamModeSnapshot(sb) && sb._last_write_public) ? sb._last_write_public : null;
+  const lastForThisBoard = (lastWrites && lastWrites[ctx.pid]) ? lastWrites[ctx.pid] : null; // [row, colKey]
 
   const cols = ["down","free","up","ang"];
   const live = {};
   for (const c of cols) live[c] = computeColumnTotals(sc, c);
 
+  const lastWriteMap = Array.isArray(sb?._last_write) || typeof sb?._last_write === 'object' ? sb._last_write : null;
+  let oppLast = null; // [row, colKey]
+  if (!isTeamModeSnapshot(sb) && lastWriteMap) {
+    for (const [pid, rc] of Object.entries(lastWriteMap)) {
+      if (String(pid) !== String(ctx.myPlayerId)) { oppLast = rc; break; }
+    }
+  }
+
   return ROW_LABELS.map((label, ri) => {
     const meta = rowGroupMeta(ri);
     const isCompute = COMPUTE_ROWS.has(ri);
+    const tip = ROW_TOOLTIPS[ri] || "";
 
     function displayFor(colKey){
       if (ri === 6)   return numOrEmpty(live[colKey].sumTop);
@@ -316,14 +412,33 @@ function renderRows(sc, sb, ctx){
       const has = val !== "" && val !== undefined && val !== null;
 
       const rowFieldKey = ROW_FIELD_KEYS[ri];
-      const isAnnouncedCell = Boolean(announced && colIdx === 4 && rowFieldKey === announced);
 
+      // announced-Markierung nur auf dem eigenen Board
+      const isAnnouncedCell = Boolean(
+        announced && colIdx === 4 && rowFieldKey === announced && ctx.highlightAnnounce
+      );
+
+      // Last-write highlight
+      const isLastWrittenCell = (!ctx.highlightAnnounce
+        && Array.isArray(lastForThisBoard)
+        && ri === Number(lastForThisBoard[0])
+        && String(colKey) === String(lastForThisBoard[1]));
+      const isOpponentBoard = !isTeamModeSnapshot(sb) && String(ctx.pid) !== String(ctx.myPlayerId);
+      const isOppLastCell = Boolean(
+        isOpponentBoard && Array.isArray(oppLast)
+        && ri === Number(oppLast[0])
+        && String(colKey) === String(oppLast[1])
+      );
+
+      const isCompute = COMPUTE_ROWS.has(ri);
+      const rolledYet = (ctx.rollsUsed ?? 0) > 0;
+      const correctionForMe = !!(ctx.correctionActive && sb?._correction?.player_id && String(sb._correction.player_id) === String(ctx.myPlayerId));
+
+      // Klicklogik
       const mayClickNormal =
         !ctx.correctionActive &&
         !isCompute &&
         !hasRaw &&
-        // isMe bleibt bei Team-Mode i.d.R. false; Klickbarkeit wird nicht mehr allein hier entschieden,
-        // sondern der Server validiert. Wir lassen Klick trotzdem zu, wenn ich am Zug bin:
         ctx.iAmTurn &&
         rolledYet &&
         (!announced ? true : isAnnouncedCell);
@@ -332,13 +447,36 @@ function renderRows(sc, sb, ctx){
 
       const clickable = (mayClickNormal || mayClickCorrection);
 
+      // Tooltip-Text bestimmen
+      let titleText = ROW_TOOLTIPS[ri] || ""; // Basis: Feld-Erklärung
+      if (!isCompute) {
+        if (hasRaw) {
+          titleText = "Bereits befüllt";
+        } else if (ctx.correctionActive && !correctionForMe) {
+          titleText = "Gegner korrigiert – bitte warten";
+        } else if (mayClickCorrection) {
+          titleText = "Klicke, um deinen letzten Eintrag hierher zu verschieben";
+        } else if (!ctx.iAmTurn) {
+          titleText = (titleText ? titleText + " • " : "") + "Nicht an der Reihe";
+        } else if (!rolledYet) {
+          titleText = (titleText ? titleText + " • " : "") + "Erst würfeln";
+        } else if (announced && !isAnnouncedCell) {
+          titleText = "Ansage aktiv: Nur ❗ (angekündigtes Feld) ist erlaubt";
+        } else if (clickable) {
+          titleText = (titleText ? titleText + " • " : "") + "Klicke, um zu schreiben";
+        }
+      }
+
       const classes = ["cell"];
       if (isCompute) classes.push("compute");
       if (isAnnouncedCell) classes.push("announced");
+      if (isLastWrittenCell) classes.push("last-write");
+      if (isOppLastCell) classes.push("last-write");
       if (clickable) classes.push("clickable");
 
       const dataAttr  = clickable ? ` data-row="${ri}" data-field="${colKey}"` : "";
-      return `<td class="${classes.join(" ")}"${dataAttr}>${has ? esc(String(val)) : ""}</td>`;
+      const titleAttr = titleText ? ` title="${esc(titleText)}"` : "";
+      return `<td class="${classes.join(" ")}"${dataAttr}${titleAttr}>${has ? esc(String(val)) : ""}</td>`;
     }
 
     const rowClasses = [];
@@ -349,8 +487,7 @@ function renderRows(sc, sb, ctx){
 
     return `
       <tr class="${rowClasses.join(" ")}">
-        <td class="desc sticky${isCompute ? " compute" : ""}">${esc(label)}</td>
-        ${cell("down", 1)}
+        <td class="desc sticky${isCompute ? " compute" : ""}" title="${esc(tip)}">${esc(label)}</td>        ${cell("down", 1)}
         ${cell("free", 2)}
         ${cell("up",   3)}
         ${cell("ang",  4)}

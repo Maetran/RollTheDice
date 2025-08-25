@@ -24,14 +24,27 @@ button{
   border-radius:6px; border:1px solid var(--border); background:#f8f8f8;
 }
 button:hover{ background:#eee; }
+
 button.small{ font-size:.85rem; padding:.25rem .5rem; }
+
+/* destructive action button */
+button.danger{
+  border-color:#c0392b;
+  background:#fdecea;
+  color:#8e1b0e;
+}
+button.danger:hover{
+  background:#fbd5cf;
+}
 
 /* === Chips & Badges === */
 .chip{ display:inline-block; padding:.1rem .5rem; border-radius:12px; font-size:.8rem; margin-right:.25rem; }
 .chip.ok{ background:#c8f7c5; color:#145214; }
 .chip.wait{ background:#f9e79f; color:#6a4a00; }
 .chip.warn{ background:#f5b7b1; color:#922b21; }
+
 .chip.info{ background:#d6eaf8; color:#154360; }
+.chip.danger{ background:#f5b7b1; color:#7a1b16; }
 
 .badge{ display:inline-block; background:#eee; padding:.1rem .45rem; border-radius:8px; font-size:.8rem; margin-left:.25rem; }
 
@@ -164,6 +177,7 @@ tr.grp-top td, tr.grp-bottom td, tr.grp-diff td{
   min-width: 320px;
   flex: 0 0 520px;    /* fixbreit */
   max-width: 520px;
+  overflow: hidden;
 }
 
 .leaderboard-box h3 {
@@ -181,6 +195,8 @@ tr.grp-top td, tr.grp-bottom td, tr.grp-diff td{
   font-variant-numeric: tabular-nums;
   border-radius: var(--table-radius);
   overflow: hidden;
+  table-layout: fixed;
+  max-width: 100%;
 }
 
 .leaderboard-box th,
@@ -188,6 +204,9 @@ tr.grp-top td, tr.grp-bottom td, tr.grp-diff td{
   border: 1px solid var(--border);
   padding: .3rem .4rem;
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .leaderboard-box thead th {
@@ -221,4 +240,159 @@ tr.grp-top td, tr.grp-bottom td, tr.grp-diff td{
   flex-wrap: wrap;
   align-items: center;
   gap: .5rem;
+}
+
+@media (max-width: 560px){
+  .leaderboards { gap: 12px; }
+  .leaderboard-box { flex: 0 0 100%; max-width: 100%; }
+}
+
+/* === Accessibility & Interaction utilities === */
+/* sichtbarer Fokus für interaktive Elemente */
+button:focus-visible,
+#diceBar .die:focus-visible,
+td.cell.clickable:focus,
+td.cell.clickable:focus-visible{
+  outline: 2px solid #2b8cff;
+  outline-offset: 2px;
+}
+
+/* „letzter Eintrag“ – visuelle Markierung (wird per JS-Klasse gesetzt) */
+td.cell.last-write{
+  background: #fff3cd !important; /* warmes Gelb */
+  box-shadow: inset 0 0 0 2px #ffcf33; /* feiner Rand */
+}
+
+/* Dice „Shake“ Animation (0.5s) */
+#diceBar .die.shake{
+  animation: shake-dice .5s linear both;
+}
+@keyframes shake-dice{
+  0%   { transform: translate(0,0) rotate(0deg); }
+  20%  { transform: translate(-1px, 0px) rotate(-4deg); }
+  40%  { transform: translate(2px, -1px) rotate(3deg); }
+  60%  { transform: translate(-2px, 1px) rotate(-2deg); }
+  80%  { transform: translate(1px, -1px) rotate(2deg); }
+  100% { transform: translate(0,0) rotate(0deg); }
+}
+/* Nutzer mit reduzierter Bewegung respektieren */
+@media (prefers-reduced-motion: reduce){
+  #diceBar .die.shake{ animation: none; }
+}
+
+/* Disabled-Buttons dezenter darstellen */
+button[disabled]{
+  opacity: .6; cursor: not-allowed;
+}
+
+/* Kopfbereich: lange Namen sauber kürzen */
+.pc-head .pc-name{
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+a.buttonlike {
+  display: inline-block;
+  text-decoration: none;
+  font-size: 1rem;
+  padding: .4rem .6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #f8f8f8;
+  color: inherit;
+}
+a.buttonlike:hover {
+  background: #eee;
+}
+a.buttonlike:focus-visible{
+  outline: 2px solid #2b8cff;
+  outline-offset: 2px;
+}
+a.buttonlike.small {
+  font-size: .85rem;
+  padding: .25rem .5rem;
+}
+
+/* Chatbereich */
+.chat {
+  border: 1px solid var(--border, #ccc);
+  border-radius: 8px;
+  margin: 1rem;
+  display: flex;
+  flex-direction: column;
+  height: 200px;
+  background: #fff;
+}
+
+.chat-box {
+  flex: 1 1 auto;
+  padding: .5rem;
+  overflow-y: auto;
+  font-size: .9rem;
+  line-height: 1.3;
+}
+
+.chat-line {
+  margin: .2rem 0;
+}
+
+.chat-input {
+  display: flex;
+  border-top: 1px solid var(--border, #ccc);
+}
+
+.chat-input input {
+  flex: 1 1 auto;
+  border: none;
+  padding: .5rem;
+  font-size: .9rem;
+}
+
+.chat-input input:focus {
+  outline: none;
+}
+
+.chat-input button {
+  border: none;
+  background: #eee;
+  padding: .5rem .9rem;
+  cursor: pointer;
+  font-size: .9rem;
+}
+
+.chat-input button:hover {
+  background: #ddd;
+}
+
+/* --- Chat (room.html) --- */
+.chat-panel{
+  margin: 0 1rem 1rem;
+}
+.chat-panel h3{
+  margin:.6rem 0;
+  font-size:1rem;
+  font-weight:700;
+}
+.chat-box{
+  max-height:240px;
+  overflow:auto;
+  border:1px solid var(--border,#e0e0e0);
+  border-radius:.5rem;
+  padding:.5rem;
+  background:#fff;
+}
+.chat-input-row{
+  display:flex;
+  gap:.5rem;
+  margin-top:.5rem;
+}
+.chat-input-row input[type="text"]{
+  flex:1;
+  padding:.45rem .6rem;
+  border:1px solid var(--border,#e0e0e0);
+  border-radius:.45rem;
+}
+.chat-line{
+  padding:.2rem 0;
+  line-height:1.3;
+  word-wrap:break-word;
 }

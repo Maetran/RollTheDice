@@ -25,6 +25,15 @@
     .leaderboard th, .leaderboard td { border:1px solid #ddd; padding:.4rem .6rem; text-align:left; font-size:.9rem; }
     .leaderboard th { background:#f7f7f7; font-weight:600; }
     .stats { font-size:.9rem; color:#444; }
+    .rules-link{
+      text-decoration:none;
+      border:1px solid var(--border,#e0e0e0);
+      background:#fff;
+      padding:.25rem .5rem;
+      border-radius:.4rem;
+      font-size:.95rem;
+    }
+    .rules-link:hover{ background:#f2f6ff; border-color:#8ab4ff; }
   </style>
 </head>
 <body>
@@ -34,7 +43,7 @@
         <div class="logo">🎲</div>
         <h1 style="margin:.2rem 0;">Würfler – Lobby</h1>
       </div>
-      <div class="stats">Würfelspiele beendet: <span id="gamesPlayed">0</span></div>
+      <div class="stats">Würfelspiele beendet: <span id="gamesPlayed">0</span><a href="/static/rules.html" class="rules-link" style="margin-left:.75rem;">Spielregeln</a></div>
     </div>
 
     <!-- 1) Wer bist du? -->
@@ -51,6 +60,7 @@
       <h2>Neues Spiel erstellen</h2>
       <div class="row">
         <input id="gameName" type="text" placeholder="Spielname" value="Neues Spiel">
+        <input id="passInput" type="text" placeholder="Passphrase">
         <select id="gameMode" title="Spielmodus">
           <option value="2">2 Spieler</option>
           <option value="3">3 Spieler</option>
@@ -112,6 +122,7 @@
 
   <script type="module">
     const nameInput  = document.getElementById('playerName');
+    const passInput  = document.getElementById('passInput');
     const modeSel    = document.getElementById('gameMode');
     const gameInput  = document.getElementById('gameName');
     const createBtn  = document.getElementById('createBtn');
@@ -191,7 +202,7 @@
         const chk = await fetch(`/api/games/${encodeURIComponent(gid)}`, {cache:'no-store'}).then(r=>r.ok?r.json():{exists:false});
         if (chk && chk.exists === false) { alert('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
       } catch {}
-      const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
+      const qs = new URLSearchParams({ game_id: gid, name: pname, pass: passInput.value }).toString();
       location.href = `/static/room.html?${qs}`;   // FIX
     });
 
@@ -206,7 +217,7 @@
         const res = await fetch('/api/games', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ name: gname, mode, owner: pname })
+          body: JSON.stringify({ name: gname, mode, owner: pname, pass: passInput.value })
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
@@ -269,5 +280,13 @@
     }
     function escapeAttr(s){ return String(s).replace(/"/g, '&quot;'); }
   </script>
+  <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/static/sw.js')
+        .catch(err => console.warn('SW registration failed:', err));
+    });
+  }
+</script>
 </body>
 </html>

@@ -38,6 +38,10 @@
     }
 
     #scoreOut { margin: 0 1rem 1rem; position: relative; }
+    /* Link zu den Spielregeln (neuer Tab) */
+    .rules-link{ display:inline-block; padding:.25rem .5rem; border:1px solid var(--border); border-radius:6px; text-decoration:none; color:#333; background:#f8f8f8; }
+    .rules-link:hover{ background:#eee; }
+    .rules-link.small{ font-size:.85rem; }
   </style>
 </head>
 <body>
@@ -47,6 +51,7 @@
     <h1 id="roomGameName"></h1>
     <div id="roomPlayerBubbles"></div>
     <div class="spacer"></div>
+    <a href="rules.html" target="_blank" rel="noopener" class="small buttonlike">Spielregeln</a>
     <button id="backToLobbyBtn" class="small">Zurück zur Lobby</button>
   </div>
 
@@ -55,9 +60,27 @@
 
   <!-- Inhalt aus scoreboard.js (Würfel, Buttons, Tabellen) -->
   <div id="scoreOut"></div>
+  <!-- Chat -->
+  <div id="chatPanel" class="chat-panel">
+    <h3 style="margin:.6rem 0;">Chat</h3>
+    <div id="chatBox" class="chat-box" style="max-height:240px; overflow:auto; border:1px solid var(--border,#e0e0e0); border-radius:.5rem; padding:.5rem; background:#fff;"></div>
+    <div class="chat-input-row" style="display:flex; gap:.5rem; margin-top:.5rem;">
+      <input id="chatInput" type="text" placeholder="Nachricht eingeben …" style="flex:1; padding:.45rem .6rem; border:1px solid var(--border,#e0e0e0); border-radius:.45rem;">
+      <button id="chatSend">Senden</button>
+    </div>
+  </div>
 
   <!-- Scripts: zuerst scoreboard, dann game -->
   <script src="scoreboard.js" defer></script>
   <script src="game.js" defer></script>
+  <script src="/static/emoji.js"></script>
+  <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/static/sw.js')
+        .catch(err => console.warn('SW registration failed:', err));
+    });
+  }
+</script>
 </body>
 </html>

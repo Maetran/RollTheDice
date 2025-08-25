@@ -6,13 +6,13 @@
   const qs = new URLSearchParams(location.search);
   const GAME_ID = qs.get("game_id");
   const MY_NAME = (qs.get("name") || localStorage.getItem("wuerfler_name") || "Gast").trim() || "Gast";
+  const PASS_PHRASE = (qs.get("pass") || qs.get("passphrase") || "").trim();
   const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws/" + encodeURIComponent(GAME_ID);
 
   // Würfel-Zeichen: 1..6 -> ⚀..⚅
   const DIE_FACE = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 
   // UI-Elemente (optional vorhanden – je nach room.html-Version)
-  const diceBar          = document.getElementById("diceBar");            // wird von scoreboard.js gerendert
   const undoBtn          = document.getElementById("undoBtn");
   const announceChip     = document.getElementById("announceChip") || document.getElementById("roomStatusLine");
   const turnChip         = document.getElementById("turnChip") || document.getElementById("roomStatusLine");
@@ -25,6 +25,8 @@
   // ===== Spielzustand (Client) =====
   let ws = null;
   let myPlayerId = localStorage.getItem("pid_" + GAME_ID) || null;
+  let autoRollLock = false;
+  let sendLock = { write:false, roll:false };
 
   // Snapshot-Infos vom Server (werden in render() genutzt)
   const S = {
@@ -46,6 +48,11 @@
   };
 
   // ===== Mappings (Zeilen) =====
+  // Kleiner Helper, um 1-Player-Mode robust zu erkennen
+  function isSingleMode() {
+    const modeStr = (S._raw && S._raw._mode != null) ? String(S._raw._mode).toLowerCase() : "";
+    return Number(S.expected) === 1 && modeStr !== "2v2";
+  }
   const WRITABLE_MAP = {
     0: "1", 1: "2", 2: "3", 3: "4", 4: "5", 5: "6",
     9: "max", 10: "min", 12: "kenter", 13: "full", 14: "poker", 15: "60",
@@ -110,7 +117,7 @@
       if (myPlayerId) {
         ws.send(JSON.stringify({ action: "rejoin_game", player_id: myPlayerId }));
       } else {
-        ws.send(JSON.stringify({ action: "join_game", name: MY_NAME }));
+        ws.send(JSON.stringify({ action: "join_game", name: MY_NAME, pass: PASS_PHRASE }));
       }
     };
 
@@ -211,22 +218,29 @@
     }
 
     if (undoBtn) {
-      const canUndo = !!S.hasLast?.[myPlayerId] && !iAmTurn && S.rollsUsed === 0 && !(S.correction?.active);
-      undoBtn.disabled = !canUndo;
+      const isSingle = isSingleMode();
+      const canUndoLogic =
+        !!S.hasLast?.[myPlayerId] &&
+        ((!iAmTurn && S.rollsUsed === 0) || (isSingle && S.rollsUsed === 0)) &&
+        !(S.correction?.active);
+      undoBtn.disabled = !canUndoLogic;
     }
 
     // Scoreboard (liefert u.a. #diceBar und #rollBtnInline)
     if (window.renderScoreboard) {
+      const isSingle = isSingleMode();
+      const canUndoLogic =
+          !!S.hasLast?.[myPlayerId] &&
+          ( (!iAmTurn && S.rollsUsed === 0) || (isSingle && S.rollsUsed === 0) ) &&
+          !(S.correction?.active);
+
       window.renderScoreboard(scoreOut, S._raw, {
         myPlayerId,
         iAmTurn,
         rollsUsed: S.rollsUsed,
         rollsMax: S.rollsMax,
         announcedRow4: S.announcedRow4,
-        canRequestCorrection: !!S.hasLast?.[myPlayerId] &&
-                              !iAmTurn &&
-                              S.rollsUsed === 0 &&
-                              !(S.correction?.active)
+        canRequestCorrection: canUndoLogic
       });
     }
 
@@ -235,6 +249,7 @@
 
     // KEIN renderDice() mehr!
     renderAnnounce();
+    maybeAutoRollSingle();
 
     // Delegation für Klicks/Keys
     ensureDelegatedHandlers(iAmTurn);
@@ -255,6 +270,22 @@
       btn.textContent = val ? DIE_FACE[val] : "";
       btn.classList.toggle("held", held);
       btn.dataset.i = String(i);
+      btn.setAttribute("aria-pressed", held ? "true" : "false");
+      btn.setAttribute("aria-label", `Würfel ${i+1}: ${val ? DIE_FACE[val] : "leer"} ${held ? "(gehalten)" : "(nicht gehalten)"}`);
+
+      // Shake animation when value changes (non-zero)
+      const prevVal = btn.dataset.prevVal ? parseInt(btn.dataset.prevVal, 10) : 0;
+      if (val && prevVal !== val) {
+        // restart animation if it was already applied
+        btn.classList.remove("shake");
+        // force reflow to allow re-adding the class
+        void btn.offsetWidth;
+        btn.classList.add("shake");
+        // cleanup after animation duration (matches CSS ~500ms)
+        setTimeout(() => btn.classList.remove("shake"), 550);
+      }
+      // remember last value to compare next render
+      btn.dataset.prevVal = String(val || 0);
     }
 
     // Click-Delegation für Halten/Lösen
@@ -279,9 +310,10 @@
       const iAmTurn = S.turn && String(S.turn.player_id) === String(myPlayerId);
       const canRoll = iAmTurn && !S.correction?.active && (S.rollsUsed < S.rollsMax);
       rollInline.disabled = !canRoll;
+      rollInline.title = "Würfeln (Leertaste oder R)";
       rollInline.onclick = () => {
         if (!canRoll) return;
-        ws.send(JSON.stringify({ action: "roll_dice" }));
+        safeRoll();
       };
     }
   }
@@ -291,36 +323,80 @@
     return iAmTurn && !S.correction?.active && (S.rollsUsed < S.rollsMax);
   }
 
-  // ===== Ansage (UI) =====
-  function renderAnnounce() {
-    // Elemente JETZT (nach Render) frisch holen
-    const announceSel  = document.getElementById("announceSelect");
-    const announceBtn  = document.getElementById("announceBtn");
-    const announceSlot = document.getElementById("announceSlot"); // Container aus scoreboard.js
+  // Sicheres Rollen mit kurzer Sperre gegen Doppelklicks/Repeat
+  function safeRoll() {
+    if (!canRollNow() || sendLock.roll) return;
+    sendLock.roll = true;
+    try {
+      ws.send(JSON.stringify({ action: "roll_dice" }));
+    } finally {
+      setTimeout(() => { sendLock.roll = false; }, 200);
+    }
+  }
 
-    // Wenn scoreboard.js gerade den Status ("Angesagt: …") zeigt, existieren Select/Btn nicht – dann nichts tun.
-    if (!announceSlot || !announceSel || !announceBtn) return;
-
+// ===== Single-Player Auto-Roll =====
+  function maybeAutoRollSingle() {
     const iAmTurn = S.turn && String(S.turn.player_id) === String(myPlayerId);
 
-    // robust: „nach Wurf 1“ gilt, wenn (rollsUsed === 1) ODER die Würfel schon Werte > 0 tragen
-    const afterFirstRoll =
-      (S.rollsUsed === 1) ||
-      (S.rollsUsed === 0 && Array.isArray(S.dice) && S.dice.some(v => v > 0));
+    // Nur im 1-Player-Mode, nur im eigenen Zug, kein Korrekturmodus, Spiel gestartet & nicht beendet
+    if (!isSingleMode() || !iAmTurn || S.correction?.active || !S.started || S.finished) return;
 
-    const canAnnounce = iAmTurn && !S.correction?.active && !S.announcedRow4 && afterFirstRoll;
+    // Neuer Zug: vor dem ersten Wurf sind alle Würfel 0 und rollsUsed === 0
+    const emptyStart = (S.rollsUsed === 0) && Array.isArray(S.dice) && S.dice.every(v => v === 0);
+    const serverHint = (S._raw && S._raw._auto_single != null) ? !!S._raw._auto_single : true;
 
-    // Optional: bereits belegte ❗-Felder filtert scoreboard.js, hier nur Enable/Disable und Handler setzen
-    announceSel.disabled = !canAnnounce;
-    announceBtn.disabled = !canAnnounce;
+    if (emptyStart && canRollNow() && !autoRollLock && serverHint) {
+      autoRollLock = true; // Snapshot-Bounce/Mehrfachsendung verhindern
+      try {
+        ws.send(JSON.stringify({ action: "roll_dice" }));
+      } finally {
+        // kurze Entsperrung, bis Snapshot ankommt
+        setTimeout(() => { autoRollLock = false; }, 250);
+      }
+    }
+  }
 
-    announceBtn.onclick = () => {
-      if (!canAnnounce) return;
-      const f = announceSel.value;
-      if (!f) return;
-      ws.send(JSON.stringify({ action: "announce_row4", field: f }));
+  // ===== Ansage (UI) =====
+function renderAnnounce() {
+  // Elemente JETZT (nach Render) frisch holen
+  const announceSel   = document.getElementById("announceSelect");
+  const announceBtn   = document.getElementById("announceBtn");
+  const unannounceBtn = document.getElementById("unannounceBtn"); // << neu
+  const announceSlot  = document.getElementById("announceSlot");  // Container aus scoreboard.js
+
+  // Wenn scoreboard.js gerade den Status ("Angesagt: …") zeigt, existieren Select/Btn nicht – dann nichts tun.
+  if (!announceSlot || !announceSel || !announceBtn) return;
+
+  const iAmTurn = S.turn && String(S.turn.player_id) === String(myPlayerId);
+
+  // robust: „nach Wurf 1“ gilt, wenn (rollsUsed === 1) ODER die Würfel schon Werte > 0 tragen
+  const afterFirstRoll =
+    (S.rollsUsed === 1) ||
+    (S.rollsUsed === 0 && Array.isArray(S.dice) && S.dice.some(v => v > 0));
+
+  const canAnnounce   = iAmTurn && !S.correction?.active && !S.announcedRow4 && afterFirstRoll;
+  const canUnannounce = iAmTurn && !S.correction?.active && !!S.announcedRow4 && afterFirstRoll; // << neu
+
+  // Optional: bereits belegte ❗-Felder filtert scoreboard.js, hier nur Enable/Disable und Handler setzen
+  announceSel.disabled = !canAnnounce;
+  announceBtn.disabled = !canAnnounce;
+
+  announceBtn.onclick = () => {
+    if (!canAnnounce) return;
+    const f = announceSel.value;
+    if (!f) return;
+    ws.send(JSON.stringify({ action: "announce_row4", field: f }));
+  };
+
+  // „Aufheben“ klick – nur falls Button existiert (wird von scoreboard.js nur bei aktiver Ansage gerendert)
+  if (unannounceBtn) {
+    unannounceBtn.disabled = !canUnannounce;
+    unannounceBtn.onclick = () => {
+      if (!canUnannounce) return;
+      ws.send(JSON.stringify({ action: "unannounce_row4" }));
     };
   }
+}
 
   // ===== Delegierter Handler für Scoreboard-Zellen + Buttons + Keybindings =====
   let delegatedBound = false;
@@ -351,10 +427,20 @@
       }
 
       if (iCorrecting) {
-        ws.send(JSON.stringify({ action: "write_field_correction", row, field: col }));
+        if (sendLock.write) return; sendLock.write = true;
+        try {
+          ws.send(JSON.stringify({ action: "write_field_correction", row, field: col }));
+        } finally {
+          setTimeout(() => { sendLock.write = false; }, 150);
+        }
       } else {
         if (S.correction?.active && (!iCorrecting)) return;
-        ws.send(JSON.stringify({ action: "write_field", row, field: col }));
+        if (sendLock.write) return; sendLock.write = true;
+        try {
+          ws.send(JSON.stringify({ action: "write_field", row, field: col }));
+        } finally {
+          setTimeout(() => { sendLock.write = false; }, 150);
+        }
       }
     });
 
@@ -392,7 +478,6 @@
         }
         return;
       }
-
       // Falls ein Input/Select fokussiert ist, Keys nicht hijacken
       const tag = (document.activeElement && document.activeElement.tagName) || "";
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -414,7 +499,16 @@
       // Space: rollen (wenn erlaubt)
       if (key === " " || key === "spacebar") {
         if (canRollNow()) {
-          ws.send(JSON.stringify({ action: "roll_dice" }));
+          safeRoll();
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // r: rollen (gleich wie Space)
+      if (key === "r") {
+        if (canRollNow()) {
+          safeRoll();
           e.preventDefault();
         }
         return;
@@ -425,6 +519,16 @@
         const btn = document.getElementById("announceBtn");
         const sel = document.getElementById("announceSelect");
         if (btn && sel && !btn.disabled && !sel.disabled) {
+          btn.click();
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // u: Ansage aufheben (wenn Button existiert & enabled)
+      if (key === "u") {
+        const btn = document.getElementById("unannounceBtn");
+        if (btn && !btn.disabled) {
           btn.click();
           e.preventDefault();
         }
