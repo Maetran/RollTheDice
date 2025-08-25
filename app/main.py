@@ -909,7 +909,11 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     await websocket.send_json({"error": "Dieses Feld ist bereits befüllt"})
                     continue
 
-                # --- Poker-Regel: "poker" nur sofort im Wurf, in dem 4er erreicht wurde; 5er immer ok ---
+                # --- Poker-Regel (SANFT bei Ansage): ---
+                # Normal: Poker nur im selben Wurf wie der erste 4er (oder bei 5 gleichen).
+                # Ausnahme (sanft): Wenn ❗ auf "poker" steht und in der ❗-Spalte geschrieben wird,
+                # darf man "poker" in diesem Zug jederzeit eintragen. Die Punkte ergeben sich aus
+                # dem *aktuellen* Wurf (kein 4er/5er => 0 Punkte).
                 if fld == "poker":
                     cur = g.get("_turn", {}) or {}
                     roll_idx = int(cur.get("roll_index", 0) or 0)
@@ -917,9 +921,17 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     dice_now = g["_dice"] or [0, 0, 0, 0, 0]
                     has4 = has_n_of_a_kind(dice_now, 4)
                     has5 = has_n_of_a_kind(dice_now, 5)
-                    if not (has5 or (has4 and first4 and roll_idx == int(first4))):
+
+                    # Sanfte Ausnahme aktiv, wenn ❗-Ansage auf "poker" steht und Zielspalte "ang" ist
+                    soft_announced_poker = (g.get("_announced_row4") == "poker" and col == "ang")
+
+                    # Zulässig, wenn:
+                    # - 5 gleiche (immer), oder
+                    # - 4 gleiche im selben Wurf wie "first4", oder
+                    # - sanfte Ausnahme (Ansage "poker" + Spalte ❗), unabhängig vom Wurfindex
+                    if not (has5 or (has4 and first4 and roll_idx == int(first4)) or soft_announced_poker):
                         await websocket.send_json({
-                            "error": "Poker darf nur im Wurf geschrieben werden, in dem 4 gleiche erreicht wurden (oder bei 5 gleichen)."
+                            "error": "Poker darf nur im Wurf des ersten Vierlings (oder bei Fünfling) geschrieben werden – außer du hast ❗ „poker“ angesagt; dann darfst du es in ❗ jederzeit eintragen (ggf. 0 Punkte)."
                         })
                         continue
 

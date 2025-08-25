@@ -40,7 +40,6 @@ import { initChat, addChatMessage } from "./chat.js";
 
   let ws = null;
   let sb = null; // letzter Snapshot
-  let justJoined = false;
 
   // Mount für das Scoreboard
   const mount = document.getElementById("scoreOut") || (()=>{
@@ -50,7 +49,7 @@ import { initChat, addChatMessage } from "./chat.js";
     return d;
   })();
 
-  // Reactions-Mount optional herstellen, falls nicht bereits in room.html vorhanden
+  // Reactions-Mount optional herstellen
   const reactionsMount = document.getElementById("reactionsBar") || (()=>{
     const r = document.createElement("div");
     r.id = "reactionsBar";
@@ -64,18 +63,13 @@ import { initChat, addChatMessage } from "./chat.js";
     ws = new WebSocket(wsURL(qs.game_id));
 
     ws.addEventListener("open", () => {
-      initChat(ws);
+      // Chat initialisieren (Name optional für lokales Echo)
+      initChat(ws, { meName: myName });
+
       if (myId) {
-        // Rejoin
         safeSend(ws, { action: "rejoin_game", player_id: myId });
       } else {
-        // Join
-        justJoined = true;
-        safeSend(ws, {
-          action: "join_game",
-          name: myName,
-          pass: qs.pass
-        });
+        safeSend(ws, { action: "join_game", name: myName, pass: qs.pass });
       }
     });
 
@@ -92,7 +86,6 @@ import { initChat, addChatMessage } from "./chat.js";
       // Fehler (z.B. falsche Passphrase)
       if (msg.error) {
         console.warn("Serverfehler:", msg.error);
-        // bei Passphrase-Fehler: zurück zur Lobby
         if (/passphrase/i.test(msg.error) || /pass/i.test(msg.error)) {
           alert("Beitritt abgelehnt: " + msg.error);
           location.href = "/static/index.html";
@@ -105,18 +98,32 @@ import { initChat, addChatMessage } from "./chat.js";
         sb = msg.scoreboard;
         renderFromSnapshot(sb);
       }
-      // Quick-Reaction empfangen & anzeigen
+
+      // Quick-Reaction
       if (msg.emoji && window.QuickReactions && typeof window.QuickReactions.show === "function") {
         window.QuickReactions.show(msg.emoji);
       }
-      // Chat: einzelne Nachricht
+
+      // Chat-Messages (robust gegen mehrere Formate)
       if (msg.chat && typeof msg.chat === "object") {
         const sender = msg.chat.sender || "???";
         const text = msg.chat.text || "";
         if (text) addChatMessage(sender, text);
+
+      } else if (msg.type === "chat" && msg.text) {
+        const sender = msg.sender || "???";
+        addChatMessage(sender, msg.text);
+
+      } else if (msg.message && msg.sender) {
+        addChatMessage(msg.sender, msg.message);
+
+      // NEU: Variante {kind:"chat", payload:{sender,text}}
+      } else if (msg.kind === "chat" && msg.payload && msg.payload.text) {
+        const sender = msg.payload.sender || "???";
+        addChatMessage(sender, msg.payload.text);
       }
 
-      // Chat: optionale History
+      // Chat-History
       if (Array.isArray(msg.chat_history)) {
         msg.chat_history.forEach(m => {
           if (m && typeof m === "object" && m.text) {
@@ -127,8 +134,7 @@ import { initChat, addChatMessage } from "./chat.js";
     });
 
     ws.addEventListener("close", () => {
-      // Bei Kick wegen falscher Passphrase o.ä. nicht reconnecten.
-      // Ansonsten sanfter Auto-Reconnect
+      // sanfter Auto-Reconnect
       setTimeout(connect, 1000);
     });
   }
@@ -136,14 +142,14 @@ import { initChat, addChatMessage } from "./chat.js";
 
   // ---------- Render & Events ----------
   function renderFromSnapshot(snapshot) {
-    // UI-Flags vorbereiten
-    const turnPid = snapshot?._turn?.player_id || null;
-    const iAmTurn = turnPid && String(turnPid) === String(myId);
+    // UI-Flags
+    const turnPid   = snapshot?._turn?.player_id || null;
+    const iAmTurn   = turnPid && String(turnPid) === String(myId);
     const rollsUsed = snapshot?._rolls_used ?? 0;
-    const rollsMax = snapshot?._rolls_max ?? 3;
+    const rollsMax  = snapshot?._rolls_max ?? 3;
     const announced = snapshot?._announced_row4 || null;
 
-    // Scoreboard zeichnen (kommt aus static/scoreboard.js)
+    // Scoreboard zeichnen
     window.renderScoreboard(mount, snapshot, {
       myPlayerId: myId,
       iAmTurn,
@@ -153,43 +159,28 @@ import { initChat, addChatMessage } from "./chat.js";
       canRequestCorrection: canRequestCorrection(snapshot)
     });
 
-    // Interaktionen verdrahten
+    // Interaktionen
     wireDiceBar();
     wireAnnounceUI();
     wireGridClicks();
 
-    // Quick-Reactions andocken (falls Datei geladen wurde)
+    // Quick-Reactions andocken
     if (window.QuickReactions && typeof window.QuickReactions.init === "function") {
-      window.QuickReactions.init({
-        mount: reactionsMount,
-        ws,
-        me: { id: myId, name: myName }
-      });
+      window.QuickReactions.init({ mount: reactionsMount, ws, me: { id: myId, name: myName } });
     }
 
-    // 1P Auto-Roll Trigger (Server setzt _auto_single)
+    // 1P Auto-Roll
     if (snapshot._auto_single && iAmTurn) {
       safeSend(ws, { action: "roll_dice" });
     }
 
-    // Abgebrochen? -> Hinweis & ggf. zurück
-    if (snapshot._aborted) {
-      // keine Leaderboard-Einträge, Spiel ist beendet
-      // optional: zurück zur Lobby
-      // location.href = "/static/index.html";
-    }
-
-    // >>> Chat-Breite an die tatsächliche Breite des Scoreboards anpassen
+    // Chat-Breite an Scoreboard angleichen
     syncChatWidth();
   }
 
   function canRequestCorrection(snapshot) {
-    // Button „Letzten Eintrag ändern“ nur zeigen, wenn:
-    // - ich einen letzten Eintrag habe (vom Server indirekt über _has_last)
-    // - KEIN Ansage-Zug war (wird serverseitig endgültig geprüft)
-    // - und momentan keine Korrektur aktiv ist
-    const hasLast = snapshot?._has_last && snapshot._has_last[myId];
-    const corrActive = !!(snapshot?._correction?.active);
+    const hasLast   = snapshot?._has_last && snapshot._has_last[myId];
+    const corrActive= !!(snapshot?._correction?.active);
     return !!(hasLast && !corrActive);
   }
 
@@ -201,11 +192,11 @@ import { initChat, addChatMessage } from "./chat.js";
       if (!grid || !chat) return;
       const w = Math.ceil(grid.getBoundingClientRect().width);
       chat.style.maxWidth = w + "px";
+      // links bündig wie der Content-Bereich
       chat.style.marginLeft = "1rem";
       chat.style.marginRight = "1rem";
     } catch {}
   }
-  // bei Resize ebenfalls nachziehen
   window.addEventListener("resize", syncChatWidth);
 
   // --- DiceBar, Hold, Roll, Correction ---
@@ -216,36 +207,23 @@ import { initChat, addChatMessage } from "./chat.js";
     if (rollBtn && !rollBtn._shakeBound) {
       rollBtn._shakeBound = true;
       rollBtn.addEventListener("click", () => {
-        // 1) evtl. alte Shakes entfernen
         const diceEls = $$("#diceBar .die", mount);
         diceEls.forEach(el => el.classList.remove("shaking"));
+        diceEls.forEach(el => { if (!el.classList.contains("held")) el.classList.add("shaking"); });
 
-        // 2) Nur nicht gehaltene Würfel kurz shakken
-        diceEls.forEach(el => {
-          if (!el.classList.contains("held")) el.classList.add("shaking");
-        });
-
-        // 3) Würfeln minimal verzögert auslösen, damit Animation sichtbar startet
-        setTimeout(() => {
-          safeSend(ws, { action: "roll_dice" });
-        }, 120);
-
-        // 4) Nach 0.5s Shake-Klasse wieder entfernen
-        setTimeout(() => {
-          $$("#diceBar .die", mount).forEach(el => el.classList.remove("shaking"));
-        }, 520);
+        // minimal verzögert würfeln, damit Animation startet
+        setTimeout(() => { safeSend(ws, { action: "roll_dice" }); }, 120);
+        setTimeout(() => { $$("#diceBar .die", mount).forEach(el => el.classList.remove("shaking")); }, 520);
       });
     }
 
-    // Würfel halten/lösen – pro Button nur einmal binden und ohne Shake
+    // Würfel halten/lösen – pro Button nur einmal binden
     $$("#diceBar .die", mount).forEach(btn => {
       if (btn._holdBound) return;
       btn._holdBound = true;
 
       btn.addEventListener("click", () => {
-        // Sicherheit: nie beim Halten shakken
         btn.classList.remove("shaking");
-
         const i = Number(btn.dataset.i);
         const holds = $$("#diceBar .die", mount).map(b => b.classList.contains("held"));
         holds[i] = !holds[i];
@@ -253,7 +231,7 @@ import { initChat, addChatMessage } from "./chat.js";
       });
     });
 
-    // Korrektur anfragen – nur einmal binden
+    // Korrektur anfragen
     const reqBtn = $("#requestCorrectionBtn", mount);
     if (reqBtn && !reqBtn._bound) {
       reqBtn._bound = true;
@@ -273,28 +251,31 @@ import { initChat, addChatMessage } from "./chat.js";
 
   // --- Ansage UI (❗) ---
   function wireAnnounceUI() {
-    const btn = $("#announceBtn", mount);
-    const sel = $("#announceSelect", mount);
-    const unbtn = $("#unannounceBtn", mount);
+    const btn  = $("#announceBtn", mount);
+    const sel  = $("#announceSelect", mount);
+    const unbtn= $("#unannounceBtn", mount);
 
-    if (btn && sel) {
+    if (btn && sel && !btn._bound) {
+      btn._bound = true;
       btn.addEventListener("click", () => {
         const val = sel.value || "";
         if (!val) return;
         safeSend(ws, { action: "announce_row4", field: val });
       });
     }
-
-    if (unbtn) {
+    if (unbtn && !unbtn._bound) {
+      unbtn._bound = true;
       unbtn.addEventListener("click", () => {
         safeSend(ws, { action: "unannounce_row4" });
       });
     }
   }
 
-  // --- Grid Clicks (write_field / write_field_correction) ---
+  // --- Grid Clicks ---
   function wireGridClicks() {
-    // Delegation auf das Table-Grid
+    if (mount._gridBound) return;
+    mount._gridBound = true;
+
     mount.addEventListener("click", (e) => {
       const td = e.target.closest("td.cell.clickable");
       if (!td) return;

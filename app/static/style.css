@@ -259,13 +259,22 @@ button[disabled]{ opacity: .6; cursor: not-allowed; }
   height: 200px;
   background: #fff;
 }
-.chat-box {
-  flex: 1 1 auto;
-  padding: .5rem;
-  overflow-y: auto;
+.chat-box{
+  /* Typografie wie gehabt */
   font-size: .9rem;
   line-height: 1.3;
+
+  /* Sichtfenster ≈ 15 Zeilen, Rest scrollbar */
+  max-height: calc(15 * 1.3em);
+  overflow-y: auto;
+
+  /* Padding & Rahmen (falls du die Version mit Border nutzt) */
+  padding: .5rem;
+  background: #fff;
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: .5rem;
 }
+
 .chat-line { margin: .2rem 0; }
 .chat-input { display: flex; border-top: 1px solid var(--border, #ccc); }
 .chat-input input {
@@ -283,13 +292,7 @@ button[disabled]{ opacity: .6; cursor: not-allowed; }
   font-size:1rem;
   font-weight:700;
 }
-.chat-box{
-  max-height:240px;
-  border:1px solid var(--border,#e0e0e0);
-  border-radius:.5rem;
-  padding:.5rem;
-  background:#fff;
-}
+
 .chat-input-row{
   display:flex;
   gap:.5rem;
@@ -305,4 +308,11 @@ button[disabled]{ opacity: .6; cursor: not-allowed; }
   padding:.2rem 0;
   line-height:1.3;
   word-wrap:break-word;
+}
+
+.chat-line .ts{
+  font-size: .8em;
+  color: #666;
+  margin-right: .35rem;
+  font-variant-numeric: tabular-nums;
 }
