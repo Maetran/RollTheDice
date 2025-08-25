@@ -97,6 +97,21 @@ import { initChat, addChatMessage } from "./chat.js";
       if (msg.scoreboard) {
         sb = msg.scoreboard;
         renderFromSnapshot(sb);
+
+        // Spielende behandeln (Sieger anzeigen + zur Lobby)
+        if (sb && sb._finished) {
+          try {
+            const res = (sb._results || sb.results) || [];
+            if (Array.isArray(res) && res.length > 0) {
+              const top = res[0];
+              alert(`Spiel beendet – Sieger: ${top.player} (${top.total} Punkte)`);
+            } else {
+              alert("Spiel beendet.");
+            }
+          } catch (e) {}
+          setTimeout(() => { location.href = "/static/index.html"; }, 600);
+          return;
+        }
       }
 
       // Quick-Reaction
