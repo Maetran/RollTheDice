@@ -84,6 +84,18 @@ STATS_FILE   = DATA_DIR / "stats.json"
 # Static korrekt mounten – jetzt existiert app
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+# Manifest (am Root-Pfad) mit korrektem MIME-Type ausliefern
+@app.get("/manifest.webmanifest", include_in_schema=False)
+def manifest():
+    # liegt im Repo-Root neben Dockerfile / README
+    return FileResponse(str(BASE / "manifest.webmanifest"), media_type="application/manifest+json")
+
+# Service Worker (Root-Scope) ausliefern
+@app.get("/sw.js", include_in_schema=False)
+def service_worker():
+    # physisch in app/static/sw.js, aber unter /sw.js servieren fuer globalen Scope
+    return FileResponse(str(STATIC_DIR / "sw.js"), media_type="application/javascript")
+
 # Zentrales Game-Registry + Typalias
 GameDict = Dict[str, Any]
 games: Dict[str, GameDict] = {}
