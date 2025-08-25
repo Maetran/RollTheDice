@@ -179,6 +179,8 @@ import { initChat, addChatMessage } from "./chat.js";
   }
 
   function canRequestCorrection(snapshot) {
+    const isSingle  = Number(snapshot?._expected || 0) === 1;   // 1‑Spieler‑Modus
+    if (isSingle) return false;
     const hasLast   = snapshot?._has_last && snapshot._has_last[myId];
     const corrActive= !!(snapshot?._correction?.active);
     return !!(hasLast && !corrActive);

@@ -964,6 +964,10 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "request_correction":
+                # 1P-Modus: Korrektur deaktiviert
+                if int(g.get("_expected", 0) or 0) == 1:
+                    await websocket.send_json({"error": "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert"})
+                    continue
                 if g["_correction"]["active"]:
                     continue
                 if player_id not in g["_last_write"]:
@@ -1007,12 +1011,18 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "cancel_correction":
+                if int(g.get("_expected", 0) or 0) == 1:
+                    await websocket.send_json({"error": "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert"})
+                    continue
                 g["_correction"] = {"active": False}
                 g["_dice"] = [0, 0, 0, 0, 0]
                 touch(g)
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "write_field_correction":
+                if int(g.get("_expected", 0) or 0) == 1:
+                    await websocket.send_json({"error": "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert"})
+                    continue
                 # --- Preconditions ---
                 corr = g["_correction"]
                 if not corr.get("active") or corr.get("player_id") != player_id:
