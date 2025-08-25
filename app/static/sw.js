@@ -1,5 +1,5 @@
 // sw.js — Minimaler Service Worker für RollTheDice
-// Scope: /static/ (Datei muss unter /static liegen)
+// Scope: /  (wird als /sw.js am Root registriert)
 
 const CACHE_VERSION = 'v2';            // <— NEU (vorher v1)
 const PRECACHE = `precache-${CACHE_VERSION}`;
@@ -15,7 +15,7 @@ const PRECACHE_URLS = [
   '/static/emoji.js',
   '/static/room.js',
   '/static/chat.js',
-  '/static/manifest.json',
+  '/manifest.webmanifest',
 ];
 
 self.addEventListener('install', (event) => {
