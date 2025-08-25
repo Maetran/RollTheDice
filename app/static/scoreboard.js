@@ -437,13 +437,13 @@ function renderRows(sc, sb, ctx){
       const correctionForMe = !!(ctx.correctionActive && sb?._correction?.player_id && String(sb._correction.player_id) === String(ctx.myPlayerId));
 
       // Klicklogik
+      const announceOk = (!announced || isAnnouncedCell || rowFieldKey === "poker");
       const mayClickNormal =
         !ctx.correctionActive &&
         !isCompute &&
         !hasRaw &&
         ctx.iAmTurn &&
-        rolledYet &&
-        (!announced ? true : isAnnouncedCell);
+        rolledYet;
 
       const mayClickCorrection = correctionForMe && !isCompute && !hasRaw;
 

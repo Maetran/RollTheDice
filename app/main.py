@@ -259,6 +259,16 @@ def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_anno
 
     field_key = WRITABLE_MAP[row]
 
+    # Global: Wenn eine Ansage aktiv ist, darf in diesem Zug nur im ❗-Feld
+    # GENAU dieses angesagte Feld beschrieben/gestrichen werden.
+    if during_turn_announce:
+        if col != "ang":
+            return False, f"Ansage aktiv: Nur ❗-Spalte {during_turn_announce} erlaubt"
+        if during_turn_announce != field_key:
+            return False, f"Angesagt ist {during_turn_announce}, nicht {field_key}"
+        # passt: ❗ + korrektes Feld -> erlaubt (Punkte oder 0 gemäss aktuellem Wurf)
+        return True, ""
+
     if col == "free":
         return True, ""
 
@@ -910,10 +920,12 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     continue
 
                 # --- Poker-Regel (SANFT bei Ansage): ---
-                # Normal: Poker nur im selben Wurf wie der erste 4er (oder bei 5 gleichen).
-                # Ausnahme (sanft): Wenn ❗ auf "poker" steht und in der ❗-Spalte geschrieben wird,
-                # darf man "poker" in diesem Zug jederzeit eintragen. Die Punkte ergeben sich aus
-                # dem *aktuellen* Wurf (kein 4er/5er => 0 Punkte).
+                # --- Poker-Regel (Schreiben vs. Streichen) ---
+                # down/free/up:
+                #   - Streichen (0) immer erlaubt (Sequenz muss passen).
+                #   - >0 nur im Wurf des ersten Vierlings ODER bei 5 gleichen.
+                # ❗ mit Ansage "poker":
+                #   - jederzeit erlaubt (Treffer => Punkte, sonst 0).
                 if fld == "poker":
                     cur = g.get("_turn", {}) or {}
                     roll_idx = int(cur.get("roll_index", 0) or 0)
@@ -921,19 +933,23 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     dice_now = g["_dice"] or [0, 0, 0, 0, 0]
                     has4 = has_n_of_a_kind(dice_now, 4)
                     has5 = has_n_of_a_kind(dice_now, 5)
-
-                    # Sanfte Ausnahme aktiv, wenn ❗-Ansage auf "poker" steht und Zielspalte "ang" ist
                     soft_announced_poker = (g.get("_announced_row4") == "poker" and col == "ang")
 
-                    # Zulässig, wenn:
-                    # - 5 gleiche (immer), oder
-                    # - 4 gleiche im selben Wurf wie "first4", oder
-                    # - sanfte Ausnahme (Ansage "poker" + Spalte ❗), unabhängig vom Wurfindex
-                    if not (has5 or (has4 and first4 and roll_idx == int(first4)) or soft_announced_poker):
-                        await websocket.send_json({
-                            "error": "Poker darf nur im Wurf des ersten Vierlings (oder bei Fünfling) geschrieben werden – außer du hast ❗ „poker“ angesagt; dann darfst du es in ❗ jederzeit eintragen (ggf. 0 Punkte)."
-                        })
-                        continue
+                    # Vorab-Wert, um Streichen (0) zu erkennen
+                    prospective = score_field_value("poker", dice_now)
+
+                    if col != "ang":
+                        # In ⬇︎／／⬆︎: 0 immer zulassen, >0 nur bei gueltigem Treffer
+                        if prospective > 0 and not (has5 or (has4 and first4 and roll_idx == int(first4))):
+                            await websocket.send_json({
+                                "error": "Poker mit Punkten nur im Wurf des ersten Vierlings (oder bei Fünfling) erlaubt. Streichen (0) ist jederzeit möglich."
+                            })
+                            continue
+                    else:
+                        # In ❗ ist „poker“ nur erlaubt, wenn „poker“ angesagt ist
+                        if not soft_announced_poker:
+                            await websocket.send_json({"error": "Ansage aktiv: In ❗ darf nur das angesagte Feld beschrieben werden"})
+                            continue
 
                 value = score_field_value(fld, g["_dice"] or [0, 0, 0, 0, 0])
                 board[key] = value
