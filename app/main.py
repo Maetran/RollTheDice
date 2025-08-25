@@ -10,7 +10,7 @@ from pathlib import Path
 import os
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -451,9 +451,13 @@ def api_games():
     return {"games": lst}
 
 @app.get("/api/games/{game_id}")
-def game_info(game_id: str):
+def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="pass")):
     sweep_timeouts()
     g = games.get(game_id)
+    # optional: Passphrase validieren, falls mitgegeben
+    if g and (g.get("_passphrase") or "") and (passphrase is not None):
+        if passphrase != (g.get("_passphrase") or ""):
+            raise HTTPException(status_code=403, detail="wrong_passphrase")
     if not g:
         return {"exists": False}
     return {

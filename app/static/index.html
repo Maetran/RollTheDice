@@ -62,6 +62,7 @@
         <input id="gameName" type="text" placeholder="Spielname" value="Neues Spiel">
         <input id="passInput" type="text" placeholder="Passphrase">
         <select id="gameMode" title="Spielmodus">
+          <option value="1">1 Spieler</option>
           <option value="2">2 Spieler</option>
           <option value="3">3 Spieler</option>
           <option value="2v2">2 vs 2</option>
@@ -175,7 +176,10 @@
         return `
           <div class="game-row">
             <div class="meta">
-              <div class="name">${escapeHtml(g.name || '(ohne Titel)')}</div>
+              <div class="name">
+                ${escapeHtml(g.name || '(ohne Titel)')}
+                ${g.locked ? `<span style="color:#b71c1c; font-weight:600; margin-left:.4rem;">Passwortgeschützt</span>` : ""}
+              </div>
               <div class="sub">
                 Spieler: <b>${joined}/${expected}</b> • Modus: ${modeTxt} • Status: ${status}
               </div>
@@ -184,7 +188,10 @@
               </div>
             </div>
             <div class="actions">
-              <button class="joinBtn" data-id="${escapeAttr(gid)}" ${disabled}>Beitreten</button>
+              <button class="joinBtn"
+                data-id="${escapeAttr(gid)}"
+                data-pass="${g.locked ? '1' : '0'}"
+                ${disabled}>Beitreten</button>
             </div>
           </div>
         `;
@@ -196,14 +203,32 @@
       const btn = e.target.closest('.joinBtn');
       if (!btn) return;
       const gid = btn.dataset.id;
+      const needsPass = btn.dataset.pass === "1";
       const pname = (nameInput.value || 'Gast').trim() || 'Gast';
       if (!gid) { alert('Ungültige Spiel-ID. Bitte aktualisieren.'); return; }
       try {
         const chk = await fetch(`/api/games/${encodeURIComponent(gid)}`, {cache:'no-store'}).then(r=>r.ok?r.json():{exists:false});
         if (chk && chk.exists === false) { alert('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
       } catch {}
-      const qs = new URLSearchParams({ game_id: gid, name: pname, pass: passInput.value }).toString();
-      location.href = `/static/room.html?${qs}`;   // FIX
+      let pass = "";
+      if (needsPass) {
+        pass = (prompt("Dieses Spiel ist passwortgeschützt. Bitte Passwort eingeben:") || "").trim();
+        // sofort zum Server schicken und pruefen
+        try {
+          const check = await fetch(`/api/games/${encodeURIComponent(gid)}?pass=${encodeURIComponent(pass)}`, {cache:'no-store'});
+          const chkData = await check.json();
+          if (chkData.error || check.status === 403) {
+            alert("Falsche Passphrase – bitte erneut versuchen.");
+            return; // bleib in der Lobby
+          }
+        } catch(e) {
+          alert("Fehler beim Prüfen der Passphrase.");
+          return;
+        }
+      }
+      const qs = new URLSearchParams({ game_id: gid, name: pname, pass }).toString();
+      location.href = `/static/room.html?${qs}`;
+
     });
 
     // Neues Spiel erstellen
@@ -223,7 +248,7 @@
         const data = await res.json();
         const gid = data.game_id || data.id;
         if (!gid) throw new Error('Antwort ohne game_id');
-        const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
+        const qs = new URLSearchParams({ game_id: gid, name: pname, pass: passInput.value }).toString();
         location.href = `/static/room.html?${qs}`;   // FIX
       } catch (e) {
         createErr.textContent = `Fehler: ${String(e.message || e)}`;
