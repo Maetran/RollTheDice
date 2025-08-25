@@ -213,15 +213,14 @@
       let pass = "";
       if (needsPass) {
         pass = (prompt("Dieses Spiel ist passwortgeschützt. Bitte Passwort eingeben:") || "").trim();
-        // sofort zum Server schicken und pruefen
+        // sofort zum Server schicken und prüfen (Preflight)
         try {
-          const check = await fetch(`/api/games/${encodeURIComponent(gid)}?pass=${encodeURIComponent(pass)}`, {cache:'no-store'});
-          const chkData = await check.json();
-          if (chkData.error || check.status === 403) {
+          const resp = await fetch(`/api/games/${encodeURIComponent(gid)}?check=1&pass=${encodeURIComponent(pass)}`, { cache: 'no-store' });
+          if (!resp.ok) {
             alert("Falsche Passphrase – bitte erneut versuchen.");
             return; // bleib in der Lobby
           }
-        } catch(e) {
+        } catch (err) {
           alert("Fehler beim Prüfen der Passphrase.");
           return;
         }

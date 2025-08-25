@@ -21,10 +21,10 @@ function gameCard(g) {
       </div>
       <div class="muted" style="margin:.35rem 0;">
         Spieler: <b>${g.players}/${g.expected}</b> • Status: <b>${started ? "läuft" : (full ? "voll" : "wartet")}</b><br>
-        ID: <code>${g.game_id}</code>
+        ID: <code>${g.id}</code>
       </div>
       <div class="row">
-        <button data-join="${g.game_id}" data-pass="${g.locked ? '1' : '0'}" ${canJoin ? "" : "disabled"}>Beitreten</button>
+        <button data-join="${g.id}" data-pass="${g.locked ? '1' : '0'}" ${canJoin ? "" : "disabled"}>Beitreten</button>
       </div>
     </div>
   `;
@@ -40,7 +40,7 @@ async function listGames() {
 
   // join handler
   grid.querySelectorAll("button[data-join]").forEach(btn => {
-    btn.addEventListener("click", async () => {   // <--- async hier
+    btn.addEventListener("click", async () => {
       const gid = btn.getAttribute("data-join");
       const name = ($("#playerName").value || "").trim() || "Gast";
       let pass = "";
@@ -48,11 +48,10 @@ async function listGames() {
       if (needsPass) {
         pass = (prompt("Dieses Spiel ist passwortgeschützt. Bitte Passphrase eingeben:") || "").trim();
         try {
-          const check = await fetch(`/api/games/${encodeURIComponent(gid)}?pass=${encodeURIComponent(pass)}`, {cache:'no-store'});
-          const chkData = await check.json();
-          if (chkData.error || check.status === 403) {
+          const check = await fetch(`/api/games/${encodeURIComponent(gid)}?check=1&pass=${encodeURIComponent(pass)}`, { cache: 'no-store' });
+          if (!check.ok) {
             alert("Falsche Passphrase – bitte erneut versuchen.");
-            return; // bleib in der Lobby
+            return;
           }
         } catch(e) {
           alert("Fehler beim Prüfen der Passphrase.");

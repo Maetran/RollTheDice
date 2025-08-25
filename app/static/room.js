@@ -64,8 +64,8 @@ import { initChat, addChatMessage } from "./chat.js";
     ws = new WebSocket(wsURL(qs.game_id));
 
     ws.addEventListener("open", () => {
-        initChat(ws);
-        if (myId) {
+      initChat(ws);
+      if (myId) {
         // Rejoin
         safeSend(ws, { action: "rejoin_game", player_id: myId });
       } else {
@@ -105,11 +105,11 @@ import { initChat, addChatMessage } from "./chat.js";
         sb = msg.scoreboard;
         renderFromSnapshot(sb);
       }
-    // Quick-Reaction empfangen & anzeigen
+      // Quick-Reaction empfangen & anzeigen
       if (msg.emoji && window.QuickReactions && typeof window.QuickReactions.show === "function") {
         window.QuickReactions.show(msg.emoji);
       }
-    // Chat: einzelne Nachricht
+      // Chat: einzelne Nachricht
       if (msg.chat && typeof msg.chat === "object") {
         const sender = msg.chat.sender || "???";
         const text = msg.chat.text || "";
@@ -178,6 +178,9 @@ import { initChat, addChatMessage } from "./chat.js";
       // optional: zurück zur Lobby
       // location.href = "/static/index.html";
     }
+
+    // >>> Chat-Breite an die tatsächliche Breite des Scoreboards anpassen
+    syncChatWidth();
   }
 
   function canRequestCorrection(snapshot) {
@@ -190,36 +193,82 @@ import { initChat, addChatMessage } from "./chat.js";
     return !!(hasLast && !corrActive);
   }
 
+  // --- Chat-Breite dynamisch an Scoreboard angleichen ---
+  function syncChatWidth() {
+    try {
+      const grid = document.querySelector("#scoreOut .players-grid");
+      const chat = document.querySelector(".chat-panel");
+      if (!grid || !chat) return;
+      const w = Math.ceil(grid.getBoundingClientRect().width);
+      chat.style.maxWidth = w + "px";
+      chat.style.marginLeft = "1rem";
+      chat.style.marginRight = "1rem";
+    } catch {}
+  }
+  // bei Resize ebenfalls nachziehen
+  window.addEventListener("resize", syncChatWidth);
+
   // --- DiceBar, Hold, Roll, Correction ---
   function wireDiceBar() {
     const rollBtn = $("#rollBtnInline", mount);
-    if (rollBtn) {
-      rollBtn.addEventListener("click", () => safeSend(ws, { action: "roll_dice" }));
+
+    // Roll-Button: nur ungelockte Würfel shakken, keine Mehrfach-Bindung
+    if (rollBtn && !rollBtn._shakeBound) {
+      rollBtn._shakeBound = true;
+      rollBtn.addEventListener("click", () => {
+        // 1) evtl. alte Shakes entfernen
+        const diceEls = $$("#diceBar .die", mount);
+        diceEls.forEach(el => el.classList.remove("shaking"));
+
+        // 2) Nur nicht gehaltene Würfel kurz shakken
+        diceEls.forEach(el => {
+          if (!el.classList.contains("held")) el.classList.add("shaking");
+        });
+
+        // 3) Würfeln minimal verzögert auslösen, damit Animation sichtbar startet
+        setTimeout(() => {
+          safeSend(ws, { action: "roll_dice" });
+        }, 120);
+
+        // 4) Nach 0.5s Shake-Klasse wieder entfernen
+        setTimeout(() => {
+          $$("#diceBar .die", mount).forEach(el => el.classList.remove("shaking"));
+        }, 520);
+      });
     }
 
-    // Würfel halten/lösen
+    // Würfel halten/lösen – pro Button nur einmal binden und ohne Shake
     $$("#diceBar .die", mount).forEach(btn => {
+      if (btn._holdBound) return;
+      btn._holdBound = true;
+
       btn.addEventListener("click", () => {
+        // Sicherheit: nie beim Halten shakken
+        btn.classList.remove("shaking");
+
         const i = Number(btn.dataset.i);
-        const held = btn.classList.contains("held");
         const holds = $$("#diceBar .die", mount).map(b => b.classList.contains("held"));
-        holds[i] = !held;
+        holds[i] = !holds[i];
         safeSend(ws, { action: "set_hold", holds });
       });
     });
 
-    // Korrektur anfragen
+    // Korrektur anfragen – nur einmal binden
     const reqBtn = $("#requestCorrectionBtn", mount);
-    if (reqBtn) {
+    if (reqBtn && !reqBtn._bound) {
+      reqBtn._bound = true;
       reqBtn.addEventListener("click", () => safeSend(ws, { action: "request_correction" }));
     }
 
-    // ESC -> Korrektur abbrechen (wenn ich korrigiere)
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && sb?._correction?.active && String(sb._correction.player_id) === String(myId)) {
-        safeSend(ws, { action: "cancel_correction" });
-      }
-    });
+    // ESC -> Korrektur abbrechen – global nur einmal binden
+    if (!document._escCorrBound) {
+      document._escCorrBound = true;
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && sb?._correction?.active && String(sb._correction.player_id) === String(myId)) {
+          safeSend(ws, { action: "cancel_correction" });
+        }
+      });
+    }
   }
 
   // --- Ansage UI (❗) ---

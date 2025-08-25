@@ -451,15 +451,25 @@ def api_games():
     return {"games": lst}
 
 @app.get("/api/games/{game_id}")
-def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="pass")):
+def game_info(game_id: str,passphrase: str | None = Query(default=None, alias="pass"),check: int = Query(default=0)):
     sweep_timeouts()
     g = games.get(game_id)
-    # optional: Passphrase validieren, falls mitgegeben
-    if g and (g.get("_passphrase") or "") and (passphrase is not None):
-        if passphrase != (g.get("_passphrase") or ""):
-            raise HTTPException(status_code=403, detail="wrong_passphrase")
     if not g:
         return {"exists": False}
+
+    # Preflight: falls ?check=1 angegeben ist, Passwort hart pruefen und frueh beenden
+    if check == 1:
+        if g.get("_passphrase"):
+            # Bei gesperrtem Spiel: fehlendes ODER falsches Passwort => 403
+            if not passphrase or passphrase != g["_passphrase"]:
+                raise HTTPException(status_code=403, detail="wrong_passphrase")
+        # OK -> kurzer Erfolg, Client prueft nur .ok
+        return {"ok": True, "exists": True}
+
+    # optional: Passphrase validieren, falls mitgegeben
+    if g.get("_passphrase") and passphrase is not None:
+        if passphrase != g["_passphrase"]:
+            raise HTTPException(status_code=403, detail="wrong_passphrase")
     return {
         "exists": True,
         "id": game_id,
@@ -470,7 +480,7 @@ def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="
         "started": g["_started"],
         "finished": g["_finished"],
         "aborted": g.get("_aborted", False),
-        "locked": bool(g.get("_passphrase")),  # <— neu: Flag für Passphrase
+        "locked": bool(g.get("_passphrase")),
         "waiting": [p.get("name", "Player") for p in g["_players"]],
     }
 

@@ -203,19 +203,21 @@ function esc(s){
 // -------- Inline CSS (injected once) --------
 function ensureInlineScoreboardCSS(){
   if (document.getElementById('scoreboard-inline-css')) return;
+
   const css = `
-    /* prevent table overflow and improve layout */
-    .players-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+    /* keep your base flex layout from style.css */
     .player-card .table-wrap { overflow: auto; max-width: 100%; }
     table.grid.compact { width: 100%; table-layout: fixed; border-collapse: collapse; }
     table.grid.compact th, table.grid.compact td { padding: 4px 6px; }
-    /* highlight opponent's last write */
-    td.cell.last-write { box-shadow: inset 0 0 0 2px rgba(255, 165, 0, 0.95); }
-    /* announced field emphasis only on own board already handled by JS classes */
-    td.cell.announced { outline: 2px solid rgba(0, 120, 255, 0.8); }
-    /* make announce selector responsive */
+  
+    /* highlight marks */
+    td.cell.last-write { box-shadow: inset 0 0 0 2px rgba(255,165,0,.95); }
+    td.cell.announced   { outline: 2px solid rgba(0,120,255,.8); }
+  
+    /* responsive select */
     #announceSlot select { max-width: 100%; }
   `;
+
   const style = document.createElement('style');
   style.id = 'scoreboard-inline-css';
   style.textContent = css;

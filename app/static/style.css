@@ -11,6 +11,10 @@
   --col-desc:   96px;  /* reicht für „ZwTotalUnten“, „Reihentotal“ */
   --col-score:  44px;  /* 3-stellige Zahlen passen */
   --table-radius: 10px;
+
+  /* Breiten-/Abstands-Variablen für Layout (2 Karten nebeneinander) */
+  --card-w: calc(var(--col-desc) + 4 * var(--col-score) + 22px);
+  --cards-gap: 16px; /* zur .players-grid gap passend halten */
 }
 
 *{ box-sizing:border-box; }
@@ -18,31 +22,38 @@ html,body{ margin:0; padding:0; background:var(--bg); color:#222; }
 body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
 h2{ margin:.5rem 0; }
 
+/* === Bereichsbreiten: Score + Chat haben die gleiche Maxbreite (2 Karten + Gap), mittig */
+#scoreOut{
+  width: 100%;
+  max-width: calc(2 * var(--card-w) + var(--cards-gap));
+  margin: 0 auto 1rem;   /* zentrieren */
+}
+.chat-panel{
+  width: 100%;
+  max-width: calc(2 * var(--card-w) + var(--cards-gap));
+  margin: 0 auto 1.2rem; /* zentrieren, etwas mehr Abstand nach unten */
+}
+
 /* === Buttons === */
 button{
   cursor:pointer; font-size:1rem; padding:.4rem .6rem;
   border-radius:6px; border:1px solid var(--border); background:#f8f8f8;
 }
 button:hover{ background:#eee; }
-
 button.small{ font-size:.85rem; padding:.25rem .5rem; }
 
-/* destructive action button */
 button.danger{
   border-color:#c0392b;
   background:#fdecea;
   color:#8e1b0e;
 }
-button.danger:hover{
-  background:#fbd5cf;
-}
+button.danger:hover{ background:#fbd5cf; }
 
 /* === Chips & Badges === */
 .chip{ display:inline-block; padding:.1rem .5rem; border-radius:12px; font-size:.8rem; margin-right:.25rem; }
 .chip.ok{ background:#c8f7c5; color:#145214; }
 .chip.wait{ background:#f9e79f; color:#6a4a00; }
 .chip.warn{ background:#f5b7b1; color:#922b21; }
-
 .chip.info{ background:#d6eaf8; color:#154360; }
 .chip.danger{ background:#f5b7b1; color:#7a1b16; }
 
@@ -50,29 +61,25 @@ button.danger:hover{
 
 /* === Layout === */
 .topbar{ display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:.5rem; }
-
-/* fix: nicht auf volle Breite strecken */
 .players-inline{ flex:0 0 auto; }
-
 .muted{ color:var(--muted); font-size:.86rem; margin:.25rem 0 .75rem; }
 
 .players-grid{
   display:flex;
   flex-wrap:wrap;
-  gap:1rem;
-  justify-content:flex-start;   /* statt verteilen */
+  gap: var(--cards-gap);
+  justify-content:flex-start;
   align-items:flex-start;
 }
 
-/* Card mit runden Ecken (Breite aus Spalten abgeleitet) */
+/* Karten (fixe Breite, damit 2 exakt nebeneinander passen) */
 .player-card {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: .6rem;
-  flex: 0 0 auto;
-  width: calc(var(--col-desc) + 4 * var(--col-score) + 22px);
-  flex: 0 0 calc(var(--col-desc) + 4 * var(--col-score) + 22px); /* fixbreit */
+  width: var(--card-w);
+  flex: 0 0 var(--card-w);
   box-shadow: 0 2px 6px rgba(0,0,0,.06);
 }
 .player-card.turn{ border-color:#2b8cff; box-shadow:0 0 0 2px rgba(43,140,255,.12); }
@@ -84,10 +91,21 @@ button.danger:hover{
 button.die{
   font-size:2rem; width:2.6rem; height:2.6rem; border-radius:.6rem;
   font-variant-numeric: tabular-nums;
-  display:inline-flex; align-items:center; justify-content:center; /* leer/zentriert */
+  display:inline-flex; align-items:center; justify-content:center;
   background:#fff; color:#000; border:1px solid var(--border);
 }
 button.die.held{ background:#d4efdf; border-color:#27ae60; }
+
+/* Shake nur für nicht gehaltene Würfel, wenn JS .shaking setzt */
+@keyframes dice-shake{
+  0%{transform:translate(0,0) rotate(0deg)}
+  20%{transform:translate(-1px,1px) rotate(-2deg)}
+  40%{transform:translate(1px,-1px) rotate(2deg)}
+  60%{transform:translate(-1px,0) rotate(-1deg)}
+  80%{transform:translate(1px,1px) rotate(1deg)}
+  100%{transform:translate(0,0) rotate(0deg)}
+}
+button.die.shaking{ animation: dice-shake .5s ease; }
 
 /* === Announce & Banner === */
 .announce-slot{ margin:.5rem 0; }
@@ -99,14 +117,14 @@ button.die.held{ background:#d4efdf; border-color:#27ae60; }
   padding:.55rem; margin-bottom:.6rem; border-radius:6px; font-size:.9rem;
 }
 
-/* === Table (fixe Breite, linksbündig, runde Ecken) === */
+/* === Tabelle (fixe Breite, linksbündig, runde Ecken) === */
 .table-wrap{ border-radius:var(--table-radius); overflow:hidden; }
 table.grid{
   border-collapse:separate; border-spacing:0;
   font-size:.9rem; table-layout:fixed;
   border-radius:var(--table-radius); overflow:hidden;
   width: calc(var(--col-desc) + 4 * var(--col-score));
-  margin: 0; /* linksbündig */
+  margin: 0;
   font-variant-numeric: tabular-nums;
 }
 
@@ -136,38 +154,31 @@ td.cell.announced{ background:#ffe9e9 !important; font-weight:700; }
 td.cell.compute, td.desc.compute{ background:#f2f3f5; color:#444; font-weight:600; }
 td.cell.compute{ font-size:.86rem; }
 
-/* === Blockrahmen NUR horizontal (keine vertikale Dicke zwischen Spalten) === */
+/* === Blockrahmen horizontal === */
 tr.grp-top td{ border-top:3px solid var(--border-strong); }
 tr.grp-top.grp-end td{ border-bottom:3px solid var(--border-strong); }
-
 tr.grp-diff td{ border-top:3px solid var(--border-strong); border-bottom:3px solid var(--border-strong); }
-
 tr.grp-bottom.grp-start td{ border-top:3px solid var(--border-strong); }
 tr.grp-bottom td{ border-bottom:3px solid var(--border-strong); }
-
 tr.grp-top td, tr.grp-bottom td, tr.grp-diff td{
   border-left:1px solid var(--border) !important;
   border-right:1px solid var(--border) !important;
 }
 
-/* --- sehr schmale Screens --- */
+/* --- sehr schmale Screens: eine Karte pro Zeile --- */
 @media (max-width:420px){
-  :root{
-    --col-desc: 90px;
-    --col-score: 40px;
-  }
-  .player-card{ width: calc(var(--col-desc) + 4 * var(--col-score) + 22px); flex-basis: calc(var(--col-desc) + 4 * var(--col-score) + 22px);}
+  :root{ --col-desc: 90px; --col-score: 40px; }
+  .player-card{ width: var(--card-w); flex-basis: var(--card-w); }
 }
 
-/* === Leaderboard Styles === */
+/* === Leaderboard (unverändert) === */
 .leaderboards {
   display: flex;
   gap: 20px;
   margin-top: 10px;
   flex-wrap: wrap;
-  justify-content: flex-start; /* fix */
+  justify-content: flex-start;
 }
-
 .leaderboard-box {
   background: var(--card);
   border: 1px solid var(--border);
@@ -175,71 +186,39 @@ tr.grp-top td, tr.grp-bottom td, tr.grp-diff td{
   padding: 0.5rem;
   box-shadow: 0 2px 6px rgba(0,0,0,.06);
   min-width: 320px;
-  flex: 0 0 520px;    /* fixbreit */
+  flex: 0 0 520px;
   max-width: 520px;
   overflow: hidden;
 }
-
-.leaderboard-box h3 {
-  margin: 0.3rem 0 0.6rem;
-  text-align: center;
-  font-weight: 600;
-  color: #333;
-}
-
+.leaderboard-box h3 { margin: 0.3rem 0 0.6rem; text-align: center; font-weight: 600; color: #333; }
 .leaderboard-box table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: .9rem;
-  font-variant-numeric: tabular-nums;
-  border-radius: var(--table-radius);
-  overflow: hidden;
-  table-layout: fixed;
-  max-width: 100%;
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font-size: .9rem; font-variant-numeric: tabular-nums;
+  border-radius: var(--table-radius); overflow: hidden; table-layout: fixed; max-width: 100%;
 }
-
-.leaderboard-box th,
-.leaderboard-box td {
-  border: 1px solid var(--border);
-  padding: .3rem .4rem;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.leaderboard-box th, .leaderboard-box td {
+  border: 1px solid var(--border); padding: .3rem .4rem; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-
-.leaderboard-box thead th {
-  background: #f7f7f7;
-  font-weight: 700;
-}
-
+.leaderboard-box thead th { background: #f7f7f7; font-weight: 700; }
 .leaderboard-box thead th:first-child { border-top-left-radius: var(--table-radius); }
 .leaderboard-box thead th:last-child { border-top-right-radius: var(--table-radius); }
 .leaderboard-box tbody tr:last-child td:first-child { border-bottom-left-radius: var(--table-radius); }
 .leaderboard-box tbody tr:last-child td:last-child { border-bottom-right-radius: var(--table-radius); }
 
 /* --- Chips/Bubbles sauber anordnen --- */
-#playerChips,
-#roomStatusLine,
-.top-chips,
-.chips,
-.players-inline {
-  display: inline-flex;      /* statt block-level flex */
+#playerChips, #roomStatusLine, .top-chips, .chips, .players-inline {
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
   gap: .45rem .55rem;
-  width: auto;               /* Container nur so breit wie Inhalt */
-  max-width: 100%;           /* falls nötig, bricht es trotzdem um */
+  width: auto;
+  max-width: 100%;
 }
-
 .badge, .chip { white-space: nowrap; }
 
 .announce-slot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .5rem;
+  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
 }
 
 @media (max-width: 560px){
@@ -247,8 +226,7 @@ tr.grp-top td, tr.grp-bottom td, tr.grp-diff td{
   .leaderboard-box { flex: 0 0 100%; max-width: 100%; }
 }
 
-/* === Accessibility & Interaction utilities === */
-/* sichtbarer Fokus für interaktive Elemente */
+/* === Accessibility & Interaction === */
 button:focus-visible,
 #diceBar .die:focus-visible,
 td.cell.clickable:focus,
@@ -257,72 +235,30 @@ td.cell.clickable:focus-visible{
   outline-offset: 2px;
 }
 
-/* „letzter Eintrag“ – visuelle Markierung (wird per JS-Klasse gesetzt) */
+/* „letzter Eintrag“ – visuelle Markierung */
 td.cell.last-write{
-  background: #fff3cd !important; /* warmes Gelb */
-  box-shadow: inset 0 0 0 2px #ffcf33; /* feiner Rand */
-}
-
-/* Dice „Shake“ Animation (0.5s) */
-#diceBar .die.shake{
-  animation: shake-dice .5s linear both;
-}
-@keyframes shake-dice{
-  0%   { transform: translate(0,0) rotate(0deg); }
-  20%  { transform: translate(-1px, 0px) rotate(-4deg); }
-  40%  { transform: translate(2px, -1px) rotate(3deg); }
-  60%  { transform: translate(-2px, 1px) rotate(-2deg); }
-  80%  { transform: translate(1px, -1px) rotate(2deg); }
-  100% { transform: translate(0,0) rotate(0deg); }
-}
-/* Nutzer mit reduzierter Bewegung respektieren */
-@media (prefers-reduced-motion: reduce){
-  #diceBar .die.shake{ animation: none; }
+  background: #fff3cd !important;
+  box-shadow: inset 0 0 0 2px #ffcf33;
 }
 
 /* Disabled-Buttons dezenter darstellen */
-button[disabled]{
-  opacity: .6; cursor: not-allowed;
-}
+button[disabled]{ opacity: .6; cursor: not-allowed; }
 
 /* Kopfbereich: lange Namen sauber kürzen */
 .pc-head .pc-name{
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-a.buttonlike {
-  display: inline-block;
-  text-decoration: none;
-  font-size: 1rem;
-  padding: .4rem .6rem;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: #f8f8f8;
-  color: inherit;
-}
-a.buttonlike:hover {
-  background: #eee;
-}
-a.buttonlike:focus-visible{
-  outline: 2px solid #2b8cff;
-  outline-offset: 2px;
-}
-a.buttonlike.small {
-  font-size: .85rem;
-  padding: .25rem .5rem;
-}
-
-/* Chatbereich */
+/* Chat-Grundlayout (Inhalt kommt aus room.html) */
 .chat {
   border: 1px solid var(--border, #ccc);
   border-radius: 8px;
-  margin: 1rem;
+  margin: 1rem 0;
   display: flex;
   flex-direction: column;
   height: 200px;
   background: #fff;
 }
-
 .chat-box {
   flex: 1 1 auto;
   padding: .5rem;
@@ -330,43 +266,18 @@ a.buttonlike.small {
   font-size: .9rem;
   line-height: 1.3;
 }
-
-.chat-line {
-  margin: .2rem 0;
-}
-
-.chat-input {
-  display: flex;
-  border-top: 1px solid var(--border, #ccc);
-}
-
+.chat-line { margin: .2rem 0; }
+.chat-input { display: flex; border-top: 1px solid var(--border, #ccc); }
 .chat-input input {
-  flex: 1 1 auto;
-  border: none;
-  padding: .5rem;
-  font-size: .9rem;
+  flex: 1 1 auto; border: none; padding: .5rem; font-size: .9rem;
 }
-
-.chat-input input:focus {
-  outline: none;
-}
-
+.chat-input input:focus { outline: none; }
 .chat-input button {
-  border: none;
-  background: #eee;
-  padding: .5rem .9rem;
-  cursor: pointer;
-  font-size: .9rem;
+  border: none; background: #eee; padding: .5rem .9rem; cursor: pointer; font-size: .9rem;
 }
-
-.chat-input button:hover {
-  background: #ddd;
-}
+.chat-input button:hover { background: #ddd; }
 
 /* --- Chat (room.html) --- */
-.chat-panel{
-  margin: 0 1rem 1rem;
-}
 .chat-panel h3{
   margin:.6rem 0;
   font-size:1rem;
@@ -374,7 +285,6 @@ a.buttonlike.small {
 }
 .chat-box{
   max-height:240px;
-  overflow:auto;
   border:1px solid var(--border,#e0e0e0);
   border-radius:.5rem;
   padding:.5rem;
