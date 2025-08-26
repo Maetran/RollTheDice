@@ -374,6 +374,22 @@ function renderScoreboard(mount, sb, {
 function renderRows(sc, sb, ctx){
   const announced = sb._announced_row4 || null;
   const rolledYet = (ctx.rollsUsed ?? 0) > 0;
+  // Ausnahme "letztes Feld": offene, noch leere, beschreibbare Zellen zaehlen
+  const remainingOpen = (() => {
+    let cnt = 0;
+    const cols = ["down","free","up","ang"];
+    for (let ri = 0; ri < ROW_LABELS.length; ri++) {
+      if (!ROW_FIELD_KEYS[ri]) continue;        // nur echte Wertungszeilen
+      for (const col of cols) {
+        const key = `${ri},${col}`;
+        const v = sc[key];
+        if (v === undefined || v === null || v === "") cnt++;
+      }
+    }
+    return cnt;
+  })();
+  const lastCellMode = (remainingOpen === 1);
+
   const correctionForMe = !!(ctx.correctionActive && sb?._correction?.player_id && String(sb._correction.player_id) === String(ctx.myPlayerId));
   // Normalize and guard last-write logic
   const lastWrites = (!isTeamModeSnapshot(sb) && sb._last_write_public) ? sb._last_write_public : null;
@@ -462,7 +478,7 @@ function renderRows(sc, sb, ctx){
           titleText = (titleText ? titleText + " • " : "") + "Nicht an der Reihe";
         } else if (!rolledYet) {
           titleText = (titleText ? titleText + " • " : "") + "Erst würfeln";
-        } else if (announced && !isAnnouncedCell) {
+        } else if (announced && !isAnnouncedCell && !lastCellMode) {
           titleText = "Ansage aktiv: Nur ❗ (angekündigtes Feld) ist erlaubt";
         } else if (clickable) {
           titleText = (titleText ? titleText + " • " : "") + "Klicke, um zu schreiben";
