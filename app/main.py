@@ -271,9 +271,13 @@ def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_anno
 
     field_key = WRITABLE_MAP[row]
 
+    # Ausnahme: Letztes freies Feld -> Ansage-Check ignorieren (Deadlock vermeiden)
+    if _remaining_cells_for(g, pid) == 1:
+        return True, ""
+
     # Global: Wenn eine Ansage aktiv ist, darf in diesem Zug nur im ❗-Feld
     # GENAU dieses angesagte Feld beschrieben/gestrichen werden.
-    if during_turn_announce:
+    if during_turn_announce and not _is_last_turn_for(g, pid):
         if col != "ang":
             return False, f"Ansage aktiv: Nur ❗-Spalte {during_turn_announce} erlaubt"
         if during_turn_announce != field_key:
@@ -939,6 +943,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 # ❗ mit Ansage "poker":
                 #   - jederzeit erlaubt (Treffer => Punkte, sonst 0).
                 if fld == "poker":
+                    last_cell_mode = (_remaining_cells_for(g, player_id) == 1)
                     cur = g.get("_turn", {}) or {}
                     roll_idx = int(cur.get("roll_index", 0) or 0)
                     first4 = cur.get("first4oak_roll")
@@ -959,7 +964,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                             continue
                     else:
                         # In ❗ ist „poker“ nur erlaubt, wenn „poker“ angesagt ist
-                        if not soft_announced_poker:
+                        if not soft_announced_poker and not last_cell_mode:
                             await websocket.send_json({"error": "Ansage aktiv: In ❗ darf nur das angesagte Feld beschrieben werden"})
                             continue
 
