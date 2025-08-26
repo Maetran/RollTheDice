@@ -1,16 +1,15 @@
-// sw.js — Minimaler Service Worker für RollTheDice
-// Scope: /  (wird als /sw.js am Root registriert)
+// sw.js — Minimaler Service Worker für RollTheDice (Root-Scope: /)
 
-const CACHE_VERSION = 'v2';            // <— NEU (vorher v1)
+const CACHE_VERSION = 'v3';
 const PRECACHE = `precache-${CACHE_VERSION}`;
-const RUNTIME = `runtime-${CACHE_VERSION}`;
+const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
   '/static/index.html',
   '/static/room.html',
   '/static/rules.html',
   '/static/style.css',
-  '/static/game.js',
+  // '/static/game.js',  // entfernt – existiert nicht mehr
   '/static/scoreboard.js',
   '/static/emoji.js',
   '/static/room.js',
@@ -18,22 +17,45 @@ const PRECACHE_URLS = [
   '/manifest.webmanifest',
 ];
 
+// — Install: robust gegen einzelne 404/Netzfehler
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(PRECACHE).then((cache) => cache.addAll(PRECACHE_URLS)));
+  event.waitUntil((async () => {
+    const cache = await caches.open(PRECACHE);
+    await Promise.all(
+      PRECACHE_URLS.map(async (url) => {
+        try {
+          const res = await fetch(url, { cache: 'no-cache' });
+          if (res && res.ok) await cache.put(url, res.clone());
+        } catch (e) {
+          // fehlende/temporär nicht erreichbare Dateien ignorieren
+        }
+      })
+    );
+  })());
   self.skipWaiting();
 });
 
+// — Activate: alte Caches aufräumen
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== PRECACHE && k !== RUNTIME).map((k) => caches.delete(k)))
+      Promise.all(
+        keys
+          .filter((k) => k !== PRECACHE && k !== RUNTIME)
+          .map((k) => caches.delete(k))
+      )
     )
   );
   self.clients.claim();
 });
 
+// — Fetch-Routing
 self.addEventListener('fetch', (event) => {
   const req = event.request;
+
+  // nur GET cachen
+  if (req.method !== 'GET') return;
+
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
@@ -41,23 +63,26 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(cacheFirst(req));
     return;
   }
+
   event.respondWith(networkFirst(req));
 });
 
+// --- Strategien ---
 async function cacheFirst(req) {
   const cache = await caches.open(PRECACHE);
   const cached = await cache.match(req, { ignoreSearch: true });
   if (cached) return cached;
+
   try {
     const res = await fetch(req);
     if (res && res.ok) cache.put(req, res.clone());
     return res;
-  } catch {
+  } catch (e) {
     if (req.destination === 'document') {
-      const idx = await cache.match('/static/index.html');
-      if (idx) return idx;
+      const fallback = await cache.match('/static/index.html');
+      if (fallback) return fallback;
     }
-    throw;
+    throw e;
   }
 }
 
@@ -67,14 +92,15 @@ async function networkFirst(req) {
     const res = await fetch(req);
     if (res && res.ok) runtime.put(req, res.clone());
     return res;
-  } catch {
+  } catch (e) {
     const cached = await runtime.match(req);
     if (cached) return cached;
+
     if (req.destination === 'document') {
       const precache = await caches.open(PRECACHE);
-      const idx = await precache.match('/static/index.html');
-      if (idx) return idx;
+      const fallback = await precache.match('/static/index.html');
+      if (fallback) return fallback;
     }
-    throw;
+    throw e;
   }
 }

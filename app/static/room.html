@@ -54,7 +54,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/static/sw.js')
+        navigator.serviceWorker.register('/sw.js')  // << statt /static/sw.js
           .catch(err => console.warn('SW registration failed:', err));
       });
     }

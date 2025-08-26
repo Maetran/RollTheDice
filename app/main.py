@@ -93,8 +93,7 @@ def manifest():
 # Service Worker (Root-Scope) ausliefern
 @app.get("/sw.js", include_in_schema=False)
 def service_worker():
-    # physisch in app/static/sw.js, aber unter /sw.js servieren fuer globalen Scope
-    return FileResponse(str(STATIC_DIR / "sw.js"), media_type="application/javascript")
+    return FileResponse(str(STATIC_DIR / "sw.js"), media_type="text/javascript")
 
 # Zentrales Game-Registry + Typalias
 GameDict = Dict[str, Any]
@@ -370,6 +369,12 @@ def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_anno
         return False, "Dieses Feld ist nicht beschreibbar"
 
     field_key = WRITABLE_MAP[row]
+
+    # Sonderfall: Nach Wurf ≥1 darf Poker in down/free/up immer gestrichen werden (strike)
+    if field_key == "poker" and col in {"down", "free", "up"}:
+        if int(g.get("_rolls_used", 0) or 0) >= 1:
+            # Streichen (0) immer erlauben – Punkte-Check erfolgt im write_field mit strike
+            return True, ""
 
     # Ausnahme: Letztes freies Feld -> Ansage-Check ignorieren (Deadlock vermeiden)
     if _remaining_cells_for(g, pid) == 1:
@@ -1012,6 +1017,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     await websocket.send_json({"error": "Ungültige Zeile"})
                     continue
                 col = data.get("field")
+                strike = bool(data.get("strike"))  # << neu: 0 erzwingen erlaubt
                 if col not in {"down", "free", "up", "ang"}:
                     await websocket.send_json({"error": "Ungültige Spalte"})
                     continue
@@ -1058,19 +1064,21 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     prospective = score_field_value("poker", dice_now)
 
                     if col != "ang":
-                        # In ⬇︎／／⬆︎: 0 immer zulassen, >0 nur bei gueltigem Treffer
                         if prospective > 0 and not (has5 or (has4 and first4 and roll_idx == int(first4))):
-                            await websocket.send_json({
-                                "error": "Poker mit Punkten nur im Wurf des ersten Vierlings (oder bei Fünfling) erlaubt. Streichen (0) ist jederzeit möglich."
-                            })
-                            continue
+                            if strike:
+                                prospective = 0      # << Bypass: 0 zulassen
+                            else:
+                                await websocket.send_json({
+                                    "error": "Poker mit Punkten nur im Wurf des ersten Vierlings (oder bei Fünfling) erlaubt. Streichen (0) ist jederzeit möglich."
+                                })
+                                continue
                     else:
-                        # In ❗ ist „poker“ nur erlaubt, wenn „poker“ angesagt ist
                         if not soft_announced_poker and not last_cell_mode:
                             await websocket.send_json({"error": "Ansage aktiv: In ❗ darf nur das angesagte Feld beschrieben werden"})
                             continue
 
                 value = score_field_value(fld, g["_dice"] or [0, 0, 0, 0, 0])
+                value = 0 if strike else score_field_value(fld, g["_dice"] or [0, 0, 0, 0, 0])
                 board[key] = value
 
                 g["_last_write"][player_id] = (row, col)
@@ -1171,6 +1179,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     await websocket.send_json({"error": "Ungültige Zeile"})
                     continue
                 col = data.get("field")
+                strike = bool(data.get("strike"))  # << neu: 0 erzwingen erlaubt
                 if col not in {"down", "free", "up", "ang"}:
                     await websocket.send_json({"error": "Ungültige Spalte"})
                     continue
@@ -1229,17 +1238,33 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 # Punkte neu berechnen und schreiben
                 # --- Poker-Regel auch in Korrektur ---
                 if fld == "poker":
-                    corr_roll_idx = int((corr.get("roll_index") or 0))
-                    first4 = corr.get("first4oak_roll")
-                    has4 = has_n_of_a_kind(dice_for_eval, 4)
-                    has5 = has_n_of_a_kind(dice_for_eval, 5)
-                    if not (has5 or (has4 and first4 and corr_roll_idx == int(first4))):
-                        await websocket.send_json({
-                            "error": "Poker darf nur im Wurf geschrieben werden, in dem 4 gleiche erreicht wurden (oder bei 5 gleichen)."
-                        })
-                        continue
+                    last_cell_mode = (_remaining_cells_for(g, player_id) == 1)
+                    cur = g.get("_turn", {}) or {}
+                    roll_idx = int(cur.get("roll_index", 0) or 0)
+                    first4 = cur.get("first4oak_roll")
+                    dice_now = g["_dice"] or [0, 0, 0, 0, 0]
+                    has4 = has_n_of_a_kind(dice_now, 4)
+                    has5 = has_n_of_a_kind(dice_now, 5)
+                    soft_announced_poker = (g.get("_announced_row4") == "poker" and col == "ang")
+
+                    prospective = score_field_value("poker", dice_now)
+
+                    if col != "ang":
+                        if prospective > 0 and not (has5 or (has4 and first4 and roll_idx == int(first4))):
+                            if strike:
+                                prospective = 0      # << Bypass: 0 zulassen
+                            else:
+                                await websocket.send_json({
+                                    "error": "Poker mit Punkten nur im Wurf des ersten Vierlings (oder bei Fünfling) erlaubt. Streichen (0) ist jederzeit möglich."
+                                })
+                                continue
+                    else:
+                        if not soft_announced_poker and not last_cell_mode:
+                            await websocket.send_json({"error": "Ansage aktiv: In ❗ darf nur das angesagte Feld beschrieben werden"})
+                            continue
 
                 val = score_field_value(fld, dice_for_eval)
+                val = 0 if strike else score_field_value(fld, dice_for_eval)
                 new_board[new_key] = val
                 g["_last_write"][player_id] = (row, col)
 

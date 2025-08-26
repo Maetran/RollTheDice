@@ -544,6 +544,15 @@ function renderAnnounce() {
         }
         return;
       }
+
+      // p: (DEBUG) Poker in Freireihe schreiben
+      if (key === "p") {
+        // row 14 = Poker, field 'free'
+        console.debug("[DBG] Forciere write_field für Poker/Free");
+        safeSend(ws, { action: "write_field", row: 14, field: "free" });
+        e.preventDefault();
+        return;
+      }
     });
   }
 
