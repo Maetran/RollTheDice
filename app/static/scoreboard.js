@@ -368,7 +368,15 @@ function renderScoreboard(mount, sb, {
   grid += `</div>`;
 
   const announceSlot = renderAnnounceSlot(sb, myPlayerId, iAmTurn, rollsUsed);
-  (contentEl || mount).innerHTML = dicebar + announceSlot + `<div id="overlayMount"></div>` + grid;
+  // NEU: Suggestions-Container zwischen Dicebar und Ansage
+  (contentEl || mount).innerHTML =
+    dicebar +
+    `<div class="suggestions-area">
+       <div id="suggestions" class="suggestions"></div>
+     </div>` +
+    announceSlot +
+    `<div id="overlayMount"></div>` +
+    grid;
 }
 
 function renderRows(sc, sb, ctx){

@@ -184,6 +184,9 @@ import { initChat, addChatMessage } from "./chat.js";
       window.QuickReactions.init({ mount: reactionsMount, ws, me: { id: myId, name: myName } });
     }
 
+    // NEU: Suggestions rendern (rein informativ, fuer alle sichtbar)
+    renderSuggestions(snapshot && Array.isArray(snapshot.suggestions) ? snapshot.suggestions : []);
+
     // 1P Auto-Roll
     if (snapshot._auto_single && iAmTurn) {
       safeSend(ws, { action: "roll_dice" });
@@ -215,6 +218,30 @@ import { initChat, addChatMessage } from "./chat.js";
     } catch {}
   }
   window.addEventListener("resize", syncChatWidth);
+
+  // --- Suggestions (nur Anzeige, keine Interaktion) ---
+  function renderSuggestions(suggestions){
+    try{
+      const mountEl = document.querySelector("#suggestions");
+      if (!mountEl) return;
+
+      // Filtern: nur serverseitig als eligible markierte Vorschlaege
+      const items = (suggestions || []).filter(s => s && s.eligible);
+
+      // Sortierung (falls Server unsortiert liefert): POKER > SIXTY > FULL > KENTER > MAX > MIN
+      const order = { POKER:0, SIXTY:1, FULL:2, KENTER:3, MAX:4, MIN:5 };
+      items.sort((a,b) => (order[a.type] ?? 99) - (order[b.type] ?? 99));
+
+      // Label + Punkte (z. B. "Full House (52)")
+      const html = items.map(s => {
+        const label = s.label || s.type || "";
+        const pts = (typeof s.points === "number") ? ` (<span class="points">${s.points}</span>)` : "";
+        return `<div class="suggestion-btn" aria-hidden="true">${label}${pts}</div>`;
+      }).join("");
+
+      mountEl.innerHTML = html;
+    } catch {}
+  }
 
   // --- DiceBar, Hold, Roll, Correction ---
   function wireDiceBar() {

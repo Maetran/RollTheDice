@@ -225,6 +225,106 @@ def score_field_value(field_key: str, dice) -> int:
 
     return 0
 
+def compute_suggestions(g: GameDict) -> list[dict]:
+    """
+    Liefert Vorschlags-Buttons (serverseitig berechnet) für den AKTUELLEN Zug.
+    - Punkte identisch zu score_field_value()
+    - Nur Kategorien, die JETZT regelkonform geschrieben werden könnten (mind. 1 freie, erlaubte Spalte)
+    - Sichtbar für alle Clients (berechnet für den aktiven Spieler)
+    """
+    try:
+        turn = g.get("_turn") or {}
+        pid = turn.get("player_id")
+        if not pid:
+            return []
+
+        dice = g.get("_dice") or [0, 0, 0, 0, 0]
+        rolls_used = int(g.get("_rolls_used", 0) or 0)
+        # Vor dem ersten Wurf keine Vorschläge anzeigen
+        if rolls_used <= 0:
+            return []
+
+        # Ziel-Board (Team/Einzel)
+        if is_team_mode(g):
+            board_id = board_key_for_actor(g, pid)
+            board = g.get("_scoreboards_by_team", {}).get(board_id, {}) or {}
+        else:
+            board = g.get("_scoreboards", {}).get(pid, {}) or {}
+
+        announced = g.get("_announced_row4")
+        cols = ["down", "free", "up", "ang"]
+
+        def cell_is_free(row: int, col: str) -> bool:
+            return f"{row},{col}" not in board
+
+        def any_col_eligible(row: int, field_key: str, points: int) -> bool:
+            """Mindestens eine Spalte ist frei & laut Regeln genau jetzt beschreibbar.
+               Poker-Sonderregel (4-Gleiche nur im ersten 4oak-Wurf außer 5-Gleiche) wird berücksichtigt.
+            """
+            for col in cols:
+                if not cell_is_free(row, col):
+                    continue
+                ok, _why = can_write_now(g, pid, row, col, during_turn_announce=announced)
+                if not ok:
+                    continue
+
+                # Poker-Sonderfall wie im Schreibpfad (nur für ⬇︎／／⬆︎ mit >0 Punkten)
+                if field_key == "poker" and col != "ang" and points > 0:
+                    cur = g.get("_turn", {}) or {}
+                    roll_idx = int(cur.get("roll_index", 0) or 0)
+                    first4 = cur.get("first4oak_roll")
+                    has4 = has_n_of_a_kind(dice, 4)
+                    has5 = has_n_of_a_kind(dice, 5)
+                    if not (has5 or (has4 and first4 and roll_idx == int(first4))):
+                        continue  # nicht zulässig -> nächste Spalte probieren
+
+                # Punkte > 0 sind Voraussetzung für Kombis; Schwellen für Max/Min weiter unten
+                return True
+            return False
+
+        MAPPING = [
+            ("POKER", "poker", "Poker"),
+            ("SIXTY", "60",    "60er"),
+            ("FULL",  "full",  "Full House"),
+            ("KENTER","kenter","Kenter"),
+            ("MAX",   "max",   "Gutes Maximum"),
+            ("MIN",   "min",   "Gutes Minimum"),
+        ]
+
+        out = []
+        for typ, key, label in MAPPING:
+            points = int(score_field_value(key, dice))
+            # Schwellwerte für Max/Min anwenden
+            if key == "max":
+                if points < 25:
+                    continue
+            elif key == "min":
+                if points > 9:
+                    continue
+            else:
+                # Nur sinnvolle Kombis (>0) vorschlagen
+                if points <= 0:
+                    continue
+
+            row = KEY_TO_ROW.get(key)
+            if row is None:
+                continue
+
+            if any_col_eligible(row, key, points):
+                out.append({
+                    "type": typ,
+                    "label": label,
+                    "points": points,
+                    "eligible": True,
+                })
+
+        # Sortierung nach gewünschter Priorität
+        order = {"POKER": 0, "SIXTY": 1, "FULL": 2, "KENTER": 3, "MAX": 4, "MIN": 5}
+        out.sort(key=lambda x: order.get(x["type"], 99))
+        return out
+    except Exception:
+        return []
+
 def _filled_rows_for(g: GameDict, pid: str, col: str) -> set[int]:
     if is_team_mode(g):
         team = board_key_for_actor(g, pid)
@@ -401,6 +501,8 @@ def snapshot(g: GameDict) -> Dict[str, Any]:
         },
         "_has_last": {pid: bool(g["_last_write"].get(pid)) for pid in g["_scoreboards"].keys()},
         "_auto_single": _auto_single,
+        # NEU: Vorschlags-Buttons (serverseitig, für aktiven Spieler berechnet)
+        "suggestions": compute_suggestions(g),
     }
 
 async def broadcast(g: GameDict, msg: Dict[str, Any]) -> None:

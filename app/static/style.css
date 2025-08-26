@@ -107,8 +107,53 @@ button.die.held{ background:#d4efdf; border-color:#27ae60; }
 }
 button.die.shaking{ animation: dice-shake .5s ease; }
 
-/* === Announce & Banner === */
-.announce-slot{ margin:.5rem 0; }
+/* === Announce & Suggestions === */
+.announce-slot {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+}
+
+/* --- Suggestions Wrapper: fester Platz, kein Layout-Shift --- */
+.suggestions-area{
+  min-height: 34px;        /* Höhe ~ einer Chip-Reihe */
+  margin: .5rem 0 .5rem 0; /* wie bisher – Layout bleibt stabil */
+}
+
+/* Wenn leer: Platz bleibt, Inhalt unsichtbar */
+.suggestions:empty{
+  opacity: 0;
+}
+
+/* --- Suggestions (dezent im Chip-Stil) --- */
+.suggestions{
+  margin: .5rem 0 .5rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem .45rem;
+}
+.suggestion-btn{
+  display: inline-block;
+  width: auto;
+  text-align: center;
+  padding: .18rem .55rem;
+  border-radius: 12px;
+  font-size: .85rem;
+  font-weight: 600;
+  border: 1px solid #f0b27a;   /* dezenter Orange-Rand */
+  background: #ffe0b2;         /* helles Orange */
+  color: #7a3e00;
+  cursor: default;              /* nicht klickbar */
+  user-select: none;
+}
+.suggestion-btn:hover{ background: #ffd59a; }
+.suggestion-btn .points{ font-weight:700; opacity:.95; }
+
+/* Mobile: untereinander & volle Breite */
+@media (max-width:560px){
+  .suggestions{ flex-direction: column; align-items: stretch; }
+  .suggestion-btn{ width:100%; }
+}
+
 .announce-box{ background:#f4f6f7; border:1px solid var(--border); padding:.45rem; border-radius:6px; }
 .announce-box label{ margin-right:.35rem; }
 
@@ -216,10 +261,6 @@ tr.grp-top td, tr.grp-bottom td, tr.grp-diff td{
   max-width: 100%;
 }
 .badge, .chip { white-space: nowrap; }
-
-.announce-slot {
-  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
-}
 
 @media (max-width: 560px){
   .leaderboards { gap: 12px; }
