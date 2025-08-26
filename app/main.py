@@ -1274,6 +1274,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 touch(g)
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
+
             elif act == "send_emoji":
                 # Quick-Reaction-Emoji an alle senden (ephemer, keine Persistenz)
                 if not player_id:

@@ -471,7 +471,14 @@ function renderRows(sc, sb, ctx){
 
       const mayClickCorrection = correctionForMe && !isCompute && !hasRaw;
 
-      const clickable = (mayClickNormal || mayClickCorrection);
+      let clickable = (mayClickNormal || mayClickCorrection);
+
+      // Robustheit: Nach "Zocken" (Wurf >=2) darf Poker in der Freireihe immer gestrichen werden (0).
+      // Server erzwingt die Regeln; hier nur sicherstellen, dass der Klick durchgeht.
+      if (!clickable && rowFieldKey === "poker" && colKey === "free" && ctx.iAmTurn && (ctx.rollsUsed ?? 0) > 0 && !ctx.correctionActive) {
+        clickable = true;
+      }
+
 
       // Tooltip-Text bestimmen
       let titleText = ROW_TOOLTIPS[ri] || ""; // Basis: Feld-Erklärung
@@ -489,7 +496,11 @@ function renderRows(sc, sb, ctx){
         } else if (announced && !isAnnouncedCell && !lastCellMode) {
           titleText = "Ansage aktiv: Nur ❗ (angekündigtes Feld) ist erlaubt";
         } else if (clickable) {
-          titleText = (titleText ? titleText + " • " : "") + "Klicke, um zu schreiben";
+          if (rowFieldKey === "poker" && colKey === "free" && (ctx.rollsUsed ?? 0) > 1) {
+            titleText = (titleText ? titleText + " • " : "") + "Klicke, um Poker mit 0 zu streichen";
+          } else {
+            titleText = (titleText ? titleText + " • " : "") + "Klicke, um zu schreiben";
+          }
         }
       }
 
