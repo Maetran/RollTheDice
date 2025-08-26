@@ -25,6 +25,4 @@ dist/
 # IDE
 .vscode/
 .idea/
-/app/leaderboard_alltime.json
-/app/leaderboard_recent.json
-/app/stats.json
+/data/
