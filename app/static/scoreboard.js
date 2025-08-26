@@ -467,7 +467,8 @@ function renderRows(sc, sb, ctx){
         !isCompute &&
         !hasRaw &&
         ctx.iAmTurn &&
-        rolledYet;
+        rolledYet &&
+        (announceOk || lastCellMode); // <<< neu: nur anklickbar, wenn Ansage passt oder letzter freier Slot
 
       const mayClickCorrection = correctionForMe && !isCompute && !hasRaw;
 
