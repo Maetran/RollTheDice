@@ -33,7 +33,7 @@ const ROW_TOOLTIPS = [
   "Diff = Einsen × (Max − Min), niemals negativ",
   "Kenter: immer 35 Punkte, wenn alle 5 Augen verschieden",
   "Full House: 3 gleiche + 2 gleiche → 40 + 3×Augenzahl der Drilling-Augen",
-  "Poker (Vierling): genau 4 gleiche im Wurf → 50 + 4×Augenzahl; 5 gleiche zählt separat",
+    "Poker (Vierling): ⬇︎／／⬆︎ → Punkte nur im Wurf des ersten Vierlings oder bei 5 gleichen; ❗ + aktive Poker-Ansage → Punkte in jedem späteren Wurf, solange 4/5 gleiche liegen",
   "60 (Fünfling): 5 gleiche → 60 + 5×Augenzahl",
   "ZwTotalUnten = Kenter + Full + Poker + 60",
   "Reihentotal = ZwTotalOben + Diff + ZwTotalUnten"
@@ -58,7 +58,7 @@ const FIELD_HINTS = {
   "Diff": "1 × (Max − Min), nie negativ",
   "Kenter": "Fünf unterschiedliche (35 Punkte)",
   "Full": "40 + 3×Wert der Drilling-Augen",
-  "Poker": "50 + 4×Wert der Vierling-Augen (nur im Wurf erreicht; bei 5 gleichen jederzeit)",
+  "Poker": "⬇︎／／⬆︎: Punkte nur im ersten Vierlings-Wurf oder bei 5 gleichen • ❗+Ansage: Punkte in jedem späteren Wurf, solange 4/5 gleiche liegen (50 + 4×Wert)",
   "60": "60 + 5×Wert der Fünfling-Augen",
   "ZwTotalUnten": "Kenter + Full + Poker + 60",
   "Reihentotal": "ZwTotalOben + Diff + ZwTotalUnten"

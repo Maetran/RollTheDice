@@ -258,7 +258,7 @@ def compute_suggestions(g: GameDict) -> list[dict]:
 
         def any_col_eligible(row: int, field_key: str, points: int) -> bool:
             """Mindestens eine Spalte ist frei & laut Regeln genau jetzt beschreibbar.
-               Poker-Sonderregel (4-Gleiche nur im ersten 4oak-Wurf außer 5-Gleiche) wird berücksichtigt.
+               Poker-Sonderregel: Punkte erlaubt, solange aktuell mindestens 4 gleiche liegen.
             """
             for col in cols:
                 if not cell_is_free(row, col):
@@ -267,15 +267,30 @@ def compute_suggestions(g: GameDict) -> list[dict]:
                 if not ok:
                     continue
 
-                # Poker-Sonderfall wie im Schreibpfad (nur für ⬇︎／／⬆︎ mit >0 Punkten)
-                if field_key == "poker" and col != "ang" and points > 0:
+                # Poker-Sonderfall: Punkte erlaubt, solange JETZT mindestens 4 gleiche (oder 5) liegen – unabhängig von Spalte/Rollindex
+                if field_key == "poker" and points > 0:
                     cur = g.get("_turn", {}) or {}
                     roll_idx = int(cur.get("roll_index", 0) or 0)
-                    first4 = cur.get("first4oak_roll")
+                    first4   = cur.get("first4oak_roll")
                     has4 = has_n_of_a_kind(dice, 4)
                     has5 = has_n_of_a_kind(dice, 5)
-                    if not (has5 or (has4 and first4 and roll_idx == int(first4))):
-                        continue  # nicht zulässig -> nächste Spalte probieren
+                    announced_poker = (announced == "poker")
+
+                    # Fallback nur für Vorschlagslogik (nicht schreibend mutieren):
+                    first4_eff = first4
+                    if has4 and not has5 and first4_eff is None:
+                        first4_eff = roll_idx
+
+                    if col == "ang":
+                        allowed_points = (
+                            (announced_poker and (has4 or has5))
+                            or (not announced_poker and (has5 or (has4 and first4_eff and roll_idx == int(first4_eff))))
+                        )
+                    else:
+                        allowed_points = (has5 or (has4 and first4_eff and roll_idx == int(first4_eff)))
+
+                    if not allowed_points:
+                        continue
 
                 # Punkte > 0 sind Voraussetzung für Kombis; Schwellen für Max/Min weiter unten
                 return True
@@ -370,12 +385,6 @@ def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_anno
 
     field_key = WRITABLE_MAP[row]
 
-    # Sonderfall: Nach Wurf ≥1 darf Poker in down/free/up immer gestrichen werden (strike)
-    if field_key == "poker" and col in {"down", "free", "up"}:
-        if int(g.get("_rolls_used", 0) or 0) >= 1:
-            # Streichen (0) immer erlauben – Punkte-Check erfolgt im write_field mit strike
-            return True, ""
-
     # Ausnahme: Letztes freies Feld -> Ansage-Check ignorieren (Deadlock vermeiden)
     if _remaining_cells_for(g, pid) == 1:
         return True, ""
@@ -433,6 +442,23 @@ def _serialize_scoreboards(g: GameDict) -> Dict[str, Dict[str, int]]:
 # -----------------------------
 
 def snapshot(g: GameDict) -> Dict[str, Any]:
+    # --- Poker-Debug (optional via env): zeigt Serverzustand im Client ---
+    def _dbg_poker():
+        if os.getenv("DEBUG_POKER", "").strip() != "1":
+            return None
+        cur = g.get("_turn", {}) or {}
+        dice = (g.get("_dice") or [])[:]
+        has4 = has_n_of_a_kind(dice, 4)
+        has5 = has_n_of_a_kind(dice, 5)
+        return {
+            "roll_index": int(cur.get("roll_index", 0) or 0),
+            "first4oak_roll": cur.get("first4oak_roll"),
+            "announced": g.get("_announced_row4"),
+            "has4": bool(has4),
+            "has5": bool(has5),
+            "dice": dice,
+        }
+
     # Auto-Timeout prüfen
     check_timeout_and_abort(g)
     # Ergebnisse (falls abgeschlossen) berechnen
@@ -508,6 +534,8 @@ def snapshot(g: GameDict) -> Dict[str, Any]:
         "_auto_single": _auto_single,
         # NEU: Vorschlags-Buttons (serverseitig, für aktiven Spieler berechnet)
         "suggestions": compute_suggestions(g),
+        # Optionales Poker-Debugging
+        "_dbg_poker": _dbg_poker(),
     }
 
 async def broadcast(g: GameDict, msg: Dict[str, Any]) -> None:
@@ -1043,39 +1071,47 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     await websocket.send_json({"error": "Dieses Feld ist bereits befüllt"})
                     continue
 
-                # --- Poker-Regel (SANFT bei Ansage): ---
-                # --- Poker-Regel (Schreiben vs. Streichen) ---
-                # down/free/up:
-                #   - Streichen (0) immer erlaubt (Sequenz muss passen).
-                #   - >0 nur im Wurf des ersten Vierlings ODER bei 5 gleichen.
-                # ❗ mit Ansage "poker":
-                #   - jederzeit erlaubt (Treffer => Punkte, sonst 0).
                 if fld == "poker":
-                    last_cell_mode = (_remaining_cells_for(g, player_id) == 1)
+                    # Punkte-Logik:
+                    # ⬇︎／／⬆︎: nur im Wurf des ersten Vierlings ODER bei 5 gleichen
+                    # ❗+Ansage "poker": in jedem Wurf mit 4/5 gleichen
                     cur = g.get("_turn", {}) or {}
                     roll_idx = int(cur.get("roll_index", 0) or 0)
-                    first4 = cur.get("first4oak_roll")
+                    first4  = cur.get("first4oak_roll")
+
                     dice_now = g["_dice"] or [0, 0, 0, 0, 0]
                     has4 = has_n_of_a_kind(dice_now, 4)
                     has5 = has_n_of_a_kind(dice_now, 5)
-                    soft_announced_poker = (g.get("_announced_row4") == "poker" and col == "ang")
 
-                    # Vorab-Wert, um Streichen (0) zu erkennen
-                    prospective = score_field_value("poker", dice_now)
+                    announced_poker = (g.get("_announced_row4") == "poker")
+                    in_ang = (col == "ang")
 
-                    if col != "ang":
-                        if prospective > 0 and not (has5 or (has4 and first4 and roll_idx == int(first4))):
+                    # Fallback: Tracking-Lücke – wenn gerade 4 gleich liegen, aber first4 noch None,
+                    # dann ist JETZT das erste Auftreten.
+                    if has4 and not has5 and not first4:
+                        cur["first4oak_roll"] = roll_idx
+                        first4 = roll_idx
+
+                    prospective = score_field_value("poker", dice_now)  # >0 nur bei 4/5 gleichen
+                    want_points = (prospective > 0)
+
+                    if want_points:
+                        if in_ang and announced_poker:
+                            allowed_points = (has4 or has5)
+                        else:
+                            allowed_points = (has5 or (has4 and first4 and roll_idx == int(first4)))
+
+                        if not allowed_points:
                             if strike:
-                                prospective = 0      # << Bypass: 0 zulassen
+                                prospective = 0  # Streichen (0) jederzeit möglich (Sequenzregeln gelten separat)
                             else:
                                 await websocket.send_json({
-                                    "error": "Poker mit Punkten nur im Wurf des ersten Vierlings (oder bei Fünfling) erlaubt. Streichen (0) ist jederzeit möglich."
+                                    "error": "Poker mit Punkten nur im ersten Vierlings-Wurf (⬇︎／／⬆︎) oder jederzeit in ❗ mit Poker-Ansage – sofern aktuell 4/5 gleiche liegen. Streichen (0) ist möglich."
                                 })
                                 continue
-                    else:
-                        if not soft_announced_poker and not last_cell_mode:
-                            await websocket.send_json({"error": "Ansage aktiv: In ❗ darf nur das angesagte Feld beschrieben werden"})
-                            continue
+
+                    # (keine weitere ❗-Sonderbehandlung hier; ob ❗ überhaupt beschreibbar ist,
+                    #  entscheidet bereits can_write_now(...).)
 
                 value = score_field_value(fld, g["_dice"] or [0, 0, 0, 0, 0])
                 value = 0 if strike else score_field_value(fld, g["_dice"] or [0, 0, 0, 0, 0])
@@ -1238,30 +1274,39 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 # Punkte neu berechnen und schreiben
                 # --- Poker-Regel auch in Korrektur ---
                 if fld == "poker":
-                    last_cell_mode = (_remaining_cells_for(g, player_id) == 1)
-                    cur = g.get("_turn", {}) or {}
-                    roll_idx = int(cur.get("roll_index", 0) or 0)
-                    first4 = cur.get("first4oak_roll")
-                    dice_now = g["_dice"] or [0, 0, 0, 0, 0]
+                    # Bewertung in der Korrektur basiert auf den GEMERKTEN Würfeln *und*
+                    # den beim ursprünglichen Zug gemerkten Meta-Werten (roll_index/first4oak_roll).
+                    corr_meta_roll_idx = int((g.get("_correction") or {}).get("roll_index", 0) or 0)
+                    corr_meta_first4   = (g.get("_correction") or {}).get("first4oak_roll")
+
+                    dice_now = dice_for_eval[:]  # wichtig: Korrekturwürfel
                     has4 = has_n_of_a_kind(dice_now, 4)
                     has5 = has_n_of_a_kind(dice_now, 5)
-                    soft_announced_poker = (g.get("_announced_row4") == "poker" and col == "ang")
+
+                    in_ang = (col == "ang")
+                    announced_poker = (g.get("_announced_row4") == "poker")  # sollte i.d.R. None sein
+
+                    # Fallback bei Tracking-Lücke: wenn 4 gleich und first4 nicht gesetzt, dann jetzt „erstes Auftreten“
+                    first4_eff = corr_meta_first4
+                    if has4 and not has5 and not first4_eff:
+                        first4_eff = corr_meta_roll_idx
 
                     prospective = score_field_value("poker", dice_now)
 
-                    if col != "ang":
-                        if prospective > 0 and not (has5 or (has4 and first4 and roll_idx == int(first4))):
+                    if prospective > 0:
+                        if in_ang and announced_poker:
+                            allowed_points = (has4 or has5)
+                        else:
+                            allowed_points = (has5 or (has4 and first4_eff and corr_meta_roll_idx == int(first4_eff)))
+
+                        if not allowed_points:
                             if strike:
-                                prospective = 0      # << Bypass: 0 zulassen
+                                prospective = 0
                             else:
                                 await websocket.send_json({
-                                    "error": "Poker mit Punkten nur im Wurf des ersten Vierlings (oder bei Fünfling) erlaubt. Streichen (0) ist jederzeit möglich."
+                                    "error": "Poker mit Punkten (Korrektur): nur im Wurf des ersten Vierlings (⬇︎／／⬆︎) oder jederzeit in ❗ mit Poker-Ansage – sofern 4/5 gleiche vorlagen. Streichen (0) ist möglich."
                                 })
                                 continue
-                    else:
-                        if not soft_announced_poker and not last_cell_mode:
-                            await websocket.send_json({"error": "Ansage aktiv: In ❗ darf nur das angesagte Feld beschrieben werden"})
-                            continue
 
                 val = score_field_value(fld, dice_for_eval)
                 val = 0 if strike else score_field_value(fld, dice_for_eval)

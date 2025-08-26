@@ -317,27 +317,26 @@ import { initChat, addChatMessage } from "./chat.js";
       const iAmCorrector = correctionActive && String(sb._correction.player_id) === String(myId);
 
       // 0-Confirm (Clientseitig)
-      const fieldKey   = WRITABLE_MAP[row];
-      const diceForEval= iAmCorrector && Array.isArray(sb?._correction?.dice) ? sb._correction.dice : (sb?._dice || []);
-      if (fieldKey) {
-        const points = calculatePoints(fieldKey, diceForEval);
-        // << neu: Poker-Strike (0) auch für ↓ ／ ↑ und im Korrekturmodus
-        const isPoker = fieldKey === "poker";
-        const isStrikeableCol = (field === "free" || field === "down" || field === "up");
-        const zockWurf = (sb?._rolls_used || 0) >= 1; // laufender Zug
-        const wantStrikeZero = isPoker && isStrikeableCol && points > 0 && (zockWurf || iAmCorrector);
+      const fieldKey    = WRITABLE_MAP[row];
+      const diceForEval = iAmCorrector && Array.isArray(sb?._correction?.dice)
+        ? sb._correction.dice
+        : (sb?._dice || []);
 
-        if (wantStrikeZero) {
-          const colLabel = field === "down" ? "⬇︎" : (field === "up" ? "⬆︎" : "／");
-          const ok = confirm(`Poker in ${colLabel} mit 0 streichen?`);
-          if (!ok) return;
+      if (fieldKey) {
+        const points  = calculatePoints(fieldKey, diceForEval);
+        const isPoker = fieldKey === "poker";
+
+        // Poker mit Punkten? -> immer sofort schreiben, KEIN Strike-Dialog
+        if (isPoker && points > 0) {
           if (iAmCorrector) {
-            safeSend(ws, { action: "write_field_correction", row, field, strike: true });
+            safeSend(ws, { action: "write_field_correction", row, field });
           } else {
-            safeSend(ws, { action: "write_field", row, field, strike: true });
+            safeSend(ws, { action: "write_field", row, field });
           }
           return;
         }
+
+        // Nur wenn der berechnete Wert wirklich 0 ist, nachfragen (Strike)
         if (points === 0) {
           const ok = confirm("Willst du dieses Feld wirklich streichen?");
           if (!ok) return;
