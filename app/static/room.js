@@ -336,6 +336,37 @@ import { initChat, addChatMessage } from "./chat.js";
           return;
         }
 
+        // Sonderfall: Poker ohne Punkte, aber Reihenfolge (⬇︎/⬆︎) wäre nicht dran
+        // -> keine Strike-Bestätigung anzeigen, da Server das ohnehin ablehnt.
+        if (isPoker && points === 0 && (field === "down" || field === "up")) {
+          // Reihenfolge lokal prüfen wie am Server (_next_required_row)
+          const ORDER_DOWN = [0,1,2,3,4,5,9,10,12,13,14,15];
+          const order = field === "down" ? ORDER_DOWN : ORDER_DOWN.slice().reverse();
+
+          // Board bestimmen (Team oder Einzel)
+          let board = {};
+          const mode = String(sb?._mode || "").toLowerCase();
+          if (mode === "2v2" && Array.isArray(sb?._teams)) {
+            const myTeam = (sb._teams.find(t => (t.members || []).some(m => String(m) === String(myId))) || {}).id;
+            board = (sb._scoreboards_by_team && myTeam) ? (sb._scoreboards_by_team[myTeam] || {}) : {};
+          } else {
+            board = (sb?._scoreboards?.[myId]) || {};
+          }
+
+          const filled = new Set(
+            Object.keys(board)
+              .filter(k => k.endsWith(`,${field}`))
+              .map(k => parseInt(k.split(",")[0], 10))
+              .filter(Number.isFinite)
+          );
+          const nextRow = order.find(r => !filled.has(r));
+
+          if (Number.isFinite(nextRow) && row !== nextRow) {
+            // Nicht „dran“ -> Strike-Dialog NICHT zeigen; Aktion abbrechen.
+            return;
+          }
+        }
+
         // Nur wenn der berechnete Wert wirklich 0 ist, nachfragen (Strike)
         if (points === 0) {
           const ok = confirm("Willst du dieses Feld wirklich streichen?");
