@@ -1102,13 +1102,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                             allowed_points = (has5 or (has4 and first4 and roll_idx == int(first4)))
 
                         if not allowed_points:
-                            if strike:
-                                prospective = 0  # Streichen (0) jederzeit möglich (Sequenzregeln gelten separat)
-                            else:
-                                await websocket.send_json({
-                                    "error": "Poker mit Punkten nur im ersten Vierlings-Wurf (⬇︎／／⬆︎) oder jederzeit in ❗ mit Poker-Ansage – sofern aktuell 4/5 gleiche liegen. Streichen (0) ist möglich."
-                                })
-                                continue
+                            # Nach dem Zocken sind Poker-Punkte nicht zulässig; stilles Streichen (0) erlauben.
+                            strike = True
+                            # Kein continue; unten wird wegen strike = True der Wert 0 geschrieben.
 
                     # (keine weitere ❗-Sonderbehandlung hier; ob ❗ überhaupt beschreibbar ist,
                     #  entscheidet bereits can_write_now(...).)
@@ -1300,13 +1296,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                             allowed_points = (has5 or (has4 and first4_eff and corr_meta_roll_idx == int(first4_eff)))
 
                         if not allowed_points:
-                            if strike:
-                                prospective = 0
-                            else:
-                                await websocket.send_json({
-                                    "error": "Poker mit Punkten (Korrektur): nur im Wurf des ersten Vierlings (⬇︎／／⬆︎) oder jederzeit in ❗ mit Poker-Ansage – sofern 4/5 gleiche vorlagen. Streichen (0) ist möglich."
-                                })
-                                continue
+                            # Korrektur: Nach dem Zocken sind Poker-Punkte nicht zulässig; stilles Streichen (0) erlauben.
+                            strike = True
+                            # Kein continue; unten wird wegen strike = True der Wert 0 geschrieben.
 
                 val = score_field_value(fld, dice_for_eval)
                 val = 0 if strike else score_field_value(fld, dice_for_eval)
