@@ -1,6 +1,6 @@
 // sw.js — Minimaler Service Worker für RollTheDice (Root-Scope: /)
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v5';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
@@ -9,7 +9,6 @@ const PRECACHE_URLS = [
   '/static/room.html',
   '/static/rules.html',
   '/static/style.css',
-  // '/static/game.js',  // entfernt – existiert nicht mehr
   '/static/scoreboard.js',
   '/static/emoji.js',
   '/static/room.js',
