@@ -278,7 +278,9 @@ function renderScoreboard(mount, sb, {
       ? `<span class="chip ok">Du bist dran</span>`
       : `<span class="chip wait">Warte auf Gegner</span>`;
     const annChip = ann
-      ? `<span class="chip warn">❗ nur Feld ${esc(ann)} erlaubt</span>`
+      ? (iAmTurn
+          ? `<span class="chip warn">❗ nur Feld ${esc(ann)} erlaubt</span>`
+          : `<span class="chip info">❗ Gegner hat ${esc(ann)} angesagt</span>`)
       : `<span class="chip info">❗ Nichts wurde angesagt</span>`;
     const corrChip = correctionActive
       ? (correctionForMe
@@ -333,7 +335,7 @@ function renderScoreboard(mount, sb, {
     }
 
     grid += `
-      <div class="player-card ${isTurn ? "turn": ""}">
+      <div class="player-card${isTurn ? " turn": ""}${isMyBoard ? " me": ""}">
         <div class="pc-head">
           <div class="pc-name">${esc(ent.name || "—")}</div>
           <div class="pc-total">Total: ${overall}</div>
@@ -357,7 +359,11 @@ function renderScoreboard(mount, sb, {
                 iAmTurn,
                 rollsUsed,
                 correctionActive,
-                highlightAnnounce: isMyBoard   // << nur eigenes Board hervorgehoben + klickbar
+                highlightAnnounce: (
+                  isTeamMode
+                    ? (id === (sb._announced_board || null))
+                    : (String(id) === String(sb._announced_by || ""))
+                )
               })}
             </tbody>
           </table>

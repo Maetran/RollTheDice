@@ -504,6 +504,8 @@ def snapshot(g: GameDict) -> Dict[str, Any]:
         "_rolls_max": g["_rolls_max"],
         "_scoreboards": ({} if is_team_mode(g) else _serialize_scoreboards(g)),
         "_announced_row4": g["_announced_row4"],
+        "_announced_by": g.get("_announced_by"),            # player-id (Einzel/2/3 Spieler)
+        "_announced_board": g.get("_announced_board"),      # board-id: team-id ("A"/"B") in 2v2, sonst player-id
         "_correction": g["_correction"],
 
         # Team-Infos für 2v2
@@ -1008,6 +1010,8 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     continue
 
                 g["_announced_row4"] = field
+                g["_announced_by"] = player_id
+                g["_announced_board"] = board_key_for_actor(g, player_id) if is_team_mode(g) else player_id
                 touch(g)
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
@@ -1028,6 +1032,8 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     continue
 
                 g["_announced_row4"] = None
+                g["_announced_by"] = None
+                g["_announced_board"] = None
                 touch(g)
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
@@ -1126,8 +1132,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 g["_holds"] = [False] * 5
                 g["_rolls_used"] = 0
                 g["_announced_row4"] = None
+                g["_announced_by"] = None
+                g["_announced_board"] = None
                 g["_turn"] = {"player_id": next_turn(g, player_id), "roll_index": 0, "first4oak_roll": None}
-                _set_roll_cap_for_current_turn(g)
 
                 # Spielende?
                 if _is_game_finished(g):
