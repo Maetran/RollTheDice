@@ -1135,7 +1135,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 g["_announced_by"] = None
                 g["_announced_board"] = None
                 g["_turn"] = {"player_id": next_turn(g, player_id), "roll_index": 0, "first4oak_roll": None}
-
+                _set_roll_cap_for_current_turn(g)
                 # Spielende?
                 if _is_game_finished(g):
                     g["_started"] = False

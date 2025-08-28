@@ -29,3 +29,6 @@ dist/
 /app/leaderboard_recent.json
 /app/stats.json
 /data/
+data/leaderboard_alltime.json
+data/leaderboard_recent.json
+data/stats.json
