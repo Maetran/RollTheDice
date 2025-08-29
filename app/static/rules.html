@@ -40,16 +40,16 @@
       <li>Du bist am Zug und kannst zu Beginn Würfel halten/lösen.</li>
       <li>Würfle (Taste <span class="kbd">Leertaste</span> oder <span class="kbd">R</span>). Nicht gehaltene Würfel werden neu geworfen.</li>
       <li>Max. <strong>3 Würfe</strong> pro Zug. Im <strong>letzten freien Feld</strong> hast du <strong>5 Würfe</strong>.</li>
-      <li>Trage anschließend das Ergebnis in genau <em>ein</em> freies Feld deiner Wahl (gemäß Reihen‑Regeln) ein.</li>
+      <li>Trage anschließend das Ergebnis in genau <em>ein</em> freies Feld deiner Wahl (gemäss Reihen-Regeln) ein.</li>
     </ol>
 
     <details>
-      <summary>Reihen‑Regeln (Spalten)</summary>
+      <summary>Reihen-Regeln (Spalten)</summary>
       <p>
         <span class="pill">⬇︎ Abwärts</span>: Felder müssen in der Reihenfolge von oben ("1") nach unten ("60") befüllt werden.<br/>
         <span class="pill">⬆︎ Aufwärts</span>: umgekehrte Reihenfolge – von unten nach oben.<br/>
         <span class="pill">／ Freireihe</span>: freie Reihenfolge, beliebige Felder.<br/>
-        <span class="pill">❗ Angesagt</span>: nach dem <strong>ersten Wurf</strong> kann (und darf) ein Ziel‑Feld angesagt werden.
+        <span class="pill">❗ Angesagt</span>: nach dem <strong>ersten Wurf</strong> kann (und darf) ein Zielfeld angesagt werden.
         Die Ansage kann <strong>im ersten Wurf</strong> geändert oder auch <strong>aufgehoben</strong> werden. Danach gilt sie bis zum Eintrag.
         Im <strong>allerletzten Zug</strong> (nur noch 1 Feld frei) darf in ❗ auch <em>ohne Ansage</em> geschrieben werden.
       </p>
@@ -64,11 +64,11 @@
         <tr><td><strong>1 … 6</strong></td><td>Summe aller Würfel mit der jeweiligen Augenzahl.</td><td>Beispiel: bei drei 5ern → 15 Punkte.</td></tr>
         <tr><td><strong>Max</strong></td><td>Summe aller fünf Würfel.</td><td>—</td></tr>
         <tr><td><strong>Min</strong></td><td>Summe aller fünf Würfel.</td><td>—</td></tr>
-        <tr><td><strong>Diff</strong></td><td><code>1 × (Max − Min)</code></td><td><em>Nie negativ:</em> negative Differenzen werden zu 0 gekappt.</td></tr>
-        <tr><td><strong>Kenter</strong></td><td><code>35</code> Punkte</td><td>Genau fünf unterschiedliche Augen (1–5 oder 2–6).</td></tr>
-        <tr><td><strong>Full</strong></td><td><code>40 + 3×(Wert der Drilling‑Augen)</code></td><td>3 gleiche + 2 gleiche <em>oder</em> 5 gleiche.</td></tr>
-        <tr><td><strong>Poker</strong></td><td><code>50 + 4×(Wert der Vierling‑Augen)</code></td><td><strong>Nur</strong> in dem Wurf eintragbar, in dem der Vierling das erste Mal erreicht wurde – außer bei fünf Gleichen, dann jederzeit im Zug.</td></tr>
-        <tr><td><strong>60</strong></td><td><code>60 + 5×(Wert der Fünfling‑Augen)</code></td><td>Fünf gleiche.</td></tr>
+        <tr><td><strong>Diff</strong></td><td><code>Max − Min</code></td><td>Sollte die Differenz am Schluss negativ sein (Maximum kleiner als Minimum), gibt es als Differenz <strong>0</strong>.</td></tr>
+        <tr><td><strong>Kenter</strong></td><td><code>35</code> Punkte</td><td>Fünf unterschiedliche Würfel/Augen (beliebige Kombination, z. B. 1-3-4-5-6 oder 1-2-3-4-6).</td></tr>
+        <tr><td><strong>Full</strong></td><td><code>40 + 3×(Wert der Drilling-Augen)</code></td><td>3 gleiche + 2 gleiche <em>oder</em> 5 gleiche.</td></tr>
+        <tr><td><strong>Poker</strong></td><td><code>50 + 4×(Wert der Vierling-Augen)</code></td><td><strong>Nur</strong> in dem Wurf eintragbar, in dem der Vierling das erste Mal erreicht wurde – ausser bei fünf Gleichen, dann jederzeit im Zug.</td></tr>
+        <tr><td><strong>60</strong></td><td><code>60 + 5×(Wert der Fünfling-Augen)</code></td><td>Fünf gleiche.</td></tr>
         <tr><td><strong>ZwSumme</strong></td><td>Summe der Felder 1–6.</td><td>Automatisch berechnet.</td></tr>
         <tr><td><strong>Bonus</strong></td><td><code>+30</code> bei ZwSumme ≥ 60.</td><td>Automatisch berechnet.</td></tr>
         <tr><td><strong>ZwTotalOben</strong></td><td>ZwSumme + Bonus.</td><td>Automatisch berechnet.</td></tr>
@@ -82,25 +82,24 @@
       <li><strong>Ansage ändern/aufheben:</strong> Im <em>ersten Wurf</em> (und nur dort) darf die Ansage beliebig geändert oder entfernt werden.</li>
       <li><strong>Streichen (0 Punkte):</strong> Einträge mit 0 Punkten werden vor dem Schreiben bestätigt.</li>
       <li><strong>Letzter Wurf:</strong> Wenn nur noch ein Feld frei ist, sind bis zu <strong>5 Würfe</strong> erlaubt.</li>
-      <li><strong>Korrekturmodus:</strong> Den letzten Eintrag kannst du (sofern er kein Ansage‑Zug war) direkt danach korrigieren –
-        Taste <span class="kbd">K</span>. Abbrechen mit <span class="kbd">Esc</span>.</li>
-      <li><strong>Single‑Player:</strong> Der erste Wurf eines Zuges startet automatisch. Korrekturen sind auch im eigenen Zug erlaubt, solange noch nicht erneut gewürfelt wurde.</li>
-      <li><strong>Abbrechen:</strong> „Zurück zur Lobby“ beendet das Spiel als <em>abgebrochen</em> – es erscheint nicht in Alltime/7‑Tage‑Listen.</li>
-      <li><strong>Auto‑Timeout:</strong> Spiele ohne Aktivität werden nach 10 Minuten automatisch abgebrochen.</li>
+      <li><strong>Korrekturmodus:</strong> Den letzten Eintrag kannst du (sofern er kein Ansage-Zug war) direkt danach korrigieren – Taste <span class="kbd">K</span>. Abbrechen mit <span class="kbd">Esc</span>. <em>Nicht im Single-Player-Modus.</em></li>
+      <li><strong>Single-Player:</strong> Der erste Wurf eines Zuges startet automatisch. <strong>Keine Korrekturen im Single-Player-Modus.</strong></li>
+      <li><strong>Abbrechen:</strong> „Zurück zur Lobby“ beendet das Spiel als <em>abgebrochen</em> – es erscheint nicht in Alltime/7-Tage-Listen.</li>
+      <li><strong>Auto-Timeout:</strong> Spiele ohne Aktivität werden nach 10 Minuten automatisch abgebrochen.</li>
     </ul>
 
     <h2>Spielmodi</h2>
     <details>
       <summary>1 Spieler</summary>
-      <p>Alle vier Spalten auf einem eigenen Board. Auto‑Roll zu Beginn jedes Zugs.</p>
+      <p>Alle vier Spalten auf einem eigenen Board. Auto-Roll zu Beginn jedes Zugs.</p>
     </details>
     <details>
       <summary>2 oder 3 Spieler</summary>
       <p>Jeder spielt sein eigenes Board. Der Zug wechselt reihum.</p>
     </details>
     <details>
-      <summary>2 v 2 (Team‑Modus)</summary>
-      <p>Spieler 1 &amp; 3 bilden Team A, 2 &amp; 4 Team B. Teams teilen sich je ein gemeinsames Board. Gewertet wird das Team‑Total.</p>
+      <summary>2 v 2 (Team-Modus)</summary>
+      <p>Spieler 1 &amp; 3 bilden Team A, 2 &amp; 4 Team B. Teams teilen sich je ein gemeinsames Board. Gewertet wird das Team-Total.</p>
     </details>
 
     <h2>Steuerung & Shortcuts</h2>
@@ -111,7 +110,7 @@
       <li><span class="kbd">K</span> Korrektur anfragen, <span class="kbd">Esc</span> Korrektur abbrechen</li>
     </ul>
 
-    <p class="note"><strong>Tipp:</strong> In der ❗‑Spalte werden auf dem eigenen Board die erlaubten Zellen hervorgehoben. Bei 0‑Punkten fragt das Spiel nach einer Bestätigung.</p>
+    <p class="note"><strong>Tipp:</strong> In der ❗-Spalte werden auf dem eigenen Board die erlaubten Zellen hervorgehoben. Bei 0-Punkten fragt das Spiel nach einer Bestätigung.</p>
   </div>
 </body>
 </html>

@@ -80,7 +80,6 @@ RollTheDice/
 │   │   ├── index.html
 │   │   ├── room.html
 │   │   ├── lobby.js
-│   │   ├── game.js
 │   │   ├── scoreboard.js
 │   │   └── style.css
 │   └── ...
