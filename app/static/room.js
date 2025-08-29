@@ -490,12 +490,51 @@ import { initChat, addChatMessage } from "./chat.js";
         const points  = calculatePoints(fieldKey, diceForEval);
         const isPoker = fieldKey === "poker";
 
-        // Poker mit Punkten? -> immer sofort schreiben, KEIN Strike-Dialog
+        // Poker mit Punkten? -> nur confirmen, WENN Punkte nach Zockerregel NICHT erlaubt wären
         if (isPoker && points > 0) {
-          if (iAmCorrector) {
-            safeSend(ws, { action: "write_field_correction", row, field });
+          // Server-paritätische Prüfung (roll_index / first4oak_roll / ❗-Ansage)
+          const turn    = sb?._turn || {};
+          const rollIdx = Number(turn.roll_index || 0);
+          let   first4  = (turn.first4oak_roll ?? null);
+
+          // has4/has5 aus aktuellen (oder Korrektur-)Würfeln
+          const counts = {};
+          for (const d of (diceForEval || [])) if (d > 0) counts[d] = (counts[d] || 0) + 1;
+          const has4 = Object.values(counts).some(n => n >= 4);
+          const has5 = Object.values(counts).some(n => n >= 5);
+
+          const announcedPoker = (sb?._announced_row4 === "poker");
+          const inAng = (field === "ang");
+
+          // Fallback wie am Server: wenn 4 gleich & kein first4 gesetzt → first4 = aktueller Wurf
+          if (has4 && !has5 && (first4 === null || first4 === undefined)) first4 = rollIdx;
+
+          // Punkte erlaubt?
+          let allowedPoints;
+          if (inAng && announcedPoker) {
+            // ❗ + Ansage "poker": Punkte in jedem Wurf mit 4/5 gleichen
+            allowedPoints = (has4 || has5);
           } else {
-            safeSend(ws, { action: "write_field", row, field });
+            // ⬇︎／／⬆︎: nur im Wurf des ersten Vierlings ODER bei 5 gleichen
+            allowedPoints = (has5 || (has4 && first4 && rollIdx === Number(first4)));
+          }
+
+          if (allowedPoints) {
+            // Legal → ohne Prompt normal schreiben (KEIN strike)
+            if (iAmCorrector) {
+              safeSend(ws, { action: "write_field_correction", row, field });
+            } else {
+              safeSend(ws, { action: "write_field", row, field });
+            }
+          } else {
+            // Nicht legal → Confirm zum Streichen
+            const ok = confirm('Zockerregel: Nach "zocken" darf ein Poker nicht mehr geschrieben werden. Willst du den Poker wirklich streichen?');
+            if (!ok) return; // Spieler darf neu wählen
+            if (iAmCorrector) {
+              safeSend(ws, { action: "write_field_correction", row, field, strike: true });
+            } else {
+              safeSend(ws, { action: "write_field", row, field, strike: true });
+            }
           }
           return;
         }
