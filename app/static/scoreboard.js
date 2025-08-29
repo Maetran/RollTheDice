@@ -380,8 +380,13 @@ function renderScoreboard(mount, sb, {
   }
   grid += `</div>`;
 
-  const announceSlot = renderAnnounceSlot(sb, myPlayerId, iAmTurn, rollsUsed);
-  // NEU: Suggestions-Container zwischen Dicebar und Ansage
+  // Wrap: Ansage-Block erhaelt einen Container, dessen Breite wir in CSS exakt an die Tabellenbreite koppeln
+  const announceSlot = `
+    <div class="announce-container">
+      ${renderAnnounceSlot(sb, myPlayerId, iAmTurn, rollsUsed)}
+    </div>
+  `;
+
   (contentEl || mount).innerHTML =
     dicebar +
     `<div class="suggestions-area">

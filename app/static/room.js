@@ -190,7 +190,9 @@ import { initChat, addChatMessage } from "./chat.js";
       }
 
       // Quick-Reaction
-      if (msg.emoji && window.QuickReactions?.show) window.QuickReactions.show(msg.emoji);
+      if (msg.emoji && window.emojiUI && typeof window.emojiUI.handleRemote === "function") {
+        window.emojiUI.handleRemote(msg.emoji);
+      }
 
       // Chat-Varianten
       if (msg.chat && typeof msg.chat === "object") {
@@ -237,8 +239,9 @@ import { initChat, addChatMessage } from "./chat.js";
     wireGridClicks();
     ensureKeybindings(); // alle Hotkeys hier
 
-    if (window.QuickReactions?.init) {
-      window.QuickReactions.init({ mount: reactionsMount, ws, me: { id: myId, name: myName } });
+    // Emoji-FAB nach jedem Render wieder in die Statuszeile einsetzen
+    if (window.emojiUI && typeof window.emojiUI.init === "function") {
+      window.emojiUI.init({ ws, getMyName: () => myName });
     }
 
     // Suggestions (informativ)

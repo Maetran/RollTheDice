@@ -25,14 +25,14 @@ h2{ margin:.5rem 0; }
 
 /* === Bereichsbreiten: Score + Chat haben die gleiche Maxbreite (2 Karten + Gap), mittig */
 #scoreOut{
-  width: 100%;
-  max-width: calc(2 * var(--card-w) + var(--cards-gap));
-  margin: 0 auto 1rem;   /* zentrieren */
+  width: auto;
+  max-width: none;
+  margin: 0 1rem 1rem;   /* linksbündig wie vorher */
 }
 .chat-panel{
-  width: 100%;
-  max-width: calc(2 * var(--card-w) + var(--cards-gap));
-  margin: 0 auto 1.2rem; /* zentrieren, etwas mehr Abstand nach unten */
+  width: auto;
+  max-width: none;
+  margin: 0 1rem 1.2rem; /* linksbündig, etwas mehr Abstand nach unten */
 }
 
 /* === Buttons === */
@@ -130,15 +130,35 @@ button.die.held{ background:#d4efdf; border-color:#27ae60; }
 }
 button.die.shaking{ animation: dice-shake .5s ease; }
 
-/* === Announce & Suggestions === */
-.announce-slot {
-  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+/* === Announce-Container: exakt so breit wie die Tabelle === */
+.announce-container{
+  width: calc(var(--col-desc) + 4 * var(--col-score)); /* = Tabellenbreite */
+  max-width: 100%;
+  margin: 0 0 .5rem 0; /* linksbündig unter der Dicebar */
 }
+
+/* Der eigentliche Slot fuellt den Container */
+.announce-slot,
+.announce-box,
+.announce-status{
+  width: 100%;
+  display: block;
+  text-align: center;
+}
+
+
 
 /* --- Suggestions Wrapper: fester Platz, kein Layout-Shift --- */
 .suggestions-area{
-  min-height: 34px;        /* Höhe ~ einer Chip-Reihe */
-  margin: .5rem 0 .5rem 0; /* wie bisher – Layout bleibt stabil */
+  min-height: 34px;
+  margin: .5rem 0 .5rem 0;
+}
+
+/* Mobile: wenn Tabelle 100% breit ist, folgt der Ansage-Block */
+@media (max-width:560px){
+  .announce-container{
+    width: 100% !important;
+  }
 }
 
 /* Wenn leer: Platz bleibt, Inhalt unsichtbar */
