@@ -11,19 +11,60 @@
 //   //   if (data.emoji) emojiUI.handleRemote(data.emoji);
 
 (function(){
-  const QUICK_EMOJIS = ['👍','👎','🎉','😡','😜','🤞','🙏','🖕'];
+  const QUICK_EMOJIS = ['👍','👎','🎉','😡','😜','🤞','🙏','🖕','💩','🤮'];
 
   function ensureStyles(){
     if (document.getElementById('emoji-ui-css')) return;
     const css = `
-      .emoji-toolbar{ display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
-      .emoji-toolbar .emoji-btn{
-        border:1px solid var(--border,#e0e0e0);
-        background:#fff; border-radius:.55rem; padding:.25rem .45rem; cursor:pointer;
-        font-size:1.05rem; line-height:1; transition:transform .06s ease;
+      .emoji-dock{
+        position:relative;
+        display:inline-flex;
+        align-items:center;
+        margin-left:.5rem;
       }
-      .emoji-toolbar .emoji-btn:hover{ background:#f7faff; }
-      .emoji-toolbar .emoji-btn:active{ transform:scale(.96); }
+      .emoji-fab{
+        width:40px; height:40px;
+        border-radius:9999px;
+        border:1px solid var(--border,#e0e0e0);
+        background:#fff;
+        cursor:pointer;
+        display:flex; align-items:center; justify-content:center;
+        padding:0; line-height:1; text-align:center;
+        box-shadow:0 2px 6px rgba(0,0,0,.08);
+        transition:transform .06s ease;
+      }
+      .emoji-fab:hover{ background:#f7faff; }
+      .emoji-fab:active{ transform:scale(.96); }
+      
+      .emoji-panel{
+        position:absolute;
+        top:110%;
+        left:50%;
+        transform:translateX(-50%);
+        display:none;
+        flex-direction:column;
+        gap:.35rem;
+        align-items:center;
+        max-height:60vh;
+        overflow:auto;
+        padding:.25rem;
+        background:transparent;
+        z-index:3000;
+      }
+      .emoji-dock.open .emoji-panel{ display:flex; }
+      
+      .emoji-btn{
+        width:36px; height:36px;
+        border-radius:9999px;
+        border:1px solid var(--border,#e0e0e0);
+        background:#fff; cursor:pointer;
+        font-size:1.05rem; line-height:1; text-align:center;
+        display:flex; align-items:center; justify-content:center;
+        padding:0;
+        transition:transform .06s ease;
+      }
+      .emoji-btn:hover{ background:#f7faff; }
+      .emoji-btn:active{ transform:scale(.96); }
       /* Badge-Overlay (zentral oben, stapelbar) */
       .emoji-pop-wrap{
         position:fixed; left:50%; top:10px; transform:translateX(-50%);
@@ -48,7 +89,7 @@
         opacity:0; transform:translateY(-6px);
       }
       @media (max-width: 480px){
-        .emoji-toolbar .emoji-btn{ font-size:1rem; padding:.2rem .4rem; }
+        .emoji-btn{ font-size:1rem; padding:.2rem .4rem; }
         .emoji-pop{ font-size:1rem; }
       }
     `;
@@ -59,18 +100,55 @@
   }
 
   function makeToolbar(onSend){
-    const wrap = document.createElement('div');
-    wrap.className = 'emoji-toolbar';
+    const dock  = document.createElement('div');
+    dock.className = 'emoji-dock';
+
+    const fab = document.createElement('button');
+    fab.className = 'emoji-fab';
+    fab.type = 'button';
+    fab.title = 'Reaktionen';
+    fab.setAttribute('aria-expanded', 'false');
+    fab.textContent = '😊';
+
+    const panel = document.createElement('div');
+    panel.className = 'emoji-panel';
+
     QUICK_EMOJIS.forEach(em => {
       const b = document.createElement('button');
       b.className = 'emoji-btn';
       b.type = 'button';
       b.textContent = em;
       b.title = `Schnellreaktion ${em}`;
-      b.addEventListener('click', () => onSend(em));
-      wrap.appendChild(b);
+      b.addEventListener('click', () => {
+        onSend(em);
+        dock.classList.remove('open');
+        fab.setAttribute('aria-expanded','false');
+      });
+      panel.appendChild(b);
     });
-    return wrap;
+
+    fab.addEventListener('click', () => {
+      const open = dock.classList.toggle('open');
+      fab.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    // Outside-Click schliesst das Panel wieder (nur 1× binden)
+    if (!document._emojiOutsideBound) {
+      document.addEventListener('click', (ev) => {
+        const anyDock = document.querySelector('.emoji-dock');
+        if (!anyDock) return;
+        if (!anyDock.contains(ev.target) && anyDock.classList.contains('open')) {
+          anyDock.classList.remove('open');
+          const fabEl = anyDock.querySelector('.emoji-fab');
+          if (fabEl) fabEl.setAttribute('aria-expanded', 'false');
+        }
+      });
+      document._emojiOutsideBound = true;
+    }
+
+    dock.appendChild(fab);
+    dock.appendChild(panel);
+    return dock;
   }
 
   function ensurePopMount(){
@@ -118,8 +196,9 @@
       }
     };
 
-    // Toolbar in Mount einsetzen (oder oberhalb Statusbereich)
-    const host = mount || document.getElementById('emojiMount') || document.getElementById('roomStatusLine') || document.body;
+    // Toolbar bevorzugt in die Statuszeile (#roomStatusLine) hängen
+    document.querySelectorAll('.emoji-dock, .emoji-toolbar').forEach(el => el.remove());
+    const host = document.getElementById('roomStatusLine') || document.body;
     host.appendChild(makeToolbar(onSend));
 
     // Exemplarische Selbst-Preview optional (lokal)
