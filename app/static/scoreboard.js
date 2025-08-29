@@ -158,6 +158,7 @@ function renderAnnounceSlot(sb, myId, iAmTurn, rollsUsed){
     ? (sb._scoreboards_by_team?.[boardKey] || {})
     : (sb._scoreboards?.[boardKey] || {});
 
+  // bereits belegte ❗-Felder im "ang"-Kanal sammeln
   const taken = new Set();
   for (const k of Object.keys(myBoard)) {
     const [rStr, col] = k.split(",", 2);
@@ -169,23 +170,29 @@ function renderAnnounceSlot(sb, myId, iAmTurn, rollsUsed){
   }
 
   const options = ANNOUNCE_FIELDS.filter(f => !taken.has(f) || f === ann);
+
   const selectorHTML = options.length
-    ? `<select id="announceSelect">
+    ? `<select id="announceSelect" style="font-size:16px; line-height:1.2; max-width:100%;">
          <option value="">— wählen —</option>
          ${options.map(v => `<option value="${v}" ${ann===v ? "selected":""}>${v}</option>`).join("")}
        </select>`
     : `<span class="muted">Alle ❗-Felder bereits befüllt</span>`;
 
-  const btnLabel = ann ? "Ändern" : "OK";
+  // Nur wenn bereits angesagt wurde, darf man „Ändern“ (= unannounce) anbieten
+  const unBtn = ann
+    ? `<button id="unannounceBtn" class="small danger" style="margin-left:.4rem;">Ändern</button>`
+    : ``;
+
   const inner = showSelector
     ? `<div class="announce-box">
          <label for="announceSelect">❗ Ansage:</label>
          ${selectorHTML}
-         ${options.length ? `<button id="announceBtn" class="small">${btnLabel}</button>` : ``}
-         ${ann ? `<button id="unannounceBtn" class="small danger" style="margin-left:.4rem;">Aufheben</button>` : ``}
+         ${unBtn}
          <span class="muted">nur direkt nach dem 1. Wurf</span>
        </div>`
-    : `<div class="announce-status"><span class="label">Angesagt:</span> <span class="value">${ann ? esc(ann) : "—"}</span></div>`;
+    : `<div class="announce-status">
+         <span class="label">Angesagt:</span> <span class="value">${ann ? esc(ann) : "—"}</span>
+       </div>`;
 
   return `<div id="announceSlot" class="announce-slot">${inner}</div>`;
 }

@@ -1,5 +1,5 @@
 // static/room.js
-// Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions) – konsolidiert (game.js -> room.js)
+// Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions)
 
 import { initChat, addChatMessage } from "./chat.js";
 
@@ -82,6 +82,11 @@ import { initChat, addChatMessage } from "./chat.js";
   let autoRollLock = false;
   const DEBUG_P_HOTKEY = false; // optionaler Debug-Hotkey "p" -> Poker/Free
 
+    // --- Mobile-Autofocus (Swipe vs. Auto-Follow) ---
+  let _lastTurnPid = null;
+  let _userScrollOverride = false;
+  let _lastFilledCount = null; // Anzahl gefuellter schreibbarer Zellen
+
   // Mounts
   const mount = document.getElementById("scoreOut") || (() => {
     const d = document.createElement("div"); d.id = "scoreOut"; document.body.appendChild(d); return d;
@@ -128,9 +133,53 @@ import { initChat, addChatMessage } from "./chat.js";
         if (sb && sb._finished) {
           try {
             const res = (sb._results || sb.results) || [];
+
+            const asNumber = (v) => (typeof v === "number" && isFinite(v)) ? v : null;
+            const humanList = (arr) => {
+              const names = (arr || []).filter(Boolean);
+              if (names.length <= 1) return names[0] || "";
+              return names.slice(0, -1).join(", ") + " und " + names[names.length - 1];
+            };
+            // Normalisiert verschiedene Ergebnis-Formate in ein {label, score}-Objekt
+            const toLabel = (entry) => {
+              if (!entry) return { label: "Unbekannt", score: null };
+
+              // Team-Formate: {is_team:true, name, members:[...]} oder {team/team_name, players:[...]}
+              const isTeam = entry.is_team || Array.isArray(entry.members) || entry.team || entry.team_name;
+              if (isTeam) {
+                const teamName = entry.name || entry.team || entry.team_name || "Team";
+                const members = entry.members || entry.players || [];
+                const label = members && members.length
+                  ? `${teamName}, mit ${humanList(members)}`
+                  : `${teamName}`;
+                return { label, score: asNumber(entry.total) };
+              }
+
+              // Solo-Formate: {player, total} oder {name, total}
+              const label = entry.player || entry.name || "Spieler";
+              return { label, score: asNumber(entry.total) };
+            };
+
             if (Array.isArray(res) && res.length > 0) {
-              const top = res[0];
-              alert(`Spiel beendet – Sieger: ${top.player} (${top.total} Punkte)`);
+              if (res.length === 1) {
+                // Single-Player oder nur ein Teilnehmer → einfacher Sieger-Text
+                const top = toLabel(res[0]);
+                alert(`Spiel beendet – Sieger: ${top.label}${top.score != null ? ` (${top.score} Punkte)` : ""}`);
+              } else {
+                // Mehr als 1 Spieler/Team → Sieger + weitere Platzierungen
+                const lines = [];
+                lines.push("Spiel zu Ende, es gibt folgende Platzierungen:");
+                const top = toLabel(res[0]);
+                lines.push(`Sieger: ${top.label}${top.score != null ? ` (${top.score} Punkte)` : ""}`);
+                if (res.length > 1) {
+                  lines.push("Weitere Platzierungen:");
+                  for (let i = 1; i < res.length; i++) {
+                    const e = toLabel(res[i]);
+                    lines.push(`${i + 1}. ${e.label}${e.score != null ? ` (${e.score} Punkte)` : ""}`);
+                  }
+                }
+                alert(lines.join("\n"));
+              }
             } else {
               alert("Spiel beendet.");
             }
@@ -167,6 +216,9 @@ import { initChat, addChatMessage } from "./chat.js";
   function renderFromSnapshot(snapshot) {
     const turnPid   = snapshot?._turn?.player_id || null;
     const iAmTurn   = turnPid && String(turnPid) === String(myId);
+    // aktuelle Scrollposition des alten Grids sichern (wichtig fuer Mobile)
+    const _oldGrid = document.querySelector("#scoreOut .players-grid");
+    const _oldScrollLeft = _oldGrid ? _oldGrid.scrollLeft : 0;
     const rollsUsed = snapshot?._rolls_used ?? 0;
     const rollsMax  = snapshot?._rolls_max ?? 3;
     const announced = snapshot?._announced_row4 || null;
@@ -197,6 +249,114 @@ import { initChat, addChatMessage } from "./chat.js";
 
     // Chat-Breite angleichen
     syncChatWidth();
+
+    // --- Scrollposition nach Re-Render bewahren, ausser bei gewolltem Fokuswechsel (Write+TurnChange)
+    const filledNow = countFilledWritableCells(snapshot);
+    const turnChanged = String(_lastTurnPid) !== String(turnPid);
+    const wroteHappened = (_lastFilledCount !== null) ? (filledNow > _lastFilledCount) : false;
+
+    const _newGrid = document.querySelector("#scoreOut .players-grid");
+    // Wiederherstellen, wenn: Nutzer manuell uebersteuert ODER kein TurnChange ODER kein Schreiben
+    if (_newGrid && (_userScrollOverride || !turnChanged || !wroteHappened)) {
+      _newGrid.scrollLeft = _oldScrollLeft;
+    }
+
+    // --- Swipe-Override Binding (einmalig pro DOM-Aufbau) ---
+    bindSwipeOverride();
+
+    // --- Auto-Follow auf Mobile (Option D) ---
+    autoFollowTurn(snapshot);
+  }
+    // --- Auto-Follow & Swipe-Override Helpers ---
+  function isMobileNarrow(){
+    try { return window.matchMedia && window.matchMedia("(max-width: 560px)").matches; }
+    catch { return false; }
+  }
+
+  function bindSwipeOverride(){
+    try {
+      const grid = document.querySelector("#scoreOut .players-grid");
+      if (!grid || grid._swipeBound) return;
+      grid._swipeBound = true;
+
+      const setOverride = () => { _userScrollOverride = true; };
+      // Nutzerinteraktion, die eine manuelle Auswahl signalisiert
+      grid.addEventListener("touchstart", setOverride, { passive: true });
+      grid.addEventListener("pointerdown", setOverride, { passive: true });
+      grid.addEventListener("wheel", setOverride, { passive: true });
+    } catch {}
+  }
+
+  function autoFollowTurn(snapshot){
+    try {
+      if (!isMobileNarrow()) return;
+
+      const turnPid = snapshot?._turn?.player_id || null;
+      const filledNow = countFilledWritableCells(snapshot);
+
+      // Initiales Setup beim ersten Snapshot: baseline setzen und einmal zur aktuellen Karte scrollen
+      if (_lastTurnPid === null || _lastFilledCount === null) {
+        _lastTurnPid = turnPid;
+        _lastFilledCount = filledNow;
+
+        const grid0 = document.querySelector("#scoreOut .players-grid");
+        const target0 = grid0 ? grid0.querySelector(".player-card.turn") : null;
+        if (grid0 && target0 && typeof target0.scrollIntoView === "function") {
+          target0.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+        }
+        return;
+      }
+
+      const turnChanged = String(_lastTurnPid) !== String(turnPid);
+      const wroteHappened = (filledNow > _lastFilledCount);
+
+      // Gewuenscht: Scroll NUR wenn wirklich geschrieben wurde UND der Zug uebergeht
+      if (turnChanged && wroteHappened) {
+        _userScrollOverride = false; // manueller Fokus endet beim Zugwechsel
+
+        const grid = document.querySelector("#scoreOut .players-grid");
+        const target = grid ? grid.querySelector(".player-card.turn") : null;
+        if (grid && target && typeof target.scrollIntoView === "function") {
+          target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+        }
+      }
+
+      // Baselines aktualisieren (immer)
+      _lastTurnPid = turnPid;
+      _lastFilledCount = filledNow;
+
+    } catch {}
+  }
+
+  // --- Write-Detection: Anzahl gefuellter beschreibbarer Zellen ---
+  function isFilledVal(v){ return !(v === undefined || v === null || v === ""); }
+  function isWritableRowIndex(ri){
+    // nutzt vorhandene WRITABLE_MAP: nur echte Schreibfelder zaehlen
+    return WRITABLE_MAP.hasOwnProperty(ri);
+  }
+
+  function countFilledWritableCells(snapshot){
+    try{
+      let cnt = 0;
+      // Einzel: _scoreboards { [pid]: {...} }, Team: _scoreboards_by_team { [teamId]: {...} }
+      const bags = [];
+      if (snapshot?._scoreboards && typeof snapshot._scoreboards === "object"){
+        bags.push(...Object.values(snapshot._scoreboards));
+      }
+      if (snapshot?._scoreboards_by_team && typeof snapshot._scoreboards_by_team === "object"){
+        bags.push(...Object.values(snapshot._scoreboards_by_team));
+      }
+      for (const sc of bags){
+        if (!sc) continue;
+        for (const k of Object.keys(sc)){
+          const parts = k.split(",", 2);
+          const ri = parseInt(parts[0], 10);
+          if (!Number.isFinite(ri) || !isWritableRowIndex(ri)) continue;
+          if (isFilledVal(sc[k])) cnt++;
+        }
+      }
+      return cnt;
+    } catch { return 0; }
   }
 
   function canRequestCorrection(snapshot) {
@@ -283,21 +443,25 @@ import { initChat, addChatMessage } from "./chat.js";
 
   // --- Ansage (❗) ---
   function wireAnnounceUI() {
-    const btn   = $("#announceBtn", mount);
     const sel   = $("#announceSelect", mount);
     const unbtn = $("#unannounceBtn", mount);
 
-    if (btn && sel && !btn._bound) {
-      btn._bound = true;
-      btn.addEventListener("click", () => {
+    // Sofort-Ansage bei Auswahl
+    if (sel && !sel._bound) {
+      sel._bound = true;
+      sel.addEventListener("change", () => {
         const val = sel.value || "";
         if (!val) return;
         safeSend(ws, { action: "announce_row4", field: val });
       });
     }
+
+    // "Ändern"-Button (ehem. Aufheben)
     if (unbtn && !unbtn._bound) {
       unbtn._bound = true;
-      unbtn.addEventListener("click", () => safeSend(ws, { action: "unannounce_row4" }));
+      unbtn.addEventListener("click", () => {
+        safeSend(ws, { action: "unannounce_row4" });
+      });
     }
   }
 
@@ -434,14 +598,6 @@ import { initChat, addChatMessage } from "./chat.js";
       // Space / r: würfeln
       if (key === " " || key === "spacebar" || key === "r") {
         if (canRollNow()) { safeRoll(); e.preventDefault(); }
-        return;
-      }
-
-      // a: Ansage (falls UI vorhanden)
-      if (key === "a") {
-        const btn = $("#announceBtn", mount);
-        const sel = $("#announceSelect", mount);
-        if (btn && sel && !btn.disabled && !sel.disabled) { btn.click(); e.preventDefault(); }
         return;
       }
 

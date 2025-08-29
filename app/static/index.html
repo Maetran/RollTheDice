@@ -7,13 +7,19 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#000000">
   <!-- FIX: relative auf die echte CSS-Datei unter /static/ -->
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v=13">
   <style>
     .wrap { max-width: 980px; margin: 1.2rem auto; }
     .card { background:#fff; border:1px solid var(--border,#e0e0e0); border-radius:12px; padding:1rem; margin:.8rem 0; }
     .row { display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; }
     .row input[type="text"]{ padding:.5rem .7rem; border:1px solid var(--border,#e0e0e0); border-radius:.45rem; min-width:18ch; }
-    select { padding:.45rem .6rem; border:1px solid var(--border,#e0e0e0); border-radius:.45rem; }
+    select {
+      padding:.45rem .6rem;
+      border:1px solid var(--border,#e0e0e0);
+      border-radius:.45rem;
+      font-family: inherit;          /* neu */
+      font-size:16px;                /* neu – bleibt stehen */
+    }
     .games { display:flex; flex-direction:column; gap:.6rem; }
     .game-row { display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border,#e0e0e0); border-radius:.6rem; padding:.7rem .9rem; background:#fff; }
     .game-row .meta .name { font-weight:700; }
@@ -61,7 +67,7 @@
       <div class="row">
         <input id="gameName" type="text" placeholder="Spielname" value="Neues Spiel">
         <input id="passInput" type="text" placeholder="Passphrase">
-        <select id="gameMode" title="Spielmodus">
+        <select id="gameMode" title="Spielmodus" style="font-size:16px; line-height:1.2;">
           <option value="1">1 Spieler</option>
           <option value="2">2 Spieler</option>
           <option value="3">3 Spieler</option>

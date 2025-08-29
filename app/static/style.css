@@ -1,4 +1,5 @@
 /* === Vars & Reset === */
+
 :root{
   --bg:#fafafa;
   --card:#fff;
@@ -48,6 +49,28 @@ button.danger{
   color:#8e1b0e;
 }
 button.danger:hover{ background:#fbd5cf; }
+
+/* === Form Controls Baseline (global) === */
+select,
+select option{
+  font-size: 1rem;    /* ≈16px Standard */
+  line-height: 1.2;
+}
+
+/* Mobile/iOS: 16px explizit verhindert Tiny-Rendering & Auto-Zoom-Artefakte */
+@media (max-width:560px){
+  select,
+  select option{
+    font-size: 16px;
+  }
+}
+
+/* Form controls: iOS/UA-Defaults überschreiben */
+select, input, button {
+  font-family: inherit;   /* bricht -webkit-small-control */
+  font-size: 16px;        /* verhindert iOS Zoom + sorgt für lesbare Größe */
+  line-height: 1.2;
+}
 
 /* === Chips & Badges === */
 .chip{ display:inline-block; padding:.1rem .5rem; border-radius:12px; font-size:.8rem; margin-right:.25rem; }
@@ -152,6 +175,66 @@ button.die.shaking{ animation: dice-shake .5s ease; }
 @media (max-width:560px){
   .suggestions{ flex-direction: column; align-items: stretch; }
   .suggestion-btn{ width:100%; }
+}
+
+/* Mobile: Scoreboard kompakter (Hoehe sparen) */
+@media (max-width:560px){
+  /* Wuerfelreihe & Abstaende */
+  .topbar{ margin-bottom: .25rem; }
+  #diceBar{ gap: .25rem; }
+  button.die{
+    font-size: 1.6rem;
+    width: 2.2rem;
+    height: 2.2rem;
+  }
+
+  /* Kopf & Meta */
+  .pc-head{ margin-bottom: .35rem; }
+  .pc-total{ font-size: .95em; }
+  .muted{ margin: .2rem 0 .5rem; }
+  .announce-box{ padding: .35rem; }
+
+  /* Tabellen: kleinere Schrift & Zellen – mit !important, da .grid.compact spaeter injiziert wird */
+  .player-card table.grid{ font-size: .82rem; }
+  .player-card table.grid.compact th,
+  .player-card table.grid.compact td{
+    padding: .18rem .26rem !important;
+  }
+}
+
+/* Mobile: horizontales Wischen + Peekahead */
+@media (max-width:560px){
+  .players-grid{
+    overflow-x: auto;
+    overflow-y: visible;
+    flex-wrap: nowrap;                /* Karten in einer Reihe */
+    scroll-snap-type: x mandatory;    /* Snap-Seitenweise */
+    -webkit-overflow-scrolling: touch;
+    padding: 0 12px;                  /* seitliche 'Gutter' */
+    gap: 12px;                        /* etwas schmaler fuers Peekahead */
+  }
+
+  /* Jede Karte 'snapt' an den linken Rand; etwas schmaler als der Viewport -> Peekahead sichtbar */
+  .player-card{
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    width: calc(100vw - 12px - 12px - 24px); /* vw - Gutter links - Gutter rechts - Peekahead */
+    flex: 0 0 calc(100vw - 12px - 12px - 24px);
+  }
+
+  /* Tabelle fuellt die Karte in der Breite (statt Fixbreite per Vars) */
+  .player-card table.grid{
+    width: 100% !important;
+  }
+}
+
+/* Mobile: lesbare Schriftgroesse im Ansage-Dropdown erzwingen */
+@media (max-width:560px){
+  #announceSlot select,
+  #announceSlot option{
+    font-size: 1rem !important;
+    line-height: 1.2;
+  }
 }
 
 .announce-box{ background:#f4f6f7; border:1px solid var(--border); padding:.45rem; border-radius:6px; }
