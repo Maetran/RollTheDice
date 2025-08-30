@@ -33,7 +33,7 @@ const ROW_TOOLTIPS = [
   "Diff = Einsen × (Max − Min), niemals negativ",
   "Kenter: immer 35 Punkte, wenn alle 5 Augen verschieden",
   "Full House: 3 gleiche + 2 gleiche → 40 + 3×Augenzahl der Drilling-Augen",
-    "Poker (Vierling): ⬇︎／／⬆︎ → Punkte nur im Wurf des ersten Vierlings oder bei 5 gleichen; ❗ + aktive Poker-Ansage → Punkte in jedem späteren Wurf, solange 4/5 gleiche liegen",
+  "Poker (Vierling): ⬇︎／／⬆︎ → Punkte nur im Wurf des ersten Vierlings oder bei 5 gleichen; ❗ + aktive Poker-Ansage → Punkte in jedem späteren Wurf, solange 4/5 gleiche liegen",
   "60 (Fünfling): 5 gleiche → 60 + 5×Augenzahl",
   "ZwTotalUnten = Kenter + Full + Poker + 60",
   "Reihentotal = ZwTotalOben + Diff + ZwTotalUnten"
@@ -199,7 +199,29 @@ function renderAnnounceSlot(sb, myId, iAmTurn, rollsUsed){
 
 // -------- Misc Utils --------
 function numOrEmpty(v){ const n = num(v); return (n === null) ? "" : String(n); }
-function dieFace(v){ const f=["","⚀","⚁","⚂","⚃","⚄","⚅"]; return f[v]||"·"; }
+
+// === NEU: SVG-Würfel ===
+function dieSVG(v){
+  // Koordinaten im 100x100 ViewBox-Raster
+  const L=30, C=50, R=70, T=30, M=50, B=70;
+  const pips = {
+    1: [[C,M]],
+    2: [[L,T],[R,B]],
+    3: [[L,T],[C,M],[R,B]],
+    4: [[L,T],[R,T],[L,B],[R,B]],
+    5: [[L,T],[R,T],[C,M],[L,B],[R,B]],
+    6: [[L,T],[L,M],[L,B],[R,T],[R,M],[R,B]]
+  }[v] || [];
+
+  const dots = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="8"></circle>`).join("");
+  return `
+    <svg viewBox="0 0 100 100" width="100%" height="100%" role="img" aria-label="Würfel ${v}">
+      <rect x="5" y="5" width="90" height="90" rx="12" ry="12" fill="white" stroke="black" stroke-width="6"></rect>
+      <g fill="black">${dots}</g>
+    </svg>
+  `;
+}
+
 function esc(s){
   return String(s).replace(/[&<>"]/g, c => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"
@@ -305,7 +327,7 @@ function renderScoreboard(mount, sb, {
     <div class="topbar">
       <div id="diceBar">
         ${dice.map((d,i)=>
-          `<button class="die ${holds[i] ? "held" : ""}" data-i="${i}" title="halten/lösen">${dieFace(d)}</button>`
+          `<button class="die ${holds[i] ? "held" : ""}" data-i="${i}" title="halten/lösen">${dieSVG(d || 0)}</button>`
         ).join("")}
         <button id="rollBtnInline" ${correctionActive ? "disabled":""}>🎲 Würfeln</button>
         ${requestBtnHTML}
