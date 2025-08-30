@@ -1,5 +1,4 @@
 /* === Vars & Reset === */
-
 :root{
   --bg:#fafafa;
   --card:#fff;
@@ -8,14 +7,12 @@
   --muted:#666;
   --accent:#2d89ef;
 
-  /* feste Spaltenbreiten – kompakt, aber 3-stellig sicher */
-  --col-desc:   96px;  /* reicht für „ZwTotalUnten“, „Reihentotal“ */
-  --col-score:  44px;  /* 3-stellige Zahlen passen */
+  --col-desc:   96px;
+  --col-score:  44px;
   --table-radius: 10px;
 
-  /* Breiten-/Abstands-Variablen für Layout (2 Karten nebeneinander) */
   --card-w: calc(var(--col-desc) + 4 * var(--col-score) + 22px);
-  --cards-gap: 16px; /* zur .players-grid gap passend halten */
+  --cards-gap: 16px;
 }
 
 *{ box-sizing:border-box; }
@@ -23,17 +20,9 @@ html,body{ margin:0; padding:0; background:var(--bg); color:#222; }
 body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
 h2{ margin:.5rem 0; }
 
-/* === Bereichsbreiten: Score + Chat haben die gleiche Maxbreite (2 Karten + Gap), mittig */
-#scoreOut{
-  width: auto;
-  max-width: none;
-  margin: 0 1rem 1rem;   /* linksbündig wie vorher */
-}
-.chat-panel{
-  width: auto;
-  max-width: none;
-  margin: 0 1rem 1.2rem; /* linksbündig, etwas mehr Abstand nach unten */
-}
+/* === Bereichsbreiten === */
+#scoreOut{ width: auto; max-width: none; margin: 0 1rem 1rem; }
+.chat-panel{ width: auto; max-width: none; margin: 0 1rem 1.2rem; }
 
 /* === Buttons === */
 button{
@@ -43,34 +32,13 @@ button{
 button:hover{ background:#eee; }
 button.small{ font-size:.85rem; padding:.25rem .5rem; }
 
-button.danger{
-  border-color:#c0392b;
-  background:#fdecea;
-  color:#8e1b0e;
-}
+button.danger{ border-color:#c0392b; background:#fdecea; color:#8e1b0e; }
 button.danger:hover{ background:#fbd5cf; }
 
-/* === Form Controls Baseline (global) === */
-select,
-select option{
-  font-size: 1rem;    /* ≈16px Standard */
-  line-height: 1.2;
-}
-
-/* Mobile/iOS: 16px explizit verhindert Tiny-Rendering & Auto-Zoom-Artefakte */
-@media (max-width:560px){
-  select,
-  select option{
-    font-size: 16px;
-  }
-}
-
-/* Form controls: iOS/UA-Defaults überschreiben */
-select, input, button {
-  font-family: inherit;   /* bricht -webkit-small-control */
-  font-size: 16px;        /* verhindert iOS Zoom + sorgt für lesbare Größe */
-  line-height: 1.2;
-}
+/* === Form Controls === */
+select, select option{ font-size: 1rem; line-height: 1.2; }
+@media (max-width:560px){ select, select option{ font-size: 16px; } }
+select, input, button { font-family: inherit; font-size: 16px; line-height: 1.2; }
 
 /* === Chips & Badges === */
 .chip{ display:inline-block; padding:.1rem .5rem; border-radius:12px; font-size:.8rem; margin-right:.25rem; }
@@ -79,7 +47,6 @@ select, input, button {
 .chip.warn{ background:#f5b7b1; color:#922b21; }
 .chip.info{ background:#d6eaf8; color:#154360; }
 .chip.danger{ background:#f5b7b1; color:#7a1b16; }
-
 .badge{ display:inline-block; background:#eee; padding:.1rem .45rem; border-radius:8px; font-size:.8rem; margin-left:.25rem; }
 
 /* === Layout === */
@@ -87,15 +54,9 @@ select, input, button {
 .players-inline{ flex:0 0 auto; }
 .muted{ color:var(--muted); font-size:.86rem; margin:.25rem 0 .75rem; }
 
-.players-grid{
-  display:flex;
-  flex-wrap:wrap;
-  gap: var(--cards-gap);
-  justify-content:flex-start;
-  align-items:flex-start;
-}
+.players-grid{ display:flex; flex-wrap:wrap; gap: var(--cards-gap); justify-content:flex-start; align-items:flex-start; }
 
-/* Karten (fixe Breite, damit 2 exakt nebeneinander passen) */
+/* Karten */
 .player-card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -109,17 +70,27 @@ select, input, button {
 .pc-head{ display:flex; align-items:baseline; justify-content:space-between; gap:.75rem; font-weight:700; margin-bottom:.5rem; }
 .pc-total{ font-weight:700; }
 
-/* === Dice === */
+/* === Dice (Basis) === */
 #diceBar{ display:flex; gap:.35rem; align-items:center; }
 button.die{
-  font-size:2rem; width:2.6rem; height:2.6rem; border-radius:.6rem;
+  width: 3rem;
+  height: 3rem;
+  aspect-ratio: 1 / 1;
+  border-radius: .8rem;
+  font-size: 2.2rem;
+  line-height: 1;
+  padding: .10rem .10rem .22rem;
   font-variant-numeric: tabular-nums;
-  display:inline-flex; align-items:center; justify-content:center;
-  background:#fff; color:#000; border:1px solid var(--border);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:#fff;
+  color:#000;
+  border:1px solid var(--border);
 }
 button.die.held{ background:#d4efdf; border-color:#27ae60; }
 
-/* Shake nur für nicht gehaltene Würfel, wenn JS .shaking setzt */
+/* Shake-Animation */
 @keyframes dice-shake{
   0%{transform:translate(0,0) rotate(0deg)}
   20%{transform:translate(-1px,1px) rotate(-2deg)}
@@ -130,333 +101,164 @@ button.die.held{ background:#d4efdf; border-color:#27ae60; }
 }
 button.die.shaking{ animation: dice-shake .5s ease; }
 
-/* === Announce-Container: exakt so breit wie die Tabelle === */
-.announce-container{
-  width: calc(var(--col-desc) + 4 * var(--col-score)); /* = Tabellenbreite */
-  max-width: 100%;
-  margin: 0 0 .5rem 0; /* linksbündig unter der Dicebar */
-}
+/* === Announce === */
+.announce-container{ width: calc(var(--col-desc) + 4 * var(--col-score)); max-width: 100%; margin: 0 0 .5rem 0; }
+.announce-slot, .announce-box, .announce-status{ width: 100%; display: block; text-align: center; }
 
-/* Der eigentliche Slot fuellt den Container */
-.announce-slot,
-.announce-box,
-.announce-status{
-  width: 100%;
-  display: block;
-  text-align: center;
-}
-
-
-
-/* --- Suggestions Wrapper: fester Platz, kein Layout-Shift --- */
-.suggestions-area{
-  min-height: 34px;
-  margin: .5rem 0 .5rem 0;
-}
-
-/* Mobile: wenn Tabelle 100% breit ist, folgt der Ansage-Block */
-@media (max-width:560px){
-  .announce-container{
-    width: 100% !important;
-  }
-}
-
-/* Wenn leer: Platz bleibt, Inhalt unsichtbar */
-.suggestions:empty{
-  opacity: 0;
-}
-
-/* --- Suggestions (dezent im Chip-Stil) --- */
-.suggestions{
-  margin: .5rem 0 .5rem 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .35rem .45rem;
-}
+/* Suggestions */
+.suggestions-area{ min-height: 34px; margin: .5rem 0 .5rem 0; }
+.suggestions:empty{ opacity: 0; }
+.suggestions{ margin: .5rem 0; display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .45rem; }
 .suggestion-btn{
-  display: inline-block;
-  width: auto;
-  text-align: center;
-  padding: .18rem .55rem;
-  border-radius: 12px;
-  font-size: .85rem;
-  font-weight: 600;
-  border: 1px solid #f0b27a;   /* dezenter Orange-Rand */
-  background: #ffe0b2;         /* helles Orange */
-  color: #7a3e00;
-  cursor: default;              /* nicht klickbar */
-  user-select: none;
+  display: inline-block; padding: .18rem .55rem; border-radius: 12px;
+  font-size: .85rem; font-weight: 600;
+  border: 1px solid #f0b27a; background: #ffe0b2; color: #7a3e00;
+  cursor: default; user-select: none;
 }
-.suggestion-btn:hover{ background: #ffd59a; }
+.suggestion-btn:hover{ background:#ffd59a; }
 .suggestion-btn .points{ font-weight:700; opacity:.95; }
 
-/* Mobile: untereinander & volle Breite */
+/* === Mobile Styles === */
 @media (max-width:560px){
+  .announce-container{ width: 100% !important; }
   .suggestions{ flex-direction: column; align-items: stretch; }
   .suggestion-btn{ width:100%; }
-}
-
-/* Mobile: Scoreboard kompakter (Hoehe sparen) */
-@media (max-width:560px){
-  /* Wuerfelreihe & Abstaende */
   .topbar{ margin-bottom: .25rem; }
-  #diceBar{ gap: .25rem; }
-  button.die{
-    font-size: 1.6rem;
-    width: 2.2rem;
-    height: 2.2rem;
-  }
 
-  /* Kopf & Meta */
-  .pc-head{ margin-bottom: .35rem; }
-  .pc-total{ font-size: .95em; }
+  #diceBar{
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: stretch; align-content: start;
+    column-gap: .25rem; row-gap: 1rem;
+    width: 100%; margin: 0; padding: .6rem .25rem .9rem;
+    overflow: visible;
+  }
+  #rollBtnInline{
+    grid-row: 2; grid-column: 1 / -1;
+    justify-self: center; width: 100%; margin-top: .25rem; max-width: 560px;
+  }
+  #diceBar .die{
+    grid-row: 1; width: 100%; aspect-ratio: 1 / 1;
+    display: flex; place-content: center; align-self: stretch;
+    border-radius: .8rem; font-size: clamp(28px, 14vw, 96px);
+    padding: .10rem .10rem .22rem; line-height: 1;
+  }
+  .room-header #roomGameName, .room-header a[href$="rules.html"]{ display: none !important; }
+  .pc-head{ margin-bottom: .35rem; } .pc-total{ font-size: .95em; }
   .muted{ margin: .2rem 0 .5rem; }
   .announce-box{ padding: .35rem; }
-
-  /* Tabellen: kleinere Schrift & Zellen – mit !important, da .grid.compact spaeter injiziert wird */
   .player-card table.grid{ font-size: .82rem; }
   .player-card table.grid.compact th,
-  .player-card table.grid.compact td{
-    padding: .18rem .26rem !important;
+  .player-card table.grid.compact td{ padding: .18rem .26rem !important; }
+}
+
+/* === Desktop Guard === */
+@media (min-width: 561px){
+  #diceBar{
+    display: flex !important; flex-wrap: wrap !important;
+    align-items: center !important; gap: .35rem !important;
+    width: auto !important; margin-left: 0 !important; padding: 0 !important;
+    overflow: visible !important;
+  }
+  #diceBar .die{
+    width: 3rem !important;
+    height: 3rem !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: .8rem !important;
+    font-size: 2.2rem !important;
+    line-height: 1 !important;
+    padding: .10rem .10rem .22rem !important;
+  }
+  #rollBtnInline{
+    display: block !important; flex: 1 1 100% !important;
+    order: 2 !important; width: 100% !important; margin-top: .35rem !important;
+    grid-row: auto !important; grid-column: auto !important;
   }
 }
 
-/* Mobile: horizontales Wischen + Peekahead */
+/* === Players Grid Mobile Scroll === */
 @media (max-width:560px){
-  .players-grid{
-    overflow-x: auto;
-    overflow-y: visible;
-    flex-wrap: nowrap;                /* Karten in einer Reihe */
-    scroll-snap-type: x mandatory;    /* Snap-Seitenweise */
-    -webkit-overflow-scrolling: touch;
-    padding: 0 12px;                  /* seitliche 'Gutter' */
-    gap: 12px;                        /* etwas schmaler fuers Peekahead */
-  }
-
-  /* Jede Karte 'snapt' an den linken Rand; etwas schmaler als der Viewport -> Peekahead sichtbar */
+  .players-grid{ overflow-x: auto; overflow-y: visible; flex-wrap: nowrap;
+    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    padding: 0 12px; gap: 12px; }
   .player-card{
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
-    width: calc(100vw - 12px - 12px - 24px); /* vw - Gutter links - Gutter rechts - Peekahead */
-    flex: 0 0 calc(100vw - 12px - 12px - 24px);
+    scroll-snap-align: start; scroll-snap-stop: always;
+    width: calc(100vw - 48px); flex: 0 0 calc(100vw - 48px);
   }
-
-  /* Tabelle fuellt die Karte in der Breite (statt Fixbreite per Vars) */
-  .player-card table.grid{
-    width: 100% !important;
-  }
+  .player-card table.grid{ width: 100% !important; }
 }
-
-/* Mobile: lesbare Schriftgroesse im Ansage-Dropdown erzwingen */
 @media (max-width:560px){
-  #announceSlot select,
-  #announceSlot option{
-    font-size: 1rem !important;
-    line-height: 1.2;
-  }
+  #announceSlot select, #announceSlot option{ font-size: 1rem !important; line-height: 1.2; }
 }
 
 .announce-box{ background:#f4f6f7; border:1px solid var(--border); padding:.45rem; border-radius:6px; }
 .announce-box label{ margin-right:.35rem; }
+.banner.correction{ background:#ffeaa7; border:1px solid #f39c12; padding:.55rem; margin-bottom:.6rem; border-radius:6px; font-size:.9rem; }
 
-.banner.correction{
-  background:#ffeaa7; border:1px solid #f39c12;
-  padding:.55rem; margin-bottom:.6rem; border-radius:6px; font-size:.9rem;
-}
-
-/* === Tabelle (fixe Breite, linksbündig, runde Ecken) === */
+/* === Tabelle === */
 .table-wrap{ border-radius:var(--table-radius); overflow:hidden; }
 table.grid{
-  border-collapse:separate; border-spacing:0;
-  font-size:.9rem; table-layout:fixed;
+  border-collapse:separate; border-spacing:0; font-size:.9rem; table-layout:fixed;
   border-radius:var(--table-radius); overflow:hidden;
-  width: calc(var(--col-desc) + 4 * var(--col-score));
-  margin: 0;
-  font-variant-numeric: tabular-nums;
+  width: calc(var(--col-desc) + 4 * var(--col-score)); margin: 0; font-variant-numeric: tabular-nums;
 }
-
-/* feste Spaltenbreiten */
 table.grid th:nth-child(1), table.grid td:nth-child(1){ width:var(--col-desc); text-align:left; }
 table.grid th:nth-child(2), table.grid td:nth-child(2),
 table.grid th:nth-child(3), table.grid td:nth-child(3),
 table.grid th:nth-child(4), table.grid td:nth-child(4),
 table.grid th:nth-child(5), table.grid td:nth-child(5){ width:var(--col-score); text-align:center; }
-
-table.grid th, table.grid td{
-  border:1px solid var(--border);
-  padding:.28rem .35rem;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
+table.grid th, table.grid td{ border:1px solid var(--border); padding:.28rem .35rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 table.grid thead th{ background:#f7f7f7; font-weight:700; }
-
-table.grid th.sticky,
-table.grid td.desc.sticky{ position:sticky; left:0; background:#f0f0f0; text-align:left; z-index:1; }
-
-/* Klickzustände */
+table.grid th.sticky, table.grid td.desc.sticky{ position:sticky; left:0; background:#f0f0f0; text-align:left; z-index:1; }
 td.cell.clickable{ cursor:pointer; background:#fdfdfd; }
 td.cell.clickable:hover{ background:#eef; }
 td.cell.announced{ background:#ffe9e9 !important; font-weight:700; }
-
-/* Compute-Felder (grau) */
 td.cell.compute, td.desc.compute{ background:#f2f3f5; color:#444; font-weight:600; }
 td.cell.compute{ font-size:.86rem; }
-
-/* === Blockrahmen horizontal === */
 tr.grp-top td{ border-top:3px solid var(--border-strong); }
 tr.grp-top.grp-end td{ border-bottom:3px solid var(--border-strong); }
 tr.grp-diff td{ border-top:3px solid var(--border-strong); border-bottom:3px solid var(--border-strong); }
 tr.grp-bottom.grp-start td{ border-top:3px solid var(--border-strong); }
 tr.grp-bottom td{ border-bottom:3px solid var(--border-strong); }
-tr.grp-top td, tr.grp-bottom td, tr.grp-diff td{
-  border-left:1px solid var(--border) !important;
-  border-right:1px solid var(--border) !important;
-}
-
-/* --- sehr schmale Screens: eine Karte pro Zeile --- */
+tr.grp-top td, tr.grp-bottom td, tr.grp-diff td{ border-left:1px solid var(--border) !important; border-right:1px solid var(--border) !important; }
 @media (max-width:420px){
   :root{ --col-desc: 90px; --col-score: 40px; }
   .player-card{ width: var(--card-w); flex-basis: var(--card-w); }
 }
 
-/* === Leaderboard (unverändert) === */
-.leaderboards {
-  display: flex;
-  gap: 20px;
-  margin-top: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-}
-.leaderboard-box {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--table-radius);
-  padding: 0.5rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,.06);
-  min-width: 320px;
-  flex: 0 0 520px;
-  max-width: 520px;
-  overflow: hidden;
-}
-.leaderboard-box h3 { margin: 0.3rem 0 0.6rem; text-align: center; font-weight: 600; color: #333; }
-.leaderboard-box table {
-  width: 100%; border-collapse: separate; border-spacing: 0;
-  font-size: .9rem; font-variant-numeric: tabular-nums;
-  border-radius: var(--table-radius); overflow: hidden; table-layout: fixed; max-width: 100%;
-}
-.leaderboard-box th, .leaderboard-box td {
-  border: 1px solid var(--border); padding: .3rem .4rem; text-align: center;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.leaderboard-box thead th { background: #f7f7f7; font-weight: 700; }
-.leaderboard-box thead th:first-child { border-top-left-radius: var(--table-radius); }
-.leaderboard-box thead th:last-child { border-top-right-radius: var(--table-radius); }
-.leaderboard-box tbody tr:last-child td:first-child { border-bottom-left-radius: var(--table-radius); }
-.leaderboard-box tbody tr:last-child td:last-child { border-bottom-right-radius: var(--table-radius); }
+/* === Leaderboard === */
+.leaderboards{ display:flex; gap:20px; margin-top:10px; flex-wrap:wrap; justify-content:flex-start; }
+.leaderboard-box{ background:var(--card); border:1px solid var(--border); border-radius:var(--table-radius); padding:.5rem; box-shadow:0 2px 6px rgba(0,0,0,.06); min-width:320px; flex:0 0 520px; max-width:520px; overflow:hidden; }
+.leaderboard-box h3{ margin:.3rem 0 .6rem; text-align:center; font-weight:600; color:#333; }
+.leaderboard-box table{ width:100%; border-collapse:separate; border-spacing:0; font-size:.9rem; font-variant-numeric:tabular-nums; border-radius:var(--table-radius); overflow:hidden; table-layout:fixed; max-width:100%; }
+.leaderboard-box th, .leaderboard-box td{ border:1px solid var(--border); padding:.3rem .4rem; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.leaderboard-box thead th{ background:#f7f7f7; font-weight:700; }
 
-/* --- Chips/Bubbles sauber anordnen --- */
-#playerChips, #roomStatusLine, .top-chips, .chips, .players-inline {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .45rem .55rem;
-  width: auto;
-  max-width: 100%;
-}
+/* Chips */
+#playerChips, #roomStatusLine, .top-chips, .chips, .players-inline{ display:inline-flex; flex-wrap:wrap; align-items:center; gap:.45rem .55rem; width:auto; max-width:100%; }
 .badge, .chip { white-space: nowrap; }
-
-@media (max-width: 560px){
-  .leaderboards { gap: 12px; }
-  .leaderboard-box { flex: 0 0 100%; max-width: 100%; }
+@media (max-width:560px){
+  .leaderboards{ gap:12px; }
+  .leaderboard-box{ flex:0 0 100%; max-width:100%; }
 }
 
-/* === Accessibility & Interaction === */
-button:focus-visible,
-#diceBar .die:focus-visible,
-td.cell.clickable:focus,
-td.cell.clickable:focus-visible{
-  outline: 2px solid #2b8cff;
-  outline-offset: 2px;
-}
+/* === Accessibility === */
+button:focus-visible, #diceBar .die:focus-visible, td.cell.clickable:focus, td.cell.clickable:focus-visible{ outline:2px solid #2b8cff; outline-offset:2px; }
+td.cell.last-write{ background:#fff3cd !important; box-shadow: inset 0 0 0 2px #ffcf33; }
+button[disabled]{ opacity:.6; cursor:not-allowed; }
+.pc-head .pc-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-/* „letzter Eintrag“ – visuelle Markierung */
-td.cell.last-write{
-  background: #fff3cd !important;
-  box-shadow: inset 0 0 0 2px #ffcf33;
-}
-
-/* Disabled-Buttons dezenter darstellen */
-button[disabled]{ opacity: .6; cursor: not-allowed; }
-
-/* Kopfbereich: lange Namen sauber kürzen */
-.pc-head .pc-name{
-  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-
-/* Chat-Grundlayout (Inhalt kommt aus room.html) */
-.chat {
-  border: 1px solid var(--border, #ccc);
-  border-radius: 8px;
-  margin: 1rem 0;
-  display: flex;
-  flex-direction: column;
-  height: 200px;
-  background: #fff;
-}
-.chat-box{
-  /* Typografie wie gehabt */
-  font-size: .9rem;
-  line-height: 1.3;
-
-  /* Sichtfenster ≈ 15 Zeilen, Rest scrollbar */
-  max-height: calc(15 * 1.3em);
-  overflow-y: auto;
-
-  /* Padding & Rahmen (falls du die Version mit Border nutzt) */
-  padding: .5rem;
-  background: #fff;
-  border: 1px solid var(--border, #e0e0e0);
-  border-radius: .5rem;
-}
-
-.chat-line { margin: .2rem 0; }
-.chat-input { display: flex; border-top: 1px solid var(--border, #ccc); }
-.chat-input input {
-  flex: 1 1 auto; border: none; padding: .5rem; font-size: .9rem;
-}
-.chat-input input:focus { outline: none; }
-.chat-input button {
-  border: none; background: #eee; padding: .5rem .9rem; cursor: pointer; font-size: .9rem;
-}
-.chat-input button:hover { background: #ddd; }
-
-/* --- Chat (room.html) --- */
-.chat-panel h3{
-  margin:.6rem 0;
-  font-size:1rem;
-  font-weight:700;
-}
-
-.chat-input-row{
-  display:flex;
-  gap:.5rem;
-  margin-top:.5rem;
-}
-.chat-input-row input[type="text"]{
-  flex:1;
-  padding:.45rem .6rem;
-  border:1px solid var(--border,#e0e0e0);
-  border-radius:.45rem;
-}
-.chat-line{
-  padding:.2rem 0;
-  line-height:1.3;
-  word-wrap:break-word;
-}
-
-.chat-line .ts{
-  font-size: .8em;
-  color: #666;
-  margin-right: .35rem;
-  font-variant-numeric: tabular-nums;
-}
+/* === Chat === */
+.chat{ border:1px solid var(--border,#ccc); border-radius:8px; margin:1rem 0; display:flex; flex-direction:column; height:200px; background:#fff; }
+.chat-box{ font-size:.9rem; line-height:1.3; max-height:calc(15 * 1.3em); overflow-y:auto; padding:.5rem; background:#fff; border:1px solid var(--border,#e0e0e0); border-radius:.5rem; }
+.chat-line{ margin:.2rem 0; }
+.chat-input{ display:flex; border-top:1px solid var(--border,#ccc); }
+.chat-input input{ flex:1 1 auto; border:none; padding:.5rem; font-size:.9rem; }
+.chat-input input:focus{ outline:none; }
+.chat-input button{ border:none; background:#eee; padding:.5rem .9rem; cursor:pointer; font-size:.9rem; }
+.chat-input button:hover{ background:#ddd; }
+.chat-panel h3{ margin:.6rem 0; font-size:1rem; font-weight:700; }
+.chat-input-row{ display:flex; gap:.5rem; margin-top:.5rem; }
+.chat-input-row input[type="text"]{ flex:1; padding:.45rem .6rem; border:1px solid var(--border,#e0e0e0); border-radius:.45rem; }
+.chat-line{ padding:.2rem 0; line-height:1.3; word-wrap:break-word; }
+.chat-line .ts{ font-size:.8em; color:#666; margin-right:.35rem; font-variant-numeric: tabular-nums; }

@@ -1,6 +1,6 @@
 // sw.js — Minimaler Service Worker für RollTheDice (Root-Scope: /)
 
-const CACHE_VERSION = 'v20';
+const CACHE_VERSION = 'v24';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
