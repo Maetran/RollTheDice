@@ -1,9 +1,8 @@
 // static/emoji.js
-// Quick‑Reactions: Toolbar + ephemere Einblendungen
+// Quick-Reactions: Toolbar + ephemere Einblendungen
 //
 // Verwendung (in room.html / room.js):
 //   emojiUI.init({
-//     mount: document.getElementById('emojiMount'),  // Container oben im Bereich
 //     ws,                                             // WebSocket-Instanz
 //     getMyName: () => currentPlayerName || 'Gast'    // optional
 //   });
@@ -170,10 +169,9 @@
 
   // öffentliche API
   let _ws = null;
-  // Merke die einmal erzeugte Toolbar-Node dauerhaft (bleibt auch erhalten, wenn sie aus dem DOM entfernt wird)
-  let _dockEl = null;
+  let _dockEl = null; // Toolbar nur einmal erzeugen
 
-  function init({mount, ws, getMyName}={}){
+  function init({ws, getMyName}={}){
     ensureStyles();
     _ws = ws || _ws;
     const onSend = (emoji) => {
@@ -185,34 +183,27 @@
       }
     };
 
-    const host = document.getElementById('roomStatusLine') || document.body;
+    const host =
+      document.getElementById('reactionsBar') ||
+      document.getElementById('roomStatusLine') ||
+      document.querySelector('.room-header') ||
+      document.body;
 
-    // Toolbar nur EINMAL bauen, danach immer dieselbe Node wieder anhängen
     if (!_dockEl) {
-      // alte Wrapper ggf. aufräumen, aber keine .emoji-dock löschen
-      document.querySelectorAll('.emoji-toolbar').forEach(el => el.remove());
       _dockEl = makeToolbar(onSend);
     }
 
-    // offenen Zustand vor dem Re-Append sichern
     const wasOpen = _dockEl.classList.contains('open');
-
-    // (Re-)Append an Zielhost – DOM-Move, kein Neuaufbau
     host.appendChild(_dockEl);
 
-    // offenen Zustand wiederherstellen
     if (wasOpen) {
       _dockEl.classList.add('open');
       const fabEl = _dockEl.querySelector('.emoji-fab');
       if (fabEl) fabEl.setAttribute('aria-expanded','true');
     }
-
-    // Exemplarische Selbst-Preview optional (lokal)
-    // on remote kommt sowieso die Broadcast-Nachricht zurück
   }
 
   function handleRemote(payload){
-    // payload: {from_id, from, emoji, ts}
     if (!payload || !payload.emoji) return;
     showPop({from: payload.from || 'Spieler', emoji: payload.emoji});
   }

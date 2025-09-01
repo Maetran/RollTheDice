@@ -252,9 +252,9 @@ import { initChat, addChatMessage } from "./chat.js";
     wireGridClicks();
     ensureKeybindings(); // alle Hotkeys hier
 
-    // Emoji-FAB nach jedem Render wieder in die Statuszeile einsetzen
+    // Emoji-FAB nach jedem Render wieder im Header einsetzen
     if (window.emojiUI && typeof window.emojiUI.init === "function") {
-      window.emojiUI.init({ ws, getMyName: () => myName });
+      window.emojiUI.init({ mount: reactionsMount, ws, getMyName: () => myName });
     }
 
     // Suggestions (informativ)

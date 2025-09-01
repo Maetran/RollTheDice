@@ -262,3 +262,14 @@ button[disabled]{ opacity:.6; cursor:not-allowed; }
 .chat-input-row input[type="text"]{ flex:1; padding:.45rem .6rem; border:1px solid var(--border,#e0e0e0); border-radius:.45rem; }
 .chat-line{ padding:.2rem 0; line-height:1.3; word-wrap:break-word; }
 .chat-line .ts{ font-size:.8em; color:#666; margin-right:.35rem; font-variant-numeric: tabular-nums; }
+
+/* === Emoji-FAB fix: immer links oben auf Desktop === */
+@media (min-width: 768px){
+  .reactions-host{
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 3000;        /* über allem */
+  }
+  .reactions-host .emoji-dock{ margin-left: 0; }
+}
