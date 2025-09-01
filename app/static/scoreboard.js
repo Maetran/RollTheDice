@@ -263,8 +263,6 @@ function renderScoreboard(mount, sb, {
   const isTeamMode = isTeamModeSnapshot(sb);
 
   const nameEl   = document.getElementById("roomGameName");
-  const bubblesEl= document.getElementById("roomPlayerBubbles");
-  const statusEl = document.getElementById("roomStatusLine");
   const contentEl= mount || document.getElementById("scoreOut");
 
   const dice  = sb._dice  || [];
@@ -295,28 +293,6 @@ function renderScoreboard(mount, sb, {
       (String(a.id) === String(myPlayerId) ? -1 :
        (String(b.id) === String(myPlayerId) ? 1 : 0))
     );
-  }
-
-  if (bubblesEl) {
-    // Obere Bubbles werden nicht mehr angezeigt – Team/Spieler-Chips wandern in die Cards
-    bubblesEl.innerHTML = "";
-  }
-
-  if (statusEl) {
-    const turnChip = iAmTurn
-      ? `<span class="chip ok">Du bist dran</span>`
-      : `<span class="chip wait">Warte auf Gegner</span>`;
-    const annChip = ann
-      ? (iAmTurn
-          ? `<span class="chip warn">❗ nur Feld ${esc(ann)} erlaubt</span>`
-          : `<span class="chip info">❗ Gegner hat ${esc(ann)} angesagt</span>`)
-      : `<span class="chip info">❗ Nichts wurde angesagt</span>`;
-    const corrChip = correctionActive
-      ? (correctionForMe
-          ? `<span class="chip warn">Korrekturmodus aktiv (du)</span>`
-          : `<span class="chip warn">Gegner korrigiert – bitte warten</span>`)
-      : ``;
-    statusEl.innerHTML = `${turnChip} ${annChip} ${corrChip}`;
   }
 
   const requestBtnHTML = canRequestCorrection

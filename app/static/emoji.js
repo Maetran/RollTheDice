@@ -11,7 +11,7 @@
 //   //   if (data.emoji) emojiUI.handleRemote(data.emoji);
 
 (function(){
-  const QUICK_EMOJIS = ['👍','👎','🎉','😡','😜','🤞','🙏','🖕','💩','🤮'];
+  const QUICK_EMOJIS = ['👍','👎','🎉','😡','😜','🤞','🙏','🖕','💩','🤮','FEIG!'];
 
   function ensureStyles(){
     if (document.getElementById('emoji-ui-css')) return;

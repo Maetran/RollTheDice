@@ -23,6 +23,7 @@ GAME_TIMEOUT = timedelta(minutes=10)
 def touch(g):
     """Aktualisiert die letzte Aktivität des Spiels."""
     g["_last_activity"] = datetime.now(timezone.utc)
+    g["_updated_at"] = g["_last_activity"].isoformat()
 
 def check_timeout_and_abort(g) -> bool:
     """Falls ein Spiel zu lange inaktiv ist, als abgebrochen markieren.
@@ -150,7 +151,11 @@ def new_game(gid: str, name: str, mode) -> GameDict:
         "_started": False,
         "_finished": False,
 
+        "_started_at": None,
+        "_updated_at": datetime.now(timezone.utc).isoformat(),
+
         "_players": [],                        # [{id,name,ws}]
+        "_spectators": [],                     # [{id,name,ws}]
         "_turn": None,                         # {"player_id": ...}
         "_dice": [0, 0, 0, 0, 0],
         "_holds": [False] * 5,
@@ -495,6 +500,8 @@ def snapshot(g: GameDict) -> Dict[str, Any]:
         "_expected": g["_expected"],
         "_started": g["_started"],
         "_finished": g["_finished"],
+        "_started_at": g.get("_started_at"),
+        "_updated_at": g.get("_updated_at"),
         "_aborted": g.get("_aborted", False),
         "locked": bool(g.get("_passphrase")),  # neu: passwortgeschütztes Spiel kennzeichnen
         "_turn": g["_turn"],
@@ -541,7 +548,8 @@ def snapshot(g: GameDict) -> Dict[str, Any]:
     }
 
 async def broadcast(g: GameDict, msg: Dict[str, Any]) -> None:
-    for p in g["_players"]:
+    recipients = list(g.get("_players", [])) + list(g.get("_spectators", []))
+    for p in recipients:
         ws = p.get("ws")
         if not ws:
             continue
@@ -608,10 +616,52 @@ def api_games():
                 "aborted": g.get("_aborted", False),
                 "locked": bool(g.get("_passphrase")),  # <— neu
                 "waiting": waiting_names,
+                "started_at": g.get("_started_at"),
+                "updated_at": g.get("_updated_at"),
+                "progress": (_progress_for_game(g) if g.get("_started") and not g.get("_finished") and not g.get("_aborted", False) else []),
             })
         except Exception:
             continue
     return {"games": lst}
+# -----------------------------
+# Leaderboard/Stats Hilfsfunktionen
+# -----------------------------
+def _progress_for_game(g: GameDict) -> list[dict]:
+    """Für laufende Spiele: pro Spieler (oder Team im 2v2) Name, befüllte Felder und aktuelle Punkte."""
+    out = []
+    if is_team_mode(g):
+        for tid in ("A", "B"):
+            team = g.get("_teams", {}).get(tid, {})
+            members = team.get("members", [])
+            names = []
+            for pid in members:
+                for p in g.get("_players", []):
+                    if p.get("id") == pid:
+                        names.append(p.get("name", "Player"))
+                        break
+            board = g.get("_scoreboards_by_team", {}).get(tid, {}) or {}
+            rows = _rows_from_scoreboard(board)
+            points = int(compute_overall(rows)["overall"]["overall_total"]) if rows else 0
+            out.append({
+                "name": team.get("name", f"Team {tid}"),
+                "members": names,
+                "filled": len(board),
+                "of": WRITABLE_CELLS_PER_PLAYER,
+                "points": points,
+            })
+    else:
+        for p in g.get("_players", []):
+            pid = p.get("id")
+            board = g.get("_scoreboards", {}).get(pid, {}) or {}
+            rows = _rows_from_scoreboard(board)
+            points = int(compute_overall(rows)["overall"]["overall_total"]) if rows else 0
+            out.append({
+                "name": p.get("name", "Player"),
+                "filled": len(board),
+                "of": WRITABLE_CELLS_PER_PLAYER,
+                "points": points,
+            })
+    return out
 
 @app.get("/api/games/{game_id}")
 def game_info(game_id: str,passphrase: str | None = Query(default=None, alias="pass"),check: int = Query(default=0)):
@@ -890,6 +940,8 @@ async def ws_game(websocket: WebSocket, game_id: str):
 
     g = games[game_id]
     player_id: str | None = None
+    spectator_id: str | None = None   # NEU
+    is_spectator: bool = False        # NEU
 
     # Direkt initialen Snapshot senden
     await websocket.send_json({"scoreboard": snapshot(g)})
@@ -902,6 +954,11 @@ async def ws_game(websocket: WebSocket, game_id: str):
             # Vor jeder Aktion Timeout prüfen
             if check_timeout_and_abort(g):
                 await broadcast(g, {"scoreboard": snapshot(g)})
+                continue
+
+            # NEU: Spectator-Gate – nur Chat & Emoji sind erlaubt
+            if is_spectator and act not in {"send_emoji", "chat_message", "rejoin_game"}:
+                await websocket.send_json({"error": "Nur fuer Spieler"})
                 continue
 
             if act == "join_game":
@@ -925,17 +982,47 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     assign_team_for_join(g, player_id)
                 if len(g["_players"]) == g["_expected"] and not g["_started"]:
                     g["_started"] = True
+                    g["_started_at"] = datetime.now(timezone.utc).isoformat()
                     g["_turn"] = {"player_id": g["_players"][0]["id"], "roll_index": 0, "first4oak_roll": None}
                     _set_roll_cap_for_current_turn(g)
+
                 await websocket.send_json({"player_id": player_id})
                 touch(g)
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
+            elif act == "spectate_game":
+                # Passphrase pruefen (gleiches Verhalten wie bei join_game)
+                provided_pass = (data.get("pass") or data.get("passphrase") or "").strip()
+                expected_pass = (g.get("_passphrase") or "")
+                if expected_pass and provided_pass != expected_pass:
+                    try:
+                        await websocket.send_json({"error": "Falsche Passphrase"})
+                    except Exception:
+                        pass
+                    await websocket.close(code=1008)
+                    break
+
+                # Spectator registrieren (zaehlt nicht als Spieler)
+                spectator_id = str(uuid.uuid4())[:6]
+                is_spectator = True
+                spec = {"id": spectator_id, "name": data.get("name") or "Gast", "ws": websocket}
+                g.setdefault("_spectators", []).append(spec)
+
+                # Spectator-Antwort + Info an Spieler
+                await websocket.send_json({"spectator_id": spectator_id, "spectator": True})
+                touch(g)
+                try:
+                    await broadcast(g, {"spectator": {"event": "joined", "name": spec["name"]}})
+                except Exception:
+                    pass
+                await broadcast(g, {"scoreboard": snapshot(g)})
+
             elif act == "rejoin_game":
                 player_id = data.get("player_id")
-                for p in g["_players"]:
-                    if p["id"] == player_id:
+                for p in g.get("_players", []):
+                    if p.get("id") == player_id:
                         p["ws"] = websocket
+                        break
                 await websocket.send_json({"player_id": player_id})
                 touch(g)
                 await websocket.send_json({"scoreboard": snapshot(g)})
@@ -1320,19 +1407,24 @@ async def ws_game(websocket: WebSocket, game_id: str):
 
             elif act == "send_emoji":
                 # Quick-Reaction-Emoji an alle senden (ephemer, keine Persistenz)
-                if not player_id:
-                    await websocket.send_json({"error": "Nicht beigetreten"})
-                    continue
-
                 emoji = str(data.get("emoji") or "").strip()
                 if not emoji:
                     await websocket.send_json({"error": "Kein Emoji"})
                     continue
 
-                sender_name = next((p.get("name", "Gast") for p in g["_players"] if p.get("id") == player_id), "Gast")
+                if player_id:
+                    sender_name = next((p.get("name", "Gast") for p in g.get("_players", []) if p.get("id") == player_id), "Gast")
+                    from_id = player_id
+                elif spectator_id:
+                    sender_name = next((s.get("name", "Gast") for s in g.get("_spectators", []) if s.get("id") == spectator_id), "Gast")
+                    from_id = f"S-{spectator_id}"
+                else:
+                    await websocket.send_json({"error": "Nicht beigetreten"})
+                    continue
+
                 payload = {
                     "emoji": {
-                        "from_id": player_id,
+                        "from_id": from_id,
                         "from": sender_name,
                         "emoji": emoji,
                         "ts": datetime.now(timezone.utc).isoformat()
@@ -1347,9 +1439,11 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 if not txt:
                     continue
                 # Absendername auflösen
-                try:
-                    sender = next((p.get("name", "Player") for p in g["_players"] if p.get("id") == player_id), "Player")
-                except Exception:
+                if player_id:
+                    sender = next((p.get("name", "Player") for p in g.get("_players", []) if p.get("id") == player_id), "Player")
+                elif spectator_id:
+                    sender = next((s.get("name", "Zuschauer") for s in g.get("_spectators", []) if s.get("id") == spectator_id), "Zuschauer")
+                else:
                     sender = "Player"
                 # Sanfte Längenbegrenzung
                 if len(txt) > 400:
@@ -1372,12 +1466,19 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await websocket.send_json({"error": f"Unbekannte Aktion: {act}"})
 
     except WebSocketDisconnect:
-        # Spieler trennt Verbindung: WS-Referenz entfernen (Rejoin möglich)
-        if game_id in games and player_id:
+        # Verbindung trennt: WS-Referenz entfernen (Rejoin moeglich)
+        if game_id in games:
             g = games[game_id]
-            for p in g["_players"]:
-                if p.get("id") == player_id:
-                    p["ws"] = None
+            if player_id:
+                for p in g.get("_players", []):
+                    if p.get("id") == player_id:
+                        p["ws"] = None
+                        break
+            elif spectator_id:
+                for s in g.get("_spectators", []):
+                    if s.get("id") == spectator_id:
+                        s["ws"] = None
+                        break
 
 # -----------------------------
 # Run
