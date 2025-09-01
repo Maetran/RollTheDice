@@ -15,14 +15,6 @@
     }
     .room-header .spacer{ flex:1 1 auto; }
     #roomGameName{ margin:0; font-size:1.28rem; font-weight:800; letter-spacing:.2px; }
-    #roomPlayerBubbles{ display:inline-flex; gap:.35rem; flex-wrap:wrap; }
-
-    .room-statusline{
-      display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
-      margin:0 auto .6rem;
-      max-width: calc(2 * var(--card-w) + var(--cards-gap));
-      padding:0 1rem;
-    }
 
     /* ScoreOut NICHT mehr links verschieben – zentriert lassen */
     #scoreOut{ margin:0 auto 1rem; position:relative; }
@@ -37,14 +29,10 @@
   <!-- Header -->
   <div class="room-header">
     <h1 id="roomGameName"></h1>
-    <div id="roomPlayerBubbles"></div>
     <div class="spacer"></div>
     <a href="rules.html" target="_blank" rel="noopener" class="small buttonlike">Spielregeln</a>
     <button id="backToLobbyBtn" class="small" onclick="location.href='/static/index.html'">Zurück zur Lobby</button>
   </div>
-
-  <!-- Statuszeile -->
-  <div id="roomStatusLine" class="room-statusline"></div>
 
   <!-- Inhalt aus scoreboard.js (Würfel, Buttons, Tabellen) -->
   <div id="scoreOut"></div>

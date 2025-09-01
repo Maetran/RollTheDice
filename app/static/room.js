@@ -13,7 +13,8 @@ import { initChat, addChatMessage } from "./chat.js";
     return {
       game_id: u.searchParams.get("game_id") || "",
       name:   (u.searchParams.get("name") || "Gast").trim() || "Gast",
-      pass:   u.searchParams.get("pass") || ""
+      pass:   u.searchParams.get("pass") || "",
+      spectator: u.searchParams.get("spectator") === "1"
     };
   }
 
@@ -71,6 +72,7 @@ import { initChat, addChatMessage } from "./chat.js";
 
   // ---------- State ----------
   const qs = getQS();
+  const IS_SPECTATOR = !!qs.spectator;
   if (!qs.game_id) { alert("Fehlende game_id. Zur Lobby."); location.href = "/"; return; }
 
   const PID_KEY = `wuerfler_pid_${qs.game_id}`;
@@ -102,8 +104,13 @@ import { initChat, addChatMessage } from "./chat.js";
 
     ws.addEventListener("open", () => {
       initChat(ws, { meName: myName });
-      if (myId) safeSend(ws, { action: "rejoin_game", player_id: myId });
-      else      safeSend(ws, { action: "join_game", name: myName, pass: qs.pass });
+      if (myId) {
+        safeSend(ws, { action: "rejoin_game", player_id: myId });
+      } else if (IS_SPECTATOR) {
+        safeSend(ws, { action: "spectate_game", name: myName, pass: qs.pass });
+      } else {
+        safeSend(ws, { action: "join_game", name: myName, pass: qs.pass });
+      }
     });
 
     ws.addEventListener("message", (ev) => {
@@ -120,7 +127,7 @@ import { initChat, addChatMessage } from "./chat.js";
         console.warn("Serverfehler:", msg.error);
         if (/passphrase/i.test(msg.error) || /pass/i.test(msg.error)) {
           alert("Beitritt abgelehnt: " + msg.error);
-          location.href = "/static/index.html";
+          location.href = "/";
           return;
         }
       }
@@ -185,7 +192,7 @@ import { initChat, addChatMessage } from "./chat.js";
               alert("Spiel beendet.");
             }
           } catch {}
-          setTimeout(() => { location.href = "/static/index.html"; }, 600);
+          setTimeout(() => { location.href = "/"; }, 600);
           return;
         }
       }
@@ -204,6 +211,11 @@ import { initChat, addChatMessage } from "./chat.js";
         addChatMessage(msg.sender, msg.message);
       } else if (msg.kind === "chat" && msg.payload?.text) {
         addChatMessage(msg.payload.sender || "???", msg.payload.text);
+      }
+
+      // Zuschauer-Toast: kurze Einblendung an der Emoji-Leiste
+      if (msg.spectator && msg.spectator.event === "joined" && typeof msg.spectator.name === "string") {
+        showSpectatorToast(msg.spectator.name);
       }
 
       if (Array.isArray(msg.chat_history)) {
@@ -404,6 +416,14 @@ import { initChat, addChatMessage } from "./chat.js";
 
   // --- DiceBar: Hold/Unhold, Roll, Correction-Request, ESC-Cancel ---
   function wireDiceBar() {
+    if (IS_SPECTATOR) {
+      const rollBtn0 = $("#rollBtnInline", mount);
+      if (rollBtn0) { rollBtn0.disabled = true; rollBtn0.title = "Zuschauer können nicht würfeln"; }
+      $$("#diceBar .die", mount).forEach(btn => { btn.style.pointerEvents = "none"; btn.title = "Nur Spieler"; btn.classList.remove("shaking"); });
+      const reqBtn0 = $("#requestCorrectionBtn", mount);
+      if (reqBtn0) { reqBtn0.disabled = true; reqBtn0.title = "Nur Spieler"; }
+      return;
+    }
     const rollBtn = $("#rollBtnInline", mount);
 
     if (rollBtn && !rollBtn._shakeBound) {
@@ -456,6 +476,13 @@ import { initChat, addChatMessage } from "./chat.js";
 
   // --- Ansage (❗) ---
   function wireAnnounceUI() {
+    if (IS_SPECTATOR) {
+      const sel0 = $("#announceSelect", mount);
+      if (sel0) { sel0.disabled = true; sel0.title = "Nur Spieler"; }
+      const unbtn0 = $("#unannounceBtn", mount);
+      if (unbtn0) { unbtn0.disabled = true; unbtn0.title = "Nur Spieler"; }
+      return;
+    }
     const sel   = $("#announceSelect", mount);
     const unbtn = $("#unannounceBtn", mount);
 
@@ -484,6 +511,7 @@ import { initChat, addChatMessage } from "./chat.js";
     mount._gridBound = true;
 
     mount.addEventListener("click", (e) => {
+      if (IS_SPECTATOR) return;
       const td = e.target.closest("td.cell.clickable");
       if (!td) return;
       const row   = Number(td.getAttribute("data-row"));
@@ -618,6 +646,7 @@ import { initChat, addChatMessage } from "./chat.js";
 
     document.addEventListener("keydown", (e) => {
       const key = e.key.toLowerCase();
+      if (IS_SPECTATOR) return;
 
       // Korrektur abbrechen (ESC) – bereits global in wireDiceBar gesetzt; hier nur Guard
       if (key === "escape") {
@@ -677,6 +706,25 @@ import { initChat, addChatMessage } from "./chat.js";
   }
 
   // ---------- Utils ----------
+  function showSpectatorToast(name){
+    try {
+      const host = reactionsMount || document.body;
+      const el = document.createElement("div");
+      el.className = "spectator-toast";
+      el.textContent = `Zuschauer verbunden: ${name}`;
+      el.style.display = "inline-block";
+      el.style.marginLeft = ".5rem";
+      el.style.padding = ".35rem .55rem";
+      el.style.borderRadius = "8px";
+      el.style.background = "rgba(0,0,0,.85)";
+      el.style.color = "#fff";
+      el.style.fontSize = ".92rem";
+      el.style.pointerEvents = "none";
+      host.appendChild(el);
+      setTimeout(() => { el.style.transition = "opacity .35s"; el.style.opacity = "0"; setTimeout(() => el.remove(), 380); }, 1400);
+    } catch {}
+  }
+
   function esc(s){
     return String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
   }

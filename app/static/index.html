@@ -88,6 +88,16 @@
       <div id="gamesList" class="games"></div>
     </div>
 
+    <!-- 3b) Laufende Spiele -->
+    <div class="card">
+      <h2>Laufende Spiele</h2>
+      <div class="row" style="margin-bottom:.5rem;">
+        <button id="refreshRunningBtn">Aktualisieren</button>
+        <span class="muted small">Klicke auf „Zuschauen“, um dem laufenden Spiel beizutreten (ohne Aktionen).</span>
+      </div>
+      <div id="runningList" class="games"></div>
+    </div>
+
     <!-- 4) Leaderboard -->
     <h2>Leaderboard</h2>
     <div class="leaderboards" style="display:flex; gap:1.2rem; flex-wrap:wrap;">
@@ -134,6 +144,9 @@
     const createErr  = document.getElementById('createErr');
     const listEl     = document.getElementById('gamesList');
     const refreshBtn = document.getElementById('refreshBtn');
+    // NEU: Laufende Spiele
+    const runningEl  = document.getElementById('runningList');
+    const refreshRunningBtn = document.getElementById('refreshRunningBtn');
     const recentTable = document.querySelector("#recentTable tbody");
     const alltimeTable = document.querySelector("#alltimeTable tbody");
     const gamesPlayedEl = document.getElementById("gamesPlayed");
@@ -152,21 +165,40 @@
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         const games = Array.isArray(data.games) ? data.games : [];
-        renderList(games.filter(g => !g.started && !g.finished));
+
+        // Offene = nicht gestartet & nicht fertig
+        const openGames = games.filter(g => !g.started && !g.finished);
+
+        // Laufende = gestartet & nicht fertig & nicht abgebrochen
+        const runningGames = games
+          .filter(g => g.started && !g.finished && !g.aborted)
+          // Sortierung: updated_at (fallback started_at) absteigend
+          .sort((a, b) => {
+            const ta = Date.parse(a.updated_at || a.started_at || 0);
+            const tb = Date.parse(b.updated_at || b.started_at || 0);
+            return tb - ta;
+          });
+
+        renderList(openGames);
+        renderRunningList(runningGames);
       } catch (e) {
         listEl.innerHTML = `<div class="muted">Konnte Spiele nicht laden: ${escapeHtml(String(e.message||e))}</div>`;
+        if (runningEl) {
+          runningEl.innerHTML = `<div class="muted">Konnte laufende Spiele nicht laden.</div>`;
+        }
       }
     }
 
     function renderList(games) {
+      if (!listEl) return;
       if (!games.length) {
         listEl.innerHTML = `<div class="muted">Keine offenen Spiele. Erstelle ein neues!</div>`;
         return;
       }
 
       listEl.innerHTML = games.map(g => {
-        const joined   = (g.joined ?? g.players ?? 0);
-        const expected = (g.expected ?? g.capacity ?? g.mode ?? '?');
+        const joined   = (g.players ?? 0);
+        const expected = (g.expected ?? g.mode ?? '?');
         const gid      = g.id || '';
         const status   = g.started ? 'läuft' : (g.finished ? 'fertig' : 'wartet');
         const disabled = (joined >= expected) || g.started || g.finished ? 'disabled' : '';
@@ -200,6 +232,93 @@
           </div>
         `;
       }).join('');
+    }
+
+    function renderRunningList(games) {
+      if (!runningEl) return;
+      if (!games.length) {
+        runningEl.innerHTML = `<div class="muted">Aktuell keine laufenden Spiele.</div>`;
+        return;
+      }
+
+      runningEl.innerHTML = games.map(g => {
+        const gid = g.id || '';
+        const modeTxt  = (g.mode === '2v2') ? '2 vs 2' : `${g.mode || g.expected}`;
+        const waiting = Array.isArray(g.waiting) ? g.waiting : [];
+        const playersLine = waiting.length
+          ? waiting.map(n => `<span class="badge">${escapeHtml(n)}</span>`).join(' ')
+          : `<span class="muted small">Spieler unbekannt</span>`;
+
+        // Fortschritt (vom Server): pro Spieler/Team
+        const progress = Array.isArray(g.progress) ? g.progress : [];
+        const progRows = progress.map(p => {
+          const who = p.members && p.members.length
+            ? `${escapeHtml(p.name)} <span class="muted small">(${p.members.map(escapeHtml).join(', ')})</span>`
+            : escapeHtml(p.name);
+          return `
+            <div class="muted small" style="margin-top:.15rem;">
+              <b>${who}</b> — Felder <b>${p.filled}/${p.of || 48}</b> • Punkte <b>${p.points}</b>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="game-row">
+            <div class="meta">
+              <div class="name">
+                ${escapeHtml(g.name || '(ohne Titel)')}
+                ${g.locked ? `<span style="color:#b71c1c; font-weight:600; margin-left:.4rem;">Passwortgeschützt</span>` : ""}
+              </div>
+              <div class="sub">
+                Modus: ${modeTxt} Spieler • Gestartet: ${formatDateTime(g.started_at)}
+              </div>
+              <div class="sub" style="margin-top:.25rem;">
+                Spieler: ${playersLine}
+              </div>
+              ${progRows ? `<div class="sub" style="margin-top:.25rem;">${progRows}</div>` : ""}
+            </div>
+            <div class="actions">
+              <button class="spectateBtn"
+                data-id="${escapeAttr(gid)}"
+                data-pass="${g.locked ? '1' : '0'}">Zuschauen</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Klick-Handler: Zuschauen (laufende Spiele)
+    if (runningEl) {
+      runningEl.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.spectateBtn');
+        if (!btn) return;
+        const gid = btn.dataset.id;
+        const needsPass = btn.dataset.pass === "1";
+        const pname = (nameInput.value || 'Gast').trim() || 'Gast';
+        if (!gid) { alert('Ungültige Spiel-ID. Bitte aktualisieren.'); return; }
+        try {
+          const chk = await fetch(`/api/games/${encodeURIComponent(gid)}`, {cache:'no-store'}).then(r=>r.ok?r.json():{exists:false});
+          if (chk && chk.exists === false) { alert('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
+        } catch {}
+        let pass = "";
+        if (needsPass) {
+          pass = (prompt("Dieses Spiel ist passwortgeschützt. Bitte Passwort eingeben:") || "").trim();
+          // Preflight
+          try {
+            const resp = await fetch(`/api/games/${encodeURIComponent(gid)}?check=1&pass=${encodeURIComponent(pass)}`, { cache: 'no-store' });
+            if (!resp.ok) {
+              alert("Falsche Passphrase – bitte erneut versuchen.");
+              return;
+            }
+          } catch (err) {
+            alert("Fehler beim Prüfen der Passphrase.");
+            return;
+          }
+        }
+        // spectator=1 kennzeichnet den Zuschauermodus für room.html
+        const qs = new URLSearchParams({ game_id: gid, name: pname, pass, spectator: "1" }).toString();
+        location.href = `/static/room.html?${qs}`;
+      });
     }
 
     // Beitreten
@@ -288,13 +407,29 @@
     }
 
     // Refresh Buttons
-    refreshBtn.addEventListener('click', fetchGames);
+    refreshBtn.addEventListener("click", fetchGames);
+    if (refreshRunningBtn) {
+      refreshRunningBtn.addEventListener("click", fetchGames);
+    }
 
     // initial
     fetchGames();
     loadLeaderboard();
     setInterval(fetchGames, 4000);
     setInterval(loadLeaderboard, 10000);
+
+    function formatDateTime(s) {
+      if (!s) return "–";
+      const d = new Date(s);
+      if (isNaN(d)) return s; // Fallback: ungeparst anzeigen
+      const pad = n => String(n).padStart(2, "0");
+      const day = pad(d.getDate());
+      const month = pad(d.getMonth() + 1);
+      const year = d.getFullYear();
+      const hours = pad(d.getHours());
+      const mins = pad(d.getMinutes());
+      return `${day}.${month}.${year}, ${hours}:${mins}`;
+    }
 
     function escapeHtml(s){
       return String(s).replace(/[&<>"']/g, c => ({
