@@ -58,7 +58,8 @@ import { initChat, addChatMessage } from "./chat.js";
       return 0;
     }
     if (fieldKey === "poker") {
-      for (const [face, n] of Object.entries(cnt)) if (n === 4) return 50 + 4*parseInt(face,10);
+      // 4 ODER 5 gleiche zählen als Poker (Client-Logik an Server angleichen)
+      for (const [face, n] of Object.entries(cnt)) if (n >= 4) return 50 + 4*parseInt(face,10);
       return 0;
     }
     if (fieldKey === "60") {
@@ -421,7 +422,16 @@ import { initChat, addChatMessage } from "./chat.js";
       btn._holdBound = true;
       btn.addEventListener("click", () => {
         btn.classList.remove("shaking");
+
+        // Blockiere Hold für "leere" Würfel (Wert 0)
         const i = Number(btn.dataset.i);
+        const val = Array.isArray(sb?._dice) ? Number(sb._dice[i] || 0) : 0;
+        if (!val) {
+          // Sicherheitsnetz: ggf. versehentlich gesetzte UI-Zustaende entfernen
+          btn.classList.remove("held");
+          return;
+        }
+
         const holds = $$("#diceBar .die", mount).map(b => b.classList.contains("held"));
         holds[i] = !holds[i];
         safeSend(ws, { action: "set_hold", holds });
