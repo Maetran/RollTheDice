@@ -132,20 +132,6 @@
       fab.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
 
-    // Outside-Click schliesst das Panel wieder (nur 1× binden)
-    if (!document._emojiOutsideBound) {
-      document.addEventListener('click', (ev) => {
-        const anyDock = document.querySelector('.emoji-dock');
-        if (!anyDock) return;
-        if (!anyDock.contains(ev.target) && anyDock.classList.contains('open')) {
-          anyDock.classList.remove('open');
-          const fabEl = anyDock.querySelector('.emoji-fab');
-          if (fabEl) fabEl.setAttribute('aria-expanded', 'false');
-        }
-      });
-      document._emojiOutsideBound = true;
-    }
-
     dock.appendChild(fab);
     dock.appendChild(panel);
     return dock;
@@ -184,6 +170,9 @@
 
   // öffentliche API
   let _ws = null;
+  // Merke die einmal erzeugte Toolbar-Node dauerhaft (bleibt auch erhalten, wenn sie aus dem DOM entfernt wird)
+  let _dockEl = null;
+
   function init({mount, ws, getMyName}={}){
     ensureStyles();
     _ws = ws || _ws;
@@ -196,10 +185,27 @@
       }
     };
 
-    // Toolbar bevorzugt in die Statuszeile (#roomStatusLine) hängen
-    document.querySelectorAll('.emoji-dock, .emoji-toolbar').forEach(el => el.remove());
     const host = document.getElementById('roomStatusLine') || document.body;
-    host.appendChild(makeToolbar(onSend));
+
+    // Toolbar nur EINMAL bauen, danach immer dieselbe Node wieder anhängen
+    if (!_dockEl) {
+      // alte Wrapper ggf. aufräumen, aber keine .emoji-dock löschen
+      document.querySelectorAll('.emoji-toolbar').forEach(el => el.remove());
+      _dockEl = makeToolbar(onSend);
+    }
+
+    // offenen Zustand vor dem Re-Append sichern
+    const wasOpen = _dockEl.classList.contains('open');
+
+    // (Re-)Append an Zielhost – DOM-Move, kein Neuaufbau
+    host.appendChild(_dockEl);
+
+    // offenen Zustand wiederherstellen
+    if (wasOpen) {
+      _dockEl.classList.add('open');
+      const fabEl = _dockEl.querySelector('.emoji-fab');
+      if (fabEl) fabEl.setAttribute('aria-expanded','true');
+    }
 
     // Exemplarische Selbst-Preview optional (lokal)
     // on remote kommt sowieso die Broadcast-Nachricht zurück
