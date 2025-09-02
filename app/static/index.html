@@ -97,12 +97,11 @@
         <table id="recentTable">
           <thead>
             <tr>
+              <th>Datum</th>
+              <th>Name</th>
               <th>Punkte</th>
-              <th>Sieger</th>
-              <th>Gegner</th>
-              <th>Gegner Punkte</th>
-              <th>Diff</th>
-              <th>Spiel</th>
+              <th>Modus</th>
+              <th>Ansicht</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -114,12 +113,11 @@
         <table id="alltimeTable">
           <thead>
             <tr>
+              <th>Datum</th>
+              <th>Name</th>
               <th>Punkte</th>
-              <th>Sieger</th>
-              <th>Gegner</th>
-              <th>Gegner Punkte</th>
-              <th>Diff</th>
-              <th>Spiel</th>
+              <th>Modus</th>
+              <th>Ansicht</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -372,34 +370,92 @@
 
     // Leaderboard laden
     async function loadLeaderboard() {
+      // Local helpers
+      function fmtMode(mode){
+        if (!mode) return "—";
+        const m = String(mode).toLowerCase();
+        if (m === "2v2") return "2 v 2";
+        const n = parseInt(m, 10);
+        if (!Number.isFinite(n) || n < 1) return "—";
+        return n === 1 ? "1 Spieler" : `${n} Spieler`;
+      }
+      function fmtRelative(iso){
+        try{
+          if (!iso) return "—";
+          const then = new Date(iso);
+          const now  = new Date();
+          const diff = now - then;
+          const s = Math.floor(diff/1000), m=Math.floor(s/60), h=Math.floor(m/60), d=Math.floor(h/24);
+          if (d > 0)  return d === 1 ? "vor 1 Tag" : `vor ${d} Tagen`;
+          if (h > 0)  return h === 1 ? "vor 1 Stunde" : `vor ${h} Stunden`;
+          if (m > 0)  return m === 1 ? "vor 1 Minute" : `vor ${m} Minuten`;
+          return "gerade eben";
+        }catch{ return "—"; }
+      }
+      function fmtDMY(iso){
+        try{
+          if (!iso) return "—";
+          const d = new Date(iso);
+          if (isNaN(d)) return "—";
+          const pad = n => String(n).padStart(2,"0");
+          return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${String(d.getFullYear()).slice(-2)}`;
+        }catch{ return "—"; }
+      }
+      function viewLink(gameId){
+        if (!gameId) return "—";
+        const url = `/static/game_view.html?id=${encodeURIComponent(gameId)}`;
+        return `<a href="${url}" class="small">Spielansicht</a>`;
+      }
+
       try {
         const res = await fetch("/api/leaderboard", {cache:"no-store"});
         if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
         gamesPlayedEl.textContent = (data.stats && data.stats.games_played) ?? 0;
 
-        function fillTable(tbody, entries) {
-          tbody.innerHTML = "";
-          entries.forEach(e => {
-            const tr = document.createElement("tr");
-            const linkCell = e.game_id
-              ? `<a href="/static/game_view.html?id=${encodeURIComponent(e.game_id)}" class="small">Ansehen</a>`
-              : "–";
-            tr.innerHTML = `
-              <td>${e.points}</td>
-              <td>${escapeHtml(e.name)}</td>
-              <td>${escapeHtml(e.opponent)}</td>
-              <td>${e.opp_points}</td>
-              <td>${e.diff}</td>
-              <td>${linkCell}</td>
-            `;
-            tbody.appendChild(tr);
-          });
+        // RECENT: Datum relativ
+        {
+          const tbody = recentTable;
+          const list = Array.isArray(data.recent) ? data.recent : [];
+          tbody.innerHTML = list.map(e => {
+            const dateRel = fmtRelative(e.finished_at || e.ts);
+            const name    = escapeHtml(e.name ?? "—");
+            const pts     = e.points ?? "—";
+            const modeLbl = fmtMode(e.mode);
+            const link    = viewLink(e.game_id);
+            return `<tr>
+              <td>${dateRel}</td>
+              <td>${name}</td>
+              <td>${pts}</td>
+              <td>${modeLbl}</td>
+              <td>${link}</td>
+            </tr>`;
+          }).join("") || `<tr><td colspan="5" class="muted">Keine Einträge</td></tr>`;
         }
-        fillTable(recentTable, data.recent || []);
-        fillTable(alltimeTable, data.alltime || []);
+
+        // ALLTIME: Datum DD.MM.YY
+        {
+          const tbody = alltimeTable;
+          const list = Array.isArray(data.alltime) ? data.alltime : [];
+          tbody.innerHTML = list.map(e => {
+            const dateDMY = fmtDMY(e.finished_at || e.ts);
+            const name    = escapeHtml(e.name ?? "—");
+            const pts     = e.points ?? "—";
+            const modeLbl = fmtMode(e.mode);
+            const link    = viewLink(e.game_id);
+            return `<tr>
+              <td>${dateDMY}</td>
+              <td>${name}</td>
+              <td>${pts}</td>
+              <td>${modeLbl}</td>
+              <td>${link}</td>
+            </tr>`;
+          }).join("") || `<tr><td colspan="5" class="muted">Keine Einträge</td></tr>`;
+        }
       } catch (e) {
         console.warn("Leaderboard konnte nicht geladen werden", e);
+        if (recentTable)  recentTable.innerHTML  = `<tr><td colspan="5" class="muted">Fehler beim Laden</td></tr>`;
+        if (alltimeTable) alltimeTable.innerHTML = `<tr><td colspan="5" class="muted">Fehler beim Laden</td></tr>`;
       }
     }
 
