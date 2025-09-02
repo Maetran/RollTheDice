@@ -1514,12 +1514,25 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 touch(g)
 
             elif act == "end_game":
+                # Optional: Initiator-Name aus Payload oder aus Registry ableiten
+                by_name = (data.get("by") or "").strip()
+                if not by_name:
+                    try:
+                        by_name = next(
+                            (p.get("name", "Player") for p in g.get("_players", []) if p.get("id") == player_id),
+                            "") or "Player"
+                    except Exception:
+                        by_name = "Player"
+                # Zuerst eine Notice an alle, dann Snapshot mit Abbruchstatus
+                try:
+                    await broadcast(g, {"notice": {"type": "ended", "by": by_name}})
+                except Exception:
+                    pass
                 # Spiel als abgebrochen markieren (kein Leaderboard-Eintrag, kein Completed-Game)
                 g["_aborted"] = True
-                # keine Ergebnisse loggen
                 g["_results"] = None
                 g["_started"] = False
-                g["_finished"] = True  # clientseitig für sauberes Beenden/Redirect verwendet
+                g["_finished"] = True  # clientseitig für sauberes Beenden/Redirect
                 touch(g)
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
@@ -1536,10 +1549,19 @@ async def ws_game(websocket: WebSocket, game_id: str):
                         p["ws"] = None
                         break
             elif spectator_id:
-                for s in g.get("_spectators", []):
+                # Zuschauer austragen und allen Bescheid geben
+                specs = g.get("_spectators", [])
+                left_name = None
+                for i, s in enumerate(list(specs)):
                     if s.get("id") == spectator_id:
-                        s["ws"] = None
+                        left_name = s.get("name")
+                        specs.pop(i)  # komplett entfernen
                         break
+                try:
+                    if left_name:
+                        await broadcast(g, {"spectator": {"event": "left", "name": left_name}})
+                except Exception:
+                    pass
 
 # -----------------------------
 # Run

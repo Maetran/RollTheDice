@@ -100,6 +100,23 @@ import { initChat, addChatMessage } from "./chat.js";
 
   // ---------- WebSocket ----------
   function connect() {
+      // --- "Zurück zur Lobby" mit Confirm + Abbruch für alle ---
+    (function bindBackToLobby() {
+      const btn = document.getElementById("backToLobbyBtn");
+      if (!btn || btn._bound) return;
+      btn._bound = true;
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (IS_SPECTATOR) { location.href = "/"; return; }  // Zuschauer: nur verlassen
+        const who = (myName || "Spieler").trim();
+        const ok = confirm("Willst du das Spiel wirklich abbrechen? Alle werden in die Lobby geschickt.");
+        if (!ok) return;
+        if (!window._abortRequested) {
+          window._abortRequested = true;
+          safeSend(ws, { action: "end_game", by: who });
+        }
+      });
+    })();
     ws = new WebSocket(wsURL(qs.game_id));
 
     ws.addEventListener("open", () => {
@@ -115,6 +132,17 @@ import { initChat, addChatMessage } from "./chat.js";
 
     ws.addEventListener("message", (ev) => {
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+
+      // Abbruch-Notice (kommt vor dem Snapshot)
+      if (msg.notice && msg.notice.type === "ended") {
+        window._lastEndedBy = msg.notice.by || null;
+        // Sofort informieren (nur einmal)
+        if (!window._abortAlerted) {
+          alert(`${window._lastEndedBy || "Ein Spieler"} hat das Spiel abgebrochen.`);
+          window._abortAlerted = true;
+        }
+        // kein return nötig; der folgende Snapshot erledigt den Redirect
+      }
 
       // Join-Response
       if (msg.player_id && !myId) {
@@ -139,20 +167,29 @@ import { initChat, addChatMessage } from "./chat.js";
 
         // Spielende
         if (sb && sb._finished) {
+          // --- Sonderfall: Abbruch ---
+          if (sb._aborted) {
+            // Falls Notice schon gezeigt wurde, nicht doppelt alerten.
+            if (!window._abortAlerted) {
+              const by = window._lastEndedBy;
+              alert(`Spiel abgebrochen${by ? ` – ${by} hat das Spiel beendet.` : ""}`);
+              window._abortAlerted = true;
+            }
+            setTimeout(() => { location.href = "/"; }, 400);
+            return;
+          }
+
+          // --- Reguläres Ende (Sieger/Platzierungen) ---
           try {
             const res = (sb._results || sb.results) || [];
-
             const asNumber = (v) => (typeof v === "number" && isFinite(v)) ? v : null;
             const humanList = (arr) => {
               const names = (arr || []).filter(Boolean);
               if (names.length <= 1) return names[0] || "";
               return names.slice(0, -1).join(", ") + " und " + names[names.length - 1];
             };
-            // Normalisiert verschiedene Ergebnis-Formate in ein {label, score}-Objekt
             const toLabel = (entry) => {
               if (!entry) return { label: "Unbekannt", score: null };
-
-              // Team-Formate: {is_team:true, name, members:[...]} oder {team/team_name, players:[...]}
               const isTeam = entry.is_team || Array.isArray(entry.members) || entry.team || entry.team_name;
               if (isTeam) {
                 const teamName = entry.name || entry.team || entry.team_name || "Team";
@@ -162,19 +199,15 @@ import { initChat, addChatMessage } from "./chat.js";
                   : `${teamName}`;
                 return { label, score: asNumber(entry.total) };
               }
-
-              // Solo-Formate: {player, total} oder {name, total}
               const label = entry.player || entry.name || "Spieler";
               return { label, score: asNumber(entry.total) };
             };
 
             if (Array.isArray(res) && res.length > 0) {
               if (res.length === 1) {
-                // Single-Player oder nur ein Teilnehmer → einfacher Sieger-Text
                 const top = toLabel(res[0]);
                 alert(`Spiel beendet – Sieger: ${top.label}${top.score != null ? ` (${top.score} Punkte)` : ""}`);
               } else {
-                // Mehr als 1 Spieler/Team → Sieger + weitere Platzierungen
                 const lines = [];
                 lines.push("Spiel zu Ende, es gibt folgende Platzierungen:");
                 const top = toLabel(res[0]);
@@ -213,9 +246,9 @@ import { initChat, addChatMessage } from "./chat.js";
         addChatMessage(msg.payload.sender || "???", msg.payload.text);
       }
 
-      // Zuschauer-Toast: kurze Einblendung an der Emoji-Leiste
-      if (msg.spectator && msg.spectator.event === "joined" && typeof msg.spectator.name === "string") {
-        showSpectatorToast(msg.spectator.name);
+      // Zuschauer-Toast
+      if (msg.spectator && typeof msg.spectator.name === "string") {
+        showSpectatorToast(msg.spectator); // Objekt übergeben, kein fertiger Text
       }
 
       if (Array.isArray(msg.chat_history)) {
@@ -706,12 +739,15 @@ import { initChat, addChatMessage } from "./chat.js";
   }
 
   // ---------- Utils ----------
-  function showSpectatorToast(name){
+  function showSpectatorToast(evt){
     try {
+      const { event, name } = evt || {};
       const host = reactionsMount || document.body;
       const el = document.createElement("div");
       el.className = "spectator-toast";
-      el.textContent = `Zuschauer verbunden: ${name}`;
+      el.textContent = event === "left"
+        ? `Zuschauer hat verlassen: ${name}`
+        : `Zuschauer verbunden: ${name}`;
       el.style.display = "inline-block";
       el.style.marginLeft = ".5rem";
       el.style.padding = ".35rem .55rem";
