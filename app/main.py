@@ -707,10 +707,71 @@ async def get_leaderboard():
                 return default
         return default
 
+    def write_json_if_changed(path: Path, original_list, new_list):
+        try:
+            # Nur schreiben, wenn sich Inhalt spürbar ändert (Länge oder Reihenfolge/Einträge)
+            if json.dumps(original_list, sort_keys=True) != json.dumps(new_list, sort_keys=True):
+                path.write_text(json.dumps(new_list, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            # Schreibfehler still ignorieren – Anzeige funktioniert trotzdem
+            pass
+
+    def parse_ts(s: str) -> datetime | None:
+        """
+        Robust: ISO-8601 mit oder ohne Zeitzone.
+        - '2025-08-31T16:13:55.151287+00:00' -> aware (ok)
+        - '2025-08-31T16:13:55.151287Z'      -> ersetze Z durch +00:00
+        - '2025-08-31T16:13:55'              -> naiv -> als UTC interpretieren
+        """
+        if not isinstance(s, str) or not s:
+            return None
+        try:
+            if s.endswith("Z"):
+                s = s[:-1] + "+00:00"
+            dt = datetime.fromisoformat(s)
+            if dt.tzinfo is None:
+                # naive → als UTC interpretieren
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
+        except Exception:
+            return None
+
+    # Rohdaten lesen
+    recent_raw  = read_json(RECENT_FILE, [])
+    alltime_raw = read_json(ALLTIME_FILE, [])
+    stats_raw   = read_json(STATS_FILE, {"games_played": 0})
+
+    # --- Cleanup "recent": nur letzte 7 Tage, sortiert, Top-10 ---
+    now_utc = datetime.now(timezone.utc)
+    cutoff  = now_utc - timedelta(days=7)
+
+    def valid_entry(e: dict) -> bool:
+        try:
+            # Pflichtfelder prüfen
+            if not isinstance(e, dict):
+                return False
+            ts = parse_ts(e.get("ts"))
+            if ts is None or ts < cutoff:
+                return False
+            # points als int interpretieren; ungültige rauswerfen
+            _ = int(e.get("points", 0))
+            return True
+        except Exception:
+            return False
+
+    recent_filtered = [e for e in (recent_raw or []) if valid_entry(e)]
+    # Sortierung & Cap
+    recent_filtered.sort(key=lambda x: int(x.get("points", 0)), reverse=True)
+    recent_filtered = recent_filtered[:10]
+
+    # Optional: Datei aktualisieren, falls sich etwas geändert hat (idempotent)
+    write_json_if_changed(RECENT_FILE, recent_raw or [], recent_filtered)
+
+    # Alltime unverändert zurückgeben (Server schreibt Alltime bereits korrekt beim Spielende)
     return {
-        "recent": read_json(RECENT_FILE, []),
-        "alltime": read_json(ALLTIME_FILE, []),
-        "stats": read_json(STATS_FILE, {"games_played": 0}),
+        "recent": recent_filtered,
+        "alltime": alltime_raw or [],
+        "stats": stats_raw
     }
 
 @app.post("/api/games")
