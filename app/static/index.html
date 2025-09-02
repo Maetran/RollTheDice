@@ -102,6 +102,7 @@
               <th>Gegner</th>
               <th>Gegner Punkte</th>
               <th>Diff</th>
+              <th>Spiel</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -118,6 +119,7 @@
               <th>Gegner</th>
               <th>Gegner Punkte</th>
               <th>Diff</th>
+              <th>Spiel</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -380,12 +382,16 @@
           tbody.innerHTML = "";
           entries.forEach(e => {
             const tr = document.createElement("tr");
+            const linkCell = e.game_id
+              ? `<a href="/static/game_view.html?id=${encodeURIComponent(e.game_id)}" class="small">Ansehen</a>`
+              : "–";
             tr.innerHTML = `
               <td>${e.points}</td>
               <td>${escapeHtml(e.name)}</td>
               <td>${escapeHtml(e.opponent)}</td>
               <td>${e.opp_points}</td>
               <td>${e.diff}</td>
+              <td>${linkCell}</td>
             `;
             tbody.appendChild(tr);
           });

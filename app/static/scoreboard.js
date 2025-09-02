@@ -255,7 +255,7 @@ function ensureInlineScoreboardCSS(){
 
 // -------- Haupt-Renderer --------
 function renderScoreboard(mount, sb, {
-  myPlayerId, iAmTurn, rollsUsed, rollsMax, announcedRow4, canRequestCorrection = false
+  myPlayerId, iAmTurn, rollsUsed, rollsMax, announcedRow4, canRequestCorrection = false, readOnly = false
 } = {}) {
   ensureInlineScoreboardCSS();
   if (!sb) { if (mount) mount.innerHTML = ""; return; }
@@ -299,7 +299,7 @@ function renderScoreboard(mount, sb, {
     ? `<button id="requestCorrectionBtn" class="small" style="margin-left:.5rem;">Letzten Eintrag ändern</button>`
     : ``;
 
-  const dicebar = `
+  const dicebar = readOnly ? "" : `
     <div class="topbar">
       <div id="diceBar">
         ${dice.map((d,i)=>
@@ -379,7 +379,7 @@ function renderScoreboard(mount, sb, {
   grid += `</div>`;
 
   // Wrap: Ansage-Block erhaelt einen Container, dessen Breite wir in CSS exakt an die Tabellenbreite koppeln
-  const announceSlot = `
+  const announceSlot = readOnly ? "" : `
     <div class="announce-container">
       ${renderAnnounceSlot(sb, myPlayerId, iAmTurn, rollsUsed)}
     </div>
@@ -387,9 +387,7 @@ function renderScoreboard(mount, sb, {
 
   (contentEl || mount).innerHTML =
     dicebar +
-    `<div class="suggestions-area">
-       <div id="suggestions" class="suggestions"></div>
-     </div>` +
+    (readOnly ? "" : `<div class="suggestions-area"><div id="suggestions" class="suggestions"></div></div>`) +
     announceSlot +
     `<div id="overlayMount"></div>` +
     grid;
@@ -540,3 +538,109 @@ function renderRows(sc, sb, ctx){
 }
 
 window.renderScoreboard = renderScoreboard;
+
+function buildClientSnapshotFromLeaderboard(lv){
+  if (!lv || typeof lv !== "object") return null;
+
+  const mode = (lv.mode || "").toString().toLowerCase();
+  const isTeam = mode === "2v2";
+
+  const rowIndexForKey = (key) => {
+    for (let i = 0; i < ROW_FIELD_KEYS.length; i++){
+      if (ROW_FIELD_KEYS[i] === key) return i;
+    }
+    return null;
+  };
+
+  const fromReihen = (reihenArr) => {
+    const sc = {};
+    const idxToCol = {1:"down", 2:"free", 3:"up", 4:"ang"};
+    (reihenArr || []).forEach(r => {
+      const col = idxToCol[r.index] || null;
+      if (!col) return;
+      const rows = r.rows || {};
+      Object.keys(rows).forEach(fk => {
+        const ri = rowIndexForKey(fk);
+        if (ri === null || ri === undefined) return;
+        const v = rows[fk];
+        if (typeof v === "number" && Number.isFinite(v)){
+          sc[`${ri},${col}`] = v;
+        }
+      });
+    });
+    return sc;
+  };
+
+  if (isTeam){
+    const teams = [{"id":"A","name":"Team A","members":[]},{"id":"B","name":"Team B","members":[]}];
+    (lv.players || []).forEach(p => {
+      const t = (p && p.team) ? String(p.team) : null;
+      if (t === "A" || t === "B"){
+        const tgt = teams.find(tt => tt.id === t);
+        if (tgt && p.id) tgt.members.push(String(p.id));
+      }
+    });
+
+    const sbByTeam = {};
+    Object.keys(lv.scoreboards || {}).forEach(entId => {
+      const entry = lv.scoreboards[entId] || {};
+      sbByTeam[String(entId)] = fromReihen(entry.reihen || []);
+    });
+
+    return {
+      _name: lv.gamename || "",
+      _mode: "2v2",
+      _players: (lv.players || []).map(p => ({id:String(p.id), name:String(p.name||"Player")})),
+      _teams: teams,
+      _scoreboards_by_team: sbByTeam,
+      _scoreboards: {},
+      _turn: null,
+      _dice: [0,0,0,0,0],
+      _holds: [false,false,false,false,false],
+      _rolls_used: 0,
+      _rolls_max: 0,
+      _announced_row4: null,
+      _correction: {active:false},
+      suggestions: []
+    };
+  } else {
+    const sb = {};
+    Object.keys(lv.scoreboards || {}).forEach(pid => {
+      const entry = lv.scoreboards[pid] || {};
+      sb[String(pid)] = fromReihen(entry.reihen || []);
+    });
+    return {
+      _name: lv.gamename || "",
+      _mode: lv.mode,
+      _players: (lv.players || []).map(p => ({id:String(p.id), name:String(p.name||"Player")})),
+      _teams: [],
+      _scoreboards_by_team: {},
+      _scoreboards: sb,
+      _turn: null,
+      _dice: [0,0,0,0,0],
+      _holds: [false,false,false,false,false],
+      _rolls_used: 0,
+      _rolls_max: 0,
+      _announced_row4: null,
+      _correction: {active:false},
+      suggestions: []
+    };
+  }
+}
+
+window.renderReadOnlyFromLeaderboard = function(mount, leaderboardView){
+  const sb = buildClientSnapshotFromLeaderboard(leaderboardView);
+  if (!sb){
+    if (mount) mount.innerHTML = "<div class='muted'>Kein Inhalt</div>";
+    return;
+  }
+  window.renderScoreboard(mount, sb, {
+    myPlayerId: null,
+    iAmTurn: false,
+    rollsUsed: 0,
+    rollsMax: 0,
+    announcedRow4: null,
+    canRequestCorrection: false,
+    readOnly: true
+  });
+};

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spielansicht – Read-Only</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .container { max-width: 1100px; margin: 0 auto; padding: 1rem; }
+    .muted { color: #666; }
+    header.top { padding: .75rem 1rem; border-bottom: 1px solid #e5e5e5; display:flex; align-items:center; justify-content:space-between; }
+    header.top h1 { margin: 0; font-size: 1.25rem; }
+    .back-btn { margin-left:auto; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1 id="roomGameName">Spielansicht</h1>
+    <button class="small back-btn" onclick="location.href='/'">⬅️ Zurück zur Lobby</button>
+  </header>
+
+  <main class="container">
+    <div id="contentMount" class="content"></div>
+  </main>
+
+  <!-- Scoreboard-Renderer -->
+  <script src="/static/scoreboard.js"></script>
+  <script>
+  (function(){
+    function qs(name){ return new URLSearchParams(location.search).get(name); }
+    var gameId = qs("id");
+    var mount = document.getElementById("contentMount");
+    var titleEl = document.getElementById("roomGameName");
+
+    function setStatus(msg){
+      if (mount) {
+        mount.innerHTML = "<div class='muted' style='background:#e7f3ff;display:inline-block;padding:.25rem .5rem;border-radius:.25rem;'>" + msg + "</div>";
+      }
+    }
+
+    if (!gameId){
+      setStatus("Kein Spiel angegeben (?id=...)");
+      return;
+    }
+
+    function fmt(dtStr){
+      try {
+        var d = new Date(dtStr);
+        if (isNaN(d.getTime())) return "";
+        return d.toLocaleString();
+      } catch(e){ return ""; }
+    }
+
+    function ensureRendererLoaded(){
+      return new Promise(function(resolve, reject){
+        if (window.renderReadOnlyFromLeaderboard) {
+          return resolve();
+        }
+        setStatus("Lade Renderer …");
+        var s = document.createElement("script");
+        s.src = "/static/scoreboard.js?v=" + Date.now();
+        s.onload = function(){
+          if (window.renderReadOnlyFromLeaderboard) resolve();
+          else reject(new Error("renderer_missing"));
+        };
+        s.onerror = function(){ reject(new Error("renderer_load_error")); };
+        document.head.appendChild(s);
+      });
+    }
+
+    fetch("/api/game_from_leaderboard/" + encodeURIComponent(gameId))
+      .then(function(res){
+        if (!res.ok) throw new Error("not_found");
+        return res.json();
+      })
+      .then(function(data){
+        if (titleEl){
+          var when = data.finished_at ? fmt(data.finished_at) : "";
+          titleEl.textContent = (data.gamename || "Spiel") + (when ? (" — " + when) : "");
+        }
+        return ensureRendererLoaded().then(function(){
+          window.renderReadOnlyFromLeaderboard(mount, data);
+        });
+      })
+      .catch(function(err){
+        if (String(err && err.message) === "not_found") {
+          setStatus("Spiel nicht gefunden oder ohne Snapshot.");
+        } else if (String(err && err.message).indexOf("renderer_") === 0) {
+          setStatus("Renderer konnte nicht geladen werden.");
+        } else {
+          setStatus("Fehler beim Laden.");
+        }
+      });
+  })();
+  </script>
+</body>
+</html>

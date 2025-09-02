@@ -774,6 +774,54 @@ async def get_leaderboard():
         "stats": stats_raw
     }
 
+@app.get("/api/game_from_leaderboard/{game_id}")
+def api_game_from_leaderboard(game_id: str):
+    """
+    Liefert den read-only Snapshot (Players + Scoreboards) eines abgeschlossenen Spiels,
+    wie er beim Leaderboard-Eintrag mitpersistiert wurde.
+    Sucht zuerst in 'leaderboard_recent.json', dann in 'leaderboard_alltime.json'.
+    """
+    def _read_list(path: Path):
+        try:
+            if path.exists():
+                data = json.loads(path.read_text(encoding="utf-8"))
+                return data if isinstance(data, list) else []
+        except Exception:
+            return []
+        return []
+
+    def _project(entry: dict) -> dict | None:
+        # Muss zur game_id passen und Snapshot-Felder enthalten
+        if not isinstance(entry, dict):
+            return None
+        if str(entry.get("game_id", "")) != str(game_id):
+            return None
+        players = entry.get("players")
+        scoreboards = entry.get("scoreboards")
+        if not players or not isinstance(players, list):
+            return None
+        if not scoreboards or not isinstance(scoreboards, dict):
+            return None
+        # Response minimal & stabil halten
+        return {
+            "game_id": entry.get("game_id"),
+            "gamename": entry.get("gamename") or entry.get("name") or "",
+            "finished_at": entry.get("finished_at") or entry.get("ts"),
+            "mode": entry.get("mode"),
+            "players": players,
+            "scoreboards": scoreboards,
+        }
+
+    # Reihenfolge: recent -> alltime
+    for path in (RECENT_FILE, ALLTIME_FILE):
+        for e in _read_list(path):
+            proj = _project(e)
+            if proj is not None:
+                return proj
+
+    # Nicht gefunden oder Eintrag ohne Snapshot-Felder
+    raise HTTPException(status_code=404, detail="not_found")
+
 @app.post("/api/games")
 async def api_games_create(req: CreateReq):
     gid = str(uuid.uuid4())[:8]
@@ -870,6 +918,82 @@ def _mutate_stats(incr_games=False):
         stats["games_played"] = int(stats.get("games_played", 0)) + 1
     STATS_FILE.write_text(json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8")
 
+def _build_leaderboard_snapshot_fields(g: GameDict) -> dict:
+    """
+    Liefert die Zusatzfelder für den Leaderboard-Eintrag:
+    - game_id, finished_at, mode
+    - players: [{id,name,team}]
+    - scoreboards: { <entity_id>: { "reihen": [ {index, rows{...}} ] } }
+      * Im Normalfall ist <entity_id> die player-id
+      * Im 2v2 ist <entity_id> die Team-ID ("A"/"B")
+    Hinweis:
+    - rows enthalten NUR die echten Schreibfelder ("1","2","3","4","5","6","max","min","kenter","full","poker","60").
+      Zwischensummen/Total werden im Read-only View wie im Client berechnet.
+    """
+    try:
+        finished_at = datetime.now(timezone.utc).isoformat()
+        mode = str(g.get("_mode", "")).lower()
+
+        # players array (immer Spieler – bei 2v2 inkl. team)
+        players = []
+        team_of = g.get("_team_of", {}) if is_team_mode(g) else {}
+        for p in g.get("_players", []):
+            pid = p.get("id")
+            players.append({
+                "id": pid,
+                "name": p.get("name", "Player"),
+                "team": (team_of.get(pid) if is_team_mode(g) else None)
+            })
+
+        scoreboards: dict[str, dict] = {}
+
+        if is_team_mode(g):
+            # 2v2: Boards pro Team
+            boards_by_team = g.get("_scoreboards_by_team", {}) or {}
+            for tid, sb in boards_by_team.items():
+                reihen_dict = _rows_from_scoreboard(sb)  # {1:{...},2:{...},3:{...},4:{...}}
+                # Reihen sauber in Arrayform bringen (immer 1..4; fehlende leere Dicts)
+                reihen = []
+                for idx in (1, 2, 3, 4):
+                    rows_map = reihen_dict.get(idx, {}) or {}
+                    # Nur die echten Schreibfelder exportieren (robust gegen Fremdkeys)
+                    clean_rows = {k: int(v) for k, v in rows_map.items()
+                                  if k in {"1","2","3","4","5","6","max","min","kenter","full","poker","60"}
+                                  and isinstance(v, (int, float))}
+                    reihen.append({"index": idx, "rows": clean_rows})
+                scoreboards[str(tid)] = {"reihen": reihen}
+        else:
+            # Einzel/3P: Boards pro Spieler
+            for p in g.get("_players", []):
+                pid = p.get("id")
+                sb = g.get("_scoreboards", {}).get(pid, {}) or {}
+                reihen_dict = _rows_from_scoreboard(sb)
+                reihen = []
+                for idx in (1, 2, 3, 4):
+                    rows_map = reihen_dict.get(idx, {}) or {}
+                    clean_rows = {k: int(v) for k, v in rows_map.items()
+                                  if k in {"1","2","3","4","5","6","max","min","kenter","full","poker","60"}
+                                  and isinstance(v, (int, float))}
+                    reihen.append({"index": idx, "rows": clean_rows})
+                scoreboards[str(pid)] = {"reihen": reihen}
+
+        return {
+            "game_id": str(g.get("_id") or ""),
+            "finished_at": finished_at,
+            "mode": mode,
+            "players": players,
+            "scoreboards": scoreboards
+        }
+    except Exception:
+        # Defensive: falls beim Snapshot etwas schiefgeht, Eintrag nicht blockieren
+        return {
+            "game_id": str(g.get("_id") or ""),
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "mode": str(g.get("_mode", "")).lower(),
+            "players": [],
+            "scoreboards": {}
+        }
+
 def _finalize_and_log_results(g: GameDict):
     totals = _compute_final_totals(g)
     mode = str(g["_mode"]).lower()
@@ -908,7 +1032,6 @@ def _finalize_and_log_results(g: GameDict):
 
         winners = ", ".join(_name(pid) for pid in (mA if winner_team == "A" else mB))
         losers  = ", ".join(_name(pid) for pid in (mB if winner_team == "A" else mA))
-
         rec = {
             "ts": entry_time,
             "points": wt_total,
@@ -918,8 +1041,11 @@ def _finalize_and_log_results(g: GameDict):
             "opp_points": lt_total,
             "diff": diff
         }
+        # Snapshot-Felder direkt an den Eintrag hängen
+        rec.update(_build_leaderboard_snapshot_fields(g))
+
         entries_for_recent.append(rec)
-        entries_for_alltime.append(rec)
+        entries_for_alltime.append(dict(rec))  # eigene Kopie
     else:
         ordered = sorted(players, key=lambda p: totals.get(p["id"], 0), reverse=True)
         if not ordered:
@@ -944,8 +1070,11 @@ def _finalize_and_log_results(g: GameDict):
             "opp_points": opp_pts,
             "diff": diff
         }
+        # Snapshot-Felder direkt an den Eintrag hängen
+        rec.update(_build_leaderboard_snapshot_fields(g))
+
         entries_for_recent.append(rec)
-        entries_for_alltime.append(rec)
+        entries_for_alltime.append(dict(rec))  # eigene Kopie
 
     def mutate_recent(data):
         cutoff = datetime.now(timezone.utc) - timedelta(days=7)
