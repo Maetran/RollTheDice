@@ -15,7 +15,7 @@ const ROW_FIELD_KEYS = [
   "max","min",
   null,
   "kenter","full","poker","60",
-  null, null, null
+  null, null
 ];
 
 const ROW_TOOLTIPS = [

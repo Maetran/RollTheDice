@@ -498,27 +498,29 @@ import { initChat, addChatMessage } from "./chat.js";
     try{
       // Zuerst alte Markierungen entfernen
       $$(".announce-pickable").forEach(td => td.classList.remove("announce-pickable"));
+
       if (announcePickMode){
-        // Nur eigenes Board, nur ❗-Spalte, nur leere Zellen
-        const mode = String(snapshot?._mode || "").toLowerCase();
+        // Nur eigenes Board, nur ❗-Spalte, nur **schreibbare** (nicht-compute) leere Zellen
         let boardRoot = null;
+        const mode = String(snapshot?._mode || "").toLowerCase();
         if (mode === "2v2"){
           const myTeam = (snapshot._teams || []).find(t => (t.members || []).some(m => String(m) === String(myId)));
           if (myTeam){
             const cards = $$(".player-card");
-            // Karte mit eigenem Team hat Klasse .me (siehe scoreboard.js)
             boardRoot = Array.from(cards).find(c => c.classList.contains("me")) || null;
           }
         } else {
           const cards = $$(".player-card");
           boardRoot = Array.from(cards).find(c => c.classList.contains("me")) || null;
         }
+
         if (boardRoot){
-          // alle ❗-Zellen (Spalte 5) im Board durchgehen
-          const tds = $$("table.grid tbody tr td:nth-child(5)", boardRoot);
+          // WICHTIG: compute-Zellen ausschließen → Diff wird nicht mehr markiert
+          const tds = $$("table.grid tbody tr td.cell:nth-child(5)", boardRoot);
           tds.forEach(td => {
-            const hasVal = td.textContent.trim().length > 0;
-            if (!hasVal && td.classList.contains("cell")) {
+            const hasVal    = td.textContent.trim().length > 0;
+            const isCompute = td.classList.contains("compute");
+            if (!hasVal && !isCompute) {
               td.classList.add("announce-pickable");
             }
           });
