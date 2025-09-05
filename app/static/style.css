@@ -35,6 +35,12 @@ button:hover{ background:#eee; }
 #announceBtnInline{
   background: #ffe7c2;           /* zartes Orange */
   border-color: #f0b27a;
+  /* allow multi-line text without expanding column width */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  text-align: center;
+  padding: .35rem .5rem;
 }
 #announceBtnInline:hover{ background: #ffd9a3; }
 #announceBtnInline::before{ content: "❗ "; }
@@ -45,7 +51,15 @@ button:hover{ background:#eee; }
 }
 #rollBtnInline:hover{ background: #d3efda; }
 
-#announceBtnInline, #rollBtnInline{ height: 2.6rem; }
+#announceBtnInline, #rollBtnInline{
+  height: 2.6rem;
+  min-width: 0;                 /* wichtig für Grid: kein Aufspreizen */
+  line-height: 1.1;             /* allow button text to wrap nicely */
+  min-height: 2.6rem;
+}
+
+/* Hide the roll button while in announce-pick mode to avoid layout shifts */
+#diceBar.announce-mode #rollBtnInline{ visibility: hidden !important; }
 
 button.small{ font-size:.85rem; padding:.25rem .5rem; }
 
@@ -88,7 +102,14 @@ select, input, button { font-family: inherit; font-size: 16px; line-height: 1.2;
 .pc-total{ font-weight:700; }
 
 /* === Dice (Basis) === */
-#diceBar{ display:flex; gap:.35rem; align-items:center; }
+#diceBar{
+  /* Einheitliche Grid-Basis: 5 Würfel oben, Aktionszeile unten */
+  display: grid;
+  grid-auto-flow: row;
+  column-gap: .35rem;
+  row-gap: .35rem;
+  align-items: center;
+}
 button.die{
   width: 2.6rem;
   height: 2.6rem;
@@ -155,7 +176,10 @@ td.cell.announce-pickable{
     column-gap: .25rem; row-gap: .55rem;
     width: 100%; margin: 0; padding: .35rem .2rem .6rem;
     overflow: visible;
+    min-width: 0; /* added to prevent grid column stretching */
   }
+  #diceBar > *{ min-width: 0; } /* prevent children from forcing min width */
+
   #diceBar .die{
     width: 100% !important;              /* füllt die Spalte */
     aspect-ratio: 1 / 1 !important;      /* bleibt quadratisch */
@@ -173,6 +197,9 @@ td.cell.announce-pickable{
     width: 100% !important;
     height: 2.6rem !important;           /* gleiche Höhe wie Würfel */
     margin-top: 0 !important;
+    white-space: normal;
+    overflow-wrap:anywhere;
+    line-height:1.1;
   }
   #rollBtnInline{
     grid-row: 2 !important;
@@ -204,9 +231,21 @@ td.cell.announce-pickable{
 @media (min-width: 561px){
   #diceBar{
     display: grid !important;
-    grid-template-columns: repeat(5, auto);
+    /* absolut feste Würfelspalten, unabhängig von Button-Text */
+    grid-template-columns: repeat(5, 2.6rem);
+    grid-template-rows: 2.6rem auto; /* Zeile 1: Würfelhöhe fix, Zeile 2: Buttons */
+    min-width: 0;
     column-gap: .35rem; row-gap: .35rem;
     align-items: center; justify-content: start;
+  }
+  #diceBar > * { min-width: 0; } /* prevent children from forcing min width */
+
+  #diceBar button{
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;               /* darf schrumpfen, Spaltenbreite bleibt stabil */
+    height: 2.6rem;             /* identische Höhe für alle Buttons */
   }
   #rollBtnInline{
     grid-row: 2 !important;

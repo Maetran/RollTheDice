@@ -88,6 +88,24 @@ import { initChat, addChatMessage } from "./chat.js";
   // --- NEU: UI-State für Ansage-Auswahlmodus (per Button/Hotkey A) ---
   let announcePickMode = false;
 
+  // Steuerung der Sichtbarkeit des Wuerfeln-Buttons im Ansage-Pick-Mode.
+  // Wichtig: Wir verwenden `visibility:hidden` (nicht `display:none`),
+  // damit der reservierte Platz erhalten bleibt und sich der Dice-Row-Layout
+  // (Abstände/Wrap) *nicht* verschiebt.
+  function applyAnnounceModeButtonVisibility(root){
+    try{
+      const rollBtn = root ? root.querySelector('#rollBtnInline') : null;
+      if (!rollBtn) return;
+      if (announcePickMode){
+        rollBtn.style.visibility = 'hidden';
+        rollBtn.style.pointerEvents = 'none';
+      } else {
+        rollBtn.style.visibility = '';
+        rollBtn.style.pointerEvents = '';
+      }
+    }catch{}
+  }
+
   // Helper: prüft, ob das Ansage-Fenster (direkt nach Wurf 1, keine Korrektur, keine bestehende Ansage, ich am Zug) offen ist
   function announceWindowOpen(snapshot){
     const rolls = Number(snapshot?._rolls_used || 0);
@@ -400,9 +418,12 @@ import { initChat, addChatMessage } from "./chat.js";
           // Falls eine Ansage existiert, Pick-Mode beenden (UI sauber halten)
           announcePickMode = false;
         } else {
-          ab.textContent = announcePickMode ? "Ansage wählen… (ESC)" : "Ansagen";
+          ab.textContent = announcePickMode ? "Ansage wählen" : "Ansagen";
           ab.dataset.state = "announce";
         }
+        // Lange Labels muessen umbrechen, damit die Buttonbreite konstant bleibt
+        ab.style.whiteSpace = 'normal';
+        ab.style.lineHeight = '1.15';
       }
     } catch {}
 
@@ -412,9 +433,14 @@ import { initChat, addChatMessage } from "./chat.js";
         if (announcePickMode) {
           announcePickMode = false;
           $$(".announce-pickable").forEach(td => td.classList.remove("announce-pickable"));
+          // Sichtbarkeit des Würfeln-Buttons nach Pick-Mode beenden zurücksetzen
+          applyAnnounceModeButtonVisibility(mount);
         }
       }
     } catch {}
+    // Während des Ansage-Pick-Modes den Würfeln-Button unsichtbar schalten,
+    // ohne das Layout zu verschieben (visibility statt display)
+    applyAnnounceModeButtonVisibility(mount);
 
     // --- NEU: Pick-Mode – ❗-Zellen im eigenen Board als klickbar markieren ---
     try{
@@ -642,6 +668,8 @@ import { initChat, addChatMessage } from "./chat.js";
         }
         // Ansage setzen → Pick-Mode toggeln
         announcePickMode = !announcePickMode;
+        // Sichtbarkeit des Würfeln-Buttons sofort anpassen
+        applyAnnounceModeButtonVisibility(mount);
         // Re-Render Markierungen
         renderFromSnapshot(sb);
       });
@@ -902,6 +930,8 @@ import { initChat, addChatMessage } from "./chat.js";
         // 1) Ansage-Pick-Mode verlassen
         if (announcePickMode) {
           announcePickMode = false;
+          // Sichtbarkeit des Würfeln-Buttons nach Pick-Mode beenden zurücksetzen
+          applyAnnounceModeButtonVisibility(mount);
           $$(".announce-pickable").forEach(td => td.classList.remove("announce-pickable"));
           e.preventDefault();
           return;
