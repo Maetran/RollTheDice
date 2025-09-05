@@ -156,7 +156,14 @@ td.cell.announce-pickable{
     width: 100%; margin: 0; padding: .35rem .2rem .6rem;
     overflow: visible;
   }
-  #diceBar .die{ font-size: clamp(22px, 12vw, 72px); }
+  #diceBar .die{
+    width: 100% !important;              /* füllt die Spalte */
+    aspect-ratio: 1 / 1 !important;      /* bleibt quadratisch */
+    max-width: 60px !important;          /* Obergrenze 60px */
+    max-height: 60px !important;         /* Obergrenze 60px */
+    font-size: clamp(20px, 8vw, 48px);   /* Schriftgröße skaliert, max 48px */
+    padding: .06rem !important;          /* kleiner Rand für SVG */
+  }
   /* Mobile: Buttons nebeneinander direkt unter den Würfeln */
   #announceBtnInline{
     grid-row: 2 !important;
