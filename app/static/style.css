@@ -30,6 +30,23 @@ button{
   border-radius:6px; border:1px solid var(--border); background:#f8f8f8;
 }
 button:hover{ background:#eee; }
+
+/* Themed action buttons */
+#announceBtnInline{
+  background: #ffe7c2;           /* zartes Orange */
+  border-color: #f0b27a;
+}
+#announceBtnInline:hover{ background: #ffd9a3; }
+#announceBtnInline::before{ content: "❗ "; }
+
+#rollBtnInline{
+  background: #e2f5e6;           /* zartes Grün */
+  border-color: #9ad1a5;
+}
+#rollBtnInline:hover{ background: #d3efda; }
+
+#announceBtnInline, #rollBtnInline{ height: 2.6rem; }
+
 button.small{ font-size:.85rem; padding:.25rem .5rem; }
 
 button.danger{ border-color:#c0392b; background:#fdecea; color:#8e1b0e; }
@@ -73,13 +90,12 @@ select, input, button { font-family: inherit; font-size: 16px; line-height: 1.2;
 /* === Dice (Basis) === */
 #diceBar{ display:flex; gap:.35rem; align-items:center; }
 button.die{
-  width: 3rem;
-  height: 3rem;
+  width: 2.6rem;
+  height: 2.6rem;
   aspect-ratio: 1 / 1;
   border-radius: .8rem;
-  font-size: 2.2rem;
   line-height: 1;
-  padding: .10rem .10rem .22rem;
+  padding: .06rem .06rem .14rem;
   font-variant-numeric: tabular-nums;
   display:inline-flex;
   align-items:center;
@@ -105,6 +121,13 @@ button.die.shaking{ animation: dice-shake .5s ease; }
 .announce-container{ width: calc(var(--col-desc) + 4 * var(--col-score)); max-width: 100%; margin: 0 0 .5rem 0; }
 .announce-slot, .announce-box, .announce-status{ width: 100%; display: block; text-align: center; }
 
+/* Markierung für Ansage-Pick-Modus: leerer ❗-Slot im eigenen Board wird klickbar hervorgehoben */
+td.cell.announce-pickable{
+  outline: 2px dashed var(--accent);
+  background: #eef8ff;
+  cursor: crosshair;
+}
+
 /* Suggestions */
 .suggestions-area{ min-height: 34px; margin: .5rem 0 .5rem 0; }
 .suggestions:empty{ opacity: 0; }
@@ -121,27 +144,45 @@ button.die.shaking{ animation: dice-shake .5s ease; }
 /* === Mobile Styles === */
 @media (max-width:560px){
   .announce-container{ width: 100% !important; }
-  .suggestions{ flex-direction: column; align-items: stretch; }
-  .suggestion-btn{ width:100%; }
+  .suggestions{ flex-direction: row; align-items: flex-start; }
+  .suggestion-btn{ width:auto; flex:0 0 auto; }
   .topbar{ margin-bottom: .25rem; }
 
   #diceBar{
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     align-items: stretch; align-content: start;
-    column-gap: .25rem; row-gap: 1rem;
-    width: 100%; margin: 0; padding: .6rem .25rem .9rem;
+    column-gap: .25rem; row-gap: .55rem;
+    width: 100%; margin: 0; padding: .35rem .2rem .6rem;
     overflow: visible;
   }
-  #rollBtnInline{
-    grid-row: 2; grid-column: 1 / -1;
-    justify-self: center; width: 100%; margin-top: .25rem; max-width: 560px;
+  #diceBar .die{ font-size: clamp(22px, 12vw, 72px); }
+  /* Mobile: Buttons nebeneinander direkt unter den Würfeln */
+  #announceBtnInline{
+    grid-row: 2 !important;
+    grid-column: 1 / span 2 !important; /* unter Würfel 1–2 */
+    align-self: stretch !important;
+    justify-self: stretch !important;
+    width: 100% !important;
+    height: 2.6rem !important;           /* gleiche Höhe wie Würfel */
+    margin-top: 0 !important;
   }
-  #diceBar .die{
-    grid-row: 1; width: 100%; aspect-ratio: 1 / 1;
-    display: flex; place-content: center; align-self: stretch;
-    border-radius: .8rem; font-size: clamp(28px, 14vw, 96px);
-    padding: .10rem .10rem .22rem; line-height: 1;
+  #rollBtnInline{
+    grid-row: 2 !important;
+    grid-column: 3 / span 3 !important; /* unter Würfel 3–5 */
+    align-self: stretch !important;
+    justify-self: stretch !important;
+    width: 100% !important;
+    height: 2.6rem !important;            /* gleiche Höhe wie Würfel */
+    margin-top: 0 !important;
+    max-width: none !important;
+  }
+  /* Mobile: Korrektur-Button in eigene Zeile, damit Ansage/Würfeln nebeneinander bleiben */
+  #requestCorrectionBtn{
+    grid-row: 3 !important;
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    margin-top: .25rem !important;
   }
   .room-header #roomGameName, .room-header a[href$="rules.html"]{ display: none !important; }
   .pc-head{ margin-bottom: .35rem; } .pc-total{ font-size: .95em; }
@@ -155,24 +196,32 @@ button.die.shaking{ animation: dice-shake .5s ease; }
 /* === Desktop Guard === */
 @media (min-width: 561px){
   #diceBar{
-    display: flex !important; flex-wrap: wrap !important;
-    align-items: center !important; gap: .35rem !important;
-    width: auto !important; margin-left: 0 !important; padding: 0 !important;
-    overflow: visible !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, auto);
+    column-gap: .35rem; row-gap: .35rem;
+    align-items: center; justify-content: start;
   }
+  #rollBtnInline{
+    grid-row: 2 !important;
+    grid-column: 3 / span 3 !important;
+    align-self: stretch !important; width: 100% !important;
+    margin-top: .15rem !important; order: 0 !important;
+  }
+  #announceBtnInline{
+    grid-row: 2 !important;
+    grid-column: 1 / span 2 !important;
+    align-self: stretch !important; width: 100% !important;
+    margin-top: .15rem !important; order: 0 !important;
+  }
+  #requestCorrectionBtn{ grid-row: 3 !important; grid-column: 1 / -1 !important; }
   #diceBar .die{
-    width: 3rem !important;
-    height: 3rem !important;
+    width: 2.6rem !important;
+    height: 2.6rem !important;
     aspect-ratio: 1 / 1 !important;
     border-radius: .8rem !important;
     font-size: 2.2rem !important;
     line-height: 1 !important;
     padding: .10rem .10rem .22rem !important;
-  }
-  #rollBtnInline{
-    display: block !important; flex: 1 1 100% !important;
-    order: 2 !important; width: 100% !important; margin-top: .35rem !important;
-    grid-row: auto !important; grid-column: auto !important;
   }
 }
 
@@ -273,3 +322,9 @@ button[disabled]{ opacity:.6; cursor:not-allowed; }
   }
   .reactions-host .emoji-dock{ margin-left: 0; }
 }
+
+/*
+  Accessibility notes:
+  - We avoid using pointer-events or pointer-related CSS on disabled buttons to ensure consistent keyboard and screen reader behavior.
+  - The dashed outline on .announce-pickable cells supports keyboard focus users by providing a clear visual focus indicator, enhanced by the :focus-visible rules.
+*/

@@ -148,52 +148,10 @@ function teamIdForPlayer(sb, pid){
 // -------- Announce-UI --------
 function renderAnnounceSlot(sb, myId, iAmTurn, rollsUsed){
   const ann = sb._announced_row4 || null;
-  const correctionActive = !!(sb?._correction?.active);
-  const showSelector = iAmTurn && rollsUsed === 1 && !correctionActive;
-
-  const isTeamMode = isTeamModeSnapshot(sb);
-  const boardKey = isTeamMode ? (teamIdForPlayer(sb, myId) || "A") : myId;
-
-  const myBoard = isTeamMode
-    ? (sb._scoreboards_by_team?.[boardKey] || {})
-    : (sb._scoreboards?.[boardKey] || {});
-
-  // bereits belegte ❗-Felder im "ang"-Kanal sammeln
-  const taken = new Set();
-  for (const k of Object.keys(myBoard)) {
-    const [rStr, col] = k.split(",", 2);
-    if (col === "ang") {
-      const r = parseInt(rStr, 10);
-      const fkey = ROW_FIELD_KEYS[r];
-      if (fkey) taken.add(fkey);
-    }
-  }
-
-  const options = ANNOUNCE_FIELDS.filter(f => !taken.has(f) || f === ann);
-
-  const selectorHTML = options.length
-    ? `<select id="announceSelect" style="font-size:16px; line-height:1.2; max-width:100%;">
-         <option value="">— wählen —</option>
-         ${options.map(v => `<option value="${v}" ${ann===v ? "selected":""}>${v}</option>`).join("")}
-       </select>`
-    : `<span class="muted">Alle ❗-Felder bereits befüllt</span>`;
-
-  // Nur wenn bereits angesagt wurde, darf man „Ändern“ (= unannounce) anbieten
-  const unBtn = ann
-    ? `<button id="unannounceBtn" class="small danger" style="margin-left:.4rem;">Ändern</button>`
-    : ``;
-
-  const inner = showSelector
-    ? `<div class="announce-box">
-         <label for="announceSelect">❗ Ansage:</label>
-         ${selectorHTML}
-         ${unBtn}
-         <span class="muted">nur direkt nach dem 1. Wurf</span>
-       </div>`
-    : `<div class="announce-status">
-         <span class="label">Angesagt:</span> <span class="value">${ann ? esc(ann) : "—"}</span>
-       </div>`;
-
+  const inner = `
+    <div class="announce-status">
+      <span class="label">Angesagt:</span> <span class="value">${ann ? esc(ann) : "—"}</span>
+    </div>`;
   return `<div id="announceSlot" class="announce-slot">${inner}</div>`;
 }
 
@@ -245,6 +203,11 @@ function ensureInlineScoreboardCSS(){
   
     /* responsive select */
     #announceSlot select { max-width: 100%; }
+    /* announce pick highlight (used by room.js) */
+    td.announce-pickable{ outline: 2px dashed var(--accent); outline-offset: -2px; background: #eef7ff; }
+    /* announce button sizing next to roll button */
+    #diceBar #announceBtnInline{ flex: 0 0 25%; min-width: 96px; }
+    #diceBar #rollBtnInline{ flex: 1 1 auto; }
   `;
 
   const style = document.createElement('style');
@@ -305,12 +268,13 @@ function renderScoreboard(mount, sb, {
         ${dice.map((d,i)=>
           `<button class="die ${holds[i] ? "held" : ""}" data-i="${i}" title="halten/lösen">${dieSVG(d || 0)}</button>`
         ).join("")}
+        <button id="announceBtnInline" class="small">Ansagen</button>
         <button id="rollBtnInline" ${correctionActive ? "disabled":""}>🎲 Würfeln</button>
         ${requestBtnHTML}
       </div>
     </div>
     <div class="muted">
-      Am Zug: ${esc(turnName)} • Würfe: ${rollsUsed ?? 0}/${rollsMax ?? 3}
+      Am Zug: ${esc(turnName)} • Würfe: ${rollsUsed ?? 0}/${rollsMax ?? 3} <span id="announceHint"></span>
     </div>
   `;
 
