@@ -24,7 +24,59 @@ import { initChat, addChatMessage } from "./chat.js";
   }
 
   function safeSend(ws, obj) {
-    try { ws && ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(obj)); } catch {}
+    /*
+      Roll-Event Throttle & Button-Guard (500 ms)
+      -------------------------------------------
+      Problem: Sehr schnelle Mehrfach-Klicks (oder doppelte Handler) koennen mehrere
+               'roll'-Events auf dem WS senden -> fühlt sich an wie "2x gewürfelt".
+      Loesung: Für 'roll' wird clientseitig ein kurzer Zeit-Guard aktiviert.
+               - Zweite Sendung < 500 ms wird verworfen.
+               - Passend dazu wird der Roll-Button visuell für ~0.5 s deaktiviert.
+               - Der 3. Wurf funktioniert normal, weil der Guard rein zeitbasiert ist.
+    */
+
+    // Erfasst aktuelle und legacy-Felder: action/type/t = 'roll_dice' ODER 'roll'
+    const isRoll =
+      obj && (
+        obj.action === 'roll_dice' || obj.type === 'roll_dice' || obj.t === 'roll_dice' ||
+        obj.type === 'roll'       || obj.t === 'roll'        || obj.action === 'roll'
+      );
+
+    // Globaler Zeitstempel für den letzten Roll-Send (einmalig initialisieren)
+    if (typeof window.__rt_lastRollSent !== 'number') {
+      window.__rt_lastRollSent = 0;
+    }
+
+    if (isRoll) {
+      const now = Date.now();
+      // Doppelklick-/Mehrfachklick-Schutz: alles < 500 ms seit letztem Roll wird verworfen
+      if (now - window.__rt_lastRollSent < 500) {
+        return; // zu schnell hintereinander -> NICHT senden
+      }
+      window.__rt_lastRollSent = now;
+
+      // UI-Feedback: Roll-Button kurz deaktivieren (ohne hart auf eine einzige ID festzunageln)
+      const rollBtn =
+        document.querySelector('[data-action="roll"]') ||     // bevorzugtes data-Attribut
+        document.getElementById('rollBtnInline') ||           // aktueller Inline-Button
+        document.getElementById('btnRoll') ||                 // ältere Variante
+        document.querySelector('button.roll');                // Fallback CSS-Klasse
+
+      if (rollBtn && !rollBtn.disabled) {
+        rollBtn.disabled = true;
+        // 550 ms statt 500 ms, damit UX sicher die Sperre "fühlt" und Text/Focus stabil bleibt
+        setTimeout(() => { rollBtn.disabled = false; }, 550);
+      }
+    }
+
+    // Senden nur, wenn der Socket offen ist – verhindert Fehler bei Race Conditions
+    try {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(obj));
+      }
+    } catch (e) {
+      // bewusst leise – wir wollen UI nicht blockieren; Logging kann bei Bedarf ergänzt werden
+    }
   }
 
   // --- Client-Punkteberechnung (nur für 0-Confirm UX) ---

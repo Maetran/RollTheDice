@@ -8,6 +8,7 @@ from typing import Dict, Any
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import os
+import time  # für monotonic()-Cooldown-Timer
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
@@ -50,6 +51,26 @@ def check_timeout_and_abort(g) -> bool:
 def sweep_timeouts():
     for _gid, _g in list(games.items()):
         check_timeout_and_abort(_g)
+
+def roll_cooldown_ok(g: dict, player_id, cooldown_s: float = 0.45) -> bool:
+    """
+    Serverseitiger Roll-Cooldown.
+    - g: Game-State Dict (pro Spiel)
+    - player_id: aktueller Spieler
+    - cooldown_s: Minimalabstand in Sekunden zwischen zwei 'roll_dice' vom selben Spieler
+    Return: True = erlaubt; False = zu schnell (schlucken)
+    """
+    try:
+        now = time.monotonic()
+        rc = g.setdefault("_roll_cooldown", {})  # { player_id -> last_monotonic }
+        last = float(rc.get(player_id, 0.0))
+        if (now - last) < float(cooldown_s):
+            return False
+        rc[player_id] = now
+        return True
+    except Exception:
+        # Defensive: lieber freigeben als hart failen
+        return True
 
 # App zuerst erstellen
 app = FastAPI()
@@ -1231,6 +1252,11 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     continue
                 if g["_rolls_used"] >= g["_rolls_max"]:
                     await websocket.send_json({"error": "Keine Würfe mehr"})
+                    continue
+                # Server-Cooldown: Double-Click-/Spam-Guard (standard 450 ms)
+                # Schluckt zu schnelle Folgerolls laut monotonic()-Timer pro Spieler.
+                if not roll_cooldown_ok(g, player_id, cooldown_s=0.45):
+                    # optional: leise ignorieren; UX bleibt smooth
                     continue
                 dice = g["_dice"][:] if g["_dice"] else [0] * 5
                 for i in range(5):
