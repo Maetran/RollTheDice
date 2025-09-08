@@ -1580,16 +1580,13 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     else:
                         allowed_points = (has5 or (has4 and first4_eff and roll_idx == int(first4_eff)))
 
-                    if want_points:
-                        if in_ang and announced_poker:
-                            allowed_points = (has4 or has5)
-                        else:
-                            allowed_points = (has5 or (has4 and first4_eff and roll_idx == int(first4_eff)))
-
-                        if not allowed_points:
-                            # Nach dem Zocken sind Poker-Punkte nicht zulässig; stilles Streichen (0) erlauben.
-                            strike = True
-                            # Kein continue; unten wird wegen strike = True der Wert 0 geschrieben.
+                    # Wenn Punkte möglich wären, sie aber laut Regel jetzt nicht erlaubt sind,
+                    # wird stillschweigend gestrichen (0 geschrieben).
+                    prospective = score_field_value("poker", g.get("_dice") or [0, 0, 0, 0, 0])
+                    if prospective > 0 and not allowed_points:
+                        # Nach dem Zocken sind Poker-Punkte nicht zulässig; stilles Streichen (0) erlauben.
+                        strike = True
+                        # Kein continue; unten wird wegen strike = True der Wert 0 geschrieben.
 
                     # (keine weitere ❗-Sonderbehandlung hier; ob ❗ überhaupt beschreibbar ist,
                     #  entscheidet bereits can_write_now(...).)
