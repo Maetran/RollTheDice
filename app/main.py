@@ -925,6 +925,7 @@ async def get_leaderboard():
     }
 
 @app.get("/api/leaderboard/game/{game_id}")
+@app.get("/api/game_from_leaderboard/{game_id}")
 def api_game_from_leaderboard(game_id: str):
     """API: Read-Only Snapshot eines abgeschlossenen Spiels aus Leaderboard-Dateien."""
     # Laden der Dateien (recent/alltime)
