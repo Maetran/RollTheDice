@@ -1,3 +1,28 @@
+"""
+RollTheDice – FastAPI backend
+---------------------------------
+
+Dieses Modul enthält die Serverlogik für das Multiplayer-Würfelspiel:
+- HTTP-Routen (Manifest/Static/Leaderboard)
+- WebSocket-Endpunkt für den Spielraum (Join/Rollen/Schreiben/Korrektur)
+- Spiel- und Scoreboard-Verwaltung, inkl. Team-Modus (2v2)
+- Ergebnisberechnung, Leaderboard-Persistenz und Inaktivitäts-Timeout
+
+Wichtig: Poker-Logik und Korrekturmodus
+--------------------------------------
+- Während eines Zuges wird getrackt, in welchem Wurf (roll_index) zum ersten
+  Mal ein Vierling ("first4oak_roll") aufgetreten ist.
+- Bei einem normalen Schreiben von "poker" in den Spalten ⬇︎/free/⬆︎ gelten Punkte
+  nur, wenn es sich um den Wurf handelt, in dem der Vierling erstmals erschien,
+  oder wenn ein Fünfling vorliegt. In ❗ (Ansage auf poker) sind Punkte in jedem
+  Wurf mit 4/5 gleichen erlaubt.
+- Im Korrekturmodus werden die beim ursprünglichen Zug gemerkten Würfel sowie
+  Meta-Werte (roll_index und first4oak_roll) genutzt, um die Berechtigung zur
+  Punktevergabe korrekt zu prüfen. Damit wird ein Fehler behoben, bei dem in
+  2‑Spieler‑Spielen nach einem Fehl-Eintrag Poker in der Korrektur fälschlich mit 0
+  Punkten gewertet wurde, obwohl im Zug zuvor bereits ein Vierling gefallen war.
+"""
+
 from __future__ import annotations
 
 import uuid
@@ -22,13 +47,20 @@ from .rules import compute_overall
 GAME_TIMEOUT = timedelta(minutes=10)
 
 def touch(g):
-    """Aktualisiert die letzte Aktivität des Spiels."""
+    """Aktualisiert die letzte Aktivität des Spiels.
+
+    Setzt `_last_activity` und `_updated_at` auf jetzt (UTC). Hilft beim
+    Timeout-Handling sowie für UI-Informationen (zuletzt aktualisiert).
+    """
     g["_last_activity"] = datetime.now(timezone.utc)
     g["_updated_at"] = g["_last_activity"].isoformat()
 
 def check_timeout_and_abort(g) -> bool:
-    """Falls ein Spiel zu lange inaktiv ist, als abgebrochen markieren.
-    Gibt True zurück, wenn ein Statuswechsel zu Abgebrochen stattgefunden hat."""
+    """Prüft Inaktivität und markiert das Spiel ggf. als abgebrochen.
+
+    Rückgabe:
+    - True, wenn das Spiel soeben als abgebrochen markiert wurde, sonst False.
+    """
     try:
         last = g.get("_last_activity")
         if not last:
@@ -49,16 +81,19 @@ def check_timeout_and_abort(g) -> bool:
     return False
 
 def sweep_timeouts():
+    """Iteriert über alle Spiele und wendet `check_timeout_and_abort` an."""
     for _gid, _g in list(games.items()):
         check_timeout_and_abort(_g)
 
 def roll_cooldown_ok(g: dict, player_id, cooldown_s: float = 0.45) -> bool:
-    """
-    Serverseitiger Roll-Cooldown.
-    - g: Game-State Dict (pro Spiel)
+    """Serverseitiger Roll-Cooldown.
+
+    Parameter:
+    - g: Game-State Dict
     - player_id: aktueller Spieler
-    - cooldown_s: Minimalabstand in Sekunden zwischen zwei 'roll_dice' vom selben Spieler
-    Return: True = erlaubt; False = zu schnell (schlucken)
+    - cooldown_s: Minimalabstand in Sekunden zwischen zwei `roll_dice` desselben Spielers
+
+    Rückgabe: True = Rollen erlauben, False = Event verwerfen (zu schnell).
     """
     try:
         now = time.monotonic()
@@ -135,11 +170,15 @@ WRITABLE_CELLS_PER_PLAYER = len(WRITABLE_ROWS) * 4  # 12*4 = 48
 # --- Team-Mode Helpers (2v2: Spieler 1&3 = Team A, 2&4 = Team B) ---
 
 def is_team_mode(g: GameDict) -> bool:
+    """True, wenn das Spiel im 2v2-Team-Modus läuft."""
     m = str(g.get("_mode"))
     return m.lower() == "2v2"
 
 def assign_team_for_join(g: GameDict, player_id: str):
-    """Zuweisung in Join-Reihenfolge: 1->A, 2->B, 3->A, 4->B."""
+    """Weist einem beitretenden Spieler ein Team zu (1/3 → A, 2/4 → B).
+
+    Legt Teams und Team-Scoreboards an, falls noch nicht vorhanden.
+    """
     order = [p["id"] for p in g["_players"]]
     idx = order.index(player_id) if player_id in order else len(order)
     team = "A" if idx % 2 == 0 else "B"
@@ -151,7 +190,10 @@ def assign_team_for_join(g: GameDict, player_id: str):
     g.setdefault("_scoreboards_by_team", {}).setdefault(team, {})
 
 def board_key_for_actor(g: GameDict, pid: str) -> str:
-    """Welche Scoreboard-ID wird beschrieben? Team-ID (2v2) oder pid (2/3 Spieler)."""
+    """Liefert die Ziel-Scoreboard-ID für einen Akteur.
+
+    Im 2v2 wird die Team-ID ("A"/"B") verwendet, sonst die Player-ID.
+    """
     if is_team_mode(g):
         team = g.get("_team_of", {}).get(pid)
         return team or "A"
@@ -209,13 +251,42 @@ def new_game(gid: str, name: str, mode) -> GameDict:
 # -----------------------------
 
 def _counts(dice):
+    """Zählt Vorkommen der geworfenen Augenzahlen (0 wird ignoriert).
+
+    Args:
+        dice (list): Liste der Würfelwerte (1-6)
+
+    Returns:
+        Counter: Zählung der Augenzahlen
+    """
     return Counter(d for d in dice if d)
 
 def has_n_of_a_kind(dice, n: int) -> bool:
+    """True, wenn die aktuellen Würfel mindestens n gleiche zeigen.
+
+    Args:
+        dice (list): Liste der Würfelwerte (1-6)
+        n (int): Anzahl der gleichen Würfel
+
+    Returns:
+        bool: True, wenn mindestens n gleiche Würfel vorhanden sind
+    """
     c = _counts(dice)
     return any(v >= n for v in c.values())
 
 def score_field_value(field_key: str, dice) -> int:
+    """Client-nahe Punkteberechnung (identisch zur Anzeige/Vorschläge).
+
+    Hinweis: Die serverseitige Autorität liegt bei `rules.score_field` bzw.
+    beim Schreib-Handler; hier wird für UI/Suggestions gerechnet.
+
+    Args:
+        field_key (str): Schlüssel des Feldes (z.B. "1", "2", ..., "6", "max", "min", ...)
+        dice (list): Liste der Würfelwerte (1-6)
+
+    Returns:
+        int: Punktzahl für das Feld
+    """
     cnt = _counts(dice)
     total = sum(d for d in dice if d)
 
@@ -366,6 +437,16 @@ def compute_suggestions(g: GameDict) -> list[dict]:
         return []
 
 def _filled_rows_for(g: GameDict, pid: str, col: str) -> set[int]:
+    """Liefert Indizes der bereits befüllten Reihen für eine Spalte (down/free/up/ang).
+
+    Args:
+        g (GameDict): Spielzustand
+        pid (str): Spieler-ID
+        col (str): Spaltenname (down, free, up, ang)
+
+    Returns:
+        set[int]: Indizes der befüllten Reihen
+    """
     if is_team_mode(g):
         team = board_key_for_actor(g, pid)
         board = g.get("_scoreboards_by_team", {}).get(team, {})
@@ -381,6 +462,15 @@ def _filled_rows_for(g: GameDict, pid: str, col: str) -> set[int]:
     return out
 
 def _next_required_row(col: str, filled: set[int]) -> int | None:
+    """Nächste erforderliche Reihe in Abhängigkeit der Spalte (down => aufwärts, up => abwärts).
+
+    Args:
+        col (str): Spaltenname (down, free, up, ang)
+        filled (set[int]): Indizes der befüllten Reihen
+
+    Returns:
+        int | None: Index der nächsten erforderlichen Reihe oder None, wenn alle Reihen befüllt sind
+    """
     order = WRITABLE_ROWS if col == "down" else list(reversed(WRITABLE_ROWS))
     for r in order:
         if r not in filled:
@@ -388,7 +478,15 @@ def _next_required_row(col: str, filled: set[int]) -> int | None:
     return None
 
 def _remaining_cells_for(g: GameDict, pid: str) -> int:
-    """Verbleibende Zellen für 'letzter Wurf' – im Team-Modus zählt das gemeinsame Blatt."""
+    """Verbleibende Zellen für 'letzter Wurf' – im Team-Modus zählt das gemeinsame Blatt.
+
+    Args:
+        g (GameDict): Spielzustand
+        pid (str): Spieler-ID
+
+    Returns:
+        int: Anzahl der verbleibenden Zellen
+    """
     if is_team_mode(g):
         team = board_key_for_actor(g, pid)
         sb = g.get("_scoreboards_by_team", {}).get(team, {}) or {}
@@ -397,6 +495,15 @@ def _remaining_cells_for(g: GameDict, pid: str) -> int:
     return WRITABLE_CELLS_PER_PLAYER - len(sb)
 
 def _is_last_turn_for(g: GameDict, pid: str) -> bool:
+    """True, wenn auf dem Ziel-Board nur noch eine beschreibbare Zelle frei ist.
+
+    Args:
+        g (GameDict): Spielzustand
+        pid (str): Spieler-ID
+
+    Returns:
+        bool: True, wenn nur noch eine Zelle frei ist
+    """
     return _remaining_cells_for(g, pid) == 1
 
 def _set_roll_cap_for_current_turn(g: GameDict):
@@ -406,6 +513,21 @@ def _set_roll_cap_for_current_turn(g: GameDict):
     g["_rolls_max"] = 5 if (pid and _is_last_turn_for(g, pid)) else 3
 
 def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_announce: str | None) -> tuple[bool, str]:
+    """Validiert, ob der Spieler JETZT in die angegebene Zelle schreiben darf.
+
+    Prüft u. a. Ansage-Regel (❗), Reihenfolge-Constraints (down/up), letztes Feld,
+    sowie 2v2-Teamziele. Rückgabe: (ok, begründung)
+
+    Args:
+        g (GameDict): Spielzustand
+        pid (str): Spieler-ID
+        row (int): Reihe
+        col (str): Spalte
+        during_turn_announce (str | None): Aktuelle Ansage (optional)
+
+    Returns:
+        tuple[bool, str]: (ok, begründung)
+    """
     if row not in WRITABLE_ROWS:
         return False, "Dieses Feld ist nicht beschreibbar"
 
@@ -453,10 +575,18 @@ def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_anno
 
     return False, "Unbekannte Spalte"
 
-def _serialize_scoreboards(g: GameDict) -> Dict[str, Dict[str, int]]:
-    out: Dict[str, Dict[str, int]] = {}
+def _serialize_scoreboards(g: GameDict) -> dict:
+    """Bereitet Scoreboards für den Snapshot vor (Team/Einzel vereinheitlicht).
+
+    Args:
+        g (GameDict): Spielzustand
+
+    Returns:
+        dict: Scoreboards als Dictionary
+    """
+    out = {}
     for pid, board in g["_scoreboards"].items():
-        sb: Dict[str, int] = {}
+        sb = {}
         for k, v in board.items():
             if isinstance(k, str):
                 sb[k] = v
@@ -467,108 +597,128 @@ def _serialize_scoreboards(g: GameDict) -> Dict[str, Dict[str, int]]:
 # Snapshot / Broadcast
 # -----------------------------
 
-def snapshot(g: GameDict) -> Dict[str, Any]:
-    # --- Poker-Debug (optional via env): zeigt Serverzustand im Client ---
-    def _dbg_poker():
-        if os.getenv("DEBUG_POKER", "").strip() != "1":
-            return None
-        cur = g.get("_turn", {}) or {}
-        dice = (g.get("_dice") or [])[:]
-        has4 = has_n_of_a_kind(dice, 4)
-        has5 = has_n_of_a_kind(dice, 5)
-        return {
-            "roll_index": int(cur.get("roll_index", 0) or 0),
-            "first4oak_roll": cur.get("first4oak_roll"),
-            "announced": g.get("_announced_row4"),
-            "has4": bool(has4),
-            "has5": bool(has5),
-            "dice": dice,
-        }
+def snapshot(g: GameDict) -> dict:
+    """Erzeugt den vollständigen Spiel-Snapshot für den Client.
 
-    # Auto-Timeout prüfen
-    check_timeout_and_abort(g)
-    # Ergebnisse (falls abgeschlossen) berechnen
-    if g["_finished"] and not g.get("_results"):
-        g["_results"] = _compute_results_for_snapshot(g)
+    Enthält Spieler/Teams, Boards, aktuelle Würfel/Holds, Zugstatus, Ansage,
+    Korrekturstatus, Vorschläge und optionale Ergebnisse.
 
-    # --- Auto-advance single-player turn logic ---
-    _auto_single = False
-    if (
-        g.get("_expected") == 1
-        and not g.get("_finished")
-        and g.get("_turn") is not None
-    ):
-        # Only if dice are all zero, no holds, and no rolls used
-        dice = g.get("_dice", [])
-        holds = g.get("_holds", [])
-        rolls_used = g.get("_rolls_used", 0)
-        if (
-            isinstance(dice, list) and all(d == 0 for d in dice)
-            and isinstance(holds, list) and all(not h for h in holds)
-            and rolls_used == 0
-        ):
-            # This is the auto-roll trigger condition
-            # Set _turn to same player (no-op in effect, but triggers client auto-roll)
-            g["_turn"] = dict(g["_turn"])  # make sure to trigger update if needed
-            _auto_single = True
-    else:
+    Args:
+        g (GameDict): Spielzustand
+
+    Returns:
+        dict: Spiel-Snapshot als Dictionary
+    """
+    try:
+        # --- Poker-Debug (optional via env): zeigt Serverzustand im Client ---
+        def _dbg_poker():
+            if os.getenv("DEBUG_POKER", "").strip() != "1":
+                return None
+            cur = g.get("_turn", {}) or {}
+            dice = (g.get("_dice") or [])[:]
+            has4 = has_n_of_a_kind(dice, 4)
+            has5 = has_n_of_a_kind(dice, 5)
+            return {
+                "roll_index": int(cur.get("roll_index", 0) or 0),
+                "first4oak_roll": cur.get("first4oak_roll"),
+                "announced": g.get("_announced_row4"),
+                "has4": bool(has4),
+                "has5": bool(has5),
+                "dice": dice,
+            }
+
+        # Auto-Timeout prüfen
+        check_timeout_and_abort(g)
+        # Ergebnisse (falls abgeschlossen) berechnen
+        if g["_finished"] and not g.get("_results"):
+            g["_results"] = _compute_results_for_snapshot(g)
+
+        # --- Auto-advance single-player turn logic ---
         _auto_single = False
+        if (
+            g.get("_expected") == 1
+            and not g.get("_finished")
+            and g.get("_turn") is not None
+        ):
+            # Only if dice are all zero, no holds, and no rolls used
+            dice = g.get("_dice", [])
+            holds = g.get("_holds", [])
+            rolls_used = g.get("_rolls_used", 0)
+            if (
+                isinstance(dice, list) and all(d == 0 for d in dice)
+                and isinstance(holds, list) and all(not h for h in holds)
+                and rolls_used == 0
+            ):
+                # This is the auto-roll trigger condition
+                # Set _turn to same player (no-op in effect, but triggers client auto-roll)
+                g["_turn"] = dict(g["_turn"])  # make sure to trigger update if needed
+                _auto_single = True
+        else:
+            _auto_single = False
 
-    return {
-        "_name": g["_name"],
-        "_players": [{"id": p["id"], "name": p["name"]} for p in g["_players"]],
-        "_players_joined": len(g["_players"]),
-        "_expected": g["_expected"],
-        "_started": g["_started"],
-        "_finished": g["_finished"],
-        "_started_at": g.get("_started_at"),
-        "_updated_at": g.get("_updated_at"),
-        "_aborted": g.get("_aborted", False),
-        "locked": bool(g.get("_passphrase")),  # neu: passwortgeschütztes Spiel kennzeichnen
-        "_turn": g["_turn"],
-        "_dice": g["_dice"],
-        "_holds": g["_holds"],
-        "_rolls_used": g["_rolls_used"],
-        "_rolls_max": g["_rolls_max"],
-        "_scoreboards": ({} if is_team_mode(g) else _serialize_scoreboards(g)),
-        "_announced_row4": g["_announced_row4"],
-        "_announced_by": g.get("_announced_by"),            # player-id (Einzel/2/3 Spieler)
-        "_announced_board": g.get("_announced_board"),      # board-id: team-id ("A"/"B") in 2v2, sonst player-id
-        "_correction": g["_correction"],
+        return {
+            "_name": g["_name"],
+            "_players": [{"id": p["id"], "name": p["name"]} for p in g["_players"]],
+            "_players_joined": len(g["_players"]),
+            "_expected": g["_expected"],
+            "_started": g["_started"],
+            "_finished": g["_finished"],
+            "_started_at": g.get("_started_at"),
+            "_updated_at": g.get("_updated_at"),
+            "_aborted": g.get("_aborted", False),
+            "locked": bool(g.get("_passphrase")),  # neu: passwortgeschütztes Spiel kennzeichnen
+            "_turn": g["_turn"],
+            "_dice": g["_dice"],
+            "_holds": g["_holds"],
+            "_rolls_used": g["_rolls_used"],
+            "_rolls_max": g["_rolls_max"],
+            "_scoreboards": ({} if is_team_mode(g) else _serialize_scoreboards(g)),
+            "_announced_row4": g["_announced_row4"],
+            "_announced_by": g.get("_announced_by"),            # player-id (Einzel/2/3 Spieler)
+            "_announced_board": g.get("_announced_board"),      # board-id: team-id ("A"/"B") in 2v2, sonst player-id
+            "_correction": g["_correction"],
 
-        # Team-Infos für 2v2
-        "_mode": g.get("_mode"),
-        "_teams": (
-            [
-              {
-                "id": "A",
-                "name": g.get("_teams", {}).get("A", {}).get("name", "Team A"),
-                # Nur IDs liefern – der Client mappt Namen aus _players
-                "members": g.get("_teams", {}).get("A", {}).get("members", [])
-              },
-              {
-                "id": "B",
-                "name": g.get("_teams", {}).get("B", {}).get("name", "Team B"),
-                "members": g.get("_teams", {}).get("B", {}).get("members", [])
-              }
-            ] if is_team_mode(g) else []
-        ),
-        "_scoreboards_by_team": (g.get("_scoreboards_by_team", {}) if is_team_mode(g) else {}),
+            # Team-Infos für 2v2
+            "_mode": g.get("_mode"),
+            "_teams": (
+                [
+                  {
+                    "id": "A",
+                    "name": g.get("_teams", {}).get("A", {}).get("name", "Team A"),
+                    # Nur IDs liefern – der Client mappt Namen aus _players
+                    "members": g.get("_teams", {}).get("A", {}).get("members", [])
+                  },
+                  {
+                    "id": "B",
+                    "name": g.get("_teams", {}).get("B", {}).get("name", "Team B"),
+                    "members": g.get("_teams", {}).get("B", {}).get("members", [])
+                  }
+                ] if is_team_mode(g) else []
+            ),
+            "_scoreboards_by_team": (g.get("_scoreboards_by_team", {}) if is_team_mode(g) else {}),
 
-        "_results": g.get("_results"),
-        "_last_write_public": {
-            pid: [int(rc[0]), str(rc[1])] if (isinstance(rc, tuple) and len(rc) == 2) else rc
-            for pid, rc in g.get("_last_write", {}).items()
-        },
-        "_has_last": {pid: bool(g["_last_write"].get(pid)) for pid in g["_scoreboards"].keys()},
-        "_auto_single": _auto_single,
-        # NEU: Vorschlags-Buttons (serverseitig, für aktiven Spieler berechnet)
-        "suggestions": compute_suggestions(g),
-        # Optionales Poker-Debugging
-        "_dbg_poker": _dbg_poker(),
-    }
+            "_results": g.get("_results"),
+            "_last_write_public": {
+                pid: [int(rc[0]), str(rc[1])] if (isinstance(rc, tuple) and len(rc) == 2) else rc
+                for pid, rc in g.get("_last_write", {}).items()
+            },
+            "_has_last": {pid: bool(g["_last_write"].get(pid)) for pid in g["_scoreboards"].keys()},
+            "_auto_single": _auto_single,
+            # NEU: Vorschlags-Buttons (serverseitig, für aktiven Spieler berechnet)
+            "suggestions": compute_suggestions(g),
+            # Optionales Poker-Debugging
+            "_dbg_poker": _dbg_poker(),
+        }
+    except Exception:
+        return {}
 
 async def broadcast(g: GameDict, msg: Dict[str, Any]) -> None:
+    """Sendet eine JSON-Nachricht an alle aktiven Spieler- und Zuschauer-Sockets.
+
+    Args:
+        g (GameDict): Spielzustand
+        msg (Dict[str, Any]): Nachricht als Dictionary
+    """
     recipients = list(g.get("_players", [])) + list(g.get("_spectators", []))
     for p in recipients:
         ws = p.get("ws")
@@ -580,6 +730,15 @@ async def broadcast(g: GameDict, msg: Dict[str, Any]) -> None:
             pass
 
 def next_turn(g: GameDict, current_pid: str | None) -> str | None:
+    """Liefert die ID des nächsten Spielers in der Reihenfolge (Ring).
+
+    Args:
+        g (GameDict): Spielzustand
+        current_pid (str | None): ID des aktuellen Spielers
+
+    Returns:
+        str | None: ID des nächsten Spielers oder None, wenn keine Spieler vorhanden sind
+    """
     ids = [p["id"] for p in g["_players"]]
     if not ids:
         return None
@@ -593,7 +752,8 @@ def next_turn(g: GameDict, current_pid: str | None) -> str | None:
 # -----------------------------
 
 @app.get("/")
-async def root():
+def root():
+    """Liefer Startseite (Lobby) aus dem Static-Verzeichnis aus."""
     return FileResponse(str(STATIC_DIR / "index.html"))
 
 class CreateReq(BaseModel):
@@ -603,6 +763,11 @@ class CreateReq(BaseModel):
     passphrase: str | None = Field(default=None, alias="pass")
 
 def game_list_payload() -> list[dict]:
+    """Hilfsfunktion: erzeugt die JSON-Payload für die Spielübersicht (Lobby).
+
+    Returns:
+        list[dict]: Liste der Spiele als Dictionary
+    """
     out = []
     for gid, g in games.items():
         out.append({
@@ -619,7 +784,8 @@ def game_list_payload() -> list[dict]:
 
 # --- Games API (mit wartenden Spielern) ---
 @app.get("/api/games")
-def api_games():
+async def api_games():
+    """API: Liste aller Spiele (laufend, wartend, abgeschlossen/abgebrochen)."""
     sweep_timeouts()
     lst = []
     for gid, g in games.items():
@@ -644,48 +810,10 @@ def api_games():
         except Exception:
             continue
     return {"games": lst}
-# -----------------------------
-# Leaderboard/Stats Hilfsfunktionen
-# -----------------------------
-def _progress_for_game(g: GameDict) -> list[dict]:
-    """Für laufende Spiele: pro Spieler (oder Team im 2v2) Name, befüllte Felder und aktuelle Punkte."""
-    out = []
-    if is_team_mode(g):
-        for tid in ("A", "B"):
-            team = g.get("_teams", {}).get(tid, {})
-            members = team.get("members", [])
-            names = []
-            for pid in members:
-                for p in g.get("_players", []):
-                    if p.get("id") == pid:
-                        names.append(p.get("name", "Player"))
-                        break
-            board = g.get("_scoreboards_by_team", {}).get(tid, {}) or {}
-            rows = _rows_from_scoreboard(board)
-            points = int(compute_overall(rows)["overall"]["overall_total"]) if rows else 0
-            out.append({
-                "name": team.get("name", f"Team {tid}"),
-                "members": names,
-                "filled": len(board),
-                "of": WRITABLE_CELLS_PER_PLAYER,
-                "points": points,
-            })
-    else:
-        for p in g.get("_players", []):
-            pid = p.get("id")
-            board = g.get("_scoreboards", {}).get(pid, {}) or {}
-            rows = _rows_from_scoreboard(board)
-            points = int(compute_overall(rows)["overall"]["overall_total"]) if rows else 0
-            out.append({
-                "name": p.get("name", "Player"),
-                "filled": len(board),
-                "of": WRITABLE_CELLS_PER_PLAYER,
-                "points": points,
-            })
-    return out
 
 @app.get("/api/games/{game_id}")
-def game_info(game_id: str,passphrase: str | None = Query(default=None, alias="pass"),check: int = Query(default=0)):
+def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="pass"), check: int = Query(default=0)):
+    """API: Detailinfos zu einem Spiel inkl. Fortschritt/Player-Status."""
     sweep_timeouts()
     g = games.get(game_id)
     if not g:
@@ -720,6 +848,7 @@ def game_info(game_id: str,passphrase: str | None = Query(default=None, alias="p
 
 @app.get("/api/leaderboard")
 async def get_leaderboard():
+    """API: Liefert aktuelles Leaderboard (recent + alltime) und Basis-Stats."""
     def read_json(path: Path, default):
         if path.exists():
             try:
@@ -795,13 +924,10 @@ async def get_leaderboard():
         "stats": stats_raw
     }
 
-@app.get("/api/game_from_leaderboard/{game_id}")
+@app.get("/api/leaderboard/game/{game_id}")
 def api_game_from_leaderboard(game_id: str):
-    """
-    Liefert den read-only Snapshot (Players + Scoreboards) eines abgeschlossenen Spiels,
-    wie er beim Leaderboard-Eintrag mitpersistiert wurde.
-    Sucht zuerst in 'leaderboard_recent.json', dann in 'leaderboard_alltime.json'.
-    """
+    """API: Read-Only Snapshot eines abgeschlossenen Spiels aus Leaderboard-Dateien."""
+    # Laden der Dateien (recent/alltime)
     def _read_list(path: Path):
         try:
             if path.exists():
@@ -845,31 +971,44 @@ def api_game_from_leaderboard(game_id: str):
 
 @app.post("/api/games")
 async def api_games_create(req: CreateReq):
+    """API: Neues Spiel anlegen (Name, Modus, optional Passphrase)."""
     gid = str(uuid.uuid4())[:8]
     g = new_game(gid, req.name, req.mode)
     g["_passphrase"] = (req.passphrase or None)
     return {"game_id": gid}
+
 # Legacy-Endpoints
 @app.get("/games")
 async def legacy_list():
+    """Legacy-Endpoint: einfache Spielauflistung (Kompatibilität)."""
     return game_list_payload()
 
 @app.post("/create_game")
 async def legacy_create_game(mode: str, name: str, passphrase: str = ""):
+    """Legacy-Endpoint: Spiel anlegen (URL-Schema alt, mit pass-Query)."""
     gid = str(uuid.uuid4())[:8]
     g = new_game(gid, name, mode)
     g["_passphrase"] = (passphrase or None)
     return {"id": gid}
 
 # Brave/Chromium DevTools Ping unterdrücken
-@app.get("/.well-known/appspecific/com.chrome.devtools.json")
+@app.get("/.well-known/appspecific/com.chrome.devtools")
 async def chrome_devtools_placeholder():
-    return {}
+    """Unterdrückt DevTools-WS-Probes von Chrome/Brave mit einfacher 200-Response."""
+    return {"ok": True}
 
 # -----------------------------
 # Leaderboard/Stats Hilfsfunktionen
 # -----------------------------
 def _rows_from_scoreboard(sb: Dict[str, int]) -> Dict[int, Dict[str, int]]:
+    """Liefert die Reihen eines Scoreboards als Dictionary.
+
+    Args:
+        sb (Dict[str, int]): Scoreboard als Dictionary
+
+    Returns:
+        Dict[int, Dict[str, int]]: Reihen des Scoreboards als Dictionary
+    """
     rows = {1: {}, 2: {}, 3: {}, 4: {}}
     for k, v in (sb or {}).items():
         if not isinstance(k, str) or "," not in k:
@@ -887,24 +1026,40 @@ def _rows_from_scoreboard(sb: Dict[str, int]) -> Dict[int, Dict[str, int]]:
     return rows
 
 def _compute_final_totals(g: GameDict) -> Dict[str,int]:
+    """Berechnet die Endpunktzahlen für ein Spiel.
+
+    Args:
+        g (GameDict): Spielzustand
+
+    Returns:
+        Dict[str,int]: Endpunktzahlen als Dictionary
+    """
     totals: Dict[str,int] = {}
     if is_team_mode(g):
         # Team-Boards
         for team_id, board in g.get("_scoreboards_by_team", {}).items():
             rows = _rows_from_scoreboard(board)
             ov = compute_overall(rows)
-            totals[team_id] = int(ov["overall"]["overall_total"])
+            totals[team_id] = int(ov["overall"]["overall_total"]) if rows else 0
     else:
         # Spieler-Boards
         for p in g["_players"]:
             pid = p["id"]
-            sb = g["_scoreboards"].get(pid, {})
+            sb = g.get("_scoreboards", {}).get(pid, {}) or {}
             rows = _rows_from_scoreboard(sb)
             ov = compute_overall(rows)
-            totals[pid] = int(ov["overall"]["overall_total"])
+            totals[pid] = int(ov["overall"]["overall_total"]) if rows else 0
     return totals
 
 def _is_game_finished(g: GameDict) -> bool:
+    """Prüft, ob ein Spiel beendet ist.
+
+    Args:
+        g (GameDict): Spielzustand
+
+    Returns:
+        bool: True, wenn das Spiel beendet ist
+    """
     if not g["_players"]:
         return False
     if is_team_mode(g):
@@ -919,6 +1074,12 @@ def _is_game_finished(g: GameDict) -> bool:
     return True
 
 def _append_json(path: Path, mutate_fn):
+    """Fügt Daten zu einer JSON-Datei hinzu.
+
+    Args:
+        path (Path): Pfad zur JSON-Datei
+        mutate_fn: Funktion, die die Daten modifiziert
+    """
     data = []
     if path.exists():
         try:
@@ -929,6 +1090,11 @@ def _append_json(path: Path, mutate_fn):
     path.write_text(json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 def _mutate_stats(incr_games=False):
+    """Aktualisiert die Statistik-Daten.
+
+    Args:
+        incr_games (bool): Ob die Anzahl der Spiele inkrementiert werden soll
+    """
     stats = {"games_played": 0}
     if STATS_FILE.exists():
         try:
@@ -940,16 +1106,13 @@ def _mutate_stats(incr_games=False):
     STATS_FILE.write_text(json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8")
 
 def _build_leaderboard_snapshot_fields(g: GameDict) -> dict:
-    """
-    Liefert die Zusatzfelder für den Leaderboard-Eintrag:
-    - game_id, finished_at, mode
-    - players: [{id,name,team}]
-    - scoreboards: { <entity_id>: { "reihen": [ {index, rows{...}} ] } }
-      * Im Normalfall ist <entity_id> die player-id
-      * Im 2v2 ist <entity_id> die Team-ID ("A"/"B")
-    Hinweis:
-    - rows enthalten NUR die echten Schreibfelder ("1","2","3","4","5","6","max","min","kenter","full","poker","60").
-      Zwischensummen/Total werden im Read-only View wie im Client berechnet.
+    """Liefert die Zusatzfelder für den Leaderboard-Eintrag.
+
+    Args:
+        g (GameDict): Spielzustand
+
+    Returns:
+        dict: Zusatzfelder als Dictionary
     """
     try:
         finished_at = datetime.now(timezone.utc).isoformat()
@@ -1016,6 +1179,11 @@ def _build_leaderboard_snapshot_fields(g: GameDict) -> dict:
         }
 
 def _finalize_and_log_results(g: GameDict):
+    """Finalisiert und loggt die Ergebnisse eines Spiels.
+
+    Args:
+        g (GameDict): Spielzustand
+    """
     totals = _compute_final_totals(g)
     mode = str(g["_mode"]).lower()
     players = g["_players"]
@@ -1122,6 +1290,14 @@ def _finalize_and_log_results(g: GameDict):
     _mutate_stats(incr_games=True)
 
 def _compute_results_for_snapshot(g: GameDict):
+    """Berechnet die Ergebnisse für den Snapshot eines Spiels.
+
+    Args:
+        g (GameDict): Spielzustand
+
+    Returns:
+        list[dict]: Ergebnisse als Liste von Dictionaries
+    """
     totals = _compute_final_totals(g)
     res = []
     if is_team_mode(g):
@@ -1386,29 +1562,29 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     # ❗+Ansage "poker": in jedem Wurf mit 4/5 gleichen
                     cur = g.get("_turn", {}) or {}
                     roll_idx = int(cur.get("roll_index", 0) or 0)
-                    first4  = cur.get("first4oak_roll")
-
-                    dice_now = g["_dice"] or [0, 0, 0, 0, 0]
-                    has4 = has_n_of_a_kind(dice_now, 4)
-                    has5 = has_n_of_a_kind(dice_now, 5)
-
+                    first4   = cur.get("first4oak_roll")
+                    has4 = has_n_of_a_kind(g["_dice"], 4)
+                    has5 = has_n_of_a_kind(g["_dice"], 5)
                     announced_poker = (g.get("_announced_row4") == "poker")
-                    in_ang = (col == "ang")
 
-                    # Fallback: Tracking-Lücke – wenn gerade 4 gleich liegen, aber first4 noch None,
-                    # dann ist JETZT das erste Auftreten.
-                    if has4 and not has5 and not first4:
-                        cur["first4oak_roll"] = roll_idx
-                        first4 = roll_idx
+                    # Fallback nur für Vorschlagslogik (nicht schreibend mutieren):
+                    first4_eff = first4
+                    if has4 and not has5 and first4_eff is None:
+                        first4_eff = roll_idx
 
-                    prospective = score_field_value("poker", dice_now)  # >0 nur bei 4/5 gleichen
-                    want_points = (prospective > 0)
+                    if col == "ang":
+                        allowed_points = (
+                            (announced_poker and (has4 or has5))
+                            or (not announced_poker and (has5 or (has4 and first4_eff and roll_idx == int(first4_eff))))
+                        )
+                    else:
+                        allowed_points = (has5 or (has4 and first4_eff and roll_idx == int(first4_eff)))
 
                     if want_points:
                         if in_ang and announced_poker:
                             allowed_points = (has4 or has5)
                         else:
-                            allowed_points = (has5 or (has4 and first4 and roll_idx == int(first4)))
+                            allowed_points = (has5 or (has4 and first4_eff and roll_idx == int(first4_eff)))
 
                         if not allowed_points:
                             # Nach dem Zocken sind Poker-Punkte nicht zulässig; stilles Streichen (0) erlauben.
@@ -1422,7 +1598,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 value = 0 if strike else score_field_value(fld, g["_dice"] or [0, 0, 0, 0, 0])
                 board[key] = value
 
-                g["_last_write"][player_id] = (row, col)
+                g["_last_write"][player_id] = (row, col, g["_rolls_used"])
                 g["_last_dice"][player_id] = (g["_dice"] or [0, 0, 0, 0, 0])[:]
                 cur = g.get("_turn", {}) or {}
                 g["_last_meta"][player_id] = {
@@ -1536,7 +1712,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 if not last:
                     await websocket.send_json({"error": "Kein letzter Eintrag vorhanden"})
                     continue
-                old_row, old_col = last
+                old_row, old_col, old_rolls_used = last
 
                 # Würfel für die Neubewertung sind die gemerkten Korrekturwürfel
                 dice_for_eval = (corr.get("dice") or g.get("_dice") or [0, 0, 0, 0, 0])[:]
@@ -1600,10 +1776,22 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     prospective = score_field_value("poker", dice_now)
 
                     if prospective > 0:
+                        # Korrektur-Spezialfall:
+                        # Wenn bereits in diesem Zug ein Vierling aufgetreten ist, darf Poker mit Punkten
+                        # auch dann gebucht werden, wenn der falsche Eintrag erst in einem späteren Wurf erfolgte.
+                        # Deshalb verwenden wir in der Korrektur als "effektiven" Wurfindex den first4oak_roll,
+                        # sofern vorhanden.
+                        effective_roll_idx = corr_meta_roll_idx
+                        if first4_eff:
+                            try:
+                                effective_roll_idx = int(first4_eff)
+                            except Exception:
+                                effective_roll_idx = corr_meta_roll_idx
+
                         if in_ang and announced_poker:
                             allowed_points = (has4 or has5)
                         else:
-                            allowed_points = (has5 or (has4 and first4_eff and corr_meta_roll_idx == int(first4_eff)))
+                            allowed_points = (has5 or (has4 and first4_eff and effective_roll_idx == int(first4_eff)))
 
                         if not allowed_points:
                             # Korrektur: Nach dem Zocken sind Poker-Punkte nicht zulässig; stilles Streichen (0) erlauben.
@@ -1613,7 +1801,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 val = score_field_value(fld, dice_for_eval)
                 val = 0 if strike else score_field_value(fld, dice_for_eval)
                 new_board[new_key] = val
-                g["_last_write"][player_id] = (row, col)
+                g["_last_write"][player_id] = (row, col, old_rolls_used)
 
                 # Korrektur beenden, Würfel zurücksetzen und broadcasten
                 g["_correction"] = {"active": False}

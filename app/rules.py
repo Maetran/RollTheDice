@@ -1,3 +1,20 @@
+"""
+rules.py – Serverseitige Punkterechner
+--------------------------------------
+
+Dieses Modul kapselt die reine Punkteberechnung für die Felder
+("1".."6", "max", "min", "kenter", "full", "poker", "60") sowie
+Hilfsfunktionen für Spaltensummen und Gesamtsummen.
+
+Entscheidende Aspekte:
+- Die Logik ist serverseitig autoritativ; der Client zeigt lediglich Vorschauen an.
+- `score_field(..., poker_allowed=...)` implementiert bewusst die Regel, dass
+  ein Vierling nur dann als "poker" gewertet werden darf, wenn das Aufschreiben
+  in der zugelassenen Situation erfolgt (wird außerhalb dieses Moduls geprüft).
+  Bei `poker_allowed=False` liefert das Feld 0 Punkte, selbst bei Vierling.
+- Ein Fünfling wird separat über das Feld "60" gewertet.
+"""
+
 from __future__ import annotations
 from typing import Dict, Tuple
 from collections import Counter
@@ -12,18 +29,38 @@ ROW_FIELDS = [
 # -----------------------------
 
 def _sum_dice(dice: Tuple[int, int, int, int, int]) -> int:
+    """Summe aller fünf Wuerfel zurückgeben.
+
+    Parameter:
+    - dice: Tupel mit 5 Augenzahlen (1..6)
+
+    Rückgabe:
+    - Integer-Summe der fünf Werte
+    """
     return sum(dice)
 
 def _counts(dice: Tuple[int, int, int, int, int]) -> Dict[int, int]:
+    """Häufigkeiten der Augenzahlen ermitteln.
+
+    Rückgabe ist ein Dict: { augenzahl -> anzahl }
+    Beispiel: (2,2,5,6,6) -> {2:2, 5:1, 6:2}
+    """
     c: Dict[int,int] = {}
     for d in dice:
         c[d] = c.get(d, 0) + 1
     return c
 
 def score_field(field_name: str, dice: Tuple[int, int, int, int, int], *, poker_allowed: bool) -> int:
-    """Berechnet die Punkte fuer genau EIN Feld gemaess der Spielregeln.
-    - Logik ist streng serverseitig. Der Client gibt nur das Feld an.
-    - poker_allowed: Vierling muss sofort eingetragen werden, sonst gesperrt bis erneut Vierling faellt.
+    """Punkteberechnung für genau ein Feld gemäß Spielregeln.
+
+    Parameter:
+    - field_name: Name des Feldes ("1".."6","max","min","kenter","full","poker","60")
+    - dice: aktueller Wurf als Tupel von fünf Werten (1..6)
+    - poker_allowed: Steuert, ob "poker" (Vierling) überhaupt mit Punkten
+      gewertet werden darf. Ist dies False, liefert "poker" 0 Punkte selbst bei Vierling.
+
+    Rückgabe:
+    - Punktewert für das angegebene Feld (Integer)
     """
     if field_name not in ROW_FIELDS:
         raise ValueError("ungueltiges Feld")
@@ -81,12 +118,18 @@ def score_field(field_name: str, dice: Tuple[int, int, int, int, int], *, poker_
 # -----------------------------
 
 def compute_row_subtotals(row: Dict[str, int]) -> Dict[str, int]:
-    """Berechnet Zwischensummen fuer EINE Reihe (12 Felder). Fehlende Felder = 0.
-    Keys:
-      - sum_top, bonus_top, total_top
-      - sum_maxmin
-      - sum_bottom
-      - total_column
+    """Zwischensummen für eine Spalte (Reihe) berechnen.
+
+    Erwartet ein Dict der 12 Wertungsfelder einer Spalte (z. B. Row 1).
+    Fehlende Felder werden als 0 behandelt.
+
+    Rückgabe-Keys:
+    - sum_top: Summe 1..6
+    - bonus_top: 30 bei sum_top >= 60, sonst 0
+    - total_top: sum_top + bonus_top
+    - sum_maxmin: 1 × (max − min), falls 1/max/min vorhanden
+    - sum_bottom: Summe von kenter + full + poker + 60
+    - total_column: total_top + sum_maxmin + sum_bottom
     """
     def g(key: str) -> int:
         return int(row.get(key, 0))
@@ -117,8 +160,13 @@ def compute_row_subtotals(row: Dict[str, int]) -> Dict[str, int]:
 # -----------------------------
 
 def compute_overall(scoresheet: Dict[int, Dict[str, int]]) -> Dict[str, Dict[str, int]]:
-    """scoresheet: {1: row1, 2: row2, 3: row3, 4: row4}.
-    Liefert pro Reihe Subtotale + overall_total.
+    """Gesamtsummen für alle vier Reihen berechnen.
+
+    Parameter:
+    - scoresheet: Mapping {1: row1, 2: row2, 3: row3, 4: row4}
+
+    Rückgabe:
+    - Dict mit Subtotals je Reihe (row1..row4) und "overall": {overall_total}
     """
     result: Dict[str, Dict[str, int]] = {}
     overall_total = 0

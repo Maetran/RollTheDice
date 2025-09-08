@@ -1,3 +1,24 @@
+/*
+  scoreboard.js – Scoreboard Rendering & Hints
+  -------------------------------------------
+  Verantwortlich für:
+  - Rendering des Spielstands für Spieler/Teams (inkl. Summen und Bonus)
+  - Tooltips, Clickability (welche Zellen sind interaktiv), Markierungen (❗ Ansage,
+    letzte Schreibzelle), sowie Read-Only-Views (Leaderboard Replay)
+
+  Wichtige Snippets:
+  - computeColumnTotals(): Berechnet Top-Summe, Bonus, Differenz (1×(max−min)) und
+    Bottom-Summe (Kenter/Full/Poker/60) pro Spalte. Rein Anzeige – die echte Logik
+    und Validierung passieren serverseitig.
+  - renderRows(): Markiert Zellen als "clickable" nur, wenn der Server dies implizit
+    erlaubt (iAmTurn, gerollt, Ansage-Regeln). Hinweise/Tooltips spiegeln die selben
+    Regeln wider wie `can_write_now` auf dem Server.
+  - buildClientSnapshotFromLeaderboard(): Wandelt einen Leaderboard-Eintrag wieder in
+    einen Client-Snapshot für die Read-Only-Ansicht um.
+
+  Hinweis: Die Poker- und Ansagelogik wird serverseitig bewertet. Dieses Modul zeigt
+  lediglich die Entscheidungen an und leitet Klicks weiter.
+*/
 // static/scoreboard.js
 // Einzel- & Team-Mode (2v2) – robust gegen verschiedene Snapshot-Formate
 
@@ -64,10 +85,20 @@ const FIELD_HINTS = {
   "Reihentotal": "ZwTotalOben + Diff + ZwTotalUnten"
 };
 
+/**
+ * Liefert eine Kurzbeschreibung für ein Feld-Label.
+ * @param {string} lbl
+ * @returns {string}
+ */
 function hintForLabel(lbl){
   return FIELD_HINTS[lbl] || "";
 }
 
+/**
+ * Gruppierungs-Metadaten für Tabellenzeilen (Top/Diff/Bottom-Bereiche).
+ * @param {number} ri - row index
+ * @returns {{group:string|null,start:boolean,end:boolean}}
+ */
 function rowGroupMeta(ri){
   if (ri >= 6 && ri <= 8)   return { group: "top",    start: ri === 6,  end: ri === 8  };
   if (ri === 11)            return { group: "diff",   start: true,      end: true      };
@@ -81,8 +112,22 @@ const num = (v) => {
   return Number.isFinite(n) ? n : null;
 };
 
+/**
+ * Liest den Rohwert einer Zelle aus einem Scoreboard-Objekt.
+ * @param {Object} sc - Scoreboard-Mapping {"row,col": value}
+ * @param {number} ri - row index
+ * @param {string} colKey - Spalte (down|free|up|ang)
+ * @returns {number|string|undefined}
+ */
 function getCell(sc, ri, colKey){ return sc[`${ri},${colKey}`]; }
 
+/**
+ * Berechnet Summen/Totalwerte für eine Spalte.
+ * Hinweis: Anzeige-Logik – Server ist autoritativ.
+ * @param {Object} sc
+ * @param {string} colKey
+ * @returns {{sumTop:number, bonusVal:number, totalTop:number, diff:number|null, sumBottom:number, totalColumn:number}}
+ */
 function computeColumnTotals(sc, colKey){
   let sumTop = 0;
   for (let ri=0; ri<=5; ri++){
@@ -137,6 +182,12 @@ function normalizeTeams(sb){
   return keys.map(k => ({ id: k, name: `Team ${k}`, members: [] }));
 }
 
+/**
+ * Liefert die Team-ID für einen Spieler basierend auf dem Snapshot.
+ * @param {Object} sb
+ * @param {string} pid
+ * @returns {string|null}
+ */
 function teamIdForPlayer(sb, pid){
   const teams = normalizeTeams(sb);
   for (const t of teams){
@@ -146,6 +197,14 @@ function teamIdForPlayer(sb, pid){
 }
 
 // -------- Announce-UI --------
+/**
+ * Rendert den Ansage-Status-Slot (oberhalb der Tabelle).
+ * @param {Object} sb
+ * @param {string} myId
+ * @param {boolean} iAmTurn
+ * @param {number} rollsUsed
+ * @returns {string}
+ */
 function renderAnnounceSlot(sb, myId, iAmTurn, rollsUsed){
   const ann = sb._announced_row4 || null;
   const inner = `
@@ -156,9 +215,19 @@ function renderAnnounceSlot(sb, myId, iAmTurn, rollsUsed){
 }
 
 // -------- Misc Utils --------
+/**
+ * Konvertiert einen numerischen Wert in Text, leer bei null.
+ * @param {number|null} v
+ * @returns {string}
+ */
 function numOrEmpty(v){ const n = num(v); return (n === null) ? "" : String(n); }
 
 // === NEU: SVG-Würfel ===
+/**
+ * Erzeugt SVG-Markup für eine Würfelanzeige (1..6).
+ * @param {number} v - Augenzahl (1..6)
+ * @returns {string} SVG-String
+ */
 function dieSVG(v){
   // Koordinaten im 100x100 ViewBox-Raster
   const L=30, C=50, R=70, T=30, M=50, B=70;
@@ -217,6 +286,13 @@ function ensureInlineScoreboardCSS(){
 }
 
 // -------- Haupt-Renderer --------
+/**
+ * Rendert das Scoreboard (Einzel oder Team) inklusive Dicebar, Suggestions,
+ * Ansage-Slot und Grid pro Entity.
+ * @param {HTMLElement} mount
+ * @param {Object} sb - Server-Snapshot
+ * @param {Object} opts - Anzeigeoptionen
+ */
 function renderScoreboard(mount, sb, {
   myPlayerId, iAmTurn, rollsUsed, rollsMax, announcedRow4, canRequestCorrection = false, readOnly = false
 } = {}) {
@@ -357,6 +433,13 @@ function renderScoreboard(mount, sb, {
     grid;
 }
 
+/**
+ * Rendert die Tabellenzeilen inklusive Clickability/Tooltips pro Zelle.
+ * @param {Object} sc - Scoreboard-Daten für eine Entity
+ * @param {Object} sb - Gesamtsnapshot
+ * @param {Object} ctx - Kontext (mein Spieler, Zuginhaber, Korrekturstatus, etc.)
+ * @returns {string}
+ */
 function renderRows(sc, sb, ctx){
   const announced = sb._announced_row4 || null;
   const rolledYet = (ctx.rollsUsed ?? 0) > 0;
@@ -437,6 +520,7 @@ function renderRows(sc, sb, ctx){
       const isCompute = COMPUTE_ROWS.has(ri);
       const rolledYet = (ctx.rollsUsed ?? 0) > 0;
       const correctionForMe = !!(ctx.correctionActive && sb?._correction?.player_id && String(sb._correction.player_id) === String(ctx.myPlayerId));
+      const corrRollIdx = Number(sb?._correction?.roll_index || 0);
 
       // Klicklogik
       const announceOk = (!announced || isAnnouncedCell || rowFieldKey === "poker");
@@ -448,7 +532,8 @@ function renderRows(sc, sb, ctx){
         rolledYet &&
         (announceOk || lastCellMode); // <<< neu: nur anklickbar, wenn Ansage passt oder letzter freier Slot
 
-      const mayClickCorrection = correctionForMe && !isCompute && !hasRaw;
+      // In Korrektur: ❗ (ang) nur, wenn roll_index == 1 (Ansagefenster). Sonst gesperrt.
+      const mayClickCorrection = correctionForMe && !isCompute && !hasRaw && (colKey !== "ang" || corrRollIdx <= 1);
 
       const clickable = (mayClickNormal || mayClickCorrection);
 
@@ -459,6 +544,8 @@ function renderRows(sc, sb, ctx){
           titleText = "Bereits befüllt";
         } else if (ctx.correctionActive && !correctionForMe) {
           titleText = "Gegner korrigiert – bitte warten";
+        } else if (ctx.correctionActive && correctionForMe && colKey === "ang" && corrRollIdx > 1) {
+          titleText = "❗ im Korrekturmodus nur im 1. Wurf erlaubt";
         } else if (mayClickCorrection) {
           titleText = "Klicke, um deinen letzten Eintrag hierher zu verschieben";
         } else if (!ctx.iAmTurn) {
@@ -503,6 +590,11 @@ function renderRows(sc, sb, ctx){
 
 window.renderScoreboard = renderScoreboard;
 
+/**
+ * Baut aus einem Leaderboard-Eintrag einen Client-Snapshot zur Anzeige.
+ * @param {Object} lv
+ * @returns {Object|null}
+ */
 function buildClientSnapshotFromLeaderboard(lv){
   if (!lv || typeof lv !== "object") return null;
 

@@ -1,3 +1,12 @@
+/*
+  style.css – Globales Styling für Lobby, Raum und Regeln
+  -------------------------------------------------------
+  - Variablen (Farben, Maße) für konsistentes Layout
+  - Komponenten: Buttons, Chips/Badges, Karten, Tabelle/Grids, Chat
+  - Dicebar-Layout (responsive), Ansage-Slot, Suggestions
+  - Leaderboard-Styling und Accessibility-Fokuszustände
+*/
+
 /* === Vars & Reset === */
 :root{
   --bg:#fafafa;
@@ -20,18 +29,18 @@ html,body{ margin:0; padding:0; background:var(--bg); color:#222; }
 body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
 h2{ margin:.5rem 0; }
 
-/* === Bereichsbreiten === */
+/* === Bereichsbreiten (Scoring/Chat) === */
 #scoreOut{ width: auto; max-width: none; margin: 0 1rem 1rem; }
 .chat-panel{ width: auto; max-width: none; margin: 0 1rem 1.2rem; }
 
-/* === Buttons === */
+/* === Buttons (Grundzustände & Varianten) === */
 button{
   cursor:pointer; font-size:1rem; padding:.4rem .6rem;
   border-radius:6px; border:1px solid var(--border); background:#f8f8f8;
 }
 button:hover{ background:#eee; }
 
-/* Themed action buttons */
+/* Themed action buttons (Ansage/Würfeln) */
 #announceBtnInline{
   background: #ffe7c2;           /* zartes Orange */
   border-color: #f0b27a;
@@ -80,14 +89,14 @@ select, input, button { font-family: inherit; font-size: 16px; line-height: 1.2;
 .chip.danger{ background:#f5b7b1; color:#7a1b16; }
 .badge{ display:inline-block; background:#eee; padding:.1rem .45rem; border-radius:8px; font-size:.8rem; margin-left:.25rem; }
 
-/* === Layout === */
+/* === Layout Wrapper === */
 .topbar{ display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:.5rem; }
 .players-inline{ flex:0 0 auto; }
 .muted{ color:var(--muted); font-size:.86rem; margin:.25rem 0 .75rem; }
 
 .players-grid{ display:flex; flex-wrap:wrap; gap: var(--cards-gap); justify-content:flex-start; align-items:flex-start; }
 
-/* Karten */
+/* Karten (Spieler-/Team-Boards) */
 .player-card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -101,7 +110,7 @@ select, input, button { font-family: inherit; font-size: 16px; line-height: 1.2;
 .pc-head{ display:flex; align-items:baseline; justify-content:space-between; gap:.75rem; font-weight:700; margin-bottom:.5rem; }
 .pc-total{ font-weight:700; }
 
-/* === Dice (Basis) === */
+/* === Dice (Basis) – Grid + Buttons === */
 #diceBar{
   /* Einheitliche Grid-Basis: 5 Würfel oben, Aktionszeile unten */
   display: grid;
@@ -127,7 +136,7 @@ button.die{
 }
 button.die.held{ background:#d4efdf; border-color:#27ae60; }
 
-/* Shake-Animation */
+/* Shake-Animation für Würfelsymbol */
 @keyframes dice-shake{
   0%{transform:translate(0,0) rotate(0deg)}
   20%{transform:translate(-1px,1px) rotate(-2deg)}
@@ -138,7 +147,7 @@ button.die.held{ background:#d4efdf; border-color:#27ae60; }
 }
 button.die.shaking{ animation: dice-shake .5s ease; }
 
-/* === Announce === */
+/* === Announce (❗) Slot und Pick-Hervorhebung === */
 .announce-container{ width: calc(var(--col-desc) + 4 * var(--col-score)); max-width: 100%; margin: 0 0 .5rem 0; }
 .announce-slot, .announce-box, .announce-status{ width: 100%; display: block; text-align: center; }
 
@@ -149,7 +158,7 @@ td.cell.announce-pickable{
   cursor: crosshair;
 }
 
-/* Suggestions */
+/* Suggestions – Button-Styling (nur Anzeige) */
 .suggestions-area{ min-height: 34px; margin: .5rem 0 .5rem 0; }
 .suggestions:empty{ opacity: 0; }
 .suggestions{ margin: .5rem 0; display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .45rem; }
@@ -162,7 +171,7 @@ td.cell.announce-pickable{
 .suggestion-btn:hover{ background:#ffd59a; }
 .suggestion-btn .points{ font-weight:700; opacity:.95; }
 
-/* === Mobile Styles === */
+/* === Mobile Styles (≤560px) === */
 @media (max-width:560px){
   .announce-container{ width: 100% !important; }
   .suggestions{ flex-direction: row; align-items: flex-start; }
@@ -227,7 +236,7 @@ td.cell.announce-pickable{
   .player-card table.grid.compact td{ padding: .18rem .26rem !important; }
 }
 
-/* === Desktop Guard === */
+/* === Desktop Guard (≥561px) – Dicebar-Gitter stabilisieren === */
 @media (min-width: 561px){
   #diceBar{
     display: grid !important;
@@ -290,7 +299,7 @@ td.cell.announce-pickable{
 .announce-box label{ margin-right:.35rem; }
 .banner.correction{ background:#ffeaa7; border:1px solid #f39c12; padding:.55rem; margin-bottom:.6rem; border-radius:6px; font-size:.9rem; }
 
-/* === Tabelle === */
+/* === Tabelle/Score-Grid === */
 .table-wrap{ border-radius:var(--table-radius); overflow:hidden; }
 table.grid{
   border-collapse:separate; border-spacing:0; font-size:.9rem; table-layout:fixed;

@@ -1,4 +1,20 @@
-// static/room.js
+/*
+  room.js – Raum-Client
+  ----------------------
+  Verantwortlich für:
+  - WebSocket-Interaktion mit dem Server (Join, Würfeln, Schreiben, Korrektur)
+  - Rendering von Scoreboard, Würfel-UI, Vorschlägen und Reactions/Chat
+  - Clientseitige Guards für bessere UX (z. B. Roll-Button Throttle)
+
+  Wichtige Snippets:
+  - safeSend(): Enthält einen kurzen zeitbasierten Throttle für 'roll'-Events, um
+    Double-Click/Mehrfachklicks abzufangen. Der Button wird für ~0.5s deaktiviert,
+    damit keine Doppelwürfe ausgelöst werden. Das korrespondiert mit einem
+    serverseitigen Cooldown.
+  - applyAnnounceModeButtonVisibility(): Steuert die Sichtbarkeit des Würfeln-Buttons
+    im Ansage-Pick-Modus über visibility, nicht display, damit sich das Layout nicht
+    verschiebt.
+*/
 // Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions)
 
 import { initChat, addChatMessage } from "./chat.js";
@@ -85,7 +101,13 @@ import { initChat, addChatMessage } from "./chat.js";
     0:"1",1:"2",2:"3",3:"4",4:"5",5:"6",
     9:"max",10:"min",12:"kenter",13:"full",14:"poker",15:"60"
   };
-
+  /**
+   * Berechnet clientseitig die Punkte für ein Feld anhand der aktuellen Würfel.
+   * Hinweis: Dient der Anzeige/Vorschlags-UX; serverseitig ist die Bewertung autoritativ.
+   * @param {string} fieldKey - Feldname ("1".."6","max","min","kenter","full","poker","60")
+   * @param {number[]} dice - Aktuelle Würfel (Länge 5)
+   * @returns {number} Punktewert
+   */
   function calculatePoints(fieldKey, dice) {
     const cnt = {};
     let total = 0;
@@ -239,6 +261,10 @@ import { initChat, addChatMessage } from "./chat.js";
   let _lastTurnPid = null;
   let _userScrollOverride = false;
   let _lastFilledCount = null; // Anzahl gefuellter schreibbarer Zellen
+  // Verzögertes Auto-Follow nach Schreibaktion (Mobile):
+  // Nach einem Schreibvorgang und Zugwechsel soll der Fokus ~1s auf dem soeben
+  // beschriebenen Board bleiben, bevor zum neuen Zug gescrollt wird.
+  let _pendingFollowTimer = null;
 
   // Mounts
   const mount = document.getElementById("scoreOut") || (() => {
@@ -249,6 +275,11 @@ import { initChat, addChatMessage } from "./chat.js";
   })();
 
   // ---------- WebSocket ----------
+  /**
+   * Stellt die WebSocket-Verbindung her und verarbeitet Server-Events.
+   * Verantwortlich für Join/Rejoin/Spectate, Snapshot-Handling,
+   * Abbruch-Notices, Chat-Weiterleitung und Auto-Reconnect.
+   */
   function connect() {
       // --- "Zurück zur Lobby" mit Confirm + Abbruch für alle ---
     (function bindBackToLobby() {
@@ -411,7 +442,13 @@ import { initChat, addChatMessage } from "./chat.js";
   connect();
 
   // ---------- Render & Events ----------
-  function renderFromSnapshot(snapshot) {
+/**
+ * Rendert die komplette Room-Ansicht aus einem Server-Snapshot.
+ * Aktualisiert Dicebar, Scoreboards, Vorschläge, Reactions und UI-Zustände
+ * (Ansage, Korrektur, Auto-Follow, Mobile-Layout).
+ * @param {object} snapshot - Server-Snapshot der aktuellen Spielsituation
+ */
+function renderFromSnapshot(snapshot) {
     const turnPid   = snapshot?._turn?.player_id || null;
     const iAmTurn   = turnPid && String(turnPid) === String(myId);
     // aktuelle Scrollposition des alten Grids sichern (wichtig fuer Mobile)
@@ -602,15 +639,27 @@ import { initChat, addChatMessage } from "./chat.js";
       const turnChanged = String(_lastTurnPid) !== String(turnPid);
       const wroteHappened = (filledNow > _lastFilledCount);
 
-      // Gewuenscht: Scroll NUR wenn wirklich geschrieben wurde UND der Zug uebergeht
+      // Gewünscht: Beim Schreibereignis + Zugwechsel NICHT sofort springen,
+      // sondern ~1s warten, damit Spieler/Gegner den Eintrag sehen können.
       if (turnChanged && wroteHappened) {
         _userScrollOverride = false; // manueller Fokus endet beim Zugwechsel
+        // Bereits laufenden Timer zurücksetzen
+        if (_pendingFollowTimer) { try { clearTimeout(_pendingFollowTimer); } catch {} }
+        const targetTurnPid = turnPid; // Ziel-Zug nach der Wartezeit
+        _pendingFollowTimer = setTimeout(() => {
+          // Nur auto-follow, wenn Nutzer nicht manuell gescrollt hat und
+          // der Zug immer noch derselbe ist wie vor 1 Sekunde.
+          if (_userScrollOverride) { _pendingFollowTimer = null; return; }
+          const curTurn = (sb && sb._turn) ? sb._turn.player_id : (snapshot?._turn?.player_id || null);
+          if (String(curTurn) !== String(targetTurnPid)) { _pendingFollowTimer = null; return; }
 
-        const grid = document.querySelector("#scoreOut .players-grid");
-        const target = grid ? grid.querySelector(".player-card.turn") : null;
-        if (grid && target && typeof target.scrollIntoView === "function") {
-          target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
-        }
+          const grid = document.querySelector("#scoreOut .players-grid");
+          const target = grid ? grid.querySelector(".player-card.turn") : null;
+          if (grid && target && typeof target.scrollIntoView === "function") {
+            target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+          }
+          _pendingFollowTimer = null;
+        }, 1000);
       }
 
       // Baselines aktualisieren (immer)
@@ -674,6 +723,10 @@ import { initChat, addChatMessage } from "./chat.js";
   window.addEventListener("resize", syncChatWidth);
 
   // --- Suggestions (nur Anzeige) ---
+  /**
+   * Zeigt serverseitige Vorschläge an (rein informativ, keine Logik).
+   * @param {Array<{type:string,label:string,points:number,eligible:boolean}>} suggestions
+   */
   function renderSuggestions(suggestions){
     try{
       const mountEl = document.querySelector("#suggestions");
@@ -691,6 +744,10 @@ import { initChat, addChatMessage } from "./chat.js";
   }
 
   // --- DiceBar: Hold/Unhold, Roll, Correction-Request, ESC-Cancel ---
+  /**
+   * Verdrahtet die Würfel-Leiste: Hold/Unhold, Würfeln, Korrekturanfrage,
+   * sowie ESC-Handling zum Abbrechen des Korrekturmodus.
+   */
   function wireDiceBar() {
     if (IS_SPECTATOR) {
       const rollBtn0 = $("#rollBtnInline", mount);
@@ -778,6 +835,10 @@ import { initChat, addChatMessage } from "./chat.js";
   }
 
   // --- Ansage (❗) ---
+  /**
+   * Bindet die Ansage-UI (❗): Auswahl des Feldes nach Wurf 1,
+   * Umschalten/Zurückziehen der Ansage und visuelle Markierungen.
+   */
   function wireAnnounceUI() {
     if (IS_SPECTATOR) {
       const sel0 = $("#announceSelect", mount);
@@ -809,6 +870,10 @@ import { initChat, addChatMessage } from "./chat.js";
   }
 
   // --- Grid-Klicks (mit 0-Confirm) ---
+  /**
+   * Aktiviert 0-Confirm-Klicks im Scoreboard-Grid. Prüft lokal Sonderfälle
+   * wie Poker-Zockerregel für Confirm-Dialoge; Server bleibt autoritativ.
+   */
   function wireGridClicks() {
     if (mount._gridBound) return;
     mount._gridBound = true;
@@ -858,9 +923,15 @@ import { initChat, addChatMessage } from "./chat.js";
         // Poker mit Punkten? -> nur confirmen, WENN Punkte nach Zockerregel NICHT erlaubt wären
         if (isPoker && points > 0) {
           // Server-paritätische Prüfung (roll_index / first4oak_roll / ❗-Ansage)
+          // Korrekturmodus: verwende die gespeicherten Meta-Daten aus _correction
           const turn    = sb?._turn || {};
-          const rollIdx = Number(turn.roll_index || 0);
-          let   first4  = (turn.first4oak_roll ?? null);
+          const corr    = sb?._correction || {};
+          const rollIdx = iAmCorrector
+            ? Number(corr.roll_index || 0)
+            : Number(turn.roll_index || 0);
+          let first4    = iAmCorrector
+            ? (corr.first4oak_roll ?? null)
+            : (turn.first4oak_roll ?? null);
 
           // has4/has5 aus aktuellen (oder Korrektur-)Würfeln
           const counts = {};
@@ -876,7 +947,10 @@ import { initChat, addChatMessage } from "./chat.js";
 
           // Punkte erlaubt?
           let allowedPoints;
-          if (inAng && announcedPoker) {
+          if (iAmCorrector) {
+            // Korrektur: Ansage spielt keine Rolle. Nutze gespeicherte Metadaten.
+            allowedPoints = (has5 || (has4 && first4 && rollIdx === Number(first4)));
+          } else if (inAng && announcedPoker) {
             // ❗ + Ansage "poker": Punkte in jedem Wurf mit 4/5 gleichen
             allowedPoints = (has4 || has5);
           } else {
@@ -904,9 +978,8 @@ import { initChat, addChatMessage } from "./chat.js";
           return;
         }
 
-        // Sonderfall: Poker ohne Punkte, aber Reihenfolge (⬇︎/⬆︎) wäre nicht dran
-        // -> keine Strike-Bestätigung anzeigen, da Server das ohnehin ablehnt.
-        if (isPoker && points === 0 && (field === "down" || field === "up")) {
+        // Generelle Reihenfolge-Prüfung für ⬇︎/⬆︎: wenn nicht „dran“, dann Aktion unterbinden
+        if (field === "down" || field === "up") {
           // Reihenfolge lokal prüfen wie am Server (_next_required_row)
           const ORDER_DOWN = [0,1,2,3,4,5,9,10,12,13,14,15];
           const order = field === "down" ? ORDER_DOWN : ORDER_DOWN.slice().reverse();
@@ -930,12 +1003,13 @@ import { initChat, addChatMessage } from "./chat.js";
           const nextRow = order.find(r => !filled.has(r));
 
           if (Number.isFinite(nextRow) && row !== nextRow) {
-            // Nicht „dran“ -> Strike-Dialog NICHT zeigen; Aktion abbrechen.
+            // Nicht „dran“ -> keinerlei Aktion; Strike-Dialog NICHT anzeigen.
             return;
           }
         }
 
-        // Nur wenn der berechnete Wert wirklich 0 ist, nachfragen (Strike)
+        // Nur wenn der berechnete Wert wirklich 0 ist, nachfragen (Strike).
+        // Hinweis: Bei ⬇︎/⬆︎ wurde oben bereits auf „dran“ geprüft und ggf. abgebrochen.
         if (points === 0) {
           const ok = confirm("Willst du dieses Feld wirklich streichen?");
           if (!ok) return;
@@ -951,6 +1025,11 @@ import { initChat, addChatMessage } from "./chat.js";
   }
 
   // ---------- Hotkeys ----------
+  /**
+   * Prüft, ob aktuell ein Wurf zulässig ist (Client-Guards). Der Server
+   * validiert zusätzlich inkl. Cooldown und Spielzustand.
+   * @returns {boolean}
+   */
   function canRollNow() {
     // Darf nur würfeln, wenn:
     // - ich am Zug bin
@@ -964,6 +1043,10 @@ import { initChat, addChatMessage } from "./chat.js";
     return iAmTurn && !(sb?._correction?.active) && underCap && !blocked;
   }
 
+  /**
+   * Sendet einen Roll-Request via safeSend mit kurzem UI-Lock (Throttle),
+   * um Doppelwürfe durch Mehrfachklicks zu verhindern.
+   */
   function safeRoll() {
     if (!canRollNow() || sendLock.roll) return;
     sendLock.roll = true;
@@ -971,6 +1054,10 @@ import { initChat, addChatMessage } from "./chat.js";
     finally { setTimeout(() => { sendLock.roll = false; }, 200); }
   }
 
+  /**
+   * Registriert Hotkeys: ESC (Cancel/Pick-Mode), 1..5 (Holds),
+   * Space/r (Roll), a (Ansage), u (Ansage aufheben), k (Korrektur anfragen).
+   */
   function ensureKeybindings() {
     if (document._roomKeysBound) return;
     document._roomKeysBound = true;
@@ -1060,6 +1147,10 @@ import { initChat, addChatMessage } from "./chat.js";
   }
 
   // ---------- Utils ----------
+  /**
+   * Zeigt einen kurzen Hinweis, wenn Zuschauer beitreten/verlassen.
+   * @param {{event:string,name:string}} evt
+   */
   function showSpectatorToast(evt){
     try {
       const { event, name } = evt || {};
@@ -1082,6 +1173,11 @@ import { initChat, addChatMessage } from "./chat.js";
     } catch {}
   }
 
+  /**
+   * HTML-Escaping für sichere Anzeige von Text (z. B. in Tooltips).
+   * @param {string} s
+   * @returns {string}
+   */
   function esc(s){
     return String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
   }

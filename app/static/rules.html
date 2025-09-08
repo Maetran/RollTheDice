@@ -4,6 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RollTheDice – Spielanleitung</title>
+  <!--
+    rules.html – Spielanleitung
+    ---------------------------
+    Erklärung der Spielregeln, Felder/Wertung, besondere Regeln, Modi
+    und Tastenkürzel. Dient als Referenzseite aus Lobby und Raum.
+  -->
   <link rel="stylesheet" href="style.css" />
   <style>
     /* Seiteninterne, leichte Ergänzungen für die Doku */
@@ -25,6 +31,7 @@
   </style>
 </head>
 <body>
+  <!-- Dokumentations-Container -->
   <div class="doc">
     <button class="small" onclick="location.href='/static/index.html'" style="margin:.75rem 0 .5rem;">Zurück zur Lobby</button>
     <h1>Spielanleitung</h1>
@@ -35,6 +42,7 @@
       indem du pro Zug bis zu drei (im letzten Zug fünf) Würfe nutzt.
     </p>
 
+    <!-- Rundenablauf -->
     <h2>Rundenablauf</h2>
     <ol>
       <li>Du bist am Zug und kannst zu Beginn Würfel halten/lösen.</li>
@@ -43,6 +51,7 @@
       <li>Trage anschließend das Ergebnis in genau <em>ein</em> freies Feld deiner Wahl (gemäss Reihen-Regeln) ein.</li>
     </ol>
 
+    <!-- Reihen-Regeln (Spalten) -->
     <details>
       <summary>Reihen-Regeln (Spalten)</summary>
       <p>
@@ -55,6 +64,7 @@
       </p>
     </details>
 
+    <!-- Felder & Wertung -->
     <h2>Felder & Wertung</h2>
     <table class="grid-fields">
       <thead>
@@ -77,6 +87,7 @@
       </tbody>
     </table>
 
+    <!-- Besondere Regeln -->
     <h2>Besondere Regeln</h2>
     <ul>
       <li><strong>Ansage ändern/aufheben:</strong> Im <em>ersten Wurf</em> (und nur dort) darf die Ansage beliebig geändert oder entfernt werden.</li>
@@ -88,6 +99,7 @@
       <li><strong>Auto-Timeout:</strong> Spiele ohne Aktivität werden nach 10 Minuten automatisch abgebrochen.</li>
     </ul>
 
+    <!-- Spielmodi -->
     <h2>Spielmodi</h2>
     <details>
       <summary>1 Spieler</summary>
@@ -102,6 +114,7 @@
       <p>Spieler 1 &amp; 3 bilden Team A, 2 &amp; 4 Team B. Teams teilen sich je ein gemeinsames Board. Gewertet wird das Team-Total.</p>
     </details>
 
+    <!-- Steuerung & Shortcuts -->
     <h2>Steuerung & Shortcuts</h2>
     <ul>
       <li><span class="kbd">1…5</span> Würfel halten/lösen</li>
@@ -110,6 +123,7 @@
       <li><span class="kbd">K</span> Korrektur anfragen, <span class="kbd">Esc</span> Korrektur abbrechen</li>
     </ul>
 
+    <!-- Hinweisbox -->
     <p class="note"><strong>Tipp:</strong> In der ❗-Spalte werden auf dem eigenen Board die erlaubten Zellen hervorgehoben. Bei 0-Punkten fragt das Spiel nach einer Bestätigung.</p>
   </div>
 </body>

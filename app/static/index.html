@@ -4,8 +4,19 @@
   <meta charset="utf-8">
   <title>Würfler – Lobby</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--
+    index.html – Lobby
+    ------------------
+    Diese Seite listet offene und laufende Spiele, ermöglicht das Erstellen
+    neuer Spiele (mit Modus/Passphrase) und zeigt Leaderboards an.
+    - /api/games liefert Spielübersichten (offen + laufend)
+    - /api/leaderboard liefert Recent/Alltime und Stats
+    - Per Buttons wird in den Spielraum /static/room.html navigiert
+  -->
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#000000">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="icon" type="image/png" href="/static/favicon.png" sizes="32x32">
   <!-- FIX: relative auf die echte CSS-Datei unter /static/ -->
   <link rel="stylesheet" href="/static/style.css?v=23">
   <style>
@@ -34,6 +45,7 @@
   </style>
 </head>
 <body>
+  <!-- Rahmen-Container -->
   <div class="wrap">
     <div class="title">
       <div style="display:flex; align-items:center; gap:.5rem;">
@@ -43,7 +55,7 @@
       <div class="stats">Würfelspiele beendet: <span id="gamesPlayed">0</span><button class="small" style="margin-left:.75rem;" onclick="location.href='/static/rules.html'">Spielregeln</button></div>
     </div>
 
-    <!-- 1) Wer bist du? -->
+    <!-- 1) Wer bist du? – Name wird im LocalStorage gemerkt -->
     <div class="card">
       <h2>Wer bist du?</h2>
       <div class="row">
@@ -52,7 +64,7 @@
       </div>
     </div>
 
-    <!-- 2) Neues Spiel -->
+    <!-- 2) Neues Spiel – Name/Modus/Passphrase, erzeugt via /api/games (POST) -->
     <div class="card">
       <h2>Neues Spiel erstellen</h2>
       <div class="row">
@@ -69,7 +81,7 @@
       <div id="createErr" class="muted small" style="margin-top:.4rem; color:#b71c1c;"></div>
     </div>
 
-    <!-- 3) Offene Spiele -->
+    <!-- 3) Offene Spiele – noch nicht gestartete Spiele -->
     <div class="card">
       <h2>Offene Spiele</h2>
       <div class="row" style="margin-bottom:.5rem;">
@@ -79,7 +91,7 @@
       <div id="gamesList" class="games"></div>
     </div>
 
-    <!-- 3b) Laufende Spiele -->
+    <!-- 3b) Laufende Spiele – beitreten als Zuschauer -->
     <div class="card">
       <h2>Laufende Spiele</h2>
       <div class="row" style="margin-bottom:.5rem;">
@@ -89,7 +101,7 @@
       <div id="runningList" class="games"></div>
     </div>
 
-    <!-- 4) Leaderboard -->
+    <!-- 4) Leaderboard – Recent (7 Tage) und Alltime Top 10 -->
     <h2>Leaderboard</h2>
     <div class="leaderboards" style="display:flex; gap:1.2rem; flex-wrap:wrap;">
       <div class="leaderboard-box" style="flex:1; min-width:320px;">
@@ -126,6 +138,7 @@
     </div>
   </div>
 
+  <!-- Hauptskript: lädt Listen/Leaderboards und verknüpft Buttons -->
   <script type="module">
     const nameInput  = document.getElementById('playerName');
     const passInput  = document.getElementById('passInput');

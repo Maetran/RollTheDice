@@ -4,6 +4,15 @@
   <meta charset="utf-8" />
   <title>RollTheDice – Spiel</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!--
+    room.html – Spielraum
+    ---------------------
+    Diese Seite stellt den Spielraum bereit:
+    - Styles aus /static/style.css bestimmen Grundlayout (Kartenbreiten, Farben)
+    - scoreboard.js rendert die Spielinhalte (Dicebar, Tabellen, Vorschläge)
+    - room.js verbindet per WebSocket, orchestriert UI, Chat und Korrekturmodus
+    - Ein schlanker Header bietet Reactions, Regeln-Link und Zurück-zur-Lobby
+  -->
   <link rel="stylesheet" href="/static/style.css?v=13">
   <style>
     /* Header & Status zentrieren – gleiche Breite wie Score/Chat */
@@ -45,8 +54,7 @@
   </style>
 </head>
 <body>
-
-  <!-- Header -->
+  <!-- Header: Reactions, Regeln, Zurück zur Lobby -->
   <div class="room-header">
     <div id="reactionsBar" class="reactions-host"></div>
     <div class="spacer"></div>
@@ -54,10 +62,10 @@
 <button id="backToLobbyBtn" class="small">Zurück zur Lobby</button>
   </div>
 
-  <!-- Inhalt aus scoreboard.js (Würfel, Buttons, Tabellen) -->
+  <!-- Scoreboard-Mount: Würfel, Buttons, Tabellen werden hier gerendert (scoreboard.js) -->
   <div id="scoreOut"></div>
 
-  <!-- Chat -->
+  <!-- Chat-Bereich: Eingabe und Verlauf (durch room.js verdrahtet) -->
   <div id="chatPanel" class="chat-panel">
     <h3 style="margin:.6rem 0;">Chat</h3>
     <div class="chat-input-row">
@@ -67,11 +75,12 @@
     <div id="chatBox" class="chat-box"></div>
   </div>
 
-  <!-- Scripts: zuerst scoreboard, dann room (als ES-Modul!) -->
+  <!-- Scripts: zuerst scoreboard (Renderer), dann room (WS/Steuerung als ES-Modul) -->
   <script src="scoreboard.js" defer></script>
   <script src="/static/emoji.js?v=2"></script>
   <script type="module" src="room.js"></script>
   <script>
+    // Service Worker registrieren (Root-Scope /sw.js)
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')  // << statt /static/sw.js

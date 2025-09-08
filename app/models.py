@@ -1,3 +1,23 @@
+"""
+models.py – Legacy Datenmodell (nicht der aktive Serverpfad)
+-----------------------------------------------------------
+
+Dieses Modul enthält eine frühere, objektorientierte Implementierung von Spiel,
+Spielern und Score-Sheets. Der aktuelle FastAPI-Server nutzt hingegen eine
+dict-basierte State-Struktur in `app/main.py`.
+
+Warum behalten?
+- Referenz für Regeln/Validierungen in OO-Form
+- Hilfreich, um Datenstrukturen und Spielfluss nachvollziehen zu können
+
+Korrektur-bezogene Felder (historisch):
+- `last_write`: Meta zum letzten Eintrag pro Spieler
+- `correction_active`, `correction_player`, `correction_dice`,
+  `correction_rows_before`: Zustandsfelder für einen Korrekturvorgang
+
+Hinweis: Die produktive Poker/Korrektur-Validierung erfolgt in `app/main.py`
+im WebSocket-Handler und wurde dort mit Roll-Tracking (first 4-of-a-kind) ergänzt.
+"""
 # models.py
 from typing import Dict, Optional, Tuple, List
 import random
@@ -7,6 +27,7 @@ MODE_EXPECTED = {"2": 2, "3": 3, "2v2": 4}
 FIELD_KEYS = ["1","2","3","4","5","6","max","min","kenter","full","poker","60"]
 
 def _has_four_kind(dice: Tuple[int, int, int, int, int]) -> bool:
+    """Hilfsfunktion: Prüft, ob ein Vierling im Wurf enthalten ist."""
     counts: Dict[int,int] = {}
     for d in dice:
         counts[d] = counts.get(d, 0) + 1
@@ -23,6 +44,7 @@ class Player:
         self.row4: Dict[str,int] = {}
 
     def row_by_idx(self, idx:int) -> Dict[str,int]:
+        """Liefert die Reihe (1..4) dieses Spielers als Dict der Felder."""
         return {1:self.row1,2:self.row2,3:self.row3,4:self.row4}[idx]
 
 class Game:
@@ -61,16 +83,20 @@ class Game:
     # ---- helpers / meta
     @property
     def expected_players(self) -> int:
+        """Erwartete Spieleranzahl anhand des Modus (2, 3, 2v2→4)."""
         return MODE_EXPECTED.get(self.mode, 2)
 
     def _is_turn_of(self, pid: str) -> bool:
+        """True, wenn aktuell dieser Spieler am Zug ist."""
         return bool(self.turn_order) and self.turn_order[self.turn_index] == pid
 
     def can_join(self) -> bool:
+        """True, wenn das Spiel noch nicht gestartet und noch Platz ist."""
         return (not self.started) and (len(self.players) < self.expected_players)
 
     # ---- players
     def add_player(self, pid: str, name: str, ws) -> bool:
+        """Fügt einen Spieler hinzu; startet das Spiel, sobald voll."""
         if not self.can_join():
             return False
         p = Player(pid, name, ws)
@@ -82,15 +108,18 @@ class Game:
         return True
 
     def reconnect_player(self, pid: str, ws):
+        """Setzt die WebSocket-Referenz neu (Rejoin)."""
         if pid in self.players:
             self.players[pid].ws = ws
 
     def disconnect_player(self, pid: str):
+        """Entkoppelt die WebSocket-Referenz (Verbindung getrennt)."""
         if pid in self.players:
             self.players[pid].ws = None
 
     # ---- lifecycle
     def _start_game(self):
+        """Initialisiert den Spielzustand und startet das Spiel."""
         if self.started:
             return
         self.started = True
@@ -107,18 +136,22 @@ class Game:
 
     # ---- finish helpers
     def _row_full(self, row: Dict[str,int]) -> bool:
+        """True, wenn alle 12 Wertungsfelder in dieser Reihe befüllt sind."""
         return sum(1 for k in FIELD_KEYS if k in row) == len(FIELD_KEYS)
 
     def _player_sheet_full(self, p: Player) -> bool:
+        """True, wenn alle vier Reihen des Spielers voll sind."""
         return self._row_full(p.row1) and self._row_full(p.row2) and self._row_full(p.row3) and self._row_full(p.row4)
 
     def _game_finished(self) -> bool:
+        """True, wenn alle Spielerblätter vollständig sind (Spielende)."""
         if not self.players:
             return False
         return all(self._player_sheet_full(p) for p in self.players.values())
 
     # ---- actions (nur erlaubt, wenn keine Korrektur läuft)
     def set_hold(self, pid: str, holds: List[bool]):
+        """Setzt Hold-Flags für die fünf Würfel (nur eigener Zug)."""
         if not self.started or not self._is_turn_of(pid) or self.finished or self.correction_active:
             return
         if len(holds) != 5:
@@ -126,6 +159,7 @@ class Game:
         self.holds = [bool(x) for x in holds]
 
     def roll_dice(self, pid: str):
+        """Würfelt für alle nicht gehaltenen Würfel (max. 3 pro Zug)."""
         if not self.started or not self._is_turn_of(pid) or self.finished or self.correction_active:
             return
         if self.rolls_used >= self.max_rolls_per_turn:
@@ -136,6 +170,7 @@ class Game:
         self.rolls_used += 1
 
     def announce_row4(self, pid: str, field: str):
+        """Setzt die Ansage für Reihe 4, nur direkt nach Wurf 1 erlaubt."""
         if not self.started or not self._is_turn_of(pid) or self.finished or self.correction_active:
             return
         if self.rolls_used != 1:
@@ -146,25 +181,30 @@ class Game:
 
     # ---- reihen-regeln
     def _allowed_row1(self, row: Dict[str,int], field:str) -> bool:
+        """Reihe 1: strikt von oben nach unten (erstes noch freies Feld)."""
         for k in FIELD_KEYS:
             if k not in row:
                 return k == field
         return False
 
     def _allowed_row2(self, row: Dict[str,int], field:str) -> bool:
+        """Reihe 2: freie Wahl (jedes noch freie Feld erlaubt)."""
         return field not in row
 
     def _allowed_row3(self, row: Dict[str,int], field:str) -> bool:
+        """Reihe 3: strikt von unten nach oben (letztes noch freies Feld)."""
         for k in reversed(FIELD_KEYS):
             if k not in row:
                 return k == field
         return False
 
     def _allowed_row4(self, row: Dict[str,int], field:str) -> bool:
+        """Reihe 4 (❗): nur das angesagte Feld und nur, wenn es dort noch frei ist."""
         return (self.announced_row4 == field) and (field not in row)
 
     # Ansage exklusiv erst ab Wurf 2; Wurf 1 erlaubt überall + implizite Ansage bei Reihe 4
     def _validate(self, player: Player, row_idx: int, field: str) -> bool:
+        """Validiert einen geplanten Eintrag gegen Reihen-/Ansageregeln."""
         if field not in FIELD_KEYS or self.finished:
             return False
 
@@ -188,6 +228,10 @@ class Game:
         return False
 
     def write_field(self, pid: str, row_idx:int, field:str, strike:bool):
+        """Schreibt einen Wert (oder 0 bei strike) in die angegebene Zelle.
+
+        Speichert einen Snapshot des vorherigen Zustands für eine mögliche Korrektur.
+        """
         if not self.started or not self._is_turn_of(pid) or self.finished or self.correction_active:
             return
         if self.rolls_used <= 0:
@@ -231,6 +275,7 @@ class Game:
 
     # ---- Korrekturmodus
     def can_request_correction(self, pid: str) -> bool:
+        """True, wenn der Spieler seinen letzten Eintrag korrigieren darf."""
         lw = self.last_write.get(pid)
         if not lw:
             return False
@@ -241,6 +286,7 @@ class Game:
         return True
 
     def start_correction(self, pid: str) -> bool:
+        """Startet den Korrekturmodus und stellt die Würfel des letzten Eintrags bereit."""
         if not self.can_request_correction(pid):
             return False
         lw = self.last_write[pid]
@@ -252,11 +298,13 @@ class Game:
         return True
 
     def cancel_correction(self):
+        """Beendet den Korrekturmodus und räumt Korrekturzustand auf."""
         self.correction_active = False
         self.correction_player = None
         self.correction_dice = None
 
     def write_field_correction(self, pid: str, row_idx:int, field:str, strike:bool):
+        """Schreibt im Korrekturmodus den letzten Eintrag neu (ggf. anderes Feld)."""
         # Nur der Anforderer, nur im Korrekturmodus
         if not self.correction_active or self.correction_player != pid:
             return
@@ -323,6 +371,7 @@ class Game:
 
     # ---- intern
     def _end_turn(self):
+        """Beendet den Zug: Reset von Rolls/Holds/Dice, nächster Spieler."""
         self.rolls_used = 0
         self.holds = [False]*5
         self.current_dice = [0,0,0,0,0]
@@ -332,6 +381,7 @@ class Game:
 
     # ---- snapshot
     def scoreboard_snapshot(self) -> dict:
+        """Erzeugt einen UI-nahen Snapshot mit Reihen/Subtotals und Zugstatus."""
         out: Dict[str,dict] = {}
         for pid, sheet in self.scores.items():
             rows = {1: sheet.row1, 2: sheet.row2, 3: sheet.row3, 4: sheet.row4}

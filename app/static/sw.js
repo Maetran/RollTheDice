@@ -1,6 +1,18 @@
-// sw.js — Minimaler Service Worker für RollTheDice (Root-Scope: /)
+/*
+  sw.js — Service Worker (Root-Scope: /)
+  --------------------------------------
+  Aufgaben:
+  - Pre-Caching zentraler Assets für Offline/Low-Connectivity
+  - Cleanup alter Cache-Versionen beim Activate-Event
+  - Vorsichtiger Fetch-Handler nur für GET-Anfragen der eigenen Origin
 
-const CACHE_VERSION = 'v34';
+  Hinweise zu Entscheidungen:
+  - Precache-Fehlschläge (404/Netz) werden bewusst ignoriert, damit eine fehlende
+    einzelne Datei die Installation nicht blockiert.
+  - Versionierte Cache-Namen (CACHE_VERSION) erleichtern das gezielte Aufräumen.
+*/
+
+const CACHE_VERSION = 'v35';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
