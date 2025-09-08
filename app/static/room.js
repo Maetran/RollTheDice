@@ -585,8 +585,10 @@ function renderFromSnapshot(snapshot) {
     const wroteHappened = (_lastFilledCount !== null) ? (filledNow > _lastFilledCount) : false;
 
     const _newGrid = document.querySelector("#scoreOut .players-grid");
-    // Wiederherstellen, wenn: Nutzer manuell uebersteuert ODER kein TurnChange ODER kein Schreiben
-    if (_newGrid && (_userScrollOverride || !turnChanged || !wroteHappened)) {
+    // Immer die vorherige Scrollposition wiederherstellen, solange der Nutzer
+    // nicht manuell uebersteuert hat. So bleibt der zuletzt sichtbare Board-Fokus
+    // fuer ~1s bestehen, bevor der Auto-Follow greift – fuer alle Nutzer.
+    if (_newGrid && !_userScrollOverride) {
       _newGrid.scrollLeft = _oldScrollLeft;
     }
 
