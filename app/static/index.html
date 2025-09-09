@@ -31,6 +31,7 @@
       font-family: inherit;          /* neu */
       font-size:16px;                /* neu – bleibt stehen */
     }
+
     .games { display:flex; flex-direction:column; gap:.6rem; }
     .game-row { display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border,#e0e0e0); border-radius:.6rem; padding:.7rem .9rem; background:#fff; }
     .game-row .meta .name { font-weight:700; }
@@ -42,6 +43,10 @@
     .leaderboard th, .leaderboard td { border:1px solid #ddd; padding:.4rem .6rem; text-align:left; font-size:.9rem; }
     .leaderboard th { background:#f7f7f7; font-weight:600; }
     .stats { font-size:.9rem; color:#444; }
+    .hc-badge { color:#b71c1c; font-weight:700; margin-left:.4rem; }
+    .tabs { display:flex; gap:.5rem; margin:.4rem 0; }
+    .tab-btn { padding:.25rem .5rem; border:1px solid var(--border,#e0e0e0); border-radius:.4rem; background:#fafafa; cursor:pointer; }
+    .tab-btn.active { background:#e9f0ff; border-color:#a8c3ff; }
   </style>
 </head>
 <body>
@@ -76,6 +81,10 @@
           <option value="3">3 Spieler</option>
           <option value="2v2">2 vs 2</option>
         </select>
+        <label style="display:flex; align-items:center; gap:.35rem;">
+          <input id="hardcoreChk" type="checkbox">
+          <span class="hc-badge">Hardcore</span>
+        </label>
         <button id="createBtn">Erstellen &amp; beitreten</button>
       </div>
       <div id="createErr" class="muted small" style="margin-top:.4rem; color:#b71c1c;"></div>
@@ -103,6 +112,10 @@
 
     <!-- 4) Leaderboard – Recent (7 Tage) und Alltime Top 10 -->
     <h2>Leaderboard</h2>
+    <div class="tabs">
+      <button id="lbTabNormal" class="tab-btn active">Normal</button>
+      <button id="lbTabHC" class="tab-btn">Hardcore</button>
+    </div>
     <div class="leaderboards" style="display:flex; gap:1.2rem; flex-wrap:wrap;">
       <div class="leaderboard-box" style="flex:1; min-width:320px;">
         <h3>Top 10 (letzte 7 Tage)</h3>
@@ -154,6 +167,10 @@
     const recentTable = document.querySelector("#recentTable tbody");
     const alltimeTable = document.querySelector("#alltimeTable tbody");
     const gamesPlayedEl = document.getElementById("gamesPlayed");
+    const hcChk    = document.getElementById('hardcoreChk');
+    const lbTabNormal = document.getElementById('lbTabNormal');
+    const lbTabHC     = document.getElementById('lbTabHC');
+    let lbActiveTab = 'normal'; // 'normal' | 'hc'
 
     // Name merken/laden
     const NAME_KEY = 'wuerfler_name';
@@ -207,6 +224,7 @@
         const status   = g.started ? 'läuft' : (g.finished ? 'fertig' : 'wartet');
         const disabled = (joined >= expected) || g.started || g.finished ? 'disabled' : '';
         const modeTxt  = (g.mode === '2v2') ? '2 vs 2' : `${g.mode || expected}`;
+        const hcBadge  = g.hardcore ? `<span class="hc-badge">Hardcore</span>` : '';
 
         const waiting = Array.isArray(g.waiting) ? g.waiting : [];
         const waitingBadges = waiting.length
@@ -219,6 +237,7 @@
               <div class="name">
                 ${escapeHtml(g.name || '(ohne Titel)')}
                 ${g.locked ? `<span style="color:#b71c1c; font-weight:600; margin-left:.4rem;">Passwortgeschützt</span>` : ""}
+                ${hcBadge}
               </div>
               <div class="sub">
                 Spieler: <b>${joined}/${expected}</b> • Modus: ${modeTxt} • Status: ${status}
@@ -248,6 +267,7 @@
       runningEl.innerHTML = games.map(g => {
         const gid = g.id || '';
         const modeTxt  = (g.mode === '2v2') ? '2 vs 2' : `${g.mode || g.expected}`;
+        const hcBadge  = g.hardcore ? `<span class="hc-badge">Hardcore</span>` : '';
         const waiting = Array.isArray(g.waiting) ? g.waiting : [];
         const playersLine = waiting.length
           ? waiting.map(n => `<span class="badge">${escapeHtml(n)}</span>`).join(' ')
@@ -272,6 +292,7 @@
               <div class="name">
                 ${escapeHtml(g.name || '(ohne Titel)')}
                 ${g.locked ? `<span style="color:#b71c1c; font-weight:600; margin-left:.4rem;">Passwortgeschützt</span>` : ""}
+                ${hcBadge}
               </div>
               <div class="sub">
                 Modus: ${modeTxt} Spieler • Gestartet: ${formatDateTime(g.started_at)}
@@ -368,7 +389,7 @@
         const res = await fetch('/api/games', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ name: gname, mode, owner: pname, pass: passInput.value })
+          body: JSON.stringify({ name: gname, mode, owner: pname, pass: passInput.value, hardcore: !!hcChk.checked })
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
@@ -426,10 +447,16 @@
         const data = await res.json();
         gamesPlayedEl.textContent = (data.stats && data.stats.games_played) ?? 0;
 
+        // Datenformat: { recent: {normal:[], hc:[]}, alltime: {normal:[], hc:[]} }
+        const r = data.recent || { normal: [], hc: [] };
+        const a = data.alltime || { normal: [], hc: [] };
+        const recentList  = lbActiveTab === 'hc' ? (r.hc || []) : (r.normal || []);
+        const alltimeList = lbActiveTab === 'hc' ? (a.hc || []) : (a.normal || []);
+
         // RECENT: Datum relativ
         {
           const tbody = recentTable;
-          const list = Array.isArray(data.recent) ? data.recent : [];
+          const list = Array.isArray(recentList) ? recentList : [];
           tbody.innerHTML = list.map(e => {
             const dateRel = fmtRelative(e.finished_at || e.ts);
             const name    = escapeHtml(e.name ?? "—");
@@ -449,7 +476,7 @@
         // ALLTIME: Datum DD.MM.YY
         {
           const tbody = alltimeTable;
-          const list = Array.isArray(data.alltime) ? data.alltime : [];
+          const list = Array.isArray(alltimeList) ? alltimeList : [];
           tbody.innerHTML = list.map(e => {
             const dateDMY = fmtDMY(e.finished_at || e.ts);
             const name    = escapeHtml(e.name ?? "—");
@@ -483,6 +510,19 @@
     loadLeaderboard();
     setInterval(fetchGames, 4000);
     setInterval(loadLeaderboard, 10000);
+
+    // Tabs Leaderboard: Handler
+    function setLbTab(tab){
+      lbActiveTab = (tab === 'hc') ? 'hc' : 'normal';
+      if (lbTabNormal && lbTabHC){
+        lbTabNormal.classList.toggle('active', lbActiveTab === 'normal');
+        lbTabHC.classList.toggle('active', lbActiveTab === 'hc');
+      }
+      // Sofort neu laden
+      loadLeaderboard();
+    }
+    if (lbTabNormal) lbTabNormal.addEventListener('click', ()=> setLbTab('normal'));
+    if (lbTabHC) lbTabHC.addEventListener('click', ()=> setLbTab('hc'));
 
     function formatDateTime(s) {
       if (!s) return "–";

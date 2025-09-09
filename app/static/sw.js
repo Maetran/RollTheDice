@@ -12,7 +12,7 @@
   - Versionierte Cache-Namen (CACHE_VERSION) erleichtern das gezielte Aufräumen.
 */
 
-const CACHE_VERSION = 'v36';
+const CACHE_VERSION = 'v37';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
@@ -81,7 +81,8 @@ self.addEventListener('fetch', (event) => {
 // --- Strategien ---
 async function cacheFirst(req) {
   const cache = await caches.open(PRECACHE);
-  const cached = await cache.match(req, { ignoreSearch: true });
+  // Wichtig: ignoreSearch=false, damit ?v=…-Busting beachtet wird
+  const cached = await cache.match(req, { ignoreSearch: false });
   if (cached) return cached;
 
   try {

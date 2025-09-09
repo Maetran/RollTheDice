@@ -125,7 +125,7 @@ def compute_row_subtotals(row: Dict[str, int]) -> Dict[str, int]:
 
     Rückgabe-Keys:
     - sum_top: Summe 1..6
-    - bonus_top: 30 bei sum_top >= 60, sonst 0
+    - bonus_top: 30 bei sum_top >= 40, sonst 0
     - total_top: sum_top + bonus_top
     - sum_maxmin: 1 × (max − min), falls 1/max/min vorhanden
     - sum_bottom: Summe von kenter + full + poker + 60
@@ -135,7 +135,7 @@ def compute_row_subtotals(row: Dict[str, int]) -> Dict[str, int]:
         return int(row.get(key, 0))
 
     sum_top = sum(g(str(i)) for i in range(1, 7))
-    bonus_top = 30 if sum_top >= 60 else 0
+    bonus_top = 30 if sum_top >= 40 else 0
     total_top = sum_top + bonus_top
 
     if all(key in row for key in ("1","max","min")):

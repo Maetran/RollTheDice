@@ -210,6 +210,7 @@ def new_game(gid: str, name: str, mode) -> GameDict:
         "_id": gid,
         "_name": name,
         "_mode": str(mode),
+        "_hardcore": False,                 # Hardcore-Modus (1 Wurf, ❗ wie Freireihe, kein Korrekturmodus)
         "_expected": expected,
         "_started": False,
         "_finished": False,
@@ -508,6 +509,10 @@ def _is_last_turn_for(g: GameDict, pid: str) -> bool:
 
 def _set_roll_cap_for_current_turn(g: GameDict):
     """Setzt _rolls_max je nach 'letzter Wurf' auf 5, sonst 3."""
+    # Hardcore überschreibt immer auf 1 Wurf pro Zug
+    if bool(g.get("_hardcore")):
+        g["_rolls_max"] = 1
+        return
     cur = g.get("_turn", {}) or {}
     pid = cur.get("player_id")
     g["_rolls_max"] = 5 if (pid and _is_last_turn_for(g, pid)) else 3
@@ -537,25 +542,34 @@ def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_anno
     if _remaining_cells_for(g, pid) == 1:
         return True, ""
 
-    # Global: Wenn eine Ansage aktiv ist, darf in diesem Zug nur im ❗-Feld
-    # GENAU dieses angesagte Feld beschrieben/gestrichen werden.
-    if during_turn_announce and not _is_last_turn_for(g, pid):
-        if col != "ang":
-            return False, f"Ansage aktiv: Nur ❗-Spalte {during_turn_announce} erlaubt"
-        if during_turn_announce != field_key:
-            return False, f"Angesagt ist {during_turn_announce}, nicht {field_key}"
-        # passt: ❗ + korrektes Feld -> erlaubt (Punkte oder 0 gemäss aktuellem Wurf)
-        return True, ""
+    # Hardcore: ❗ verhält sich exakt wie Freireihe (keine Ansagepflicht, keine Reihenfolge-Constraints)
+    if bool(g.get("_hardcore")):
+        if col in ("free", "ang"):
+            return True, ""
+        # für down/up gelten weiterhin die üblichen Reihenfolgen
+        # (kein Ansage-Mechanismus in Hardcore)
+    else:
+        # Global: Wenn eine Ansage aktiv ist, darf in diesem Zug nur im ❗-Feld
+        # GENAU dieses angesagte Feld beschrieben/gestrichen werden.
+        if during_turn_announce and not _is_last_turn_for(g, pid):
+            if col != "ang":
+                return False, f"Ansage aktiv: Nur ❗-Spalte {during_turn_announce} erlaubt"
+            if during_turn_announce != field_key:
+                return False, f"Angesagt ist {during_turn_announce}, nicht {field_key}"
+            # passt: ❗ + korrektes Feld -> erlaubt (Punkte oder 0 gemäss aktuellem Wurf)
+            return True, ""
 
     if col == "free":
         return True, ""
 
     if col == "ang":
+        if bool(g.get("_hardcore")):
+            # In Hardcore ist ❗ identisch zur Freireihe
+            return True, ""
         # Ausnahme: im letzten Zug darf ohne Ansage in ❗ geschrieben werden
         if _is_last_turn_for(g, pid):
             return True, ""
         # NEU: direkt nach dem 1. Wurf darf ohne Dropdown-Ansage in ❗ geschrieben werden
-        # (solange das Ziel-Feld noch leer ist; das prüfen wir im Schreibpfad ohnehin)
         if g.get("_rolls_used", 0) == 1:
             return True, ""
         if not during_turn_announce:
@@ -633,10 +647,12 @@ def snapshot(g: GameDict) -> dict:
         if g["_finished"] and not g.get("_results"):
             g["_results"] = _compute_results_for_snapshot(g)
 
-        # --- Auto-advance single-player turn logic ---
+        # --- Auto-advance roll trigger logic ---
+        # Im 1P-Modus und im Hardcore-Modus (alle Modi) wird der erste Wurf automatisch angestoßen,
+        # sobald ein neuer Zug beginnt (würfel alle 0, keine Holds, keine Würfe verwendet).
         _auto_single = False
         if (
-            g.get("_expected") == 1
+            (g.get("_expected") == 1 or bool(g.get("_hardcore")))
             and not g.get("_finished")
             and g.get("_turn") is not None
         ):
@@ -658,6 +674,7 @@ def snapshot(g: GameDict) -> dict:
 
         return {
             "_name": g["_name"],
+            "_hardcore": bool(g.get("_hardcore", False)),
             "_players": [{"id": p["id"], "name": p["name"]} for p in g["_players"]],
             "_players_joined": len(g["_players"]),
             "_expected": g["_expected"],
@@ -761,6 +778,7 @@ class CreateReq(BaseModel):
     mode: str | int
     owner: str | None = None
     passphrase: str | None = Field(default=None, alias="pass")
+    hardcore: bool | None = False
 
 def game_list_payload() -> list[dict]:
     """Hilfsfunktion: erzeugt die JSON-Payload für die Spielübersicht (Lobby).
@@ -774,6 +792,7 @@ def game_list_payload() -> list[dict]:
             "id": gid,
             "name": g["_name"],
             "mode": g["_mode"],
+            "hardcore": bool(g.get("_hardcore", False)),
             "expected": g["_expected"],
             "joined": len(g["_players"]),
             "started": g["_started"],
@@ -796,6 +815,7 @@ async def api_games():
                 "id": gid,
                 "name": g["_name"],
                 "mode": g["_mode"],
+                "hardcore": bool(g.get("_hardcore", False)),
                 "players": joined,
                 "expected": g["_expected"],
                 "started": g["_started"],
@@ -837,6 +857,7 @@ def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="
         "id": game_id,
         "name": g["_name"],
         "mode": g["_mode"],
+        "hardcore": bool(g.get("_hardcore", False)),
         "players": len(g["_players"]),
         "expected": g["_expected"],
         "started": g["_started"],
@@ -886,9 +907,9 @@ async def get_leaderboard():
         except Exception:
             return None
 
-    # Rohdaten lesen
-    recent_raw  = read_json(RECENT_FILE, [])
-    alltime_raw = read_json(ALLTIME_FILE, [])
+    # Rohdaten lesen (neues Schema: {normal:[...], hc:[...]}, aber alte Liste weiterhin unterstützen)
+    recent_raw  = read_json(RECENT_FILE, {"normal": [], "hc": []})
+    alltime_raw = read_json(ALLTIME_FILE, {"normal": [], "hc": []})
     stats_raw   = read_json(STATS_FILE, {"games_played": 0})
 
     # --- Cleanup "recent": nur letzte 7 Tage, sortiert, Top-10 ---
@@ -909,18 +930,32 @@ async def get_leaderboard():
         except Exception:
             return False
 
-    recent_filtered = [e for e in (recent_raw or []) if valid_entry(e)]
-    # Sortierung & Cap
-    recent_filtered.sort(key=lambda x: int(x.get("points", 0)), reverse=True)
-    recent_filtered = recent_filtered[:10]
+    def as_dual_lists(raw):
+        if isinstance(raw, dict):
+            return list(raw.get("normal", []) or []), list(raw.get("hc", []) or [])
+        # legacy: plain list -> normal, hc leer
+        return list(raw or []), []
+
+    recent_norm, recent_hc = as_dual_lists(recent_raw)
+    alltime_norm, alltime_hc = as_dual_lists(alltime_raw)
+
+    def process_recent(lst):
+        out = [e for e in (lst or []) if valid_entry(e)]
+        out.sort(key=lambda x: int(x.get("points", 0)), reverse=True)
+        return out[:10]
+
+    recent_norm_f = process_recent(recent_norm)
+    recent_hc_f   = process_recent(recent_hc)
 
     # Optional: Datei aktualisieren, falls sich etwas geändert hat (idempotent)
-    write_json_if_changed(RECENT_FILE, recent_raw or [], recent_filtered)
+    write_json_if_changed(RECENT_FILE, recent_raw or {}, {"normal": recent_norm_f, "hc": recent_hc_f})
 
-    # Alltime unverändert zurückgeben (Server schreibt Alltime bereits korrekt beim Spielende)
+    # Alltime: falls Legacy-Format, jetzt in Bucket-Format persistieren (Migration)
+    write_json_if_changed(ALLTIME_FILE, alltime_raw or {}, {"normal": alltime_norm, "hc": alltime_hc})
+
     return {
-        "recent": recent_filtered,
-        "alltime": alltime_raw or [],
+        "recent": {"normal": recent_norm_f, "hc": recent_hc_f},
+        "alltime": {"normal": alltime_norm or [], "hc": alltime_hc or []},
         "stats": stats_raw
     }
 
@@ -928,12 +963,23 @@ async def get_leaderboard():
 @app.get("/api/game_from_leaderboard/{game_id}")
 def api_game_from_leaderboard(game_id: str):
     """API: Read-Only Snapshot eines abgeschlossenen Spiels aus Leaderboard-Dateien."""
-    # Laden der Dateien (recent/alltime)
+    # Laden der Dateien (recent/alltime) – unterstützt altes (Liste) und neues (Bucket) Format
     def _read_list(path: Path):
         try:
-            if path.exists():
-                data = json.loads(path.read_text(encoding="utf-8"))
-                return data if isinstance(data, list) else []
+            if not path.exists():
+                return []
+            data = json.loads(path.read_text(encoding="utf-8"))
+            # neu: {"normal": [...], "hc": [...]} ⇒ beide Buckets zusammenführen
+            if isinstance(data, dict):
+                out = []
+                for k in ("normal", "hc"):
+                    arr = data.get(k)
+                    if isinstance(arr, list):
+                        out.extend(arr)
+                return out
+            # legacy: direkte Liste
+            if isinstance(data, list):
+                return data
         except Exception:
             return []
         return []
@@ -962,7 +1008,8 @@ def api_game_from_leaderboard(game_id: str):
 
     # Reihenfolge: recent -> alltime
     for path in (RECENT_FILE, ALLTIME_FILE):
-        for e in _read_list(path):
+        entries = _read_list(path)
+        for e in entries:
             proj = _project(e)
             if proj is not None:
                 return proj
@@ -976,6 +1023,7 @@ async def api_games_create(req: CreateReq):
     gid = str(uuid.uuid4())[:8]
     g = new_game(gid, req.name, req.mode)
     g["_passphrase"] = (req.passphrase or None)
+    g["_hardcore"] = bool(req.hardcore or False)
     return {"game_id": gid}
 
 # Legacy-Endpoints
@@ -1166,6 +1214,7 @@ def _build_leaderboard_snapshot_fields(g: GameDict) -> dict:
             "game_id": str(g.get("_id") or ""),
             "finished_at": finished_at,
             "mode": mode,
+            "hardcore": bool(g.get("_hardcore", False)),
             "players": players,
             "scoreboards": scoreboards
         }
@@ -1266,25 +1315,46 @@ def _finalize_and_log_results(g: GameDict):
         entries_for_recent.append(rec)
         entries_for_alltime.append(dict(rec))  # eigene Kopie
 
+    # Einträge dem passenden Bucket (normal/hc) zuordnen
+    is_hc = bool(g.get("_hardcore", False))
+
     def mutate_recent(data):
         cutoff = datetime.now(timezone.utc) - timedelta(days=7)
-        kept = []
-        for x in data:
-            try:
-                ts = datetime.fromisoformat(x.get("ts"))
-            except Exception:
-                continue
-            if ts >= cutoff:
-                kept.append(x)
-        kept.extend(entries_for_recent)
-        kept.sort(key=lambda x: int(x.get("points", 0)), reverse=True)
-        return kept[:10]
+        # Daten zu dualer Struktur wandeln
+        if not isinstance(data, dict):
+            data = {"normal": list(data or []), "hc": []}
+        for k in ("normal", "hc"):
+            if not isinstance(data.get(k), list):
+                data[k] = []
+        bucket = "hc" if is_hc else "normal"
+        # alte behalten (nur innerhalb der letzten 7 Tage)
+        def keep_recent(lst):
+            kept = []
+            for x in (lst or []):
+                try:
+                    ts = datetime.fromisoformat(x.get("ts"))
+                except Exception:
+                    continue
+                if ts >= cutoff:
+                    kept.append(x)
+            return kept
+        data[bucket] = keep_recent(data[bucket]) + entries_for_recent
+        # sortieren & cap 10
+        data[bucket].sort(key=lambda x: int(x.get("points", 0)), reverse=True)
+        data[bucket] = data[bucket][:10]
+        return data
 
     def mutate_alltime(data):
-        arr = list(data) if isinstance(data, list) else []
-        arr.extend(entries_for_alltime)
-        arr.sort(key=lambda x: int(x.get("points", 0)), reverse=True)
-        return arr[:10]
+        if not isinstance(data, dict):
+            data = {"normal": list(data or []), "hc": []}
+        for k in ("normal", "hc"):
+            if not isinstance(data.get(k), list):
+                data[k] = []
+        bucket = "hc" if is_hc else "normal"
+        data[bucket] = (list(data[bucket]) + entries_for_alltime)
+        data[bucket].sort(key=lambda x: int(x.get("points", 0)), reverse=True)
+        data[bucket] = data[bucket][:10]
+        return data
 
     _append_json(RECENT_FILE, mutate_recent)
     _append_json(ALLTIME_FILE, mutate_alltime)
@@ -1462,6 +1532,10 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "announce_row4":
+                # Hardcore: keine Ansage – ❗ verhält sich wie Freireihe
+                if bool(g.get("_hardcore")):
+                    await websocket.send_json({"error": "Ansage ist im Hardcore-Modus deaktiviert"})
+                    continue
                 # nur direkt nach Wurf 1; Änderung erlaubt (Um-Ansage)
                 if not (g["_turn"] and g["_turn"]["player_id"] == player_id):
                     await websocket.send_json({"error": "Nicht an der Reihe"})
@@ -1496,6 +1570,10 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "unannounce_row4":
+                # Hardcore: keine Ansage – ❗ verhält sich wie Freireihe
+                if bool(g.get("_hardcore")):
+                    await websocket.send_json({"error": "Ansage ist im Hardcore-Modus deaktiviert"})
+                    continue
                 # Ansage im ersten Wurf zurückziehen
                 if not (g["_turn"] and g["_turn"]["player_id"] == player_id):
                     await websocket.send_json({"error": "Nicht an der Reihe"})
@@ -1623,6 +1701,10 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "request_correction":
+                # Hardcore: Korrektur generell deaktiviert
+                if bool(g.get("_hardcore")):
+                    await websocket.send_json({"error": "Korrekturmodus ist im Hardcore-Modus deaktiviert"})
+                    continue
                 # 1P-Modus: Korrektur deaktiviert
                 if int(g.get("_expected", 0) or 0) == 1:
                     await websocket.send_json({"error": "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert"})
@@ -1670,6 +1752,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "cancel_correction":
+                if bool(g.get("_hardcore")):
+                    await websocket.send_json({"error": "Korrekturmodus ist im Hardcore-Modus deaktiviert"})
+                    continue
                 if int(g.get("_expected", 0) or 0) == 1:
                     await websocket.send_json({"error": "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert"})
                     continue
@@ -1679,6 +1764,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "write_field_correction":
+                if bool(g.get("_hardcore")):
+                    await websocket.send_json({"error": "Korrekturmodus ist im Hardcore-Modus deaktiviert"})
+                    continue
                 if int(g.get("_expected", 0) or 0) == 1:
                     await websocket.send_json({"error": "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert"})
                     continue

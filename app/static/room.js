@@ -451,6 +451,7 @@ import { initChat, addChatMessage } from "./chat.js";
 function renderFromSnapshot(snapshot) {
     const turnPid   = snapshot?._turn?.player_id || null;
     const iAmTurn   = turnPid && String(turnPid) === String(myId);
+    const isHC      = !!(snapshot && snapshot._hardcore);
     // aktuelle Scrollposition des alten Grids sichern (wichtig fuer Mobile)
     const _oldGrid = document.querySelector("#scoreOut .players-grid");
     const _oldScrollLeft = _oldGrid ? _oldGrid.scrollLeft : 0;
@@ -468,24 +469,30 @@ function renderFromSnapshot(snapshot) {
     });
 
     wireDiceBar();
-    wireAnnounceUI();
+    if (!isHC) {
+      wireAnnounceUI();
+    }
     wireGridClicks();
     ensureKeybindings(); // alle Hotkeys hier
 
         // --- NEU: Roll-Button sperren, falls nach Wurf 1 eine Ansage Pflicht ist ---
     try{
-      const blockRoll = isRollingBlocked(snapshot);
+      const blockRoll = isHC ? false : isRollingBlocked(snapshot);
       const rollBtn = $("#rollBtnInline", mount);
       if (rollBtn){
         rollBtn.disabled = blockRoll || !!(snapshot?._correction?.active);
-        rollBtn.title = rollBtn.disabled
-          ? "Weiter würfeln erst nach Ansage möglich (Pflicht nach Wurf 1)."
-          : "Würfeln";
+        if (!isHC) {
+          rollBtn.title = rollBtn.disabled
+            ? "Weiter würfeln erst nach Ansage möglich (Pflicht nach Wurf 1)."
+            : "Würfeln";
+        } else {
+          rollBtn.title = "Würfeln";
+        }
       }
       // Hinweiszeile (falls vorhanden)
       const hint = document.getElementById("announceHint");
       if (hint){
-        hint.textContent = (blockRoll ? "Bitte ein ❗-Feld ansagen, bevor du weiter würfelst." : "");
+        hint.textContent = (!isHC && blockRoll) ? "Bitte ein ❗-Feld ansagen, bevor du weiter würfelst." : "";
       }
     } catch {}
 
@@ -523,7 +530,7 @@ function renderFromSnapshot(snapshot) {
           announcePickMode = false;
           $$(".announce-pickable").forEach(td => td.classList.remove("announce-pickable"));
           // Sichtbarkeit des Würfeln-Buttons nach Pick-Mode beenden zurücksetzen
-          applyAnnounceModeButtonVisibility(mount);
+          if (!isHC) applyAnnounceModeButtonVisibility(mount);
         }
       }
     } catch {}
@@ -536,7 +543,7 @@ function renderFromSnapshot(snapshot) {
       // Zuerst alte Markierungen entfernen
       $$(".announce-pickable").forEach(td => td.classList.remove("announce-pickable"));
 
-      if (announcePickMode){
+      if (!isHC && announcePickMode){
         // Nur eigenes Board, nur ❗-Spalte, nur **schreibbare** (nicht-compute) leere Zellen
         let boardRoot = null;
         const mode = String(snapshot?._mode || "").toLowerCase();
@@ -704,7 +711,8 @@ function renderFromSnapshot(snapshot) {
 
   function canRequestCorrection(snapshot) {
     const isSingle  = Number(snapshot?._expected || 0) === 1;
-    if (isSingle) return false;
+    const isHC      = !!(snapshot && snapshot._hardcore);
+    if (isSingle || isHC) return false;
     const hasLast   = snapshot?._has_last && snapshot._has_last[myId];
     const corrActive= !!(snapshot?._correction?.active);
     return !!(hasLast && !corrActive);

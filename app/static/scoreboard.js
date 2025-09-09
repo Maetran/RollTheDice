@@ -47,7 +47,7 @@ const ROW_TOOLTIPS = [
   "Summe der ⚄ (nur Fünfen)",
   "Summe der ⚅ (nur Sechsen)",
   "Zwischensumme oben (1–6)",
-  "Bonus +30, wenn ZwSumme ≥ 60",
+  "Bonus +30, wenn ZwSumme ≥ 40",
   "ZwTotalOben = ZwSumme + Bonus",
   "Max: Summe aller 5 Würfel (höchster Wurf)",
   "Min: Summe aller 5 Würfel (niedrigster Wurf)",
@@ -72,7 +72,7 @@ const FIELD_HINTS = {
   "5": "Summe aller 5er",
   "6": "Summe aller 6er",
   "ZwSumme": "Summe der Felder 1–6",
-  "Bonus": "+30 bei ZwSumme ≥ 60",
+  "Bonus": "+30 bei ZwSumme ≥ 40",
   "ZwTotalOben": "ZwSumme + Bonus",
   "Max": "Summe aller fünf Würfel",
   "Min": "Summe aller fünf Würfel",
@@ -134,7 +134,7 @@ function computeColumnTotals(sc, colKey){
     const v = num(getCell(sc, ri, colKey));
     if (v !== null) sumTop += v;
   }
-  const bonusVal = (sumTop >= 60) ? 30 : 0;
+  const bonusVal = (sumTop >= 40) ? 30 : 0;
   const totalTop = sumTop + bonusVal;
 
   const one  = num(getCell(sc, 0,  colKey));
@@ -277,6 +277,7 @@ function ensureInlineScoreboardCSS(){
     /* announce button sizing next to roll button */
     #diceBar #announceBtnInline{ flex: 0 0 25%; min-width: 96px; }
     #diceBar #rollBtnInline{ flex: 1 1 auto; }
+    .hc-badge { color:#b71c1c; font-weight:700; }
   `;
 
   const style = document.createElement('style');
@@ -334,7 +335,9 @@ function renderScoreboard(mount, sb, {
     );
   }
 
-  const requestBtnHTML = canRequestCorrection
+  const isHC = !!(sb && sb._hardcore);
+
+  const requestBtnHTML = (canRequestCorrection && !isHC)
     ? `<button id="requestCorrectionBtn" class="small" style="margin-left:.5rem;">Letzten Eintrag ändern</button>`
     : ``;
 
@@ -344,13 +347,13 @@ function renderScoreboard(mount, sb, {
         ${dice.map((d,i)=>
           `<button class="die ${holds[i] ? "held" : ""}" data-i="${i}" title="halten/lösen">${dieSVG(d || 0)}</button>`
         ).join("")}
-        <button id="announceBtnInline" class="small">Ansagen</button>
-        <button id="rollBtnInline" ${correctionActive ? "disabled":""}>🎲 Würfeln</button>
+        ${isHC ? '' : '<button id="announceBtnInline" class="small">Ansagen</button>'}
+        ${isHC ? '' : `<button id="rollBtnInline" ${correctionActive ? "disabled": ""}>🎲 Würfeln</button>`}
         ${requestBtnHTML}
       </div>
     </div>
     <div class="muted">
-      Am Zug: ${esc(turnName)} • Würfe: ${rollsUsed ?? 0}/${rollsMax ?? 3} <span id="announceHint"></span>
+      Am Zug: ${esc(turnName)} • ${isHC ? '<span class="hc-badge">Hardcore</span>' : `Würfe: ${rollsUsed ?? 0}/${rollsMax ?? 3} <span id="announceHint"></span>`}
     </div>
   `;
 
