@@ -117,7 +117,7 @@ def score_field(field_name: str, dice: Tuple[int, int, int, int, int], *, poker_
 # Zwischensummen pro Reihe
 # -----------------------------
 
-def compute_row_subtotals(row: Dict[str, int]) -> Dict[str, int]:
+def compute_row_subtotals(row: Dict[str, int], *, hardcore: bool = False) -> Dict[str, int]:
     """Zwischensummen für eine Spalte (Reihe) berechnen.
 
     Erwartet ein Dict der 12 Wertungsfelder einer Spalte (z. B. Row 1).
@@ -125,7 +125,7 @@ def compute_row_subtotals(row: Dict[str, int]) -> Dict[str, int]:
 
     Rückgabe-Keys:
     - sum_top: Summe 1..6
-    - bonus_top: 30 bei sum_top >= 40, sonst 0
+    - bonus_top: 30 bei sum_top >= THRESHOLD, sonst 0 (THRESHOLD: 60 normal, 40 hardcore)
     - total_top: sum_top + bonus_top
     - sum_maxmin: 1 × (max − min), falls 1/max/min vorhanden
     - sum_bottom: Summe von kenter + full + poker + 60
@@ -135,7 +135,8 @@ def compute_row_subtotals(row: Dict[str, int]) -> Dict[str, int]:
         return int(row.get(key, 0))
 
     sum_top = sum(g(str(i)) for i in range(1, 7))
-    bonus_top = 30 if sum_top >= 40 else 0
+    threshold = 40 if hardcore else 60
+    bonus_top = 30 if sum_top >= threshold else 0
     total_top = sum_top + bonus_top
 
     if all(key in row for key in ("1","max","min")):
@@ -159,7 +160,7 @@ def compute_row_subtotals(row: Dict[str, int]) -> Dict[str, int]:
 # Gesamtzusammenzug fuer 4 Reihen
 # -----------------------------
 
-def compute_overall(scoresheet: Dict[int, Dict[str, int]]) -> Dict[str, Dict[str, int]]:
+def compute_overall(scoresheet: Dict[int, Dict[str, int]], *, hardcore: bool = False) -> Dict[str, Dict[str, int]]:
     """Gesamtsummen für alle vier Reihen berechnen.
 
     Parameter:
@@ -172,7 +173,7 @@ def compute_overall(scoresheet: Dict[int, Dict[str, int]]) -> Dict[str, Dict[str
     overall_total = 0
     for idx in (1,2,3,4):
         row = scoresheet.get(idx, {}) or {}
-        subtot = compute_row_subtotals(row)
+        subtot = compute_row_subtotals(row, hardcore=hardcore)
         result[f"row{idx}"] = subtot
         overall_total += subtot["total_column"]
     result["overall"] = {"overall_total": overall_total}

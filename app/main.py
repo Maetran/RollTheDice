@@ -1088,7 +1088,7 @@ def _compute_final_totals(g: GameDict) -> Dict[str,int]:
         # Team-Boards
         for team_id, board in g.get("_scoreboards_by_team", {}).items():
             rows = _rows_from_scoreboard(board)
-            ov = compute_overall(rows)
+            ov = compute_overall(rows, hardcore=bool(g.get("_hardcore", False)))
             totals[team_id] = int(ov["overall"]["overall_total"]) if rows else 0
     else:
         # Spieler-Boards
@@ -1096,7 +1096,7 @@ def _compute_final_totals(g: GameDict) -> Dict[str,int]:
             pid = p["id"]
             sb = g.get("_scoreboards", {}).get(pid, {}) or {}
             rows = _rows_from_scoreboard(sb)
-            ov = compute_overall(rows)
+            ov = compute_overall(rows, hardcore=bool(g.get("_hardcore", False)))
             totals[pid] = int(ov["overall"]["overall_total"]) if rows else 0
     return totals
 

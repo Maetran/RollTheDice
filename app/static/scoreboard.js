@@ -47,7 +47,7 @@ const ROW_TOOLTIPS = [
   "Summe der ⚄ (nur Fünfen)",
   "Summe der ⚅ (nur Sechsen)",
   "Zwischensumme oben (1–6)",
-  "Bonus +30, wenn ZwSumme ≥ 40",
+  "Bonus +30 (Normal: ≥ 60 • Hardcore: ≥ 40)",
   "ZwTotalOben = ZwSumme + Bonus",
   "Max: Summe aller 5 Würfel (höchster Wurf)",
   "Min: Summe aller 5 Würfel (niedrigster Wurf)",
@@ -72,7 +72,7 @@ const FIELD_HINTS = {
   "5": "Summe aller 5er",
   "6": "Summe aller 6er",
   "ZwSumme": "Summe der Felder 1–6",
-  "Bonus": "+30 bei ZwSumme ≥ 40",
+  "Bonus": "+30 (Normal: ≥ 60 • Hardcore: ≥ 40)",
   "ZwTotalOben": "ZwSumme + Bonus",
   "Max": "Summe aller fünf Würfel",
   "Min": "Summe aller fünf Würfel",
@@ -128,13 +128,14 @@ function getCell(sc, ri, colKey){ return sc[`${ri},${colKey}`]; }
  * @param {string} colKey
  * @returns {{sumTop:number, bonusVal:number, totalTop:number, diff:number|null, sumBottom:number, totalColumn:number}}
  */
-function computeColumnTotals(sc, colKey){
+function computeColumnTotals(sc, colKey, { hardcore = false } = {}){
   let sumTop = 0;
   for (let ri=0; ri<=5; ri++){
     const v = num(getCell(sc, ri, colKey));
     if (v !== null) sumTop += v;
   }
-  const bonusVal = (sumTop >= 40) ? 30 : 0;
+  const threshold = hardcore ? 40 : 60;
+  const bonusVal = (sumTop >= threshold) ? 30 : 0;
   const totalTop = sumTop + bonusVal;
 
   const one  = num(getCell(sc, 0,  colKey));
@@ -153,9 +154,9 @@ function computeColumnTotals(sc, colKey){
   return { sumTop, bonusVal, totalTop, diff, sumBottom, totalColumn };
 }
 
-function computeOverall(sc){
+function computeOverall(sc, { hardcore = false } = {}){
   const cols = ["down","free","up","ang"];
-  return cols.reduce((acc, c) => acc + computeColumnTotals(sc, c).totalColumn, 0);
+  return cols.reduce((acc, c) => acc + computeColumnTotals(sc, c, { hardcore }).totalColumn, 0);
 }
 
 // -------- Team-Helpers --------
@@ -366,7 +367,7 @@ function renderScoreboard(mount, sb, {
     const isTurn = isTeamMode
       ? (teamIdForPlayer(sb, turnPid) === id)
       : (String(turnPid) === String(id));
-    const overall = computeOverall(sc);
+    const overall = computeOverall(sc, { hardcore: isHC });
 
     // NEU: Bestimmen, ob dieses Board "meins" ist (Player vs Team)
     const isMyBoard = isTeamMode
@@ -469,7 +470,8 @@ function renderRows(sc, sb, ctx){
 
   const cols = ["down","free","up","ang"];
   const live = {};
-  for (const c of cols) live[c] = computeColumnTotals(sc, c);
+  const isHC = !!(sb && sb._hardcore);
+  for (const c of cols) live[c] = computeColumnTotals(sc, c, { hardcore: isHC });
 
   const lastWriteMap = Array.isArray(sb?._last_write) || typeof sb?._last_write === 'object' ? sb._last_write : null;
   let oppLast = null; // [row, colKey]
@@ -649,6 +651,7 @@ function buildClientSnapshotFromLeaderboard(lv){
     return {
       _name: lv.gamename || "",
       _mode: "2v2",
+      _hardcore: !!lv.hardcore,
       _players: (lv.players || []).map(p => ({id:String(p.id), name:String(p.name||"Player")})),
       _teams: teams,
       _scoreboards_by_team: sbByTeam,
@@ -671,6 +674,7 @@ function buildClientSnapshotFromLeaderboard(lv){
     return {
       _name: lv.gamename || "",
       _mode: lv.mode,
+      _hardcore: !!lv.hardcore,
       _players: (lv.players || []).map(p => ({id:String(p.id), name:String(p.name||"Player")})),
       _teams: [],
       _scoreboards_by_team: {},
