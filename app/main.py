@@ -1002,6 +1002,7 @@ def api_game_from_leaderboard(game_id: str):
             "gamename": entry.get("gamename") or entry.get("name") or "",
             "finished_at": entry.get("finished_at") or entry.get("ts"),
             "mode": entry.get("mode"),
+            "hardcore": bool(entry.get("hardcore", False)),
             "players": players,
             "scoreboards": scoreboards,
         }
