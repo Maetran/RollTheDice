@@ -1,18 +1,21 @@
 # 🎲 RollTheDice
 
-RollTheDice is a lightweight multiplayer dice game.  
-It uses **FastAPI** (Python) for the backend and serves a static HTML/JS frontend.  
-Runs easily in Docker – on Raspberry Pi, Hetzner, or Docker Desktop.
+RollTheDice ist ein leichtgewichtiges Multiplayer-Würfelspiel.  
+Verwendet **FastAPI** (Python) für das Backend und ein statisches HTML/JS-Frontend.  
+Läuft einfach in Docker – auf Raspberry Pi, Hetzner oder Docker Desktop.
 
 ---
 
 ## 🚀 Features
 
-- Web lobby to create/join games with multiple players or teams  
-- Interactive frontend (HTML/JS) served by FastAPI  
-- REST API + WebSocket support  
-- Persistent data in `./data` (leaderboards, stats)  
-- Runs on x86_64 and arm64 (Raspberry Pi)
+- Web-Lobby zum Erstellen/Beitreten von Spielen mit mehreren Spielern oder Teams  
+- Interaktives Frontend (HTML/JS) mit FastAPI  
+- REST API + WebSocket Unterstützung  
+- Persistente Daten in `./data` (Bestenlisten, Statistiken)  
+- Läuft auf x86_64 und arm64 (Raspberry Pi)
+- Progressive Web App (PWA) mit Offline-Unterstützung
+- Chat-Funktion mit Emoji-Unterstützung
+- Detaillierte Spielstatistiken und Bestenlisten
 
 ---
 
@@ -65,39 +68,74 @@ This rebuilds the image and restarts the container while keeping existing data i
 
 ---
 
-## 📁 Project Structure
+## 📁 Projektstruktur
 
-\```
+```
 RollTheDice/
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
+├── Dockerfile                 # Docker-Konfiguration
+├── docker-compose.yml         # Docker Compose Konfiguration
+├── requirements.txt           # Python-Abhängigkeiten
+├── manifest.webmanifest       # PWA Manifest
 ├── app/
-│   ├── main.py
-│   ├── models.py
-│   ├── rules.py
-│   ├── static/
-│   │   ├── index.html
-│   │   ├── room.html
-│   │   ├── lobby.js
-│   │   ├── scoreboard.js
-│   │   └── style.css
-│   └── ...
-└── data/                # persisted: leaderboard, stats, etc.
-\```
+│   ├── main.py               # Hauptanwendung (FastAPI)
+│   ├── models.py             # Datenmodelle
+│   ├── rules.py              # Spielregeln
+│   └── static/               # Frontend-Dateien
+│       ├── index.html        # Lobby
+│       ├── room.html         # Spielraum
+│       ├── game_view.html    # Spielansicht
+│       ├── rules.html        # Spielregeln
+│       ├── chat.js           # Chat-Funktionalität
+│       ├── emoji.js          # Emoji-Unterstützung
+│       ├── lobby.js          # Lobby-Logik
+│       ├── room.js           # Spielraum-Logik
+│       ├── scoreboard.js     # Bestenlisten-Logik
+│       ├── style.css         # Styling
+│       ├── sw.js            # Service Worker (PWA)
+│       └── favicon.svg       # Favicon
+└── data/                    # Persistente Daten
+    ├── leaderboard_recent.json  # Aktuelle Bestenliste (letzte 7 Tage)
+    ├── leaderboard_alltime.json # Ewige Bestenliste
+    └── stats.json           # Spielstatistiken
+```
 
 ---
 
-## 🛠 Development Notes
+## 💾 Datenpersistenz
 
-- Source code: `app/`  
-- Static frontend: `app/static/`  
-- Persistent data: `data/`  
-- `.dockerignore` excludes unnecessary files (e.g. venv, git, etc.)
+- Die Anwendung speichert folgende Daten im `./data`-Verzeichnis:
+  - `leaderboard_recent.json`: Bestenliste der letzten 7 Tage
+  - `leaderboard_alltime.json`: Ewige Bestenliste
+  - `stats.json`: Allgemeine Spielstatistiken
+
+- **Wichtig**: Das `./data`-Verzeichnis wird bei Updates nicht überschrieben und bleibt auch nach Neustarts des Containers erhalten.
+
+## 🛠 Entwicklungshinweise
+
+- Quellcode: `app/`
+- Frontend: `app/static/`
+- Persistente Daten: `data/`
+- `.dockerignore` schließt nicht benötigte Dateien aus (z.B. venv, git, etc.)
+
+### Sicherung der Daten
+- Die Spielstände werden automatisch im `./data`-Verzeichnis gespeichert
+- Für ein Backup einfach den gesamten `./data`-Ordner sichern
+- Die Daten werden im JSON-Format gespeichert und können einfach eingesehen werden
 
 ---
 
-## 🧪 Optional: Run without Compose
+## 🔄 Update der Anwendung
+
+Nach einem Update des Codes:
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+**Wichtig**: Die Spielstände und Bestenlisten bleiben bei Updates erhalten, da sie im `./data`-Verzeichnis gespeichert werden, das nicht von Git überschrieben wird.
+
+## 🧪 Optional: Ohne Docker Compose ausführen
 
 If you prefer plain Docker:
 
