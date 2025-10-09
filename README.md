@@ -1,21 +1,21 @@
 # 🎲 RollTheDice
 
-RollTheDice ist ein leichtgewichtiges Multiplayer-Würfelspiel.  
-Verwendet **FastAPI** (Python) für das Backend und ein statisches HTML/JS-Frontend.  
-Läuft einfach in Docker – auf Raspberry Pi, Hetzner oder Docker Desktop.
+RollTheDice is a lightweight multiplayer dice game.  
+Uses **FastAPI** (Python) for the backend and serves a static HTML/JS frontend.  
+Runs easily in Docker – on Raspberry Pi, Hetzner, or Docker Desktop.
 
 ---
 
 ## 🚀 Features
 
-- Web-Lobby zum Erstellen/Beitreten von Spielen mit mehreren Spielern oder Teams  
-- Interaktives Frontend (HTML/JS) mit FastAPI  
-- REST API + WebSocket Unterstützung  
-- Persistente Daten in `./data` (Bestenlisten, Statistiken)  
-- Läuft auf x86_64 und arm64 (Raspberry Pi)
-- Progressive Web App (PWA) mit Offline-Unterstützung
-- Chat-Funktion mit Emoji-Unterstützung
-- Detaillierte Spielstatistiken und Bestenlisten
+- Web lobby to create/join games with multiple players or teams  
+- Interactive frontend (HTML/JS) with FastAPI  
+- REST API + WebSocket support  
+- Persistent data in `./data` (leaderboards, stats)  
+- Runs on x86_64 and arm64 (Raspberry Pi)
+- Progressive Web App (PWA) with offline support
+- Built-in chat with emoji support
+- Detailed game statistics and leaderboards
 
 ---
 
@@ -68,72 +68,72 @@ This rebuilds the image and restarts the container while keeping existing data i
 
 ---
 
-## 📁 Projektstruktur
+## 📁 Project Structure
 
 ```
 RollTheDice/
-├── Dockerfile                 # Docker-Konfiguration
-├── docker-compose.yml         # Docker Compose Konfiguration
-├── requirements.txt           # Python-Abhängigkeiten
-├── manifest.webmanifest       # PWA Manifest
+├── Dockerfile                 # Docker configuration
+├── docker-compose.yml         # Docker Compose configuration
+├── requirements.txt           # Python dependencies
+├── manifest.webmanifest       # PWA manifest
 ├── app/
-│   ├── main.py               # Hauptanwendung (FastAPI)
-│   ├── models.py             # Datenmodelle
-│   ├── rules.py              # Spielregeln
-│   └── static/               # Frontend-Dateien
+│   ├── main.py               # Main application (FastAPI)
+│   ├── models.py             # Data models
+│   ├── rules.py              # Game rules
+│   └── static/               # Frontend files
 │       ├── index.html        # Lobby
-│       ├── room.html         # Spielraum
-│       ├── game_view.html    # Spielansicht
-│       ├── rules.html        # Spielregeln
-│       ├── chat.js           # Chat-Funktionalität
-│       ├── emoji.js          # Emoji-Unterstützung
-│       ├── lobby.js          # Lobby-Logik
-│       ├── room.js           # Spielraum-Logik
-│       ├── scoreboard.js     # Bestenlisten-Logik
+│       ├── room.html         # Game room
+│       ├── game_view.html    # Game view
+│       ├── rules.html        # Game rules
+│       ├── chat.js           # Chat functionality
+│       ├── emoji.js          # Emoji support
+│       ├── lobby.js          # Lobby logic
+│       ├── room.js           # Game room logic
+│       ├── scoreboard.js     # Leaderboard logic
 │       ├── style.css         # Styling
-│       ├── sw.js            # Service Worker (PWA)
+│       ├── sw.js             # Service Worker (PWA)
 │       └── favicon.svg       # Favicon
-└── data/                    # Persistente Daten
-    ├── leaderboard_recent.json  # Aktuelle Bestenliste (letzte 7 Tage)
-    ├── leaderboard_alltime.json # Ewige Bestenliste
-    └── stats.json           # Spielstatistiken
+└── data/                     # Persistent data
+    ├── leaderboard_recent.json  # Current leaderboard (last 7 days)
+    ├── leaderboard_alltime.json # All-time leaderboard
+    └── stats.json            # Game statistics
 ```
 
 ---
 
-## 💾 Datenpersistenz
+## 💾 Data Persistence
 
-- Die Anwendung speichert folgende Daten im `./data`-Verzeichnis:
-  - `leaderboard_recent.json`: Bestenliste der letzten 7 Tage
-  - `leaderboard_alltime.json`: Ewige Bestenliste
-  - `stats.json`: Allgemeine Spielstatistiken
+- The application stores the following data in the `./data` directory:
+  - `leaderboard_recent.json`: Leaderboard for the last 7 days
+  - `leaderboard_alltime.json`: All-time leaderboard
+  - `stats.json`: General game statistics
 
-- **Wichtig**: Das `./data`-Verzeichnis wird bei Updates nicht überschrieben und bleibt auch nach Neustarts des Containers erhalten.
+- **Important**: The `./data` directory is not overwritten during updates and persists across container restarts.
 
-## 🛠 Entwicklungshinweise
+## 🛠 Development Notes
 
-- Quellcode: `app/`
+- Source code: `app/`
 - Frontend: `app/static/`
-- Persistente Daten: `data/`
-- `.dockerignore` schließt nicht benötigte Dateien aus (z.B. venv, git, etc.)
+- Persistent data: `data/`
+- `.dockerignore` excludes unnecessary files (e.g., venv, git, etc.)
 
-### Sicherung der Daten
-- Die Spielstände werden automatisch im `./data`-Verzeichnis gespeichert
-- Für ein Backup einfach den gesamten `./data`-Ordner sichern
-- Die Daten werden im JSON-Format gespeichert und können einfach eingesehen werden
+### Data Backup
+- Game data is automatically saved in the `./data` directory
+- For backup, simply copy the entire `./data` folder
+- Data is stored in JSON format and can be easily viewed
 
 ---
 
-## 🔄 Update der Anwendung
+## 🔄 Updating the Application
 
-Nach einem Update des Codes:
+After updating the code:
 
 ```bash
 git pull
 docker compose up -d --build
 ```
 
-**Wichtig**: Die Spielstände und Bestenlisten bleiben bei Updates erhalten, da sie im `./data`-Verzeichnis gespeichert werden, das nicht von Git überschrieben wird.
+**Important**: Game data and leaderboards are preserved during updates as they are stored in the `./data` directory, which is not overwritten by Git.
 
 ## 🧪 Optional: Ohne Docker Compose ausführen
 
