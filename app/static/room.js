@@ -595,7 +595,7 @@ function renderFromSnapshot(snapshot) {
     // Immer die vorherige Scrollposition wiederherstellen, solange der Nutzer
     // nicht manuell uebersteuert hat. So bleibt der zuletzt sichtbare Board-Fokus
     // fuer ~1s bestehen, bevor der Auto-Follow greift – fuer alle Nutzer.
-    if (_newGrid && !_userScrollOverride) {
+    if (_newGrid) {
       _newGrid.scrollLeft = _oldScrollLeft;
     }
 
