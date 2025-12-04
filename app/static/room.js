@@ -822,6 +822,9 @@ function renderFromSnapshot(snapshot) {
           return;
         }
 
+        const iAmTurn = (sb?._turn && String(sb._turn.player_id) === String(myId));
+        if (!iAmTurn || (sb?._correction?.active)) return;
+
         const holds = $$("#diceBar .die", mount).map(b => b.classList.contains("held"));
         holds[i] = !holds[i];
         safeSend(ws, { action: "set_hold", holds });
@@ -1103,8 +1106,8 @@ function renderFromSnapshot(snapshot) {
       if (["1","2","3","4","5"].includes(key)) {
         const idx = parseInt(key, 10) - 1;
         const iAmTurn = sb?._turn && String(sb._turn.player_id) === String(myId);
-        const iCorrectingMine = !!(sb?._correction?.active && String(sb._correction.player_id) === String(myId));
-        if (!iAmTurn && !iCorrectingMine) return;
+        const inCorr = !!(sb?._correction?.active);
+        if (!iAmTurn || inCorr) return;
 
         const holdsEls = $$("#diceBar .die", mount);
         const next = holdsEls.map(b => b.classList.contains("held"));

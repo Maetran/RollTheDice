@@ -1487,6 +1487,12 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await websocket.send_json({"scoreboard": snapshot(g)})
 
             elif act == "set_hold":
+                if not g["_turn"] or g["_turn"]["player_id"] != player_id:
+                    await websocket.send_json({"error": "Nicht an der Reihe"})
+                    continue
+                if g["_correction"]["active"]:
+                    await websocket.send_json({"error": "Während Korrektur nicht erlaubt"})
+                    continue
                 g["_holds"] = list(data.get("holds", [False] * 5))[:5]
                 touch(g)
                 await broadcast(g, {"scoreboard": snapshot(g)})
