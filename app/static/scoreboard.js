@@ -223,7 +223,7 @@ function renderAnnounceSlot(sb, myId, iAmTurn, rollsUsed){
  */
 function numOrEmpty(v){ const n = num(v); return (n === null) ? "" : String(n); }
 
-// === NEU: SVG-Würfel ===
+// SVG-Würfel
 /**
  * Erzeugt SVG-Markup für eine Würfelanzeige (1..6).
  * @param {number} v - Augenzahl (1..6)
@@ -339,7 +339,7 @@ function renderScoreboard(mount, sb, {
   const isHC = !!(sb && sb._hardcore);
 
   const requestBtnHTML = (canRequestCorrection && !isHC)
-    ? `<button id="requestCorrectionBtn" class="small" style="margin-left:.5rem;">Letzten Eintrag ändern</button>`
+    ? `<button id="requestCorrectionBtn" class="small">Letzten Eintrag ändern</button>`
     : ``;
 
   const dicebar = readOnly ? "" : `
@@ -369,7 +369,6 @@ function renderScoreboard(mount, sb, {
       : (String(turnPid) === String(id));
     const overall = computeOverall(sc, { hardcore: isHC });
 
-    // NEU: Bestimmen, ob dieses Board "meins" ist (Player vs Team)
     const isMyBoard = isTeamMode
       ? (teamIdForPlayer(sb, myPlayerId) === id)
       : (String(id) === String(myPlayerId));
@@ -389,7 +388,7 @@ function renderScoreboard(mount, sb, {
           <div class="pc-name">${esc(ent.name || "—")}</div>
           <div class="pc-total">Total: ${overall}</div>
         </div>
-        ${isTeamMode ? `<div class="pc-members" style="margin: .25rem 0 .5rem 0;">${membersHTML}</div>` : ``}
+        ${isTeamMode ? `<div class="pc-members">${membersHTML}</div>` : ``}
         <div class="table-wrap">
           <table class="grid compact">
             <thead>
@@ -405,6 +404,7 @@ function renderScoreboard(mount, sb, {
               ${renderRows(sc, sb, {
                 myPlayerId,
                 pid: id,
+                isMyBoard,
                 iAmTurn,
                 rollsUsed,
                 correctionActive,
@@ -530,15 +530,16 @@ function renderRows(sc, sb, ctx){
       // Klicklogik
       const announceOk = (!announced || isAnnouncedCell || rowFieldKey === "poker");
       const mayClickNormal =
+        ctx.isMyBoard &&
         !ctx.correctionActive &&
         !isCompute &&
         !hasRaw &&
         ctx.iAmTurn &&
         rolledYet &&
-        (announceOk || lastCellMode); // <<< neu: nur anklickbar, wenn Ansage passt oder letzter freier Slot
+        (announceOk || lastCellMode);
 
       // In Korrektur: ❗ (ang) nur, wenn roll_index == 1 (Ansagefenster). Sonst gesperrt.
-      const mayClickCorrection = correctionForMe && !isCompute && !hasRaw && (colKey !== "ang" || corrRollIdx <= 1);
+      const mayClickCorrection = ctx.isMyBoard && correctionForMe && !isCompute && !hasRaw && (colKey !== "ang" || corrRollIdx <= 1);
 
       const clickable = (mayClickNormal || mayClickCorrection);
 
@@ -547,6 +548,8 @@ function renderRows(sc, sb, ctx){
       if (!isCompute) {
         if (hasRaw) {
           titleText = "Bereits befüllt";
+        } else if (!ctx.isMyBoard) {
+          titleText = "Nur dein eigenes Board ist beschreibbar";
         } else if (ctx.correctionActive && !correctionForMe) {
           titleText = "Gegner korrigiert – bitte warten";
         } else if (ctx.correctionActive && correctionForMe && colKey === "ang" && corrRollIdx > 1) {

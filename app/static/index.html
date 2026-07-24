@@ -17,107 +17,81 @@
   <meta name="theme-color" content="#000000">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/static/favicon.png" sizes="32x32">
-  <!-- FIX: relative auf die echte CSS-Datei unter /static/ -->
-  <link rel="stylesheet" href="/static/style.css?v=23">
-  <style>
-    .wrap { max-width: 980px; margin: 1.2rem auto; }
-    .card { background:#fff; border:1px solid var(--border,#e0e0e0); border-radius:12px; padding:1rem; margin:.8rem 0; }
-    .row { display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; }
-    .row input[type="text"]{ padding:.5rem .7rem; border:1px solid var(--border,#e0e0e0); border-radius:.45rem; min-width:18ch; }
-    select {
-      padding:.45rem .6rem;
-      border:1px solid var(--border,#e0e0e0);
-      border-radius:.45rem;
-      font-family: inherit;          /* neu */
-      font-size:16px;                /* neu – bleibt stehen */
-    }
-
-    .games { display:flex; flex-direction:column; gap:.6rem; }
-    .game-row { display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border,#e0e0e0); border-radius:.6rem; padding:.7rem .9rem; background:#fff; }
-    .game-row .meta .name { font-weight:700; }
-    .game-row .meta .sub { margin-top:.15rem; font-size:.92rem; color:#666; }
-    .muted.small { font-size:.85rem; color:#666; }
-    .title { display:flex; align-items:center; gap:.5rem; justify-content:space-between; }
-    .title .logo { font-size:1.6rem; }
-    .leaderboard table { border-collapse: collapse; width: 100%; margin-top:.6rem; }
-    .leaderboard th, .leaderboard td { border:1px solid #ddd; padding:.4rem .6rem; text-align:left; font-size:.9rem; }
-    .leaderboard th { background:#f7f7f7; font-weight:600; }
-    .stats { font-size:.9rem; color:#444; }
-    .hc-badge { color:#b71c1c; font-weight:700; margin-left:.4rem; }
-    .tabs { display:flex; gap:.5rem; margin:.4rem 0; }
-    .tab-btn { padding:.25rem .5rem; border:1px solid var(--border,#e0e0e0); border-radius:.4rem; background:#fafafa; cursor:pointer; }
-    .tab-btn.active { background:#e9f0ff; border-color:#a8c3ff; }
-  </style>
+  <link rel="stylesheet" href="/static/style.css?v=26">
 </head>
-<body>
+<body class="lobby-page">
   <!-- Rahmen-Container -->
-  <div class="wrap">
-    <div class="title">
-      <div style="display:flex; align-items:center; gap:.5rem;">
+  <div class="wrap lobby-shell">
+    <header class="lobby-header">
+      <div class="brand-lockup">
         <div class="logo">🎲</div>
-        <h1 style="margin:.2rem 0;">Würfler – Lobby</h1>
+        <h1>Würfler – Lobby</h1>
       </div>
-      <div class="stats">Würfelspiele beendet: <span id="gamesPlayed">0</span><button class="small" style="margin-left:.75rem;" onclick="location.href='/static/rules.html'">Spielregeln</button></div>
-    </div>
+      <div class="stats">Würfelspiele beendet: <span id="gamesPlayed">0</span><button class="small ghost" onclick="location.href='/static/rules.html'">Spielregeln</button></div>
+    </header>
 
     <!-- 1) Wer bist du? – Name wird im LocalStorage gemerkt -->
-    <div class="card">
-      <h2>Wer bist du?</h2>
-      <div class="row">
-        <input id="playerName" type="text" placeholder="Dein Name">
-        <span class="muted small">Wird für den Beitritt verwendet.</span>
-      </div>
-    </div>
+    <div class="setup-grid">
+      <section class="card">
+        <h2>Spieler</h2>
+        <div class="row">
+          <input id="playerName" type="text" placeholder="Dein Name">
+          <span class="muted small">Wird für den Beitritt verwendet.</span>
+        </div>
+      </section>
 
-    <!-- 2) Neues Spiel – Name/Modus/Passphrase, erzeugt via /api/games (POST) -->
-    <div class="card">
-      <h2>Neues Spiel erstellen</h2>
-      <div class="row">
-        <input id="gameName" type="text" placeholder="Spielname" value="Neues Spiel">
-        <input id="passInput" type="text" placeholder="Passphrase">
-        <select id="gameMode" title="Spielmodus" style="font-size:16px; line-height:1.2;">
-          <option value="1">1 Spieler</option>
-          <option value="2">2 Spieler</option>
-          <option value="3">3 Spieler</option>
-          <option value="2v2">2 vs 2</option>
-        </select>
-        <label style="display:flex; align-items:center; gap:.35rem;">
-          <input id="hardcoreChk" type="checkbox">
-          <span class="hc-badge">Hardcore</span>
-        </label>
-        <button id="createBtn">Erstellen &amp; beitreten</button>
-      </div>
-      <div id="createErr" class="muted small" style="margin-top:.4rem; color:#b71c1c;"></div>
+      <!-- 2) Neues Spiel – Name/Modus/Passphrase, erzeugt via /api/games (POST) -->
+      <section class="card">
+        <h2>Neues Spiel</h2>
+        <div class="row create-row">
+          <input id="gameName" type="text" placeholder="Spielname" value="Neues Spiel">
+          <input id="passInput" type="text" placeholder="Passphrase">
+          <select id="gameMode" title="Spielmodus">
+            <option value="1">1 Spieler</option>
+            <option value="2">2 Spieler</option>
+            <option value="3">3 Spieler</option>
+            <option value="2v2">2 vs 2</option>
+          </select>
+          <label class="toggle-row">
+            <input id="hardcoreChk" type="checkbox">
+            <span class="hc-badge">Hardcore</span>
+          </label>
+          <button id="createBtn">Erstellen &amp; beitreten</button>
+        </div>
+        <div id="createErr" class="muted small"></div>
+      </section>
     </div>
 
     <!-- 3) Offene Spiele – noch nicht gestartete Spiele -->
-    <div class="card">
+    <section class="card">
       <h2>Offene Spiele</h2>
-      <div class="row" style="margin-bottom:.5rem;">
+      <div class="row section-actions">
         <button id="refreshBtn">Aktualisieren</button>
         <span class="muted small">Klicke auf „Beitreten“, um in den Spielraum zu wechseln.</span>
       </div>
       <div id="gamesList" class="games"></div>
-    </div>
+    </section>
 
     <!-- 3b) Laufende Spiele – beitreten als Zuschauer -->
-    <div class="card">
+    <section class="card">
       <h2>Laufende Spiele</h2>
-      <div class="row" style="margin-bottom:.5rem;">
+      <div class="row section-actions">
         <button id="refreshRunningBtn">Aktualisieren</button>
         <span class="muted small">Klicke auf „Zuschauen“, um dem laufenden Spiel beizutreten (ohne Aktionen).</span>
       </div>
       <div id="runningList" class="games"></div>
-    </div>
+    </section>
 
     <!-- 4) Leaderboard – Recent (7 Tage) und Alltime Top 10 -->
-    <h2>Leaderboard</h2>
-    <div class="tabs">
-      <button id="lbTabNormal" class="tab-btn active">Normal</button>
-      <button id="lbTabHC" class="tab-btn">Hardcore</button>
+    <div class="leaderboard-heading">
+      <h2>Leaderboard</h2>
+      <div class="tabs">
+        <button id="lbTabNormal" class="tab-btn active">Normal</button>
+        <button id="lbTabHC" class="tab-btn">Hardcore</button>
+      </div>
     </div>
-    <div class="leaderboards" style="display:flex; gap:1.2rem; flex-wrap:wrap;">
-      <div class="leaderboard-box" style="flex:1; min-width:320px;">
+    <div class="leaderboards">
+      <div class="leaderboard-box">
         <h3>Top 10 (letzte 7 Tage)</h3>
         <table id="recentTable">
           <thead>
@@ -133,7 +107,7 @@
         </table>
       </div>
 
-      <div class="leaderboard-box" style="flex:1; min-width:320px;">
+      <div class="leaderboard-box">
         <h3>Top 10 Alltime</h3>
         <table id="alltimeTable">
           <thead>
@@ -161,7 +135,6 @@
     const createErr  = document.getElementById('createErr');
     const listEl     = document.getElementById('gamesList');
     const refreshBtn = document.getElementById('refreshBtn');
-    // NEU: Laufende Spiele
     const runningEl  = document.getElementById('runningList');
     const refreshRunningBtn = document.getElementById('refreshRunningBtn');
     const recentTable = document.querySelector("#recentTable tbody");
@@ -236,13 +209,13 @@
             <div class="meta">
               <div class="name">
                 ${escapeHtml(g.name || '(ohne Titel)')}
-                ${g.locked ? `<span style="color:#b71c1c; font-weight:600; margin-left:.4rem;">Passwortgeschützt</span>` : ""}
+                ${g.locked ? `<span class="locked-label">Passwortgeschützt</span>` : ""}
                 ${hcBadge}
               </div>
               <div class="sub">
                 Spieler: <b>${joined}/${expected}</b> • Modus: ${modeTxt} • Status: ${status}
               </div>
-              <div class="sub" style="margin-top:.25rem;">
+              <div class="sub">
                 Wartende: ${waitingBadges}
               </div>
             </div>
@@ -277,10 +250,10 @@
         const progress = Array.isArray(g.progress) ? g.progress : [];
         const progRows = progress.map(p => {
           const who = p.members && p.members.length
-            ? `${escapeHtml(p.name)} <span class="muted small">(${p.members.map(escapeHtml).join(', ')})</span>`
-            : escapeHtml(p.name);
+              ? `${escapeHtml(p.name)} <span class="muted small">(${p.members.map(escapeHtml).join(', ')})</span>`
+              : escapeHtml(p.name);
           return `
-            <div class="muted small" style="margin-top:.15rem;">
+            <div class="muted small progress-line">
               <b>${who}</b> — Felder <b>${p.filled}/${p.of || 48}</b> • Punkte <b>${p.points}</b>
             </div>
           `;
@@ -291,16 +264,16 @@
             <div class="meta">
               <div class="name">
                 ${escapeHtml(g.name || '(ohne Titel)')}
-                ${g.locked ? `<span style="color:#b71c1c; font-weight:600; margin-left:.4rem;">Passwortgeschützt</span>` : ""}
+                ${g.locked ? `<span class="locked-label">Passwortgeschützt</span>` : ""}
                 ${hcBadge}
               </div>
               <div class="sub">
                 Modus: ${modeTxt} Spieler • Gestartet: ${formatDateTime(g.started_at)}
               </div>
-              <div class="sub" style="margin-top:.25rem;">
+              <div class="sub">
                 Spieler: ${playersLine}
               </div>
-              ${progRows ? `<div class="sub" style="margin-top:.25rem;">${progRows}</div>` : ""}
+              ${progRows ? `<div class="sub progress-stack">${progRows}</div>` : ""}
             </div>
             <div class="actions">
               <button class="spectateBtn"

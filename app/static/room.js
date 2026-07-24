@@ -17,7 +17,7 @@
 */
 // Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions)
 
-import { initChat, addChatMessage } from "./chat.js";
+import { initChat, addChatMessage } from "./chat.js?v=2";
 
 (() => {
   // ---------- Helpers ----------
@@ -95,6 +95,12 @@ import { initChat, addChatMessage } from "./chat.js";
     }
   }
 
+  function leaveRoomAfterFatalError(message) {
+    window._fatalWsClose = true;
+    alert(message);
+    location.href = "/";
+  }
+
   // --- Client-Punkteberechnung (nur für 0-Confirm UX) ---
   // Map der schreibbaren Reihen -> Feldkey
   const WRITABLE_MAP = {
@@ -151,6 +157,7 @@ import { initChat, addChatMessage } from "./chat.js";
 
   const PID_KEY = `wuerfler_pid_${qs.game_id}`;
   let myId   = sessionStorage.getItem(PID_KEY) || null;
+  let mySpectatorId = null;
   let myName = qs.name;
 
   let ws = null;
@@ -159,7 +166,7 @@ import { initChat, addChatMessage } from "./chat.js";
   let autoRollLock = false;
   const DEBUG_P_HOTKEY = false; // optionaler Debug-Hotkey "p" -> Poker/Free
 
-  // --- NEU: UI-State für Ansage-Auswahlmodus (per Button/Hotkey A) ---
+  // UI-State für die Ansage-Auswahl per Button oder Hotkey.
   let announcePickMode = false;
 
   // Steuerung der Sichtbarkeit des Wuerfeln-Buttons im Ansage-Pick-Mode.
@@ -180,7 +187,7 @@ import { initChat, addChatMessage } from "./chat.js";
     }catch{}
   }
 
-  // Helper: prüft, ob das Ansage-Fenster (direkt nach Wurf 1, keine Korrektur, keine bestehende Ansage, ich am Zug) offen ist
+  // Das Ansage-Fenster ist nur direkt nach Wurf 1 für den aktuellen Spieler offen.
   function announceWindowOpen(snapshot){
     const rolls = Number(snapshot?._rolls_used || 0);
     const iAmTurn = (snapshot?._turn && String(snapshot._turn.player_id) === String(myId));
@@ -189,7 +196,7 @@ import { initChat, addChatMessage } from "./chat.js";
     return iAmTurn && !corrActive && rolls === 1 && !announced;
   }
 
-  // --- Helper: eigenes Board (Spieler oder Team) holen ---
+  // Eigenes Zielboard: im Teammodus das gemeinsame Teamboard, sonst das Spielerboard.
   function getMyBoard(snapshot){
     const mode = String(snapshot?._mode || "").toLowerCase();
     if (mode === "2v2" && Array.isArray(snapshot?._teams)) {
@@ -199,7 +206,6 @@ import { initChat, addChatMessage } from "./chat.js";
     return (snapshot?._scoreboards?.[myId]) || {};
   }
 
-  // --- Helper: prüft, ob eine Spalte (down/free/up) vollständig ist (alle schreibbaren Reihen belegt) ---
   function isColFull(sc, colKey){
     try{
       const need = Object.keys(WRITABLE_MAP).map(k => Number(k));
@@ -212,7 +218,6 @@ import { initChat, addChatMessage } from "./chat.js";
     }catch{ return false; }
   }
 
-  // --- Helper: Anzahl leerer Zellen in ❗ auf dem eigenen Board ---
   function emptyCountAng(sc){
     try{
       let cnt = 0;
@@ -225,7 +230,6 @@ import { initChat, addChatMessage } from "./chat.js";
     }catch{ return 0; }
   }
 
-  // --- Helper: Gesamtzahl aller offenen, beschreibbaren Zellen im eigenen Board (Deadlock-Schutz) ---
   function totalOpenWritable(sc){
     try{
       let cnt = 0;
@@ -240,7 +244,7 @@ import { initChat, addChatMessage } from "./chat.js";
     }catch{ return 0; }
   }
 
-  // --- Policy: Muss nach Wurf 1 angesagt werden (um weiter würfeln zu dürfen)? ---
+  // Ansagepflicht verhindert ein Sackgassen-Endspiel, wenn nur noch ❗ sinnvoll offen ist.
   function mustAnnounceAfterFirst(snapshot){
     const sc = getMyBoard(snapshot);
     const colFull = isColFull(sc, "down") && isColFull(sc, "free") && isColFull(sc, "up");
@@ -250,7 +254,6 @@ import { initChat, addChatMessage } from "./chat.js";
     return Boolean(colFull && freeAng >= 2 && openAll !== 1);
   }
 
-  // --- Rolling-Block: gilt nach Wurf ≥1, wenn Pflichtbedingungen erfüllt und (noch) keine Ansage existiert ---
   function isRollingBlocked(snapshot){
     const rolls = Number(snapshot?._rolls_used || 0);
     const announced = snapshot?._announced_row4 || null;
@@ -330,13 +333,19 @@ import { initChat, addChatMessage } from "./chat.js";
         myId = String(msg.player_id);
         sessionStorage.setItem(PID_KEY, myId);
       }
+      if (msg.spectator_id) {
+        mySpectatorId = String(msg.spectator_id);
+      }
 
       // Fehler
       if (msg.error) {
         console.warn("Serverfehler:", msg.error);
+        if (msg.fatal) {
+          leaveRoomAfterFatalError(msg.error);
+          return;
+        }
         if (/passphrase/i.test(msg.error) || /pass/i.test(msg.error)) {
-          alert("Beitritt abgelehnt: " + msg.error);
-          location.href = "/";
+          leaveRoomAfterFatalError("Beitritt abgelehnt: " + msg.error);
           return;
         }
       }
@@ -414,11 +423,24 @@ import { initChat, addChatMessage } from "./chat.js";
       // Quick-Reaction
       if (msg.emoji && window.emojiUI && typeof window.emojiUI.handleRemote === "function") {
         window.emojiUI.handleRemote(msg.emoji);
+        addChatMessage(msg.emoji.from || "???", msg.emoji.emoji || "", {
+          ts: msg.emoji.ts,
+          kind: "reaction",
+        });
       }
 
       // Chat-Varianten
       if (msg.chat && typeof msg.chat === "object") {
-        const sender = msg.chat.sender || "???"; const text = msg.chat.text || ""; if (text) addChatMessage(sender, text);
+        const sender = msg.chat.sender || "???";
+        const text = msg.chat.text || "";
+        if (text) {
+          addChatMessage(sender, text, { ts: msg.chat.ts });
+          const ownIds = [myId, mySpectatorId ? `S-${mySpectatorId}` : null].filter(Boolean).map(String);
+          const isOwn = msg.chat.from_id && ownIds.includes(String(msg.chat.from_id));
+          if (!isOwn && window.emojiUI && typeof window.emojiUI.handleChat === "function") {
+            window.emojiUI.handleChat(msg.chat);
+          }
+        }
       } else if (msg.type === "chat" && msg.text) {
         addChatMessage(msg.sender || "???", msg.text);
       } else if (msg.message && msg.sender) {
@@ -437,7 +459,10 @@ import { initChat, addChatMessage } from "./chat.js";
       }
     });
 
-    ws.addEventListener("close", () => setTimeout(connect, 1000));
+    ws.addEventListener("close", () => {
+      if (window._fatalWsClose) return;
+      setTimeout(connect, 1000);
+    });
   }
   connect();
 
@@ -469,13 +494,10 @@ function renderFromSnapshot(snapshot) {
     });
 
     wireDiceBar();
-    if (!isHC) {
-      wireAnnounceUI();
-    }
     wireGridClicks();
     ensureKeybindings(); // alle Hotkeys hier
 
-        // --- NEU: Roll-Button sperren, falls nach Wurf 1 eine Ansage Pflicht ist ---
+    // Weiterwürfeln blockieren, wenn nach Wurf 1 eine Ansage Pflicht ist.
     try{
       const blockRoll = isHC ? false : isRollingBlocked(snapshot);
       const rollBtn = $("#rollBtnInline", mount);
@@ -496,7 +518,7 @@ function renderFromSnapshot(snapshot) {
       }
     } catch {}
 
-    // --- NEU: Ansage-Button beschriften/aktivieren ---
+    // Ansage-Button je nach Fenster und aktiver Ansage beschriften.
     try{
       const ab = $("#announceBtnInline", mount);
       if (ab){
@@ -538,13 +560,11 @@ function renderFromSnapshot(snapshot) {
     // ohne das Layout zu verschieben (visibility statt display)
     applyAnnounceModeButtonVisibility(mount);
 
-    // --- NEU: Pick-Mode – ❗-Zellen im eigenen Board als klickbar markieren ---
+    // Im Pick-Mode nur freie, beschreibbare ❗-Zellen des eigenen Boards markieren.
     try{
-      // Zuerst alte Markierungen entfernen
       $$(".announce-pickable").forEach(td => td.classList.remove("announce-pickable"));
 
       if (!isHC && announcePickMode){
-        // Nur eigenes Board, nur ❗-Spalte, nur **schreibbare** (nicht-compute) leere Zellen
         let boardRoot = null;
         const mode = String(snapshot?._mode || "").toLowerCase();
         if (mode === "2v2"){
@@ -559,7 +579,6 @@ function renderFromSnapshot(snapshot) {
         }
 
         if (boardRoot){
-          // WICHTIG: compute-Zellen ausschließen → Diff wird nicht mehr markiert
           const tds = $$("table.grid tbody tr td.cell:nth-child(5)", boardRoot);
           tds.forEach(td => {
             const hasVal    = td.textContent.trim().length > 0;
@@ -721,13 +740,15 @@ function renderFromSnapshot(snapshot) {
   // --- Chatbreite ---
   function syncChatWidth() {
     try {
+      const score = document.querySelector("#scoreOut");
       const grid = document.querySelector("#scoreOut .players-grid");
       const chat = document.querySelector(".chat-panel");
       if (!grid || !chat) return;
-      const w = Math.ceil(grid.getBoundingClientRect().width);
+      const source = score || grid;
+      const w = Math.ceil(source.getBoundingClientRect().width);
       chat.style.maxWidth = w + "px";
-      chat.style.marginLeft = "1rem";
-      chat.style.marginRight = "1rem";
+      chat.style.marginLeft = "auto";
+      chat.style.marginRight = "auto";
     } catch {}
   }
   window.addEventListener("resize", syncChatWidth);
@@ -769,7 +790,7 @@ function renderFromSnapshot(snapshot) {
     }
     const rollBtn = $("#rollBtnInline", mount);
 
-        // NEU: Ansage-Button (ein Button für Ansage setzen ODER aufheben)
+    // Ein Button setzt eine neue Ansage oder hebt die aktive Ansage wieder auf.
     const announceBtn = $("#announceBtnInline", mount);
     if (announceBtn && !announceBtn._bound){
       announceBtn._bound = true;
@@ -779,19 +800,14 @@ function renderFromSnapshot(snapshot) {
         const rolls = Number(sb?._rolls_used || 0);
         const iAmTurn = (sb?._turn && String(sb._turn.player_id) === String(myId));
         const corrActive = !!(sb?._correction?.active);
-        // Guard: nur direkt nach Wurf 1 vom Zugspieler
         if (!(iAmTurn && !corrActive && rolls === 1)) return;
 
         if (state === "unannounce" && sb?._announced_row4){
-          // Aufheben (gleiches Server-API wie bisher)
           safeSend(ws, { action: "unannounce_row4" });
           return;
         }
-        // Ansage setzen → Pick-Mode toggeln
         announcePickMode = !announcePickMode;
-        // Sichtbarkeit des Würfeln-Buttons sofort anpassen
         applyAnnounceModeButtonVisibility(mount);
-        // Re-Render Markierungen
         renderFromSnapshot(sb);
       });
     }
@@ -847,41 +863,6 @@ function renderFromSnapshot(snapshot) {
     }
   }
 
-  // --- Ansage (❗) ---
-  /**
-   * Bindet die Ansage-UI (❗): Auswahl des Feldes nach Wurf 1,
-   * Umschalten/Zurückziehen der Ansage und visuelle Markierungen.
-   */
-  function wireAnnounceUI() {
-    if (IS_SPECTATOR) {
-      const sel0 = $("#announceSelect", mount);
-      if (sel0) { sel0.disabled = true; sel0.title = "Nur Spieler"; }
-      const unbtn0 = $("#unannounceBtn", mount);
-      if (unbtn0) { unbtn0.disabled = true; unbtn0.title = "Nur Spieler"; }
-      return;
-    }
-    const sel   = $("#announceSelect", mount);
-    const unbtn = $("#unannounceBtn", mount);
-
-    // Sofort-Ansage bei Auswahl
-    if (sel && !sel._bound) {
-      sel._bound = true;
-      sel.addEventListener("change", () => {
-        const val = sel.value || "";
-        if (!val) return;
-        safeSend(ws, { action: "announce_row4", field: val });
-      });
-    }
-
-    // "Ändern"-Button (ehem. Aufheben)
-    if (unbtn && !unbtn._bound) {
-      unbtn._bound = true;
-      unbtn.addEventListener("click", () => {
-        safeSend(ws, { action: "unannounce_row4" });
-      });
-    }
-  }
-
   // --- Grid-Klicks (mit 0-Confirm) ---
   /**
    * Aktiviert 0-Confirm-Klicks im Scoreboard-Grid. Prüft lokal Sonderfälle
@@ -895,26 +876,20 @@ function renderFromSnapshot(snapshot) {
       if (IS_SPECTATOR) return;
       const td = e.target.closest("td.cell.clickable");
       if (!td) return;
+      const card = td.closest(".player-card");
+      if (!card || !card.classList.contains("me")) return;
       const row   = Number(td.getAttribute("data-row"));
       const field = td.getAttribute("data-field");
-      // --- NEU: Ansage-Pick-Mode ---
-      // Wenn aktiv: Klick auf leere ❗-Zelle im eigenen Board setzt die Ansage (statt zu schreiben)
+      // Im Pick-Mode setzt der Klick auf eine freie ❗-Zelle die Ansage statt zu schreiben.
       if (announcePickMode) {
-        // Race-Guard: nur im gültigen Zeitfenster (Wurf 1, keine Korrektur, keine bestehende Ansage, ich am Zug)
         if (!announceWindowOpen(sb)) return;
-        // Nur ❗-Spalte akzeptieren
         if (field !== "ang") return;
-        // nur eigenes Board: .player-card.me
-        const card = td.closest(".player-card");
-        if (!card || !card.classList.contains("me")) return;
-        // nur leere Zelle
+        if (!card.classList.contains("me")) return;
         if (td.textContent && td.textContent.trim().length > 0) return;
 
         const fieldKey = WRITABLE_MAP[row];
         if (!fieldKey) return;
-        // Server-Call: Ansage auf das gewählte Feld
         safeSend(ws, { action: "announce_row4", field: fieldKey });
-        // Pick-Mode beenden – der Snapshot nach Serverantwort aktualisiert UI/Label
         announcePickMode = false;
         return;
       }

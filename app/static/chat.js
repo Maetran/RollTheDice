@@ -1,8 +1,6 @@
-// static/chat.js
 let ws = null;
 let chatBox, chatInput, chatSend;
 
-// optional: eigener Name (nur für spätere Features, NICHT zum Echo)
 let meName = "Ich";
 
 export function initChat(websocket, opts = {}) {
@@ -30,41 +28,39 @@ function sendMessage() {
   const txt = (chatInput?.value || "").trim();
   if (!txt) return;
 
-  // Nur zum Server schicken – KEIN lokales Echo
   try {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ action: "chat_message", text: txt }));
     }
   } catch {}
 
-  // Eingabefeld leeren
   if (chatInput) chatInput.value = "";
 }
 
-export function addChatMessage(sender, text) {
+export function addChatMessage(sender, text, opts = {}) {
   if (!chatBox) chatBox = document.getElementById("chatBox");
   if (!chatBox) return;
 
-  const ts = new Date();
-  const hh = String(ts.getHours()).padStart(2, "0");
-  const mm = String(ts.getMinutes()).padStart(2, "0");
-  const ss = String(ts.getSeconds()).padStart(2, "0");
+  const ts = opts.ts ? new Date(opts.ts) : new Date();
+  const safeTs = Number.isNaN(ts.getTime()) ? new Date() : ts;
+  const hh = String(safeTs.getHours()).padStart(2, "0");
+  const mm = String(safeTs.getMinutes()).padStart(2, "0");
+  const ss = String(safeTs.getSeconds()).padStart(2, "0");
   const stamp = `${hh}:${mm}:${ss}`;
 
   const line = document.createElement("div");
-  line.className = "chat-line";
-  line.innerHTML =
-    `<span style="color:#666; font-size:0.8em; margin-right:4px;">[${stamp}]</span>` +
-    `<b>${escapeHtml(sender)}:</b> ${escapeHtml(text)}`;
+  line.className = `chat-line${opts.kind === "reaction" ? " reaction" : ""}`;
+  const body = opts.kind === "reaction"
+    ? `<b>${escapeHtml(sender)}</b> ${escapeHtml(text)}`
+    : `<b>${escapeHtml(sender)}:</b> ${escapeHtml(text)}`;
+  line.innerHTML = `<span class="ts">[${stamp}]</span>${body}`;
 
-  // Neueste zuerst
   chatBox.prepend(line);
   chatBox.scrollTop = 0;
 }
 
-// einfache Escapes
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
   }[c]));
 }

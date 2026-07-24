@@ -1,14 +1,3 @@
-// static/emoji.js
-// Quick-Reactions: Toolbar + ephemere Einblendungen
-//
-// Verwendung (in room.html / room.js):
-//   emojiUI.init({
-//     ws,                                             // WebSocket-Instanz
-//     getMyName: () => currentPlayerName || 'Gast'    // optional
-//   });
-//   // und in ws.onmessage(msg):
-//   //   if (data.emoji) emojiUI.handleRemote(data.emoji);
-
 (function(){
   const QUICK_EMOJIS = ['👍','👎','🎉','😡','😜','🤞','🙏','🖕','💩','🤮','FEIG!'];
 
@@ -71,6 +60,7 @@
         z-index: 3000; pointer-events:none;
       }
       .emoji-pop{
+        max-width:calc(100vw - 24px);
         background:rgba(255,255,255,.95);
         border:1px solid rgba(0,0,0,.08);
         box-shadow:0 6px 18px rgba(0,0,0,.12);
@@ -81,8 +71,19 @@
         pointer-events:auto;
         transition: opacity .3s ease, transform .3s ease;
       }
+      .emoji-pop.chat-pop{
+        cursor:pointer;
+      }
       .emoji-pop .who{
+        flex:0 0 auto;
         font-weight:700; color:#333; font-size:.95rem;
+      }
+      .emoji-pop .txt{
+        min-width:0;
+        max-width:min(520px, 70vw);
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
       }
       .emoji-pop.fade-out{
         opacity:0; transform:translateY(-6px);
@@ -90,6 +91,7 @@
       @media (max-width: 480px){
         .emoji-btn{ font-size:1rem; padding:.2rem .4rem; }
         .emoji-pop{ font-size:1rem; }
+        .emoji-pop .txt{ max-width:62vw; }
       }
     `;
     const style = document.createElement('style');
@@ -147,14 +149,30 @@
     return m;
   }
 
-  function showPop({from, emoji}, {ttlMs=5000}={}){
+  function scrollToChat(){
+    const panel = document.getElementById('chatPanel') || document.getElementById('chatBox');
+    if (!panel) return;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const input = document.getElementById('chatInput');
+    if (input) {
+      try { input.focus({ preventScroll: true }); }
+      catch { input.focus(); }
+    }
+  }
+
+  function showPop({from, emoji, text, kind}, {ttlMs=5000}={}){
     ensureStyles();
     const mount = ensurePopMount();
     const el = document.createElement('div');
-    el.className = 'emoji-pop';
-    el.innerHTML = `<span class="who">${escapeHtml(from)}</span> <span class="em">${escapeHtml(emoji)}</span>`;
+    const isChat = kind === 'chat';
+    el.className = `emoji-pop${isChat ? ' chat-pop' : ''}`;
+    if (isChat) {
+      el.innerHTML = `<span class="who">${escapeHtml(from)}:</span> <span class="txt">${escapeHtml(text || '')}</span>`;
+      el.addEventListener('click', scrollToChat);
+    } else {
+      el.innerHTML = `<span class="who">${escapeHtml(from)}</span> <span class="em">${escapeHtml(emoji)}</span>`;
+    }
     mount.appendChild(el);
-    // Auto-Remove
     setTimeout(() => {
       el.classList.add('fade-out');
       setTimeout(() => el.remove(), 320);
@@ -208,5 +226,10 @@
     showPop({from: payload.from || 'Spieler', emoji: payload.emoji});
   }
 
-  window.emojiUI = { init, handleRemote };
+  function handleChat(payload){
+    if (!payload || !payload.text) return;
+    showPop({from: payload.sender || payload.from || 'Spieler', text: payload.text, kind: 'chat'});
+  }
+
+  window.emojiUI = { init, handleRemote, handleChat };
 })();

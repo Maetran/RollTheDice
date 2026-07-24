@@ -18,9 +18,7 @@ Wichtig: Poker-Logik und Korrekturmodus
   Wurf mit 4/5 gleichen erlaubt.
 - Im Korrekturmodus werden die beim ursprünglichen Zug gemerkten Würfel sowie
   Meta-Werte (roll_index und first4oak_roll) genutzt, um die Berechtigung zur
-  Punktevergabe korrekt zu prüfen. Damit wird ein Fehler behoben, bei dem in
-  2‑Spieler‑Spielen nach einem Fehl-Eintrag Poker in der Korrektur fälschlich mit 0
-  Punkten gewertet wurde, obwohl im Zug zuvor bereits ein Vierling gefallen war.
+  Punktevergabe korrekt zu prüfen.
 """
 
 from __future__ import annotations
@@ -166,6 +164,8 @@ WRITABLE_MAP = {
 }
 KEY_TO_ROW = {v: k for k, v in WRITABLE_MAP.items()}
 WRITABLE_CELLS_PER_PLAYER = len(WRITABLE_ROWS) * 4  # 12*4 = 48
+WRITABLE_COLS = ("down", "free", "up", "ang")
+WRITABLE_FIELDS = set(KEY_TO_ROW.keys())
 
 # --- Team-Mode Helpers (2v2: Spieler 1&3 = Team A, 2&4 = Team B) ---
 
@@ -199,18 +199,65 @@ def board_key_for_actor(g: GameDict, pid: str) -> str:
         return team or "A"
     return pid
 
+def _board_for_actor(g: GameDict, pid: str) -> dict:
+    """Liefert das Scoreboard, in das dieser Spieler schreiben würde."""
+    if is_team_mode(g):
+        team = board_key_for_actor(g, pid)
+        return g.get("_scoreboards_by_team", {}).get(team, {}) or {}
+    return g.get("_scoreboards", {}).get(pid, {}) or {}
+
+def _ensure_board_for_actor(g: GameDict, pid: str) -> dict:
+    """Liefert das beschreibbare Zielboard und legt es bei Bedarf an."""
+    if is_team_mode(g):
+        team = board_key_for_actor(g, pid)
+        return g.setdefault("_scoreboards_by_team", {}).setdefault(team, {})
+    return g.setdefault("_scoreboards", {}).setdefault(pid, {})
+
+def _clear_announcement(g: GameDict) -> None:
+    """Setzt alle Ansage-Metadaten zurueck."""
+    g["_announced_row4"] = None
+    g["_announced_by"] = None
+    g["_announced_board"] = None
+
+def _reset_turn_roll_state(g: GameDict) -> None:
+    """Setzt Wuerfel, Holds und Wurfzaehler fuer den naechsten Zug zurueck."""
+    g["_dice"] = [0, 0, 0, 0, 0]
+    g["_holds"] = [False] * 5
+    g["_rolls_used"] = 0
+
+def _clear_correction(g: GameDict) -> None:
+    """Beendet den Korrekturmodus und entfernt die angezeigten Korrekturwuerfel."""
+    g["_correction"] = {"active": False}
+    g["_dice"] = [0, 0, 0, 0, 0]
+
+def _join_block_reason(g: GameDict) -> str | None:
+    """Prueft, ob ein neuer Spieler dem Spiel noch beitreten darf."""
+    if g.get("_finished") or g.get("_aborted"):
+        return "Spiel ist bereits beendet"
+    if g.get("_started"):
+        return "Spiel ist bereits gestartet"
+    if len(g.get("_players", [])) >= int(g.get("_expected", 0) or 0):
+        return "Spiel ist bereits voll"
+    return None
+
+def _passphrase_from_payload(data: dict) -> str:
+    """Liest die Passphrase aus aktuellen und Legacy-Payload-Feldern."""
+    return (data.get("pass") or data.get("passphrase") or "").strip()
+
+def _passphrase_matches(g: GameDict, data: dict) -> bool:
+    """True, wenn keine Passphrase gesetzt ist oder die Payload passt."""
+    expected_pass = g.get("_passphrase") or ""
+    return (not expected_pass) or _passphrase_from_payload(data) == expected_pass
+
 def new_game(gid: str, name: str, mode) -> GameDict:
     if isinstance(mode, str) and mode.isdigit():
         mode = int(mode)
     expected = 4 if str(mode).lower() == "2v2" else int(mode)
-    if str(mode).lower() == "2v2":
-        # explizit Teams & Team-Scoreboards anlegen (optional)
-        pass  # (dein Einfügeblock würde hier stehen)
     g: GameDict = {
         "_id": gid,
         "_name": name,
         "_mode": str(mode),
-        "_hardcore": False,                 # Hardcore-Modus (1 Wurf, ❗ wie Freireihe, kein Korrekturmodus)
+        "_hardcore": False,                 # 1 Wurf, ❗ wie Freireihe, keine Korrektur
         "_expected": expected,
         "_started": False,
         "_finished": False,
@@ -448,19 +495,66 @@ def _filled_rows_for(g: GameDict, pid: str, col: str) -> set[int]:
     Returns:
         set[int]: Indizes der befüllten Reihen
     """
-    if is_team_mode(g):
-        team = board_key_for_actor(g, pid)
-        board = g.get("_scoreboards_by_team", {}).get(team, {})
-    else:
-        board = g["_scoreboards"].get(pid, {})
+    board = _board_for_actor(g, pid)
+    return _filled_rows_in_board(board, col)
+
+def _filled_rows_in_board(board: dict, col: str) -> set[int]:
+    """Liefert befüllte Schreibzeilen einer Spalte aus einem Scoreboard-Dict."""
     out = set()
-    for k in board.keys():
+    for k in (board or {}).keys():
         if isinstance(k, str) and "," in k:
             r_str, c = k.split(",", 1)
-            r = int(r_str)
-            if c == col:
+            try:
+                r = int(r_str)
+            except ValueError:
+                continue
+            if c == col and r in WRITABLE_ROWS:
                 out.add(r)
     return out
+
+def _is_col_full(board: dict, col: str) -> bool:
+    """True, wenn alle beschreibbaren Felder einer Spalte belegt sind."""
+    return all(f"{row},{col}" in (board or {}) for row in WRITABLE_ROWS)
+
+def _empty_count_in_col(board: dict, col: str) -> int:
+    """Zaehlt freie beschreibbare Felder in einer Spalte."""
+    return sum(1 for row in WRITABLE_ROWS if f"{row},{col}" not in (board or {}))
+
+def _open_writable_count(board: dict) -> int:
+    """Zaehlt alle freien beschreibbaren Felder eines Boards."""
+    return sum(
+        1
+        for row in WRITABLE_ROWS
+        for col in WRITABLE_COLS
+        if f"{row},{col}" not in (board or {})
+    )
+
+def _must_announce_after_first(g: GameDict, pid: str) -> bool:
+    """Serverseitiger Guard fuer die Ansagepflicht vor weiterem Wuerfeln."""
+    if bool(g.get("_hardcore")):
+        return False
+    board = _board_for_actor(g, pid)
+    regular_cols_full = all(_is_col_full(board, col) for col in ("down", "free", "up"))
+    free_ang = _empty_count_in_col(board, "ang")
+    open_all = _open_writable_count(board)
+    return bool(regular_cols_full and free_ang >= 2 and open_all != 1)
+
+def _parse_write_target(data: dict) -> tuple[int, str, str]:
+    """Validiert Zeile/Spalte aus einer Write-Payload und liefert row, col, field_key."""
+    try:
+        row = int(data["row"])
+    except Exception as exc:
+        raise ValueError("Ungültige Zeile") from exc
+
+    col = data.get("field")
+    if col not in WRITABLE_COLS:
+        raise ValueError("Ungültige Spalte")
+
+    fld = WRITABLE_MAP.get(row)
+    if fld is None:
+        raise ValueError("Dieses Feld ist nicht beschreibbar")
+
+    return row, col, fld
 
 def _next_required_row(col: str, filled: set[int]) -> int | None:
     """Nächste erforderliche Reihe in Abhängigkeit der Spalte (down => aufwärts, up => abwärts).
@@ -569,7 +663,7 @@ def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_anno
         # Ausnahme: im letzten Zug darf ohne Ansage in ❗ geschrieben werden
         if _is_last_turn_for(g, pid):
             return True, ""
-        # NEU: direkt nach dem 1. Wurf darf ohne Dropdown-Ansage in ❗ geschrieben werden
+        # Direkt nach dem 1. Wurf darf ohne aktive Ansage in ❗ geschrieben werden.
         if g.get("_rolls_used", 0) == 1:
             return True, ""
         if not during_turn_announce:
@@ -721,7 +815,7 @@ def snapshot(g: GameDict) -> dict:
             },
             "_has_last": {pid: bool(g["_last_write"].get(pid)) for pid in g["_scoreboards"].keys()},
             "_auto_single": _auto_single,
-            # NEU: Vorschlags-Buttons (serverseitig, für aktiven Spieler berechnet)
+            # Serverseitig berechnete Vorschläge für den aktiven Spieler.
             "suggestions": compute_suggestions(g),
             # Optionales Poker-Debugging
             "_dbg_poker": _dbg_poker(),
@@ -746,6 +840,17 @@ async def broadcast(g: GameDict, msg: Dict[str, Any]) -> None:
         except Exception:
             pass
 
+async def _close_ws_with_error(websocket: WebSocket, error: str, *, fatal: bool = False, code: int = 1008) -> None:
+    """Sendet einen Fehler und schliesst danach den WebSocket."""
+    try:
+        payload = {"error": error}
+        if fatal:
+            payload["fatal"] = True
+        await websocket.send_json(payload)
+    except Exception:
+        pass
+    await websocket.close(code=code)
+
 def next_turn(g: GameDict, current_pid: str | None) -> str | None:
     """Liefert die ID des nächsten Spielers in der Reihenfolge (Ring).
 
@@ -763,6 +868,17 @@ def next_turn(g: GameDict, current_pid: str | None) -> str | None:
         i = (ids.index(current_pid) + 1) % len(ids)
         return ids[i]
     return ids[0]
+
+def _begin_next_turn(g: GameDict, current_pid: str | None) -> None:
+    """Schliesst den aktuellen Zug ab und initialisiert den naechsten Zug."""
+    _reset_turn_roll_state(g)
+    _clear_announcement(g)
+    g["_turn"] = {
+        "player_id": next_turn(g, current_pid),
+        "roll_index": 0,
+        "first4oak_roll": None,
+    }
+    _set_roll_cap_for_current_turn(g)
 
 # -----------------------------
 # HTTP API
@@ -1101,6 +1217,40 @@ def _compute_final_totals(g: GameDict) -> Dict[str,int]:
             totals[pid] = int(ov["overall"]["overall_total"]) if rows else 0
     return totals
 
+def _progress_for_game(g: GameDict) -> list[dict]:
+    """Liefert kompakten Fortschritt fuer die Lobby-Liste laufender Spiele."""
+    totals = _compute_final_totals(g)
+    if is_team_mode(g):
+        players_by_id = {p.get("id"): p.get("name", "Player") for p in g.get("_players", [])}
+        out = []
+        for tid in ("A", "B"):
+            team = g.get("_teams", {}).get(tid, {}) or {}
+            members = [players_by_id.get(pid, str(pid)) for pid in team.get("members", [])]
+            board = g.get("_scoreboards_by_team", {}).get(tid, {}) or {}
+            out.append({
+                "id": tid,
+                "name": team.get("name", f"Team {tid}"),
+                "members": members,
+                "filled": min(len(board), WRITABLE_CELLS_PER_PLAYER),
+                "of": WRITABLE_CELLS_PER_PLAYER,
+                "points": int(totals.get(tid, 0)),
+            })
+        return out
+
+    out = []
+    for p in g.get("_players", []):
+        pid = p.get("id")
+        board = g.get("_scoreboards", {}).get(pid, {}) or {}
+        out.append({
+            "id": pid,
+            "name": p.get("name", "Player"),
+            "members": [],
+            "filled": min(len(board), WRITABLE_CELLS_PER_PLAYER),
+            "of": WRITABLE_CELLS_PER_PLAYER,
+            "points": int(totals.get(pid, 0)),
+        })
+    return out
+
 def _is_game_finished(g: GameDict) -> bool:
     """Prüft, ob ein Spiel beendet ist.
 
@@ -1393,8 +1543,7 @@ def _compute_results_for_snapshot(g: GameDict):
 async def ws_game(websocket: WebSocket, game_id: str):
     await websocket.accept()
     if game_id not in games:
-        await websocket.send_json({"error": "Game nicht gefunden"})
-        await websocket.close()
+        await _close_ws_with_error(websocket, "Game nicht gefunden", fatal=True, code=1000)
         return
 
     g = games[game_id]
@@ -1415,21 +1564,20 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
                 continue
 
-            # NEU: Spectator-Gate – nur Chat & Emoji sind erlaubt
+            # Zuschauer dürfen nur passive Aktionen senden.
             if is_spectator and act not in {"send_emoji", "chat_message", "rejoin_game"}:
                 await websocket.send_json({"error": "Nur fuer Spieler"})
                 continue
 
             if act == "join_game":
                 # Passphrase validieren (falls gesetzt) – bei Fehler Socket sofort schließen
-                provided_pass = (data.get("pass") or data.get("passphrase") or "").strip()
-                expected_pass = (g.get("_passphrase") or "")
-                if expected_pass and provided_pass != expected_pass:
-                    try:
-                        await websocket.send_json({"error": "Falsche Passphrase"})
-                    except Exception:
-                        pass
-                    await websocket.close(code=1008)
+                if not _passphrase_matches(g, data):
+                    await _close_ws_with_error(websocket, "Falsche Passphrase")
+                    break
+
+                blocked_reason = _join_block_reason(g)
+                if blocked_reason:
+                    await _close_ws_with_error(websocket, blocked_reason, fatal=True)
                     break
 
                 player_id = str(uuid.uuid4())[:6]
@@ -1451,14 +1599,8 @@ async def ws_game(websocket: WebSocket, game_id: str):
 
             elif act == "spectate_game":
                 # Passphrase pruefen (gleiches Verhalten wie bei join_game)
-                provided_pass = (data.get("pass") or data.get("passphrase") or "").strip()
-                expected_pass = (g.get("_passphrase") or "")
-                if expected_pass and provided_pass != expected_pass:
-                    try:
-                        await websocket.send_json({"error": "Falsche Passphrase"})
-                    except Exception:
-                        pass
-                    await websocket.close(code=1008)
+                if not _passphrase_matches(g, data):
+                    await _close_ws_with_error(websocket, "Falsche Passphrase")
                     break
 
                 # Spectator registrieren (zaehlt nicht als Spieler)
@@ -1506,6 +1648,14 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     continue
                 if g["_rolls_used"] >= g["_rolls_max"]:
                     await websocket.send_json({"error": "Keine Würfe mehr"})
+                    continue
+                if (
+                    not bool(g.get("_hardcore"))
+                    and not g.get("_announced_row4")
+                    and int(g.get("_rolls_used", 0) or 0) >= 1
+                    and _must_announce_after_first(g, player_id)
+                ):
+                    await websocket.send_json({"error": "Bitte zuerst ein ❗-Feld ansagen, bevor weiter gewürfelt wird"})
                     continue
                 # Server-Cooldown: Double-Click-/Spam-Guard (standard 450 ms)
                 # Schluckt zu schnelle Folgerolls laut monotonic()-Timer pro Spieler.
@@ -1555,17 +1705,14 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     continue
 
                 field = data.get("field")
-                if field not in {"1","2","3","4","5","6","max","min","kenter","full","poker","60"}:
+                if field not in WRITABLE_FIELDS:
                     await websocket.send_json({"error": "Ungültiges Ansage-Feld"})
                     continue
 
                 # Feld in ❗ schon befüllt?
                 row_for_field = KEY_TO_ROW.get(field)
                 # prüfen gegen Zielboard (Team/Spieler)
-                if is_team_mode(g):
-                    board = g.get("_scoreboards_by_team", {}).get(board_key_for_actor(g, player_id), {})
-                else:
-                    board = g["_scoreboards"].get(player_id, {})
+                board = _board_for_actor(g, player_id)
                 if row_for_field is not None and f"{row_for_field},ang" in board:
                     await websocket.send_json({"error": f"Ansage nicht möglich: Feld {field} in ❗ bereits befüllt"})
                     continue
@@ -1611,20 +1758,11 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     continue
 
                 try:
-                    row = int(data["row"])
-                except Exception:
-                    await websocket.send_json({"error": "Ungültige Zeile"})
+                    row, col, fld = _parse_write_target(data)
+                except ValueError as exc:
+                    await websocket.send_json({"error": str(exc)})
                     continue
-                col = data.get("field")
-                strike = bool(data.get("strike"))  # << neu: 0 erzwingen erlaubt
-                if col not in {"down", "free", "up", "ang"}:
-                    await websocket.send_json({"error": "Ungültige Spalte"})
-                    continue
-
-                fld = WRITABLE_MAP.get(row)
-                if fld is None:
-                    await websocket.send_json({"error": "Dieses Feld ist nicht beschreibbar"})
-                    continue
+                strike = bool(data.get("strike"))
 
                 ok, why = can_write_now(g, player_id, row, col, during_turn_announce=g["_announced_row4"])
                 if not ok:
@@ -1633,10 +1771,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
 
                 key = f"{row},{col}"
                 # Ziel-Board...
-                if is_team_mode(g):
-                    board = g.setdefault("_scoreboards_by_team", {}).setdefault(board_key_for_actor(g, player_id), {})
-                else:
-                    board = g.setdefault("_scoreboards", {}).setdefault(player_id, {})
+                board = _ensure_board_for_actor(g, player_id)
 
                 if key in board:
                     await websocket.send_json({"error": "Dieses Feld ist bereits befüllt"})
@@ -1677,7 +1812,6 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     # (keine weitere ❗-Sonderbehandlung hier; ob ❗ überhaupt beschreibbar ist,
                     #  entscheidet bereits can_write_now(...).)
 
-                value = score_field_value(fld, g["_dice"] or [0, 0, 0, 0, 0])
                 value = 0 if strike else score_field_value(fld, g["_dice"] or [0, 0, 0, 0, 0])
                 board[key] = value
 
@@ -1689,15 +1823,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     "roll_index": int(cur.get("roll_index", 0) or 0),
                     "first4oak_roll": cur.get("first4oak_roll"),
                 }
-                # Turn Ende
-                g["_dice"] = [0, 0, 0, 0, 0]
-                g["_holds"] = [False] * 5
-                g["_rolls_used"] = 0
-                g["_announced_row4"] = None
-                g["_announced_by"] = None
-                g["_announced_board"] = None
-                g["_turn"] = {"player_id": next_turn(g, player_id), "roll_index": 0, "first4oak_roll": None}
-                _set_roll_cap_for_current_turn(g)
+                _begin_next_turn(g, player_id)
                 # Spielende?
                 if _is_game_finished(g):
                     g["_started"] = False
@@ -1728,8 +1854,6 @@ async def ws_game(websocket: WebSocket, game_id: str):
 
                 is_single = (not is_team_mode(g)) and int(g.get("_expected", 0) or 0) == 1
 
-                # Bisher: nur erlaubt, wenn NICHT du dran bist.
-                # Jetzt: im 1P-Mode auch erlaubt, wenn du dran bist – aber nur bevor erneut gewürfelt wurde.
                 if not g.get("_turn"):
                     await websocket.send_json({"error": "Korrektur nur direkt nach deinem Zug"})
                     continue
@@ -1765,8 +1889,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 if int(g.get("_expected", 0) or 0) == 1:
                     await websocket.send_json({"error": "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert"})
                     continue
-                g["_correction"] = {"active": False}
-                g["_dice"] = [0, 0, 0, 0, 0]
+                _clear_correction(g)
                 touch(g)
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
@@ -1783,22 +1906,12 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     await websocket.send_json({"error": "Keine Korrektur aktiv"})
                     continue
 
-                # Zielzeile/-spalte aus dem Request
                 try:
-                    row = int(data["row"])
-                except Exception:
-                    await websocket.send_json({"error": "Ungültige Zeile"})
+                    row, col, fld = _parse_write_target(data)
+                except ValueError as exc:
+                    await websocket.send_json({"error": str(exc)})
                     continue
-                col = data.get("field")
-                strike = bool(data.get("strike"))  # << neu: 0 erzwingen erlaubt
-                if col not in {"down", "free", "up", "ang"}:
-                    await websocket.send_json({"error": "Ungültige Spalte"})
-                    continue
-
-                fld = WRITABLE_MAP.get(row)
-                if fld is None:
-                    await websocket.send_json({"error": "Dieses Feld ist nicht beschreibbar"})
-                    continue
+                strike = bool(data.get("strike"))
 
                 # Es darf nur der letzte Eintrag dieses Spielers korrigiert werden
                 last = g["_last_write"].get(player_id)
@@ -1810,31 +1923,19 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 # Würfel für die Neubewertung sind die gemerkten Korrekturwürfel
                 dice_for_eval = (corr.get("dice") or g.get("_dice") or [0, 0, 0, 0, 0])[:]
 
-                # --- Altes Zielboard (Team/Spieler) bestimmen und alten Eintrag entfernen ---
-                if is_team_mode(g):
-                    old_board = g.setdefault("_scoreboards_by_team", {}).setdefault(
-                        board_key_for_actor(g, player_id), {}
-                    )
-                else:
-                    old_board = g.setdefault("_scoreboards", {}).setdefault(player_id, {})
+                # --- Zielboard (Team/Spieler) bestimmen ---
+                new_board = _ensure_board_for_actor(g, player_id)
 
                 old_key = f"{old_row},{old_col}"
-                old_board.pop(old_key, None)
-
-                # --- Neues Zielboard (Team/Spieler) bestimmen ---
-                if is_team_mode(g):
-                    new_board = g.setdefault("_scoreboards_by_team", {}).setdefault(
-                        board_key_for_actor(g, player_id), {}
-                    )
-                else:
-                    new_board = g.setdefault("_scoreboards", {}).setdefault(player_id, {})
-
                 new_key = f"{row},{col}"
+                board_after_removing_old = dict(new_board)
+                board_after_removing_old.pop(old_key, None)
+
                 # --- Reihenfolge-Checks wie im normalen Modus (nur für down/up) ---
                 # Sonderfall: Wenn der Spieler im Korrekturmodus im *gleichen* Feld bleibt,
                 # darf er das auch dann, wenn 'next_row' streng genommen anders wäre.
                 if col in {"down", "up"}:
-                    filled = _filled_rows_for(g, player_id, col)
+                    filled = _filled_rows_in_board(board_after_removing_old, col)
                     next_row = _next_required_row(col, filled)
                     if next_row is None:
                         await websocket.send_json({"error": "Reihe bereits voll"})
@@ -1842,7 +1943,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     if row != next_row and not (row == old_row and col == old_col):
                         await websocket.send_json({"error": f"In dieser Reihe ist als Nächstes Zeile {next_row} erlaubt"})
                         continue
-                if new_key in new_board:
+                if new_key in board_after_removing_old:
                     await websocket.send_json({"error": "Ziel-Feld bereits befüllt"})
                     continue
 
@@ -1891,14 +1992,13 @@ async def ws_game(websocket: WebSocket, game_id: str):
                             strike = True
                             # Kein continue; unten wird wegen strike = True der Wert 0 geschrieben.
 
-                val = score_field_value(fld, dice_for_eval)
                 val = 0 if strike else score_field_value(fld, dice_for_eval)
+                new_board.pop(old_key, None)
                 new_board[new_key] = val
                 g["_last_write"][player_id] = (row, col, old_rolls_used)
 
                 # Korrektur beenden, Würfel zurücksetzen und broadcasten
-                g["_correction"] = {"active": False}
-                g["_dice"] = [0, 0, 0, 0, 0]
+                _clear_correction(g)
                 touch(g)
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
@@ -1938,15 +2038,25 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 # Absendername auflösen
                 if player_id:
                     sender = next((p.get("name", "Player") for p in g.get("_players", []) if p.get("id") == player_id), "Player")
+                    from_id = player_id
                 elif spectator_id:
                     sender = next((s.get("name", "Zuschauer") for s in g.get("_spectators", []) if s.get("id") == spectator_id), "Zuschauer")
+                    from_id = f"S-{spectator_id}"
                 else:
                     sender = "Player"
+                    from_id = None
                 # Sanfte Längenbegrenzung
                 if len(txt) > 400:
                     txt = txt[:400]
                 # Broadcast ohne Persistenz
-                await broadcast(g, {"chat": {"sender": sender, "text": txt}})
+                await broadcast(g, {
+                    "chat": {
+                        "from_id": from_id,
+                        "sender": sender,
+                        "text": txt,
+                        "ts": datetime.now(timezone.utc).isoformat(),
+                    }
+                })
                 touch(g)
 
             elif act == "end_game":
@@ -1979,11 +2089,19 @@ async def ws_game(websocket: WebSocket, game_id: str):
         # Verbindung trennt: WS-Referenz entfernen (Rejoin moeglich)
         if game_id in games:
             g = games[game_id]
+            correction_cancelled = False
             if player_id:
                 for p in g.get("_players", []):
                     if p.get("id") == player_id:
                         p["ws"] = None
                         break
+                if (
+                    g.get("_correction", {}).get("active")
+                    and g.get("_correction", {}).get("player_id") == player_id
+                ):
+                    _clear_correction(g)
+                    touch(g)
+                    correction_cancelled = True
             elif spectator_id:
                 # Zuschauer austragen und allen Bescheid geben
                 specs = g.get("_spectators", [])
@@ -1996,6 +2114,11 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 try:
                     if left_name:
                         await broadcast(g, {"spectator": {"event": "left", "name": left_name}})
+                except Exception:
+                    pass
+            if correction_cancelled:
+                try:
+                    await broadcast(g, {"scoreboard": snapshot(g)})
                 except Exception:
                     pass
 

@@ -5,14 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RollTheDice – Spielanleitung</title>
   <!--
-    rules.html – Spielanleitung
+    rules.html - Spielanleitung
     ---------------------------
-    Erklärung der Spielregeln, Felder/Wertung, besondere Regeln, Modi
-    und Tastenkürzel. Dient als Referenzseite aus Lobby und Raum.
+    Referenz fuer Spielablauf, Wertung, Modi und Tastatursteuerung.
   -->
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/static/style.css?v=26" />
   <style>
-    /* Seiteninterne, leichte Ergänzungen für die Doku */
+    /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
     .doc { max-width: 880px; margin: 1rem auto 2rem; padding: 0 1rem; }
     .doc h1 { margin: .5rem 0 0.25rem; font-size: 1.6rem; }
     .doc h2 { margin-top: 1.25rem; }
@@ -27,27 +26,28 @@
     details { border:1px solid #e5e7eb; border-radius:8px; padding:.5rem .6rem; background:#fcfcfd; }
     details + details { margin-top:.5rem; }
     summary { cursor:pointer; font-weight:600; }
-    .back { margin: .75rem 1rem; display:inline-block; }
+    .back { margin:.75rem 0 .5rem; }
   </style>
 </head>
 <body>
   <!-- Dokumentations-Container -->
   <div class="doc">
-    <button class="small" onclick="location.href='/static/index.html'" style="margin:.75rem 0 .5rem;">Zurück zur Lobby</button>
+    <button class="small back" onclick="location.href='/static/index.html'">Zurück zur Lobby</button>
     <h1>Spielanleitung</h1>
     <p>
-      <strong>Ziel:</strong> Sammle möglichst viele Punkte über vier Spalten –
+      <strong>Ziel:</strong> Sammle möglichst viele Punkte über vier Spalten:
       <span class="pill">⬇︎ Abwärts</span>, <span class="pill">／ Freireihe</span>,
-      <span class="pill">⬆︎ Aufwärts</span> und <span class="pill">❗ Angesagt</span> –
-      indem du pro Zug bis zu drei (im letzten Zug fünf) Würfe nutzt.
+      <span class="pill">⬆︎ Aufwärts</span> und <span class="pill">❗ Angesagt</span>.
+      Normalerweise hast du pro Zug bis zu drei Würfe; im letzten freien Feld sind es fünf.
+      Im Hardcore-Modus gibt es pro Zug genau einen automatischen Wurf.
     </p>
 
     <!-- Rundenablauf -->
     <h2>Rundenablauf</h2>
     <ol>
-      <li>Du bist am Zug und kannst zu Beginn Würfel halten/lösen.</li>
-      <li>Würfle (Taste <span class="kbd">Leertaste</span> oder <span class="kbd">R</span>). Nicht gehaltene Würfel werden neu geworfen.</li>
-      <li>Max. <strong>3 Würfe</strong> pro Zug. Im <strong>letzten freien Feld</strong> hast du <strong>5 Würfe</strong>.</li>
+      <li>Du bist am Zug und würfelst mit fünf Würfeln.</li>
+      <li>Nach einem Wurf kannst du Würfel halten oder wieder lösen. Nicht gehaltene Würfel werden beim nächsten Wurf neu geworfen.</li>
+      <li>Max. <strong>3 Würfe</strong> pro Zug. Im <strong>letzten freien Feld</strong> hast du <strong>5 Würfe</strong>. Hardcore: <strong>1 Wurf</strong>.</li>
       <li>Trage anschließend das Ergebnis in genau <em>ein</em> freies Feld deiner Wahl (gemäss Reihen-Regeln) ein.</li>
     </ol>
 
@@ -58,9 +58,14 @@
         <span class="pill">⬇︎ Abwärts</span>: Felder müssen in der Reihenfolge von oben ("1") nach unten ("60") befüllt werden.<br/>
         <span class="pill">⬆︎ Aufwärts</span>: umgekehrte Reihenfolge – von unten nach oben.<br/>
         <span class="pill">／ Freireihe</span>: freie Reihenfolge, beliebige Felder.<br/>
-        <span class="pill">❗ Angesagt</span>: nach dem <strong>ersten Wurf</strong> kann (und darf) ein Zielfeld angesagt werden.
-        Die Ansage kann <strong>im ersten Wurf</strong> geändert oder auch <strong>aufgehoben</strong> werden. Danach gilt sie bis zum Eintrag.
-        Im <strong>allerletzten Zug</strong> (nur noch 1 Feld frei) darf in ❗ auch <em>ohne Ansage</em> geschrieben werden.
+        <span class="pill">❗ Angesagt</span>: direkt nach dem <strong>ersten Wurf</strong> kannst du ein Zielfeld ansagen
+        oder direkt ein freies ❗-Feld schreiben. Eine Ansage kann in diesem ersten Wurf geändert oder aufgehoben werden.
+        Ab dem zweiten Wurf gilt eine aktive Ansage bis zum Eintrag: dann darf nur das angesagte ❗-Feld geschrieben werden.
+        Im <strong>allerletzten Zug</strong> (nur noch 1 Feld frei) darf ohne Ansage geschrieben werden.
+      </p>
+      <p>
+        Sobald ⬇︎, ／ und ⬆︎ voll sind und in ❗ noch mehrere Felder frei sind, musst du nach dem ersten Wurf ein ❗-Feld
+        ansagen, bevor du weiterwürfeln darfst. Das verhindert Sackgassen am Spielende.
       </p>
     </details>
 
@@ -74,13 +79,13 @@
         <tr><td><strong>1 … 6</strong></td><td>Summe aller Würfel mit der jeweiligen Augenzahl.</td><td>Beispiel: bei drei 5ern → 15 Punkte.</td></tr>
         <tr><td><strong>Max</strong></td><td>Summe aller fünf Würfel.</td><td>—</td></tr>
         <tr><td><strong>Min</strong></td><td>Summe aller fünf Würfel.</td><td>—</td></tr>
-        <tr><td><strong>Diff</strong></td><td><code>Max − Min</code></td><td>Sollte die Differenz am Schluss negativ sein (Maximum kleiner als Minimum), gibt es als Differenz <strong>0</strong>.</td></tr>
+        <tr><td><strong>Diff</strong></td><td><code>Feld 1 × (Max − Min)</code>, nie unter 0.</td><td>Der Wert aus Feld 1 ist die Summe der gewürfelten Einsen.</td></tr>
         <tr><td><strong>Kenter</strong></td><td><code>35</code> Punkte</td><td>Fünf unterschiedliche Würfel/Augen (beliebige Kombination, z. B. 1-3-4-5-6 oder 1-2-3-4-6).</td></tr>
         <tr><td><strong>Full</strong></td><td><code>40 + 3×(Wert der Drilling-Augen)</code></td><td>3 gleiche + 2 gleiche <em>oder</em> 5 gleiche.</td></tr>
-        <tr><td><strong>Poker</strong></td><td><code>50 + 4×(Wert der Vierling-Augen)</code></td><td><strong>Nur</strong> in dem Wurf eintragbar, in dem der Vierling das erste Mal erreicht wurde – ausser bei fünf Gleichen, dann jederzeit im Zug.</td></tr>
+        <tr><td><strong>Poker</strong></td><td><code>50 + 4×(Wert der gleichen Augen)</code></td><td>Vier oder fünf gleiche. In ⬇︎/／/⬆︎ zählen Punkte nur im ersten Vierlings-Wurf oder bei fünf Gleichen. Bei ❗+Poker-Ansage zählen Punkte in jedem späteren Wurf mit vier oder fünf gleichen.</td></tr>
         <tr><td><strong>60</strong></td><td><code>60 + 5×(Wert der Fünfling-Augen)</code></td><td>Fünf gleiche.</td></tr>
         <tr><td><strong>ZwSumme</strong></td><td>Summe der Felder 1–6.</td><td>Automatisch berechnet.</td></tr>
-        <tr><td><strong>Bonus</strong></td><td><code>+30</code> bei ZwSumme ≥ 60.</td><td>Automatisch berechnet.</td></tr>
+        <tr><td><strong>Bonus</strong></td><td><code>+30</code> bei ZwSumme ≥ 60, im Hardcore ab ≥ 40.</td><td>Automatisch berechnet.</td></tr>
         <tr><td><strong>ZwTotalOben</strong></td><td>ZwSumme + Bonus.</td><td>Automatisch berechnet.</td></tr>
         <tr><td><strong>ZwTotalUnten</strong></td><td>Kenter + Full + Poker + 60.</td><td>Automatisch berechnet.</td></tr>
         <tr><td><strong>Reihentotal</strong></td><td>ZwTotalOben + Diff + ZwTotalUnten.</td><td>Pro Spalte (⬇︎／⬆︎/❗).</td></tr>
@@ -90,11 +95,12 @@
     <!-- Besondere Regeln -->
     <h2>Besondere Regeln</h2>
     <ul>
-      <li><strong>Ansage ändern/aufheben:</strong> Im <em>ersten Wurf</em> (und nur dort) darf die Ansage beliebig geändert oder entfernt werden.</li>
+      <li><strong>Ansage ändern/aufheben:</strong> Im <em>ersten Wurf</em> (und nur dort) darf die Ansage geändert oder entfernt werden.</li>
       <li><strong>Streichen (0 Punkte):</strong> Einträge mit 0 Punkten werden vor dem Schreiben bestätigt.</li>
       <li><strong>Letzter Wurf:</strong> Wenn nur noch ein Feld frei ist, sind bis zu <strong>5 Würfe</strong> erlaubt.</li>
-      <li><strong>Korrekturmodus:</strong> Den letzten Eintrag kannst du (sofern er kein Ansage-Zug war) direkt danach korrigieren – Taste <span class="kbd">K</span>. Abbrechen mit <span class="kbd">Esc</span>. <em>Nicht im Single-Player-Modus.</em></li>
-      <li><strong>Single-Player:</strong> Der erste Wurf eines Zuges startet automatisch. <strong>Keine Korrekturen im Single-Player-Modus.</strong></li>
+      <li><strong>Korrekturmodus:</strong> Den letzten Eintrag kannst du direkt danach korrigieren, sofern er kein Ansage-Zug war und der nächste Spieler noch nicht gewürfelt hat. Abbrechen mit <span class="kbd">Esc</span>. Nicht in Single-Player oder Hardcore.</li>
+      <li><strong>Single-Player:</strong> Der erste Wurf eines Zuges startet automatisch. Keine Korrekturen im Single-Player-Modus.</li>
+      <li><strong>Hardcore:</strong> Ein automatischer Wurf pro Zug, kein Halten, keine Ansage, keine Korrektur. Die ❗-Spalte verhält sich wie eine zweite Freireihe.</li>
       <li><strong>Abbrechen:</strong> „Zurück zur Lobby“ beendet das Spiel als <em>abgebrochen</em> – es erscheint nicht in Alltime/7-Tage-Listen.</li>
       <li><strong>Auto-Timeout:</strong> Spiele ohne Aktivität werden nach 10 Minuten automatisch abgebrochen.</li>
     </ul>
