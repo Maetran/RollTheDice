@@ -444,10 +444,10 @@ def compute_suggestions(g: GameDict) -> list[dict]:
         MAPPING = [
             ("POKER", "poker", "Poker"),
             ("SIXTY", "60",    "60er"),
-            ("FULL",  "full",  "Full House"),
+            ("FULL",  "full",  "Full"),
             ("KENTER","kenter","Kenter"),
-            ("MAX",   "max",   "Gutes Maximum"),
-            ("MIN",   "min",   "Gutes Minimum"),
+            ("MAX",   "max",   "Max"),
+            ("MIN",   "min",   "Min"),
         ]
 
         out = []

@@ -3,7 +3,7 @@
   -------------------------------------------------------
   - Variablen (Farben, Maße) für konsistentes Layout
   - Komponenten: Buttons, Chips/Badges, Karten, Tabelle/Grids, Chat
-  - Dicebar-Layout (responsive), Ansage-Slot, Suggestions
+  - Dicebar-Layout (responsive), Ansage-Pick-Hervorhebung, Suggestions
   - Leaderboard-Styling und Accessibility-Fokuszustände
 */
 
@@ -364,18 +364,7 @@ button.die.held{ background:var(--success-soft); border-color:#75c9a4; }
 }
 button.die.shaking{ animation: dice-shake .5s ease; }
 
-/* === Announce (❗) Slot und Pick-Hervorhebung === */
-.announce-container{ width: calc(var(--col-desc) + 4 * var(--col-score)); max-width: 100%; margin: 0 0 .5rem 0; }
-.announce-slot, .announce-box, .announce-status{ width: 100%; display: block; text-align: center; }
-.announce-status{
-  padding:.34rem .55rem;
-  border:1px solid var(--border);
-  border-radius:var(--radius-sm);
-  background:var(--surface-soft);
-}
-.announce-status .label{ color:var(--muted); }
-.announce-status .value{ font-weight:800; }
-
+/* === Announce (❗) Pick-Hervorhebung === */
 /* Markierung für Ansage-Pick-Modus: leerer ❗-Slot im eigenen Board wird klickbar hervorgehoben */
 td.cell.announce-pickable{
   outline: 2px dashed var(--accent);
@@ -384,12 +373,30 @@ td.cell.announce-pickable{
 }
 
 /* Suggestions – Button-Styling (nur Anzeige) */
-.suggestions-area{ min-height: 34px; margin: .5rem 0 .5rem 0; }
+.suggestions-area{ min-height: 1.7rem; margin: .35rem 0 .4rem 0; }
 .suggestions:empty{ opacity: 0; }
-.suggestions{ margin: .5rem 0; display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .45rem; }
+.suggestions{
+  min-height: 1.7rem;
+  margin: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: .28rem;
+  overflow: hidden;
+}
 .suggestion-btn{
-  display: inline-block; padding: .2rem .58rem; border-radius: 999px;
-  font-size: .85rem; font-weight: 600;
+  flex:0 0 auto;
+  display: inline-block;
+  max-width: 7.5rem;
+  padding: .16rem .46rem;
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 650;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   border: 1px solid #f2c16d; background: var(--warning-soft); color: #7a3e00;
   cursor: default; user-select: none;
 }
@@ -445,17 +452,16 @@ td.cell.announce-pickable{
   }
   .tabs{ width:100%; }
   .tab-btn{ flex:1 1 0; }
-  .announce-container{ width: 100% !important; }
-  .suggestions{ flex-direction: row; align-items: flex-start; }
-  .suggestion-btn{ width:auto; flex:0 0 auto; }
+  .suggestions{ align-items: center; justify-content: center; gap:.08rem; }
+  .suggestion-btn{ width:auto; max-width:4.8rem; padding:.08rem .14rem; font-size:.66rem; }
   .topbar{ margin-bottom: .25rem; }
 
   #diceBar{
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     align-items: stretch; align-content: start;
-    column-gap: .25rem; row-gap: .55rem;
-    width: 100%; margin: 0; padding: .35rem .2rem .6rem;
+    column-gap: .25rem; row-gap: .32rem;
+    width: 100%; margin: 0; padding: .18rem .2rem .28rem;
     overflow: visible;
     min-width: 0; /* added to prevent grid column stretching */
   }
@@ -464,8 +470,8 @@ td.cell.announce-pickable{
   #diceBar .die{
     width: 100% !important;              /* füllt die Spalte */
     aspect-ratio: 1 / 1 !important;      /* bleibt quadratisch */
-    max-width: 60px !important;          /* Obergrenze 60px */
-    max-height: 60px !important;         /* Obergrenze 60px */
+    max-width: 56px !important;          /* Obergrenze 56px */
+    max-height: 56px !important;         /* Obergrenze 56px */
     font-size: clamp(20px, 8vw, 48px);   /* Schriftgröße skaliert, max 48px */
     padding: .06rem !important;          /* kleiner Rand für SVG */
   }
@@ -476,7 +482,8 @@ td.cell.announce-pickable{
     align-self: stretch !important;
     justify-self: stretch !important;
     width: 100% !important;
-    height: 2.6rem !important;           /* gleiche Höhe wie Würfel */
+    height: 2.35rem !important;
+    min-height: 2.35rem !important;
     margin-top: 0 !important;
     white-space: normal;
     overflow-wrap:anywhere;
@@ -488,7 +495,8 @@ td.cell.announce-pickable{
     align-self: stretch !important;
     justify-self: stretch !important;
     width: 100% !important;
-    height: 2.6rem !important;            /* gleiche Höhe wie Würfel */
+    height: 2.35rem !important;
+    min-height: 2.35rem !important;
     margin-top: 0 !important;
     max-width: none !important;
   }
@@ -501,12 +509,21 @@ td.cell.announce-pickable{
   }
   .room-header #roomGameName, .room-header a[href$="rules.html"]{ display: none !important; }
   .room-header{
-    gap:.45rem;
-    margin:0 0 .65rem;
-    padding:.55rem .75rem;
-    min-height:3rem;
+    gap:.3rem;
+    margin:0 0 .35rem;
+    padding:.28rem .5rem;
+    min-height:2.35rem;
   }
   .room-header .spacer{ min-width:.25rem; }
+  .room-header button.small{
+    min-height:1.8rem;
+    padding:.22rem .42rem;
+    font-size:.78rem;
+  }
+  .room-header .emoji-fab{
+    width:34px;
+    height:34px;
+  }
   #scoreOut{ padding:0; margin-bottom:.75rem; }
   .chat-panel{
     width:calc(100% - 1.5rem) !important;
@@ -517,7 +534,6 @@ td.cell.announce-pickable{
   .chat-input-row button{ flex:0 0 auto; }
   .pc-head{ margin-bottom: .35rem; } .pc-total{ font-size: .95em; }
   .muted{ margin: .2rem 0 .5rem; }
-  .announce-box{ padding: .35rem; }
   .player-card table.grid{ font-size: .82rem; }
   .player-card table.grid.compact th,
   .player-card table.grid.compact td{ padding: .18rem .26rem !important; }
@@ -578,12 +594,6 @@ td.cell.announce-pickable{
   }
   .player-card table.grid{ width: 100% !important; }
 }
-@media (max-width:560px){
-  #announceSlot select, #announceSlot option{ font-size: 1rem !important; line-height: 1.2; }
-}
-
-.announce-box{ background:var(--surface-soft); border:1px solid var(--border); padding:.45rem; border-radius:var(--radius-sm); }
-.announce-box label{ margin-right:.35rem; }
 .banner.correction{ background:var(--warning-soft); border:1px solid #f2c16d; padding:.55rem; margin-bottom:.6rem; border-radius:var(--radius-sm); font-size:.9rem; }
 
 /* === Tabelle/Score-Grid === */
@@ -743,10 +753,11 @@ button[disabled]{ opacity:.6; cursor:not-allowed; }
   padding:0;
   margin:.35rem auto 1rem;
 }
+.mobile-reactions-host{ display:none; }
 .room-page .topbar{
   justify-content:center;
-  margin:0 0 .65rem;
-  padding:.9rem;
+  margin:0 0 .45rem;
+  padding:.65rem;
 }
 .room-page #diceBar{
   justify-content:center;
@@ -759,8 +770,8 @@ button[disabled]{ opacity:.6; cursor:not-allowed; }
   gap:.25rem;
   width:fit-content;
   max-width:100%;
-  margin:.15rem auto .55rem;
-  padding:.34rem .7rem;
+  margin:.05rem auto .35rem;
+  padding:.24rem .58rem;
   border:1px solid var(--border);
   border-radius:999px;
   background:var(--surface);
@@ -769,14 +780,8 @@ button[disabled]{ opacity:.6; cursor:not-allowed; }
 }
 .room-page .suggestions-area{
   width:min(var(--card-w), 100%);
-  min-height:0;
-  margin:.35rem auto;
-}
-.room-page .suggestions:empty{
-  display:none;
-}
-.room-page .announce-container{
-  margin:.4rem auto .85rem;
+  min-height:1.7rem;
+  margin:.2rem auto .35rem;
 }
 .room-page .chat-panel{
   margin:1rem auto 1.2rem;
@@ -799,30 +804,81 @@ button[disabled]{ opacity:.6; cursor:not-allowed; }
   .room-page .room-header{
     width:100%;
     max-width:none;
+    gap:.3rem;
+    margin:0 0 .35rem;
+    padding:.28rem .5rem;
+    min-height:2.35rem;
+  }
+  .room-page .room-header button.small{
+    min-height:1.8rem;
+    padding:.22rem .42rem;
+    font-size:.78rem;
+  }
+  .room-page .room-header .emoji-fab{
+    width:34px;
+    height:34px;
+    min-height:34px;
+  }
+  .room-page .room-header #reactionsBar:empty{
+    display:none;
+    margin:0;
   }
   .room-page #scoreOut{
+    display:flex;
+    flex-direction:column;
     width:100%;
     max-width:none;
   }
   .room-page .topbar{
+    order:5;
     border-left:0;
     border-right:0;
     border-radius:0;
     margin-top:0;
+    margin-bottom:.28rem;
+    padding:.42rem .55rem .3rem;
   }
   .room-page #scoreOut > .muted{
+    order:2;
     width:calc(100% - 1.5rem);
-    margin:.1rem .75rem .55rem;
+    margin:.05rem .75rem .25rem;
+    padding:.18rem .5rem;
+    font-size:.78rem;
+    display:grid;
+    grid-template-columns:34px minmax(0, 1fr);
+    justify-content:stretch;
+    gap:.4rem;
+    min-height:2.2rem;
   }
+  .room-page .turn-status-text{
+    min-width:0;
+    justify-self:center;
+    align-self:center;
+  }
+  .room-page .mobile-reactions-host{
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    width:34px;
+    min-width:34px;
+  }
+  .room-page .mobile-reactions-host .emoji-dock{ margin-left:0; }
+  .room-page .mobile-reactions-host .emoji-fab{
+    width:34px;
+    height:34px;
+    min-height:34px;
+  }
+  .room-page .players-grid{ order:1; }
   .room-page .suggestions-area{
+    order:3;
     width:calc(100% - 1.5rem);
+    min-height:1.5rem;
+    margin:.12rem .75rem .3rem;
   }
-  .room-page .announce-container{
-    width:calc(100% - 1.5rem) !important;
-  }
+  .room-page #overlayMount{ order:4; }
 }
 
-/* Emoji-FAB bleibt im Room-Header, damit Desktop und Mobile identisch bedienbar sind. */
+/* Desktop: Emoji-FAB bleibt im Room-Header. Mobile nutzt den Statuszeilen-Mount. */
 @media (min-width: 768px){
   .reactions-host .emoji-dock{ margin-left:0; }
 }

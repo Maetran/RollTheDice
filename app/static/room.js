@@ -591,9 +591,10 @@ function renderFromSnapshot(snapshot) {
       }
     } catch {}
 
-    // Emoji-FAB nach jedem Render wieder im Header einsetzen
+    // Emoji-FAB nach jedem Render an den passenden Mount setzen:
+    // Desktop im Header, mobile in der Statuszeile unter dem Board.
     if (window.emojiUI && typeof window.emojiUI.init === "function") {
-      window.emojiUI.init({ mount: reactionsMount, ws, getMyName: () => myName });
+      window.emojiUI.init({ mount: currentReactionsMount(), ws, getMyName: () => myName });
     }
 
     // Suggestions (informativ)
@@ -628,6 +629,19 @@ function renderFromSnapshot(snapshot) {
   function isMobileNarrow(){
     try { return window.matchMedia && window.matchMedia("(max-width: 560px)").matches; }
     catch { return false; }
+  }
+
+  function currentReactionsMount(){
+    const mobileMount = document.getElementById("mobileReactionsBar");
+    return (isMobileNarrow() && mobileMount) ? mobileMount : reactionsMount;
+  }
+
+  function syncReactionsMount(){
+    try {
+      if (window.emojiUI && typeof window.emojiUI.init === "function") {
+        window.emojiUI.init({ mount: currentReactionsMount(), ws, getMyName: () => myName });
+      }
+    } catch {}
   }
 
   function bindSwipeOverride(){
@@ -751,7 +765,10 @@ function renderFromSnapshot(snapshot) {
       chat.style.marginRight = "auto";
     } catch {}
   }
-  window.addEventListener("resize", syncChatWidth);
+  window.addEventListener("resize", () => {
+    syncChatWidth();
+    syncReactionsMount();
+  });
 
   // --- Suggestions (nur Anzeige) ---
   /**
@@ -764,10 +781,21 @@ function renderFromSnapshot(snapshot) {
       if (!mountEl) return;
       const items = (suggestions || []).filter(s => s && s.eligible);
       const order = { POKER:0, SIXTY:1, FULL:2, KENTER:3, MAX:4, MIN:5 };
+      const shortLabels = {
+        POKER: "Poker",
+        SIXTY: "60er",
+        FULL: "Full",
+        KENTER: "Kenter",
+        MAX: "Max",
+        MIN: "Min",
+        "Gutes Maximum": "Max",
+        "Gutes Minimum": "Min",
+        "Full House": "Full"
+      };
       items.sort((a,b) => (order[a.type] ?? 99) - (order[b.type] ?? 99));
       const html = items.map(s => {
-        const label = s.label || s.type || "";
-        const pts = (typeof s.points === "number") ? ` (<span class="points">${s.points}</span>)` : "";
+        const label = shortLabels[s.type] || shortLabels[s.label] || s.label || s.type || "";
+        const pts = (typeof s.points === "number") ? ` <span class="points">${s.points}</span>` : "";
         return `<div class="suggestion-btn" aria-hidden="true">${label}${pts}</div>`;
       }).join("");
       mountEl.innerHTML = html;

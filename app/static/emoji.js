@@ -26,23 +26,22 @@
       
       .emoji-panel{
         position:absolute;
-        top:110%;
-        left:50%;
-        transform:translateX(-50%);
+        top:calc(100% + .35rem);
+        left:0;
         display:none;
-        flex-direction:column;
+        grid-template-columns:repeat(4, 40px);
         gap:.35rem;
-        align-items:center;
-        max-height:60vh;
-        overflow:auto;
-        padding:.25rem;
-        background:transparent;
+        padding:.45rem;
+        background:rgba(255,255,255,.98);
+        border:1px solid var(--border,#e0e0e0);
+        border-radius:8px;
+        box-shadow:0 12px 28px rgba(15,23,42,.16);
         z-index:3000;
       }
-      .emoji-dock.open .emoji-panel{ display:flex; }
+      .emoji-dock.open .emoji-panel{ display:grid; }
       
       .emoji-btn{
-        width:36px; height:36px;
+        width:40px; height:40px;
         border-radius:9999px;
         border:1px solid var(--border,#e0e0e0);
         background:#fff; cursor:pointer;
@@ -50,6 +49,11 @@
         display:flex; align-items:center; justify-content:center;
         padding:0;
         transition:transform .06s ease;
+      }
+      .emoji-btn-text{
+        font-size:.72rem;
+        font-weight:800;
+        letter-spacing:0;
       }
       .emoji-btn:hover{ background:#f7faff; }
       .emoji-btn:active{ transform:scale(.96); }
@@ -89,7 +93,13 @@
         opacity:0; transform:translateY(-6px);
       }
       @media (max-width: 480px){
-        .emoji-btn{ font-size:1rem; padding:.2rem .4rem; }
+        .emoji-panel{
+          grid-template-columns:repeat(4, 38px);
+          gap:.3rem;
+          padding:.35rem;
+        }
+        .emoji-btn{ width:38px; height:38px; font-size:1rem; }
+        .emoji-btn-text{ font-size:.68rem; }
         .emoji-pop{ font-size:1rem; }
         .emoji-pop .txt{ max-width:62vw; }
       }
@@ -114,16 +124,22 @@
     const panel = document.createElement('div');
     panel.className = 'emoji-panel';
 
+    const closePanel = () => {
+      dock.classList.remove('open');
+      fab.setAttribute('aria-expanded','false');
+    };
+
     QUICK_EMOJIS.forEach(em => {
       const b = document.createElement('button');
       b.className = 'emoji-btn';
+      if (String(em).length > 2) b.classList.add('emoji-btn-text');
       b.type = 'button';
       b.textContent = em;
       b.title = `Schnellreaktion ${em}`;
+      b.setAttribute('aria-label', `Schnellreaktion ${em}`);
       b.addEventListener('click', () => {
         onSend(em);
-        dock.classList.remove('open');
-        fab.setAttribute('aria-expanded','false');
+        closePanel();
       });
       panel.appendChild(b);
     });
@@ -131,6 +147,18 @@
     fab.addEventListener('click', () => {
       const open = dock.classList.toggle('open');
       fab.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+      if (!dock.classList.contains('open')) return;
+      if (dock.contains(event.target)) return;
+      closePanel();
+    }, true);
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && dock.classList.contains('open')) {
+        closePanel();
+      }
     });
 
     dock.appendChild(fab);
@@ -189,7 +217,7 @@
   let _ws = null;
   let _dockEl = null; // Toolbar nur einmal erzeugen
 
-  function init({ws, getMyName}={}){
+  function init({mount, ws, getMyName}={}){
     ensureStyles();
     _ws = ws || _ws;
     const onSend = (emoji) => {
@@ -202,6 +230,7 @@
     };
 
     const host =
+      mount ||
       document.getElementById('reactionsBar') ||
       document.getElementById('roomStatusLine') ||
       document.querySelector('.room-header') ||

@@ -197,24 +197,6 @@ function teamIdForPlayer(sb, pid){
   return null;
 }
 
-// -------- Announce-UI --------
-/**
- * Rendert den Ansage-Status-Slot (oberhalb der Tabelle).
- * @param {Object} sb
- * @param {string} myId
- * @param {boolean} iAmTurn
- * @param {number} rollsUsed
- * @returns {string}
- */
-function renderAnnounceSlot(sb, myId, iAmTurn, rollsUsed){
-  const ann = sb._announced_row4 || null;
-  const inner = `
-    <div class="announce-status">
-      <span class="label">Angesagt:</span> <span class="value">${ann ? esc(ann) : "—"}</span>
-    </div>`;
-  return `<div id="announceSlot" class="announce-slot">${inner}</div>`;
-}
-
 // -------- Misc Utils --------
 /**
  * Konvertiert einen numerischen Wert in Text, leer bei null.
@@ -271,8 +253,6 @@ function ensureInlineScoreboardCSS(){
     td.cell.last-write { box-shadow: inset 0 0 0 2px rgba(255,165,0,.95); }
     td.cell.announced   { outline: 2px solid rgba(0,120,255,.8); }
   
-    /* responsive select */
-    #announceSlot select { max-width: 100%; }
     /* announce pick highlight (used by room.js) */
     td.announce-pickable{ outline: 2px dashed var(--accent); outline-offset: -2px; background: #eef7ff; }
     /* announce button sizing next to roll button */
@@ -289,8 +269,8 @@ function ensureInlineScoreboardCSS(){
 
 // -------- Haupt-Renderer --------
 /**
- * Rendert das Scoreboard (Einzel oder Team) inklusive Dicebar, Suggestions,
- * Ansage-Slot und Grid pro Entity.
+ * Rendert das Scoreboard (Einzel oder Team) inklusive Dicebar, Suggestions
+ * und Grid pro Entity.
  * @param {HTMLElement} mount
  * @param {Object} sb - Server-Snapshot
  * @param {Object} opts - Anzeigeoptionen
@@ -314,8 +294,6 @@ function renderScoreboard(mount, sb, {
   const corr = sb?._correction || { active:false };
   const correctionActive = !!corr.active;
   const correctionForMe  = correctionActive && String(corr.player_id) === String(myPlayerId);
-
-  const ann = announcedRow4 || sb._announced_row4 || null;
 
   if (nameEl) nameEl.textContent = sb?._name || "";
 
@@ -353,8 +331,9 @@ function renderScoreboard(mount, sb, {
         ${requestBtnHTML}
       </div>
     </div>
-    <div class="muted">
-      Am Zug: ${esc(turnName)} • ${isHC ? '<span class="hc-badge">Hardcore</span>' : `Würfe: ${rollsUsed ?? 0}/${rollsMax ?? 3} <span id="announceHint"></span>`}
+    <div class="muted turn-status">
+      <span id="mobileReactionsBar" class="mobile-reactions-host" aria-label="Reaktionen"></span>
+      <span class="turn-status-text">Am Zug: ${esc(turnName)} • ${isHC ? '<span class="hc-badge">Hardcore</span>' : `Würfe: ${rollsUsed ?? 0}/${rollsMax ?? 3} <span id="announceHint"></span>`}</span>
     </div>
   `;
 
@@ -422,17 +401,9 @@ function renderScoreboard(mount, sb, {
   }
   grid += `</div>`;
 
-  // Wrap: Ansage-Block erhaelt einen Container, dessen Breite wir in CSS exakt an die Tabellenbreite koppeln
-  const announceSlot = readOnly ? "" : `
-    <div class="announce-container">
-      ${renderAnnounceSlot(sb, myPlayerId, iAmTurn, rollsUsed)}
-    </div>
-  `;
-
   (contentEl || mount).innerHTML =
     dicebar +
     (readOnly ? "" : `<div class="suggestions-area"><div id="suggestions" class="suggestions"></div></div>`) +
-    announceSlot +
     `<div id="overlayMount"></div>` +
     grid;
 }
