@@ -201,13 +201,35 @@ input[type="checkbox"]{
 }
 .stats{
   display:flex;
+  flex-direction:column;
   align-items:center;
   gap:.55rem;
-  flex-wrap:wrap;
   justify-content:flex-end;
   color:var(--muted);
   font-size:.9rem;
 }
+.stats-top,
+.avg-stats{
+  display:flex;
+  align-items:center;
+  gap:.55rem;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  width:100%;
+}
+.stats b{ color:var(--text); font-weight:800; }
+.stats .avg-label{ color:var(--text); font-weight:750; }
+.stats .avg-trend{
+  display:inline-block;
+  min-width:1ch;
+  margin-left:.22rem;
+  color:var(--text);
+  font-weight:900;
+  line-height:1;
+}
+.stats .avg-trend.avg-up{ color:var(--success); }
+.stats .avg-trend.avg-down{ color:var(--danger); }
+.stats .avg-trend.avg-same{ color:var(--text); }
 .setup-grid{
   display:grid;
   grid-template-columns:minmax(220px, .75fr) minmax(320px, 1.25fr);
@@ -419,9 +441,14 @@ td.cell.announce-pickable{
   .brand-lockup h1{ font-size:1.42rem; }
   .logo{ width:2rem; height:2rem; }
   .stats{
+    align-items:flex-start;
     justify-content:flex-start;
     width:100%;
     font-size:.84rem;
+  }
+  .stats-top,
+  .avg-stats{
+    justify-content:flex-start;
   }
   .setup-grid{ grid-template-columns:1fr; gap:.75rem; }
   .card{ padding:.85rem; }

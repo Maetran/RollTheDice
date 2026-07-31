@@ -42,7 +42,7 @@ from pydantic import BaseModel, Field
 from .rules import compute_overall
 
 # --- Auto-Timeout (Inaktivität) ---
-GAME_TIMEOUT = timedelta(minutes=10)
+GAME_TIMEOUT = timedelta(hours=1)
 
 def touch(g):
     """Aktualisiert die letzte Aktivität des Spiels.
@@ -1116,6 +1116,39 @@ def _as_shame_lists(raw):
         return list(raw.get("recent", []) or []), list(raw.get("alltime", []) or [])
     return [], list(raw or [])
 
+def _average_bucket(games: int = 0, points_total: int = 0, trend: str = "same") -> dict:
+    games = max(0, int(games or 0))
+    points_total = int(points_total or 0)
+    avg = round(points_total / games, 1) if games else 0.0
+    if trend not in {"up", "down", "same"}:
+        trend = "same"
+    return {"games": games, "points_total": points_total, "average_points": avg, "trend": trend}
+
+def _empty_average_points() -> dict:
+    return {"normal": _average_bucket(), "hc": _average_bucket()}
+
+def _stats_with_average_points(stats: dict) -> dict:
+    if not isinstance(stats, dict):
+        stats = {"games_played": 0}
+    stats = dict(stats)
+    stats["games_played"] = int(stats.get("games_played", 0) or 0)
+
+    avg = stats.get("average_points")
+    if not isinstance(avg, dict) or not all(isinstance(avg.get(k), dict) for k in ("normal", "hc")):
+        stats["average_points"] = _empty_average_points()
+        return stats
+
+    normalized = {}
+    for key in ("normal", "hc"):
+        bucket = avg.get(key) or {}
+        normalized[key] = _average_bucket(
+            bucket.get("games", 0),
+            bucket.get("points_total", 0),
+            bucket.get("trend", "same"),
+        )
+    stats["average_points"] = normalized
+    return stats
+
 @app.get("/api/leaderboard")
 async def get_leaderboard():
     """API: Liefert aktuelles Leaderboard (recent + alltime) und Basis-Stats."""
@@ -1125,6 +1158,7 @@ async def get_leaderboard():
     shame_raw   = _read_json_file(SHAME_FILE, {"recent": [], "alltime": []})
     last_raw    = _read_json_file(LAST_GAMES_FILE, [])
     stats_raw   = _read_json_file(STATS_FILE, {"games_played": 0})
+    stats_f = _stats_with_average_points(stats_raw)
 
     # --- Cleanup "recent": nur letzte 7 Tage, sortiert, Top-10 ---
     now_utc = datetime.now(timezone.utc)
@@ -1168,13 +1202,14 @@ async def get_leaderboard():
     _write_json_if_changed(ALLTIME_FILE, alltime_raw or {}, {"normal": alltime_norm, "hc": alltime_hc})
     _write_json_if_changed(SHAME_FILE, shame_raw or {}, {"recent": shame_recent_f, "alltime": shame_alltime_f})
     _write_json_if_changed(LAST_GAMES_FILE, last_raw or [], last_games_f)
+    _write_json_if_changed(STATS_FILE, stats_raw or {}, stats_f)
 
     return {
         "recent": {"normal": recent_norm_f, "hc": recent_hc_f},
         "alltime": {"normal": alltime_norm or [], "hc": alltime_hc or []},
         "shame": {"recent": shame_recent_f, "alltime": shame_alltime_f},
         "last_games": last_games_f,
-        "stats": stats_raw
+        "stats": stats_f
     }
 
 @app.get("/api/leaderboard/game/{game_id}")
@@ -1391,7 +1426,7 @@ def _append_json(path: Path, mutate_fn):
     new_data = mutate_fn(data)
     path.write_text(json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-def _mutate_stats(incr_games=False):
+def _mutate_stats(incr_games=False, *, average_points: int | None = None, hardcore: bool = False):
     """Aktualisiert die Statistik-Daten.
 
     Args:
@@ -1403,8 +1438,24 @@ def _mutate_stats(incr_games=False):
             stats = json.loads(STATS_FILE.read_text(encoding="utf-8"))
         except Exception:
             pass
+    stats = _stats_with_average_points(stats)
     if incr_games:
         stats["games_played"] = int(stats.get("games_played", 0)) + 1
+    if average_points is not None:
+        bucket_key = "hc" if hardcore else "normal"
+        bucket = stats.setdefault("average_points", _empty_average_points()).get(bucket_key, {})
+        previous_average = float(bucket.get("average_points", 0) or 0)
+        games_count = int(bucket.get("games", 0) or 0) + 1
+        points_total = int(bucket.get("points_total", 0) or 0) + int(average_points)
+        updated_bucket = _average_bucket(games_count, points_total)
+        new_average = float(updated_bucket["average_points"])
+        if new_average > previous_average:
+            updated_bucket["trend"] = "up"
+        elif new_average < previous_average:
+            updated_bucket["trend"] = "down"
+        else:
+            updated_bucket["trend"] = "same"
+        stats["average_points"][bucket_key] = updated_bucket
     STATS_FILE.write_text(json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8")
 
 def _build_leaderboard_snapshot_fields(g: GameDict) -> dict:
@@ -1505,6 +1556,7 @@ def _finalize_and_log_results(g: GameDict):
     entries_for_alltime = []
     entries_for_shame = []
     entries_for_last_games = []
+    winner_points_for_average = 0
 
     if mode == "2v2":
         teams = g.get("_teams", {})
@@ -1518,6 +1570,7 @@ def _finalize_and_log_results(g: GameDict):
         wt_total = teamA_total if winner_team == "A" else teamB_total
         lt_total = teamB_total if winner_team == "A" else teamA_total
         diff = wt_total - lt_total
+        winner_points_for_average = wt_total
 
         def _name(pid):
             for pp in players:
@@ -1560,6 +1613,7 @@ def _finalize_and_log_results(g: GameDict):
             return
         winner = ordered[0]
         winner_pts = totals.get(winner["id"], 0)
+        winner_points_for_average = int(winner_pts)
         if len(ordered) >= 2:
             second = ordered[1]
             opp_name = second["name"]
@@ -1676,7 +1730,11 @@ def _finalize_and_log_results(g: GameDict):
     if not is_hc:
         _append_json(SHAME_FILE, mutate_shame)
     _append_json(LAST_GAMES_FILE, mutate_last_games)
-    _mutate_stats(incr_games=True)
+    _mutate_stats(
+        incr_games=True,
+        average_points=winner_points_for_average,
+        hardcore=is_hc,
+    )
 
 def _compute_results_for_snapshot(g: GameDict):
     """Berechnet die Ergebnisse für den Snapshot eines Spiels.

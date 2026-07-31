@@ -17,7 +17,7 @@
   <meta name="theme-color" content="#000000">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/static/favicon.png" sizes="32x32">
-  <link rel="stylesheet" href="/static/style.css?v=32">
+  <link rel="stylesheet" href="/static/style.css?v=34">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -27,7 +27,17 @@
         <div class="logo">🎲</div>
         <h1>Würfler – Lobby</h1>
       </div>
-      <div class="stats">Würfelspiele beendet: <span id="gamesPlayed">0</span><button class="small ghost" onclick="location.href='/static/rules.html'">Spielregeln</button></div>
+      <div class="stats">
+        <div class="stats-top">
+          <span>Würfelspiele beendet: <b id="gamesPlayed">0</b></span>
+          <button class="small ghost" onclick="location.href='/static/rules.html'">Spielregeln</button>
+        </div>
+        <div class="avg-stats">
+          <span class="avg-label">Durchschnittspunkte</span>
+          <span>Normale Spiele: <b id="avgNormalPoints">—</b><span id="avgNormalTrend" class="avg-trend avg-same">-</span></span>
+          <span>Hardcore Spiele: <b id="avgHardcorePoints">—</b><span id="avgHardcoreTrend" class="avg-trend avg-same">-</span></span>
+        </div>
+      </div>
     </header>
 
     <!-- 1) Wer bist du? – Name wird im LocalStorage gemerkt -->
@@ -146,6 +156,10 @@
     const recentTable = document.querySelector("#recentTable tbody");
     const alltimeTable = document.querySelector("#alltimeTable tbody");
     const gamesPlayedEl = document.getElementById("gamesPlayed");
+    const avgNormalPointsEl = document.getElementById("avgNormalPoints");
+    const avgHardcorePointsEl = document.getElementById("avgHardcorePoints");
+    const avgNormalTrendEl = document.getElementById("avgNormalTrend");
+    const avgHardcoreTrendEl = document.getElementById("avgHardcoreTrend");
     const hcChk    = document.getElementById('hardcoreChk');
     const lbTabNormal = document.getElementById('lbTabNormal');
     const lbTabHC     = document.getElementById('lbTabHC');
@@ -421,12 +435,40 @@
         const url = `/static/game_view.html?id=${encodeURIComponent(gameId)}`;
         return `<a href="${url}" class="small">Spielansicht</a>`;
       }
+      function fmtAvgPoints(bucket){
+        const value = bucket && Number(bucket.average_points);
+        if (!Number.isFinite(value)) return "—";
+        return new Intl.NumberFormat("de-CH", { maximumFractionDigits: 1 }).format(value);
+      }
+      function avgTrendMeta(bucket){
+        if (bucket && bucket.trend === "up") {
+          return { text: "↑", cls: "avg-trend avg-up", title: "Durchschnitt gestiegen" };
+        }
+        if (bucket && bucket.trend === "down") {
+          return { text: "↓", cls: "avg-trend avg-down", title: "Durchschnitt gesunken" };
+        }
+        return { text: "-", cls: "avg-trend avg-same", title: "Durchschnitt unverändert" };
+      }
+      function renderAverage(bucket, valueEl, trendEl){
+        if (valueEl) valueEl.textContent = fmtAvgPoints(bucket);
+        if (trendEl) {
+          const trend = avgTrendMeta(bucket);
+          trendEl.textContent = trend.text;
+          trendEl.className = trend.cls;
+          trendEl.title = trend.title;
+          trendEl.setAttribute("aria-label", trend.title);
+        }
+      }
 
       try {
         const res = await fetch("/api/leaderboard", {cache:"no-store"});
         if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
-        gamesPlayedEl.textContent = (data.stats && data.stats.games_played) ?? 0;
+        const stats = data.stats || {};
+        const avg = stats.average_points || {};
+        gamesPlayedEl.textContent = stats.games_played ?? 0;
+        renderAverage(avg.normal, avgNormalPointsEl, avgNormalTrendEl);
+        renderAverage(avg.hc, avgHardcorePointsEl, avgHardcoreTrendEl);
 
         function renderLeaderboardRows(tbody, list, { dateKind = "relative", emptyText = "Keine Einträge" } = {}) {
           const rows = Array.isArray(list) ? list : [];

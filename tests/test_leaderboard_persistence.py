@@ -100,6 +100,11 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
             self.assertEqual(last_games[0]["name"], "Anna")
             self.assertEqual(last_games[0]["game_id"], g["_id"])
             self.assertEqual(stats["games_played"], 8)
+            self.assertEqual(stats["average_points"]["normal"]["games"], 1)
+            self.assertEqual(stats["average_points"]["normal"]["points_total"], 410)
+            self.assertEqual(stats["average_points"]["normal"]["average_points"], 410.0)
+            self.assertEqual(stats["average_points"]["normal"]["trend"], "up")
+            self.assertEqual(stats["average_points"]["hc"]["trend"], "same")
 
             replay = main.api_game_from_leaderboard(g["_id"])
             self.assertEqual(replay["game_id"], g["_id"])
@@ -133,6 +138,13 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
             self.assertEqual(last_games[0]["name"], "Solo")
             self.assertTrue(last_games[0]["hardcore"])
             self.assertEqual(stats["games_played"], 1)
+            self.assertEqual(stats["average_points"]["normal"]["games"], 0)
+            self.assertEqual(stats["average_points"]["normal"]["points_total"], 0)
+            self.assertEqual(stats["average_points"]["normal"]["average_points"], 0.0)
+            self.assertEqual(stats["average_points"]["normal"]["trend"], "same")
+            self.assertEqual(stats["average_points"]["hc"]["games"], 1)
+            self.assertEqual(stats["average_points"]["hc"]["points_total"], 410)
+            self.assertEqual(stats["average_points"]["hc"]["trend"], "up")
 
     def test_finalize_team_game_uses_team_totals_and_member_names(self):
         g = self.make_game(mode="2v2", name="Team Cup", players=[
@@ -188,6 +200,63 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
             self.assertIn(g["_id"], {e["game_id"] for e in alltime["normal"]})
             self.assertEqual(read_json(shame_file)["recent"][0]["name"], "Ben")
             self.assertEqual(read_json(last_games_file)[0]["game_id"], g["_id"])
+
+    def test_finalize_extends_existing_average_stats_without_rebuilding_from_leaderboard(self):
+        g = self.make_game(name="Average", players=[("p1", "Anna"), ("p2", "Ben")])
+        g["_scoreboards"]["p1"] = self.high_scoreboard()
+        g["_scoreboards"]["p2"] = self.low_scoreboard()
+        existing_stats = {
+            "games_played": 12,
+            "average_points": {
+                "normal": {"games": 3, "points_total": 900, "average_points": 300.0},
+                "hc": {"games": 2, "points_total": 500, "average_points": 250.0},
+            },
+        }
+
+        with patched_leaderboard_files() as (_recent_file, _alltime_file, _shame_file, _last_games_file, stats_file):
+            stats_file.write_text(json.dumps(existing_stats), encoding="utf-8")
+
+            main._finalize_and_log_results(g)
+
+            stats = read_json(stats_file)
+            self.assertEqual(stats["games_played"], 13)
+            self.assertEqual(stats["average_points"]["normal"]["games"], 4)
+            self.assertEqual(stats["average_points"]["normal"]["points_total"], 1310)
+            self.assertEqual(stats["average_points"]["normal"]["average_points"], 327.5)
+            self.assertEqual(stats["average_points"]["normal"]["trend"], "up")
+            self.assertEqual(stats["average_points"]["hc"]["games"], 2)
+            self.assertEqual(stats["average_points"]["hc"]["points_total"], 500)
+            self.assertEqual(stats["average_points"]["hc"]["trend"], "same")
+
+    def test_average_stats_track_down_and_same_trends(self):
+        with patched_leaderboard_files() as (_recent_file, _alltime_file, _shame_file, _last_games_file, stats_file):
+            stats_file.write_text(json.dumps({
+                "games_played": 0,
+                "average_points": {
+                    "normal": {"games": 1, "points_total": 900, "average_points": 900.0},
+                    "hc": {"games": 0, "points_total": 0, "average_points": 0.0},
+                },
+            }), encoding="utf-8")
+
+            main._mutate_stats(average_points=410, hardcore=False)
+
+            stats = read_json(stats_file)
+            self.assertEqual(stats["average_points"]["normal"]["average_points"], 655.0)
+            self.assertEqual(stats["average_points"]["normal"]["trend"], "down")
+
+            stats_file.write_text(json.dumps({
+                "games_played": 0,
+                "average_points": {
+                    "normal": {"games": 1, "points_total": 410, "average_points": 410.0},
+                    "hc": {"games": 0, "points_total": 0, "average_points": 0.0},
+                },
+            }), encoding="utf-8")
+
+            main._mutate_stats(average_points=410, hardcore=False)
+
+            stats = read_json(stats_file)
+            self.assertEqual(stats["average_points"]["normal"]["average_points"], 410.0)
+            self.assertEqual(stats["average_points"]["normal"]["trend"], "same")
 
     def test_last_games_are_capped_to_latest_ten_entries(self):
         g = self.make_game(name="Newest", players=[("p1", "Anna"), ("p2", "Ben")])
@@ -291,4 +360,13 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
             self.assertEqual(read_json(alltime_file), {"normal": legacy_alltime, "hc": []})
             self.assertEqual(read_json(shame_file), payload["shame"])
             self.assertEqual(read_json(last_games_file), payload["last_games"])
-            self.assertEqual(payload["stats"], {"games_played": 3})
+            self.assertEqual(payload["stats"]["games_played"], 3)
+            self.assertEqual(payload["stats"]["average_points"]["normal"]["games"], 0)
+            self.assertEqual(payload["stats"]["average_points"]["normal"]["points_total"], 0)
+            self.assertEqual(payload["stats"]["average_points"]["normal"]["average_points"], 0.0)
+            self.assertEqual(payload["stats"]["average_points"]["normal"]["trend"], "same")
+            self.assertEqual(payload["stats"]["average_points"]["hc"]["games"], 0)
+            self.assertEqual(payload["stats"]["average_points"]["hc"]["points_total"], 0)
+            self.assertEqual(payload["stats"]["average_points"]["hc"]["average_points"], 0.0)
+            self.assertEqual(payload["stats"]["average_points"]["hc"]["trend"], "same")
+            self.assertEqual(read_json(stats_file), payload["stats"])

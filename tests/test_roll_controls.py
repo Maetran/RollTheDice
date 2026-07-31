@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from app import main
@@ -30,6 +31,20 @@ class RollControlTestCase(unittest.TestCase):
         g["_rolls_used"] = 0
         g["_rolls_max"] = 3
         return g
+
+    def test_inactivity_timeout_aborts_after_one_hour(self):
+        g = self.make_game()
+
+        g["_last_activity"] = datetime.now(timezone.utc) - timedelta(minutes=59)
+        self.assertFalse(main.check_timeout_and_abort(g))
+        self.assertTrue(g["_started"])
+        self.assertFalse(g.get("_finished"))
+
+        g["_last_activity"] = datetime.now(timezone.utc) - timedelta(minutes=61)
+        self.assertTrue(main.check_timeout_and_abort(g))
+        self.assertFalse(g["_started"])
+        self.assertTrue(g["_finished"])
+        self.assertTrue(g["_aborted"])
 
     @staticmethod
     def fill_regular_columns(board):
