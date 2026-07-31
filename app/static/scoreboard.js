@@ -315,6 +315,10 @@ function renderScoreboard(mount, sb, {
   }
 
   const isHC = !!(sb && sb._hardcore);
+  const rollsNum = Number(rollsUsed ?? sb?._rolls_used ?? 0);
+  const rollsCap = Number(rollsMax ?? sb?._rolls_max ?? 3);
+  const announceDisabledAttr = (!iAmTurn || correctionActive || rollsNum !== 1) ? "disabled" : "";
+  const rollDisabledAttr = (!iAmTurn || correctionActive || rollsNum >= rollsCap) ? "disabled" : "";
 
   const requestBtnHTML = (canRequestCorrection && !isHC)
     ? `<button id="requestCorrectionBtn" class="small">Letzten Eintrag ändern</button>`
@@ -326,8 +330,8 @@ function renderScoreboard(mount, sb, {
         ${dice.map((d,i)=>
           `<button class="die ${holds[i] ? "held" : ""}" data-i="${i}" title="halten/lösen">${dieSVG(d || 0)}</button>`
         ).join("")}
-        ${isHC ? '' : '<button id="announceBtnInline" class="small">Ansagen</button>'}
-        ${isHC ? '' : `<button id="rollBtnInline" ${correctionActive ? "disabled": ""}>🎲 Würfeln</button>`}
+        ${isHC ? '' : `<button id="announceBtnInline" class="small" ${announceDisabledAttr}>Ansagen</button>`}
+        ${isHC ? '' : `<button id="rollBtnInline" data-action="roll" ${rollDisabledAttr}>🎲 Würfeln</button>`}
         ${requestBtnHTML}
       </div>
     </div>

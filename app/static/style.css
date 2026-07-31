@@ -362,7 +362,7 @@ button.die.held{ background:var(--success-soft); border-color:#75c9a4; }
   80%{transform:translate(1px,1px) rotate(1deg)}
   100%{transform:translate(0,0) rotate(0deg)}
 }
-button.die.shaking{ animation: dice-shake .5s ease; }
+button.die.shaking{ animation: dice-shake .65s ease; will-change: transform; }
 
 /* === Announce (❗) Pick-Hervorhebung === */
 /* Markierung für Ansage-Pick-Modus: leerer ❗-Slot im eigenen Board wird klickbar hervorgehoben */
@@ -666,7 +666,28 @@ tr.grp-top td, tr.grp-bottom td, tr.grp-diff td{ border-left:1px solid var(--bor
 /* === Accessibility === */
 button:focus-visible, #diceBar .die:focus-visible, td.cell.clickable:focus, td.cell.clickable:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
 td.cell.last-write{ background:#fff7db !important; box-shadow: inset 0 0 0 2px #f4c430; }
-button[disabled]{ opacity:.6; cursor:not-allowed; }
+button[disabled],
+button:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+  filter:grayscale(.35);
+  box-shadow:none;
+}
+button[disabled]:hover,
+button:disabled:hover{
+  transform:none;
+}
+#announceBtnInline:disabled,
+#rollBtnInline:disabled{
+  background:#eef1f5;
+  border-color:#cfd7e3;
+  color:#778294;
+}
+#announceBtnInline:disabled:hover,
+#rollBtnInline:disabled:hover{
+  background:#eef1f5;
+  border-color:#cfd7e3;
+}
 .pc-head .pc-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* === Chat === */

@@ -7,10 +7,10 @@
   - Clientseitige Guards für bessere UX (z. B. Roll-Button Throttle)
 
   Wichtige Snippets:
-  - safeSend(): Enthält einen kurzen zeitbasierten Throttle für 'roll'-Events, um
-    Double-Click/Mehrfachklicks abzufangen. Der Button wird für ~0.5s deaktiviert,
-    damit keine Doppelwürfe ausgelöst werden. Das korrespondiert mit einem
-    serverseitigen Cooldown.
+  - safeSend(): Enthält einen kurzen zeitbasierten Throttle für 'roll'-Events.
+  - requestRoll(): Sperrt weitere Roll-Requests sofort und gibt erst nach einem
+    neuen Server-Snapshot wieder frei. Dadurch wird der Buttonzustand nicht durch
+    einen Timer gegen den echten Spielzustand reaktiviert.
   - applyAnnounceModeButtonVisibility(): Steuert die Sichtbarkeit des Würfeln-Buttons
     im Ansage-Pick-Modus über visibility, nicht display, damit sich das Layout nicht
     verschiebt.
@@ -39,60 +39,53 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
     return `${proto}//${location.host}/ws/${encodeURIComponent(gid)}`;
   }
 
+  const ROLL_GUARD_MS = 600;
+  const ROLL_ANIMATION_SEND_DELAY_MS = 120;
+  const ROLL_ANIMATION_MS = 650;
+  const ROLL_PENDING_TIMEOUT_MS = 5000;
+
+  function isRollAction(obj) {
+    return obj && (
+      obj.action === 'roll_dice' || obj.type === 'roll_dice' || obj.t === 'roll_dice' ||
+      obj.type === 'roll'       || obj.t === 'roll'        || obj.action === 'roll'
+    );
+  }
+
   function safeSend(ws, obj) {
     /*
-      Roll-Event Throttle & Button-Guard (500 ms)
-      -------------------------------------------
+      Roll-Event Throttle (600 ms)
+      ----------------------------
       Problem: Sehr schnelle Mehrfach-Klicks (oder doppelte Handler) koennen mehrere
                'roll'-Events auf dem WS senden -> fühlt sich an wie "2x gewürfelt".
-      Loesung: Für 'roll' wird clientseitig ein kurzer Zeit-Guard aktiviert.
-               - Zweite Sendung < 500 ms wird verworfen.
-               - Passend dazu wird der Roll-Button visuell für ~0.5 s deaktiviert.
-               - Der 3. Wurf funktioniert normal, weil der Guard rein zeitbasiert ist.
+      Loesung: Für 'roll' wird clientseitig ein kurzer Zeit-Guard aktiviert; die
+               sichtbare Button-Sperre wird in requestRoll()/syncActionButtons()
+               aus dem echten Spielzustand abgeleitet.
     */
-
-    // Erfasst aktuelle und legacy-Felder: action/type/t = 'roll_dice' ODER 'roll'
-    const isRoll =
-      obj && (
-        obj.action === 'roll_dice' || obj.type === 'roll_dice' || obj.t === 'roll_dice' ||
-        obj.type === 'roll'       || obj.t === 'roll'        || obj.action === 'roll'
-      );
 
     // Globaler Zeitstempel für den letzten Roll-Send (einmalig initialisieren)
     if (typeof window.__rt_lastRollSent !== 'number') {
       window.__rt_lastRollSent = 0;
     }
 
-    if (isRoll) {
+    if (isRollAction(obj)) {
       const now = Date.now();
-      // Doppelklick-/Mehrfachklick-Schutz: alles < 500 ms seit letztem Roll wird verworfen
-      if (now - window.__rt_lastRollSent < 500) {
-        return; // zu schnell hintereinander -> NICHT senden
+      // Doppelklick-/Mehrfachklick-Schutz: alles < Guard seit letztem Roll wird verworfen
+      if (now - window.__rt_lastRollSent < ROLL_GUARD_MS) {
+        return false; // zu schnell hintereinander -> NICHT senden
       }
       window.__rt_lastRollSent = now;
-
-      // UI-Feedback: Roll-Button kurz deaktivieren (ohne hart auf eine einzige ID festzunageln)
-      const rollBtn =
-        document.querySelector('[data-action="roll"]') ||     // bevorzugtes data-Attribut
-        document.getElementById('rollBtnInline') ||           // aktueller Inline-Button
-        document.getElementById('btnRoll') ||                 // ältere Variante
-        document.querySelector('button.roll');                // Fallback CSS-Klasse
-
-      if (rollBtn && !rollBtn.disabled) {
-        rollBtn.disabled = true;
-        // 550 ms statt 500 ms, damit UX sicher die Sperre "fühlt" und Text/Focus stabil bleibt
-        setTimeout(() => { rollBtn.disabled = false; }, 550);
-      }
     }
 
     // Senden nur, wenn der Socket offen ist – verhindert Fehler bei Race Conditions
     try {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(obj));
+        return true;
       }
     } catch (e) {
       // bewusst leise – wir wollen UI nicht blockieren; Logging kann bei Bedarf ergänzt werden
     }
+    return false;
   }
 
   function leaveRoomAfterFatalError(message) {
@@ -162,8 +155,15 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
 
   let ws = null;
   let sb = null; // letzter Snapshot
-  let sendLock = { write:false, roll:false };
-  let autoRollLock = false;
+  let rollRequestPending = false;
+  let pendingRollSnapshotKey = null;
+  let rollSendTimer = null;
+  let rollPendingTimer = null;
+  let rollCooldownTimer = null;
+  let autoRollRetryTimer = null;
+  let rollAnimationTimer = null;
+  let rollAnimationUntil = 0;
+  let rollAnimationIndices = [];
   const DEBUG_P_HOTKEY = false; // optionaler Debug-Hotkey "p" -> Poker/Free
 
   // UI-State für die Ansage-Auswahl per Button oder Hotkey.
@@ -260,6 +260,237 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
     return (rolls >= 1) && mustAnnounceAfterFirst(snapshot) && !announced;
   }
 
+  function rollSnapshotKey(snapshot){
+    try{
+      const turnPid = snapshot?._turn?.player_id || "";
+      const rolls = Number(snapshot?._rolls_used || 0);
+      const dice = Array.isArray(snapshot?._dice) ? snapshot._dice.join(",") : "";
+      const corr = snapshot?._correction?.active ? "1" : "0";
+      const finished = snapshot?._finished ? "1" : "0";
+      return `${turnPid}|${rolls}|${dice}|${corr}|${finished}`;
+    }catch{
+      return "";
+    }
+  }
+
+  function rollCooldownRemaining(){
+    const nextByLock = Number(window.__rt_rollLockedUntil || 0);
+    const nextByLastSend = Number(window.__rt_lastRollSent || 0) + ROLL_GUARD_MS;
+    const nextAllowed = Math.max(nextByLock, nextByLastSend);
+    return Math.max(0, nextAllowed - Date.now());
+  }
+
+  function scheduleRollAvailabilityRefresh(){
+    try{
+      if (rollCooldownTimer) clearTimeout(rollCooldownTimer);
+      const wait = rollCooldownRemaining();
+      if (wait <= 0) return;
+      rollCooldownTimer = setTimeout(() => {
+        rollCooldownTimer = null;
+        syncActionButtons(sb);
+      }, wait + 25);
+    }catch{}
+  }
+
+  function stopDiceShake(){
+    try{ $$("#diceBar .die", mount).forEach(el => el.classList.remove("shaking")); }
+    catch{}
+  }
+
+  function clearRollAnimation(){
+    rollAnimationUntil = 0;
+    rollAnimationIndices = [];
+    if (rollAnimationTimer) {
+      try{ clearTimeout(rollAnimationTimer); }catch{}
+      rollAnimationTimer = null;
+    }
+    stopDiceShake();
+  }
+
+  function activeRollDiceIndices(snapshot){
+    const holds = Array.isArray(snapshot?._holds) ? snapshot._holds : [false,false,false,false,false];
+    return [0,1,2,3,4].filter(i => !holds[i]);
+  }
+
+  function applyRollAnimation(){
+    try{
+      const active = rollAnimationUntil > Date.now() && rollAnimationIndices.length > 0;
+      const diceEls = $$("#diceBar .die", mount);
+      diceEls.forEach(el => el.classList.remove("shaking"));
+      if (!active) return;
+      const animated = new Set(rollAnimationIndices.map(Number));
+      diceEls.forEach(el => {
+        const i = Number(el.dataset.i);
+        if (animated.has(i)) el.classList.add("shaking");
+      });
+    }catch{}
+  }
+
+  function startRollAnimation(snapshot){
+    rollAnimationIndices = activeRollDiceIndices(snapshot);
+    rollAnimationUntil = Date.now() + ROLL_ANIMATION_MS;
+    applyRollAnimation();
+    if (rollAnimationTimer) {
+      try{ clearTimeout(rollAnimationTimer); }catch{}
+    }
+    rollAnimationTimer = setTimeout(clearRollAnimation, ROLL_ANIMATION_MS + 40);
+  }
+
+  function clearPendingRoll(){
+    rollRequestPending = false;
+    pendingRollSnapshotKey = null;
+    if (rollSendTimer) { try{ clearTimeout(rollSendTimer); }catch{} rollSendTimer = null; }
+    if (rollPendingTimer) { try{ clearTimeout(rollPendingTimer); }catch{} rollPendingTimer = null; }
+  }
+
+  function clearAutoRollRetry(){
+    if (autoRollRetryTimer) {
+      try{ clearTimeout(autoRollRetryTimer); }catch{}
+      autoRollRetryTimer = null;
+    }
+  }
+
+  function settlePendingRollFromSnapshot(snapshot){
+    if (!rollRequestPending) return;
+    const nextKey = rollSnapshotKey(snapshot);
+    if (pendingRollSnapshotKey && nextKey && nextKey !== pendingRollSnapshotKey) {
+      clearPendingRoll();
+    }
+  }
+
+  function hasOpenAnnounceField(snapshot){
+    const sc = getMyBoard(snapshot);
+    try{
+      for (const ri of Object.keys(WRITABLE_MAP).map(k => Number(k))){
+        const v = sc[`${ri},ang`];
+        if (v === undefined || v === null || v === "") return true;
+      }
+    }catch{}
+    return false;
+  }
+
+  function getRollAvailability(snapshot){
+    if (IS_SPECTATOR) return { usable:false, reason:"Zuschauer können nicht würfeln", code:"spectator" };
+    if (!snapshot || snapshot._finished) return { usable:false, reason:"Spiel ist nicht aktiv", code:"inactive" };
+    const turn = snapshot?._turn || null;
+    const iAmTurn = turn && String(turn.player_id) === String(myId);
+    if (!iAmTurn) return { usable:false, reason:"Nicht an der Reihe", code:"not_turn" };
+    if (snapshot?._correction?.active) return { usable:false, reason:"Während Korrektur nicht erlaubt", code:"correction" };
+    const rolls = Number(snapshot?._rolls_used || 0);
+    const max = Number(snapshot?._rolls_max || 3);
+    if (rolls >= max) return { usable:false, reason:"Keine Würfe mehr", code:"no_rolls_left" };
+    if (!snapshot._hardcore && isRollingBlocked(snapshot)) {
+      return { usable:false, reason:"Weiter würfeln erst nach Ansage möglich (Pflicht nach Wurf 1).", code:"announce_required" };
+    }
+    if (rollRequestPending) return { usable:false, reason:"Wurf läuft", code:"pending" };
+    const wait = rollCooldownRemaining();
+    if (wait > 0) return { usable:false, reason:"Kurz warten", code:"cooldown" };
+    return { usable:true, reason:"Würfeln", code:"ready" };
+  }
+
+  function getAnnounceAvailability(snapshot){
+    if (IS_SPECTATOR) return { usable:false, reason:"Zuschauer können nicht ansagen", mode:"announce" };
+    if (!snapshot || snapshot._finished) return { usable:false, reason:"Spiel ist nicht aktiv", mode:"announce" };
+    if (snapshot?._hardcore) return { usable:false, reason:"Ansage ist im Hardcore-Modus deaktiviert", mode:"announce" };
+    const announced = snapshot?._announced_row4 || null;
+    const mode = announced ? "unannounce" : "announce";
+    const turn = snapshot?._turn || null;
+    const iAmTurn = turn && String(turn.player_id) === String(myId);
+    if (!iAmTurn) return { usable:false, reason:"Nicht an der Reihe", mode };
+    if (snapshot?._correction?.active) return { usable:false, reason:"Während Korrektur nicht erlaubt", mode };
+    const rolls = Number(snapshot?._rolls_used || 0);
+    if (rolls < 1) return { usable:false, reason:"Ansage erst nach dem ersten Wurf möglich", mode };
+    if (rolls !== 1) return { usable:false, reason:"Ansage nur direkt nach Wurf 1 möglich", mode };
+    if (announced) return { usable:true, reason:"Ansage aufheben", mode };
+    if (!hasOpenAnnounceField(snapshot)) return { usable:false, reason:"Keine freien ❗-Felder für eine Ansage", mode };
+    return { usable:true, reason:"Ansagen", mode };
+  }
+
+  function syncActionButtons(snapshot){
+    try{
+      const rollBtn = $("#rollBtnInline", mount);
+      if (rollBtn){
+        const roll = getRollAvailability(snapshot);
+        rollBtn.disabled = !roll.usable;
+        rollBtn.title = roll.reason || "Würfeln";
+        rollBtn.setAttribute("aria-disabled", roll.usable ? "false" : "true");
+      }
+
+      const ab = $("#announceBtnInline", mount);
+      if (ab){
+        const ann = getAnnounceAvailability(snapshot);
+        const announced = snapshot?._announced_row4 || null;
+        ab.disabled = !ann.usable;
+        ab.title = ann.reason || "Ansagen";
+        ab.dataset.state = ann.mode || "announce";
+        ab.setAttribute("aria-disabled", ann.usable ? "false" : "true");
+        if (ann.mode === "unannounce" || announced){
+          ab.textContent = "Ansage aufheben";
+          announcePickMode = false;
+        } else {
+          ab.textContent = announcePickMode ? "Ansage wählen" : "Ansagen";
+        }
+        // Lange Labels muessen umbrechen, damit die Buttonbreite konstant bleibt
+        ab.style.whiteSpace = 'normal';
+        ab.style.lineHeight = '1.15';
+      }
+
+      scheduleRollAvailabilityRefresh();
+    }catch{}
+  }
+
+  function scheduleAutoRollRetry(snapshot){
+    try{
+      if (autoRollRetryTimer) return;
+      const targetKey = rollSnapshotKey(snapshot);
+      const wait = rollCooldownRemaining();
+      autoRollRetryTimer = setTimeout(() => {
+        autoRollRetryTimer = null;
+        const stillSameAutoTurn = sb?._auto_single && rollSnapshotKey(sb) === targetKey;
+        if (stillSameAutoTurn) requestRoll({ animate: true, auto: true });
+      }, Math.max(wait, 0) + 25);
+    }catch{}
+  }
+
+  function requestRoll({ animate = true, auto = false } = {}) {
+    const availability = getRollAvailability(sb);
+    if (!availability.usable) {
+      if (auto && availability.code === "cooldown") scheduleAutoRollRetry(sb);
+      syncActionButtons(sb);
+      return false;
+    }
+
+    clearAutoRollRetry();
+    rollRequestPending = true;
+    pendingRollSnapshotKey = rollSnapshotKey(sb);
+    window.__rt_rollLockedUntil = Date.now() + ROLL_GUARD_MS;
+    syncActionButtons(sb);
+
+    if (rollSendTimer) { try{ clearTimeout(rollSendTimer); }catch{} }
+    rollSendTimer = setTimeout(() => {
+      rollSendTimer = null;
+      const sent = safeSend(ws, { action: "roll_dice" });
+      if (!sent) {
+        clearPendingRoll();
+        clearRollAnimation();
+        syncActionButtons(sb);
+      }
+    }, animate ? ROLL_ANIMATION_SEND_DELAY_MS : 0);
+
+    if (rollPendingTimer) { try{ clearTimeout(rollPendingTimer); }catch{} }
+    rollPendingTimer = setTimeout(() => {
+      if (!rollRequestPending) return;
+      clearPendingRoll();
+      clearRollAnimation();
+      syncActionButtons(sb);
+    }, ROLL_PENDING_TIMEOUT_MS);
+
+    if (animate) {
+      startRollAnimation(sb);
+    }
+    return true;
+  }
+
     // --- Mobile-Autofocus (Swipe vs. Auto-Follow) ---
   let _lastTurnPid = null;
   let _userScrollOverride = false;
@@ -340,6 +571,11 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
       // Fehler
       if (msg.error) {
         console.warn("Serverfehler:", msg.error);
+        if (rollRequestPending) {
+          clearPendingRoll();
+          clearRollAnimation();
+          syncActionButtons(sb);
+        }
         if (msg.fatal) {
           leaveRoomAfterFatalError(msg.error);
           return;
@@ -460,6 +696,10 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
     });
 
     ws.addEventListener("close", () => {
+      clearPendingRoll();
+      clearAutoRollRetry();
+      clearRollAnimation();
+      syncActionButtons(sb);
       if (window._fatalWsClose) return;
       setTimeout(connect, 1000);
     });
@@ -474,6 +714,7 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
  * @param {object} snapshot - Server-Snapshot der aktuellen Spielsituation
  */
 function renderFromSnapshot(snapshot) {
+    settlePendingRollFromSnapshot(snapshot);
     const turnPid   = snapshot?._turn?.player_id || null;
     const iAmTurn   = turnPid && String(turnPid) === String(myId);
     const isHC      = !!(snapshot && snapshot._hardcore);
@@ -492,62 +733,16 @@ function renderFromSnapshot(snapshot) {
       announcedRow4: announced,
       canRequestCorrection: canRequestCorrection(snapshot)
     });
+    applyRollAnimation();
 
     wireDiceBar();
     wireGridClicks();
     ensureKeybindings(); // alle Hotkeys hier
 
-    // Weiterwürfeln blockieren, wenn nach Wurf 1 eine Ansage Pflicht ist.
-    try{
-      const blockRoll = isHC ? false : isRollingBlocked(snapshot);
-      const rollBtn = $("#rollBtnInline", mount);
-      if (rollBtn){
-        rollBtn.disabled = blockRoll || !!(snapshot?._correction?.active);
-        if (!isHC) {
-          rollBtn.title = rollBtn.disabled
-            ? "Weiter würfeln erst nach Ansage möglich (Pflicht nach Wurf 1)."
-            : "Würfeln";
-        } else {
-          rollBtn.title = "Würfeln";
-        }
-      }
-      // Hinweiszeile (falls vorhanden)
-      const hint = document.getElementById("announceHint");
-      if (hint){
-        hint.textContent = (!isHC && blockRoll) ? "Bitte ein ❗-Feld ansagen, bevor du weiter würfelst." : "";
-      }
-    } catch {}
-
-    // Ansage-Button je nach Fenster und aktiver Ansage beschriften.
-    try{
-      const ab = $("#announceBtnInline", mount);
-      if (ab){
-        const announced = snapshot?._announced_row4 || null;
-        const rolls = Number(snapshot?._rolls_used || 0);
-        const iAmTurn = (snapshot?._turn && String(snapshot._turn.player_id) === String(myId));
-        const corrActive = !!(snapshot?._correction?.active);
-        // Button ist nur direkt nach Wurf 1 für den Zuginhaber sinnvoll
-        const usable = iAmTurn && !corrActive && rolls === 1;
-        ab.disabled = !usable;
-        // Ein Button für beides: Ansagen ODER Aufheben
-        if (announced){
-          ab.textContent = "Ansage aufheben";
-          ab.dataset.state = "unannounce";
-          // Falls eine Ansage existiert, Pick-Mode beenden (UI sauber halten)
-          announcePickMode = false;
-        } else {
-          ab.textContent = announcePickMode ? "Ansage wählen" : "Ansagen";
-          ab.dataset.state = "announce";
-        }
-        // Lange Labels muessen umbrechen, damit die Buttonbreite konstant bleibt
-        ab.style.whiteSpace = 'normal';
-        ab.style.lineHeight = '1.15';
-      }
-    } catch {}
-
     // --- Auto-Beenden des Pick-Modes außerhalb des Fensters ---
     try{
-      if (!announceWindowOpen(snapshot)) {
+      const ann = getAnnounceAvailability(snapshot);
+      if (!announceWindowOpen(snapshot) || !ann.usable || ann.mode !== "announce") {
         if (announcePickMode) {
           announcePickMode = false;
           $$(".announce-pickable").forEach(td => td.classList.remove("announce-pickable"));
@@ -556,6 +751,19 @@ function renderFromSnapshot(snapshot) {
         }
       }
     } catch {}
+
+    // Ansage-/Würfeln-Buttons aus demselben Benutzbarkeitsmodell setzen.
+    syncActionButtons(snapshot);
+
+    // Hinweiszeile (falls vorhanden)
+    try{
+      const hint = document.getElementById("announceHint");
+      if (hint){
+        const blockRoll = !isHC && isRollingBlocked(snapshot);
+        hint.textContent = blockRoll ? "Bitte ein ❗-Feld ansagen, bevor du weiter würfelst." : "";
+      }
+    } catch {}
+
     // Während des Ansage-Pick-Modes den Würfeln-Button unsichtbar schalten,
     // ohne das Layout zu verschieben (visibility statt display)
     applyAnnounceModeButtonVisibility(mount);
@@ -601,7 +809,7 @@ function renderFromSnapshot(snapshot) {
     renderSuggestions(Array.isArray(snapshot.suggestions) ? snapshot.suggestions : []);
 
     // 1P Auto-Roll
-    if (snapshot._auto_single && iAmTurn) safeSend(ws, { action: "roll_dice" });
+    if (snapshot._auto_single && iAmTurn) requestRoll({ animate: true, auto: true });
 
     // Chat-Breite angleichen
     syncChatWidth();
@@ -824,11 +1032,12 @@ function renderFromSnapshot(snapshot) {
       announceBtn._bound = true;
       announceBtn.addEventListener("click", () => {
         if (!sb) return;
+        const availability = getAnnounceAvailability(sb);
+        if (!availability.usable) {
+          syncActionButtons(sb);
+          return;
+        }
         const state = announceBtn.dataset.state || "announce";
-        const rolls = Number(sb?._rolls_used || 0);
-        const iAmTurn = (sb?._turn && String(sb._turn.player_id) === String(myId));
-        const corrActive = !!(sb?._correction?.active);
-        if (!(iAmTurn && !corrActive && rolls === 1)) return;
 
         if (state === "unannounce" && sb?._announced_row4){
           safeSend(ws, { action: "unannounce_row4" });
@@ -843,11 +1052,7 @@ function renderFromSnapshot(snapshot) {
     if (rollBtn && !rollBtn._shakeBound) {
       rollBtn._shakeBound = true;
       rollBtn.addEventListener("click", () => {
-        const diceEls = $$("#diceBar .die", mount);
-        diceEls.forEach(el => el.classList.remove("shaking"));
-        diceEls.forEach(el => { if (!el.classList.contains("held")) el.classList.add("shaking"); });
-        setTimeout(() => { safeSend(ws, { action: "roll_dice" }); }, 120);
-        setTimeout(() => { $$("#diceBar .die", mount).forEach(el => el.classList.remove("shaking")); }, 520);
+        requestRoll({ animate: true });
       });
     }
 
@@ -1047,27 +1252,15 @@ function renderFromSnapshot(snapshot) {
    * @returns {boolean}
    */
   function canRollNow() {
-    // Darf nur würfeln, wenn:
-    // - ich am Zug bin
-    // - kein Korrekturmodus aktiv
-    // - unter Roll-Cap
-    // - und NICHT durch „Ansage nach Wurf 1“ gesperrt
-    if (!sb) return false;
-    const iAmTurn = sb?._turn && String(sb._turn.player_id) === String(myId);
-    const underCap = ((sb?._rolls_used || 0) < (sb?._rolls_max || 3));
-    const blocked = isRollingBlocked(sb);
-    return iAmTurn && !(sb?._correction?.active) && underCap && !blocked;
+    return getRollAvailability(sb).usable;
   }
 
   /**
-   * Sendet einen Roll-Request via safeSend mit kurzem UI-Lock (Throttle),
-   * um Doppelwürfe durch Mehrfachklicks zu verhindern.
+   * Sendet einen manuellen Roll-Request mit derselben Animation/Guard-Logik
+   * wie der Würfeln-Button.
    */
   function safeRoll() {
-    if (!canRollNow() || sendLock.roll) return;
-    sendLock.roll = true;
-    try { safeSend(ws, { action: "roll_dice" }); }
-    finally { setTimeout(() => { sendLock.roll = false; }, 200); }
+    requestRoll({ animate: true });
   }
 
   /**
@@ -1122,7 +1315,12 @@ function renderFromSnapshot(snapshot) {
 
       // Space / r: würfeln
       if (key === " " || key === "spacebar" || key === "r") {
-        if (canRollNow()) { safeRoll(); e.preventDefault(); }
+        if (e.repeat) {
+          e.preventDefault();
+          return;
+        }
+        if (canRollNow()) safeRoll();
+        e.preventDefault();
         return;
       }
 

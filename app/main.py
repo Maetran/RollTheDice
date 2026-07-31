@@ -83,7 +83,7 @@ def sweep_timeouts():
     for _gid, _g in list(games.items()):
         check_timeout_and_abort(_g)
 
-def roll_cooldown_ok(g: dict, player_id, cooldown_s: float = 0.45) -> bool:
+def roll_cooldown_ok(g: dict, player_id, cooldown_s: float = 0.6) -> bool:
     """Serverseitiger Roll-Cooldown.
 
     Parameter:
@@ -1657,9 +1657,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 ):
                     await websocket.send_json({"error": "Bitte zuerst ein ❗-Feld ansagen, bevor weiter gewürfelt wird"})
                     continue
-                # Server-Cooldown: Double-Click-/Spam-Guard (standard 450 ms)
+                # Server-Cooldown: Double-Click-/Spam-Guard (standard 600 ms)
                 # Schluckt zu schnelle Folgerolls laut monotonic()-Timer pro Spieler.
-                if not roll_cooldown_ok(g, player_id, cooldown_s=0.45):
+                if not roll_cooldown_ok(g, player_id, cooldown_s=0.6):
                     # optional: leise ignorieren; UX bleibt smooth
                     continue
                 dice = g["_dice"][:] if g["_dice"] else [0] * 5
