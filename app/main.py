@@ -415,26 +415,13 @@ def compute_suggestions(g: GameDict) -> list[dict]:
                 # Poker-Sonderfall: Punkte erlaubt, solange JETZT mindestens 4 gleiche (oder 5) liegen – unabhängig von Spalte/Rollindex
                 if field_key == "poker" and points > 0:
                     cur = g.get("_turn", {}) or {}
-                    roll_idx = int(cur.get("roll_index", 0) or 0)
-                    first4   = cur.get("first4oak_roll")
-                    has4 = has_n_of_a_kind(dice, 4)
-                    has5 = has_n_of_a_kind(dice, 5)
-                    announced_poker = (announced == "poker")
-
-                    # Fallback nur für Vorschlagslogik (nicht schreibend mutieren):
-                    first4_eff = first4
-                    if has4 and not has5 and first4_eff is None:
-                        first4_eff = roll_idx
-
-                    if col == "ang":
-                        allowed_points = (
-                            (announced_poker and (has4 or has5))
-                            or (not announced_poker and (has5 or (has4 and first4_eff and roll_idx == int(first4_eff))))
-                        )
-                    else:
-                        allowed_points = (has5 or (has4 and first4_eff and roll_idx == int(first4_eff)))
-
-                    if not allowed_points:
+                    if not poker_points_allowed(
+                        dice,
+                        col,
+                        roll_index=int(cur.get("roll_index", 0) or 0),
+                        first4oak_roll=cur.get("first4oak_roll"),
+                        announced_poker=(announced == "poker"),
+                    ):
                         continue
 
                 # Punkte > 0 sind Voraussetzung für Kombis; Schwellen für Max/Min weiter unten
@@ -610,6 +597,88 @@ def _set_roll_cap_for_current_turn(g: GameDict):
     cur = g.get("_turn", {}) or {}
     pid = cur.get("player_id")
     g["_rolls_max"] = 5 if (pid and _is_last_turn_for(g, pid)) else 3
+
+def can_roll_now(g: GameDict, pid: str | None) -> tuple[bool, str]:
+    """Validiert, ob ein Spieler im aktuellen Zustand würfeln darf."""
+    if not g.get("_turn") or g["_turn"].get("player_id") != pid:
+        return False, "Nicht an der Reihe"
+    if g.get("_correction", {}).get("active"):
+        return False, "Während Korrektur nicht erlaubt"
+    if int(g.get("_rolls_used", 0) or 0) >= int(g.get("_rolls_max", 3)):
+        return False, "Keine Würfe mehr"
+    if (
+        not bool(g.get("_hardcore"))
+        and not g.get("_announced_row4")
+        and int(g.get("_rolls_used", 0) or 0) >= 1
+        and _must_announce_after_first(g, str(pid))
+    ):
+        return False, "Bitte zuerst ein ❗-Feld ansagen, bevor weiter gewürfelt wird"
+    return True, ""
+
+def apply_roll(g: GameDict, *, randint_fn=None) -> list[int]:
+    """Wendet einen Wurf auf den Spielzustand an und pflegt die Roll-Metadaten."""
+    rng = randint_fn or random.randint
+    dice = g["_dice"][:] if g.get("_dice") else [0] * 5
+    holds = list(g.get("_holds", [False] * 5))[:5]
+    if len(holds) < 5:
+        holds += [False] * (5 - len(holds))
+
+    for i in range(5):
+        if not holds[i]:
+            dice[i] = rng(1, 6)
+    g["_dice"] = dice
+    g["_rolls_used"] = int(g.get("_rolls_used", 0) or 0) + 1
+
+    try:
+        cur = g.setdefault("_turn", {})
+        if "roll_index" not in cur:
+            cur["roll_index"] = 0
+        if "first4oak_roll" not in cur:
+            cur["first4oak_roll"] = None
+        cur["roll_index"] = int(cur.get("roll_index", 0) or 0) + 1
+        if cur.get("first4oak_roll") is None and has_n_of_a_kind(g["_dice"], 4):
+            cur["first4oak_roll"] = cur["roll_index"]
+    except Exception:
+        pass
+
+    return g["_dice"]
+
+def poker_points_allowed(
+    dice,
+    col: str,
+    *,
+    roll_index: int,
+    first4oak_roll,
+    announced_poker: bool = False,
+    correction: bool = False,
+) -> bool:
+    """Prüft, ob ein Pokerwurf in diesem Schreibkontext Punkte geben darf."""
+    has4 = has_n_of_a_kind(dice, 4)
+    has5 = has_n_of_a_kind(dice, 5)
+    if not has4 and not has5:
+        return False
+    if has5:
+        return True
+    if col == "ang" and announced_poker:
+        return True
+
+    try:
+        roll_idx = int(roll_index or 0)
+    except Exception:
+        roll_idx = 0
+
+    first4_eff = first4oak_roll
+    missing_first4 = (not first4_eff) if correction else (first4_eff is None)
+    if has4 and missing_first4:
+        first4_eff = roll_idx
+
+    try:
+        first4_idx = int(first4_eff)
+    except Exception:
+        return False
+
+    effective_roll_idx = first4_idx if correction else roll_idx
+    return bool(has4 and first4_idx and effective_roll_idx == first4_idx)
 
 def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_announce: str | None) -> tuple[bool, str]:
     """Validiert, ob der Spieler JETZT in die angegebene Zelle schreiben darf.
@@ -1640,50 +1709,16 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "roll_dice":
-                if not g["_turn"] or g["_turn"]["player_id"] != player_id:
-                    await websocket.send_json({"error": "Nicht an der Reihe"})
-                    continue
-                if g["_correction"]["active"]:
-                    await websocket.send_json({"error": "Während Korrektur nicht erlaubt"})
-                    continue
-                if g["_rolls_used"] >= g["_rolls_max"]:
-                    await websocket.send_json({"error": "Keine Würfe mehr"})
-                    continue
-                if (
-                    not bool(g.get("_hardcore"))
-                    and not g.get("_announced_row4")
-                    and int(g.get("_rolls_used", 0) or 0) >= 1
-                    and _must_announce_after_first(g, player_id)
-                ):
-                    await websocket.send_json({"error": "Bitte zuerst ein ❗-Feld ansagen, bevor weiter gewürfelt wird"})
+                ok, why = can_roll_now(g, player_id)
+                if not ok:
+                    await websocket.send_json({"error": why})
                     continue
                 # Server-Cooldown: Double-Click-/Spam-Guard (standard 600 ms)
                 # Schluckt zu schnelle Folgerolls laut monotonic()-Timer pro Spieler.
                 if not roll_cooldown_ok(g, player_id, cooldown_s=0.6):
                     # optional: leise ignorieren; UX bleibt smooth
                     continue
-                dice = g["_dice"][:] if g["_dice"] else [0] * 5
-                for i in range(5):
-                    if not g["_holds"][i]:
-                        dice[i] = random.randint(1, 6)
-                g["_dice"] = dice
-                g["_rolls_used"] += 1
-
-                # --- Poker-Regel Tracking: roll_index & "first4oak_roll" ---
-                try:
-                    # turn-hilfswerte initialisieren falls alt Spielstand
-                    cur = g.setdefault("_turn", {})
-                    if "roll_index" not in cur:
-                        cur["roll_index"] = 0
-                    if "first4oak_roll" not in cur:
-                        cur["first4oak_roll"] = None
-                    # aktuellen Wurf zählen
-                    cur["roll_index"] = int(cur.get("roll_index", 0)) + 1
-                    # erster 4er-Gleiche in diesem Zug merken (nur einmal)
-                    if cur.get("first4oak_roll") is None and has_n_of_a_kind(g["_dice"], 4):
-                        cur["first4oak_roll"] = cur["roll_index"]
-                except Exception:
-                    pass
+                apply_roll(g)
 
                 touch(g)
                 await broadcast(g, {"scoreboard": snapshot(g)})
@@ -1782,24 +1817,13 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     # ⬇︎／／⬆︎: nur im Wurf des ersten Vierlings ODER bei 5 gleichen
                     # ❗+Ansage "poker": in jedem Wurf mit 4/5 gleichen
                     cur = g.get("_turn", {}) or {}
-                    roll_idx = int(cur.get("roll_index", 0) or 0)
-                    first4   = cur.get("first4oak_roll")
-                    has4 = has_n_of_a_kind(g["_dice"], 4)
-                    has5 = has_n_of_a_kind(g["_dice"], 5)
-                    announced_poker = (g.get("_announced_row4") == "poker")
-
-                    # Fallback nur für Vorschlagslogik (nicht schreibend mutieren):
-                    first4_eff = first4
-                    if has4 and not has5 and first4_eff is None:
-                        first4_eff = roll_idx
-
-                    if col == "ang":
-                        allowed_points = (
-                            (announced_poker and (has4 or has5))
-                            or (not announced_poker and (has5 or (has4 and first4_eff and roll_idx == int(first4_eff))))
-                        )
-                    else:
-                        allowed_points = (has5 or (has4 and first4_eff and roll_idx == int(first4_eff)))
+                    allowed_points = poker_points_allowed(
+                        g.get("_dice") or [0, 0, 0, 0, 0],
+                        col,
+                        roll_index=int(cur.get("roll_index", 0) or 0),
+                        first4oak_roll=cur.get("first4oak_roll"),
+                        announced_poker=(g.get("_announced_row4") == "poker"),
+                    )
 
                     # Wenn Punkte möglich wären, sie aber laut Regel jetzt nicht erlaubt sind,
                     # wird stillschweigend gestrichen (0 geschrieben).
@@ -1952,40 +1976,18 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 if fld == "poker":
                     # Bewertung in der Korrektur basiert auf den GEMERKTEN Würfeln *und*
                     # den beim ursprünglichen Zug gemerkten Meta-Werten (roll_index/first4oak_roll).
-                    corr_meta_roll_idx = int((g.get("_correction") or {}).get("roll_index", 0) or 0)
-                    corr_meta_first4   = (g.get("_correction") or {}).get("first4oak_roll")
-
-                    dice_now = dice_for_eval[:]  # wichtig: Korrekturwürfel
-                    has4 = has_n_of_a_kind(dice_now, 4)
-                    has5 = has_n_of_a_kind(dice_now, 5)
-
-                    in_ang = (col == "ang")
-                    announced_poker = (g.get("_announced_row4") == "poker")  # sollte i.d.R. None sein
-
-                    # Fallback bei Tracking-Lücke: wenn 4 gleich und first4 nicht gesetzt, dann jetzt „erstes Auftreten“
-                    first4_eff = corr_meta_first4
-                    if has4 and not has5 and not first4_eff:
-                        first4_eff = corr_meta_roll_idx
-
+                    dice_now = dice_for_eval[:]
                     prospective = score_field_value("poker", dice_now)
 
                     if prospective > 0:
-                        # Korrektur-Spezialfall:
-                        # Wenn bereits in diesem Zug ein Vierling aufgetreten ist, darf Poker mit Punkten
-                        # auch dann gebucht werden, wenn der falsche Eintrag erst in einem späteren Wurf erfolgte.
-                        # Deshalb verwenden wir in der Korrektur als "effektiven" Wurfindex den first4oak_roll,
-                        # sofern vorhanden.
-                        effective_roll_idx = corr_meta_roll_idx
-                        if first4_eff:
-                            try:
-                                effective_roll_idx = int(first4_eff)
-                            except Exception:
-                                effective_roll_idx = corr_meta_roll_idx
-
-                        if in_ang and announced_poker:
-                            allowed_points = (has4 or has5)
-                        else:
-                            allowed_points = (has5 or (has4 and first4_eff and effective_roll_idx == int(first4_eff)))
+                        allowed_points = poker_points_allowed(
+                            dice_now,
+                            col,
+                            roll_index=int((g.get("_correction") or {}).get("roll_index", 0) or 0),
+                            first4oak_roll=(g.get("_correction") or {}).get("first4oak_roll"),
+                            announced_poker=(g.get("_announced_row4") == "poker"),
+                            correction=True,
+                        )
 
                         if not allowed_points:
                             # Korrektur: Nach dem Zocken sind Poker-Punkte nicht zulässig; stilles Streichen (0) erlauben.
