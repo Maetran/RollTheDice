@@ -10,14 +10,14 @@
     Diese Seite listet offene und laufende Spiele, ermöglicht das Erstellen
     neuer Spiele (mit Modus/Passphrase) und zeigt Leaderboards an.
     - /api/games liefert Spielübersichten (offen + laufend)
-    - /api/leaderboard liefert Recent/Alltime und Stats
+    - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /static/room.html navigiert
   -->
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#000000">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/static/favicon.png" sizes="32x32">
-  <link rel="stylesheet" href="/static/style.css?v=31">
+  <link rel="stylesheet" href="/static/style.css?v=32">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -82,17 +82,19 @@
       <div id="runningList" class="games"></div>
     </section>
 
-    <!-- 4) Leaderboard – Recent (7 Tage) und Alltime Top 10 -->
+    <!-- 4) Leaderboard, Hall of Shame und letzte Spiele -->
     <div class="leaderboard-heading">
       <h2>Leaderboard</h2>
       <div class="tabs">
-        <button id="lbTabNormal" class="tab-btn active">Normal</button>
-        <button id="lbTabHC" class="tab-btn">Hardcore</button>
+        <button id="lbTabNormal" class="tab-btn active">Top Normal</button>
+        <button id="lbTabHC" class="tab-btn">Top Hardcore</button>
+        <button id="lbTabShame" class="tab-btn">Hall of Shame</button>
+        <button id="lbTabLast" class="tab-btn">Letzte 10 Spiele</button>
       </div>
     </div>
     <div class="leaderboards">
-      <div class="leaderboard-box">
-        <h3>Top 10 (letzte 7 Tage)</h3>
+      <div id="recentBox" class="leaderboard-box">
+        <h3 id="recentTitle">Top 10 (letzte 7 Tage)</h3>
         <table id="recentTable">
           <thead>
             <tr>
@@ -107,8 +109,8 @@
         </table>
       </div>
 
-      <div class="leaderboard-box">
-        <h3>Top 10 Alltime</h3>
+      <div id="alltimeBox" class="leaderboard-box">
+        <h3 id="alltimeTitle">Top 10 Alltime</h3>
         <table id="alltimeTable">
           <thead>
             <tr>
@@ -137,13 +139,19 @@
     const refreshBtn = document.getElementById('refreshBtn');
     const runningEl  = document.getElementById('runningList');
     const refreshRunningBtn = document.getElementById('refreshRunningBtn');
+    const recentBox = document.getElementById("recentBox");
+    const alltimeBox = document.getElementById("alltimeBox");
+    const recentTitle = document.getElementById("recentTitle");
+    const alltimeTitle = document.getElementById("alltimeTitle");
     const recentTable = document.querySelector("#recentTable tbody");
     const alltimeTable = document.querySelector("#alltimeTable tbody");
     const gamesPlayedEl = document.getElementById("gamesPlayed");
     const hcChk    = document.getElementById('hardcoreChk');
     const lbTabNormal = document.getElementById('lbTabNormal');
     const lbTabHC     = document.getElementById('lbTabHC');
-    let lbActiveTab = 'normal'; // 'normal' | 'hc'
+    const lbTabShame  = document.getElementById('lbTabShame');
+    const lbTabLast   = document.getElementById('lbTabLast');
+    let lbActiveTab = 'normal'; // 'normal' | 'hc' | 'shame' | 'last'
 
     // Name merken/laden
     const NAME_KEY = 'wuerfler_name';
@@ -420,50 +428,52 @@
         const data = await res.json();
         gamesPlayedEl.textContent = (data.stats && data.stats.games_played) ?? 0;
 
-        // Datenformat: { recent: {normal:[], hc:[]}, alltime: {normal:[], hc:[]} }
-        const r = data.recent || { normal: [], hc: [] };
-        const a = data.alltime || { normal: [], hc: [] };
-        const recentList  = lbActiveTab === 'hc' ? (r.hc || []) : (r.normal || []);
-        const alltimeList = lbActiveTab === 'hc' ? (a.hc || []) : (a.normal || []);
-
-        // RECENT: Datum relativ
-        {
-          const tbody = recentTable;
-          const list = Array.isArray(recentList) ? recentList : [];
-          tbody.innerHTML = list.map(e => {
-            const dateRel = fmtRelative(e.finished_at || e.ts);
-            const name    = escapeHtml(e.name ?? "—");
-            const pts     = e.points ?? "—";
-            const modeLbl = fmtMode(e.mode);
-            const link    = viewLink(e.game_id);
-            return `<tr>
-              <td>${dateRel}</td>
+        function renderLeaderboardRows(tbody, list, { dateKind = "relative", emptyText = "Keine Einträge" } = {}) {
+          const rows = Array.isArray(list) ? list : [];
+          tbody.innerHTML = rows.map(e => {
+            const date = dateKind === "relative" ? fmtRelative(e.finished_at || e.ts) : fmtDMY(e.finished_at || e.ts);
+            const name = escapeHtml(e.name ?? "—");
+            const pts = e.points ?? "—";
+            const modeBase = fmtMode(e.mode);
+            const hc = !!e.hardcore;
+            const modeLbl = hc ? `${modeBase} <span class="hc-badge">Hardcore</span>` : modeBase;
+            const link = viewLink(e.game_id);
+            const rowClass = hc ? ` class="hc-entry"` : "";
+            return `<tr${rowClass}>
+              <td>${date}</td>
               <td>${name}</td>
               <td>${pts}</td>
               <td>${modeLbl}</td>
               <td>${link}</td>
             </tr>`;
-          }).join("") || `<tr><td colspan="5" class="muted">Keine Einträge</td></tr>`;
+          }).join("") || `<tr><td colspan="5" class="muted">${emptyText}</td></tr>`;
         }
 
-        // ALLTIME: Datum DD.MM.YY
-        {
-          const tbody = alltimeTable;
-          const list = Array.isArray(alltimeList) ? alltimeList : [];
-          tbody.innerHTML = list.map(e => {
-            const dateDMY = fmtDMY(e.finished_at || e.ts);
-            const name    = escapeHtml(e.name ?? "—");
-            const pts     = e.points ?? "—";
-            const modeLbl = fmtMode(e.mode);
-            const link    = viewLink(e.game_id);
-            return `<tr>
-              <td>${dateDMY}</td>
-              <td>${name}</td>
-              <td>${pts}</td>
-              <td>${modeLbl}</td>
-              <td>${link}</td>
-            </tr>`;
-          }).join("") || `<tr><td colspan="5" class="muted">Keine Einträge</td></tr>`;
+        // Datenformat: Toplisten { recent/alltime: {normal:[], hc:[]} }, Zusatzlisten { shame, last_games }
+        const r = data.recent || { normal: [], hc: [] };
+        const a = data.alltime || { normal: [], hc: [] };
+        const s = data.shame || { recent: [], alltime: [] };
+        const lastGames = data.last_games || [];
+
+        if (alltimeBox) alltimeBox.hidden = false;
+        if (recentBox) recentBox.classList.toggle("wide", lbActiveTab === "last");
+
+        if (lbActiveTab === "shame") {
+          if (recentTitle) recentTitle.textContent = "Hall of Shame (letzte 10 Tage)";
+          if (alltimeTitle) alltimeTitle.textContent = "Hall of Shame Alltime";
+          renderLeaderboardRows(recentTable, s.recent || [], { dateKind: "relative" });
+          renderLeaderboardRows(alltimeTable, s.alltime || [], { dateKind: "absolute" });
+        } else if (lbActiveTab === "last") {
+          if (recentTitle) recentTitle.textContent = "Letzte 10 Spiele";
+          if (alltimeBox) alltimeBox.hidden = true;
+          renderLeaderboardRows(recentTable, lastGames, { dateKind: "relative" });
+          if (alltimeTable) alltimeTable.innerHTML = "";
+        } else {
+          const isHcTab = lbActiveTab === "hc";
+          if (recentTitle) recentTitle.textContent = "Top 10 (letzte 7 Tage)";
+          if (alltimeTitle) alltimeTitle.textContent = "Top 10 Alltime";
+          renderLeaderboardRows(recentTable, isHcTab ? (r.hc || []) : (r.normal || []), { dateKind: "relative" });
+          renderLeaderboardRows(alltimeTable, isHcTab ? (a.hc || []) : (a.normal || []), { dateKind: "absolute" });
         }
       } catch (e) {
         console.warn("Leaderboard konnte nicht geladen werden", e);
@@ -486,16 +496,22 @@
 
     // Tabs Leaderboard: Handler
     function setLbTab(tab){
-      lbActiveTab = (tab === 'hc') ? 'hc' : 'normal';
-      if (lbTabNormal && lbTabHC){
-        lbTabNormal.classList.toggle('active', lbActiveTab === 'normal');
-        lbTabHC.classList.toggle('active', lbActiveTab === 'hc');
-      }
+      lbActiveTab = ["normal", "hc", "shame", "last"].includes(tab) ? tab : "normal";
+      [
+        [lbTabNormal, "normal"],
+        [lbTabHC, "hc"],
+        [lbTabShame, "shame"],
+        [lbTabLast, "last"],
+      ].forEach(([btn, key]) => {
+        if (btn) btn.classList.toggle("active", lbActiveTab === key);
+      });
       // Sofort neu laden
       loadLeaderboard();
     }
     if (lbTabNormal) lbTabNormal.addEventListener('click', ()=> setLbTab('normal'));
     if (lbTabHC) lbTabHC.addEventListener('click', ()=> setLbTab('hc'));
+    if (lbTabShame) lbTabShame.addEventListener('click', ()=> setLbTab('shame'));
+    if (lbTabLast) lbTabLast.addEventListener('click', ()=> setLbTab('last'));
 
     function formatDateTime(s) {
       if (!s) return "–";

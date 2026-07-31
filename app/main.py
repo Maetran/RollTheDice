@@ -134,6 +134,8 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 # Dateien relativ zu DATA_DIR
 RECENT_FILE  = DATA_DIR / "leaderboard_recent.json"
 ALLTIME_FILE = DATA_DIR / "leaderboard_alltime.json"
+SHAME_FILE   = DATA_DIR / "leaderboard_shame.json"
+LAST_GAMES_FILE = DATA_DIR / "leaderboard_last_games.json"
 STATS_FILE   = DATA_DIR / "stats.json"
 
 # Static korrekt mounten – jetzt existiert app
@@ -1052,95 +1054,126 @@ def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="
         "waiting": [p.get("name", "Player") for p in g["_players"]],
     }
 
+def _read_json_file(path: Path, default):
+    """Liest JSON-Daten defensiv und liefert bei fehlender/defekter Datei default."""
+    if path.exists():
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return default
+    return default
+
+def _write_json_if_changed(path: Path, original_data, new_data) -> None:
+    """Schreibt JSON nur, wenn sich der Inhalt tatsächlich geändert hat."""
+    try:
+        if json.dumps(original_data, sort_keys=True) != json.dumps(new_data, sort_keys=True):
+            path.write_text(json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+def _parse_ts(s: str) -> datetime | None:
+    """Robustes ISO-8601-Parsing, naive Zeitstempel werden als UTC interpretiert."""
+    if not isinstance(s, str) or not s:
+        return None
+    try:
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+def _entry_ts(entry: dict) -> datetime | None:
+    """Liefert den besten verfügbaren Abschlusszeitpunkt eines Leaderboard-Eintrags."""
+    if not isinstance(entry, dict):
+        return None
+    return _parse_ts(entry.get("ts")) or _parse_ts(entry.get("finished_at"))
+
+def _entry_has_points(entry: dict) -> bool:
+    try:
+        _ = int(entry.get("points", 0))
+        return True
+    except Exception:
+        return False
+
+def _valid_entry_since(entry: dict, cutoff: datetime | None = None) -> bool:
+    if not isinstance(entry, dict) or not _entry_has_points(entry):
+        return False
+    ts = _entry_ts(entry)
+    if ts is None:
+        return False
+    return cutoff is None or ts >= cutoff
+
+def _as_dual_lists(raw):
+    if isinstance(raw, dict):
+        return list(raw.get("normal", []) or []), list(raw.get("hc", []) or [])
+    return list(raw or []), []
+
+def _as_shame_lists(raw):
+    if isinstance(raw, dict):
+        return list(raw.get("recent", []) or []), list(raw.get("alltime", []) or [])
+    return [], list(raw or [])
+
 @app.get("/api/leaderboard")
 async def get_leaderboard():
     """API: Liefert aktuelles Leaderboard (recent + alltime) und Basis-Stats."""
-    def read_json(path: Path, default):
-        if path.exists():
-            try:
-                return json.loads(path.read_text(encoding="utf-8"))
-            except Exception:
-                return default
-        return default
-
-    def write_json_if_changed(path: Path, original_list, new_list):
-        try:
-            # Nur schreiben, wenn sich Inhalt spürbar ändert (Länge oder Reihenfolge/Einträge)
-            if json.dumps(original_list, sort_keys=True) != json.dumps(new_list, sort_keys=True):
-                path.write_text(json.dumps(new_list, ensure_ascii=False, indent=2), encoding="utf-8")
-        except Exception:
-            # Schreibfehler still ignorieren – Anzeige funktioniert trotzdem
-            pass
-
-    def parse_ts(s: str) -> datetime | None:
-        """
-        Robust: ISO-8601 mit oder ohne Zeitzone.
-        - '2025-08-31T16:13:55.151287+00:00' -> aware (ok)
-        - '2025-08-31T16:13:55.151287Z'      -> ersetze Z durch +00:00
-        - '2025-08-31T16:13:55'              -> naiv -> als UTC interpretieren
-        """
-        if not isinstance(s, str) or not s:
-            return None
-        try:
-            if s.endswith("Z"):
-                s = s[:-1] + "+00:00"
-            dt = datetime.fromisoformat(s)
-            if dt.tzinfo is None:
-                # naive → als UTC interpretieren
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt.astimezone(timezone.utc)
-        except Exception:
-            return None
-
     # Rohdaten lesen (neues Schema: {normal:[...], hc:[...]}, aber alte Liste weiterhin unterstützen)
-    recent_raw  = read_json(RECENT_FILE, {"normal": [], "hc": []})
-    alltime_raw = read_json(ALLTIME_FILE, {"normal": [], "hc": []})
-    stats_raw   = read_json(STATS_FILE, {"games_played": 0})
+    recent_raw  = _read_json_file(RECENT_FILE, {"normal": [], "hc": []})
+    alltime_raw = _read_json_file(ALLTIME_FILE, {"normal": [], "hc": []})
+    shame_raw   = _read_json_file(SHAME_FILE, {"recent": [], "alltime": []})
+    last_raw    = _read_json_file(LAST_GAMES_FILE, [])
+    stats_raw   = _read_json_file(STATS_FILE, {"games_played": 0})
 
     # --- Cleanup "recent": nur letzte 7 Tage, sortiert, Top-10 ---
     now_utc = datetime.now(timezone.utc)
-    cutoff  = now_utc - timedelta(days=7)
+    recent_cutoff = now_utc - timedelta(days=7)
+    shame_cutoff = now_utc - timedelta(days=10)
 
-    def valid_entry(e: dict) -> bool:
-        try:
-            # Pflichtfelder prüfen
-            if not isinstance(e, dict):
-                return False
-            ts = parse_ts(e.get("ts"))
-            if ts is None or ts < cutoff:
-                return False
-            # points als int interpretieren; ungültige rauswerfen
-            _ = int(e.get("points", 0))
-            return True
-        except Exception:
-            return False
-
-    def as_dual_lists(raw):
-        if isinstance(raw, dict):
-            return list(raw.get("normal", []) or []), list(raw.get("hc", []) or [])
-        # legacy: plain list -> normal, hc leer
-        return list(raw or []), []
-
-    recent_norm, recent_hc = as_dual_lists(recent_raw)
-    alltime_norm, alltime_hc = as_dual_lists(alltime_raw)
+    recent_norm, recent_hc = _as_dual_lists(recent_raw)
+    alltime_norm, alltime_hc = _as_dual_lists(alltime_raw)
+    shame_recent, shame_alltime = _as_shame_lists(shame_raw)
 
     def process_recent(lst):
-        out = [e for e in (lst or []) if valid_entry(e)]
+        out = [e for e in (lst or []) if _valid_entry_since(e, recent_cutoff)]
         out.sort(key=lambda x: int(x.get("points", 0)), reverse=True)
+        return out[:10]
+
+    def process_shame_recent(lst):
+        out = [e for e in (lst or []) if _valid_entry_since(e, shame_cutoff) and not bool(e.get("hardcore"))]
+        out.sort(key=lambda x: int(x.get("points", 0)))
+        return out[:10]
+
+    def process_shame_alltime(lst):
+        out = [e for e in (lst or []) if _valid_entry_since(e) and not bool(e.get("hardcore"))]
+        out.sort(key=lambda x: int(x.get("points", 0)))
+        return out[:10]
+
+    def process_last_games(lst):
+        out = [e for e in (lst or []) if _valid_entry_since(e)]
+        out.sort(key=lambda x: _entry_ts(x) or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
         return out[:10]
 
     recent_norm_f = process_recent(recent_norm)
     recent_hc_f   = process_recent(recent_hc)
+    shame_recent_f = process_shame_recent(shame_recent)
+    shame_alltime_f = process_shame_alltime(shame_alltime)
+    last_games_f = process_last_games(last_raw if isinstance(last_raw, list) else [])
 
     # Optional: Datei aktualisieren, falls sich etwas geändert hat (idempotent)
-    write_json_if_changed(RECENT_FILE, recent_raw or {}, {"normal": recent_norm_f, "hc": recent_hc_f})
+    _write_json_if_changed(RECENT_FILE, recent_raw or {}, {"normal": recent_norm_f, "hc": recent_hc_f})
 
     # Alltime: falls Legacy-Format, jetzt in Bucket-Format persistieren (Migration)
-    write_json_if_changed(ALLTIME_FILE, alltime_raw or {}, {"normal": alltime_norm, "hc": alltime_hc})
+    _write_json_if_changed(ALLTIME_FILE, alltime_raw or {}, {"normal": alltime_norm, "hc": alltime_hc})
+    _write_json_if_changed(SHAME_FILE, shame_raw or {}, {"recent": shame_recent_f, "alltime": shame_alltime_f})
+    _write_json_if_changed(LAST_GAMES_FILE, last_raw or [], last_games_f)
 
     return {
         "recent": {"normal": recent_norm_f, "hc": recent_hc_f},
         "alltime": {"normal": alltime_norm or [], "hc": alltime_hc or []},
+        "shame": {"recent": shame_recent_f, "alltime": shame_alltime_f},
+        "last_games": last_games_f,
         "stats": stats_raw
     }
 
@@ -1157,7 +1190,7 @@ def api_game_from_leaderboard(game_id: str):
             # neu: {"normal": [...], "hc": [...]} ⇒ beide Buckets zusammenführen
             if isinstance(data, dict):
                 out = []
-                for k in ("normal", "hc"):
+                for k in ("normal", "hc", "recent", "alltime", "games"):
                     arr = data.get(k)
                     if isinstance(arr, list):
                         out.extend(arr)
@@ -1192,8 +1225,8 @@ def api_game_from_leaderboard(game_id: str):
             "scoreboards": scoreboards,
         }
 
-    # Reihenfolge: recent -> alltime
-    for path in (RECENT_FILE, ALLTIME_FILE):
+    # Reihenfolge: Top-Listen zuerst, danach Zusatzlisten mit eigenen Dateien.
+    for path in (RECENT_FILE, ALLTIME_FILE, SHAME_FILE, LAST_GAMES_FILE):
         entries = _read_list(path)
         for e in entries:
             proj = _project(e)
@@ -1466,9 +1499,12 @@ def _finalize_and_log_results(g: GameDict):
 
     entry_time = datetime.now(timezone.utc).isoformat()
     game_name = g["_name"]
+    snapshot_fields = _build_leaderboard_snapshot_fields(g)
 
     entries_for_recent = []
     entries_for_alltime = []
+    entries_for_shame = []
+    entries_for_last_games = []
 
     if mode == "2v2":
         teams = g.get("_teams", {})
@@ -1501,10 +1537,23 @@ def _finalize_and_log_results(g: GameDict):
             "diff": diff
         }
         # Snapshot-Felder direkt an den Eintrag hängen
-        rec.update(_build_leaderboard_snapshot_fields(g))
+        rec.update(snapshot_fields)
+
+        shame_rec = {
+            "ts": entry_time,
+            "points": lt_total,
+            "name": losers,
+            "gamename": game_name,
+            "opponent": winners,
+            "opp_points": wt_total,
+            "diff": diff
+        }
+        shame_rec.update(snapshot_fields)
 
         entries_for_recent.append(rec)
         entries_for_alltime.append(dict(rec))  # eigene Kopie
+        entries_for_shame.append(shame_rec)
+        entries_for_last_games.append(dict(rec))
     else:
         ordered = sorted(players, key=lambda p: totals.get(p["id"], 0), reverse=True)
         if not ordered:
@@ -1520,6 +1569,11 @@ def _finalize_and_log_results(g: GameDict):
             opp_name = "-"
             opp_pts = 0
             diff = winner_pts
+        worst = ordered[-1]
+        worst_pts = totals.get(worst["id"], 0)
+        shame_opp_name = winner["name"] if len(ordered) >= 2 else "-"
+        shame_opp_pts = winner_pts if len(ordered) >= 2 else 0
+        shame_diff = shame_opp_pts - worst_pts if len(ordered) >= 2 else worst_pts
         rec = {
             "ts": entry_time,
             "points": winner_pts,
@@ -1530,10 +1584,23 @@ def _finalize_and_log_results(g: GameDict):
             "diff": diff
         }
         # Snapshot-Felder direkt an den Eintrag hängen
-        rec.update(_build_leaderboard_snapshot_fields(g))
+        rec.update(snapshot_fields)
+
+        shame_rec = {
+            "ts": entry_time,
+            "points": worst_pts,
+            "name": worst["name"],
+            "gamename": game_name,
+            "opponent": shame_opp_name,
+            "opp_points": shame_opp_pts,
+            "diff": shame_diff
+        }
+        shame_rec.update(snapshot_fields)
 
         entries_for_recent.append(rec)
         entries_for_alltime.append(dict(rec))  # eigene Kopie
+        entries_for_shame.append(shame_rec)
+        entries_for_last_games.append(dict(rec))
 
     # Einträge dem passenden Bucket (normal/hc) zuordnen
     is_hc = bool(g.get("_hardcore", False))
@@ -1576,8 +1643,39 @@ def _finalize_and_log_results(g: GameDict):
         data[bucket] = data[bucket][:10]
         return data
 
+    def mutate_shame(data):
+        if not isinstance(data, dict):
+            data = {"recent": [], "alltime": list(data or [])}
+        for k in ("recent", "alltime"):
+            if not isinstance(data.get(k), list):
+                data[k] = []
+        if is_hc:
+            return data
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=10)
+        kept_recent = [x for x in data["recent"] if _valid_entry_since(x, cutoff) and not bool(x.get("hardcore"))]
+        data["recent"] = kept_recent + entries_for_shame
+        data["recent"].sort(key=lambda x: int(x.get("points", 0)))
+        data["recent"] = data["recent"][:10]
+
+        data["alltime"] = [x for x in data["alltime"] if _valid_entry_since(x) and not bool(x.get("hardcore"))]
+        data["alltime"] = data["alltime"] + entries_for_shame
+        data["alltime"].sort(key=lambda x: int(x.get("points", 0)))
+        data["alltime"] = data["alltime"][:10]
+        return data
+
+    def mutate_last_games(data):
+        if not isinstance(data, list):
+            data = []
+        data = [x for x in data if _valid_entry_since(x)] + entries_for_last_games
+        data.sort(key=lambda x: _entry_ts(x) or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+        return data[:10]
+
     _append_json(RECENT_FILE, mutate_recent)
     _append_json(ALLTIME_FILE, mutate_alltime)
+    if not is_hc:
+        _append_json(SHAME_FILE, mutate_shame)
+    _append_json(LAST_GAMES_FILE, mutate_last_games)
     _mutate_stats(incr_games=True)
 
 def _compute_results_for_snapshot(g: GameDict):

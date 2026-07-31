@@ -651,6 +651,9 @@ tr.grp-top td, tr.grp-bottom td, tr.grp-diff td{ border-left:1px solid var(--bor
 .leaderboard-box th:last-child, .leaderboard-box td:last-child{ border-right:0; }
 .leaderboard-box tbody tr:last-child td{ border-bottom:0; }
 .leaderboard-box thead th{ background:#edf2f8; font-weight:800; color:#42516a; }
+.leaderboard-box.wide{ grid-column:1 / -1; }
+.leaderboard-box tbody tr.hc-entry td{ background:#fff4d8; }
+.leaderboard-box tbody tr.hc-entry:hover td{ background:#ffedbd; }
 
 /* Chips */
 #playerChips, #roomStatusLine, .top-chips, .chips, .players-inline{ display:inline-flex; flex-wrap:wrap; align-items:center; gap:.45rem .55rem; width:auto; max-width:100%; }
