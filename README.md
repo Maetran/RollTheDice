@@ -41,6 +41,10 @@ docker compose up -d --build
 
 Game data is stored in `./data` and is preserved across rebuilds.
 
+Production deployment details, including the IONOS SSH target and mandatory
+leaderboard backup rules, are documented in `docs/DEPLOYMENT.md`. Use
+`scripts/deploy_zdwa.sh` for the guarded production deploy.
+
 ## Local Development
 
 ```bash
