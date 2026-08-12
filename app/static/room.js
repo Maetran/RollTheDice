@@ -17,7 +17,7 @@
 */
 // Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions)
 
-import { initChat, addChatMessage } from "./chat.js?v=2";
+import { initChat, addChatMessage } from "./chat.js?v=4";
 
 (() => {
   // ---------- Helpers ----------
@@ -164,10 +164,14 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
   let rollAnimationTimer = null;
   let rollAnimationUntil = 0;
   let rollAnimationIndices = [];
+  let chatHistorySeeded = false;
+  let lastSuperadminSnapshotActive = false;
   const DEBUG_P_HOTKEY = false; // optionaler Debug-Hotkey "p" -> Poker/Free
 
   // UI-State für die Ansage-Auswahl per Button oder Hotkey.
   let announcePickMode = false;
+  let superadminState = { active: false, boardId: null, draft: {} };
+  let superadminTapState = { boardId: null, count: 0, lastTs: 0 };
 
   // Steuerung der Sichtbarkeit des Wuerfeln-Buttons im Ansage-Pick-Mode.
   // Wichtig: Wir verwenden `visibility:hidden` (nicht `display:none`),
@@ -372,6 +376,7 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
   function getRollAvailability(snapshot){
     if (IS_SPECTATOR) return { usable:false, reason:"Zuschauer können nicht würfeln", code:"spectator" };
     if (!snapshot || snapshot._finished) return { usable:false, reason:"Spiel ist nicht aktiv", code:"inactive" };
+    if (snapshot?._superadmin_active) return { usable:false, reason:"Während Superadmin-Edit gesperrt", code:"superadmin" };
     const turn = snapshot?._turn || null;
     const iAmTurn = turn && String(turn.player_id) === String(myId);
     if (!iAmTurn) return { usable:false, reason:"Nicht an der Reihe", code:"not_turn" };
@@ -391,6 +396,7 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
   function getAnnounceAvailability(snapshot){
     if (IS_SPECTATOR) return { usable:false, reason:"Zuschauer können nicht ansagen", mode:"announce" };
     if (!snapshot || snapshot._finished) return { usable:false, reason:"Spiel ist nicht aktiv", mode:"announce" };
+    if (snapshot?._superadmin_active) return { usable:false, reason:"Während Superadmin-Edit gesperrt", mode:"announce" };
     if (snapshot?._hardcore) return { usable:false, reason:"Ansage ist im Hardcore-Modus deaktiviert", mode:"announce" };
     const announced = snapshot?._announced_row4 || null;
     const mode = announced ? "unannounce" : "announce";
@@ -437,6 +443,26 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
 
       scheduleRollAvailabilityRefresh();
     }catch{}
+  }
+
+  function renderSuperadminLockNotice(snapshot){
+    try {
+      let el = document.getElementById("superadminLockNotice");
+      if (!snapshot?._superadmin_active) {
+        if (el) el.remove();
+        return;
+      }
+      const score = document.querySelector("#scoreOut");
+      if (!score) return;
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "superadminLockNotice";
+        el.className = "superadmin-lock-notice";
+        const anchor = score.querySelector(".suggestions-area") || score.querySelector(".players-grid");
+        score.insertBefore(el, anchor || score.firstChild);
+      }
+      el.textContent = "Superadmin-Edit aktiv: Würfeln, Halten, Ansagen und Schreiben sind pausiert.";
+    } catch {}
   }
 
   function scheduleAutoRollRetry(snapshot){
@@ -571,6 +597,9 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
       // Fehler
       if (msg.error) {
         console.warn("Serverfehler:", msg.error);
+        if (superadminState.active || /superadmin/i.test(String(msg.error || ""))) {
+          alert(msg.error);
+        }
         if (rollRequestPending) {
           clearPendingRoll();
           clearRollAnimation();
@@ -586,10 +615,30 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
         }
       }
 
+      if (msg.superadmin && msg.superadmin.active) {
+        superadminState = { active: true, boardId: String(msg.superadmin.board_id || ""), draft: {} };
+        applySuperadminUiState();
+      }
+      if (msg.superadmin && msg.superadmin.saved) {
+        superadminState.draft = {};
+        applySuperadminUiState();
+      }
+      if (msg.superadmin && msg.superadmin.active === false) {
+        superadminState = { active: false, boardId: null, draft: {} };
+        resetAfterSuperadminExit({ scrollTop: false });
+      }
+
       // Scoreboard-Update
       if (msg.scoreboard) {
+        const wasSuperadminActive = lastSuperadminSnapshotActive;
         sb = msg.scoreboard;
+        const isSuperadminActive = !!sb?._superadmin_active;
+        lastSuperadminSnapshotActive = isSuperadminActive;
+        seedChatHistoryFromSnapshot(sb);
         renderFromSnapshot(sb);
+        if (wasSuperadminActive && !isSuperadminActive) {
+          resetAfterSuperadminExit({ scrollTop: true });
+        }
 
         // Spielende
         if (sb && sb._finished) {
@@ -670,7 +719,7 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
         const sender = msg.chat.sender || "???";
         const text = msg.chat.text || "";
         if (text) {
-          addChatMessage(sender, text, { ts: msg.chat.ts });
+          addChatMessage(sender, text, { ts: msg.chat.ts, kind: msg.chat.kind });
           const ownIds = [myId, mySpectatorId ? `S-${mySpectatorId}` : null].filter(Boolean).map(String);
           const isOwn = msg.chat.from_id && ownIds.includes(String(msg.chat.from_id));
           if (!isOwn && window.emojiUI && typeof window.emojiUI.handleChat === "function") {
@@ -691,7 +740,7 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
       }
 
       if (Array.isArray(msg.chat_history)) {
-        msg.chat_history.forEach(m => { if (m?.text) addChatMessage(m.sender || "???", m.text); });
+        msg.chat_history.forEach(m => { if (m?.text) addChatMessage(m.sender || "???", m.text, { ts: m.ts, kind: m.kind }); });
       }
     });
 
@@ -705,6 +754,18 @@ import { initChat, addChatMessage } from "./chat.js?v=2";
     });
   }
   connect();
+
+  function seedChatHistoryFromSnapshot(snapshot){
+    try {
+      if (chatHistorySeeded) return;
+      chatHistorySeeded = true;
+      const hist = Array.isArray(snapshot?._chat_history) ? snapshot._chat_history : [];
+      if (!hist.length) return;
+      hist.forEach(m => {
+        if (m && m.text) addChatMessage(m.sender || "???", m.text, { ts: m.ts, kind: m.kind });
+      });
+    } catch {}
+  }
 
   // ---------- Render & Events ----------
 /**
@@ -737,6 +798,7 @@ function renderFromSnapshot(snapshot) {
 
     wireDiceBar();
     wireGridClicks();
+    applySuperadminUiState();
     ensureKeybindings(); // alle Hotkeys hier
 
     // --- Auto-Beenden des Pick-Modes außerhalb des Fensters ---
@@ -754,6 +816,7 @@ function renderFromSnapshot(snapshot) {
 
     // Ansage-/Würfeln-Buttons aus demselben Benutzbarkeitsmodell setzen.
     syncActionButtons(snapshot);
+    renderSuperadminLockNotice(snapshot);
 
     // Hinweiszeile (falls vorhanden)
     try{
@@ -880,9 +943,7 @@ function renderFromSnapshot(snapshot) {
 
         const grid0 = document.querySelector("#scoreOut .players-grid");
         const target0 = grid0 ? grid0.querySelector(".player-card.turn") : null;
-        if (grid0 && target0 && typeof target0.scrollIntoView === "function") {
-          target0.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
-        }
+        scrollGridToCard(grid0, target0, "smooth");
         return;
       }
 
@@ -905,9 +966,7 @@ function renderFromSnapshot(snapshot) {
 
           const grid = document.querySelector("#scoreOut .players-grid");
           const target = grid ? grid.querySelector(".player-card.turn") : null;
-          if (grid && target && typeof target.scrollIntoView === "function") {
-            target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
-          }
+          scrollGridToCard(grid, target, "smooth");
           _pendingFollowTimer = null;
         }, 1000);
       }
@@ -917,6 +976,18 @@ function renderFromSnapshot(snapshot) {
       _lastFilledCount = filledNow;
 
     } catch {}
+  }
+
+  function scrollGridToCard(grid, card, behavior = "smooth"){
+    try {
+      if (!grid || !card) return;
+      const gridRect = grid.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      const left = grid.scrollLeft + cardRect.left - gridRect.left;
+      grid.scrollTo({ left: Math.max(0, left), behavior });
+    } catch {
+      try { if (grid && card) grid.scrollLeft = card.offsetLeft; } catch {}
+    }
   }
 
   // --- Write-Detection: Anzahl gefuellter beschreibbarer Zellen ---
@@ -1057,6 +1128,12 @@ function renderFromSnapshot(snapshot) {
     }
 
     $$("#diceBar .die", mount).forEach(btn => {
+      if (sb?._superadmin_active) {
+        btn.disabled = true;
+        btn.title = "Während Superadmin-Edit gesperrt";
+        btn.classList.remove("shaking");
+        return;
+      }
       if (btn._holdBound) return;
       btn._holdBound = true;
       btn.addEventListener("click", () => {
@@ -1107,6 +1184,12 @@ function renderFromSnapshot(snapshot) {
 
     mount.addEventListener("click", (e) => {
       if (IS_SPECTATOR) return;
+      const totalEl = e.target.closest(".pc-total");
+      if (totalEl && handleSuperadminTap(totalEl)) return;
+
+      if (superadminState.active && handleSuperadminEditClick(e)) return;
+      if (sb?._superadmin_active) return;
+
       const td = e.target.closest("td.cell.clickable");
       if (!td) return;
       const card = td.closest(".player-card");
@@ -1243,6 +1326,240 @@ function renderFromSnapshot(snapshot) {
         safeSend(ws, { action: "write_field", row, field });
       }
     });
+  }
+
+  function handleSuperadminTap(totalEl){
+    try {
+      const card = totalEl.closest(".player-card");
+      const boardId = card ? String(card.dataset.boardId || "") : "";
+      if (!boardId) return false;
+
+      const now = Date.now();
+      if (superadminTapState.boardId !== boardId || now - superadminTapState.lastTs > 2500) {
+        superadminTapState = { boardId, count: 1, lastTs: now };
+      } else {
+        superadminTapState.count += 1;
+        superadminTapState.lastTs = now;
+      }
+
+      if (superadminTapState.count >= 10) {
+        superadminTapState = { boardId: null, count: 0, lastTs: 0 };
+        const code = prompt("Superadmin-Code");
+        if (code === null) return true;
+        safeSend(ws, { action: "superadmin_activate", code: String(code), board_id: boardId });
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function handleSuperadminEditClick(e){
+    try {
+      const td = e.target.closest("td.cell[data-row][data-field]");
+      if (!td) return false;
+      const card = td.closest(".player-card");
+      const boardId = card ? String(card.dataset.boardId || "") : "";
+      if (!boardId || boardId !== String(superadminState.boardId || "")) return false;
+      if (td.classList.contains("compute")) return true;
+
+      const row = Number(td.getAttribute("data-row"));
+      const field = td.getAttribute("data-field");
+      if (!Number.isFinite(row) || !field) return true;
+
+      const key = `${row},${field}`;
+      const board = getSnapshotBoard(superadminState.boardId);
+      const hasOriginal = Object.prototype.hasOwnProperty.call(board, key);
+      const original = hasOriginal ? String(board[key]) : "";
+      const existingDraft = superadminState.draft[key];
+      const current = existingDraft
+        ? (existingDraft.delete ? "" : String(existingDraft.value))
+        : original;
+      const promptText = hasOriginal
+        ? "Neuer Wert. Leer lassen, um dieses Feld zu löschen."
+        : "Wert für leeres Feld. Speichern ist nur mit gleichzeitiger Löschung möglich.";
+      const next = prompt(promptText, current || (hasOriginal ? "" : "0"));
+      if (next === null) return true;
+
+      const trimmed = String(next).trim();
+      if (trimmed === "") {
+        if (!hasOriginal) {
+          alert("Ein leeres Feld kann nicht gelöscht werden.");
+          return true;
+        }
+        superadminState.draft[key] = { row, field, value: null, delete: true };
+      } else {
+        const value = Number(trimmed);
+        if (!Number.isInteger(value) || value < 0 || value > 9999) {
+          alert("Bitte eine ganze Zahl zwischen 0 und 9999 eingeben.");
+          return true;
+        }
+        if (hasOriginal && String(value) === original) {
+          delete superadminState.draft[key];
+        } else {
+          superadminState.draft[key] = { row, field, value, delete: false };
+        }
+      }
+      applySuperadminUiState();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function applySuperadminUiState(){
+    try {
+      document.body.classList.toggle("superadmin-active", !!superadminState.active);
+      $$(".player-card").forEach(card => {
+        const isTarget = superadminState.active && String(card.dataset.boardId || "") === String(superadminState.boardId || "");
+        card.classList.toggle("admin-target", !!isTarget);
+      });
+      renderSuperadminToolbar();
+      applySuperadminDraftPreview();
+    } catch {}
+  }
+
+  function getSnapshotBoard(boardId){
+    const bid = String(boardId || "");
+    const mode = String(sb?._mode || "").toLowerCase();
+    if (mode === "2v2") return (sb?._scoreboards_by_team?.[bid]) || {};
+    return (sb?._scoreboards?.[bid]) || {};
+  }
+
+  function adminDraftEntries(){
+    return Object.values(superadminState.draft || {});
+  }
+
+  function validateAdminDraftClient(){
+    const changes = adminDraftEntries();
+    if (!changes.length) return "Keine Änderungen vorhanden.";
+    const board = getSnapshotBoard(superadminState.boardId);
+    const deletes = changes.filter(c => c.delete);
+    const writes = changes.filter(c => !c.delete);
+    if (deletes.length) {
+      const emptyWrites = writes.filter(c => !Object.prototype.hasOwnProperty.call(board, `${c.row},${c.field}`));
+      const existingWrites = writes.filter(c => Object.prototype.hasOwnProperty.call(board, `${c.row},${c.field}`));
+      if (existingWrites.length) return "Beim Löschen dürfen nur leere Felder neu beschrieben werden.";
+      if (deletes.length !== emptyWrites.length) return "Jede Löschung braucht genau ein neu beschriebenes leeres Feld.";
+    } else {
+      const emptyWrites = writes.filter(c => !Object.prototype.hasOwnProperty.call(board, `${c.row},${c.field}`));
+      if (emptyWrites.length) return "Leere Felder dürfen nur zusammen mit einer Löschung beschrieben werden.";
+    }
+    return "";
+  }
+
+  function saveSuperadminDraft(){
+    const validation = validateAdminDraftClient();
+    if (validation) {
+      alert(validation);
+      return;
+    }
+    safeSend(ws, {
+      action: "superadmin_save",
+      board_id: superadminState.boardId,
+      changes: adminDraftEntries(),
+    });
+  }
+
+  function discardSuperadminDraft(){
+    superadminState.draft = {};
+    applySuperadminUiState();
+  }
+
+  function exitSuperadminMode(){
+    if (adminDraftEntries().length && !confirm("Ungespeicherte Änderungen verwerfen?")) return;
+    superadminState = { active: false, boardId: null, draft: {} };
+    resetAfterSuperadminExit({ scrollTop: false });
+    safeSend(ws, { action: "superadmin_deactivate" });
+  }
+
+  function resetAfterSuperadminExit({ scrollTop = true } = {}){
+    try {
+      superadminState = { active: false, boardId: null, draft: {} };
+      document.body.classList.remove("superadmin-active", "chat-open");
+      document.documentElement.classList.remove("chat-open");
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+
+      const chatPanel = document.getElementById("chatPanel");
+      const chatToggle = document.getElementById("chatToggle");
+      const chatBackdrop = document.getElementById("chatBackdrop");
+      if (chatPanel) chatPanel.classList.remove("open");
+      if (chatToggle) chatToggle.setAttribute("aria-expanded", "false");
+      if (chatBackdrop) chatBackdrop.hidden = true;
+
+      const bar = document.getElementById("superadminBar");
+      if (bar) bar.remove();
+      const notice = document.getElementById("superadminLockNotice");
+      if (notice) notice.remove();
+      $$(".admin-target").forEach(el => el.classList.remove("admin-target"));
+      $$(".admin-draft").forEach(td => td.classList.remove("admin-draft", "admin-draft-delete"));
+
+      if (scrollTop) {
+        requestAnimationFrame(() => {
+          try {
+            const grid = document.querySelector("#scoreOut .players-grid");
+            if (grid) grid.scrollLeft = 0;
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+            window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+          } catch {}
+        });
+      }
+    } catch {}
+  }
+
+  function renderSuperadminToolbar(){
+    let bar = document.getElementById("superadminBar");
+    if (!superadminState.active) {
+      if (bar) bar.remove();
+      return;
+    }
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = "superadminBar";
+      bar.className = "superadmin-bar";
+      bar.innerHTML = `
+        <span class="superadmin-bar-label"></span>
+        <button id="superadminSave" class="small primary" type="button">Speichern</button>
+        <button id="superadminDiscard" class="small" type="button">Verwerfen</button>
+        <button id="superadminExit" class="small ghost" type="button">Beenden</button>
+      `;
+      document.body.appendChild(bar);
+      bar.querySelector("#superadminSave").addEventListener("click", saveSuperadminDraft);
+      bar.querySelector("#superadminDiscard").addEventListener("click", discardSuperadminDraft);
+      bar.querySelector("#superadminExit").addEventListener("click", exitSuperadminMode);
+    }
+    const count = adminDraftEntries().length;
+    const label = bar.querySelector(".superadmin-bar-label");
+    if (label) label.textContent = `Superadmin aktiv • ${count} Änderung${count === 1 ? "" : "en"}`;
+    const saveBtn = bar.querySelector("#superadminSave");
+    const discardBtn = bar.querySelector("#superadminDiscard");
+    if (saveBtn) saveBtn.disabled = count === 0;
+    if (discardBtn) discardBtn.disabled = count === 0;
+  }
+
+  function applySuperadminDraftPreview(){
+    $$(".admin-draft").forEach(td => td.classList.remove("admin-draft", "admin-draft-delete"));
+    if (!superadminState.active) return;
+    const card = document.querySelector(`.player-card[data-board-id="${cssEscape(superadminState.boardId)}"]`);
+    if (!card) return;
+    adminDraftEntries().forEach(change => {
+      const td = card.querySelector(`td.cell[data-row="${change.row}"][data-field="${cssEscape(change.field)}"]`);
+      if (!td) return;
+      td.classList.add("admin-draft");
+      if (change.delete) {
+        td.classList.add("admin-draft-delete");
+        td.textContent = "";
+      } else {
+        td.textContent = String(change.value);
+      }
+    });
+  }
+
+  function cssEscape(value){
+    if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(String(value));
+    return String(value).replace(/["\\]/g, "\\$&");
   }
 
   // ---------- Hotkeys ----------

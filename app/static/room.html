@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <title>RollTheDice – Spiel</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <!--
     room.html – Spielraum
     ---------------------
@@ -13,7 +13,7 @@
     - room.js verbindet per WebSocket, orchestriert UI, Chat und Korrekturmodus
     - Ein schlanker Header bietet Reactions, Regeln-Link und Zurück-zur-Lobby
   -->
-  <link rel="stylesheet" href="/static/style.css?v=31">
+  <link rel="stylesheet" href="/static/style.css?v=38">
 </head>
 <body class="room-page">
   <!-- Header: Desktop-Reactions, Regeln, Zurück zur Lobby -->
@@ -28,19 +28,30 @@
   <div id="scoreOut"></div>
 
   <!-- Chat-Bereich: Eingabe und Verlauf (durch room.js verdrahtet) -->
+  <div id="chatBackdrop" class="chat-backdrop" hidden></div>
   <div id="chatPanel" class="chat-panel">
-    <h3>Chat</h3>
-    <div class="chat-input-row">
-      <input id="chatInput" type="text" placeholder="Nachricht eingeben …">
-      <button id="chatSend">Senden</button>
+    <button id="chatToggle" class="chat-toggle" type="button" aria-expanded="false" aria-controls="chatContent">
+      <span>Chat</span>
+      <span id="chatToggleCount" class="chat-toggle-count" hidden>0</span>
+      <span class="chat-toggle-icon" aria-hidden="true">⌃</span>
+    </button>
+    <div id="chatContent" class="chat-content">
+      <div class="chat-head">
+        <h3>Chat</h3>
+        <button id="chatClose" class="small ghost chat-close" type="button" aria-label="Chat schließen">×</button>
+      </div>
+      <div class="chat-input-row">
+        <input id="chatInput" type="text" placeholder="Nachricht eingeben …">
+        <button id="chatSend">Senden</button>
+      </div>
+      <div id="chatBox" class="chat-box"></div>
     </div>
-    <div id="chatBox" class="chat-box"></div>
   </div>
 
   <!-- Scripts: zuerst scoreboard (Renderer), dann room (WS/Steuerung als ES-Modul) -->
-  <script src="/static/scoreboard.js?v=19" defer></script>
+  <script src="/static/scoreboard.js?v=22" defer></script>
   <script src="/static/emoji.js?v=5"></script>
-  <script type="module" src="room.js?v=10"></script>
+  <script type="module" src="room.js?v=15"></script>
   <script>
     // Service Worker registrieren (Root-Scope /sw.js)
     if ('serviceWorker' in navigator) {

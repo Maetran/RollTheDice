@@ -17,32 +17,30 @@
   <meta name="theme-color" content="#000000">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/static/favicon.png" sizes="32x32">
-  <link rel="stylesheet" href="/static/style.css?v=34">
+  <link rel="stylesheet" href="/static/style.css?v=38">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
   <div class="wrap lobby-shell">
     <header class="lobby-header">
-      <div class="brand-lockup">
-        <div class="logo">🎲</div>
-        <h1>Würfler – Lobby</h1>
+      <div class="brand-area">
+        <div class="brand-lockup">
+          <div class="logo">🎲</div>
+          <h1>Würfler – Lobby</h1>
+        </div>
+        <button class="small ghost rules-under-title" onclick="location.href='/static/rules.html'">Spielregeln</button>
       </div>
       <div class="stats">
-        <div class="stats-top">
-          <span>Würfelspiele beendet: <b id="gamesPlayed">0</b></span>
-          <button class="small ghost" onclick="location.href='/static/rules.html'">Spielregeln</button>
-        </div>
-        <div class="avg-stats">
-          <span class="avg-label">Durchschnittspunkte</span>
-          <span>Normale Spiele: <b id="avgNormalPoints">—</b><span id="avgNormalTrend" class="avg-trend avg-same">-</span></span>
-          <span>Hardcore Spiele: <b id="avgHardcorePoints">—</b><span id="avgHardcoreTrend" class="avg-trend avg-same">-</span></span>
-        </div>
+        <span>Würfelspiele beendet: <b id="gamesPlayed">0</b></span>
+        <span class="avg-label">Durchschnittspunkte</span>
+        <span>Normale Spiele: <b id="avgNormalPoints">—</b><span id="avgNormalTrend" class="avg-trend avg-same">-</span></span>
+        <span>Hardcore Spiele: <b id="avgHardcorePoints">—</b><span id="avgHardcoreTrend" class="avg-trend avg-same">-</span></span>
       </div>
     </header>
 
     <!-- 1) Wer bist du? – Name wird im LocalStorage gemerkt -->
     <div class="setup-grid">
-      <section class="card">
+      <section class="card setup-card">
         <h2>Spieler</h2>
         <div class="row">
           <input id="playerName" type="text" placeholder="Dein Name">
@@ -50,22 +48,23 @@
         </div>
       </section>
 
-      <!-- 2) Neues Spiel – Name/Modus/Passphrase, erzeugt via /api/games (POST) -->
-      <section class="card">
+      <!-- 2) Neues Spiel – Modus/Passphrase, erzeugt via /api/games (POST) -->
+      <section class="card setup-card">
         <h2>Neues Spiel</h2>
         <div class="row create-row">
-          <input id="gameName" type="text" placeholder="Spielname" value="Neues Spiel">
           <input id="passInput" type="text" placeholder="Passphrase">
-          <select id="gameMode" title="Spielmodus">
-            <option value="1">1 Spieler</option>
-            <option value="2">2 Spieler</option>
-            <option value="3">3 Spieler</option>
-            <option value="2v2">2 vs 2</option>
-          </select>
-          <label class="toggle-row">
-            <input id="hardcoreChk" type="checkbox">
-            <span class="hc-badge">Hardcore</span>
-          </label>
+          <div class="mode-hardcore-row">
+            <select id="gameMode" title="Spielmodus">
+              <option value="1">1 Spieler</option>
+              <option value="2">2 Spieler</option>
+              <option value="3">3 Spieler</option>
+              <option value="2v2">2 vs 2</option>
+            </select>
+            <label class="toggle-row">
+              <input id="hardcoreChk" type="checkbox">
+              <span class="hc-badge">Hardcore</span>
+            </label>
+          </div>
           <button id="createBtn">Erstellen &amp; beitreten</button>
         </div>
         <div id="createErr" class="muted small"></div>
@@ -74,21 +73,21 @@
 
     <!-- 3) Offene Spiele – noch nicht gestartete Spiele -->
     <section class="card">
-      <h2>Offene Spiele</h2>
-      <div class="row section-actions">
-        <button id="refreshBtn">Aktualisieren</button>
-        <span class="muted small">Klicke auf „Beitreten“, um in den Spielraum zu wechseln.</span>
+      <div class="section-title-row">
+        <h2>Offene Spiele</h2>
+        <button id="refreshBtn" class="small">Aktualisieren</button>
       </div>
+      <p class="muted small section-hint">Klicke auf „Beitreten“, um in den Spielraum zu wechseln.</p>
       <div id="gamesList" class="games"></div>
     </section>
 
     <!-- 3b) Laufende Spiele – beitreten als Zuschauer -->
     <section class="card">
-      <h2>Laufende Spiele</h2>
-      <div class="row section-actions">
-        <button id="refreshRunningBtn">Aktualisieren</button>
-        <span class="muted small">Klicke auf „Zuschauen“, um dem laufenden Spiel beizutreten (ohne Aktionen).</span>
+      <div class="section-title-row">
+        <h2>Laufende Spiele</h2>
+        <button id="refreshRunningBtn" class="small">Aktualisieren</button>
       </div>
+      <p class="muted small section-hint">Klicke auf „Zuschauen“, um dem laufenden Spiel beizutreten (ohne Aktionen).</p>
       <div id="runningList" class="games"></div>
     </section>
 
@@ -142,7 +141,6 @@
     const nameInput  = document.getElementById('playerName');
     const passInput  = document.getElementById('passInput');
     const modeSel    = document.getElementById('gameMode');
-    const gameInput  = document.getElementById('gameName');
     const createBtn  = document.getElementById('createBtn');
     const createErr  = document.getElementById('createErr');
     const listEl     = document.getElementById('gamesList');
@@ -377,8 +375,8 @@
     createBtn.addEventListener('click', async () => {
       createErr.textContent = '';
       const pname = (nameInput.value || 'Gast').trim() || 'Gast';
-      const gname = (gameInput.value || '').trim() || 'Neues Spiel';
       const mode  = modeSel.value || '2';
+      const gname = defaultGameName(pname, mode);
       localStorage.setItem(NAME_KEY, pname);
       try {
         const res = await fetch('/api/games', {
@@ -396,6 +394,11 @@
         createErr.textContent = `Fehler: ${String(e.message || e)}`;
       }
     });
+
+    function defaultGameName(playerName, mode){
+      const modeText = mode === "2v2" ? "2 vs 2" : `${mode || 2} Spieler`;
+      return `${modeText} · ${playerName}`;
+    }
 
     // Leaderboard laden
     async function loadLeaderboard() {

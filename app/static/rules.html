@@ -9,7 +9,7 @@
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi und Tastatursteuerung.
   -->
-  <link rel="stylesheet" href="/static/style.css?v=31" />
+  <link rel="stylesheet" href="/static/style.css?v=38" />
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
     .doc { max-width: 880px; margin: 1rem auto 2rem; padding: 0 1rem; }
@@ -77,18 +77,18 @@
       </thead>
       <tbody>
         <tr><td><strong>1 … 6</strong></td><td>Summe aller Würfel mit der jeweiligen Augenzahl.</td><td>Beispiel: bei drei 5ern → 15 Punkte.</td></tr>
-        <tr><td><strong>Max</strong></td><td>Summe aller fünf Würfel.</td><td>—</td></tr>
-        <tr><td><strong>Min</strong></td><td>Summe aller fünf Würfel.</td><td>—</td></tr>
-        <tr><td><strong>Diff</strong></td><td><code>Feld 1 × (Max − Min)</code>, nie unter 0.</td><td>Der Wert aus Feld 1 ist die Summe der gewürfelten Einsen.</td></tr>
-        <tr><td><strong>Kenter</strong></td><td><code>35</code> Punkte</td><td>Fünf unterschiedliche Würfel/Augen (beliebige Kombination, z. B. 1-3-4-5-6 oder 1-2-3-4-6).</td></tr>
-        <tr><td><strong>Full</strong></td><td><code>40 + 3×(Wert der Drilling-Augen)</code></td><td>3 gleiche + 2 gleiche <em>oder</em> 5 gleiche.</td></tr>
-        <tr><td><strong>Poker</strong></td><td><code>50 + 4×(Wert der gleichen Augen)</code></td><td>Vier oder fünf gleiche. In ⬇︎/／/⬆︎ zählen Punkte nur im ersten Vierlings-Wurf oder bei fünf Gleichen. Bei ❗+Poker-Ansage zählen Punkte in jedem späteren Wurf mit vier oder fünf gleichen.</td></tr>
+        <tr><td><strong>S</strong></td><td>Summe der Felder 1–6.</td><td>Automatisch berechnet.</td></tr>
+        <tr><td><strong>B</strong></td><td><code>+30</code> bei S ≥ 60, im Hardcore ab ≥ 40.</td><td>Bonus, automatisch berechnet.</td></tr>
+        <tr><td><strong>ZTO</strong></td><td>S + B.</td><td>Zwischentotal oben, automatisch berechnet.</td></tr>
+        <tr><td><strong>+</strong></td><td>Summe aller fünf Würfel.</td><td>Max-Feld.</td></tr>
+        <tr><td><strong>-</strong></td><td>Summe aller fünf Würfel.</td><td>Min-Feld.</td></tr>
+        <tr><td><strong>D</strong></td><td><code>Feld 1 × (Wert aus + minus Wert aus -)</code>, nie unter 0.</td><td>Differenz. Der Wert aus Feld 1 ist die Summe der gewürfelten Einsen.</td></tr>
+        <tr><td><strong>K</strong></td><td><code>35</code> Punkte</td><td>Kenter: fünf unterschiedliche Würfel/Augen, z. B. 1-3-4-5-6 oder 1-2-3-4-6.</td></tr>
+        <tr><td><strong>F</strong></td><td><code>40 + 3×(Wert der Drilling-Augen)</code></td><td>Full: 3 gleiche + 2 gleiche <em>oder</em> 5 gleiche.</td></tr>
+        <tr><td><strong>P</strong></td><td><code>50 + 4×(Wert der gleichen Augen)</code></td><td>Poker: vier oder fünf gleiche. In ⬇︎/／/⬆︎ zählen Punkte nur im ersten Vierlings-Wurf oder bei fünf Gleichen. Bei ❗+Poker-Ansage zählen Punkte in jedem späteren Wurf mit vier oder fünf gleichen.</td></tr>
         <tr><td><strong>60</strong></td><td><code>60 + 5×(Wert der Fünfling-Augen)</code></td><td>Fünf gleiche.</td></tr>
-        <tr><td><strong>ZwSumme</strong></td><td>Summe der Felder 1–6.</td><td>Automatisch berechnet.</td></tr>
-        <tr><td><strong>Bonus</strong></td><td><code>+30</code> bei ZwSumme ≥ 60, im Hardcore ab ≥ 40.</td><td>Automatisch berechnet.</td></tr>
-        <tr><td><strong>ZwTotalOben</strong></td><td>ZwSumme + Bonus.</td><td>Automatisch berechnet.</td></tr>
-        <tr><td><strong>ZwTotalUnten</strong></td><td>Kenter + Full + Poker + 60.</td><td>Automatisch berechnet.</td></tr>
-        <tr><td><strong>Reihentotal</strong></td><td>ZwTotalOben + Diff + ZwTotalUnten.</td><td>Pro Spalte (⬇︎／⬆︎/❗).</td></tr>
+        <tr><td><strong>ZTU</strong></td><td>K + F + P + 60.</td><td>Zwischentotal unten, automatisch berechnet.</td></tr>
+        <tr><td><strong>T</strong></td><td>ZTO + D + ZTU.</td><td>Reihentotal pro Spalte (⬇︎／⬆︎/❗).</td></tr>
       </tbody>
     </table>
 

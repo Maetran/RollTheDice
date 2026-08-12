@@ -168,6 +168,18 @@ KEY_TO_ROW = {v: k for k, v in WRITABLE_MAP.items()}
 WRITABLE_CELLS_PER_PLAYER = len(WRITABLE_ROWS) * 4  # 12*4 = 48
 WRITABLE_COLS = ("down", "free", "up", "ang")
 WRITABLE_FIELDS = set(KEY_TO_ROW.keys())
+SUPERADMIN_CODE = os.getenv("ROLLTHEDICE_SUPERADMIN_CODE", "4112")
+CHAT_HISTORY_LIMIT = 300
+SUPERADMIN_BLOCKED_ACTIONS = {
+    "set_hold",
+    "roll_dice",
+    "announce_row4",
+    "unannounce_row4",
+    "write_field",
+    "request_correction",
+    "cancel_correction",
+    "write_field_correction",
+}
 
 # --- Team-Mode Helpers (2v2: Spieler 1&3 = Team A, 2&4 = Team B) ---
 
@@ -214,6 +226,185 @@ def _ensure_board_for_actor(g: GameDict, pid: str) -> dict:
         team = board_key_for_actor(g, pid)
         return g.setdefault("_scoreboards_by_team", {}).setdefault(team, {})
     return g.setdefault("_scoreboards", {}).setdefault(pid, {})
+
+def _board_for_id(g: GameDict, board_id: str) -> dict:
+    """Liefert ein Board per Player- oder Team-ID."""
+    bid = str(board_id or "")
+    if is_team_mode(g):
+        return g.get("_scoreboards_by_team", {}).get(bid, {}) or {}
+    return g.get("_scoreboards", {}).get(bid, {}) or {}
+
+def _ensure_board_for_id(g: GameDict, board_id: str) -> dict:
+    """Liefert ein beschreibbares Board per Player- oder Team-ID."""
+    bid = str(board_id or "")
+    if is_team_mode(g):
+        return g.setdefault("_scoreboards_by_team", {}).setdefault(bid, {})
+    return g.setdefault("_scoreboards", {}).setdefault(bid, {})
+
+def _board_exists(g: GameDict, board_id: str) -> bool:
+    """Prüft, ob eine Board-ID in diesem Spiel existiert."""
+    bid = str(board_id or "")
+    if is_team_mode(g):
+        return bid in (g.get("_scoreboards_by_team", {}) or {})
+    return bid in (g.get("_scoreboards", {}) or {})
+
+def _board_display_name(g: GameDict, board_id: str) -> str:
+    """Menschenlesbarer Boardname für Admin- und Chatmeldungen."""
+    bid = str(board_id or "")
+    if is_team_mode(g):
+        return (g.get("_teams", {}).get(bid, {}) or {}).get("name") or f"Team {bid}"
+    return next((p.get("name", "Player") for p in g.get("_players", []) if str(p.get("id")) == bid), bid or "Board")
+
+def _player_name(g: GameDict, pid: str | None) -> str:
+    """Liefert den Namen eines Spielers anhand der ID."""
+    if not pid:
+        return "Spieler"
+    return next((p.get("name", "Player") for p in g.get("_players", []) if str(p.get("id")) == str(pid)), "Spieler")
+
+def _row_label_for_admin(row: int) -> str:
+    """Kurzlabel einer schreibbaren Zeile für Adminmeldungen."""
+    return {
+        0: "1", 1: "2", 2: "3", 3: "4", 4: "5", 5: "6",
+        9: "+", 10: "-", 12: "K", 13: "F", 14: "P", 15: "60",
+    }.get(int(row), str(row))
+
+def _col_label_for_admin(col: str) -> str:
+    """Kurzlabel einer Spalte für Adminmeldungen."""
+    return {
+        "down": "⬇︎",
+        "free": "／",
+        "up": "⬆︎",
+        "ang": "❗",
+    }.get(str(col), str(col))
+
+def _append_chat_history(g: GameDict, entry: dict) -> dict:
+    """Speichert eine begrenzte Chat-/Systemmeldung im Spielzustand."""
+    clean = {
+        "from_id": entry.get("from_id"),
+        "sender": str(entry.get("sender") or "System")[:80],
+        "text": str(entry.get("text") or "")[:400],
+        "ts": entry.get("ts") or datetime.now(timezone.utc).isoformat(),
+        "kind": str(entry.get("kind") or "chat")[:32],
+    }
+    hist = g.setdefault("_chat_history", [])
+    hist.append(clean)
+    if len(hist) > CHAT_HISTORY_LIMIT:
+        del hist[:-CHAT_HISTORY_LIMIT]
+    return clean
+
+async def broadcast_chat(g: GameDict, entry: dict) -> None:
+    """Persistiert und broadcastet eine Chatmeldung."""
+    clean = _append_chat_history(g, entry)
+    await broadcast(g, {"chat": clean})
+
+def apply_superadmin_changes(g: GameDict, player_id: str, board_id: str, changes: list[dict]) -> list[dict]:
+    """Validiert und schreibt einen Superadmin-Batch.
+
+    Erlaubte Modi:
+    - Bestehende Felder auf nichtnegative Ganzzahlen ändern.
+    - Gefüllte Felder löschen und gleich viele bisher leere Felder beschreiben.
+    """
+    if not _board_exists(g, board_id):
+      raise ValueError("Board nicht gefunden")
+    if not isinstance(changes, list) or not changes:
+      raise ValueError("Keine Änderungen vorhanden")
+    if len(changes) > 24:
+      raise ValueError("Zu viele Änderungen auf einmal")
+
+    board = _ensure_board_for_id(g, board_id)
+    normalized = []
+    seen_keys = set()
+
+    for item in changes:
+        if not isinstance(item, dict):
+            raise ValueError("Ungültige Änderung")
+        try:
+            row = int(item.get("row"))
+        except Exception as exc:
+            raise ValueError("Ungültige Zeile") from exc
+        col = str(item.get("field") or "")
+        if row not in WRITABLE_MAP or col not in WRITABLE_COLS:
+            raise ValueError("Dieses Feld ist nicht editierbar")
+        key = f"{row},{col}"
+        if key in seen_keys:
+            raise ValueError("Doppelte Änderung für dasselbe Feld")
+        seen_keys.add(key)
+
+        raw_value = item.get("value")
+        delete = bool(item.get("delete")) or raw_value is None or raw_value == ""
+        value = None
+        if not delete:
+            try:
+                value = int(raw_value)
+            except Exception as exc:
+                raise ValueError("Ungültiger Wert") from exc
+            if value < 0 or value > 9999:
+                raise ValueError("Wert ausserhalb des erlaubten Bereichs")
+        normalized.append({"row": row, "field": col, "key": key, "delete": delete, "value": value})
+
+    deletes = [c for c in normalized if c["delete"]]
+    writes = [c for c in normalized if not c["delete"]]
+
+    if deletes:
+        empty_writes = [c for c in writes if c["key"] not in board]
+        existing_writes = [c for c in writes if c["key"] in board]
+        if existing_writes:
+            raise ValueError("Beim Löschen dürfen nur leere Felder neu beschrieben werden")
+        if len(deletes) != len(empty_writes):
+            raise ValueError("Jede Löschung braucht genau ein neu beschriebenes leeres Feld")
+        for c in deletes:
+            if c["key"] not in board:
+                raise ValueError("Nur gefüllte Felder können gelöscht werden")
+    else:
+        for c in writes:
+            if c["key"] not in board:
+                raise ValueError("Leere Felder dürfen nur zusammen mit einer Löschung beschrieben werden")
+
+    now = datetime.now(timezone.utc).isoformat()
+    applied = []
+    edit_bucket = g.setdefault("_admin_edits", {}).setdefault(str(board_id), {})
+
+    for c in deletes:
+        old_raw = board.get(c["key"])
+        old_value = int(old_raw) if isinstance(old_raw, (int, float)) else 0
+        board.pop(c["key"], None)
+        meta = {
+            "row": c["row"],
+            "field": c["field"],
+            "old": old_value,
+            "new": None,
+            "by": player_id,
+            "by_name": _player_name(g, player_id),
+            "ts": now,
+        }
+        edit_bucket[c["key"]] = meta
+        applied.append(meta)
+
+    for c in writes:
+        old_raw = board.get(c["key"])
+        old_value = int(old_raw) if isinstance(old_raw, (int, float)) else None
+        board[c["key"]] = int(c["value"])
+        meta = {
+            "row": c["row"],
+            "field": c["field"],
+            "old": old_value,
+            "new": int(c["value"]),
+            "by": player_id,
+            "by_name": _player_name(g, player_id),
+            "ts": now,
+        }
+        edit_bucket[c["key"]] = meta
+        applied.append(meta)
+
+    return applied
+
+def superadmin_edit_active(g: GameDict) -> bool:
+    """True, solange mindestens ein Superadmin-Editmodus aktiv ist."""
+    return bool(g.get("_superadmins"))
+
+def action_blocked_by_superadmin(g: GameDict, action: str | None) -> bool:
+    """True, wenn eine Spielaktion während Superadmin-Edit pausiert werden muss."""
+    return superadmin_edit_active(g) and str(action or "") in SUPERADMIN_BLOCKED_ACTIONS
 
 def _clear_announcement(g: GameDict) -> None:
     """Setzt alle Ansage-Metadaten zurueck."""
@@ -292,6 +483,9 @@ def new_game(gid: str, name: str, mode) -> GameDict:
         "_last_write": {},                     # pid -> (row, col)
         "_last_dice": {},                      # pid -> [d1..d5]
         "_last_meta": {},                      # pid -> {"announced": ...}
+        "_chat_history": [],                   # gespeicherte Chat-/Systemmeldungen
+        "_superadmins": {},                    # pid -> {"board_id": ...}
+        "_admin_edits": {},                    # board_id -> {"row,col": meta}
     }
     games[gid] = g
     return g
@@ -855,6 +1049,8 @@ def snapshot(g: GameDict) -> dict:
             "_rolls_used": g["_rolls_used"],
             "_rolls_max": g["_rolls_max"],
             "_scoreboards": ({} if is_team_mode(g) else _serialize_scoreboards(g)),
+            "_admin_edits": g.get("_admin_edits", {}),
+            "_superadmin_active": superadmin_edit_active(g),
             "_announced_row4": g["_announced_row4"],
             "_announced_by": g.get("_announced_by"),            # player-id (Einzel/2/3 Spieler)
             "_announced_board": g.get("_announced_board"),      # board-id: team-id ("A"/"B") in 2v2, sonst player-id
@@ -886,6 +1082,7 @@ def snapshot(g: GameDict) -> dict:
             },
             "_has_last": {pid: bool(g["_last_write"].get(pid)) for pid in g["_scoreboards"].keys()},
             "_auto_single": _auto_single,
+            "_chat_history": list(g.get("_chat_history", []))[-CHAT_HISTORY_LIMIT:],
             # Serverseitig berechnete Vorschläge für den aktiven Spieler.
             "suggestions": compute_suggestions(g),
             # Optionales Poker-Debugging
@@ -1258,6 +1455,8 @@ def api_game_from_leaderboard(game_id: str):
             "hardcore": bool(entry.get("hardcore", False)),
             "players": players,
             "scoreboards": scoreboards,
+            "chat_history": entry.get("chat_history") if isinstance(entry.get("chat_history"), list) else [],
+            "admin_edits": entry.get("admin_edits") if isinstance(entry.get("admin_edits"), dict) else {},
         }
 
     # Reihenfolge: Top-Listen zuerst, danach Zusatzlisten mit eigenen Dateien.
@@ -1520,7 +1719,9 @@ def _build_leaderboard_snapshot_fields(g: GameDict) -> dict:
             "mode": mode,
             "hardcore": bool(g.get("_hardcore", False)),
             "players": players,
-            "scoreboards": scoreboards
+            "scoreboards": scoreboards,
+            "chat_history": list(g.get("_chat_history", []))[-CHAT_HISTORY_LIMIT:],
+            "admin_edits": g.get("_admin_edits", {}),
         }
     except Exception:
         # Defensive: falls beim Snapshot etwas schiefgeht, Eintrag nicht blockieren
@@ -1529,7 +1730,9 @@ def _build_leaderboard_snapshot_fields(g: GameDict) -> dict:
             "finished_at": datetime.now(timezone.utc).isoformat(),
             "mode": str(g.get("_mode", "")).lower(),
             "players": [],
-            "scoreboards": {}
+            "scoreboards": {},
+            "chat_history": [],
+            "admin_edits": {},
         }
 
 def _finalize_and_log_results(g: GameDict):
@@ -1794,6 +1997,10 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await websocket.send_json({"error": "Nur fuer Spieler"})
                 continue
 
+            if action_blocked_by_superadmin(g, act):
+                await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
+                continue
+
             if act == "join_game":
                 # Passphrase validieren (falls gesetzt) – bei Fehler Socket sofort schließen
                 if not _passphrase_matches(g, data):
@@ -1854,6 +2061,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await websocket.send_json({"scoreboard": snapshot(g)})
 
             elif act == "set_hold":
+                if superadmin_edit_active(g):
+                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
+                    continue
                 if not g["_turn"] or g["_turn"]["player_id"] != player_id:
                     await websocket.send_json({"error": "Nicht an der Reihe"})
                     continue
@@ -1865,6 +2075,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "roll_dice":
+                if superadmin_edit_active(g):
+                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
+                    continue
                 ok, why = can_roll_now(g, player_id)
                 if not ok:
                     await websocket.send_json({"error": why})
@@ -1880,6 +2093,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "announce_row4":
+                if superadmin_edit_active(g):
+                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
+                    continue
                 # Hardcore: keine Ansage – ❗ verhält sich wie Freireihe
                 if bool(g.get("_hardcore")):
                     await websocket.send_json({"error": "Ansage ist im Hardcore-Modus deaktiviert"})
@@ -1915,6 +2131,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "unannounce_row4":
+                if superadmin_edit_active(g):
+                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
+                    continue
                 # Hardcore: keine Ansage – ❗ verhält sich wie Freireihe
                 if bool(g.get("_hardcore")):
                     await websocket.send_json({"error": "Ansage ist im Hardcore-Modus deaktiviert"})
@@ -1941,6 +2160,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "write_field":
+                if superadmin_edit_active(g):
+                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
+                    continue
                 if not (g["_turn"] and g["_turn"]["player_id"] == player_id):
                     await websocket.send_json({"error": "Nicht an der Reihe"})
                     continue
@@ -2014,6 +2236,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "request_correction":
+                if superadmin_edit_active(g):
+                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
+                    continue
                 # Hardcore: Korrektur generell deaktiviert
                 if bool(g.get("_hardcore")):
                     await websocket.send_json({"error": "Korrekturmodus ist im Hardcore-Modus deaktiviert"})
@@ -2063,6 +2288,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "cancel_correction":
+                if superadmin_edit_active(g):
+                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
+                    continue
                 if bool(g.get("_hardcore")):
                     await websocket.send_json({"error": "Korrekturmodus ist im Hardcore-Modus deaktiviert"})
                     continue
@@ -2074,6 +2302,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "write_field_correction":
+                if superadmin_edit_active(g):
+                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
+                    continue
                 if bool(g.get("_hardcore")):
                     await websocket.send_json({"error": "Korrekturmodus ist im Hardcore-Modus deaktiviert"})
                     continue
@@ -2188,6 +2419,79 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 touch(g)
                 await broadcast(g, payload)
 
+            elif act == "superadmin_activate":
+                if not player_id:
+                    await websocket.send_json({"error": "Nur Spieler koennen Superadmin aktivieren"})
+                    continue
+                code = str(data.get("code") or "")
+                board_id = str(data.get("board_id") or "")
+                if code != str(SUPERADMIN_CODE):
+                    await websocket.send_json({"error": "Superadmin-Code falsch"})
+                    continue
+                if not _board_exists(g, board_id):
+                    await websocket.send_json({"error": "Board nicht gefunden"})
+                    continue
+
+                g.setdefault("_superadmins", {})[player_id] = {"board_id": board_id}
+                name = _player_name(g, player_id)
+                await websocket.send_json({"superadmin": {"active": True, "board_id": board_id}})
+                await broadcast_chat(g, {
+                    "from_id": None,
+                    "sender": "System",
+                    "text": f"Spieler {name} hat den Superadmin-Modus aktiviert.",
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                    "kind": "system",
+                })
+                touch(g)
+                await broadcast(g, {"scoreboard": snapshot(g)})
+
+            elif act == "superadmin_deactivate":
+                if player_id:
+                    g.setdefault("_superadmins", {}).pop(player_id, None)
+                await websocket.send_json({"superadmin": {"active": False}})
+                touch(g)
+                await broadcast(g, {"scoreboard": snapshot(g)})
+
+            elif act == "superadmin_save":
+                if not player_id or player_id not in g.get("_superadmins", {}):
+                    await websocket.send_json({"error": "Superadmin-Modus nicht aktiv"})
+                    continue
+
+                board_id = str(data.get("board_id") or g.get("_superadmins", {}).get(player_id, {}).get("board_id") or "")
+                was_finished = bool(g.get("_finished"))
+                try:
+                    applied_changes = apply_superadmin_changes(g, player_id, board_id, data.get("changes") or [])
+                except ValueError as exc:
+                    await websocket.send_json({"error": str(exc)})
+                    continue
+
+                board_name = _board_display_name(g, board_id)
+                for edit_meta in applied_changes:
+                    row_label = _row_label_for_admin(edit_meta["row"])
+                    col_label = _col_label_for_admin(edit_meta["field"])
+                    old_label = "leer" if edit_meta.get("old") is None else str(edit_meta.get("old"))
+                    new_label = "leer" if edit_meta.get("new") is None else str(edit_meta.get("new"))
+                    await broadcast_chat(g, {
+                        "from_id": None,
+                        "sender": "System",
+                        "text": f"Superadmin: {board_name}, Feld {row_label} / Reihe {col_label} von {old_label} auf {new_label} geändert.",
+                        "ts": edit_meta["ts"],
+                        "kind": "system",
+                    })
+
+                if _is_game_finished(g):
+                    g["_started"] = False
+                    g["_finished"] = True
+                    if not was_finished:
+                        _finalize_and_log_results(g)
+                    else:
+                        g["_results"] = _compute_results_for_snapshot(g)
+                else:
+                    g["_results"] = None
+                touch(g)
+                await websocket.send_json({"superadmin": {"saved": True, "board_id": board_id}})
+                await broadcast(g, {"scoreboard": snapshot(g)})
+
             elif act == "chat_message":
                 # Einfache Chat-Weiterleitung an alle
                 txt = str(data.get("text") or "").strip()
@@ -2206,14 +2510,12 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 # Sanfte Längenbegrenzung
                 if len(txt) > 400:
                     txt = txt[:400]
-                # Broadcast ohne Persistenz
-                await broadcast(g, {
-                    "chat": {
-                        "from_id": from_id,
-                        "sender": sender,
-                        "text": txt,
-                        "ts": datetime.now(timezone.utc).isoformat(),
-                    }
+                await broadcast_chat(g, {
+                    "from_id": from_id,
+                    "sender": sender,
+                    "text": txt,
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                    "kind": "chat",
                 })
                 touch(g)
 
@@ -2248,11 +2550,16 @@ async def ws_game(websocket: WebSocket, game_id: str):
         if game_id in games:
             g = games[game_id]
             correction_cancelled = False
+            superadmin_cancelled = False
             if player_id:
                 for p in g.get("_players", []):
                     if p.get("id") == player_id:
                         p["ws"] = None
                         break
+                if player_id in g.get("_superadmins", {}):
+                    g.setdefault("_superadmins", {}).pop(player_id, None)
+                    touch(g)
+                    superadmin_cancelled = True
                 if (
                     g.get("_correction", {}).get("active")
                     and g.get("_correction", {}).get("player_id") == player_id
@@ -2274,7 +2581,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                         await broadcast(g, {"spectator": {"event": "left", "name": left_name}})
                 except Exception:
                     pass
-            if correction_cancelled:
+            if correction_cancelled or superadmin_cancelled:
                 try:
                     await broadcast(g, {"scoreboard": snapshot(g)})
                 except Exception:

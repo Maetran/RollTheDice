@@ -24,10 +24,10 @@
 
 const ROW_LABELS = [
   "1","2","3","4","5","6",
-  "ZwSumme","Bonus","ZwTotalOben",
-  "Max","Min","Diff",
-  "Kenter","Full","Poker","60",
-  "ZwTotalUnten","Reihentotal"
+  "S","B","ZTO",
+  "+","-","D",
+  "K","F","P","60",
+  "ZTU","T"
 ];
 
 const ROW_FIELD_KEYS = [
@@ -71,6 +71,17 @@ const FIELD_HINTS = {
   "4": "Summe aller 4er",
   "5": "Summe aller 5er",
   "6": "Summe aller 6er",
+  "S": "Summe der Felder 1–6",
+  "B": "+30 (Normal: ≥ 60 • Hardcore: ≥ 40)",
+  "ZTO": "Zwischentotal oben",
+  "ZTU": "Zwischentotal unten",
+  "+": "Summe aller fünf Würfel",
+  "-": "Summe aller fünf Würfel",
+  "D": "1 × (Max − Min), nie negativ",
+  "K": "Fünf unterschiedliche (35 Punkte)",
+  "F": "40 + 3×Wert der Drilling-Augen",
+  "P": "⬇︎／／⬆︎: Punkte nur im ersten Vierlings-Wurf oder bei 5 gleichen • ❗+Ansage: Punkte in jedem späteren Wurf, solange 4/5 gleiche liegen (50 + 4×Wert)",
+  "T": "ZwTotalOben + Diff + ZwTotalUnten",
   "ZwSumme": "Summe der Felder 1–6",
   "Bonus": "+30 (Normal: ≥ 60 • Hardcore: ≥ 40)",
   "ZwTotalOben": "ZwSumme + Bonus",
@@ -366,7 +377,7 @@ function renderScoreboard(mount, sb, {
     }
 
     grid += `
-      <div class="player-card${isTurn ? " turn": ""}${isMyBoard ? " me": ""}">
+      <div class="player-card${isTurn ? " turn": ""}${isMyBoard ? " me": ""}" data-board-id="${esc(id)}">
         <div class="pc-head">
           <div class="pc-name">${esc(ent.name || "—")}</div>
           <div class="pc-total">Total: ${overall}</div>
@@ -479,6 +490,9 @@ function renderRows(sc, sb, ctx){
       const has = val !== "" && val !== undefined && val !== null;
 
       const rowFieldKey = ROW_FIELD_KEYS[ri];
+      const adminEdit = rowFieldKey
+        ? (sb?._admin_edits?.[ctx.pid]?.[`${ri},${colKey}`] || null)
+        : null;
 
       // announced-Markierung nur auf dem eigenen Board
       const isAnnouncedCell = Boolean(
@@ -544,12 +558,20 @@ function renderRows(sc, sb, ctx){
 
       const classes = ["cell"];
       if (isCompute) classes.push("compute");
+      if (adminEdit) classes.push("admin-edited");
       if (isAnnouncedCell) classes.push("announced");
       if (isLastWrittenCell) classes.push("last-write");
       if (isOppLastCell) classes.push("last-write");
       if (clickable) classes.push("clickable");
 
-      const dataAttr  = clickable ? ` data-row="${ri}" data-field="${colKey}"` : "";
+      if (adminEdit) {
+        const oldVal = adminEdit.old ?? "";
+        const newVal = adminEdit.new ?? "";
+        const byName = adminEdit.by_name ? ` durch ${adminEdit.by_name}` : "";
+        titleText = `${titleText ? titleText + " • " : ""}Superadmin-Änderung${byName}: ${oldVal} → ${newVal}`;
+      }
+
+      const dataAttr  = rowFieldKey ? ` data-row="${ri}" data-field="${colKey}"` : "";
       const titleAttr = titleText ? ` title="${esc(titleText)}"` : "";
       return `<td class="${classes.join(" ")}"${dataAttr}${titleAttr}>${has ? esc(String(val)) : ""}</td>`;
     }
@@ -634,6 +656,7 @@ function buildClientSnapshotFromLeaderboard(lv){
       _teams: teams,
       _scoreboards_by_team: sbByTeam,
       _scoreboards: {},
+      _admin_edits: lv.admin_edits || {},
       _turn: null,
       _dice: [0,0,0,0,0],
       _holds: [false,false,false,false,false],
@@ -657,6 +680,7 @@ function buildClientSnapshotFromLeaderboard(lv){
       _teams: [],
       _scoreboards_by_team: {},
       _scoreboards: sb,
+      _admin_edits: lv.admin_edits || {},
       _turn: null,
       _dice: [0,0,0,0,0],
       _holds: [false,false,false,false,false],
@@ -684,4 +708,27 @@ window.renderReadOnlyFromLeaderboard = function(mount, leaderboardView){
     canRequestCorrection: false,
     readOnly: true
   });
+  renderReadOnlyChatHistory(mount, leaderboardView.chat_history || []);
 };
+
+function renderReadOnlyChatHistory(mount, history){
+  if (!mount || !Array.isArray(history) || history.length === 0) return;
+  const rows = history.slice().reverse().map(m => {
+    const ts = m && m.ts ? new Date(m.ts) : null;
+    const stamp = ts && !Number.isNaN(ts.getTime())
+      ? ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      : "";
+    const sender = (m && m.sender) ? m.sender : "System";
+    const text = (m && m.text) ? m.text : "";
+    const kind = (m && m.kind) ? String(m.kind) : "chat";
+    return `<div class="readonly-chat-line ${esc(kind)}">
+      <span class="ts">${esc(stamp)}</span><b>${esc(sender)}:</b> ${esc(text)}
+    </div>`;
+  }).join("");
+  mount.insertAdjacentHTML("beforeend", `
+    <section class="readonly-chat">
+      <h2>Chatverlauf</h2>
+      <div class="readonly-chat-box">${rows}</div>
+    </section>
+  `);
+}
