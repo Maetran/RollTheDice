@@ -10,6 +10,30 @@ User root
 
 The application is deployed from the GitHub `master` branch and runs with Docker Compose. Runtime data lives in `./data` on the server and is mounted into the container as `/app/data`.
 
+Production directory layout on `zdwa`:
+
+```text
+/root/
+├── RollTheDice/
+│   ├── app/
+│   ├── data/                 # production leaderboard and stats data
+│   ├── tests/
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   ├── manifest.webmanifest
+│   ├── README.md
+│   └── requirements.txt
+├── backup_data/
+├── backup_data_pull_1756397116/
+└── rollthedice-data-backup-20260731-114147.tar.gz
+```
+
+The deploy working directory is:
+
+```bash
+/root/RollTheDice
+```
+
 ## Non-Negotiable Data Rule
 
 The leaderboard files in `./data` are production data and must not be deleted, reset, replaced, or overwritten by deploy tooling.
@@ -33,16 +57,16 @@ From a local checkout:
 scripts/deploy_zdwa.sh
 ```
 
-If the remote repository is not auto-discovered, pass the path explicitly:
+The script defaults to `/root/RollTheDice`. To override it:
 
 ```bash
-REMOTE_DIR=/root/RollTheDice scripts/deploy_zdwa.sh
+REMOTE_DIR=/another/path/RollTheDice scripts/deploy_zdwa.sh
 ```
 
 The script:
 
 - connects to `ssh zdwa`
-- discovers the RollTheDice checkout when possible
+- uses `/root/RollTheDice` unless `REMOTE_DIR` is provided
 - refuses to deploy if the remote worktree has uncommitted changes
 - copies `data/` to `data.backup-YYYYMMDD-HHMMSS`
 - pulls `origin/master` with `--ff-only`
@@ -55,7 +79,7 @@ Use this only when the script cannot be used:
 
 ```bash
 ssh zdwa
-cd /path/to/RollTheDice
+cd /root/RollTheDice
 git status --short --branch
 cp -a data "data.backup-$(date +%Y%m%d-%H%M%S)"
 git fetch origin master

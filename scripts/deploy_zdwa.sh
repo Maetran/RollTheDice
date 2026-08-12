@@ -2,28 +2,27 @@
 set -euo pipefail
 
 REMOTE="${REMOTE:-zdwa}"
-REMOTE_DIR="${REMOTE_DIR:-}"
+REMOTE_DIR="${REMOTE_DIR:-/root/RollTheDice}"
 REPO_MATCH="${REPO_MATCH:-Maetran/RollTheDice}"
 BRANCH="${BRANCH:-master}"
 
-if [[ -z "$REMOTE_DIR" ]]; then
+if [[ "$REMOTE_DIR" == "auto" ]]; then
   REMOTE_DIR="$(
     ssh "$REMOTE" "find /root /home /opt /srv /var/www -maxdepth 6 -type d -name .git 2>/dev/null | while read -r gitdir; do repo=\${gitdir%/.git}; if git -C \"\$repo\" remote -v 2>/dev/null | grep -q '$REPO_MATCH'; then printf '%s\n' \"\$repo\"; exit 0; fi; done" || true
   )"
-fi
 
-if [[ -z "$REMOTE_DIR" ]]; then
-  cat >&2 <<'EOF'
+  if [[ -z "$REMOTE_DIR" ]]; then
+    cat >&2 <<'EOF'
 Could not auto-discover the remote RollTheDice checkout.
 Run again with:
 
   REMOTE_DIR=/path/to/RollTheDice scripts/deploy_zdwa.sh
 EOF
-  exit 1
-fi
+    exit 1
+  fi
 
-if [[ "$REMOTE_DIR" == *$'\n'* ]]; then
-  cat >&2 <<EOF
+  if [[ "$REMOTE_DIR" == *$'\n'* ]]; then
+    cat >&2 <<EOF
 Multiple remote checkouts found. Pick one explicitly:
 
 $REMOTE_DIR
@@ -31,7 +30,8 @@ $REMOTE_DIR
 Run:
   REMOTE_DIR=/path/to/RollTheDice scripts/deploy_zdwa.sh
 EOF
-  exit 1
+    exit 1
+  fi
 fi
 
 printf 'Deploy target: %s:%s\n' "$REMOTE" "$REMOTE_DIR"
