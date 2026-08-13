@@ -152,6 +152,10 @@ def manifest():
 def service_worker():
     return FileResponse(str(STATIC_DIR / "sw.js"), media_type="text/javascript")
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return FileResponse(str(STATIC_DIR / "favicon.svg"), media_type="image/svg+xml")
+
 # Zentrales Game-Registry + Typalias
 GameDict = Dict[str, Any]
 games: Dict[str, GameDict] = {}

@@ -36,6 +36,11 @@
 
   --card-w: calc(var(--col-desc) + 4 * var(--col-score) + 22px);
   --cards-gap: 16px;
+  --mobile-grid-row-h: 1.8rem;
+  --mobile-chatbar-h: 3.1rem;
+  --mobile-actionbar-h: 6.85rem;
+  --mobile-suggestionsbar-h: 1.35rem;
+  --mobile-reactionbar-w: 3.35rem;
 }
 
 *{ box-sizing:border-box; }
@@ -416,7 +421,12 @@ button.die{
   border:1px solid var(--border);
   box-shadow:0 1px 2px rgba(15,23,42,.08);
 }
-button.die.held{ background:var(--success-soft); border-color:#75c9a4; }
+button.die.held{
+  background:var(--success-soft);
+  border-color:#0f8a5f;
+  border-width:2px;
+  box-shadow:0 1px 2px rgba(15,23,42,.08), inset 0 0 0 1px rgba(15,138,95,.18);
+}
 
 /* Shake-Animation für Würfelsymbol */
 @keyframes dice-shake{
@@ -916,6 +926,10 @@ button:disabled:hover{
   backdrop-filter:saturate(1.2) blur(12px);
 }
 .room-header .spacer{ flex:1 1 auto; }
+.header-turn-status,
+.chat-reactions-host{
+  display:none;
+}
 .rules-link{
   display:inline-flex;
   align-items:center;
@@ -1024,7 +1038,36 @@ button:disabled:hover{
     gap:.3rem;
     margin:0 0 .35rem;
     padding:.28rem .5rem;
-    min-height:2.35rem;
+    min-height:2.6rem;
+  }
+  .room-page .header-turn-status{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    flex:1 1 auto;
+    min-width:7.5rem;
+    max-width:calc(100vw - 15.25rem);
+    min-height:1.8rem;
+    color:var(--muted);
+    font-size:.72rem;
+    font-weight:650;
+    line-height:1.12;
+    overflow:hidden;
+  }
+  .room-page .header-turn-status .line{
+    display:block;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .room-page .header-turn-status .line.secondary{
+    color:#40506a;
+    font-weight:750;
+  }
+  .room-page .room-header .spacer{
+    flex:0 0 .2rem;
+    min-width:.2rem;
   }
   .room-page .room-header button.small{
     min-height:1.8rem;
@@ -1047,53 +1090,62 @@ button:disabled:hover{
     max-width:none;
   }
   .room-page .topbar{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:var(--mobile-chatbar-h);
+    z-index:1300;
     order:5;
     border-left:0;
     border-right:0;
-    border-radius:0;
-    margin-top:0;
-    margin-bottom:.28rem;
-    padding:.42rem .55rem .3rem;
+    border-bottom:0;
+    border-radius:8px 8px 0 0;
+    margin:0;
+    height:var(--mobile-actionbar-h);
+    padding:.45rem .55rem .4rem;
+    background:rgba(244,246,248,.96);
+    box-shadow:0 -10px 24px rgba(15,23,42,.12);
+    backdrop-filter:saturate(1.2) blur(12px);
+  }
+  .room-page #diceBar .die{
+    max-width:57px !important;
+    max-height:57px !important;
+    height:auto !important;
+    min-height:0 !important;
   }
   .room-page #scoreOut > .muted{
     order:2;
-    width:calc(100% - 1.5rem);
-    margin:.05rem .75rem .25rem;
-    padding:.18rem .5rem;
-    font-size:.78rem;
-    display:grid;
-    grid-template-columns:34px minmax(0, 1fr);
-    justify-content:stretch;
-    gap:.4rem;
-    min-height:2.2rem;
+    width:0;
+    height:0;
+    min-height:0;
+    margin:0;
+    padding:0;
+    border:0;
+    overflow:hidden;
+    box-shadow:none;
   }
   .room-page .turn-status-text{
     min-width:0;
     justify-self:center;
     align-self:center;
   }
-  .room-page .mobile-reactions-host{
-    display:flex;
-    align-items:center;
-    justify-content:flex-start;
-    width:34px;
-    min-width:34px;
-  }
-  .room-page .mobile-reactions-host .emoji-dock{ margin-left:0; }
-  .room-page .mobile-reactions-host .emoji-fab{
-    width:34px;
-    height:34px;
-    min-height:34px;
-  }
-  .room-page .players-grid{ order:1; }
+  .room-page .mobile-reactions-host{ display:none; }
+  .room-page .players-grid{ order:4; }
   .room-page .players-grid{
     gap:.5rem;
-    padding:0 .5rem .15rem;
+    padding:0 .5rem .1rem;
+    margin-top:.9rem;
   }
   .room-page .player-card{
     width:calc(100vw - 1rem);
     flex:0 0 calc(100vw - 1rem);
-    padding:.45rem;
+    padding:.36rem .42rem;
+  }
+  .room-page .pc-head{
+    min-height:1.45rem;
+    margin-bottom:.22rem;
+    font-size:.95rem;
+    line-height:1.1;
   }
   .room-page .player-card .table-wrap{
     width:100%;
@@ -1105,8 +1157,8 @@ button:disabled:hover{
   }
   .room-page .player-card table.grid th,
   .room-page .player-card table.grid td{
-    height:2rem;
-    padding:.2rem .12rem !important;
+    height:var(--mobile-grid-row-h);
+    padding:.1rem .1rem !important;
     line-height:1.05;
     text-align:center;
   }
@@ -1128,19 +1180,40 @@ button:disabled:hover{
     background:#dcecff;
   }
   .room-page .suggestions-area{
+    position:fixed;
+    left:.75rem;
+    right:.75rem;
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h));
+    z-index:1290;
     order:3;
     width:calc(100% - 1.5rem);
-    min-height:1.5rem;
-    margin:.12rem .75rem .3rem;
+    min-height:1.35rem;
+    margin:0;
   }
-  .room-page #overlayMount{ order:4; }
+  .room-page .suggestion-btn{
+    font-size:.69rem;
+    padding:.09rem .16rem;
+    line-height:1.08;
+  }
+  .room-page .suggestions-area:has(.suggestions:empty){
+    min-height:0;
+    height:0;
+    overflow:hidden;
+  }
+  .room-page:has(.suggestions:empty) #scoreOut > .muted{
+    bottom:auto;
+  }
+  .room-page #overlayMount{ order:5; }
   .room-page{
-    padding-bottom:3.35rem;
+    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-suggestionsbar-h) + .65rem);
     max-width:100vw;
     overflow-x:hidden;
   }
+  .room-page.superadmin-active{
+    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-suggestionsbar-h) + 5.4rem);
+  }
   .superadmin-bar{
-    bottom:3.55rem;
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-suggestionsbar-h) + .45rem);
     align-items:stretch;
     flex-wrap:wrap;
   }
@@ -1172,14 +1245,53 @@ button:disabled:hover{
   .room-page .chat-backdrop[hidden]{
     display:none;
   }
-  .room-page .chat-panel{
-    --chat-bar-height:3.1rem;
+  .room-page .chat-reactions-host{
     position:fixed;
     left:0;
+    bottom:0;
+    z-index:1510;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:var(--mobile-reactionbar-w);
+    min-width:var(--mobile-reactionbar-w);
+    height:var(--mobile-chatbar-h);
+    min-height:var(--mobile-chatbar-h);
+    padding:.28rem .25rem;
+    background:#172033;
+    border-radius:8px 0 0 0;
+    box-shadow:0 -16px 34px rgba(15,23,42,.18);
+    transform:translateY(2px);
+  }
+  .room-page .chat-reactions-host .emoji-dock{
+    position:static;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    height:100%;
+    margin-left:0;
+  }
+  .room-page .chat-reactions-host .emoji-fab{
+    width:34px;
+    height:34px;
+    min-height:34px;
+    margin:0;
+    flex:0 0 34px;
+  }
+  .room-page .chat-reactions-host .emoji-panel{
+    top:auto;
+    bottom:calc(100% + var(--mobile-actionbar-h) + var(--mobile-suggestionsbar-h) + .35rem);
+    left:.35rem;
+  }
+  .room-page .chat-panel{
+    --chat-bar-height:var(--mobile-chatbar-h);
+    position:fixed;
+    left:var(--mobile-reactionbar-w);
     right:0;
     bottom:0;
     z-index:1500;
-    width:100% !important;
+    width:calc(100% - var(--mobile-reactionbar-w)) !important;
     max-width:none !important;
     max-height:min(72vh, 34rem);
     margin:0 !important;
@@ -1187,14 +1299,21 @@ button:disabled:hover{
     border-left:0;
     border-right:0;
     border-bottom:0;
-    border-radius:8px 8px 0 0;
+    border-radius:0 8px 0 0;
     box-shadow:0 -16px 34px rgba(15,23,42,.18);
     transform:translateY(calc(100% - var(--chat-bar-height)));
     transition:transform .22s ease;
     overflow:hidden;
   }
   .room-page .chat-panel.open{
+    left:0;
+    z-index:1520;
+    width:100% !important;
+    border-radius:8px 8px 0 0;
     transform:translateY(0);
+  }
+  .room-page .chat-panel.open .chat-toggle{
+    border-radius:8px 8px 0 0;
   }
   .room-page .chat-toggle{
     display:flex;
@@ -1206,7 +1325,7 @@ button:disabled:hover{
     min-height:var(--chat-bar-height);
     padding:.55rem .85rem;
     border:0;
-    border-radius:0;
+    border-radius:0 8px 0 0;
     background:#172033;
     color:#fff;
     font-weight:800;
@@ -1267,6 +1386,57 @@ button:disabled:hover{
     flex:1 1 auto;
     max-height:none;
     min-height:0;
+  }
+}
+
+@media (max-width:560px) and (max-height:820px){
+  :root{
+    --mobile-grid-row-h: clamp(1.14rem, calc((100vh - 20.45rem) / 19), 1.36rem);
+    --mobile-actionbar-h: 6.78rem;
+    --mobile-suggestionsbar-h: 1.15rem;
+  }
+  .room-page .room-header{
+    margin-bottom:.2rem;
+  }
+  .room-page #diceBar{
+    row-gap:.22rem;
+    padding:.1rem .15rem .18rem;
+  }
+  .room-page #diceBar .die{
+    max-width:52px !important;
+    max-height:52px !important;
+    height:auto !important;
+    min-height:0 !important;
+  }
+  .room-page #announceBtnInline,
+  .room-page #rollBtnInline{
+    height:2.08rem !important;
+    min-height:2.08rem !important;
+    padding:.25rem .4rem;
+  }
+  .room-page #scoreOut > .muted{
+    min-height:0;
+  }
+  .room-page .suggestions-area{
+    min-height:1.1rem;
+  }
+  .room-page .suggestions-area:has(.suggestions:empty){
+    min-height:0;
+    height:0;
+    overflow:hidden;
+  }
+  .room-page .suggestions{
+    min-height:1.1rem;
+  }
+  .room-page .suggestion-btn{
+    font-size:.65rem;
+    line-height:1.05;
+  }
+}
+
+@media (max-width:560px) and (min-height:821px){
+  :root{
+    --mobile-grid-row-h: clamp(1.45rem, calc((100vh - 15.2rem) / 19), 2rem);
   }
 }
 
