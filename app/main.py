@@ -32,6 +32,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import os
 import time  # für monotonic()-Cooldown-Timer
+import math
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
@@ -52,6 +53,28 @@ def touch(g):
     """
     g["_last_activity"] = datetime.now(timezone.utc)
     g["_updated_at"] = g["_last_activity"].isoformat()
+
+def timeout_seconds() -> int:
+    """Liefert den Auto-Timeout in Sekunden."""
+    return int(GAME_TIMEOUT.total_seconds())
+
+def _format_duration_hm(seconds: int | float | None) -> str:
+    """Formatiert Sekunden als knappe h/min-Angabe."""
+    total = max(0, int(math.ceil(float(seconds or 0) / 60.0) * 60))
+    hours = total // 3600
+    minutes = (total % 3600) // 60
+    return f"{hours} h {minutes} min" if hours else f"{minutes} min"
+
+def pause_remaining_seconds(g) -> int:
+    """Restzeit bis zum Auto-Timeout auf Basis der letzten Aktivitaet."""
+    try:
+        last = g.get("_last_activity")
+        if not last:
+            return timeout_seconds()
+        now = datetime.now(timezone.utc)
+        return max(0, int((GAME_TIMEOUT - (now - last)).total_seconds()))
+    except Exception:
+        return timeout_seconds()
 
 def check_timeout_and_abort(g) -> bool:
     """Prüft Inaktivität und markiert das Spiel ggf. als abgebrochen.
@@ -468,7 +491,12 @@ def _offline_players(g: GameDict) -> list[dict]:
     ]
 
 def multiplayer_pause_reason(g: GameDict) -> str | None:
-    """Pausiert Multiplayer-Partien, bis alle Spieler wieder verbunden sind."""
+    """Liefert den aktiven Pausegrund fuer manuelle und Reconnect-Pausen."""
+    if g.get("_manual_pause"):
+        by = g.get("_manual_pause_by_name")
+        prefix = f"{by} hat das Spiel pausiert." if by else "Spiel pausiert."
+        return f"{prefix} Wiederaufnahme innerhalb von {_format_duration_hm(pause_remaining_seconds(g))} möglich."
+
     missing = _offline_players(g)
     if not missing:
         return None
@@ -529,6 +557,10 @@ def new_game(gid: str, name: str, mode) -> GameDict:
         "_superadmins": {},                    # pid -> {"board_id": ...}
         "_admin_edits": {},                    # board_id -> {"row,col": meta}
         "_resume_required": False,             # True, sobald ein laufendes Multiplayer-Spiel Verbindungen verloren hat
+        "_manual_pause": False,                # explizit vom Spieler pausiert statt abgebrochen
+        "_manual_pause_by": None,
+        "_manual_pause_by_name": None,
+        "_manual_pause_at": None,
     }
     games[gid] = g
     return g
@@ -1081,6 +1113,8 @@ def snapshot(g: GameDict) -> dict:
             _auto_single = False
 
         offline_players = _offline_players(g)
+        pause_reason = multiplayer_pause_reason(g)
+        pause_left = pause_remaining_seconds(g)
         return {
             "_name": g["_name"],
             "_hardcore": bool(g.get("_hardcore", False)),
@@ -1095,8 +1129,13 @@ def snapshot(g: GameDict) -> dict:
             "_started_at": g.get("_started_at"),
             "_updated_at": g.get("_updated_at"),
             "_aborted": g.get("_aborted", False),
-            "_paused": bool(offline_players),
-            "_pause_reason": multiplayer_pause_reason(g),
+            "_paused": bool(pause_reason),
+            "_pause_reason": pause_reason,
+            "_manual_pause": bool(g.get("_manual_pause")),
+            "_pause_remaining_seconds": pause_left,
+            "_pause_remaining_label": _format_duration_hm(pause_left),
+            "_timeout_seconds": timeout_seconds(),
+            "_timeout_label": _format_duration_hm(timeout_seconds()),
             "_offline_players": offline_players,
             "_connected": {
                 str(p.get("id")): _player_connected(p)
@@ -1256,6 +1295,8 @@ async def api_games():
             joined = len(g["_players"])
             waiting_names = [p.get("name", f"Player {i}") for i, p in enumerate(g["_players"], start=1)]
             offline = _offline_players(g)
+            pause_reason = multiplayer_pause_reason(g)
+            pause_left = pause_remaining_seconds(g)
             lst.append({
                 "id": gid,
                 "name": g["_name"],
@@ -1281,7 +1322,13 @@ async def api_games():
                     for p in g.get("_players", [])
                 ],
                 "offline": offline,
-                "paused": bool(offline),
+                "paused": bool(pause_reason),
+                "pause_reason": pause_reason,
+                "manual_pause": bool(g.get("_manual_pause")),
+                "pause_remaining_seconds": pause_left,
+                "pause_remaining_label": _format_duration_hm(pause_left),
+                "timeout_seconds": timeout_seconds(),
+                "timeout_label": _format_duration_hm(timeout_seconds()),
                 "started_at": g.get("_started_at"),
                 "updated_at": g.get("_updated_at"),
                 "progress": (_progress_for_game(g) if g.get("_started") and not g.get("_finished") and not g.get("_aborted", False) else []),
@@ -1311,6 +1358,9 @@ def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="
     if g.get("_passphrase") and passphrase is not None:
         if passphrase != g["_passphrase"]:
             raise HTTPException(status_code=403, detail="wrong_passphrase")
+    offline = _offline_players(g)
+    pause_reason = multiplayer_pause_reason(g)
+    pause_left = pause_remaining_seconds(g)
     return {
         "exists": True,
         "id": game_id,
@@ -1336,8 +1386,14 @@ def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="
             }
             for p in g.get("_players", [])
         ],
-        "offline": _offline_players(g),
-        "paused": bool(_offline_players(g)),
+        "offline": offline,
+        "paused": bool(pause_reason),
+        "pause_reason": pause_reason,
+        "manual_pause": bool(g.get("_manual_pause")),
+        "pause_remaining_seconds": pause_left,
+        "pause_remaining_label": _format_duration_hm(pause_left),
+        "timeout_seconds": timeout_seconds(),
+        "timeout_label": _format_duration_hm(timeout_seconds()),
     }
 
 def _read_json_file(path: Path, default):
@@ -2186,6 +2242,10 @@ async def ws_game(websocket: WebSocket, game_id: str):
                         await old_ws.close(code=1000)
                     except Exception:
                         pass
+                g["_manual_pause"] = False
+                g["_manual_pause_by"] = None
+                g["_manual_pause_by_name"] = None
+                g["_manual_pause_at"] = None
                 if not _offline_players(g):
                     g["_resume_required"] = False
                 if not player.get("resume_token"):
@@ -2652,6 +2712,28 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     "kind": "chat",
                 })
                 touch(g)
+
+            elif act == "pause_game":
+                if not player_id:
+                    await websocket.send_json({"error": "Nur Spieler koennen das Spiel pausieren"})
+                    continue
+
+                by_name = (data.get("by") or "").strip()
+                if not by_name:
+                    by_name = _player_name(g, player_id)
+
+                touch(g)
+                g["_manual_pause"] = True
+                g["_manual_pause_by"] = player_id
+                g["_manual_pause_by_name"] = by_name
+                g["_manual_pause_at"] = datetime.now(timezone.utc).isoformat()
+                pause_left = pause_remaining_seconds(g)
+                await websocket.send_json({
+                    "paused": True,
+                    "pause_remaining_seconds": pause_left,
+                    "pause_remaining_label": _format_duration_hm(pause_left),
+                })
+                await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "end_game":
                 # Optional: Initiator-Name aus Payload oder aus Registry ableiten

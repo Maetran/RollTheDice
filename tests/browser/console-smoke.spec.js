@@ -157,6 +157,55 @@ test("multiplayer game pauses on disconnect and resumes from the lobby", async (
   await player2Context.close();
 });
 
+test("back to lobby can pause a game and resume it later", async ({ page, request }) => {
+  const health = watchPageHealth(page);
+  const created = await request.post("/api/games", {
+    data: { name: "Manual Pause Smoke", mode: 1 },
+  });
+  expect(created.ok()).toBeTruthy();
+  const { game_id: gameId } = await created.json();
+
+  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Solo`);
+  await page.waitForSelector("#diceBar");
+
+  const dialogMessages = [];
+  page.on("dialog", async (dialog) => {
+    dialogMessages.push(dialog.message());
+    if (dialog.type() === "prompt") await dialog.accept("P");
+    else await dialog.accept();
+  });
+
+  await page.click("#backToLobbyBtn");
+  await page.waitForURL("/");
+  expect(dialogMessages[0]).toContain("P = Spiel pausieren");
+  expect(dialogMessages.some((message) => message.includes("Spiel pausiert"))).toBeTruthy();
+
+  const info = await request.get(`/api/games/${encodeURIComponent(gameId)}`);
+  expect(info.ok()).toBeTruthy();
+  const payload = await info.json();
+  expect(payload).toMatchObject({
+    exists: true,
+    started: true,
+    finished: false,
+    paused: true,
+    manual_pause: true,
+  });
+  expect(payload.pause_remaining_label).toMatch(/h|min/);
+
+  const resumeButton = page.locator(`.resumeBtn[data-id="${gameId}"]`);
+  await expect(resumeButton).toBeVisible();
+  const gameRow = resumeButton.locator("xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' game-row ')][1]");
+  await expect(gameRow.locator(".warn-line", { hasText: "Restzeit" })).toBeVisible();
+  await resumeButton.click();
+  await page.waitForURL(/room\.html\?game_id=/);
+  await page.waitForSelector("#diceBar");
+  await expect(page.locator("#multiplayerPauseNotice")).toBeHidden();
+
+  const afterResume = await request.get(`/api/games/${encodeURIComponent(gameId)}`);
+  expect((await afterResume.json()).paused).toBe(false);
+  await health.expectClean();
+});
+
 test("mobile game layout keeps totals above the dice bar and has no browser errors", async ({ page, request }) => {
   await page.setViewportSize({ width: 367, height: 703 });
   const health = watchPageHealth(page);

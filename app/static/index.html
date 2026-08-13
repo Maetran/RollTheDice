@@ -297,8 +297,16 @@
             }).join(' ')
           : `<span class="muted small">Spieler unbekannt</span>`;
         const canResume = !!(localPlayerIdFor(gid) && localTokenFor(gid));
-        const pauseLine = g.paused && Array.isArray(g.offline) && g.offline.length
-          ? `<div class="sub warn-line">Pausiert: wartet auf ${g.offline.map(p => escapeHtml(p.name || "Spieler")).join(', ')}</div>`
+        const pauseLine = g.paused
+          ? (() => {
+              const remaining = g.pause_remaining_label || g.timeout_label || "";
+              const offline = Array.isArray(g.offline) ? g.offline : [];
+              const waitText = offline.length
+                ? `wartet auf ${offline.map(p => escapeHtml(p.name || "Spieler")).join(', ')}`
+                : "manuell pausiert";
+              const timeText = remaining ? ` • Restzeit: ${escapeHtml(remaining)}` : "";
+              return `<div class="sub warn-line">Pausiert: ${waitText}${timeText}</div>`;
+            })()
           : "";
 
         // Fortschritt (vom Server): pro Spieler/Team

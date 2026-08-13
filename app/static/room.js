@@ -95,6 +95,16 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
     location.href = "/";
   }
 
+  function pauseDurationLabel(snapshot){
+    const label = snapshot?._timeout_label || snapshot?._pause_remaining_label;
+    if (label) return String(label);
+    const seconds = Number(snapshot?._timeout_seconds || 3600);
+    const totalMinutes = Math.max(1, Math.ceil(seconds / 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return hours ? `${hours} h ${minutes} min` : `${minutes} min`;
+  }
+
   // --- Client-Punkteberechnung (nur für 0-Confirm UX) ---
   // Map der schreibbaren Reihen -> Feldkey
   const WRITABLE_MAP = {
@@ -816,7 +826,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
    * Abbruch-Notices, Chat-Weiterleitung und Auto-Reconnect.
    */
   function connect() {
-      // --- "Zurück zur Lobby" mit Confirm + Abbruch für alle ---
+      // --- "Zurück zur Lobby" mit Auswahl: pausieren oder abbrechen ---
     bindRulesSheet();
     (function bindBackToLobby() {
       const btn = document.getElementById("backToLobbyBtn");
@@ -826,9 +836,32 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
         e.preventDefault();
         if (IS_SPECTATOR) { location.href = "/"; return; }  // Zuschauer: nur verlassen
         const who = (myName || "Spieler").trim();
-        const ok = confirm("Willst du das Spiel wirklich abbrechen? Alle werden in die Lobby geschickt.");
-        if (!ok) return;
-        if (!window._abortRequested) {
+        const holdFor = pauseDurationLabel(sb);
+        const choice = prompt(
+          `Zur Lobby wechseln:\n\nP = Spiel pausieren und später fortsetzen (bis zu ${holdFor})\nA = Spiel abbrechen und alle in die Lobby schicken\n\nEingabe:`,
+          "P"
+        );
+        if (choice == null) return;
+        const normalized = String(choice).trim().toLowerCase();
+        if (normalized === "p" || normalized === "pause" || normalized === "pausieren") {
+          if (!window._pauseRequested) {
+            window._pauseRequested = true;
+            safeSend(ws, { action: "pause_game", by: who });
+            setTimeout(() => {
+              if (window._pauseRequested) {
+                window._fatalWsClose = true;
+                location.href = "/";
+              }
+            }, 600);
+          }
+          return;
+        }
+        if (normalized !== "a" && normalized !== "abbrechen" && normalized !== "abort") {
+          alert("Bitte P für Pausieren oder A für Abbrechen eingeben.");
+          return;
+        }
+        const ok = confirm("Spiel wirklich abbrechen? Es erscheint nicht im Leaderboard.");
+        if (ok && !window._abortRequested) {
           window._abortRequested = true;
           safeSend(ws, { action: "end_game", by: who });
         }
@@ -879,6 +912,14 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
       }
       if (msg.spectator_id) {
         mySpectatorId = String(msg.spectator_id);
+      }
+      if (msg.paused) {
+        const label = msg.pause_remaining_label || pauseDurationLabel(sb);
+        alert(`Spiel pausiert. Du kannst es innerhalb von ${label} wieder aufnehmen.`);
+        window._fatalWsClose = true;
+        try { ws.close(1000); } catch {}
+        location.href = "/";
+        return;
       }
 
       // Fehler
