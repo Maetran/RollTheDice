@@ -42,6 +42,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
   const ROLL_GUARD_MS = 600;
   const ROLL_ANIMATION_SEND_DELAY_MS = 120;
   const ROLL_ANIMATION_MS = 650;
+  const ROLL_FACE_ANIMATION_STEP_MS = 100;
   const ROLL_PENDING_TIMEOUT_MS = 5000;
 
   function isRollAction(obj) {
@@ -454,7 +455,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
         return;
       }
       renderRollingDiceFaces();
-    }, 70);
+    }, ROLL_FACE_ANIMATION_STEP_MS);
     rollAnimationTimer = setTimeout(clearRollAnimation, ROLL_ANIMATION_MS + 40);
   }
 

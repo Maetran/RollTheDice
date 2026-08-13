@@ -196,7 +196,7 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
     const frames = [];
     const transforms = [];
     for (let i = 0; i < 6; i += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 70));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       frames.push(labels());
       transforms.push(Array.from(document.querySelectorAll("#diceBar .die"))
         .map((die) => window.getComputedStyle(die).transform));
