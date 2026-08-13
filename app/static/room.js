@@ -191,6 +191,52 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
     }catch{}
   }
 
+  function closeChatSheet(){
+    try {
+      const chatPanel = document.getElementById("chatPanel");
+      const chatToggle = document.getElementById("chatToggle");
+      const chatBackdrop = document.getElementById("chatBackdrop");
+      if (chatPanel) chatPanel.classList.remove("open");
+      if (chatToggle) chatToggle.setAttribute("aria-expanded", "false");
+      if (chatBackdrop) chatBackdrop.hidden = true;
+      document.body.classList.remove("chat-open");
+      document.documentElement.classList.remove("chat-open");
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    } catch {}
+  }
+
+  function syncRoomLayoutSoon({ scrollTop = false } = {}){
+    requestAnimationFrame(() => {
+      try {
+        syncChatWidth();
+        syncReactionsMount();
+        applyAnnounceModeButtonVisibility(mount);
+        const grid = document.querySelector("#scoreOut .players-grid");
+        if (scrollTop && grid) grid.scrollLeft = 0;
+        if (scrollTop) {
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+          window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        }
+      } catch {}
+    });
+  }
+
+  function normalizeTransientLayoutForAdmin({ scrollTop = false } = {}){
+    try {
+      announcePickMode = false;
+      closeChatSheet();
+      $$(".announce-pickable").forEach(td => td.classList.remove("announce-pickable"));
+      _userScrollOverride = false;
+      if (_pendingFollowTimer) {
+        try { clearTimeout(_pendingFollowTimer); } catch {}
+        _pendingFollowTimer = null;
+      }
+      syncRoomLayoutSoon({ scrollTop });
+    } catch {}
+  }
+
   // Das Ansage-Fenster ist nur direkt nach Wurf 1 für den aktuellen Spieler offen.
   function announceWindowOpen(snapshot){
     const rolls = Number(snapshot?._rolls_used || 0);
@@ -617,6 +663,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
 
       if (msg.superadmin && msg.superadmin.active) {
         superadminState = { active: true, boardId: String(msg.superadmin.board_id || ""), draft: {} };
+        normalizeTransientLayoutForAdmin({ scrollTop: false });
         applySuperadminUiState();
       }
       if (msg.superadmin && msg.superadmin.saved) {
@@ -794,6 +841,7 @@ function renderFromSnapshot(snapshot) {
       announcedRow4: announced,
       canRequestCorrection: canRequestCorrection(snapshot)
     });
+    syncHeaderTurnStatus(snapshot);
     applyRollAnimation();
 
     wireDiceBar();
@@ -863,7 +911,7 @@ function renderFromSnapshot(snapshot) {
     } catch {}
 
     // Emoji-FAB nach jedem Render an den passenden Mount setzen:
-    // Desktop im Header, mobile in der Statuszeile unter dem Board.
+    // Desktop im Header, mobile links neben der Chatbar.
     if (window.emojiUI && typeof window.emojiUI.init === "function") {
       window.emojiUI.init({ mount: currentReactionsMount(), ws, getMyName: () => myName });
     }
@@ -903,8 +951,28 @@ function renderFromSnapshot(snapshot) {
   }
 
   function currentReactionsMount(){
-    const mobileMount = document.getElementById("mobileReactionsBar");
+    const mobileMount = document.getElementById("chatReactionsBar");
     return (isMobileNarrow() && mobileMount) ? mobileMount : reactionsMount;
+  }
+
+  function syncHeaderTurnStatus(snapshot){
+    try {
+      const el = document.getElementById("headerTurnStatus");
+      if (!el) return;
+      if (!snapshot || snapshot._finished) {
+        el.textContent = "";
+        return;
+      }
+      const turnPid = snapshot?._turn?.player_id || null;
+      const turnName = (snapshot?._players || []).find(p => String(p.id) === String(turnPid))?.name || "—";
+      const rolls = Number(snapshot?._rolls_used || 0);
+      const max = Number(snapshot?._rolls_max || 3);
+      const isHC = !!snapshot?._hardcore;
+      el.innerHTML = `
+        <span class="line">Am Zug: ${esc(turnName)}</span>
+        <span class="line secondary">${isHC ? "Hardcore" : `Würfe: ${rolls}/${max}`}</span>
+      `;
+    } catch {}
   }
 
   function syncReactionsMount(){
@@ -1476,17 +1544,8 @@ function renderFromSnapshot(snapshot) {
   function resetAfterSuperadminExit({ scrollTop = true } = {}){
     try {
       superadminState = { active: false, boardId: null, draft: {} };
-      document.body.classList.remove("superadmin-active", "chat-open");
-      document.documentElement.classList.remove("chat-open");
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-
-      const chatPanel = document.getElementById("chatPanel");
-      const chatToggle = document.getElementById("chatToggle");
-      const chatBackdrop = document.getElementById("chatBackdrop");
-      if (chatPanel) chatPanel.classList.remove("open");
-      if (chatToggle) chatToggle.setAttribute("aria-expanded", "false");
-      if (chatBackdrop) chatBackdrop.hidden = true;
+      document.body.classList.remove("superadmin-active");
+      normalizeTransientLayoutForAdmin({ scrollTop });
 
       const bar = document.getElementById("superadminBar");
       if (bar) bar.remove();
@@ -1495,17 +1554,7 @@ function renderFromSnapshot(snapshot) {
       $$(".admin-target").forEach(el => el.classList.remove("admin-target"));
       $$(".admin-draft").forEach(td => td.classList.remove("admin-draft", "admin-draft-delete"));
 
-      if (scrollTop) {
-        requestAnimationFrame(() => {
-          try {
-            const grid = document.querySelector("#scoreOut .players-grid");
-            if (grid) grid.scrollLeft = 0;
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-            window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-          } catch {}
-        });
-      }
+      syncRoomLayoutSoon({ scrollTop });
     } catch {}
   }
 

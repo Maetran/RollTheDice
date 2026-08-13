@@ -1,5 +1,9 @@
 (function(){
-  const QUICK_EMOJIS = ['👍','👎','🎉','😡','😜','🤞','🙏','🖕','💩','🤮','FEIG!'];
+  const QUICK_EMOJIS = [
+    '👍','👎','🤞','🙏','🖕',
+    '😂','😲','😡','😜','🙄','🤦','😭','🤮',
+    '🎉','💩','FEIG!'
+  ];
 
   function ensureStyles(){
     if (document.getElementById('emoji-ui-css')) return;
@@ -178,9 +182,23 @@
   }
 
   function scrollToChat(){
-    const panel = document.getElementById('chatPanel') || document.getElementById('chatBox');
-    if (!panel) return;
-    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const panel = document.getElementById('chatPanel');
+    const toggle = document.getElementById('chatToggle');
+    const backdrop = document.getElementById('chatBackdrop');
+    const count = document.getElementById('chatToggleCount');
+    if (panel) {
+      panel.classList.add('open');
+      document.documentElement.classList.add('chat-open');
+      document.body.classList.add('chat-open');
+    }
+    if (toggle) toggle.setAttribute('aria-expanded', 'true');
+    if (backdrop) backdrop.hidden = false;
+    if (count) {
+      count.textContent = '0';
+      count.hidden = true;
+    }
+    const target = panel || document.getElementById('chatBox');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     const input = document.getElementById('chatInput');
     if (input) {
       try { input.focus({ preventScroll: true }); }

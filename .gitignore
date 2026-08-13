@@ -21,6 +21,9 @@ Thumbs.db
 # Build
 build/
 dist/
+node_modules/
+test-results/
+playwright-report/
 
 # IDE
 .vscode/
