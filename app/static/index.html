@@ -296,7 +296,7 @@
               return `<span class="badge ${connected ? 'online' : 'offline'}">${escapeHtml(name)}${connected ? '' : ' offline'}</span>`;
             }).join(' ')
           : `<span class="muted small">Spieler unbekannt</span>`;
-        const canResume = !!(localPlayerIdFor(gid) && localTokenFor(gid));
+        const canResume = !!localPlayerIdFor(gid);
         const pauseLine = g.paused
           ? (() => {
               const remaining = g.pause_remaining_label || g.timeout_label || "";

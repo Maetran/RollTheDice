@@ -206,7 +206,16 @@ test("back to lobby can pause a game and resume it later", async ({ page, reques
   await expect(resumeButton).toBeVisible();
   const gameRow = resumeButton.locator("xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' game-row ')][1]");
   await expect(gameRow.locator(".warn-line", { hasText: "Restzeit" })).toBeVisible();
-  await resumeButton.click();
+  const storedToken = await page.evaluate((gid) => localStorage.getItem(`wuerfler_token_${gid}`), gameId);
+  await page.evaluate((gid) => {
+    localStorage.removeItem(`wuerfler_token_${gid}`);
+  }, gameId);
+  await page.reload();
+  await expect(page.locator(`.resumeBtn[data-id="${gameId}"]`)).toBeVisible();
+  await page.evaluate(({ gid, token }) => {
+    if (token) localStorage.setItem(`wuerfler_token_${gid}`, token);
+  }, { gid: gameId, token: storedToken });
+  await page.locator(`.resumeBtn[data-id="${gameId}"]`).click();
   await page.waitForURL(/room\.html\?game_id=/);
   await page.waitForSelector("#diceBar");
   await expect(page.locator("#multiplayerPauseNotice")).toBeHidden();
