@@ -9,7 +9,7 @@
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi und Tastatursteuerung.
   -->
-  <link rel="stylesheet" href="/static/style.css?v=38" />
+  <link rel="stylesheet" href="/static/style.css?v=56" />
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
     .doc { max-width: 880px; margin: 1rem auto 2rem; padding: 0 1rem; }
@@ -27,6 +27,15 @@
     details + details { margin-top:.5rem; }
     summary { cursor:pointer; font-weight:600; }
     .back { margin:.75rem 0 .5rem; }
+    html.embedded-rules-root,
+    body.embedded-rules {
+      min-height:100%;
+      overflow-y:auto;
+      overscroll-behavior-y:contain;
+      -webkit-overflow-scrolling:touch;
+    }
+    body.embedded-rules .back { display:none; }
+    body.embedded-rules .doc { margin-top:.25rem; }
   </style>
 </head>
 <body>
@@ -132,5 +141,11 @@
     <!-- Hinweisbox -->
     <p class="note"><strong>Tipp:</strong> In der ❗-Spalte werden auf dem eigenen Board die erlaubten Zellen hervorgehoben. Bei 0-Punkten fragt das Spiel nach einer Bestätigung.</p>
   </div>
+  <script>
+    if (new URLSearchParams(location.search).get("embed") === "1") {
+      document.documentElement.classList.add("embedded-rules-root");
+      document.body.classList.add("embedded-rules");
+    }
+  </script>
 </body>
 </html>

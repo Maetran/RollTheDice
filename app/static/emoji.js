@@ -63,7 +63,7 @@
       .emoji-btn:active{ transform:scale(.96); }
       /* Badge-Overlay (zentral oben, stapelbar) */
       .emoji-pop-wrap{
-        position:fixed; left:50%; top:10px; transform:translateX(-50%);
+        position:fixed; left:50%; top:var(--emoji-pop-top, 10px); transform:translateX(-50%);
         display:flex; flex-direction:column; gap:.4rem; align-items:center;
         z-index: 3000; pointer-events:none;
       }
@@ -181,6 +181,14 @@
     return m;
   }
 
+  function syncPopMountPosition(){
+    try {
+      const header = document.querySelector('.room-page .room-header');
+      const top = header ? Math.ceil(header.getBoundingClientRect().bottom + 8) : 10;
+      document.documentElement.style.setProperty('--emoji-pop-top', `${top}px`);
+    } catch {}
+  }
+
   function scrollToChat(){
     const panel = document.getElementById('chatPanel');
     const toggle = document.getElementById('chatToggle');
@@ -209,6 +217,7 @@
   function showPop({from, emoji, text, kind}, {ttlMs=5000}={}){
     ensureStyles();
     const mount = ensurePopMount();
+    syncPopMountPosition();
     const el = document.createElement('div');
     const isChat = kind === 'chat';
     el.className = `emoji-pop${isChat ? ' chat-pop' : ''}`;

@@ -36,7 +36,7 @@
 
   --card-w: calc(var(--col-desc) + 4 * var(--col-score) + 22px);
   --cards-gap: 16px;
-  --mobile-grid-row-h: 1.62rem;
+  --mobile-grid-row-h: 1.74rem;
   --mobile-chatbar-h: 3.1rem;
   --mobile-actionbar-h: 6.85rem;
   --mobile-action-gap: .45rem;
@@ -192,6 +192,9 @@ input[type="checkbox"]{
 .chip.info{ background:#e9f2ff; color:#17428f; border-color:#c8d9ff; }
 .chip.danger{ background:var(--danger-soft); color:var(--danger); border-color:#f0b5ae; }
 .badge{ background:#eef2f7; color:#435166; border-color:#dce3ed; margin-left:.25rem; }
+.badge.online{ background:var(--success-soft); color:#07583b; border-color:#bce7d3; }
+.badge.offline{ background:var(--warning-soft); color:#7a3e00; border-color:#f2c16d; }
+.warn-line{ color:#7a3e00 !important; font-weight:650; }
 
 /* === Lobby === */
 .wrap{
@@ -830,6 +833,18 @@ body.superadmin-active .player-card.admin-target td.cell[data-row]:hover{
   font-weight:750;
   text-align:center;
 }
+.multiplayer-pause-notice{
+  width:min(var(--card-w), calc(100% - 1.5rem));
+  margin:.2rem auto .35rem;
+  padding:.42rem .58rem;
+  border:1px solid #f2c16d;
+  border-radius:var(--radius-sm);
+  background:var(--warning-soft);
+  color:#7a3e00;
+  font-size:.86rem;
+  font-weight:750;
+  text-align:center;
+}
 button[disabled],
 button:disabled{
   opacity:.55;
@@ -1016,6 +1031,67 @@ button:disabled:hover{
 .room-page .chat-panel{
   margin:1rem auto 1.2rem;
   padding:1rem;
+}
+.rules-sheet-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:1680;
+  background:rgba(15,23,42,.34);
+}
+.rules-sheet-backdrop[hidden],
+.rules-sheet[hidden]{
+  display:none;
+}
+.rules-sheet{
+  position:fixed;
+  inset:min(5vh, 2rem) max(1rem, calc((100vw - 920px) / 2));
+  z-index:1690;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--surface);
+  box-shadow:0 24px 70px rgba(15,23,42,.24);
+  overscroll-behavior:contain;
+}
+.rules-sheet-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:1rem;
+  flex:0 0 auto;
+  min-height:3.2rem;
+  padding:.65rem .8rem .65rem 1rem;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+}
+.rules-sheet-head h2{
+  margin:0;
+  font-size:1rem;
+}
+.rules-sheet-close{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:2rem;
+  height:2rem;
+  min-height:2rem;
+  padding:0;
+  font-size:1.35rem;
+  line-height:1;
+}
+.rules-frame{
+  display:block;
+  flex:1 1 auto;
+  width:100%;
+  height:100%;
+  min-height:0;
+  border:0;
+  background:var(--surface);
+  overflow:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
 }
 @media (min-width:561px){
   .room-page .topbar{
@@ -1393,7 +1469,7 @@ button:disabled:hover{
 
 @media (max-width:560px) and (max-height:820px){
   :root{
-    --mobile-grid-row-h: clamp(1.08rem, calc((100vh - 21.05rem) / 19), 1.28rem);
+    --mobile-grid-row-h: clamp(1.18rem, calc((100vh - 19rem) / 19), 1.45rem);
     --mobile-actionbar-h: 6.78rem;
     --mobile-suggestionsbar-h: 1.15rem;
   }
@@ -1438,7 +1514,27 @@ button:disabled:hover{
 
 @media (max-width:560px) and (min-height:821px){
   :root{
-    --mobile-grid-row-h: clamp(1.26rem, calc((100vh - 19rem) / 19), 1.72rem);
+    --mobile-grid-row-h: clamp(1.34rem, calc((100vh - 17.8rem) / 19), 1.84rem);
+  }
+}
+
+@media (max-width:560px){
+  .room-page .rules-sheet{
+    inset:auto 0 0 0;
+    height:min(84dvh, 46rem);
+    border-left:0;
+    border-right:0;
+    border-bottom:0;
+    border-radius:8px 8px 0 0;
+  }
+  @supports not (height: 1dvh){
+    .room-page .rules-sheet{
+      height:min(84vh, 46rem);
+    }
+  }
+  .room-page .rules-sheet-head{
+    min-height:3rem;
+    padding:.58rem .75rem;
   }
 }
 

@@ -17,7 +17,7 @@
   <meta name="theme-color" content="#000000">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/static/favicon.png" sizes="32x32">
-  <link rel="stylesheet" href="/static/style.css?v=38">
+  <link rel="stylesheet" href="/static/style.css?v=56">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -167,10 +167,34 @@
 
     // Name merken/laden
     const NAME_KEY = 'wuerfler_name';
+    const PID_PREFIX = 'wuerfler_pid_';
+    const TOKEN_PREFIX = 'wuerfler_token_';
+    const PASS_PREFIX = 'wuerfler_pass_';
+    const PLAYER_NAME_PREFIX = 'wuerfler_player_name_';
     nameInput.value = localStorage.getItem(NAME_KEY) || '';
     nameInput.addEventListener('input', () => {
       localStorage.setItem(NAME_KEY, nameInput.value.trim());
     });
+
+    function localPlayerIdFor(gid){
+      try { return localStorage.getItem(`${PID_PREFIX}${gid}`) || ""; }
+      catch { return ""; }
+    }
+
+    function localPassFor(gid){
+      try { return localStorage.getItem(`${PASS_PREFIX}${gid}`) || ""; }
+      catch { return ""; }
+    }
+
+    function localTokenFor(gid){
+      try { return localStorage.getItem(`${TOKEN_PREFIX}${gid}`) || ""; }
+      catch { return ""; }
+    }
+
+    function localNameFor(gid){
+      try { return localStorage.getItem(`${PLAYER_NAME_PREFIX}${gid}`) || ""; }
+      catch { return ""; }
+    }
 
     // Spiele holen
     async function fetchGames() {
@@ -261,10 +285,21 @@
         const gid = g.id || '';
         const modeTxt  = (g.mode === '2v2') ? '2 vs 2' : `${g.mode || g.expected}`;
         const hcBadge  = g.hardcore ? `<span class="hc-badge">Hardcore</span>` : '';
-        const waiting = Array.isArray(g.waiting) ? g.waiting : [];
+        const statuses = Array.isArray(g.player_statuses) ? g.player_statuses : [];
+        const waiting = statuses.length
+          ? statuses
+          : (Array.isArray(g.waiting) ? g.waiting.map(n => ({ name:n, connected:true })) : []);
         const playersLine = waiting.length
-          ? waiting.map(n => `<span class="badge">${escapeHtml(n)}</span>`).join(' ')
+          ? waiting.map(p => {
+              const name = typeof p === "string" ? p : (p.name || "Spieler");
+              const connected = typeof p === "string" ? true : !!p.connected;
+              return `<span class="badge ${connected ? 'online' : 'offline'}">${escapeHtml(name)}${connected ? '' : ' offline'}</span>`;
+            }).join(' ')
           : `<span class="muted small">Spieler unbekannt</span>`;
+        const canResume = !!(localPlayerIdFor(gid) && localTokenFor(gid));
+        const pauseLine = g.paused && Array.isArray(g.offline) && g.offline.length
+          ? `<div class="sub warn-line">Pausiert: wartet auf ${g.offline.map(p => escapeHtml(p.name || "Spieler")).join(', ')}</div>`
+          : "";
 
         // Fortschritt (vom Server): pro Spieler/Team
         const progress = Array.isArray(g.progress) ? g.progress : [];
@@ -293,9 +328,13 @@
               <div class="sub">
                 Spieler: ${playersLine}
               </div>
+              ${pauseLine}
               ${progRows ? `<div class="sub progress-stack">${progRows}</div>` : ""}
             </div>
             <div class="actions">
+              ${canResume ? `<button class="resumeBtn"
+                data-id="${escapeAttr(gid)}"
+                data-pass="${g.locked ? '1' : '0'}">Wieder aufnehmen</button>` : ""}
               <button class="spectateBtn"
                 data-id="${escapeAttr(gid)}"
                 data-pass="${g.locked ? '1' : '0'}">Zuschauen</button>
@@ -308,19 +347,24 @@
     // Klick-Handler: Zuschauen (laufende Spiele)
     if (runningEl) {
       runningEl.addEventListener('click', async (e) => {
-        const btn = e.target.closest('.spectateBtn');
+        const resumeBtn = e.target.closest('.resumeBtn');
+        const btn = resumeBtn || e.target.closest('.spectateBtn');
         if (!btn) return;
         const gid = btn.dataset.id;
         const needsPass = btn.dataset.pass === "1";
-        const pname = (nameInput.value || 'Gast').trim() || 'Gast';
+        const isResume = !!resumeBtn;
+        const storedName = isResume ? localNameFor(gid) : "";
+        const pname = (storedName || nameInput.value || 'Gast').trim() || 'Gast';
         if (!gid) { alert('Ungültige Spiel-ID. Bitte aktualisieren.'); return; }
         try {
           const chk = await fetch(`/api/games/${encodeURIComponent(gid)}`, {cache:'no-store'}).then(r=>r.ok?r.json():{exists:false});
           if (chk && chk.exists === false) { alert('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
         } catch {}
-        let pass = "";
+        let pass = isResume ? localPassFor(gid) : "";
         if (needsPass) {
-          pass = (prompt("Dieses Spiel ist passwortgeschützt. Bitte Passwort eingeben:") || "").trim();
+          if (!pass) {
+            pass = (prompt("Dieses Spiel ist passwortgeschützt. Bitte Passwort eingeben:") || "").trim();
+          }
           // Preflight
           try {
             const resp = await fetch(`/api/games/${encodeURIComponent(gid)}?check=1&pass=${encodeURIComponent(pass)}`, { cache: 'no-store' });
@@ -328,13 +372,15 @@
               alert("Falsche Passphrase – bitte erneut versuchen.");
               return;
             }
+            if (isResume) localStorage.setItem(`${PASS_PREFIX}${gid}`, pass);
           } catch (err) {
             alert("Fehler beim Prüfen der Passphrase.");
             return;
           }
         }
-        // spectator=1 kennzeichnet den Zuschauermodus für room.html
-        const qs = new URLSearchParams({ game_id: gid, name: pname, pass, spectator: "1" }).toString();
+        const params = { game_id: gid, name: pname, pass };
+        if (!isResume) params.spectator = "1";
+        const qs = new URLSearchParams(params).toString();
         location.href = `/static/room.html?${qs}`;
       });
     }

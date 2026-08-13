@@ -114,6 +114,49 @@ test("game creation API flow from lobby and spectator mode both work", async ({ 
   await health.expectClean();
 });
 
+test("multiplayer game pauses on disconnect and resumes from the lobby", async ({ page, browser, request }) => {
+  const health = watchPageHealth(page);
+  const created = await request.post("/api/games", {
+    data: { name: "Resume Smoke", mode: 2 },
+  });
+  expect(created.ok()).toBeTruthy();
+  const { game_id: gameId } = await created.json();
+
+  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Anna`);
+  await page.waitForSelector("#diceBar");
+  await expect(page.locator(".player-card")).toContainText("Anna");
+
+  const player2Context = await browser.newContext();
+  const player2 = await player2Context.newPage();
+  const player2Health = watchPageHealth(player2);
+  await player2.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Ben`);
+  await player2.waitForSelector("#diceBar");
+  await expect(player2.locator(".player-card", { hasText: "Ben" })).toBeVisible();
+  await expect(page.locator(".player-card", { hasText: "Ben" })).toBeVisible();
+  await player2Health.expectClean();
+
+  await player2.close();
+  await expect(page.locator("#multiplayerPauseNotice")).toContainText("Ben");
+  await expect(page.locator("#rollBtnInline")).toBeDisabled();
+
+  const resumedPlayer2 = await player2Context.newPage();
+  const resumedHealth = watchPageHealth(resumedPlayer2);
+  await resumedPlayer2.goto("/");
+  const resumeButton = resumedPlayer2.locator(`.resumeBtn[data-id="${gameId}"]`);
+  await expect(resumeButton).toBeVisible();
+  await resumeButton.click();
+  await resumedPlayer2.waitForURL(/room\.html\?game_id=/);
+  await resumedPlayer2.waitForSelector("#diceBar");
+
+  await expect(page.locator("#multiplayerPauseNotice")).toBeHidden();
+  await expect(page.locator("#rollBtnInline")).toBeEnabled();
+
+  await resumedHealth.expectClean();
+  await health.expectClean();
+  await resumedPlayer2.close();
+  await player2Context.close();
+});
+
 test("mobile game layout keeps totals above the dice bar and has no browser errors", async ({ page, request }) => {
   await page.setViewportSize({ width: 367, height: 703 });
   const health = watchPageHealth(page);
@@ -162,6 +205,7 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
         bottom: Math.round(lr.bottom),
         height: Math.round(lr.height),
       },
+      tableWrap: rect(".player-card .table-wrap"),
       loadedCss: Array.from(document.styleSheets)
         .map((sheet) => sheet.href)
         .filter(Boolean)
@@ -180,9 +224,10 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   expect(layout.chatReactions.top).toBeLessThanOrEqual(layout.chatToggle.top + 2);
   expect(layout.chatReactions.height).toBe(layout.chatToggle.height);
   expect(layout.die.width).toBeGreaterThanOrEqual(48);
-  expect(layout.die.width).toBeLessThanOrEqual(55);
+  expect(layout.die.width).toBeLessThanOrEqual(57);
   expect(layout.die.height).toBe(layout.die.width);
   expect(layout.heldDieBorderWidth).toBe("2px");
+  expect(layout.tableWrap.height).toBeGreaterThanOrEqual(395);
 
   await page.waitForFunction(() => {
     const btn = document.querySelector("#rollBtnInline");
@@ -282,6 +327,17 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   await page.evaluate(() => {
     window.emojiUI.handleChat({ sender: "Other", text: "Ping" });
   });
+  const chatPopPosition = await page.evaluate(() => {
+    const pop = document.querySelector(".emoji-pop.chat-pop");
+    const header = document.querySelector(".room-header");
+    const pr = pop.getBoundingClientRect();
+    const hr = header.getBoundingClientRect();
+    return {
+      popTop: Math.round(pr.top),
+      headerBottom: Math.round(hr.bottom),
+    };
+  });
+  expect(chatPopPosition.popTop).toBeGreaterThanOrEqual(chatPopPosition.headerBottom + 6);
   await page.click(".emoji-pop.chat-pop");
   await page.waitForTimeout(250);
   const openedFromBubble = await page.evaluate(() => {
@@ -309,6 +365,21 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   });
   await page.click("#chatClose");
   await page.waitForTimeout(250);
+
+  const beforeRulesUrl = page.url();
+  await page.click("#rulesSheetOpen");
+  await expect(page.locator("#rulesSheet")).toBeVisible();
+  await expect(page.locator("#rulesFrame")).toHaveAttribute("src", /rules\.html\?embed=1/);
+  expect(page.url()).toBe(beforeRulesUrl);
+  await expect(page.frameLocator("#rulesFrame").locator("h1")).toContainText("Spielanleitung");
+  await page.locator("#rulesFrame").hover();
+  await page.mouse.wheel(0, 700);
+  await expect.poll(async () => {
+    const frame = page.frame({ url: /rules\.html\?embed=1/ });
+    return frame ? frame.evaluate(() => window.scrollY) : 0;
+  }).toBeGreaterThan(0);
+  await page.click("#rulesSheetClose");
+  await expect(page.locator("#rulesSheet")).toBeHidden();
 
   await page.click("#chatReactionsBar .emoji-fab");
   const reactionPanel = await page.evaluate(() => {

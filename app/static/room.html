@@ -14,7 +14,7 @@
     - room.js verbindet per WebSocket, orchestriert UI, Chat und Korrekturmodus
     - Ein schlanker Header bietet Reactions, Regeln-Link und Zurück-zur-Lobby
   -->
-  <link rel="stylesheet" href="/static/style.css?v=53">
+  <link rel="stylesheet" href="/static/style.css?v=56">
 </head>
 <body class="room-page">
   <!-- Header: Desktop-Reactions, Regeln, Zurück zur Lobby -->
@@ -22,12 +22,22 @@
     <div id="reactionsBar" class="reactions-host"></div>
     <div id="headerTurnStatus" class="header-turn-status" aria-live="polite"></div>
     <div class="spacer"></div>
-    <button class="small ghost" onclick="window.open('/static/rules.html','_blank','noopener')">Spielregeln</button>
+    <button id="rulesSheetOpen" class="small ghost" type="button">Spielregeln</button>
     <button id="backToLobbyBtn" class="small">Zurück zur Lobby</button>
   </div>
 
   <!-- Scoreboard-Mount: Würfel, Buttons, Tabellen werden hier gerendert (scoreboard.js) -->
   <div id="scoreOut"></div>
+
+  <!-- Spielregeln als In-Game-Sheet, damit der Spielraum aktiv bleibt -->
+  <div id="rulesSheetBackdrop" class="rules-sheet-backdrop" hidden></div>
+  <section id="rulesSheet" class="rules-sheet" role="dialog" aria-modal="true" aria-labelledby="rulesSheetTitle" tabindex="-1" hidden>
+    <div class="rules-sheet-head">
+      <h2 id="rulesSheetTitle">Spielregeln</h2>
+      <button id="rulesSheetClose" class="small ghost rules-sheet-close" type="button" aria-label="Spielregeln schließen">×</button>
+    </div>
+    <iframe id="rulesFrame" class="rules-frame" title="Spielregeln" data-src="/static/rules.html?embed=1" scrolling="yes"></iframe>
+  </section>
 
   <!-- Chat-Bereich: Eingabe und Verlauf (durch room.js verdrahtet) -->
   <div id="chatBackdrop" class="chat-backdrop" hidden></div>
@@ -53,8 +63,8 @@
 
   <!-- Scripts: zuerst scoreboard (Renderer), dann room (WS/Steuerung als ES-Modul) -->
   <script src="/static/scoreboard.js?v=22" defer></script>
-  <script src="/static/emoji.js?v=7"></script>
-  <script type="module" src="room.js?v=22"></script>
+  <script src="/static/emoji.js?v=8"></script>
+  <script type="module" src="room.js?v=25"></script>
   <script>
     // Service Worker registrieren (Root-Scope /sw.js)
     if ('serviceWorker' in navigator) {
