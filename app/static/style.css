@@ -36,9 +36,10 @@
 
   --card-w: calc(var(--col-desc) + 4 * var(--col-score) + 22px);
   --cards-gap: 16px;
-  --mobile-grid-row-h: 1.8rem;
+  --mobile-grid-row-h: 1.62rem;
   --mobile-chatbar-h: 3.1rem;
   --mobile-actionbar-h: 6.85rem;
+  --mobile-action-gap: .45rem;
   --mobile-suggestionsbar-h: 1.35rem;
   --mobile-reactionbar-w: 3.35rem;
 }
@@ -431,13 +432,14 @@ button.die.held{
 /* Shake-Animation für Würfelsymbol */
 @keyframes dice-shake{
   0%{transform:translate(0,0) rotate(0deg)}
-  20%{transform:translate(-1px,1px) rotate(-2deg)}
-  40%{transform:translate(1px,-1px) rotate(2deg)}
-  60%{transform:translate(-1px,0) rotate(-1deg)}
-  80%{transform:translate(1px,1px) rotate(1deg)}
+  15%{transform:translate(-3px,2px) rotate(-5deg)}
+  30%{transform:translate(3px,-2px) rotate(5deg)}
+  45%{transform:translate(-2px,-3px) rotate(-4deg)}
+  60%{transform:translate(3px,2px) rotate(4deg)}
+  80%{transform:translate(-2px,1px) rotate(-3deg)}
   100%{transform:translate(0,0) rotate(0deg)}
 }
-button.die.shaking{ animation: dice-shake .65s ease; will-change: transform; }
+button.die.shaking{ animation: dice-shake .65s ease-in-out; will-change: transform; }
 
 /* === Announce (❗) Pick-Hervorhebung === */
 /* Markierung für Ansage-Pick-Modus: leerer ❗-Slot im eigenen Board wird klickbar hervorgehoben */
@@ -1093,7 +1095,7 @@ button:disabled:hover{
     position:fixed;
     left:0;
     right:0;
-    bottom:var(--mobile-chatbar-h);
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-action-gap));
     z-index:1300;
     order:5;
     border-left:0;
@@ -1134,7 +1136,7 @@ button:disabled:hover{
   .room-page .players-grid{
     gap:.5rem;
     padding:0 .5rem .1rem;
-    margin-top:.9rem;
+    margin-top:.55rem;
   }
   .room-page .player-card{
     width:calc(100vw - 1rem);
@@ -1183,7 +1185,7 @@ button:disabled:hover{
     position:fixed;
     left:.75rem;
     right:.75rem;
-    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h));
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap));
     z-index:1290;
     order:3;
     width:calc(100% - 1.5rem);
@@ -1205,15 +1207,15 @@ button:disabled:hover{
   }
   .room-page #overlayMount{ order:5; }
   .room-page{
-    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-suggestionsbar-h) + .65rem);
+    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .65rem);
     max-width:100vw;
     overflow-x:hidden;
   }
   .room-page.superadmin-active{
-    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-suggestionsbar-h) + 5.4rem);
+    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + 5.4rem);
   }
   .superadmin-bar{
-    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-suggestionsbar-h) + .45rem);
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .45rem);
     align-items:stretch;
     flex-wrap:wrap;
   }
@@ -1261,7 +1263,7 @@ button:disabled:hover{
     background:#172033;
     border-radius:8px 0 0 0;
     box-shadow:0 -16px 34px rgba(15,23,42,.18);
-    transform:translateY(2px);
+    transform:translateY(1px);
   }
   .room-page .chat-reactions-host .emoji-dock{
     position:static;
@@ -1281,7 +1283,7 @@ button:disabled:hover{
   }
   .room-page .chat-reactions-host .emoji-panel{
     top:auto;
-    bottom:calc(100% + var(--mobile-actionbar-h) + var(--mobile-suggestionsbar-h) + .35rem);
+    bottom:calc(100% + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .35rem);
     left:.35rem;
   }
   .room-page .chat-panel{
@@ -1391,7 +1393,7 @@ button:disabled:hover{
 
 @media (max-width:560px) and (max-height:820px){
   :root{
-    --mobile-grid-row-h: clamp(1.14rem, calc((100vh - 20.45rem) / 19), 1.36rem);
+    --mobile-grid-row-h: clamp(1.08rem, calc((100vh - 21.05rem) / 19), 1.28rem);
     --mobile-actionbar-h: 6.78rem;
     --mobile-suggestionsbar-h: 1.15rem;
   }
@@ -1436,7 +1438,7 @@ button:disabled:hover{
 
 @media (max-width:560px) and (min-height:821px){
   :root{
-    --mobile-grid-row-h: clamp(1.45rem, calc((100vh - 15.2rem) / 19), 2rem);
+    --mobile-grid-row-h: clamp(1.26rem, calc((100vh - 19rem) / 19), 1.72rem);
   }
 }
 
