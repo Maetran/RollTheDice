@@ -174,6 +174,7 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   expect(layout.suggestions.bottom).toBeLessThanOrEqual(layout.topbar.top + 1);
   expect(layout.lastRow.bottom).toBeLessThanOrEqual(layout.topbar.top - 1);
   expect(layout.topbar.bottom).toBeLessThanOrEqual(layout.chatToggle.top + 1);
+  expect(layout.chatToggle.top - layout.topbar.bottom).toBeGreaterThanOrEqual(5);
   expect(layout.chatReactions.right).toBeLessThanOrEqual(layout.chatToggle.left + 1);
   expect(layout.chatReactions.top).toBeGreaterThanOrEqual(layout.chatToggle.top);
   expect(layout.chatReactions.top).toBeLessThanOrEqual(layout.chatToggle.top + 2);
@@ -182,6 +183,30 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   expect(layout.die.width).toBeLessThanOrEqual(55);
   expect(layout.die.height).toBe(layout.die.width);
   expect(layout.heldDieBorderWidth).toBe("2px");
+
+  await page.waitForFunction(() => {
+    const btn = document.querySelector("#rollBtnInline");
+    return btn && !btn.disabled;
+  });
+  const rollVisual = await page.evaluate(async () => {
+    const labels = () => Array.from(document.querySelectorAll("#diceBar .die"))
+      .map((die) => die.querySelector("svg")?.getAttribute("aria-label") || "");
+    const before = labels();
+    document.querySelector("#rollBtnInline").click();
+    const frames = [];
+    for (let i = 0; i < 6; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 70));
+      frames.push(labels());
+    }
+    const changedDice = before.filter((label, index) => {
+      return frames.some((frame) => frame[index] && frame[index] !== label);
+    }).length;
+    const shakingCount = document.querySelectorAll("#diceBar .die.shaking").length;
+    return { before, frames, changedDice, shakingCount };
+  });
+  expect(rollVisual.shakingCount).toBeGreaterThan(0);
+  expect(rollVisual.changedDice).toBeGreaterThanOrEqual(3);
+  await page.waitForTimeout(350);
 
   const withSuggestion = await page.evaluate(() => {
     const suggestions = document.querySelector("#suggestions");

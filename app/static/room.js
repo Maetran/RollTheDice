@@ -162,6 +162,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
   let rollCooldownTimer = null;
   let autoRollRetryTimer = null;
   let rollAnimationTimer = null;
+  let rollFaceTimer = null;
   let rollAnimationUntil = 0;
   let rollAnimationIndices = [];
   let chatHistorySeeded = false;
@@ -347,6 +348,65 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
     catch{}
   }
 
+  function dieSVGMarkup(v){
+    const L=30, C=50, R=70, T=30, M=50, B=70;
+    const pips = {
+      1: [[C,M]],
+      2: [[L,T],[R,B]],
+      3: [[L,T],[C,M],[R,B]],
+      4: [[L,T],[R,T],[L,B],[R,B]],
+      5: [[L,T],[R,T],[C,M],[L,B],[R,B]],
+      6: [[L,T],[L,M],[L,B],[R,T],[R,M],[R,B]]
+    }[Number(v)] || [];
+    const dots = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="8"></circle>`).join("");
+    return `
+      <svg viewBox="0 0 100 100" width="100%" height="100%" role="img" aria-label="Würfel ${Number(v) || 0}">
+        <rect x="5" y="5" width="90" height="90" rx="12" ry="12" fill="white" stroke="black" stroke-width="6"></rect>
+        <g fill="black">${dots}</g>
+      </svg>
+    `;
+  }
+
+  function randomFaceExcept(prev){
+    let next = 1 + Math.floor(Math.random() * 6);
+    if (next === Number(prev)) next = (next % 6) + 1;
+    return next;
+  }
+
+  function restoreDiceFacesFromSnapshot(snapshot){
+    try {
+      const dice = Array.isArray(snapshot?._dice) ? snapshot._dice : [];
+      $$("#diceBar .die", mount).forEach(el => {
+        const i = Number(el.dataset.i);
+        el.removeAttribute("data-rolling-face");
+        el.innerHTML = dieSVGMarkup(Number(dice[i] || 0));
+      });
+    } catch {}
+  }
+
+  function renderRollingDiceFaces(){
+    try {
+      const active = rollAnimationUntil > Date.now() && rollAnimationIndices.length > 0;
+      if (!active) return;
+      const animated = new Set(rollAnimationIndices.map(Number));
+      $$("#diceBar .die", mount).forEach(el => {
+        const i = Number(el.dataset.i);
+        if (!animated.has(i)) return;
+        const prev = Number(el.dataset.rollingFace || sb?._dice?.[i] || 0);
+        const face = randomFaceExcept(prev);
+        el.dataset.rollingFace = String(face);
+        el.innerHTML = dieSVGMarkup(face);
+      });
+    } catch {}
+  }
+
+  function stopRollFaceTimer(){
+    if (rollFaceTimer) {
+      try{ clearInterval(rollFaceTimer); }catch{}
+      rollFaceTimer = null;
+    }
+  }
+
   function clearRollAnimation(){
     rollAnimationUntil = 0;
     rollAnimationIndices = [];
@@ -354,7 +414,9 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
       try{ clearTimeout(rollAnimationTimer); }catch{}
       rollAnimationTimer = null;
     }
+    stopRollFaceTimer();
     stopDiceShake();
+    restoreDiceFacesFromSnapshot(sb);
   }
 
   function activeRollDiceIndices(snapshot){
@@ -373,6 +435,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
         const i = Number(el.dataset.i);
         if (animated.has(i)) el.classList.add("shaking");
       });
+      renderRollingDiceFaces();
     }catch{}
   }
 
@@ -383,6 +446,15 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
     if (rollAnimationTimer) {
       try{ clearTimeout(rollAnimationTimer); }catch{}
     }
+    stopRollFaceTimer();
+    renderRollingDiceFaces();
+    rollFaceTimer = setInterval(() => {
+      if (rollAnimationUntil <= Date.now()) {
+        clearRollAnimation();
+        return;
+      }
+      renderRollingDiceFaces();
+    }, 70);
     rollAnimationTimer = setTimeout(clearRollAnimation, ROLL_ANIMATION_MS + 40);
   }
 
