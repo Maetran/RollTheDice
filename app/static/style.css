@@ -845,6 +845,51 @@ body.superadmin-active .player-card.admin-target td.cell[data-row]:hover{
   font-weight:750;
   text-align:center;
 }
+.leave-game-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:1700;
+  background:rgba(15,23,42,.34);
+}
+.leave-game-backdrop[hidden],
+.leave-game-dialog[hidden]{
+  display:none;
+}
+.leave-game-dialog{
+  position:fixed;
+  left:50%;
+  top:50%;
+  z-index:1710;
+  width:min(27rem, calc(100vw - 2rem));
+  transform:translate(-50%, -50%);
+  padding:1rem;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--surface);
+  box-shadow:0 24px 70px rgba(15,23,42,.24);
+}
+.leave-game-dialog h2{
+  margin:0 0 .45rem;
+  font-size:1.08rem;
+}
+.leave-game-dialog p{
+  margin:.2rem 0 .85rem;
+  line-height:1.4;
+}
+.leave-game-actions{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:.5rem;
+}
+button.danger{
+  border-color:#f0b5ae;
+  background:var(--danger-soft);
+  color:var(--danger);
+}
+button.danger:hover{
+  border-color:#dc8f85;
+  background:#ffe2df;
+}
 button[disabled],
 button:disabled{
   opacity:.55;
@@ -1535,6 +1580,9 @@ button:disabled:hover{
   .room-page .rules-sheet-head{
     min-height:3rem;
     padding:.58rem .75rem;
+  }
+  .leave-game-actions{
+    grid-template-columns:1fr;
   }
 }
 

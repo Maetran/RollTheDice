@@ -17,7 +17,7 @@
   <meta name="theme-color" content="#000000">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/static/favicon.png" sizes="32x32">
-  <link rel="stylesheet" href="/static/style.css?v=56">
+  <link rel="stylesheet" href="/static/style.css?v=57">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -296,9 +296,17 @@
               return `<span class="badge ${connected ? 'online' : 'offline'}">${escapeHtml(name)}${connected ? '' : ' offline'}</span>`;
             }).join(' ')
           : `<span class="muted small">Spieler unbekannt</span>`;
-        const canResume = !!(localPlayerIdFor(gid) && localTokenFor(gid));
-        const pauseLine = g.paused && Array.isArray(g.offline) && g.offline.length
-          ? `<div class="sub warn-line">Pausiert: wartet auf ${g.offline.map(p => escapeHtml(p.name || "Spieler")).join(', ')}</div>`
+        const canResume = !!localPlayerIdFor(gid);
+        const pauseLine = g.paused
+          ? (() => {
+              const remaining = g.pause_remaining_label || g.timeout_label || "";
+              const offline = Array.isArray(g.offline) ? g.offline : [];
+              const waitText = offline.length
+                ? `wartet auf ${offline.map(p => escapeHtml(p.name || "Spieler")).join(', ')}`
+                : "manuell pausiert";
+              const timeText = remaining ? ` • Restzeit: ${escapeHtml(remaining)}` : "";
+              return `<div class="sub warn-line">Pausiert: ${waitText}${timeText}</div>`;
+            })()
           : "";
 
         // Fortschritt (vom Server): pro Spieler/Team

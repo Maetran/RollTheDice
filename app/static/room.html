@@ -14,7 +14,7 @@
     - room.js verbindet per WebSocket, orchestriert UI, Chat und Korrekturmodus
     - Ein schlanker Header bietet Reactions, Regeln-Link und Zurück-zur-Lobby
   -->
-  <link rel="stylesheet" href="/static/style.css?v=56">
+  <link rel="stylesheet" href="/static/style.css?v=57">
 </head>
 <body class="room-page">
   <!-- Header: Desktop-Reactions, Regeln, Zurück zur Lobby -->
@@ -37,6 +37,17 @@
       <button id="rulesSheetClose" class="small ghost rules-sheet-close" type="button" aria-label="Spielregeln schließen">×</button>
     </div>
     <iframe id="rulesFrame" class="rules-frame" title="Spielregeln" data-src="/static/rules.html?embed=1" scrolling="yes"></iframe>
+  </section>
+
+  <div id="leaveGameBackdrop" class="leave-game-backdrop" hidden></div>
+  <section id="leaveGameDialog" class="leave-game-dialog" role="dialog" aria-modal="true" aria-labelledby="leaveGameTitle" tabindex="-1" hidden>
+    <h2 id="leaveGameTitle">Zur Lobby wechseln?</h2>
+    <p id="leaveGameText" class="muted small"></p>
+    <div class="leave-game-actions">
+      <button id="leavePauseBtn" class="primary" type="button">Pause</button>
+      <button id="leaveAbortBtn" class="danger" type="button">Zur Lobby</button>
+      <button id="leaveStayBtn" class="ghost" type="button">Im Spiel bleiben</button>
+    </div>
   </section>
 
   <!-- Chat-Bereich: Eingabe und Verlauf (durch room.js verdrahtet) -->
@@ -64,7 +75,7 @@
   <!-- Scripts: zuerst scoreboard (Renderer), dann room (WS/Steuerung als ES-Modul) -->
   <script src="/static/scoreboard.js?v=22" defer></script>
   <script src="/static/emoji.js?v=8"></script>
-  <script type="module" src="room.js?v=26"></script>
+  <script type="module" src="room.js?v=28"></script>
   <script>
     // Service Worker registrieren (Root-Scope /sw.js)
     if ('serviceWorker' in navigator) {

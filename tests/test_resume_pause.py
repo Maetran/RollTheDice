@@ -41,3 +41,19 @@ class ResumePauseTests(GameStateTestCase):
         self.assertFalse(snap["_paused"])
         self.assertEqual(snap["_offline_players"], [])
         self.assertTrue(ok, why)
+
+    def test_manual_pause_pauses_single_player_and_reports_timeout(self):
+        g = self.make_game(mode=1, players=[("p1", "Solo")])
+        g["_manual_pause"] = True
+        g["_manual_pause_by"] = "p1"
+        g["_manual_pause_by_name"] = "Solo"
+
+        snap = main.snapshot(g)
+        ok, why = main.can_roll_now(g, "p1")
+
+        self.assertTrue(snap["_paused"])
+        self.assertTrue(snap["_manual_pause"])
+        self.assertEqual(snap["_timeout_seconds"], 3600)
+        self.assertIn("1 h 0 min", snap["_pause_reason"])
+        self.assertFalse(ok)
+        self.assertIn("Solo hat das Spiel pausiert", why)

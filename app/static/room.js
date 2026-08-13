@@ -95,6 +95,16 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
     location.href = "/";
   }
 
+  function pauseDurationLabel(snapshot){
+    const label = snapshot?._timeout_label || snapshot?._pause_remaining_label;
+    if (label) return String(label);
+    const seconds = Number(snapshot?._timeout_seconds || 3600);
+    const totalMinutes = Math.max(1, Math.ceil(seconds / 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return hours ? `${hours} h ${minutes} min` : `${minutes} min`;
+  }
+
   // --- Client-Punkteberechnung (nur für 0-Confirm UX) ---
   // Map der schreibbaren Reihen -> Feldkey
   const WRITABLE_MAP = {
@@ -326,6 +336,90 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
         window.addEventListener("keydown", (e) => {
           const sheet = document.getElementById("rulesSheet");
           if (e.key === "Escape" && sheet && !sheet.hidden) closeRulesSheet();
+        });
+      }
+    } catch {}
+  }
+
+  function closeLeaveGameDialog(){
+    try {
+      const dialog = document.getElementById("leaveGameDialog");
+      const backdrop = document.getElementById("leaveGameBackdrop");
+      if (dialog) dialog.hidden = true;
+      if (backdrop) backdrop.hidden = true;
+      document.body.classList.remove("leave-dialog-open");
+      document.documentElement.classList.remove("leave-dialog-open");
+    } catch {}
+  }
+
+  function openLeaveGameDialog(){
+    try {
+      const dialog = document.getElementById("leaveGameDialog");
+      const backdrop = document.getElementById("leaveGameBackdrop");
+      const text = document.getElementById("leaveGameText");
+      if (!dialog || !backdrop) return;
+      closeChatSheet();
+      closeRulesSheet();
+      const holdFor = pauseDurationLabel(sb);
+      if (text) {
+        text.textContent = `Pause hält das Spiel bis zu ${holdFor} offen. Zur Lobby bricht das Spiel ab und schickt alle zurück.`;
+      }
+      dialog.hidden = false;
+      backdrop.hidden = false;
+      document.body.classList.add("leave-dialog-open");
+      document.documentElement.classList.add("leave-dialog-open");
+      const pauseBtn = document.getElementById("leavePauseBtn");
+      setTimeout(() => {
+        try { (pauseBtn || dialog).focus({ preventScroll: true }); }
+        catch { (pauseBtn || dialog).focus(); }
+      }, 0);
+    } catch {}
+  }
+
+  function bindLeaveGameDialog(){
+    try {
+      const pauseBtn = document.getElementById("leavePauseBtn");
+      const abortBtn = document.getElementById("leaveAbortBtn");
+      const stayBtn = document.getElementById("leaveStayBtn");
+      const backdrop = document.getElementById("leaveGameBackdrop");
+      const who = () => (myName || "Spieler").trim();
+      if (pauseBtn && !pauseBtn._bound) {
+        pauseBtn._bound = true;
+        pauseBtn.addEventListener("click", () => {
+          if (window._pauseRequested) return;
+          window._pauseRequested = true;
+          safeSend(ws, { action: "pause_game", by: who() });
+          closeLeaveGameDialog();
+          setTimeout(() => {
+            if (window._pauseRequested) {
+              window._fatalWsClose = true;
+              location.href = "/";
+            }
+          }, 600);
+        });
+      }
+      if (abortBtn && !abortBtn._bound) {
+        abortBtn._bound = true;
+        abortBtn.addEventListener("click", () => {
+          if (window._abortRequested) return;
+          window._abortRequested = true;
+          safeSend(ws, { action: "end_game", by: who() });
+          closeLeaveGameDialog();
+        });
+      }
+      if (stayBtn && !stayBtn._bound) {
+        stayBtn._bound = true;
+        stayBtn.addEventListener("click", closeLeaveGameDialog);
+      }
+      if (backdrop && !backdrop._bound) {
+        backdrop._bound = true;
+        backdrop.addEventListener("click", closeLeaveGameDialog);
+      }
+      if (!window.__rt_leaveDialogEscapeBound) {
+        window.__rt_leaveDialogEscapeBound = true;
+        window.addEventListener("keydown", (e) => {
+          const dialog = document.getElementById("leaveGameDialog");
+          if (e.key === "Escape" && dialog && !dialog.hidden) closeLeaveGameDialog();
         });
       }
     } catch {}
@@ -816,8 +910,9 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
    * Abbruch-Notices, Chat-Weiterleitung und Auto-Reconnect.
    */
   function connect() {
-      // --- "Zurück zur Lobby" mit Confirm + Abbruch für alle ---
+      // --- "Zurück zur Lobby" mit Auswahl: pausieren oder abbrechen ---
     bindRulesSheet();
+    bindLeaveGameDialog();
     (function bindBackToLobby() {
       const btn = document.getElementById("backToLobbyBtn");
       if (!btn || btn._bound) return;
@@ -825,13 +920,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         if (IS_SPECTATOR) { location.href = "/"; return; }  // Zuschauer: nur verlassen
-        const who = (myName || "Spieler").trim();
-        const ok = confirm("Willst du das Spiel wirklich abbrechen? Alle werden in die Lobby geschickt.");
-        if (!ok) return;
-        if (!window._abortRequested) {
-          window._abortRequested = true;
-          safeSend(ws, { action: "end_game", by: who });
-        }
+        openLeaveGameDialog();
       });
     })();
     ws = new WebSocket(wsURL(qs.game_id));
@@ -879,6 +968,14 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
       }
       if (msg.spectator_id) {
         mySpectatorId = String(msg.spectator_id);
+      }
+      if (msg.paused) {
+        const label = msg.pause_remaining_label || pauseDurationLabel(sb);
+        alert(`Spiel pausiert. Du kannst es innerhalb von ${label} wieder aufnehmen.`);
+        window._fatalWsClose = true;
+        try { ws.close(1000); } catch {}
+        location.href = "/";
+        return;
       }
 
       // Fehler
