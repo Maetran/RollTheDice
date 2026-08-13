@@ -184,6 +184,18 @@ SUPERADMIN_BLOCKED_ACTIONS = {
     "cancel_correction",
     "write_field_correction",
 }
+MULTIPLAYER_PAUSE_BLOCKED_ACTIONS = {
+    "set_hold",
+    "roll_dice",
+    "announce_row4",
+    "unannounce_row4",
+    "write_field",
+    "request_correction",
+    "cancel_correction",
+    "write_field_correction",
+    "superadmin_activate",
+    "superadmin_save",
+}
 
 # --- Team-Mode Helpers (2v2: Spieler 1&3 = Team A, 2&4 = Team B) ---
 
@@ -437,6 +449,32 @@ def _join_block_reason(g: GameDict) -> str | None:
         return "Spiel ist bereits voll"
     return None
 
+def _player_connected(p: dict) -> bool:
+    """True, wenn fuer den Spieler aktuell ein WebSocket registriert ist."""
+    return p.get("ws") is not None
+
+def _offline_players(g: GameDict) -> list[dict]:
+    """Liefert getrennte Spieler fuer laufende Multiplayer-Spiele."""
+    if int(g.get("_expected", 0) or 0) <= 1:
+        return []
+    if not g.get("_started") or g.get("_finished") or g.get("_aborted"):
+        return []
+    if not g.get("_resume_required") and not any(_player_connected(p) for p in g.get("_players", [])):
+        return []
+    return [
+        {"id": str(p.get("id")), "name": p.get("name", "Player")}
+        for p in g.get("_players", [])
+        if not _player_connected(p)
+    ]
+
+def multiplayer_pause_reason(g: GameDict) -> str | None:
+    """Pausiert Multiplayer-Partien, bis alle Spieler wieder verbunden sind."""
+    missing = _offline_players(g)
+    if not missing:
+        return None
+    names = ", ".join(p.get("name", "Player") for p in missing)
+    return f"Spiel pausiert, bis alle Spieler wieder verbunden sind. Es fehlen: {names}"
+
 def _passphrase_from_payload(data: dict) -> str:
     """Liest die Passphrase aus aktuellen und Legacy-Payload-Feldern."""
     return (data.get("pass") or data.get("passphrase") or "").strip()
@@ -490,6 +528,7 @@ def new_game(gid: str, name: str, mode) -> GameDict:
         "_chat_history": [],                   # gespeicherte Chat-/Systemmeldungen
         "_superadmins": {},                    # pid -> {"board_id": ...}
         "_admin_edits": {},                    # board_id -> {"row,col": meta}
+        "_resume_required": False,             # True, sobald ein laufendes Multiplayer-Spiel Verbindungen verloren hat
     }
     games[gid] = g
     return g
@@ -800,6 +839,9 @@ def _set_roll_cap_for_current_turn(g: GameDict):
 
 def can_roll_now(g: GameDict, pid: str | None) -> tuple[bool, str]:
     """Validiert, ob ein Spieler im aktuellen Zustand würfeln darf."""
+    paused = multiplayer_pause_reason(g)
+    if paused:
+        return False, paused
     if not g.get("_turn") or g["_turn"].get("player_id") != pid:
         return False, "Nicht an der Reihe"
     if g.get("_correction", {}).get("active"):
@@ -896,6 +938,9 @@ def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_anno
     Returns:
         tuple[bool, str]: (ok, begründung)
     """
+    paused = multiplayer_pause_reason(g)
+    if paused:
+        return False, paused
     if row not in WRITABLE_ROWS:
         return False, "Dieses Feld ist nicht beschreibbar"
 
@@ -1035,10 +1080,14 @@ def snapshot(g: GameDict) -> dict:
         else:
             _auto_single = False
 
+        offline_players = _offline_players(g)
         return {
             "_name": g["_name"],
             "_hardcore": bool(g.get("_hardcore", False)),
-            "_players": [{"id": p["id"], "name": p["name"]} for p in g["_players"]],
+            "_players": [
+                {"id": p["id"], "name": p["name"], "connected": _player_connected(p)}
+                for p in g["_players"]
+            ],
             "_players_joined": len(g["_players"]),
             "_expected": g["_expected"],
             "_started": g["_started"],
@@ -1046,6 +1095,13 @@ def snapshot(g: GameDict) -> dict:
             "_started_at": g.get("_started_at"),
             "_updated_at": g.get("_updated_at"),
             "_aborted": g.get("_aborted", False),
+            "_paused": bool(offline_players),
+            "_pause_reason": multiplayer_pause_reason(g),
+            "_offline_players": offline_players,
+            "_connected": {
+                str(p.get("id")): _player_connected(p)
+                for p in g.get("_players", [])
+            },
             "locked": bool(g.get("_passphrase")),  # neu: passwortgeschütztes Spiel kennzeichnen
             "_turn": g["_turn"],
             "_dice": g["_dice"],
@@ -1199,6 +1255,7 @@ async def api_games():
         try:
             joined = len(g["_players"])
             waiting_names = [p.get("name", f"Player {i}") for i, p in enumerate(g["_players"], start=1)]
+            offline = _offline_players(g)
             lst.append({
                 "id": gid,
                 "name": g["_name"],
@@ -1211,6 +1268,20 @@ async def api_games():
                 "aborted": g.get("_aborted", False),
                 "locked": bool(g.get("_passphrase")),  # <— neu
                 "waiting": waiting_names,
+                "connected": {
+                    str(p.get("id")): _player_connected(p)
+                    for p in g.get("_players", [])
+                },
+                "player_statuses": [
+                    {
+                        "id": str(p.get("id")),
+                        "name": p.get("name", "Player"),
+                        "connected": _player_connected(p),
+                    }
+                    for p in g.get("_players", [])
+                ],
+                "offline": offline,
+                "paused": bool(offline),
                 "started_at": g.get("_started_at"),
                 "updated_at": g.get("_updated_at"),
                 "progress": (_progress_for_game(g) if g.get("_started") and not g.get("_finished") and not g.get("_aborted", False) else []),
@@ -1253,6 +1324,20 @@ def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="
         "aborted": g.get("_aborted", False),
         "locked": bool(g.get("_passphrase")),
         "waiting": [p.get("name", "Player") for p in g["_players"]],
+        "connected": {
+            str(p.get("id")): _player_connected(p)
+            for p in g.get("_players", [])
+        },
+        "player_statuses": [
+            {
+                "id": str(p.get("id")),
+                "name": p.get("name", "Player"),
+                "connected": _player_connected(p),
+            }
+            for p in g.get("_players", [])
+        ],
+        "offline": _offline_players(g),
+        "paused": bool(_offline_players(g)),
     }
 
 def _read_json_file(path: Path, default):
@@ -2005,6 +2090,11 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
                 continue
 
+            paused_reason = multiplayer_pause_reason(g)
+            if paused_reason and act in MULTIPLAYER_PAUSE_BLOCKED_ACTIONS:
+                await websocket.send_json({"error": paused_reason})
+                continue
+
             if act == "join_game":
                 # Passphrase validieren (falls gesetzt) – bei Fehler Socket sofort schließen
                 if not _passphrase_matches(g, data):
@@ -2017,7 +2107,12 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     break
 
                 player_id = str(uuid.uuid4())[:6]
-                player = {"id": player_id, "name": data.get("name") or "Gast", "ws": websocket}
+                player = {
+                    "id": player_id,
+                    "name": data.get("name") or "Gast",
+                    "ws": websocket,
+                    "resume_token": uuid.uuid4().hex,
+                }
                 g["_players"].append(player)
                 g["_scoreboards"][player_id] = {}
                 # 2v2: Spieler dem Team zuordnen (1&3 -> A, 2&4 -> B)
@@ -2029,7 +2124,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     g["_turn"] = {"player_id": g["_players"][0]["id"], "roll_index": 0, "first4oak_roll": None}
                     _set_roll_cap_for_current_turn(g)
 
-                await websocket.send_json({"player_id": player_id})
+                await websocket.send_json({"player_id": player_id, "resume_token": player["resume_token"]})
                 touch(g)
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
@@ -2055,14 +2150,49 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "rejoin_game":
-                player_id = data.get("player_id")
-                for p in g.get("_players", []):
-                    if p.get("id") == player_id:
-                        p["ws"] = websocket
-                        break
-                await websocket.send_json({"player_id": player_id})
+                if not _passphrase_matches(g, data):
+                    await _close_ws_with_error(websocket, "Falsche Passphrase")
+                    break
+
+                requested_id = str(data.get("player_id") or "")
+                player = next(
+                    (p for p in g.get("_players", []) if str(p.get("id")) == requested_id),
+                    None,
+                )
+                if not player:
+                    await _close_ws_with_error(
+                        websocket,
+                        "Spieler-Sitzung nicht gefunden. Bitte der Partie neu beitreten oder zuschauen.",
+                        fatal=True,
+                    )
+                    break
+                expected_token = str(player.get("resume_token") or "")
+                provided_token = str(data.get("resume_token") or "")
+                if expected_token and provided_token != expected_token:
+                    await _close_ws_with_error(
+                        websocket,
+                        "Wiederaufnahme abgelehnt. Die gespeicherte Spieler-Sitzung passt nicht.",
+                        fatal=True,
+                    )
+                    break
+
+                old_ws = player.get("ws")
+                player_id = requested_id
+                is_spectator = False
+                spectator_id = None
+                player["ws"] = websocket
+                if old_ws and old_ws is not websocket:
+                    try:
+                        await old_ws.close(code=1000)
+                    except Exception:
+                        pass
+                if not _offline_players(g):
+                    g["_resume_required"] = False
+                if not player.get("resume_token"):
+                    player["resume_token"] = uuid.uuid4().hex
+                await websocket.send_json({"player_id": player_id, "resume_token": player["resume_token"], "resumed": True})
                 touch(g)
-                await websocket.send_json({"scoreboard": snapshot(g)})
+                await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "set_hold":
                 if superadmin_edit_active(g):
@@ -2558,7 +2688,8 @@ async def ws_game(websocket: WebSocket, game_id: str):
             if player_id:
                 for p in g.get("_players", []):
                     if p.get("id") == player_id:
-                        p["ws"] = None
+                        if p.get("ws") is websocket:
+                            p["ws"] = None
                         break
                 if player_id in g.get("_superadmins", {}):
                     g.setdefault("_superadmins", {}).pop(player_id, None)
@@ -2585,7 +2716,10 @@ async def ws_game(websocket: WebSocket, game_id: str):
                         await broadcast(g, {"spectator": {"event": "left", "name": left_name}})
                 except Exception:
                     pass
-            if correction_cancelled or superadmin_cancelled:
+            if player_id and g.get("_started") and not g.get("_finished") and not g.get("_aborted"):
+                g["_resume_required"] = True
+                touch(g)
+            if correction_cancelled or superadmin_cancelled or player_id:
                 try:
                     await broadcast(g, {"scoreboard": snapshot(g)})
                 except Exception:

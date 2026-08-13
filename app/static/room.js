@@ -150,7 +150,13 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
   if (!qs.game_id) { alert("Fehlende game_id. Zur Lobby."); location.href = "/"; return; }
 
   const PID_KEY = `wuerfler_pid_${qs.game_id}`;
-  let myId   = sessionStorage.getItem(PID_KEY) || null;
+  const TOKEN_KEY = `wuerfler_token_${qs.game_id}`;
+  const PASS_KEY = `wuerfler_pass_${qs.game_id}`;
+  const PLAYER_NAME_KEY = `wuerfler_player_name_${qs.game_id}`;
+  if (!qs.pass && localStorage.getItem(PASS_KEY)) qs.pass = localStorage.getItem(PASS_KEY) || "";
+  if (qs.pass) localStorage.setItem(PASS_KEY, qs.pass);
+  if (qs.name) localStorage.setItem(PLAYER_NAME_KEY, qs.name);
+  let myId = IS_SPECTATOR ? null : (localStorage.getItem(PID_KEY) || sessionStorage.getItem(PID_KEY) || null);
   let mySpectatorId = null;
   let myName = qs.name;
 
@@ -205,6 +211,122 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
       document.documentElement.classList.remove("chat-open");
       document.body.style.overflow = "";
       document.documentElement.style.overflow = "";
+    } catch {}
+  }
+
+  function closeRulesSheet(){
+    try {
+      const sheet = document.getElementById("rulesSheet");
+      const backdrop = document.getElementById("rulesSheetBackdrop");
+      if (sheet) sheet.hidden = true;
+      if (backdrop) backdrop.hidden = true;
+      document.body.classList.remove("rules-open");
+      document.documentElement.classList.remove("rules-open");
+    } catch {}
+  }
+
+  function bindRulesFrameScroll(frame){
+    if (!frame || frame._rulesScrollBound) return;
+    frame._rulesScrollBound = true;
+
+    const scrollByDelta = (deltaY) => {
+      try {
+        const win = frame.contentWindow;
+        if (!win || !deltaY) return;
+        win.scrollBy({ top: deltaY, left: 0, behavior: "auto" });
+      } catch {}
+    };
+
+    const bindTouchScroll = (target) => {
+      if (!target || target._rulesTouchScrollBound) return;
+      target._rulesTouchScrollBound = true;
+      let lastTouchY = null;
+      target.addEventListener("touchstart", (e) => {
+        lastTouchY = e.touches && e.touches.length ? e.touches[0].clientY : null;
+      }, { passive: true });
+      target.addEventListener("touchmove", (e) => {
+        if (!e.touches || !e.touches.length || lastTouchY == null) return;
+        const y = e.touches[0].clientY;
+        scrollByDelta(lastTouchY - y);
+        lastTouchY = y;
+        e.preventDefault();
+      }, { passive: false });
+      target.addEventListener("touchend", () => { lastTouchY = null; }, { passive: true });
+      target.addEventListener("touchcancel", () => { lastTouchY = null; }, { passive: true });
+    };
+
+    const bindInnerDocument = () => {
+      try {
+        const doc = frame.contentDocument;
+        if (!doc || doc._rulesWheelScrollBound) return;
+        doc._rulesWheelScrollBound = true;
+        doc.addEventListener("wheel", (e) => {
+          scrollByDelta(e.deltaY);
+          e.preventDefault();
+        }, { passive: false });
+        bindTouchScroll(doc);
+      } catch {}
+    };
+
+    frame.addEventListener("wheel", (e) => {
+      scrollByDelta(e.deltaY);
+      e.preventDefault();
+    }, { passive: false });
+    bindTouchScroll(frame);
+    frame.addEventListener("load", bindInnerDocument);
+    bindInnerDocument();
+  }
+
+  function openRulesSheet(){
+    try {
+      closeChatSheet();
+      const sheet = document.getElementById("rulesSheet");
+      const backdrop = document.getElementById("rulesSheetBackdrop");
+      const frame = document.getElementById("rulesFrame");
+      if (!sheet || !backdrop) return;
+      bindRulesFrameScroll(frame);
+      if (frame && !frame.getAttribute("src")) {
+        frame.setAttribute("src", frame.dataset.src || "/static/rules.html?embed=1");
+      }
+      sheet.hidden = false;
+      backdrop.hidden = false;
+      document.body.classList.add("rules-open");
+      document.documentElement.classList.add("rules-open");
+      const closeBtn = document.getElementById("rulesSheetClose");
+      setTimeout(() => {
+        try { (closeBtn || sheet).focus({ preventScroll: true }); }
+        catch { (closeBtn || sheet).focus(); }
+      }, 0);
+    } catch {}
+  }
+
+  function bindRulesSheet(){
+    try {
+      const openBtn = document.getElementById("rulesSheetOpen");
+      const closeBtn = document.getElementById("rulesSheetClose");
+      const backdrop = document.getElementById("rulesSheetBackdrop");
+      if (openBtn && !openBtn._bound) {
+        openBtn._bound = true;
+        openBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          openRulesSheet();
+        });
+      }
+      if (closeBtn && !closeBtn._bound) {
+        closeBtn._bound = true;
+        closeBtn.addEventListener("click", closeRulesSheet);
+      }
+      if (backdrop && !backdrop._bound) {
+        backdrop._bound = true;
+        backdrop.addEventListener("click", closeRulesSheet);
+      }
+      if (!window.__rt_rulesEscapeBound) {
+        window.__rt_rulesEscapeBound = true;
+        window.addEventListener("keydown", (e) => {
+          const sheet = document.getElementById("rulesSheet");
+          if (e.key === "Escape" && sheet && !sheet.hidden) closeRulesSheet();
+        });
+      }
     } catch {}
   }
 
@@ -495,6 +617,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
   function getRollAvailability(snapshot){
     if (IS_SPECTATOR) return { usable:false, reason:"Zuschauer können nicht würfeln", code:"spectator" };
     if (!snapshot || snapshot._finished) return { usable:false, reason:"Spiel ist nicht aktiv", code:"inactive" };
+    if (snapshot?._paused) return { usable:false, reason:snapshot._pause_reason || "Spiel pausiert, bis alle Spieler wieder verbunden sind", code:"paused" };
     if (snapshot?._superadmin_active) return { usable:false, reason:"Während Superadmin-Edit gesperrt", code:"superadmin" };
     const turn = snapshot?._turn || null;
     const iAmTurn = turn && String(turn.player_id) === String(myId);
@@ -515,6 +638,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
   function getAnnounceAvailability(snapshot){
     if (IS_SPECTATOR) return { usable:false, reason:"Zuschauer können nicht ansagen", mode:"announce" };
     if (!snapshot || snapshot._finished) return { usable:false, reason:"Spiel ist nicht aktiv", mode:"announce" };
+    if (snapshot?._paused) return { usable:false, reason:snapshot._pause_reason || "Spiel pausiert, bis alle Spieler wieder verbunden sind", mode:"announce" };
     if (snapshot?._superadmin_active) return { usable:false, reason:"Während Superadmin-Edit gesperrt", mode:"announce" };
     if (snapshot?._hardcore) return { usable:false, reason:"Ansage ist im Hardcore-Modus deaktiviert", mode:"announce" };
     const announced = snapshot?._announced_row4 || null;
@@ -581,6 +705,30 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
         score.insertBefore(el, anchor || score.firstChild);
       }
       el.textContent = "Superadmin-Edit aktiv: Würfeln, Halten, Ansagen und Schreiben sind pausiert.";
+    } catch {}
+  }
+
+  function renderMultiplayerPauseNotice(snapshot){
+    try {
+      let el = document.getElementById("multiplayerPauseNotice");
+      if (!snapshot?._paused) {
+        if (el) el.remove();
+        return;
+      }
+      const score = document.querySelector("#scoreOut");
+      if (!score) return;
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "multiplayerPauseNotice";
+        el.className = "multiplayer-pause-notice";
+        const anchor = score.querySelector(".suggestions-area") || score.querySelector(".players-grid");
+        score.insertBefore(el, anchor || score.firstChild);
+      }
+      const offline = Array.isArray(snapshot._offline_players) ? snapshot._offline_players : [];
+      const names = offline.map(p => p && p.name).filter(Boolean).join(", ");
+      el.textContent = names
+        ? `Spiel pausiert. Weiter geht es, sobald wieder verbunden sind: ${names}.`
+        : "Spiel pausiert. Weiter geht es, sobald alle Spieler wieder verbunden sind.";
     } catch {}
   }
 
@@ -661,6 +809,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
    */
   function connect() {
       // --- "Zurück zur Lobby" mit Confirm + Abbruch für alle ---
+    bindRulesSheet();
     (function bindBackToLobby() {
       const btn = document.getElementById("backToLobbyBtn");
       if (!btn || btn._bound) return;
@@ -681,10 +830,15 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
 
     ws.addEventListener("open", () => {
       initChat(ws, { meName: myName });
-      if (myId) {
-        safeSend(ws, { action: "rejoin_game", player_id: myId });
-      } else if (IS_SPECTATOR) {
+      if (IS_SPECTATOR) {
         safeSend(ws, { action: "spectate_game", name: myName, pass: qs.pass });
+      } else if (myId) {
+        safeSend(ws, {
+          action: "rejoin_game",
+          player_id: myId,
+          resume_token: localStorage.getItem(TOKEN_KEY) || "",
+          pass: qs.pass
+        });
       } else {
         safeSend(ws, { action: "join_game", name: myName, pass: qs.pass });
       }
@@ -705,9 +859,15 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
       }
 
       // Join-Response
-      if (msg.player_id && !myId) {
+      if (msg.player_id) {
         myId = String(msg.player_id);
         sessionStorage.setItem(PID_KEY, myId);
+        localStorage.setItem(PID_KEY, myId);
+        localStorage.setItem(PLAYER_NAME_KEY, myName);
+        if (qs.pass) localStorage.setItem(PASS_KEY, qs.pass);
+      }
+      if (msg.resume_token) {
+        localStorage.setItem(TOKEN_KEY, String(msg.resume_token));
       }
       if (msg.spectator_id) {
         mySpectatorId = String(msg.spectator_id);
@@ -725,6 +885,16 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
           syncActionButtons(sb);
         }
         if (msg.fatal) {
+          if (/Spieler-Sitzung nicht gefunden/i.test(String(msg.error || ""))) {
+            localStorage.removeItem(PID_KEY);
+            localStorage.removeItem(TOKEN_KEY);
+            sessionStorage.removeItem(PID_KEY);
+          }
+          if (/Wiederaufnahme abgelehnt/i.test(String(msg.error || ""))) {
+            localStorage.removeItem(PID_KEY);
+            localStorage.removeItem(TOKEN_KEY);
+            sessionStorage.removeItem(PID_KEY);
+          }
           leaveRoomAfterFatalError(msg.error);
           return;
         }
@@ -938,6 +1108,7 @@ function renderFromSnapshot(snapshot) {
     // Ansage-/Würfeln-Buttons aus demselben Benutzbarkeitsmodell setzen.
     syncActionButtons(snapshot);
     renderSuperadminLockNotice(snapshot);
+    renderMultiplayerPauseNotice(snapshot);
 
     // Hinweiszeile (falls vorhanden)
     try{
@@ -1034,6 +1205,13 @@ function renderFromSnapshot(snapshot) {
       if (!el) return;
       if (!snapshot || snapshot._finished) {
         el.textContent = "";
+        return;
+      }
+      if (snapshot?._paused) {
+        el.innerHTML = `
+          <span class="line">Spiel pausiert</span>
+          <span class="line secondary">Warte auf Mitspieler</span>
+        `;
         return;
       }
       const turnPid = snapshot?._turn?.player_id || null;
@@ -1165,6 +1343,7 @@ function renderFromSnapshot(snapshot) {
   function canRequestCorrection(snapshot) {
     const isSingle  = Number(snapshot?._expected || 0) === 1;
     const isHC      = !!(snapshot && snapshot._hardcore);
+    if (snapshot?._paused) return false;
     if (isSingle || isHC) return false;
     const hasLast   = snapshot?._has_last && snapshot._has_last[myId];
     const corrActive= !!(snapshot?._correction?.active);
