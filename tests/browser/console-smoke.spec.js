@@ -166,7 +166,7 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   expect(created.ok()).toBeTruthy();
   const { game_id: gameId } = await created.json();
 
-  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Smoke`);
+  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Smoke&__test=1`);
   await page.waitForSelector("#diceBar");
   await page.waitForTimeout(500);
 
@@ -240,8 +240,16 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
     document.querySelector("#rollBtnInline").click();
     const frames = [];
     const transforms = [];
+    let suggestionsDuring = null;
+    let suggestionsAfter = null;
     for (let i = 0; i < 6; i += 1) {
       await new Promise((resolve) => setTimeout(resolve, 100));
+      if (i === 1 && window.__rtDebugRenderSuggestionsForSnapshot) {
+        window.__rtDebugRenderSuggestionsForSnapshot({
+          suggestions: [{ type: "KENTER", label: "Kenter", points: 35, eligible: true }],
+        });
+        suggestionsDuring = document.querySelector("#suggestions").textContent.trim();
+      }
       frames.push(labels());
       transforms.push(Array.from(document.querySelectorAll("#diceBar .die"))
         .map((die) => window.getComputedStyle(die).transform));
@@ -251,11 +259,15 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
     }).length;
     const shakingCount = document.querySelectorAll("#diceBar .die.shaking").length;
     const transformedFrames = transforms.flat().filter((value) => value && value !== "none").length;
-    return { before, frames, changedDice, shakingCount, transformedFrames };
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    suggestionsAfter = document.querySelector("#suggestions").textContent.trim();
+    return { before, frames, changedDice, shakingCount, transformedFrames, suggestionsDuring, suggestionsAfter };
   });
   expect(rollVisual.shakingCount).toBeGreaterThan(0);
   expect(rollVisual.changedDice).toBeGreaterThanOrEqual(3);
   expect(rollVisual.transformedFrames).toBeGreaterThan(0);
+  expect(rollVisual.suggestionsDuring).toBe("");
+  expect(rollVisual.suggestionsAfter).toContain("Kenter");
   await page.waitForTimeout(350);
 
   const withSuggestion = await page.evaluate(() => {

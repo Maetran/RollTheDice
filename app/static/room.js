@@ -172,6 +172,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
   let rollFaceTimer = null;
   let rollAnimationUntil = 0;
   let rollAnimationIndices = [];
+  let deferredSuggestionSnapshot = null;
   let chatHistorySeeded = false;
   let lastSuperadminSnapshotActive = false;
   const DEBUG_P_HOTKEY = false; // optionaler Debug-Hotkey "p" -> Poker/Free
@@ -509,7 +510,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
 
   function renderRollingDiceFaces(){
     try {
-      const active = rollAnimationUntil > Date.now() && rollAnimationIndices.length > 0;
+      const active = isRollAnimationActive();
       if (!active) return;
       const animated = new Set(rollAnimationIndices.map(Number));
       $$("#diceBar .die", mount).forEach(el => {
@@ -540,6 +541,13 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
     stopRollFaceTimer();
     stopDiceShake();
     restoreDiceFacesFromSnapshot(sb);
+    const suggestionSnapshot = deferredSuggestionSnapshot || sb;
+    deferredSuggestionSnapshot = null;
+    renderSuggestionsForSnapshot(suggestionSnapshot);
+  }
+
+  function isRollAnimationActive(){
+    return rollAnimationUntil > Date.now() && rollAnimationIndices.length > 0;
   }
 
   function activeRollDiceIndices(snapshot){
@@ -549,7 +557,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
 
   function applyRollAnimation(){
     try{
-      const active = rollAnimationUntil > Date.now() && rollAnimationIndices.length > 0;
+      const active = isRollAnimationActive();
       const diceEls = $$("#diceBar .die", mount);
       diceEls.forEach(el => el.classList.remove("shaking"));
       if (!active) return;
@@ -1160,8 +1168,8 @@ function renderFromSnapshot(snapshot) {
       window.emojiUI.init({ mount: currentReactionsMount(), ws, getMyName: () => myName });
     }
 
-    // Suggestions (informativ)
-    renderSuggestions(Array.isArray(snapshot.suggestions) ? snapshot.suggestions : []);
+    // Suggestions (informativ), aber erst nach Ende der lokalen Roll-Animation.
+    renderSuggestionsForSnapshot(snapshot);
 
     // 1P Auto-Roll
     if (snapshot._auto_single && iAmTurn) requestRoll({ animate: true, auto: true });
@@ -1399,6 +1407,20 @@ function renderFromSnapshot(snapshot) {
       }).join("");
       mountEl.innerHTML = html;
     } catch {}
+  }
+
+  function renderSuggestionsForSnapshot(snapshot){
+    try {
+      if (isRollAnimationActive()) {
+        deferredSuggestionSnapshot = snapshot || null;
+        renderSuggestions([]);
+        return;
+      }
+      renderSuggestions(Array.isArray(snapshot?.suggestions) ? snapshot.suggestions : []);
+    } catch {}
+  }
+  if (new URLSearchParams(location.search).get("__test") === "1") {
+    window.__rtDebugRenderSuggestionsForSnapshot = renderSuggestionsForSnapshot;
   }
 
   // --- DiceBar: Hold/Unhold, Roll, Correction-Request, ESC-Cancel ---
