@@ -432,13 +432,14 @@ button.die.held{
 /* Shake-Animation für Würfelsymbol */
 @keyframes dice-shake{
   0%{transform:translate(0,0) rotate(0deg)}
-  20%{transform:translate(-1px,1px) rotate(-2deg)}
-  40%{transform:translate(1px,-1px) rotate(2deg)}
-  60%{transform:translate(-1px,0) rotate(-1deg)}
-  80%{transform:translate(1px,1px) rotate(1deg)}
+  15%{transform:translate(-3px,2px) rotate(-5deg)}
+  30%{transform:translate(3px,-2px) rotate(5deg)}
+  45%{transform:translate(-2px,-3px) rotate(-4deg)}
+  60%{transform:translate(3px,2px) rotate(4deg)}
+  80%{transform:translate(-2px,1px) rotate(-3deg)}
   100%{transform:translate(0,0) rotate(0deg)}
 }
-button.die.shaking{ animation: dice-shake .65s ease; will-change: transform; }
+button.die.shaking{ animation: dice-shake .65s ease-in-out; will-change: transform; }
 
 /* === Announce (❗) Pick-Hervorhebung === */
 /* Markierung für Ansage-Pick-Modus: leerer ❗-Slot im eigenen Board wird klickbar hervorgehoben */

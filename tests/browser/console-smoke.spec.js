@@ -194,18 +194,23 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
     const before = labels();
     document.querySelector("#rollBtnInline").click();
     const frames = [];
+    const transforms = [];
     for (let i = 0; i < 6; i += 1) {
       await new Promise((resolve) => setTimeout(resolve, 70));
       frames.push(labels());
+      transforms.push(Array.from(document.querySelectorAll("#diceBar .die"))
+        .map((die) => window.getComputedStyle(die).transform));
     }
     const changedDice = before.filter((label, index) => {
       return frames.some((frame) => frame[index] && frame[index] !== label);
     }).length;
     const shakingCount = document.querySelectorAll("#diceBar .die.shaking").length;
-    return { before, frames, changedDice, shakingCount };
+    const transformedFrames = transforms.flat().filter((value) => value && value !== "none").length;
+    return { before, frames, changedDice, shakingCount, transformedFrames };
   });
   expect(rollVisual.shakingCount).toBeGreaterThan(0);
   expect(rollVisual.changedDice).toBeGreaterThanOrEqual(3);
+  expect(rollVisual.transformedFrames).toBeGreaterThan(0);
   await page.waitForTimeout(350);
 
   const withSuggestion = await page.evaluate(() => {
