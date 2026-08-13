@@ -341,6 +341,90 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
     } catch {}
   }
 
+  function closeLeaveGameDialog(){
+    try {
+      const dialog = document.getElementById("leaveGameDialog");
+      const backdrop = document.getElementById("leaveGameBackdrop");
+      if (dialog) dialog.hidden = true;
+      if (backdrop) backdrop.hidden = true;
+      document.body.classList.remove("leave-dialog-open");
+      document.documentElement.classList.remove("leave-dialog-open");
+    } catch {}
+  }
+
+  function openLeaveGameDialog(){
+    try {
+      const dialog = document.getElementById("leaveGameDialog");
+      const backdrop = document.getElementById("leaveGameBackdrop");
+      const text = document.getElementById("leaveGameText");
+      if (!dialog || !backdrop) return;
+      closeChatSheet();
+      closeRulesSheet();
+      const holdFor = pauseDurationLabel(sb);
+      if (text) {
+        text.textContent = `Pause hält das Spiel bis zu ${holdFor} offen. Zur Lobby bricht das Spiel ab und schickt alle zurück.`;
+      }
+      dialog.hidden = false;
+      backdrop.hidden = false;
+      document.body.classList.add("leave-dialog-open");
+      document.documentElement.classList.add("leave-dialog-open");
+      const pauseBtn = document.getElementById("leavePauseBtn");
+      setTimeout(() => {
+        try { (pauseBtn || dialog).focus({ preventScroll: true }); }
+        catch { (pauseBtn || dialog).focus(); }
+      }, 0);
+    } catch {}
+  }
+
+  function bindLeaveGameDialog(){
+    try {
+      const pauseBtn = document.getElementById("leavePauseBtn");
+      const abortBtn = document.getElementById("leaveAbortBtn");
+      const stayBtn = document.getElementById("leaveStayBtn");
+      const backdrop = document.getElementById("leaveGameBackdrop");
+      const who = () => (myName || "Spieler").trim();
+      if (pauseBtn && !pauseBtn._bound) {
+        pauseBtn._bound = true;
+        pauseBtn.addEventListener("click", () => {
+          if (window._pauseRequested) return;
+          window._pauseRequested = true;
+          safeSend(ws, { action: "pause_game", by: who() });
+          closeLeaveGameDialog();
+          setTimeout(() => {
+            if (window._pauseRequested) {
+              window._fatalWsClose = true;
+              location.href = "/";
+            }
+          }, 600);
+        });
+      }
+      if (abortBtn && !abortBtn._bound) {
+        abortBtn._bound = true;
+        abortBtn.addEventListener("click", () => {
+          if (window._abortRequested) return;
+          window._abortRequested = true;
+          safeSend(ws, { action: "end_game", by: who() });
+          closeLeaveGameDialog();
+        });
+      }
+      if (stayBtn && !stayBtn._bound) {
+        stayBtn._bound = true;
+        stayBtn.addEventListener("click", closeLeaveGameDialog);
+      }
+      if (backdrop && !backdrop._bound) {
+        backdrop._bound = true;
+        backdrop.addEventListener("click", closeLeaveGameDialog);
+      }
+      if (!window.__rt_leaveDialogEscapeBound) {
+        window.__rt_leaveDialogEscapeBound = true;
+        window.addEventListener("keydown", (e) => {
+          const dialog = document.getElementById("leaveGameDialog");
+          if (e.key === "Escape" && dialog && !dialog.hidden) closeLeaveGameDialog();
+        });
+      }
+    } catch {}
+  }
+
   function syncRoomLayoutSoon({ scrollTop = false } = {}){
     requestAnimationFrame(() => {
       try {
@@ -828,6 +912,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
   function connect() {
       // --- "Zurück zur Lobby" mit Auswahl: pausieren oder abbrechen ---
     bindRulesSheet();
+    bindLeaveGameDialog();
     (function bindBackToLobby() {
       const btn = document.getElementById("backToLobbyBtn");
       if (!btn || btn._bound) return;
@@ -835,36 +920,7 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         if (IS_SPECTATOR) { location.href = "/"; return; }  // Zuschauer: nur verlassen
-        const who = (myName || "Spieler").trim();
-        const holdFor = pauseDurationLabel(sb);
-        const choice = prompt(
-          `Zur Lobby wechseln:\n\nP = Spiel pausieren und später fortsetzen (bis zu ${holdFor})\nA = Spiel abbrechen und alle in die Lobby schicken\n\nEingabe:`,
-          "P"
-        );
-        if (choice == null) return;
-        const normalized = String(choice).trim().toLowerCase();
-        if (normalized === "p" || normalized === "pause" || normalized === "pausieren") {
-          if (!window._pauseRequested) {
-            window._pauseRequested = true;
-            safeSend(ws, { action: "pause_game", by: who });
-            setTimeout(() => {
-              if (window._pauseRequested) {
-                window._fatalWsClose = true;
-                location.href = "/";
-              }
-            }, 600);
-          }
-          return;
-        }
-        if (normalized !== "a" && normalized !== "abbrechen" && normalized !== "abort") {
-          alert("Bitte P für Pausieren oder A für Abbrechen eingeben.");
-          return;
-        }
-        const ok = confirm("Spiel wirklich abbrechen? Es erscheint nicht im Leaderboard.");
-        if (ok && !window._abortRequested) {
-          window._abortRequested = true;
-          safeSend(ws, { action: "end_game", by: who });
-        }
+        openLeaveGameDialog();
       });
     })();
     ws = new WebSocket(wsURL(qs.game_id));

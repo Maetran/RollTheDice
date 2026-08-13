@@ -171,13 +171,23 @@ test("back to lobby can pause a game and resume it later", async ({ page, reques
   const dialogMessages = [];
   page.on("dialog", async (dialog) => {
     dialogMessages.push(dialog.message());
-    if (dialog.type() === "prompt") await dialog.accept("P");
-    else await dialog.accept();
+    await dialog.accept();
   });
 
   await page.click("#backToLobbyBtn");
+  await expect(page.locator("#leaveGameDialog")).toBeVisible();
+  await expect(page.locator("#leaveGameDialog")).toContainText("Pause hält das Spiel");
+  await expect(page.locator("#leavePauseBtn")).toBeVisible();
+  await expect(page.locator("#leaveAbortBtn")).toBeVisible();
+  await expect(page.locator("#leaveStayBtn")).toBeVisible();
+  await page.click("#leaveStayBtn");
+  await expect(page.locator("#leaveGameDialog")).toBeHidden();
+  await expect(page.locator("#diceBar")).toBeVisible();
+
+  await page.click("#backToLobbyBtn");
+  await expect(page.locator("#leaveGameDialog")).toBeVisible();
+  await page.click("#leavePauseBtn");
   await page.waitForURL("/");
-  expect(dialogMessages[0]).toContain("P = Spiel pausieren");
   expect(dialogMessages.some((message) => message.includes("Spiel pausiert"))).toBeTruthy();
 
   const info = await request.get(`/api/games/${encodeURIComponent(gameId)}`);
