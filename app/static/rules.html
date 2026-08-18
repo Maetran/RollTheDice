@@ -4,12 +4,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RollTheDice – Spielanleitung</title>
+  <meta name="theme-color" content="#f4f6f8">
+  <meta name="color-scheme" content="light dark">
+  <link rel="manifest" href="/manifest.webmanifest">
   <!--
     rules.html - Spielanleitung
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi und Tastatursteuerung.
   -->
-  <link rel="stylesheet" href="/static/style.css?v=57" />
+  <script src="/static/theme.js?v=1"></script>
+  <link rel="stylesheet" href="/static/style.css?v=70" />
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
     .doc { max-width: 880px; margin: 1rem auto 2rem; padding: 0 1rem; }
@@ -17,13 +21,13 @@
     .doc h2 { margin-top: 1.25rem; }
     .doc h3 { margin-top: 1rem; }
     .doc p  { line-height: 1.45; }
-    .pill { display:inline-block; font-weight:600; padding: .1rem .45rem; border-radius: 12px; background:#eef3ff; border:1px solid #cfe0ff; }
-    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:.92em; padding:.05rem .35rem; border:1px solid #ddd; border-bottom-width:2px; border-radius:4px; background:#fafafa; }
+    .pill { display:inline-block; font-weight:600; padding: .1rem .45rem; border-radius: 12px; background:var(--info-soft); border:1px solid var(--info-border); }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:.92em; padding:.05rem .35rem; border:1px solid var(--border); border-bottom-width:2px; border-radius:4px; background:var(--surface-soft); }
     .grid-fields { width:100%; border-collapse: separate; border-spacing:0; margin:.5rem 0; font-variant-numeric: tabular-nums; }
     .grid-fields th, .grid-fields td { border:1px solid var(--border); padding:.35rem .45rem; text-align:left; vertical-align: top; }
-    .grid-fields thead th { background:#f7f7f7; }
-    .note { background:#fff7d6; border:1px solid #ffdc73; padding:.5rem .6rem; border-radius:8px; }
-    details { border:1px solid #e5e7eb; border-radius:8px; padding:.5rem .6rem; background:#fcfcfd; }
+    .grid-fields thead th { background:var(--table-head); }
+    .note { background:var(--warning-soft); border:1px solid var(--warning-border); padding:.5rem .6rem; border-radius:8px; }
+    details { border:1px solid var(--border); border-radius:8px; padding:.5rem .6rem; background:var(--surface); }
     details + details { margin-top:.5rem; }
     summary { cursor:pointer; font-weight:600; }
     .back { margin:.75rem 0 .5rem; }
@@ -41,7 +45,13 @@
 <body>
   <!-- Dokumentations-Container -->
   <div class="doc">
-    <button class="small back" onclick="location.href='/static/index.html'">Zurück zur Lobby</button>
+    <div class="doc-actions">
+      <button class="small back" onclick="location.href='/static/index.html'">Zurück zur Lobby</button>
+      <button class="small ghost theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten">
+        <span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span>
+        <span data-theme-label>Dunkel</span>
+      </button>
+    </div>
     <h1>Spielanleitung</h1>
     <p>
       <strong>Ziel:</strong> Sammle möglichst viele Punkte über vier Spalten:

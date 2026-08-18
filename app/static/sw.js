@@ -12,7 +12,7 @@
   - Versionierte Cache-Namen (CACHE_VERSION) erleichtern das gezielte Aufräumen.
 */
 
-const CACHE_VERSION = 'v55';
+const CACHE_VERSION = 'v58';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
@@ -20,7 +20,9 @@ const PRECACHE_URLS = [
   '/static/index.html',
   '/static/room.html',
   '/static/rules.html',
+  '/static/game_view.html',
   '/static/style.css',
+  '/static/theme.js',
   '/static/scoreboard.js',
   '/static/emoji.js',
   '/static/room.js',
@@ -63,12 +65,19 @@ self.addEventListener('activate', (event) => {
 // — Fetch-Routing
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-
-  // nur GET cachen
-  if (req.method !== 'GET') return;
-
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+
+  // API-Aufrufe dürfen nie aus einem alten Runtime-Cache beantwortet werden.
+  // Bei einem nicht erreichbaren Backend liefern wir eine eindeutige 503-Antwort
+  // statt eines browserabhängigen "Failed to fetch".
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(apiNetworkOnly(req));
+    return;
+  }
+
+  // Nur statische GET-Anfragen und Navigationen cachen.
+  if (req.method !== 'GET') return;
 
   if (url.pathname.startsWith('/static/')) {
     event.respondWith(cacheFirst(req));
@@ -81,8 +90,11 @@ self.addEventListener('fetch', (event) => {
 // --- Strategien ---
 async function cacheFirst(req) {
   const cache = await caches.open(PRECACHE);
-  // Wichtig: ignoreSearch=false, damit ?v=…-Busting beachtet wird
-  const cached = await cache.match(req, { ignoreSearch: false });
+  // Erst die exakte Version suchen. Offline darf danach die vorab gecachte
+  // kanonische Datei ohne ?v=… verwendet werden.
+  const url = new URL(req.url);
+  const cached = await cache.match(req, { ignoreSearch: false })
+    || await cache.match(url.pathname, { ignoreSearch: true });
   if (cached) return cached;
 
   try {
@@ -95,6 +107,23 @@ async function cacheFirst(req) {
       if (fallback) return fallback;
     }
     throw e;
+  }
+}
+
+async function apiNetworkOnly(req) {
+  try {
+    return await fetch(req);
+  } catch (e) {
+    return new Response(JSON.stringify({
+      detail: 'backend_unavailable',
+      message: 'Der Spielserver ist nicht erreichbar.'
+    }), {
+      status: 503,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store'
+      }
+    });
   }
 }
 

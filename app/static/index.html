@@ -14,10 +14,12 @@
     - Per Buttons wird in den Spielraum /static/room.html navigiert
   -->
   <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#f4f6f8">
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/static/favicon.png" sizes="32x32">
-  <link rel="stylesheet" href="/static/style.css?v=57">
+  <script src="/static/theme.js?v=1"></script>
+  <link rel="stylesheet" href="/static/style.css?v=70">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -28,7 +30,13 @@
           <div class="logo">🎲</div>
           <h1>Würfler – Lobby</h1>
         </div>
-        <button class="small ghost rules-under-title" onclick="location.href='/static/rules.html'">Spielregeln</button>
+        <div class="brand-actions">
+          <button class="small ghost rules-under-title" onclick="location.href='/static/rules.html'">Spielregeln</button>
+          <button class="small ghost theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten">
+            <span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span>
+            <span data-theme-label>Dunkel</span>
+          </button>
+        </div>
       </div>
       <div class="stats">
         <span>Würfelspiele beendet: <b id="gamesPlayed">0</b></span>
@@ -220,9 +228,9 @@
         renderList(openGames);
         renderRunningList(runningGames);
       } catch (e) {
-        listEl.innerHTML = `<div class="muted">Konnte Spiele nicht laden: ${escapeHtml(String(e.message||e))}</div>`;
+        listEl.innerHTML = `<div class="connection-error">Spielserver nicht erreichbar. Bitte Server starten und die Seite neu laden.</div>`;
         if (runningEl) {
-          runningEl.innerHTML = `<div class="muted">Konnte laufende Spiele nicht laden.</div>`;
+          runningEl.innerHTML = `<div class="connection-error">Keine Verbindung zum Spielserver.</div>`;
         }
       }
     }
@@ -428,6 +436,7 @@
     // Neues Spiel erstellen
     createBtn.addEventListener('click', async () => {
       createErr.textContent = '';
+      createErr.classList.remove('connection-error');
       const pname = (nameInput.value || 'Gast').trim() || 'Gast';
       const mode  = modeSel.value || '2';
       const gname = defaultGameName(pname, mode);
@@ -438,14 +447,27 @@
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ name: gname, mode, owner: pname, pass: passInput.value, hardcore: !!hcChk.checked })
         });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res.ok) {
+          let message = '';
+          try {
+            const errorPayload = await res.json();
+            message = String(errorPayload.message || errorPayload.detail || '');
+          } catch {}
+          if (res.status === 503) throw new Error(message || 'Der Spielserver ist nicht erreichbar.');
+          throw new Error(message || ('Serverfehler ' + res.status));
+        }
         const data = await res.json();
         const gid = data.game_id || data.id;
         if (!gid) throw new Error('Antwort ohne game_id');
         const qs = new URLSearchParams({ game_id: gid, name: pname, pass: passInput.value }).toString();
         location.href = `/static/room.html?${qs}`;   // FIX
       } catch (e) {
-        createErr.textContent = `Fehler: ${String(e.message || e)}`;
+        const raw = String(e && e.message ? e.message : e);
+        const offline = e instanceof TypeError || /failed to fetch|load failed|networkerror/i.test(raw);
+        createErr.textContent = offline
+          ? 'Der Spielserver ist nicht erreichbar. Bitte Server starten und die Seite neu laden.'
+          : `Fehler: ${raw}`;
+        createErr.classList.add('connection-error');
       }
     });
 

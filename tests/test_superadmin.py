@@ -95,3 +95,48 @@ class SuperadminEditTestCase(GameStateTestCase):
         self.assertFalse(main.action_blocked_by_superadmin(g, "chat_message"))
         self.assertFalse(main.action_blocked_by_superadmin(g, "superadmin_save"))
         self.assertFalse(main.action_blocked_by_superadmin(g, "superadmin_deactivate"))
+
+    def test_save_exit_preserves_current_turn_in_all_player_modes(self):
+        for mode in (1, 2, 3, "2v2"):
+            with self.subTest(mode=mode):
+                count = 4 if mode == "2v2" else int(mode)
+                players = [(f"p{i}", f"Player {i}") for i in range(1, count + 1)]
+                g = self.make_game(mode=mode, players=players)
+                active_id = players[-1][0]
+                original_turn = {"player_id": active_id, "roll_index": 2, "first4oak_roll": 1}
+                g["_turn"] = original_turn.copy()
+                g["_dice"] = [6, 6, 6, 6, 2]
+                g["_holds"] = [True, True, True, True, False]
+                g["_rolls_used"] = 2
+                g["_superadmins"]["p1"] = {"board_id": main.board_key_for_actor(g, "p1")}
+
+                restored = main.complete_superadmin_save(g, "p1")
+
+                self.assertEqual(restored, active_id)
+                self.assertEqual(g["_turn"], original_turn)
+                self.assertEqual(g["_dice"], [6, 6, 6, 6, 2])
+                self.assertEqual(g["_holds"], [True, True, True, True, False])
+                self.assertEqual(g["_rolls_used"], 2)
+                self.assertFalse(main.superadmin_edit_active(g))
+                self.assertFalse(main.action_blocked_by_superadmin(g, "roll_dice"))
+
+    def test_save_exit_repairs_missing_turn_in_all_player_modes(self):
+        for mode in (1, 2, 3, "2v2"):
+            with self.subTest(mode=mode):
+                count = 4 if mode == "2v2" else int(mode)
+                players = [(f"p{i}", f"Player {i}") for i in range(1, count + 1)]
+                g = self.make_game(mode=mode, players=players)
+                g["_turn"] = None
+                g["_dice"] = [5, 4, 3, 2, 1]
+                g["_holds"] = [True] * 5
+                g["_rolls_used"] = 3
+                g["_superadmins"]["p1"] = {"board_id": main.board_key_for_actor(g, "p1")}
+
+                restored = main.complete_superadmin_save(g, "p1")
+
+                self.assertEqual(restored, "p1")
+                self.assertEqual(g["_turn"], {"player_id": "p1", "roll_index": 0, "first4oak_roll": None})
+                self.assertEqual(g["_dice"], [0, 0, 0, 0, 0])
+                self.assertEqual(g["_holds"], [False] * 5)
+                self.assertEqual(g["_rolls_used"], 0)
+                self.assertFalse(main.superadmin_edit_active(g))

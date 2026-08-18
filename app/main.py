@@ -173,7 +173,11 @@ def manifest():
 # Service Worker (Root-Scope) ausliefern
 @app.get("/sw.js", include_in_schema=False)
 def service_worker():
-    return FileResponse(str(STATIC_DIR / "sw.js"), media_type="text/javascript")
+    return FileResponse(
+        str(STATIC_DIR / "sw.js"),
+        media_type="text/javascript",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
@@ -444,6 +448,46 @@ def superadmin_edit_active(g: GameDict) -> bool:
 def action_blocked_by_superadmin(g: GameDict, action: str | None) -> bool:
     """True, wenn eine Spielaktion während Superadmin-Edit pausiert werden muss."""
     return superadmin_edit_active(g) and str(action or "") in SUPERADMIN_BLOCKED_ACTIONS
+
+def _ensure_turn_after_superadmin(g: GameDict, fallback_player_id: str | None = None) -> str | None:
+    """Bewahrt einen gültigen Zug oder stellt ihn nach einem Admin-Edit wieder her.
+
+    Ein bestehender gültiger Zug inklusive Würfeln, Holds und Wurfzähler bleibt
+    unverändert. Nur ein fehlender oder auf einen unbekannten Spieler zeigender
+    Zug wird defensiv neu initialisiert.
+    """
+    if not g.get("_started") or g.get("_finished") or g.get("_aborted"):
+        return None
+
+    player_ids = [str(p.get("id")) for p in g.get("_players", []) if p.get("id") is not None]
+    if not player_ids:
+        g["_turn"] = None
+        return None
+
+    turn = g.get("_turn")
+    current_id = str(turn.get("player_id")) if isinstance(turn, dict) and turn.get("player_id") is not None else ""
+    if current_id in player_ids:
+        turn.setdefault("roll_index", int(g.get("_rolls_used", 0) or 0))
+        turn.setdefault("first4oak_roll", None)
+        _set_roll_cap_for_current_turn(g)
+        return current_id
+
+    fallback = str(fallback_player_id) if fallback_player_id is not None else ""
+    restored_id = fallback if fallback in player_ids else player_ids[0]
+    _reset_turn_roll_state(g)
+    _clear_announcement(g)
+    g["_turn"] = {
+        "player_id": restored_id,
+        "roll_index": 0,
+        "first4oak_roll": None,
+    }
+    _set_roll_cap_for_current_turn(g)
+    return restored_id
+
+def complete_superadmin_save(g: GameDict, player_id: str) -> str | None:
+    """Beendet den speichernden Admin-Edit und garantiert einen aktiven Zug."""
+    g.setdefault("_superadmins", {}).pop(player_id, None)
+    return _ensure_turn_after_superadmin(g, player_id)
 
 def _clear_announcement(g: GameDict) -> None:
     """Setzt alle Ansage-Metadaten zurueck."""
@@ -1254,7 +1298,10 @@ def _begin_next_turn(g: GameDict, current_pid: str | None) -> None:
 @app.get("/")
 def root():
     """Liefer Startseite (Lobby) aus dem Static-Verzeichnis aus."""
-    return FileResponse(str(STATIC_DIR / "index.html"))
+    return FileResponse(
+        str(STATIC_DIR / "index.html"),
+        headers={"Cache-Control": "no-cache, must-revalidate"},
+    )
 
 class CreateReq(BaseModel):
     name: str
@@ -2682,8 +2729,11 @@ async def ws_game(websocket: WebSocket, game_id: str):
                         g["_results"] = _compute_results_for_snapshot(g)
                 else:
                     g["_results"] = None
+                    complete_superadmin_save(g, player_id)
+                if g.get("_finished"):
+                    g.setdefault("_superadmins", {}).pop(player_id, None)
                 touch(g)
-                await websocket.send_json({"superadmin": {"saved": True, "board_id": board_id}})
+                await websocket.send_json({"superadmin": {"saved": True, "active": False, "board_id": board_id}})
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "chat_message":
