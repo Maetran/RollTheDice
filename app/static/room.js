@@ -17,7 +17,7 @@
 */
 // Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions)
 
-import { initChat, addChatMessage } from "./chat.js?v=4";
+import { initChat, addChatMessage } from "./chat.js?v=6";
 
 (() => {
   // ---------- Helpers ----------
@@ -426,11 +426,12 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
   }
 
   function syncRoomLayoutSoon({ scrollTop = false } = {}){
-    requestAnimationFrame(() => {
-      try {
-        syncChatWidth();
-        syncReactionsMount();
-        applyAnnounceModeButtonVisibility(mount);
+	    requestAnimationFrame(() => {
+	      try {
+	        syncChatWidth();
+	        syncSideChatAnchor();
+	        syncReactionsMount();
+	        applyAnnounceModeButtonVisibility(mount);
         const grid = document.querySelector("#scoreOut .players-grid");
         if (scrollTop && grid) grid.scrollLeft = 0;
         if (scrollTop) {
@@ -925,9 +926,10 @@ import { initChat, addChatMessage } from "./chat.js?v=4";
     })();
     ws = new WebSocket(wsURL(qs.game_id));
 
-    ws.addEventListener("open", () => {
-      initChat(ws, { meName: myName });
-      if (IS_SPECTATOR) {
+	    ws.addEventListener("open", () => {
+	      initChat(ws, { meName: myName });
+	      syncSideChatAnchor();
+	      if (IS_SPECTATOR) {
         safeSend(ws, { action: "spectate_game", name: myName, pass: qs.pass });
       } else if (myId) {
         safeSend(ws, {
@@ -1189,6 +1191,7 @@ function renderFromSnapshot(snapshot) {
       announcedRow4: announced,
       canRequestCorrection: canRequestCorrection(snapshot)
     });
+    syncBoardCountClasses();
     syncHeaderTurnStatus(snapshot);
     applyRollAnimation();
 
@@ -1271,10 +1274,11 @@ function renderFromSnapshot(snapshot) {
     // 1P Auto-Roll
     if (snapshot._auto_single && iAmTurn) requestRoll({ animate: true, auto: true });
 
-    // Chat-Breite angleichen
-    syncChatWidth();
+	    // Chat-Breite angleichen
+	    syncChatWidth();
+	    syncSideChatAnchor();
 
-    // --- Scrollposition nach Re-Render bewahren, ausser bei gewolltem Fokuswechsel (Write+TurnChange)
+	    // --- Scrollposition nach Re-Render bewahren, ausser bei gewolltem Fokuswechsel (Write+TurnChange)
     const filledNow = countFilledWritableCells(snapshot);
     const turnChanged = String(_lastTurnPid) !== String(turnPid);
     const wroteHappened = (_lastFilledCount !== null) ? (filledNow > _lastFilledCount) : false;
@@ -1301,7 +1305,26 @@ function renderFromSnapshot(snapshot) {
 
   function currentReactionsMount(){
     const mobileMount = document.getElementById("chatReactionsBar");
-    return (isMobileNarrow() && mobileMount) ? mobileMount : reactionsMount;
+    return mobileMount || reactionsMount;
+  }
+
+  function syncBoardCountClasses() {
+    try {
+      const grid = document.querySelector("#scoreOut .players-grid");
+      const count = grid ? grid.querySelectorAll(":scope > .player-card").length : 0;
+      const targets = [document.body, grid].filter(Boolean);
+      targets.forEach((el) => {
+        el.classList.remove(
+          "board-count-0",
+          "board-count-1",
+          "board-count-2",
+          "board-count-3",
+          "board-count-4",
+          "board-count-many"
+        );
+        el.classList.add(count > 4 ? "board-count-many" : `board-count-${count}`);
+      });
+    } catch {}
   }
 
   function syncHeaderTurnStatus(snapshot){
@@ -1456,23 +1479,54 @@ function renderFromSnapshot(snapshot) {
   }
 
   // --- Chatbreite ---
-  function syncChatWidth() {
-    try {
-      const score = document.querySelector("#scoreOut");
-      const grid = document.querySelector("#scoreOut .players-grid");
-      const chat = document.querySelector(".chat-panel");
+	  function syncChatWidth() {
+	    try {
+	      const score = document.querySelector("#scoreOut");
+	      const grid = document.querySelector("#scoreOut .players-grid");
+	      const chat = document.querySelector(".chat-panel");
       if (!grid || !chat) return;
       const source = score || grid;
       const w = Math.ceil(source.getBoundingClientRect().width);
       chat.style.maxWidth = w + "px";
       chat.style.marginLeft = "auto";
-      chat.style.marginRight = "auto";
-    } catch {}
-  }
-  window.addEventListener("resize", () => {
-    syncChatWidth();
-    syncReactionsMount();
-  });
+	      chat.style.marginRight = "auto";
+	    } catch {}
+	  }
+
+	  function syncSideChatAnchor() {
+	    try {
+	      const root = document.documentElement;
+	      if (!window.matchMedia || !window.matchMedia("(min-width: 900px)").matches) {
+	        root.style.removeProperty("--desktop-side-chat-center-y");
+	        return;
+	      }
+	      const selectors = [
+	        ".room-header",
+	        "#scoreOut .players-grid",
+	        "#scoreOut .suggestions-area",
+	        "#scoreOut .topbar"
+	      ];
+	      const rects = selectors
+	        .map(sel => document.querySelector(sel))
+	        .filter(Boolean)
+	        .map(el => el.getBoundingClientRect())
+	        .filter(r => r.width > 0 && r.height >= 0);
+	      if (!rects.length) {
+	        root.style.removeProperty("--desktop-side-chat-center-y");
+	        return;
+	      }
+	      const top = Math.min(...rects.map(r => r.top));
+	      const bottom = Math.max(...rects.map(r => r.bottom));
+	      const center = Math.round((top + bottom) / 2);
+	      root.style.setProperty("--desktop-side-chat-center-y", `${center}px`);
+	    } catch {}
+	  }
+
+	  window.addEventListener("resize", () => {
+	    syncChatWidth();
+	    syncSideChatAnchor();
+	    syncReactionsMount();
+	  });
 
   // --- Suggestions (nur Anzeige) ---
   /**

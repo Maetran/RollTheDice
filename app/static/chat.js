@@ -27,10 +27,14 @@ export function initChat(websocket, opts = {}) {
     chatInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") sendMessage();
     });
-  }
-  bindChatSheet();
-  setChatOpen(false, { focus: false });
-}
+	  }
+	  bindChatSheet();
+	  setChatOpen(shouldDefaultOpenChat(), { focus: false });
+	}
+
+function shouldDefaultOpenChat() {
+  return false;
+	}
 
 function sendMessage() {
   if (!chatInput) chatInput = document.getElementById("chatInput");

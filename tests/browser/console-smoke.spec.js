@@ -157,6 +157,65 @@ test("multiplayer game pauses on disconnect and resumes from the lobby", async (
   await player2Context.close();
 });
 
+test("tablet multiplayer layout shows up to three boards side by side", async ({ page, browser, request }) => {
+  await page.setViewportSize({ width: 900, height: 780 });
+  const created = await request.post("/api/games", {
+    data: { name: "Layout Smoke", mode: 3 },
+  });
+  expect(created.ok()).toBeTruthy();
+  const { game_id: gameId } = await created.json();
+
+  const player2Context = await browser.newContext({ viewport: { width: 900, height: 780 } });
+  const player3Context = await browser.newContext({ viewport: { width: 900, height: 780 } });
+  const player2 = await player2Context.newPage();
+  const player3 = await player3Context.newPage();
+
+  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Anna`);
+  await player2.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Ben`);
+  await player3.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Cara`);
+
+  await expect(page.locator(".player-card")).toHaveCount(3);
+  await expect(page.locator(".player-card", { hasText: "Anna" })).toBeVisible();
+  await expect(page.locator(".player-card", { hasText: "Ben" })).toBeVisible();
+  await expect(page.locator(".player-card", { hasText: "Cara" })).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const grid = document.querySelector(".players-grid");
+    const gridRect = grid.getBoundingClientRect();
+    const cards = Array.from(document.querySelectorAll(".player-card")).map((card) => {
+      const r = card.getBoundingClientRect();
+      return {
+        top: Math.round(r.top),
+        left: Math.round(r.left),
+        right: Math.round(r.right),
+        width: Math.round(r.width),
+      };
+    });
+    return {
+      gridClientWidth: Math.round(grid.clientWidth),
+      gridScrollWidth: Math.round(grid.scrollWidth),
+      gridLeft: Math.round(gridRect.left),
+      gridRight: Math.round(gridRect.right),
+      cards,
+      viewportWidth: window.innerWidth,
+      documentScrollWidth: Math.round(document.documentElement.scrollWidth),
+    };
+  });
+
+  expect(layout.cards).toHaveLength(3);
+  expect(layout.gridScrollWidth).toBeLessThanOrEqual(layout.gridClientWidth + 2);
+  expect(layout.documentScrollWidth).toBeLessThanOrEqual(layout.viewportWidth + 2);
+  expect(new Set(layout.cards.map((card) => card.top)).size).toBe(1);
+  expect(layout.cards[0].left).toBeGreaterThanOrEqual(layout.gridLeft - 1);
+  expect(layout.cards[2].right).toBeLessThanOrEqual(layout.gridRight + 1);
+  for (const card of layout.cards) {
+    expect(card.width).toBeGreaterThanOrEqual(250);
+  }
+
+  await player3Context.close();
+  await player2Context.close();
+});
+
 test("back to lobby can pause a game and resume it later", async ({ page, request }) => {
   const health = watchPageHealth(page);
   const created = await request.post("/api/games", {
@@ -495,7 +554,7 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
     };
   });
 
-  expect(reactionPanel.panel.bottom).toBeLessThanOrEqual(reactionPanel.suggestions.top - 1);
+  expect(reactionPanel.panel.bottom).toBeLessThanOrEqual(reactionPanel.host.top - 1);
   expect(reactionPanel.panel.top).toBeGreaterThanOrEqual(0);
   expect(reactionPanel.panel.left).toBeGreaterThanOrEqual(0);
   expect(reactionPanel.panel.right).toBeLessThanOrEqual(reactionPanel.viewport.width);

@@ -14,7 +14,7 @@
     - room.js verbindet per WebSocket, orchestriert UI, Chat und Korrekturmodus
     - Ein schlanker Header bietet Reactions, Regeln-Link und Zurück-zur-Lobby
   -->
-  <link rel="stylesheet" href="/static/style.css?v=57">
+  <link rel="stylesheet" href="/static/style.css?v=68">
 </head>
 <body class="room-page">
   <!-- Header: Desktop-Reactions, Regeln, Zurück zur Lobby -->
@@ -75,7 +75,7 @@
   <!-- Scripts: zuerst scoreboard (Renderer), dann room (WS/Steuerung als ES-Modul) -->
   <script src="/static/scoreboard.js?v=22" defer></script>
   <script src="/static/emoji.js?v=8"></script>
-  <script type="module" src="room.js?v=28"></script>
+  <script type="module" src="room.js?v=33"></script>
   <script>
     // Service Worker registrieren (Root-Scope /sw.js)
     if ('serviceWorker' in navigator) {
