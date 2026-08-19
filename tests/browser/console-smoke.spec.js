@@ -333,6 +333,8 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
         height: Math.round(lr.height),
       },
       tableWrap: rect(".player-card .table-wrap"),
+      scrollHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
       loadedCss: Array.from(document.styleSheets)
         .map((sheet) => sheet.href)
         .filter(Boolean)
@@ -344,8 +346,6 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   expect(layout.headerStatus.bottom).toBeLessThanOrEqual(layout.card.top + 1);
   expect(layout.suggestions.bottom).toBeLessThanOrEqual(layout.topbar.top + 1);
   expect(layout.lastRow.bottom).toBeLessThanOrEqual(layout.topbar.top - 1);
-  expect(layout.topbar.bottom).toBeLessThanOrEqual(layout.chatToggle.top + 1);
-  expect(layout.chatToggle.top - layout.topbar.bottom).toBeGreaterThanOrEqual(5);
   expect(layout.chatReactions.right).toBeLessThanOrEqual(layout.chatToggle.left + 1);
   expect(layout.chatReactions.top).toBeGreaterThanOrEqual(layout.chatToggle.top);
   expect(layout.chatReactions.top).toBeLessThanOrEqual(layout.chatToggle.top + 2);
@@ -354,7 +354,20 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   expect(layout.die.width).toBeLessThanOrEqual(61);
   expect(layout.die.height).toBe(layout.die.width);
   expect(layout.heldDieBorderWidth).toBe("2px");
-  expect(layout.tableWrap.height).toBeGreaterThanOrEqual(395);
+  expect(layout.tableWrap.height).toBeGreaterThanOrEqual(460);
+  expect(layout.scrollHeight).toBeGreaterThan(layout.viewportHeight);
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(100);
+  const bottomDock = await page.evaluate(() => {
+    const topbar = document.querySelector(".topbar").getBoundingClientRect();
+    const chatToggle = document.querySelector("#chatToggle").getBoundingClientRect();
+    return {
+      topbarBottom: Math.round(topbar.bottom),
+      chatTop: Math.round(chatToggle.top),
+    };
+  });
+  expect(bottomDock.topbarBottom).toBeLessThanOrEqual(bottomDock.chatTop - 5);
 
   await page.waitForFunction(() => {
     const btn = document.querySelector("#rollBtnInline");
