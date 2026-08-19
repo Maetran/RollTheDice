@@ -339,7 +339,7 @@ function renderScoreboard(mount, sb, {
     <div class="topbar">
       <div id="diceBar">
         ${dice.map((d,i)=>
-          `<button class="die ${holds[i] ? "held" : ""}" data-i="${i}" title="halten/lösen">${dieSVG(d || 0)}</button>`
+          `<button type="button" class="die ${holds[i] ? "held" : ""}" data-i="${i}" aria-label="Würfel ${i + 1} halten oder lösen" aria-pressed="${holds[i] ? "true" : "false"}" title="halten/lösen">${dieSVG(d || 0)}</button>`
         ).join("")}
         ${isHC ? '' : `<button id="announceBtnInline" class="small" ${announceDisabledAttr}>Ansagen</button>`}
         ${isHC ? '' : `<button id="rollBtnInline" data-action="roll" ${rollDisabledAttr}>🎲 Würfeln</button>`}

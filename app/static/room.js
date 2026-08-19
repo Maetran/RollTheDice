@@ -1644,9 +1644,19 @@ function renderFromSnapshot(snapshot) {
         const iAmTurn = (sb?._turn && String(sb._turn.player_id) === String(myId));
         if (!iAmTurn || (sb?._correction?.active)) return;
 
+        // Den Hold sofort darstellen. Zuvor wurde die Markierung erst mit dem
+        // Server-Snapshot sichtbar, was sich besonders mobil verzögert anfühlte.
+        const nextHeld = !btn.classList.contains("held");
+        btn.classList.toggle("held", nextHeld);
+        btn.setAttribute("aria-pressed", String(nextHeld));
+
         const holds = $$("#diceBar .die", mount).map(b => b.classList.contains("held"));
-        holds[i] = !holds[i];
-        safeSend(ws, { action: "set_hold", holds });
+        if (!safeSend(ws, { action: "set_hold", holds })) {
+          // Ohne offene Verbindung bleibt kein Zustand stehen, den der Server
+          // nie erhalten hat.
+          btn.classList.toggle("held", !nextHeld);
+          btn.setAttribute("aria-pressed", String(!nextHeld));
+        }
       });
     });
 
