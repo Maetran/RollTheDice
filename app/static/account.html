@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Würfler – Mein Bereich</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css?v=75">
+  <script src="/static/theme.js?v=1"></script>
+</head>
+<body class="lobby-page">
+  <main class="wrap profile-shell">
+    <nav class="page-nav"><a href="/">← Lobby</a><a id="publicProfileLink" href="#">Öffentliches Profil</a></nav>
+    <section class="card">
+      <p class="eyebrow">Mein Bereich</p>
+      <h1 id="accountName">Meine Statistiken</h1>
+      <div id="accountNotice" class="connection-error" hidden></div>
+      <div id="statistics" class="statistics-grid"></div>
+    </section>
+    <section class="card password-card">
+      <h2>Passwort ändern</h2>
+      <p id="passwordHint" class="muted small"></p>
+      <form id="passwordForm" class="form-stack">
+        <label>Aktuelles Passwort<input id="currentPassword" type="password" autocomplete="current-password" required></label>
+        <label>Neues Passwort<input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+        <label>Neues Passwort wiederholen<input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+        <button>Passwort ändern</button>
+      </form>
+      <div id="passwordMessage" class="muted small"></div>
+    </section>
+  </main>
+  <script type="module">
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth } from '/static/auth.js?v=2';
+    const auth = await loadAuth();
+    if (!auth.authenticated) location.replace('/');
+    const user = auth.user;
+    document.getElementById('accountName').textContent = user.username;
+    document.getElementById('publicProfileLink').href = `/static/profile.html?user=${encodeURIComponent(user.username)}`;
+    if (user.must_change_password) {
+      document.getElementById('passwordHint').textContent = 'Das temporäre Passwort muss jetzt geändert werden.';
+    }
+
+    function bucket(title, data) {
+      return `<article class="stat-bucket"><h2>${escapeHtml(title)}</h2><dl>
+        <div><dt>Spiele</dt><dd>${formatNumber(data.games_played, '0')}</dd></div>
+        <div><dt>Gesamtpunkte</dt><dd>${formatNumber(data.points_total, '0')}</dd></div>
+        <div><dt>Maximum</dt><dd>${formatNumber(data.max_points)}</dd></div>
+        <div><dt>Minimum</dt><dd>${formatNumber(data.min_points)}</dd></div>
+        <div><dt>Durchschnitt</dt><dd>${formatNumber(data.average_points)}</dd></div>
+      </dl></article>`;
+    }
+
+    const statsResponse = await fetch('/api/users/me/statistics', { cache: 'no-store' });
+    if (statsResponse.ok) {
+      const stats = (await statsResponse.json()).player.statistics;
+      document.getElementById('statistics').innerHTML = bucket('Gesamt', stats.overall)
+        + bucket('Normal', stats.normal) + bucket('Hardcore', stats.hardcore);
+    }
+
+    document.getElementById('passwordForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const message = document.getElementById('passwordMessage');
+      const current = document.getElementById('currentPassword').value;
+      const next = document.getElementById('newPassword').value;
+      if (next !== document.getElementById('confirmPassword').value) {
+        message.textContent = 'Die neuen Passwörter stimmen nicht überein.';
+        return;
+      }
+      const response = await apiFetch('/api/auth/change-password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: current, new_password: next }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { message.textContent = authError(data.detail); return; }
+      message.textContent = 'Passwort geändert. Bitte erneut anmelden.';
+      setTimeout(() => location.replace('/'), 1200);
+    });
+  </script>
+</body>
+</html>

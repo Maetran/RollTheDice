@@ -189,6 +189,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
 
   // UI-State für die Ansage-Auswahl per Button oder Hotkey.
   let announcePickMode = false;
+  let authState = { authenticated: false, user: null };
   let superadminState = { active: false, boardId: null, draft: {} };
   let superadminTapState = { boardId: null, count: 0, lastTs: 0 };
 
@@ -945,6 +946,11 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
 
     ws.addEventListener("message", (ev) => {
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+
+      if (msg.auth) {
+        authState = msg.auth;
+        if (authState?.user?.username) myName = String(authState.user.username);
+      }
 
       // Abbruch-Notice (kommt vor dem Snapshot)
       if (msg.notice && msg.notice.type === "ended") {
@@ -1833,6 +1839,7 @@ function renderFromSnapshot(snapshot) {
 
   function handleSuperadminTap(totalEl){
     try {
+      if (!authState?.user?.is_admin) return false;
       const card = totalEl.closest(".player-card");
       const boardId = card ? String(card.dataset.boardId || "") : "";
       if (!boardId) return false;
@@ -1847,9 +1854,7 @@ function renderFromSnapshot(snapshot) {
 
       if (superadminTapState.count >= 10) {
         superadminTapState = { boardId: null, count: 0, lastTs: 0 };
-        const code = prompt("Superadmin-Code");
-        if (code === null) return true;
-        safeSend(ws, { action: "superadmin_activate", code: String(code), board_id: boardId });
+        safeSend(ws, { action: "superadmin_activate", board_id: boardId });
       }
       return true;
     } catch {

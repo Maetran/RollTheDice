@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   rollthedice:
     build: .
@@ -9,6 +7,12 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
+    environment:
+      ROLLTHEDICE_ADMIN_USERNAME: ${ROLLTHEDICE_ADMIN_USERNAME:-}
+      ROLLTHEDICE_ADMIN_PASSWORD: ${ROLLTHEDICE_ADMIN_PASSWORD:-}
+      ROLLTHEDICE_COOKIE_SECURE: ${ROLLTHEDICE_COOKIE_SECURE:-0}
+      ROLLTHEDICE_TURNSTILE_SITE_KEY: ${ROLLTHEDICE_TURNSTILE_SITE_KEY:-}
+      ROLLTHEDICE_TURNSTILE_SECRET: ${ROLLTHEDICE_TURNSTILE_SECRET:-}
 
 # git clone https://github.com/Maetran/RollTheDice.git
 # cd RollTheDice

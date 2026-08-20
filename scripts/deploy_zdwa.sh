@@ -54,8 +54,22 @@ fi
 
 echo "== Data backup =="
 if [[ -d data ]]; then
+  service_was_running=0
+  resume_service() {
+    if [[ "$service_was_running" == "1" ]]; then
+      docker compose start rollthedice >/dev/null
+      service_was_running=0
+    fi
+  }
+  trap resume_service EXIT
+  if docker compose ps --status running --services 2>/dev/null | grep -qx 'rollthedice'; then
+    service_was_running=1
+    docker compose stop rollthedice >/dev/null
+  fi
   backup_dir="data.backup-$(date +%Y%m%d-%H%M%S)"
   cp -a data "$backup_dir"
+  resume_service
+  trap - EXIT
   echo "Created $backup_dir"
 else
   mkdir -p data

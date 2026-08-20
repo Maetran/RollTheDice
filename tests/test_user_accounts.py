@@ -1,0 +1,216 @@
+import io
+import json
+import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from starlette.requests import Request
+from sqlalchemy import func, select
+
+from app import main
+from app.api_users import AssignmentRequest, assign_game_participant, public_player_profile
+from app.auth import change_password, create_user, login, resolve_session
+from app.auth_protection import (
+    enforce_login_rate_limit,
+    enforce_registration_rate_limit,
+    record_login_failure,
+    registration_public_config,
+    validate_auth_protection_config,
+    verify_registration_challenge,
+)
+from app.database import configure_database, session_scope, upgrade_database
+from app.game_history import persist_runtime_game
+from app.models import AssignmentAudit, CompletedGame, GameParticipant, Session, User
+from app.security import validate_password
+from tests.support import GameStateTestCase
+
+
+def request_for(*, cookie: str = "", csrf: str = "", origin: str = "") -> Request:
+    headers = [(b"host", b"testserver")]
+    if cookie:
+        headers.append((b"cookie", cookie.encode("ascii")))
+    if csrf:
+        headers.append((b"x-csrf-token", csrf.encode("ascii")))
+    if origin:
+        headers.append((b"origin", origin.encode("ascii")))
+    return Request({
+        "type": "http",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/",
+        "headers": headers,
+        "client": ("127.0.0.1", 1234),
+        "server": ("testserver", 80),
+    })
+
+
+class AccountDatabaseTestCase(GameStateTestCase):
+    def setUp(self):
+        super().setUp()
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.database_path = Path(self.temporary_directory.name) / "accounts.sqlite3"
+        self.env_patch = patch.dict(os.environ, {
+            "ROLLTHEDICE_DATABASE_URL": f"sqlite:///{self.database_path}",
+            "ROLLTHEDICE_TURNSTILE_SITE_KEY": "",
+            "ROLLTHEDICE_TURNSTILE_SECRET": "",
+        })
+        self.env_patch.start()
+        configure_database(Path(self.temporary_directory.name))
+        upgrade_database(main.BASE)
+
+    def tearDown(self):
+        self.env_patch.stop()
+        configure_database(main.DATA_DIR)
+        self.temporary_directory.cleanup()
+        super().tearDown()
+
+    def test_login_uses_hashed_server_side_session(self):
+        user = create_user("Anna", "a-secure-password-123", must_change_password=False)
+        identity, raw_token = login(request_for(), "anna", "a-secure-password-123")
+
+        self.assertEqual(identity.user_id, user.id)
+        with session_scope() as db:
+            stored = db.scalar(select(Session))
+            self.assertIsNotNone(stored)
+            self.assertNotEqual(stored.token_hash, raw_token)
+
+        resolved = resolve_session(request_for(cookie=f"rollthedice_session={raw_token}"))
+        self.assertEqual(resolved.username, "Anna")
+
+    def test_password_minimum_is_eight_characters(self):
+        self.assertEqual(validate_password("12345678"), "12345678")
+        with self.assertRaisesRegex(ValueError, "mindestens 8 Zeichen"):
+            validate_password("1234567")
+
+    def test_database_upgrade_is_idempotent_across_restarts(self):
+        upgrade_database(main.BASE)
+        with session_scope() as db:
+            self.assertEqual(db.scalar(select(func.count()).select_from(User)), 0)
+
+    def test_registration_rate_limit_is_persistent(self):
+        request = request_for()
+        enforce_registration_rate_limit(request)
+
+        configure_database(Path(self.temporary_directory.name))
+        upgrade_database(main.BASE)
+
+        with self.assertRaisesRegex(Exception, "registration_temporarily_blocked") as blocked:
+            enforce_registration_rate_limit(request)
+        self.assertEqual(blocked.exception.status_code, 429)
+
+    def test_login_failure_limit_is_persistent(self):
+        request = request_for()
+        key = enforce_login_rate_limit(request, "anna")
+        for _ in range(5):
+            record_login_failure(key)
+
+        with self.assertRaisesRegex(Exception, "login_temporarily_blocked") as blocked:
+            enforce_login_rate_limit(request, "anna")
+        self.assertEqual(blocked.exception.status_code, 429)
+
+    def test_turnstile_is_optional_but_partial_config_is_rejected(self):
+        self.assertFalse(registration_public_config()["turnstile_enabled"])
+        verify_registration_challenge(request_for(), None)
+
+        with patch.dict(os.environ, {
+            "ROLLTHEDICE_TURNSTILE_SITE_KEY": "site-key",
+            "ROLLTHEDICE_TURNSTILE_SECRET": "",
+        }):
+            with self.assertRaises(RuntimeError):
+                validate_auth_protection_config()
+
+    def test_enabled_turnstile_requires_a_token(self):
+        with patch.dict(os.environ, {
+            "ROLLTHEDICE_TURNSTILE_SITE_KEY": "site-key",
+            "ROLLTHEDICE_TURNSTILE_SECRET": "secret",
+        }):
+            with self.assertRaisesRegex(Exception, "captcha_required") as blocked:
+                verify_registration_challenge(request_for(), None)
+            self.assertEqual(blocked.exception.status_code, 400)
+
+    def test_enabled_turnstile_verifies_token_and_action(self):
+        response = io.BytesIO(json.dumps({"success": True, "action": "register"}).encode("utf-8"))
+        with patch.dict(os.environ, {
+            "ROLLTHEDICE_TURNSTILE_SITE_KEY": "site-key",
+            "ROLLTHEDICE_TURNSTILE_SECRET": "secret",
+        }), patch("app.auth_protection.urlopen", return_value=response) as verify:
+            verify_registration_challenge(request_for(), "valid-token")
+
+        self.assertEqual(verify.call_count, 1)
+        sent_body = verify.call_args.args[0].data.decode("ascii")
+        self.assertIn("secret=secret", sent_body)
+        self.assertIn("response=valid-token", sent_body)
+
+    def test_password_change_revokes_all_sessions(self):
+        create_user("Ben", "first-password-123", must_change_password=True)
+        identity, _raw_token = login(request_for(), "Ben", "first-password-123")
+
+        change_password(identity, "first-password-123", "second-password-123")
+
+        with session_scope() as db:
+            user = db.scalar(select(User).where(User.username == "Ben"))
+            self.assertFalse(user.must_change_password)
+            self.assertEqual(db.scalar(select(func.count()).select_from(Session)), 0)
+
+    def test_completed_game_drives_split_profile_statistics(self):
+        user = create_user("Carla", "temporary-carla-123", must_change_password=False)
+        g = self.make_game(mode=2, players=[("p1", "Carla"), ("p2", "Gast")])
+        g["_players"][0]["user_id"] = user.id
+        g["_scoreboards"]["p1"] = self.high_scoreboard()
+        g["_scoreboards"]["p2"] = self.low_scoreboard()
+        snapshot = main._build_leaderboard_snapshot_fields(g)
+
+        self.assertTrue(persist_runtime_game(g, main._compute_final_totals(g), snapshot))
+        profile = public_player_profile("carla")["player"]
+
+        self.assertEqual(profile["statistics"]["overall"]["games_played"], 1)
+        self.assertEqual(profile["statistics"]["normal"]["points_total"], 410)
+        self.assertEqual(profile["statistics"]["hardcore"]["games_played"], 0)
+
+    def test_team_score_is_attributed_to_both_registered_members(self):
+        first = create_user("Dora", "temporary-dora-123", must_change_password=False)
+        second = create_user("Emil", "temporary-emil-123", must_change_password=False)
+        g = self.make_game(mode="2v2", players=[
+            ("p1", "Dora"), ("p2", "Gast 1"), ("p3", "Emil"), ("p4", "Gast 2"),
+        ])
+        g["_players"][0]["user_id"] = first.id
+        g["_players"][2]["user_id"] = second.id
+        g["_scoreboards_by_team"]["A"] = self.high_scoreboard()
+        g["_scoreboards_by_team"]["B"] = self.low_scoreboard()
+
+        persist_runtime_game(g, main._compute_final_totals(g), main._build_leaderboard_snapshot_fields(g))
+
+        with session_scope() as db:
+            scores = list(db.scalars(
+                select(GameParticipant.points)
+                .where(GameParticipant.user_id.in_([first.id, second.id]))
+                .order_by(GameParticipant.user_id)
+            ))
+            self.assertEqual(scores, [410, 410])
+            self.assertEqual(db.scalar(select(func.count()).select_from(CompletedGame)), 1)
+
+    def test_admin_assignment_is_audited_and_updates_profile(self):
+        admin = create_user("Admin", "temporary-admin-123", role="admin", must_change_password=False)
+        player = create_user("Fiona", "temporary-fiona-123", must_change_password=False)
+        g = self.make_game(mode=1, players=[("guest", "Fiona als Gast")])
+        g["_scoreboards"]["guest"] = self.high_scoreboard()
+        persist_runtime_game(g, main._compute_final_totals(g), main._build_leaderboard_snapshot_fields(g))
+        with session_scope() as db:
+            participant_id = db.scalar(select(GameParticipant.id))
+
+        identity, raw_token = login(request_for(), "Admin", "temporary-admin-123")
+        request = request_for(
+            cookie=f"rollthedice_session={raw_token}",
+            csrf=identity.csrf_token,
+            origin="http://testserver",
+        )
+        result = assign_game_participant(participant_id, AssignmentRequest(user_id=player.id), request)
+
+        self.assertTrue(result["changed"])
+        self.assertEqual(public_player_profile("Fiona")["player"]["statistics"]["overall"]["points_total"], 410)
+        with session_scope() as db:
+            audit = db.scalar(select(AssignmentAudit))
+            self.assertEqual(audit.admin_user_id, admin.id)
+            self.assertEqual(audit.new_user_id, player.id)

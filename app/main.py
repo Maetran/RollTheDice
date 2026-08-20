@@ -35,12 +35,18 @@ import time  # für monotonic()-Cooldown-Timer
 import math
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .rules import compute_overall
+from .api_auth import router as auth_router
+from .api_users import profile_links_for_games, router as users_router
+from .auth import ensure_bootstrap_admin, resolve_session, username_is_registered, websocket_origin_allowed
+from .auth_protection import validate_auth_protection_config
+from .database import configure_database, upgrade_database
+from .game_history import import_legacy_leaderboards, persist_runtime_game
 
 # --- Auto-Timeout (Inaktivität) ---
 GAME_TIMEOUT = timedelta(hours=1)
@@ -161,6 +167,23 @@ SHAME_FILE   = DATA_DIR / "leaderboard_shame.json"
 LAST_GAMES_FILE = DATA_DIR / "leaderboard_last_games.json"
 STATS_FILE   = DATA_DIR / "stats.json"
 
+# Neue persistente Benutzer- und Spieldatenbank. Die eigentliche Migration
+# läuft beim App-Start, damit reine Logiktests weiterhin ohne Startup-Hook
+# ausgeführt werden können.
+configure_database(DATA_DIR)
+
+
+@app.on_event("startup")
+def initialize_persistent_database() -> None:
+    upgrade_database(BASE)
+    validate_auth_protection_config()
+    ensure_bootstrap_admin()
+    import_legacy_leaderboards([RECENT_FILE, ALLTIME_FILE, SHAME_FILE, LAST_GAMES_FILE])
+
+
+app.include_router(auth_router)
+app.include_router(users_router)
+
 # Static korrekt mounten – jetzt existiert app
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -199,7 +222,6 @@ KEY_TO_ROW = {v: k for k, v in WRITABLE_MAP.items()}
 WRITABLE_CELLS_PER_PLAYER = len(WRITABLE_ROWS) * 4  # 12*4 = 48
 WRITABLE_COLS = ("down", "free", "up", "ang")
 WRITABLE_FIELDS = set(KEY_TO_ROW.keys())
-SUPERADMIN_CODE = os.getenv("ROLLTHEDICE_SUPERADMIN_CODE", "4112")
 CHAT_HISTORY_LIMIT = 300
 SUPERADMIN_BLOCKED_ACTIONS = {
     "set_hold",
@@ -1163,7 +1185,12 @@ def snapshot(g: GameDict) -> dict:
             "_name": g["_name"],
             "_hardcore": bool(g.get("_hardcore", False)),
             "_players": [
-                {"id": p["id"], "name": p["name"], "connected": _player_connected(p)}
+                {
+                    "id": p["id"],
+                    "name": p["name"],
+                    "user_id": p.get("user_id"),
+                    "connected": _player_connected(p),
+                }
                 for p in g["_players"]
             ],
             "_players_joined": len(g["_players"]),
@@ -1333,9 +1360,10 @@ def game_list_payload() -> list[dict]:
 
 # --- Games API (mit wartenden Spielern) ---
 @app.get("/api/games")
-async def api_games():
+async def api_games(request: Request):
     """API: Liste aller Spiele (laufend, wartend, abgeschlossen/abgebrochen)."""
     sweep_timeouts()
+    auth_identity = resolve_session(request)
     lst = []
     for gid, g in games.items():
         try:
@@ -1344,6 +1372,13 @@ async def api_games():
             offline = _offline_players(g)
             pause_reason = multiplayer_pause_reason(g)
             pause_left = pause_remaining_seconds(g)
+            account_player = next(
+                (
+                    p for p in g.get("_players", [])
+                    if auth_identity and p.get("user_id") == auth_identity.user_id
+                ),
+                None,
+            )
             lst.append({
                 "id": gid,
                 "name": g["_name"],
@@ -1374,6 +1409,7 @@ async def api_games():
                 "manual_pause": bool(g.get("_manual_pause")),
                 "pause_remaining_seconds": pause_left,
                 "pause_remaining_label": _format_duration_hm(pause_left),
+                "my_player_id": str(account_player.get("id")) if account_player else None,
                 "timeout_seconds": timeout_seconds(),
                 "timeout_label": _format_duration_hm(timeout_seconds()),
                 "started_at": g.get("_started_at"),
@@ -1584,6 +1620,38 @@ async def get_leaderboard():
     shame_alltime_f = process_shame_alltime(shame_alltime)
     last_games_f = process_last_games(last_raw if isinstance(last_raw, list) else [])
 
+    visible_lists = [
+        recent_norm_f, recent_hc_f, alltime_norm, alltime_hc,
+        shame_recent_f, shame_alltime_f, last_games_f,
+    ]
+    visible_game_ids = {
+        str(entry.get("game_id"))
+        for entries in visible_lists
+        for entry in (entries or [])
+        if isinstance(entry, dict) and entry.get("game_id")
+    }
+    links_by_game = profile_links_for_games(visible_game_ids)
+
+    def with_profile_links(entries):
+        enriched = []
+        for entry in entries or []:
+            if not isinstance(entry, dict):
+                continue
+            item = dict(entry)
+            try:
+                entry_points = int(item.get("points"))
+            except (TypeError, ValueError):
+                entry_points = None
+            candidates = links_by_game.get(str(item.get("game_id")), [])
+            linked_players = [
+                player for player in candidates
+                if entry_points is None or player.get("points") == entry_points
+            ]
+            if linked_players:
+                item["linked_players"] = linked_players
+            enriched.append(item)
+        return enriched
+
     # Optional: Datei aktualisieren, falls sich etwas geändert hat (idempotent)
     _write_json_if_changed(RECENT_FILE, recent_raw or {}, {"normal": recent_norm_f, "hc": recent_hc_f})
 
@@ -1594,10 +1662,10 @@ async def get_leaderboard():
     _write_json_if_changed(STATS_FILE, stats_raw or {}, stats_f)
 
     return {
-        "recent": {"normal": recent_norm_f, "hc": recent_hc_f},
-        "alltime": {"normal": alltime_norm or [], "hc": alltime_hc or []},
-        "shame": {"recent": shame_recent_f, "alltime": shame_alltime_f},
-        "last_games": last_games_f,
+        "recent": {"normal": with_profile_links(recent_norm_f), "hc": with_profile_links(recent_hc_f)},
+        "alltime": {"normal": with_profile_links(alltime_norm), "hc": with_profile_links(alltime_hc)},
+        "shame": {"recent": with_profile_links(shame_recent_f), "alltime": with_profile_links(shame_alltime_f)},
+        "last_games": with_profile_links(last_games_f),
         "stats": stats_f
     }
 
@@ -1870,7 +1938,8 @@ def _build_leaderboard_snapshot_fields(g: GameDict) -> dict:
             players.append({
                 "id": pid,
                 "name": p.get("name", "Player"),
-                "team": (team_of.get(pid) if is_team_mode(g) else None)
+                "team": (team_of.get(pid) if is_team_mode(g) else None),
+                "user_id": p.get("user_id"),
             })
 
         scoreboards: dict[str, dict] = {}
@@ -1946,6 +2015,10 @@ def _finalize_and_log_results(g: GameDict):
     entry_time = datetime.now(timezone.utc).isoformat()
     game_name = g["_name"]
     snapshot_fields = _build_leaderboard_snapshot_fields(g)
+
+    # Vollständige Historie für Profile und Rankings. Die bisherigen JSON-
+    # Leaderboards bleiben während der Übergangsphase parallel bestehen.
+    persist_runtime_game(g, totals, snapshot_fields)
 
     entries_for_recent = []
     entries_for_alltime = []
@@ -2161,6 +2234,10 @@ def _compute_results_for_snapshot(g: GameDict):
 # -----------------------------
 @app.websocket("/ws/{game_id}")
 async def ws_game(websocket: WebSocket, game_id: str):
+    if not websocket_origin_allowed(websocket):
+        await websocket.close(code=1008, reason="Origin rejected")
+        return
+    auth_identity = resolve_session(websocket)
     await websocket.accept()
     if game_id not in games:
         await _close_ws_with_error(websocket, "Game nicht gefunden", fatal=True, code=1000)
@@ -2172,7 +2249,18 @@ async def ws_game(websocket: WebSocket, game_id: str):
     is_spectator: bool = False        # NEU
 
     # Direkt initialen Snapshot senden
-    await websocket.send_json({"scoreboard": snapshot(g)})
+    await websocket.send_json({
+        "scoreboard": snapshot(g),
+        "auth": {
+            "authenticated": bool(auth_identity),
+            "user": ({
+                "id": auth_identity.user_id,
+                "username": auth_identity.username,
+                "role": auth_identity.role,
+                "is_admin": auth_identity.is_admin,
+            } if auth_identity else None),
+        },
+    })
 
     try:
         while True:
@@ -2209,10 +2297,33 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     await _close_ws_with_error(websocket, blocked_reason, fatal=True)
                     break
 
+                requested_name = str(data.get("name") or "Gast").strip() or "Gast"
+                if auth_identity:
+                    requested_name = auth_identity.username
+                    duplicate_account = next(
+                        (p for p in g.get("_players", []) if p.get("user_id") == auth_identity.user_id),
+                        None,
+                    )
+                    if duplicate_account:
+                        await _close_ws_with_error(
+                            websocket,
+                            "Dieser Benutzer ist der Partie bereits beigetreten. Bitte Spiel fortsetzen.",
+                            fatal=True,
+                        )
+                        break
+                elif username_is_registered(requested_name):
+                    await _close_ws_with_error(
+                        websocket,
+                        "Dieser Spielername ist registriert. Bitte anmelden oder einen anderen Gastnamen verwenden.",
+                        fatal=True,
+                    )
+                    break
+
                 player_id = str(uuid.uuid4())[:6]
                 player = {
                     "id": player_id,
-                    "name": data.get("name") or "Gast",
+                    "name": requested_name,
+                    "user_id": auth_identity.user_id if auth_identity else None,
                     "ws": websocket,
                     "resume_token": uuid.uuid4().hex,
                 }
@@ -2240,7 +2351,12 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 # Spectator registrieren (zaehlt nicht als Spieler)
                 spectator_id = str(uuid.uuid4())[:6]
                 is_spectator = True
-                spec = {"id": spectator_id, "name": data.get("name") or "Gast", "ws": websocket}
+                spec = {
+                    "id": spectator_id,
+                    "name": auth_identity.username if auth_identity else (data.get("name") or "Gast"),
+                    "user_id": auth_identity.user_id if auth_identity else None,
+                    "ws": websocket,
+                }
                 g.setdefault("_spectators", []).append(spec)
 
                 # Spectator-Antwort + Info an Spieler
@@ -2271,7 +2387,12 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     break
                 expected_token = str(player.get("resume_token") or "")
                 provided_token = str(data.get("resume_token") or "")
-                if expected_token and provided_token != expected_token:
+                account_matches = bool(
+                    auth_identity
+                    and player.get("user_id") is not None
+                    and int(player["user_id"]) == auth_identity.user_id
+                )
+                if expected_token and provided_token != expected_token and not account_matches:
                     await _close_ws_with_error(
                         websocket,
                         "Wiederaufnahme abgelehnt. Die gespeicherte Spieler-Sitzung passt nicht.",
@@ -2664,10 +2785,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 if not player_id:
                     await websocket.send_json({"error": "Nur Spieler koennen Superadmin aktivieren"})
                     continue
-                code = str(data.get("code") or "")
                 board_id = str(data.get("board_id") or "")
-                if code != str(SUPERADMIN_CODE):
-                    await websocket.send_json({"error": "Superadmin-Code falsch"})
+                if not auth_identity or not auth_identity.is_admin:
+                    await websocket.send_json({"error": "Admin-Berechtigung erforderlich"})
                     continue
                 if not _board_exists(g, board_id):
                     await websocket.send_json({"error": "Board nicht gefunden"})

@@ -12,6 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # **Hier korrekt kopieren: kompletter Ordner app/**
 COPY app /app/app
+COPY alembic /app/alembic
+COPY alembic.ini /app/alembic.ini
 
 # Datenverzeichnis im Container (wird gemountet)
 RUN mkdir -p /app/data

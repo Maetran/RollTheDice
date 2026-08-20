@@ -8,6 +8,8 @@
 */
 
 /* === Vars & Reset === */
+[hidden]{ display:none !important; }
+
 :root{
   --bg:#f4f6f8;
   --surface:#fff;
@@ -2602,4 +2604,43 @@ button:disabled:hover{
     border-color:var(--accent);
     box-shadow:0 0 0 3px rgba(37,99,235,.18);
   }
+}
+
+/* Benutzerkonten, Profile und Administration */
+.button-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.login-inline, .auth-actions, .search-row, .admin-create-grid { display: flex; gap: .65rem; align-items: center; flex-wrap: wrap; }
+.login-inline { margin-top: .8rem; }
+.login-inline input { min-width: 9rem; flex: 1; }
+.registration-challenge { flex-basis: 100%; min-height: 65px; }
+.auth-actions { margin-top: .8rem; }
+.auth-actions a, .page-nav a, .player-profile-link { color: var(--accent); }
+.profile-shell { max-width: 1080px; padding-top: 1.25rem; }
+.admin-shell { max-width: 1240px; padding-top: 1.25rem; }
+.page-nav { display: flex; gap: 1rem; margin: 0 0 1rem; }
+.eyebrow { margin: 0 0 .25rem; color: var(--muted, #64748b); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.statistics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.stat-bucket { border: 1px solid var(--border); border-radius: 14px; padding: 1rem; background: color-mix(in srgb, var(--card) 92%, var(--accent) 8%); }
+.stat-bucket h2 { margin-top: 0; }
+.stat-bucket dl { margin: 0; }
+.stat-bucket dl div { display: flex; justify-content: space-between; gap: 1rem; padding: .48rem 0; border-bottom: 1px solid var(--border, #dce2ea); }
+.stat-bucket dl div:last-child { border-bottom: 0; }
+.stat-bucket dt { color: var(--muted, #64748b); }
+.stat-bucket dd { margin: 0; font-weight: 700; }
+.password-card { max-width: 620px; }
+.form-stack { display: grid; gap: .8rem; }
+.form-stack label { display: grid; gap: .35rem; }
+.table-scroll { overflow-x: auto; }
+.ranking-table, .admin-table { width: 100%; border-collapse: collapse; }
+.ranking-table th, .ranking-table td, .admin-table th, .admin-table td { padding: .7rem; text-align: left; border-bottom: 1px solid var(--border, #dce2ea); }
+.player-search-results { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
+.player-result { padding: .55rem .8rem; border: 1px solid var(--border, #dce2ea); border-radius: 999px; text-decoration: none; }
+.admin-create-grid { display: grid; grid-template-columns: 1fr 1.6fr auto auto; }
+.assignment-list { display: grid; gap: .65rem; }
+.assignment-row { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(160px, 260px) auto; gap: .75rem; align-items: center; border: 1px solid var(--border, #dce2ea); border-radius: 12px; padding: .75rem; }
+
+@media (max-width: 760px) {
+  .statistics-grid { grid-template-columns: 1fr; }
+  .admin-create-grid, .assignment-row { grid-template-columns: 1fr; }
+  .login-inline { align-items: stretch; }
+  .login-inline input, .login-inline button { width: 100%; }
 }

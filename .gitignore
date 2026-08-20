@@ -17,6 +17,8 @@ Thumbs.db
 
 # Logs
 *.log
+.env
+!.env.example
 
 # Build
 build/

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Würfler – Spieler &amp; Ranking</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css?v=75">
+  <script src="/static/theme.js?v=1"></script>
+</head>
+<body class="lobby-page">
+  <main class="wrap profile-shell">
+    <nav class="page-nav"><a href="/">← Lobby</a></nav>
+    <section class="card">
+      <h1>Spieler suchen</h1>
+      <form id="searchForm" class="search-row">
+        <input id="searchInput" type="search" placeholder="Benutzername" autocomplete="off">
+        <button>Suchen</button>
+      </form>
+      <div id="searchResults" class="player-search-results muted">Benutzername eingeben oder alle anzeigen.</div>
+    </section>
+    <section class="card">
+      <div class="section-title-row">
+        <h1>Spieler-Ranking</h1>
+        <select id="rankingSort" aria-label="Ranking sortieren">
+          <option value="games">Meiste Spiele</option>
+          <option value="points">Meiste Gesamtpunkte</option>
+          <option value="average">Höchster Durchschnitt</option>
+          <option value="maximum">Höchste Punktzahl</option>
+        </select>
+      </div>
+      <div class="table-scroll">
+        <table class="ranking-table">
+          <thead><tr><th>#</th><th>Spieler</th><th>Spiele</th><th>Gesamt</th><th>Ø</th><th>Max</th></tr></thead>
+          <tbody id="rankingBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script type="module">
+    import { escapeHtml, formatNumber } from '/static/auth.js?v=2';
+    const searchForm = document.getElementById('searchForm');
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    const rankingSort = document.getElementById('rankingSort');
+    const rankingBody = document.getElementById('rankingBody');
+    const profileUrl = username => `/static/profile.html?user=${encodeURIComponent(username)}`;
+
+    async function searchPlayers() {
+      const response = await fetch(`/api/players/search?query=${encodeURIComponent(searchInput.value.trim())}`, { cache: 'no-store' });
+      const players = response.ok ? (await response.json()).players : [];
+      searchResults.classList.remove('muted');
+      searchResults.innerHTML = players.map(player =>
+        `<a class="player-result" href="${profileUrl(player.username)}">${escapeHtml(player.username)}</a>`
+      ).join('') || '<span class="muted">Keine Spieler gefunden.</span>';
+    }
+
+    async function loadRanking() {
+      rankingBody.innerHTML = '<tr><td colspan="6" class="muted">Laden…</td></tr>';
+      const response = await fetch(`/api/players/ranking?sort=${encodeURIComponent(rankingSort.value)}`, { cache: 'no-store' });
+      const players = response.ok ? (await response.json()).players : [];
+      rankingBody.innerHTML = players.map(player => `<tr>
+        <td>${player.rank}</td>
+        <td><a href="${profileUrl(player.username)}">${escapeHtml(player.username)}</a></td>
+        <td>${formatNumber(player.games_played, '0')}</td>
+        <td>${formatNumber(player.points_total, '0')}</td>
+        <td>${formatNumber(player.average_points)}</td>
+        <td>${formatNumber(player.max_points)}</td>
+      </tr>`).join('') || '<tr><td colspan="6" class="muted">Noch keine registrierten Spieler.</td></tr>';
+    }
+
+    searchForm.addEventListener('submit', event => { event.preventDefault(); searchPlayers(); });
+    rankingSort.addEventListener('change', loadRanking);
+    await Promise.all([searchPlayers(), loadRanking()]);
+  </script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Würfler – Administration</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css?v=75">
+  <script src="/static/theme.js?v=1"></script>
+</head>
+<body class="lobby-page">
+  <main class="wrap admin-shell">
+    <nav class="page-nav"><a href="/">← Lobby</a><a href="/static/account.html">Mein Bereich</a></nav>
+    <section class="card">
+      <p class="eyebrow">Administration</p>
+      <h1>Benutzerverwaltung</h1>
+      <form id="createUserForm" class="admin-create-grid">
+        <input id="newUsername" placeholder="Benutzername" autocomplete="off" required>
+        <input id="newPassword" type="password" placeholder="Temporäres Passwort (min. 8 Zeichen)" minlength="8" required>
+        <select id="newRole"><option value="user">Benutzer</option><option value="admin">Admin</option></select>
+        <button>Benutzer anlegen</button>
+      </form>
+      <div id="adminMessage" class="muted small"></div>
+      <div class="table-scroll"><table class="admin-table">
+        <thead><tr><th>Benutzer</th><th>Rolle</th><th>Status</th><th>Passwort</th><th>Aktion</th></tr></thead>
+        <tbody id="usersBody"></tbody>
+      </table></div>
+    </section>
+
+    <section class="card">
+      <div class="section-title-row"><div><p class="eyebrow">Historische Daten</p><h1>Spiele zuordnen</h1></div><button id="reloadAssignments" class="small">Aktualisieren</button></div>
+      <p class="muted">Hier erscheinen nicht zugeordnete Teilnehmer aus importierten Bestenlisten und neuen Gastspielen.</p>
+      <div id="assignmentList" class="assignment-list"></div>
+    </section>
+  </main>
+  <script type="module">
+    import { apiFetch, authError, escapeHtml, loadAuth } from '/static/auth.js?v=2';
+    const auth = await loadAuth();
+    if (!auth?.user?.is_admin) location.replace('/');
+    const usersBody = document.getElementById('usersBody');
+    const message = document.getElementById('adminMessage');
+    const assignmentList = document.getElementById('assignmentList');
+    let users = [];
+
+    async function loadUsers() {
+      const response = await fetch('/api/admin/users?limit=200', { cache: 'no-store' });
+      if (!response.ok) return;
+      users = (await response.json()).users;
+      usersBody.innerHTML = users.map(user => `<tr data-user-id="${user.id}">
+        <td><a href="/static/profile.html?user=${encodeURIComponent(user.username)}">${escapeHtml(user.username)}</a>${user.must_change_password ? '<span class="badge">PW-Wechsel offen</span>' : ''}</td>
+        <td><select class="role-select"><option value="user" ${user.role === 'user' ? 'selected' : ''}>Benutzer</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option></select></td>
+        <td>${user.is_active ? 'Aktiv' : 'Deaktiviert'}</td>
+        <td><button class="small reset-password">Zurücksetzen</button></td>
+        <td><button class="small ghost toggle-active">${user.is_active ? 'Deaktivieren' : 'Aktivieren'}</button></td>
+      </tr>`).join('');
+    }
+
+    async function updateUser(userId, payload) {
+      const response = await apiFetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(authError(data.detail));
+      await loadUsers();
+    }
+
+    document.getElementById('createUserForm').addEventListener('submit', async event => {
+      event.preventDefault(); message.textContent = '';
+      const response = await apiFetch('/api/admin/users', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: document.getElementById('newUsername').value,
+          temporary_password: document.getElementById('newPassword').value,
+          role: document.getElementById('newRole').value,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { message.textContent = authError(data.detail); return; }
+      event.target.reset(); message.textContent = 'Benutzer wurde angelegt.';
+      await loadUsers();
+    });
+
+    usersBody.addEventListener('change', async event => {
+      if (!event.target.classList.contains('role-select')) return;
+      const row = event.target.closest('tr');
+      try { await updateUser(Number(row.dataset.userId), { role: event.target.value }); }
+      catch (error) { message.textContent = error.message; await loadUsers(); }
+    });
+
+    usersBody.addEventListener('click', async event => {
+      const row = event.target.closest('tr');
+      if (!row) return;
+      const userId = Number(row.dataset.userId);
+      const user = users.find(item => item.id === userId);
+      if (event.target.classList.contains('reset-password')) {
+        const temporary = prompt(`Temporäres Passwort für ${user.username} (mindestens 8 Zeichen)`);
+        if (temporary === null) return;
+        const response = await apiFetch(`/api/admin/users/${userId}/reset-password`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ temporary_password: temporary }),
+        });
+        const data = await response.json().catch(() => ({}));
+        message.textContent = response.ok ? 'Passwort wurde zurückgesetzt.' : authError(data.detail);
+        await loadUsers();
+      }
+      if (event.target.classList.contains('toggle-active')) {
+        try { await updateUser(userId, { is_active: !user.is_active }); }
+        catch (error) { message.textContent = error.message; }
+      }
+    });
+
+    async function loadAssignments() {
+      assignmentList.innerHTML = '<div class="muted">Laden…</div>';
+      const response = await fetch('/api/admin/game-participants?unassigned=true&limit=200', { cache: 'no-store' });
+      const participants = response.ok ? (await response.json()).participants : [];
+      const options = users.filter(user => user.is_active).map(user =>
+        `<option value="${user.id}">${escapeHtml(user.username)}</option>`
+      ).join('');
+      assignmentList.innerHTML = participants.map(item => `<article class="assignment-row" data-participant-id="${item.id}">
+        <div><strong>${escapeHtml(item.display_name)}</strong> · ${item.points} Punkte
+          <div class="muted small">${escapeHtml(item.game_name)} · ${new Date(item.finished_at).toLocaleDateString('de-CH')} · ${escapeHtml(item.mode)}${item.hardcore ? ' · Hardcore' : ''}</div>
+        </div>
+        <select class="assignment-user"><option value="">Benutzer wählen…</option>${options}</select>
+        <button class="small assign-button">Zuordnen</button>
+      </article>`).join('') || '<div class="muted">Keine unzugeordneten Spiele vorhanden.</div>';
+    }
+
+    assignmentList.addEventListener('click', async event => {
+      if (!event.target.classList.contains('assign-button')) return;
+      const row = event.target.closest('.assignment-row');
+      const userId = Number(row.querySelector('.assignment-user').value);
+      if (!userId) return;
+      const response = await apiFetch(`/api/admin/game-participants/${row.dataset.participantId}/assignment`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: userId }),
+      });
+      if (response.ok) await loadAssignments();
+    });
+
+    document.getElementById('reloadAssignments').addEventListener('click', loadAssignments);
+    await loadUsers();
+    await loadAssignments();
+  </script>
+</body>
+</html>

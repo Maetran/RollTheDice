@@ -8,6 +8,9 @@ RollTheDice is a lightweight multiplayer dice game with a FastAPI backend and a 
 - REST API for lobby, games, leaderboard, and replay data
 - WebSocket game room for rolling, scoring, chat, spectators, and corrections
 - Persistent leaderboards and stats in `./data`
+- User accounts, admin management, public profiles, search, and player rankings
+- Self-registration from the lobby with immutable usernames
+- Personal statistics split into Normal, Hardcore, and overall results
 - Progressive Web App support via manifest and service worker
 - Docker Compose setup for local machines, servers, and Raspberry Pi
 
@@ -24,6 +27,19 @@ git clone https://github.com/Maetran/RollTheDice.git
 cd RollTheDice
 docker compose up -d --build
 ```
+
+For the first administrator, copy `.env.example` to `.env`, set a temporary
+username and password, and start the container. There is no default admin
+password. After the first successful login, remove
+`ROLLTHEDICE_ADMIN_PASSWORD` from `.env`. Set
+`ROLLTHEDICE_COOKIE_SECURE=1` for a public HTTPS deployment.
+
+Self-registration is protected by persistent SQLite rate limits without any
+extra service. For a public deployment, create a Cloudflare Turnstile widget
+for the production hostname and set both `ROLLTHEDICE_TURNSTILE_SITE_KEY` and
+`ROLLTHEDICE_TURNSTILE_SECRET` in `.env`. Local development leaves both values
+empty and does not show a CAPTCHA. A partial Turnstile configuration is rejected
+at startup so registration cannot silently run with broken protection.
 
 Open:
 
@@ -54,12 +70,16 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
+Install `requirements-dev.txt` when running the HTTP integration tests.
+
 Useful checks:
 
 ```bash
 python3 -m py_compile app/main.py app/rules.py
 node --check app/static/scoreboard.js
 node --input-type=module --check < app/static/room.js
+python3 -m unittest discover -s tests -p 'test_*.py'
+npm run test:browser
 git diff --check
 ```
 
@@ -74,6 +94,12 @@ RollTheDice/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI routes, WebSocket game loop, lobby and leaderboard state
+│   ├── models.py            # User, session, completed-game, and participant models
+│   ├── database.py          # Database configuration and Alembic upgrades
+│   ├── auth.py              # Password, session, and role logic
+│   ├── api_auth.py          # Login, password, and admin-user API
+│   ├── api_users.py         # Profiles, stats, search, ranking, and assignments
+│   ├── game_history.py      # Complete results and legacy JSON import
 │   ├── rules.py             # Server-side subtotal and total calculations
 │   └── static/
 │       ├── index.html       # Lobby
@@ -91,12 +117,17 @@ RollTheDice/
 └── data/                    # Persistent runtime data, ignored by Git
     ├── leaderboard_recent.json
     ├── leaderboard_alltime.json
-    └── stats.json
+    ├── stats.json
+    └── rollthedice.sqlite3  # Accounts, sessions, and complete new game history
 ```
 
 ## Data
 
-The application writes leaderboard and stats files to `./data`. Backups can be made by copying that directory. The files are JSON and can be inspected manually when needed.
+The application writes leaderboard JSON files and its SQLite database to
+`./data`. Copy the complete directory only while the container is stopped; the
+deployment script handles this automatically. Existing JSON snapshots are
+imported idempotently by `game_id`. Historical user statistics can only include
+the snapshots that still exist in the capped legacy lists.
 
 ## Plain Docker
 

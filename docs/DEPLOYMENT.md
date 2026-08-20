@@ -10,6 +10,10 @@ User root
 
 The application is deployed from the GitHub `master` branch and runs with Docker Compose. Runtime data lives in `./data` on the server and is mounted into the container as `/app/data`.
 
+User accounts, sessions, and the complete new game history live in
+`data/rollthedice.sqlite3`. The legacy JSON leaderboards remain in place during
+the migration period.
+
 Production directory layout on `zdwa`:
 
 ```text
@@ -49,6 +53,10 @@ git reset --hard
 
 Any deploy must create a timestamped copy of `data/` before changing the running application.
 
+SQLite can use WAL files. Do not copy its directory while the application is
+writing. The automated deployment briefly stops the container, copies the full
+directory, and starts it again before updating the code.
+
 ## Automated Deploy
 
 From a local checkout:
@@ -68,7 +76,8 @@ The script:
 - connects to `ssh zdwa`
 - uses `/root/RollTheDice` unless `REMOTE_DIR` is provided
 - refuses to deploy if the remote worktree has uncommitted changes
-- copies `data/` to `data.backup-YYYYMMDD-HHMMSS`
+- briefly stops the container and copies `data/` to `data.backup-YYYYMMDD-HHMMSS`
+- restarts the existing container immediately after the consistent backup
 - pulls `origin/master` with `--ff-only`
 - rebuilds and restarts the service with `docker compose up -d --build`
 - prints `docker compose ps`
@@ -81,13 +90,52 @@ Use this only when the script cannot be used:
 ssh zdwa
 cd /root/RollTheDice
 git status --short --branch
+docker compose stop rollthedice
 cp -a data "data.backup-$(date +%Y%m%d-%H%M%S)"
+docker compose start rollthedice
 git fetch origin master
 git checkout master
 git pull --ff-only origin master
 docker compose up -d --build
 docker compose ps
 ```
+
+## First Admin and HTTPS Cookies
+
+Before the first deployment with user accounts, create
+`/root/RollTheDice/.env` from `.env.example` and set a temporary bootstrap
+username and password. After the account exists, remove
+`ROLLTHEDICE_ADMIN_PASSWORD` from `.env`.
+
+For a public HTTPS endpoint set `ROLLTHEDICE_COOKIE_SECURE=1`. The reverse proxy
+must forward the original host and protocol (`X-Forwarded-Host` and
+`X-Forwarded-Proto`), because mutation and WebSocket origin checks use them.
+
+## Registration Protection
+
+Login failures and registration attempts are rate-limited persistently in the
+same SQLite database. No Redis or separate maintenance service is required.
+
+Before enabling public self-registration, create a Cloudflare Turnstile widget
+restricted to the public hostname and add both values to `.env`:
+
+```dotenv
+ROLLTHEDICE_TURNSTILE_SITE_KEY=...
+ROLLTHEDICE_TURNSTILE_SECRET=...
+```
+
+Restart with `docker compose up -d --build`. Verify that the challenge appears
+in the lobby and that the container is healthy:
+
+```bash
+docker compose logs --tail=100 rollthedice
+curl -fsS http://127.0.0.1:8000/api/auth/registration-config
+```
+
+The response must contain `"turnstile_enabled":true`. Never expose the secret
+in HTML or JavaScript; only the site key is returned by the public config API.
+If either value is missing, startup fails deliberately instead of providing a
+false sense of protection.
 
 ## Server Maintenance
 

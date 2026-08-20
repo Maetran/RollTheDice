@@ -19,7 +19,7 @@
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/static/favicon.png" sizes="32x32">
   <script src="/static/theme.js?v=1"></script>
-  <link rel="stylesheet" href="/static/style.css?v=70">
+  <link rel="stylesheet" href="/static/style.css?v=76">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -31,6 +31,7 @@
           <h1>Würfler – Lobby</h1>
         </div>
         <div class="brand-actions">
+          <a class="button-link small ghost" href="/static/players.html">Spieler &amp; Ranking</a>
           <button class="small ghost rules-under-title" onclick="location.href='/static/rules.html'">Spielregeln</button>
           <button class="small ghost theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten">
             <span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span>
@@ -49,11 +50,27 @@
     <!-- 1) Wer bist du? – Name wird im LocalStorage gemerkt -->
     <div class="setup-grid">
       <section class="card setup-card">
-        <h2>Spieler</h2>
+        <div class="section-title-row">
+          <h2>Spieler</h2>
+          <span id="authBadge" class="badge" hidden></span>
+        </div>
         <div class="row">
           <input id="playerName" type="text" placeholder="Dein Name">
           <span class="muted small">Wird für den Beitritt verwendet.</span>
         </div>
+        <form id="loginForm" class="login-inline">
+          <input id="loginUsername" autocomplete="username" placeholder="Benutzername" required>
+          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Passwort (min. 8 Zeichen)" minlength="8" required>
+          <button type="submit" class="small">Anmelden</button>
+          <button id="registerBtn" type="button" class="small ghost">Registrieren</button>
+          <div id="registrationChallenge" class="registration-challenge" hidden></div>
+        </form>
+        <div id="authActions" class="auth-actions" hidden>
+          <a href="/static/account.html">Meine Statistiken</a>
+          <a id="adminLink" href="/static/admin.html" hidden>Administration</a>
+          <button id="logoutBtn" type="button" class="small ghost">Abmelden</button>
+        </div>
+        <div id="loginError" class="muted small"></div>
       </section>
 
       <!-- 2) Neues Spiel – Modus/Passphrase, erzeugt via /api/games (POST) -->
@@ -146,6 +163,8 @@
 
   <!-- Hauptskript: lädt Listen/Leaderboards und verknüpft Buttons -->
   <script type="module">
+    import { loadAuth, login, logout, register } from '/static/auth.js?v=3';
+
     const nameInput  = document.getElementById('playerName');
     const passInput  = document.getElementById('passInput');
     const modeSel    = document.getElementById('gameMode');
@@ -167,11 +186,71 @@
     const avgNormalTrendEl = document.getElementById("avgNormalTrend");
     const avgHardcoreTrendEl = document.getElementById("avgHardcoreTrend");
     const hcChk    = document.getElementById('hardcoreChk');
+    const loginForm = document.getElementById('loginForm');
+    const loginUsername = document.getElementById('loginUsername');
+    const loginPassword = document.getElementById('loginPassword');
+    const registerBtn = document.getElementById('registerBtn');
+    const registrationChallenge = document.getElementById('registrationChallenge');
+    const loginError = document.getElementById('loginError');
+    const authBadge = document.getElementById('authBadge');
+    const authActions = document.getElementById('authActions');
+    const adminLink = document.getElementById('adminLink');
+    const logoutBtn = document.getElementById('logoutBtn');
     const lbTabNormal = document.getElementById('lbTabNormal');
     const lbTabHC     = document.getElementById('lbTabHC');
     const lbTabShame  = document.getElementById('lbTabShame');
     const lbTabLast   = document.getElementById('lbTabLast');
     let lbActiveTab = 'normal'; // 'normal' | 'hc' | 'shame' | 'last'
+    let turnstileToken = null;
+    let turnstileWidgetId = null;
+    let turnstileEnabled = false;
+
+    function loadTurnstileScript() {
+      if (window.turnstile) return Promise.resolve();
+      return new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-rollthedice-turnstile]');
+        if (existing) {
+          existing.addEventListener('load', resolve, { once: true });
+          existing.addEventListener('error', reject, { once: true });
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        script.async = true;
+        script.defer = true;
+        script.dataset.rollthediceTurnstile = '1';
+        script.addEventListener('load', resolve, { once: true });
+        script.addEventListener('error', reject, { once: true });
+        document.head.appendChild(script);
+      });
+    }
+
+    async function initializeRegistrationProtection() {
+      try {
+        const response = await fetch('/api/auth/registration-config', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const config = await response.json();
+        if (!config.turnstile_enabled) return;
+        turnstileEnabled = true;
+        registrationChallenge.hidden = false;
+        await loadTurnstileScript();
+        turnstileWidgetId = window.turnstile.render(registrationChallenge, {
+          sitekey: config.turnstile_site_key,
+          action: 'register',
+          callback: token => { turnstileToken = token; },
+          'expired-callback': () => { turnstileToken = null; },
+          'error-callback': () => { turnstileToken = null; },
+        });
+      } catch (error) {
+        registerBtn.disabled = true;
+        loginError.textContent = 'Registrierung ist momentan nicht verfügbar. Die Anmeldung funktioniert weiterhin.';
+      }
+    }
+
+    function resetRegistrationChallenge() {
+      turnstileToken = null;
+      if (turnstileWidgetId !== null && window.turnstile) window.turnstile.reset(turnstileWidgetId);
+    }
 
     // Name merken/laden
     const NAME_KEY = 'wuerfler_name';
@@ -181,7 +260,71 @@
     const PLAYER_NAME_PREFIX = 'wuerfler_player_name_';
     nameInput.value = localStorage.getItem(NAME_KEY) || '';
     nameInput.addEventListener('input', () => {
+      if (nameInput.disabled) return;
       localStorage.setItem(NAME_KEY, nameInput.value.trim());
+    });
+
+    async function refreshAuthUi(refresh = false) {
+      try {
+        const auth = await loadAuth({ refresh });
+        const user = auth?.user;
+        loginForm.hidden = !!user;
+        authActions.hidden = !user;
+        authBadge.hidden = !user;
+        adminLink.hidden = !user?.is_admin;
+        if (user) {
+          authBadge.textContent = user.is_admin ? `${user.username} · Admin` : user.username;
+          nameInput.value = user.username;
+          nameInput.disabled = true;
+          localStorage.setItem(NAME_KEY, user.username);
+        } else {
+          nameInput.disabled = false;
+          nameInput.value = localStorage.getItem(NAME_KEY) || '';
+        }
+      } catch (error) {
+        loginError.textContent = 'Anmeldestatus konnte nicht geladen werden.';
+      }
+    }
+
+    loginForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      loginError.textContent = '';
+      try {
+        await login(loginUsername.value, loginPassword.value);
+        loginPassword.value = '';
+        await refreshAuthUi();
+      } catch (error) {
+        loginError.textContent = error.message;
+        loginError.classList.add('connection-error');
+      }
+    });
+
+    registerBtn.addEventListener('click', async () => {
+      loginError.textContent = '';
+      if (turnstileEnabled && !turnstileToken) {
+        loginError.textContent = 'Bitte bestätige zuerst, dass du kein Bot bist.';
+        return;
+      }
+      try {
+        await register(loginUsername.value, loginPassword.value, turnstileToken);
+        loginPassword.value = '';
+        await refreshAuthUi();
+      } catch (error) {
+        loginError.textContent = error.message;
+        loginError.classList.add('connection-error');
+      } finally {
+        resetRegistrationChallenge();
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      loginError.textContent = '';
+      try {
+        await logout();
+        await refreshAuthUi(true);
+      } catch (error) {
+        loginError.textContent = error.message;
+      }
     });
 
     function localPlayerIdFor(gid){
@@ -304,7 +447,7 @@
               return `<span class="badge ${connected ? 'online' : 'offline'}">${escapeHtml(name)}${connected ? '' : ' offline'}</span>`;
             }).join(' ')
           : `<span class="muted small">Spieler unbekannt</span>`;
-        const canResume = !!localPlayerIdFor(gid);
+        const canResume = !!(localPlayerIdFor(gid) || g.my_player_id);
         const pauseLine = g.paused
           ? (() => {
               const remaining = g.pause_remaining_label || g.timeout_label || "";
@@ -350,6 +493,7 @@
             <div class="actions">
               ${canResume ? `<button class="resumeBtn"
                 data-id="${escapeAttr(gid)}"
+                data-player-id="${escapeAttr(g.my_player_id || '')}"
                 data-pass="${g.locked ? '1' : '0'}">Wieder aufnehmen</button>` : ""}
               <button class="spectateBtn"
                 data-id="${escapeAttr(gid)}"
@@ -369,6 +513,9 @@
         const gid = btn.dataset.id;
         const needsPass = btn.dataset.pass === "1";
         const isResume = !!resumeBtn;
+        if (isResume && !localPlayerIdFor(gid) && btn.dataset.playerId) {
+          localStorage.setItem(`${PID_PREFIX}${gid}`, btn.dataset.playerId);
+        }
         const storedName = isResume ? localNameFor(gid) : "";
         const pname = (storedName || nameInput.value || 'Gast').trim() || 'Gast';
         if (!gid) { alert('Ungültige Spiel-ID. Bitte aktualisieren.'); return; }
@@ -514,6 +661,16 @@
         const url = `/static/game_view.html?id=${encodeURIComponent(gameId)}`;
         return `<a href="${url}" class="small">Spielansicht</a>`;
       }
+      function playerName(e){
+        const links = Array.isArray(e.linked_players) ? e.linked_players : [];
+        const parts = String(e.name ?? '—').split(', ');
+        return parts.map(part => {
+          const linked = links.find(player => String(player.display_name) === part);
+          if (!linked) return escapeHtml(part);
+          const href = `/static/profile.html?user=${encodeURIComponent(linked.username)}`;
+          return `<a href="${href}" class="player-profile-link">${escapeHtml(part)}</a>`;
+        }).join(', ');
+      }
       function fmtAvgPoints(bucket){
         const value = bucket && Number(bucket.average_points);
         if (!Number.isFinite(value)) return "—";
@@ -553,7 +710,7 @@
           const rows = Array.isArray(list) ? list : [];
           tbody.innerHTML = rows.map(e => {
             const date = dateKind === "relative" ? fmtRelative(e.finished_at || e.ts) : fmtDMY(e.finished_at || e.ts);
-            const name = escapeHtml(e.name ?? "—");
+            const name = playerName(e);
             const pts = e.points ?? "—";
             const modeBase = fmtMode(e.mode);
             const hc = !!e.hardcore;
@@ -610,6 +767,8 @@
     }
 
     // initial
+    refreshAuthUi();
+    initializeRegistrationProtection();
     fetchGames();
     loadLeaderboard();
     setInterval(fetchGames, 4000);

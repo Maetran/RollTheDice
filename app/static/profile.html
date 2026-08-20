@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Würfler – Spielerprofil</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/style.css?v=75">
+  <script src="/static/theme.js?v=1"></script>
+</head>
+<body class="lobby-page">
+  <main class="wrap profile-shell">
+    <nav class="page-nav"><a href="/">← Lobby</a><a href="/static/players.html">Spieler-Ranking</a></nav>
+    <section class="card">
+      <p class="eyebrow">Öffentliches Spielerprofil</p>
+      <h1 id="profileName">Spielerprofil</h1>
+      <div id="profileError" class="connection-error" hidden></div>
+      <div id="statistics" class="statistics-grid"></div>
+    </section>
+  </main>
+  <script type="module">
+    import { escapeHtml, formatNumber } from '/static/auth.js?v=2';
+    const username = new URLSearchParams(location.search).get('user') || '';
+    const errorEl = document.getElementById('profileError');
+    const statisticsEl = document.getElementById('statistics');
+    document.title = username ? `Würfler – ${username}` : document.title;
+
+    function bucket(title, data) {
+      return `<article class="stat-bucket">
+        <h2>${escapeHtml(title)}</h2>
+        <dl>
+          <div><dt>Spiele</dt><dd>${formatNumber(data.games_played, '0')}</dd></div>
+          <div><dt>Gesamtpunkte</dt><dd>${formatNumber(data.points_total, '0')}</dd></div>
+          <div><dt>Maximum</dt><dd>${formatNumber(data.max_points)}</dd></div>
+          <div><dt>Minimum</dt><dd>${formatNumber(data.min_points)}</dd></div>
+          <div><dt>Durchschnitt</dt><dd>${formatNumber(data.average_points)}</dd></div>
+        </dl>
+      </article>`;
+    }
+
+    try {
+      const response = await fetch(`/api/players/${encodeURIComponent(username)}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error(response.status === 404 ? 'Spieler wurde nicht gefunden.' : 'Profil konnte nicht geladen werden.');
+      const player = (await response.json()).player;
+      document.getElementById('profileName').textContent = player.username;
+      statisticsEl.innerHTML = bucket('Gesamt', player.statistics.overall)
+        + bucket('Normal', player.statistics.normal)
+        + bucket('Hardcore', player.statistics.hardcore);
+    } catch (error) {
+      errorEl.textContent = error.message;
+      errorEl.hidden = false;
+    }
+  </script>
+</body>
+</html>
