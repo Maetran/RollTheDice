@@ -59,8 +59,10 @@ from .game_history import (
     deleted_game_ids,
     import_legacy_leaderboards,
     persist_runtime_game,
+    recent_winner_points_by_mode,
     stable_game_id,
 )
+from .trends import recent_points_trend
 
 # --- Auto-Timeout (Inaktivität) ---
 GAME_TIMEOUT = timedelta(hours=1)
@@ -1656,6 +1658,15 @@ async def get_leaderboard():
     shame_recent_f = process_shame_recent(shame_recent)
     shame_alltime_f = process_shame_alltime(shame_alltime)
     last_games_f = process_last_games(last_raw if isinstance(last_raw, list) else [])
+
+    recent_points = recent_winner_points_by_mode()
+    for bucket_key in ("normal", "hc"):
+        bucket = stats_f["average_points"][bucket_key]
+        bucket.update(recent_points_trend(
+            recent_points[bucket_key],
+            games_played=bucket["games"],
+            points_total=bucket["points_total"],
+        ))
 
     visible_lists = [
         recent_norm_f, recent_hc_f, alltime_norm, alltime_hc,

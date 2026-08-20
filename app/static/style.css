@@ -324,7 +324,7 @@ input[type="checkbox"]{
 }
 .stats b{ color:var(--text); font-weight:800; }
 .stats .avg-label{ color:var(--text); font-weight:750; }
-.stats .avg-trend{
+.avg-trend{
   display:inline-block;
   min-width:1ch;
   margin-left:.22rem;
@@ -332,9 +332,9 @@ input[type="checkbox"]{
   font-weight:900;
   line-height:1;
 }
-.stats .avg-trend.avg-up{ color:var(--success); }
-.stats .avg-trend.avg-down{ color:var(--danger); }
-.stats .avg-trend.avg-same{ color:var(--text); }
+.avg-trend.avg-up{ color:var(--success); }
+.avg-trend.avg-down{ color:var(--danger); }
+.avg-trend.avg-same{ color:var(--text); }
 .setup-grid{
   display:grid;
   grid-template-columns:minmax(220px, .75fr) minmax(320px, 1.25fr);

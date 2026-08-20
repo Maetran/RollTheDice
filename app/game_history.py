@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from .database import database_schema_ready, session_scope
@@ -153,6 +153,32 @@ def deleted_game_ids() -> set[str]:
         return set()
     with session_scope() as db:
         return {str(game_id) for game_id in db.scalars(select(DeletedGame.game_id))}
+
+
+def recent_winner_points_by_mode(limit: int = 3) -> dict[str, list[int]]:
+    """Return winner/team scores from the latest completed games per scoring mode."""
+    result: dict[str, list[int]] = {"normal": [], "hc": []}
+    if not database_schema_ready():
+        return result
+    with session_scope() as db:
+        rows = db.execute(
+            select(
+                CompletedGame.hardcore,
+                CompletedGame.finished_at,
+                CompletedGame.id,
+                func.max(GameParticipant.points),
+            )
+            .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
+            .group_by(CompletedGame.id)
+            .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc())
+        ).all()
+    for hardcore, _finished_at, _game_id, points in rows:
+        bucket = result["hc" if hardcore else "normal"]
+        if len(bucket) < limit and points is not None:
+            bucket.append(int(points))
+        if all(len(values) >= limit for values in result.values()):
+            break
+    return result
 
 
 def delete_completed_game(*, game_id: str, admin_user_id: int, reason: str) -> dict:

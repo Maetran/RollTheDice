@@ -19,7 +19,7 @@
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/static/favicon.png" sizes="32x32">
   <script src="/static/theme.js?v=1"></script>
-  <link rel="stylesheet" href="/static/style.css?v=76">
+  <link rel="stylesheet" href="/static/style.css?v=77">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -677,13 +677,17 @@
         return new Intl.NumberFormat("de-CH", { maximumFractionDigits: 1 }).format(value);
       }
       function avgTrendMeta(bucket){
+        const recentAverage = bucket && Number(bucket.recent_average_points);
+        const detail = bucket && Number(bucket.trend_games) >= 3 && Number.isFinite(recentAverage)
+          ? ` (Ø letzte 3: ${new Intl.NumberFormat("de-CH", { maximumFractionDigits: 1 }).format(recentAverage)})`
+          : " (noch keine 3 Spiele)";
         if (bucket && bucket.trend === "up") {
-          return { text: "↑", cls: "avg-trend avg-up", title: "Durchschnitt gestiegen" };
+          return { text: "↑", cls: "avg-trend avg-up", title: `Trend positiv${detail}` };
         }
         if (bucket && bucket.trend === "down") {
-          return { text: "↓", cls: "avg-trend avg-down", title: "Durchschnitt gesunken" };
+          return { text: "↓", cls: "avg-trend avg-down", title: `Trend negativ${detail}` };
         }
-        return { text: "-", cls: "avg-trend avg-same", title: "Durchschnitt unverändert" };
+        return { text: "–", cls: "avg-trend avg-same", title: `Trend stagnierend${detail}` };
       }
       function renderAverage(bucket, valueEl, trendEl){
         if (valueEl) valueEl.textContent = fmtAvgPoints(bucket);

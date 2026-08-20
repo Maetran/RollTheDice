@@ -24,6 +24,7 @@ from app.database import configure_database, session_scope, upgrade_database
 from app.game_history import import_legacy_leaderboards, persist_runtime_game, stable_game_id
 from app.models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, Session, User
 from app.security import validate_password
+from app.trends import recent_points_trend
 from tests.support import GameStateTestCase
 
 
@@ -83,6 +84,28 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertEqual(validate_password("12345678"), "12345678")
         with self.assertRaisesRegex(ValueError, "mindestens 8 Zeichen"):
             validate_password("1234567")
+
+    def test_usernames_are_unique_case_insensitively(self):
+        create_user("UniqueUser", "a-secure-password-123", must_change_password=False)
+        with self.assertRaisesRegex(ValueError, "bereits vergeben"):
+            create_user(" uniqueuser ", "another-password-123", must_change_password=False)
+
+    def test_three_game_trend_compares_recent_average_with_mode_average(self):
+        self.assertEqual(recent_points_trend(
+            [500, 400, 300], games_played=5, points_total=1500,
+        )["trend"], "up")
+        self.assertEqual(recent_points_trend(
+            [100, 200, 300], games_played=5, points_total=1500,
+        )["trend"], "down")
+        self.assertEqual(recent_points_trend(
+            [300, 300, 300], games_played=5, points_total=1500,
+        )["trend"], "same")
+        incomplete = recent_points_trend([500, 400], games_played=5, points_total=1500)
+        self.assertEqual(incomplete["trend"], "same")
+        self.assertEqual(incomplete["trend_games"], 2)
+        self.assertEqual(recent_points_trend(
+            [500, 400, 300], games_played=2, points_total=900,
+        )["trend"], "same")
 
     def test_origin_check_accepts_proxy_scheme_but_rejects_other_hosts(self):
         validate_request_origin(request_for(origin="https://testserver"))

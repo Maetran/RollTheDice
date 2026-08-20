@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>Würfler – Spielerprofil</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=75">
+  <link rel="stylesheet" href="/static/style.css?v=77">
   <script src="/static/theme.js?v=1"></script>
 </head>
 <body class="lobby-page">
@@ -25,6 +25,14 @@
     document.title = username ? `Würfler – ${username}` : document.title;
 
     function bucket(title, data, { details = true } = {}) {
+      const trend = data.trend === 'up'
+        ? { symbol: '↑', text: 'Positiv', css: 'avg-up' }
+        : data.trend === 'down'
+          ? { symbol: '↓', text: 'Negativ', css: 'avg-down' }
+          : { symbol: '–', text: 'Stagnierend', css: 'avg-same' };
+      const trendTitle = data.trend_games < 3
+        ? `Noch keine drei ${title}-Spiele vorhanden`
+        : `Ø der letzten 3 Spiele: ${formatNumber(data.recent_average_points)}`;
       return `<article class="stat-bucket">
         <h2>${escapeHtml(title)}</h2>
         <dl>
@@ -32,7 +40,8 @@
           <div><dt>Gesamtpunkte</dt><dd>${formatNumber(data.points_total, '0')}</dd></div>
           ${details ? `<div><dt>Maximum</dt><dd>${formatNumber(data.max_points)}</dd></div>
           <div><dt>Minimum</dt><dd>${formatNumber(data.min_points)}</dd></div>
-          <div><dt>Durchschnitt</dt><dd>${formatNumber(data.average_points)}</dd></div>` : ''}
+          <div><dt>Durchschnitt</dt><dd>${formatNumber(data.average_points)}</dd></div>
+          <div><dt>Trend (3 Spiele)</dt><dd><span class="avg-trend ${trend.css}" title="${escapeHtml(trendTitle)}" aria-label="${escapeHtml(trendTitle)}">${trend.symbol} ${trend.text}</span></dd></div>` : ''}
         </dl>
       </article>`;
     }

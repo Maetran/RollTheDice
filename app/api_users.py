@@ -11,6 +11,7 @@ from .auth import require_admin, require_csrf, require_user
 from .database import database_schema_ready, session_scope
 from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User
 from .security import normalize_username, utcnow
+from .trends import recent_points_trend
 
 
 router = APIRouter(prefix="/api", tags=["players"])
@@ -21,7 +22,16 @@ class AssignmentRequest(BaseModel):
 
 
 def _empty_bucket() -> dict:
-    return {"games_played": 0, "points_total": 0, "max_points": None, "min_points": None, "average_points": None}
+    return {
+        "games_played": 0,
+        "points_total": 0,
+        "max_points": None,
+        "min_points": None,
+        "average_points": None,
+        "trend": "same",
+        "trend_games": 0,
+        "recent_average_points": None,
+    }
 
 
 def _statistics_for_user(db, user_id: int) -> dict:
@@ -47,6 +57,23 @@ def _statistics_for_user(db, user_id: int) -> dict:
             "min_points": int(minimum) if minimum is not None else None,
             "average_points": round(float(average), 1) if average is not None else None,
         }
+    recent_rows = db.execute(
+        select(CompletedGame.hardcore, GameParticipant.points)
+        .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
+        .where(GameParticipant.user_id == user_id)
+        .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc(), GameParticipant.id.desc())
+    ).all()
+    recent_by_mode = {"normal": [], "hardcore": []}
+    for hardcore, points in recent_rows:
+        bucket = recent_by_mode["hardcore" if hardcore else "normal"]
+        if len(bucket) < 3:
+            bucket.append(int(points))
+    for key in ("normal", "hardcore"):
+        buckets[key].update(recent_points_trend(
+            recent_by_mode[key],
+            games_played=buckets[key]["games_played"],
+            points_total=buckets[key]["points_total"],
+        ))
     normal = buckets["normal"]
     hardcore = buckets["hardcore"]
     total_games = normal["games_played"] + hardcore["games_played"]
@@ -123,6 +150,22 @@ def player_ranking(
             .offset(offset)
             .limit(limit)
         ).all()
+        user_ids = [user.id for user, *_values in rows]
+        recent_by_user: dict[int, list[int]] = {user_id: [] for user_id in user_ids}
+        if user_ids:
+            recent_rows = db.execute(
+                select(GameParticipant.user_id, GameParticipant.points)
+                .join(CompletedGame, CompletedGame.id == GameParticipant.game_id)
+                .where(
+                    GameParticipant.user_id.in_(user_ids),
+                    CompletedGame.hardcore.is_(mode == "hardcore"),
+                )
+                .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc(), GameParticipant.id.desc())
+            ).all()
+            for user_id, score in recent_rows:
+                recent = recent_by_user[int(user_id)]
+                if len(recent) < 3:
+                    recent.append(int(score))
         return {
             "players": [
                 {
@@ -133,6 +176,11 @@ def player_ranking(
                     "points_total": int(points),
                     "average_points": round(float(average), 1) if average is not None else None,
                     "max_points": int(maximum) if maximum is not None else None,
+                    **recent_points_trend(
+                        recent_by_user[user.id],
+                        games_played=int(games),
+                        points_total=int(points),
+                    ),
                 }
                 for index, (user, games, points, average, maximum) in enumerate(rows)
             ],
