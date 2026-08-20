@@ -39,20 +39,20 @@
       document.getElementById('passwordHint').textContent = 'Das temporäre Passwort muss jetzt geändert werden.';
     }
 
-    function bucket(title, data) {
+    function bucket(title, data, { details = true } = {}) {
       return `<article class="stat-bucket"><h2>${escapeHtml(title)}</h2><dl>
         <div><dt>Spiele</dt><dd>${formatNumber(data.games_played, '0')}</dd></div>
         <div><dt>Gesamtpunkte</dt><dd>${formatNumber(data.points_total, '0')}</dd></div>
-        <div><dt>Maximum</dt><dd>${formatNumber(data.max_points)}</dd></div>
+        ${details ? `<div><dt>Maximum</dt><dd>${formatNumber(data.max_points)}</dd></div>
         <div><dt>Minimum</dt><dd>${formatNumber(data.min_points)}</dd></div>
-        <div><dt>Durchschnitt</dt><dd>${formatNumber(data.average_points)}</dd></div>
+        <div><dt>Durchschnitt</dt><dd>${formatNumber(data.average_points)}</dd></div>` : ''}
       </dl></article>`;
     }
 
     const statsResponse = await fetch('/api/users/me/statistics', { cache: 'no-store' });
     if (statsResponse.ok) {
       const stats = (await statsResponse.json()).player.statistics;
-      document.getElementById('statistics').innerHTML = bucket('Gesamt', stats.overall)
+      document.getElementById('statistics').innerHTML = bucket('Gesamt', stats.overall, { details: false })
         + bucket('Normal', stats.normal) + bucket('Hardcore', stats.hardcore);
     }
 

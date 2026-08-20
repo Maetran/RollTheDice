@@ -50,6 +50,8 @@ test("admin can log in, create a user and open the public profile", async ({ pag
   await expect(page.getByRole("heading", { name: "RegisteredSmoke" })).toBeVisible();
   await expect(page.locator(".stat-bucket")).toHaveCount(3);
   await expect(page.locator(".stat-bucket").first()).toContainText("Spiele");
+  await expect(page.locator(".stat-bucket").first()).not.toContainText("Maximum");
+  await expect(page.locator(".stat-bucket").nth(1)).toContainText("Maximum");
 });
 
 
@@ -64,6 +66,8 @@ test("logged-in user sees the personal landing page", async ({ page }) => {
   await page.waitForURL(/account\.html/);
   await expect(page.getByRole("heading", { name: "RegisteredSmoke" })).toBeVisible();
   await expect(page.locator(".stat-bucket")).toHaveCount(3);
+  await expect(page.locator(".stat-bucket").first()).not.toContainText("Durchschnitt");
+  await expect(page.locator(".stat-bucket").nth(2)).toContainText("Durchschnitt");
   await expect(page.getByRole("heading", { name: "Passwort ändern" })).toBeVisible();
 });
 

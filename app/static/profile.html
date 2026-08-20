@@ -24,15 +24,15 @@
     const statisticsEl = document.getElementById('statistics');
     document.title = username ? `Würfler – ${username}` : document.title;
 
-    function bucket(title, data) {
+    function bucket(title, data, { details = true } = {}) {
       return `<article class="stat-bucket">
         <h2>${escapeHtml(title)}</h2>
         <dl>
           <div><dt>Spiele</dt><dd>${formatNumber(data.games_played, '0')}</dd></div>
           <div><dt>Gesamtpunkte</dt><dd>${formatNumber(data.points_total, '0')}</dd></div>
-          <div><dt>Maximum</dt><dd>${formatNumber(data.max_points)}</dd></div>
+          ${details ? `<div><dt>Maximum</dt><dd>${formatNumber(data.max_points)}</dd></div>
           <div><dt>Minimum</dt><dd>${formatNumber(data.min_points)}</dd></div>
-          <div><dt>Durchschnitt</dt><dd>${formatNumber(data.average_points)}</dd></div>
+          <div><dt>Durchschnitt</dt><dd>${formatNumber(data.average_points)}</dd></div>` : ''}
         </dl>
       </article>`;
     }
@@ -42,7 +42,7 @@
       if (!response.ok) throw new Error(response.status === 404 ? 'Spieler wurde nicht gefunden.' : 'Profil konnte nicht geladen werden.');
       const player = (await response.json()).player;
       document.getElementById('profileName').textContent = player.username;
-      statisticsEl.innerHTML = bucket('Gesamt', player.statistics.overall)
+      statisticsEl.innerHTML = bucket('Gesamt', player.statistics.overall, { details: false })
         + bucket('Normal', player.statistics.normal)
         + bucket('Hardcore', player.statistics.hardcore);
     } catch (error) {
