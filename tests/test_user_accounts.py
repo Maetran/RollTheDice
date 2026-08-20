@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 
 from app import main
 from app.api_users import AssignmentRequest, assign_game_participant, public_player_profile
-from app.auth import change_password, create_user, login, resolve_session
+from app.auth import change_password, create_user, login, resolve_session, validate_request_origin
 from app.auth_protection import (
     enforce_login_rate_limit,
     enforce_registration_rate_limit,
@@ -27,8 +27,8 @@ from app.security import validate_password
 from tests.support import GameStateTestCase
 
 
-def request_for(*, cookie: str = "", csrf: str = "", origin: str = "") -> Request:
-    headers = [(b"host", b"testserver")]
+def request_for(*, cookie: str = "", csrf: str = "", origin: str = "", host: str = "testserver") -> Request:
+    headers = [(b"host", host.encode("ascii"))]
     if cookie:
         headers.append((b"cookie", cookie.encode("ascii")))
     if csrf:
@@ -83,6 +83,13 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertEqual(validate_password("12345678"), "12345678")
         with self.assertRaisesRegex(ValueError, "mindestens 8 Zeichen"):
             validate_password("1234567")
+
+    def test_origin_check_accepts_proxy_scheme_but_rejects_other_hosts(self):
+        validate_request_origin(request_for(origin="https://testserver"))
+        validate_request_origin(request_for(origin="https://testserver:443"))
+        with self.assertRaisesRegex(Exception, "origin_rejected") as rejected:
+            validate_request_origin(request_for(origin="https://evil.example"))
+        self.assertEqual(rejected.exception.status_code, 403)
 
     def test_database_upgrade_is_idempotent_across_restarts(self):
         upgrade_database(main.BASE)

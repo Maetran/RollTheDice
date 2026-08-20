@@ -78,16 +78,32 @@ def clear_session_cookie(response: Response) -> None:
     )
 
 
+def _origin_matches_host(origin: str, expected_host: str) -> bool:
+    try:
+        parsed_origin = urlsplit(origin)
+        parsed_expected = urlsplit(f"//{expected_host}")
+        same_hostname = (
+            parsed_origin.scheme.casefold() in {"http", "https"}
+            and bool(parsed_origin.hostname)
+            and parsed_origin.hostname.casefold() == (parsed_expected.hostname or "").casefold()
+        )
+        same_explicit_port = (
+            parsed_origin.port == parsed_expected.port
+            if parsed_origin.port is not None and parsed_expected.port is not None
+            else True
+        )
+        return same_hostname and same_explicit_port
+    except ValueError:
+        return False
+
+
 def _validate_same_origin(request: Request) -> None:
     origin = request.headers.get("origin")
     if not origin:
         return
-    expected = str(request.base_url).rstrip("/")
-    forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",", 1)[0].strip()
-    forwarded_host = request.headers.get("x-forwarded-host", "").split(",", 1)[0].strip()
-    if forwarded_proto and forwarded_host:
-        expected = f"{forwarded_proto}://{forwarded_host}"
-    if origin.rstrip("/") != expected:
+    expected_host = request.headers.get("host", "").split(",", 1)[0].strip()
+    if not _origin_matches_host(origin, expected_host):
+        logger.warning("Rejected request origin %s for host %s", origin, expected_host)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="origin_rejected")
 
 
@@ -99,16 +115,8 @@ def websocket_origin_allowed(websocket: WebSocket) -> bool:
     origin = websocket.headers.get("origin")
     if not origin:
         return True
-    parsed = urlsplit(origin)
-    origin_host = parsed.netloc.casefold()
-    expected_host = websocket.headers.get("x-forwarded-host") or websocket.headers.get("host", "")
-    expected_host = expected_host.split(",", 1)[0].strip().casefold()
-    if origin_host != expected_host:
-        return False
-    forwarded_proto = websocket.headers.get("x-forwarded-proto", "").split(",", 1)[0].strip().casefold()
-    if forwarded_proto and parsed.scheme.casefold() != forwarded_proto:
-        return False
-    return parsed.scheme.casefold() in {"http", "https"}
+    expected_host = websocket.headers.get("host", "").split(",", 1)[0].strip()
+    return _origin_matches_host(origin, expected_host)
 
 
 def username_is_registered(username: str) -> bool:
