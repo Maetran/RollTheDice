@@ -38,8 +38,17 @@ test("admin can log in, create a user and open the public profile", async ({ pag
 
   await page.click("#adminLink");
   await page.waitForURL(/admin\.html/);
+  await expect(page.getByRole("heading", { name: "Adminbereich" })).toBeVisible();
+  await expect(page.locator(".admin-module-tile")).toHaveCount(3);
+  await expect(page.locator("#usersPanel")).toBeHidden();
+  await expect(page.locator("#completedGamesPanel")).toBeHidden();
+
+  await page.locator('[data-admin-panel="usersPanel"]').click();
   await expect(page.getByRole("heading", { name: "Benutzerverwaltung" })).toBeVisible();
+  await page.locator('[data-admin-panel="completedGamesPanel"]').click();
   await expect(page.getByRole("heading", { name: "Abgeschlossene Spiele löschen" })).toBeVisible();
+  await expect(page.locator("#usersPanel")).toBeHidden();
+  await page.locator('[data-admin-panel="usersPanel"]').click();
 
   const existing = page.locator("#usersBody tr", { hasText: "RegisteredSmoke" });
   if (await existing.count() === 0) {

@@ -4,14 +4,38 @@
   <meta charset="utf-8">
   <title>Würfler – Administration</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=75">
+  <link rel="stylesheet" href="/static/style.css?v=76">
   <script src="/static/theme.js?v=1"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
     <nav class="page-nav"><a href="/">← Lobby</a><a href="/static/account.html">Mein Bereich</a></nav>
-    <section class="card">
+    <section class="card admin-overview">
       <p class="eyebrow">Administration</p>
+      <h1>Adminbereich</h1>
+      <p class="muted">Wähle einen Bereich aus. Es bleibt immer nur eine Kachel geöffnet.</p>
+      <div class="admin-module-grid">
+        <button class="admin-module-tile" type="button" data-admin-panel="usersPanel" aria-controls="usersPanel" aria-expanded="false">
+          <span class="admin-module-icon" aria-hidden="true">👥</span>
+          <span class="admin-module-copy"><strong>Benutzerverwaltung</strong><small>Accounts, Rollen und Passwörter</small></span>
+          <span class="admin-module-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <button class="admin-module-tile" type="button" data-admin-panel="assignmentsPanel" aria-controls="assignmentsPanel" aria-expanded="false">
+          <span class="admin-module-icon" aria-hidden="true">🎯</span>
+          <span class="admin-module-copy"><strong>Spielzuordnung</strong><small>Gastspiele mit Benutzern verknüpfen</small></span>
+          <span class="admin-module-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <button class="admin-module-tile admin-module-tile-danger" type="button" data-admin-panel="completedGamesPanel" aria-controls="completedGamesPanel" aria-expanded="false">
+          <span class="admin-module-icon" aria-hidden="true">🗑️</span>
+          <span class="admin-module-copy"><strong>Spiele löschen</strong><small>Snapshots dauerhaft entfernen</small></span>
+          <span class="admin-module-chevron" aria-hidden="true">⌄</span>
+        </button>
+      </div>
+      <div id="adminMessage" class="muted small admin-message" aria-live="polite"></div>
+    </section>
+
+    <section id="usersPanel" class="card admin-panel" hidden>
+      <p class="eyebrow">Accounts</p>
       <h1>Benutzerverwaltung</h1>
       <form id="createUserForm" class="admin-create-grid">
         <input id="newUsername" placeholder="Benutzername" autocomplete="off" required>
@@ -19,20 +43,19 @@
         <select id="newRole"><option value="user">Benutzer</option><option value="admin">Admin</option></select>
         <button>Benutzer anlegen</button>
       </form>
-      <div id="adminMessage" class="muted small"></div>
       <div class="table-scroll"><table class="admin-table">
         <thead><tr><th>Benutzer</th><th>Rolle</th><th>Status</th><th>Passwort</th><th>Aktion</th></tr></thead>
         <tbody id="usersBody"></tbody>
       </table></div>
     </section>
 
-    <section class="card">
+    <section id="assignmentsPanel" class="card admin-panel" hidden>
       <div class="section-title-row"><div><p class="eyebrow">Historische Daten</p><h1>Spiele zuordnen</h1></div><button id="reloadAssignments" class="small">Aktualisieren</button></div>
       <p class="muted">Hier erscheinen nicht zugeordnete Teilnehmer aus importierten Bestenlisten und neuen Gastspielen.</p>
       <div id="assignmentList" class="assignment-list"></div>
     </section>
 
-    <section class="card danger-zone">
+    <section id="completedGamesPanel" class="card admin-panel danger-zone" hidden>
       <div class="section-title-row">
         <div><p class="eyebrow">Gefahrenbereich</p><h1>Abgeschlossene Spiele löschen</h1></div>
         <button id="reloadCompletedGames" class="small">Aktualisieren</button>
@@ -55,7 +78,26 @@
     const assignmentList = document.getElementById('assignmentList');
     const completedGameList = document.getElementById('completedGameList');
     const deletedGameList = document.getElementById('deletedGameList');
+    const adminPanels = [...document.querySelectorAll('.admin-panel')];
+    const adminTiles = [...document.querySelectorAll('.admin-module-tile')];
     let users = [];
+
+    function toggleAdminPanel(tile) {
+      const panel = document.getElementById(tile.dataset.adminPanel);
+      const shouldOpen = panel.hidden;
+      adminPanels.forEach(item => { item.hidden = true; });
+      adminTiles.forEach(item => {
+        item.classList.remove('active');
+        item.setAttribute('aria-expanded', 'false');
+      });
+      if (!shouldOpen) return;
+      panel.hidden = false;
+      tile.classList.add('active');
+      tile.setAttribute('aria-expanded', 'true');
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    adminTiles.forEach(tile => tile.addEventListener('click', () => toggleAdminPanel(tile)));
 
     async function loadUsers() {
       const response = await fetch('/api/admin/users?limit=200', { cache: 'no-store' });

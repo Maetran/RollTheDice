@@ -2616,6 +2616,34 @@ button:disabled:hover{
 .auth-actions a, .page-nav a, .player-profile-link { color: var(--accent); }
 .profile-shell { max-width: 1080px; padding-top: 1.25rem; }
 .admin-shell { max-width: 1240px; padding-top: 1.25rem; }
+.admin-overview { overflow: hidden; }
+.admin-module-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem; margin-top: 1.1rem; }
+.admin-module-tile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: .8rem;
+  align-items: center;
+  min-height: 92px;
+  padding: 1rem;
+  color: var(--text);
+  text-align: left;
+  background: color-mix(in srgb, var(--card) 88%, var(--accent) 12%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: none;
+}
+.admin-module-tile:hover { border-color: var(--accent); transform: translateY(-1px); }
+.admin-module-tile.active { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.admin-module-icon { display: grid; place-items: center; width: 2.65rem; height: 2.65rem; font-size: 1.35rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+.admin-module-copy { display: grid; gap: .2rem; min-width: 0; }
+.admin-module-copy strong { font-size: 1rem; }
+.admin-module-copy small { color: var(--muted, #64748b); font-weight: 500; line-height: 1.3; }
+.admin-module-chevron { font-size: 1.25rem; transition: transform .18s ease; }
+.admin-module-tile.active .admin-module-chevron { transform: rotate(180deg); }
+.admin-module-tile-danger { background: color-mix(in srgb, var(--card) 91%, #dc2626 9%); }
+.admin-module-tile-danger:hover, .admin-module-tile-danger.active { border-color: #dc2626; }
+.admin-message { min-height: 1.2em; margin-top: .8rem; }
+.admin-panel[hidden] { display: none; }
 .page-nav { display: flex; gap: 1rem; margin: 0 0 1rem; }
 .eyebrow { margin: 0 0 .25rem; color: var(--muted, #64748b); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .statistics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
@@ -2647,6 +2675,7 @@ button.danger { color: #fff; background: #b91c1c; border-color: #991b1b; }
 
 @media (max-width: 760px) {
   .statistics-grid { grid-template-columns: 1fr; }
+  .admin-module-grid { grid-template-columns: 1fr; }
   .admin-create-grid, .assignment-row, .completed-game-row { grid-template-columns: 1fr; }
   .ranking-controls { width: 100%; justify-content: flex-start; }
   .login-inline { align-items: stretch; }
