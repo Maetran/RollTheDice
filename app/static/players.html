@@ -21,16 +21,22 @@
     <section class="card">
       <div class="section-title-row">
         <h1>Spieler-Ranking</h1>
-        <select id="rankingSort" aria-label="Ranking sortieren">
-          <option value="games">Meiste Spiele</option>
-          <option value="points">Meiste Gesamtpunkte</option>
-          <option value="average">Höchster Durchschnitt</option>
-          <option value="maximum">Höchste Punktzahl</option>
-        </select>
+        <div class="ranking-controls">
+          <div class="tabs" aria-label="Spielmodus">
+            <button id="rankingNormal" class="tab-btn active" type="button">Normal</button>
+            <button id="rankingHardcore" class="tab-btn" type="button">Hardcore</button>
+          </div>
+          <select id="rankingSort" aria-label="Ranking sortieren">
+            <option value="games">Meiste Spiele</option>
+            <option value="points">Meiste Gesamtpunkte</option>
+            <option value="average">Höchster Durchschnitt</option>
+            <option value="maximum">Höchste Punktzahl</option>
+          </select>
+        </div>
       </div>
       <div class="table-scroll">
         <table class="ranking-table">
-          <thead><tr><th>#</th><th>Spieler</th><th>Spiele</th><th>Gesamt</th><th>Ø</th><th>Max</th></tr></thead>
+          <thead><tr><th>#</th><th>Spieler</th><th>Spiele</th><th>Gesamtpunkte</th><th>Ø</th><th>Max</th></tr></thead>
           <tbody id="rankingBody"></tbody>
         </table>
       </div>
@@ -42,8 +48,11 @@
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
     const rankingSort = document.getElementById('rankingSort');
+    const rankingNormal = document.getElementById('rankingNormal');
+    const rankingHardcore = document.getElementById('rankingHardcore');
     const rankingBody = document.getElementById('rankingBody');
     const profileUrl = username => `/static/profile.html?user=${encodeURIComponent(username)}`;
+    let rankingMode = 'normal';
 
     async function searchPlayers() {
       const response = await fetch(`/api/players/search?query=${encodeURIComponent(searchInput.value.trim())}`, { cache: 'no-store' });
@@ -56,7 +65,7 @@
 
     async function loadRanking() {
       rankingBody.innerHTML = '<tr><td colspan="6" class="muted">Laden…</td></tr>';
-      const response = await fetch(`/api/players/ranking?sort=${encodeURIComponent(rankingSort.value)}`, { cache: 'no-store' });
+      const response = await fetch(`/api/players/ranking?mode=${rankingMode}&sort=${encodeURIComponent(rankingSort.value)}`, { cache: 'no-store' });
       const players = response.ok ? (await response.json()).players : [];
       rankingBody.innerHTML = players.map(player => `<tr>
         <td>${player.rank}</td>
@@ -70,6 +79,14 @@
 
     searchForm.addEventListener('submit', event => { event.preventDefault(); searchPlayers(); });
     rankingSort.addEventListener('change', loadRanking);
+    function setRankingMode(mode) {
+      rankingMode = mode;
+      rankingNormal.classList.toggle('active', mode === 'normal');
+      rankingHardcore.classList.toggle('active', mode === 'hardcore');
+      loadRanking();
+    }
+    rankingNormal.addEventListener('click', () => setRankingMode('normal'));
+    rankingHardcore.addEventListener('click', () => setRankingMode('hardcore'));
     await Promise.all([searchPlayers(), loadRanking()]);
   </script>
 </body>

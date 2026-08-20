@@ -5,6 +5,9 @@ test("public player search and ranking are available to guests", async ({ page }
   await page.goto("/static/players.html");
   await expect(page.getByRole("heading", { name: "Spieler suchen" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Spieler-Ranking" })).toBeVisible();
+  await expect(page.locator("#rankingNormal")).toHaveClass(/active/);
+  await page.locator("#rankingHardcore").click();
+  await expect(page.locator("#rankingHardcore")).toHaveClass(/active/);
   await expect(page.locator("#rankingBody tr").first()).toBeVisible();
 });
 

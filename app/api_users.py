@@ -93,6 +93,7 @@ def search_players(query: str = "", limit: int = 20, offset: int = 0):
 @router.get("/players/ranking")
 def player_ranking(
     sort: Literal["games", "points", "average", "maximum"] = "games",
+    mode: Literal["normal", "hardcore"] = "normal",
     limit: int = 50,
     offset: int = 0,
 ):
@@ -111,8 +112,12 @@ def player_ranking(
     with session_scope() as db:
         rows = db.execute(
             select(User, games_count, points_total, average_points, maximum_points)
-            .outerjoin(GameParticipant, GameParticipant.user_id == User.id)
-            .where(User.is_active.is_(True))
+            .join(GameParticipant, GameParticipant.user_id == User.id)
+            .join(CompletedGame, CompletedGame.id == GameParticipant.game_id)
+            .where(
+                User.is_active.is_(True),
+                CompletedGame.hardcore.is_(mode == "hardcore"),
+            )
             .group_by(User.id)
             .order_by(sort_expression.desc().nullslast(), User.username_normalized)
             .offset(offset)
@@ -132,6 +137,7 @@ def player_ranking(
                 for index, (user, games, points, average, maximum) in enumerate(rows)
             ],
             "sort": sort,
+            "mode": mode,
             "limit": limit,
             "offset": offset,
         }

@@ -10,7 +10,7 @@ from starlette.requests import Request
 from sqlalchemy import func, select
 
 from app import main
-from app.api_users import AssignmentRequest, assign_game_participant, public_player_profile
+from app.api_users import AssignmentRequest, assign_game_participant, player_ranking, public_player_profile
 from app.auth import change_password, create_user, login, resolve_session, validate_request_origin
 from app.auth_protection import (
     enforce_login_rate_limit,
@@ -219,6 +219,28 @@ class AccountDatabaseTestCase(GameStateTestCase):
             ))
             self.assertEqual(scores, [410, 410])
             self.assertEqual(db.scalar(select(func.count()).select_from(CompletedGame)), 1)
+
+    def test_player_ranking_separates_normal_and_hardcore_games(self):
+        first = create_user("Rina", "temporary-rina-123", must_change_password=False)
+        second = create_user("Sven", "temporary-sven-123", must_change_password=False)
+        for hardcore, user, board in (
+            (False, first, self.high_scoreboard()),
+            (True, first, self.low_scoreboard()),
+            (False, second, self.low_scoreboard()),
+        ):
+            g = self.make_game(mode=1, hardcore=hardcore, players=[("p1", user.username)])
+            g["_players"][0]["user_id"] = user.id
+            g["_scoreboards"]["p1"] = board
+            persist_runtime_game(g, main._compute_final_totals(g), main._build_leaderboard_snapshot_fields(g))
+
+        normal = player_ranking(mode="normal")
+        hardcore = player_ranking(mode="hardcore")
+
+        self.assertEqual([row["username"] for row in normal["players"]], ["Rina", "Sven"])
+        self.assertEqual(normal["players"][0]["games_played"], 1)
+        self.assertEqual(normal["players"][0]["points_total"], 410)
+        self.assertEqual([row["username"] for row in hardcore["players"]], ["Rina"])
+        self.assertEqual(hardcore["players"][0]["games_played"], 1)
 
     def test_admin_assignment_is_audited_and_updates_profile(self):
         admin = create_user("Admin", "temporary-admin-123", role="admin", must_change_password=False)

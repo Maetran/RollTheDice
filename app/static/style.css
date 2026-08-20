@@ -2631,6 +2631,7 @@ button:disabled:hover{
 .form-stack label { display: grid; gap: .35rem; }
 .table-scroll { overflow-x: auto; }
 .ranking-table, .admin-table { width: 100%; border-collapse: collapse; }
+.ranking-controls { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; justify-content: flex-end; }
 .ranking-table th, .ranking-table td, .admin-table th, .admin-table td { padding: .7rem; text-align: left; border-bottom: 1px solid var(--border, #dce2ea); }
 .player-search-results { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
 .player-result { padding: .55rem .8rem; border: 1px solid var(--border, #dce2ea); border-radius: 999px; text-decoration: none; }
@@ -2641,6 +2642,7 @@ button:disabled:hover{
 @media (max-width: 760px) {
   .statistics-grid { grid-template-columns: 1fr; }
   .admin-create-grid, .assignment-row { grid-template-columns: 1fr; }
+  .ranking-controls { width: 100%; justify-content: flex-start; }
   .login-inline { align-items: stretch; }
   .login-inline input, .login-inline button { width: 100%; }
 }
