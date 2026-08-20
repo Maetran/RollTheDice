@@ -21,7 +21,7 @@ from app.auth_protection import (
     verify_registration_challenge,
 )
 from app.database import configure_database, session_scope, upgrade_database
-from app.game_history import persist_runtime_game
+from app.game_history import import_legacy_leaderboards, persist_runtime_game, stable_game_id
 from app.models import AssignmentAudit, CompletedGame, GameParticipant, Session, User
 from app.security import validate_password
 from tests.support import GameStateTestCase
@@ -95,6 +95,28 @@ class AccountDatabaseTestCase(GameStateTestCase):
         upgrade_database(main.BASE)
         with session_scope() as db:
             self.assertEqual(db.scalar(select(func.count()).select_from(User)), 0)
+
+    def test_snapshotless_legacy_score_is_imported_once(self):
+        entry = {
+            "ts": "2025-08-30T20:36:11+00:00",
+            "name": "Mani",
+            "points": 1354,
+            "gamename": "Neues Spiel",
+            "opponent": "-",
+            "opp_points": 0,
+        }
+        source = Path(self.temporary_directory.name) / "legacy.json"
+        source.write_text(json.dumps({"normal": [entry]}), encoding="utf-8")
+
+        self.assertEqual(import_legacy_leaderboards([source]), 1)
+        self.assertEqual(import_legacy_leaderboards([source]), 0)
+        with session_scope() as db:
+            game = db.scalar(select(CompletedGame))
+            participant = db.scalar(select(GameParticipant))
+            self.assertEqual(game.game_id, stable_game_id(entry))
+            self.assertEqual(game.mode, "1")
+            self.assertEqual(participant.display_name, "Mani")
+            self.assertEqual(participant.points, 1354)
 
     def test_registration_rate_limit_is_persistent(self):
         request = request_for()

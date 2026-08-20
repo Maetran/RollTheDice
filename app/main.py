@@ -46,7 +46,7 @@ from .api_users import profile_links_for_games, router as users_router
 from .auth import ensure_bootstrap_admin, resolve_session, username_is_registered, websocket_origin_allowed
 from .auth_protection import validate_auth_protection_config
 from .database import configure_database, upgrade_database
-from .game_history import import_legacy_leaderboards, persist_runtime_game
+from .game_history import import_legacy_leaderboards, persist_runtime_game, stable_game_id
 
 # --- Auto-Timeout (Inaktivität) ---
 GAME_TIMEOUT = timedelta(hours=1)
@@ -1625,10 +1625,10 @@ async def get_leaderboard():
         shame_recent_f, shame_alltime_f, last_games_f,
     ]
     visible_game_ids = {
-        str(entry.get("game_id"))
+        stable_game_id(entry)
         for entries in visible_lists
         for entry in (entries or [])
-        if isinstance(entry, dict) and entry.get("game_id")
+        if isinstance(entry, dict) and stable_game_id(entry)
     }
     links_by_game = profile_links_for_games(visible_game_ids)
 
@@ -1642,7 +1642,7 @@ async def get_leaderboard():
                 entry_points = int(item.get("points"))
             except (TypeError, ValueError):
                 entry_points = None
-            candidates = links_by_game.get(str(item.get("game_id")), [])
+            candidates = links_by_game.get(stable_game_id(item) or "", [])
             linked_players = [
                 player for player in candidates
                 if entry_points is None or player.get("points") == entry_points

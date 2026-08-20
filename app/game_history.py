@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from datetime import datetime, timezone
@@ -15,6 +16,30 @@ from .security import as_utc, utcnow
 
 
 logger = logging.getLogger(__name__)
+
+
+def stable_game_id(entry: dict) -> str | None:
+    """Return the real game ID or a deterministic ID for pre-snapshot rows."""
+    if entry.get("game_id"):
+        return str(entry["game_id"])
+    if not entry.get("ts") or not entry.get("name") or entry.get("points") is None:
+        return None
+    identity = {
+        key: entry.get(key)
+        for key in ("ts", "name", "points", "gamename", "opponent", "opp_points", "hardcore")
+    }
+    digest = hashlib.sha256(
+        json.dumps(identity, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()[:20]
+    return f"legacy-{digest}"
+
+
+def _legacy_mode(entry: dict) -> str:
+    if entry.get("mode") is not None:
+        return str(entry["mode"])
+    if str(entry.get("opponent") or "").strip() in {"", "-"} and int(entry.get("opp_points") or 0) == 0:
+        return "1"
+    return "legacy"
 
 
 def _parse_datetime(value: object) -> datetime:
@@ -164,9 +189,11 @@ def import_legacy_leaderboards(paths: list[Path]) -> int:
             if not isinstance(array, list):
                 continue
             for entry in array:
-                if not isinstance(entry, dict) or not entry.get("game_id"):
+                if not isinstance(entry, dict):
                     continue
-                game_id = str(entry["game_id"])
+                game_id = stable_game_id(entry)
+                if not game_id:
+                    continue
                 current = candidates.get(game_id)
                 has_snapshot = isinstance(entry.get("players"), list) and isinstance(entry.get("scoreboards"), dict)
                 current_has_snapshot = bool(
@@ -190,7 +217,7 @@ def import_legacy_leaderboards(paths: list[Path]) -> int:
         if persist_completed_game(
             game_id=game_id,
             game_name=str(entry.get("gamename") or entry.get("name") or ""),
-            mode=str(entry.get("mode") or ""),
+            mode=_legacy_mode(entry),
             hardcore=bool(entry.get("hardcore")),
             finished_at=_parse_datetime(entry.get("finished_at") or entry.get("ts")),
             snapshot=entry,
