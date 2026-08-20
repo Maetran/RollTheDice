@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from .auth import require_admin, require_csrf, require_user
 from .database import database_schema_ready, session_scope
-from .models import AssignmentAudit, CompletedGame, GameParticipant, User
+from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User
 from .security import normalize_username, utcnow
 
 
@@ -214,6 +214,70 @@ def admin_game_participants(
             "limit": limit,
             "offset": offset,
         }
+
+
+@router.get("/admin/completed-games")
+def admin_completed_games(request: Request, query: str = "", limit: int = 100, offset: int = 0):
+    require_admin(request)
+    limit = min(max(limit, 1), 200)
+    offset = max(offset, 0)
+    with session_scope() as db:
+        stmt = select(CompletedGame).options(
+            selectinload(CompletedGame.participants).selectinload(GameParticipant.user)
+        )
+        if query.strip():
+            needle = f"%{query.strip().casefold()}%"
+            matching_games = select(GameParticipant.game_id).where(
+                func.lower(GameParticipant.display_name).like(needle)
+            )
+            stmt = stmt.where(
+                func.lower(CompletedGame.game_name).like(needle)
+                | func.lower(CompletedGame.game_id).like(needle)
+                | CompletedGame.id.in_(matching_games)
+            )
+        games = list(db.scalars(
+            stmt.order_by(CompletedGame.finished_at.desc()).offset(offset).limit(limit)
+        ))
+        return {
+            "games": [{
+                "game_id": game.game_id,
+                "game_name": game.game_name,
+                "finished_at": game.finished_at,
+                "mode": game.mode,
+                "hardcore": game.hardcore,
+                "imported_from_legacy": game.imported_from_legacy,
+                "participants": [{
+                    "display_name": participant.display_name,
+                    "points": participant.points,
+                    "username": participant.user.username if participant.user else None,
+                } for participant in game.participants],
+            } for game in games],
+            "limit": limit,
+            "offset": offset,
+        }
+
+
+@router.get("/admin/deleted-games")
+def admin_deleted_games(request: Request, limit: int = 50):
+    require_admin(request)
+    limit = min(max(limit, 1), 200)
+    with session_scope() as db:
+        rows = db.execute(
+            select(DeletedGame, User.username)
+            .join(User, User.id == DeletedGame.deleted_by_user_id)
+            .order_by(DeletedGame.deleted_at.desc())
+            .limit(limit)
+        ).all()
+        return {"games": [{
+            "game_id": game.game_id,
+            "game_name": game.game_name,
+            "finished_at": game.finished_at,
+            "mode": game.mode,
+            "hardcore": game.hardcore,
+            "deleted_at": game.deleted_at,
+            "deleted_by": username,
+            "reason": game.reason,
+        } for game, username in rows]}
 
 
 @router.put("/admin/game-participants/{participant_id}/assignment")

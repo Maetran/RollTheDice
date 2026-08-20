@@ -33,6 +33,7 @@ from pathlib import Path
 import os
 import time  # für monotonic()-Cooldown-Timer
 import math
+import threading
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request
@@ -43,10 +44,23 @@ from pydantic import BaseModel, Field
 from .rules import compute_overall
 from .api_auth import router as auth_router
 from .api_users import profile_links_for_games, router as users_router
-from .auth import ensure_bootstrap_admin, resolve_session, username_is_registered, websocket_origin_allowed
+from .auth import (
+    ensure_bootstrap_admin,
+    require_admin,
+    require_csrf,
+    resolve_session,
+    username_is_registered,
+    websocket_origin_allowed,
+)
 from .auth_protection import validate_auth_protection_config
 from .database import configure_database, upgrade_database
-from .game_history import import_legacy_leaderboards, persist_runtime_game, stable_game_id
+from .game_history import (
+    delete_completed_game,
+    deleted_game_ids,
+    import_legacy_leaderboards,
+    persist_runtime_game,
+    stable_game_id,
+)
 
 # --- Auto-Timeout (Inaktivität) ---
 GAME_TIMEOUT = timedelta(hours=1)
@@ -166,6 +180,8 @@ ALLTIME_FILE = DATA_DIR / "leaderboard_alltime.json"
 SHAME_FILE   = DATA_DIR / "leaderboard_shame.json"
 LAST_GAMES_FILE = DATA_DIR / "leaderboard_last_games.json"
 STATS_FILE   = DATA_DIR / "stats.json"
+LEADERBOARD_FILE_LOCK = threading.RLock()
+GLOBAL_AVERAGE_STARTED_AT = datetime(2026, 7, 31, 11, 40, tzinfo=timezone.utc)
 
 # Neue persistente Benutzer- und Spieldatenbank. Die eigentliche Migration
 # läuft beim App-Start, damit reine Logiktests weiterhin ohne Startup-Hook
@@ -1337,6 +1353,11 @@ class CreateReq(BaseModel):
     passphrase: str | None = Field(default=None, alias="pass")
     hardcore: bool | None = False
 
+
+class DeleteCompletedGameReq(BaseModel):
+    reason: str = Field(min_length=10, max_length=500)
+    confirmation_game_id: str = Field(min_length=1, max_length=64)
+
 def game_list_payload() -> list[dict]:
     """Hilfsfunktion: erzeugt die JSON-Payload für die Spielübersicht (Lobby).
 
@@ -1490,11 +1511,12 @@ def _read_json_file(path: Path, default):
 
 def _write_json_if_changed(path: Path, original_data, new_data) -> None:
     """Schreibt JSON nur, wenn sich der Inhalt tatsächlich geändert hat."""
-    try:
-        if json.dumps(original_data, sort_keys=True) != json.dumps(new_data, sort_keys=True):
-            path.write_text(json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception:
-        pass
+    with LEADERBOARD_FILE_LOCK:
+        try:
+            if json.dumps(original_data, sort_keys=True) != json.dumps(new_data, sort_keys=True):
+                _atomic_write_json(path, new_data)
+        except Exception:
+            pass
 
 def _parse_ts(s: str) -> datetime | None:
     """Robustes ISO-8601-Parsing, naive Zeitstempel werden als UTC interpretiert."""
@@ -1593,6 +1615,21 @@ async def get_leaderboard():
     recent_norm, recent_hc = _as_dual_lists(recent_raw)
     alltime_norm, alltime_hc = _as_dual_lists(alltime_raw)
     shame_recent, shame_alltime = _as_shame_lists(shame_raw)
+    deleted_ids = deleted_game_ids()
+
+    def exclude_deleted(entries):
+        return [
+            entry for entry in (entries or [])
+            if not isinstance(entry, dict) or stable_game_id(entry) not in deleted_ids
+        ]
+
+    recent_norm = exclude_deleted(recent_norm)
+    recent_hc = exclude_deleted(recent_hc)
+    alltime_norm = exclude_deleted(alltime_norm)
+    alltime_hc = exclude_deleted(alltime_hc)
+    shame_recent = exclude_deleted(shame_recent)
+    shame_alltime = exclude_deleted(shame_alltime)
+    last_raw = exclude_deleted(last_raw if isinstance(last_raw, list) else [])
 
     def process_recent(lst):
         out = [e for e in (lst or []) if _valid_entry_since(e, recent_cutoff)]
@@ -1673,6 +1710,8 @@ async def get_leaderboard():
 @app.get("/api/game_from_leaderboard/{game_id}")
 def api_game_from_leaderboard(game_id: str):
     """API: Read-Only Snapshot eines abgeschlossenen Spiels aus Leaderboard-Dateien."""
+    if str(game_id) in deleted_game_ids():
+        raise HTTPException(status_code=404, detail="not_found")
     # Laden der Dateien (recent/alltime) – unterstützt altes (Liste) und neues (Bucket) Format
     def _read_list(path: Path):
         try:
@@ -1876,14 +1915,21 @@ def _append_json(path: Path, mutate_fn):
         path (Path): Pfad zur JSON-Datei
         mutate_fn: Funktion, die die Daten modifiziert
     """
-    data = []
-    if path.exists():
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            data = []
-    new_data = mutate_fn(data)
-    path.write_text(json.dumps(new_data, ensure_ascii=False, indent=2), encoding="utf-8")
+    with LEADERBOARD_FILE_LOCK:
+        data = []
+        if path.exists():
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                data = []
+        new_data = mutate_fn(data)
+        _atomic_write_json(path, new_data)
+
+
+def _atomic_write_json(path: Path, data) -> None:
+    temporary = path.with_name(f".{path.name}.tmp")
+    temporary.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary.replace(path)
 
 def _mutate_stats(incr_games=False, *, average_points: int | None = None, hardcore: bool = False):
     """Aktualisiert die Statistik-Daten.
@@ -1891,31 +1937,93 @@ def _mutate_stats(incr_games=False, *, average_points: int | None = None, hardco
     Args:
         incr_games (bool): Ob die Anzahl der Spiele inkrementiert werden soll
     """
-    stats = {"games_played": 0}
-    if STATS_FILE.exists():
-        try:
-            stats = json.loads(STATS_FILE.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-    stats = _stats_with_average_points(stats)
-    if incr_games:
-        stats["games_played"] = int(stats.get("games_played", 0)) + 1
-    if average_points is not None:
-        bucket_key = "hc" if hardcore else "normal"
-        bucket = stats.setdefault("average_points", _empty_average_points()).get(bucket_key, {})
-        previous_average = float(bucket.get("average_points", 0) or 0)
-        games_count = int(bucket.get("games", 0) or 0) + 1
-        points_total = int(bucket.get("points_total", 0) or 0) + int(average_points)
-        updated_bucket = _average_bucket(games_count, points_total)
-        new_average = float(updated_bucket["average_points"])
-        if new_average > previous_average:
-            updated_bucket["trend"] = "up"
-        elif new_average < previous_average:
-            updated_bucket["trend"] = "down"
-        else:
-            updated_bucket["trend"] = "same"
-        stats["average_points"][bucket_key] = updated_bucket
-    STATS_FILE.write_text(json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8")
+    with LEADERBOARD_FILE_LOCK:
+        stats = {"games_played": 0}
+        if STATS_FILE.exists():
+            try:
+                stats = json.loads(STATS_FILE.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        stats = _stats_with_average_points(stats)
+        if incr_games:
+            stats["games_played"] = int(stats.get("games_played", 0)) + 1
+        if average_points is not None:
+            bucket_key = "hc" if hardcore else "normal"
+            bucket = stats.setdefault("average_points", _empty_average_points()).get(bucket_key, {})
+            previous_average = float(bucket.get("average_points", 0) or 0)
+            games_count = int(bucket.get("games", 0) or 0) + 1
+            points_total = int(bucket.get("points_total", 0) or 0) + int(average_points)
+            updated_bucket = _average_bucket(games_count, points_total)
+            new_average = float(updated_bucket["average_points"])
+            if new_average > previous_average:
+                updated_bucket["trend"] = "up"
+            elif new_average < previous_average:
+                updated_bucket["trend"] = "down"
+            else:
+                updated_bucket["trend"] = "same"
+            stats["average_points"][bucket_key] = updated_bucket
+        _atomic_write_json(STATS_FILE, stats)
+
+
+def _remove_deleted_game_from_files(deleted: dict) -> None:
+    game_id = str(deleted["game_id"])
+
+    def without_game(data):
+        if isinstance(data, list):
+            return [
+                item for item in data
+                if not isinstance(item, dict) or stable_game_id(item) != game_id
+            ]
+        if isinstance(data, dict):
+            return {
+                key: without_game(value) if isinstance(value, (list, dict)) else value
+                for key, value in data.items()
+            }
+        return data
+
+    with LEADERBOARD_FILE_LOCK:
+        for path in (RECENT_FILE, ALLTIME_FILE, SHAME_FILE, LAST_GAMES_FILE):
+            _append_json(path, without_game)
+
+        stats = _stats_with_average_points(_read_json_file(STATS_FILE, {"games_played": 0}))
+        stats["games_played"] = max(0, int(stats.get("games_played", 0)) - 1)
+        if deleted["finished_at"] >= GLOBAL_AVERAGE_STARTED_AT:
+            bucket_key = "hc" if deleted["hardcore"] else "normal"
+            bucket = stats["average_points"][bucket_key]
+            old_average = float(bucket.get("average_points", 0) or 0)
+            games_count = max(0, int(bucket.get("games", 0) or 0) - 1)
+            points_total = max(0, int(bucket.get("points_total", 0) or 0) - int(deleted["winner_points"]))
+            updated = _average_bucket(games_count, points_total)
+            new_average = float(updated["average_points"])
+            updated["trend"] = "up" if new_average > old_average else "down" if new_average < old_average else "same"
+            stats["average_points"][bucket_key] = updated
+        _atomic_write_json(STATS_FILE, stats)
+
+
+@app.delete("/api/admin/completed-games/{game_id}")
+def admin_delete_completed_game(game_id: str, payload: DeleteCompletedGameReq, request: Request):
+    identity = require_admin(request)
+    require_csrf(request, identity)
+    if payload.confirmation_game_id != game_id:
+        raise HTTPException(status_code=400, detail="game_delete_confirmation_mismatch")
+    try:
+        deleted = delete_completed_game(
+            game_id=game_id,
+            admin_user_id=identity.user_id,
+            reason=payload.reason,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="game_not_found") from exc
+    except ValueError as exc:
+        detail = str(exc)
+        status_code = 409 if detail == "game_already_deleted" else 400
+        raise HTTPException(status_code=status_code, detail=detail) from exc
+    _remove_deleted_game_from_files(deleted)
+    return {
+        "ok": True,
+        "game_id": deleted["game_id"],
+        "affected_user_ids": deleted["affected_user_ids"],
+    }
 
 def _build_leaderboard_snapshot_fields(g: GameDict) -> dict:
     """Liefert die Zusatzfelder für den Leaderboard-Eintrag.

@@ -31,6 +31,20 @@
       <p class="muted">Hier erscheinen nicht zugeordnete Teilnehmer aus importierten Bestenlisten und neuen Gastspielen.</p>
       <div id="assignmentList" class="assignment-list"></div>
     </section>
+
+    <section class="card danger-zone">
+      <div class="section-title-row">
+        <div><p class="eyebrow">Gefahrenbereich</p><h1>Abgeschlossene Spiele löschen</h1></div>
+        <button id="reloadCompletedGames" class="small">Aktualisieren</button>
+      </div>
+      <p class="muted">Löscht Snapshot und Spielergebnisse dauerhaft. Der Löschvorgang selbst bleibt protokolliert.</p>
+      <form id="completedGameSearch" class="search-row">
+        <input id="completedGameQuery" type="search" placeholder="Spiel, Spieler oder Spiel-ID">
+        <button class="small">Suchen</button>
+      </form>
+      <div id="completedGameList" class="completed-game-list"></div>
+      <details class="deletion-audit"><summary>Protokoll gelöschter Spiele</summary><div id="deletedGameList"></div></details>
+    </section>
   </main>
   <script type="module">
     import { apiFetch, authError, escapeHtml, loadAuth } from '/static/auth.js?v=2';
@@ -39,6 +53,8 @@
     const usersBody = document.getElementById('usersBody');
     const message = document.getElementById('adminMessage');
     const assignmentList = document.getElementById('assignmentList');
+    const completedGameList = document.getElementById('completedGameList');
+    const deletedGameList = document.getElementById('deletedGameList');
     let users = [];
 
     async function loadUsers() {
@@ -136,8 +152,65 @@
     });
 
     document.getElementById('reloadAssignments').addEventListener('click', loadAssignments);
+    async function loadCompletedGames() {
+      completedGameList.innerHTML = '<div class="muted">Laden…</div>';
+      const query = document.getElementById('completedGameQuery').value.trim();
+      const response = await fetch(`/api/admin/completed-games?limit=100&query=${encodeURIComponent(query)}`, { cache: 'no-store' });
+      const games = response.ok ? (await response.json()).games : [];
+      completedGameList.innerHTML = games.map(game => {
+        const players = game.participants.map(player =>
+          `${escapeHtml(player.display_name)}${player.username ? ` → ${escapeHtml(player.username)}` : ''}: ${player.points}`
+        ).join(' · ');
+        return `<article class="completed-game-row" data-game-id="${escapeHtml(game.game_id)}">
+          <div><strong>${escapeHtml(game.game_name || 'Spiel')}</strong>
+            <div class="muted small">${new Date(game.finished_at).toLocaleString('de-CH')} · ${escapeHtml(game.mode)}${game.hardcore ? ' · Hardcore' : ''} · ID ${escapeHtml(game.game_id)}</div>
+            <div class="small">${players}</div>
+          </div>
+          <button class="small danger delete-game" type="button">Dauerhaft löschen</button>
+        </article>`;
+      }).join('') || '<div class="muted">Keine Spiele gefunden.</div>';
+    }
+
+    async function loadDeletedGames() {
+      const response = await fetch('/api/admin/deleted-games?limit=50', { cache: 'no-store' });
+      const games = response.ok ? (await response.json()).games : [];
+      deletedGameList.innerHTML = games.map(game => `<div class="deletion-audit-row">
+        <strong>${escapeHtml(game.game_name || game.game_id)}</strong> · ${new Date(game.deleted_at).toLocaleString('de-CH')}
+        <div class="muted small">ID ${escapeHtml(game.game_id)} · gelöscht durch ${escapeHtml(game.deleted_by)} · ${escapeHtml(game.reason)}</div>
+      </div>`).join('') || '<div class="muted small">Noch keine Spiele gelöscht.</div>';
+    }
+
+    completedGameList.addEventListener('click', async event => {
+      const button = event.target.closest('.delete-game');
+      if (!button) return;
+      const row = button.closest('.completed-game-row');
+      const gameId = row.dataset.gameId;
+      const reason = prompt('Begründung für die dauerhafte Löschung (mindestens 10 Zeichen):');
+      if (reason === null) return;
+      if (reason.trim().length < 10) { message.textContent = 'Die Begründung ist zu kurz.'; return; }
+      const confirmation = prompt(`Zum endgültigen Löschen die Spiel-ID exakt eingeben:\n${gameId}`);
+      if (confirmation !== gameId) { message.textContent = 'Löschung abgebrochen: Spiel-ID stimmt nicht überein.'; return; }
+      button.disabled = true;
+      const response = await apiFetch(`/api/admin/completed-games/${encodeURIComponent(gameId)}`, {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason.trim(), confirmation_game_id: confirmation }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        message.textContent = authError(data.detail);
+        button.disabled = false;
+        return;
+      }
+      message.textContent = `Spiel ${gameId} wurde dauerhaft gelöscht.`;
+      await Promise.all([loadCompletedGames(), loadDeletedGames(), loadAssignments()]);
+    });
+
+    document.getElementById('completedGameSearch').addEventListener('submit', event => {
+      event.preventDefault(); loadCompletedGames();
+    });
+    document.getElementById('reloadCompletedGames').addEventListener('click', loadCompletedGames);
     await loadUsers();
-    await loadAssignments();
+    await Promise.all([loadAssignments(), loadCompletedGames(), loadDeletedGames()]);
   </script>
 </body>
 </html>

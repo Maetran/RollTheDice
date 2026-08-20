@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from .database import database_schema_ready, session_scope
-from .models import CompletedGame, GameParticipant
+from .models import CompletedGame, DeletedGame, GameParticipant
 from .rules import compute_overall
 from .security import as_utc, utcnow
 
@@ -115,6 +115,8 @@ def persist_completed_game(
         return False
     try:
         with session_scope() as db:
+            if db.scalar(select(DeletedGame.id).where(DeletedGame.game_id == str(game_id))):
+                return False
             if db.scalar(select(CompletedGame.id).where(CompletedGame.game_id == str(game_id))):
                 return False
             row = CompletedGame(
@@ -144,6 +146,53 @@ def persist_completed_game(
     except SQLAlchemyError:
         logger.exception("Could not persist completed game %s", game_id)
         return False
+
+
+def deleted_game_ids() -> set[str]:
+    if not database_schema_ready():
+        return set()
+    with session_scope() as db:
+        return {str(game_id) for game_id in db.scalars(select(DeletedGame.game_id))}
+
+
+def delete_completed_game(*, game_id: str, admin_user_id: int, reason: str) -> dict:
+    """Delete snapshot/participants and retain only a non-scoring audit tombstone."""
+    clean_reason = str(reason or "").strip()
+    if len(clean_reason) < 10:
+        raise ValueError("deletion_reason_too_short")
+    with session_scope() as db:
+        if db.scalar(select(DeletedGame.id).where(DeletedGame.game_id == str(game_id))):
+            raise ValueError("game_already_deleted")
+        game = db.scalar(select(CompletedGame).where(CompletedGame.game_id == str(game_id)))
+        if not game:
+            raise LookupError("game_not_found")
+        participants = list(game.participants)
+        winner_points = max((int(participant.points) for participant in participants), default=0)
+        affected_user_ids = sorted({
+            int(participant.user_id) for participant in participants if participant.user_id is not None
+        })
+        result = {
+            "game_id": game.game_id,
+            "game_name": game.game_name,
+            "finished_at": as_utc(game.finished_at),
+            "mode": game.mode,
+            "hardcore": bool(game.hardcore),
+            "imported_from_legacy": bool(game.imported_from_legacy),
+            "winner_points": winner_points,
+            "affected_user_ids": affected_user_ids,
+        }
+        db.add(DeletedGame(
+            game_id=game.game_id,
+            game_name=game.game_name,
+            finished_at=game.finished_at,
+            mode=game.mode,
+            hardcore=game.hardcore,
+            deleted_at=utcnow(),
+            deleted_by_user_id=admin_user_id,
+            reason=clean_reason,
+        ))
+        db.delete(game)
+        return result
 
 
 def persist_runtime_game(game: dict, totals: dict[str, int], snapshot: dict) -> bool:

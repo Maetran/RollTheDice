@@ -22,7 +22,7 @@ from app.auth_protection import (
 )
 from app.database import configure_database, session_scope, upgrade_database
 from app.game_history import import_legacy_leaderboards, persist_runtime_game, stable_game_id
-from app.models import AssignmentAudit, CompletedGame, GameParticipant, Session, User
+from app.models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, Session, User
 from app.security import validate_password
 from tests.support import GameStateTestCase
 
@@ -265,3 +265,91 @@ class AccountDatabaseTestCase(GameStateTestCase):
             audit = db.scalar(select(AssignmentAudit))
             self.assertEqual(audit.admin_user_id, admin.id)
             self.assertEqual(audit.new_user_id, player.id)
+
+    def test_admin_deletion_updates_users_files_stats_and_blocks_reimport(self):
+        admin = create_user("DeleteAdmin", "temporary-delete-123", role="admin", must_change_password=False)
+        first = create_user("DeleteOne", "temporary-delete-123", must_change_password=False)
+        second = create_user("DeleteTwo", "temporary-delete-123", must_change_password=False)
+        g = self.make_game(mode="2v2", players=[
+            ("p1", "DeleteOne"), ("p2", "DeleteTwo"), ("p3", "Gast A"), ("p4", "Gast B"),
+        ])
+        g["_players"][0]["user_id"] = first.id
+        g["_players"][1]["user_id"] = second.id
+        g["_scoreboards_by_team"]["A"] = self.high_scoreboard()
+        g["_scoreboards_by_team"]["B"] = self.low_scoreboard()
+        snapshot = main._build_leaderboard_snapshot_fields(g)
+        totals = main._compute_final_totals(g)
+        self.assertTrue(persist_runtime_game(g, totals, snapshot))
+
+        entry = {
+            **snapshot,
+            "ts": snapshot["finished_at"],
+            "points": max(totals.values()),
+            "name": "DeleteOne, Gast A",
+            "gamename": "Delete test",
+            "opponent": "DeleteTwo, Gast B",
+            "opp_points": min(totals.values()),
+        }
+        files = {
+            "RECENT_FILE": Path(self.temporary_directory.name) / "recent.json",
+            "ALLTIME_FILE": Path(self.temporary_directory.name) / "alltime.json",
+            "SHAME_FILE": Path(self.temporary_directory.name) / "shame.json",
+            "LAST_GAMES_FILE": Path(self.temporary_directory.name) / "last.json",
+            "STATS_FILE": Path(self.temporary_directory.name) / "stats.json",
+        }
+        files["RECENT_FILE"].write_text(json.dumps({"normal": [entry], "hc": []}), encoding="utf-8")
+        files["ALLTIME_FILE"].write_text(json.dumps({"normal": [entry], "hc": []}), encoding="utf-8")
+        files["SHAME_FILE"].write_text(json.dumps({"recent": [entry], "alltime": [entry]}), encoding="utf-8")
+        files["LAST_GAMES_FILE"].write_text(json.dumps([entry]), encoding="utf-8")
+        files["STATS_FILE"].write_text(json.dumps({
+            "games_played": 10,
+            "average_points": {
+                "normal": {"games": 5, "points_total": 2000, "average_points": 400},
+                "hc": {"games": 0, "points_total": 0, "average_points": 0},
+            },
+        }), encoding="utf-8")
+
+        identity, raw_token = login(request_for(), admin.username, "temporary-delete-123")
+        request = request_for(
+            cookie=f"rollthedice_session={raw_token}",
+            csrf=identity.csrf_token,
+            origin="http://testserver",
+        )
+        payload = main.DeleteCompletedGameReq(
+            reason="Unsachgemäße Punktebearbeitung",
+            confirmation_game_id=g["_id"],
+        )
+        with patch.multiple(main, **files):
+            mismatch = main.DeleteCompletedGameReq(
+                reason="Unsachgemäße Punktebearbeitung",
+                confirmation_game_id="falsche-id",
+            )
+            with self.assertRaisesRegex(Exception, "game_delete_confirmation_mismatch") as rejected:
+                main.admin_delete_completed_game(g["_id"], mismatch, request)
+            self.assertEqual(rejected.exception.status_code, 400)
+            result = main.admin_delete_completed_game(g["_id"], payload, request)
+            self.assertTrue(result["ok"])
+            with self.assertRaisesRegex(Exception, "not_found"):
+                main.api_game_from_leaderboard(g["_id"])
+            with self.assertRaisesRegex(Exception, "game_already_deleted") as duplicate:
+                main.admin_delete_completed_game(g["_id"], payload, request)
+            self.assertEqual(duplicate.exception.status_code, 409)
+
+        self.assertEqual(public_player_profile(first.username)["player"]["statistics"]["overall"]["games_played"], 0)
+        self.assertEqual(public_player_profile(second.username)["player"]["statistics"]["overall"]["games_played"], 0)
+        with session_scope() as db:
+            self.assertIsNone(db.scalar(select(CompletedGame).where(CompletedGame.game_id == g["_id"])))
+            tombstone = db.scalar(select(DeletedGame).where(DeletedGame.game_id == g["_id"]))
+            self.assertEqual(tombstone.deleted_by_user_id, admin.id)
+            self.assertEqual(tombstone.reason, "Unsachgemäße Punktebearbeitung")
+
+        for key in ("RECENT_FILE", "ALLTIME_FILE", "SHAME_FILE", "LAST_GAMES_FILE"):
+            self.assertNotIn(g["_id"], files[key].read_text(encoding="utf-8"))
+        stats = json.loads(files["STATS_FILE"].read_text(encoding="utf-8"))
+        self.assertEqual(stats["games_played"], 9)
+        self.assertEqual(stats["average_points"]["normal"]["games"], 4)
+        self.assertEqual(stats["average_points"]["normal"]["points_total"], 1590)
+
+        legacy = Path(self.temporary_directory.name) / "deleted-legacy.json"
+        legacy.write_text(json.dumps([entry]), encoding="utf-8")
+        self.assertEqual(import_legacy_leaderboards([legacy]), 0)

@@ -137,6 +137,19 @@ in HTML or JavaScript; only the site key is returned by the public config API.
 If either value is missing, startup fails deliberately instead of providing a
 false sense of protection.
 
+## Deleting Invalid Completed Games
+
+Administrators can permanently delete an invalid completed game in the
+administration page. The snapshot, participants, assignments, and leaderboard
+entries are removed. User profiles and rankings are calculated from the
+remaining database rows and therefore update immediately.
+
+Only a tombstone containing the game ID, basic metadata, deletion time,
+administrator, and required reason remains. It prevents legacy JSON files from
+reimporting the deleted game after a restart. The snapshot itself is not kept in
+the tombstone. Production backups created before the deletion remain the final
+recovery option.
+
 ## Server Maintenance
 
 If Ubuntu reports `System restart required`, a controlled reboot is acceptable.

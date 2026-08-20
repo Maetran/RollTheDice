@@ -2638,10 +2638,16 @@ button:disabled:hover{
 .admin-create-grid { display: grid; grid-template-columns: 1fr 1.6fr auto auto; }
 .assignment-list { display: grid; gap: .65rem; }
 .assignment-row { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(160px, 260px) auto; gap: .75rem; align-items: center; border: 1px solid var(--border, #dce2ea); border-radius: 12px; padding: .75rem; }
+.danger-zone { border-color: color-mix(in srgb, #dc2626 45%, var(--border)); }
+.completed-game-list { display: grid; gap: .65rem; margin-top: 1rem; }
+.completed-game-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .8rem; align-items: center; border: 1px solid var(--border); border-radius: 12px; padding: .8rem; }
+button.danger { color: #fff; background: #b91c1c; border-color: #991b1b; }
+.deletion-audit { margin-top: 1rem; }
+.deletion-audit-row { padding: .65rem 0; border-bottom: 1px solid var(--border); }
 
 @media (max-width: 760px) {
   .statistics-grid { grid-template-columns: 1fr; }
-  .admin-create-grid, .assignment-row { grid-template-columns: 1fr; }
+  .admin-create-grid, .assignment-row, .completed-game-row { grid-template-columns: 1fr; }
   .ranking-controls { width: 100%; justify-content: flex-start; }
   .login-inline { align-items: stretch; }
   .login-inline input, .login-inline button { width: 100%; }

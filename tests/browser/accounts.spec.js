@@ -39,6 +39,7 @@ test("admin can log in, create a user and open the public profile", async ({ pag
   await page.click("#adminLink");
   await page.waitForURL(/admin\.html/);
   await expect(page.getByRole("heading", { name: "Benutzerverwaltung" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Abgeschlossene Spiele löschen" })).toBeVisible();
 
   const existing = page.locator("#usersBody tr", { hasText: "RegisteredSmoke" });
   if (await existing.count() === 0) {

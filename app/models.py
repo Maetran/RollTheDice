@@ -79,6 +79,24 @@ class CompletedGame(Base):
     __table_args__ = (Index("ix_completed_games_finished_at", "finished_at"),)
 
 
+class DeletedGame(Base):
+    __tablename__ = "deleted_games"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    game_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    game_name: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    hardcore: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    deleted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    deleted_by_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (Index("ix_deleted_games_deleted_at", "deleted_at"),)
+
+
 class GameParticipant(Base):
     __tablename__ = "game_participants"
 

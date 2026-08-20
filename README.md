@@ -9,6 +9,7 @@ RollTheDice is a lightweight multiplayer dice game with a FastAPI backend and a 
 - WebSocket game room for rolling, scoring, chat, spectators, and corrections
 - Persistent leaderboards and stats in `./data`
 - User accounts, admin management, public profiles, search, and player rankings
+- Audited permanent deletion of invalid completed games with automatic statistic updates
 - Self-registration from the lobby with immutable usernames
 - Personal statistics split into Normal, Hardcore, and overall results
 - Progressive Web App support via manifest and service worker
