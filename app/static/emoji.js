@@ -58,9 +58,21 @@
         font-size:.72rem;
         font-weight:800;
         letter-spacing:0;
+        color:#111827;
       }
       .emoji-btn:hover{ background:#f7faff; }
       .emoji-btn:active{ transform:scale(.96); }
+      :root[data-theme="dark"] .emoji-fab,
+      :root[data-theme="dark"] .emoji-btn{
+        background:#f8fafc;
+        border-color:#64748b;
+        color:#020617;
+      }
+      :root[data-theme="dark"] .emoji-fab:hover,
+      :root[data-theme="dark"] .emoji-btn:hover{
+        background:#e2e8f0;
+        border-color:#94a3b8;
+      }
       /* Badge-Overlay (zentral oben, stapelbar) */
       .emoji-pop-wrap{
         position:fixed; left:50%; top:var(--emoji-pop-top, 10px); transform:translateX(-50%);
@@ -70,6 +82,7 @@
       .emoji-pop{
         max-width:calc(100vw - 24px);
         background:rgba(255,255,255,.95);
+        color:#111827;
         border:1px solid rgba(0,0,0,.08);
         box-shadow:0 6px 18px rgba(0,0,0,.12);
         border-radius:999px;

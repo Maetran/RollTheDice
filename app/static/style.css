@@ -50,6 +50,7 @@
   --mobile-action-gap: .45rem;
   --mobile-suggestionsbar-h: 1.35rem;
   --mobile-reactionbar-w: 3.35rem;
+  --mobile-safe-left: max(.5rem, env(safe-area-inset-left, 0px));
   --desktop-shell-max: 430px;
   --desktop-two-board-shell-max: 900px;
   --desktop-three-board-shell-max: 1320px;
@@ -1883,7 +1884,7 @@ button:disabled:hover{
   }
   .room-page .chat-reactions-host{
     position:fixed;
-    left:0;
+    left:var(--mobile-safe-left);
     bottom:0;
     z-index:1510;
     display:flex;
@@ -1923,11 +1924,11 @@ button:disabled:hover{
   .room-page .chat-panel{
     --chat-bar-height:var(--mobile-chatbar-h);
     position:fixed;
-    left:var(--mobile-reactionbar-w);
+    left:calc(var(--mobile-reactionbar-w) + var(--mobile-safe-left));
     right:0;
     bottom:0;
     z-index:1500;
-    width:calc(100% - var(--mobile-reactionbar-w)) !important;
+    width:calc(100% - var(--mobile-reactionbar-w) - var(--mobile-safe-left)) !important;
     max-width:none !important;
     max-height:min(72vh, 34rem);
     margin:0 !important;
@@ -2564,17 +2565,18 @@ button:disabled:hover{
 :root[data-theme="dark"] .room-page.board-count-many .chat-panel{ background:#050914; }
 :root[data-theme="dark"] .room-page .chat-toggle-count{ background:#f8fafc; color:#0b1120; }
 
-/* Dice: slightly larger targets, with the strongest increase on phones. */
+/* Dice: comfortably sized click targets with a little breathing room above the actions. */
 @media (min-width:561px){
   .room-page #diceBar{
-    grid-template-columns:repeat(5, 3.4rem);
-    grid-template-rows:3.4rem auto;
+    grid-template-columns:repeat(5, 3.6rem);
+    grid-template-rows:3.6rem auto;
+    row-gap:.7rem;
   }
   .room-page #diceBar .die{
-    width:3.4rem !important;
-    height:3.4rem !important;
-    max-width:3.4rem !important;
-    max-height:3.4rem !important;
+    width:3.6rem !important;
+    height:3.6rem !important;
+    max-width:3.6rem !important;
+    max-height:3.6rem !important;
   }
 }
 
@@ -2587,15 +2589,16 @@ button:disabled:hover{
     --mobile-grid-row-h:clamp(1.55rem, calc((100vh - 17.8rem) / 19), 1.84rem);
   }
   .room-page #diceBar{
-    grid-template-columns:repeat(5, clamp(3.1rem, calc((100vw - 4rem) / 5), 3.5rem));
-    grid-template-rows:clamp(3.1rem, calc((100vw - 4rem) / 5), 3.5rem) auto;
+    grid-template-columns:repeat(5, clamp(3.25rem, calc((100vw - 3rem) / 5), 3.65rem));
+    grid-template-rows:clamp(3.25rem, calc((100vw - 3rem) / 5), 3.65rem) auto;
+    row-gap:.65rem;
   }
   .room-page #diceBar .die{
-    width:clamp(3.1rem, calc((100vw - 4rem) / 5), 3.5rem) !important;
-    height:clamp(3.1rem, calc((100vw - 4rem) / 5), 3.5rem) !important;
-    max-width:3.5rem !important;
-    max-height:3.5rem !important;
-    min-height:3.1rem !important;
+    width:clamp(3.25rem, calc((100vw - 3rem) / 5), 3.65rem) !important;
+    height:clamp(3.25rem, calc((100vw - 3rem) / 5), 3.65rem) !important;
+    max-width:3.65rem !important;
+    max-height:3.65rem !important;
+    min-height:3.25rem !important;
     padding:.06rem !important;
     -webkit-tap-highlight-color:transparent;
   }
