@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <title>Würfler – Mein Konto</title>
+  <title>ZDWA – Mein Konto</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="manifest" href="/manifest.webmanifest?v=2">
   <link rel="icon" type="image/png" href="/static/favicon.png?v=2" sizes="32x32">
@@ -22,17 +22,17 @@
     </section>
     <section class="card password-card">
       <h2>Spieleinstellungen</h2>
-      <p class="muted small">Diese Einstellungen gelten für dein Konto auf allen Geräten.</p>
+      <p class="muted small">Diese Einstellungen gelten für dein Konto auf allen Geräten. Sie ändern nur die Bedienung, nicht die Spielregeln.</p>
       <form id="preferencesForm" class="form-stack account-preferences-form">
         <fieldset>
-          <legend>Ansage auswählen</legend>
-          <label><input type="radio" name="announceSelectionMode" value="overlay"> Auswahlfenster mit allen Ansagefeldern</label>
-          <label><input type="radio" name="announceSelectionMode" value="table"> Freies ❗-Feld direkt in der Tabelle anklicken</label>
+          <legend>Ansagefeld auswählen</legend>
+          <label><input type="radio" name="announceSelectionMode" value="overlay"> Auswahlfenster: Nach „Ansagen“ werden alle freien ❗-Felder kompakt angezeigt</label>
+          <label><input type="radio" name="announceSelectionMode" value="table"> Tabelle: Nach „Ansagen“ das gewünschte freie ❗-Feld direkt im Spielblatt anklicken</label>
         </fieldset>
         <fieldset>
-          <legend>Angesagtes Feld schreiben</legend>
-          <label><input type="radio" name="autoWriteAnnounced" value="true"> Nach dem letzten Wurf automatisch schreiben</label>
-          <label><input type="radio" name="autoWriteAnnounced" value="false"> Immer manuell schreiben</label>
+          <legend>Angesagtes Feld eintragen</legend>
+          <label><input type="radio" name="autoWriteAnnounced" value="true"> Automatisch: Nach dem letzten erlaubten Wurf wird das angesagte Ergebnis selbstständig eingetragen</label>
+          <label><input type="radio" name="autoWriteAnnounced" value="false"> Manuell: Das angesagte ❗-Feld nach dem Würfeln immer selbst anklicken</label>
         </fieldset>
         <button>Spieleinstellungen speichern</button>
       </form>

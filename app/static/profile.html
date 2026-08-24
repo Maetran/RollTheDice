@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <title>Würfler – Spielerprofil</title>
+  <title>ZDWA – Spielerprofil</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="manifest" href="/manifest.webmanifest?v=2">
   <link rel="icon" type="image/png" href="/static/favicon.png?v=2" sizes="32x32">
@@ -25,7 +25,7 @@
     const username = new URLSearchParams(location.search).get('user') || '';
     const errorEl = document.getElementById('profileError');
     const statisticsEl = document.getElementById('statistics');
-    document.title = username ? `Würfler – ${username}` : document.title;
+    document.title = username ? `ZDWA – ${username}` : document.title;
 
     function bucket(title, data, { details = true } = {}) {
       const trend = data.trend === 'up'

@@ -1,6 +1,6 @@
 {
-  "name": "Würfler",
-  "short_name": "Würfler",
+  "name": "ZDWA – Zock die Wand an",
+  "short_name": "ZDWA",
   "description": "Schnelles Würfelspiel im Browser – mit Lobby, Leaderboard und Rooms.",
   "start_url": "/",
   "scope": "/",
