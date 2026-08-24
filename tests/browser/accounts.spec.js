@@ -104,9 +104,11 @@ test("logged-in user sees the personal landing page", async ({ page }) => {
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#authBadge")).toContainText("RegisteredSmoke");
 
-  await page.getByRole("link", { name: "Meine Statistiken" }).click();
+  await page.getByRole("link", { name: "Mein Konto" }).click();
   await page.waitForURL(/account\.html/);
   await expect(page.getByRole("heading", { name: "RegisteredSmoke" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Statistiken" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Spieleinstellungen" })).toBeVisible();
   await expect(page.locator(".stat-bucket")).toHaveCount(3);
   await expect(page.locator(".stat-bucket").first()).not.toContainText("Durchschnitt");
   await expect(page.locator(".stat-bucket").nth(2)).toContainText("Durchschnitt");
