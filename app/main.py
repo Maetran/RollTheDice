@@ -45,6 +45,7 @@ from .rules import compute_overall
 from .api_auth import router as auth_router
 from .api_users import profile_links_for_games, router as users_router
 from .auth import (
+    auth_identity_payload,
     ensure_bootstrap_admin,
     require_admin,
     require_csrf,
@@ -545,6 +546,15 @@ def _clear_correction(g: GameDict) -> None:
     """Beendet den Korrekturmodus und entfernt die angezeigten Korrekturwuerfel."""
     g["_correction"] = {"active": False}
     g["_dice"] = [0, 0, 0, 0, 0]
+
+
+def correction_disabled_reason(g: GameDict) -> str | None:
+    """Return the shared reason why correction actions are unavailable."""
+    if bool(g.get("_hardcore")):
+        return "Korrekturmodus ist im Hardcore-Modus deaktiviert"
+    if int(g.get("_expected", 0) or 0) == 1:
+        return "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert"
+    return None
 
 def _join_block_reason(g: GameDict) -> str | None:
     """Prueft, ob ein neuer Spieler dem Spiel noch beitreten darf."""
@@ -2372,16 +2382,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
         "scoreboard": snapshot(g),
         "auth": {
             "authenticated": bool(auth_identity),
-            "user": ({
-                "id": auth_identity.user_id,
-                "username": auth_identity.username,
-                "role": auth_identity.role,
-                "is_admin": auth_identity.is_admin,
-                "preferences": {
-                    "announce_selection_mode": auth_identity.announce_selection_mode,
-                    "auto_write_announced": auth_identity.auto_write_announced,
-                },
-            } if auth_identity else None),
+            "user": auth_identity_payload(auth_identity) if auth_identity else None,
         },
     })
 
@@ -2546,9 +2547,6 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "set_hold":
-                if superadmin_edit_active(g):
-                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
-                    continue
                 if not g["_turn"] or g["_turn"]["player_id"] != player_id:
                     await websocket.send_json({"error": "Nicht an der Reihe"})
                     continue
@@ -2560,9 +2558,6 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "roll_dice":
-                if superadmin_edit_active(g):
-                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
-                    continue
                 ok, why = can_roll_now(g, player_id)
                 if not ok:
                     await websocket.send_json({"error": why})
@@ -2578,9 +2573,6 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "announce_row4":
-                if superadmin_edit_active(g):
-                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
-                    continue
                 # Hardcore: keine Ansage – ❗ verhält sich wie Freireihe
                 if bool(g.get("_hardcore")):
                     await websocket.send_json({"error": "Ansage ist im Hardcore-Modus deaktiviert"})
@@ -2616,9 +2608,6 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "unannounce_row4":
-                if superadmin_edit_active(g):
-                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
-                    continue
                 # Hardcore: keine Ansage – ❗ verhält sich wie Freireihe
                 if bool(g.get("_hardcore")):
                     await websocket.send_json({"error": "Ansage ist im Hardcore-Modus deaktiviert"})
@@ -2645,9 +2634,6 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "write_field":
-                if superadmin_edit_active(g):
-                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
-                    continue
                 if not (g["_turn"] and g["_turn"]["player_id"] == player_id):
                     await websocket.send_json({"error": "Nicht an der Reihe"})
                     continue
@@ -2721,16 +2707,8 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "request_correction":
-                if superadmin_edit_active(g):
-                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
-                    continue
-                # Hardcore: Korrektur generell deaktiviert
-                if bool(g.get("_hardcore")):
-                    await websocket.send_json({"error": "Korrekturmodus ist im Hardcore-Modus deaktiviert"})
-                    continue
-                # 1P-Modus: Korrektur deaktiviert
-                if int(g.get("_expected", 0) or 0) == 1:
-                    await websocket.send_json({"error": "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert"})
+                if reason := correction_disabled_reason(g):
+                    await websocket.send_json({"error": reason})
                     continue
                 if g["_correction"]["active"]:
                     continue
@@ -2742,12 +2720,10 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     await websocket.send_json({"error": "Korrektur nicht erlaubt (Ansage-Zug)"})
                     continue
 
-                is_single = (not is_team_mode(g)) and int(g.get("_expected", 0) or 0) == 1
-
                 if not g.get("_turn"):
                     await websocket.send_json({"error": "Korrektur nur direkt nach deinem Zug"})
                     continue
-                if (g["_turn"]["player_id"] == player_id) and (not is_single):
+                if g["_turn"]["player_id"] == player_id:
                     await websocket.send_json({"error": "Korrektur nur direkt nach deinem Zug"})
                     continue
 
@@ -2773,28 +2749,16 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "cancel_correction":
-                if superadmin_edit_active(g):
-                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
-                    continue
-                if bool(g.get("_hardcore")):
-                    await websocket.send_json({"error": "Korrekturmodus ist im Hardcore-Modus deaktiviert"})
-                    continue
-                if int(g.get("_expected", 0) or 0) == 1:
-                    await websocket.send_json({"error": "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert"})
+                if reason := correction_disabled_reason(g):
+                    await websocket.send_json({"error": reason})
                     continue
                 _clear_correction(g)
                 touch(g)
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "write_field_correction":
-                if superadmin_edit_active(g):
-                    await websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
-                    continue
-                if bool(g.get("_hardcore")):
-                    await websocket.send_json({"error": "Korrekturmodus ist im Hardcore-Modus deaktiviert"})
-                    continue
-                if int(g.get("_expected", 0) or 0) == 1:
-                    await websocket.send_json({"error": "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert"})
+                if reason := correction_disabled_reason(g):
+                    await websocket.send_json({"error": reason})
                     continue
                 # --- Preconditions ---
                 corr = g["_correction"]

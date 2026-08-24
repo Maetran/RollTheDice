@@ -112,7 +112,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
     0:"1",1:"2",2:"3",3:"4",4:"5",5:"6",
     9:"max",10:"min",12:"kenter",13:"full",14:"poker",15:"60"
   };
-  const MOBILE_ANNOUNCE_FIELDS = [
+  const ANNOUNCE_FIELDS = [
     [
       { row:0, field:"1", label:"1" }, { row:1, field:"2", label:"2" },
       { row:2, field:"3", label:"3" }, { row:3, field:"4", label:"4" },
@@ -244,7 +244,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
     else if (sb) syncActionButtons(sb);
   }
 
-  function renderMobileAnnouncePicker(snapshot){
+  function renderAnnouncePicker(snapshot){
     const picker = document.getElementById("mobileAnnouncePicker");
     if (!picker) return;
 
@@ -260,7 +260,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
     }
 
     const board = getMyBoard(snapshot);
-    picker.replaceChildren(...MOBILE_ANNOUNCE_FIELDS.map((fields, rowIndex) => {
+    picker.replaceChildren(...ANNOUNCE_FIELDS.map((fields, rowIndex) => {
       const row = document.createElement("div");
       row.className = "mobile-announce-picker-row";
       row.setAttribute("aria-label", rowIndex === 0 ? "Zahlenfelder" : "Sonderfelder");
@@ -1351,7 +1351,7 @@ function renderFromSnapshot(snapshot) {
 
     // Ansage-/Würfeln-Buttons aus demselben Benutzbarkeitsmodell setzen.
     syncActionButtons(snapshot);
-    renderMobileAnnouncePicker(snapshot);
+    renderAnnouncePicker(snapshot);
     scheduleAutoWriteAnnouncedField(snapshot);
     renderSuperadminLockNotice(snapshot);
     renderMultiplayerPauseNotice(snapshot);
@@ -1374,18 +1374,7 @@ function renderFromSnapshot(snapshot) {
       $$(".announce-pickable").forEach(td => td.classList.remove("announce-pickable"));
 
       if (!isHC && announcePickMode && userGameplayPreferences().announceSelectionMode === "table"){
-        let boardRoot = null;
-        const mode = String(snapshot?._mode || "").toLowerCase();
-        if (mode === "2v2"){
-          const myTeam = (snapshot._teams || []).find(t => (t.members || []).some(m => String(m) === String(myId)));
-          if (myTeam){
-            const cards = $$(".player-card");
-            boardRoot = Array.from(cards).find(c => c.classList.contains("me")) || null;
-          }
-        } else {
-          const cards = $$(".player-card");
-          boardRoot = Array.from(cards).find(c => c.classList.contains("me")) || null;
-        }
+        const boardRoot = $(".player-card.me");
 
         if (boardRoot){
           const tds = $$("table.grid tbody tr td.cell:nth-child(5)", boardRoot);

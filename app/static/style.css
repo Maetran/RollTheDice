@@ -2293,46 +2293,21 @@ button:disabled:hover{
     backdrop-filter:none;
   }
   .room-page .mobile-announce-picker{
-    position:absolute;
     left:.4rem;
     right:.4rem;
-    bottom:calc(100% + .4rem);
-    z-index:1320;
-    display:grid;
     gap:.3rem;
     width:auto;
-    margin:0;
     padding:.35rem;
-    border:1px solid color-mix(in srgb, var(--border) 76%, transparent);
-    border-radius:.65rem;
     background:color-mix(in srgb, var(--surface) 94%, transparent);
-    box-shadow:0 12px 28px rgba(15,23,42,.2);
-    backdrop-filter:blur(10px) saturate(1.15);
     transform:none;
   }
-  .room-page .mobile-announce-picker[hidden]{ display:none; }
   .room-page .mobile-announce-picker-row{
-    display:grid;
-    grid-template-columns:repeat(6, minmax(0, 1fr));
     gap:.28rem;
   }
   .room-page .mobile-announce-option{
-    width:100%;
-    min-width:0;
     min-height:2.15rem;
     padding:.22rem .12rem;
-    border-color:color-mix(in srgb, var(--warning-border) 68%, transparent);
     background:color-mix(in srgb, var(--warning-soft) 76%, transparent);
-    color:var(--text);
-    font-size:.9rem;
-    font-weight:850;
-    box-shadow:none;
-  }
-  .room-page .mobile-announce-option:disabled{
-    opacity:.36;
-    background:var(--surface-soft);
-    border-color:var(--border);
-    color:var(--muted);
   }
   .room-page #diceBar{
     grid-template-columns:repeat(5, 3.15rem);

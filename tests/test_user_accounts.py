@@ -12,7 +12,14 @@ from sqlalchemy import func, select
 from app import main
 from app.api_auth import UserPreferencesRequest, auth_me, auth_update_preferences
 from app.api_users import AssignmentRequest, assign_game_participant, player_ranking, public_player_profile
-from app.auth import change_password, create_user, login, resolve_session, validate_request_origin
+from app.auth import (
+    auth_identity_payload,
+    change_password,
+    create_user,
+    login,
+    resolve_session,
+    validate_request_origin,
+)
 from app.auth_protection import (
     enforce_login_rate_limit,
     enforce_registration_rate_limit,
@@ -80,6 +87,11 @@ class AccountDatabaseTestCase(GameStateTestCase):
 
         resolved = resolve_session(request_for(cookie=f"rollthedice_session={raw_token}"))
         self.assertEqual(resolved.username, "Anna")
+
+        public_payload = auth_identity_payload(resolved)
+        self.assertNotIn("csrf_token", public_payload)
+        self.assertEqual(public_payload["preferences"]["announce_selection_mode"], "overlay")
+        self.assertIn("csrf_token", auth_identity_payload(resolved, include_csrf=True))
 
     def test_password_minimum_is_eight_characters(self):
         self.assertEqual(validate_password("12345678"), "12345678")

@@ -8,6 +8,7 @@ from sqlalchemy import delete, func, select
 
 from .auth import (
     SESSION_COOKIE,
+    auth_identity_payload,
     change_password,
     clear_session_cookie,
     create_user,
@@ -71,21 +72,6 @@ class AdminUserUpdateRequest(BaseModel):
     is_active: bool | None = None
 
 
-def _identity_payload(identity) -> dict:
-    return {
-        "id": identity.user_id,
-        "username": identity.username,
-        "role": identity.role,
-        "is_admin": identity.is_admin,
-        "must_change_password": identity.must_change_password,
-        "preferences": {
-            "announce_selection_mode": identity.announce_selection_mode,
-            "auto_write_announced": identity.auto_write_announced,
-        },
-        "csrf_token": identity.csrf_token,
-    }
-
-
 def _user_payload(user: User) -> dict:
     return {
         "id": user.id,
@@ -101,7 +87,10 @@ def _user_payload(user: User) -> dict:
 @router.get("/auth/me")
 def auth_me(request: Request):
     identity = resolve_session(request)
-    return {"authenticated": bool(identity), "user": _identity_payload(identity) if identity else None}
+    return {
+        "authenticated": bool(identity),
+        "user": auth_identity_payload(identity, include_csrf=True) if identity else None,
+    }
 
 
 @router.get("/auth/registration-config")
@@ -114,7 +103,7 @@ def auth_login(payload: LoginRequest, request: Request, response: Response):
     identity, raw_token = login(request, payload.username, payload.password)
     set_session_cookie(response, raw_token)
     response.headers["Cache-Control"] = "no-store"
-    return {"authenticated": True, "user": _identity_payload(identity)}
+    return {"authenticated": True, "user": auth_identity_payload(identity, include_csrf=True)}
 
 
 @router.post("/auth/register", status_code=status.HTTP_201_CREATED)
@@ -129,7 +118,7 @@ def auth_register(payload: RegisterRequest, request: Request, response: Response
     identity, raw_token = login(request, payload.username, payload.password)
     set_session_cookie(response, raw_token)
     response.headers["Cache-Control"] = "no-store"
-    return {"authenticated": True, "user": _identity_payload(identity)}
+    return {"authenticated": True, "user": auth_identity_payload(identity, include_csrf=True)}
 
 
 @router.post("/auth/logout")

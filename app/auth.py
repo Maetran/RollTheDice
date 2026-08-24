@@ -54,6 +54,24 @@ class AuthIdentity:
         return self.role == "admin"
 
 
+def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False) -> dict:
+    """Serialize the account fields shared by HTTP and WebSocket auth responses."""
+    payload = {
+        "id": identity.user_id,
+        "username": identity.username,
+        "role": identity.role,
+        "is_admin": identity.is_admin,
+        "must_change_password": identity.must_change_password,
+        "preferences": {
+            "announce_selection_mode": identity.announce_selection_mode,
+            "auto_write_announced": identity.auto_write_announced,
+        },
+    }
+    if include_csrf:
+        payload["csrf_token"] = identity.csrf_token
+    return payload
+
+
 def _cookie_secure() -> bool:
     return os.getenv("ROLLTHEDICE_COOKIE_SECURE", "0").strip().lower() in {"1", "true", "yes", "on"}
 

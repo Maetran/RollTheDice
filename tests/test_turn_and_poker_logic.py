@@ -74,6 +74,21 @@ class RollApplicationTestCase(GameStateTestCase):
         main._set_roll_cap_for_current_turn(g_hc)
         self.assertEqual(g_hc["_rolls_max"], 1)
 
+    def test_correction_disabled_reason_is_shared_across_modes(self):
+        regular = self.make_game(players=[("p1", "A"), ("p2", "B")])
+        single = self.make_game(mode=1)
+        hardcore = self.make_game(hardcore=True)
+
+        self.assertIsNone(main.correction_disabled_reason(regular))
+        self.assertEqual(
+            main.correction_disabled_reason(single),
+            "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert",
+        )
+        self.assertEqual(
+            main.correction_disabled_reason(hardcore),
+            "Korrekturmodus ist im Hardcore-Modus deaktiviert",
+        )
+
 
 class WriteGuardTestCase(GameStateTestCase):
     def test_down_and_up_columns_enforce_their_required_order(self):
