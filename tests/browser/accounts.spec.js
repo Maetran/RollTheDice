@@ -115,6 +115,57 @@ test("logged-in user sees the personal landing page", async ({ page }) => {
 });
 
 
+test("account gameplay preferences persist and control announce behavior", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.fill("#loginUsername", "RegisteredSmoke");
+  await page.fill("#loginPassword", "registered-password-123");
+  await page.click("#loginForm button[type=submit]");
+  await expect(page.locator("#authBadge")).toContainText("RegisteredSmoke");
+
+  await page.goto("/static/account.html");
+  await expect(page.locator('input[name="announceSelectionMode"][value="overlay"]')).toBeChecked();
+  await expect(page.locator('input[name="autoWriteAnnounced"][value="true"]')).toBeChecked();
+  await page.check('input[name="announceSelectionMode"][value="table"]');
+  await page.check('input[name="autoWriteAnnounced"][value="false"]');
+  await page.click("#preferencesForm button");
+  await expect(page.locator("#preferencesMessage")).toHaveText("Spieleinstellungen gespeichert.");
+  await page.reload();
+  await expect(page.locator('input[name="announceSelectionMode"][value="table"]')).toBeChecked();
+  await expect(page.locator('input[name="autoWriteAnnounced"][value="false"]')).toBeChecked();
+
+  const gameId = await page.evaluate(async () => {
+    const response = await fetch('/api/games', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Preference behavior', mode: 1 }),
+    });
+    return (await response.json()).game_id;
+  });
+  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=ignored`);
+  await expect(page.locator("#announceBtnInline")).toBeEnabled({ timeout: 6000 });
+  await page.locator("#announceBtnInline").click();
+  await expect(page.locator("#mobileAnnouncePicker")).toBeHidden();
+  await expect(page.locator(".player-card.me td.announce-pickable")).toHaveCount(12);
+
+  const pokerAnnounced = page.locator('.player-card.me td.cell[data-row="14"][data-field="ang"]');
+  await pokerAnnounced.click();
+  await expect(page.locator("#announceBtnInline")).toContainText("Ansage aufheben");
+  const rollButton = page.locator("#rollBtnInline");
+  await rollButton.click();
+  await expect(rollButton).toBeEnabled();
+  await rollButton.click();
+  await expect(rollButton).toBeDisabled();
+  await page.waitForTimeout(1300);
+  await expect(pokerAnnounced).toHaveText("");
+
+  await page.goto("/static/account.html");
+  await page.check('input[name="announceSelectionMode"][value="overlay"]');
+  await page.check('input[name="autoWriteAnnounced"][value="true"]');
+  await page.click("#preferencesForm button");
+  await expect(page.locator("#preferencesMessage")).toHaveText("Spieleinstellungen gespeichert.");
+});
+
+
 test("logged-in player can resume on another browser without a local token", async ({ page, browser }) => {
   await page.goto("/");
   await page.fill("#loginUsername", "RegisteredSmoke");

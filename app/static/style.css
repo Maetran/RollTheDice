@@ -554,6 +554,71 @@ td.cell.announce-pickable{
   cursor: crosshair;
 }
 .mobile-announce-picker{ display:none; }
+.room-page .topbar{ position:relative; }
+.room-page .mobile-announce-picker{
+  position:absolute;
+  left:50%;
+  bottom:calc(100% + .4rem);
+  z-index:1320;
+  display:grid;
+  gap:.35rem;
+  width:min(40rem, calc(100vw - 1rem));
+  margin:0;
+  padding:.5rem;
+  border:1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius:.65rem;
+  background:color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow:0 12px 28px rgba(15,23,42,.2);
+  backdrop-filter:blur(10px) saturate(1.15);
+  transform:translateX(-50%);
+}
+.room-page .mobile-announce-picker[hidden]{ display:none; }
+.room-page .mobile-announce-picker-row{
+  display:grid;
+  grid-template-columns:repeat(6, minmax(0, 1fr));
+  gap:.35rem;
+}
+.room-page .mobile-announce-option{
+  width:100%;
+  min-width:0;
+  min-height:2.25rem;
+  padding:.3rem .15rem;
+  border-color:color-mix(in srgb, var(--warning-border) 68%, transparent);
+  background:color-mix(in srgb, var(--warning-soft) 76%, transparent);
+  color:var(--text);
+  font-size:.9rem;
+  font-weight:850;
+  box-shadow:none;
+}
+.room-page .mobile-announce-option:disabled{
+  opacity:.36;
+  background:var(--surface-soft);
+  border-color:var(--border);
+  color:var(--muted);
+}
+
+.account-preferences-form fieldset{
+  display:grid;
+  gap:.55rem;
+  margin:0;
+  padding:.8rem;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+}
+.account-preferences-form legend{
+  padding:0 .3rem;
+  font-weight:800;
+}
+.account-preferences-form fieldset label{
+  display:flex;
+  align-items:flex-start;
+  gap:.5rem;
+  cursor:pointer;
+}
+.account-preferences-form input[type="radio"]{
+  flex:0 0 auto;
+  margin-top:.18rem;
+}
 
 /* Suggestions – Button-Styling (nur Anzeige) */
 .suggestions-area{ min-height: 1.7rem; margin: .35rem 0 .4rem 0; }
@@ -1445,7 +1510,7 @@ button:disabled:hover{
   }
   .room-page .topbar{
     order:3;
-    position:static;
+    position:relative;
     z-index:auto;
     width:100%;
     max-width:var(--desktop-shell-max);
@@ -2243,6 +2308,7 @@ button:disabled:hover{
     background:color-mix(in srgb, var(--surface) 94%, transparent);
     box-shadow:0 12px 28px rgba(15,23,42,.2);
     backdrop-filter:blur(10px) saturate(1.15);
+    transform:none;
   }
   .room-page .mobile-announce-picker[hidden]{ display:none; }
   .room-page .mobile-announce-picker-row{

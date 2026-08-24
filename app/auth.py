@@ -44,6 +44,8 @@ class AuthIdentity:
     username: str
     role: str
     must_change_password: bool
+    announce_selection_mode: str
+    auto_write_announced: bool
     csrf_token: str
     session_id: int
 
@@ -156,6 +158,8 @@ def login(request: Request, username: str, password: str) -> tuple[AuthIdentity,
             username=user.username,
             role=user.role,
             must_change_password=user.must_change_password,
+            announce_selection_mode=user.announce_selection_mode,
+            auto_write_announced=user.auto_write_announced,
             csrf_token=login_session.csrf_token,
             session_id=login_session.id,
         )
@@ -186,6 +190,8 @@ def resolve_session(connection: Request | WebSocket) -> AuthIdentity | None:
             username=user.username,
             role=user.role,
             must_change_password=user.must_change_password,
+            announce_selection_mode=user.announce_selection_mode,
+            auto_write_announced=user.auto_write_announced,
             csrf_token=login_session.csrf_token,
             session_id=login_session.id,
         )

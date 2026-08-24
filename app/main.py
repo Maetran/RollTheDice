@@ -2377,6 +2377,10 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 "username": auth_identity.username,
                 "role": auth_identity.role,
                 "is_admin": auth_identity.is_admin,
+                "preferences": {
+                    "announce_selection_mode": auth_identity.announce_selection_mode,
+                    "auto_write_announced": auth_identity.auto_write_announced,
+                },
             } if auth_identity else None),
         },
     })

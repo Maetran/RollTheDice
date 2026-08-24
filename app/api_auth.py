@@ -51,6 +51,11 @@ class PasswordChangeRequest(BaseModel):
     new_password: str = Field(min_length=1, max_length=256)
 
 
+class UserPreferencesRequest(BaseModel):
+    announce_selection_mode: Literal["table", "overlay"]
+    auto_write_announced: bool
+
+
 class AdminUserCreateRequest(BaseModel):
     username: str
     temporary_password: str
@@ -73,6 +78,10 @@ def _identity_payload(identity) -> dict:
         "role": identity.role,
         "is_admin": identity.is_admin,
         "must_change_password": identity.must_change_password,
+        "preferences": {
+            "announce_selection_mode": identity.announce_selection_mode,
+            "auto_write_announced": identity.auto_write_announced,
+        },
         "csrf_token": identity.csrf_token,
     }
 
@@ -140,6 +149,26 @@ def auth_change_password(payload: PasswordChangeRequest, request: Request, respo
     change_password(identity, payload.current_password, payload.new_password)
     clear_session_cookie(response)
     return {"ok": True, "login_required": True}
+
+
+@router.put("/auth/preferences")
+def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
+    identity = require_user(request)
+    require_csrf(request, identity)
+    with session_scope() as db:
+        user = db.get(User, identity.user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
+        user.announce_selection_mode = payload.announce_selection_mode
+        user.auto_write_announced = payload.auto_write_announced
+        user.updated_at = utcnow()
+        db.flush()
+        return {
+            "preferences": {
+                "announce_selection_mode": user.announce_selection_mode,
+                "auto_write_announced": user.auto_write_announced,
+            }
+        }
 
 
 @router.get("/admin/users")

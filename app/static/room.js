@@ -208,6 +208,14 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
   let superadminState = { active: false, boardId: null, draft: {} };
   let superadminTapState = { boardId: null, count: 0, lastTs: 0 };
 
+  function userGameplayPreferences(){
+    const preferences = authState?.user?.preferences || {};
+    return {
+      announceSelectionMode: preferences.announce_selection_mode === "table" ? "table" : "overlay",
+      autoWriteAnnounced: preferences.auto_write_announced !== false,
+    };
+  }
+
   // Steuerung der Sichtbarkeit des Wuerfeln-Buttons im Ansage-Pick-Mode.
   // Wichtig: Wir verwenden `visibility:hidden` (nicht `display:none`),
   // damit der reservierte Platz erhalten bleibt und sich der Dice-Row-Layout
@@ -241,7 +249,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
     if (!picker) return;
 
     const availability = getAnnounceAvailability(snapshot);
-    const visible = isMobileNarrow()
+    const visible = userGameplayPreferences().announceSelectionMode === "overlay"
       && announcePickMode
       && availability.usable
       && availability.mode === "announce";
@@ -304,6 +312,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
       && !snapshot?._correction?.active
       && String(turnPid) === String(myId)
       && !!announced
+      && userGameplayPreferences().autoWriteAnnounced
       && isLastAllowedRoll(snapshot)
       && targetIsFree;
 
@@ -1364,7 +1373,7 @@ function renderFromSnapshot(snapshot) {
     try{
       $$(".announce-pickable").forEach(td => td.classList.remove("announce-pickable"));
 
-      if (!isHC && announcePickMode){
+      if (!isHC && announcePickMode && userGameplayPreferences().announceSelectionMode === "table"){
         let boardRoot = null;
         const mode = String(snapshot?._mode || "").toLowerCase();
         if (mode === "2v2"){
@@ -1760,7 +1769,7 @@ function renderFromSnapshot(snapshot) {
     if (!document._announceOutsideBound) {
       document._announceOutsideBound = true;
       document.addEventListener("click", (event) => {
-        if (!announcePickMode || !isMobileNarrow()) return;
+        if (!announcePickMode || userGameplayPreferences().announceSelectionMode !== "overlay") return;
         if (event.target.closest("#mobileAnnouncePicker, #announceBtnInline")) return;
         closeAnnouncePickMode({ rerender:true });
       });
@@ -1855,6 +1864,7 @@ function renderFromSnapshot(snapshot) {
       // Im Pick-Mode setzt der Klick auf eine freie ❗-Zelle die Ansage statt zu schreiben.
       if (announcePickMode) {
         if (!announceWindowOpen(sb)) return;
+        if (userGameplayPreferences().announceSelectionMode !== "table") return;
         if (field !== "ang") return;
         if (!card.classList.contains("me")) return;
         if (td.textContent && td.textContent.trim().length > 0) return;

@@ -20,6 +20,8 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="user")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    announce_selection_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="overlay")
+    auto_write_announced: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 

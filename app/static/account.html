@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>Würfler – Mein Bereich</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/style.css?v=77">
+  <link rel="stylesheet" href="/static/style.css?v=82">
   <script src="/static/theme.js?v=1"></script>
 </head>
 <body class="lobby-page">
@@ -15,6 +15,24 @@
       <h1 id="accountName">Meine Statistiken</h1>
       <div id="accountNotice" class="connection-error" hidden></div>
       <div id="statistics" class="statistics-grid"></div>
+    </section>
+    <section class="card password-card">
+      <h2>Spieleinstellungen</h2>
+      <p class="muted small">Diese Einstellungen gelten für dein Konto auf allen Geräten.</p>
+      <form id="preferencesForm" class="form-stack account-preferences-form">
+        <fieldset>
+          <legend>Ansage auswählen</legend>
+          <label><input type="radio" name="announceSelectionMode" value="overlay"> Auswahlfenster mit allen Ansagefeldern</label>
+          <label><input type="radio" name="announceSelectionMode" value="table"> Freies ❗-Feld direkt in der Tabelle anklicken</label>
+        </fieldset>
+        <fieldset>
+          <legend>Angesagtes Feld schreiben</legend>
+          <label><input type="radio" name="autoWriteAnnounced" value="true"> Nach dem letzten Wurf automatisch schreiben</label>
+          <label><input type="radio" name="autoWriteAnnounced" value="false"> Immer manuell schreiben</label>
+        </fieldset>
+        <button>Spieleinstellungen speichern</button>
+      </form>
+      <div id="preferencesMessage" class="muted small" role="status"></div>
     </section>
     <section class="card password-card">
       <h2>Passwort ändern</h2>
@@ -38,6 +56,30 @@
     if (user.must_change_password) {
       document.getElementById('passwordHint').textContent = 'Das temporäre Passwort muss jetzt geändert werden.';
     }
+
+    const preferences = user.preferences || {};
+    const announceMode = preferences.announce_selection_mode === 'table' ? 'table' : 'overlay';
+    const autoWrite = preferences.auto_write_announced !== false;
+    document.querySelector(`input[name="announceSelectionMode"][value="${announceMode}"]`).checked = true;
+    document.querySelector(`input[name="autoWriteAnnounced"][value="${autoWrite}"]`).checked = true;
+
+    document.getElementById('preferencesForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const message = document.getElementById('preferencesMessage');
+      const selectedMode = document.querySelector('input[name="announceSelectionMode"]:checked')?.value;
+      const selectedAutoWrite = document.querySelector('input[name="autoWriteAnnounced"]:checked')?.value;
+      const response = await apiFetch('/api/auth/preferences', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          announce_selection_mode: selectedMode,
+          auto_write_announced: selectedAutoWrite === 'true',
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      message.textContent = response.ok
+        ? 'Spieleinstellungen gespeichert.'
+        : authError(data.detail);
+    });
 
     function bucket(title, data, { details = true } = {}) {
       const trend = data.trend === 'up'

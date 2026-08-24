@@ -10,6 +10,7 @@ from starlette.requests import Request
 from sqlalchemy import func, select
 
 from app import main
+from app.api_auth import UserPreferencesRequest, auth_me, auth_update_preferences
 from app.api_users import AssignmentRequest, assign_game_participant, player_ranking, public_player_profile
 from app.auth import change_password, create_user, login, resolve_session, validate_request_origin
 from app.auth_protection import (
@@ -89,6 +90,30 @@ class AccountDatabaseTestCase(GameStateTestCase):
         create_user("UniqueUser", "a-secure-password-123", must_change_password=False)
         with self.assertRaisesRegex(ValueError, "bereits vergeben"):
             create_user(" uniqueuser ", "another-password-123", must_change_password=False)
+
+    def test_gameplay_preferences_are_persisted_and_returned_with_account(self):
+        create_user("PrefsUser", "a-secure-password-123", must_change_password=False)
+        identity, raw_token = login(request_for(), "PrefsUser", "a-secure-password-123")
+        authenticated_request = request_for(
+            cookie=f"rollthedice_session={raw_token}",
+            csrf=identity.csrf_token,
+        )
+
+        result = auth_update_preferences(
+            UserPreferencesRequest(announce_selection_mode="table", auto_write_announced=False),
+            authenticated_request,
+        )
+
+        self.assertEqual(result["preferences"], {
+            "announce_selection_mode": "table",
+            "auto_write_announced": False,
+        })
+        account = auth_me(request_for(cookie=f"rollthedice_session={raw_token}"))
+        self.assertEqual(account["user"]["preferences"], result["preferences"])
+        with session_scope() as db:
+            user = db.scalar(select(User).where(User.username == "PrefsUser"))
+            self.assertEqual(user.announce_selection_mode, "table")
+            self.assertFalse(user.auto_write_announced)
 
     def test_three_game_trend_compares_recent_average_with_mode_average(self):
         self.assertEqual(recent_points_trend(
