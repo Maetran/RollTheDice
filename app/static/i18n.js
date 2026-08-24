@@ -1,0 +1,652 @@
+/*
+  ZDWA localization
+  -----------------
+  German is the canonical source language. Every user-facing German string must
+  have an English entry here. Static and dynamically inserted DOM content is
+  translated automatically; dialogs and server messages use the same catalog.
+*/
+(function () {
+  "use strict";
+
+  const STORAGE_KEY = "zdwa_language";
+  const SUPPORTED = new Set(["de", "en"]);
+
+  const EN = {
+    "ZDWA Lobby": "ZDWA Lobby",
+    "ZDWA – Mein Konto": "ZDWA – My Account",
+    "ZDWA – Administration": "ZDWA – Administration",
+    "ZDWA – Spieler & Ranking": "ZDWA – Players & Ranking",
+    "ZDWA – Spielerprofil": "ZDWA – Player Profile",
+    "ZDWA – Spiel": "ZDWA – Game",
+    "ZDWA – Spielansicht": "ZDWA – Game View",
+    "ZDWA – Spielanleitung": "ZDWA – Game Rules",
+    "← Lobby": "← Lobby",
+    "⬅️ Zurück zur Lobby": "⬅️ Back to Lobby",
+    "Zurück zur Lobby": "Back to Lobby",
+    "Zock die Wand an · beendete Partien:": "Zock die Wand an · completed games:",
+    "Spieler & Ranking": "Players & Ranking",
+    "Spieler-Ranking": "Player Ranking",
+    "Spielregeln": "Game Rules",
+    "Spielregeln schließen": "Close game rules",
+    "Dunklen Modus einschalten": "Enable dark mode",
+    "Heller Modus": "Light mode",
+    "Dunkler Modus": "Dark mode",
+    "Dunkel": "Dark",
+    "Hell": "Light",
+    "⌀ Punkte": "Avg. points",
+    "Durchschnittspunkte": "Average points",
+    "Normale Spiele:": "Normal games:",
+    "Hardcore Spiele:": "Hardcore games:",
+    "Spieler": "Player",
+    "Dein Name": "Your name",
+    "Wird für den Beitritt verwendet.": "Used when joining a game.",
+    "Benutzername": "Username",
+    "Passwort (min. 8 Zeichen)": "Password (min. 8 characters)",
+    "Anmelden": "Sign in",
+    "Registrieren": "Register",
+    "Mein Konto": "My Account",
+    "Öffentliches Profil": "Public profile",
+    "Administration": "Administration",
+    "Abmelden": "Sign out",
+    "Neues Spiel": "New Game",
+    "Passphrase": "Passphrase",
+    "Spielmodus": "Game mode",
+    "1 Spieler": "1 player",
+    "2 Spieler": "2 players",
+    "3 Spieler": "3 players",
+    "2 vs 2": "2 vs 2",
+    "Erstellen & beitreten": "Create & join",
+    "Offene Spiele": "Open Games",
+    "Aktualisieren": "Refresh",
+    "Klicke auf „Beitreten“, um in den Spielraum zu wechseln.": "Select “Join” to enter the game room.",
+    "Laufende Spiele": "Games in Progress",
+    "Klicke auf „Zuschauen“, um dem laufenden Spiel beizutreten (ohne Aktionen).": "Select “Watch” to open a running game as a spectator (read-only).",
+    "Leaderboard": "Leaderboard",
+    "Top Normal": "Top Normal",
+    "Top Hardcore": "Top Hardcore",
+    "Hall of Shame": "Hall of Shame",
+    "Letzte 10 Spiele": "Last 10 Games",
+    "Top 10 (letzte 7 Tage)": "Top 10 (last 7 days)",
+    "Top 10 Alltime": "Top 10 All-Time",
+    "Datum": "Date",
+    "Name": "Name",
+    "Punkte": "Points",
+    "Modus": "Mode",
+    "Ansicht": "View",
+    "Beitreten": "Join",
+    "Zuschauen": "Watch",
+    "Wieder aufnehmen": "Resume",
+    "Passwortgeschützt": "Password-protected",
+    "Noch keine Spieler": "No players yet",
+    "Spieler unbekannt": "Players unknown",
+    "Spieler:": "Players:",
+    "Modus:": "Mode:",
+    "Status:": "Status:",
+    "wartet auf": "waiting for",
+    "manuell pausiert": "paused manually",
+    "Restzeit:": "Time remaining:",
+    "Pausiert:": "Paused:",
+    "Spielansicht": "Game view",
+    "Kein Spiel angegeben (?id=...)": "No game specified (?id=...)",
+    "Lade Renderer …": "Loading game view…",
+    "Spiel nicht gefunden oder ohne Snapshot.": "Game not found or no snapshot is available.",
+    "Renderer konnte nicht geladen werden.": "The game view could not be loaded.",
+    "Fehler beim Laden.": "Unable to load.",
+    "Chatverlauf": "Chat History",
+    "(ohne Titel)": "(untitled)",
+    "läuft": "running",
+    "fertig": "finished",
+    "wartet": "waiting",
+    "Wartende:": "Waiting players:",
+    "Gestartet:": "Started:",
+    "Keine offenen Spiele. Erstelle ein neues!": "No open games. Create one!",
+    "Aktuell keine laufenden Spiele.": "There are currently no games in progress.",
+    "Spielserver nicht erreichbar. Bitte Server starten und die Seite neu laden.": "The game server is unavailable. Please start the server and reload the page.",
+    "Keine Verbindung zum Spielserver.": "No connection to the game server.",
+    "Fehler beim Laden": "Unable to load",
+    "Hall of Shame (letzte 10 Tage)": "Hall of Shame (last 10 days)",
+    "Hall of Shame Alltime": "Hall of Shame All-Time",
+    "Sprache wählen": "Choose language",
+    "Deutsch": "German",
+    "Englisch": "English",
+
+    "Mein Konto": "My Account",
+    "Benutzerkonto": "User Account",
+    "Statistiken": "Statistics",
+    "Spieleinstellungen": "Game Settings",
+    "Diese Einstellungen gelten für dein Konto auf allen Geräten. Sie ändern nur die Bedienung, nicht die Spielregeln.": "These settings apply to your account on every device. They only change how the game is controlled, not its rules.",
+    "Sprache": "Language",
+    "Bevorzugte Sprache": "Preferred language",
+    "Ansagefeld auswählen": "Choose an announced field",
+    "Auswahlfenster: Nach „Ansagen“ werden alle freien ❗-Felder kompakt angezeigt": "Selection panel: After choosing “Announce”, all available ❗ fields are shown in a compact panel",
+    "Tabelle: Nach „Ansagen“ das gewünschte freie ❗-Feld direkt im Spielblatt anklicken": "Scorecard: After choosing “Announce”, select the desired available ❗ field directly on the scorecard",
+    "Angesagtes Feld eintragen": "Enter the announced field",
+    "Automatisch: Nach dem letzten erlaubten Wurf wird das angesagte Ergebnis selbstständig eingetragen": "Automatically: After the final permitted roll, the announced result is entered automatically",
+    "Manuell: Das angesagte ❗-Feld nach dem Würfeln immer selbst anklicken": "Manually: Always select the announced ❗ field yourself after rolling",
+    "Spieleinstellungen speichern": "Save game settings",
+    "Spieleinstellungen gespeichert.": "Game settings saved.",
+    "Passwort ändern": "Change Password",
+    "Aktuelles Passwort": "Current password",
+    "Neues Passwort": "New password",
+    "Neues Passwort wiederholen": "Repeat new password",
+    "Das temporäre Passwort muss jetzt geändert werden.": "You must change the temporary password now.",
+    "Die neuen Passwörter stimmen nicht überein.": "The new passwords do not match.",
+    "Passwort geändert. Bitte erneut anmelden.": "Password changed. Please sign in again.",
+    "Gesamt": "Overall",
+    "Normal": "Normal",
+    "Spiele": "Games",
+    "Gesamtpunkte": "Total points",
+    "Maximum": "Maximum",
+    "Minimum": "Minimum",
+    "Durchschnitt": "Average",
+    "Trend (3 Spiele)": "Trend (3 games)",
+    "Positiv": "Positive",
+    "Negativ": "Negative",
+    "Stagnierend": "Unchanged",
+
+    "Öffentliches Spielerprofil": "Public Player Profile",
+    "Spielerprofil": "Player Profile",
+    "Spieler suchen": "Find Players",
+    "Suchen": "Search",
+    "Benutzername eingeben oder alle anzeigen.": "Enter a username or show all players.",
+    "Ranking sortieren": "Sort ranking",
+    "Meiste Spiele": "Most games",
+    "Meiste Gesamtpunkte": "Most total points",
+    "Höchster Durchschnitt": "Highest average",
+    "Höchste Punktzahl": "Highest score",
+    "Keine Spieler gefunden.": "No players found.",
+    "Noch keine registrierten Spieler.": "No registered players yet.",
+    "Laden…": "Loading…",
+
+    "Adminbereich": "Admin Area",
+    "Wähle einen Bereich aus. Es bleibt immer nur eine Kachel geöffnet.": "Choose a section. Only one panel remains open at a time.",
+    "Benutzerverwaltung": "User Management",
+    "Accounts, Rollen und Passwörter": "Accounts, roles and passwords",
+    "Spielzuordnung": "Game Assignment",
+    "Gastspiele mit Benutzern verknüpfen": "Link guest games to user accounts",
+    "Spiele löschen": "Delete Games",
+    "Snapshots dauerhaft entfernen": "Permanently remove snapshots",
+    "Accounts": "Accounts",
+    "Temporäres Passwort (min. 8 Zeichen)": "Temporary password (min. 8 characters)",
+    "Benutzer": "User",
+    "Admin": "Admin",
+    "Benutzer anlegen": "Create user",
+    "Rolle": "Role",
+    "Status": "Status",
+    "Passwort": "Password",
+    "Aktion": "Action",
+    "Zurücksetzen": "Reset",
+    "Deaktivieren": "Deactivate",
+    "Aktivieren": "Activate",
+    "Historische Daten": "Historical Data",
+    "Spiele zuordnen": "Assign Games",
+    "Hier erscheinen nicht zugeordnete Teilnehmer aus importierten Bestenlisten und neuen Gastspielen.": "Unassigned participants from imported leaderboards and new guest games appear here.",
+    "Gefahrenbereich": "Danger Zone",
+    "Abgeschlossene Spiele löschen": "Delete Completed Games",
+    "Löscht Snapshot und Spielergebnisse dauerhaft. Der Löschvorgang selbst bleibt protokolliert.": "Permanently deletes the snapshot and game results. The deletion itself remains in the audit log.",
+    "Spiel, Spieler oder Spiel-ID": "Game, player or game ID",
+    "Protokoll gelöschter Spiele": "Deleted games audit log",
+    "Benutzer wählen…": "Choose user…",
+    "Zuordnen": "Assign",
+    "Keine unzugeordneten Spiele vorhanden.": "There are no unassigned games.",
+    "Dauerhaft löschen": "Delete permanently",
+    "Keine Spiele gefunden.": "No games found.",
+    "Keine Einträge": "No entries",
+    "Noch keine Spiele gelöscht.": "No games have been deleted.",
+    "Benutzer wurde angelegt.": "User created.",
+    "Passwort wurde zurückgesetzt.": "Password reset.",
+    "PW-Wechsel offen": "Password change pending",
+    "Aktiv": "Active",
+    "Deaktiviert": "Deactivated",
+    "gelöscht durch": "deleted by",
+    "Die Begründung ist zu kurz.": "The reason is too short.",
+    "Löschung abgebrochen: Spiel-ID stimmt nicht überein.": "Deletion cancelled: the game ID does not match.",
+
+    "Game Rules": "Game Rules",
+    "Spielanleitung": "Game Rules",
+    "Zock die Wand an (ZDWA):": "Zock die Wand an (ZDWA):",
+    "Sammle möglichst viele Punkte über vier Spalten:": "Score as many points as possible across four columns:",
+    "⬇︎ Abwärts": "⬇︎ Down",
+    "／ Freireihe": "／ Free",
+    "⬆︎ Aufwärts": "⬆︎ Up",
+    "❗ Angesagt": "❗ Announced",
+    "Normalerweise hast du pro Zug bis zu drei Würfe; im letzten freien Feld sind es fünf. Im Hardcore-Modus gibt es pro Zug genau einen automatischen Wurf.": "You normally have up to three rolls per turn; for the final available field you have five. Hardcore mode gives you exactly one automatic roll per turn.",
+    "Rundenablauf": "Turn Sequence",
+    "Du bist am Zug und würfelst mit fünf Würfeln.": "On your turn, roll five dice.",
+    "Nach einem Wurf kannst du Würfel halten oder wieder lösen. Nicht gehaltene Würfel werden beim nächsten Wurf neu geworfen.": "After a roll, you may hold or release dice. Any dice not held are rerolled on the next roll.",
+    "Max.": "Up to",
+    "3 Würfe": "3 rolls",
+    "pro Zug. Im": "per turn. For the",
+    "letzten freien Feld": "final available field",
+    "hast du": "you have",
+    "5 Würfe": "5 rolls",
+    "Hardcore:": "Hardcore:",
+    "1 Wurf": "1 roll",
+    "Trage anschließend das Ergebnis in genau": "Then enter the result in exactly",
+    "ein": "one",
+    "freies Feld deiner Wahl (gemäss Reihen-Regeln) ein.": "available field of your choice (subject to the column rules).",
+    "Reihen-Regeln (Spalten)": "Column Rules",
+    "Abwärts": "Down",
+    "Aufwärts": "Up",
+    "Freireihe": "Free",
+    "Angesagt": "Announced",
+    "Felder müssen in der Reihenfolge von oben (\"1\") nach unten (\"60\") befüllt werden.": "Fields must be filled from top (\"1\") to bottom (\"60\").",
+    "umgekehrte Reihenfolge – von unten nach oben.": "Reverse order — from bottom to top.",
+    "freie Reihenfolge, beliebige Felder.": "Any available field may be chosen.",
+    "direkt nach dem": "immediately after the",
+    "ersten Wurf": "first roll",
+    "kannst du ein Zielfeld ansagen oder direkt ein freies ❗-Feld schreiben. Eine Ansage kann in diesem ersten Wurf geändert oder aufgehoben werden. Ab dem zweiten Wurf gilt eine aktive Ansage bis zum Eintrag: dann darf nur das angesagte ❗-Feld geschrieben werden. Im": "you may announce a target field or enter an available ❗ field immediately. During this first-roll window, an announcement may be changed or cancelled. From the second roll onward, an active announcement remains binding until entered: only the announced ❗ field may be used. On the",
+    "allerletzten Zug": "very last turn",
+    "(nur noch 1 Feld frei) darf ohne Ansage geschrieben werden.": "(only one field remaining), you may enter a result without an announcement.",
+    "Sobald ⬇︎, ／ und ⬆︎ voll sind und in ❗ noch mehrere Felder frei sind, musst du nach dem ersten Wurf ein ❗-Feld ansagen, bevor du weiterwürfeln darfst. Das verhindert Sackgassen am Spielende.": "Once ⬇︎, ／ and ⬆︎ are full while several ❗ fields remain available, you must announce a ❗ field after the first roll before rolling again. This prevents a dead end at the end of the game.",
+    "Felder & Wertung": "Fields & Scoring",
+    "Feld": "Field",
+    "Wertung": "Scoring",
+    "Hinweis": "Notes",
+    "Summe aller Würfel mit der jeweiligen Augenzahl.": "Sum of all dice showing that number.",
+    "Beispiel: bei drei 5ern → 15 Punkte.": "Example: three fives → 15 points.",
+    "Summe der Felder 1–6.": "Sum of fields 1–6.",
+    "Automatisch berechnet.": "Calculated automatically.",
+    "+30 bei S ≥ 60, im Hardcore ab ≥ 40.": "+30 when Σ ≥ 60; in Hardcore when Σ ≥ 40.",
+    "Bonus, automatisch berechnet.": "Bonus, calculated automatically.",
+    "S + B.": "Σ + B.",
+    "Zwischentotal oben, automatisch berechnet.": "Upper total, calculated automatically.",
+    "Summe aller fünf Würfel.": "Sum of all five dice.",
+    "Max-Feld.": "Max field.",
+    "Min-Feld.": "Min field.",
+    "Feld 1 × (Wert aus + minus Wert aus -), nie unter 0.": "Field 1 × (value in + minus value in −), never below 0.",
+    "Differenz. Der Wert aus Feld 1 ist die Summe der gewürfelten Einsen.": "Difference. Field 1 contains the sum of all rolled ones.",
+    "35 Punkte": "35 points",
+    "Kenter: fünf unterschiedliche Würfel/Augen, z. B. 1-3-4-5-6 oder 1-2-3-4-6.": "Kenter: five different die values, e.g. 1-3-4-5-6 or 1-2-3-4-6.",
+    "40 + 3×(Wert der Drilling-Augen)": "40 + 3×(value of the three matching dice)",
+    "Full: 3 gleiche + 2 gleiche oder 5 gleiche. Beim Fünfling zählt dessen Augenzahl.": "Full House: three of one value plus two of another, or five of a kind. For five of a kind, use that die value.",
+    "50 + 4×(Wert der gleichen Augen)": "50 + 4×(value of the matching dice)",
+    "Poker: vier oder fünf gleiche. Ohne aktive Poker-Ansage zählen Punkte nur in dem Wurf, in dem der erste Vierling entsteht, oder bei fünf Gleichen. Mit aktiver ❗-Poker-Ansage zählen vier oder fünf gleiche in jedem Wurf.": "Poker: four or five of a kind. Without an active Poker announcement, points only count on the roll that first produces four of a kind, or whenever you have five of a kind. With an active ❗ Poker announcement, four or five of a kind scores on any roll.",
+    "60 + 5×(Wert der Fünfling-Augen)": "60 + 5×(value of the five matching dice)",
+    "Fünf gleiche.": "Five of a kind.",
+    "K + F + P + 60.": "K + FH + P + 60.",
+    "Zwischentotal unten, automatisch berechnet.": "Lower total, calculated automatically.",
+    "ZTO + D + ZTU.": "UT + D + LT.",
+    "Reihentotal pro Spalte (⬇︎／⬆︎/❗).": "Column total (⬇︎／⬆︎/❗).",
+    "Besondere Regeln": "Special Rules",
+    "Ansage ändern/aufheben:": "Change/cancel announcement:",
+    "Im": "During the",
+    "(und nur dort) darf die Ansage geändert oder entfernt werden.": "(and only then), the announcement may be changed or cancelled.",
+    "Streichen (0 Punkte):": "Crossing out (0 points):",
+    "Einträge mit 0 Punkten werden vor dem Schreiben bestätigt.": "Entries worth 0 points require confirmation before they are recorded.",
+    "Letztes freies Feld:": "Final available field:",
+    "Wenn auf deinem Spielblatt – im Teammodus auf dem gemeinsamen Blatt – nur noch ein Feld frei ist, sind bis zu": "When only one field remains available on your scorecard — or the shared scorecard in team mode — you have up to",
+    "erlaubt.": "available.",
+    "Korrekturmodus:": "Correction mode:",
+    "Den letzten Eintrag kannst du mit den gespeicherten Würfeln dieses Zugs neu eintragen oder in ein anderes erlaubtes Feld verschieben. Das geht nur direkt danach, sofern es kein Ansage-Zug war und der nächste Spieler noch nicht gewürfelt hat. Abbrechen mit": "You may re-enter your most recent result using that turn’s saved dice or move it to another permitted field. This is only possible immediately afterward, provided it was not an announced turn and the next player has not rolled yet. Cancel with",
+    "Nicht im 1-Spieler- oder Hardcore-Modus.": "Unavailable in single-player and Hardcore modes.",
+    "Single-Player:": "Single-player:",
+    "Der erste Wurf eines Zuges startet automatisch. Keine Korrekturen im Single-Player-Modus.": "The first roll of each turn starts automatically. Corrections are unavailable in single-player mode.",
+    "Hardcore:": "Hardcore:",
+    "Ein automatischer Wurf pro Zug, kein Halten, keine Ansage, keine Korrektur. Die ❗-Spalte verhält sich wie eine zweite Freireihe.": "One automatic roll per turn; no holding, announcements, or corrections. The ❗ column acts as a second free column.",
+    "Pause & Lobby:": "Pause & Lobby:",
+    "Du kannst das Spiel pausieren und innerhalb der angezeigten Restzeit wieder aufnehmen oder es abbrechen und alle zur Lobby zurückschicken. In Mehrspieler-Partien pausiert das Spiel auch, solange ein Spieler nicht verbunden ist. Abgebrochene Spiele erscheinen nicht in Alltime/7-Tage-Listen.": "You can pause the game and resume it within the displayed time, or abort it and send everyone back to the lobby. Multiplayer games also pause while a player is disconnected. Aborted games do not appear in the all-time or 7-day rankings.",
+    "Auto-Timeout:": "Automatic timeout:",
+    "Spiele ohne Aktivität werden nach 1 Stunde automatisch abgebrochen.": "Games with no activity are aborted automatically after 1 hour.",
+    "Spielmodi": "Game Modes",
+    "Alle vier Spalten auf einem eigenen Board. Auto-Roll zu Beginn jedes Zugs.": "All four columns on your own scorecard. Automatic roll at the start of each turn.",
+    "2 oder 3 Spieler": "2 or 3 players",
+    "Jeder spielt sein eigenes Board. Der Zug wechselt reihum.": "Each player uses their own scorecard. Turns rotate in order.",
+    "2 v 2 (Team-Modus)": "2 vs 2 (Team Mode)",
+    "Spieler 1 & 3 bilden Team A, 2 & 4 Team B. Teams teilen sich je ein gemeinsames Board. Gewertet wird das Team-Total.": "Players 1 & 3 form Team A; players 2 & 4 form Team B. Each team shares one scorecard, and the team total determines the result.",
+    "Steuerung & Shortcuts": "Controls & Shortcuts",
+    "Würfel halten/lösen": "Hold/release dice",
+    "Leertaste": "Space",
+    "oder": "or",
+    "und": "and",
+    "würfeln": "roll",
+    "ansagen (falls möglich),": "announce (when available),",
+    "Ansage aufheben": "cancel announcement",
+    "Korrektur anfragen,": "request correction,",
+    "Korrektur abbrechen": "cancel correction",
+    "Tipp:": "Tip:",
+    "In der ❗-Spalte werden auf dem eigenen Board die erlaubten Zellen hervorgehoben. Bei 0-Punkten fragt das Spiel nach einer Bestätigung.": "Permitted cells in your own ❗ column are highlighted. The game asks for confirmation before recording 0 points.",
+
+    "Zur Lobby wechseln?": "Return to Lobby?",
+    "Pause": "Pause",
+    "Zur Lobby": "Return to Lobby",
+    "Im Spiel bleiben": "Stay in Game",
+    "Reaktionen": "Reactions",
+    "Chat schließen": "Close chat",
+    "Nachricht eingeben …": "Enter a message…",
+    "Senden": "Send",
+    "Letzten Eintrag ändern": "Change last entry",
+    "Ansagen": "Announce",
+    "Ansage wählen": "Choose announcement",
+    "Würfeln": "Roll",
+    "🎲 Würfeln": "🎲 Roll",
+    "Ansagefeld auswählen": "Choose announced field",
+    "Am Zug:": "Turn:",
+    "Würfe:": "Rolls:",
+    "Total:": "Total:",
+    "S": "Σ",
+    "ZTO": "UT",
+    "ZTU": "LT",
+    "F": "FH",
+    "Full": "Full House",
+    "Summe der ⚀ (nur Einsen)": "Sum of ⚀ dice (ones only)",
+    "Summe der ⚁ (nur Zweien)": "Sum of ⚁ dice (twos only)",
+    "Summe der ⚂ (nur Dreien)": "Sum of ⚂ dice (threes only)",
+    "Summe der ⚃ (nur Vieren)": "Sum of ⚃ dice (fours only)",
+    "Summe der ⚄ (nur Fünfen)": "Sum of ⚄ dice (fives only)",
+    "Summe der ⚅ (nur Sechsen)": "Sum of ⚅ dice (sixes only)",
+    "Zwischensumme oben (1–6)": "Upper subtotal (1–6)",
+    "Bonus +30 (Normal: ≥ 60 • Hardcore: ≥ 40)": "Bonus +30 (Normal: ≥ 60 • Hardcore: ≥ 40)",
+    "ZwTotalOben = ZwSumme + Bonus": "Upper total = subtotal + bonus",
+    "Max: Summe aller 5 Würfel (höchster Wurf)": "Max: sum of all 5 dice (highest roll)",
+    "Min: Summe aller 5 Würfel (niedrigster Wurf)": "Min: sum of all 5 dice (lowest roll)",
+    "Diff = Einsen × (Max − Min), niemals negativ": "Difference = ones × (Max − Min), never negative",
+    "Kenter: immer 35 Punkte, wenn alle 5 Augen verschieden": "Kenter: 35 points when all 5 die values are different",
+    "Full House: 3 gleiche + 2 gleiche → 40 + 3×Augenzahl der Drilling-Augen": "Full House: 3 of a kind + a pair → 40 + 3×value of the three matching dice",
+    "Poker (Vierling): ⬇︎／／⬆︎ → Punkte nur im Wurf des ersten Vierlings oder bei 5 gleichen; ❗ + aktive Poker-Ansage → Punkte in jedem späteren Wurf, solange 4/5 gleiche liegen": "Poker (four of a kind): without an active Poker announcement, points only score on the first four-of-a-kind roll or with 5 of a kind; with an active ❗ Poker announcement, 4/5 of a kind scores on any roll",
+    "60 (Fünfling): 5 gleiche → 60 + 5×Augenzahl": "60 (five of a kind): 5 matching dice → 60 + 5×die value",
+    "ZwTotalUnten = Kenter + Full + Poker + 60": "Lower total = Kenter + Full House + Poker + 60",
+    "Reihentotal = ZwTotalOben + Diff + ZwTotalUnten": "Column total = upper total + difference + lower total",
+    "Summe aller 1er": "Sum of all ones",
+    "Summe aller 2er": "Sum of all twos",
+    "Summe aller 3er": "Sum of all threes",
+    "Summe aller 4er": "Sum of all fours",
+    "Summe aller 5er": "Sum of all fives",
+    "Summe aller 6er": "Sum of all sixes",
+    "Summe der Felder 1–6": "Sum of fields 1–6",
+    "+30 (Normal: ≥ 60 • Hardcore: ≥ 40)": "+30 (Normal: ≥ 60 • Hardcore: ≥ 40)",
+    "Zwischentotal oben": "Upper total",
+    "Zwischentotal unten": "Lower total",
+    "Summe aller fünf Würfel": "Sum of all five dice",
+    "1 × (Max − Min), nie negativ": "1 × (Max − Min), never negative",
+    "Fünf unterschiedliche (35 Punkte)": "Five different values (35 points)",
+    "40 + 3×Wert der Drilling-Augen": "40 + 3×value of the three matching dice",
+    "⬇︎／／⬆︎: Punkte nur im ersten Vierlings-Wurf oder bei 5 gleichen • ❗+Ansage: Punkte in jedem späteren Wurf, solange 4/5 gleiche liegen (50 + 4×Wert)": "Without an active Poker announcement: points only on the first four-of-a-kind roll or with 5 of a kind • active ❗ announcement: 4/5 of a kind scores on any roll (50 + 4×value)",
+    "ZwSumme + Bonus": "Subtotal + bonus",
+    "Kenter + Full + Poker + 60": "Kenter + Full House + Poker + 60",
+    "ZwTotalOben + Diff + ZwTotalUnten": "Upper total + difference + lower total",
+    "Feld": "Field",
+    "Abwärts": "Down",
+    "Freireihe": "Free",
+    "Aufwärts": "Up",
+    "Angesagt": "Announced",
+    "Kein Inhalt": "No content",
+    "Zuschauer können nicht würfeln": "Spectators cannot roll",
+    "Zuschauer können nicht ansagen": "Spectators cannot make announcements",
+    "Spiel ist nicht aktiv": "The game is not active",
+    "Während Superadmin-Edit gesperrt": "Unavailable during Superadmin editing",
+    "Nicht an der Reihe": "Not your turn",
+    "Während Korrektur nicht erlaubt": "Unavailable during correction",
+    "Keine Würfe mehr": "No rolls remaining",
+    "Weiter würfeln erst nach Ansage möglich (Pflicht nach Wurf 1).": "You must announce a field after roll 1 before rolling again.",
+    "Wurf läuft": "Rolling",
+    "Kurz warten": "Please wait",
+    "Ansage ist im Hardcore-Modus deaktiviert": "Announcements are disabled in Hardcore mode",
+    "Ansage erst nach dem ersten Wurf möglich": "An announcement is only possible after the first roll",
+    "Ansage nur direkt nach Wurf 1 möglich": "An announcement is only possible immediately after roll 1",
+    "Keine freien ❗-Felder für eine Ansage": "No available ❗ fields to announce",
+    "Bitte ein ❗-Feld ansagen, bevor du weiter würfelst.": "Please announce a ❗ field before rolling again.",
+    "Erst würfeln": "Roll first",
+    "Nur Spieler": "Players only",
+    "Bereits ausgefüllt": "Already filled",
+    "Zahlenfelder": "Number fields",
+    "Sonderfelder": "Special fields",
+    "Spiel pausiert": "Game paused",
+    "Spiel beendet.": "Game over.",
+    "Ein leeres Feld kann nicht gelöscht werden.": "An empty field cannot be deleted.",
+    "Bitte eine ganze Zahl zwischen 0 und 9999 eingeben.": "Please enter a whole number between 0 and 9999.",
+    "Feld 1 × (Wert aus + minus Wert aus -)": "Field 1 × (value in + minus value in −)",
+    ", nie unter 0.": ", never below 0.",
+    ". Nicht im 1-Spieler- oder Hardcore-Modus.": ". Unavailable in single-player and Hardcore modes.",
+    "Ungespeicherte Änderungen verwerfen?": "Discard unsaved changes?",
+    "Speichern": "Save",
+    "Verwerfen": "Discard",
+    "Beenden": "Exit",
+    "Warte auf Mitspieler": "Waiting for other players",
+    "Ich": "Me",
+    "Board nicht gefunden": "Scorecard not found",
+    "Keine Änderungen vorhanden": "There are no changes",
+    "Zu viele Änderungen auf einmal": "Too many changes at once",
+    "Ungültige Änderung": "Invalid change",
+    "Ungültige Zeile": "Invalid row",
+    "Dieses Feld ist nicht editierbar": "This field cannot be edited",
+    "Doppelte Änderung für dasselbe Feld": "Duplicate change for the same field",
+    "Ungültiger Wert": "Invalid value",
+    "Wert ausserhalb des erlaubten Bereichs": "Value outside the permitted range",
+    "Beim Löschen dürfen nur leere Felder neu beschrieben werden": "When deleting, only empty fields may receive a new value",
+    "Jede Löschung braucht genau ein neu beschriebenes leeres Feld": "Each deletion requires exactly one newly filled empty field",
+    "Nur gefüllte Felder können gelöscht werden": "Only filled fields can be deleted",
+    "Leere Felder dürfen nur zusammen mit einer Löschung beschrieben werden": "Empty fields may only be filled together with a deletion",
+    "Ungültige Spalte": "Invalid column",
+    "Dieses Feld ist nicht beschreibbar": "This field cannot be filled",
+    "Bitte zuerst ein ❗-Feld ansagen, bevor weiter gewürfelt wird": "Please announce a ❗ field before rolling again",
+    "Reihe bereits voll": "Column already full",
+    "Unbekannte Spalte": "Unknown column",
+    "Spielaktionen sind während Superadmin-Edit gesperrt": "Game actions are unavailable during Superadmin editing",
+    "Nur fuer Spieler": "Players only",
+    "Korrekturmodus ist im Hardcore-Modus deaktiviert": "Correction mode is disabled in Hardcore mode",
+    "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert": "Correction mode is disabled in single-player mode",
+    "Spiel ist bereits beendet": "The game has already ended",
+    "Spiel ist bereits gestartet": "The game has already started",
+    "Spiel ist bereits voll": "The game is already full",
+    "Dieser Benutzer ist der Partie bereits beigetreten. Bitte Spiel fortsetzen.": "This user has already joined the game. Please resume the game.",
+    "Dieser Spielername ist registriert. Bitte anmelden oder einen anderen Gastnamen verwenden.": "This player name is registered. Please sign in or choose a different guest name.",
+    "Spieler-Sitzung nicht gefunden. Bitte der Partie neu beitreten oder zuschauen.": "Player session not found. Please rejoin the game or watch as a spectator.",
+    "Wiederaufnahme abgelehnt. Die gespeicherte Spieler-Sitzung passt nicht.": "Resume request rejected because the saved player session does not match.",
+    "Ansage (oder Änderung) nur direkt nach Wurf 1": "An announcement or change is only possible immediately after roll 1",
+    "Ungültiges Ansage-Feld": "Invalid announcement field",
+    "Ansage nur direkt nach Wurf 1 zurückziehbar": "An announcement can only be cancelled immediately after roll 1",
+    "Dieses Feld ist bereits befüllt": "This field is already filled",
+    "Kein letzter Eintrag vorhanden": "No previous entry is available",
+    "Korrektur nicht erlaubt (Ansage-Zug)": "Correction is unavailable for an announced turn",
+    "Korrektur nur direkt nach deinem Zug": "Correction is only possible immediately after your turn",
+    "Korrektur nicht möglich: Es wurde bereits weiter gewürfelt": "Correction is no longer possible because the next player has already rolled",
+    "Kein letzter Wurf vorhanden": "No previous roll is available",
+    "Keine Korrektur aktiv": "No correction is active",
+    "Ziel-Feld bereits befüllt": "Target field is already filled",
+    "Kein Emoji": "No emoji selected",
+    "Nicht beigetreten": "You have not joined",
+    "Nur Spieler koennen Superadmin aktivieren": "Only players can enable Superadmin mode",
+    "Superadmin-Modus nicht aktiv": "Superadmin mode is not active",
+    "Nur Spieler koennen das Spiel pausieren": "Only players can pause the game",
+    "Benutzername ist bereits vergeben": "That username is already taken",
+    "Benutzername darf nur Buchstaben, Zahlen, Punkt, Unterstrich und Bindestrich enthalten": "The username may only contain letters, numbers, periods, underscores, and hyphens",
+    "Passwort ist zu lang": "The password is too long",
+    "Willst du dieses Feld wirklich streichen?": "Do you really want to cross out this field?",
+    "Zockerregel: Nach \"zocken\" darf ein Poker nicht mehr geschrieben werden. Willst du den Poker wirklich streichen?": "Zocker rule: After rerolling beyond the first four-of-a-kind roll, Poker can no longer score. Do you really want to cross out Poker?",
+    "Der Spielserver ist nicht erreichbar.": "The game server is unavailable.",
+    "Fehlende game_id. Zur Lobby.": "Missing game_id. Returning to the lobby.",
+    "Abmelden fehlgeschlagen": "Sign-out failed",
+    "Benutzername oder Passwort ist falsch.": "The username or password is incorrect.",
+    "Zu viele Fehlversuche. Bitte später erneut versuchen.": "Too many failed attempts. Please try again later.",
+    "Zu viele Registrierungen. Bitte warte kurz und versuche es später erneut.": "Too many registrations. Please wait and try again later.",
+    "Bitte bestätige zuerst, dass du kein Bot bist.": "Please confirm that you are not a bot.",
+    "Die Sicherheitsprüfung ist abgelaufen oder ungültig. Bitte versuche es erneut.": "The security check has expired or is invalid. Please try again.",
+    "Die Sicherheitsprüfung ist momentan nicht erreichbar. Bitte versuche es später erneut.": "The security check is currently unavailable. Please try again later.",
+    "Bitte zuerst anmelden.": "Please sign in first.",
+    "Admin-Berechtigung erforderlich.": "Administrator access required.",
+    "Unbekannter Fehler": "Unknown error"
+  };
+
+  const PHRASES = Object.entries(EN)
+    .filter(([source, target]) => source.length >= 8 && source !== target)
+    .sort((a, b) => b[0].length - a[0].length);
+
+  const DYNAMIC = [
+    [/Normalerweise hast du pro Zug bis zu drei Würfe; im letzten freien Feld sind es fünf\. Im Hardcore-Modus gibt es pro Zug genau einen automatischen Wurf\./g, "You normally have up to three rolls per turn; for the final available field you have five. Hardcore mode gives you exactly one automatic roll per turn."],
+    [/Am Zug:/g, "Turn:"],
+    [/Würfe:/g, "Rolls:"],
+    [/Noch keine drei (.+)-Spiele vorhanden/g, "Fewer than three $1 games available"],
+    [/Noch keine drei Spiele in diesem Modus vorhanden/g, "Fewer than three games available in this mode"],
+    [/Ø der letzten 3 Spiele:/g, "Average of the last 3 games:"],
+    [/Felder (\d+)\/(\d+)/g, "Fields $1/$2"],
+    [/(\d+) Spieler/g, "$1 players"],
+    [/vor 1 Tag/g, "1 day ago"],
+    [/vor (\d+) Tagen/g, "$1 days ago"],
+    [/vor 1 Stunde/g, "1 hour ago"],
+    [/vor (\d+) Stunden/g, "$1 hours ago"],
+    [/vor 1 Minute/g, "1 minute ago"],
+    [/vor (\d+) Minuten/g, "$1 minutes ago"],
+    [/gerade eben/g, "just now"],
+    [/Ø letzte 3:/g, "avg. last 3:"],
+    [/noch keine 3 Spiele/g, "fewer than 3 games"],
+    [/Trend positiv/g, "Positive trend"],
+    [/Trend negativ/g, "Negative trend"],
+    [/Trend stagnierend/g, "Unchanged trend"],
+    [/Punkte/g, "points"],
+    [/Würfel (\d+) halten oder lösen/g, "Hold or release die $1"],
+    [/Würfel (\d+)/g, "Die $1"],
+    [/(.+) ansagen/g, "Announce $1"],
+    [/ – bereits ausgefüllt/g, " — already filled"],
+    [/Pause hält das Spiel bis zu (.+) offen\. Zur Lobby bricht das Spiel ab und schickt alle zurück\./g, "Pause keeps the game available for up to $1. Return to Lobby aborts the game and sends everyone back."],
+    [/Spiel pausiert\. Du kannst es innerhalb von (.+) wieder aufnehmen\./g, "Game paused. You can resume it within $1."],
+    [/Spiel pausiert\. Weiter geht es, sobald wieder verbunden sind: (.+)\./g, "Game paused. Play resumes when these players reconnect: $1."],
+    [/Spiel pausiert\. Weiter geht es, sobald alle Spieler wieder verbunden sind\./g, "Game paused. Play resumes when all players have reconnected."],
+    [/(.+) hat das Spiel abgebrochen\./g, "$1 aborted the game."],
+    [/Spiel abgebrochen/g, "Game aborted"],
+    [/Spiel beendet – Sieger:/g, "Game over — Winner:"],
+    [/Spiel zu Ende, es gibt folgende Platzierungen:/g, "Game over. Final standings:"],
+    [/Superadmin aktiv • (\d+) Änderung/g, "Superadmin active • $1 change"],
+    [/Superadmin aktiv • (\d+) Änderungen/g, "Superadmin active • $1 changes"],
+    [/Spiel (.+) wurde dauerhaft gelöscht\./g, "Game $1 was permanently deleted."],
+    [/Benutzername muss (\d+) bis (\d+) Zeichen lang sein/g, "The username must be between $1 and $2 characters long"],
+    [/Passwort muss mindestens (\d+) Zeichen lang sein/g, "The password must be at least $1 characters long"],
+    [/Ansage nicht möglich: Feld (.+) in ❗ bereits befüllt/g, "Announcement unavailable: field $1 in ❗ is already filled"],
+    [/In dieser Reihe ist als Nächstes Zeile (.+) erlaubt/g, "The next permitted field in this column is row $1"],
+    [/Unbekannte Aktion: (.+)/g, "Unknown action: $1"],
+    [/Zuschauer hat verlassen: (.+)/g, "Spectator left: $1"],
+    [/Zuschauer verbunden: (.+)/g, "Spectator connected: $1"],
+    [/Temporäres Passwort für (.+) \(mindestens 8 Zeichen\)/g, "Temporary password for $1 (at least 8 characters)"],
+    [/Begründung für die dauerhafte Löschung \(mindestens 10 Zeichen\):/g, "Reason for permanent deletion (at least 10 characters):"],
+    [/Zum endgültigen Löschen die Spiel-ID exakt eingeben:/g, "To delete permanently, enter the exact game ID:"],
+    [/Spieler wurde nicht gefunden\./g, "Player not found."],
+    [/Profil konnte nicht geladen werden\./g, "Unable to load profile."],
+    [/Keine Ansage aktiv/g, "No active announcement"],
+    [/Ansage aktiv: Nur ❗-Spalte (.+) erlaubt/g, "Announcement active: only ❗ field $1 is allowed"],
+    [/Angesagt ist (.+), nicht (.+)/g, "The announced field is $1, not $2"],
+    [/Spiel pausiert, bis alle Spieler wieder verbunden sind\. Es fehlen: (.+)/g, "Game paused until all players reconnect. Missing: $1"],
+    [/Spiel pausiert, bis alle Spieler wieder verbunden sind/g, "Game paused until all players reconnect"],
+    [/Nur direkt nach Wurf 1/g, "Only immediately after roll 1"],
+    [/Keine Spiele/g, "No games"],
+    [/Keine Spieler/g, "No players"]
+  ];
+
+  function getLanguage() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return SUPPORTED.has(saved) ? saved : "de";
+  }
+
+  function locale() {
+    return getLanguage() === "en" ? "en-GB" : "de-CH";
+  }
+
+  function translateString(value) {
+    if (getLanguage() !== "en" || value == null) return String(value ?? "");
+    const raw = String(value);
+    const leading = raw.match(/^\s*/)?.[0] || "";
+    const trailing = raw.match(/\s*$/)?.[0] || "";
+    const core = raw.slice(leading.length, raw.length - trailing.length || undefined);
+    if (!core) return raw;
+    const normalized = core.replace(/\s+/g, " ");
+    const catalogValue = EN[core] || EN[normalized];
+    let translated = catalogValue || normalized;
+    if (!catalogValue) {
+      for (const [source, target] of PHRASES) translated = translated.split(source).join(target);
+      for (const [pattern, replacement] of DYNAMIC) translated = translated.replace(pattern, replacement);
+    }
+    return leading + translated + trailing;
+  }
+
+  function translateElement(root) {
+    if (getLanguage() !== "en" || !root) return;
+    if (root.nodeType === Node.TEXT_NODE) {
+      if (root.parentElement && !root.parentElement.closest("script, style")) {
+        const translated = translateString(root.nodeValue);
+        if (translated !== root.nodeValue) root.nodeValue = translated;
+      }
+      return;
+    }
+    if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_NODE) return;
+    const elements = root.nodeType === Node.ELEMENT_NODE ? [root, ...root.querySelectorAll("*")] : [...root.querySelectorAll("*")];
+    for (const element of elements) {
+      if (element.matches("script, style")) continue;
+      for (const attr of ["placeholder", "title", "aria-label"]) {
+        if (element.hasAttribute(attr)) {
+          const current = element.getAttribute(attr);
+          const translated = translateString(current);
+          if (translated !== current) element.setAttribute(attr, translated);
+        }
+      }
+      for (const node of element.childNodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const translated = translateString(node.nodeValue);
+          if (translated !== node.nodeValue) node.nodeValue = translated;
+        }
+      }
+    }
+  }
+
+  async function persistAccountLanguage(language) {
+    try {
+      const me = await fetch("/api/auth/me", { cache: "no-store" });
+      if (!me.ok) return;
+      const auth = await me.json();
+      const csrf = auth?.user?.csrf_token;
+      if (!auth?.authenticated || !csrf) return;
+      await fetch("/api/auth/preferences/language", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+        body: JSON.stringify({ preferred_language: language }),
+      });
+    } catch (_) {}
+  }
+
+  async function setLanguage(language, { persist = true, reload = true } = {}) {
+    if (!SUPPORTED.has(language)) return;
+    localStorage.setItem(STORAGE_KEY, language);
+    document.documentElement.lang = language;
+    if (persist) await persistAccountLanguage(language);
+    if (reload) location.reload();
+  }
+
+  function syncAccountLanguage(language) {
+    if (!SUPPORTED.has(language) || language === getLanguage()) return false;
+    localStorage.setItem(STORAGE_KEY, language);
+    location.reload();
+    return true;
+  }
+
+  const nativeAlert = window.alert.bind(window);
+  const nativeConfirm = window.confirm.bind(window);
+  const nativePrompt = window.prompt.bind(window);
+  window.alert = message => nativeAlert(translateString(message));
+  window.confirm = message => nativeConfirm(translateString(message));
+  window.prompt = (message, value) => nativePrompt(translateString(message), value);
+
+  window.ZDWA_I18N = { getLanguage, locale, setLanguage, syncAccountLanguage, t: translateString, translateElement, catalog: EN };
+  document.documentElement.lang = getLanguage();
+  const manifestLink = document.querySelector('link[rel="manifest"]');
+  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=1";
+
+  document.addEventListener("DOMContentLoaded", () => {
+    translateElement(document);
+    for (const switcher of document.querySelectorAll("[data-language-switcher]")) {
+      switcher.value = getLanguage();
+      switcher.addEventListener("change", () => setLanguage(switcher.value));
+    }
+    const observer = new MutationObserver(records => {
+      for (const record of records) {
+        if (record.type === "characterData") translateElement(record.target);
+        if (record.type === "attributes") translateElement(record.target);
+        for (const node of record.addedNodes) translateElement(node);
+      }
+    });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["placeholder", "title", "aria-label"],
+    });
+  });
+})();

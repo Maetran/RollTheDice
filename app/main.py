@@ -212,6 +212,11 @@ def manifest():
     # liegt im Repo-Root neben Dockerfile / README
     return FileResponse(str(BASE / "manifest.webmanifest"), media_type="application/manifest+json")
 
+
+@app.get("/manifest-en.webmanifest", include_in_schema=False)
+def manifest_en():
+    return FileResponse(str(BASE / "manifest-en.webmanifest"), media_type="application/manifest+json")
+
 # Service Worker (Root-Scope) ausliefern
 @app.get("/sw.js", include_in_schema=False)
 def service_worker():

@@ -113,6 +113,18 @@ h4{ font-size:.98rem; }
 a{ color:var(--accent); }
 
 /* === Theme switch === */
+.language-switcher select{
+  min-height:2rem;
+  padding:.3rem 1.65rem .3rem .55rem;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  background:var(--surface);
+  color:var(--text);
+  font:inherit;
+  font-size:.82rem;
+  font-weight:700;
+  cursor:pointer;
+}
 .theme-toggle{
   display:inline-flex;
   align-items:center;

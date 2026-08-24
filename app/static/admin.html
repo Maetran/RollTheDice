@@ -7,6 +7,7 @@
   <link rel="manifest" href="/manifest.webmanifest?v=2">
   <link rel="icon" type="image/png" href="/static/favicon.png?v=2" sizes="32x32">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=2" sizes="180x180">
+  <script src="/static/i18n.js?v=1"></script>
   <link rel="stylesheet" href="/static/style.css?v=76">
   <script src="/static/theme.js?v=1"></script>
 </head>
@@ -178,7 +179,7 @@
       ).join('');
       assignmentList.innerHTML = participants.map(item => `<article class="assignment-row" data-participant-id="${item.id}">
         <div><strong>${escapeHtml(item.display_name)}</strong> · ${item.points} Punkte
-          <div class="muted small">${escapeHtml(item.game_name)} · ${new Date(item.finished_at).toLocaleDateString('de-CH')} · ${escapeHtml(item.mode)}${item.hardcore ? ' · Hardcore' : ''}</div>
+          <div class="muted small">${escapeHtml(item.game_name)} · ${new Date(item.finished_at).toLocaleDateString(window.ZDWA_I18N?.locale?.() || 'de-CH')} · ${escapeHtml(item.mode)}${item.hardcore ? ' · Hardcore' : ''}</div>
         </div>
         <select class="assignment-user"><option value="">Benutzer wählen…</option>${options}</select>
         <button class="small assign-button">Zuordnen</button>
@@ -208,7 +209,7 @@
         ).join(' · ');
         return `<article class="completed-game-row" data-game-id="${escapeHtml(game.game_id)}">
           <div><strong>${escapeHtml(game.game_name || 'Spiel')}</strong>
-            <div class="muted small">${new Date(game.finished_at).toLocaleString('de-CH')} · ${escapeHtml(game.mode)}${game.hardcore ? ' · Hardcore' : ''} · ID ${escapeHtml(game.game_id)}</div>
+            <div class="muted small">${new Date(game.finished_at).toLocaleString(window.ZDWA_I18N?.locale?.() || 'de-CH')} · ${escapeHtml(game.mode)}${game.hardcore ? ' · Hardcore' : ''} · ID ${escapeHtml(game.game_id)}</div>
             <div class="small">${players}</div>
           </div>
           <button class="small danger delete-game" type="button">Dauerhaft löschen</button>
@@ -220,7 +221,7 @@
       const response = await fetch('/api/admin/deleted-games?limit=50', { cache: 'no-store' });
       const games = response.ok ? (await response.json()).games : [];
       deletedGameList.innerHTML = games.map(game => `<div class="deletion-audit-row">
-        <strong>${escapeHtml(game.game_name || game.game_id)}</strong> · ${new Date(game.deleted_at).toLocaleString('de-CH')}
+        <strong>${escapeHtml(game.game_name || game.game_id)}</strong> · ${new Date(game.deleted_at).toLocaleString(window.ZDWA_I18N?.locale?.() || 'de-CH')}
         <div class="muted small">ID ${escapeHtml(game.game_id)} · gelöscht durch ${escapeHtml(game.deleted_by)} · ${escapeHtml(game.reason)}</div>
       </div>`).join('') || '<div class="muted small">Noch keine Spiele gelöscht.</div>';
     }

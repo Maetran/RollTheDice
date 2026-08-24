@@ -12,7 +12,7 @@
   - Versionierte Cache-Namen (CACHE_VERSION) erleichtern das gezielte Aufräumen.
 */
 
-const CACHE_VERSION = 'v80';
+const CACHE_VERSION = 'v81';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
@@ -26,6 +26,7 @@ const PRECACHE_URLS = [
   '/static/account.html',
   '/static/admin.html',
   '/static/auth.js',
+  '/static/i18n.js',
   '/static/style.css',
   '/static/theme.js',
   '/static/scoreboard.js',
@@ -37,6 +38,7 @@ const PRECACHE_URLS = [
   '/static/icons/icon-192.png',
   '/static/icons/icon-512.png',
   '/manifest.webmanifest',
+  '/manifest-en.webmanifest',
 ];
 
 // — Install: robust gegen einzelne 404/Netzfehler

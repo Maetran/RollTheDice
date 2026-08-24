@@ -717,7 +717,7 @@ function renderReadOnlyChatHistory(mount, history){
   const rows = history.slice().reverse().map(m => {
     const ts = m && m.ts ? new Date(m.ts) : null;
     const stamp = ts && !Number.isNaN(ts.getTime())
-      ? ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      ? ts.toLocaleTimeString(window.ZDWA_I18N?.locale?.() || [], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
       : "";
     const sender = (m && m.sender) ? m.sender : "System";
     const text = (m && m.text) ? m.text : "";

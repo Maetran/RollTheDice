@@ -10,7 +10,13 @@ from starlette.requests import Request
 from sqlalchemy import func, select
 
 from app import main
-from app.api_auth import UserPreferencesRequest, auth_me, auth_update_preferences
+from app.api_auth import (
+    LanguagePreferenceRequest,
+    UserPreferencesRequest,
+    auth_me,
+    auth_update_language,
+    auth_update_preferences,
+)
 from app.api_users import AssignmentRequest, assign_game_participant, player_ranking, public_player_profile
 from app.auth import (
     auth_identity_payload,
@@ -91,6 +97,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
         public_payload = auth_identity_payload(resolved)
         self.assertNotIn("csrf_token", public_payload)
         self.assertEqual(public_payload["preferences"]["announce_selection_mode"], "overlay")
+        self.assertEqual(public_payload["preferences"]["preferred_language"], "de")
         self.assertIn("csrf_token", auth_identity_payload(resolved, include_csrf=True))
 
     def test_password_minimum_is_eight_characters(self):
@@ -112,13 +119,18 @@ class AccountDatabaseTestCase(GameStateTestCase):
         )
 
         result = auth_update_preferences(
-            UserPreferencesRequest(announce_selection_mode="table", auto_write_announced=False),
+            UserPreferencesRequest(
+                announce_selection_mode="table",
+                auto_write_announced=False,
+                preferred_language="en",
+            ),
             authenticated_request,
         )
 
         self.assertEqual(result["preferences"], {
             "announce_selection_mode": "table",
             "auto_write_announced": False,
+            "preferred_language": "en",
         })
         account = auth_me(request_for(cookie=f"rollthedice_session={raw_token}"))
         self.assertEqual(account["user"]["preferences"], result["preferences"])
@@ -126,6 +138,21 @@ class AccountDatabaseTestCase(GameStateTestCase):
             user = db.scalar(select(User).where(User.username == "PrefsUser"))
             self.assertEqual(user.announce_selection_mode, "table")
             self.assertFalse(user.auto_write_announced)
+            self.assertEqual(user.preferred_language, "en")
+
+    def test_language_can_be_updated_independently(self):
+        create_user("LanguageUser", "a-secure-password-123", must_change_password=False)
+        identity, raw_token = login(request_for(), "LanguageUser", "a-secure-password-123")
+        authenticated_request = request_for(
+            cookie=f"rollthedice_session={raw_token}",
+            csrf=identity.csrf_token,
+        )
+
+        result = auth_update_language(LanguagePreferenceRequest(preferred_language="en"), authenticated_request)
+
+        self.assertEqual(result, {"preferred_language": "en"})
+        account = auth_me(request_for(cookie=f"rollthedice_session={raw_token}"))
+        self.assertEqual(account["user"]["preferences"]["preferred_language"], "en")
 
     def test_three_game_trend_compares_recent_average_with_mode_average(self):
         self.assertEqual(recent_points_trend(

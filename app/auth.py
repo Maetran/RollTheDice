@@ -46,6 +46,7 @@ class AuthIdentity:
     must_change_password: bool
     announce_selection_mode: str
     auto_write_announced: bool
+    preferred_language: str
     csrf_token: str
     session_id: int
 
@@ -65,6 +66,7 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
         "preferences": {
             "announce_selection_mode": identity.announce_selection_mode,
             "auto_write_announced": identity.auto_write_announced,
+            "preferred_language": identity.preferred_language,
         },
     }
     if include_csrf:
@@ -178,6 +180,7 @@ def login(request: Request, username: str, password: str) -> tuple[AuthIdentity,
             must_change_password=user.must_change_password,
             announce_selection_mode=user.announce_selection_mode,
             auto_write_announced=user.auto_write_announced,
+            preferred_language=user.preferred_language,
             csrf_token=login_session.csrf_token,
             session_id=login_session.id,
         )
@@ -210,6 +213,7 @@ def resolve_session(connection: Request | WebSocket) -> AuthIdentity | None:
             must_change_password=user.must_change_password,
             announce_selection_mode=user.announce_selection_mode,
             auto_write_announced=user.auto_write_announced,
+            preferred_language=user.preferred_language,
             csrf_token=login_session.csrf_token,
             session_id=login_session.id,
         )
@@ -257,11 +261,20 @@ def change_password(identity: AuthIdentity, current_password: str, new_password:
         db.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
 
 
-def create_user(username: str, password: str, *, role: str = "user", must_change_password: bool = True) -> User:
+def create_user(
+    username: str,
+    password: str,
+    *,
+    role: str = "user",
+    must_change_password: bool = True,
+    preferred_language: str = "de",
+) -> User:
     clean_username = validate_username(username)
     normalized = normalize_username(clean_username)
     if role not in {"user", "admin"}:
         raise ValueError("Unbekannte Rolle")
+    if preferred_language not in {"de", "en"}:
+        raise ValueError("Unbekannte Sprache")
     now = utcnow()
     try:
         with session_scope() as db:
@@ -274,6 +287,7 @@ def create_user(username: str, password: str, *, role: str = "user", must_change
                 role=role,
                 is_active=True,
                 must_change_password=must_change_password,
+                preferred_language=preferred_language,
                 created_at=now,
                 updated_at=now,
             )

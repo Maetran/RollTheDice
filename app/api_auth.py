@@ -45,6 +45,7 @@ class RegisterRequest(BaseModel):
     username: str = Field(min_length=1, max_length=64)
     password: str = Field(min_length=1, max_length=256)
     turnstile_token: str | None = Field(default=None, max_length=4096)
+    preferred_language: Literal["de", "en"] = "de"
 
 
 class PasswordChangeRequest(BaseModel):
@@ -55,6 +56,11 @@ class PasswordChangeRequest(BaseModel):
 class UserPreferencesRequest(BaseModel):
     announce_selection_mode: Literal["table", "overlay"]
     auto_write_announced: bool
+    preferred_language: Literal["de", "en"] = "de"
+
+
+class LanguagePreferenceRequest(BaseModel):
+    preferred_language: Literal["de", "en"]
 
 
 class AdminUserCreateRequest(BaseModel):
@@ -112,7 +118,13 @@ def auth_register(payload: RegisterRequest, request: Request, response: Response
     enforce_registration_rate_limit(request)
     verify_registration_challenge(request, payload.turnstile_token)
     try:
-        create_user(payload.username, payload.password, role="user", must_change_password=False)
+        create_user(
+            payload.username,
+            payload.password,
+            role="user",
+            must_change_password=False,
+            preferred_language=payload.preferred_language,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     identity, raw_token = login(request, payload.username, payload.password)
@@ -150,14 +162,30 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
         user.announce_selection_mode = payload.announce_selection_mode
         user.auto_write_announced = payload.auto_write_announced
+        user.preferred_language = payload.preferred_language
         user.updated_at = utcnow()
         db.flush()
         return {
             "preferences": {
                 "announce_selection_mode": user.announce_selection_mode,
                 "auto_write_announced": user.auto_write_announced,
+                "preferred_language": user.preferred_language,
             }
         }
+
+
+@router.put("/auth/preferences/language")
+def auth_update_language(payload: LanguagePreferenceRequest, request: Request):
+    identity = require_user(request)
+    require_csrf(request, identity)
+    with session_scope() as db:
+        user = db.get(User, identity.user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
+        user.preferred_language = payload.preferred_language
+        user.updated_at = utcnow()
+        db.flush()
+        return {"preferred_language": user.preferred_language}
 
 
 @router.get("/admin/users")

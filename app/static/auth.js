@@ -1,10 +1,16 @@
 let authCache = null;
 
+function syncLanguage(data) {
+  const language = data?.user?.preferences?.preferred_language;
+  if (language && window.ZDWA_I18N) window.ZDWA_I18N.syncAccountLanguage(language);
+}
+
 export async function loadAuth({ refresh = false } = {}) {
   if (authCache && !refresh) return authCache;
   const response = await fetch('/api/auth/me', { cache: 'no-store' });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   authCache = await response.json();
+  syncLanguage(authCache);
   return authCache;
 }
 
@@ -30,6 +36,7 @@ export async function login(username, password) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(authError(data.detail));
   authCache = data;
+  syncLanguage(data);
   return data;
 }
 
@@ -37,11 +44,17 @@ export async function register(username, password, turnstileToken = null) {
   const response = await fetch('/api/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password, turnstile_token: turnstileToken }),
+    body: JSON.stringify({
+      username,
+      password,
+      turnstile_token: turnstileToken,
+      preferred_language: window.ZDWA_I18N?.getLanguage?.() || 'de',
+    }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(authError(data.detail));
   authCache = data;
+  syncLanguage(data);
   return data;
 }
 
@@ -79,5 +92,6 @@ export function escapeHtml(value) {
 
 export function formatNumber(value, fallback = '—') {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return fallback;
-  return new Intl.NumberFormat('de-CH', { maximumFractionDigits: 1 }).format(Number(value));
+  const locale = window.ZDWA_I18N?.getLanguage?.() === 'en' ? 'en-GB' : 'de-CH';
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(Number(value));
 }

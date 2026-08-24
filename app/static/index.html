@@ -18,6 +18,7 @@
   <meta name="color-scheme" content="light dark">
   <link rel="icon" type="image/png" href="/static/favicon.png?v=2" sizes="32x32">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=2" sizes="180x180">
+  <script src="/static/i18n.js?v=1"></script>
   <script src="/static/theme.js?v=1"></script>
   <link rel="stylesheet" href="/static/style.css?v=81">
 </head>
@@ -31,6 +32,12 @@
           <h1>ZDWA Lobby</h1>
         </div>
         <div class="brand-actions">
+          <label class="language-switcher" aria-label="Sprache wählen">
+            <select data-language-switcher aria-label="Sprache wählen">
+              <option value="de">DE</option>
+              <option value="en">EN</option>
+            </select>
+          </label>
           <a class="button-link small ghost" href="/static/players.html">Spieler &amp; Ranking</a>
           <button class="small ghost rules-under-title" onclick="location.href='/static/rules.html'">Spielregeln</button>
           <button class="small ghost theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten">
@@ -680,12 +687,12 @@
       function fmtAvgPoints(bucket){
         const value = bucket && Number(bucket.average_points);
         if (!Number.isFinite(value)) return "—";
-        return new Intl.NumberFormat("de-CH", { maximumFractionDigits: 1 }).format(value);
+        return new Intl.NumberFormat(window.ZDWA_I18N?.locale?.() || "de-CH", { maximumFractionDigits: 1 }).format(value);
       }
       function avgTrendMeta(bucket){
         const recentAverage = bucket && Number(bucket.recent_average_points);
         const detail = bucket && Number(bucket.trend_games) >= 3 && Number.isFinite(recentAverage)
-          ? ` (Ø letzte 3: ${new Intl.NumberFormat("de-CH", { maximumFractionDigits: 1 }).format(recentAverage)})`
+          ? ` (Ø letzte 3: ${new Intl.NumberFormat(window.ZDWA_I18N?.locale?.() || "de-CH", { maximumFractionDigits: 1 }).format(recentAverage)})`
           : " (noch keine 3 Spiele)";
         if (bucket && bucket.trend === "up") {
           return { text: "↑", cls: "avg-trend avg-up", title: `Trend positiv${detail}` };
