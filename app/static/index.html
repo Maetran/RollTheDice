@@ -19,7 +19,7 @@
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/static/favicon.png" sizes="32x32">
   <script src="/static/theme.js?v=1"></script>
-  <link rel="stylesheet" href="/static/style.css?v=77">
+  <link rel="stylesheet" href="/static/style.css?v=80">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -41,7 +41,7 @@
       </div>
       <div class="stats">
         <span>Würfelspiele beendet: <b id="gamesPlayed">0</b></span>
-        <span class="avg-label">Durchschnittspunkte</span>
+        <span class="avg-label" title="Durchschnittspunkte">⌀ Punkte</span>
         <span>Normale Spiele: <b id="avgNormalPoints">—</b><span id="avgNormalTrend" class="avg-trend avg-same">-</span></span>
         <span>Hardcore Spiele: <b id="avgHardcorePoints">—</b><span id="avgHardcoreTrend" class="avg-trend avg-same">-</span></span>
       </div>
@@ -49,12 +49,11 @@
 
     <!-- 1) Wer bist du? – Name wird im LocalStorage gemerkt -->
     <div class="setup-grid">
-      <section class="card setup-card">
+      <section id="playerSetupCard" class="card setup-card player-setup-card">
         <div class="section-title-row">
           <h2>Spieler</h2>
-          <span id="authBadge" class="badge" hidden></span>
         </div>
-        <div class="row">
+        <div id="playerNameRow" class="row">
           <input id="playerName" type="text" placeholder="Dein Name">
           <span class="muted small">Wird für den Beitritt verwendet.</span>
         </div>
@@ -66,6 +65,7 @@
           <div id="registrationChallenge" class="registration-challenge" hidden></div>
         </form>
         <div id="authActions" class="auth-actions" hidden>
+          <span id="authBadge" class="badge" hidden></span>
           <a href="/static/account.html">Meine Statistiken</a>
           <a id="adminLink" href="/static/admin.html" hidden>Administration</a>
           <button id="logoutBtn" type="button" class="small ghost">Abmelden</button>
@@ -192,6 +192,7 @@
     const registerBtn = document.getElementById('registerBtn');
     const registrationChallenge = document.getElementById('registrationChallenge');
     const loginError = document.getElementById('loginError');
+    const playerSetupCard = document.getElementById('playerSetupCard');
     const authBadge = document.getElementById('authBadge');
     const authActions = document.getElementById('authActions');
     const adminLink = document.getElementById('adminLink');
@@ -272,6 +273,7 @@
         authActions.hidden = !user;
         authBadge.hidden = !user;
         adminLink.hidden = !user?.is_admin;
+        playerSetupCard.classList.toggle('authenticated', !!user);
         if (user) {
           authBadge.textContent = user.is_admin ? `${user.username} · Admin` : user.username;
           nameInput.value = user.username;

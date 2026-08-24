@@ -24,7 +24,34 @@ test("guest sees login and registration while a new account sees only logout", a
   await page.click("#registerBtn");
   await expect(page.locator("#authBadge")).toContainText(username);
   await expect(page.locator("#loginForm")).toBeHidden();
+  await expect(page.locator("#playerNameRow")).toBeHidden();
+  await expect(page.locator("#playerSetupCard")).toHaveClass(/authenticated/);
   await expect(page.locator("#logoutBtn")).toBeVisible();
+  expect(await page.locator("#playerSetupCard").evaluate(element => element.getBoundingClientRect().height)).toBeLessThan(120);
+});
+
+
+test("mobile lobby cards and leaderboard tabs stay inside the viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 440, height: 956 });
+  await page.goto("/");
+  await expect(page.locator(".avg-label")).toHaveText("⌀ Punkte");
+  await page.locator("#lbTabLast").click();
+
+  const layout = await page.evaluate(() => {
+    const right = selector => document.querySelector(selector).getBoundingClientRect().right;
+    return {
+      viewportWidth: window.innerWidth,
+      pageWidth: document.documentElement.scrollWidth,
+      cardRights: Array.from(document.querySelectorAll(".card")).map(card => card.getBoundingClientRect().right),
+      lastTabRight: right("#lbTabLast"),
+      recentBoxRight: right("#recentBox"),
+    };
+  });
+
+  expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewportWidth);
+  for (const right of layout.cardRights) expect(right).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.lastTabRight).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.recentBoxRight).toBeLessThanOrEqual(layout.viewportWidth);
 });
 
 

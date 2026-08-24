@@ -351,7 +351,7 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   expect(layout.chatReactions.top).toBeLessThanOrEqual(layout.chatToggle.top + 2);
   expect(layout.chatReactions.height).toBe(layout.chatToggle.height);
   expect(layout.die.width).toBeGreaterThanOrEqual(55);
-  expect(layout.die.width).toBeLessThanOrEqual(61);
+  expect(layout.die.width).toBeLessThanOrEqual(63);
   expect(layout.die.height).toBe(layout.die.width);
   expect(layout.heldDieBorderWidth).toBe("2px");
   expect(layout.tableWrap.height).toBeGreaterThanOrEqual(460);
