@@ -610,6 +610,15 @@ test("mobile announce picker shows two rows and disables filled fields", async (
   await expect(filledField).not.toHaveText("");
   await expect(page.locator("#announceBtnInline")).toBeEnabled();
 
+  const layoutBeforePicker = await page.evaluate(() => {
+    const topbar = document.querySelector(".topbar").getBoundingClientRect();
+    const players = document.querySelector(".players-grid").getBoundingClientRect();
+    return {
+      topbarTop: topbar.top + window.scrollY,
+      playersTop: players.top + window.scrollY,
+      playersBottom: players.bottom + window.scrollY,
+    };
+  });
   await page.locator("#announceBtnInline").click();
   const picker = page.locator("#mobileAnnouncePicker");
   await expect(picker).toBeVisible();
@@ -623,13 +632,36 @@ test("mobile announce picker shows two rows and disables filled fields", async (
 
   const bounds = await picker.evaluate((element) => {
     const rect = element.getBoundingClientRect();
-    return { left: rect.left, right: rect.right, viewportWidth: window.innerWidth };
+    const topbar = document.querySelector(".topbar").getBoundingClientRect();
+    const players = document.querySelector(".players-grid").getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: rect.right,
+      bottom: rect.bottom,
+      viewportWidth: window.innerWidth,
+      topbarTop: topbar.top,
+      topbarDocumentTop: topbar.top + window.scrollY,
+      playersTop: players.top + window.scrollY,
+      playersBottom: players.bottom + window.scrollY,
+    };
   });
   expect(bounds.left).toBeGreaterThanOrEqual(0);
   expect(bounds.right).toBeLessThanOrEqual(bounds.viewportWidth);
+  expect(bounds.bottom).toBeLessThanOrEqual(bounds.topbarTop);
+  expect(bounds.topbarDocumentTop).toBeCloseTo(layoutBeforePicker.topbarTop, 1);
+  expect(bounds.playersTop).toBeCloseTo(layoutBeforePicker.playersTop, 1);
+  expect(bounds.playersBottom).toBeCloseTo(layoutBeforePicker.playersBottom, 1);
 
   await picker.locator('.mobile-announce-option[data-field="poker"]').click();
   await expect(picker).toBeHidden();
   await expect(page.locator("#announceBtnInline")).toContainText("Ansage aufheben");
+
+  const rollButton = page.locator("#rollBtnInline");
+  await expect(rollButton).toBeEnabled();
+  await rollButton.click();
+  await expect(rollButton).toBeEnabled();
+  await rollButton.click();
+  const pokerAng = page.locator('.player-card.me td.cell[data-row="14"][data-field="ang"]');
+  await expect(pokerAng).not.toHaveText("", { timeout: 5000 });
   await health.expectClean();
 });

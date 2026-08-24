@@ -194,6 +194,8 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
   let rollFaceTimer = null;
   let rollAnimationUntil = 0;
   let rollAnimationIndices = [];
+  let autoAnnounceWriteTimer = null;
+  let autoAnnounceWriteKey = null;
   let deferredSuggestionSnapshot = null;
   let chatHistorySeeded = false;
   let lastSuperadminSnapshotActive = false;
@@ -269,6 +271,58 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
       });
       return row;
     }));
+  }
+
+  function autoAnnounceSnapshotKey(snapshot){
+    const dice = Array.isArray(snapshot?._dice) ? snapshot._dice.join("") : "";
+    return [
+      snapshot?._turn?.player_id || "",
+      snapshot?._turn?.roll_index || 0,
+      snapshot?._rolls_used || 0,
+      snapshot?._announced_row4 || "",
+      dice
+    ].join(":");
+  }
+
+  function scheduleAutoWriteAnnouncedField(snapshot){
+    const announced = snapshot?._announced_row4 || null;
+    const row = Object.keys(WRITABLE_MAP).find(key => WRITABLE_MAP[key] === announced);
+    const turnPid = snapshot?._turn?.player_id || null;
+    const rollsUsed = Number(snapshot?._rolls_used || 0);
+    const rollsMax = Number(snapshot?._rolls_max || 3);
+    const board = getMyBoard(snapshot);
+    const targetIsFree = row !== undefined && !Object.prototype.hasOwnProperty.call(board || {}, `${row},ang`);
+    const shouldWrite = !IS_SPECTATOR
+      && !snapshot?._finished
+      && !snapshot?._paused
+      && !snapshot?._superadmin_active
+      && !snapshot?._correction?.active
+      && String(turnPid) === String(myId)
+      && !!announced
+      && rollsUsed >= rollsMax
+      && targetIsFree;
+
+    if (!shouldWrite) {
+      if (autoAnnounceWriteTimer) clearTimeout(autoAnnounceWriteTimer);
+      autoAnnounceWriteTimer = null;
+      autoAnnounceWriteKey = null;
+      return;
+    }
+
+    const key = autoAnnounceSnapshotKey(snapshot);
+    if (autoAnnounceWriteKey === key) return;
+    if (autoAnnounceWriteTimer) clearTimeout(autoAnnounceWriteTimer);
+    autoAnnounceWriteKey = key;
+    const wait = Math.max(0, rollAnimationUntil - Date.now()) + 50;
+    autoAnnounceWriteTimer = setTimeout(() => {
+      autoAnnounceWriteTimer = null;
+      if (!sb || autoAnnounceSnapshotKey(sb) !== key) return;
+      const currentBoard = getMyBoard(sb);
+      if (Object.prototype.hasOwnProperty.call(currentBoard || {}, `${row},ang`)) return;
+      if (!safeSend(ws, { action:"write_field", row:Number(row), field:"ang" })) {
+        autoAnnounceWriteKey = null;
+      }
+    }, wait);
   }
 
   function closeChatSheet(){
@@ -1282,6 +1336,7 @@ function renderFromSnapshot(snapshot) {
     // Ansage-/Würfeln-Buttons aus demselben Benutzbarkeitsmodell setzen.
     syncActionButtons(snapshot);
     renderMobileAnnouncePicker(snapshot);
+    scheduleAutoWriteAnnouncedField(snapshot);
     renderSuperadminLockNotice(snapshot);
     renderMultiplayerPauseNotice(snapshot);
 

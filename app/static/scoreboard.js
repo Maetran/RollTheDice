@@ -345,6 +345,7 @@ function renderScoreboard(mount, sb, {
         ${isHC ? '' : `<button id="rollBtnInline" data-action="roll" ${rollDisabledAttr}>🎲 Würfeln</button>`}
         ${requestBtnHTML}
       </div>
+      ${isHC ? '' : `<section id="mobileAnnouncePicker" class="mobile-announce-picker" aria-label="Ansagefeld auswählen" hidden></section>`}
     </div>
     <div class="muted turn-status">
       <span id="mobileReactionsBar" class="mobile-reactions-host" aria-label="Reaktionen"></span>
@@ -419,7 +420,6 @@ function renderScoreboard(mount, sb, {
   (contentEl || mount).innerHTML =
     dicebar +
     (readOnly ? "" : `<div class="suggestions-area"><div id="suggestions" class="suggestions"></div></div>`) +
-    (readOnly || isHC ? "" : `<section id="mobileAnnouncePicker" class="mobile-announce-picker" aria-label="Ansagefeld auswählen" hidden></section>`) +
     `<div id="overlayMount"></div>` +
     grid;
 }
