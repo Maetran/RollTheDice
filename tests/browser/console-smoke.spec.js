@@ -590,3 +590,46 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   ]);
   await health.expectClean();
 });
+
+test("mobile announce picker shows two rows and disables filled fields", async ({ page, request }) => {
+  await page.setViewportSize({ width: 367, height: 703 });
+  const health = watchPageHealth(page);
+  const created = await request.post("/api/games", {
+    data: { name: "Mobile Announce Picker", mode: 1 },
+  });
+  expect(created.ok()).toBeTruthy();
+  const { game_id: gameId } = await created.json();
+
+  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Announce&__test=1`);
+  await page.waitForSelector("#diceBar");
+
+  const filledField = page.locator('.player-card.me td.cell[data-row="0"][data-field="ang"]');
+  await expect(filledField).toHaveClass(/clickable/);
+  page.on("dialog", (dialog) => dialog.accept());
+  await filledField.click();
+  await expect(filledField).not.toHaveText("");
+  await expect(page.locator("#announceBtnInline")).toBeEnabled();
+
+  await page.locator("#announceBtnInline").click();
+  const picker = page.locator("#mobileAnnouncePicker");
+  await expect(picker).toBeVisible();
+  await expect(picker.locator(".mobile-announce-picker-row")).toHaveCount(2);
+  await expect(picker.locator(".mobile-announce-option")).toHaveText([
+    "1", "2", "3", "4", "5", "6",
+    "+", "−", "K", "F", "P", "60",
+  ]);
+  await expect(picker.locator('.mobile-announce-option[data-field="1"]')).toBeDisabled();
+  await expect(picker.locator('.mobile-announce-option[data-field="poker"]')).toBeEnabled();
+
+  const bounds = await picker.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, viewportWidth: window.innerWidth };
+  });
+  expect(bounds.left).toBeGreaterThanOrEqual(0);
+  expect(bounds.right).toBeLessThanOrEqual(bounds.viewportWidth);
+
+  await picker.locator('.mobile-announce-option[data-field="poker"]').click();
+  await expect(picker).toBeHidden();
+  await expect(page.locator("#announceBtnInline")).toContainText("Ansage aufheben");
+  await health.expectClean();
+});

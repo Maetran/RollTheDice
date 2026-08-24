@@ -419,6 +419,7 @@ function renderScoreboard(mount, sb, {
   (contentEl || mount).innerHTML =
     dicebar +
     (readOnly ? "" : `<div class="suggestions-area"><div id="suggestions" class="suggestions"></div></div>`) +
+    (readOnly || isHC ? "" : `<section id="mobileAnnouncePicker" class="mobile-announce-picker" aria-label="Ansagefeld auswählen" hidden></section>`) +
     `<div id="overlayMount"></div>` +
     grid;
 }

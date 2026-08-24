@@ -553,6 +553,7 @@ td.cell.announce-pickable{
   background: #eaf3ff;
   cursor: crosshair;
 }
+.mobile-announce-picker{ display:none; }
 
 /* Suggestions – Button-Styling (nur Anzeige) */
 .suggestions-area{ min-height: 1.7rem; margin: .35rem 0 .4rem 0; }
@@ -2210,7 +2211,7 @@ button:disabled:hover{
     overflow:hidden;
   }
   .room-page .topbar{
-    order:3;
+    order:4;
     position:static !important;
     left:auto;
     right:auto;
@@ -2225,6 +2226,42 @@ button:disabled:hover{
     background:var(--surface);
     box-shadow:var(--shadow-sm);
     backdrop-filter:none;
+  }
+  .room-page .mobile-announce-picker{
+    order:3;
+    display:grid;
+    gap:.4rem;
+    width:calc(100% - 1rem);
+    margin:.4rem .5rem 0;
+    padding:.5rem;
+    border:1px solid var(--warning-border);
+    border-radius:var(--radius);
+    background:var(--surface);
+    box-shadow:var(--shadow-sm);
+  }
+  .room-page .mobile-announce-picker[hidden]{ display:none; }
+  .room-page .mobile-announce-picker-row{
+    display:grid;
+    grid-template-columns:repeat(6, minmax(0, 1fr));
+    gap:.35rem;
+  }
+  .room-page .mobile-announce-option{
+    width:100%;
+    min-width:0;
+    min-height:2.35rem;
+    padding:.3rem .15rem;
+    border-color:var(--warning-border);
+    background:var(--warning-soft);
+    color:var(--text);
+    font-size:.9rem;
+    font-weight:850;
+    box-shadow:none;
+  }
+  .room-page .mobile-announce-option:disabled{
+    opacity:.36;
+    background:var(--surface-soft);
+    border-color:var(--border);
+    color:var(--muted);
   }
   .room-page #diceBar{
     grid-template-columns:repeat(5, 3.15rem);
@@ -2270,7 +2307,7 @@ button:disabled:hover{
     z-index:1;
   }
   .room-page #overlayMount{
-    order:4;
+    order:5;
   }
   .room-page .chat-reactions-host .emoji-panel{
     bottom:calc(100% + .35rem);

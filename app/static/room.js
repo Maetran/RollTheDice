@@ -111,6 +111,18 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
     0:"1",1:"2",2:"3",3:"4",4:"5",5:"6",
     9:"max",10:"min",12:"kenter",13:"full",14:"poker",15:"60"
   };
+  const MOBILE_ANNOUNCE_FIELDS = [
+    [
+      { row:0, field:"1", label:"1" }, { row:1, field:"2", label:"2" },
+      { row:2, field:"3", label:"3" }, { row:3, field:"4", label:"4" },
+      { row:4, field:"5", label:"5" }, { row:5, field:"6", label:"6" }
+    ],
+    [
+      { row:9, field:"max", label:"+" }, { row:10, field:"min", label:"−" },
+      { row:12, field:"kenter", label:"K" }, { row:13, field:"full", label:"F" },
+      { row:14, field:"poker", label:"P" }, { row:15, field:"60", label:"60" }
+    ]
+  ];
   /**
    * Berechnet clientseitig die Punkte für ein Feld anhand der aktuellen Würfel.
    * Hinweis: Dient der Anzeige/Vorschlags-UX; serverseitig ist die Bewertung autoritativ.
@@ -209,6 +221,54 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
         rollBtn.style.pointerEvents = '';
       }
     }catch{}
+  }
+
+  function closeAnnouncePickMode({ rerender = false } = {}){
+    announcePickMode = false;
+    $$(".announce-pickable").forEach(td => td.classList.remove("announce-pickable"));
+    const picker = document.getElementById("mobileAnnouncePicker");
+    if (picker) picker.hidden = true;
+    applyAnnounceModeButtonVisibility(mount);
+    if (rerender && sb) renderFromSnapshot(sb);
+    else if (sb) syncActionButtons(sb);
+  }
+
+  function renderMobileAnnouncePicker(snapshot){
+    const picker = document.getElementById("mobileAnnouncePicker");
+    if (!picker) return;
+
+    const availability = getAnnounceAvailability(snapshot);
+    const visible = isMobileNarrow()
+      && announcePickMode
+      && availability.usable
+      && availability.mode === "announce";
+    picker.hidden = !visible;
+    if (!visible) {
+      picker.replaceChildren();
+      return;
+    }
+
+    const board = getMyBoard(snapshot);
+    picker.replaceChildren(...MOBILE_ANNOUNCE_FIELDS.map((fields, rowIndex) => {
+      const row = document.createElement("div");
+      row.className = "mobile-announce-picker-row";
+      row.setAttribute("aria-label", rowIndex === 0 ? "Zahlenfelder" : "Sonderfelder");
+      fields.forEach(({ row: scoreRow, field, label }) => {
+        const value = board?.[`${scoreRow},ang`];
+        const filled = !(value === undefined || value === null || value === "");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "mobile-announce-option";
+        button.dataset.field = field;
+        button.dataset.row = String(scoreRow);
+        button.textContent = label;
+        button.disabled = filled;
+        button.setAttribute("aria-label", `${label} ansagen${filled ? " – bereits ausgefüllt" : ""}`);
+        button.title = filled ? "Bereits ausgefüllt" : `${label} ansagen`;
+        row.appendChild(button);
+      });
+      return row;
+    }));
   }
 
   function closeChatSheet(){
@@ -1221,6 +1281,7 @@ function renderFromSnapshot(snapshot) {
 
     // Ansage-/Würfeln-Buttons aus demselben Benutzbarkeitsmodell setzen.
     syncActionButtons(snapshot);
+    renderMobileAnnouncePicker(snapshot);
     renderSuperadminLockNotice(snapshot);
     renderMultiplayerPauseNotice(snapshot);
 
@@ -1619,6 +1680,29 @@ function renderFromSnapshot(snapshot) {
       });
     }
 
+    const announcePicker = $("#mobileAnnouncePicker", mount);
+    if (announcePicker && !announcePicker._bound) {
+      announcePicker._bound = true;
+      announcePicker.addEventListener("click", (event) => {
+        const option = event.target.closest(".mobile-announce-option");
+        if (!option || option.disabled || !announcePickMode || !announceWindowOpen(sb)) return;
+        const field = option.dataset.field;
+        if (!field) return;
+        if (safeSend(ws, { action: "announce_row4", field })) {
+          closeAnnouncePickMode();
+        }
+      });
+    }
+
+    if (!document._announceOutsideBound) {
+      document._announceOutsideBound = true;
+      document.addEventListener("click", (event) => {
+        if (!announcePickMode || !isMobileNarrow()) return;
+        if (event.target.closest("#mobileAnnouncePicker, #announceBtnInline")) return;
+        closeAnnouncePickMode({ rerender:true });
+      });
+    }
+
     if (rollBtn && !rollBtn._shakeBound) {
       rollBtn._shakeBound = true;
       rollBtn.addEventListener("click", () => {
@@ -1715,7 +1799,7 @@ function renderFromSnapshot(snapshot) {
         const fieldKey = WRITABLE_MAP[row];
         if (!fieldKey) return;
         safeSend(ws, { action: "announce_row4", field: fieldKey });
-        announcePickMode = false;
+        closeAnnouncePickMode();
         return;
       }
       if (!Number.isFinite(row) || !field) return;
@@ -2085,10 +2169,7 @@ function renderFromSnapshot(snapshot) {
       if (key === "escape") {
         // 1) Ansage-Pick-Mode verlassen
         if (announcePickMode) {
-          announcePickMode = false;
-          // Sichtbarkeit des Würfeln-Buttons nach Pick-Mode beenden zurücksetzen
-          applyAnnounceModeButtonVisibility(mount);
-          $$(".announce-pickable").forEach(td => td.classList.remove("announce-pickable"));
+          closeAnnouncePickMode({ rerender:true });
           e.preventDefault();
           return;
         }
