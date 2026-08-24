@@ -71,6 +71,37 @@ test("mobile lobby cards and leaderboard tabs stay inside the viewport", async (
 });
 
 
+test("tablet new-game controls stay inside their card", async ({ page }) => {
+  for (const viewport of [
+    { width: 768, height: 1024 },
+    { width: 1024, height: 768 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+
+    const layout = await page.evaluate(() => {
+      const card = document.querySelector(".setup-grid .setup-card:nth-child(2)").getBoundingClientRect();
+      const row = document.querySelector(".create-row").getBoundingClientRect();
+      const input = document.querySelector("#passInput").getBoundingClientRect();
+      const controls = ["#passInput", ".mode-hardcore-row", ".mode-hardcore-row .toggle-row", "#createBtn"]
+        .map(selector => document.querySelector(selector).getBoundingClientRect());
+      return {
+        cardRight: card.right,
+        rowWidth: row.width,
+        inputWidth: input.width,
+        controlRights: controls.map(control => control.right),
+        pageWidth: document.documentElement.scrollWidth,
+        viewportWidth: window.innerWidth,
+      };
+    });
+
+    expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewportWidth);
+    expect(layout.inputWidth).toBeGreaterThan(layout.rowWidth - 1);
+    for (const right of layout.controlRights) expect(right).toBeLessThanOrEqual(layout.cardRight);
+  }
+});
+
+
 test("English localization covers lobby, rules, account preference and game UI", async ({ page }) => {
   await page.goto("/");
   await Promise.all([

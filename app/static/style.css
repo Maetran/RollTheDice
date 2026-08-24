@@ -391,8 +391,14 @@ input[type="checkbox"]{
   align-items:stretch;
   gap:.5rem;
   flex:0 0 auto;
+  flex-wrap:wrap;
+  min-width:0;
+  max-width:100%;
 }
-.mode-hardcore-row select{ flex:0 0 9.5rem; }
+.mode-hardcore-row select{
+  flex:0 1 9.5rem;
+  min-width:0;
+}
 .section-title-row{
   display:flex;
   align-items:center;
@@ -419,6 +425,17 @@ input[type="checkbox"]{
   border:1px solid var(--border);
   border-radius:var(--radius-sm);
   background:var(--surface-soft);
+}
+
+/* Tablet cards are too narrow for all new-game controls on one line. */
+@media (min-width:561px) and (max-width:1100px){
+  .create-row input[type="text"]{
+    flex:1 1 100%;
+    width:100%;
+  }
+  .mode-hardcore-row{
+    flex:1 1 auto;
+  }
 }
 .games{ display:flex; flex-direction:column; gap:.65rem; }
 .game-row{
