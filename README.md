@@ -113,7 +113,7 @@ RollTheDice/
 │       ├── scoreboard.js    # Scoreboard renderer and read-only replay renderer
 │       ├── style.css        # Shared styling
 │       ├── sw.js            # Service worker
-│       ├── favicon.svg
+│       ├── favicon.png
 │       └── icons/
 └── data/                    # Persistent runtime data, ignored by Git
     ├── leaderboard_recent.json

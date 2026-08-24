@@ -223,7 +223,7 @@ def service_worker():
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
-    return FileResponse(str(STATIC_DIR / "favicon.svg"), media_type="image/svg+xml")
+    return FileResponse(str(STATIC_DIR / "favicon.png"), media_type="image/png")
 
 # Zentrales Game-Registry + Typalias
 GameDict = Dict[str, Any]

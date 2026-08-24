@@ -12,7 +12,7 @@
   - Versionierte Cache-Namen (CACHE_VERSION) erleichtern das gezielte Aufräumen.
 */
 
-const CACHE_VERSION = 'v78';
+const CACHE_VERSION = 'v79';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
@@ -32,6 +32,10 @@ const PRECACHE_URLS = [
   '/static/emoji.js',
   '/static/room.js',
   '/static/chat.js',
+  '/static/favicon.png',
+  '/static/icons/apple-touch-icon-180.png',
+  '/static/icons/icon-192.png',
+  '/static/icons/icon-512.png',
   '/manifest.webmanifest',
 ];
 
