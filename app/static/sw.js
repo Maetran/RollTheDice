@@ -12,7 +12,7 @@
   - Versionierte Cache-Namen (CACHE_VERSION) erleichtern das gezielte Aufräumen.
 */
 
-const CACHE_VERSION = 'v71';
+const CACHE_VERSION = 'v72';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
@@ -95,18 +95,19 @@ self.addEventListener('fetch', (event) => {
 // --- Strategien ---
 async function cacheFirst(req) {
   const cache = await caches.open(PRECACHE);
-  // Erst die exakte Version suchen. Offline darf danach die vorab gecachte
-  // kanonische Datei ohne ?v=… verwendet werden.
+  // Eine neue Versionsnummer muss online wirklich die neue Datei laden.
+  // Der kanonische Precache-Eintrag dient nur als Offline-Fallback.
   const url = new URL(req.url);
-  const cached = await cache.match(req, { ignoreSearch: false })
-    || await cache.match(url.pathname, { ignoreSearch: true });
-  if (cached) return cached;
+  const exact = await cache.match(req, { ignoreSearch: false });
+  if (exact) return exact;
 
   try {
-    const res = await fetch(req);
+    const res = await fetch(req, { cache: 'no-cache' });
     if (res && res.ok) cache.put(req, res.clone());
     return res;
   } catch (e) {
+    const canonical = await cache.match(url.pathname, { ignoreSearch: true });
+    if (canonical) return canonical;
     if (req.destination === 'document') {
       const fallback = await cache.match('/static/index.html');
       if (fallback) return fallback;

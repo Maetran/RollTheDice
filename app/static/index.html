@@ -19,7 +19,7 @@
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/static/favicon.png" sizes="32x32">
   <script src="/static/theme.js?v=1"></script>
-  <link rel="stylesheet" href="/static/style.css?v=80">
+  <link rel="stylesheet" href="/static/style.css?v=81">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -50,7 +50,7 @@
     <!-- 1) Wer bist du? – Name wird im LocalStorage gemerkt -->
     <div class="setup-grid">
       <section id="playerSetupCard" class="card setup-card player-setup-card">
-        <div class="section-title-row">
+        <div id="playerSectionTitle" class="section-title-row">
           <h2>Spieler</h2>
         </div>
         <div id="playerNameRow" class="row">
@@ -193,6 +193,8 @@
     const registrationChallenge = document.getElementById('registrationChallenge');
     const loginError = document.getElementById('loginError');
     const playerSetupCard = document.getElementById('playerSetupCard');
+    const playerSectionTitle = document.getElementById('playerSectionTitle');
+    const playerNameRow = document.getElementById('playerNameRow');
     const authBadge = document.getElementById('authBadge');
     const authActions = document.getElementById('authActions');
     const adminLink = document.getElementById('adminLink');
@@ -274,6 +276,8 @@
         authBadge.hidden = !user;
         adminLink.hidden = !user?.is_admin;
         playerSetupCard.classList.toggle('authenticated', !!user);
+        playerSectionTitle.hidden = !!user;
+        playerNameRow.hidden = !!user;
         if (user) {
           authBadge.textContent = user.is_admin ? `${user.username} · Admin` : user.username;
           nameInput.value = user.username;

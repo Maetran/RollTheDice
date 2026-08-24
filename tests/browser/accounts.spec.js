@@ -24,6 +24,7 @@ test("guest sees login and registration while a new account sees only logout", a
   await page.click("#registerBtn");
   await expect(page.locator("#authBadge")).toContainText(username);
   await expect(page.locator("#loginForm")).toBeHidden();
+  await expect(page.locator("#playerSectionTitle")).toBeHidden();
   await expect(page.locator("#playerNameRow")).toBeHidden();
   await expect(page.locator("#playerSetupCard")).toHaveClass(/authenticated/);
   await expect(page.locator("#logoutBtn")).toBeVisible();
