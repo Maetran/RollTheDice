@@ -44,6 +44,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
   const ROLL_ANIMATION_MS = 650;
   const ROLL_FACE_ANIMATION_STEP_MS = 100;
   const ROLL_PENDING_TIMEOUT_MS = 5000;
+  const AUTO_ANNOUNCE_WRITE_DELAY_MS = 500;
 
   function isRollAction(obj) {
     return obj && (
@@ -284,12 +285,16 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
     ].join(":");
   }
 
+  function isLastAllowedRoll(snapshot){
+    const rollsUsed = Number(snapshot?._rolls_used || 0);
+    const rollsMax = Number(snapshot?._rolls_max || 3);
+    return rollsMax > 0 && rollsUsed >= rollsMax;
+  }
+
   function scheduleAutoWriteAnnouncedField(snapshot){
     const announced = snapshot?._announced_row4 || null;
     const row = Object.keys(WRITABLE_MAP).find(key => WRITABLE_MAP[key] === announced);
     const turnPid = snapshot?._turn?.player_id || null;
-    const rollsUsed = Number(snapshot?._rolls_used || 0);
-    const rollsMax = Number(snapshot?._rolls_max || 3);
     const board = getMyBoard(snapshot);
     const targetIsFree = row !== undefined && !Object.prototype.hasOwnProperty.call(board || {}, `${row},ang`);
     const shouldWrite = !IS_SPECTATOR
@@ -299,7 +304,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
       && !snapshot?._correction?.active
       && String(turnPid) === String(myId)
       && !!announced
-      && rollsUsed >= rollsMax
+      && isLastAllowedRoll(snapshot)
       && targetIsFree;
 
     if (!shouldWrite) {
@@ -313,7 +318,9 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
     if (autoAnnounceWriteKey === key) return;
     if (autoAnnounceWriteTimer) clearTimeout(autoAnnounceWriteTimer);
     autoAnnounceWriteKey = key;
-    const wait = Math.max(0, rollAnimationUntil - Date.now()) + 50;
+    // Erst den letzten Wurf vollständig anzeigen und danach noch eine kurze
+    // Lesepause lassen, bevor das angesagte Feld den Zug automatisch beendet.
+    const wait = Math.max(0, rollAnimationUntil - Date.now()) + AUTO_ANNOUNCE_WRITE_DELAY_MS;
     autoAnnounceWriteTimer = setTimeout(() => {
       autoAnnounceWriteTimer = null;
       if (!sb || autoAnnounceSnapshotKey(sb) !== key) return;
@@ -1694,6 +1701,7 @@ function renderFromSnapshot(snapshot) {
   }
   if (new URLSearchParams(location.search).get("__test") === "1") {
     window.__rtDebugRenderSuggestionsForSnapshot = renderSuggestionsForSnapshot;
+    window.__rtDebugIsLastAllowedRoll = isLastAllowedRoll;
   }
 
   // --- DiceBar: Hold/Unhold, Roll, Correction-Request, ESC-Cancel ---

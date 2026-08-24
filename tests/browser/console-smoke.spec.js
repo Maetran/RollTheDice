@@ -602,6 +602,12 @@ test("mobile announce picker shows two rows and disables filled fields", async (
 
   await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Announce&__test=1`);
   await page.waitForSelector("#diceBar");
+  const finalRollRules = await page.evaluate(() => ({
+    regularThird: window.__rtDebugIsLastAllowedRoll({ _rolls_used: 3, _rolls_max: 3 }),
+    specialThird: window.__rtDebugIsLastAllowedRoll({ _rolls_used: 3, _rolls_max: 5 }),
+    specialFifth: window.__rtDebugIsLastAllowedRoll({ _rolls_used: 5, _rolls_max: 5 }),
+  }));
+  expect(finalRollRules).toEqual({ regularThird: true, specialThird: false, specialFifth: true });
 
   const filledField = page.locator('.player-card.me td.cell[data-row="0"][data-field="ang"]');
   await expect(filledField).toHaveClass(/clickable/);
@@ -660,8 +666,32 @@ test("mobile announce picker shows two rows and disables filled fields", async (
   await expect(rollButton).toBeEnabled();
   await rollButton.click();
   await expect(rollButton).toBeEnabled();
+  const autoWriteTiming = page.evaluate(() => new Promise((resolve, reject) => {
+    let sawAnimation = false;
+    let animationEndedAt = null;
+    const timeout = setTimeout(() => {
+      observer.disconnect();
+      reject(new Error("Automatisches Schreiben wurde nicht beobachtet"));
+    }, 5000);
+    const observer = new MutationObserver(() => {
+      const shaking = document.querySelectorAll("#diceBar .die.shaking").length > 0;
+      if (shaking) sawAnimation = true;
+      if (sawAnimation && !shaking && animationEndedAt === null) {
+        animationEndedAt = performance.now();
+      }
+      const target = document.querySelector('.player-card.me td.cell[data-row="14"][data-field="ang"]');
+      if (animationEndedAt !== null && target?.textContent.trim()) {
+        clearTimeout(timeout);
+        observer.disconnect();
+        resolve({ afterAnimationMs: performance.now() - animationEndedAt });
+      }
+    });
+    observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+  }));
   await rollButton.click();
   const pokerAng = page.locator('.player-card.me td.cell[data-row="14"][data-field="ang"]');
   await expect(pokerAng).not.toHaveText("", { timeout: 5000 });
+  const timing = await autoWriteTiming;
+  expect(timing.afterAnimationMs).toBeGreaterThanOrEqual(450);
   await health.expectClean();
 });
