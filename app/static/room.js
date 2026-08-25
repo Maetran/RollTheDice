@@ -796,8 +796,10 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
     }catch{}
   }
 
-  function startRollAnimation(snapshot){
-    rollAnimationIndices = activeRollDiceIndices(snapshot);
+  function startRollAnimation(snapshot, explicitIndices = null){
+    rollAnimationIndices = Array.isArray(explicitIndices)
+      ? explicitIndices.map(Number).filter(i => i >= 0 && i < 5)
+      : activeRollDiceIndices(snapshot);
     rollAnimationUntil = Date.now() + ROLL_ANIMATION_MS;
     applyRollAnimation();
     if (rollAnimationTimer) {
@@ -938,7 +940,9 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
         const anchor = score.querySelector(".suggestions-area") || score.querySelector(".players-grid");
         score.insertBefore(el, anchor || score.firstChild);
       }
-      el.textContent = "Superadmin-Edit aktiv: Würfeln, Halten, Ansagen und Schreiben sind pausiert.";
+      el.textContent = superadminState.active
+        ? "Superadmin-Edit aktiv: Zusatzwurf nutzen oder einen Würfel antippen, um ihn sofort zu setzen."
+        : "Superadmin-Edit aktiv: Würfeln, Halten, Ansagen und Schreiben sind pausiert.";
     } catch {}
   }
 
@@ -1151,6 +1155,9 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
         superadminState = { active: true, boardId: String(msg.superadmin.board_id || ""), draft: {} };
         normalizeTransientLayoutForAdmin({ scrollTop: false });
         applySuperadminUiState();
+      }
+      if (msg.superadmin && msg.superadmin.dice_rolled) {
+        startRollAnimation(sb, msg.superadmin.changed_indices || []);
       }
       if (msg.superadmin && msg.superadmin.saved) {
         superadminState.draft = {};
@@ -1772,16 +1779,40 @@ function renderFromSnapshot(snapshot) {
     }
 
     $$("#diceBar .die", mount).forEach(btn => {
-      if (sb?._superadmin_active) {
+      const adminDice = getSuperadminDiceAvailability(sb);
+      if (sb?._superadmin_active && !adminDice.usable) {
         btn.disabled = true;
         btn.title = "Während Superadmin-Edit gesperrt";
         btn.classList.remove("shaking");
         return;
       }
+      if (superadminState.active && adminDice.usable) {
+        btn.disabled = false;
+        btn.title = "Superadmin: Würfelwert sofort setzen";
+        btn.classList.add("superadmin-die-editable");
+      } else {
+        btn.classList.remove("superadmin-die-editable");
+      }
       if (btn._holdBound) return;
       btn._holdBound = true;
       btn.addEventListener("click", () => {
         btn.classList.remove("shaking");
+
+        if (superadminState.active) {
+          const availability = getSuperadminDiceAvailability(sb);
+          if (!availability.usable) return;
+          const index = Number(btn.dataset.i);
+          const current = Number(sb?._dice?.[index] || 0);
+          const next = prompt(`Würfel ${index + 1}: neue Augenzahl (1–6)`, String(current || 1));
+          if (next === null) return;
+          const value = Number(String(next).trim());
+          if (!Number.isInteger(value) || value < 1 || value > 6) {
+            alert("Bitte eine ganze Augenzahl zwischen 1 und 6 eingeben.");
+            return;
+          }
+          safeSend(ws, { action: "superadmin_set_die", index, value });
+          return;
+        }
 
         // Blockiere Hold für "leere" Würfel (Wert 0)
         const i = Number(btn.dataset.i);
@@ -2084,6 +2115,42 @@ function renderFromSnapshot(snapshot) {
     return Object.values(superadminState.draft || {});
   }
 
+  function activeTurnBoardId(snapshot){
+    const turnPlayerId = String(snapshot?._turn?.player_id || "");
+    if (!turnPlayerId) return "";
+    if (String(snapshot?._mode || "").toLowerCase() === "2v2") {
+      const team = (snapshot?._teams || []).find(item =>
+        (item?.members || []).some(member => String(member) === turnPlayerId)
+      );
+      return String(team?.id || "");
+    }
+    return turnPlayerId;
+  }
+
+  function getSuperadminDiceAvailability(snapshot){
+    if (!superadminState.active) return { usable:false, reason:"Superadmin-Modus nicht aktiv" };
+    if (!snapshot || snapshot._finished || snapshot._aborted || !snapshot._started) {
+      return { usable:false, reason:"Spiel ist nicht aktiv" };
+    }
+    if (snapshot?._correction?.active) return { usable:false, reason:"Während Korrektur nicht erlaubt" };
+    if (String(superadminState.boardId || "") !== activeTurnBoardId(snapshot)) {
+      return { usable:false, reason:"Nur beim aktuell aktiven Spieler verfügbar" };
+    }
+    if (Number(snapshot?._rolls_used || 0) < 1) {
+      return { usable:false, reason:"Erst nach dem ersten regulären Wurf verfügbar" };
+    }
+    return { usable:true, reason:"Freie Würfel zusätzlich würfeln" };
+  }
+
+  function requestSuperadminRoll(){
+    const availability = getSuperadminDiceAvailability(sb);
+    if (!availability.usable) {
+      alert(availability.reason);
+      return;
+    }
+    safeSend(ws, { action: "superadmin_roll_dice" });
+  }
+
   function validateAdminDraftClient(){
     const changes = adminDraftEntries();
     if (!changes.length) return "Keine Änderungen vorhanden.";
@@ -2156,20 +2223,28 @@ function renderFromSnapshot(snapshot) {
       bar.className = "superadmin-bar";
       bar.innerHTML = `
         <span class="superadmin-bar-label"></span>
+        <button id="superadminRoll" class="small primary" type="button">Zusatzwurf</button>
         <button id="superadminSave" class="small primary" type="button">Speichern</button>
         <button id="superadminDiscard" class="small" type="button">Verwerfen</button>
         <button id="superadminExit" class="small ghost" type="button">Beenden</button>
       `;
       document.body.appendChild(bar);
+      bar.querySelector("#superadminRoll").addEventListener("click", requestSuperadminRoll);
       bar.querySelector("#superadminSave").addEventListener("click", saveSuperadminDraft);
       bar.querySelector("#superadminDiscard").addEventListener("click", discardSuperadminDraft);
       bar.querySelector("#superadminExit").addEventListener("click", exitSuperadminMode);
     }
     const count = adminDraftEntries().length;
     const label = bar.querySelector(".superadmin-bar-label");
-    if (label) label.textContent = `Superadmin aktiv • ${count} Änderung${count === 1 ? "" : "en"}`;
+    if (label) label.textContent = `Superadmin aktiv • Würfel antippen = sofort setzen • ${count} Tabellenänderung${count === 1 ? "" : "en"}`;
+    const rollBtn = bar.querySelector("#superadminRoll");
     const saveBtn = bar.querySelector("#superadminSave");
     const discardBtn = bar.querySelector("#superadminDiscard");
+    if (rollBtn) {
+      const availability = getSuperadminDiceAvailability(sb);
+      rollBtn.disabled = !availability.usable;
+      rollBtn.title = availability.reason;
+    }
     if (saveBtn) saveBtn.disabled = count === 0;
     if (discardBtn) discardBtn.disabled = count === 0;
   }

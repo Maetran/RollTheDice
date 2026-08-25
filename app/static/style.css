@@ -562,6 +562,11 @@ button.die.held{
   border-width:2px;
   box-shadow:0 1px 2px rgba(15,23,42,.08), inset 0 0 0 1px rgba(15,138,95,.18);
 }
+body.superadmin-active button.die.superadmin-die-editable{
+  cursor:pointer;
+  border-color:#0f8a5f;
+  box-shadow:0 0 0 2px rgba(15,138,95,.22), 0 1px 2px rgba(15,23,42,.08);
+}
 
 /* Shake-Animation für Würfelsymbol */
 @keyframes dice-shake{

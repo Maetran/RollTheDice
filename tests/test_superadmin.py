@@ -95,6 +95,74 @@ class SuperadminEditTestCase(GameStateTestCase):
         self.assertFalse(main.action_blocked_by_superadmin(g, "chat_message"))
         self.assertFalse(main.action_blocked_by_superadmin(g, "superadmin_save"))
         self.assertFalse(main.action_blocked_by_superadmin(g, "superadmin_deactivate"))
+        self.assertFalse(main.action_blocked_by_superadmin(g, "superadmin_roll_dice"))
+        self.assertFalse(main.action_blocked_by_superadmin(g, "superadmin_set_die"))
+
+    def test_extra_roll_replaces_only_free_dice_without_changing_turn_flow(self):
+        g = self.make_game(mode=2, players=[("p1", "Admin"), ("p2", "Other")])
+        g["_dice"] = [1, 2, 3, 4, 5]
+        g["_holds"] = [True, False, True, False, False]
+        g["_rolls_used"] = 3
+        g["_rolls_max"] = 3
+        g["_turn"] = {"player_id": "p1", "roll_index": 3, "first4oak_roll": 1}
+        g["_announced_row4"] = "5"
+        g["_superadmins"]["p1"] = {"board_id": "p1"}
+
+        rolls = iter([6, 1, 2])
+        result = main.apply_superadmin_roll(g, "p1", randint_fn=lambda _low, _high: next(rolls))
+
+        self.assertEqual(g["_dice"], [1, 6, 3, 1, 2])
+        self.assertEqual(g["_holds"], [True, False, True, False, False])
+        self.assertEqual(g["_rolls_used"], 3)
+        self.assertEqual(g["_rolls_max"], 3)
+        self.assertEqual(g["_turn"], {"player_id": "p1", "roll_index": 3, "first4oak_roll": 1})
+        self.assertEqual(g["_announced_row4"], "5")
+        self.assertEqual(result["changed_indices"], [1, 3, 4])
+
+    def test_single_die_edit_becomes_current_scoring_truth(self):
+        g = self.make_game(mode=1, players=[("p1", "Admin")])
+        g["_dice"] = [1, 3, 3, 4, 6]
+        g["_rolls_used"] = 2
+        g["_turn"] = {"player_id": "p1", "roll_index": 2, "first4oak_roll": None}
+        g["_superadmins"]["p1"] = {"board_id": "p1"}
+
+        result = main.apply_superadmin_die_change(g, "p1", 4, 5)
+
+        self.assertEqual(g["_dice"], [1, 3, 3, 4, 5])
+        self.assertEqual(main.score_field_value("5", g["_dice"]), 5)
+        self.assertEqual(g["_rolls_used"], 2)
+        self.assertEqual(g["_turn"]["roll_index"], 2)
+        self.assertEqual(result["old"], 6)
+        self.assertEqual(result["new"], 5)
+
+    def test_die_edit_reconciles_current_poker_metadata(self):
+        g = self.make_game(mode=1, players=[("p1", "Admin")])
+        g["_dice"] = [5, 5, 5, 2, 5]
+        g["_rolls_used"] = 2
+        g["_turn"] = {"player_id": "p1", "roll_index": 2, "first4oak_roll": None}
+        g["_superadmins"]["p1"] = {"board_id": "p1"}
+
+        main.apply_superadmin_die_change(g, "p1", 3, 5)
+        self.assertEqual(g["_turn"]["first4oak_roll"], 2)
+
+        main.apply_superadmin_die_change(g, "p1", 3, 2)
+        self.assertEqual(g["_turn"]["first4oak_roll"], 2)
+
+        main.apply_superadmin_die_change(g, "p1", 0, 1)
+        self.assertIsNone(g["_turn"]["first4oak_roll"])
+
+    def test_dice_edit_is_limited_to_active_target_board_and_existing_roll(self):
+        g = self.make_game(mode=2, players=[("p1", "Admin"), ("p2", "Other")])
+        g["_superadmins"]["p1"] = {"board_id": "p2"}
+        g["_rolls_used"] = 1
+
+        with self.assertRaisesRegex(ValueError, "aktuell aktiven Spieler"):
+            main.apply_superadmin_die_change(g, "p1", 0, 5)
+
+        g["_superadmins"]["p1"] = {"board_id": "p1"}
+        g["_rolls_used"] = 0
+        with self.assertRaisesRegex(ValueError, "ersten regulären Wurf"):
+            main.apply_superadmin_roll(g, "p1")
 
     def test_save_exit_preserves_current_turn_in_all_player_modes(self):
         for mode in (1, 2, 3, "2v2"):

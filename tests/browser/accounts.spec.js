@@ -226,6 +226,41 @@ test("admin can log in, create a user and open the public profile", async ({ pag
   await expect(page.locator(".stat-bucket").nth(1)).toContainText("Trend (3 Spiele)");
 });
 
+test("superadmin can make a neutral extra roll and set a die", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#loginUsername", "Admin");
+  await page.fill("#loginPassword", "temporary-password-123");
+  await page.click("#loginForm button[type=submit]");
+  await expect(page.locator("#authBadge")).toContainText("Admin");
+
+  const gameId = await page.evaluate(async () => {
+    const response = await fetch("/api/games", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Admin dice edit", mode: 1 }),
+    });
+    return (await response.json()).game_id;
+  });
+  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=ignored`);
+  await expect(page.locator(".turn-status-text")).toContainText("Würfe: 1/", { timeout: 6000 });
+
+  const dice = page.locator("#diceBar .die");
+  await dice.nth(0).click();
+  const heldFace = await dice.nth(0).locator("svg").getAttribute("aria-label");
+  const rollsBefore = await page.locator(".turn-status-text").textContent();
+
+  for (let i = 0; i < 10; i += 1) await page.locator(".pc-total").click();
+  await expect(page.locator("#superadminBar")).toBeVisible();
+  await page.locator("#superadminRoll").click();
+  await expect(dice.nth(0).locator("svg")).toHaveAttribute("aria-label", heldFace);
+  await expect(page.locator(".turn-status-text")).toHaveText(rollsBefore);
+
+  page.once("dialog", dialog => dialog.accept("5"));
+  await dice.nth(4).click();
+  await expect(dice.nth(4).locator("svg")).toHaveAttribute("aria-label", "Würfel 5");
+  await expect(page.locator(".turn-status-text")).toHaveText(rollsBefore);
+});
+
 
 test("logged-in user sees the personal landing page", async ({ page }) => {
   await page.goto("/");

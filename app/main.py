@@ -535,6 +535,104 @@ def complete_superadmin_save(g: GameDict, player_id: str) -> str | None:
     g.setdefault("_superadmins", {}).pop(player_id, None)
     return _ensure_turn_after_superadmin(g, player_id)
 
+def _validate_superadmin_dice_edit(g: GameDict, player_id: str) -> str:
+    """Validiert den losgeloesten Wuerfeleingriff eines aktiven Superadmins."""
+    admin = g.get("_superadmins", {}).get(player_id)
+    if not admin:
+        raise ValueError("Superadmin-Modus nicht aktiv")
+    if not g.get("_started") or g.get("_finished") or g.get("_aborted"):
+        raise ValueError("Spiel ist nicht aktiv")
+    if g.get("_correction", {}).get("active"):
+        raise ValueError("Während Korrektur nicht erlaubt")
+
+    turn = g.get("_turn") or {}
+    turn_player_id = str(turn.get("player_id") or "")
+    if not turn_player_id:
+        raise ValueError("Kein aktiver Zug")
+    target_board_id = str(admin.get("board_id") or "")
+    if target_board_id != str(board_key_for_actor(g, turn_player_id)):
+        raise ValueError("Würfel können nur beim aktuell aktiven Spieler bearbeitet werden")
+    if int(g.get("_rolls_used", 0) or 0) < 1:
+        raise ValueError("Würfel können erst nach dem ersten regulären Wurf bearbeitet werden")
+    return turn_player_id
+
+def _reconcile_four_kind_after_admin_dice_edit(g: GameDict) -> None:
+    """Haelt die vom aktuellen Wurf abgeleitete Poker-Metainfo konsistent."""
+    turn = g.get("_turn")
+    if not isinstance(turn, dict):
+        return
+    roll_index = int(turn.get("roll_index", g.get("_rolls_used", 0)) or 0)
+    first_four_kind = turn.get("first4oak_roll")
+    if has_n_of_a_kind(g.get("_dice") or [], 4):
+        if first_four_kind is None:
+            turn["first4oak_roll"] = roll_index
+    elif first_four_kind == roll_index:
+        # Der Superadmin hat die aktuelle Wurf-Wahrheit geaendert. Ein Vierling
+        # aus einem frueheren Wurf bleibt dagegen absichtlich gespeichert.
+        turn["first4oak_roll"] = None
+
+def _record_superadmin_dice_edit(g: GameDict, meta: dict) -> dict:
+    history = g.setdefault("_admin_dice_edits", [])
+    history.append(meta)
+    if len(history) > 100:
+        del history[:-100]
+    return meta
+
+def apply_superadmin_roll(g: GameDict, player_id: str, *, randint_fn=None) -> dict:
+    """Wuerfelt nur freie Wuerfel, ohne irgendeinen Wurf-/Ablaufzaehler zu aendern."""
+    _validate_superadmin_dice_edit(g, player_id)
+    rng = randint_fn or random.randint
+    old_dice = list(g.get("_dice") or [0] * 5)[:5]
+    old_dice += [0] * (5 - len(old_dice))
+    holds = list(g.get("_holds") or [False] * 5)[:5]
+    holds += [False] * (5 - len(holds))
+    new_dice = old_dice[:]
+    changed_indices = []
+    for index in range(5):
+        if not holds[index]:
+            new_dice[index] = rng(1, 6)
+            changed_indices.append(index)
+    g["_dice"] = new_dice
+    _reconcile_four_kind_after_admin_dice_edit(g)
+    return _record_superadmin_dice_edit(g, {
+        "type": "roll",
+        "old": old_dice,
+        "new": new_dice[:],
+        "changed_indices": changed_indices,
+        "by": player_id,
+        "by_name": _player_name(g, player_id),
+        "ts": datetime.now(timezone.utc).isoformat(),
+    })
+
+def apply_superadmin_die_change(g: GameDict, player_id: str, die_index: int, value: int) -> dict:
+    """Setzt einen einzelnen Wuerfel unmittelbar auf eine neue Augenzahl."""
+    _validate_superadmin_dice_edit(g, player_id)
+    try:
+        index = int(die_index)
+        face = int(value)
+    except Exception as exc:
+        raise ValueError("Ungültiger Würfelwert") from exc
+    if index < 0 or index >= 5:
+        raise ValueError("Ungültiger Würfel")
+    if face < 1 or face > 6:
+        raise ValueError("Würfelwert muss zwischen 1 und 6 liegen")
+
+    dice = list(g.get("_dice") or [0] * 5)[:5]
+    dice += [0] * (5 - len(dice))
+    old_value = dice[index]
+    dice[index] = face
+    g["_dice"] = dice
+    _reconcile_four_kind_after_admin_dice_edit(g)
+    return _record_superadmin_dice_edit(g, {
+        "type": "set",
+        "index": index,
+        "old": old_value,
+        "new": face,
+        "by": player_id,
+        "by_name": _player_name(g, player_id),
+        "ts": datetime.now(timezone.utc).isoformat(),
+    })
+
 def _clear_announcement(g: GameDict) -> None:
     """Setzt alle Ansage-Metadaten zurueck."""
     g["_announced_row4"] = None
@@ -655,6 +753,7 @@ def new_game(gid: str, name: str, mode) -> GameDict:
         "_chat_history": [],                   # gespeicherte Chat-/Systemmeldungen
         "_superadmins": {},                    # pid -> {"board_id": ...}
         "_admin_edits": {},                    # board_id -> {"row,col": meta}
+        "_admin_dice_edits": [],               # Audit der losgeloesten Superadmin-Wuerfeleingriffe
         "_resume_required": False,             # True, sobald ein laufendes Multiplayer-Spiel Verbindungen verloren hat
         "_manual_pause": False,                # explizit vom Spieler pausiert statt abgebrochen
         "_manual_pause_by": None,
@@ -2946,6 +3045,68 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     g.setdefault("_superadmins", {}).pop(player_id, None)
                 touch(g)
                 await websocket.send_json({"superadmin": {"saved": True, "active": False, "board_id": board_id}})
+                await broadcast(g, {"scoreboard": snapshot(g)})
+
+            elif act == "superadmin_roll_dice":
+                if not auth_identity or not auth_identity.is_admin:
+                    await websocket.send_json({"error": "Admin-Berechtigung erforderlich"})
+                    continue
+                if not player_id:
+                    await websocket.send_json({"error": "Nur Spieler koennen Würfel bearbeiten"})
+                    continue
+                try:
+                    edit_meta = apply_superadmin_roll(g, player_id)
+                except ValueError as exc:
+                    await websocket.send_json({"error": str(exc)})
+                    continue
+
+                changed = ", ".join(str(index + 1) for index in edit_meta["changed_indices"]) or "keine"
+                await broadcast_chat(g, {
+                    "from_id": None,
+                    "sender": "System",
+                    "text": f"Superadmin: Zusatzwurf ausgeführt (freie Würfel: {changed}).",
+                    "ts": edit_meta["ts"],
+                    "kind": "system",
+                })
+                touch(g)
+                await websocket.send_json({
+                    "superadmin": {
+                        "dice_rolled": True,
+                        "changed_indices": edit_meta["changed_indices"],
+                    }
+                })
+                await broadcast(g, {"scoreboard": snapshot(g)})
+
+            elif act == "superadmin_set_die":
+                if not auth_identity or not auth_identity.is_admin:
+                    await websocket.send_json({"error": "Admin-Berechtigung erforderlich"})
+                    continue
+                if not player_id:
+                    await websocket.send_json({"error": "Nur Spieler koennen Würfel bearbeiten"})
+                    continue
+                try:
+                    edit_meta = apply_superadmin_die_change(
+                        g,
+                        player_id,
+                        data.get("index"),
+                        data.get("value"),
+                    )
+                except ValueError as exc:
+                    await websocket.send_json({"error": str(exc)})
+                    continue
+
+                await broadcast_chat(g, {
+                    "from_id": None,
+                    "sender": "System",
+                    "text": (
+                        f"Superadmin: Würfel {edit_meta['index'] + 1} "
+                        f"von {edit_meta['old']} auf {edit_meta['new']} gedreht."
+                    ),
+                    "ts": edit_meta["ts"],
+                    "kind": "system",
+                })
+                touch(g)
+                await websocket.send_json({"superadmin": {"die_set": True}})
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "chat_message":
