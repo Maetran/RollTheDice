@@ -1,179 +1,305 @@
-# Deployment
+# ZDWA Deployment und Betrieb
 
-Production runs on the IONOS server reachable through the local SSH alias:
+Dieses Dokument beschreibt den produktiven Betrieb von **ZDWA – Zock die Wand
+an**. Das Repository heisst intern weiterhin `RollTheDice`.
+
+## Produktionsumgebung
+
+| Bereich | Wert |
+| --- | --- |
+| Öffentliche URL | `https://zockdiewandan.online/` |
+| SSH-Ziel | `ssh zdwa` |
+| Arbeitsverzeichnis | `/root/RollTheDice` |
+| Git-Branch | `master` |
+| Container/Service | `rollthedice` |
+| Lokaler Container-Port | `8000` |
+| Persistente Daten | `/root/RollTheDice/data` |
+
+Die Anwendung läuft mit Docker Compose hinter einem HTTPS-Reverse-Proxy. Das
+Verzeichnis `./data` wird als `/app/data` in den Container eingebunden.
+
+Die SQLite-Datenbank `data/rollthedice.sqlite3` enthält Benutzerkonten,
+Sessions, Schutzereignisse, vollständige Spiele und Zuordnungen. Die vorhandenen
+JSON-Dateien enthalten weiterhin Leaderboards und ältere Statistikdaten. Beide
+Speicherarten gehören zu den Produktionsdaten.
+
+## Unverhandelbare Datenregeln
+
+`data/` darf bei einem Deployment niemals gelöscht, geleert oder durch lokale
+Daten ersetzt werden. Vor jeder Änderung der laufenden Anwendung muss auf dem
+Server eine zeitgestempelte Kopie des vollständigen Verzeichnisses entstehen.
+
+SQLite verwendet WAL-Dateien. Deshalb darf `data/` nicht kopiert werden, während
+der Container in die Datenbank schreibt. Das Deployment-Skript stoppt den
+Container kurz, kopiert das vollständige Verzeichnis und startet ihn sofort
+wieder.
+
+Folgende Befehle sind auf Produktion nicht Teil eines Deployments:
 
 ```text
-Host zdwa
-HostName 217.154.16.72
-User root
-```
-
-The application is deployed from the GitHub `master` branch and runs with Docker Compose. Runtime data lives in `./data` on the server and is mounted into the container as `/app/data`.
-
-User accounts, sessions, and the complete new game history live in
-`data/rollthedice.sqlite3`. The legacy JSON leaderboards remain in place during
-the migration period.
-
-Production directory layout on `zdwa`:
-
-```text
-/root/
-├── RollTheDice/
-│   ├── app/
-│   ├── data/                 # production leaderboard and stats data
-│   ├── tests/
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   ├── manifest.webmanifest
-│   ├── README.md
-│   └── requirements.txt
-├── backup_data/
-├── backup_data_pull_1756397116/
-└── rollthedice-data-backup-20260731-114147.tar.gz
-```
-
-The deploy working directory is:
-
-```bash
-/root/RollTheDice
-```
-
-## Non-Negotiable Data Rule
-
-The leaderboard files in `./data` are production data and must not be deleted, reset, replaced, or overwritten by deploy tooling.
-
-Do not run:
-
-```bash
 docker compose down -v
 rm -rf data
 git clean -fdx
 git reset --hard
 ```
 
-Any deploy must create a timestamped copy of `data/` before changing the running application.
+Ein erfolgreiches Backup sieht so aus:
 
-SQLite can use WAL files. Do not copy its directory while the application is
-writing. The automated deployment briefly stops the container, copies the full
-directory, and starts it again before updating the code.
+```text
+/root/RollTheDice/data.backup-YYYYMMDD-HHMMSS
+```
 
-## Automated Deploy
+Backups werden nicht automatisch gelöscht. Ihre Aufbewahrung und eine allfällige
+Auslagerung auf einen zweiten Speicher müssen bewusst organisiert werden.
 
-From a local checkout:
+## Voraussetzungen
+
+Vor einem regulären Rollout müssen folgende Bedingungen erfüllt sein:
+
+- Die Änderung ist auf `master` committed und zu `origin/master` gepusht.
+- Relevante Python- und Browsertests sind erfolgreich.
+- Der lokale und der produktive Git-Arbeitsbaum enthalten keine unbekannten
+  Änderungen.
+- Datenmigrationen besitzen eine Alembic-Migration. Die Anwendung aktualisiert
+  das Schema beim Start automatisch bis `head`.
+- Änderungen an statischen Assets berücksichtigen die Cache-Regeln weiter unten.
+
+Empfohlene lokale Prüfung:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py'
+npm run test:browser
+git diff --check
+git status --short
+```
+
+## Standard-Deployment
+
+Der reguläre und bevorzugte Weg ist:
 
 ```bash
 scripts/deploy_zdwa.sh
 ```
 
-The script defaults to `/root/RollTheDice`. To override it:
+Das Skript führt auf `ssh zdwa` folgende Schritte aus:
+
+1. Wechsel nach `/root/RollTheDice`.
+2. Abbruch, falls der produktive Git-Arbeitsbaum verändert ist.
+3. Kurzer Stopp des Containers für ein konsistentes `data`-Backup.
+4. Sofortiger Neustart des bestehenden Containers nach dem Backup.
+5. Fast-forward-only-Update von `origin/master`.
+6. Neubau und Neustart mit `docker compose up -d --build`.
+7. Ausgabe des Containerstatus und einmaliger lokaler HTTP-Check.
+
+Das Ziel kann bei Bedarf überschrieben werden:
 
 ```bash
-REMOTE_DIR=/another/path/RollTheDice scripts/deploy_zdwa.sh
+REMOTE=zdwa REMOTE_DIR=/root/RollTheDice BRANCH=master scripts/deploy_zdwa.sh
 ```
 
-The script:
+`REMOTE_DIR=auto` sucht nach einem Checkout mit dem erwarteten GitHub-Remote.
+Für Produktion ist der explizite Standardpfad vorzuziehen.
 
-- connects to `ssh zdwa`
-- uses `/root/RollTheDice` unless `REMOTE_DIR` is provided
-- refuses to deploy if the remote worktree has uncommitted changes
-- briefly stops the container and copies `data/` to `data.backup-YYYYMMDD-HHMMSS`
-- restarts the existing container immediately after the consistent backup
-- pulls `origin/master` with `--ff-only`
-- rebuilds and restarts the service with `docker compose up -d --build`
-- prints `docker compose ps`
+## Verifikation nach dem Rollout
 
-## Manual Deploy
-
-Use this only when the script cannot be used:
+Ein Deployment ist erst abgeschlossen, wenn Container, lokale Anwendung und
+öffentliche URL geprüft wurden:
 
 ```bash
-ssh zdwa
-cd /root/RollTheDice
-git status --short --branch
-docker compose stop rollthedice
-cp -a data "data.backup-$(date +%Y%m%d-%H%M%S)"
-docker compose start rollthedice
-git fetch origin master
-git checkout master
-git pull --ff-only origin master
-docker compose up -d --build
-docker compose ps
+ssh zdwa 'cd /root/RollTheDice && docker compose ps'
+
+ssh zdwa 'curl --retry 12 --retry-delay 2 --retry-connrefused \
+  -fsS http://127.0.0.1:8000/ >/dev/null && echo "local app OK"'
+
+curl --retry 8 --retry-delay 2 --retry-connrefused \
+  -fsS https://zockdiewandan.online/ >/dev/null && echo "public app OK"
 ```
 
-## First Admin and HTTPS Cookies
+Der Container muss `Up` sein. Bei Problemen liefern die letzten Logs meist den
+schnellsten Befund:
 
-Before the first deployment with user accounts, create
-`/root/RollTheDice/.env` from `.env.example` and set a temporary bootstrap
-username and password. After the account exists, remove
-`ROLLTHEDICE_ADMIN_PASSWORD` from `.env`.
+```bash
+ssh zdwa 'cd /root/RollTheDice && docker compose logs --tail=150 rollthedice'
+```
 
-For a public HTTPS endpoint set `ROLLTHEDICE_COOKIE_SECURE=1`. The reverse proxy
-must forward the original host and protocol (`X-Forwarded-Host` and
-`X-Forwarded-Proto`), because mutation and WebSocket origin checks use them.
+Der einmalige Health-Check am Ende des Deployment-Skripts kann direkt nach dem
+Containerstart mit `Empty reply from server` fehlschlagen, obwohl Uvicorn wenige
+Sekunden später bereit ist. In diesem Fall zuerst den Check mit den obigen
+Retries wiederholen und die Logs prüfen. Ein fehlgeschlagener Erst-Check allein
+ist noch kein Grund für eine Datenwiederherstellung.
 
-## Registration Protection
+Bei Datenbankänderungen zusätzlich den Migrationsstand prüfen:
 
-Login failures and registration attempts are rate-limited persistently in the
-same SQLite database. No Redis or separate maintenance service is required.
+```bash
+ssh zdwa 'cd /root/RollTheDice && docker compose exec rollthedice alembic current'
+```
 
-Before enabling public self-registration, create a Cloudflare Turnstile widget
-restricted to the public hostname and add both values to `.env`:
+## Service Worker und statische Assets
+
+ZDWA verwendet einen Service Worker mit Cache-First-Strategie für statische
+Dateien. Ohne neue Versionsnummer können Browser nach einem Deployment weiterhin
+alte CSS- oder JavaScript-Dateien verwenden.
+
+Bei einer Änderung an einem gecachten Asset:
+
+1. `CACHE_VERSION` in `app/static/sw.js` erhöhen.
+2. Den Versionsparameter des geänderten Imports erhöhen, beispielsweise
+   `style.css?v=82` zu `style.css?v=83`.
+3. Prüfen, ob das Asset in `PRECACHE_URLS` enthalten sein muss.
+4. Nach dem Deployment die öffentliche HTML-Datei, das Asset und `sw.js`
+   kontrollieren.
+5. Die Seite in einem bereits verwendeten Browser nochmals laden. Der neue
+   Service Worker übernimmt bestehende Tabs unter Umständen erst nach dem ersten
+   Reload vollständig.
+
+Beispielprüfung:
+
+```bash
+curl -fsS https://zockdiewandan.online/static/sw.js | grep CACHE_VERSION
+curl -fsS 'https://zockdiewandan.online/static/style.css?v=VERSION' >/dev/null
+```
+
+## Konfiguration und Geheimnisse
+
+Die Produktionskonfiguration liegt in `/root/RollTheDice/.env` und wird nicht in
+Git gespeichert.
+
+Für HTTPS muss gesetzt sein:
+
+```dotenv
+ROLLTHEDICE_COOKIE_SECURE=1
+```
+
+Der Reverse-Proxy muss den ursprünglichen Host und das Protokoll weitergeben,
+insbesondere `X-Forwarded-Host` und `X-Forwarded-Proto`. Diese Werte werden für
+Origin-Prüfungen bei schreibenden Requests und WebSockets benötigt.
+
+### Erster Administrator
+
+Nur für die erstmalige Erstellung eines Administrators werden folgende Werte
+benötigt:
+
+```dotenv
+ROLLTHEDICE_ADMIN_USERNAME=Admin
+ROLLTHEDICE_ADMIN_PASSWORD=ein-langes-temporaeres-passwort
+```
+
+Nach der erfolgreichen Kontoerstellung muss
+`ROLLTHEDICE_ADMIN_PASSWORD` wieder aus `.env` entfernt und der Container neu
+erstellt werden. Es existiert kein Standardpasswort.
+
+### Registrierungsschutz
+
+Öffentliche Selbstregistrierung sollte mit Cloudflare Turnstile geschützt sein:
 
 ```dotenv
 ROLLTHEDICE_TURNSTILE_SITE_KEY=...
 ROLLTHEDICE_TURNSTILE_SECRET=...
 ```
 
-Restart with `docker compose up -d --build`. Verify that the challenge appears
-in the lobby and that the container is healthy:
+Beide Werte müssen gemeinsam gesetzt oder gemeinsam leer sein. Eine
+Teilkonfiguration führt absichtlich zu einem Startfehler. Der Secret Key darf
+niemals in HTML, JavaScript, Logs oder Dokumentation erscheinen.
+
+Prüfung:
 
 ```bash
-docker compose logs --tail=100 rollthedice
-curl -fsS http://127.0.0.1:8000/api/auth/registration-config
+curl -fsS https://zockdiewandan.online/api/auth/registration-config
 ```
 
-The response must contain `"turnstile_enabled":true`. Never expose the secret
-in HTML or JavaScript; only the site key is returned by the public config API.
-If either value is missing, startup fails deliberately instead of providing a
-false sense of protection.
+Die produktive Antwort muss bei aktivem Schutz
+`"turnstile_enabled":true` enthalten und darf nur den Site Key offenlegen.
 
-## Deleting Invalid Completed Games
+## Manuelles Deployment
 
-Administrators can permanently delete an invalid completed game in the
-administration page. The snapshot, participants, assignments, and leaderboard
-entries are removed. User profiles and rankings are calculated from the
-remaining database rows and therefore update immediately.
-
-Only a tombstone containing the game ID, basic metadata, deletion time,
-administrator, and required reason remains. It prevents legacy JSON files from
-reimporting the deleted game after a restart. The snapshot itself is not kept in
-the tombstone. Production backups created before the deletion remain the final
-recovery option.
-
-## Server Maintenance
-
-If Ubuntu reports `System restart required`, a controlled reboot is acceptable.
-
-Before reboot:
+Nur verwenden, wenn das Skript selbst nicht ausgeführt werden kann. Die
+Reihenfolge darf wegen SQLite/WAL nicht verkürzt werden:
 
 ```bash
+ssh zdwa
+cd /root/RollTheDice
+git status --short --branch
+
+docker compose stop rollthedice
+cp -a data "data.backup-$(date +%Y%m%d-%H%M%S)"
+docker compose start rollthedice
+
+git fetch origin master
+git checkout master
+git pull --ff-only origin master
+docker compose up -d --build
+
+docker compose ps
+curl --retry 12 --retry-delay 2 --retry-connrefused \
+  -fsS http://127.0.0.1:8000/ >/dev/null
+```
+
+Wenn `git status --short` Änderungen zeigt, nicht weitermachen. Zuerst klären,
+wem die Änderungen gehören und ob sie gesichert werden müssen.
+
+## Rollback
+
+### Reiner Codefehler
+
+Wenn Daten und Schema intakt sind, wird der fehlerhafte Commit lokal mit
+`git revert` rückgängig gemacht, getestet, auf `master` gepusht und mit dem
+normalen Skript erneut ausgerollt. Dadurch bleibt die Historie nachvollziehbar
+und das Deployment erstellt nochmals ein aktuelles Datenbackup.
+
+Alembic-Downgrades passieren nicht automatisch. Vor einem Rollback über eine
+Schemaänderung muss geprüft werden, ob der ältere Code mit dem bereits
+aktualisierten Schema kompatibel ist.
+
+### Beschädigte Produktionsdaten
+
+Eine Datenwiederherstellung ist ein separater Notfallvorgang und nicht Teil eines
+normalen Code-Rollbacks. Vorher müssen Ursache, gewünschter Backup-Zeitpunkt und
+der akzeptierte Datenverlust seit diesem Zeitpunkt feststehen.
+
+Grundprinzip:
+
+1. Anwendung stoppen.
+2. Den aktuellen beschädigten Stand unter einem neuen Namen erhalten.
+3. Das ausgewählte `data.backup-*` als neues `data/` kopieren.
+4. Anwendung starten und Migrationen, Login, Leaderboards und ein bekanntes
+   Spiel prüfen.
+
+Produktionsdaten nie ohne explizite Freigabe und einen bestätigten Backup-Pfad
+wiederherstellen.
+
+## Löschen ungültiger Spiele
+
+Ungültige abgeschlossene Spiele werden ausschliesslich über die Administration
+gelöscht. Dabei verschwinden Snapshot, Teilnehmer, Zuordnungen und
+Leaderboard-Einträge; Profile und Rankings werden aus den verbleibenden
+Datenbankzeilen neu berechnet.
+
+Ein Tombstone mit Spiel-ID, Metadaten, Zeitpunkt, Administrator und Begründung
+bleibt erhalten. Er verhindert, dass ein gelöschtes Legacy-Spiel beim nächsten
+Start erneut importiert wird. Das letzte vollständige Wiederherstellungsmedium
+ist deshalb ein Produktionsbackup von vor der Löschung.
+
+## Serverwartung
+
+Vor einem kontrollierten Neustart:
+
+```bash
+ssh zdwa
+cd /root/RollTheDice
 docker compose ps
 systemctl is-enabled docker
 ```
 
-Then:
-
-```bash
-reboot
-```
-
-After the server is back:
+Nach dem Neustart:
 
 ```bash
 ssh zdwa
-cd /path/to/RollTheDice
+cd /root/RollTheDice
 docker compose ps
-curl -fsS http://127.0.0.1:8000/ >/dev/null && echo "local app OK"
+curl --retry 12 --retry-delay 2 --retry-connrefused \
+  -fsS http://127.0.0.1:8000/ >/dev/null && echo "local app OK"
 ```
 
-Package updates are acceptable, but take an IONOS snapshot first when possible and avoid combining broad OS upgrades with an app deploy unless SSH is stable.
+Breite Betriebssystem-Upgrades nicht mit einem Anwendungsdeployment verbinden.
+Vor umfangreichen Serveränderungen nach Möglichkeit zusätzlich einen
+IONOS-Snapshot erstellen.
