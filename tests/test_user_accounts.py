@@ -6,6 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from alembic import command
+from alembic.config import Config
 from starlette.requests import Request
 from sqlalchemy import func, select
 
@@ -97,6 +99,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
         public_payload = auth_identity_payload(resolved)
         self.assertNotIn("csrf_token", public_payload)
         self.assertEqual(public_payload["preferences"]["announce_selection_mode"], "overlay")
+        self.assertFalse(public_payload["preferences"]["mobile_row_quick_entry"])
         self.assertEqual(public_payload["preferences"]["preferred_language"], "de")
         self.assertIn("csrf_token", auth_identity_payload(resolved, include_csrf=True))
 
@@ -122,6 +125,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
             UserPreferencesRequest(
                 announce_selection_mode="table",
                 auto_write_announced=False,
+                mobile_row_quick_entry=True,
                 preferred_language="en",
             ),
             authenticated_request,
@@ -130,6 +134,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertEqual(result["preferences"], {
             "announce_selection_mode": "table",
             "auto_write_announced": False,
+            "mobile_row_quick_entry": True,
             "preferred_language": "en",
         })
         account = auth_me(request_for(cookie=f"rollthedice_session={raw_token}"))
@@ -138,7 +143,26 @@ class AccountDatabaseTestCase(GameStateTestCase):
             user = db.scalar(select(User).where(User.username == "PrefsUser"))
             self.assertEqual(user.announce_selection_mode, "table")
             self.assertFalse(user.auto_write_announced)
+            self.assertTrue(user.mobile_row_quick_entry)
             self.assertEqual(user.preferred_language, "en")
+
+    def test_mobile_quick_entry_migration_enables_existing_but_not_new_accounts(self):
+        create_user("ExistingUser", "a-secure-password-123", must_change_password=False)
+        config = Config(str(main.BASE / "alembic.ini"))
+        config.set_main_option("script_location", str(main.BASE / "alembic"))
+        config.set_main_option("sqlalchemy.url", f"sqlite:///{self.database_path}")
+
+        command.downgrade(config, "20260824_0005")
+        command.upgrade(config, "head")
+
+        with session_scope() as db:
+            existing = db.scalar(select(User).where(User.username == "ExistingUser"))
+            self.assertTrue(existing.mobile_row_quick_entry)
+
+        create_user("NewUser", "a-secure-password-123", must_change_password=False)
+        with session_scope() as db:
+            new_user = db.scalar(select(User).where(User.username == "NewUser"))
+            self.assertFalse(new_user.mobile_row_quick_entry)
 
     def test_language_can_be_updated_independently(self):
         create_user("LanguageUser", "a-secure-password-123", must_change_password=False)

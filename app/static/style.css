@@ -2849,3 +2849,64 @@ button.danger { color: #fff; background: #b91c1c; border-color: #991b1b; }
   .login-inline { align-items: stretch; }
   .login-inline input, .login-inline button { width: 100%; }
 }
+
+/* Mobile quick entry keeps all score actions in one thumb-friendly row. */
+.dice-actions{ display:contents; }
+.mobile-row-quick-actions{ display:none; }
+
+@media (max-width:560px){
+  :root{
+    --mobile-actionbar-h:8rem;
+  }
+  .room-page #diceBar{
+    grid-template-columns:repeat(5, 3.25rem);
+    grid-template-rows:3.25rem auto;
+    row-gap:.35rem;
+    padding:0 .1rem;
+  }
+  .room-page .topbar{
+    padding:.25rem .55rem;
+  }
+  .room-page #diceBar .die{
+    width:3.25rem !important;
+    height:3.25rem !important;
+    max-width:3.25rem !important;
+    max-height:3.25rem !important;
+  }
+  .room-page #diceBar .dice-actions{
+    display:grid;
+    grid-row:2;
+    grid-column:1 / -1;
+    grid-template-columns:minmax(5.25rem, .85fr) minmax(4.75rem, .8fr) minmax(7rem, 1.35fr);
+    gap:.35rem;
+    width:100%;
+    min-width:0;
+  }
+  .room-page #mobileRowQuickActions:not([hidden]){
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:.25rem;
+    min-width:0;
+  }
+  .room-page .mobile-row-quick-button,
+  .room-page #announceBtnInline,
+  .room-page #rollBtnInline{
+    grid-row:auto !important;
+    grid-column:auto !important;
+    width:100% !important;
+    min-width:0 !important;
+    height:2.35rem !important;
+    min-height:2.35rem !important;
+    margin:0 !important;
+  }
+  .room-page .mobile-row-quick-button{
+    padding:.25rem;
+    font-size:1.15rem;
+    line-height:1;
+  }
+  .room-page #requestCorrectionBtn{
+    grid-row:2 !important;
+    grid-column:1 / -1 !important;
+    margin:.15rem 0 0 !important;
+  }
+}

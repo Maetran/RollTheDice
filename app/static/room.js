@@ -213,6 +213,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
     return {
       announceSelectionMode: preferences.announce_selection_mode === "table" ? "table" : "overlay",
       autoWriteAnnounced: preferences.auto_write_announced !== false,
+      mobileRowQuickEntry: preferences.mobile_row_quick_entry === true,
     };
   }
 
@@ -891,6 +892,30 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
     return { usable:true, reason:"Ansagen", mode };
   }
 
+  const QUICK_ROW_ORDER = [0,1,2,3,4,5,9,10,12,13,14,15];
+
+  function getQuickEntryAvailability(snapshot, field){
+    if (!userGameplayPreferences().mobileRowQuickEntry) {
+      return { usable:false, reason:"Mobile Schnelleingabe ist deaktiviert", cell:null };
+    }
+    if (IS_SPECTATOR) return { usable:false, reason:"Zuschauer können nicht schreiben", cell:null };
+    if (!snapshot || snapshot._finished) return { usable:false, reason:"Spiel ist nicht aktiv", cell:null };
+    if (snapshot?._paused) return { usable:false, reason:snapshot._pause_reason || "Spiel pausiert", cell:null };
+    if (snapshot?._superadmin_active) return { usable:false, reason:"Während Superadmin-Edit gesperrt", cell:null };
+    const iAmTurn = snapshot?._turn && String(snapshot._turn.player_id) === String(myId);
+    if (!iAmTurn) return { usable:false, reason:"Nicht an der Reihe", cell:null };
+    if (snapshot?._correction?.active) return { usable:false, reason:"Während Korrektur nicht erlaubt", cell:null };
+    if (Number(snapshot?._rolls_used || 0) < 1) return { usable:false, reason:"Erst würfeln", cell:null };
+
+    const order = field === "up" ? QUICK_ROW_ORDER.slice().reverse() : QUICK_ROW_ORDER;
+    const board = $(".player-card.me", mount);
+    const cell = order
+      .map(row => board?.querySelector(`td.cell.clickable[data-row="${row}"][data-field="${field}"]`))
+      .find(Boolean) || null;
+    if (!cell) return { usable:false, reason:"Reihe vollständig oder derzeit nicht beschreibbar", cell:null };
+    return { usable:true, reason:field === "up" ? "Nächstes Feld der Aufwärtsreihe eintragen" : "Nächstes Feld der Abwärtsreihe eintragen", cell };
+  }
+
   function syncActionButtons(snapshot){
     try{
       const rollBtn = $("#rollBtnInline", mount);
@@ -918,6 +943,18 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
         // Lange Labels muessen umbrechen, damit die Buttonbreite konstant bleibt
         ab.style.whiteSpace = 'normal';
         ab.style.lineHeight = '1.15';
+      }
+
+      const quickActions = $("#mobileRowQuickActions", mount);
+      if (quickActions){
+        const enabled = userGameplayPreferences().mobileRowQuickEntry;
+        quickActions.hidden = !enabled;
+        $$(".mobile-row-quick-button", quickActions).forEach(button => {
+          const availability = getQuickEntryAvailability(snapshot, button.dataset.quickField);
+          button.disabled = !availability.usable;
+          button.title = availability.reason;
+          button.setAttribute("aria-disabled", availability.usable ? "false" : "true");
+        });
       }
 
       scheduleRollAvailabilityRefresh();
@@ -1724,6 +1761,21 @@ function renderFromSnapshot(snapshot) {
       return;
     }
     const rollBtn = $("#rollBtnInline", mount);
+
+    const quickActions = $("#mobileRowQuickActions", mount);
+    if (quickActions && !quickActions._bound) {
+      quickActions._bound = true;
+      quickActions.addEventListener("click", event => {
+        const button = event.target.closest(".mobile-row-quick-button");
+        if (!button || button.disabled) return;
+        const availability = getQuickEntryAvailability(sb, button.dataset.quickField);
+        if (!availability.usable || !availability.cell) {
+          syncActionButtons(sb);
+          return;
+        }
+        availability.cell.click();
+      });
+    }
 
     // Ein Button setzt eine neue Ansage oder hebt die aktive Ansage wieder auf.
     const announceBtn = $("#announceBtnInline", mount);

@@ -56,6 +56,7 @@ class PasswordChangeRequest(BaseModel):
 class UserPreferencesRequest(BaseModel):
     announce_selection_mode: Literal["table", "overlay"]
     auto_write_announced: bool
+    mobile_row_quick_entry: bool
     preferred_language: Literal["de", "en"] = "de"
 
 
@@ -162,6 +163,7 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
         user.announce_selection_mode = payload.announce_selection_mode
         user.auto_write_announced = payload.auto_write_announced
+        user.mobile_row_quick_entry = payload.mobile_row_quick_entry
         user.preferred_language = payload.preferred_language
         user.updated_at = utcnow()
         db.flush()
@@ -169,6 +171,7 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
             "preferences": {
                 "announce_selection_mode": user.announce_selection_mode,
                 "auto_write_announced": user.auto_write_announced,
+                "mobile_row_quick_entry": user.mobile_row_quick_entry,
                 "preferred_language": user.preferred_language,
             }
         }

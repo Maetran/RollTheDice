@@ -46,6 +46,7 @@ class AuthIdentity:
     must_change_password: bool
     announce_selection_mode: str
     auto_write_announced: bool
+    mobile_row_quick_entry: bool
     preferred_language: str
     csrf_token: str
     session_id: int
@@ -66,6 +67,7 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
         "preferences": {
             "announce_selection_mode": identity.announce_selection_mode,
             "auto_write_announced": identity.auto_write_announced,
+            "mobile_row_quick_entry": identity.mobile_row_quick_entry,
             "preferred_language": identity.preferred_language,
         },
     }
@@ -180,6 +182,7 @@ def login(request: Request, username: str, password: str) -> tuple[AuthIdentity,
             must_change_password=user.must_change_password,
             announce_selection_mode=user.announce_selection_mode,
             auto_write_announced=user.auto_write_announced,
+            mobile_row_quick_entry=user.mobile_row_quick_entry,
             preferred_language=user.preferred_language,
             csrf_token=login_session.csrf_token,
             session_id=login_session.id,
@@ -213,6 +216,7 @@ def resolve_session(connection: Request | WebSocket) -> AuthIdentity | None:
             must_change_password=user.must_change_password,
             announce_selection_mode=user.announce_selection_mode,
             auto_write_announced=user.auto_write_announced,
+            mobile_row_quick_entry=user.mobile_row_quick_entry,
             preferred_language=user.preferred_language,
             csrf_token=login_session.csrf_token,
             session_id=login_session.id,

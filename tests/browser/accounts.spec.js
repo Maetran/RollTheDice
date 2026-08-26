@@ -47,6 +47,63 @@ test("guest sees login and registration while a new account sees only logout", a
 });
 
 
+test("mobile quick entry is opt-in for new accounts and writes the next ordered field", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.fill("#loginUsername", "Admin");
+  await page.fill("#loginPassword", "temporary-password-123");
+  await page.click("#loginForm button[type=submit]");
+  await expect(page.locator("#authBadge")).toContainText("Admin");
+
+  await page.goto("/static/account.html");
+  const preference = page.locator('input[name="mobileRowQuickEntry"]');
+  await expect(preference).not.toBeChecked();
+  await preference.check();
+  await page.click("#preferencesForm button");
+  await expect(page.locator("#preferencesMessage")).toHaveText("Spieleinstellungen gespeichert.");
+
+  const gameId = await page.evaluate(async () => {
+    const response = await fetch("/api/games", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Mobile quick entry", mode: 1 }),
+    });
+    return (await response.json()).game_id;
+  });
+  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=ignored`);
+
+  const quickActions = page.locator("#mobileRowQuickActions");
+  await expect(quickActions).toBeVisible({ timeout: 6000 });
+  const downButton = page.locator('[data-quick-field="down"]');
+  await expect(downButton).toBeEnabled();
+  page.once("dialog", dialog => dialog.accept());
+  await downButton.click();
+  await expect(page.locator('.player-card.me td[data-row="0"][data-field="down"]')).not.toBeEmpty();
+
+  const layout = await page.evaluate(() => {
+    const bar = document.querySelector("#diceBar").getBoundingClientRect();
+    const actions = document.querySelector(".dice-actions").getBoundingClientRect();
+    return {
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      barRight: bar.right,
+      actionsRight: actions.right,
+      quickButtonHeights: Array.from(document.querySelectorAll(".mobile-row-quick-button"))
+        .map(button => button.getBoundingClientRect().height),
+    };
+  });
+  expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.barRight).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.actionsRight).toBeLessThanOrEqual(layout.viewportWidth);
+  for (const height of layout.quickButtonHeights) expect(height).toBeGreaterThanOrEqual(37);
+
+  await page.click("#backToLobbyBtn");
+  await expect(page.locator("#leaveGameDialog")).toBeVisible();
+  await page.click("#leaveAbortBtn");
+  await page.waitForURL("/");
+});
+
+
 test("mobile lobby cards and leaderboard tabs stay inside the viewport", async ({ page }) => {
   await page.setViewportSize({ width: 440, height: 956 });
   await page.goto("/");

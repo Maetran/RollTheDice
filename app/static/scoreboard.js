@@ -341,9 +341,15 @@ function renderScoreboard(mount, sb, {
         ${dice.map((d,i)=>
           `<button type="button" class="die ${holds[i] ? "held" : ""}" data-i="${i}" aria-label="Würfel ${i + 1} halten oder lösen" aria-pressed="${holds[i] ? "true" : "false"}" title="halten/lösen">${dieSVG(d || 0)}</button>`
         ).join("")}
-        ${isHC ? '' : `<button id="announceBtnInline" class="small" ${announceDisabledAttr}>Ansagen</button>`}
-        ${isHC ? '' : `<button id="rollBtnInline" data-action="roll" ${rollDisabledAttr}>🎲 Würfeln</button>`}
-        ${requestBtnHTML}
+        <div class="dice-actions">
+          <div id="mobileRowQuickActions" class="mobile-row-quick-actions" aria-label="Mobile Schnelleingabe" hidden>
+            <button type="button" class="mobile-row-quick-button" data-quick-field="down" aria-label="Nächstes Feld der Abwärtsreihe eintragen" title="Abwärtsreihe schnell eintragen">⬇︎</button>
+            <button type="button" class="mobile-row-quick-button" data-quick-field="up" aria-label="Nächstes Feld der Aufwärtsreihe eintragen" title="Aufwärtsreihe schnell eintragen">⬆︎</button>
+          </div>
+          ${isHC ? '' : `<button id="announceBtnInline" class="small" ${announceDisabledAttr}>Ansagen</button>`}
+          ${isHC ? '' : `<button id="rollBtnInline" data-action="roll" ${rollDisabledAttr}>🎲 Würfeln</button>`}
+          ${requestBtnHTML}
+        </div>
       </div>
       ${isHC ? '' : `<section id="mobileAnnouncePicker" class="mobile-announce-picker" aria-label="Ansagefeld auswählen" hidden></section>`}
     </div>
