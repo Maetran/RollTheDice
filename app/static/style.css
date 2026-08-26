@@ -2850,8 +2850,8 @@ button.danger { color: #fff; background: #b91c1c; border-color: #991b1b; }
   .login-inline input, .login-inline button { width: 100%; }
 }
 
-/* Mobile quick entry keeps all score actions in one thumb-friendly row. */
-.dice-actions{ display:contents; }
+/* Wrappers remain transparent to the established desktop dice grid. */
+.dice-main, .dice-row, .dice-actions{ display:contents; }
 .mobile-row-quick-actions{ display:none; }
 
 @media (max-width:560px){
@@ -2859,40 +2859,61 @@ button.danger { color: #fff; background: #b91c1c; border-color: #991b1b; }
     --mobile-actionbar-h:8rem;
   }
   .room-page #diceBar{
-    grid-template-columns:repeat(5, clamp(3.25rem, calc((100vw - 4rem) / 5), 3.5rem));
-    grid-template-rows:clamp(3.25rem, calc((100vw - 4rem) / 5), 3.5rem) auto;
-    row-gap:.15rem;
+    grid-template-columns:minmax(0, 1fr);
+    grid-template-rows:auto;
+    gap:0;
+    width:100%;
     padding:0 .1rem;
   }
   .room-page .topbar{
     padding:0 .35rem;
   }
+  .room-page #diceBar:has(#mobileRowQuickActions:not([hidden])){
+    grid-template-columns:2.5rem minmax(0, 1fr);
+    column-gap:.25rem;
+  }
+  .room-page #diceBar .dice-main{
+    display:grid;
+    grid-column:1;
+    grid-row:1;
+    grid-template-rows:auto auto;
+    row-gap:.15rem;
+    min-width:0;
+  }
+  .room-page #diceBar:has(#mobileRowQuickActions:not([hidden])) .dice-main{
+    grid-column:2;
+  }
+  .room-page #diceBar .dice-row{
+    display:grid;
+    grid-template-columns:repeat(5, minmax(0, 1fr));
+    column-gap:.25rem;
+    align-items:center;
+    justify-items:center;
+    min-width:0;
+  }
   .room-page #diceBar .die{
-    width:clamp(3.25rem, calc((100vw - 4rem) / 5), 3.5rem) !important;
-    height:clamp(3.25rem, calc((100vw - 4rem) / 5), 3.5rem) !important;
+    width:100% !important;
+    height:auto !important;
+    aspect-ratio:1 / 1 !important;
     max-width:3.5rem !important;
     max-height:3.5rem !important;
   }
   .room-page #diceBar .dice-actions{
     display:grid;
-    grid-row:2;
-    grid-column:1 / -1;
-    grid-template-columns:minmax(4.5rem, .75fr) minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-columns:minmax(0, 2fr) minmax(0, 3fr);
     gap:.35rem;
-    justify-self:center;
-    width:min(calc(100vw - 2rem), 30rem);
-    max-width:calc(100% + 4.25rem);
+    width:100%;
     min-width:0;
-  }
-  .room-page #diceBar .dice-actions:has(#mobileRowQuickActions[hidden]){
-    grid-template-columns:minmax(0, .9fr) minmax(0, 1.1fr);
   }
   .room-page #diceBar .dice-actions:not(:has(#announceBtnInline)){
     grid-template-columns:minmax(0, 1fr);
   }
   .room-page #mobileRowQuickActions:not([hidden]){
     display:grid;
-    grid-template-columns:repeat(2, minmax(0, 1fr));
+    grid-column:1;
+    grid-row:1;
+    grid-template-rows:repeat(2, minmax(0, 1fr));
+    align-self:stretch;
     gap:.25rem;
     min-width:0;
   }
@@ -2903,12 +2924,14 @@ button.danger { color: #fff; background: #b91c1c; border-color: #991b1b; }
     grid-column:auto !important;
     width:100% !important;
     min-width:0 !important;
-    height:2.25rem !important;
-    min-height:2.25rem !important;
+    height:2.35rem !important;
+    min-height:2.35rem !important;
     margin:0 !important;
   }
   .room-page .mobile-row-quick-button{
-    padding:.25rem;
+    height:auto !important;
+    min-height:2rem !important;
+    padding:.2rem;
     font-size:1.15rem;
     line-height:1;
   }

@@ -84,25 +84,34 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
     const bar = document.querySelector("#diceBar").getBoundingClientRect();
     const actions = document.querySelector(".dice-actions").getBoundingClientRect();
     const dice = Array.from(document.querySelectorAll("#diceBar .die")).map(die => die.getBoundingClientRect());
+    const quickButtons = Array.from(document.querySelectorAll(".mobile-row-quick-button"))
+      .map(button => button.getBoundingClientRect());
     return {
       viewportWidth: window.innerWidth,
       documentWidth: document.documentElement.scrollWidth,
       barRight: bar.right,
+      barWidth: bar.width,
       actionsRight: actions.right,
       actionsWidth: actions.width,
+      actionsTop: actions.top,
       diceSpan: dice.at(-1).right - dice[0].left,
       dieWidth: dice[0].width,
-      quickButtonHeights: Array.from(document.querySelectorAll(".mobile-row-quick-button"))
-        .map(button => button.getBoundingClientRect().height),
+      diceLeft: dice[0].left,
+      diceBottom: dice[0].bottom,
+      quickButtons: quickButtons.map(rect => ({
+        top: rect.top, bottom: rect.bottom, right: rect.right, height: rect.height,
+      })),
     };
   });
   expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
   expect(layout.barRight).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.barWidth).toBeGreaterThanOrEqual(layout.viewportWidth - 36);
   expect(layout.actionsRight).toBeLessThanOrEqual(layout.viewportWidth);
-  expect(layout.actionsWidth).toBeGreaterThan(layout.diceSpan);
-  expect(layout.actionsWidth).toBeGreaterThanOrEqual(layout.viewportWidth - 36);
+  expect(layout.actionsTop).toBeGreaterThanOrEqual(layout.diceBottom);
+  expect(layout.quickButtons[0].bottom).toBeLessThanOrEqual(layout.quickButtons[1].top);
+  expect(layout.quickButtons[0].right).toBeLessThanOrEqual(layout.diceLeft);
   expect(layout.dieWidth).toBeGreaterThanOrEqual(55);
-  for (const height of layout.quickButtonHeights) expect(height).toBeGreaterThanOrEqual(35);
+  for (const button of layout.quickButtons) expect(button.height).toBeGreaterThanOrEqual(44);
 
   await page.click("#backToLobbyBtn");
   await expect(page.locator("#leaveGameDialog")).toBeVisible();
