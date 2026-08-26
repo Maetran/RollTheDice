@@ -12,7 +12,7 @@
   - Versionierte Cache-Namen (CACHE_VERSION) erleichtern das gezielte Aufräumen.
 */
 
-const CACHE_VERSION = 'v89';
+const CACHE_VERSION = 'v90';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
