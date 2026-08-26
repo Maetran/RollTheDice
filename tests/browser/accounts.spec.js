@@ -99,6 +99,7 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
       dieWidth: dice[0].width,
       diceTop: dice[0].top,
       diceLeft: dice[0].left,
+      diceRight: dice.at(-1).right,
       diceBottom: dice[0].bottom,
       quickButtons: quickButtons.map(rect => ({
         top: rect.top, bottom: rect.bottom, right: rect.right, height: rect.height,
@@ -111,11 +112,12 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
   expect(layout.actionsRight).toBeLessThanOrEqual(layout.viewportWidth);
   expect(layout.actionsTop).toBeGreaterThanOrEqual(layout.diceBottom);
   expect(Math.abs(layout.quickButtons[0].top - layout.diceTop)).toBeLessThanOrEqual(1);
-  expect(Math.abs(layout.quickButtons[0].bottom - layout.diceBottom)).toBeLessThanOrEqual(1);
-  expect(Math.abs(layout.quickButtons[1].top - layout.actionsTop)).toBeLessThanOrEqual(1);
+  expect(Math.abs(layout.quickButtons[0].height - layout.quickButtons[1].height)).toBeLessThanOrEqual(1);
   expect(Math.abs(layout.quickButtons[1].bottom - layout.actionsBottom)).toBeLessThanOrEqual(1);
+  expect(Math.abs(layout.diceLeft - (layout.actionsRight - layout.actionsWidth))).toBeLessThanOrEqual(1);
+  expect(Math.abs(layout.diceRight - layout.actionsRight)).toBeLessThanOrEqual(1);
   expect(layout.diceLeft - layout.quickButtons[0].right).toBeGreaterThanOrEqual(9);
-  expect(layout.dieWidth).toBeGreaterThanOrEqual(55);
+  expect(layout.dieWidth).toBeGreaterThanOrEqual(58);
 
   await page.click("#backToLobbyBtn");
   await expect(page.locator("#leaveGameDialog")).toBeVisible();

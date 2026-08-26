@@ -2898,6 +2898,10 @@ button.danger { color: #fff; background: #b91c1c; border-color: #991b1b; }
     max-width:3.5rem !important;
     max-height:3.5rem !important;
   }
+  .room-page #diceBar:has(#mobileRowQuickActions:not([hidden])) .die{
+    max-width:none !important;
+    max-height:none !important;
+  }
   .room-page #diceBar .dice-actions{
     display:grid;
     grid-template-columns:minmax(0, 2fr) minmax(0, 3fr);
@@ -2912,7 +2916,7 @@ button.danger { color: #fff; background: #b91c1c; border-color: #991b1b; }
     display:grid;
     grid-column:1;
     grid-row:1;
-    grid-template-rows:minmax(0, 1fr) 2.35rem;
+    grid-template-rows:repeat(2, minmax(0, 1fr));
     align-self:stretch;
     gap:.15rem;
     min-width:0;
