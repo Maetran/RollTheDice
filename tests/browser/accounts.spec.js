@@ -83,11 +83,15 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
   const layout = await page.evaluate(() => {
     const bar = document.querySelector("#diceBar").getBoundingClientRect();
     const actions = document.querySelector(".dice-actions").getBoundingClientRect();
+    const dice = Array.from(document.querySelectorAll("#diceBar .die")).map(die => die.getBoundingClientRect());
     return {
       viewportWidth: window.innerWidth,
       documentWidth: document.documentElement.scrollWidth,
       barRight: bar.right,
       actionsRight: actions.right,
+      actionsWidth: actions.width,
+      diceSpan: dice.at(-1).right - dice[0].left,
+      dieWidth: dice[0].width,
       quickButtonHeights: Array.from(document.querySelectorAll(".mobile-row-quick-button"))
         .map(button => button.getBoundingClientRect().height),
     };
@@ -95,7 +99,10 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
   expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
   expect(layout.barRight).toBeLessThanOrEqual(layout.viewportWidth);
   expect(layout.actionsRight).toBeLessThanOrEqual(layout.viewportWidth);
-  for (const height of layout.quickButtonHeights) expect(height).toBeGreaterThanOrEqual(37);
+  expect(layout.actionsWidth).toBeGreaterThan(layout.diceSpan);
+  expect(layout.actionsWidth).toBeGreaterThanOrEqual(layout.viewportWidth - 36);
+  expect(layout.dieWidth).toBeGreaterThanOrEqual(55);
+  for (const height of layout.quickButtonHeights) expect(height).toBeGreaterThanOrEqual(35);
 
   await page.click("#backToLobbyBtn");
   await expect(page.locator("#leaveGameDialog")).toBeVisible();
@@ -374,6 +381,14 @@ test("account gameplay preferences persist and control announce behavior", async
   const pokerAnnounced = page.locator('.player-card.me td.cell[data-row="14"][data-field="ang"]');
   await pokerAnnounced.click();
   await expect(page.locator("#announceBtnInline")).toContainText("Ansage aufheben");
+  const announceLayout = await page.locator("#announceBtnInline").evaluate(button => ({
+    clientHeight: button.clientHeight,
+    scrollHeight: button.scrollHeight,
+    clientWidth: button.clientWidth,
+    scrollWidth: button.scrollWidth,
+  }));
+  expect(announceLayout.scrollHeight).toBeLessThanOrEqual(announceLayout.clientHeight + 1);
+  expect(announceLayout.scrollWidth).toBeLessThanOrEqual(announceLayout.clientWidth + 1);
   const rollButton = page.locator("#rollBtnInline");
   await rollButton.click();
   await expect(rollButton).toBeEnabled();
