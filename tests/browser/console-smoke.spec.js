@@ -227,12 +227,6 @@ test("back to lobby can pause a game and resume it later", async ({ page, reques
   await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Solo`);
   await page.waitForSelector("#diceBar");
 
-  const dialogMessages = [];
-  page.on("dialog", async (dialog) => {
-    dialogMessages.push(dialog.message());
-    await dialog.accept();
-  });
-
   await page.click("#backToLobbyBtn");
   await expect(page.locator("#leaveGameDialog")).toBeVisible();
   await expect(page.locator("#leaveGameDialog")).toContainText("Pause hält das Spiel");
@@ -246,8 +240,9 @@ test("back to lobby can pause a game and resume it later", async ({ page, reques
   await page.click("#backToLobbyBtn");
   await expect(page.locator("#leaveGameDialog")).toBeVisible();
   await page.click("#leavePauseBtn");
+  await expect(page.locator("#appDialog")).toContainText("Spiel pausiert");
+  await page.click('[data-dialog-action="ok"]');
   await page.waitForURL("/");
-  expect(dialogMessages.some((message) => message.includes("Spiel pausiert"))).toBeTruthy();
 
   const info = await request.get(`/api/games/${encodeURIComponent(gameId)}`);
   expect(info.ok()).toBeTruthy();
@@ -316,6 +311,7 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
     const lr = lastRow.getBoundingClientRect();
     return {
       headerStatus: rect("#headerTurnStatus"),
+      actionFeedback: document.querySelector("#actionFeedback")?.textContent.trim() || "",
       suggestions: rect(".suggestions-area"),
       topbar: rect(".topbar"),
       chatToggle: rect("#chatToggle"),
@@ -335,6 +331,8 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
       tableWrap: rect(".player-card .table-wrap"),
       scrollHeight: document.documentElement.scrollHeight,
       viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
       loadedCss: Array.from(document.styleSheets)
         .map((sheet) => sheet.href)
         .filter(Boolean)
@@ -343,6 +341,8 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   });
 
   expect(layout.loadedCss).toContain("style.css?v=");
+  expect(layout.actionFeedback.length).toBeGreaterThan(0);
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth);
   expect(layout.headerStatus.bottom).toBeLessThanOrEqual(layout.card.top + 1);
   expect(layout.suggestions.bottom).toBeLessThanOrEqual(layout.topbar.top + 1);
   expect(layout.lastRow.bottom).toBeLessThanOrEqual(layout.topbar.top - 1);
@@ -611,8 +611,11 @@ test("mobile announce picker shows two rows and disables filled fields", async (
 
   const filledField = page.locator('.player-card.me td.cell[data-row="0"][data-field="ang"]');
   await expect(filledField).toHaveClass(/clickable/);
-  page.on("dialog", (dialog) => dialog.accept());
   await filledField.click();
+  if (await page.locator("#appDialogBackdrop:not([hidden])").isVisible()) {
+    await expect(page.locator("#appDialog")).toContainText("0 Punkte");
+    await page.click('[data-dialog-action="confirm"]');
+  }
   await expect(filledField).not.toHaveText("");
   await expect(page.locator("#announceBtnInline")).toBeEnabled();
 
@@ -694,4 +697,44 @@ test("mobile announce picker shows two rows and disables filled fields", async (
   const timing = await autoWriteTiming;
   expect(timing.afterAnimationMs).toBeGreaterThanOrEqual(450);
   await health.expectClean();
+});
+
+test("game result dialog keeps the final standings visible and prepares a new round", async ({ page, request }) => {
+  const created = await request.post("/api/games", { data: { name: "Result dialog", mode: 1 } });
+  const { game_id: gameId } = await created.json();
+  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Result&__test=1`);
+  await page.waitForSelector("#diceBar");
+
+  await page.evaluate(() => {
+    window.__rtDebugShowGameResults({
+      _results: [{ name: "Result", total: 777 }],
+      _mode: "2",
+      _hardcore: true,
+    });
+  });
+  await expect(page.locator("#appDialog")).toContainText("1. Result – 777 Punkte");
+  await expect(page.getByRole("button", { name: "Neue Runde" })).toBeVisible();
+  await page.getByRole("button", { name: "Neue Runde" }).click();
+  await page.waitForURL(/\?new_game=1/);
+  await expect(page.locator("#gameMode")).toHaveValue("2");
+  await expect(page.locator("#hardcoreChk")).toBeChecked();
+});
+
+test("protected game passphrases use an in-app dialog and stay out of the room URL", async ({ page, request }) => {
+  const created = await request.post("/api/games", {
+    data: { name: "Protected game", mode: 1, pass: "secret-round" },
+  });
+  const { game_id: gameId } = await created.json();
+  await page.goto("/");
+  await page.fill("#playerName", "ProtectedPlayer");
+  const join = page.locator(`.joinBtn[data-id="${gameId}"]`);
+  await expect(join).toBeVisible();
+  await join.click();
+  await expect(page.locator("#appDialog")).toContainText("Passphrase erforderlich");
+  await page.fill("#appDialogInput", "secret-round");
+  await page.click('[data-dialog-action="confirm"]');
+  await page.waitForURL(/room\.html\?game_id=/);
+  expect(new URL(page.url()).searchParams.has("pass")).toBe(false);
+  const stored = await page.evaluate(gid => sessionStorage.getItem(`wuerfler_pass_${gid}`), gameId);
+  expect(stored).toBe("secret-round");
 });

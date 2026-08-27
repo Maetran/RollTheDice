@@ -203,6 +203,22 @@ def initialize_persistent_database() -> None:
 app.include_router(auth_router)
 app.include_router(users_router)
 
+@app.middleware("http")
+async def static_cache_policy(request: Request, call_next):
+    """Keep HTML/SW fresh while allowing explicitly versioned assets to be immutable."""
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/static/"):
+        if path.endswith(".html"):
+            response.headers["Cache-Control"] = "no-cache, must-revalidate"
+        elif request.query_params.get("v"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    elif path in {"/manifest.webmanifest", "/manifest-en.webmanifest"}:
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    return response
+
 # Static korrekt mounten – jetzt existiert app
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 

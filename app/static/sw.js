@@ -12,7 +12,7 @@
   - Versionierte Cache-Namen (CACHE_VERSION) erleichtern das gezielte Aufräumen.
 */
 
-const CACHE_VERSION = 'v91';
+const CACHE_VERSION = 'v92';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
@@ -26,6 +26,8 @@ const PRECACHE_URLS = [
   '/static/account.html',
   '/static/admin.html',
   '/static/auth.js',
+  '/static/ui.js',
+  '/static/pwa.js',
   '/static/i18n.js',
   '/static/style.css',
   '/static/theme.js',
@@ -33,6 +35,7 @@ const PRECACHE_URLS = [
   '/static/emoji.js',
   '/static/room.js',
   '/static/chat.js',
+  '/static/offline.html',
   '/static/favicon.png',
   '/static/icons/apple-touch-icon-180.png',
   '/static/icons/icon-192.png',
@@ -56,7 +59,10 @@ self.addEventListener('install', (event) => {
       })
     );
   })());
-  self.skipWaiting();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 // — Activate: alte Caches aufräumen
@@ -115,7 +121,7 @@ async function cacheFirst(req) {
     const canonical = await cache.match(url.pathname, { ignoreSearch: true });
     if (canonical) return canonical;
     if (req.destination === 'document') {
-      const fallback = await cache.match('/static/index.html');
+      const fallback = await cache.match('/static/offline.html');
       if (fallback) return fallback;
     }
     throw e;
@@ -151,7 +157,7 @@ async function networkFirst(req) {
 
     if (req.destination === 'document') {
       const precache = await caches.open(PRECACHE);
-      const fallback = await precache.match('/static/index.html');
+      const fallback = await precache.match('/static/offline.html');
       if (fallback) return fallback;
     }
     throw e;

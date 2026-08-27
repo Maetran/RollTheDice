@@ -1,6 +1,8 @@
 import json
 import unittest
 
+import httpx
+
 from app import main
 
 
@@ -23,6 +25,24 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
             html = html_path.read_text()
             self.assertIn("/static/favicon.png?v=2", html, html_path.name)
             self.assertIn("/static/icons/apple-touch-icon-180.png?v=2", html, html_path.name)
+
+    async def test_versioned_assets_are_immutable_but_html_is_revalidated(self):
+        transport = httpx.ASGITransport(app=main.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            asset = await client.get("/static/style.css?v=93")
+            shell = await client.get("/static/room.html")
+        self.assertEqual(asset.status_code, 200)
+        self.assertIn("immutable", asset.headers.get("cache-control", ""))
+        self.assertIn("no-cache", shell.headers.get("cache-control", ""))
+
+    def test_pwa_update_and_offline_assets_are_precached(self):
+        service_worker = (main.STATIC_DIR / "sw.js").read_text()
+        self.assertIn("'/static/ui.js'", service_worker)
+        self.assertIn("'/static/pwa.js'", service_worker)
+        self.assertIn("'/static/offline.html'", service_worker)
+        self.assertIn("SKIP_WAITING", service_worker)
+        install_handler = service_worker.split("self.addEventListener('message'", 1)[0]
+        self.assertNotIn("self.skipWaiting()", install_handler)
 
     async def test_lobby_create_payload_creates_game(self):
         request = main.CreateReq.model_validate({

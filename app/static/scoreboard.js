@@ -337,6 +337,7 @@ function renderScoreboard(mount, sb, {
 
   const dicebar = readOnly ? "" : `
     <div class="topbar">
+      <div id="actionFeedback" class="action-feedback" role="status" aria-live="polite"></div>
       <div id="diceBar">
         <div id="mobileRowQuickActions" class="mobile-row-quick-actions" aria-label="Mobile Schnelleingabe" hidden>
           <button type="button" class="mobile-row-quick-button" data-quick-field="down" aria-label="Nächstes Feld der Abwärtsreihe eintragen" title="Abwärtsreihe schnell eintragen">⬇︎</button>

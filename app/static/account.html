@@ -7,8 +7,10 @@
   <link rel="manifest" href="/manifest.webmanifest?v=2">
   <link rel="icon" type="image/png" href="/static/favicon.png?v=2" sizes="32x32">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=2" sizes="180x180">
-  <script src="/static/i18n.js?v=3"></script>
-  <link rel="stylesheet" href="/static/style.css?v=92">
+  <script src="/static/i18n.js?v=4"></script>
+  <script src="/static/ui.js?v=1"></script>
+  <script src="/static/pwa.js?v=1" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=93">
   <script src="/static/theme.js?v=1"></script>
 </head>
 <body class="lobby-page">
@@ -20,6 +22,10 @@
       <div id="accountNotice" class="connection-error" hidden></div>
       <h2>Statistiken</h2>
       <div id="statistics" class="statistics-grid"></div>
+      <section id="recentGamesSection" class="recent-games-section" hidden>
+        <h2>Letzte Spiele</h2>
+        <div id="recentGames" class="recent-games-list"></div>
+      </section>
     </section>
     <section class="card password-card">
       <h2>Spieleinstellungen</h2>
@@ -43,6 +49,11 @@
         <fieldset>
           <legend>Mobile Schnelleingabe</legend>
           <label><input type="checkbox" name="mobileRowQuickEntry"> Schnellbuttons für die Aufwärts- und Abwärtsreihe auf Mobilgeräten anzeigen</label>
+        </fieldset>
+        <fieldset>
+          <legend>Mobilkomfort</legend>
+          <label><input type="checkbox" name="hapticFeedback"> Sanftes haptisches Feedback für Würfeln, Halten und Schreiben verwenden</label>
+          <label><input type="checkbox" name="keepScreenAwake"> Bildschirm während eines laufenden Spiels wach halten</label>
         </fieldset>
         <button>Spieleinstellungen speichern</button>
       </form>
@@ -75,11 +86,15 @@
     const announceMode = preferences.announce_selection_mode === 'table' ? 'table' : 'overlay';
     const autoWrite = preferences.auto_write_announced !== false;
     const mobileRowQuickEntry = preferences.mobile_row_quick_entry === true;
+    const hapticFeedback = preferences.haptic_feedback === true;
+    const keepScreenAwake = preferences.keep_screen_awake === true;
     const preferredLanguage = preferences.preferred_language === 'en' ? 'en' : 'de';
     document.querySelector(`input[name="preferredLanguage"][value="${preferredLanguage}"]`).checked = true;
     document.querySelector(`input[name="announceSelectionMode"][value="${announceMode}"]`).checked = true;
     document.querySelector(`input[name="autoWriteAnnounced"][value="${autoWrite}"]`).checked = true;
     document.querySelector('input[name="mobileRowQuickEntry"]').checked = mobileRowQuickEntry;
+    document.querySelector('input[name="hapticFeedback"]').checked = hapticFeedback;
+    document.querySelector('input[name="keepScreenAwake"]').checked = keepScreenAwake;
 
     document.getElementById('preferencesForm').addEventListener('submit', async event => {
       event.preventDefault();
@@ -87,6 +102,8 @@
       const selectedMode = document.querySelector('input[name="announceSelectionMode"]:checked')?.value;
       const selectedAutoWrite = document.querySelector('input[name="autoWriteAnnounced"]:checked')?.value;
       const selectedMobileRowQuickEntry = document.querySelector('input[name="mobileRowQuickEntry"]').checked;
+      const selectedHapticFeedback = document.querySelector('input[name="hapticFeedback"]').checked;
+      const selectedKeepScreenAwake = document.querySelector('input[name="keepScreenAwake"]').checked;
       const selectedLanguage = document.querySelector('input[name="preferredLanguage"]:checked')?.value || 'de';
       const response = await apiFetch('/api/auth/preferences', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -94,6 +111,8 @@
           announce_selection_mode: selectedMode,
           auto_write_announced: selectedAutoWrite === 'true',
           mobile_row_quick_entry: selectedMobileRowQuickEntry,
+          haptic_feedback: selectedHapticFeedback,
+          keep_screen_awake: selectedKeepScreenAwake,
           preferred_language: selectedLanguage,
         }),
       });
@@ -126,9 +145,22 @@
 
     const statsResponse = await fetch('/api/users/me/statistics', { cache: 'no-store' });
     if (statsResponse.ok) {
-      const stats = (await statsResponse.json()).player.statistics;
+      const player = (await statsResponse.json()).player;
+      const stats = player.statistics;
       document.getElementById('statistics').innerHTML = bucket('Gesamt', stats.overall, { details: false })
         + bucket('Normal', stats.normal) + bucket('Hardcore', stats.hardcore);
+      const recent = Array.isArray(player.recent_games) ? player.recent_games : [];
+      if (recent.length) {
+        document.getElementById('recentGamesSection').hidden = false;
+        document.getElementById('recentGames').innerHTML = recent.map(game => {
+          const date = new Intl.DateTimeFormat(window.ZDWA_I18N?.locale?.() || 'de-CH', { dateStyle: 'medium' }).format(new Date(game.finished_at));
+          const mode = game.hardcore ? 'Hardcore' : (String(game.mode) === '2v2' ? '2 vs 2' : `${game.mode} Spieler`);
+          return `<a class="recent-game-row" href="/static/game_view.html?id=${encodeURIComponent(game.game_id)}">
+            <span><strong>${escapeHtml(date)}</strong><small>${escapeHtml(mode)}</small></span>
+            <strong>${formatNumber(game.points, '0')} Punkte</strong>
+          </a>`;
+        }).join('');
+      }
     }
 
     document.getElementById('passwordForm').addEventListener('submit', async event => {

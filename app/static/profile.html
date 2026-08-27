@@ -7,8 +7,10 @@
   <link rel="manifest" href="/manifest.webmanifest?v=2">
   <link rel="icon" type="image/png" href="/static/favicon.png?v=2" sizes="32x32">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=2" sizes="180x180">
-  <script src="/static/i18n.js?v=2"></script>
-  <link rel="stylesheet" href="/static/style.css?v=77">
+  <script src="/static/i18n.js?v=4"></script>
+  <script src="/static/ui.js?v=1"></script>
+  <script src="/static/pwa.js?v=1" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=93">
   <script src="/static/theme.js?v=1"></script>
 </head>
 <body class="lobby-page">
@@ -19,6 +21,10 @@
       <h1 id="profileName">Spielerprofil</h1>
       <div id="profileError" class="connection-error" hidden></div>
       <div id="statistics" class="statistics-grid"></div>
+      <section id="recentGamesSection" class="recent-games-section" hidden>
+        <h2>Letzte Spiele</h2>
+        <div id="recentGames" class="recent-games-list"></div>
+      </section>
     </section>
   </main>
   <script type="module">
@@ -58,6 +64,18 @@
       statisticsEl.innerHTML = bucket('Gesamt', player.statistics.overall, { details: false })
         + bucket('Normal', player.statistics.normal)
         + bucket('Hardcore', player.statistics.hardcore);
+      const recent = Array.isArray(player.recent_games) ? player.recent_games : [];
+      if (recent.length) {
+        document.getElementById('recentGamesSection').hidden = false;
+        document.getElementById('recentGames').innerHTML = recent.map(game => {
+          const date = new Intl.DateTimeFormat(window.ZDWA_I18N?.locale?.() || 'de-CH', { dateStyle: 'medium' }).format(new Date(game.finished_at));
+          const mode = game.hardcore ? 'Hardcore' : (String(game.mode) === '2v2' ? '2 vs 2' : `${game.mode} Spieler`);
+          return `<a class="recent-game-row" href="/static/game_view.html?id=${encodeURIComponent(game.game_id)}">
+            <span><strong>${escapeHtml(date)}</strong><small>${escapeHtml(mode)}</small></span>
+            <strong>${formatNumber(game.points, '0')} Punkte</strong>
+          </a>`;
+        }).join('');
+      }
     } catch (error) {
       errorEl.textContent = error.message;
       errorEl.hidden = false;

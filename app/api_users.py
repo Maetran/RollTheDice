@@ -92,11 +92,34 @@ def _statistics_for_user(db, user_id: int) -> dict:
     }
 
 
+def _recent_games_for_user(db, user_id: int, limit: int = 10) -> list[dict]:
+    rows = db.execute(
+        select(CompletedGame, GameParticipant.points, GameParticipant.team)
+        .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
+        .where(GameParticipant.user_id == user_id)
+        .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc())
+        .limit(limit)
+    ).all()
+    return [
+        {
+            "game_id": game.game_id,
+            "game_name": game.game_name,
+            "finished_at": game.finished_at,
+            "mode": game.mode,
+            "hardcore": bool(game.hardcore),
+            "points": int(points),
+            "team": team,
+        }
+        for game, points, team in rows
+    ]
+
+
 def _public_profile(db, user: User) -> dict:
     return {
         "id": user.id,
         "username": user.username,
         "statistics": _statistics_for_user(db, user.id),
+        "recent_games": _recent_games_for_user(db, user.id),
     }
 
 

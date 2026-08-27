@@ -100,6 +100,8 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertNotIn("csrf_token", public_payload)
         self.assertEqual(public_payload["preferences"]["announce_selection_mode"], "overlay")
         self.assertFalse(public_payload["preferences"]["mobile_row_quick_entry"])
+        self.assertFalse(public_payload["preferences"]["haptic_feedback"])
+        self.assertFalse(public_payload["preferences"]["keep_screen_awake"])
         self.assertEqual(public_payload["preferences"]["preferred_language"], "de")
         self.assertIn("csrf_token", auth_identity_payload(resolved, include_csrf=True))
 
@@ -126,6 +128,8 @@ class AccountDatabaseTestCase(GameStateTestCase):
                 announce_selection_mode="table",
                 auto_write_announced=False,
                 mobile_row_quick_entry=True,
+                haptic_feedback=True,
+                keep_screen_awake=True,
                 preferred_language="en",
             ),
             authenticated_request,
@@ -135,6 +139,8 @@ class AccountDatabaseTestCase(GameStateTestCase):
             "announce_selection_mode": "table",
             "auto_write_announced": False,
             "mobile_row_quick_entry": True,
+            "haptic_feedback": True,
+            "keep_screen_awake": True,
             "preferred_language": "en",
         })
         account = auth_me(request_for(cookie=f"rollthedice_session={raw_token}"))
@@ -144,6 +150,8 @@ class AccountDatabaseTestCase(GameStateTestCase):
             self.assertEqual(user.announce_selection_mode, "table")
             self.assertFalse(user.auto_write_announced)
             self.assertTrue(user.mobile_row_quick_entry)
+            self.assertTrue(user.haptic_feedback)
+            self.assertTrue(user.keep_screen_awake)
             self.assertEqual(user.preferred_language, "en")
 
     def test_mobile_quick_entry_migration_enables_existing_but_not_new_accounts(self):
@@ -163,6 +171,8 @@ class AccountDatabaseTestCase(GameStateTestCase):
         with session_scope() as db:
             new_user = db.scalar(select(User).where(User.username == "NewUser"))
             self.assertFalse(new_user.mobile_row_quick_entry)
+            self.assertFalse(new_user.haptic_feedback)
+            self.assertFalse(new_user.keep_screen_awake)
 
     def test_language_can_be_updated_independently(self):
         create_user("LanguageUser", "a-secure-password-123", must_change_password=False)
@@ -308,6 +318,9 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertEqual(profile["statistics"]["overall"]["games_played"], 1)
         self.assertEqual(profile["statistics"]["normal"]["points_total"], 410)
         self.assertEqual(profile["statistics"]["hardcore"]["games_played"], 0)
+        self.assertEqual(len(profile["recent_games"]), 1)
+        self.assertEqual(profile["recent_games"][0]["points"], 410)
+        self.assertFalse(profile["recent_games"][0]["hardcore"])
 
     def test_team_score_is_attributed_to_both_registered_members(self):
         first = create_user("Dora", "temporary-dora-123", must_change_password=False)

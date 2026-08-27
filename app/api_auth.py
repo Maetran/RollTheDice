@@ -57,6 +57,8 @@ class UserPreferencesRequest(BaseModel):
     announce_selection_mode: Literal["table", "overlay"]
     auto_write_announced: bool
     mobile_row_quick_entry: bool
+    haptic_feedback: bool = False
+    keep_screen_awake: bool = False
     preferred_language: Literal["de", "en"] = "de"
 
 
@@ -164,6 +166,8 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
         user.announce_selection_mode = payload.announce_selection_mode
         user.auto_write_announced = payload.auto_write_announced
         user.mobile_row_quick_entry = payload.mobile_row_quick_entry
+        user.haptic_feedback = payload.haptic_feedback
+        user.keep_screen_awake = payload.keep_screen_awake
         user.preferred_language = payload.preferred_language
         user.updated_at = utcnow()
         db.flush()
@@ -172,6 +176,8 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
                 "announce_selection_mode": user.announce_selection_mode,
                 "auto_write_announced": user.auto_write_announced,
                 "mobile_row_quick_entry": user.mobile_row_quick_entry,
+                "haptic_feedback": user.haptic_feedback,
+                "keep_screen_awake": user.keep_screen_awake,
                 "preferred_language": user.preferred_language,
             }
         }

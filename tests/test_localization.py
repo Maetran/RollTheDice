@@ -12,6 +12,7 @@ USER_PAGES = {
     "profile.html",
     "account.html",
     "admin.html",
+    "offline.html",
 }
 
 
@@ -24,6 +25,8 @@ def test_every_user_facing_page_loads_shared_localization_catalog():
 def test_localization_catalog_is_available_offline():
     service_worker = (STATIC / "sw.js").read_text(encoding="utf-8")
     assert "'/static/i18n.js'" in service_worker
+    assert "'/static/ui.js'" in service_worker
+    assert "'/static/pwa.js'" in service_worker
     assert "'/manifest-en.webmanifest'" in service_worker
 
 

@@ -3,13 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <title>ZDWA – Spiel</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
   <link rel="manifest" href="/manifest.webmanifest?v=2">
   <link rel="icon" type="image/png" href="/static/favicon.png?v=2" sizes="32x32">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=2" sizes="180x180">
-  <script src="/static/i18n.js?v=3"></script>
+  <script src="/static/i18n.js?v=4"></script>
+  <script src="/static/ui.js?v=1"></script>
+  <script src="/static/pwa.js?v=1" defer></script>
   <!--
     room.html – Spielraum
     ---------------------
@@ -20,7 +22,7 @@
     - Ein schlanker Header bietet Reactions, Regeln-Link und Zurück-zur-Lobby
   -->
   <script src="/static/theme.js?v=1"></script>
-  <link rel="stylesheet" href="/static/style.css?v=92">
+  <link rel="stylesheet" href="/static/style.css?v=93">
 </head>
 <body class="room-page">
   <!-- Header: Desktop-Reactions, Regeln, Zurück zur Lobby -->
@@ -33,8 +35,10 @@
       <span class="theme-toggle-label" data-theme-label>Dunkel</span>
     </button>
     <button id="rulesSheetOpen" class="small ghost" type="button">Spielregeln</button>
+    <button id="shareGameBtn" class="small ghost room-share-button" type="button" aria-label="Spiel teilen" title="Spiel teilen">↗</button>
     <button id="backToLobbyBtn" class="small">Zurück zur Lobby</button>
   </div>
+  <div id="connectionStatus" class="connection-status" role="status" aria-live="polite" hidden></div>
 
   <!-- Scoreboard-Mount: Würfel, Buttons, Tabellen werden hier gerendert (scoreboard.js) -->
   <div id="scoreOut"></div>
@@ -83,17 +87,8 @@
   </div>
 
   <!-- Scripts: zuerst scoreboard (Renderer), dann room (WS/Steuerung als ES-Modul) -->
-  <script src="/static/scoreboard.js?v=27" defer></script>
+  <script src="/static/scoreboard.js?v=28" defer></script>
   <script src="/static/emoji.js?v=10"></script>
-  <script type="module" src="room.js?v=43"></script>
-  <script>
-    // Service Worker registrieren (Root-Scope /sw.js)
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')  // << statt /static/sw.js
-          .catch(err => console.warn('SW registration failed:', err));
-      });
-    }
-  </script>
+  <script type="module" src="room.js?v=44"></script>
 </body>
 </html>

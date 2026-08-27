@@ -76,8 +76,11 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
   await expect(quickActions).toBeVisible({ timeout: 6000 });
   const downButton = page.locator('[data-quick-field="down"]');
   await expect(downButton).toBeEnabled();
-  page.once("dialog", dialog => dialog.accept());
   await downButton.click();
+  if (await page.locator("#appDialogBackdrop:not([hidden])").isVisible()) {
+    await expect(page.locator("#appDialog")).toContainText("0 Punkte");
+    await page.click('[data-dialog-action="confirm"]');
+  }
   await expect(page.locator('.player-card.me td[data-row="0"][data-field="down"]')).not.toBeEmpty();
 
   const layout = await page.evaluate(() => {
@@ -122,6 +125,8 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
   await page.click("#backToLobbyBtn");
   await expect(page.locator("#leaveGameDialog")).toBeVisible();
   await page.click("#leaveAbortBtn");
+  await expect(page.locator("#appDialog")).toContainText("Spiel abgebrochen");
+  await page.click('[data-dialog-action="ok"]');
   await page.waitForURL("/");
 });
 
@@ -372,13 +377,19 @@ test("account gameplay preferences persist and control announce behavior", async
   await page.goto("/static/account.html");
   await expect(page.locator('input[name="announceSelectionMode"][value="overlay"]')).toBeChecked();
   await expect(page.locator('input[name="autoWriteAnnounced"][value="true"]')).toBeChecked();
+  await expect(page.locator('input[name="hapticFeedback"]')).not.toBeChecked();
+  await expect(page.locator('input[name="keepScreenAwake"]')).not.toBeChecked();
   await page.check('input[name="announceSelectionMode"][value="table"]');
   await page.check('input[name="autoWriteAnnounced"][value="false"]');
+  await page.check('input[name="hapticFeedback"]');
+  await page.check('input[name="keepScreenAwake"]');
   await page.click("#preferencesForm button");
   await expect(page.locator("#preferencesMessage")).toHaveText("Spieleinstellungen gespeichert.");
   await page.reload();
   await expect(page.locator('input[name="announceSelectionMode"][value="table"]')).toBeChecked();
   await expect(page.locator('input[name="autoWriteAnnounced"][value="false"]')).toBeChecked();
+  await expect(page.locator('input[name="hapticFeedback"]')).toBeChecked();
+  await expect(page.locator('input[name="keepScreenAwake"]')).toBeChecked();
 
   const gameId = await page.evaluate(async () => {
     const response = await fetch('/api/games', {
@@ -415,6 +426,8 @@ test("account gameplay preferences persist and control announce behavior", async
   await page.goto("/static/account.html");
   await page.check('input[name="announceSelectionMode"][value="overlay"]');
   await page.check('input[name="autoWriteAnnounced"][value="true"]');
+  await page.uncheck('input[name="hapticFeedback"]');
+  await page.uncheck('input[name="keepScreenAwake"]');
   await page.click("#preferencesForm button");
   await expect(page.locator("#preferencesMessage")).toHaveText("Spieleinstellungen gespeichert.");
 });

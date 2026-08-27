@@ -46,6 +46,13 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
   const ROLL_PENDING_TIMEOUT_MS = 5000;
   const AUTO_ANNOUNCE_WRITE_DELAY_MS = 500;
 
+  function haptic(pattern = 10) {
+    try {
+      if (!userGameplayPreferences().hapticFeedback || typeof navigator.vibrate !== "function") return;
+      navigator.vibrate(pattern);
+    } catch {}
+  }
+
   function isRollAction(obj) {
     return obj && (
       obj.action === 'roll_dice' || obj.type === 'roll_dice' || obj.t === 'roll_dice' ||
@@ -82,6 +89,9 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
     try {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(obj));
+        if (isRollAction(obj)) haptic(12);
+        else if (obj?.action === "set_hold") haptic(8);
+        else if (String(obj?.action || "").startsWith("write_field")) haptic([12, 24, 12]);
         return true;
       }
     } catch (e) {
@@ -90,10 +100,34 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
     return false;
   }
 
+  function showToast(message, options = {}) {
+    if (window.ZDWA_UI?.toast) return window.ZDWA_UI.toast(message, options);
+    console.info(message);
+    return null;
+  }
+
+  function showNotice(options) {
+    if (window.ZDWA_UI?.notice) return window.ZDWA_UI.notice(options);
+    alert(options?.message || options?.title || "Hinweis");
+    return Promise.resolve();
+  }
+
+  function askForConfirmation(options) {
+    if (window.ZDWA_UI?.confirm) return window.ZDWA_UI.confirm(options);
+    return Promise.resolve(confirm(options?.message || "Bestätigen?"));
+  }
+
+  async function askForWriteConfirmation(options) {
+    if (writeConfirmationPending) return false;
+    writeConfirmationPending = true;
+    try { return await askForConfirmation(options); }
+    finally { writeConfirmationPending = false; }
+  }
+
   function leaveRoomAfterFatalError(message) {
     window._fatalWsClose = true;
-    alert(message);
-    location.href = "/";
+    showNotice({ title: "Verbindung beendet", message, kind: "error", buttonLabel: "Zur Lobby" })
+      .finally(() => { location.href = "/"; });
   }
 
   function pauseDurationLabel(snapshot){
@@ -170,20 +204,36 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
   // ---------- State ----------
   const qs = getQS();
   const IS_SPECTATOR = !!qs.spectator;
-  if (!qs.game_id) { alert("Fehlende game_id. Zur Lobby."); location.href = "/"; return; }
+  if (!qs.game_id) {
+    showNotice({ title: "Spiel nicht gefunden", message: "Die Spiel-ID fehlt.", kind: "error", buttonLabel: "Zur Lobby" })
+      .finally(() => { location.href = "/"; });
+    return;
+  }
 
   const PID_KEY = `wuerfler_pid_${qs.game_id}`;
   const TOKEN_KEY = `wuerfler_token_${qs.game_id}`;
   const PASS_KEY = `wuerfler_pass_${qs.game_id}`;
   const PLAYER_NAME_KEY = `wuerfler_player_name_${qs.game_id}`;
-  if (!qs.pass && localStorage.getItem(PASS_KEY)) qs.pass = localStorage.getItem(PASS_KEY) || "";
-  if (qs.pass) localStorage.setItem(PASS_KEY, qs.pass);
+  if (!qs.pass) qs.pass = sessionStorage.getItem(PASS_KEY) || localStorage.getItem(PASS_KEY) || "";
+  if (qs.pass) {
+    sessionStorage.setItem(PASS_KEY, qs.pass);
+    localStorage.removeItem(PASS_KEY);
+  }
+  if (new URL(location.href).searchParams.has("pass")) {
+    const cleanUrl = new URL(location.href);
+    cleanUrl.searchParams.delete("pass");
+    history.replaceState(null, "", cleanUrl);
+  }
   if (qs.name) localStorage.setItem(PLAYER_NAME_KEY, qs.name);
   let myId = IS_SPECTATOR ? null : (localStorage.getItem(PID_KEY) || sessionStorage.getItem(PID_KEY) || null);
   let mySpectatorId = null;
   let myName = qs.name;
 
   let ws = null;
+  let reconnectAttempts = 0;
+  let connectionHideTimer = null;
+  let screenWakeLock = null;
+  let lastHapticTurnPid = null;
   let sb = null; // letzter Snapshot
   let rollRequestPending = false;
   let pendingRollSnapshotKey = null;
@@ -198,6 +248,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
   let autoAnnounceWriteTimer = null;
   let autoAnnounceWriteKey = null;
   let deferredSuggestionSnapshot = null;
+  let writeConfirmationPending = false;
   let chatHistorySeeded = false;
   let lastSuperadminSnapshotActive = false;
   const DEBUG_P_HOTKEY = false; // optionaler Debug-Hotkey "p" -> Poker/Free
@@ -208,14 +259,133 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
   let superadminState = { active: false, boardId: null, draft: {} };
   let superadminTapState = { boardId: null, count: 0, lastTs: 0 };
 
+  function setConnectionStatus(state, message, { hideAfter = 0 } = {}) {
+    const element = document.getElementById("connectionStatus");
+    if (!element) return;
+    if (connectionHideTimer) {
+      clearTimeout(connectionHideTimer);
+      connectionHideTimer = null;
+    }
+    element.dataset.state = state;
+    element.textContent = window.ZDWA_I18N?.t?.(message) || message;
+    element.hidden = false;
+    if (hideAfter > 0) {
+      connectionHideTimer = setTimeout(() => { element.hidden = true; }, hideAfter);
+    }
+  }
+
+  function turnPlayerName(snapshot) {
+    const turnId = String(snapshot?._turn?.player_id || "");
+    const player = (snapshot?._players || []).find(item => String(item?.id || "") === turnId);
+    return player?.name || snapshot?._turn?.name || "";
+  }
+
+  function actionGuidance(snapshot) {
+    if (!snapshot || snapshot._finished) return "Spiel wird geladen …";
+    if (snapshot._paused) return snapshot._pause_reason || "Spiel ist pausiert.";
+    if (IS_SPECTATOR) return "Du schaust diesem Spiel zu.";
+    if (snapshot?._superadmin_active) return "Aktionen sind während der Bearbeitung pausiert.";
+    const iAmTurn = snapshot?._turn && String(snapshot._turn.player_id) === String(myId);
+    if (!iAmTurn) {
+      const name = turnPlayerName(snapshot);
+      return name ? `Warte auf ${name}.` : "Warte auf den nächsten Zug.";
+    }
+    if (snapshot?._correction?.active) return "Wähle das korrigierte Feld oder brich mit Esc ab.";
+    const rolls = Number(snapshot?._rolls_used || 0);
+    const max = Number(snapshot?._rolls_max || 3);
+    if (rolls < 1) return "Du bist am Zug – jetzt würfeln.";
+    const roll = getRollAvailability(snapshot);
+    if (roll.code === "announce_required") return "Vor dem Weiterwürfeln ein ❗-Feld ansagen.";
+    if (rolls >= max) return "Wähle jetzt ein erlaubtes Feld zum Eintragen.";
+    return "Würfel halten, weiterwürfeln oder ein erlaubtes Feld eintragen.";
+  }
+
+  function syncActionFeedback(snapshot) {
+    const element = document.getElementById("actionFeedback");
+    if (!element) return;
+    element.textContent = window.ZDWA_I18N?.t?.(actionGuidance(snapshot)) || actionGuidance(snapshot);
+  }
+
+  async function showGameResults(snapshot) {
+    if (window._resultsShown) return;
+    window._resultsShown = true;
+    window._fatalWsClose = true;
+
+    const results = Array.isArray(snapshot?._results || snapshot?.results)
+      ? (snapshot._results || snapshot.results)
+      : [];
+    const humanList = values => {
+      const names = (values || []).filter(Boolean);
+      if (names.length <= 1) return names[0] || "";
+      return `${names.slice(0, -1).join(", ")} und ${names.at(-1)}`;
+    };
+    const labelFor = entry => {
+      if (!entry) return "Unbekannt";
+      const isTeam = entry.is_team || Array.isArray(entry.members) || entry.team || entry.team_name;
+      if (!isTeam) return entry.player || entry.name || "Spieler";
+      const teamName = entry.name || entry.team || entry.team_name || "Team";
+      const members = entry.members || entry.players || [];
+      return members.length ? `${teamName} (${humanList(members)})` : teamName;
+    };
+    const lines = results.length
+      ? results.map((entry, index) => `${index + 1}. ${labelFor(entry)}${Number.isFinite(entry?.total) ? ` – ${entry.total} Punkte` : ""}`)
+      : ["Das Spiel wurde erfolgreich beendet."];
+
+    const choice = window.ZDWA_UI?.dialog
+      ? await window.ZDWA_UI.dialog({
+          title: results.length > 1 ? "Endstand" : "Spiel beendet",
+          message: lines.join("\n"),
+          kind: "success",
+          dismissible: false,
+          actions: [
+            { id: "lobby", label: "Zur Lobby", className: "ghost" },
+            { id: "new", label: "Neue Runde", className: "primary" },
+          ],
+        })
+      : "lobby";
+    if (choice === "new") {
+      sessionStorage.setItem("zdwa_new_game_defaults", JSON.stringify({
+        mode: String(snapshot?._mode || "1"),
+        hardcore: !!snapshot?._hardcore,
+      }));
+      location.href = "/?new_game=1";
+      return;
+    }
+    location.href = "/";
+  }
+
   function userGameplayPreferences(){
     const preferences = authState?.user?.preferences || {};
     return {
       announceSelectionMode: preferences.announce_selection_mode === "table" ? "table" : "overlay",
       autoWriteAnnounced: preferences.auto_write_announced !== false,
       mobileRowQuickEntry: preferences.mobile_row_quick_entry === true,
+      hapticFeedback: preferences.haptic_feedback === true,
+      keepScreenAwake: preferences.keep_screen_awake === true,
     };
   }
+
+  async function syncScreenWakeLock(snapshot = sb) {
+    const shouldHold = userGameplayPreferences().keepScreenAwake
+      && document.visibilityState === "visible"
+      && !!snapshot
+      && !snapshot._finished
+      && !snapshot._aborted;
+    if (!shouldHold) {
+      if (screenWakeLock) {
+        try { await screenWakeLock.release(); } catch {}
+        screenWakeLock = null;
+      }
+      return;
+    }
+    if (screenWakeLock || !navigator.wakeLock?.request) return;
+    try {
+      screenWakeLock = await navigator.wakeLock.request("screen");
+      screenWakeLock.addEventListener("release", () => { screenWakeLock = null; }, { once: true });
+    } catch {}
+  }
+
+  document.addEventListener("visibilitychange", () => syncScreenWakeLock(sb));
 
   // Steuerung der Sichtbarkeit des Wuerfeln-Buttons im Ansage-Pick-Mode.
   // Wichtig: Wir verwenden `visibility:hidden` (nicht `display:none`),
@@ -471,6 +641,32 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
         });
       }
     } catch {}
+  }
+
+  function bindShareGameButton() {
+    const button = document.getElementById("shareGameBtn");
+    if (!button || button._bound) return;
+    button._bound = true;
+    button.addEventListener("click", async () => {
+      const url = new URL(location.href);
+      url.searchParams.delete("pass");
+      url.searchParams.delete("name");
+      const shareData = {
+        title: "ZDWA – Zock die Wand an",
+        text: "Komm zu meiner ZDWA-Runde!",
+        url: url.toString(),
+      };
+      try {
+        if (navigator.share) {
+          await navigator.share(shareData);
+          return;
+        }
+        await navigator.clipboard.writeText(shareData.url);
+        showToast("Spielelink kopiert.", { kind: "success" });
+      } catch (error) {
+        if (error?.name !== "AbortError") showToast("Spielelink konnte nicht geteilt werden.", { kind: "error" });
+      }
+    });
   }
 
   function closeLeaveGameDialog(){
@@ -957,6 +1153,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
         });
       }
 
+      syncActionFeedback(snapshot);
       scheduleRollAvailabilityRefresh();
     }catch{}
   }
@@ -1085,6 +1282,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
   function connect() {
       // --- "Zurück zur Lobby" mit Auswahl: pausieren oder abbrechen ---
     bindRulesSheet();
+    bindShareGameButton();
     bindLeaveGameDialog();
     (function bindBackToLobby() {
       const btn = document.getElementById("backToLobbyBtn");
@@ -1096,9 +1294,12 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
         openLeaveGameDialog();
       });
     })();
+    setConnectionStatus(reconnectAttempts ? "reconnecting" : "connecting", reconnectAttempts ? "Verbindung wird wiederhergestellt …" : "Verbindung wird hergestellt …");
     ws = new WebSocket(wsURL(qs.game_id));
 
 	    ws.addEventListener("open", () => {
+	      reconnectAttempts = 0;
+	      setConnectionStatus("online", "Verbunden", { hideAfter: 1400 });
 	      initChat(ws, { meName: myName });
 	      syncSideChatAnchor();
 	      if (IS_SPECTATOR) {
@@ -1126,12 +1327,6 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
       // Abbruch-Notice (kommt vor dem Snapshot)
       if (msg.notice && msg.notice.type === "ended") {
         window._lastEndedBy = msg.notice.by || null;
-        // Sofort informieren (nur einmal)
-        if (!window._abortAlerted) {
-          alert(`${window._lastEndedBy || "Ein Spieler"} hat das Spiel abgebrochen.`);
-          window._abortAlerted = true;
-        }
-        // kein return nötig; der folgende Snapshot erledigt den Redirect
       }
 
       // Join-Response
@@ -1140,7 +1335,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
         sessionStorage.setItem(PID_KEY, myId);
         localStorage.setItem(PID_KEY, myId);
         localStorage.setItem(PLAYER_NAME_KEY, myName);
-        if (qs.pass) localStorage.setItem(PASS_KEY, qs.pass);
+        if (qs.pass) sessionStorage.setItem(PASS_KEY, qs.pass);
       }
       if (msg.resume_token) {
         localStorage.setItem(TOKEN_KEY, String(msg.resume_token));
@@ -1150,19 +1345,20 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
       }
       if (msg.paused) {
         const label = msg.pause_remaining_label || pauseDurationLabel(sb);
-        alert(`Spiel pausiert. Du kannst es innerhalb von ${label} wieder aufnehmen.`);
         window._fatalWsClose = true;
         try { ws.close(1000); } catch {}
-        location.href = "/";
+        showNotice({
+          title: "Spiel pausiert",
+          message: `Du kannst es innerhalb von ${label} wieder aufnehmen.`,
+          kind: "info",
+          buttonLabel: "Zur Lobby",
+        }).finally(() => { location.href = "/"; });
         return;
       }
 
       // Fehler
       if (msg.error) {
         console.warn("Serverfehler:", msg.error);
-        if (superadminState.active || /superadmin/i.test(String(msg.error || ""))) {
-          alert(msg.error);
-        }
         if (rollRequestPending) {
           clearPendingRoll();
           clearRollAnimation();
@@ -1186,6 +1382,7 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
           leaveRoomAfterFatalError("Beitritt abgelehnt: " + msg.error);
           return;
         }
+        showToast(msg.error, { kind: "error", duration: 5000 });
       }
 
       if (msg.superadmin && msg.superadmin.active) {
@@ -1219,65 +1416,20 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
 
         // Spielende
         if (sb && sb._finished) {
-          // --- Sonderfall: Abbruch ---
           if (sb._aborted) {
-            // Falls Notice schon gezeigt wurde, nicht doppelt alerten.
-            if (!window._abortAlerted) {
-              const by = window._lastEndedBy;
-              alert(`Spiel abgebrochen${by ? ` – ${by} hat das Spiel beendet.` : ""}`);
-              window._abortAlerted = true;
-            }
-            setTimeout(() => { location.href = "/"; }, 400);
+            if (window._abortAlerted) return;
+            window._abortAlerted = true;
+            window._fatalWsClose = true;
+            const by = window._lastEndedBy;
+            showNotice({
+              title: "Spiel abgebrochen",
+              message: by ? `${by} hat das Spiel beendet.` : "Das Spiel wurde beendet.",
+              kind: "warning",
+              buttonLabel: "Zur Lobby",
+            }).finally(() => { location.href = "/"; });
             return;
           }
-
-          // --- Reguläres Ende (Sieger/Platzierungen) ---
-          try {
-            const res = (sb._results || sb.results) || [];
-            const asNumber = (v) => (typeof v === "number" && isFinite(v)) ? v : null;
-            const humanList = (arr) => {
-              const names = (arr || []).filter(Boolean);
-              if (names.length <= 1) return names[0] || "";
-              return names.slice(0, -1).join(", ") + " und " + names[names.length - 1];
-            };
-            const toLabel = (entry) => {
-              if (!entry) return { label: "Unbekannt", score: null };
-              const isTeam = entry.is_team || Array.isArray(entry.members) || entry.team || entry.team_name;
-              if (isTeam) {
-                const teamName = entry.name || entry.team || entry.team_name || "Team";
-                const members = entry.members || entry.players || [];
-                const label = members && members.length
-                  ? `${teamName}, mit ${humanList(members)}`
-                  : `${teamName}`;
-                return { label, score: asNumber(entry.total) };
-              }
-              const label = entry.player || entry.name || "Spieler";
-              return { label, score: asNumber(entry.total) };
-            };
-
-            if (Array.isArray(res) && res.length > 0) {
-              if (res.length === 1) {
-                const top = toLabel(res[0]);
-                alert(`Spiel beendet – Sieger: ${top.label}${top.score != null ? ` (${top.score} Punkte)` : ""}`);
-              } else {
-                const lines = [];
-                lines.push("Spiel zu Ende, es gibt folgende Platzierungen:");
-                const top = toLabel(res[0]);
-                lines.push(`Sieger: ${top.label}${top.score != null ? ` (${top.score} Punkte)` : ""}`);
-                if (res.length > 1) {
-                  lines.push("Weitere Platzierungen:");
-                  for (let i = 1; i < res.length; i++) {
-                    const e = toLabel(res[i]);
-                    lines.push(`${i + 1}. ${e.label}${e.score != null ? ` (${e.score} Punkte)` : ""}`);
-                  }
-                }
-                alert(lines.join("\n"));
-              }
-            } else {
-              alert("Spiel beendet.");
-            }
-          } catch {}
-          setTimeout(() => { location.href = "/"; }, 600);
+          showGameResults(sb);
           return;
         }
       }
@@ -1327,9 +1479,16 @@ import { initChat, addChatMessage } from "./chat.js?v=6";
       clearRollAnimation();
       syncActionButtons(sb);
       if (window._fatalWsClose) return;
-      setTimeout(connect, 1000);
+      reconnectAttempts += 1;
+      setConnectionStatus(navigator.onLine ? "reconnecting" : "offline", navigator.onLine ? "Verbindung unterbrochen – neuer Versuch …" : "Offline – warte auf eine Internetverbindung");
+      const delay = Math.min(1000 * Math.pow(1.6, reconnectAttempts - 1), 10000);
+      setTimeout(connect, delay);
     });
   }
+  window.addEventListener("offline", () => setConnectionStatus("offline", "Offline – warte auf eine Internetverbindung"));
+  window.addEventListener("online", () => {
+    if (!ws || ws.readyState === WebSocket.CLOSED) setConnectionStatus("reconnecting", "Internetverbindung verfügbar – verbinde neu …");
+  });
   connect();
 
   function seedChatHistoryFromSnapshot(snapshot){
@@ -1362,6 +1521,11 @@ function renderFromSnapshot(snapshot) {
     const rollsUsed = snapshot?._rolls_used ?? 0;
     const rollsMax  = snapshot?._rolls_max ?? 3;
     const announced = snapshot?._announced_row4 || null;
+    if (lastHapticTurnPid !== null && String(lastHapticTurnPid) !== String(turnPid) && iAmTurn) {
+      haptic([18, 45, 18]);
+    }
+    lastHapticTurnPid = turnPid;
+    syncScreenWakeLock(snapshot);
 
     window.renderScoreboard(mount, snapshot, {
       myPlayerId: myId,
@@ -1373,6 +1537,7 @@ function renderFromSnapshot(snapshot) {
     });
     syncBoardCountClasses();
     syncHeaderTurnStatus(snapshot);
+    syncActionFeedback(snapshot);
     applyRollAnimation();
 
     wireDiceBar();
@@ -1744,6 +1909,7 @@ function renderFromSnapshot(snapshot) {
   if (new URLSearchParams(location.search).get("__test") === "1") {
     window.__rtDebugRenderSuggestionsForSnapshot = renderSuggestionsForSnapshot;
     window.__rtDebugIsLastAllowedRoll = isLastAllowedRoll;
+    window.__rtDebugShowGameResults = showGameResults;
   }
 
   // --- DiceBar: Hold/Unhold, Roll, Correction-Request, ESC-Cancel ---
@@ -1752,6 +1918,15 @@ function renderFromSnapshot(snapshot) {
    * sowie ESC-Handling zum Abbrechen des Korrekturmodus.
    */
   function wireDiceBar() {
+    if (!mount._disabledReasonBound) {
+      mount._disabledReasonBound = true;
+      mount.addEventListener("pointerdown", event => {
+        const button = event.target.closest("#diceBar button:disabled, #requestCorrectionBtn:disabled");
+        if (!button) return;
+        const reason = button.title || "Diese Aktion ist gerade nicht verfügbar.";
+        showToast(reason, { kind: "info", duration: 2400 });
+      }, true);
+    }
     if (IS_SPECTATOR) {
       const rollBtn0 = $("#rollBtnInline", mount);
       if (rollBtn0) { rollBtn0.disabled = true; rollBtn0.title = "Zuschauer können nicht würfeln"; }
@@ -1919,7 +2094,7 @@ function renderFromSnapshot(snapshot) {
     if (mount._gridBound) return;
     mount._gridBound = true;
 
-    mount.addEventListener("click", (e) => {
+    mount.addEventListener("click", async (e) => {
       if (IS_SPECTATOR) return;
       const totalEl = e.target.closest(".pc-total");
       if (totalEl && handleSuperadminTap(totalEl)) return;
@@ -2009,7 +2184,12 @@ function renderFromSnapshot(snapshot) {
             }
           } else {
             // Nicht legal → Confirm zum Streichen
-            const ok = confirm('Zockerregel: Nach "zocken" darf ein Poker nicht mehr geschrieben werden. Willst du den Poker wirklich streichen?');
+            const ok = await askForWriteConfirmation({
+              title: "Poker streichen?",
+              message: 'Nach „zocken“ darf ein Poker nicht mehr geschrieben werden. Willst du das Feld wirklich mit 0 Punkten eintragen?',
+              confirmLabel: "Streichen",
+              danger: true,
+            });
             if (!ok) return; // Spieler darf neu wählen
             if (iAmCorrector) {
               safeSend(ws, { action: "write_field_correction", row, field, strike: true });
@@ -2053,7 +2233,12 @@ function renderFromSnapshot(snapshot) {
         // Nur wenn der berechnete Wert wirklich 0 ist, nachfragen (Strike).
         // Hinweis: Bei ⬇︎/⬆︎ wurde oben bereits auf „dran“ geprüft und ggf. abgebrochen.
         if (points === 0) {
-          const ok = confirm("Willst du dieses Feld wirklich streichen?");
+          const ok = await askForWriteConfirmation({
+            title: "Feld streichen?",
+            message: "Dieses Ergebnis gibt 0 Punkte. Möchtest du das Feld wirklich streichen?",
+            confirmLabel: "Streichen",
+            danger: true,
+          });
           if (!ok) return;
         }
       }

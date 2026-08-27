@@ -18,9 +18,11 @@
   <meta name="color-scheme" content="light dark">
   <link rel="icon" type="image/png" href="/static/favicon.png?v=2" sizes="32x32">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=2" sizes="180x180">
-  <script src="/static/i18n.js?v=2"></script>
+  <script src="/static/i18n.js?v=4"></script>
+  <script src="/static/ui.js?v=1"></script>
+  <script src="/static/pwa.js?v=1" defer></script>
   <script src="/static/theme.js?v=1"></script>
-  <link rel="stylesheet" href="/static/style.css?v=82">
+  <link rel="stylesheet" href="/static/style.css?v=93">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -55,7 +57,7 @@
     </header>
 
     <!-- 1) Wer bist du? – Name wird im LocalStorage gemerkt -->
-    <div class="setup-grid">
+    <div id="setupGrid" class="setup-grid">
       <section id="playerSetupCard" class="card setup-card player-setup-card">
         <div id="playerSectionTitle" class="section-title-row">
           <h2>Spieler</h2>
@@ -104,7 +106,7 @@
     </div>
 
     <!-- 3) Offene Spiele – noch nicht gestartete Spiele -->
-    <section class="card">
+    <section id="openGamesCard" class="card">
       <div class="section-title-row">
         <h2>Offene Spiele</h2>
         <button id="refreshBtn" class="small">Aktualisieren</button>
@@ -114,9 +116,9 @@
     </section>
 
     <!-- 3b) Laufende Spiele – beitreten als Zuschauer -->
-    <section class="card">
+    <section id="runningGamesCard" class="card">
       <div class="section-title-row">
-        <h2>Laufende Spiele</h2>
+        <h2 id="runningGamesTitle">Laufende Spiele</h2>
         <button id="refreshRunningBtn" class="small">Aktualisieren</button>
       </div>
       <p class="muted small section-hint">Klicke auf „Zuschauen“, um dem laufenden Spiel beizutreten (ohne Aktionen).</p>
@@ -180,6 +182,10 @@
     const listEl     = document.getElementById('gamesList');
     const refreshBtn = document.getElementById('refreshBtn');
     const runningEl  = document.getElementById('runningList');
+    const setupGrid = document.getElementById('setupGrid');
+    const openGamesCard = document.getElementById('openGamesCard');
+    const runningGamesCard = document.getElementById('runningGamesCard');
+    const runningGamesTitle = document.getElementById('runningGamesTitle');
     const refreshRunningBtn = document.getElementById('refreshRunningBtn');
     const recentBox = document.getElementById("recentBox");
     const alltimeBox = document.getElementById("alltimeBox");
@@ -214,6 +220,44 @@
     let turnstileToken = null;
     let turnstileWidgetId = null;
     let turnstileEnabled = false;
+
+    async function requestPassphrase() {
+      if (window.ZDWA_UI?.prompt) {
+        const value = await window.ZDWA_UI.prompt({
+          title: 'Passphrase erforderlich',
+          message: 'Dieses Spiel ist passwortgeschützt.',
+          label: 'Passphrase',
+          confirmLabel: 'Weiter',
+          input: { label: 'Passphrase', type: 'password', autocomplete: 'current-password' },
+        });
+        return value == null ? null : String(value).trim();
+      }
+      return (prompt('Dieses Spiel ist passwortgeschützt. Bitte Passwort eingeben:') || '').trim();
+    }
+
+    function lobbyNotice(message, { title = 'Hinweis', kind = 'warning' } = {}) {
+      if (window.ZDWA_UI?.notice) return window.ZDWA_UI.notice({ title, message, kind });
+      alert(message);
+      return Promise.resolve();
+    }
+
+    function storeGamePass(gid, pass) {
+      if (!gid || !pass) return;
+      try {
+        sessionStorage.setItem(`${PASS_PREFIX}${gid}`, pass);
+        localStorage.removeItem(`${PASS_PREFIX}${gid}`);
+      } catch {}
+    }
+
+    try {
+      if (new URLSearchParams(location.search).get('new_game') === '1') {
+        const defaults = JSON.parse(sessionStorage.getItem('zdwa_new_game_defaults') || '{}');
+        if (['1', '2', '3', '2v2'].includes(String(defaults.mode))) modeSel.value = String(defaults.mode);
+        hcChk.checked = defaults.hardcore === true;
+        sessionStorage.removeItem('zdwa_new_game_defaults');
+        setTimeout(() => document.querySelector('.create-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+      }
+    } catch {}
 
     function loadTurnstileScript() {
       if (window.turnstile) return Promise.resolve();
@@ -346,7 +390,11 @@
     }
 
     function localPassFor(gid){
-      try { return localStorage.getItem(`${PASS_PREFIX}${gid}`) || ""; }
+      try {
+        const stored = sessionStorage.getItem(`${PASS_PREFIX}${gid}`) || localStorage.getItem(`${PASS_PREFIX}${gid}`) || "";
+        if (stored) storeGamePass(gid, stored);
+        return stored;
+      }
       catch { return ""; }
     }
 
@@ -438,10 +486,19 @@
       }).join('');
     }
 
+    function prioritizeResumableGames() {
+      const hasResumableGame = !!runningEl?.querySelector('.resumeBtn');
+      runningGamesCard?.classList.toggle('priority-card', hasResumableGame);
+      if (runningGamesTitle) runningGamesTitle.textContent = hasResumableGame ? 'Spiel fortsetzen' : 'Laufende Spiele';
+      if (hasResumableGame) setupGrid?.before(runningGamesCard);
+      else openGamesCard?.after(runningGamesCard);
+    }
+
     function renderRunningList(games) {
       if (!runningEl) return;
       if (!games.length) {
         runningEl.innerHTML = `<div class="muted">Aktuell keine laufenden Spiele.</div>`;
+        prioritizeResumableGames();
         return;
       }
 
@@ -515,6 +572,7 @@
           </div>
         `;
       }).join('');
+      prioritizeResumableGames();
     }
 
     // Klick-Handler: Zuschauen (laufende Spiele)
@@ -531,30 +589,32 @@
         }
         const storedName = isResume ? localNameFor(gid) : "";
         const pname = (storedName || nameInput.value || 'Gast').trim() || 'Gast';
-        if (!gid) { alert('Ungültige Spiel-ID. Bitte aktualisieren.'); return; }
+        if (!gid) { await lobbyNotice('Ungültige Spiel-ID. Bitte aktualisieren.'); return; }
         try {
           const chk = await fetch(`/api/games/${encodeURIComponent(gid)}`, {cache:'no-store'}).then(r=>r.ok?r.json():{exists:false});
-          if (chk && chk.exists === false) { alert('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
+          if (chk && chk.exists === false) { await lobbyNotice('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
         } catch {}
         let pass = isResume ? localPassFor(gid) : "";
         if (needsPass) {
           if (!pass) {
-            pass = (prompt("Dieses Spiel ist passwortgeschützt. Bitte Passwort eingeben:") || "").trim();
+            pass = await requestPassphrase();
+            if (pass === null) return;
           }
           // Preflight
           try {
             const resp = await fetch(`/api/games/${encodeURIComponent(gid)}?check=1&pass=${encodeURIComponent(pass)}`, { cache: 'no-store' });
             if (!resp.ok) {
-              alert("Falsche Passphrase – bitte erneut versuchen.");
+              await lobbyNotice("Falsche Passphrase – bitte erneut versuchen.", { title: 'Beitritt nicht möglich', kind: 'error' });
               return;
             }
-            if (isResume) localStorage.setItem(`${PASS_PREFIX}${gid}`, pass);
+            if (isResume) storeGamePass(gid, pass);
           } catch (err) {
-            alert("Fehler beim Prüfen der Passphrase.");
+            await lobbyNotice("Fehler beim Prüfen der Passphrase.", { title: 'Verbindungsfehler', kind: 'error' });
             return;
           }
         }
-        const params = { game_id: gid, name: pname, pass };
+        storeGamePass(gid, pass);
+        const params = { game_id: gid, name: pname };
         if (!isResume) params.spectator = "1";
         const qs = new URLSearchParams(params).toString();
         location.href = `/static/room.html?${qs}`;
@@ -568,27 +628,29 @@
       const gid = btn.dataset.id;
       const needsPass = btn.dataset.pass === "1";
       const pname = (nameInput.value || 'Gast').trim() || 'Gast';
-      if (!gid) { alert('Ungültige Spiel-ID. Bitte aktualisieren.'); return; }
+      if (!gid) { await lobbyNotice('Ungültige Spiel-ID. Bitte aktualisieren.'); return; }
       try {
         const chk = await fetch(`/api/games/${encodeURIComponent(gid)}`, {cache:'no-store'}).then(r=>r.ok?r.json():{exists:false});
-        if (chk && chk.exists === false) { alert('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
+        if (chk && chk.exists === false) { await lobbyNotice('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
       } catch {}
       let pass = "";
       if (needsPass) {
-        pass = (prompt("Dieses Spiel ist passwortgeschützt. Bitte Passwort eingeben:") || "").trim();
+        pass = await requestPassphrase();
+        if (pass === null) return;
         // sofort zum Server schicken und prüfen (Preflight)
         try {
           const resp = await fetch(`/api/games/${encodeURIComponent(gid)}?check=1&pass=${encodeURIComponent(pass)}`, { cache: 'no-store' });
           if (!resp.ok) {
-            alert("Falsche Passphrase – bitte erneut versuchen.");
+            await lobbyNotice("Falsche Passphrase – bitte erneut versuchen.", { title: 'Beitritt nicht möglich', kind: 'error' });
             return; // bleib in der Lobby
           }
         } catch (err) {
-          alert("Fehler beim Prüfen der Passphrase.");
+          await lobbyNotice("Fehler beim Prüfen der Passphrase.", { title: 'Verbindungsfehler', kind: 'error' });
           return;
         }
       }
-      const qs = new URLSearchParams({ game_id: gid, name: pname, pass }).toString();
+      storeGamePass(gid, pass);
+      const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
       location.href = `/static/room.html?${qs}`;
 
     });
@@ -619,7 +681,8 @@
         const data = await res.json();
         const gid = data.game_id || data.id;
         if (!gid) throw new Error('Antwort ohne game_id');
-        const qs = new URLSearchParams({ game_id: gid, name: pname, pass: passInput.value }).toString();
+        storeGamePass(gid, passInput.value);
+        const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
         location.href = `/static/room.html?${qs}`;   // FIX
       } catch (e) {
         const raw = String(e && e.message ? e.message : e);
@@ -834,13 +897,5 @@
     }
     function escapeAttr(s){ return String(s).replace(/"/g, '&quot;'); }
   </script>
-  <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .catch(err => console.warn('SW registration failed:', err));
-    });
-  }
-</script>
 </body>
 </html>

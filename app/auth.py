@@ -47,6 +47,8 @@ class AuthIdentity:
     announce_selection_mode: str
     auto_write_announced: bool
     mobile_row_quick_entry: bool
+    haptic_feedback: bool
+    keep_screen_awake: bool
     preferred_language: str
     csrf_token: str
     session_id: int
@@ -68,6 +70,8 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
             "announce_selection_mode": identity.announce_selection_mode,
             "auto_write_announced": identity.auto_write_announced,
             "mobile_row_quick_entry": identity.mobile_row_quick_entry,
+            "haptic_feedback": identity.haptic_feedback,
+            "keep_screen_awake": identity.keep_screen_awake,
             "preferred_language": identity.preferred_language,
         },
     }
@@ -183,6 +187,8 @@ def login(request: Request, username: str, password: str) -> tuple[AuthIdentity,
             announce_selection_mode=user.announce_selection_mode,
             auto_write_announced=user.auto_write_announced,
             mobile_row_quick_entry=user.mobile_row_quick_entry,
+            haptic_feedback=user.haptic_feedback,
+            keep_screen_awake=user.keep_screen_awake,
             preferred_language=user.preferred_language,
             csrf_token=login_session.csrf_token,
             session_id=login_session.id,
@@ -217,6 +223,8 @@ def resolve_session(connection: Request | WebSocket) -> AuthIdentity | None:
             announce_selection_mode=user.announce_selection_mode,
             auto_write_announced=user.auto_write_announced,
             mobile_row_quick_entry=user.mobile_row_quick_entry,
+            haptic_feedback=user.haptic_feedback,
+            keep_screen_awake=user.keep_screen_awake,
             preferred_language=user.preferred_language,
             csrf_token=login_session.csrf_token,
             session_id=login_session.id,

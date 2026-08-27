@@ -23,6 +23,8 @@ class User(Base):
     announce_selection_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="overlay")
     auto_write_announced: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     mobile_row_quick_entry: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    haptic_feedback: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    keep_screen_awake: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     preferred_language: Mapped[str] = mapped_column(String(2), nullable=False, default="de")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
