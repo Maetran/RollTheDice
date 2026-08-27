@@ -2256,16 +2256,22 @@ button:disabled:hover{
 
 @media (max-width:560px){
   .room-page{
-    padding-bottom:calc(var(--mobile-chatbar-h) + .75rem);
+    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .65rem);
   }
   .room-page.superadmin-active{
-    padding-bottom:calc(var(--mobile-chatbar-h) + 5.4rem);
+    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + 5.4rem);
   }
   .room-page .room-header{
     display:grid;
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
     grid-template-columns:minmax(0, 1fr) auto auto;
     align-items:center;
     gap:.3rem;
+    z-index:1350;
+    margin:0;
   }
   .room-page .header-turn-status{
     grid-column:1;
@@ -2290,47 +2296,52 @@ button:disabled:hover{
   .room-page #scoreOut > .muted{
     display:none !important;
   }
+  .room-page #scoreOut{
+    margin-top:calc(2.6rem + .35rem);
+  }
   .room-page .players-grid{
     order:1;
     margin-top:.35rem;
   }
   .room-page .suggestions-area{
     order:2;
-    position:static !important;
-    left:auto;
-    right:auto;
-    bottom:auto;
-    z-index:auto;
-    width:calc(100% - 1rem);
-    height:1.65rem;
-    min-height:1.65rem;
-    margin:.35rem .5rem 0;
+    position:fixed !important;
+    left:.75rem;
+    right:.75rem;
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap));
+    z-index:1290;
+    width:calc(100% - 1.5rem);
+    min-height:var(--mobile-suggestionsbar-h);
+    margin:0;
     display:flex;
     align-items:center;
     justify-content:center;
   }
   .room-page .suggestions-area:has(.suggestions:empty){
-    min-height:1.65rem;
-    height:1.65rem;
-    margin:.35rem .5rem 0;
+    min-height:0;
+    height:0;
+    margin:0;
     overflow:hidden;
   }
   .room-page .topbar{
     order:3;
-    position:relative !important;
-    left:auto;
-    right:auto;
-    bottom:auto;
-    z-index:auto;
-    width:calc(100% - 1rem);
-    height:auto;
-    min-height:0;
-    margin:.4rem .5rem 0;
+    position:fixed !important;
+    left:0;
+    right:0;
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-action-gap));
+    z-index:1300;
+    width:100%;
+    height:var(--mobile-actionbar-h);
+    min-height:var(--mobile-actionbar-h);
+    margin:0;
     border:1px solid var(--border);
-    border-radius:var(--radius);
-    background:var(--surface);
-    box-shadow:var(--shadow-sm);
-    backdrop-filter:none;
+    border-left:0;
+    border-right:0;
+    border-bottom:0;
+    border-radius:8px 8px 0 0;
+    background:rgba(244,246,248,.96);
+    box-shadow:0 -10px 24px rgba(15,23,42,.12);
+    backdrop-filter:saturate(1.2) blur(12px);
   }
   .room-page .mobile-announce-picker{
     left:.4rem;
@@ -2707,11 +2718,12 @@ button:disabled:hover{
    several specialised board-count breakpoints above. */
 @media (max-width:560px){
   .room-page .room-header{
-    grid-template-columns:minmax(0, 1fr) auto auto auto;
+    grid-template-columns:minmax(0, 1fr) auto auto auto auto;
   }
   .room-page .room-header > .theme-toggle{ grid-column:2; grid-row:1; }
   .room-page #rulesSheetOpen{ grid-column:3; grid-row:1; }
-  .room-page #backToLobbyBtn{ grid-column:4; grid-row:1; }
+  .room-page .room-share-button{ grid-column:4; grid-row:1; }
+  .room-page #backToLobbyBtn{ grid-column:5; grid-row:1; }
 }
 @media (min-width:561px){
   .room-page .room-header{
@@ -2978,7 +2990,7 @@ body.app-dialog-open{ overflow:hidden; }
   .app-dialog-actions{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); }
   .app-dialog-actions > :only-child{ grid-column:1 / -1; }
   .app-toast-region{
-    top:max(.45rem, env(safe-area-inset-top));
+    top:max(calc(2.6rem + .45rem), env(safe-area-inset-top));
     right:.45rem;
     width:calc(100vw - .9rem);
   }
