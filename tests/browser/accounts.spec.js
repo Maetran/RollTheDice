@@ -379,6 +379,69 @@ test("logged-in user sees the personal landing page", async ({ page }) => {
 });
 
 
+test("account history keeps Normal and Hardcore in separate chart datasets", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#loginUsername", "RegisteredSmoke");
+  await page.fill("#loginPassword", "registered-password-123");
+  await page.click("#loginForm button[type=submit]");
+  await expect(page.locator("#authBadge")).toContainText("RegisteredSmoke");
+
+  const games = [
+    { game_id: "normal-new", finished_at: "2026-08-28T12:00:00Z", mode: "1", hardcore: false, points: 1200 },
+    { game_id: "hardcore-new", finished_at: "2026-08-27T12:00:00Z", mode: "1", hardcore: true, points: 500 },
+    { game_id: "normal-old", finished_at: "2026-08-26T12:00:00Z", mode: "1", hardcore: false, points: 900 },
+    { game_id: "hardcore-old", finished_at: "2026-08-25T12:00:00Z", mode: "1", hardcore: true, points: 400 },
+  ];
+  await page.addInitScript(({ historyGames }) => {
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.url, location.origin);
+      if (url.pathname !== "/api/users/me/game-history") return nativeFetch(input, init);
+      const mode = url.searchParams.get("mode") || "normal";
+      const selected = mode === "all"
+        ? historyGames
+        : historyGames.filter(game => game.hardcore === (mode === "hardcore"));
+      const modeSummary = hardcore => {
+        const points = selected.filter(game => game.hardcore === hardcore).map(game => game.points).sort((a, b) => a - b);
+        const middle = Math.floor(points.length / 2);
+        const median = points.length ? (points.length % 2 ? points[middle] : (points[middle - 1] + points[middle]) / 2) : null;
+        return { games: points.length, median_points: median, average_points: points.length ? points.reduce((a, b) => a + b, 0) / points.length : null };
+      };
+      return new Response(JSON.stringify({
+        games: selected,
+        selection: url.searchParams.get("limit") || "10",
+        mode,
+        summary: {
+          games: selected.length,
+          points_total: selected.reduce((sum, game) => sum + game.points, 0),
+          normal: modeSummary(false),
+          hardcore: modeSummary(true),
+        },
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    };
+  }, { historyGames: games });
+
+  await page.goto("/konto#statistics");
+  await page.getByRole("tab", { name: "Statistik" }).click();
+  await expect(page.locator('[data-history-mode="normal"]')).toHaveClass(/active/);
+  await expect(page.locator('[data-history-point="normal"]')).toHaveCount(2);
+  await expect(page.locator('[data-history-point="hardcore"]')).toHaveCount(0);
+
+  await page.locator('[data-history-mode="hardcore"]').click();
+  await expect(page.locator('[data-history-point="hardcore"]')).toHaveCount(2);
+  await expect(page.locator('[data-history-point="normal"]')).toHaveCount(0);
+
+  await page.locator('[data-history-mode="all"]').click();
+  await expect(page.locator('[data-history-point="normal"]')).toHaveCount(2);
+  await expect(page.locator('[data-history-point="hardcore"]')).toHaveCount(2);
+  await expect(page.locator('[data-history-dataset="normal"]')).toHaveCount(1);
+  await expect(page.locator('[data-history-dataset="hardcore"]')).toHaveCount(1);
+  await expect(page.locator(".history-median-line")).toHaveCount(0);
+  await expect(page.locator("#recentGames .history-mode-badge.normal")).toHaveCount(2);
+  await expect(page.locator("#recentGames .history-mode-badge.hardcore")).toHaveCount(2);
+});
+
+
 test("account gameplay preferences persist and control announce behavior", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");

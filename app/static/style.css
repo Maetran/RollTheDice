@@ -2964,6 +2964,7 @@ body.app-dialog-open{ overflow:hidden; }
 .history-chart-section { margin-top: 1.25rem; padding-top: 1.1rem; border-top: 1px solid var(--border); }
 .history-chart-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
 .history-chart-header h2 { margin: 0; }
+.history-filters { display: grid; gap: .45rem; justify-items: end; }
 .history-range { display: flex; gap: .3rem; padding: .25rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-soft); }
 .history-range button { min-width: 2.75rem; padding: .45rem .65rem; border-color: transparent; background: transparent; color: var(--muted); box-shadow: none; }
 .history-range button:hover { transform: none; }
@@ -2978,6 +2979,7 @@ body.app-dialog-open{ overflow:hidden; }
 .history-grid line { stroke: var(--border); stroke-width: 1; stroke-dasharray: 4 5; }
 .history-grid text, .history-date { fill: var(--muted); font-size: 12px; }
 .history-score-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.history-score-line.hardcore { stroke: #f97316; }
 .history-dots circle { stroke: var(--card); stroke-width: 2; }
 .history-dots .normal { fill: var(--accent); }
 .history-dots .hardcore { fill: #f97316; }
@@ -2987,6 +2989,8 @@ body.app-dialog-open{ overflow:hidden; }
 .history-legend i { width: .65rem; height: .65rem; border-radius: 999px; background: var(--accent); }
 .history-legend i.hardcore { background: #f97316; }
 .history-legend i.median { width: 1.2rem; height: 0; border-top: 2px dashed #8b5cf6; border-radius: 0; background: none; }
+.history-mode-badge { display: inline-flex; padding: .1rem .4rem; border-radius: 999px; color: #fff; background: var(--accent); font-size: .72rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
+.history-mode-badge.hardcore { background: #f97316; }
 
 @media (max-width: 760px) {
   .statistics-grid { grid-template-columns: 1fr; }
@@ -2996,7 +3000,9 @@ body.app-dialog-open{ overflow:hidden; }
   .login-inline { align-items: stretch; }
   .login-inline input, .login-inline button { width: 100%; }
   .history-chart-header { align-items: stretch; flex-direction: column; }
+  .history-filters { justify-items: stretch; }
   .history-range { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; }
+  .history-mode { grid-template-columns: repeat(3, 1fr); }
   .history-range button { min-width: 0; }
   .history-summary { gap: .35rem; }
   .history-summary span { padding: .55rem; }

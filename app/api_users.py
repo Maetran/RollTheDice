@@ -29,7 +29,8 @@ def _empty_bucket() -> dict:
         "max_points": None,
         "min_points": None,
         "average_points": None,
-        "trend": "same",
+        "median_points": None,
+        "trend": None,
         "trend_games": 0,
         "recent_average_points": None,
     }
@@ -64,14 +65,14 @@ def _statistics_for_user(db, user_id: int) -> dict:
         .where(GameParticipant.user_id == user_id)
         .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc(), GameParticipant.id.desc())
     ).all()
-    recent_by_mode = {"normal": [], "hardcore": []}
+    points_by_mode = {"normal": [], "hardcore": []}
     for hardcore, points in recent_rows:
-        bucket = recent_by_mode["hardcore" if hardcore else "normal"]
-        if len(bucket) < 3:
-            bucket.append(int(points))
+        points_by_mode["hardcore" if hardcore else "normal"].append(int(points))
     for key in ("normal", "hardcore"):
+        mode_points = points_by_mode[key]
+        buckets[key]["median_points"] = round(float(median(mode_points)), 1) if mode_points else None
         buckets[key].update(recent_points_trend(
-            recent_by_mode[key],
+            mode_points,
             games_played=buckets[key]["games_played"],
             points_total=buckets[key]["points_total"],
         ))
@@ -79,27 +80,29 @@ def _statistics_for_user(db, user_id: int) -> dict:
     hardcore = buckets["hardcore"]
     total_games = normal["games_played"] + hardcore["games_played"]
     total_points = normal["points_total"] + hardcore["points_total"]
-    maxima = [value for value in (normal["max_points"], hardcore["max_points"]) if value is not None]
-    minima = [value for value in (normal["min_points"], hardcore["min_points"]) if value is not None]
     return {
         "overall": {
             "games_played": total_games,
             "points_total": total_points,
-            "max_points": max(maxima) if maxima else None,
-            "min_points": min(minima) if minima else None,
-            "average_points": round(total_points / total_games, 1) if total_games else None,
         },
         **buckets,
     }
 
 
-def _recent_games_for_user(db, user_id: int, limit: int = 10) -> list[dict]:
+def _recent_games_for_user(
+    db,
+    user_id: int,
+    limit: int = 10,
+    mode: Literal["normal", "hardcore", "all"] = "all",
+) -> list[dict]:
     stmt = (
         select(CompletedGame, GameParticipant.points, GameParticipant.team)
         .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
         .where(GameParticipant.user_id == user_id)
         .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc())
     )
+    if mode != "all":
+        stmt = stmt.where(CompletedGame.hardcore.is_(mode == "hardcore"))
     if limit > 0:
         stmt = stmt.limit(limit)
     rows = db.execute(stmt).all()
@@ -241,8 +244,27 @@ def own_statistics(request: Request):
         return {"player": _public_profile(db, user), "private": {"role": user.role}}
 
 
+def _history_summary(games: list[dict]) -> dict:
+    summary = {
+        "games": len(games),
+        "points_total": sum(game["points"] for game in games),
+    }
+    for mode, hardcore in (("normal", False), ("hardcore", True)):
+        points = [game["points"] for game in games if bool(game["hardcore"]) == hardcore]
+        summary[mode] = {
+            "games": len(points),
+            "median_points": round(float(median(points)), 1) if points else None,
+            "average_points": round(sum(points) / len(points), 1) if points else None,
+        }
+    return summary
+
+
 @router.get("/users/me/game-history")
-def own_game_history(request: Request, limit: Literal["10", "50", "100", "all"] = "10"):
+def own_game_history(
+    request: Request,
+    limit: Literal["10", "50", "100", "all"] = "10",
+    mode: Literal["normal", "hardcore", "all"] = "normal",
+):
     """Return the signed-in player's score history for the account chart."""
     identity = require_user(request)
     selected_limit = 0 if limit == "all" else int(limit)
@@ -250,16 +272,12 @@ def own_game_history(request: Request, limit: Literal["10", "50", "100", "all"] 
         user = db.get(User, identity.user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
-        games = _recent_games_for_user(db, user.id, selected_limit)
-        points = [game["points"] for game in games]
+        games = _recent_games_for_user(db, user.id, selected_limit, mode)
         return {
             "games": games,
             "selection": limit,
-            "summary": {
-                "games": len(points),
-                "median_points": round(float(median(points)), 1) if points else None,
-                "average_points": round(sum(points) / len(points), 1) if points else None,
-            },
+            "mode": mode,
+            "summary": _history_summary(games),
         }
 
 

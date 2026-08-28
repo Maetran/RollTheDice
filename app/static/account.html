@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <title>ZDWA – Mein Konto</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="/manifest.webmanifest?v=7c5d7aaf9b23">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=7c5d7aaf9b23" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=7c5d7aaf9b23" sizes="180x180">
-  <script src="/static/i18n.js?v=7c5d7aaf9b23"></script>
-  <script src="/static/ui.js?v=7c5d7aaf9b23"></script>
-  <script src="/static/pwa.js?v=7c5d7aaf9b23" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=7c5d7aaf9b23">
-  <script src="/static/theme.js?v=7c5d7aaf9b23"></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=fca6e201bca7">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=fca6e201bca7" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=fca6e201bca7" sizes="180x180">
+  <script src="/static/i18n.js?v=fca6e201bca7"></script>
+  <script src="/static/ui.js?v=fca6e201bca7"></script>
+  <script src="/static/pwa.js?v=fca6e201bca7" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=fca6e201bca7">
+  <script src="/static/theme.js?v=fca6e201bca7"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -34,16 +34,23 @@
             <p class="eyebrow">Punkteentwicklung</p>
             <h2 id="historyChartTitle">Deine letzten Spiele</h2>
           </div>
-          <div class="history-range" role="group" aria-label="Anzahl angezeigter Spiele">
-            <button class="active" type="button" data-history-limit="10">10</button>
-            <button type="button" data-history-limit="50">50</button>
-            <button type="button" data-history-limit="100">100</button>
-            <button type="button" data-history-limit="all">Alle</button>
+          <div class="history-filters">
+            <div class="history-range history-mode" role="group" aria-label="Spielmodus">
+              <button class="active" type="button" data-history-mode="normal">Normal</button>
+              <button type="button" data-history-mode="hardcore">Hardcore</button>
+              <button type="button" data-history-mode="all">Alle</button>
+            </div>
+            <div class="history-range" role="group" aria-label="Anzahl angezeigter Spiele">
+              <button class="active" type="button" data-history-limit="10">10</button>
+              <button type="button" data-history-limit="50">50</button>
+              <button type="button" data-history-limit="100">100</button>
+              <button type="button" data-history-limit="all">Alle</button>
+            </div>
           </div>
         </div>
         <div id="historySummary" class="history-summary" aria-live="polite"></div>
         <div id="historyChart" class="history-chart" aria-live="polite"></div>
-        <div class="history-legend"><span><i class="normal"></i>Normal</span><span><i class="hardcore"></i>Hardcore</span><span><i class="median"></i>Median</span></div>
+        <div id="historyLegend" class="history-legend"></div>
       </section>
       <section id="recentGamesSection" class="recent-games-section" hidden>
         <h2>Letzte Spiele</h2>
@@ -97,7 +104,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth } from '/static/auth.js?v=7c5d7aaf9b23';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth } from '/static/auth.js?v=fca6e201bca7';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace('/');
     const user = auth.user;
@@ -177,13 +184,16 @@
     });
 
     function bucket(title, data, { details = true } = {}) {
+      const hasTrend = data.trend === 'up' || data.trend === 'down' || data.trend === 'same';
       const trend = data.trend === 'up'
         ? { symbol: '↑', text: 'Positiv', css: 'avg-up' }
         : data.trend === 'down'
           ? { symbol: '↓', text: 'Negativ', css: 'avg-down' }
-          : { symbol: '–', text: 'Stagnierend', css: 'avg-same' };
-      const trendTitle = data.trend_games < 3
-        ? `Noch keine drei ${title}-Spiele vorhanden`
+          : hasTrend
+            ? { symbol: '–', text: 'Stagnierend', css: 'avg-same' }
+            : { symbol: '–', text: 'Zu wenig Daten', css: 'avg-same' };
+      const trendTitle = !hasTrend
+        ? `Zu wenig Daten: mindestens drei ${title}-Spiele erforderlich`
         : `Ø der letzten 3 Spiele: ${formatNumber(data.recent_average_points)}`;
       return `<article class="stat-bucket"><h2>${escapeHtml(title)}</h2><dl>
         <div><dt>Spiele</dt><dd>${formatNumber(data.games_played, '0')}</dd></div>
@@ -191,18 +201,29 @@
         ${details ? `<div><dt>Maximum</dt><dd>${formatNumber(data.max_points)}</dd></div>
         <div><dt>Minimum</dt><dd>${formatNumber(data.min_points)}</dd></div>
         <div><dt>Durchschnitt</dt><dd>${formatNumber(data.average_points)}</dd></div>
+        <div><dt>Median</dt><dd>${formatNumber(data.median_points)}</dd></div>
         <div><dt>Trend (3 Spiele)</dt><dd><span class="avg-trend ${trend.css}" title="${escapeHtml(trendTitle)}" aria-label="${escapeHtml(trendTitle)}">${trend.symbol} ${trend.text}</span></dd></div>` : ''}
       </dl></article>`;
     }
 
     function renderHistoryChart(payload) {
-      const games = Array.isArray(payload.games) ? [...payload.games].reverse() : [];
+      const newestFirst = Array.isArray(payload.games) ? payload.games : [];
+      const games = [...newestFirst].reverse();
+      const selectedMode = payload.mode === 'hardcore' || payload.mode === 'all' ? payload.mode : 'normal';
       const chart = document.getElementById('historyChart');
       const summary = document.getElementById('historySummary');
+      const legend = document.getElementById('historyLegend');
       const t = window.ZDWA_I18N?.t || (value => value);
+      renderHistoryList(newestFirst);
       if (!games.length) {
         summary.innerHTML = `<span><strong>0</strong> ${t('Spiele')}</span>`;
-        chart.innerHTML = `<p class="muted">${t('Noch keine Spiele für den Verlauf vorhanden.')}</p>`;
+        const empty = selectedMode === 'hardcore'
+          ? t('Noch keine Hardcore-Spiele vorhanden.')
+          : selectedMode === 'normal'
+            ? t('Noch keine Normal-Spiele vorhanden.')
+            : t('Noch keine Spiele für den Verlauf vorhanden.');
+        chart.innerHTML = `<p class="muted">${empty}</p>`;
+        legend.innerHTML = '';
         return;
       }
 
@@ -212,42 +233,87 @@
       const padding = Math.max(10, Math.ceil((maximum - minimum) * .12));
       const low = Math.max(0, minimum - padding);
       const high = Math.max(low + 1, maximum + padding);
-      const medianPoints = Number(payload.summary?.median_points);
-      const averagePoints = Number(payload.summary?.average_points);
-      summary.innerHTML = `
-        <span><small>${t('Spiele')}</small><strong>${games.length}</strong></span>
-        <span><small>${t('Median')}</small><strong>${formatNumber(medianPoints)}</strong></span>
-        <span><small>${t('Durchschnitt')}</small><strong>${formatNumber(averagePoints)}</strong></span>`;
+      const modeSummary = payload.summary?.[selectedMode];
+      if (selectedMode === 'all') {
+        const normal = payload.summary?.normal || {};
+        const hardcore = payload.summary?.hardcore || {};
+        summary.innerHTML = `
+          <span><small>${t('Spiele gesamt')}</small><strong>${games.length}</strong></span>
+          <span><small>${t('Normal Median / Ø')}</small><strong>${formatNumber(normal.median_points)} / ${formatNumber(normal.average_points)}</strong></span>
+          <span><small>${t('Hardcore Median / Ø')}</small><strong>${formatNumber(hardcore.median_points)} / ${formatNumber(hardcore.average_points)}</strong></span>`;
+      } else {
+        summary.innerHTML = `
+          <span><small>${t('Spiele')}</small><strong>${games.length}</strong></span>
+          <span><small>${t('Median')}</small><strong>${formatNumber(modeSummary?.median_points)}</strong></span>
+          <span><small>${t('Durchschnitt')}</small><strong>${formatNumber(modeSummary?.average_points)}</strong></span>`;
+      }
 
       const width = 720;
       const height = 260;
       const plot = { left: 48, right: 14, top: 18, bottom: 38 };
       const plotWidth = width - plot.left - plot.right;
       const plotHeight = height - plot.top - plot.bottom;
-      const x = index => plot.left + (games.length === 1 ? plotWidth / 2 : index * plotWidth / (games.length - 1));
+      const timestamps = games.map(game => new Date(game.finished_at).getTime());
+      const timeLow = Math.min(...timestamps);
+      const timeHigh = Math.max(...timestamps);
+      const useTimeScale = timestamps.every(Number.isFinite) && timeHigh > timeLow;
+      const x = index => plot.left + (
+        games.length === 1 || !useTimeScale
+          ? (games.length === 1 ? plotWidth / 2 : index * plotWidth / (games.length - 1))
+          : (timestamps[index] - timeLow) * plotWidth / (timeHigh - timeLow)
+      );
       const y = value => plot.top + (high - value) * plotHeight / (high - low);
-      const linePoints = games.map((game, index) => `${x(index).toFixed(1)},${y(game.points).toFixed(1)}`).join(' ');
+      const indexedGames = games.map((game, index) => ({ game, index }));
+      const datasets = selectedMode === 'all'
+        ? [
+            { mode: 'normal', items: indexedGames.filter(item => !item.game.hardcore) },
+            { mode: 'hardcore', items: indexedGames.filter(item => item.game.hardcore) },
+          ]
+        : [{ mode: selectedMode, items: indexedGames }];
+      const lines = datasets.filter(dataset => dataset.items.length > 1).map(dataset => {
+        const points = dataset.items.map(item => `${x(item.index).toFixed(1)},${y(item.game.points).toFixed(1)}`).join(' ');
+        return `<polyline class="history-score-line ${dataset.mode}" data-history-dataset="${dataset.mode}" points="${points}"></polyline>`;
+      }).join('');
       const gridValues = [high, Math.round((high + low) / 2), low];
       const grid = gridValues.map(value => `<g><line x1="${plot.left}" y1="${y(value)}" x2="${width - plot.right}" y2="${y(value)}"></line><text x="${plot.left - 8}" y="${y(value) + 4}" text-anchor="end">${value}</text></g>`).join('');
-      const dots = games.map((game, index) => `<circle class="${game.hardcore ? 'hardcore' : 'normal'}" cx="${x(index)}" cy="${y(game.points)}" r="${games.length > 100 ? 2 : 3.5}"><title>${escapeHtml(String(game.points))} ${t('Punkte')}</title></circle>`).join('');
+      const dots = games.map((game, index) => `<circle class="${game.hardcore ? 'hardcore' : 'normal'}" data-history-point="${game.hardcore ? 'hardcore' : 'normal'}" cx="${x(index)}" cy="${y(game.points)}" r="${games.length > 100 ? 2 : 3.5}"><title>${escapeHtml(String(game.points))} ${t('Punkte')}</title></circle>`).join('');
       const locale = window.ZDWA_I18N?.locale?.() || 'de-CH';
       const shortDate = value => new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(value));
       const firstDate = escapeHtml(shortDate(games[0].finished_at));
       const lastDate = escapeHtml(shortDate(games.at(-1).finished_at));
       chart.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(t('Punkteverlauf der ausgewählten Spiele'))}">
         <g class="history-grid">${grid}</g>
-        <line class="history-median-line" x1="${plot.left}" y1="${y(medianPoints)}" x2="${width - plot.right}" y2="${y(medianPoints)}"></line>
-        <polyline class="history-score-line" points="${linePoints}"></polyline>
+        ${selectedMode === 'all' ? '' : `<line class="history-median-line" x1="${plot.left}" y1="${y(modeSummary.median_points)}" x2="${width - plot.right}" y2="${y(modeSummary.median_points)}"></line>`}
+        ${lines}
         <g class="history-dots">${dots}</g>
         <text class="history-date" x="${plot.left}" y="${height - 10}">${firstDate}</text>
         <text class="history-date" x="${width - plot.right}" y="${height - 10}" text-anchor="end">${lastDate}</text>
       </svg>`;
+      legend.innerHTML = selectedMode === 'all'
+        ? `<span><i class="normal"></i>${t('Normal')}</span><span><i class="hardcore"></i>${t('Hardcore')}</span>`
+        : `<span><i class="${selectedMode}"></i>${t(selectedMode === 'hardcore' ? 'Hardcore' : 'Normal')}</span><span><i class="median"></i>${t('Median')}</span>`;
     }
 
-    async function loadHistory(limit = '10') {
+    function renderHistoryList(games) {
+      const section = document.getElementById('recentGamesSection');
+      const list = document.getElementById('recentGames');
+      section.hidden = !games.length;
+      list.innerHTML = games.map(game => {
+        const date = new Intl.DateTimeFormat(window.ZDWA_I18N?.locale?.() || 'de-CH', { dateStyle: 'medium' }).format(new Date(game.finished_at));
+        const mode = game.hardcore ? 'Hardcore' : 'Normal';
+        return `<a class="recent-game-row" href="/ergebnis/${encodeURIComponent(game.game_id)}">
+          <span><strong>${escapeHtml(date)}</strong><small><span class="history-mode-badge ${mode.toLowerCase()}">${mode}</span> · ${escapeHtml(String(game.mode) === '2v2' ? '2 vs 2' : `${game.mode} Spieler`)}</small></span>
+          <strong>${formatNumber(game.points, '0')} Punkte</strong>
+        </a>`;
+      }).join('');
+    }
+
+    const historyState = { mode: 'normal', limit: '10' };
+    async function loadHistory() {
       const chart = document.getElementById('historyChart');
       chart.innerHTML = '<p class="muted">Laden…</p>';
-      const response = await fetch(`/api/users/me/game-history?limit=${encodeURIComponent(limit)}`, { cache: 'no-store' });
+      const params = new URLSearchParams({ mode: historyState.mode, limit: historyState.limit });
+      const response = await fetch(`/api/users/me/game-history?${params}`, { cache: 'no-store' });
       if (!response.ok) {
         chart.innerHTML = '<p class="connection-error">Verlauf konnte nicht geladen werden.</p>';
         return;
@@ -258,7 +324,15 @@
     document.querySelectorAll('[data-history-limit]').forEach(button => {
       button.addEventListener('click', () => {
         document.querySelectorAll('[data-history-limit]').forEach(item => item.classList.toggle('active', item === button));
-        loadHistory(button.dataset.historyLimit);
+        historyState.limit = button.dataset.historyLimit;
+        loadHistory();
+      });
+    });
+    document.querySelectorAll('[data-history-mode]').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('[data-history-mode]').forEach(item => item.classList.toggle('active', item === button));
+        historyState.mode = button.dataset.historyMode;
+        loadHistory();
       });
     });
     loadHistory();
@@ -269,18 +343,6 @@
       const stats = player.statistics;
       document.getElementById('statistics').innerHTML = bucket('Gesamt', stats.overall, { details: false })
         + bucket('Normal', stats.normal) + bucket('Hardcore', stats.hardcore);
-      const recent = Array.isArray(player.recent_games) ? player.recent_games : [];
-      if (recent.length) {
-        document.getElementById('recentGamesSection').hidden = false;
-        document.getElementById('recentGames').innerHTML = recent.map(game => {
-          const date = new Intl.DateTimeFormat(window.ZDWA_I18N?.locale?.() || 'de-CH', { dateStyle: 'medium' }).format(new Date(game.finished_at));
-          const mode = game.hardcore ? 'Hardcore' : (String(game.mode) === '2v2' ? '2 vs 2' : `${game.mode} Spieler`);
-          return `<a class="recent-game-row" href="/ergebnis/${encodeURIComponent(game.game_id)}">
-            <span><strong>${escapeHtml(date)}</strong><small>${escapeHtml(mode)}</small></span>
-            <strong>${formatNumber(game.points, '0')} Punkte</strong>
-          </a>`;
-        }).join('');
-      }
     }
 
     document.getElementById('passwordForm').addEventListener('submit', async event => {

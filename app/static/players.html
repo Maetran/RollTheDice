@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <title>ZDWA – Spieler &amp; Ranking</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="/manifest.webmanifest?v=7c5d7aaf9b23">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=7c5d7aaf9b23" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=7c5d7aaf9b23" sizes="180x180">
-  <script src="/static/i18n.js?v=7c5d7aaf9b23"></script>
-  <script src="/static/ui.js?v=7c5d7aaf9b23"></script>
-  <script src="/static/pwa.js?v=7c5d7aaf9b23" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=7c5d7aaf9b23">
-  <script src="/static/theme.js?v=7c5d7aaf9b23"></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=fca6e201bca7">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=fca6e201bca7" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=fca6e201bca7" sizes="180x180">
+  <script src="/static/i18n.js?v=fca6e201bca7"></script>
+  <script src="/static/ui.js?v=fca6e201bca7"></script>
+  <script src="/static/pwa.js?v=fca6e201bca7" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=fca6e201bca7">
+  <script src="/static/theme.js?v=fca6e201bca7"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -49,7 +49,7 @@
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber } from '/static/auth.js?v=7c5d7aaf9b23';
+    import { escapeHtml, formatNumber } from '/static/auth.js?v=fca6e201bca7';
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
@@ -74,13 +74,16 @@
       const response = await fetch(`/api/players/ranking?mode=${rankingMode}&sort=${encodeURIComponent(rankingSort.value)}`, { cache: 'no-store' });
       const players = response.ok ? (await response.json()).players : [];
       rankingBody.innerHTML = players.map(player => {
+        const hasTrend = player.trend === 'up' || player.trend === 'down' || player.trend === 'same';
         const trend = player.trend === 'up'
           ? { symbol: '↑', text: 'Positiv', css: 'avg-up' }
           : player.trend === 'down'
             ? { symbol: '↓', text: 'Negativ', css: 'avg-down' }
-            : { symbol: '–', text: 'Stagnierend', css: 'avg-same' };
-        const trendTitle = player.trend_games < 3
-          ? 'Noch keine drei Spiele in diesem Modus vorhanden'
+            : hasTrend
+              ? { symbol: '–', text: 'Stagnierend', css: 'avg-same' }
+              : { symbol: '–', text: 'Zu wenig Daten', css: 'avg-same' };
+        const trendTitle = !hasTrend
+          ? 'Zu wenig Daten: mindestens drei Spiele in diesem Modus erforderlich'
           : `Ø der letzten 3 Spiele: ${formatNumber(player.recent_average_points)}`;
         return `<tr>
         <td>${player.rank}</td>

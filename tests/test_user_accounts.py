@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -21,6 +22,7 @@ from app.api_auth import (
 )
 from app.api_users import (
     AssignmentRequest,
+    _recent_games_for_user,
     assign_game_participant,
     own_game_history,
     player_ranking,
@@ -206,11 +208,11 @@ class AccountDatabaseTestCase(GameStateTestCase):
             [300, 300, 300], games_played=5, points_total=1500,
         )["trend"], "same")
         incomplete = recent_points_trend([500, 400], games_played=5, points_total=1500)
-        self.assertEqual(incomplete["trend"], "same")
+        self.assertIsNone(incomplete["trend"])
         self.assertEqual(incomplete["trend_games"], 2)
-        self.assertEqual(recent_points_trend(
+        self.assertIsNone(recent_points_trend(
             [500, 400, 300], games_played=2, points_total=900,
-        )["trend"], "same")
+        )["trend"])
 
     def test_origin_check_accepts_proxy_scheme_but_rejects_other_hosts(self):
         validate_request_origin(request_for(origin="https://testserver"))
@@ -373,8 +375,80 @@ class AccountDatabaseTestCase(GameStateTestCase):
             limit="all",
         )
         self.assertEqual(history["selection"], "all")
-        self.assertEqual(history["summary"], {"games": 1, "median_points": 410.0, "average_points": 410.0})
+        self.assertEqual(history["mode"], "normal")
+        self.assertEqual(history["summary"], {
+            "games": 1,
+            "points_total": 410,
+            "normal": {"games": 1, "median_points": 410.0, "average_points": 410.0},
+            "hardcore": {"games": 0, "median_points": None, "average_points": None},
+        })
         self.assertEqual(history["games"][0]["game_id"], g["_id"])
+
+    def test_account_statistics_and_history_keep_modes_separate(self):
+        user = create_user("ModeStats", "temporary-mode-stats-123", must_change_password=False)
+        base_time = datetime(2026, 8, 1, tzinfo=timezone.utc)
+        samples = [
+            (False, 900),
+            (False, 1000),
+            (True, 400),
+            (False, 1100),
+            (True, 500),
+            (False, 1200),
+            (False, 1300),
+        ]
+        with session_scope() as db:
+            for index, (hardcore, score) in enumerate(samples):
+                timestamp = base_time + timedelta(minutes=index)
+                game = CompletedGame(
+                    game_id=f"mode-stats-{index}",
+                    game_name=f"Mode stats {index}",
+                    finished_at=timestamp,
+                    mode="1",
+                    hardcore=hardcore,
+                    snapshot_json="{}",
+                    imported_from_legacy=False,
+                    created_at=timestamp,
+                )
+                db.add(game)
+                db.flush()
+                db.add(GameParticipant(
+                    game_id=game.id,
+                    position=0,
+                    player_key=f"player-{index}",
+                    display_name=user.username,
+                    points=score,
+                    user_id=user.id,
+                ))
+
+        statistics = public_player_profile(user.username)["player"]["statistics"]
+        self.assertEqual(statistics["overall"], {"games_played": 7, "points_total": 6400})
+        self.assertEqual(statistics["normal"]["games_played"], 5)
+        self.assertEqual(statistics["normal"]["points_total"], 5500)
+        self.assertEqual(statistics["normal"]["average_points"], 1100.0)
+        self.assertEqual(statistics["normal"]["median_points"], 1100.0)
+        self.assertEqual(statistics["normal"]["min_points"], 900)
+        self.assertEqual(statistics["normal"]["max_points"], 1300)
+        self.assertEqual(statistics["hardcore"]["games_played"], 2)
+        self.assertEqual(statistics["hardcore"]["points_total"], 900)
+        self.assertEqual(statistics["hardcore"]["average_points"], 450.0)
+        self.assertEqual(statistics["hardcore"]["median_points"], 450.0)
+        self.assertEqual(statistics["hardcore"]["min_points"], 400)
+        self.assertEqual(statistics["hardcore"]["max_points"], 500)
+        self.assertIsNone(statistics["hardcore"]["trend"])
+
+        identity, raw_token = login(request_for(), user.username, "temporary-mode-stats-123")
+        request = request_for(cookie=f"rollthedice_session={raw_token}", csrf=identity.csrf_token)
+        with session_scope() as db:
+            newest_normal = _recent_games_for_user(db, user.id, limit=3, mode="normal")
+        self.assertEqual([game["points"] for game in newest_normal], [1300, 1200, 1100])
+        self.assertTrue(all(not game["hardcore"] for game in newest_normal))
+
+        normal_history = own_game_history(request, limit="10", mode="normal")
+        self.assertEqual([game["points"] for game in normal_history["games"]], [1300, 1200, 1100, 1000, 900])
+
+        hardcore_history = own_game_history(request, limit="10", mode="hardcore")
+        self.assertEqual([game["points"] for game in hardcore_history["games"]], [500, 400])
+        self.assertTrue(all(game["hardcore"] for game in hardcore_history["games"]))
 
     def test_team_score_is_attributed_to_both_registered_members(self):
         first = create_user("Dora", "temporary-dora-123", must_change_password=False)

@@ -222,6 +222,11 @@
     "Deine letzten Spiele": "Your recent games",
     "Alle": "All",
     "Anzahl angezeigter Spiele": "Number of games shown",
+    "Spiele gesamt": "Total games",
+    "Normal Median / Ø": "Normal median / avg.",
+    "Hardcore Median / Ø": "Hardcore median / avg.",
+    "Noch keine Normal-Spiele vorhanden.": "No Normal games available yet.",
+    "Noch keine Hardcore-Spiele vorhanden.": "No Hardcore games available yet.",
     "Noch keine Spiele für den Verlauf vorhanden.": "No games available for the chart yet.",
     "Verlauf konnte nicht geladen werden.": "The chart could not be loaded.",
     "Punkteverlauf der ausgewählten Spiele": "Score chart for the selected games",
@@ -229,6 +234,10 @@
     "Positiv": "Positive",
     "Negativ": "Negative",
     "Stagnierend": "Unchanged",
+    "Zu wenig Daten": "Not enough data",
+    "Zu wenig Daten: mindestens drei Normal-Spiele erforderlich": "Not enough data: at least three Normal games required",
+    "Zu wenig Daten: mindestens drei Hardcore-Spiele erforderlich": "Not enough data: at least three Hardcore games required",
+    "Zu wenig Daten: mindestens drei Spiele in diesem Modus erforderlich": "Not enough data: at least three games required in this mode",
 
     "Öffentliches Spielerprofil": "Public Player Profile",
     "Spielerprofil": "Player Profile",
@@ -585,6 +594,8 @@
     [/Würfe:/g, "Rolls:"],
     [/Noch keine drei (.+)-Spiele vorhanden/g, "Fewer than three $1 games available"],
     [/Noch keine drei Spiele in diesem Modus vorhanden/g, "Fewer than three games available in this mode"],
+    [/Zu wenig Daten: mindestens drei (.+)-Spiele erforderlich/g, "Not enough data: at least three $1 games required"],
+    [/Zu wenig Daten: mindestens drei Spiele in diesem Modus erforderlich/g, "Not enough data: at least three games required in this mode"],
     [/Ø der letzten 3 Spiele:/g, "Average of the last 3 games:"],
     [/Felder (\d+)\/(\d+)/g, "Fields $1/$2"],
     [/(\d+) Spieler/g, "$1 players"],
@@ -738,7 +749,7 @@
   window.ZDWA_I18N = { getLanguage, locale, setLanguage, syncAccountLanguage, t: translateString, translateElement, catalog: EN };
   document.documentElement.lang = getLanguage();
   const manifestLink = document.querySelector('link[rel="manifest"]');
-  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=7c5d7aaf9b23";
+  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=fca6e201bca7";
 
   document.addEventListener("DOMContentLoaded", () => {
     translateElement(document);

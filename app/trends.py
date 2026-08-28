@@ -17,7 +17,7 @@ def recent_points_trend(
     recent_points = [int(value) for value in points][:window_size]
     sample_size = len(recent_points)
     result = {
-        "trend": "same",
+        "trend": None,
         "trend_games": sample_size,
         "recent_average_points": round(sum(recent_points) / sample_size, 1) if sample_size else None,
     }
