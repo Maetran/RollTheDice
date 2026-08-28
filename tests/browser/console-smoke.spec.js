@@ -34,6 +34,11 @@ function watchPageHealth(page) {
   };
 }
 
+function activeGameId(url) {
+  const match = new URL(url).pathname.match(/^\/spiel\/([^/]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 test("lobby can create a game and open spectator view without browser errors", async ({ page, browser, request }) => {
   const health = watchPageHealth(page);
   await page.goto("/");
@@ -41,7 +46,7 @@ test("lobby can create a game and open spectator view without browser errors", a
   await page.fill("#passInput", "");
   await page.selectOption("#gameMode", "1");
   await page.click("#createBtn");
-  await page.waitForURL(/room\.html\?game_id=/);
+  await page.waitForURL(/\/spiel\/[^/?]+/);
   await page.waitForSelector("#diceBar");
   await health.expectClean();
 
@@ -51,7 +56,7 @@ test("lobby can create a game and open spectator view without browser errors", a
   await spectator.fill("#playerName", "Observer");
   await spectator.waitForSelector("button.spectateBtn");
   await spectator.click("button.spectateBtn");
-  await spectator.waitForURL(/room\.html\?game_id=.*spectator=1/);
+  await spectator.waitForURL(/\/spiel\/[^/?]+\/zuschauen$/);
   await spectator.waitForSelector("#diceBar");
   await expect.poll(async () => {
     const response = await request.get("/api/games");
@@ -63,6 +68,19 @@ test("lobby can create a game and open spectator view without browser errors", a
     const response = await request.get("/api/games");
     return (await response.json()).online_users;
   }).toBe(1);
+});
+
+test("legacy room links end on the clean canonical game URL", async ({ page, request }) => {
+  const created = await request.post("/api/games", { data: { name: "Legacy URL", mode: 1 } });
+  const { game_id: gameId } = await created.json();
+
+  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=LegacyGuest`);
+  await page.waitForSelector("#diceBar");
+
+  const url = new URL(page.url());
+  expect(url.pathname).toBe(`/spiel/${encodeURIComponent(gameId)}`);
+  expect(url.search).toBe("");
+  await expect(page.locator(".player-card", { hasText: "LegacyGuest" })).toBeVisible();
 });
 
 test("dismissed install prompt stays hidden for seven days or until a new app version", async ({ page }) => {
@@ -119,8 +137,8 @@ test("game creation API flow from lobby and spectator mode both work", async ({ 
   const createResponse = await createResponsePromise;
   expect(createResponse.ok()).toBeTruthy();
 
-  await page.waitForURL(/room\.html\?game_id=/);
-  const gameId = new URL(page.url()).searchParams.get("game_id");
+  await page.waitForURL(/\/spiel\/[^/?]+/);
+  const gameId = activeGameId(page.url());
   expect(gameId).toBeTruthy();
   await page.waitForSelector("#diceBar");
   await expect(page.locator(".player-card")).toContainText("Creator");
@@ -143,9 +161,9 @@ test("game creation API flow from lobby and spectator mode both work", async ({ 
   const spectateButton = spectator.locator(`.spectateBtn[data-id="${gameId}"]`);
   await expect(spectateButton).toBeVisible();
   await spectateButton.click();
-  await spectator.waitForURL(/room\.html\?game_id=.*spectator=1/);
-  expect(new URL(spectator.url()).searchParams.get("game_id")).toBe(gameId);
-  expect(new URL(spectator.url()).searchParams.get("spectator")).toBe("1");
+  await spectator.waitForURL(/\/spiel\/[^/?]+\/zuschauen$/);
+  expect(activeGameId(spectator.url())).toBe(gameId);
+  expect(new URL(spectator.url()).pathname).toBe(`/spiel/${encodeURIComponent(gameId)}/zuschauen`);
   await spectator.waitForSelector("#diceBar");
   await expect(spectator.locator(".player-card")).toContainText("Creator");
 
@@ -168,14 +186,14 @@ test("multiplayer game pauses on disconnect and resumes from the lobby", async (
   expect(created.ok()).toBeTruthy();
   const { game_id: gameId } = await created.json();
 
-  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Anna`);
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Anna`);
   await page.waitForSelector("#diceBar");
   await expect(page.locator(".player-card")).toContainText("Anna");
 
   const player2Context = await browser.newContext();
   const player2 = await player2Context.newPage();
   const player2Health = watchPageHealth(player2);
-  await player2.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Ben`);
+  await player2.goto(`/spiel/${encodeURIComponent(gameId)}?name=Ben`);
   await player2.waitForSelector("#diceBar");
   await expect(player2.locator(".player-card", { hasText: "Ben" })).toBeVisible();
   await expect(page.locator(".player-card", { hasText: "Ben" })).toBeVisible();
@@ -191,7 +209,7 @@ test("multiplayer game pauses on disconnect and resumes from the lobby", async (
   const resumeButton = resumedPlayer2.locator(`.resumeBtn[data-id="${gameId}"]`);
   await expect(resumeButton).toBeVisible();
   await resumeButton.click();
-  await resumedPlayer2.waitForURL(/room\.html\?game_id=/);
+  await resumedPlayer2.waitForURL(/\/spiel\/[^/?]+/);
   await resumedPlayer2.waitForSelector("#diceBar");
 
   await expect(page.locator("#multiplayerPauseNotice")).toBeHidden();
@@ -216,9 +234,9 @@ test("tablet multiplayer layout shows up to three boards side by side", async ({
   const player2 = await player2Context.newPage();
   const player3 = await player3Context.newPage();
 
-  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Anna`);
-  await player2.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Ben`);
-  await player3.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Cara`);
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Anna`);
+  await player2.goto(`/spiel/${encodeURIComponent(gameId)}?name=Ben`);
+  await player3.goto(`/spiel/${encodeURIComponent(gameId)}?name=Cara`);
 
   await expect(page.locator(".player-card")).toHaveCount(3);
   await expect(page.locator(".player-card", { hasText: "Anna" })).toBeVisible();
@@ -270,7 +288,7 @@ test("back to lobby can pause a game and resume it later", async ({ page, reques
   expect(created.ok()).toBeTruthy();
   const { game_id: gameId } = await created.json();
 
-  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Solo`);
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Solo`);
   await page.waitForSelector("#diceBar");
 
   await page.click("#backToLobbyBtn");
@@ -316,7 +334,7 @@ test("back to lobby can pause a game and resume it later", async ({ page, reques
     if (token) localStorage.setItem(`wuerfler_token_${gid}`, token);
   }, { gid: gameId, token: storedToken });
   await page.locator(`.resumeBtn[data-id="${gameId}"]`).click();
-  await page.waitForURL(/room\.html\?game_id=/);
+  await page.waitForURL(/\/spiel\/[^/?]+/);
   await page.waitForSelector("#diceBar");
   await expect(page.locator("#multiplayerPauseNotice")).toBeHidden();
 
@@ -334,7 +352,7 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   expect(created.ok()).toBeTruthy();
   const { game_id: gameId } = await created.json();
 
-  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Smoke&__test=1`);
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Smoke&__test=1`);
   await page.waitForSelector("#diceBar");
   await page.waitForTimeout(500);
 
@@ -583,13 +601,13 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   const beforeRulesUrl = page.url();
   await page.click("#rulesSheetOpen");
   await expect(page.locator("#rulesSheet")).toBeVisible();
-  await expect(page.locator("#rulesFrame")).toHaveAttribute("src", /rules\.html\?embed=1/);
+  await expect(page.locator("#rulesFrame")).toHaveAttribute("src", /\/regeln\?embed=1/);
   expect(page.url()).toBe(beforeRulesUrl);
   await expect(page.frameLocator("#rulesFrame").locator("h1")).toContainText("Spielanleitung");
   await page.locator("#rulesFrame").hover();
   await page.mouse.wheel(0, 700);
   await expect.poll(async () => {
-    const frame = page.frame({ url: /rules\.html\?embed=1/ });
+    const frame = page.frame({ url: /\/regeln\?embed=1/ });
     return frame ? frame.evaluate(() => window.scrollY) : 0;
   }).toBeGreaterThan(0);
   await page.click("#rulesSheetClose");
@@ -650,7 +668,7 @@ test("mobile announce picker shows two rows and disables filled fields", async (
   expect(created.ok()).toBeTruthy();
   const { game_id: gameId } = await created.json();
 
-  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Announce&__test=1`);
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Announce&__test=1`);
   await page.waitForSelector("#diceBar");
   const finalRollRules = await page.evaluate(() => ({
     regularThird: window.__rtDebugIsLastAllowedRoll({ _rolls_used: 3, _rolls_max: 3 }),
@@ -752,7 +770,7 @@ test("mobile announce picker shows two rows and disables filled fields", async (
 test("game result dialog keeps the final standings visible and creates a new round", async ({ page, request }) => {
   const created = await request.post("/api/games", { data: { name: "Result dialog", mode: 1 } });
   const { game_id: gameId } = await created.json();
-  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Result&__test=1`);
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Result&__test=1`);
   await page.waitForSelector("#diceBar");
 
   await page.evaluate(() => {
@@ -766,11 +784,10 @@ test("game result dialog keeps the final standings visible and creates a new rou
   await expect(page.getByRole("button", { name: "Neue Runde" })).toBeVisible();
   await page.getByRole("button", { name: "Neue Runde" }).click();
   await page.waitForURL(url => (
-    url.pathname === "/static/room.html"
-    && url.searchParams.get("game_id")
-    && url.searchParams.get("game_id") !== gameId
+    /^\/spiel\/[^/]+$/.test(url.pathname)
+    && activeGameId(url.toString()) !== gameId
   ));
-  const nextGameId = new URL(page.url()).searchParams.get("game_id");
+  const nextGameId = activeGameId(page.url());
   expect(nextGameId).toBeTruthy();
   expect(nextGameId).not.toBe(gameId);
   await page.waitForSelector("#diceBar");
@@ -798,7 +815,7 @@ test("protected game passphrases use an in-app dialog and stay out of the room U
   await expect(page.locator("#appDialog")).toContainText("Passphrase erforderlich");
   await page.fill("#appDialogInput", "secret-round");
   await page.click('[data-dialog-action="confirm"]');
-  await page.waitForURL(/room\.html\?game_id=/);
+  await page.waitForURL(/\/spiel\/[^/?]+/);
   expect(new URL(page.url()).searchParams.has("pass")).toBe(false);
   const stored = await page.evaluate(gid => sessionStorage.getItem(`wuerfler_pass_${gid}`), gameId);
   expect(stored).toBe("secret-round");

@@ -868,7 +868,7 @@ td.cell.announce-pickable{
     width: 100% !important;
     margin-top: .25rem !important;
   }
-  .room-header #roomGameName, .room-header a[href$="rules.html"]{ display: none !important; }
+  .room-header #roomGameName, .room-header a[href="/regeln"]{ display: none !important; }
   .room-header{
     gap:.3rem;
     margin:0 0 .35rem;

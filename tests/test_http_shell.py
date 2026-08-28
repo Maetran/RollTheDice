@@ -45,16 +45,37 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=main.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
             asset = await client.get("/static/style.css?v=93")
-            shell = await client.get("/static/room.html")
+            shell = await client.get("/spiel/test-game")
         self.assertEqual(asset.status_code, 200)
         self.assertIn("immutable", asset.headers.get("cache-control", ""))
         self.assertIn("no-cache", shell.headers.get("cache-control", ""))
+
+    async def test_clean_page_routes_and_legacy_redirects(self):
+        transport = httpx.ASGITransport(app=main.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            for path in (
+                "/regeln", "/spieler", "/spieler/Test", "/konto", "/admin",
+                "/spiel/abc123", "/spiel/abc123/zuschauen", "/ergebnis/abc123", "/offline",
+            ):
+                response = await client.get(path)
+                self.assertEqual(response.status_code, 200, path)
+
+            room = await client.get("/static/room.html?game_id=abc123&name=Gast&spectator=1")
+            profile = await client.get("/static/profile.html?user=Test")
+            result = await client.get("/static/game_view.html?id=abc123")
+            account = await client.get("/static/account.html")
+
+        self.assertEqual(room.status_code, 308)
+        self.assertEqual(room.headers["location"], "/spiel/abc123/zuschauen?name=Gast")
+        self.assertEqual(profile.headers["location"], "/spieler/Test")
+        self.assertEqual(result.headers["location"], "/ergebnis/abc123")
+        self.assertEqual(account.headers["location"], "/konto")
 
     def test_pwa_update_and_offline_assets_are_precached(self):
         service_worker = (main.STATIC_DIR / "sw.js").read_text()
         self.assertIn("'/static/ui.js'", service_worker)
         self.assertIn("'/static/pwa.js'", service_worker)
-        self.assertIn("'/static/offline.html'", service_worker)
+        self.assertIn("'/offline'", service_worker)
         self.assertIn("SKIP_WAITING", service_worker)
         install_handler = service_worker.split("self.addEventListener('message'", 1)[0]
         self.assertNotIn("self.skipWaiting()", install_handler)

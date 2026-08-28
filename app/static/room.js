@@ -17,7 +17,7 @@
 */
 // Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions)
 
-import { initChat, addChatMessage } from "./chat.js?v=0feb342ce2fa";
+import { initChat, addChatMessage } from "./chat.js?v=7c5d7aaf9b23";
 
 (() => {
   // ---------- Helpers ----------
@@ -26,11 +26,19 @@ import { initChat, addChatMessage } from "./chat.js?v=0feb342ce2fa";
 
   function getQS() {
     const u = new URL(location.href);
+    const pathMatch = u.pathname.match(/^\/spiel\/([^/]+)(\/zuschauen)?\/?$/);
+    let pathGameId = "";
+    try { pathGameId = pathMatch ? decodeURIComponent(pathMatch[1]) : ""; }
+    catch { pathGameId = ""; }
+    const gameId = pathGameId || u.searchParams.get("game_id") || "";
+    const storedName = gameId
+      ? localStorage.getItem(`wuerfler_player_name_${gameId}`) || localStorage.getItem("wuerfler_name") || ""
+      : "";
     return {
-      game_id: u.searchParams.get("game_id") || "",
-      name:   (u.searchParams.get("name") || "Gast").trim() || "Gast",
+      game_id: gameId,
+      name:   (u.searchParams.get("name") || storedName || "Gast").trim() || "Gast",
       pass:   u.searchParams.get("pass") || "",
-      spectator: u.searchParams.get("spectator") === "1"
+      spectator: !!pathMatch?.[2] || u.searchParams.get("spectator") === "1"
     };
   }
 
@@ -219,11 +227,10 @@ import { initChat, addChatMessage } from "./chat.js?v=0feb342ce2fa";
     sessionStorage.setItem(PASS_KEY, qs.pass);
     localStorage.removeItem(PASS_KEY);
   }
-  if (new URL(location.href).searchParams.has("pass")) {
-    const cleanUrl = new URL(location.href);
-    cleanUrl.searchParams.delete("pass");
-    history.replaceState(null, "", cleanUrl);
-  }
+  const cleanUrl = new URL(location.href);
+  cleanUrl.pathname = `/spiel/${encodeURIComponent(qs.game_id)}${IS_SPECTATOR ? "/zuschauen" : ""}`;
+  for (const key of ["game_id", "name", "pass", "spectator"]) cleanUrl.searchParams.delete(key);
+  if (cleanUrl.toString() !== location.href) history.replaceState(null, "", cleanUrl);
   if (qs.name) localStorage.setItem(PLAYER_NAME_KEY, qs.name);
   let myId = IS_SPECTATOR ? null : (localStorage.getItem(PID_KEY) || sessionStorage.getItem(PID_KEY) || null);
   let mySpectatorId = null;
@@ -359,9 +366,8 @@ import { initChat, addChatMessage } from "./chat.js?v=0feb342ce2fa";
         const created = await response.json();
         if (!created?.game_id) throw new Error("missing_game_id");
         if (qs.pass) sessionStorage.setItem(`wuerfler_pass_${created.game_id}`, qs.pass);
-        const nextRoom = new URL("/static/room.html", location.origin);
-        nextRoom.searchParams.set("game_id", created.game_id);
-        nextRoom.searchParams.set("name", myName || "Gast");
+        const nextRoom = new URL(`/spiel/${encodeURIComponent(created.game_id)}`, location.origin);
+        localStorage.setItem(`wuerfler_player_name_${created.game_id}`, myName || "Gast");
         location.href = nextRoom.toString();
       } catch (error) {
         await showNotice({
@@ -622,7 +628,7 @@ import { initChat, addChatMessage } from "./chat.js?v=0feb342ce2fa";
       if (!sheet || !backdrop) return;
       bindRulesFrameScroll(frame);
       if (frame && !frame.getAttribute("src")) {
-        frame.setAttribute("src", frame.dataset.src || "/static/rules.html?embed=1");
+        frame.setAttribute("src", frame.dataset.src || "/regeln?embed=1");
       }
       sheet.hidden = false;
       backdrop.hidden = false;

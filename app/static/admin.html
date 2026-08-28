@@ -4,18 +4,18 @@
   <meta charset="utf-8">
   <title>ZDWA – Administration</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="/manifest.webmanifest?v=0feb342ce2fa">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=0feb342ce2fa" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=0feb342ce2fa" sizes="180x180">
-  <script src="/static/i18n.js?v=0feb342ce2fa"></script>
-  <script src="/static/ui.js?v=0feb342ce2fa"></script>
-  <script src="/static/pwa.js?v=0feb342ce2fa" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=0feb342ce2fa">
-  <script src="/static/theme.js?v=0feb342ce2fa"></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=7c5d7aaf9b23">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=7c5d7aaf9b23" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=7c5d7aaf9b23" sizes="180x180">
+  <script src="/static/i18n.js?v=7c5d7aaf9b23"></script>
+  <script src="/static/ui.js?v=7c5d7aaf9b23"></script>
+  <script src="/static/pwa.js?v=7c5d7aaf9b23" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=7c5d7aaf9b23">
+  <script src="/static/theme.js?v=7c5d7aaf9b23"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
-    <nav class="page-nav"><a href="/">← Lobby</a><a href="/static/account.html">Mein Konto</a></nav>
+    <nav class="page-nav"><a href="/">← Lobby</a><a href="/konto">Mein Konto</a></nav>
     <section class="card admin-overview">
       <p class="eyebrow">Administration</p>
       <h1>Adminbereich</h1>
@@ -76,7 +76,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, loadAuth } from '/static/auth.js?v=0feb342ce2fa';
+    import { apiFetch, authError, escapeHtml, loadAuth } from '/static/auth.js?v=7c5d7aaf9b23';
     const auth = await loadAuth();
     if (!auth?.user?.is_admin) location.replace('/');
     const usersBody = document.getElementById('usersBody');
@@ -110,7 +110,7 @@
       if (!response.ok) return;
       users = (await response.json()).users;
       usersBody.innerHTML = users.map(user => `<tr data-user-id="${user.id}">
-        <td><a href="/static/profile.html?user=${encodeURIComponent(user.username)}">${escapeHtml(user.username)}</a>${user.must_change_password ? '<span class="badge">PW-Wechsel offen</span>' : ''}</td>
+        <td><a href="/spieler/${encodeURIComponent(user.username)}">${escapeHtml(user.username)}</a>${user.must_change_password ? '<span class="badge">PW-Wechsel offen</span>' : ''}</td>
         <td><select class="role-select"><option value="user" ${user.role === 'user' ? 'selected' : ''}>Benutzer</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option></select></td>
         <td>${user.is_active ? 'Aktiv' : 'Deaktiviert'}</td>
         <td><button class="small reset-password">Zurücksetzen</button></td>

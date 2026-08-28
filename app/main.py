@@ -36,10 +36,11 @@ import time  # für monotonic()-Cooldown-Timer
 import math
 import threading
 import asyncio
+from urllib.parse import quote, urlencode
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -208,9 +209,47 @@ def initialize_persistent_database() -> None:
 app.include_router(auth_router)
 app.include_router(users_router)
 
+LEGACY_PAGE_PATHS = {
+    "/static/index.html": "/",
+    "/static/rules.html": "/regeln",
+    "/static/players.html": "/spieler",
+    "/static/account.html": "/konto",
+    "/static/admin.html": "/admin",
+    "/static/offline.html": "/offline",
+}
+
+
+def _legacy_page_target(request: Request) -> str | None:
+    """Map old static HTML links to their public page routes."""
+    path = request.url.path
+    target = LEGACY_PAGE_PATHS.get(path)
+    consumed: set[str] = set()
+    if path == "/static/room.html":
+        game_id = str(request.query_params.get("game_id") or "").strip()
+        if not game_id:
+            return "/"
+        spectator = request.query_params.get("spectator") == "1"
+        target = f"/spiel/{quote(game_id, safe='')}" + ("/zuschauen" if spectator else "")
+        consumed.update({"game_id", "spectator"})
+    elif path == "/static/profile.html":
+        username = str(request.query_params.get("user") or "").strip()
+        target = f"/spieler/{quote(username, safe='')}" if username else "/spieler"
+        consumed.add("user")
+    elif path == "/static/game_view.html":
+        game_id = str(request.query_params.get("id") or "").strip()
+        target = f"/ergebnis/{quote(game_id, safe='')}" if game_id else "/ergebnis"
+        consumed.add("id")
+    if not target:
+        return None
+    remaining = [(key, value) for key, value in request.query_params.multi_items() if key not in consumed]
+    return f"{target}?{urlencode(remaining)}" if remaining else target
+
 @app.middleware("http")
 async def static_cache_policy(request: Request, call_next):
     """Keep HTML/SW fresh while allowing explicitly versioned assets to be immutable."""
+    legacy_target = _legacy_page_target(request)
+    if legacy_target:
+        return RedirectResponse(legacy_target, status_code=308)
     response = await call_next(request)
     path = request.url.path
     if path.startswith("/static/"):
@@ -250,6 +289,55 @@ def service_worker():
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
     return FileResponse(str(STATIC_DIR / "favicon.png"), media_type="image/png")
+
+
+def _page(filename: str) -> FileResponse:
+    return FileResponse(
+        str(STATIC_DIR / filename),
+        headers={"Cache-Control": "no-cache, must-revalidate"},
+    )
+
+
+@app.get("/regeln", include_in_schema=False)
+def rules_page():
+    return _page("rules.html")
+
+
+@app.get("/spieler", include_in_schema=False)
+def players_page():
+    return _page("players.html")
+
+
+@app.get("/spieler/{username}", include_in_schema=False)
+def player_profile_page(username: str):
+    return _page("profile.html")
+
+
+@app.get("/konto", include_in_schema=False)
+def account_page():
+    return _page("account.html")
+
+
+@app.get("/admin", include_in_schema=False)
+def admin_page():
+    return _page("admin.html")
+
+
+@app.get("/spiel/{game_id}", include_in_schema=False)
+@app.get("/spiel/{game_id}/zuschauen", include_in_schema=False)
+def room_page(game_id: str):
+    return _page("room.html")
+
+
+@app.get("/ergebnis", include_in_schema=False)
+@app.get("/ergebnis/{game_id}", include_in_schema=False)
+def completed_game_page(game_id: str | None = None):
+    return _page("game_view.html")
+
+
+@app.get("/offline", include_in_schema=False)
+def offline_page():
+    return _page("offline.html")
 
 
 @app.get("/api/health", include_in_schema=False)

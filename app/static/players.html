@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <title>ZDWA – Spieler &amp; Ranking</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="/manifest.webmanifest?v=0feb342ce2fa">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=0feb342ce2fa" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=0feb342ce2fa" sizes="180x180">
-  <script src="/static/i18n.js?v=0feb342ce2fa"></script>
-  <script src="/static/ui.js?v=0feb342ce2fa"></script>
-  <script src="/static/pwa.js?v=0feb342ce2fa" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=0feb342ce2fa">
-  <script src="/static/theme.js?v=0feb342ce2fa"></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=7c5d7aaf9b23">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=7c5d7aaf9b23" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=7c5d7aaf9b23" sizes="180x180">
+  <script src="/static/i18n.js?v=7c5d7aaf9b23"></script>
+  <script src="/static/ui.js?v=7c5d7aaf9b23"></script>
+  <script src="/static/pwa.js?v=7c5d7aaf9b23" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=7c5d7aaf9b23">
+  <script src="/static/theme.js?v=7c5d7aaf9b23"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -49,7 +49,7 @@
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber } from '/static/auth.js?v=0feb342ce2fa';
+    import { escapeHtml, formatNumber } from '/static/auth.js?v=7c5d7aaf9b23';
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
@@ -57,7 +57,7 @@
     const rankingNormal = document.getElementById('rankingNormal');
     const rankingHardcore = document.getElementById('rankingHardcore');
     const rankingBody = document.getElementById('rankingBody');
-    const profileUrl = username => `/static/profile.html?user=${encodeURIComponent(username)}`;
+    const profileUrl = username => `/spieler/${encodeURIComponent(username)}`;
     let rankingMode = 'normal';
 
     async function searchPlayers() {

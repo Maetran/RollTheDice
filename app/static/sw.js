@@ -13,19 +13,17 @@
     `scripts/sync_static_versions.py` ausführen, nicht manuell hochzählen.
 */
 
-const CACHE_VERSION = 'assets-0feb342ce2fa';
+const CACHE_VERSION = 'assets-7c5d7aaf9b23';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
-  '/static/index.html',
-  '/static/room.html',
-  '/static/rules.html',
-  '/static/game_view.html',
-  '/static/profile.html',
-  '/static/players.html',
-  '/static/account.html',
-  '/static/admin.html',
+  '/',
+  '/regeln',
+  '/spieler',
+  '/konto',
+  '/admin',
+  '/offline',
   '/static/auth.js',
   '/static/ui.js',
   '/static/pwa.js',
@@ -36,7 +34,6 @@ const PRECACHE_URLS = [
   '/static/emoji.js',
   '/static/room.js',
   '/static/chat.js',
-  '/static/offline.html',
   '/static/favicon.png',
   '/static/icons/apple-touch-icon-180.png',
   '/static/icons/icon-192.png',
@@ -122,7 +119,7 @@ async function cacheFirst(req) {
     const canonical = await cache.match(url.pathname, { ignoreSearch: true });
     if (canonical) return canonical;
     if (req.destination === 'document') {
-      const fallback = await cache.match('/static/offline.html');
+      const fallback = await cache.match('/offline');
       if (fallback) return fallback;
     }
     throw e;
@@ -158,7 +155,7 @@ async function networkFirst(req) {
 
     if (req.destination === 'document') {
       const precache = await caches.open(PRECACHE);
-      const fallback = await precache.match('/static/offline.html');
+      const fallback = await precache.match('/offline');
       if (fallback) return fallback;
     }
     throw e;

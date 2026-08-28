@@ -158,7 +158,7 @@ Beispielprüfung:
 
 ```bash
 curl -fsS https://zockdiewandan.online/static/sw.js | grep CACHE_VERSION
-curl -fsS https://zockdiewandan.online/static/room.html | grep 'style.css?v='
+curl -fsS https://zockdiewandan.online/spiel/test | grep 'style.css?v='
 ```
 
 ## Konfiguration und Geheimnisse

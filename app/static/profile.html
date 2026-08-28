@@ -4,18 +4,18 @@
   <meta charset="utf-8">
   <title>ZDWA – Spielerprofil</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="/manifest.webmanifest?v=0feb342ce2fa">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=0feb342ce2fa" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=0feb342ce2fa" sizes="180x180">
-  <script src="/static/i18n.js?v=0feb342ce2fa"></script>
-  <script src="/static/ui.js?v=0feb342ce2fa"></script>
-  <script src="/static/pwa.js?v=0feb342ce2fa" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=0feb342ce2fa">
-  <script src="/static/theme.js?v=0feb342ce2fa"></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=7c5d7aaf9b23">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=7c5d7aaf9b23" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=7c5d7aaf9b23" sizes="180x180">
+  <script src="/static/i18n.js?v=7c5d7aaf9b23"></script>
+  <script src="/static/ui.js?v=7c5d7aaf9b23"></script>
+  <script src="/static/pwa.js?v=7c5d7aaf9b23" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=7c5d7aaf9b23">
+  <script src="/static/theme.js?v=7c5d7aaf9b23"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
-    <nav class="page-nav"><a href="/">← Lobby</a><a href="/static/players.html">Spieler-Ranking</a></nav>
+    <nav class="page-nav"><a href="/">← Lobby</a><a href="/spieler">Spieler-Ranking</a></nav>
     <section class="card">
       <p class="eyebrow">Öffentliches Spielerprofil</p>
       <h1 id="profileName">Spielerprofil</h1>
@@ -28,8 +28,12 @@
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber } from '/static/auth.js?v=0feb342ce2fa';
-    const username = new URLSearchParams(location.search).get('user') || '';
+    import { escapeHtml, formatNumber } from '/static/auth.js?v=7c5d7aaf9b23';
+    const profilePath = location.pathname.match(/^\/spieler\/([^/]+)\/?$/);
+    let username = new URLSearchParams(location.search).get('user') || '';
+    try { if (profilePath) username = decodeURIComponent(profilePath[1]); }
+    catch { username = ''; }
+    if (username && !profilePath) history.replaceState(null, '', `/spieler/${encodeURIComponent(username)}`);
     const errorEl = document.getElementById('profileError');
     const statisticsEl = document.getElementById('statistics');
     document.title = username ? `ZDWA – ${username}` : document.title;
@@ -70,7 +74,7 @@
         document.getElementById('recentGames').innerHTML = recent.map(game => {
           const date = new Intl.DateTimeFormat(window.ZDWA_I18N?.locale?.() || 'de-CH', { dateStyle: 'medium' }).format(new Date(game.finished_at));
           const mode = game.hardcore ? 'Hardcore' : (String(game.mode) === '2v2' ? '2 vs 2' : `${game.mode} Spieler`);
-          return `<a class="recent-game-row" href="/static/game_view.html?id=${encodeURIComponent(game.game_id)}">
+          return `<a class="recent-game-row" href="/ergebnis/${encodeURIComponent(game.game_id)}">
             <span><strong>${escapeHtml(date)}</strong><small>${escapeHtml(mode)}</small></span>
             <strong>${formatNumber(game.points, '0')} Punkte</strong>
           </a>`;

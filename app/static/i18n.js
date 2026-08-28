@@ -95,7 +95,7 @@
     "Restzeit:": "Time remaining:",
     "Pausiert:": "Paused:",
     "Spielansicht": "Game view",
-    "Kein Spiel angegeben (?id=...)": "No game specified (?id=...)",
+    "Kein Spiel angegeben.": "No game specified.",
     "Lade Renderer …": "Loading game view…",
     "Spiel nicht gefunden oder ohne Snapshot.": "Game not found or no snapshot is available.",
     "Renderer konnte nicht geladen werden.": "The game view could not be loaded.",
@@ -738,7 +738,7 @@
   window.ZDWA_I18N = { getLanguage, locale, setLanguage, syncAccountLanguage, t: translateString, translateElement, catalog: EN };
   document.documentElement.lang = getLanguage();
   const manifestLink = document.querySelector('link[rel="manifest"]');
-  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=0feb342ce2fa";
+  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=7c5d7aaf9b23";
 
   document.addEventListener("DOMContentLoaded", () => {
     translateElement(document);

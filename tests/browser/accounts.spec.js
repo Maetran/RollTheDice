@@ -19,7 +19,7 @@ async function expectNoGermanUi(page) {
 test("public player search and ranking are available to guests", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#onlineUsers")).toContainText(/[1-9]\d* Nutzer online/);
-  await page.goto("/static/players.html");
+  await page.goto("/spieler");
   await expect(page.getByRole("heading", { name: "Spieler suchen" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Spieler-Ranking" })).toBeVisible();
   await expect(page.locator("#rankingNormal")).toHaveClass(/active/);
@@ -57,7 +57,7 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#authBadge")).toContainText("Admin");
 
-  await page.goto("/static/account.html#settings");
+  await page.goto("/konto#settings");
   const preference = page.locator('input[name="mobileRowQuickEntry"]');
   await expect(preference).not.toBeChecked();
   await preference.check();
@@ -72,7 +72,7 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
     });
     return (await response.json()).game_id;
   });
-  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=ignored`);
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=ignored`);
 
   const quickActions = page.locator("#mobileRowQuickActions");
   await expect(quickActions).toBeVisible({ timeout: 6000 });
@@ -207,7 +207,7 @@ test("English localization covers lobby, rules, account preference and game UI",
   await expect(page.getByPlaceholder("Your name")).toBeVisible();
   await expectNoGermanUi(page);
 
-  await page.goto("/static/rules.html");
+  await page.goto("/regeln");
   await expect(page.getByRole("heading", { name: "Game Rules" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Turn Sequence" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Fields & Scoring" })).toBeVisible();
@@ -220,7 +220,7 @@ test("English localization covers lobby, rules, account preference and game UI",
   await page.fill("#loginPassword", "temporary-password-123");
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#authBadge")).toContainText("Admin");
-  await page.goto("/static/account.html#settings");
+  await page.goto("/konto#settings");
   await page.check('input[name="preferredLanguage"][value="en"]');
   await page.click("#preferencesForm button");
   await page.waitForLoadState("load");
@@ -235,7 +235,7 @@ test("English localization covers lobby, rules, account preference and game UI",
   });
   expect(preferredLanguage).toBe("en");
 
-  await page.goto("/static/admin.html");
+  await page.goto("/admin");
   await expect(page.getByRole("heading", { name: "Admin Area" })).toBeVisible();
   await expectNoGermanUi(page);
   for (const panel of ["usersPanel", "assignmentsPanel", "completedGamesPanel"]) {
@@ -244,16 +244,16 @@ test("English localization covers lobby, rules, account preference and game UI",
     await expectNoGermanUi(page);
   }
 
-  await page.goto("/static/players.html");
+  await page.goto("/spieler");
   await expect(page.getByRole("heading", { name: "Find Players" })).toBeVisible();
   await expectNoGermanUi(page);
 
-  await page.goto("/static/profile.html?user=Admin");
+  await page.goto("/spieler/Admin");
   await expect(page.getByRole("heading", { name: "Admin" })).toBeVisible();
   await expectNoGermanUi(page);
 
-  await page.goto("/static/game_view.html");
-  await expect(page.getByText("No game specified (?id=...)", { exact: true })).toBeVisible();
+  await page.goto("/ergebnis");
+  await expect(page.getByText("No game specified.", { exact: true })).toBeVisible();
   await expectNoGermanUi(page);
 
   const gameId = await page.evaluate(async () => {
@@ -264,13 +264,13 @@ test("English localization covers lobby, rules, account preference and game UI",
     });
     return (await response.json()).game_id;
   });
-  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=ignored`);
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=ignored`);
   await expect(page.locator("#rollBtnInline")).toContainText("Roll", { timeout: 6000 });
   await expect(page.locator("#announceBtnInline")).toContainText("Announce");
   await expect(page.locator(".turn-status-text")).toContainText("Turn:");
   await expectNoGermanUi(page);
 
-  await page.goto("/static/account.html#settings");
+  await page.goto("/konto#settings");
   await page.check('input[name="preferredLanguage"][value="de"]');
   await page.click("#preferencesForm button");
   await expect(page.locator("html")).toHaveAttribute("lang", "de", { timeout: 3000 });
@@ -286,7 +286,7 @@ test("admin can log in, create a user and open the public profile", async ({ pag
   await expect(page.locator("#playerName")).toBeDisabled();
 
   await page.click("#adminLink");
-  await page.waitForURL(/admin\.html/);
+  await page.waitForURL(/\/admin$/);
   await expect(page.getByRole("heading", { name: "Adminbereich" })).toBeVisible();
   await expect(page.locator(".admin-module-tile")).toHaveCount(3);
   await expect(page.locator("#usersPanel")).toBeHidden();
@@ -308,7 +308,7 @@ test("admin can log in, create a user and open the public profile", async ({ pag
   }
   await expect(page.locator("#usersBody tr", { hasText: "RegisteredSmoke" })).toBeVisible();
 
-  await page.goto("/static/profile.html?user=RegisteredSmoke");
+  await page.goto("/spieler/RegisteredSmoke");
   await expect(page.getByRole("heading", { name: "RegisteredSmoke" })).toBeVisible();
   await expect(page.locator(".stat-bucket")).toHaveCount(3);
   await expect(page.locator(".stat-bucket").first()).toContainText("Spiele");
@@ -332,7 +332,7 @@ test("superadmin can make a neutral extra roll and set a die", async ({ page }) 
     });
     return (await response.json()).game_id;
   });
-  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=ignored`);
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=ignored`);
   await expect(page.locator(".turn-status-text")).toContainText("Würfe: 1/", { timeout: 6000 });
 
   const dice = page.locator("#diceBar .die");
@@ -361,7 +361,7 @@ test("logged-in user sees the personal landing page", async ({ page }) => {
   await expect(page.locator("#authBadge")).toContainText("RegisteredSmoke");
 
   await page.getByRole("link", { name: "Mein Konto" }).click();
-  await page.waitForURL(/account\.html/);
+  await page.waitForURL(/\/konto(?:#|$)/);
   await expect(page.getByRole("heading", { name: "RegisteredSmoke" })).toBeVisible();
   await page.getByRole("tab", { name: "Statistik" }).click();
   await expect(page.getByRole("tab", { name: "Statistik" })).toHaveAttribute("aria-selected", "true");
@@ -387,7 +387,7 @@ test("account gameplay preferences persist and control announce behavior", async
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#authBadge")).toContainText("RegisteredSmoke");
 
-  await page.goto("/static/account.html#settings");
+  await page.goto("/konto#settings");
   await expect(page.locator('input[name="announceSelectionMode"][value="overlay"]')).toBeChecked();
   await expect(page.locator('input[name="autoWriteAnnounced"][value="true"]')).toBeChecked();
   await expect(page.locator('input[name="hapticFeedback"]')).not.toBeChecked();
@@ -411,7 +411,7 @@ test("account gameplay preferences persist and control announce behavior", async
     });
     return (await response.json()).game_id;
   });
-  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=ignored`);
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=ignored`);
   await expect(page.locator("#announceBtnInline")).toBeEnabled({ timeout: 6000 });
   await page.locator("#announceBtnInline").click();
   await expect(page.locator("#mobileAnnouncePicker")).toBeHidden();
@@ -436,7 +436,7 @@ test("account gameplay preferences persist and control announce behavior", async
   await page.waitForTimeout(1300);
   await expect(pokerAnnounced).toHaveText("");
 
-  await page.goto("/static/account.html#settings");
+  await page.goto("/konto#settings");
   await page.check('input[name="announceSelectionMode"][value="overlay"]');
   await page.check('input[name="autoWriteAnnounced"][value="true"]');
   await page.uncheck('input[name="hapticFeedback"]');
@@ -461,7 +461,7 @@ test("logged-in player can resume on another browser without a local token", asy
     });
     return (await response.json()).game_id;
   });
-  await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=ignored`);
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=ignored`);
   await expect(page.locator(".player-card", { hasText: "RegisteredSmoke" })).toBeVisible();
 
   const secondContext = await browser.newContext();
@@ -474,7 +474,7 @@ test("logged-in player can resume on another browser without a local token", asy
   const resume = secondPage.locator(`.resumeBtn[data-id="${gameId}"]`);
   await expect(resume).toBeVisible({ timeout: 6000 });
   await resume.click();
-  await secondPage.waitForURL(/room\.html/);
+  await secondPage.waitForURL(/\/spiel\//);
   await expect(secondPage.locator(".player-card", { hasText: "RegisteredSmoke" })).toBeVisible();
   await secondContext.close();
 });

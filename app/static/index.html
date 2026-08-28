@@ -11,18 +11,18 @@
     neuer Spiele (mit Modus/Passphrase) und zeigt Leaderboards an.
     - /api/games liefert Spielübersichten (offen + laufend)
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
-    - Per Buttons wird in den Spielraum /static/room.html navigiert
+    - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=0feb342ce2fa">
+  <link rel="manifest" href="/manifest.webmanifest?v=7c5d7aaf9b23">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=0feb342ce2fa" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=0feb342ce2fa" sizes="180x180">
-  <script src="/static/i18n.js?v=0feb342ce2fa"></script>
-  <script src="/static/ui.js?v=0feb342ce2fa"></script>
-  <script src="/static/pwa.js?v=0feb342ce2fa" defer></script>
-  <script src="/static/theme.js?v=0feb342ce2fa"></script>
-  <link rel="stylesheet" href="/static/style.css?v=0feb342ce2fa">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=7c5d7aaf9b23" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=7c5d7aaf9b23" sizes="180x180">
+  <script src="/static/i18n.js?v=7c5d7aaf9b23"></script>
+  <script src="/static/ui.js?v=7c5d7aaf9b23"></script>
+  <script src="/static/pwa.js?v=7c5d7aaf9b23" defer></script>
+  <script src="/static/theme.js?v=7c5d7aaf9b23"></script>
+  <link rel="stylesheet" href="/static/style.css?v=7c5d7aaf9b23">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -40,8 +40,8 @@
               <option value="en">EN</option>
             </select>
           </label>
-          <a class="button-link small ghost" href="/static/players.html">Spieler &amp; Ranking</a>
-          <button class="small ghost rules-under-title" onclick="location.href='/static/rules.html'">Spielregeln</button>
+          <a class="button-link small ghost" href="/spieler">Spieler &amp; Ranking</a>
+          <button class="small ghost rules-under-title" onclick="location.href='/regeln'">Spielregeln</button>
           <button class="small ghost theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten">
             <span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span>
             <span data-theme-label>Dunkel</span>
@@ -76,8 +76,8 @@
         </form>
         <div id="authActions" class="auth-actions" hidden>
           <span id="authBadge" class="badge" hidden></span>
-          <a href="/static/account.html">Mein Konto</a>
-          <a id="adminLink" href="/static/admin.html" hidden>Administration</a>
+          <a href="/konto">Mein Konto</a>
+          <a id="adminLink" href="/admin" hidden>Administration</a>
           <button id="logoutBtn" type="button" class="small ghost">Abmelden</button>
         </div>
         <div id="loginError" class="muted small"></div>
@@ -173,7 +173,7 @@
 
   <!-- Hauptskript: lädt Listen/Leaderboards und verknüpft Buttons -->
   <script type="module">
-    import { loadAuth, login, logout, register } from '/static/auth.js?v=0feb342ce2fa';
+    import { loadAuth, login, logout, register } from '/static/auth.js?v=7c5d7aaf9b23';
 
     const nameInput  = document.getElementById('playerName');
     const passInput  = document.getElementById('passInput');
@@ -410,6 +410,16 @@
       catch { return ""; }
     }
 
+    function rememberPlayerName(gid, name) {
+      try { localStorage.setItem(`${PLAYER_NAME_PREFIX}${gid}`, name); }
+      catch {}
+    }
+
+    function roomUrl(gid, spectator = false) {
+      const base = `/spiel/${encodeURIComponent(gid)}`;
+      return spectator ? `${base}/zuschauen` : base;
+    }
+
     function renderOnlineUsers(value) {
       if (!onlineUsersEl) return;
       const label = window.ZDWA_I18N?.t?.("Nutzer online") || "Nutzer online";
@@ -628,10 +638,8 @@
           }
         }
         storeGamePass(gid, pass);
-        const params = { game_id: gid, name: pname };
-        if (!isResume) params.spectator = "1";
-        const qs = new URLSearchParams(params).toString();
-        location.href = `/static/room.html?${qs}`;
+        rememberPlayerName(gid, pname);
+        location.href = roomUrl(gid, !isResume);
       });
     }
 
@@ -664,8 +672,8 @@
         }
       }
       storeGamePass(gid, pass);
-      const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
-      location.href = `/static/room.html?${qs}`;
+      rememberPlayerName(gid, pname);
+      location.href = roomUrl(gid);
 
     });
 
@@ -696,8 +704,8 @@
         const gid = data.game_id || data.id;
         if (!gid) throw new Error('Antwort ohne game_id');
         storeGamePass(gid, passInput.value);
-        const qs = new URLSearchParams({ game_id: gid, name: pname }).toString();
-        location.href = `/static/room.html?${qs}`;   // FIX
+        rememberPlayerName(gid, pname);
+        location.href = roomUrl(gid);
       } catch (e) {
         const raw = String(e && e.message ? e.message : e);
         const offline = e instanceof TypeError || /failed to fetch|load failed|networkerror/i.test(raw);
@@ -748,7 +756,7 @@
       }
       function viewLink(gameId){
         if (!gameId) return "—";
-        const url = `/static/game_view.html?id=${encodeURIComponent(gameId)}`;
+        const url = `/ergebnis/${encodeURIComponent(gameId)}`;
         return `<a href="${url}" class="small">Spielansicht</a>`;
       }
       function playerName(e){
@@ -757,7 +765,7 @@
         return parts.map(part => {
           const linked = links.find(player => String(player.display_name) === part);
           if (!linked) return escapeHtml(part);
-          const href = `/static/profile.html?user=${encodeURIComponent(linked.username)}`;
+          const href = `/spieler/${encodeURIComponent(linked.username)}`;
           return `<a href="${href}" class="player-profile-link">${escapeHtml(part)}</a>`;
         }).join(', ');
       }

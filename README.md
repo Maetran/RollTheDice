@@ -19,6 +19,20 @@ Localization conventions and terminology are documented in [docs/LOCALIZATION.md
 - Readiness endpoint and container healthcheck for migration-safe deployments
 - Docker Compose setup for local machines, servers, and Raspberry Pi
 
+## Public page URLs
+
+User-facing navigation uses short routes without implementation details:
+
+- `/` lobby
+- `/spiel/{game_id}` active player view
+- `/spiel/{game_id}/zuschauen` spectator view
+- `/regeln`, `/spieler`, `/spieler/{username}`, `/konto`, and `/admin`
+- `/ergebnis/{game_id}` completed-game view
+
+JavaScript, styles, and icons remain under `/static/`; these asset paths are not
+used for browser navigation. Legacy `*.html` links redirect to the matching
+public route so existing bookmarks and older installed app versions keep working.
+
 ## Requirements
 
 - Docker with the Compose plugin
