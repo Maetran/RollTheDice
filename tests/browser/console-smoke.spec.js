@@ -65,6 +65,44 @@ test("lobby can create a game and open spectator view without browser errors", a
   }).toBe(1);
 });
 
+test("dismissed install prompt stays hidden for seven days or until a new app version", async ({ page }) => {
+  await page.goto("/");
+  const dispatchInstallPrompt = () => page.evaluate(() => {
+    const event = new Event("beforeinstallprompt", { cancelable: true });
+    event.prompt = async () => {};
+    window.dispatchEvent(event);
+  });
+
+  await dispatchInstallPrompt();
+  const prompt = page.locator(".app-toast", { hasText: "ZDWA kann als App installiert werden." });
+  await expect(prompt).toBeVisible();
+  await prompt.locator(".app-toast-close").click();
+  await expect(prompt).toBeHidden();
+
+  await page.reload();
+  await dispatchInstallPrompt();
+  await expect(prompt).toBeHidden();
+
+  await page.evaluate(() => {
+    localStorage.setItem("zdwa_install_prompt_dismissed", JSON.stringify({
+      version: "older-service-worker-version",
+      dismissedAt: Date.now(),
+    }));
+  });
+  await dispatchInstallPrompt();
+  await expect(prompt).toBeVisible();
+
+  await prompt.locator(".app-toast-close").click();
+  await page.evaluate(() => {
+    const dismissed = JSON.parse(localStorage.getItem("zdwa_install_prompt_dismissed"));
+    dismissed.dismissedAt = Date.now() - 8 * 24 * 60 * 60 * 1000;
+    localStorage.setItem("zdwa_install_prompt_dismissed", JSON.stringify(dismissed));
+  });
+  await page.reload();
+  await dispatchInstallPrompt();
+  await expect(prompt).toBeVisible();
+});
+
 test("game creation API flow from lobby and spectator mode both work", async ({ page, browser, request }) => {
   const health = watchPageHealth(page);
   await page.goto("/");

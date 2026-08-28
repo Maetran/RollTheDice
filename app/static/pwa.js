@@ -3,6 +3,15 @@
   "use strict";
 
   const PRESENCE_KEY = "zdwa_presence_id";
+  const INSTALL_DISMISS_KEY = "zdwa_install_prompt_dismissed";
+  const INSTALL_DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
+  const APP_VERSION = (() => {
+    try {
+      return new URL(document.currentScript?.src || "", location.href).searchParams.get("v") || "unversioned";
+    } catch {
+      return "unversioned";
+    }
+  })();
   let presenceSocket = null;
   let presenceHeartbeat = null;
   let presenceRetry = null;
@@ -61,6 +70,27 @@
 
   const toast = (message, options) => window.ZDWA_UI?.toast?.(message, options);
 
+  function installPromptSuppressed() {
+    try {
+      const dismissed = JSON.parse(localStorage.getItem(INSTALL_DISMISS_KEY) || "null");
+      return dismissed?.version === APP_VERSION
+        && Date.now() - Number(dismissed.dismissedAt || 0) < INSTALL_DISMISS_MS;
+    } catch {
+      return false;
+    }
+  }
+
+  function dismissInstallPrompt() {
+    try {
+      localStorage.setItem(INSTALL_DISMISS_KEY, JSON.stringify({
+        version: APP_VERSION,
+        dismissedAt: Date.now(),
+      }));
+    } catch {
+      // Storage can be unavailable in private/restricted browsing contexts.
+    }
+  }
+
   function showUpdate(registration) {
     if (!registration?.waiting || updateToast) return;
     updateToast = toast("Eine neue Version von ZDWA ist verfügbar.", {
@@ -89,10 +119,12 @@
     event.preventDefault();
     installPrompt = event;
     if (matchMedia("(display-mode: standalone)").matches) return;
+    if (installPromptSuppressed()) return;
     toast("ZDWA kann als App installiert werden.", {
       kind: "info",
       duration: 0,
       actionLabel: "Installieren",
+      onDismiss: dismissInstallPrompt,
       onAction: async () => {
         const prompt = installPrompt;
         installPrompt = null;
@@ -103,6 +135,7 @@
 
   window.addEventListener("appinstalled", () => {
     installPrompt = null;
+    try { localStorage.removeItem(INSTALL_DISMISS_KEY); } catch {}
     toast("ZDWA wurde installiert.", { kind: "success" });
   });
 
@@ -132,5 +165,10 @@
     }
   });
 
-  window.ZDWA_PWA = { showUpdate };
+  window.ZDWA_PWA = {
+    showUpdate,
+    appVersion: APP_VERSION,
+    installPromptSuppressed,
+    dismissInstallPrompt,
+  };
 })();

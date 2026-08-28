@@ -18,7 +18,7 @@
     return region;
   }
 
-  function toast(message, { kind = "info", duration = 3200, actionLabel = "", onAction = null } = {}) {
+  function toast(message, { kind = "info", duration = 3200, actionLabel = "", onAction = null, onDismiss = null } = {}) {
     const region = ensureToastRegion();
     const item = document.createElement("div");
     item.className = `app-toast app-toast-${kind}`;
@@ -45,7 +45,9 @@
     close.className = "app-toast-close";
     close.setAttribute("aria-label", t("Hinweis schließen"));
     close.textContent = "×";
-    close.addEventListener("click", () => item.remove());
+    close.addEventListener("click", () => {
+      try { onDismiss?.(); } finally { item.remove(); }
+    });
     item.appendChild(close);
     region.appendChild(item);
 
