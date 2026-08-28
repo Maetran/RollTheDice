@@ -9,6 +9,7 @@ an**. Das Repository heisst intern weiterhin `RollTheDice`.
 | --- | --- |
 | Öffentliche URL | `https://zockdiewandan.online/` |
 | SSH-Ziel | `ssh zdwa` |
+| SSH-Benutzer | `manuel`, Deployment unter `/root` via passwortlosem `sudo` |
 | Arbeitsverzeichnis | `/root/RollTheDice` |
 | Git-Branch | `master` |
 | Container/Service | `rollthedice` |
@@ -79,7 +80,7 @@ git status --short
 Der reguläre und bevorzugte Weg ist:
 
 ```bash
-scripts/deploy_zdwa.sh
+REMOTE_SUDO=1 scripts/deploy_zdwa.sh
 ```
 
 Das Skript führt auf `ssh zdwa` folgende Schritte aus:
@@ -96,7 +97,7 @@ Das Skript führt auf `ssh zdwa` folgende Schritte aus:
 Das Ziel kann bei Bedarf überschrieben werden:
 
 ```bash
-REMOTE=zdwa REMOTE_DIR=/root/RollTheDice BRANCH=master scripts/deploy_zdwa.sh
+REMOTE=zdwa REMOTE_SUDO=1 REMOTE_DIR=/root/RollTheDice BRANCH=master scripts/deploy_zdwa.sh
 ```
 
 `REMOTE_DIR=auto` sucht nach einem Checkout mit dem erwarteten GitHub-Remote.

@@ -5,6 +5,7 @@ REMOTE="${REMOTE:-zdwa}"
 REMOTE_DIR="${REMOTE_DIR:-/root/RollTheDice}"
 REPO_MATCH="${REPO_MATCH:-Maetran/RollTheDice}"
 BRANCH="${BRANCH:-master}"
+REMOTE_SUDO="${REMOTE_SUDO:-0}"
 
 if [[ "$REMOTE_DIR" == "auto" ]]; then
   REMOTE_DIR="$(
@@ -36,7 +37,14 @@ fi
 
 printf 'Deploy target: %s:%s\n' "$REMOTE" "$REMOTE_DIR"
 
-ssh "$REMOTE" "REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") BRANCH=$(printf '%q' "$BRANCH") bash -s" <<'REMOTE_SCRIPT'
+remote_env="REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") BRANCH=$(printf '%q' "$BRANCH")"
+if [[ "$REMOTE_SUDO" == "1" ]]; then
+  remote_command="sudo -n env $remote_env bash -s"
+else
+  remote_command="$remote_env bash -s"
+fi
+
+ssh "$REMOTE" "$remote_command" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
 cd "$REMOTE_DIR"
