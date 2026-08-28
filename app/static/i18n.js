@@ -147,6 +147,8 @@
     "Das Spiel wurde erfolgreich beendet.": "The game ended successfully.",
     "Das Spiel wurde beendet.": "The game was ended.",
     "Neue Runde": "New round",
+    "Neue Runde konnte nicht erstellt werden": "Could not create a new round",
+    "Bitte versuche es erneut oder kehre zur Lobby zurück.": "Please try again or return to the lobby.",
     "Spiel pausiert": "Game paused",
     "Passphrase erforderlich": "Passphrase required",
     "Dieses Spiel ist passwortgeschützt.": "This game is password-protected.",
@@ -725,7 +727,7 @@
   window.ZDWA_I18N = { getLanguage, locale, setLanguage, syncAccountLanguage, t: translateString, translateElement, catalog: EN };
   document.documentElement.lang = getLanguage();
   const manifestLink = document.querySelector('link[rel="manifest"]');
-  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=a57ffffe833b";
+  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=c983bbcb704b";
 
   document.addEventListener("DOMContentLoaded", () => {
     translateElement(document);

@@ -17,7 +17,7 @@
 */
 // Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions)
 
-import { initChat, addChatMessage } from "./chat.js?v=a57ffffe833b";
+import { initChat, addChatMessage } from "./chat.js?v=c983bbcb704b";
 
 (() => {
   // ---------- Helpers ----------
@@ -344,11 +344,34 @@ import { initChat, addChatMessage } from "./chat.js?v=a57ffffe833b";
         })
       : "lobby";
     if (choice === "new") {
-      sessionStorage.setItem("zdwa_new_game_defaults", JSON.stringify({
-        mode: String(snapshot?._mode || "1"),
-        hardcore: !!snapshot?._hardcore,
-      }));
-      location.href = "/?new_game=1";
+      try {
+        const response = await fetch("/api/games", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: String(snapshot?._name || "Neue Runde"),
+            mode: String(snapshot?._mode || "1"),
+            hardcore: !!snapshot?._hardcore,
+            pass: qs.pass || null,
+          }),
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const created = await response.json();
+        if (!created?.game_id) throw new Error("missing_game_id");
+        if (qs.pass) sessionStorage.setItem(`wuerfler_pass_${created.game_id}`, qs.pass);
+        const nextRoom = new URL("/static/room.html", location.origin);
+        nextRoom.searchParams.set("game_id", created.game_id);
+        nextRoom.searchParams.set("name", myName || "Gast");
+        location.href = nextRoom.toString();
+      } catch (error) {
+        await showNotice({
+          title: "Neue Runde konnte nicht erstellt werden",
+          message: "Bitte versuche es erneut oder kehre zur Lobby zurück.",
+          kind: "error",
+        });
+        window._resultsShown = false;
+        return showGameResults(snapshot);
+      }
       return;
     }
     location.href = "/";

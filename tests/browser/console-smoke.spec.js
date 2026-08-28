@@ -749,7 +749,7 @@ test("mobile announce picker shows two rows and disables filled fields", async (
   await health.expectClean();
 });
 
-test("game result dialog keeps the final standings visible and prepares a new round", async ({ page, request }) => {
+test("game result dialog keeps the final standings visible and creates a new round", async ({ page, request }) => {
   const created = await request.post("/api/games", { data: { name: "Result dialog", mode: 1 } });
   const { game_id: gameId } = await created.json();
   await page.goto(`/static/room.html?game_id=${encodeURIComponent(gameId)}&name=Result&__test=1`);
@@ -765,9 +765,24 @@ test("game result dialog keeps the final standings visible and prepares a new ro
   await expect(page.locator("#appDialog")).toContainText("1. Result – 777 Punkte");
   await expect(page.getByRole("button", { name: "Neue Runde" })).toBeVisible();
   await page.getByRole("button", { name: "Neue Runde" }).click();
-  await page.waitForURL(/\?new_game=1/);
-  await expect(page.locator("#gameMode")).toHaveValue("2");
-  await expect(page.locator("#hardcoreChk")).toBeChecked();
+  await page.waitForURL(url => (
+    url.pathname === "/static/room.html"
+    && url.searchParams.get("game_id")
+    && url.searchParams.get("game_id") !== gameId
+  ));
+  const nextGameId = new URL(page.url()).searchParams.get("game_id");
+  expect(nextGameId).toBeTruthy();
+  expect(nextGameId).not.toBe(gameId);
+  await page.waitForSelector("#diceBar");
+  const nextGame = await request.get(`/api/games/${encodeURIComponent(nextGameId)}`);
+  expect(nextGame.ok()).toBeTruthy();
+  expect(await nextGame.json()).toMatchObject({
+    exists: true,
+    mode: "2",
+    hardcore: true,
+    started: false,
+    finished: false,
+  });
 });
 
 test("protected game passphrases use an in-app dialog and stay out of the room URL", async ({ page, request }) => {
