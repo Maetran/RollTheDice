@@ -14,7 +14,7 @@ Localization conventions and terminology are documented in [docs/LOCALIZATION.md
 - User accounts, admin management, public profiles, search, and player rankings
 - Audited permanent deletion of invalid completed games with automatic statistic updates
 - Self-registration from the lobby with immutable usernames
-- Personal statistics split into Normal, Hardcore, and overall results
+- Personal statistics split into Normal, Hardcore, and overall results, with a selectable score chart and median
 - Progressive Web App support with content-hashed asset and service-worker versions
 - Readiness endpoint and container healthcheck for migration-safe deployments
 - Docker Compose setup for local machines, servers, and Raspberry Pi

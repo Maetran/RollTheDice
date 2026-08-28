@@ -635,11 +635,12 @@ td.cell.announce-pickable{
 
 .account-preferences-form fieldset{
   display:grid;
-  gap:.55rem;
+  gap:.45rem;
   margin:0;
-  padding:.8rem;
+  padding:.85rem;
   border:1px solid var(--border);
-  border-radius:var(--radius-sm);
+  border-radius:14px;
+  background:var(--surface-soft);
 }
 .account-preferences-form legend{
   padding:0 .3rem;
@@ -648,12 +649,33 @@ td.cell.announce-pickable{
 .account-preferences-form fieldset label{
   display:flex;
   align-items:flex-start;
-  gap:.5rem;
+  gap:.65rem;
+  min-height:44px;
+  padding:.65rem .7rem;
+  border:1px solid var(--border);
+  border-radius:11px;
+  background:var(--card);
+  line-height:1.38;
   cursor:pointer;
+  transition:border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.account-preferences-form fieldset label:hover{ border-color:color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.account-preferences-form fieldset label:has(input:checked){
+  border-color:var(--accent);
+  background:color-mix(in srgb, var(--card) 86%, var(--accent) 14%);
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 .account-preferences-form input[type="radio"]{
   flex:0 0 auto;
   margin-top:.18rem;
+}
+.account-preferences-form input[type="radio"],
+.account-preferences-form input[type="checkbox"]{
+  width:1.15rem;
+  height:1.15rem;
+  flex:0 0 auto;
+  margin-top:.12rem;
+  accent-color:var(--accent);
 }
 
 /* Suggestions – Button-Styling (nur Anzeige) */
@@ -2704,6 +2726,27 @@ button:disabled:hover{
 .admin-panel[hidden] { display: none; }
 .page-nav { display: flex; gap: 1rem; margin: 0 0 1rem; }
 .eyebrow { margin: 0 0 .25rem; color: var(--muted, #64748b); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.account-header-card h1 { margin-bottom: 0; }
+.account-tabs {
+  position: sticky;
+  top: .5rem;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .35rem;
+  margin: .75rem 0 1rem;
+  padding: .3rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(12px);
+}
+.account-tab { min-height: 44px; border-color: transparent; background: transparent; color: var(--muted); box-shadow: none; }
+.account-tab:hover { transform: none; border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.account-tab.active { color: #fff; background: var(--accent); border-color: var(--accent); }
+.account-panel[hidden] { display: none; }
+.account-settings-panel { display: grid; gap: 1rem; }
 .statistics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 .stat-bucket { border: 1px solid var(--border); border-radius: 14px; padding: 1rem; background: color-mix(in srgb, var(--card) 92%, var(--accent) 8%); }
 .stat-bucket h2 { margin-top: 0; }
@@ -2918,6 +2961,32 @@ body.app-dialog-open{ overflow:hidden; }
 .recent-game-row:hover{ border-color:var(--accent); }
 .recent-game-row span{ display:grid; gap:.12rem; }
 .recent-game-row small{ color:var(--muted); }
+.history-chart-section { margin-top: 1.25rem; padding-top: 1.1rem; border-top: 1px solid var(--border); }
+.history-chart-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+.history-chart-header h2 { margin: 0; }
+.history-range { display: flex; gap: .3rem; padding: .25rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-soft); }
+.history-range button { min-width: 2.75rem; padding: .45rem .65rem; border-color: transparent; background: transparent; color: var(--muted); box-shadow: none; }
+.history-range button:hover { transform: none; }
+.history-range button.active { color: #fff; background: var(--accent); border-color: var(--accent); }
+.history-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; margin: .9rem 0 .55rem; }
+.history-summary span { display: grid; gap: .15rem; padding: .65rem .8rem; border-radius: 12px; background: var(--surface-soft); }
+.history-summary small { color: var(--muted); }
+.history-summary strong { font-size: 1.15rem; }
+.history-chart { min-height: 250px; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-soft); }
+.history-chart > p { margin: 1rem; }
+.history-chart svg { display: block; width: 100%; height: auto; min-height: 250px; }
+.history-grid line { stroke: var(--border); stroke-width: 1; stroke-dasharray: 4 5; }
+.history-grid text, .history-date { fill: var(--muted); font-size: 12px; }
+.history-score-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.history-dots circle { stroke: var(--card); stroke-width: 2; }
+.history-dots .normal { fill: var(--accent); }
+.history-dots .hardcore { fill: #f97316; }
+.history-median-line { stroke: #8b5cf6; stroke-width: 2; stroke-dasharray: 7 5; }
+.history-legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: .55rem; color: var(--muted); font-size: .82rem; }
+.history-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+.history-legend i { width: .65rem; height: .65rem; border-radius: 999px; background: var(--accent); }
+.history-legend i.hardcore { background: #f97316; }
+.history-legend i.median { width: 1.2rem; height: 0; border-top: 2px dashed #8b5cf6; border-radius: 0; background: none; }
 
 @media (max-width: 760px) {
   .statistics-grid { grid-template-columns: 1fr; }
@@ -2926,6 +2995,13 @@ body.app-dialog-open{ overflow:hidden; }
   .ranking-controls { width: 100%; justify-content: flex-start; }
   .login-inline { align-items: stretch; }
   .login-inline input, .login-inline button { width: 100%; }
+  .history-chart-header { align-items: stretch; flex-direction: column; }
+  .history-range { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; }
+  .history-range button { min-width: 0; }
+  .history-summary { gap: .35rem; }
+  .history-summary span { padding: .55rem; }
+  .history-chart { min-height: 220px; margin-inline: -.25rem; }
+  .history-chart svg { min-height: 220px; }
 }
 
 /* Wrappers remain transparent to the established desktop dice grid. */

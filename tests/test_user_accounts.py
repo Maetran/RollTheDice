@@ -19,7 +19,13 @@ from app.api_auth import (
     auth_update_language,
     auth_update_preferences,
 )
-from app.api_users import AssignmentRequest, assign_game_participant, player_ranking, public_player_profile
+from app.api_users import (
+    AssignmentRequest,
+    assign_game_participant,
+    own_game_history,
+    player_ranking,
+    public_player_profile,
+)
 from app.auth import (
     auth_identity_payload,
     change_password,
@@ -360,6 +366,15 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertEqual(len(profile["recent_games"]), 1)
         self.assertEqual(profile["recent_games"][0]["points"], 410)
         self.assertFalse(profile["recent_games"][0]["hardcore"])
+
+        identity, raw_token = login(request_for(), "Carla", "temporary-carla-123")
+        history = own_game_history(
+            request_for(cookie=f"rollthedice_session={raw_token}", csrf=identity.csrf_token),
+            limit="all",
+        )
+        self.assertEqual(history["selection"], "all")
+        self.assertEqual(history["summary"], {"games": 1, "median_points": 410.0, "average_points": 410.0})
+        self.assertEqual(history["games"][0]["game_id"], g["_id"])
 
     def test_team_score_is_attributed_to_both_registered_members(self):
         first = create_user("Dora", "temporary-dora-123", must_change_password=False)

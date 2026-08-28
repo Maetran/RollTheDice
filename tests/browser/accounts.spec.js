@@ -57,7 +57,7 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#authBadge")).toContainText("Admin");
 
-  await page.goto("/static/account.html");
+  await page.goto("/static/account.html#settings");
   const preference = page.locator('input[name="mobileRowQuickEntry"]');
   await expect(preference).not.toBeChecked();
   await preference.check();
@@ -220,7 +220,7 @@ test("English localization covers lobby, rules, account preference and game UI",
   await page.fill("#loginPassword", "temporary-password-123");
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#authBadge")).toContainText("Admin");
-  await page.goto("/static/account.html");
+  await page.goto("/static/account.html#settings");
   await page.check('input[name="preferredLanguage"][value="en"]');
   await page.click("#preferencesForm button");
   await page.waitForLoadState("load");
@@ -270,7 +270,7 @@ test("English localization covers lobby, rules, account preference and game UI",
   await expect(page.locator(".turn-status-text")).toContainText("Turn:");
   await expectNoGermanUi(page);
 
-  await page.goto("/static/account.html");
+  await page.goto("/static/account.html#settings");
   await page.check('input[name="preferredLanguage"][value="de"]');
   await page.click("#preferencesForm button");
   await expect(page.locator("html")).toHaveAttribute("lang", "de", { timeout: 3000 });
@@ -363,12 +363,18 @@ test("logged-in user sees the personal landing page", async ({ page }) => {
   await page.getByRole("link", { name: "Mein Konto" }).click();
   await page.waitForURL(/account\.html/);
   await expect(page.getByRole("heading", { name: "RegisteredSmoke" })).toBeVisible();
+  await page.getByRole("tab", { name: "Statistik" }).click();
+  await expect(page.getByRole("tab", { name: "Statistik" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Statistiken" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Spieleinstellungen" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Deine letzten Spiele" })).toBeVisible();
+  await expect(page.locator("[data-history-limit]")).toHaveCount(4);
+  await expect(page.locator("#historyChart svg, #historyChart .muted")).toBeVisible();
   await expect(page.locator(".stat-bucket")).toHaveCount(3);
   await expect(page.locator(".stat-bucket").first()).not.toContainText("Durchschnitt");
   await expect(page.locator(".stat-bucket").nth(2)).toContainText("Durchschnitt");
   await expect(page.locator(".stat-bucket").nth(2)).toContainText("Trend (3 Spiele)");
+  await page.getByRole("tab", { name: "Einstellungen" }).click();
+  await expect(page.getByRole("heading", { name: "Spieleinstellungen" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Passwort ändern" })).toBeVisible();
 });
 
@@ -381,7 +387,7 @@ test("account gameplay preferences persist and control announce behavior", async
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#authBadge")).toContainText("RegisteredSmoke");
 
-  await page.goto("/static/account.html");
+  await page.goto("/static/account.html#settings");
   await expect(page.locator('input[name="announceSelectionMode"][value="overlay"]')).toBeChecked();
   await expect(page.locator('input[name="autoWriteAnnounced"][value="true"]')).toBeChecked();
   await expect(page.locator('input[name="hapticFeedback"]')).not.toBeChecked();
@@ -430,7 +436,7 @@ test("account gameplay preferences persist and control announce behavior", async
   await page.waitForTimeout(1300);
   await expect(pokerAnnounced).toHaveText("");
 
-  await page.goto("/static/account.html");
+  await page.goto("/static/account.html#settings");
   await page.check('input[name="announceSelectionMode"][value="overlay"]');
   await page.check('input[name="autoWriteAnnounced"][value="true"]');
   await page.uncheck('input[name="hapticFeedback"]');

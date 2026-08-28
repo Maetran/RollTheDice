@@ -4,80 +4,132 @@
   <meta charset="utf-8">
   <title>ZDWA – Mein Konto</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="/manifest.webmanifest?v=c983bbcb704b">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=c983bbcb704b" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=c983bbcb704b" sizes="180x180">
-  <script src="/static/i18n.js?v=c983bbcb704b"></script>
-  <script src="/static/ui.js?v=c983bbcb704b"></script>
-  <script src="/static/pwa.js?v=c983bbcb704b" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=c983bbcb704b">
-  <script src="/static/theme.js?v=c983bbcb704b"></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=0feb342ce2fa">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=0feb342ce2fa" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=0feb342ce2fa" sizes="180x180">
+  <script src="/static/i18n.js?v=0feb342ce2fa"></script>
+  <script src="/static/ui.js?v=0feb342ce2fa"></script>
+  <script src="/static/pwa.js?v=0feb342ce2fa" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=0feb342ce2fa">
+  <script src="/static/theme.js?v=0feb342ce2fa"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
     <nav class="page-nav"><a href="/">← Lobby</a><a id="publicProfileLink" href="#">Öffentliches Profil</a></nav>
-    <section class="card">
+    <section class="card account-header-card">
       <p class="eyebrow">Mein Konto</p>
       <h1 id="accountName">Benutzerkonto</h1>
       <div id="accountNotice" class="connection-error" hidden></div>
+    </section>
+    <nav class="account-tabs" role="tablist" aria-label="Kontobereiche">
+      <button id="statisticsTab" class="account-tab active" type="button" role="tab" aria-selected="true" aria-controls="statisticsPanel">Statistik</button>
+      <button id="settingsTab" class="account-tab" type="button" role="tab" aria-selected="false" aria-controls="settingsPanel">Einstellungen</button>
+    </nav>
+    <section id="statisticsPanel" class="card account-panel" role="tabpanel" aria-labelledby="statisticsTab">
       <h2>Statistiken</h2>
       <div id="statistics" class="statistics-grid"></div>
+      <section class="history-chart-section" aria-labelledby="historyChartTitle">
+        <div class="history-chart-header">
+          <div>
+            <p class="eyebrow">Punkteentwicklung</p>
+            <h2 id="historyChartTitle">Deine letzten Spiele</h2>
+          </div>
+          <div class="history-range" role="group" aria-label="Anzahl angezeigter Spiele">
+            <button class="active" type="button" data-history-limit="10">10</button>
+            <button type="button" data-history-limit="50">50</button>
+            <button type="button" data-history-limit="100">100</button>
+            <button type="button" data-history-limit="all">Alle</button>
+          </div>
+        </div>
+        <div id="historySummary" class="history-summary" aria-live="polite"></div>
+        <div id="historyChart" class="history-chart" aria-live="polite"></div>
+        <div class="history-legend"><span><i class="normal"></i>Normal</span><span><i class="hardcore"></i>Hardcore</span><span><i class="median"></i>Median</span></div>
+      </section>
       <section id="recentGamesSection" class="recent-games-section" hidden>
         <h2>Letzte Spiele</h2>
         <div id="recentGames" class="recent-games-list"></div>
       </section>
     </section>
-    <section class="card password-card">
-      <h2>Spieleinstellungen</h2>
-      <p class="muted small">Diese Einstellungen gelten für dein Konto auf allen Geräten. Sie ändern nur die Bedienung, nicht die Spielregeln.</p>
-      <form id="preferencesForm" class="form-stack account-preferences-form">
-        <fieldset>
-          <legend>Bevorzugte Sprache</legend>
-          <label><input type="radio" name="preferredLanguage" value="de"> Deutsch</label>
-          <label><input type="radio" name="preferredLanguage" value="en"> Englisch</label>
-        </fieldset>
-        <fieldset>
-          <legend>Ansagefeld auswählen</legend>
-          <label><input type="radio" name="announceSelectionMode" value="overlay"> Auswahlfenster: Nach „Ansagen“ werden alle freien ❗-Felder kompakt angezeigt</label>
-          <label><input type="radio" name="announceSelectionMode" value="table"> Tabelle: Nach „Ansagen“ das gewünschte freie ❗-Feld direkt im Spielblatt anklicken</label>
-        </fieldset>
-        <fieldset>
-          <legend>Angesagtes Feld eintragen</legend>
-          <label><input type="radio" name="autoWriteAnnounced" value="true"> Automatisch: Nach dem letzten erlaubten Wurf wird das angesagte Ergebnis selbstständig eingetragen</label>
-          <label><input type="radio" name="autoWriteAnnounced" value="false"> Manuell: Das angesagte ❗-Feld nach dem Würfeln immer selbst anklicken</label>
-        </fieldset>
-        <fieldset>
-          <legend>Mobile Schnelleingabe</legend>
-          <label><input type="checkbox" name="mobileRowQuickEntry"> Schnellbuttons für die Aufwärts- und Abwärtsreihe auf Mobilgeräten anzeigen</label>
-        </fieldset>
-        <fieldset>
-          <legend>Mobilkomfort</legend>
-          <label><input type="checkbox" name="hapticFeedback"> Sanftes haptisches Feedback für Würfeln, Halten und Schreiben verwenden</label>
-          <label><input type="checkbox" name="keepScreenAwake"> Bildschirm während eines laufenden Spiels wach halten</label>
-        </fieldset>
-        <button>Spieleinstellungen speichern</button>
-      </form>
-      <div id="preferencesMessage" class="muted small" role="status"></div>
-    </section>
-    <section class="card password-card">
-      <h2>Passwort ändern</h2>
-      <p id="passwordHint" class="muted small"></p>
-      <form id="passwordForm" class="form-stack">
-        <label>Aktuelles Passwort<input id="currentPassword" type="password" autocomplete="current-password" required></label>
-        <label>Neues Passwort<input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></label>
-        <label>Neues Passwort wiederholen<input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>
-        <button>Passwort ändern</button>
-      </form>
-      <div id="passwordMessage" class="muted small"></div>
+    <section id="settingsPanel" class="account-panel account-settings-panel" role="tabpanel" aria-labelledby="settingsTab" hidden>
+      <section class="card password-card">
+        <h2>Spieleinstellungen</h2>
+        <p class="muted small">Diese Einstellungen gelten für dein Konto auf allen Geräten. Sie ändern nur die Bedienung, nicht die Spielregeln.</p>
+        <form id="preferencesForm" class="form-stack account-preferences-form">
+          <fieldset>
+            <legend>Bevorzugte Sprache</legend>
+            <label><input type="radio" name="preferredLanguage" value="de"> Deutsch</label>
+            <label><input type="radio" name="preferredLanguage" value="en"> Englisch</label>
+          </fieldset>
+          <fieldset>
+            <legend>Ansagefeld auswählen</legend>
+            <label><input type="radio" name="announceSelectionMode" value="overlay"> Auswahlfenster: Nach „Ansagen“ werden alle freien ❗-Felder kompakt angezeigt</label>
+            <label><input type="radio" name="announceSelectionMode" value="table"> Tabelle: Nach „Ansagen“ das gewünschte freie ❗-Feld direkt im Spielblatt anklicken</label>
+          </fieldset>
+          <fieldset>
+            <legend>Angesagtes Feld eintragen</legend>
+            <label><input type="radio" name="autoWriteAnnounced" value="true"> Automatisch: Nach dem letzten erlaubten Wurf wird das angesagte Ergebnis selbstständig eingetragen</label>
+            <label><input type="radio" name="autoWriteAnnounced" value="false"> Manuell: Das angesagte ❗-Feld nach dem Würfeln immer selbst anklicken</label>
+          </fieldset>
+          <fieldset>
+            <legend>Mobile Schnelleingabe</legend>
+            <label><input type="checkbox" name="mobileRowQuickEntry"> Schnellbuttons für die Aufwärts- und Abwärtsreihe auf Mobilgeräten anzeigen</label>
+          </fieldset>
+          <fieldset>
+            <legend>Mobilkomfort</legend>
+            <label><input type="checkbox" name="hapticFeedback"> Sanftes haptisches Feedback für Würfeln, Halten und Schreiben verwenden</label>
+            <label><input type="checkbox" name="keepScreenAwake"> Bildschirm während eines laufenden Spiels wach halten</label>
+          </fieldset>
+          <button>Spieleinstellungen speichern</button>
+        </form>
+        <div id="preferencesMessage" class="muted small" role="status"></div>
+      </section>
+      <section class="card password-card">
+        <h2>Passwort ändern</h2>
+        <p id="passwordHint" class="muted small"></p>
+        <form id="passwordForm" class="form-stack">
+          <label>Aktuelles Passwort<input id="currentPassword" type="password" autocomplete="current-password" required></label>
+          <label>Neues Passwort<input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+          <label>Neues Passwort wiederholen<input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+          <button>Passwort ändern</button>
+        </form>
+        <div id="passwordMessage" class="muted small"></div>
+      </section>
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth } from '/static/auth.js?v=c983bbcb704b';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth } from '/static/auth.js?v=0feb342ce2fa';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace('/');
     const user = auth.user;
     document.getElementById('accountName').textContent = user.username;
     document.getElementById('publicProfileLink').href = `/static/profile.html?user=${encodeURIComponent(user.username)}`;
+
+    const accountTabs = {
+      statistics: {
+        button: document.getElementById('statisticsTab'),
+        panel: document.getElementById('statisticsPanel'),
+      },
+      settings: {
+        button: document.getElementById('settingsTab'),
+        panel: document.getElementById('settingsPanel'),
+      },
+    };
+    function showAccountPanel(name, { updateHash = true } = {}) {
+      const selected = name === 'settings' ? 'settings' : 'statistics';
+      Object.entries(accountTabs).forEach(([key, tab]) => {
+        const active = key === selected;
+        tab.button.classList.toggle('active', active);
+        tab.button.setAttribute('aria-selected', String(active));
+        tab.panel.hidden = !active;
+      });
+      if (updateHash) history.replaceState(null, '', selected === 'settings' ? '#settings' : '#statistics');
+    }
+    Object.entries(accountTabs).forEach(([name, tab]) => {
+      tab.button.addEventListener('click', () => showAccountPanel(name));
+    });
+    window.addEventListener('hashchange', () => showAccountPanel(location.hash === '#settings' ? 'settings' : 'statistics', { updateHash: false }));
+    showAccountPanel(user.must_change_password || location.hash === '#settings' ? 'settings' : 'statistics', { updateHash: false });
+
     if (user.must_change_password) {
       document.getElementById('passwordHint').textContent = 'Das temporäre Passwort muss jetzt geändert werden.';
     }
@@ -142,6 +194,74 @@
         <div><dt>Trend (3 Spiele)</dt><dd><span class="avg-trend ${trend.css}" title="${escapeHtml(trendTitle)}" aria-label="${escapeHtml(trendTitle)}">${trend.symbol} ${trend.text}</span></dd></div>` : ''}
       </dl></article>`;
     }
+
+    function renderHistoryChart(payload) {
+      const games = Array.isArray(payload.games) ? [...payload.games].reverse() : [];
+      const chart = document.getElementById('historyChart');
+      const summary = document.getElementById('historySummary');
+      const t = window.ZDWA_I18N?.t || (value => value);
+      if (!games.length) {
+        summary.innerHTML = `<span><strong>0</strong> ${t('Spiele')}</span>`;
+        chart.innerHTML = `<p class="muted">${t('Noch keine Spiele für den Verlauf vorhanden.')}</p>`;
+        return;
+      }
+
+      const values = games.map(game => Number(game.points));
+      const minimum = Math.min(...values);
+      const maximum = Math.max(...values);
+      const padding = Math.max(10, Math.ceil((maximum - minimum) * .12));
+      const low = Math.max(0, minimum - padding);
+      const high = Math.max(low + 1, maximum + padding);
+      const medianPoints = Number(payload.summary?.median_points);
+      const averagePoints = Number(payload.summary?.average_points);
+      summary.innerHTML = `
+        <span><small>${t('Spiele')}</small><strong>${games.length}</strong></span>
+        <span><small>${t('Median')}</small><strong>${formatNumber(medianPoints)}</strong></span>
+        <span><small>${t('Durchschnitt')}</small><strong>${formatNumber(averagePoints)}</strong></span>`;
+
+      const width = 720;
+      const height = 260;
+      const plot = { left: 48, right: 14, top: 18, bottom: 38 };
+      const plotWidth = width - plot.left - plot.right;
+      const plotHeight = height - plot.top - plot.bottom;
+      const x = index => plot.left + (games.length === 1 ? plotWidth / 2 : index * plotWidth / (games.length - 1));
+      const y = value => plot.top + (high - value) * plotHeight / (high - low);
+      const linePoints = games.map((game, index) => `${x(index).toFixed(1)},${y(game.points).toFixed(1)}`).join(' ');
+      const gridValues = [high, Math.round((high + low) / 2), low];
+      const grid = gridValues.map(value => `<g><line x1="${plot.left}" y1="${y(value)}" x2="${width - plot.right}" y2="${y(value)}"></line><text x="${plot.left - 8}" y="${y(value) + 4}" text-anchor="end">${value}</text></g>`).join('');
+      const dots = games.map((game, index) => `<circle class="${game.hardcore ? 'hardcore' : 'normal'}" cx="${x(index)}" cy="${y(game.points)}" r="${games.length > 100 ? 2 : 3.5}"><title>${escapeHtml(String(game.points))} ${t('Punkte')}</title></circle>`).join('');
+      const locale = window.ZDWA_I18N?.locale?.() || 'de-CH';
+      const shortDate = value => new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(value));
+      const firstDate = escapeHtml(shortDate(games[0].finished_at));
+      const lastDate = escapeHtml(shortDate(games.at(-1).finished_at));
+      chart.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(t('Punkteverlauf der ausgewählten Spiele'))}">
+        <g class="history-grid">${grid}</g>
+        <line class="history-median-line" x1="${plot.left}" y1="${y(medianPoints)}" x2="${width - plot.right}" y2="${y(medianPoints)}"></line>
+        <polyline class="history-score-line" points="${linePoints}"></polyline>
+        <g class="history-dots">${dots}</g>
+        <text class="history-date" x="${plot.left}" y="${height - 10}">${firstDate}</text>
+        <text class="history-date" x="${width - plot.right}" y="${height - 10}" text-anchor="end">${lastDate}</text>
+      </svg>`;
+    }
+
+    async function loadHistory(limit = '10') {
+      const chart = document.getElementById('historyChart');
+      chart.innerHTML = '<p class="muted">Laden…</p>';
+      const response = await fetch(`/api/users/me/game-history?limit=${encodeURIComponent(limit)}`, { cache: 'no-store' });
+      if (!response.ok) {
+        chart.innerHTML = '<p class="connection-error">Verlauf konnte nicht geladen werden.</p>';
+        return;
+      }
+      renderHistoryChart(await response.json());
+    }
+
+    document.querySelectorAll('[data-history-limit]').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('[data-history-limit]').forEach(item => item.classList.toggle('active', item === button));
+        loadHistory(button.dataset.historyLimit);
+      });
+    });
+    loadHistory();
 
     const statsResponse = await fetch('/api/users/me/statistics', { cache: 'no-store' });
     if (statsResponse.ok) {

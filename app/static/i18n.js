@@ -181,7 +181,10 @@
 
     "Mein Konto": "My Account",
     "Benutzerkonto": "User Account",
+    "Kontobereiche": "Account sections",
+    "Statistik": "Statistics",
     "Statistiken": "Statistics",
+    "Einstellungen": "Settings",
     "Spieleinstellungen": "Game Settings",
     "Diese Einstellungen gelten für dein Konto auf allen Geräten. Sie ändern nur die Bedienung, nicht die Spielregeln.": "These settings apply to your account on every device. They only change how the game is controlled, not its rules.",
     "Sprache": "Language",
@@ -214,6 +217,14 @@
     "Maximum": "Maximum",
     "Minimum": "Minimum",
     "Durchschnitt": "Average",
+    "Median": "Median",
+    "Punkteentwicklung": "Score progression",
+    "Deine letzten Spiele": "Your recent games",
+    "Alle": "All",
+    "Anzahl angezeigter Spiele": "Number of games shown",
+    "Noch keine Spiele für den Verlauf vorhanden.": "No games available for the chart yet.",
+    "Verlauf konnte nicht geladen werden.": "The chart could not be loaded.",
+    "Punkteverlauf der ausgewählten Spiele": "Score chart for the selected games",
     "Trend (3 Spiele)": "Trend (3 games)",
     "Positiv": "Positive",
     "Negativ": "Negative",
@@ -727,7 +738,7 @@
   window.ZDWA_I18N = { getLanguage, locale, setLanguage, syncAccountLanguage, t: translateString, translateElement, catalog: EN };
   document.documentElement.lang = getLanguage();
   const manifestLink = document.querySelector('link[rel="manifest"]');
-  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=c983bbcb704b";
+  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=0feb342ce2fa";
 
   document.addEventListener("DOMContentLoaded", () => {
     translateElement(document);

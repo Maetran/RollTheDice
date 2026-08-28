@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from statistics import median
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -93,13 +94,15 @@ def _statistics_for_user(db, user_id: int) -> dict:
 
 
 def _recent_games_for_user(db, user_id: int, limit: int = 10) -> list[dict]:
-    rows = db.execute(
+    stmt = (
         select(CompletedGame, GameParticipant.points, GameParticipant.team)
         .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
         .where(GameParticipant.user_id == user_id)
         .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc())
-        .limit(limit)
-    ).all()
+    )
+    if limit > 0:
+        stmt = stmt.limit(limit)
+    rows = db.execute(stmt).all()
     return [
         {
             "game_id": game.game_id,
@@ -236,6 +239,28 @@ def own_statistics(request: Request):
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
         return {"player": _public_profile(db, user), "private": {"role": user.role}}
+
+
+@router.get("/users/me/game-history")
+def own_game_history(request: Request, limit: Literal["10", "50", "100", "all"] = "10"):
+    """Return the signed-in player's score history for the account chart."""
+    identity = require_user(request)
+    selected_limit = 0 if limit == "all" else int(limit)
+    with session_scope() as db:
+        user = db.get(User, identity.user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
+        games = _recent_games_for_user(db, user.id, selected_limit)
+        points = [game["points"] for game in games]
+        return {
+            "games": games,
+            "selection": limit,
+            "summary": {
+                "games": len(points),
+                "median_points": round(float(median(points)), 1) if points else None,
+                "average_points": round(sum(points) / len(points), 1) if points else None,
+            },
+        }
 
 
 @router.get("/admin/game-participants")
