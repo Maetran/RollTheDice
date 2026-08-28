@@ -36,9 +36,10 @@ from app.auth_protection import (
     validate_auth_protection_config,
     verify_registration_challenge,
 )
+from app.active_games import load_active_games, save_active_game
 from app.database import configure_database, session_scope, upgrade_database
 from app.game_history import import_legacy_leaderboards, persist_runtime_game, stable_game_id
-from app.models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, Session, User
+from app.models import ActiveGame, AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, Session, User
 from app.security import validate_password
 from app.trends import recent_points_trend
 from tests.support import GameStateTestCase
@@ -216,6 +217,44 @@ class AccountDatabaseTestCase(GameStateTestCase):
         upgrade_database(main.BASE)
         with session_scope() as db:
             self.assertEqual(db.scalar(select(func.count()).select_from(User)), 0)
+
+    def test_online_user_count_deduplicates_tabs_with_the_same_browser_id(self):
+        original = dict(main.presence_connections)
+        try:
+            main.presence_connections.clear()
+            main.presence_connections.update({"browser-a": 2, "browser-b": 1})
+            self.assertEqual(main.online_user_count(), 2)
+        finally:
+            main.presence_connections.clear()
+            main.presence_connections.update(original)
+
+    def test_running_game_is_restored_without_process_local_connections(self):
+        game = self.make_game(mode=2, players=[("p1", "Anna"), ("p2", "Berta")])
+        game["_players"][0]["resume_token"] = "resume-anna"
+        game["_players"][0]["ws"] = object()
+        game["_spectators"] = [{"id": "s1", "name": "Gast", "ws": object()}]
+        game["_scoreboards"]["p1"]["0,down"] = 3
+        game["_dice"] = [1, 2, 3, 4, 5]
+        save_active_game(game)
+
+        restored = load_active_games()[game["_id"]]
+
+        self.assertEqual(restored["_scoreboards"]["p1"]["0,down"], 3)
+        self.assertEqual(restored["_dice"], [1, 2, 3, 4, 5])
+        self.assertEqual(restored["_players"][0]["resume_token"], "resume-anna")
+        self.assertIsNone(restored["_players"][0]["ws"])
+        self.assertEqual(restored["_spectators"], [])
+        self.assertTrue(restored["_resume_required"])
+
+    def test_finished_game_removes_active_snapshot(self):
+        game = self.make_game(mode=1, players=[("p1", "Anna")])
+        save_active_game(game)
+        game["_finished"] = True
+        game["_started"] = False
+        save_active_game(game)
+
+        with session_scope() as db:
+            self.assertIsNone(db.scalar(select(ActiveGame).where(ActiveGame.game_id == game["_id"])))
 
     def test_snapshotless_legacy_score_is_imported_once(self):
         entry = {

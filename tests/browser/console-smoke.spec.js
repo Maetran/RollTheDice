@@ -34,7 +34,7 @@ function watchPageHealth(page) {
   };
 }
 
-test("lobby can create a game and open spectator view without browser errors", async ({ page, browser }) => {
+test("lobby can create a game and open spectator view without browser errors", async ({ page, browser, request }) => {
   const health = watchPageHealth(page);
   await page.goto("/");
   await page.fill("#playerName", "Smoke");
@@ -53,8 +53,16 @@ test("lobby can create a game and open spectator view without browser errors", a
   await spectator.click("button.spectateBtn");
   await spectator.waitForURL(/room\.html\?game_id=.*spectator=1/);
   await spectator.waitForSelector("#diceBar");
+  await expect.poll(async () => {
+    const response = await request.get("/api/games");
+    return (await response.json()).online_users;
+  }).toBe(2);
   await spectatorHealth.expectClean();
   await spectator.close();
+  await expect.poll(async () => {
+    const response = await request.get("/api/games");
+    return (await response.json()).online_users;
+  }).toBe(1);
 });
 
 test("game creation API flow from lobby and spectator mode both work", async ({ page, browser, request }) => {
@@ -345,13 +353,12 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth);
   expect(layout.headerStatus.bottom).toBeLessThanOrEqual(layout.card.top + 1);
   expect(layout.suggestions.bottom).toBeLessThanOrEqual(layout.topbar.top + 1);
-  expect(layout.lastRow.bottom).toBeLessThanOrEqual(layout.topbar.top - 1);
   expect(layout.chatReactions.right).toBeLessThanOrEqual(layout.chatToggle.left + 1);
   expect(layout.chatReactions.top).toBeGreaterThanOrEqual(layout.chatToggle.top);
   expect(layout.chatReactions.top).toBeLessThanOrEqual(layout.chatToggle.top + 2);
   expect(layout.chatReactions.height).toBe(layout.chatToggle.height);
-  expect(layout.die.width).toBeGreaterThanOrEqual(55);
-  expect(layout.die.width).toBeLessThanOrEqual(63);
+  expect(layout.die.width).toBeGreaterThanOrEqual(65);
+  expect(layout.die.width).toBeLessThanOrEqual(75);
   expect(layout.die.height).toBe(layout.die.width);
   expect(layout.heldDieBorderWidth).toBe("2px");
   expect(layout.tableWrap.height).toBeGreaterThanOrEqual(460);
@@ -362,12 +369,17 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   const bottomDock = await page.evaluate(() => {
     const topbar = document.querySelector(".topbar").getBoundingClientRect();
     const chatToggle = document.querySelector("#chatToggle").getBoundingClientRect();
+    const rows = Array.from(document.querySelectorAll(".player-card tbody tr"));
+    const lastRow = rows.at(-1).getBoundingClientRect();
     return {
       topbarBottom: Math.round(topbar.bottom),
       chatTop: Math.round(chatToggle.top),
+      lastRowBottom: Math.round(lastRow.bottom),
+      topbarTop: Math.round(topbar.top),
     };
   });
   expect(bottomDock.topbarBottom).toBeLessThanOrEqual(bottomDock.chatTop - 5);
+  expect(bottomDock.lastRowBottom).toBeLessThanOrEqual(bottomDock.topbarTop - 1);
 
   await page.waitForFunction(() => {
     const btn = document.querySelector("#rollBtnInline");

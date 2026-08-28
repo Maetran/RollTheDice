@@ -19,7 +19,7 @@ Die Anwendung läuft mit Docker Compose hinter einem HTTPS-Reverse-Proxy. Das
 Verzeichnis `./data` wird als `/app/data` in den Container eingebunden.
 
 Die SQLite-Datenbank `data/rollthedice.sqlite3` enthält Benutzerkonten,
-Sessions, Schutzereignisse, vollständige Spiele und Zuordnungen. Die vorhandenen
+Sessions, Schutzereignisse, wartende/laufende sowie vollständige Spiele und Zuordnungen. Die vorhandenen
 JSON-Dateien enthalten weiterhin Leaderboards und ältere Statistikdaten. Beide
 Speicherarten gehören zu den Produktionsdaten.
 
@@ -62,13 +62,14 @@ Vor einem regulären Rollout müssen folgende Bedingungen erfüllt sein:
   Änderungen.
 - Datenmigrationen besitzen eine Alembic-Migration. Die Anwendung aktualisiert
   das Schema beim Start automatisch bis `head`.
-- Änderungen an statischen Assets berücksichtigen die Cache-Regeln weiter unten.
+- Statische Assets sind mit `scripts/sync_static_versions.py --check` synchronisiert.
 
 Empfohlene lokale Prüfung:
 
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py'
 npm run test:browser
+python3 scripts/sync_static_versions.py --check
 git diff --check
 git status --short
 ```
@@ -88,8 +89,9 @@ Das Skript führt auf `ssh zdwa` folgende Schritte aus:
 3. Kurzer Stopp des Containers für ein konsistentes `data`-Backup.
 4. Sofortiger Neustart des bestehenden Containers nach dem Backup.
 5. Fast-forward-only-Update von `origin/master`.
-6. Neubau und Neustart mit `docker compose up -d --build`.
-7. Ausgabe des Containerstatus und einmaliger lokaler HTTP-Check.
+6. Prüfung der inhaltsbasierten Asset-/Service-Worker-Version.
+7. Neubau und Neustart mit `docker compose up -d --build`.
+8. Ausgabe des Containerstatus und Readiness-Prüfung mit Retries.
 
 Das Ziel kann bei Bedarf überschrieben werden:
 
@@ -108,25 +110,24 @@ Ein Deployment ist erst abgeschlossen, wenn Container, lokale Anwendung und
 ```bash
 ssh zdwa 'cd /root/RollTheDice && docker compose ps'
 
-ssh zdwa 'curl --retry 12 --retry-delay 2 --retry-connrefused \
-  -fsS http://127.0.0.1:8000/ >/dev/null && echo "local app OK"'
+ssh zdwa 'curl --retry 15 --retry-delay 2 --retry-connrefused --retry-all-errors \
+  -fsS http://127.0.0.1:8000/api/health >/dev/null && echo "local app and database ready"'
 
 curl --retry 8 --retry-delay 2 --retry-connrefused \
   -fsS https://zockdiewandan.online/ >/dev/null && echo "public app OK"
 ```
 
-Der Container muss `Up` sein. Bei Problemen liefern die letzten Logs meist den
+Der Container muss `Up (healthy)` sein. `/api/health` antwortet erst erfolgreich,
+wenn der Server gestartet und das Datenbankschema vollständig migriert ist. Bei Problemen liefern die letzten Logs meist den
 schnellsten Befund:
 
 ```bash
 ssh zdwa 'cd /root/RollTheDice && docker compose logs --tail=150 rollthedice'
 ```
 
-Der einmalige Health-Check am Ende des Deployment-Skripts kann direkt nach dem
-Containerstart mit `Empty reply from server` fehlschlagen, obwohl Uvicorn wenige
-Sekunden später bereit ist. In diesem Fall zuerst den Check mit den obigen
-Retries wiederholen und die Logs prüfen. Ein fehlgeschlagener Erst-Check allein
-ist noch kein Grund für eine Datenwiederherstellung.
+Das Deployment-Skript und der Docker-Healthcheck berücksichtigen die Startzeit
+mit Retries beziehungsweise einer Startperiode. Ein Fehlschlag nach Ablauf
+dieser Frist ist ein echter Rollout-Fehler; dann Logs und Migrationsstand prüfen.
 
 Bei Datenbankänderungen zusätzlich den Migrationsstand prüfen:
 
@@ -137,18 +138,18 @@ ssh zdwa 'cd /root/RollTheDice && docker compose exec rollthedice alembic curren
 ## Service Worker und statische Assets
 
 ZDWA verwendet einen Service Worker mit Cache-First-Strategie für statische
-Dateien. Ohne neue Versionsnummer können Browser nach einem Deployment weiterhin
-alte CSS- oder JavaScript-Dateien verwenden.
+Dateien. Cache-Name und Query-Parameter werden aus dem Inhalt aller statischen
+Dateien und Manifeste abgeleitet und dadurch gemeinsam aktualisiert.
 
-Bei einer Änderung an einem gecachten Asset:
+Nach einer Änderung unter `app/static/` oder an einem Manifest:
 
-1. `CACHE_VERSION` in `app/static/sw.js` erhöhen.
-2. Den Versionsparameter des geänderten Imports erhöhen, beispielsweise
-   `style.css?v=82` zu `style.css?v=83`.
-3. Prüfen, ob das Asset in `PRECACHE_URLS` enthalten sein muss.
-4. Nach dem Deployment die öffentliche HTML-Datei, das Asset und `sw.js`
-   kontrollieren.
-5. Die Seite in einem bereits verwendeten Browser nochmals laden. Der neue
+1. `python3 scripts/sync_static_versions.py` oder `npm run sync:assets` ausführen.
+2. Die dabei mechanisch geänderten Referenzen zusammen mit dem Asset committen.
+3. Mit `python3 scripts/sync_static_versions.py --check` prüfen. Das Deployment
+   bricht bei einem nicht synchronisierten Stand ab.
+4. Prüfen, ob neue Offline-Assets in `PRECACHE_URLS` aufgenommen werden müssen.
+5. Nach dem Deployment die öffentliche HTML-Datei und `sw.js` kontrollieren.
+6. Die Seite in einem bereits verwendeten Browser nochmals laden. Der neue
    Service Worker übernimmt bestehende Tabs unter Umständen erst nach dem ersten
    Reload vollständig.
 
@@ -156,7 +157,7 @@ Beispielprüfung:
 
 ```bash
 curl -fsS https://zockdiewandan.online/static/sw.js | grep CACHE_VERSION
-curl -fsS 'https://zockdiewandan.online/static/style.css?v=VERSION' >/dev/null
+curl -fsS https://zockdiewandan.online/static/room.html | grep 'style.css?v='
 ```
 
 ## Konfiguration und Geheimnisse
@@ -227,11 +228,12 @@ docker compose start rollthedice
 git fetch origin master
 git checkout master
 git pull --ff-only origin master
+python3 scripts/sync_static_versions.py --check
 docker compose up -d --build
 
 docker compose ps
-curl --retry 12 --retry-delay 2 --retry-connrefused \
-  -fsS http://127.0.0.1:8000/ >/dev/null
+curl --retry 15 --retry-delay 2 --retry-connrefused --retry-all-errors \
+  -fsS http://127.0.0.1:8000/api/health >/dev/null
 ```
 
 Wenn `git status --short` Änderungen zeigt, nicht weitermachen. Zuerst klären,

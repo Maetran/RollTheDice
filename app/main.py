@@ -6,7 +6,8 @@ Dieses Modul enthält die Serverlogik für das Multiplayer-Würfelspiel:
 - HTTP-Routen (Manifest/Static/Leaderboard)
 - WebSocket-Endpunkt für den Spielraum (Join/Rollen/Schreiben/Korrektur)
 - Spiel- und Scoreboard-Verwaltung, inkl. Team-Modus (2v2)
-- Ergebnisberechnung, Leaderboard-Persistenz und Inaktivitäts-Timeout
+- Persistenz laufender Partien sowie Ergebnis-/Leaderboard-Persistenz
+- Wiederaufnahme nach Verbindungsabbruch oder Server-Neustart und Inaktivitäts-Timeout
 
 Wichtig: Poker-Logik und Korrekturmodus
 --------------------------------------
@@ -34,6 +35,7 @@ import os
 import time  # für monotonic()-Cooldown-Timer
 import math
 import threading
+import asyncio
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request
@@ -54,7 +56,8 @@ from .auth import (
     websocket_origin_allowed,
 )
 from .auth_protection import validate_auth_protection_config
-from .database import configure_database, upgrade_database
+from .active_games import delete_active_game, load_active_games, save_active_game
+from .database import configure_database, database_schema_ready, upgrade_database
 from .game_history import (
     delete_completed_game,
     deleted_game_ids,
@@ -119,6 +122,7 @@ def check_timeout_and_abort(g) -> bool:
             g["_finished"] = True
             # Keine Ergebnisse loggen, Snapshot zeigt _aborted
             g["_results"] = None
+            delete_active_game(str(g.get("_id") or ""))
             return True
     except Exception:
         pass
@@ -198,6 +202,7 @@ def initialize_persistent_database() -> None:
     validate_auth_protection_config()
     ensure_bootstrap_admin()
     import_legacy_leaderboards([RECENT_FILE, ALLTIME_FILE, SHAME_FILE, LAST_GAMES_FILE])
+    games.update(load_active_games())
 
 
 app.include_router(auth_router)
@@ -245,6 +250,46 @@ def service_worker():
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
     return FileResponse(str(STATIC_DIR / "favicon.png"), media_type="image/png")
+
+
+@app.get("/api/health", include_in_schema=False)
+def health() -> dict[str, str]:
+    """Readiness probe: startup and all database migrations must be complete."""
+    if not database_schema_ready():
+        raise HTTPException(status_code=503, detail="database_not_ready")
+    return {"status": "ok", "database": "ready"}
+
+
+# Seitenweite, anonyme Presence. Mehrere Tabs mit derselben Browser-ID zählen
+# als ein Nutzer; ein Heartbeat entfernt abgebrochene Verbindungen zeitnah.
+presence_connections: dict[str, int] = {}
+
+
+def online_user_count() -> int:
+    return len(presence_connections)
+
+
+@app.websocket("/ws/presence")
+async def presence(websocket: WebSocket) -> None:
+    if not websocket_origin_allowed(websocket):
+        await websocket.close(code=1008, reason="Origin rejected")
+        return
+    client_id = str(websocket.query_params.get("client_id") or "").strip()[:80]
+    if not client_id:
+        client_id = uuid.uuid4().hex
+    await websocket.accept()
+    presence_connections[client_id] = presence_connections.get(client_id, 0) + 1
+    try:
+        while True:
+            await asyncio.wait_for(websocket.receive_text(), timeout=45)
+    except (asyncio.TimeoutError, WebSocketDisconnect):
+        pass
+    finally:
+        remaining = presence_connections.get(client_id, 1) - 1
+        if remaining > 0:
+            presence_connections[client_id] = remaining
+        else:
+            presence_connections.pop(client_id, None)
 
 # Zentrales Game-Registry + Typalias
 GameDict = Dict[str, Any]
@@ -689,6 +734,7 @@ def _player_connected(p: dict) -> bool:
     """True, wenn fuer den Spieler aktuell ein WebSocket registriert ist."""
     return p.get("ws") is not None
 
+
 def _offline_players(g: GameDict) -> list[dict]:
     """Liefert getrennte Spieler fuer laufende Multiplayer-Spiele."""
     if int(g.get("_expected", 0) or 0) <= 1:
@@ -741,8 +787,8 @@ def new_game(gid: str, name: str, mode) -> GameDict:
         "_started_at": None,
         "_updated_at": datetime.now(timezone.utc).isoformat(),
 
-        "_players": [],                        # [{id,name,ws}]
-        "_spectators": [],                     # [{id,name,ws}]
+        "_players": [],                        # Dauerhafte Identität plus flüchtige `ws`-Verbindung
+        "_spectators": [],                     # Prozesslokal; Zuschauer werden nicht wiederhergestellt
         "_turn": None,                         # {"player_id": ...}
         "_dice": [0, 0, 0, 0, 0],
         "_holds": [False] * 5,
@@ -777,6 +823,7 @@ def new_game(gid: str, name: str, mode) -> GameDict:
         "_manual_pause_at": None,
     }
     games[gid] = g
+    save_active_game(g)
     return g
 
 # -----------------------------
@@ -1416,6 +1463,9 @@ async def broadcast(g: GameDict, msg: Dict[str, Any]) -> None:
         g (GameDict): Spielzustand
         msg (Dict[str, Any]): Nachricht als Dictionary
     """
+    # Mutationen enden in einem Broadcast. Dieser zentrale Checkpoint speichert
+    # den Zustand ohne WebSockets und andere prozesslokale Werte.
+    save_active_game(g)
     recipients = list(g.get("_players", [])) + list(g.get("_spectators", []))
     for p in recipients:
         ws = p.get("ws")
@@ -1571,7 +1621,7 @@ async def api_games(request: Request):
             })
         except Exception:
             continue
-    return {"games": lst}
+    return {"games": lst, "online_users": online_user_count()}
 
 @app.get("/api/games/{game_id}")
 def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="pass"), check: int = Query(default=0)):
@@ -1917,6 +1967,7 @@ async def api_games_create(req: CreateReq):
     g = new_game(gid, req.name, req.mode)
     g["_passphrase"] = (req.passphrase or None)
     g["_hardcore"] = bool(req.hardcore or False)
+    save_active_game(g)
     return {"game_id": gid}
 
 # Legacy-Endpoints
@@ -1931,6 +1982,7 @@ async def legacy_create_game(mode: str, name: str, passphrase: str = ""):
     gid = str(uuid.uuid4())[:8]
     g = new_game(gid, name, mode)
     g["_passphrase"] = (passphrase or None)
+    save_active_game(g)
     return {"id": gid}
 
 # Brave/Chromium DevTools Ping unterdrücken
@@ -2268,6 +2320,7 @@ def _finalize_and_log_results(g: GameDict):
     # Vollständige Historie für Profile und Rankings. Die bisherigen JSON-
     # Leaderboards bleiben während der Übergangsphase parallel bestehen.
     persist_runtime_game(g, totals, snapshot_fields)
+    delete_active_game(str(g.get("_id") or ""))
 
     entries_for_recent = []
     entries_for_alltime = []
@@ -2494,8 +2547,8 @@ async def ws_game(websocket: WebSocket, game_id: str):
 
     g = games[game_id]
     player_id: str | None = None
-    spectator_id: str | None = None   # NEU
-    is_spectator: bool = False        # NEU
+    spectator_id: str | None = None
+    is_spectator: bool = False
 
     # Direkt initialen Snapshot senden
     await websocket.send_json({
@@ -3003,6 +3056,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 g.setdefault("_superadmins", {})[player_id] = {"board_id": board_id}
                 name = _player_name(g, player_id)
                 await websocket.send_json({"superadmin": {"active": True, "board_id": board_id}})
+                touch(g)
                 await broadcast_chat(g, {
                     "from_id": None,
                     "sender": "System",
@@ -3010,7 +3064,6 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     "ts": datetime.now(timezone.utc).isoformat(),
                     "kind": "system",
                 })
-                touch(g)
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "superadmin_deactivate":
@@ -3143,6 +3196,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 # Sanfte Längenbegrenzung
                 if len(txt) > 400:
                     txt = txt[:400]
+                touch(g)
                 await broadcast_chat(g, {
                     "from_id": from_id,
                     "sender": sender,
@@ -3150,7 +3204,6 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     "ts": datetime.now(timezone.utc).isoformat(),
                     "kind": "chat",
                 })
-                touch(g)
 
             elif act == "pause_game":
                 if not player_id:

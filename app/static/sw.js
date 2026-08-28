@@ -9,10 +9,11 @@
   Hinweise zu Entscheidungen:
   - Precache-Fehlschläge (404/Netz) werden bewusst ignoriert, damit eine fehlende
     einzelne Datei die Installation nicht blockiert.
-  - Versionierte Cache-Namen (CACHE_VERSION) erleichtern das gezielte Aufräumen.
+  - Cache-Name und Asset-Querys werden aus dem Dateiinhalt erzeugt; dazu
+    `scripts/sync_static_versions.py` ausführen, nicht manuell hochzählen.
 */
 
-const CACHE_VERSION = 'v95';
+const CACHE_VERSION = 'assets-c01378c7cfba';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 

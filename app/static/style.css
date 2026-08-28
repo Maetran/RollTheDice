@@ -282,6 +282,8 @@ input[type="checkbox"]{
 .chip.danger{ background:var(--danger-soft); color:var(--danger); border-color:#f0b5ae; }
 .badge{ background:#eef2f7; color:#435166; border-color:#dce3ed; margin-left:.25rem; }
 .badge.online{ background:var(--success-soft); color:#07583b; border-color:#bce7d3; }
+.online-user-count{ display:inline-flex; align-items:center; gap:.35rem; }
+.online-dot{ width:.55rem; height:.55rem; border-radius:50%; background:#16a36a; box-shadow:0 0 0 3px color-mix(in srgb, #16a36a 16%, transparent); }
 .badge.offline{ background:var(--warning-soft); color:#7a3e00; border-color:#f2c16d; }
 .warn-line{ color:#7a3e00 !important; font-weight:650; }
 
@@ -1880,30 +1882,6 @@ button:disabled:hover{
     width:100%;
     max-width:none;
   }
-  .room-page .topbar{
-    position:fixed;
-    left:0;
-    right:0;
-    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-action-gap));
-    z-index:1300;
-    order:5;
-    border-left:0;
-    border-right:0;
-    border-bottom:0;
-    border-radius:8px 8px 0 0;
-    margin:0;
-    height:var(--mobile-actionbar-h);
-    padding:.45rem .55rem .4rem;
-    background:rgba(244,246,248,.96);
-    box-shadow:0 -10px 24px rgba(15,23,42,.12);
-    backdrop-filter:saturate(1.2) blur(12px);
-  }
-  .room-page #diceBar .die{
-    max-width:57px !important;
-    max-height:57px !important;
-    height:auto !important;
-    min-height:0 !important;
-  }
   .room-page #scoreOut > .muted{
     order:2;
     width:0;
@@ -2323,117 +2301,11 @@ button:disabled:hover{
     margin:0;
     overflow:hidden;
   }
-  .room-page .topbar{
-    order:3;
-    position:fixed !important;
-    left:0;
-    right:0;
-    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-action-gap));
-    z-index:1300;
-    width:100%;
-    height:var(--mobile-actionbar-h);
-    min-height:var(--mobile-actionbar-h);
-    margin:0;
-    border:1px solid var(--border);
-    border-left:0;
-    border-right:0;
-    border-bottom:0;
-    border-radius:8px 8px 0 0;
-    background:rgba(244,246,248,.96);
-    box-shadow:0 -10px 24px rgba(15,23,42,.12);
-    backdrop-filter:saturate(1.2) blur(12px);
-  }
-  .room-page .mobile-announce-picker{
-    left:.4rem;
-    right:.4rem;
-    gap:.3rem;
-    width:auto;
-    padding:.35rem;
-    background:color-mix(in srgb, var(--surface) 94%, transparent);
-    transform:none;
-  }
-  .room-page .mobile-announce-picker-row{
-    gap:.28rem;
-  }
-  .room-page .mobile-announce-option{
-    min-height:2.15rem;
-    padding:.22rem .12rem;
-    background:color-mix(in srgb, var(--warning-soft) 76%, transparent);
-  }
-  .room-page #diceBar{
-    grid-template-columns:repeat(5, 3.15rem);
-    grid-template-rows:3.15rem auto;
-    justify-content:center;
-    align-items:center;
-    column-gap:.42rem;
-    row-gap:.55rem;
-    width:100%;
-    padding:.7rem .45rem .65rem;
-  }
-  .room-page #diceBar .die{
-    width:3.15rem !important;
-    height:3.15rem !important;
-    max-width:3.15rem !important;
-    max-height:3.15rem !important;
-    justify-self:center;
-    font-size:2.55rem;
-    padding:.06rem !important;
-  }
-  .room-page #announceBtnInline{
-    grid-row:2 !important;
-    grid-column:1 / span 2 !important;
-    min-width:0 !important;
-    width:100% !important;
-    max-width:100% !important;
-    height:2.35rem !important;
-    min-height:2.35rem !important;
-    margin:0 !important;
-    padding:.35rem .35rem;
-    z-index:1;
-  }
-  .room-page #rollBtnInline{
-    grid-row:2 !important;
-    grid-column:3 / span 3 !important;
-    min-width:0 !important;
-    width:100% !important;
-    max-width:100% !important;
-    height:2.35rem !important;
-    min-height:2.35rem !important;
-    margin:0 !important;
-    padding:.35rem .45rem;
-    z-index:1;
-  }
   .room-page #overlayMount{
     order:4;
   }
   .room-page .chat-reactions-host .emoji-panel{
     bottom:calc(100% + .35rem);
-  }
-}
-
-@media (max-width:560px) and (max-height:820px){
-  .room-page .topbar{
-    margin:.3rem .5rem 0;
-    padding:.35rem .45rem;
-  }
-  .room-page #diceBar{
-    grid-template-columns:repeat(5, 3rem);
-    grid-template-rows:3rem auto;
-    column-gap:.35rem;
-    row-gap:.35rem;
-    padding:.35rem;
-  }
-  .room-page #diceBar .die{
-    width:3rem !important;
-    height:3rem !important;
-    max-width:3rem !important;
-    max-height:3rem !important;
-  }
-  .room-page #announceBtnInline,
-  .room-page #rollBtnInline{
-    height:2.08rem !important;
-    min-height:2.08rem !important;
-    padding:.25rem .35rem;
   }
 }
 
@@ -3060,9 +2932,10 @@ body.app-dialog-open{ overflow:hidden; }
 .dice-main, .dice-row, .dice-actions{ display:contents; }
 .mobile-row-quick-actions{ display:none; }
 
+/* Canonical mobile action dock. Keep all fixed dice/controls geometry here. */
 @media (max-width:560px){
   :root{
-    --mobile-actionbar-h:8rem;
+    --mobile-actionbar-h:clamp(8rem, calc(20vw + 3.5rem), 10.75rem);
   }
   .room-page #diceBar{
     grid-template-columns:minmax(0, 1fr);
@@ -3072,7 +2945,46 @@ body.app-dialog-open{ overflow:hidden; }
     padding:0 .1rem;
   }
   .room-page .topbar{
+    order:3;
+    position:fixed !important;
+    left:0;
+    right:0;
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-action-gap));
+    z-index:1300;
+    width:100%;
+    height:var(--mobile-actionbar-h);
+    min-height:var(--mobile-actionbar-h);
+    margin:0;
     padding:0 .35rem;
+    border:1px solid var(--border);
+    border-left:0;
+    border-right:0;
+    border-bottom:0;
+    border-radius:8px 8px 0 0;
+    background:rgba(244,246,248,.96);
+    box-shadow:0 -10px 24px rgba(15,23,42,.12);
+    backdrop-filter:saturate(1.2) blur(12px);
+  }
+  .room-page .mobile-announce-picker{
+    position:fixed;
+    left:.4rem;
+    right:.4rem;
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + .35rem);
+    gap:.3rem;
+    width:auto;
+    max-width:calc(100vw - .8rem);
+    box-sizing:border-box;
+    padding:.35rem;
+    background:color-mix(in srgb, var(--surface) 94%, transparent);
+    transform:none;
+  }
+  .room-page .mobile-announce-picker-row{
+    gap:.28rem;
+  }
+  .room-page .mobile-announce-option{
+    min-height:2.15rem;
+    padding:.22rem .12rem;
+    background:color-mix(in srgb, var(--warning-soft) 76%, transparent);
   }
   .room-page #diceBar:has(#mobileRowQuickActions:not([hidden])){
     grid-template-columns:2.5rem minmax(0, 1fr);
@@ -3101,8 +3013,8 @@ body.app-dialog-open{ overflow:hidden; }
     width:100% !important;
     height:auto !important;
     aspect-ratio:1 / 1 !important;
-    max-width:3.5rem !important;
-    max-height:3.5rem !important;
+    max-width:none !important;
+    max-height:none !important;
   }
   .room-page #diceBar .dice-actions{
     display:grid;

@@ -6,15 +6,17 @@ Localization conventions and terminology are documented in [docs/LOCALIZATION.md
 
 ## Features
 
-- Responsive lobby and game room
+- Responsive lobby and game room with fixed mobile controls and sticky chat
+- Anonymous live count of connected visitors across lobby, games, spectator views, and other app pages
 - REST API for lobby, games, leaderboard, and replay data
 - WebSocket game room for rolling, scoring, chat, spectators, and corrections
-- Persistent leaderboards and stats in `./data`
+- Restart-safe waiting/running games plus persistent completed games, leaderboards, and stats in `./data`
 - User accounts, admin management, public profiles, search, and player rankings
 - Audited permanent deletion of invalid completed games with automatic statistic updates
 - Self-registration from the lobby with immutable usernames
 - Personal statistics split into Normal, Hardcore, and overall results
-- Progressive Web App support via manifest and service worker
+- Progressive Web App support with content-hashed asset and service-worker versions
+- Readiness endpoint and container healthcheck for migration-safe deployments
 - Docker Compose setup for local machines, servers, and Raspberry Pi
 
 ## Requirements
@@ -59,6 +61,8 @@ docker compose up -d --build
 ```
 
 Game data is stored in `./data` and is preserved across rebuilds.
+Waiting and running games are restored after an application restart; connected
+players appear offline until they rejoin with their locally stored resume token.
 
 Production deployment details, including the IONOS SSH target and mandatory
 leaderboard backup rules, are documented in `docs/DEPLOYMENT.md`. Use
@@ -81,6 +85,7 @@ Useful checks:
 python3 -m py_compile app/main.py app/rules.py
 node --check app/static/scoreboard.js
 node --input-type=module --check < app/static/room.js
+python3 scripts/sync_static_versions.py --check
 python3 -m unittest discover -s tests -p 'test_*.py'
 npm run test:browser
 git diff --check
@@ -97,8 +102,9 @@ RollTheDice/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI routes, WebSocket game loop, lobby and leaderboard state
-│   ├── models.py            # User, session, completed-game, and participant models
+│   ├── models.py            # User, session, active/completed-game, and participant models
 │   ├── database.py          # Database configuration and Alembic upgrades
+│   ├── active_games.py      # Restart-safe snapshots of waiting and running games
 │   ├── auth.py              # Password, session, and role logic
 │   ├── api_auth.py          # Login, password, and admin-user API
 │   ├── api_users.py         # Profiles, stats, search, ranking, and assignments
@@ -117,11 +123,15 @@ RollTheDice/
 │       ├── sw.js            # Service worker
 │       ├── favicon.png
 │       └── icons/
+├── alembic/                 # Versioned database schema migrations
+├── scripts/
+│   ├── deploy_zdwa.sh       # Guarded production deployment
+│   └── sync_static_versions.py # Content-hashed PWA/asset version synchronization
 └── data/                    # Persistent runtime data, ignored by Git
     ├── leaderboard_recent.json
     ├── leaderboard_alltime.json
     ├── stats.json
-    └── rollthedice.sqlite3  # Accounts, sessions, and complete new game history
+    └── rollthedice.sqlite3  # Accounts, active games, sessions, and completed-game history
 ```
 
 ## Data
@@ -131,6 +141,11 @@ The application writes leaderboard JSON files and its SQLite database to
 deployment script handles this automatically. Existing JSON snapshots are
 imported idempotently by `game_id`. Historical user statistics can only include
 the snapshots that still exist in the capped legacy lists.
+
+After changing a file under `app/static/` or either manifest, run
+`npm run sync:assets` (or `python3 scripts/sync_static_versions.py`). This writes
+one deterministic content version to all asset references and the service-worker
+cache. The deploy script rejects unsynchronized versions.
 
 ## Plain Docker
 

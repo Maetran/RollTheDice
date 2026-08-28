@@ -81,13 +81,18 @@ git fetch origin "$BRANCH"
 git checkout "$BRANCH"
 git pull --ff-only origin "$BRANCH"
 
+echo "== Static asset versions =="
+python3 scripts/sync_static_versions.py --check
+
 echo "== Docker deploy =="
 docker compose up -d --build
 docker compose ps
 
 echo "== Local health =="
 if command -v curl >/dev/null 2>&1; then
-  curl -fsS http://127.0.0.1:8000/ >/dev/null && echo "local app OK"
+  curl --retry 15 --retry-delay 2 --retry-connrefused --retry-all-errors \
+    -fsS http://127.0.0.1:8000/api/health >/dev/null
+  echo "local app and database ready"
 else
   echo "curl not installed; skipped local HTTP check"
 fi

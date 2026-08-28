@@ -85,6 +85,20 @@ class CompletedGame(Base):
     __table_args__ = (Index("ix_completed_games_finished_at", "finished_at"),)
 
 
+class ActiveGame(Base):
+    """Restart-safe snapshot of a waiting or running game."""
+
+    __tablename__ = "active_games"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    game_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    state_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (Index("ix_active_games_updated_at", "updated_at"),)
+
+
 class DeletedGame(Base):
     __tablename__ = "deleted_games"
 

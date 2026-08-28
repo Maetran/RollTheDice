@@ -42,6 +42,7 @@
     "Normale Spiele:": "Normal games:",
     "Hardcore Spiele:": "Hardcore games:",
     "Spieler": "Player",
+    "Nutzer online": "users online",
     "Dein Name": "Your name",
     "Wird für den Beitritt verwendet.": "Used when joining a game.",
     "Benutzername": "Username",
@@ -75,6 +76,7 @@
     "Top 10 Alltime": "Top 10 All-Time",
     "Datum": "Date",
     "Name": "Name",
+    "Felder": "Fields",
     "Punkte": "Points",
     "Modus": "Mode",
     "Ansicht": "View",
@@ -359,6 +361,8 @@
     "Du kannst das Spiel pausieren und innerhalb der angezeigten Restzeit wieder aufnehmen oder es abbrechen und alle zur Lobby zurückschicken. In Mehrspieler-Partien pausiert das Spiel auch, solange ein Spieler nicht verbunden ist. Abgebrochene Spiele erscheinen nicht in Alltime/7-Tage-Listen.": "You can pause the game and resume it within the displayed time, or abort it and send everyone back to the lobby. Multiplayer games also pause while a player is disconnected. Aborted games do not appear in the all-time or 7-day rankings.",
     "Auto-Timeout:": "Automatic timeout:",
     "Spiele ohne Aktivität werden nach 1 Stunde automatisch abgebrochen.": "Games with no activity are aborted automatically after 1 hour.",
+    "Server-Neustart:": "Server restart:",
+    "Wartende und laufende Partien bleiben erhalten. Nach dem Neustart werden Spieler als offline angezeigt und können die Partie mit ihrem gespeicherten Zugang wieder aufnehmen.": "Waiting and running games are preserved. After a restart, players appear offline and can resume the game with their saved access.",
     "Spielmodi": "Game Modes",
     "Alle vier Spalten auf einem eigenen Board. Auto-Roll zu Beginn jedes Zugs.": "All four columns on your own scorecard. Automatic roll at the start of each turn.",
     "2 oder 3 Spieler": "2 or 3 players",
@@ -374,6 +378,8 @@
     "ansagen (falls möglich),": "announce (when available),",
     "Ansage aufheben": "cancel announcement",
     "Korrektur anfragen,": "request correction,",
+    "Mobil:": "Mobile:",
+    "Würfel- und Aktionsleiste sowie Chat bleiben am unteren Bildschirmrand erreichbar. Die optionale Schnelleingabe für ⬇︎ und ⬆︎ lässt sich im Konto aktivieren.": "The dice and action dock and chat remain accessible at the bottom of the screen. Optional quick entry for ⬇︎ and ⬆︎ can be enabled in the account settings.",
     "Korrektur abbrechen": "cancel correction",
     "Tipp:": "Tip:",
     "In der ❗-Spalte werden auf dem eigenen Board die erlaubten Zellen hervorgehoben. Bei 0-Punkten fragt das Spiel nach einer Bestätigung.": "Permitted cells in your own ❗ column are highlighted. The game asks for confirmation before recording 0 points.",
@@ -719,7 +725,7 @@
   window.ZDWA_I18N = { getLanguage, locale, setLanguage, syncAccountLanguage, t: translateString, translateElement, catalog: EN };
   document.documentElement.lang = getLanguage();
   const manifestLink = document.querySelector('link[rel="manifest"]');
-  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=1";
+  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=c01378c7cfba";
 
   document.addEventListener("DOMContentLoaded", () => {
     translateElement(document);

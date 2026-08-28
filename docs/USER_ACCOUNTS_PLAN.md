@@ -1,7 +1,15 @@
-# Plan: Benutzerkonten, Profile und Spielerstatistiken
+# Historischer Umsetzungsplan: Benutzerkonten, Profile und Spielerstatistiken
 
-Status: Planung, keine Implementierung  
-Branch: `plan/user-accounts-and-profiles`
+Status: Kernumfang implementiert (Stand 28. August 2026)
+Ursprünglicher Planungsbranch: `plan/user-accounts-and-profiles`
+
+Dieses Dokument hält die ursprüngliche Architekturentscheidung und deren
+Begründung fest. Benutzerkonten, serverseitige Sessions, Rollen, Präferenzen,
+Profile, Rankings, vollständige Spielergebnisse, Zuordnungen und das Audit für
+Löschungen sind inzwischen implementiert. Die produktive App verwendet
+SQLAlchemy, Alembic und `data/rollthedice.sqlite3`; laufende Partien werden
+ebenfalls restart-sicher gespeichert. Die nachfolgende „Ausgangslage“ ist daher
+historisch und beschreibt den Stand vor der Umsetzung.
 
 ## Zielbild
 
@@ -16,15 +24,15 @@ Branch: `plan/user-accounts-and-profiles`
 - Neue vollständige Spiele werden dauerhaft und vollständig gespeichert. Daraus
   werden Profile, Rankings und Bestenlisten berechnet.
 
-## Befund der aktuellen App
+## Historische Ausgangslage vor der Umsetzung
 
-Die Anwendung hat derzeit keine dauerhafte Benutzeridentität. Ein Spieler ist
+Die Anwendung hatte zu Beginn keine dauerhafte Benutzeridentität. Ein Spieler war
 nur eine zufällige sechsstellige ID innerhalb eines laufenden Spiels; der frei
 eingegebene Name und ein Resume-Token liegen im Local Storage. Das ist für die
 Wiederaufnahme eines Spiels ausreichend, aber nicht für Konten oder belastbare
 Statistiken.
 
-Die JSON-Persistenz speichert nur begrenzte Ausschnitte:
+Die damalige JSON-Persistenz speicherte nur begrenzte Ausschnitte:
 
 - Top 10 der letzten sieben Tage
 - Top 10 Alltime, getrennt nach Normal und Hardcore
@@ -131,7 +139,12 @@ Für eine eindeutige und testbare Umsetzung wird empfohlen:
   nach Gesamtpunkten, Durchschnitt und Maximum
 - bei Gleichstand: zuerst höherer Sekundärwert, danach Benutzername
 
-## Umsetzung in Etappen
+## Umsetzungsstand der Etappen
+
+Die Etappen 1–9 wurden im Kern umgesetzt und durch Unit-, HTTP-, WebSocket- und
+Browser-Tests abgesichert. Die JSON-Importe bleiben aus Kompatibilitätsgründen
+erhalten. Offen bleiben nur betriebliche Daueraufgaben wie externe
+Backup-Aufbewahrung, Restore-Proben und weitere UI-/Sicherheitsverbesserungen.
 
 1. Produktentscheidungen festlegen und Datenmodell/API-Vertrag finalisieren.
 2. Datenbankschicht, Migrationen, Backup-/Restore-Probe und Import der
@@ -171,7 +184,11 @@ Sessions, Hashing, Cookie-/CSRF-/WebSocket-Schutz, Passwortwechsel, Sperren und
 Tests aber ungefähr 4–7 Personentage. Die Integration der Benutzeridentität in
 Spiel und historische Daten ist ein zusätzlicher Aufwand.
 
-## Noch zu entscheiden
+## Ursprünglich offene Entscheidungen
+
+Die folgenden Punkte sind historische Entscheidungsfragen. Der aktuelle Code
+ist die maßgebliche Spezifikation; Änderungen daran sollten als eigene
+Produktentscheidung dokumentiert werden.
 
 1. Ist der Benutzername zugleich der sichtbare Spielername?
 2. Sind Profile vollständig öffentlich oder sollen einzelne Statistikwerte nur

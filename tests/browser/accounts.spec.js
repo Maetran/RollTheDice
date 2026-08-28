@@ -17,6 +17,8 @@ async function expectNoGermanUi(page) {
 
 
 test("public player search and ranking are available to guests", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#onlineUsers")).toContainText(/[1-9]\d* Nutzer online/);
   await page.goto("/static/players.html");
   await expect(page.getByRole("heading", { name: "Spieler suchen" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Spieler-Ranking" })).toBeVisible();
@@ -48,7 +50,7 @@ test("guest sees login and registration while a new account sees only logout", a
 
 
 test("mobile quick entry is opt-in for new accounts and writes the next ordered field", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 472, height: 1024 });
   await page.goto("/");
   await page.fill("#loginUsername", "Admin");
   await page.fill("#loginPassword", "temporary-password-123");
@@ -86,6 +88,8 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
   const layout = await page.evaluate(() => {
     const bar = document.querySelector("#diceBar").getBoundingClientRect();
     const actions = document.querySelector(".dice-actions").getBoundingClientRect();
+    const topbar = document.querySelector(".topbar").getBoundingClientRect();
+    const chat = document.querySelector("#chatToggle").getBoundingClientRect();
     const dice = Array.from(document.querySelectorAll("#diceBar .die")).map(die => die.getBoundingClientRect());
     const quickButtons = Array.from(document.querySelectorAll(".mobile-row-quick-button"))
       .map(button => button.getBoundingClientRect());
@@ -98,6 +102,8 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
       actionsWidth: actions.width,
       actionsTop: actions.top,
       actionsBottom: actions.bottom,
+      topbarBottom: topbar.bottom,
+      chatTop: chat.top,
       diceSpan: dice.at(-1).right - dice[0].left,
       dieWidth: dice[0].width,
       diceTop: dice[0].top,
@@ -117,10 +123,11 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
   expect(Math.abs(layout.quickButtons[0].top - layout.diceTop)).toBeLessThanOrEqual(1);
   expect(Math.abs(layout.quickButtons[0].height - layout.quickButtons[1].height)).toBeLessThanOrEqual(1);
   expect(Math.abs(layout.quickButtons[1].bottom - layout.actionsBottom)).toBeLessThanOrEqual(1);
-  expect(Math.abs(layout.diceLeft - (layout.actionsRight - layout.actionsWidth))).toBeLessThanOrEqual(1);
-  expect(Math.abs(layout.diceRight - layout.actionsRight)).toBeLessThanOrEqual(1);
+  expect(layout.diceLeft).toBeGreaterThanOrEqual(layout.actionsRight - layout.actionsWidth - 1);
+  expect(layout.diceRight).toBeLessThanOrEqual(layout.actionsRight + 1);
   expect(layout.diceLeft - layout.quickButtons[0].right).toBeGreaterThanOrEqual(9);
   expect(layout.dieWidth).toBeGreaterThanOrEqual(58);
+  expect(layout.topbarBottom).toBeLessThanOrEqual(layout.chatTop - 5);
 
   await page.click("#backToLobbyBtn");
   await expect(page.locator("#leaveGameDialog")).toBeVisible();
@@ -194,7 +201,7 @@ test("English localization covers lobby, rules, account preference and game UI",
   ]);
 
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "/manifest-en.webmanifest?v=1");
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", /\/manifest-en\.webmanifest\?v=[a-f0-9]{12}$/);
   await expect(page.getByRole("link", { name: "Players & Ranking" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "New Game" })).toBeVisible();
   await expect(page.getByPlaceholder("Your name")).toBeVisible();

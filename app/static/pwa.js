@@ -2,6 +2,57 @@
 (function () {
   "use strict";
 
+  const PRESENCE_KEY = "zdwa_presence_id";
+  let presenceSocket = null;
+  let presenceHeartbeat = null;
+  let presenceRetry = null;
+
+  function randomPresenceId() {
+    return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function presenceId() {
+    try {
+      let value = localStorage.getItem(PRESENCE_KEY);
+      if (!value) {
+        value = randomPresenceId();
+        localStorage.setItem(PRESENCE_KEY, value);
+      }
+      return value;
+    } catch {
+      return randomPresenceId();
+    }
+  }
+
+  function connectPresence() {
+    if (!("WebSocket" in window) || !navigator.onLine) return;
+    if (presenceSocket && presenceSocket.readyState <= WebSocket.OPEN) return;
+    clearTimeout(presenceRetry);
+    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+    presenceSocket = new WebSocket(
+      `${protocol}//${location.host}/ws/presence?client_id=${encodeURIComponent(presenceId())}`,
+    );
+    presenceSocket.addEventListener("open", () => {
+      window.dispatchEvent(new CustomEvent("zdwa:presence-connected"));
+      clearInterval(presenceHeartbeat);
+      presenceHeartbeat = setInterval(() => {
+        if (presenceSocket?.readyState === WebSocket.OPEN) presenceSocket.send("ping");
+      }, 20000);
+    });
+    presenceSocket.addEventListener("close", () => {
+      clearInterval(presenceHeartbeat);
+      presenceHeartbeat = null;
+      presenceSocket = null;
+      clearTimeout(presenceRetry);
+      presenceRetry = setTimeout(connectPresence, 2500);
+    });
+  }
+
+  connectPresence();
+  window.addEventListener("online", connectPresence);
+  window.addEventListener("pageshow", connectPresence);
+  window.addEventListener("pagehide", () => presenceSocket?.close());
+
   if (!("serviceWorker" in navigator)) return;
   let installPrompt = null;
   let refreshRequested = false;
