@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <title>ZDWA – Administration</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="/manifest.webmanifest?v=f96c5e55fc90">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=f96c5e55fc90" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=f96c5e55fc90" sizes="180x180">
-  <script src="/static/i18n.js?v=f96c5e55fc90"></script>
-  <script src="/static/ui.js?v=f96c5e55fc90"></script>
-  <script src="/static/pwa.js?v=f96c5e55fc90" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=f96c5e55fc90">
-  <script src="/static/theme.js?v=f96c5e55fc90"></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=e720b8255003">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=e720b8255003" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=e720b8255003" sizes="180x180">
+  <script src="/static/i18n.js?v=e720b8255003"></script>
+  <script src="/static/ui.js?v=e720b8255003"></script>
+  <script src="/static/pwa.js?v=e720b8255003" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=e720b8255003">
+  <script src="/static/theme.js?v=e720b8255003"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
@@ -76,7 +76,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, loadAuth } from '/static/auth.js?v=f96c5e55fc90';
+    import { apiFetch, authError, escapeHtml, loadAuth } from '/static/auth.js?v=e720b8255003';
     const auth = await loadAuth();
     if (!auth?.user?.is_admin) location.replace('/');
     const usersBody = document.getElementById('usersBody');

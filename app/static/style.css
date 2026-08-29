@@ -774,6 +774,7 @@ td.cell.announce-pickable{
     overflow-wrap:anywhere;
   }
   .stats > span:first-child,
+  .stats > span:nth-child(2),
   .stats .avg-label{
     grid-column:1 / -1;
   }

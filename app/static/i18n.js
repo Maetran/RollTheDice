@@ -749,7 +749,7 @@
   window.ZDWA_I18N = { getLanguage, locale, setLanguage, syncAccountLanguage, t: translateString, translateElement, catalog: EN };
   document.documentElement.lang = getLanguage();
   const manifestLink = document.querySelector('link[rel="manifest"]');
-  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=f96c5e55fc90";
+  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=e720b8255003";
 
   document.addEventListener("DOMContentLoaded", () => {
     translateElement(document);
