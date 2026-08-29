@@ -17,7 +17,7 @@
 */
 // Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions)
 
-import { initChat, addChatMessage } from "./chat.js?v=e720b8255003";
+import { initChat, addChatMessage } from "./chat.js?v=da6daff971a7";
 
 (() => {
   // ---------- Helpers ----------

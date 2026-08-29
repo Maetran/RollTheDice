@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <title>ZDWA – Spielerprofil</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="/manifest.webmanifest?v=e720b8255003">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=e720b8255003" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=e720b8255003" sizes="180x180">
-  <script src="/static/i18n.js?v=e720b8255003"></script>
-  <script src="/static/ui.js?v=e720b8255003"></script>
-  <script src="/static/pwa.js?v=e720b8255003" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=e720b8255003">
-  <script src="/static/theme.js?v=e720b8255003"></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=da6daff971a7">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=da6daff971a7" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=da6daff971a7" sizes="180x180">
+  <script src="/static/i18n.js?v=da6daff971a7"></script>
+  <script src="/static/ui.js?v=da6daff971a7"></script>
+  <script src="/static/pwa.js?v=da6daff971a7" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=da6daff971a7">
+  <script src="/static/theme.js?v=da6daff971a7"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -28,7 +28,7 @@
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber } from '/static/auth.js?v=e720b8255003';
+    import { escapeHtml, formatNumber } from '/static/auth.js?v=da6daff971a7';
     const profilePath = location.pathname.match(/^\/spieler\/([^/]+)\/?$/);
     let username = new URLSearchParams(location.search).get('user') || '';
     try { if (profilePath) username = decodeURIComponent(profilePath[1]); }

@@ -162,6 +162,32 @@ test("mobile lobby cards and leaderboard tabs stay inside the viewport", async (
 });
 
 
+test("lobby game choices stay synchronized with the existing creation form", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { name: "Schnell spielen" })).toBeVisible();
+  await expect(page.getByText("Du kannst ohne Konto spielen.")).toBeVisible();
+  await expect(page.getByRole("radio", { name: "1 Spieler, Solo" })).toBeChecked();
+  await expect(page.locator("#gameMode")).toHaveValue("1");
+  await expect(page.getByRole("radio", { name: "Normal" })).toBeChecked();
+  await expect(page.locator("#hardcoreChk")).not.toBeChecked();
+  await expect(page.locator("#hardcoreHelp")).toBeHidden();
+
+  await page.getByRole("radio", { name: "3 Spieler" }).click();
+  await expect(page.locator("#gameMode")).toHaveValue("3");
+  await expect(page.getByRole("radio", { name: "3 Spieler" })).toBeChecked();
+
+  await page.getByRole("radio", { name: "3 Spieler" }).press("ArrowRight");
+  await expect(page.locator("#gameMode")).toHaveValue("2v2");
+  await expect(page.getByRole("radio", { name: "2 gegen 2" })).toBeFocused();
+
+  await page.getByRole("radio", { name: "Hardcore" }).click();
+  await expect(page.locator("#hardcoreChk")).toBeChecked();
+  await expect(page.getByRole("radio", { name: "Hardcore" })).toBeChecked();
+  await expect(page.locator("#hardcoreHelp")).toBeVisible();
+});
+
+
 test("tablet new-game controls stay inside their card", async ({ page }) => {
   for (const viewport of [
     { width: 768, height: 1024 },

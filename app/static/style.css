@@ -396,7 +396,8 @@ input[type="checkbox"]{
 }
 .player-setup-card.authenticated .section-title-row,
 .player-setup-card.authenticated #playerNameRow,
-.player-setup-card.authenticated #loginForm{
+.player-setup-card.authenticated #loginForm,
+.player-setup-card.authenticated .guest-account-panel{
   display:none;
 }
 .player-setup-card.authenticated .auth-actions{
@@ -407,19 +408,125 @@ input[type="checkbox"]{
 }
 .row{ display:flex; gap:.7rem; align-items:center; flex-wrap:wrap; }
 .row input[type="text"]{ min-width:18ch; }
-.create-row input[type="text"]{ flex:1 1 16rem; }
-.mode-hardcore-row{
-  display:flex;
-  align-items:stretch;
-  gap:.5rem;
-  flex:0 0 auto;
-  flex-wrap:wrap;
+.form-field{
+  display:grid;
+  gap:.35rem;
   min-width:0;
-  max-width:100%;
+  color:var(--text);
+  font-size:.84rem;
+  font-weight:700;
 }
-.mode-hardcore-row select{
-  flex:0 1 9.5rem;
+.form-field > span small{ color:var(--muted); font-weight:500; }
+.form-field input{ width:100%; min-width:0; }
+.quick-play-fields{ display:grid; gap:.35rem; }
+.quick-play-fields .muted{ margin:.1rem 0 0; }
+.guest-account-panel{
+  margin-top:.9rem;
+  padding-top:.8rem;
+  border-top:1px solid var(--border);
+}
+.account-intro h3{ margin:0 0 .2rem; }
+.account-intro .muted{ margin:0; line-height:1.35; }
+.player-setup-card .login-inline{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:.55rem;
+  align-items:stretch;
+  margin-top:.65rem;
+}
+.player-setup-card .login-inline input{ min-width:0; }
+.account-form-actions{ display:grid; grid-template-columns:1fr 1fr; gap:.45rem; }
+.account-form-actions button{ width:100%; }
+.player-setup-card .auth-actions{
+  display:grid;
+  grid-template-columns:repeat(3, auto);
+  justify-content:start;
+  gap:.5rem;
+}
+.account-identity{
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+  grid-column:1 / -1;
+}
+.account-identity .eyebrow{ margin:0; }
+.account-identity .badge{ margin:0; }
+.create-game-card{ align-self:start; }
+.create-game-card .create-row{
+  display:grid;
+  grid-template-columns:minmax(0, 1.2fr) minmax(0, 1fr);
+  gap:.8rem;
+  align-items:start;
+}
+.create-fieldset{
+  position:relative;
   min-width:0;
+  margin:0;
+  padding:0;
+  border:0;
+}
+.create-fieldset legend{
+  margin-bottom:.38rem;
+  padding:0;
+  color:var(--text);
+  font-size:.84rem;
+  font-weight:700;
+}
+.segmented-choice,
+.mode-hardcore-row{
+  display:grid;
+  gap:.4rem;
+  min-width:0;
+}
+.player-count-choice{ grid-template-columns:repeat(4, minmax(0, 1fr)); }
+.mode-hardcore-row{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+.choice-button,
+.mode-hardcore-row .choice-button{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:.28rem;
+  width:100%;
+  min-height:44px;
+  min-width:0;
+  padding:.5rem .65rem;
+  background:var(--surface-soft);
+  border-color:var(--border);
+  box-shadow:none;
+  font-weight:700;
+}
+.choice-button small{ color:var(--muted); font-size:.72rem; font-weight:600; }
+.choice-button[aria-checked="true"]{
+  border-color:var(--accent);
+  background:var(--info-soft);
+  box-shadow:inset 0 0 0 1px var(--accent);
+}
+.choice-check{
+  display:none;
+  font-size:.78rem;
+  font-weight:900;
+}
+.choice-button[aria-checked="true"] .choice-check{ display:inline; }
+.choice-button.hardcore-choice[aria-checked="true"]{
+  border-color:var(--hardcore-border);
+  background:var(--hardcore-soft);
+  color:var(--hardcore);
+  box-shadow:inset 0 0 0 1px var(--hardcore-border);
+}
+.hardcore-help{
+  margin:.48rem 0 0;
+  color:var(--hardcore);
+  font-size:.8rem;
+  font-weight:650;
+  line-height:1.35;
+}
+.passphrase-field{ grid-column:1 / -1; }
+.create-game-card #createBtn{
+  grid-column:1 / -1;
+  width:100%;
+  min-height:46px;
+  font-weight:800;
 }
 .section-title-row{
   display:flex;
@@ -437,31 +544,6 @@ input[type="checkbox"]{
 }
 .section-hint{
   margin:.1rem 0 .65rem;
-}
-.toggle-row{
-  display:inline-flex;
-  align-items:center;
-  gap:.4rem;
-  min-height:2.45rem;
-  padding:.35rem .55rem;
-  border:1px solid var(--border);
-  border-radius:var(--radius-sm);
-  background:var(--surface-soft);
-}
-.toggle-row:has(#hardcoreChk:checked){
-  border-color:var(--hardcore-border);
-  background:var(--hardcore-soft);
-}
-
-/* Tablet cards are too narrow for all new-game controls on one line. */
-@media (min-width:561px) and (max-width:1100px){
-  .create-row input[type="text"]{
-    flex:1 1 100%;
-    width:100%;
-  }
-  .mode-hardcore-row{
-    flex:1 1 auto;
-  }
 }
 .games{ display:flex; flex-direction:column; gap:.65rem; }
 .game-row{
@@ -507,6 +589,35 @@ input[type="checkbox"]{
   line-height:1.35;
 }
 .hc-badge{ color:var(--hardcore); font-weight:750; }
+.secondary-card{
+  background:color-mix(in srgb, var(--surface) 82%, var(--bg));
+}
+.lobby-state,
+.lobby-empty-state{
+  padding:.8rem;
+  border:1px dashed var(--border);
+  border-radius:var(--radius-sm);
+  background:var(--surface-soft);
+  color:var(--muted);
+}
+.lobby-empty-state{ display:grid; gap:.28rem; justify-items:start; }
+.lobby-empty-state strong{ color:var(--text); }
+.lobby-empty-state p{ margin:0 0 .35rem; }
+.lobby-community{
+  padding:.8rem 0;
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+}
+.lobby-community > .eyebrow{ margin-bottom:.55rem; }
+.lobby-community .stats{
+  display:grid;
+  grid-template-columns:auto auto auto minmax(0, 1fr) minmax(0, 1fr);
+  align-items:center;
+  gap:.45rem 1rem;
+  min-width:0;
+  color:var(--muted);
+  font-size:.85rem;
+}
 .leaderboard-heading{
   display:flex;
   align-items:center;
@@ -758,9 +869,23 @@ td.cell.announce-pickable{
   .brand-lockup h1{ font-size:1.42rem; }
   .logo{ width:2rem; height:2rem; }
   .brand-actions{
-    margin-left:calc(2rem + .5rem);
+    display:grid;
+    grid-template-columns:auto minmax(0, 1.25fr) minmax(0, 1fr) auto;
+    align-items:stretch;
+    width:100%;
+    margin-left:0;
   }
-  .stats{
+  .brand-actions > *{
+    min-width:0;
+  }
+  .brand-actions .button-link,
+  .brand-actions button,
+  .brand-actions select{
+    width:100%;
+    height:100%;
+    white-space:normal;
+  }
+  .lobby-community .stats{
     display:grid;
     grid-template-columns:repeat(2, minmax(0, 1fr));
     align-items:start;
@@ -769,13 +894,13 @@ td.cell.announce-pickable{
     min-width:0;
     font-size:.84rem;
   }
-  .stats > span{
+  .lobby-community .stats > span{
     min-width:0;
     overflow-wrap:anywhere;
   }
-  .stats > span:first-child,
-  .stats > span:nth-child(2),
-  .stats .avg-label{
+  .lobby-community .stats > span:first-child,
+  .lobby-community .stats > span:nth-child(2),
+  .lobby-community .stats .avg-label{
     grid-column:1 / -1;
   }
   .setup-grid{ grid-template-columns:minmax(0, 1fr); gap:.55rem; }
@@ -790,6 +915,12 @@ td.cell.announce-pickable{
   .card{ padding:.85rem; }
   .setup-card{ padding:.65rem .75rem; }
   .setup-card h2{ margin-bottom:.45rem; }
+  .create-game-card .create-row{
+    grid-template-columns:minmax(0, 1fr);
+    gap:.7rem;
+  }
+  .create-game-card .create-row > *{ grid-column:1; }
+  .player-count-choice{ grid-template-columns:repeat(4, minmax(0, 1fr)); }
   .row{ gap:.55rem; align-items:stretch; }
   .row input[type="text"],
   .create-row input[type="text"],
@@ -798,21 +929,19 @@ td.cell.announce-pickable{
     width:100%;
   }
   .mode-hardcore-row{
-    flex:1 1 100%;
     width:100%;
     gap:.45rem;
   }
-  .mode-hardcore-row select{
-    flex:1 1 auto;
-    min-width:0;
-    width:auto;
-  }
   .mode-hardcore-row .toggle-row{
-    flex:0 0 auto;
-    width:auto;
+    width:100%;
     justify-content:center;
     white-space:nowrap;
   }
+  .player-setup-card .auth-actions{
+    grid-template-columns:1fr 1fr;
+  }
+  .player-setup-card .auth-actions > *{ min-width:0; }
+  .player-setup-card .auth-actions #logoutBtn{ grid-column:1 / -1; }
   .game-row{
     align-items:stretch;
     flex-direction:column;
@@ -946,6 +1075,11 @@ td.cell.announce-pickable{
 :root[data-theme="dark"] button.spectateBtn,
 :root[data-theme="dark"] #refreshBtn,
 :root[data-theme="dark"] #refreshRunningBtn{
+  background:#172b4d;
+  border-color:#315a91;
+  color:#bfdbfe;
+}
+:root[data-theme="dark"] .button-link.secondary{
   background:#172b4d;
   border-color:#315a91;
   color:#bfdbfe;
@@ -2740,6 +2874,11 @@ button:disabled:hover{
 .button-link:hover{ background:var(--surface-soft); border-color:var(--border-strong); }
 .button-link:active{ transform:translateY(1px); }
 .button-link.small{ min-height:2rem; padding:.35rem .58rem; font-size:.85rem; }
+.button-link.secondary{
+  background:#eef4ff;
+  border-color:#c8d9ff;
+  color:#163f8f;
+}
 .button-link.ghost{ background:transparent; box-shadow:none; }
 .login-inline, .auth-actions, .search-row, .admin-create-grid { display: flex; gap: .65rem; align-items: center; flex-wrap: wrap; }
 .login-inline { margin-top: .8rem; }

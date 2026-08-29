@@ -13,16 +13,16 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=e720b8255003">
+  <link rel="manifest" href="/manifest.webmanifest?v=da6daff971a7">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=e720b8255003" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=e720b8255003" sizes="180x180">
-  <script src="/static/i18n.js?v=e720b8255003"></script>
-  <script src="/static/ui.js?v=e720b8255003"></script>
-  <script src="/static/pwa.js?v=e720b8255003" defer></script>
-  <script src="/static/theme.js?v=e720b8255003"></script>
-  <link rel="stylesheet" href="/static/style.css?v=e720b8255003">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=da6daff971a7" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=da6daff971a7" sizes="180x180">
+  <script src="/static/i18n.js?v=da6daff971a7"></script>
+  <script src="/static/ui.js?v=da6daff971a7"></script>
+  <script src="/static/pwa.js?v=da6daff971a7" defer></script>
+  <script src="/static/theme.js?v=da6daff971a7"></script>
+  <link rel="stylesheet" href="/static/style.css?v=da6daff971a7">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -48,61 +48,93 @@
           </button>
         </div>
       </div>
-      <div class="stats">
-        <span id="onlineUsers" class="online-user-count" aria-live="polite"><span class="online-dot" aria-hidden="true"></span><b>0</b> Nutzer online</span>
-        <span>Zock die Wand an · beendete Partien: <b id="gamesPlayed">0</b></span>
-        <span class="avg-label" title="Durchschnittspunkte">⌀ Punkte</span>
-        <span>Normale Spiele: <b id="avgNormalPoints">—</b><span id="avgNormalTrend" class="avg-trend avg-same">-</span></span>
-        <span>Hardcore Spiele: <b id="avgHardcorePoints">—</b><span id="avgHardcoreTrend" class="avg-trend avg-same">-</span></span>
-      </div>
     </header>
 
     <!-- 1) Wer bist du? – Name wird im LocalStorage gemerkt -->
     <div id="setupGrid" class="setup-grid">
       <section id="playerSetupCard" class="card setup-card player-setup-card">
         <div id="playerSectionTitle" class="section-title-row">
-          <h2>Spieler</h2>
+          <div>
+            <p class="eyebrow">Ohne Konto</p>
+            <h2>Schnell spielen</h2>
+          </div>
         </div>
-        <div id="playerNameRow" class="row">
-          <input id="playerName" type="text" placeholder="Dein Name">
-          <span class="muted small">Wird für den Beitritt verwendet.</span>
+        <div id="playerNameRow" class="quick-play-fields">
+          <label class="form-field" for="playerName">
+            <span>Spielername</span>
+            <input id="playerName" type="text" placeholder="Dein Name" autocomplete="nickname" aria-describedby="guestPlayHint">
+          </label>
+          <p id="guestPlayHint" class="muted small">Du kannst ohne Konto spielen.</p>
         </div>
-        <form id="loginForm" class="login-inline">
-          <input id="loginUsername" autocomplete="username" placeholder="Benutzername" required>
-          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Passwort (min. 8 Zeichen)" minlength="8" required>
-          <button type="submit" class="small">Anmelden</button>
-          <button id="registerBtn" type="button" class="small ghost">Registrieren</button>
-          <div id="registrationChallenge" class="registration-challenge" hidden></div>
-        </form>
+        <div class="guest-account-panel">
+          <div class="account-intro">
+            <h3>Spielerkonto</h3>
+            <p class="muted small">Optional für Statistiken, Rankings und gespeicherte Einstellungen.</p>
+          </div>
+          <form id="loginForm" class="login-inline">
+            <label class="form-field compact" for="loginUsername">
+              <span>Benutzername</span>
+              <input id="loginUsername" autocomplete="username" placeholder="Benutzername" required>
+            </label>
+            <label class="form-field compact" for="loginPassword">
+              <span>Passwort</span>
+              <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Passwort (min. 8 Zeichen)" minlength="8" required>
+            </label>
+            <div class="account-form-actions">
+              <button type="submit" class="small">Anmelden</button>
+              <button id="registerBtn" type="button" class="small ghost">Registrieren</button>
+            </div>
+            <div id="registrationChallenge" class="registration-challenge" hidden></div>
+          </form>
+        </div>
         <div id="authActions" class="auth-actions" hidden>
-          <span id="authBadge" class="badge" hidden></span>
-          <a href="/konto">Mein Konto</a>
-          <a id="adminLink" href="/admin" hidden>Administration</a>
+          <div class="account-identity">
+            <span class="eyebrow">Du spielst als</span>
+            <span id="authBadge" class="badge" hidden></span>
+          </div>
+          <a class="button-link small secondary" href="/konto">Mein Konto</a>
+          <a id="adminLink" class="button-link small ghost" href="/admin" hidden>Administration</a>
           <button id="logoutBtn" type="button" class="small ghost">Abmelden</button>
         </div>
         <div id="loginError" class="muted small"></div>
       </section>
 
       <!-- 2) Neues Spiel – Modus/Passphrase, erzeugt via /api/games (POST) -->
-      <section class="card setup-card">
+      <section id="createGameCard" class="card setup-card create-game-card priority-card">
+        <p class="eyebrow">Loslegen</p>
         <h2>Neues Spiel</h2>
         <div class="row create-row">
-          <input id="passInput" type="text" placeholder="Passphrase">
-          <div class="mode-hardcore-row">
-            <select id="gameMode" title="Spielmodus">
+          <fieldset class="create-fieldset player-count-fieldset">
+            <legend>Spieleranzahl</legend>
+            <select id="gameMode" hidden>
               <option value="1">1 Spieler</option>
               <option value="2">2 Spieler</option>
               <option value="3">3 Spieler</option>
               <option value="2v2">2 vs 2</option>
             </select>
-            <label class="toggle-row">
-              <input id="hardcoreChk" type="checkbox">
-              <span class="hc-badge">Hardcore</span>
-            </label>
-          </div>
-          <button id="createBtn">Erstellen &amp; beitreten</button>
+            <div class="segmented-choice player-count-choice" role="radiogroup" aria-label="Spieleranzahl">
+              <button type="button" class="choice-button" role="radio" aria-label="1 Spieler, Solo" aria-checked="true" data-game-mode="1"><span class="choice-check" aria-hidden="true">✓</span>1 <small>Solo</small></button>
+              <button type="button" class="choice-button" role="radio" aria-label="2 Spieler" aria-checked="false" data-game-mode="2"><span class="choice-check" aria-hidden="true">✓</span>2</button>
+              <button type="button" class="choice-button" role="radio" aria-label="3 Spieler" aria-checked="false" data-game-mode="3"><span class="choice-check" aria-hidden="true">✓</span>3</button>
+              <button type="button" class="choice-button" role="radio" aria-label="2 gegen 2" aria-checked="false" data-game-mode="2v2"><span class="choice-check" aria-hidden="true">✓</span>2 vs 2</button>
+            </div>
+          </fieldset>
+          <fieldset class="create-fieldset game-type-fieldset">
+            <legend>Spielmodus</legend>
+            <input id="hardcoreChk" type="checkbox" hidden>
+            <div class="mode-hardcore-row" role="radiogroup" aria-label="Spielmodus">
+              <button type="button" class="choice-button toggle-row" role="radio" aria-label="Normal" aria-checked="true" data-hardcore="false"><span class="choice-check" aria-hidden="true">✓</span>Normal</button>
+              <button type="button" class="choice-button toggle-row hardcore-choice" role="radio" aria-label="Hardcore" aria-checked="false" data-hardcore="true"><span class="choice-check" aria-hidden="true">✓</span>Hardcore</button>
+            </div>
+            <p id="hardcoreHelp" class="hardcore-help" hidden>1 Wurf · kein Halten · keine Ansage · keine Korrektur</p>
+          </fieldset>
+          <label class="form-field passphrase-field" for="passInput">
+            <span>Passphrase <small>(optional)</small></span>
+            <input id="passInput" type="text" placeholder="Leer lassen für ein öffentliches Spiel" autocomplete="off">
+          </label>
+          <button id="createBtn">Spiel starten</button>
         </div>
-        <div id="createErr" class="muted small"></div>
+        <div id="createErr" class="muted small" role="status"></div>
       </section>
     </div>
 
@@ -113,18 +145,29 @@
         <button id="refreshBtn" class="small">Aktualisieren</button>
       </div>
       <p class="muted small section-hint">Klicke auf „Beitreten“, um in den Spielraum zu wechseln.</p>
-      <div id="gamesList" class="games"></div>
+      <div id="gamesList" class="games"><div class="lobby-state" role="status">Offene Spiele werden geladen …</div></div>
     </section>
 
     <!-- 3b) Laufende Spiele – beitreten als Zuschauer -->
-    <section id="runningGamesCard" class="card">
+    <section id="runningGamesCard" class="card secondary-card">
       <div class="section-title-row">
         <h2 id="runningGamesTitle">Laufende Spiele</h2>
         <button id="refreshRunningBtn" class="small">Aktualisieren</button>
       </div>
       <p class="muted small section-hint">Klicke auf „Zuschauen“, um dem laufenden Spiel beizutreten (ohne Aktionen).</p>
-      <div id="runningList" class="games"></div>
+      <div id="runningList" class="games"><div class="lobby-state" role="status">Laufende Spiele werden geladen …</div></div>
     </section>
+
+    <aside class="lobby-community" aria-label="ZDWA Community">
+      <p class="eyebrow">ZDWA Community</p>
+      <div class="stats">
+        <span id="onlineUsers" class="online-user-count" aria-live="polite"><span class="online-dot" aria-hidden="true"></span><b>0</b> Nutzer online</span>
+        <span>Zock die Wand an · beendete Partien: <b id="gamesPlayed">0</b></span>
+        <span class="avg-label" title="Durchschnittspunkte">⌀ Punkte</span>
+        <span>Normale Spiele: <b id="avgNormalPoints">—</b><span id="avgNormalTrend" class="avg-trend avg-same">-</span></span>
+        <span>Hardcore Spiele: <b id="avgHardcorePoints">—</b><span id="avgHardcoreTrend" class="avg-trend avg-same">-</span></span>
+      </div>
+    </aside>
 
     <!-- 4) Leaderboard, Hall of Shame und letzte Spiele -->
     <div class="leaderboard-heading">
@@ -173,7 +216,7 @@
 
   <!-- Hauptskript: lädt Listen/Leaderboards und verknüpft Buttons -->
   <script type="module">
-    import { loadAuth, login, logout, register } from '/static/auth.js?v=e720b8255003';
+    import { loadAuth, login, logout, register } from '/static/auth.js?v=da6daff971a7';
 
     const nameInput  = document.getElementById('playerName');
     const passInput  = document.getElementById('passInput');
@@ -218,10 +261,72 @@
     const lbTabHC     = document.getElementById('lbTabHC');
     const lbTabShame  = document.getElementById('lbTabShame');
     const lbTabLast   = document.getElementById('lbTabLast');
+    const modeButtons = Array.from(document.querySelectorAll('[data-game-mode]'));
+    const hardcoreModeButtons = Array.from(document.querySelectorAll('[data-hardcore]'));
+    const hardcoreHelp = document.getElementById('hardcoreHelp');
+    const createGameCard = document.getElementById('createGameCard');
     let lbActiveTab = 'normal'; // 'normal' | 'hc' | 'shame' | 'last'
     let turnstileToken = null;
     let turnstileWidgetId = null;
     let turnstileEnabled = false;
+
+    function syncGameSetupChoices() {
+      const selectedMode = modeSel.value || '1';
+      modeButtons.forEach(button => {
+        const active = button.dataset.gameMode === selectedMode;
+        button.setAttribute('aria-checked', String(active));
+        button.tabIndex = active ? 0 : -1;
+      });
+      hardcoreModeButtons.forEach(button => {
+        const active = (button.dataset.hardcore === 'true') === hcChk.checked;
+        button.setAttribute('aria-checked', String(active));
+        button.tabIndex = active ? 0 : -1;
+      });
+      if (hardcoreHelp) hardcoreHelp.hidden = !hcChk.checked;
+    }
+
+    function moveChoiceFocus(buttons, current, direction, activate) {
+      const index = buttons.indexOf(current);
+      if (index < 0) return;
+      const nextIndex = direction === 'first'
+        ? 0
+        : direction === 'last'
+          ? buttons.length - 1
+          : (index + direction + buttons.length) % buttons.length;
+      activate(buttons[nextIndex]);
+      buttons[nextIndex].focus();
+    }
+
+    function wireChoiceButtons(buttons, activate) {
+      buttons.forEach(button => {
+        button.addEventListener('click', () => activate(button));
+        button.addEventListener('keydown', event => {
+          const direction = ['ArrowRight', 'ArrowDown'].includes(event.key)
+            ? 1
+            : ['ArrowLeft', 'ArrowUp'].includes(event.key)
+              ? -1
+              : event.key === 'Home'
+                ? 'first'
+                : event.key === 'End'
+                  ? 'last'
+                  : null;
+          if (direction === null) return;
+          event.preventDefault();
+          moveChoiceFocus(buttons, button, direction, activate);
+        });
+      });
+    }
+
+    wireChoiceButtons(modeButtons, button => {
+      modeSel.value = button.dataset.gameMode;
+      modeSel.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    wireChoiceButtons(hardcoreModeButtons, button => {
+      hcChk.checked = button.dataset.hardcore === 'true';
+      hcChk.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    modeSel.addEventListener('change', syncGameSetupChoices);
+    hcChk.addEventListener('change', syncGameSetupChoices);
 
     async function requestPassphrase() {
       if (window.ZDWA_UI?.prompt) {
@@ -260,6 +365,7 @@
         setTimeout(() => document.querySelector('.create-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       }
     } catch {}
+    syncGameSetupChoices();
 
     function loadTurnstileScript() {
       if (window.turnstile) return Promise.resolve();
@@ -430,7 +536,13 @@
     }
 
     // Spiele holen
-    async function fetchGames() {
+    async function fetchGames({ showLoading = false } = {}) {
+      if (showLoading) {
+        openGamesCard?.setAttribute('aria-busy', 'true');
+        runningGamesCard?.setAttribute('aria-busy', 'true');
+        refreshBtn.disabled = true;
+        if (refreshRunningBtn) refreshRunningBtn.disabled = true;
+      }
       try {
         const res = await fetch('/api/games', {cache: 'no-store'});
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -459,13 +571,22 @@
         if (runningEl) {
           runningEl.innerHTML = `<div class="connection-error">Keine Verbindung zum Spielserver.</div>`;
         }
+      } finally {
+        openGamesCard?.removeAttribute('aria-busy');
+        runningGamesCard?.removeAttribute('aria-busy');
+        refreshBtn.disabled = false;
+        if (refreshRunningBtn) refreshRunningBtn.disabled = false;
       }
     }
 
     function renderList(games) {
       if (!listEl) return;
       if (!games.length) {
-        listEl.innerHTML = `<div class="muted">Keine offenen Spiele. Erstelle ein neues!</div>`;
+        listEl.innerHTML = `<div class="lobby-empty-state">
+          <strong>Keine offenen Spiele</strong>
+          <p>Aktuell wartet niemand auf Mitspieler. Starte einfach selbst eines.</p>
+          <button type="button" class="small secondary focus-create-btn">Neues Spiel</button>
+        </div>`;
         return;
       }
 
@@ -473,7 +594,6 @@
         const joined   = (g.players ?? 0);
         const expected = (g.expected ?? g.mode ?? '?');
         const gid      = g.id || '';
-        const status   = g.started ? 'läuft' : (g.finished ? 'fertig' : 'wartet');
         const disabled = (joined >= expected) || g.started || g.finished ? 'disabled' : '';
         const modeTxt  = (g.mode === '2v2') ? '2 vs 2' : `${g.mode || expected}`;
         const hcBadge  = g.hardcore ? `<span class="hc-badge">Hardcore</span>` : '';
@@ -492,7 +612,7 @@
                 ${hcBadge}
               </div>
               <div class="sub">
-                Spieler: <b>${joined}/${expected}</b> • Modus: ${modeTxt} • Status: ${status}
+                Spieler: <b>${joined}/${expected}</b> • Modus: ${modeTxt}
               </div>
               <div class="sub">
                 Wartende: ${waitingBadges}
@@ -520,7 +640,7 @@
     function renderRunningList(games) {
       if (!runningEl) return;
       if (!games.length) {
-        runningEl.innerHTML = `<div class="muted">Aktuell keine laufenden Spiele.</div>`;
+        runningEl.innerHTML = `<div class="lobby-state">Aktuell keine laufenden Spiele.</div>`;
         prioritizeResumableGames();
         return;
       }
@@ -645,6 +765,12 @@
 
     // Beitreten
     listEl.addEventListener('click', async (e) => {
+      const focusCreateBtn = e.target.closest('.focus-create-btn');
+      if (focusCreateBtn) {
+        createGameCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => modeButtons.find(button => button.getAttribute('aria-checked') === 'true')?.focus(), 250);
+        return;
+      }
       const btn = e.target.closest('.joinBtn');
       if (!btn) return;
       const gid = btn.dataset.id;
@@ -866,16 +992,16 @@
     }
 
     // Refresh Buttons
-    refreshBtn.addEventListener("click", fetchGames);
+    refreshBtn.addEventListener("click", () => fetchGames({ showLoading: true }));
     window.addEventListener("zdwa:presence-connected", fetchGames);
     if (refreshRunningBtn) {
-      refreshRunningBtn.addEventListener("click", fetchGames);
+      refreshRunningBtn.addEventListener("click", () => fetchGames({ showLoading: true }));
     }
 
     // initial
     refreshAuthUi();
     initializeRegistrationProtection();
-    fetchGames();
+    fetchGames({ showLoading: true });
     loadLeaderboard();
     setInterval(fetchGames, 4000);
     setInterval(loadLeaderboard, 10000);
