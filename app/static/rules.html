@@ -6,19 +6,19 @@
   <title>ZDWA – Spielanleitung</title>
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=da6daff971a7">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=da6daff971a7" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=da6daff971a7" sizes="180x180">
-  <script src="/static/i18n.js?v=da6daff971a7"></script>
-  <script src="/static/ui.js?v=da6daff971a7"></script>
-  <script src="/static/pwa.js?v=da6daff971a7" defer></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=a5f271e1e239">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=a5f271e1e239" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a5f271e1e239" sizes="180x180">
+  <script src="/static/i18n.js?v=a5f271e1e239"></script>
+  <script src="/static/ui.js?v=a5f271e1e239"></script>
+  <script src="/static/pwa.js?v=a5f271e1e239" defer></script>
   <!--
     rules.html - Spielanleitung
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi sowie Desktop-/Mobilsteuerung.
   -->
-  <script src="/static/theme.js?v=da6daff971a7"></script>
-  <link rel="stylesheet" href="/static/style.css?v=da6daff971a7" />
+  <script src="/static/theme.js?v=a5f271e1e239"></script>
+  <link rel="stylesheet" href="/static/style.css?v=a5f271e1e239" />
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
     .doc { max-width: 880px; margin: 1rem auto 2rem; padding: 0 1rem; }
@@ -35,7 +35,6 @@
     details { border:1px solid var(--border); border-radius:8px; padding:.5rem .6rem; background:var(--surface); }
     details + details { margin-top:.5rem; }
     summary { cursor:pointer; font-weight:600; }
-    .back { margin:.75rem 0 .5rem; }
     html.embedded-rules-root,
     body.embedded-rules {
       min-height:100%;
@@ -43,20 +42,20 @@
       overscroll-behavior-y:contain;
       -webkit-overflow-scrolling:touch;
     }
-    body.embedded-rules .back { display:none; }
+    body.embedded-rules .app-nav { display:none; }
     body.embedded-rules .doc { margin-top:.25rem; }
   </style>
 </head>
 <body>
   <!-- Dokumentations-Container -->
   <div class="doc">
-    <div class="doc-actions">
-      <button class="small back" onclick="location.href='/'">Zurück zur Lobby</button>
-      <button class="small ghost theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten">
-        <span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span>
-        <span data-theme-label>Dunkel</span>
-      </button>
-    </div>
+    <header class="app-nav">
+      <a class="app-nav-brand" href="/" aria-label="ZDWA Lobby"><span class="logo" aria-hidden="true">🎲</span><span>ZDWA</span></a>
+      <nav class="app-nav-links" aria-label="Hauptnavigation">
+        <a class="app-nav-link" href="/">Lobby</a><a class="app-nav-link" href="/spieler">Spieler &amp; Ranking</a><a class="app-nav-link" href="/regeln" aria-current="page">Regeln</a><a class="app-nav-link" href="/konto">Konto</a>
+      </nav>
+      <div class="app-nav-tools"><button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten"><span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span><span class="theme-toggle-label" data-theme-label>Dunkel</span></button></div>
+    </header>
     <h1>Spielanleitung</h1>
     <p>
       <strong>Zock die Wand an (ZDWA):</strong> Sammle möglichst viele Punkte über vier Spalten:

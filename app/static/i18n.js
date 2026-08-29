@@ -23,6 +23,11 @@
     "← Lobby": "← Lobby",
     "⬅️ Zurück zur Lobby": "⬅️ Back to Lobby",
     "Zurück zur Lobby": "Back to Lobby",
+    "Hauptnavigation": "Main navigation",
+    "Lobby": "Lobby",
+    "Regeln": "Rules",
+    "Konto": "Account",
+    "Spiel verlassen": "Leave game",
     "Zock die Wand an · beendete Partien:": "Zock die Wand an · completed games:",
     "Spieler & Ranking": "Players & Ranking",
     "Spieler-Ranking": "Player Ranking",
@@ -770,7 +775,7 @@
   window.ZDWA_I18N = { getLanguage, locale, setLanguage, syncAccountLanguage, t: translateString, translateElement, catalog: EN };
   document.documentElement.lang = getLanguage();
   const manifestLink = document.querySelector('link[rel="manifest"]');
-  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=da6daff971a7";
+  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=a5f271e1e239";
 
   document.addEventListener("DOMContentLoaded", () => {
     translateElement(document);

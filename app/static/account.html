@@ -4,21 +4,29 @@
   <meta charset="utf-8">
   <title>ZDWA – Mein Konto</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="/manifest.webmanifest?v=da6daff971a7">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=da6daff971a7" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=da6daff971a7" sizes="180x180">
-  <script src="/static/i18n.js?v=da6daff971a7"></script>
-  <script src="/static/ui.js?v=da6daff971a7"></script>
-  <script src="/static/pwa.js?v=da6daff971a7" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=da6daff971a7">
-  <script src="/static/theme.js?v=da6daff971a7"></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=a5f271e1e239">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=a5f271e1e239" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a5f271e1e239" sizes="180x180">
+  <script src="/static/i18n.js?v=a5f271e1e239"></script>
+  <script src="/static/ui.js?v=a5f271e1e239"></script>
+  <script src="/static/pwa.js?v=a5f271e1e239" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=a5f271e1e239">
+  <script src="/static/theme.js?v=a5f271e1e239"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
-    <nav class="page-nav"><a href="/">← Lobby</a><a id="publicProfileLink" href="#">Öffentliches Profil</a></nav>
+    <header class="app-nav">
+      <a class="app-nav-brand" href="/" aria-label="ZDWA Lobby"><span class="logo" aria-hidden="true">🎲</span><span>ZDWA</span></a>
+      <nav class="app-nav-links" aria-label="Hauptnavigation">
+        <a class="app-nav-link" href="/">Lobby</a><a class="app-nav-link" href="/spieler">Spieler &amp; Ranking</a><a class="app-nav-link" href="/regeln">Regeln</a><a class="app-nav-link" href="/konto" aria-current="page">Konto</a>
+      </nav>
+      <div class="app-nav-tools"><button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten"><span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span><span class="theme-toggle-label" data-theme-label>Dunkel</span></button></div>
+    </header>
     <section class="card account-header-card">
-      <p class="eyebrow">Mein Konto</p>
-      <h1 id="accountName">Benutzerkonto</h1>
+      <div class="section-title-row">
+        <div><p class="eyebrow">Mein Konto</p><h1 id="accountName">Benutzerkonto</h1></div>
+        <a id="publicProfileLink" class="button-link small ghost" href="#">Öffentliches Profil</a>
+      </div>
       <div id="accountNotice" class="connection-error" hidden></div>
     </section>
     <nav class="account-tabs" role="tablist" aria-label="Kontobereiche">
@@ -86,7 +94,7 @@
             <label><input type="checkbox" name="hapticFeedback"> Sanftes haptisches Feedback für Würfeln, Halten und Schreiben verwenden</label>
             <label><input type="checkbox" name="keepScreenAwake"> Bildschirm während eines laufenden Spiels wach halten</label>
           </fieldset>
-          <button>Spieleinstellungen speichern</button>
+          <button class="primary">Spieleinstellungen speichern</button>
         </form>
         <div id="preferencesMessage" class="muted small" role="status"></div>
       </section>
@@ -97,14 +105,14 @@
           <label>Aktuelles Passwort<input id="currentPassword" type="password" autocomplete="current-password" required></label>
           <label>Neues Passwort<input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></label>
           <label>Neues Passwort wiederholen<input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>
-          <button>Passwort ändern</button>
+          <button class="primary">Passwort ändern</button>
         </form>
         <div id="passwordMessage" class="muted small"></div>
       </section>
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth } from '/static/auth.js?v=da6daff971a7';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth } from '/static/auth.js?v=a5f271e1e239';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace('/');
     const user = auth.user;

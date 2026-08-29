@@ -13,40 +13,42 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=da6daff971a7">
+  <link rel="manifest" href="/manifest.webmanifest?v=a5f271e1e239">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=da6daff971a7" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=da6daff971a7" sizes="180x180">
-  <script src="/static/i18n.js?v=da6daff971a7"></script>
-  <script src="/static/ui.js?v=da6daff971a7"></script>
-  <script src="/static/pwa.js?v=da6daff971a7" defer></script>
-  <script src="/static/theme.js?v=da6daff971a7"></script>
-  <link rel="stylesheet" href="/static/style.css?v=da6daff971a7">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=a5f271e1e239" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a5f271e1e239" sizes="180x180">
+  <script src="/static/i18n.js?v=a5f271e1e239"></script>
+  <script src="/static/ui.js?v=a5f271e1e239"></script>
+  <script src="/static/pwa.js?v=a5f271e1e239" defer></script>
+  <script src="/static/theme.js?v=a5f271e1e239"></script>
+  <link rel="stylesheet" href="/static/style.css?v=a5f271e1e239">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
   <div class="wrap lobby-shell">
-    <header class="lobby-header">
-      <div class="brand-area">
-        <div class="brand-lockup">
-          <div class="logo">🎲</div>
-          <h1>ZDWA Lobby</h1>
-        </div>
-        <div class="brand-actions">
-          <label class="language-switcher" aria-label="Sprache wählen">
-            <select data-language-switcher aria-label="Sprache wählen">
-              <option value="de">DE</option>
-              <option value="en">EN</option>
-            </select>
-          </label>
-          <a class="button-link small ghost" href="/spieler">Spieler &amp; Ranking</a>
-          <button class="small ghost rules-under-title" onclick="location.href='/regeln'">Spielregeln</button>
-          <button class="small ghost theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten">
-            <span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span>
-            <span data-theme-label>Dunkel</span>
-          </button>
-        </div>
+    <header class="lobby-header app-nav">
+      <a class="app-nav-brand" href="/" aria-label="ZDWA Lobby">
+        <span class="logo" aria-hidden="true">🎲</span>
+        <h1>ZDWA Lobby</h1>
+      </a>
+      <nav class="app-nav-links" aria-label="Hauptnavigation">
+        <a class="app-nav-link" href="/" aria-current="page">Lobby</a>
+        <a class="app-nav-link" href="/spieler">Spieler &amp; Ranking</a>
+        <a class="app-nav-link" href="/regeln">Regeln</a>
+        <a id="headerAccountLink" class="app-nav-link" href="#loginForm">Konto</a>
+      </nav>
+      <div class="app-nav-tools">
+        <label class="language-switcher" aria-label="Sprache wählen">
+          <select data-language-switcher aria-label="Sprache wählen">
+            <option value="de">DE</option>
+            <option value="en">EN</option>
+          </select>
+        </label>
+        <button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten">
+          <span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span>
+          <span class="theme-toggle-label" data-theme-label>Dunkel</span>
+        </button>
       </div>
     </header>
 
@@ -81,7 +83,7 @@
               <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Passwort (min. 8 Zeichen)" minlength="8" required>
             </label>
             <div class="account-form-actions">
-              <button type="submit" class="small">Anmelden</button>
+              <button type="submit" class="small secondary">Anmelden</button>
               <button id="registerBtn" type="button" class="small ghost">Registrieren</button>
             </div>
             <div id="registrationChallenge" class="registration-challenge" hidden></div>
@@ -216,7 +218,7 @@
 
   <!-- Hauptskript: lädt Listen/Leaderboards und verknüpft Buttons -->
   <script type="module">
-    import { loadAuth, login, logout, register } from '/static/auth.js?v=da6daff971a7';
+    import { loadAuth, login, logout, register } from '/static/auth.js?v=a5f271e1e239';
 
     const nameInput  = document.getElementById('playerName');
     const passInput  = document.getElementById('passInput');
@@ -256,6 +258,7 @@
     const authBadge = document.getElementById('authBadge');
     const authActions = document.getElementById('authActions');
     const adminLink = document.getElementById('adminLink');
+    const headerAccountLink = document.getElementById('headerAccountLink');
     const logoutBtn = document.getElementById('logoutBtn');
     const lbTabNormal = document.getElementById('lbTabNormal');
     const lbTabHC     = document.getElementById('lbTabHC');
@@ -438,11 +441,13 @@
         playerSectionTitle.hidden = !!user;
         playerNameRow.hidden = !!user;
         if (user) {
+          headerAccountLink.href = '/konto';
           authBadge.textContent = user.is_admin ? `${user.username} · Admin` : user.username;
           nameInput.value = user.username;
           nameInput.disabled = true;
           localStorage.setItem(NAME_KEY, user.username);
         } else {
+          headerAccountLink.href = '#loginForm';
           nameInput.disabled = false;
           nameInput.value = localStorage.getItem(NAME_KEY) || '';
         }

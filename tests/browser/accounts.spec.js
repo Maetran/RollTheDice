@@ -29,12 +29,66 @@ test("public player search and ranking are available to guests", async ({ page }
 });
 
 
+test("global navigation exposes the same destinations and current section", async ({ page }) => {
+  const cases = [
+    { path: "/", current: "Lobby" },
+    { path: "/spieler", current: "Spieler & Ranking" },
+    { path: "/regeln", current: "Regeln" },
+    { path: "/ergebnis/does-not-exist", current: null },
+  ];
+
+  for (const entry of cases) {
+    await page.goto(entry.path);
+    const navigation = page.getByRole("navigation", { name: "Hauptnavigation" });
+    await expect(navigation).toBeVisible();
+    await expect(navigation.getByRole("link", { name: "Lobby" })).toHaveAttribute("href", "/");
+    await expect(navigation.getByRole("link", { name: "Spieler & Ranking" })).toHaveAttribute("href", "/spieler");
+    await expect(navigation.getByRole("link", { name: "Regeln" })).toHaveAttribute("href", "/regeln");
+    await expect(navigation.getByRole("link", { name: "Konto" })).toBeVisible();
+    await expect(navigation.locator('[aria-current="page"]')).toHaveCount(entry.current ? 1 : 0);
+    if (entry.current) await expect(navigation.getByRole("link", { name: entry.current })).toHaveAttribute("aria-current", "page");
+  }
+
+  await page.goto("/regeln?embed=1");
+  await expect(page.locator(".app-nav")).toBeHidden();
+});
+
+
+test("mobile global navigation remains touch-friendly and inside the viewport", async ({ page }) => {
+  for (const viewport of [
+    { width: 375, height: 812 },
+    { width: 430, height: 932 },
+    { width: 768, height: 1024 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+
+    const layout = await page.evaluate(() => ({
+      viewportWidth: window.innerWidth,
+      pageWidth: document.documentElement.scrollWidth,
+      links: Array.from(document.querySelectorAll(".app-nav-link")).map(link => {
+        const rect = link.getBoundingClientRect();
+        return { width: rect.width, height: rect.height, right: rect.right };
+      }),
+    }));
+
+    expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewportWidth);
+    expect(layout.links).toHaveLength(4);
+    for (const link of layout.links) {
+      expect(link.height).toBeGreaterThanOrEqual(44);
+      expect(link.right).toBeLessThanOrEqual(layout.viewportWidth);
+    }
+  }
+});
+
+
 test("guest sees login and registration while a new account sees only logout", async ({ page }) => {
   const username = `SelfRegistered${Date.now()}`;
   await page.goto("/");
   await expect(page.locator("#loginForm")).toBeVisible();
   await expect(page.locator("#registerBtn")).toBeVisible();
   await expect(page.locator("#authActions")).toBeHidden();
+  await expect(page.locator("#headerAccountLink")).toHaveAttribute("href", "#loginForm");
 
   await page.fill("#loginUsername", username);
   await page.fill("#loginPassword", "self-register-password-123");
@@ -45,6 +99,7 @@ test("guest sees login and registration while a new account sees only logout", a
   await expect(page.locator("#playerNameRow")).toBeHidden();
   await expect(page.locator("#playerSetupCard")).toHaveClass(/authenticated/);
   await expect(page.locator("#logoutBtn")).toBeVisible();
+  await expect(page.locator("#headerAccountLink")).toHaveAttribute("href", "/konto");
   expect(await page.locator("#playerSetupCard").evaluate(element => element.getBoundingClientRect().height)).toBeLessThan(120);
 });
 

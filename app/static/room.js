@@ -17,7 +17,7 @@
 */
 // Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions)
 
-import { initChat, addChatMessage } from "./chat.js?v=da6daff971a7";
+import { initChat, addChatMessage } from "./chat.js?v=a5f271e1e239";
 
 (() => {
   // ---------- Helpers ----------
@@ -1317,6 +1317,13 @@ import { initChat, addChatMessage } from "./chat.js?v=da6daff971a7";
       const btn = document.getElementById("backToLobbyBtn");
       if (!btn || btn._bound) return;
       btn._bound = true;
+      if (IS_SPECTATOR) {
+        btn.textContent = "Lobby";
+        btn.classList.remove("danger", "leave-game-trigger");
+      } else {
+        btn.setAttribute("aria-haspopup", "dialog");
+        btn.setAttribute("aria-controls", "leaveGameDialog");
+      }
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         if (IS_SPECTATOR) { location.href = "/"; return; }  // Zuschauer: nur verlassen

@@ -4,23 +4,29 @@
   <meta charset="utf-8">
   <title>ZDWA – Spieler &amp; Ranking</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="/manifest.webmanifest?v=da6daff971a7">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=da6daff971a7" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=da6daff971a7" sizes="180x180">
-  <script src="/static/i18n.js?v=da6daff971a7"></script>
-  <script src="/static/ui.js?v=da6daff971a7"></script>
-  <script src="/static/pwa.js?v=da6daff971a7" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=da6daff971a7">
-  <script src="/static/theme.js?v=da6daff971a7"></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=a5f271e1e239">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=a5f271e1e239" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a5f271e1e239" sizes="180x180">
+  <script src="/static/i18n.js?v=a5f271e1e239"></script>
+  <script src="/static/ui.js?v=a5f271e1e239"></script>
+  <script src="/static/pwa.js?v=a5f271e1e239" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=a5f271e1e239">
+  <script src="/static/theme.js?v=a5f271e1e239"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
-    <nav class="page-nav"><a href="/">← Lobby</a></nav>
+    <header class="app-nav">
+      <a class="app-nav-brand" href="/" aria-label="ZDWA Lobby"><span class="logo" aria-hidden="true">🎲</span><span>ZDWA</span></a>
+      <nav class="app-nav-links" aria-label="Hauptnavigation">
+        <a class="app-nav-link" href="/">Lobby</a><a class="app-nav-link" href="/spieler" aria-current="page">Spieler &amp; Ranking</a><a class="app-nav-link" href="/regeln">Regeln</a><a class="app-nav-link" href="/konto">Konto</a>
+      </nav>
+      <div class="app-nav-tools"><button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten"><span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span><span class="theme-toggle-label" data-theme-label>Dunkel</span></button></div>
+    </header>
     <section class="card">
       <h1>Spieler suchen</h1>
       <form id="searchForm" class="search-row">
         <input id="searchInput" type="search" placeholder="Benutzername" autocomplete="off">
-        <button>Suchen</button>
+        <button class="primary">Suchen</button>
       </form>
       <div id="searchResults" class="player-search-results muted">Benutzername eingeben oder alle anzeigen.</div>
     </section>
@@ -49,7 +55,7 @@
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber } from '/static/auth.js?v=da6daff971a7';
+    import { escapeHtml, formatNumber } from '/static/auth.js?v=a5f271e1e239';
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');

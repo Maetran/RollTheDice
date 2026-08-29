@@ -6,37 +6,34 @@
   <title>ZDWA – Spielansicht</title>
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=da6daff971a7">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=da6daff971a7" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=da6daff971a7" sizes="180x180">
-  <script src="/static/i18n.js?v=da6daff971a7"></script>
-  <script src="/static/ui.js?v=da6daff971a7"></script>
-  <script src="/static/pwa.js?v=da6daff971a7" defer></script>
-  <script src="/static/theme.js?v=da6daff971a7"></script>
-  <link rel="stylesheet" href="/static/style.css?v=da6daff971a7" />
+  <link rel="manifest" href="/manifest.webmanifest?v=a5f271e1e239">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=a5f271e1e239" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a5f271e1e239" sizes="180x180">
+  <script src="/static/i18n.js?v=a5f271e1e239"></script>
+  <script src="/static/ui.js?v=a5f271e1e239"></script>
+  <script src="/static/pwa.js?v=a5f271e1e239" defer></script>
+  <script src="/static/theme.js?v=a5f271e1e239"></script>
+  <link rel="stylesheet" href="/static/style.css?v=a5f271e1e239" />
   <style>
     .container { max-width: 1100px; margin: 0 auto; padding: 1rem; }
-    header.top { padding: .75rem 1rem; border-bottom: 1px solid var(--border); display:flex; gap:.5rem; align-items:center; justify-content:space-between; }
-    header.top h1 { margin: 0; font-size: 1.25rem; }
-    .back-btn { margin-left:auto; }
+    .result-title { margin: 0 0 1rem; font-size: 1.25rem; }
   </style>
 </head>
-<body>
-  <header class="top">
-    <h1 id="roomGameName">Spielansicht</h1>
-    <button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten">
-      <span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span>
-      <span class="theme-toggle-label" data-theme-label>Dunkel</span>
-    </button>
-    <button class="small back-btn" onclick="location.href='/'">⬅️ Zurück zur Lobby</button>
-  </header>
-
+<body class="lobby-page">
   <main class="container">
+    <header class="app-nav">
+      <a class="app-nav-brand" href="/" aria-label="ZDWA Lobby"><span class="logo" aria-hidden="true">🎲</span><span>ZDWA</span></a>
+      <nav class="app-nav-links" aria-label="Hauptnavigation">
+        <a class="app-nav-link" href="/">Lobby</a><a class="app-nav-link" href="/spieler">Spieler &amp; Ranking</a><a class="app-nav-link" href="/regeln">Regeln</a><a class="app-nav-link" href="/konto">Konto</a>
+      </nav>
+      <div class="app-nav-tools"><button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten"><span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span><span class="theme-toggle-label" data-theme-label>Dunkel</span></button></div>
+    </header>
+    <h1 id="roomGameName" class="result-title">Spielansicht</h1>
     <div id="contentMount" class="content"></div>
   </main>
 
   <!-- Scoreboard-Renderer -->
-  <script src="/static/scoreboard.js?v=da6daff971a7"></script>
+  <script src="/static/scoreboard.js?v=a5f271e1e239"></script>
   <script>
   (function(){
     function qs(name){ return new URLSearchParams(location.search).get(name); }

@@ -58,6 +58,8 @@ test("lobby can create a game and open spectator view without browser errors", a
   await spectator.click("button.spectateBtn");
   await spectator.waitForURL(/\/spiel\/[^/?]+\/zuschauen$/);
   await spectator.waitForSelector("#diceBar");
+  await expect(spectator.locator("#backToLobbyBtn")).toHaveText("Lobby");
+  await expect(spectator.locator("#backToLobbyBtn")).not.toHaveClass(/danger/);
   await expect.poll(async () => {
     const response = await request.get("/api/games");
     return (await response.json()).online_users;
@@ -290,6 +292,9 @@ test("back to lobby can pause a game and resume it later", async ({ page, reques
 
   await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Solo`);
   await page.waitForSelector("#diceBar");
+  await expect(page.locator("#backToLobbyBtn")).toHaveText("Spiel verlassen");
+  await expect(page.locator("#backToLobbyBtn")).toHaveClass(/danger/);
+  await expect(page.locator("#backToLobbyBtn")).toHaveAttribute("aria-controls", "leaveGameDialog");
 
   await page.click("#backToLobbyBtn");
   await expect(page.locator("#leaveGameDialog")).toBeVisible();

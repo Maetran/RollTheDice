@@ -4,18 +4,24 @@
   <meta charset="utf-8">
   <title>ZDWA – Administration</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="/manifest.webmanifest?v=da6daff971a7">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=da6daff971a7" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=da6daff971a7" sizes="180x180">
-  <script src="/static/i18n.js?v=da6daff971a7"></script>
-  <script src="/static/ui.js?v=da6daff971a7"></script>
-  <script src="/static/pwa.js?v=da6daff971a7" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=da6daff971a7">
-  <script src="/static/theme.js?v=da6daff971a7"></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=a5f271e1e239">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=a5f271e1e239" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a5f271e1e239" sizes="180x180">
+  <script src="/static/i18n.js?v=a5f271e1e239"></script>
+  <script src="/static/ui.js?v=a5f271e1e239"></script>
+  <script src="/static/pwa.js?v=a5f271e1e239" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=a5f271e1e239">
+  <script src="/static/theme.js?v=a5f271e1e239"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
-    <nav class="page-nav"><a href="/">← Lobby</a><a href="/konto">Mein Konto</a></nav>
+    <header class="app-nav">
+      <a class="app-nav-brand" href="/" aria-label="ZDWA Lobby"><span class="logo" aria-hidden="true">🎲</span><span>ZDWA</span></a>
+      <nav class="app-nav-links" aria-label="Hauptnavigation">
+        <a class="app-nav-link" href="/">Lobby</a><a class="app-nav-link" href="/spieler">Spieler &amp; Ranking</a><a class="app-nav-link" href="/regeln">Regeln</a><a class="app-nav-link" href="/konto" aria-current="page">Konto</a>
+      </nav>
+      <div class="app-nav-tools"><button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten"><span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span><span class="theme-toggle-label" data-theme-label>Dunkel</span></button></div>
+    </header>
     <section class="card admin-overview">
       <p class="eyebrow">Administration</p>
       <h1>Adminbereich</h1>
@@ -47,7 +53,7 @@
         <input id="newUsername" placeholder="Benutzername" autocomplete="off" required>
         <input id="newPassword" type="password" placeholder="Temporäres Passwort (min. 8 Zeichen)" minlength="8" required>
         <select id="newRole"><option value="user">Benutzer</option><option value="admin">Admin</option></select>
-        <button>Benutzer anlegen</button>
+        <button class="primary">Benutzer anlegen</button>
       </form>
       <div class="table-scroll"><table class="admin-table">
         <thead><tr><th>Benutzer</th><th>Rolle</th><th>Status</th><th>Passwort</th><th>Aktion</th></tr></thead>
@@ -56,7 +62,7 @@
     </section>
 
     <section id="assignmentsPanel" class="card admin-panel" hidden>
-      <div class="section-title-row"><div><p class="eyebrow">Historische Daten</p><h1>Spiele zuordnen</h1></div><button id="reloadAssignments" class="small">Aktualisieren</button></div>
+      <div class="section-title-row"><div><p class="eyebrow">Historische Daten</p><h1>Spiele zuordnen</h1></div><button id="reloadAssignments" class="small secondary">Aktualisieren</button></div>
       <p class="muted">Hier erscheinen nicht zugeordnete Teilnehmer aus importierten Bestenlisten und neuen Gastspielen.</p>
       <div id="assignmentList" class="assignment-list"></div>
     </section>
@@ -64,19 +70,19 @@
     <section id="completedGamesPanel" class="card admin-panel danger-zone" hidden>
       <div class="section-title-row">
         <div><p class="eyebrow">Gefahrenbereich</p><h1>Abgeschlossene Spiele löschen</h1></div>
-        <button id="reloadCompletedGames" class="small">Aktualisieren</button>
+        <button id="reloadCompletedGames" class="small secondary">Aktualisieren</button>
       </div>
       <p class="muted">Löscht Snapshot und Spielergebnisse dauerhaft. Der Löschvorgang selbst bleibt protokolliert.</p>
       <form id="completedGameSearch" class="search-row">
         <input id="completedGameQuery" type="search" placeholder="Spiel, Spieler oder Spiel-ID">
-        <button class="small">Suchen</button>
+        <button class="small secondary">Suchen</button>
       </form>
       <div id="completedGameList" class="completed-game-list"></div>
       <details class="deletion-audit"><summary>Protokoll gelöschter Spiele</summary><div id="deletedGameList"></div></details>
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, loadAuth } from '/static/auth.js?v=da6daff971a7';
+    import { apiFetch, authError, escapeHtml, loadAuth } from '/static/auth.js?v=a5f271e1e239';
     const auth = await loadAuth();
     if (!auth?.user?.is_admin) location.replace('/');
     const usersBody = document.getElementById('usersBody');
@@ -113,7 +119,7 @@
         <td><a href="/spieler/${encodeURIComponent(user.username)}">${escapeHtml(user.username)}</a>${user.must_change_password ? '<span class="badge">PW-Wechsel offen</span>' : ''}</td>
         <td><select class="role-select"><option value="user" ${user.role === 'user' ? 'selected' : ''}>Benutzer</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option></select></td>
         <td>${user.is_active ? 'Aktiv' : 'Deaktiviert'}</td>
-        <td><button class="small reset-password">Zurücksetzen</button></td>
+        <td><button class="small secondary reset-password">Zurücksetzen</button></td>
         <td><button class="small ghost toggle-active">${user.is_active ? 'Deaktivieren' : 'Aktivieren'}</button></td>
       </tr>`).join('');
     }
@@ -184,7 +190,7 @@
           <div class="muted small">${escapeHtml(item.game_name)} · ${new Date(item.finished_at).toLocaleDateString(window.ZDWA_I18N?.locale?.() || 'de-CH')} · ${escapeHtml(item.mode)}${item.hardcore ? ' · Hardcore' : ''}</div>
         </div>
         <select class="assignment-user"><option value="">Benutzer wählen…</option>${options}</select>
-        <button class="small assign-button">Zuordnen</button>
+        <button class="small secondary assign-button">Zuordnen</button>
       </article>`).join('') || '<div class="muted">Keine unzugeordneten Spiele vorhanden.</div>';
     }
 
