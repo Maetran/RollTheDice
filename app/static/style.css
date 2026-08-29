@@ -313,7 +313,7 @@ input[type="checkbox"]{
 }
 .app-nav{
   display:grid;
-  grid-template-columns:auto minmax(0, 1fr) auto;
+  grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr);
   align-items:center;
   gap:.75rem;
   width:100%;
@@ -374,6 +374,7 @@ input[type="checkbox"]{
   justify-content:flex-end;
   gap:.4rem;
   min-width:0;
+  justify-self:end;
 }
 .app-nav-tools .theme-toggle,
 .app-nav-tools select{
@@ -913,13 +914,16 @@ td.cell.announce-pickable{
     grid-row:2;
     display:grid;
     grid-template-columns:repeat(4, minmax(0, 1fr));
+    grid-auto-rows:52px;
+    align-items:stretch;
     gap:.3rem;
     width:100%;
   }
   .app-nav-link{
     width:100%;
     min-width:0;
-    min-height:44px;
+    height:52px;
+    min-height:52px;
     padding:.45rem .25rem;
     white-space:normal;
   }
@@ -2931,8 +2935,8 @@ button:disabled:hover{
 .registration-challenge { flex-basis: 100%; min-height: 65px; }
 .auth-actions { margin-top: .8rem; }
 .auth-actions a, .player-profile-link { color: var(--accent); }
-.profile-shell { max-width: 1080px; padding-top: 1.25rem; }
-.admin-shell { max-width: 1240px; padding-top: 1.25rem; }
+.profile-shell,
+.admin-shell{ max-width:1120px; padding-top:0; }
 .admin-overview { overflow: hidden; }
 .admin-module-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem; margin-top: 1.1rem; }
 .admin-module-tile {

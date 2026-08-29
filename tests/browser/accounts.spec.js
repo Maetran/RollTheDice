@@ -82,6 +82,41 @@ test("mobile global navigation remains touch-friendly and inside the viewport", 
 });
 
 
+test("mobile navigation keeps identical geometry between app sections", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/");
+  await page.fill("#loginUsername", "Admin");
+  await page.fill("#loginPassword", "temporary-password-123");
+  await page.click("#loginForm button[type=submit]");
+  await expect(page.locator("#authBadge")).toContainText("Admin");
+
+  const geometry = () => page.evaluate(() => {
+    const nav = document.querySelector(".app-nav").getBoundingClientRect();
+    const links = Array.from(document.querySelectorAll(".app-nav-link")).map(link => {
+      const rect = link.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+    });
+    return { left: nav.left, top: nav.top, width: nav.width, height: nav.height, links };
+  });
+
+  const expected = await geometry();
+  for (const path of ["/spieler", "/regeln", "/konto"]) {
+    await page.goto(path);
+    await expect(page.locator(".app-nav")).toBeVisible();
+    const actual = await geometry();
+    for (const key of ["left", "top", "width", "height"]) {
+      expect(actual[key]).toBeCloseTo(expected[key], 1);
+    }
+    expect(actual.links).toHaveLength(expected.links.length);
+    actual.links.forEach((link, index) => {
+      for (const key of ["left", "top", "width", "height"]) {
+        expect(link[key]).toBeCloseTo(expected.links[index][key], 1);
+      }
+    });
+  }
+});
+
+
 test("guest sees login and registration while a new account sees only logout", async ({ page }) => {
   const username = `SelfRegistered${Date.now()}`;
   await page.goto("/");

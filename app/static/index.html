@@ -13,16 +13,16 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=a5f271e1e239">
+  <link rel="manifest" href="/manifest.webmanifest?v=e2e23f637297">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=a5f271e1e239" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a5f271e1e239" sizes="180x180">
-  <script src="/static/i18n.js?v=a5f271e1e239"></script>
-  <script src="/static/ui.js?v=a5f271e1e239"></script>
-  <script src="/static/pwa.js?v=a5f271e1e239" defer></script>
-  <script src="/static/theme.js?v=a5f271e1e239"></script>
-  <link rel="stylesheet" href="/static/style.css?v=a5f271e1e239">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=e2e23f637297" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=e2e23f637297" sizes="180x180">
+  <script src="/static/i18n.js?v=e2e23f637297"></script>
+  <script src="/static/ui.js?v=e2e23f637297"></script>
+  <script src="/static/pwa.js?v=e2e23f637297" defer></script>
+  <script src="/static/theme.js?v=e2e23f637297"></script>
+  <link rel="stylesheet" href="/static/style.css?v=e2e23f637297">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -30,7 +30,7 @@
     <header class="lobby-header app-nav">
       <a class="app-nav-brand" href="/" aria-label="ZDWA Lobby">
         <span class="logo" aria-hidden="true">🎲</span>
-        <h1>ZDWA Lobby</h1>
+        <h1>ZDWA</h1>
       </a>
       <nav class="app-nav-links" aria-label="Hauptnavigation">
         <a class="app-nav-link" href="/" aria-current="page">Lobby</a>
@@ -218,7 +218,7 @@
 
   <!-- Hauptskript: lädt Listen/Leaderboards und verknüpft Buttons -->
   <script type="module">
-    import { loadAuth, login, logout, register } from '/static/auth.js?v=a5f271e1e239';
+    import { loadAuth, login, logout, register } from '/static/auth.js?v=e2e23f637297';
 
     const nameInput  = document.getElementById('playerName');
     const passInput  = document.getElementById('passInput');
