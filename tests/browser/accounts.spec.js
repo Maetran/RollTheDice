@@ -490,7 +490,16 @@ test("superadmin can make a neutral extra roll and a scored 60 triggers the cele
   await page.locator("#superadminExit").click();
   await expect(page.locator("#superadminBar")).toBeHidden();
 
+  await page.setViewportSize({ width: 430, height: 932 });
+  await page.waitForTimeout(300);
+  const dockBeforeShake = await page.locator(".topbar").evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    const chat = document.querySelector("#chatToggle").getBoundingClientRect();
+    return { top: rect.top, bottom: rect.bottom, chatTop: chat.top };
+  });
+
   const spectatorPage = await page.context().newPage();
+  await spectatorPage.setViewportSize({ width: 430, height: 932 });
   await spectatorPage.goto(`/spiel/${encodeURIComponent(gameId)}/zuschauen`);
   await expect(spectatorPage.locator(".player-card")).toBeVisible();
 
@@ -515,6 +524,20 @@ test("superadmin can make a neutral extra roll and a scored 60 triggers the cele
     expect(page.locator("body")).toHaveClass(/sixty-score-celebration/),
     expect(spectatorPage.locator("body")).toHaveClass(/sixty-score-celebration/),
   ]);
+  const dockDuringShake = await page.evaluate(() => {
+    const dock = document.querySelector(".topbar").getBoundingClientRect();
+    const chat = document.querySelector("#chatToggle").getBoundingClientRect();
+    return {
+      top: dock.top,
+      bottom: dock.bottom,
+      chatTop: chat.top,
+      scoreOutTranslate: getComputedStyle(document.querySelector("#scoreOut")).translate,
+    };
+  });
+  expect(Math.abs(dockDuringShake.top - dockBeforeShake.top)).toBeLessThanOrEqual(3);
+  expect(Math.abs(dockDuringShake.bottom - dockBeforeShake.bottom)).toBeLessThanOrEqual(3);
+  expect(Math.abs(dockDuringShake.chatTop - dockBeforeShake.chatTop)).toBeLessThanOrEqual(3);
+  expect(dockDuringShake.scoreOutTranslate).toBe("none");
   await expect(page.locator(".turn-status-text")).toContainText("Würfe: 0/");
   await expect(page.locator("body")).not.toHaveClass(/sixty-score-celebration/, { timeout: 1500 });
   await expect(page.locator(".turn-status-text")).toContainText("Würfe: 1/", { timeout: 3000 });

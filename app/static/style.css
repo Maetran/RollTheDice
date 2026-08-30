@@ -791,7 +791,11 @@ button.die.shaking{ animation: dice-shake .65s ease-in-out; will-change: transfo
   60%{ translate:-1.25px -.25px; }
   78%{ translate:.75px .25px; }
 }
-body.room-page.sixty-score-celebration > *{
+body.room-page.sixty-score-celebration > .room-header,
+body.room-page.sixty-score-celebration > .connection-status,
+body.room-page.sixty-score-celebration > #scoreOut > .turn-status,
+body.room-page.sixty-score-celebration > #scoreOut > .suggestions-area,
+body.room-page.sixty-score-celebration > #scoreOut > .players-grid{
   animation:sixty-score-shake .5s cubic-bezier(.36,.07,.19,.97) both;
   will-change:translate;
 }
