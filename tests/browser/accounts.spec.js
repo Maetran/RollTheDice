@@ -490,12 +490,39 @@ test("superadmin can make a neutral extra roll and a scored 60 triggers the cele
   await page.locator("#superadminExit").click();
   await expect(page.locator("#superadminBar")).toBeHidden();
 
+  const spectatorPage = await page.context().newPage();
+  await spectatorPage.goto(`/spiel/${encodeURIComponent(gameId)}/zuschauen`);
+  await expect(spectatorPage.locator(".player-card")).toBeVisible();
+
+  await page.evaluate(() => {
+    window.__sixtyTiming = { shakeStart: null, shakeEnd: null, rollStart: null };
+    const timing = window.__sixtyTiming;
+    new MutationObserver(() => {
+      const shaking = document.body.classList.contains("sixty-score-celebration");
+      if (shaking && timing.shakeStart === null) timing.shakeStart = performance.now();
+      if (!shaking && timing.shakeStart !== null && timing.shakeEnd === null) timing.shakeEnd = performance.now();
+      if (timing.shakeStart !== null && timing.rollStart === null && document.querySelector("#diceBar .die.shaking")) {
+        timing.rollStart = performance.now();
+      }
+    }).observe(document.body, { attributes: true, childList: true, subtree: true });
+  });
+
   const sixtyCell = page.locator('.player-card.me td.cell[data-row="15"][data-field="free"]');
   await expect(sixtyCell).toHaveClass(/clickable/);
   await sixtyCell.click();
   await expect(sixtyCell).toHaveText("90");
-  await expect(page.locator("body")).toHaveClass(/sixty-score-celebration/);
+  await Promise.all([
+    expect(page.locator("body")).toHaveClass(/sixty-score-celebration/),
+    expect(spectatorPage.locator("body")).toHaveClass(/sixty-score-celebration/),
+  ]);
+  await expect(page.locator(".turn-status-text")).toContainText("Würfe: 0/");
   await expect(page.locator("body")).not.toHaveClass(/sixty-score-celebration/, { timeout: 1500 });
+  await expect(page.locator(".turn-status-text")).toContainText("Würfe: 1/", { timeout: 3000 });
+
+  const timing = await page.evaluate(() => window.__sixtyTiming);
+  expect(timing.shakeEnd - timing.shakeStart).toBeGreaterThanOrEqual(475);
+  expect(timing.rollStart).toBeGreaterThanOrEqual(timing.shakeEnd);
+  await spectatorPage.close();
 });
 
 

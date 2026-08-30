@@ -17,7 +17,7 @@
 */
 // Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions)
 
-import { initChat, addChatMessage } from "./chat.js?v=28c0cc8f3aca";
+import { initChat, addChatMessage } from "./chat.js?v=f3fab333dc4a";
 
 (() => {
   // ---------- Helpers ----------
@@ -255,6 +255,7 @@ import { initChat, addChatMessage } from "./chat.js?v=28c0cc8f3aca";
   let autoAnnounceWriteTimer = null;
   let autoAnnounceWriteKey = null;
   let sixtyCelebrationTimer = null;
+  let sixtyCelebrationUntil = 0;
   let deferredSuggestionSnapshot = null;
   let writeConfirmationPending = false;
   let chatHistorySeeded = false;
@@ -1086,6 +1087,7 @@ import { initChat, addChatMessage } from "./chat.js?v=28c0cc8f3aca";
     const iAmTurn = turn && String(turn.player_id) === String(myId);
     if (!iAmTurn) return { usable:false, reason:"Nicht an der Reihe", code:"not_turn" };
     if (snapshot?._correction?.active) return { usable:false, reason:"Während Korrektur nicht erlaubt", code:"correction" };
+    if (sixtyCelebrationRemaining() > 0) return { usable:false, reason:"60er! Gleich geht es weiter", code:"sixty_celebration" };
     const rolls = Number(snapshot?._rolls_used || 0);
     const max = Number(snapshot?._rolls_max || 3);
     if (rolls >= max) return { usable:false, reason:"Keine Würfe mehr", code:"no_rolls_left" };
@@ -1238,7 +1240,7 @@ import { initChat, addChatMessage } from "./chat.js?v=28c0cc8f3aca";
     try{
       if (autoRollRetryTimer) return;
       const targetKey = rollSnapshotKey(snapshot);
-      const wait = rollCooldownRemaining();
+      const wait = Math.max(rollCooldownRemaining(), sixtyCelebrationRemaining());
       autoRollRetryTimer = setTimeout(() => {
         autoRollRetryTimer = null;
         const stillSameAutoTurn = sb?._auto_single && rollSnapshotKey(sb) === targetKey;
@@ -1250,7 +1252,7 @@ import { initChat, addChatMessage } from "./chat.js?v=28c0cc8f3aca";
   function requestRoll({ animate = true, auto = false } = {}) {
     const availability = getRollAvailability(sb);
     if (!availability.usable) {
-      if (auto && availability.code === "cooldown") scheduleAutoRollRetry(sb);
+      if (auto && ["cooldown", "sixty_celebration"].includes(availability.code)) scheduleAutoRollRetry(sb);
       syncActionButtons(sb);
       return false;
     }
@@ -1442,12 +1444,12 @@ import { initChat, addChatMessage } from "./chat.js?v=28c0cc8f3aca";
       // Scoreboard-Update
       if (msg.scoreboard) {
         const wasSuperadminActive = lastSuperadminSnapshotActive;
+        celebrateSixtyScore(msg.score_event);
         sb = msg.scoreboard;
         const isSuperadminActive = !!sb?._superadmin_active;
         lastSuperadminSnapshotActive = isSuperadminActive;
         seedChatHistoryFromSnapshot(sb);
         renderFromSnapshot(sb);
-        celebrateSixtyScore(msg.score_event);
         if (wasSuperadminActive && !isSuperadminActive) {
           resetAfterSuperadminExit({ scrollTop: true });
         }
@@ -1550,14 +1552,24 @@ import { initChat, addChatMessage } from "./chat.js?v=28c0cc8f3aca";
     if (String(scoreEvent?.field || "") !== "60" || Number(scoreEvent?.points || 0) <= 0) return;
     const page = document.body;
     if (!page) return;
+    const duration = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : 500;
     if (sixtyCelebrationTimer) clearTimeout(sixtyCelebrationTimer);
+    clearAutoRollRetry();
+    clearRollAnimation();
+    sixtyCelebrationUntil = performance.now() + duration;
     page.classList.remove("sixty-score-celebration");
     void page.offsetWidth;
     page.classList.add("sixty-score-celebration");
     sixtyCelebrationTimer = window.setTimeout(() => {
       page.classList.remove("sixty-score-celebration");
+      sixtyCelebrationUntil = 0;
       sixtyCelebrationTimer = null;
-    }, 500);
+      syncActionButtons(sb);
+    }, duration);
+  }
+
+  function sixtyCelebrationRemaining() {
+    return Math.max(0, sixtyCelebrationUntil - performance.now());
   }
 
 /**
