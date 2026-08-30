@@ -338,6 +338,7 @@
     "Spielanleitung": "Game Rules",
     "Zock die Wand an: Spielregeln": "Zock die Wand an: Game Rules",
     "Entstehung und Weiterentwicklung": "Origins and ongoing development",
+    "Der technische Grundstein entstand um 2021/2022 als reiner Python-Prototyp mit mehr als 1'000 Zeilen Code. Dieser erste lauffähige Entwurf machte aus der Spielidee ein digitales Projekt und bildete die Basis für alle späteren Versionen.": "The technical foundation was created around 2021/2022 as a pure Python prototype with more than 1,000 lines of code. This first working design turned the game idea into a digital project and became the basis for every later version.",
     "Zock die Wand an wurde in Reutte in Tirol erfunden und später in Niederwil AG in der Schweiz digitalisiert. Aus dem gemeinsamen Würfeln und Ausfüllen eines Punkteblatts entstand Schritt für Schritt eine vollständige Web-App. Die digitale Variante verwaltet Würfe, erlaubte Felder und Summen, ohne den Spielern die taktischen Entscheidungen abzunehmen.": "Zock die Wand an was invented in Reutte in Tyrol and later digitized in Niederwil AG, Switzerland. Rolling dice together and filling out a scorecard gradually became a complete web app. The digital version manages rolls, eligible fields, and totals without taking tactical decisions away from the players.",
     "Schritt für Schritt verbessert": "Improved step by step",
     "Seit der ersten digitalen Version wurde jedes neue Feature wiederholt analysiert, im echten Spielablauf geprüft und weiter verbessert. Dazu gehören eine mobil optimierte Spieloberfläche, klar erreichbare Würfel- und Chat-Steuerungen, Zuschauer- und Teamspiele, der Normal- und Hardcore-Modus sowie eine konsistente Navigation mit verständlichen URLs.": "Since the first digital version, every new feature has been repeatedly analyzed, tested in real gameplay, and improved. This includes a mobile-optimized game interface, easily accessible dice and chat controls, spectator and team games, Normal and Hardcore modes, and consistent navigation with clear URLs.",
@@ -795,7 +796,7 @@
   window.ZDWA_I18N = { getLanguage, locale, setLanguage, syncAccountLanguage, t: translateString, translateElement, catalog: EN };
   document.documentElement.lang = getLanguage();
   const manifestLink = document.querySelector('link[rel="manifest"]');
-  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=1d4146b592db";
+  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=33a4b3453904";
 
   document.addEventListener("DOMContentLoaded", () => {
     translateElement(document);

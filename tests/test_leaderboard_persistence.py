@@ -65,6 +65,30 @@ class FinalTotalsTestCase(GameStateTestCase):
 
 
 class LeaderboardPersistenceTestCase(GameStateTestCase):
+    def test_legacy_profile_link_falls_back_to_assigned_name_when_score_changed(self):
+        candidates = [{
+            "user_id": 4,
+            "username": "Tomtom",
+            "display_name": "Tom",
+            "points": 759,
+        }]
+
+        self.assertEqual(
+            main._linked_players_for_entry({"name": "Tom", "points": 753}, candidates),
+            candidates,
+        )
+        self.assertEqual(
+            main._linked_players_for_entry({"name": "Unbekannt", "points": 753}, candidates),
+            candidates,
+        )
+        self.assertEqual(
+            main._linked_players_for_entry(
+                {"name": "Unbekannt", "points": 753},
+                [*candidates, {"user_id": 5, "username": "Simon", "display_name": "Simon", "points": 802}],
+            ),
+            [],
+        )
+
     def test_finalize_normal_game_writes_recent_alltime_stats_and_replay_snapshot(self):
         g = self.make_game(name="Cup", players=[("p1", "Anna"), ("p2", "Ben")])
         g["_scoreboards"]["p1"] = self.high_scoreboard()

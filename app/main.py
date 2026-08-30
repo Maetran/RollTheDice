@@ -1917,6 +1917,39 @@ def _average_bucket(games: int = 0, points_total: int = 0, trend: str = "same") 
 def _empty_average_points() -> dict:
     return {"normal": _average_bucket(), "hc": _average_bucket()}
 
+
+def _linked_players_for_entry(entry: dict, candidates: list[dict]) -> list[dict]:
+    """Match a legacy leaderboard row to assigned SQL participants.
+
+    Old snapshots can produce a slightly different total under today's scoring
+    rules. The game ID remains authoritative; within that game an exact score
+    wins, followed by an unambiguous display-name match or sole participant.
+    """
+    if not candidates:
+        return []
+    try:
+        entry_points = int(entry.get("points"))
+    except (AttributeError, TypeError, ValueError):
+        entry_points = None
+    if entry_points is not None:
+        exact = [player for player in candidates if player.get("points") == entry_points]
+        if exact:
+            return exact
+
+    entry_names = {
+        name.strip().casefold()
+        for name in str(entry.get("name") or "").split(",")
+        if name.strip()
+    }
+    named = [
+        player for player in candidates
+        if str(player.get("display_name") or "").strip().casefold() in entry_names
+        or str(player.get("username") or "").strip().casefold() in entry_names
+    ]
+    if named:
+        return named
+    return candidates if len(candidates) == 1 else []
+
 def _stats_with_average_points(stats: dict) -> dict:
     if not isinstance(stats, dict):
         stats = {"games_played": 0}
@@ -2027,15 +2060,8 @@ async def get_leaderboard():
             if not isinstance(entry, dict):
                 continue
             item = dict(entry)
-            try:
-                entry_points = int(item.get("points"))
-            except (TypeError, ValueError):
-                entry_points = None
             candidates = links_by_game.get(stable_game_id(item) or "", [])
-            linked_players = [
-                player for player in candidates
-                if entry_points is None or player.get("points") == entry_points
-            ]
+            linked_players = _linked_players_for_entry(item, candidates)
             if linked_players:
                 item["linked_players"] = linked_players
             enriched.append(item)
