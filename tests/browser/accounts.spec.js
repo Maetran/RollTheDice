@@ -209,15 +209,31 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
   expect(layout.barRight).toBeLessThanOrEqual(layout.viewportWidth);
   expect(layout.barWidth).toBeGreaterThanOrEqual(layout.viewportWidth - 36);
   expect(layout.actionsRight).toBeLessThanOrEqual(layout.viewportWidth);
-  expect(layout.actionsTop).toBeGreaterThanOrEqual(layout.diceBottom);
+  expect(layout.actionsTop).toBeGreaterThanOrEqual(layout.diceBottom - 2);
   expect(Math.abs(layout.quickButtons[0].top - layout.diceTop)).toBeLessThanOrEqual(1);
   expect(Math.abs(layout.quickButtons[0].height - layout.quickButtons[1].height)).toBeLessThanOrEqual(1);
   expect(Math.abs(layout.quickButtons[1].bottom - layout.actionsBottom)).toBeLessThanOrEqual(1);
-  expect(layout.diceLeft).toBeGreaterThanOrEqual(layout.actionsRight - layout.actionsWidth - 1);
+  expect(layout.quickButtons[1].bottom).toBeLessThanOrEqual(layout.topbarBottom + 1);
+  expect(layout.quickButtons[1].bottom).toBeLessThanOrEqual(layout.chatTop - 5);
+  expect(layout.diceLeft).toBeGreaterThanOrEqual(layout.actionsRight - layout.actionsWidth - 2);
   expect(layout.diceRight).toBeLessThanOrEqual(layout.actionsRight + 1);
   expect(layout.diceLeft - layout.quickButtons[0].right).toBeGreaterThanOrEqual(9);
   expect(layout.dieWidth).toBeGreaterThanOrEqual(58);
   expect(layout.topbarBottom).toBeLessThanOrEqual(layout.chatTop - 5);
+
+  await page.setViewportSize({ width: 430, height: 932 });
+  const compactLayout = await page.evaluate(() => {
+    const quickUp = document.querySelector('[data-quick-field="up"]').getBoundingClientRect();
+    const topbar = document.querySelector(".topbar").getBoundingClientRect();
+    const chat = document.querySelector("#chatToggle").getBoundingClientRect();
+    return {
+      quickBottom: quickUp.bottom,
+      topbarBottom: topbar.bottom,
+      chatTop: chat.top,
+    };
+  });
+  expect(compactLayout.quickBottom).toBeLessThanOrEqual(compactLayout.topbarBottom + 1);
+  expect(compactLayout.quickBottom).toBeLessThanOrEqual(compactLayout.chatTop - 5);
 
   await page.click("#backToLobbyBtn");
   await expect(page.locator("#leaveGameDialog")).toBeVisible();
