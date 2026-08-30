@@ -2569,7 +2569,9 @@ button:disabled:hover{
   }
 }
 
-@media (min-width:900px){
+/* A side rail needs landscape width. iPad Pro portrait otherwise pushes the
+   reaction trigger and its panel beyond the left viewport edge. */
+@media (min-width:900px) and (orientation:landscape){
   .room-page{
     --desktop-side-chat-w:min(20rem, calc((100vw - var(--desktop-shell-max)) / 2 - 2rem));
     padding-bottom:1.5rem;
@@ -2864,6 +2866,17 @@ button:disabled:hover{
   .room-page .room-header > .theme-toggle{ grid-column:2; grid-row:1; }
   .room-page #rulesSheetOpen{ grid-column:3; grid-row:1; }
   .room-page #backToLobbyBtn{ grid-column:4; grid-row:1; }
+}
+
+/* Installed iPad PWAs can extend beneath the system status bar. Keep the game
+   header below that safe area and add a small fallback when the inset is 0. */
+@media (min-width:768px) and (max-width:1366px) and (orientation:portrait){
+  .room-page{
+    padding-top:max(1rem, env(safe-area-inset-top, 0px));
+  }
+  .room-page .room-header{
+    top:max(1rem, env(safe-area-inset-top, 0px));
+  }
 }
 
 /* Late dark-mode overrides for components declared in the responsive blocks. */

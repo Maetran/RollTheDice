@@ -300,6 +300,55 @@ test("tablet multiplayer layout shows up to three boards side by side", async ({
   await player2Context.close();
 });
 
+test("iPad Pro portrait keeps header and quick reactions inside the viewport", async ({ page, request }) => {
+  await page.setViewportSize({ width: 1024, height: 1366 });
+  const created = await request.post("/api/games", {
+    data: { name: "iPad Portrait", mode: 1 },
+  });
+  expect(created.ok()).toBeTruthy();
+  const { game_id: gameId } = await created.json();
+
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Tablet`);
+  await page.waitForSelector("#diceBar");
+
+  const closedLayout = await page.evaluate(() => {
+    const header = document.querySelector(".room-header").getBoundingClientRect();
+    const reactions = document.querySelector("#chatReactionsBar").getBoundingClientRect();
+    const chatToggle = document.querySelector("#chatToggle").getBoundingClientRect();
+    return {
+      headerTop: Math.round(header.top),
+      reactionsLeft: Math.round(reactions.left),
+      reactionsRight: Math.round(reactions.right),
+      reactionsBottom: Math.round(reactions.bottom),
+      chatToggleBottom: Math.round(chatToggle.bottom),
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    };
+  });
+  expect(closedLayout.headerTop).toBeGreaterThanOrEqual(16);
+  expect(closedLayout.reactionsLeft).toBeGreaterThanOrEqual(0);
+  expect(closedLayout.reactionsRight).toBeLessThanOrEqual(closedLayout.viewportWidth);
+  expect(closedLayout.reactionsBottom).toBeLessThanOrEqual(closedLayout.viewportHeight + 1);
+  expect(closedLayout.chatToggleBottom).toBeLessThanOrEqual(closedLayout.viewportHeight + 1);
+
+  await page.click("#chatReactionsBar .emoji-fab");
+  const openPanel = await page.locator("#chatReactionsBar .emoji-panel").evaluate(panel => {
+    const rect = panel.getBoundingClientRect();
+    return {
+      top: Math.round(rect.top),
+      bottom: Math.round(rect.bottom),
+      left: Math.round(rect.left),
+      right: Math.round(rect.right),
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    };
+  });
+  expect(openPanel.top).toBeGreaterThanOrEqual(0);
+  expect(openPanel.bottom).toBeLessThanOrEqual(openPanel.viewportHeight);
+  expect(openPanel.left).toBeGreaterThanOrEqual(0);
+  expect(openPanel.right).toBeLessThanOrEqual(openPanel.viewportWidth);
+});
+
 test("back to lobby can pause a game and resume it later", async ({ page, request }) => {
   const health = watchPageHealth(page);
   const created = await request.post("/api/games", {
