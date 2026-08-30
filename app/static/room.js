@@ -17,7 +17,7 @@
 */
 // Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions)
 
-import { initChat, addChatMessage } from "./chat.js?v=600ed9a98c82";
+import { initChat, addChatMessage } from "./chat.js?v=28c0cc8f3aca";
 
 (() => {
   // ---------- Helpers ----------
@@ -254,6 +254,7 @@ import { initChat, addChatMessage } from "./chat.js?v=600ed9a98c82";
   let rollAnimationIndices = [];
   let autoAnnounceWriteTimer = null;
   let autoAnnounceWriteKey = null;
+  let sixtyCelebrationTimer = null;
   let deferredSuggestionSnapshot = null;
   let writeConfirmationPending = false;
   let chatHistorySeeded = false;
@@ -1446,6 +1447,7 @@ import { initChat, addChatMessage } from "./chat.js?v=600ed9a98c82";
         lastSuperadminSnapshotActive = isSuperadminActive;
         seedChatHistoryFromSnapshot(sb);
         renderFromSnapshot(sb);
+        celebrateSixtyScore(msg.score_event);
         if (wasSuperadminActive && !isSuperadminActive) {
           resetAfterSuperadminExit({ scrollTop: true });
         }
@@ -1540,6 +1542,24 @@ import { initChat, addChatMessage } from "./chat.js?v=600ed9a98c82";
   }
 
   // ---------- Render & Events ----------
+  /**
+   * Gibt allen verbundenen Clients einen kurzen visuellen Impuls, wenn das
+   * 60er-Feld erfolgreich gewertet wurde. Gestrichene 60er lösen nichts aus.
+   */
+  function celebrateSixtyScore(scoreEvent) {
+    if (String(scoreEvent?.field || "") !== "60" || Number(scoreEvent?.points || 0) <= 0) return;
+    const page = document.body;
+    if (!page) return;
+    if (sixtyCelebrationTimer) clearTimeout(sixtyCelebrationTimer);
+    page.classList.remove("sixty-score-celebration");
+    void page.offsetWidth;
+    page.classList.add("sixty-score-celebration");
+    sixtyCelebrationTimer = window.setTimeout(() => {
+      page.classList.remove("sixty-score-celebration");
+      sixtyCelebrationTimer = null;
+    }, 500);
+  }
+
 /**
  * Rendert die komplette Room-Ansicht aus einem Server-Snapshot.
  * Aktualisiert Dicebar, Scoreboards, Vorschläge, Reactions und UI-Zustände

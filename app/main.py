@@ -3082,7 +3082,14 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     _finalize_and_log_results(g)
 
                 touch(g)
-                await broadcast(g, {"scoreboard": snapshot(g)})
+                await broadcast(g, {
+                    "scoreboard": snapshot(g),
+                    "score_event": {
+                        "field": fld,
+                        "points": value,
+                        "player_id": player_id,
+                    },
+                })
 
             elif act == "request_correction":
                 if reason := correction_disabled_reason(g):
@@ -3216,7 +3223,14 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 # Korrektur beenden, Würfel zurücksetzen und broadcasten
                 _clear_correction(g)
                 touch(g)
-                await broadcast(g, {"scoreboard": snapshot(g)})
+                await broadcast(g, {
+                    "scoreboard": snapshot(g),
+                    "score_event": {
+                        "field": fld,
+                        "points": val,
+                        "player_id": player_id,
+                    },
+                })
 
             elif act == "send_emoji":
                 # Quick-Reaction-Emoji an alle senden (ephemer, keine Persistenz)

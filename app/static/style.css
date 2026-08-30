@@ -782,6 +782,20 @@ body.superadmin-active button.die.superadmin-die-editable{
 }
 button.die.shaking{ animation: dice-shake .65s ease-in-out; will-change: transform; }
 
+/* Ein erfolgreicher 60er bewegt die sichtbaren Ebenen kurz gemeinsam. */
+@keyframes sixty-score-shake{
+  0%, 100%{ translate:0 0; }
+  14%{ translate:1.5px -.5px; }
+  28%{ translate:-2px .5px; }
+  44%{ translate:1.75px 0; }
+  60%{ translate:-1.25px -.25px; }
+  78%{ translate:.75px .25px; }
+}
+body.room-page.sixty-score-celebration > *{
+  animation:sixty-score-shake .5s cubic-bezier(.36,.07,.19,.97) both;
+  will-change:translate;
+}
+
 /* === Announce (❗) Pick-Hervorhebung === */
 /* Markierung für Ansage-Pick-Modus: leerer ❗-Slot im eigenen Board wird klickbar hervorgehoben */
 td.cell.announce-pickable{

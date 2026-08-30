@@ -449,7 +449,7 @@ test("admin can log in, create a user and open the public profile", async ({ pag
   await expect(page.locator(".stat-bucket").nth(1)).toContainText("Trend (3 Spiele)");
 });
 
-test("superadmin can make a neutral extra roll and set a die", async ({ page }) => {
+test("superadmin can make a neutral extra roll and a scored 60 triggers the celebration", async ({ page }) => {
   await page.goto("/");
   await page.fill("#loginUsername", "Admin");
   await page.fill("#loginPassword", "temporary-password-123");
@@ -482,6 +482,20 @@ test("superadmin can make a neutral extra roll and set a die", async ({ page }) 
   await dice.nth(4).click();
   await expect(dice.nth(4).locator("svg")).toHaveAttribute("aria-label", "Würfel 5");
   await expect(page.locator(".turn-status-text")).toHaveText(rollsBefore);
+
+  for (let index = 0; index < 5; index += 1) {
+    page.once("dialog", dialog => dialog.accept("6"));
+    await dice.nth(index).click();
+  }
+  await page.locator("#superadminExit").click();
+  await expect(page.locator("#superadminBar")).toBeHidden();
+
+  const sixtyCell = page.locator('.player-card.me td.cell[data-row="15"][data-field="free"]');
+  await expect(sixtyCell).toHaveClass(/clickable/);
+  await sixtyCell.click();
+  await expect(sixtyCell).toHaveText("90");
+  await expect(page.locator("body")).toHaveClass(/sixty-score-celebration/);
+  await expect(page.locator("body")).not.toHaveClass(/sixty-score-celebration/, { timeout: 1500 });
 });
 
 
