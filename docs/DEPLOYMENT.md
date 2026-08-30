@@ -50,9 +50,11 @@ Ein erfolgreiches Backup sieht so aus:
 /root/RollTheDice/data.backup-YYYYMMDD-HHMMSS
 ```
 
-Backups werden nicht automatisch gelöscht. `scripts/prune_data_backups.sh`
-listet deshalb standardmässig nur die Backups auf, die über den neuesten 30
-liegen. Erst `APPLY=1` löscht genau diese zuvor angezeigten Verzeichnisse. Eine
+Nach einem erfolgreichen Deployment entfernt `scripts/deploy_zdwa.sh`
+automatisch ältere Deployment-Backups und behält immer die neuesten fünf. Bei
+einem fehlgeschlagenen Rollout findet diese Bereinigung nicht statt. Das
+Hilfsskript arbeitet bei einem manuellen Aufruf weiterhin standardmässig als
+Trockenlauf; erst `APPLY=1` löscht die zuvor angezeigten Verzeichnisse. Eine
 Auslagerung wichtiger Wochen-/Monatsstände auf einen zweiten Speicher bleibt
 weiterhin empfohlen.
 
@@ -102,11 +104,11 @@ Konfiguration an, führt `nginx -t` aus und stellt sie bei einem Fehler wieder
 her. Diese Systemkonfiguration wird nicht bei jedem App-Deployment ungeprüft
 überschrieben.
 
-Alte Datenbackups werden zunächst nur aufgelistet:
+Bei einem manuellen Aufruf werden alte Datenbackups zunächst nur aufgelistet:
 
 ```bash
 cd /root/RollTheDice
-KEEP=30 scripts/prune_data_backups.sh
+KEEP=5 scripts/prune_data_backups.sh
 ```
 
 Nach Kontrolle der Liste kann dieselbe Auswahl mit `APPLY=1` gelöscht werden.
@@ -129,6 +131,8 @@ Das Skript führt auf `ssh zdwa` folgende Schritte aus:
 6. Prüfung der inhaltsbasierten Asset-/Service-Worker-Version.
 7. Neubau und Neustart mit `docker compose up -d --build`.
 8. Ausgabe des Containerstatus und Readiness-Prüfung mit Retries.
+9. Nach erfolgreicher Readiness-Prüfung automatische Bereinigung auf die fünf
+   neuesten `data.backup-*`-Verzeichnisse.
 
 Das Ziel kann bei Bedarf überschrieben werden:
 

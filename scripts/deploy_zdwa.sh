@@ -104,4 +104,9 @@ if command -v curl >/dev/null 2>&1; then
 else
   echo "curl not installed; skipped local HTTP check"
 fi
+
+echo "== Backup retention =="
+# Erst nach dem erfolgreichen Rollout aufräumen. Das soeben erstellte Backup
+# gehört zu den fünf neuesten und bleibt damit für einen Rollback erhalten.
+BACKUP_ROOT="$REMOTE_DIR" KEEP=5 APPLY=1 scripts/prune_data_backups.sh
 REMOTE_SCRIPT

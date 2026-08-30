@@ -2,7 +2,7 @@
 set -euo pipefail
 
 BACKUP_ROOT="${BACKUP_ROOT:-.}"
-KEEP="${KEEP:-30}"
+KEEP="${KEEP:-5}"
 APPLY="${APPLY:-0}"
 
 if ! [[ "$KEEP" =~ ^[0-9]+$ ]] || (( KEEP < 1 )); then
@@ -12,7 +12,10 @@ fi
 
 backups=()
 while IFS= read -r backup; do
-  backups+=("$backup")
+  backup_name="${backup##*/}"
+  if [[ "$backup_name" =~ ^data\.backup-[0-9]{8}-[0-9]{6}$ ]]; then
+    backups+=("$backup")
+  fi
 done < <(find "$BACKUP_ROOT" -maxdepth 1 -type d -name 'data.backup-[0-9]*' -print | LC_ALL=C sort)
 
 remove_count=$(( ${#backups[@]} - KEEP ))
@@ -33,7 +36,10 @@ fi
 
 for (( index=0; index<remove_count; index++ )); do
   target="${backups[$index]}"
-  if [[ "$target" != "$BACKUP_ROOT"/data.backup-* ]] || [[ ! -d "$target" ]]; then
+  target_name="${target##*/}"
+  if [[ "$target" != "$BACKUP_ROOT"/data.backup-* ]] \
+    || ! [[ "$target_name" =~ ^data\.backup-[0-9]{8}-[0-9]{6}$ ]] \
+    || [[ ! -d "$target" ]]; then
     echo "Refusing unexpected target: $target" >&2
     exit 1
   fi

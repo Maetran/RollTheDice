@@ -145,7 +145,7 @@ RollTheDice/
 ├── scripts/
 │   ├── deploy_zdwa.sh       # Guarded production deployment
 │   ├── install_nginx_config.sh # Validated installation of production proxy limits
-│   ├── prune_data_backups.sh # Explicit dry-run-first backup retention helper
+│   ├── prune_data_backups.sh # Keeps five deploy backups; manual use is dry-run-first
 │   └── sync_static_versions.py # Content-hashed PWA/asset version synchronization
 └── data/                    # Persistent runtime data, ignored by Git
     ├── leaderboard_recent.json
