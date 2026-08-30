@@ -2,16 +2,25 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <title>ZDWA – Spieler &amp; Ranking</title>
+  <title>ZDWA Spieler-Ranking &amp; Statistiken</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="/manifest.webmanifest?v=82453ff0615a">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=82453ff0615a" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=82453ff0615a" sizes="180x180">
-  <script src="/static/i18n.js?v=82453ff0615a"></script>
-  <script src="/static/ui.js?v=82453ff0615a"></script>
-  <script src="/static/pwa.js?v=82453ff0615a" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=82453ff0615a">
-  <script src="/static/theme.js?v=82453ff0615a"></script>
+  <meta name="description" content="Entdecke das ZDWA Spieler-Ranking, suche öffentliche Profile und vergleiche Spiele, Durchschnitt, Trend und Bestwerte für Normal und Hardcore.">
+  <link rel="canonical" href="https://zockdiewandan.online/spieler">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ZDWA">
+  <meta property="og:title" content="ZDWA Spieler-Ranking &amp; Statistiken">
+  <meta property="og:description" content="Spieler finden und Leistungen in Normal- und Hardcore-Partien vergleichen.">
+  <meta property="og:url" content="https://zockdiewandan.online/spieler">
+  <meta property="og:image" content="https://zockdiewandan.online/static/icons/icon-512.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="manifest" href="/manifest.webmanifest?v=26d28a6968de">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=26d28a6968de" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=26d28a6968de" sizes="180x180">
+  <script src="/static/i18n.js?v=26d28a6968de"></script>
+  <script src="/static/ui.js?v=26d28a6968de"></script>
+  <script src="/static/pwa.js?v=26d28a6968de" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=26d28a6968de">
+  <script src="/static/theme.js?v=26d28a6968de"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -22,8 +31,13 @@
       </nav>
       <div class="app-nav-tools"><button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten"><span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span><span class="theme-toggle-label" data-theme-label>Dunkel</span></button></div>
     </header>
+    <section class="page-intro" aria-labelledby="playersTitle">
+      <p class="eyebrow">ZDWA Community</p>
+      <h1 id="playersTitle">Spieler &amp; Ranking</h1>
+      <p>Finde öffentliche Spielerprofile und vergleiche Spiele, Durchschnitt, Trend und Bestwerte getrennt nach Normal- und Hardcore-Modus.</p>
+    </section>
     <section class="card">
-      <h1>Spieler suchen</h1>
+      <h2>Spieler suchen</h2>
       <form id="searchForm" class="search-row">
         <input id="searchInput" type="search" placeholder="Benutzername" autocomplete="off">
         <button class="primary">Suchen</button>
@@ -32,7 +46,7 @@
     </section>
     <section class="card">
       <div class="section-title-row">
-        <h1>Spieler-Ranking</h1>
+        <h2>Spieler-Ranking</h2>
         <div class="ranking-controls">
           <div class="tabs" aria-label="Spielmodus">
             <button id="rankingNormal" class="tab-btn active" type="button">Normal</button>
@@ -55,7 +69,7 @@
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber } from '/static/auth.js?v=82453ff0615a';
+    import { escapeHtml, formatNumber } from '/static/auth.js?v=26d28a6968de';
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');

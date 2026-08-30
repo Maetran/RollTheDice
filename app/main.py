@@ -41,7 +41,7 @@ from typing import Any, Dict
 from urllib.parse import quote, urlencode
 
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
@@ -294,6 +294,25 @@ def service_worker():
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
     return FileResponse(str(STATIC_DIR / "favicon.png"), media_type="image/png")
+
+
+@app.get("/robots.txt", include_in_schema=False, response_class=PlainTextResponse)
+def robots_txt() -> str:
+    """Expose crawler rules and the canonical sitemap location."""
+    return "User-agent: *\nAllow: /\nSitemap: https://zockdiewandan.online/sitemap.xml\n"
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap_xml() -> Response:
+    """List the stable public pages that are useful in search results."""
+    body = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://zockdiewandan.online/</loc></url>
+  <url><loc>https://zockdiewandan.online/regeln</loc></url>
+  <url><loc>https://zockdiewandan.online/spieler</loc></url>
+</urlset>
+"""
+    return Response(content=body, media_type="application/xml")
 
 
 def _page(filename: str) -> FileResponse:

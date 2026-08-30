@@ -308,6 +308,27 @@ input[type="checkbox"]{
 }
 .lobby-page .wrap{ padding-bottom:1rem; }
 .lobby-shell{ display:grid; gap:1rem; }
+.visually-hidden{
+  position:absolute !important;
+  width:1px !important;
+  height:1px !important;
+  padding:0 !important;
+  margin:-1px !important;
+  overflow:hidden !important;
+  clip:rect(0, 0, 0, 0) !important;
+  white-space:nowrap !important;
+  border:0 !important;
+}
+.lobby-intro,
+.page-intro{
+  max-width:780px;
+  padding:.25rem 0;
+}
+.lobby-intro h1,
+.page-intro h1{ margin:.15rem 0 .35rem; line-height:1.12; }
+.lobby-intro p:last-child,
+.page-intro p:last-child{ margin:.35rem 0 0; color:var(--muted); line-height:1.5; }
+.about-game p{ max-width:850px; line-height:1.55; }
 .lobby-header{
   padding:.25rem 0 .5rem;
 }

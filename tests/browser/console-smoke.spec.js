@@ -130,12 +130,12 @@ test("service worker serves core pages while offline", async ({ page, context })
     await navigator.serviceWorker.ready;
   });
   await page.goto("/regeln");
-  await expect(page.getByRole("heading", { name: "Spielanleitung" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Zock die Wand an: Spielregeln" })).toBeVisible();
 
   await context.setOffline(true);
   try {
     await page.goto("/regeln");
-    await expect(page.getByRole("heading", { name: "Spielanleitung" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Zock die Wand an: Spielregeln" })).toBeVisible();
   } finally {
     await context.setOffline(false);
   }
@@ -626,7 +626,7 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   await expect(page.locator("#rulesSheet")).toBeVisible();
   await expect(page.locator("#rulesFrame")).toHaveAttribute("src", /\/regeln\?embed=1/);
   expect(page.url()).toBe(beforeRulesUrl);
-  await expect(page.frameLocator("#rulesFrame").locator("h1")).toContainText("Spielanleitung");
+  await expect(page.frameLocator("#rulesFrame").locator("h1")).toContainText("Zock die Wand an: Spielregeln");
   await page.locator("#rulesFrame").hover();
   await page.mouse.wheel(0, 700);
   await expect.poll(async () => {

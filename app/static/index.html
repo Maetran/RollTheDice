@@ -2,8 +2,17 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <title>ZDWA Lobby</title>
+  <title>ZDWA – Würfelspiel online kostenlos spielen</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Spiele Zock die Wand an (ZDWA) kostenlos online – allein, mit Freunden oder im 2-vs-2-Team. Mit Normal- und Hardcore-Modus, Ranking und Statistiken.">
+  <link rel="canonical" href="https://zockdiewandan.online/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ZDWA">
+  <meta property="og:title" content="ZDWA – Würfelspiel online kostenlos spielen">
+  <meta property="og:description" content="Zock die Wand an direkt im Browser spielen: allein, mit Freunden oder im Team.">
+  <meta property="og:url" content="https://zockdiewandan.online/">
+  <meta property="og:image" content="https://zockdiewandan.online/static/icons/icon-512.png">
+  <meta name="twitter:card" content="summary">
   <!--
     index.html – Lobby
     ------------------
@@ -13,16 +22,29 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=82453ff0615a">
+  <link rel="manifest" href="/manifest.webmanifest?v=26d28a6968de">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=82453ff0615a" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=82453ff0615a" sizes="180x180">
-  <script src="/static/i18n.js?v=82453ff0615a"></script>
-  <script src="/static/ui.js?v=82453ff0615a"></script>
-  <script src="/static/pwa.js?v=82453ff0615a" defer></script>
-  <script src="/static/theme.js?v=82453ff0615a"></script>
-  <link rel="stylesheet" href="/static/style.css?v=82453ff0615a">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=26d28a6968de" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=26d28a6968de" sizes="180x180">
+  <script src="/static/i18n.js?v=26d28a6968de"></script>
+  <script src="/static/ui.js?v=26d28a6968de"></script>
+  <script src="/static/pwa.js?v=26d28a6968de" defer></script>
+  <script src="/static/theme.js?v=26d28a6968de"></script>
+  <link rel="stylesheet" href="/static/style.css?v=26d28a6968de">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "ZDWA – Zock die Wand an",
+    "url": "https://zockdiewandan.online/",
+    "description": "Ein kostenloses Würfelspiel im Browser für Einzelspieler, Freunde und Teams.",
+    "applicationCategory": "GameApplication",
+    "operatingSystem": "Web",
+    "inLanguage": ["de", "en"],
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CHF" }
+  }
+  </script>
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -30,7 +52,7 @@
     <header class="lobby-header app-nav">
       <a class="app-nav-brand" href="/" aria-label="ZDWA Lobby">
         <span class="logo" aria-hidden="true">🎲</span>
-        <h1>ZDWA</h1>
+        <span>ZDWA</span>
       </a>
       <nav class="app-nav-links" aria-label="Hauptnavigation">
         <a class="app-nav-link" href="/" aria-current="page">Lobby</a>
@@ -51,6 +73,12 @@
         </button>
       </div>
     </header>
+
+    <section class="lobby-intro" aria-labelledby="lobbyTitle">
+      <p class="eyebrow">Online würfeln</p>
+      <h1 id="lobbyTitle">Zock die Wand an – Würfelspiel online</h1>
+      <p>Fülle dein Punkteblatt mit Köpfchen, spiele allein oder mit Freunden und starte direkt im Browser – kostenlos und ohne Konto.</p>
+    </section>
 
     <!-- 1) Wer bist du? – Name wird im LocalStorage gemerkt -->
     <div id="setupGrid" class="setup-grid">
@@ -214,11 +242,18 @@
         </table>
       </div>
     </div>
+
+    <section class="card about-game" aria-labelledby="aboutGameTitle">
+      <p class="eyebrow">Über das Spiel</p>
+      <h2 id="aboutGameTitle">Was ist Zock die Wand an?</h2>
+      <p>ZDWA ist ein taktisches Punkte-Würfelspiel: Du würfelst mit fünf Würfeln und trägst passende Ergebnisse in vier unterschiedlich geregelte Spalten ein. Gute Entscheidungen beim Halten, Ansagen und Eintragen sind ebenso wichtig wie Würfelglück.</p>
+      <p>Diese Webversion bringt die gesellige Spielrunde in den Browser – mit Normal- und Hardcore-Modus, Einzel-, Mehrspieler- und Team-Partien. Den vollständigen Ablauf erklärt die <a href="/regeln">Spielanleitung für Zock die Wand an</a>.</p>
+    </section>
   </div>
 
   <!-- Hauptskript: lädt Listen/Leaderboards und verknüpft Buttons -->
   <script type="module">
-    import { loadAuth, login, logout, register } from '/static/auth.js?v=82453ff0615a';
+    import { loadAuth, login, logout, register } from '/static/auth.js?v=26d28a6968de';
 
     const nameInput  = document.getElementById('playerName');
     const passInput  = document.getElementById('passInput');

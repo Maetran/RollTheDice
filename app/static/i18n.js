@@ -12,7 +12,9 @@
   const SUPPORTED = new Set(["de", "en"]);
 
   const EN = {
-    "ZDWA Lobby": "ZDWA Lobby",
+    "ZDWA – Würfelspiel online kostenlos spielen": "ZDWA – Play the dice game online for free",
+    "Zock die Wand an: Spielregeln & Anleitung | ZDWA": "Zock die Wand an: Game Rules & Guide | ZDWA",
+    "ZDWA Spieler-Ranking & Statistiken": "ZDWA Player Ranking & Statistics",
     "ZDWA – Mein Konto": "ZDWA – My Account",
     "ZDWA – Administration": "ZDWA – Administration",
     "ZDWA – Spieler & Ranking": "ZDWA – Players & Ranking",
@@ -48,6 +50,9 @@
     "Hardcore Spiele:": "Hardcore games:",
     "Spieler": "Player",
     "Nutzer online": "users online",
+    "Online würfeln": "Roll online",
+    "Zock die Wand an – Würfelspiel online": "Zock die Wand an – Online Dice Game",
+    "Fülle dein Punkteblatt mit Köpfchen, spiele allein oder mit Freunden und starte direkt im Browser – kostenlos und ohne Konto.": "Fill your scorecard strategically, play solo or with friends, and start right in your browser – free and without an account.",
     "Ohne Konto": "No account needed",
     "Schnell spielen": "Quick Play",
     "Spielername": "Player name",
@@ -90,6 +95,11 @@
     "Laufende Spiele werden geladen …": "Loading games in progress…",
     "Klicke auf „Zuschauen“, um dem laufenden Spiel beizutreten (ohne Aktionen).": "Select “Watch” to open a running game as a spectator (read-only).",
     "Leaderboard": "Leaderboard",
+    "Über das Spiel": "About the game",
+    "Was ist Zock die Wand an?": "What is Zock die Wand an?",
+    "ZDWA ist ein taktisches Punkte-Würfelspiel: Du würfelst mit fünf Würfeln und trägst passende Ergebnisse in vier unterschiedlich geregelte Spalten ein. Gute Entscheidungen beim Halten, Ansagen und Eintragen sind ebenso wichtig wie Würfelglück.": "ZDWA is a tactical dice scoring game: roll five dice and enter suitable results into four columns with different rules. Smart choices when holding, announcing, and scoring matter just as much as luck.",
+    "Diese Webversion bringt die gesellige Spielrunde in den Browser – mit Normal- und Hardcore-Modus, Einzel-, Mehrspieler- und Team-Partien. Den vollständigen Ablauf erklärt die": "This web version brings the shared game night to your browser – with Normal and Hardcore modes and solo, multiplayer, and team games. The full flow is explained in the",
+    "Spielanleitung für Zock die Wand an": "Zock die Wand an game guide",
     "Top Normal": "Top Normal",
     "Top Hardcore": "Top Hardcore",
     "Hall of Shame": "Hall of Shame",
@@ -325,6 +335,11 @@
 
     "Game Rules": "Game Rules",
     "Spielanleitung": "Game Rules",
+    "Zock die Wand an: Spielregeln": "Zock die Wand an: Game Rules",
+    "Von der Tischrunde zur Web-App": "From the tabletop to the web app",
+    "ZDWA überträgt das gemeinsame Würfeln und Ausfüllen eines Punkteblatts in den Browser. Die digitale Variante verwaltet Würfe, erlaubte Felder und Summen, ohne die taktischen Entscheidungen abzunehmen. Die hier dokumentierten Regeln bilden den aktuellen Stand der spielbaren Webversion ab.": "ZDWA brings rolling dice together and filling out a scorecard to the browser. The digital version manages rolls, eligible fields, and totals without taking away the tactical decisions. These rules reflect the current playable web version.",
+    "ZDWA jetzt spielen": "Play ZDWA now",
+    "Finde öffentliche Spielerprofile und vergleiche Spiele, Durchschnitt, Trend und Bestwerte getrennt nach Normal- und Hardcore-Modus.": "Find public player profiles and compare games, averages, trends, and best scores separately for Normal and Hardcore modes.",
     "Zock die Wand an (ZDWA):": "Zock die Wand an (ZDWA):",
     "Sammle möglichst viele Punkte über vier Spalten:": "Score as many points as possible across four columns:",
     "⬇︎ Abwärts": "⬇︎ Down",
@@ -775,7 +790,7 @@
   window.ZDWA_I18N = { getLanguage, locale, setLanguage, syncAccountLanguage, t: translateString, translateElement, catalog: EN };
   document.documentElement.lang = getLanguage();
   const manifestLink = document.querySelector('link[rel="manifest"]');
-  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=82453ff0615a";
+  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=26d28a6968de";
 
   document.addEventListener("DOMContentLoaded", () => {
     translateElement(document);

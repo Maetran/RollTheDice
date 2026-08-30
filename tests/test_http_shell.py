@@ -1,11 +1,32 @@
 import json
 import unittest
+from html.parser import HTMLParser
 from unittest.mock import patch
 
 import httpx
 
 from app import main
 from scripts.sync_static_versions import content_version, desired_text
+
+
+class _SeoParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.h1_count = 0
+        self.description = None
+        self.robots = None
+        self.canonical = None
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag == "h1":
+            self.h1_count += 1
+        elif tag == "meta" and attributes.get("name") == "description":
+            self.description = attributes.get("content")
+        elif tag == "meta" and attributes.get("name") == "robots":
+            self.robots = attributes.get("content")
+        elif tag == "link" and attributes.get("rel") == "canonical":
+            self.canonical = attributes.get("href")
 
 
 class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
@@ -40,6 +61,43 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         version = content_version()
         for path in [*main.STATIC_DIR.rglob("*.html"), *main.STATIC_DIR.rglob("*.js")]:
             self.assertEqual(path.read_text(), desired_text(path, version), path.name)
+
+    def test_every_page_has_one_h1_and_a_meta_description(self):
+        for html_path in main.STATIC_DIR.glob("*.html"):
+            parser = _SeoParser()
+            parser.feed(html_path.read_text(encoding="utf-8"))
+            self.assertEqual(parser.h1_count, 1, html_path.name)
+            self.assertTrue(parser.description, html_path.name)
+
+    def test_search_indexing_is_limited_to_stable_public_pages(self):
+        expected_canonicals = {
+            "index.html": "https://zockdiewandan.online/",
+            "rules.html": "https://zockdiewandan.online/regeln",
+            "players.html": "https://zockdiewandan.online/spieler",
+        }
+        for html_path in main.STATIC_DIR.glob("*.html"):
+            parser = _SeoParser()
+            parser.feed(html_path.read_text(encoding="utf-8"))
+            if html_path.name in expected_canonicals:
+                self.assertEqual(parser.canonical, expected_canonicals[html_path.name])
+                self.assertIsNone(parser.robots, html_path.name)
+            else:
+                self.assertIn("noindex", parser.robots or "", html_path.name)
+
+    async def test_robots_and_sitemap_expose_only_public_canonical_pages(self):
+        transport = httpx.ASGITransport(app=main.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            robots = await client.get("/robots.txt")
+            sitemap = await client.get("/sitemap.xml")
+
+        self.assertEqual(robots.status_code, 200)
+        self.assertIn("Sitemap: https://zockdiewandan.online/sitemap.xml", robots.text)
+        self.assertEqual(sitemap.status_code, 200)
+        self.assertEqual(sitemap.headers["content-type"], "application/xml")
+        for url in ("/", "/regeln", "/spieler"):
+            self.assertIn(f"<loc>https://zockdiewandan.online{url}</loc>", sitemap.text)
+        self.assertNotIn("/konto", sitemap.text)
+        self.assertNotIn("/spiel/", sitemap.text)
 
     async def test_versioned_assets_are_immutable_but_html_is_revalidated(self):
         transport = httpx.ASGITransport(app=main.app)
