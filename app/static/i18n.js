@@ -98,7 +98,7 @@
     "Über das Spiel": "About the game",
     "Was ist Zock die Wand an?": "What is Zock die Wand an?",
     "ZDWA ist ein taktisches Punkte-Würfelspiel: Du würfelst mit fünf Würfeln und trägst passende Ergebnisse in vier unterschiedlich geregelte Spalten ein. Gute Entscheidungen beim Halten, Ansagen und Eintragen sind ebenso wichtig wie Würfelglück.": "ZDWA is a tactical dice scoring game: roll five dice and enter suitable results into four columns with different rules. Smart choices when holding, announcing, and scoring matter just as much as luck.",
-    "Diese Webversion bringt die gesellige Spielrunde in den Browser – mit Normal- und Hardcore-Modus, Einzel-, Mehrspieler- und Team-Partien. Den vollständigen Ablauf erklärt die": "This web version brings the shared game night to your browser – with Normal and Hardcore modes and solo, multiplayer, and team games. The full flow is explained in the",
+    "In Reutte in Tirol erfunden und in Niederwil AG in der Schweiz digitalisiert, bringt diese Webversion die gesellige Spielrunde in den Browser – mit Normal- und Hardcore-Modus, Einzel-, Mehrspieler- und Team-Partien. Den vollständigen Ablauf und die Entwicklungsgeschichte erklärt die": "Invented in Reutte in Tyrol and digitized in Niederwil AG, Switzerland, this web version brings the shared game night to your browser – with Normal and Hardcore modes and solo, multiplayer, and team games. The full flow and development story are explained in the",
     "Spielanleitung für Zock die Wand an": "Zock die Wand an game guide",
     "Top Normal": "Top Normal",
     "Top Hardcore": "Top Hardcore",
@@ -266,6 +266,7 @@
     "Noch keine Spiele für den Verlauf vorhanden.": "No games available for the chart yet.",
     "Verlauf konnte nicht geladen werden.": "The chart could not be loaded.",
     "Punkteverlauf der ausgewählten Spiele": "Score chart for the selected games",
+    "Spielnummer": "Game number",
     "Trend (3 Spiele)": "Trend (3 games)",
     "Positiv": "Positive",
     "Negativ": "Negative",
@@ -336,8 +337,12 @@
     "Game Rules": "Game Rules",
     "Spielanleitung": "Game Rules",
     "Zock die Wand an: Spielregeln": "Zock die Wand an: Game Rules",
-    "Von der Tischrunde zur Web-App": "From the tabletop to the web app",
-    "ZDWA überträgt das gemeinsame Würfeln und Ausfüllen eines Punkteblatts in den Browser. Die digitale Variante verwaltet Würfe, erlaubte Felder und Summen, ohne die taktischen Entscheidungen abzunehmen. Die hier dokumentierten Regeln bilden den aktuellen Stand der spielbaren Webversion ab.": "ZDWA brings rolling dice together and filling out a scorecard to the browser. The digital version manages rolls, eligible fields, and totals without taking away the tactical decisions. These rules reflect the current playable web version.",
+    "Entstehung und Weiterentwicklung": "Origins and ongoing development",
+    "Zock die Wand an wurde in Reutte in Tirol erfunden und später in Niederwil AG in der Schweiz digitalisiert. Aus dem gemeinsamen Würfeln und Ausfüllen eines Punkteblatts entstand Schritt für Schritt eine vollständige Web-App. Die digitale Variante verwaltet Würfe, erlaubte Felder und Summen, ohne den Spielern die taktischen Entscheidungen abzunehmen.": "Zock die Wand an was invented in Reutte in Tyrol and later digitized in Niederwil AG, Switzerland. Rolling dice together and filling out a scorecard gradually became a complete web app. The digital version manages rolls, eligible fields, and totals without taking tactical decisions away from the players.",
+    "Schritt für Schritt verbessert": "Improved step by step",
+    "Seit der ersten digitalen Version wurde jedes neue Feature wiederholt analysiert, im echten Spielablauf geprüft und weiter verbessert. Dazu gehören eine mobil optimierte Spieloberfläche, klar erreichbare Würfel- und Chat-Steuerungen, Zuschauer- und Teamspiele, der Normal- und Hardcore-Modus sowie eine konsistente Navigation mit verständlichen URLs.": "Since the first digital version, every new feature has been repeatedly analyzed, tested in real gameplay, and improved. This includes a mobile-optimized game interface, easily accessible dice and chat controls, spectator and team games, Normal and Hardcore modes, and consistent navigation with clear URLs.",
+    "Spieler können heute freiwillig ein Konto nutzen, Einstellungen speichern und ihre persönlichen Statistiken auswerten. Die Datenhaltung wurde auf eine SQL-Datenbank mit nachvollziehbaren Migrationen umgestellt, damit Konten, Partien und historische Ergebnisse zuverlässig erhalten bleiben. Rankings, getrennte Statistiken pro Spielmodus und der Verlauf der letzten Partien wurden ebenfalls mehrfach fachlich und hinsichtlich ihrer Bedienbarkeit verfeinert.": "Players can now optionally use an account, save settings, and review their personal statistics. Data storage was migrated to a SQL database with traceable migrations so accounts, games, and historical results remain reliable. Rankings, separate statistics for each game mode, and recent game history have also been refined repeatedly for correctness and usability.",
+    "Die hier dokumentierten Regeln und Funktionen bilden den aktuellen Stand dieser fortlaufend weiterentwickelten Webversion ab.": "The rules and features documented here reflect the current state of this continuously evolving web version.",
     "ZDWA jetzt spielen": "Play ZDWA now",
     "Finde öffentliche Spielerprofile und vergleiche Spiele, Durchschnitt, Trend und Bestwerte getrennt nach Normal- und Hardcore-Modus.": "Find public player profiles and compare games, averages, trends, and best scores separately for Normal and Hardcore modes.",
     "Zock die Wand an (ZDWA):": "Zock die Wand an (ZDWA):",
@@ -790,7 +795,7 @@
   window.ZDWA_I18N = { getLanguage, locale, setLanguage, syncAccountLanguage, t: translateString, translateElement, catalog: EN };
   document.documentElement.lang = getLanguage();
   const manifestLink = document.querySelector('link[rel="manifest"]');
-  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=26d28a6968de";
+  if (manifestLink && getLanguage() === "en") manifestLink.href = "/manifest-en.webmanifest?v=1d4146b592db";
 
   document.addEventListener("DOMContentLoaded", () => {
     translateElement(document);

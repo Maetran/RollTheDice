@@ -504,9 +504,9 @@ test("account history keeps Normal and Hardcore in separate chart datasets", asy
 
   const games = [
     { game_id: "normal-new", finished_at: "2026-08-28T12:00:00Z", mode: "1", hardcore: false, points: 1200 },
-    { game_id: "hardcore-new", finished_at: "2026-08-27T12:00:00Z", mode: "1", hardcore: true, points: 500 },
-    { game_id: "normal-old", finished_at: "2026-08-26T12:00:00Z", mode: "1", hardcore: false, points: 900 },
-    { game_id: "hardcore-old", finished_at: "2026-08-25T12:00:00Z", mode: "1", hardcore: true, points: 400 },
+    { game_id: "hardcore-new", finished_at: "2026-08-28T11:59:00Z", mode: "1", hardcore: true, points: 500 },
+    { game_id: "normal-old", finished_at: "2026-08-28T08:00:00Z", mode: "1", hardcore: false, points: 900 },
+    { game_id: "hardcore-old", finished_at: "2026-08-28T07:59:00Z", mode: "1", hardcore: true, points: 400 },
   ];
   await page.addInitScript(({ historyGames }) => {
     const nativeFetch = window.fetch.bind(window);
@@ -553,6 +553,11 @@ test("account history keeps Normal and Hardcore in separate chart datasets", asy
   await expect(page.locator('[data-history-dataset="normal"]')).toHaveCount(1);
   await expect(page.locator('[data-history-dataset="hardcore"]')).toHaveCount(1);
   await expect(page.locator(".history-median-line")).toHaveCount(0);
+  await expect(page.locator(".history-date")).toHaveCount(0);
+  await expect(page.locator("[data-history-axis-index]")).toHaveText(["1", "2", "3", "4"]);
+  const xPositions = await page.locator("[data-history-index]").evaluateAll(points => points.map(point => Number(point.getAttribute("cx"))));
+  const xGaps = xPositions.slice(1).map((position, index) => position - xPositions[index]);
+  expect(Math.max(...xGaps) - Math.min(...xGaps)).toBeLessThan(0.2);
   await expect(page.locator("#recentGames .history-mode-badge.normal")).toHaveCount(2);
   await expect(page.locator("#recentGames .history-mode-badge.hardcore")).toHaveCount(2);
 });

@@ -6,14 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=26d28a6968de">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=26d28a6968de" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=26d28a6968de" sizes="180x180">
-  <script src="/static/i18n.js?v=26d28a6968de"></script>
-  <script src="/static/ui.js?v=26d28a6968de"></script>
-  <script src="/static/pwa.js?v=26d28a6968de" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=26d28a6968de">
-  <script src="/static/theme.js?v=26d28a6968de"></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=1d4146b592db">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=1d4146b592db" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=1d4146b592db" sizes="180x180">
+  <script src="/static/i18n.js?v=1d4146b592db"></script>
+  <script src="/static/ui.js?v=1d4146b592db"></script>
+  <script src="/static/pwa.js?v=1d4146b592db" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=1d4146b592db">
+  <script src="/static/theme.js?v=1d4146b592db"></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -114,7 +114,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth } from '/static/auth.js?v=26d28a6968de';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth } from '/static/auth.js?v=1d4146b592db';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace('/');
     const user = auth.user;
@@ -263,14 +263,10 @@
       const plot = { left: 48, right: 14, top: 18, bottom: 38 };
       const plotWidth = width - plot.left - plot.right;
       const plotHeight = height - plot.top - plot.bottom;
-      const timestamps = games.map(game => new Date(game.finished_at).getTime());
-      const timeLow = Math.min(...timestamps);
-      const timeHigh = Math.max(...timestamps);
-      const useTimeScale = timestamps.every(Number.isFinite) && timeHigh > timeLow;
+      // Die Auswahl 10/50/100 bezeichnet Partien, keinen Zeitraum. Deshalb
+      // erhält jedes Spiel unabhängig von seinem Zeitstempel denselben Abstand.
       const x = index => plot.left + (
-        games.length === 1 || !useTimeScale
-          ? (games.length === 1 ? plotWidth / 2 : index * plotWidth / (games.length - 1))
-          : (timestamps[index] - timeLow) * plotWidth / (timeHigh - timeLow)
+        games.length === 1 ? plotWidth / 2 : index * plotWidth / (games.length - 1)
       );
       const y = value => plot.top + (high - value) * plotHeight / (high - low);
       const indexedGames = games.map((game, index) => ({ game, index }));
@@ -286,18 +282,23 @@
       }).join('');
       const gridValues = [high, Math.round((high + low) / 2), low];
       const grid = gridValues.map(value => `<g><line x1="${plot.left}" y1="${y(value)}" x2="${width - plot.right}" y2="${y(value)}"></line><text x="${plot.left - 8}" y="${y(value) + 4}" text-anchor="end">${value}</text></g>`).join('');
-      const dots = games.map((game, index) => `<circle class="${game.hardcore ? 'hardcore' : 'normal'}" data-history-point="${game.hardcore ? 'hardcore' : 'normal'}" cx="${x(index)}" cy="${y(game.points)}" r="${games.length > 100 ? 2 : 3.5}"><title>${escapeHtml(String(game.points))} ${t('Punkte')}</title></circle>`).join('');
       const locale = window.ZDWA_I18N?.locale?.() || 'de-CH';
-      const shortDate = value => new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(value));
-      const firstDate = escapeHtml(shortDate(games[0].finished_at));
-      const lastDate = escapeHtml(shortDate(games.at(-1).finished_at));
+      const gameDate = value => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+      const dots = games.map((game, index) => {
+        const details = `${t('Spiel')} ${index + 1}: ${game.points} ${t('Punkte')} · ${gameDate(game.finished_at)}`;
+        return `<circle class="${game.hardcore ? 'hardcore' : 'normal'}" data-history-point="${game.hardcore ? 'hardcore' : 'normal'}" data-history-index="${index + 1}" cx="${x(index)}" cy="${y(game.points)}" r="${games.length > 100 ? 2 : 3.5}"><title>${escapeHtml(details)}</title></circle>`;
+      }).join('');
+      const maxTicks = 10;
+      const tickStep = Math.max(1, Math.ceil((games.length - 1) / (maxTicks - 1)));
+      const tickIndexes = Array.from({ length: games.length }, (_value, index) => index)
+        .filter(index => index % tickStep === 0 || index === games.length - 1);
+      const gameTicks = tickIndexes.map(index => `<text class="history-game-number" data-history-axis-index="${index + 1}" x="${x(index)}" y="${height - 10}" text-anchor="middle">${index + 1}</text>`).join('');
       chart.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(t('Punkteverlauf der ausgewählten Spiele'))}">
         <g class="history-grid">${grid}</g>
         ${selectedMode === 'all' ? '' : `<line class="history-median-line" x1="${plot.left}" y1="${y(modeSummary.median_points)}" x2="${width - plot.right}" y2="${y(modeSummary.median_points)}"></line>`}
         ${lines}
         <g class="history-dots">${dots}</g>
-        <text class="history-date" x="${plot.left}" y="${height - 10}">${firstDate}</text>
-        <text class="history-date" x="${width - plot.right}" y="${height - 10}" text-anchor="end">${lastDate}</text>
+        <g class="history-game-axis" aria-label="${escapeHtml(t('Spielnummer'))}">${gameTicks}</g>
       </svg>`;
       legend.innerHTML = selectedMode === 'all'
         ? `<span><i class="normal"></i>${t('Normal')}</span><span><i class="hardcore"></i>${t('Hardcore')}</span>`

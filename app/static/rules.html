@@ -15,19 +15,19 @@
   <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=26d28a6968de">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=26d28a6968de" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=26d28a6968de" sizes="180x180">
-  <script src="/static/i18n.js?v=26d28a6968de"></script>
-  <script src="/static/ui.js?v=26d28a6968de"></script>
-  <script src="/static/pwa.js?v=26d28a6968de" defer></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=1d4146b592db">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=1d4146b592db" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=1d4146b592db" sizes="180x180">
+  <script src="/static/i18n.js?v=1d4146b592db"></script>
+  <script src="/static/ui.js?v=1d4146b592db"></script>
+  <script src="/static/pwa.js?v=1d4146b592db" defer></script>
   <!--
     rules.html - Spielanleitung
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi sowie Desktop-/Mobilsteuerung.
   -->
-  <script src="/static/theme.js?v=26d28a6968de"></script>
-  <link rel="stylesheet" href="/static/style.css?v=26d28a6968de" />
+  <script src="/static/theme.js?v=1d4146b592db"></script>
+  <link rel="stylesheet" href="/static/style.css?v=1d4146b592db" />
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
     .doc { width:min(1120px, calc(100vw - 32px)); margin:1.25rem auto 2rem; }
@@ -171,12 +171,24 @@
     <!-- Hinweisbox -->
     <p class="note"><strong>Tipp:</strong> In der ❗-Spalte werden auf dem eigenen Board die erlaubten Zellen hervorgehoben. Bei 0-Punkten fragt das Spiel nach einer Bestätigung.</p>
 
-    <h2>Von der Tischrunde zur Web-App</h2>
+    <h2>Entstehung und Weiterentwicklung</h2>
     <p>
-      ZDWA überträgt das gemeinsame Würfeln und Ausfüllen eines Punkteblatts in den Browser.
-      Die digitale Variante verwaltet Würfe, erlaubte Felder und Summen, ohne die taktischen Entscheidungen abzunehmen.
-      Die hier dokumentierten Regeln bilden den aktuellen Stand der spielbaren Webversion ab.
+      Zock die Wand an wurde in Reutte in Tirol erfunden und später in Niederwil AG in der Schweiz digitalisiert.
+      Aus dem gemeinsamen Würfeln und Ausfüllen eines Punkteblatts entstand Schritt für Schritt eine vollständige Web-App.
+      Die digitale Variante verwaltet Würfe, erlaubte Felder und Summen, ohne den Spielern die taktischen Entscheidungen abzunehmen.
     </p>
+    <h3>Schritt für Schritt verbessert</h3>
+    <p>
+      Seit der ersten digitalen Version wurde jedes neue Feature wiederholt analysiert, im echten Spielablauf geprüft und weiter verbessert.
+      Dazu gehören eine mobil optimierte Spieloberfläche, klar erreichbare Würfel- und Chat-Steuerungen, Zuschauer- und Teamspiele,
+      der Normal- und Hardcore-Modus sowie eine konsistente Navigation mit verständlichen URLs.
+    </p>
+    <p>
+      Spieler können heute freiwillig ein Konto nutzen, Einstellungen speichern und ihre persönlichen Statistiken auswerten.
+      Die Datenhaltung wurde auf eine SQL-Datenbank mit nachvollziehbaren Migrationen umgestellt, damit Konten, Partien und historische Ergebnisse zuverlässig erhalten bleiben.
+      Rankings, getrennte Statistiken pro Spielmodus und der Verlauf der letzten Partien wurden ebenfalls mehrfach fachlich und hinsichtlich ihrer Bedienbarkeit verfeinert.
+    </p>
+    <p>Die hier dokumentierten Regeln und Funktionen bilden den aktuellen Stand dieser fortlaufend weiterentwickelten Webversion ab.</p>
     <p><a class="button-link primary" href="/">ZDWA jetzt spielen</a></p>
     </div>
   </div>
