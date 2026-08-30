@@ -6,7 +6,8 @@ import os
 from datetime import timedelta
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
-from urllib.request import Request as UrlRequest, urlopen
+from urllib.request import Request as UrlRequest
+from urllib.request import urlopen
 
 from fastapi import HTTPException, Request, status
 from sqlalchemy import delete, func, select
@@ -14,6 +15,17 @@ from sqlalchemy import delete, func, select
 from .database import session_scope
 from .models import AuthRateEvent
 from .security import utcnow
+
+
+def _positive_int_env(name: str, default: int) -> int:
+    raw_value = os.getenv(name, str(default)).strip()
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be a positive integer") from exc
+    if value < 1:
+        raise RuntimeError(f"{name} must be a positive integer")
+    return value
 
 
 TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
@@ -25,6 +37,12 @@ REGISTER_IP_WINDOW = timedelta(hours=1)
 REGISTER_IP_MAX = 3
 REGISTER_GLOBAL_WINDOW = timedelta(hours=1)
 REGISTER_GLOBAL_MAX = 20
+GAME_CREATE_BURST_WINDOW = timedelta(minutes=1)
+GAME_CREATE_BURST_MAX = _positive_int_env("ROLLTHEDICE_GAME_CREATE_BURST_MAX", 5)
+GAME_CREATE_IP_WINDOW = timedelta(hours=1)
+GAME_CREATE_IP_MAX = _positive_int_env("ROLLTHEDICE_GAME_CREATE_IP_MAX", 30)
+GAME_CREATE_GLOBAL_WINDOW = timedelta(hours=1)
+GAME_CREATE_GLOBAL_MAX = _positive_int_env("ROLLTHEDICE_GAME_CREATE_GLOBAL_MAX", 300)
 EVENT_RETENTION = timedelta(days=1)
 
 
@@ -106,6 +124,29 @@ def enforce_registration_rate_limit(request: Request) -> None:
     # Record before CAPTCHA and password hashing so rejected bot traffic cannot
     # repeatedly consume either external verification or CPU resources.
     _record_event("register", client_key)
+
+
+def enforce_game_creation_rate_limit(request: Request) -> None:
+    """Limit anonymous game creation per client and across the instance."""
+    now = utcnow()
+    client_key = _client_key(request)
+    burst_limited = (
+        _event_count("game_create", now - GAME_CREATE_BURST_WINDOW, client_key=client_key)
+        >= GAME_CREATE_BURST_MAX
+    )
+    hourly_limited = (
+        _event_count("game_create", now - GAME_CREATE_IP_WINDOW, client_key=client_key)
+        >= GAME_CREATE_IP_MAX
+        or _event_count("game_create", now - GAME_CREATE_GLOBAL_WINDOW)
+        >= GAME_CREATE_GLOBAL_MAX
+    )
+    if burst_limited or hourly_limited:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="game_creation_temporarily_blocked",
+            headers={"Retry-After": "3600" if hourly_limited else "60"},
+        )
+    _record_event("game_create", client_key)
 
 
 def enforce_login_rate_limit(request: Request, normalized_username: str) -> str:

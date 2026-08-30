@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-
 TREND_WINDOW_SIZE = 3
 
 

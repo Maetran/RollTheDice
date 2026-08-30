@@ -13,16 +13,16 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=e2e23f637297">
+  <link rel="manifest" href="/manifest.webmanifest?v=82453ff0615a">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=e2e23f637297" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=e2e23f637297" sizes="180x180">
-  <script src="/static/i18n.js?v=e2e23f637297"></script>
-  <script src="/static/ui.js?v=e2e23f637297"></script>
-  <script src="/static/pwa.js?v=e2e23f637297" defer></script>
-  <script src="/static/theme.js?v=e2e23f637297"></script>
-  <link rel="stylesheet" href="/static/style.css?v=e2e23f637297">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=82453ff0615a" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=82453ff0615a" sizes="180x180">
+  <script src="/static/i18n.js?v=82453ff0615a"></script>
+  <script src="/static/ui.js?v=82453ff0615a"></script>
+  <script src="/static/pwa.js?v=82453ff0615a" defer></script>
+  <script src="/static/theme.js?v=82453ff0615a"></script>
+  <link rel="stylesheet" href="/static/style.css?v=82453ff0615a">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -64,7 +64,7 @@
         <div id="playerNameRow" class="quick-play-fields">
           <label class="form-field" for="playerName">
             <span>Spielername</span>
-            <input id="playerName" type="text" placeholder="Dein Name" autocomplete="nickname" aria-describedby="guestPlayHint">
+            <input id="playerName" type="text" placeholder="Dein Name" autocomplete="nickname" maxlength="64" aria-describedby="guestPlayHint">
           </label>
           <p id="guestPlayHint" class="muted small">Du kannst ohne Konto spielen.</p>
         </div>
@@ -132,7 +132,7 @@
           </fieldset>
           <label class="form-field passphrase-field" for="passInput">
             <span>Passphrase <small>(optional)</small></span>
-            <input id="passInput" type="text" placeholder="Leer lassen für ein öffentliches Spiel" autocomplete="off">
+            <input id="passInput" type="text" placeholder="Leer lassen für ein öffentliches Spiel" autocomplete="off" maxlength="100">
           </label>
           <button id="createBtn">Spiel starten</button>
         </div>
@@ -218,7 +218,7 @@
 
   <!-- Hauptskript: lädt Listen/Leaderboards und verknüpft Buttons -->
   <script type="module">
-    import { loadAuth, login, logout, register } from '/static/auth.js?v=e2e23f637297';
+    import { loadAuth, login, logout, register } from '/static/auth.js?v=82453ff0615a';
 
     const nameInput  = document.getElementById('playerName');
     const passInput  = document.getElementById('passInput');
@@ -820,7 +820,7 @@
         const res = await fetch('/api/games', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ name: gname, mode, owner: pname, pass: passInput.value, hardcore: !!hcChk.checked })
+          body: JSON.stringify({ name: gname, mode, pass: passInput.value, hardcore: !!hcChk.checked })
         });
         if (!res.ok) {
           let message = '';
@@ -828,6 +828,7 @@
             const errorPayload = await res.json();
             message = String(errorPayload.message || errorPayload.detail || '');
           } catch {}
+          if (res.status === 429) throw new Error('Zu viele neue Spiele. Bitte kurz warten.');
           if (res.status === 503) throw new Error(message || 'Der Spielserver ist nicht erreichbar.');
           throw new Error(message || ('Serverfehler ' + res.status));
         }

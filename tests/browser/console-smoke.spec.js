@@ -123,6 +123,24 @@ test("dismissed install prompt stays hidden for seven days or until a new app ve
   await expect(prompt).toBeVisible();
 });
 
+test("service worker serves core pages while offline", async ({ page, context }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    if (!("serviceWorker" in navigator)) throw new Error("service_worker_unavailable");
+    await navigator.serviceWorker.ready;
+  });
+  await page.goto("/regeln");
+  await expect(page.getByRole("heading", { name: "Spielanleitung" })).toBeVisible();
+
+  await context.setOffline(true);
+  try {
+    await page.goto("/regeln");
+    await expect(page.getByRole("heading", { name: "Spielanleitung" })).toBeVisible();
+  } finally {
+    await context.setOffline(false);
+  }
+});
+
 test("game creation API flow from lobby and spectator mode both work", async ({ page, browser, request }) => {
   const health = watchPageHealth(page);
   await page.goto("/");

@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 
 from pwdlib import PasswordHash
 
-
 PASSWORD_MIN_LENGTH = 8
 USERNAME_MIN_LENGTH = 3
 USERNAME_MAX_LENGTH = 32

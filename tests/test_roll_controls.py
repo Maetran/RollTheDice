@@ -1,37 +1,11 @@
-import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from app import main
+from tests.support import GameStateTestCase
 
 
-class RollControlTestCase(unittest.TestCase):
-    def setUp(self):
-        self.gids = []
-
-    def tearDown(self):
-        for gid in self.gids:
-            main.games.pop(gid, None)
-
-    def make_game(self, *, mode=2, hardcore=False):
-        gid = f"test-{len(self.gids)}"
-        self.gids.append(gid)
-        g = main.new_game(gid, "Test Game", mode)
-        players = [{"id": "p1", "name": "A", "ws": None}]
-        if int(g["_expected"]) > 1:
-            players.append({"id": "p2", "name": "B", "ws": None})
-        g["_players"] = players
-        g["_scoreboards"] = {p["id"]: {} for p in players}
-        g["_hardcore"] = hardcore
-        g["_started"] = True
-        g["_turn"] = {"player_id": "p1", "roll_index": 0, "first4oak_roll": None}
-        g["_correction"] = {"active": False}
-        g["_dice"] = [0, 0, 0, 0, 0]
-        g["_holds"] = [False] * 5
-        g["_rolls_used"] = 0
-        g["_rolls_max"] = 3
-        return g
-
+class RollControlTestCase(GameStateTestCase):
     def test_inactivity_timeout_aborts_after_one_hour(self):
         g = self.make_game()
 
@@ -166,7 +140,3 @@ class RollControlTestCase(unittest.TestCase):
         snap = main.snapshot(g)
 
         self.assertFalse(snap["_auto_single"])
-
-
-if __name__ == "__main__":
-    unittest.main()

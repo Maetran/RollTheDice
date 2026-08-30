@@ -14,7 +14,6 @@ from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant
 from .security import normalize_username, utcnow
 from .trends import recent_points_trend
 
-
 router = APIRouter(prefix="/api", tags=["players"])
 
 

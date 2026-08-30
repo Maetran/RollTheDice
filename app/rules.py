@@ -8,7 +8,9 @@ WebSocket-Pfad in `app/main.py`.
 """
 
 from __future__ import annotations
+
 from typing import Dict
+
 
 def compute_row_subtotals(row: Dict[str, int], *, hardcore: bool = False) -> Dict[str, int]:
     """Berechnet die automatisch angezeigten Summen einer Spalte.

@@ -14,9 +14,9 @@ module.exports = defineConfig({
     browserName: "chromium",
   },
   webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
-    command: `ROLLTHEDICE_DATABASE_URL=sqlite:///${testDatabase} ROLLTHEDICE_ADMIN_USERNAME=Admin ROLLTHEDICE_ADMIN_PASSWORD=temporary-password-123 ROLLTHEDICE_COOKIE_SECURE=0 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port ${port}`,
+    command: `ROLLTHEDICE_DATABASE_URL=sqlite:///${testDatabase} ROLLTHEDICE_ADMIN_USERNAME=Admin ROLLTHEDICE_ADMIN_PASSWORD=temporary-password-123 ROLLTHEDICE_COOKIE_SECURE=0 ROLLTHEDICE_GAME_CREATE_BURST_MAX=100 ROLLTHEDICE_GAME_CREATE_IP_MAX=200 ROLLTHEDICE_GAME_CREATE_GLOBAL_MAX=500 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port ${port} --ws-max-size 65536`,
     url: baseURL,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 15000,
   },
 });

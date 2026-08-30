@@ -100,7 +100,11 @@ python3 -m py_compile app/main.py app/rules.py
 node --check app/static/scoreboard.js
 node --input-type=module --check < app/static/room.js
 python3 scripts/sync_static_versions.py --check
-python3 -m unittest discover -s tests -p 'test_*.py'
+pytest --cov --cov-report=term-missing
+ruff check .
+bandit -q -r app scripts -c pyproject.toml
+vulture app scripts tests --min-confidence 80
+pip-audit -r requirements-dev.txt --progress-spinner off
 npm run test:browser
 git diff --check
 ```
@@ -140,6 +144,8 @@ RollTheDice/
 ├── alembic/                 # Versioned database schema migrations
 ├── scripts/
 │   ├── deploy_zdwa.sh       # Guarded production deployment
+│   ├── install_nginx_config.sh # Validated installation of production proxy limits
+│   ├── prune_data_backups.sh # Explicit dry-run-first backup retention helper
 │   └── sync_static_versions.py # Content-hashed PWA/asset version synchronization
 └── data/                    # Persistent runtime data, ignored by Git
     ├── leaderboard_recent.json

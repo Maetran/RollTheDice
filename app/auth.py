@@ -11,12 +11,12 @@ from fastapi import HTTPException, Request, Response, WebSocket, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 
-from .database import session_scope
 from .auth_protection import (
     clear_login_failures,
     enforce_login_rate_limit,
     record_login_failure,
 )
+from .database import session_scope
 from .models import Session as LoginSession
 from .models import User
 from .security import (
@@ -31,7 +31,6 @@ from .security import (
     validate_username,
     verify_password,
 )
-
 
 logger = logging.getLogger(__name__)
 SESSION_COOKIE = "rollthedice_session"

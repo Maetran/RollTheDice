@@ -50,8 +50,11 @@ Ein erfolgreiches Backup sieht so aus:
 /root/RollTheDice/data.backup-YYYYMMDD-HHMMSS
 ```
 
-Backups werden nicht automatisch gelöscht. Ihre Aufbewahrung und eine allfällige
-Auslagerung auf einen zweiten Speicher müssen bewusst organisiert werden.
+Backups werden nicht automatisch gelöscht. `scripts/prune_data_backups.sh`
+listet deshalb standardmässig nur die Backups auf, die über den neuesten 30
+liegen. Erst `APPLY=1` löscht genau diese zuvor angezeigten Verzeichnisse. Eine
+Auslagerung wichtiger Wochen-/Monatsstände auf einen zweiten Speicher bleibt
+weiterhin empfohlen.
 
 ## Voraussetzungen
 
@@ -68,12 +71,45 @@ Vor einem regulären Rollout müssen folgende Bedingungen erfüllt sein:
 Empfohlene lokale Prüfung:
 
 ```bash
-python3 -m unittest discover -s tests -p 'test_*.py'
+pytest --cov --cov-report=term-missing
+ruff check .
+bandit -q -r app scripts -c pyproject.toml
+vulture app scripts tests --min-confidence 80
+pip-audit -r requirements-dev.txt --progress-spinner off
 npm run test:browser
 python3 scripts/sync_static_versions.py --check
 git diff --check
 git status --short
 ```
+
+## Reverse-Proxy-Härtung
+
+Die versionierte Nginx-Konfiguration unter `deploy/nginx/rollthedice.conf`
+begrenzt HTTP-Bursts, Request-Grössen und parallele WebSockets pro IP. Sie reicht
+für WebSockets außerdem die echte Client-IP an Uvicorn weiter und setzt eine
+Content-Security-Policy.
+
+Nach manueller Prüfung wird sie auf dem Produktionsserver aus dem Repository
+installiert:
+
+```bash
+cd /root/RollTheDice
+scripts/install_nginx_config.sh
+```
+
+Das Skript legt zuerst eine zeitgestempelte Sicherung der bisherigen
+Konfiguration an, führt `nginx -t` aus und stellt sie bei einem Fehler wieder
+her. Diese Systemkonfiguration wird nicht bei jedem App-Deployment ungeprüft
+überschrieben.
+
+Alte Datenbackups werden zunächst nur aufgelistet:
+
+```bash
+cd /root/RollTheDice
+KEEP=30 scripts/prune_data_backups.sh
+```
+
+Nach Kontrolle der Liste kann dieselbe Auswahl mit `APPLY=1` gelöscht werden.
 
 ## Standard-Deployment
 

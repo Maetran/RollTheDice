@@ -8,7 +8,6 @@ import hashlib
 import re
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = ROOT / "app" / "static"
 MANIFESTS = (ROOT / "manifest.webmanifest", ROOT / "manifest-en.webmanifest")

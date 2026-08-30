@@ -12,7 +12,6 @@ from .database import database_schema_ready, session_scope
 from .models import ActiveGame
 from .security import utcnow
 
-
 logger = logging.getLogger(__name__)
 
 

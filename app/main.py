@@ -24,29 +24,31 @@ Wichtig: Poker-Logik und Korrekturmodus
 
 from __future__ import annotations
 
-import uuid
-import random
+import asyncio
 import json
-from collections import Counter
-from typing import Dict, Any
+import logging
+import math
+import os
+import random
+import threading
+import time  # für monotonic()-Cooldown-Timer
+import uuid
+from collections import Counter, deque
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-import os
-import time  # für monotonic()-Cooldown-Timer
-import math
-import threading
-import asyncio
+from typing import Any, Dict
 from urllib.parse import quote, urlencode
 
-import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-from .rules import compute_overall
+from .active_games import delete_active_game, load_active_games, save_active_game
 from .api_auth import router as auth_router
-from .api_users import profile_links_for_games, router as users_router
+from .api_users import profile_links_for_games
+from .api_users import router as users_router
 from .auth import (
     auth_identity_payload,
     ensure_bootstrap_admin,
@@ -56,8 +58,7 @@ from .auth import (
     username_is_registered,
     websocket_origin_allowed,
 )
-from .auth_protection import validate_auth_protection_config
-from .active_games import delete_active_game, load_active_games, save_active_game
+from .auth_protection import enforce_game_creation_rate_limit, validate_auth_protection_config
 from .database import configure_database, database_schema_ready, upgrade_database
 from .game_history import (
     delete_completed_game,
@@ -67,6 +68,7 @@ from .game_history import (
     recent_winner_points_by_mode,
     stable_game_id,
 )
+from .rules import compute_overall
 from .trends import recent_points_trend
 
 # --- Auto-Timeout (Inaktivität) ---
@@ -100,7 +102,7 @@ def pause_remaining_seconds(g) -> int:
             return timeout_seconds()
         now = datetime.now(timezone.utc)
         return max(0, int((GAME_TIMEOUT - (now - last)).total_seconds()))
-    except Exception:
+    except (TypeError, ValueError):
         return timeout_seconds()
 
 def check_timeout_and_abort(g) -> bool:
@@ -125,8 +127,8 @@ def check_timeout_and_abort(g) -> bool:
             g["_results"] = None
             delete_active_game(str(g.get("_id") or ""))
             return True
-    except Exception:
-        pass
+    except (TypeError, ValueError, OverflowError):
+        logger.warning("Could not evaluate timeout for game %s", g.get("_id"), exc_info=True)
     return False
 
 def sweep_timeouts():
@@ -152,12 +154,11 @@ def roll_cooldown_ok(g: dict, player_id, cooldown_s: float = 0.6) -> bool:
             return False
         rc[player_id] = now
         return True
-    except Exception:
+    except (TypeError, ValueError):
         # Defensive: lieber freigeben als hart failen
         return True
 
-# App zuerst erstellen
-app = FastAPI()
+logger = logging.getLogger(__name__)
 
 # ---------------- Pfade robust auflösen (static/ und data/) ----------------
 HERE = Path(__file__).resolve().parent           # .../RollTheDice/app
@@ -197,13 +198,17 @@ GLOBAL_AVERAGE_STARTED_AT = datetime(2026, 7, 31, 11, 40, tzinfo=timezone.utc)
 configure_database(DATA_DIR)
 
 
-@app.on_event("startup")
-def initialize_persistent_database() -> None:
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
     upgrade_database(BASE)
     validate_auth_protection_config()
     ensure_bootstrap_admin()
     import_legacy_leaderboards([RECENT_FILE, ALLTIME_FILE, SHAME_FILE, LAST_GAMES_FILE])
     games.update(load_active_games())
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 app.include_router(auth_router)
@@ -351,6 +356,46 @@ def health() -> dict[str, str]:
 # Seitenweite, anonyme Presence. Mehrere Tabs mit derselben Browser-ID zählen
 # als ein Nutzer; ein Heartbeat entfernt abgebrochene Verbindungen zeitnah.
 presence_connections: dict[str, int] = {}
+websocket_connections_by_address: dict[str, int] = {}
+
+
+def _positive_int_setting(name: str, default: int) -> int:
+    raw_value = os.getenv(name, str(default)).strip()
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be a positive integer") from exc
+    if value < 1:
+        raise RuntimeError(f"{name} must be a positive integer")
+    return value
+
+
+MAX_WEBSOCKETS_PER_ADDRESS = _positive_int_setting("ROLLTHEDICE_MAX_WEBSOCKETS_PER_ADDRESS", 30)
+MAX_WEBSOCKETS_GLOBAL = _positive_int_setting("ROLLTHEDICE_MAX_WEBSOCKETS_GLOBAL", 500)
+
+
+def _websocket_address(websocket: WebSocket) -> str:
+    return websocket.client.host if websocket.client else "unknown"
+
+
+def _reserve_websocket(websocket: WebSocket) -> str | None:
+    address = _websocket_address(websocket)
+    if sum(websocket_connections_by_address.values()) >= MAX_WEBSOCKETS_GLOBAL:
+        return None
+    if websocket_connections_by_address.get(address, 0) >= MAX_WEBSOCKETS_PER_ADDRESS:
+        return None
+    websocket_connections_by_address[address] = websocket_connections_by_address.get(address, 0) + 1
+    return address
+
+
+def _release_websocket(address: str | None) -> None:
+    if not address:
+        return
+    remaining = websocket_connections_by_address.get(address, 1) - 1
+    if remaining > 0:
+        websocket_connections_by_address[address] = remaining
+    else:
+        websocket_connections_by_address.pop(address, None)
 
 
 def online_user_count() -> int:
@@ -361,6 +406,10 @@ def online_user_count() -> int:
 async def presence(websocket: WebSocket) -> None:
     if not websocket_origin_allowed(websocket):
         await websocket.close(code=1008, reason="Origin rejected")
+        return
+    connection_address = _reserve_websocket(websocket)
+    if connection_address is None:
+        await websocket.close(code=1013, reason="Too many connections")
         return
     client_id = str(websocket.query_params.get("client_id") or "").strip()[:80]
     if not client_id:
@@ -378,6 +427,7 @@ async def presence(websocket: WebSocket) -> None:
             presence_connections[client_id] = remaining
         else:
             presence_connections.pop(client_id, None)
+        _release_websocket(connection_address)
 
 # Zentrales Game-Registry + Typalias
 GameDict = Dict[str, Any]
@@ -1089,6 +1139,7 @@ def compute_suggestions(g: GameDict) -> list[dict]:
         out.sort(key=lambda x: order.get(x["type"], 99))
         return out
     except Exception:
+        logger.exception("Could not compute suggestions for game %s", g.get("_id"))
         return []
 
 def _filled_rows_for(g: GameDict, pid: str, col: str) -> set[int]:
@@ -1261,8 +1312,8 @@ def apply_roll(g: GameDict, *, randint_fn=None) -> list[int]:
         cur["roll_index"] = int(cur.get("roll_index", 0) or 0) + 1
         if cur.get("first4oak_roll") is None and has_n_of_a_kind(g["_dice"], 4):
             cur["first4oak_roll"] = cur["roll_index"]
-    except Exception:
-        pass
+    except (AttributeError, TypeError, ValueError):
+        logger.warning("Could not update roll metadata for game %s", g.get("_id"), exc_info=True)
 
     return g["_dice"]
 
@@ -1287,7 +1338,7 @@ def poker_points_allowed(
 
     try:
         roll_idx = int(roll_index or 0)
-    except Exception:
+    except (TypeError, ValueError):
         roll_idx = 0
 
     first4_eff = first4oak_roll
@@ -1297,7 +1348,7 @@ def poker_points_allowed(
 
     try:
         first4_idx = int(first4_eff)
-    except Exception:
+    except (TypeError, ValueError):
         return False
 
     effective_roll_idx = first4_idx if correction else roll_idx
@@ -1542,6 +1593,7 @@ def snapshot(g: GameDict) -> dict:
             "_dbg_poker": _dbg_poker(),
         }
     except Exception:
+        logger.exception("Could not build snapshot for game %s", g.get("_id"))
         return {}
 
 async def broadcast(g: GameDict, msg: Dict[str, Any]) -> None:
@@ -1562,7 +1614,7 @@ async def broadcast(g: GameDict, msg: Dict[str, Any]) -> None:
         try:
             await ws.send_json(msg)
         except Exception:
-            pass
+            logger.debug("Could not send broadcast to a disconnected recipient", exc_info=True)
 
 async def _close_ws_with_error(websocket: WebSocket, error: str, *, fatal: bool = False, code: int = 1008) -> None:
     """Sendet einen Fehler und schliesst danach den WebSocket."""
@@ -1572,7 +1624,7 @@ async def _close_ws_with_error(websocket: WebSocket, error: str, *, fatal: bool 
             payload["fatal"] = True
         await websocket.send_json(payload)
     except Exception:
-        pass
+        logger.debug("Could not send final WebSocket error payload", exc_info=True)
     await websocket.close(code=code)
 
 def next_turn(g: GameDict, current_pid: str | None) -> str | None:
@@ -1617,37 +1669,37 @@ def root():
     )
 
 class CreateReq(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=80)
     mode: str | int
-    owner: str | None = None
-    passphrase: str | None = Field(default=None, alias="pass")
+    passphrase: str | None = Field(default=None, alias="pass", max_length=100)
     hardcore: bool | None = False
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(_cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("game_name_required")
+        return cleaned
+
+    @field_validator("mode")
+    @classmethod
+    def validate_mode(_cls, value: str | int) -> str:
+        cleaned = str(value).strip().lower()
+        if cleaned not in {"1", "2", "3", "2v2"}:
+            raise ValueError("invalid_game_mode")
+        return cleaned
+
+    @field_validator("passphrase")
+    @classmethod
+    def normalize_passphrase(_cls, value: str | None) -> str | None:
+        cleaned = str(value or "").strip()
+        return cleaned or None
 
 
 class DeleteCompletedGameReq(BaseModel):
     reason: str = Field(min_length=10, max_length=500)
     confirmation_game_id: str = Field(min_length=1, max_length=64)
-
-def game_list_payload() -> list[dict]:
-    """Hilfsfunktion: erzeugt die JSON-Payload für die Spielübersicht (Lobby).
-
-    Returns:
-        list[dict]: Liste der Spiele als Dictionary
-    """
-    out = []
-    for gid, g in games.items():
-        out.append({
-            "id": gid,
-            "name": g["_name"],
-            "mode": g["_mode"],
-            "hardcore": bool(g.get("_hardcore", False)),
-            "expected": g["_expected"],
-            "joined": len(g["_players"]),
-            "started": g["_started"],
-            "finished": g["_finished"],
-            "locked": bool(g.get("_passphrase")),
-        })
-    return out
 
 # --- Games API (mit wartenden Spielern) ---
 @app.get("/api/games")
@@ -1707,7 +1759,8 @@ async def api_games(request: Request):
                 "updated_at": g.get("_updated_at"),
                 "progress": (_progress_for_game(g) if g.get("_started") and not g.get("_finished") and not g.get("_aborted", False) else []),
             })
-        except Exception:
+        except (KeyError, TypeError, ValueError):
+            logger.warning("Skipping malformed game %s in lobby response", gid, exc_info=True)
             continue
     return {"games": lst, "online_users": online_user_count()}
 
@@ -1775,7 +1828,8 @@ def _read_json_file(path: Path, default):
     if path.exists():
         try:
             return json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            logger.warning("Could not read JSON file %s; using fallback", path, exc_info=True)
             return default
     return default
 
@@ -1785,8 +1839,8 @@ def _write_json_if_changed(path: Path, original_data, new_data) -> None:
         try:
             if json.dumps(original_data, sort_keys=True) != json.dumps(new_data, sort_keys=True):
                 _atomic_write_json(path, new_data)
-        except Exception:
-            pass
+        except (OSError, TypeError, ValueError):
+            logger.exception("Could not update JSON file %s", path)
 
 def _parse_ts(s: str) -> datetime | None:
     """Robustes ISO-8601-Parsing, naive Zeitstempel werden als UTC interpretiert."""
@@ -1799,7 +1853,7 @@ def _parse_ts(s: str) -> datetime | None:
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc)
-    except Exception:
+    except (TypeError, ValueError):
         return None
 
 def _entry_ts(entry: dict) -> datetime | None:
@@ -1812,7 +1866,7 @@ def _entry_has_points(entry: dict) -> bool:
     try:
         _ = int(entry.get("points", 0))
         return True
-    except Exception:
+    except (AttributeError, TypeError, ValueError):
         return False
 
 def _valid_entry_since(entry: dict, cutoff: datetime | None = None) -> bool:
@@ -1985,7 +2039,6 @@ async def get_leaderboard():
         "stats": stats_f
     }
 
-@app.get("/api/leaderboard/game/{game_id}")
 @app.get("/api/game_from_leaderboard/{game_id}")
 def api_game_from_leaderboard(game_id: str):
     """API: Read-Only Snapshot eines abgeschlossenen Spiels aus Leaderboard-Dateien."""
@@ -2008,7 +2061,8 @@ def api_game_from_leaderboard(game_id: str):
             # legacy: direkte Liste
             if isinstance(data, list):
                 return data
-        except Exception:
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            logger.warning("Could not read completed-game source %s", path, exc_info=True)
             return []
         return []
 
@@ -2049,29 +2103,15 @@ def api_game_from_leaderboard(game_id: str):
     raise HTTPException(status_code=404, detail="not_found")
 
 @app.post("/api/games")
-async def api_games_create(req: CreateReq):
+async def api_games_create(req: CreateReq, request: Request):
     """API: Neues Spiel anlegen (Name, Modus, optional Passphrase)."""
+    enforce_game_creation_rate_limit(request)
     gid = str(uuid.uuid4())[:8]
     g = new_game(gid, req.name, req.mode)
     g["_passphrase"] = (req.passphrase or None)
     g["_hardcore"] = bool(req.hardcore or False)
     save_active_game(g)
     return {"game_id": gid}
-
-# Legacy-Endpoints
-@app.get("/games")
-async def legacy_list():
-    """Legacy-Endpoint: einfache Spielauflistung (Kompatibilität)."""
-    return game_list_payload()
-
-@app.post("/create_game")
-async def legacy_create_game(mode: str, name: str, passphrase: str = ""):
-    """Legacy-Endpoint: Spiel anlegen (URL-Schema alt, mit pass-Query)."""
-    gid = str(uuid.uuid4())[:8]
-    g = new_game(gid, name, mode)
-    g["_passphrase"] = (passphrase or None)
-    save_active_game(g)
-    return {"id": gid}
 
 # Brave/Chromium DevTools Ping unterdrücken
 @app.get("/.well-known/appspecific/com.chrome.devtools")
@@ -2201,7 +2241,8 @@ def _append_json(path: Path, mutate_fn):
         if path.exists():
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
-            except Exception:
+            except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                logger.warning("Could not read JSON file %s; starting with an empty value", path, exc_info=True)
                 data = []
         new_data = mutate_fn(data)
         _atomic_write_json(path, new_data)
@@ -2223,8 +2264,8 @@ def _mutate_stats(incr_games=False, *, average_points: int | None = None, hardco
         if STATS_FILE.exists():
             try:
                 stats = json.loads(STATS_FILE.read_text(encoding="utf-8"))
-            except Exception:
-                pass
+            except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                logger.warning("Could not read statistics file %s; rebuilding defaults", STATS_FILE, exc_info=True)
         stats = _stats_with_average_points(stats)
         if incr_games:
             stats["games_played"] = int(stats.get("games_played", 0)) + 1
@@ -2375,6 +2416,7 @@ def _build_leaderboard_snapshot_fields(g: GameDict) -> dict:
         }
     except Exception:
         # Defensive: falls beim Snapshot etwas schiefgeht, Eintrag nicht blockieren
+        logger.exception("Could not serialize completed game %s", g.get("_id"))
         return {
             "game_id": str(g.get("_id") or ""),
             "finished_at": datetime.now(timezone.utc).isoformat(),
@@ -2532,7 +2574,7 @@ def _finalize_and_log_results(g: GameDict):
             for x in (lst or []):
                 try:
                     ts = datetime.fromisoformat(x.get("ts"))
-                except Exception:
+                except (AttributeError, TypeError, ValueError):
                     continue
                 if ts >= cutoff:
                     kept.append(x)
@@ -2632,25 +2674,55 @@ async def ws_game(websocket: WebSocket, game_id: str):
     if game_id not in games:
         await _close_ws_with_error(websocket, "Game nicht gefunden", fatal=True, code=1000)
         return
+    connection_address = _reserve_websocket(websocket)
+    if connection_address is None:
+        await _close_ws_with_error(websocket, "Zu viele Verbindungen", fatal=True, code=1013)
+        return
 
     g = games[game_id]
     player_id: str | None = None
     spectator_id: str | None = None
     is_spectator: bool = False
+    recent_messages: deque[float] = deque()
+    recent_social_messages: deque[float] = deque()
 
-    # Direkt initialen Snapshot senden
-    await websocket.send_json({
-        "scoreboard": snapshot(g),
-        "auth": {
-            "authenticated": bool(auth_identity),
-            "user": auth_identity_payload(auth_identity) if auth_identity else None,
-        },
-    })
+    # Direkt initialen Snapshot senden. Bei einem Abbruch vor der Empfangsschleife
+    # muss der reservierte Verbindungsslot ebenfalls freigegeben werden.
+    try:
+        await websocket.send_json({
+            "scoreboard": snapshot(g),
+            "auth": {
+                "authenticated": bool(auth_identity),
+                "user": auth_identity_payload(auth_identity) if auth_identity else None,
+            },
+        })
+    except Exception:
+        _release_websocket(connection_address)
+        logger.debug("Could not send initial WebSocket snapshot", exc_info=True)
+        return
 
     try:
         while True:
             data = await websocket.receive_json()
+            if not isinstance(data, dict):
+                await websocket.send_json({"error": "Ungültige Nachricht"})
+                continue
             act = data.get("action")
+
+            now_monotonic = time.monotonic()
+            while recent_messages and recent_messages[0] <= now_monotonic - 10:
+                recent_messages.popleft()
+            recent_messages.append(now_monotonic)
+            if len(recent_messages) > 60:
+                await _close_ws_with_error(websocket, "Zu viele Nachrichten", fatal=True, code=1008)
+                break
+            if act in {"send_emoji", "chat_message"}:
+                while recent_social_messages and recent_social_messages[0] <= now_monotonic - 5:
+                    recent_social_messages.popleft()
+                recent_social_messages.append(now_monotonic)
+                if len(recent_social_messages) > 10:
+                    await websocket.send_json({"error": "Bitte kurz warten"})
+                    continue
 
             # Vor jeder Aktion Timeout prüfen
             if check_timeout_and_abort(g):
@@ -2682,7 +2754,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     await _close_ws_with_error(websocket, blocked_reason, fatal=True)
                     break
 
-                requested_name = str(data.get("name") or "Gast").strip() or "Gast"
+                requested_name = (str(data.get("name") or "Gast").strip() or "Gast")[:64]
                 if auth_identity:
                     requested_name = auth_identity.username
                     duplicate_account = next(
@@ -2738,7 +2810,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 is_spectator = True
                 spec = {
                     "id": spectator_id,
-                    "name": auth_identity.username if auth_identity else (data.get("name") or "Gast"),
+                    "name": auth_identity.username if auth_identity else (str(data.get("name") or "Gast").strip() or "Gast")[:64],
                     "user_id": auth_identity.user_id if auth_identity else None,
                     "ws": websocket,
                 }
@@ -2750,7 +2822,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 try:
                     await broadcast(g, {"spectator": {"event": "joined", "name": spec["name"]}})
                 except Exception:
-                    pass
+                    logger.debug("Could not broadcast spectator join", exc_info=True)
                 await broadcast(g, {"scoreboard": snapshot(g)})
 
             elif act == "rejoin_game":
@@ -2794,7 +2866,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     try:
                         await old_ws.close(code=1000)
                     except Exception:
-                        pass
+                        logger.debug("Could not close replaced WebSocket", exc_info=True)
                 g["_manual_pause"] = False
                 g["_manual_pause_by"] = None
                 g["_manual_pause_by_name"] = None
@@ -3107,6 +3179,9 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 if not emoji:
                     await websocket.send_json({"error": "Kein Emoji"})
                     continue
+                if len(emoji) > 16:
+                    await websocket.send_json({"error": "Ungültige Reaktion"})
+                    continue
 
                 if player_id:
                     sender_name = next((p.get("name", "Gast") for p in g.get("_players", []) if p.get("id") == player_id), "Gast")
@@ -3329,7 +3404,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 try:
                     await broadcast(g, {"notice": {"type": "ended", "by": by_name}})
                 except Exception:
-                    pass
+                    logger.debug("Could not broadcast game-end notice", exc_info=True)
                 # Spiel als abgebrochen markieren (kein Leaderboard-Eintrag, kein Completed-Game)
                 g["_aborted"] = True
                 g["_results"] = None
@@ -3377,7 +3452,7 @@ async def ws_game(websocket: WebSocket, game_id: str):
                     if left_name:
                         await broadcast(g, {"spectator": {"event": "left", "name": left_name}})
                 except Exception:
-                    pass
+                    logger.debug("Could not broadcast spectator departure", exc_info=True)
             if player_id and g.get("_started") and not g.get("_finished") and not g.get("_aborted"):
                 g["_resume_required"] = True
                 touch(g)
@@ -3385,10 +3460,8 @@ async def ws_game(websocket: WebSocket, game_id: str):
                 try:
                     await broadcast(g, {"scoreboard": snapshot(g)})
                 except Exception:
-                    pass
-
-# -----------------------------
-# Run
-# -----------------------------
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+                    logger.debug("Could not broadcast disconnect snapshot", exc_info=True)
+    except Exception:
+        logger.exception("Unexpected WebSocket failure for game %s", game_id)
+    finally:
+        _release_websocket(connection_address)

@@ -250,34 +250,6 @@ function esc(s){
 }
 // function colIndexFromKey(k){ return k === "down" ? 1 : k === "free" ? 2 : k === "up" ? 3 : k === "ang" ? 4 : null; }
 
-// -------- Inline CSS (injected once) --------
-function ensureInlineScoreboardCSS(){
-  if (document.getElementById('scoreboard-inline-css')) return;
-
-  const css = `
-    /* keep your base flex layout from style.css */
-    .player-card .table-wrap { overflow: auto; max-width: 100%; }
-    table.grid.compact { width: 100%; table-layout: fixed; border-collapse: collapse; }
-    table.grid.compact th, table.grid.compact td { padding: 4px 6px; }
-  
-    /* highlight marks */
-    td.cell.last-write { box-shadow: inset 0 0 0 2px rgba(255,165,0,.95); }
-    td.cell.announced   { outline: 2px solid rgba(0,120,255,.8); }
-  
-    /* announce pick highlight (used by room.js) */
-    td.announce-pickable{ outline: 2px dashed var(--accent); outline-offset: -2px; background: #eef7ff; }
-    /* announce button sizing next to roll button */
-    #diceBar #announceBtnInline{ flex: 0 0 25%; min-width: 96px; }
-    #diceBar #rollBtnInline{ flex: 1 1 auto; }
-    .hc-badge { color:#b71c1c; font-weight:700; }
-  `;
-
-  const style = document.createElement('style');
-  style.id = 'scoreboard-inline-css';
-  style.textContent = css;
-  document.head.appendChild(style);
-}
-
 // -------- Haupt-Renderer --------
 /**
  * Rendert das Scoreboard (Einzel oder Team) inklusive Dicebar, Suggestions
@@ -289,7 +261,6 @@ function ensureInlineScoreboardCSS(){
 function renderScoreboard(mount, sb, {
   myPlayerId, iAmTurn, rollsUsed, rollsMax, announcedRow4, canRequestCorrection = false, readOnly = false
 } = {}) {
-  ensureInlineScoreboardCSS();
   if (!sb) { if (mount) mount.innerHTML = ""; return; }
 
   const isTeamMode = isTeamModeSnapshot(sb);

@@ -5,11 +5,11 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-from alembic import command
 from alembic.config import Config
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
+from alembic import command
 
 _engine: Engine | None = None
 _session_factory: sessionmaker[Session] | None = None

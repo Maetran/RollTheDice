@@ -17,7 +17,7 @@
 */
 // Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions)
 
-import { initChat, addChatMessage } from "./chat.js?v=e2e23f637297";
+import { initChat, addChatMessage } from "./chat.js?v=82453ff0615a";
 
 (() => {
   // ---------- Helpers ----------
@@ -1942,7 +1942,9 @@ function renderFromSnapshot(snapshot) {
       renderSuggestions(Array.isArray(snapshot?.suggestions) ? snapshot.suggestions : []);
     } catch {}
   }
-  if (new URLSearchParams(location.search).get("__test") === "1") {
+  const localTestMode = ["127.0.0.1", "localhost"].includes(location.hostname)
+    && new URLSearchParams(location.search).get("__test") === "1";
+  if (localTestMode) {
     window.__rtDebugRenderSuggestionsForSnapshot = renderSuggestionsForSnapshot;
     window.__rtDebugIsLastAllowedRoll = isLastAllowedRoll;
     window.__rtDebugShowGameResults = showGameResults;

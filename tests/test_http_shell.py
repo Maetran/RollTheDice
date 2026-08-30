@@ -84,12 +84,12 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         request = main.CreateReq.model_validate({
             "name": "HTTP shell test",
             "mode": "1",
-            "owner": "Tester",
             "pass": "",
             "hardcore": False,
         })
 
-        response = await main.api_games_create(request)
+        with patch("app.main.enforce_game_creation_rate_limit"):
+            response = await main.api_games_create(request, object())
         game_id = response["game_id"]
         try:
             self.assertIn(game_id, main.games)

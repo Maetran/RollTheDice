@@ -14,7 +14,6 @@ from .models import CompletedGame, DeletedGame, GameParticipant
 from .rules import compute_overall
 from .security import as_utc, utcnow
 
-
 logger = logging.getLogger(__name__)
 
 

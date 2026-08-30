@@ -1,0 +1,41 @@
+name: Quality
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: pip check
+      - run: ruff check .
+      - run: bandit -q -r app scripts -c pyproject.toml
+      - run: vulture app scripts tests --min-confidence 80
+      - run: pip-audit -r requirements-dev.txt --progress-spinner off
+      - run: pytest --cov --cov-report=term-missing
+      - run: python3 scripts/sync_static_versions.py --check
+      - run: git diff --check
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: pip install -r requirements-dev.txt
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser

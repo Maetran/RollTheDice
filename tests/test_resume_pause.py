@@ -1,6 +1,5 @@
-from tests.support import GameStateTestCase
-
 from app import main
+from tests.support import GameStateTestCase
 
 
 class ResumePauseTests(GameStateTestCase):

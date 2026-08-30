@@ -69,6 +69,7 @@ export function authError(detail) {
     invalid_credentials: 'Benutzername oder Passwort ist falsch.',
     login_temporarily_blocked: 'Zu viele Fehlversuche. Bitte später erneut versuchen.',
     registration_temporarily_blocked: 'Zu viele Registrierungen. Bitte warte kurz und versuche es später erneut.',
+    game_creation_temporarily_blocked: 'Zu viele neue Spiele. Bitte warte kurz und versuche es später erneut.',
     captcha_required: 'Bitte bestätige zuerst, dass du kein Bot bist.',
     captcha_invalid: 'Die Sicherheitsprüfung ist abgelaufen oder ungültig. Bitte versuche es erneut.',
     captcha_unavailable: 'Die Sicherheitsprüfung ist momentan nicht erreichbar. Bitte versuche es später erneut.',

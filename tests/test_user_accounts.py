@@ -1,18 +1,22 @@
+import asyncio
 import io
 import json
 import os
 import tempfile
-import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
-from alembic import command
+import httpx
 from alembic.config import Config
-from starlette.requests import Request
 from sqlalchemy import func, select
+from starlette.requests import Request
+from starlette.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
+from alembic import command
 from app import main
+from app.active_games import load_active_games, save_active_game
 from app.api_auth import (
     LanguagePreferenceRequest,
     UserPreferencesRequest,
@@ -37,6 +41,7 @@ from app.auth import (
     validate_request_origin,
 )
 from app.auth_protection import (
+    enforce_game_creation_rate_limit,
     enforce_login_rate_limit,
     enforce_registration_rate_limit,
     record_login_failure,
@@ -44,7 +49,6 @@ from app.auth_protection import (
     validate_auth_protection_config,
     verify_registration_challenge,
 )
-from app.active_games import load_active_games, save_active_game
 from app.database import configure_database, session_scope, upgrade_database
 from app.game_history import import_legacy_leaderboards, persist_runtime_game, stable_game_id
 from app.models import ActiveGame, AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, Session, User
@@ -296,6 +300,88 @@ class AccountDatabaseTestCase(GameStateTestCase):
         with self.assertRaisesRegex(Exception, "registration_temporarily_blocked") as blocked:
             enforce_registration_rate_limit(request)
         self.assertEqual(blocked.exception.status_code, 429)
+
+    def test_game_creation_rate_limit_blocks_bursts(self):
+        request = request_for()
+        for _ in range(5):
+            enforce_game_creation_rate_limit(request)
+
+        with self.assertRaisesRegex(Exception, "game_creation_temporarily_blocked") as blocked:
+            enforce_game_creation_rate_limit(request)
+        self.assertEqual(blocked.exception.status_code, 429)
+
+    def test_game_creation_payload_has_server_side_limits(self):
+        valid = main.CreateReq.model_validate({"name": " Runde ", "mode": 2, "pass": " geheim "})
+        self.assertEqual(valid.name, "Runde")
+        self.assertEqual(valid.mode, "2")
+        self.assertEqual(valid.passphrase, "geheim")
+
+        for payload in (
+            {"name": "", "mode": "2"},
+            {"name": "x" * 81, "mode": "2"},
+            {"name": "Runde", "mode": "5"},
+            {"name": "Runde", "mode": "2", "pass": "x" * 101},
+        ):
+            with self.subTest(payload=payload), self.assertRaises(ValueError):
+                main.CreateReq.model_validate(payload)
+
+    def test_game_creation_http_validation_and_rate_limit(self):
+        async def scenario():
+            transport = httpx.ASGITransport(app=main.app)
+            async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+                invalid = await client.post("/api/games", json={"name": "Runde", "mode": "5"})
+                self.assertEqual(invalid.status_code, 422)
+                too_long = await client.post("/api/games", json={"name": "x" * 81, "mode": "2"})
+                self.assertEqual(too_long.status_code, 422)
+
+                created_ids = []
+                for index in range(5):
+                    response = await client.post("/api/games", json={"name": f"Runde {index}", "mode": "2"})
+                    self.assertEqual(response.status_code, 200)
+                    created_ids.append(response.json()["game_id"])
+                blocked = await client.post("/api/games", json={"name": "Eine zu viel", "mode": "2"})
+                self.assertEqual(blocked.status_code, 429)
+                self.assertEqual(blocked.json()["detail"], "game_creation_temporarily_blocked")
+                return created_ids
+
+        for game_id in asyncio.run(scenario()):
+            main.games.pop(game_id, None)
+
+    def test_websocket_rejects_foreign_origin_and_unknown_actions(self):
+        game = self.make_game(mode=1, players=[("p1", "Anna")])
+        with TestClient(main.app) as client:
+            with self.assertRaises(WebSocketDisconnect) as rejected:
+                with client.websocket_connect(
+                    f"/ws/{game['_id']}", headers={"origin": "https://evil.example"}
+                ):
+                    pass
+            self.assertEqual(rejected.exception.code, 1008)
+
+            with client.websocket_connect(
+                f"/ws/{game['_id']}", headers={"origin": "http://testserver"}
+            ) as websocket:
+                websocket.receive_json()
+                websocket.send_json({"action": "not-a-real-action"})
+                self.assertIn("Unbekannte Aktion", websocket.receive_json()["error"])
+
+    def test_websocket_connection_limits_are_released(self):
+        websocket = type("Socket", (), {"client": type("Client", (), {"host": "127.0.0.9"})()})()
+        original = dict(main.websocket_connections_by_address)
+        main.websocket_connections_by_address.clear()
+        try:
+            with patch.object(main, "MAX_WEBSOCKETS_PER_ADDRESS", 2), patch.object(
+                main, "MAX_WEBSOCKETS_GLOBAL", 2
+            ):
+                first = main._reserve_websocket(websocket)
+                second = main._reserve_websocket(websocket)
+                self.assertEqual(first, "127.0.0.9")
+                self.assertEqual(second, "127.0.0.9")
+                self.assertIsNone(main._reserve_websocket(websocket))
+                main._release_websocket(first)
+                self.assertEqual(main._reserve_websocket(websocket), "127.0.0.9")
+        finally:
+            main.websocket_connections_by_address.clear()
+            main.websocket_connections_by_address.update(original)
 
     def test_login_failure_limit_is_persistent(self):
         request = request_for()

@@ -32,7 +32,6 @@ from .models import Session as LoginSession
 from .models import User
 from .security import utcnow
 
-
 router = APIRouter(prefix="/api", tags=["authentication"])
 
 
