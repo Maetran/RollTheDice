@@ -72,12 +72,15 @@ if [[ -d data ]]; then
     compose stop rollthedice >/dev/null
   fi
   backup_dir="data.backup-$(date +%Y%m%d-%H%M%S)"
-  cp -a data "$backup_dir"
+  # Docker's root-mapped process owns SQLite and its WAL files. Preserve their
+  # ownership and copy them via sudo so a later deployment stays writable.
+  sudo -n cp -a data "$backup_dir"
   resume_service
   trap - EXIT
   echo "Created $backup_dir"
 else
-  mkdir -p data
+  sudo -n mkdir -p data
+  sudo -n chown root:root data
   echo "Created missing data directory for first deploy"
 fi
 
@@ -105,5 +108,5 @@ fi
 echo "== Backup retention =="
 # Erst nach dem erfolgreichen Rollout aufräumen. Das soeben erstellte Backup
 # gehört zu den fünf neuesten und bleibt damit für einen Rollback erhalten.
-BACKUP_ROOT="$REMOTE_DIR" KEEP=5 APPLY=1 scripts/prune_data_backups.sh
+sudo -n env BACKUP_ROOT="$REMOTE_DIR" KEEP=5 APPLY=1 scripts/prune_data_backups.sh
 REMOTE_SCRIPT

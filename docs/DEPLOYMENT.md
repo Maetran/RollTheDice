@@ -24,6 +24,11 @@ Sessions, Schutzereignisse, wartende/laufende sowie vollständige Spiele und Zuo
 JSON-Dateien enthalten weiterhin Leaderboards und ältere Statistikdaten. Beide
 Speicherarten gehören zu den Produktionsdaten.
 
+Der Checkout gehört `manuel`; `data/` bleibt hingegen `root:root`, weil der
+Docker-Prozess die SQLite-Datei inklusive WAL-Dateien mit diesem Mapping
+schreibt. Das Deploy-Skript verwendet deshalb nur für Docker und Datenbackups
+passwortloses `sudo`.
+
 ## Unverhandelbare Datenregeln
 
 `data/` darf bei einem Deployment niemals gelöscht, geleert oder durch lokale
