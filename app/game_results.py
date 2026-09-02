@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 
+from .achievements import sync_achievements_for_users
 from .active_games import delete_active_game
 from .game_engine import _compute_final_totals, _rows_from_scoreboard
 from .game_history import persist_runtime_game, stable_game_id
@@ -199,7 +200,10 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
 
     # Vollständige Historie für Profile und Rankings. Die bisherigen JSON-
     # Leaderboards bleiben während der Übergangsphase parallel bestehen.
-    persist_runtime_game(g, totals, snapshot_fields)
+    if persist_runtime_game(g, totals, snapshot_fields):
+        sync_achievements_for_users(
+            {int(player["user_id"]) for player in g.get("_players", []) if player.get("user_id") is not None}
+        )
     delete_active_game(str(g.get("_id") or ""))
 
     entries_for_recent = []

@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
+from .achievements import sync_achievements_for_users, sync_user_achievements
 from .auth import require_admin, require_csrf, require_user
 from .database import database_schema_ready, session_scope
 from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User
@@ -70,11 +71,13 @@ def _statistics_for_user(db, user_id: int) -> dict:
     for key in ("normal", "hardcore"):
         mode_points = points_by_mode[key]
         buckets[key]["median_points"] = round(float(median(mode_points)), 1) if mode_points else None
-        buckets[key].update(recent_points_trend(
-            mode_points,
-            games_played=buckets[key]["games_played"],
-            points_total=buckets[key]["points_total"],
-        ))
+        buckets[key].update(
+            recent_points_trend(
+                mode_points,
+                games_played=buckets[key]["games_played"],
+                points_total=buckets[key]["points_total"],
+            )
+        )
     normal = buckets["normal"]
     hardcore = buckets["hardcore"]
     total_games = normal["games_played"] + hardcore["games_played"]
@@ -125,6 +128,7 @@ def _public_profile(db, user: User) -> dict:
         "username": user.username,
         "statistics": _statistics_for_user(db, user.id),
         "recent_games": _recent_games_for_user(db, user.id),
+        "achievements": sync_user_achievements(db, user),
     }
 
 
@@ -240,6 +244,8 @@ def own_statistics(request: Request):
         user = db.get(User, identity.user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
+        user.statistics_views += 1
+        user.updated_at = utcnow()
         return {"player": _public_profile(db, user), "private": {"role": user.role}}
 
 
@@ -303,7 +309,9 @@ def admin_game_participants(
             needle = f"%{query.strip().casefold()}%"
             stmt = stmt.where(func.lower(GameParticipant.display_name).like(needle))
         participants = list(
-            db.scalars(stmt.order_by(CompletedGame.finished_at.desc(), GameParticipant.position).offset(offset).limit(limit))
+            db.scalars(
+                stmt.order_by(CompletedGame.finished_at.desc(), GameParticipant.position).offset(offset).limit(limit)
+            )
         )
         return {
             "participants": [
@@ -318,8 +326,7 @@ def admin_game_participants(
                     "team": participant.team,
                     "points": participant.points,
                     "user": (
-                        {"id": participant.user.id, "username": participant.user.username}
-                        if participant.user else None
+                        {"id": participant.user.id, "username": participant.user.username} if participant.user else None
                     ),
                 }
                 for participant in participants
@@ -348,23 +355,27 @@ def admin_completed_games(request: Request, query: str = "", limit: int = 100, o
                 | func.lower(CompletedGame.game_id).like(needle)
                 | CompletedGame.id.in_(matching_games)
             )
-        games = list(db.scalars(
-            stmt.order_by(CompletedGame.finished_at.desc()).offset(offset).limit(limit)
-        ))
+        games = list(db.scalars(stmt.order_by(CompletedGame.finished_at.desc()).offset(offset).limit(limit)))
         return {
-            "games": [{
-                "game_id": game.game_id,
-                "game_name": game.game_name,
-                "finished_at": game.finished_at,
-                "mode": game.mode,
-                "hardcore": game.hardcore,
-                "imported_from_legacy": game.imported_from_legacy,
-                "participants": [{
-                    "display_name": participant.display_name,
-                    "points": participant.points,
-                    "username": participant.user.username if participant.user else None,
-                } for participant in game.participants],
-            } for game in games],
+            "games": [
+                {
+                    "game_id": game.game_id,
+                    "game_name": game.game_name,
+                    "finished_at": game.finished_at,
+                    "mode": game.mode,
+                    "hardcore": game.hardcore,
+                    "imported_from_legacy": game.imported_from_legacy,
+                    "participants": [
+                        {
+                            "display_name": participant.display_name,
+                            "points": participant.points,
+                            "username": participant.user.username if participant.user else None,
+                        }
+                        for participant in game.participants
+                    ],
+                }
+                for game in games
+            ],
             "limit": limit,
             "offset": offset,
         }
@@ -381,22 +392,28 @@ def admin_deleted_games(request: Request, limit: int = 50):
             .order_by(DeletedGame.deleted_at.desc())
             .limit(limit)
         ).all()
-        return {"games": [{
-            "game_id": game.game_id,
-            "game_name": game.game_name,
-            "finished_at": game.finished_at,
-            "mode": game.mode,
-            "hardcore": game.hardcore,
-            "deleted_at": game.deleted_at,
-            "deleted_by": username,
-            "reason": game.reason,
-        } for game, username in rows]}
+        return {
+            "games": [
+                {
+                    "game_id": game.game_id,
+                    "game_name": game.game_name,
+                    "finished_at": game.finished_at,
+                    "mode": game.mode,
+                    "hardcore": game.hardcore,
+                    "deleted_at": game.deleted_at,
+                    "deleted_by": username,
+                    "reason": game.reason,
+                }
+                for game, username in rows
+            ]
+        }
 
 
 @router.put("/admin/game-participants/{participant_id}/assignment")
 def assign_game_participant(participant_id: int, payload: AssignmentRequest, request: Request):
     identity = require_admin(request)
     require_csrf(request, identity)
+    affected_user_ids: set[int] = set()
     with session_scope() as db:
         participant = db.get(GameParticipant, participant_id)
         if not participant:
@@ -411,14 +428,18 @@ def assign_game_participant(participant_id: int, payload: AssignmentRequest, req
         participant.user_id = payload.user_id
         participant.assigned_by_user_id = identity.user_id
         participant.assigned_at = utcnow()
-        db.add(AssignmentAudit(
-            participant_id=participant.id,
-            previous_user_id=previous_user_id,
-            new_user_id=payload.user_id,
-            admin_user_id=identity.user_id,
-            changed_at=utcnow(),
-        ))
-        return {"ok": True, "changed": True}
+        db.add(
+            AssignmentAudit(
+                participant_id=participant.id,
+                previous_user_id=previous_user_id,
+                new_user_id=payload.user_id,
+                admin_user_id=identity.user_id,
+                changed_at=utcnow(),
+            )
+        )
+        affected_user_ids = {user_id for user_id in (previous_user_id, payload.user_id) if user_id is not None}
+    sync_achievements_for_users(affected_user_ids)
+    return {"ok": True, "changed": True}
 
 
 def profile_links_for_games(game_ids: set[str]) -> dict[str, list[dict]]:
@@ -434,10 +455,12 @@ def profile_links_for_games(game_ids: set[str]) -> dict[str, list[dict]]:
         ).all()
         result: dict[str, list[dict]] = {}
         for game_id, display_name, points, user_id, username in rows:
-            result.setdefault(game_id, []).append({
-                "user_id": user_id,
-                "username": username,
-                "display_name": display_name,
-                "points": int(points),
-            })
+            result.setdefault(game_id, []).append(
+                {
+                    "user_id": user_id,
+                    "username": username,
+                    "display_name": display_name,
+                    "points": int(points),
+                }
+            )
         return result

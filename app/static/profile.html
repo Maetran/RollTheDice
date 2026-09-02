@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Öffentliches ZDWA Spielerprofil mit Statistiken und letzten Spielen.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=6b7db9f1f166">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=6b7db9f1f166" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=6b7db9f1f166" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=0f3a2da9ad91">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=0f3a2da9ad91" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=0f3a2da9ad91" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=6b7db9f1f166">
-  <script src="/static/shell.js?v=6b7db9f1f166" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=0f3a2da9ad91">
+  <script src="/static/shell.js?v=0f3a2da9ad91" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -27,6 +27,17 @@
       <h1 id="profileName">Spielerprofil</h1>
       <div id="profileError" class="connection-error" hidden></div>
       <div id="statistics" class="statistics-grid"></div>
+      <section class="achievements-section" aria-labelledby="achievementsTitle">
+        <div class="section-title-row"><div><p class="eyebrow">Sammlung</p><h2 id="achievementsTitle">Erfolge</h2></div><p id="achievementSummary" class="muted small"></p></div>
+        <section class="achievement-group" aria-labelledby="unlockedAchievementsTitle">
+          <h3 id="unlockedAchievementsTitle">Erreicht</h3>
+          <div id="unlockedAchievements" class="achievement-grid"></div>
+        </section>
+        <section class="achievement-group achievement-group-locked" aria-labelledby="lockedAchievementsTitle">
+          <h3 id="lockedAchievementsTitle">Noch zu erreichen</h3>
+          <div id="lockedAchievements" class="achievement-grid"></div>
+        </section>
+      </section>
       <section id="recentGamesSection" class="recent-games-section" hidden>
         <h2>Letzte Spiele</h2>
         <div id="recentGames" class="recent-games-list"></div>
@@ -34,7 +45,7 @@
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber } from '/static/auth.js?v=6b7db9f1f166';
+    import { escapeHtml, formatNumber } from '/static/auth.js?v=0f3a2da9ad91';
     const profilePath = location.pathname.match(/^\/spieler\/([^/]+)\/?$/);
     let username = new URLSearchParams(location.search).get('user') || '';
     try { if (profilePath) username = decodeURIComponent(profilePath[1]); }
@@ -70,6 +81,23 @@
       </article>`;
     }
 
+    function achievementIcon(iconKey) {
+      const icons = { points: '◆', games: '▦', score: '★', upper: '↑', row: '≡', strike: '×', sixty: '6', full: '●', poker: '♠', office: '◫', night: '☾', weekend: '☀', early: '↗', statistics: '⌁', account: '✓' };
+      return icons[iconKey] || '✦';
+    }
+
+    function achievementCard(item, unlocked) {
+      const progress = item.progress || {};
+      const current = Number(progress.current || 0);
+      const target = Number(progress.target || 1);
+      const progressText = unlocked ? 'Erreicht' : `${formatNumber(Math.min(current, target), '0')} / ${formatNumber(target, '0')}`;
+      return `<article class="achievement-card${unlocked ? ' unlocked' : ' locked'}">
+        <span class="achievement-icon achievement-icon-${escapeHtml(item.icon_key || 'default')}" aria-hidden="true">${achievementIcon(item.icon_key)}</span>
+        <span class="achievement-copy"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.description)}</small></span>
+        <span class="achievement-progress">${escapeHtml(progressText)}</span>
+      </article>`;
+    }
+
     try {
       const response = await fetch(`/api/players/${encodeURIComponent(username)}`, { cache: 'no-store' });
       if (!response.ok) throw new Error(response.status === 404 ? 'Spieler wurde nicht gefunden.' : 'Profil konnte nicht geladen werden.');
@@ -78,6 +106,16 @@
       statisticsEl.innerHTML = bucket('Gesamt', player.statistics.overall, { details: false })
         + bucket('Normal', player.statistics.normal)
         + bucket('Hardcore', player.statistics.hardcore);
+      const achievements = player.achievements || {};
+      const unlocked = Array.isArray(achievements.unlocked) ? achievements.unlocked : [];
+      const locked = Array.isArray(achievements.locked) ? achievements.locked : [];
+      document.getElementById('achievementSummary').textContent = `${unlocked.length} von ${unlocked.length + locked.length} erreicht`;
+      document.getElementById('unlockedAchievements').innerHTML = unlocked.length
+        ? unlocked.map(item => achievementCard(item, true)).join('')
+        : '<p class="muted">Noch keine Erfolge erreicht – das erste Ziel wartet bereits.</p>';
+      document.getElementById('lockedAchievements').innerHTML = locked.length
+        ? locked.map(item => achievementCard(item, false)).join('')
+        : '<p class="muted">Alle derzeitigen Erfolge sind erreicht.</p>';
       const recent = Array.isArray(player.recent_games) ? player.recent_games : [];
       if (recent.length) {
         document.getElementById('recentGamesSection').hidden = false;

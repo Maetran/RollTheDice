@@ -26,6 +26,7 @@ class User(Base):
     haptic_feedback: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     keep_screen_awake: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     preferred_language: Mapped[str] = mapped_column(String(2), nullable=False, default="de")
+    statistics_views: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
@@ -33,6 +34,7 @@ class User(Base):
     participations: Mapped[list[GameParticipant]] = relationship(
         back_populates="user", foreign_keys="GameParticipant.user_id"
     )
+    achievements: Mapped[list[UserAchievement]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class Session(Base):
@@ -109,9 +111,7 @@ class DeletedGame(Base):
     mode: Mapped[str] = mapped_column(String(16), nullable=False)
     hardcore: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     deleted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    deleted_by_user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
-    )
+    deleted_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
 
     __table_args__ = (Index("ix_deleted_games_deleted_at", "deleted_at"),)
@@ -129,9 +129,7 @@ class GameParticipant(Base):
     points: Mapped[int] = mapped_column(Integer, nullable=False)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    assigned_by_user_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    assigned_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     game: Mapped[CompletedGame] = relationship(back_populates="participants")
     user: Mapped[User | None] = relationship(back_populates="participations", foreign_keys=[user_id])
@@ -146,10 +144,24 @@ class AssignmentAudit(Base):
     __tablename__ = "assignment_audit"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    participant_id: Mapped[int] = mapped_column(
-        ForeignKey("game_participants.id", ondelete="CASCADE"), nullable=False
-    )
+    participant_id: Mapped[int] = mapped_column(ForeignKey("game_participants.id", ondelete="CASCADE"), nullable=False)
     previous_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     new_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     admin_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class UserAchievement(Base):
+    __tablename__ = "user_achievements"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    achievement_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="achievements")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "achievement_key", name="uq_user_achievement"),
+        Index("ix_user_achievements_user", "user_id"),
+    )

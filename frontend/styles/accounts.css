@@ -83,6 +83,21 @@
 .account-panel[hidden] { display: none; }
 .account-settings-panel { display: grid; gap: 1rem; }
 .statistics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.achievements-section{ margin-top:1.25rem; padding-top:1.1rem; border-top:1px solid var(--border); }
+.achievements-section h2{ margin:0; }
+.achievement-group{ margin-top:1rem; }
+.achievement-group h3{ margin:0 0 .6rem; font-size:1rem; }
+.achievement-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.6rem; }
+.achievement-card{ display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:.65rem; align-items:center; min-height:4.9rem; padding:.7rem; border:1px solid var(--border); border-radius:var(--radius-card); background:var(--surface-soft); }
+.achievement-card.unlocked{ border-color:color-mix(in srgb,var(--success) 52%,var(--border)); background:color-mix(in srgb,var(--success-soft) 62%,var(--card)); }
+.achievement-card.locked{ opacity:.78; }
+.achievement-icon{ display:grid; place-items:center; width:2.35rem; height:2.35rem; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--accent); font-weight:850; font-size:1.15rem; }
+.achievement-card.unlocked .achievement-icon{ border-color:color-mix(in srgb,var(--success) 55%,var(--border)); color:var(--success); }
+.achievement-copy{ display:grid; gap:.18rem; min-width:0; }
+.achievement-copy strong{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.achievement-copy small{ color:var(--muted); line-height:1.25; }
+.achievement-progress{ align-self:start; padding:.16rem .38rem; border-radius:999px; background:var(--card); color:var(--muted); font-size:.72rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.achievement-card.unlocked .achievement-progress{ color:var(--success); }
 .stat-bucket { border: 1px solid var(--border); border-radius:var(--radius-card); padding: 1rem; background: color-mix(in srgb, var(--card) 92%, var(--accent) 8%); }
 .stat-bucket h2 { margin-top: 0; }
 .stat-bucket dl { margin: 0; }
@@ -359,7 +374,7 @@ body.app-dialog-open{ overflow:hidden; }
 }
 
 @media (max-width: 760px) {
-  .statistics-grid { grid-template-columns: 1fr; }
+  .statistics-grid, .achievement-grid { grid-template-columns: 1fr; }
   .admin-module-grid { grid-template-columns: 1fr; }
   .admin-create-grid, .assignment-row, .completed-game-row { grid-template-columns: 1fr; }
   .ranking-controls { width: 100%; justify-content: flex-start; }

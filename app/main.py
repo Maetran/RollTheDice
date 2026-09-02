@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse,
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
+from .achievements import sync_achievements_for_users
 from .active_games import load_active_games, save_active_game
 from .api_auth import router as auth_router
 from .api_users import router as users_router
@@ -555,6 +556,7 @@ def admin_delete_completed_game(game_id: str, payload: DeleteCompletedGameReq, r
         status_code = 409 if detail == "game_already_deleted" else 400
         raise HTTPException(status_code=status_code, detail=detail) from exc
     _remove_deleted_game_from_files(deleted)
+    sync_achievements_for_users(set(deleted["affected_user_ids"]))
     return {
         "ok": True,
         "game_id": deleted["game_id"],

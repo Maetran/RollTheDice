@@ -54,7 +54,16 @@ from app.game_engine import _compute_final_totals
 from app.game_history import import_legacy_leaderboards, persist_runtime_game, stable_game_id
 from app.game_results import build_leaderboard_snapshot_fields
 from app.leaderboard_storage import LeaderboardFiles
-from app.models import ActiveGame, AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, Session, User
+from app.models import (
+    ActiveGame,
+    AssignmentAudit,
+    CompletedGame,
+    DeletedGame,
+    GameParticipant,
+    Session,
+    User,
+    UserAchievement,
+)
 from app.security import validate_password
 from app.trends import recent_points_trend
 from tests.support import GameStateTestCase
@@ -520,6 +529,36 @@ class AccountDatabaseTestCase(GameStateTestCase):
             },
         )
         self.assertEqual(history["games"][0]["game_id"], g["_id"])
+
+    def test_profile_achievements_are_backfilled_from_saved_games(self):
+        user = create_user("Achiever", "temporary-achiever-123", must_change_password=False)
+        g = self.make_game(mode=1, players=[("p1", user.username)])
+        g["_players"][0]["user_id"] = user.id
+        g["_scoreboards"]["p1"] = self.high_scoreboard()
+        snapshot = build_leaderboard_snapshot_fields(g)
+        snapshot["finished_at"] = "2026-08-30T01:30:00+00:00"  # Sunday, 03:30 in Zurich
+        self.assertTrue(persist_runtime_game(g, {"p1": 1_200}, snapshot))
+        with session_scope() as db:
+            db.get(User, user.id).statistics_views = 10
+
+        achievements = public_player_profile(user.username)["player"]["achievements"]
+        unlocked = {item["key"] for item in achievements["unlocked"]}
+        expected = {
+            "account_created",
+            "single_game_score_1000",
+            "single_game_score_1100",
+            "single_game_score_1200",
+            "lower_six_strikes",
+            "sixty_once",
+            "night_owl",
+            "statistics_views",
+        }
+        self.assertTrue(expected.issubset(unlocked), unlocked)
+        self.assertEqual(len(unlocked) + len(achievements["locked"]), 33)
+        weekend = next(item for item in achievements["locked"] if item["key"] == "weekend_games")
+        self.assertEqual(weekend["progress"], {"current": 1, "target": 10})
+        with session_scope() as db:
+            self.assertEqual(db.scalar(select(func.count()).select_from(UserAchievement)), len(unlocked))
 
     def test_account_statistics_and_history_keep_modes_separate(self):
         user = create_user("ModeStats", "temporary-mode-stats-123", must_change_password=False)
