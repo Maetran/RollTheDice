@@ -42,6 +42,8 @@ import { EN } from "./catalog.js";
     [/Trend positiv/g, "Positive trend"],
     [/Trend negativ/g, "Negative trend"],
     [/Trend stagnierend/g, "Unchanged trend"],
+    [/(\d+) von (\d+) erreicht/g, "$1 of $2 achieved"],
+    [/🏆 Erfolg erreicht: /g, "🏆 Achievement unlocked: "],
     [/Punkte/g, "points"],
     [/Würfel (\d+): neue Augenzahl \(1–6\)/g, "Die $1: new value (1–6)"],
     [/Superadmin: Zusatzwurf ausgeführt \(freie Würfel: (.+)\)\./g, "Superadmin: extra roll completed (free dice: $1)."],

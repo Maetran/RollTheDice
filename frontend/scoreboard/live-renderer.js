@@ -247,7 +247,7 @@ function renderRows(sc, sb, ctx){
         !isCompute &&
         !hasRaw &&
         ctx.iAmTurn &&
-        rolledYet &&
+        (rolledYet || lastCellMode) &&
         (announceOk || lastCellMode);
 
       // In Korrektur: ❗ (ang) nur, wenn roll_index == 1 (Ansagefenster). Sonst gesperrt.
@@ -270,7 +270,7 @@ function renderRows(sc, sb, ctx){
           titleText = "Klicke, um deinen letzten Eintrag hierher zu verschieben";
         } else if (!ctx.iAmTurn) {
           titleText = (titleText ? titleText + " • " : "") + "Nicht an der Reihe";
-        } else if (!rolledYet) {
+        } else if (!rolledYet && !lastCellMode) {
           titleText = (titleText ? titleText + " • " : "") + "Erst würfeln";
         } else if (announced && !isAnnouncedCell && !lastCellMode) {
           titleText = "Ansage aktiv: Nur ❗ (angekündigtes Feld) ist erlaubt";

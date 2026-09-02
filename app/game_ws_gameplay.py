@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Awaitable, Callable
 
 from .game_engine import (
     _begin_next_turn,
     _filled_rows_in_board,
     _is_game_finished,
+    _is_last_turn_for,
     _next_required_row,
     _parse_write_target,
     apply_roll,
@@ -30,6 +32,8 @@ from .game_state import (
     touch,
 )
 from .game_ws_session import GameSocketSession
+
+logger = logging.getLogger(__name__)
 
 GAMEPLAY_ACTIONS = frozenset(
     {
@@ -188,15 +192,23 @@ async def _write_field(
     if g["_correction"]["active"]:
         await _send_error(session, "Während Korrektur nicht erlaubt")
         return
-    if int(g.get("_rolls_used", 0) or 0) < 1:
-        await _send_error(session, "Erst würfeln")
-        return
     try:
         row, column, field = _parse_write_target(data)
     except ValueError as exc:
         await _send_error(session, str(exc))
         return
     strike = bool(data.get("strike"))
+
+    # Das einzig verbliebene Feld muss immer als 0 abgeschlossen werden können.
+    # Der allgemeine "Erst würfeln"-Guard wurde nach dem Refactoring vor der
+    # Letztfeld-Ausnahme geprüft und konnte dadurch ein bereits festgefahrenes
+    # Endspiel nicht mehr beenden.
+    terminal_write_without_roll = (
+        int(g.get("_rolls_used", 0) or 0) < 1 and _is_last_turn_for(g, player_id)
+    )
+    if int(g.get("_rolls_used", 0) or 0) < 1 and not terminal_write_without_roll:
+        await _send_error(session, "Erst würfeln")
+        return
 
     ok, reason = can_write_now(
         g,
@@ -228,7 +240,9 @@ async def _write_field(
         if score_field_value("poker", dice) > 0 and not allowed_points:
             strike = True
 
-    value = 0 if strike else score_field_value(field, dice)
+    # Ohne Wurf kann das letzte Feld nur gestrichen werden; niemals Punkte aus
+    # einem veralteten oder leeren Würfelzustand übernehmen.
+    value = 0 if strike or terminal_write_without_roll else score_field_value(field, dice)
     board[key] = value
     g["_last_write"][player_id] = (row, column, g["_rolls_used"])
     g["_last_dice"][player_id] = dice[:]
@@ -243,7 +257,13 @@ async def _write_field(
     if _is_game_finished(g):
         g["_started"] = False
         g["_finished"] = True
-        completion = finalize_game(g) or {}
+        try:
+            completion = finalize_game(g) or {}
+        except Exception:
+            # Persistenz und Achievements dürfen den Spielabschluss im Client
+            # nicht blockieren. Der Zustand ist bereits korrekt abgeschlossen;
+            # das Ergebnis-Snapshot muss daher in jedem Fall gesendet werden.
+            logger.exception("Could not finalize completed game %s", g.get("_id"))
 
     touch(g)
     await broadcast(

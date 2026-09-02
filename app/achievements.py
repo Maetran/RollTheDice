@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -15,6 +16,7 @@ from .security import as_utc, utcnow
 ZURICH = ZoneInfo("Europe/Zurich")
 TOP_FIELDS = tuple(str(number) for number in range(1, 7))
 LOWER_FIELDS = ("kenter", "full", "poker")
+STYLER_FULL_VALUES = frozenset(40 + 3 * face for face in range(1, 7))
 
 
 @dataclass(frozen=True)
@@ -230,6 +232,149 @@ ACHIEVEMENTS: tuple[Achievement, ...] = tuple(
             4,
         ),
         Achievement(
+            "five_ones_written",
+            "Einser-Serie",
+            "Fünf Einsen im 1er-Feld geschrieben.",
+            "upper",
+            "five_ones_written",
+        ),
+        Achievement(
+            "min_five",
+            "Bäm Minimum",
+            "Genau 5 Punkte im Minimum geschrieben.",
+            "score",
+            "min_five",
+        ),
+        Achievement(
+            "max_under_ten",
+            "Fail Max",
+            "Weniger als 10 Punkte im Maximum geschrieben.",
+            "score",
+            "max_under_ten",
+        ),
+        Achievement(
+            "min_under_ten",
+            "Minimum tief",
+            "Weniger als 10 Punkte im Minimum geschrieben.",
+            "score",
+            "min_under_ten",
+        ),
+        Achievement(
+            "max_over_25",
+            "Maximum hoch",
+            "Mehr als 25 Punkte im Maximum geschrieben.",
+            "score",
+            "max_over_25",
+        ),
+        Achievement(
+            "min_over_25",
+            "Fail Min",
+            "Mehr als 25 Punkte im Minimum geschrieben.",
+            "score",
+            "min_over_25",
+        ),
+        Achievement(
+            "diff_over_125",
+            "Differenz extrem III",
+            "In einer Reihe eine Differenz über 125 erreicht.",
+            "diff",
+            "extra_diff_max",
+            126,
+        ),
+        Achievement(
+            "max_thirty",
+            "Bäm Maximum",
+            "30 Punkte im Maximum geschrieben.",
+            "score",
+            "max_thirty",
+        ),
+        Achievement(
+            "six_thirty",
+            "Sechser-Bäm",
+            "30 Punkte im 6er-Feld geschrieben.",
+            "upper",
+            "six_thirty",
+        ),
+        Achievement(
+            "styler_full_once",
+            "Styler Full",
+            "Ein Full mit fünf gleichen Würfeln geschrieben.",
+            "full",
+            "styler_full_count",
+        ),
+        Achievement(
+            "styler_full_10",
+            "Styler-Show",
+            "10 Fulls mit fünf gleichen Würfeln geschrieben.",
+            "full",
+            "styler_full_count",
+            10,
+        ),
+        Achievement(
+            "daily_streak_7",
+            "Wochenläufer",
+            "Während 7 aufeinanderfolgenden Tagen je ein Spiel beendet.",
+            "games",
+            "daily_streak",
+            7,
+        ),
+        Achievement(
+            "daily_streak_14",
+            "Zwei-Wochen-Lauf",
+            "Während 14 aufeinanderfolgenden Tagen je ein Spiel beendet.",
+            "games",
+            "daily_streak",
+            14,
+        ),
+        Achievement(
+            "daily_streak_30",
+            "Monatsläufer",
+            "Während 30 aufeinanderfolgenden Tagen je ein Spiel beendet.",
+            "games",
+            "daily_streak",
+            30,
+        ),
+    ]
+    + _tiered(
+        "hardcore_games",
+        "games",
+        [
+            (1, "Hardcore-Einstieg", "1 Hardcore-Spiel abgeschlossen."),
+            (10, "Hardcore-Stammgast", "10 Hardcore-Spiele abgeschlossen."),
+            (30, "Hardcore-Veteran", "30 Hardcore-Spiele abgeschlossen."),
+            (50, "Hardcore-Dauerläufer", "50 Hardcore-Spiele abgeschlossen."),
+            (100, "Hardcore-Hundert", "100 Hardcore-Spiele abgeschlossen."),
+            (300, "Hardcore-Monument", "300 Hardcore-Spiele abgeschlossen."),
+            (500, "Hardcore-Legende", "500 Hardcore-Spiele abgeschlossen."),
+            (1_000, "Hardcore-Unsterblich", "1’000 Hardcore-Spiele abgeschlossen."),
+        ],
+    )
+    + _tiered(
+        "hardcore_score",
+        "score",
+        [
+            (300, "Hardcore 300", "In einem Hardcore-Spiel mindestens 300 Punkte erreicht."),
+            (400, "Hardcore 400", "In einem Hardcore-Spiel mindestens 400 Punkte erreicht."),
+            (500, "Hardcore 500", "In einem Hardcore-Spiel mindestens 500 Punkte erreicht."),
+            (600, "Hardcore 600", "In einem Hardcore-Spiel mindestens 600 Punkte erreicht."),
+            (700, "Hardcore 700", "In einem Hardcore-Spiel mindestens 700 Punkte erreicht."),
+            (800, "Hardcore Pro", "In einem Hardcore-Spiel mindestens 800 Punkte erreicht."),
+            (900, "Hardcore Legend", "In einem Hardcore-Spiel mindestens 900 Punkte erreicht."),
+            (1_000, "Hardcore Godmode", "In einem Hardcore-Spiel mindestens 1’000 Punkte erreicht."),
+        ],
+    )
+    + [
+        Achievement(
+            "hardcore_streak_7",
+            "Hardcore-Woche",
+            "Während 7 aufeinanderfolgenden Tagen je ein Hardcore-Spiel beendet.",
+            "games",
+            "hardcore_streak",
+            7,
+        ),
+        # Zeitbasierte Ziele bleiben am Ende des Katalogs, damit sie in der
+        # Profilansicht nach den Spiel- und Hardcore-Zielen erscheinen.
+        Achievement(
             "office_hours",
             "Bürozeit",
             "Ein Spiel werktags zwischen 07:00 und 17:00 Uhr beendet.",
@@ -302,6 +447,10 @@ def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str
     fulls = [row["full"] for row in rows if "full" in row]
     pokers = [row["poker"] for row in rows if "poker" in row]
     kenters = [row["kenter"] for row in rows if "kenter" in row]
+    ones = [row["1"] for row in rows if "1" in row]
+    sixes = [row["6"] for row in rows if "6" in row]
+    maximums = [row["max"] for row in rows if "max" in row]
+    minimums = [row["min"] for row in rows if "min" in row]
     local_finished = as_utc(game.finished_at).astimezone(ZURICH)
     return {
         "top_max": top_max,
@@ -330,11 +479,36 @@ def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str
         "diffs_equal": len(differences) == 4 and len(set(differences)) == 1,
         "no_top_bonus": len(subtotals) == 4 and all(subtotal["bonus_top"] == 0 for subtotal in subtotals),
         "all_top_bonuses": len(subtotals) == 4 and all(subtotal["bonus_top"] > 0 for subtotal in subtotals),
+        "five_ones_written": any(value == 5 for value in ones),
+        "min_five": any(value == 5 for value in minimums),
+        "max_under_ten": any(0 < value < 10 for value in maximums),
+        "min_under_ten": any(0 < value < 10 for value in minimums),
+        "max_over_25": any(value > 25 for value in maximums),
+        "min_over_25": any(value > 25 for value in minimums),
+        "max_thirty": any(value == 30 for value in maximums),
+        "six_thirty": any(value == 30 for value in sixes),
+        "styler_full_count": sum(value in STYLER_FULL_VALUES for value in fulls),
         "office_hours": local_finished.weekday() < 5 and 7 <= local_finished.hour < 17,
         "night_owl": 2 <= local_finished.hour < 5,
         "weekend": local_finished.weekday() >= 5,
         "early_bird": 6 <= local_finished.hour < 7,
     }
+
+
+def _longest_daily_streak(games: list[tuple[CompletedGame, GameParticipant, dict[str, int | bool]]]) -> int:
+    """Return the longest run of calendar days with at least one completed game.
+
+    Achievement days use Europe/Zurich, matching the other time-based rewards.
+    Multiple games on the same day count once.
+    """
+    days = sorted({as_utc(game.finished_at).astimezone(ZURICH).date() for game, _participant, _metrics in games})
+    longest = current = 0
+    previous = None
+    for day in days:
+        current = current + 1 if previous and day == previous + timedelta(days=1) else 1
+        longest = max(longest, current)
+        previous = day
+    return longest
 
 
 def _progress_for_user(db, user: User) -> dict[str, int | bool]:
@@ -345,8 +519,12 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
         .order_by(CompletedGame.finished_at, CompletedGame.id)
     ).all()
     games = [(game, participant, _game_metrics(game, participant)) for game, participant in rows]
-    gameplay_started_at = as_utc(user.achievement_gameplay_started_at)
+    gameplay_started_at = as_utc(user.achievement_gameplay_started_at or utcnow())
     gameplay_games = [entry for entry in games if as_utc(entry[0].finished_at) >= gameplay_started_at]
+    extra_started_at = as_utc(user.achievement_extra_started_at or utcnow())
+    extra_games = [entry for entry in games if as_utc(entry[0].finished_at) >= extra_started_at]
+    hardcore_games = [entry for entry in games if bool(entry[0].hardcore)]
+    extra_hardcore_games = [entry for entry in extra_games if bool(entry[0].hardcore)]
     return {
         "career_points": sum(int(participant.points) for _game, participant, _metrics in games),
         "games_played": len(games),
@@ -389,6 +567,28 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
         "all_top_bonuses": max(
             (4 if metrics["all_top_bonuses"] else 0 for _game, _participant, metrics in gameplay_games), default=0
         ),
+        "five_ones_written": any(bool(metrics["five_ones_written"]) for _game, _participant, metrics in extra_games),
+        "min_five": any(bool(metrics["min_five"]) for _game, _participant, metrics in extra_games),
+        "max_under_ten": any(bool(metrics["max_under_ten"]) for _game, _participant, metrics in extra_games),
+        "min_under_ten": any(bool(metrics["min_under_ten"]) for _game, _participant, metrics in extra_games),
+        "max_over_25": any(bool(metrics["max_over_25"]) for _game, _participant, metrics in extra_games),
+        "min_over_25": any(bool(metrics["min_over_25"]) for _game, _participant, metrics in extra_games),
+        "extra_diff_max": max(
+            (int(metrics["diff_max"]) for _game, _participant, metrics in extra_games), default=0
+        ),
+        "max_thirty": any(bool(metrics["max_thirty"]) for _game, _participant, metrics in extra_games),
+        "six_thirty": any(bool(metrics["six_thirty"]) for _game, _participant, metrics in extra_games),
+        "styler_full_count": sum(
+            int(metrics["styler_full_count"]) for _game, _participant, metrics in extra_games
+        ),
+        "daily_streak": _longest_daily_streak(extra_games),
+        # Diese zwei Hardcore-Reihen sind ausdrücklich rückwirkend: alle
+        # gespeicherten Hardcore-Partien zählen, unabhängig vom Rolloutmarker.
+        "hardcore_games": len(hardcore_games),
+        "hardcore_score": max(
+            (int(participant.points) for _game, participant, _metrics in hardcore_games), default=0
+        ),
+        "hardcore_streak": _longest_daily_streak(extra_hardcore_games),
         "office_hours": any(bool(metrics["office_hours"]) for _game, _participant, metrics in gameplay_games),
         "night_owl": any(bool(metrics["night_owl"]) for _game, _participant, metrics in gameplay_games),
         "weekend_games": sum(1 for _game, _participant, metrics in gameplay_games if metrics["weekend"]),

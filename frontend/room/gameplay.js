@@ -314,13 +314,17 @@
     const iAmTurn = snapshot?._turn && String(snapshot._turn.player_id) === String(myId);
     if (!iAmTurn) return { usable:false, reason:"Nicht an der Reihe", cell:null };
     if (snapshot?._correction?.active) return { usable:false, reason:"Während Korrektur nicht erlaubt", cell:null };
-    if (Number(snapshot?._rolls_used || 0) < 1) return { usable:false, reason:"Erst würfeln", cell:null };
 
     const order = field === "up" ? QUICK_ROW_ORDER.slice().reverse() : QUICK_ROW_ORDER;
     const board = $(".player-card.me", mount);
     const cell = order
       .map(row => board?.querySelector(`td.cell.clickable[data-row="${row}"][data-field="${field}"]`))
       .find(Boolean) || null;
+    // Das letzte freie Feld darf auch nach einem Wiederverbinden ohne
+    // gespeicherten Wurf als Streichfeld abgeschlossen werden.
+    if (Number(snapshot?._rolls_used || 0) < 1 && !cell) {
+      return { usable:false, reason:"Erst würfeln", cell:null };
+    }
     if (!cell) return { usable:false, reason:"Reihe vollständig oder derzeit nicht beschreibbar", cell:null };
     return { usable:true, reason:field === "up" ? "Nächstes Feld der Aufwärtsreihe eintragen" : "Nächstes Feld der Abwärtsreihe eintragen", cell };
   }

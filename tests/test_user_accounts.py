@@ -16,6 +16,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from alembic import command
 from app import main
+from app.achievements import ACHIEVEMENTS
 from app.active_games import load_active_games, save_active_game
 from app.api_auth import (
     LanguagePreferenceRequest,
@@ -200,6 +201,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
         with session_scope() as db:
             existing = db.scalar(select(User).where(User.username == "ExistingUser"))
             self.assertTrue(existing.mobile_row_quick_entry)
+            self.assertIsNotNone(existing.achievement_extra_started_at)
 
         create_user("NewUser", "a-secure-password-123", must_change_password=False)
         with session_scope() as db:
@@ -556,7 +558,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
             "statistics_views",
         }
         self.assertTrue(expected.issubset(unlocked), unlocked)
-        self.assertEqual(len(unlocked) + len(achievements["locked"]), 47)
+        self.assertEqual(len(unlocked) + len(achievements["locked"]), len(ACHIEVEMENTS))
         weekend = next(item for item in achievements["locked"] if item["key"] == "weekend_games")
         self.assertEqual(weekend["progress"], {"current": 1, "target": 10})
         with session_scope() as db:
@@ -617,6 +619,120 @@ class AccountDatabaseTestCase(GameStateTestCase):
                 "all_top_bonuses",
             }.issubset(unlocked)
         )
+
+    def test_additional_achievements_track_new_scores_streaks_and_hardcore_goals(self):
+        user = create_user("AchievementSprint", "temporary-sprint-123", must_change_password=False)
+        rollout = datetime(2026, 9, 2, 12, tzinfo=timezone.utc)
+        with session_scope() as db:
+            player = db.get(User, user.id)
+            player.achievement_gameplay_started_at = rollout
+            player.achievement_extra_started_at = rollout
+
+        columns = {
+            "down": {
+                "1": 5,
+                "6": 30,
+                "max": 30,
+                "min": 5,
+                "full": 58,
+            },
+            "free": {
+                "1": 6,
+                "6": 18,
+                "max": 9,
+                "min": 9,
+                "full": 55,
+            },
+            "up": {
+                "1": 6,
+                "6": 18,
+                "max": 26,
+                "min": 26,
+                "full": 49,
+            },
+            "ang": {
+                "1": 6,
+                "6": 18,
+                "max": 30,
+                "min": 5,
+                "full": 46,
+            },
+        }
+        for day in range(30):
+            game = self.make_game(mode=1, players=[("p1", user.username)])
+            game["_players"][0]["user_id"] = user.id
+            game["_hardcore"] = day >= 20
+            game["_scoreboards"]["p1"] = self.full_scoreboard(columns)
+            snapshot = build_leaderboard_snapshot_fields(game)
+            snapshot["finished_at"] = (rollout + timedelta(days=day)).isoformat()
+            self.assertTrue(
+                persist_runtime_game(game, {"p1": 1_000 if game["_hardcore"] else 600}, snapshot)
+            )
+
+        unlocked = {
+            item["key"]
+            for item in public_player_profile(user.username)["player"]["achievements"]["unlocked"]
+        }
+        self.assertTrue(
+            {
+                "five_ones_written",
+                "min_five",
+                "max_under_ten",
+                "min_under_ten",
+                "max_over_25",
+                "min_over_25",
+                "diff_over_125",
+                "max_thirty",
+                "six_thirty",
+                "styler_full_once",
+                "styler_full_10",
+                "daily_streak_7",
+                "daily_streak_14",
+                "daily_streak_30",
+                "hardcore_games_1",
+                "hardcore_games_10",
+                "hardcore_streak_7",
+                "hardcore_score_300",
+                "hardcore_score_400",
+                "hardcore_score_500",
+                "hardcore_score_600",
+                "hardcore_score_700",
+                "hardcore_score_800",
+                "hardcore_score_900",
+                "hardcore_score_1000",
+            }.issubset(unlocked),
+            unlocked,
+        )
+
+    def test_hardcore_count_and_score_achievements_are_historical_only(self):
+        user = create_user("HistoricalHardcore", "temporary-hardcore-123", must_change_password=False)
+        historic = datetime(2026, 8, 1, 12, tzinfo=timezone.utc)
+        game = self.make_game(mode=1, players=[("p1", user.username)])
+        game["_players"][0]["user_id"] = user.id
+        game["_hardcore"] = True
+        game["_scoreboards"]["p1"] = self.high_scoreboard()
+        snapshot = build_leaderboard_snapshot_fields(game)
+        snapshot["finished_at"] = historic.isoformat()
+        self.assertTrue(persist_runtime_game(game, {"p1": 1_000}, snapshot))
+        with session_scope() as db:
+            player = db.get(User, user.id)
+            player.achievement_gameplay_started_at = datetime(2026, 9, 2, tzinfo=timezone.utc)
+            player.achievement_extra_started_at = datetime(2026, 9, 2, tzinfo=timezone.utc)
+
+        unlocked = {
+            item["key"]
+            for item in public_player_profile(user.username)["player"]["achievements"]["unlocked"]
+        }
+        self.assertIn("hardcore_games_1", unlocked)
+        self.assertTrue(
+            {f"hardcore_score_{score}" for score in (300, 400, 500, 600, 700, 800, 900, 1000)}.issubset(
+                unlocked
+            )
+        )
+        self.assertNotIn("five_ones_written", unlocked)
+        self.assertNotIn("styler_full_once", unlocked)
+        self.assertNotIn("daily_streak_7", unlocked)
+        self.assertNotIn("hardcore_streak_7", unlocked)
 
     def test_account_statistics_and_history_keep_modes_separate(self):
         user = create_user("ModeStats", "temporary-mode-stats-123", must_change_password=False)

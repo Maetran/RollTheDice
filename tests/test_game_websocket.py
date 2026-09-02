@@ -1,7 +1,7 @@
 import asyncio
 from unittest.mock import patch
 
-from app.game_state import _passphrase_from_payload
+from app.game_state import WRITABLE_COLS, WRITABLE_ROWS, _passphrase_from_payload
 from app.game_websocket import MessageRateLimiter
 from app.game_ws_gameplay import handle_gameplay_action
 from app.game_ws_session import GameSocketSession, disconnect_session, handle_session_action
@@ -122,6 +122,62 @@ class WebSocketActionGuardTestCase(GameStateTestCase):
 
         self.assertEqual(session.websocket.messages[-1]["error"], "Erst würfeln")
         self.assertEqual(game["_scoreboards"]["p1"], {})
+
+    def test_last_open_field_can_be_struck_without_a_roll(self):
+        game = self.make_game(mode=1, players=[("p1", "Anna")])
+        board = game["_scoreboards"]["p1"]
+        for row in WRITABLE_ROWS:
+            for column in WRITABLE_COLS:
+                board[f"{row},{column}"] = 0
+        board.pop("15,down")
+
+        session = self.session(game, player_id="p1")
+        game["_players"][0]["ws"] = session.websocket
+        finalized = []
+
+        asyncio.run(
+            handle_gameplay_action(
+                session,
+                "write_field",
+                {"row": 15, "field": "down", "strike": True},
+                finalize_game=lambda finished_game: finalized.append(finished_game) or {},
+            )
+        )
+
+        self.assertEqual(board["15,down"], 0)
+        self.assertTrue(game["_finished"])
+        self.assertFalse(game["_started"])
+        self.assertEqual(finalized, [game])
+        self.assertTrue(session.websocket.messages[-1]["scoreboard"]["_finished"])
+
+    def test_finalizer_failure_does_not_hide_the_completed_game(self):
+        game = self.make_game(mode=1, players=[("p1", "Anna")])
+        board = game["_scoreboards"]["p1"]
+        for row in WRITABLE_ROWS:
+            for column in WRITABLE_COLS:
+                board[f"{row},{column}"] = 0
+        board.pop("15,down")
+        game["_rolls_used"] = 5
+        game["_rolls_max"] = 5
+
+        session = self.session(game, player_id="p1")
+        game["_players"][0]["ws"] = session.websocket
+
+        def failing_finalizer(_game):
+            raise RuntimeError("achievement persistence failed")
+
+        asyncio.run(
+            handle_gameplay_action(
+                session,
+                "write_field",
+                {"row": 15, "field": "down", "strike": True},
+                finalize_game=failing_finalizer,
+            )
+        )
+
+        self.assertEqual(board["15,down"], 0)
+        self.assertTrue(game["_finished"])
+        self.assertTrue(session.websocket.messages[-1]["scoreboard"]["_finished"])
 
     def test_only_the_owner_can_cancel_a_correction(self):
         game = self.make_game(mode=2, players=[("p1", "Anna"), ("p2", "Ben")])
