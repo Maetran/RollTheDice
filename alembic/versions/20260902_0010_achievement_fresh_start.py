@@ -40,16 +40,17 @@ HISTORICAL_ACHIEVEMENT_KEYS = (
 
 
 def upgrade() -> None:
-    op.add_column(
-        "users",
-        sa.Column("achievement_gameplay_started_at", sa.DateTime(timezone=True), nullable=True),
-    )
-    op.get_bind().execute(
+    bind = op.get_bind()
+    user_columns = {column["name"] for column in sa.inspect(bind).get_columns("users")}
+    if "achievement_gameplay_started_at" not in user_columns:
+        op.add_column(
+            "users",
+            sa.Column("achievement_gameplay_started_at", sa.DateTime(timezone=True), nullable=True),
+        )
+    bind.execute(
         sa.text("UPDATE users SET achievement_gameplay_started_at = :started_at"),
         {"started_at": datetime.now(timezone.utc)},
     )
-    with op.batch_alter_table("users") as batch_op:
-        batch_op.alter_column("achievement_gameplay_started_at", nullable=False)
     op.execute(sa.text("UPDATE users SET statistics_views = 0"))
     retained = ", ".join(f"'{key}'" for key in HISTORICAL_ACHIEVEMENT_KEYS)
     op.execute(sa.text(f"DELETE FROM user_achievements WHERE achievement_key NOT IN ({retained})"))
