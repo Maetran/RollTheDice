@@ -2,10 +2,9 @@
 set -euo pipefail
 
 REMOTE="${REMOTE:-zdwa}"
-REMOTE_DIR="${REMOTE_DIR:-/root/RollTheDice}"
+REMOTE_DIR="${REMOTE_DIR:-/home/manuel/RollTheDice}"
 REPO_MATCH="${REPO_MATCH:-Maetran/RollTheDice}"
 BRANCH="${BRANCH:-master}"
-REMOTE_SUDO="${REMOTE_SUDO:-0}"
 
 if [[ "$REMOTE_DIR" == "auto" ]]; then
   REMOTE_DIR="$(
@@ -38,16 +37,14 @@ fi
 printf 'Deploy target: %s:%s\n' "$REMOTE" "$REMOTE_DIR"
 
 remote_env="REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") BRANCH=$(printf '%q' "$BRANCH")"
-if [[ "$REMOTE_SUDO" == "1" ]]; then
-  remote_command="sudo -n env $remote_env bash -s"
-else
-  remote_command="$remote_env bash -s"
-fi
-
-ssh "$REMOTE" "$remote_command" <<'REMOTE_SCRIPT'
+ssh "$REMOTE" "$remote_env bash -s" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
 cd "$REMOTE_DIR"
+
+compose() {
+  sudo -n docker compose "$@"
+}
 
 echo "== Remote =="
 hostname
@@ -65,14 +62,14 @@ if [[ -d data ]]; then
   service_was_running=0
   resume_service() {
     if [[ "$service_was_running" == "1" ]]; then
-      docker compose start rollthedice >/dev/null
+      compose start rollthedice >/dev/null
       service_was_running=0
     fi
   }
   trap resume_service EXIT
-  if docker compose ps --status running --services 2>/dev/null | grep -qx 'rollthedice'; then
+  if compose ps --status running --services 2>/dev/null | grep -qx 'rollthedice'; then
     service_was_running=1
-    docker compose stop rollthedice >/dev/null
+    compose stop rollthedice >/dev/null
   fi
   backup_dir="data.backup-$(date +%Y%m%d-%H%M%S)"
   cp -a data "$backup_dir"
@@ -93,8 +90,8 @@ echo "== Static asset versions =="
 python3 scripts/sync_static_versions.py --check
 
 echo "== Docker deploy =="
-docker compose up -d --build
-docker compose ps
+compose up -d --build
+compose ps
 
 echo "== Local health =="
 if command -v curl >/dev/null 2>&1; then

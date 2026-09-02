@@ -9,12 +9,12 @@ an**. Das Repository heisst intern weiterhin `RollTheDice`.
 | --- | --- |
 | Öffentliche URL | `https://zockdiewandan.online/` |
 | SSH-Ziel | `ssh zdwa` |
-| SSH-Benutzer | `manuel`, Deployment unter `/root` via passwortlosem `sudo` |
-| Arbeitsverzeichnis | `/root/RollTheDice` |
+| SSH-Benutzer | `manuel` (SSH-Key, passwortloses `sudo` für Docker) |
+| Arbeitsverzeichnis | `/home/manuel/RollTheDice` |
 | Git-Branch | `master` |
 | Container/Service | `rollthedice` |
 | Lokaler Container-Port | `8000` |
-| Persistente Daten | `/root/RollTheDice/data` |
+| Persistente Daten | `/home/manuel/RollTheDice/data` |
 
 Die Anwendung läuft mit Docker Compose hinter einem HTTPS-Reverse-Proxy. Das
 Verzeichnis `./data` wird als `/app/data` in den Container eingebunden.
@@ -47,7 +47,7 @@ git reset --hard
 Ein erfolgreiches Backup sieht so aus:
 
 ```text
-/root/RollTheDice/data.backup-YYYYMMDD-HHMMSS
+/home/manuel/RollTheDice/data.backup-YYYYMMDD-HHMMSS
 ```
 
 Nach einem erfolgreichen Deployment entfernt `scripts/deploy_zdwa.sh`
@@ -95,7 +95,7 @@ Nach manueller Prüfung wird sie auf dem Produktionsserver aus dem Repository
 installiert:
 
 ```bash
-cd /root/RollTheDice
+cd /home/manuel/RollTheDice
 scripts/install_nginx_config.sh
 ```
 
@@ -107,7 +107,7 @@ her. Diese Systemkonfiguration wird nicht bei jedem App-Deployment ungeprüft
 Bei einem manuellen Aufruf werden alte Datenbackups zunächst nur aufgelistet:
 
 ```bash
-cd /root/RollTheDice
+cd /home/manuel/RollTheDice
 KEEP=5 scripts/prune_data_backups.sh
 ```
 
@@ -118,12 +118,12 @@ Nach Kontrolle der Liste kann dieselbe Auswahl mit `APPLY=1` gelöscht werden.
 Der reguläre und bevorzugte Weg ist:
 
 ```bash
-REMOTE_SUDO=1 scripts/deploy_zdwa.sh
+scripts/deploy_zdwa.sh
 ```
 
 Das Skript führt auf `ssh zdwa` folgende Schritte aus:
 
-1. Wechsel nach `/root/RollTheDice`.
+1. Wechsel nach `/home/manuel/RollTheDice`.
 2. Abbruch, falls der produktive Git-Arbeitsbaum verändert ist.
 3. Kurzer Stopp des Containers für ein konsistentes `data`-Backup.
 4. Sofortiger Neustart des bestehenden Containers nach dem Backup.
@@ -137,7 +137,7 @@ Das Skript führt auf `ssh zdwa` folgende Schritte aus:
 Das Ziel kann bei Bedarf überschrieben werden:
 
 ```bash
-REMOTE=zdwa REMOTE_SUDO=1 REMOTE_DIR=/root/RollTheDice BRANCH=master scripts/deploy_zdwa.sh
+REMOTE=zdwa REMOTE_DIR=/home/manuel/RollTheDice BRANCH=master scripts/deploy_zdwa.sh
 ```
 
 `REMOTE_DIR=auto` sucht nach einem Checkout mit dem erwarteten GitHub-Remote.
@@ -149,7 +149,7 @@ Ein Deployment ist erst abgeschlossen, wenn Container, lokale Anwendung und
 öffentliche URL geprüft wurden:
 
 ```bash
-ssh zdwa 'cd /root/RollTheDice && docker compose ps'
+ssh zdwa 'cd /home/manuel/RollTheDice && sudo -n docker compose ps'
 
 ssh zdwa 'curl --retry 15 --retry-delay 2 --retry-connrefused --retry-all-errors \
   -fsS http://127.0.0.1:8000/api/health >/dev/null && echo "local app and database ready"'
@@ -163,7 +163,7 @@ wenn der Server gestartet und das Datenbankschema vollständig migriert ist. Bei
 schnellsten Befund:
 
 ```bash
-ssh zdwa 'cd /root/RollTheDice && docker compose logs --tail=150 rollthedice'
+ssh zdwa 'cd /home/manuel/RollTheDice && sudo -n docker compose logs --tail=150 rollthedice'
 ```
 
 Das Deployment-Skript und der Docker-Healthcheck berücksichtigen die Startzeit
@@ -173,7 +173,7 @@ dieser Frist ist ein echter Rollout-Fehler; dann Logs und Migrationsstand prüfe
 Bei Datenbankänderungen zusätzlich den Migrationsstand prüfen:
 
 ```bash
-ssh zdwa 'cd /root/RollTheDice && docker compose exec rollthedice alembic current'
+ssh zdwa 'cd /home/manuel/RollTheDice && sudo -n docker compose exec rollthedice alembic current'
 ```
 
 ## Service Worker und statische Assets
@@ -203,7 +203,7 @@ curl -fsS https://zockdiewandan.online/spiel/test | grep 'style.css?v='
 
 ## Konfiguration und Geheimnisse
 
-Die Produktionskonfiguration liegt in `/root/RollTheDice/.env` und wird nicht in
+Die Produktionskonfiguration liegt in `/home/manuel/RollTheDice/.env` und wird nicht in
 Git gespeichert.
 
 Für HTTPS muss gesetzt sein:
@@ -259,7 +259,7 @@ Reihenfolge darf wegen SQLite/WAL nicht verkürzt werden:
 
 ```bash
 ssh zdwa
-cd /root/RollTheDice
+cd /home/manuel/RollTheDice
 git status --short --branch
 
 docker compose stop rollthedice
@@ -328,7 +328,7 @@ Vor einem kontrollierten Neustart:
 
 ```bash
 ssh zdwa
-cd /root/RollTheDice
+cd /home/manuel/RollTheDice
 docker compose ps
 systemctl is-enabled docker
 ```
@@ -337,7 +337,7 @@ Nach dem Neustart:
 
 ```bash
 ssh zdwa
-cd /root/RollTheDice
+cd /home/manuel/RollTheDice
 docker compose ps
 curl --retry 12 --retry-delay 2 --retry-connrefused \
   -fsS http://127.0.0.1:8000/ >/dev/null && echo "local app OK"
