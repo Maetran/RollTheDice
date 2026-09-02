@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import timedelta
+from typing import Iterable
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -27,6 +28,7 @@ class Achievement:
     icon_key: str
     kind: str
     target: int = 1
+    points: int = 1
 
 
 def _tiered(kind: str, icon_key: str, values: list[tuple[int, str, str]]) -> list[Achievement]:
@@ -35,7 +37,25 @@ def _tiered(kind: str, icon_key: str, values: list[tuple[int, str, str]]) -> lis
     ]
 
 
-ACHIEVEMENTS: tuple[Achievement, ...] = tuple(
+EXACT_GAME_SCORE_TARGETS = (555, 666, 777, 888, 999, 1_111, 1_222, 1_333, 1_444, 1_555)
+
+
+def _exact_score_achievements() -> list[Achievement]:
+    """Create one achievement per deliberately exact final score."""
+    return [
+        Achievement(
+            f"exact_game_score_{score}",
+            f"Punktlandung {score}",
+            f"Ein Spiel mit exakt {score} Punkten beendet.",
+            "score",
+            f"exact_game_score_{score}",
+            score,
+        )
+        for score in EXACT_GAME_SCORE_TARGETS
+    ]
+
+
+_ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
     _tiered(
         "career_points",
         "points",
@@ -74,6 +94,14 @@ ACHIEVEMENTS: tuple[Achievement, ...] = tuple(
         ],
     )
     + [
+        Achievement(
+            "normal_under_700",
+            "Pro Loser",
+            "Ein normales Spiel mit weniger als 700 Punkten beendet.",
+            "score",
+            "normal_under_700",
+        ),
+        *_exact_score_achievements(),
         Achievement(
             "top_section_81_without_bonus",
             "Obere Liga",
@@ -239,6 +267,34 @@ ACHIEVEMENTS: tuple[Achievement, ...] = tuple(
             "five_ones_written",
         ),
         Achievement(
+            "five_twos_written",
+            "Zweier-Serie",
+            "Fünf Zweien im 2er-Feld geschrieben.",
+            "upper",
+            "five_twos_written",
+        ),
+        Achievement(
+            "five_threes_written",
+            "Dreier-Serie",
+            "Fünf Dreien im 3er-Feld geschrieben.",
+            "upper",
+            "five_threes_written",
+        ),
+        Achievement(
+            "five_fours_written",
+            "Vierer-Serie",
+            "Fünf Vieren im 4er-Feld geschrieben.",
+            "upper",
+            "five_fours_written",
+        ),
+        Achievement(
+            "five_fives_written",
+            "Fünfer-Serie",
+            "Fünf Fünfen im 5er-Feld geschrieben.",
+            "upper",
+            "five_fives_written",
+        ),
+        Achievement(
             "min_five",
             "Bäm Minimum",
             "Genau 5 Punkte im Minimum geschrieben.",
@@ -276,10 +332,9 @@ ACHIEVEMENTS: tuple[Achievement, ...] = tuple(
         Achievement(
             "diff_over_125",
             "Differenz extrem III",
-            "In einer Reihe eine Differenz über 125 erreicht.",
+            "In einer Reihe exakt 125 Punkte Differenz erreicht.",
             "diff",
-            "extra_diff_max",
-            126,
+            "diff_exact_125",
         ),
         Achievement(
             "max_thirty",
@@ -411,6 +466,176 @@ ACHIEVEMENTS: tuple[Achievement, ...] = tuple(
 )
 
 
+# Achievement points deliberately reflect both rarity and effort.  They are
+# catalog data rather than UI-only decoration: profile totals and the public
+# achievement ranking use the exact same values.
+_TIER_POINTS: dict[str, dict[int, int]] = {
+    "career_points": {1_000: 1, 10_000: 2, 100_000: 4, 500_000: 7, 1_000_000: 10},
+    "games_played": {10: 1, 100: 2, 200: 3, 500: 5, 800: 6, 1_000: 7, 10_000: 10},
+    "single_game_score": {1_000: 2, 1_100: 3, 1_200: 4, 1_300: 5, 1_400: 6, 1_500: 7, 1_600: 8},
+    "hardcore_games": {1: 2, 10: 3, 30: 4, 50: 5, 100: 6, 300: 7, 500: 8, 1_000: 10},
+    "hardcore_score": {300: 3, 400: 4, 500: 5, 600: 6, 700: 7, 800: 8, 900: 9, 1_000: 10},
+}
+_EXACT_SCORE_POINTS = {555: 4, 666: 4, 777: 4, 888: 4, 999: 5, 1_111: 5, 1_222: 6, 1_333: 7, 1_444: 8, 1_555: 10}
+_KEY_POINTS: dict[str, int] = {
+    "account_created": 1,
+    "statistics_views": 1,
+    "normal_under_700": 3,
+    "top_section_81_without_bonus": 5,
+    "top_section_101": 6,
+    "row_401": 6,
+    "lower_six_strikes": 3,
+    "sixty_once": 2,
+    "sixty_all_written": 5,
+    "sixty_all_struck": 4,
+    "full_perfect": 8,
+    "poker_perfect": 8,
+    "full_minimal": 6,
+    "poker_minimal": 6,
+    "diff_over_100": 4,
+    "diff_over_120": 6,
+    "diff_over_125": 10,
+    "diff_pro": 7,
+    "diff_all_under_20": 6,
+    "diff_zero": 1,
+    "kenter_struck": 1,
+    "kenter_all_written": 5,
+    "top_totals_equal": 5,
+    "diffs_equal": 6,
+    "no_top_bonus": 2,
+    "all_top_bonuses": 7,
+    "five_ones_written": 2,
+    "five_twos_written": 2,
+    "five_threes_written": 3,
+    "five_fours_written": 3,
+    "five_fives_written": 4,
+    "six_thirty": 4,
+    "min_five": 2,
+    "max_under_ten": 2,
+    "min_under_ten": 2,
+    "max_over_25": 3,
+    "min_over_25": 3,
+    "max_thirty": 4,
+    "styler_full_once": 4,
+    "styler_full_10": 8,
+    "daily_streak_7": 4,
+    "daily_streak_14": 6,
+    "daily_streak_30": 8,
+    "hardcore_streak_7": 7,
+    "office_hours": 1,
+    "night_owl": 2,
+    "weekend_games": 3,
+    "early_bird_games": 3,
+}
+
+
+def _achievement_points(achievement: Achievement) -> int:
+    if achievement.kind in _TIER_POINTS:
+        return _TIER_POINTS[achievement.kind][achievement.target]
+    if achievement.kind.startswith("exact_game_score_"):
+        return _EXACT_SCORE_POINTS[achievement.target]
+    return _KEY_POINTS[achievement.key]
+
+
+ACHIEVEMENTS: tuple[Achievement, ...] = tuple(
+    replace(achievement, points=_achievement_points(achievement)) for achievement in _ACHIEVEMENT_CATALOG
+)
+ACHIEVEMENT_BY_KEY = {achievement.key: achievement for achievement in ACHIEVEMENTS}
+ACHIEVEMENT_POINTS_BY_KEY = {achievement.key: achievement.points for achievement in ACHIEVEMENTS}
+
+if len(ACHIEVEMENT_BY_KEY) != len(ACHIEVEMENTS):
+    raise RuntimeError("Achievement keys must be unique.")
+if not all(1 <= achievement.points <= 10 for achievement in ACHIEVEMENTS):
+    raise RuntimeError("Every achievement must award between 1 and 10 points.")
+
+
+def achievement_points_for_keys(keys: Iterable[str]) -> int:
+    """Return the score for known, unique unlocked achievement keys."""
+    return sum(ACHIEVEMENT_POINTS_BY_KEY.get(key, 0) for key in set(keys))
+
+
+def achievement_sort_key(achievement: Achievement) -> tuple[int, int, int, str]:
+    """Keep related achievements together in both unlocked and locked lists."""
+    kind = achievement.kind
+    if kind == "account_created":
+        return (0, 0, 0, achievement.key)
+    if kind in {"games_played", "career_points", "statistics_views"}:
+        return (10, {"games_played": 0, "career_points": 1, "statistics_views": 2}[kind], achievement.target, achievement.key)
+    if kind == "normal_under_700":
+        return (20, 0, 0, achievement.key)
+    if kind.startswith("exact_game_score_"):
+        return (20, 1, achievement.target, achievement.key)
+    if kind == "single_game_score":
+        return (20, 2, achievement.target, achievement.key)
+    five_of_kind_order = {
+        "five_ones_written": 1,
+        "five_twos_written": 2,
+        "five_threes_written": 3,
+        "five_fours_written": 4,
+        "five_fives_written": 5,
+        "six_thirty": 6,
+    }
+    if kind in five_of_kind_order:
+        return (30, five_of_kind_order[kind], 0, achievement.key)
+    if kind in {"top_section", "row_score", "top_totals_equal", "no_top_bonus", "all_top_bonuses"}:
+        return (30, {"top_section": 10, "row_score": 11, "top_totals_equal": 12, "no_top_bonus": 13, "all_top_bonuses": 14}[kind], achievement.target, achievement.key)
+    if kind in {
+        "min_five", "max_under_ten", "min_under_ten", "max_over_25", "min_over_25", "max_thirty",
+        "diff_max", "diff_exact_125", "diff_pro", "diff_all_under_20", "diff_zero", "diffs_equal",
+    }:
+        return (
+            40,
+            {
+                "min_five": 0,
+                "max_under_ten": 1,
+                "min_under_ten": 2,
+                "max_over_25": 3,
+                "min_over_25": 4,
+                "max_thirty": 5,
+                "diff_max": 10,
+                "diff_exact_125": 11,
+                "diff_pro": 12,
+                "diff_all_under_20": 13,
+                "diff_zero": 14,
+                "diffs_equal": 15,
+            }[kind],
+            achievement.target,
+            achievement.key,
+        )
+    if kind in {
+        "lower_strikes", "sixty_once", "sixty_all_written", "sixty_all_struck", "full_perfect",
+        "full_minimal", "poker_perfect", "poker_minimal", "styler_full_count", "kenter_struck", "kenter_all_written",
+    }:
+        return (
+            50,
+            {
+                "lower_strikes": 0,
+                "kenter_struck": 1,
+                "kenter_all_written": 2,
+                "full_minimal": 3,
+                "full_perfect": 4,
+                "styler_full_count": 5,
+                "poker_minimal": 6,
+                "poker_perfect": 7,
+                "sixty_once": 8,
+                "sixty_all_written": 9,
+                "sixty_all_struck": 10,
+            }[kind],
+            achievement.target,
+            achievement.key,
+        )
+    if kind in {"daily_streak", "office_hours", "night_owl", "weekend_games", "early_bird_games"}:
+        return (
+            60,
+            {"daily_streak": 0, "office_hours": 1, "night_owl": 2, "weekend_games": 3, "early_bird_games": 4}[kind],
+            achievement.target,
+            achievement.key,
+        )
+    if kind in {"hardcore_games", "hardcore_score", "hardcore_streak"}:
+        return (70, {"hardcore_games": 0, "hardcore_score": 1, "hardcore_streak": 2}[kind], achievement.target, achievement.key)
+    raise RuntimeError(f"Achievement {achievement.key} has no display order.")
+
+
 def _snapshot_rows(snapshot_json: str, participant: GameParticipant, mode: str) -> list[dict[str, int]]:
     try:
         snapshot = json.loads(snapshot_json)
@@ -447,8 +672,10 @@ def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str
     fulls = [row["full"] for row in rows if "full" in row]
     pokers = [row["poker"] for row in rows if "poker" in row]
     kenters = [row["kenter"] for row in rows if "kenter" in row]
-    ones = [row["1"] for row in rows if "1" in row]
-    sixes = [row["6"] for row in rows if "6" in row]
+    number_fields = {
+        number: [row[str(number)] for row in rows if str(number) in row]
+        for number in range(1, 7)
+    }
     maximums = [row["max"] for row in rows if "max" in row]
     minimums = [row["min"] for row in rows if "min" in row]
     local_finished = as_utc(game.finished_at).astimezone(ZURICH)
@@ -468,6 +695,7 @@ def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str
         "full_minimal_count": sum(value == 43 for value in fulls),
         "poker_minimal_count": sum(value == 54 for value in pokers),
         "diff_max": max(differences, default=0),
+        "diff_exact_125": any(value == 125 for value in differences),
         "diff_pro": len(differences) == 4
         and all(value > 60 for value in differences)
         and any(value > 80 for value in differences),
@@ -479,14 +707,18 @@ def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str
         "diffs_equal": len(differences) == 4 and len(set(differences)) == 1,
         "no_top_bonus": len(subtotals) == 4 and all(subtotal["bonus_top"] == 0 for subtotal in subtotals),
         "all_top_bonuses": len(subtotals) == 4 and all(subtotal["bonus_top"] > 0 for subtotal in subtotals),
-        "five_ones_written": any(value == 5 for value in ones),
+        "five_ones_written": any(value == 5 for value in number_fields[1]),
+        "five_twos_written": any(value == 10 for value in number_fields[2]),
+        "five_threes_written": any(value == 15 for value in number_fields[3]),
+        "five_fours_written": any(value == 20 for value in number_fields[4]),
+        "five_fives_written": any(value == 25 for value in number_fields[5]),
         "min_five": any(value == 5 for value in minimums),
         "max_under_ten": any(0 < value < 10 for value in maximums),
         "min_under_ten": any(0 < value < 10 for value in minimums),
         "max_over_25": any(value > 25 for value in maximums),
         "min_over_25": any(value > 25 for value in minimums),
         "max_thirty": any(value == 30 for value in maximums),
-        "six_thirty": any(value == 30 for value in sixes),
+        "six_thirty": any(value == 30 for value in number_fields[6]),
         "styler_full_count": sum(value in STYLER_FULL_VALUES for value in fulls),
         "office_hours": local_finished.weekday() < 5 and 7 <= local_finished.hour < 17,
         "night_owl": 2 <= local_finished.hour < 5,
@@ -523,9 +755,12 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
     gameplay_games = [entry for entry in games if as_utc(entry[0].finished_at) >= gameplay_started_at]
     extra_started_at = as_utc(user.achievement_extra_started_at or utcnow())
     extra_games = [entry for entry in games if as_utc(entry[0].finished_at) >= extra_started_at]
+    expansion_started_at = as_utc(user.achievement_expansion_started_at or utcnow())
+    expansion_games = [entry for entry in games if as_utc(entry[0].finished_at) >= expansion_started_at]
     hardcore_games = [entry for entry in games if bool(entry[0].hardcore)]
     extra_hardcore_games = [entry for entry in extra_games if bool(entry[0].hardcore)]
-    return {
+    scores = {int(participant.points) for _game, participant, _metrics in games}
+    progress: dict[str, int | bool] = {
         "career_points": sum(int(participant.points) for _game, participant, _metrics in games),
         "games_played": len(games),
         "single_game_score": max((int(participant.points) for _game, participant, _metrics in games), default=0),
@@ -567,15 +802,21 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
         "all_top_bonuses": max(
             (4 if metrics["all_top_bonuses"] else 0 for _game, _participant, metrics in gameplay_games), default=0
         ),
+        "normal_under_700": any(
+            not bool(game.hardcore) and int(participant.points) < 700
+            for game, participant, _metrics in games
+        ),
         "five_ones_written": any(bool(metrics["five_ones_written"]) for _game, _participant, metrics in extra_games),
+        "five_twos_written": any(bool(metrics["five_twos_written"]) for _game, _participant, metrics in expansion_games),
+        "five_threes_written": any(bool(metrics["five_threes_written"]) for _game, _participant, metrics in expansion_games),
+        "five_fours_written": any(bool(metrics["five_fours_written"]) for _game, _participant, metrics in expansion_games),
+        "five_fives_written": any(bool(metrics["five_fives_written"]) for _game, _participant, metrics in expansion_games),
         "min_five": any(bool(metrics["min_five"]) for _game, _participant, metrics in extra_games),
         "max_under_ten": any(bool(metrics["max_under_ten"]) for _game, _participant, metrics in extra_games),
         "min_under_ten": any(bool(metrics["min_under_ten"]) for _game, _participant, metrics in extra_games),
         "max_over_25": any(bool(metrics["max_over_25"]) for _game, _participant, metrics in extra_games),
         "min_over_25": any(bool(metrics["min_over_25"]) for _game, _participant, metrics in extra_games),
-        "extra_diff_max": max(
-            (int(metrics["diff_max"]) for _game, _participant, metrics in extra_games), default=0
-        ),
+        "diff_exact_125": any(bool(metrics["diff_exact_125"]) for _game, _participant, metrics in extra_games),
         "max_thirty": any(bool(metrics["max_thirty"]) for _game, _participant, metrics in extra_games),
         "six_thirty": any(bool(metrics["six_thirty"]) for _game, _participant, metrics in extra_games),
         "styler_full_count": sum(
@@ -596,6 +837,13 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
         "statistics_views": int(user.statistics_views),
         "account_created": True,
     }
+    progress.update(
+        {
+            f"exact_game_score_{score}": score if score in scores else 0
+            for score in EXACT_GAME_SCORE_TARGETS
+        }
+    )
+    return progress
 
 
 def _is_unlocked(achievement: Achievement, progress: dict[str, int | bool]) -> bool:
@@ -621,12 +869,13 @@ def sync_user_achievements(db, user: User) -> dict:
         for row in db.scalars(select(UserAchievement).where(UserAchievement.user_id == user.id))
     }
     unlocked, locked = [], []
-    for achievement in ACHIEVEMENTS:
+    for achievement in sorted(ACHIEVEMENTS, key=achievement_sort_key):
         payload = {
             "key": achievement.key,
             "name": achievement.name,
             "description": achievement.description,
             "icon_key": achievement.icon_key,
+            "points": achievement.points,
             "progress": {"current": int(progress[achievement.kind]), "target": achievement.target},
         }
         row = unlocked_rows.get(achievement.key)
@@ -635,7 +884,13 @@ def sync_user_achievements(db, user: User) -> dict:
             unlocked.append(payload)
         else:
             locked.append(payload)
-    return {"unlocked": unlocked, "locked": locked}
+    earned_points = achievement_points_for_keys(unlocked_rows)
+    return {
+        "unlocked": unlocked,
+        "locked": locked,
+        "points_earned": earned_points,
+        "points_possible": sum(achievement.points for achievement in ACHIEVEMENTS),
+    }
 
 
 def sync_achievements_for_users(user_ids: set[int]) -> dict[int, list[dict]]:

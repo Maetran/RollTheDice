@@ -26,6 +26,9 @@ test("public player search and ranking are available to guests", async ({ page }
   await page.locator("#rankingHardcore").click();
   await expect(page.locator("#rankingHardcore")).toHaveClass(/active/);
   await expect(page.locator("#rankingBody tr").first()).toBeVisible();
+  await page.locator("#rankingAchievements").click();
+  await expect(page.locator("#rankingAchievements")).toHaveClass(/active/);
+  await expect(page.locator(".ranking-table thead")).toContainText("Erfolgspunkte");
 });
 
 

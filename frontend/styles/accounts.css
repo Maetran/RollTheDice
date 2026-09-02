@@ -96,8 +96,11 @@
 .achievement-copy{ display:grid; gap:.18rem; min-width:0; }
 .achievement-copy strong{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .achievement-copy small{ color:var(--muted); line-height:1.25; }
-.achievement-progress{ align-self:start; padding:.16rem .38rem; border-radius:999px; background:var(--card); color:var(--muted); font-size:.72rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.achievement-status{ display:grid; justify-items:end; align-content:start; gap:.3rem; }
+.achievement-points{ padding:.16rem .38rem; border-radius:999px; background:color-mix(in srgb,var(--accent) 14%,var(--card)); color:var(--accent); font-size:.72rem; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.achievement-progress{ padding:.16rem .38rem; border-radius:999px; background:var(--card); color:var(--muted); font-size:.72rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .achievement-card.unlocked .achievement-progress{ color:var(--success); }
+.achievement-card.unlocked .achievement-points{ background:color-mix(in srgb,var(--success-soft) 68%,var(--card)); color:var(--success); }
 .stat-bucket { border: 1px solid var(--border); border-radius:var(--radius-card); padding: 1rem; background: color-mix(in srgb, var(--card) 92%, var(--accent) 8%); }
 .stat-bucket h2 { margin-top: 0; }
 .stat-bucket dl { margin: 0; }

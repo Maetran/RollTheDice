@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.achievements import ACHIEVEMENTS
+from app.achievements import ACHIEVEMENTS, achievement_sort_key
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / "app" / "static"
@@ -51,3 +51,12 @@ def test_every_achievement_name_and_description_has_an_english_catalog_entry():
         if f'"{value}":' not in catalog
     ]
     assert not missing, missing
+
+
+def test_achievement_points_are_visible_catalog_data_and_logically_ordered():
+    assert ACHIEVEMENTS
+    assert all(1 <= achievement.points <= 10 for achievement in ACHIEVEMENTS)
+    ordered_keys = [achievement.key for achievement in sorted(ACHIEVEMENTS, key=achievement_sort_key)]
+    assert ordered_keys.index("five_ones_written") < ordered_keys.index("five_twos_written")
+    assert ordered_keys.index("five_fives_written") < ordered_keys.index("six_thirty")
+    assert ordered_keys.index("exact_game_score_555") < ordered_keys.index("exact_game_score_1555")

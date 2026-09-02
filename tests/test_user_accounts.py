@@ -202,6 +202,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
             existing = db.scalar(select(User).where(User.username == "ExistingUser"))
             self.assertTrue(existing.mobile_row_quick_entry)
             self.assertIsNotNone(existing.achievement_extra_started_at)
+            self.assertIsNotNone(existing.achievement_expansion_started_at)
 
         create_user("NewUser", "a-secure-password-123", must_change_password=False)
         with session_scope() as db:
@@ -627,10 +628,15 @@ class AccountDatabaseTestCase(GameStateTestCase):
             player = db.get(User, user.id)
             player.achievement_gameplay_started_at = rollout
             player.achievement_extra_started_at = rollout
+            player.achievement_expansion_started_at = rollout
 
         columns = {
             "down": {
                 "1": 5,
+                "2": 10,
+                "3": 15,
+                "4": 20,
+                "5": 25,
                 "6": 30,
                 "max": 30,
                 "min": 5,
@@ -676,6 +682,10 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertTrue(
             {
                 "five_ones_written",
+                "five_twos_written",
+                "five_threes_written",
+                "five_fours_written",
+                "five_fives_written",
                 "min_five",
                 "max_under_ten",
                 "min_under_ten",
@@ -700,6 +710,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
                 "hardcore_score_800",
                 "hardcore_score_900",
                 "hardcore_score_1000",
+                "normal_under_700",
             }.issubset(unlocked),
             unlocked,
         )
@@ -733,6 +744,53 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertNotIn("styler_full_once", unlocked)
         self.assertNotIn("daily_streak_7", unlocked)
         self.assertNotIn("hardcore_streak_7", unlocked)
+
+    def test_exact_score_achievements_are_historical_and_drive_the_achievement_ranking(self):
+        achiever = create_user("PointLanding", "temporary-landing-123", must_change_password=False)
+        newcomer = create_user("Newcomer", "temporary-newcomer-123", must_change_password=False)
+        game = self.make_game(mode=1, players=[("p1", achiever.username)])
+        game["_players"][0]["user_id"] = achiever.id
+        game["_scoreboards"]["p1"] = self.low_scoreboard()
+        snapshot = build_leaderboard_snapshot_fields(game)
+        snapshot["finished_at"] = "2020-01-15T12:00:00+00:00"
+        self.assertTrue(persist_runtime_game(game, {"p1": 555}, snapshot))
+
+        profile = public_player_profile(achiever.username)["player"]
+        unlocked = {item["key"]: item for item in profile["achievements"]["unlocked"]}
+        self.assertIn("exact_game_score_555", unlocked)
+        self.assertIn("normal_under_700", unlocked)
+        self.assertEqual(unlocked["exact_game_score_555"]["points"], 4)
+        self.assertEqual(profile["statistics"]["overall"]["achievement_points"], 8)
+        self.assertEqual(profile["achievements"]["points_earned"], 8)
+
+        ranking = player_ranking(mode="achievements", sort="achievements")
+        self.assertEqual([row["username"] for row in ranking["players"][:2]], [achiever.username, newcomer.username])
+        self.assertEqual(ranking["players"][0]["achievement_points"], 8)
+        self.assertEqual(ranking["players"][1]["games_played"], 0)
+
+    def test_achievement_score_migration_backfills_existing_final_scores(self):
+        user = create_user("MigrationScore", "temporary-migration-123", must_change_password=False)
+        game = self.make_game(mode=1, players=[("p1", user.username)])
+        game["_players"][0]["user_id"] = user.id
+        game["_scoreboards"]["p1"] = self.low_scoreboard()
+        snapshot = build_leaderboard_snapshot_fields(game)
+        snapshot["finished_at"] = "2020-01-15T12:00:00+00:00"
+        self.assertTrue(persist_runtime_game(game, {"p1": 666}, snapshot))
+        config = Config(str(main.BASE / "alembic.ini"))
+        config.set_main_option("script_location", str(main.BASE / "alembic"))
+        config.set_main_option("sqlalchemy.url", f"sqlite:///{self.database_path}")
+
+        command.downgrade(config, "20260902_0011")
+        command.upgrade(config, "head")
+
+        with session_scope() as db:
+            keys = set(
+                db.scalars(
+                    select(UserAchievement.achievement_key).where(UserAchievement.user_id == user.id)
+                )
+            )
+        self.assertIn("exact_game_score_666", keys)
+        self.assertIn("normal_under_700", keys)
 
     def test_account_statistics_and_history_keep_modes_separate(self):
         user = create_user("ModeStats", "temporary-mode-stats-123", must_change_password=False)
@@ -773,7 +831,10 @@ class AccountDatabaseTestCase(GameStateTestCase):
                 )
 
         statistics = public_player_profile(user.username)["player"]["statistics"]
-        self.assertEqual(statistics["overall"], {"games_played": 7, "points_total": 6400})
+        self.assertEqual(statistics["overall"]["games_played"], 7)
+        self.assertEqual(statistics["overall"]["points_total"], 6400)
+        self.assertGreater(statistics["overall"]["achievement_points"], 0)
+        self.assertGreater(statistics["overall"]["achievement_points_possible"], statistics["overall"]["achievement_points"])
         self.assertEqual(statistics["normal"]["games_played"], 5)
         self.assertEqual(statistics["normal"]["points_total"], 5500)
         self.assertEqual(statistics["normal"]["average_points"], 1100.0)

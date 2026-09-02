@@ -15,7 +15,7 @@ Localization conventions and terminology are documented in [docs/LOCALIZATION.md
 - Audited permanent deletion of invalid completed games with automatic statistic updates
 - Self-registration from the lobby with immutable usernames
 - Personal statistics split into Normal, Hardcore, and overall results, with a selectable score chart and median
-- Achievement milestones for special scoring plays, daily streaks, and Hardcore progress; rollout-sensitive goals start from their introduction while Hardcore game counts and score milestones remain historical
+- Achievement milestones for special scoring plays, exact final scores, daily streaks, and Hardcore progress; every achievement awards 1–10 points, profiles show the total, and the player overview includes a sortable achievement ranking. Rollout-sensitive gameplay goals start from their introduction while score-based goals and Hardcore game counts remain historical
 - Progressive Web App support with content-hashed asset and service-worker versions
 - Readiness endpoint and container healthcheck for migration-safe deployments
 - Docker Compose setup for local machines, servers, and Raspberry Pi

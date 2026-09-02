@@ -8,10 +8,10 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from .achievements import sync_achievements_for_users, sync_user_achievements
+from .achievements import achievement_points_for_keys, sync_achievements_for_users, sync_user_achievements
 from .auth import require_admin, require_csrf, require_user
 from .database import database_schema_ready, session_scope
-from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User
+from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User, UserAchievement
 from .security import normalize_username, utcnow
 from .trends import recent_points_trend
 
@@ -123,12 +123,37 @@ def _recent_games_for_user(
 
 
 def _public_profile(db, user: User) -> dict:
+    achievements = sync_user_achievements(db, user)
+    statistics = _statistics_for_user(db, user.id)
+    statistics["overall"].update(
+        {
+            "achievement_points": achievements["points_earned"],
+            "achievement_points_possible": achievements["points_possible"],
+        }
+    )
     return {
         "id": user.id,
         "username": user.username,
-        "statistics": _statistics_for_user(db, user.id),
+        "statistics": statistics,
         "recent_games": _recent_games_for_user(db, user.id),
-        "achievements": sync_user_achievements(db, user),
+        "achievements": achievements,
+    }
+
+
+def _achievement_points_by_user(db, user_ids: set[int]) -> dict[int, int]:
+    """Read materialized unlocks in one query for the public ranking."""
+    points_by_user = {user_id: 0 for user_id in user_ids}
+    if not user_ids:
+        return points_by_user
+    keys_by_user: dict[int, set[str]] = {user_id: set() for user_id in user_ids}
+    rows = db.execute(
+        select(UserAchievement.user_id, UserAchievement.achievement_key).where(UserAchievement.user_id.in_(user_ids))
+    ).all()
+    for user_id, key in rows:
+        keys_by_user[int(user_id)].add(str(key))
+    return {
+        user_id: achievement_points_for_keys(keys_by_user[user_id])
+        for user_id in user_ids
     }
 
 
@@ -151,8 +176,8 @@ def search_players(query: str = "", limit: int = 20, offset: int = 0):
 
 @router.get("/players/ranking")
 def player_ranking(
-    sort: Literal["games", "points", "average", "maximum"] = "games",
-    mode: Literal["normal", "hardcore"] = "normal",
+    sort: Literal["games", "points", "average", "maximum", "achievements"] = "games",
+    mode: Literal["normal", "hardcore", "achievements"] = "normal",
     limit: int = 50,
     offset: int = 0,
 ):
@@ -162,37 +187,49 @@ def player_ranking(
     points_total = func.coalesce(func.sum(GameParticipant.points), 0)
     average_points = func.avg(GameParticipant.points)
     maximum_points = func.max(GameParticipant.points)
-    sort_expression = {
-        "games": games_count,
-        "points": points_total,
-        "average": average_points,
-        "maximum": maximum_points,
-    }[sort]
     with session_scope() as db:
-        rows = db.execute(
-            select(User, games_count, points_total, average_points, maximum_points)
-            .join(GameParticipant, GameParticipant.user_id == User.id)
-            .join(CompletedGame, CompletedGame.id == GameParticipant.game_id)
-            .where(
-                User.is_active.is_(True),
-                CompletedGame.hardcore.is_(mode == "hardcore"),
+        statement = select(User, games_count, points_total, average_points, maximum_points).where(User.is_active.is_(True))
+        if mode == "achievements":
+            statement = (
+                statement.outerjoin(GameParticipant, GameParticipant.user_id == User.id)
+                .outerjoin(CompletedGame, CompletedGame.id == GameParticipant.game_id)
+                .group_by(User.id)
             )
-            .group_by(User.id)
-            .order_by(sort_expression.desc().nullslast(), User.username_normalized)
-            .offset(offset)
-            .limit(limit)
-        ).all()
+        else:
+            statement = (
+                statement.join(GameParticipant, GameParticipant.user_id == User.id)
+                .join(CompletedGame, CompletedGame.id == GameParticipant.game_id)
+                .where(CompletedGame.hardcore.is_(mode == "hardcore"))
+                .group_by(User.id)
+            )
+        rows = db.execute(statement).all()
+        achievement_points = _achievement_points_by_user(db, {user.id for user, *_values in rows})
+
+        def sort_key(row):
+            user, games, points, average, maximum = row
+            values = {
+                "games": int(games),
+                "points": int(points),
+                "average": float(average) if average is not None else float("-inf"),
+                "maximum": int(maximum) if maximum is not None else -1,
+                "achievements": achievement_points[user.id],
+            }
+            return (-values[sort], user.username_normalized)
+
+        ranked_rows = sorted(rows, key=sort_key)
+        rows = ranked_rows[offset : offset + limit]
         user_ids = [user.id for user, *_values in rows]
         recent_by_user: dict[int, list[int]] = {user_id: [] for user_id in user_ids}
         if user_ids:
-            recent_rows = db.execute(
+            recent_statement = (
                 select(GameParticipant.user_id, GameParticipant.points)
                 .join(CompletedGame, CompletedGame.id == GameParticipant.game_id)
-                .where(
-                    GameParticipant.user_id.in_(user_ids),
-                    CompletedGame.hardcore.is_(mode == "hardcore"),
-                )
-                .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc(), GameParticipant.id.desc())
+                .where(GameParticipant.user_id.in_(user_ids))
+            )
+            if mode != "achievements":
+                recent_statement = recent_statement.where(CompletedGame.hardcore.is_(mode == "hardcore"))
+            recent_rows = db.execute(
+                recent_statement.order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc(), GameParticipant.id.desc())
             ).all()
             for user_id, score in recent_rows:
                 recent = recent_by_user[int(user_id)]
@@ -208,6 +245,7 @@ def player_ranking(
                     "points_total": int(points),
                     "average_points": round(float(average), 1) if average is not None else None,
                     "max_points": int(maximum) if maximum is not None else None,
+                    "achievement_points": achievement_points[user.id],
                     **recent_points_trend(
                         recent_by_user[user.id],
                         games_played=int(games),

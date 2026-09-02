@@ -18,7 +18,7 @@ from .auth_protection import (
 )
 from .database import session_scope
 from .models import Session as LoginSession
-from .models import User
+from .models import User, UserAchievement
 from .security import (
     as_utc,
     hash_password,
@@ -302,6 +302,9 @@ def create_user(
             )
             db.add(user)
             db.flush()
+            # Keep the materialized achievement score correct even before a
+            # player opens a profile or finishes their first game.
+            db.add(UserAchievement(user_id=user.id, achievement_key="account_created", unlocked_at=now))
             return user
     except IntegrityError as exc:
         raise ValueError("Benutzername ist bereits vergeben") from exc

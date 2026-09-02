@@ -4,21 +4,21 @@
   <meta charset="utf-8">
   <title>ZDWA Spieler-Ranking &amp; Statistiken</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Entdecke das ZDWA Spieler-Ranking, suche öffentliche Profile und vergleiche Spiele, Durchschnitt, Trend und Bestwerte für Normal und Hardcore.">
+  <meta name="description" content="Entdecke das ZDWA Spieler-Ranking, suche öffentliche Profile und vergleiche Spiele, Bestwerte und Erfolgspunkte für Normal und Hardcore.">
   <link rel="canonical" href="https://zockdiewandan.online/spieler">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="ZDWA">
   <meta property="og:title" content="ZDWA Spieler-Ranking &amp; Statistiken">
-  <meta property="og:description" content="Spieler finden und Leistungen in Normal- und Hardcore-Partien vergleichen.">
+  <meta property="og:description" content="Spieler finden und Leistungen sowie Erfolgspunkte in Normal- und Hardcore-Partien vergleichen.">
   <meta property="og:url" content="https://zockdiewandan.online/spieler">
   <meta property="og:image" content="https://zockdiewandan.online/static/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="manifest" href="/manifest.webmanifest?v=91142d05e01a">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=91142d05e01a" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=91142d05e01a" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=3c895ae9e258">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=3c895ae9e258" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=3c895ae9e258" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=91142d05e01a">
-  <script src="/static/shell.js?v=91142d05e01a" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=3c895ae9e258">
+  <script src="/static/shell.js?v=3c895ae9e258" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -32,7 +32,7 @@
     <section class="page-intro" aria-labelledby="playersTitle">
       <p class="eyebrow">ZDWA Community</p>
       <h1 id="playersTitle">Spieler &amp; Ranking</h1>
-      <p>Finde öffentliche Spielerprofile und vergleiche Spiele, Durchschnitt, Trend und Bestwerte getrennt nach Normal- und Hardcore-Modus.</p>
+      <p>Finde öffentliche Spielerprofile und vergleiche Spiele, Durchschnitt, Trend, Bestwerte und Erfolgspunkte getrennt nach Normal- und Hardcore-Modus.</p>
     </section>
     <section class="card">
       <h2>Spieler suchen</h2>
@@ -49,31 +49,34 @@
           <div class="tabs" aria-label="Spielmodus">
             <button id="rankingNormal" class="tab-btn active" type="button">Normal</button>
             <button id="rankingHardcore" class="tab-btn" type="button">Hardcore</button>
+            <button id="rankingAchievements" class="tab-btn" type="button">Erfolge</button>
           </div>
           <select id="rankingSort" aria-label="Ranking sortieren">
             <option value="games">Meiste Spiele</option>
             <option value="points">Meiste Gesamtpunkte</option>
             <option value="average">Höchster Durchschnitt</option>
             <option value="maximum">Höchste Punktzahl</option>
+            <option value="achievements">Meiste Erfolgspunkte</option>
           </select>
         </div>
       </div>
       <div class="table-scroll">
         <table class="ranking-table">
-          <thead><tr><th>#</th><th>Spieler</th><th>Spiele</th><th>Gesamtpunkte</th><th>Ø</th><th>Trend (3)</th><th>Max</th></tr></thead>
+          <thead><tr><th>#</th><th>Spieler</th><th>Spiele</th><th>Gesamtpunkte</th><th>Ø</th><th>Trend (3)</th><th>Max</th><th>Erfolgspunkte</th></tr></thead>
           <tbody id="rankingBody"></tbody>
         </table>
       </div>
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber } from '/static/auth.js?v=91142d05e01a';
+    import { escapeHtml, formatNumber } from '/static/auth.js?v=3c895ae9e258';
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
     const rankingSort = document.getElementById('rankingSort');
     const rankingNormal = document.getElementById('rankingNormal');
     const rankingHardcore = document.getElementById('rankingHardcore');
+    const rankingAchievements = document.getElementById('rankingAchievements');
     const rankingBody = document.getElementById('rankingBody');
     const profileUrl = username => `/spieler/${encodeURIComponent(username)}`;
     let rankingMode = 'normal';
@@ -88,7 +91,7 @@
     }
 
     async function loadRanking() {
-      rankingBody.innerHTML = '<tr><td colspan="7" class="muted">Laden…</td></tr>';
+      rankingBody.innerHTML = '<tr><td colspan="8" class="muted">Laden…</td></tr>';
       const response = await fetch(`/api/players/ranking?mode=${rankingMode}&sort=${encodeURIComponent(rankingSort.value)}`, { cache: 'no-store' });
       const players = response.ok ? (await response.json()).players : [];
       rankingBody.innerHTML = players.map(player => {
@@ -111,8 +114,9 @@
         <td>${formatNumber(player.average_points)}</td>
         <td><span class="avg-trend ${trend.css}" title="${escapeHtml(trendTitle)}" aria-label="${escapeHtml(trendTitle)}">${trend.symbol} ${trend.text}</span></td>
         <td>${formatNumber(player.max_points)}</td>
+        <td><strong>${formatNumber(player.achievement_points, '0')}</strong></td>
       </tr>`;
-      }).join('') || '<tr><td colspan="7" class="muted">Noch keine registrierten Spieler.</td></tr>';
+      }).join('') || '<tr><td colspan="8" class="muted">Noch keine registrierten Spieler.</td></tr>';
     }
 
     searchForm.addEventListener('submit', event => { event.preventDefault(); searchPlayers(); });
@@ -121,10 +125,20 @@
       rankingMode = mode;
       rankingNormal.classList.toggle('active', mode === 'normal');
       rankingHardcore.classList.toggle('active', mode === 'hardcore');
+      rankingAchievements.classList.toggle('active', mode === 'achievements');
+      if (mode === 'achievements') {
+        if (rankingSort.value !== 'achievements') rankingSort.dataset.lastGameSort = rankingSort.value;
+        rankingSort.value = 'achievements';
+        rankingSort.disabled = true;
+      } else {
+        rankingSort.disabled = false;
+        if (rankingSort.value === 'achievements') rankingSort.value = rankingSort.dataset.lastGameSort || 'games';
+      }
       loadRanking();
     }
     rankingNormal.addEventListener('click', () => setRankingMode('normal'));
     rankingHardcore.addEventListener('click', () => setRankingMode('hardcore'));
+    rankingAchievements.addEventListener('click', () => setRankingMode('achievements'));
     await Promise.all([searchPlayers(), loadRanking()]);
   </script>
 </body>

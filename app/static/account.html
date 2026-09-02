@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=91142d05e01a">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=91142d05e01a" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=91142d05e01a" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=3c895ae9e258">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=3c895ae9e258" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=3c895ae9e258" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=91142d05e01a">
-  <script src="/static/shell.js?v=91142d05e01a" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=3c895ae9e258">
+  <script src="/static/shell.js?v=3c895ae9e258" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -124,7 +124,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth } from '/static/auth.js?v=91142d05e01a';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth } from '/static/auth.js?v=3c895ae9e258';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace('/');
     const user = auth.user;
@@ -222,6 +222,7 @@
       return `<article class="stat-bucket"><h2>${escapeHtml(title)}</h2><dl>
         <div><dt>Spiele</dt><dd>${formatNumber(data.games_played, '0')}</dd></div>
         <div><dt>Gesamtpunkte</dt><dd>${formatNumber(data.points_total, '0')}</dd></div>
+        ${data.achievement_points !== undefined ? `<div><dt>Erfolgspunkte</dt><dd>${formatNumber(data.achievement_points, '0')} / ${formatNumber(data.achievement_points_possible, '0')}</dd></div>` : ''}
         ${details ? `<div><dt>Maximum</dt><dd>${formatNumber(data.max_points)}</dd></div>
         <div><dt>Minimum</dt><dd>${formatNumber(data.min_points)}</dd></div>
         <div><dt>Durchschnitt</dt><dd>${formatNumber(data.average_points)}</dd></div>
@@ -239,10 +240,13 @@
       const current = Number(progress.current || 0);
       const target = Number(progress.target || 1);
       const progressText = unlocked ? 'Erreicht' : `${formatNumber(Math.min(current, target), '0')} / ${formatNumber(target, '0')}`;
+      const achievementPoints = Math.max(0, Number(item.points || 0));
+      const t = window.ZDWA_I18N?.t || (value => value);
+      const pointsText = `+${formatNumber(achievementPoints, '0')} ${t('Erfolgspunkte')}`;
       return `<article class="achievement-card${unlocked ? ' unlocked' : ' locked'}">
         <span class="achievement-icon" aria-hidden="true">${achievementIcon(item.icon_key)}</span>
         <span class="achievement-copy"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.description)}</small></span>
-        <span class="achievement-progress">${escapeHtml(progressText)}</span>
+        <span class="achievement-status"><span class="achievement-points">${escapeHtml(pointsText)}</span><span class="achievement-progress">${escapeHtml(progressText)}</span></span>
       </article>`;
     }
 
@@ -387,7 +391,7 @@
       const achievements = player.achievements || {};
       const unlocked = Array.isArray(achievements.unlocked) ? achievements.unlocked : [];
       const locked = Array.isArray(achievements.locked) ? achievements.locked : [];
-      document.getElementById('achievementSummary').textContent = `${unlocked.length} von ${unlocked.length + locked.length} erreicht`;
+      document.getElementById('achievementSummary').textContent = `${unlocked.length} von ${unlocked.length + locked.length} erreicht · ${formatNumber(achievements.points_earned || 0, '0')} / ${formatNumber(achievements.points_possible || 0, '0')} Erfolgspunkte`;
       document.getElementById('unlockedAchievements').innerHTML = unlocked.length
         ? unlocked.map(item => achievementCard(item, true)).join('')
         : '<p class="muted">Noch keine Erfolge erreicht – das erste Ziel wartet bereits.</p>';
