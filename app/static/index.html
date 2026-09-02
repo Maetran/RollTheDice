@@ -22,16 +22,17 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=92f8b060db44">
+  <link rel="manifest" href="/manifest.webmanifest?v=d87e8a21b65c">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=92f8b060db44" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=92f8b060db44" sizes="180x180">
-  <script src="/static/i18n.js?v=92f8b060db44"></script>
-  <script src="/static/ui.js?v=92f8b060db44"></script>
-  <script src="/static/pwa.js?v=92f8b060db44" defer></script>
-  <script src="/static/theme.js?v=92f8b060db44"></script>
-  <link rel="stylesheet" href="/static/style.css?v=92f8b060db44">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=d87e8a21b65c" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=d87e8a21b65c" sizes="180x180">
+  <script src="/static/i18n.js?v=d87e8a21b65c" defer></script>
+  <script src="/static/ui.js?v=d87e8a21b65c" defer></script>
+  <script src="/static/pwa.js?v=d87e8a21b65c" defer></script>
+  <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
+  <script src="/static/theme.js?v=d87e8a21b65c" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=d87e8a21b65c">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -253,7 +254,7 @@
 
   <!-- Hauptskript: lädt Listen/Leaderboards und verknüpft Buttons -->
   <script type="module">
-    import { loadAuth, login, logout, register } from '/static/auth.js?v=92f8b060db44';
+    import { loadAuth, login, logout, register } from '/static/auth.js?v=d87e8a21b65c';
 
     const nameInput  = document.getElementById('playerName');
     const passInput  = document.getElementById('passInput');

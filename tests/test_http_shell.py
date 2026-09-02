@@ -62,6 +62,20 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         for path in [*main.STATIC_DIR.rglob("*.html"), *main.STATIC_DIR.rglob("*.js")]:
             self.assertEqual(path.read_text(), desired_text(path, version), path.name)
 
+    def test_shared_head_scripts_do_not_block_rendering(self):
+        for html_path in main.STATIC_DIR.glob("*.html"):
+            html = html_path.read_text(encoding="utf-8")
+            for asset in ("i18n.js", "ui.js", "pwa.js"):
+                self.assertIn(f'<script src="/static/{asset}?v=', html, html_path.name)
+                start = html.index(f'<script src="/static/{asset}?v=')
+                end = html.index(">", start)
+                self.assertIn("defer", html[start:end], f"{html_path.name}: {asset}")
+            if "theme.js" in html:
+                self.assertIn("document.documentElement.dataset.theme", html, html_path.name)
+                start = html.index('<script src="/static/theme.js?v=')
+                end = html.index(">", start)
+                self.assertIn("defer", html[start:end], f"{html_path.name}: theme.js")
+
     def test_every_page_has_one_h1_and_a_meta_description(self):
         for html_path in main.STATIC_DIR.glob("*.html"):
             parser = _SeoParser()

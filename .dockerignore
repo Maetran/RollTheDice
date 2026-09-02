@@ -3,19 +3,37 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
 
 # Lokale Datenbanken & persistente Files
 *.db
+*.sqlite3
+*.sqlite3-*
+.env
+.env.*
+!.env.example
 data/
+data.backup-*/
 
 # Umgebungen & lokale Tools
-.env
-.venv
+.venv/
+env/
+venv/
+node_modules/
 
 # Git & Docker Meta
-.git
+.git/
+.github/
 .gitignore
 .dockerignore
+.idea/
+.vscode/
 
-# Logs
+# Logs und Testartefakte
 *.log
+playwright-report/
+test-results/

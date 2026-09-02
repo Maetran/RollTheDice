@@ -27,6 +27,10 @@ node_modules/
 test-results/
 playwright-report/
 .coverage
+.coverage.*
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 data.backup-*/
 
 # IDE
@@ -35,7 +39,8 @@ data.backup-*/
 /app/leaderboard_alltime.json
 /app/leaderboard_recent.json
 /app/stats.json
+/app/*.sqlite3
+/app/*.sqlite3-*
 /data/
-data/leaderboard_alltime.json
-data/leaderboard_recent.json
-data/stats.json
+.env.*
+!.env.example
