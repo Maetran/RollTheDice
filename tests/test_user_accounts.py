@@ -207,6 +207,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
             self.assertIsNotNone(existing.achievement_expansion_started_at)
             self.assertIsNotNone(existing.achievement_office_hours_started_at)
             self.assertIsNotNone(existing.achievement_multiplayer_started_at)
+            self.assertIsNotNone(existing.achievement_top_section_started_at)
 
         create_user("NewUser", "a-secure-password-123", must_change_password=False)
         with session_scope() as db:
@@ -216,6 +217,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
             self.assertFalse(new_user.keep_screen_awake)
             self.assertIsNotNone(new_user.achievement_office_hours_started_at)
             self.assertIsNotNone(new_user.achievement_multiplayer_started_at)
+            self.assertIsNotNone(new_user.achievement_top_section_started_at)
 
     def test_language_can_be_updated_independently(self):
         create_user("LanguageUser", "a-secure-password-123", must_change_password=False)
@@ -758,6 +760,40 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertTrue(
             {"office_hours", "office_hours_10", "office_hours_25", "office_hours_50"}.issubset(unlocked),
             unlocked,
+        )
+
+    def test_exact_upper_sixty_achievements_start_at_their_own_rollout_marker(self):
+        user = create_user("SixtyTower", "temporary-sixty-tower-123", must_change_password=False)
+        rollout = datetime(2026, 9, 2, 12, tzinfo=timezone.utc)
+        with session_scope() as db:
+            db.get(User, user.id).achievement_top_section_started_at = rollout
+
+        upper_sixty = {"1": 5, "2": 10, "3": 15, "4": 20, "5": 10, "6": 0}
+
+        def persist_exact_sixty_game(finished_at: datetime) -> None:
+            game = self.make_game(mode=1, players=[("p1", user.username)])
+            game["_players"][0]["user_id"] = user.id
+            game["_scoreboards"]["p1"] = self.full_scoreboard(
+                {column: upper_sixty for column in ("down", "free", "up", "ang")}
+            )
+            snapshot = build_leaderboard_snapshot_fields(game)
+            snapshot["finished_at"] = finished_at.isoformat()
+            self.assertTrue(persist_runtime_game(game, {"p1": 900}, snapshot))
+
+        # A pre-rollout perfect upper section deliberately does not count.
+        persist_exact_sixty_game(rollout - timedelta(minutes=1))
+        before = public_player_profile(user.username)["player"]["achievements"]
+        locked = {item["key"]: item for item in before["locked"]}
+        self.assertEqual(locked["top_section_exact_60"]["progress"], {"current": 0, "target": 1})
+        self.assertEqual(locked["top_section_all_exact_60"]["progress"], {"current": 0, "target": 1})
+
+        persist_exact_sixty_game(rollout)
+        unlocked = public_player_profile(user.username)["player"]["achievements"]["unlocked"]
+        unlocked_keys = {item["key"] for item in unlocked}
+        self.assertTrue({"top_section_exact_60", "top_section_all_exact_60"}.issubset(unlocked_keys))
+        self.assertEqual(
+            [item["unlocked_at"] for item in unlocked],
+            sorted((item["unlocked_at"] for item in unlocked), reverse=True),
         )
 
     def test_multiplayer_achievements_are_winner_only_and_start_at_their_rollout(self):

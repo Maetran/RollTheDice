@@ -216,5 +216,57 @@
     if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   });
 
+  function rankLegendContext(badge) {
+    const parsedPoints = Number(badge?.dataset?.rankPoints);
+    const parsedMaximum = Number(badge?.dataset?.rankPointsPossible);
+    return {
+      key: String(badge?.dataset?.rankKey || ""),
+      points: Number.isFinite(parsedPoints) ? Math.max(0, Math.trunc(parsedPoints)) : null,
+      pointsPossible: Number.isFinite(parsedMaximum) ? Math.max(0, Math.trunc(parsedMaximum)) : null,
+      owner: String(badge?.dataset?.rankOwner || "").trim(),
+    };
+  }
+
+  function openRankLegend(badge) {
+    const context = rankLegendContext(badge);
+    if (typeof window.ZDWA_OPEN_RANK_LEGEND === "function") {
+      try {
+        const result = window.ZDWA_OPEN_RANK_LEGEND(context);
+        if (result && typeof result.catch === "function") result.catch(() => {});
+        return;
+      } catch (_) {
+        // A room overlay is a convenience. The full legend remains available.
+      }
+    }
+    const url = new URL("/rangabzeichen", window.location.origin);
+    if (context.points !== null) url.searchParams.set("punkte", String(context.points));
+    if (context.owner) url.searchParams.set("spieler", context.owner);
+    window.location.assign(url);
+  }
+
+  function rankLegendBadgeFromEvent(event) {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    return target?.closest?.("[data-rank-legend]") || null;
+  }
+
+  // Rank badges also appear inside linked player names. Delegation makes every
+  // badge independently keyboard-accessible without ever nesting anchors.
+  document.addEventListener("click", event => {
+    const badge = rankLegendBadgeFromEvent(event);
+    if (!badge) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openRankLegend(badge);
+  }, true);
+
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const badge = rankLegendBadgeFromEvent(event);
+    if (!badge) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openRankLegend(badge);
+  }, true);
+
   window.ZDWA_UI = { dialog, notice, confirm: confirmDialog, prompt: promptDialog, toast };
 })();

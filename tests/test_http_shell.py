@@ -6,6 +6,7 @@ from unittest.mock import patch
 import httpx
 
 from app import main
+from app.achievements import ACHIEVEMENT_POINTS_POSSIBLE, ACHIEVEMENT_RANKS, achievement_rank_for_points
 from app.site_seo import PUBLIC_SEO_PAGES, SITE_ORIGIN
 from scripts.sync_static_versions import content_version, desired_text
 
@@ -115,6 +116,22 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("/konto", sitemap.text)
         self.assertNotIn("/spiel/", sitemap.text)
 
+    async def test_achievement_rank_legend_is_public_and_uses_live_catalog_thresholds(self):
+        transport = httpx.ASGITransport(app=main.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            response = await client.get("/api/achievement-ranks")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["points_possible"], ACHIEVEMENT_POINTS_POSSIBLE)
+        self.assertNotIn("current", payload)
+        self.assertEqual([rank["key"] for rank in payload["ranks"]], [rank.key for rank in ACHIEVEMENT_RANKS])
+        self.assertEqual(payload["ranks"][0]["minimum_points"], 0)
+        self.assertEqual(
+            payload["ranks"][-1]["minimum_points"],
+            achievement_rank_for_points(ACHIEVEMENT_POINTS_POSSIBLE)["minimum_points"],
+        )
+
     async def test_versioned_assets_are_immutable_but_html_is_revalidated(self):
         version = content_version()
         transport = httpx.ASGITransport(app=main.app)
@@ -144,6 +161,7 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
                 "/regeln",
                 "/spieler",
                 "/spieler/Test",
+                "/rangabzeichen",
                 "/konto",
                 "/admin",
                 "/spiel/abc123",
@@ -158,17 +176,20 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
             profile = await client.get("/static/profile.html?user=Test")
             result = await client.get("/static/game_view.html?id=abc123")
             account = await client.get("/static/account.html")
+            ranks = await client.get("/static/ranks.html")
 
         self.assertEqual(room.status_code, 308)
         self.assertEqual(room.headers["location"], "/spiel/abc123/zuschauen?name=Gast")
         self.assertEqual(profile.headers["location"], "/spieler/Test")
         self.assertEqual(result.headers["location"], "/ergebnis/abc123")
         self.assertEqual(account.headers["location"], "/konto")
+        self.assertEqual(ranks.headers["location"], "/rangabzeichen")
 
     def test_pwa_update_and_offline_assets_are_precached(self):
         service_worker = (main.STATIC_DIR / "sw.js").read_text()
         self.assertIn("'/static/shell.js'", service_worker)
         self.assertIn("'/static/lobby.js'", service_worker)
+        self.assertIn("'/rangabzeichen'", service_worker)
         self.assertNotIn("'/static/room-scoring.js'", service_worker)
         self.assertNotIn("'/static/chat.js'", service_worker)
         self.assertNotIn("'/static/pwa.js'", service_worker)

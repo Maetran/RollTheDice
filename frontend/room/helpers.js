@@ -52,6 +52,7 @@ import { ANNOUNCE_FIELDS, calculatePoints, WRITABLE_MAP } from "./scoring.js";
   const ROLL_ANIMATION_MS = 650;
   const ROLL_FACE_ANIMATION_STEP_MS = 100;
   const ROLL_PENDING_TIMEOUT_MS = 5000;
+  const WRITE_PENDING_TIMEOUT_MS = 8000;
   const AUTO_ANNOUNCE_WRITE_DELAY_MS = 500;
 
   function haptic(pattern = 10) {
@@ -66,6 +67,30 @@ import { ANNOUNCE_FIELDS, calculatePoints, WRITABLE_MAP } from "./scoring.js";
       obj.action === 'roll_dice' || obj.type === 'roll_dice' || obj.t === 'roll_dice' ||
       obj.type === 'roll'       || obj.t === 'roll'        || obj.action === 'roll'
     );
+  }
+
+  function isWriteAction(obj) {
+    return typeof obj?.action === "string" && obj.action.startsWith("write_field");
+  }
+
+  function clearPendingWrite() {
+    if (window.__rt_writePendingTimer) {
+      clearTimeout(window.__rt_writePendingTimer);
+      window.__rt_writePendingTimer = null;
+    }
+    window.__rt_writeRequestPending = false;
+  }
+
+  function beginPendingWrite() {
+    clearPendingWrite();
+    window.__rt_writeRequestPending = true;
+    // A dropped connection or an unexpected server response must never leave a
+    // player unable to continue. The next snapshot/error normally clears this
+    // immediately; this is only a last-resort client-side escape hatch.
+    window.__rt_writePendingTimer = setTimeout(() => {
+      clearPendingWrite();
+      if (typeof syncActionButtons === "function") syncActionButtons(sb);
+    }, WRITE_PENDING_TIMEOUT_MS);
   }
 
   function safeSend(ws, obj) {
@@ -84,6 +109,10 @@ import { ANNOUNCE_FIELDS, calculatePoints, WRITABLE_MAP } from "./scoring.js";
       window.__rt_lastRollSent = 0;
     }
 
+    if (isWriteAction(obj) && window.__rt_writeRequestPending) {
+      return false;
+    }
+
     if (isRollAction(obj)) {
       const now = Date.now();
       // Doppelklick-/Mehrfachklick-Schutz: alles < Guard seit letztem Roll wird verworfen
@@ -99,7 +128,10 @@ import { ANNOUNCE_FIELDS, calculatePoints, WRITABLE_MAP } from "./scoring.js";
         ws.send(JSON.stringify(obj));
         if (isRollAction(obj)) haptic(12);
         else if (obj?.action === "set_hold") haptic(8);
-        else if (String(obj?.action || "").startsWith("write_field")) haptic([12, 24, 12]);
+        else if (isWriteAction(obj)) {
+          beginPendingWrite();
+          haptic([12, 24, 12]);
+        }
         return true;
       }
     } catch (e) {

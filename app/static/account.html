@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=d1af14c7c6b4">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=d1af14c7c6b4" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=d1af14c7c6b4" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=a26617486889">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=a26617486889" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a26617486889" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=d1af14c7c6b4">
-  <script src="/static/shell.js?v=d1af14c7c6b4" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=a26617486889">
+  <script src="/static/shell.js?v=a26617486889" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -124,7 +124,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=d1af14c7c6b4';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=a26617486889';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace('/');
     const user = auth.user;
@@ -208,6 +208,7 @@
     });
 
     function bucket(title, data, { details = true } = {}) {
+      const t = window.ZDWA_I18N?.t || (value => value);
       const hasTrend = data.trend === 'up' || data.trend === 'down' || data.trend === 'same';
       const trend = data.trend === 'up'
         ? { symbol: '↑', text: 'Positiv', css: 'avg-up' }
@@ -222,7 +223,7 @@
       return `<article class="stat-bucket"><h2>${escapeHtml(title)}</h2><dl>
         <div><dt>Spiele</dt><dd>${formatNumber(data.games_played, '0')}</dd></div>
         <div><dt>Gesamtpunkte</dt><dd>${formatNumber(data.points_total, '0')}</dd></div>
-        ${data.achievement_points !== undefined ? `<div><dt>Erfolgspunkte</dt><dd>${formatNumber(data.achievement_points, '0')} / ${formatNumber(data.achievement_points_possible, '0')}</dd></div>` : ''}
+        ${data.achievement_points !== undefined ? `<div><dt>${t('Ehrenberg-Marken')}</dt><dd>${formatNumber(data.achievement_points, '0')} / ${formatNumber(data.achievement_points_possible, '0')}</dd></div>` : ''}
         ${data.achievement_rank ? `<div><dt>Rang</dt><dd>${playerRankBadge({ achievement_rank: data.achievement_rank })}</dd></div>` : ''}
         ${details ? `<div><dt>Maximum</dt><dd>${formatNumber(data.max_points)}</dd></div>
         <div><dt>Minimum</dt><dd>${formatNumber(data.min_points)}</dd></div>
@@ -236,14 +237,25 @@
       const icons = { points: '◆', games: '▦', score: '★', upper: '↑', row: '≡', strike: '×', sixty: '6', full: '●', poker: '♠', diff: 'Δ', kenter: '◇', bonus: '+', office: '◫', night: '☾', weekend: '☀', early: '↗', statistics: '⌁', account: '✓' };
       return icons[iconKey] || '✦';
     }
+    function achievementDate(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      return new Intl.DateTimeFormat(window.ZDWA_I18N?.locale?.() || 'de-CH', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+      }).format(date);
+    }
     function achievementCard(item, unlocked) {
       const progress = item.progress || {};
       const current = Number(progress.current || 0);
       const target = Number(progress.target || 1);
-      const progressText = unlocked ? 'Erreicht' : `${formatNumber(Math.min(current, target), '0')} / ${formatNumber(target, '0')}`;
       const achievementPoints = Math.max(0, Number(item.points || 0));
       const t = window.ZDWA_I18N?.t || (value => value);
-      const pointsText = `+${formatNumber(achievementPoints, '0')} ${t('Erfolgspunkte')}`;
+      const unlockedDate = unlocked ? achievementDate(item.unlocked_at) : '';
+      const progressText = unlocked
+        ? (unlockedDate ? `${t('Erreicht am')} ${unlockedDate}` : t('Erreicht'))
+        : `${formatNumber(Math.min(current, target), '0')} / ${formatNumber(target, '0')}`;
+      const pointsText = `+${formatNumber(achievementPoints, '0')} ${t('Ehrenberg-Marken')}`;
       return `<article class="achievement-card${unlocked ? ' unlocked' : ' locked'}">
         <span class="achievement-icon" aria-hidden="true">${achievementIcon(item.icon_key)}</span>
         <span class="achievement-copy"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.description)}</small></span>
@@ -393,7 +405,8 @@
       const achievements = player.achievements || {};
       const unlocked = Array.isArray(achievements.unlocked) ? achievements.unlocked : [];
       const locked = Array.isArray(achievements.locked) ? achievements.locked : [];
-      document.getElementById('achievementSummary').textContent = `${unlocked.length} von ${unlocked.length + locked.length} erreicht · ${formatNumber(achievements.points_earned || 0, '0')} / ${formatNumber(achievements.points_possible || 0, '0')} Erfolgspunkte`;
+      const t = window.ZDWA_I18N?.t || (value => value);
+      document.getElementById('achievementSummary').textContent = `${unlocked.length} ${t('von')} ${unlocked.length + locked.length} ${t('erreicht')} · ${formatNumber(achievements.points_earned || 0, '0')} / ${formatNumber(achievements.points_possible || 0, '0')} ${t('Ehrenberg-Marken')}`;
       document.getElementById('unlockedAchievements').innerHTML = unlocked.length
         ? unlocked.map(item => achievementCard(item, true)).join('')
         : '<p class="muted">Noch keine Erfolge erreicht – das erste Ziel wartet bereits.</p>';

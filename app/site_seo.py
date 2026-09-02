@@ -29,6 +29,7 @@ PUBLIC_SEO_PAGES: tuple[PublicSeoPage, ...] = (
     PublicSeoPage("/", "index.html", "weekly", 1.0),
     PublicSeoPage("/regeln", "rules.html", "monthly", 0.9),
     PublicSeoPage("/spieler", "players.html", "daily", 0.8),
+    PublicSeoPage("/rangabzeichen", "ranks.html", "monthly", 0.6),
 )
 
 

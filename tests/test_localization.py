@@ -15,6 +15,7 @@ USER_PAGES = {
     "rules.html",
     "game_view.html",
     "players.html",
+    "ranks.html",
     "profile.html",
     "account.html",
     "admin.html",
@@ -65,6 +66,8 @@ def test_achievement_points_are_visible_catalog_data_and_logically_ordered():
     assert ordered_keys.index("five_ones_written") < ordered_keys.index("five_twos_written")
     assert ordered_keys.index("five_fives_written") < ordered_keys.index("six_thirty")
     assert ordered_keys.index("exact_game_score_555") < ordered_keys.index("exact_game_score_1555")
+    assert ordered_keys.index("top_section_exact_60") < ordered_keys.index("top_section_all_exact_60")
+    assert ordered_keys.index("top_section_all_exact_60") < ordered_keys.index("top_section_81_without_bonus")
     assert ordered_keys.index("office_hours") < ordered_keys.index("office_hours_10")
     assert ordered_keys.index("office_hours_10") < ordered_keys.index("office_hours_25") < ordered_keys.index("office_hours_50")
     assert ordered_keys.index("multiplayer_2p_margin_100") < ordered_keys.index("multiplayer_2p_margin_200")
@@ -76,14 +79,26 @@ def test_achievement_points_are_visible_catalog_data_and_logically_ordered():
 
 
 def test_achievement_rank_tiers_follow_the_public_point_distribution():
-    assert ACHIEVEMENT_POINTS_POSSIBLE == 535
+    assert ACHIEVEMENT_POINTS_POSSIBLE == 549
     assert achievement_rank_for_points(0)["title"] == "Newbie"
-    assert achievement_rank_for_points(12)["title"] == "Rookie"
-    assert achievement_rank_for_points(42)["title"] == "Spieler"
-    assert achievement_rank_for_points(143)["title"] == "Pro"
-    assert achievement_rank_for_points(273)["title"] == "Meister"
-    assert achievement_rank_for_points(445)["title"] == "Legende"
-    godmode = achievement_rank_for_points(511)
+    assert achievement_rank_for_points(13)["title"] == "Rookie"
+    assert achievement_rank_for_points(43)["title"] == "Spieler"
+    assert achievement_rank_for_points(147)["title"] == "Pro"
+    assert achievement_rank_for_points(280)["title"] == "Meister"
+    assert achievement_rank_for_points(457)["title"] == "Legende"
+    godmode = achievement_rank_for_points(524)
     assert godmode["title"] == "Godmode"
     assert godmode["stars"] == 5
     assert godmode["points_possible"] == ACHIEVEMENT_POINTS_POSSIBLE
+
+
+def test_ehrenberg_marks_and_unlocked_dates_are_localized_in_achievement_views():
+    catalog = (ROOT / "frontend" / "i18n" / "catalog.js").read_text(encoding="utf-8")
+    assert '"Ehrenberg-Marken": "Ehrenberg Marks"' in catalog
+    assert '"Erreicht am": "Unlocked on"' in catalog
+    for filename in ("account.html", "profile.html"):
+        source = (STATIC / filename).read_text(encoding="utf-8")
+        assert "Ehrenberg-Marken" in source
+        assert "Erreicht am" in source
+        assert "unlocked_at" in source
+        assert "Erfolgspunkte" not in source

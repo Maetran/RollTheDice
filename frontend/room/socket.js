@@ -91,6 +91,7 @@
       // Fehler
       if (msg.error) {
         console.warn("Serverfehler:", msg.error);
+        clearPendingWrite();
         if (rollRequestPending) {
           clearPendingRoll();
           clearRollAnimation();
@@ -136,6 +137,7 @@
 
       // Scoreboard-Update
       if (msg.scoreboard) {
+        clearPendingWrite();
         const wasSuperadminActive = lastSuperadminSnapshotActive;
         celebrateSixtyScore(msg.score_event);
         sb = msg.scoreboard;
@@ -219,6 +221,7 @@
     });
 
     ws.addEventListener("close", () => {
+      clearPendingWrite();
       clearPendingRoll();
       clearAutoRollRetry();
       clearRollAnimation();

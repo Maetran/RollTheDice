@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>ZDWA Rangabzeichen &amp; Ehrenberg-Marken</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Erfahre, wie ZDWA Rangabzeichen und Ehrenberg-Marken funktionieren, welche Sterne und Punkte für Newbie bis Godmode erforderlich sind.">
+  <meta name="theme-color" content="#f4f6f8">
+  <meta name="color-scheme" content="light dark">
+  <link rel="canonical" href="https://zockdiewandan.online/rangabzeichen">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ZDWA">
+  <meta property="og:title" content="ZDWA Rangabzeichen &amp; Ehrenberg-Marken">
+  <meta property="og:description" content="Alle ZDWA Rangstufen, Sternabzeichen und Mindestwerte für Ehrenberg-Marken auf einen Blick.">
+  <meta property="og:url" content="https://zockdiewandan.online/rangabzeichen">
+  <meta property="og:image" content="https://zockdiewandan.online/static/icons/icon-512.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="manifest" href="/manifest.webmanifest?v=a26617486889">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=a26617486889" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a26617486889" sizes="180x180">
+  <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
+  <link rel="stylesheet" href="/static/style.css?v=a26617486889">
+  <script src="/static/shell.js?v=a26617486889" defer></script>
+</head>
+<body class="lobby-page">
+  <main class="wrap profile-shell rank-legend-page">
+    <header class="app-nav">
+      <a class="app-nav-brand" href="/" aria-label="ZDWA Lobby"><span class="logo" aria-hidden="true">🎲</span><span>ZDWA</span></a>
+      <nav class="app-nav-links" aria-label="Hauptnavigation">
+        <a class="app-nav-link" href="/">Lobby</a><a class="app-nav-link" href="/spieler">Spieler &amp; Ranking</a><a class="app-nav-link" href="/regeln">Regeln</a><a class="app-nav-link" href="/konto">Konto</a><a class="app-nav-link" href="/rangabzeichen" aria-current="page">Rangabzeichen</a>
+      </nav>
+      <div class="app-nav-tools"><button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten"><span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span><span class="theme-toggle-label" data-theme-label>Dunkel</span></button></div>
+    </header>
+    <section class="page-intro" aria-labelledby="rankLegendTitle">
+      <p class="eyebrow">ZDWA Fortschritt</p>
+      <h1 id="rankLegendTitle">Rangabzeichen &amp; Ehrenberg-Marken</h1>
+      <p>Sterne zeigen deinen Rang. Die Rangschwellen wachsen mit dem Erfolgskatalog, damit der Weg von Newbie bis Godmode immer anspruchsvoll bleibt.</p>
+    </section>
+    <section class="card" aria-labelledby="rankLegendListTitle">
+      <div id="rankLegendError" class="connection-error" hidden></div>
+      <section id="rankLegendCurrent" class="rank-legend-current" hidden></section>
+      <div id="rankLegendSummary" class="rank-legend-summary" aria-live="polite"></div>
+      <h2 id="rankLegendListTitle">Ränge und Mindestwerte</h2>
+      <ol id="rankLegendList" class="rank-legend-list" aria-busy="true"></ol>
+    </section>
+  </main>
+  <script type="module">
+    import { formatNumber } from '/static/auth.js?v=a26617486889';
+
+    const t = value => window.ZDWA_I18N?.t?.(value) || value;
+    const currentElement = document.getElementById('rankLegendCurrent');
+    const summaryElement = document.getElementById('rankLegendSummary');
+    const listElement = document.getElementById('rankLegendList');
+    const errorElement = document.getElementById('rankLegendError');
+    const parameters = new URLSearchParams(location.search);
+    const requestedPointsValue = Number(parameters.get('punkte'));
+    const requestedPoints = parameters.has('punkte') && Number.isFinite(requestedPointsValue)
+      ? Math.max(0, Math.trunc(requestedPointsValue))
+      : null;
+    const requestedOwner = String(parameters.get('spieler') || '').trim();
+
+    function rankKey(value) {
+      return String(value || 'newbie').replace(/[^a-z0-9-]/gi, '') || 'newbie';
+    }
+
+    function rankStars(value) {
+      const count = Math.max(0, Math.min(5, Math.trunc(Number(value) || 0)));
+      return count ? '★'.repeat(count) : '☆';
+    }
+
+    function selectedRank(ranks, points) {
+      return ranks.filter(rank => points >= Number(rank?.minimum_points || 0)).at(-1) || ranks[0] || null;
+    }
+
+    function stat(label, value) {
+      const element = document.createElement('div');
+      element.className = 'rank-legend-stat';
+      const caption = document.createElement('small');
+      caption.textContent = label;
+      const amount = document.createElement('strong');
+      amount.textContent = value;
+      element.append(caption, amount);
+      return element;
+    }
+
+    function row(rank, activeKey) {
+      const item = document.createElement('li');
+      const key = rankKey(rank?.key);
+      item.className = `rank-legend-row${key === activeKey ? ' is-current' : ''}`;
+      const insignia = document.createElement('span');
+      insignia.className = `rank-legend-insignia rank-legend-insignia--${key}`;
+      insignia.textContent = rankStars(rank?.stars);
+      insignia.setAttribute('aria-label', `${formatNumber(rank?.stars, '0')} ${t('Sterne')}`);
+      const title = document.createElement('span');
+      title.className = 'rank-legend-title';
+      const name = document.createElement('strong');
+      name.textContent = t(rank?.title || 'Newbie');
+      const detail = document.createElement('small');
+      detail.textContent = t('Ab diesem Wert trägst du dieses Rangabzeichen.');
+      title.append(name, detail);
+      const minimum = document.createElement('span');
+      minimum.className = 'rank-legend-minimum';
+      minimum.textContent = `${t('ab')} ${formatNumber(rank?.minimum_points, '0')} ${t('Ehrenberg-Marken')}`;
+      item.append(insignia, title, minimum);
+      return item;
+    }
+
+    function render(payload) {
+      const ranks = Array.isArray(payload?.ranks) ? payload.ranks : [];
+      const maximum = Math.max(0, Math.trunc(Number(payload?.points_possible) || 0));
+      const viewerPoints = Number(payload?.current?.points);
+      const points = requestedPoints ?? (Number.isFinite(viewerPoints) ? Math.max(0, Math.trunc(viewerPoints)) : null);
+      const currentRank = points === null ? null : selectedRank(ranks, points);
+
+      currentElement.replaceChildren();
+      currentElement.hidden = false;
+      if (currentRank) {
+        const title = document.createElement('strong');
+        title.textContent = requestedOwner ? `${t('Rang von')} ${requestedOwner}` : t('Dein Rang');
+        const text = document.createElement('p');
+        text.textContent = `${rankStars(currentRank.stars)} ${t(currentRank.title || 'Newbie')} · ${formatNumber(points, '0')} / ${formatNumber(maximum, '0')} ${t('Ehrenberg-Marken')}`;
+        currentElement.append(title, text);
+      } else {
+        const text = document.createElement('p');
+        text.textContent = t('Melde dich an oder öffne ein Rangabzeichen eines Spielers, um den aktuellen Stand zu sehen.');
+        currentElement.append(text);
+      }
+
+      summaryElement.replaceChildren(
+        stat(t('Aktuell möglich'), `${formatNumber(maximum, '0')} ${t('Ehrenberg-Marken')}`),
+        stat(t('Rangstufen'), String(ranks.length)),
+      );
+      listElement.replaceChildren(...ranks.map(rank => row(rank, currentRank?.key)));
+      listElement.removeAttribute('aria-busy');
+    }
+
+    try {
+      const response = await fetch('/api/achievement-ranks', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      render(await response.json());
+    } catch {
+      errorElement.textContent = t('Ranglegende konnte nicht geladen werden.');
+      errorElement.hidden = false;
+      listElement.removeAttribute('aria-busy');
+    }
+  </script>
+</body>
+</html>

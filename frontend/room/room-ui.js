@@ -45,6 +45,56 @@
     element.textContent = window.ZDWA_I18N?.t?.(actionGuidance(snapshot)) || actionGuidance(snapshot);
   }
 
+  function achievementUnlockQueue(unlockedAchievements) {
+    if (!Array.isArray(unlockedAchievements)) return [];
+    const seen = new Set();
+    return unlockedAchievements.filter(achievement => {
+      if (!achievement || typeof achievement !== "object") return false;
+      const key = String(achievement.key || achievement.name || "").trim();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function achievementUnlockMessage(achievement, index, total) {
+    const translate = value => window.ZDWA_I18N?.t?.(value) || String(value ?? "");
+    const points = Math.max(0, Math.trunc(Number(achievement?.points) || 0));
+    const lines = [translate(achievement?.name || "Erfolg")];
+    if (achievement?.description) lines.push(translate(achievement.description));
+    if (points) lines.push(`+${points} ${translate("Ehrenberg-Marken")}`);
+    if (total > 1) lines.push(`${index + 1} / ${total}`);
+    return lines.join("\n\n");
+  }
+
+  async function acknowledgeAchievementUnlocks(unlockedAchievements) {
+    const queue = achievementUnlockQueue(unlockedAchievements);
+    for (const [index, achievement] of queue.entries()) {
+      const message = achievementUnlockMessage(achievement, index, queue.length);
+      let acknowledged = false;
+      if (window.ZDWA_UI?.dialog) {
+        try {
+          await window.ZDWA_UI.dialog({
+            title: "Erfolg erreicht!",
+            message,
+            kind: "achievement",
+            dismissible: false,
+            actions: [{ id: "acknowledge", label: "Weiter", className: "primary" }],
+          });
+          acknowledged = true;
+        } catch (error) {
+          console.warn("Achievement-Hinweis konnte nicht angezeigt werden:", error);
+        }
+      }
+      // A final-result snapshot must never get stuck because the shared dialog
+      // system is unavailable. `alert` still requires an explicit acknowledgement.
+      if (!acknowledged) {
+        try { window.alert(message); }
+        catch (error) { console.warn("Achievement-Hinweis konnte nicht bestätigt werden:", error); }
+      }
+    }
+  }
+
   async function showGameResults(snapshot, unlockedAchievements = []) {
     if (window._resultsShown) return;
     window._resultsShown = true;
@@ -87,15 +137,20 @@
     const lines = results.length
       ? results.map((entry, index) => `${index + 1}. ${labelFor(entry)}${Number.isFinite(entry?.total) ? ` – ${entry.total} Punkte` : ""}`)
       : ["Das Spiel wurde erfolgreich beendet."];
-    const achievementLines = unlockedAchievements.flatMap(achievement => [
-      `🏆 Erfolg erreicht: ${achievement.name || "Erfolg"}`,
-      achievement.description || "",
-    ]).filter(Boolean);
+
+    // Achievements are acknowledged one by one before result actions become
+    // available. They are presentation-only: the server has already persisted
+    // and finalized the game before this local queue is opened.
+    try {
+      await acknowledgeAchievementUnlocks(unlockedAchievements);
+    } catch (error) {
+      console.warn("Achievement-Queue konnte nicht geöffnet werden:", error);
+    }
 
     const choice = window.ZDWA_UI?.dialog
       ? await window.ZDWA_UI.dialog({
-          title: achievementLines.length ? "Erfolg erreicht!" : (results.length > 1 ? "Endstand" : "Spiel beendet"),
-          message: [...lines, ...achievementLines].join("\n"),
+          title: results.length > 1 ? "Endstand" : "Spiel beendet",
+          message: lines.join("\n"),
           kind: "success",
           dismissible: false,
           actions: [

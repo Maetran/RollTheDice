@@ -13,7 +13,7 @@
     `scripts/sync_static_versions.py` ausführen, nicht manuell hochzählen.
 */
 
-const CACHE_VERSION = 'assets-d1af14c7c6b4';
+const CACHE_VERSION = 'assets-a26617486889';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
@@ -21,6 +21,7 @@ const PRECACHE_URLS = [
   '/',
   '/regeln',
   '/spieler',
+  '/rangabzeichen',
   '/konto',
   '/admin',
   '/offline',

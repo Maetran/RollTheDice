@@ -15,7 +15,7 @@ Localization conventions and terminology are documented in [docs/LOCALIZATION.md
 - Audited permanent deletion of invalid completed games with automatic statistic updates
 - Self-registration from the lobby with immutable usernames
 - Personal statistics split into Normal, Hardcore, and overall results, with a selectable score chart and median
-- Achievement milestones for special scoring plays, exact final scores, multiplayer victory margins, daily streaks, office-hour game counts, and Hardcore progress; every achievement awards 1–10 points, profiles show the total, and the player overview includes a sortable achievement ranking. The calculated total also assigns an account-only title from Newbie through Godmode with star insignia, shown consistently beside player names in the lobby, live game, chat, profiles, replays, and rankings. Rollout-sensitive gameplay goals, including multiplayer goals, start from their introduction while score-based goals and Hardcore game counts remain historical
+- Achievement milestones for special scoring plays, exact final scores, multiplayer victory margins, daily streaks, office-hour game counts, exact upper-section 60s, and Hardcore progress; every achievement awards 1–10 **Ehrenberg-Marken**, the achievement currency named after Ehrenberg in Reutte. Profiles show the total, and the player overview includes a sortable Ehrenberg-Marken ranking. The calculated total also assigns an account-only title from Newbie through Godmode with star insignia, shown consistently beside player names in the lobby, live game, chat, profiles, replays, and rankings. Clicking an insignia opens the rank legend at `/rangabzeichen` (as an overlay during live play). Rollout-sensitive gameplay goals, including multiplayer and upper-section-60 goals, start from their introduction while score-based goals and Hardcore game counts remain historical
 - Progressive Web App support with content-hashed asset and service-worker versions
 - Readiness endpoint and container healthcheck for migration-safe deployments
 - Docker Compose setup for local machines, servers, and Raspberry Pi
@@ -27,7 +27,7 @@ User-facing navigation uses short routes without implementation details:
 - `/` lobby
 - `/spiel/{game_id}` active player view
 - `/spiel/{game_id}/zuschauen` spectator view
-- `/regeln`, `/spieler`, `/spieler/{username}`, `/konto`, and `/admin`
+- `/regeln`, `/rangabzeichen`, `/spieler`, `/spieler/{username}`, `/konto`, and `/admin`
 - `/ergebnis/{game_id}` completed-game view
 - `/robots.txt` crawler rules and `/sitemap.xml` for the stable, indexable public pages
 

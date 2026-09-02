@@ -28,7 +28,7 @@ test("public player search and ranking are available to guests", async ({ page }
   await expect(page.locator("#rankingBody tr").first()).toBeVisible();
   await page.locator("#rankingAchievements").click();
   await expect(page.locator("#rankingAchievements")).toHaveClass(/active/);
-  await expect(page.locator(".ranking-table thead")).toContainText("Erfolgspunkte");
+  await expect(page.locator(".ranking-table thead")).toContainText("Ehrenberg-Marken");
 });
 
 
@@ -160,6 +160,37 @@ test("achievement titles follow an account player through lobby, stats, and the 
     page.click("#createBtn"),
   ]);
   await expect(page.locator(".player-card .player-rank")).toHaveText(/☆\s*Newbie/);
+});
+
+
+test("rank badges open the public legend and the live-game overlay", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#loginUsername", "Admin");
+  await page.fill("#loginPassword", "temporary-password-123");
+  await page.click("#loginForm button[type=submit]");
+
+  await Promise.all([
+    page.waitForURL(/\/rangabzeichen/),
+    page.locator("#authBadge .player-rank").click(),
+  ]);
+  await expect(page.getByRole("heading", { name: "Rangabzeichen & Ehrenberg-Marken" })).toBeVisible();
+  await expect(page.locator("#rankLegendList .rank-legend-row")).toHaveCount(10);
+  await expect(page.locator("#rankLegendCurrent")).toContainText("Ehrenberg-Marken");
+
+  await page.goto("/");
+  await page.getByRole("radio", { name: "1 Spieler, Solo" }).click();
+  await Promise.all([
+    page.waitForURL(/\/spiel\/[^/?]+/),
+    page.click("#createBtn"),
+  ]);
+  await expect(page.locator(".player-card .player-rank")).toBeVisible();
+  await page.locator(".player-card .player-rank").click();
+  await expect(page.locator("#rankLegendSheet:not([hidden])")).toBeVisible();
+  await expect(page.locator("#rankLegendSheetList .rank-legend-row")).toHaveCount(10);
+  await expect(page.locator("#rankLegendSheetOpen")).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#rankLegendSheet")).toBeHidden();
+  await expect(page.locator("#rankLegendSheetOpen")).toHaveAttribute("aria-expanded", "false");
 });
 
 
@@ -406,6 +437,11 @@ test("English localization covers lobby, rules, account preference and game UI",
 
   await page.goto("/spieler");
   await expect(page.getByRole("heading", { name: "Find Players" })).toBeVisible();
+  await expectNoGermanUi(page);
+
+  await page.goto("/rangabzeichen");
+  await expect(page.getByRole("heading", { name: "Rank Insignia & Ehrenberg Marks" })).toBeVisible();
+  await expect(page.locator("#rankLegendList .rank-legend-row")).toHaveCount(10);
   await expectNoGermanUi(page);
 
   await page.goto("/spieler/Admin");

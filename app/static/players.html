@@ -4,21 +4,21 @@
   <meta charset="utf-8">
   <title>ZDWA Spieler-Ranking &amp; Statistiken</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Entdecke das ZDWA Spieler-Ranking, suche öffentliche Profile und vergleiche Spiele, Bestwerte und Erfolgspunkte für Normal und Hardcore.">
+  <meta name="description" content="Entdecke das ZDWA Spieler-Ranking, suche öffentliche Profile und vergleiche Spiele, Bestwerte und Ehrenberg-Marken für Normal und Hardcore.">
   <link rel="canonical" href="https://zockdiewandan.online/spieler">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="ZDWA">
   <meta property="og:title" content="ZDWA Spieler-Ranking &amp; Statistiken">
-  <meta property="og:description" content="Spieler finden und Leistungen sowie Erfolgspunkte in Normal- und Hardcore-Partien vergleichen.">
+  <meta property="og:description" content="Spieler finden und Leistungen sowie Ehrenberg-Marken in Normal- und Hardcore-Partien vergleichen.">
   <meta property="og:url" content="https://zockdiewandan.online/spieler">
   <meta property="og:image" content="https://zockdiewandan.online/static/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="manifest" href="/manifest.webmanifest?v=d1af14c7c6b4">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=d1af14c7c6b4" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=d1af14c7c6b4" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=a26617486889">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=a26617486889" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a26617486889" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=d1af14c7c6b4">
-  <script src="/static/shell.js?v=d1af14c7c6b4" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=a26617486889">
+  <script src="/static/shell.js?v=a26617486889" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -32,7 +32,7 @@
     <section class="page-intro" aria-labelledby="playersTitle">
       <p class="eyebrow">ZDWA Community</p>
       <h1 id="playersTitle">Spieler &amp; Ranking</h1>
-      <p>Finde öffentliche Spielerprofile und vergleiche Spiele, Durchschnitt, Trend, Bestwerte und Erfolgspunkte getrennt nach Normal- und Hardcore-Modus.</p>
+      <p>Finde öffentliche Spielerprofile und vergleiche Spiele, Durchschnitt, Trend, Bestwerte und Ehrenberg-Marken getrennt nach Normal- und Hardcore-Modus.</p>
     </section>
     <section class="card">
       <h2>Spieler suchen</h2>
@@ -56,20 +56,20 @@
             <option value="points">Meiste Gesamtpunkte</option>
             <option value="average">Höchster Durchschnitt</option>
             <option value="maximum">Höchste Punktzahl</option>
-            <option value="achievements">Meiste Erfolgspunkte</option>
+            <option value="achievements">Meiste Ehrenberg-Marken</option>
           </select>
         </div>
       </div>
       <div class="table-scroll">
         <table class="ranking-table">
-          <thead><tr><th>#</th><th>Spieler</th><th>Spiele</th><th>Gesamtpunkte</th><th>Ø</th><th>Trend (3)</th><th>Max</th><th>Erfolgspunkte</th></tr></thead>
+          <thead><tr><th>#</th><th>Spieler</th><th>Spiele</th><th>Gesamtpunkte</th><th>Ø</th><th>Trend (3)</th><th>Max</th><th>Ehrenberg-Marken</th></tr></thead>
           <tbody id="rankingBody"></tbody>
         </table>
       </div>
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber, playerNameMarkup } from '/static/auth.js?v=d1af14c7c6b4';
+    import { escapeHtml, formatNumber, playerNameMarkup } from '/static/auth.js?v=a26617486889';
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');

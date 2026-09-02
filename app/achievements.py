@@ -120,6 +120,20 @@ _ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
         ),
         *_exact_score_achievements(),
         Achievement(
+            "top_section_exact_60",
+            "Grad und grad",
+            "In einer Reihe im oberen Teil (1–6) genau 60 Punkte erreicht.",
+            "upper",
+            "top_section_exact_60",
+        ),
+        Achievement(
+            "top_section_all_exact_60",
+            "Sechziger-Festung",
+            "In einem Spiel in allen vier Reihen im oberen Teil (1–6) jeweils genau 60 Punkte erreicht.",
+            "upper",
+            "top_section_all_exact_60",
+        ),
+        Achievement(
             "top_section_81_without_bonus",
             "Obere Liga",
             "In einer Reihe im oberen Teil (1–6) ohne Bonus über 80 Punkte erreicht.",
@@ -642,6 +656,8 @@ _KEY_POINTS: dict[str, int] = {
     "account_created": 1,
     "statistics_views": 1,
     "normal_under_700": 3,
+    "top_section_exact_60": 4,
+    "top_section_all_exact_60": 10,
     "top_section_81_without_bonus": 5,
     "top_section_101": 6,
     "row_401": 6,
@@ -784,6 +800,32 @@ def achievement_rank_for_points(points: int | float | None) -> dict:
     }
 
 
+def achievement_rank_legend_payload(points: int | float | None = None) -> dict:
+    """Serialize the public, catalog-scaled rank ladder for the client.
+
+    The minimums are deliberately evaluated here instead of duplicated in a
+    template or JavaScript.  As the achievement catalog grows, this endpoint
+    and every rank badge continue to describe the same scaled thresholds.
+    ``points`` is optional so the public legend can be fetched anonymously;
+    authenticated callers may include their current rank as a convenience.
+    """
+    payload = {
+        "points_possible": ACHIEVEMENT_POINTS_POSSIBLE,
+        "ranks": [
+            {
+                "key": rank.key,
+                "title": rank.title,
+                "stars": rank.stars,
+                "minimum_points": _rank_minimum_points(rank),
+            }
+            for rank in ACHIEVEMENT_RANKS
+        ],
+    }
+    if points is not None:
+        payload["current"] = achievement_rank_for_points(points)
+    return payload
+
+
 def achievement_rank_for_keys(keys: Iterable[str]) -> dict:
     """Return a rank payload for a user's materialized achievement keys."""
     return achievement_rank_for_points(achievement_points_for_keys(keys))
@@ -860,8 +902,29 @@ def achievement_sort_key(achievement: Achievement) -> tuple[int, int, int, str]:
     }
     if kind in five_of_kind_order:
         return (30, five_of_kind_order[kind], 0, achievement.key)
-    if kind in {"top_section", "row_score", "top_totals_equal", "no_top_bonus", "all_top_bonuses"}:
-        return (30, {"top_section": 10, "row_score": 11, "top_totals_equal": 12, "no_top_bonus": 13, "all_top_bonuses": 14}[kind], achievement.target, achievement.key)
+    if kind in {
+        "top_section_exact_60",
+        "top_section_all_exact_60",
+        "top_section",
+        "row_score",
+        "top_totals_equal",
+        "no_top_bonus",
+        "all_top_bonuses",
+    }:
+        return (
+            30,
+            {
+                "top_section_exact_60": 0,
+                "top_section_all_exact_60": 1,
+                "top_section": 10,
+                "row_score": 11,
+                "top_totals_equal": 12,
+                "no_top_bonus": 13,
+                "all_top_bonuses": 14,
+            }[kind],
+            achievement.target,
+            achievement.key,
+        )
     if kind in {
         "min_five", "max_under_ten", "min_under_ten", "max_over_25", "min_over_25", "max_thirty",
         "diff_max", "diff_exact_125", "diff_pro", "diff_all_under_20", "diff_zero", "diffs_equal",
@@ -1062,6 +1125,8 @@ def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str
     local_finished = as_utc(game.finished_at).astimezone(ZURICH)
     return {
         "top_max": top_max,
+        "top_section_exact_60": any(total == 60 for total in top_totals),
+        "top_section_all_exact_60": len(top_totals) == 4 and all(total == 60 for total in top_totals),
         "row_max": row_max,
         "lower_strikes": lower_strikes,
         "sixty_once": any(value > 0 for value in sixties),
@@ -1144,6 +1209,8 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
     office_hours_games = [entry for entry in games if as_utc(entry[0].finished_at) >= office_hours_started_at]
     multiplayer_started_at = as_utc(user.achievement_multiplayer_started_at or utcnow())
     multiplayer_games = [entry for entry in games if as_utc(entry[0].finished_at) >= multiplayer_started_at]
+    top_section_started_at = as_utc(user.achievement_top_section_started_at or utcnow())
+    top_section_games = [entry for entry in games if as_utc(entry[0].finished_at) >= top_section_started_at]
     hardcore_games = [entry for entry in games if bool(entry[0].hardcore)]
     extra_hardcore_games = [entry for entry in extra_games if bool(entry[0].hardcore)]
     scores = {int(participant.points) for _game, participant, _metrics in games}
@@ -1151,6 +1218,12 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
         "career_points": sum(int(participant.points) for _game, participant, _metrics in games),
         "games_played": len(games),
         "single_game_score": max((int(participant.points) for _game, participant, _metrics in games), default=0),
+        "top_section_exact_60": any(
+            bool(metrics["top_section_exact_60"]) for _game, _participant, metrics in top_section_games
+        ),
+        "top_section_all_exact_60": any(
+            bool(metrics["top_section_all_exact_60"]) for _game, _participant, metrics in top_section_games
+        ),
         "top_section": max((int(metrics["top_max"]) for _game, _participant, metrics in gameplay_games), default=0),
         "row_score": max((int(metrics["row_max"]) for _game, _participant, metrics in gameplay_games), default=0),
         "lower_strikes": max(
@@ -1299,6 +1372,9 @@ def sync_user_achievements(db, user: User) -> dict:
             unlocked.append(payload)
         else:
             locked.append(payload)
+    # Completed achievements are a personal timeline.  A newly earned badge
+    # belongs first, while the locked catalog remains grouped logically below.
+    unlocked.sort(key=lambda payload: as_utc(payload["unlocked_at"]), reverse=True)
     earned_points = achievement_points_for_keys(unlocked_rows)
     return {
         "unlocked": unlocked,

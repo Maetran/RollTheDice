@@ -889,6 +889,55 @@ test("game result dialog keeps the final standings visible and creates a new rou
   });
 });
 
+test("new achievements are acknowledged individually before the final standings", async ({ page, request }) => {
+  const created = await request.post("/api/games", { data: { name: "Achievement queue", mode: 1 } });
+  const { game_id: gameId } = await created.json();
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Achievement&__test=1`);
+  await page.waitForSelector("#diceBar");
+
+  await page.evaluate(() => {
+    void window.__rtDebugShowGameResults({
+      _results: [{ name: "Achievement", total: 777 }],
+      _mode: "1",
+    }, [
+      {
+        key: "first-achievement",
+        name: "Erster Erfolg",
+        description: "Die erste Belohnung.",
+        points: 3,
+      },
+      {
+        key: "second-achievement",
+        name: "Zweiter Erfolg",
+        description: "Die zweite Belohnung.",
+        points: 7,
+      },
+    ]);
+  });
+
+  const dialog = page.locator("#appDialog");
+  await expect(dialog).toHaveAttribute("data-kind", "achievement");
+  await expect(dialog).toContainText("Erster Erfolg");
+  await expect(dialog).toContainText("+3 Ehrenberg-Marken");
+  await expect(dialog).toContainText("1 / 2");
+  await expect(page.getByRole("button", { name: "Neue Runde" })).toHaveCount(0);
+  await expect(page.locator("#appDialogClose")).toBeHidden();
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toContainText("Erster Erfolg");
+
+  await page.getByRole("button", { name: "Weiter" }).click();
+  await expect(dialog).toHaveAttribute("data-kind", "achievement");
+  await expect(dialog).toContainText("Zweiter Erfolg");
+  await expect(dialog).toContainText("+7 Ehrenberg-Marken");
+  await expect(dialog).toContainText("2 / 2");
+
+  await page.getByRole("button", { name: "Weiter" }).click();
+  await expect(dialog).toHaveAttribute("data-kind", "success");
+  await expect(dialog).toContainText("1. Achievement – 777 Punkte");
+  await expect(page.getByRole("button", { name: "Neue Runde" })).toBeVisible();
+});
+
 test("protected game passphrases use an in-app dialog and stay out of the room URL", async ({ page, request }) => {
   const created = await request.post("/api/games", {
     data: { name: "Protected game", mode: 1, pass: "secret-round" },

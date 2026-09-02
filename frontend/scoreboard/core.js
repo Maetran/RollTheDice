@@ -255,21 +255,23 @@ function playerRankNumber(value){
   return new Intl.NumberFormat(window.ZDWA_I18N?.locale?.() || "de-CH", { maximumFractionDigits: 0 }).format(numeric);
 }
 
-function playerRankMarkup(player, { compact = false } = {}){
+function playerRankMarkup(player, { compact = false, owner = "" } = {}){
   const rank = player?.achievement_rank;
   if (!rank || typeof rank !== "object") return "";
   const key = String(rank.key || "newbie").replace(/[^a-z0-9-]/gi, "") || "newbie";
   const stars = Math.max(0, Math.min(5, Math.trunc(Number(rank.stars) || 0)));
+  const points = Math.max(0, Math.trunc(Number(rank.points) || 0));
+  const pointsPossible = Math.max(0, Math.trunc(Number(rank.points_possible) || 0));
   const starText = stars ? "★".repeat(stars) : "☆";
   const translate = window.ZDWA_I18N?.t || (value => String(value ?? ""));
   const label = translate(rank.title || "Newbie");
-  const title = `${translate("Rang")}: ${label} · ${playerRankNumber(rank.points)} / ${playerRankNumber(rank.points_possible)} ${translate("Erfolgspunkte")}`;
-  return `<span class="player-rank player-rank--${esc(key)}${compact ? " player-rank--compact" : ""}" title="${esc(title)}" aria-label="${esc(title)}"><span class="player-rank-stars" aria-hidden="true">${starText}</span><span class="player-rank-title">${esc(label)}</span></span>`;
+  const title = `${translate("Rang")}: ${label} · ${playerRankNumber(points)} / ${playerRankNumber(pointsPossible)} ${translate("Ehrenberg-Marken")} · ${translate("Rangabzeichen öffnen")}`;
+  return `<span class="player-rank player-rank--${esc(key)}${compact ? " player-rank--compact" : ""}" role="link" tabindex="0" data-rank-legend data-rank-key="${esc(key)}" data-rank-points="${points}" data-rank-points-possible="${pointsPossible}"${owner ? ` data-rank-owner="${esc(owner)}"` : ""} title="${esc(title)}" aria-label="${esc(title)}"><span class="player-rank-stars" aria-hidden="true">${starText}</span><span class="player-rank-title">${esc(label)}</span></span>`;
 }
 
 function playerNameMarkup(player, { name, compactRank = false, fallback = "Spieler" } = {}){
   const label = name ?? player?.name ?? player?.username ?? fallback;
-  return `<span class="player-name-with-rank"><span class="player-name-label">${esc(label)}</span>${playerRankMarkup(player, { compact: compactRank })}</span>`;
+  return `<span class="player-name-with-rank"><span class="player-name-label">${esc(label)}</span>${playerRankMarkup(player, { compact: compactRank, owner: label })}</span>`;
 }
 
 // Room modules and the replay chat use this same renderer after the scoreboard

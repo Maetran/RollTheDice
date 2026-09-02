@@ -9,11 +9,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from .achievements import (
+    achievement_rank_legend_payload,
     achievement_rank_payloads_for_user_ids,
     sync_achievements_for_users,
     sync_user_achievements,
 )
-from .auth import require_admin, require_csrf, require_user
+from .auth import require_admin, require_csrf, require_user, resolve_session
 from .database import database_schema_ready, session_scope
 from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User
 from .security import normalize_username, utcnow
@@ -24,6 +25,14 @@ router = APIRouter(prefix="/api", tags=["players"])
 
 class AssignmentRequest(BaseModel):
     user_id: int | None
+
+
+@router.get("/achievement-ranks")
+def achievement_rank_legend(request: Request) -> dict:
+    """Return the live rank ladder and, for an account, its current place."""
+    identity = resolve_session(request)
+    points = identity.achievement_rank.get("points") if identity else None
+    return achievement_rank_legend_payload(points)
 
 
 def _empty_bucket() -> dict:

@@ -102,6 +102,7 @@
   function bindRulesSheet(){
     try {
       const openBtn = document.getElementById("rulesSheetOpen");
+      const rankLegendOpenBtn = document.getElementById("rankLegendSheetOpen");
       const closeBtn = document.getElementById("rulesSheetClose");
       const backdrop = document.getElementById("rulesSheetBackdrop");
       if (openBtn && !openBtn._bound) {
@@ -109,6 +110,13 @@
         openBtn.addEventListener("click", (e) => {
           e.preventDefault();
           openRulesSheet();
+        });
+      }
+      if (rankLegendOpenBtn && !rankLegendOpenBtn._bound) {
+        rankLegendOpenBtn._bound = true;
+        rankLegendOpenBtn.addEventListener("click", event => {
+          event.preventDefault();
+          openRankLegendSheet();
         });
       }
       if (closeBtn && !closeBtn._bound) {
@@ -128,6 +136,231 @@
       }
     } catch {}
   }
+
+  let rankLegendPreviousFocus = null;
+  let rankLegendRequestId = 0;
+
+  function rankLegendText(value){
+    return window.ZDWA_I18N?.t?.(value) || value;
+  }
+
+  function rankLegendNumber(value){
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return "0";
+    return new Intl.NumberFormat(window.ZDWA_I18N?.locale?.() || "de-CH", {
+      maximumFractionDigits: 0,
+    }).format(Math.max(0, Math.trunc(numeric)));
+  }
+
+  function rankLegendKey(value){
+    return String(value || "newbie").replace(/[^a-z0-9-]/gi, "") || "newbie";
+  }
+
+  function rankLegendStars(value){
+    const count = Math.max(0, Math.min(5, Math.trunc(Number(value) || 0)));
+    return count ? "★".repeat(count) : "☆";
+  }
+
+  function ensureRankLegendSheet(){
+    let sheet = document.getElementById("rankLegendSheet");
+    if (sheet) return sheet;
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "rankLegendSheetBackdrop";
+    backdrop.className = "rules-sheet-backdrop rank-legend-sheet-backdrop";
+    backdrop.hidden = true;
+
+    sheet = document.createElement("section");
+    sheet.id = "rankLegendSheet";
+    sheet.className = "rules-sheet rank-legend-sheet";
+    sheet.setAttribute("role", "dialog");
+    sheet.setAttribute("aria-modal", "true");
+    sheet.setAttribute("aria-labelledby", "rankLegendSheetTitle");
+    sheet.tabIndex = -1;
+    sheet.hidden = true;
+
+    const head = document.createElement("div");
+    head.className = "rules-sheet-head";
+    const title = document.createElement("h2");
+    title.id = "rankLegendSheetTitle";
+    title.textContent = rankLegendText("Rangabzeichen");
+    const close = document.createElement("button");
+    close.id = "rankLegendSheetClose";
+    close.className = "small ghost rules-sheet-close";
+    close.type = "button";
+    close.textContent = "×";
+    close.setAttribute("aria-label", rankLegendText("Rangabzeichen schließen"));
+    head.append(title, close);
+
+    const content = document.createElement("div");
+    content.className = "rank-legend-content";
+    const introduction = document.createElement("p");
+    introduction.id = "rankLegendSheetIntroduction";
+    introduction.textContent = rankLegendText(
+      "Sterne zeigen deinen Rang. Die Mindestwerte skalieren mit dem Erfolgskatalog.",
+    );
+    const current = document.createElement("section");
+    current.id = "rankLegendSheetCurrent";
+    current.className = "rank-legend-current";
+    current.hidden = true;
+    const summary = document.createElement("div");
+    summary.id = "rankLegendSheetSummary";
+    summary.className = "rank-legend-summary";
+    const heading = document.createElement("h3");
+    heading.id = "rankLegendSheetListTitle";
+    heading.textContent = rankLegendText("Ränge und Mindestwerte");
+    const list = document.createElement("ol");
+    list.id = "rankLegendSheetList";
+    list.className = "rank-legend-list";
+    content.append(introduction, current, summary, heading, list);
+    sheet.append(head, content);
+    document.body.append(backdrop, sheet);
+
+    close.addEventListener("click", closeRankLegendSheet);
+    backdrop.addEventListener("click", closeRankLegendSheet);
+    return sheet;
+  }
+
+  function closeRankLegendSheet(){
+    const sheet = document.getElementById("rankLegendSheet");
+    const backdrop = document.getElementById("rankLegendSheetBackdrop");
+    if (sheet) sheet.hidden = true;
+    if (backdrop) backdrop.hidden = true;
+    document.getElementById("rankLegendSheetOpen")?.setAttribute("aria-expanded", "false");
+    document.body.classList.remove("rank-legend-open");
+    document.documentElement.classList.remove("rank-legend-open");
+    const previousFocus = rankLegendPreviousFocus;
+    rankLegendPreviousFocus = null;
+    try { previousFocus?.focus?.({ preventScroll: true }); } catch {}
+  }
+
+  function selectedRankForPoints(ranks, points){
+    const eligible = ranks.filter(rank => points >= Number(rank?.minimum_points || 0));
+    return eligible.at(-1) || ranks[0] || null;
+  }
+
+  function renderRankLegendSheet(payload, context = {}){
+    const sheet = ensureRankLegendSheet();
+    const ranks = Array.isArray(payload?.ranks) ? payload.ranks : [];
+    const maximum = Math.max(0, Math.trunc(Number(payload?.points_possible) || 0));
+    const suppliedPoints = Number(context?.points);
+    const viewerPoints = Number(payload?.current?.points);
+    const points = Number.isFinite(suppliedPoints)
+      ? Math.max(0, Math.trunc(suppliedPoints))
+      : Number.isFinite(viewerPoints)
+        ? Math.max(0, Math.trunc(viewerPoints))
+        : null;
+    const selected = points === null ? null : selectedRankForPoints(ranks, points);
+    const owner = String(context?.owner || "").trim();
+    const current = document.getElementById("rankLegendSheetCurrent");
+    const summary = document.getElementById("rankLegendSheetSummary");
+    const list = document.getElementById("rankLegendSheetList");
+    const introduction = document.getElementById("rankLegendSheetIntroduction");
+    if (!current || !summary || !list) return;
+    if (introduction) {
+      introduction.textContent = rankLegendText(
+        "Sterne zeigen deinen Rang. Die Mindestwerte skalieren mit dem Erfolgskatalog.",
+      );
+    }
+
+    current.replaceChildren();
+    current.hidden = false;
+    if (selected) {
+      const title = document.createElement("strong");
+      title.textContent = owner ? `${rankLegendText("Rang von")} ${owner}` : rankLegendText("Dein Rang");
+      const description = document.createElement("p");
+      description.textContent = `${rankLegendStars(selected.stars)} ${rankLegendText(selected.title || "Newbie")} · ${rankLegendNumber(points)} / ${rankLegendNumber(maximum)} ${rankLegendText("Ehrenberg-Marken")}`;
+      current.append(title, description);
+    } else {
+      const description = document.createElement("p");
+      description.textContent = rankLegendText(
+        "Melde dich an oder öffne ein Rangabzeichen eines Spielers, um den aktuellen Stand zu sehen.",
+      );
+      current.append(description);
+    }
+
+    summary.replaceChildren();
+    for (const [label, value] of [
+      [rankLegendText("Aktuell möglich"), `${rankLegendNumber(maximum)} ${rankLegendText("Ehrenberg-Marken")}`],
+      [rankLegendText("Rangstufen"), String(ranks.length)],
+    ]) {
+      const stat = document.createElement("div");
+      stat.className = "rank-legend-stat";
+      const caption = document.createElement("small");
+      caption.textContent = label;
+      const amount = document.createElement("strong");
+      amount.textContent = value;
+      stat.append(caption, amount);
+      summary.appendChild(stat);
+    }
+
+    list.replaceChildren(...ranks.map(rank => {
+      const item = document.createElement("li");
+      const key = rankLegendKey(rank?.key);
+      item.className = `rank-legend-row${selected?.key === rank?.key ? " is-current" : ""}`;
+      const insignia = document.createElement("span");
+      insignia.className = `rank-legend-insignia rank-legend-insignia--${key}`;
+      insignia.textContent = rankLegendStars(rank?.stars);
+      insignia.setAttribute("aria-label", `${rankLegendNumber(rank?.stars)} ${rankLegendText("Sterne")}`);
+      const title = document.createElement("span");
+      title.className = "rank-legend-title";
+      const name = document.createElement("strong");
+      name.textContent = rankLegendText(rank?.title || "Newbie");
+      const detail = document.createElement("small");
+      detail.textContent = rankLegendText("Ab diesem Wert trägst du dieses Rangabzeichen.");
+      title.append(name, detail);
+      const minimum = document.createElement("span");
+      minimum.className = "rank-legend-minimum";
+      minimum.textContent = `${rankLegendText("ab")} ${rankLegendNumber(rank?.minimum_points)} ${rankLegendText("Ehrenberg-Marken")}`;
+      item.append(insignia, title, minimum);
+      return item;
+    }));
+    sheet.removeAttribute("aria-busy");
+  }
+
+  async function openRankLegendSheet(context = {}){
+    closeChatSheet();
+    closeRulesSheet();
+    const sheet = ensureRankLegendSheet();
+    const backdrop = document.getElementById("rankLegendSheetBackdrop");
+    rankLegendPreviousFocus = document.activeElement;
+    sheet.hidden = false;
+    sheet.setAttribute("aria-busy", "true");
+    if (backdrop) backdrop.hidden = false;
+    document.getElementById("rankLegendSheetOpen")?.setAttribute("aria-expanded", "true");
+    document.body.classList.add("rank-legend-open");
+    document.documentElement.classList.add("rank-legend-open");
+    const close = document.getElementById("rankLegendSheetClose");
+    setTimeout(() => {
+      try { (close || sheet).focus({ preventScroll: true }); } catch {}
+    }, 0);
+
+    const requestId = ++rankLegendRequestId;
+    try {
+      const response = await fetch("/api/achievement-ranks", { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json();
+      if (requestId !== rankLegendRequestId) return;
+      renderRankLegendSheet(payload, context);
+    } catch {
+      if (requestId !== rankLegendRequestId) return;
+      const introduction = document.getElementById("rankLegendSheetIntroduction");
+      if (introduction) introduction.textContent = rankLegendText("Ranglegende konnte nicht geladen werden.");
+      sheet.removeAttribute("aria-busy");
+    }
+  }
+
+  if (!window.__rt_rankLegendEscapeBound) {
+    window.__rt_rankLegendEscapeBound = true;
+    window.addEventListener("keydown", event => {
+      const sheet = document.getElementById("rankLegendSheet");
+      if (event.key === "Escape" && sheet && !sheet.hidden) {
+        event.preventDefault();
+        closeRankLegendSheet();
+      }
+    });
+  }
+  window.ZDWA_OPEN_RANK_LEGEND = openRankLegendSheet;
 
   function bindShareGameButton() {
     const button = document.getElementById("shareGameBtn");

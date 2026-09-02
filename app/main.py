@@ -110,6 +110,7 @@ LEGACY_PAGE_PATHS = {
     "/static/index.html": "/",
     "/static/rules.html": "/regeln",
     "/static/players.html": "/spieler",
+    "/static/ranks.html": "/rangabzeichen",
     "/static/account.html": "/konto",
     "/static/admin.html": "/admin",
     "/static/offline.html": "/offline",
@@ -217,6 +218,12 @@ def players_page():
 @app.get("/spieler/{username}", include_in_schema=False)
 def player_profile_page(username: str):
     return _page("profile.html")
+
+
+@app.get("/rangabzeichen", include_in_schema=False)
+def achievement_rank_legend_page():
+    """Serve the public explanation of achievement rank badges."""
+    return _page("ranks.html")
 
 
 @app.get("/konto", include_in_schema=False)

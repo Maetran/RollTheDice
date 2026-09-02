@@ -150,6 +150,62 @@ class WebSocketActionGuardTestCase(GameStateTestCase):
         self.assertEqual(finalized, [game])
         self.assertTrue(session.websocket.messages[-1]["scoreboard"]["_finished"])
 
+    def test_last_field_at_three_of_five_rolls_finishes_once_without_turn_reset(self):
+        game = self.make_game(mode=1, players=[("p1", "Anna")])
+        board = game["_scoreboards"]["p1"]
+        for row in WRITABLE_ROWS:
+            for column in WRITABLE_COLS:
+                board[f"{row},{column}"] = 0
+        board.pop("15,down")
+        game["_turn"] = {"player_id": "p1", "roll_index": 3, "first4oak_roll": None}
+        game["_rolls_used"] = 3
+        game["_rolls_max"] = 5
+        game["_dice"] = [1, 2, 3, 4, 5]
+        turn_before = dict(game["_turn"])
+        dice_before = game["_dice"][:]
+
+        session = self.session(game, player_id="p1")
+        game["_players"][0]["ws"] = session.websocket
+        finalized = []
+        completion = {"achievement_unlocks": {"p1": [{"key": "terminal-test"}]}}
+
+        asyncio.run(
+            handle_gameplay_action(
+                session,
+                "write_field",
+                {"row": 15, "field": "down", "strike": True},
+                finalize_game=lambda finished_game: finalized.append(finished_game) or completion,
+            )
+        )
+
+        self.assertEqual(board["15,down"], 0)
+        self.assertTrue(game["_finished"])
+        self.assertFalse(game["_started"])
+        self.assertEqual(game["_turn"], turn_before)
+        self.assertEqual(game["_rolls_used"], 3)
+        self.assertEqual(game["_rolls_max"], 5)
+        self.assertEqual(game["_dice"], dice_before)
+        self.assertEqual(finalized, [game])
+        self.assertEqual(session.websocket.messages[-1]["achievement_unlocks"], completion["achievement_unlocks"])
+
+        # The same mobile tap/retry must be a no-op that still gives the
+        # client the final snapshot, rather than a stale turn error.
+        asyncio.run(
+            handle_gameplay_action(
+                session,
+                "write_field",
+                {"row": 15, "field": "down", "strike": True},
+                finalize_game=lambda finished_game: finalized.append(finished_game) or completion,
+            )
+        )
+
+        retry = session.websocket.messages[-1]
+        self.assertNotIn("error", retry)
+        self.assertTrue(retry["scoreboard"]["_finished"])
+        self.assertEqual(retry["scoreboard"]["_turn"], turn_before)
+        self.assertEqual(retry["achievement_unlocks"], completion["achievement_unlocks"])
+        self.assertEqual(finalized, [game])
+
     def test_finalizer_failure_does_not_hide_the_completed_game(self):
         game = self.make_game(mode=1, players=[("p1", "Anna")])
         board = game["_scoreboards"]["p1"]

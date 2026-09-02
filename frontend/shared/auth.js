@@ -131,18 +131,20 @@ function translate(value) {
  * Render the account-only achievement title that accompanies a player name.
  * Guests deliberately have no rank payload and therefore no badge.
  */
-export function playerRankBadge(player, { compact = false } = {}) {
+export function playerRankBadge(player, { compact = false, owner = '' } = {}) {
   const rank = player?.achievement_rank;
   if (!rank || typeof rank !== 'object') return '';
   const key = String(rank.key || 'newbie').replace(/[^a-z0-9-]/gi, '') || 'newbie';
   const stars = Math.max(0, Math.min(5, Math.trunc(Number(rank.stars) || 0)));
+  const points = Math.max(0, Math.trunc(Number(rank.points) || 0));
+  const pointsPossible = Math.max(0, Math.trunc(Number(rank.points_possible) || 0));
   const starText = stars ? '★'.repeat(stars) : '☆';
   const label = translate(rank.title || 'Newbie');
-  const rankTitle = `${translate('Rang')}: ${label} · ${formatNumber(rank.points, '0')} / ${formatNumber(rank.points_possible, '0')} ${translate('Erfolgspunkte')}`;
-  return `<span class="player-rank player-rank--${escapeHtml(key)}${compact ? ' player-rank--compact' : ''}" title="${escapeHtml(rankTitle)}" aria-label="${escapeHtml(rankTitle)}"><span class="player-rank-stars" aria-hidden="true">${starText}</span><span class="player-rank-title">${escapeHtml(label)}</span></span>`;
+  const rankTitle = `${translate('Rang')}: ${label} · ${formatNumber(points, '0')} / ${formatNumber(pointsPossible, '0')} ${translate('Ehrenberg-Marken')} · ${translate('Rangabzeichen öffnen')}`;
+  return `<span class="player-rank player-rank--${escapeHtml(key)}${compact ? ' player-rank--compact' : ''}" role="link" tabindex="0" data-rank-legend data-rank-key="${escapeHtml(key)}" data-rank-points="${points}" data-rank-points-possible="${pointsPossible}"${owner ? ` data-rank-owner="${escapeHtml(owner)}"` : ''} title="${escapeHtml(rankTitle)}" aria-label="${escapeHtml(rankTitle)}"><span class="player-rank-stars" aria-hidden="true">${starText}</span><span class="player-rank-title">${escapeHtml(label)}</span></span>`;
 }
 
 export function playerNameMarkup(player, { name, compactRank = false, fallback = 'Spieler' } = {}) {
   const label = name ?? player?.name ?? player?.username ?? fallback;
-  return `<span class="player-name-with-rank"><span class="player-name-label">${escapeHtml(label)}</span>${playerRankBadge(player, { compact: compactRank })}</span>`;
+  return `<span class="player-name-with-rank"><span class="player-name-label">${escapeHtml(label)}</span>${playerRankBadge(player, { compact: compactRank, owner: label })}</span>`;
 }

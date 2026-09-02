@@ -186,6 +186,23 @@ async def _write_field(
 ) -> None:
     g = session.game
     player_id = session.player_id
+
+    # A delayed duplicate write is normal on touch devices.  Once the first
+    # request has completed the game, answer the retry with the terminal state
+    # instead of validating it against a turn that intentionally no longer
+    # accepts writes.  This also keeps finalization strictly once-only.
+    if g.get("_finished"):
+        completion = g.get("_final_completion")
+        await session.websocket.send_json(
+            {
+                "scoreboard": snapshot(g),
+                "achievement_unlocks": (
+                    completion.get("achievement_unlocks", {}) if isinstance(completion, dict) else {}
+                ),
+            }
+        )
+        return
+
     if not (g["_turn"] and g["_turn"]["player_id"] == player_id):
         await _send_error(session, "Nicht an der Reihe")
         return
@@ -203,9 +220,7 @@ async def _write_field(
     # Der allgemeine "Erst würfeln"-Guard wurde nach dem Refactoring vor der
     # Letztfeld-Ausnahme geprüft und konnte dadurch ein bereits festgefahrenes
     # Endspiel nicht mehr beenden.
-    terminal_write_without_roll = (
-        int(g.get("_rolls_used", 0) or 0) < 1 and _is_last_turn_for(g, player_id)
-    )
+    terminal_write_without_roll = int(g.get("_rolls_used", 0) or 0) < 1 and _is_last_turn_for(g, player_id)
     if int(g.get("_rolls_used", 0) or 0) < 1 and not terminal_write_without_roll:
         await _send_error(session, "Erst würfeln")
         return
@@ -252,18 +267,27 @@ async def _write_field(
         "roll_index": int(turn.get("roll_index", 0) or 0),
         "first4oak_roll": turn.get("first4oak_roll"),
     }
-    _begin_next_turn(g, player_id)
+
+    # Completion must be decided before advancing the turn.  Advancing first
+    # resets dice/roll state and can make a terminal retry look like a fresh
+    # turn, which is exactly the state that previously trapped players at the
+    # final field.
+    is_finished = _is_game_finished(g)
     completion = {}
-    if _is_game_finished(g):
+    if is_finished:
         g["_started"] = False
         g["_finished"] = True
         try:
-            completion = finalize_game(g) or {}
+            result = finalize_game(g)
+            completion = result if isinstance(result, dict) else {}
         except Exception:
             # Persistenz und Achievements dürfen den Spielabschluss im Client
             # nicht blockieren. Der Zustand ist bereits korrekt abgeschlossen;
             # das Ergebnis-Snapshot muss daher in jedem Fall gesendet werden.
             logger.exception("Could not finalize completed game %s", g.get("_id"))
+        g["_final_completion"] = completion
+    else:
+        _begin_next_turn(g, player_id)
 
     touch(g)
     await broadcast(
