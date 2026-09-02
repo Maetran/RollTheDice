@@ -452,6 +452,30 @@ _ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
             "office",
             "office_hours",
         ),
+        Achievement(
+            "office_hours_10",
+            "Arbeitszeitbetrug I",
+            "10 Spiele werktags zwischen 07:00 und 17:00 Uhr beendet.",
+            "office",
+            "office_hours_count",
+            10,
+        ),
+        Achievement(
+            "office_hours_25",
+            "Arbeitszeitbetrug II",
+            "25 Spiele werktags zwischen 07:00 und 17:00 Uhr beendet.",
+            "office",
+            "office_hours_count",
+            25,
+        ),
+        Achievement(
+            "office_hours_50",
+            "Arbeitszeitbetrug Ultra Pro Max III",
+            "50 Spiele werktags zwischen 07:00 und 17:00 Uhr beendet.",
+            "office",
+            "office_hours_count",
+            50,
+        ),
         Achievement("night_owl", "Nachteule", "Ein Spiel zwischen 02:00 und 05:00 Uhr beendet.", "night", "night_owl"),
         Achievement(
             "weekend_games",
@@ -539,6 +563,9 @@ _KEY_POINTS: dict[str, int] = {
     "daily_streak_30": 8,
     "hardcore_streak_7": 7,
     "office_hours": 1,
+    "office_hours_10": 3,
+    "office_hours_25": 5,
+    "office_hours_50": 8,
     "night_owl": 2,
     "weekend_games": 3,
     "early_bird_games": 3,
@@ -744,10 +771,17 @@ def achievement_sort_key(achievement: Achievement) -> tuple[int, int, int, str]:
             achievement.target,
             achievement.key,
         )
-    if kind in {"daily_streak", "office_hours", "night_owl", "weekend_games", "early_bird_games"}:
+    if kind in {"daily_streak", "office_hours", "office_hours_count", "night_owl", "weekend_games", "early_bird_games"}:
         return (
             60,
-            {"daily_streak": 0, "office_hours": 1, "night_owl": 2, "weekend_games": 3, "early_bird_games": 4}[kind],
+            {
+                "daily_streak": 0,
+                "office_hours": 1,
+                "office_hours_count": 2,
+                "night_owl": 3,
+                "weekend_games": 4,
+                "early_bird_games": 5,
+            }[kind],
             achievement.target,
             achievement.key,
         )
@@ -877,6 +911,8 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
     extra_games = [entry for entry in games if as_utc(entry[0].finished_at) >= extra_started_at]
     expansion_started_at = as_utc(user.achievement_expansion_started_at or utcnow())
     expansion_games = [entry for entry in games if as_utc(entry[0].finished_at) >= expansion_started_at]
+    office_hours_started_at = as_utc(user.achievement_office_hours_started_at or utcnow())
+    office_hours_games = [entry for entry in games if as_utc(entry[0].finished_at) >= office_hours_started_at]
     hardcore_games = [entry for entry in games if bool(entry[0].hardcore)]
     extra_hardcore_games = [entry for entry in extra_games if bool(entry[0].hardcore)]
     scores = {int(participant.points) for _game, participant, _metrics in games}
@@ -951,6 +987,9 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
         ),
         "hardcore_streak": _longest_daily_streak(extra_hardcore_games),
         "office_hours": any(bool(metrics["office_hours"]) for _game, _participant, metrics in gameplay_games),
+        "office_hours_count": sum(
+            1 for _game, _participant, metrics in office_hours_games if bool(metrics["office_hours"])
+        ),
         "night_owl": any(bool(metrics["night_owl"]) for _game, _participant, metrics in gameplay_games),
         "weekend_games": sum(1 for _game, _participant, metrics in gameplay_games if metrics["weekend"]),
         "early_bird_games": sum(1 for _game, _participant, metrics in gameplay_games if metrics["early_bird"]),

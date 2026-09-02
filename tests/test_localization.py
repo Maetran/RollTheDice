@@ -65,17 +65,19 @@ def test_achievement_points_are_visible_catalog_data_and_logically_ordered():
     assert ordered_keys.index("five_ones_written") < ordered_keys.index("five_twos_written")
     assert ordered_keys.index("five_fives_written") < ordered_keys.index("six_thirty")
     assert ordered_keys.index("exact_game_score_555") < ordered_keys.index("exact_game_score_1555")
+    assert ordered_keys.index("office_hours") < ordered_keys.index("office_hours_10")
+    assert ordered_keys.index("office_hours_10") < ordered_keys.index("office_hours_25") < ordered_keys.index("office_hours_50")
 
 
 def test_achievement_rank_tiers_follow_the_public_point_distribution():
-    assert ACHIEVEMENT_POINTS_POSSIBLE == 451
+    assert ACHIEVEMENT_POINTS_POSSIBLE == 467
     assert achievement_rank_for_points(0)["title"] == "Newbie"
-    assert achievement_rank_for_points(10)["title"] == "Rookie"
-    assert achievement_rank_for_points(35)["title"] == "Spieler"
-    assert achievement_rank_for_points(120)["title"] == "Pro"
-    assert achievement_rank_for_points(230)["title"] == "Meister"
-    assert achievement_rank_for_points(375)["title"] == "Legende"
-    godmode = achievement_rank_for_points(430)
+    assert achievement_rank_for_points(11)["title"] == "Rookie"
+    assert achievement_rank_for_points(37)["title"] == "Spieler"
+    assert achievement_rank_for_points(125)["title"] == "Pro"
+    assert achievement_rank_for_points(239)["title"] == "Meister"
+    assert achievement_rank_for_points(389)["title"] == "Legende"
+    godmode = achievement_rank_for_points(446)
     assert godmode["title"] == "Godmode"
     assert godmode["stars"] == 5
     assert godmode["points_possible"] == ACHIEVEMENT_POINTS_POSSIBLE

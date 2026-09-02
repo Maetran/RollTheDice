@@ -205,6 +205,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
             self.assertTrue(existing.mobile_row_quick_entry)
             self.assertIsNotNone(existing.achievement_extra_started_at)
             self.assertIsNotNone(existing.achievement_expansion_started_at)
+            self.assertIsNotNone(existing.achievement_office_hours_started_at)
 
         create_user("NewUser", "a-secure-password-123", must_change_password=False)
         with session_scope() as db:
@@ -212,6 +213,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
             self.assertFalse(new_user.mobile_row_quick_entry)
             self.assertFalse(new_user.haptic_feedback)
             self.assertFalse(new_user.keep_screen_awake)
+            self.assertIsNotNone(new_user.achievement_office_hours_started_at)
 
     def test_language_can_be_updated_independently(self):
         create_user("LanguageUser", "a-secure-password-123", must_change_password=False)
@@ -714,6 +716,45 @@ class AccountDatabaseTestCase(GameStateTestCase):
                 "hardcore_score_1000",
                 "normal_under_700",
             }.issubset(unlocked),
+            unlocked,
+        )
+
+    def test_office_hours_series_counts_only_games_after_its_rollout_marker(self):
+        user = create_user("OfficeFraud", "temporary-office-fraud-123", must_change_password=False)
+        rollout = datetime(2026, 9, 2, 7, tzinfo=timezone.utc)
+        with session_scope() as db:
+            player = db.get(User, user.id)
+            player.achievement_gameplay_started_at = rollout
+            player.achievement_office_hours_started_at = rollout
+
+        def persist_office_game(finished_at: datetime) -> None:
+            game = self.make_game(mode=1, players=[("p1", user.username)])
+            game["_players"][0]["user_id"] = user.id
+            game["_scoreboards"]["p1"] = self.low_scoreboard()
+            snapshot = build_leaderboard_snapshot_fields(game)
+            snapshot["finished_at"] = finished_at.isoformat()
+            self.assertTrue(persist_runtime_game(game, {"p1": 600}, snapshot))
+
+        # This is a valid office-hours game, but it is just before the series
+        # rollout and must not contribute to the new 10/25/50 thresholds.
+        persist_office_game(rollout - timedelta(minutes=1))
+        for index in range(9):
+            persist_office_game(rollout + timedelta(minutes=index))
+
+        achievements = public_player_profile(user.username)["player"]["achievements"]
+        locked = {achievement["key"]: achievement for achievement in achievements["locked"]}
+        self.assertEqual(locked["office_hours_10"]["progress"], {"current": 9, "target": 10})
+
+        persist_office_game(rollout + timedelta(minutes=9))
+        for index in range(10, 50):
+            persist_office_game(rollout + timedelta(minutes=index))
+
+        unlocked = {
+            achievement["key"]
+            for achievement in public_player_profile(user.username)["player"]["achievements"]["unlocked"]
+        }
+        self.assertTrue(
+            {"office_hours", "office_hours_10", "office_hours_25", "office_hours_50"}.issubset(unlocked),
             unlocked,
         )
 
