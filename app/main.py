@@ -33,7 +33,7 @@ import random
 import threading
 import time  # für monotonic()-Cooldown-Timer
 import uuid
-from collections import Counter, deque
+from collections import deque
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -68,6 +68,7 @@ from .game_history import (
     recent_winner_points_by_mode,
     stable_game_id,
 )
+from .game_scoring import has_n_of_a_kind, poker_points_allowed, score_field_value
 from .rules import compute_overall
 from .trends import recent_points_trend
 
@@ -983,81 +984,6 @@ def new_game(gid: str, name: str, mode) -> GameDict:
     save_active_game(g)
     return g
 
-# -----------------------------
-# Scoring & Helpers
-# -----------------------------
-
-def _counts(dice):
-    """Zählt Vorkommen der geworfenen Augenzahlen (0 wird ignoriert).
-
-    Args:
-        dice (list): Liste der Würfelwerte (1-6)
-
-    Returns:
-        Counter: Zählung der Augenzahlen
-    """
-    return Counter(d for d in dice if d)
-
-def has_n_of_a_kind(dice, n: int) -> bool:
-    """True, wenn die aktuellen Würfel mindestens n gleiche zeigen.
-
-    Args:
-        dice (list): Liste der Würfelwerte (1-6)
-        n (int): Anzahl der gleichen Würfel
-
-    Returns:
-        bool: True, wenn mindestens n gleiche Würfel vorhanden sind
-    """
-    c = _counts(dice)
-    return any(v >= n for v in c.values())
-
-def score_field_value(field_key: str, dice) -> int:
-    """Client-nahe Punkteberechnung (identisch zur Anzeige/Vorschläge).
-
-    Hinweis: Die serverseitige Autorität liegt bei `rules.score_field` bzw.
-    beim Schreib-Handler; hier wird für UI/Suggestions gerechnet.
-
-    Args:
-        field_key (str): Schlüssel des Feldes (z.B. "1", "2", ..., "6", "max", "min", ...)
-        dice (list): Liste der Würfelwerte (1-6)
-
-    Returns:
-        int: Punktzahl für das Feld
-    """
-    cnt = _counts(dice)
-    total = sum(d for d in dice if d)
-
-    if field_key in {"1", "2", "3", "4", "5", "6"}:
-        face = int(field_key)
-        return cnt.get(face, 0) * face
-
-    if field_key in {"max", "min"}:
-        return total
-
-    if field_key == "kenter":
-        return 35 if len(cnt.keys()) == 5 else 0
-
-    if field_key == "full":
-        if not cnt:
-            return 0
-        most_face = cnt.most_common(1)[0][0]
-        vals = sorted(cnt.values())
-        return 40 + 3 * most_face if vals == [2, 3] or vals == [5] else 0
-
-    if field_key == "poker":
-        for face, n in cnt.items():
-            if n >= 4:  # auch 5 gleiche zählen als Poker
-                return 50 + 4 * face
-        return 0
-
-    if field_key == "60":
-        for face, n in cnt.items():
-            if n == 5:
-                return 60 + 5 * face
-        return 0
-
-    return 0
-
 def compute_suggestions(g: GameDict) -> list[dict]:
     """
     Liefert Vorschlags-Buttons (serverseitig berechnet) für den AKTUELLEN Zug.
@@ -1335,43 +1261,6 @@ def apply_roll(g: GameDict, *, randint_fn=None) -> list[int]:
         logger.warning("Could not update roll metadata for game %s", g.get("_id"), exc_info=True)
 
     return g["_dice"]
-
-def poker_points_allowed(
-    dice,
-    col: str,
-    *,
-    roll_index: int,
-    first4oak_roll,
-    announced_poker: bool = False,
-    correction: bool = False,
-) -> bool:
-    """Prüft, ob ein Pokerwurf in diesem Schreibkontext Punkte geben darf."""
-    has4 = has_n_of_a_kind(dice, 4)
-    has5 = has_n_of_a_kind(dice, 5)
-    if not has4 and not has5:
-        return False
-    if has5:
-        return True
-    if col == "ang" and announced_poker:
-        return True
-
-    try:
-        roll_idx = int(roll_index or 0)
-    except (TypeError, ValueError):
-        roll_idx = 0
-
-    first4_eff = first4oak_roll
-    missing_first4 = (not first4_eff) if correction else (first4_eff is None)
-    if has4 and missing_first4:
-        first4_eff = roll_idx
-
-    try:
-        first4_idx = int(first4_eff)
-    except (TypeError, ValueError):
-        return False
-
-    effective_roll_idx = first4_idx if correction else roll_idx
-    return bool(has4 and first4_idx and effective_roll_idx == first4_idx)
 
 def can_write_now(g: GameDict, pid: str, row: int, col: str, *, during_turn_announce: str | None) -> tuple[bool, str]:
     """Validiert, ob der Spieler JETZT in die angegebene Zelle schreiben darf.
