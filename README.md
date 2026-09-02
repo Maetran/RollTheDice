@@ -1,6 +1,6 @@
 # RollTheDice
 
-RollTheDice is a lightweight multiplayer dice game with a FastAPI backend and a static HTML/CSS/JS frontend. It supports German and English, single-player, 2-player, 3-player, 2v2 team games, Hardcore mode, chat, emoji reactions, leaderboards, and read-only replay views for completed games.
+RollTheDice is a lightweight multiplayer dice game with a FastAPI backend and a static HTML/CSS/JS frontend. It supports German and English, single-player, 2-player, 3-player, 2v2 team games, Hardcore mode, chat, emoji reactions, leaderboards, account achievement milestones, and read-only replay views for completed games.
 
 Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
 
@@ -15,6 +15,7 @@ Localization conventions and terminology are documented in [docs/LOCALIZATION.md
 - Audited permanent deletion of invalid completed games with automatic statistic updates
 - Self-registration from the lobby with immutable usernames
 - Personal statistics split into Normal, Hardcore, and overall results, with a selectable score chart and median
+- Achievement milestones for special scoring plays, daily streaks, and Hardcore progress; rollout-sensitive goals start from their introduction while Hardcore game counts and score milestones remain historical
 - Progressive Web App support with content-hashed asset and service-worker versions
 - Readiness endpoint and container healthcheck for migration-safe deployments
 - Docker Compose setup for local machines, servers, and Raspberry Pi
@@ -28,10 +29,22 @@ User-facing navigation uses short routes without implementation details:
 - `/spiel/{game_id}/zuschauen` spectator view
 - `/regeln`, `/spieler`, `/spieler/{username}`, `/konto`, and `/admin`
 - `/ergebnis/{game_id}` completed-game view
+- `/robots.txt` crawler rules and `/sitemap.xml` for the stable, indexable public pages
 
 JavaScript, styles, and icons remain under `/static/`; these asset paths are not
 used for browser navigation. Legacy `*.html` links redirect to the matching
 public route so existing bookmarks and older installed app versions keep working.
+
+## Product delivery gate
+
+Every user-visible change ships with documentation, localization, and search
+visibility checks. The mandatory process is defined in
+[docs/PRODUCT_DELIVERY.md](docs/PRODUCT_DELIVERY.md): update this README,
+update the player-facing rules when gameplay changes, translate every visible
+string, and register every evergreen public page in the SEO registry. The
+automated `scripts/check_product_delivery.py` runs as part of `npm run lint`
+and CI, so sitemap, robots, canonical metadata, Open Graph data, achievement
+translations, and documentation cannot silently drift apart.
 
 ## Requirements
 
@@ -120,6 +133,7 @@ RollTheDice/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI assembly and thin HTTP/WebSocket routes
+│   ├── site_seo.py          # Public-page registry plus robots/sitemap rendering
 │   ├── models.py            # User, session, active/completed-game, and participant models
 │   ├── database.py          # Database configuration and Alembic upgrades
 │   ├── active_games.py      # Restart-safe snapshots of waiting and running games
@@ -154,6 +168,7 @@ RollTheDice/
 │   ├── install_nginx_config.sh # Validated installation of production proxy limits
 │   ├── prune_data_backups.sh # Keeps five deploy backups; manual use is dry-run-first
 │   ├── build-static.mjs     # Bundles/minifies frontend sources into app/static
+│   ├── check_product_delivery.py # Documentation, localization, and SEO delivery gate
 │   └── sync_static_versions.py # Content-hashed PWA/asset version synchronization
 └── data/                    # Persistent runtime data, ignored by Git
     ├── leaderboard_recent.json

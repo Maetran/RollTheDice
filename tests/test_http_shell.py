@@ -6,6 +6,7 @@ from unittest.mock import patch
 import httpx
 
 from app import main
+from app.site_seo import PUBLIC_SEO_PAGES, SITE_ORIGIN
 from scripts.sync_static_versions import content_version, desired_text
 
 
@@ -88,11 +89,7 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(parser.description, html_path.name)
 
     def test_search_indexing_is_limited_to_stable_public_pages(self):
-        expected_canonicals = {
-            "index.html": "https://zockdiewandan.online/",
-            "rules.html": "https://zockdiewandan.online/regeln",
-            "players.html": "https://zockdiewandan.online/spieler",
-        }
+        expected_canonicals = {page.static_filename: page.canonical_url for page in PUBLIC_SEO_PAGES}
         for html_path in main.STATIC_DIR.glob("*.html"):
             parser = _SeoParser()
             parser.feed(html_path.read_text(encoding="utf-8"))
@@ -109,11 +106,12 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
             sitemap = await client.get("/sitemap.xml")
 
         self.assertEqual(robots.status_code, 200)
-        self.assertIn("Sitemap: https://zockdiewandan.online/sitemap.xml", robots.text)
+        self.assertIn(f"Sitemap: {SITE_ORIGIN}/sitemap.xml", robots.text)
+        self.assertIn("Disallow: /api/", robots.text)
         self.assertEqual(sitemap.status_code, 200)
         self.assertEqual(sitemap.headers["content-type"], "application/xml")
-        for url in ("/", "/regeln", "/spieler"):
-            self.assertIn(f"<loc>https://zockdiewandan.online{url}</loc>", sitemap.text)
+        for page in PUBLIC_SEO_PAGES:
+            self.assertIn(f"<loc>{page.canonical_url}</loc>", sitemap.text)
         self.assertNotIn("/konto", sitemap.text)
         self.assertNotIn("/spiel/", sitemap.text)
 

@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from app.achievements import ACHIEVEMENTS
+
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / "app" / "static"
 USER_PAGES = {
@@ -38,3 +40,14 @@ def test_localization_maintenance_guide_exists():
     guide = (ROOT / "docs" / "LOCALIZATION.md").read_text(encoding="utf-8")
     assert "German is the canonical source" in guide
     assert "ZTO / ZTU" in guide
+
+
+def test_every_achievement_name_and_description_has_an_english_catalog_entry():
+    catalog = (ROOT / "frontend" / "i18n" / "catalog.js").read_text(encoding="utf-8")
+    missing = [
+        value
+        for achievement in ACHIEVEMENTS
+        for value in (achievement.name, achievement.description)
+        if f'"{value}":' not in catalog
+    ]
+    assert not missing, missing

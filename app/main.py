@@ -53,6 +53,7 @@ from .leaderboard_service import (
     game_from_leaderboard,
 )
 from .leaderboard_storage import LeaderboardFiles
+from .site_seo import robots_document, sitemap_document
 
 logger = logging.getLogger(__name__)
 
@@ -186,20 +187,13 @@ def favicon():
 @app.get("/robots.txt", include_in_schema=False, response_class=PlainTextResponse)
 def robots_txt() -> str:
     """Expose crawler rules and the canonical sitemap location."""
-    return "User-agent: *\nAllow: /\nSitemap: https://zockdiewandan.online/sitemap.xml\n"
+    return robots_document()
 
 
 @app.get("/sitemap.xml", include_in_schema=False)
 def sitemap_xml() -> Response:
     """List the stable public pages that are useful in search results."""
-    body = """<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://zockdiewandan.online/</loc></url>
-  <url><loc>https://zockdiewandan.online/regeln</loc></url>
-  <url><loc>https://zockdiewandan.online/spieler</loc></url>
-</urlset>
-"""
-    return Response(content=body, media_type="application/xml")
+    return Response(content=sitemap_document(), media_type="application/xml")
 
 
 def _page(filename: str) -> FileResponse:

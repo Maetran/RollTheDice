@@ -439,6 +439,12 @@ export const EN = {
     "Korrektur abbrechen": "cancel correction",
     "Tipp:": "Tip:",
     "In der ❗-Spalte werden auf dem eigenen Board die erlaubten Zellen hervorgehoben. Bei 0-Punkten fragt das Spiel nach einer Bestätigung.": "Permitted cells in your own ❗ column are highlighted. The game asks for confirmation before recording 0 points.",
+    "Erfolge & Fortschritt": "Achievements & Progress",
+    "Mit einem optionalen Konto sammelst du Erfolge für besondere Spielzüge, Serien und Hardcore-Leistungen.": "With an optional account, you earn achievements for special plays, streaks, and Hardcore performances.",
+    "Neue Spiel- und Serienziele zählen ab ihrer Einführung; bereits abgeschlossene Partien werden dafür nicht nachträglich ausgewertet.": "New gameplay and streak goals count from their introduction onward; completed games are not evaluated retroactively for them.",
+    "Die Anzahl abgeschlossener Hardcore-Spiele und erreichte Hardcore-Punktestufen werden aus der gesamten gespeicherten Historie ermittelt.": "Completed Hardcore game counts and Hardcore score milestones are calculated from the complete saved history.",
+    "Eine Tages-Serie zählt pro Zürcher Kalendertag einmal; ein Monat entspricht 30 aufeinanderfolgenden Tagen.": "A daily streak counts once per Zurich calendar day; one month equals 30 consecutive days.",
+    "Erfolge verändern keine Spielregeln oder Wertungen. Deinen Fortschritt siehst du im Konto unter Erfolge.": "Achievements do not change the rules or scoring. You can view your progress under Achievements in your account.",
 
     "Zur Lobby wechseln?": "Return to Lobby?",
     "Pause": "Pause",

@@ -23,13 +23,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: pip check
-      - run: ruff check .
+      - run: npm run lint
       - run: bandit -q -r app scripts -c pyproject.toml
-      - run: vulture app scripts tests --min-confidence 80
       - run: pip-audit -r requirements-dev.txt --progress-spinner off
       - run: pytest --cov --cov-report=term-missing
-      - run: npm run check:static-build
-      - run: python3 scripts/sync_static_versions.py --check
       - run: git diff --check
 
   browser:

@@ -3,7 +3,7 @@
   "scripts": {
     "build:static": "node scripts/build-static.mjs && python3 scripts/sync_static_versions.py",
     "check:static-build": "node scripts/build-static.mjs --check",
-    "lint": "ruff check . && vulture app scripts tests --min-confidence 80 && npm run check:static-build && python3 scripts/sync_static_versions.py --check",
+    "lint": "ruff check . && vulture app scripts tests --min-confidence 80 && python3 scripts/check_product_delivery.py && npm run check:static-build && python3 scripts/sync_static_versions.py --check",
     "sync:assets": "python3 scripts/sync_static_versions.py",
     "check:assets": "python3 scripts/sync_static_versions.py --check",
     "test:backend": "pytest --cov --cov-report=term-missing",

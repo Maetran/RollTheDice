@@ -17,6 +17,11 @@ is delivered to every user-facing page inside the generated `shell.js` bundle.
    introduced.
 6. Run `npm run build:static` to regenerate and version the browser bundle.
 
+Server-provided catalog values are user-facing text too. For example, every
+achievement name and description in `app/achievements.py` must have an entry in
+the browser catalog. `npm run lint` enforces this through the product delivery
+check.
+
 Do not create a separate English copy of a page. Keeping one DOM and one game
 implementation prevents the languages from drifting apart.
 
