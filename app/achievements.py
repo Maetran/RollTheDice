@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, replace
 from datetime import timedelta
+from math import ceil
 from typing import Iterable
 from zoneinfo import ZoneInfo
 
@@ -29,6 +30,21 @@ class Achievement:
     kind: str
     target: int = 1
     points: int = 1
+
+
+@dataclass(frozen=True)
+class AchievementRank:
+    """A title tier derived from the cumulative achievement score.
+
+    The thresholds intentionally scale from the catalog maximum.  Adding a
+    future achievement therefore keeps the rank distribution balanced instead
+    of making every existing title progressively easier to obtain.
+    """
+
+    key: str
+    title: str
+    stars: int
+    reference_minimum_points: int
 
 
 def _tiered(kind: str, icon_key: str, values: list[tuple[int, str, str]]) -> list[Achievement]:
@@ -542,11 +558,115 @@ ACHIEVEMENTS: tuple[Achievement, ...] = tuple(
 )
 ACHIEVEMENT_BY_KEY = {achievement.key: achievement for achievement in ACHIEVEMENTS}
 ACHIEVEMENT_POINTS_BY_KEY = {achievement.key: achievement.points for achievement in ACHIEVEMENTS}
+ACHIEVEMENT_POINTS_POSSIBLE = sum(achievement.points for achievement in ACHIEVEMENTS)
 
 if len(ACHIEVEMENT_BY_KEY) != len(ACHIEVEMENTS):
     raise RuntimeError("Achievement keys must be unique.")
 if not all(1 <= achievement.points <= 10 for achievement in ACHIEVEMENTS):
     raise RuntimeError("Every achievement must award between 1 and 10 points.")
+
+
+# The first catalog with achievement ranks awards 451 points in total.  The
+# reference thresholds are the published distribution and are scaled to the
+# actual catalog total by ``achievement_rank_for_points``.  This keeps the
+# advertised nine progression steps and the final Godmode tier stable even
+# when the catalog grows later.
+_RANK_REFERENCE_MAXIMUM = 451
+ACHIEVEMENT_RANKS: tuple[AchievementRank, ...] = (
+    AchievementRank("newbie", "Newbie", 0, 0),
+    AchievementRank("rookie", "Rookie", 1, 10),
+    AchievementRank("player", "Spieler", 2, 35),
+    AchievementRank("advanced", "Fortgeschritten", 2, 75),
+    AchievementRank("pro", "Pro", 3, 120),
+    AchievementRank("expert", "Expert", 3, 170),
+    AchievementRank("master", "Meister", 4, 230),
+    AchievementRank("elite", "Elite", 4, 300),
+    AchievementRank("legend", "Legende", 5, 375),
+    AchievementRank("godmode", "Godmode", 5, 430),
+)
+
+
+def _rank_minimum_points(rank: AchievementRank) -> int:
+    """Return the current catalog-scaled lower bound for one rank."""
+    if rank.reference_minimum_points <= 0 or _RANK_REFERENCE_MAXIMUM <= 0:
+        return 0
+    return ceil(ACHIEVEMENT_POINTS_POSSIBLE * rank.reference_minimum_points / _RANK_REFERENCE_MAXIMUM)
+
+
+def achievement_rank_for_points(points: int | float | None) -> dict:
+    """Return the public rank payload for a cumulative achievement score."""
+    try:
+        earned = max(0, int(points or 0))
+    except (TypeError, ValueError):
+        earned = 0
+
+    current_index = 0
+    for index, rank in enumerate(ACHIEVEMENT_RANKS):
+        if earned >= _rank_minimum_points(rank):
+            current_index = index
+        else:
+            break
+    current = ACHIEVEMENT_RANKS[current_index]
+    next_rank = ACHIEVEMENT_RANKS[current_index + 1] if current_index + 1 < len(ACHIEVEMENT_RANKS) else None
+    next_minimum = _rank_minimum_points(next_rank) if next_rank else None
+    return {
+        "key": current.key,
+        "title": current.title,
+        "stars": current.stars,
+        "points": earned,
+        "points_possible": ACHIEVEMENT_POINTS_POSSIBLE,
+        "minimum_points": _rank_minimum_points(current),
+        "next_minimum_points": next_minimum,
+        "points_to_next_rank": max(0, next_minimum - earned) if next_minimum is not None else 0,
+    }
+
+
+def achievement_rank_for_keys(keys: Iterable[str]) -> dict:
+    """Return a rank payload for a user's materialized achievement keys."""
+    return achievement_rank_for_points(achievement_points_for_keys(keys))
+
+
+def _normalized_user_ids(user_ids: Iterable[int]) -> set[int]:
+    normalized: set[int] = set()
+    for user_id in user_ids:
+        if user_id is None:
+            continue
+        try:
+            normalized.add(int(user_id))
+        except (TypeError, ValueError):
+            continue
+    return normalized
+
+
+def achievement_rank_payloads_for_user_ids(db, user_ids: Iterable[int]) -> dict[int, dict]:
+    """Read public rank payloads in one query inside an existing DB session."""
+    normalized_ids = _normalized_user_ids(user_ids)
+    payloads = {user_id: achievement_rank_for_points(0) for user_id in normalized_ids}
+    if not normalized_ids:
+        return payloads
+    keys_by_user: dict[int, set[str]] = {user_id: set() for user_id in normalized_ids}
+    rows = db.execute(
+        select(UserAchievement.user_id, UserAchievement.achievement_key).where(UserAchievement.user_id.in_(normalized_ids))
+    ).all()
+    for user_id, key in rows:
+        keys_by_user[int(user_id)].add(str(key))
+    return {
+        user_id: achievement_rank_for_keys(keys_by_user[user_id])
+        for user_id in normalized_ids
+    }
+
+
+def public_achievement_ranks(user_ids: Iterable[int]) -> dict[int, dict]:
+    """Read public rank payloads safely from modules without a DB session."""
+    normalized_ids = _normalized_user_ids(user_ids)
+    if not normalized_ids:
+        return {}
+    from .database import database_schema_ready, session_scope
+
+    if not database_schema_ready():
+        return {}
+    with session_scope() as db:
+        return achievement_rank_payloads_for_user_ids(db, normalized_ids)
 
 
 def achievement_points_for_keys(keys: Iterable[str]) -> int:
@@ -889,7 +1009,8 @@ def sync_user_achievements(db, user: User) -> dict:
         "unlocked": unlocked,
         "locked": locked,
         "points_earned": earned_points,
-        "points_possible": sum(achievement.points for achievement in ACHIEVEMENTS),
+        "points_possible": ACHIEVEMENT_POINTS_POSSIBLE,
+        "rank": achievement_rank_for_points(earned_points),
     }
 
 

@@ -55,7 +55,12 @@ function buildClientSnapshotFromLeaderboard(lv){
       _name: lv.gamename || "",
       _mode: "2v2",
       _hardcore: !!lv.hardcore,
-      _players: (lv.players || []).map(p => ({id:String(p.id), name:String(p.name||"Player")})),
+      _players: (lv.players || []).map(p => ({
+        id:String(p.id),
+        name:String(p.name||"Player"),
+        user_id:p.user_id ?? null,
+        achievement_rank:p.achievement_rank || null,
+      })),
       _teams: teams,
       _scoreboards_by_team: sbByTeam,
       _scoreboards: {},
@@ -79,7 +84,12 @@ function buildClientSnapshotFromLeaderboard(lv){
       _name: lv.gamename || "",
       _mode: lv.mode,
       _hardcore: !!lv.hardcore,
-      _players: (lv.players || []).map(p => ({id:String(p.id), name:String(p.name||"Player")})),
+      _players: (lv.players || []).map(p => ({
+        id:String(p.id),
+        name:String(p.name||"Player"),
+        user_id:p.user_id ?? null,
+        achievement_rank:p.achievement_rank || null,
+      })),
       _teams: [],
       _scoreboards_by_team: {},
       _scoreboards: sb,
@@ -125,7 +135,7 @@ function renderReadOnlyChatHistory(mount, history){
     const text = (m && m.text) ? m.text : "";
     const kind = (m && m.kind) ? String(m.kind) : "chat";
     return `<div class="readonly-chat-line ${esc(kind)}">
-      <span class="ts">${esc(stamp)}</span><b>${esc(sender)}:</b> ${esc(text)}
+      <span class="ts">${esc(stamp)}</span><b>${playerNameMarkup(m && m.achievement_rank ? { name: sender, achievement_rank: m.achievement_rank } : { name: sender }, { compactRank: true })}:</b> ${esc(text)}
     </div>`;
   }).join("");
   mount.insertAdjacentHTML("beforeend", `

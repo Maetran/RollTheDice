@@ -330,7 +330,12 @@ def _offline_players(g: GameDict) -> list[dict]:
     if not g.get("_resume_required") and not any(_player_connected(p) for p in g.get("_players", [])):
         return []
     return [
-        {"id": str(p.get("id")), "name": p.get("name", "Player")}
+        {
+            "id": str(p.get("id")),
+            "name": p.get("name", "Player"),
+            **({"user_id": p["user_id"]} if p.get("user_id") is not None else {}),
+            **({"achievement_rank": p["achievement_rank"]} if isinstance(p.get("achievement_rank"), dict) else {}),
+        }
         for p in g.get("_players", [])
         if not _player_connected(p)
     ]

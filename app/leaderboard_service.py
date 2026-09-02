@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 
+from .achievements import public_achievement_ranks
 from .api_users import profile_links_for_games
 from .game_history import (
     deleted_game_ids,
@@ -286,6 +287,60 @@ def game_from_leaderboard(files: LeaderboardFiles, game_id: str):
             return None
         if not scoreboards or not isinstance(scoreboards, dict):
             return None
+        players_copy = [dict(player) for player in players if isinstance(player, dict)]
+        chat_history = [dict(message) for message in entry.get("chat_history", []) if isinstance(message, dict)]
+        linked_players = profile_links_for_games({str(entry.get("game_id") or "")}).get(
+            str(entry.get("game_id") or ""),
+            [],
+        )
+
+        def linked_player_for_name(name):
+            normalized = str(name or "").strip().casefold()
+            return next(
+                (
+                    candidate
+                    for candidate in linked_players
+                    if normalized
+                    and normalized
+                    in {
+                        str(candidate.get("display_name") or "").strip().casefold(),
+                        str(candidate.get("username") or "").strip().casefold(),
+                    }
+                ),
+                None,
+            )
+
+        for player in players_copy:
+            if player.get("user_id") is None and (linked := linked_player_for_name(player.get("name"))):
+                player["user_id"] = linked.get("user_id")
+                if linked.get("achievement_rank"):
+                    player["achievement_rank"] = linked["achievement_rank"]
+        for message in chat_history:
+            if message.get("user_id") is None and (linked := linked_player_for_name(message.get("sender"))):
+                message["user_id"] = linked.get("user_id")
+                if linked.get("achievement_rank"):
+                    message["achievement_rank"] = linked["achievement_rank"]
+        ranks = public_achievement_ranks(
+            [
+                *[player.get("user_id") for player in players_copy],
+                *[message.get("user_id") for message in chat_history],
+            ]
+        )
+
+        def rank_for_user_id(user_id):
+            try:
+                return ranks.get(int(user_id)) if user_id is not None else None
+            except (TypeError, ValueError):
+                return None
+
+        for player in players_copy:
+            user_id = player.get("user_id")
+            if rank := rank_for_user_id(user_id):
+                player["achievement_rank"] = rank
+        for message in chat_history:
+            user_id = message.get("user_id")
+            if rank := rank_for_user_id(user_id):
+                message["achievement_rank"] = rank
         # Response minimal & stabil halten
         return {
             "game_id": entry.get("game_id"),
@@ -293,9 +348,9 @@ def game_from_leaderboard(files: LeaderboardFiles, game_id: str):
             "finished_at": entry.get("finished_at") or entry.get("ts"),
             "mode": entry.get("mode"),
             "hardcore": bool(entry.get("hardcore", False)),
-            "players": players,
+            "players": players_copy,
             "scoreboards": scoreboards,
-            "chat_history": entry.get("chat_history") if isinstance(entry.get("chat_history"), list) else [],
+            "chat_history": chat_history,
             "admin_edits": entry.get("admin_edits") if isinstance(entry.get("admin_edits"), dict) else {},
         }
 

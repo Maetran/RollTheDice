@@ -63,9 +63,15 @@ export function addChatMessage(sender, text, opts = {}) {
 
   const line = document.createElement("div");
   line.className = `chat-line${opts.kind === "reaction" ? " reaction" : ""}${opts.kind === "system" ? " system" : ""}`;
+  const senderMarkup = typeof window.ZDWA_PLAYER_NAME_MARKUP === "function"
+    ? window.ZDWA_PLAYER_NAME_MARKUP(
+      opts.achievement_rank ? { name: sender, achievement_rank: opts.achievement_rank } : { name: sender },
+      { compactRank: true },
+    )
+    : escapeHtml(sender);
   const body = opts.kind === "reaction"
-    ? `<b>${escapeHtml(sender)}</b> ${escapeHtml(text)}`
-    : `<b>${escapeHtml(sender)}:</b> ${escapeHtml(text)}`;
+    ? `<b>${senderMarkup}</b> ${escapeHtml(text)}`
+    : `<b>${senderMarkup}:</b> ${escapeHtml(text)}`;
   line.innerHTML = `<span class="ts">[${stamp}]</span>${body}`;
 
   chatBox.prepend(line);

@@ -113,6 +113,7 @@ def build_leaderboard_snapshot_fields(g: GameDict) -> dict:
                     "name": p.get("name", "Player"),
                     "team": (team_of.get(pid) if is_team_mode(g) else None),
                     "user_id": p.get("user_id"),
+                    **({"achievement_rank": p["achievement_rank"]} if isinstance(p.get("achievement_rank"), dict) else {}),
                 }
             )
 

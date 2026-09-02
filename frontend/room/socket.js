@@ -174,6 +174,7 @@
         addChatMessage(msg.emoji.from || "???", msg.emoji.emoji || "", {
           ts: msg.emoji.ts,
           kind: "reaction",
+          achievement_rank: msg.emoji.achievement_rank,
         });
       }
 
@@ -182,7 +183,11 @@
         const sender = msg.chat.sender || "???";
         const text = msg.chat.text || "";
         if (text) {
-          addChatMessage(sender, text, { ts: msg.chat.ts, kind: msg.chat.kind });
+          addChatMessage(sender, text, {
+            ts: msg.chat.ts,
+            kind: msg.chat.kind,
+            achievement_rank: msg.chat.achievement_rank,
+          });
           const ownIds = [myId, mySpectatorId ? `S-${mySpectatorId}` : null].filter(Boolean).map(String);
           const isOwn = msg.chat.from_id && ownIds.includes(String(msg.chat.from_id));
           if (!isOwn && window.emojiUI && typeof window.emojiUI.handleChat === "function") {
@@ -203,7 +208,13 @@
       }
 
       if (Array.isArray(msg.chat_history)) {
-        msg.chat_history.forEach(m => { if (m?.text) addChatMessage(m.sender || "???", m.text, { ts: m.ts, kind: m.kind }); });
+        msg.chat_history.forEach(m => {
+          if (m?.text) addChatMessage(m.sender || "???", m.text, {
+            ts: m.ts,
+            kind: m.kind,
+            achievement_rank: m.achievement_rank,
+          });
+        });
       }
     });
 
@@ -232,7 +243,11 @@
       const hist = Array.isArray(snapshot?._chat_history) ? snapshot._chat_history : [];
       if (!hist.length) return;
       hist.forEach(m => {
-        if (m && m.text) addChatMessage(m.sender || "???", m.text, { ts: m.ts, kind: m.kind });
+        if (m && m.text) addChatMessage(m.sender || "???", m.text, {
+          ts: m.ts,
+          kind: m.kind,
+          achievement_rank: m.achievement_rank,
+        });
       });
     } catch {}
   }

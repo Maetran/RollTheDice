@@ -23,6 +23,16 @@ def append_chat_history(game: GameDict, entry: dict) -> dict:
         "ts": entry.get("ts") or datetime.now(timezone.utc).isoformat(),
         "kind": str(entry.get("kind") or "chat")[:32],
     }
+    user_id = entry.get("user_id")
+    if isinstance(user_id, int):
+        clean["user_id"] = user_id
+    rank = entry.get("achievement_rank")
+    if isinstance(rank, dict):
+        clean["achievement_rank"] = {
+            key: rank[key]
+            for key in ("key", "title", "stars", "points", "points_possible")
+            if key in rank
+        }
     history = game.setdefault("_chat_history", [])
     history.append(clean)
     if len(history) > CHAT_HISTORY_LIMIT:

@@ -493,11 +493,24 @@ def _progress_for_game(g: GameDict) -> list[dict]:
     """Liefert kompakten Fortschritt fuer die Lobby-Liste laufender Spiele."""
     totals = _compute_final_totals(g)
     if is_team_mode(g):
-        players_by_id = {p.get("id"): p.get("name", "Player") for p in g.get("_players", [])}
+        players_by_id = {p.get("id"): p for p in g.get("_players", [])}
         out = []
         for tid in ("A", "B"):
             team = g.get("_teams", {}).get(tid, {}) or {}
-            members = [players_by_id.get(pid, str(pid)) for pid in team.get("members", [])]
+            members = [
+                {
+                    "id": str(player.get("id") or pid),
+                    "name": player.get("name", "Player"),
+                    "user_id": player.get("user_id"),
+                    **(
+                        {"achievement_rank": player["achievement_rank"]}
+                        if isinstance(player.get("achievement_rank"), dict)
+                        else {}
+                    ),
+                }
+                for pid in team.get("members", [])
+                for player in [players_by_id.get(pid, {"id": pid, "name": str(pid)})]
+            ]
             board = g.get("_scoreboards_by_team", {}).get(tid, {}) or {}
             filled = WRITABLE_CELLS_PER_PLAYER - _open_writable_count(board)
             out.append(
@@ -521,6 +534,8 @@ def _progress_for_game(g: GameDict) -> list[dict]:
             {
                 "id": pid,
                 "name": p.get("name", "Player"),
+                "user_id": p.get("user_id"),
+                **({"achievement_rank": p["achievement_rank"]} if isinstance(p.get("achievement_rank"), dict) else {}),
                 "members": [],
                 "filled": filled,
                 "of": WRITABLE_CELLS_PER_PLAYER,

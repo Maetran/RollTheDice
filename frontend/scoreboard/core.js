@@ -248,6 +248,33 @@ function esc(s){
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"
   }[c]));
 }
+
+function playerRankNumber(value){
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "0";
+  return new Intl.NumberFormat(window.ZDWA_I18N?.locale?.() || "de-CH", { maximumFractionDigits: 0 }).format(numeric);
+}
+
+function playerRankMarkup(player, { compact = false } = {}){
+  const rank = player?.achievement_rank;
+  if (!rank || typeof rank !== "object") return "";
+  const key = String(rank.key || "newbie").replace(/[^a-z0-9-]/gi, "") || "newbie";
+  const stars = Math.max(0, Math.min(5, Math.trunc(Number(rank.stars) || 0)));
+  const starText = stars ? "★".repeat(stars) : "☆";
+  const translate = window.ZDWA_I18N?.t || (value => String(value ?? ""));
+  const label = translate(rank.title || "Newbie");
+  const title = `${translate("Rang")}: ${label} · ${playerRankNumber(rank.points)} / ${playerRankNumber(rank.points_possible)} ${translate("Erfolgspunkte")}`;
+  return `<span class="player-rank player-rank--${esc(key)}${compact ? " player-rank--compact" : ""}" title="${esc(title)}" aria-label="${esc(title)}"><span class="player-rank-stars" aria-hidden="true">${starText}</span><span class="player-rank-title">${esc(label)}</span></span>`;
+}
+
+function playerNameMarkup(player, { name, compactRank = false, fallback = "Spieler" } = {}){
+  const label = name ?? player?.name ?? player?.username ?? fallback;
+  return `<span class="player-name-with-rank"><span class="player-name-label">${esc(label)}</span>${playerRankMarkup(player, { compact: compactRank })}</span>`;
+}
+
+// Room modules and the replay chat use this same renderer after the scoreboard
+// bundle has loaded.  That keeps a title visually identical in every game view.
+window.ZDWA_PLAYER_NAME_MARKUP = playerNameMarkup;
 // function colIndexFromKey(k){ return k === "down" ? 1 : k === "free" ? 2 : k === "up" ? 3 : k === "ang" ? 4 : null; }
 
 // -------- Haupt-Renderer --------

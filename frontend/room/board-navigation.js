@@ -43,12 +43,16 @@
         return;
       }
       const turnPid = snapshot?._turn?.player_id || null;
-      const turnName = (snapshot?._players || []).find(p => String(p.id) === String(turnPid))?.name || "—";
+      const turnPlayer = (snapshot?._players || []).find(p => String(p.id) === String(turnPid));
+      const turnName = turnPlayer?.name || "—";
+      const turnMarkup = typeof window.ZDWA_PLAYER_NAME_MARKUP === "function"
+        ? window.ZDWA_PLAYER_NAME_MARKUP(turnPlayer, { name: turnName, compactRank: true, fallback: "—" })
+        : esc(turnName);
       const rolls = Number(snapshot?._rolls_used || 0);
       const max = Number(snapshot?._rolls_max || 3);
       const isHC = !!snapshot?._hardcore;
       el.innerHTML = `
-        <span class="line">Am Zug: ${esc(turnName)}</span>
+        <span class="line">Am Zug: ${turnMarkup}</span>
         <span class="line secondary">${isHC ? "Hardcore" : `Würfe: ${rolls}/${max}`}</span>
       `;
     } catch {}

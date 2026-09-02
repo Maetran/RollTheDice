@@ -120,6 +120,8 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any]) -> bool:
         "ws": websocket,
         "resume_token": uuid.uuid4().hex,
     }
+    if identity:
+        player["achievement_rank"] = identity.achievement_rank
     session.player_id = player_id
     session.spectator_id = None
     session.is_spectator = False
@@ -166,6 +168,8 @@ async def _spectate_game(session: GameSocketSession, data: dict[str, Any]) -> bo
         "user_id": identity.user_id if identity else None,
         "ws": websocket,
     }
+    if identity:
+        spectator["achievement_rank"] = identity.achievement_rank
     session.player_id = None
     session.spectator_id = spectator_id
     session.is_spectator = True
@@ -174,7 +178,10 @@ async def _spectate_game(session: GameSocketSession, data: dict[str, Any]) -> bo
     await websocket.send_json({"spectator_id": spectator_id, "spectator": True})
     touch(g)
     try:
-        await broadcast(g, {"spectator": {"event": "joined", "name": spectator["name"]}})
+        notice = {"event": "joined", "name": spectator["name"]}
+        if identity:
+            notice["achievement_rank"] = identity.achievement_rank
+        await broadcast(g, {"spectator": notice})
     except Exception:
         logger.debug("Could not broadcast spectator join", exc_info=True)
     await broadcast(g, {"scoreboard": snapshot(g)})
@@ -230,6 +237,8 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any]) -> bool
     session.spectator_id = None
     session.is_spectator = False
     player["ws"] = websocket
+    if identity:
+        player["achievement_rank"] = identity.achievement_rank
     if old_websocket and old_websocket is not websocket:
         try:
             await old_websocket.close(code=1000)
@@ -289,14 +298,19 @@ async def disconnect_session(session: GameSocketSession) -> None:
     elif spectator_id:
         spectators = g.get("_spectators", [])
         left_name = None
+        left_spectator = None
         for index, spectator in enumerate(list(spectators)):
             if spectator.get("id") == spectator_id:
                 left_name = spectator.get("name")
+                left_spectator = spectator
                 spectators.pop(index)
                 break
         try:
             if left_name:
-                await broadcast(g, {"spectator": {"event": "left", "name": left_name}})
+                notice = {"event": "left", "name": left_name}
+                if left_spectator and left_spectator.get("achievement_rank"):
+                    notice["achievement_rank"] = left_spectator["achievement_rank"]
+                await broadcast(g, {"spectator": notice})
         except Exception:
             logger.debug("Could not broadcast spectator departure", exc_info=True)
 

@@ -414,8 +414,13 @@
         score.insertBefore(el, anchor || score.firstChild);
       }
       const offline = Array.isArray(snapshot._offline_players) ? snapshot._offline_players : [];
-      const names = offline.map(p => p && p.name).filter(Boolean).join(", ");
-      el.textContent = names
+      const names = offline
+        .filter(player => player?.name)
+        .map(player => typeof window.ZDWA_PLAYER_NAME_MARKUP === "function"
+          ? window.ZDWA_PLAYER_NAME_MARKUP(player, { compactRank: true })
+          : esc(player.name))
+        .join(", ");
+      el.innerHTML = names
         ? `Spiel pausiert. Weiter geht es, sobald wieder verbunden sind: ${names}.`
         : "Spiel pausiert. Weiter geht es, sobald alle Spieler wieder verbunden sind.";
     } catch {}

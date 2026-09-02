@@ -1,4 +1,4 @@
-import { loadAuth, login, logout, register } from "../shared/auth.js";
+import { loadAuth, login, logout, playerNameMarkup, register } from "../shared/auth.js";
 import { dom, storageKeys } from "./context.js";
 
 const turnstileState = {
@@ -68,7 +68,7 @@ async function refreshAuthUi(refresh = false) {
     dom.playerNameRow.hidden = Boolean(user);
     if (user) {
       dom.headerAccountLink.href = "/konto";
-      dom.authBadge.textContent = user.is_admin ? `${user.username} · Admin` : user.username;
+      dom.authBadge.innerHTML = `${playerNameMarkup(user, { compactRank: true })}${user.is_admin ? ' <span class="badge">Admin</span>' : ''}`;
       dom.nameInput.value = user.username;
       dom.nameInput.disabled = true;
       localStorage.setItem(storageKeys.name, user.username);

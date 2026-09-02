@@ -1,4 +1,5 @@
 import { dom, escapeHtml } from "./context.js";
+import { playerNameMarkup } from "../shared/auth.js";
 
 let activeTab = "normal";
 
@@ -44,7 +45,7 @@ function playerNames(entry) {
   return String(entry.name ?? "—").split(", ").map((name) => {
     const player = links.find((candidate) => String(candidate.display_name) === name);
     return player
-      ? `<a href="/spieler/${encodeURIComponent(player.username)}" class="player-profile-link">${escapeHtml(name)}</a>`
+      ? `<a href="/spieler/${encodeURIComponent(player.username)}" class="player-profile-link">${playerNameMarkup(player, { name, compactRank: true })}</a>`
       : escapeHtml(name);
   }).join(", ");
 }

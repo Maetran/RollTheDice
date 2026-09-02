@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
+from .achievements import achievement_rank_payloads_for_user_ids, public_achievement_ranks
 from .auth import (
     SESSION_COOKIE,
     auth_identity_payload,
@@ -80,8 +81,8 @@ class AdminUserUpdateRequest(BaseModel):
     is_active: bool | None = None
 
 
-def _user_payload(user: User) -> dict:
-    return {
+def _user_payload(user: User, *, achievement_rank: dict | None = None) -> dict:
+    payload = {
         "id": user.id,
         "username": user.username,
         "role": user.role,
@@ -90,6 +91,9 @@ def _user_payload(user: User) -> dict:
         "created_at": user.created_at,
         "updated_at": user.updated_at,
     }
+    if achievement_rank is not None:
+        payload["achievement_rank"] = achievement_rank
+    return payload
 
 
 @router.get("/auth/me")
@@ -207,7 +211,12 @@ def admin_list_users(request: Request, query: str = "", limit: int = 100, offset
         if query.strip():
             stmt = stmt.where(User.username_normalized.contains(query.strip().casefold()))
         users = list(db.scalars(stmt.order_by(User.username_normalized).offset(offset).limit(limit)))
-        return {"users": [_user_payload(user) for user in users], "limit": limit, "offset": offset}
+        ranks = achievement_rank_payloads_for_user_ids(db, {user.id for user in users})
+        return {
+            "users": [_user_payload(user, achievement_rank=ranks.get(user.id)) for user in users],
+            "limit": limit,
+            "offset": offset,
+        }
 
 
 @router.post("/admin/users", status_code=status.HTTP_201_CREATED)
@@ -223,7 +232,7 @@ def admin_create_user(payload: AdminUserCreateRequest, request: Request):
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return {"user": _user_payload(user)}
+    return {"user": _user_payload(user, achievement_rank=public_achievement_ranks({user.id}).get(user.id))}
 
 
 @router.post("/admin/users/{user_id}/reset-password")
@@ -265,4 +274,5 @@ def admin_update_user(user_id: int, payload: AdminUserUpdateRequest, request: Re
         user.updated_at = utcnow()
         db.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
         db.flush()
-        return {"user": _user_payload(user)}
+        rank = achievement_rank_payloads_for_user_ids(db, {user.id}).get(user.id)
+        return {"user": _user_payload(user, achievement_rank=rank)}

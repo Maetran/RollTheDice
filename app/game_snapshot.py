@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 
+from .achievements import public_achievement_ranks
 from .game_admin import superadmin_edit_active
 from .game_engine import (
     _compute_final_totals,
@@ -25,6 +26,49 @@ from .game_state import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def refresh_game_achievement_ranks(g: GameDict) -> None:
+    """Hydrate account-player ranks once and refresh them after a finish.
+
+    Active games retain their player dictionaries across reconnects and server
+    restarts.  Keeping the public rank beside that identity avoids a database
+    query for every dice roll while still making a newly unlocked title visible
+    in the final snapshot.
+    """
+    players = list(g.get("_players", [])) + list(g.get("_spectators", []))
+    refresh_final = bool(g.get("_finished") and not g.get("_achievement_ranks_finalized"))
+    candidates = [
+        player
+        for player in players
+        if player.get("user_id") is not None and (refresh_final or not isinstance(player.get("achievement_rank"), dict))
+    ]
+    if not candidates:
+        return
+    ranks = public_achievement_ranks(player.get("user_id") for player in candidates)
+    for player in candidates:
+        try:
+            rank = ranks.get(int(player["user_id"]))
+        except (TypeError, ValueError):
+            rank = None
+        if rank:
+            player["achievement_rank"] = rank
+    if refresh_final:
+        g["_achievement_ranks_finalized"] = True
+
+
+def public_player_payload(player: dict, *, connected: bool | None = None) -> dict:
+    """Serialize a player identity consistently for lobby and game clients."""
+    payload = {
+        "id": str(player.get("id") or ""),
+        "name": player.get("name", "Player"),
+        "user_id": player.get("user_id"),
+    }
+    if connected is not None:
+        payload["connected"] = bool(connected)
+    if isinstance(player.get("achievement_rank"), dict):
+        payload["achievement_rank"] = player["achievement_rank"]
+    return payload
 
 
 def _serialize_scoreboards(g: GameDict) -> dict:
@@ -83,6 +127,7 @@ def snapshot(g: GameDict) -> dict:
 
         # Auto-Timeout prüfen
         check_timeout_and_abort(g)
+        refresh_game_achievement_ranks(g)
         # Ergebnisse (falls abgeschlossen) berechnen
         if g["_finished"] and not g.get("_results"):
             g["_results"] = _compute_results_for_snapshot(g)
@@ -121,12 +166,7 @@ def snapshot(g: GameDict) -> dict:
             "_name": g["_name"],
             "_hardcore": bool(g.get("_hardcore", False)),
             "_players": [
-                {
-                    "id": p["id"],
-                    "name": p["name"],
-                    "user_id": p.get("user_id"),
-                    "connected": _player_connected(p),
-                }
+                public_player_payload(p, connected=_player_connected(p))
                 for p in g["_players"]
             ],
             "_players_joined": len(g["_players"]),
@@ -221,6 +261,11 @@ def _compute_results_for_snapshot(g: GameDict):
     # Einzel/3P
     for p in g["_players"]:
         pid = p["id"]
-        res.append({"player": p.get("name", "Player"), "total": int(totals.get(pid, 0))})
+        result = {"player": p.get("name", "Player"), "total": int(totals.get(pid, 0))}
+        if p.get("user_id") is not None:
+            result["user_id"] = p["user_id"]
+        if isinstance(p.get("achievement_rank"), dict):
+            result["achievement_rank"] = p["achievement_rank"]
+        res.append(result)
     res.sort(key=lambda x: x["total"], reverse=True)
     return res

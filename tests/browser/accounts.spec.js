@@ -142,6 +142,27 @@ test("guest sees login and registration while a new account sees only logout", a
 });
 
 
+test("achievement titles follow an account player through lobby, stats, and the live game", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#loginUsername", "Admin");
+  await page.fill("#loginPassword", "temporary-password-123");
+  await page.click("#loginForm button[type=submit]");
+
+  await expect(page.locator("#authBadge .player-rank")).toHaveText(/☆\s*Newbie/);
+  await page.goto("/konto");
+  await expect(page.locator("#accountName .player-rank")).toHaveText(/☆\s*Newbie/);
+  await expect(page.locator("#statistics .player-rank")).toHaveText(/☆\s*Newbie/);
+
+  await page.goto("/");
+  await page.getByRole("radio", { name: "1 Spieler, Solo" }).click();
+  await Promise.all([
+    page.waitForURL(/\/spiel\/[^/?]+/),
+    page.click("#createBtn"),
+  ]);
+  await expect(page.locator(".player-card .player-rank")).toHaveText(/☆\s*Newbie/);
+});
+
+
 test("mobile quick entry is opt-in for new accounts and writes the next ordered field", async ({ page }) => {
   await page.setViewportSize({ width: 472, height: 1024 });
   await page.goto("/");

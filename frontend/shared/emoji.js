@@ -227,18 +227,29 @@
     }
   }
 
-  function showPop({from, emoji, text, kind}, {ttlMs=5000}={}){
+  function playerNameMarkup(name, achievementRank){
+    if (typeof window.ZDWA_PLAYER_NAME_MARKUP === 'function') {
+      return window.ZDWA_PLAYER_NAME_MARKUP(
+        { name, achievement_rank: achievementRank },
+        { compactRank: true, fallback: 'Spieler' },
+      );
+    }
+    return escapeHtml(name || 'Spieler');
+  }
+
+  function showPop({from, emoji, text, kind, achievement_rank: achievementRank}, {ttlMs=5000}={}){
     ensureStyles();
     const mount = ensurePopMount();
     syncPopMountPosition();
     const el = document.createElement('div');
     const isChat = kind === 'chat';
     el.className = `emoji-pop${isChat ? ' chat-pop' : ''}`;
+    const senderMarkup = playerNameMarkup(from, achievementRank);
     if (isChat) {
-      el.innerHTML = `<span class="who">${escapeHtml(from)}:</span> <span class="txt">${escapeHtml(text || '')}</span>`;
+      el.innerHTML = `<span class="who">${senderMarkup}:</span> <span class="txt">${escapeHtml(text || '')}</span>`;
       el.addEventListener('click', scrollToChat);
     } else {
-      el.innerHTML = `<span class="who">${escapeHtml(from)}</span> <span class="em">${escapeHtml(emoji)}</span>`;
+      el.innerHTML = `<span class="who">${senderMarkup}</span> <span class="em">${escapeHtml(emoji)}</span>`;
     }
     mount.appendChild(el);
     setTimeout(() => {
@@ -292,12 +303,21 @@
 
   function handleRemote(payload){
     if (!payload || !payload.emoji) return;
-    showPop({from: payload.from || 'Spieler', emoji: payload.emoji});
+    showPop({
+      from: payload.from || 'Spieler',
+      emoji: payload.emoji,
+      achievement_rank: payload.achievement_rank,
+    });
   }
 
   function handleChat(payload){
     if (!payload || !payload.text) return;
-    showPop({from: payload.sender || payload.from || 'Spieler', text: payload.text, kind: 'chat'});
+    showPop({
+      from: payload.sender || payload.from || 'Spieler',
+      text: payload.text,
+      kind: 'chat',
+      achievement_rank: payload.achievement_rank,
+    });
   }
 
   window.emojiUI = { init, handleRemote, handleChat };

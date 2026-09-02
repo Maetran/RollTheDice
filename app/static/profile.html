@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Öffentliches ZDWA Spielerprofil mit Statistiken und letzten Spielen.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=3c895ae9e258">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=3c895ae9e258" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=3c895ae9e258" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=2da62be76cd8">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=2da62be76cd8" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=2da62be76cd8" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=3c895ae9e258">
-  <script src="/static/shell.js?v=3c895ae9e258" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=2da62be76cd8">
+  <script src="/static/shell.js?v=2da62be76cd8" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -45,7 +45,7 @@
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber } from '/static/auth.js?v=3c895ae9e258';
+    import { escapeHtml, formatNumber, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=2da62be76cd8';
     const profilePath = location.pathname.match(/^\/spieler\/([^/]+)\/?$/);
     let username = new URLSearchParams(location.search).get('user') || '';
     try { if (profilePath) username = decodeURIComponent(profilePath[1]); }
@@ -73,6 +73,7 @@
           <div><dt>Spiele</dt><dd>${formatNumber(data.games_played, '0')}</dd></div>
         <div><dt>Gesamtpunkte</dt><dd>${formatNumber(data.points_total, '0')}</dd></div>
         ${data.achievement_points !== undefined ? `<div><dt>Erfolgspunkte</dt><dd>${formatNumber(data.achievement_points, '0')} / ${formatNumber(data.achievement_points_possible, '0')}</dd></div>` : ''}
+        ${data.achievement_rank ? `<div><dt>Rang</dt><dd>${playerRankBadge({ achievement_rank: data.achievement_rank })}</dd></div>` : ''}
           ${details ? `<div><dt>Maximum</dt><dd>${formatNumber(data.max_points)}</dd></div>
           <div><dt>Minimum</dt><dd>${formatNumber(data.min_points)}</dd></div>
           <div><dt>Durchschnitt</dt><dd>${formatNumber(data.average_points)}</dd></div>
@@ -106,7 +107,7 @@
       const response = await fetch(`/api/players/${encodeURIComponent(username)}`, { cache: 'no-store' });
       if (!response.ok) throw new Error(response.status === 404 ? 'Spieler wurde nicht gefunden.' : 'Profil konnte nicht geladen werden.');
       const player = (await response.json()).player;
-      document.getElementById('profileName').textContent = player.username;
+      document.getElementById('profileName').innerHTML = playerNameMarkup(player, { name: player.username });
       statisticsEl.innerHTML = bucket('Gesamt', player.statistics.overall, { details: false })
         + bucket('Normal', player.statistics.normal)
         + bucket('Hardcore', player.statistics.hardcore);

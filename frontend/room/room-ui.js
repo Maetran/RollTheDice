@@ -61,10 +61,28 @@
     const labelFor = entry => {
       if (!entry) return "Unbekannt";
       const isTeam = entry.is_team || Array.isArray(entry.members) || entry.team || entry.team_name;
-      if (!isTeam) return entry.player || entry.name || "Spieler";
+      if (!isTeam) {
+        const name = entry.player || entry.name || "Spieler";
+        const rank = entry.achievement_rank;
+        if (!rank || typeof rank !== "object") return name;
+        const stars = Math.max(0, Math.min(5, Math.trunc(Number(rank.stars) || 0)));
+        const insignia = stars ? "★".repeat(stars) : "☆";
+        const title = window.ZDWA_I18N?.t?.(rank.title || "Newbie") || rank.title || "Newbie";
+        return `${name} · ${insignia} ${title}`;
+      }
       const teamName = entry.name || entry.team || entry.team_name || "Team";
       const members = entry.members || entry.players || [];
-      return members.length ? `${teamName} (${humanList(members)})` : teamName;
+      const memberLabels = members.map(member => {
+        if (typeof member === "string") return member;
+        const name = member?.name || member?.player || "Spieler";
+        const rank = member?.achievement_rank;
+        if (!rank || typeof rank !== "object") return name;
+        const stars = Math.max(0, Math.min(5, Math.trunc(Number(rank.stars) || 0)));
+        const insignia = stars ? "★".repeat(stars) : "☆";
+        const title = window.ZDWA_I18N?.t?.(rank.title || "Newbie") || rank.title || "Newbie";
+        return `${name} · ${insignia} ${title}`;
+      });
+      return memberLabels.length ? `${teamName} (${humanList(memberLabels)})` : teamName;
     };
     const lines = results.length
       ? results.map((entry, index) => `${index + 1}. ${labelFor(entry)}${Number.isFinite(entry?.total) ? ` – ${entry.total} Punkte` : ""}`)

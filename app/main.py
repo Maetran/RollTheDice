@@ -34,6 +34,7 @@ from .game_history import (
     import_legacy_leaderboards,
 )
 from .game_results import finalize_and_log_results, remove_deleted_game_from_files
+from .game_snapshot import public_player_payload, refresh_game_achievement_ranks
 from .game_state import (
     GameDict,
     _format_duration_hm,
@@ -387,6 +388,7 @@ async def api_games(request: Request):
     lst = []
     for gid, g in games.items():
         try:
+            refresh_game_achievement_ranks(g)
             joined = len(g["_players"])
             waiting_names = [p.get("name", f"Player {i}") for i, p in enumerate(g["_players"], start=1)]
             offline = _offline_players(g)
@@ -411,11 +413,7 @@ async def api_games(request: Request):
                     "waiting": waiting_names,
                     "connected": {str(p.get("id")): _player_connected(p) for p in g.get("_players", [])},
                     "player_statuses": [
-                        {
-                            "id": str(p.get("id")),
-                            "name": p.get("name", "Player"),
-                            "connected": _player_connected(p),
-                        }
+                        public_player_payload(p, connected=_player_connected(p))
                         for p in g.get("_players", [])
                     ],
                     "offline": offline,
@@ -463,6 +461,7 @@ def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="
     if g.get("_passphrase") and passphrase is not None:
         if passphrase != g["_passphrase"]:
             raise HTTPException(status_code=403, detail="wrong_passphrase")
+    refresh_game_achievement_ranks(g)
     offline = _offline_players(g)
     pause_reason = multiplayer_pause_reason(g)
     pause_left = pause_remaining_seconds(g)
@@ -481,11 +480,7 @@ def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="
         "waiting": [p.get("name", "Player") for p in g["_players"]],
         "connected": {str(p.get("id")): _player_connected(p) for p in g.get("_players", [])},
         "player_statuses": [
-            {
-                "id": str(p.get("id")),
-                "name": p.get("name", "Player"),
-                "connected": _player_connected(p),
-            }
+            public_player_payload(p, connected=_player_connected(p))
             for p in g.get("_players", [])
         ],
         "offline": offline,

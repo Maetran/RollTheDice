@@ -129,6 +129,8 @@ class AccountDatabaseTestCase(GameStateTestCase):
 
         public_payload = auth_identity_payload(resolved)
         self.assertNotIn("csrf_token", public_payload)
+        self.assertEqual(public_payload["achievement_rank"]["title"], "Newbie")
+        self.assertEqual(public_payload["achievement_rank"]["points"], 1)
         self.assertEqual(public_payload["preferences"]["announce_selection_mode"], "overlay")
         self.assertFalse(public_payload["preferences"]["mobile_row_quick_entry"])
         self.assertFalse(public_payload["preferences"]["haptic_feedback"])

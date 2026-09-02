@@ -11,6 +11,7 @@ from fastapi import HTTPException, Request, Response, WebSocket, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 
+from .achievements import achievement_rank_for_keys
 from .auth_protection import (
     clear_login_failures,
     enforce_login_rate_limit,
@@ -51,6 +52,7 @@ class AuthIdentity:
     preferred_language: str
     csrf_token: str
     session_id: int
+    achievement_rank: dict
 
     @property
     def is_admin(self) -> bool:
@@ -65,6 +67,7 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
         "role": identity.role,
         "is_admin": identity.is_admin,
         "must_change_password": identity.must_change_password,
+        "achievement_rank": identity.achievement_rank,
         "preferences": {
             "announce_selection_mode": identity.announce_selection_mode,
             "auto_write_announced": identity.auto_write_announced,
@@ -77,6 +80,13 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
     if include_csrf:
         payload["csrf_token"] = identity.csrf_token
     return payload
+
+
+def _achievement_rank_for_user(db, user_id: int) -> dict:
+    keys = db.scalars(
+        select(UserAchievement.achievement_key).where(UserAchievement.user_id == user_id)
+    )
+    return achievement_rank_for_keys(keys)
 
 
 def _cookie_secure() -> bool:
@@ -191,6 +201,7 @@ def login(request: Request, username: str, password: str) -> tuple[AuthIdentity,
             preferred_language=user.preferred_language,
             csrf_token=login_session.csrf_token,
             session_id=login_session.id,
+            achievement_rank=_achievement_rank_for_user(db, user.id),
         )
         return identity, raw_token
 
@@ -225,6 +236,7 @@ def resolve_session(connection: Request | WebSocket) -> AuthIdentity | None:
             preferred_language=user.preferred_language,
             csrf_token=login_session.csrf_token,
             session_id=login_session.id,
+            achievement_rank=_achievement_rank_for_user(db, user.id),
         )
 
 

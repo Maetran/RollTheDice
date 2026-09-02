@@ -8,10 +8,14 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from .achievements import achievement_points_for_keys, sync_achievements_for_users, sync_user_achievements
+from .achievements import (
+    achievement_rank_payloads_for_user_ids,
+    sync_achievements_for_users,
+    sync_user_achievements,
+)
 from .auth import require_admin, require_csrf, require_user
 from .database import database_schema_ready, session_scope
-from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User, UserAchievement
+from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User
 from .security import normalize_username, utcnow
 from .trends import recent_points_trend
 
@@ -129,31 +133,16 @@ def _public_profile(db, user: User) -> dict:
         {
             "achievement_points": achievements["points_earned"],
             "achievement_points_possible": achievements["points_possible"],
+            "achievement_rank": achievements["rank"],
         }
     )
     return {
         "id": user.id,
         "username": user.username,
+        "achievement_rank": achievements["rank"],
         "statistics": statistics,
         "recent_games": _recent_games_for_user(db, user.id),
         "achievements": achievements,
-    }
-
-
-def _achievement_points_by_user(db, user_ids: set[int]) -> dict[int, int]:
-    """Read materialized unlocks in one query for the public ranking."""
-    points_by_user = {user_id: 0 for user_id in user_ids}
-    if not user_ids:
-        return points_by_user
-    keys_by_user: dict[int, set[str]] = {user_id: set() for user_id in user_ids}
-    rows = db.execute(
-        select(UserAchievement.user_id, UserAchievement.achievement_key).where(UserAchievement.user_id.in_(user_ids))
-    ).all()
-    for user_id, key in rows:
-        keys_by_user[int(user_id)].add(str(key))
-    return {
-        user_id: achievement_points_for_keys(keys_by_user[user_id])
-        for user_id in user_ids
     }
 
 
@@ -167,8 +156,16 @@ def search_players(query: str = "", limit: int = 20, offset: int = 0):
         if normalized:
             stmt = stmt.where(User.username_normalized.contains(normalized))
         users = list(db.scalars(stmt.order_by(User.username_normalized).offset(offset).limit(limit)))
+        ranks = achievement_rank_payloads_for_user_ids(db, {user.id for user in users})
         return {
-            "players": [{"id": user.id, "username": user.username} for user in users],
+            "players": [
+                {
+                    "id": user.id,
+                    "username": user.username,
+                    "achievement_rank": ranks.get(user.id),
+                }
+                for user in users
+            ],
             "limit": limit,
             "offset": offset,
         }
@@ -203,7 +200,8 @@ def player_ranking(
                 .group_by(User.id)
             )
         rows = db.execute(statement).all()
-        achievement_points = _achievement_points_by_user(db, {user.id for user, *_values in rows})
+        achievement_ranks = achievement_rank_payloads_for_user_ids(db, {user.id for user, *_values in rows})
+        achievement_points = {user_id: rank["points"] for user_id, rank in achievement_ranks.items()}
 
         def sort_key(row):
             user, games, points, average, maximum = row
@@ -246,6 +244,7 @@ def player_ranking(
                     "average_points": round(float(average), 1) if average is not None else None,
                     "max_points": int(maximum) if maximum is not None else None,
                     "achievement_points": achievement_points[user.id],
+                    "achievement_rank": achievement_ranks[user.id],
                     **recent_points_trend(
                         recent_by_user[user.id],
                         games_played=int(games),
@@ -351,6 +350,10 @@ def admin_game_participants(
                 stmt.order_by(CompletedGame.finished_at.desc(), GameParticipant.position).offset(offset).limit(limit)
             )
         )
+        ranks = achievement_rank_payloads_for_user_ids(
+            db,
+            {participant.user.id for participant in participants if participant.user is not None},
+        )
         return {
             "participants": [
                 {
@@ -364,7 +367,13 @@ def admin_game_participants(
                     "team": participant.team,
                     "points": participant.points,
                     "user": (
-                        {"id": participant.user.id, "username": participant.user.username} if participant.user else None
+                        {
+                            "id": participant.user.id,
+                            "username": participant.user.username,
+                            "achievement_rank": ranks.get(participant.user.id),
+                        }
+                        if participant.user
+                        else None
                     ),
                 }
                 for participant in participants
@@ -392,8 +401,17 @@ def admin_completed_games(request: Request, query: str = "", limit: int = 100, o
                 func.lower(CompletedGame.game_name).like(needle)
                 | func.lower(CompletedGame.game_id).like(needle)
                 | CompletedGame.id.in_(matching_games)
-            )
+        )
         games = list(db.scalars(stmt.order_by(CompletedGame.finished_at.desc()).offset(offset).limit(limit)))
+        ranks = achievement_rank_payloads_for_user_ids(
+            db,
+            {
+                participant.user.id
+                for game in games
+                for participant in game.participants
+                if participant.user is not None
+            },
+        )
         return {
             "games": [
                 {
@@ -408,6 +426,8 @@ def admin_completed_games(request: Request, query: str = "", limit: int = 100, o
                             "display_name": participant.display_name,
                             "points": participant.points,
                             "username": participant.user.username if participant.user else None,
+                            "user_id": participant.user.id if participant.user else None,
+                            "achievement_rank": ranks.get(participant.user.id) if participant.user else None,
                         }
                         for participant in game.participants
                     ],
@@ -425,11 +445,12 @@ def admin_deleted_games(request: Request, limit: int = 50):
     limit = min(max(limit, 1), 200)
     with session_scope() as db:
         rows = db.execute(
-            select(DeletedGame, User.username)
+            select(DeletedGame, User.id, User.username)
             .join(User, User.id == DeletedGame.deleted_by_user_id)
             .order_by(DeletedGame.deleted_at.desc())
             .limit(limit)
         ).all()
+        ranks = achievement_rank_payloads_for_user_ids(db, {user_id for _game, user_id, _username in rows})
         return {
             "games": [
                 {
@@ -440,9 +461,10 @@ def admin_deleted_games(request: Request, limit: int = 50):
                     "hardcore": game.hardcore,
                     "deleted_at": game.deleted_at,
                     "deleted_by": username,
+                    "deleted_by_rank": ranks.get(int(user_id)),
                     "reason": game.reason,
                 }
-                for game, username in rows
+                for game, user_id, username in rows
             ]
         }
 
@@ -491,6 +513,7 @@ def profile_links_for_games(game_ids: set[str]) -> dict[str, list[dict]]:
             .where(CompletedGame.game_id.in_(game_ids), User.is_active.is_(True))
             .order_by(GameParticipant.position)
         ).all()
+        ranks = achievement_rank_payloads_for_user_ids(db, {user_id for *_values, user_id, _username in rows})
         result: dict[str, list[dict]] = {}
         for game_id, display_name, points, user_id, username in rows:
             result.setdefault(game_id, []).append(
@@ -499,6 +522,7 @@ def profile_links_for_games(game_ids: set[str]) -> dict[str, list[dict]]:
                     "username": username,
                     "display_name": display_name,
                     "points": int(points),
+                    "achievement_rank": ranks.get(int(user_id)),
                 }
             )
         return result

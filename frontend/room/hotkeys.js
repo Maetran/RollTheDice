@@ -117,13 +117,19 @@
    */
   function showSpectatorToast(evt){
     try {
-      const { event, name } = evt || {};
+      const { event, name, achievement_rank: achievementRank } = evt || {};
       const host = reactionsMount || document.body;
       const el = document.createElement("div");
       el.className = "spectator-toast";
-      el.textContent = event === "left"
-        ? `Zuschauer hat verlassen: ${name}`
-        : `Zuschauer verbunden: ${name}`;
+      const nameMarkup = typeof window.ZDWA_PLAYER_NAME_MARKUP === "function"
+        ? window.ZDWA_PLAYER_NAME_MARKUP(
+          { name: name || "Spieler", achievement_rank: achievementRank },
+          { compactRank: true },
+        )
+        : esc(name || "Spieler");
+      el.innerHTML = event === "left"
+        ? `Zuschauer hat verlassen: ${nameMarkup}`
+        : `Zuschauer verbunden: ${nameMarkup}`;
       el.style.display = "inline-block";
       el.style.marginLeft = ".5rem";
       el.style.padding = ".35rem .55rem";

@@ -11,7 +11,8 @@ function renderScoreboard(mount, sb, {
   const dice  = sb._dice  || [];
   const holds = sb._holds || [false,false,false,false,false];
   const turnPid  = sb?._turn?.player_id || null;
-  const turnName = (sb?._players || []).find(p => String(p.id) === String(turnPid))?.name || "—";
+  const turnPlayer = (sb?._players || []).find(p => String(p.id) === String(turnPid));
+  const turnName = turnPlayer?.name || "—";
 
   const corr = sb?._correction || { active:false };
   const correctionActive = !!corr.active;
@@ -71,7 +72,7 @@ function renderScoreboard(mount, sb, {
     </div>
     <div class="muted turn-status">
       <span id="mobileReactionsBar" class="mobile-reactions-host" aria-label="Reaktionen"></span>
-      <span class="turn-status-text">Am Zug: ${esc(turnName)} • ${isHC ? '<span class="hc-badge">Hardcore</span>' : `Würfe: ${rollsUsed ?? 0}/${rollsMax ?? 3} <span id="announceHint"></span>`}</span>
+      <span class="turn-status-text">Am Zug: ${playerNameMarkup(turnPlayer, { name: turnName, compactRank: true })} • ${isHC ? '<span class="hc-badge">Hardcore</span>' : `Würfe: ${rollsUsed ?? 0}/${rollsMax ?? 3} <span id="announceHint"></span>`}</span>
     </div>
   `;
 
@@ -93,16 +94,16 @@ function renderScoreboard(mount, sb, {
     // Team-Mitglieder-Namen für Chips zusammensetzen (nur 2v2)
     let membersHTML = "";
     if (isTeamMode) {
-      const memberNames = (ent.members || [])
-        .map(pid => sb._players.find(p => String(p.id) === String(pid))?.name || pid)
+      const members = (ent.members || [])
+        .map(pid => sb._players.find(p => String(p.id) === String(pid)) || { id: pid, name: pid })
         .filter(Boolean);
-      membersHTML = memberNames.map(n => `<span class="badge">${esc(n)}</span>`).join(" ");
+      membersHTML = members.map(player => `<span class="badge">${playerNameMarkup(player, { compactRank: true })}</span>`).join(" ");
     }
 
     grid += `
       <div class="player-card${isTurn ? " turn": ""}${isMyBoard ? " me": ""}" data-board-id="${esc(id)}">
         <div class="pc-head">
-          <div class="pc-name">${esc(ent.name || "—")}</div>
+          <div class="pc-name">${isTeamMode ? esc(ent.name || "—") : playerNameMarkup(ent, { compactRank: true, fallback: "—" })}</div>
           <div class="pc-total">Total: ${overall}</div>
         </div>
         ${isTeamMode ? `<div class="pc-members">${membersHTML}</div>` : ``}

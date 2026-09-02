@@ -299,4 +299,42 @@ input[type="checkbox"]{
 .online-user-count{ display:inline-flex; align-items:center; gap:.35rem; }
 .online-dot{ width:.55rem; height:.55rem; border-radius:50%; background:#16a36a; box-shadow:0 0 0 3px color-mix(in srgb, #16a36a 16%, transparent); }
 .badge.offline{ background:var(--warning-soft); color:#7a3e00; border-color:#f2c16d; }
+.player-name-with-rank{
+  display:inline-flex;
+  align-items:center;
+  gap:.32rem;
+  min-width:0;
+  vertical-align:middle;
+  flex-wrap:wrap;
+}
+.player-name-label{ min-width:0; overflow-wrap:anywhere; }
+.player-rank{
+  --rank-color:#64748b;
+  display:inline-flex;
+  align-items:center;
+  gap:.2rem;
+  padding:.08rem .34rem;
+  border:1px solid color-mix(in srgb,var(--rank-color) 42%,var(--border));
+  border-radius:999px;
+  background:color-mix(in srgb,var(--rank-color) 10%,var(--card));
+  color:var(--rank-color);
+  font-size:.68rem;
+  font-weight:800;
+  line-height:1.25;
+  white-space:nowrap;
+  letter-spacing:.01em;
+}
+.player-rank-stars{ letter-spacing:.03em; font-size:.72rem; line-height:1; }
+.player-rank-title{ font-weight:750; }
+.player-rank--newbie{ --rank-color:#718096; }
+.player-rank--rookie,.player-rank--player{ --rank-color:#8a5a2b; }
+.player-rank--advanced,.player-rank--pro{ --rank-color:#2563a8; }
+.player-rank--expert,.player-rank--master{ --rank-color:#7c3aed; }
+.player-rank--elite,.player-rank--legend{ --rank-color:#b7791f; }
+.player-rank--godmode{ --rank-color:#c026d3; }
+.player-rank--compact{ font-size:.64rem; padding:.06rem .28rem; }
+.player-rank--compact .player-rank-stars{ font-size:.67rem; }
+@media (max-width:420px){
+  .player-rank-title{ max-width:5.8rem; overflow:hidden; text-overflow:ellipsis; }
+}
 .warn-line{ color:#7a3e00 !important; font-weight:650; }

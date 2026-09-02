@@ -14,6 +14,7 @@ import {
   storageKeys,
   storeGamePass,
 } from "./context.js";
+import { playerNameMarkup } from "../shared/auth.js";
 
 function renderOnlineUsers(value) {
   if (!dom.onlineUsers) return;
@@ -42,9 +43,13 @@ function renderOpenGames(games) {
     const disabled = joined >= expected || game.started || game.finished ? "disabled" : "";
     const mode = game.mode === "2v2" ? "2 vs 2" : `${game.mode || expected}`;
     const hardcore = game.hardcore ? '<span class="hc-badge">Hardcore</span>' : "";
+    const statuses = Array.isArray(game.player_statuses) ? game.player_statuses : [];
     const waiting = Array.isArray(game.waiting) ? game.waiting : [];
-    const badges = waiting.length
-      ? waiting.map((name) => `<span class="badge">${escapeHtml(name)}</span>`).join(" ")
+    const listedPlayers = statuses.length
+      ? statuses
+      : waiting.map((name) => ({ name }));
+    const badges = listedPlayers.length
+      ? listedPlayers.map((player) => `<span class="badge">${playerNameMarkup(player, { compactRank: true })}</span>`).join(" ")
       : '<span class="muted small">Noch keine Spieler</span>';
     return `<div class="game-row">
       <div class="meta">
@@ -95,7 +100,8 @@ function renderRunningGames(games) {
       ? players.map((player) => {
         const name = typeof player === "string" ? player : player.name || "Spieler";
         const connected = typeof player === "string" || Boolean(player.connected);
-        return `<span class="badge ${connected ? "online" : "offline"}">${escapeHtml(name)}${connected ? "" : " offline"}</span>`;
+        const playerData = typeof player === "string" ? { name } : player;
+        return `<span class="badge ${connected ? "online" : "offline"}">${playerNameMarkup(playerData, { compactRank: true })}${connected ? "" : " offline"}</span>`;
       }).join(" ")
       : '<span class="muted small">Spieler unbekannt</span>';
     const canResume = Boolean(localPlayerIdFor(gameId) || game.my_player_id);
@@ -104,7 +110,7 @@ function renderRunningGames(games) {
         const remaining = game.pause_remaining_label || game.timeout_label || "";
         const offline = Array.isArray(game.offline) ? game.offline : [];
         const waitText = offline.length
-          ? `wartet auf ${offline.map((player) => escapeHtml(player.name || "Spieler")).join(", ")}`
+          ? `wartet auf ${offline.map((player) => playerNameMarkup(player, { compactRank: true })).join(", ")}`
           : "manuell pausiert";
         const timeText = remaining ? ` • Restzeit: ${escapeHtml(remaining)}` : "";
         return `<div class="sub warn-line">Pausiert: ${waitText}${timeText}</div>`;
@@ -113,8 +119,10 @@ function renderRunningGames(games) {
     const progressRows = (Array.isArray(game.progress) ? game.progress : []).map((progress) => {
       const translate = window.ZDWA_I18N?.t || ((text) => text);
       const player = progress.members?.length
-        ? `${escapeHtml(progress.name)} <span class="muted small">(${progress.members.map(escapeHtml).join(", ")})</span>`
-        : escapeHtml(progress.name);
+        ? `${escapeHtml(progress.name)} <span class="muted small">(${progress.members.map((member) => (
+          typeof member === "string" ? escapeHtml(member) : playerNameMarkup(member, { compactRank: true })
+        )).join(", ")})</span>`
+        : playerNameMarkup(progress, { compactRank: true });
       return `<div class="muted small progress-line">
         <b>${player}</b> — ${escapeHtml(translate("Felder"))} <b>${progress.filled}/${progress.of || 48}</b> • ${escapeHtml(translate("Punkte"))} <b>${progress.points}</b>
       </div>`;

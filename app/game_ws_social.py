@@ -42,27 +42,27 @@ async def _send_error(session: GameSocketSession, message: str) -> None:
     await session.websocket.send_json({"error": message})
 
 
-def _sender(session: GameSocketSession) -> tuple[str, str] | None:
+def _sender(session: GameSocketSession) -> tuple[str, dict] | None:
     if session.player_id:
-        name = next(
+        player = next(
             (
-                player.get("name", "Gast")
+                player
                 for player in session.game.get("_players", [])
                 if player.get("id") == session.player_id
             ),
-            "Gast",
+            {"name": "Gast"},
         )
-        return session.player_id, name
+        return session.player_id, player
     if session.spectator_id:
-        name = next(
+        spectator = next(
             (
-                spectator.get("name", "Gast")
+                spectator
                 for spectator in session.game.get("_spectators", [])
                 if spectator.get("id") == session.spectator_id
             ),
-            "Gast",
+            {"name": "Gast"},
         )
-        return f"S-{session.spectator_id}", name
+        return f"S-{session.spectator_id}", spectator
     return None
 
 
@@ -78,7 +78,9 @@ async def _send_emoji(session: GameSocketSession, data: dict[str, Any]) -> None:
     if not sender:
         await _send_error(session, "Nicht beigetreten")
         return
-    sender_id, sender_name = sender
+    sender_id, sender_player = sender
+    sender_name = sender_player.get("name", "Gast")
+    sender_rank = sender_player.get("achievement_rank")
     touch(session.game)
     await broadcast(
         session.game,
@@ -88,6 +90,7 @@ async def _send_emoji(session: GameSocketSession, data: dict[str, Any]) -> None:
                 "from": sender_name,
                 "emoji": emoji,
                 "ts": datetime.now(timezone.utc).isoformat(),
+                **({"achievement_rank": sender_rank} if isinstance(sender_rank, dict) else {}),
             }
         },
     )
@@ -101,7 +104,9 @@ async def _chat_message(session: GameSocketSession, data: dict[str, Any]) -> Non
     if not sender:
         await _send_error(session, "Nicht beigetreten")
         return
-    sender_id, sender_name = sender
+    sender_id, sender_player = sender
+    sender_name = sender_player.get("name", "Gast")
+    sender_rank = sender_player.get("achievement_rank")
     touch(session.game)
     await broadcast_chat(
         session.game,
@@ -111,6 +116,8 @@ async def _chat_message(session: GameSocketSession, data: dict[str, Any]) -> Non
             "text": text[:400],
             "ts": datetime.now(timezone.utc).isoformat(),
             "kind": "chat",
+            "user_id": sender_player.get("user_id"),
+            **({"achievement_rank": sender_rank} if isinstance(sender_rank, dict) else {}),
         },
     )
 

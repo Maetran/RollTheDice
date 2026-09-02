@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Geschützter Administrationsbereich von ZDWA.">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="manifest" href="/manifest.webmanifest?v=3c895ae9e258">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=3c895ae9e258" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=3c895ae9e258" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=2da62be76cd8">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=2da62be76cd8" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=2da62be76cd8" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=3c895ae9e258">
-  <script src="/static/shell.js?v=3c895ae9e258" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=2da62be76cd8">
+  <script src="/static/shell.js?v=2da62be76cd8" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
@@ -82,7 +82,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, loadAuth } from '/static/auth.js?v=3c895ae9e258';
+    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=2da62be76cd8';
     const auth = await loadAuth();
     if (!auth?.user?.is_admin) location.replace('/');
     const usersBody = document.getElementById('usersBody');
@@ -116,7 +116,7 @@
       if (!response.ok) return;
       users = (await response.json()).users;
       usersBody.innerHTML = users.map(user => `<tr data-user-id="${user.id}">
-        <td><a href="/spieler/${encodeURIComponent(user.username)}">${escapeHtml(user.username)}</a>${user.must_change_password ? '<span class="badge">PW-Wechsel offen</span>' : ''}</td>
+        <td><a href="/spieler/${encodeURIComponent(user.username)}">${playerNameMarkup(user, { name: user.username, compactRank: true })}</a>${user.must_change_password ? '<span class="badge">PW-Wechsel offen</span>' : ''}</td>
         <td><select class="role-select"><option value="user" ${user.role === 'user' ? 'selected' : ''}>Benutzer</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option></select></td>
         <td>${user.is_active ? 'Aktiv' : 'Deaktiviert'}</td>
         <td><button class="small secondary reset-password">Zurücksetzen</button></td>
@@ -213,7 +213,7 @@
       const games = response.ok ? (await response.json()).games : [];
       completedGameList.innerHTML = games.map(game => {
         const players = game.participants.map(player =>
-          `${escapeHtml(player.display_name)}${player.username ? ` → ${escapeHtml(player.username)}` : ''}: ${player.points}`
+          `${escapeHtml(player.display_name)}${player.username ? ` → ${playerNameMarkup({ name: player.username, achievement_rank: player.achievement_rank }, { compactRank: true })}` : ''}: ${player.points}`
         ).join(' · ');
         return `<article class="completed-game-row" data-game-id="${escapeHtml(game.game_id)}">
           <div><strong>${escapeHtml(game.game_name || 'Spiel')}</strong>
@@ -230,7 +230,7 @@
       const games = response.ok ? (await response.json()).games : [];
       deletedGameList.innerHTML = games.map(game => `<div class="deletion-audit-row">
         <strong>${escapeHtml(game.game_name || game.game_id)}</strong> · ${new Date(game.deleted_at).toLocaleString(window.ZDWA_I18N?.locale?.() || 'de-CH')}
-        <div class="muted small">ID ${escapeHtml(game.game_id)} · gelöscht durch ${escapeHtml(game.deleted_by)} · ${escapeHtml(game.reason)}</div>
+        <div class="muted small">ID ${escapeHtml(game.game_id)} · gelöscht durch ${playerNameMarkup({ name: game.deleted_by, achievement_rank: game.deleted_by_rank }, { compactRank: true })} · ${escapeHtml(game.reason)}</div>
       </div>`).join('') || '<div class="muted small">Noch keine Spiele gelöscht.</div>';
     }
 
