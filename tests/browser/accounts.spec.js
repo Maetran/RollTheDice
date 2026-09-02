@@ -260,6 +260,7 @@ test("mobile lobby cards and leaderboard tabs stay inside the viewport", async (
       cardRights: Array.from(document.querySelectorAll(".card")).map(card => card.getBoundingClientRect().right),
       lastTabRight: right("#lbTabLast"),
       recentBoxRight: right("#recentBox"),
+      recentBoxBorder: getComputedStyle(document.querySelector("#recentBox")).borderTopWidth,
     };
   });
 
@@ -267,6 +268,7 @@ test("mobile lobby cards and leaderboard tabs stay inside the viewport", async (
   for (const right of layout.cardRights) expect(right).toBeLessThanOrEqual(layout.viewportWidth);
   expect(layout.lastTabRight).toBeLessThanOrEqual(layout.viewportWidth);
   expect(layout.recentBoxRight).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.recentBoxBorder).toBe("1px");
 });
 
 

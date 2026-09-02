@@ -402,6 +402,58 @@
   color:#17428f;
 }
 
+/* Rankings are part of the lobby bundle, including their own visible frame. */
+.leaderboards{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:1rem;
+  margin-top:.75rem;
+}
+.leaderboard-box{
+  min-width:0;
+  overflow:hidden;
+  padding:.75rem;
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  background:var(--card);
+  box-shadow:var(--shadow-sm);
+}
+.leaderboard-box h3{
+  margin:.1rem 0 .65rem;
+  color:var(--text);
+  font-weight:750;
+  text-align:left;
+}
+.leaderboard-box table{
+  width:100%;
+  max-width:100%;
+  table-layout:fixed;
+  border-spacing:0;
+  border-collapse:separate;
+  border-radius:var(--table-radius);
+  overflow:hidden;
+  font-size:.9rem;
+  font-variant-numeric:tabular-nums;
+}
+.leaderboard-box th,
+.leaderboard-box td{
+  padding:.42rem .45rem;
+  overflow:hidden;
+  border:0;
+  border-right:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  text-align:left;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.leaderboard-box th:last-child,
+.leaderboard-box td:last-child{ border-right:0; }
+.leaderboard-box tbody tr:last-child td{ border-bottom:0; }
+.leaderboard-box thead th{ background:var(--table-head); font-weight:800; color:#42516a; }
+.leaderboard-box.wide{ grid-column:1 / -1; }
+.leaderboard-box tbody tr.hc-entry td{ background:#fff4d8; }
+.leaderboard-box tbody tr.hc-entry:hover td{ background:#ffedbd; }
+
 /* The landing page owns the responsive application navigation and rankings.
    Keeping these rules here prevents the lightweight lobby bundle from depending
    on the game-board stylesheet. */
