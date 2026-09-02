@@ -146,6 +146,8 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
     def test_pwa_update_and_offline_assets_are_precached(self):
         service_worker = (main.STATIC_DIR / "sw.js").read_text()
         self.assertIn("'/static/ui.js'", service_worker)
+        self.assertIn("'/static/lobby.js'", service_worker)
+        self.assertIn("'/static/room-scoring.js'", service_worker)
         self.assertIn("'/static/pwa.js'", service_worker)
         self.assertIn("'/offline'", service_worker)
         self.assertIn("SKIP_WAITING", service_worker)

@@ -17,7 +17,8 @@
 */
 // Orchestriert den Room-Client (WS, UI-Events, Scoreboard-Render, Reactions)
 
-import { initChat, addChatMessage } from "./chat.js?v=d87e8a21b65c";
+import { initChat, addChatMessage } from "./chat.js?v=997b09c68e34";
+import { ANNOUNCE_FIELDS, calculatePoints, WRITABLE_MAP } from "./room-scoring.js?v=997b09c68e34";
 
 (() => {
   // ---------- Helpers ----------
@@ -146,67 +147,6 @@ import { initChat, addChatMessage } from "./chat.js?v=d87e8a21b65c";
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
     return hours ? `${hours} h ${minutes} min` : `${minutes} min`;
-  }
-
-  // --- Client-Punkteberechnung (nur für 0-Confirm UX) ---
-  // Map der schreibbaren Reihen -> Feldkey
-  const WRITABLE_MAP = {
-    0:"1",1:"2",2:"3",3:"4",4:"5",5:"6",
-    9:"max",10:"min",12:"kenter",13:"full",14:"poker",15:"60"
-  };
-  const ANNOUNCE_FIELDS = [
-    [
-      { row:0, field:"1", label:"1" }, { row:1, field:"2", label:"2" },
-      { row:2, field:"3", label:"3" }, { row:3, field:"4", label:"4" },
-      { row:4, field:"5", label:"5" }, { row:5, field:"6", label:"6" }
-    ],
-    [
-      { row:9, field:"max", label:"+" }, { row:10, field:"min", label:"−" },
-      { row:12, field:"kenter", label:"K" }, { row:13, field:"full", label:"F" },
-      { row:14, field:"poker", label:"P" }, { row:15, field:"60", label:"60" }
-    ]
-  ];
-  /**
-   * Berechnet clientseitig die Punkte für ein Feld anhand der aktuellen Würfel.
-   * Hinweis: Dient der Anzeige/Vorschlags-UX; serverseitig ist die Bewertung autoritativ.
-   * @param {string} fieldKey - Feldname ("1".."6","max","min","kenter","full","poker","60")
-   * @param {number[]} dice - Aktuelle Würfel (Länge 5)
-   * @returns {number} Punktewert
-   */
-  function calculatePoints(fieldKey, dice) {
-    const cnt = {};
-    let total = 0;
-    for (const d of (dice || [])) {
-      if (d > 0) { cnt[d] = (cnt[d] || 0) + 1; total += d; }
-    }
-    if (["1","2","3","4","5","6"].includes(fieldKey)) {
-      const face = parseInt(fieldKey, 10);
-      return (cnt[face] || 0) * face;
-    }
-    if (fieldKey === "max" || fieldKey === "min") return total;
-    if (fieldKey === "kenter") return Object.keys(cnt).length === 5 ? 35 : 0;
-    if (fieldKey === "full") {
-      const values = Object.values(cnt).sort((a,b)=>a-b);
-      if (values.length === 1 && values[0] === 5) {
-        const face = parseInt(Object.keys(cnt)[0], 10);
-        return 40 + 3 * face;
-      }
-      if (values.length === 2 && values[0] === 2 && values[1] === 3) {
-        const face3 = parseInt(Object.keys(cnt).find(k => cnt[k] === 3), 10);
-        return 40 + 3 * face3;
-      }
-      return 0;
-    }
-    if (fieldKey === "poker") {
-      // 4 ODER 5 gleiche zählen als Poker (Client-Logik an Server angleichen)
-      for (const [face, n] of Object.entries(cnt)) if (n >= 4) return 50 + 4*parseInt(face,10);
-      return 0;
-    }
-    if (fieldKey === "60") {
-      for (const [face, n] of Object.entries(cnt)) if (n === 5) return 60 + 5*parseInt(face,10);
-      return 0;
-    }
-    return 0;
   }
 
   // ---------- State ----------

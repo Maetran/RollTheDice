@@ -1,0 +1,836 @@
+    import { loadAuth, login, logout, register } from '/static/auth.js?v=997b09c68e34';
+
+    const nameInput  = document.getElementById('playerName');
+    const passInput  = document.getElementById('passInput');
+    const modeSel    = document.getElementById('gameMode');
+    const createBtn  = document.getElementById('createBtn');
+    const createErr  = document.getElementById('createErr');
+    const listEl     = document.getElementById('gamesList');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const runningEl  = document.getElementById('runningList');
+    const setupGrid = document.getElementById('setupGrid');
+    const openGamesCard = document.getElementById('openGamesCard');
+    const runningGamesCard = document.getElementById('runningGamesCard');
+    const runningGamesTitle = document.getElementById('runningGamesTitle');
+    const refreshRunningBtn = document.getElementById('refreshRunningBtn');
+    const onlineUsersEl = document.getElementById('onlineUsers');
+    const recentBox = document.getElementById("recentBox");
+    const alltimeBox = document.getElementById("alltimeBox");
+    const recentTitle = document.getElementById("recentTitle");
+    const alltimeTitle = document.getElementById("alltimeTitle");
+    const recentTable = document.querySelector("#recentTable tbody");
+    const alltimeTable = document.querySelector("#alltimeTable tbody");
+    const gamesPlayedEl = document.getElementById("gamesPlayed");
+    const avgNormalPointsEl = document.getElementById("avgNormalPoints");
+    const avgHardcorePointsEl = document.getElementById("avgHardcorePoints");
+    const avgNormalTrendEl = document.getElementById("avgNormalTrend");
+    const avgHardcoreTrendEl = document.getElementById("avgHardcoreTrend");
+    const hcChk    = document.getElementById('hardcoreChk');
+    const loginForm = document.getElementById('loginForm');
+    const loginUsername = document.getElementById('loginUsername');
+    const loginPassword = document.getElementById('loginPassword');
+    const registerBtn = document.getElementById('registerBtn');
+    const registrationChallenge = document.getElementById('registrationChallenge');
+    const loginError = document.getElementById('loginError');
+    const playerSetupCard = document.getElementById('playerSetupCard');
+    const playerSectionTitle = document.getElementById('playerSectionTitle');
+    const playerNameRow = document.getElementById('playerNameRow');
+    const authBadge = document.getElementById('authBadge');
+    const authActions = document.getElementById('authActions');
+    const adminLink = document.getElementById('adminLink');
+    const headerAccountLink = document.getElementById('headerAccountLink');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const lbTabNormal = document.getElementById('lbTabNormal');
+    const lbTabHC     = document.getElementById('lbTabHC');
+    const lbTabShame  = document.getElementById('lbTabShame');
+    const lbTabLast   = document.getElementById('lbTabLast');
+    const modeButtons = Array.from(document.querySelectorAll('[data-game-mode]'));
+    const hardcoreModeButtons = Array.from(document.querySelectorAll('[data-hardcore]'));
+    const hardcoreHelp = document.getElementById('hardcoreHelp');
+    const createGameCard = document.getElementById('createGameCard');
+    let lbActiveTab = 'normal'; // 'normal' | 'hc' | 'shame' | 'last'
+    let turnstileToken = null;
+    let turnstileWidgetId = null;
+    let turnstileEnabled = false;
+
+    function syncGameSetupChoices() {
+      const selectedMode = modeSel.value || '1';
+      modeButtons.forEach(button => {
+        const active = button.dataset.gameMode === selectedMode;
+        button.setAttribute('aria-checked', String(active));
+        button.tabIndex = active ? 0 : -1;
+      });
+      hardcoreModeButtons.forEach(button => {
+        const active = (button.dataset.hardcore === 'true') === hcChk.checked;
+        button.setAttribute('aria-checked', String(active));
+        button.tabIndex = active ? 0 : -1;
+      });
+      if (hardcoreHelp) hardcoreHelp.hidden = !hcChk.checked;
+    }
+
+    function moveChoiceFocus(buttons, current, direction, activate) {
+      const index = buttons.indexOf(current);
+      if (index < 0) return;
+      const nextIndex = direction === 'first'
+        ? 0
+        : direction === 'last'
+          ? buttons.length - 1
+          : (index + direction + buttons.length) % buttons.length;
+      activate(buttons[nextIndex]);
+      buttons[nextIndex].focus();
+    }
+
+    function wireChoiceButtons(buttons, activate) {
+      buttons.forEach(button => {
+        button.addEventListener('click', () => activate(button));
+        button.addEventListener('keydown', event => {
+          const direction = ['ArrowRight', 'ArrowDown'].includes(event.key)
+            ? 1
+            : ['ArrowLeft', 'ArrowUp'].includes(event.key)
+              ? -1
+              : event.key === 'Home'
+                ? 'first'
+                : event.key === 'End'
+                  ? 'last'
+                  : null;
+          if (direction === null) return;
+          event.preventDefault();
+          moveChoiceFocus(buttons, button, direction, activate);
+        });
+      });
+    }
+
+    wireChoiceButtons(modeButtons, button => {
+      modeSel.value = button.dataset.gameMode;
+      modeSel.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    wireChoiceButtons(hardcoreModeButtons, button => {
+      hcChk.checked = button.dataset.hardcore === 'true';
+      hcChk.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    modeSel.addEventListener('change', syncGameSetupChoices);
+    hcChk.addEventListener('change', syncGameSetupChoices);
+
+    async function requestPassphrase() {
+      if (window.ZDWA_UI?.prompt) {
+        const value = await window.ZDWA_UI.prompt({
+          title: 'Passphrase erforderlich',
+          message: 'Dieses Spiel ist passwortgeschützt.',
+          label: 'Passphrase',
+          confirmLabel: 'Weiter',
+          input: { label: 'Passphrase', type: 'password', autocomplete: 'current-password' },
+        });
+        return value == null ? null : String(value).trim();
+      }
+      return (prompt('Dieses Spiel ist passwortgeschützt. Bitte Passwort eingeben:') || '').trim();
+    }
+
+    function lobbyNotice(message, { title = 'Hinweis', kind = 'warning' } = {}) {
+      if (window.ZDWA_UI?.notice) return window.ZDWA_UI.notice({ title, message, kind });
+      alert(message);
+      return Promise.resolve();
+    }
+
+    function storeGamePass(gid, pass) {
+      if (!gid || !pass) return;
+      try {
+        sessionStorage.setItem(`${PASS_PREFIX}${gid}`, pass);
+        localStorage.removeItem(`${PASS_PREFIX}${gid}`);
+      } catch {}
+    }
+
+    try {
+      if (new URLSearchParams(location.search).get('new_game') === '1') {
+        const defaults = JSON.parse(sessionStorage.getItem('zdwa_new_game_defaults') || '{}');
+        if (['1', '2', '3', '2v2'].includes(String(defaults.mode))) modeSel.value = String(defaults.mode);
+        hcChk.checked = defaults.hardcore === true;
+        sessionStorage.removeItem('zdwa_new_game_defaults');
+        setTimeout(() => document.querySelector('.create-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+      }
+    } catch {}
+    syncGameSetupChoices();
+
+    function loadTurnstileScript() {
+      if (window.turnstile) return Promise.resolve();
+      return new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-rollthedice-turnstile]');
+        if (existing) {
+          existing.addEventListener('load', resolve, { once: true });
+          existing.addEventListener('error', reject, { once: true });
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        script.async = true;
+        script.defer = true;
+        script.dataset.rollthediceTurnstile = '1';
+        script.addEventListener('load', resolve, { once: true });
+        script.addEventListener('error', reject, { once: true });
+        document.head.appendChild(script);
+      });
+    }
+
+    async function initializeRegistrationProtection() {
+      try {
+        const response = await fetch('/api/auth/registration-config', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const config = await response.json();
+        if (!config.turnstile_enabled) return;
+        turnstileEnabled = true;
+        registrationChallenge.hidden = false;
+        await loadTurnstileScript();
+        turnstileWidgetId = window.turnstile.render(registrationChallenge, {
+          sitekey: config.turnstile_site_key,
+          action: 'register',
+          callback: token => { turnstileToken = token; },
+          'expired-callback': () => { turnstileToken = null; },
+          'error-callback': () => { turnstileToken = null; },
+        });
+      } catch (error) {
+        registerBtn.disabled = true;
+        loginError.textContent = 'Registrierung ist momentan nicht verfügbar. Die Anmeldung funktioniert weiterhin.';
+      }
+    }
+
+    function resetRegistrationChallenge() {
+      turnstileToken = null;
+      if (turnstileWidgetId !== null && window.turnstile) window.turnstile.reset(turnstileWidgetId);
+    }
+
+    // Name merken/laden
+    const NAME_KEY = 'wuerfler_name';
+    const PID_PREFIX = 'wuerfler_pid_';
+    const TOKEN_PREFIX = 'wuerfler_token_';
+    const PASS_PREFIX = 'wuerfler_pass_';
+    const PLAYER_NAME_PREFIX = 'wuerfler_player_name_';
+    nameInput.value = localStorage.getItem(NAME_KEY) || '';
+    nameInput.addEventListener('input', () => {
+      if (nameInput.disabled) return;
+      localStorage.setItem(NAME_KEY, nameInput.value.trim());
+    });
+
+    async function refreshAuthUi(refresh = false) {
+      try {
+        const auth = await loadAuth({ refresh });
+        const user = auth?.user;
+        loginForm.hidden = !!user;
+        authActions.hidden = !user;
+        authBadge.hidden = !user;
+        adminLink.hidden = !user?.is_admin;
+        playerSetupCard.classList.toggle('authenticated', !!user);
+        playerSectionTitle.hidden = !!user;
+        playerNameRow.hidden = !!user;
+        if (user) {
+          headerAccountLink.href = '/konto';
+          authBadge.textContent = user.is_admin ? `${user.username} · Admin` : user.username;
+          nameInput.value = user.username;
+          nameInput.disabled = true;
+          localStorage.setItem(NAME_KEY, user.username);
+        } else {
+          headerAccountLink.href = '#loginForm';
+          nameInput.disabled = false;
+          nameInput.value = localStorage.getItem(NAME_KEY) || '';
+        }
+      } catch (error) {
+        loginError.textContent = 'Anmeldestatus konnte nicht geladen werden.';
+      }
+    }
+
+    loginForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      loginError.textContent = '';
+      try {
+        await login(loginUsername.value, loginPassword.value);
+        loginPassword.value = '';
+        await refreshAuthUi();
+      } catch (error) {
+        loginError.textContent = error.message;
+        loginError.classList.add('connection-error');
+      }
+    });
+
+    registerBtn.addEventListener('click', async () => {
+      loginError.textContent = '';
+      if (turnstileEnabled && !turnstileToken) {
+        loginError.textContent = 'Bitte bestätige zuerst, dass du kein Bot bist.';
+        return;
+      }
+      try {
+        await register(loginUsername.value, loginPassword.value, turnstileToken);
+        loginPassword.value = '';
+        await refreshAuthUi();
+      } catch (error) {
+        loginError.textContent = error.message;
+        loginError.classList.add('connection-error');
+      } finally {
+        resetRegistrationChallenge();
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      loginError.textContent = '';
+      try {
+        await logout();
+        await refreshAuthUi(true);
+      } catch (error) {
+        loginError.textContent = error.message;
+      }
+    });
+
+    function localPlayerIdFor(gid){
+      try { return localStorage.getItem(`${PID_PREFIX}${gid}`) || ""; }
+      catch { return ""; }
+    }
+
+    function localPassFor(gid){
+      try {
+        const stored = sessionStorage.getItem(`${PASS_PREFIX}${gid}`) || localStorage.getItem(`${PASS_PREFIX}${gid}`) || "";
+        if (stored) storeGamePass(gid, stored);
+        return stored;
+      }
+      catch { return ""; }
+    }
+
+    function localTokenFor(gid){
+      try { return localStorage.getItem(`${TOKEN_PREFIX}${gid}`) || ""; }
+      catch { return ""; }
+    }
+
+    function localNameFor(gid){
+      try { return localStorage.getItem(`${PLAYER_NAME_PREFIX}${gid}`) || ""; }
+      catch { return ""; }
+    }
+
+    function rememberPlayerName(gid, name) {
+      try { localStorage.setItem(`${PLAYER_NAME_PREFIX}${gid}`, name); }
+      catch {}
+    }
+
+    function roomUrl(gid, spectator = false) {
+      const base = `/spiel/${encodeURIComponent(gid)}`;
+      return spectator ? `${base}/zuschauen` : base;
+    }
+
+    function renderOnlineUsers(value) {
+      if (!onlineUsersEl) return;
+      const label = window.ZDWA_I18N?.t?.("Nutzer online") || "Nutzer online";
+      const count = value !== null && value !== undefined && Number.isFinite(Number(value))
+        ? Math.max(0, Math.floor(Number(value)))
+        : "—";
+      onlineUsersEl.innerHTML = `<span class="online-dot" aria-hidden="true"></span><b>${count}</b> ${escapeHtml(label)}`;
+    }
+
+    // Spiele holen
+    async function fetchGames({ showLoading = false } = {}) {
+      if (showLoading) {
+        openGamesCard?.setAttribute('aria-busy', 'true');
+        runningGamesCard?.setAttribute('aria-busy', 'true');
+        refreshBtn.disabled = true;
+        if (refreshRunningBtn) refreshRunningBtn.disabled = true;
+      }
+      try {
+        const res = await fetch('/api/games', {cache: 'no-store'});
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const games = Array.isArray(data.games) ? data.games : [];
+        renderOnlineUsers(data.online_users);
+
+        // Offene = nicht gestartet & nicht fertig
+        const openGames = games.filter(g => !g.started && !g.finished);
+
+        // Laufende = gestartet & nicht fertig & nicht abgebrochen
+        const runningGames = games
+          .filter(g => g.started && !g.finished && !g.aborted)
+          // Sortierung: updated_at (fallback started_at) absteigend
+          .sort((a, b) => {
+            const ta = Date.parse(a.updated_at || a.started_at || 0);
+            const tb = Date.parse(b.updated_at || b.started_at || 0);
+            return tb - ta;
+          });
+
+        renderList(openGames);
+        renderRunningList(runningGames);
+      } catch (e) {
+        renderOnlineUsers(null);
+        listEl.innerHTML = `<div class="connection-error">Spielserver nicht erreichbar. Bitte Server starten und die Seite neu laden.</div>`;
+        if (runningEl) {
+          runningEl.innerHTML = `<div class="connection-error">Keine Verbindung zum Spielserver.</div>`;
+        }
+      } finally {
+        openGamesCard?.removeAttribute('aria-busy');
+        runningGamesCard?.removeAttribute('aria-busy');
+        refreshBtn.disabled = false;
+        if (refreshRunningBtn) refreshRunningBtn.disabled = false;
+      }
+    }
+
+    function renderList(games) {
+      if (!listEl) return;
+      if (!games.length) {
+        listEl.innerHTML = `<div class="lobby-empty-state">
+          <strong>Keine offenen Spiele</strong>
+          <p>Aktuell wartet niemand auf Mitspieler. Starte einfach selbst eines.</p>
+          <button type="button" class="small secondary focus-create-btn">Neues Spiel</button>
+        </div>`;
+        return;
+      }
+
+      listEl.innerHTML = games.map(g => {
+        const joined   = (g.players ?? 0);
+        const expected = (g.expected ?? g.mode ?? '?');
+        const gid      = g.id || '';
+        const disabled = (joined >= expected) || g.started || g.finished ? 'disabled' : '';
+        const modeTxt  = (g.mode === '2v2') ? '2 vs 2' : `${g.mode || expected}`;
+        const hcBadge  = g.hardcore ? `<span class="hc-badge">Hardcore</span>` : '';
+
+        const waiting = Array.isArray(g.waiting) ? g.waiting : [];
+        const waitingBadges = waiting.length
+          ? waiting.map(n => `<span class="badge">${escapeHtml(n)}</span>`).join(' ')
+          : `<span class="muted small">Noch keine Spieler</span>`;
+
+        return `
+          <div class="game-row">
+            <div class="meta">
+              <div class="name">
+                ${escapeHtml(g.name || '(ohne Titel)')}
+                ${g.locked ? `<span class="locked-label">Passwortgeschützt</span>` : ""}
+                ${hcBadge}
+              </div>
+              <div class="sub">
+                Spieler: <b>${joined}/${expected}</b> • Modus: ${modeTxt}
+              </div>
+              <div class="sub">
+                Wartende: ${waitingBadges}
+              </div>
+            </div>
+            <div class="actions">
+              <button class="joinBtn"
+                data-id="${escapeAttr(gid)}"
+                data-pass="${g.locked ? '1' : '0'}"
+                ${disabled}>Beitreten</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function prioritizeResumableGames() {
+      const hasResumableGame = !!runningEl?.querySelector('.resumeBtn');
+      runningGamesCard?.classList.toggle('priority-card', hasResumableGame);
+      if (runningGamesTitle) runningGamesTitle.textContent = hasResumableGame ? 'Spiel fortsetzen' : 'Laufende Spiele';
+      if (hasResumableGame) setupGrid?.before(runningGamesCard);
+      else openGamesCard?.after(runningGamesCard);
+    }
+
+    function renderRunningList(games) {
+      if (!runningEl) return;
+      if (!games.length) {
+        runningEl.innerHTML = `<div class="lobby-state">Aktuell keine laufenden Spiele.</div>`;
+        prioritizeResumableGames();
+        return;
+      }
+
+      runningEl.innerHTML = games.map(g => {
+        const gid = g.id || '';
+        const modeTxt  = (g.mode === '2v2') ? '2 vs 2' : `${g.mode || g.expected}`;
+        const hcBadge  = g.hardcore ? `<span class="hc-badge">Hardcore</span>` : '';
+        const statuses = Array.isArray(g.player_statuses) ? g.player_statuses : [];
+        const waiting = statuses.length
+          ? statuses
+          : (Array.isArray(g.waiting) ? g.waiting.map(n => ({ name:n, connected:true })) : []);
+        const playersLine = waiting.length
+          ? waiting.map(p => {
+              const name = typeof p === "string" ? p : (p.name || "Spieler");
+              const connected = typeof p === "string" ? true : !!p.connected;
+              return `<span class="badge ${connected ? 'online' : 'offline'}">${escapeHtml(name)}${connected ? '' : ' offline'}</span>`;
+            }).join(' ')
+          : `<span class="muted small">Spieler unbekannt</span>`;
+        const canResume = !!(localPlayerIdFor(gid) || g.my_player_id);
+        const pauseLine = g.paused
+          ? (() => {
+              const remaining = g.pause_remaining_label || g.timeout_label || "";
+              const offline = Array.isArray(g.offline) ? g.offline : [];
+              const waitText = offline.length
+                ? `wartet auf ${offline.map(p => escapeHtml(p.name || "Spieler")).join(', ')}`
+                : "manuell pausiert";
+              const timeText = remaining ? ` • Restzeit: ${escapeHtml(remaining)}` : "";
+              return `<div class="sub warn-line">Pausiert: ${waitText}${timeText}</div>`;
+            })()
+          : "";
+
+        // Fortschritt (vom Server): pro Spieler/Team
+        const progress = Array.isArray(g.progress) ? g.progress : [];
+        const progRows = progress.map(p => {
+          const translate = window.ZDWA_I18N?.t || ((text) => text);
+          const who = p.members && p.members.length
+              ? `${escapeHtml(p.name)} <span class="muted small">(${p.members.map(escapeHtml).join(', ')})</span>`
+              : escapeHtml(p.name);
+          return `
+            <div class="muted small progress-line">
+              <b>${who}</b> — ${escapeHtml(translate("Felder"))} <b>${p.filled}/${p.of || 48}</b> • ${escapeHtml(translate("Punkte"))} <b>${p.points}</b>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="game-row">
+            <div class="meta">
+              <div class="name">
+                ${escapeHtml(g.name || '(ohne Titel)')}
+                ${g.locked ? `<span class="locked-label">Passwortgeschützt</span>` : ""}
+                ${hcBadge}
+              </div>
+              <div class="sub">
+                Modus: ${modeTxt} Spieler • Gestartet: ${formatDateTime(g.started_at)}
+              </div>
+              <div class="sub">
+                Spieler: ${playersLine}
+              </div>
+              ${pauseLine}
+              ${progRows ? `<div class="sub progress-stack">${progRows}</div>` : ""}
+            </div>
+            <div class="actions">
+              ${canResume ? `<button class="resumeBtn"
+                data-id="${escapeAttr(gid)}"
+                data-player-id="${escapeAttr(g.my_player_id || '')}"
+                data-pass="${g.locked ? '1' : '0'}">Wieder aufnehmen</button>` : ""}
+              <button class="spectateBtn"
+                data-id="${escapeAttr(gid)}"
+                data-pass="${g.locked ? '1' : '0'}">Zuschauen</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      prioritizeResumableGames();
+    }
+
+    // Klick-Handler: Zuschauen (laufende Spiele)
+    if (runningEl) {
+      runningEl.addEventListener('click', async (e) => {
+        const resumeBtn = e.target.closest('.resumeBtn');
+        const btn = resumeBtn || e.target.closest('.spectateBtn');
+        if (!btn) return;
+        const gid = btn.dataset.id;
+        const needsPass = btn.dataset.pass === "1";
+        const isResume = !!resumeBtn;
+        if (isResume && !localPlayerIdFor(gid) && btn.dataset.playerId) {
+          localStorage.setItem(`${PID_PREFIX}${gid}`, btn.dataset.playerId);
+        }
+        const storedName = isResume ? localNameFor(gid) : "";
+        const pname = (storedName || nameInput.value || 'Gast').trim() || 'Gast';
+        if (!gid) { await lobbyNotice('Ungültige Spiel-ID. Bitte aktualisieren.'); return; }
+        try {
+          const chk = await fetch(`/api/games/${encodeURIComponent(gid)}`, {cache:'no-store'}).then(r=>r.ok?r.json():{exists:false});
+          if (chk && chk.exists === false) { await lobbyNotice('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
+        } catch {}
+        let pass = isResume ? localPassFor(gid) : "";
+        if (needsPass) {
+          if (!pass) {
+            pass = await requestPassphrase();
+            if (pass === null) return;
+          }
+          // Preflight
+          try {
+            const resp = await fetch(`/api/games/${encodeURIComponent(gid)}?check=1&pass=${encodeURIComponent(pass)}`, { cache: 'no-store' });
+            if (!resp.ok) {
+              await lobbyNotice("Falsche Passphrase – bitte erneut versuchen.", { title: 'Beitritt nicht möglich', kind: 'error' });
+              return;
+            }
+            if (isResume) storeGamePass(gid, pass);
+          } catch (err) {
+            await lobbyNotice("Fehler beim Prüfen der Passphrase.", { title: 'Verbindungsfehler', kind: 'error' });
+            return;
+          }
+        }
+        storeGamePass(gid, pass);
+        rememberPlayerName(gid, pname);
+        location.href = roomUrl(gid, !isResume);
+      });
+    }
+
+    // Beitreten
+    listEl.addEventListener('click', async (e) => {
+      const focusCreateBtn = e.target.closest('.focus-create-btn');
+      if (focusCreateBtn) {
+        createGameCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => modeButtons.find(button => button.getAttribute('aria-checked') === 'true')?.focus(), 250);
+        return;
+      }
+      const btn = e.target.closest('.joinBtn');
+      if (!btn) return;
+      const gid = btn.dataset.id;
+      const needsPass = btn.dataset.pass === "1";
+      const pname = (nameInput.value || 'Gast').trim() || 'Gast';
+      if (!gid) { await lobbyNotice('Ungültige Spiel-ID. Bitte aktualisieren.'); return; }
+      try {
+        const chk = await fetch(`/api/games/${encodeURIComponent(gid)}`, {cache:'no-store'}).then(r=>r.ok?r.json():{exists:false});
+        if (chk && chk.exists === false) { await lobbyNotice('Game nicht gefunden (Liste evtl. veraltet).'); await fetchGames(); return; }
+      } catch {}
+      let pass = "";
+      if (needsPass) {
+        pass = await requestPassphrase();
+        if (pass === null) return;
+        // sofort zum Server schicken und prüfen (Preflight)
+        try {
+          const resp = await fetch(`/api/games/${encodeURIComponent(gid)}?check=1&pass=${encodeURIComponent(pass)}`, { cache: 'no-store' });
+          if (!resp.ok) {
+            await lobbyNotice("Falsche Passphrase – bitte erneut versuchen.", { title: 'Beitritt nicht möglich', kind: 'error' });
+            return; // bleib in der Lobby
+          }
+        } catch (err) {
+          await lobbyNotice("Fehler beim Prüfen der Passphrase.", { title: 'Verbindungsfehler', kind: 'error' });
+          return;
+        }
+      }
+      storeGamePass(gid, pass);
+      rememberPlayerName(gid, pname);
+      location.href = roomUrl(gid);
+
+    });
+
+    // Neues Spiel erstellen
+    createBtn.addEventListener('click', async () => {
+      createErr.textContent = '';
+      createErr.classList.remove('connection-error');
+      const pname = (nameInput.value || 'Gast').trim() || 'Gast';
+      const mode  = modeSel.value || '2';
+      const gname = defaultGameName(pname, mode);
+      localStorage.setItem(NAME_KEY, pname);
+      try {
+        const res = await fetch('/api/games', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ name: gname, mode, pass: passInput.value, hardcore: !!hcChk.checked })
+        });
+        if (!res.ok) {
+          let message = '';
+          try {
+            const errorPayload = await res.json();
+            message = String(errorPayload.message || errorPayload.detail || '');
+          } catch {}
+          if (res.status === 429) throw new Error('Zu viele neue Spiele. Bitte kurz warten.');
+          if (res.status === 503) throw new Error(message || 'Der Spielserver ist nicht erreichbar.');
+          throw new Error(message || ('Serverfehler ' + res.status));
+        }
+        const data = await res.json();
+        const gid = data.game_id || data.id;
+        if (!gid) throw new Error('Antwort ohne game_id');
+        storeGamePass(gid, passInput.value);
+        rememberPlayerName(gid, pname);
+        location.href = roomUrl(gid);
+      } catch (e) {
+        const raw = String(e && e.message ? e.message : e);
+        const offline = e instanceof TypeError || /failed to fetch|load failed|networkerror/i.test(raw);
+        createErr.textContent = offline
+          ? 'Der Spielserver ist nicht erreichbar. Bitte Server starten und die Seite neu laden.'
+          : `Fehler: ${raw}`;
+        createErr.classList.add('connection-error');
+      }
+    });
+
+    function defaultGameName(playerName, mode){
+      const modeText = mode === "2v2" ? "2 vs 2" : `${mode || 2} Spieler`;
+      return `${modeText} · ${playerName}`;
+    }
+
+    // Leaderboard laden
+    async function loadLeaderboard() {
+      // Local helpers
+      function fmtMode(mode){
+        if (!mode) return "—";
+        const m = String(mode).toLowerCase();
+        if (m === "2v2") return "2 v 2";
+        const n = parseInt(m, 10);
+        if (!Number.isFinite(n) || n < 1) return "—";
+        return n === 1 ? "1 Spieler" : `${n} Spieler`;
+      }
+      function fmtRelative(iso){
+        try{
+          if (!iso) return "—";
+          const then = new Date(iso);
+          const now  = new Date();
+          const diff = now - then;
+          const s = Math.floor(diff/1000), m=Math.floor(s/60), h=Math.floor(m/60), d=Math.floor(h/24);
+          if (d > 0)  return d === 1 ? "vor 1 Tag" : `vor ${d} Tagen`;
+          if (h > 0)  return h === 1 ? "vor 1 Stunde" : `vor ${h} Stunden`;
+          if (m > 0)  return m === 1 ? "vor 1 Minute" : `vor ${m} Minuten`;
+          return "gerade eben";
+        }catch{ return "—"; }
+      }
+      function fmtDMY(iso){
+        try{
+          if (!iso) return "—";
+          const d = new Date(iso);
+          if (isNaN(d)) return "—";
+          const pad = n => String(n).padStart(2,"0");
+          return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${String(d.getFullYear()).slice(-2)}`;
+        }catch{ return "—"; }
+      }
+      function viewLink(gameId){
+        if (!gameId) return "—";
+        const url = `/ergebnis/${encodeURIComponent(gameId)}`;
+        return `<a href="${url}" class="small">Spielansicht</a>`;
+      }
+      function playerName(e){
+        const links = Array.isArray(e.linked_players) ? e.linked_players : [];
+        const parts = String(e.name ?? '—').split(', ');
+        return parts.map(part => {
+          const linked = links.find(player => String(player.display_name) === part);
+          if (!linked) return escapeHtml(part);
+          const href = `/spieler/${encodeURIComponent(linked.username)}`;
+          return `<a href="${href}" class="player-profile-link">${escapeHtml(part)}</a>`;
+        }).join(', ');
+      }
+      function fmtAvgPoints(bucket){
+        const value = bucket && Number(bucket.average_points);
+        if (!Number.isFinite(value)) return "—";
+        return new Intl.NumberFormat(window.ZDWA_I18N?.locale?.() || "de-CH", { maximumFractionDigits: 1 }).format(value);
+      }
+      function avgTrendMeta(bucket){
+        const recentAverage = bucket && Number(bucket.recent_average_points);
+        const detail = bucket && Number(bucket.trend_games) >= 3 && Number.isFinite(recentAverage)
+          ? ` (Ø letzte 3: ${new Intl.NumberFormat(window.ZDWA_I18N?.locale?.() || "de-CH", { maximumFractionDigits: 1 }).format(recentAverage)})`
+          : " (noch keine 3 Spiele)";
+        if (bucket && bucket.trend === "up") {
+          return { text: "↑", cls: "avg-trend avg-up", title: `Trend positiv${detail}` };
+        }
+        if (bucket && bucket.trend === "down") {
+          return { text: "↓", cls: "avg-trend avg-down", title: `Trend negativ${detail}` };
+        }
+        if (!bucket || !["up", "down", "same"].includes(bucket.trend)) {
+          return { text: "–", cls: "avg-trend avg-same", title: "Zu wenig Daten" };
+        }
+        return { text: "–", cls: "avg-trend avg-same", title: `Trend stagnierend${detail}` };
+      }
+      function renderAverage(bucket, valueEl, trendEl){
+        if (valueEl) valueEl.textContent = fmtAvgPoints(bucket);
+        if (trendEl) {
+          const trend = avgTrendMeta(bucket);
+          trendEl.textContent = trend.text;
+          trendEl.className = trend.cls;
+          trendEl.title = trend.title;
+          trendEl.setAttribute("aria-label", trend.title);
+        }
+      }
+
+      try {
+        const res = await fetch("/api/leaderboard", {cache:"no-store"});
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        const stats = data.stats || {};
+        const avg = stats.average_points || {};
+        gamesPlayedEl.textContent = stats.games_played ?? 0;
+        renderAverage(avg.normal, avgNormalPointsEl, avgNormalTrendEl);
+        renderAverage(avg.hc, avgHardcorePointsEl, avgHardcoreTrendEl);
+
+        function renderLeaderboardRows(tbody, list, { dateKind = "relative", emptyText = "Keine Einträge" } = {}) {
+          const rows = Array.isArray(list) ? list : [];
+          tbody.innerHTML = rows.map(e => {
+            const date = dateKind === "relative" ? fmtRelative(e.finished_at || e.ts) : fmtDMY(e.finished_at || e.ts);
+            const name = playerName(e);
+            const pts = e.points ?? "—";
+            const modeBase = fmtMode(e.mode);
+            const hc = !!e.hardcore;
+            const modeLbl = hc ? `${modeBase} <span class="hc-badge">Hardcore</span>` : modeBase;
+            const link = viewLink(e.game_id);
+            const rowClass = hc ? ` class="hc-entry"` : "";
+            return `<tr${rowClass}>
+              <td>${date}</td>
+              <td>${name}</td>
+              <td>${pts}</td>
+              <td>${modeLbl}</td>
+              <td>${link}</td>
+            </tr>`;
+          }).join("") || `<tr><td colspan="5" class="muted">${emptyText}</td></tr>`;
+        }
+
+        // Datenformat: Toplisten { recent/alltime: {normal:[], hc:[]} }, Zusatzlisten { shame, last_games }
+        const r = data.recent || { normal: [], hc: [] };
+        const a = data.alltime || { normal: [], hc: [] };
+        const s = data.shame || { recent: [], alltime: [] };
+        const lastGames = data.last_games || [];
+
+        if (alltimeBox) alltimeBox.hidden = false;
+        if (recentBox) recentBox.classList.toggle("wide", lbActiveTab === "last");
+
+        if (lbActiveTab === "shame") {
+          if (recentTitle) recentTitle.textContent = "Hall of Shame (letzte 10 Tage)";
+          if (alltimeTitle) alltimeTitle.textContent = "Hall of Shame Alltime";
+          renderLeaderboardRows(recentTable, s.recent || [], { dateKind: "relative" });
+          renderLeaderboardRows(alltimeTable, s.alltime || [], { dateKind: "absolute" });
+        } else if (lbActiveTab === "last") {
+          if (recentTitle) recentTitle.textContent = "Letzte 10 Spiele";
+          if (alltimeBox) alltimeBox.hidden = true;
+          renderLeaderboardRows(recentTable, lastGames, { dateKind: "relative" });
+          if (alltimeTable) alltimeTable.innerHTML = "";
+        } else {
+          const isHcTab = lbActiveTab === "hc";
+          if (recentTitle) recentTitle.textContent = "Top 10 (letzte 7 Tage)";
+          if (alltimeTitle) alltimeTitle.textContent = "Top 10 Alltime";
+          renderLeaderboardRows(recentTable, isHcTab ? (r.hc || []) : (r.normal || []), { dateKind: "relative" });
+          renderLeaderboardRows(alltimeTable, isHcTab ? (a.hc || []) : (a.normal || []), { dateKind: "absolute" });
+        }
+      } catch (e) {
+        console.warn("Leaderboard konnte nicht geladen werden", e);
+        if (recentTable)  recentTable.innerHTML  = `<tr><td colspan="5" class="muted">Fehler beim Laden</td></tr>`;
+        if (alltimeTable) alltimeTable.innerHTML = `<tr><td colspan="5" class="muted">Fehler beim Laden</td></tr>`;
+      }
+    }
+
+    // Refresh Buttons
+    refreshBtn.addEventListener("click", () => fetchGames({ showLoading: true }));
+    window.addEventListener("zdwa:presence-connected", fetchGames);
+    if (refreshRunningBtn) {
+      refreshRunningBtn.addEventListener("click", () => fetchGames({ showLoading: true }));
+    }
+
+    // initial
+    refreshAuthUi();
+    initializeRegistrationProtection();
+    fetchGames({ showLoading: true });
+    loadLeaderboard();
+    setInterval(fetchGames, 4000);
+    setInterval(loadLeaderboard, 10000);
+
+    // Tabs Leaderboard: Handler
+    function setLbTab(tab){
+      lbActiveTab = ["normal", "hc", "shame", "last"].includes(tab) ? tab : "normal";
+      [
+        [lbTabNormal, "normal"],
+        [lbTabHC, "hc"],
+        [lbTabShame, "shame"],
+        [lbTabLast, "last"],
+      ].forEach(([btn, key]) => {
+        if (btn) btn.classList.toggle("active", lbActiveTab === key);
+      });
+      // Sofort neu laden
+      loadLeaderboard();
+    }
+    if (lbTabNormal) lbTabNormal.addEventListener('click', ()=> setLbTab('normal'));
+    if (lbTabHC) lbTabHC.addEventListener('click', ()=> setLbTab('hc'));
+    if (lbTabShame) lbTabShame.addEventListener('click', ()=> setLbTab('shame'));
+    if (lbTabLast) lbTabLast.addEventListener('click', ()=> setLbTab('last'));
+
+    function formatDateTime(s) {
+      if (!s) return "–";
+      const d = new Date(s);
+      if (isNaN(d)) return s; // Fallback: ungeparst anzeigen
+      const pad = n => String(n).padStart(2, "0");
+      const day = pad(d.getDate());
+      const month = pad(d.getMonth() + 1);
+      const year = d.getFullYear();
+      const hours = pad(d.getHours());
+      const mins = pad(d.getMinutes());
+      return `${day}.${month}.${year}, ${hours}:${mins}`;
+    }
+
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;"
+      }[c]));
+    }
+    function escapeAttr(s){ return String(s).replace(/"/g, '&quot;'); }
