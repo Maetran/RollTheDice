@@ -10,6 +10,7 @@ from typing import Iterable
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from .models import CompletedGame, GameParticipant, User, UserAchievement
 from .rules import compute_row_subtotals
@@ -443,6 +444,126 @@ _ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
             "hardcore_streak",
             7,
         ),
+        # Mehrspieler-Ziele sind bewusst nach Spielmodus gegliedert. Die
+        # eigenständige Dreier-Serie misst den Vorsprung auf den letzten Platz,
+        # nicht noch einmal den Vorsprung auf Platz zwei.
+        Achievement(
+            "multiplayer_2p_margin_100",
+            "Duell-Dominanz I",
+            "Ein 2-Spieler-Spiel mit mehr als 100 Punkten Vorsprung gewonnen.",
+            "score",
+            "multiplayer_margin_2p",
+            101,
+        ),
+        Achievement(
+            "multiplayer_2p_margin_200",
+            "Duell-Dominanz II",
+            "Ein 2-Spieler-Spiel mit mehr als 200 Punkten Vorsprung gewonnen.",
+            "score",
+            "multiplayer_margin_2p",
+            201,
+        ),
+        Achievement(
+            "multiplayer_2p_margin_350",
+            "Duell-Dominanz III",
+            "Ein 2-Spieler-Spiel mit mehr als 350 Punkten Vorsprung gewonnen.",
+            "score",
+            "multiplayer_margin_2p",
+            351,
+        ),
+        Achievement(
+            "multiplayer_3p_runner_up_margin_100",
+            "Podiums-Dominanz I",
+            "Ein 3-Spieler-Spiel als Erster mit mehr als 100 Punkten Vorsprung auf Platz 2 gewonnen.",
+            "score",
+            "multiplayer_margin_3p_runner_up",
+            101,
+        ),
+        Achievement(
+            "multiplayer_3p_runner_up_margin_200",
+            "Podiums-Dominanz II",
+            "Ein 3-Spieler-Spiel als Erster mit mehr als 200 Punkten Vorsprung auf Platz 2 gewonnen.",
+            "score",
+            "multiplayer_margin_3p_runner_up",
+            201,
+        ),
+        Achievement(
+            "multiplayer_3p_runner_up_margin_350",
+            "Podiums-Dominanz III",
+            "Ein 3-Spieler-Spiel als Erster mit mehr als 350 Punkten Vorsprung auf Platz 2 gewonnen.",
+            "score",
+            "multiplayer_margin_3p_runner_up",
+            351,
+        ),
+        Achievement(
+            "multiplayer_3p_last_margin_100",
+            "Dreierfeld-Dominanz I",
+            "Ein 3-Spieler-Spiel als Erster mit mehr als 100 Punkten Vorsprung auf den letzten Platz beendet.",
+            "score",
+            "multiplayer_margin_3p_last",
+            101,
+        ),
+        Achievement(
+            "multiplayer_3p_last_margin_200",
+            "Dreierfeld-Dominanz II",
+            "Ein 3-Spieler-Spiel als Erster mit mehr als 200 Punkten Vorsprung auf den letzten Platz beendet.",
+            "score",
+            "multiplayer_margin_3p_last",
+            201,
+        ),
+        Achievement(
+            "multiplayer_3p_last_margin_350",
+            "Dreierfeld-Dominanz III",
+            "Ein 3-Spieler-Spiel als Erster mit mehr als 350 Punkten Vorsprung auf den letzten Platz beendet.",
+            "score",
+            "multiplayer_margin_3p_last",
+            351,
+        ),
+        Achievement(
+            "multiplayer_2v2_margin_100",
+            "Team-Dominanz I",
+            "Ein 2v2-Spiel als Team mit mehr als 100 Punkten Vorsprung gewonnen.",
+            "score",
+            "multiplayer_margin_2v2",
+            101,
+        ),
+        Achievement(
+            "multiplayer_2v2_margin_200",
+            "Team-Dominanz II",
+            "Ein 2v2-Spiel als Team mit mehr als 200 Punkten Vorsprung gewonnen.",
+            "score",
+            "multiplayer_margin_2v2",
+            201,
+        ),
+        Achievement(
+            "multiplayer_2v2_margin_350",
+            "Team-Dominanz III",
+            "Ein 2v2-Spiel als Team mit mehr als 350 Punkten Vorsprung gewonnen.",
+            "score",
+            "multiplayer_margin_2v2",
+            351,
+        ),
+        Achievement(
+            "multiplayer_close_win",
+            "Foto-Finish",
+            "Ein Mehrspieler-Spiel mit höchstens 10 Punkten Vorsprung gewonnen.",
+            "score",
+            "multiplayer_close_win",
+        ),
+        Achievement(
+            "multiplayer_one_point_win",
+            "Ein Punkt reicht",
+            "Ein Mehrspieler-Spiel mit exakt 1 Punkt Vorsprung gewonnen.",
+            "score",
+            "multiplayer_one_point_win",
+        ),
+        Achievement(
+            "multiplayer_blowout",
+            "Unüberbrückbar",
+            "Ein Mehrspieler-Spiel mit mehr als 500 Punkten Vorsprung gewonnen.",
+            "score",
+            "multiplayer_blowout",
+        ),
         # Zeitbasierte Ziele bleiben am Ende des Katalogs, damit sie in der
         # Profilansicht nach den Spiel- und Hardcore-Zielen erscheinen.
         Achievement(
@@ -566,6 +687,21 @@ _KEY_POINTS: dict[str, int] = {
     "office_hours_10": 3,
     "office_hours_25": 5,
     "office_hours_50": 8,
+    "multiplayer_2p_margin_100": 2,
+    "multiplayer_2p_margin_200": 4,
+    "multiplayer_2p_margin_350": 7,
+    "multiplayer_3p_runner_up_margin_100": 2,
+    "multiplayer_3p_runner_up_margin_200": 4,
+    "multiplayer_3p_runner_up_margin_350": 7,
+    "multiplayer_3p_last_margin_100": 1,
+    "multiplayer_3p_last_margin_200": 3,
+    "multiplayer_3p_last_margin_350": 5,
+    "multiplayer_2v2_margin_100": 2,
+    "multiplayer_2v2_margin_200": 4,
+    "multiplayer_2v2_margin_350": 7,
+    "multiplayer_close_win": 3,
+    "multiplayer_one_point_win": 7,
+    "multiplayer_blowout": 10,
     "night_owl": 2,
     "weekend_games": 3,
     "early_bird_games": 3,
@@ -771,9 +907,32 @@ def achievement_sort_key(achievement: Achievement) -> tuple[int, int, int, str]:
             achievement.target,
             achievement.key,
         )
-    if kind in {"daily_streak", "office_hours", "office_hours_count", "night_owl", "weekend_games", "early_bird_games"}:
+    if kind in {
+        "multiplayer_margin_2p",
+        "multiplayer_margin_3p_runner_up",
+        "multiplayer_margin_3p_last",
+        "multiplayer_margin_2v2",
+        "multiplayer_close_win",
+        "multiplayer_one_point_win",
+        "multiplayer_blowout",
+    }:
         return (
             60,
+            {
+                "multiplayer_margin_2p": 0,
+                "multiplayer_margin_3p_runner_up": 1,
+                "multiplayer_margin_3p_last": 2,
+                "multiplayer_margin_2v2": 3,
+                "multiplayer_close_win": 4,
+                "multiplayer_one_point_win": 5,
+                "multiplayer_blowout": 6,
+            }[kind],
+            achievement.target,
+            achievement.key,
+        )
+    if kind in {"daily_streak", "office_hours", "office_hours_count", "night_owl", "weekend_games", "early_bird_games"}:
+        return (
+            65,
             {
                 "daily_streak": 0,
                 "office_hours": 1,
@@ -808,6 +967,74 @@ def _snapshot_rows(snapshot_json: str, participant: GameParticipant, mode: str) 
             continue
         result.append({str(key): int(value) for key, value in item["rows"].items() if isinstance(value, (int, float))})
     return result
+
+
+def _multiplayer_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str, int | bool]:
+    """Return outcome metrics for the account that occupied ``participant``.
+
+    Only a strict winner qualifies. This deliberately excludes ties so a
+    scoreboard's presentation tiebreaker can never award a win achievement.
+    The three-player global win goals use the gap to second place; the separate
+    ``multiplayer_margin_3p_last`` series is the requested gap to last place.
+    """
+    metrics: dict[str, int | bool] = {
+        "multiplayer_margin_2p": 0,
+        "multiplayer_margin_3p_runner_up": 0,
+        "multiplayer_margin_3p_last": 0,
+        "multiplayer_margin_2v2": 0,
+        "multiplayer_close_win": False,
+        "multiplayer_one_point_win": False,
+        "multiplayer_blowout": False,
+    }
+    mode = str(game.mode or "").lower()
+    participants = list(game.participants)
+
+    def apply_standard_win_metrics(margin: int) -> None:
+        metrics["multiplayer_close_win"] = margin <= 10
+        metrics["multiplayer_one_point_win"] = margin == 1
+        metrics["multiplayer_blowout"] = margin > 500
+
+    if mode in {"2", "3"}:
+        expected_participants = int(mode)
+        if len(participants) != expected_participants:
+            return metrics
+        ordered = sorted(participants, key=lambda item: int(item.points), reverse=True)
+        winner, runner_up = ordered[0], ordered[1]
+        if int(winner.points) <= int(runner_up.points) or participant.id != winner.id:
+            return metrics
+        margin = int(winner.points) - int(runner_up.points)
+        apply_standard_win_metrics(margin)
+        if mode == "2":
+            metrics["multiplayer_margin_2p"] = margin
+        else:
+            metrics["multiplayer_margin_3p_runner_up"] = margin
+            metrics["multiplayer_margin_3p_last"] = int(winner.points) - int(ordered[-1].points)
+        return metrics
+
+    if mode != "2v2" or len(participants) != 4:
+        return metrics
+    team_members: dict[str, list[GameParticipant]] = {}
+    for item in participants:
+        team = str(item.team or "").strip()
+        if not team:
+            return metrics
+        team_members.setdefault(team, []).append(item)
+    if len(team_members) != 2 or any(len(members) != 2 for members in team_members.values()):
+        return metrics
+    team_scores: dict[str, int] = {}
+    for team, members in team_members.items():
+        scores = {int(member.points) for member in members}
+        if len(scores) != 1:
+            return metrics
+        team_scores[team] = scores.pop()
+    ordered_teams = sorted(team_scores.items(), key=lambda item: item[1], reverse=True)
+    (winner_team, winner_points), (_loser_team, loser_points) = ordered_teams
+    if winner_points <= loser_points or str(participant.team or "").strip() != winner_team:
+        return metrics
+    margin = winner_points - loser_points
+    metrics["multiplayer_margin_2v2"] = margin
+    apply_standard_win_metrics(margin)
+    return metrics
 
 
 def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str, int | bool]:
@@ -878,6 +1105,7 @@ def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str
         "night_owl": 2 <= local_finished.hour < 5,
         "weekend": local_finished.weekday() >= 5,
         "early_bird": 6 <= local_finished.hour < 7,
+        **_multiplayer_metrics(game, participant),
     }
 
 
@@ -901,6 +1129,7 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
     rows = db.execute(
         select(CompletedGame, GameParticipant)
         .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
+        .options(selectinload(CompletedGame.participants))
         .where(GameParticipant.user_id == user.id)
         .order_by(CompletedGame.finished_at, CompletedGame.id)
     ).all()
@@ -913,6 +1142,8 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
     expansion_games = [entry for entry in games if as_utc(entry[0].finished_at) >= expansion_started_at]
     office_hours_started_at = as_utc(user.achievement_office_hours_started_at or utcnow())
     office_hours_games = [entry for entry in games if as_utc(entry[0].finished_at) >= office_hours_started_at]
+    multiplayer_started_at = as_utc(user.achievement_multiplayer_started_at or utcnow())
+    multiplayer_games = [entry for entry in games if as_utc(entry[0].finished_at) >= multiplayer_started_at]
     hardcore_games = [entry for entry in games if bool(entry[0].hardcore)]
     extra_hardcore_games = [entry for entry in extra_games if bool(entry[0].hardcore)]
     scores = {int(participant.points) for _game, participant, _metrics in games}
@@ -989,6 +1220,31 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
         "office_hours": any(bool(metrics["office_hours"]) for _game, _participant, metrics in gameplay_games),
         "office_hours_count": sum(
             1 for _game, _participant, metrics in office_hours_games if bool(metrics["office_hours"])
+        ),
+        "multiplayer_margin_2p": max(
+            (int(metrics["multiplayer_margin_2p"]) for _game, _participant, metrics in multiplayer_games), default=0
+        ),
+        "multiplayer_margin_3p_runner_up": max(
+            (
+                int(metrics["multiplayer_margin_3p_runner_up"])
+                for _game, _participant, metrics in multiplayer_games
+            ),
+            default=0,
+        ),
+        "multiplayer_margin_3p_last": max(
+            (int(metrics["multiplayer_margin_3p_last"]) for _game, _participant, metrics in multiplayer_games), default=0
+        ),
+        "multiplayer_margin_2v2": max(
+            (int(metrics["multiplayer_margin_2v2"]) for _game, _participant, metrics in multiplayer_games), default=0
+        ),
+        "multiplayer_close_win": any(
+            bool(metrics["multiplayer_close_win"]) for _game, _participant, metrics in multiplayer_games
+        ),
+        "multiplayer_one_point_win": any(
+            bool(metrics["multiplayer_one_point_win"]) for _game, _participant, metrics in multiplayer_games
+        ),
+        "multiplayer_blowout": any(
+            bool(metrics["multiplayer_blowout"]) for _game, _participant, metrics in multiplayer_games
         ),
         "night_owl": any(bool(metrics["night_owl"]) for _game, _participant, metrics in gameplay_games),
         "weekend_games": sum(1 for _game, _participant, metrics in gameplay_games if metrics["weekend"]),

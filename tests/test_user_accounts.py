@@ -206,6 +206,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
             self.assertIsNotNone(existing.achievement_extra_started_at)
             self.assertIsNotNone(existing.achievement_expansion_started_at)
             self.assertIsNotNone(existing.achievement_office_hours_started_at)
+            self.assertIsNotNone(existing.achievement_multiplayer_started_at)
 
         create_user("NewUser", "a-secure-password-123", must_change_password=False)
         with session_scope() as db:
@@ -214,6 +215,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
             self.assertFalse(new_user.haptic_feedback)
             self.assertFalse(new_user.keep_screen_awake)
             self.assertIsNotNone(new_user.achievement_office_hours_started_at)
+            self.assertIsNotNone(new_user.achievement_multiplayer_started_at)
 
     def test_language_can_be_updated_independently(self):
         create_user("LanguageUser", "a-secure-password-123", must_change_password=False)
@@ -757,6 +759,141 @@ class AccountDatabaseTestCase(GameStateTestCase):
             {"office_hours", "office_hours_10", "office_hours_25", "office_hours_50"}.issubset(unlocked),
             unlocked,
         )
+
+    def test_multiplayer_achievements_are_winner_only_and_start_at_their_rollout(self):
+        winner = create_user("MarginWinner", "temporary-margin-winner-123", must_change_password=False)
+        runner_up = create_user("MarginRunner", "temporary-margin-runner-123", must_change_password=False)
+        last_place = create_user("MarginLast", "temporary-margin-last-123", must_change_password=False)
+        teammate = create_user("MarginTeam", "temporary-margin-team-123", must_change_password=False)
+        historic = create_user("MarginHistoric", "temporary-margin-historic-123", must_change_password=False)
+        boundary = create_user("MarginBoundary", "temporary-margin-boundary-123", must_change_password=False)
+        rollout = datetime(2026, 9, 2, 12, tzinfo=timezone.utc)
+        users = (winner, runner_up, last_place, teammate, historic, boundary)
+        with session_scope() as db:
+            for user in users:
+                db.get(User, user.id).achievement_multiplayer_started_at = rollout
+
+        def persist_multiplayer_game(
+            mode: int | str,
+            players: list[tuple[str, str]],
+            totals: dict[str, int],
+            finished_at: datetime,
+            assigned_ids: dict[str, int],
+        ) -> None:
+            game = self.make_game(mode=mode, players=players)
+            for player in game["_players"]:
+                player["user_id"] = assigned_ids.get(player["id"])
+            if str(mode).lower() == "2v2":
+                game["_scoreboards_by_team"] = {"A": self.low_scoreboard(), "B": self.low_scoreboard()}
+            else:
+                for player in game["_players"]:
+                    game["_scoreboards"][player["id"]] = self.low_scoreboard()
+            snapshot = build_leaderboard_snapshot_fields(game)
+            snapshot["finished_at"] = finished_at.isoformat()
+            self.assertTrue(persist_runtime_game(game, totals, snapshot))
+
+        # A game from before rollout must not award any of the fresh multiplayer goals.
+        persist_multiplayer_game(
+            2,
+            [("h1", historic.username), ("h2", "Guest")],
+            {"h1": 1_000, "h2": 300},
+            rollout - timedelta(minutes=1),
+            {"h1": historic.id},
+        )
+        # A strict 100-point lead is deliberately not "more than 100". A tie is
+        # not a win either, so neither game can create a multiplayer achievement.
+        persist_multiplayer_game(
+            2,
+            [("b1", boundary.username), ("b2", "Guest")],
+            {"b1": 800, "b2": 700},
+            rollout + timedelta(minutes=1),
+            {"b1": boundary.id},
+        )
+        persist_multiplayer_game(
+            2,
+            [("b3", boundary.username), ("b4", "Guest")],
+            {"b3": 700, "b4": 700},
+            rollout + timedelta(minutes=2),
+            {"b3": boundary.id},
+        )
+        persist_multiplayer_game(
+            2,
+            [("p1", winner.username), ("p2", runner_up.username)],
+            {"p1": 1_000, "p2": 400},
+            rollout + timedelta(minutes=3),
+            {"p1": winner.id, "p2": runner_up.id},
+        )
+        persist_multiplayer_game(
+            3,
+            [
+                ("p1", winner.username),
+                ("p2", runner_up.username),
+                ("p3", last_place.username),
+            ],
+            {"p1": 1_000, "p2": 600, "p3": 400},
+            rollout + timedelta(minutes=4),
+            {"p1": winner.id, "p2": runner_up.id, "p3": last_place.id},
+        )
+        persist_multiplayer_game(
+            "2v2",
+            [
+                ("p1", winner.username),
+                ("p2", runner_up.username),
+                ("p3", teammate.username),
+                ("p4", "Guest"),
+            ],
+            {"A": 1_000, "B": 400},
+            rollout + timedelta(minutes=5),
+            {"p1": winner.id, "p2": runner_up.id, "p3": teammate.id},
+        )
+        persist_multiplayer_game(
+            2,
+            [("p1", winner.username), ("p2", runner_up.username)],
+            {"p1": 701, "p2": 700},
+            rollout + timedelta(minutes=6),
+            {"p1": winner.id, "p2": runner_up.id},
+        )
+
+        expected_winner_keys = {
+            "multiplayer_2p_margin_100",
+            "multiplayer_2p_margin_200",
+            "multiplayer_2p_margin_350",
+            "multiplayer_3p_runner_up_margin_100",
+            "multiplayer_3p_runner_up_margin_200",
+            "multiplayer_3p_runner_up_margin_350",
+            "multiplayer_3p_last_margin_100",
+            "multiplayer_3p_last_margin_200",
+            "multiplayer_3p_last_margin_350",
+            "multiplayer_2v2_margin_100",
+            "multiplayer_2v2_margin_200",
+            "multiplayer_2v2_margin_350",
+            "multiplayer_close_win",
+            "multiplayer_one_point_win",
+            "multiplayer_blowout",
+        }
+        winner_keys = {
+            item["key"]
+            for item in public_player_profile(winner.username)["player"]["achievements"]["unlocked"]
+            if item["key"].startswith("multiplayer_")
+        }
+        self.assertEqual(winner_keys, expected_winner_keys)
+        teammate_keys = {
+            item["key"]
+            for item in public_player_profile(teammate.username)["player"]["achievements"]["unlocked"]
+            if item["key"].startswith("multiplayer_")
+        }
+        self.assertEqual(
+            teammate_keys,
+            {
+                "multiplayer_2v2_margin_100",
+                "multiplayer_2v2_margin_200",
+                "multiplayer_2v2_margin_350",
+                "multiplayer_blowout",
+            },
+        )
+        for user in (runner_up, last_place, historic, boundary):
+            unlocked = public_player_profile(user.username)["player"]["achievements"]["unlocked"]
+            self.assertFalse(any(item["key"].startswith("multiplayer_") for item in unlocked), user.username)
 
     def test_hardcore_count_and_score_achievements_are_historical_only(self):
         user = create_user("HistoricalHardcore", "temporary-hardcore-123", must_change_password=False)
