@@ -7,11 +7,31 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import WebSocketDisconnect
+from fastapi.encoders import jsonable_encoder
 
 from .active_games import save_active_game
 from .game_state import CHAT_HISTORY_LIMIT, GameDict
 
 logger = logging.getLogger(__name__)
+
+
+async def send_game_message(websocket: Any, message: dict[str, Any]) -> None:
+    """Send one game payload after converting transport-only values to JSON.
+
+    The game result finalizer intentionally returns the newly unlocked
+    achievements so the browser can celebrate them immediately.  Those
+    payloads include ``UserAchievement.unlocked_at`` values as ``datetime``
+    instances.  Unlike normal FastAPI responses, Starlette's
+    :meth:`~starlette.websockets.WebSocket.send_json` does not run
+    ``jsonable_encoder`` itself.  Sending such a terminal payload used to
+    raise ``TypeError`` *after* the last field was persisted; ``broadcast``
+    then detached the socket and the client remained on its old board.
+
+    Keeping the conversion at the WebSocket boundary also makes future game
+    payloads safe for UUIDs, enums and other standard FastAPI encodable
+    values.
+    """
+    await websocket.send_json(jsonable_encoder(message))
 
 
 def append_chat_history(game: GameDict, entry: dict) -> dict:
@@ -44,13 +64,16 @@ async def broadcast(game: GameDict, message: dict[str, Any]) -> None:
     """Send to connected players and spectators, detaching dead sockets."""
     # Mutations converge here; persistence strips process-local sockets.
     save_active_game(game)
+    # Encode once so every recipient receives the exact same JSON-safe
+    # representation and a single datetime cannot silently detach all sockets.
+    payload = jsonable_encoder(message)
     recipients = [*game.get("_players", []), *game.get("_spectators", [])]
     for recipient in recipients:
         websocket = recipient.get("ws")
         if websocket is None:
             continue
         try:
-            await websocket.send_json(message)
+            await websocket.send_json(payload)
         except (WebSocketDisconnect, RuntimeError, OSError):
             if recipient.get("ws") is websocket:
                 recipient["ws"] = None

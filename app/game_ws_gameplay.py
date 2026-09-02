@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 import logging
 from typing import Any, Awaitable, Callable
 
@@ -16,7 +18,7 @@ from .game_engine import (
     can_roll_now,
     can_write_now,
 )
-from .game_realtime import broadcast
+from .game_realtime import broadcast, send_game_message
 from .game_scoring import poker_points_allowed, score_field_value
 from .game_snapshot import snapshot
 from .game_state import (
@@ -79,12 +81,40 @@ async def handle_gameplay_action(
 
 
 async def _send_error(session: GameSocketSession, message: str) -> None:
-    await session.websocket.send_json({"error": message})
+    await send_game_message(session.websocket, {"error": message})
 
 
 async def _publish_scoreboard(session: GameSocketSession) -> None:
     touch(session.game)
     await broadcast(session.game, {"scoreboard": snapshot(session.game)})
+
+
+async def _broadcast_write_update(session: GameSocketSession, message: dict[str, Any]) -> None:
+    """Fan out a write update and keep a replaced requester in sync.
+
+    A reconnect can replace ``player["ws"]`` while an already accepted socket
+    is still finishing a tap.  The action is valid server-side, but a normal
+    broadcast only reaches the replacement socket.  In particular that left
+    the tab that wrote the 48th field without its terminal snapshot.  Reply to
+    that requester first when it is no longer the live player socket, then
+    retain the usual fan-out for every currently connected client.
+    """
+    active_socket = next(
+        (
+            player.get("ws")
+            for player in session.game.get("_players", [])
+            if str(player.get("id")) == str(session.player_id)
+        ),
+        None,
+    )
+    if active_socket is not session.websocket:
+        try:
+            await send_game_message(session.websocket, message)
+        except Exception:
+            # Delivery to an old socket is best-effort.  It must not prevent
+            # the active session and spectators from receiving the update.
+            logger.debug("Could not send write update to replaced requester", exc_info=True)
+    await broadcast(session.game, message)
 
 
 async def _set_hold(session: GameSocketSession, data: dict[str, Any]) -> None:
@@ -193,7 +223,8 @@ async def _write_field(
     # accepts writes.  This also keeps finalization strictly once-only.
     if g.get("_finished"):
         completion = g.get("_final_completion")
-        await session.websocket.send_json(
+        await send_game_message(
+            session.websocket,
             {
                 "scoreboard": snapshot(g),
                 "achievement_unlocks": (
@@ -277,21 +308,49 @@ async def _write_field(
     if is_finished:
         g["_started"] = False
         g["_finished"] = True
+        # The visible end state is independent from persistence.  In
+        # particular, achievement synchronization can inspect a sizeable game
+        # history and must never keep the browser on an apparently empty last
+        # cell while it runs.  Publish the completed board first, then finish
+        # logging outside the event loop and send any unlocks in a follow-up.
+        g["_finalization_pending"] = True
+        touch(g)
+        await _broadcast_write_update(
+            session,
+            {
+                "scoreboard": snapshot(g),
+                "score_event": {"field": field, "points": value, "player_id": player_id},
+                "achievement_unlocks": {},
+                "finalization_pending": True,
+            },
+        )
         try:
-            result = finalize_game(g)
+            result = await asyncio.to_thread(finalize_game, g)
+            if inspect.isawaitable(result):
+                result = await result
             completion = result if isinstance(result, dict) else {}
         except Exception:
-            # Persistenz und Achievements dürfen den Spielabschluss im Client
-            # nicht blockieren. Der Zustand ist bereits korrekt abgeschlossen;
-            # das Ergebnis-Snapshot muss daher in jedem Fall gesendet werden.
+            # Persistence and achievements must never undo or hide the already
+            # delivered game result.
             logger.exception("Could not finalize completed game %s", g.get("_id"))
         g["_final_completion"] = completion
+        g["_finalization_pending"] = False
+        touch(g)
+        await _broadcast_write_update(
+            session,
+            {
+                "scoreboard": snapshot(g),
+                "achievement_unlocks": completion.get("achievement_unlocks", {}),
+                "finalization_pending": False,
+            },
+        )
+        return
     else:
         _begin_next_turn(g, player_id)
 
     touch(g)
-    await broadcast(
-        g,
+    await _broadcast_write_update(
+        session,
         {
             "scoreboard": snapshot(g),
             "score_event": {"field": field, "points": value, "player_id": player_id},

@@ -12,7 +12,7 @@ from fastapi import WebSocket
 
 from .auth import AuthIdentity, username_is_registered
 from .game_engine import _set_roll_cap_for_current_turn
-from .game_realtime import broadcast
+from .game_realtime import broadcast, send_game_message
 from .game_snapshot import snapshot
 from .game_state import (
     GameDict,
@@ -194,7 +194,7 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any]) -> bool
     if not _passphrase_matches(g, data):
         await close_with_error(websocket, "Falsche Passphrase")
         return True
-    if g.get("_finished") or g.get("_aborted"):
+    if g.get("_aborted"):
         await close_with_error(websocket, "Spiel ist bereits beendet", fatal=True)
         return True
 
@@ -260,6 +260,24 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any]) -> bool
             "resumed": True,
         }
     )
+    if g.get("_finished"):
+        # A client can reconnect in the short window between the immediate
+        # terminal board snapshot and the later achievement synchronization.
+        # The result is already final, but the authenticated/valid resume
+        # session still deserves that terminal payload rather than a fatal
+        # "Spiel ist bereits beendet" response.
+        completion = g.get("_final_completion")
+        await send_game_message(
+            websocket,
+            {
+                "scoreboard": snapshot(g),
+                "achievement_unlocks": (
+                    completion.get("achievement_unlocks", {}) if isinstance(completion, dict) else {}
+                ),
+                "finalization_pending": bool(g.get("_finalization_pending")),
+            }
+        )
+        return False
     touch(g)
     await broadcast(g, {"scoreboard": snapshot(g)})
     return False

@@ -938,6 +938,155 @@ test("new achievements are acknowledged individually before the final standings"
   await expect(page.getByRole("button", { name: "Neue Runde" })).toBeVisible();
 });
 
+test("the last struck field stays visible while finalization waits for achievements", async ({ page }) => {
+  const rows = [0, 1, 2, 3, 4, 5, 9, 10, 12, 13, 14, 15];
+  const columns = ["down", "free", "up", "ang"];
+  const board = Object.fromEntries(
+    columns.flatMap(column => rows
+      .filter(row => !(row === 15 && column === "ang"))
+      .map(row => [`${row},${column}`, 0]))
+  );
+  const snapshot = ({ finished, pending }) => ({
+    _name: "Finalisierung",
+    _hardcore: false,
+    _players: [{ id: "final-player", name: "Finalizer" }],
+    _players_joined: 1,
+    _expected: 1,
+    _started: !finished,
+    _finished: finished,
+    _aborted: false,
+    _paused: false,
+    _manual_pause: false,
+    _offline_players: [],
+    _connected: { "final-player": true },
+    _turn: finished ? null : { player_id: "final-player", roll_index: 1, first4oak_roll: null },
+    _dice: [1, 2, 3, 4, 5],
+    _holds: [false, false, false, false, false],
+    _rolls_used: finished ? 0 : 1,
+    _rolls_max: finished ? 0 : 5,
+    _scoreboards: {
+      "final-player": finished ? { ...board, "15,ang": 0 } : board,
+    },
+    _admin_edits: {},
+    _superadmin_active: false,
+    _announced_row4: null,
+    _announced_by: null,
+    _announced_board: null,
+    _correction: { active: false },
+    _mode: "1",
+    _teams: [],
+    _scoreboards_by_team: {},
+    _results: finished ? [{ player: "Finalizer", total: 0 }] : null,
+    _last_write_public: {},
+    _has_last: { "final-player": false },
+    _auto_single: false,
+    _chat_history: [],
+    suggestions: [],
+    _finalization_pending: pending,
+  });
+  const writes = [];
+
+  await page.routeWebSocket(/\/ws\/finalization-flow$/, socket => {
+    socket.onMessage(raw => {
+      const message = JSON.parse(String(raw));
+      if (message.action === "join_game") {
+        socket.send(JSON.stringify({ player_id: "final-player", resume_token: "terminal-token" }));
+        socket.send(JSON.stringify({ scoreboard: snapshot({ finished: false, pending: false }) }));
+        return;
+      }
+      if (message.action !== "write_field") return;
+      writes.push(message);
+      socket.send(JSON.stringify({
+        scoreboard: snapshot({ finished: true, pending: true }),
+        finalization_pending: true,
+      }));
+      setTimeout(() => {
+        socket.send(JSON.stringify({
+          scoreboard: snapshot({ finished: true, pending: false }),
+          finalization_pending: false,
+          achievement_unlocks: {
+            "final-player": [{
+              key: "terminal-achievement",
+              name: "Letzter Zug",
+              description: "Das letzte Feld sicher abgeschlossen.",
+              points: 4,
+              unlocked_at: "2026-09-02T12:34:56+00:00",
+            }],
+          },
+        }));
+      }, 550);
+    });
+  });
+
+  await page.goto("/spiel/finalization-flow?name=Finalizer&__test=1");
+  const lastCell = page.locator('.player-card.me td.cell[data-row="15"][data-field="ang"]');
+  await expect(lastCell).toHaveText("");
+  await lastCell.click();
+  await page.getByRole("button", { name: "Streichen" }).click();
+  await expect.poll(() => writes.length).toBe(1);
+
+  const dialog = page.locator("#appDialog");
+  await expect(lastCell).toHaveText("0");
+  await expect(dialog).toContainText("1. Finalizer – 0 Punkte");
+  await expect(dialog).toContainText("Erfolge werden geprüft …");
+  await expect(dialog.locator('[data-dialog-action="pending-finalization"]')).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Neue Runde" })).toHaveCount(0);
+
+  await expect(dialog).toHaveAttribute("data-kind", "achievement");
+  await expect(dialog).toContainText("Letzter Zug");
+  await expect(dialog).toContainText("+4 Ehrenberg-Marken");
+  await page.getByRole("button", { name: "Weiter" }).click();
+  await expect(dialog).toHaveAttribute("data-kind", "success");
+  await expect(dialog).toContainText("1. Finalizer – 0 Punkte");
+  await expect(page.getByRole("button", { name: "Neue Runde" })).toBeVisible();
+});
+
+test("a fast completion cannot leave a queued finalization dialog behind", async ({ page, request }) => {
+  const created = await request.post("/api/games", { data: { name: "Fast completion", mode: 1 } });
+  const { game_id: gameId } = await created.json();
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Fast&__test=1`);
+  await page.waitForSelector("#diceBar");
+
+  await page.evaluate(() => {
+    const pendingSnapshot = {
+      _name: "Fast completion",
+      _mode: "1",
+      _results: [{ name: "Fast", total: 555 }],
+      _finalization_pending: true,
+    };
+    const completedSnapshot = {
+      ...pendingSnapshot,
+      _finalization_pending: false,
+    };
+    // Simulate the just-closed strike confirmation: another dialog is still
+    // active while the first and second terminal WebSocket frames arrive.
+    void window.ZDWA_UI.dialog({
+      id: "fast-finalization-blocker",
+      title: "Bitte warten",
+      message: "Kurz noch …",
+      dismissible: false,
+      actions: [{ id: "hold", label: "Bitte warten", className: "primary", disabled: true }],
+    });
+    void window.__rtDebugShowGameResults(pendingSnapshot, [], { finalizationPending: true });
+    void window.__rtDebugShowGameResults(completedSnapshot, [{
+      key: "fast-terminal-achievement",
+      name: "Schnelles Finale",
+      description: "Die Auswertung kam sofort an.",
+      points: 2,
+      unlocked_at: "2026-09-02T12:34:56+00:00",
+    }], { finalizationPending: false });
+    window.ZDWA_UI.dismiss("fast-finalization-blocker", "released");
+  });
+
+  const dialog = page.locator("#appDialog");
+  await expect(dialog).toHaveAttribute("data-kind", "achievement");
+  await expect(dialog).toContainText("Schnelles Finale");
+  await page.getByRole("button", { name: "Weiter" }).click();
+  await expect(dialog).toHaveAttribute("data-kind", "success");
+  await expect(dialog).toContainText("1. Fast – 555 Punkte");
+  await expect(page.getByRole("button", { name: "Neue Runde" })).toBeVisible();
+});
+
 test("protected game passphrases use an in-app dialog and stay out of the room URL", async ({ page, request }) => {
   const created = await request.post("/api/games", {
     data: { name: "Protected game", mode: 1, pass: "secret-round" },

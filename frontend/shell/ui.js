@@ -143,6 +143,7 @@
       button.dataset.dialogAction = definition.id;
       button.className = definition.className || "";
       button.textContent = t(definition.label);
+      button.disabled = Boolean(definition.disabled);
       button.addEventListener("click", () => {
         const value = definition.useInput ? input.value : definition.value ?? definition.id;
         finish(value);
@@ -154,7 +155,7 @@
     document.documentElement.classList.add("app-dialog-open");
     document.body.classList.add("app-dialog-open");
     setTimeout(() => {
-      const target = inputOptions ? input : actions.querySelector(".primary, button");
+      const target = inputOptions ? input : actions.querySelector(".primary:not(:disabled), button:not(:disabled)");
       try { (target || dialog).focus({ preventScroll: true }); } catch (_) { (target || dialog).focus(); }
     }, 0);
   }
@@ -164,6 +165,22 @@
       queue.push({ options, resolve, previousFocus: document.activeElement });
       pumpDialogQueue();
     });
+  }
+
+  // Some state transitions intentionally show an actionless progress dialog
+  // before replacing it with the next mandatory step.  Keep this narrowly
+  // addressed by dialog id so unrelated dialogs can never be dismissed.
+  function dismiss(id, value = null) {
+    if (active?.options?.id === id) {
+      finish(value);
+      return true;
+    }
+    const queuedIndex = queue.findIndex(entry => entry.options?.id === id);
+    if (queuedIndex < 0) return false;
+    const [queued] = queue.splice(queuedIndex, 1);
+    queued.resolve(value);
+    setTimeout(pumpDialogQueue, 0);
+    return true;
   }
 
   async function notice(options = {}) {
@@ -268,5 +285,5 @@
     openRankLegend(badge);
   }, true);
 
-  window.ZDWA_UI = { dialog, notice, confirm: confirmDialog, prompt: promptDialog, toast };
+  window.ZDWA_UI = { dialog, dismiss, notice, confirm: confirmDialog, prompt: promptDialog, toast };
 })();

@@ -45,7 +45,14 @@ def refresh_game_achievement_ranks(g: GameDict) -> None:
     ]
     if not candidates:
         return
-    ranks = public_achievement_ranks(player.get("user_id") for player in candidates)
+    try:
+        ranks = public_achievement_ranks(player.get("user_id") for player in candidates)
+    except Exception:
+        # A rank badge is supplemental UI.  A transient database issue must
+        # never turn the complete game snapshot into `{}` — especially not the
+        # terminal snapshot that tells a player their last field was accepted.
+        logger.exception("Could not refresh achievement ranks for game %s", g.get("_id"))
+        return
     for player in candidates:
         try:
             rank = ranks.get(int(player["user_id"]))
@@ -127,7 +134,12 @@ def snapshot(g: GameDict) -> dict:
 
         # Auto-Timeout prüfen
         check_timeout_and_abort(g)
-        refresh_game_achievement_ranks(g)
+        # The first terminal frame is deliberately sent before the potentially
+        # expensive persistence/achievement pass.  It already carries the
+        # rank from the joined player identity; hydrate the new rank only once
+        # finalization has completed.
+        if not g.get("_finalization_pending"):
+            refresh_game_achievement_ranks(g)
         # Ergebnisse (falls abgeschlossen) berechnen
         if g["_finished"] and not g.get("_results"):
             g["_results"] = _compute_results_for_snapshot(g)
@@ -173,6 +185,7 @@ def snapshot(g: GameDict) -> dict:
             "_expected": g["_expected"],
             "_started": g["_started"],
             "_finished": g["_finished"],
+            "_finalization_pending": bool(g.get("_finalization_pending")),
             "_started_at": g.get("_started_at"),
             "_updated_at": g.get("_updated_at"),
             "_aborted": g.get("_aborted", False),

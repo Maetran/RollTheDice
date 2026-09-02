@@ -144,7 +144,14 @@
         const isSuperadminActive = !!sb?._superadmin_active;
         lastSuperadminSnapshotActive = isSuperadminActive;
         seedChatHistoryFromSnapshot(sb);
-        renderFromSnapshot(sb);
+        // A terminal result must still be shown if a non-essential renderer
+        // enhancement fails (for example a malformed rank badge). Rendering
+        // cannot be allowed to swallow the only completion frame.
+        try {
+          renderFromSnapshot(sb);
+        } catch (error) {
+          console.error("Spielstand konnte nicht vollständig gerendert werden:", error);
+        }
         if (wasSuperadminActive && !isSuperadminActive) {
           resetAfterSuperadminExit({ scrollTop: true });
         }
@@ -165,7 +172,12 @@
             return;
           }
           const unlockedAchievements = msg.achievement_unlocks?.[String(myId)] || [];
-          showGameResults(sb, Array.isArray(unlockedAchievements) ? unlockedAchievements : []);
+          const finalizationPending = msg.finalization_pending === true
+            || sb._finalization_pending === true
+            || sb.finalization_pending === true;
+          showGameResults(sb, Array.isArray(unlockedAchievements) ? unlockedAchievements : [], {
+            finalizationPending,
+          });
           return;
         }
       }

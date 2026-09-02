@@ -3,6 +3,8 @@ import io
 import json
 import os
 import tempfile
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -54,6 +56,7 @@ from app.database import configure_database, session_scope, upgrade_database
 from app.game_engine import _compute_final_totals
 from app.game_history import import_legacy_leaderboards, persist_runtime_game, stable_game_id
 from app.game_results import build_leaderboard_snapshot_fields
+from app.game_state import WRITABLE_COLS, WRITABLE_ROWS
 from app.leaderboard_storage import LeaderboardFiles
 from app.models import (
     ActiveGame,
@@ -421,6 +424,101 @@ class AccountDatabaseTestCase(GameStateTestCase):
                 websocket.send_json({"action": "end_game"})
                 self.assertEqual(websocket.receive_json()["error"], "Nicht beigetreten")
                 self.assertFalse(game["_aborted"])
+
+    def test_authenticated_last_field_broadcasts_result_before_delayed_achievements(self):
+        """A terminal board is visible before a slow achievement sync ends."""
+        create_user("TerminalAccount", "terminal-account-password", must_change_password=False)
+        leaderboard_files = LeaderboardFiles.in_directory(Path(self.temporary_directory.name) / "leaderboards")
+        finalizer_started = threading.Event()
+
+        def delayed_finalizer(finished_game):
+            finalizer_started.set()
+            time.sleep(0.15)
+            player_id = str(finished_game["_players"][0]["id"])
+            return {
+                "achievement_unlocks": {
+                    player_id: [
+                        {
+                            "key": "terminal-achievement",
+                            "name": "Terminal",
+                            "points": 3,
+                            # Real achievement finalizers return ORM datetimes.
+                            "unlocked_at": datetime(2026, 9, 2, 12, tzinfo=timezone.utc),
+                        }
+                    ]
+                }
+            }
+
+        with patch.object(main, "LEADERBOARD_FILES", leaderboard_files), patch.object(
+            main, "_finalize_and_log_results", side_effect=delayed_finalizer
+        ):
+            with TestClient(main.app) as client:
+                login_response = client.post(
+                    "/api/auth/login",
+                    json={"username": "TerminalAccount", "password": "terminal-account-password"},
+                )
+                self.assertEqual(login_response.status_code, 200)
+
+                game_id = f"authenticated-terminal-{len(self.gids)}"
+                self.gids.append(game_id)
+                main.new_game(game_id, "Authenticated terminal", 1)
+
+                with client.websocket_connect(f"/ws/{game_id}", headers={"origin": "http://testserver"}) as websocket:
+                    self.assertTrue(websocket.receive_json()["auth"]["authenticated"])
+                    websocket.send_json({"action": "join_game", "name": "ignored-for-account"})
+                    player_id = websocket.receive_json()["player_id"]
+                    websocket.receive_json()  # initial started-game snapshot
+
+                    game = main.games[game_id]
+                    board = game["_scoreboards"][player_id]
+                    for row in WRITABLE_ROWS:
+                        for column in WRITABLE_COLS:
+                            board[f"{row},{column}"] = 0
+                    board.pop("15,down")
+                    game["_turn"] = {"player_id": player_id, "roll_index": 1, "first4oak_roll": None}
+                    game["_rolls_used"] = 1
+                    game["_rolls_max"] = 5
+                    game["_dice"] = [1, 2, 3, 4, 5]
+
+                    async def receive_socket_message():
+                        return await asyncio.wait_for(websocket._send_rx.receive(), timeout=5)
+
+                    started = time.monotonic()
+                    websocket.send_json({"action": "write_field", "row": 15, "field": "down", "strike": True})
+                    try:
+                        raw_terminal = websocket.portal.call(receive_socket_message)
+                    except TimeoutError:
+                        self.fail(
+                            "Authenticated final write produced no snapshot within five seconds: "
+                            f"finished={game.get('_finished')}, persisted={game.get('_id') not in main.games}"
+                        )
+                    terminal = json.loads(raw_terminal["text"])
+                    elapsed = time.monotonic() - started
+                    try:
+                        raw_completion = websocket.portal.call(receive_socket_message)
+                    except TimeoutError:
+                        self.fail("Authenticated final write produced no completion payload within five seconds")
+                    completion = json.loads(raw_completion["text"])
+
+                # A slow disk/SQLite host is still allowed a generous window,
+                # but a blocked finalizer must never strand the active client.
+                self.assertLess(elapsed, 1)
+                self.assertTrue(terminal["scoreboard"]["_finished"])
+                self.assertFalse(terminal["scoreboard"]["_started"])
+                self.assertEqual(terminal["scoreboard"]["_scoreboards"][player_id]["15,down"], 0)
+                self.assertEqual(terminal["scoreboard"]["_results"][0]["player"], "TerminalAccount")
+                self.assertTrue(terminal["finalization_pending"])
+                self.assertTrue(finalizer_started.is_set())
+                self.assertFalse(completion["finalization_pending"])
+                self.assertIn(player_id, completion["achievement_unlocks"])
+                self.assertTrue(completion["achievement_unlocks"][player_id])
+                self.assertEqual(
+                    completion["achievement_unlocks"][player_id][0]["unlocked_at"],
+                    "2026-09-02T12:00:00+00:00",
+                )
+
+                with session_scope() as db:
+                    self.assertIsNone(db.scalar(select(ActiveGame).where(ActiveGame.game_id == game_id)))
 
     def test_websocket_connection_limits_are_released(self):
         websocket = type("Socket", (), {"client": type("Client", (), {"host": "127.0.0.9"})()})()

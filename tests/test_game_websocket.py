@@ -1,6 +1,9 @@
 import asyncio
+import json
+from datetime import datetime, timezone
 from unittest.mock import patch
 
+from app.game_snapshot import snapshot
 from app.game_state import WRITABLE_COLS, WRITABLE_ROWS, _passphrase_from_payload
 from app.game_websocket import MessageRateLimiter
 from app.game_ws_gameplay import handle_gameplay_action
@@ -19,6 +22,17 @@ class RecordingSocket:
 
     async def close(self, code=1000):
         self.close_codes.append(code)
+
+
+class JsonRecordingSocket(RecordingSocket):
+    """A test socket that enforces Starlette's raw ``send_json`` contract."""
+
+    async def send_json(self, message):
+        # Starlette WebSocket.send_json calls json.dumps itself.  Keeping that
+        # behaviour here makes an unserializable terminal achievement fail the
+        # regression test exactly as it would in a browser connection.
+        json.dumps(message, separators=(",", ":"), ensure_ascii=False)
+        await super().send_json(message)
 
 
 class RejoinDisconnectTestCase(GameStateTestCase):
@@ -47,6 +61,46 @@ class RejoinDisconnectTestCase(GameStateTestCase):
         self.assertFalse(game["_resume_required"])
         self.assertIn("p1", game["_superadmins"])
         self.assertTrue(game["_correction"]["active"])
+
+    def test_valid_rejoin_receives_a_terminal_snapshot_while_finalization_is_pending(self):
+        game = self.make_game(mode=1, players=[("p1", "Anna")])
+        game["_players"][0]["resume_token"] = "resume-anna"
+        game["_players"][0]["ws"] = RecordingSocket()
+        game["_started"] = False
+        game["_finished"] = True
+        game["_finalization_pending"] = True
+        game["_final_completion"] = {
+            "achievement_unlocks": {
+                "p1": [
+                    {
+                        "key": "normal_under_700",
+                        "unlocked_at": datetime(2026, 9, 2, 12, tzinfo=timezone.utc),
+                    }
+                ]
+            }
+        }
+        for row in WRITABLE_ROWS:
+            for column in WRITABLE_COLS:
+                game["_scoreboards"]["p1"][f"{row},{column}"] = 0
+
+        socket = JsonRecordingSocket()
+        session = GameSocketSession(websocket=socket, game=game, auth_identity=None)
+        should_close = asyncio.run(
+            handle_session_action(
+                session,
+                "rejoin_game",
+                {"player_id": "p1", "resume_token": "resume-anna"},
+            )
+        )
+
+        self.assertFalse(should_close)
+        self.assertEqual(socket.messages[0]["player_id"], "p1")
+        self.assertTrue(socket.messages[1]["scoreboard"]["_finished"])
+        self.assertTrue(socket.messages[1]["finalization_pending"])
+        self.assertEqual(
+            socket.messages[1]["achievement_unlocks"]["p1"][0]["unlocked_at"],
+            "2026-09-02T12:00:00+00:00",
+        )
 
 
 class MessageRateLimiterTestCase(GameStateTestCase):
@@ -205,6 +259,114 @@ class WebSocketActionGuardTestCase(GameStateTestCase):
         self.assertEqual(retry["scoreboard"]["_turn"], turn_before)
         self.assertEqual(retry["achievement_unlocks"], completion["achievement_unlocks"])
         self.assertEqual(finalized, [game])
+
+    def test_terminal_write_reaches_a_requester_replaced_during_reconnect(self):
+        """The socket that accepted the last tap must receive its result too.
+
+        A reconnect may replace the socket stored on the player while an older
+        accepted socket still completes a write.  Broadcasting only to the
+        current player socket used to leave that requester with an unchanged
+        final cell even though the server had persisted it.
+        """
+        game = self.make_game(mode=1, players=[("p1", "Anna")])
+        board = game["_scoreboards"]["p1"]
+        for row in WRITABLE_ROWS:
+            for column in WRITABLE_COLS:
+                board[f"{row},{column}"] = 0
+        board.pop("15,down")
+        stale_socket = RecordingSocket()
+        current_socket = RecordingSocket()
+        game["_players"][0]["ws"] = current_socket
+        session = GameSocketSession(websocket=stale_socket, game=game, auth_identity=None, player_id="p1")
+        completion = {"achievement_unlocks": {"p1": [{"key": "terminal-test"}]}}
+        finalized = []
+
+        asyncio.run(
+            handle_gameplay_action(
+                session,
+                "write_field",
+                {"row": 15, "field": "down", "strike": True},
+                finalize_game=lambda finished_game: finalized.append(finished_game) or completion,
+            )
+        )
+
+        self.assertEqual(finalized, [game])
+        self.assertEqual(board["15,down"], 0)
+        self.assertEqual(len(stale_socket.messages), 2)
+        self.assertEqual(len(current_socket.messages), 2)
+        for delivered in (stale_socket.messages[-1], current_socket.messages[-1]):
+            self.assertTrue(delivered["scoreboard"]["_finished"])
+            self.assertFalse(delivered["finalization_pending"])
+            self.assertEqual(delivered["achievement_unlocks"], completion["achievement_unlocks"])
+
+    def test_terminal_achievement_datetime_is_json_serialized_without_detaching_socket(self):
+        """A newly earned achievement must not swallow the terminal update.
+
+        ``UserAchievement.unlocked_at`` is a Python datetime.  Starlette's
+        WebSocket implementation uses raw ``json.dumps`` and used to fail on
+        it, after the final field had already been persisted.  Broadcast then
+        treated the healthy connection as dead, leaving the browser stuck.
+        """
+        game = self.make_game(mode=1, players=[("p1", "Anna")])
+        board = game["_scoreboards"]["p1"]
+        for row in WRITABLE_ROWS:
+            for column in WRITABLE_COLS:
+                board[f"{row},{column}"] = 0
+        board.pop("15,down")
+        unlocked_at = datetime(2026, 9, 2, 12, 34, 56, tzinfo=timezone.utc)
+        completion = {
+            "achievement_unlocks": {
+                "p1": [{"key": "normal_under_700", "unlocked_at": unlocked_at}]
+            }
+        }
+        socket = JsonRecordingSocket()
+        session = GameSocketSession(websocket=socket, game=game, auth_identity=None, player_id="p1")
+        game["_players"][0]["ws"] = socket
+
+        asyncio.run(
+            handle_gameplay_action(
+                session,
+                "write_field",
+                {"row": 15, "field": "down", "strike": True},
+                finalize_game=lambda _game: completion,
+            )
+        )
+
+        self.assertIs(game["_players"][0]["ws"], socket)
+        self.assertEqual(board["15,down"], 0)
+        self.assertTrue(socket.messages[-1]["scoreboard"]["_finished"])
+        unlock = socket.messages[-1]["achievement_unlocks"]["p1"][0]
+        self.assertEqual(unlock["unlocked_at"], unlocked_at.isoformat())
+
+        # The duplicate-tap recovery path sends the same completion directly,
+        # so it must apply the encoder as well.
+        asyncio.run(
+            handle_gameplay_action(
+                session,
+                "write_field",
+                {"row": 15, "field": "down", "strike": True},
+                finalize_game=lambda _game: completion,
+            )
+        )
+        retry_unlock = socket.messages[-1]["achievement_unlocks"]["p1"][0]
+        self.assertEqual(retry_unlock["unlocked_at"], unlocked_at.isoformat())
+
+    def test_terminal_snapshot_survives_a_rank_lookup_failure(self):
+        game = self.make_game(mode=1, players=[("p1", "Anna")])
+        game["_players"][0]["user_id"] = 42
+        game["_started"] = False
+        game["_finished"] = True
+        board = game["_scoreboards"]["p1"]
+        for row in WRITABLE_ROWS:
+            for column in WRITABLE_COLS:
+                board[f"{row},{column}"] = 0
+
+        with patch("app.game_snapshot.public_achievement_ranks", side_effect=RuntimeError("database temporarily locked")):
+            terminal = snapshot(game)
+
+        self.assertTrue(terminal["_finished"])
+        self.assertEqual(terminal["_scoreboards"]["p1"]["15,down"], 0)
+        self.assertEqual(terminal["_results"][0]["player"], "Anna")
 
     def test_finalizer_failure_does_not_hide_the_completed_game(self):
         game = self.make_game(mode=1, players=[("p1", "Anna")])

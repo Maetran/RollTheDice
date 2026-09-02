@@ -79,11 +79,14 @@ import { ANNOUNCE_FIELDS, calculatePoints, WRITABLE_MAP } from "./scoring.js";
       window.__rt_writePendingTimer = null;
     }
     window.__rt_writeRequestPending = false;
+    window.__rt_writePendingAction = null;
   }
 
-  function beginPendingWrite() {
+  function beginPendingWrite(action) {
     clearPendingWrite();
     window.__rt_writeRequestPending = true;
+    window.__rt_writePendingAction = action || null;
+    if (typeof syncActionFeedback === "function") syncActionFeedback(sb);
     // A dropped connection or an unexpected server response must never leave a
     // player unable to continue. The next snapshot/error normally clears this
     // immediately; this is only a last-resort client-side escape hatch.
@@ -129,7 +132,7 @@ import { ANNOUNCE_FIELDS, calculatePoints, WRITABLE_MAP } from "./scoring.js";
         if (isRollAction(obj)) haptic(12);
         else if (obj?.action === "set_hold") haptic(8);
         else if (isWriteAction(obj)) {
-          beginPendingWrite();
+          beginPendingWrite(obj);
           haptic([12, 24, 12]);
         }
         return true;

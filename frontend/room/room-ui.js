@@ -20,7 +20,13 @@
   }
 
   function actionGuidance(snapshot) {
-    if (!snapshot || snapshot._finished) return "Spiel wird geladen …";
+    if (!snapshot) return "Spiel wird geladen …";
+    if (snapshot._finished) {
+      return snapshot._finalization_pending || snapshot.finalization_pending
+        ? "Spiel wird ausgewertet …"
+        : "Spiel wird abgeschlossen …";
+    }
+    if (window.__rt_writeRequestPending) return "Feld wird eingetragen …";
     if (snapshot._paused) return snapshot._pause_reason || "Spiel ist pausiert.";
     if (IS_SPECTATOR) return "Du schaust diesem Spiel zu.";
     if (snapshot?._superadmin_active) return "Aktionen sind während der Bearbeitung pausiert.";
@@ -95,11 +101,9 @@
     }
   }
 
-  async function showGameResults(snapshot, unlockedAchievements = []) {
-    if (window._resultsShown) return;
-    window._resultsShown = true;
-    window._fatalWsClose = true;
+  let pendingGameFinalization = null;
 
+  function gameResultPresentation(snapshot) {
     const results = Array.isArray(snapshot?._results || snapshot?.results)
       ? (snapshot._results || snapshot.results)
       : [];
@@ -137,6 +141,71 @@
     const lines = results.length
       ? results.map((entry, index) => `${index + 1}. ${labelFor(entry)}${Number.isFinite(entry?.total) ? ` – ${entry.total} Punkte` : ""}`)
       : ["Das Spiel wurde erfolgreich beendet."];
+    return { results, lines };
+  }
+
+  function beginPendingGameFinalization(snapshot) {
+    if (pendingGameFinalization) {
+      pendingGameFinalization.snapshot = snapshot;
+      return;
+    }
+
+    window._resultsShown = true;
+    // Keep the socket recoverable while persistence and achievement evaluation
+    // run. The server follows with a second terminal frame when that work is
+    // complete; only then may the final actions be offered.
+    window._fatalWsClose = false;
+    setConnectionStatus("finalizing", "Spiel wird ausgewertet …");
+
+    const { results, lines } = gameResultPresentation(snapshot);
+    const state = { snapshot, pending: true, dialogPromise: null };
+    pendingGameFinalization = state;
+    if (window.ZDWA_UI?.dialog) {
+      state.dialogPromise = window.ZDWA_UI.dialog({
+        id: "game-finalization-pending",
+        title: results.length > 1 ? "Endstand" : "Spiel beendet",
+        message: `${lines.join("\n")}\n\n${window.ZDWA_I18N?.t?.("Erfolge werden geprüft …") || "Erfolge werden geprüft …"}`,
+        kind: "success",
+        dismissible: false,
+        actions: [{
+          id: "pending-finalization",
+          label: "Erfolge werden geprüft …",
+          className: "primary",
+          disabled: true,
+        }],
+      }).catch(error => {
+        console.warn("Endstand konnte während der Auswertung nicht geöffnet werden:", error);
+      });
+    }
+  }
+
+  async function completePendingGameFinalization(snapshot, unlockedAchievements) {
+    const state = pendingGameFinalization;
+    if (!state?.pending) return false;
+    state.pending = false;
+    pendingGameFinalization = null;
+    window.ZDWA_UI?.dismiss?.("game-finalization-pending", "finalized");
+    if (state.dialogPromise) {
+      try { await state.dialogPromise; }
+      catch (error) { console.warn("Auswertungsdialog konnte nicht geschlossen werden:", error); }
+    }
+    window._resultsShown = false;
+    await showGameResults(snapshot, unlockedAchievements);
+    return true;
+  }
+
+  async function showGameResults(snapshot, unlockedAchievements = [], { finalizationPending = false } = {}) {
+    if (finalizationPending) {
+      beginPendingGameFinalization(snapshot);
+      return;
+    }
+    if (await completePendingGameFinalization(snapshot, unlockedAchievements)) return;
+    if (window._resultsShown) return;
+    window._resultsShown = true;
+    window._fatalWsClose = true;
+    setConnectionStatus("online", "Spiel beendet", { hideAfter: 1200 });
+
+    const { results, lines } = gameResultPresentation(snapshot);
 
     // Achievements are acknowledged one by one before result actions become
     // available. They are presentation-only: the server has already persisted
