@@ -110,7 +110,8 @@ body{
   -webkit-font-smoothing:antialiased;
   overscroll-behavior-y:none;
 }
-.lobby-page{
+.lobby-page,
+.rules-page{
   overflow-y:auto;
   overscroll-behavior-y:auto;
 }

@@ -57,6 +57,47 @@ test("global navigation exposes the same destinations and current section", asyn
 });
 
 
+test("rules keep native scrolling on desktop, tablet, and mobile", async ({ page }) => {
+  const viewports = [
+    { width: 1440, height: 900 },
+    { width: 768, height: 1024 },
+    { width: 390, height: 844 },
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await page.goto("/regeln");
+    await expect(page.getByRole("heading", { name: "Zock die Wand an: Spielregeln" })).toBeVisible();
+    await page.mouse.move(Math.round(viewport.width / 2), Math.min(360, viewport.height - 80));
+    await page.mouse.wheel(0, 720);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  }
+
+  await page.setViewportSize(viewports[0]);
+  await page.goto("/");
+  await page.fill("#playerName", "RulesScroll");
+  await Promise.all([
+    page.waitForURL(/\/spiel\/[^/?]+/),
+    page.click("#createBtn"),
+  ]);
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await page.locator("#rulesSheetOpen").click();
+    const frame = page.frameLocator("#rulesFrame");
+    await expect(frame.getByRole("heading", { name: "Zock die Wand an: Spielregeln" })).toBeVisible();
+    const frameBox = await page.locator("#rulesFrame").boundingBox();
+    expect(frameBox).not.toBeNull();
+    const before = await frame.locator("html").evaluate(root => root.scrollTop);
+    await page.mouse.move(frameBox.x + frameBox.width / 2, frameBox.y + frameBox.height / 2);
+    await page.mouse.wheel(0, 600);
+    await expect.poll(() => frame.locator("html").evaluate(root => root.scrollTop)).toBeGreaterThan(before);
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#rulesSheet")).toBeHidden();
+  }
+});
+
+
 test("mobile global navigation remains touch-friendly and inside the viewport", async ({ page }) => {
   for (const viewport of [
     { width: 375, height: 812 },
