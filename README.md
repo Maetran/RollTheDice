@@ -119,7 +119,7 @@ RollTheDice/
 ├── requirements.txt
 ├── app/
 │   ├── __init__.py
-│   ├── main.py              # FastAPI routes, WebSocket game loop, lobby and leaderboard state
+│   ├── main.py              # FastAPI assembly and thin HTTP/WebSocket routes
 │   ├── models.py            # User, session, active/completed-game, and participant models
 │   ├── database.py          # Database configuration and Alembic upgrades
 │   ├── active_games.py      # Restart-safe snapshots of waiting and running games
@@ -127,25 +127,33 @@ RollTheDice/
 │   ├── api_auth.py          # Login, password, and admin-user API
 │   ├── api_users.py         # Profiles, stats, search, ranking, and assignments
 │   ├── game_history.py      # Complete results and legacy JSON import
+│   ├── game_state.py        # Live-game state, boards, timeouts, and connection state
+│   ├── game_engine.py       # Turn validation, rolls, suggestions, and score projections
+│   ├── game_websocket.py    # WebSocket coordinator; action handlers live in game_ws_*.py
+│   ├── game_results.py      # Completed-result projection and statistic persistence
+│   ├── leaderboard_service.py # Leaderboard aggregation and replay/profile reads
+│   ├── leaderboard_storage.py # Locked legacy-JSON compatibility storage
 │   ├── rules.py             # Server-side subtotal and total calculations
 │   └── static/
 │       ├── index.html       # Lobby
 │       ├── room.html        # Game room shell
 │       ├── game_view.html   # Read-only leaderboard replay view
 │       ├── rules.html       # Player-facing game rules
-│       ├── chat.js          # Chat client
 │       ├── emoji.js         # Emoji reactions
-│       ├── room.js          # Game room WebSocket client
+│       ├── room.js          # Generated, bundled game-room client
 │       ├── scoreboard.js    # Scoreboard renderer and read-only replay renderer
-│       ├── style.css        # Shared styling
+│       ├── lobby.css        # Generated, schlankes Styling für die Landing-Page
+│       ├── style.css        # Generated, minified shared styling für Spiel-/Kontoseiten
 │       ├── sw.js            # Service worker
 │       ├── favicon.png
 │       └── icons/
+├── frontend/                # Authored JS/CSS split by lobby, room, i18n, and style concern
 ├── alembic/                 # Versioned database schema migrations
 ├── scripts/
 │   ├── deploy_zdwa.sh       # Guarded production deployment
 │   ├── install_nginx_config.sh # Validated installation of production proxy limits
 │   ├── prune_data_backups.sh # Keeps five deploy backups; manual use is dry-run-first
+│   ├── build-static.mjs     # Bundles/minifies frontend sources into app/static
 │   └── sync_static_versions.py # Content-hashed PWA/asset version synchronization
 └── data/                    # Persistent runtime data, ignored by Git
     ├── leaderboard_recent.json
@@ -162,10 +170,12 @@ deployment script handles this automatically. Existing JSON snapshots are
 imported idempotently by `game_id`. Historical user statistics can only include
 the snapshots that still exist in the capped legacy lists.
 
-After changing a file under `app/static/` or either manifest, run
-`npm run sync:assets` (or `python3 scripts/sync_static_versions.py`). This writes
-one deterministic content version to all asset references and the service-worker
-cache. The deploy script rejects unsynchronized versions.
+After changing authored files under `frontend/`, run `npm run build:static`.
+It bundles and minifies the browser assets, then writes one deterministic content
+version to all asset references and the service-worker cache. For direct changes
+to static HTML, images, or a manifest, `npm run sync:assets` is sufficient. CI
+rejects stale generated files; CI and the deployment guard reject unsynchronized
+asset versions.
 
 ## Plain Docker
 

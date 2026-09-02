@@ -45,8 +45,10 @@ test("lobby can create a game and open spectator view without browser errors", a
   await page.fill("#playerName", "Smoke");
   await page.fill("#passInput", "");
   await page.getByRole("radio", { name: "1 Spieler, Solo" }).click();
-  await page.click("#createBtn");
-  await page.waitForURL(/\/spiel\/[^/?]+/);
+  await Promise.all([
+    page.waitForURL(/\/spiel\/[^/?]+/),
+    page.click("#createBtn"),
+  ]);
   await page.waitForSelector("#diceBar");
   await health.expectClean();
 
@@ -55,8 +57,10 @@ test("lobby can create a game and open spectator view without browser errors", a
   await spectator.goto("/");
   await spectator.fill("#playerName", "Observer");
   await spectator.waitForSelector("button.spectateBtn");
-  await spectator.click("button.spectateBtn");
-  await spectator.waitForURL(/\/spiel\/[^/?]+\/zuschauen$/);
+  await Promise.all([
+    spectator.waitForURL(/\/spiel\/[^/?]+\/zuschauen$/),
+    spectator.click("button.spectateBtn"),
+  ]);
   await spectator.waitForSelector("#diceBar");
   await expect(spectator.locator("#backToLobbyBtn")).toHaveText("Lobby");
   await expect(spectator.locator("#backToLobbyBtn")).not.toHaveClass(/danger/);
@@ -152,12 +156,13 @@ test("game creation API flow from lobby and spectator mode both work", async ({ 
     return res.url().endsWith("/api/games") &&
       res.request().method() === "POST";
   });
+  const navigationPromise = page.waitForURL(/\/spiel\/[^/?]+/);
   await page.click("#createBtn");
 
   const createResponse = await createResponsePromise;
   expect(createResponse.ok()).toBeTruthy();
 
-  await page.waitForURL(/\/spiel\/[^/?]+/);
+  await navigationPromise;
   const gameId = activeGameId(page.url());
   expect(gameId).toBeTruthy();
   await page.waitForSelector("#diceBar");
@@ -180,8 +185,10 @@ test("game creation API flow from lobby and spectator mode both work", async ({ 
   await spectator.fill("#playerName", "Spectator");
   const spectateButton = spectator.locator(`.spectateBtn[data-id="${gameId}"]`);
   await expect(spectateButton).toBeVisible();
-  await spectateButton.click();
-  await spectator.waitForURL(/\/spiel\/[^/?]+\/zuschauen$/);
+  await Promise.all([
+    spectator.waitForURL(/\/spiel\/[^/?]+\/zuschauen$/),
+    spectateButton.click(),
+  ]);
   expect(activeGameId(spectator.url())).toBe(gameId);
   expect(new URL(spectator.url()).pathname).toBe(`/spiel/${encodeURIComponent(gameId)}/zuschauen`);
   await spectator.waitForSelector("#diceBar");
@@ -228,8 +235,10 @@ test("multiplayer game pauses on disconnect and resumes from the lobby", async (
   await resumedPlayer2.goto("/");
   const resumeButton = resumedPlayer2.locator(`.resumeBtn[data-id="${gameId}"]`);
   await expect(resumeButton).toBeVisible();
-  await resumeButton.click();
-  await resumedPlayer2.waitForURL(/\/spiel\/[^/?]+/);
+  await Promise.all([
+    resumedPlayer2.waitForURL(/\/spiel\/[^/?]+/),
+    resumeButton.click(),
+  ]);
   await resumedPlayer2.waitForSelector("#diceBar");
 
   await expect(page.locator("#multiplayerPauseNotice")).toBeHidden();
@@ -377,8 +386,10 @@ test("back to lobby can pause a game and resume it later", async ({ page, reques
   await expect(page.locator("#leaveGameDialog")).toBeVisible();
   await page.click("#leavePauseBtn");
   await expect(page.locator("#appDialog")).toContainText("Spiel pausiert");
-  await page.click('[data-dialog-action="ok"]');
-  await page.waitForURL("/");
+  await Promise.all([
+    page.waitForURL("/"),
+    page.click('[data-dialog-action="ok"]'),
+  ]);
 
   const info = await request.get(`/api/games/${encodeURIComponent(gameId)}`);
   expect(info.ok()).toBeTruthy();
@@ -405,8 +416,10 @@ test("back to lobby can pause a game and resume it later", async ({ page, reques
   await page.evaluate(({ gid, token }) => {
     if (token) localStorage.setItem(`wuerfler_token_${gid}`, token);
   }, { gid: gameId, token: storedToken });
-  await page.locator(`.resumeBtn[data-id="${gameId}"]`).click();
-  await page.waitForURL(/\/spiel\/[^/?]+/);
+  await Promise.all([
+    page.waitForURL(/\/spiel\/[^/?]+/),
+    page.locator(`.resumeBtn[data-id="${gameId}"]`).click(),
+  ]);
   await page.waitForSelector("#diceBar");
   await expect(page.locator("#multiplayerPauseNotice")).toBeHidden();
 
@@ -854,11 +867,13 @@ test("game result dialog keeps the final standings visible and creates a new rou
   });
   await expect(page.locator("#appDialog")).toContainText("1. Result – 777 Punkte");
   await expect(page.getByRole("button", { name: "Neue Runde" })).toBeVisible();
-  await page.getByRole("button", { name: "Neue Runde" }).click();
-  await page.waitForURL(url => (
-    /^\/spiel\/[^/]+$/.test(url.pathname)
-    && activeGameId(url.toString()) !== gameId
-  ));
+  await Promise.all([
+    page.waitForURL(url => (
+      /^\/spiel\/[^/]+$/.test(url.pathname)
+      && activeGameId(url.toString()) !== gameId
+    )),
+    page.getByRole("button", { name: "Neue Runde" }).click(),
+  ]);
   const nextGameId = activeGameId(page.url());
   expect(nextGameId).toBeTruthy();
   expect(nextGameId).not.toBe(gameId);
@@ -886,8 +901,10 @@ test("protected game passphrases use an in-app dialog and stay out of the room U
   await join.click();
   await expect(page.locator("#appDialog")).toContainText("Passphrase erforderlich");
   await page.fill("#appDialogInput", "secret-round");
-  await page.click('[data-dialog-action="confirm"]');
-  await page.waitForURL(/\/spiel\/[^/?]+/);
+  await Promise.all([
+    page.waitForURL(/\/spiel\/[^/?]+/),
+    page.click('[data-dialog-action="confirm"]'),
+  ]);
   expect(new URL(page.url()).searchParams.has("pass")).toBe(false);
   const stored = await page.evaluate(gid => sessionStorage.getItem(`wuerfler_pass_${gid}`), gameId);
   expect(stored).toBe("secret-round");

@@ -1,13 +1,16 @@
 {
   "private": true,
   "scripts": {
-    "lint": "ruff check . && vulture app scripts tests --min-confidence 80 && python3 scripts/sync_static_versions.py --check",
+    "build:static": "node scripts/build-static.mjs && python3 scripts/sync_static_versions.py",
+    "check:static-build": "node scripts/build-static.mjs --check",
+    "lint": "ruff check . && vulture app scripts tests --min-confidence 80 && npm run check:static-build && python3 scripts/sync_static_versions.py --check",
     "sync:assets": "python3 scripts/sync_static_versions.py",
     "check:assets": "python3 scripts/sync_static_versions.py --check",
     "test:backend": "pytest --cov --cov-report=term-missing",
     "test:browser": "playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1"
+    "@playwright/test": "^1.62.1",
+    "esbuild": "^0.28.2"
   }
 }

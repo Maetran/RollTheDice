@@ -1,6 +1,6 @@
 import unittest
 
-from app import main
+from app import game_engine, game_scoring
 from app.rules import compute_overall, compute_row_subtotals
 from tests.support import GameStateTestCase
 
@@ -9,32 +9,32 @@ class FieldScoringTestCase(unittest.TestCase):
     def test_number_fields_sum_matching_faces_and_ignore_zeroes(self):
         dice = [1, 1, 2, 5, 0]
 
-        self.assertEqual(main.score_field_value("1", dice), 2)
-        self.assertEqual(main.score_field_value("2", dice), 2)
-        self.assertEqual(main.score_field_value("5", dice), 5)
-        self.assertEqual(main.score_field_value("6", dice), 0)
+        self.assertEqual(game_scoring.score_field_value("1", dice), 2)
+        self.assertEqual(game_scoring.score_field_value("2", dice), 2)
+        self.assertEqual(game_scoring.score_field_value("5", dice), 5)
+        self.assertEqual(game_scoring.score_field_value("6", dice), 0)
 
     def test_max_and_min_use_sum_of_all_rolled_dice(self):
         dice = [6, 5, 4, 3, 0]
 
-        self.assertEqual(main.score_field_value("max", dice), 18)
-        self.assertEqual(main.score_field_value("min", dice), 18)
+        self.assertEqual(game_scoring.score_field_value("max", dice), 18)
+        self.assertEqual(game_scoring.score_field_value("min", dice), 18)
 
     def test_kenter_requires_five_different_faces(self):
-        self.assertEqual(main.score_field_value("kenter", [1, 2, 3, 4, 6]), 35)
-        self.assertEqual(main.score_field_value("kenter", [1, 2, 3, 4, 4]), 0)
+        self.assertEqual(game_scoring.score_field_value("kenter", [1, 2, 3, 4, 6]), 35)
+        self.assertEqual(game_scoring.score_field_value("kenter", [1, 2, 3, 4, 4]), 0)
 
     def test_full_house_counts_three_plus_two_or_five_of_a_kind(self):
-        self.assertEqual(main.score_field_value("full", [2, 2, 2, 5, 5]), 46)
-        self.assertEqual(main.score_field_value("full", [6, 6, 6, 6, 6]), 58)
-        self.assertEqual(main.score_field_value("full", [4, 4, 4, 4, 1]), 0)
+        self.assertEqual(game_scoring.score_field_value("full", [2, 2, 2, 5, 5]), 46)
+        self.assertEqual(game_scoring.score_field_value("full", [6, 6, 6, 6, 6]), 58)
+        self.assertEqual(game_scoring.score_field_value("full", [4, 4, 4, 4, 1]), 0)
 
     def test_poker_and_sixty_values(self):
-        self.assertEqual(main.score_field_value("poker", [4, 4, 4, 4, 2]), 66)
-        self.assertEqual(main.score_field_value("poker", [6, 6, 6, 6, 6]), 74)
-        self.assertEqual(main.score_field_value("poker", [1, 1, 1, 2, 2]), 0)
-        self.assertEqual(main.score_field_value("60", [6, 6, 6, 6, 6]), 90)
-        self.assertEqual(main.score_field_value("60", [6, 6, 6, 6, 1]), 0)
+        self.assertEqual(game_scoring.score_field_value("poker", [4, 4, 4, 4, 2]), 66)
+        self.assertEqual(game_scoring.score_field_value("poker", [6, 6, 6, 6, 6]), 74)
+        self.assertEqual(game_scoring.score_field_value("poker", [1, 1, 1, 2, 2]), 0)
+        self.assertEqual(game_scoring.score_field_value("60", [6, 6, 6, 6, 6]), 90)
+        self.assertEqual(game_scoring.score_field_value("60", [6, 6, 6, 6, 1]), 0)
 
 
 class TotalsCalculationTestCase(GameStateTestCase):
@@ -102,7 +102,7 @@ class TotalsCalculationTestCase(GameStateTestCase):
             "not-a-cell": 5,
         }
 
-        rows = main._rows_from_scoreboard(board)
+        rows = game_engine._rows_from_scoreboard(board)
 
         self.assertEqual(rows[1]["1"], 3)
         self.assertEqual(rows[1]["max"], 28)
@@ -121,7 +121,7 @@ class SuggestionsTestCase(GameStateTestCase):
         g["_turn"]["roll_index"] = 2
         g["_turn"]["first4oak_roll"] = 1
 
-        suggestions = main.compute_suggestions(g)
+        suggestions = game_engine.compute_suggestions(g)
 
         self.assertNotIn("POKER", {s["type"] for s in suggestions})
 
@@ -133,7 +133,7 @@ class SuggestionsTestCase(GameStateTestCase):
         g["_turn"]["first4oak_roll"] = 1
         g["_announced_row4"] = "poker"
 
-        suggestions = main.compute_suggestions(g)
+        suggestions = game_engine.compute_suggestions(g)
 
         poker = [s for s in suggestions if s["type"] == "POKER"]
         self.assertEqual(len(poker), 1)

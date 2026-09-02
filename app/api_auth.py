@@ -98,6 +98,7 @@ def auth_me(request: Request):
     return {
         "authenticated": bool(identity),
         "user": auth_identity_payload(identity, include_csrf=True) if identity else None,
+        "registration": registration_public_config(),
     }
 
 

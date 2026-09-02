@@ -1,0 +1,861 @@
+@media (max-width:560px){
+  :root{
+    --col-desc:42px;
+  }
+  .room-page .room-header{
+    width:100%;
+    max-width:none;
+    gap:.3rem;
+    margin:0 0 .35rem;
+    padding:.28rem .5rem;
+    min-height:2.6rem;
+  }
+  .room-page .header-turn-status{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    flex:1 1 auto;
+    min-width:5rem;
+    max-width:calc(100vw - 17.25rem);
+    min-height:1.8rem;
+    color:var(--muted);
+    font-size:.72rem;
+    font-weight:650;
+    line-height:1.12;
+    overflow:hidden;
+  }
+  .room-page .header-turn-status .line{
+    display:block;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .room-page .header-turn-status .line.secondary{
+    color:#40506a;
+    font-weight:750;
+  }
+  .room-page .room-header .spacer{
+    flex:0 0 .2rem;
+    min-width:.2rem;
+  }
+  .room-page .room-header button.small{
+    min-height:1.8rem;
+    padding:.22rem .42rem;
+    font-size:.78rem;
+  }
+  .room-page .room-share-button{
+    flex:0 0 1.8rem;
+    width:1.8rem;
+    padding:.2rem;
+    font-size:1rem;
+  }
+  .room-page .room-header .emoji-fab{
+    width:34px;
+    height:34px;
+    min-height:34px;
+  }
+  .room-page .room-header #reactionsBar:empty{
+    display:none;
+    margin:0;
+  }
+  .room-page #scoreOut{
+    display:flex;
+    flex-direction:column;
+    width:100%;
+    max-width:none;
+  }
+  .room-page #scoreOut > .muted{
+    order:2;
+    width:0;
+    height:0;
+    min-height:0;
+    margin:0;
+    padding:0;
+    border:0;
+    overflow:hidden;
+    box-shadow:none;
+  }
+  .room-page .turn-status-text{
+    min-width:0;
+    justify-self:center;
+    align-self:center;
+  }
+  .room-page .mobile-reactions-host{ display:none; }
+  .room-page .players-grid{ order:4; }
+  .room-page .players-grid{
+    gap:.5rem;
+    padding:0 .5rem .1rem;
+    margin-top:.55rem;
+  }
+  .room-page .player-card{
+    width:calc(100vw - 1rem);
+    flex:0 0 calc(100vw - 1rem);
+    padding:.36rem .42rem;
+  }
+  .room-page .pc-head{
+    min-height:1.45rem;
+    margin-bottom:.22rem;
+    font-size:.95rem;
+    line-height:1.1;
+  }
+  .room-page .player-card .table-wrap{
+    width:100%;
+    overflow:hidden;
+  }
+  .room-page .player-card table.grid{
+    width:100% !important;
+    font-size:.84rem;
+  }
+  .room-page .player-card table.grid th,
+  .room-page .player-card table.grid td{
+    height:var(--mobile-grid-row-h);
+    padding:.1rem .1rem !important;
+    line-height:1.05;
+    text-align:center;
+  }
+  .room-page .player-card table.grid th:nth-child(1),
+  .room-page .player-card table.grid td:nth-child(1){
+    width:var(--col-desc) !important;
+    max-width:var(--col-desc);
+    text-align:center;
+    font-weight:800;
+  }
+  .room-page .player-card table.grid th:nth-child(n+2),
+  .room-page .player-card table.grid td:nth-child(n+2){
+    width:calc((100% - var(--col-desc)) / 4) !important;
+  }
+  .room-page .player-card table.grid td.cell.clickable{
+    box-shadow:inset 0 0 0 1px rgba(37,99,235,.1);
+  }
+  .room-page .player-card table.grid td.cell.clickable:active{
+    background:#dcecff;
+  }
+  .room-page .suggestions-area{
+    position:fixed;
+    left:.75rem;
+    right:.75rem;
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap));
+    z-index:1290;
+    order:3;
+    width:calc(100% - 1.5rem);
+    min-height:1.35rem;
+    margin:0;
+  }
+  .room-page .suggestion-btn{
+    font-size:.69rem;
+    padding:.09rem .16rem;
+    line-height:1.08;
+  }
+  .room-page .suggestions-area:has(.suggestions:empty){
+    min-height:0;
+    height:0;
+    overflow:hidden;
+  }
+  .room-page:has(.suggestions:empty) #scoreOut > .muted{
+    bottom:auto;
+  }
+  .room-page #overlayMount{ order:5; }
+  .room-page{
+    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .65rem);
+    max-width:100vw;
+    overflow-x:hidden;
+  }
+  .room-page.superadmin-active{
+    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + 5.4rem);
+  }
+  .superadmin-bar{
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .45rem);
+    align-items:stretch;
+    flex-wrap:wrap;
+  }
+  .superadmin-bar-label{
+    flex:1 1 100%;
+    text-align:center;
+  }
+  .superadmin-bar button{
+    flex:1 1 0;
+  }
+  html.chat-open,
+  .room-page.chat-open{
+    overflow:hidden;
+  }
+  .room-page .chat-backdrop{
+    display:block;
+    position:fixed;
+    inset:0;
+    z-index:1400;
+    background:rgba(15,23,42,.32);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease;
+  }
+  .room-page.chat-open .chat-backdrop{
+    opacity:1;
+    pointer-events:auto;
+  }
+  .room-page .chat-backdrop[hidden]{
+    display:none;
+  }
+  .room-page .chat-reactions-host{
+    position:fixed;
+    left:var(--mobile-safe-left);
+    bottom:0;
+    z-index:1510;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:var(--mobile-reactionbar-w);
+    min-width:var(--mobile-reactionbar-w);
+    height:var(--mobile-chatbar-h);
+    min-height:var(--mobile-chatbar-h);
+    padding:.28rem .25rem;
+    background:#172033;
+    border-radius:8px 0 0 0;
+    box-shadow:0 -16px 34px rgba(15,23,42,.18);
+    transform:translateY(1px);
+  }
+  .room-page .chat-reactions-host .emoji-dock{
+    position:static;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    height:100%;
+    margin-left:0;
+  }
+  .room-page .chat-reactions-host .emoji-fab{
+    width:34px;
+    height:34px;
+    min-height:34px;
+    margin:0;
+    flex:0 0 34px;
+  }
+  .room-page .chat-reactions-host .emoji-panel{
+    top:auto;
+    bottom:calc(100% + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .35rem);
+    left:.35rem;
+  }
+  .room-page .chat-panel{
+    --chat-bar-height:var(--mobile-chatbar-h);
+    position:fixed;
+    left:calc(var(--mobile-reactionbar-w) + var(--mobile-safe-left));
+    right:0;
+    bottom:0;
+    z-index:1500;
+    width:calc(100% - var(--mobile-reactionbar-w) - var(--mobile-safe-left)) !important;
+    max-width:none !important;
+    max-height:min(72vh, 34rem);
+    margin:0 !important;
+    padding:0;
+    border-left:0;
+    border-right:0;
+    border-bottom:0;
+    border-radius:0 8px 0 0;
+    box-shadow:0 -16px 34px rgba(15,23,42,.18);
+    transform:translateY(calc(100% - var(--chat-bar-height)));
+    transition:transform .22s ease;
+    overflow:hidden;
+  }
+  .room-page .chat-panel.open{
+    left:0;
+    z-index:1520;
+    width:100% !important;
+    border-radius:8px 8px 0 0;
+    transform:translateY(0);
+  }
+  .room-page .chat-panel.open .chat-toggle{
+    border-radius:8px 8px 0 0;
+  }
+  .room-page .chat-toggle{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:.45rem;
+    width:100%;
+    height:var(--chat-bar-height);
+    min-height:var(--chat-bar-height);
+    padding:.55rem .85rem;
+    border:0;
+    border-radius:0 8px 0 0;
+    background:#172033;
+    color:#fff;
+    font-weight:800;
+    box-shadow:none;
+  }
+  .room-page .chat-toggle-count{
+    min-width:1.35rem;
+    height:1.35rem;
+    padding:.1rem .35rem;
+    border-radius:999px;
+    background:#fff;
+    color:#172033;
+    font-size:.78rem;
+    line-height:1.15rem;
+    text-align:center;
+  }
+  .room-page .chat-toggle-icon{
+    margin-left:.1rem;
+    line-height:1;
+  }
+  .room-page .chat-panel.open .chat-toggle-icon{
+    transform:rotate(180deg);
+  }
+  .room-page .chat-content{
+    display:flex;
+    flex-direction:column;
+    gap:.5rem;
+    height:calc(72dvh - var(--chat-bar-height));
+    max-height:calc(34rem - var(--chat-bar-height));
+    padding:.75rem;
+    background:var(--surface);
+  }
+  @supports not (height: 1dvh){
+    .room-page .chat-content{
+      height:calc(72vh - var(--chat-bar-height));
+    }
+  }
+  .room-page .chat-head h3{
+    margin:0;
+  }
+  .room-page .chat-close{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:2rem;
+    height:2rem;
+    min-height:2rem;
+    padding:0;
+    font-size:1.4rem;
+    line-height:1;
+  }
+  .room-page .chat-input-row{
+    order:2;
+    margin-top:0;
+  }
+  .room-page .chat-box{
+    order:1;
+    flex:1 1 auto;
+    max-height:none;
+    min-height:0;
+  }
+}
+
+@media (max-width:560px) and (max-height:820px){
+  :root{
+    --mobile-grid-row-h: clamp(1.18rem, calc((100vh - 19rem) / 19), 1.45rem);
+    --mobile-actionbar-h: 6.78rem;
+    --mobile-suggestionsbar-h: 1.15rem;
+  }
+  .room-page .room-header{
+    margin-bottom:.2rem;
+  }
+  .room-page #diceBar{
+    row-gap:.22rem;
+    padding:.1rem .15rem .18rem;
+  }
+  .room-page #diceBar .die{
+    max-width:52px !important;
+    max-height:52px !important;
+    height:auto !important;
+    min-height:0 !important;
+  }
+  .room-page #announceBtnInline,
+  .room-page #rollBtnInline{
+    height:2.08rem !important;
+    min-height:2.08rem !important;
+    padding:.25rem .4rem;
+  }
+  .room-page #scoreOut > .muted{
+    min-height:0;
+  }
+  .room-page .suggestions-area{
+    min-height:1.1rem;
+  }
+  .room-page .suggestions-area:has(.suggestions:empty){
+    min-height:0;
+    height:0;
+    overflow:hidden;
+  }
+  .room-page .suggestions{
+    min-height:1.1rem;
+  }
+  .room-page .suggestion-btn{
+    font-size:.65rem;
+    line-height:1.05;
+  }
+}
+
+@media (max-width:560px) and (min-height:821px){
+  :root{
+    --mobile-grid-row-h: clamp(1.34rem, calc((100vh - 17.8rem) / 19), 1.84rem);
+  }
+}
+
+@media (max-width:560px){
+  .room-page .rules-sheet{
+    inset:auto 0 0 0;
+    height:min(84dvh, 46rem);
+    border-left:0;
+    border-right:0;
+    border-bottom:0;
+    border-radius:8px 8px 0 0;
+  }
+  @supports not (height: 1dvh){
+    .room-page .rules-sheet{
+      height:min(84vh, 46rem);
+    }
+  }
+  .room-page .rules-sheet-head{
+    min-height:3rem;
+    padding:.58rem .75rem;
+  }
+  .leave-game-actions{
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width:560px){
+  .room-page{
+    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .65rem);
+  }
+  .room-page.superadmin-active{
+    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + 5.4rem);
+  }
+  .room-page .room-header{
+    display:grid;
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    grid-template-columns:minmax(0, 1fr) auto auto;
+    align-items:center;
+    gap:.3rem;
+    z-index:1350;
+    margin:0;
+  }
+  .room-page .header-turn-status{
+    grid-column:1;
+    grid-row:1;
+    max-width:none;
+    min-width:0;
+  }
+  .room-page .room-header .spacer{
+    display:none;
+  }
+  .room-page #rulesSheetOpen{
+    grid-column:2;
+    grid-row:1;
+  }
+  .room-page #backToLobbyBtn{
+    grid-column:3;
+    grid-row:1;
+  }
+  .room-page .room-header button.small{
+    white-space:nowrap;
+  }
+  .room-page #scoreOut > .muted{
+    display:none !important;
+  }
+  .room-page #scoreOut{
+    margin-top:calc(2.6rem + .35rem);
+  }
+  .room-page .players-grid{
+    order:1;
+    margin-top:.35rem;
+  }
+  .room-page .suggestions-area{
+    order:2;
+    position:fixed !important;
+    left:.75rem;
+    right:.75rem;
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap));
+    z-index:1290;
+    width:calc(100% - 1.5rem);
+    min-height:var(--mobile-suggestionsbar-h);
+    margin:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .room-page .suggestions-area:has(.suggestions:empty){
+    min-height:0;
+    height:0;
+    margin:0;
+    overflow:hidden;
+  }
+  .room-page #overlayMount{
+    order:4;
+  }
+  .room-page .chat-reactions-host .emoji-panel{
+    bottom:calc(100% + .35rem);
+  }
+}
+
+/* A side rail needs landscape width. iPad Pro portrait otherwise pushes the
+   reaction trigger and its panel beyond the left viewport edge. */
+@media (min-width:900px) and (orientation:landscape){
+  .room-page{
+    --desktop-side-chat-w:min(20rem, calc((100vw - var(--desktop-shell-max)) / 2 - 2rem));
+    padding-bottom:1.5rem;
+  }
+  .room-page .chat-panel{
+    --chat-bar-height:2.75rem;
+    position:fixed;
+    top:var(--desktop-side-chat-center-y, 50%);
+    right:calc(50% + var(--desktop-shell-max) / 2 + .85rem);
+    left:auto;
+    bottom:auto;
+    z-index:1450;
+    width:var(--desktop-side-chat-w) !important;
+    min-width:15rem;
+    height:var(--chat-bar-height);
+    max-height:min(34rem, calc(100vh - 2rem));
+    margin:0 !important;
+    padding:0;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:var(--surface);
+    box-shadow:0 18px 46px rgba(15,23,42,.16);
+    transform:translateY(-50%);
+    transition:height .22s ease, box-shadow .18s ease;
+    overflow:hidden;
+  }
+  .room-page .chat-panel.open{
+    top:var(--desktop-side-chat-center-y, 50%);
+    right:calc(50% + var(--desktop-shell-max) / 2 + .85rem);
+    left:auto;
+    width:var(--desktop-side-chat-w) !important;
+    height:min(34rem, calc(100vh - 2rem));
+    border-radius:8px;
+    transform:translateY(-50%);
+  }
+  .room-page .chat-toggle{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:.45rem;
+    width:100%;
+    height:var(--chat-bar-height);
+    min-height:var(--chat-bar-height);
+    padding:.55rem .85rem;
+    border:0;
+    border-bottom:1px solid rgba(216,222,232,.7);
+    border-radius:8px 8px 0 0;
+    background:#172033;
+    color:#fff;
+    font-weight:800;
+    box-shadow:none;
+  }
+  .room-page .chat-panel:not(.open) .chat-toggle{
+    border-bottom:0;
+    border-radius:8px;
+  }
+  .room-page .chat-panel.open .chat-toggle-icon{
+    transform:rotate(180deg);
+  }
+  .room-page .chat-content{
+    display:none;
+  }
+  .room-page .chat-panel.open .chat-content{
+    display:flex;
+    flex-direction:column;
+    gap:.5rem;
+    height:calc(100% - var(--chat-bar-height));
+    max-height:none;
+    padding:.75rem;
+    background:var(--surface);
+  }
+  .room-page .chat-panel.open .chat-head{
+    display:none;
+  }
+  .room-page .chat-input-row{
+    order:1;
+    margin-top:0;
+  }
+  .room-page .chat-box{
+    order:2;
+    flex:1 1 auto;
+    min-height:0;
+    max-height:none;
+  }
+  .room-page .chat-reactions-host{
+    position:fixed;
+    top:var(--desktop-side-chat-center-y, 50%);
+    right:calc(50% + var(--desktop-shell-max) / 2 + .85rem + var(--desktop-side-chat-w) + .5rem);
+    left:auto;
+    bottom:auto;
+    z-index:1460;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:2.75rem;
+    min-width:2.75rem;
+    height:2.75rem;
+    min-height:2.75rem;
+    padding:.22rem;
+    border-radius:999px;
+    background:#172033;
+    box-shadow:0 12px 30px rgba(15,23,42,.18);
+    transform:translateY(-50%);
+  }
+  .room-page .chat-reactions-host .emoji-dock{
+    position:static;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    height:100%;
+    margin-left:0;
+  }
+  .room-page .chat-reactions-host .emoji-fab{
+    width:34px;
+    height:34px;
+    min-height:34px;
+    margin:0;
+    flex:0 0 34px;
+  }
+  .room-page .chat-reactions-host .emoji-panel{
+    top:50%;
+    bottom:auto;
+    left:auto;
+    right:calc(100% + .5rem);
+    transform:translateY(-50%);
+  }
+  .room-page.board-count-2,
+  .room-page.board-count-3,
+  .room-page.board-count-4,
+  .room-page.board-count-many{
+    padding-bottom:calc(var(--desktop-chatbar-h) + .75rem);
+  }
+  .room-page.board-count-2 .chat-panel,
+  .room-page.board-count-3 .chat-panel,
+  .room-page.board-count-4 .chat-panel,
+  .room-page.board-count-many .chat-panel{
+    --chat-bar-height:var(--desktop-chatbar-h);
+    top:auto;
+    right:auto;
+    left:calc(max(1rem, calc((100vw - var(--desktop-shell-max)) / 2)) + var(--mobile-reactionbar-w));
+    bottom:0;
+    z-index:1500;
+    width:min(
+      calc(var(--desktop-shell-max) - var(--mobile-reactionbar-w)),
+      calc(100vw - 2rem - var(--mobile-reactionbar-w))
+    ) !important;
+    min-width:0;
+    height:auto;
+    max-height:min(62vh, 30rem);
+    border-left:0;
+    border-right:0;
+    border-bottom:0;
+    border-radius:0 8px 0 0;
+    background:#172033;
+    transform:translateY(calc(100% - var(--chat-bar-height)));
+    transition:transform .22s ease;
+  }
+  .room-page.board-count-2 .chat-panel.open,
+  .room-page.board-count-3 .chat-panel.open,
+  .room-page.board-count-4 .chat-panel.open,
+  .room-page.board-count-many .chat-panel.open{
+    top:auto;
+    right:auto;
+    left:max(1rem, calc((100vw - var(--desktop-shell-max)) / 2));
+    bottom:0;
+    z-index:1520;
+    width:min(var(--desktop-shell-max), calc(100vw - 2rem)) !important;
+    height:auto;
+    max-height:min(62vh, 30rem);
+    border-radius:8px 8px 0 0;
+    transform:translateY(0);
+  }
+  .room-page.board-count-2 .chat-toggle,
+  .room-page.board-count-3 .chat-toggle,
+  .room-page.board-count-4 .chat-toggle,
+  .room-page.board-count-many .chat-toggle{
+    margin-left:-1px;
+    width:calc(100% + 1px);
+    border-bottom:0;
+    border-radius:0 8px 0 0;
+  }
+  .room-page.board-count-2 .chat-panel:not(.open),
+  .room-page.board-count-3 .chat-panel:not(.open),
+  .room-page.board-count-4 .chat-panel:not(.open),
+  .room-page.board-count-many .chat-panel:not(.open),
+  .room-page.board-count-2 .chat-panel:not(.open) .chat-toggle,
+  .room-page.board-count-3 .chat-panel:not(.open) .chat-toggle,
+  .room-page.board-count-4 .chat-panel:not(.open) .chat-toggle,
+  .room-page.board-count-many .chat-panel:not(.open) .chat-toggle{
+    border-radius:0 8px 0 0;
+  }
+  .room-page.board-count-2 .chat-panel.open .chat-toggle,
+  .room-page.board-count-3 .chat-panel.open .chat-toggle,
+  .room-page.board-count-4 .chat-panel.open .chat-toggle,
+  .room-page.board-count-many .chat-panel.open .chat-toggle{
+    border-radius:8px 8px 0 0;
+  }
+  .room-page.board-count-2 .chat-content,
+  .room-page.board-count-3 .chat-content,
+  .room-page.board-count-4 .chat-content,
+  .room-page.board-count-many .chat-content{
+    display:flex;
+    flex-direction:column;
+    gap:.5rem;
+    height:calc(62dvh - var(--chat-bar-height));
+    max-height:calc(30rem - var(--chat-bar-height));
+    padding:.75rem;
+    background:var(--surface);
+  }
+  @supports not (height: 1dvh){
+    .room-page.board-count-2 .chat-content,
+    .room-page.board-count-3 .chat-content,
+    .room-page.board-count-4 .chat-content,
+    .room-page.board-count-many .chat-content{
+      height:calc(62vh - var(--chat-bar-height));
+    }
+  }
+  .room-page.board-count-2 .chat-head,
+  .room-page.board-count-3 .chat-head,
+  .room-page.board-count-4 .chat-head,
+  .room-page.board-count-many .chat-head{
+    display:flex;
+  }
+  .room-page.board-count-2 .chat-input-row,
+  .room-page.board-count-3 .chat-input-row,
+  .room-page.board-count-4 .chat-input-row,
+  .room-page.board-count-many .chat-input-row{
+    order:2;
+  }
+  .room-page.board-count-2 .chat-box,
+  .room-page.board-count-3 .chat-box,
+  .room-page.board-count-4 .chat-box,
+  .room-page.board-count-many .chat-box{
+    order:1;
+  }
+  .room-page.board-count-2 .chat-reactions-host,
+  .room-page.board-count-3 .chat-reactions-host,
+  .room-page.board-count-4 .chat-reactions-host,
+  .room-page.board-count-many .chat-reactions-host{
+    top:auto;
+    right:auto;
+    left:max(1rem, calc((100vw - var(--desktop-shell-max)) / 2));
+    bottom:0;
+    z-index:1510;
+    width:var(--mobile-reactionbar-w);
+    min-width:var(--mobile-reactionbar-w);
+    height:var(--desktop-chatbar-h);
+    min-height:var(--desktop-chatbar-h);
+    padding:.28rem .25rem;
+    border-radius:8px 0 0 0;
+    transform:translateY(1px);
+  }
+  .room-page.board-count-2 .chat-reactions-host .emoji-panel,
+  .room-page.board-count-3 .chat-reactions-host .emoji-panel,
+  .room-page.board-count-4 .chat-reactions-host .emoji-panel,
+  .room-page.board-count-many .chat-reactions-host .emoji-panel{
+    top:auto;
+    right:auto;
+    bottom:calc(100% + var(--desktop-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .35rem);
+    left:.35rem;
+    transform:none;
+  }
+}
+
+/* Desktop: Emoji-FAB bleibt im Room-Header. Mobile nutzt den Statuszeilen-Mount. */
+@media (min-width: 768px){
+  .reactions-host .emoji-dock{ margin-left:0; }
+}
+
+/*
+  Accessibility notes:
+  - We avoid using pointer-events or pointer-related CSS on disabled buttons to ensure consistent keyboard and screen reader behavior.
+  - The dashed outline on .announce-pickable cells supports keyboard focus users by providing a clear visual focus indicator, enhanced by the :focus-visible rules.
+*/
+
+/* Final header placement: kept last because the responsive room layout has
+   several specialised board-count breakpoints above. */
+@media (max-width:560px){
+  .room-page .room-header{
+    grid-template-columns:minmax(0, 1fr) auto auto auto auto;
+  }
+  .room-page .room-header > .theme-toggle{ grid-column:2; grid-row:1; }
+  .room-page #rulesSheetOpen{ grid-column:3; grid-row:1; }
+  .room-page .room-share-button{ grid-column:4; grid-row:1; }
+  .room-page #backToLobbyBtn{ grid-column:5; grid-row:1; }
+}
+@media (min-width:561px){
+  .room-page .room-header{
+    grid-template-columns:minmax(0, 1fr) auto auto auto;
+  }
+  .room-page .room-header > .theme-toggle{ grid-column:2; grid-row:1; }
+  .room-page #rulesSheetOpen{ grid-column:3; grid-row:1; }
+  .room-page #backToLobbyBtn{ grid-column:4; grid-row:1; }
+}
+
+/* Installed iPad PWAs can extend beneath the system status bar. Keep the game
+   header below that safe area and add a small fallback when the inset is 0. */
+@media (min-width:768px) and (max-width:1366px) and (orientation:portrait){
+  .room-page{
+    padding-top:max(1rem, env(safe-area-inset-top, 0px));
+  }
+  .room-page .room-header{
+    top:max(1rem, env(safe-area-inset-top, 0px));
+  }
+}
+
+/* Late dark-mode overrides for components declared in the responsive blocks. */
+:root[data-theme="dark"] .room-page .room-header{
+  background:var(--header-bg);
+  border-color:var(--header-border);
+}
+:root[data-theme="dark"] .room-page .header-turn-status .line.secondary{ color:#c4cfdd; }
+:root[data-theme="dark"] .room-page .chat-toggle,
+:root[data-theme="dark"] .room-page .chat-reactions-host,
+:root[data-theme="dark"] .room-page.board-count-2 .chat-panel,
+:root[data-theme="dark"] .room-page.board-count-3 .chat-panel,
+:root[data-theme="dark"] .room-page.board-count-4 .chat-panel,
+:root[data-theme="dark"] .room-page.board-count-many .chat-panel{ background:#050914; }
+:root[data-theme="dark"] .room-page .chat-toggle-count{ background:#f8fafc; color:#0b1120; }
+
+/* Dice: comfortably sized click targets with a little breathing room above the actions. */
+@media (min-width:561px){
+  .room-page #diceBar{
+    grid-template-columns:repeat(5, 3.6rem);
+    grid-template-rows:3.6rem auto;
+    row-gap:.7rem;
+  }
+  .room-page #diceBar .die{
+    width:3.6rem !important;
+    height:3.6rem !important;
+    max-width:3.6rem !important;
+    max-height:3.6rem !important;
+  }
+}
+
+/* The fluid mobile size keeps all five dice on one row on narrow phones. */
+@media (max-width:560px){
+  :root{
+    /* Keep the score table comfortably readable even when mobile browser
+       chrome reduces the viewport height. The page may scroll instead of
+       squeezing all 19 rows into the remaining space. */
+    --mobile-grid-row-h:clamp(1.55rem, calc((100vh - 17.8rem) / 19), 1.84rem);
+  }
+  .room-page #diceBar{
+    grid-template-columns:repeat(5, clamp(3.25rem, calc((100vw - 3rem) / 5), 3.65rem));
+    grid-template-rows:clamp(3.25rem, calc((100vw - 3rem) / 5), 3.65rem) auto;
+    row-gap:.65rem;
+  }
+  .room-page #diceBar .die{
+    width:clamp(3.25rem, calc((100vw - 3rem) / 5), 3.65rem) !important;
+    height:clamp(3.25rem, calc((100vw - 3rem) / 5), 3.65rem) !important;
+    max-width:3.65rem !important;
+    max-height:3.65rem !important;
+    min-height:3.25rem !important;
+    padding:.06rem !important;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .room-page #diceBar .die:active:not(:disabled){
+    transform:scale(.93);
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(37,99,235,.18);
+  }
+}

@@ -1,19 +1,21 @@
 # Localization
 
 ZDWA supports German (`de`) and English (`en`). German is the canonical source
-language. The shared browser catalog lives in `app/static/i18n.js` and is loaded
-by every user-facing page.
+language. The authored browser catalog lives in `frontend/i18n/catalog.js` and
+is delivered to every user-facing page inside the generated `shell.js` bundle.
 
 ## Adding user-facing text
 
 1. Write the German source text in the relevant HTML or JavaScript file.
-2. Add a natural English translation to the `EN` catalog in `i18n.js`.
+2. Add a natural English translation to the `EN` catalog in
+   `frontend/i18n/catalog.js`.
 3. For text containing live values, add a narrowly scoped expression to
    `DYNAMIC`, or render the text through `window.ZDWA_I18N.t(...)`.
 4. Verify both languages, including placeholders, tooltips, accessible labels,
    alerts, confirmations, and mobile layouts.
 5. Extend the localization browser test whenever a new screen or interaction is
    introduced.
+6. Run `npm run build:static` to regenerate and version the browser bundle.
 
 Do not create a separate English copy of a page. Keeping one DOM and one game
 implementation prevents the languages from drifting apart.

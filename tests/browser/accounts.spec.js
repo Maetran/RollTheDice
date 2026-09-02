@@ -239,8 +239,10 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
   await expect(page.locator("#leaveGameDialog")).toBeVisible();
   await page.click("#leaveAbortBtn");
   await expect(page.locator("#appDialog")).toContainText("Spiel abgebrochen");
-  await page.click('[data-dialog-action="ok"]');
-  await page.waitForURL("/");
+  await Promise.all([
+    page.waitForURL("/"),
+    page.click('[data-dialog-action="ok"]'),
+  ]);
 });
 
 
@@ -417,8 +419,10 @@ test("admin can log in, create a user and open the public profile", async ({ pag
   await expect(page.locator("#authBadge")).toContainText("Admin");
   await expect(page.locator("#playerName")).toBeDisabled();
 
-  await page.click("#adminLink");
-  await page.waitForURL(/\/admin$/);
+  await Promise.all([
+    page.waitForURL(/\/admin$/),
+    page.click("#adminLink"),
+  ]);
   await expect(page.getByRole("heading", { name: "Adminbereich" })).toBeVisible();
   await expect(page.locator(".admin-module-tile")).toHaveCount(3);
   await expect(page.locator("#usersPanel")).toBeHidden();
@@ -556,8 +560,10 @@ test("logged-in user sees the personal landing page", async ({ page }) => {
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#authBadge")).toContainText("RegisteredSmoke");
 
-  await page.getByRole("link", { name: "Mein Konto" }).click();
-  await page.waitForURL(/\/konto(?:#|$)/);
+  await Promise.all([
+    page.waitForURL(/\/konto(?:#|$)/),
+    page.getByRole("link", { name: "Mein Konto" }).click(),
+  ]);
   await expect(page.getByRole("heading", { name: "RegisteredSmoke" })).toBeVisible();
   await page.getByRole("tab", { name: "Statistik" }).click();
   await expect(page.getByRole("tab", { name: "Statistik" })).toHaveAttribute("aria-selected", "true");
@@ -737,8 +743,10 @@ test("logged-in player can resume on another browser without a local token", asy
   await expect(secondPage.locator("#authBadge")).toContainText("RegisteredSmoke");
   const resume = secondPage.locator(`.resumeBtn[data-id="${gameId}"]`);
   await expect(resume).toBeVisible({ timeout: 6000 });
-  await resume.click();
-  await secondPage.waitForURL(/\/spiel\//);
+  await Promise.all([
+    secondPage.waitForURL(/\/spiel\//),
+    resume.click(),
+  ]);
   await expect(secondPage.locator(".player-card", { hasText: "RegisteredSmoke" })).toBeVisible();
   await secondContext.close();
 });

@@ -4,9 +4,9 @@ import tempfile
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import patch
 
-from app import main
+from app import game_engine, game_results, game_snapshot, leaderboard_service
+from app.leaderboard_storage import LeaderboardFiles, atomic_write_json, write_json_if_changed
 from tests.support import GameStateTestCase
 
 
@@ -19,14 +19,14 @@ def patched_leaderboard_files():
         shame = root / "leaderboard_shame.json"
         last_games = root / "leaderboard_last_games.json"
         stats = root / "stats.json"
-        with (
-            patch.object(main, "RECENT_FILE", recent),
-            patch.object(main, "ALLTIME_FILE", alltime),
-            patch.object(main, "SHAME_FILE", shame),
-            patch.object(main, "LAST_GAMES_FILE", last_games),
-            patch.object(main, "STATS_FILE", stats),
-        ):
-            yield recent, alltime, shame, last_games, stats
+        files = LeaderboardFiles(
+            recent=recent,
+            alltime=alltime,
+            shame=shame,
+            last_games=last_games,
+            stats=stats,
+        )
+        yield files, recent, alltime, shame, last_games, stats
 
 
 def read_json(path):
@@ -39,50 +39,68 @@ class FinalTotalsTestCase(GameStateTestCase):
         g["_scoreboards"]["p1"] = self.high_scoreboard()
         g["_scoreboards"]["p2"] = self.low_scoreboard()
 
-        totals = main._compute_final_totals(g)
-        results = main._compute_results_for_snapshot(g)
+        totals = game_engine._compute_final_totals(g)
+        results = game_snapshot._compute_results_for_snapshot(g)
 
         self.assertEqual(totals, {"p1": 410, "p2": 253})
         self.assertEqual(results, [{"player": "Anna", "total": 410}, {"player": "Ben", "total": 253}])
-        self.assertTrue(main._is_game_finished(g))
+        self.assertTrue(game_engine._is_game_finished(g))
 
     def test_compute_final_totals_for_team_boards(self):
-        g = self.make_game(mode="2v2", players=[
-            ("p1", "Alina"),
-            ("p2", "Ben"),
-            ("p3", "Carla"),
-            ("p4", "Dan"),
-        ])
+        g = self.make_game(
+            mode="2v2",
+            players=[
+                ("p1", "Alina"),
+                ("p2", "Ben"),
+                ("p3", "Carla"),
+                ("p4", "Dan"),
+            ],
+        )
         g["_scoreboards_by_team"]["A"] = self.high_scoreboard()
         g["_scoreboards_by_team"]["B"] = self.low_scoreboard()
 
-        totals = main._compute_final_totals(g)
-        results = main._compute_results_for_snapshot(g)
+        totals = game_engine._compute_final_totals(g)
+        results = game_snapshot._compute_results_for_snapshot(g)
 
         self.assertEqual(totals, {"A": 410, "B": 253})
         self.assertEqual(results, [{"player": "Team A", "total": 410}, {"player": "Team B", "total": 253}])
-        self.assertTrue(main._is_game_finished(g))
+        self.assertTrue(game_engine._is_game_finished(g))
 
 
 class LeaderboardPersistenceTestCase(GameStateTestCase):
+    def test_normalization_does_not_overwrite_a_newer_concurrent_write(self):
+        with patched_leaderboard_files() as (files, recent_file, *_rest):
+            original = {"normal": [{"game_id": "old"}], "hc": []}
+            concurrent = {"normal": [{"game_id": "new"}, {"game_id": "old"}], "hc": []}
+            normalized = {"normal": [{"game_id": "old", "normalized": True}], "hc": []}
+            atomic_write_json(recent_file, original)
+
+            atomic_write_json(recent_file, concurrent)
+            write_json_if_changed(files, recent_file, original, normalized)
+
+            self.assertEqual(read_json(recent_file), concurrent)
+            self.assertEqual(list(recent_file.parent.glob(f".{recent_file.name}.*.tmp")), [])
+
     def test_legacy_profile_link_falls_back_to_assigned_name_when_score_changed(self):
-        candidates = [{
-            "user_id": 4,
-            "username": "Tomtom",
-            "display_name": "Tom",
-            "points": 759,
-        }]
+        candidates = [
+            {
+                "user_id": 4,
+                "username": "Tomtom",
+                "display_name": "Tom",
+                "points": 759,
+            }
+        ]
 
         self.assertEqual(
-            main._linked_players_for_entry({"name": "Tom", "points": 753}, candidates),
+            leaderboard_service.linked_players_for_entry({"name": "Tom", "points": 753}, candidates),
             candidates,
         )
         self.assertEqual(
-            main._linked_players_for_entry({"name": "Unbekannt", "points": 753}, candidates),
+            leaderboard_service.linked_players_for_entry({"name": "Unbekannt", "points": 753}, candidates),
             candidates,
         )
         self.assertEqual(
-            main._linked_players_for_entry(
+            leaderboard_service.linked_players_for_entry(
                 {"name": "Unbekannt", "points": 753},
                 [*candidates, {"user_id": 5, "username": "Simon", "display_name": "Simon", "points": 802}],
             ),
@@ -94,10 +112,10 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
         g["_scoreboards"]["p1"] = self.high_scoreboard()
         g["_scoreboards"]["p2"] = self.low_scoreboard()
 
-        with patched_leaderboard_files() as (recent_file, alltime_file, shame_file, last_games_file, stats_file):
+        with patched_leaderboard_files() as (files, recent_file, alltime_file, shame_file, last_games_file, stats_file):
             stats_file.write_text(json.dumps({"games_played": 7}), encoding="utf-8")
 
-            main._finalize_and_log_results(g)
+            game_results.finalize_and_log_results(files, g)
 
             recent = read_json(recent_file)
             alltime = read_json(alltime_file)
@@ -130,7 +148,7 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
             self.assertEqual(stats["average_points"]["normal"]["trend"], "up")
             self.assertEqual(stats["average_points"]["hc"]["trend"], "same")
 
-            replay = main.api_game_from_leaderboard(g["_id"])
+            replay = leaderboard_service.game_from_leaderboard(files, g["_id"])
             self.assertEqual(replay["game_id"], g["_id"])
             self.assertEqual(replay["gamename"], "Cup")
             self.assertEqual(replay["scoreboards"]["p2"]["reihen"][0]["rows"]["full"], 46)
@@ -141,11 +159,11 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
         now = datetime.now(timezone.utc).isoformat()
         normal_entry = {"ts": now, "points": 999, "name": "Normal"}
 
-        with patched_leaderboard_files() as (recent_file, alltime_file, shame_file, last_games_file, stats_file):
+        with patched_leaderboard_files() as (files, recent_file, alltime_file, shame_file, last_games_file, stats_file):
             recent_file.write_text(json.dumps({"normal": [normal_entry], "hc": []}), encoding="utf-8")
             alltime_file.write_text(json.dumps({"normal": [normal_entry], "hc": []}), encoding="utf-8")
 
-            main._finalize_and_log_results(g)
+            game_results.finalize_and_log_results(files, g)
 
             recent = read_json(recent_file)
             alltime = read_json(alltime_file)
@@ -171,17 +189,28 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
             self.assertEqual(stats["average_points"]["hc"]["trend"], "up")
 
     def test_finalize_team_game_uses_team_totals_and_member_names(self):
-        g = self.make_game(mode="2v2", name="Team Cup", players=[
-            ("p1", "Alina"),
-            ("p2", "Ben"),
-            ("p3", "Carla"),
-            ("p4", "Dan"),
-        ])
+        g = self.make_game(
+            mode="2v2",
+            name="Team Cup",
+            players=[
+                ("p1", "Alina"),
+                ("p2", "Ben"),
+                ("p3", "Carla"),
+                ("p4", "Dan"),
+            ],
+        )
         g["_scoreboards_by_team"]["A"] = self.high_scoreboard()
         g["_scoreboards_by_team"]["B"] = self.low_scoreboard()
 
-        with patched_leaderboard_files() as (recent_file, _alltime_file, shame_file, _last_games_file, _stats_file):
-            main._finalize_and_log_results(g)
+        with patched_leaderboard_files() as (
+            files,
+            recent_file,
+            _alltime_file,
+            shame_file,
+            _last_games_file,
+            _stats_file,
+        ):
+            game_results.finalize_and_log_results(files, g)
 
             entry = read_json(recent_file)["normal"][0]
             shame_entry = read_json(shame_file)["recent"][0]
@@ -209,11 +238,18 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
         existing_recent = {"ts": now, "points": 999, "name": "Existing Recent", "game_id": "old-r"}
         existing_alltime = {"ts": now, "points": 1000, "name": "Existing Alltime", "game_id": "old-a"}
 
-        with patched_leaderboard_files() as (recent_file, alltime_file, shame_file, last_games_file, _stats_file):
+        with patched_leaderboard_files() as (
+            files,
+            recent_file,
+            alltime_file,
+            shame_file,
+            last_games_file,
+            _stats_file,
+        ):
             recent_file.write_text(json.dumps({"normal": [existing_recent], "hc": []}), encoding="utf-8")
             alltime_file.write_text(json.dumps({"normal": [existing_alltime], "hc": []}), encoding="utf-8")
 
-            main._finalize_and_log_results(g)
+            game_results.finalize_and_log_results(files, g)
 
             recent = read_json(recent_file)
             alltime = read_json(alltime_file)
@@ -237,10 +273,17 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
             },
         }
 
-        with patched_leaderboard_files() as (_recent_file, _alltime_file, _shame_file, _last_games_file, stats_file):
+        with patched_leaderboard_files() as (
+            files,
+            _recent_file,
+            _alltime_file,
+            _shame_file,
+            _last_games_file,
+            stats_file,
+        ):
             stats_file.write_text(json.dumps(existing_stats), encoding="utf-8")
 
-            main._finalize_and_log_results(g)
+            game_results.finalize_and_log_results(files, g)
 
             stats = read_json(stats_file)
             self.assertEqual(stats["games_played"], 13)
@@ -253,30 +296,47 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
             self.assertEqual(stats["average_points"]["hc"]["trend"], "same")
 
     def test_average_stats_track_down_and_same_trends(self):
-        with patched_leaderboard_files() as (_recent_file, _alltime_file, _shame_file, _last_games_file, stats_file):
-            stats_file.write_text(json.dumps({
-                "games_played": 0,
-                "average_points": {
-                    "normal": {"games": 1, "points_total": 900, "average_points": 900.0},
-                    "hc": {"games": 0, "points_total": 0, "average_points": 0.0},
-                },
-            }), encoding="utf-8")
+        with patched_leaderboard_files() as (
+            files,
+            _recent_file,
+            _alltime_file,
+            _shame_file,
+            _last_games_file,
+            stats_file,
+        ):
+            stats_file.write_text(
+                json.dumps(
+                    {
+                        "games_played": 0,
+                        "average_points": {
+                            "normal": {"games": 1, "points_total": 900, "average_points": 900.0},
+                            "hc": {"games": 0, "points_total": 0, "average_points": 0.0},
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
 
-            main._mutate_stats(average_points=410, hardcore=False)
+            game_results.mutate_stats(files, average_points=410, hardcore=False)
 
             stats = read_json(stats_file)
             self.assertEqual(stats["average_points"]["normal"]["average_points"], 655.0)
             self.assertEqual(stats["average_points"]["normal"]["trend"], "down")
 
-            stats_file.write_text(json.dumps({
-                "games_played": 0,
-                "average_points": {
-                    "normal": {"games": 1, "points_total": 410, "average_points": 410.0},
-                    "hc": {"games": 0, "points_total": 0, "average_points": 0.0},
-                },
-            }), encoding="utf-8")
+            stats_file.write_text(
+                json.dumps(
+                    {
+                        "games_played": 0,
+                        "average_points": {
+                            "normal": {"games": 1, "points_total": 410, "average_points": 410.0},
+                            "hc": {"games": 0, "points_total": 0, "average_points": 0.0},
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
 
-            main._mutate_stats(average_points=410, hardcore=False)
+            game_results.mutate_stats(files, average_points=410, hardcore=False)
 
             stats = read_json(stats_file)
             self.assertEqual(stats["average_points"]["normal"]["average_points"], 410.0)
@@ -288,14 +348,26 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
         g["_scoreboards"]["p2"] = self.low_scoreboard()
         now = datetime.now(timezone.utc)
         existing = [
-            {"ts": (now - timedelta(minutes=i + 1)).isoformat(), "points": 100 + i, "name": f"Old {i}", "game_id": f"old-{i}"}
+            {
+                "ts": (now - timedelta(minutes=i + 1)).isoformat(),
+                "points": 100 + i,
+                "name": f"Old {i}",
+                "game_id": f"old-{i}",
+            }
             for i in range(10)
         ]
 
-        with patched_leaderboard_files() as (_recent_file, _alltime_file, _shame_file, last_games_file, _stats_file):
+        with patched_leaderboard_files() as (
+            files,
+            _recent_file,
+            _alltime_file,
+            _shame_file,
+            last_games_file,
+            _stats_file,
+        ):
             last_games_file.write_text(json.dumps(existing), encoding="utf-8")
 
-            main._finalize_and_log_results(g)
+            game_results.finalize_and_log_results(files, g)
 
             last_games = read_json(last_games_file)
             self.assertEqual(len(last_games), 10)
@@ -322,12 +394,19 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
             "scoreboards": {"p2": {"reihen": [{"index": 1, "rows": {"2": 2}}]}},
         }
 
-        with patched_leaderboard_files() as (_recent_file, _alltime_file, shame_file, last_games_file, _stats_file):
+        with patched_leaderboard_files() as (
+            files,
+            _recent_file,
+            _alltime_file,
+            shame_file,
+            last_games_file,
+            _stats_file,
+        ):
             shame_file.write_text(json.dumps({"recent": [shame_entry], "alltime": []}), encoding="utf-8")
             last_games_file.write_text(json.dumps([last_entry]), encoding="utf-8")
 
-            shame_replay = main.api_game_from_leaderboard("shame-game")
-            last_replay = main.api_game_from_leaderboard("last-game")
+            shame_replay = leaderboard_service.game_from_leaderboard(files, "shame-game")
+            last_replay = leaderboard_service.game_from_leaderboard(files, "last-game")
 
             self.assertEqual(shame_replay["gamename"], "Shame Replay")
             self.assertEqual(last_replay["gamename"], "Last Replay")
@@ -364,14 +443,14 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
             {"ts": now.isoformat(), "points": "broken", "name": "Broken"},
         ]
 
-        with patched_leaderboard_files() as (recent_file, alltime_file, shame_file, last_games_file, stats_file):
+        with patched_leaderboard_files() as (files, recent_file, alltime_file, shame_file, last_games_file, stats_file):
             recent_file.write_text(json.dumps(recent_raw), encoding="utf-8")
             alltime_file.write_text(json.dumps(legacy_alltime), encoding="utf-8")
             shame_file.write_text(json.dumps(shame_raw), encoding="utf-8")
             last_games_file.write_text(json.dumps(last_raw), encoding="utf-8")
             stats_file.write_text(json.dumps({"games_played": 3}), encoding="utf-8")
 
-            payload = asyncio.run(main.get_leaderboard())
+            payload = asyncio.run(leaderboard_service.build_leaderboard(files))
 
             self.assertEqual([e["name"] for e in payload["recent"]["normal"]], ["Best", "Current"])
             self.assertEqual(payload["recent"]["hc"][0]["name"], "HC")

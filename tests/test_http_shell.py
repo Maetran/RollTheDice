@@ -65,16 +65,20 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
     def test_shared_head_scripts_do_not_block_rendering(self):
         for html_path in main.STATIC_DIR.glob("*.html"):
             html = html_path.read_text(encoding="utf-8")
-            for asset in ("i18n.js", "ui.js", "pwa.js"):
-                self.assertIn(f'<script src="/static/{asset}?v=', html, html_path.name)
-                start = html.index(f'<script src="/static/{asset}?v=')
-                end = html.index(">", start)
-                self.assertIn("defer", html[start:end], f"{html_path.name}: {asset}")
-            if "theme.js" in html:
+            self.assertEqual(html.count('<script src="/static/shell.js?v='), 1, html_path.name)
+            start = html.index('<script src="/static/shell.js?v=')
+            end = html.index(">", start)
+            self.assertIn("defer", html[start:end], f"{html_path.name}: shell.js")
+            for legacy_asset in ("i18n.js", "ui.js", "pwa.js", "theme.js"):
+                self.assertNotIn(f"/static/{legacy_asset}", html, html_path.name)
+            if html_path.name != "offline.html":
                 self.assertIn("document.documentElement.dataset.theme", html, html_path.name)
-                start = html.index('<script src="/static/theme.js?v=')
-                end = html.index(">", start)
-                self.assertIn("defer", html[start:end], f"{html_path.name}: theme.js")
+
+    def test_lobby_uses_its_small_page_specific_stylesheet(self):
+        version = content_version()
+        lobby = (main.STATIC_DIR / "index.html").read_text(encoding="utf-8")
+        self.assertIn(f'/static/lobby.css?v={version}', lobby)
+        self.assertNotIn('/static/style.css', lobby)
 
     def test_every_page_has_one_h1_and_a_meta_description(self):
         for html_path in main.STATIC_DIR.glob("*.html"):
@@ -114,20 +118,40 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("/spiel/", sitemap.text)
 
     async def test_versioned_assets_are_immutable_but_html_is_revalidated(self):
+        version = content_version()
         transport = httpx.ASGITransport(app=main.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            asset = await client.get("/static/style.css?v=93")
+            asset = await client.get(f"/static/style.css?v={version}")
+            stale_asset = await client.get("/static/style.css?v=stale")
+            missing_asset = await client.get(f"/static/not-present.js?v={version}")
+            missing_page = await client.get("/not-present")
+            robots = await client.get("/robots.txt")
             shell = await client.get("/spiel/test-game")
+            games = await client.get("/api/games")
         self.assertEqual(asset.status_code, 200)
         self.assertIn("immutable", asset.headers.get("cache-control", ""))
+        self.assertIn("no-cache", stale_asset.headers.get("cache-control", ""))
+        self.assertEqual(missing_asset.status_code, 404)
+        self.assertIn("no-store", missing_asset.headers.get("cache-control", ""))
+        self.assertEqual(missing_page.status_code, 404)
+        self.assertIn("no-store", missing_page.headers.get("cache-control", ""))
+        self.assertIn("no-cache", robots.headers.get("cache-control", ""))
         self.assertIn("no-cache", shell.headers.get("cache-control", ""))
+        self.assertIn("no-store", games.headers.get("cache-control", ""))
 
     async def test_clean_page_routes_and_legacy_redirects(self):
         transport = httpx.ASGITransport(app=main.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
             for path in (
-                "/regeln", "/spieler", "/spieler/Test", "/konto", "/admin",
-                "/spiel/abc123", "/spiel/abc123/zuschauen", "/ergebnis/abc123", "/offline",
+                "/regeln",
+                "/spieler",
+                "/spieler/Test",
+                "/konto",
+                "/admin",
+                "/spiel/abc123",
+                "/spiel/abc123/zuschauen",
+                "/ergebnis/abc123",
+                "/offline",
             ):
                 response = await client.get(path)
                 self.assertEqual(response.status_code, 200, path)
@@ -145,22 +169,28 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
 
     def test_pwa_update_and_offline_assets_are_precached(self):
         service_worker = (main.STATIC_DIR / "sw.js").read_text()
-        self.assertIn("'/static/ui.js'", service_worker)
+        self.assertIn("'/static/shell.js'", service_worker)
         self.assertIn("'/static/lobby.js'", service_worker)
-        self.assertIn("'/static/room-scoring.js'", service_worker)
-        self.assertIn("'/static/pwa.js'", service_worker)
+        self.assertNotIn("'/static/room-scoring.js'", service_worker)
+        self.assertNotIn("'/static/chat.js'", service_worker)
+        self.assertNotIn("'/static/pwa.js'", service_worker)
         self.assertIn("'/offline'", service_worker)
         self.assertIn("SKIP_WAITING", service_worker)
+        self.assertIn("await cache.put(req, res.clone())", service_worker)
+        self.assertIn("await runtime.put(req, res.clone())", service_worker)
+        self.assertIn("await self.clients.claim()", service_worker)
         install_handler = service_worker.split("self.addEventListener('message'", 1)[0]
         self.assertNotIn("self.skipWaiting()", install_handler)
 
     async def test_lobby_create_payload_creates_game(self):
-        request = main.CreateReq.model_validate({
-            "name": "HTTP shell test",
-            "mode": "1",
-            "pass": "",
-            "hardcore": False,
-        })
+        request = main.CreateReq.model_validate(
+            {
+                "name": "HTTP shell test",
+                "mode": "1",
+                "pass": "",
+                "hardcore": False,
+            }
+        )
 
         with patch("app.main.enforce_game_creation_rate_limit"):
             response = await main.api_games_create(request, object())

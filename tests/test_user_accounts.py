@@ -50,7 +50,10 @@ from app.auth_protection import (
     verify_registration_challenge,
 )
 from app.database import configure_database, session_scope, upgrade_database
+from app.game_engine import _compute_final_totals
 from app.game_history import import_legacy_leaderboards, persist_runtime_game, stable_game_id
+from app.game_results import build_leaderboard_snapshot_fields
+from app.leaderboard_storage import LeaderboardFiles
 from app.models import ActiveGame, AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, Session, User
 from app.security import validate_password
 from app.trends import recent_points_trend
@@ -65,15 +68,17 @@ def request_for(*, cookie: str = "", csrf: str = "", origin: str = "", host: str
         headers.append((b"x-csrf-token", csrf.encode("ascii")))
     if origin:
         headers.append((b"origin", origin.encode("ascii")))
-    return Request({
-        "type": "http",
-        "method": "GET",
-        "scheme": "http",
-        "path": "/",
-        "headers": headers,
-        "client": ("127.0.0.1", 1234),
-        "server": ("testserver", 80),
-    })
+    return Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "scheme": "http",
+            "path": "/",
+            "headers": headers,
+            "client": ("127.0.0.1", 1234),
+            "server": ("testserver", 80),
+        }
+    )
 
 
 class AccountDatabaseTestCase(GameStateTestCase):
@@ -81,11 +86,14 @@ class AccountDatabaseTestCase(GameStateTestCase):
         super().setUp()
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.database_path = Path(self.temporary_directory.name) / "accounts.sqlite3"
-        self.env_patch = patch.dict(os.environ, {
-            "ROLLTHEDICE_DATABASE_URL": f"sqlite:///{self.database_path}",
-            "ROLLTHEDICE_TURNSTILE_SITE_KEY": "",
-            "ROLLTHEDICE_TURNSTILE_SECRET": "",
-        })
+        self.env_patch = patch.dict(
+            os.environ,
+            {
+                "ROLLTHEDICE_DATABASE_URL": f"sqlite:///{self.database_path}",
+                "ROLLTHEDICE_TURNSTILE_SITE_KEY": "",
+                "ROLLTHEDICE_TURNSTILE_SECRET": "",
+            },
+        )
         self.env_patch.start()
         configure_database(Path(self.temporary_directory.name))
         upgrade_database(main.BASE)
@@ -148,16 +156,20 @@ class AccountDatabaseTestCase(GameStateTestCase):
             authenticated_request,
         )
 
-        self.assertEqual(result["preferences"], {
-            "announce_selection_mode": "table",
-            "auto_write_announced": False,
-            "mobile_row_quick_entry": True,
-            "haptic_feedback": True,
-            "keep_screen_awake": True,
-            "preferred_language": "en",
-        })
+        self.assertEqual(
+            result["preferences"],
+            {
+                "announce_selection_mode": "table",
+                "auto_write_announced": False,
+                "mobile_row_quick_entry": True,
+                "haptic_feedback": True,
+                "keep_screen_awake": True,
+                "preferred_language": "en",
+            },
+        )
         account = auth_me(request_for(cookie=f"rollthedice_session={raw_token}"))
         self.assertEqual(account["user"]["preferences"], result["preferences"])
+        self.assertEqual(account["registration"], registration_public_config())
         with session_scope() as db:
             user = db.scalar(select(User).where(User.username == "PrefsUser"))
             self.assertEqual(user.announce_selection_mode, "table")
@@ -202,21 +214,40 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertEqual(account["user"]["preferences"]["preferred_language"], "en")
 
     def test_three_game_trend_compares_recent_average_with_mode_average(self):
-        self.assertEqual(recent_points_trend(
-            [500, 400, 300], games_played=5, points_total=1500,
-        )["trend"], "up")
-        self.assertEqual(recent_points_trend(
-            [100, 200, 300], games_played=5, points_total=1500,
-        )["trend"], "down")
-        self.assertEqual(recent_points_trend(
-            [300, 300, 300], games_played=5, points_total=1500,
-        )["trend"], "same")
+        self.assertEqual(
+            recent_points_trend(
+                [500, 400, 300],
+                games_played=5,
+                points_total=1500,
+            )["trend"],
+            "up",
+        )
+        self.assertEqual(
+            recent_points_trend(
+                [100, 200, 300],
+                games_played=5,
+                points_total=1500,
+            )["trend"],
+            "down",
+        )
+        self.assertEqual(
+            recent_points_trend(
+                [300, 300, 300],
+                games_played=5,
+                points_total=1500,
+            )["trend"],
+            "same",
+        )
         incomplete = recent_points_trend([500, 400], games_played=5, points_total=1500)
         self.assertIsNone(incomplete["trend"])
         self.assertEqual(incomplete["trend_games"], 2)
-        self.assertIsNone(recent_points_trend(
-            [500, 400, 300], games_played=2, points_total=900,
-        )["trend"])
+        self.assertIsNone(
+            recent_points_trend(
+                [500, 400, 300],
+                games_played=2,
+                points_total=900,
+            )["trend"]
+        )
 
     def test_origin_check_accepts_proxy_scheme_but_rejects_other_hosts(self):
         validate_request_origin(request_for(origin="https://testserver"))
@@ -349,29 +380,34 @@ class AccountDatabaseTestCase(GameStateTestCase):
 
     def test_websocket_rejects_foreign_origin_and_unknown_actions(self):
         game = self.make_game(mode=1, players=[("p1", "Anna")])
+        game["_passphrase"] = "private-round"
+        game["_chat_history"] = [{"sender": "Anna", "text": "private message"}]
+        save_active_game(game)
         with TestClient(main.app) as client:
             with self.assertRaises(WebSocketDisconnect) as rejected:
-                with client.websocket_connect(
-                    f"/ws/{game['_id']}", headers={"origin": "https://evil.example"}
-                ):
+                with client.websocket_connect(f"/ws/{game['_id']}", headers={"origin": "https://evil.example"}):
                     pass
             self.assertEqual(rejected.exception.code, 1008)
 
-            with client.websocket_connect(
-                f"/ws/{game['_id']}", headers={"origin": "http://testserver"}
-            ) as websocket:
-                websocket.receive_json()
+            with client.websocket_connect(f"/ws/{game['_id']}", headers={"origin": "http://testserver"}) as websocket:
+                initial = websocket.receive_json()
+                self.assertTrue(initial["game"]["locked"])
+                self.assertNotIn("scoreboard", initial)
+                self.assertNotIn("private message", str(initial))
                 websocket.send_json({"action": "not-a-real-action"})
                 self.assertIn("Unbekannte Aktion", websocket.receive_json()["error"])
+                websocket.send_json({"action": "chat_message", "text": "vor Beitritt"})
+                self.assertEqual(websocket.receive_json()["error"], "Nicht beigetreten")
+                websocket.send_json({"action": "end_game"})
+                self.assertEqual(websocket.receive_json()["error"], "Nicht beigetreten")
+                self.assertFalse(game["_aborted"])
 
     def test_websocket_connection_limits_are_released(self):
         websocket = type("Socket", (), {"client": type("Client", (), {"host": "127.0.0.9"})()})()
         original = dict(main.websocket_connections_by_address)
         main.websocket_connections_by_address.clear()
         try:
-            with patch.object(main, "MAX_WEBSOCKETS_PER_ADDRESS", 2), patch.object(
-                main, "MAX_WEBSOCKETS_GLOBAL", 2
-            ):
+            with patch.object(main, "MAX_WEBSOCKETS_PER_ADDRESS", 2), patch.object(main, "MAX_WEBSOCKETS_GLOBAL", 2):
                 first = main._reserve_websocket(websocket)
                 second = main._reserve_websocket(websocket)
                 self.assertEqual(first, "127.0.0.9")
@@ -397,28 +433,40 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertFalse(registration_public_config()["turnstile_enabled"])
         verify_registration_challenge(request_for(), None)
 
-        with patch.dict(os.environ, {
-            "ROLLTHEDICE_TURNSTILE_SITE_KEY": "site-key",
-            "ROLLTHEDICE_TURNSTILE_SECRET": "",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "ROLLTHEDICE_TURNSTILE_SITE_KEY": "site-key",
+                "ROLLTHEDICE_TURNSTILE_SECRET": "",
+            },
+        ):
             with self.assertRaises(RuntimeError):
                 validate_auth_protection_config()
 
     def test_enabled_turnstile_requires_a_token(self):
-        with patch.dict(os.environ, {
-            "ROLLTHEDICE_TURNSTILE_SITE_KEY": "site-key",
-            "ROLLTHEDICE_TURNSTILE_SECRET": "secret",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "ROLLTHEDICE_TURNSTILE_SITE_KEY": "site-key",
+                "ROLLTHEDICE_TURNSTILE_SECRET": "secret",
+            },
+        ):
             with self.assertRaisesRegex(Exception, "captcha_required") as blocked:
                 verify_registration_challenge(request_for(), None)
             self.assertEqual(blocked.exception.status_code, 400)
 
     def test_enabled_turnstile_verifies_token_and_action(self):
         response = io.BytesIO(json.dumps({"success": True, "action": "register"}).encode("utf-8"))
-        with patch.dict(os.environ, {
-            "ROLLTHEDICE_TURNSTILE_SITE_KEY": "site-key",
-            "ROLLTHEDICE_TURNSTILE_SECRET": "secret",
-        }), patch("app.auth_protection.urlopen", return_value=response) as verify:
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "ROLLTHEDICE_TURNSTILE_SITE_KEY": "site-key",
+                    "ROLLTHEDICE_TURNSTILE_SECRET": "secret",
+                },
+            ),
+            patch("app.auth_protection.urlopen", return_value=response) as verify,
+        ):
             verify_registration_challenge(request_for(), "valid-token")
 
         self.assertEqual(verify.call_count, 1)
@@ -443,9 +491,9 @@ class AccountDatabaseTestCase(GameStateTestCase):
         g["_players"][0]["user_id"] = user.id
         g["_scoreboards"]["p1"] = self.high_scoreboard()
         g["_scoreboards"]["p2"] = self.low_scoreboard()
-        snapshot = main._build_leaderboard_snapshot_fields(g)
+        snapshot = build_leaderboard_snapshot_fields(g)
 
-        self.assertTrue(persist_runtime_game(g, main._compute_final_totals(g), snapshot))
+        self.assertTrue(persist_runtime_game(g, _compute_final_totals(g), snapshot))
         profile = public_player_profile("carla")["player"]
 
         self.assertEqual(profile["statistics"]["overall"]["games_played"], 1)
@@ -462,12 +510,15 @@ class AccountDatabaseTestCase(GameStateTestCase):
         )
         self.assertEqual(history["selection"], "all")
         self.assertEqual(history["mode"], "normal")
-        self.assertEqual(history["summary"], {
-            "games": 1,
-            "points_total": 410,
-            "normal": {"games": 1, "median_points": 410.0, "average_points": 410.0},
-            "hardcore": {"games": 0, "median_points": None, "average_points": None},
-        })
+        self.assertEqual(
+            history["summary"],
+            {
+                "games": 1,
+                "points_total": 410,
+                "normal": {"games": 1, "median_points": 410.0, "average_points": 410.0},
+                "hardcore": {"games": 0, "median_points": None, "average_points": None},
+            },
+        )
         self.assertEqual(history["games"][0]["game_id"], g["_id"])
 
     def test_account_statistics_and_history_keep_modes_separate(self):
@@ -497,14 +548,16 @@ class AccountDatabaseTestCase(GameStateTestCase):
                 )
                 db.add(game)
                 db.flush()
-                db.add(GameParticipant(
-                    game_id=game.id,
-                    position=0,
-                    player_key=f"player-{index}",
-                    display_name=user.username,
-                    points=score,
-                    user_id=user.id,
-                ))
+                db.add(
+                    GameParticipant(
+                        game_id=game.id,
+                        position=0,
+                        player_key=f"player-{index}",
+                        display_name=user.username,
+                        points=score,
+                        user_id=user.id,
+                    )
+                )
 
         statistics = public_player_profile(user.username)["player"]["statistics"]
         self.assertEqual(statistics["overall"], {"games_played": 7, "points_total": 6400})
@@ -539,22 +592,30 @@ class AccountDatabaseTestCase(GameStateTestCase):
     def test_team_score_is_attributed_to_both_registered_members(self):
         first = create_user("Dora", "temporary-dora-123", must_change_password=False)
         second = create_user("Emil", "temporary-emil-123", must_change_password=False)
-        g = self.make_game(mode="2v2", players=[
-            ("p1", "Dora"), ("p2", "Gast 1"), ("p3", "Emil"), ("p4", "Gast 2"),
-        ])
+        g = self.make_game(
+            mode="2v2",
+            players=[
+                ("p1", "Dora"),
+                ("p2", "Gast 1"),
+                ("p3", "Emil"),
+                ("p4", "Gast 2"),
+            ],
+        )
         g["_players"][0]["user_id"] = first.id
         g["_players"][2]["user_id"] = second.id
         g["_scoreboards_by_team"]["A"] = self.high_scoreboard()
         g["_scoreboards_by_team"]["B"] = self.low_scoreboard()
 
-        persist_runtime_game(g, main._compute_final_totals(g), main._build_leaderboard_snapshot_fields(g))
+        persist_runtime_game(g, _compute_final_totals(g), build_leaderboard_snapshot_fields(g))
 
         with session_scope() as db:
-            scores = list(db.scalars(
-                select(GameParticipant.points)
-                .where(GameParticipant.user_id.in_([first.id, second.id]))
-                .order_by(GameParticipant.user_id)
-            ))
+            scores = list(
+                db.scalars(
+                    select(GameParticipant.points)
+                    .where(GameParticipant.user_id.in_([first.id, second.id]))
+                    .order_by(GameParticipant.user_id)
+                )
+            )
             self.assertEqual(scores, [410, 410])
             self.assertEqual(db.scalar(select(func.count()).select_from(CompletedGame)), 1)
 
@@ -569,7 +630,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
             g = self.make_game(mode=1, hardcore=hardcore, players=[("p1", user.username)])
             g["_players"][0]["user_id"] = user.id
             g["_scoreboards"]["p1"] = board
-            persist_runtime_game(g, main._compute_final_totals(g), main._build_leaderboard_snapshot_fields(g))
+            persist_runtime_game(g, _compute_final_totals(g), build_leaderboard_snapshot_fields(g))
 
         normal = player_ranking(mode="normal")
         hardcore = player_ranking(mode="hardcore")
@@ -585,7 +646,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
         player = create_user("Fiona", "temporary-fiona-123", must_change_password=False)
         g = self.make_game(mode=1, players=[("guest", "Fiona als Gast")])
         g["_scoreboards"]["guest"] = self.high_scoreboard()
-        persist_runtime_game(g, main._compute_final_totals(g), main._build_leaderboard_snapshot_fields(g))
+        persist_runtime_game(g, _compute_final_totals(g), build_leaderboard_snapshot_fields(g))
         with session_scope() as db:
             participant_id = db.scalar(select(GameParticipant.id))
 
@@ -608,15 +669,21 @@ class AccountDatabaseTestCase(GameStateTestCase):
         admin = create_user("DeleteAdmin", "temporary-delete-123", role="admin", must_change_password=False)
         first = create_user("DeleteOne", "temporary-delete-123", must_change_password=False)
         second = create_user("DeleteTwo", "temporary-delete-123", must_change_password=False)
-        g = self.make_game(mode="2v2", players=[
-            ("p1", "DeleteOne"), ("p2", "DeleteTwo"), ("p3", "Gast A"), ("p4", "Gast B"),
-        ])
+        g = self.make_game(
+            mode="2v2",
+            players=[
+                ("p1", "DeleteOne"),
+                ("p2", "DeleteTwo"),
+                ("p3", "Gast A"),
+                ("p4", "Gast B"),
+            ],
+        )
         g["_players"][0]["user_id"] = first.id
         g["_players"][1]["user_id"] = second.id
         g["_scoreboards_by_team"]["A"] = self.high_scoreboard()
         g["_scoreboards_by_team"]["B"] = self.low_scoreboard()
-        snapshot = main._build_leaderboard_snapshot_fields(g)
-        totals = main._compute_final_totals(g)
+        snapshot = build_leaderboard_snapshot_fields(g)
+        totals = _compute_final_totals(g)
         self.assertTrue(persist_runtime_game(g, totals, snapshot))
 
         entry = {
@@ -628,24 +695,30 @@ class AccountDatabaseTestCase(GameStateTestCase):
             "opponent": "DeleteTwo, Gast B",
             "opp_points": min(totals.values()),
         }
-        files = {
-            "RECENT_FILE": Path(self.temporary_directory.name) / "recent.json",
-            "ALLTIME_FILE": Path(self.temporary_directory.name) / "alltime.json",
-            "SHAME_FILE": Path(self.temporary_directory.name) / "shame.json",
-            "LAST_GAMES_FILE": Path(self.temporary_directory.name) / "last.json",
-            "STATS_FILE": Path(self.temporary_directory.name) / "stats.json",
-        }
-        files["RECENT_FILE"].write_text(json.dumps({"normal": [entry], "hc": []}), encoding="utf-8")
-        files["ALLTIME_FILE"].write_text(json.dumps({"normal": [entry], "hc": []}), encoding="utf-8")
-        files["SHAME_FILE"].write_text(json.dumps({"recent": [entry], "alltime": [entry]}), encoding="utf-8")
-        files["LAST_GAMES_FILE"].write_text(json.dumps([entry]), encoding="utf-8")
-        files["STATS_FILE"].write_text(json.dumps({
-            "games_played": 10,
-            "average_points": {
-                "normal": {"games": 5, "points_total": 2000, "average_points": 400},
-                "hc": {"games": 0, "points_total": 0, "average_points": 0},
-            },
-        }), encoding="utf-8")
+        root = Path(self.temporary_directory.name)
+        files = LeaderboardFiles(
+            recent=root / "recent.json",
+            alltime=root / "alltime.json",
+            shame=root / "shame.json",
+            last_games=root / "last.json",
+            stats=root / "stats.json",
+        )
+        files.recent.write_text(json.dumps({"normal": [entry], "hc": []}), encoding="utf-8")
+        files.alltime.write_text(json.dumps({"normal": [entry], "hc": []}), encoding="utf-8")
+        files.shame.write_text(json.dumps({"recent": [entry], "alltime": [entry]}), encoding="utf-8")
+        files.last_games.write_text(json.dumps([entry]), encoding="utf-8")
+        files.stats.write_text(
+            json.dumps(
+                {
+                    "games_played": 10,
+                    "average_points": {
+                        "normal": {"games": 5, "points_total": 2000, "average_points": 400},
+                        "hc": {"games": 0, "points_total": 0, "average_points": 0},
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
 
         identity, raw_token = login(request_for(), admin.username, "temporary-delete-123")
         request = request_for(
@@ -657,7 +730,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
             reason="Unsachgemäße Punktebearbeitung",
             confirmation_game_id=g["_id"],
         )
-        with patch.multiple(main, **files):
+        with patch.object(main, "LEADERBOARD_FILES", files):
             mismatch = main.DeleteCompletedGameReq(
                 reason="Unsachgemäße Punktebearbeitung",
                 confirmation_game_id="falsche-id",
@@ -681,9 +754,9 @@ class AccountDatabaseTestCase(GameStateTestCase):
             self.assertEqual(tombstone.deleted_by_user_id, admin.id)
             self.assertEqual(tombstone.reason, "Unsachgemäße Punktebearbeitung")
 
-        for key in ("RECENT_FILE", "ALLTIME_FILE", "SHAME_FILE", "LAST_GAMES_FILE"):
-            self.assertNotIn(g["_id"], files[key].read_text(encoding="utf-8"))
-        stats = json.loads(files["STATS_FILE"].read_text(encoding="utf-8"))
+        for path in (files.recent, files.alltime, files.shame, files.last_games):
+            self.assertNotIn(g["_id"], path.read_text(encoding="utf-8"))
+        stats = json.loads(files.stats.read_text(encoding="utf-8"))
         self.assertEqual(stats["games_played"], 9)
         self.assertEqual(stats["average_points"]["normal"]["games"], 4)
         self.assertEqual(stats["average_points"]["normal"]["points_total"], 1590)

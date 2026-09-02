@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-from app import main
+from app import game_engine, game_snapshot, game_state
 from tests.support import GameStateTestCase
 
 
@@ -10,41 +10,41 @@ class RollControlTestCase(GameStateTestCase):
         g = self.make_game()
 
         g["_last_activity"] = datetime.now(timezone.utc) - timedelta(minutes=59)
-        self.assertFalse(main.check_timeout_and_abort(g))
+        self.assertFalse(game_state.check_timeout_and_abort(g))
         self.assertTrue(g["_started"])
         self.assertFalse(g.get("_finished"))
 
         g["_last_activity"] = datetime.now(timezone.utc) - timedelta(minutes=61)
-        self.assertTrue(main.check_timeout_and_abort(g))
+        self.assertTrue(game_state.check_timeout_and_abort(g))
         self.assertFalse(g["_started"])
         self.assertTrue(g["_finished"])
         self.assertTrue(g["_aborted"])
 
     @staticmethod
     def fill_regular_columns(board):
-        for row in main.WRITABLE_ROWS:
+        for row in game_state.WRITABLE_ROWS:
             for col in ("down", "free", "up"):
                 board[f"{row},{col}"] = 1
 
     def test_roll_cooldown_blocks_same_player_until_window_elapsed(self):
         g = {}
 
-        with patch.object(main.time, "monotonic", side_effect=[100.0, 100.3, 100.61]):
-            self.assertTrue(main.roll_cooldown_ok(g, "p1"))
-            self.assertFalse(main.roll_cooldown_ok(g, "p1"))
-            self.assertTrue(main.roll_cooldown_ok(g, "p1"))
+        with patch("app.game_state.time.monotonic", side_effect=[100.0, 100.3, 100.61]):
+            self.assertTrue(game_state.roll_cooldown_ok(g, "p1"))
+            self.assertFalse(game_state.roll_cooldown_ok(g, "p1"))
+            self.assertTrue(game_state.roll_cooldown_ok(g, "p1"))
 
     def test_roll_cooldown_is_tracked_per_player(self):
         g = {}
 
-        with patch.object(main.time, "monotonic", side_effect=[200.0, 200.1]):
-            self.assertTrue(main.roll_cooldown_ok(g, "p1"))
-            self.assertTrue(main.roll_cooldown_ok(g, "p2"))
+        with patch("app.game_state.time.monotonic", side_effect=[200.0, 200.1]):
+            self.assertTrue(game_state.roll_cooldown_ok(g, "p1"))
+            self.assertTrue(game_state.roll_cooldown_ok(g, "p2"))
 
     def test_current_player_can_roll_before_cap(self):
         g = self.make_game()
 
-        ok, why = main.can_roll_now(g, "p1")
+        ok, why = game_engine.can_roll_now(g, "p1")
 
         self.assertTrue(ok)
         self.assertEqual(why, "")
@@ -52,7 +52,7 @@ class RollControlTestCase(GameStateTestCase):
     def test_inactive_player_cannot_roll(self):
         g = self.make_game()
 
-        ok, why = main.can_roll_now(g, "p2")
+        ok, why = game_engine.can_roll_now(g, "p2")
 
         self.assertFalse(ok)
         self.assertEqual(why, "Nicht an der Reihe")
@@ -61,7 +61,7 @@ class RollControlTestCase(GameStateTestCase):
         g = self.make_game()
         g["_correction"] = {"active": True, "player_id": "p1"}
 
-        ok, why = main.can_roll_now(g, "p1")
+        ok, why = game_engine.can_roll_now(g, "p1")
 
         self.assertFalse(ok)
         self.assertEqual(why, "Während Korrektur nicht erlaubt")
@@ -71,7 +71,7 @@ class RollControlTestCase(GameStateTestCase):
         g["_rolls_used"] = 3
         g["_rolls_max"] = 3
 
-        ok, why = main.can_roll_now(g, "p1")
+        ok, why = game_engine.can_roll_now(g, "p1")
 
         self.assertFalse(ok)
         self.assertEqual(why, "Keine Würfe mehr")
@@ -81,8 +81,8 @@ class RollControlTestCase(GameStateTestCase):
         self.fill_regular_columns(g["_scoreboards"]["p1"])
         g["_rolls_used"] = 1
 
-        self.assertTrue(main._must_announce_after_first(g, "p1"))
-        ok, why = main.can_roll_now(g, "p1")
+        self.assertTrue(game_engine._must_announce_after_first(g, "p1"))
+        ok, why = game_engine.can_roll_now(g, "p1")
 
         self.assertFalse(ok)
         self.assertIn("❗-Feld ansagen", why)
@@ -93,7 +93,7 @@ class RollControlTestCase(GameStateTestCase):
         g["_rolls_used"] = 1
         g["_announced_row4"] = "poker"
 
-        ok, why = main.can_roll_now(g, "p1")
+        ok, why = game_engine.can_roll_now(g, "p1")
 
         self.assertTrue(ok)
         self.assertEqual(why, "")
@@ -104,8 +104,8 @@ class RollControlTestCase(GameStateTestCase):
         g["_rolls_used"] = 1
         g["_rolls_max"] = 2
 
-        self.assertFalse(main._must_announce_after_first(g, "p1"))
-        ok, why = main.can_roll_now(g, "p1")
+        self.assertFalse(game_engine._must_announce_after_first(g, "p1"))
+        ok, why = game_engine.can_roll_now(g, "p1")
 
         self.assertTrue(ok)
         self.assertEqual(why, "")
@@ -114,13 +114,13 @@ class RollControlTestCase(GameStateTestCase):
         g = self.make_game()
         board = g["_scoreboards"]["p1"]
         self.fill_regular_columns(board)
-        for row in main.WRITABLE_ROWS[:-1]:
+        for row in game_state.WRITABLE_ROWS[:-1]:
             board[f"{row},ang"] = 0
         g["_rolls_used"] = 1
 
-        self.assertEqual(main._remaining_cells_for(g, "p1"), 1)
-        self.assertFalse(main._must_announce_after_first(g, "p1"))
-        ok, why = main.can_roll_now(g, "p1")
+        self.assertEqual(game_engine._remaining_cells_for(g, "p1"), 1)
+        self.assertFalse(game_engine._must_announce_after_first(g, "p1"))
+        ok, why = game_engine.can_roll_now(g, "p1")
 
         self.assertTrue(ok)
         self.assertEqual(why, "")
@@ -128,7 +128,7 @@ class RollControlTestCase(GameStateTestCase):
     def test_snapshot_requests_auto_roll_for_new_single_player_turn(self):
         g = self.make_game(mode=1)
 
-        snap = main.snapshot(g)
+        snap = game_snapshot.snapshot(g)
 
         self.assertTrue(snap["_auto_single"])
 
@@ -137,6 +137,6 @@ class RollControlTestCase(GameStateTestCase):
         g["_rolls_used"] = 1
         g["_dice"] = [1, 2, 3, 4, 5]
 
-        snap = main.snapshot(g)
+        snap = game_snapshot.snapshot(g)
 
         self.assertFalse(snap["_auto_single"])

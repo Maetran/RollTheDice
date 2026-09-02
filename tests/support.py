@@ -1,6 +1,6 @@
 import unittest
 
-from app import main
+from app import game_state
 
 
 class GameStateTestCase(unittest.TestCase):
@@ -9,12 +9,12 @@ class GameStateTestCase(unittest.TestCase):
 
     def tearDown(self):
         for gid in self.gids:
-            main.games.pop(gid, None)
+            game_state.games.pop(gid, None)
 
     def make_game(self, *, mode=2, hardcore=False, players=None, name="Test Game"):
         gid = f"{self.__class__.__name__}-{len(self.gids)}"
         self.gids.append(gid)
-        g = main.new_game(gid, name, mode)
+        g = game_state.new_game(gid, name, mode)
 
         if players is None:
             expected = 4 if str(mode).lower() == "2v2" else int(g["_expected"])
@@ -39,7 +39,7 @@ class GameStateTestCase(unittest.TestCase):
         g["_last_dice"] = {}
         g["_last_meta"] = {}
 
-        if main.is_team_mode(g):
+        if game_state.is_team_mode(g):
             ids = [pid for pid, _pname in players]
             g["_teams"] = {
                 "A": {"name": "Team A", "members": ids[0::2]},
@@ -54,45 +54,49 @@ class GameStateTestCase(unittest.TestCase):
     def full_scoreboard(columns=None, *, default=0):
         columns = columns or {}
         board = {}
-        for col in main.WRITABLE_COLS:
+        for col in game_state.WRITABLE_COLS:
             values = columns.get(col, {}) or {}
-            for row in main.WRITABLE_ROWS:
-                field = main.WRITABLE_MAP[row]
+            for row in game_state.WRITABLE_ROWS:
+                field = game_state.WRITABLE_MAP[row]
                 board[f"{row},{col}"] = int(values.get(field, default))
         return board
 
     def high_scoreboard(self):
-        return self.full_scoreboard({
-            "down": {
-                "1": 3,
-                "2": 6,
-                "3": 9,
-                "4": 12,
-                "5": 15,
-                "6": 18,
-                "max": 28,
-                "min": 8,
-                "kenter": 35,
-                "full": 58,
-                "poker": 74,
-                "60": 90,
+        return self.full_scoreboard(
+            {
+                "down": {
+                    "1": 3,
+                    "2": 6,
+                    "3": 9,
+                    "4": 12,
+                    "5": 15,
+                    "6": 18,
+                    "max": 28,
+                    "min": 8,
+                    "kenter": 35,
+                    "full": 58,
+                    "poker": 74,
+                    "60": 90,
+                }
             }
-        })
+        )
 
     def low_scoreboard(self):
-        return self.full_scoreboard({
-            "down": {
-                "1": 1,
-                "2": 2,
-                "3": 3,
-                "4": 4,
-                "5": 5,
-                "6": 6,
-                "max": 15,
-                "min": 10,
-                "kenter": 35,
-                "full": 46,
-                "poker": 66,
-                "60": 80,
+        return self.full_scoreboard(
+            {
+                "down": {
+                    "1": 1,
+                    "2": 2,
+                    "3": 3,
+                    "4": 4,
+                    "5": 5,
+                    "6": 6,
+                    "max": 15,
+                    "min": 10,
+                    "kenter": 35,
+                    "full": 46,
+                    "poker": 66,
+                    "60": 80,
+                }
             }
-        })
+        )

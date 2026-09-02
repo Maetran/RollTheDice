@@ -18,14 +18,12 @@ USER_PAGES = {
 def test_every_user_facing_page_loads_shared_localization_catalog():
     for filename in USER_PAGES:
         source = (STATIC / filename).read_text(encoding="utf-8")
-        assert '/static/i18n.js' in source, f"{filename} does not load the shared localization catalog"
+        assert '/static/shell.js' in source, f"{filename} does not load the shared localization catalog"
 
 
 def test_localization_catalog_is_available_offline():
     service_worker = (STATIC / "sw.js").read_text(encoding="utf-8")
-    assert "'/static/i18n.js'" in service_worker
-    assert "'/static/ui.js'" in service_worker
-    assert "'/static/pwa.js'" in service_worker
+    assert "'/static/shell.js'" in service_worker
     assert "'/manifest-en.webmanifest'" in service_worker
 
 

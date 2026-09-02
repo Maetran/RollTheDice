@@ -1,4 +1,4 @@
-from app import main
+from app import game_engine, game_snapshot
 from tests.support import GameStateTestCase
 
 
@@ -8,13 +8,13 @@ class ResumePauseTests(GameStateTestCase):
         g["_players"][0]["ws"] = object()
         g["_players"][1]["ws"] = None
 
-        snap = main.snapshot(g)
+        snap = game_snapshot.snapshot(g)
 
         self.assertTrue(snap["_paused"])
         self.assertEqual(snap["_offline_players"], [{"id": "p2", "name": "Ben"}])
         self.assertEqual(snap["_connected"], {"p1": True, "p2": False})
 
-        ok, why = main.can_roll_now(g, "p1")
+        ok, why = game_engine.can_roll_now(g, "p1")
         self.assertFalse(ok)
         self.assertIn("Ben", why)
 
@@ -23,8 +23,8 @@ class ResumePauseTests(GameStateTestCase):
         for player in g["_players"]:
             player["ws"] = object()
 
-        snap = main.snapshot(g)
-        ok, why = main.can_roll_now(g, "p1")
+        snap = game_snapshot.snapshot(g)
+        ok, why = game_engine.can_roll_now(g, "p1")
 
         self.assertFalse(snap["_paused"])
         self.assertEqual(snap["_offline_players"], [])
@@ -34,8 +34,8 @@ class ResumePauseTests(GameStateTestCase):
         g = self.make_game(mode=1, players=[("p1", "Solo")])
         g["_players"][0]["ws"] = None
 
-        snap = main.snapshot(g)
-        ok, why = main.can_roll_now(g, "p1")
+        snap = game_snapshot.snapshot(g)
+        ok, why = game_engine.can_roll_now(g, "p1")
 
         self.assertFalse(snap["_paused"])
         self.assertEqual(snap["_offline_players"], [])
@@ -47,8 +47,8 @@ class ResumePauseTests(GameStateTestCase):
         g["_manual_pause_by"] = "p1"
         g["_manual_pause_by_name"] = "Solo"
 
-        snap = main.snapshot(g)
-        ok, why = main.can_roll_now(g, "p1")
+        snap = game_snapshot.snapshot(g)
+        ok, why = game_engine.can_roll_now(g, "p1")
 
         self.assertTrue(snap["_paused"])
         self.assertTrue(snap["_manual_pause"])

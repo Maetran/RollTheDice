@@ -1,6 +1,6 @@
 import unittest
 
-from app import main
+from app import game_engine, game_scoring, game_state
 from tests.support import GameStateTestCase
 
 
@@ -19,7 +19,7 @@ class RollApplicationTestCase(GameStateTestCase):
         g["_dice"] = [1, 2, 3, 4, 5]
         g["_holds"] = [True, False, True, False, False]
 
-        dice = main.apply_roll(g, randint_fn=sequence_rng([6, 1, 2]))
+        dice = game_engine.apply_roll(g, randint_fn=sequence_rng([6, 1, 2]))
 
         self.assertEqual(dice, [1, 6, 3, 1, 2])
         self.assertEqual(g["_rolls_used"], 1)
@@ -29,9 +29,9 @@ class RollApplicationTestCase(GameStateTestCase):
     def test_apply_roll_records_first_four_of_a_kind_once(self):
         g = self.make_game()
 
-        main.apply_roll(g, randint_fn=sequence_rng([1, 2, 3, 4, 5]))
-        main.apply_roll(g, randint_fn=sequence_rng([2, 2, 2, 2, 5]))
-        main.apply_roll(g, randint_fn=sequence_rng([6, 6, 6, 6, 6]))
+        game_engine.apply_roll(g, randint_fn=sequence_rng([1, 2, 3, 4, 5]))
+        game_engine.apply_roll(g, randint_fn=sequence_rng([2, 2, 2, 2, 5]))
+        game_engine.apply_roll(g, randint_fn=sequence_rng([6, 6, 6, 6, 6]))
 
         self.assertEqual(g["_rolls_used"], 3)
         self.assertEqual(g["_turn"]["roll_index"], 3)
@@ -46,7 +46,7 @@ class RollApplicationTestCase(GameStateTestCase):
         g["_announced_by"] = "p1"
         g["_announced_board"] = "p1"
 
-        main._begin_next_turn(g, "p1")
+        game_engine._begin_next_turn(g, "p1")
 
         self.assertEqual(g["_dice"], [0, 0, 0, 0, 0])
         self.assertEqual(g["_holds"], [False, False, False, False, False])
@@ -58,34 +58,51 @@ class RollApplicationTestCase(GameStateTestCase):
 
     def test_roll_cap_is_three_five_on_last_cell_and_one_in_hardcore(self):
         g = self.make_game()
-        main._set_roll_cap_for_current_turn(g)
+        game_engine._set_roll_cap_for_current_turn(g)
         self.assertEqual(g["_rolls_max"], 3)
 
         g_last = self.make_game()
         board = g_last["_scoreboards"]["p1"]
-        for row in main.WRITABLE_ROWS:
-            for col in main.WRITABLE_COLS:
+        for row in game_state.WRITABLE_ROWS:
+            for col in game_state.WRITABLE_COLS:
                 board[f"{row},{col}"] = 0
-        board.pop(f"{main.WRITABLE_ROWS[-1]},ang")
-        main._set_roll_cap_for_current_turn(g_last)
+        board.pop(f"{game_state.WRITABLE_ROWS[-1]},ang")
+        game_engine._set_roll_cap_for_current_turn(g_last)
         self.assertEqual(g_last["_rolls_max"], 5)
 
         g_hc = self.make_game(hardcore=True)
-        main._set_roll_cap_for_current_turn(g_hc)
+        game_engine._set_roll_cap_for_current_turn(g_hc)
         self.assertEqual(g_hc["_rolls_max"], 1)
+
+    def test_foreign_scoreboard_keys_do_not_complete_a_game_or_change_progress(self):
+        g = self.make_game(mode=1, players=[("p1", "A")])
+        board = g["_scoreboards"]["p1"]
+        for index in range(game_state.WRITABLE_CELLS_PER_PLAYER):
+            board[f"foreign-{index}"] = 999
+
+        self.assertFalse(game_engine._is_game_finished(g))
+        self.assertEqual(game_engine._remaining_cells_for(g, "p1"), game_state.WRITABLE_CELLS_PER_PLAYER)
+        self.assertEqual(game_engine._progress_for_game(g)[0]["filled"], 0)
+
+    def test_rolls_are_rejected_after_game_completion(self):
+        g = self.make_game(mode=1, players=[("p1", "A")])
+        g["_finished"] = True
+        g["_started"] = False
+
+        self.assertEqual(game_engine.can_roll_now(g, "p1"), (False, "Spiel ist bereits beendet"))
 
     def test_correction_disabled_reason_is_shared_across_modes(self):
         regular = self.make_game(players=[("p1", "A"), ("p2", "B")])
         single = self.make_game(mode=1)
         hardcore = self.make_game(hardcore=True)
 
-        self.assertIsNone(main.correction_disabled_reason(regular))
+        self.assertIsNone(game_state.correction_disabled_reason(regular))
         self.assertEqual(
-            main.correction_disabled_reason(single),
+            game_state.correction_disabled_reason(single),
             "Korrekturmodus ist im 1‑Spieler‑Modus deaktiviert",
         )
         self.assertEqual(
-            main.correction_disabled_reason(hardcore),
+            game_state.correction_disabled_reason(hardcore),
             "Korrekturmodus ist im Hardcore-Modus deaktiviert",
         )
 
@@ -94,30 +111,30 @@ class WriteGuardTestCase(GameStateTestCase):
     def test_down_and_up_columns_enforce_their_required_order(self):
         g = self.make_game()
 
-        self.assertEqual(main.can_write_now(g, "p1", 0, "down", during_turn_announce=None), (True, ""))
-        ok, why = main.can_write_now(g, "p1", 1, "down", during_turn_announce=None)
+        self.assertEqual(game_engine.can_write_now(g, "p1", 0, "down", during_turn_announce=None), (True, ""))
+        ok, why = game_engine.can_write_now(g, "p1", 1, "down", during_turn_announce=None)
         self.assertFalse(ok)
         self.assertIn("Zeile 0", why)
 
-        self.assertEqual(main.can_write_now(g, "p1", 15, "up", during_turn_announce=None), (True, ""))
-        ok, why = main.can_write_now(g, "p1", 14, "up", during_turn_announce=None)
+        self.assertEqual(game_engine.can_write_now(g, "p1", 15, "up", during_turn_announce=None), (True, ""))
+        ok, why = game_engine.can_write_now(g, "p1", 14, "up", during_turn_announce=None)
         self.assertFalse(ok)
         self.assertIn("Zeile 15", why)
 
         g["_scoreboards"]["p1"]["0,down"] = 2
-        self.assertEqual(main.can_write_now(g, "p1", 1, "down", during_turn_announce=None), (True, ""))
+        self.assertEqual(game_engine.can_write_now(g, "p1", 1, "down", during_turn_announce=None), (True, ""))
 
     def test_active_announcement_allows_only_matching_ang_cell(self):
         g = self.make_game()
         g["_rolls_used"] = 2
 
-        self.assertEqual(main.can_write_now(g, "p1", 14, "ang", during_turn_announce="poker"), (True, ""))
+        self.assertEqual(game_engine.can_write_now(g, "p1", 14, "ang", during_turn_announce="poker"), (True, ""))
 
-        ok, why = main.can_write_now(g, "p1", 13, "ang", during_turn_announce="poker")
+        ok, why = game_engine.can_write_now(g, "p1", 13, "ang", during_turn_announce="poker")
         self.assertFalse(ok)
         self.assertIn("Angesagt ist poker", why)
 
-        ok, why = main.can_write_now(g, "p1", 14, "free", during_turn_announce="poker")
+        ok, why = game_engine.can_write_now(g, "p1", 14, "free", during_turn_announce="poker")
         self.assertFalse(ok)
         self.assertIn("Nur ❗-Spalte", why)
 
@@ -125,27 +142,27 @@ class WriteGuardTestCase(GameStateTestCase):
         g = self.make_game(hardcore=True)
         g["_rolls_used"] = 1
 
-        self.assertEqual(main.can_write_now(g, "p1", 14, "ang", during_turn_announce=None), (True, ""))
-        self.assertEqual(main.can_write_now(g, "p1", 14, "free", during_turn_announce=None), (True, ""))
+        self.assertEqual(game_engine.can_write_now(g, "p1", 14, "ang", during_turn_announce=None), (True, ""))
+        self.assertEqual(game_engine.can_write_now(g, "p1", 14, "free", during_turn_announce=None), (True, ""))
 
 
 class PokerStrikeRuleTestCase(unittest.TestCase):
     def test_regular_columns_score_poker_only_on_first_four_kind_roll(self):
         dice = [4, 4, 4, 4, 2]
 
-        self.assertTrue(main.poker_points_allowed(dice, "free", roll_index=1, first4oak_roll=1))
-        self.assertFalse(main.poker_points_allowed(dice, "free", roll_index=2, first4oak_roll=1))
+        self.assertTrue(game_scoring.poker_points_allowed(dice, "free", roll_index=1, first4oak_roll=1))
+        self.assertFalse(game_scoring.poker_points_allowed(dice, "free", roll_index=2, first4oak_roll=1))
 
     def test_five_of_a_kind_always_scores_as_poker(self):
         dice = [6, 6, 6, 6, 6]
 
-        self.assertTrue(main.poker_points_allowed(dice, "down", roll_index=3, first4oak_roll=1))
+        self.assertTrue(game_scoring.poker_points_allowed(dice, "down", roll_index=3, first4oak_roll=1))
 
     def test_announced_poker_scores_in_ang_after_later_four_kind_roll(self):
         dice = [4, 4, 4, 4, 2]
 
         self.assertTrue(
-            main.poker_points_allowed(
+            game_scoring.poker_points_allowed(
                 dice,
                 "ang",
                 roll_index=2,
@@ -157,9 +174,9 @@ class PokerStrikeRuleTestCase(unittest.TestCase):
     def test_correction_can_use_remembered_first_four_kind_roll(self):
         dice = [4, 4, 4, 4, 2]
 
-        self.assertFalse(main.poker_points_allowed(dice, "free", roll_index=3, first4oak_roll=1))
+        self.assertFalse(game_scoring.poker_points_allowed(dice, "free", roll_index=3, first4oak_roll=1))
         self.assertTrue(
-            main.poker_points_allowed(
+            game_scoring.poker_points_allowed(
                 dice,
                 "free",
                 roll_index=3,

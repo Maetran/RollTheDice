@@ -13,7 +13,7 @@
     `scripts/sync_static_versions.py` ausführen, nicht manuell hochzählen.
 */
 
-const CACHE_VERSION = 'assets-997b09c68e34';
+const CACHE_VERSION = 'assets-eb308a4f044d';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
@@ -25,17 +25,13 @@ const PRECACHE_URLS = [
   '/admin',
   '/offline',
   '/static/auth.js',
-  '/static/ui.js',
-  '/static/pwa.js',
-  '/static/i18n.js',
+  '/static/shell.js',
   '/static/lobby.js',
+  '/static/lobby.css',
   '/static/style.css',
-  '/static/theme.js',
   '/static/scoreboard.js',
   '/static/emoji.js',
   '/static/room.js',
-  '/static/room-scoring.js',
-  '/static/chat.js',
   '/static/favicon.png',
   '/static/icons/apple-touch-icon-180.png',
   '/static/icons/icon-192.png',
@@ -67,16 +63,15 @@ self.addEventListener('message', (event) => {
 
 // — Activate: alte Caches aufräumen
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((k) => k !== PRECACHE && k !== RUNTIME)
-          .map((k) => caches.delete(k))
-      )
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(
+      keys
+        .filter((k) => k !== PRECACHE && k !== RUNTIME)
+        .map((k) => caches.delete(k))
+    );
+    await self.clients.claim();
+  })());
 });
 
 // — Fetch-Routing
@@ -115,7 +110,11 @@ async function cacheFirst(req) {
 
   try {
     const res = await fetch(req, { cache: 'no-cache' });
-    if (res && res.ok) cache.put(req, res.clone());
+    if (res && res.ok) {
+      try { await cache.put(req, res.clone()); } catch (cacheError) {
+        // Eine volle/gesperrte Cache Storage darf eine gute Netzantwort nicht verwerfen.
+      }
+    }
     return res;
   } catch (e) {
     const canonical = await cache.match(url.pathname, { ignoreSearch: true });
@@ -149,7 +148,11 @@ async function networkFirst(req) {
   const runtime = await caches.open(RUNTIME);
   try {
     const res = await fetch(req);
-    if (res && res.ok) runtime.put(req, res.clone());
+    if (res && res.ok) {
+      try { await runtime.put(req, res.clone()); } catch (cacheError) {
+        // Netzantwort bleibt auch dann nutzbar, wenn Cache Storage fehlschlägt.
+      }
+    }
     return res;
   } catch (e) {
     const cached = await runtime.match(req);

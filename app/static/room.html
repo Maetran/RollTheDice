@@ -8,12 +8,9 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=997b09c68e34">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=997b09c68e34" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=997b09c68e34" sizes="180x180">
-  <script src="/static/i18n.js?v=997b09c68e34" defer></script>
-  <script src="/static/ui.js?v=997b09c68e34" defer></script>
-  <script src="/static/pwa.js?v=997b09c68e34" defer></script>
+  <link rel="manifest" href="/manifest.webmanifest?v=eb308a4f044d">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=eb308a4f044d" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=eb308a4f044d" sizes="180x180">
   <!--
     room.html – Spielraum
     ---------------------
@@ -24,8 +21,8 @@
     - Ein schlanker Header bietet Reactions, Regeln-Link und Zurück-zur-Lobby
   -->
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <script src="/static/theme.js?v=997b09c68e34" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=997b09c68e34">
+  <script src="/static/shell.js?v=eb308a4f044d" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=eb308a4f044d">
 </head>
 <body class="room-page">
   <h1 class="visually-hidden">ZDWA Spielraum</h1>
@@ -91,8 +88,8 @@
   </div>
 
   <!-- Scripts: zuerst scoreboard (Renderer), dann room (WS/Steuerung als ES-Modul) -->
-  <script src="/static/scoreboard.js?v=997b09c68e34" defer></script>
-  <script src="/static/emoji.js?v=997b09c68e34"></script>
-  <script type="module" src="/static/room.js?v=997b09c68e34"></script>
+  <script src="/static/scoreboard.js?v=eb308a4f044d" defer></script>
+  <script src="/static/emoji.js?v=eb308a4f044d"></script>
+  <script type="module" src="/static/room.js?v=eb308a4f044d"></script>
 </body>
 </html>
