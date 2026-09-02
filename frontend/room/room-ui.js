@@ -45,7 +45,7 @@
     element.textContent = window.ZDWA_I18N?.t?.(actionGuidance(snapshot)) || actionGuidance(snapshot);
   }
 
-  async function showGameResults(snapshot) {
+  async function showGameResults(snapshot, unlockedAchievements = []) {
     if (window._resultsShown) return;
     window._resultsShown = true;
     window._fatalWsClose = true;
@@ -69,11 +69,15 @@
     const lines = results.length
       ? results.map((entry, index) => `${index + 1}. ${labelFor(entry)}${Number.isFinite(entry?.total) ? ` – ${entry.total} Punkte` : ""}`)
       : ["Das Spiel wurde erfolgreich beendet."];
+    const achievementLines = unlockedAchievements.flatMap(achievement => [
+      `🏆 Erfolg erreicht: ${achievement.name || "Erfolg"}`,
+      achievement.description || "",
+    ]).filter(Boolean);
 
     const choice = window.ZDWA_UI?.dialog
       ? await window.ZDWA_UI.dialog({
-          title: results.length > 1 ? "Endstand" : "Spiel beendet",
-          message: lines.join("\n"),
+          title: achievementLines.length ? "Erfolg erreicht!" : (results.length > 1 ? "Endstand" : "Spiel beendet"),
+          message: [...lines, ...achievementLines].join("\n"),
           kind: "success",
           dismissible: false,
           actions: [

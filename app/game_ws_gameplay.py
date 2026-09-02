@@ -239,10 +239,11 @@ async def _write_field(
         "first4oak_roll": turn.get("first4oak_roll"),
     }
     _begin_next_turn(g, player_id)
+    completion = {}
     if _is_game_finished(g):
         g["_started"] = False
         g["_finished"] = True
-        finalize_game(g)
+        completion = finalize_game(g) or {}
 
     touch(g)
     await broadcast(
@@ -250,6 +251,7 @@ async def _write_field(
         {
             "scoreboard": snapshot(g),
             "score_event": {"field": field, "points": value, "player_id": player_id},
+            "achievement_unlocks": completion.get("achievement_unlocks", {}),
         },
     )
 

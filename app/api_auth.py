@@ -250,9 +250,7 @@ def admin_update_user(user_id: int, payload: AdminUserUpdateRequest, request: Re
         user = db.get(User, user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
-        removes_admin = user.role == "admin" and (
-            payload.role == "user" or payload.is_active is False
-        )
+        removes_admin = user.role == "admin" and (payload.role == "user" or payload.is_active is False)
         if removes_admin:
             active_admins = int(
                 db.scalar(select(func.count()).select_from(User).where(User.role == "admin", User.is_active.is_(True)))

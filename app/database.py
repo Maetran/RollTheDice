@@ -30,6 +30,7 @@ def configure_database(data_dir: Path) -> None:
     _engine = create_engine(_database_url, connect_args=connect_args, pool_pre_ping=True)
 
     if _database_url.startswith("sqlite"):
+
         @event.listens_for(_engine, "connect")
         def _sqlite_pragmas(dbapi_connection, _connection_record) -> None:
             cursor = dbapi_connection.cursor()

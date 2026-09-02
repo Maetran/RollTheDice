@@ -67,7 +67,7 @@
   top: .5rem;
   z-index: 30;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: .35rem;
   margin: .75rem 0 1rem;
   padding: .3rem;

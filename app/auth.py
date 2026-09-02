@@ -201,9 +201,7 @@ def resolve_session(connection: Request | WebSocket) -> AuthIdentity | None:
         return None
     now = utcnow()
     with session_scope() as db:
-        login_session = db.scalar(
-            select(LoginSession).where(LoginSession.token_hash == hash_session_token(raw_token))
-        )
+        login_session = db.scalar(select(LoginSession).where(LoginSession.token_hash == hash_session_token(raw_token)))
         if not login_session or as_utc(login_session.expires_at) <= now:
             if login_session:
                 db.delete(login_session)
@@ -337,5 +335,7 @@ def ensure_bootstrap_admin() -> bool:
     if not username or not password:
         raise RuntimeError("Both ROLLTHEDICE_ADMIN_USERNAME and ROLLTHEDICE_ADMIN_PASSWORD are required")
     create_user(username, password, role="admin", must_change_password=True)
-    logger.warning("Bootstrap administrator %s was created; remove the bootstrap password from the environment", username)
+    logger.warning(
+        "Bootstrap administrator %s was created; remove the bootstrap password from the environment", username
+    )
     return True

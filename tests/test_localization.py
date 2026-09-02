@@ -18,7 +18,7 @@ USER_PAGES = {
 def test_every_user_facing_page_loads_shared_localization_catalog():
     for filename in USER_PAGES:
         source = (STATIC / filename).read_text(encoding="utf-8")
-        assert '/static/shell.js' in source, f"{filename} does not load the shared localization catalog"
+        assert "/static/shell.js" in source, f"{filename} does not load the shared localization catalog"
 
 
 def test_localization_catalog_is_available_offline():

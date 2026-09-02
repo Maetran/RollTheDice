@@ -77,8 +77,8 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
     def test_lobby_uses_its_small_page_specific_stylesheet(self):
         version = content_version()
         lobby = (main.STATIC_DIR / "index.html").read_text(encoding="utf-8")
-        self.assertIn(f'/static/lobby.css?v={version}', lobby)
-        self.assertNotIn('/static/style.css', lobby)
+        self.assertIn(f"/static/lobby.css?v={version}", lobby)
+        self.assertNotIn("/static/style.css", lobby)
 
     def test_every_page_has_one_h1_and_a_meta_description(self):
         for html_path in main.STATIC_DIR.glob("*.html"):

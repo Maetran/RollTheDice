@@ -60,7 +60,7 @@ def poker_points_allowed(
     except (TypeError, ValueError):
         roll = 0
     first = first4oak_roll
-    if (not first if correction else first is None):
+    if not first if correction else first is None:
         first = roll
     try:
         first = int(first)

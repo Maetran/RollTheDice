@@ -58,8 +58,7 @@ def validate_auth_protection_config() -> None:
     site_key, secret = turnstile_config()
     if bool(site_key) != bool(secret):
         raise RuntimeError(
-            "ROLLTHEDICE_TURNSTILE_SITE_KEY and ROLLTHEDICE_TURNSTILE_SECRET "
-            "must either both be set or both be empty"
+            "ROLLTHEDICE_TURNSTILE_SITE_KEY and ROLLTHEDICE_TURNSTILE_SECRET must either both be set or both be empty"
         )
 
 
@@ -88,9 +87,13 @@ def _login_key(request: Request, normalized_username: str) -> str:
 
 def _event_count(kind: str, since, *, client_key: str | None = None) -> int:
     with session_scope() as db:
-        stmt = select(func.count()).select_from(AuthRateEvent).where(
-            AuthRateEvent.kind == kind,
-            AuthRateEvent.occurred_at >= since,
+        stmt = (
+            select(func.count())
+            .select_from(AuthRateEvent)
+            .where(
+                AuthRateEvent.kind == kind,
+                AuthRateEvent.occurred_at >= since,
+            )
         )
         if client_key is not None:
             stmt = stmt.where(AuthRateEvent.client_key == client_key)
@@ -108,9 +111,7 @@ def _record_event(kind: str, client_key: str) -> None:
 def enforce_registration_rate_limit(request: Request) -> None:
     now = utcnow()
     client_key = _client_key(request)
-    burst_limited = (
-        _event_count("register", now - REGISTER_BURST_WINDOW, client_key=client_key) >= REGISTER_BURST_MAX
-    )
+    burst_limited = _event_count("register", now - REGISTER_BURST_WINDOW, client_key=client_key) >= REGISTER_BURST_MAX
     hourly_limited = (
         _event_count("register", now - REGISTER_IP_WINDOW, client_key=client_key) >= REGISTER_IP_MAX
         or _event_count("register", now - REGISTER_GLOBAL_WINDOW) >= REGISTER_GLOBAL_MAX
@@ -131,14 +132,11 @@ def enforce_game_creation_rate_limit(request: Request) -> None:
     now = utcnow()
     client_key = _client_key(request)
     burst_limited = (
-        _event_count("game_create", now - GAME_CREATE_BURST_WINDOW, client_key=client_key)
-        >= GAME_CREATE_BURST_MAX
+        _event_count("game_create", now - GAME_CREATE_BURST_WINDOW, client_key=client_key) >= GAME_CREATE_BURST_MAX
     )
     hourly_limited = (
-        _event_count("game_create", now - GAME_CREATE_IP_WINDOW, client_key=client_key)
-        >= GAME_CREATE_IP_MAX
-        or _event_count("game_create", now - GAME_CREATE_GLOBAL_WINDOW)
-        >= GAME_CREATE_GLOBAL_MAX
+        _event_count("game_create", now - GAME_CREATE_IP_WINDOW, client_key=client_key) >= GAME_CREATE_IP_MAX
+        or _event_count("game_create", now - GAME_CREATE_GLOBAL_WINDOW) >= GAME_CREATE_GLOBAL_MAX
     )
     if burst_limited or hourly_limited:
         raise HTTPException(
@@ -166,10 +164,12 @@ def record_login_failure(key: str) -> None:
 
 def clear_login_failures(key: str) -> None:
     with session_scope() as db:
-        db.execute(delete(AuthRateEvent).where(
-            AuthRateEvent.kind == "login_failure",
-            AuthRateEvent.client_key == key,
-        ))
+        db.execute(
+            delete(AuthRateEvent).where(
+                AuthRateEvent.kind == "login_failure",
+                AuthRateEvent.client_key == key,
+            )
+        )
 
 
 def verify_registration_challenge(request: Request, token: str | None) -> None:
@@ -179,11 +179,13 @@ def verify_registration_challenge(request: Request, token: str | None) -> None:
     if not token:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="captcha_required")
 
-    body = urlencode({
-        "secret": secret,
-        "response": token,
-        "remoteip": _client_address(request),
-    }).encode("ascii")
+    body = urlencode(
+        {
+            "secret": secret,
+            "response": token,
+            "remoteip": _client_address(request),
+        }
+    ).encode("ascii")
     verification_request = UrlRequest(
         TURNSTILE_VERIFY_URL,
         data=body,

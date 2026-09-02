@@ -200,8 +200,9 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
 
     # Vollständige Historie für Profile und Rankings. Die bisherigen JSON-
     # Leaderboards bleiben während der Übergangsphase parallel bestehen.
+    achievement_unlocks: dict[int, list[dict]] = {}
     if persist_runtime_game(g, totals, snapshot_fields):
-        sync_achievements_for_users(
+        achievement_unlocks = sync_achievements_for_users(
             {int(player["user_id"]) for player in g.get("_players", []) if player.get("user_id") is not None}
         )
     delete_active_game(str(g.get("_id") or ""))
@@ -392,3 +393,10 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
         average_points=winner_points_for_average,
         hardcore=is_hc,
     )
+    return {
+        "achievement_unlocks": {
+            str(player["id"]): achievement_unlocks.get(int(player["user_id"]), [])
+            for player in g.get("_players", [])
+            if player.get("user_id") is not None and achievement_unlocks.get(int(player["user_id"]))
+        }
+    }

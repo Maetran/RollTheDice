@@ -24,8 +24,7 @@ def stable_game_id(entry: dict) -> str | None:
     if not entry.get("ts") or not entry.get("name") or entry.get("points") is None:
         return None
     identity = {
-        key: entry.get(key)
-        for key in ("ts", "name", "points", "gamename", "opponent", "opp_points", "hardcore")
+        key: entry.get(key) for key in ("ts", "name", "points", "gamename", "opponent", "opp_points", "hardcore")
     }
     digest = hashlib.sha256(
         json.dumps(identity, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -65,11 +64,7 @@ def _scoreboard_total(board: dict, *, hardcore: bool) -> int:
             continue
         if index not in rows or not isinstance(item.get("rows"), dict):
             continue
-        rows[index] = {
-            str(key): int(value)
-            for key, value in item["rows"].items()
-            if isinstance(value, (int, float))
-        }
+        rows[index] = {str(key): int(value) for key, value in item["rows"].items() if isinstance(value, (int, float))}
     return int(compute_overall(rows, hardcore=hardcore)["overall"]["overall_total"])
 
 
@@ -86,16 +81,18 @@ def _participants_from_snapshot(snapshot: dict) -> list[dict]:
         team = str(player.get("team") or "") or None
         board_key = team if mode.lower() == "2v2" and team else player_key
         points = _scoreboard_total(scoreboards.get(board_key, {}), hardcore=hardcore)
-        participants.append({
-            "position": position,
-            "player_key": player_key,
-            "display_name": str(player.get("name") or "Gast")[:64],
-            "team": team,
-            "points": points,
-            # Numerische user_ids aus JSON dürfen nicht in eine neue Datenbank
-            # übernommen werden: dort könnten sie zu einem anderen Konto gehören.
-            "user_id": None,
-        })
+        participants.append(
+            {
+                "position": position,
+                "player_key": player_key,
+                "display_name": str(player.get("name") or "Gast")[:64],
+                "team": team,
+                "points": points,
+                # Numerische user_ids aus JSON dürfen nicht in eine neue Datenbank
+                # übernommen werden: dort könnten sie zu einem anderen Konto gehören.
+                "user_id": None,
+            }
+        )
     return participants
 
 
@@ -131,16 +128,18 @@ def persist_completed_game(
             db.add(row)
             db.flush()
             for position, participant in enumerate(participants):
-                db.add(GameParticipant(
-                    game_id=row.id,
-                    position=int(participant.get("position", position)),
-                    player_key=str(participant.get("player_key") or f"player-{position}")[:64],
-                    display_name=str(participant.get("display_name") or "Gast")[:64],
-                    team=(str(participant.get("team"))[:8] if participant.get("team") else None),
-                    points=int(participant.get("points", 0)),
-                    user_id=participant.get("user_id"),
-                    assigned_at=utcnow() if participant.get("user_id") is not None else None,
-                ))
+                db.add(
+                    GameParticipant(
+                        game_id=row.id,
+                        position=int(participant.get("position", position)),
+                        player_key=str(participant.get("player_key") or f"player-{position}")[:64],
+                        display_name=str(participant.get("display_name") or "Gast")[:64],
+                        team=(str(participant.get("team"))[:8] if participant.get("team") else None),
+                        points=int(participant.get("points", 0)),
+                        user_id=participant.get("user_id"),
+                        assigned_at=utcnow() if participant.get("user_id") is not None else None,
+                    )
+                )
         return True
     except SQLAlchemyError:
         logger.exception("Could not persist completed game %s", game_id)
@@ -193,9 +192,9 @@ def delete_completed_game(*, game_id: str, admin_user_id: int, reason: str) -> d
             raise LookupError("game_not_found")
         participants = list(game.participants)
         winner_points = max((int(participant.points) for participant in participants), default=0)
-        affected_user_ids = sorted({
-            int(participant.user_id) for participant in participants if participant.user_id is not None
-        })
+        affected_user_ids = sorted(
+            {int(participant.user_id) for participant in participants if participant.user_id is not None}
+        )
         result = {
             "game_id": game.game_id,
             "game_name": game.game_name,
@@ -206,16 +205,18 @@ def delete_completed_game(*, game_id: str, admin_user_id: int, reason: str) -> d
             "winner_points": winner_points,
             "affected_user_ids": affected_user_ids,
         }
-        db.add(DeletedGame(
-            game_id=game.game_id,
-            game_name=game.game_name,
-            finished_at=game.finished_at,
-            mode=game.mode,
-            hardcore=game.hardcore,
-            deleted_at=utcnow(),
-            deleted_by_user_id=admin_user_id,
-            reason=clean_reason,
-        ))
+        db.add(
+            DeletedGame(
+                game_id=game.game_id,
+                game_name=game.game_name,
+                finished_at=game.finished_at,
+                mode=game.mode,
+                hardcore=game.hardcore,
+                deleted_at=utcnow(),
+                deleted_by_user_id=admin_user_id,
+                reason=clean_reason,
+            )
+        )
         db.delete(game)
         return result
 
@@ -228,14 +229,16 @@ def persist_runtime_game(game: dict, totals: dict[str, int], snapshot: dict) -> 
         player_key = str(player.get("id") or f"player-{position}")
         team = game.get("_team_of", {}).get(player_key) if is_team else None
         score_key = team if is_team else player_key
-        participants.append({
-            "position": position,
-            "player_key": player_key,
-            "display_name": player.get("name") or "Gast",
-            "team": team,
-            "points": int(totals.get(score_key, 0)),
-            "user_id": player.get("user_id"),
-        })
+        participants.append(
+            {
+                "position": position,
+                "player_key": player_key,
+                "display_name": player.get("name") or "Gast",
+                "team": team,
+                "points": int(totals.get(score_key, 0)),
+                "user_id": player.get("user_id"),
+            }
+        )
     finished_at = _parse_datetime(snapshot.get("finished_at"))
     return persist_completed_game(
         game_id=str(game.get("_id") or snapshot.get("game_id") or ""),
@@ -271,7 +274,9 @@ def import_legacy_leaderboards(paths: list[Path]) -> int:
                 current = candidates.get(game_id)
                 has_snapshot = isinstance(entry.get("players"), list) and isinstance(entry.get("scoreboards"), dict)
                 current_has_snapshot = bool(
-                    current and isinstance(current.get("players"), list) and isinstance(current.get("scoreboards"), dict)
+                    current
+                    and isinstance(current.get("players"), list)
+                    and isinstance(current.get("scoreboards"), dict)
                 )
                 if current is None or (has_snapshot and not current_has_snapshot):
                     candidates[game_id] = entry
@@ -280,14 +285,16 @@ def import_legacy_leaderboards(paths: list[Path]) -> int:
     for game_id, entry in candidates.items():
         participants = _participants_from_snapshot(entry)
         if not participants:
-            participants = [{
-                "position": 0,
-                "player_key": f"legacy-{game_id}",
-                "display_name": entry.get("name") or "Gast",
-                "team": None,
-                "points": int(entry.get("points", 0)),
-                "user_id": None,
-            }]
+            participants = [
+                {
+                    "position": 0,
+                    "player_key": f"legacy-{game_id}",
+                    "display_name": entry.get("name") or "Gast",
+                    "team": None,
+                    "points": int(entry.get("points", 0)),
+                    "user_id": None,
+                }
+            ]
         if persist_completed_game(
             game_id=game_id,
             game_name=str(entry.get("gamename") or entry.get("name") or ""),

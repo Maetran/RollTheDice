@@ -539,7 +539,9 @@ class AccountDatabaseTestCase(GameStateTestCase):
         snapshot["finished_at"] = "2026-08-30T01:30:00+00:00"  # Sunday, 03:30 in Zurich
         self.assertTrue(persist_runtime_game(g, {"p1": 1_200}, snapshot))
         with session_scope() as db:
-            db.get(User, user.id).statistics_views = 10
+            player = db.get(User, user.id)
+            player.statistics_views = 10
+            player.achievement_gameplay_started_at = datetime(2026, 8, 1, tzinfo=timezone.utc)
 
         achievements = public_player_profile(user.username)["player"]["achievements"]
         unlocked = {item["key"] for item in achievements["unlocked"]}
@@ -554,11 +556,67 @@ class AccountDatabaseTestCase(GameStateTestCase):
             "statistics_views",
         }
         self.assertTrue(expected.issubset(unlocked), unlocked)
-        self.assertEqual(len(unlocked) + len(achievements["locked"]), 33)
+        self.assertEqual(len(unlocked) + len(achievements["locked"]), 47)
         weekend = next(item for item in achievements["locked"] if item["key"] == "weekend_games")
         self.assertEqual(weekend["progress"], {"current": 1, "target": 10})
         with session_scope() as db:
             self.assertEqual(db.scalar(select(func.count()).select_from(UserAchievement)), len(unlocked))
+
+    def test_gameplay_achievements_ignore_games_before_the_rollout_marker(self):
+        user = create_user("FreshStart", "temporary-fresh-start-123", must_change_password=False)
+        g = self.make_game(mode=1, players=[("p1", user.username)])
+        g["_players"][0]["user_id"] = user.id
+        g["_scoreboards"]["p1"] = self.high_scoreboard()
+        snapshot = build_leaderboard_snapshot_fields(g)
+        snapshot["finished_at"] = "2020-08-30T01:30:00+00:00"
+        self.assertTrue(persist_runtime_game(g, {"p1": 1_200}, snapshot))
+
+        achievements = public_player_profile(user.username)["player"]["achievements"]
+        unlocked = {item["key"] for item in achievements["unlocked"]}
+        self.assertTrue({"account_created", "career_points_1000", "single_game_score_1200"}.issubset(unlocked))
+        self.assertNotIn("lower_six_strikes", unlocked)
+        self.assertNotIn("sixty_once", unlocked)
+        self.assertNotIn("row_401", unlocked)
+
+    def test_new_game_achievements_cover_minimal_combinations_and_differences(self):
+        user = create_user("CombinationPro", "temporary-combination-123", must_change_password=False)
+        g = self.make_game(mode=1, players=[("p1", user.username)])
+        g["_players"][0]["user_id"] = user.id
+        column = {
+            "1": 5,
+            "2": 10,
+            "3": 9,
+            "4": 12,
+            "5": 8,
+            "6": 18,
+            "max": 30,
+            "min": 1,
+            "kenter": 35,
+            "full": 43,
+            "poker": 54,
+            "60": 65,
+        }
+        g["_scoreboards"]["p1"] = self.full_scoreboard({name: column for name in ("down", "free", "up", "ang")})
+        snapshot = build_leaderboard_snapshot_fields(g)
+        snapshot["finished_at"] = "2026-09-03T12:00:00+00:00"
+        self.assertTrue(persist_runtime_game(g, {"p1": 900}, snapshot))
+        with session_scope() as db:
+            db.get(User, user.id).achievement_gameplay_started_at = datetime(2026, 9, 1, tzinfo=timezone.utc)
+
+        unlocked = {item["key"] for item in public_player_profile(user.username)["player"]["achievements"]["unlocked"]}
+        self.assertTrue(
+            {
+                "full_minimal",
+                "poker_minimal",
+                "diff_over_100",
+                "diff_over_120",
+                "diff_pro",
+                "kenter_all_written",
+                "top_totals_equal",
+                "diffs_equal",
+                "all_top_bonuses",
+            }.issubset(unlocked)
+        )
 
     def test_account_statistics_and_history_keep_modes_separate(self):
         user = create_user("ModeStats", "temporary-mode-stats-123", must_change_password=False)

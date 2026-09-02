@@ -162,7 +162,8 @@
             }).finally(() => { location.href = "/"; });
             return;
           }
-          showGameResults(sb);
+          const unlockedAchievements = msg.achievement_unlocks?.[String(myId)] || [];
+          showGameResults(sb, Array.isArray(unlockedAchievements) ? unlockedAchievements : []);
           return;
         }
       }

@@ -26,6 +26,7 @@ def compute_row_subtotals(row: Dict[str, int], *, hardcore: bool = False) -> Dic
     - sum_bottom: Summe von kenter + full + poker + 60
     - total_column: total_top + sum_maxmin + sum_bottom
     """
+
     def g(key: str) -> int:
         return int(row.get(key, 0))
 
@@ -34,7 +35,7 @@ def compute_row_subtotals(row: Dict[str, int], *, hardcore: bool = False) -> Dic
     bonus_top = 30 if sum_top >= threshold else 0
     total_top = sum_top + bonus_top
 
-    if all(key in row for key in ("1","max","min")):
+    if all(key in row for key in ("1", "max", "min")):
         sum_maxmin = max(0, g("1") * (g("max") - g("min")))
     else:
         sum_maxmin = 0
@@ -51,6 +52,7 @@ def compute_row_subtotals(row: Dict[str, int], *, hardcore: bool = False) -> Dic
         "total_column": total_column,
     }
 
+
 def compute_overall(scoresheet: Dict[int, Dict[str, int]], *, hardcore: bool = False) -> Dict[str, Dict[str, int]]:
     """Berechnet alle Spaltensummen und das Gesamttotal eines Boards.
 
@@ -62,7 +64,7 @@ def compute_overall(scoresheet: Dict[int, Dict[str, int]], *, hardcore: bool = F
     """
     result: Dict[str, Dict[str, int]] = {}
     overall_total = 0
-    for idx in (1,2,3,4):
+    for idx in (1, 2, 3, 4):
         row = scoresheet.get(idx, {}) or {}
         subtot = compute_row_subtotals(row, hardcore=hardcore)
         result[f"row{idx}"] = subtot

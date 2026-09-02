@@ -73,6 +73,14 @@ ACHIEVEMENTS: tuple[Achievement, ...] = tuple(
     )
     + [
         Achievement(
+            "top_section_81_without_bonus",
+            "Obere Liga",
+            "In einer Reihe im oberen Teil (1–6) ohne Bonus über 80 Punkte erreicht.",
+            "upper",
+            "top_section",
+            81,
+        ),
+        Achievement(
             "top_section_101",
             "Zahlenzauber",
             "In einer Reihe im oberen Teil (1–6) über 100 Punkte erreicht.",
@@ -122,6 +130,103 @@ ACHIEVEMENTS: tuple[Achievement, ...] = tuple(
             "In einem Spiel alle vier Poker mit Sechsern geschrieben.",
             "poker",
             "poker_perfect",
+            4,
+        ),
+        Achievement(
+            "full_minimal",
+            "Kleines Full",
+            "In einem Spiel alle vier Fulls nur mit Einsern geschrieben.",
+            "full",
+            "full_minimal",
+            4,
+        ),
+        Achievement(
+            "poker_minimal",
+            "Kleiner Poker",
+            "In einem Spiel alle vier Poker nur mit Einsern geschrieben.",
+            "poker",
+            "poker_minimal",
+            4,
+        ),
+        Achievement(
+            "diff_over_100",
+            "Differenz extrem I",
+            "In einer Reihe eine Differenz über 100 erreicht.",
+            "diff",
+            "diff_max",
+            101,
+        ),
+        Achievement(
+            "diff_over_120",
+            "Differenz extrem II",
+            "In einer Reihe eine Differenz über 120 erreicht.",
+            "diff",
+            "diff_max",
+            121,
+        ),
+        Achievement(
+            "diff_pro",
+            "Differenz-Profi",
+            "In einem Spiel alle vier Differenzen über 60 und mindestens eine über 80 erreicht.",
+            "diff",
+            "diff_pro",
+        ),
+        Achievement(
+            "diff_all_under_20",
+            "Differenz null",
+            "In einem Spiel alle vier Differenzen unter 20 gehalten.",
+            "diff",
+            "diff_all_under_20",
+        ),
+        Achievement(
+            "diff_zero",
+            "Differenz abgekackt",
+            "In einem Spiel mindestens eine Differenz von 0 geschrieben.",
+            "diff",
+            "diff_zero",
+        ),
+        Achievement(
+            "kenter_struck",
+            "Kenter gestrichen",
+            "In einem Spiel mindestens einen Kenter gestrichen.",
+            "kenter",
+            "kenter_struck",
+        ),
+        Achievement(
+            "kenter_all_written",
+            "Kenter-Serie",
+            "In einem Spiel alle vier Kenter geschrieben.",
+            "kenter",
+            "kenter_all_written",
+            4,
+        ),
+        Achievement(
+            "top_totals_equal",
+            "Oben im Gleichklang",
+            "In einem Spiel in allen vier Reihen dieselbe Summe bei 1–6 erreicht.",
+            "upper",
+            "top_totals_equal",
+        ),
+        Achievement(
+            "diffs_equal",
+            "Differenz im Gleichklang",
+            "In einem Spiel in allen vier Reihen dieselbe Differenz erreicht.",
+            "diff",
+            "diffs_equal",
+        ),
+        Achievement(
+            "no_top_bonus",
+            "Ohne Prämie",
+            "In einem Spiel in keiner Reihe den oberen Bonus erhalten.",
+            "bonus",
+            "no_top_bonus",
+        ),
+        Achievement(
+            "all_top_bonuses",
+            "Prämienjäger",
+            "In einem Spiel in allen vier Reihen den oberen Bonus erhalten.",
+            "bonus",
+            "all_top_bonuses",
             4,
         ),
         Achievement(
@@ -183,12 +288,20 @@ def _snapshot_rows(snapshot_json: str, participant: GameParticipant, mode: str) 
 
 def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str, int | bool]:
     rows = _snapshot_rows(game.snapshot_json, participant, game.mode)
-    top_max = max((sum(row.get(field, 0) for field in TOP_FIELDS) for row in rows), default=0)
-    row_max = max((compute_row_subtotals(row, hardcore=bool(game.hardcore))["total_column"] for row in rows), default=0)
+    subtotals = [compute_row_subtotals(row, hardcore=bool(game.hardcore)) for row in rows]
+    top_totals = [subtotal["sum_top"] for subtotal in subtotals]
+    differences = [
+        subtotal["sum_maxmin"]
+        for row, subtotal in zip(rows, subtotals)
+        if all(key in row for key in ("1", "max", "min"))
+    ]
+    top_max = max(top_totals, default=0)
+    row_max = max((subtotal["total_column"] for subtotal in subtotals), default=0)
     lower_strikes = sum(1 for row in rows for field in LOWER_FIELDS if field in row and row[field] == 0)
     sixties = [row["60"] for row in rows if "60" in row]
     fulls = [row["full"] for row in rows if "full" in row]
     pokers = [row["poker"] for row in rows if "poker" in row]
+    kenters = [row["kenter"] for row in rows if "kenter" in row]
     local_finished = as_utc(game.finished_at).astimezone(ZURICH)
     return {
         "top_max": top_max,
@@ -203,6 +316,20 @@ def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str
         "sixty_struck_count": sum(value == 0 for value in sixties),
         "full_perfect_count": sum(value == 58 for value in fulls),
         "poker_perfect_count": sum(value == 74 for value in pokers),
+        "full_minimal_count": sum(value == 43 for value in fulls),
+        "poker_minimal_count": sum(value == 54 for value in pokers),
+        "diff_max": max(differences, default=0),
+        "diff_pro": len(differences) == 4
+        and all(value > 60 for value in differences)
+        and any(value > 80 for value in differences),
+        "diff_all_under_20": len(differences) == 4 and all(value < 20 for value in differences),
+        "diff_zero": any(value == 0 for value in differences),
+        "kenter_struck": any(value == 0 for value in kenters),
+        "kenter_written_count": sum(value > 0 for value in kenters),
+        "top_totals_equal": len(top_totals) == 4 and len(set(top_totals)) == 1,
+        "diffs_equal": len(differences) == 4 and len(set(differences)) == 1,
+        "no_top_bonus": len(subtotals) == 4 and all(subtotal["bonus_top"] == 0 for subtotal in subtotals),
+        "all_top_bonuses": len(subtotals) == 4 and all(subtotal["bonus_top"] > 0 for subtotal in subtotals),
         "office_hours": local_finished.weekday() < 5 and 7 <= local_finished.hour < 17,
         "night_owl": 2 <= local_finished.hour < 5,
         "weekend": local_finished.weekday() >= 5,
@@ -218,28 +345,54 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
         .order_by(CompletedGame.finished_at, CompletedGame.id)
     ).all()
     games = [(game, participant, _game_metrics(game, participant)) for game, participant in rows]
+    gameplay_started_at = as_utc(user.achievement_gameplay_started_at)
+    gameplay_games = [entry for entry in games if as_utc(entry[0].finished_at) >= gameplay_started_at]
     return {
         "career_points": sum(int(participant.points) for _game, participant, _metrics in games),
         "games_played": len(games),
         "single_game_score": max((int(participant.points) for _game, participant, _metrics in games), default=0),
-        "top_section": max((int(metrics["top_max"]) for _game, _participant, metrics in games), default=0),
-        "row_score": max((int(metrics["row_max"]) for _game, _participant, metrics in games), default=0),
-        "lower_strikes": max((int(metrics["lower_strikes"]) for _game, _participant, metrics in games), default=0),
-        "sixty_once": any(bool(metrics["sixty_once"]) for _game, _participant, metrics in games),
+        "top_section": max((int(metrics["top_max"]) for _game, _participant, metrics in gameplay_games), default=0),
+        "row_score": max((int(metrics["row_max"]) for _game, _participant, metrics in gameplay_games), default=0),
+        "lower_strikes": max(
+            (int(metrics["lower_strikes"]) for _game, _participant, metrics in gameplay_games), default=0
+        ),
+        "sixty_once": any(bool(metrics["sixty_once"]) for _game, _participant, metrics in gameplay_games),
         "sixty_all_written": max(
-            (int(metrics["sixty_written_count"]) for _game, _participant, metrics in games), default=0
+            (int(metrics["sixty_written_count"]) for _game, _participant, metrics in gameplay_games), default=0
         ),
         "sixty_all_struck": max(
-            (int(metrics["sixty_struck_count"]) for _game, _participant, metrics in games), default=0
+            (int(metrics["sixty_struck_count"]) for _game, _participant, metrics in gameplay_games), default=0
         ),
-        "full_perfect": max((int(metrics["full_perfect_count"]) for _game, _participant, metrics in games), default=0),
+        "full_perfect": max(
+            (int(metrics["full_perfect_count"]) for _game, _participant, metrics in gameplay_games), default=0
+        ),
         "poker_perfect": max(
-            (int(metrics["poker_perfect_count"]) for _game, _participant, metrics in games), default=0
+            (int(metrics["poker_perfect_count"]) for _game, _participant, metrics in gameplay_games), default=0
         ),
-        "office_hours": any(bool(metrics["office_hours"]) for _game, _participant, metrics in games),
-        "night_owl": any(bool(metrics["night_owl"]) for _game, _participant, metrics in games),
-        "weekend_games": sum(1 for _game, _participant, metrics in games if metrics["weekend"]),
-        "early_bird_games": sum(1 for _game, _participant, metrics in games if metrics["early_bird"]),
+        "full_minimal": max(
+            (int(metrics["full_minimal_count"]) for _game, _participant, metrics in gameplay_games), default=0
+        ),
+        "poker_minimal": max(
+            (int(metrics["poker_minimal_count"]) for _game, _participant, metrics in gameplay_games), default=0
+        ),
+        "diff_max": max((int(metrics["diff_max"]) for _game, _participant, metrics in gameplay_games), default=0),
+        "diff_pro": any(bool(metrics["diff_pro"]) for _game, _participant, metrics in gameplay_games),
+        "diff_all_under_20": any(bool(metrics["diff_all_under_20"]) for _game, _participant, metrics in gameplay_games),
+        "diff_zero": any(bool(metrics["diff_zero"]) for _game, _participant, metrics in gameplay_games),
+        "kenter_struck": any(bool(metrics["kenter_struck"]) for _game, _participant, metrics in gameplay_games),
+        "kenter_all_written": max(
+            (int(metrics["kenter_written_count"]) for _game, _participant, metrics in gameplay_games), default=0
+        ),
+        "top_totals_equal": any(bool(metrics["top_totals_equal"]) for _game, _participant, metrics in gameplay_games),
+        "diffs_equal": any(bool(metrics["diffs_equal"]) for _game, _participant, metrics in gameplay_games),
+        "no_top_bonus": any(bool(metrics["no_top_bonus"]) for _game, _participant, metrics in gameplay_games),
+        "all_top_bonuses": max(
+            (4 if metrics["all_top_bonuses"] else 0 for _game, _participant, metrics in gameplay_games), default=0
+        ),
+        "office_hours": any(bool(metrics["office_hours"]) for _game, _participant, metrics in gameplay_games),
+        "night_owl": any(bool(metrics["night_owl"]) for _game, _participant, metrics in gameplay_games),
+        "weekend_games": sum(1 for _game, _participant, metrics in gameplay_games if metrics["weekend"]),
+        "early_bird_games": sum(1 for _game, _participant, metrics in gameplay_games if metrics["early_bird"]),
         "statistics_views": int(user.statistics_views),
         "account_created": True,
     }
@@ -285,14 +438,24 @@ def sync_user_achievements(db, user: User) -> dict:
     return {"unlocked": unlocked, "locked": locked}
 
 
-def sync_achievements_for_users(user_ids: set[int]) -> None:
+def sync_achievements_for_users(user_ids: set[int]) -> dict[int, list[dict]]:
     """Re-evaluate affected users after a completed game changes."""
     from .database import database_schema_ready, session_scope
 
     if not user_ids or not database_schema_ready():
-        return
+        return {}
+    newly_unlocked: dict[int, list[dict]] = {}
     with session_scope() as db:
         for user_id in user_ids:
             user = db.get(User, user_id)
             if user:
-                sync_user_achievements(db, user)
+                existing_keys = {row.achievement_key for row in user.achievements}
+                payload = sync_user_achievements(db, user)
+                unlocked_now = [
+                    achievement
+                    for achievement in payload["unlocked"]
+                    if achievement["key"] not in existing_keys and achievement["key"] != "account_created"
+                ]
+                if unlocked_now:
+                    newly_unlocked[user_id] = unlocked_now
+    return newly_unlocked
