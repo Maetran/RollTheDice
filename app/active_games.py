@@ -132,6 +132,15 @@ def load_active_games() -> dict[str, dict]:
                         player["ws"] = None
                     if game.get("_started") and game.get("_players"):
                         game["_resume_required"] = True
+                    # Active Solo duration intentionally excludes the process
+                    # downtime between persistence and restart.  Import here
+                    # rather than at module scope because zilch_state itself
+                    # persists new games through this module.
+                    if game.get("_started") and game.get("_game_type") == "zilch":
+                        from .zilch_state import pause_zilch_solo_timer, zilch_is_configured_solo_game
+
+                        if zilch_is_configured_solo_game(game):
+                            pause_zilch_solo_timer(game, count_elapsed=False)
                     restored[row.game_id] = game
                 except (TypeError, ValueError, json.JSONDecodeError):
                     # A terminal state with an unknown game type may contain

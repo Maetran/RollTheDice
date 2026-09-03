@@ -4,8 +4,8 @@ RollTheDice is a lightweight multiplayer dice game with a FastAPI backend and a 
 
 ZDWA is the public game. The repository also contains an intentionally private,
 playable Zilch preview: its own six-dice, 10,000-point state,
-server-authoritative start roll, scoring, Quick Holds, banking, final reply,
-and simultaneous two-player boards. By default, only the authenticated admin
+server-authoritative scoring, Quick Holds, banking, and competitive start-roll/
+final-reply handling. By default, only the authenticated admin
 account whose normalized username is `mani` can open it. A second private test
 account can be admitted only through the explicit
 `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` allowlist; it receives no admin rights.
@@ -15,13 +15,21 @@ humans in `multiplayer`, or one authenticated host against a real `cpu`
 participant in `cpu` mode. The CPU has no account, session, resume token, or
 WebSocket; it uses the same server-side dice and scoring path as a human and
 differs only through its conservative, normal, or aggressive decision policy.
+It also supports a genuine one-human `solo` Sprint: the fixed, versioned
+objective `reach_10000_fewest_turns` (v1) starts directly with a normal turn,
+ends at at least 10,000 banked points, and records turns, rolls, Zilchs, Hot
+Dice, highest banked round, and active time. There is no opponent, CPU,
+start roll, final reply, or fabricated winner/tie in Solo. A confirmed
+abandonment remains a private `abandoned` result; pause and restart downtime
+do not count as active time. Future comparison order is turns, rolls, Zilchs,
+then active duration (all ascending); no Solo leaderboard exists yet.
 Finished private Zilch games are stored as a separate, versioned result payload
 with a private read-only history; they do not enter any ZDWA scorecard, replay,
 statistic, achievement, or leaderboard path. The protected Zilch app has its
 own lobby, game view, history, result report, and in-app rule guide. Its
 CSS-only wood-table, paper-card, and dice direction is isolated from ZDWA.
-True solo play, manual dice selection, Zilch aggregates, achievements,
-leaderboards, and public release are deliberately deferred.
+Manual dice selection, additional Solo objectives/challenges, Zilch aggregates,
+achievements, leaderboards, and public release are deliberately deferred.
 
 Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
 
@@ -105,7 +113,7 @@ at startup so registration cannot silently run with broken protection.
 
 Zilch is not a public feature. Keep `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES`
 empty in normal production operation. An authorized `Mani` account can test a
-private CPU game alone. For an explicitly private two-browser human test, set
+private Solo Sprint or CPU game alone. For an explicitly private two-browser human test, set
 the variable to a comma-separated list of normalized account usernames; those
 accounts gain only Zilch-preview access, not an admin role. Admin `Mani`
 continues to require both the normalized name and `is_admin=true`, even if
@@ -136,6 +144,9 @@ at most one eligible, unpaused CPU turn. A terminal game is first retained as
 an active recovery snapshot, then stored idempotently as a typed result, and
 removed from active storage only after the write succeeds. Finished Zilch games
 use their own private `zilch-house-v1` payload and never enter ZDWA history.
+Solo active states persist their fixed Objective/metrics and resume only with
+their authenticated human seat; process downtime and explicit pauses are
+excluded from the stored active duration.
 
 Production deployment details, including the IONOS SSH target and mandatory
 leaderboard backup rules, are documented in `docs/DEPLOYMENT.md`. Use
@@ -194,6 +205,7 @@ RollTheDice/
 │   ├── zilch_results.py     # Private, versioned Zilch result payload/projection
 │   ├── zilch_cpu_strategy.py # Pure conservative/normal/aggressive CPU policy
 │   ├── zilch_cpu_runner.py  # Cancellable trusted CPU-turn runner
+│   ├── zilch_solo_objective.py # Pure versioned Solo Sprint objective/metrics
 │   ├── leaderboard_service.py # Leaderboard aggregation and replay/profile reads
 │   ├── leaderboard_storage.py # Locked legacy-JSON compatibility storage
 │   ├── rules.py             # Server-side subtotal and total calculations

@@ -206,7 +206,13 @@ async def _receive_messages(
             await session.websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
             continue
         paused_reason = multiplayer_pause_reason(session.game)
-        if paused_reason and action in (MULTIPLAYER_PAUSE_BLOCKED_ACTIONS | allowed_gameplay_actions | allowed_superadmin_actions):
+        # A Solo player may explicitly abandon an already paused private run.
+        # It is still versioned and confirmation-gated in the Zilch handler;
+        # every score-affecting action remains blocked while paused.
+        pause_blocked_actions = (
+            MULTIPLAYER_PAUSE_BLOCKED_ACTIONS | allowed_gameplay_actions | allowed_superadmin_actions
+        ) - {"zilch_abandon_solo"}
+        if paused_reason and action in pause_blocked_actions:
             await session.websocket.send_json({"error": paused_reason})
             continue
 

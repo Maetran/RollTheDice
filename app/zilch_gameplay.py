@@ -28,10 +28,14 @@ from .zilch_state import (
     current_zilch_turn,
     ensure_zilch_engine_state,
     finish_zilch_game,
+    finish_zilch_solo_game,
     record_zilch_bank,
     record_zilch_loss,
+    record_zilch_solo_hot_dice,
+    record_zilch_solo_roll,
     record_zilch_start_roll,
     sync_zilch_turn,
+    zilch_is_configured_solo_game,
     zilch_participant_ids,
 )
 
@@ -44,6 +48,7 @@ ZILCH_GAMEPLAY_ACTIONS = frozenset(
         "zilch_roll_dice",
         "zilch_select_hold",
         "zilch_bank_points",
+        "zilch_abandon_solo",
         "zilch_submit_score",
     }
 )
@@ -148,9 +153,10 @@ def _current_actor_turn(session: GameSocketSession, data: dict[str, Any]):
     if not player_id or player_id not in zilch_participant_ids(game):
         raise ZilchRuleError("zilch_not_participant")
     ensure_zilch_engine_state(game)
-    start_roll = current_zilch_start_roll(game)
-    if start_roll.get("phase") != "resolved":
-        raise ZilchRuleError("zilch_start_roll_pending")
+    if not zilch_is_configured_solo_game(game):
+        start_roll = current_zilch_start_roll(game)
+        if start_roll.get("phase") != "resolved":
+            raise ZilchRuleError("zilch_start_roll_pending")
     turn = current_zilch_turn(game)
     if turn.player_id != player_id:
         raise ZilchRuleError("zilch_not_your_turn")
@@ -177,6 +183,8 @@ def _current_start_roll_actor(session: GameSocketSession, data: dict[str, Any]) 
     if not player_id or player_id not in zilch_participant_ids(game):
         raise ZilchRuleError("zilch_not_participant")
     ensure_zilch_engine_state(game)
+    if zilch_is_configured_solo_game(game):
+        raise ZilchRuleError("zilch_start_roll_not_required")
     start_roll = current_zilch_start_roll(game)
     if start_roll.get("phase") != "awaiting_rolls":
         raise ZilchRuleError("zilch_start_roll_finished")
@@ -238,9 +246,10 @@ def _turn_for_actor(
     _require_zilch_live_game(game)
     if not actor_id or actor_id not in zilch_participant_ids(game):
         raise ZilchRuleError("zilch_not_participant")
-    start_roll = current_zilch_start_roll(game)
-    if start_roll.get("phase") != "resolved":
-        raise ZilchRuleError("zilch_start_roll_pending")
+    if not zilch_is_configured_solo_game(game):
+        start_roll = current_zilch_start_roll(game)
+        if start_roll.get("phase") != "resolved":
+            raise ZilchRuleError("zilch_start_roll_pending")
     turn = current_zilch_turn(game)
     if turn.player_id != actor_id:
         raise ZilchRuleError("zilch_not_your_turn")
@@ -254,6 +263,8 @@ def _turn_for_actor(
 def _start_roll_for_actor(game: dict[str, Any], actor_id: str, *, version: object) -> dict:
     """Return the current start-roll procedure for a versioned actor command."""
     _require_zilch_live_game(game)
+    if zilch_is_configured_solo_game(game):
+        raise ZilchRuleError("zilch_start_roll_not_required")
     if not actor_id or actor_id not in zilch_participant_ids(game):
         raise ZilchRuleError("zilch_not_participant")
     start_roll = current_zilch_start_roll(game)
@@ -291,6 +302,7 @@ def apply_zilch_roll_dice(
     """Apply one authoritative Zilch roll for either valid actor kind."""
     turn = _turn_for_actor(game, actor_id, turn_id=turn_id, version=version)
     rolled_turn, evaluation = roll_zilch_turn(turn, randint_fn=randint_fn or fair_zilch_randint)
+    record_zilch_solo_roll(game, rolled_turn)
     if evaluation.zilch:
         loss = record_zilch_loss(game, rolled_turn, reason="no_scoring_option")
         outcome = _complete_or_advance(game, rolled_turn.player_id)
@@ -365,6 +377,8 @@ def apply_zilch_select_hold(
             terminal=outcome is not None,
         )
     sync_zilch_turn(game, result.turn)
+    if result.option.hot_dice:
+        record_zilch_solo_hot_dice(game, result.turn)
     return ZilchActionTransition(
         event={
             "type": "hold",
@@ -396,9 +410,14 @@ def apply_zilch_bank_points(
         and str(final_round.get("triggered_by") or "") == turn.player_id
         and outcome is None
     )
+    is_solo_completion = bool(
+        outcome is not None
+        and zilch_is_configured_solo_game(game)
+        and str(outcome.get("status") or "") == "completed"
+    )
     return ZilchActionTransition(
         event={
-            "type": "bank",
+            "type": "solo_completed" if is_solo_completion else "bank",
             "player_id": turn.player_id,
             "points": turn.round_points,
             "total": total,
@@ -406,6 +425,36 @@ def apply_zilch_bank_points(
             "final_round_started": final_round_started,
         },
         terminal=outcome is not None,
+    )
+
+
+def apply_zilch_abandon_solo(
+    game: dict[str, Any],
+    actor_id: str,
+    *,
+    turn_id: object,
+    version: object,
+    confirmed: object,
+) -> ZilchActionTransition:
+    """Finish a currently active Solo Sprint after explicit client consent.
+
+    The browser confirmation is UX only.  The server also requires the exact
+    boolean and the current actor/turn/version so a stale or forged request
+    cannot terminate another run.
+    """
+    if confirmed is not True:
+        raise ZilchRuleError("zilch_solo_abandon_confirmation_required")
+    turn = _turn_for_actor(game, actor_id, turn_id=turn_id, version=version)
+    if not zilch_is_configured_solo_game(game):
+        raise ZilchRuleError("zilch_solo_action_not_allowed")
+    outcome = finish_zilch_solo_game(game, status="abandoned")
+    return ZilchActionTransition(
+        event={
+            "type": "solo_abandoned",
+            "player_id": turn.player_id,
+            "outcome": outcome,
+        },
+        terminal=True,
     )
 
 
@@ -559,6 +608,28 @@ async def _bank_points(
     return True
 
 
+async def _abandon_solo(
+    session: GameSocketSession,
+    data: dict[str, Any],
+    *,
+    finalize_game: FinalizeGame | None,
+) -> bool:
+    try:
+        player_id = _require_human_session_actor(session)
+        transition = apply_zilch_abandon_solo(
+            session.game,
+            player_id,
+            turn_id=data.get("turn_id"),
+            version=data.get("version"),
+            confirmed=data.get("confirmed"),
+        )
+    except ZilchRuleError as exc:
+        await _send_error(session, exc.code)
+        return False
+    await publish_zilch_transition(session.game, transition, finalize_game=finalize_game)
+    return True
+
+
 async def handle_zilch_gameplay_action(
     session: GameSocketSession,
     action: str,
@@ -577,6 +648,8 @@ async def handle_zilch_gameplay_action(
         changed = await _select_hold(session, data, finalize_game=finalize_game)
     elif action == "zilch_bank_points":
         changed = await _bank_points(session, data, finalize_game=finalize_game)
+    elif action == "zilch_abandon_solo":
+        changed = await _abandon_solo(session, data, finalize_game=finalize_game)
     elif action == "zilch_submit_score":
         await _send_error(session, "zilch_manual_score_not_supported")
         return

@@ -5,7 +5,7 @@ die serverseitige Engine. Zilch bleibt eine geschützte `noindex`-Vorschau für
 den Admin-Account `Mani` (mit einer ausdrücklich konfigurierten privaten
 Allowlist für einen zweiten Testspieler). Es gibt ausdrücklich keine
 öffentliche Regelseite. Die aktuelle Oberfläche ist eine private, spielbare
-Human-vs-Human- und Human-vs-CPU-Produktoberfläche, keine öffentliche
+Human-vs-Human-, Human-vs-CPU- und Solo-Produktoberfläche, keine öffentliche
 Freischaltung.
 
 ## Begriffe
@@ -68,11 +68,13 @@ Beispiele:
 
 ## Zugablauf, Risiko und Sichern
 
-1. Vor Spielbeginn würfeln die Teilnehmer jeweils einmal. Der höhere Wert
-   beginnt; bei Gleichstand wird erneut gewürfelt. Jeder Startwurf wird
-   ausschließlich serverseitig erzeugt. In einer CPU-Partie würfelt zuerst der
-   Mensch; der serverseitige CPU-Runner erzeugt danach den gleichwertigen
-   CPU-Wurf.
+1. In `multiplayer` und `cpu` würfeln die Teilnehmer vor Spielbeginn jeweils
+   einmal. Der höhere Wert beginnt; bei Gleichstand wird erneut gewürfelt.
+   Jeder Startwurf wird ausschließlich serverseitig erzeugt. In einer
+   CPU-Partie würfelt zuerst der Mensch; der serverseitige CPU-Runner erzeugt
+   danach den gleichwertigen CPU-Wurf. Im Solo-Sprint gibt es bewusst keinen
+   bedeutungslosen Startwurf: der einzige Mensch beginnt direkt mit seinem
+   ersten normalen Zug.
 2. Der aktive Teilnehmer würfelt ausschließlich auf dem Server alle noch
    freien Würfel und hält anschließend mindestens eine gültige Wertung.
 3. Nach dem dritten Wurf müssen insgesamt mindestens 300 Rundenpunkte
@@ -116,10 +118,13 @@ festen Kadenz folgen sollen, ist bewusst noch nicht festgelegt. Die aktuelle
 Engine zieht daher genau beim Übergang `2 → 3` einmal 500 Punkte ab und erfindet
 keine weitere Straflogik.
 
-Ab mindestens 10.000 angeschriebenen Punkten wird die mögliche Schlussrunde
-begonnen. Der andere Teilnehmer erhält einen vollständigen normalen Zug mit
-beliebig vielen Würfen nach diesen Regeln. Danach gewinnt der höchste
-Gesamtstand; bei Gleichstand gibt es keinen Sieger und keinen Stechwurf.
+In `multiplayer` und `cpu` wird ab mindestens 10.000 angeschriebenen Punkten
+die mögliche Schlussrunde begonnen. Der andere Teilnehmer erhält einen
+vollständigen normalen Zug mit beliebig vielen Würfen nach diesen Regeln.
+Danach gewinnt der höchste Gesamtstand; bei Gleichstand gibt es keinen Sieger
+und keinen Stechwurf. Der Solo-Sprint hat keinen Gegner, keine Schlussrunde
+und keinen Gegenzug: ein legaler Bank-Vorgang mit mindestens 10.000 Punkten
+schließt sein Objective unmittelbar ab.
 
 Manuelle Punkteingabe ist nicht vorgesehen. Eine spätere manuelle
 Würfelauswahl kann zusätzlich zu Quick Holds entstehen, bestimmt aber niemals
@@ -142,6 +147,10 @@ Die aktuell verfügbaren WebSocket-Aktionen sind:
 - `zilch_select_hold` mit `turn_id`, `version`, `roll_id`, `option_id` sowie
   optional gegengeprüften Würfelindizes, Punkten und Kombinationstyp;
 - `zilch_bank_points` mit `turn_id` und `version`.
+- `zilch_abandon_solo` mit aktuellem `turn_id`, `version` und dem exakten
+  Server-Flag `confirmed: true`; die Oberfläche zeigt davor einen
+  Bestätigungsdialog. Die Action ist ausschließlich für den menschlichen
+  Teilnehmer eines aktiven Solo-Sprints gültig.
 
 Eine Quick-Hold-Auswahl wird für den aktuellen Turn und Roll erneut
 berechnet. Alte IDs, falsche Indizes/Punkte, ein falscher Spieler, falscher
@@ -151,7 +160,7 @@ explizit als nicht unterstützte manuelle Punkteingabe abgelehnt.
 
 ## Private Modi, CPU-Gegner und Ergebnisgrenze
 
-Der aktuelle private Spielmodus unterstützt zwei Varianten:
+Der aktuelle private Spielmodus unterstützt drei Varianten:
 
 - `multiplayer`: genau zwei angemeldete menschliche Teilnehmer. Beide führen
   ihren Startwurf selbst aus.
@@ -159,6 +168,26 @@ Der aktuelle private Spielmodus unterstützt zwei Varianten:
   Die CPU hat keinen Account, keine Session, keinen Resume-Token und keinen
   WebSocket. Sie ist daher nie „offline“ und ein zweiter Mensch kann ihre
   Stelle nicht einnehmen.
+- `solo`: genau ein angemeldeter menschlicher Host mit dem versionierten
+  Objective `reach_10000_fewest_turns` v1. Es gibt keinen Gegner, keinen CPU-
+  Teilnehmer, keinen Raumcode und keinen Startwurf.
+
+### Solo-Sprint: `reach_10000_fewest_turns` v1
+
+Der erste echte Solo-Modus ist ein 10.000-Punkte-Sprint: Ziel ist, mindestens
+10.000 gesicherte Punkte in möglichst wenigen **eigenen Zügen** zu erreichen.
+Es gibt kein Rundenlimit. Der Server beobachtet die unveränderten Engine-
+Ereignisse und speichert als Challenge-Metriken Anzahl Züge, Anzahl Würfe,
+Zilchs, Hot-Dice-Ereignisse, höchste gesicherte Runde und aktive Dauer. Die
+spätere, noch nicht implementierte Vergleichsreihenfolge lautet: weniger Züge,
+dann weniger Würfe, weniger Zilchs und kürzere aktive Dauer.
+
+Pausen und Neustart-/Offline-Zeit zählen nicht zur aktiven Dauer. Der Spieler
+kann einen laufenden Sprint nach einer sichtbaren Bestätigung aufgeben. Das
+ergibt das private Outcome `abandoned`; der bis dahin autoritative Verlauf und
+alle Metriken bleiben erhalten. Ein erfolgreicher Zielabschluss heißt
+`completed`. Keines der beiden Outcomes erzeugt künstlich einen Gewinner,
+Gleichstand oder Gegner.
 
 Die beiden Startwerte und ein möglicher Gleichstand bleiben im Snapshot
 sichtbar. Anschließend zeigt die private Spielseite gleichzeitig beide Boards,
@@ -192,14 +221,16 @@ Würfelauswahl oder Punkteingabe existiert nicht. Die Karten, Würfeln und
 Sichern sind Tastatur- und Touch-Buttons; der Browser sendet nur die
 referenzierte Option und übernimmt nie einen lokalen Punktewert.
 
-Nach dem vollen Gegenzug markiert der aktive Zilch-State Gewinner oder
-Gleichstand. Er wird zuerst als terminaler `active_games`-Snapshot gespeichert,
-damit ein Datenbankfehler oder Neustart keinen Endstand verliert. Anschließend
-erzeugt der Zilch-Finalizer idempotent einen eigenen versionierten
-`zilch_result`-Payload (Schema 1) mit `zilch-house-v1`, Teilnehmern,
-Startwurf, beiden Boards, gesicherten Runden, Zilchs, Strafen, Schlussrunde,
-Gegenzug, Outcome und Dauer. Erst nach bestätigter Speicherung wird der aktive
-Terminal-State entfernt.
+Nach dem vollen kompetitiven Gegenzug markiert der aktive Zilch-State Gewinner
+oder Gleichstand. Ein Solo-Sprint markiert stattdessen `completed` oder
+`abandoned`. Beide Terminalarten werden zuerst als `active_games`-Snapshot
+gespeichert, damit ein Datenbankfehler oder Neustart keinen Endstand verliert.
+Anschließend erzeugt der Zilch-Finalizer idempotent entweder den unveränderten
+kompetitiven `zilch_result`-Payload (Schema 1) oder den getrennten
+`zilch_solo_result`-Payload (Schema 2). Solo enthält Objective-ID/-Version,
+Parameter, Fortschritt, aktive Dauer, eine Board-Historie und keine
+Startwurf-/Schlussrunden-/Winner-/Tie-Felder. Erst nach bestätigter Speicherung
+wird der aktive Terminal-State entfernt.
 
 Der Report ist ausschließlich über die geschützte, `noindex`
 Zilch-Ergebnisroute und die private eigene Historie erreichbar. Er wird
@@ -217,9 +248,9 @@ sind serverseitig durch dieselbe Preview-Policy geschützt und bleiben
 Regelquelle. Gemeinsame Konto- und Spracheinstellungen bleiben Plattformfunktionen
 und führen bei gültiger Berechtigung zurück zur privaten Zilch-Lobby.
 
-Zum manuellen privaten Test kann Admin `Mani` direkt eine CPU-Partie anlegen
-und eine der drei Strategien wählen. Für eine Zwei-Menschen-Partie vor dem
-App-Start den normalisierten Namen des zweiten angemeldeten Testkontos in
+Zum manuellen privaten Test kann Admin `Mani` direkt einen Solo-Sprint oder
+eine CPU-Partie anlegen. Für eine Zwei-Menschen-Partie vor dem App-Start den
+normalisierten Namen des zweiten angemeldeten Testkontos in
 `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` setzen, beide Browser in die private
 Zilch-Lobby wechseln, beitreten und den Startwurf nacheinander ausführen.
 Ohne diese Konfiguration bleibt ausschließlich Admin `Mani` zugelassen.
@@ -231,14 +262,15 @@ Ohne diese Konfiguration bleibt ausschließlich Admin `Mani` zugelassen.
   serverseitige Denkpause `ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` (Standard 0,55
   Sekunden, begrenzt auf 0–5) beeinflusst nur die sichtbare Taktung, niemals
   Würfel oder Wertung.
-- Aktive Zustände samt Turn-ID, Startwurf, Holds, Rundenpunkten, Boards und
-  Quick-Hold-Grundlage bleiben über die bestehende aktive Persistenz
+- Aktive Zustände samt Turn-ID, Holds, Rundenpunkten, Boards und Quick-Hold-
+  Grundlage bleiben über die bestehende aktive Persistenz
   restart-sicher. Ein Abschluss wird erst nach einer erfolgreichen,
   idempotenten privaten Ergebnis-Persistenz entfernt und bleibt vollständig
   von ZDWA-Ergebnissen, Statistiken, Achievements und Bestenlisten getrennt.
 - Noch offen bleiben insbesondere eine präzise Strafkadenz nach mehr als drei
-  aufeinanderfolgenden Zilchs, ein echtes Solo-Ziel, manuelle Würfelauswahl,
-  finale Interaktions-/Markenpolitur und Zilch-spezifische Auswertung.
+  aufeinanderfolgenden Zilchs, weitere Solo-Objectives/Challenges, manuelle
+  Würfelauswahl, finale Interaktions-/Markenpolitur und Zilch-spezifische
+  Auswertung.
 
 ## Designrichtung
 
@@ -246,7 +278,8 @@ Die private Oberfläche nutzt die vorhandene `data-game="zilch"`-Grenze mit
 warmen Holz-/Spieltischflächen, physisch wirkenden CSS-Würfeln, deutlich
 leuchtenden gehaltenen/ausgewählten Zuständen, großen papierartigen
 Quick-Hold-/Würfel-/Sichern-Karten, gut lesbarer Standardschrift und großen
-Touch-Zielen. Lobby, Wartesaal, Startwurf, beide Boards, Ergebnis, Historie und
+Touch-Zielen. Lobby, Wartesaal, Startwurf (nur kompetitiv), ein oder zwei
+Boards, Ergebnis, Historie und
 die private Hilfe bleiben dabei eine eigenständige Zilch-Oberfläche. Zilch, Hot
 Dice, Bestätigungswurf und Spielende erhalten einen zusätzlichen Textstatus und
 kurze reduzierte-Bewegung-freundliche CSS-Effekte. Semantische Buttons,

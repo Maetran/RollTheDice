@@ -22,7 +22,12 @@ from .game_state import (
     touch,
 )
 from .game_types import ZILCH_GAME_TYPE, game_type_from_state
-from .zilch_state import zilch_human_join_error
+from .zilch_state import (
+    pause_zilch_solo_timer,
+    resume_zilch_solo_timer,
+    zilch_human_join_error,
+    zilch_is_configured_solo_game,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -266,6 +271,11 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any], *, fina
     g["_manual_pause_at"] = None
     if not _offline_players(g):
         g["_resume_required"] = False
+    if game_type_from_state(g) == ZILCH_GAME_TYPE and zilch_is_configured_solo_game(g):
+        # A recovered/disconnected Solo run has no second connection to
+        # release its pause. Its active-duration clock resumes only when its
+        # authenticated human seat returns.
+        resume_zilch_solo_timer(g)
     if not player.get("resume_token"):
         player["resume_token"] = uuid.uuid4().hex
     await websocket.send_json(
@@ -355,6 +365,8 @@ async def disconnect_session(session: GameSocketSession) -> None:
             logger.debug("Could not broadcast spectator departure", exc_info=True)
 
     if player_id and owns_player_socket and g.get("_started") and not g.get("_finished") and not g.get("_aborted"):
+        if game_type_from_state(g) == ZILCH_GAME_TYPE and zilch_is_configured_solo_game(g):
+            pause_zilch_solo_timer(g)
         g["_resume_required"] = True
         touch(g)
     if correction_cancelled or superadmin_cancelled or (player_id and owns_player_socket):

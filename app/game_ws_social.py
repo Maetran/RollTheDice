@@ -16,6 +16,7 @@ from .game_state import (
 )
 from .game_types import ZILCH_GAME_TYPE, game_type_from_state
 from .game_ws_session import GameSocketSession
+from .zilch_state import pause_zilch_solo_timer, zilch_is_configured_solo_game
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +132,8 @@ async def _pause_game(session: GameSocketSession, _data: dict[str, Any]) -> None
         await _send_error(session, "Spiel ist bereits beendet")
         return
     by_name = _player_name(session.game, session.player_id)
+    if game_type_from_state(session.game) == ZILCH_GAME_TYPE and zilch_is_configured_solo_game(session.game):
+        pause_zilch_solo_timer(session.game)
     touch(session.game)
     session.game["_manual_pause"] = True
     session.game["_manual_pause_by"] = session.player_id

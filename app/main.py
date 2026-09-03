@@ -71,13 +71,21 @@ from .zilch_engine import (
     ZILCH_ZILCH_STREAK_PENALTY,
 )
 from .zilch_results import list_zilch_results_for_user, load_zilch_result
+from .zilch_solo_objective import (
+    ZILCH_SOLO_SPRINT_OBJECTIVE_ID,
+    ZILCH_SOLO_SPRINT_OBJECTIVE_VERSION,
+    validate_zilch_solo_objective_definition,
+)
 from .zilch_state import (
     ZILCH_CPU_MODE,
+    ZILCH_SOLO_MODE,
     configure_zilch_cpu_game,
+    configure_zilch_solo_game,
     validate_zilch_hvh_mode,
     zilch_expected_connection_count,
     zilch_expected_participant_count,
     zilch_participants,
+    zilch_solo_objective_projection,
 )
 
 # Retained as a small backwards-compatible module export for existing focused
@@ -505,6 +513,16 @@ def _is_zilch_cpu_host(game: GameDict, user_id: object) -> bool:
     )
 
 
+def _is_zilch_solo_host(game: GameDict, user_id: object) -> bool:
+    """Identify the one account allowed to take a configured Solo seat."""
+    return (
+        game.get("_play_mode") == ZILCH_SOLO_MODE
+        and type(user_id) is int
+        and type(game.get("_zilch_solo_host_user_id")) is int
+        and game["_zilch_solo_host_user_id"] == user_id
+    )
+
+
 @app.websocket("/ws/presence")
 async def presence(websocket: WebSocket) -> None:
     if not websocket_origin_allowed(websocket):
@@ -592,26 +610,34 @@ class CreateReq(BaseModel):
         if value is None:
             return None
         cleaned = str(value).strip().lower()
-        if cleaned not in {"multiplayer", "cpu"}:
+        if cleaned not in {"multiplayer", "cpu", "solo"}:
             raise ValueError("zilch_invalid_play_mode")
         return cleaned
 
     @model_validator(mode="after")
     def validate_game_specific_options(self):
         if self.game_type == ZILCH_GAME_TYPE:
-            try:
-                validate_zilch_hvh_mode(self.mode)
-            except ValueError as exc:
-                raise ValueError(str(exc)) from exc
             if self.hardcore:
                 raise ValueError("zilch_hardcore_not_supported")
             self.play_mode = self.play_mode or "multiplayer"
+            if self.play_mode == ZILCH_SOLO_MODE:
+                if self.mode != "1":
+                    raise ValueError("zilch_solo_requires_one_player")
+                if self.cpu_strategy is not None:
+                    raise ValueError("zilch_cpu_strategy_not_allowed")
+                if self.passphrase is not None:
+                    raise ValueError("zilch_solo_roomcode_not_supported")
+            else:
+                try:
+                    validate_zilch_hvh_mode(self.mode)
+                except ValueError as exc:
+                    raise ValueError(str(exc)) from exc
             if self.play_mode == ZILCH_CPU_MODE:
                 try:
                     self.cpu_strategy = validate_zilch_cpu_strategy(self.cpu_strategy)
                 except ZilchCpuStrategyError as exc:
                     raise ValueError(exc.code) from exc
-            elif self.cpu_strategy is not None:
+            elif self.play_mode != ZILCH_SOLO_MODE and self.cpu_strategy is not None:
                 raise ValueError("zilch_cpu_strategy_not_allowed")
         elif self.play_mode is not None or self.cpu_strategy is not None:
             raise ValueError("game_play_mode_not_supported")
@@ -705,6 +731,10 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
                 entry["expected_connections"] = zilch_expected_connection_count(g)
                 entry["cpu_strategy"] = _zilch_cpu_strategy(g)
                 entry["my_cpu_host"] = _is_zilch_cpu_host(g, auth_identity.user_id if auth_identity else None)
+                solo = zilch_solo_objective_projection(g)
+                entry["solo_objective"] = solo
+                entry["solo_metrics"] = dict(solo.get("metrics") or {}) if isinstance(solo, dict) else None
+                entry["my_solo_host"] = _is_zilch_solo_host(g, auth_identity.user_id if auth_identity else None)
             lst.append(entry)
         except (KeyError, TypeError, ValueError):
             logger.warning("Skipping malformed game %s in lobby response", gid, exc_info=True)
@@ -780,6 +810,7 @@ def game_info(
     }
     if game_type_from_state(g) == ZILCH_GAME_TYPE:
         current_player_id, current_player_name = _lobby_current_player(g)
+        solo_projection = zilch_solo_objective_projection(g)
         result.update(
             {
                 "play_mode": g.get("_play_mode", "multiplayer"),
@@ -789,6 +820,9 @@ def game_info(
                 "expected_connections": zilch_expected_connection_count(g),
                 "cpu_strategy": _zilch_cpu_strategy(g),
                 "my_cpu_host": _is_zilch_cpu_host(g, auth_identity.user_id if auth_identity else None),
+                "my_solo_host": _is_zilch_solo_host(g, auth_identity.user_id if auth_identity else None),
+                "solo_objective": solo_projection,
+                "solo_metrics": dict(solo_projection.get("metrics") or {}) if isinstance(solo_projection, dict) else None,
                 "current_player_id": current_player_id,
                 "current_player_name": current_player_name,
                 "final_round": _zilch_lobby_final_round(g),
@@ -828,6 +862,10 @@ def api_zilch_result(game_id: str, request: Request):
 def api_zilch_rules(request: Request) -> dict[str, object]:
     """Return the small authoritative rules projection used by the private UI."""
     _require_zilch_preview(request)
+    solo_definition = validate_zilch_solo_objective_definition(
+        ZILCH_SOLO_SPRINT_OBJECTIVE_ID,
+        ZILCH_SOLO_SPRINT_OBJECTIVE_VERSION,
+    )
     return {
         "ruleset": ZILCH_RULESET_VERSION,
         "dice_count": ZILCH_DICE_COUNT,
@@ -836,6 +874,7 @@ def api_zilch_rules(request: Request) -> dict[str, object]:
         "third_roll_minimum": ZILCH_THIRD_ROLL_MINIMUM,
         "confirmation_minimum": ZILCH_CONFIRMATION_MINIMUM,
         "third_zilch_penalty": ZILCH_ZILCH_STREAK_PENALTY,
+        "solo_objective": solo_definition.payload(),
         "scoring": {
             "single_one": 100,
             "single_five": 50,
@@ -864,6 +903,10 @@ async def api_games_create(req: CreateReq, request: Request):
             host_user_id=identity.user_id,
             cpu_strategy=req.cpu_strategy,
         )
+    elif req.game_type == ZILCH_GAME_TYPE and req.play_mode == ZILCH_SOLO_MODE:
+        # The host is the only durable human seat. The Objective is fixed by
+        # the server; no browser parameter can tune target or ranking.
+        configure_zilch_solo_game(g, host_user_id=identity.user_id)
     g["_passphrase"] = req.passphrase or None
     g["_hardcore"] = bool(req.hardcore or False)
     save_active_game(g)

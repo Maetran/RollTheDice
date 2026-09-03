@@ -28,7 +28,9 @@ from .zilch_state import (
     ensure_zilch_engine_state,
     zilch_expected_connection_count,
     zilch_expected_participant_count,
+    zilch_is_configured_solo_game,
     zilch_participants,
+    zilch_solo_objective_projection,
 )
 
 
@@ -149,6 +151,12 @@ def snapshot_zilch(game: GameDict) -> dict:
         if turn
         else None
     )
+    solo_objective = zilch_solo_objective_projection(game)
+    solo_metrics = (
+        dict(solo_objective.get("metrics") or {})
+        if isinstance(solo_objective, dict)
+        else None
+    )
     return {
         "_game_type": ZILCH_GAME_TYPE,
         "_name": game.get("_name", "Zilch"),
@@ -249,6 +257,17 @@ def snapshot_zilch(game: GameDict) -> dict:
         "_zilch_result": game.get("_zilch_result"),
         "_zilch_last_event": game.get("_zilch_last_event"),
         "_zilch_cpu_error": game.get("_zilch_cpu_error"),
+        # The nested Objective is an authoritative domain projection. The
+        # browser only renders it; it never increments turns, rolls or score.
+        "_zilch_solo_objective": solo_objective,
+        "_zilch_solo_metrics": solo_metrics,
+        "_zilch_solo_error": game.get("_zilch_solo_error"),
+        "_zilch_can_abandon": bool(
+            zilch_is_configured_solo_game(game)
+            and turn is not None
+            and not game.get("_finished")
+            and not game.get("_aborted")
+        ),
         "_zilch_turn_state": current_turn_state,
         "_zilch_quick_holds": [option.payload() for option in options],
         "_chat_history": list(game.get("_chat_history", []))[-CHAT_HISTORY_LIMIT:],

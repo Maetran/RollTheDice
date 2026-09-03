@@ -328,6 +328,82 @@ function cpuTurnSnapshot() {
   });
 }
 
+function soloTurnSnapshot() {
+  return baseSnapshot({
+    _players: [
+      { id: "p1", name: "Mani", user_id: 2, connected: true },
+    ],
+    _participants: [
+      { id: "p1", name: "Mani", type: "human", user_id: 2, connection_player_id: "p1" },
+    ],
+    _play_mode: "solo",
+    _mode: "1",
+    _players_joined: 1,
+    _expected: 1,
+    _zilch_start_roll: null,
+    _zilch_final_round: null,
+    _turn: { player_id: "p1" },
+    _dice: [0, 0, 0, 0, 0, 0],
+    _holds: [false, false, false, false, false, false],
+    _zilch_boards: {
+      p1: board({
+        playerId: "p1",
+        totalPoints: 6500,
+        roundPoints: 0,
+        active: true,
+        rounds: [{ round: 3, event: "bank", points: 900 }],
+      }),
+    },
+    _round_points: { p1: 0 },
+    _total_points: { p1: 6500 },
+    _zilch_turn_state: {
+      turn_id: 41,
+      version: 7,
+      phase: "ready_to_roll",
+      roll_id: 0,
+      rolls_used: 0,
+      available_dice_indices: [0, 1, 2, 3, 4, 5],
+      held_dice_indices: [],
+      committed_holds: [],
+      round_points: 0,
+      confirmation_required: false,
+      confirmation_reasons: [],
+      can_roll: true,
+      can_select_hold: false,
+      can_bank: false,
+      bank_block_reason: "zilch_bank_minimum_not_reached",
+    },
+    _zilch_quick_holds: [],
+    _zilch_solo_objective: {
+      id: "reach_10000_fewest_turns",
+      version: 1,
+      parameters: {},
+      progress: {
+        target_score: 10000,
+        total_points: 6500,
+        turns: 3,
+        rolls: 5,
+        zilchs: 1,
+        hot_dice_events: 1,
+        highest_banked_round: 1200,
+        active_duration_seconds: 420,
+      },
+      outcome: null,
+    },
+    _zilch_solo_metrics: {
+      turns: 3,
+      rolls: 5,
+      zilchs: 1,
+      hot_dice_events: 1,
+      highest_banked_round: 1200,
+      active_duration_seconds: 420,
+      remaining_points: 3500,
+    },
+    _zilch_can_abandon: true,
+    _zilch_last_event: { type: "bank", points: 900 },
+  });
+}
+
 async function installGameScreenFixture(page, gameId, snapshots, detailsOverrides = {}) {
   const details = {
     exists: true,
@@ -476,6 +552,190 @@ test("the private CPU create controls are keyboard-operable and send only the se
   }
 });
 
+test("the solo create controls expose the fixed sprint and send no client objective parameters", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    await page.goto("/zilch");
+
+    const solo = page.locator("input[name='zilchPlayMode'][value='solo']");
+    await solo.check();
+    await expect(solo).toBeChecked();
+    await expect(page.locator("#zilchSoloObjective")).toBeVisible();
+    await expect(page.locator("#zilchSoloObjective")).toContainText(/10(?:'|,|’|\s)000/);
+    await expect(page.locator("#zilchCpuStrategy")).toBeHidden();
+    expect(await page.locator("#zilchGamePassphrase").evaluate(input => input.closest("label")?.hidden)).toBe(true);
+
+    let createPayload = null;
+    await page.route("**/api/games", async route => {
+      if (route.request().method() !== "POST") return route.continue();
+      createPayload = route.request().postDataJSON();
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ game_id: "solo-create-ui-fixture" }),
+      });
+    });
+    await page.route("**/zilch/spiel/solo-create-ui-fixture", route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: "<!doctype html><title>Solo fixture</title>",
+    }));
+
+    await Promise.all([
+      page.waitForRequest(request => request.method() === "POST" && new URL(request.url()).pathname === "/api/games"),
+      page.locator("#zilchCreateForm button[type='submit']").click(),
+    ]);
+    expect(createPayload).toMatchObject({
+      game_type: "zilch",
+      mode: "1",
+      play_mode: "solo",
+    });
+    expect(Object.keys(createPayload).filter(key => /objective|strategy|pass/i.test(key))).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("a newly created owned solo run is presented as continue, never as a joinable seat", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    await page.route(/\/api\/games(?:\?.*)?$/, async route => {
+      const url = new URL(route.request().url());
+      if (route.request().method() !== "GET" || url.searchParams.get("game_type") !== "zilch") return route.continue();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          games: [{
+            id: "solo-owned-lobby-fixture",
+            game_type: "zilch",
+            name: "Mein Sprint",
+            mode: "1",
+            play_mode: "solo",
+            started: false,
+            finished: false,
+            aborted: false,
+            participant_count: 1,
+            expected_participants: 1,
+            my_solo_host: true,
+            participants: [{ id: "p1", name: "Mani", type: "human", user_id: 2, connected: true }],
+            solo_objective: {
+              id: "reach_10000_fewest_turns",
+              version: 1,
+              parameters: {},
+              progress: { target_score: 10000, total_points: 0, turns: 0, rolls: 0, zilchs: 0, hot_dice_events: 0, highest_banked_round: 0, active_duration_seconds: 0 },
+              outcome: null,
+              name_key: "zilch.solo_objective.reach_10000_fewest_turns.name",
+              description_key: "zilch.solo_objective.reach_10000_fewest_turns.description",
+              metrics: { target_score: 10000, total_points: 0, turns: 0, rolls: 0, zilchs: 0, hot_dice_events: 0, highest_banked_round: 0, active_duration_seconds: 0, remaining_points: 10000 },
+            },
+            solo_metrics: { target_score: 10000, total_points: 0, turns: 0, rolls: 0, zilchs: 0, hot_dice_events: 0, highest_banked_round: 0, active_duration_seconds: 0, remaining_points: 10000 },
+          }],
+          online_users: 1,
+        }),
+      });
+    });
+    await page.route("**/api/zilch/results", route => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ results: [] }),
+    }));
+
+    await page.goto("/zilch");
+    const running = page.locator("#zilchRunningGames");
+    await expect(running).toContainText("Mein Sprint");
+    await expect(running).toContainText(/Solo-Lauf fortsetzen|Continue solo run/);
+    await expect(running.getByRole("link", { name: /Solo-Lauf fortsetzen|Continue solo run/ })).toHaveAttribute("href", "/zilch/spiel/solo-owned-lobby-fixture");
+    await expect(running).not.toContainText(/Beitreten|Join/);
+    await expect(page.locator("#zilchWaitingGames")).not.toContainText("Mein Sprint");
+  } finally {
+    await context.close();
+  }
+});
+
+test("a private solo result renders its one board and metrics without match-only sections", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    const resultId = "solo-result-screen-fixture";
+    const result = {
+      schema_version: 2,
+      payload_kind: "zilch_solo_result",
+      game_type: "zilch",
+      game_id: resultId,
+      game_name: "Mein Sprint",
+      ruleset: "zilch-house-v1",
+      play_mode: "solo",
+      mode: "1",
+      target_score: 10000,
+      started_at: "2026-09-03T10:00:00+00:00",
+      finished_at: "2026-09-03T10:08:00+00:00",
+      duration_seconds: 480,
+      participants: [{ participant_id: "p1", display_name: "Mani", participant_type: "human", user_id: 2 }],
+      participant_order: ["p1"],
+      boards: {
+        p1: {
+          participant_id: "p1",
+          total_points: 10050,
+          round_points: 0,
+          zilch_streak: 0,
+          rounds: [{ turn_id: 1, round: 1, event: "bank", points: 10050, rolls_used: 5, hot_dice_events: 0 }],
+        },
+      },
+      totals: { p1: 10050 },
+      objective: {
+        id: "reach_10000_fewest_turns",
+        version: 1,
+        parameters: {},
+        progress: { target_score: 10000, total_points: 10050, turns: 1, rolls: 5, zilchs: 0, hot_dice_events: 0, highest_banked_round: 10050, active_duration_seconds: 420 },
+        outcome: "completed",
+        ranking: { primary: "turns", tie_breakers: ["rolls", "zilchs", "active_duration_seconds"] },
+      },
+      outcome: { status: "completed", objective_completed: true },
+      metrics: {
+        turns: 1,
+        rolls: 5,
+        zilch_count: 0,
+        hot_dice_events: 0,
+        hot_dice_events_complete: true,
+        highest_banked_round: 10050,
+        active_duration_seconds: 420,
+        remaining_points: 0,
+        zilch_penalties: [],
+      },
+    };
+    await page.route(`**/api/zilch/results/${resultId}`, route => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ result }),
+    }));
+    await page.route(`**/zilch/ergebnis/${resultId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+
+    await page.goto(`/zilch/ergebnis/${resultId}`);
+    await expect(page.locator(".zilch-result-board")).toHaveCount(1);
+    await expect(page.locator(".zilch-result-summary")).toContainText(/Solo-Ziel erreicht|Solo objective reached/);
+    await expect(page.locator(".zilch-solo-objective")).toContainText(/10(?:'|,|’|\s)000/);
+    await expect(page.locator(".zilch-solo-metrics")).toContainText(/(?:Züge|Turns).*1/);
+    await expect(page.locator(".zilch-result-start-roll")).toHaveCount(0);
+    await expect(page.locator(".zilch-result-final-round")).toHaveCount(0);
+    await expect(page.locator(".zilch-result-board")).toContainText("Mani");
+  } finally {
+    await context.close();
+  }
+});
+
 test("a CPU participant is rendered from the authoritative participant snapshot without a fake online state", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
   const page = await context.newPage();
@@ -512,6 +772,55 @@ test("a CPU participant is rendered from the authoritative participant snapshot 
     await expect(page.locator(".zilch-quick-hold")).toBeDisabled();
     await expect(page.locator("[data-zilch-roll]")).toBeDisabled();
     await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
+  } finally {
+    await context.close();
+  }
+});
+
+test("a server-driven solo snapshot renders one board, objective metrics, and a confirmed abandon action", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+
+    const gameId = "solo-screen-fixture";
+    await installGameScreenFixture(
+      page,
+      gameId,
+      { initial: soloTurnSnapshot() },
+      {
+        mode: "1",
+        play_mode: "solo",
+        participants: [{ id: "p1", type: "human", user_id: 2, connection_player_id: "p1" }],
+      },
+    );
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    await page.goto(`/zilch/spiel/${gameId}`);
+
+    await expect(page.locator("[data-zilch-board-id]")).toHaveCount(1);
+    await expect(page.locator('[data-zilch-board-id="p1"]')).toContainText("Mani");
+    await expect(page.locator(".zilch-start-roll")).toHaveCount(0);
+    await expect(page.locator(".zilch-board--cpu")).toHaveCount(0);
+    await expect(page.locator("#zilchChatForm")).toHaveCount(0);
+    await expect(page.locator(".zilch-solo-objective")).toContainText(/10(?:'|,|’|\s)000/);
+    await expect(page.locator(".zilch-solo-metrics")).toContainText(/(?:Züge|Turns).*3/);
+    await expect(page.locator(".zilch-solo-metrics")).toContainText(/(?:Würfe|Rolls).*5/);
+    await expect(page.locator("[data-zilch-abandon-solo]")).toBeEnabled();
+
+    await page.evaluate(() => {
+      window.ZDWA_UI = { ...(window.ZDWA_UI || {}), confirm: () => Promise.resolve(true) };
+    });
+    await page.locator("[data-zilch-abandon-solo]").click();
+    await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: "zilch_abandon_solo", turn_id: 41, version: 7, confirmed: true }),
+    ]));
   } finally {
     await context.close();
   }

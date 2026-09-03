@@ -116,11 +116,14 @@ test("private Zilch rules, history, and product navigation use the protected noi
   ]);
   await expect(page.locator("[data-zilch-root]")).toBeVisible();
 
-  const [historyResponse] = await Promise.all([
-    page.waitForResponse(response => new URL(response.url()).pathname === "/api/zilch/results" && response.status() === 200),
-    page.goto("/zilch/historie"),
-  ]);
-  expect(await historyResponse.json()).toHaveProperty("results");
+  // Consume the body as soon as the response arrives. The app can issue a
+  // navigation while route initialization finishes, which otherwise makes a
+  // retained Playwright response body unavailable on WebKit/Chromium.
+  const historyBody = page
+    .waitForResponse(response => new URL(response.url()).pathname === "/api/zilch/results" && response.status() === 200)
+    .then(response => response.json());
+  await page.goto("/zilch/historie");
+  expect(await historyBody).toHaveProperty("results");
   await expect(page.locator("#zilchAllResultsHistory")).toBeVisible();
   await expect(page.locator("#zilchNavigation a[href='/zilch/historie']")).toHaveAttribute("aria-current", "page");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);

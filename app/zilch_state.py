@@ -22,6 +22,18 @@ from .zilch_engine import (
     resolve_zilch_start_attempt,
     zilch_turn_from_state,
 )
+from .zilch_solo_objective import (
+    ZilchSoloObjectiveError,
+    abandon_solo_objective,
+    new_zilch_solo_objective_state,
+    record_solo_objective_active_duration,
+    record_solo_objective_bank,
+    record_solo_objective_hot_dice,
+    record_solo_objective_roll,
+    record_solo_objective_turn_started,
+    record_solo_objective_zilch,
+    zilch_solo_objective_state_from_payload,
+)
 
 ZILCH_MIN_PLAYERS = 1
 ZILCH_MAX_PLAYERS = 2
@@ -232,20 +244,27 @@ def zilch_cpu_participant(game: GameDict) -> dict | None:
 
 
 def zilch_human_join_error(game: GameDict, *, user_id: object) -> str | None:
-    """Return a machine-readable reason when a human cannot take a CPU seat.
+    """Return a machine-readable reason when a human cannot take a Zilch seat.
 
     Common session code can use this before allocating a resume token.  It is
     deliberately a state policy rather than an HTTP-specific check, so a
     second browser can never become a hidden third participant.
     """
-    if game.get("_play_mode") != ZILCH_CPU_MODE:
+    play_mode = game.get("_play_mode")
+    if play_mode not in {ZILCH_CPU_MODE, ZILCH_SOLO_MODE}:
         return None
-    expected_host = game.get("_zilch_cpu_host_user_id")
+    if play_mode == ZILCH_SOLO_MODE and not zilch_is_configured_solo_game(game):
+        # A legacy mode-1 foundation snapshot is not silently assigned the
+        # new private challenge policy. It remains loadable for diagnosis.
+        return None
+    expected_host = game.get(
+        "_zilch_cpu_host_user_id" if play_mode == ZILCH_CPU_MODE else "_zilch_solo_host_user_id"
+    )
     if type(expected_host) is int:
         if type(user_id) is not int or user_id != expected_host:
-            return "zilch_cpu_host_required"
+            return "zilch_cpu_host_required" if play_mode == ZILCH_CPU_MODE else "zilch_solo_host_required"
     if len(game.get("_players", [])) >= zilch_expected_connection_count(game):
-        return "zilch_cpu_human_seat_taken"
+        return "zilch_cpu_human_seat_taken" if play_mode == ZILCH_CPU_MODE else "zilch_solo_human_seat_taken"
     return None
 
 
@@ -297,6 +316,243 @@ def configure_zilch_cpu_game(
     return cpu
 
 
+def _utcnow() -> datetime:
+    """Keep the Solo clock injectable through the module's datetime seam."""
+    return datetime.now(timezone.utc)
+
+
+def _parse_zilch_timestamp(value: object) -> datetime | None:
+    """Parse one persisted UTC timestamp without inventing elapsed time."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        text = value[:-1] + "+00:00" if value.endswith("Z") else value
+        parsed = datetime.fromisoformat(text)
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _solo_objective_state(game: GameDict):
+    """Read the configured Solo objective or expose a stable rule error.
+
+    A historical preview state with ``_play_mode == 'solo'`` but no objective
+    remains a legacy placeholder.  It is deliberately not silently upgraded
+    into the new Sprint challenge, because that would invent product data.
+    """
+    if game.get("_play_mode") != ZILCH_SOLO_MODE:
+        raise ZilchRuleError("zilch_solo_mode_required")
+    raw = game.get("_zilch_solo_objective")
+    if not isinstance(raw, dict):
+        raise ZilchRuleError("zilch_solo_objective_not_configured")
+    try:
+        return zilch_solo_objective_state_from_payload(raw)
+    except ZilchSoloObjectiveError as exc:
+        game["_zilch_solo_error"] = exc.code
+        raise ZilchRuleError(exc.code) from exc
+
+
+def zilch_is_configured_solo_game(game: GameDict) -> bool:
+    """Return whether this is a real v1 Solo run, not an old mode-1 stub."""
+    if game.get("_play_mode") != ZILCH_SOLO_MODE or not isinstance(game.get("_zilch_solo_objective"), dict):
+        return False
+    try:
+        zilch_solo_objective_state_from_payload(game["_zilch_solo_objective"])
+    except ZilchSoloObjectiveError as exc:
+        game["_zilch_solo_error"] = exc.code
+        return False
+    return True
+
+
+def _solo_metrics_from_state(state) -> dict[str, int]:
+    progress = state.progress_payload()
+    return {
+        **progress,
+        "remaining_points": max(0, progress["target_score"] - progress["total_points"]),
+    }
+
+
+def _store_solo_objective_state(game: GameDict, state) -> None:
+    """Persist the one authoritative objective envelope plus a read model."""
+    game["_zilch_solo_objective"] = state.payload()
+    game["_zilch_solo_metrics"] = _solo_metrics_from_state(state)
+    game["_zilch_solo_error"] = None
+
+
+def configure_zilch_solo_game(game: GameDict, *, host_user_id: int) -> None:
+    """Configure a new one-human Sprint without a fake opponent or start roll."""
+    if type(host_user_id) is not int or host_user_id < 1:
+        raise ValueError("zilch_solo_host_required")
+    if game.get("_started") or game.get("_finished") or game.get("_aborted"):
+        raise ValueError("zilch_solo_configuration_not_new")
+    if game.get("_players") or game.get("_participants"):
+        raise ValueError("zilch_solo_configuration_not_new")
+    game["_mode"] = "1"
+    game["_play_mode"] = ZILCH_SOLO_MODE
+    game["_expected"] = ZILCH_MIN_PLAYERS
+    game["_expected_connections"] = ZILCH_MIN_PLAYERS
+    game["_zilch_solo_host_user_id"] = host_user_id
+    game["_zilch_solo_active_since"] = None
+    game["_zilch_solo_paused_at"] = None
+    _store_solo_objective_state(game, new_zilch_solo_objective_state())
+
+
+def zilch_solo_active_duration_seconds(game: GameDict, *, now: datetime | None = None) -> int:
+    """Return elapsed active play time; paused or restart downtime is excluded."""
+    state = _solo_objective_state(game)
+    elapsed = state.active_duration_seconds
+    anchor = _parse_zilch_timestamp(game.get("_zilch_solo_active_since"))
+    if anchor is None:
+        return elapsed
+    current = now or _utcnow()
+    return elapsed + max(0, int((current - anchor).total_seconds()))
+
+
+def settle_zilch_solo_active_duration(game: GameDict, *, now: datetime | None = None) -> int:
+    """Copy elapsed active time into the objective before a durable event."""
+    state = _solo_objective_state(game)
+    duration = zilch_solo_active_duration_seconds(game, now=now)
+    if duration > state.active_duration_seconds:
+        try:
+            state = record_solo_objective_active_duration(state, duration)
+        except ZilchSoloObjectiveError as exc:
+            raise ZilchRuleError(exc.code) from exc
+        _store_solo_objective_state(game, state)
+    return duration
+
+
+def pause_zilch_solo_timer(
+    game: GameDict,
+    *,
+    now: datetime | None = None,
+    count_elapsed: bool = True,
+) -> None:
+    """Stop Solo time for disconnect, manual pause, or restart recovery."""
+    if not zilch_is_configured_solo_game(game):
+        return
+    current = now or _utcnow()
+    if count_elapsed:
+        settle_zilch_solo_active_duration(game, now=current)
+    game["_zilch_solo_active_since"] = None
+    game["_zilch_solo_paused_at"] = current.isoformat()
+
+
+def resume_zilch_solo_timer(game: GameDict, *, now: datetime | None = None) -> None:
+    """Restart Solo time only while a valid, nonterminal run is playable."""
+    if not zilch_is_configured_solo_game(game) or game.get("_finished") or game.get("_aborted"):
+        return
+    current = now or _utcnow()
+    game["_zilch_solo_active_since"] = current.isoformat()
+    game["_zilch_solo_paused_at"] = None
+
+
+def zilch_solo_objective_projection(game: GameDict) -> dict | None:
+    """Build a read-only, localizable Solo projection from server state."""
+    if not zilch_is_configured_solo_game(game):
+        return None
+    try:
+        state = _solo_objective_state(game)
+    except ZilchRuleError:
+        return None
+    payload = state.payload()
+    metrics = _solo_metrics_from_state(state)
+    if game.get("_started") and not game.get("_finished"):
+        metrics["active_duration_seconds"] = zilch_solo_active_duration_seconds(game)
+    metrics["remaining_points"] = max(0, metrics["target_score"] - metrics["total_points"])
+    definition = state.definition.payload()
+    return {
+        **payload,
+        "name_key": definition["name_key"],
+        "description_key": definition["description_key"],
+        "primary_metric": definition["primary_metric"],
+        "tie_break_metrics": definition["tie_break_metrics"],
+        "allows_abandon": definition["allows_abandon"],
+        "metrics": metrics,
+    }
+
+
+def _record_solo_turn_started(game: GameDict, turn: ZilchTurn) -> None:
+    if not zilch_is_configured_solo_game(game):
+        return
+    try:
+        _store_solo_objective_state(
+            game,
+            record_solo_objective_turn_started(_solo_objective_state(game), turn_id=turn.turn_id),
+        )
+    except ZilchSoloObjectiveError as exc:
+        raise ZilchRuleError(exc.code) from exc
+
+
+def record_zilch_solo_roll(game: GameDict, turn: ZilchTurn) -> None:
+    """Observe an accepted roll after the shared fair engine produced it."""
+    if not zilch_is_configured_solo_game(game):
+        return
+    settle_zilch_solo_active_duration(game)
+    try:
+        _store_solo_objective_state(
+            game,
+            record_solo_objective_roll(
+                _solo_objective_state(game), turn_id=turn.turn_id, roll_id=turn.roll_id
+            ),
+        )
+    except ZilchSoloObjectiveError as exc:
+        raise ZilchRuleError(exc.code) from exc
+
+
+def record_zilch_solo_hot_dice(game: GameDict, turn: ZilchTurn) -> None:
+    """Observe a Hot-Dice event selected from the authoritative option list."""
+    if not zilch_is_configured_solo_game(game):
+        return
+    settle_zilch_solo_active_duration(game)
+    try:
+        _store_solo_objective_state(
+            game,
+            record_solo_objective_hot_dice(
+                _solo_objective_state(game), turn_id=turn.turn_id, roll_id=turn.roll_id
+            ),
+        )
+    except ZilchSoloObjectiveError as exc:
+        raise ZilchRuleError(exc.code) from exc
+
+
+def _record_solo_bank(game: GameDict, turn: ZilchTurn, total: int) -> None:
+    if not zilch_is_configured_solo_game(game):
+        return
+    settle_zilch_solo_active_duration(game)
+    try:
+        _store_solo_objective_state(
+            game,
+            record_solo_objective_bank(
+                _solo_objective_state(game),
+                turn_id=turn.turn_id,
+                banked_points=turn.round_points,
+                total_points_after=total,
+            ),
+        )
+    except ZilchSoloObjectiveError as exc:
+        raise ZilchRuleError(exc.code) from exc
+
+
+def _record_solo_zilch(game: GameDict, turn: ZilchTurn, *, total: int, penalty: int) -> None:
+    if not zilch_is_configured_solo_game(game):
+        return
+    settle_zilch_solo_active_duration(game)
+    try:
+        _store_solo_objective_state(
+            game,
+            record_solo_objective_zilch(
+                _solo_objective_state(game),
+                turn_id=turn.turn_id,
+                total_points_after=total,
+                penalty_points=penalty,
+            ),
+        )
+    except ZilchSoloObjectiveError as exc:
+        raise ZilchRuleError(exc.code) from exc
+
+
 def new_zilch_game(gid: str, name: str, mode: object) -> GameDict:
     """Create an isolated Zilch state without importing ZDWA scoring concepts."""
     normalized_mode = validate_zilch_mode(mode)
@@ -329,6 +585,16 @@ def new_zilch_game(gid: str, name: str, mode: object) -> GameDict:
         "_participants": [],
         "_zilch_cpu_host_user_id": None,
         "_zilch_cpu_participant_id": None,
+        # A true Solo run is configured explicitly by the protected create
+        # endpoint. Keeping the legacy mode-1 factory state empty prevents an
+        # old scaffold or malformed snapshot from receiving invented Sprint
+        # progress, a host identity, or a direct-start lifecycle.
+        "_zilch_solo_host_user_id": None,
+        "_zilch_solo_objective": None,
+        "_zilch_solo_metrics": None,
+        "_zilch_solo_active_since": None,
+        "_zilch_solo_paused_at": None,
+        "_zilch_solo_error": None,
         "_spectators": [],
         "_turn": None,
         "_dice": [0] * ZILCH_DICE_COUNT,
@@ -722,6 +988,22 @@ def ensure_zilch_engine_state(game: GameDict) -> None:
     game.setdefault("_zilch_outcome", None)
     game.setdefault("_zilch_last_event", None)
     game.setdefault("_zilch_cpu_error", None)
+    game.setdefault("_zilch_solo_host_user_id", None)
+    game.setdefault("_zilch_solo_objective", None)
+    game.setdefault("_zilch_solo_metrics", None)
+    game.setdefault("_zilch_solo_active_since", None)
+    game.setdefault("_zilch_solo_paused_at", None)
+    game.setdefault("_zilch_solo_error", None)
+    # A configured Solo snapshot must validate as the exact known objective.
+    # Do not repair or create one while loading an older one-player scaffold:
+    # it has no authoritative Objective ID/version to preserve.
+    if game.get("_play_mode") == ZILCH_SOLO_MODE and isinstance(game.get("_zilch_solo_objective"), dict):
+        try:
+            _store_solo_objective_state(game, _solo_objective_state(game))
+        except ZilchRuleError:
+            # Retain the original JSON and a machine-readable reason so an
+            # active damaged private run is not silently transformed or lost.
+            pass
     for key in ("_round_points", "_total_points", "_zilch_zilch_streaks", "_zilch_boards"):
         if not isinstance(game.get(key), dict):
             game[key] = {}
@@ -763,6 +1045,7 @@ def _start_turn_for(game: GameDict, player_id: str) -> ZilchTurn:
     )
     game["_zilch_turn_sequence"] = sequence
     sync_zilch_turn(game, turn)
+    _record_solo_turn_started(game, turn)
     return turn
 
 
@@ -830,6 +1113,7 @@ def record_zilch_bank(game: GameDict, turn: ZilchTurn) -> int:
         ),
     )
     game["_zilch_last_event"] = {"event": "bank", "player_id": player_id, "points": turn.round_points}
+    _record_solo_bank(game, turn, total)
     return total
 
 
@@ -884,6 +1168,7 @@ def record_zilch_loss(game: GameDict, turn: ZilchTurn, *, reason: str) -> dict:
         "reason": str(reason),
         "penalty": penalty,
     }
+    _record_solo_zilch(game, turn, total=total, penalty=penalty)
     return {"total": total, "streak": streak, "penalty": penalty}
 
 
@@ -899,6 +1184,14 @@ def advance_after_zilch_turn(game: GameDict, current_player_id: str) -> bool:
     if not order:
         return True
     player_id = str(current_player_id)
+    if zilch_is_configured_solo_game(game):
+        state = _solo_objective_state(game)
+        # Sprint completion is the only solo terminal criterion. There is no
+        # synthetic opponent, final reply, winner, or tie.
+        if state.is_terminal:
+            return True
+        begin_next_zilch_turn(game, player_id)
+        return False
     final_round = game.get("_zilch_final_round")
     if isinstance(final_round, dict):
         pending = [str(candidate) for candidate in final_round.get("pending_player_ids", []) if str(candidate) in order]
@@ -931,9 +1224,61 @@ def advance_after_zilch_turn(game: GameDict, current_player_id: str) -> bool:
     return False
 
 
+def finish_zilch_solo_game(game: GameDict, *, status: str) -> dict:
+    """Close a configured Solo run without competitive outcome fields."""
+    if status not in {"completed", "abandoned"}:
+        raise ZilchRuleError("zilch_solo_invalid_outcome")
+    ensure_zilch_engine_state(game)
+    state = _solo_objective_state(game)
+    settle_zilch_solo_active_duration(game)
+    state = _solo_objective_state(game)
+    try:
+        if status == "completed":
+            if state.outcome != "completed":
+                raise ZilchSoloObjectiveError("zilch_solo_objective_not_completed")
+        elif state.outcome is None:
+            state = abandon_solo_objective(state)
+        elif state.outcome != "abandoned":
+            raise ZilchSoloObjectiveError("zilch_solo_objective_finished")
+    except ZilchSoloObjectiveError as exc:
+        raise ZilchRuleError(exc.code) from exc
+    _store_solo_objective_state(game, state)
+    pause_zilch_solo_timer(game, count_elapsed=False)
+    participant_ids = zilch_participant_ids(game)
+    player_id = participant_ids[0] if participant_ids else None
+    total = _normalise_score(game.get("_total_points", {}).get(player_id)) if player_id else 0
+    outcome = {
+        "status": status,
+        "objective_id": state.objective_id,
+        "objective_version": state.objective_version,
+        "target_score": state.definition.target_score,
+        "total_points": total,
+        "totals": {player_id: total} if player_id else {},
+    }
+    game["_zilch_outcome"] = outcome
+    game["_started"] = False
+    game["_finished"] = True
+    # A manual/reconnect pause cannot obscure a terminal abandoned outcome.
+    game["_manual_pause"] = False
+    game["_manual_pause_by"] = None
+    game["_manual_pause_by_name"] = None
+    game["_manual_pause_at"] = None
+    game["_resume_required"] = False
+    if not isinstance(game.get("_finished_at"), str) or not str(game.get("_finished_at") or "").strip():
+        game["_finished_at"] = _utcnow().isoformat()
+    game["_results"] = None
+    game["_turn"] = None
+    game["_dice"] = [0] * ZILCH_DICE_COUNT
+    game["_holds"] = [False] * ZILCH_DICE_COUNT
+    game["_rolls_used"] = 0
+    return outcome
+
+
 def finish_zilch_game(game: GameDict) -> dict:
     """Close a Zilch state without invoking ZDWA results, stats, or awards."""
     ensure_zilch_engine_state(game)
+    if zilch_is_configured_solo_game(game):
+        return finish_zilch_solo_game(game, status="completed")
     totals = {player_id: _normalise_score(value) for player_id, value in game.get("_total_points", {}).items()}
     highest = max(totals.values(), default=0)
     winner_ids = [player_id for player_id in zilch_participant_ids(game) if totals.get(player_id, 0) == highest]
@@ -972,7 +1317,7 @@ def start_zilch_game(game: GameDict, *, randint_fn=None) -> None:
     if not zilch_is_ready_to_start(game):
         return
     game["_started"] = True
-    game["_started_at"] = datetime.now(timezone.utc).isoformat()
+    game["_started_at"] = _utcnow().isoformat()
     game["_finished_at"] = None
     player_ids = zilch_participant_ids(game)
     game["_zilch_turn_order"] = player_ids[:]
@@ -983,6 +1328,19 @@ def start_zilch_game(game: GameDict, *, randint_fn=None) -> None:
     game["_zilch_result"] = None
     game["_completion_persisted"] = False
     game["_finalization_pending"] = False
+    if zilch_is_configured_solo_game(game):
+        # The confirmed Sprint begins with a meaningful regular turn. A
+        # one-player start roll would decide nothing and is deliberately not
+        # serialized in this lifecycle.
+        game["_zilch_start_roll"] = None
+        game["_zilch_last_event"] = {"type": "solo_started", "player_id": player_ids[0]}
+        game["_turn"] = None
+        game["_dice"] = [0] * ZILCH_DICE_COUNT
+        game["_holds"] = [False] * ZILCH_DICE_COUNT
+        game["_rolls_used"] = 0
+        resume_zilch_solo_timer(game)
+        _start_turn_for(game, player_ids[0])
+        return
     game["_zilch_last_event"] = {"type": "start_roll_waiting", "player_ids": player_ids}
     game["_turn"] = None
     game["_dice"] = [0] * ZILCH_DICE_COUNT

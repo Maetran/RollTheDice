@@ -22,11 +22,24 @@ from .game_types import ZILCH_GAME_TYPE, game_type_from_state
 from .models import CompletedGame, GameParticipant
 from .zilch_cpu_strategy import ZilchCpuStrategyError, validate_zilch_cpu_strategy
 from .zilch_engine import ZILCH_RULESET_VERSION, ZILCH_TARGET_SCORE
+from .zilch_solo_objective import (
+    ZILCH_SOLO_SPRINT_OBJECTIVE_ID,
+    ZILCH_SOLO_SPRINT_OBJECTIVE_VERSION,
+    ZILCH_SOLO_SPRINT_TARGET_SCORE,
+    ZilchSoloObjectiveError,
+    zilch_solo_objective_state_from_payload,
+)
 
 logger = logging.getLogger(__name__)
 
+# Keep the existing competitive payload frozen at v1.  Persisted Human-vs-
+# Human and Human-vs-CPU records must remain readable after solo arrives;
+# solo therefore gets its own explicitly typed v2 projection rather than
+# changing the old result contract in place.
 ZILCH_RESULT_SCHEMA_VERSION = 1
 ZILCH_RESULT_PAYLOAD_KIND = "zilch_result"
+ZILCH_SOLO_RESULT_SCHEMA_VERSION = 2
+ZILCH_SOLO_RESULT_PAYLOAD_KIND = "zilch_solo_result"
 
 
 class ZilchResultValidationError(ValueError):
@@ -343,7 +356,285 @@ def _outcome_payload(raw: object, participant_ids: list[str], boards: dict[str, 
     }
 
 
-def build_zilch_result_payload(game: dict) -> dict:
+def _solo_outcome_payload(raw: object, *, total_points: int, target_score: int) -> dict:
+    """Project the non-competitive terminal outcome of one solo run.
+
+    A solo objective is not a disguised one-player match.  In particular, it
+    has no winner, tie, opponent, final reply, or opening-roll meaning.  Do
+    not accept those fields even as optional historic baggage: a terminal
+    active state with them belongs to a different lifecycle and should remain
+    available for diagnosis rather than be persisted under the wrong type.
+    """
+    if not isinstance(raw, dict):
+        raise ZilchResultValidationError("zilch_result_invalid_solo_outcome")
+    forbidden = {"winner_id", "winner_ids", "tied", "final_round", "opponent_id"}
+    if forbidden.intersection(raw):
+        raise ZilchResultValidationError("zilch_result_invalid_solo_outcome")
+    status = raw.get("status")
+    if status not in {"completed", "abandoned"}:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_outcome")
+    if status == "completed" and total_points < target_score:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_outcome")
+    # Reaching the approved objective ends the run immediately.  An
+    # ``abandoned`` run must therefore not manufacture an alternate success
+    # outcome after the objective was already achieved.
+    if status == "abandoned" and total_points >= target_score:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_outcome")
+    return {"status": status, "objective_completed": status == "completed"}
+
+
+def _solo_objective_payload(
+    raw: object,
+    *,
+    outcome_status: str,
+    total_points: int,
+    duration_seconds: int,
+    allow_result_ranking: bool = False,
+) -> tuple[dict, dict]:
+    """Sanitize the approved v1 sprint objective and its authoritative metrics.
+
+    The active state deliberately stores the objective envelope separately
+    from the turn engine.  Result persistence reads that one serialized
+    source of truth; it does not derive a challenge score from browser data
+    or infer an objective merely from ``mode == '1'``.
+    """
+    if not isinstance(raw, dict):
+        raise ZilchResultValidationError("zilch_result_invalid_solo_objective")
+    ranking = raw.get("ranking")
+    has_ranking = "ranking" in raw
+    expected_ranking = {
+        "primary": "turns",
+        "tie_breakers": ["rolls", "zilchs", "active_duration_seconds"],
+    }
+    if has_ranking and (not allow_result_ranking or ranking != expected_ranking):
+        raise ZilchResultValidationError("zilch_result_invalid_solo_objective")
+    objective_state_payload = {key: value for key, value in raw.items() if key != "ranking"}
+    # Keep the result boundary coupled to the pure objective contract rather
+    # than accepting free-form client or recovered-state parameters.  Its
+    # parser also rejects unknown fields, incomplete metrics, and impossible
+    # objective completion before a historic row can be written.
+    try:
+        objective_state = zilch_solo_objective_state_from_payload(objective_state_payload)
+        canonical_objective_state = objective_state.payload()
+    except (TypeError, ValueError, ZilchSoloObjectiveError) as exc:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_objective") from exc
+    if objective_state_payload != canonical_objective_state:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_objective")
+    objective_id = _required_text(
+        canonical_objective_state.get("id"), "zilch_result_invalid_solo_objective", limit=80
+    )
+    objective_version = _integer(
+        canonical_objective_state.get("version"), "zilch_result_invalid_solo_objective", minimum=1
+    )
+    parameters = canonical_objective_state.get("parameters")
+    if (
+        objective_id != ZILCH_SOLO_SPRINT_OBJECTIVE_ID
+        or objective_version != ZILCH_SOLO_SPRINT_OBJECTIVE_VERSION
+        or parameters != {}
+    ):
+        raise ZilchResultValidationError("zilch_result_invalid_solo_objective")
+
+    raw_progress = canonical_objective_state["progress"]
+    progress = {
+        "target_score": _integer(
+            raw_progress.get("target_score"), "zilch_result_invalid_solo_progress", minimum=1
+        ),
+        "total_points": _integer(raw_progress.get("total_points"), "zilch_result_invalid_solo_progress"),
+        "turns": _integer(raw_progress.get("turns"), "zilch_result_invalid_solo_progress"),
+        "rolls": _integer(raw_progress.get("rolls"), "zilch_result_invalid_solo_progress"),
+        "zilchs": _integer(raw_progress.get("zilchs"), "zilch_result_invalid_solo_progress"),
+        "hot_dice_events": _integer(
+            raw_progress.get("hot_dice_events"), "zilch_result_invalid_solo_progress"
+        ),
+        "highest_banked_round": _integer(
+            raw_progress.get("highest_banked_round"), "zilch_result_invalid_solo_progress"
+        ),
+        "active_duration_seconds": _integer(
+            raw_progress.get("active_duration_seconds"), "zilch_result_invalid_solo_progress"
+        ),
+    }
+    if progress["target_score"] != ZILCH_SOLO_SPRINT_TARGET_SCORE:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_progress")
+    if progress["total_points"] != total_points:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_progress")
+    if progress["active_duration_seconds"] > duration_seconds:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_progress")
+    if raw.get("outcome") != outcome_status:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_objective")
+    return (
+        {
+            "id": objective_id,
+            "version": objective_version,
+            "parameters": {},
+            "progress": progress,
+            "outcome": outcome_status,
+            # Stable, explicit future ranking order.  It is recorded for
+            # historic interpretation only; Part 7 creates no leaderboard.
+            "ranking": expected_ranking,
+        },
+        progress,
+    )
+
+
+def _solo_metrics_payload(
+    raw: object,
+    *,
+    progress: dict,
+    history_metrics: dict,
+    board: dict,
+    total_points: int,
+    target_score: int,
+    outcome_status: str,
+) -> dict:
+    """Cross-check the serialised solo progress against authoritative boards.
+
+    ``_zilch_solo_metrics`` is intentionally a convenience projection, not a
+    second source of truth.  Requiring it to agree with the objective and
+    completed round history catches malformed recovery JSON without making
+    result reads depend on a browser-side calculation.
+    """
+    if not isinstance(raw, dict):
+        raise ZilchResultValidationError("zilch_result_invalid_solo_metrics")
+    hot_dice_value = raw.get("hot_dice_events", raw.get("hot_dice"))
+    if "hot_dice_events" in raw and "hot_dice" in raw and raw["hot_dice_events"] != raw["hot_dice"]:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_metrics")
+    metrics = {
+        "turns": _integer(raw.get("turns"), "zilch_result_invalid_solo_metrics"),
+        "rolls": _integer(raw.get("rolls"), "zilch_result_invalid_solo_metrics"),
+        "zilchs": _integer(raw.get("zilchs"), "zilch_result_invalid_solo_metrics"),
+        "hot_dice_events": _integer(hot_dice_value, "zilch_result_invalid_solo_metrics"),
+        "highest_banked_round": _integer(
+            raw.get("highest_banked_round"), "zilch_result_invalid_solo_metrics"
+        ),
+        "active_duration_seconds": _integer(
+            raw.get("active_duration_seconds"), "zilch_result_invalid_solo_metrics"
+        ),
+        "remaining_points": _integer(raw.get("remaining_points"), "zilch_result_invalid_solo_metrics"),
+    }
+    for key in (
+        "turns",
+        "rolls",
+        "zilchs",
+        "hot_dice_events",
+        "highest_banked_round",
+        "active_duration_seconds",
+    ):
+        if metrics[key] != progress[key]:
+            raise ZilchResultValidationError("zilch_result_invalid_solo_metrics")
+    if metrics["remaining_points"] != max(0, target_score - total_points):
+        raise ZilchResultValidationError("zilch_result_invalid_solo_metrics")
+    if not history_metrics.get("hot_dice_events_complete"):
+        raise ZilchResultValidationError("zilch_result_incomplete_solo_round_history")
+    if metrics["zilchs"] != history_metrics["zilch_count"]:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_metrics")
+    if metrics["hot_dice_events"] != history_metrics["hot_dice_events"]:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_metrics")
+    if metrics["highest_banked_round"] != history_metrics["highest_banked_round"]:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_metrics")
+    rounds = board.get("rounds") if isinstance(board, dict) else None
+    if not isinstance(rounds, list):
+        raise ZilchResultValidationError("zilch_result_invalid_solo_metrics")
+    completed_turns = len(rounds)
+    if outcome_status == "completed":
+        if metrics["turns"] != completed_turns:
+            raise ZilchResultValidationError("zilch_result_invalid_solo_metrics")
+    elif metrics["turns"] not in {completed_turns, completed_turns + 1}:
+        # An abandon can happen before or during one unfinished local turn;
+        # it cannot legitimately skip an arbitrary number of board entries.
+        raise ZilchResultValidationError("zilch_result_invalid_solo_metrics")
+    completed_rolls = sum(_integer(round_entry.get("rolls_used"), "zilch_result_invalid_round") for round_entry in rounds)
+    if metrics["rolls"] < completed_rolls:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_metrics")
+    return {
+        "turns": metrics["turns"],
+        "rolls": metrics["rolls"],
+        "zilch_count": metrics["zilchs"],
+        "hot_dice_events": metrics["hot_dice_events"],
+        "hot_dice_events_complete": True,
+        "highest_banked_round": metrics["highest_banked_round"],
+        "active_duration_seconds": metrics["active_duration_seconds"],
+        "remaining_points": metrics["remaining_points"],
+        "zilch_penalties": history_metrics["zilch_penalties"],
+    }
+
+
+def _build_zilch_solo_result_payload(game: dict) -> dict:
+    """Build the distinct v2 payload for the approved 10,000-point sprint."""
+    try:
+        if game_type_from_state(game) != ZILCH_GAME_TYPE:
+            raise ZilchResultValidationError("zilch_result_wrong_game_type")
+    except ValueError as exc:
+        raise ZilchResultValidationError("zilch_result_wrong_game_type") from exc
+    if not game.get("_finished") or game.get("_aborted"):
+        raise ZilchResultValidationError("zilch_result_not_terminal")
+    if game.get("_zilch_ruleset") != ZILCH_RULESET_VERSION:
+        raise ZilchResultValidationError("zilch_result_unknown_ruleset")
+    if game.get("_play_mode") != "solo" or game.get("_mode") != "1":
+        raise ZilchResultValidationError("zilch_result_invalid_solo_mode")
+    if game.get("_zilch_start_roll") is not None or game.get("_zilch_final_round") is not None:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_lifecycle")
+    game_id = _required_text(game.get("_id"), "zilch_result_missing_game_id", limit=64)
+    game_name = str(game.get("_name") or "")[:160]
+    started_at = _timestamp(game.get("_started_at"), "zilch_result_missing_started_at")
+    finished_at = _timestamp(game.get("_finished_at"), "zilch_result_missing_finished_at")
+    if finished_at < started_at:
+        raise ZilchResultValidationError("zilch_result_invalid_duration")
+    duration_seconds = int((finished_at - started_at).total_seconds())
+    target_score = _integer(game.get("_target_score"), "zilch_result_invalid_target", minimum=1)
+    if target_score != ZILCH_TARGET_SCORE or target_score != ZILCH_SOLO_SPRINT_TARGET_SCORE:
+        raise ZilchResultValidationError("zilch_result_unknown_target")
+    participants, participant_ids = _participant_payloads(game)
+    if len(participants) != 1 or participants[0]["participant_type"] != "human":
+        raise ZilchResultValidationError("zilch_result_invalid_solo_participants")
+    boards, history_metrics = _board_payloads(game, participant_ids)
+    participant_id = participant_ids[0]
+    board = boards[participant_id]
+    total_points = board["total_points"]
+    raw_totals = game.get("_total_points")
+    if not isinstance(raw_totals, dict) or set(map(str, raw_totals)) != {participant_id}:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_totals")
+    if _integer(raw_totals.get(participant_id), "zilch_result_invalid_solo_totals") != total_points:
+        raise ZilchResultValidationError("zilch_result_board_total_mismatch")
+    outcome = _solo_outcome_payload(game.get("_zilch_outcome"), total_points=total_points, target_score=target_score)
+    objective, progress = _solo_objective_payload(
+        game.get("_zilch_solo_objective"),
+        outcome_status=outcome["status"],
+        total_points=total_points,
+        duration_seconds=duration_seconds,
+    )
+    metrics = _solo_metrics_payload(
+        game.get("_zilch_solo_metrics"),
+        progress=progress,
+        history_metrics=history_metrics,
+        board=board,
+        total_points=total_points,
+        target_score=target_score,
+        outcome_status=outcome["status"],
+    )
+    return {
+        "schema_version": ZILCH_SOLO_RESULT_SCHEMA_VERSION,
+        "payload_kind": ZILCH_SOLO_RESULT_PAYLOAD_KIND,
+        "game_type": ZILCH_GAME_TYPE,
+        "game_id": game_id,
+        "game_name": game_name,
+        "ruleset": ZILCH_RULESET_VERSION,
+        "play_mode": "solo",
+        "mode": "1",
+        "target_score": target_score,
+        "started_at": _timestamp_payload(started_at),
+        "finished_at": _timestamp_payload(finished_at),
+        "duration_seconds": duration_seconds,
+        "participants": participants,
+        "participant_order": participant_ids,
+        "boards": boards,
+        "totals": {participant_id: total_points},
+        "objective": objective,
+        "outcome": outcome,
+        "metrics": metrics,
+    }
+
+
+def _build_competitive_zilch_result_payload(game: dict) -> dict:
     """Build one immutable v1 result from a fully authoritative terminal state.
 
     This intentionally does *not* invoke the forgiving live-state hydrator.
@@ -408,6 +699,18 @@ def build_zilch_result_payload(game: dict) -> dict:
         "outcome": outcome,
         "metrics": metrics,
     }
+
+
+def build_zilch_result_payload(game: dict) -> dict:
+    """Build the typed historic projection selected by the durable play mode.
+
+    The dispatch is intentionally at the persistence boundary.  Gameplay
+    remains free of result/database concerns and established multiplayer/CPU
+    records keep their exact v1 format.
+    """
+    if game.get("_play_mode") == "solo":
+        return _build_zilch_solo_result_payload(game)
+    return _build_competitive_zilch_result_payload(game)
 
 
 def _result_participants(payload: dict) -> list[dict]:
@@ -475,7 +778,7 @@ def finalize_zilch_result(game: dict) -> dict:
     # a new ActiveGame record after the confirmed deletion.
     game["_zilch_result"] = {
         "game_id": payload["game_id"],
-        "schema_version": ZILCH_RESULT_SCHEMA_VERSION,
+        "schema_version": payload["schema_version"],
         "result_url": response["result_url"],
     }
     game["_completion_persisted"] = True
@@ -483,8 +786,8 @@ def finalize_zilch_result(game: dict) -> dict:
     return response
 
 
-def _validate_stored_payload(payload: dict) -> None:
-    """Reject a damaged historic payload before exposing it to a projection.
+def _validate_v1_stored_payload(payload: dict) -> None:
+    """Validate the frozen Human-vs-Human/CPU v1 result contract.
 
     The builder validates a live terminal state before it is written, but a
     database row can still be damaged by an operator, a future migration, or a
@@ -616,6 +919,120 @@ def _validate_stored_payload(payload: dict) -> None:
         _integer(hot_dice_events, "zilch_result_invalid_metrics")
     if type(metrics.get("hot_dice_events_complete")) is not bool:
         raise ZilchResultValidationError("zilch_result_invalid_metrics")
+
+
+def _validate_solo_participant_payload(raw: object) -> tuple[dict, str]:
+    """Validate the one durable human seat a solo result may expose."""
+    if not isinstance(raw, dict):
+        raise ZilchResultValidationError("zilch_result_invalid_solo_participants")
+    if _integer(raw.get("position"), "zilch_result_invalid_solo_participants") != 0:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_participants")
+    participant_id = _required_text(raw.get("participant_id"), "zilch_result_invalid_participant_id", limit=64)
+    if _required_text(raw.get("player_key"), "zilch_result_invalid_participant_id", limit=64) != participant_id:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_participants")
+    _required_text(raw.get("display_name"), "zilch_result_invalid_participant_name", limit=64)
+    _required_text(raw.get("username"), "zilch_result_invalid_participant_name", limit=64)
+    if raw.get("participant_type") != "human" or raw.get("cpu_strategy") is not None:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_participants")
+    if raw.get("connection_player_id") is not None:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_participants")
+    _optional_user_id(raw.get("user_id"))
+    return raw, participant_id
+
+
+def _validate_v2_solo_stored_payload(payload: dict) -> None:
+    """Validate the typed v2 solo report without applying v1 match rules."""
+    if (
+        payload.get("payload_kind") != ZILCH_SOLO_RESULT_PAYLOAD_KIND
+        or payload.get("schema_version") != ZILCH_SOLO_RESULT_SCHEMA_VERSION
+        or payload.get("game_type") != ZILCH_GAME_TYPE
+    ):
+        raise ZilchResultValidationError("zilch_result_unknown_payload_schema")
+    if "start_roll" in payload or "final_round" in payload:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_lifecycle")
+    _required_text(payload.get("game_id"), "zilch_result_missing_game_id", limit=64)
+    if payload.get("ruleset") != ZILCH_RULESET_VERSION:
+        raise ZilchResultValidationError("zilch_result_unknown_ruleset")
+    if payload.get("play_mode") != "solo" or payload.get("mode") != "1":
+        raise ZilchResultValidationError("zilch_result_invalid_solo_mode")
+    started_at = _timestamp(payload.get("started_at"), "zilch_result_missing_started_at")
+    finished_at = _timestamp(payload.get("finished_at"), "zilch_result_missing_finished_at")
+    duration_seconds = _integer(payload.get("duration_seconds"), "zilch_result_invalid_duration")
+    if finished_at < started_at or duration_seconds != int((finished_at - started_at).total_seconds()):
+        raise ZilchResultValidationError("zilch_result_invalid_duration")
+    target_score = _integer(payload.get("target_score"), "zilch_result_invalid_target", minimum=1)
+    if target_score != ZILCH_TARGET_SCORE or target_score != ZILCH_SOLO_SPRINT_TARGET_SCORE:
+        raise ZilchResultValidationError("zilch_result_unknown_target")
+
+    participants = payload.get("participants")
+    if not isinstance(participants, list) or len(participants) != 1:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_participants")
+    _participant, participant_id = _validate_solo_participant_payload(participants[0])
+    if payload.get("participant_order") != [participant_id]:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_participants")
+
+    raw_boards = payload.get("boards")
+    if not isinstance(raw_boards, dict) or set(raw_boards) != {participant_id}:
+        raise ZilchResultValidationError("zilch_result_invalid_boards")
+    boards, history_metrics = _board_payloads({"_zilch_boards": raw_boards}, [participant_id])
+    board = boards[participant_id]
+    total_points = board["total_points"]
+    expected_totals = {participant_id: total_points}
+    if payload.get("totals") != expected_totals:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_totals")
+
+    outcome = _solo_outcome_payload(payload.get("outcome"), total_points=total_points, target_score=target_score)
+    if payload.get("outcome") != outcome:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_outcome")
+    objective, progress = _solo_objective_payload(
+        payload.get("objective"),
+        outcome_status=outcome["status"],
+        total_points=total_points,
+        duration_seconds=duration_seconds,
+        allow_result_ranking=True,
+    )
+    if payload.get("objective") != objective:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_objective")
+    raw_metrics = payload.get("metrics")
+    if not isinstance(raw_metrics, dict):
+        raise ZilchResultValidationError("zilch_result_invalid_solo_metrics")
+    projected_live_metrics = {
+        "turns": raw_metrics.get("turns"),
+        "rolls": raw_metrics.get("rolls"),
+        "zilchs": raw_metrics.get("zilch_count"),
+        "hot_dice_events": raw_metrics.get("hot_dice_events"),
+        "highest_banked_round": raw_metrics.get("highest_banked_round"),
+        "active_duration_seconds": raw_metrics.get("active_duration_seconds"),
+        "remaining_points": raw_metrics.get("remaining_points"),
+    }
+    metrics = _solo_metrics_payload(
+        projected_live_metrics,
+        progress=progress,
+        history_metrics=history_metrics,
+        board=board,
+        total_points=total_points,
+        target_score=target_score,
+        outcome_status=outcome["status"],
+    )
+    if raw_metrics != metrics:
+        raise ZilchResultValidationError("zilch_result_invalid_solo_metrics")
+
+
+def _validate_stored_payload(payload: dict) -> None:
+    """Fail closed by dispatching only the two known historic payload types."""
+    if not isinstance(payload, dict):
+        raise ZilchResultValidationError("zilch_result_unknown_payload_schema")
+    kind = payload.get("payload_kind")
+    version = payload.get("schema_version")
+    if kind == ZILCH_RESULT_PAYLOAD_KIND and version == ZILCH_RESULT_SCHEMA_VERSION:
+        _validate_v1_stored_payload(payload)
+        return
+    if kind == ZILCH_SOLO_RESULT_PAYLOAD_KIND and version == ZILCH_SOLO_RESULT_SCHEMA_VERSION:
+        _validate_v2_solo_stored_payload(payload)
+        return
+    raise ZilchResultValidationError("zilch_result_unknown_payload_schema")
+
+
 def _stored_payload(row: CompletedGame) -> dict | None:
     if row.game_type != ZILCH_GAME_TYPE:
         return None
@@ -670,15 +1087,20 @@ def list_zilch_results_for_user(user_id: int, *, limit: int = 30) -> list[dict]:
     for payload in payloads:
         if payload is None:
             continue
-        summaries.append(
-            {
-                "game_id": payload["game_id"],
-                "game_name": payload["game_name"],
-                "finished_at": payload["finished_at"],
-                "participants": payload["participants"],
-                "totals": payload["totals"],
-                "outcome": payload["outcome"],
-                "result_url": f"/zilch/ergebnis/{payload['game_id']}",
-            }
-        )
+        summary = {
+            "game_id": payload["game_id"],
+            "game_name": payload["game_name"],
+            "finished_at": payload["finished_at"],
+            "play_mode": payload["play_mode"],
+            "participants": payload["participants"],
+            "totals": payload["totals"],
+            "outcome": payload["outcome"],
+            "result_url": f"/zilch/ergebnis/{payload['game_id']}",
+        }
+        if payload["play_mode"] == "solo":
+            # The lobby needs compact, server-built objective information; it
+            # must not recalculate ranking metrics from the round history.
+            summary["objective"] = payload["objective"]
+            summary["metrics"] = payload["metrics"]
+        summaries.append(summary)
     return summaries

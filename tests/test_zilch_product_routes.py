@@ -30,6 +30,11 @@ from app.zilch_engine import (
     ZILCH_THIRD_ROLL_MINIMUM,
     ZILCH_ZILCH_STREAK_PENALTY,
 )
+from app.zilch_solo_objective import (
+    ZILCH_SOLO_SPRINT_OBJECTIVE_ID,
+    ZILCH_SOLO_SPRINT_OBJECTIVE_VERSION,
+    validate_zilch_solo_objective_definition,
+)
 from app.zilch_state import (
     join_zilch_player,
     new_zilch_game,
@@ -128,6 +133,10 @@ class ZilchProductRoutesTestCase(TestCase):
                 "third_roll_minimum": ZILCH_THIRD_ROLL_MINIMUM,
                 "confirmation_minimum": ZILCH_CONFIRMATION_MINIMUM,
                 "third_zilch_penalty": ZILCH_ZILCH_STREAK_PENALTY,
+                "solo_objective": validate_zilch_solo_objective_definition(
+                    ZILCH_SOLO_SPRINT_OBJECTIVE_ID,
+                    ZILCH_SOLO_SPRINT_OBJECTIVE_VERSION,
+                ).payload(),
                 "scoring": {
                     "single_one": 100,
                     "single_five": 50,

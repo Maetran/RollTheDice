@@ -6,11 +6,11 @@ internal Zilch preview. The binding Zilch house rules live in
 rule page. The private in-app rule guide is a localized projection of that
 contract, not a second rule source.
 
-The current private increment is a playable **human-vs-human and
-human-vs-CPU preview** with a complete private product surface: lobby, waiting
-room, live game, history, read-only completed-result report, and rule guide. It
-is not a public release and it deliberately remains outside ZDWA results,
-statistics, leaderboards, achievements, and replay views.
+The current private increment is a playable **human-vs-human, human-vs-CPU,
+and solo preview** with a complete private product surface: lobby, waiting room
+where relevant, live game, history, read-only completed-result report, and rule
+guide. It is not a public release and it deliberately remains outside ZDWA
+results, statistics, leaderboards, achievements, and replay views.
 
 ## Boundaries
 
@@ -25,13 +25,17 @@ statistics, leaderboards, achievements, and replay views.
   and a pure server-side scoring/turn engine. Play mode
   (`solo | cpu | multiplayer`) and participant type (`human | cpu`) are
   distinct from WebSocket connections. The preview exposes `multiplayer` with
-  exactly two authenticated human participants and `cpu` with one authenticated
-  host plus one CPU domain participant; it has no spectators. A CPU has neither
-  an account/user ID, session, resume token, WebSocket, nor offline state.
-  `_players` remains transport-only, while `_participants` holds both domain
-  seats and `_expected_connections` states how many human connections are
-  required. True solo remains a future domain/product decision. Its UI is a
-  separate route/root with its own stylesheet boundary (`data-game="zilch"`), a
+  exactly two authenticated human participants, `cpu` with one authenticated
+  host plus one CPU domain participant, and `solo` with exactly one human
+  participant and one human connection; it has no spectators. Solo uses the
+  versioned `reach_10000_fewest_turns` objective at version 1: reach at least
+  10,000 points, then rank future runs by fewer turns, fewer rolls, fewer
+  Zilchs, and shorter active duration. A CPU has neither an account/user ID,
+  session, resume token, WebSocket, nor offline state. `_players` remains
+  transport-only, while `_participants` holds domain seats and
+  `_expected_connections` states how many human connections are required.
+  Solo has no CPU, opponent, competitive winner/tie, opening roll, or final
+  reply. Its UI is a separate route/root with its own stylesheet boundary (`data-game="zilch"`), a
   private navigation, six server-snapshot dice, and no manual dice-selection
   affordance. The CSS-only design system uses warm table, paper-card, and dice
   tokens without third-party game assets. Completed games have their own
@@ -80,11 +84,14 @@ invented, converted to ZDWA, or deleted.
 
 ZDWA keeps its existing scorecard payload, legacy replay, leaderboard JSON,
 statistics, and achievement pipeline behind the `zdwa` finalizer. All of those
-SQL readers explicitly filter `game_type = zdwa`. Zilch uses a separate
-`zilch_result` payload at schema version 1 with its ruleset, timestamps,
-participants, start-roll attempts, both boards and round histories, penalties,
-final-round state, outcome, and only reliable derived metrics. It is visible
-only through protected `/api/zilch/results` endpoints and
+SQL readers explicitly filter `game_type = zdwa`. Competitive Zilch uses the
+separate `zilch_result` payload at schema version 1 with its ruleset,
+timestamps, participants, start-roll attempts, both boards and round histories,
+penalties, final-round state, outcome, and only reliable derived metrics. Solo
+uses the distinct `zilch_solo_result` payload at schema version 2: its
+objective id/version and parameters, one human board and round history,
+authoritative run metrics, active duration, and `completed` or `abandoned`
+outcome. Both are visible only through protected `/api/zilch/results` endpoints and
 `/zilch/ergebnis/{game_id}`; it never enters the ZDWA replay renderer or any
 ZDWA aggregate.
 
@@ -98,8 +105,9 @@ silently discarding Zilch history.
 ## Zilch rule contract and engine boundary
 
 [ZILCH_RULES.md](ZILCH_RULES.md) records the confirmed score table, holds,
-Hot Dice, confirmation rolls, Zilch behavior, start roll, banking threshold,
-final reply, tie, and manual-score decisions. `app/zilch_engine.py` implements
+Hot Dice, confirmation rolls, Zilch behavior, competitive start roll, banking
+threshold, final reply, tie, the Solo Sprint objective, and manual-score
+decisions. `app/zilch_engine.py` implements
 those rules as a pure domain module. Its inputs/outputs are serializable data;
 it does not import FastAPI, WebSockets, browser state, database models, ZDWA's
 five-dice engine, or ZDWA scoring.
@@ -108,8 +116,11 @@ five-dice engine, or ZDWA scoring.
 turn/version/option references, calls the pure engine, synchronizes the Zilch
 live state, then broadcasts through the shared coordinator. A visible,
 versioned `zilch_start_roll` action records one server-generated die per
-participant and repeats ties before the first regular turn. `zilch_roll_dice`,
-`zilch_select_hold`, and `zilch_bank_points` are authoritative actions.
+competitive participant and repeats ties before the first regular turn. Solo
+starts directly with its first normal turn, so it never receives a meaningless
+opening-roll action. `zilch_roll_dice`, `zilch_select_hold`, and
+`zilch_bank_points` are authoritative actions; a confirmed
+`zilch_abandon_solo` action is available only to the current Solo participant.
 `zilch_submit_score` remains an explicit rejected compatibility action because
 manual score entry was ruled out for this phase.
 
@@ -120,7 +131,7 @@ opening-roll history, current unbanked score, Zilch streak, connection state,
 Hot Dice/confirmation state, and final-reply markers are projected together.
 
 The remaining product decisions are deliberately narrower: the exact penalty
-cadence after a fourth or later consecutive Zilch, a meaningful solo objective,
+cadence after a fourth or later consecutive Zilch, additional Solo objectives,
 manual dice interaction, final branding/polish, Zilch statistics/achievements,
 and public release.
 
@@ -202,6 +213,37 @@ user ID, and its authoritative boards, rounds, scores, Zilchs, penalties, Hot
 Dice, final reply, and outcome. That remains private and cannot enter ZDWA
 results, statistics, achievements, leaderboards, or replay.
 
+## Solo Sprint operation
+
+A preview-authorized human can create `play_mode = solo` with exactly one
+domain participant and one required human transport connection. The sole
+currently offered objective is the immutable
+`reach_10000_fewest_turns` objective at version 1. It has no client-selectable
+parameters: score at least 10,000 under `zilch-house-v1`; future comparison
+uses, in order, fewer turns, fewer rolls, fewer Zilchs, then shorter active
+duration. There is no round limit, opponent, CPU, start roll, final reply, or
+competitive winner/tie.
+
+The normal Zilch engine remains unchanged. The player rolls, selects only
+server-generated Quick Holds, rolls again or banks under the ordinary 300/400,
+Hot Dice, confirmation-roll, and Zilch rules. After a bank or a Zilch, the
+next turn belongs to that same participant. The pure
+`app/zilch_solo_objective.py` observes only authoritative turn, roll, Hot Dice,
+bank, and Zilch events; it cannot score dice, alter the RNG, or make gameplay
+decisions. It writes a versioned objective envelope containing progress and
+the authoritative metrics (turns, rolls, Zilchs, Hot Dice, highest banked
+round, total points, and active duration).
+
+Solo begins directly with the first normal turn. Reaching the objective ends
+the run with `completed`; the participant may instead explicitly confirm an
+`abandoned` run. Both outcomes are terminal and are idempotently persisted by
+the existing typed Zilch finalizer. Active duration is measured server-side:
+manual pause and restart/rejoin downtime are excluded, while active connected
+play time is retained. Reload/rejoin restores the one participant, objective,
+turn/version, dice and holds; no CPU runner is ever scheduled for a Solo game.
+Its private report/history uses `zilch_solo_result` schema 2 and deliberately
+shows no opponent, final reply, winner, tie, CPU strategy, or ZDWA aggregate.
+
 ## Private product UI
 
 The protected Zilch app has a compact navigation for lobby, a remembered active
@@ -214,10 +256,12 @@ only after the session is still policy-authorized.
 The lobby separates waiting, running/paused, and own completed games. A Zilch
 room may use the existing optional room-code mechanism; a code stays in the
 browser session only and is checked by the server on join/rejoin. Waiting and
-start-roll states remain distinct from regular gameplay. Both boards stay
-visible through the game, while the six non-clickable dice, server-produced
+start-roll states remain distinct from regular competitive gameplay.
+Competitive games retain both boards; Solo has one board plus an objective and
+progress card. In every mode, the six non-clickable dice, server-produced
 Quick-Hold cards, roll/bank actions, hold/bank constraints, events, connection
-state, and terminal outcome are projected only from the authoritative snapshot.
+state where applicable, and terminal outcome are projected only from the
+authoritative snapshot.
 
 The private UI uses scoped CSS variables for a warm wood table, paper-like
 cards, deep dice, high-contrast hold/status states, large touch targets, and
@@ -263,8 +307,9 @@ the repository-owned current status.
 
 - The durable domain keeps `1 | 2` participant capacity and
   `solo | cpu | multiplayer` separate from connections. HTTP creation exposes
-  exactly two authenticated humans for `multiplayer`, or one authorized human
-  and one server-owned CPU seat for `cpu`; true solo is still unavailable.
+  exactly two authenticated humans for `multiplayer`, one authorized human and
+  one server-owned CPU seat for `cpu`, or one authorized human with the
+  versioned Solo Sprint objective for `solo`.
 - The confirmed engine now powers the private browser flow. Quick Holds are
   the only selection method in this increment; manual dice selection and final
   interaction polish stay future work.
@@ -309,7 +354,9 @@ the repository-owned current status.
   ties, and turn order.
 - [x] Decide whether score entry is calculated only, manual, or a separate
   audited correction path.
-- [ ] Decide the purpose and success metric of true solo play.
+- [x] Define the first true Solo objective as
+  `reach_10000_fewest_turns` version 1, without coupling the engine to future
+  challenge variants.
 
 ### Phase 2 — authoritative Zilch engine
 
@@ -332,8 +379,9 @@ the repository-owned current status.
 - [x] Finish private human-vs-human play for two participants, including join,
   versioned opening roll, Quick Holds, banking, turn changes, final reply,
   terminal result, and simultaneous boards.
-- [ ] Define solo objectives without coupling the engine to one metric; store
-  a challenge/ruleset identifier rather than hard-coding “reach 10,000”.
+- [x] Add a private Solo lifecycle with one human participant, a versioned
+  objective envelope, direct first turn, no CPU/opponent/final reply, and
+  server-owned progress/metrics.
 - [x] Add a private human-vs-CPU lifecycle without fake accounts or sockets.
   Strategy changes decisions only and considers score, dice remaining,
   opponent score, confirmation/Hot-Dice state, and endgame context while using
