@@ -7,9 +7,10 @@ Zilch foundation: only the authenticated admin account whose normalized
 username is `mani` can open its separate preview shell. It establishes a
 six-dice, 10,000-point, one-or-two-participant state boundary. Play modes
 `solo | cpu | multiplayer` and participant types `human | cpu` are separate
-from WebSocket connections; CPU behavior is not implemented. Zilch scoring,
-completed-game persistence, achievements, leaderboards, and final rules are
-also deliberately deferred.
+from WebSocket connections; CPU behavior is not implemented. Confirmed Zilch
+scoring, turn handling, and Quick-Hold validation run server-side only. The
+tactile Zilch interface, completed-game persistence, achievements,
+leaderboards, CPU behavior, and public release are deliberately deferred.
 
 Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
 
@@ -212,9 +213,11 @@ behind their adapter; Zilch has separate modules and cannot call ZDWA scoring or
 completion code. The current Zilch preview is deliberately noindex and guarded
 on every relevant page, API, detail lookup, and WebSocket connection.
 
-The scope and deliberately unresolved Zilch house rules are documented in
-[docs/MULTIGAME_FOUNDATION.md](docs/MULTIGAME_FOUNDATION.md). They are not part
-of the player-facing ZDWA rules until actual Zilch gameplay is agreed.
+The architecture boundary is documented in
+[docs/MULTIGAME_FOUNDATION.md](docs/MULTIGAME_FOUNDATION.md); the confirmed
+internal rule contract is in [docs/ZILCH_RULES.md](docs/ZILCH_RULES.md). Neither
+is a public Zilch rules page, and Zilch remains outside the player-facing ZDWA
+rules until the private preview is productized.
 
 ## Plain Docker
 

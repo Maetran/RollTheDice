@@ -91,7 +91,7 @@ async function renderLobby() {
   content.innerHTML = `<section class="zilch-intro">
       <p class="eyebrow">${t("Interne Vorschau")}</p>
       <h1>${t("Zilch-Preview")}</h1>
-      <p>${t("Separater Spielmodus mit sechs Würfeln und Ziel 10’000. Die Spielregeln und Wertung sind bewusst noch nicht festgelegt.")}</p>
+      <p>${t("Separater Spielmodus mit sechs Würfeln und Ziel 10’000. Der serverseitige Regelvertrag ist festgelegt; die taktile Spieloberfläche folgt später.")}</p>
     </section>
     <section class="zilch-card">
       <p class="eyebrow">${t("Neue Zilch-Partie")}</p>
@@ -108,8 +108,8 @@ async function renderLobby() {
       <div id="zilchGames" class="zilch-game-list" aria-live="polite">${t("Zilch-Partien werden geladen …")}</div>
     </section>
     <section class="zilch-card zilch-scaffold-note">
-      <h2>${t("Fundament, keine Regeln")}</h2>
-      <p>${t("Würfeln, wertende Würfelauswahl und manuelle Punkteingabe sind hier nur als klar abgegrenztes Scaffold vorbereitet. Diese Vorschau löst keine ZDWA-Erfolge, Statistiken oder Leaderboards aus.")}</p>
+      <h2>${t("Regel-Engine, noch keine Spieloberfläche")}</h2>
+      <p>${t("Wertung, Quick-Hold-Prüfung und aktive Zustände werden bereits serverseitig getrennt berechnet. Die taktile Zilch-Bedienung folgt; diese Vorschau löst keine ZDWA-Erfolge, Statistiken oder Leaderboards aus.")}</p>
     </section>`;
 
   const gamesSlot = document.getElementById("zilchGames");
@@ -152,7 +152,7 @@ function boardCard(player, board) {
   return `<article class="zilch-board" data-zilch-board-id="${escapeHtml(player.id)}">
     <h3>${playerName(player)}</h3>
     <dl><div><dt>${t("Rundenpunkte")}</dt><dd>${roundPoints}</dd></div><div><dt>${t("Gesamtpunkte")}</dt><dd>${totalPoints}</dd></div></dl>
-    <p class="zilch-muted">${t("Eigenes Zilch-Board — die Wertungsfelder folgen erst nach bestätigten Hausregeln.")}</p>
+    <p class="zilch-muted">${t("Eigenes Zilch-Board — die serverseitige Wertungsengine ist getrennt; die Bedienoberfläche folgt später.")}</p>
   </article>`;
 }
 
@@ -181,8 +181,8 @@ function renderGameState() {
     <section class="zilch-card zilch-dice-card">
       <h2>${t("Sechs Würfel")}</h2>
       <div class="zilch-dice" aria-label="${t("Sechs Würfel")}">${dice.map((die, index) => `<span class="zilch-die" aria-label="${t("Würfel")} ${index + 1}">${die || "–"}</span>`).join("")}</div>
-      <div class="zilch-actions"><button type="button" data-zilch-roll disabled title="${t("Zilch-Würfeln ist im Fundament noch nicht implementiert.")}">${t("Würfeln")}</button><button type="button" data-zilch-score disabled title="${t("Zilch-Punkteingabe ist im Fundament noch nicht implementiert.")}">${t("Punkte eintragen")}</button></div>
-      <p class="zilch-muted">${t("Scaffold aktiv: Keine Zilch-Wertung, keine automatischen Punkte und keine ZDWA-Logik.")}</p>
+      <div class="zilch-actions"><button type="button" data-zilch-roll disabled title="${t("Die serverseitige Zilch-Engine ist vorhanden; die Bedienoberfläche folgt später.")}">${t("Würfeln")}</button><button type="button" data-zilch-score disabled title="${t("Manuelle Punkteingabe ist in Zilch derzeit nicht vorgesehen.")}">${t("Punkte eintragen")}</button></div>
+      <p class="zilch-muted">${t("Interne Regel-Engine aktiv: Zilch-Wertung bleibt getrennt von ZDWA; Quick Holds werden erst mit der späteren Bedienoberfläche auswählbar.")}</p>
     </section>
     <section class="zilch-board-grid" aria-label="${t("Zilch-Boards")}">${players.map(player => boardCard(player, boards[player.id] || {})).join("")}</section>
     <section class="zilch-card zilch-chat">

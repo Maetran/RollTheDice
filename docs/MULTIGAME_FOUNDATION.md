@@ -1,8 +1,9 @@
 # Multi-Game Foundation: ZDWA and Zilch
 
-This document describes the foundation introduced for a future Zilch game. It
-is not a Zilch rulebook and must not be read as a promise that the preview is a
-playable Zilch implementation.
+This document describes the multi-game boundary introduced for ZDWA and the
+internal Zilch preview. The binding Zilch house rules live in
+[ZILCH_RULES.md](ZILCH_RULES.md); neither document is a public player-facing
+rule page or a promise of a finished Zilch user interface.
 
 ## Boundaries
 
@@ -14,12 +15,13 @@ playable Zilch implementation.
   leaderboards, statistics, and achievements.
 - **Zilch:** a separate state factory, six dice, target score 10,000, a one- or
   two-participant limit, independent player boards, snapshot projection, and a
-  named gameplay-action scaffold. Play mode (`solo | cpu | multiplayer`) and
-  participant type (`human | cpu`) are distinct from WebSocket connections.
+  pure server-side scoring/turn engine. Play mode (`solo | cpu | multiplayer`)
+  and participant type (`human | cpu`) are distinct from WebSocket connections.
   Only human solo and human-vs-human creation are exposed today; CPU strategy
-  names (`conservative | normal | aggressive`) are a rule-neutral contract,
+  names (`conservative | normal | aggressive`) are a future decision contract,
   not a bot implementation. Its UI is a separate route/root with its own
-  stylesheet boundary (`data-game="zilch"`).
+  stylesheet boundary (`data-game="zilch"`) and remains a deliberately
+  provisional shell.
 
 `app/game_registry.py` is the intentionally small composition point. It
 selects state creation, per-game join/start setup, gameplay-action dispatch,
@@ -45,24 +47,26 @@ non-ZDWA completion attempt. A later Zilch completion branch must introduce a
 typed completed-game model/migration and explicitly separate all aggregates
 before enabling finalization.
 
-## Deliberately unresolved Zilch rules
+## Zilch rule contract and engine boundary
 
-The following decisions remain open and no behavior in the foundation assumes
-an answer:
+[ZILCH_RULES.md](ZILCH_RULES.md) records the confirmed score table, holds,
+Hot Dice, confirmation rolls, Zilch behavior, start roll, banking threshold,
+final reply, tie, and manual-score decisions. `app/zilch_engine.py` implements
+those rules as a pure domain module. Its inputs/outputs are serializable data;
+it does not import FastAPI, WebSockets, browser state, database models, ZDWA's
+five-dice engine, or ZDWA scoring.
 
-- scoring for four, five, and six of a kind;
-- straight, three pairs, and two triples;
-- entry and safety thresholds;
-- Hot Dice;
-- selecting/separating scoring dice;
-- exact versus at-least 10,000 victory;
-- final round or opponent reply;
-- ties;
-- whether and how manual score entry participates in the authoritative state.
+`zilch_gameplay.py` is only the adapter: it validates authenticated WebSocket
+turn/version/option references, calls the pure engine, synchronizes the Zilch
+live state, then broadcasts through the shared coordinator. `zilch_roll_dice`,
+`zilch_select_hold`, and `zilch_bank_points` are authoritative actions.
+`zilch_submit_score` remains an explicit rejected compatibility action because
+manual score entry was ruled out for this phase.
 
-The `zilch_roll_dice` and `zilch_submit_score` actions exist solely as an
-honest, non-scoring interface boundary. They return a not-implemented response
-and do not delegate to ZDWA's engine.
+The remaining product decisions are deliberately narrower: the exact penalty
+cadence after a fourth or later consecutive Zilch, CPU decisions, a meaningful
+solo objective, manual dice interaction, final tactile UI, typed completed-game
+persistence, Zilch stats/achievements, and public release.
 
 ## Verified repository architecture
 
@@ -96,9 +100,10 @@ the repository-owned current status.
   currently exposed creation choice. The durable domain distinguishes
   `solo | cpu | multiplayer`, and a participant is not required to be an
   authenticated user or WebSocket connection.
-- Earlier scope language mentioned a basic playable Zilch turn. That conflicts
-  with the requirement not to choose house rules. The foundation consequently
-  provides only disabled UI and explicit not-implemented actions.
+- Earlier scope language mentioned a basic playable Zilch turn. That was held
+  back until the house rules were confirmed. The rules engine is now complete
+  for the internal contract, while the preview shell intentionally remains
+  separate and non-final rather than becoming a premature design project.
 - A completed-game migration was suggested as an option. It is intentionally
   deferred because no Zilch completion can occur and all current aggregates are
   ZDWA-specific. The defensive boundary rejects non-ZDWA finalization.
@@ -126,33 +131,33 @@ the repository-owned current status.
 - [x] Cover legacy restore, ZDWA modes, access matrix, API/WebSocket isolation,
   snapshot/dispatch boundaries, switch/logout/direct URLs, and regressions.
 
-### Phase 1 — rule decision record (requires Manuel)
+### Phase 1 — rule decision record (Manuel confirmed)
 
-- [ ] Confirm the base scoring table: single 1 = 100, single 5 = 50, three 1s
+- [x] Confirm the base scoring table: single 1 = 100, single 5 = 50, three 1s
   = 1,000, and other triples = face value × 100.
-- [ ] Decide four/five/six of a kind, straight, three pairs, two triples, and
+- [x] Decide four/five/six of a kind, straight, three pairs, two triples, and
   every other special combination.
-- [ ] Decide entry threshold and any minimum bank threshold.
-- [ ] Decide Hot Dice, mandatory scoring selection after a roll, and whether a
+- [x] Decide entry threshold and any minimum bank threshold.
+- [x] Decide Hot Dice, mandatory scoring selection after a roll, and whether a
   scoring group may be split.
-- [ ] Decide Zilch behavior, victory at exactly/at least 10,000, final reply,
+- [x] Decide Zilch behavior, victory at exactly/at least 10,000, final reply,
   ties, and turn order.
-- [ ] Decide whether score entry is calculated only, manual, or a separate
+- [x] Decide whether score entry is calculated only, manual, or a separate
   audited correction path.
 - [ ] Decide the purpose and success metric of true solo play.
 
 ### Phase 2 — authoritative Zilch engine
 
-- [ ] Specify commands/events and invariants for roll, hold/unhold, bank,
+- [x] Specify commands/events and invariants for roll, immutable hold, bank,
   Zilch, Hot Dice, turn transition, and completion.
-- [ ] Use one server-authoritative RNG path for every participant; CPUs must
+- [x] Use one server-authoritative RNG path for every participant; CPUs must
   never receive altered odds.
-- [ ] Return deterministic scoring choices keyed by dice IDs and validate every
+- [x] Return deterministic scoring choices keyed by dice IDs and validate every
   client selection again on the server.
-- [ ] Add exhaustive unit/property tests for combinations, stale commands,
+- [x] Add exhaustive unit/integration tests for combinations, stale commands,
   illegal holds, turn ownership, thresholds, banking, and terminal states.
-- [ ] Only then enable the existing roll/score controls and update the DE/EN
-  player rules.
+- [ ] Build the tactile DE/EN controls and accessible manual dice selection;
+  no public Zilch rules page exists until the preview is productized.
 
 ### Phase 3 — modes and participants
 

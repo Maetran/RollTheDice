@@ -154,7 +154,8 @@ class MultiGameFoundationTestCase(GameStateTestCase):
         self.assertEqual(set(projected["_zilch_boards"]), {"p1", "p2"})
         self.assertIsNot(projected["_zilch_boards"]["p1"], projected["_zilch_boards"]["p2"])
         self.assertEqual(projected["_zilch_boards"]["p1"]["total_points"], 0)
-        self.assertEqual(projected["_turn"]["player_id"], "p1")
+        self.assertIn(projected["_turn"]["player_id"], {"p1", "p2"})
+        self.assertEqual(projected["_turn"]["player_id"], projected["_zilch_start_roll"]["winner_id"])
         self.assertEqual(
             [participant["type"] for participant in projected["_participants"]],
             [ZILCH_HUMAN_PARTICIPANT, ZILCH_HUMAN_PARTICIPANT],
@@ -288,6 +289,49 @@ class MultiGameFoundationTestCase(GameStateTestCase):
                 projected = websocket.receive_json()["scoreboard"]
                 self.assertEqual(projected["_game_type"], ZILCH_GAME_TYPE)
                 self.assertEqual(len(projected["_dice"]), 6)
+
+    def test_zilch_action_is_denied_when_mani_loses_admin_role_after_join(self):
+        game = self._track(create_game_state("ws-zilch-revoked", "Socket Zilch", 1, ZILCH_GAME_TYPE))
+        _, mani_token = self._identity("Mani", role="admin")
+
+        with TestClient(main.app) as client:
+            client.cookies.set("rollthedice_session", mani_token)
+            with client.websocket_connect(f"/ws/{game['_id']}") as websocket:
+                websocket.receive_json()
+                websocket.send_json({"action": "join_game"})
+                websocket.receive_json()
+                websocket.receive_json()
+                with session_scope() as db:
+                    user = db.scalar(select(User).where(User.username_normalized == "mani"))
+                    self.assertIsNotNone(user)
+                    user.role = "user"
+
+                websocket.send_json({"action": "zilch_roll_dice", "turn_id": 1, "version": 0})
+                rejected = websocket.receive_json()
+
+        self.assertTrue(rejected["fatal"])
+        self.assertEqual(game["_dice"], [0] * ZILCH_DICE_COUNT)
+
+    def test_websocket_dispatches_zilch_roll_to_its_own_engine_snapshot(self):
+        game = self._track(create_game_state("ws-zilch-engine", "Socket Zilch", 1, ZILCH_GAME_TYPE))
+        _, mani_token = self._identity("Mani", role="admin")
+
+        with TestClient(main.app) as client:
+            client.cookies.set("rollthedice_session", mani_token)
+            with client.websocket_connect(f"/ws/{game['_id']}") as websocket:
+                websocket.receive_json()
+                websocket.send_json({"action": "join_game"})
+                websocket.receive_json()
+                websocket.receive_json()
+                websocket.send_json({"action": "zilch_roll_dice", "turn_id": 1, "version": 0})
+                update = websocket.receive_json()
+
+        projected = update["scoreboard"]
+        self.assertEqual(projected["_game_type"], ZILCH_GAME_TYPE)
+        self.assertEqual(projected["_gameplay_status"], "rules_engine")
+        self.assertEqual(projected["_rolls_used"], 1)
+        self.assertTrue(projected["_zilch_quick_holds"])
+        self.assertNotIn("_scoreboards", game)
 
     def test_gameplay_dispatch_stays_with_its_adapter(self):
         zdwa = self._track(new_game("dispatch-zdwa", "ZDWA", 1))

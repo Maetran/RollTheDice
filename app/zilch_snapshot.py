@@ -1,4 +1,4 @@
-"""Client projection for the isolated Zilch preview state."""
+"""Client projection for the isolated, server-authoritative Zilch state."""
 
 from __future__ import annotations
 
@@ -15,7 +15,14 @@ from .game_state import (
     timeout_seconds,
 )
 from .game_types import ZILCH_GAME_TYPE
-from .zilch_state import ZILCH_DICE_COUNT, ZILCH_TARGET_SCORE
+from .zilch_engine import (
+    ZILCH_DICE_COUNT,
+    ZILCH_TARGET_SCORE,
+    ZilchRuleError,
+    bank_allowed,
+    options_for_turn,
+)
+from .zilch_state import current_zilch_turn, ensure_zilch_engine_state
 
 
 def _six_dice(game: GameDict) -> list[int]:
@@ -32,21 +39,62 @@ def _boards(game: GameDict) -> dict[str, dict]:
     for player in game.get("_players", [])[:2]:
         player_id = str(player.get("id") or "")
         raw_board = raw_boards.get(player_id, {}) if isinstance(raw_boards, dict) else {}
+        round_points = game.get("_round_points", {})
+        total_points = game.get("_total_points", {})
+        raw_rounds = raw_board.get("rounds", []) if isinstance(raw_board, dict) else []
         result[player_id] = {
             "player_id": player_id,
-            "round_points": int(raw_board.get("round_points", game.get("_round_points", {}).get(player_id, 0)) or 0),
-            "total_points": int(raw_board.get("total_points", game.get("_total_points", {}).get(player_id, 0)) or 0),
-            "rounds": list(raw_board.get("rounds", [])) if isinstance(raw_board.get("rounds", []), list) else [],
+            "round_points": int(
+                raw_board.get("round_points", round_points.get(player_id, 0))
+                if isinstance(raw_board, dict) and isinstance(round_points, dict)
+                else 0
+            ),
+            "total_points": int(
+                raw_board.get("total_points", total_points.get(player_id, 0))
+                if isinstance(raw_board, dict) and isinstance(total_points, dict)
+                else 0
+            ),
+            "zilch_streak": int(raw_board.get("zilch_streak", 0) or 0) if isinstance(raw_board, dict) else 0,
+            "rounds": [dict(entry) if isinstance(entry, dict) else entry for entry in raw_rounds]
+            if isinstance(raw_rounds, list)
+            else [],
         }
     return result
 
 
 def snapshot_zilch(game: GameDict) -> dict:
-    """Return a rule-neutral Zilch snapshot; never invoke ZDWA scoring helpers."""
+    """Project only Zilch engine data; never invoke ZDWA scoring helpers."""
+    ensure_zilch_engine_state(game)
     check_timeout_and_abort(game)
     pause_reason = multiplayer_pause_reason(game)
     pause_left = pause_remaining_seconds(game)
     boards = _boards(game)
+    try:
+        turn = current_zilch_turn(game) if game.get("_turn") else None
+    except ZilchRuleError:
+        turn = None
+    options = options_for_turn(turn) if turn else ()
+    can_bank, bank_reason = bank_allowed(turn) if turn else (False, "zilch_turn_not_ready")
+    current_turn_state = (
+        {
+            "turn_id": turn.turn_id,
+            "version": turn.version,
+            "phase": turn.phase,
+            "roll_id": turn.roll_id,
+            "rolls_used": turn.rolls_used,
+            "available_dice_indices": list(turn.available_indices),
+            "held_dice_indices": list(turn.held_indices),
+            "committed_holds": [dict(entry) for entry in turn.committed_holds],
+            "round_points": turn.round_points,
+            "confirmation_required": turn.confirmation_required,
+            "confirmation_reasons": list(turn.confirmation_reasons),
+            "can_roll": turn.phase in {"ready_to_roll", "confirmation_roll_required"},
+            "can_bank": can_bank,
+            "bank_block_reason": bank_reason,
+        }
+        if turn
+        else None
+    )
     return {
         "_game_type": ZILCH_GAME_TYPE,
         "_name": game.get("_name", "Zilch"),
@@ -88,6 +136,8 @@ def snapshot_zilch(game: GameDict) -> dict:
         "locked": bool(game.get("_passphrase")),
         "_turn": game.get("_turn"),
         "_dice": _six_dice(game),
+        "_holds": [bool(value) for value in list(game.get("_holds") or [])[:ZILCH_DICE_COUNT]],
+        "_rolls_used": int(game.get("_rolls_used", 0) or 0),
         "_target_score": int(game.get("_target_score", ZILCH_TARGET_SCORE) or ZILCH_TARGET_SCORE),
         "_round_points": {
             player_id: board["round_points"] for player_id, board in boards.items()
@@ -96,7 +146,14 @@ def snapshot_zilch(game: GameDict) -> dict:
             player_id: board["total_points"] for player_id, board in boards.items()
         },
         "_zilch_boards": boards,
+        "_zilch_ruleset": game.get("_zilch_ruleset"),
+        "_zilch_start_roll": game.get("_zilch_start_roll"),
+        "_zilch_final_round": game.get("_zilch_final_round"),
+        "_zilch_outcome": game.get("_zilch_outcome"),
+        "_zilch_last_event": game.get("_zilch_last_event"),
+        "_zilch_turn_state": current_turn_state,
+        "_zilch_quick_holds": [option.payload() for option in options],
         "_chat_history": list(game.get("_chat_history", []))[-CHAT_HISTORY_LIMIT:],
-        "_gameplay_status": "scaffold",
-        "_gameplay_notice": "Zilch gameplay is not implemented yet.",
+        "_gameplay_status": "rules_engine",
+        "_gameplay_notice": {"message_key": "zilch.preview.rules_engine"},
     }
