@@ -108,13 +108,19 @@ class ZilchProductRoutesTestCase(TestCase):
         _mani_id, mani_token = self._identity("Mani", role="admin")
         _normal_id, normal_token = self._identity("Normal")
 
-        for path in ("/zilch/historie", "/zilch/regeln", "/api/zilch/rules"):
+        for path in (
+            "/zilch/historie",
+            "/zilch/statistiken",
+            "/zilch/bestenlisten",
+            "/zilch/regeln",
+            "/api/zilch/rules",
+        ):
             with self.subTest(path=path, identity="anonymous"):
                 self.assertEqual(self._get(path).status_code, 401)
             with self.subTest(path=path, identity="normal"):
                 self.assertEqual(self._get(path, normal_token).status_code, 403)
 
-        for path in ("/zilch/historie", "/zilch/regeln"):
+        for path in ("/zilch/historie", "/zilch/statistiken", "/zilch/bestenlisten", "/zilch/regeln"):
             with self.subTest(path=path):
                 response = self._get(path, mani_token)
                 self.assertEqual(response.status_code, 200)
@@ -154,6 +160,8 @@ class ZilchProductRoutesTestCase(TestCase):
 
         with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES": "previewfriend"}):
             self.assertEqual(self._get("/zilch/historie", preview_token).status_code, 200)
+            self.assertEqual(self._get("/zilch/statistiken", preview_token).status_code, 200)
+            self.assertEqual(self._get("/zilch/bestenlisten", preview_token).status_code, 200)
             self.assertEqual(self._get("/zilch/regeln", preview_token).status_code, 200)
             self.assertEqual(self._get("/api/zilch/rules", preview_token).status_code, 200)
 

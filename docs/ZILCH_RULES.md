@@ -235,14 +235,18 @@ wird der aktive Terminal-State entfernt.
 Der Report ist ausschließlich über die geschützte, `noindex`
 Zilch-Ergebnisroute und die private eigene Historie erreichbar. Er wird
 weiterhin **nicht** in ZDWA-Historie, Scorecards, Replay, Statistik,
-Leaderboard, Achievement- oder Profilaggregate geschrieben. Ein alter
+Leaderboard, Achievement- oder Profilaggregate geschrieben. Die getrennten
+privaten Zilch-Statistiken und Bestenlisten lesen ausschließlich validierte
+abgeschlossene Zilch-Payloads; sie verändern weder Ergebnisse noch Regeln. Ein alter
 Terminal-State, dem eine autoritative Pflichtangabe wie der Endzeitpunkt fehlt,
 bleibt aktiv und wird protokolliert; die Anwendung erfindet keine Werte.
 
 Die private Navigation führt nur zu funktionierenden Bereichen:
 `/zilch` (Lobby), `/zilch/spiel/{id}` (Partie), `/zilch/historie` (eigene
-abgeschlossene Partien), `/zilch/ergebnis/{id}` (read-only Ergebnis) und
-`/zilch/regeln` (diese Regeln als lokalisierte In-App-Hilfe). Alle diese Routen
+abgeschlossene Partien), `/zilch/ergebnis/{id}` (read-only Ergebnis),
+`/zilch/statistiken` (eigene Auswertung), `/zilch/bestenlisten` (private
+Ranglisten) und `/zilch/regeln` (diese Regeln als lokalisierte In-App-Hilfe).
+Alle diese Routen
 sind serverseitig durch dieselbe Preview-Policy geschützt und bleiben
 `noindex`; die Regelseite ist weder öffentlich noch eine zweite verbindliche
 Regelquelle. Gemeinsame Konto- und Spracheinstellungen bleiben Plattformfunktionen
@@ -267,10 +271,15 @@ Ohne diese Konfiguration bleibt ausschließlich Admin `Mani` zugelassen.
   restart-sicher. Ein Abschluss wird erst nach einer erfolgreichen,
   idempotenten privaten Ergebnis-Persistenz entfernt und bleibt vollständig
   von ZDWA-Ergebnissen, Statistiken, Achievements und Bestenlisten getrennt.
+- Die private Auswertung verwendet nur abgeschlossene, validierte Zilch-
+  Ergebnisse: Solo Sprint v1 nach weniger Zügen, Würfen, Zilchs und aktiver
+  Dauer; Human-vs-Human nach Siegen, dann weniger Niederlagen, mehr
+  Gleichständen, höherer Endpunktzahl und höchster Runde; CPU-Partien nach
+  denselben Kriterien je Strategie. Aufgegebene Solo-Läufe und nicht aktive
+  Konten sind nicht rankingfähig.
 - Noch offen bleiben insbesondere eine präzise Strafkadenz nach mehr als drei
   aufeinanderfolgenden Zilchs, weitere Solo-Objectives/Challenges, manuelle
-  Würfelauswahl, finale Interaktions-/Markenpolitur und Zilch-spezifische
-  Auswertung.
+  Würfelauswahl, finale Interaktions-/Markenpolitur und Zilch-Achievements.
 
 ## Designrichtung
 

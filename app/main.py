@@ -87,6 +87,12 @@ from .zilch_state import (
     zilch_participants,
     zilch_solo_objective_projection,
 )
+from .zilch_statistics import (
+    ZilchStatisticsInputError,
+    get_zilch_leaderboard,
+    get_zilch_personal_statistics,
+    list_zilch_leaderboard_categories,
+)
 
 # Retained as a small backwards-compatible module export for existing focused
 # logic tests and integrations that historically imported ``app.main.new_game``.
@@ -342,6 +348,20 @@ def zilch_result_page(game_id: str, request: Request):
 @app.get("/zilch/historie", include_in_schema=False)
 def zilch_history_page(request: Request):
     """Serve the private, noindex Zilch shell for the history view."""
+    _require_zilch_preview(request)
+    return _page("zilch.html")
+
+
+@app.get("/zilch/statistiken", include_in_schema=False)
+def zilch_statistics_page(request: Request):
+    """Serve the private, noindex Zilch shell for personal statistics."""
+    _require_zilch_preview(request)
+    return _page("zilch.html")
+
+
+@app.get("/zilch/bestenlisten", include_in_schema=False)
+def zilch_leaderboards_page(request: Request):
+    """Serve the private, noindex Zilch shell for Zilch leaderboards."""
     _require_zilch_preview(request)
     return _page("zilch.html")
 
@@ -856,6 +876,44 @@ def api_zilch_result(game_id: str, request: Request):
     if result is None:
         raise HTTPException(status_code=404, detail="result_not_found")
     return {"result": result}
+
+
+@app.get("/api/zilch/statistics")
+def api_zilch_statistics(request: Request) -> dict[str, object]:
+    """Return only the authenticated preview user's Zilch-only statistics."""
+    identity = _require_zilch_preview(request)
+    # The user relation is intentionally never a client parameter.  Zilch
+    # statistics are private account data, not a public profile projection.
+    return get_zilch_personal_statistics(identity.user_id)
+
+
+@app.get("/api/zilch/leaderboards/categories")
+def api_zilch_leaderboard_categories(request: Request) -> dict[str, object]:
+    """Expose only safe metadata for the currently implemented private tables."""
+    _require_zilch_preview(request)
+    return {"version": 1, "categories": list_zilch_leaderboard_categories()}
+
+
+@app.get("/api/zilch/leaderboards")
+def api_zilch_leaderboards(
+    request: Request,
+    category: str = Query("solo_sprint", max_length=48),
+    strategy: str | None = Query(None, max_length=32),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1),
+) -> dict[str, object]:
+    """Read one bounded, server-calculated private Zilch leaderboard."""
+    identity = _require_zilch_preview(request)
+    try:
+        return get_zilch_leaderboard(
+            category,
+            strategy=strategy,
+            offset=offset,
+            limit=limit,
+            current_user_id=identity.user_id,
+        )
+    except ZilchStatisticsInputError as exc:
+        raise HTTPException(status_code=400, detail=exc.code) from exc
 
 
 @app.get("/api/zilch/rules")

@@ -95,6 +95,28 @@ outcome. Both are visible only through protected `/api/zilch/results` endpoints 
 `/zilch/ergebnis/{game_id}`; it never enters the ZDWA replay renderer or any
 ZDWA aggregate.
 
+Private Zilch statistics and leaderboards are a second, Zilch-only read model.
+`app/zilch_statistics.py` first filters `CompletedGame` by
+`game_type = zilch`, then accepts only the known, strictly validated schema-1
+competitive and schema-2 Solo payloads. It calculates the signed-in account's
+personal overview and mode-specific values on request; it never reads active
+games, ZDWA scorecards, legacy JSON files, browser counters, or CPU-runner
+state. Unknown or incomplete historic data is skipped rather than silently
+turned into zero. The all-time source is scanned in bounded database pages;
+the current private preview data volume does not justify a persisted aggregate
+or cache.
+
+The private tables are: one best successful compatible Solo Sprint v1 run per
+active account (fewest turns, rolls, Zilchs, active duration, then older
+completion), Human-vs-Human wins (then losses, ties, final score, and highest
+banked round), and Human-vs-CPU wins separately for each strategy using the
+same transparent tie-breaks. All use Competition Ranking (`1, 2, 2, 4`) and
+have a hard maximum of 100 entries. Human identity comes from `GameParticipant.user_id`; CPU never
+gets an account statistic or rank. Historical deleted/inactive account names
+remain in permitted result reports but are not ranking identities. Deleting a
+Zilch row/tombstone removes it from calculation-on-read without any ZDWA
+rebuild or achievement synchronization.
+
 SQLite receives native non-null type columns plus INSERT/UPDATE validation
 triggers because rebuilding a populated parent table would risk cascading its
 participant rows. The downgrade is intentionally guarded: it works for
@@ -247,8 +269,8 @@ shows no opponent, final reply, winner, tie, CPU strategy, or ZDWA aggregate.
 ## Private product UI
 
 The protected Zilch app has a compact navigation for lobby, a remembered active
-game, own completed games, rules, shared account/settings, and the explicit
-return to ZDWA. The app-mode switch replaces the rendered game root rather than
+game, own completed games, private statistics, private leaderboards, rules,
+shared account/settings, and the explicit return to ZDWA. The app-mode switch replaces the rendered game root rather than
 mounting Zilch next to ZDWA; logout, session expiry, and loss of preview access
 fall back to ZDWA. A normal account page can return to the private Zilch lobby
 only after the session is still policy-authorized.
@@ -315,10 +337,11 @@ the repository-owned current status.
   interaction polish stay future work.
 - Typed completion now preserves terminal recovery data until a result write
   succeeds. ZDWA aggregates remain explicitly type-filtered; Zilch exposes
-  only private per-user history and a read-only report.
+  separate private history, results, statistics, and leaderboards.
 - The current preview URLs are `/zilch`, `/zilch/spiel/{id}`,
-  `/zilch/historie`, `/zilch/ergebnis/{id}`, and `/zilch/regeln`. They are
-  `noindex` implementation routes, not committed public URLs.
+  `/zilch/historie`, `/zilch/ergebnis/{id}`, `/zilch/statistiken`,
+  `/zilch/bestenlisten`, and `/zilch/regeln`. They are `noindex`
+  implementation routes, not committed public URLs.
 
 ## Master checklist
 
@@ -399,8 +422,11 @@ the repository-owned current status.
   payload without making `user_id` mandatory.
 - [x] Provide idempotent recovery plus a protected, read-only Zilch report and
   minimal own-history list.
-- [ ] Design Zilch-specific statistics and achievements from confirmed rules;
-  never reuse ZDWA achievement evaluation.
+- [x] Calculate private Zilch-only personal statistics and separated
+  leaderboards from validated completed result payloads, without a ZDWA
+  aggregate path.
+- [ ] Add Zilch achievements from confirmed rules; never reuse ZDWA achievement
+  evaluation.
 
 ### Phase 5 — productization and release
 

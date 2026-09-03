@@ -147,7 +147,8 @@ def _participant_payloads(game: dict) -> tuple[list[dict], list[str]]:
 def _start_roll_payload(raw: object, participant_ids: list[str]) -> dict:
     if not isinstance(raw, dict) or raw.get("phase") != "resolved":
         raise ZilchResultValidationError("zilch_result_invalid_start_roll")
-    if [str(value) for value in raw.get("player_ids", [])] != participant_ids:
+    raw_player_ids = raw.get("player_ids")
+    if not isinstance(raw_player_ids, list) or [str(value) for value in raw_player_ids] != participant_ids:
         raise ZilchResultValidationError("zilch_result_invalid_start_roll")
     winner_id = _required_text(raw.get("winner_id"), "zilch_result_invalid_start_roll")
     if winner_id not in participant_ids or bool(raw.get("tied")):
@@ -296,6 +297,39 @@ def _board_payloads(game: dict, participant_ids: list[str]) -> tuple[dict[str, d
         "hot_dice_events": hot_dice_count if hot_dice_complete else None,
         "hot_dice_events_complete": hot_dice_complete,
     }
+
+
+def _validate_board_round_totals(boards: dict[str, dict]) -> None:
+    """Ensure the durable round history agrees with every board total.
+
+    Statistics intentionally derive per-player banked points and round counts
+    from the authoritative history.  A JSON row that changes an individual
+    round while leaving its board total untouched is therefore damaged, even
+    when its coarse top-level metrics still happen to look plausible.
+    """
+    for board in boards.values():
+        running_total = 0
+        rounds = board.get("rounds")
+        if not isinstance(rounds, list):
+            raise ZilchResultValidationError("zilch_result_invalid_boards")
+        for round_entry in rounds:
+            if not isinstance(round_entry, dict):
+                raise ZilchResultValidationError("zilch_result_invalid_round")
+            if round_entry.get("event") == "bank":
+                running_total += _integer(round_entry.get("points"), "zilch_result_invalid_round")
+            elif round_entry.get("event") == "zilch":
+                # The stored penalty is a positive deduction.  Engine state
+                # clamps the affected board at zero after that deduction.
+                running_total = max(
+                    0,
+                    running_total - _integer(round_entry.get("penalty"), "zilch_result_invalid_round"),
+                )
+            else:
+                raise ZilchResultValidationError("zilch_result_invalid_round")
+            if _integer(round_entry.get("total_after"), "zilch_result_invalid_round") != running_total:
+                raise ZilchResultValidationError("zilch_result_board_total_mismatch")
+        if _integer(board.get("total_points"), "zilch_result_invalid_boards") != running_total:
+            raise ZilchResultValidationError("zilch_result_board_total_mismatch")
 
 
 def _final_round_payload(raw: object, participant_ids: list[str]) -> dict | None:
@@ -587,6 +621,7 @@ def _build_zilch_solo_result_payload(game: dict) -> dict:
     if len(participants) != 1 or participants[0]["participant_type"] != "human":
         raise ZilchResultValidationError("zilch_result_invalid_solo_participants")
     boards, history_metrics = _board_payloads(game, participant_ids)
+    _validate_board_round_totals(boards)
     participant_id = participant_ids[0]
     board = boards[participant_id]
     total_points = board["total_points"]
@@ -662,12 +697,20 @@ def _build_competitive_zilch_result_payload(game: dict) -> dict:
         raise ZilchResultValidationError("zilch_result_unknown_target")
     play_mode = _required_text(game.get("_play_mode"), "zilch_result_invalid_mode", limit=24)
     mode = _required_text(game.get("_mode"), "zilch_result_invalid_mode", limit=16)
-    if play_mode == "cpu":
+    if mode != "2":
+        raise ZilchResultValidationError("zilch_result_invalid_mode")
+    if play_mode == "multiplayer":
+        if len(participants) != 2 or any(participant["participant_type"] != "human" for participant in participants):
+            raise ZilchResultValidationError("zilch_result_invalid_multiplayer_participants")
+    elif play_mode == "cpu":
         participant_types = [participant["participant_type"] for participant in participants]
         if participant_types.count("human") != 1 or participant_types.count("cpu") != 1:
             raise ZilchResultValidationError("zilch_result_invalid_cpu_participants")
+    else:
+        raise ZilchResultValidationError("zilch_result_invalid_mode")
     start_roll = _start_roll_payload(game.get("_zilch_start_roll"), participant_ids)
     boards, metrics = _board_payloads(game, participant_ids)
+    _validate_board_round_totals(boards)
     final_round = _final_round_payload(game.get("_zilch_final_round"), participant_ids)
     outcome = _outcome_payload(game.get("_zilch_outcome"), participant_ids, boards, target_score)
     if final_round is not None:
@@ -812,7 +855,8 @@ def _validate_v1_stored_payload(payload: dict) -> None:
     if target_score != ZILCH_TARGET_SCORE:
         raise ZilchResultValidationError("zilch_result_unknown_target")
     play_mode = _required_text(payload.get("play_mode"), "zilch_result_invalid_mode", limit=24)
-    _required_text(payload.get("mode"), "zilch_result_invalid_mode", limit=16)
+    if _required_text(payload.get("mode"), "zilch_result_invalid_mode", limit=16) != "2":
+        raise ZilchResultValidationError("zilch_result_invalid_mode")
 
     raw_participants = payload.get("participants")
     if not isinstance(raw_participants, list) or not 1 <= len(raw_participants) <= 2:
@@ -853,12 +897,16 @@ def _validate_v1_stored_payload(payload: dict) -> None:
     # invariant as the live result builder so a damaged row can neither make
     # a CPU look like a human game nor expose an impossible CPU composition.
     participant_types = [participant.get("participant_type") for participant in raw_participants]
-    if play_mode == "cpu":
+    if play_mode == "multiplayer":
+        if len(raw_participants) != 2 or any(participant_type != "human" for participant_type in participant_types):
+            raise ZilchResultValidationError("zilch_result_invalid_multiplayer_participants")
+    elif play_mode == "cpu":
         if participant_types.count("human") != 1 or participant_types.count("cpu") != 1:
             raise ZilchResultValidationError("zilch_result_invalid_cpu_participants")
-    elif "cpu" in participant_types:
-        raise ZilchResultValidationError("zilch_result_invalid_cpu_participants")
-    if [str(value) for value in payload.get("participant_order", [])] != participant_ids:
+    else:
+        raise ZilchResultValidationError("zilch_result_invalid_mode")
+    raw_participant_order = payload.get("participant_order")
+    if not isinstance(raw_participant_order, list) or [str(value) for value in raw_participant_order] != participant_ids:
         raise ZilchResultValidationError("zilch_result_invalid_participants")
 
     raw_start_roll = payload.get("start_roll")
@@ -878,20 +926,8 @@ def _validate_v1_stored_payload(payload: dict) -> None:
     raw_boards = payload.get("boards")
     if not isinstance(raw_boards, dict) or set(raw_boards) != set(participant_ids):
         raise ZilchResultValidationError("zilch_result_invalid_boards")
-    boards: dict[str, dict] = {}
-    for participant_id in participant_ids:
-        board = raw_boards.get(participant_id)
-        if not isinstance(board, dict) or str(board.get("participant_id") or "") != participant_id:
-            raise ZilchResultValidationError("zilch_result_invalid_boards")
-        total_points = _integer(board.get("total_points"), "zilch_result_invalid_boards")
-        _integer(board.get("round_points"), "zilch_result_invalid_boards")
-        _integer(board.get("zilch_streak"), "zilch_result_invalid_boards")
-        rounds = board.get("rounds")
-        if not isinstance(rounds, list):
-            raise ZilchResultValidationError("zilch_result_invalid_boards")
-        for round_entry in rounds:
-            _round_payload(round_entry, participant_id=participant_id)
-        boards[participant_id] = {"total_points": total_points}
+    boards, history_metrics = _board_payloads({"_zilch_boards": raw_boards}, participant_ids)
+    _validate_board_round_totals(boards)
 
     final_round = _final_round_payload(payload.get("final_round"), participant_ids)
     if final_round is not None and final_round["pending_player_ids"]:
@@ -919,6 +955,19 @@ def _validate_v1_stored_payload(payload: dict) -> None:
         _integer(hot_dice_events, "zilch_result_invalid_metrics")
     if type(metrics.get("hot_dice_events_complete")) is not bool:
         raise ZilchResultValidationError("zilch_result_invalid_metrics")
+    # A valid JSON record is not necessarily authoritative.  Keep the stored
+    # summary tied to the detailed board history before a reader (notably the
+    # statistics service) can aggregate it.  This also preserves the v1
+    # contract where missing holds make Hot Dice explicitly unknown rather
+    # than a fabricated zero.
+    for key in ("highest_banked_round", "zilch_count", "zilch_penalties"):
+        if metrics.get(key) != history_metrics[key]:
+            raise ZilchResultValidationError("zilch_result_metrics_mismatch")
+    if history_metrics["hot_dice_events_complete"] and (
+        metrics.get("hot_dice_events") != history_metrics["hot_dice_events"]
+        or metrics.get("hot_dice_events_complete") is not True
+    ):
+        raise ZilchResultValidationError("zilch_result_metrics_mismatch")
 
 
 def _validate_solo_participant_payload(raw: object) -> tuple[dict, str]:
@@ -975,6 +1024,7 @@ def _validate_v2_solo_stored_payload(payload: dict) -> None:
     if not isinstance(raw_boards, dict) or set(raw_boards) != {participant_id}:
         raise ZilchResultValidationError("zilch_result_invalid_boards")
     boards, history_metrics = _board_payloads({"_zilch_boards": raw_boards}, [participant_id])
+    _validate_board_round_totals(boards)
     board = boards[participant_id]
     total_points = board["total_points"]
     expected_totals = {participant_id: total_points}
@@ -1033,6 +1083,34 @@ def _validate_stored_payload(payload: dict) -> None:
     raise ZilchResultValidationError("zilch_result_unknown_payload_schema")
 
 
+def validate_stored_zilch_result_payload(
+    payload: object,
+    *,
+    expected_game_id: str | None = None,
+) -> dict | None:
+    """Return one known, valid historic Zilch payload or ``None``.
+
+    Result consumers such as the private history, statistics and future
+    read-only projections all need the same fail-closed schema boundary.  It
+    deliberately exposes *validated data only* rather than the private
+    validator details: unknown versions, malformed JSON decoded by a caller,
+    and a mismatching durable game ID are unavailable rather than partially
+    interpreted.
+
+    The helper does not log by itself because callers can attach useful row or
+    request context without leaking the damaged payload to a client.
+    """
+    if not isinstance(payload, dict):
+        return None
+    if expected_game_id is not None and str(payload.get("game_id") or "") != str(expected_game_id):
+        return None
+    try:
+        _validate_stored_payload(payload)
+    except (KeyError, TypeError, ValueError, ZilchResultValidationError):
+        return None
+    return payload
+
+
 def _stored_payload(row: CompletedGame) -> dict | None:
     if row.game_type != ZILCH_GAME_TYPE:
         return None
@@ -1046,8 +1124,9 @@ def _stored_payload(row: CompletedGame) -> dict | None:
         return None
     try:
         _validate_stored_payload(payload)
-    except ZilchResultValidationError as exc:
-        logger.error("Stored Zilch result %s is unavailable: %s", row.game_id, exc.code)
+    except (KeyError, TypeError, ValueError, ZilchResultValidationError) as exc:
+        code = exc.code if isinstance(exc, ZilchResultValidationError) else "zilch_result_invalid_payload"
+        logger.error("Stored Zilch result %s is unavailable: %s", row.game_id, code)
         return None
     return payload
 

@@ -10,7 +10,11 @@ const gameId = gameIdMatch ? decodeURIComponent(gameIdMatch[1]) : null;
 const resultId = resultIdMatch ? decodeURIComponent(resultIdMatch[1]) : null;
 const historyRoute = window.location.pathname === "/zilch/historie";
 const rulesRoute = window.location.pathname === "/zilch/regeln";
+const statisticsRoute = window.location.pathname === "/zilch/statistiken";
+const leaderboardsRoute = window.location.pathname === "/zilch/bestenlisten";
 const ZILCH_ACTIVE_GAME_STORAGE_KEY = "zilch_active_game_id";
+const ZILCH_LEADERBOARD_LIMIT = 100;
+const ZILCH_LEADERBOARD_CATEGORIES = new Set(["solo_sprint", "multiplayer_wins", "cpu_wins"]);
 const state = {
   auth: null,
   details: null,
@@ -30,6 +34,13 @@ const state = {
   navigationBound: false,
   rules: null,
   confirmingSoloAbandon: false,
+  statistics: null,
+  statisticsMode: "overview",
+  statisticsCpuStrategy: "all",
+  leaderboard: null,
+  leaderboardCategory: "solo_sprint",
+  leaderboardStrategy: "conservative",
+  leaderboardOffset: 0,
 };
 
 function t(value) {
@@ -38,6 +49,10 @@ function t(value) {
 
 function message(key, params = {}) {
   return window.ZDWA_I18N?.message?.(key, params) || t(key);
+}
+
+function interpolated(value, params = {}) {
+  return String(t(value)).replace(/\{([a-zA-Z0-9_]+)\}/g, (_match, name) => String(params?.[name] ?? ""));
 }
 
 function localizedServerMessage(key, params = {}, fallback = "") {
@@ -325,6 +340,8 @@ function routeKind() {
   if (resultId) return "result";
   if (historyRoute) return "history";
   if (rulesRoute) return "rules";
+  if (statisticsRoute) return "statistics";
+  if (leaderboardsRoute) return "leaderboards";
   return "lobby";
 }
 
@@ -353,6 +370,8 @@ function renderNavigation() {
       label: t("Zurück zum Spiel"),
     }] : []),
     { key: "history", href: "/zilch/historie", label: t("Abgeschlossene Spiele") },
+    { key: "statistics", href: "/zilch/statistiken", label: t("Statistiken") },
+    { key: "leaderboards", href: "/zilch/bestenlisten", label: t("Bestenlisten") },
     { key: "rules", href: "/zilch/regeln", label: t("Regeln") },
     {
       key: "account",
@@ -894,6 +913,580 @@ async function renderHistory() {
   } catch (_) {
     if (slot) slot.innerHTML = `<p class="zilch-error">${escapeHtml(t("Zilch-Historie konnte nicht geladen werden."))}</p>`;
   }
+}
+
+// Statistics and ranking values are intentionally rendered as a projection of
+// the private API response.  The browser never combines results, derives a
+// win rate, or rebuilds a ranking tuple: all of that stays in the typed Zilch
+// statistics service.
+function plainObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function statisticValue(sources, keys) {
+  const lookup = Array.isArray(sources) ? sources : [sources];
+  for (const source of lookup) {
+    const object = plainObject(source);
+    for (const key of keys) {
+      const value = object[key];
+      if (value !== null && value !== undefined && value !== "") return value;
+    }
+  }
+  return null;
+}
+
+function statisticSources(value) {
+  const source = plainObject(value);
+  return [source, plainObject(source.metrics), plainObject(source.values), plainObject(source.summary)];
+}
+
+function statisticEntry(label, source, keys, format = "number") {
+  const value = statisticValue(statisticSources(source), keys);
+  if (value === null) return null;
+  return { label, value, format };
+}
+
+function hotDiceStatisticEntry(source) {
+  const value = statisticValue(statisticSources(source), ["hot_dice", "hot_dice_events"]);
+  if (value !== null) return { label: t("Hot Dice"), value, format: "number" };
+  const complete = statisticValue(statisticSources(source), ["hot_dice_events_complete"]);
+  return {
+    label: t("Hot Dice"),
+    value: complete === false ? t("Nicht vollständig verfügbar") : t("Nicht verfügbar"),
+    format: "text",
+  };
+}
+
+function formattedPercentage(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return String(value || t("Nicht verfügbar"));
+  const percent = Math.abs(numeric) <= 1 ? numeric : numeric / 100;
+  return new Intl.NumberFormat(window.ZDWA_I18N?.locale?.() || "de-CH", {
+    style: "percent",
+    maximumFractionDigits: 1,
+  }).format(percent);
+}
+
+function formattedStatistic(value, format = "number") {
+  if (value === null || value === undefined || value === "") return t("Nicht verfügbar");
+  if (format === "duration") return formattedDuration(value);
+  if (format === "datetime") return formattedDateTime(value);
+  if (format === "percentage") return formattedPercentage(value);
+  if (format === "text") return String(value);
+  return number(value);
+}
+
+function statisticsProjection(payload) {
+  const outer = plainObject(payload);
+  return plainObject(outer.statistics && typeof outer.statistics === "object" ? outer.statistics : outer);
+}
+
+async function fetchZilchStatistics() {
+  const response = await fetch("/api/zilch/statistics", { cache: "no-store" });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return statisticsProjection(await response.json());
+}
+
+function statisticsScope(statistics, key) {
+  const source = plainObject(statistics);
+  if (key === "overview") return plainObject(source.overview);
+  if (key === "multiplayer") return plainObject(source.multiplayer);
+  if (key === "cpu") return plainObject(source.cpu);
+  if (key === "solo") return plainObject(source.solo);
+  return {};
+}
+
+function modeLabel(mode) {
+  if (mode === "multiplayer") return t("Zwei Spieler");
+  if (mode === "cpu") return t("Gegen CPU");
+  if (mode === "solo") return t("Solo");
+  return t("Übersicht");
+}
+
+function statisticsTabMarkup() {
+  const tabs = ["overview", "multiplayer", "cpu", "solo"];
+  return `<div class="zilch-stats-tabs" role="tablist" aria-label="${escapeHtml(t("Statistikbereich auswählen"))}">
+    ${tabs.map(mode => `<button id="zilchStatsTab-${mode}" type="button" class="zilch-stats-tab${state.statisticsMode === mode ? " is-active" : ""}" role="tab" data-zilch-stats-mode="${mode}" aria-selected="${String(state.statisticsMode === mode)}" aria-controls="zilchStatisticsPanel" tabindex="${state.statisticsMode === mode ? "0" : "-1"}">${escapeHtml(modeLabel(mode))}</button>`).join("")}
+  </div>`;
+}
+
+function metricsMarkup(entries) {
+  const present = entries.filter(Boolean);
+  if (!present.length) return `<p class="zilch-muted">${escapeHtml(t("Keine vergleichbaren Daten verfügbar."))}</p>`;
+  return `<dl class="zilch-stat-metrics">${present.map(entry => `<div><dt>${escapeHtml(entry.label)}</dt><dd>${escapeHtml(formattedStatistic(entry.value, entry.format))}</dd></div>`).join("")}</dl>`;
+}
+
+function statisticsSection({ eyebrow, title, description, entries, extra = "" }) {
+  return `<section class="zilch-card zilch-statistics-card">
+    <p class="eyebrow">${escapeHtml(eyebrow)}</p>
+    <h2>${escapeHtml(title)}</h2>
+    ${description ? `<p class="zilch-statistics-card__description">${escapeHtml(description)}</p>` : ""}
+    ${metricsMarkup(entries)}
+    ${extra}
+  </section>`;
+}
+
+function hasStatisticRecords(source, keys = ["games", "runs", "completed_records"]) {
+  const value = statisticValue(statisticSources(source), keys);
+  return Number.isFinite(Number(value)) && Number(value) > 0;
+}
+
+function statisticsEmptyMarkup(title, description) {
+  return `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(title)}</h2><p>${escapeHtml(description)}</p></section>`;
+}
+
+function gamesByModeMarkup(source) {
+  const modes = plainObject(statisticValue(statisticSources(source), ["games_by_mode", "completed_by_mode", "modes"]));
+  const entries = ["multiplayer", "cpu", "solo"].map(mode => {
+    const value = statisticValue([modes], [mode]);
+    return value === null ? null : { label: modeLabel(mode), value };
+  }).filter(Boolean);
+  if (!entries.length) return "";
+  return `<section class="zilch-card zilch-statistics-card zilch-statistics-card--compact"><p class="eyebrow">${escapeHtml(t("Nach Spielart"))}</p><h2>${escapeHtml(t("Abgeschlossene Läufe"))}</h2>${metricsMarkup(entries)}</section>`;
+}
+
+function renderOverviewStatistics(statistics) {
+  const overview = statisticsScope(statistics, "overview");
+  if (!hasStatisticRecords(overview, ["completed_records", "completed_games_and_runs", "completed", "games"])) {
+    return statisticsEmptyMarkup(t("Noch keine Zilch-Partien"), t("Schließe eine private Zilch-Partie ab, damit hier deine getrennten Werte erscheinen."));
+  }
+  const entries = [
+    statisticEntry(t("Abgeschlossene Partien und Läufe"), overview, ["completed_records", "completed_games_and_runs", "completed", "completed_count", "games"]),
+    statisticEntry(t("Gesamte Spieldauer"), overview, ["duration_seconds"], "duration"),
+    statisticEntry(t("Aktive Solo-Dauer"), overview, ["active_duration_seconds", "active_duration"], "duration"),
+    statisticEntry(t("Gesicherte Gesamtpunkte"), overview, ["banked_total_points", "banked_points", "total_banked_points"]),
+    statisticEntry(t("Gesicherte Runden"), overview, ["banked_rounds", "banked_round_count"]),
+    statisticEntry(t("Höchste gesicherte Runde"), overview, ["highest_banked_round", "highest_round"]),
+    statisticEntry(t("Durchschnittliche gesicherte Runde"), overview, ["average_banked_round", "average_round"]),
+    statisticEntry(t("Zilch-Runden"), overview, ["zilchs", "zilch_count"]),
+    statisticEntry(t("Zilch-Strafen"), overview, ["zilch_penalties", "penalties"]),
+    hotDiceStatisticEntry(overview),
+  ];
+  return `${statisticsSection({
+    eyebrow: t("Übersicht"),
+    title: t("Deine Zilch-Statistiken"),
+    description: t("Diese Werte stammen nur aus gespeicherten privaten Zilch-Ergebnissen."),
+    entries,
+  })}${gamesByModeMarkup(overview)}`;
+}
+
+function renderMultiplayerStatistics(statistics) {
+  const multiplayer = statisticsScope(statistics, "multiplayer");
+  if (!hasStatisticRecords(multiplayer, ["games", "completed_games"])) {
+    return statisticsEmptyMarkup(t("Noch keine Human-vs-Human-Partien"), t("Spiele eine private Partie gegen einen anderen Menschen, damit diese Werte erscheinen."));
+  }
+  return statisticsSection({
+    eyebrow: t("Zwei Spieler"),
+    title: t("Human-vs-Human"),
+    description: t("Solo-Läufe und CPU-Partien zählen hier nicht mit."),
+    entries: [
+      statisticEntry(t("Spiele"), multiplayer, ["games", "completed_games"]),
+      statisticEntry(t("Siege"), multiplayer, ["wins"]),
+      statisticEntry(t("Niederlagen"), multiplayer, ["losses"]),
+      statisticEntry(t("Gleichstände"), multiplayer, ["ties", "draws"]),
+      statisticEntry(t("Siegquote"), multiplayer, ["win_rate", "win_percentage"], "percentage"),
+      statisticEntry(t("Durchschnittliche Endpunktzahl"), multiplayer, ["average_final_score", "average_score"]),
+      statisticEntry(t("Höchste Endpunktzahl"), multiplayer, ["highest_final_score", "best_final_score"]),
+      statisticEntry(t("Höchste gesicherte Runde"), multiplayer, ["highest_banked_round", "highest_round"]),
+      statisticEntry(t("Durchschnittliche gesicherte Runde"), multiplayer, ["average_banked_round", "average_round"]),
+      statisticEntry(t("Zilch-Runden"), multiplayer, ["zilchs", "zilch_count"]),
+      hotDiceStatisticEntry(multiplayer),
+      statisticEntry(t("Durchschnittliche Spieldauer"), multiplayer, ["average_duration_seconds", "average_duration"], "duration"),
+    ],
+  });
+}
+
+function cpuStrategyLabel(strategy) {
+  return strategyLabel(strategy) || t("Alle Strategien");
+}
+
+function cpuStrategyTabsMarkup(cpu) {
+  const byStrategy = plainObject(cpu.by_strategy);
+  const available = ["all", "conservative", "normal", "aggressive"].filter(strategy => (
+    strategy === "all" || Object.prototype.hasOwnProperty.call(byStrategy, strategy)
+  ));
+  return `<div class="zilch-stat-subtabs" role="tablist" aria-label="${escapeHtml(t("CPU-Strategie auswählen"))}">
+    ${available.map(strategy => `<button type="button" class="zilch-stat-subtab${state.statisticsCpuStrategy === strategy ? " is-active" : ""}" role="tab" data-zilch-stats-cpu-strategy="${strategy}" aria-selected="${String(state.statisticsCpuStrategy === strategy)}" aria-controls="zilchStatisticsPanel" tabindex="${state.statisticsCpuStrategy === strategy ? "0" : "-1"}">${escapeHtml(cpuStrategyLabel(strategy))}</button>`).join("")}
+  </div>`;
+}
+
+function renderCpuStatistics(statistics) {
+  const cpu = statisticsScope(statistics, "cpu");
+  const byStrategy = plainObject(cpu.by_strategy);
+  const selected = state.statisticsCpuStrategy;
+  const scope = selected === "all" ? plainObject(cpu.overall || cpu) : plainObject(byStrategy[selected]);
+  const noGames = !hasStatisticRecords(scope, ["games", "completed_games"]);
+  if (noGames) {
+    return `${cpuStrategyTabsMarkup(cpu)}${statisticsEmptyMarkup(
+      selected === "all" ? t("Noch keine CPU-Partien") : t("Noch keine CPU-Partien gegen diese Strategie"),
+      t("Erstelle eine private Partie gegen die CPU, damit diese Werte erscheinen."),
+    )}`;
+  }
+  return `${cpuStrategyTabsMarkup(cpu)}${statisticsSection({
+    eyebrow: t("Gegen CPU"),
+    title: selected === "all" ? t("Alle CPU-Partien") : `${t("CPU-Strategie")}: ${cpuStrategyLabel(selected)}`,
+    description: t("CPU-Gegner erhalten keinen Account-Rang. Jede Strategie bleibt getrennt auswertbar."),
+    entries: [
+      statisticEntry(t("Spiele"), scope, ["games", "completed_games"]),
+      statisticEntry(t("Siege"), scope, ["wins"]),
+      statisticEntry(t("Niederlagen"), scope, ["losses"]),
+      statisticEntry(t("Gleichstände"), scope, ["ties", "draws"]),
+      statisticEntry(t("Siegquote"), scope, ["win_rate", "win_percentage"], "percentage"),
+      statisticEntry(t("Durchschnittliche Endpunktzahl"), scope, ["average_final_score", "average_score"]),
+      statisticEntry(t("Höchste Endpunktzahl"), scope, ["highest_final_score", "best_final_score"]),
+      statisticEntry(t("Höchste gesicherte Runde"), scope, ["highest_banked_round", "highest_round"]),
+      statisticEntry(t("Durchschnittliche gesicherte Runde"), scope, ["average_banked_round", "average_round"]),
+      statisticEntry(t("Zilch-Runden"), scope, ["zilchs", "zilch_count"]),
+      hotDiceStatisticEntry(scope),
+      statisticEntry(t("Durchschnittliche Spieldauer"), scope, ["average_duration_seconds", "average_duration"], "duration"),
+    ],
+  })}`;
+}
+
+function personalBestMarkup(solo) {
+  const best = plainObject(statisticValue(statisticSources(solo), ["personal_best", "best_run"]));
+  if (!Object.keys(best).length) return "";
+  const entries = [
+    statisticEntry(t("Züge"), best, ["turns", "turn_count"]),
+    statisticEntry(t("Würfe"), best, ["rolls", "roll_count"]),
+    statisticEntry(t("Zilch-Runden"), best, ["zilchs", "zilch_count"]),
+    statisticEntry(t("Aktive Dauer"), best, ["active_duration_seconds", "active_duration"], "duration"),
+  ];
+  return statisticsSection({
+    eyebrow: t("Persönliche Bestleistung"),
+    title: t("10’000-Punkte-Sprint"),
+    description: t("Vergleichbar sind nur erfolgreich abgeschlossene Solo-Sprints derselben Objective-Version."),
+    entries,
+  });
+}
+
+function renderSoloStatistics(statistics) {
+  const solo = statisticsScope(statistics, "solo");
+  if (!hasStatisticRecords(solo, ["runs", "saved_runs", "started_runs"])) {
+    return statisticsEmptyMarkup(t("Noch keine Solo-Läufe"), t("Starte einen Solo-Sprint, damit Fortschritt und Bestleistung hier erscheinen."));
+  }
+  return `${statisticsSection({
+    eyebrow: t("Solo"),
+    title: t("Solo-Sprint"),
+    description: t("Aufgegebene Läufe bleiben in deiner Historie, sind aber nicht für die Bestenliste qualifiziert."),
+    entries: [
+      statisticEntry(t("Gespeicherte Läufe"), solo, ["saved_runs", "runs", "started_runs"]),
+      statisticEntry(t("Abgeschlossen"), solo, ["completed", "completed_runs"]),
+      statisticEntry(t("Aufgegeben"), solo, ["abandoned", "abandoned_runs"]),
+      statisticEntry(t("Abschlussquote"), solo, ["completion_rate", "completion_percentage"], "percentage"),
+      statisticEntry(t("Wenigste Züge"), solo, ["lowest_turns", "fewest_turns", "best_turns"]),
+      statisticEntry(t("Wenigste Würfe"), solo, ["lowest_rolls", "fewest_rolls", "best_rolls"]),
+      statisticEntry(t("Wenigste Zilchs"), solo, ["lowest_zilchs", "fewest_zilchs", "best_zilchs"]),
+      statisticEntry(t("Kürzeste aktive Dauer"), solo, ["shortest_active_duration_seconds", "shortest_active_duration"], "duration"),
+      statisticEntry(t("Höchste gesicherte Runde"), solo, ["highest_banked_round", "highest_round"]),
+      statisticEntry(t("Durchschnittliche gesicherte Runde"), solo, ["average_banked_round", "average_round"]),
+      statisticEntry(t("Durchschnittliche Züge abgeschlossener Läufe"), solo, ["average_turns_completed", "average_turns"]),
+      statisticEntry(t("Durchschnittliche Würfe abgeschlossener Läufe"), solo, ["average_rolls_completed", "average_rolls"]),
+      hotDiceStatisticEntry(solo),
+    ],
+  })}${personalBestMarkup(solo)}`;
+}
+
+function statisticsContentMarkup(statistics) {
+  if (state.statisticsMode === "multiplayer") return renderMultiplayerStatistics(statistics);
+  if (state.statisticsMode === "cpu") return renderCpuStatistics(statistics);
+  if (state.statisticsMode === "solo") return renderSoloStatistics(statistics);
+  return renderOverviewStatistics(statistics);
+}
+
+function bindStatisticsTabs() {
+  const tabs = [...document.querySelectorAll("[data-zilch-stats-mode]")];
+  const activate = (button, { focus = false } = {}) => {
+    state.statisticsMode = String(button?.dataset?.zilchStatsMode || "overview");
+    renderStatisticsBody();
+    if (focus) document.querySelector(`[data-zilch-stats-mode="${state.statisticsMode}"]`)?.focus();
+  };
+  tabs.forEach((button, index) => {
+    button.addEventListener("click", () => activate(button, { focus: true }));
+    button.addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      let target = index;
+      if (event.key === "ArrowLeft") target = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === "ArrowRight") target = (index + 1) % tabs.length;
+      if (event.key === "Home") target = 0;
+      if (event.key === "End") target = tabs.length - 1;
+      activate(tabs[target], { focus: true });
+    });
+  });
+  const cpuTabs = [...document.querySelectorAll("[data-zilch-stats-cpu-strategy]")];
+  const activateCpu = (button, { focus = false } = {}) => {
+    state.statisticsCpuStrategy = String(button?.dataset?.zilchStatsCpuStrategy || "all");
+    renderStatisticsBody();
+    if (focus) document.querySelector(`[data-zilch-stats-cpu-strategy="${state.statisticsCpuStrategy}"]`)?.focus();
+  };
+  cpuTabs.forEach((button, index) => {
+    button.addEventListener("click", () => activateCpu(button, { focus: true }));
+    button.addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      let target = index;
+      if (event.key === "ArrowLeft") target = (index - 1 + cpuTabs.length) % cpuTabs.length;
+      if (event.key === "ArrowRight") target = (index + 1) % cpuTabs.length;
+      if (event.key === "Home") target = 0;
+      if (event.key === "End") target = cpuTabs.length - 1;
+      activateCpu(cpuTabs[target], { focus: true });
+    });
+  });
+}
+
+function renderStatisticsBody() {
+  const slot = document.getElementById("zilchStatisticsBody");
+  if (!slot) return;
+  slot.innerHTML = `${statisticsTabMarkup()}<div id="zilchStatisticsPanel" class="zilch-statistics-panel" role="tabpanel" aria-live="polite" aria-labelledby="zilchStatsTab-${escapeHtml(state.statisticsMode)}">${statisticsContentMarkup(state.statistics || {})}</div>`;
+  bindStatisticsTabs();
+}
+
+async function renderStatistics() {
+  if (!content) return;
+  content.innerHTML = `<section class="zilch-game-head zilch-statistics-head">
+      <div><p class="eyebrow">${escapeHtml(t("Private Auswertung"))}</p><h1>${escapeHtml(t("Zilch-Statistiken"))}</h1><p>${escapeHtml(t("Deine Zilch-Werte werden getrennt von ZDWA und ausschließlich aus gespeicherten Ergebnissen berechnet."))}</p></div>
+      <a class="small ghost button-link" href="/zilch/bestenlisten">${escapeHtml(t("Zu den Bestenlisten"))}</a>
+    </section>
+    <div id="zilchStatisticsBody" aria-live="polite">${statisticsTabMarkup()}<section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Statistiken werden geladen …"))}</p></section></div>`;
+  try {
+    state.statistics = await fetchZilchStatistics();
+    renderStatisticsBody();
+  } catch (_) {
+    const slot = document.getElementById("zilchStatisticsBody");
+    if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Statistiken nicht verfügbar"))}</h2><p>${escapeHtml(t("Bitte versuche es später erneut oder kehre zur Zilch-Lobby zurück."))}</p><a class="button-link small ghost" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a></section>`;
+  }
+}
+
+function normalizedLeaderboardCategory(value) {
+  const category = String(value || "").toLowerCase();
+  return ZILCH_LEADERBOARD_CATEGORIES.has(category) ? category : "solo_sprint";
+}
+
+function leaderboardCategoryLabel(category) {
+  if (category === "multiplayer_wins") return t("Zwei Spieler · Siege");
+  if (category === "cpu_wins") return t("Gegen CPU · Siege");
+  return t("Solo-Sprint");
+}
+
+function leaderboardSortingDescription(category) {
+  if (category === "multiplayer_wins") return t("Sortierung: Siege, dann weniger Niederlagen, mehr Gleichstände, höhere Endpunktzahl und höchste Runde; Competition Ranking.");
+  if (category === "cpu_wins") return t("Sortierung: Siege gegen die gewählte Strategie, dann weniger Niederlagen, mehr Gleichstände, höhere Endpunktzahl und höchste Runde; Competition Ranking.");
+  return t("Sortierung: wenige Züge, wenige Würfe, wenige Zilchs, kurze aktive Dauer, dann älterer Abschluss.");
+}
+
+function leaderboardProjection(payload) {
+  const outer = plainObject(payload);
+  return plainObject(outer.leaderboard && typeof outer.leaderboard === "object" ? outer.leaderboard : outer);
+}
+
+async function fetchZilchLeaderboard() {
+  const params = new URLSearchParams({
+    category: state.leaderboardCategory,
+    limit: String(ZILCH_LEADERBOARD_LIMIT),
+    offset: String(Math.max(0, Number(state.leaderboardOffset) || 0)),
+  });
+  if (state.leaderboardCategory === "cpu_wins") params.set("strategy", state.leaderboardStrategy);
+  const response = await fetch(`/api/zilch/leaderboards?${params.toString()}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return leaderboardProjection(await response.json());
+}
+
+function leaderboardEntrySources(entry) {
+  const source = plainObject(entry);
+  return [source, plainObject(source.values), plainObject(source.tie_breaks), plainObject(source.metrics)];
+}
+
+function leaderboardEntryValue(entry, keys) {
+  return statisticValue(leaderboardEntrySources(entry), keys);
+}
+
+function leaderboardColumns(category) {
+  if (category === "solo_sprint") {
+    return [
+      { key: "turns", label: t("Züge"), aliases: ["turns", "turn_count"] },
+      { key: "rolls", label: t("Würfe"), aliases: ["rolls", "roll_count"] },
+      { key: "zilchs", label: t("Zilch-Runden"), aliases: ["zilchs", "zilch_count"] },
+      { key: "duration", label: t("Aktive Dauer"), aliases: ["active_duration_seconds", "active_duration"], format: "duration" },
+      { key: "finished", label: t("Abgeschlossen am"), aliases: ["finished_at"], format: "datetime" },
+    ];
+  }
+  if (category === "multiplayer_wins") {
+    return [
+      { key: "wins", label: t("Siege"), aliases: ["wins", "primary_value"] },
+      { key: "games", label: t("Spiele"), aliases: ["games"] },
+      { key: "losses", label: t("Niederlagen"), aliases: ["losses"] },
+      { key: "ties", label: t("Gleichstände"), aliases: ["ties", "draws"] },
+      { key: "rate", label: t("Siegquote"), aliases: ["win_rate", "win_percentage"], format: "percentage" },
+      { key: "best", label: t("Beste Endpunktzahl"), aliases: ["best_final_score", "highest_final_score", "best_score"] },
+      { key: "highest", label: t("Höchste gesicherte Runde"), aliases: ["highest_banked_round", "highest_round"] },
+    ];
+  }
+  return [
+    { key: "wins", label: t("Siege"), aliases: ["wins", "primary_value"] },
+    { key: "games", label: t("Spiele"), aliases: ["games"] },
+    { key: "losses", label: t("Niederlagen"), aliases: ["losses"] },
+    { key: "ties", label: t("Gleichstände"), aliases: ["ties", "draws"] },
+    { key: "rate", label: t("Siegquote"), aliases: ["win_rate", "win_percentage"], format: "percentage" },
+    { key: "best", label: t("Beste Endpunktzahl"), aliases: ["best_final_score", "highest_final_score", "best_score"] },
+    { key: "highest", label: t("Höchste gesicherte Runde"), aliases: ["highest_banked_round", "highest_round"] },
+  ];
+}
+
+function isOwnLeaderboardEntry(entry) {
+  if (entry?.is_current_user === true) return true;
+  const ownId = state.auth?.user?.id;
+  return ownId !== null && ownId !== undefined && samePresentId(entry?.user_id, ownId);
+}
+
+function leaderboardEntryName(entry) {
+  return String(entry?.display_name || entry?.username || t("Spieler"));
+}
+
+function leaderboardTableMarkup(leaderboard) {
+  const entries = Array.isArray(leaderboard.entries) ? leaderboard.entries : [];
+  const columns = leaderboardColumns(state.leaderboardCategory);
+  if (!entries.length) return `<section class="zilch-empty-state"><h2>${escapeHtml(t("Noch keine vergleichbaren Ergebnisse"))}</h2><p>${escapeHtml(t("Sobald eine passende private Zilch-Partie abgeschlossen ist, erscheint sie hier."))}</p></section>`;
+  return `<div class="zilch-leaderboard-table-wrap" tabindex="0" aria-label="${escapeHtml(t("Zilch-Bestenliste"))}">
+    <table class="zilch-leaderboard-table">
+      <thead><tr><th scope="col">${escapeHtml(t("Rang"))}</th><th scope="col">${escapeHtml(t("Spieler"))}</th>${columns.map(column => `<th scope="col">${escapeHtml(column.label)}</th>`).join("")}</tr></thead>
+      <tbody>${entries.map(entry => {
+        const own = isOwnLeaderboardEntry(entry);
+        const rank = leaderboardEntryValue(entry, ["rank"]);
+        return `<tr${own ? ' class="is-own" data-own-entry="true" aria-label="' + escapeHtml(t("Dein Eintrag")) + '"' : ""}>
+          <th scope="row">${escapeHtml(rank === null ? "—" : number(rank))}</th>
+          <td><strong>${escapeHtml(leaderboardEntryName(entry))}</strong>${own ? `<span class="zilch-own-marker">${escapeHtml(t("Du"))}</span>` : ""}</td>
+          ${columns.map(column => {
+            const value = leaderboardEntryValue(entry, column.aliases);
+            return `<td>${escapeHtml(value === null ? "—" : formattedStatistic(value, column.format))}</td>`;
+          }).join("")}
+        </tr>`;
+      }).join("")}</tbody>
+    </table>
+  </div>`;
+}
+
+function ownLeaderboardEntryMarkup(leaderboard) {
+  const own = plainObject(leaderboard.own_entry);
+  const entries = Array.isArray(leaderboard.entries) ? leaderboard.entries : [];
+  if (!Object.keys(own).length || entries.some(entry => isOwnLeaderboardEntry(entry))) return "";
+  const rank = leaderboardEntryValue(own, ["rank"]);
+  const primary = leaderboardEntryValue(own, ["primary_value"]);
+  return `<aside class="zilch-card zilch-own-leaderboard-entry" aria-label="${escapeHtml(t("Dein Eintrag"))}"><p class="eyebrow">${escapeHtml(t("Dein Eintrag"))}</p><h2>${escapeHtml(leaderboardEntryName(own))}</h2><p><strong>${escapeHtml(t("Rang"))} ${escapeHtml(rank === null ? "—" : number(rank))}</strong>${primary === null ? "" : ` · ${escapeHtml(formattedStatistic(primary))}`}</p></aside>`;
+}
+
+function leaderboardPaginationMarkup(leaderboard) {
+  const offset = Math.max(0, Number(leaderboard.offset ?? state.leaderboardOffset) || 0);
+  const limit = Math.max(1, Number(leaderboard.limit) || ZILCH_LEADERBOARD_LIMIT);
+  const total = Number(leaderboard.total);
+  if (!Number.isFinite(total) || total <= limit) return "";
+  const previousDisabled = offset <= 0;
+  const nextDisabled = offset + limit >= total;
+  return `<nav class="zilch-leaderboard-pagination" aria-label="${escapeHtml(t("Seitennavigation der Bestenliste"))}">
+    <button type="button" class="small ghost" data-zilch-leaderboard-page="previous"${previousDisabled ? " disabled" : ""}>${escapeHtml(t("Vorherige"))}</button>
+    <p>${escapeHtml(interpolated("{from}–{to} von {total}", { from: number(offset + 1), to: number(Math.min(offset + limit, total)), total: number(total) }))}</p>
+    <button type="button" class="small ghost" data-zilch-leaderboard-page="next"${nextDisabled ? " disabled" : ""}>${escapeHtml(t("Nächste"))}</button>
+  </nav>`;
+}
+
+function leaderboardControlsMarkup() {
+  const category = state.leaderboardCategory;
+  const cpu = category === "cpu_wins";
+  return `<form id="zilchLeaderboardFilters" class="zilch-leaderboard-filters" aria-label="${escapeHtml(t("Bestenliste filtern"))}">
+    <label><span>${escapeHtml(t("Kategorie"))}</span><select name="category">
+      ${["solo_sprint", "multiplayer_wins", "cpu_wins"].map(value => `<option value="${value}"${value === category ? " selected" : ""}>${escapeHtml(leaderboardCategoryLabel(value))}</option>`).join("")}
+    </select></label>
+    <label id="zilchLeaderboardStrategyFilter"${cpu ? "" : " hidden"}><span>${escapeHtml(t("CPU-Strategie"))}</span><select name="strategy">
+      ${["conservative", "normal", "aggressive"].map(value => `<option value="${value}"${value === state.leaderboardStrategy ? " selected" : ""}>${escapeHtml(strategyLabel(value))}</option>`).join("")}
+    </select></label>
+  </form>`;
+}
+
+function leaderboardObjectiveMarkup(leaderboard) {
+  const objective = plainObject(leaderboard?.objective);
+  const objectiveId = String(objective.id || "").trim();
+  const version = objective.version;
+  if (!objectiveId || version === null || version === undefined || version === "") return "";
+  const title = objectiveId === SOLO_SPRINT_OBJECTIVE_ID
+    ? t("10’000-Punkte-Sprint")
+    : objectiveId;
+  return `<p class="zilch-leaderboard-objective"><strong>${escapeHtml(t("Objective"))}:</strong> ${escapeHtml(title)} · ${escapeHtml(t("Version"))} ${escapeHtml(String(version))}</p>`;
+}
+
+function updateLeaderboardLocation() {
+  const params = new URLSearchParams({ category: state.leaderboardCategory });
+  if (state.leaderboardCategory === "cpu_wins") params.set("strategy", state.leaderboardStrategy);
+  const query = params.toString();
+  window.history.replaceState({}, "", `/zilch/bestenlisten${query ? `?${query}` : ""}`);
+}
+
+function bindLeaderboardControls() {
+  const form = document.getElementById("zilchLeaderboardFilters");
+  if (form) form.addEventListener("change", event => {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    if (target.name === "category") state.leaderboardCategory = normalizedLeaderboardCategory(target.value);
+    if (target.name === "strategy" && CPU_STRATEGIES.has(target.value)) state.leaderboardStrategy = target.value;
+    state.leaderboardOffset = 0;
+    updateLeaderboardLocation();
+    const focusSelector = target.name === "strategy"
+      ? '#zilchLeaderboardFilters select[name="strategy"]'
+      : '#zilchLeaderboardFilters select[name="category"]';
+    void refreshLeaderboard({ focusSelector });
+  });
+  document.querySelectorAll("[data-zilch-leaderboard-page]").forEach(button => button.addEventListener("click", () => {
+    const direction = button.dataset.zilchLeaderboardPage;
+    const limit = Math.max(1, Number(state.leaderboard?.limit) || ZILCH_LEADERBOARD_LIMIT);
+    state.leaderboardOffset = direction === "next"
+      ? state.leaderboardOffset + limit
+      : Math.max(0, state.leaderboardOffset - limit);
+    void refreshLeaderboard({ focusSelector: `[data-zilch-leaderboard-page="${direction}"]` });
+  }));
+}
+
+function renderLeaderboardBody() {
+  const slot = document.getElementById("zilchLeaderboardBody");
+  if (!slot) return;
+  const leaderboard = state.leaderboard || {};
+  slot.innerHTML = `<section class="zilch-card zilch-leaderboard-card">
+      <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Private Bestenlisten"))}</p><h2>${escapeHtml(leaderboardCategoryLabel(state.leaderboardCategory))}</h2></div><p class="zilch-leaderboard-sorting">${escapeHtml(leaderboardSortingDescription(state.leaderboardCategory))}</p></div>
+      ${leaderboardObjectiveMarkup(leaderboard)}
+      ${leaderboardControlsMarkup()}
+      ${leaderboardTableMarkup(leaderboard)}
+      ${leaderboardPaginationMarkup(leaderboard)}
+    </section>${ownLeaderboardEntryMarkup(leaderboard)}`;
+  bindLeaderboardControls();
+}
+
+async function refreshLeaderboard({ focusSelector = "" } = {}) {
+  const slot = document.getElementById("zilchLeaderboardBody");
+  if (!slot) return;
+  slot.setAttribute("aria-busy", "true");
+  try {
+    state.leaderboard = await fetchZilchLeaderboard();
+    state.leaderboardOffset = Math.max(0, Number(state.leaderboard.offset ?? state.leaderboardOffset) || 0);
+    renderLeaderboardBody();
+    if (focusSelector) document.querySelector(focusSelector)?.focus();
+  } catch (_) {
+    slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Bestenliste nicht verfügbar"))}</h2><p>${escapeHtml(t("Bitte versuche es später erneut oder kehre zur Zilch-Lobby zurück."))}</p><a class="button-link small ghost" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a></section>`;
+  } finally {
+    slot.removeAttribute("aria-busy");
+  }
+}
+
+async function renderLeaderboards() {
+  if (!content) return;
+  const params = new URLSearchParams(window.location.search);
+  state.leaderboardCategory = normalizedLeaderboardCategory(params.get("category"));
+  const strategy = String(params.get("strategy") || state.leaderboardStrategy).toLowerCase();
+  state.leaderboardStrategy = CPU_STRATEGIES.has(strategy) ? strategy : "conservative";
+  state.leaderboardOffset = 0;
+  content.innerHTML = `<section class="zilch-game-head zilch-leaderboards-head">
+      <div><p class="eyebrow">${escapeHtml(t("Private Auswertung"))}</p><h1>${escapeHtml(t("Zilch-Bestenlisten"))}</h1><p>${escapeHtml(t("Alle Ranglisten werden serverseitig aus gespeicherten, passenden Zilch-Ergebnissen berechnet."))}</p></div>
+      <a class="small ghost button-link" href="/zilch/statistiken">${escapeHtml(t("Zu deinen Statistiken"))}</a>
+    </section>
+    <div id="zilchLeaderboardBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Bestenliste wird geladen …"))}</p></section></div>`;
+  await refreshLeaderboard();
 }
 
 function ruleNumber(value) {
@@ -1875,6 +2468,8 @@ async function initialize() {
   if (resultId) await renderResult();
   else if (gameId) await renderGame();
   else if (historyRoute) await renderHistory();
+  else if (statisticsRoute) await renderStatistics();
+  else if (leaderboardsRoute) await renderLeaderboards();
   else if (rulesRoute) await renderRules();
   else await renderLobby();
 }

@@ -269,10 +269,72 @@ class ZilchResultsTestCase(TestCase):
         self.assertEqual(payload["participant_order"], ["p1", "p2"])
         self.assertEqual(set(payload["boards"]), {"p1", "p2"})
         self.assertEqual(payload["outcome"]["winner_id"], "p1")
+
+    def test_v1_result_keeps_the_positive_third_zilch_deduction_consistent_with_board_history(self) -> None:
+        game = self._terminal_game()
+        board = game["_zilch_boards"]["p1"]
+        board["rounds"].extend(
+            [
+                {
+                    "turn_id": 6,
+                    "round": 4,
+                    "event": "zilch",
+                    "reason": "no_scoring_option",
+                    "discarded_points": 0,
+                    "penalty": 0,
+                    "total_after": 10_000,
+                    "zilch_streak": 1,
+                    "rolls_used": 1,
+                    "committed_holds": [],
+                },
+                {
+                    "turn_id": 8,
+                    "round": 5,
+                    "event": "zilch",
+                    "reason": "no_scoring_option",
+                    "discarded_points": 0,
+                    "penalty": 0,
+                    "total_after": 10_000,
+                    "zilch_streak": 2,
+                    "rolls_used": 1,
+                    "committed_holds": [],
+                },
+                {
+                    "turn_id": 10,
+                    "round": 6,
+                    "event": "zilch",
+                    "reason": "no_scoring_option",
+                    "discarded_points": 0,
+                    "penalty": 500,
+                    "total_after": 9_500,
+                    "zilch_streak": 3,
+                    "rolls_used": 1,
+                    "committed_holds": [],
+                },
+            ]
+        )
+        board["total_points"] = 9_500
+        board["zilch_streak"] = 3
+        game["_total_points"]["p1"] = 9_500
+        game["_zilch_zilch_streaks"]["p1"] = 3
+        game["_zilch_outcome"] = {
+            "status": "completed",
+            "target_score": 10_000,
+            "totals": {"p1": 9_500, "p2": 9_700},
+            "winner_ids": ["p2"],
+            "winner_id": "p2",
+            "tied": False,
+        }
+
+        payload = build_zilch_result_payload(game)
+
+        self.assertEqual(payload["boards"]["p1"]["total_points"], 9_500)
+        self.assertEqual(payload["metrics"]["zilch_penalties"][-1]["points"], 500)
+        self.assertEqual(payload["outcome"]["winner_id"], "p2")
         self.assertFalse(payload["outcome"]["tied"])
         self.assertEqual(payload["final_round"]["triggered_by"], "p1")
         self.assertEqual(payload["final_round"]["pending_player_ids"], [])
-        self.assertEqual(payload["metrics"]["zilch_count"], 1)
+        self.assertEqual(payload["metrics"]["zilch_count"], 4)
         self.assertEqual(payload["metrics"]["hot_dice_events"], 1)
         self.assertTrue(payload["metrics"]["hot_dice_events_complete"])
         self.assertNotIn("scoreboards", payload)

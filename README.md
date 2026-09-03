@@ -22,14 +22,19 @@ Dice, highest banked round, and active time. There is no opponent, CPU,
 start roll, final reply, or fabricated winner/tie in Solo. A confirmed
 abandonment remains a private `abandoned` result; pause and restart downtime
 do not count as active time. Future comparison order is turns, rolls, Zilchs,
-then active duration (all ascending); no Solo leaderboard exists yet.
+then active duration (all ascending). Private, server-calculated Zilch
+statistics keep Solo, human-vs-human, and human-vs-CPU separate. The three
+private leaderboards are the best compatible Solo Sprint per active account,
+human-vs-human wins, and wins against each individual CPU strategy; they never
+feed a ZDWA ranking.
 Finished private Zilch games are stored as a separate, versioned result payload
 with a private read-only history; they do not enter any ZDWA scorecard, replay,
 statistic, achievement, or leaderboard path. The protected Zilch app has its
-own lobby, game view, history, result report, and in-app rule guide. Its
+own lobby, game view, history, result report, statistics, leaderboards, and
+in-app rule guide. Its
 CSS-only wood-table, paper-card, and dice direction is isolated from ZDWA.
-Manual dice selection, additional Solo objectives/challenges, Zilch aggregates,
-achievements, leaderboards, and public release are deliberately deferred.
+Manual dice selection, additional Solo objectives/challenges, Zilch
+achievements, and public release are deliberately deferred.
 
 Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
 
@@ -40,7 +45,8 @@ Localization conventions and terminology are documented in [docs/LOCALIZATION.md
 - REST API for lobby, games, leaderboard, and replay data
 - WebSocket game room for rolling, scoring, chat, spectators, and corrections
 - Restart-safe live games plus typed completed-game persistence in `./data`;
-  ZDWA aggregates and private Zilch result history stay separate
+  ZDWA aggregates and private Zilch results/statistics/leaderboards stay
+  separate
 - User accounts, admin management, public profiles, search, and player rankings
 - Audited deletion of invalid ZDWA results with automatic statistic updates;
   private Zilch deletion never mutates ZDWA aggregates
@@ -61,6 +67,8 @@ User-facing navigation uses short routes without implementation details:
 - `/zilch/spiel/{game_id}` protected Zilch game view (not public or indexable)
 - `/zilch/historie` protected own Zilch history (not public or indexable)
 - `/zilch/ergebnis/{game_id}` protected, read-only Zilch result report (not public or indexable)
+- `/zilch/statistiken` protected own Zilch statistics (not public or indexable)
+- `/zilch/bestenlisten` protected Zilch leaderboards (not public or indexable)
 - `/zilch/regeln` protected in-app Zilch rule guide (not public or indexable)
 - `/spiel/{game_id}/zuschauen` spectator view
 - `/regeln`, `/rangabzeichen`, `/spieler`, `/spieler/{username}`, `/konto`, and `/admin`
@@ -206,6 +214,7 @@ RollTheDice/
 │   ├── zilch_cpu_strategy.py # Pure conservative/normal/aggressive CPU policy
 │   ├── zilch_cpu_runner.py  # Cancellable trusted CPU-turn runner
 │   ├── zilch_solo_objective.py # Pure versioned Solo Sprint objective/metrics
+│   ├── zilch_statistics.py  # Private Zilch-only statistics and leaderboard service
 │   ├── leaderboard_service.py # Leaderboard aggregation and replay/profile reads
 │   ├── leaderboard_storage.py # Locked legacy-JSON compatibility storage
 │   ├── rules.py             # Server-side subtotal and total calculations

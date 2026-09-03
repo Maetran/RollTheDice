@@ -47,6 +47,10 @@ test("private Zilch rules, history, and product navigation use the protected noi
   expect(anonymousRules?.status()).toBe(401);
   const anonymousHistory = await page.goto("/zilch/historie");
   expect(anonymousHistory?.status()).toBe(401);
+  const anonymousStatistics = await page.goto("/zilch/statistiken");
+  expect(anonymousStatistics?.status()).toBe(401);
+  const anonymousLeaderboards = await page.goto("/zilch/bestenlisten");
+  expect(anonymousLeaderboards?.status()).toBe(401);
 
   await signInAsPreviewMani(page);
   const requests = [];
@@ -81,6 +85,8 @@ test("private Zilch rules, history, and product navigation use the protected noi
   expect(hrefs).toEqual(expect.arrayContaining([
     "/zilch",
     "/zilch/historie",
+    "/zilch/statistiken",
+    "/zilch/bestenlisten",
     "/zilch/regeln",
     "/konto?return_to=zilch#settings",
   ]));
@@ -90,11 +96,16 @@ test("private Zilch rules, history, and product navigation use the protected noi
   expect(hrefs.filter(href => ![
     "/zilch",
     "/zilch/historie",
+    "/zilch/statistiken",
+    "/zilch/bestenlisten",
     "/zilch/regeln",
     "/konto?return_to=zilch#settings",
     "/",
   ].includes(href))).toEqual([]);
-  expect(navigation.map(link => link.text)).not.toContain("Bestenlisten");
+  expect(navigation.map(link => link.text)).toEqual(expect.arrayContaining([
+    expect.stringMatching(/^(Statistiken|Statistics)$/),
+    expect.stringMatching(/^(Bestenlisten|Leaderboards)$/),
+  ]));
   expect(navigation.map(link => link.text)).not.toContain("Achievements");
   expect(page.locator("#createGameCard")).toHaveCount(0);
 
@@ -204,4 +215,192 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   ]);
   await expect(page.locator("html")).toHaveAttribute("data-game", "zdwa");
   await expect(page.locator("#createGameCard")).toBeVisible();
+});
+
+test("private Zilch statistics and leaderboards render only server projections accessibly", async ({ browser, baseURL }) => {
+  // The private shell registers a service worker in normal contexts.  Use an
+  // isolated blocked-SW context so these browser-only projection fixtures
+  // exercise the real page while Playwright reliably intercepts only its API
+  // reads, never a stale cache response.
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+  await signInAsPreviewMani(page);
+
+  await page.route("**/api/zilch/statistics", route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      version: 1,
+      overview: {
+        completed_records: 7,
+        games_by_mode: { multiplayer: 2, cpu: 3, solo: 2 },
+        banked_points: 12400,
+        banked_rounds: 18,
+        highest_banked_round: 1900,
+        average_banked_round: 688.89,
+        zilchs: 4,
+        zilch_penalties: 500,
+        hot_dice_events: 2,
+        duration_seconds: 4200,
+        active_duration_seconds: 900,
+      },
+      multiplayer: {
+        games: 2, wins: 1, losses: 0, ties: 1, win_rate: 1,
+        average_final_score: 10100, highest_final_score: 10300,
+        highest_banked_round: 1300, average_banked_round: 760,
+        zilchs: 1, hot_dice_events: 1, average_duration_seconds: 1200,
+      },
+      cpu: {
+        overall: {
+          games: 3, wins: 2, losses: 1, ties: 0, win_rate: 0.67,
+          average_final_score: 10050, highest_final_score: 10900,
+          highest_banked_round: 1600, average_banked_round: 720,
+          zilchs: 2, hot_dice_events: 1, average_duration_seconds: 980,
+        },
+        by_strategy: {
+          conservative: {
+            games: 1, wins: 1, losses: 0, ties: 0, win_rate: 1,
+            average_final_score: 10100, highest_final_score: 10100,
+            highest_banked_round: 800, average_banked_round: 650,
+            zilchs: 0, hot_dice_events: 0, average_duration_seconds: 800,
+          },
+          normal: {
+            games: 1, wins: 1, losses: 0, ties: 0, win_rate: 1,
+            average_final_score: 10500, highest_final_score: 10500,
+            highest_banked_round: 1600, average_banked_round: 840,
+            zilchs: 1, hot_dice_events: 1, average_duration_seconds: 1000,
+          },
+          aggressive: {
+            games: 1, wins: 0, losses: 1, ties: 0, win_rate: 0,
+            average_final_score: 9550, highest_final_score: 9550,
+            highest_banked_round: 1200, average_banked_round: 660,
+            zilchs: 1, hot_dice_events: null, hot_dice_events_complete: false, average_duration_seconds: 1140,
+          },
+        },
+      },
+      solo: {
+        runs: 2, completed: 1, abandoned: 1, completion_rate: 0.5,
+        best_run: { turns: 12, rolls: 28, zilchs: 1, active_duration_seconds: 740 },
+        lowest_turns: 12, lowest_rolls: 28, lowest_zilchs: 1,
+        shortest_active_duration_seconds: 740, highest_banked_round: 2000,
+        average_banked_round: 910, average_turns_completed: 12,
+        average_rolls_completed: 28, hot_dice_events: 1,
+      },
+    }),
+  }));
+
+  await page.route("**/api/zilch/leaderboards**", async route => {
+    const requestUrl = new URL(route.request().url());
+    const category = requestUrl.searchParams.get("category") || "solo_sprint";
+    const strategy = requestUrl.searchParams.get("strategy");
+    const offset = Number(requestUrl.searchParams.get("offset") || "0");
+    const common = {
+      version: 1,
+      category,
+      strategy: category === "cpu_wins" ? strategy : null,
+      ranking: "competition",
+      sorting: { direction: category === "solo_sprint" ? "ascending" : "descending" },
+      offset,
+      limit: 100,
+      total: 101,
+      ...(category === "solo_sprint" ? {
+        objective: { id: "reach_10000_fewest_turns", version: 1 },
+      } : {}),
+    };
+    const entry = category === "solo_sprint"
+      ? {
+        rank: 1, user_id: 2, display_name: "Mani", primary_value: 12, games: 1, is_current_user: true,
+        values: {
+          turns: 12, rolls: 28, zilchs: 1, active_duration_seconds: 740,
+          highest_banked_round: 2000, finished_at: "2026-09-03T10:00:00+00:00",
+        },
+        tie_breaks: { rolls: 28, zilchs: 1, active_duration_seconds: 740, finished_at: "2026-09-03T10:00:00+00:00" },
+      }
+      : {
+        rank: 1, user_id: 2, display_name: "Mani", primary_value: 2, games: 3, is_current_user: true,
+        values: {
+          wins: 2, games: 3, losses: 1, ties: category === "cpu_wins" ? 1 : 0,
+          win_rate: 0.67, highest_final_score: 10900, highest_banked_round: 1600,
+        },
+        tie_breaks: { losses: 1, ties: 0, highest_final_score: 10900, highest_banked_round: 1600 },
+      };
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ...common, entries: [entry], own_entry: entry }) });
+  });
+
+  await page.goto("/zilch/statistiken");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await expect(page.getByRole("heading", { name: "Zilch-Statistiken", exact: true })).toBeVisible();
+  await expect(page.locator("#zilchNavigation a[href='/zilch/statistiken']")).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText("Gesicherte Gesamtpunkte")).toBeVisible();
+
+  const multiplayerTab = page.getByRole("tab", { name: "Zwei Spieler" });
+  await multiplayerTab.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("tab", { name: "Gegen CPU" })).toBeFocused();
+  await expect(page.getByText("Alle CPU-Partien", { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Aggressiv" }).click();
+  await expect(page.getByText("CPU-Strategie: Aggressiv", { exact: true })).toBeVisible();
+  await expect(page.getByText("Nicht vollständig verfügbar", { exact: true })).toBeVisible();
+
+  await page.goto("/zilch/bestenlisten");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await expect(page.getByRole("heading", { name: "Zilch-Bestenlisten" })).toBeVisible();
+  await expect(page.locator("#zilchNavigation a[href='/zilch/bestenlisten']")).toHaveAttribute("aria-current", "page");
+  await expect(page.locator(".zilch-leaderboard-table")).toBeVisible();
+  await expect(page.locator("tr[data-own-entry='true']")).toContainText("Du");
+  await expect(page.getByText("Objective:", { exact: false })).toBeVisible();
+  await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Abgeschlossen am");
+  await expect(page.getByRole("button", { name: "Nächste" })).toBeEnabled();
+
+  const cpuRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === "/api/zilch/leaderboards" && url.searchParams.get("category") === "cpu_wins";
+  });
+  const category = page.locator("#zilchLeaderboardFilters select[name='category']");
+  await category.focus();
+  await expect(category).toBeFocused();
+  await category.selectOption("cpu_wins");
+  await cpuRequest;
+  await expect(category).toBeFocused();
+  await expect(page.locator("#zilchLeaderboardStrategyFilter")).toBeVisible();
+  await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Gleichstände");
+  await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Beste Endpunktzahl");
+
+  const aggressiveRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === "/api/zilch/leaderboards"
+      && url.searchParams.get("category") === "cpu_wins"
+      && url.searchParams.get("strategy") === "aggressive";
+  });
+  await page.locator("#zilchLeaderboardFilters select[name='strategy']").selectOption("aggressive");
+  await aggressiveRequest;
+  await expect(page).toHaveURL(/category=cpu_wins.*strategy=aggressive/);
+
+  const nextRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === "/api/zilch/leaderboards" && url.searchParams.get("offset") === "100";
+  });
+  await page.getByRole("button", { name: "Nächste" }).click();
+  await nextRequest;
+
+  for (const width of [320, 375, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+    page.locator("[data-language-switcher]").selectOption("en"),
+  ]);
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.getByRole("heading", { name: "Zilch leaderboards" })).toBeVisible();
+  await expect(page.locator("tr[data-own-entry='true']")).toContainText("You");
+
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+    page.locator("[data-language-switcher]").selectOption("de"),
+  ]);
+  } finally {
+    await context.close();
+  }
 });
