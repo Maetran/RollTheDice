@@ -22,6 +22,7 @@ from .game_state import (
     touch,
 )
 from .game_types import ZILCH_GAME_TYPE, game_type_from_state
+from .zilch_state import zilch_human_join_error
 
 logger = logging.getLogger(__name__)
 
@@ -62,33 +63,40 @@ async def handle_session_action(
     session: GameSocketSession,
     action: str,
     data: dict[str, Any],
+    *,
+    finalize_game=None,
 ) -> bool:
     """Handle join/rejoin actions; return true when the socket should close."""
     if session.player_id or (session.spectator_id and action != "rejoin_game"):
         await session.websocket.send_json({"error": "Bereits beigetreten"})
         return False
     if action == "join_game":
-        return await _join_game(session, data)
+        return await _join_game(session, data, finalize_game=finalize_game)
     if action == "spectate_game":
         return await _spectate_game(session, data)
     if action == "rejoin_game":
-        return await _rejoin_game(session, data)
+        return await _rejoin_game(session, data, finalize_game=finalize_game)
     raise ValueError(f"Unsupported session action: {action}")
 
 
-async def _join_game(session: GameSocketSession, data: dict[str, Any]) -> bool:
+async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finalize_game=None) -> bool:
     g = session.game
     websocket = session.websocket
     if not _passphrase_matches(g, data):
         await close_with_error(websocket, "Falsche Passphrase")
         return True
 
+    identity = session.auth_identity
+    if game_type_from_state(g) == ZILCH_GAME_TYPE:
+        cpu_join_error = zilch_human_join_error(g, user_id=identity.user_id if identity else None)
+        if cpu_join_error:
+            await close_with_error(websocket, cpu_join_error, fatal=True)
+            return True
     if blocked_reason := _join_block_reason(g):
         await close_with_error(websocket, blocked_reason, fatal=True)
         return True
 
     requested_name = (str(data.get("name") or "Gast").strip() or "Gast")[:64]
-    identity = session.auth_identity
     if identity:
         requested_name = identity.username
         duplicate_account = next(
@@ -125,12 +133,23 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any]) -> bool:
     session.is_spectator = False
     # Player identity, lifecycle and connection handling stay common.  The
     # adapter owns only the game-specific board shape and start metadata.
-    join_player_to_game(g, player)
-    start_game_if_ready(g)
+    try:
+        join_player_to_game(g, player)
+        start_game_if_ready(g)
+    except ValueError as exc:
+        # A Zilch CPU seat is a durable participant, not a shared transport
+        # player.  Keep a race or direct adapter call from becoming an
+        # unhandled WebSocket exception.
+        await close_with_error(websocket, str(exc), fatal=True)
+        return True
 
     await websocket.send_json({"player_id": player_id, "resume_token": player["resume_token"]})
     touch(g)
     await broadcast(g, {"scoreboard": snapshot(g)})
+    if game_type_from_state(g) == ZILCH_GAME_TYPE:
+        from .zilch_cpu_runner import maybe_schedule_cpu_turn
+
+        maybe_schedule_cpu_turn(g, finalize_game=finalize_game)
     return False
 
 
@@ -184,7 +203,7 @@ async def _spectate_game(session: GameSocketSession, data: dict[str, Any]) -> bo
     return False
 
 
-async def _rejoin_game(session: GameSocketSession, data: dict[str, Any]) -> bool:
+async def _rejoin_game(session: GameSocketSession, data: dict[str, Any], *, finalize_game=None) -> bool:
     g = session.game
     websocket = session.websocket
     if not _passphrase_matches(g, data):
@@ -279,6 +298,10 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any]) -> bool
         return False
     touch(g)
     await broadcast(g, {"scoreboard": snapshot(g)})
+    if game_type_from_state(g) == ZILCH_GAME_TYPE:
+        from .zilch_cpu_runner import maybe_schedule_cpu_turn
+
+        maybe_schedule_cpu_turn(g, finalize_game=finalize_game)
     return False
 
 

@@ -94,7 +94,11 @@ async function bankWhenPossible(pages) {
             () => page.locator(".zilch-board--active").getAttribute("data-zilch-board-id"),
             { timeout: 1_500, intervals: [100, 250, 500] },
           ).not.toBe(activeBefore);
-          return page;
+          return {
+            page,
+            activeBefore,
+            activeAfter: await page.locator(".zilch-board--active").getAttribute("data-zilch-board-id"),
+          };
         } catch {
           await page.waitForTimeout(120);
         }
@@ -300,6 +304,87 @@ test("Zilch is a separate permission-gated app mode and its hotkey respects inpu
   await expect(page.locator("[data-game-switch]")).toBeHidden();
 });
 
+test("a permitted user can create and reload a private CPU game through the normal server path", async ({ page }) => {
+  await page.goto("/");
+  await signIn(page, "Admin", "temporary-password-123");
+  await expect(page.locator("#authBadge")).toContainText("Admin");
+  await ensurePreviewAccounts(page);
+
+  await page.click("#logoutBtn");
+  await expect(page.locator("#loginForm")).toBeVisible();
+  await signIn(page, "Mani", "mani-preview-password-123");
+  await expect(page.locator("[data-game-switch]")).toBeVisible();
+  await page.locator("[data-game-switch]").click();
+  await page.waitForURL(/\/zilch$/);
+
+  await page.locator("input[name='zilchPlayMode'][value='cpu']").check();
+  await expect(page.locator("#zilchCpuStrategy")).toBeVisible();
+  await page.locator("input[name='zilchCpuStrategy'][value='aggressive']").check();
+  await page.locator("#zilchGameName").fill("CPU Serverpfad");
+  await Promise.all([
+    page.waitForURL(/\/zilch\/spiel\/[^/]+$/),
+    page.locator("#zilchCreateForm button[type='submit']").click(),
+  ]);
+  const gamePath = new URL(page.url()).pathname;
+  const gameId = gamePath.split("/").at(-1);
+
+  // Navigation reaches the protected shell before its normal WebSocket join
+  // completes. Wait for the authoritative snapshot rather than assuming a
+  // transport player exists as soon as the URL changes.
+  await expect(page.locator("[data-zilch-board-id]")).toHaveCount(2);
+
+  // The public projection proves that the CPU is a durable second seat but
+  // not a second browser/WebSocket connection. This is the ordinary private
+  // API used by the game screen, not a test fixture or server hook.
+  const details = await page.evaluate(async id => {
+    const response = await fetch(`/api/games/${encodeURIComponent(id)}`, { cache: "no-store" });
+    return { status: response.status, body: await response.json() };
+  }, gameId);
+  expect(details.status).toBe(200);
+  expect(details.body).toMatchObject({
+    game_type: "zilch",
+    play_mode: "cpu",
+    expected_connections: 1,
+    expected_participants: 2,
+  });
+  expect(details.body.players).toBe(1);
+  const cpuParticipant = details.body.participants.find(participant => participant.participant_type === "cpu");
+  expect(cpuParticipant).toMatchObject({
+    is_cpu: true,
+    connected: null,
+    user_id: null,
+    cpu_strategy: "aggressive",
+  });
+
+  const cpuBoard = page.locator(`[data-zilch-board-id="${cpuParticipant.id}"]`);
+  await expect(cpuBoard).toContainText(/CPU/);
+  await expect(cpuBoard).toContainText(/Aggressiv|Aggressive/);
+  await expect(cpuBoard).not.toHaveClass(/zilch-board--offline/);
+  await expect(cpuBoard.locator(".zilch-connection-dot")).toHaveCount(0);
+
+  // The human produces only their own opening roll. The runner then performs
+  // the CPU's server-authoritative opening roll with the normal fair RNG. A
+  // tie is legitimate, so observe CPU activity rather than forcing a result.
+  const openingRoll = page.locator("[data-zilch-start-roll]");
+  await expect(openingRoll).toBeEnabled();
+  await openingRoll.click();
+  const cpuActivity = page.locator("#zilchLiveStatus, .zilch-start-roll, .zilch-event");
+  await expect.poll(
+    async () => (await cpuActivity.allTextContents()).join(" "),
+    { timeout: 5_000, intervals: [50, 100, 200] },
+  ).toMatch(/CPU.*(?:würfelt|rolls)/i);
+
+  // Reload uses the real resume-token path. It must retain the active game
+  // and the CPU domain seat rather than creating a fake user or offline CPU.
+  await page.reload();
+  await expect(page).toHaveURL(new RegExp(`${gamePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
+  await expect(page.locator("[data-zilch-board-id]")).toHaveCount(2);
+  const rejoinedCpuBoard = page.locator(`[data-zilch-board-id="${cpuParticipant.id}"]`);
+  await expect(rejoinedCpuBoard).toContainText(/CPU/);
+  await expect(rejoinedCpuBoard.locator(".zilch-connection-dot")).toHaveCount(0);
+  await expect(page.locator("#zilchLiveStatus")).not.toContainText(/CPU-Spiel kann nicht fortgesetzt werden|CPU game cannot continue/i);
+});
+
 test("two explicitly allowed humans can create, rejoin, and play a private Zilch alpha", async ({ browser, page }) => {
   await page.goto("/");
   await signIn(page, "Admin", "temporary-password-123");
@@ -379,9 +464,13 @@ test("two explicitly allowed humans can create, rejoin, and play a private Zilch
     await expect(mani.locator("[data-zilch-board-id]")).toHaveCount(2);
     await expect(mani.locator("[data-zilch-root]")).toBeVisible();
 
-    const beforeBank = await mani.locator(".zilch-board--active").getAttribute("data-zilch-board-id");
-    await bankWhenPossible([mani, preview]);
-    await expect.poll(async () => mani.locator(".zilch-board--active").getAttribute("data-zilch-board-id")).not.toBe(beforeBank);
+    const banked = await bankWhenPossible([mani, preview]);
+    // The helper may need to resolve a preceding Zilch before it reaches a
+    // bankable turn, so the active seat can legitimately match the state from
+    // before the helper began. Assert the actual bank transition and that the
+    // rejoined client receives that same authoritative turn instead.
+    expect(banked.activeAfter).not.toBe(banked.activeBefore);
+    await expect.poll(async () => mani.locator(".zilch-board--active").getAttribute("data-zilch-board-id")).toBe(banked.activeAfter);
 
     await blocked.goto("/");
     await signIn(blocked, "Admin", "temporary-password-123");

@@ -9,6 +9,8 @@ from typing import Final, Literal
 from .active_games import save_active_game
 from .game_state import GameDict, games
 from .game_types import ZILCH_GAME_TYPE
+from .zilch_cpu_strategy import ZILCH_CPU_STRATEGIES as _CPU_STRATEGY_NAMES
+from .zilch_cpu_strategy import validate_zilch_cpu_strategy
 from .zilch_engine import (
     ZILCH_DICE_COUNT,
     ZILCH_RULESET_VERSION,
@@ -33,9 +35,9 @@ ZILCH_CPU_MODE: Final[ZilchPlayMode] = "cpu"
 ZILCH_MULTIPLAYER_MODE: Final[ZilchPlayMode] = "multiplayer"
 ZILCH_HUMAN_PARTICIPANT: Final[ZilchParticipantType] = "human"
 ZILCH_CPU_PARTICIPANT: Final[ZilchParticipantType] = "cpu"
-ZILCH_CPU_STRATEGIES: Final[frozenset[str]] = frozenset(
-    {"conservative", "normal", "aggressive"}
-)
+# Kept as a backwards-compatible state-module export while the pure strategy
+# module remains the one canonical validation source.
+ZILCH_CPU_STRATEGIES: Final[frozenset[str]] = _CPU_STRATEGY_NAMES
 ZILCH_START_ROLL_AWAITING: Final = "awaiting_rolls"
 ZILCH_START_ROLL_RESOLVED: Final = "resolved"
 
@@ -85,8 +87,7 @@ def new_zilch_participant(
     if participant_type not in {ZILCH_HUMAN_PARTICIPANT, ZILCH_CPU_PARTICIPANT}:
         raise ValueError("zilch_invalid_participant_type")
     if participant_type == ZILCH_CPU_PARTICIPANT:
-        if cpu_strategy not in ZILCH_CPU_STRATEGIES:
-            raise ValueError("zilch_invalid_cpu_strategy")
+        cpu_strategy = validate_zilch_cpu_strategy(cpu_strategy)
         connection_player_id = None
         user_id = None
     elif cpu_strategy is not None:
@@ -101,6 +102,201 @@ def new_zilch_participant(
     }
 
 
+def _positive_zilch_count(value: object, *, fallback: int) -> int:
+    """Return a bounded participant/connection count from durable JSON."""
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = fallback
+    return min(ZILCH_MAX_PLAYERS, max(1, parsed))
+
+
+def zilch_expected_participant_count(game: GameDict) -> int:
+    """Return the durable seat count, independently of WebSocket seats."""
+    return _positive_zilch_count(game.get("_expected"), fallback=ZILCH_MAX_PLAYERS)
+
+
+def zilch_expected_connection_count(game: GameDict) -> int:
+    """Return how many human transport seats must connect before start.
+
+    Pre-Part-6 snapshots did not distinguish participants from WebSocket
+    players, so their old ``_expected`` value remains the safe fallback.  A
+    restored CPU state with no newer marker is also recognised defensively.
+    """
+    expected_participants = zilch_expected_participant_count(game)
+    participants = game.get("_participants")
+    has_cpu = isinstance(participants, list) and any(
+        isinstance(participant, dict) and participant.get("type") == ZILCH_CPU_PARTICIPANT
+        for participant in participants
+    )
+    if game.get("_play_mode") == ZILCH_CPU_MODE or has_cpu:
+        # Part 6 deliberately supports exactly one human plus one CPU.  Do
+        # not trust a stale/malformed transport count here: it could make a
+        # restored game wait for a nonexistent second WebSocket.
+        return max(1, expected_participants - 1)
+    raw = game.get("_expected_connections")
+    try:
+        expected_connections = int(raw)
+    except (TypeError, ValueError):
+        expected_connections = -1
+    if 1 <= expected_connections <= expected_participants:
+        return expected_connections
+    return expected_participants
+
+
+def _normalise_existing_participants(game: GameDict) -> list[dict]:
+    """Hydrate legacy human participants while preserving durable CPU seats.
+
+    ``_players`` is intentionally transport-only from Part 6 onward.  Older
+    active Zilch states only had that collection, therefore this small bridge
+    creates matching human participants exactly once during hydration.
+    """
+    raw_participants = game.get("_participants")
+    participants: list[dict] = []
+    known_ids: set[str] = set()
+    if isinstance(raw_participants, list):
+        for participant in raw_participants:
+            if not isinstance(participant, dict):
+                continue
+            participant_id = str(participant.get("id") or "")
+            participant_type = participant.get("type")
+            if (
+                not participant_id
+                or participant_id in known_ids
+                or participant_type not in {ZILCH_HUMAN_PARTICIPANT, ZILCH_CPU_PARTICIPANT}
+            ):
+                continue
+            try:
+                cleaned = new_zilch_participant(
+                    participant_id,
+                    str(participant.get("name") or "Player"),
+                    participant_type=participant_type,
+                    connection_player_id=(
+                        str(participant.get("connection_player_id"))
+                        if participant.get("connection_player_id") is not None
+                        else None
+                    ),
+                    user_id=participant.get("user_id") if type(participant.get("user_id")) is int else None,
+                    cpu_strategy=participant.get("cpu_strategy"),
+                )
+            except ValueError:
+                if participant_type != ZILCH_CPU_PARTICIPANT:
+                    continue
+                # A recovered CPU with an unknown strategy must stay visible
+                # as a CPU seat.  Dropping it would silently turn a damaged
+                # private game into a different participant layout.  The
+                # runner then marks it unavailable, while result recovery
+                # rejects its payload without deleting the active state.
+                cleaned = {
+                    "id": participant_id,
+                    "name": str(participant.get("name") or "CPU")[:64],
+                    "type": ZILCH_CPU_PARTICIPANT,
+                    "connection_player_id": None,
+                    "user_id": None,
+                    "cpu_strategy": participant.get("cpu_strategy"),
+                }
+            participants.append(cleaned)
+            known_ids.add(participant_id)
+
+    for player in game.get("_players", []):
+        if not isinstance(player, dict):
+            continue
+        player_id = str(player.get("id") or "")
+        if not player_id or player_id in known_ids:
+            continue
+        participants.append(
+            new_zilch_participant(
+                player_id,
+                str(player.get("name") or "Player"),
+                participant_type=ZILCH_HUMAN_PARTICIPANT,
+                connection_player_id=player_id,
+                user_id=player.get("user_id") if type(player.get("user_id")) is int else None,
+            )
+        )
+        known_ids.add(player_id)
+    game["_participants"] = participants[:ZILCH_MAX_PLAYERS]
+    return game["_participants"]
+
+
+def zilch_participants(game: GameDict) -> list[dict]:
+    """Return canonical durable participants, hydrating pre-CPU snapshots."""
+    return _normalise_existing_participants(game)
+
+
+def zilch_cpu_participant(game: GameDict) -> dict | None:
+    """Return the sole CPU domain seat, never a transport player."""
+    for participant in zilch_participants(game):
+        if participant.get("type") == ZILCH_CPU_PARTICIPANT:
+            return participant
+    return None
+
+
+def zilch_human_join_error(game: GameDict, *, user_id: object) -> str | None:
+    """Return a machine-readable reason when a human cannot take a CPU seat.
+
+    Common session code can use this before allocating a resume token.  It is
+    deliberately a state policy rather than an HTTP-specific check, so a
+    second browser can never become a hidden third participant.
+    """
+    if game.get("_play_mode") != ZILCH_CPU_MODE:
+        return None
+    expected_host = game.get("_zilch_cpu_host_user_id")
+    if type(expected_host) is int:
+        if type(user_id) is not int or user_id != expected_host:
+            return "zilch_cpu_host_required"
+    if len(game.get("_players", [])) >= zilch_expected_connection_count(game):
+        return "zilch_cpu_human_seat_taken"
+    return None
+
+
+def configure_zilch_cpu_game(
+    game: GameDict,
+    *,
+    host_user_id: int,
+    cpu_strategy: object,
+    cpu_name: str = "CPU",
+) -> dict:
+    """Configure a freshly created two-seat Zilch game for one human and CPU.
+
+    Only the CPU is inserted at creation time.  The human is still joined by
+    the normal authenticated WebSocket path and therefore receives the normal
+    connection player and resume token.  This preserves the shared room
+    fields (name, passphrase, chat and lifecycle) while making ``_players`` a
+    strictly transport-bound collection.
+    """
+    if type(host_user_id) is not int or host_user_id < 1:
+        raise ValueError("zilch_cpu_host_required")
+    if game.get("_started") or game.get("_finished") or game.get("_aborted"):
+        raise ValueError("zilch_cpu_configuration_not_new")
+    if game.get("_players") or game.get("_participants"):
+        raise ValueError("zilch_cpu_configuration_not_new")
+    game_id = str(game.get("_id") or "").strip()
+    if not game_id:
+        raise ValueError("zilch_cpu_missing_game_id")
+    strategy = validate_zilch_cpu_strategy(cpu_strategy)
+    cpu_id = f"cpu-{game_id}"
+    cpu = new_zilch_participant(
+        cpu_id,
+        cpu_name,
+        participant_type=ZILCH_CPU_PARTICIPANT,
+        cpu_strategy=strategy,
+    )
+    # ``_expected`` remains the total domain seat count.  Only the new
+    # connection marker changes start readiness for a CPU game.
+    game["_mode"] = "2"
+    game["_play_mode"] = ZILCH_CPU_MODE
+    game["_expected"] = ZILCH_MAX_PLAYERS
+    game["_expected_connections"] = 1
+    game["_zilch_cpu_host_user_id"] = host_user_id
+    game["_zilch_cpu_participant_id"] = cpu_id
+    game["_participants"] = [cpu]
+    game.setdefault("_zilch_boards", {})[cpu_id] = new_zilch_board(cpu_id)
+    game.setdefault("_round_points", {})[cpu_id] = 0
+    game.setdefault("_total_points", {})[cpu_id] = 0
+    game.setdefault("_zilch_zilch_streaks", {})[cpu_id] = 0
+    return cpu
+
+
 def new_zilch_game(gid: str, name: str, mode: object) -> GameDict:
     """Create an isolated Zilch state without importing ZDWA scoring concepts."""
     normalized_mode = validate_zilch_mode(mode)
@@ -113,7 +309,10 @@ def new_zilch_game(gid: str, name: str, mode: object) -> GameDict:
         "_mode": normalized_mode,
         "_play_mode": zilch_play_mode_for_player_count(normalized_mode),
         "_hardcore": False,
+        # ``_expected`` is always the number of durable participants.  The
+        # CPU mode later narrows the separate connection count to one.
         "_expected": expected,
+        "_expected_connections": expected,
         "_started": False,
         "_finished": False,
         "_aborted": False,
@@ -128,6 +327,8 @@ def new_zilch_game(gid: str, name: str, mode: object) -> GameDict:
         # WebSocket players. Humans currently populate both collections;
         # future CPU participants will only exist here.
         "_participants": [],
+        "_zilch_cpu_host_user_id": None,
+        "_zilch_cpu_participant_id": None,
         "_spectators": [],
         "_turn": None,
         "_dice": [0] * ZILCH_DICE_COUNT,
@@ -141,6 +342,7 @@ def new_zilch_game(gid: str, name: str, mode: object) -> GameDict:
         "_zilch_final_round": None,
         "_zilch_outcome": None,
         "_zilch_result": None,
+        "_zilch_cpu_error": None,
         "_zilch_zilch_streaks": {},
         "_zilch_last_event": None,
         "_target_score": ZILCH_TARGET_SCORE,
@@ -183,18 +385,40 @@ def new_zilch_board(player_id: str) -> dict:
 
 
 def join_zilch_player(game: GameDict, player: dict) -> None:
-    """Attach a player and create only that player's independent board."""
+    """Attach one authenticated human transport player to a Zilch seat.
+
+    A CPU is never added here: it is a durable participant configured before
+    the host opens the room.  This guard also keeps direct state callers from
+    accidentally inserting a second human beside that CPU.
+    """
+    if not isinstance(player, dict):
+        raise ValueError("zilch_invalid_human_player")
     player_id = str(player["id"])
+    if not player_id:
+        raise ValueError("zilch_invalid_human_player")
+    if join_error := zilch_human_join_error(game, user_id=player.get("user_id")):
+        raise ValueError(join_error)
+    players = game.setdefault("_players", [])
+    if any(str(existing.get("id") or "") == player_id for existing in players if isinstance(existing, dict)):
+        raise ValueError("zilch_duplicate_human_player")
+    participants = zilch_participants(game)
+    if any(str(participant.get("id") or "") == player_id for participant in participants):
+        raise ValueError("zilch_duplicate_participant")
     game.setdefault("_players", []).append(player)
-    game.setdefault("_participants", []).append(
-        new_zilch_participant(
-            player_id,
-            str(player.get("name") or "Player"),
-            participant_type=ZILCH_HUMAN_PARTICIPANT,
-            connection_player_id=player_id,
-            user_id=player.get("user_id"),
-        )
+    participant = new_zilch_participant(
+        player_id,
+        str(player.get("name") or "Player"),
+        participant_type=ZILCH_HUMAN_PARTICIPANT,
+        connection_player_id=player_id,
+        user_id=player.get("user_id") if type(player.get("user_id")) is int else None,
     )
+    # Put the human first in CPU reports and opening-roll presentation even
+    # though the CPU's durable seat was allocated at game creation.
+    if game.get("_play_mode") == ZILCH_CPU_MODE:
+        participants.insert(0, participant)
+    else:
+        participants.append(participant)
+    game["_participants"] = participants[:ZILCH_MAX_PLAYERS]
     game.setdefault("_zilch_boards", {})[player_id] = new_zilch_board(player_id)
     game.setdefault("_round_points", {})[player_id] = 0
     game.setdefault("_total_points", {})[player_id] = 0
@@ -203,13 +427,28 @@ def join_zilch_player(game: GameDict, player: dict) -> None:
 
 def zilch_participant_ids(game: GameDict) -> list[str]:
     """Return the durable participant order without transport-only details."""
-    participants = game.get("_participants", [])
-    if isinstance(participants, list):
-        ids = [str(participant.get("id") or "") for participant in participants if isinstance(participant, dict)]
-        ids = [player_id for player_id in ids if player_id]
-        if ids:
-            return ids
+    participants = zilch_participants(game)
+    ids = [str(participant.get("id") or "") for participant in participants]
+    ids = [player_id for player_id in ids if player_id]
+    if ids:
+        return ids
     return [str(player.get("id") or "") for player in game.get("_players", []) if str(player.get("id") or "")]
+
+
+def zilch_is_ready_to_start(game: GameDict) -> bool:
+    """Check both durable seats and required human transport connections."""
+    participant_ids = zilch_participant_ids(game)
+    players = [player for player in game.get("_players", []) if isinstance(player, dict)]
+    connection_ids = [str(player.get("id") or "") for player in players]
+    expected_participants = zilch_expected_participant_count(game)
+    expected_connections = zilch_expected_connection_count(game)
+    return (
+        len(participant_ids) == expected_participants
+        and len(set(participant_ids)) == expected_participants
+        and len(connection_ids) == expected_connections
+        and len(set(connection_ids)) == expected_connections
+        and all(connection_id in participant_ids for connection_id in connection_ids)
+    )
 
 
 def zilch_turn_order(game: GameDict) -> list[str]:
@@ -453,7 +692,22 @@ def ensure_zilch_engine_state(game: GameDict) -> None:
     existed.  They retain their players and boards; only missing turn metadata
     receives the new defaults.
     """
+    # Hydrate the durable participant layer before deriving turn order or
+    # boards.  Old human-vs-human JSON has only ``_players``; new CPU JSON
+    # keeps the CPU exclusively in ``_participants``.
     player_ids = zilch_participant_ids(game)
+    expected_participants = zilch_expected_participant_count(game)
+    game["_expected"] = expected_participants
+    expected_connections = zilch_expected_connection_count(game)
+    game.setdefault("_expected_connections", expected_connections)
+    # A malformed persisted connection marker must never make a CPU wait for
+    # a fake socket.  Replace it with the documented compatible fallback.
+    if game.get("_play_mode") == ZILCH_CPU_MODE:
+        game["_expected_connections"] = expected_connections
+    elif not isinstance(game.get("_expected_connections"), int) or not (
+        1 <= int(game["_expected_connections"]) <= expected_participants
+    ):
+        game["_expected_connections"] = expected_connections
     game.setdefault("_zilch_ruleset", ZILCH_RULESET_VERSION)
     raw_turn_order = game.get("_zilch_turn_order")
     if not isinstance(raw_turn_order, list) or set(map(str, raw_turn_order)) != set(player_ids) or len(raw_turn_order) != len(player_ids):
@@ -467,6 +721,7 @@ def ensure_zilch_engine_state(game: GameDict) -> None:
     game.setdefault("_zilch_final_round", None)
     game.setdefault("_zilch_outcome", None)
     game.setdefault("_zilch_last_event", None)
+    game.setdefault("_zilch_cpu_error", None)
     for key in ("_round_points", "_total_points", "_zilch_zilch_streaks", "_zilch_boards"):
         if not isinstance(game.get(key), dict):
             game[key] = {}
@@ -711,12 +966,14 @@ def start_zilch_game(game: GameDict, *, randint_fn=None) -> None:
     the Part-2 test seam.  Randomness is deliberately consumed only when each
     human presses the explicit Zilch start-roll action.
     """
-    if game.get("_started") or len(game.get("_players", [])) != int(game.get("_expected", 0)):
+    if game.get("_started"):
+        return
+    ensure_zilch_engine_state(game)
+    if not zilch_is_ready_to_start(game):
         return
     game["_started"] = True
     game["_started_at"] = datetime.now(timezone.utc).isoformat()
     game["_finished_at"] = None
-    ensure_zilch_engine_state(game)
     player_ids = zilch_participant_ids(game)
     game["_zilch_turn_order"] = player_ids[:]
     game["_zilch_start_roll"] = new_zilch_start_roll(player_ids)

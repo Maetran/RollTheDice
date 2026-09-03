@@ -264,7 +264,71 @@ function fixtureSnapshots() {
   return { hotDice, holdOptions, heldForConfirmation, thirdZilch };
 }
 
-async function installGameScreenFixture(page, gameId, snapshots) {
+function cpuTurnSnapshot() {
+  return baseSnapshot({
+    _players: [
+      { id: "connection-mani", name: "Mani", user_id: 2, connected: true },
+    ],
+    _participants: [
+      { id: "human-mani", name: "Mani", type: "human", user_id: 2, connection_player_id: "connection-mani" },
+      { id: "cpu-river", name: "Tischgeist", type: "cpu", user_id: null, connection_player_id: null, cpu_strategy: "aggressive" },
+    ],
+    _play_mode: "cpu",
+    _turn: { player_id: "cpu-river" },
+    _dice: [4, 4, 4, 5, 2, 6],
+    _holds: [false, false, false, false, false, false],
+    _zilch_boards: {
+      "human-mani": board({ playerId: "human-mani", totalPoints: 8200, roundPoints: 0 }),
+      "cpu-river": board({ playerId: "cpu-river", totalPoints: 7900, roundPoints: 400, active: true }),
+    },
+    _zilch_turn_state: {
+      turn_id: 19,
+      version: 3,
+      phase: "awaiting_hold",
+      roll_id: 4,
+      rolls_used: 2,
+      available_dice_indices: [0, 1, 2, 3, 4, 5],
+      held_dice_indices: [],
+      committed_holds: [],
+      round_points: 400,
+      confirmation_required: false,
+      confirmation_reasons: [],
+      can_roll: false,
+      can_select_hold: true,
+      can_bank: true,
+      bank_block_reason: "",
+    },
+    _zilch_quick_holds: [
+      {
+        id: "cpu-three-fours",
+        combination_type: "three_of_a_kind",
+        dice_indices: [0, 1, 2],
+        dice_values: [4, 4, 4],
+        points: 400,
+        label_key: "zilch.option.three_of_a_kind",
+        label_params: { face: 4 },
+        roll_id: 4,
+        requires_confirmation: false,
+        hot_dice: false,
+        free_roll: false,
+        all_available_dice: false,
+      },
+    ],
+    _zilch_last_event: {
+      type: "hold",
+      actor_participant_id: "cpu-river",
+      option: {
+        combination_type: "three_of_a_kind",
+        points: 400,
+        label_key: "zilch.option.three_of_a_kind",
+        label_params: { face: 4 },
+      },
+      cpu_reason_key: "zilch.cpu_reason.hold_high_value",
+    },
+  });
+}
+
+async function installGameScreenFixture(page, gameId, snapshots, detailsOverrides = {}) {
   const details = {
     exists: true,
     game_type: "zilch",
@@ -272,6 +336,7 @@ async function installGameScreenFixture(page, gameId, snapshots) {
     mode: "2",
     locked: false,
     player_statuses: [],
+    ...detailsOverrides,
   };
   await page.addInitScript(({ fixtureGameId, fixtureDetails, fixtureSnapshots }) => {
     const originalFetch = window.fetch.bind(window);
@@ -309,7 +374,7 @@ async function installGameScreenFixture(page, gameId, snapshots) {
         window.__zilchGameScreenFixtureMessages.push(message);
         if (message.action === "join_game" || message.action === "rejoin_game") {
           this._message({ player_id: "p1", resume_token: "fixture-resume" });
-          this._message({ scoreboard: fixtureSnapshots.hotDice });
+          this._message({ scoreboard: fixtureSnapshots.initial || fixtureSnapshots.hotDice });
         } else if (message.action === "zilch_roll_dice") {
           const next = window.__zilchGameScreenFixtureMessages
             .some(item => item.action === "zilch_select_hold")
@@ -341,6 +406,116 @@ async function installGameScreenFixture(page, gameId, snapshots) {
     window.WebSocket = FixtureWebSocket;
   }, { fixtureGameId: gameId, fixtureDetails: details, fixtureSnapshots: snapshots });
 }
+
+test("the private CPU create controls are keyboard-operable and send only the selected strategy", async ({ browser, baseURL }) => {
+  // Service workers intentionally keep authenticated Zilch documents
+  // network-only, but a fresh blocked context also makes this request-payload
+  // assertion independent from a prior suite's cached shell.
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    await page.goto("/zilch");
+
+    const multiplayer = page.locator("input[name='zilchPlayMode'][value='multiplayer']");
+    const cpu = page.locator("input[name='zilchPlayMode'][value='cpu']");
+    const strategy = page.locator("#zilchCpuStrategy");
+    const conservative = page.locator("input[name='zilchCpuStrategy'][value='conservative']");
+    const normal = page.locator("input[name='zilchCpuStrategy'][value='normal']");
+    const aggressive = page.locator("input[name='zilchCpuStrategy'][value='aggressive']");
+
+    await expect(multiplayer).toBeChecked();
+    await expect(strategy).toBeHidden();
+
+    // Native radio semantics make the game mode and strategy usable without a
+    // pointer. This intentionally exercises the browser's real radio-group
+    // navigation rather than changing a value through page.evaluate().
+    await multiplayer.focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(cpu).toBeChecked();
+    await expect(strategy).toBeVisible();
+    await expect(normal).toBeChecked();
+
+    await conservative.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(normal).toBeChecked();
+    await page.keyboard.press("ArrowRight");
+    await expect(aggressive).toBeChecked();
+
+    let createPayload = null;
+    await page.route("**/api/games", async route => {
+      if (route.request().method() !== "POST") return route.continue();
+      createPayload = route.request().postDataJSON();
+      // A successful, controlled response verifies the real UI request without
+      // adding a test-only backend route or weakening production validation.
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ game_id: "cpu-create-ui-fixture" }),
+      });
+    });
+    await page.route("**/zilch/spiel/cpu-create-ui-fixture", route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: "<!doctype html><title>CPU fixture</title>",
+    }));
+
+    await Promise.all([
+      page.waitForRequest(request => request.method() === "POST" && new URL(request.url()).pathname === "/api/games"),
+      page.locator("#zilchCreateForm button[type='submit']").click(),
+    ]);
+    expect(createPayload).toMatchObject({
+      game_type: "zilch",
+      mode: "2",
+      play_mode: "cpu",
+      cpu_strategy: "aggressive",
+    });
+    expect(Object.keys(createPayload).filter(key => key.includes("strategy"))).toEqual(["cpu_strategy"]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("a CPU participant is rendered from the authoritative participant snapshot without a fake online state", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+
+    const gameId = "cpu-screen-fixture";
+    await installGameScreenFixture(
+      page,
+      gameId,
+      { initial: cpuTurnSnapshot() },
+      { play_mode: "cpu", participants: [
+        { id: "human-mani", type: "human", user_id: 2, connection_player_id: "connection-mani" },
+        { id: "cpu-river", type: "cpu", user_id: null, connection_player_id: null, cpu_strategy: "aggressive" },
+      ] },
+    );
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    await page.goto(`/zilch/spiel/${gameId}`);
+
+    const cpuBoard = page.locator('[data-zilch-board-id="cpu-river"]');
+    await expect(cpuBoard).toContainText("Tischgeist");
+    await expect(cpuBoard).toContainText(/CPU/);
+    await expect(cpuBoard).toContainText(/Aggressiv|Aggressive/);
+    await expect(cpuBoard.locator(".zilch-connection-dot")).toHaveCount(0);
+    await expect(page.locator("#zilchLiveStatus")).toContainText(/CPU überlegt|CPU is thinking/);
+    await expect(page.locator(".zilch-event")).toContainText(/CPU.*(?:hält|holds).*Drilling|CPU.*(?:hält|holds).*Three/);
+    await expect(page.locator(".zilch-quick-hold")).toBeDisabled();
+    await expect(page.locator("[data-zilch-roll]")).toBeDisabled();
+    await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
+  } finally {
+    await context.close();
+  }
+});
 
 test("a controlled server snapshot drives both boards, dice, Quick Holds, and high-risk Zilch states", async ({ browser, baseURL }) => {
   // The client fixture intercepts only a private game's detail request and

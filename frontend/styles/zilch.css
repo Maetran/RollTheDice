@@ -319,6 +319,92 @@ html[data-game="zilch"] .eyebrow { margin: 0; color: var(--zilch-gold); font: 75
   outline-offset: 2px;
 }
 
+/* CPU setup is a native radio group, not a decorative pseudo-control.  This
+   keeps the new game choice fully keyboard and screen-reader operable. */
+html[data-game="zilch"] .zilch-mode-choice,
+html[data-game="zilch"] .zilch-cpu-strategy {
+  display: grid;
+  gap: var(--zilch-space-2);
+  min-width: min(100%, 19rem);
+  margin: 0;
+  padding: .78rem;
+  border: 1px dashed var(--zilch-paper-edge);
+  border-radius: var(--zilch-radius-sm);
+  background: rgba(136, 90, 40, .055);
+}
+
+html[data-game="zilch"] .zilch-mode-choice legend,
+html[data-game="zilch"] .zilch-cpu-strategy legend {
+  padding: 0 .28rem;
+  color: var(--zilch-ink);
+  font-weight: 800;
+}
+
+html[data-game="zilch"] .zilch-mode-option,
+html[data-game="zilch"] .zilch-strategy-card {
+  display: flex;
+  align-items: flex-start;
+  gap: .6rem;
+  min-width: 0;
+  min-height: 3.25rem;
+  padding: .64rem .68rem;
+  border: 1px solid transparent;
+  border-radius: var(--zilch-radius-xs);
+  cursor: pointer;
+}
+
+html[data-game="zilch"] .zilch-mode-option:hover,
+html[data-game="zilch"] .zilch-strategy-card:hover {
+  border-color: rgba(136, 90, 40, .32);
+  background: rgba(255, 252, 232, .52);
+}
+
+html[data-game="zilch"] .zilch-mode-option > span,
+html[data-game="zilch"] .zilch-strategy-card > span {
+  display: grid;
+  gap: .18rem;
+  min-width: 0;
+}
+
+html[data-game="zilch"] .zilch-mode-option strong,
+html[data-game="zilch"] .zilch-strategy-card strong {
+  color: var(--zilch-ink);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+html[data-game="zilch"] .zilch-mode-option small,
+html[data-game="zilch"] .zilch-strategy-card small {
+  color: var(--zilch-muted);
+  line-height: 1.35;
+}
+
+html[data-game="zilch"] .zilch-mode-option:has(input:checked),
+html[data-game="zilch"] .zilch-strategy-card:has(input:checked) {
+  border-color: #b37627;
+  background: linear-gradient(135deg, rgba(255, 241, 174, .72), rgba(255, 251, 227, .66));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .58);
+}
+
+html[data-game="zilch"] .zilch-mode-option input,
+html[data-game="zilch"] .zilch-strategy-card input {
+  flex: 0 0 auto;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin: .08rem 0 0;
+  accent-color: var(--zilch-wood);
+}
+
+html[data-game="zilch"] .zilch-mode-option input:focus-visible,
+html[data-game="zilch"] .zilch-strategy-card input:focus-visible {
+  outline: 3px solid var(--zilch-focus-ring);
+  outline-offset: 3px;
+}
+
+html[data-game="zilch"] .zilch-cpu-strategy { flex: 1 1 100%; }
+html[data-game="zilch"] .zilch-strategy-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
+html[data-game="zilch"] .zilch-strategy-card { min-height: 5.8rem; }
+html[data-game="zilch"] .zilch-mode-choice .zilch-muted { margin: .12rem 0 0; font-size: .84rem; }
+
 .zilch-lobby-grid,
 .zilch-lobby-sections {
   display: grid;
@@ -357,6 +443,57 @@ html[data-game="zilch"] .eyebrow { margin: 0; color: var(--zilch-gold); font: 75
   font-size: .88rem;
 }
 .zilch-player-count strong { color: var(--zilch-ink); font-size: 1rem; }
+
+html[data-game="zilch"] .zilch-participant-badges {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: .28rem;
+  min-width: 0;
+}
+
+html[data-game="zilch"] .zilch-participant-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.35rem;
+  max-width: 100%;
+  padding: .12rem .4rem;
+  border: 1px solid rgba(80, 52, 27, .24);
+  border-radius: 99px;
+  color: #4b2d16;
+  background: rgba(213, 177, 102, .2);
+  font-size: .7rem;
+  font-weight: 800;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+html[data-game="zilch"] .zilch-participant-badge--cpu {
+  border-color: rgba(71, 84, 114, .44);
+  color: #233650;
+  background: linear-gradient(135deg, #dfeaf2, #bcd1df);
+}
+
+html[data-theme="dark"][data-game="zilch"] .zilch-participant-badge--cpu {
+  color: #172a3c;
+}
+
+html[data-game="zilch"] .zilch-participant-badge--cpu::before {
+  width: .52rem;
+  height: .52rem;
+  margin-right: .25rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  content: "";
+  opacity: .72;
+}
+
+html[data-game="zilch"] .zilch-participant-badge--strategy {
+  color: var(--zilch-ink-soft);
+  background: rgba(255, 251, 227, .58);
+}
 
 .zilch-game-list { display: grid; gap: .75rem; }
 .zilch-game-card {
@@ -437,6 +574,17 @@ html[data-game="zilch"] .eyebrow { margin: 0; color: var(--zilch-gold); font: 75
   background: color-mix(in srgb, var(--zilch-red) 8%, var(--zilch-paper-soft));
 }
 
+.zilch-player-chip--cpu {
+  border-color: rgba(71, 84, 114, .38);
+  background: color-mix(in srgb, #bcd1df 34%, var(--zilch-paper-soft));
+}
+
+.zilch-player-chip .zilch-participant-badge {
+  min-height: 1.1rem;
+  padding: .08rem .28rem;
+  font-size: .63rem;
+}
+
 .zilch-player-chip .zilch-connection-dot { flex: 0 0 auto; width: .45rem; height: .45rem; }
 .zilch-player-chip--offline .zilch-connection-dot { background: var(--zilch-red); box-shadow: 0 0 0 .12rem rgba(198, 59, 46, .16); }
 
@@ -467,6 +615,7 @@ html[data-game="zilch"] .eyebrow { margin: 0; color: var(--zilch-gold); font: 75
 .zilch-result-history-card h3,
 .zilch-result-history-card p { margin: 0; }
 .zilch-result-history-card h3 { overflow-wrap: anywhere; }
+.zilch-result-history-card__badges { justify-content: flex-start; margin-top: .42rem; }
 .zilch-result-history-card p + p { margin-top: .35rem; }
 .zilch-result-history-card__outcome { color: var(--zilch-ink); }
 
@@ -592,11 +741,14 @@ html[data-game="zilch"] .eyebrow { margin: 0; color: var(--zilch-gold); font: 75
 }
 .zilch-board--active { border: 2px solid var(--zilch-gold); box-shadow: 0 0 0 .2rem rgba(246, 202, 78, .24), var(--zilch-shadow-card); transform: translateY(-.1rem); }
 .zilch-board--offline { opacity: .72; }
+.zilch-board--cpu { border-color: #8ea9ba; background: repeating-linear-gradient(-8deg, rgba(75, 106, 126, .035) 0 1px, transparent 1px 5px), var(--zilch-paper); }
+.zilch-board--cpu.zilch-board--active { border-color: #5c94b5; box-shadow: 0 0 0 .2rem rgba(106, 179, 216, .25), var(--zilch-shadow-card); }
 .zilch-board-head { align-items: flex-start; justify-content: space-between; }
 .zilch-board-head h3 { max-width: 19ch; margin: 0; overflow-wrap: anywhere; font: 800 1.35rem/1.1 Georgia, "Times New Roman", serif; }
 .zilch-board-head p { display: flex; align-items: center; gap: .35rem; margin: .35rem 0 0; color: var(--zilch-muted); font-size: .85rem; }
 .zilch-connection-dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--zilch-green); box-shadow: 0 0 0 .12rem rgba(37, 122, 87, .18); }
 .zilch-board--offline .zilch-connection-dot { background: var(--zilch-red); box-shadow: 0 0 0 .12rem rgba(198, 59, 46, .16); }
+.zilch-board--cpu .zilch-participant-badges { margin-left: auto; }
 .zilch-board dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; }
 .zilch-board dl div { min-width: 0; padding: .62rem; border-radius: .55rem; background: rgba(136, 90, 40, .09); }
 .zilch-board dt { color: var(--zilch-muted); font-size: .75rem; }
@@ -875,6 +1027,7 @@ html[data-game="zilch"] .eyebrow { margin: 0; color: var(--zilch-gold); font: 75
   .zilch-table__heading p { text-align: left; }
   .zilch-board-grid,
   .zilch-action-cards { grid-template-columns: 1fr; }
+  html[data-game="zilch"] .zilch-strategy-grid { grid-template-columns: 1fr; }
   .zilch-lobby-grid,
   .zilch-lobby-sections,
   .zilch-rules-grid { grid-template-columns: 1fr; }

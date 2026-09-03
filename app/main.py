@@ -60,6 +60,7 @@ from .leaderboard_service import (
 )
 from .leaderboard_storage import LeaderboardFiles
 from .site_seo import robots_document, sitemap_document
+from .zilch_cpu_strategy import ZilchCpuStrategyError, validate_zilch_cpu_strategy
 from .zilch_engine import (
     ZILCH_BANK_MINIMUM,
     ZILCH_CONFIRMATION_MINIMUM,
@@ -70,7 +71,14 @@ from .zilch_engine import (
     ZILCH_ZILCH_STREAK_PENALTY,
 )
 from .zilch_results import list_zilch_results_for_user, load_zilch_result
-from .zilch_state import validate_zilch_hvh_mode
+from .zilch_state import (
+    ZILCH_CPU_MODE,
+    configure_zilch_cpu_game,
+    validate_zilch_hvh_mode,
+    zilch_expected_connection_count,
+    zilch_expected_participant_count,
+    zilch_participants,
+)
 
 # Retained as a small backwards-compatible module export for existing focused
 # logic tests and integrations that historically imported ``app.main.new_game``.
@@ -118,7 +126,16 @@ async def lifespan(_app: FastAPI):
     import_legacy_leaderboards(LEADERBOARD_FILES.legacy_paths())
     games.update(load_active_games())
     _recover_terminal_completed_games()
-    yield
+    # CPU tasks are deliberately process-local.  Their eligibility is derived
+    # from the recovered authoritative state, never serialized alongside a
+    # timer or a fake connection.
+    from .zilch_cpu_runner import resume_cpu_games, stop_cpu_runners
+
+    await resume_cpu_games(games, finalize_game=_finalize_and_log_results)
+    try:
+        yield
+    finally:
+        await stop_cpu_runners()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -413,7 +430,7 @@ def _lobby_current_player(game: GameDict) -> tuple[str | None, str | None]:
     if not player_id:
         return None, None
     player = next(
-        (candidate for candidate in game.get("_players", []) if str(candidate.get("id") or "") == player_id),
+        (candidate for candidate in zilch_participants(game) if str(candidate.get("id") or "") == player_id),
         None,
     )
     if not isinstance(player, dict):
@@ -426,7 +443,7 @@ def _zilch_lobby_final_round(game: GameDict) -> dict[str, object] | None:
     raw_final_round = game.get("_zilch_final_round")
     if not isinstance(raw_final_round, dict):
         return None
-    player_ids = {str(player.get("id") or "") for player in game.get("_players", [])}
+    player_ids = {str(player.get("id") or "") for player in zilch_participants(game)}
     raw_triggered_by = str(raw_final_round.get("triggered_by") or "")
     triggered_by = raw_triggered_by if raw_triggered_by in player_ids else None
     raw_pending = raw_final_round.get("pending_player_ids")
@@ -441,6 +458,51 @@ def _zilch_lobby_final_round(game: GameDict) -> dict[str, object] | None:
         "triggered_by": triggered_by,
         "pending_player_ids": pending_player_ids,
     }
+
+
+def _zilch_lobby_participants(game: GameDict) -> list[dict[str, object]]:
+    """Project durable Zilch seats without turning a CPU into a connection."""
+    connections = {
+        str(player.get("id") or ""): player
+        for player in game.get("_players", [])
+        if isinstance(player, dict) and str(player.get("id") or "")
+    }
+    result: list[dict[str, object]] = []
+    for participant in zilch_participants(game):
+        participant_id = str(participant.get("id") or "")
+        if not participant_id:
+            continue
+        is_cpu = participant.get("type") == "cpu"
+        connection = connections.get(str(participant.get("connection_player_id") or participant_id))
+        result.append(
+            {
+                "id": participant_id,
+                "name": str(participant.get("name") or "Player"),
+                "participant_type": participant.get("type"),
+                "cpu_strategy": participant.get("cpu_strategy"),
+                "user_id": participant.get("user_id"),
+                "is_cpu": is_cpu,
+                "connected": None if is_cpu else bool(connection and _player_connected(connection)),
+            }
+        )
+    return result
+
+
+def _zilch_cpu_strategy(game: GameDict) -> str | None:
+    """Return the persisted CPU strategy for a Zilch lobby projection."""
+    cpu = next((participant for participant in zilch_participants(game) if participant.get("type") == "cpu"), None)
+    strategy = cpu.get("cpu_strategy") if isinstance(cpu, dict) else None
+    return strategy if isinstance(strategy, str) else None
+
+
+def _is_zilch_cpu_host(game: GameDict, user_id: object) -> bool:
+    """Identify the one account allowed to occupy a pre-created CPU seat."""
+    return (
+        game.get("_play_mode") == ZILCH_CPU_MODE
+        and type(user_id) is int
+        and type(game.get("_zilch_cpu_host_user_id")) is int
+        and game["_zilch_cpu_host_user_id"] == user_id
+    )
 
 
 @app.websocket("/ws/presence")
@@ -491,6 +553,8 @@ class CreateReq(BaseModel):
     game_type: str = Field(default=DEFAULT_GAME_TYPE, max_length=16)
     passphrase: str | None = Field(default=None, alias="pass", max_length=100)
     hardcore: bool | None = False
+    play_mode: str | None = Field(default=None, max_length=16)
+    cpu_strategy: str | None = Field(default=None, max_length=32)
 
     @field_validator("name")
     @classmethod
@@ -522,6 +586,16 @@ class CreateReq(BaseModel):
         cleaned = str(value or "").strip()
         return cleaned or None
 
+    @field_validator("play_mode")
+    @classmethod
+    def normalize_play_mode(_cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = str(value).strip().lower()
+        if cleaned not in {"multiplayer", "cpu"}:
+            raise ValueError("zilch_invalid_play_mode")
+        return cleaned
+
     @model_validator(mode="after")
     def validate_game_specific_options(self):
         if self.game_type == ZILCH_GAME_TYPE:
@@ -531,6 +605,16 @@ class CreateReq(BaseModel):
                 raise ValueError(str(exc)) from exc
             if self.hardcore:
                 raise ValueError("zilch_hardcore_not_supported")
+            self.play_mode = self.play_mode or "multiplayer"
+            if self.play_mode == ZILCH_CPU_MODE:
+                try:
+                    self.cpu_strategy = validate_zilch_cpu_strategy(self.cpu_strategy)
+                except ZilchCpuStrategyError as exc:
+                    raise ValueError(exc.code) from exc
+            elif self.cpu_strategy is not None:
+                raise ValueError("zilch_cpu_strategy_not_allowed")
+        elif self.play_mode is not None or self.cpu_strategy is not None:
+            raise ValueError("game_play_mode_not_supported")
         return self
 
 
@@ -614,6 +698,13 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
                 entry["current_player_id"] = current_player_id
                 entry["current_player_name"] = current_player_name
                 entry["final_round"] = _zilch_lobby_final_round(g)
+                entry["play_mode"] = g.get("_play_mode", "multiplayer")
+                entry["participants"] = _zilch_lobby_participants(g)
+                entry["participant_count"] = len(entry["participants"])
+                entry["expected_participants"] = zilch_expected_participant_count(g)
+                entry["expected_connections"] = zilch_expected_connection_count(g)
+                entry["cpu_strategy"] = _zilch_cpu_strategy(g)
+                entry["my_cpu_host"] = _is_zilch_cpu_host(g, auth_identity.user_id if auth_identity else None)
             lst.append(entry)
         except (KeyError, TypeError, ValueError):
             logger.warning("Skipping malformed game %s in lobby response", gid, exc_info=True)
@@ -633,7 +724,8 @@ def game_info(
     g = games.get(game_id)
     if not g:
         return {"exists": False}
-    if not can_access_game(resolve_session(request), g):
+    auth_identity = resolve_session(request)
+    if not can_access_game(auth_identity, g):
         raise HTTPException(status_code=404, detail="game_not_found")
 
     # Preflight: falls ?check=1 angegeben ist, Passwort hart pruefen und frueh beenden
@@ -653,7 +745,7 @@ def game_info(
     offline = _offline_players(g)
     pause_reason = multiplayer_pause_reason(g)
     pause_left = pause_remaining_seconds(g)
-    return {
+    result = {
         "exists": True,
         "id": game_id,
         "game_type": game_type_from_state(g),
@@ -686,6 +778,23 @@ def game_info(
             else []
         ),
     }
+    if game_type_from_state(g) == ZILCH_GAME_TYPE:
+        current_player_id, current_player_name = _lobby_current_player(g)
+        result.update(
+            {
+                "play_mode": g.get("_play_mode", "multiplayer"),
+                "participants": _zilch_lobby_participants(g),
+                "participant_count": len(zilch_participants(g)),
+                "expected_participants": zilch_expected_participant_count(g),
+                "expected_connections": zilch_expected_connection_count(g),
+                "cpu_strategy": _zilch_cpu_strategy(g),
+                "my_cpu_host": _is_zilch_cpu_host(g, auth_identity.user_id if auth_identity else None),
+                "current_player_id": current_player_id,
+                "current_player_name": current_player_name,
+                "final_round": _zilch_lobby_final_round(g),
+            }
+        )
+    return result
 
 
 @app.get("/api/leaderboard")
@@ -741,11 +850,20 @@ def api_zilch_rules(request: Request) -> dict[str, object]:
 @app.post("/api/games")
 async def api_games_create(req: CreateReq, request: Request):
     """API: Neues Spiel anlegen (Name, Modus, optional Passphrase)."""
+    identity = None
     if req.game_type == ZILCH_GAME_TYPE:
-        _require_zilch_preview(request)
+        identity = _require_zilch_preview(request)
     enforce_game_creation_rate_limit(request)
     gid = str(uuid.uuid4())[:8]
     g = create_game_state(gid, req.name, req.mode, req.game_type)
+    if req.game_type == ZILCH_GAME_TYPE and req.play_mode == ZILCH_CPU_MODE:
+        # The creator is the only human seat.  The CPU is a durable domain
+        # participant and receives neither account data nor a socket record.
+        configure_zilch_cpu_game(
+            g,
+            host_user_id=identity.user_id,
+            cpu_strategy=req.cpu_strategy,
+        )
     g["_passphrase"] = req.passphrase or None
     g["_hardcore"] = bool(req.hardcore or False)
     save_active_game(g)

@@ -5,7 +5,8 @@ die serverseitige Engine. Zilch bleibt eine geschützte `noindex`-Vorschau für
 den Admin-Account `Mani` (mit einer ausdrücklich konfigurierten privaten
 Allowlist für einen zweiten Testspieler). Es gibt ausdrücklich keine
 öffentliche Regelseite. Die aktuelle Oberfläche ist eine private, spielbare
-Human-vs-Human-Produktoberfläche, keine öffentliche Freischaltung.
+Human-vs-Human- und Human-vs-CPU-Produktoberfläche, keine öffentliche
+Freischaltung.
 
 ## Begriffe
 
@@ -68,8 +69,10 @@ Beispiele:
 ## Zugablauf, Risiko und Sichern
 
 1. Vor Spielbeginn würfeln die Teilnehmer jeweils einmal. Der höhere Wert
-   beginnt; bei Gleichstand wird erneut gewürfelt. Im Einspieler-Modus wird
-   der dokumentierte Startwurf ebenfalls serverseitig erzeugt.
+   beginnt; bei Gleichstand wird erneut gewürfelt. Jeder Startwurf wird
+   ausschließlich serverseitig erzeugt. In einer CPU-Partie würfelt zuerst der
+   Mensch; der serverseitige CPU-Runner erzeugt danach den gleichwertigen
+   CPU-Wurf.
 2. Der aktive Teilnehmer würfelt ausschließlich auf dem Server alle noch
    freien Würfel und hält anschließend mindestens eine gültige Wertung.
 3. Nach dem dritten Wurf müssen insgesamt mindestens 300 Rundenpunkte
@@ -133,7 +136,8 @@ formatiert daraus keine deutschen Texte.
 Die aktuell verfügbaren WebSocket-Aktionen sind:
 
 - `zilch_start_roll` mit `start_roll_version`; jeder menschliche Teilnehmer
-  löst genau seinen eigenen serverseitigen Startwurf aus;
+  löst genau seinen eigenen serverseitigen Startwurf aus. Der CPU-Startwurf
+  wird ausschließlich über den vertrauenswürdigen Server-Runner ausgelöst;
 - `zilch_roll_dice` mit `turn_id` und `version`;
 - `zilch_select_hold` mit `turn_id`, `version`, `roll_id`, `option_id` sowie
   optional gegengeprüften Würfelindizes, Punkten und Kombinationstyp;
@@ -145,15 +149,42 @@ Spieltyp sowie doppelte oder veraltete Versionsstände werden ohne
 Zustandsänderung abgewiesen. Der ältere Platzhalter `zilch_submit_score` wird
 explizit als nicht unterstützte manuelle Punkteingabe abgelehnt.
 
-## Private Bedienung und Ergebnisgrenze
+## Private Modi, CPU-Gegner und Ergebnisgrenze
 
-Der aktuelle private Spielmodus unterstützt ausschließlich zwei angemeldete
-menschliche Teilnehmer im Multiplayer-Modus. Beide führen den Startwurf selbst
-aus; die beiden Werte und ein möglicher Gleichstand bleiben im Snapshot
+Der aktuelle private Spielmodus unterstützt zwei Varianten:
+
+- `multiplayer`: genau zwei angemeldete menschliche Teilnehmer. Beide führen
+  ihren Startwurf selbst aus.
+- `cpu`: ein angemeldeter menschlicher Host gegen einen echten CPU-Teilnehmer.
+  Die CPU hat keinen Account, keine Session, keinen Resume-Token und keinen
+  WebSocket. Sie ist daher nie „offline“ und ein zweiter Mensch kann ihre
+  Stelle nicht einnehmen.
+
+Die beiden Startwerte und ein möglicher Gleichstand bleiben im Snapshot
 sichtbar. Anschließend zeigt die private Spielseite gleichzeitig beide Boards,
 sechs ausschließlich vom Server gelieferte Würfel, Rundenscore, Gesamtpunkte,
 Zilch-Serie, Verbindungsstatus, Start-/Schlussrundenmarker und eine kompakte
 Rundenhistorie.
+
+Die CPU verwendet genau dieselben gültigen serverseitigen Quick Holds,
+Würfelaktionen, Versionen, Scoring-Regeln und die gleiche faire RNG-Funktion
+wie ein Mensch. Sie besitzt keine eigene Zufallsquelle, kann keine künftigen
+Würfe sehen, keine Kombination erfinden und keine Punktzahl bestimmen. Ihre
+einzige Auswahl beim Erstellen ist eine fest validierte Strategie:
+
+| Strategie | Basis zum Sichern | Verhalten |
+| --- | ---: | --- |
+| Konservativ | 500 | sichert eher früh und vermeidet unnötige Risiken |
+| Normal | 750 | hält Risiko und Rundenwert im Gleichgewicht |
+| Aggressiv | 1.100 | spielt häufiger auf größere Runden weiter |
+
+Diese Werte sind transparente Produktparameter, keine abweichenden
+Spielregeln. Die Strategie berücksichtigt zusätzlich Punkteabstand,
+verbleibende Würfel, Hot Dice, Bestätigungswurf und Schlussrunde. Ein
+Bestätigungswurf bleibt immer zwingend; ein erreichbarer Sieg wird gesichert,
+und eine CPU würfelt in einem noch legalen Gegenzug weiter, wenn ein sonstiges
+Sichern sicher verlieren würde. Die genaue technische Heuristik steht in
+[MULTIGAME_FOUNDATION.md](MULTIGAME_FOUNDATION.md).
 
 Die Bedienung erfolgt in dieser Stufe nur über serverseitig berechnete
 Quick-Hold-Karten. Einzelne Würfel wirken nicht anklickbar und eine manuelle
@@ -186,7 +217,8 @@ sind serverseitig durch dieselbe Preview-Policy geschützt und bleiben
 Regelquelle. Gemeinsame Konto- und Spracheinstellungen bleiben Plattformfunktionen
 und führen bei gültiger Berechtigung zurück zur privaten Zilch-Lobby.
 
-Zum manuellen privaten Test: mit Admin `Mani` ein Spiel anlegen, vor dem
+Zum manuellen privaten Test kann Admin `Mani` direkt eine CPU-Partie anlegen
+und eine der drei Strategien wählen. Für eine Zwei-Menschen-Partie vor dem
 App-Start den normalisierten Namen des zweiten angemeldeten Testkontos in
 `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` setzen, beide Browser in die private
 Zilch-Lobby wechseln, beitreten und den Startwurf nacheinander ausführen.
@@ -194,18 +226,19 @@ Ohne diese Konfiguration bleibt ausschließlich Admin `Mani` zugelassen.
 
 ## Technische und Produktgrenzen
 
-- Die Engine verwendet für Menschen und spätere CPU-Teilnehmer denselben
-  injizierbaren, serverseitigen Zufallsweg. Clients liefern nie
-  Würfelergebnisse.
+- Die Engine verwendet für Menschen und CPU-Teilnehmer denselben injizierbaren,
+  serverseitigen Zufallsweg. Clients liefern nie Würfelergebnisse. Die
+  serverseitige Denkpause `ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` (Standard 0,55
+  Sekunden, begrenzt auf 0–5) beeinflusst nur die sichtbare Taktung, niemals
+  Würfel oder Wertung.
 - Aktive Zustände samt Turn-ID, Startwurf, Holds, Rundenpunkten, Boards und
   Quick-Hold-Grundlage bleiben über die bestehende aktive Persistenz
   restart-sicher. Ein Abschluss wird erst nach einer erfolgreichen,
   idempotenten privaten Ergebnis-Persistenz entfernt und bleibt vollständig
   von ZDWA-Ergebnissen, Statistiken, Achievements und Bestenlisten getrennt.
 - Noch offen bleiben insbesondere eine präzise Strafkadenz nach mehr als drei
-  aufeinanderfolgenden Zilchs, CPU-Entscheidungen, ein echtes Solo-Ziel,
-  manuelle Würfelauswahl, finale Interaktions-/Markenpolitur und
-  Zilch-spezifische Auswertung.
+  aufeinanderfolgenden Zilchs, ein echtes Solo-Ziel, manuelle Würfelauswahl,
+  finale Interaktions-/Markenpolitur und Zilch-spezifische Auswertung.
 
 ## Designrichtung
 

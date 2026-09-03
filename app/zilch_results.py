@@ -20,6 +20,7 @@ from .database import database_schema_ready, session_scope
 from .game_history import CompletedGameWriteResult, persist_completed_game_result
 from .game_types import ZILCH_GAME_TYPE, game_type_from_state
 from .models import CompletedGame, GameParticipant
+from .zilch_cpu_strategy import ZilchCpuStrategyError, validate_zilch_cpu_strategy
 from .zilch_engine import ZILCH_RULESET_VERSION, ZILCH_TARGET_SCORE
 
 logger = logging.getLogger(__name__)
@@ -102,8 +103,15 @@ def _participant_payloads(game: dict) -> tuple[list[dict], list[str]]:
             raise ZilchResultValidationError("zilch_result_invalid_cpu_strategy")
         if participant_type == "human" and cpu_strategy is not None:
             raise ZilchResultValidationError("zilch_result_invalid_cpu_strategy")
-        if participant_type == "cpu" and user_id is not None:
-            raise ZilchResultValidationError("zilch_result_invalid_cpu_user")
+        if participant_type == "cpu":
+            if user_id is not None:
+                raise ZilchResultValidationError("zilch_result_invalid_cpu_user")
+            if raw.get("connection_player_id") is not None:
+                raise ZilchResultValidationError("zilch_result_invalid_cpu_connection")
+            try:
+                cpu_strategy = validate_zilch_cpu_strategy(cpu_strategy)
+            except ZilchCpuStrategyError as exc:
+                raise ZilchResultValidationError("zilch_result_invalid_cpu_strategy") from exc
         # The current shared session model uses the account username as the
         # in-game name. Persist that historical text under both clear labels,
         # so a future account rename cannot change a finished report.
@@ -363,6 +371,10 @@ def build_zilch_result_payload(game: dict) -> dict:
         raise ZilchResultValidationError("zilch_result_unknown_target")
     play_mode = _required_text(game.get("_play_mode"), "zilch_result_invalid_mode", limit=24)
     mode = _required_text(game.get("_mode"), "zilch_result_invalid_mode", limit=16)
+    if play_mode == "cpu":
+        participant_types = [participant["participant_type"] for participant in participants]
+        if participant_types.count("human") != 1 or participant_types.count("cpu") != 1:
+            raise ZilchResultValidationError("zilch_result_invalid_cpu_participants")
     start_roll = _start_roll_payload(game.get("_zilch_start_roll"), participant_ids)
     boards, metrics = _board_payloads(game, participant_ids)
     final_round = _final_round_payload(game.get("_zilch_final_round"), participant_ids)
@@ -496,7 +508,7 @@ def _validate_stored_payload(payload: dict) -> None:
     target_score = _integer(payload.get("target_score"), "zilch_result_invalid_target", minimum=1)
     if target_score != ZILCH_TARGET_SCORE:
         raise ZilchResultValidationError("zilch_result_unknown_target")
-    _required_text(payload.get("play_mode"), "zilch_result_invalid_mode", limit=24)
+    play_mode = _required_text(payload.get("play_mode"), "zilch_result_invalid_mode", limit=24)
     _required_text(payload.get("mode"), "zilch_result_invalid_mode", limit=16)
 
     raw_participants = payload.get("participants")
@@ -526,9 +538,23 @@ def _validate_stored_payload(payload: dict) -> None:
             raise ZilchResultValidationError("zilch_result_invalid_cpu_strategy")
         if participant_type == "human" and cpu_strategy is not None:
             raise ZilchResultValidationError("zilch_result_invalid_cpu_strategy")
-        if participant_type == "cpu" and user_id is not None:
-            raise ZilchResultValidationError("zilch_result_invalid_cpu_user")
+        if participant_type == "cpu":
+            if user_id is not None:
+                raise ZilchResultValidationError("zilch_result_invalid_cpu_user")
+            try:
+                validate_zilch_cpu_strategy(cpu_strategy)
+            except ZilchCpuStrategyError as exc:
+                raise ZilchResultValidationError("zilch_result_invalid_cpu_strategy") from exc
         participant_ids.append(participant_id)
+    # Stored payloads are untrusted historic data.  Keep the same CPU-seat
+    # invariant as the live result builder so a damaged row can neither make
+    # a CPU look like a human game nor expose an impossible CPU composition.
+    participant_types = [participant.get("participant_type") for participant in raw_participants]
+    if play_mode == "cpu":
+        if participant_types.count("human") != 1 or participant_types.count("cpu") != 1:
+            raise ZilchResultValidationError("zilch_result_invalid_cpu_participants")
+    elif "cpu" in participant_types:
+        raise ZilchResultValidationError("zilch_result_invalid_cpu_participants")
     if [str(value) for value in payload.get("participant_order", [])] != participant_ids:
         raise ZilchResultValidationError("zilch_result_invalid_participants")
 

@@ -107,7 +107,14 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
     const catalogValue = EN[core] || EN[normalized];
     let translated = catalogValue || normalized;
     if (!catalogValue) {
-      for (const [source, target] of PHRASES) translated = translated.split(source).join(target);
+      for (const [source, target] of PHRASES) {
+        // MutationObserver runs this function again for text it has already
+        // translated. Some German source words are prefixes of their English
+        // translation (for example "Aggressiv" → "Aggressive"). Replacing
+        // the source inside an already-rendered target would otherwise grow
+        // the string on every observer turn and starve the page event loop.
+        if (!translated.includes(target)) translated = translated.split(source).join(target);
+      }
       for (const [pattern, replacement] of DYNAMIC) translated = translated.replace(pattern, replacement);
     }
     return leading + translated + trailing;

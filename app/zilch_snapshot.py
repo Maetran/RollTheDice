@@ -22,7 +22,14 @@ from .zilch_engine import (
     bank_allowed,
     options_for_turn,
 )
-from .zilch_state import current_zilch_start_roll, current_zilch_turn, ensure_zilch_engine_state
+from .zilch_state import (
+    current_zilch_start_roll,
+    current_zilch_turn,
+    ensure_zilch_engine_state,
+    zilch_expected_connection_count,
+    zilch_expected_participant_count,
+    zilch_participants,
+)
 
 
 def _six_dice(game: GameDict) -> list[int]:
@@ -41,15 +48,30 @@ def _boards(
     """Project exactly the per-player fields needed by the preview client."""
     result: dict[str, dict] = {}
     raw_boards = game.get("_zilch_boards", {}) or {}
-    for player in game.get("_players", [])[:2]:
-        player_id = str(player.get("id") or "")
+    transport_by_id = {
+        str(player.get("id") or ""): player
+        for player in game.get("_players", [])
+        if isinstance(player, dict) and str(player.get("id") or "")
+    }
+    for participant in zilch_participants(game)[:2]:
+        player_id = str(participant.get("id") or "")
+        if not player_id:
+            continue
+        participant_type = participant.get("type")
+        is_cpu = participant_type == "cpu"
+        connection_id = participant.get("connection_player_id")
+        connection = transport_by_id.get(str(connection_id or player_id))
         raw_board = raw_boards.get(player_id, {}) if isinstance(raw_boards, dict) else {}
         round_points = game.get("_round_points", {})
         total_points = game.get("_total_points", {})
         raw_rounds = raw_board.get("rounds", []) if isinstance(raw_board, dict) else []
         result[player_id] = {
             "player_id": player_id,
-            "connected": _player_connected(player),
+            # A CPU owns no transport at all. ``None`` deliberately means
+            # "not applicable", not an offline opponent.
+            "connected": None if is_cpu else bool(connection and _player_connected(connection)),
+            "participant_type": participant_type,
+            "is_cpu": is_cpu,
             "active": player_id == active_player_id,
             "round_points": int(
                 raw_board.get("round_points", round_points.get(player_id, 0))
@@ -97,6 +119,13 @@ def snapshot_zilch(game: GameDict) -> dict:
         active_player_id=turn.player_id if turn else None,
         final_round=final_round,
     )
+    participants = zilch_participants(game)
+    transport_players = [player for player in game.get("_players", []) if isinstance(player, dict)]
+    transport_by_id = {
+        str(player.get("id") or ""): player
+        for player in transport_players
+        if str(player.get("id") or "")
+    }
     options = options_for_turn(turn) if turn else ()
     can_bank, bank_reason = bank_allowed(turn) if turn else (False, "zilch_turn_not_ready")
     current_turn_state = (
@@ -125,7 +154,7 @@ def snapshot_zilch(game: GameDict) -> dict:
         "_name": game.get("_name", "Zilch"),
         "_players": [
             public_player_payload(player, connected=_player_connected(player))
-            for player in game.get("_players", [])
+            for player in transport_players
         ],
         "_participants": [
             {
@@ -135,16 +164,38 @@ def snapshot_zilch(game: GameDict) -> dict:
                 "connection_player_id": participant.get("connection_player_id"),
                 "user_id": participant.get("user_id"),
                 "cpu_strategy": participant.get("cpu_strategy"),
+                "is_cpu": participant.get("type") == "cpu",
+                "connected": (
+                    None
+                    if participant.get("type") == "cpu"
+                    else bool(
+                        transport_by_id.get(
+                            str(participant.get("connection_player_id") or participant.get("id") or "")
+                        )
+                        and _player_connected(
+                            transport_by_id[
+                                str(participant.get("connection_player_id") or participant.get("id") or "")
+                            ]
+                        )
+                    )
+                ),
             }
-            for participant in game.get("_participants", [])[:2]
+            for participant in participants[:2]
         ],
         "_play_mode": game.get(
             "_play_mode",
             "solo" if int(game.get("_expected", 0) or 0) == 1 else "multiplayer",
         ),
         "_mode": game.get("_mode"),
-        "_players_joined": len(game.get("_players", [])),
-        "_expected": int(game.get("_expected", 0) or 0),
+        # `_players` and `_players_joined` intentionally retain their
+        # historic transport meaning.  The explicit fields below let a CPU
+        # game show two durable seats while requiring only one connection.
+        "_players_joined": len(transport_players),
+        "_connections_joined": len(transport_players),
+        "_expected_connections": zilch_expected_connection_count(game),
+        "_participants_joined": len(participants),
+        "_expected_participants": zilch_expected_participant_count(game),
+        "_expected": zilch_expected_participant_count(game),
         "_started": bool(game.get("_started")),
         "_finished": bool(game.get("_finished")),
         "_aborted": bool(game.get("_aborted")),
@@ -160,7 +211,24 @@ def snapshot_zilch(game: GameDict) -> dict:
         "_timeout_seconds": timeout_seconds(),
         "_timeout_label": _format_duration_hm(timeout_seconds()),
         "_offline_players": _offline_players(game),
-        "_connected": {str(player.get("id")): _player_connected(player) for player in game.get("_players", [])},
+        "_connected": {str(player.get("id")): _player_connected(player) for player in transport_players},
+        "_participant_connected": {
+            str(participant.get("id") or ""): (
+                None
+                if participant.get("type") == "cpu"
+                else bool(
+                    transport_by_id.get(
+                        str(participant.get("connection_player_id") or participant.get("id") or "")
+                    )
+                    and _player_connected(
+                        transport_by_id[
+                            str(participant.get("connection_player_id") or participant.get("id") or "")
+                        ]
+                    )
+                )
+            )
+            for participant in participants
+        },
         "locked": bool(game.get("_passphrase")),
         "_turn": game.get("_turn"),
         "_dice": _six_dice(game),
@@ -180,6 +248,7 @@ def snapshot_zilch(game: GameDict) -> dict:
         "_zilch_outcome": game.get("_zilch_outcome"),
         "_zilch_result": game.get("_zilch_result"),
         "_zilch_last_event": game.get("_zilch_last_event"),
+        "_zilch_cpu_error": game.get("_zilch_cpu_error"),
         "_zilch_turn_state": current_turn_state,
         "_zilch_quick_holds": [option.payload() for option in options],
         "_chat_history": list(game.get("_chat_history", []))[-CHAT_HISTORY_LIMIT:],

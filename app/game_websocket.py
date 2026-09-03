@@ -211,7 +211,7 @@ async def _receive_messages(
             continue
 
         if action in SESSION_ACTIONS:
-            if await handle_session_action(session, action, data):
+            if await handle_session_action(session, action, data, finalize_game=finalize_game):
                 return
         elif action in allowed_gameplay_actions:
             await dispatch_gameplay_action(

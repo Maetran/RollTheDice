@@ -6,11 +6,11 @@ internal Zilch preview. The binding Zilch house rules live in
 rule page. The private in-app rule guide is a localized projection of that
 contract, not a second rule source.
 
-The current private increment is a playable **human-vs-human Alpha** with a
-complete private product surface: lobby, waiting room, live game, history,
-read-only completed-result report, and rule guide. It is not a public release
-and it deliberately remains outside ZDWA results, statistics, leaderboards,
-achievements, and replay views.
+The current private increment is a playable **human-vs-human and
+human-vs-CPU preview** with a complete private product surface: lobby, waiting
+room, live game, history, read-only completed-result report, and rule guide. It
+is not a public release and it deliberately remains outside ZDWA results,
+statistics, leaderboards, achievements, and replay views.
 
 ## Boundaries
 
@@ -24,16 +24,18 @@ achievements, and replay views.
   two-participant domain limit, independent player boards, snapshot projection,
   and a pure server-side scoring/turn engine. Play mode
   (`solo | cpu | multiplayer`) and participant type (`human | cpu`) are
-  distinct from WebSocket connections. This Alpha exposes only
-  `multiplayer`, exactly two authenticated human participants, and no
-  spectators. Solo and CPU remain represented only as future domain contracts;
-  CPU strategy names (`conservative | normal | aggressive`) are not a bot
-  implementation. Its UI is a separate route/root with its own stylesheet
-  boundary (`data-game="zilch"`), a private navigation, six server-snapshot
-  dice, and no manual dice-selection affordance. The CSS-only design system
-  uses warm table, paper-card, and dice tokens without third-party game assets.
-  Completed games have their own versioned `zilch-house-v1` payload and private
-  result/history projection.
+  distinct from WebSocket connections. The preview exposes `multiplayer` with
+  exactly two authenticated human participants and `cpu` with one authenticated
+  host plus one CPU domain participant; it has no spectators. A CPU has neither
+  an account/user ID, session, resume token, WebSocket, nor offline state.
+  `_players` remains transport-only, while `_participants` holds both domain
+  seats and `_expected_connections` states how many human connections are
+  required. True solo remains a future domain/product decision. Its UI is a
+  separate route/root with its own stylesheet boundary (`data-game="zilch"`), a
+  private navigation, six server-snapshot dice, and no manual dice-selection
+  affordance. The CSS-only design system uses warm table, paper-card, and dice
+  tokens without third-party game assets. Completed games have their own
+  versioned `zilch-house-v1` payload and private result/history projection.
 
 `app/game_registry.py` is the intentionally small composition point. It
 selects state creation, per-game join/start setup, gameplay-action dispatch,
@@ -118,9 +120,9 @@ opening-roll history, current unbanked score, Zilch streak, connection state,
 Hot Dice/confirmation state, and final-reply markers are projected together.
 
 The remaining product decisions are deliberately narrower: the exact penalty
-cadence after a fourth or later consecutive Zilch, CPU decisions, a meaningful
-solo objective, manual dice interaction, final branding/polish, Zilch
-statistics/achievements, and public release.
+cadence after a fourth or later consecutive Zilch, a meaningful solo objective,
+manual dice interaction, final branding/polish, Zilch statistics/achievements,
+and public release.
 
 ## Human-vs-human Alpha operation
 
@@ -140,6 +142,65 @@ statistics/achievements, and public release.
    read-only result report. The Zilch lobby lists only the signed-in preview
    account's own completed games; it does not add a public history or a ZDWA
    replay.
+
+## Human-vs-CPU operation
+
+A preview-authorized host can create `play_mode = cpu` with exactly one human
+and one CPU participant. The server validates one of the closed strategy names
+`conservative`, `normal`, or `aggressive` at creation; a browser cannot supply
+thresholds, a participant ID, a CPU action, or a changed strategy later. A
+second human cannot join that game. The ordinary shared join/rejoin path still
+creates the one human transport player, but the CPU is never added to
+`_players`, never receives a resume token, and cannot be presented as offline.
+
+The human performs the opening roll first. Once it is durable, a trusted
+server-runner performs the CPU opening roll through the same Zilch action and
+fair RNG path; ties repeat with the same ordering. During normal play that
+runner observes the current authoritative state, waits a short cancellable
+server-side interval, then makes exactly one visible decision: select an
+already-valid Quick Hold, roll, or bank. It revalidates every transition
+through the same Zilch domain commands used by human actions, broadcasts the
+ordinary snapshot/event, stops for pause/terminal state, and never uses a fake
+WebSocket, browser, session, or account.
+
+`app/zilch_cpu_strategy.py` is pure and deterministic: it receives only the
+current authoritative board/totals, available dice, server-generated Quick
+Holds, confirmation/Hot-Dice state, Zilch streak, and final-reply context. It
+cannot see future rolls, form a new dice combination, calculate a different
+score, or alter RNG. Its public product parameters are deliberately small:
+
+| Strategy | Base bank goal | Character |
+| --- | ---: | --- |
+| `conservative` | 500 | Prefer a legal safe bank and avoid unnecessary risk. |
+| `normal` | 750 | Balance a useful round with a further roll. |
+| `aggressive` | 1,100 | Seek larger rounds and accept more Zilch risk. |
+
+Before a legal bank is compared, the policy adjusts that goal by the current
+position only: a material 1,200-point deficit raises it by 150, an equivalent
+lead lowers it by 150, one/two available dice lower it by 150, five/six dice
+raise it by 100, and a non-confirmation Hot Dice adds 100. The result is
+clamped to the confirmed 400-point bank floor and 1,800. It also treats a
+required confirmation roll as mandatory, banks a reachable win when allowed,
+and continues a final reply that would otherwise certainly lose. These are
+documented decision heuristics, not scoring rules, secret odds, or a different
+difficulty RNG. Quick Hold points remain the primary selection criterion;
+strategy risk preference only resolves the presentation-equivalent choice.
+
+CPU and human dice both call the same injectable server-side fair RNG function.
+The runner has no separate random source, does not inspect future values, and
+does not retry an unfavorable result. Its delay is operational pacing only:
+`ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` defaults to 0.55 seconds and is bounded
+to 0–5 seconds. The active JSON state persists the CPU participant, strategy,
+turn, boards, start roll, ruleset, and outcome, but never a task or timer. On
+startup/rejoin, the lifecycle derives whether one unpaused CPU turn is due and
+schedules it once; a human disconnect pauses the game and prevents CPU play
+until the ordinary safe resume condition is met.
+
+The existing typed Zilch finalizer stores the CPU in the same `zilch_result`
+schema: `participant_type = cpu`, a historical display name and strategy, no
+user ID, and its authoritative boards, rounds, scores, Zilchs, penalties, Hot
+Dice, final reply, and outcome. That remains private and cannot enter ZDWA
+results, statistics, achievements, leaderboards, or replay.
 
 ## Private product UI
 
@@ -179,7 +240,9 @@ loads its versioned Zilch assets on demand.
   have an immutable display form and a normalized lookup form.
 - Live games are process-memory dictionaries restored from JSON in the
   `active_games` table. WebSocket players have a short game ID, optional
-  account `user_id`, resume token, and process-local socket.
+  account `user_id`, resume token, and process-local socket. Zilch keeps the
+  separate durable participant list so a CPU participant has none of those
+  transport fields.
 - The WebSocket coordinator owns origin validation, session resolution,
   connection limits, action throttling, common session actions, and dispatch.
   Chat/reactions are reusable; ZDWA roll/write/correction/superadmin actions are
@@ -199,8 +262,9 @@ account plan, and the recovered 3 September 2026 Zilch planning artifacts in
 the repository-owned current status.
 
 - The durable domain keeps `1 | 2` participant capacity and
-  `solo | cpu | multiplayer` separate from connections. HTTP creation in this
-  Alpha is intentionally narrower: exactly two authenticated humans.
+  `solo | cpu | multiplayer` separate from connections. HTTP creation exposes
+  exactly two authenticated humans for `multiplayer`, or one authorized human
+  and one server-owned CPU seat for `cpu`; true solo is still unavailable.
 - The confirmed engine now powers the private browser flow. Quick Holds are
   the only selection method in this increment; manual dice selection and final
   interaction polish stay future work.
@@ -270,9 +334,10 @@ the repository-owned current status.
   terminal result, and simultaneous boards.
 - [ ] Define solo objectives without coupling the engine to one metric; store
   a challenge/ruleset identifier rather than hard-coding “reach 10,000”.
-- [ ] Add CPU lifecycle without fake accounts or sockets. CPU difficulty may
-  change decisions only and may consider score, dice remaining, opponent
-  score, and endgame context.
+- [x] Add a private human-vs-CPU lifecycle without fake accounts or sockets.
+  Strategy changes decisions only and considers score, dice remaining,
+  opponent score, confirmation/Hot-Dice state, and endgame context while using
+  the exact same server RNG and engine actions.
 - [x] Test reload/rejoin independently from participant/turn persistence.
 
 ### Phase 4 — typed completion and account features

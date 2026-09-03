@@ -3,22 +3,25 @@
 RollTheDice is a lightweight multiplayer dice game with a FastAPI backend and a static HTML/CSS/JS frontend. It supports German and English, single-player, 2-player, 3-player, 2v2 team games, Hardcore mode, chat, emoji reactions, leaderboards, account achievement milestones, and read-only replay views for completed games.
 
 ZDWA is the public game. The repository also contains an intentionally private,
-playable Zilch human-vs-human Alpha: its own six-dice, 10,000-point state,
+playable Zilch preview: its own six-dice, 10,000-point state,
 server-authoritative start roll, scoring, Quick Holds, banking, final reply,
 and simultaneous two-player boards. By default, only the authenticated admin
 account whose normalized username is `mani` can open it. A second private test
 account can be admitted only through the explicit
 `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` allowlist; it receives no admin rights.
 Play modes `solo | cpu | multiplayer` and participant types `human | cpu` stay
-separate from WebSocket connections, but this Alpha exposes only two
-authenticated human participants. Finished private Zilch games are stored as a
-separate, versioned result payload with a private read-only history; they do
-not enter any ZDWA scorecard, replay, statistic, achievement, or leaderboard
-path. The protected Zilch app has its own lobby, game view, history, result
-report, and in-app rule guide. Its CSS-only wood-table, paper-card, and dice
-direction is isolated from ZDWA. CPU, solo, manual dice selection, Zilch
-aggregates, achievements, leaderboards, and public release are deliberately
-deferred.
+separate from WebSocket connections. The preview supports two authenticated
+humans in `multiplayer`, or one authenticated host against a real `cpu`
+participant in `cpu` mode. The CPU has no account, session, resume token, or
+WebSocket; it uses the same server-side dice and scoring path as a human and
+differs only through its conservative, normal, or aggressive decision policy.
+Finished private Zilch games are stored as a separate, versioned result payload
+with a private read-only history; they do not enter any ZDWA scorecard, replay,
+statistic, achievement, or leaderboard path. The protected Zilch app has its
+own lobby, game view, history, result report, and in-app rule guide. Its
+CSS-only wood-table, paper-card, and dice direction is isolated from ZDWA.
+True solo play, manual dice selection, Zilch aggregates, achievements,
+leaderboards, and public release are deliberately deferred.
 
 Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
 
@@ -101,11 +104,14 @@ empty and does not show a CAPTCHA. A partial Turnstile configuration is rejected
 at startup so registration cannot silently run with broken protection.
 
 Zilch is not a public feature. Keep `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES`
-empty in normal production operation. For an explicitly private two-browser
-test only, set it to a comma-separated list of normalized account usernames;
-those accounts gain only Zilch-preview access, not an admin role. Admin `Mani`
+empty in normal production operation. An authorized `Mani` account can test a
+private CPU game alone. For an explicitly private two-browser human test, set
+the variable to a comma-separated list of normalized account usernames; those
+accounts gain only Zilch-preview access, not an admin role. Admin `Mani`
 continues to require both the normalized name and `is_admin=true`, even if
-someone mistakenly puts `mani` in the allowlist.
+someone mistakenly puts `mani` in the allowlist. CPU action pacing is an
+operator-only setting: `ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` defaults to 0.55
+seconds and is bounded to 0–5 seconds; it never changes dice odds or scoring.
 
 Open:
 
@@ -122,12 +128,14 @@ docker compose up -d --build
 ```
 
 Game data is stored in `./data` and is preserved across rebuilds. Waiting and
-running games are restored after an application restart; connected players
-appear offline until they rejoin with their locally stored resume token. A
-terminal game is first retained as an active recovery snapshot, then stored
-idempotently as a typed result, and removed from active storage only after the
-write succeeds. Finished Zilch games use their own private `zilch-house-v1`
-payload and never enter ZDWA history.
+running games are restored after an application restart; connected human
+players appear offline until they rejoin with their locally stored resume token.
+A CPU is never a connection and never appears offline. Its process-local runner
+is not serialized; after recovery or rejoin the authoritative state schedules
+at most one eligible, unpaused CPU turn. A terminal game is first retained as
+an active recovery snapshot, then stored idempotently as a typed result, and
+removed from active storage only after the write succeeds. Finished Zilch games
+use their own private `zilch-house-v1` payload and never enter ZDWA history.
 
 Production deployment details, including the IONOS SSH target and mandatory
 leaderboard backup rules, are documented in `docs/DEPLOYMENT.md`. Use
@@ -184,6 +192,8 @@ RollTheDice/
 │   ├── game_websocket.py    # WebSocket coordinator; action handlers live in game_ws_*.py
 │   ├── game_results.py      # ZDWA result projection and statistic persistence
 │   ├── zilch_results.py     # Private, versioned Zilch result payload/projection
+│   ├── zilch_cpu_strategy.py # Pure conservative/normal/aggressive CPU policy
+│   ├── zilch_cpu_runner.py  # Cancellable trusted CPU-turn runner
 │   ├── leaderboard_service.py # Leaderboard aggregation and replay/profile reads
 │   ├── leaderboard_storage.py # Locked legacy-JSON compatibility storage
 │   ├── rules.py             # Server-side subtotal and total calculations

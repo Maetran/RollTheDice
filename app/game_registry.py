@@ -60,16 +60,34 @@ def _start_zdwa_game(game: GameDict) -> None:
 
 
 def _zilch_progress(game: GameDict) -> list[dict]:
+    # Zilch participants are durable domain seats.  A CPU deliberately has no
+    # entry in `_players`, which remains shared WebSocket transport state.
+    from .zilch_state import zilch_participants
+
     boards = game.get("_zilch_boards", {}) or {}
+    connections = {
+        str(player.get("id") or ""): player
+        for player in game.get("_players", [])
+        if isinstance(player, dict) and str(player.get("id") or "")
+    }
     result = []
-    for player in game.get("_players", []):
-        player_id = str(player.get("id") or "")
+    for participant in zilch_participants(game):
+        player_id = str(participant.get("id") or "")
+        if not player_id:
+            continue
         board = boards.get(player_id, {}) if isinstance(boards, dict) else {}
+        is_cpu = participant.get("type") == "cpu"
+        connection_id = str(participant.get("connection_player_id") or player_id)
+        connection = connections.get(connection_id)
         result.append(
             {
                 "id": player_id,
-                "name": player.get("name", "Player"),
-                "user_id": player.get("user_id"),
+                "name": participant.get("name", "Player"),
+                "user_id": participant.get("user_id"),
+                "participant_type": participant.get("type"),
+                "cpu_strategy": participant.get("cpu_strategy"),
+                "is_cpu": is_cpu,
+                "connected": None if is_cpu else bool(connection and connection.get("ws") is not None),
                 "members": [],
                 "filled": len(board.get("rounds", [])) if isinstance(board.get("rounds", []), list) else 0,
                 "of": None,

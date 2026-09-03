@@ -36,6 +36,7 @@ from app.zilch_results import (
     load_zilch_result,
 )
 from app.zilch_state import (
+    configure_zilch_cpu_game,
     finish_zilch_game,
     join_zilch_player,
     new_zilch_game,
@@ -178,6 +179,64 @@ class ZilchResultsTestCase(TestCase):
         finish_zilch_game(game)
         return game
 
+    def _terminal_cpu_game(self, *, strategy: str = "normal") -> dict:
+        """Build a terminal CPU result through the real participant boundary."""
+        game_id = f"zilch-cpu-result-{len(self.game_ids)}"
+        self.game_ids.append(game_id)
+        game = new_zilch_game(game_id, "Private CPU final", 2)
+        cpu = configure_zilch_cpu_game(game, host_user_id=41, cpu_strategy=strategy)
+        cpu_id = str(cpu["id"])
+        join_zilch_player(game, self._player("p1", "Mani", 41))
+        start_zilch_game(game)
+        record_zilch_start_roll(game, "p1", 6)
+        record_zilch_start_roll(game, cpu_id, 2)
+        game["_total_points"] = {"p1": 10_000, cpu_id: 9_600}
+        game["_round_points"] = {"p1": 0, cpu_id: 0}
+        game["_zilch_zilch_streaks"] = {"p1": 0, cpu_id: 0}
+        game["_zilch_boards"] = {
+            "p1": {
+                "player_id": "p1",
+                "round_points": 0,
+                "total_points": 10_000,
+                "zilch_streak": 0,
+                "rounds": [
+                    {
+                        "turn_id": 1,
+                        "round": 1,
+                        "event": "bank",
+                        "points": 10_000,
+                        "total_after": 10_000,
+                        "rolls_used": 2,
+                        "committed_holds": [],
+                    }
+                ],
+            },
+            cpu_id: {
+                "player_id": cpu_id,
+                "round_points": 0,
+                "total_points": 9_600,
+                "zilch_streak": 0,
+                "rounds": [
+                    {
+                        "turn_id": 2,
+                        "round": 1,
+                        "event": "bank",
+                        "points": 9_600,
+                        "total_after": 9_600,
+                        "rolls_used": 2,
+                        "committed_holds": [],
+                    }
+                ],
+            },
+        }
+        game["_zilch_final_round"] = {
+            "triggered_by": "p1",
+            "target_score": 10_000,
+            "pending_player_ids": [],
+        }
+        finish_zilch_game(game)
+        return game
+
     @staticmethod
     def _active_row(game_id: str) -> ActiveGame | None:
         with session_scope() as db:
@@ -226,6 +285,44 @@ class ZilchResultsTestCase(TestCase):
         self.assertIsNone(payload["outcome"]["winner_id"])
         self.assertEqual(payload["outcome"]["winner_ids"], ["p1", "p2"])
         self.assertEqual(payload["totals"], {"p1": 10_000, "p2": 10_000})
+
+    def test_cpu_result_is_persisted_by_the_existing_zilch_finalizer_without_a_user_or_connection(self) -> None:
+        game = self._terminal_cpu_game(strategy="aggressive")
+
+        completion = finalize_zilch_result(game)
+
+        self.assertTrue(completion["result_persisted"])
+        payload = load_zilch_result(game["_id"])
+        self.assertIsNotNone(payload)
+        cpu = next(participant for participant in payload["participants"] if participant["participant_type"] == "cpu")
+        self.assertEqual(cpu["cpu_strategy"], "aggressive")
+        self.assertIsNone(cpu["user_id"])
+        self.assertNotIn("connection_player_id", cpu)
+        self.assertEqual(payload["play_mode"], "cpu")
+        with session_scope() as db:
+            stored_cpu = db.scalar(
+                select(GameParticipant)
+                .join(CompletedGame)
+                .where(CompletedGame.game_id == game["_id"], GameParticipant.player_key == cpu["participant_id"])
+            )
+        self.assertIsNotNone(stored_cpu)
+        self.assertIsNone(stored_cpu.user_id)
+
+    def test_tampered_cpu_mode_payload_with_two_humans_is_not_read_back(self) -> None:
+        """Stored CPU reports must retain their exact participant topology."""
+        game = self._terminal_cpu_game(strategy="normal")
+        self.assertTrue(finalize_zilch_result(game)["result_persisted"])
+
+        with session_scope() as db:
+            row = db.scalar(select(CompletedGame).where(CompletedGame.game_id == game["_id"]))
+            self.assertIsNotNone(row)
+            payload = json.loads(row.snapshot_json)
+            cpu = next(participant for participant in payload["participants"] if participant["participant_type"] == "cpu")
+            cpu["participant_type"] = "human"
+            cpu["cpu_strategy"] = None
+            row.snapshot_json = json.dumps(payload)
+
+        self.assertIsNone(load_zilch_result(game["_id"]))
 
     def test_registry_uses_zilch_finalizer_once_without_zdwa_aggregates(self) -> None:
         game = self._terminal_game()
