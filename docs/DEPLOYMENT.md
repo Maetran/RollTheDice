@@ -271,6 +271,18 @@ den Container durch. Die CPU-Pause bleibt auf 0 bis 5 Sekunden begrenzt und
 ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS=0.55
 ```
 
+Für eine eindeutig getrennte Staging-Umgebung kann der explizite
+Zielgruppenmodus auf alle **angemeldeten** Accounts erweitert werden:
+
+```dotenv
+ROLLTHEDICE_ZILCH_ACCESS_MODE=authenticated
+```
+
+Dieser Wert ist kein anonymer Zugriff: Authentifizierung, Session, CSRF,
+WebSocket-Origin-Prüfung, Ergebniszugriffe und alle übrigen Zilch-Regeln
+bleiben aktiv. Der sichere Standard und die verpflichtende Einstellung für
+Produktion bis zu einer gesonderten Freigabe ist weiterhin `preview`.
+
 ### Erster Administrator
 
 Nur für die erstmalige Erstellung eines Administrators werden folgende Werte

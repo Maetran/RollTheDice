@@ -21,6 +21,7 @@ services:
       # Private Zilch-preview controls are deliberately operator-only.  The
       # empty default keeps the production-safe Mani-only policy intact.
       ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES: ${ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES:-}
+      ROLLTHEDICE_ZILCH_ACCESS_MODE: ${ROLLTHEDICE_ZILCH_ACCESS_MODE:-preview}
       ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS: ${ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS:-0.55}
 
 # git clone https://github.com/Maetran/RollTheDice.git

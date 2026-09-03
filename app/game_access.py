@@ -14,6 +14,21 @@ if TYPE_CHECKING:
 
 ZILCH_PREVIEW_USERNAME = "mani"
 ZILCH_PREVIEW_ALLOWLIST_ENV = "ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES"
+ZILCH_ACCESS_MODE_ENV = "ROLLTHEDICE_ZILCH_ACCESS_MODE"
+ZILCH_ACCESS_MODE_PREVIEW = "preview"
+ZILCH_ACCESS_MODE_AUTHENTICATED = "authenticated"
+
+
+def configured_zilch_access_mode() -> str:
+    """Return the deliberately closed Zilch audience mode.
+
+    ``preview`` remains the safe default. A separate staging environment may
+    opt into ``authenticated`` to exercise the signed-in product audience;
+    unknown values fail closed to preview rather than widening access.
+    """
+    configured = os.getenv(ZILCH_ACCESS_MODE_ENV, ZILCH_ACCESS_MODE_PREVIEW).strip().casefold()
+    valid_modes = {ZILCH_ACCESS_MODE_PREVIEW, ZILCH_ACCESS_MODE_AUTHENTICATED}
+    return configured if configured in valid_modes else ZILCH_ACCESS_MODE_PREVIEW
 
 
 def configured_zilch_preview_usernames() -> frozenset[str]:
@@ -43,6 +58,8 @@ def can_access_zilch_preview(identity: AuthIdentity | None) -> bool:
     """
     if not identity:
         return False
+    if configured_zilch_access_mode() == ZILCH_ACCESS_MODE_AUTHENTICATED:
+        return True
     username = normalize_username(identity.username)
     if username == ZILCH_PREVIEW_USERNAME:
         return identity.is_admin

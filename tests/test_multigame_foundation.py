@@ -20,7 +20,11 @@ from app import main
 from app.active_games import load_active_games, save_active_game, serializable_game_state
 from app.auth import create_user, login
 from app.database import configure_database, session_scope, upgrade_database
-from app.game_access import can_access_zilch_preview, configured_zilch_preview_usernames
+from app.game_access import (
+    can_access_zilch_preview,
+    configured_zilch_access_mode,
+    configured_zilch_preview_usernames,
+)
 from app.game_registry import (
     create_game_state,
     dispatch_gameplay_action,
@@ -216,6 +220,16 @@ class MultiGameFoundationTestCase(GameStateTestCase):
             self.assertTrue(can_access_zilch_preview(preview_identity))
             self.assertFalse(can_access_zilch_preview(mani_without_admin))
             self.assertFalse(preview_identity.is_admin)
+
+    def test_authenticated_zilch_mode_is_explicit_and_keeps_guests_out(self):
+        normal_identity, _ = self._identity("Normal")
+        with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "authenticated"}):
+            self.assertEqual(configured_zilch_access_mode(), "authenticated")
+            self.assertTrue(can_access_zilch_preview(normal_identity))
+            self.assertFalse(can_access_zilch_preview(None))
+        with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "unexpected"}):
+            self.assertEqual(configured_zilch_access_mode(), "preview")
+            self.assertFalse(can_access_zilch_preview(normal_identity))
 
     def test_unapproved_clients_cannot_list_or_read_zilch_games(self):
         game = self._track(create_game_state("hidden-zilch", "Secret Zilch", 1, ZILCH_GAME_TYPE))
