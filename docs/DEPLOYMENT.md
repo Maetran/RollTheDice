@@ -19,6 +19,14 @@ an**. Das Repository heisst intern weiterhin `RollTheDice`.
 Die Anwendung läuft mit Docker Compose hinter einem HTTPS-Reverse-Proxy. Das
 Verzeichnis `./data` wird als `/app/data` in den Container eingebunden.
 
+Der dokumentierte Compose-Betrieb startet genau **einen** Uvicorn-Prozess in
+einem `rollthedice`-Container. Das ist derzeit eine Plattformvoraussetzung,
+nicht nur eine Zilch-Eigenheit: aktive Spiele liegen im Prozessspeicher und der
+Zilch-CPU-Runner verwendet zusätzlich eine prozesslokale Task-Registry.
+Mehrere Container, Replikate oder Uvicorn-/Gunicorn-Worker dürfen deshalb erst
+eingesetzt werden, wenn eine verteilte Zustands- und Lease-Koordination
+implementiert und getestet ist.
+
 Die SQLite-Datenbank `data/rollthedice.sqlite3` enthält Benutzerkonten,
 Sessions, Schutzereignisse, wartende/laufende sowie vollständige Spiele und Zuordnungen. Die vorhandenen
 JSON-Dateien enthalten weiterhin Leaderboards und ältere Statistikdaten. Beide
@@ -254,6 +262,14 @@ Die zentrale Server-Policy schützt die Zilch-Shell, alle privaten Zilch-Routen,
 APIs und WebSockets. `/static/zilch.html` ist kein direkter Einstieg,
 Zilch-Seiten bleiben `noindex` und gehören nicht in die Sitemap. Das Verbergen
 des App-Switches im Browser ist kein Ersatz für diese Prüfung.
+
+Compose reicht die Allowlist und die rein sichtbare CPU-Denkpause explizit in
+den Container durch. Die CPU-Pause bleibt auf 0 bis 5 Sekunden begrenzt und
+ändert nie Würfelwahrscheinlichkeiten oder Wertung:
+
+```dotenv
+ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS=0.55
+```
 
 ### Erster Administrator
 
