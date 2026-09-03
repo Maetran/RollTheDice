@@ -112,6 +112,131 @@ async function visibleGameFacts(page) {
   }));
 }
 
+function completedZilchResultFixture() {
+  return {
+    schema_version: 1,
+    payload_kind: "zilch_result",
+    game_type: "zilch",
+    game_id: "browser-zilch-result",
+    game_name: "Browser Ergebnis",
+    ruleset: "zilch-house-v1",
+    play_mode: "multiplayer",
+    mode: "2",
+    target_score: 10000,
+    started_at: "2026-09-03T12:00:00+00:00",
+    finished_at: "2026-09-03T12:10:00+00:00",
+    duration_seconds: 600,
+    participants: [
+      {
+        position: 0,
+        participant_id: "p1",
+        player_key: "p1",
+        display_name: "Mani",
+        username: "Mani",
+        user_id: 1,
+        participant_type: "human",
+        cpu_strategy: null,
+      },
+      {
+        position: 1,
+        participant_id: "p2",
+        player_key: "p2",
+        display_name: "PreviewFriend",
+        username: "PreviewFriend",
+        user_id: 2,
+        participant_type: "human",
+        cpu_strategy: null,
+      },
+    ],
+    participant_order: ["p1", "p2"],
+    start_roll: {
+      attempts: [
+        { attempt: 1, rolls: { p1: 2, p2: 2 } },
+        { attempt: 2, rolls: { p1: 6, p2: 3 } },
+      ],
+      winner_id: "p1",
+      final_rolls: { p1: 6, p2: 3 },
+    },
+    boards: {
+      p1: {
+        participant_id: "p1",
+        total_points: 10000,
+        round_points: 0,
+        zilch_streak: 0,
+        rounds: [
+          { turn_id: 1, round: 1, event: "bank", points: 8000, total_after: 8000, rolls_used: 2, committed_holds: [] },
+          { turn_id: 3, round: 2, event: "zilch", reason: "no_scoring_option", discarded_points: 150, penalty: 0, total_after: 8000, zilch_streak: 1, rolls_used: 1 },
+          { turn_id: 5, round: 3, event: "bank", points: 2000, total_after: 10000, rolls_used: 2, committed_holds: [] },
+        ],
+      },
+      p2: {
+        participant_id: "p2",
+        total_points: 9700,
+        round_points: 0,
+        zilch_streak: 0,
+        rounds: [
+          { turn_id: 2, round: 1, event: "bank", points: 9700, total_after: 9700, rolls_used: 2, committed_holds: [] },
+          { turn_id: 4, round: 2, event: "zilch", reason: "no_scoring_option", discarded_points: 50, penalty: 500, total_after: 9200, zilch_streak: 3, rolls_used: 1 },
+          { turn_id: 6, round: 3, event: "bank", points: 500, total_after: 9700, rolls_used: 2, committed_holds: [] },
+        ],
+      },
+    },
+    totals: { p1: 10000, p2: 9700 },
+    final_round: { triggered_by: "p1", target_score: 10000, pending_player_ids: [] },
+    outcome: {
+      status: "completed",
+      target_score: 10000,
+      totals: { p1: 10000, p2: 9700 },
+      winner_ids: ["p1"],
+      winner_id: "p1",
+      tied: false,
+    },
+    metrics: {
+      highest_banked_round: 8000,
+      zilch_count: 2,
+      zilch_penalties: [{ participant_id: "p2", turn_id: 4, round: 2, points: 500 }],
+      hot_dice_events: 0,
+      hot_dice_events_complete: true,
+    },
+  };
+}
+
+async function mockPrivateZilchResultEndpoints(page, result) {
+  const history = {
+    results: [{
+      game_id: result.game_id,
+      game_name: result.game_name,
+      finished_at: result.finished_at,
+      participants: result.participants,
+      totals: result.totals,
+      outcome: result.outcome,
+      result_url: `/zilch/ergebnis/${result.game_id}`,
+    }],
+  };
+  // The installed PWA service worker intentionally owns ordinary fetches in
+  // this suite. Stub `fetch` in every future document instead of relying on a
+  // route that a service worker may answer before Playwright sees it. This is
+  // client-only fixture data; no production test endpoint is introduced.
+  await page.addInitScript(({ gameId, historyPayload, resultPayload }) => {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      const rawUrl = typeof input === "string" ? input : input?.url;
+      const pathname = new URL(rawUrl || window.location.href, window.location.href).pathname;
+      if (pathname === "/api/zilch/results") {
+        return Promise.resolve(new Response(JSON.stringify(historyPayload), {
+          headers: { "Content-Type": "application/json" },
+        }));
+      }
+      if (pathname === `/api/zilch/results/${gameId}`) {
+        return Promise.resolve(new Response(JSON.stringify({ result: resultPayload }), {
+          headers: { "Content-Type": "application/json" },
+        }));
+      }
+      return originalFetch(input, init);
+    };
+  }, { gameId: result.game_id, historyPayload: history, resultPayload: result });
+}
+
 test("Zilch is a separate permission-gated app mode and its hotkey respects inputs", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("[data-game-switch]")).toBeHidden();
@@ -266,7 +391,91 @@ test("direct Zilch URLs remain server-protected", async ({ page }) => {
   const response = await page.goto("/zilch");
   expect(response?.status()).toBe(401);
   await expect(page.locator("[data-zilch-root]")).toHaveCount(0);
+  const resultPage = await page.goto("/zilch/ergebnis/not-a-private-result");
+  expect(resultPage?.status()).toBe(401);
+  const resultsApi = await page.request.get("/api/zilch/results");
+  expect(resultsApi.status()).toBe(401);
+  const resultApi = await page.request.get("/api/zilch/results/not-a-private-result");
+  expect(resultApi.status()).toBe(401);
   const rawStatic = await page.goto("/static/zilch.html");
   expect(rawStatic?.status()).toBe(404);
+  await expect(page.locator("[data-zilch-root]")).toHaveCount(0);
+});
+
+test("private Zilch result history and read-only report stay separate from ZDWA", async ({ browser, baseURL }) => {
+  // The production PWA service worker can satisfy navigation before a test
+  // route sees it. This isolated context keeps the fixture private to the
+  // browser test and lets the result shell be exercised without a product
+  // seed endpoint.
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await page.goto("/");
+    await signIn(page, "Admin", "temporary-password-123");
+    await expect(page.locator("#authBadge")).toContainText("Admin");
+    await ensurePreviewAccounts(page);
+
+    await page.click("#logoutBtn");
+    await expect(page.locator("#loginForm")).toBeVisible();
+    await signIn(page, "Mani", "mani-preview-password-123");
+    await expect(page.locator("[data-game-switch]")).toBeVisible();
+
+    const result = completedZilchResultFixture();
+    await mockPrivateZilchResultEndpoints(page, result);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    await page.route(`**/zilch/ergebnis/${result.game_id}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+
+    await expect(page.getByRole("heading", { name: "Deine abgeschlossenen Zilch-Partien" })).toBeVisible();
+    const resultLink = page.getByRole("link", { name: "Ergebnis ansehen" });
+    await expect(resultLink).toBeVisible();
+    await expect(page.locator("#createGameCard")).toHaveCount(0);
+    await resultLink.focus();
+    await page.keyboard.press("Enter");
+    await page.waitForURL(new RegExp(`/zilch/ergebnis/${result.game_id}$`));
+
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    await expect(page.getByRole("heading", { name: "Mani gewinnt die Partie." })).toBeVisible();
+    await expect(page.locator(".zilch-result-board")).toHaveCount(2);
+    await expect(page.locator(".zilch-result-board").nth(0)).toContainText(/10.?000/);
+    await expect(page.locator(".zilch-result-board").nth(1)).toContainText("500");
+    await expect(page.getByText("Gleichstand – Startwurf wiederholt")).toBeVisible();
+    await expect(page.getByText("Gegenzug abgeschlossen von")).toBeVisible();
+    await expect(page.locator("#createGameCard")).toHaveCount(0);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.reload();
+    await expect(page.locator(".zilch-result-board")).toHaveCount(2);
+
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+      page.locator("[data-language-switcher]").selectOption("en"),
+    ]);
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.getByText("Private result report")).toBeVisible();
+    await expect(page.getByText("Ruleset")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back to Zilch lobby" })).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
+test("a signed-in non-preview account cannot read private Zilch result endpoints", async ({ page }) => {
+  await page.goto("/");
+  await signIn(page, "Admin", "temporary-password-123");
+  await expect(page.locator("#authBadge")).toContainText("Admin");
+
+  const history = await page.request.get("/api/zilch/results");
+  expect(history.status()).toBe(403);
+  const detail = await page.request.get("/api/zilch/results/not-a-private-result");
+  expect(detail.status()).toBe(403);
+  const route = await page.goto("/zilch/ergebnis/not-a-private-result");
+  expect(route?.status()).toBe(403);
   await expect(page.locator("[data-zilch-root]")).toHaveCount(0);
 });

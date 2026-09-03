@@ -118,6 +118,10 @@ def new_zilch_game(gid: str, name: str, mode: object) -> GameDict:
         "_finished": False,
         "_aborted": False,
         "_started_at": None,
+        # A terminal timestamp is authoritative result data.  It is set once
+        # by ``finish_zilch_game`` rather than inferred from mutable activity
+        # timestamps (for example a later chat/reconnect event).
+        "_finished_at": None,
         "_updated_at": now.isoformat(),
         "_players": [],
         # Domain participants are intentionally separate from connected
@@ -136,6 +140,7 @@ def new_zilch_game(gid: str, name: str, mode: object) -> GameDict:
         "_zilch_start_roll": None,
         "_zilch_final_round": None,
         "_zilch_outcome": None,
+        "_zilch_result": None,
         "_zilch_zilch_streaks": {},
         "_zilch_last_event": None,
         "_target_score": ZILCH_TARGET_SCORE,
@@ -145,6 +150,8 @@ def new_zilch_game(gid: str, name: str, mode: object) -> GameDict:
         # intentionally stays small until the house rules are confirmed.
         "_zilch_boards": {},
         "_results": None,
+        "_completion_persisted": False,
+        "_finalization_pending": False,
         "_passphrase": None,
         "_last_activity": now,
         "_chat_history": [],
@@ -597,6 +604,10 @@ def record_zilch_loss(game: GameDict, turn: ZilchTurn, *, reason: str) -> dict:
             "total_after": total,
             "zilch_streak": streak,
             "rolls_used": turn.rolls_used,
+            # From typed results onward, retain the already authoritative
+            # holds even for a lost turn.  This makes Hot-Dice metrics
+            # auditable without inventing an event after the fact.
+            "committed_holds": [dict(entry) for entry in turn.committed_holds],
         },
     )
     sync_zilch_turn(
@@ -683,6 +694,8 @@ def finish_zilch_game(game: GameDict) -> dict:
     game["_zilch_outcome"] = outcome
     game["_started"] = False
     game["_finished"] = True
+    if not isinstance(game.get("_finished_at"), str) or not str(game.get("_finished_at") or "").strip():
+        game["_finished_at"] = datetime.now(timezone.utc).isoformat()
     game["_results"] = None
     game["_turn"] = None
     game["_dice"] = [0] * ZILCH_DICE_COUNT
@@ -702,6 +715,7 @@ def start_zilch_game(game: GameDict, *, randint_fn=None) -> None:
         return
     game["_started"] = True
     game["_started_at"] = datetime.now(timezone.utc).isoformat()
+    game["_finished_at"] = None
     ensure_zilch_engine_state(game)
     player_ids = zilch_participant_ids(game)
     game["_zilch_turn_order"] = player_ids[:]
@@ -709,6 +723,9 @@ def start_zilch_game(game: GameDict, *, randint_fn=None) -> None:
     game["_zilch_turn_sequence"] = 0
     game["_zilch_final_round"] = None
     game["_zilch_outcome"] = None
+    game["_zilch_result"] = None
+    game["_completion_persisted"] = False
+    game["_finalization_pending"] = False
     game["_zilch_last_event"] = {"type": "start_roll_waiting", "player_ids": player_ids}
     game["_turn"] = None
     game["_dice"] = [0] * ZILCH_DICE_COUNT

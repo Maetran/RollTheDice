@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import inspect
+import logging
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -23,6 +26,8 @@ from .game_state import (
     touch,
 )
 from .game_ws_session import GameSocketSession
+
+logger = logging.getLogger(__name__)
 
 SUPERADMIN_ACTIONS = frozenset(
     {
@@ -152,11 +157,38 @@ async def _save(
             },
         )
 
+    completion: dict[str, Any] = {}
     if _is_game_finished(g):
         g["_started"] = False
         g["_finished"] = True
         if not was_finished:
-            finalize_game(g)
+            # Store the finished board before the synchronous result work so a
+            # database failure/restart cannot lose a superadmin-completed game.
+            g["_finalization_pending"] = True
+            touch(g)
+            await broadcast(
+                g,
+                {
+                    "scoreboard": snapshot(g),
+                    "finalization_pending": True,
+                },
+            )
+            try:
+                result = await asyncio.to_thread(finalize_game, g)
+                if inspect.isawaitable(result):
+                    result = await result
+                completion = result if isinstance(result, dict) else {}
+            except Exception:
+                logger.exception("Could not finalize superadmin-completed game %s", g.get("_id"))
+                completion = {"result_persisted": False, "persistence_error": "result_persistence_failed"}
+            g["_final_completion"] = completion
+            # Keep the historic injected-finalizer seam compatible while the
+            # typed production finalizer explicitly reports a failed write.
+            # The marker stops the follow-up broadcast from recreating an
+            # ActiveGame only after a confirmed completed result exists.
+            if completion and completion.get("result_persisted", True):
+                g["_completion_persisted"] = True
+            g["_finalization_pending"] = False
         else:
             g["_results"] = _compute_results_for_snapshot(g)
     else:
@@ -166,7 +198,15 @@ async def _save(
         g.setdefault("_superadmins", {}).pop(player_id, None)
     touch(g)
     await session.websocket.send_json({"superadmin": {"saved": True, "active": False, "board_id": board_id}})
-    await broadcast(g, {"scoreboard": snapshot(g)})
+    await broadcast(
+        g,
+        {
+            "scoreboard": snapshot(g),
+            "finalization_pending": bool(g.get("_finalization_pending")),
+            "achievement_unlocks": completion.get("achievement_unlocks", {}),
+            "achievement_rank_ups": completion.get("achievement_rank_ups", {}),
+        },
+    )
 
 
 async def _roll_dice(session: GameSocketSession) -> None:

@@ -15,6 +15,7 @@ StartGame = Callable[[GameDict], None]
 ProjectSnapshot = Callable[[GameDict], dict]
 ProjectProgress = Callable[[GameDict], list[dict]]
 HandleGameplay = Callable[..., Awaitable[None]]
+FinalizeCompletedGame = Callable[[GameDict, Any], dict]
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,7 @@ class GameAdapter:
     project_progress: ProjectProgress
     gameplay_actions: frozenset[str]
     handle_gameplay: HandleGameplay
+    finalize_completed_game: FinalizeCompletedGame
     superadmin_actions: frozenset[str] = frozenset()
 
 
@@ -86,6 +88,13 @@ def _zdwa_adapter() -> GameAdapter:
     from .game_ws_admin import SUPERADMIN_ACTIONS
     from .game_ws_gameplay import GAMEPLAY_ACTIONS, handle_gameplay_action
 
+    def finalize_completed_game(game: GameDict, files: Any) -> dict:
+        # Preserve the established ZDWA result, aggregate and achievement
+        # implementation behind a thin typed adapter.
+        from .game_results import finalize_and_log_results
+
+        return finalize_and_log_results(files, game)
+
     return GameAdapter(
         game_type=DEFAULT_GAME_TYPE,
         create_state=new_game,
@@ -95,6 +104,7 @@ def _zdwa_adapter() -> GameAdapter:
         project_progress=_progress_for_game,
         gameplay_actions=GAMEPLAY_ACTIONS,
         handle_gameplay=handle_gameplay_action,
+        finalize_completed_game=finalize_completed_game,
         superadmin_actions=SUPERADMIN_ACTIONS,
     )
 
@@ -103,6 +113,13 @@ def _zilch_adapter() -> GameAdapter:
     from .zilch_gameplay import ZILCH_GAMEPLAY_ACTIONS, handle_zilch_gameplay_action
     from .zilch_snapshot import snapshot_zilch
     from .zilch_state import join_zilch_player, new_zilch_game, start_zilch_game
+
+    def finalize_completed_game(game: GameDict, _files: Any) -> dict:
+        # Zilch owns its versioned payload and never enters the ZDWA
+        # scorecard/leaderboard/achievement module.
+        from .zilch_results import finalize_zilch_result
+
+        return finalize_zilch_result(game)
 
     return GameAdapter(
         game_type=ZILCH_GAME_TYPE,
@@ -113,6 +130,7 @@ def _zilch_adapter() -> GameAdapter:
         project_progress=_zilch_progress,
         gameplay_actions=ZILCH_GAMEPLAY_ACTIONS,
         handle_gameplay=handle_zilch_gameplay_action,
+        finalize_completed_game=finalize_completed_game,
     )
 
 
@@ -164,3 +182,8 @@ def project_game_snapshot(game: GameDict) -> dict:
 
 def project_game_progress(game: GameDict) -> list[dict]:
     return adapter_for_game(game).project_progress(game)
+
+
+def finalize_completed_game(game: GameDict, *, files: Any) -> dict:
+    """Finalize through the game-specific adapter selected by durable type."""
+    return adapter_for_game(game).finalize_completed_game(game, files)

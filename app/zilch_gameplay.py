@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import inspect
+import logging
+from collections.abc import Callable
 from typing import Any
 
 from .game_realtime import broadcast, send_game_message
@@ -43,6 +47,10 @@ ZILCH_GAMEPLAY_ACTIONS = frozenset(
     }
 )
 
+logger = logging.getLogger(__name__)
+
+FinalizeGame = Callable[[dict], Any]
+
 
 def _error_key(code: str) -> str:
     return f"zilch.error.{code}"
@@ -63,10 +71,10 @@ async def _send_error(session: GameSocketSession, code: str, **params: Any) -> N
     )
 
 
-async def _publish(session: GameSocketSession, *, event: dict[str, Any]) -> None:
+async def _publish(session: GameSocketSession, *, event: dict[str, Any], **message: Any) -> None:
     session.game["_zilch_last_event"] = dict(event)
     touch(session.game)
-    await broadcast(session.game, {"scoreboard": snapshot(session.game), "zilch_event": event})
+    await broadcast(session.game, {"scoreboard": snapshot(session.game), "zilch_event": event, **message})
 
 
 def _strict_int(data: dict[str, Any], key: str) -> int:
@@ -157,7 +165,51 @@ def _complete_or_advance(game: dict, player_id: str) -> dict[str, Any] | None:
     return None
 
 
-async def _roll_dice(session: GameSocketSession, data: dict[str, Any]) -> None:
+async def _publish_terminal_and_finalize(
+    session: GameSocketSession,
+    *,
+    event: dict[str, Any],
+    finalize_game: FinalizeGame | None,
+) -> None:
+    """Persist the terminal live snapshot before trying typed finalization.
+
+    The first publish is intentionally before the blocking database work: it
+    lets both players see the outcome and stores restart recovery data.  The
+    second publish carries the durable result route when (and only when) the
+    game-specific finalizer confirmed persistence.
+    """
+    game = session.game
+    game["_finalization_pending"] = True
+    await _publish(session, event=event, finalization_pending=True)
+    completion: dict[str, Any] = {}
+    if finalize_game is not None:
+        try:
+            result = await asyncio.to_thread(finalize_game, game)
+            if inspect.isawaitable(result):
+                result = await result
+            completion = result if isinstance(result, dict) else {}
+        except Exception:
+            # The active terminal snapshot deliberately remains persisted for
+            # startup recovery.  A transient storage failure must not hide an
+            # already finished board or route it through ZDWA.
+            logger.exception("Could not finalize terminal Zilch game %s", game.get("_id"))
+            completion = {"result_persisted": False, "persistence_error": "zilch_result_persistence_failed"}
+    game["_final_completion"] = completion
+    game["_finalization_pending"] = False
+    await _publish(
+        session,
+        event=event,
+        finalization_pending=False,
+        zilch_result=completion,
+    )
+
+
+async def _roll_dice(
+    session: GameSocketSession,
+    data: dict[str, Any],
+    *,
+    finalize_game: FinalizeGame | None,
+) -> None:
     try:
         turn = _current_actor_turn(session, data)
         if not roll_cooldown_ok(session.game, str(session.player_id), cooldown_s=0.6):
@@ -171,30 +223,32 @@ async def _roll_dice(session: GameSocketSession, data: dict[str, Any]) -> None:
     if evaluation.zilch:
         loss = record_zilch_loss(session.game, rolled_turn, reason="no_scoring_option")
         outcome = _complete_or_advance(session.game, rolled_turn.player_id)
-        await _publish(
-            session,
-            event={
-                "type": "zilch",
-                "reason": "no_scoring_option",
-                "player_id": rolled_turn.player_id,
-                "penalty": loss["penalty"],
-                "outcome": outcome,
-            },
-        )
+        event = {
+            "type": "zilch",
+            "reason": "no_scoring_option",
+            "player_id": rolled_turn.player_id,
+            "penalty": loss["penalty"],
+            "outcome": outcome,
+        }
+        if outcome is not None:
+            await _publish_terminal_and_finalize(session, event=event, finalize_game=finalize_game)
+        else:
+            await _publish(session, event=event)
         return
     if evaluation.third_roll_threshold_zilch:
         loss = record_zilch_loss(session.game, rolled_turn, reason="third_roll_minimum_not_reachable")
         outcome = _complete_or_advance(session.game, rolled_turn.player_id)
-        await _publish(
-            session,
-            event={
-                "type": "zilch",
-                "reason": "third_roll_minimum_not_reachable",
-                "player_id": rolled_turn.player_id,
-                "penalty": loss["penalty"],
-                "outcome": outcome,
-            },
-        )
+        event = {
+            "type": "zilch",
+            "reason": "third_roll_minimum_not_reachable",
+            "player_id": rolled_turn.player_id,
+            "penalty": loss["penalty"],
+            "outcome": outcome,
+        }
+        if outcome is not None:
+            await _publish_terminal_and_finalize(session, event=event, finalize_game=finalize_game)
+        else:
+            await _publish(session, event=event)
         return
 
     sync_zilch_turn(session.game, rolled_turn)
@@ -221,7 +275,12 @@ async def _start_roll(session: GameSocketSession, data: dict[str, Any]) -> None:
     await _publish(session, event=event)
 
 
-async def _select_hold(session: GameSocketSession, data: dict[str, Any]) -> None:
+async def _select_hold(
+    session: GameSocketSession,
+    data: dict[str, Any],
+    *,
+    finalize_game: FinalizeGame | None,
+) -> None:
     try:
         turn = _current_actor_turn(session, data)
         result = select_zilch_option(turn, data.get("option_id"))
@@ -233,16 +292,17 @@ async def _select_hold(session: GameSocketSession, data: dict[str, Any]) -> None
     if result.third_roll_threshold_zilch:
         loss = record_zilch_loss(session.game, result.turn, reason="third_roll_minimum_not_met")
         outcome = _complete_or_advance(session.game, result.turn.player_id)
-        await _publish(
-            session,
-            event={
-                "type": "zilch",
-                "reason": "third_roll_minimum_not_met",
-                "player_id": result.turn.player_id,
-                "penalty": loss["penalty"],
-                "outcome": outcome,
-            },
-        )
+        event = {
+            "type": "zilch",
+            "reason": "third_roll_minimum_not_met",
+            "player_id": result.turn.player_id,
+            "penalty": loss["penalty"],
+            "outcome": outcome,
+        }
+        if outcome is not None:
+            await _publish_terminal_and_finalize(session, event=event, finalize_game=finalize_game)
+        else:
+            await _publish(session, event=event)
         return
 
     sync_zilch_turn(session.game, result.turn)
@@ -256,7 +316,12 @@ async def _select_hold(session: GameSocketSession, data: dict[str, Any]) -> None
     )
 
 
-async def _bank_points(session: GameSocketSession, data: dict[str, Any]) -> None:
+async def _bank_points(
+    session: GameSocketSession,
+    data: dict[str, Any],
+    *,
+    finalize_game: FinalizeGame | None,
+) -> None:
     try:
         turn = _current_actor_turn(session, data)
         allowed, reason = bank_allowed(turn)
@@ -276,23 +341,26 @@ async def _bank_points(session: GameSocketSession, data: dict[str, Any]) -> None
         and str(final_round.get("triggered_by") or "") == turn.player_id
         and outcome is None
     )
-    await _publish(
-        session,
-        event={
-            "type": "bank",
-            "player_id": turn.player_id,
-            "points": turn.round_points,
-            "total": total,
-            "outcome": outcome,
-            "final_round_started": final_round_started,
-        },
-    )
+    event = {
+        "type": "bank",
+        "player_id": turn.player_id,
+        "points": turn.round_points,
+        "total": total,
+        "outcome": outcome,
+        "final_round_started": final_round_started,
+    }
+    if outcome is not None:
+        await _publish_terminal_and_finalize(session, event=event, finalize_game=finalize_game)
+    else:
+        await _publish(session, event=event)
 
 
 async def handle_zilch_gameplay_action(
     session: GameSocketSession,
     action: str,
     data: dict[str, Any],
+    *,
+    finalize_game: FinalizeGame | None = None,
     **_kwargs: Any,
 ) -> None:
     """Dispatch an action without ever invoking ZDWA gameplay or scoring."""
@@ -300,13 +368,13 @@ async def handle_zilch_gameplay_action(
         await _start_roll(session, data)
         return
     if action == "zilch_roll_dice":
-        await _roll_dice(session, data)
+        await _roll_dice(session, data, finalize_game=finalize_game)
         return
     if action == "zilch_select_hold":
-        await _select_hold(session, data)
+        await _select_hold(session, data, finalize_game=finalize_game)
         return
     if action == "zilch_bank_points":
-        await _bank_points(session, data)
+        await _bank_points(session, data, finalize_game=finalize_game)
         return
     if action == "zilch_submit_score":
         await _send_error(session, "zilch_manual_score_not_supported")

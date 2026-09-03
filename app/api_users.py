@@ -5,7 +5,7 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import selectinload
 
 from .achievements import (
@@ -16,6 +16,7 @@ from .achievements import (
 )
 from .auth import require_admin, require_csrf, require_user, resolve_session
 from .database import database_schema_ready, session_scope
+from .game_types import DEFAULT_GAME_TYPE
 from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User
 from .security import normalize_username, utcnow
 from .trends import recent_points_trend
@@ -60,7 +61,7 @@ def _statistics_for_user(db, user_id: int) -> dict:
             func.avg(GameParticipant.points),
         )
         .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
-        .where(GameParticipant.user_id == user_id)
+        .where(GameParticipant.user_id == user_id, CompletedGame.game_type == DEFAULT_GAME_TYPE)
         .group_by(CompletedGame.hardcore)
     ).all()
     buckets = {"normal": _empty_bucket(), "hardcore": _empty_bucket()}
@@ -75,7 +76,7 @@ def _statistics_for_user(db, user_id: int) -> dict:
     recent_rows = db.execute(
         select(CompletedGame.hardcore, GameParticipant.points)
         .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
-        .where(GameParticipant.user_id == user_id)
+        .where(GameParticipant.user_id == user_id, CompletedGame.game_type == DEFAULT_GAME_TYPE)
         .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc(), GameParticipant.id.desc())
     ).all()
     points_by_mode = {"normal": [], "hardcore": []}
@@ -113,7 +114,7 @@ def _recent_games_for_user(
     stmt = (
         select(CompletedGame, GameParticipant.points, GameParticipant.team)
         .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
-        .where(GameParticipant.user_id == user_id)
+        .where(GameParticipant.user_id == user_id, CompletedGame.game_type == DEFAULT_GAME_TYPE)
         .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc())
     )
     if mode != "all":
@@ -196,16 +197,27 @@ def player_ranking(
     with session_scope() as db:
         statement = select(User, games_count, points_total, average_points, maximum_points).where(User.is_active.is_(True))
         if mode == "achievements":
+            zdwa_game_ids = select(CompletedGame.id).where(
+                CompletedGame.game_type == DEFAULT_GAME_TYPE
+            )
             statement = (
-                statement.outerjoin(GameParticipant, GameParticipant.user_id == User.id)
-                .outerjoin(CompletedGame, CompletedGame.id == GameParticipant.game_id)
+                statement.outerjoin(
+                    GameParticipant,
+                    and_(
+                        GameParticipant.user_id == User.id,
+                        GameParticipant.game_id.in_(zdwa_game_ids),
+                    ),
+                )
                 .group_by(User.id)
             )
         else:
             statement = (
                 statement.join(GameParticipant, GameParticipant.user_id == User.id)
                 .join(CompletedGame, CompletedGame.id == GameParticipant.game_id)
-                .where(CompletedGame.hardcore.is_(mode == "hardcore"))
+                .where(
+                    CompletedGame.game_type == DEFAULT_GAME_TYPE,
+                    CompletedGame.hardcore.is_(mode == "hardcore"),
+                )
                 .group_by(User.id)
             )
         rows = db.execute(statement).all()
@@ -231,7 +243,10 @@ def player_ranking(
             recent_statement = (
                 select(GameParticipant.user_id, GameParticipant.points)
                 .join(CompletedGame, CompletedGame.id == GameParticipant.game_id)
-                .where(GameParticipant.user_id.in_(user_ids))
+                .where(
+                    GameParticipant.user_id.in_(user_ids),
+                    CompletedGame.game_type == DEFAULT_GAME_TYPE,
+                )
             )
             if mode != "achievements":
                 recent_statement = recent_statement.where(CompletedGame.hardcore.is_(mode == "hardcore"))
@@ -348,6 +363,7 @@ def admin_game_participants(
             select(GameParticipant)
             .options(selectinload(GameParticipant.game), selectinload(GameParticipant.user))
             .join(CompletedGame, CompletedGame.id == GameParticipant.game_id)
+            .where(CompletedGame.game_type == DEFAULT_GAME_TYPE)
         )
         if unassigned:
             stmt = stmt.where(GameParticipant.user_id.is_(None))
@@ -400,7 +416,7 @@ def admin_completed_games(request: Request, query: str = "", limit: int = 100, o
     with session_scope() as db:
         stmt = select(CompletedGame).options(
             selectinload(CompletedGame.participants).selectinload(GameParticipant.user)
-        )
+        ).where(CompletedGame.game_type == DEFAULT_GAME_TYPE)
         if query.strip():
             needle = f"%{query.strip().casefold()}%"
             matching_games = select(GameParticipant.game_id).where(
@@ -456,6 +472,7 @@ def admin_deleted_games(request: Request, limit: int = 50):
         rows = db.execute(
             select(DeletedGame, User.id, User.username)
             .join(User, User.id == DeletedGame.deleted_by_user_id)
+            .where(DeletedGame.game_type == DEFAULT_GAME_TYPE)
             .order_by(DeletedGame.deleted_at.desc())
             .limit(limit)
         ).all()
@@ -486,6 +503,10 @@ def assign_game_participant(participant_id: int, payload: AssignmentRequest, req
     with session_scope() as db:
         participant = db.get(GameParticipant, participant_id)
         if not participant:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="participant_not_found")
+        if not participant.game or participant.game.game_type != DEFAULT_GAME_TYPE:
+            # Existing assignment tooling belongs to public ZDWA histories;
+            # never expose or alter a private Zilch participant through it.
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="participant_not_found")
         if payload.user_id is not None:
             target = db.get(User, payload.user_id)
@@ -519,7 +540,11 @@ def profile_links_for_games(game_ids: set[str]) -> dict[str, list[dict]]:
             select(CompletedGame.game_id, GameParticipant.display_name, GameParticipant.points, User.id, User.username)
             .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
             .join(User, User.id == GameParticipant.user_id)
-            .where(CompletedGame.game_id.in_(game_ids), User.is_active.is_(True))
+            .where(
+                CompletedGame.game_type == DEFAULT_GAME_TYPE,
+                CompletedGame.game_id.in_(game_ids),
+                User.is_active.is_(True),
+            )
             .order_by(GameParticipant.position)
         ).all()
         ranks = achievement_rank_payloads_for_user_ids(db, {user_id for *_values, user_id, _username in rows})

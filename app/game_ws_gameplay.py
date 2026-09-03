@@ -338,6 +338,12 @@ async def _write_field(
             # delivered game result.
             logger.exception("Could not finalize completed game %s", g.get("_id"))
         g["_final_completion"] = completion
+        # The typed finalizers explicitly report ``result_persisted``.  Keep
+        # the long-standing injected-finalizer test seam compatible: a legacy
+        # callback that returns its former achievement-only payload represents
+        # a completed write, whereas an explicit failure leaves recovery data.
+        if completion and completion.get("result_persisted", True):
+            g["_completion_persisted"] = True
         g["_finalization_pending"] = False
         touch(g)
         await _broadcast_write_update(

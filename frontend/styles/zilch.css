@@ -167,6 +167,13 @@ html[data-theme="dark"][data-game="zilch"] {
 }
 .zilch-lobby-action { white-space: nowrap; }
 
+.zilch-result-history-list { display: grid; gap: .75rem; }
+.zilch-result-history-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; border: 1px dashed var(--zilch-paper-edge); border-radius: .75rem; background: rgba(255, 255, 255, .18); }
+.zilch-result-history-card h3,
+.zilch-result-history-card p { margin: 0; }
+.zilch-result-history-card p + p { margin-top: .35rem; }
+.zilch-result-history-card__outcome { color: var(--zilch-ink); }
+
 .zilch-live-status,
 .zilch-event,
 .zilch-offline-note {
@@ -261,6 +268,24 @@ html[data-theme="dark"][data-game="zilch"] {
 .zilch-final-result { border: .18rem solid var(--zilch-gold); text-align: center; }
 .zilch-final-result h2 { font: 800 clamp(2rem, 7vw, 3.3rem)/1 Georgia, serif; }
 
+.zilch-result-head { margin-bottom: 1.1rem; }
+.zilch-result-summary { max-width: none; }
+.zilch-result-summary h1 { margin: .25rem 0 1rem; font: 800 clamp(2rem, 7vw, 3.3rem)/1 Georgia, serif; }
+.zilch-result-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; margin: 1.1rem 0 0; text-align: left; }
+.zilch-result-facts div { min-width: 0; padding: .65rem; border-radius: .55rem; background: rgba(136, 90, 40, .09); }
+.zilch-result-facts dt { color: var(--zilch-muted); font-size: .75rem; }
+.zilch-result-facts dd { margin: .16rem 0 0; overflow-wrap: anywhere; color: var(--zilch-ink); font-weight: 800; }
+.zilch-result-facts code { font: inherit; font-size: .85em; overflow-wrap: anywhere; }
+.zilch-result-board { min-height: 0; }
+.zilch-result-board .zilch-board-head { margin-bottom: .85rem; }
+.zilch-result-board__history-title { margin: 1.1rem 0 .1rem; color: var(--zilch-ink); font: 800 1rem/1.2 Georgia, "Times New Roman", serif; }
+.zilch-result-start-roll { max-width: 50rem; }
+.zilch-result-start-attempt + .zilch-result-start-attempt { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--zilch-paper-edge); }
+.zilch-result-start-attempt h3 { margin: 0; color: var(--zilch-muted); font-size: .88rem; }
+.zilch-start-roll-value { display: inline-grid; place-items: center; min-width: 2.15rem; min-height: 2.15rem; border: 1px solid #d1b184; border-radius: 45%; color: #3a2011; background: linear-gradient(145deg, #fffdf5, #f0dfbc); box-shadow: inset .08rem .08rem .16rem rgba(255,255,255,.98), .12rem .18rem 0 #724b2d; }
+.zilch-result-final-round { max-width: 50rem; }
+.zilch-result-final-round p { margin: .55rem 0; }
+
 .zilch-chat-history { display: grid; gap: .45rem; max-height: 16rem; margin: 0 0 1rem; padding: 0; overflow: auto; list-style: none; }
 .zilch-chat-history li { display: grid; grid-template-columns: minmax(5rem, auto) 1fr; gap: .55rem; padding: .5rem .65rem; border-radius: .5rem; background: rgba(136, 90, 40, .08); }
 .zilch-chat-form input { flex: 1 1 auto; }
@@ -282,13 +307,16 @@ html[data-theme="dark"][data-game="zilch"] {
   .zilch-table__heading p { text-align: left; }
   .zilch-board-grid,
   .zilch-action-cards { grid-template-columns: 1fr; }
+  .zilch-result-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .zilch-board dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .zilch-dice { grid-template-columns: repeat(3, minmax(4.5rem, 1fr)); max-width: 24rem; }
   .zilch-game-card { align-items: flex-start; flex-direction: column; }
+  .zilch-result-history-card { align-items: flex-start; flex-direction: column; }
   .zilch-chat-form { align-items: stretch; flex-direction: column; }
 }
 
 @media (max-width: 390px) {
+  .zilch-result-facts { grid-template-columns: 1fr; }
   .zilch-board dl { grid-template-columns: 1fr; }
   .zilch-dice { gap: .42rem; }
   .zilch-die { box-shadow: inset .12rem .12rem .26rem rgba(255,255,255,.92), inset -.12rem -.15rem .25rem rgba(89,53,25,.24), .16rem .25rem 0 #724b2d, .28rem .42rem .5rem rgba(0,0,0,.34); }

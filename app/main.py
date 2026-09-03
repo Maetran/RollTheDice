@@ -30,11 +30,12 @@ from .auth_protection import enforce_game_creation_rate_limit, validate_auth_pro
 from .database import configure_database, database_schema_ready, upgrade_database
 from .game_access import can_access_game, can_access_zilch_preview
 from .game_history import (
+    completed_game_type_for_id,
     delete_completed_game,
     import_legacy_leaderboards,
 )
-from .game_registry import create_game_state, project_game_progress
-from .game_results import finalize_and_log_results, remove_deleted_game_from_files
+from .game_registry import create_game_state, finalize_completed_game, project_game_progress
+from .game_results import remove_deleted_game_from_files
 from .game_snapshot import public_player_payload, refresh_game_achievement_ranks
 from .game_state import (
     GameDict,
@@ -59,6 +60,7 @@ from .leaderboard_service import (
 )
 from .leaderboard_storage import LeaderboardFiles
 from .site_seo import robots_document, sitemap_document
+from .zilch_results import list_zilch_results_for_user, load_zilch_result
 from .zilch_state import validate_zilch_hvh_mode
 
 # Retained as a small backwards-compatible module export for existing focused
@@ -106,6 +108,7 @@ async def lifespan(_app: FastAPI):
     ensure_bootstrap_admin()
     import_legacy_leaderboards(LEADERBOARD_FILES.legacy_paths())
     games.update(load_active_games())
+    _recover_terminal_completed_games()
     yield
 
 
@@ -291,9 +294,27 @@ def zilch_room_page(game_id: str, request: Request):
     return _page("zilch.html")
 
 
+@app.get("/zilch/ergebnis/{game_id}", include_in_schema=False)
+def zilch_result_page(game_id: str, request: Request):
+    """Serve the private noindex Zilch shell for one persisted result."""
+    _require_zilch_preview(request)
+    if load_zilch_result(game_id) is None:
+        # Do not distinguish an unknown ID, a ZDWA ID, or a malformed private
+        # Zilch payload at this route.
+        raise HTTPException(status_code=404, detail="result_not_found")
+    return _page("zilch.html")
+
+
 @app.get("/ergebnis", include_in_schema=False)
 @app.get("/ergebnis/{game_id}", include_in_schema=False)
-def completed_game_page(game_id: str | None = None):
+def completed_game_page(request: Request, game_id: str | None = None):
+    # A stored Zilch game must never mount the fixed ZDWA replay renderer.
+    # The public route gives no indication that a private result exists.
+    if game_id and completed_game_type_for_id(game_id) == ZILCH_GAME_TYPE:
+        identity = resolve_session(request)
+        if not can_access_zilch_preview(identity) or load_zilch_result(game_id) is None:
+            raise HTTPException(status_code=404, detail="result_not_found")
+        return RedirectResponse(f"/zilch/ergebnis/{quote(game_id, safe='')}", status_code=307)
     return _page("game_view.html")
 
 
@@ -472,6 +493,11 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
     lst = []
     for gid, g in games.items():
         try:
+            # A final live object can remain in memory just long enough to
+            # finish its connected socket broadcast. Its durable result now
+            # belongs to private history, not the active-game lobby.
+            if g.get("_completion_persisted"):
+                continue
             if game_type_from_state(g) != requested_game_type:
                 continue
             if not can_access_game(auth_identity, g):
@@ -606,6 +632,23 @@ def api_game_from_leaderboard(game_id: str):
     return game_from_leaderboard(LEADERBOARD_FILES, game_id)
 
 
+@app.get("/api/zilch/results")
+def api_zilch_results(request: Request):
+    """Return only the authenticated preview user's own private history."""
+    identity = _require_zilch_preview(request)
+    return {"results": list_zilch_results_for_user(identity.user_id)}
+
+
+@app.get("/api/zilch/results/{game_id}")
+def api_zilch_result(game_id: str, request: Request):
+    """Read a known-version private Zilch result without ZDWA projection."""
+    _require_zilch_preview(request)
+    result = load_zilch_result(game_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="result_not_found")
+    return {"result": result}
+
+
 @app.post("/api/games")
 async def api_games_create(req: CreateReq, request: Request):
     """API: Neues Spiel anlegen (Name, Modus, optional Passphrase)."""
@@ -636,6 +679,11 @@ def admin_delete_completed_game(game_id: str, payload: DeleteCompletedGameReq, r
     require_csrf(request, identity)
     if payload.confirmation_game_id != game_id:
         raise HTTPException(status_code=400, detail="game_delete_confirmation_mismatch")
+    stored_type = completed_game_type_for_id(game_id)
+    if stored_type == ZILCH_GAME_TYPE and not can_access_zilch_preview(identity):
+        # A general application administrator is not automatically a member
+        # of the deliberately narrow Zilch preview cohort.
+        raise HTTPException(status_code=404, detail="game_not_found")
     try:
         deleted = delete_completed_game(
             game_id=game_id,
@@ -648,8 +696,9 @@ def admin_delete_completed_game(game_id: str, payload: DeleteCompletedGameReq, r
         detail = str(exc)
         status_code = 409 if detail == "game_already_deleted" else 400
         raise HTTPException(status_code=status_code, detail=detail) from exc
-    _remove_deleted_game_from_files(deleted)
-    sync_achievements_for_users(set(deleted["affected_user_ids"]))
+    if deleted["game_type"] == DEFAULT_GAME_TYPE:
+        _remove_deleted_game_from_files(deleted)
+        sync_achievements_for_users(set(deleted["affected_user_ids"]))
     return {
         "ok": True,
         "game_id": deleted["game_id"],
@@ -662,7 +711,27 @@ def _remove_deleted_game_from_files(deleted: dict) -> None:
 
 
 def _finalize_and_log_results(g: GameDict):
-    return finalize_and_log_results(LEADERBOARD_FILES, g)
+    return finalize_completed_game(g, files=LEADERBOARD_FILES)
+
+
+def _recover_terminal_completed_games() -> None:
+    """Retry durable finalization after a restart without inventing state.
+
+    Terminal snapshots are retained by ``active_games`` until their typed
+    finalizer succeeds.  Malformed legacy Zilch terminals intentionally stay
+    in storage for inspection rather than being deleted or coerced into ZDWA.
+    """
+    for game_id, game in list(games.items()):
+        if not game.get("_finished") or game.get("_aborted") or game.get("_completion_persisted"):
+            continue
+        try:
+            completion = _finalize_and_log_results(game)
+        except Exception:
+            logger.exception("Could not recover terminal game %s", game_id)
+            continue
+        if isinstance(completion, dict) and completion.get("result_persisted"):
+            game["_final_completion"] = completion
+            games.pop(game_id, None)
 
 
 # -----------------------------

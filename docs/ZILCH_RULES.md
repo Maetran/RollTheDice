@@ -145,7 +145,7 @@ Spieltyp sowie doppelte oder veraltete Versionsstände werden ohne
 Zustandsänderung abgewiesen. Der ältere Platzhalter `zilch_submit_score` wird
 explizit als nicht unterstützte manuelle Punkteingabe abgelehnt.
 
-## Alpha-Bedienung und Ergebnisgrenze
+## Alpha-Bedienung und private Ergebnisgrenze
 
 Der Alpha unterstützt ausschließlich zwei angemeldete menschliche Teilnehmer
 im Multiplayer-Modus. Beide führen den Startwurf selbst aus; die beiden Werte
@@ -162,10 +162,20 @@ Sichern sind Tastatur- und Touch-Buttons; der Browser sendet nur die
 referenzierte Option und übernimmt nie einen lokalen Punktewert.
 
 Nach dem vollen Gegenzug markiert der aktive Zilch-State Gewinner oder
-Gleichstand und bleibt in `active_games` erhalten, damit beide Teilnehmer den
-Endstand nach Reload oder Rejoin sehen. Er wird weiterhin **nicht** in
-`CompletedGame`, ZDWA-Historie, Statistik, Leaderboard, Achievement- oder
-Replay-Pfade geschrieben.
+Gleichstand. Er wird zuerst als terminaler `active_games`-Snapshot gespeichert,
+damit ein Datenbankfehler oder Neustart keinen Endstand verliert. Anschließend
+erzeugt der Zilch-Finalizer idempotent einen eigenen versionierten
+`zilch_result`-Payload (Schema 1) mit `zilch-house-v1`, Teilnehmern,
+Startwurf, beiden Boards, gesicherten Runden, Zilchs, Strafen, Schlussrunde,
+Gegenzug, Outcome und Dauer. Erst nach bestätigter Speicherung wird der aktive
+Terminal-State entfernt.
+
+Der Report ist ausschließlich über die geschützte, `noindex`
+Zilch-Ergebnisroute und die private eigene Historie erreichbar. Er wird
+weiterhin **nicht** in ZDWA-Historie, Scorecards, Replay, Statistik,
+Leaderboard, Achievement- oder Profilaggregate geschrieben. Ein alter
+Terminal-State, dem eine autoritative Pflichtangabe wie der Endzeitpunkt fehlt,
+bleibt aktiv und wird protokolliert; die Anwendung erfindet keine Werte.
 
 Zum manuellen privaten Test: mit Admin `Mani` ein Spiel anlegen, vor dem
 App-Start den normalisierten Namen des zweiten angemeldeten Testkontos in
@@ -180,13 +190,13 @@ Ohne diese Konfiguration bleibt ausschließlich Admin `Mani` zugelassen.
   Würfelergebnisse.
 - Aktive Zustände samt Turn-ID, Startwurf, Holds, Rundenpunkten, Boards und
   Quick-Hold-Grundlage bleiben über die bestehende aktive Persistenz
-  restart-sicher. Auch ein abgeschlossenes Alpha-Zilch bleibt dort für seinen
-  sichtbaren Endstand; es wird nicht in ZDWA-Ergebnisse, Statistiken,
-  Achievements oder Bestenlisten geschrieben.
+  restart-sicher. Ein Abschluss wird erst nach einer erfolgreichen,
+  idempotenten privaten Ergebnis-Persistenz entfernt und bleibt vollständig
+  von ZDWA-Ergebnissen, Statistiken, Achievements und Bestenlisten getrennt.
 - Noch offen bleiben insbesondere eine präzise Strafkadenz nach mehr als drei
   aufeinanderfolgenden Zilchs, CPU-Entscheidungen, ein echtes Solo-Ziel,
-  manuelle Würfelauswahl, finale Interaktions-/Markenpolitur,
-  Ergebnisdatenbank und Zilch-spezifische Auswertung.
+  manuelle Würfelauswahl, finale Interaktions-/Markenpolitur und
+  Zilch-spezifische Auswertung.
 
 ## Designrichtung
 

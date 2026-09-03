@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from .achievements import public_achievement_ranks, sync_achievements_for_users
 from .active_games import delete_active_game
 from .game_engine import _compute_final_totals, _rows_from_scoreboard
-from .game_history import persist_runtime_game, stable_game_id
+from .game_history import persist_runtime_game_result, stable_game_id
 from .game_state import CHAT_HISTORY_LIMIT, GameDict, is_team_mode
 from .game_types import DEFAULT_GAME_TYPE, game_type_from_state
 from .leaderboard_service import (
@@ -260,7 +260,38 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
         for player in g.get("_players", [])
         if player.get("user_id") is not None
     }
-    if persist_runtime_game(g, totals, snapshot_fields):
+    write_result = persist_runtime_game_result(g, totals, snapshot_fields)
+    legacy_json_only = write_result.reason == "database_not_ready"
+    if not write_result.succeeded and not legacy_json_only:
+        # Do not write derived JSON lists, awards, or remove the durable live
+        # terminal state unless the authoritative completed row exists.  A
+        # restart can retry the same game ID safely.
+        logger.error(
+            "Could not persist completed ZDWA game %s: %s",
+            g.get("_id"),
+            write_result.reason or write_result.status,
+        )
+        return {
+            "achievement_unlocks": {},
+            "achievement_rank_ups": {},
+            "result_persisted": False,
+            "persistence_error": write_result.reason or write_result.status,
+        }
+    if write_result.status == "already_stored":
+        # A process can crash after committing the relational result but before
+        # removing its active terminal state.  Never replay legacy ZDWA JSON
+        # or achievement side effects for that idempotent recovery path.
+        g["_completion_persisted"] = True
+        delete_active_game(str(g.get("_id") or ""))
+        return {
+            "achievement_unlocks": {},
+            "achievement_rank_ups": {},
+            "result_persisted": True,
+            "result_id": str(g.get("_id") or ""),
+            "result_recovered": True,
+        }
+
+    if write_result.succeeded:
         ranks_before = _achievement_ranks_safely(achievement_user_ids, game_id=g.get("_id"))
         achievement_unlocks = sync_achievements_for_users(achievement_user_ids)
         ranks_after = _achievement_ranks_safely(achievement_user_ids, game_id=g.get("_id"))
@@ -269,7 +300,6 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
             ranks_before,
             ranks_after,
         )
-    delete_active_game(str(g.get("_id") or ""))
 
     entries_for_recent = []
     entries_for_alltime = []
@@ -457,6 +487,13 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
         average_points=winner_points_for_average,
         hardcore=is_hc,
     )
+    # The terminal active snapshot is intentionally removed only after the
+    # relational result and the historic ZDWA follow-up data are complete.
+    # ``save_active_game`` recognizes this marker and will not recreate it
+    # during the final socket broadcast.
+    if write_result.succeeded:
+        g["_completion_persisted"] = True
+        delete_active_game(str(g.get("_id") or ""))
     return {
         "achievement_unlocks": {
             str(player["id"]): achievement_unlocks.get(int(player["user_id"]), [])
@@ -464,4 +501,6 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
             if player.get("user_id") is not None and achievement_unlocks.get(int(player["user_id"]))
         },
         "achievement_rank_ups": achievement_rank_ups,
+        "result_persisted": write_result.succeeded,
+        "result_id": str(g.get("_id") or "") if write_result.succeeded else None,
     }

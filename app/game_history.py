@@ -3,19 +3,51 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 
 from sqlalchemy import func, select
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from .database import database_schema_ready, session_scope
-from .game_types import DEFAULT_GAME_TYPE, game_type_from_state
-from .models import CompletedGame, DeletedGame, GameParticipant
+from .game_types import DEFAULT_GAME_TYPE, GameType, game_type_from_state, normalize_game_type
+from .models import CompletedGame, DeletedGame, GameParticipant, User
 from .rules import compute_overall
 from .security import as_utc, utcnow
 
 logger = logging.getLogger(__name__)
+
+
+CompletedGameWriteStatus = Literal["stored", "already_stored", "blocked", "failed"]
+
+
+@dataclass(frozen=True)
+class CompletedGameWriteResult:
+    """Outcome of one idempotent completed-game write attempt.
+
+    ``already_stored`` is deliberately successful for a typed finalizer: a
+    process may restart after committing the durable row but before removing
+    its active terminal state.  The older boolean wrappers below retain their
+    historic ``False`` result for a duplicate so existing ZDWA callers do not
+    accidentally repeat aggregate side effects.
+    """
+
+    status: CompletedGameWriteStatus
+    game_id: str
+    game_type: GameType
+    completed_game_id: int | None = None
+    reason: str | None = None
+
+    @property
+    def succeeded(self) -> bool:
+        return self.status in {"stored", "already_stored"}
+
+
+def _completed_game_type(value: object | None) -> GameType:
+    """Validate a persisted result type using the central game-type contract."""
+    return normalize_game_type(value)
 
 
 def stable_game_id(entry: dict) -> str | None:
@@ -97,27 +129,74 @@ def _participants_from_snapshot(snapshot: dict) -> list[dict]:
     return participants
 
 
-def persist_completed_game(
+def persist_completed_game_result(
     *,
     game_id: str,
     game_name: str,
+    game_type: object | None = DEFAULT_GAME_TYPE,
     mode: str,
     hardcore: bool,
     finished_at: datetime,
     snapshot: dict,
     participants: list[dict],
     imported_from_legacy: bool = False,
-) -> bool:
+) -> CompletedGameWriteResult:
+    """Atomically store a typed result and report idempotent success precisely."""
+    normalized_game_id = str(game_id)
+    normalized_type = _completed_game_type(game_type)
     if not database_schema_ready():
-        return False
+        return CompletedGameWriteResult("failed", normalized_game_id, normalized_type, reason="database_not_ready")
+
+    def existing_result() -> CompletedGameWriteResult | None:
+        try:
+            with session_scope() as db:
+                deleted = db.scalar(select(DeletedGame).where(DeletedGame.game_id == normalized_game_id))
+                if deleted is not None:
+                    return CompletedGameWriteResult("blocked", normalized_game_id, normalized_type, reason="game_deleted")
+                existing = db.scalar(select(CompletedGame).where(CompletedGame.game_id == normalized_game_id))
+                if existing is None:
+                    return None
+                if existing.game_type != normalized_type:
+                    return CompletedGameWriteResult(
+                        "failed",
+                        normalized_game_id,
+                        normalized_type,
+                        completed_game_id=existing.id,
+                        reason="game_id_type_conflict",
+                    )
+                return CompletedGameWriteResult(
+                    "already_stored",
+                    normalized_game_id,
+                    normalized_type,
+                    completed_game_id=existing.id,
+                )
+        except SQLAlchemyError:
+            logger.exception("Could not inspect completed game %s", normalized_game_id)
+            return CompletedGameWriteResult("failed", normalized_game_id, normalized_type, reason="database_error")
+
     try:
         with session_scope() as db:
-            if db.scalar(select(DeletedGame.id).where(DeletedGame.game_id == str(game_id))):
-                return False
-            if db.scalar(select(CompletedGame.id).where(CompletedGame.game_id == str(game_id))):
-                return False
+            if db.scalar(select(DeletedGame.id).where(DeletedGame.game_id == normalized_game_id)):
+                return CompletedGameWriteResult("blocked", normalized_game_id, normalized_type, reason="game_deleted")
+            existing = db.scalar(select(CompletedGame).where(CompletedGame.game_id == normalized_game_id))
+            if existing is not None:
+                if existing.game_type == normalized_type:
+                    return CompletedGameWriteResult(
+                        "already_stored",
+                        normalized_game_id,
+                        normalized_type,
+                        completed_game_id=existing.id,
+                    )
+                return CompletedGameWriteResult(
+                    "failed",
+                    normalized_game_id,
+                    normalized_type,
+                    completed_game_id=existing.id,
+                    reason="game_id_type_conflict",
+                )
             row = CompletedGame(
-                game_id=str(game_id),
+                game_id=normalized_game_id,
+                game_type=normalized_type,
                 game_name=str(game_name or "")[:160],
                 finished_at=as_utc(finished_at),
                 mode=str(mode or ""),
@@ -129,6 +208,17 @@ def persist_completed_game(
             db.add(row)
             db.flush()
             for position, participant in enumerate(participants):
+                raw_user_id = participant.get("user_id")
+                try:
+                    user_id = int(raw_user_id) if raw_user_id is not None else None
+                except (TypeError, ValueError):
+                    user_id = None
+                # Result payloads retain the historical display name even
+                # when an account vanished between a game and finalization.
+                # Do not let an obsolete optional foreign key lose the whole
+                # completed result.
+                if user_id is not None and db.get(User, user_id) is None:
+                    user_id = None
                 db.add(
                     GameParticipant(
                         game_id=row.id,
@@ -137,21 +227,84 @@ def persist_completed_game(
                         display_name=str(participant.get("display_name") or "Gast")[:64],
                         team=(str(participant.get("team"))[:8] if participant.get("team") else None),
                         points=int(participant.get("points", 0)),
-                        user_id=participant.get("user_id"),
-                        assigned_at=utcnow() if participant.get("user_id") is not None else None,
+                        user_id=user_id,
+                        assigned_at=utcnow() if user_id is not None else None,
                     )
                 )
-        return True
-    except SQLAlchemyError:
-        logger.exception("Could not persist completed game %s", game_id)
-        return False
+        return CompletedGameWriteResult("stored", normalized_game_id, normalized_type, completed_game_id=row.id)
+    except IntegrityError:
+        # A concurrent terminal action can win the unique game_id race after
+        # both callers performed their preflight lookup.  Read it back and
+        # treat only the same typed row as an idempotent success.
+        result = existing_result()
+        if result is not None:
+            return result
+        logger.exception("Could not persist completed game %s after a uniqueness conflict", normalized_game_id)
+        return CompletedGameWriteResult("failed", normalized_game_id, normalized_type, reason="integrity_error")
+    except (SQLAlchemyError, TypeError, ValueError):
+        logger.exception("Could not persist completed game %s", normalized_game_id)
+        return CompletedGameWriteResult("failed", normalized_game_id, normalized_type, reason="database_error")
 
 
-def deleted_game_ids() -> set[str]:
+def persist_completed_game(
+    *,
+    game_id: str,
+    game_name: str,
+    game_type: object | None = DEFAULT_GAME_TYPE,
+    mode: str,
+    hardcore: bool,
+    finished_at: datetime,
+    snapshot: dict,
+    participants: list[dict],
+    imported_from_legacy: bool = False,
+) -> bool:
+    """Compatibility wrapper returning ``True`` only for a fresh insert."""
+    return persist_completed_game_result(
+        game_id=game_id,
+        game_name=game_name,
+        game_type=game_type,
+        mode=mode,
+        hardcore=hardcore,
+        finished_at=finished_at,
+        snapshot=snapshot,
+        participants=participants,
+        imported_from_legacy=imported_from_legacy,
+    ).status == "stored"
+
+
+def deleted_game_ids(*, game_type: object | None = DEFAULT_GAME_TYPE) -> set[str]:
+    """Return tombstones only for the requested result family.
+
+    The public ZDWA leaderboard must not even conceptually consult private
+    Zilch tombstones once both result types coexist.
+    """
     if not database_schema_ready():
         return set()
+    normalized_type = _completed_game_type(game_type)
     with session_scope() as db:
-        return {str(game_id) for game_id in db.scalars(select(DeletedGame.game_id))}
+        return {
+            str(game_id)
+            for game_id in db.scalars(
+                select(DeletedGame.game_id).where(DeletedGame.game_type == normalized_type)
+            )
+        }
+
+
+def completed_game_type_for_id(game_id: str) -> GameType | None:
+    """Return a stored result's validated type without exposing its payload."""
+    if not database_schema_ready():
+        return None
+    with session_scope() as db:
+        raw_type = db.scalar(
+            select(CompletedGame.game_type).where(CompletedGame.game_id == str(game_id))
+        )
+    if raw_type is None:
+        return None
+    try:
+        return _completed_game_type(raw_type)
+    except ValueError:
+        logger.error("Completed game %s has an unknown persisted type %r", game_id, raw_type)
+        return None
 
 
 def recent_winner_points_by_mode(limit: int = 3) -> dict[str, list[int]]:
@@ -168,6 +321,7 @@ def recent_winner_points_by_mode(limit: int = 3) -> dict[str, list[int]]:
                 func.max(GameParticipant.points),
             )
             .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
+            .where(CompletedGame.game_type == DEFAULT_GAME_TYPE)
             .group_by(CompletedGame.id)
             .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc())
         ).all()
@@ -198,6 +352,7 @@ def delete_completed_game(*, game_id: str, admin_user_id: int, reason: str) -> d
         )
         result = {
             "game_id": game.game_id,
+            "game_type": game.game_type,
             "game_name": game.game_name,
             "finished_at": as_utc(game.finished_at),
             "mode": game.mode,
@@ -209,6 +364,7 @@ def delete_completed_game(*, game_id: str, admin_user_id: int, reason: str) -> d
         db.add(
             DeletedGame(
                 game_id=game.game_id,
+                game_type=game.game_type,
                 game_name=game.game_name,
                 finished_at=game.finished_at,
                 mode=game.mode,
@@ -222,12 +378,28 @@ def delete_completed_game(*, game_id: str, admin_user_id: int, reason: str) -> d
         return result
 
 
-def persist_runtime_game(game: dict, totals: dict[str, int], snapshot: dict) -> bool:
-    # Defensive second boundary: Zilch's unfinished format must not create a
+def persist_runtime_game_result(
+    game: dict,
+    totals: dict[str, int],
+    snapshot: dict,
+) -> CompletedGameWriteResult:
+    """Persist the established ZDWA runtime result with typed idempotency.
+
+    This remains deliberately separate from Zilch: callers that attempt to
+    route another game through the ZDWA scorecard history get a precise failed
+    result rather than a best-effort row.
+    """
+    game_id = str(game.get("_id") or snapshot.get("game_id") or "")
+    # Defensive second boundary: Zilch's result format must never create a
     # completed ZDWA row even if a future caller mistakenly asks to persist it.
     if game_type_from_state(game) != DEFAULT_GAME_TYPE:
         logger.warning("Refusing to persist non-ZDWA game %s in completed history", game.get("_id"))
-        return False
+        return CompletedGameWriteResult(
+            "failed",
+            game_id,
+            DEFAULT_GAME_TYPE,
+            reason="wrong_game_type",
+        )
     mode = str(game.get("_mode") or "")
     is_team = mode.lower() == "2v2"
     participants = []
@@ -246,15 +418,21 @@ def persist_runtime_game(game: dict, totals: dict[str, int], snapshot: dict) -> 
             }
         )
     finished_at = _parse_datetime(snapshot.get("finished_at"))
-    return persist_completed_game(
-        game_id=str(game.get("_id") or snapshot.get("game_id") or ""),
+    return persist_completed_game_result(
+        game_id=game_id,
         game_name=str(game.get("_name") or ""),
+        game_type=DEFAULT_GAME_TYPE,
         mode=mode,
         hardcore=bool(game.get("_hardcore")),
         finished_at=finished_at,
         snapshot=snapshot,
         participants=participants,
     )
+
+
+def persist_runtime_game(game: dict, totals: dict[str, int], snapshot: dict) -> bool:
+    """Historic boolean facade for callers that only care about first write."""
+    return persist_runtime_game_result(game, totals, snapshot).status == "stored"
 
 
 def import_legacy_leaderboards(paths: list[Path]) -> int:
@@ -304,6 +482,7 @@ def import_legacy_leaderboards(paths: list[Path]) -> int:
         if persist_completed_game(
             game_id=game_id,
             game_name=str(entry.get("gamename") or entry.get("name") or ""),
+            game_type=DEFAULT_GAME_TYPE,
             mode=_legacy_mode(entry),
             hardcore=bool(entry.get("hardcore")),
             finished_at=_parse_datetime(entry.get("finished_at") or entry.get("ts")),

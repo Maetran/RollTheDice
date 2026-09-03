@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from .game_types import DEFAULT_GAME_TYPE
 from .models import CompletedGame, GameParticipant, User, UserAchievement
 from .rules import compute_row_subtotals
 from .security import as_utc, utcnow
@@ -1195,7 +1196,7 @@ def _progress_for_user(db, user: User) -> dict[str, int | bool]:
         select(CompletedGame, GameParticipant)
         .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
         .options(selectinload(CompletedGame.participants))
-        .where(GameParticipant.user_id == user.id)
+        .where(GameParticipant.user_id == user.id, CompletedGame.game_type == DEFAULT_GAME_TYPE)
         .order_by(CompletedGame.finished_at, CompletedGame.id)
     ).all()
     games = [(game, participant, _game_metrics(game, participant)) for game, participant in rows]

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, validates
+
+from .game_types import DEFAULT_GAME_TYPE, normalize_game_type
 
 
 class Base(DeclarativeBase):
@@ -90,6 +92,10 @@ class CompletedGame(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     game_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    # This discriminator is deliberately persisted rather than inferred from
+    # the JSON payload.  A completed Zilch must never become a ZDWA scorecard
+    # merely because a caller uses one of the historic result readers.
+    game_type: Mapped[str] = mapped_column(String(16), nullable=False, default=DEFAULT_GAME_TYPE)
     game_name: Mapped[str] = mapped_column(String(160), nullable=False, default="")
     finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     mode: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -102,7 +108,21 @@ class CompletedGame(Base):
         back_populates="game", cascade="all, delete-orphan", order_by="GameParticipant.position"
     )
 
-    __table_args__ = (Index("ix_completed_games_finished_at", "finished_at"),)
+    __table_args__ = (
+        CheckConstraint("game_type IN ('zdwa', 'zilch')", name="ck_completed_games_game_type"),
+        Index("ix_completed_games_finished_at", "finished_at"),
+        # Both the public ZDWA readers and the private Zilch history filter by
+        # type and show the newest finished rows first.
+        Index("ix_completed_games_game_type_finished_at", "game_type", "finished_at"),
+    )
+
+    @validates("game_type")
+    def _validate_game_type(self, _key: str, value: object) -> str:
+        """Keep ORM writers aligned with the database discriminator contract."""
+        try:
+            return normalize_game_type(value)
+        except ValueError as exc:
+            raise ValueError("invalid_game_type") from exc
 
 
 class ActiveGame(Base):
@@ -124,6 +144,7 @@ class DeletedGame(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     game_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    game_type: Mapped[str] = mapped_column(String(16), nullable=False, default=DEFAULT_GAME_TYPE)
     game_name: Mapped[str] = mapped_column(String(160), nullable=False, default="")
     finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     mode: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -132,7 +153,18 @@ class DeletedGame(Base):
     deleted_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
 
-    __table_args__ = (Index("ix_deleted_games_deleted_at", "deleted_at"),)
+    __table_args__ = (
+        CheckConstraint("game_type IN ('zdwa', 'zilch')", name="ck_deleted_games_game_type"),
+        Index("ix_deleted_games_deleted_at", "deleted_at"),
+    )
+
+    @validates("game_type")
+    def _validate_game_type(self, _key: str, value: object) -> str:
+        """Use the same central validation for audit tombstones."""
+        try:
+            return normalize_game_type(value)
+        except ValueError as exc:
+            raise ValueError("invalid_game_type") from exc
 
 
 class GameParticipant(Base):

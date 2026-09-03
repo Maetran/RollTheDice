@@ -11,9 +11,11 @@ account can be admitted only through the explicit
 `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` allowlist; it receives no admin rights.
 Play modes `solo | cpu | multiplayer` and participant types `human | cpu` stay
 separate from WebSocket connections, but this Alpha exposes only two
-authenticated human participants. CPU, solo, manual dice selection, typed
-completed-game persistence, achievements, leaderboards, and public release are
-deliberately deferred.
+authenticated human participants. Finished private Zilch games are stored as a
+separate, versioned result payload with a private read-only history; they do
+not enter any ZDWA scorecard, replay, statistic, achievement, or leaderboard
+path. CPU, solo, manual dice selection, Zilch aggregates, achievements,
+leaderboards, and public release are deliberately deferred.
 
 Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
 
@@ -23,9 +25,11 @@ Localization conventions and terminology are documented in [docs/LOCALIZATION.md
 - Anonymous live count of connected visitors across lobby, games, spectator views, and other app pages
 - REST API for lobby, games, leaderboard, and replay data
 - WebSocket game room for rolling, scoring, chat, spectators, and corrections
-- Restart-safe waiting/running games plus persistent completed games, leaderboards, and stats in `./data`
+- Restart-safe live games plus typed completed-game persistence in `./data`;
+  ZDWA aggregates and private Zilch result history stay separate
 - User accounts, admin management, public profiles, search, and player rankings
-- Audited permanent deletion of invalid completed games with automatic statistic updates
+- Audited deletion of invalid ZDWA results with automatic statistic updates;
+  private Zilch deletion never mutates ZDWA aggregates
 - Self-registration from the lobby with immutable usernames
 - Personal statistics split into Normal, Hardcore, and overall results, with a selectable score chart and median
 - Achievement milestones for special scoring plays, exact final scores, multiplayer victory margins, daily streaks, office-hour game counts, exact upper-section 60s, and Hardcore progress; every achievement awards 1–10 **Ehrenberg-Marken**, the achievement currency named after Ehrenberg in Reutte. When a game unlocks several achievements, each one is presented and acknowledged separately before the final standings; a genuine title increase then receives its own celebratory **LEVEL UP!** card. Profiles show the total, and the player overview includes a sortable Ehrenberg-Marken ranking. The calculated total also assigns an account-only title from Newbie through Godmode with star insignia, shown consistently beside player names in the lobby, live game, chat, profiles, replays, and rankings. Clicking an insignia opens the rank legend at `/rangabzeichen` (as an overlay during live play). Rollout-sensitive gameplay goals, including multiplayer and upper-section-60 goals, start from their introduction while score-based goals and Hardcore game counts remain historical
@@ -40,6 +44,7 @@ User-facing navigation uses short routes without implementation details:
 - `/` lobby
 - `/spiel/{game_id}` active player view
 - `/zilch` protected internal Zilch preview (not public or indexable)
+- `/zilch/ergebnis/{game_id}` protected, read-only Zilch result report (not public or indexable)
 - `/spiel/{game_id}/zuschauen` spectator view
 - `/regeln`, `/rangabzeichen`, `/spieler`, `/spieler/{username}`, `/konto`, and `/admin`
 - `/ergebnis/{game_id}` completed-game view
@@ -111,8 +116,10 @@ docker compose up -d --build
 Game data is stored in `./data` and is preserved across rebuilds. Waiting and
 running games are restored after an application restart; connected players
 appear offline until they rejoin with their locally stored resume token. A
-completed private Zilch Alpha remains as an active-state terminal board so the
-participants can reload its winner or tie; it is not written to ZDWA history.
+terminal game is first retained as an active recovery snapshot, then stored
+idempotently as a typed result, and removed from active storage only after the
+write succeeds. Finished Zilch games use their own private `zilch-house-v1`
+payload and never enter ZDWA history.
 
 Production deployment details, including the IONOS SSH target and mandatory
 leaderboard backup rules, are documented in `docs/DEPLOYMENT.md`. Use
@@ -163,11 +170,12 @@ RollTheDice/
 │   ├── auth.py              # Password, session, and role logic
 │   ├── api_auth.py          # Login, password, and admin-user API
 │   ├── api_users.py         # Profiles, stats, search, ranking, and assignments
-│   ├── game_history.py      # Complete results and legacy JSON import
+│   ├── game_history.py      # Typed completed results and legacy ZDWA JSON import
 │   ├── game_state.py        # Live-game state, boards, timeouts, and connection state
 │   ├── game_engine.py       # Turn validation, rolls, suggestions, and score projections
 │   ├── game_websocket.py    # WebSocket coordinator; action handlers live in game_ws_*.py
-│   ├── game_results.py      # Completed-result projection and statistic persistence
+│   ├── game_results.py      # ZDWA result projection and statistic persistence
+│   ├── zilch_results.py     # Private, versioned Zilch result payload/projection
 │   ├── leaderboard_service.py # Leaderboard aggregation and replay/profile reads
 │   ├── leaderboard_storage.py # Locked legacy-JSON compatibility storage
 │   ├── rules.py             # Server-side subtotal and total calculations
@@ -220,11 +228,14 @@ asset versions.
 The shared account, session cookie, roles, player identities, chat, rejoin,
 WebSocket transport, and active-game persistence can serve more than one game.
 Game-specific state creation, join/start setup, gameplay actions, lobby progress,
-and snapshots are selected through a small registry. Existing ZDWA flows remain
-behind their adapter; Zilch has separate modules and cannot call ZDWA scoring or
-completion code. The private Zilch Alpha is deliberately `noindex`, guarded on
-every relevant page, API, detail lookup, and WebSocket connection, and defaults
-to admin `Mani` only unless its explicit preview allowlist is configured.
+snapshots, and terminal-result finalization are selected through a small
+registry. Existing ZDWA flows remain behind their adapter; Zilch has separate
+modules and cannot call ZDWA scoring or completion code. `CompletedGame` now
+stores an explicit `game_type`; all older records are migrated to `zdwa`, while
+private Zilch results use a versioned `zilch-house-v1` JSON payload. The private
+Zilch Alpha is deliberately `noindex`, guarded on every relevant page, API,
+detail lookup, and WebSocket connection, and defaults to admin `Mani` only
+unless its explicit preview allowlist is configured.
 
 The architecture boundary is documented in
 [docs/MULTIGAME_FOUNDATION.md](docs/MULTIGAME_FOUNDATION.md); the confirmed

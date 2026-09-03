@@ -5,9 +5,10 @@ internal Zilch preview. The binding Zilch house rules live in
 [ZILCH_RULES.md](ZILCH_RULES.md); neither document is a public player-facing
 rule page or a promise of a finished Zilch user interface.
 
-The current private increment is a playable **human-vs-human Alpha**. It is
-not a public release and it deliberately remains outside ZDWA results,
-statistics, leaderboards, achievements, and replay views.
+The current private increment is a playable **human-vs-human Alpha** with a
+private, read-only completed-result report. It is not a public release and it
+deliberately remains outside ZDWA results, statistics, leaderboards,
+achievements, and replay views.
 
 ## Boundaries
 
@@ -27,12 +28,14 @@ statistics, leaderboards, achievements, and replay views.
   CPU strategy names (`conservative | normal | aggressive`) are not a bot
   implementation. Its UI is a separate route/root with its own stylesheet
   boundary (`data-game="zilch"`), six server-snapshot dice, and no manual
-  dice-selection affordance.
+  dice-selection affordance. Completed games have their own versioned
+  `zilch-house-v1` payload and private result/history projection.
 
 `app/game_registry.py` is the intentionally small composition point. It
 selects state creation, per-game join/start setup, gameplay-action dispatch,
-progress projection, and snapshots by a centrally validated `zdwa | zilch`
-type. Legacy active snapshots without `_game_type` are restored as `zdwa`.
+progress projection, snapshots, and terminal finalization by a centrally
+validated `zdwa | zilch` type. Legacy active snapshots without `_game_type` are
+restored as `zdwa`.
 
 ## Preview access
 
@@ -46,19 +49,44 @@ user receives no admin role or other elevated capability. Leave the variable
 empty in normal production operation.
 
 The same policy drives switch visibility and the protected `/zilch` routes,
-creation, lobby filtering, detail APIs, and every WebSocket connection/action.
-The raw `/static/zilch.html` artifact is denied. Zilch is not in the public SEO
+creation, lobby/history/result APIs, and every WebSocket connection/action. The
+raw `/static/zilch.html` artifact is denied. Zilch is not in the public SEO
 registry or sitemap and its shell is `noindex`.
 
-## Completion boundary
+## Typed completion boundary
 
-No `CompletedGame.game_type` migration is included. A completed Alpha Zilch
-state remains in `active_games` so both participants can reload/rejoin and see
-the winner or tie, but it is never written to ZDWA's result history,
-statistics, leaderboards, achievements, or replay data. The existing ZDWA
-finalizer defensively rejects non-ZDWA games. A later typed completion branch
-must introduce a separate completed-game model/migration and explicitly split
-all aggregates before Zilch result persistence is enabled.
+Alembic revision `20260903_0016` gives `completed_games` and deletion audit
+tombstones an explicit non-null `game_type` constrained to `zdwa | zilch`.
+Existing rows are deterministically backfilled to `zdwa`; the legacy JSON
+importer and every current ZDWA writer also pass `zdwa` explicitly. The
+composite chronological result index is `(game_type, finished_at)`.
+
+The registry selects a game-specific finalizer. A terminal live state is first
+persisted as an `active_games` recovery snapshot, then a finalizer builds its
+authoritative result in one typed write. `game_id` makes repeated finalization
+idempotent: an existing row of the same type is a successful recovery, while a
+type conflict or database failure leaves the terminal active state intact.
+Only after confirmed persistence is that active state removed. Startup retries
+unpersisted terminal states; a malformed legacy Zilch terminal (for example
+without an authoritative end timestamp) is logged and retained rather than
+invented, converted to ZDWA, or deleted.
+
+ZDWA keeps its existing scorecard payload, legacy replay, leaderboard JSON,
+statistics, and achievement pipeline behind the `zdwa` finalizer. All of those
+SQL readers explicitly filter `game_type = zdwa`. Zilch uses a separate
+`zilch_result` payload at schema version 1 with its ruleset, timestamps,
+participants, start-roll attempts, both boards and round histories, penalties,
+final-round state, outcome, and only reliable derived metrics. It is visible
+only through protected `/api/zilch/results` endpoints and
+`/zilch/ergebnis/{game_id}`; it never enters the ZDWA replay renderer or any
+ZDWA aggregate.
+
+SQLite receives native non-null type columns plus INSERT/UPDATE validation
+triggers because rebuilding a populated parent table would risk cascading its
+participant rows. The downgrade is intentionally guarded: it works for
+ZDWA-only data, but aborts before removing the discriminator if any Zilch
+completed result or tombstone exists. Restore a compatible backup instead of
+silently discarding Zilch history.
 
 ## Zilch rule contract and engine boundary
 
@@ -86,8 +114,8 @@ Hot Dice/confirmation state, and final-reply markers are projected together.
 
 The remaining product decisions are deliberately narrower: the exact penalty
 cadence after a fourth or later consecutive Zilch, CPU decisions, a meaningful
-solo objective, manual dice interaction, final branding/polish, typed
-completed-game persistence, Zilch stats/achievements, and public release.
+solo objective, manual dice interaction, final branding/polish, Zilch
+statistics/achievements, and public release.
 
 ## Human-vs-human Alpha operation
 
@@ -103,6 +131,10 @@ completed-game persistence, Zilch stats/achievements, and public release.
    rolls again or banks when allowed. Reloading either browser reconnects with
    its authenticated player identity; no saved browser score or Quick Hold is
    reused.
+5. After the full reply, both terminal snapshots link to the protected,
+   read-only result report. The Zilch lobby lists only the signed-in preview
+   account's own completed games; it does not add a public history or a ZDWA
+   replay.
 
 The Alpha uses a CSS-only warm wood table, paper-like action cards, deep dice,
 and high-contrast selection/status markers. This is an independent direction,
@@ -123,9 +155,9 @@ or layout.
   connection limits, action throttling, common session actions, and dispatch.
   Chat/reactions are reusable; ZDWA roll/write/correction/superadmin actions are
   game-specific.
-- Completed games, participants, legacy JSON leaderboards, statistics, replay
-  snapshots, and achievements currently encode ZDWA semantics. They therefore
-  remain outside Zilch until typed completion is introduced.
+- Completed-game rows now have a type discriminator. ZDWA's participants,
+  legacy JSON leaderboards, statistics, replay snapshots, and achievements
+  remain ZDWA-only; Zilch reads its separate versioned JSON result payload.
 - Deployment is a single FastAPI container with SQLite and JSON data in the
   mounted `data` directory, fronted by nginx in production. Alembic migrations
   run before readiness; the guarded deploy script backs up persistent data.
@@ -143,11 +175,12 @@ the repository-owned current status.
 - The confirmed engine now powers the private browser flow. Quick Holds are
   the only selection method in this increment; manual dice selection and final
   interaction polish stay future work.
-- A completed-game migration remains deferred. Alpha completion is durable in
-  active state only; all existing aggregates are ZDWA-specific and the
-  defensive finalizer rejects non-ZDWA games.
-- The current preview URL is `/zilch` with rooms below `/zilch/spiel/{id}`.
-  It is a private, `noindex` implementation route, not a committed public URL.
+- Typed completion now preserves terminal recovery data until a result write
+  succeeds. ZDWA aggregates remain explicitly type-filtered; Zilch exposes
+  only private per-user history and a read-only report.
+- The current preview URLs are `/zilch`, `/zilch/spiel/{id}`, and the private
+  `/zilch/ergebnis/{id}`. They are `noindex` implementation routes, not
+  committed public URLs.
 
 ## Master checklist
 
@@ -161,8 +194,9 @@ the repository-owned current status.
   timeout, and active persistence shared.
 - [x] Protect Zilch page, list, detail, creation, room redirect, static page
   artifact, and WebSocket server-side for admin username `Mani` by default.
-- [x] Keep Zilch out of completed results, achievements, statistics,
-  leaderboards, public SEO registry, sitemap, and service-worker precache.
+- [x] Keep Zilch out of **ZDWA** completed results, achievements, statistics,
+  leaderboards, replay, public SEO registry, sitemap, and service-worker
+  precache while allowing only its separate private result payload.
 - [x] Model six dice, target 10,000, up to two separate boards, play modes,
   transport-independent participant types, and reserved CPU strategies.
 - [x] Provide a separate DE/EN preview shell and safe app switch/hotkey.
@@ -214,12 +248,15 @@ the repository-owned current status.
 
 ### Phase 4 — typed completion and account features
 
-- [ ] Add a `game_type` (and, if required, ruleset/version) migration to
-  completed/deleted games with deterministic `zdwa` backfill and rollback.
-- [ ] Split result projection and every leaderboard/statistics query by game
-  type before allowing Zilch completion.
-- [ ] Persist participant type and optional account assignment without making
-  `user_id` mandatory.
+- [x] Add a `game_type` and versioned Zilch payload migration to
+  completed/deleted games with deterministic `zdwa` backfill and guarded
+  ZDWA-only rollback.
+- [x] Split result projection and every ZDWA leaderboard/statistics query by
+  game type before allowing private Zilch completion.
+- [x] Persist participant type and optional account assignment in the Zilch
+  payload without making `user_id` mandatory.
+- [x] Provide idempotent recovery plus a protected, read-only Zilch report and
+  minimal own-history list.
 - [ ] Design Zilch-specific statistics and achievements from confirmed rules;
   never reuse ZDWA achievement evaluation.
 
@@ -230,15 +267,16 @@ the repository-owned current status.
 - [ ] Replace the temporary `Mani` policy with an explicit feature flag or
   entitlement and test staged rollout/rollback.
 - [ ] Decide permanent URLs and SEO status only when the feature is public.
-- [ ] Run migration rehearsal and restore test, then lint, full backend and
+- [ ] Run a production backup/restore rehearsal, then lint, full backend and
   browser suites, asset consistency, and production smoke checks.
 
 ## Foundation acceptance and rollback
 
 Acceptance requires unchanged ZDWA create/join/rejoin/roll/write/chat/finish
 behavior; an explicit game type in every saved state; complete denial of Zilch
-data to unauthorized users; distinct Zilch state/actions/snapshots; and no
-Zilch result entering ZDWA aggregates. Removing the Zilch routes/switch and
-registry entry disables the preview; existing active snapshots remain readable
-because untyped states default to ZDWA. No database migration is part of this
-branch, so schema rollback is unnecessary.
+data to unauthorized users; distinct Zilch state/actions/snapshots; typed,
+idempotent finalization; and no Zilch result entering ZDWA aggregates. Removing
+the Zilch routes/switch and registry entry disables the preview; existing active
+snapshots remain readable because untyped states default to ZDWA. Schema
+rollback is permitted only while no Zilch result/tombstone exists; otherwise a
+compatible database backup is required.

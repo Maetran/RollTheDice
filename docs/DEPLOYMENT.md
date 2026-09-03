@@ -73,6 +73,13 @@ Vor einem regulären Rollout müssen folgende Bedingungen erfüllt sein:
   Änderungen.
 - Datenmigrationen besitzen eine Alembic-Migration. Die Anwendung aktualisiert
   das Schema beim Start automatisch bis `head`.
+- Vor einer Migration das vollständige `data/`-Verzeichnis sichern. Revision
+  `20260903_0016` typisiert abgeschlossene Spiele: vorhandene Ergebnisse und
+  Tombstones werden zu `zdwa` zurückgefüllt; neue private Zilch-Ergebnisse
+  verwenden `zilch`. Ein Downgrade wird absichtlich verweigert, solange
+  Zilch-Ergebnisse oder
+  -Tombstones vorhanden sind; dann ist ein kompatibles Backup der sichere
+  Rückweg.
 - Statische Assets sind mit `scripts/sync_static_versions.py --check` synchronisiert.
 
 Empfohlene lokale Prüfung:
@@ -297,6 +304,12 @@ und das Deployment erstellt nochmals ein aktuelles Datenbackup.
 Alembic-Downgrades passieren nicht automatisch. Vor einem Rollback über eine
 Schemaänderung muss geprüft werden, ob der ältere Code mit dem bereits
 aktualisierten Schema kompatibel ist.
+
+Für Revision `20260903_0016` gilt zusätzlich: Ein Downgrade ist nur mit
+ZDWA-only Ergebnissen möglich. Sobald eine private Zilch-Ergebniszeile oder ein
+Zilch-Tombstone existiert, bricht die Migration kontrolliert ab und erhält die
+Daten. In diesem Fall nicht manuell Spalten oder Ergebnisse löschen, sondern
+den Code vorwärts reparieren oder ein passendes `data.backup-*` wiederherstellen.
 
 ### Beschädigte Produktionsdaten
 

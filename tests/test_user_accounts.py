@@ -312,13 +312,20 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertEqual(restored["_spectators"], [])
         self.assertTrue(restored["_resume_required"])
 
-    def test_finished_game_removes_active_snapshot(self):
+    def test_finished_game_is_retained_until_typed_finalization_confirms_persistence(self):
         game = self.make_game(mode=1, players=[("p1", "Anna")])
         save_active_game(game)
         game["_finished"] = True
         game["_started"] = False
         save_active_game(game)
 
+        with session_scope() as db:
+            active = db.scalar(select(ActiveGame).where(ActiveGame.game_id == game["_id"]))
+            self.assertIsNotNone(active)
+            self.assertTrue(json.loads(active.state_json)["_finished"])
+
+        game["_completion_persisted"] = True
+        save_active_game(game)
         with session_scope() as db:
             self.assertIsNone(db.scalar(select(ActiveGame).where(ActiveGame.game_id == game["_id"])))
 

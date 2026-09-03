@@ -4,11 +4,14 @@ import { initializeAppMode } from "../multigame/app-mode.js";
 const root = document.querySelector("[data-zilch-root]");
 const content = document.getElementById("zilchContent");
 const gameIdMatch = window.location.pathname.match(/^\/zilch\/spiel\/([^/]+)$/);
+const resultIdMatch = window.location.pathname.match(/^\/zilch\/ergebnis\/([^/]+)$/);
 const gameId = gameIdMatch ? decodeURIComponent(gameIdMatch[1]) : null;
+const resultId = resultIdMatch ? decodeURIComponent(resultIdMatch[1]) : null;
 const state = {
   auth: null,
   details: null,
   game: null,
+  result: null,
   socket: null,
   playerId: null,
   reconnectTimer: null,
@@ -33,6 +36,27 @@ function sameId(first, second) {
 
 function number(value) {
   return new Intl.NumberFormat(window.ZDWA_I18N?.locale?.() || "de-CH").format(Number(value || 0));
+}
+
+function formattedDateTime(value) {
+  if (!value) return t("Nicht verfügbar");
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return t("Nicht verfügbar");
+  return new Intl.DateTimeFormat(window.ZDWA_I18N?.locale?.() || "de-CH", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function formattedDuration(value) {
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds) || seconds < 0) return t("Nicht verfügbar");
+  const hours = Math.floor(seconds / 3_600);
+  const minutes = Math.floor((seconds % 3_600) / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  if (hours) return `${hours} ${t("Std.")} ${minutes} ${t("Min.")}`;
+  if (minutes) return `${minutes} ${t("Min.")} ${remainingSeconds} ${t("Sek.")}`;
+  return `${remainingSeconds} ${t("Sek.")}`;
 }
 
 function storageKey(kind) {
@@ -123,6 +147,113 @@ async function fetchZilchGames() {
   return Array.isArray(payload.games) ? payload.games : [];
 }
 
+function resultRecord(payload) {
+  const topLevel = payload?.result && typeof payload.result === "object" ? payload.result : payload;
+  if (!topLevel || typeof topLevel !== "object") return null;
+  const nestedPayload = topLevel.payload && typeof topLevel.payload === "object" ? topLevel.payload : null;
+  return nestedPayload ? { ...topLevel, ...nestedPayload } : topLevel;
+}
+
+function resultIdFor(result) {
+  return String(result?.game_id || result?.id || "");
+}
+
+function resultParticipants(result) {
+  const participants = result?.participants || result?.player_order || [];
+  return Array.isArray(participants) ? participants.filter(player => player && typeof player === "object") : [];
+}
+
+function resultPlayerName(player) {
+  return String(player?.display_name || player?.name || player?.username || t("Spieler"));
+}
+
+function resultPlayerId(player) {
+  return String(player?.participant_id || player?.player_id || player?.id || "");
+}
+
+function resultBoardFor(result, player) {
+  const boards = result?.boards || result?.zilch_boards || {};
+  const playerId = resultPlayerId(player);
+  if (Array.isArray(boards)) {
+    return boards.find(board => sameId(board?.participant_id || board?.player_id || board?.id, playerId)) || {};
+  }
+  return boards?.[playerId] || {};
+}
+
+function resultTotals(result) {
+  return result?.final_scores || result?.totals || result?.outcome?.totals || {};
+}
+
+function resultTotalFor(result, player, board) {
+  const totals = resultTotals(result);
+  const playerId = resultPlayerId(player);
+  const raw = totals?.[playerId] ?? board?.total_points ?? board?.final_total_points ?? player?.total_points ?? 0;
+  return number(raw);
+}
+
+function resultWinnerIds(result) {
+  const outcome = result?.outcome || {};
+  const winners = outcome.winner_ids || result?.winner_ids || [];
+  if (Array.isArray(winners)) return winners.map(value => String(value));
+  return winners ? [String(winners)] : [];
+}
+
+function resultIsTied(result) {
+  return Boolean(result?.outcome?.tied || result?.tied || result?.outcome?.status === "tie");
+}
+
+function resultOutcomeLabel(result) {
+  if (resultIsTied(result)) return t("Gleichstand");
+  const winnerIds = resultWinnerIds(result);
+  const names = resultParticipants(result)
+    .filter(player => winnerIds.some(id => sameId(id, resultPlayerId(player))))
+    .map(resultPlayerName);
+  return names.length ? names.join(", ") : t("Beendet");
+}
+
+function resultRoundHistory(entry) {
+  if (!entry || typeof entry !== "object") return "";
+  const round = Number(entry.round ?? entry.round_number ?? 0);
+  const prefix = round ? `${t("Runde")} ${round}: ` : "";
+  const event = String(entry.event || entry.type || "");
+  if (event === "bank" || event === "banked") return `${prefix}+${number(entry.points ?? entry.banked_points)} ${t("gesichert")}`;
+  if (event === "zilch") {
+    const penalty = Number(entry.penalty ?? entry.zilch_penalty ?? 0);
+    return penalty ? `${prefix}${t("Zilch")} · −${number(penalty)}` : `${prefix}${t("Zilch")}`;
+  }
+  if (event === "hot_dice") return `${prefix}${t("Hot Dice")}`;
+  return prefix || t("Runde abgeschlossen");
+}
+
+function resultHistoryCard(result) {
+  const id = resultIdFor(result);
+  if (!id) return "";
+  const participants = resultParticipants(result);
+  const scores = participants.map(player => {
+    const board = resultBoardFor(result, player);
+    return `${resultPlayerName(player)} ${resultTotalFor(result, player, board)}`;
+  }).join(" · ");
+  const name = String(result?.game_name || result?.name || "Zilch");
+  return `<article class="zilch-result-history-card">
+    <div>
+      <p class="eyebrow">${escapeHtml(t("Abgeschlossene Partie"))}</p>
+      <h3>${escapeHtml(name)}</h3>
+      <p class="zilch-muted">${escapeHtml(formattedDateTime(result?.finished_at))}</p>
+      <p>${escapeHtml(scores || t("Punktestand nicht verfügbar"))}</p>
+      <p class="zilch-result-history-card__outcome">${escapeHtml(t("Ergebnis"))}: <strong>${escapeHtml(resultOutcomeLabel(result))}</strong></p>
+    </div>
+    <a class="button-link zilch-lobby-action" href="/zilch/ergebnis/${encodeURIComponent(id)}">${escapeHtml(t("Ergebnis ansehen"))}</a>
+  </article>`;
+}
+
+async function fetchZilchResults() {
+  const response = await fetch("/api/zilch/results", { cache: "no-store" });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const payload = await response.json();
+  const results = Array.isArray(payload?.results) ? payload.results : [];
+  return results.map(resultRecord).filter(Boolean);
+}
+
 async function renderLobby() {
   if (!content) return;
   content.innerHTML = `<section class="zilch-intro zilch-intro--alpha">
@@ -145,12 +276,17 @@ async function renderLobby() {
       <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Zilch-Lobby"))}</p><h2>${escapeHtml(t("Deine und offene Zilch-Partien"))}</h2></div><button id="zilchRefresh" class="small ghost" type="button">${escapeHtml(t("Aktualisieren"))}</button></div>
       <div id="zilchGames" class="zilch-game-list" aria-live="polite">${escapeHtml(t("Zilch-Partien werden geladen …"))}</div>
     </section>
+    <section class="zilch-card zilch-results-history" aria-labelledby="zilchHistoryTitle">
+      <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Private Historie"))}</p><h2 id="zilchHistoryTitle">${escapeHtml(t("Deine abgeschlossenen Zilch-Partien"))}</h2></div></div>
+      <div id="zilchResultsHistory" class="zilch-result-history-list" aria-live="polite">${escapeHtml(t("Zilch-Historie wird geladen …"))}</div>
+    </section>
     <section class="zilch-card zilch-alpha-note">
       <h2>${escapeHtml(t("Human-vs-Human-Alpha"))}</h2>
-      <p>${escapeHtml(t("Quick Holds, Würfel und Punkte werden ausschließlich auf dem Server geprüft. Zilch-Partien erzeugen weiterhin keine ZDWA-Ergebnisse, Statistiken oder Erfolge."))}</p>
+      <p>${escapeHtml(t("Quick Holds, Würfel und Punkte werden ausschließlich auf dem Server geprüft. Zilch-Partien bleiben von ZDWA-Statistiken, Erfolgen und Bestenlisten getrennt."))}</p>
     </section>`;
 
   const gamesSlot = document.getElementById("zilchGames");
+  const resultsSlot = document.getElementById("zilchResultsHistory");
   const refreshGames = async () => {
     try {
       const games = await fetchZilchGames();
@@ -165,7 +301,23 @@ async function renderLobby() {
       gamesSlot.innerHTML = `<p class="zilch-error">${escapeHtml(t("Zilch-Lobby konnte nicht geladen werden."))}</p>`;
     }
   };
-  document.getElementById("zilchRefresh")?.addEventListener("click", () => { void refreshGames(); });
+  const refreshResults = async () => {
+    if (!resultsSlot) return;
+    try {
+      const results = await fetchZilchResults();
+      resultsSlot.innerHTML = results.length
+        ? results.map(resultHistoryCard).join("")
+        : `<p class="zilch-muted">${escapeHtml(t("Noch keine abgeschlossenen Zilch-Partien"))}</p>`;
+    } catch (_) {
+      // A history request is intentionally optional for the active lobby. A
+      // private endpoint may be unavailable while an older server is running.
+      resultsSlot.innerHTML = `<p class="zilch-muted">${escapeHtml(t("Zilch-Historie ist derzeit nicht verfügbar."))}</p>`;
+    }
+  };
+  document.getElementById("zilchRefresh")?.addEventListener("click", () => {
+    void refreshGames();
+    void refreshResults();
+  });
   document.getElementById("zilchCreateForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const errorSlot = document.getElementById("zilchCreateError");
@@ -185,6 +337,7 @@ async function renderLobby() {
     }
   });
   await refreshGames();
+  await refreshResults();
 }
 
 function connectionLabel(player) {
@@ -225,6 +378,136 @@ function boardCard(player, board) {
     </dl>
     <ol class="zilch-round-history" aria-label="${escapeHtml(t("Rundenhistorie"))}">${history.length ? history.map(entry => `<li>${escapeHtml(roundHistory(entry))}</li>`).join("") : `<li class="zilch-muted">${escapeHtml(t("Noch keine Runde abgeschlossen"))}</li>`}</ol>
   </article>`;
+}
+
+function resultPlayerForId(result, playerId) {
+  return resultParticipants(result).find(player => sameId(resultPlayerId(player), playerId));
+}
+
+function resultBoardCard(result, player) {
+  const board = resultBoardFor(result, player);
+  const history = Array.isArray(board?.rounds) ? board.rounds.slice().reverse() : [];
+  const penalties = history.filter(entry => String(entry?.event || entry?.type || "") === "zilch" && Number(entry?.penalty ?? entry?.zilch_penalty ?? 0) > 0);
+  const playerNameValue = resultPlayerName(player);
+  return `<article class="zilch-board zilch-result-board">
+    <header class="zilch-board-head"><div><h3>${escapeHtml(playerNameValue)}</h3><p>${escapeHtml(t("Abgeschlossen"))}</p></div></header>
+    <dl>
+      <div><dt>${escapeHtml(t("Gesamtpunkte"))}</dt><dd>${resultTotalFor(result, player, board)}</dd></div>
+      <div><dt>${escapeHtml(t("Zilch-Runden"))}</dt><dd>${number(board?.zilch_count ?? history.filter(entry => String(entry?.event || entry?.type || "") === "zilch").length)}</dd></div>
+      <div><dt>${escapeHtml(t("Zilch-Strafen"))}</dt><dd>${number(board?.penalty_total ?? penalties.reduce((total, entry) => total + Number(entry?.penalty ?? entry?.zilch_penalty ?? 0), 0))}</dd></div>
+    </dl>
+    <h4 class="zilch-result-board__history-title">${escapeHtml(t("Rundenhistorie"))}</h4>
+    <ol class="zilch-round-history" aria-label="${escapeHtml(`${t("Rundenhistorie")} ${playerNameValue}`)}">${history.length
+      ? history.map(entry => `<li>${escapeHtml(resultRoundHistory(entry))}</li>`).join("")
+      : `<li class="zilch-muted">${escapeHtml(t("Keine Rundenhistorie verfügbar"))}</li>`}</ol>
+  </article>`;
+}
+
+function resultStartRollAttempts(result) {
+  const start = result?.start_roll || result?.start_rolls || {};
+  const attempts = Array.isArray(start?.attempts) ? start.attempts : Array.isArray(start) ? start : [];
+  if (attempts.length) return attempts;
+  if (start?.rolls && typeof start.rolls === "object") return [{ rolls: start.rolls, tied: start.tied }];
+  return [];
+}
+
+function resultStartRollCard(result) {
+  const attempts = resultStartRollAttempts(result);
+  if (!attempts.length) return "";
+  const rows = attempts.map((attempt, attemptIndex) => {
+    const rolls = attempt?.rolls && typeof attempt.rolls === "object" ? attempt.rolls : {};
+    const values = Object.entries(rolls).map(([playerId, value]) => {
+      const player = resultPlayerForId(result, playerId);
+      const name = player ? resultPlayerName(player) : t("Spieler");
+      return `<li><span>${escapeHtml(name)}</span><strong class="zilch-start-roll-value">${number(value)}</strong></li>`;
+    }).join("");
+    const rollValues = Object.values(rolls);
+    const tied = Boolean(attempt?.tied) || (rollValues.length > 1 && new Set(rollValues.map(String)).size === 1);
+    const tie = tied ? `<p class="zilch-muted">${escapeHtml(t("Gleichstand – Startwurf wiederholt"))}</p>` : "";
+    return `<div class="zilch-result-start-attempt"><h3>${escapeHtml(`${t("Startwurf")} ${attempts.length > 1 ? `· ${attemptIndex + 1}` : ""}`)}</h3><ol class="zilch-start-rolls">${values}</ol>${tie}</div>`;
+  }).join("");
+  return `<section class="zilch-card zilch-result-start-roll" aria-labelledby="zilchResultStartRollTitle"><p class="eyebrow">${escapeHtml(t("Startwurf"))}</p><h2 id="zilchResultStartRollTitle">${escapeHtml(t("Ermittelte Startreihenfolge"))}</h2>${rows}</section>`;
+}
+
+function resultFinalRoundCard(result) {
+  const finalRound = result?.final_round || result?.outcome?.final_round || {};
+  const triggeredBy = finalRound?.triggered_by || finalRound?.triggered_by_id || result?.outcome?.final_round_triggered_by;
+  const replyPlayerIds = finalRound?.reply_player_ids
+    || finalRound?.reply_participant_ids
+    || finalRound?.completed_player_ids
+    || finalRound?.participants_with_reply
+    || (triggeredBy ? resultParticipants(result).map(resultPlayerId).filter(playerId => !sameId(playerId, triggeredBy)) : []);
+  const hasReplyPlayers = Array.isArray(replyPlayerIds) ? replyPlayerIds.length > 0 : Boolean(replyPlayerIds);
+  if (!triggeredBy && !hasReplyPlayers) return "";
+  const triggerPlayer = resultPlayerForId(result, triggeredBy);
+  const replyNames = (Array.isArray(replyPlayerIds) ? replyPlayerIds : [replyPlayerIds])
+    .map(playerId => resultPlayerForId(result, playerId))
+    .filter(Boolean)
+    .map(resultPlayerName);
+  return `<section class="zilch-card zilch-result-final-round" aria-labelledby="zilchResultFinalRoundTitle">
+    <p class="eyebrow">${escapeHtml(t("Schlussrunde"))}</p>
+    <h2 id="zilchResultFinalRoundTitle">${escapeHtml(t("Voller Gegenzug"))}</h2>
+    ${triggerPlayer ? `<p>${escapeHtml(t("Ausgelöst von"))}: <strong>${escapeHtml(resultPlayerName(triggerPlayer))}</strong></p>` : ""}
+    <p>${escapeHtml(t("Gegenzug abgeschlossen von"))}: <strong>${escapeHtml(replyNames.length ? replyNames.join(", ") : t("Kein Gegenzug erforderlich"))}</strong></p>
+  </section>`;
+}
+
+function resultHeadline(result) {
+  if (resultIsTied(result)) return t("Gleichstand");
+  const winnerIds = resultWinnerIds(result);
+  const names = resultParticipants(result)
+    .filter(player => winnerIds.some(id => sameId(id, resultPlayerId(player))))
+    .map(resultPlayerName);
+  return names.length ? `${names.join(", ")} ${t("gewinnt die Partie.")}` : t("Spiel beendet");
+}
+
+function resultSummary(result) {
+  const ruleset = String(result?.ruleset || result?.rule_set || t("Nicht verfügbar"));
+  return `<section class="zilch-card zilch-final-result zilch-result-summary" role="status" aria-labelledby="zilchResultTitle">
+    <p class="eyebrow">${escapeHtml(t("Zilch-Ergebnis"))}</p>
+    <h1 id="zilchResultTitle">${escapeHtml(resultHeadline(result))}</h1>
+    <dl class="zilch-result-facts">
+      <div><dt>${escapeHtml(t("Spiel-ID"))}</dt><dd><code>${escapeHtml(resultIdFor(result))}</code></dd></div>
+      <div><dt>${escapeHtml(t("Regelset"))}</dt><dd>${escapeHtml(ruleset)}</dd></div>
+      <div><dt>${escapeHtml(t("Beendet am"))}</dt><dd>${escapeHtml(formattedDateTime(result?.finished_at))}</dd></div>
+      <div><dt>${escapeHtml(t("Spieldauer"))}</dt><dd>${escapeHtml(formattedDuration(result?.duration_seconds ?? result?.duration))}</dd></div>
+    </dl>
+  </section>`;
+}
+
+async function fetchZilchResult(id) {
+  const response = await fetch(`/api/zilch/results/${encodeURIComponent(id)}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const payload = await response.json();
+  return resultRecord(payload);
+}
+
+async function renderResult() {
+  if (!content || !resultId) return;
+  renderNotice("Zilch-Ergebnis wird geladen …");
+  try {
+    const result = await fetchZilchResult(resultId);
+    if (!result || resultIdFor(result) !== resultId) {
+      renderNotice("Zilch-Ergebnis nicht verfügbar.", { kind: "error" });
+      return;
+    }
+    state.result = result;
+    const participants = resultParticipants(result);
+    const gameName = String(result?.game_name || result?.name || "Zilch");
+    document.title = `${gameName} – ${t("Zilch-Ergebnis")}`;
+    content.innerHTML = `<section class="zilch-game-head zilch-result-head">
+        <div><p class="eyebrow">${escapeHtml(t("Privater Ergebnisbericht"))}</p><h1>${escapeHtml(gameName)}</h1><p>${escapeHtml(t("Read-only Ergebnis einer privaten Zilch-Partie."))}</p></div>
+        <a class="small ghost button-link" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
+      </section>
+      ${resultSummary(result)}
+      <section class="zilch-board-grid zilch-result-board-grid" aria-label="${escapeHtml(t("Zilch-Ergebnisboards"))}">${participants.map(player => resultBoardCard(result, player)).join("") || `<p class="zilch-muted">${escapeHtml(t("Keine Teilnehmerdaten verfügbar"))}</p>`}</section>
+      ${resultStartRollCard(result)}
+      ${resultFinalRoundCard(result)}`;
+  } catch (_) {
+    // The server intentionally answers private result access with an opaque
+    // failure; preserve that non-disclosing behaviour in the view as well.
+    renderNotice("Zilch-Ergebnis nicht verfügbar.", { kind: "error" });
+  }
 }
 
 function diePips(value) {
@@ -329,7 +612,14 @@ function finalResult(snapshot) {
   const detail = outcome.tied
     ? t("Die Schlussrunde endet mit Gleichstand.")
     : `${winnerNames} ${t("gewinnt die Partie.")}`;
-  return `<section class="zilch-card zilch-final-result" role="status"><p class="eyebrow">${escapeHtml(t("Endstand"))}</p><h2>${escapeHtml(headline)}</h2><p>${detail}</p><a class="button-link" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a></section>`;
+  const candidateResultRoute = snapshot?._zilch_result?.route || snapshot?._zilch_result?.result_route || snapshot?._zilch_result?.result_url;
+  const resultRoute = typeof candidateResultRoute === "string" && /^\/zilch\/ergebnis\/[^/?#]+$/.test(candidateResultRoute)
+    ? candidateResultRoute
+    : null;
+  const resultLink = resultRoute
+    ? `<a class="button-link" href="${escapeHtml(resultRoute)}">${escapeHtml(t("Ergebnis ansehen"))}</a>`
+    : "";
+  return `<section class="zilch-card zilch-final-result" role="status"><p class="eyebrow">${escapeHtml(t("Endstand"))}</p><h2>${escapeHtml(headline)}</h2><p>${detail}</p><div class="zilch-actions">${resultLink}<a class="button-link" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a></div></section>`;
 }
 
 function statusText(snapshot, turnState) {
@@ -602,7 +892,8 @@ async function initialize() {
   document.getElementById("zilchLogout")?.addEventListener("click", async () => {
     try { await logout(); } finally { window.location.replace("/"); }
   });
-  if (gameId) await renderGame();
+  if (resultId) await renderResult();
+  else if (gameId) await renderGame();
   else await renderLobby();
 }
 
