@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from .database import database_schema_ready, session_scope
-from .game_types import game_type_from_state
+from .game_types import ZILCH_GAME_TYPE, game_type_from_state
 from .models import ActiveGame
 from .security import utcnow
 
@@ -45,13 +45,20 @@ def serializable_game_state(game: dict) -> dict:
 
 
 def save_active_game(game: dict) -> None:
-    """Upsert a waiting/running game, or remove it once terminal."""
+    """Upsert a live game and retain the private Zilch terminal board.
+
+    ZDWA completion is persisted through its dedicated result pipeline and can
+    disappear from ``active_games``.  Zilch deliberately has no such pipeline
+    yet, so its completed alpha state remains restart-safe until a later typed
+    completion design replaces this temporary boundary.
+    """
     if not database_schema_ready():
         return
     game_id = str(game.get("_id") or "").strip()
     if not game_id:
         return
-    if game.get("_finished") or game.get("_aborted"):
+    game_type = game_type_from_state(game)
+    if game.get("_aborted") or (game.get("_finished") and game_type != ZILCH_GAME_TYPE):
         delete_active_game(game_id)
         return
     now = utcnow()
@@ -102,13 +109,18 @@ def load_active_games() -> dict[str, dict]:
             for row in rows:
                 try:
                     game = json.loads(row.state_json)
-                    if not isinstance(game, dict) or game.get("_finished") or game.get("_aborted"):
+                    if not isinstance(game, dict):
                         db.delete(row)
                         continue
                     # Missing type markers belong to pre-multigame ZDWA
                     # snapshots. Unknown markers are malformed and must never
                     # be silently routed through a different rules engine.
                     game["_game_type"] = game_type_from_state(game)
+                    if game.get("_aborted") or (
+                        game.get("_finished") and game["_game_type"] != ZILCH_GAME_TYPE
+                    ):
+                        db.delete(row)
+                        continue
                     game["_id"] = row.game_id
                     game["_last_activity"] = _parse_activity(game.get("_last_activity"))
                     game["_spectators"] = []

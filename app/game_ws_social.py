@@ -14,6 +14,7 @@ from .game_state import (
     pause_remaining_seconds,
     touch,
 )
+from .game_types import ZILCH_GAME_TYPE, game_type_from_state
 from .game_ws_session import GameSocketSession
 
 logger = logging.getLogger(__name__)
@@ -147,6 +148,12 @@ async def _pause_game(session: GameSocketSession, _data: dict[str, Any]) -> None
 
 
 async def _end_game(session: GameSocketSession, _data: dict[str, Any]) -> None:
+    if game_type_from_state(session.game) == ZILCH_GAME_TYPE:
+        # Zilch reaches its visible terminal state only through its own turn
+        # engine. This guard also protects direct handler calls outside the
+        # normal coordinator vocabulary.
+        await _send_error(session, "Zilch-Partien werden über ihre Spielregeln beendet.")
+        return
     if not session.player_id:
         await _send_error(session, "Nur Spieler koennen das Spiel beenden")
         return

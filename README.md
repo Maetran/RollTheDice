@@ -2,15 +2,18 @@
 
 RollTheDice is a lightweight multiplayer dice game with a FastAPI backend and a static HTML/CSS/JS frontend. It supports German and English, single-player, 2-player, 3-player, 2v2 team games, Hardcore mode, chat, emoji reactions, leaderboards, account achievement milestones, and read-only replay views for completed games.
 
-ZDWA is the public game. The repository also contains an intentionally private
-Zilch foundation: only the authenticated admin account whose normalized
-username is `mani` can open its separate preview shell. It establishes a
-six-dice, 10,000-point, one-or-two-participant state boundary. Play modes
-`solo | cpu | multiplayer` and participant types `human | cpu` are separate
-from WebSocket connections; CPU behavior is not implemented. Confirmed Zilch
-scoring, turn handling, and Quick-Hold validation run server-side only. The
-tactile Zilch interface, completed-game persistence, achievements,
-leaderboards, CPU behavior, and public release are deliberately deferred.
+ZDWA is the public game. The repository also contains an intentionally private,
+playable Zilch human-vs-human Alpha: its own six-dice, 10,000-point state,
+server-authoritative start roll, scoring, Quick Holds, banking, final reply,
+and simultaneous two-player boards. By default, only the authenticated admin
+account whose normalized username is `mani` can open it. A second private test
+account can be admitted only through the explicit
+`ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` allowlist; it receives no admin rights.
+Play modes `solo | cpu | multiplayer` and participant types `human | cpu` stay
+separate from WebSocket connections, but this Alpha exposes only two
+authenticated human participants. CPU, solo, manual dice selection, typed
+completed-game persistence, achievements, leaderboards, and public release are
+deliberately deferred.
 
 Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
 
@@ -84,6 +87,13 @@ for the production hostname and set both `ROLLTHEDICE_TURNSTILE_SITE_KEY` and
 empty and does not show a CAPTCHA. A partial Turnstile configuration is rejected
 at startup so registration cannot silently run with broken protection.
 
+Zilch is not a public feature. Keep `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES`
+empty in normal production operation. For an explicitly private two-browser
+test only, set it to a comma-separated list of normalized account usernames;
+those accounts gain only Zilch-preview access, not an admin role. Admin `Mani`
+continues to require both the normalized name and `is_admin=true`, even if
+someone mistakenly puts `mani` in the allowlist.
+
 Open:
 
 - Lobby: `http://localhost:8000/`
@@ -98,9 +108,11 @@ git pull
 docker compose up -d --build
 ```
 
-Game data is stored in `./data` and is preserved across rebuilds.
-Waiting and running games are restored after an application restart; connected
-players appear offline until they rejoin with their locally stored resume token.
+Game data is stored in `./data` and is preserved across rebuilds. Waiting and
+running games are restored after an application restart; connected players
+appear offline until they rejoin with their locally stored resume token. A
+completed private Zilch Alpha remains as an active-state terminal board so the
+participants can reload its winner or tie; it is not written to ZDWA history.
 
 Production deployment details, including the IONOS SSH target and mandatory
 leaderboard backup rules, are documented in `docs/DEPLOYMENT.md`. Use
@@ -210,8 +222,9 @@ WebSocket transport, and active-game persistence can serve more than one game.
 Game-specific state creation, join/start setup, gameplay actions, lobby progress,
 and snapshots are selected through a small registry. Existing ZDWA flows remain
 behind their adapter; Zilch has separate modules and cannot call ZDWA scoring or
-completion code. The current Zilch preview is deliberately noindex and guarded
-on every relevant page, API, detail lookup, and WebSocket connection.
+completion code. The private Zilch Alpha is deliberately `noindex`, guarded on
+every relevant page, API, detail lookup, and WebSocket connection, and defaults
+to admin `Mani` only unless its explicit preview allowlist is configured.
 
 The architecture boundary is documented in
 [docs/MULTIGAME_FOUNDATION.md](docs/MULTIGAME_FOUNDATION.md); the confirmed

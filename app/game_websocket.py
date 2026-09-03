@@ -27,6 +27,7 @@ from .game_state import (
     games,
     multiplayer_pause_reason,
 )
+from .game_types import ZILCH_GAME_TYPE, game_type_from_state
 from .game_ws_admin import SUPERADMIN_ACTIONS, handle_superadmin_action
 from .game_ws_gameplay import GAMEPLAY_ACTIONS
 from .game_ws_session import (
@@ -179,7 +180,15 @@ async def _receive_messages(
 
         allowed_gameplay_actions = gameplay_actions_for_game(session.game)
         allowed_superadmin_actions = superadmin_actions_for_game(session.game)
-        allowed_actions = SESSION_ACTIONS | allowed_gameplay_actions | allowed_superadmin_actions | SOCIAL_ACTIONS
+        # Chat and pause are transport-neutral. The generic ``end_game``
+        # action, however, marks a ZDWA-shaped aborted result and must not
+        # bypass the Zilch engine's terminal-state boundary.
+        allowed_social_actions = (
+            frozenset({"chat_message", "pause_game"})
+            if game_type_from_state(session.game) == ZILCH_GAME_TYPE
+            else SOCIAL_ACTIONS
+        )
+        allowed_actions = SESSION_ACTIONS | allowed_gameplay_actions | allowed_superadmin_actions | allowed_social_actions
         if action not in allowed_actions:
             await session.websocket.send_json({"error": f"Unbekannte Aktion: {action_value}"})
             continue
@@ -218,7 +227,7 @@ async def _receive_messages(
                 data,
                 finalize_game=finalize_game,
             )
-        elif action in SOCIAL_ACTIONS:
+        elif action in allowed_social_actions:
             await handle_social_action(session, action, data)
         else:  # Defensive: KNOWN_ACTIONS and the dispatch tables must stay aligned.
             raise RuntimeError(f"Action dispatch is incomplete: {action}")

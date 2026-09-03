@@ -2,8 +2,10 @@
 
 Stand: `zilch-house-v1`. Dieses Dokument ist der verbindliche Regelvertrag für
 die serverseitige Engine. Zilch bleibt eine geschützte `noindex`-Vorschau für
-den Admin-Account `Mani`; es gibt ausdrücklich noch keine öffentliche
-Regelseite und keine fertige Spieloberfläche.
+den Admin-Account `Mani` (mit einer ausdrücklich konfigurierten privaten
+Allowlist für einen zweiten Testspieler). Es gibt ausdrücklich keine
+öffentliche Regelseite. Die aktuelle Oberfläche ist ein spielbarer
+Human-vs-Human-Alpha, keine fertige öffentliche Produktoberfläche.
 
 ## Begriffe
 
@@ -130,6 +132,8 @@ formatiert daraus keine deutschen Texte.
 
 Die aktuell verfügbaren WebSocket-Aktionen sind:
 
+- `zilch_start_roll` mit `start_roll_version`; jeder menschliche Teilnehmer
+  löst genau seinen eigenen serverseitigen Startwurf aus;
 - `zilch_roll_dice` mit `turn_id` und `version`;
 - `zilch_select_hold` mit `turn_id`, `version`, `roll_id`, `option_id` sowie
   optional gegengeprüften Würfelindizes, Punkten und Kombinationstyp;
@@ -141,28 +145,59 @@ Spieltyp sowie doppelte oder veraltete Versionsstände werden ohne
 Zustandsänderung abgewiesen. Der ältere Platzhalter `zilch_submit_score` wird
 explizit als nicht unterstützte manuelle Punkteingabe abgelehnt.
 
+## Alpha-Bedienung und Ergebnisgrenze
+
+Der Alpha unterstützt ausschließlich zwei angemeldete menschliche Teilnehmer
+im Multiplayer-Modus. Beide führen den Startwurf selbst aus; die beiden Werte
+und ein möglicher Gleichstand bleiben im Snapshot sichtbar. Anschließend zeigt
+die private Spielseite gleichzeitig beide Boards, sechs ausschließlich vom
+Server gelieferte Würfel, Rundenscore, Gesamtpunkte, Zilch-Serie,
+Verbindungsstatus, Start-/Schlussrundenmarker und eine kompakte
+Rundenhistorie.
+
+Die Bedienung erfolgt in dieser Stufe nur über serverseitig berechnete
+Quick-Hold-Karten. Einzelne Würfel wirken nicht anklickbar und eine manuelle
+Würfelauswahl oder Punkteingabe existiert nicht. Die Karten, Würfeln und
+Sichern sind Tastatur- und Touch-Buttons; der Browser sendet nur die
+referenzierte Option und übernimmt nie einen lokalen Punktewert.
+
+Nach dem vollen Gegenzug markiert der aktive Zilch-State Gewinner oder
+Gleichstand und bleibt in `active_games` erhalten, damit beide Teilnehmer den
+Endstand nach Reload oder Rejoin sehen. Er wird weiterhin **nicht** in
+`CompletedGame`, ZDWA-Historie, Statistik, Leaderboard, Achievement- oder
+Replay-Pfade geschrieben.
+
+Zum manuellen privaten Test: mit Admin `Mani` ein Spiel anlegen, vor dem
+App-Start den normalisierten Namen des zweiten angemeldeten Testkontos in
+`ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` setzen, beide Browser in die private
+Zilch-Lobby wechseln, beitreten und den Startwurf nacheinander ausführen.
+Ohne diese Konfiguration bleibt ausschließlich Admin `Mani` zugelassen.
+
 ## Technische und Produktgrenzen
 
 - Die Engine verwendet für Menschen und spätere CPU-Teilnehmer denselben
   injizierbaren, serverseitigen Zufallsweg. Clients liefern nie
   Würfelergebnisse.
-- Aktive Zustände samt Turn-ID, Holds, Rundenpunkten, Boards und
+- Aktive Zustände samt Turn-ID, Startwurf, Holds, Rundenpunkten, Boards und
   Quick-Hold-Grundlage bleiben über die bestehende aktive Persistenz
-  restart-sicher. Ein abgeschlossenes Zilch wird nicht in ZDWA-Ergebnisse,
-  Statistiken, Achievements oder Bestenlisten geschrieben.
+  restart-sicher. Auch ein abgeschlossenes Alpha-Zilch bleibt dort für seinen
+  sichtbaren Endstand; es wird nicht in ZDWA-Ergebnisse, Statistiken,
+  Achievements oder Bestenlisten geschrieben.
 - Noch offen bleiben insbesondere eine präzise Strafkadenz nach mehr als drei
   aufeinanderfolgenden Zilchs, CPU-Entscheidungen, ein echtes Solo-Ziel,
-  manuelle Würfelauswahl, fertige Interaktion, Ergebnisdatenbank und
-  Zilch-spezifische Auswertung.
+  manuelle Würfelauswahl, finale Interaktions-/Markenpolitur,
+  Ergebnisdatenbank und Zilch-spezifische Auswertung.
 
-## Spätere Designrichtung
+## Designrichtung
 
-Die spätere eigene Zilch-Oberfläche darf die vorhandene `data-game="zilch"`
-Grenze nutzen: warme Holz-/Spieltischflächen, physisch wirkende Würfel mit
-Tiefe, deutlich leuchtende ausgewählte Würfel, große papierartige
-Quick-Hold-/Würfel-/Sichern-Karten, gut lesbare Standardschrift mit
-handschriftlichen Akzenten und große Touch-Ziele. Zilch, Hot Dice und besondere
-Erfolge sollen klar als Risiko- oder Erfolgszustand inszeniert werden.
+Die private Alpha nutzt die vorhandene `data-game="zilch"`-Grenze bereits mit
+warmen Holz-/Spieltischflächen, physisch wirkenden CSS-Würfeln, deutlich
+leuchtenden gehaltenen/ausgewählten Zuständen, großen papierartigen
+Quick-Hold-/Würfel-/Sichern-Karten, gut lesbarer Standardschrift und großen
+Touch-Zielen. Zilch, Hot Dice, Bestätigungswurf und Spielende erhalten einen
+zusätzlichen Textstatus und kurze reduzierte-Bewegung-freundliche CSS-Effekte.
+Finales Branding, eine lizenzierte Akzentschrift und weitere Produktpolitur
+sind nicht Teil dieser Regelversion.
 
 Das ist ausschließlich eine eigene Designrichtung. Es werden keine Grafiken,
 Sounds, Fonts, Logos, Award-Designs, Quellcodes oder pixelgenauen Vorlagen von

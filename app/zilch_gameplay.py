@@ -13,16 +13,19 @@ from .zilch_engine import (
     ZilchRuleError,
     bank_allowed,
     fair_zilch_randint,
+    roll_zilch_start_die,
     roll_zilch_turn,
     select_zilch_option,
 )
 from .zilch_state import (
     advance_after_zilch_turn,
+    current_zilch_start_roll,
     current_zilch_turn,
     ensure_zilch_engine_state,
     finish_zilch_game,
     record_zilch_bank,
     record_zilch_loss,
+    record_zilch_start_roll,
     sync_zilch_turn,
     zilch_participant_ids,
 )
@@ -32,6 +35,7 @@ from .zilch_state import (
 # the confirmed rules use server-calculated holds and banking only.
 ZILCH_GAMEPLAY_ACTIONS = frozenset(
     {
+        "zilch_start_roll",
         "zilch_roll_dice",
         "zilch_select_hold",
         "zilch_bank_points",
@@ -60,6 +64,7 @@ async def _send_error(session: GameSocketSession, code: str, **params: Any) -> N
 
 
 async def _publish(session: GameSocketSession, *, event: dict[str, Any]) -> None:
+    session.game["_zilch_last_event"] = dict(event)
     touch(session.game)
     await broadcast(session.game, {"scoreboard": snapshot(session.game), "zilch_event": event})
 
@@ -87,6 +92,9 @@ def _current_actor_turn(session: GameSocketSession, data: dict[str, Any]):
     if not player_id or player_id not in zilch_participant_ids(game):
         raise ZilchRuleError("zilch_not_participant")
     ensure_zilch_engine_state(game)
+    start_roll = current_zilch_start_roll(game)
+    if start_roll.get("phase") != "resolved":
+        raise ZilchRuleError("zilch_start_roll_pending")
     turn = current_zilch_turn(game)
     if turn.player_id != player_id:
         raise ZilchRuleError("zilch_not_your_turn")
@@ -95,6 +103,32 @@ def _current_actor_turn(session: GameSocketSession, data: dict[str, Any]):
     if _strict_int(data, "version") != turn.version:
         raise ZilchRuleError("zilch_stale_state")
     return turn
+
+
+def _current_start_roll_actor(session: GameSocketSession, data: dict[str, Any]) -> dict:
+    """Validate a participant's versioned, one-time opening roll command."""
+    game = session.game
+    try:
+        if game_type_from_state(game) != ZILCH_GAME_TYPE:
+            raise ZilchRuleError("zilch_wrong_game_type")
+    except ValueError as exc:
+        raise ZilchRuleError("zilch_wrong_game_type") from exc
+    if game.get("_finished") or game.get("_aborted"):
+        raise ZilchRuleError("zilch_game_finished")
+    if not game.get("_started"):
+        raise ZilchRuleError("zilch_not_started")
+    player_id = str(session.player_id or "")
+    if not player_id or player_id not in zilch_participant_ids(game):
+        raise ZilchRuleError("zilch_not_participant")
+    ensure_zilch_engine_state(game)
+    start_roll = current_zilch_start_roll(game)
+    if start_roll.get("phase") != "awaiting_rolls":
+        raise ZilchRuleError("zilch_start_roll_finished")
+    if _strict_int(data, "start_roll_version") != int(start_roll.get("version", 0) or 0):
+        raise ZilchRuleError("zilch_stale_start_roll")
+    if player_id not in start_roll.get("pending_player_ids", []):
+        raise ZilchRuleError("zilch_start_roll_already_recorded")
+    return start_roll
 
 
 def _validate_option_reference(data: dict[str, Any], option) -> None:
@@ -127,6 +161,7 @@ async def _roll_dice(session: GameSocketSession, data: dict[str, Any]) -> None:
     try:
         turn = _current_actor_turn(session, data)
         if not roll_cooldown_ok(session.game, str(session.player_id), cooldown_s=0.6):
+            await _send_error(session, "zilch_roll_cooldown")
             return
         rolled_turn, evaluation = roll_zilch_turn(turn, randint_fn=fair_zilch_randint)
     except ZilchRuleError as exc:
@@ -174,6 +209,18 @@ async def _roll_dice(session: GameSocketSession, data: dict[str, Any]) -> None:
     )
 
 
+async def _start_roll(session: GameSocketSession, data: dict[str, Any]) -> None:
+    try:
+        _current_start_roll_actor(session, data)
+        player_id = str(session.player_id or "")
+        die_value = roll_zilch_start_die(randint_fn=fair_zilch_randint)
+        event = record_zilch_start_roll(session.game, player_id, die_value)
+    except ZilchRuleError as exc:
+        await _send_error(session, exc.code)
+        return
+    await _publish(session, event=event)
+
+
 async def _select_hold(session: GameSocketSession, data: dict[str, Any]) -> None:
     try:
         turn = _current_actor_turn(session, data)
@@ -219,8 +266,16 @@ async def _bank_points(session: GameSocketSession, data: dict[str, Any]) -> None
         await _send_error(session, exc.code)
         return
 
+    had_final_round = isinstance(session.game.get("_zilch_final_round"), dict)
     total = record_zilch_bank(session.game, turn)
     outcome = _complete_or_advance(session.game, turn.player_id)
+    final_round = session.game.get("_zilch_final_round")
+    final_round_started = bool(
+        not had_final_round
+        and isinstance(final_round, dict)
+        and str(final_round.get("triggered_by") or "") == turn.player_id
+        and outcome is None
+    )
     await _publish(
         session,
         event={
@@ -229,6 +284,7 @@ async def _bank_points(session: GameSocketSession, data: dict[str, Any]) -> None
             "points": turn.round_points,
             "total": total,
             "outcome": outcome,
+            "final_round_started": final_round_started,
         },
     )
 
@@ -240,6 +296,9 @@ async def handle_zilch_gameplay_action(
     **_kwargs: Any,
 ) -> None:
     """Dispatch an action without ever invoking ZDWA gameplay or scoring."""
+    if action == "zilch_start_roll":
+        await _start_roll(session, data)
+        return
     if action == "zilch_roll_dice":
         await _roll_dice(session, data)
         return

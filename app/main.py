@@ -59,7 +59,7 @@ from .leaderboard_service import (
 )
 from .leaderboard_storage import LeaderboardFiles
 from .site_seo import robots_document, sitemap_document
-from .zilch_state import validate_zilch_mode
+from .zilch_state import validate_zilch_hvh_mode
 
 # Retained as a small backwards-compatible module export for existing focused
 # logic tests and integrations that historically imported ``app.main.new_game``.
@@ -442,9 +442,9 @@ class CreateReq(BaseModel):
     def validate_game_specific_options(self):
         if self.game_type == ZILCH_GAME_TYPE:
             try:
-                validate_zilch_mode(self.mode)
+                validate_zilch_hvh_mode(self.mode)
             except ValueError as exc:
-                raise ValueError("zilch_invalid_player_count") from exc
+                raise ValueError(str(exc)) from exc
             if self.hardcore:
                 raise ValueError("zilch_hardcore_not_supported")
         return self

@@ -1,4 +1,4 @@
-import { EN } from "./catalog.js";
+import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
 
 /*
   ZDWA localization
@@ -113,6 +113,12 @@ import { EN } from "./catalog.js";
     return leading + translated + trailing;
   }
 
+  function formatMessage(key, params = {}) {
+    const catalog = getLanguage() === "en" ? EN_MESSAGES : DE_MESSAGES;
+    const template = catalog[String(key)] || String(key || "");
+    return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_match, name) => String(params?.[name] ?? ""));
+  }
+
   function translateElement(root) {
     if (getLanguage() !== "en" || !root) return;
     if (root.nodeType === Node.TEXT_NODE) {
@@ -179,7 +185,16 @@ import { EN } from "./catalog.js";
   window.confirm = message => nativeConfirm(translateString(message));
   window.prompt = (message, value) => nativePrompt(translateString(message), value);
 
-  window.ZDWA_I18N = { getLanguage, locale, setLanguage, syncAccountLanguage, t: translateString, translateElement, catalog: EN };
+  window.ZDWA_I18N = {
+    getLanguage,
+    locale,
+    setLanguage,
+    syncAccountLanguage,
+    t: translateString,
+    message: formatMessage,
+    translateElement,
+    catalog: EN,
+  };
   document.documentElement.lang = getLanguage();
   const manifestLink = document.querySelector('link[rel="manifest"]');
   if (manifestLink && getLanguage() === "en") {

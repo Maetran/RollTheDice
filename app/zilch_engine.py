@@ -56,6 +56,41 @@ def _die_from_rng(randint_fn: ZilchRandomInt) -> int:
     return value
 
 
+def roll_zilch_start_die(*, randint_fn: ZilchRandomInt | None = None) -> int:
+    """Roll one server-authoritative die for the opening-player procedure.
+
+    This is intentionally the same injected RNG seam used by ordinary Zilch
+    rolls.  The live adapter decides *when* a participant may use it; the
+    engine remains free of WebSocket/session concerns.
+    """
+    return _die_from_rng(randint_fn or fair_zilch_randint)
+
+
+def resolve_zilch_start_attempt(
+    player_ids: Sequence[object],
+    rolls: Mapping[object, object],
+) -> str | None:
+    """Return the unique higher starter, or ``None`` for a tie.
+
+    The function validates a complete one- or two-human attempt without
+    generating randomness itself.  It therefore supports a visible, one
+    participant at a time start roll while retaining the old pure bulk helper
+    below for compatibility tests and tools.
+    """
+    ids = tuple(str(player_id) for player_id in player_ids if str(player_id))
+    if not ids or len(ids) > 2 or len(set(ids)) != len(ids):
+        raise ZilchRuleError("zilch_invalid_starting_players")
+    values: dict[str, int] = {}
+    for player_id in ids:
+        value = rolls.get(player_id)
+        if type(value) is not int or value < 1 or value > 6:
+            raise ZilchRuleError("zilch_invalid_start_roll")
+        values[player_id] = value
+    highest = max(values.values())
+    winners = [player_id for player_id, value in values.items() if value == highest]
+    return winners[0] if len(winners) == 1 else None
+
+
 def _normalise_dice(values: Sequence[object], *, allow_unrolled: bool) -> tuple[int, ...]:
     if len(values) != ZILCH_DICE_COUNT:
         raise ZilchRuleError("zilch_invalid_dice")
@@ -334,10 +369,9 @@ def roll_starting_player(
     while True:
         attempt = {player_id: _die_from_rng(rng) for player_id in ids}
         attempts.append(attempt)
-        high = max(attempt.values())
-        winners = [player_id for player_id, value in attempt.items() if value == high]
-        if len(winners) == 1:
-            return ZilchStartRoll(player_id=winners[0], attempts=tuple(attempts))
+        winner = resolve_zilch_start_attempt(ids, attempt)
+        if winner is not None:
+            return ZilchStartRoll(player_id=winner, attempts=tuple(attempts))
 
 
 def roll_available_dice(

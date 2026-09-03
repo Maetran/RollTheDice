@@ -17,7 +17,7 @@ from .zilch_engine import (
     ZilchTurn,
     apply_zilch_streak,
     new_zilch_turn,
-    roll_starting_player,
+    resolve_zilch_start_attempt,
     zilch_turn_from_state,
 )
 
@@ -36,6 +36,8 @@ ZILCH_CPU_PARTICIPANT: Final[ZilchParticipantType] = "cpu"
 ZILCH_CPU_STRATEGIES: Final[frozenset[str]] = frozenset(
     {"conservative", "normal", "aggressive"}
 )
+ZILCH_START_ROLL_AWAITING: Final = "awaiting_rolls"
+ZILCH_START_ROLL_RESOLVED: Final = "resolved"
 
 
 def validate_zilch_mode(mode: object) -> str:
@@ -43,6 +45,20 @@ def validate_zilch_mode(mode: object) -> str:
     normalized = str(mode).strip()
     if normalized not in {"1", "2"}:
         raise ValueError("zilch_invalid_player_count")
+    return normalized
+
+
+def validate_zilch_hvh_mode(mode: object) -> str:
+    """Validate the only creation mode exposed by the playable alpha.
+
+    The broader ``validate_zilch_mode`` remains intentionally available to
+    preserve the future solo/CPU domain contract and old active snapshots.
+    HTTP creation for this branch, however, is strictly two authenticated
+    human participants.
+    """
+    normalized = validate_zilch_mode(mode)
+    if normalized != "2":
+        raise ValueError("zilch_multiplayer_only")
     return normalized
 
 
@@ -189,6 +205,194 @@ def zilch_participant_ids(game: GameDict) -> list[str]:
     return [str(player.get("id") or "") for player in game.get("_players", []) if str(player.get("id") or "")]
 
 
+def zilch_turn_order(game: GameDict) -> list[str]:
+    """Return the durable turn order, falling back safely for old states."""
+    participant_ids = zilch_participant_ids(game)
+    raw_order = game.get("_zilch_turn_order")
+    if isinstance(raw_order, list):
+        order = [str(player_id) for player_id in raw_order if str(player_id) in participant_ids]
+        if len(order) == len(participant_ids) and len(set(order)) == len(order):
+            return order
+    return participant_ids
+
+
+def new_zilch_start_roll(player_ids: list[str]) -> dict:
+    """Create the durable, visible state for participant-by-participant rolls."""
+    ids = [str(player_id) for player_id in player_ids if str(player_id)]
+    if not ids or len(ids) > ZILCH_MAX_PLAYERS or len(set(ids)) != len(ids):
+        raise ZilchRuleError("zilch_invalid_starting_players")
+    return {
+        "phase": ZILCH_START_ROLL_AWAITING,
+        "version": 0,
+        "attempt": 1,
+        "player_ids": ids,
+        "pending_player_ids": ids[:],
+        "rolls": {},
+        "attempts": [],
+        "winner_id": None,
+        "tied": False,
+    }
+
+
+def _normalise_start_attempts(raw_attempts: object, player_ids: list[str]) -> list[dict]:
+    """Keep persisted opening attempts compact, complete, and client-safe."""
+    if not isinstance(raw_attempts, list):
+        return []
+    attempts: list[dict] = []
+    for raw_attempt in raw_attempts:
+        if not isinstance(raw_attempt, dict):
+            continue
+        raw_rolls = raw_attempt.get("rolls", raw_attempt)
+        if not isinstance(raw_rolls, dict):
+            continue
+        rolls = {
+            player_id: value
+            for player_id in player_ids
+            if type((value := raw_rolls.get(player_id))) is int and 1 <= value <= 6
+        }
+        if len(rolls) != len(player_ids):
+            continue
+        attempts.append({"attempt": len(attempts) + 1, "rolls": rolls})
+    return attempts
+
+
+def normalise_zilch_start_roll(game: GameDict) -> dict | None:
+    """Hydrate new and pre-Alpha opening-roll state without losing games.
+
+    Part 2 stored an already resolved ``winner_id`` plus raw attempt maps.  A
+    restart must keep that game playable, while newly started Part 3 games use
+    the participant-triggered state shape below.
+    """
+    player_ids = zilch_participant_ids(game)
+    if not player_ids:
+        return None
+    raw = game.get("_zilch_start_roll")
+    if not isinstance(raw, dict):
+        return None
+    attempts = _normalise_start_attempts(raw.get("attempts"), player_ids)
+    winner_id = str(raw.get("winner_id") or "")
+    if winner_id in player_ids and raw.get("phase") != ZILCH_START_ROLL_AWAITING:
+        last_rolls = dict(attempts[-1]["rolls"]) if attempts else {}
+        return {
+            "phase": ZILCH_START_ROLL_RESOLVED,
+            "version": max(0, _normalise_score(raw.get("version"))),
+            "attempt": max(1, len(attempts)),
+            "player_ids": player_ids,
+            "pending_player_ids": [],
+            "rolls": last_rolls,
+            "attempts": attempts,
+            "winner_id": winner_id,
+            "tied": False,
+        }
+    if raw.get("phase") == ZILCH_START_ROLL_AWAITING:
+        raw_rolls = raw.get("rolls")
+        if not isinstance(raw_rolls, dict):
+            raw_rolls = {}
+        rolls = {
+            player_id: value
+            for player_id in player_ids
+            if type((value := raw_rolls.get(player_id))) is int
+            and 1 <= value <= 6
+        }
+        pending = [player_id for player_id in player_ids if player_id not in rolls]
+        return {
+            "phase": ZILCH_START_ROLL_AWAITING,
+            "version": max(0, _normalise_score(raw.get("version"))),
+            "attempt": max(1, _normalise_score(raw.get("attempt")) or len(attempts) + 1),
+            "player_ids": player_ids,
+            "pending_player_ids": pending,
+            "rolls": rolls,
+            "attempts": attempts,
+            "winner_id": None,
+            "tied": bool(raw.get("tied")),
+        }
+    return None
+
+
+def current_zilch_start_roll(game: GameDict) -> dict:
+    """Return the active opening procedure or a stable rule error."""
+    start_roll = normalise_zilch_start_roll(game)
+    if not start_roll:
+        raise ZilchRuleError("zilch_start_roll_not_ready")
+    game["_zilch_start_roll"] = start_roll
+    return start_roll
+
+
+def record_zilch_start_roll(game: GameDict, player_id: str, die_value: int) -> dict:
+    """Record one server-generated opening die and resolve/tie-reroll it.
+
+    The caller has already authenticated the player and generated the die via
+    the engine RNG seam.  This state helper validates the durable procedure,
+    persists every visible attempt, and only creates the first regular turn
+    after an unambiguous winner exists.
+    """
+    ensure_zilch_engine_state(game)
+    start_roll = current_zilch_start_roll(game)
+    if start_roll.get("phase") != ZILCH_START_ROLL_AWAITING:
+        raise ZilchRuleError("zilch_start_roll_finished")
+    actor_id = str(player_id)
+    if actor_id not in start_roll.get("player_ids", []):
+        raise ZilchRuleError("zilch_not_participant")
+    if actor_id not in start_roll.get("pending_player_ids", []):
+        raise ZilchRuleError("zilch_start_roll_already_recorded")
+    if type(die_value) is not int or not 1 <= die_value <= 6:
+        raise ZilchRuleError("zilch_invalid_start_roll")
+
+    rolls = dict(start_roll.get("rolls") or {})
+    rolls[actor_id] = die_value
+    start_roll["rolls"] = rolls
+    start_roll["pending_player_ids"] = [
+        candidate for candidate in start_roll.get("player_ids", []) if candidate not in rolls
+    ]
+    start_roll["version"] = _normalise_score(start_roll.get("version")) + 1
+    start_roll["tied"] = False
+
+    if start_roll["pending_player_ids"]:
+        game["_zilch_start_roll"] = start_roll
+        return {
+            "type": "start_roll",
+            "player_id": actor_id,
+            "value": die_value,
+            "attempt": start_roll["attempt"],
+            "resolved": False,
+        }
+
+    player_ids = [str(candidate) for candidate in start_roll["player_ids"]]
+    winner_id = resolve_zilch_start_attempt(player_ids, rolls)
+    attempts = list(start_roll.get("attempts") or [])
+    attempts.append({"attempt": len(attempts) + 1, "rolls": {candidate: rolls[candidate] for candidate in player_ids}})
+    start_roll["attempts"] = attempts
+    if winner_id is None:
+        start_roll["attempt"] = len(attempts) + 1
+        start_roll["pending_player_ids"] = player_ids[:]
+        start_roll["rolls"] = {}
+        start_roll["tied"] = True
+        game["_zilch_start_roll"] = start_roll
+        return {
+            "type": "start_roll_tie",
+            "player_id": actor_id,
+            "value": die_value,
+            "attempt": len(attempts),
+            "resolved": False,
+        }
+
+    start_roll["phase"] = ZILCH_START_ROLL_RESOLVED
+    start_roll["winner_id"] = winner_id
+    start_roll["pending_player_ids"] = []
+    start_roll["rolls"] = {candidate: rolls[candidate] for candidate in player_ids}
+    game["_zilch_start_roll"] = start_roll
+    game["_zilch_turn_order"] = [winner_id, *[candidate for candidate in player_ids if candidate != winner_id]]
+    _start_turn_for(game, winner_id)
+    return {
+        "type": "start_roll_resolved",
+        "player_id": actor_id,
+        "value": die_value,
+        "attempt": len(attempts),
+        "winner_id": winner_id,
+        "resolved": True,
+    }
+
+
 def _normalise_score(value: object) -> int:
     try:
         return max(0, int(value or 0))
@@ -244,11 +448,15 @@ def ensure_zilch_engine_state(game: GameDict) -> None:
     """
     player_ids = zilch_participant_ids(game)
     game.setdefault("_zilch_ruleset", ZILCH_RULESET_VERSION)
-    game.setdefault("_zilch_turn_order", player_ids[:])
-    if list(game.get("_zilch_turn_order") or []) != player_ids:
+    raw_turn_order = game.get("_zilch_turn_order")
+    if not isinstance(raw_turn_order, list) or set(map(str, raw_turn_order)) != set(player_ids) or len(raw_turn_order) != len(player_ids):
         game["_zilch_turn_order"] = player_ids[:]
     game.setdefault("_zilch_turn_sequence", 0)
-    game.setdefault("_zilch_start_roll", None)
+    existing_start_roll = normalise_zilch_start_roll(game)
+    if existing_start_roll:
+        game["_zilch_start_roll"] = existing_start_roll
+    else:
+        game.setdefault("_zilch_start_roll", None)
     game.setdefault("_zilch_final_round", None)
     game.setdefault("_zilch_outcome", None)
     game.setdefault("_zilch_last_event", None)
@@ -299,7 +507,7 @@ def _start_turn_for(game: GameDict, player_id: str) -> ZilchTurn:
 def begin_next_zilch_turn(game: GameDict, current_player_id: str) -> ZilchTurn:
     """Advance in the fixed opening-roll order without importing ZDWA turns."""
     ensure_zilch_engine_state(game)
-    order = zilch_participant_ids(game)
+    order = zilch_turn_order(game)
     if not order:
         raise ZilchRuleError("zilch_missing_participants")
     player_id = str(current_player_id)
@@ -421,7 +629,7 @@ def advance_after_zilch_turn(game: GameDict, current_player_id: str) -> bool:
     calls the ZDWA completed-game pipeline.
     """
     ensure_zilch_engine_state(game)
-    order = zilch_participant_ids(game)
+    order = zilch_turn_order(game)
     if not order:
         return True
     player_id = str(current_player_id)
@@ -476,21 +684,33 @@ def finish_zilch_game(game: GameDict) -> dict:
     game["_started"] = False
     game["_finished"] = True
     game["_results"] = None
+    game["_turn"] = None
+    game["_dice"] = [0] * ZILCH_DICE_COUNT
+    game["_holds"] = [False] * ZILCH_DICE_COUNT
+    game["_rolls_used"] = 0
     return outcome
 
 
 def start_zilch_game(game: GameDict, *, randint_fn=None) -> None:
-    """Start a 1/2-player game through the shared fair RNG contract."""
+    """Enter the persisted opening-roll phase once all participants joined.
+
+    ``randint_fn`` remains a harmless compatibility parameter for callers from
+    the Part-2 test seam.  Randomness is deliberately consumed only when each
+    human presses the explicit Zilch start-roll action.
+    """
     if game.get("_started") or len(game.get("_players", [])) != int(game.get("_expected", 0)):
         return
     game["_started"] = True
     game["_started_at"] = datetime.now(timezone.utc).isoformat()
     ensure_zilch_engine_state(game)
     player_ids = zilch_participant_ids(game)
-    opening_roll = roll_starting_player(player_ids, randint_fn=randint_fn)
     game["_zilch_turn_order"] = player_ids[:]
-    game["_zilch_start_roll"] = opening_roll.payload()
+    game["_zilch_start_roll"] = new_zilch_start_roll(player_ids)
     game["_zilch_turn_sequence"] = 0
     game["_zilch_final_round"] = None
     game["_zilch_outcome"] = None
-    _start_turn_for(game, opening_roll.player_id)
+    game["_zilch_last_event"] = {"type": "start_roll_waiting", "player_ids": player_ids}
+    game["_turn"] = None
+    game["_dice"] = [0] * ZILCH_DICE_COUNT
+    game["_holds"] = [False] * ZILCH_DICE_COUNT
+    game["_rolls_used"] = 0

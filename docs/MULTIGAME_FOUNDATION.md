@@ -5,6 +5,10 @@ internal Zilch preview. The binding Zilch house rules live in
 [ZILCH_RULES.md](ZILCH_RULES.md); neither document is a public player-facing
 rule page or a promise of a finished Zilch user interface.
 
+The current private increment is a playable **human-vs-human Alpha**. It is
+not a public release and it deliberately remains outside ZDWA results,
+statistics, leaderboards, achievements, and replay views.
+
 ## Boundaries
 
 - **Shared:** accounts, normalized usernames, session cookies, roles, player
@@ -14,14 +18,16 @@ rule page or a promise of a finished Zilch user interface.
   engine, scorecards, suggestions, superadmin edit mode, final results,
   leaderboards, statistics, and achievements.
 - **Zilch:** a separate state factory, six dice, target score 10,000, a one- or
-  two-participant limit, independent player boards, snapshot projection, and a
-  pure server-side scoring/turn engine. Play mode (`solo | cpu | multiplayer`)
-  and participant type (`human | cpu`) are distinct from WebSocket connections.
-  Only human solo and human-vs-human creation are exposed today; CPU strategy
-  names (`conservative | normal | aggressive`) are a future decision contract,
-  not a bot implementation. Its UI is a separate route/root with its own
-  stylesheet boundary (`data-game="zilch"`) and remains a deliberately
-  provisional shell.
+  two-participant domain limit, independent player boards, snapshot projection,
+  and a pure server-side scoring/turn engine. Play mode
+  (`solo | cpu | multiplayer`) and participant type (`human | cpu`) are
+  distinct from WebSocket connections. This Alpha exposes only
+  `multiplayer`, exactly two authenticated human participants, and no
+  spectators. Solo and CPU remain represented only as future domain contracts;
+  CPU strategy names (`conservative | normal | aggressive`) are not a bot
+  implementation. Its UI is a separate route/root with its own stylesheet
+  boundary (`data-game="zilch"`), six server-snapshot dice, and no manual
+  dice-selection affordance.
 
 `app/game_registry.py` is the intentionally small composition point. It
 selects state creation, per-game join/start setup, gameplay-action dispatch,
@@ -30,22 +36,29 @@ type. Legacy active snapshots without `_game_type` are restored as `zdwa`.
 
 ## Preview access
 
-`app/game_access.py` is the sole policy location for Zilch preview access. It
-requires a valid resolved session, `identity.is_admin`, and a normalized
-username of `mani`. The policy is applied by the protected `/zilch` routes,
-Zilch creation, lobby filtering, detail APIs, and before any protected
-WebSocket frame is sent. Zilch is not in the public SEO registry and its page
-uses `noindex`.
+`app/game_access.py` is the sole policy location for Zilch preview access. Its
+safe production default requires a valid resolved session, `identity.is_admin`,
+and normalized username `mani`. A second human can be admitted only through
+the explicit comma-separated environment variable
+`ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES`; values are normalized, `mani` is
+ignored there so its admin requirement cannot be weakened, and an allowlisted
+user receives no admin role or other elevated capability. Leave the variable
+empty in normal production operation.
+
+The same policy drives switch visibility and the protected `/zilch` routes,
+creation, lobby filtering, detail APIs, and every WebSocket connection/action.
+The raw `/static/zilch.html` artifact is denied. Zilch is not in the public SEO
+registry or sitemap and its shell is `noindex`.
 
 ## Completion boundary
 
-No `CompletedGame.game_type` migration is included in this foundation. The
-real persistence path currently persists directly into ZDWA's result history,
-statistics, leaderboards, and achievement calculations. Because Zilch has no
-completion rules yet, it never enters that path; defensive guards reject a
-non-ZDWA completion attempt. A later Zilch completion branch must introduce a
-typed completed-game model/migration and explicitly separate all aggregates
-before enabling finalization.
+No `CompletedGame.game_type` migration is included. A completed Alpha Zilch
+state remains in `active_games` so both participants can reload/rejoin and see
+the winner or tie, but it is never written to ZDWA's result history,
+statistics, leaderboards, achievements, or replay data. The existing ZDWA
+finalizer defensively rejects non-ZDWA games. A later typed completion branch
+must introduce a separate completed-game model/migration and explicitly split
+all aggregates before Zilch result persistence is enabled.
 
 ## Zilch rule contract and engine boundary
 
@@ -58,15 +71,43 @@ five-dice engine, or ZDWA scoring.
 
 `zilch_gameplay.py` is only the adapter: it validates authenticated WebSocket
 turn/version/option references, calls the pure engine, synchronizes the Zilch
-live state, then broadcasts through the shared coordinator. `zilch_roll_dice`,
+live state, then broadcasts through the shared coordinator. A visible,
+versioned `zilch_start_roll` action records one server-generated die per
+participant and repeats ties before the first regular turn. `zilch_roll_dice`,
 `zilch_select_hold`, and `zilch_bank_points` are authoritative actions.
 `zilch_submit_score` remains an explicit rejected compatibility action because
 manual score entry was ruled out for this phase.
 
+The browser does not calculate scores or invent dice. It renders structured
+Quick Holds from `_zilch_quick_holds`, sends their turn/version/roll/option
+references, and waits for the next server snapshot. Both player boards,
+opening-roll history, current unbanked score, Zilch streak, connection state,
+Hot Dice/confirmation state, and final-reply markers are projected together.
+
 The remaining product decisions are deliberately narrower: the exact penalty
 cadence after a fourth or later consecutive Zilch, CPU decisions, a meaningful
-solo objective, manual dice interaction, final tactile UI, typed completed-game
-persistence, Zilch stats/achievements, and public release.
+solo objective, manual dice interaction, final branding/polish, typed
+completed-game persistence, Zilch stats/achievements, and public release.
+
+## Human-vs-human Alpha operation
+
+1. Sign in as admin `Mani` and, only for a private second test participant,
+   set `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` to that account's normalized
+   username before starting the app.
+2. Open the server-confirmed Zilch switch, create a two-human game, and let the
+   allowlisted second account join it from the private Zilch lobby.
+3. Each participant presses the opening-roll card. Both dice stay visible;
+   tied results restart the attempt, otherwise the higher die receives the
+   first ordinary turn.
+4. The active participant rolls, chooses one server-produced Quick Hold, then
+   rolls again or banks when allowed. Reloading either browser reconnects with
+   its authenticated player identity; no saved browser score or Quick Hold is
+   reused.
+
+The Alpha uses a CSS-only warm wood table, paper-like action cards, deep dice,
+and high-contrast selection/status markers. This is an independent direction,
+not a copy of Bubblebox or another game's assets, sounds, fonts, code, logos,
+or layout.
 
 ## Verified repository architecture
 
@@ -96,17 +137,15 @@ account plan, and the recovered 3 September 2026 Zilch planning artifacts in
 `Documents/Codex`. The recovered checklist remains useful detail; this file is
 the repository-owned current status.
 
-- Earlier wording treated `1 | 2` as the Zilch mode. That remains only the
-  currently exposed creation choice. The durable domain distinguishes
-  `solo | cpu | multiplayer`, and a participant is not required to be an
-  authenticated user or WebSocket connection.
-- Earlier scope language mentioned a basic playable Zilch turn. That was held
-  back until the house rules were confirmed. The rules engine is now complete
-  for the internal contract, while the preview shell intentionally remains
-  separate and non-final rather than becoming a premature design project.
-- A completed-game migration was suggested as an option. It is intentionally
-  deferred because no Zilch completion can occur and all current aggregates are
-  ZDWA-specific. The defensive boundary rejects non-ZDWA finalization.
+- The durable domain keeps `1 | 2` participant capacity and
+  `solo | cpu | multiplayer` separate from connections. HTTP creation in this
+  Alpha is intentionally narrower: exactly two authenticated humans.
+- The confirmed engine now powers the private browser flow. Quick Holds are
+  the only selection method in this increment; manual dice selection and final
+  interaction polish stay future work.
+- A completed-game migration remains deferred. Alpha completion is durable in
+  active state only; all existing aggregates are ZDWA-specific and the
+  defensive finalizer rejects non-ZDWA games.
 - The current preview URL is `/zilch` with rooms below `/zilch/spiel/{id}`.
   It is a private, `noindex` implementation route, not a committed public URL.
 
@@ -121,13 +160,12 @@ the repository-owned current status.
 - [x] Keep account/session/auth, connection security, rejoin, chat, broadcast,
   timeout, and active persistence shared.
 - [x] Protect Zilch page, list, detail, creation, room redirect, static page
-  artifact, and WebSocket server-side for admin username `Mani` only.
+  artifact, and WebSocket server-side for admin username `Mani` by default.
 - [x] Keep Zilch out of completed results, achievements, statistics,
   leaderboards, public SEO registry, sitemap, and service-worker precache.
 - [x] Model six dice, target 10,000, up to two separate boards, play modes,
   transport-independent participant types, and reserved CPU strategies.
-- [x] Provide a separate DE/EN preview shell and safe app switch/hotkey without
-  implementing rules or final design.
+- [x] Provide a separate DE/EN preview shell and safe app switch/hotkey.
 - [x] Cover legacy restore, ZDWA modes, access matrix, API/WebSocket isolation,
   snapshot/dispatch boundaries, switch/logout/direct URLs, and regressions.
 
@@ -156,19 +194,23 @@ the repository-owned current status.
   client selection again on the server.
 - [x] Add exhaustive unit/integration tests for combinations, stale commands,
   illegal holds, turn ownership, thresholds, banking, and terminal states.
-- [ ] Build the tactile DE/EN controls and accessible manual dice selection;
-  no public Zilch rules page exists until the preview is productized.
+- [x] Build private DE/EN Quick-Hold controls, two-player boards, status
+  states, opening roll, reconnect/reload projection, and reduced-motion-safe
+  Alpha presentation.
+- [ ] Add accessible manual dice selection; no public Zilch rules page exists
+  until the preview is productized.
 
 ### Phase 3 — modes and participants
 
-- [ ] Finish human-vs-human play for two participants and keep both boards
-  visible at once.
+- [x] Finish private human-vs-human play for two participants, including join,
+  versioned opening roll, Quick Holds, banking, turn changes, final reply,
+  terminal result, and simultaneous boards.
 - [ ] Define solo objectives without coupling the engine to one metric; store
   a challenge/ruleset identifier rather than hard-coding “reach 10,000”.
 - [ ] Add CPU lifecycle without fake accounts or sockets. CPU difficulty may
   change decisions only and may consider score, dice remaining, opponent
   score, and endgame context.
-- [ ] Test disconnect/rejoin independently from participant/turn persistence.
+- [x] Test reload/rejoin independently from participant/turn persistence.
 
 ### Phase 4 — typed completion and account features
 

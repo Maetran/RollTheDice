@@ -17,10 +17,10 @@ from starlette.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 from app import main
-from app.active_games import load_active_games, serializable_game_state
+from app.active_games import load_active_games, save_active_game, serializable_game_state
 from app.auth import create_user, login
 from app.database import configure_database, session_scope, upgrade_database
-from app.game_access import can_access_zilch_preview
+from app.game_access import can_access_zilch_preview, configured_zilch_preview_usernames
 from app.game_registry import (
     create_game_state,
     dispatch_gameplay_action,
@@ -40,6 +40,7 @@ from app.zilch_state import (
     ZILCH_MULTIPLAYER_MODE,
     ZILCH_SOLO_MODE,
     ZILCH_TARGET_SCORE,
+    finish_zilch_game,
     new_zilch_game,
     new_zilch_participant,
 )
@@ -74,6 +75,7 @@ class MultiGameFoundationTestCase(GameStateTestCase):
                 "ROLLTHEDICE_DATABASE_URL": f"sqlite:///{self.database_path}",
                 "ROLLTHEDICE_TURNSTILE_SITE_KEY": "",
                 "ROLLTHEDICE_TURNSTILE_SECRET": "",
+                "ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES": "",
             },
         )
         self.env_patch.start()
@@ -133,7 +135,7 @@ class MultiGameFoundationTestCase(GameStateTestCase):
                 self.assertEqual(game["_expected"], expected)
                 self.assertEqual(len(game["_dice"]), 5)
 
-    def test_zilch_accepts_only_one_or_two_players_and_has_two_independent_boards(self):
+    def test_zilch_domain_accepts_one_or_two_but_alpha_creation_requires_two_humans(self):
         for invalid_mode in ("3", "2v2"):
             with self.subTest(mode=invalid_mode):
                 with self.assertRaises(ValueError):
@@ -154,8 +156,9 @@ class MultiGameFoundationTestCase(GameStateTestCase):
         self.assertEqual(set(projected["_zilch_boards"]), {"p1", "p2"})
         self.assertIsNot(projected["_zilch_boards"]["p1"], projected["_zilch_boards"]["p2"])
         self.assertEqual(projected["_zilch_boards"]["p1"]["total_points"], 0)
-        self.assertIn(projected["_turn"]["player_id"], {"p1", "p2"})
-        self.assertEqual(projected["_turn"]["player_id"], projected["_zilch_start_roll"]["winner_id"])
+        self.assertIsNone(projected["_turn"])
+        self.assertEqual(projected["_zilch_start_roll"]["phase"], "awaiting_rolls")
+        self.assertEqual(projected["_zilch_start_roll"]["pending_player_ids"], ["p1", "p2"])
         self.assertEqual(
             [participant["type"] for participant in projected["_participants"]],
             [ZILCH_HUMAN_PARTICIPANT, ZILCH_HUMAN_PARTICIPANT],
@@ -164,6 +167,12 @@ class MultiGameFoundationTestCase(GameStateTestCase):
 
         solo = self._track(create_game_state("zilch-solo", "Solo", 1, ZILCH_GAME_TYPE))
         self.assertEqual(solo["_play_mode"], ZILCH_SOLO_MODE)
+        with self.assertRaises(ValueError):
+            main.CreateReq.model_validate({"name": "Alpha Solo", "mode": "1", "game_type": "zilch"})
+        self.assertEqual(
+            main.CreateReq.model_validate({"name": "Alpha HvH", "mode": "2", "game_type": "zilch"}).mode,
+            "2",
+        )
 
     def test_cpu_participant_contract_is_transport_independent(self):
         cpu = new_zilch_participant(
@@ -195,6 +204,19 @@ class MultiGameFoundationTestCase(GameStateTestCase):
         self.assertFalse(can_access_zilch_preview(mani_without_admin))
         self.assertTrue(can_access_zilch_preview(mani_admin))
 
+    def test_preview_allowlist_is_opt_in_normalized_and_never_grants_admin(self):
+        preview_identity, _ = self._identity("PreviewFriend")
+        mani_without_admin, _ = self._identity("Mani")
+        self.assertFalse(can_access_zilch_preview(preview_identity))
+        with patch.dict(
+            os.environ,
+            {"ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES": " PreviewFriend , MANI "},
+        ):
+            self.assertEqual(configured_zilch_preview_usernames(), frozenset({"previewfriend"}))
+            self.assertTrue(can_access_zilch_preview(preview_identity))
+            self.assertFalse(can_access_zilch_preview(mani_without_admin))
+            self.assertFalse(preview_identity.is_admin)
+
     def test_unapproved_clients_cannot_list_or_read_zilch_games(self):
         game = self._track(create_game_state("hidden-zilch", "Secret Zilch", 1, ZILCH_GAME_TYPE))
         game["_chat_history"] = [{"sender": "Mani", "text": "private zilch chat"}]
@@ -223,7 +245,7 @@ class MultiGameFoundationTestCase(GameStateTestCase):
         self.assertEqual(detail["id"], game["_id"])
 
     def test_zilch_creation_and_page_are_server_side_guarded(self):
-        request = main.CreateReq.model_validate({"name": "Zilch", "mode": "1", "game_type": "zilch"})
+        request = main.CreateReq.model_validate({"name": "Zilch", "mode": "2", "game_type": "zilch"})
         with patch("app.main.enforce_game_creation_rate_limit"):
             with self.assertRaises(HTTPException) as anonymous:
                 asyncio.run(main.api_games_create(request, request_for()))
@@ -266,6 +288,80 @@ class MultiGameFoundationTestCase(GameStateTestCase):
         self.assertEqual(admin_page.status_code, 200)
         self.assertEqual(raw_static_page.status_code, 404)
         self.assertIn('name="robots" content="noindex, nofollow"', admin_page.text)
+
+    def test_allowlisted_two_human_websocket_join_rejects_third_player_and_spectator(self):
+        """The Alpha has two private human seats, not inherited ZDWA viewing."""
+        game = self._track(create_game_state("zilch-hvh-ws", "Private HvH", 2, ZILCH_GAME_TYPE))
+        _, mani_token = self._identity("Mani", role="admin")
+        _, preview_token = self._identity("PreviewFriend")
+        _, third_token = self._identity("ThirdPreview")
+
+        with patch.dict(
+            os.environ,
+            {"ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES": "previewfriend,thirdpreview"},
+        ):
+            with TestClient(main.app) as mani_client, TestClient(main.app) as preview_client, TestClient(main.app) as third_client:
+                mani_client.cookies.set("rollthedice_session", mani_token)
+                preview_client.cookies.set("rollthedice_session", preview_token)
+                third_client.cookies.set("rollthedice_session", third_token)
+                with mani_client.websocket_connect(f"/ws/{game['_id']}") as mani_socket:
+                    self.assertEqual(mani_socket.receive_json()["game"]["game_type"], ZILCH_GAME_TYPE)
+                    mani_socket.send_json({"action": "join_game"})
+                    mani_player = mani_socket.receive_json()["player_id"]
+                    waiting = mani_socket.receive_json()["scoreboard"]
+                    self.assertFalse(waiting["_started"])
+
+                    with preview_client.websocket_connect(f"/ws/{game['_id']}") as preview_socket:
+                        self.assertEqual(preview_socket.receive_json()["game"]["game_type"], ZILCH_GAME_TYPE)
+                        preview_socket.send_json({"action": "join_game"})
+                        preview_player = preview_socket.receive_json()["player_id"]
+                        started = preview_socket.receive_json()["scoreboard"]
+                        mirrored = mani_socket.receive_json()["scoreboard"]
+                        self.assertNotEqual(mani_player, preview_player)
+                        self.assertTrue(started["_started"])
+                        self.assertEqual(started["_players_joined"], 2)
+                        self.assertEqual(started["_zilch_start_roll"]["pending_player_ids"], [mani_player, preview_player])
+                        self.assertEqual(started["_zilch_start_roll"], mirrored["_zilch_start_roll"])
+
+                        mani_socket.send_json({"action": "end_game"})
+                        rejected_end = mani_socket.receive_json()
+                        self.assertEqual(rejected_end["error"], "Unbekannte Aktion: end_game")
+                        self.assertFalse(main.games[game["_id"]]["_finished"])
+
+                        with third_client.websocket_connect(f"/ws/{game['_id']}") as third_socket:
+                            self.assertEqual(third_socket.receive_json()["game"]["game_type"], ZILCH_GAME_TYPE)
+                            third_socket.send_json({"action": "join_game"})
+                            rejected_join = third_socket.receive_json()
+                            self.assertTrue(rejected_join["fatal"])
+                            self.assertEqual(rejected_join["error"], "Spiel ist bereits gestartet")
+
+                        with third_client.websocket_connect(f"/ws/{game['_id']}") as spectator_socket:
+                            self.assertEqual(spectator_socket.receive_json()["game"]["game_type"], ZILCH_GAME_TYPE)
+                            spectator_socket.send_json({"action": "spectate_game"})
+                            rejected_spectator = spectator_socket.receive_json()
+                            self.assertTrue(rejected_spectator["fatal"])
+                            self.assertEqual(
+                                rejected_spectator["error"],
+                                "Zuschauen ist in dieser Zilch-Alpha nicht verfügbar.",
+                            )
+
+        self.assertEqual(len(main.games[game["_id"]]["_players"]), 2)
+
+    def test_completed_zilch_active_state_survives_restart_without_zdwa_result_fields(self):
+        game = self._track(create_game_state("zilch-terminal-active", "Endstand", 2, ZILCH_GAME_TYPE))
+        join_player_to_game(game, {"id": "p1", "name": "Mani", "user_id": 1, "ws": None})
+        join_player_to_game(game, {"id": "p2", "name": "Preview", "user_id": 2, "ws": None})
+        start_game_if_ready(game)
+        outcome = finish_zilch_game(game)
+        save_active_game(game)
+
+        restored = load_active_games()[game["_id"]]
+        projected = snapshot(restored)
+        self.assertTrue(restored["_finished"])
+        self.assertEqual(restored["_game_type"], ZILCH_GAME_TYPE)
+        self.assertEqual(projected["_zilch_outcome"], outcome)
+        self.assertIsNone(restored["_results"])
+        self.assertNotIn("_scoreboards", restored)
 
     def test_websocket_rejects_zilch_before_any_protected_frame(self):
         game = self._track(create_game_state("ws-zilch", "Socket Zilch", 1, ZILCH_GAME_TYPE))
@@ -315,20 +411,26 @@ class MultiGameFoundationTestCase(GameStateTestCase):
     def test_websocket_dispatches_zilch_roll_to_its_own_engine_snapshot(self):
         game = self._track(create_game_state("ws-zilch-engine", "Socket Zilch", 1, ZILCH_GAME_TYPE))
         _, mani_token = self._identity("Mani", role="admin")
+        values = iter([6, 5, 5, 5, 2, 3, 4])
 
-        with TestClient(main.app) as client:
-            client.cookies.set("rollthedice_session", mani_token)
-            with client.websocket_connect(f"/ws/{game['_id']}") as websocket:
-                websocket.receive_json()
-                websocket.send_json({"action": "join_game"})
-                websocket.receive_json()
-                websocket.receive_json()
-                websocket.send_json({"action": "zilch_roll_dice", "turn_id": 1, "version": 0})
-                update = websocket.receive_json()
+        with patch("app.zilch_gameplay.fair_zilch_randint", new=lambda _lower, _upper: next(values)):
+            with TestClient(main.app) as client:
+                client.cookies.set("rollthedice_session", mani_token)
+                with client.websocket_connect(f"/ws/{game['_id']}") as websocket:
+                    websocket.receive_json()
+                    websocket.send_json({"action": "join_game"})
+                    websocket.receive_json()
+                    opening = websocket.receive_json()["scoreboard"]
+                    self.assertEqual(opening["_zilch_start_roll"]["phase"], "awaiting_rolls")
+                    websocket.send_json({"action": "zilch_start_roll", "start_roll_version": 0})
+                    started = websocket.receive_json()["scoreboard"]
+                    self.assertIsNotNone(started["_turn"])
+                    websocket.send_json({"action": "zilch_roll_dice", "turn_id": 1, "version": 0})
+                    update = websocket.receive_json()
 
         projected = update["scoreboard"]
         self.assertEqual(projected["_game_type"], ZILCH_GAME_TYPE)
-        self.assertEqual(projected["_gameplay_status"], "rules_engine")
+        self.assertEqual(projected["_gameplay_status"], "playable_alpha")
         self.assertEqual(projected["_rolls_used"], 1)
         self.assertTrue(projected["_zilch_quick_holds"])
         self.assertNotIn("_scoreboards", game)

@@ -23,6 +23,7 @@ from app.zilch_state import (
     new_zilch_game,
     record_zilch_bank,
     record_zilch_loss,
+    record_zilch_start_roll,
     start_zilch_game,
     sync_zilch_turn,
 )
@@ -78,13 +79,69 @@ class ZilchGameplayTestCase(TestCase):
                 {"id": player_id, "name": f"Player {index + 1}", "user_id": index + 1, "ws": socket},
             )
             sockets.append(socket)
-        start_rng = sequence_rng([6] if players == 1 else [6, 1])
-        start_zilch_game(game, randint_fn=start_rng)
+        start_zilch_game(game)
+        for index in range(players):
+            # Existing turn/action tests start after the opening procedure;
+            # dedicated tests below exercise the human-triggered action itself.
+            record_zilch_start_roll(game, f"p{index + 1}", 6 - index)
         return game, sockets
 
     @staticmethod
     def session(game, socket, player_id: str) -> GameSocketSession:
         return GameSocketSession(websocket=socket, game=game, auth_identity=None, player_id=player_id)
+
+    def test_two_humans_complete_visible_versioned_start_roll_and_repeat_a_tie(self):
+        game_id = f"zilch-start-roll-{len(self.game_ids)}"
+        self.game_ids.append(game_id)
+        game = new_zilch_game(game_id, "Start", 2)
+        sockets = [RecordingSocket(), RecordingSocket()]
+        for index, socket in enumerate(sockets, start=1):
+            join_zilch_player(
+                game,
+                {"id": f"p{index}", "name": f"Player {index}", "user_id": index, "ws": socket},
+            )
+        start_zilch_game(game)
+        initial = snapshot_zilch(game)
+        self.assertIsNone(initial["_turn"])
+        self.assertEqual(initial["_zilch_start_roll"]["phase"], "awaiting_rolls")
+        self.assertEqual(initial["_zilch_start_roll"]["pending_player_ids"], ["p1", "p2"])
+
+        first = self.session(game, sockets[0], "p1")
+        second = self.session(game, sockets[1], "p2")
+        asyncio.run(handle_zilch_gameplay_action(first, "zilch_roll_dice", {"turn_id": 1, "version": 0}))
+        self.assertEqual(sockets[0].messages[-1]["zilch_error"]["code"], "zilch_start_roll_pending")
+
+        with patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([4])):
+            asyncio.run(handle_zilch_gameplay_action(first, "zilch_start_roll", {"start_roll_version": 0}))
+        after_first = sockets[0].messages[-1]["scoreboard"]
+        self.assertEqual(after_first["_zilch_start_roll"]["rolls"], {"p1": 4})
+        self.assertIsNone(after_first["_turn"])
+        restored_waiting = json.loads(json.dumps(serializable_game_state(game)))
+        ensure_zilch_engine_state(restored_waiting)
+        restored_waiting_snapshot = snapshot_zilch(restored_waiting)
+        self.assertEqual(restored_waiting_snapshot["_zilch_start_roll"]["rolls"], {"p1": 4})
+        self.assertEqual(restored_waiting_snapshot["_zilch_start_roll"]["pending_player_ids"], ["p2"])
+        self.assertIsNone(restored_waiting_snapshot["_turn"])
+
+        asyncio.run(handle_zilch_gameplay_action(first, "zilch_start_roll", {"start_roll_version": 1}))
+        self.assertEqual(sockets[0].messages[-1]["zilch_error"]["code"], "zilch_start_roll_already_recorded")
+
+        with patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([4])):
+            asyncio.run(handle_zilch_gameplay_action(second, "zilch_start_roll", {"start_roll_version": 1}))
+        tie = sockets[1].messages[-1]["scoreboard"]
+        self.assertTrue(tie["_zilch_start_roll"]["tied"])
+        self.assertEqual(tie["_zilch_start_roll"]["attempts"], [{"attempt": 1, "rolls": {"p1": 4, "p2": 4}}])
+
+        asyncio.run(handle_zilch_gameplay_action(first, "zilch_start_roll", {"start_roll_version": 1}))
+        self.assertEqual(sockets[0].messages[-1]["zilch_error"]["code"], "zilch_stale_start_roll")
+        with patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([2])):
+            asyncio.run(handle_zilch_gameplay_action(first, "zilch_start_roll", {"start_roll_version": 2}))
+        with patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([6])):
+            asyncio.run(handle_zilch_gameplay_action(second, "zilch_start_roll", {"start_roll_version": 3}))
+        resolved = sockets[1].messages[-1]["scoreboard"]
+        self.assertEqual(resolved["_zilch_start_roll"]["phase"], "resolved")
+        self.assertEqual(resolved["_zilch_start_roll"]["winner_id"], "p2")
+        self.assertEqual(resolved["_turn"]["player_id"], "p2")
 
     def test_roll_and_hold_are_server_calculated_and_broadcast_the_structured_option(self):
         game, sockets = self.make_game()
