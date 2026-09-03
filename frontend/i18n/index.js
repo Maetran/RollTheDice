@@ -188,6 +188,7 @@ import { EN } from "./catalog.js";
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    document.title = translateString(document.title);
     translateElement(document);
     for (const switcher of document.querySelectorAll("[data-language-switcher]")) {
       switcher.value = getLanguage();

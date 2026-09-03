@@ -2,6 +2,10 @@ let authCache = null;
 let authRequest = null;
 let authEpoch = 0;
 
+function notifyAuthState(data) {
+  window.dispatchEvent(new CustomEvent("zdwa:auth-state", { detail: data || { authenticated: false, user: null } }));
+}
+
 function syncLanguage(data) {
   const language = data?.user?.preferences?.preferred_language;
   if (language && window.ZDWA_I18N) window.ZDWA_I18N.syncAccountLanguage(language);
@@ -22,6 +26,7 @@ export function loadAuth({ refresh = false } = {}) {
     }
     authCache = data;
     syncLanguage(authCache);
+    notifyAuthState(authCache);
     return authCache;
   })();
   authRequest = request;
@@ -59,6 +64,7 @@ export async function login(username, password) {
   authRequest = null;
   authCache = data;
   syncLanguage(data);
+  notifyAuthState(data);
   return data;
 }
 
@@ -79,6 +85,7 @@ export async function register(username, password, turnstileToken = null) {
   authRequest = null;
   authCache = data;
   syncLanguage(data);
+  notifyAuthState(data);
   return data;
 }
 
@@ -88,6 +95,7 @@ export async function logout() {
   authEpoch += 1;
   authCache = null;
   authRequest = null;
+  notifyAuthState({ authenticated: false, user: null });
 }
 
 export function authError(detail) {

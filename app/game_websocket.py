@@ -11,8 +11,14 @@ from typing import Any
 from fastapi import WebSocket, WebSocketDisconnect
 
 from .auth import auth_identity_payload, resolve_session, websocket_origin_allowed
+from .game_access import can_access_game
 from .game_admin import action_blocked_by_superadmin
 from .game_realtime import broadcast
+from .game_registry import (
+    dispatch_gameplay_action,
+    gameplay_actions_for_game,
+    superadmin_actions_for_game,
+)
 from .game_snapshot import snapshot
 from .game_state import (
     MULTIPLAYER_PAUSE_BLOCKED_ACTIONS,
@@ -22,7 +28,7 @@ from .game_state import (
     multiplayer_pause_reason,
 )
 from .game_ws_admin import SUPERADMIN_ACTIONS, handle_superadmin_action
-from .game_ws_gameplay import GAMEPLAY_ACTIONS, handle_gameplay_action
+from .game_ws_gameplay import GAMEPLAY_ACTIONS
 from .game_ws_session import (
     SESSION_ACTIONS,
     GameSocketSession,
@@ -31,10 +37,13 @@ from .game_ws_session import (
     handle_session_action,
 )
 from .game_ws_social import SOCIAL_ACTIONS, handle_social_action
+from .zilch_gameplay import ZILCH_GAMEPLAY_ACTIONS
 
 logger = logging.getLogger(__name__)
 
-KNOWN_ACTIONS = SESSION_ACTIONS | GAMEPLAY_ACTIONS | SUPERADMIN_ACTIONS | SOCIAL_ACTIONS
+# Kept as the complete public action vocabulary for compatibility with tests
+# and diagnostics. Runtime validation below deliberately narrows it per game.
+KNOWN_ACTIONS = SESSION_ACTIONS | GAMEPLAY_ACTIONS | ZILCH_GAMEPLAY_ACTIONS | SUPERADMIN_ACTIONS | SOCIAL_ACTIONS
 
 ReserveConnection = Callable[[WebSocket], str | None]
 ReleaseConnection = Callable[[str | None], None]
@@ -80,12 +89,20 @@ async def serve_game_websocket(
         await websocket.close(code=1008, reason="Origin rejected")
         return
 
-    identity = resolve_session(websocket)
-    await websocket.accept()
     game = games.get(game_id)
     if game is None:
+        await websocket.accept()
         await close_with_error(websocket, "Game nicht gefunden", fatal=True, code=1000)
         return
+
+    identity = resolve_session(websocket)
+    # Reject before accepting/sending any frame.  In particular, a known Zilch
+    # ID must not disclose its lock state, players, board or chat to anyone.
+    if not can_access_game(identity, game):
+        await websocket.close(code=1008, reason="Zilch preview access required")
+        return
+
+    await websocket.accept()
 
     connection_address = reserve_connection(websocket)
     if connection_address is None:
@@ -103,7 +120,10 @@ async def serve_game_websocket(
                 },
                 # Do not expose a protected game's board or chat until the
                 # client has authenticated through join/spectate/rejoin.
-                "game": {"locked": bool(game.get("_passphrase"))},
+                "game": {
+                    "locked": bool(game.get("_passphrase")),
+                    "game_type": game.get("_game_type", "zdwa"),
+                },
             }
         )
         await _receive_messages(session, limiter=limiter, finalize_game=finalize_game)
@@ -130,6 +150,20 @@ async def _receive_messages(
         action_value = data.get("action")
         action = action_value if isinstance(action_value, str) else None
 
+        # Zilch preview access is checked again for every received action. A
+        # deleted session, role change, or account deactivation therefore does
+        # not leave an already-open socket authorized indefinitely.
+        if session.game.get("_game_type", "zdwa") == "zilch":
+            session.auth_identity = resolve_session(session.websocket)
+            if not can_access_game(session.auth_identity, session.game):
+                await close_with_error(
+                    session.websocket,
+                    "Zilch-Vorschau nicht mehr verfügbar",
+                    fatal=True,
+                    code=1008,
+                )
+                return
+
         rate_limit = limiter.check(action)
         if rate_limit == "close":
             await close_with_error(
@@ -143,7 +177,10 @@ async def _receive_messages(
             await session.websocket.send_json({"error": "Bitte kurz warten"})
             continue
 
-        if action not in KNOWN_ACTIONS:
+        allowed_gameplay_actions = gameplay_actions_for_game(session.game)
+        allowed_superadmin_actions = superadmin_actions_for_game(session.game)
+        allowed_actions = SESSION_ACTIONS | allowed_gameplay_actions | allowed_superadmin_actions | SOCIAL_ACTIONS
+        if action not in allowed_actions:
             await session.websocket.send_json({"error": f"Unbekannte Aktion: {action_value}"})
             continue
         if not session.player_id and not session.spectator_id and action not in SESSION_ACTIONS:
@@ -156,25 +193,25 @@ async def _receive_messages(
         if session.is_spectator and action not in {"send_emoji", "chat_message", "rejoin_game"}:
             await session.websocket.send_json({"error": "Nur fuer Spieler"})
             continue
-        if action_blocked_by_superadmin(session.game, action):
+        if allowed_superadmin_actions and action_blocked_by_superadmin(session.game, action):
             await session.websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
             continue
         paused_reason = multiplayer_pause_reason(session.game)
-        if paused_reason and action in MULTIPLAYER_PAUSE_BLOCKED_ACTIONS:
+        if paused_reason and action in (MULTIPLAYER_PAUSE_BLOCKED_ACTIONS | allowed_gameplay_actions | allowed_superadmin_actions):
             await session.websocket.send_json({"error": paused_reason})
             continue
 
         if action in SESSION_ACTIONS:
             if await handle_session_action(session, action, data):
                 return
-        elif action in GAMEPLAY_ACTIONS:
-            await handle_gameplay_action(
+        elif action in allowed_gameplay_actions:
+            await dispatch_gameplay_action(
                 session,
                 action,
                 data,
                 finalize_game=finalize_game,
             )
-        elif action in SUPERADMIN_ACTIONS:
+        elif action in allowed_superadmin_actions:
             await handle_superadmin_action(
                 session,
                 action,

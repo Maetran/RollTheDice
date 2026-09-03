@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from .database import database_schema_ready, session_scope
+from .game_types import game_type_from_state
 from .models import ActiveGame
 from .security import utcnow
 
@@ -31,6 +32,9 @@ def _json_safe(value: Any) -> Any:
 def serializable_game_state(game: dict) -> dict:
     """Return durable state; live connections are rebuilt on rejoin."""
     state = _json_safe(game)
+    # Persist an explicit marker even when the source was restored from an old
+    # snapshot.  ``game_type_from_state`` supplies the documented ZDWA default.
+    state["_game_type"] = game_type_from_state(game)
     state["_spectators"] = []
     state["_superadmins"] = {}
     state["_roll_cooldown"] = {}
@@ -101,6 +105,10 @@ def load_active_games() -> dict[str, dict]:
                     if not isinstance(game, dict) or game.get("_finished") or game.get("_aborted"):
                         db.delete(row)
                         continue
+                    # Missing type markers belong to pre-multigame ZDWA
+                    # snapshots. Unknown markers are malformed and must never
+                    # be silently routed through a different rules engine.
+                    game["_game_type"] = game_type_from_state(game)
                     game["_id"] = row.game_id
                     game["_last_activity"] = _parse_activity(game.get("_last_activity"))
                     game["_spectators"] = []

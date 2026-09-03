@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
 from .active_games import delete_active_game, save_active_game
+from .game_types import DEFAULT_GAME_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -373,6 +374,9 @@ def new_game(gid: str, name: str, mode) -> GameDict:
     expected = 4 if str(mode).lower() == "2v2" else int(mode)
     g: GameDict = {
         "_id": gid,
+        # Keep the legacy constructor public for tests and existing callers,
+        # but make every newly created ZDWA state explicit from now on.
+        "_game_type": DEFAULT_GAME_TYPE,
         "_name": name,
         "_mode": str(mode),
         "_hardcore": False,  # 1 Wurf, ❗ wie Freireihe, keine Korrektur

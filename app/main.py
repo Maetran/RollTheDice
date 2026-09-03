@@ -13,7 +13,7 @@ from urllib.parse import quote, urlencode
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .achievements import sync_achievements_for_users
 from .active_games import load_active_games, save_active_game
@@ -28,11 +28,12 @@ from .auth import (
 )
 from .auth_protection import enforce_game_creation_rate_limit, validate_auth_protection_config
 from .database import configure_database, database_schema_ready, upgrade_database
-from .game_engine import _progress_for_game
+from .game_access import can_access_game, can_access_zilch_preview
 from .game_history import (
     delete_completed_game,
     import_legacy_leaderboards,
 )
+from .game_registry import create_game_state, project_game_progress
 from .game_results import finalize_and_log_results, remove_deleted_game_from_files
 from .game_snapshot import public_player_payload, refresh_game_achievement_ranks
 from .game_state import (
@@ -42,11 +43,14 @@ from .game_state import (
     _player_connected,
     games,
     multiplayer_pause_reason,
-    new_game,
     pause_remaining_seconds,
     sweep_timeouts,
     timeout_seconds,
 )
+from .game_state import (
+    new_game as _new_game,
+)
+from .game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state, normalize_game_type
 from .game_websocket import serve_game_websocket
 from .http_cache import apply_cache_policy, read_static_asset_version
 from .leaderboard_service import (
@@ -55,6 +59,11 @@ from .leaderboard_service import (
 )
 from .leaderboard_storage import LeaderboardFiles
 from .site_seo import robots_document, sitemap_document
+from .zilch_state import validate_zilch_mode
+
+# Retained as a small backwards-compatible module export for existing focused
+# logic tests and integrations that historically imported ``app.main.new_game``.
+new_game = _new_game
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +155,11 @@ def _legacy_page_target(request: Request) -> str | None:
 @app.middleware("http")
 async def response_cache_policy(request: Request, call_next):
     """Redirect legacy pages and apply the shared HTTP cache contract."""
+    # ``zilch.html`` is an implementation artifact used by the protected
+    # routes below.  Unlike public static assets, it must never become a
+    # second, unauthenticated page entry point through the static mount.
+    if request.url.path == "/static/zilch.html":
+        return Response(status_code=404, headers={"Cache-Control": "no-store"})
     legacy_target = _legacy_page_target(request)
     if legacy_target:
         response = RedirectResponse(legacy_target, status_code=308)
@@ -238,8 +252,43 @@ def admin_page():
 
 @app.get("/spiel/{game_id}", include_in_schema=False)
 @app.get("/spiel/{game_id}/zuschauen", include_in_schema=False)
-def room_page(game_id: str):
+def room_page(game_id: str, request: Request):
+    # A known Zilch game never mounts the ZDWA room.  The dedicated page has a
+    # second server-side check, while the 404 here avoids revealing it to an
+    # unauthorized caller who guessed an ID.
+    game = games.get(game_id)
+    if game and game_type_from_state(game) == ZILCH_GAME_TYPE:
+        if not can_access_game(resolve_session(request), game):
+            raise HTTPException(status_code=404, detail="game_not_found")
+        return RedirectResponse(f"/zilch/spiel/{quote(game_id, safe='')}", status_code=307)
     return _page("room.html")
+
+
+def _require_zilch_preview(request: Request):
+    """Resolve the session once and enforce the central Zilch preview policy."""
+    identity = resolve_session(request)
+    if not identity:
+        raise HTTPException(status_code=401, detail="authentication_required")
+    if not can_access_zilch_preview(identity):
+        raise HTTPException(status_code=403, detail="zilch_preview_required")
+    return identity
+
+
+@app.get("/zilch", include_in_schema=False)
+def zilch_preview_page(request: Request):
+    """Serve the internal, noindex Zilch shell only to the preview identity."""
+    _require_zilch_preview(request)
+    return _page("zilch.html")
+
+
+@app.get("/zilch/spiel/{game_id}", include_in_schema=False)
+def zilch_room_page(game_id: str, request: Request):
+    """Serve a Zilch room only after both policy and type checks pass."""
+    identity = _require_zilch_preview(request)
+    game = games.get(game_id)
+    if not game or game_type_from_state(game) != ZILCH_GAME_TYPE or not can_access_game(identity, game):
+        raise HTTPException(status_code=404, detail="game_not_found")
+    return _page("zilch.html")
 
 
 @app.get("/ergebnis", include_in_schema=False)
@@ -355,6 +404,7 @@ def root():
 class CreateReq(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     mode: str | int
+    game_type: str = Field(default=DEFAULT_GAME_TYPE, max_length=16)
     passphrase: str | None = Field(default=None, alias="pass", max_length=100)
     hardcore: bool | None = False
 
@@ -374,11 +424,30 @@ class CreateReq(BaseModel):
             raise ValueError("invalid_game_mode")
         return cleaned
 
+    @field_validator("game_type")
+    @classmethod
+    def validate_game_type(_cls, value: str) -> str:
+        try:
+            return normalize_game_type(value)
+        except ValueError as exc:
+            raise ValueError("invalid_game_type") from exc
+
     @field_validator("passphrase")
     @classmethod
     def normalize_passphrase(_cls, value: str | None) -> str | None:
         cleaned = str(value or "").strip()
         return cleaned or None
+
+    @model_validator(mode="after")
+    def validate_game_specific_options(self):
+        if self.game_type == ZILCH_GAME_TYPE:
+            try:
+                validate_zilch_mode(self.mode)
+            except ValueError as exc:
+                raise ValueError("zilch_invalid_player_count") from exc
+            if self.hardcore:
+                raise ValueError("zilch_hardcore_not_supported")
+        return self
 
 
 class DeleteCompletedGameReq(BaseModel):
@@ -388,13 +457,25 @@ class DeleteCompletedGameReq(BaseModel):
 
 # --- Games API (mit wartenden Spielern) ---
 @app.get("/api/games")
-async def api_games(request: Request):
+async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAME_TYPE)):
     """API: Liste aller Spiele (laufend, wartend, abgeschlossen/abgebrochen)."""
     sweep_timeouts()
     auth_identity = resolve_session(request)
+    try:
+        requested_game_type = normalize_game_type(game_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="invalid_game_type") from exc
+    # Returning an empty list is deliberate: an unauthorized request cannot
+    # distinguish an inaccessible Zilch lobby from one with no games.
+    if requested_game_type == ZILCH_GAME_TYPE and not can_access_zilch_preview(auth_identity):
+        return {"games": [], "online_users": online_user_count()}
     lst = []
     for gid, g in games.items():
         try:
+            if game_type_from_state(g) != requested_game_type:
+                continue
+            if not can_access_game(auth_identity, g):
+                continue
             refresh_game_achievement_ranks(g)
             joined = len(g["_players"])
             waiting_names = [p.get("name", f"Player {i}") for i, p in enumerate(g["_players"], start=1)]
@@ -408,6 +489,7 @@ async def api_games(request: Request):
             lst.append(
                 {
                     "id": gid,
+                    "game_type": requested_game_type,
                     "name": g["_name"],
                     "mode": g["_mode"],
                     "hardcore": bool(g.get("_hardcore", False)),
@@ -435,7 +517,7 @@ async def api_games(request: Request):
                     "started_at": g.get("_started_at"),
                     "updated_at": g.get("_updated_at"),
                     "progress": (
-                        _progress_for_game(g)
+                        project_game_progress(g)
                         if g.get("_started") and not g.get("_finished") and not g.get("_aborted", False)
                         else []
                     ),
@@ -448,12 +530,19 @@ async def api_games(request: Request):
 
 
 @app.get("/api/games/{game_id}")
-def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="pass"), check: int = Query(default=0)):
+def game_info(
+    game_id: str,
+    request: Request,
+    passphrase: str | None = Query(default=None, alias="pass"),
+    check: int = Query(default=0),
+):
     """API: Detailinfos zu einem Spiel inkl. Fortschritt/Player-Status."""
     sweep_timeouts()
     g = games.get(game_id)
     if not g:
         return {"exists": False}
+    if not can_access_game(resolve_session(request), g):
+        raise HTTPException(status_code=404, detail="game_not_found")
 
     # Preflight: falls ?check=1 angegeben ist, Passwort hart pruefen und frueh beenden
     if check == 1:
@@ -475,6 +564,7 @@ def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="
     return {
         "exists": True,
         "id": game_id,
+        "game_type": game_type_from_state(g),
         "name": g["_name"],
         "mode": g["_mode"],
         "hardcore": bool(g.get("_hardcore", False)),
@@ -498,6 +588,11 @@ def game_info(game_id: str, passphrase: str | None = Query(default=None, alias="
         "pause_remaining_label": _format_duration_hm(pause_left),
         "timeout_seconds": timeout_seconds(),
         "timeout_label": _format_duration_hm(timeout_seconds()),
+        "progress": (
+            project_game_progress(g)
+            if g.get("_started") and not g.get("_finished") and not g.get("_aborted", False)
+            else []
+        ),
     }
 
 
@@ -514,9 +609,11 @@ def api_game_from_leaderboard(game_id: str):
 @app.post("/api/games")
 async def api_games_create(req: CreateReq, request: Request):
     """API: Neues Spiel anlegen (Name, Modus, optional Passphrase)."""
+    if req.game_type == ZILCH_GAME_TYPE:
+        _require_zilch_preview(request)
     enforce_game_creation_rate_limit(request)
     gid = str(uuid.uuid4())[:8]
-    g = new_game(gid, req.name, req.mode)
+    g = create_game_state(gid, req.name, req.mode, req.game_type)
     g["_passphrase"] = req.passphrase or None
     g["_hardcore"] = bool(req.hardcore or False)
     save_active_game(g)

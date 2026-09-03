@@ -18,6 +18,7 @@ from .auth_protection import (
     record_login_failure,
 )
 from .database import session_scope
+from .game_access import public_game_access_payload
 from .models import Session as LoginSession
 from .models import User, UserAchievement
 from .security import (
@@ -66,6 +67,9 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
         "username": identity.username,
         "role": identity.role,
         "is_admin": identity.is_admin,
+        # The browser receives a capability calculated by the same policy the
+        # HTTP and WebSocket layers use; it never decides access from a name.
+        "game_access": public_game_access_payload(identity),
         "must_change_password": identity.must_change_password,
         "achievement_rank": identity.achievement_rank,
         "preferences": {

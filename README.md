@@ -2,6 +2,15 @@
 
 RollTheDice is a lightweight multiplayer dice game with a FastAPI backend and a static HTML/CSS/JS frontend. It supports German and English, single-player, 2-player, 3-player, 2v2 team games, Hardcore mode, chat, emoji reactions, leaderboards, account achievement milestones, and read-only replay views for completed games.
 
+ZDWA is the public game. The repository also contains an intentionally private
+Zilch foundation: only the authenticated admin account whose normalized
+username is `mani` can open its separate preview shell. It establishes a
+six-dice, 10,000-point, one-or-two-participant state boundary. Play modes
+`solo | cpu | multiplayer` and participant types `human | cpu` are separate
+from WebSocket connections; CPU behavior is not implemented. Zilch scoring,
+completed-game persistence, achievements, leaderboards, and final rules are
+also deliberately deferred.
+
 Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
 
 ## Features
@@ -26,6 +35,7 @@ User-facing navigation uses short routes without implementation details:
 
 - `/` lobby
 - `/spiel/{game_id}` active player view
+- `/zilch` protected internal Zilch preview (not public or indexable)
 - `/spiel/{game_id}/zuschauen` spectator view
 - `/regeln`, `/rangabzeichen`, `/spieler`, `/spieler/{username}`, `/konto`, and `/admin`
 - `/ergebnis/{game_id}` completed-game view
@@ -191,6 +201,20 @@ version to all asset references and the service-worker cache. For direct changes
 to static HTML, images, or a manifest, `npm run sync:assets` is sufficient. CI
 rejects stale generated files; CI and the deployment guard reject unsynchronized
 asset versions.
+
+## Multi-game foundation
+
+The shared account, session cookie, roles, player identities, chat, rejoin,
+WebSocket transport, and active-game persistence can serve more than one game.
+Game-specific state creation, join/start setup, gameplay actions, lobby progress,
+and snapshots are selected through a small registry. Existing ZDWA flows remain
+behind their adapter; Zilch has separate modules and cannot call ZDWA scoring or
+completion code. The current Zilch preview is deliberately noindex and guarded
+on every relevant page, API, detail lookup, and WebSocket connection.
+
+The scope and deliberately unresolved Zilch house rules are documented in
+[docs/MULTIGAME_FOUNDATION.md](docs/MULTIGAME_FOUNDATION.md). They are not part
+of the player-facing ZDWA rules until actual Zilch gameplay is agreed.
 
 ## Plain Docker
 

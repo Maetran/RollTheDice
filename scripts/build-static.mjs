@@ -19,6 +19,7 @@ const targets = [
     format: "iife",
   },
   { source: "frontend/lobby/index.js", output: "app/static/lobby.js", format: "esm" },
+  { source: "frontend/zilch/index.js", output: "app/static/zilch.js", format: "esm" },
   {
     sources: [
       "frontend/room/helpers.js",
@@ -40,6 +41,7 @@ const targets = [
   },
   { source: "frontend/shell/index.js", output: "app/static/shell.js", format: "iife" },
   { source: "frontend/styles/lobby-entry.css", output: "app/static/lobby.css" },
+  { source: "frontend/styles/zilch.css", output: "app/static/zilch.css" },
   { source: "frontend/styles/index.css", output: "app/static/style.css" },
 ];
 

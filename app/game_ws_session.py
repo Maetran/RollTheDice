@@ -5,14 +5,13 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import WebSocket
 
 from .auth import AuthIdentity, username_is_registered
-from .game_engine import _set_roll_cap_for_current_turn
 from .game_realtime import broadcast, send_game_message
+from .game_registry import join_player_to_game, start_game_if_ready
 from .game_snapshot import snapshot
 from .game_state import (
     GameDict,
@@ -20,8 +19,6 @@ from .game_state import (
     _join_block_reason,
     _offline_players,
     _passphrase_matches,
-    assign_team_for_join,
-    is_team_mode,
     touch,
 )
 
@@ -125,19 +122,10 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any]) -> bool:
     session.player_id = player_id
     session.spectator_id = None
     session.is_spectator = False
-    g["_players"].append(player)
-    g["_scoreboards"][player_id] = {}
-    if is_team_mode(g):
-        assign_team_for_join(g, player_id)
-    if len(g["_players"]) == g["_expected"] and not g["_started"]:
-        g["_started"] = True
-        g["_started_at"] = datetime.now(timezone.utc).isoformat()
-        g["_turn"] = {
-            "player_id": g["_players"][0]["id"],
-            "roll_index": 0,
-            "first4oak_roll": None,
-        }
-        _set_roll_cap_for_current_turn(g)
+    # Player identity, lifecycle and connection handling stay common.  The
+    # adapter owns only the game-specific board shape and start metadata.
+    join_player_to_game(g, player)
+    start_game_if_ready(g)
 
     await websocket.send_json({"player_id": player_id, "resume_token": player["resume_token"]})
     touch(g)

@@ -10,6 +10,7 @@ from .active_games import delete_active_game
 from .game_engine import _compute_final_totals, _rows_from_scoreboard
 from .game_history import persist_runtime_game, stable_game_id
 from .game_state import CHAT_HISTORY_LIMIT, GameDict, is_team_mode
+from .game_types import DEFAULT_GAME_TYPE, game_type_from_state
 from .leaderboard_service import (
     GLOBAL_AVERAGE_STARTED_AT,
     _average_bucket,
@@ -229,6 +230,13 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
     Args:
         g (GameDict): Spielzustand
     """
+    # The completed-game pipeline currently represents ZDWA scorecards,
+    # leaderboards, statistics and achievements. Zilch must never pass through
+    # it before it has its own confirmed completion model.
+    if game_type_from_state(g) != DEFAULT_GAME_TYPE:
+        logger.warning("Skipping ZDWA finalization for non-ZDWA game %s", g.get("_id"))
+        return {"achievement_unlocks": {}, "achievement_rank_ups": {}}
+
     totals = _compute_final_totals(g)
     mode = str(g["_mode"]).lower()
     players = g["_players"]

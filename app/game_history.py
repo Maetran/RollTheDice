@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from .database import database_schema_ready, session_scope
+from .game_types import DEFAULT_GAME_TYPE, game_type_from_state
 from .models import CompletedGame, DeletedGame, GameParticipant
 from .rules import compute_overall
 from .security import as_utc, utcnow
@@ -222,6 +223,11 @@ def delete_completed_game(*, game_id: str, admin_user_id: int, reason: str) -> d
 
 
 def persist_runtime_game(game: dict, totals: dict[str, int], snapshot: dict) -> bool:
+    # Defensive second boundary: Zilch's unfinished format must not create a
+    # completed ZDWA row even if a future caller mistakenly asks to persist it.
+    if game_type_from_state(game) != DEFAULT_GAME_TYPE:
+        logger.warning("Refusing to persist non-ZDWA game %s in completed history", game.get("_id"))
+        return False
     mode = str(game.get("_mode") or "")
     is_team = mode.lower() == "2v2"
     participants = []

@@ -102,8 +102,8 @@ def _serialize_scoreboards(g: GameDict) -> dict:
 # -----------------------------
 
 
-def snapshot(g: GameDict) -> dict:
-    """Erzeugt den vollständigen Spiel-Snapshot für den Client.
+def snapshot_zdwa(g: GameDict) -> dict:
+    """Erzeugt den vollständigen ZDWA-Snapshot für den bestehenden Client.
 
     Enthält Spieler/Teams, Boards, aktuelle Würfel/Holds, Zugstatus, Ansage,
     Korrekturstatus, Vorschläge und optionale Ergebnisse.
@@ -175,6 +175,7 @@ def snapshot(g: GameDict) -> dict:
         pause_reason = multiplayer_pause_reason(g)
         pause_left = pause_remaining_seconds(g)
         return {
+            "_game_type": "zdwa",
             "_name": g["_name"],
             "_hardcore": bool(g.get("_hardcore", False)),
             "_players": [
@@ -247,6 +248,15 @@ def snapshot(g: GameDict) -> dict:
     except Exception:
         logger.exception("Could not build snapshot for game %s", g.get("_id"))
         return {}
+
+
+def snapshot(g: GameDict) -> dict:
+    """Project the current game through its registered snapshot adapter."""
+    # This local import avoids forcing existing ZDWA code into a new import
+    # graph while making all coordinator call sites game-neutral.
+    from .game_registry import project_game_snapshot
+
+    return project_game_snapshot(g)
 
 
 def _compute_results_for_snapshot(g: GameDict):

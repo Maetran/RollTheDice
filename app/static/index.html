@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" data-game="zdwa">
 <head>
   <meta charset="utf-8">
   <title>ZDWA – Würfelspiel online kostenlos spielen</title>
@@ -22,14 +22,14 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=a7cdbc90e0fb">
+  <link rel="manifest" href="/manifest.webmanifest?v=880e07731bd7">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=a7cdbc90e0fb" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a7cdbc90e0fb" sizes="180x180">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=880e07731bd7" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=880e07731bd7" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <script src="/static/shell.js?v=a7cdbc90e0fb" defer></script>
-  <link rel="stylesheet" href="/static/lobby.css?v=a7cdbc90e0fb">
+  <script src="/static/shell.js?v=880e07731bd7" defer></script>
+  <link rel="stylesheet" href="/static/lobby.css?v=880e07731bd7">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -67,6 +67,9 @@
         </label>
         <button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten">
           <span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span>
+        </button>
+        <button id="gameSwitchZilch" class="small ghost game-switch" type="button" data-game-switch hidden disabled aria-hidden="true" aria-keyshortcuts="Alt+Shift+Z" title="Zilch-Vorschau öffnen (Alt+Shift+Z)">
+          <span aria-hidden="true">⇄</span><span>Zilch-Vorschau</span>
         </button>
       </div>
     </header>
@@ -259,6 +262,6 @@
   </div>
 
   <!-- Lobby-Controller: eigenständiges ES-Modul. -->
-  <script type="module" src="/static/lobby.js?v=a7cdbc90e0fb"></script>
+  <script type="module" src="/static/lobby.js?v=880e07731bd7"></script>
 </body>
 </html>
