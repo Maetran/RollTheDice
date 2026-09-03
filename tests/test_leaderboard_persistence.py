@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app import game_engine, game_results, game_snapshot, leaderboard_service
+from app.achievements import achievement_rank_for_points
 from app.leaderboard_storage import LeaderboardFiles, atomic_write_json, write_json_if_changed
 from tests.support import GameStateTestCase
 
@@ -68,6 +69,23 @@ class FinalTotalsTestCase(GameStateTestCase):
 
 
 class LeaderboardPersistenceTestCase(GameStateTestCase):
+    def test_completed_game_rank_upgrade_only_reports_a_genuine_higher_tier(self):
+        game = self.make_game(players=[("p1", "Anna"), ("p2", "Ben")])
+        game["_players"][0]["user_id"] = 71
+        game["_players"][1]["user_id"] = 72
+        before = {
+            71: achievement_rank_for_points(12),
+            72: achievement_rank_for_points(13),
+        }
+        after = {
+            71: achievement_rank_for_points(13),
+            72: achievement_rank_for_points(13),
+        }
+
+        rank_ups = game_results._rank_ups_for_completed_game(game, before, after)
+
+        self.assertEqual(rank_ups, {"p1": {"previous": before[71], "current": after[71]}})
+
     def test_normalization_does_not_overwrite_a_newer_concurrent_write(self):
         with patched_leaderboard_files() as (files, recent_file, *_rest):
             original = {"normal": [{"game_id": "old"}], "hc": []}

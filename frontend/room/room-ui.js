@@ -101,6 +101,61 @@
     }
   }
 
+  function rankUpgradePayload(value) {
+    const previous = value?.previous;
+    const current = value?.current;
+    if (!previous || !current || typeof previous !== "object" || typeof current !== "object") return null;
+    if (!current.key || current.key === previous.key) return null;
+    const previousMinimum = Number(previous.minimum_points);
+    const currentMinimum = Number(current.minimum_points);
+    if (!Number.isFinite(previousMinimum) || !Number.isFinite(currentMinimum) || currentMinimum <= previousMinimum) {
+      return null;
+    }
+    return { previous, current };
+  }
+
+  function rankUpgradeMessage(value) {
+    const rankUpgrade = rankUpgradePayload(value);
+    if (!rankUpgrade) return "";
+    const translate = text => window.ZDWA_I18N?.t?.(text) || String(text ?? "");
+    const previousTitle = translate(rankUpgrade.previous.title || "Newbie");
+    const currentTitle = translate(rankUpgrade.current.title || "Newbie");
+    const stars = Math.max(1, Math.min(5, Math.trunc(Number(rankUpgrade.current.stars) || 0)));
+    const points = Math.max(0, Math.trunc(Number(rankUpgrade.current.points) || 0));
+    return [
+      "✦".repeat(stars),
+      `${translate("Neuer Rang erreicht!")} ${currentTitle}`,
+      `${previousTitle} → ${currentTitle}`,
+      `${points} ${translate("Ehrenberg-Marken")}`,
+    ].join("\n\n");
+  }
+
+  async function acknowledgeAchievementRankUp(value) {
+    const message = rankUpgradeMessage(value);
+    if (!message) return;
+    let acknowledged = false;
+    if (window.ZDWA_UI?.dialog) {
+      try {
+        await window.ZDWA_UI.dialog({
+          title: "LEVEL UP! ✨",
+          message,
+          kind: "level-up",
+          dismissible: false,
+          actions: [{ id: "acknowledge-level-up", label: "Weiter", className: "primary" }],
+        });
+        acknowledged = true;
+      } catch (error) {
+        console.warn("Rangaufstieg konnte nicht angezeigt werden:", error);
+      }
+    }
+    // Keep the celebratory moment explicit even if the shared dialog is not
+    // available. Just like achievement cards, a rank-up must be acknowledged.
+    if (!acknowledged) {
+      try { window.alert(`LEVEL UP! ✨\n\n${message}`); }
+      catch (error) { console.warn("Rangaufstieg konnte nicht bestätigt werden:", error); }
+    }
+  }
+
   let pendingGameFinalization = null;
 
   function gameResultPresentation(snapshot) {
@@ -179,7 +234,7 @@
     }
   }
 
-  async function completePendingGameFinalization(snapshot, unlockedAchievements) {
+  async function completePendingGameFinalization(snapshot, unlockedAchievements, achievementRankUp) {
     const state = pendingGameFinalization;
     if (!state?.pending) return false;
     state.pending = false;
@@ -190,16 +245,20 @@
       catch (error) { console.warn("Auswertungsdialog konnte nicht geschlossen werden:", error); }
     }
     window._resultsShown = false;
-    await showGameResults(snapshot, unlockedAchievements);
+    await showGameResults(snapshot, unlockedAchievements, { achievementRankUp });
     return true;
   }
 
-  async function showGameResults(snapshot, unlockedAchievements = [], { finalizationPending = false } = {}) {
+  async function showGameResults(
+    snapshot,
+    unlockedAchievements = [],
+    { finalizationPending = false, achievementRankUp = null } = {},
+  ) {
     if (finalizationPending) {
       beginPendingGameFinalization(snapshot);
       return;
     }
-    if (await completePendingGameFinalization(snapshot, unlockedAchievements)) return;
+    if (await completePendingGameFinalization(snapshot, unlockedAchievements, achievementRankUp)) return;
     if (window._resultsShown) return;
     window._resultsShown = true;
     window._fatalWsClose = true;
@@ -214,6 +273,14 @@
       await acknowledgeAchievementUnlocks(unlockedAchievements);
     } catch (error) {
       console.warn("Achievement-Queue konnte nicht geöffnet werden:", error);
+    }
+
+    // A title change belongs to this end-of-game celebration too, but only
+    // after every individual achievement has been acknowledged.
+    try {
+      await acknowledgeAchievementRankUp(achievementRankUp);
+    } catch (error) {
+      console.warn("Rangaufstieg konnte nicht geöffnet werden:", error);
     }
 
     const choice = window.ZDWA_UI?.dialog

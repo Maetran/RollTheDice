@@ -102,3 +102,14 @@ def test_ehrenberg_marks_and_unlocked_dates_are_localized_in_achievement_views()
         assert "Erreicht am" in source
         assert "unlocked_at" in source
         assert "Erfolgspunkte" not in source
+
+
+def test_rank_upgrade_completion_is_localized_and_documented():
+    catalog = (ROOT / "frontend" / "i18n" / "catalog.js").read_text(encoding="utf-8")
+    rules = (STATIC / "rules.html").read_text(encoding="utf-8")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert '"LEVEL UP! ✨": "LEVEL UP! ✨"' in catalog
+    assert '"Neuer Rang erreicht!": "New rank unlocked!"' in catalog
+    assert "mehrere Erfolge, wird jeder einzeln gezeigt und bestätigt" in rules
+    assert "LEVEL UP!" in readme

@@ -230,6 +230,9 @@ async def _write_field(
                 "achievement_unlocks": (
                     completion.get("achievement_unlocks", {}) if isinstance(completion, dict) else {}
                 ),
+                "achievement_rank_ups": (
+                    completion.get("achievement_rank_ups", {}) if isinstance(completion, dict) else {}
+                ),
             }
         )
         return
@@ -321,6 +324,7 @@ async def _write_field(
                 "scoreboard": snapshot(g),
                 "score_event": {"field": field, "points": value, "player_id": player_id},
                 "achievement_unlocks": {},
+                "achievement_rank_ups": {},
                 "finalization_pending": True,
             },
         )
@@ -341,6 +345,7 @@ async def _write_field(
             {
                 "scoreboard": snapshot(g),
                 "achievement_unlocks": completion.get("achievement_unlocks", {}),
+                "achievement_rank_ups": completion.get("achievement_rank_ups", {}),
                 "finalization_pending": False,
             },
         )

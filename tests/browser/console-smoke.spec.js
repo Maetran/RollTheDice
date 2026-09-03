@@ -912,7 +912,24 @@ test("new achievements are acknowledged individually before the final standings"
         description: "Die zweite Belohnung.",
         points: 7,
       },
-    ]);
+    ], {
+      achievementRankUp: {
+        previous: {
+          key: "newbie",
+          title: "Newbie",
+          stars: 0,
+          points: 12,
+          minimum_points: 0,
+        },
+        current: {
+          key: "rookie",
+          title: "Rookie",
+          stars: 1,
+          points: 15,
+          minimum_points: 13,
+        },
+      },
+    });
   });
 
   const dialog = page.locator("#appDialog");
@@ -931,6 +948,16 @@ test("new achievements are acknowledged individually before the final standings"
   await expect(dialog).toContainText("Zweiter Erfolg");
   await expect(dialog).toContainText("+7 Ehrenberg-Marken");
   await expect(dialog).toContainText("2 / 2");
+
+  await page.getByRole("button", { name: "Weiter" }).click();
+  await expect(dialog).toHaveAttribute("data-kind", "level-up");
+  await expect(dialog).toContainText("LEVEL UP!");
+  await expect(dialog).toContainText("Newbie → Rookie");
+  await expect(dialog).toContainText("15 Ehrenberg-Marken");
+  await expect(page.getByRole("button", { name: "Neue Runde" })).toHaveCount(0);
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toContainText("LEVEL UP!");
 
   await page.getByRole("button", { name: "Weiter" }).click();
   await expect(dialog).toHaveAttribute("data-kind", "success");
@@ -1013,6 +1040,12 @@ test("the last struck field stays visible while finalization waits for achieveme
               unlocked_at: "2026-09-02T12:34:56+00:00",
             }],
           },
+          achievement_rank_ups: {
+            "final-player": {
+              previous: { key: "newbie", title: "Newbie", stars: 0, points: 12, minimum_points: 0 },
+              current: { key: "rookie", title: "Rookie", stars: 1, points: 15, minimum_points: 13 },
+            },
+          },
         }));
       }, 550);
     });
@@ -1035,6 +1068,9 @@ test("the last struck field stays visible while finalization waits for achieveme
   await expect(dialog).toHaveAttribute("data-kind", "achievement");
   await expect(dialog).toContainText("Letzter Zug");
   await expect(dialog).toContainText("+4 Ehrenberg-Marken");
+  await page.getByRole("button", { name: "Weiter" }).click();
+  await expect(dialog).toHaveAttribute("data-kind", "level-up");
+  await expect(dialog).toContainText("Newbie → Rookie");
   await page.getByRole("button", { name: "Weiter" }).click();
   await expect(dialog).toHaveAttribute("data-kind", "success");
   await expect(dialog).toContainText("1. Finalizer – 0 Punkte");

@@ -77,7 +77,13 @@ class RejoinDisconnectTestCase(GameStateTestCase):
                         "unlocked_at": datetime(2026, 9, 2, 12, tzinfo=timezone.utc),
                     }
                 ]
-            }
+            },
+            "achievement_rank_ups": {
+                "p1": {
+                    "previous": {"key": "newbie", "title": "Newbie", "minimum_points": 0},
+                    "current": {"key": "rookie", "title": "Rookie", "minimum_points": 13},
+                }
+            },
         }
         for row in WRITABLE_ROWS:
             for column in WRITABLE_COLS:
@@ -101,6 +107,7 @@ class RejoinDisconnectTestCase(GameStateTestCase):
             socket.messages[1]["achievement_unlocks"]["p1"][0]["unlocked_at"],
             "2026-09-02T12:00:00+00:00",
         )
+        self.assertEqual(socket.messages[1]["achievement_rank_ups"]["p1"]["current"]["key"], "rookie")
 
 
 class MessageRateLimiterTestCase(GameStateTestCase):
@@ -221,7 +228,15 @@ class WebSocketActionGuardTestCase(GameStateTestCase):
         session = self.session(game, player_id="p1")
         game["_players"][0]["ws"] = session.websocket
         finalized = []
-        completion = {"achievement_unlocks": {"p1": [{"key": "terminal-test"}]}}
+        completion = {
+            "achievement_unlocks": {"p1": [{"key": "terminal-test"}]},
+            "achievement_rank_ups": {
+                "p1": {
+                    "previous": {"key": "newbie", "minimum_points": 0},
+                    "current": {"key": "rookie", "minimum_points": 13},
+                }
+            },
+        }
 
         asyncio.run(
             handle_gameplay_action(
@@ -241,6 +256,7 @@ class WebSocketActionGuardTestCase(GameStateTestCase):
         self.assertEqual(game["_dice"], dice_before)
         self.assertEqual(finalized, [game])
         self.assertEqual(session.websocket.messages[-1]["achievement_unlocks"], completion["achievement_unlocks"])
+        self.assertEqual(session.websocket.messages[-1]["achievement_rank_ups"], completion["achievement_rank_ups"])
 
         # The same mobile tap/retry must be a no-op that still gives the
         # client the final snapshot, rather than a stale turn error.
@@ -258,6 +274,7 @@ class WebSocketActionGuardTestCase(GameStateTestCase):
         self.assertTrue(retry["scoreboard"]["_finished"])
         self.assertEqual(retry["scoreboard"]["_turn"], turn_before)
         self.assertEqual(retry["achievement_unlocks"], completion["achievement_unlocks"])
+        self.assertEqual(retry["achievement_rank_ups"], completion["achievement_rank_ups"])
         self.assertEqual(finalized, [game])
 
     def test_terminal_write_reaches_a_requester_replaced_during_reconnect(self):

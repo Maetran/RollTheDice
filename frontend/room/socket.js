@@ -172,11 +172,13 @@
             return;
           }
           const unlockedAchievements = msg.achievement_unlocks?.[String(myId)] || [];
+          const achievementRankUp = msg.achievement_rank_ups?.[String(myId)] || null;
           const finalizationPending = msg.finalization_pending === true
             || sb._finalization_pending === true
             || sb.finalization_pending === true;
           showGameResults(sb, Array.isArray(unlockedAchievements) ? unlockedAchievements : [], {
             finalizationPending,
+            achievementRankUp,
           });
           return;
         }

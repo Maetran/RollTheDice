@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 
-from .achievements import sync_achievements_for_users
+from .achievements import public_achievement_ranks, sync_achievements_for_users
 from .active_games import delete_active_game
 from .game_engine import _compute_final_totals, _rows_from_scoreboard
 from .game_history import persist_runtime_game, stable_game_id
@@ -26,6 +26,50 @@ from .leaderboard_storage import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _rank_ups_for_completed_game(
+    g: GameDict,
+    before: dict[int, dict],
+    after: dict[int, dict],
+) -> dict[str, dict[str, dict]]:
+    """Return only genuine upward title changes, keyed by game player id.
+
+    The client identifies itself with the short in-game player id, whereas
+    achievement ranks are persisted per account id.  Keeping that mapping at
+    the result boundary lets every connected player receive only their own
+    celebratory rank-up card.
+    """
+    upgrades: dict[str, dict[str, dict]] = {}
+    for player in g.get("_players", []):
+        try:
+            user_id = int(player.get("user_id"))
+        except (TypeError, ValueError):
+            continue
+        previous = before.get(user_id)
+        current = after.get(user_id)
+        if not isinstance(previous, dict) or not isinstance(current, dict):
+            continue
+        if previous.get("key") == current.get("key"):
+            continue
+        try:
+            advanced = int(current.get("minimum_points", 0)) > int(previous.get("minimum_points", 0))
+        except (TypeError, ValueError):
+            advanced = False
+        if advanced:
+            upgrades[str(player.get("id") or "")] = {"previous": previous, "current": current}
+    return upgrades
+
+
+def _achievement_ranks_safely(user_ids: set[int], *, game_id: object) -> dict[int, dict]:
+    """Fetch optional display ranks without risking result persistence."""
+    if not user_ids:
+        return {}
+    try:
+        return public_achievement_ranks(user_ids)
+    except Exception:
+        logger.exception("Could not compare achievement ranks for completed game %s", game_id)
+        return {}
 
 
 def mutate_stats(
@@ -202,9 +246,20 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
     # Vollständige Historie für Profile und Rankings. Die bisherigen JSON-
     # Leaderboards bleiben während der Übergangsphase parallel bestehen.
     achievement_unlocks: dict[int, list[dict]] = {}
+    achievement_rank_ups: dict[str, dict[str, dict]] = {}
+    achievement_user_ids = {
+        int(player["user_id"])
+        for player in g.get("_players", [])
+        if player.get("user_id") is not None
+    }
     if persist_runtime_game(g, totals, snapshot_fields):
-        achievement_unlocks = sync_achievements_for_users(
-            {int(player["user_id"]) for player in g.get("_players", []) if player.get("user_id") is not None}
+        ranks_before = _achievement_ranks_safely(achievement_user_ids, game_id=g.get("_id"))
+        achievement_unlocks = sync_achievements_for_users(achievement_user_ids)
+        ranks_after = _achievement_ranks_safely(achievement_user_ids, game_id=g.get("_id"))
+        achievement_rank_ups = _rank_ups_for_completed_game(
+            g,
+            ranks_before,
+            ranks_after,
         )
     delete_active_game(str(g.get("_id") or ""))
 
@@ -399,5 +454,6 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
             str(player["id"]): achievement_unlocks.get(int(player["user_id"]), [])
             for player in g.get("_players", [])
             if player.get("user_id") is not None and achievement_unlocks.get(int(player["user_id"]))
-        }
+        },
+        "achievement_rank_ups": achievement_rank_ups,
     }

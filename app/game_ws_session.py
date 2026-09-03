@@ -274,6 +274,9 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any]) -> bool
                 "achievement_unlocks": (
                     completion.get("achievement_unlocks", {}) if isinstance(completion, dict) else {}
                 ),
+                "achievement_rank_ups": (
+                    completion.get("achievement_rank_ups", {}) if isinstance(completion, dict) else {}
+                ),
                 "finalization_pending": bool(g.get("_finalization_pending")),
             }
         )
