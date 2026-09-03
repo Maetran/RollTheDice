@@ -368,6 +368,104 @@ test("mobile lobby cards and leaderboard tabs stay inside the viewport", async (
 });
 
 
+test("mobile leaderboard gives ranked player names room and uses an icon-only game view", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const entry = {
+    game_id: "ranked-mobile-game",
+    finished_at: "2026-09-03T10:00:00.000Z",
+    name: "Alexandria Beispielspieler",
+    points: 834,
+    linked_players: [{
+      display_name: "Alexandria Beispielspieler",
+      username: "alexandria",
+      achievement_rank: {
+        key: "advanced",
+        stars: 2,
+        title: "Fortgeschritten",
+        points: 32,
+        points_possible: 100,
+      },
+    }],
+  };
+  await page.route("**/api/leaderboard", route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      recent: { normal: [entry], hc: [] },
+      alltime: { normal: [entry], hc: [] },
+      shame: { recent: [], alltime: [] },
+      last_games: [entry],
+      stats: { games_played: 1, average_points: { normal: {}, hc: {} } },
+    }),
+  }));
+  await page.goto("/");
+
+  const headers = page.locator("#recentTable thead th");
+  await expect(headers).toHaveCount(4);
+  await expect(headers.last()).toHaveAttribute("aria-label", "Spielansicht");
+  await expect(headers.last()).toHaveText("");
+  const gameView = page.locator("#recentTable .leaderboard-view-link");
+  await expect(gameView).toHaveText("👁️");
+  await expect(gameView).toHaveAttribute("aria-label", "Spielansicht");
+
+  const layout = await page.evaluate(() => {
+    const table = document.querySelector("#recentTable");
+    const cells = Array.from(table.querySelectorAll("tbody tr:first-child td"));
+    const rect = element => {
+      const box = element.getBoundingClientRect();
+      return { left: box.left, right: box.right, width: box.width, height: box.height };
+    };
+    return {
+      viewportWidth: window.innerWidth,
+      pageWidth: document.documentElement.scrollWidth,
+      cellWidths: cells.map(cell => rect(cell).width),
+      viewLink: rect(document.querySelector(".leaderboard-view-link")),
+    };
+  });
+
+  expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.cellWidths[1]).toBeGreaterThan(layout.cellWidths[0]);
+  expect(layout.cellWidths[1]).toBeGreaterThan(layout.cellWidths[2]);
+  expect(layout.viewLink.width).toBeGreaterThanOrEqual(32);
+});
+
+
+test("narrow desktop room header keeps the current turn beside icon controls", async ({ page, request }) => {
+  await page.setViewportSize({ width: 561, height: 900 });
+  const created = await request.post("/api/games", {
+    data: { name: "Header Layout", mode: 1 },
+  });
+  expect(created.ok()).toBeTruthy();
+  const { game_id: gameId } = await created.json();
+
+  await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Header`);
+  await page.waitForSelector("#diceBar");
+  await expect(page.locator("#headerTurnStatus .line").first()).toContainText("Am Zug:");
+
+  const layout = await page.evaluate(() => {
+    const rect = selector => {
+      const box = document.querySelector(selector).getBoundingClientRect();
+      return { left: box.left, right: box.right, width: box.width, height: box.height };
+    };
+    return {
+      status: rect("#headerTurnStatus"),
+      theme: rect("[data-theme-toggle]"),
+      themeText: document.querySelector("[data-theme-toggle]").textContent.trim(),
+      rank: rect("#rankLegendSheetOpen"),
+      rankText: document.querySelector("#rankLegendSheetOpen").textContent.trim(),
+      rankLabel: document.querySelector("#rankLegendSheetOpen").getAttribute("aria-label"),
+      secondLine: document.querySelector("#headerTurnStatus .line.secondary")?.textContent.trim() || "",
+    };
+  });
+
+  expect(layout.status.width).toBeGreaterThanOrEqual(48);
+  expect(layout.status.right).toBeLessThanOrEqual(layout.theme.left + 1);
+  expect(layout.themeText).toMatch(/^[☀☾]$/);
+  expect(layout.rankText).toBe("⭐");
+  expect(layout.rankLabel).toBe("Ränge");
+  expect(layout.secondLine).toContain("Würfe:");
+});
+
+
 test("lobby game choices stay synchronized with the existing creation form", async ({ page }) => {
   await page.goto("/");
 

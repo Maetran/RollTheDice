@@ -264,13 +264,6 @@ td.cell.announce-pickable{
     min-height:44px;
     padding:.4rem;
   }
-  .app-nav-tools .theme-toggle-label{
-    position:absolute;
-    width:1px;
-    height:1px;
-    overflow:hidden;
-    clip:rect(0 0 0 0);
-  }
   .lobby-community .stats{
     display:grid;
     grid-template-columns:repeat(2, minmax(0, 1fr));
@@ -538,7 +531,6 @@ td.cell.announce-pickable{
 :root[data-theme="dark"] .leaderboard-box tbody tr.hc-entry:hover td{ background:#443313; }
 
 @media (max-width:560px){
-  .room-page .theme-toggle-label{ display:none; }
   .room-page .theme-toggle{ width:2rem; min-width:2rem; padding:.2rem; }
   :root[data-theme="dark"] .room-page .topbar{ background:rgba(11,17,32,.96); }
   :root[data-theme="dark"] .room-page .player-card table.grid td.cell.clickable:active{ background:#23446d; }

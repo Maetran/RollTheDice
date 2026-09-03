@@ -435,6 +435,9 @@
   font-size:.9rem;
   font-variant-numeric:tabular-nums;
 }
+.leaderboard-date-column{ width:4.75rem; }
+.leaderboard-points-column{ width:4.35rem; }
+.leaderboard-view-column{ width:2.6rem; }
 .leaderboard-box th,
 .leaderboard-box td{
   padding:.42rem .45rem;
@@ -448,8 +451,52 @@
 }
 .leaderboard-box th:last-child,
 .leaderboard-box td:last-child{ border-right:0; }
+.leaderboard-box th:nth-child(3),
+.leaderboard-box td:nth-child(3){ text-align:right; }
+.leaderboard-box th:last-child,
+.leaderboard-box td:last-child{
+  padding-right:.25rem;
+  padding-left:.25rem;
+  text-align:center;
+}
 .leaderboard-box tbody tr:last-child td{ border-bottom:0; }
 .leaderboard-box thead th{ background:var(--table-head); font-weight:800; color:#42516a; }
+.leaderboard-view-link{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:2rem;
+  min-width:2rem;
+  min-height:2rem;
+  color:inherit;
+  font-size:1.1rem;
+  line-height:1;
+  text-decoration:none;
+}
+.leaderboard-view-link:hover,
+.leaderboard-view-link:focus-visible{
+  border-radius:var(--radius-sm);
+  background:var(--surface-soft);
+}
+.leaderboard-box .player-profile-link{
+  display:block;
+  min-width:0;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.leaderboard-box .player-name-with-rank{
+  max-width:100%;
+  flex-wrap:nowrap;
+}
+.leaderboard-box .player-name-label,
+.leaderboard-box .player-rank-title{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.leaderboard-box .player-name-label{ white-space:nowrap; }
+.leaderboard-box .player-rank{ min-width:0; }
 .leaderboard-box.wide{ grid-column:1 / -1; }
 .leaderboard-box tbody tr.hc-entry td{ background:#fff4d8; }
 .leaderboard-box tbody tr.hc-entry:hover td{ background:#ffedbd; }
@@ -499,13 +546,6 @@
     min-width:44px;
     min-height:44px;
     padding:.4rem;
-  }
-  .app-nav-tools .theme-toggle-label{
-    position:absolute;
-    width:1px;
-    height:1px;
-    overflow:hidden;
-    clip:rect(0 0 0 0);
   }
   .lobby-community .stats{
     display:grid;

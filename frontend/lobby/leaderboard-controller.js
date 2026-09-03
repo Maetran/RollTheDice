@@ -3,14 +3,6 @@ import { playerNameMarkup } from "../shared/auth.js";
 
 let activeTab = "normal";
 
-function formatMode(mode) {
-  if (!mode) return "—";
-  if (String(mode).toLowerCase() === "2v2") return "2 v 2";
-  const count = Number.parseInt(mode, 10);
-  if (!Number.isFinite(count) || count < 1) return "—";
-  return count === 1 ? "1 Spieler" : `${count} Spieler`;
-}
-
 function formatRelative(iso) {
   try {
     if (!iso) return "—";
@@ -36,7 +28,7 @@ function formatDate(iso) {
 
 function gameViewLink(gameId) {
   return gameId
-    ? `<a href="/ergebnis/${encodeURIComponent(gameId)}" class="small">Spielansicht</a>`
+    ? `<a href="/ergebnis/${encodeURIComponent(gameId)}" class="leaderboard-view-link" aria-label="Spielansicht" title="Spielansicht">👁️</a>`
     : "—";
 }
 
@@ -86,15 +78,13 @@ function renderRows(table, entries, { absolute = false, emptyText = "Keine Eintr
   table.innerHTML = rows.map((entry) => {
     const finishedAt = entry.finished_at || entry.ts;
     const date = absolute ? formatDate(finishedAt) : formatRelative(finishedAt);
-    const mode = `${formatMode(entry.mode)}${entry.hardcore ? ' <span class="hc-badge">Hardcore</span>' : ""}`;
     return `<tr${entry.hardcore ? ' class="hc-entry"' : ""}>
       <td>${date}</td>
       <td>${playerNames(entry)}</td>
       <td>${entry.points ?? "—"}</td>
-      <td>${mode}</td>
       <td>${gameViewLink(entry.game_id)}</td>
     </tr>`;
-  }).join("") || `<tr><td colspan="5" class="muted">${emptyText}</td></tr>`;
+  }).join("") || `<tr><td colspan="4" class="muted">${emptyText}</td></tr>`;
 }
 
 export async function loadLeaderboard() {
@@ -134,10 +124,10 @@ export async function loadLeaderboard() {
   } catch (error) {
     console.warn("Leaderboard konnte nicht geladen werden", error);
     if (dom.recentTable) {
-      dom.recentTable.innerHTML = '<tr><td colspan="5" class="muted">Fehler beim Laden</td></tr>';
+      dom.recentTable.innerHTML = '<tr><td colspan="4" class="muted">Fehler beim Laden</td></tr>';
     }
     if (dom.alltimeTable) {
-      dom.alltimeTable.innerHTML = '<tr><td colspan="5" class="muted">Fehler beim Laden</td></tr>';
+      dom.alltimeTable.innerHTML = '<tr><td colspan="4" class="muted">Fehler beim Laden</td></tr>';
     }
   }
 }

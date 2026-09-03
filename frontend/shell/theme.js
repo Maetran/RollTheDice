@@ -36,9 +36,7 @@
       button.setAttribute("aria-label", dark ? "Hellen Modus einschalten" : "Dunklen Modus einschalten");
       button.title = dark ? "Heller Modus" : "Dunkler Modus";
       const icon = button.querySelector("[data-theme-icon]");
-      const label = button.querySelector("[data-theme-label]");
       if (icon) icon.textContent = dark ? "☀" : "☾";
-      if (label) label.textContent = dark ? "Hell" : "Dunkel";
     });
   }
 

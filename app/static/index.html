@@ -22,14 +22,14 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=43cc6006e188">
+  <link rel="manifest" href="/manifest.webmanifest?v=a7cdbc90e0fb">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=43cc6006e188" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=43cc6006e188" sizes="180x180">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=a7cdbc90e0fb" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a7cdbc90e0fb" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <script src="/static/shell.js?v=43cc6006e188" defer></script>
-  <link rel="stylesheet" href="/static/lobby.css?v=43cc6006e188">
+  <script src="/static/shell.js?v=a7cdbc90e0fb" defer></script>
+  <link rel="stylesheet" href="/static/lobby.css?v=a7cdbc90e0fb">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -67,7 +67,6 @@
         </label>
         <button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten">
           <span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span>
-          <span class="theme-toggle-label" data-theme-label>Dunkel</span>
         </button>
       </div>
     </header>
@@ -211,13 +210,18 @@
       <div id="recentBox" class="leaderboard-box">
         <h3 id="recentTitle">Top 10 (letzte 7 Tage)</h3>
         <table id="recentTable">
+          <colgroup>
+            <col class="leaderboard-date-column">
+            <col>
+            <col class="leaderboard-points-column">
+            <col class="leaderboard-view-column">
+          </colgroup>
           <thead>
             <tr>
-              <th>Datum</th>
-              <th>Name</th>
-              <th>Punkte</th>
-              <th>Modus</th>
-              <th>Ansicht</th>
+              <th scope="col">Datum</th>
+              <th scope="col">Name</th>
+              <th scope="col">Punkte</th>
+              <th scope="col" class="leaderboard-view-heading" aria-label="Spielansicht"></th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -227,13 +231,18 @@
       <div id="alltimeBox" class="leaderboard-box">
         <h3 id="alltimeTitle">Top 10 Alltime</h3>
         <table id="alltimeTable">
+          <colgroup>
+            <col class="leaderboard-date-column">
+            <col>
+            <col class="leaderboard-points-column">
+            <col class="leaderboard-view-column">
+          </colgroup>
           <thead>
             <tr>
-              <th>Datum</th>
-              <th>Name</th>
-              <th>Punkte</th>
-              <th>Modus</th>
-              <th>Ansicht</th>
+              <th scope="col">Datum</th>
+              <th scope="col">Name</th>
+              <th scope="col">Punkte</th>
+              <th scope="col" class="leaderboard-view-heading" aria-label="Spielansicht"></th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -250,6 +259,6 @@
   </div>
 
   <!-- Lobby-Controller: eigenständiges ES-Modul. -->
-  <script type="module" src="/static/lobby.js?v=43cc6006e188"></script>
+  <script type="module" src="/static/lobby.js?v=a7cdbc90e0fb"></script>
 </body>
 </html>
