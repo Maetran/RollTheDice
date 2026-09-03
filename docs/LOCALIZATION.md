@@ -25,6 +25,21 @@ check.
 Do not create a separate English copy of a page. Keeping one DOM and one game
 implementation prevents the languages from drifting apart.
 
+## Zilch preview
+
+The private Zilch views use the same catalog and language switcher as ZDWA.
+Their authored German text lives in `frontend/zilch/` (and the small protected
+shell in `app/static/zilch.html`), with the matching English text in `EN`.
+
+Zilch gameplay payloads must remain semantic and server-owned: Quick Holds,
+events, and machine-readable errors use stable keys such as
+`zilch.option.*`, `zilch.event.*`, and `zilch.error.*`, plus parameters. The
+matching templates live in `DE_MESSAGES` and `EN_MESSAGES`. The browser may
+format those templates, but it must never reconstruct a scoring combination or
+calculate its points. Protected rule facts are likewise localized in the
+client presentation; the server remains authoritative for the ruleset and its
+numeric values.
+
 ## Terminology
 
 - ZDWA / Zock die Wand an: brand name, never translated.

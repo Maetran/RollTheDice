@@ -14,8 +14,11 @@ separate from WebSocket connections, but this Alpha exposes only two
 authenticated human participants. Finished private Zilch games are stored as a
 separate, versioned result payload with a private read-only history; they do
 not enter any ZDWA scorecard, replay, statistic, achievement, or leaderboard
-path. CPU, solo, manual dice selection, Zilch aggregates, achievements,
-leaderboards, and public release are deliberately deferred.
+path. The protected Zilch app has its own lobby, game view, history, result
+report, and in-app rule guide. Its CSS-only wood-table, paper-card, and dice
+direction is isolated from ZDWA. CPU, solo, manual dice selection, Zilch
+aggregates, achievements, leaderboards, and public release are deliberately
+deferred.
 
 Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
 
@@ -43,8 +46,11 @@ User-facing navigation uses short routes without implementation details:
 
 - `/` lobby
 - `/spiel/{game_id}` active player view
-- `/zilch` protected internal Zilch preview (not public or indexable)
+- `/zilch` protected internal Zilch lobby (not public or indexable)
+- `/zilch/spiel/{game_id}` protected Zilch game view (not public or indexable)
+- `/zilch/historie` protected own Zilch history (not public or indexable)
 - `/zilch/ergebnis/{game_id}` protected, read-only Zilch result report (not public or indexable)
+- `/zilch/regeln` protected in-app Zilch rule guide (not public or indexable)
 - `/spiel/{game_id}/zuschauen` spectator view
 - `/regeln`, `/rangabzeichen`, `/spieler`, `/spieler/{username}`, `/konto`, and `/admin`
 - `/ergebnis/{game_id}` completed-game view
@@ -53,6 +59,8 @@ User-facing navigation uses short routes without implementation details:
 JavaScript, styles, and icons remain under `/static/`; these asset paths are not
 used for browser navigation. Legacy `*.html` links redirect to the matching
 public route so existing bookmarks and older installed app versions keep working.
+The private Zilch routes above are server-authorized implementation routes,
+remain outside public navigation and the sitemap, and always send `noindex`.
 
 ## Product delivery gate
 
@@ -221,7 +229,10 @@ It bundles and minifies the browser assets, then writes one deterministic conten
 version to all asset references and the service-worker cache. For direct changes
 to static HTML, images, or a manifest, `npm run sync:assets` is sufficient. CI
 rejects stale generated files; CI and the deployment guard reject unsynchronized
-asset versions.
+asset versions. Zilch JavaScript and CSS are deliberately not part of the public
+service-worker precache: the browser obtains them only after the protected shell
+has been served, while `/zilch` routes remain network-only so a logout or policy
+change cannot reveal a stale private view.
 
 ## Multi-game foundation
 
@@ -240,8 +251,9 @@ unless its explicit preview allowlist is configured.
 The architecture boundary is documented in
 [docs/MULTIGAME_FOUNDATION.md](docs/MULTIGAME_FOUNDATION.md); the confirmed
 internal rule contract is in [docs/ZILCH_RULES.md](docs/ZILCH_RULES.md). Neither
-is a public Zilch rules page, and Zilch remains outside the player-facing ZDWA
-rules until the private preview is productized.
+document is a public Zilch rules page. The private `/zilch/regeln` view is a
+localized in-app projection of that contract; Zilch remains outside the
+player-facing ZDWA rules and public SEO.
 
 ## Plain Docker
 

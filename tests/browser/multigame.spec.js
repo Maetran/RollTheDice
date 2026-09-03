@@ -84,9 +84,20 @@ async function bankWhenPossible(pages) {
     for (const page of pages) {
       const bank = await enabledLocator(page, "[data-zilch-bank]");
       if (bank) {
+        const activeBefore = await page.locator(".zilch-board--active").getAttribute("data-zilch-board-id");
         await bank.click();
-        await page.waitForTimeout(220);
-        return page;
+        // A snapshot can turn stale between the enabled-state check and the
+        // click. Treat such a rejected request as a retry, not as a completed
+        // bank action; successful banking must advance the authoritative turn.
+        try {
+          await expect.poll(
+            () => page.locator(".zilch-board--active").getAttribute("data-zilch-board-id"),
+            { timeout: 1_500, intervals: [100, 250, 500] },
+          ).not.toBe(activeBefore);
+          return page;
+        } catch {
+          await page.waitForTimeout(120);
+        }
       }
     }
     const quickHold = await selectableQuickHold(pages, { preferNonHot: true });
@@ -328,7 +339,7 @@ test("two explicitly allowed humans can create, rejoin, and play a private Zilch
     await expect(preview.locator("[data-game-switch]")).toBeVisible();
     await preview.locator("[data-game-switch]").click();
     await preview.waitForURL(/\/zilch$/);
-    await expect(preview.getByRole("heading", { name: "Zilch Preview" })).toBeVisible();
+    await expect(preview.getByRole("heading", { name: "Your Zilch table" })).toBeVisible();
     await Promise.all([
       preview.waitForURL(new RegExp(`${gamePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`)),
       preview.locator(`a[href="${gamePath}"]`).click(),

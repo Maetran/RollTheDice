@@ -6,29 +6,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Geschützte interne Vorschau des separaten Zilch-Spielmodus mit sechs Würfeln und einem Ziel von 10’000 Punkten.">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#f4f6f8">
+  <meta name="theme-color" content="#542d16">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=05b850630c16">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=05b850630c16" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=05b850630c16" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=b07852e8661b">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=b07852e8661b" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=b07852e8661b" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <script src="/static/shell.js?v=05b850630c16" defer></script>
-  <link rel="stylesheet" href="/static/zilch.css?v=05b850630c16">
+  <script src="/static/shell.js?v=b07852e8661b" defer></script>
+  <link rel="stylesheet" href="/static/zilch.css?v=b07852e8661b">
 </head>
 <body class="zilch-page">
-  <main class="zilch-shell zilch-loading" data-zilch-root aria-live="polite">
+  <a class="zilch-skip-link" href="#zilchContent">Zum Zilch-Inhalt springen</a>
+  <main class="zilch-shell zilch-loading" data-zilch-root>
     <header class="zilch-header">
-      <a class="zilch-brand" href="/" aria-label="ZDWA Lobby"><span class="zilch-brand-mark" aria-hidden="true">Z</span><span>Zilch</span></a>
+      <a class="zilch-brand" href="/zilch" aria-label="Zilch-Lobby"><span class="zilch-brand-mark" aria-hidden="true">Z</span><span>Zilch</span></a>
       <div class="zilch-header-tools">
         <span id="zilchAccount"></span>
         <label class="language-switcher" aria-label="Sprache wählen"><select data-language-switcher aria-label="Sprache wählen"><option value="de">DE</option><option value="en">EN</option></select></label>
         <button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten"><span data-theme-icon aria-hidden="true">☾</span></button>
         <button class="small ghost game-switch" type="button" data-game-switch hidden disabled aria-hidden="true" aria-keyshortcuts="Alt+Shift+Z" title="ZDWA öffnen (Alt+Shift+Z)"><span aria-hidden="true">⇄</span><span>ZDWA</span></button>
         <button id="zilchLogout" class="small ghost" type="button">Abmelden</button>
+        <button id="zilchNavToggle" class="small ghost zilch-nav-toggle" type="button" aria-controls="zilchNavigation" aria-expanded="false"><span aria-hidden="true">☰</span><span>Menü</span></button>
       </div>
     </header>
-    <div id="zilchContent"><h1>Zilch-Vorschau wird geprüft …</h1></div>
+    <nav id="zilchNavigation" class="zilch-nav" aria-label="Zilch-Navigation" hidden></nav>
+    <div id="zilchLiveAnnouncements" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+    <div id="zilchContent" tabindex="-1"><h1>Zilch-Vorschau wird geprüft …</h1></div>
   </main>
-  <script type="module" src="/static/zilch.js?v=05b850630c16"></script>
+  <script type="module" src="/static/zilch.js?v=b07852e8661b"></script>
 </body>
 </html>

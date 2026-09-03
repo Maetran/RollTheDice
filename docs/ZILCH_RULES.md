@@ -4,8 +4,8 @@ Stand: `zilch-house-v1`. Dieses Dokument ist der verbindliche Regelvertrag für
 die serverseitige Engine. Zilch bleibt eine geschützte `noindex`-Vorschau für
 den Admin-Account `Mani` (mit einer ausdrücklich konfigurierten privaten
 Allowlist für einen zweiten Testspieler). Es gibt ausdrücklich keine
-öffentliche Regelseite. Die aktuelle Oberfläche ist ein spielbarer
-Human-vs-Human-Alpha, keine fertige öffentliche Produktoberfläche.
+öffentliche Regelseite. Die aktuelle Oberfläche ist eine private, spielbare
+Human-vs-Human-Produktoberfläche, keine öffentliche Freischaltung.
 
 ## Begriffe
 
@@ -145,14 +145,14 @@ Spieltyp sowie doppelte oder veraltete Versionsstände werden ohne
 Zustandsänderung abgewiesen. Der ältere Platzhalter `zilch_submit_score` wird
 explizit als nicht unterstützte manuelle Punkteingabe abgelehnt.
 
-## Alpha-Bedienung und private Ergebnisgrenze
+## Private Bedienung und Ergebnisgrenze
 
-Der Alpha unterstützt ausschließlich zwei angemeldete menschliche Teilnehmer
-im Multiplayer-Modus. Beide führen den Startwurf selbst aus; die beiden Werte
-und ein möglicher Gleichstand bleiben im Snapshot sichtbar. Anschließend zeigt
-die private Spielseite gleichzeitig beide Boards, sechs ausschließlich vom
-Server gelieferte Würfel, Rundenscore, Gesamtpunkte, Zilch-Serie,
-Verbindungsstatus, Start-/Schlussrundenmarker und eine kompakte
+Der aktuelle private Spielmodus unterstützt ausschließlich zwei angemeldete
+menschliche Teilnehmer im Multiplayer-Modus. Beide führen den Startwurf selbst
+aus; die beiden Werte und ein möglicher Gleichstand bleiben im Snapshot
+sichtbar. Anschließend zeigt die private Spielseite gleichzeitig beide Boards,
+sechs ausschließlich vom Server gelieferte Würfel, Rundenscore, Gesamtpunkte,
+Zilch-Serie, Verbindungsstatus, Start-/Schlussrundenmarker und eine kompakte
 Rundenhistorie.
 
 Die Bedienung erfolgt in dieser Stufe nur über serverseitig berechnete
@@ -177,6 +177,15 @@ Leaderboard, Achievement- oder Profilaggregate geschrieben. Ein alter
 Terminal-State, dem eine autoritative Pflichtangabe wie der Endzeitpunkt fehlt,
 bleibt aktiv und wird protokolliert; die Anwendung erfindet keine Werte.
 
+Die private Navigation führt nur zu funktionierenden Bereichen:
+`/zilch` (Lobby), `/zilch/spiel/{id}` (Partie), `/zilch/historie` (eigene
+abgeschlossene Partien), `/zilch/ergebnis/{id}` (read-only Ergebnis) und
+`/zilch/regeln` (diese Regeln als lokalisierte In-App-Hilfe). Alle diese Routen
+sind serverseitig durch dieselbe Preview-Policy geschützt und bleiben
+`noindex`; die Regelseite ist weder öffentlich noch eine zweite verbindliche
+Regelquelle. Gemeinsame Konto- und Spracheinstellungen bleiben Plattformfunktionen
+und führen bei gültiger Berechtigung zurück zur privaten Zilch-Lobby.
+
 Zum manuellen privaten Test: mit Admin `Mani` ein Spiel anlegen, vor dem
 App-Start den normalisierten Namen des zweiten angemeldeten Testkontos in
 `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` setzen, beide Browser in die private
@@ -200,14 +209,17 @@ Ohne diese Konfiguration bleibt ausschließlich Admin `Mani` zugelassen.
 
 ## Designrichtung
 
-Die private Alpha nutzt die vorhandene `data-game="zilch"`-Grenze bereits mit
+Die private Oberfläche nutzt die vorhandene `data-game="zilch"`-Grenze mit
 warmen Holz-/Spieltischflächen, physisch wirkenden CSS-Würfeln, deutlich
 leuchtenden gehaltenen/ausgewählten Zuständen, großen papierartigen
 Quick-Hold-/Würfel-/Sichern-Karten, gut lesbarer Standardschrift und großen
-Touch-Zielen. Zilch, Hot Dice, Bestätigungswurf und Spielende erhalten einen
-zusätzlichen Textstatus und kurze reduzierte-Bewegung-freundliche CSS-Effekte.
-Finales Branding, eine lizenzierte Akzentschrift und weitere Produktpolitur
-sind nicht Teil dieser Regelversion.
+Touch-Zielen. Lobby, Wartesaal, Startwurf, beide Boards, Ergebnis, Historie und
+die private Hilfe bleiben dabei eine eigenständige Zilch-Oberfläche. Zilch, Hot
+Dice, Bestätigungswurf und Spielende erhalten einen zusätzlichen Textstatus und
+kurze reduzierte-Bewegung-freundliche CSS-Effekte. Semantische Buttons,
+sichtbarer Fokus, Live-Status und nicht allein farbbasierte Zustände gehören zur
+Bedienung. Finales Branding, eine lizenzierte Akzentschrift und weitere
+Produktpolitur sind nicht Teil dieser Regelversion.
 
 Das ist ausschließlich eine eigene Designrichtung. Es werden keine Grafiken,
 Sounds, Fonts, Logos, Award-Designs, Quellcodes oder pixelgenauen Vorlagen von

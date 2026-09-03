@@ -60,6 +60,15 @@ from .leaderboard_service import (
 )
 from .leaderboard_storage import LeaderboardFiles
 from .site_seo import robots_document, sitemap_document
+from .zilch_engine import (
+    ZILCH_BANK_MINIMUM,
+    ZILCH_CONFIRMATION_MINIMUM,
+    ZILCH_DICE_COUNT,
+    ZILCH_RULESET_VERSION,
+    ZILCH_TARGET_SCORE,
+    ZILCH_THIRD_ROLL_MINIMUM,
+    ZILCH_ZILCH_STREAK_PENALTY,
+)
 from .zilch_results import list_zilch_results_for_user, load_zilch_result
 from .zilch_state import validate_zilch_hvh_mode
 
@@ -305,6 +314,20 @@ def zilch_result_page(game_id: str, request: Request):
     return _page("zilch.html")
 
 
+@app.get("/zilch/historie", include_in_schema=False)
+def zilch_history_page(request: Request):
+    """Serve the private, noindex Zilch shell for the history view."""
+    _require_zilch_preview(request)
+    return _page("zilch.html")
+
+
+@app.get("/zilch/regeln", include_in_schema=False)
+def zilch_rules_page(request: Request):
+    """Serve the private, noindex Zilch shell for the rules view."""
+    _require_zilch_preview(request)
+    return _page("zilch.html")
+
+
 @app.get("/ergebnis", include_in_schema=False)
 @app.get("/ergebnis/{game_id}", include_in_schema=False)
 def completed_game_page(request: Request, game_id: str | None = None):
@@ -378,6 +401,46 @@ def _release_websocket(address: str | None) -> None:
 
 def online_user_count() -> int:
     return len(presence_connections)
+
+
+def _lobby_current_player(game: GameDict) -> tuple[str | None, str | None]:
+    """Return a safe, presentation-only current-player hint for game lists."""
+    raw_turn = game.get("_turn")
+    if not isinstance(raw_turn, dict):
+        return None, None
+    raw_player_id = raw_turn.get("player_id")
+    player_id = str(raw_player_id).strip() if raw_player_id is not None else ""
+    if not player_id:
+        return None, None
+    player = next(
+        (candidate for candidate in game.get("_players", []) if str(candidate.get("id") or "") == player_id),
+        None,
+    )
+    if not isinstance(player, dict):
+        return None, None
+    return player_id, str(player.get("name") or "Player")
+
+
+def _zilch_lobby_final_round(game: GameDict) -> dict[str, object] | None:
+    """Project only the non-scoring final-round state useful in a Zilch lobby."""
+    raw_final_round = game.get("_zilch_final_round")
+    if not isinstance(raw_final_round, dict):
+        return None
+    player_ids = {str(player.get("id") or "") for player in game.get("_players", [])}
+    raw_triggered_by = str(raw_final_round.get("triggered_by") or "")
+    triggered_by = raw_triggered_by if raw_triggered_by in player_ids else None
+    raw_pending = raw_final_round.get("pending_player_ids")
+    pending_player_ids = (
+        [str(player_id) for player_id in raw_pending if str(player_id) in player_ids]
+        if isinstance(raw_pending, list)
+        else []
+    )
+    if triggered_by is None and not pending_player_ids:
+        return None
+    return {
+        "triggered_by": triggered_by,
+        "pending_player_ids": pending_player_ids,
+    }
 
 
 @app.websocket("/ws/presence")
@@ -512,43 +575,46 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
                 (p for p in g.get("_players", []) if auth_identity and p.get("user_id") == auth_identity.user_id),
                 None,
             )
-            lst.append(
-                {
-                    "id": gid,
-                    "game_type": requested_game_type,
-                    "name": g["_name"],
-                    "mode": g["_mode"],
-                    "hardcore": bool(g.get("_hardcore", False)),
-                    "players": joined,
-                    "expected": g["_expected"],
-                    "started": g["_started"],
-                    "finished": g["_finished"],
-                    "aborted": g.get("_aborted", False),
-                    "locked": bool(g.get("_passphrase")),  # <— neu
-                    "waiting": waiting_names,
-                    "connected": {str(p.get("id")): _player_connected(p) for p in g.get("_players", [])},
-                    "player_statuses": [
-                        public_player_payload(p, connected=_player_connected(p))
-                        for p in g.get("_players", [])
-                    ],
-                    "offline": offline,
-                    "paused": bool(pause_reason),
-                    "pause_reason": pause_reason,
-                    "manual_pause": bool(g.get("_manual_pause")),
-                    "pause_remaining_seconds": pause_left,
-                    "pause_remaining_label": _format_duration_hm(pause_left),
-                    "my_player_id": str(account_player.get("id")) if account_player else None,
-                    "timeout_seconds": timeout_seconds(),
-                    "timeout_label": _format_duration_hm(timeout_seconds()),
-                    "started_at": g.get("_started_at"),
-                    "updated_at": g.get("_updated_at"),
-                    "progress": (
-                        project_game_progress(g)
-                        if g.get("_started") and not g.get("_finished") and not g.get("_aborted", False)
-                        else []
-                    ),
-                }
-            )
+            entry = {
+                "id": gid,
+                "game_type": requested_game_type,
+                "name": g["_name"],
+                "mode": g["_mode"],
+                "hardcore": bool(g.get("_hardcore", False)),
+                "players": joined,
+                "expected": g["_expected"],
+                "started": g["_started"],
+                "finished": g["_finished"],
+                "aborted": g.get("_aborted", False),
+                "locked": bool(g.get("_passphrase")),
+                "waiting": waiting_names,
+                "connected": {str(p.get("id")): _player_connected(p) for p in g.get("_players", [])},
+                "player_statuses": [
+                    public_player_payload(p, connected=_player_connected(p)) for p in g.get("_players", [])
+                ],
+                "offline": offline,
+                "paused": bool(pause_reason),
+                "pause_reason": pause_reason,
+                "manual_pause": bool(g.get("_manual_pause")),
+                "pause_remaining_seconds": pause_left,
+                "pause_remaining_label": _format_duration_hm(pause_left),
+                "my_player_id": str(account_player.get("id")) if account_player else None,
+                "timeout_seconds": timeout_seconds(),
+                "timeout_label": _format_duration_hm(timeout_seconds()),
+                "started_at": g.get("_started_at"),
+                "updated_at": g.get("_updated_at"),
+                "progress": (
+                    project_game_progress(g)
+                    if g.get("_started") and not g.get("_finished") and not g.get("_aborted", False)
+                    else []
+                ),
+            }
+            if requested_game_type == ZILCH_GAME_TYPE:
+                current_player_id, current_player_name = _lobby_current_player(g)
+                entry["current_player_id"] = current_player_id
+                entry["current_player_name"] = current_player_name
+                entry["final_round"] = _zilch_lobby_final_round(g)
+            lst.append(entry)
         except (KeyError, TypeError, ValueError):
             logger.warning("Skipping malformed game %s in lobby response", gid, exc_info=True)
             continue
@@ -647,6 +713,29 @@ def api_zilch_result(game_id: str, request: Request):
     if result is None:
         raise HTTPException(status_code=404, detail="result_not_found")
     return {"result": result}
+
+
+@app.get("/api/zilch/rules")
+def api_zilch_rules(request: Request) -> dict[str, object]:
+    """Return the small authoritative rules projection used by the private UI."""
+    _require_zilch_preview(request)
+    return {
+        "ruleset": ZILCH_RULESET_VERSION,
+        "dice_count": ZILCH_DICE_COUNT,
+        "target_score": ZILCH_TARGET_SCORE,
+        "bank_minimum": ZILCH_BANK_MINIMUM,
+        "third_roll_minimum": ZILCH_THIRD_ROLL_MINIMUM,
+        "confirmation_minimum": ZILCH_CONFIRMATION_MINIMUM,
+        "third_zilch_penalty": ZILCH_ZILCH_STREAK_PENALTY,
+        "scoring": {
+            "single_one": 100,
+            "single_five": 50,
+            "three_ones": 1_000,
+            "straight": 2_000,
+            "three_pairs": 500,
+            "nothing_bonus": 500,
+        },
+    }
 
 
 @app.post("/api/games")

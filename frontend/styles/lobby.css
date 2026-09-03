@@ -304,6 +304,13 @@
 .section-title-row button{
   flex:0 0 auto;
 }
+.section-title-row-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+  gap:.45rem;
+}
 .section-hint{
   margin:.1rem 0 .65rem;
 }

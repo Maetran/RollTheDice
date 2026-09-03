@@ -200,11 +200,22 @@ Nach einer Änderung unter `app/static/` oder an einem Manifest:
 2. Die dabei mechanisch geänderten Referenzen zusammen mit dem Asset committen.
 3. Mit `python3 scripts/sync_static_versions.py --check` prüfen. Das Deployment
    bricht bei einem nicht synchronisierten Stand ab.
-4. Prüfen, ob neue Offline-Assets in `PRECACHE_URLS` aufgenommen werden müssen.
+4. Prüfen, ob neue **öffentliche** Offline-Assets in `PRECACHE_URLS`
+   aufgenommen werden müssen. Geschützte Zilch-Routen und ihre Zilch-JS/CSS-
+   Bundles gehören absichtlich nicht in den globalen Precache.
 5. Nach dem Deployment die öffentliche HTML-Datei und `sw.js` kontrollieren.
 6. Die Seite in einem bereits verwendeten Browser nochmals laden. Der neue
    Service Worker übernimmt bestehende Tabs unter Umständen erst nach dem ersten
    Reload vollständig.
+
+Zilch ist eine autorisierungsgebundene private Vorschau. Der Service Worker
+behandelt `/zilch` und alle Unterrouten deshalb ausschließlich per Netzwerk und
+precacht weder die geschützte Shell noch `zilch.js` oder `zilch.css`. Erst eine
+erfolgreiche serverseitige Preview-Prüfung liefert die Shell, die ihre
+versionierten Bundles bei Bedarf lädt. Dieses Verhalten darf bei PWA- oder
+Cache-Änderungen nicht in eine Offline-Fallback-Ansicht abgeschwächt werden:
+nach Logout oder einem Policy-Wechsel darf kein alter privater Zilch-Inhalt
+sichtbar bleiben.
 
 Beispielprüfung:
 
@@ -227,6 +238,22 @@ ROLLTHEDICE_COOKIE_SECURE=1
 Der Reverse-Proxy muss den ursprünglichen Host und das Protokoll weitergeben,
 insbesondere `X-Forwarded-Host` und `X-Forwarded-Proto`. Diese Werte werden für
 Origin-Prüfungen bei schreibenden Requests und WebSockets benötigt.
+
+### Private Zilch-Vorschau
+
+Zilch ist weder eine öffentliche Produktfunktion noch ein zweites Admin-System.
+Der sichere Standard ist ausschließlich die bestehende Admin-Identität mit
+normalisiertem Username `mani` und `is_admin=true`. Für einen ausdrücklich
+privaten Zwei-Browser-Test kann
+`ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` eine kommagetrennte Liste normalisierter
+zusätzlicher Accountnamen enthalten. Diese Nutzer erhalten nur Zilch-
+Preview-Zugang und keine Adminrechte. Die Variable in der normalen Produktion
+leer lassen; nie Passwörter oder andere Geheimnisse darin hinterlegen.
+
+Die zentrale Server-Policy schützt die Zilch-Shell, alle privaten Zilch-Routen,
+APIs und WebSockets. `/static/zilch.html` ist kein direkter Einstieg,
+Zilch-Seiten bleiben `noindex` und gehören nicht in die Sitemap. Das Verbergen
+des App-Switches im Browser ist kein Ersatz für diese Prüfung.
 
 ### Erster Administrator
 

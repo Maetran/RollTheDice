@@ -5,7 +5,9 @@ export const ZILCH_HOTKEY = "Alt+Shift+Z";
 
 function isEditableTarget(target) {
   if (!(target instanceof Element)) return false;
-  return Boolean(target.closest("input, textarea, select, [contenteditable], [contenteditable='true']"));
+  return Boolean(target.closest(
+    "input, textarea, select, [contenteditable], [contenteditable='true'], dialog[open], [role='dialog'], [aria-modal='true']",
+  ));
 }
 
 function canUseZilch(auth) {

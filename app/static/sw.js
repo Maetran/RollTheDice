@@ -13,7 +13,7 @@
     `scripts/sync_static_versions.py` ausführen, nicht manuell hochzählen.
 */
 
-const CACHE_VERSION = 'assets-05b850630c16';
+const CACHE_VERSION = 'assets-b07852e8661b';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
@@ -29,8 +29,6 @@ const PRECACHE_URLS = [
   '/static/shell.js',
   '/static/lobby.js',
   '/static/lobby.css',
-  '/static/zilch.js',
-  '/static/zilch.css',
   '/static/style.css',
   '/static/scoreboard.js',
   '/static/emoji.js',

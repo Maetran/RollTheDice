@@ -3,11 +3,13 @@
 This document describes the multi-game boundary introduced for ZDWA and the
 internal Zilch preview. The binding Zilch house rules live in
 [ZILCH_RULES.md](ZILCH_RULES.md); neither document is a public player-facing
-rule page or a promise of a finished Zilch user interface.
+rule page. The private in-app rule guide is a localized projection of that
+contract, not a second rule source.
 
 The current private increment is a playable **human-vs-human Alpha** with a
-private, read-only completed-result report. It is not a public release and it
-deliberately remains outside ZDWA results, statistics, leaderboards,
+complete private product surface: lobby, waiting room, live game, history,
+read-only completed-result report, and rule guide. It is not a public release
+and it deliberately remains outside ZDWA results, statistics, leaderboards,
 achievements, and replay views.
 
 ## Boundaries
@@ -27,9 +29,11 @@ achievements, and replay views.
   spectators. Solo and CPU remain represented only as future domain contracts;
   CPU strategy names (`conservative | normal | aggressive`) are not a bot
   implementation. Its UI is a separate route/root with its own stylesheet
-  boundary (`data-game="zilch"`), six server-snapshot dice, and no manual
-  dice-selection affordance. Completed games have their own versioned
-  `zilch-house-v1` payload and private result/history projection.
+  boundary (`data-game="zilch"`), a private navigation, six server-snapshot
+  dice, and no manual dice-selection affordance. The CSS-only design system
+  uses warm table, paper-card, and dice tokens without third-party game assets.
+  Completed games have their own versioned `zilch-house-v1` payload and private
+  result/history projection.
 
 `app/game_registry.py` is the intentionally small composition point. It
 selects state creation, per-game join/start setup, gameplay-action dispatch,
@@ -48,10 +52,11 @@ ignored there so its admin requirement cannot be weakened, and an allowlisted
 user receives no admin role or other elevated capability. Leave the variable
 empty in normal production operation.
 
-The same policy drives switch visibility and the protected `/zilch` routes,
-creation, lobby/history/result APIs, and every WebSocket connection/action. The
-raw `/static/zilch.html` artifact is denied. Zilch is not in the public SEO
-registry or sitemap and its shell is `noindex`.
+The same policy drives switch visibility and the protected `/zilch`,
+`/zilch/spiel/{id}`, `/zilch/historie`, `/zilch/ergebnis/{id}`, and
+`/zilch/regeln` routes, creation, lobby/history/result/rule APIs, and every
+WebSocket connection/action. The raw `/static/zilch.html` artifact is denied.
+Zilch is not in the public SEO registry or sitemap and its shell is `noindex`.
 
 ## Typed completion boundary
 
@@ -136,10 +141,34 @@ statistics/achievements, and public release.
    account's own completed games; it does not add a public history or a ZDWA
    replay.
 
-The Alpha uses a CSS-only warm wood table, paper-like action cards, deep dice,
-and high-contrast selection/status markers. This is an independent direction,
-not a copy of Bubblebox or another game's assets, sounds, fonts, code, logos,
-or layout.
+## Private product UI
+
+The protected Zilch app has a compact navigation for lobby, a remembered active
+game, own completed games, rules, shared account/settings, and the explicit
+return to ZDWA. The app-mode switch replaces the rendered game root rather than
+mounting Zilch next to ZDWA; logout, session expiry, and loss of preview access
+fall back to ZDWA. A normal account page can return to the private Zilch lobby
+only after the session is still policy-authorized.
+
+The lobby separates waiting, running/paused, and own completed games. A Zilch
+room may use the existing optional room-code mechanism; a code stays in the
+browser session only and is checked by the server on join/rejoin. Waiting and
+start-roll states remain distinct from regular gameplay. Both boards stay
+visible through the game, while the six non-clickable dice, server-produced
+Quick-Hold cards, roll/bank actions, hold/bank constraints, events, connection
+state, and terminal outcome are projected only from the authoritative snapshot.
+
+The private UI uses scoped CSS variables for a warm wood table, paper-like
+cards, deep dice, high-contrast hold/status states, large touch targets, and
+short optional effects. It has a skip link, semantic navigation, keyboard
+focus, live status announcements, responsive two-board layouts, and a
+reduced-motion path. This is an independent direction, not a copy of Bubblebox
+or another game's assets, sounds, fonts, code, logos, or layout.
+
+The service worker never precaches Zilch pages or the Zilch JS/CSS bundles.
+Protected `/zilch` navigation is network-only; this prevents an old cached
+private shell from surviving logout or a policy change. The authorized shell
+loads its versioned Zilch assets on demand.
 
 ## Verified repository architecture
 
@@ -178,9 +207,9 @@ the repository-owned current status.
 - Typed completion now preserves terminal recovery data until a result write
   succeeds. ZDWA aggregates remain explicitly type-filtered; Zilch exposes
   only private per-user history and a read-only report.
-- The current preview URLs are `/zilch`, `/zilch/spiel/{id}`, and the private
-  `/zilch/ergebnis/{id}`. They are `noindex` implementation routes, not
-  committed public URLs.
+- The current preview URLs are `/zilch`, `/zilch/spiel/{id}`,
+  `/zilch/historie`, `/zilch/ergebnis/{id}`, and `/zilch/regeln`. They are
+  `noindex` implementation routes, not committed public URLs.
 
 ## Master checklist
 
@@ -231,8 +260,8 @@ the repository-owned current status.
 - [x] Build private DE/EN Quick-Hold controls, two-player boards, status
   states, opening roll, reconnect/reload projection, and reduced-motion-safe
   Alpha presentation.
-- [ ] Add accessible manual dice selection; no public Zilch rules page exists
-  until the preview is productized.
+- [ ] Add accessible manual dice selection. The private in-app rules guide does
+  not change the decision that no public Zilch rules page exists.
 
 ### Phase 3 — modes and participants
 
@@ -262,8 +291,9 @@ the repository-owned current status.
 
 ### Phase 5 — productization and release
 
-- [ ] Complete accessible mobile/desktop UX, keyboard operation, reduced
-  motion, error states, reconnect behavior, and browser coverage.
+- [x] Complete the private accessible mobile/desktop product surface: app-mode
+  navigation, lobby, waiting/start-roll state, live game, history, result,
+  rule guide, keyboard operation, reduced motion, and reconnect/error states.
 - [ ] Replace the temporary `Mani` policy with an explicit feature flag or
   entitlement and test staged rollout/rollback.
 - [ ] Decide permanent URLs and SEO status only when the feature is public.
