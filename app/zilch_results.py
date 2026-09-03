@@ -785,7 +785,12 @@ def _write_response(result: CompletedGameWriteResult, *, payload: dict | None = 
 
 
 def finalize_zilch_result(game: dict) -> dict:
-    """Idempotently persist one Zilch terminal state, then remove it actively."""
+    """Persist one terminal Zilch result and register its private awards.
+
+    Result persistence stays the first durable boundary.  A transient award
+    failure must never lose that result, but it keeps this terminal active
+    state recoverable until the explicit evaluation work item succeeds.
+    """
     try:
         payload = build_zilch_result_payload(game)
     except ZilchResultValidationError as exc:
@@ -824,6 +829,34 @@ def finalize_zilch_result(game: dict) -> dict:
         "schema_version": payload["schema_version"],
         "result_url": response["result_url"],
     }
+    try:
+        # Keep this import local: result-only tools and migrations do not need
+        # to load the independent achievement persistence model eagerly.
+        # The service evaluates only the validated, already stored result and
+        # never places a user's private awards in a shared game snapshot.
+        from .zilch_achievements import (  # pylint: disable=import-outside-toplevel
+            ZilchAchievementError,
+            ZilchAchievementSyncError,
+            register_zilch_result_for_achievements,
+        )
+
+        registration = register_zilch_result_for_achievements(payload["game_id"])
+    except (ZilchAchievementSyncError, ZilchAchievementError) as exc:
+        logger.exception(
+            "Retaining terminal Zilch game %s until achievement evaluation recovers: %s",
+            payload["game_id"],
+            exc.code,
+        )
+        # The result itself is already idempotently stored.  Startup recovery
+        # retries this finalizer, which can only finish registration/evaluation
+        # and cannot duplicate the completed game.
+        response["achievement_sync_pending"] = True
+        response["achievement_sync_error"] = exc.code
+        return response
+    response["achievement_sync_pending"] = bool(registration.pending)
+    if registration.pending:
+        # Preserve the same recovery contract if evaluation becomes async.
+        return response
     game["_completion_persisted"] = True
     delete_active_game(payload["game_id"])
     return response

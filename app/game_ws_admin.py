@@ -186,7 +186,11 @@ async def _save(
             # typed production finalizer explicitly reports a failed write.
             # The marker stops the follow-up broadcast from recreating an
             # ActiveGame only after a confirmed completed result exists.
-            if completion and completion.get("result_persisted", True):
+            if (
+                completion
+                and completion.get("result_persisted", True)
+                and not completion.get("achievement_sync_pending")
+            ):
                 g["_completion_persisted"] = True
             g["_finalization_pending"] = False
         else:

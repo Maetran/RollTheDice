@@ -342,7 +342,11 @@ async def _write_field(
         # the long-standing injected-finalizer test seam compatible: a legacy
         # callback that returns its former achievement-only payload represents
         # a completed write, whereas an explicit failure leaves recovery data.
-        if completion and completion.get("result_persisted", True):
+        if (
+            completion
+            and completion.get("result_persisted", True)
+            and not completion.get("achievement_sync_pending")
+        ):
             g["_completion_persisted"] = True
         g["_finalization_pending"] = False
         touch(g)

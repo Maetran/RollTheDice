@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 async def send_game_message(websocket: Any, message: dict[str, Any]) -> None:
     """Send one game payload after converting transport-only values to JSON.
 
-    The game result finalizer intentionally returns the newly unlocked
-    achievements so the browser can celebrate them immediately.  Those
-    payloads include ``UserAchievement.unlocked_at`` values as ``datetime``
-    instances.  Unlike normal FastAPI responses, Starlette's
+    Terminal result metadata and other server-originated event payloads can
+    contain timestamps as ``datetime`` instances.  Private Zilch awards are
+    deliberately fetched from their per-session delivery queue instead of
+    being copied into a shared game broadcast.  Unlike normal FastAPI
+    responses, Starlette's
     :meth:`~starlette.websockets.WebSocket.send_json` does not run
     ``jsonable_encoder`` itself.  Sending such a terminal payload used to
     raise ``TypeError`` *after* the last field was persisted; ``broadcast``

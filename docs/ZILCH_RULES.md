@@ -241,11 +241,40 @@ abgeschlossene Zilch-Payloads; sie verändern weder Ergebnisse noch Regeln. Ein 
 Terminal-State, dem eine autoritative Pflichtangabe wie der Endzeitpunkt fehlt,
 bleibt aktiv und wird protokolliert; die Anwendung erfindet keine Werte.
 
+### Private Erfolge sind keine Spielregel
+
+Private Zilch-Erfolge bilden einen eigenen, geschützten Zilch-Namensraum. Sie
+sind weder ZDWA-Erfolge noch **Ehrenberg-Marken**: Sie ändern keine
+ZDWA-Titel, Sterne, öffentlichen Profile, Ranglisten, Statistiken oder
+Spielregeln. Das gilt ausdrücklich auch dann, wenn derselbe Account ZDWA und
+Zilch verwendet.
+
+Als fachliche Quelle zählt ausschließlich ein erfolgreich gespeichertes,
+validiertes Zilch-Ergebnis, das der Finalizer als neues post-Rollout-Workitem
+registriert. Live-Snapshots, Browseranzeigen und lokale Zählwerte können
+keinen Erfolg auslösen. Die Recovery verarbeitet nur solche ausstehenden
+Workitems; frühere Preview-Partien werden nie rückwirkend gescannt oder
+backfilled. Eine Auslieferung ist pro Freischaltung idempotent. Die Bestätigung
+in der Oberfläche setzt nur den Anzeigezeitpunkt und nicht die fachliche
+Vergabe.
+
+Wird das Quellergebnis gelöscht, werden daraus abgeleitete private Zilch-
+Erfolge widerrufen. Das berührt weder ZDWA-Aggregate noch Ehrenberg-Marken.
+Unbekannte, unvollständige oder beschädigte Ergebnis-Payloads, CPU-Sitze und
+alte Daten ohne die erforderliche Evidenz bleiben absichtlich ohne Erfolg. Die
+privaten Ansichten `/zilch/erfolge` und `/zilch/spieler/{username}` unterliegen
+derselben Preview-Policy wie die Partie und bleiben `noindex`; sie sind keine
+öffentlichen Spielerprofile. Der technische Auslieferungs-, Widerrufs- und
+Katalogvertrag steht in [ACCOUNT_STATISTICS.md](ACCOUNT_STATISTICS.md); er ist
+keine zusätzliche Zilch-Spielregel.
+
 Die private Navigation führt nur zu funktionierenden Bereichen:
 `/zilch` (Lobby), `/zilch/spiel/{id}` (Partie), `/zilch/historie` (eigene
 abgeschlossene Partien), `/zilch/ergebnis/{id}` (read-only Ergebnis),
 `/zilch/statistiken` (eigene Auswertung), `/zilch/bestenlisten` (private
-Ranglisten) und `/zilch/regeln` (diese Regeln als lokalisierte In-App-Hilfe).
+Ranglisten), `/zilch/erfolge` (private Erfolge),
+`/zilch/spieler/{username}` (privater Zilch-Spielerkontext) und `/zilch/regeln`
+(diese Regeln als lokalisierte In-App-Hilfe).
 Alle diese Routen
 sind serverseitig durch dieselbe Preview-Policy geschützt und bleiben
 `noindex`; die Regelseite ist weder öffentlich noch eine zweite verbindliche
@@ -279,7 +308,8 @@ Ohne diese Konfiguration bleibt ausschließlich Admin `Mani` zugelassen.
   Konten sind nicht rankingfähig.
 - Noch offen bleiben insbesondere eine präzise Strafkadenz nach mehr als drei
   aufeinanderfolgenden Zilchs, weitere Solo-Objectives/Challenges, manuelle
-  Würfelauswahl, finale Interaktions-/Markenpolitur und Zilch-Achievements.
+  Würfelauswahl, finale Interaktions-/Markenpolitur und weitere private
+  Zilch-Erfolgskategorien.
 
 ## Designrichtung
 

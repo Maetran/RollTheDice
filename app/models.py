@@ -215,3 +215,107 @@ class UserAchievement(Base):
         UniqueConstraint("user_id", "achievement_key", name="uq_user_achievement"),
         Index("ix_user_achievements_user", "user_id"),
     )
+
+
+class ZilchAchievementEvaluation(Base):
+    """Durable, explicitly registered work item for one Zilch result.
+
+    Zilch achievements deliberately do not scan historic ``CompletedGame``
+    rows.  The Zilch finalizer registers a newly persisted result here, then
+    the isolated achievement service consumes only these work items.  A
+    pending row survives a transient evaluation failure and makes a bounded,
+    idempotent recovery pass possible without touching pre-rollout games.
+    """
+
+    __tablename__ = "zilch_achievement_evaluations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    game_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    game_type: Mapped[str] = mapped_column(String(16), nullable=False, default="zilch")
+    result_schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    ruleset: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    registered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    evaluated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(String(160), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("game_type = 'zilch'", name="ck_zilch_achievement_evaluations_game_type"),
+        CheckConstraint("result_schema_version >= 1", name="ck_zilch_achievement_evaluations_schema"),
+        CheckConstraint("status IN ('pending', 'completed')", name="ck_zilch_achievement_evaluations_status"),
+        CheckConstraint("attempts >= 0", name="ck_zilch_achievement_evaluations_attempts"),
+        Index("ix_zilch_achievement_evaluations_status_registered", "status", "registered_at"),
+    )
+
+
+class ZilchAchievementEvidence(Base):
+    """Validated, normalized facts for one human Zilch seat and result.
+
+    The JSON contains only the narrow, server-derived facts the Zilch
+    achievement definitions need.  It is written only after the result
+    payload has passed the shared Zilch result validator, and is removed when
+    its source result is administratively deleted.
+    """
+
+    __tablename__ = "zilch_achievement_evidence"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    evaluation_id: Mapped[int] = mapped_column(
+        ForeignKey("zilch_achievement_evaluations.id", ondelete="CASCADE"), nullable=False
+    )
+    source_game_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    result_schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    ruleset: Mapped[str] = mapped_column(String(64), nullable=False)
+    play_mode: Mapped[str] = mapped_column(String(24), nullable=False)
+    facts_json: Mapped[str] = mapped_column(Text, nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("result_schema_version >= 1", name="ck_zilch_achievement_evidence_schema"),
+        CheckConstraint(
+            "play_mode IN ('multiplayer', 'cpu', 'solo')",
+            name="ck_zilch_achievement_evidence_play_mode",
+        ),
+        UniqueConstraint("evaluation_id", "user_id", name="uq_zilch_achievement_evidence_evaluation_user"),
+        Index("ix_zilch_achievement_evidence_user", "user_id"),
+        Index("ix_zilch_achievement_evidence_source_game", "source_game_id"),
+    )
+
+
+class ZilchAchievementUnlock(Base):
+    """One namespaced, non-Ehrenberg Zilch achievement per account."""
+
+    __tablename__ = "zilch_achievement_unlocks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    achievement_key: Mapped[str] = mapped_column(String(96), nullable=False)
+    definition_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_evidence_id: Mapped[int | None] = mapped_column(
+        ForeignKey("zilch_achievement_evidence.id", ondelete="SET NULL"), nullable=True
+    )
+    source_game_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("definition_version >= 1", name="ck_zilch_achievement_unlocks_definition"),
+        UniqueConstraint("user_id", "achievement_key", name="uq_zilch_achievement_unlock_user_key"),
+        Index("ix_zilch_achievement_unlocks_user", "user_id"),
+    )
+
+
+class ZilchAchievementDelivery(Base):
+    """Reload-safe presentation state for a newly unlocked Zilch award."""
+
+    __tablename__ = "zilch_achievement_deliveries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    unlock_id: Mapped[int] = mapped_column(
+        ForeignKey("zilch_achievement_unlocks.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    queued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (Index("ix_zilch_achievement_deliveries_pending", "acknowledged_at", "queued_at"),)

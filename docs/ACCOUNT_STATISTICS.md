@@ -130,5 +130,97 @@ only settles an otherwise fully equal presentation order.
 Deleting a typed Zilch result creates a `DeletedGame` tombstone with
 `game_type = 'zilch'` and removes its `CompletedGame` row in one transaction.
 On-read aggregation therefore drops it immediately. The generic deletion route
-does not run ZDWA JSON cleanup or achievement synchronization for Zilch, and
-there is no restore workflow today.
+does not run ZDWA JSON cleanup or ZDWA achievement synchronization for Zilch.
+It invokes the Zilch-specific award cleanup described below; there is no restore
+workflow today.
+
+## Private Zilch awards and player context
+
+Zilch awards are a separate, private namespace. They are not ZDWA
+achievements, do not reuse the ZDWA achievement catalog or rollout markers,
+and never add **Ehrenberg-Marken**, a ZDWA title, stars, a public profile value,
+or a public player-ranking position. This is deliberately **Option A**: Zilch
+recognition is visible only within the protected Zilch product context.
+
+### Source of truth and eligibility
+
+The source chain starts with an authoritative, successfully persisted
+`CompletedGame` row with `game_type = 'zilch'` and a known, strictly validated
+Zilch result payload. The Zilch finalizer explicitly registers that new result
+as a post-rollout evaluation work item in `zilch_achievement_evaluations`.
+Only such registered work items are eligible: recovery processes pending work
+items, never the historic `CompletedGame` population. After payload validation,
+`zilch_achievement_evidence` stores the narrow server-derived facts for each
+eligible human participant, and `zilch_achievement_unlocks` is the durable
+namespaced outcome. Live snapshots, browser counters, WebSocket notices,
+private statistic aggregates, and leaderboard projections are not sources of
+truth. A CPU seat cannot receive an account award.
+
+The rollout is deliberately forward-only without a retrospective database
+scan. Existing Zilch history is not registered or backfilled, even if its
+payload would otherwise meet a condition. This prevents a later catalog change
+from rewriting the meaning of an earlier private preview result.
+
+### Delivery, acknowledgement, and revocation
+
+After evaluation has durably unlocked an award, the server creates one private
+`zilch_achievement_deliveries` row for it. Delivery is idempotent per unlock,
+so terminal-state recovery or a browser reload cannot create a duplicate. The
+pending-delivery API is only a presentation queue. A client acknowledgement
+sets `acknowledged_at`; it neither grants an award nor changes its eligibility.
+The authoritative result, registered evaluation, validated evidence, and
+server-side unlock remain decisive.
+
+Deleting a Zilch result calls the Zilch-specific cleanup for its source game.
+It removes the normalized evidence and evaluation, synchronizes affected
+private Zilch accounts, and removes any unlock that no longer has supporting
+evidence; the delivery then disappears through its unlock foreign key. The
+next private profile/pending-delivery response consequently presents that award
+as locked or absent, rather than leaving a historical Zilch award visible. The
+deletion must not call ZDWA achievement synchronization, alter ZDWA aggregate
+JSON, or change Ehrenberg-Marken/title data. There is no restore workflow:
+restoring a backup is the only supported way to recover a deleted source result
+and its private award state.
+
+If this post-delete cleanup is interrupted after the typed deletion transaction
+has committed, a bounded recovery reads only `DeletedGame(game_type='zilch')`
+tombstones that still reference Zilch award state. It removes stale evidence;
+it never scans ordinary completed results and can therefore never act as a
+retrospective unlock backfill.
+
+### Private views and known data gaps
+
+`/zilch/erfolge` and `/zilch/spieler/{username}` are Zilch-context views, not
+public player profiles. They require the same preview policy as gameplay and
+must not expose ZDWA achievements or data to a user who is not otherwise
+allowed to see it. Historical display names may remain readable in a permitted
+result report, but deleted/inactive accounts and CPU seats are not award
+identities.
+
+Unknown payload schemas, malformed/incomplete result data, results before the
+Zilch award rollout that were never registered, and deleted results deliberately
+produce no award claim. Older result schemas can also lack an event or metric needed for a
+future category; such data is reported as unavailable rather than inferred or
+reconstructed from client state. Zilch awards currently have no public
+aggregate, cross-game rank, or retrospective backfill.
+
+### Version-1 private catalog and APIs
+
+All keys are namespaced as `zilch.*` and are versioned separately from the
+ZDWA catalog. The first private catalog contains only conditions supported by
+validated result evidence:
+
+| Group | Keys |
+| --- | --- |
+| First milestones | `zilch.first_game`, `zilch.first_hvh_win`, `zilch.first_cpu_win`, `zilch.solo_sprint_completed` |
+| CPU strategy wins | `zilch.cpu_win_conservative`, `zilch.cpu_win_normal`, `zilch.cpu_win_aggressive` |
+| Banked rounds and exact finish | `zilch.banked_round_500`, `zilch.banked_round_1000`, `zilch.banked_round_1500`, `zilch.banked_round_2000`, `zilch.exact_10000` |
+| Confirmed combinations | `zilch.first_straight`, `zilch.first_three_pairs`, `zilch.first_500_for_nothing`, `zilch.first_three_ones`, `zilch.first_hot_dice` |
+| Resilience | `zilch.win_after_three_zilchs`, `zilch.win_after_zilch_penalty`, `zilch.solo_sprint_without_zilch` |
+
+The Zilch-only APIs are protected by the same preview policy as gameplay:
+`GET /api/zilch/achievements`, `GET /api/zilch/achievements/pending`,
+`POST /api/zilch/achievements/{key}/acknowledge`, and
+`GET /api/zilch/players/{username}/achievements`. They return only private
+Zilch award data; the last endpoint backs the private player-context page and
+does not become a public profile API.

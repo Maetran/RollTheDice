@@ -29,14 +29,23 @@ human-vs-human wins, and wins against each individual CPU strategy; they never
 feed a ZDWA ranking.
 Finished private Zilch games are stored as a separate, versioned result payload
 with a private read-only history; they do not enter any ZDWA scorecard, replay,
-statistic, achievement, or leaderboard path. The protected Zilch app has its
-own lobby, game view, history, result report, statistics, leaderboards, and
-in-app rule guide. Its
+statistic, achievement, or leaderboard path. Private Zilch awards use their
+own protected namespace instead: they award neither **Ehrenberg-Marken** nor
+ZDWA titles, ranks, stars, profile values, or public ranking positions. They
+are considered only when the Zilch finalizer explicitly registers a newly
+persisted authoritative result after the award rollout; older history is never
+rescanned or backfilled. They can be revoked when the source result is deleted
+and remain visible only in Zilch context. The protected Zilch app has its own
+lobby, game view, history, result report, statistics, leaderboards, awards,
+private player-award context, and in-app rule guide. Its
 CSS-only wood-table, paper-card, and dice direction is isolated from ZDWA.
-Manual dice selection, additional Solo objectives/challenges, Zilch
-achievements, and public release are deliberately deferred.
+Manual dice selection, additional Solo objectives/challenges, further Zilch
+award categories, and public release are deliberately deferred.
 
 Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
+The private Zilch award boundary, evidence source, delivery lifecycle, and
+version-1 catalog are documented in
+[docs/ACCOUNT_STATISTICS.md](docs/ACCOUNT_STATISTICS.md).
 
 ## Features
 
@@ -49,10 +58,16 @@ Localization conventions and terminology are documented in [docs/LOCALIZATION.md
   separate
 - User accounts, admin management, public profiles, search, and player rankings
 - Audited deletion of invalid ZDWA results with automatic statistic updates;
-  private Zilch deletion never mutates ZDWA aggregates
+  private Zilch deletion never mutates ZDWA aggregates and revokes only the
+  affected private Zilch-derived award state
 - Self-registration from the lobby with immutable usernames
 - Personal statistics split into Normal, Hardcore, and overall results, with a selectable score chart and median
 - Achievement milestones for special scoring plays, exact final scores, multiplayer victory margins, daily streaks, office-hour game counts, exact upper-section 60s, and Hardcore progress; every achievement awards 1–10 **Ehrenberg-Marken**, the achievement currency named after Ehrenberg in Reutte. When a game unlocks several achievements, each one is presented and acknowledged separately before the final standings; a genuine title increase then receives its own celebratory **LEVEL UP!** card. Profiles show the total, and the player overview includes a sortable Ehrenberg-Marken ranking. The calculated total also assigns an account-only title from Newbie through Godmode with star insignia, shown consistently beside player names in the lobby, live game, chat, profiles, replays, and rankings. Clicking an insignia opens the rank legend at `/rangabzeichen` (as an overlay during live play). Rollout-sensitive gameplay goals, including multiplayer and upper-section-60 goals, start from their introduction while score-based goals and Hardcore game counts remain historical
+- Private Zilch awards are a separate, preview-only collection: they are based
+  on newly persisted, validated Zilch results registered by the finalizer, have
+  their own private delivery and acknowledgement state, are revocable with
+  their source result, and never award Ehrenberg-Marken or alter ZDWA titles,
+  profiles, rankings, statistics, achievements, or leaderboards
 - Progressive Web App support with content-hashed asset and service-worker versions
 - Readiness endpoint and container healthcheck for migration-safe deployments
 - Docker Compose setup for local machines, servers, and Raspberry Pi
@@ -69,6 +84,9 @@ User-facing navigation uses short routes without implementation details:
 - `/zilch/ergebnis/{game_id}` protected, read-only Zilch result report (not public or indexable)
 - `/zilch/statistiken` protected own Zilch statistics (not public or indexable)
 - `/zilch/bestenlisten` protected Zilch leaderboards (not public or indexable)
+- `/zilch/erfolge` protected private Zilch awards (not public or indexable)
+- `/zilch/spieler/{username}` protected Zilch-context player-award view (not
+  public or indexable)
 - `/zilch/regeln` protected in-app Zilch rule guide (not public or indexable)
 - `/spiel/{game_id}/zuschauen` spectator view
 - `/regeln`, `/rangabzeichen`, `/spieler`, `/spieler/{username}`, `/konto`, and `/admin`

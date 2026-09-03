@@ -15,7 +15,11 @@ from alembic import command
 
 BASE = Path(__file__).resolve().parents[1]
 PRE_TYPED_RESULTS_REVISION = "20260902_0015"
-TYPED_RESULTS_REVISION = "20260903_0016"
+# ``head`` now includes the isolated Zilch-achievement tables.  The typed
+# game-result assertions below remain deliberately exercised through the full
+# upgrade chain so later revisions cannot leave the legacy type migration in a
+# partially upgraded state.
+LATEST_SCHEMA_REVISION = "20260903_0017"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -161,7 +165,7 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
 
         with self._connection() as connection:
             version = connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-            self.assertEqual(version, TYPED_RESULTS_REVISION)
+            self.assertEqual(version, LATEST_SCHEMA_REVISION)
             completed_info = {
                 str(row[1]): {"notnull": int(row[3]), "default": row[4]}
                 for row in connection.execute("PRAGMA table_info(completed_games)")

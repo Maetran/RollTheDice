@@ -40,6 +40,9 @@ results, statistics, leaderboards, achievements, and replay views.
   affordance. The CSS-only design system uses warm table, paper-card, and dice
   tokens without third-party game assets. Completed games have their own
   versioned `zilch-house-v1` payload and private result/history projection.
+  Private Zilch awards have a separate namespace and player-context view; they
+  are never ZDWA achievements and never contribute Ehrenberg-Marken, titles,
+  stars, public profiles, or public rankings.
 
 `app/game_registry.py` is the intentionally small composition point. It
 selects state creation, per-game join/start setup, gameplay-action dispatch,
@@ -60,9 +63,10 @@ empty in normal production operation.
 
 The same policy drives switch visibility and the protected `/zilch`,
 `/zilch/spiel/{id}`, `/zilch/historie`, `/zilch/ergebnis/{id}`, and
-`/zilch/regeln` routes, creation, lobby/history/result/rule APIs, and every
-WebSocket connection/action. The raw `/static/zilch.html` artifact is denied.
-Zilch is not in the public SEO registry or sitemap and its shell is `noindex`.
+`/zilch/regeln`, `/zilch/erfolge`, and `/zilch/spieler/{username}` routes,
+creation, lobby/history/result/rule/award APIs, and every WebSocket
+connection/action. The raw `/static/zilch.html` artifact is denied. Zilch is
+not in the public SEO registry or sitemap and its shell is `noindex`.
 
 ## Typed completion boundary
 
@@ -115,7 +119,8 @@ have a hard maximum of 100 entries. Human identity comes from `GameParticipant.u
 gets an account statistic or rank. Historical deleted/inactive account names
 remain in permitted result reports but are not ranking identities. Deleting a
 Zilch row/tombstone removes it from calculation-on-read without any ZDWA
-rebuild or achievement synchronization.
+rebuild or ZDWA achievement synchronization; its private award cleanup is
+separate and is described below.
 
 SQLite receives native non-null type columns plus INSERT/UPDATE validation
 triggers because rebuilding a populated parent table would risk cascading its
@@ -123,6 +128,52 @@ participant rows. The downgrade is intentionally guarded: it works for
 ZDWA-only data, but aborts before removing the discriminator if any Zilch
 completed result or tombstone exists. Restore a compatible backup instead of
 silently discarding Zilch history.
+
+## Private Zilch award boundary
+
+Zilch recognition is a deliberately separate private namespace, not an
+extension of the ZDWA `achievements` catalog. **Option A** applies: Zilch
+awards grant no Ehrenberg-Marken and cannot change ZDWA title tiers, rank
+badges, public profiles, scorecards, statistics, leaderboards, achievements,
+or replay payloads. The only shared concern is authenticated account identity.
+
+The source chain starts with a durably finalized, typed
+`CompletedGame(game_type='zilch')` with a known and validated Zilch payload.
+The finalizer explicitly registers only a **new** post-rollout result in
+`zilch_achievement_evaluations`; recovery evaluates pending registrations, not
+the historic `CompletedGame` population. The resulting human-seat facts are
+stored in `zilch_achievement_evidence`, and namespaced `zilch.*` unlocks are
+stored separately in `zilch_achievement_unlocks`. The browser, active state,
+Quick-Hold cache, private statistic projection, and leaderboard are never
+authoritative award inputs. There is no retrospective scan or backfill of
+older preview results.
+
+Alembic revision `20260903_0017` creates the isolated evaluation, evidence,
+unlock, and delivery tables. It creates no historic work items, so upgrading a
+database cannot award a pre-rollout Zilch result.
+
+For every durable unlock, `zilch_achievement_deliveries` holds one reload-safe
+presentation delivery. It is idempotent and `acknowledged_at` records only
+that the presentation was seen; acknowledgement does not grant, recompute, or
+preserve an award. On Zilch-result deletion, all award state derived from that
+result is revoked in the Zilch-specific deletion path: evaluation and evidence
+are removed, affected private accounts are synchronized, unsupported unlocks
+are removed, and their delivery cascades away. No ZDWA achievement sync or
+aggregate rebuild is allowed. A Zilch award/player view is available only in
+the protected Zilch context (`/zilch/erfolge` and
+`/zilch/spieler/{username}`), is `noindex`, and is not a public profile. Its
+protected APIs are `/api/zilch/achievements`, `/api/zilch/achievements/pending`,
+`/api/zilch/achievements/{key}/acknowledge`, and
+`/api/zilch/players/{username}/achievements`.
+
+If a completed-result deletion commits before its private award cleanup can
+finish, a bounded tombstone recovery consults only typed Zilch `DeletedGame`
+rows with stale award references. It is cleanup, not a CompletedGame backfill.
+
+Unknown/malformed result payloads, historic results never registered after the
+rollout, deleted results, and CPU participants are intentionally ineligible.
+Older schemas may lack the evidence for a future award; the implementation
+must report that gap rather than infer it from browser or active-game data.
 
 ## Zilch rule contract and engine boundary
 
@@ -154,8 +205,8 @@ Hot Dice/confirmation state, and final-reply markers are projected together.
 
 The remaining product decisions are deliberately narrower: the exact penalty
 cadence after a fourth or later consecutive Zilch, additional Solo objectives,
-manual dice interaction, final branding/polish, Zilch statistics/achievements,
-and public release.
+manual dice interaction, final branding/polish, additional private Zilch award
+categories, and public release.
 
 ## Human-vs-human Alpha operation
 
@@ -425,8 +476,10 @@ the repository-owned current status.
 - [x] Calculate private Zilch-only personal statistics and separated
   leaderboards from validated completed result payloads, without a ZDWA
   aggregate path.
-- [ ] Add Zilch achievements from confirmed rules; never reuse ZDWA achievement
-  evaluation.
+- [x] Add a private, forward-only Zilch award namespace with no ZDWA
+  achievement evaluation, Ehrenberg-Marken, titles, or public-profile effect.
+- [ ] Add further private Zilch award categories only from confirmed rules and
+  reliable persisted evidence.
 
 ### Phase 5 — productization and release
 

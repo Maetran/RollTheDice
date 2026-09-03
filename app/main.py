@@ -14,6 +14,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocket
 from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, model_validator
+from sqlalchemy import select
 
 from .achievements import sync_achievements_for_users
 from .active_games import load_active_games, save_active_game
@@ -27,7 +28,7 @@ from .auth import (
     websocket_origin_allowed,
 )
 from .auth_protection import enforce_game_creation_rate_limit, validate_auth_protection_config
-from .database import configure_database, database_schema_ready, upgrade_database
+from .database import configure_database, database_schema_ready, session_scope, upgrade_database
 from .game_access import can_access_game, can_access_zilch_preview
 from .game_history import (
     completed_game_type_for_id,
@@ -59,7 +60,19 @@ from .leaderboard_service import (
     game_from_leaderboard,
 )
 from .leaderboard_storage import LeaderboardFiles
+from .models import User
+from .security import normalize_username
 from .site_seo import robots_document, sitemap_document
+from .zilch_achievements import (
+    ZilchAchievementError,
+    ZilchAchievementSyncError,
+    acknowledge_zilch_award,
+    get_zilch_achievement_profile,
+    pending_zilch_awards,
+    recover_deleted_zilch_achievement_sources,
+    recover_pending_zilch_achievement_evaluations,
+    remove_zilch_result_from_achievements,
+)
 from .zilch_cpu_strategy import ZilchCpuStrategyError, validate_zilch_cpu_strategy
 from .zilch_engine import (
     ZILCH_BANK_MINIMUM,
@@ -140,6 +153,30 @@ async def lifespan(_app: FastAPI):
     import_legacy_leaderboards(LEADERBOARD_FILES.legacy_paths())
     games.update(load_active_games())
     _recover_terminal_completed_games()
+    # This is deliberately not a historical CompletedGame scan.  It retries
+    # only work rows registered by a post-rollout Zilch finalizer after a
+    # transient achievement-storage failure.
+    try:
+        recovery = recover_pending_zilch_achievement_evaluations()
+        if recovery.get("failed"):
+            logger.warning("Some pending Zilch achievement evaluations remain: %s", recovery["failed"])
+        # A result may have been durably written just before shutdown while
+        # its award evaluation was still pending.  The first terminal pass
+        # above leaves that active terminal in place; this second pass can now
+        # complete its idempotent finalizer in the same startup.
+        if recovery.get("completed"):
+            _recover_terminal_completed_games()
+    except ZilchAchievementSyncError:
+        logger.exception("Could not recover pending Zilch achievement evaluations")
+    # This is a tombstone-only repair pass.  It cannot discover or award a
+    # historic result: it merely removes stale private evidence after a
+    # completed Zilch result was already administratively deleted.
+    try:
+        tombstone_recovery = recover_deleted_zilch_achievement_sources()
+        if tombstone_recovery.get("failed"):
+            logger.warning("Some deleted Zilch achievement sources remain: %s", tombstone_recovery["failed"])
+    except ZilchAchievementSyncError:
+        logger.exception("Could not recover deleted Zilch achievement sources")
     # CPU tasks are deliberately process-local.  Their eligibility is derived
     # from the recovered authoritative state, never serialized alongside a
     # timer or a fake connection.
@@ -362,6 +399,20 @@ def zilch_statistics_page(request: Request):
 @app.get("/zilch/bestenlisten", include_in_schema=False)
 def zilch_leaderboards_page(request: Request):
     """Serve the private, noindex Zilch shell for Zilch leaderboards."""
+    _require_zilch_preview(request)
+    return _page("zilch.html")
+
+
+@app.get("/zilch/erfolge", include_in_schema=False)
+def zilch_achievements_page(request: Request):
+    """Serve the private noindex Zilch award collection."""
+    _require_zilch_preview(request)
+    return _page("zilch.html")
+
+
+@app.get("/zilch/spieler/{username}", include_in_schema=False)
+def zilch_player_achievements_page(username: str, request: Request):
+    """Serve a private Zilch-context award profile, never the public ZDWA one."""
     _require_zilch_preview(request)
     return _page("zilch.html")
 
@@ -916,6 +967,82 @@ def api_zilch_leaderboards(
         raise HTTPException(status_code=400, detail=exc.code) from exc
 
 
+def _safe_zilch_achievement_profile(user_id: int) -> dict[str, object]:
+    """Return an award-only projection without leaking a database user ID."""
+    profile = get_zilch_achievement_profile(user_id)
+    player = profile.get("player") if isinstance(profile, dict) else None
+    if isinstance(player, dict) and player.get("username"):
+        profile = {**profile, "player": {"username": str(player["username"])}}
+    return profile
+
+
+def _zilch_achievement_http_error(exc: ZilchAchievementError | ZilchAchievementSyncError) -> HTTPException:
+    """Keep private award errors compact without disclosing source evidence."""
+    code = getattr(exc, "code", "zilch_achievement_unavailable")
+    if code in {
+        "zilch_achievement_user_not_found",
+        "zilch_achievement_unknown_key",
+        "zilch_achievement_not_unlocked",
+        "zilch_achievement_delivery_missing",
+    }:
+        return HTTPException(status_code=404, detail="zilch_achievement_not_found")
+    return HTTPException(status_code=503, detail="zilch_achievements_unavailable")
+
+
+@app.get("/api/zilch/achievements")
+def api_zilch_achievements(request: Request) -> dict[str, object]:
+    """Return only the current preview account's private Zilch awards."""
+    identity = _require_zilch_preview(request)
+    try:
+        return _safe_zilch_achievement_profile(identity.user_id)
+    except (ZilchAchievementError, ZilchAchievementSyncError) as exc:
+        raise _zilch_achievement_http_error(exc) from exc
+
+
+@app.get("/api/zilch/players/{username}/achievements")
+def api_zilch_player_achievements(username: str, request: Request) -> dict[str, object]:
+    """Read another active account's awards only inside the preview product."""
+    _require_zilch_preview(request)
+    normalized_username = normalize_username(username)
+    if not normalized_username:
+        raise HTTPException(status_code=404, detail="zilch_achievement_not_found")
+    with session_scope() as db:
+        user_id = db.scalar(
+            select(User.id).where(
+                User.username_normalized == normalized_username,
+                User.is_active.is_(True),
+            )
+        )
+    if user_id is None:
+        raise HTTPException(status_code=404, detail="zilch_achievement_not_found")
+    try:
+        return _safe_zilch_achievement_profile(int(user_id))
+    except (ZilchAchievementError, ZilchAchievementSyncError) as exc:
+        raise _zilch_achievement_http_error(exc) from exc
+
+
+@app.get("/api/zilch/achievements/pending")
+def api_zilch_pending_achievements(request: Request) -> dict[str, object]:
+    """Read the caller's reload-safe, not-yet-acknowledged award queue."""
+    identity = _require_zilch_preview(request)
+    try:
+        return pending_zilch_awards(identity.user_id)
+    except (ZilchAchievementError, ZilchAchievementSyncError) as exc:
+        raise _zilch_achievement_http_error(exc) from exc
+
+
+@app.post("/api/zilch/achievements/{achievement_key}/acknowledge")
+def api_acknowledge_zilch_achievement(achievement_key: str, request: Request) -> dict[str, object]:
+    """Acknowledge a presentation only; it can never grant an award."""
+    identity = _require_zilch_preview(request)
+    require_csrf(request, identity)
+    try:
+        acknowledgement = acknowledge_zilch_award(identity.user_id, achievement_key)
+    except (ZilchAchievementError, ZilchAchievementSyncError) as exc:
+        raise _zilch_achievement_http_error(exc) from exc
+    return {"ok": True, **acknowledgement}
+
+
 @app.get("/api/zilch/rules")
 def api_zilch_rules(request: Request) -> dict[str, object]:
     """Return the small authoritative rules projection used by the private UI."""
@@ -1007,10 +1134,27 @@ def admin_delete_completed_game(game_id: str, payload: DeleteCompletedGameReq, r
     if deleted["game_type"] == DEFAULT_GAME_TYPE:
         _remove_deleted_game_from_files(deleted)
         sync_achievements_for_users(set(deleted["affected_user_ids"]))
+    elif deleted["game_type"] == ZILCH_GAME_TYPE:
+        # The isolated service removes source evidence and recomputes only
+        # these private Zilch awards.  It never touches ZDWA achievement
+        # marks, titles, JSON aggregates, or public profile projections.
+        try:
+            remove_zilch_result_from_achievements(
+                deleted["game_id"],
+                user_ids=deleted["affected_user_ids"],
+            )
+        except ZilchAchievementSyncError:
+            # The typed result and tombstone are already durable.  Do not
+            # pretend that deletion failed or leak a server error after that
+            # fact; the bounded startup tombstone pass will retry the only
+            # still-pending private cleanup.
+            logger.exception("Queued Zilch achievement cleanup after deleting %s", deleted["game_id"])
+            deleted["achievement_cleanup_pending"] = True
     return {
         "ok": True,
         "game_id": deleted["game_id"],
         "affected_user_ids": deleted["affected_user_ids"],
+        "achievement_cleanup_pending": bool(deleted.get("achievement_cleanup_pending", False)),
     }
 
 
@@ -1037,7 +1181,11 @@ def _recover_terminal_completed_games() -> None:
         except Exception:
             logger.exception("Could not recover terminal game %s", game_id)
             continue
-        if isinstance(completion, dict) and completion.get("result_persisted"):
+        if (
+            isinstance(completion, dict)
+            and completion.get("result_persisted")
+            and not completion.get("achievement_sync_pending")
+        ):
             game["_final_completion"] = completion
             games.pop(game_id, None)
 

@@ -6,6 +6,7 @@ from app.achievements import (
     achievement_rank_for_points,
     achievement_sort_key,
 )
+from app.zilch_achievements import ZILCH_ACHIEVEMENT_CATEGORIES, ZILCH_ACHIEVEMENTS
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / "app" / "static"
@@ -56,6 +57,25 @@ def test_every_achievement_name_and_description_has_an_english_catalog_entry():
         for value in (achievement.name, achievement.description)
         if f'"{value}":' not in catalog
     ]
+    assert not missing, missing
+
+
+def test_every_private_zilch_award_and_category_has_de_and_en_message_keys():
+    """Keep the private server catalog and browser translations in lockstep."""
+
+    catalog = (ROOT / "frontend" / "i18n" / "catalog.js").read_text(encoding="utf-8")
+    keys = [
+        *(f"zilch.achievement.category.{category}" for category in ZILCH_ACHIEVEMENT_CATEGORIES),
+        *(
+            key
+            for achievement in ZILCH_ACHIEVEMENTS
+            for key in (achievement.title_key, achievement.description_key)
+        ),
+    ]
+    # The structured German and English message maps each contain every key.
+    # Count the literal key rather than a translated value: German/English
+    # wording may legitimately share a term such as "CPU" or "Solo".
+    missing = [key for key in keys if catalog.count(f'"{key}":') < 2]
     assert not missing, missing
 
 

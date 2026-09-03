@@ -277,6 +277,37 @@ class WebSocketActionGuardTestCase(GameStateTestCase):
         self.assertEqual(retry["achievement_rank_ups"], completion["achievement_rank_ups"])
         self.assertEqual(finalized, [game])
 
+    def test_pending_achievement_sync_keeps_terminal_recovery_state(self):
+        """A durable result alone must not discard an unfinished award retry."""
+
+        game = self.make_game(mode=1, players=[("p1", "Anna")])
+        board = game["_scoreboards"]["p1"]
+        for row in WRITABLE_ROWS:
+            for column in WRITABLE_COLS:
+                board[f"{row},{column}"] = 0
+        board.pop("15,down")
+        session = self.session(game, player_id="p1")
+        game["_players"][0]["ws"] = session.websocket
+        completion = {
+            "result_persisted": True,
+            "achievement_sync_pending": True,
+            "achievement_sync_error": "temporary_award_store_failure",
+        }
+
+        asyncio.run(
+            handle_gameplay_action(
+                session,
+                "write_field",
+                {"row": 15, "field": "down", "strike": True},
+                finalize_game=lambda _finished_game: completion,
+            )
+        )
+
+        self.assertTrue(game["_finished"])
+        self.assertFalse(game.get("_completion_persisted", False))
+        self.assertEqual(game["_final_completion"], completion)
+        self.assertFalse(game["_finalization_pending"])
+
     def test_terminal_write_reaches_a_requester_replaced_during_reconnect(self):
         """The socket that accepted the last tap must receive its result too.
 
