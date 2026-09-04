@@ -126,6 +126,9 @@ test("private Zilch rules, history, and product navigation use the protected noi
   ]);
   await expect(page.getByRole("heading", { name: "Mani", exact: true })).toBeVisible();
   await expect(page.locator("#zilchAchievementsBody")).toBeVisible();
+  await expect(page.locator(".zilch-header [data-zilch-logout]")).toHaveCount(0);
+  await expect(page.locator("#zilchAccountLogout")).toBeVisible();
+  await expect(page.locator("#zilchAccountLogout")).toHaveText("Abmelden");
 
   await page.goto("/konto#settings");
   await expect(page.getByRole("heading", { name: /ZDWA(?:-|\s)(Spieleinstellungen|game settings)/i })).toBeVisible();
@@ -157,8 +160,49 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   ]);
   await expect(page.locator("html")).toHaveAttribute("data-game", "zilch");
   await expect(page.locator("#createGameCard")).toHaveCount(0);
+  const zilchGameSwitch = page.locator(".zilch-header [data-game-switch]");
+  await expect(zilchGameSwitch).toBeVisible();
+  await expect(zilchGameSwitch).toContainText("ZDWA");
+  await expect(zilchGameSwitch.locator("span").last()).toBeVisible();
+  const identity = page.locator(".zilch-lobby-identity");
+  await expect(identity).toContainText("Du spielst als");
+  await expect(identity).toContainText("Mani");
+  await expect(identity.getByRole("link", { name: "Mein Konto" })).toHaveAttribute("href", "/zilch/konto");
+  await expect(page.locator("#zilchAccount")).toBeHidden();
+  await expect(page.locator(".zilch-header [data-zilch-logout]")).toHaveCount(0);
 
   await page.setViewportSize({ width: 320, height: 844 });
+  const lobbyAlignment = await page.evaluate(() => {
+    const modes = [...document.querySelectorAll(".zilch-mode-option")].map(option => {
+      const style = getComputedStyle(option);
+      const box = option.getBoundingClientRect();
+      const label = option.querySelector("strong").getBoundingClientRect();
+      return {
+        justifyContent: style.justifyContent,
+        textAlign: style.textAlign,
+        centerDelta: Math.abs((box.left + box.width / 2) - (label.left + label.width / 2)),
+      };
+    });
+    const identity = document.querySelector(".zilch-lobby-identity");
+    const identityBox = identity.getBoundingClientRect();
+    const childCenters = [...identity.children].map(child => {
+      const box = child.getBoundingClientRect();
+      return box.top + box.height / 2;
+    });
+    return {
+      modes,
+      identityHeight: identityBox.height,
+      identityCenterSpread: Math.max(...childCenters) - Math.min(...childCenters),
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth,
+    };
+  });
+  expect(lobbyAlignment.modes).toHaveLength(3);
+  expect(lobbyAlignment.modes.every(mode => mode.justifyContent === "center" && mode.textAlign === "center")).toBe(true);
+  expect(lobbyAlignment.modes.every(mode => mode.centerDelta <= 1)).toBe(true);
+  expect(lobbyAlignment.identityCenterSpread).toBeLessThanOrEqual(1);
+  expect(lobbyAlignment.identityHeight).toBeLessThanOrEqual(48);
+  expect(lobbyAlignment.documentWidth).toBeLessThanOrEqual(lobbyAlignment.viewportWidth);
   const navigation = page.locator("#zilchNavigation");
   const navigationList = page.locator("#zilchNavigation .zilch-nav-list");
   const toggle = page.locator("#zilchNavToggle");
@@ -194,6 +238,12 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   ]);
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("#zilchNavigation a[href='/zilch/regeln']")).toHaveText("Rules");
+  await expect(page.locator(".zilch-lobby-identity")).toContainText("Playing as");
+  await expect(page.locator(".zilch-lobby-identity").getByRole("link", { name: "My Account" })).toHaveAttribute("href", "/zilch/konto");
+
+  await page.goto("/zilch/konto");
+  await expect(page.locator("#zilchAccountLogout")).toHaveText("Sign out");
+  await expect(page.locator(".zilch-header [data-zilch-logout]")).toHaveCount(0);
 
   await page.goto("/zilch/regeln");
   await expect(page.getByRole("heading", { name: /zilch.*rules/i })).toBeVisible();

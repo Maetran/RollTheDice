@@ -875,6 +875,56 @@ def public_achievement_ranks(user_ids: Iterable[int]) -> dict[int, dict]:
         return achievement_rank_payloads_for_user_ids(db, normalized_ids)
 
 
+def earned_achievement_payloads_for_game(game_id: object) -> dict[str, list[dict]]:
+    """Return proven ZDWA unlocks keyed by the source game's player key.
+
+    The result view is public, so this exposes only the same catalog fields
+    already visible on public profiles. Unknown/stale catalog keys and NULL
+    sources are omitted rather than guessed from unlock timestamps.
+    """
+    normalized_game_id = str(game_id or "").strip()
+    if not normalized_game_id:
+        return {}
+    from .database import database_schema_ready, session_scope
+
+    if not database_schema_ready():
+        return {}
+    with session_scope() as db:
+        rows = db.execute(
+            select(GameParticipant.player_key, UserAchievement)
+            .select_from(CompletedGame)
+            .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
+            .join(
+                UserAchievement,
+                (UserAchievement.source_completed_game_id == CompletedGame.id)
+                & (UserAchievement.user_id == GameParticipant.user_id),
+            )
+            .where(
+                CompletedGame.game_id == normalized_game_id,
+                CompletedGame.game_type == DEFAULT_GAME_TYPE,
+            )
+            .order_by(GameParticipant.position, UserAchievement.unlocked_at, UserAchievement.id)
+        ).all()
+    result: dict[str, list[dict]] = {}
+    for player_key, row in rows:
+        achievement = ACHIEVEMENT_BY_KEY.get(str(row.achievement_key))
+        if achievement is None:
+            continue
+        result.setdefault(str(player_key), []).append(
+            {
+                "key": achievement.key,
+                "name": achievement.name,
+                "description": achievement.description,
+                "icon_key": achievement.icon_key,
+                "points": achievement.points,
+                "unlocked_at": as_utc(row.unlocked_at).isoformat(),
+            }
+        )
+    for payloads in result.values():
+        payloads.sort(key=lambda payload: achievement_sort_key(ACHIEVEMENT_BY_KEY[payload["key"]]))
+    return result
+
+
 def achievement_points_for_keys(keys: Iterable[str]) -> int:
     """Return the score for known, unique unlocked achievement keys."""
     return sum(ACHIEVEMENT_POINTS_BY_KEY.get(key, 0) for key in set(keys))
@@ -1191,14 +1241,21 @@ def _longest_daily_streak(games: list[tuple[CompletedGame, GameParticipant, dict
     return longest
 
 
-def _progress_for_user(db, user: User) -> dict[str, int | bool]:
-    rows = db.execute(
+def _progress_for_user(
+    db,
+    user: User,
+    *,
+    excluded_completed_game_id: int | None = None,
+) -> dict[str, int | bool]:
+    statement = (
         select(CompletedGame, GameParticipant)
         .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
         .options(selectinload(CompletedGame.participants))
         .where(GameParticipant.user_id == user.id, CompletedGame.game_type == DEFAULT_GAME_TYPE)
-        .order_by(CompletedGame.finished_at, CompletedGame.id)
-    ).all()
+    )
+    if excluded_completed_game_id is not None:
+        statement = statement.where(CompletedGame.id != int(excluded_completed_game_id))
+    rows = db.execute(statement.order_by(CompletedGame.finished_at, CompletedGame.id)).all()
     games = [(game, participant, _game_metrics(game, participant)) for game, participant in rows]
     gameplay_started_at = as_utc(user.achievement_gameplay_started_at or utcnow())
     gameplay_games = [entry for entry in games if as_utc(entry[0].finished_at) >= gameplay_started_at]
@@ -1340,16 +1397,79 @@ def _is_unlocked(achievement: Achievement, progress: dict[str, int | bool]) -> b
     return bool(value) if isinstance(value, bool) else int(value) >= achievement.target
 
 
-def sync_user_achievements(db, user: User) -> dict:
-    """Synchronize derived achievement rows and return the public payload."""
+def sync_user_achievements(
+    db,
+    user: User,
+    *,
+    source_completed_game_id: int | None = None,
+) -> dict:
+    """Synchronize derived rows and optionally link a proven source result.
+
+    A caller may nominate the just-persisted/assigned completed game. A new
+    unlock is linked only when removing exactly that game makes its criterion
+    false. This fail-closed delta prevents a later profile sync, a historic
+    backfill, or another concurrently visible result from inventing a source.
+    """
     progress = _progress_for_user(db, user)
+    proven_source_id: int | None = None
+    proven_source_finished_at = None
+    progress_without_source: dict[str, int | bool] | None = None
+    if source_completed_game_id is not None:
+        try:
+            candidate_id = int(source_completed_game_id)
+        except (TypeError, ValueError):
+            candidate_id = 0
+        if candidate_id > 0:
+            source = db.scalar(
+                select(CompletedGame)
+                .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
+                .where(
+                    CompletedGame.id == candidate_id,
+                    CompletedGame.game_type == DEFAULT_GAME_TYPE,
+                    GameParticipant.user_id == user.id,
+                )
+                .limit(1)
+            )
+            if source is not None:
+                proven_source_id = int(source.id)
+                proven_source_finished_at = as_utc(source.finished_at)
+                progress_without_source = _progress_for_user(
+                    db,
+                    user,
+                    excluded_completed_game_id=proven_source_id,
+                )
     existing = {row.achievement_key: row for row in user.achievements}
     for achievement in ACHIEVEMENTS:
         unlocked = _is_unlocked(achievement, progress)
         row = existing.get(achievement.key)
+        source_id = (
+            proven_source_id
+            if progress_without_source is not None
+            and not _is_unlocked(achievement, progress_without_source)
+            else None
+        )
         if unlocked and row is None:
             unlocked_at = user.created_at if achievement.kind == "account_created" else utcnow()
-            db.add(UserAchievement(user_id=user.id, achievement_key=achievement.key, unlocked_at=unlocked_at))
+            db.add(
+                UserAchievement(
+                    user_id=user.id,
+                    achievement_key=achievement.key,
+                    source_completed_game_id=source_id,
+                    unlocked_at=unlocked_at,
+                )
+            )
+        elif (
+            unlocked
+            and row is not None
+            and row.source_completed_game_id is None
+            and source_id is not None
+            and proven_source_finished_at is not None
+            and as_utc(row.unlocked_at) >= proven_source_finished_at
+        ):
+            # A profile read can race between the completed-game commit and
+            # its source-aware finalizer sync. Repair only such chronologically
+            # possible NULL links; pre-migration history remains untouched.
+            row.source_completed_game_id = source_id
         elif not unlocked and row is not None:
             db.delete(row)
     db.flush()
@@ -1386,7 +1506,11 @@ def sync_user_achievements(db, user: User) -> dict:
     }
 
 
-def sync_achievements_for_users(user_ids: set[int]) -> dict[int, list[dict]]:
+def sync_achievements_for_users(
+    user_ids: set[int],
+    *,
+    source_completed_game_id: int | None = None,
+) -> dict[int, list[dict]]:
     """Re-evaluate affected users after a completed game changes."""
     from .database import database_schema_ready, session_scope
 
@@ -1398,7 +1522,11 @@ def sync_achievements_for_users(user_ids: set[int]) -> dict[int, list[dict]]:
             user = db.get(User, user_id)
             if user:
                 existing_keys = {row.achievement_key for row in user.achievements}
-                payload = sync_user_achievements(db, user)
+                payload = sync_user_achievements(
+                    db,
+                    user,
+                    source_completed_game_id=source_completed_game_id,
+                )
                 unlocked_now = [
                     achievement
                     for achievement in payload["unlocked"]

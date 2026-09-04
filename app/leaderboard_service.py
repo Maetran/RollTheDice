@@ -2,23 +2,60 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
+from sqlalchemy import select
 
-from .achievements import public_achievement_ranks
+from .achievements import earned_achievement_payloads_for_game, public_achievement_ranks
 from .api_users import profile_links_for_games
+from .database import database_schema_ready, session_scope
 from .game_history import (
     deleted_game_ids,
     recent_winner_points_by_mode,
     stable_game_id,
 )
+from .game_types import DEFAULT_GAME_TYPE
 from .leaderboard_storage import LeaderboardFiles, read_json, write_json_if_changed
+from .models import CompletedGame
+from .security import as_utc
 from .trends import recent_points_trend
 
 logger = logging.getLogger(__name__)
 GLOBAL_AVERAGE_STARTED_AT = datetime(2026, 7, 31, 11, 40, tzinfo=timezone.utc)
+
+
+def _stored_zdwa_snapshot(game_id: str) -> dict | None:
+    """Load one authoritative ZDWA snapshot beyond the capped JSON lists."""
+    if not database_schema_ready():
+        return None
+    with session_scope() as db:
+        game = db.scalar(
+            select(CompletedGame).where(
+                CompletedGame.game_id == str(game_id),
+                CompletedGame.game_type == DEFAULT_GAME_TYPE,
+            )
+        )
+        if game is None:
+            return None
+        try:
+            snapshot = json.loads(game.snapshot_json)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            logger.warning("Could not decode stored ZDWA snapshot %s", game_id, exc_info=True)
+            return None
+        if not isinstance(snapshot, dict):
+            return None
+        # Identity/type metadata comes from typed columns.  The mutable copy
+        # retains the immutable scoreboards, players and chat from the result.
+        snapshot = dict(snapshot)
+        snapshot["game_id"] = game.game_id
+        snapshot["gamename"] = game.game_name
+        snapshot["finished_at"] = as_utc(game.finished_at).isoformat()
+        snapshot["mode"] = game.mode
+        snapshot["hardcore"] = bool(game.hardcore)
+        return snapshot
 
 
 def _parse_ts(s: str) -> datetime | None:
@@ -289,6 +326,15 @@ def game_from_leaderboard(files: LeaderboardFiles, game_id: str):
             return None
         players_copy = [dict(player) for player in players if isinstance(player, dict)]
         chat_history = [dict(message) for message in entry.get("chat_history", []) if isinstance(message, dict)]
+        try:
+            earned_by_player = earned_achievement_payloads_for_game(str(entry.get("game_id") or ""))
+        except Exception:
+            # A replay remains useful if the optional achievement projection
+            # is temporarily unavailable. Never guess links from timestamps.
+            logger.exception("Could not load earned achievements for completed game %s", entry.get("game_id"))
+            earned_by_player = {}
+        for player in players_copy:
+            player["earned_achievements"] = list(earned_by_player.get(str(player.get("id") or ""), []))
         linked_players = profile_links_for_games({str(entry.get("game_id") or "")}).get(
             str(entry.get("game_id") or ""),
             [],
@@ -361,6 +407,15 @@ def game_from_leaderboard(files: LeaderboardFiles, game_id: str):
             proj = _project(e)
             if proj is not None:
                 return proj
+
+    # The legacy projections are intentionally capped.  Profile histories,
+    # however, link every typed relational result and must keep those replay
+    # URLs useful after a game falls out of all four JSON lists.
+    stored_snapshot = _stored_zdwa_snapshot(str(game_id))
+    if stored_snapshot is not None:
+        projected = _project(stored_snapshot)
+        if projected is not None:
+            return projected
 
     # Nicht gefunden oder Eintrag ohne Snapshot-Felder
     raise HTTPException(status_code=404, detail="not_found")

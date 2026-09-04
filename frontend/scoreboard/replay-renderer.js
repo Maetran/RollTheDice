@@ -121,8 +121,59 @@ window.renderReadOnlyFromLeaderboard = function(mount, leaderboardView){
     canRequestCorrection: false,
     readOnly: true
   });
+  renderReadOnlyAchievements(mount, leaderboardView.players || []);
   renderReadOnlyChatHistory(mount, leaderboardView.chat_history || []);
 };
+
+function replayAchievementIcon(iconKey){
+  const icons = {
+    points: "◆", games: "▦", score: "★", upper: "↑", row: "≡",
+    strike: "×", sixty: "6", full: "●", poker: "♠", diff: "Δ",
+    kenter: "◇", bonus: "+", office: "◫", night: "☾", weekend: "☀",
+    early: "↗", statistics: "⌁", account: "✓"
+  };
+  return icons[String(iconKey || "")] || "✦";
+}
+
+function renderReadOnlyAchievements(mount, players){
+  if (!mount || !Array.isArray(players)) return;
+  const groups = players.map(player => {
+    const seen = new Set();
+    const achievements = (Array.isArray(player?.earned_achievements) ? player.earned_achievements : [])
+      .filter(achievement => {
+        if (!achievement || typeof achievement !== "object") return false;
+        const key = String(achievement.key || "").trim();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    return { player, achievements };
+  }).filter(group => group.achievements.length > 0);
+  if (groups.length === 0) return;
+
+  const markup = groups.map(({ player, achievements }) => {
+    const cards = achievements.map(achievement => {
+      const points = Math.max(0, Math.trunc(Number(achievement.points) || 0));
+      return `<li class="readonly-achievement-card">
+        <span class="readonly-achievement-icon" aria-hidden="true">${esc(replayAchievementIcon(achievement.icon_key))}</span>
+        <span class="readonly-achievement-copy"><strong>${esc(achievement.name || "Erfolg")}</strong>${achievement.description ? `<small>${esc(achievement.description)}</small>` : ""}</span>
+        <span class="readonly-achievement-points">+${esc(points)} ${esc(points === 1 ? "Ehrenberg-Marke" : "Ehrenberg-Marken")}</span>
+      </li>`;
+    }).join("");
+    return `<section class="readonly-achievement-player" aria-label="${esc(player?.name || "Spieler")}">
+      <h3>${esc(player?.name || "Spieler")}</h3>
+      <ul class="readonly-achievement-list">${cards}</ul>
+    </section>`;
+  }).join("");
+
+  mount.insertAdjacentHTML("beforeend", `
+    <section class="readonly-achievements" aria-labelledby="readonlyAchievementsTitle">
+      <p class="eyebrow">Partie-Erfolge</p>
+      <h2 id="readonlyAchievementsTitle">In dieser Partie erreicht</h2>
+      <div class="readonly-achievement-players">${markup}</div>
+    </section>
+  `);
+}
 
 function renderReadOnlyChatHistory(mount, history){
   if (!mount || !Array.isArray(history) || history.length === 0) return;

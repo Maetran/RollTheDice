@@ -17,7 +17,7 @@ from .achievements import (
 from .auth import require_admin, require_csrf, require_user, resolve_session
 from .database import database_schema_ready, session_scope
 from .game_types import DEFAULT_GAME_TYPE
-from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User
+from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User, UserAchievement
 from .security import normalize_username, utcnow
 from .trends import recent_points_trend
 
@@ -500,6 +500,7 @@ def assign_game_participant(participant_id: int, payload: AssignmentRequest, req
     identity = require_admin(request)
     require_csrf(request, identity)
     affected_user_ids: set[int] = set()
+    source_completed_game_id: int | None = None
     with session_scope() as db:
         participant = db.get(GameParticipant, participant_id)
         if not participant:
@@ -515,6 +516,7 @@ def assign_game_participant(participant_id: int, payload: AssignmentRequest, req
         previous_user_id = participant.user_id
         if previous_user_id == payload.user_id:
             return {"ok": True, "changed": False}
+        source_completed_game_id = int(participant.game_id)
         participant.user_id = payload.user_id
         participant.assigned_by_user_id = identity.user_id
         participant.assigned_at = utcnow()
@@ -528,7 +530,32 @@ def assign_game_participant(participant_id: int, payload: AssignmentRequest, req
             )
         )
         affected_user_ids = {user_id for user_id in (previous_user_id, payload.user_id) if user_id is not None}
-    sync_achievements_for_users(affected_user_ids)
+        db.flush()
+        if previous_user_id is not None:
+            previous_user_still_participates = db.scalar(
+                select(GameParticipant.id)
+                .where(
+                    GameParticipant.game_id == source_completed_game_id,
+                    GameParticipant.user_id == previous_user_id,
+                    GameParticipant.id != participant.id,
+                )
+                .limit(1)
+            )
+            if previous_user_still_participates is None:
+                for achievement in db.scalars(
+                    select(UserAchievement).where(
+                        UserAchievement.user_id == previous_user_id,
+                        UserAchievement.source_completed_game_id == source_completed_game_id,
+                    )
+                ):
+                    # The result still exists, but it no longer belongs to
+                    # this account. Keep a still-earned award while dropping
+                    # the now-untrue source attribution.
+                    achievement.source_completed_game_id = None
+    sync_achievements_for_users(
+        affected_user_ids,
+        source_completed_game_id=source_completed_game_id,
+    )
     return {"ok": True, "changed": True}
 
 

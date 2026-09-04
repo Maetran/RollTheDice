@@ -778,7 +778,17 @@
     grid-template-columns:minmax(0, 1fr) auto auto auto auto auto auto;
   }
   .room-page .room-header > .theme-toggle{ grid-column:2; grid-row:1; }
-  .room-page .room-game-switch{ grid-column:3; grid-row:1; width:2.25rem; padding:.2rem; }
+  .room-page .room-header button.room-game-switch.small{
+    grid-column:3;
+    grid-row:1;
+    width:2.25rem;
+    min-width:2.25rem;
+    height:2.25rem;
+    min-height:2.25rem;
+    padding:.22rem .42rem;
+    font-size:.78rem;
+    line-height:1;
+  }
   .room-page .room-game-switch-label{ position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip:rect(0, 0, 0, 0); white-space:nowrap; }
   .room-page #rulesSheetOpen{ grid-column:4; grid-row:1; }
   .room-page #rankLegendSheetOpen{ grid-column:5; grid-row:1; }
@@ -790,7 +800,16 @@
     grid-template-columns:minmax(0, 1fr) auto auto auto auto auto auto;
   }
   .room-page .room-header > .theme-toggle{ grid-column:2; grid-row:1; }
-  .room-page .room-game-switch{ grid-column:3; grid-row:1; }
+  .room-page .room-header button.room-game-switch.small{
+    grid-column:3;
+    grid-row:1;
+    width:4.5rem;
+    min-width:4.5rem;
+    height:2.25rem;
+    min-height:2.25rem;
+    padding:0 .44rem;
+    font-size:.75rem;
+  }
   .room-page #rulesSheetOpen{ grid-column:4; grid-row:1; }
   .room-page #rankLegendSheetOpen{ grid-column:5; grid-row:1; }
   .room-page .room-share-button{ grid-column:6; grid-row:1; }

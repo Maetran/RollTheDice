@@ -16,12 +16,20 @@
   backdrop-filter:saturate(1.2) blur(12px);
 }
 .room-header .spacer{ flex:1 1 auto; }
-.room-page .room-game-switch{
+.room-page .room-header .room-game-switch{
+  box-sizing:border-box;
   display:inline-flex;
   align-items:center;
   justify-content:center;
   gap:.3rem;
-  min-width:2.25rem;
+  width:4.5rem;
+  min-width:4.5rem;
+  height:2.25rem;
+  min-height:2.25rem;
+  padding:0 .44rem;
+  font-size:.75rem;
+  font-weight:800;
+  line-height:1;
 }
 .header-turn-status,
 .chat-reactions-host{

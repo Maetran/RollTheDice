@@ -381,7 +381,12 @@ test("Zilch is a separate permission-gated app mode and its hotkey respects inpu
 
   await page.locator("[data-game-switch]").click();
   await page.waitForURL(/\/zilch$/);
-  await page.click("#zilchLogout");
+  await Promise.all([
+    page.waitForURL(/\/zilch\/konto$/),
+    page.locator("#zilchNavigation a[href='/zilch/konto']").click(),
+  ]);
+  await expect(page.locator("#zilchAccountLogout")).toBeVisible();
+  await page.click("#zilchAccountLogout");
   await page.waitForURL(/\/$/);
   await expect(page.locator("[data-game-switch]")).toBeHidden();
 });

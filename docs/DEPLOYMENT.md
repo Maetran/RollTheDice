@@ -88,6 +88,13 @@ Vor einem regulären Rollout müssen folgende Bedingungen erfüllt sein:
   Zilch-Ergebnisse oder
   -Tombstones vorhanden sind; dann ist ein kompatibles Backup der sichere
   Rückweg.
+- Revision `20260903_0017` legt die getrennte Zilch-Achievement-Historie an;
+  ihr Downgrade entfernt Auswertungen, Nachweise, Freischaltungen und
+  Zustellstatus. Revision `20260904_0018` verknüpft neu verdiente
+  ZDWA-Achievements mit ihrem Ursprungsspiel; ihr Downgrade entfernt diese
+  Verknüpfung. Nach produktiven Freischaltungen daher bevorzugt den Code
+  vorwärts reparieren. Ist ein Schema-Rückgang unvermeidbar, zuerst den
+  bestätigten `data.backup-*`-Stand außerhalb des laufenden `data/` bewahren.
 - Statische Assets sind mit `scripts/sync_static_versions.py --check` synchronisiert.
 
 Empfohlene lokale Prüfung:
@@ -365,6 +372,12 @@ ZDWA-only Ergebnissen möglich. Sobald eine private Zilch-Ergebniszeile oder ein
 Zilch-Tombstone existiert, bricht die Migration kontrolliert ab und erhält die
 Daten. In diesem Fall nicht manuell Spalten oder Ergebnisse löschen, sondern
 den Code vorwärts reparieren oder ein passendes `data.backup-*` wiederherstellen.
+
+Ein Downgrade über `20260903_0017` löscht die gesamte getrennte
+Zilch-Achievement-Historie. Ein Downgrade über `20260904_0018` behält die
+ZDWA-Freischaltungen, entfernt aber ihre Zuordnung zum Ursprungsspiel. Beide
+Schritte deshalb nur nach bestätigtem Backup und bewusster Entscheidung über
+diesen Datenverlust ausführen.
 
 ### Beschädigte Produktionsdaten
 

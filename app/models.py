@@ -207,6 +207,12 @@ class UserAchievement(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     achievement_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Only awards that can be proven to have crossed their threshold through
+    # one concrete ZDWA result receive a source. Historic materializations and
+    # account-only achievements deliberately remain unlinked.
+    source_completed_game_id: Mapped[int | None] = mapped_column(
+        ForeignKey("completed_games.id", ondelete="SET NULL"), nullable=True
+    )
     unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     user: Mapped[User] = relationship(back_populates="achievements")
@@ -214,6 +220,7 @@ class UserAchievement(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "achievement_key", name="uq_user_achievement"),
         Index("ix_user_achievements_user", "user_id"),
+        Index("ix_user_achievements_source_game", "source_completed_game_id"),
     )
 
 

@@ -19,7 +19,7 @@ PRE_TYPED_RESULTS_REVISION = "20260902_0015"
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20260903_0017"
+LATEST_SCHEMA_REVISION = "20260904_0018"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -183,6 +183,60 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
                 for row in connection.execute("PRAGMA index_list(completed_games)")
             }
             self.assertEqual(indexes["ix_completed_games_game_type_finished_at"], ["game_type", "finished_at"])
+            achievement_columns = {
+                str(row[1]): {"notnull": int(row[3]), "default": row[4]}
+                for row in connection.execute("PRAGMA table_info(user_achievements)")
+            }
+            self.assertEqual(
+                achievement_columns["source_completed_game_id"],
+                {"notnull": 0, "default": None},
+            )
+            achievement_indexes = {
+                str(row[1]): [str(column[2]) for column in connection.execute(f"PRAGMA index_info({row[1]})")]
+                for row in connection.execute("PRAGMA index_list(user_achievements)")
+            }
+            self.assertEqual(
+                achievement_indexes["ix_user_achievements_source_game"],
+                ["source_completed_game_id"],
+            )
+
+    def test_achievement_source_migration_keeps_history_unlinked_and_sets_null_on_delete(self) -> None:
+        self._upgrade("20260903_0017")
+        with self._connection() as connection:
+            user_id = self._insert_user(connection)
+            completed_id = self._insert_completed_game(
+                connection,
+                game_id="achievement-source-game",
+                game_type="zdwa",
+            )
+            connection.execute(
+                """
+                INSERT INTO user_achievements (user_id, achievement_key, unlocked_at)
+                VALUES (?, ?, ?)
+                """,
+                (user_id, "career_points_1000", "2026-09-03T12:00:00+00:00"),
+            )
+
+        self._upgrade()
+
+        with self._connection() as connection:
+            self.assertIsNone(
+                connection.execute(
+                    "SELECT source_completed_game_id FROM user_achievements WHERE user_id = ?",
+                    (user_id,),
+                ).fetchone()[0]
+            )
+            connection.execute(
+                "UPDATE user_achievements SET source_completed_game_id = ? WHERE user_id = ?",
+                (completed_id, user_id),
+            )
+            connection.execute("DELETE FROM completed_games WHERE id = ?", (completed_id,))
+            self.assertIsNone(
+                connection.execute(
+                    "SELECT source_completed_game_id FROM user_achievements WHERE user_id = ?",
+                    (user_id,),
+                ).fetchone()[0]
+            )
 
     def test_upgrade_backfills_legacy_rows_and_preserves_participants(self) -> None:
         completed_game_id, deleted_game_id, completed_id = self._seed_pre_typed_rows()

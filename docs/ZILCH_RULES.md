@@ -134,6 +134,21 @@ Auswahl ist dafür gültig; beim Abwählen werden Würfel, die dadurch nicht meh
 werten, ebenfalls aus dem Entwurf entfernt. Bereits in einem früheren Wurf
 bestätigte Holds lassen sich nicht zurücknehmen.
 
+Die Daumenleiste zeigt höchstens acht unterschiedliche Empfehlungen. Physisch
+austauschbare Würfel derselben Wertung werden zusammengefasst; tatsächlich
+verschiedene Möglichkeiten mit demselben Punktwert bleiben dagegen erhalten.
+Bei `6, 5, 4, 4, 5, 1` sind deshalb sowohl die einzelne `1` als auch die beiden
+`5` als eigene 100-Punkte-Auswahl sichtbar und über ihre Würfelwerte
+unterscheidbar.
+
+Auf der aktiven Spielseite schalten die Tasten `1` bis `6` den entsprechenden
+noch nicht bestätigten Würfel um. `Q`, `W`, `E`, `R`, `T`, `Z`, `U` und `I`
+wählen die sichtbaren Empfehlungen in ihrer Reihenfolge. Die Leertaste löst
+zuerst einen zulässigen Startwurf und danach die aktuell zulässige
+Weiterwürfeln-Aktion aus; `B` sichert nur, wenn Sichern möglich ist. In
+Eingabefeldern, bei einem offenen Dialog oder zusammen mit einer
+Steuerungstaste greifen diese Kürzel nicht ein.
+
 ## Serververtrag für spätere Bedienung
 
 Nach jedem Wurf liefert der Snapshot strukturierte Quick-Hold-Optionen unter
@@ -233,11 +248,12 @@ Sichern sicher verlieren würde. Die genaue technische Heuristik steht in
 Die Bedienung verbindet direkte Würfelauswahl mit serverseitig berechneten
 Wertungsoptionen. Ein Tipp auf einen wertenden, noch freien Würfel markiert ihn
 zunächst; nur dazu passende Wertungsoptionen bleiben wählbar. Ein Tipp auf die
-passende Option hält die Auswahl verbindlich. Ein Hot-Dice-Vorschlag hält mit
-einem einzigen Tipp sofort alle zugehörigen Würfel – ohne zweiten
-Bestätigungsschritt. Die Karten, Würfel und Sichern sind Tastatur- und
-Touch-Buttons; der Browser sendet nur die referenzierte Option und übernimmt
-nie einen lokalen Punktewert.
+passende Option übernimmt alle zugehörigen Würfel in diesen weiterhin
+änderbaren Entwurf. Ein Hot-Dice-Vorschlag wählt mit einem einzigen Tipp alle
+zugehörigen Würfel, bleibt aber ebenfalls optional. Erst `Weiterwürfeln` oder
+`Sichern` bestätigt den vollständigen Entwurf zusammen mit der Folgeaktion.
+Die Karten, Würfel und Sichern sind Tastatur- und Touch-Buttons; der Browser
+sendet nur die referenzierte Option und übernimmt nie einen lokalen Punktewert.
 
 Der Punktezettel zeigt ausschließlich den serverseitigen Rundenverlauf.
 Chatnachrichten und Schnellreaktionen sind davon getrennte Kommunikation:
@@ -339,19 +355,34 @@ Ohne diese Konfiguration bleibt ausschließlich Admin `Mani` zugelassen.
 ## Designrichtung
 
 Die private Oberfläche nutzt die vorhandene `data-game="zilch"`-Grenze mit
-Wirtshaus-Holzdielen, physisch wirkenden CSS-Würfeln und klar getrennten
+einer lokal ausgelieferten, gealterten Wirtshaus-Holztextur, physisch wirkenden
+Würfeln und klar getrennten
 ausgewählten sowie bereits gehaltenen Zuständen. Der aktive, intern scrollbare
 Notizzettel liegt vorne; im Duell bleibt der Name samt Gesamtstand des anderen
-Teilnehmers auf dem dahinterliegenden Blatt sichtbar. Höchstens drei kompakte
+Teilnehmers auf dem dahinterliegenden Blatt sichtbar. Kompakte, unterschiedliche
 Wertungsvorschläge bleiben rechts mit dem Daumen erreichbar, während die sechs
-Würfel große responsive Touch-Ziele bilden. Lobby, Wartesaal, Startwurf (nur
+Würfel große responsive Touch-Ziele bilden. Linienpapier, eine rein dekorative
+CSS-Spiralbindung und versetzte Blattkanten geben dem Block Tiefe, ohne
+Fokusreihenfolge oder Bedienfläche zu verändern. Der Notizzettel belegt vor und
+nach dem ersten Wurf exakt dieselbe linke Hälfte, damit die Empfehlungen ohne
+Layoutsprung rechts dazukommen. Lobby, Wartesaal, Startwurf (nur
 kompetitiv), ein oder zwei Boards, Ergebnis, Historie und
 die private Hilfe bleiben dabei eine eigenständige Zilch-Oberfläche. Zilch, Hot
 Dice, Bestätigungswurf und Spielende erhalten einen zusätzlichen Textstatus und
-kurze reduzierte-Bewegung-freundliche CSS-Effekte. Semantische Buttons,
+kurze reduzierte-Bewegung-freundliche Effekte. Ein neues Zilch erscheint einmalig
+als großer Stempel über dem betroffenen Blatt; erst danach rückt das Blatt des
+nächsten Teilnehmers nach vorne. Semantische Buttons,
 sichtbarer Fokus, Live-Status und nicht allein farbbasierte Zustände gehören zur
-Bedienung. Finales Branding, eine lizenzierte Akzentschrift und weitere
+Bedienung. Nach Spielende bleiben Notizzettel und Ergebnisfläche gleich hoch und
+gleich breit; neue Runde, Ergebnisansicht und Lobby sind als eindeutige,
+untereinander angeordnete Aktionen erreichbar. Finales Branding, eine lizenzierte
+Akzentschrift und weitere
 Produktpolitur sind nicht Teil dieser Regelversion.
+
+Neue private Zilch-Awards werden am Spielende nur dann direkt im Ergebnisfeld
+gezeigt, wenn ihr persistierter `source_game_id` exakt zur soeben beendeten
+Partie passt. Ältere, noch nicht bestätigte Awards bleiben in der allgemeinen,
+reload-sicheren Zustellwarteschlange und werden diesem Endstand nicht zugerechnet.
 
 Das ist ausschließlich eine eigene Designrichtung. Es werden keine Grafiken,
 Sounds, Fonts, Logos, Award-Designs, Quellcodes oder pixelgenauen Vorlagen von

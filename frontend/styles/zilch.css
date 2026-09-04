@@ -358,6 +358,55 @@ html[data-game="zilch"] .zilch-intro--lobby p:last-child {
   line-height: 1.45;
 }
 
+html[data-game="zilch"] .zilch-lobby-identity {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: .45rem;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 .65rem;
+  padding: .38rem .45rem .38rem .6rem;
+  border: 1px solid rgba(221, 200, 158, .88);
+  border-radius: .62rem;
+  color: var(--zilch-ink);
+  background: rgba(255, 248, 222, .92);
+  box-shadow: var(--zilch-shadow-soft);
+}
+
+html[data-game="zilch"] .zilch-lobby-identity .eyebrow {
+  flex: 0 0 auto;
+  color: var(--zilch-muted);
+  font-size: .68rem;
+  letter-spacing: .08em;
+}
+
+html[data-game="zilch"] .zilch-lobby-identity strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--zilch-blue-strong);
+  font-size: .86rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-game="zilch"] .zilch-lobby-identity .button-link {
+  flex: 0 0 auto;
+  min-height: 1.8rem;
+  margin-left: 0;
+  padding: .22rem .42rem;
+  font-size: .72rem;
+  line-height: 1;
+}
+
+html[data-game="zilch"] .zilch-lobby-identity .button-link::before {
+  margin-right: .4rem;
+  color: var(--zilch-muted);
+  content: "–";
+  pointer-events: none;
+}
+
 html[data-game="zilch"] .zilch-create-card {
   margin-top: 0;
   padding: .8rem .9rem;
@@ -452,7 +501,8 @@ html[data-game="zilch"] .zilch-cpu-strategy legend {
 html[data-game="zilch"] .zilch-mode-option,
 html[data-game="zilch"] .zilch-strategy-card {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   gap: .6rem;
   min-width: 0;
   min-height: 44px;
@@ -468,7 +518,7 @@ html[data-game="zilch"] button.zilch-mode-option {
   box-shadow: none;
   color: var(--zilch-ink);
   font: inherit;
-  text-align: left;
+  text-align: center;
 }
 
 html[data-game="zilch"] .zilch-mode-option:hover,
@@ -602,13 +652,38 @@ html[data-game="zilch"] .zilch-cpu-strategy { grid-column: 1 / -1; }
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--zilch-space-4);
-  margin-bottom: var(--zilch-space-5);
+  margin-bottom: .65rem;
 }
 
 .zilch-account-link { color: var(--zilch-ink); text-decoration: none; }
 .zilch-account-link:hover { border-color: var(--zilch-blue); transform: translateY(-1px); }
 .zilch-account-overview :where(h2, p) { margin-top: .2rem; }
 .zilch-account-overview p:last-child { margin-bottom: 0; color: var(--zilch-muted); }
+.zilch-account-session {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin: 0 0 var(--zilch-space-5);
+  padding: .7rem .8rem;
+}
+.zilch-account-session > div { min-width: 0; }
+.zilch-account-session :where(.eyebrow, .zilch-account-session__name) { margin: 0; }
+.zilch-account-session__name {
+  display: block;
+  margin-top: .12rem;
+  overflow: hidden;
+  color: var(--zilch-ink);
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.zilch-account-session button {
+  flex: 0 0 auto;
+  min-height: 2.25rem;
+  border-color: rgba(165, 40, 33, .45);
+  color: var(--zilch-warning);
+}
 .zilch-account-awards { display: grid; gap: var(--zilch-space-3); }
 
 .zilch-lobby-grid > .zilch-card,
@@ -1865,11 +1940,9 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
   .zilch-header-tools .zilch-account { display: none; }
   .zilch-header-tools :where(button, select) { min-height: 2.15rem; font-size: .82rem; }
   .zilch-header-tools .language-switcher select { min-height: 2.15rem; padding: .25rem 1.35rem .25rem .42rem; }
-  .zilch-header-tools :where(.game-switch, #zilchNavToggle, #zilchLogout) { width: 2.15rem; min-width: 2.15rem; padding: .25rem; }
+  .zilch-header-tools :where(.game-switch, #zilchNavToggle) { width: 2.15rem; min-width: 2.15rem; padding: .25rem; }
   .zilch-header-tools .game-switch span:last-child,
   .zilch-header-tools #zilchNavToggle span:last-child { display: none; }
-  .zilch-header-tools #zilchLogout { font-size: 0; }
-  .zilch-header-tools #zilchLogout::before { content: "↪"; font-size: 1.05rem; line-height: 1; }
 
   html[data-game="zilch"] .zilch-nav {
     position: absolute;
@@ -2177,7 +2250,7 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
 }
 .zilch-shell--game .zilch-recommendation {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: .42rem;
   width: 100%;
@@ -2216,6 +2289,25 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
   box-shadow: 0 0 0 .14rem rgba(246, 202, 78, .35), inset 0 1px rgba(255, 255, 255, .12);
 }
 .zilch-shell--game .zilch-recommendation.is-selected strong { color: #ffe28a; }
+.zilch-shell--game .zilch-recommendation__shortcut {
+  display: inline-grid;
+  place-items: center;
+  width: 1.22rem;
+  height: 1.22rem;
+  padding: 0;
+  border: 1px solid rgba(91, 55, 28, .42);
+  border-radius: .25rem;
+  color: #694323;
+  background: rgba(255, 253, 239, .68);
+  box-shadow: 0 1px 0 rgba(61, 30, 12, .18);
+  font: 850 .58rem/1 ui-rounded, "Avenir Next", system-ui, sans-serif;
+  text-transform: uppercase;
+}
+.zilch-shell--game .zilch-recommendation.is-selected .zilch-recommendation__shortcut {
+  border-color: rgba(255, 226, 138, .55);
+  color: #43210f;
+  background: #ffe28a;
+}
 .zilch-shell--game .zilch-recommendation:disabled { opacity: .42; cursor: not-allowed; }
 .zilch-shell--game .zilch-recommendation:not(:disabled):hover { border-color: #dcaa36; background: #fff2b8; }
 .zilch-shell--game .zilch-recommendation.is-selected:not(:disabled):hover { background: #512811; }
@@ -2426,22 +2518,12 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
 html[data-game="zilch"] body {
   background-color: #5a3018;
   background-image:
-    radial-gradient(ellipse 6.8rem 2rem at 14% 27%,
-      transparent 0 30%, rgba(40, 17, 7, .26) 32% 35%, transparent 37% 52%,
-      rgba(255, 202, 115, .09) 54% 56%, transparent 58%),
-    radial-gradient(ellipse 8.2rem 2.35rem at 84% 72%,
-      transparent 0 34%, rgba(36, 14, 5, .28) 36% 39%, transparent 41% 55%,
-      rgba(255, 205, 125, .08) 57% 59%, transparent 61%),
-    repeating-linear-gradient(0deg,
-      transparent 0 5.08rem,
-      rgba(38, 15, 6, .42) 5.12rem 5.22rem,
-      rgba(242, 185, 99, .12) 5.24rem 5.29rem),
-    repeating-linear-gradient(2deg,
-      rgba(255, 225, 174, .035) 0 1px,
-      transparent 1px 5px,
-      rgba(31, 12, 5, .045) 6px 7px,
-      transparent 7px 11px),
-    linear-gradient(96deg, #3f200f 0%, #744625 22%, #5a3018 51%, #7b4a28 76%, #43210f 100%);
+    radial-gradient(ellipse at 48% 18%, rgba(210, 151, 82, .12), transparent 58%),
+    linear-gradient(105deg, rgba(38, 17, 8, .18), rgba(116, 70, 37, .04) 48%, rgba(35, 15, 7, .2)),
+    url("/static/zilch-wood-table-v1.jpg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
   background-attachment: fixed;
 }
 
@@ -2461,6 +2543,11 @@ html[data-game="zilch"] body {
 .zilch-shell--game .zilch-recommendations {
   height: 100%;
   min-height: 0;
+}
+
+.zilch-shell--game .zilch-play-layout__notebook {
+  position: relative;
+  isolation: isolate;
 }
 
 /* Two players share the same physical footprint. The inactive sheet sits
@@ -2616,6 +2703,106 @@ html[data-game="zilch"] body {
   background: rgba(244, 199, 105, .42);
 }
 
+.zilch-shell--game .zilch-play-layout--finished .zilch-recommendations {
+  padding-right: 0;
+  overflow: hidden;
+}
+
+.zilch-shell--game .zilch-final-result {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: clamp(.68rem, 2.4vw, 1rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-wrap: normal;
+  text-align: left;
+  scrollbar-color: rgba(123, 78, 39, .45) transparent;
+  scrollbar-width: thin;
+}
+
+.zilch-shell--game .zilch-final-result > .eyebrow {
+  color: #a45d16;
+  font-size: clamp(.65rem, 1.9vw, .76rem);
+}
+
+.zilch-shell--game .zilch-final-result h2 {
+  margin: .3rem 0 .5rem;
+  overflow-wrap: normal;
+  color: #382013;
+  font: 800 clamp(1.24rem, 5.5vw, 2.5rem)/.98 Georgia, "Times New Roman", serif;
+  hyphens: none;
+  word-break: normal;
+}
+
+.zilch-shell--game .zilch-final-result > p:not(.eyebrow) {
+  margin: 0;
+  color: #5f4938;
+  font-size: clamp(.76rem, 2.4vw, .92rem);
+  line-height: 1.4;
+}
+
+.zilch-shell--game .zilch-final-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: .4rem;
+  width: 100%;
+  margin-top: auto;
+  padding-top: .75rem;
+}
+
+.zilch-shell--game .zilch-final-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.5rem;
+  margin: 0;
+  padding: .42rem .52rem;
+  border: 1px solid #9a7044;
+  border-radius: .45rem;
+  color: #3c210f;
+  background: #fff8df;
+  box-shadow: 0 .13rem .3rem rgba(58, 28, 9, .16);
+  font: 800 clamp(.72rem, 2.35vw, .86rem)/1.15 ui-rounded, "Avenir Next", system-ui, sans-serif;
+  overflow-wrap: normal;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+  word-break: normal;
+}
+
+.zilch-shell--game .zilch-final-action--primary {
+  border-color: #874014;
+  color: #fff9e9;
+  background: #964719;
+}
+
+.zilch-shell--game .zilch-final-action--secondary {
+  border-color: #b77a20;
+  background: linear-gradient(145deg, #ffe39a, #e8b64f);
+}
+
+.zilch-shell--game .zilch-final-action--quiet {
+  color: #61401f;
+  background: rgba(255, 253, 244, .5);
+}
+
+.zilch-shell--game .zilch-final-action:hover {
+  border-color: #633112;
+  color: #fff9e9;
+  background: #633112;
+}
+
+.zilch-shell--game .zilch-final-action:focus-visible {
+  outline: 3px solid var(--zilch-focus-ring);
+  outline-offset: 2px;
+}
+
 .zilch-shell--game .zilch-recommendation span {
   overflow: visible;
   overflow-wrap: anywhere;
@@ -2624,9 +2811,9 @@ html[data-game="zilch"] body {
 }
 
 /* The dice are the primary phone controls, not miniature status icons. Six
-   still fit on a 320px viewport while common phones get a 52–54px target. */
+   still fit on a 320px viewport while common phones get a roughly 58px target. */
 .zilch-shell--game .zilch-dice {
-  --zilch-room-die-size: clamp(2.7rem, calc((100vw - 2.5rem) / 6), 3.4rem);
+  --zilch-room-die-size: clamp(2.7rem, calc((100vw - 2.2rem) / 6), 3.65rem);
   gap: clamp(.16rem, .8vw, .3rem);
 }
 
@@ -2821,6 +3008,221 @@ html[data-game="zilch"] body {
   .zilch-shell--game .zilch-notebook-entry__unit { display: none; }
 }
 
+/* Keep the notebook in its final left-hand footprint from the first frame.
+   The right rail stays available for the first scoring choices, avoiding a
+   large layout jump after the opening roll. */
+.zilch-shell--game .zilch-play-layout,
+.zilch-shell--game .zilch-play-layout.zilch-play-layout--has-choices,
+.zilch-shell--game .zilch-play-layout.zilch-play-layout--no-choices,
+.zilch-shell--game .zilch-play-layout.zilch-play-layout--finished,
+.zilch-shell--game .zilch-play-layout--duel.zilch-play-layout--has-choices {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* The two offset sheets stay behind the live score surface. They are purely
+   decorative, never alter its measured column, and leave the adjacent thumb
+   rail untouched even at 320px. */
+.zilch-shell--game .zilch-play-layout__notebook::before,
+.zilch-shell--game .zilch-play-layout__notebook::after {
+  position: absolute;
+  inset: .26rem -.13rem -.13rem .32rem;
+  z-index: -2;
+  border: 1px solid rgba(111, 73, 37, .54);
+  border-radius: .6rem;
+  background: #e5d0a2;
+  box-shadow: .12rem .22rem .42rem rgba(33, 14, 5, .26);
+  content: "";
+  pointer-events: none;
+  transform: rotate(.65deg);
+}
+
+.zilch-shell--game .zilch-play-layout__notebook::after {
+  inset: .15rem -.07rem -.07rem .2rem;
+  z-index: -1;
+  background: #f0dfba;
+  transform: rotate(-.35deg);
+}
+
+.zilch-shell--game .zilch-score-notebook {
+  position: relative;
+  isolation: isolate;
+}
+
+/* A compact row of rings and punched holes makes the ruled paper read as a
+   real spiral notebook. The pseudo-element is decorative and cannot receive
+   pointer or accessibility focus. */
+.zilch-shell--game .zilch-score-notebook::after {
+  position: absolute;
+  top: .55rem;
+  bottom: .55rem;
+  left: -.08rem;
+  z-index: 8;
+  width: 1.08rem;
+  background-image:
+    radial-gradient(circle at 78% 50%, #392315 0 .105rem, #c49b62 .115rem .17rem, transparent .18rem),
+    radial-gradient(ellipse at 42% 50%, transparent 0 .17rem, #3c2415 .18rem .235rem, #b9864a .245rem .27rem, transparent .28rem);
+  background-position: center top;
+  background-repeat: repeat-y;
+  background-size: 100% 1.42rem;
+  content: "";
+  filter: drop-shadow(.06rem .08rem .04rem rgba(37, 17, 7, .28));
+  pointer-events: none;
+}
+
+.zilch-shell--game .zilch-notebook-player {
+  padding-left: clamp(1.35rem, 4.5vw, 1.62rem);
+}
+
+.zilch-shell--game .zilch-notebook-player h2 {
+  font-size: clamp(1.02rem, 3.1vw, 1.18rem);
+  font-weight: 900;
+}
+
+.zilch-shell--game .zilch-notebook-player header > span,
+.zilch-shell--game .zilch-notebook-player header .zilch-notebook-total {
+  font-size: clamp(.72rem, 2.15vw, .84rem);
+  font-weight: 850;
+}
+
+.zilch-shell--game .zilch-notebook-player ol {
+  font-size: clamp(.88rem, 2.6vw, 1.02rem);
+  font-weight: 800;
+  line-height: 1.08;
+}
+
+/* The dice remain mathematically square and fit as a single six-die row on a
+   320px viewport. Narrower dock gutters turn the reclaimed pixels into useful
+   touch target instead of empty chrome. */
+.zilch-shell--game .zilch-dice {
+  --zilch-room-die-size: clamp(2.95rem, calc((100vw - 1.45rem) / 6), 3.85rem);
+  gap: clamp(.08rem, .42vw, .17rem);
+}
+
+@media (max-width: 760px) {
+  .zilch-shell--game .zilch-dice-dock { right: .2rem; left: .2rem; }
+  .zilch-shell--game .zilch-dice-dock .zilch-table { padding-inline: .2rem; }
+}
+
+.zilch-shell--game .zilch-final-awards {
+  margin-top: .7rem;
+  padding-top: .55rem;
+  border-top: 1px dashed rgba(132, 83, 36, .48);
+}
+
+.zilch-shell--game .zilch-final-awards h3 {
+  margin: 0 0 .38rem;
+  color: #6e3917;
+  font: 850 clamp(.68rem, 2.2vw, .8rem)/1.15 ui-rounded, "Avenir Next", system-ui, sans-serif;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+}
+
+.zilch-shell--game .zilch-final-awards ul {
+  display: grid;
+  gap: .32rem;
+  max-height: 7.35rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.zilch-shell--game .zilch-final-award {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: .38rem;
+  min-width: 0;
+  padding: .32rem .38rem;
+  border: 1px solid rgba(184, 128, 47, .48);
+  border-radius: .38rem;
+  background: linear-gradient(135deg, rgba(255, 239, 170, .66), rgba(255, 253, 240, .72));
+}
+
+.zilch-shell--game .zilch-final-award .zilch-achievement-card__icon {
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: .38rem;
+  font-size: .84rem;
+}
+
+.zilch-shell--game .zilch-final-award__copy {
+  display: grid;
+  gap: .06rem;
+  min-width: 0;
+}
+
+.zilch-shell--game .zilch-final-award__copy strong,
+.zilch-shell--game .zilch-final-award__copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zilch-shell--game .zilch-final-award__copy strong {
+  color: #43230f;
+  font-size: clamp(.7rem, 2.3vw, .82rem);
+  line-height: 1.12;
+}
+
+.zilch-shell--game .zilch-final-award__copy small {
+  color: #70543d;
+  font-size: clamp(.58rem, 1.9vw, .68rem);
+}
+
+.zilch-event-overlay {
+  position: fixed;
+  z-index: 46;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: .12rem;
+  overflow: hidden;
+  border-radius: .65rem;
+  color: #9c271e;
+  background: radial-gradient(ellipse at center, rgba(255, 248, 222, .78), rgba(255, 248, 222, .16) 62%, transparent 78%);
+  filter: drop-shadow(0 .35rem .55rem rgba(40, 15, 5, .28));
+  pointer-events: none;
+  transform-origin: center;
+}
+
+.zilch-event-overlay strong {
+  padding: .04em .17em .1em;
+  border: .09em double currentColor;
+  font: 900 clamp(2.2rem, 8vw, 5.4rem)/.92 Georgia, "Times New Roman", serif;
+  letter-spacing: .045em;
+  text-shadow: .025em .035em 0 rgba(93, 28, 19, .22);
+  transform: rotate(-3.5deg);
+}
+
+.zilch-event-overlay span {
+  color: #6c241b;
+  font: 900 clamp(1rem, 3.2vw, 1.8rem)/1 ui-rounded, "Avenir Next", sans-serif;
+  letter-spacing: .04em;
+}
+
+.zilch-event-overlay.is-visible {
+  animation: zilch-event-fade 1.35s cubic-bezier(.2, .78, .2, 1) both;
+}
+
+.zilch-event-overlay.is-visible strong {
+  animation: zilch-event-stamp 1.35s cubic-bezier(.2, .78, .2, 1) both;
+}
+
+@keyframes zilch-event-fade {
+  0% { opacity: 0; }
+  13%, 76% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes zilch-event-stamp {
+  0% { transform: scale(1.42) rotate(4deg); }
+  13% { transform: scale(.94) rotate(-5.1deg); }
+  22%, 100% { transform: scale(1) rotate(-3.5deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player,
   .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player.is-turn-entering,
@@ -2830,6 +3232,13 @@ html[data-game="zilch"] body {
     animation: none !important;
     transition: none !important;
   }
+
+  .zilch-event-overlay.is-visible {
+    opacity: 1;
+    animation: none !important;
+  }
+
+  .zilch-event-overlay.is-visible strong { animation: none !important; }
 }
 
 /* -------------------------------------------------------------------------
@@ -2902,21 +3311,24 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
 
 .zilch-shell--game .zilch-header-tools :where(button, a),
 .zilch-shell--game .zilch-room-abandon {
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 2.125rem;
-  width: 2.125rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .28rem;
+  flex: 0 0 auto;
+  width: auto;
   min-width: 2.125rem;
   height: 2.125rem;
   min-height: 2.125rem;
   margin: 0;
-  padding: 0;
+  padding: 0 .44rem;
   border: 1px solid rgba(255, 229, 177, .38);
   border-radius: .48rem;
   color: #fff8e8;
   background: rgba(255, 255, 255, .08);
   box-shadow: none;
-  font-size: 1rem;
+  font-size: .72rem;
+  font-weight: 800;
   line-height: 1;
   text-decoration: none;
 }
@@ -2929,16 +3341,18 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
 
 .zilch-shell--game .zilch-header-tools .game-switch span:last-child,
 .zilch-shell--game .zilch-header-tools .zilch-control-label {
-  display: none;
+  display: inline;
 }
 
-.zilch-shell--game .zilch-logout {
-  font-size: 1rem !important;
-}
-
-.zilch-shell--game .zilch-logout::before { content: none !important; }
+.zilch-shell--game .zilch-header-tools :where(button, a) > [aria-hidden="true"] { font-size: .86rem; }
 
 .zilch-shell--game .zilch-room-abandon {
+  display: inline-grid;
+  place-items: center;
+  flex-basis: 2.125rem;
+  width: 2.125rem;
+  min-width: 2.125rem;
+  padding: 0;
   border-color: rgba(255, 194, 166, .48);
   color: #ffe1d4;
 }
@@ -2978,7 +3392,7 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
     min-height: 2.125rem;
   }
 
-  .zilch-shell:not(.zilch-shell--game) .zilch-header-tools :where(.game-switch, .zilch-logout) {
+  .zilch-shell:not(.zilch-shell--game) .zilch-header-tools .game-switch {
     flex: 0 0 2.125rem;
     width: 2.125rem;
     min-width: 2.125rem;
@@ -2989,12 +3403,6 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
   .zilch-shell:not(.zilch-shell--game) .zilch-header-tools .zilch-control-label {
     display: none;
   }
-
-  .zilch-shell:not(.zilch-shell--game) .zilch-logout {
-    font-size: 1rem;
-  }
-
-  .zilch-shell:not(.zilch-shell--game) .zilch-logout::before { content: none; }
 
   html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-nav {
     position: static;
@@ -3062,6 +3470,16 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
 @media (max-width: 340px) {
   .zilch-shell--game .zilch-header-tools { gap: .16rem; }
 
+  .zilch-shell--game .zilch-header-tools :where(button, a) {
+    gap: 0;
+    padding-inline: .32rem;
+    font-size: .68rem;
+  }
+
+  .zilch-shell--game .zilch-header-tools :where(button, a) > [aria-hidden="true"] { display: none; }
+
+  .zilch-shell--game .zilch-room-abandon { padding: 0; }
+
   html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-nav-list {
     gap: .18rem;
   }
@@ -3069,5 +3487,44 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
   html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-nav-list a {
     padding-inline: .14rem;
     font-size: .66rem;
+  }
+}
+
+/* Match the sole cross-game control across ZDWA and Zilch without changing
+   the dimensions of neighbouring header actions. Phones use the same square,
+   icon-only form; wider headers expose the destination label. */
+html[data-game="zilch"] .zilch-header-tools .game-switch {
+  box-sizing: border-box;
+  width: 4.5rem;
+  min-width: 4.5rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0 .44rem;
+  gap: .3rem;
+  font-size: .75rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+@media (max-width: 560px) {
+  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch,
+  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch {
+    width: 2.25rem;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    min-height: 2.25rem;
+    padding: .22rem .42rem;
+    font-size: .78rem;
+    line-height: 1;
+  }
+
+  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch > span:first-child,
+  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch > span:first-child {
+    display: inline;
+  }
+
+  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch > span:last-child,
+  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch > span:last-child {
+    display: none;
   }
 }

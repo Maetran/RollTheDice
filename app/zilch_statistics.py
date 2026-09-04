@@ -470,7 +470,12 @@ def _empty_solo_projection() -> dict[str, Any]:
 
 
 def _solo_projection(records: Iterable[_PlayerResult]) -> dict[str, Any]:
-    all_records = [record for record in records if _solo_metrics(record) is not None]
+    all_records: list[tuple[_PlayerResult, dict[str, int]]] = []
+    for record in records:
+        metrics = _solo_metrics(record)
+        if metrics is None:
+            continue
+        all_records.append((record, metrics))
     if not all_records:
         return _empty_solo_projection()
     completed: list[tuple[_PlayerResult, dict[str, int]]] = []
@@ -478,9 +483,7 @@ def _solo_projection(records: Iterable[_PlayerResult]) -> dict[str, Any]:
     banked_rounds: list[int] = []
     hot_dice_values: list[int] = []
     hot_dice_complete = True
-    for record in all_records:
-        metrics = _solo_metrics(record)
-        assert metrics is not None
+    for record, metrics in all_records:
         if record.payload["outcome"].get("status") == "completed":
             completed.append((record, metrics))
         else:
@@ -871,14 +874,17 @@ def get_zilch_leaderboard(
             "keys": ["wins", "losses", "ties", "highest_final_score", "highest_banked_round"],
         }
         objective = None
-    else:
-        assert clean_strategy is not None
+    elif clean_category == ZILCH_LEADERBOARD_CPU_WINS:
+        if clean_strategy not in ZILCH_CPU_STRATEGIES:
+            raise ZilchStatisticsInputError("zilch_statistics_invalid_cpu_strategy")
         items = _leaderboard_match(records_by_user, cpu_strategy=clean_strategy)
         sorting = {
             "direction": "descending",
             "keys": ["wins", "losses", "ties", "highest_final_score", "highest_banked_round"],
         }
         objective = None
+    else:
+        raise ZilchStatisticsInputError("zilch_statistics_invalid_leaderboard_category")
     entries, own_entry, total = _rank_entries(
         items,
         offset=clean_offset,

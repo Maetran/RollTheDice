@@ -191,11 +191,15 @@ class ZilchAchievementApiTestCase(TestCase):
     def test_acknowledgement_is_csrf_protected_idempotent_and_owned_by_the_session_user(self) -> None:
         mani, mani_token, mani_csrf = self._identity("Mani", role="admin")
         _other, other_token, other_csrf = self._identity("PreviewFriend")
-        self._persist_cpu_win(mani)
+        game_id = self._persist_cpu_win(mani)
 
         pending = self._request("GET", "/api/zilch/achievements/pending", token=mani_token)
         self.assertEqual(pending.status_code, 200)
         self.assertIn("zilch.first_game", {award["key"] for award in pending.json()["awards"]})
+        self.assertEqual(
+            {award["source_game_id"] for award in pending.json()["awards"]},
+            {game_id},
+        )
 
         acknowledgement_path = "/api/zilch/achievements/zilch.first_game/acknowledge"
         self.assertEqual(self._request("POST", acknowledgement_path, token=mani_token).status_code, 403)

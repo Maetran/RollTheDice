@@ -429,6 +429,78 @@ test("mobile leaderboard gives ranked player names room and uses an icon-only ga
 });
 
 
+test("completed game view shows achievements attributed to that game for every player", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const gameId = "achievement-replay-fixture";
+  await page.route(`**/api/game_from_leaderboard/${gameId}`, route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      game_id: gameId,
+      gamename: "Ehrenberg-Runde",
+      finished_at: "2026-09-04T12:00:00.000Z",
+      mode: "2",
+      hardcore: false,
+      players: [
+        {
+          id: "p1",
+          name: "Ada",
+          earned_achievements: [{
+            key: "single_game_score_1000",
+            name: "Vierstellig",
+            description: "In einem Spiel mindestens 1’000 Punkte erreicht.",
+            icon_key: "score",
+            points: 3,
+          }],
+        },
+        {
+          id: "p2",
+          name: "Ben",
+          earned_achievements: [{
+            key: "exact_game_score_777",
+            name: "Punktlandung 777",
+            description: "Ein Spiel mit exakt 777 Punkten beendet.",
+            icon_key: "score",
+            points: 4,
+          }],
+        },
+      ],
+      scoreboards: {
+        p1: { reihen: [{ index: 1, rows: { "1": 1 } }] },
+        p2: { reihen: [{ index: 1, rows: { "1": 2 } }] },
+      },
+      chat_history: [],
+      admin_edits: {},
+    }),
+  }));
+
+  await page.goto(`/ergebnis/${gameId}`);
+
+  const achievements = page.locator(".readonly-achievements");
+  await expect(achievements.getByRole("heading", { name: "In dieser Partie erreicht" })).toBeVisible();
+  await expect(achievements.locator(".readonly-achievement-player")).toHaveCount(2);
+  await expect(achievements).toContainText("Ada");
+  await expect(achievements).toContainText("Vierstellig");
+  await expect(achievements).toContainText("Ben");
+  await expect(achievements).toContainText("Punktlandung 777");
+  await expect(achievements).toContainText("+3 Ehrenberg-Marken");
+
+  const layout = await achievements.evaluate(element => ({
+    pageWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth,
+    cardWidths: Array.from(element.querySelectorAll(".readonly-achievement-card"), card => card.getBoundingClientRect().width),
+  }));
+  expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.cardWidths.every(width => width >= 300)).toBeTruthy();
+
+  await page.evaluate(async () => {
+    await window.ZDWA_I18N.setLanguage("en", { persist: false, reload: false });
+    window.ZDWA_I18N.translateElement(document.body);
+  });
+  await expect(page.getByRole("heading", { name: "Earned in this game" })).toBeVisible();
+  await expect(page.locator(".readonly-achievements")).toContainText("+3 Ehrenberg Marks");
+});
+
+
 test("narrow desktop room header keeps the current turn beside icon controls", async ({ page, request }) => {
   await page.setViewportSize({ width: 561, height: 900 });
   const created = await request.post("/api/games", {

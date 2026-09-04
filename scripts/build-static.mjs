@@ -68,6 +68,7 @@ for (const target of targets) {
     format: target.format,
     platform: "browser",
     target: ["es2020"],
+    external: ["/static/*"],
     charset: "utf8",
     legalComments: "none",
     logLevel: "silent",

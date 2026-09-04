@@ -609,3 +609,39 @@
   .leaderboard-box th,
   .leaderboard-box td{ padding:.38rem .34rem; }
 }
+
+/* One game switch, one muscle memory: the ZDWA page header uses the same
+   isolated geometry as both live rooms. Other header tools retain their own
+   established sizes. */
+.app-nav-tools .game-switch{
+  box-sizing:border-box;
+  width:4.5rem;
+  min-width:4.5rem;
+  height:2.25rem;
+  min-height:2.25rem;
+  padding:0 .44rem;
+  gap:.3rem;
+  font-size:.75rem;
+  font-weight:800;
+  line-height:1;
+}
+
+@media (max-width:560px){
+  .app-nav-tools .game-switch{
+    width:2.25rem;
+    min-width:2.25rem;
+    height:2.25rem;
+    min-height:2.25rem;
+    padding:0 .2rem;
+  }
+
+  .app-nav-tools .game-switch span:last-child{
+    position:absolute;
+    width:1px;
+    height:1px;
+    margin:-1px;
+    overflow:hidden;
+    clip:rect(0, 0, 0, 0);
+    white-space:nowrap;
+  }
+}

@@ -98,7 +98,7 @@ test("dismissed install prompt stays hidden for seven days or until a new app ve
   });
 
   await dispatchInstallPrompt();
-  const prompt = page.locator(".app-toast", { hasText: "ZDWA kann als App installiert werden." });
+  const prompt = page.locator(".app-toast", { hasText: "Die App kann installiert werden." });
   await expect(prompt).toBeVisible();
   await prompt.locator(".app-toast-close").click();
   await expect(prompt).toBeHidden();

@@ -42,17 +42,28 @@ rescanned or backfilled. They can be revoked when the source result is deleted
 and remain visible only in Zilch context. The protected Zilch app has its own
 lobby, game view, history, result report, statistics, leaderboards, awards,
 private player-award context, and in-app rule guide. Its
-CSS-only wood-table, paper-card, and dice direction is isolated from ZDWA.
+first-party wood-table texture, paper-card, and dice direction is isolated from ZDWA.
+The Zilch lobby mirrors ZDWA's signed-in identity pattern, while the compact
+game header keeps Lobby, ZDWA, and Rules explicit. Logout is deliberately
+available only inside the Zilch account page. The ZDWA↔Zilch switch keeps the
+same isolated dimensions, padding, and type size in both page and game headers;
+on narrow phones both sides use its square icon-only form.
 The compact setup starts a default game with one click; advanced room protection
 stays optional, and a completed game can be restarted directly with the same mode.
 Additional Solo objectives/challenges, further Zilch award categories, and public
 release are deliberately deferred. A player selects scoring dice directly or
-uses one of at most three useful suggestions. The selection stays reversible
-until **Roll again** or **Bank** validates and commits it atomically. Previously
-held dice remain immutable; invalid dependent dice are removed when a selection
-is reduced. Hot Dice therefore selects all scoring dice in one tap but remains
-optional until the next action. Stacked, internally scrollable paper score sheets
-keep the active player in front and the opponent total visible. The resulting
+uses one of up to eight distinct suggestions; equivalent choices using
+interchangeable dice are deduplicated, while equal scores from genuinely
+different dice remain identifiable. The selection stays reversible until
+**Roll again** or **Bank** validates and commits it atomically. Previously held
+dice remain immutable; invalid dependent dice are removed when a selection is
+reduced. Hot Dice therefore selects all scoring dice in one tap but remains
+optional until the next action. On the active game page, keys 1–6 toggle the
+corresponding selectable dice, Q/W/E/R/T/Z/U/I activate the visible suggestions
+in order, Space performs the enabled start or regular roll, and B banks only
+when permitted. Form fields, open dialogs, and modifier chords suppress these
+shortcuts. Stacked, internally scrollable spiral score sheets with ruled paper
+and offset page edges keep the active player in front and the opponent total visible. The resulting
 turns are recorded there, while chat and short-lived emoji reactions remain separate
 from the score history and are echoed to every connected participant,
 including the sender.
@@ -77,7 +88,7 @@ version-1 catalog are documented in
   affected private Zilch-derived award state
 - Self-registration from the lobby with immutable usernames
 - Personal statistics split into Normal, Hardcore, and overall results, with a selectable score chart and median
-- Achievement milestones for special scoring plays, exact final scores, multiplayer victory margins, daily streaks, office-hour game counts, exact upper-section 60s, and Hardcore progress; every achievement awards 1–10 **Ehrenberg-Marken**, the achievement currency named after Ehrenberg in Reutte. When a game unlocks several achievements, each one is presented and acknowledged separately before the final standings; a genuine title increase then receives its own celebratory **LEVEL UP!** card. Profiles show the total, and the player overview includes a sortable Ehrenberg-Marken ranking. The calculated total also assigns an account-only title from Newbie through Godmode with star insignia, shown consistently beside player names in the lobby, live game, chat, profiles, replays, and rankings. Clicking an insignia opens the rank legend at `/rangabzeichen` (as an overlay during live play). Rollout-sensitive gameplay goals, including multiplayer and upper-section-60 goals, start from their introduction while score-based goals and Hardcore game counts remain historical
+- Achievement milestones for special scoring plays, exact final scores, multiplayer victory margins, daily streaks, office-hour game counts, exact upper-section 60s, and Hardcore progress; every achievement awards 1–10 **Ehrenberg-Marken**, the achievement currency named after Ehrenberg in Reutte. When a game unlocks several achievements, each one is presented and acknowledged separately before the final standings; a genuine title increase then receives its own celebratory **LEVEL UP!** card. Completed-game replays show the achievements that were durably and unambiguously unlocked by that exact game, grouped by participant; account-only milestones and unlocks predating source-game attribution are deliberately not assigned retroactively. Profiles show the total, and the player overview includes a sortable Ehrenberg-Marken ranking. The calculated total also assigns an account-only title from Newbie through Godmode with star insignia, shown consistently beside player names in the lobby, live game, chat, profiles, replays, and rankings. Clicking an insignia opens the rank legend at `/rangabzeichen` (as an overlay during live play). Rollout-sensitive gameplay goals, including multiplayer and upper-section-60 goals, start from their introduction while score-based goals and Hardcore game counts remain historical
 - Private Zilch awards are a separate, protected collection: they are based
   on newly persisted, validated Zilch results registered by the finalizer, have
   their own private delivery and acknowledgement state, are revocable with
@@ -295,7 +306,15 @@ It bundles and minifies the browser assets, then writes one deterministic conten
 version to all asset references and the service-worker cache. For direct changes
 to static HTML, images, or a manifest, `npm run sync:assets` is sufficient. CI
 rejects stale generated files; CI and the deployment guard reject unsynchronized
-asset versions. Zilch JavaScript and CSS are deliberately not part of the public
+asset versions. The protected Zilch shell uses the local
+`app/static/zilch-wood-table-v1.jpg` texture; it must remain a bundled first-party
+asset so the game room never depends on an external image host. A finished Zilch
+room keeps the score sheet and result panel equally sized and exposes every next
+destination as a full-width action instead of a raw inline link. Newly unlocked
+private Zilch awards are attributed by their durable source game ID and only
+appear in that live end screen; older pending deliveries remain in the normal
+reload-safe award queue. Zilch JavaScript
+and CSS are deliberately not part of the public
 service-worker precache: the browser obtains them only after the protected shell
 has been served, while `/zilch` routes remain network-only so a logout or policy
 change cannot reveal a stale private view.

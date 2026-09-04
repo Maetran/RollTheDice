@@ -814,3 +814,81 @@ button:disabled:hover{
   border-color:#cfd7e3;
 }
 .pc-head .pc-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* Completed-game evidence: only achievements durably attributed to this game. */
+.readonly-achievements{
+  width:min(1120px, 100%);
+  margin:1rem auto 0;
+  padding:1rem;
+  border:1px solid color-mix(in srgb, var(--success) 42%, var(--border));
+  border-radius:var(--radius);
+  background:color-mix(in srgb, var(--success-soft) 48%, var(--surface));
+  box-shadow:var(--shadow-sm);
+}
+.readonly-achievements > .eyebrow{ margin:0 0 .2rem; }
+.readonly-achievements > h2{ margin:0 0 .8rem; }
+.readonly-achievement-players{ display:grid; gap:.75rem; }
+.readonly-achievement-player{
+  display:grid;
+  grid-template-columns:minmax(7rem, 11rem) minmax(0, 1fr);
+  gap:.65rem 1rem;
+  align-items:start;
+}
+.readonly-achievement-player + .readonly-achievement-player{
+  padding-top:.75rem;
+  border-top:1px solid color-mix(in srgb, var(--success) 24%, var(--border));
+}
+.readonly-achievement-player h3{
+  margin:.62rem 0 0;
+  overflow-wrap:anywhere;
+  font-size:.95rem;
+}
+.readonly-achievement-list{
+  display:grid;
+  gap:.45rem;
+  margin:0;
+  padding:0;
+  list-style:none;
+}
+.readonly-achievement-card{
+  display:grid;
+  grid-template-columns:auto minmax(0, 1fr) auto;
+  gap:.6rem;
+  align-items:center;
+  min-width:0;
+  padding:.55rem .65rem;
+  border:1px solid color-mix(in srgb, var(--success) 30%, var(--border));
+  border-radius:var(--radius-sm);
+  background:var(--surface);
+}
+.readonly-achievement-icon{
+  display:grid;
+  place-items:center;
+  width:2.1rem;
+  aspect-ratio:1;
+  border:1px solid color-mix(in srgb, var(--success) 48%, var(--border));
+  border-radius:.55rem;
+  color:var(--success);
+  background:var(--success-soft);
+  font-size:1.05rem;
+  font-weight:850;
+}
+.readonly-achievement-copy{ display:grid; gap:.12rem; min-width:0; }
+.readonly-achievement-copy strong{ overflow-wrap:anywhere; }
+.readonly-achievement-copy small{ color:var(--muted); line-height:1.25; }
+.readonly-achievement-points{
+  padding:.16rem .4rem;
+  border-radius:999px;
+  color:var(--success);
+  background:var(--success-soft);
+  font-size:.72rem;
+  font-weight:800;
+  white-space:nowrap;
+}
+@media (max-width:560px){
+  .readonly-achievements{ padding:.8rem; }
+  .readonly-achievement-player{ grid-template-columns:minmax(0, 1fr); gap:.4rem; }
+  .readonly-achievement-player h3{ margin:0; }
+  .readonly-achievement-card{ grid-template-columns:auto minmax(0, 1fr); }
+  .readonly-achievement-points{ grid-column:2; justify-self:start; }
+}

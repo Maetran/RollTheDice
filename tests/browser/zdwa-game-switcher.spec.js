@@ -30,6 +30,23 @@ async function signInAsPreviewMani(page) {
   await expect(page.locator("#authBadge")).toContainText("Mani");
 }
 
+async function switchControlGeometry(locator) {
+  return locator.evaluate(element => {
+    const box = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return {
+      width: box.width,
+      height: box.height,
+      paddingTop: style.paddingTop,
+      paddingRight: style.paddingRight,
+      paddingBottom: style.paddingBottom,
+      paddingLeft: style.paddingLeft,
+      fontSize: style.fontSize,
+      lineHeight: style.lineHeight,
+    };
+  });
+}
+
 test("the permission-gated game switch is available across ZDWA and in its active room", async ({ page }) => {
   await page.goto("/regeln");
   const anonymousSwitch = page.locator("[data-game-switch]");
@@ -38,6 +55,19 @@ test("the permission-gated game switch is available across ZDWA and in its activ
   await expect(anonymousSwitch).toHaveAttribute("aria-hidden", "true");
 
   await signInAsPreviewMani(page);
+
+  await page.setViewportSize({ width: 1024, height: 800 });
+  const zdwaDesktopSwitch = await switchControlGeometry(page.locator("[data-game-switch]"));
+  await Promise.all([
+    page.waitForURL(/\/zilch$/),
+    page.locator("[data-game-switch]").click(),
+  ]);
+  const zilchDesktopSwitch = await switchControlGeometry(page.locator(".zilch-header [data-game-switch]"));
+  expect(zilchDesktopSwitch).toEqual(zdwaDesktopSwitch);
+  await Promise.all([
+    page.waitForURL(url => url.pathname === "/"),
+    page.locator(".zilch-header [data-game-switch]").click(),
+  ]);
 
   const destinations = [
     "/",
@@ -82,6 +112,7 @@ test("the permission-gated game switch is available across ZDWA and in its activ
   const roomSwitch = page.locator(".room-header [data-game-switch]");
   await expect(roomSwitch).toBeVisible();
   await expect(roomSwitch).toBeEnabled();
+  const zdwaMobileSwitch = await switchControlGeometry(roomSwitch);
   const geometry = await roomSwitch.evaluate(element => {
     const button = element.getBoundingClientRect();
     const header = element.closest(".room-header").getBoundingClientRect();
@@ -105,4 +136,6 @@ test("the permission-gated game switch is available across ZDWA and in its activ
     roomSwitch.click(),
   ]);
   await expect(page.locator("html")).toHaveAttribute("data-game", "zilch");
+  const zilchMobileSwitch = await switchControlGeometry(page.locator(".zilch-header [data-game-switch]"));
+  expect(zilchMobileSwitch).toEqual(zdwaMobileSwitch);
 });

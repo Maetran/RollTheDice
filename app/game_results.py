@@ -279,13 +279,31 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
         }
     if write_result.status == "already_stored":
         # A process can crash after committing the relational result but before
-        # removing its active terminal state.  Never replay legacy ZDWA JSON
-        # or achievement side effects for that idempotent recovery path.
+        # synchronizing achievements or removing its active terminal state.
+        # Re-running the relational synchronization is idempotent and repairs
+        # a missing game-source link; legacy JSON side effects must still not
+        # be replayed for that recovery path.
+        ranks_before = _achievement_ranks_safely(achievement_user_ids, game_id=g.get("_id"))
+        achievement_unlocks = sync_achievements_for_users(
+            achievement_user_ids,
+            source_completed_game_id=write_result.completed_game_id,
+        )
+        ranks_after = _achievement_ranks_safely(achievement_user_ids, game_id=g.get("_id"))
+        achievement_rank_ups = _rank_ups_for_completed_game(
+            g,
+            ranks_before,
+            ranks_after,
+        )
         g["_completion_persisted"] = True
         delete_active_game(str(g.get("_id") or ""))
         return {
-            "achievement_unlocks": {},
-            "achievement_rank_ups": {},
+            "achievement_unlocks": {
+                str(player["id"]): achievement_unlocks.get(int(player["user_id"]), [])
+                for player in g.get("_players", [])
+                if player.get("user_id") is not None
+                and achievement_unlocks.get(int(player["user_id"]))
+            },
+            "achievement_rank_ups": achievement_rank_ups,
             "result_persisted": True,
             "result_id": str(g.get("_id") or ""),
             "result_recovered": True,
@@ -293,7 +311,10 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
 
     if write_result.succeeded:
         ranks_before = _achievement_ranks_safely(achievement_user_ids, game_id=g.get("_id"))
-        achievement_unlocks = sync_achievements_for_users(achievement_user_ids)
+        achievement_unlocks = sync_achievements_for_users(
+            achievement_user_ids,
+            source_completed_game_id=write_result.completed_game_id,
+        )
         ranks_after = _achievement_ranks_safely(achievement_user_ids, game_id=g.get("_id"))
         achievement_rank_ups = _rank_ups_for_completed_game(
             g,

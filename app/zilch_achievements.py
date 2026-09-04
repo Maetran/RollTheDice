@@ -917,6 +917,10 @@ def _unlock_payload(
     payload = _definition_payload(definition)
     payload.update(
         {
+            # The private client needs the durable source to distinguish an
+            # award earned by the game that just ended from an older pending
+            # delivery.  This ID never crosses the protected Zilch API.
+            "source_game_id": str(unlock.source_game_id) if unlock.source_game_id else None,
             "unlocked_at": as_utc(unlock.unlocked_at).isoformat(),
         }
     )
