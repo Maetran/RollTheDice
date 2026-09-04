@@ -16,6 +16,7 @@ from app.zilch_gameplay import ZILCH_GAMEPLAY_ACTIONS, handle_zilch_gameplay_act
 from app.zilch_snapshot import snapshot_zilch
 from app.zilch_state import (
     advance_after_zilch_turn,
+    configure_zilch_solo_game,
     current_zilch_turn,
     ensure_zilch_engine_state,
     finish_zilch_game,
@@ -58,6 +59,20 @@ def option_for(snapshot: dict, *, combination_type: str, dice_indices: list[int]
     raise AssertionError(f"missing option: {combination_type}, {dice_indices}, {points}")
 
 
+def action_with_option(action: str, snapshot: dict, option: dict) -> dict:
+    turn = snapshot["_zilch_turn_state"]
+    return {
+        "action": action,
+        "turn_id": turn["turn_id"],
+        "version": turn["version"],
+        "roll_id": option["roll_id"],
+        "option_id": option["id"],
+        "dice_indices": option["dice_indices"],
+        "points": option["points"],
+        "combination_type": option["combination_type"],
+    }
+
+
 class ZilchGameplayTestCase(TestCase):
     def setUp(self):
         self.game_ids: list[str] = []
@@ -66,10 +81,14 @@ class ZilchGameplayTestCase(TestCase):
         for game_id in self.game_ids:
             games.pop(game_id, None)
 
-    def make_game(self, *, players: int = 1):
+    def make_game(self, *, players: int = 1, solo: bool = False):
         game_id = f"zilch-gameplay-{len(self.game_ids)}"
         self.game_ids.append(game_id)
         game = new_zilch_game(game_id, "Rules", players)
+        if solo:
+            if players != 1:
+                raise ValueError("A Solo gameplay fixture must have exactly one player")
+            configure_zilch_solo_game(game, host_user_id=1)
         sockets = []
         for index in range(players):
             socket = RecordingSocket()
@@ -80,10 +99,11 @@ class ZilchGameplayTestCase(TestCase):
             )
             sockets.append(socket)
         start_zilch_game(game)
-        for index in range(players):
-            # Existing turn/action tests start after the opening procedure;
-            # dedicated tests below exercise the human-triggered action itself.
-            record_zilch_start_roll(game, f"p{index + 1}", 6 - index)
+        if not solo:
+            for index in range(players):
+                # Existing turn/action tests start after the opening procedure;
+                # dedicated tests below exercise the human-triggered action itself.
+                record_zilch_start_roll(game, f"p{index + 1}", 6 - index)
         return game, sockets
 
     @staticmethod
@@ -176,6 +196,154 @@ class ZilchGameplayTestCase(TestCase):
         self.assertEqual(held["_zilch_turn_state"]["held_dice_indices"], [0, 1, 2])
         self.assertTrue(held["_zilch_turn_state"]["can_bank"])
         self.assertEqual(held["_zilch_turn_state"]["committed_holds"][0]["id"], triple["id"])
+
+    def test_atomic_hold_and_roll_commits_only_the_selected_option_then_rolls_free_dice(self):
+        game, sockets = self.make_game()
+        session = self.session(game, sockets[0], "p1")
+        with (
+            patch("app.zilch_gameplay.roll_cooldown_ok", return_value=True),
+            patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([5, 5, 5, 2, 3, 4])),
+        ):
+            asyncio.run(handle_zilch_gameplay_action(session, "zilch_roll_dice", {"turn_id": 1, "version": 0}))
+
+        rolled = sockets[0].messages[-1]["scoreboard"]
+        triple = option_for(rolled, combination_type="three_of_a_kind", dice_indices=[0, 1, 2], points=500)
+        messages_before = len(sockets[0].messages)
+        payload = action_with_option("zilch_roll_dice", rolled, triple)
+        with (
+            patch("app.zilch_gameplay.roll_cooldown_ok", return_value=True),
+            patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([1, 2, 3])),
+        ):
+            asyncio.run(handle_zilch_gameplay_action(session, payload.pop("action"), payload))
+
+        self.assertEqual(len(sockets[0].messages), messages_before + 1)
+        message = sockets[0].messages[-1]
+        continued = message["scoreboard"]
+        self.assertEqual(message["zilch_event"]["type"], "roll")
+        self.assertEqual(message["zilch_event"]["committed_option"]["id"], triple["id"])
+        self.assertEqual(continued["_dice"], [5, 5, 5, 1, 2, 3])
+        self.assertEqual(continued["_zilch_turn_state"]["held_dice_indices"], [0, 1, 2])
+        self.assertEqual(continued["_zilch_turn_state"]["round_points"], 500)
+        self.assertEqual(continued["_zilch_turn_state"]["rolls_used"], 2)
+        self.assertEqual(continued["_zilch_turn_state"]["version"], 3)
+        self.assertEqual(continued["_zilch_turn_state"]["committed_holds"][0]["id"], triple["id"])
+
+    def test_atomic_hold_and_bank_records_the_hold_and_advances_in_one_broadcast(self):
+        game, sockets = self.make_game()
+        session = self.session(game, sockets[0], "p1")
+        with (
+            patch("app.zilch_gameplay.roll_cooldown_ok", return_value=True),
+            patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([5, 5, 5, 2, 3, 4])),
+        ):
+            asyncio.run(handle_zilch_gameplay_action(session, "zilch_roll_dice", {"turn_id": 1, "version": 0}))
+
+        rolled = sockets[0].messages[-1]["scoreboard"]
+        triple = option_for(rolled, combination_type="three_of_a_kind", dice_indices=[0, 1, 2], points=500)
+        messages_before = len(sockets[0].messages)
+        payload = action_with_option("zilch_bank_points", rolled, triple)
+        asyncio.run(handle_zilch_gameplay_action(session, payload.pop("action"), payload))
+
+        self.assertEqual(len(sockets[0].messages), messages_before + 1)
+        message = sockets[0].messages[-1]
+        banked = message["scoreboard"]
+        self.assertEqual(message["zilch_event"]["type"], "bank")
+        self.assertEqual(message["zilch_event"]["committed_option"]["id"], triple["id"])
+        self.assertEqual(banked["_zilch_boards"]["p1"]["total_points"], 500)
+        self.assertEqual(banked["_zilch_boards"]["p1"]["rounds"][-1]["points"], 500)
+        self.assertEqual(banked["_zilch_boards"]["p1"]["rounds"][-1]["committed_holds"][0]["id"], triple["id"])
+        self.assertEqual(banked["_zilch_turn_state"]["turn_id"], 2)
+
+        unchanged = json.dumps(serializable_game_state(game), sort_keys=True)
+        duplicate = action_with_option("zilch_bank_points", rolled, triple)
+        asyncio.run(handle_zilch_gameplay_action(session, duplicate.pop("action"), duplicate))
+        self.assertEqual(sockets[0].messages[-1]["zilch_error"]["code"], "zilch_stale_turn")
+        self.assertEqual(json.dumps(serializable_game_state(game), sort_keys=True), unchanged)
+
+    def test_atomic_bank_rejects_below_minimum_and_confirmation_holds_without_mutation(self):
+        scenarios = [
+            ([5, 2, 3, 4, 6, 2], "single_five", [0], 50, "zilch_bank_minimum_not_reached"),
+            ([1, 1, 1, 2, 3, 4], "three_ones", [0, 1, 2], 1_000, "zilch_confirmation_required"),
+        ]
+        for dice, combination_type, indices, points, error_code in scenarios:
+            with self.subTest(error_code=error_code):
+                game, sockets = self.make_game()
+                session = self.session(game, sockets[0], "p1")
+                with (
+                    patch("app.zilch_gameplay.roll_cooldown_ok", return_value=True),
+                    patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng(dice)),
+                ):
+                    asyncio.run(
+                        handle_zilch_gameplay_action(
+                            session,
+                            "zilch_roll_dice",
+                            {"turn_id": 1, "version": 0},
+                        )
+                    )
+                rolled = sockets[0].messages[-1]["scoreboard"]
+                option = option_for(
+                    rolled,
+                    combination_type=combination_type,
+                    dice_indices=indices,
+                    points=points,
+                )
+                before = json.dumps(serializable_game_state(game), sort_keys=True)
+                payload = action_with_option("zilch_bank_points", rolled, option)
+                asyncio.run(handle_zilch_gameplay_action(session, payload.pop("action"), payload))
+                self.assertEqual(sockets[0].messages[-1]["zilch_error"]["code"], error_code)
+                self.assertEqual(json.dumps(serializable_game_state(game), sort_keys=True), before)
+
+    def test_hot_dice_draft_is_committed_and_all_six_dice_roll_again_atomically(self):
+        game, sockets = self.make_game(solo=True)
+        session = self.session(game, sockets[0], "p1")
+        with (
+            patch("app.zilch_gameplay.roll_cooldown_ok", return_value=True),
+            patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([1, 2, 3, 4, 5, 6])),
+        ):
+            asyncio.run(handle_zilch_gameplay_action(session, "zilch_roll_dice", {"turn_id": 1, "version": 0}))
+        rolled = sockets[0].messages[-1]["scoreboard"]
+        straight = option_for(rolled, combination_type="straight", dice_indices=[0, 1, 2, 3, 4, 5], points=2_000)
+        payload = action_with_option("zilch_roll_dice", rolled, straight)
+        with (
+            patch("app.zilch_gameplay.roll_cooldown_ok", return_value=True),
+            patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([5, 2, 3, 4, 6, 2])),
+        ):
+            asyncio.run(handle_zilch_gameplay_action(session, payload.pop("action"), payload))
+
+        continued = sockets[0].messages[-1]["scoreboard"]
+        self.assertEqual(continued["_dice"], [5, 2, 3, 4, 6, 2])
+        self.assertEqual(continued["_zilch_turn_state"]["held_dice_indices"], [])
+        self.assertEqual(continued["_zilch_turn_state"]["round_points"], 2_000)
+        self.assertEqual(continued["_zilch_turn_state"]["rolls_used"], 2)
+        self.assertEqual(continued["_zilch_solo_metrics"]["rolls"], 2)
+        self.assertEqual(continued["_zilch_solo_metrics"]["hot_dice_events"], 1)
+
+    def test_stale_or_forged_atomic_roll_does_not_mutate_state_or_consume_cooldown(self):
+        game, sockets = self.make_game()
+        session = self.session(game, sockets[0], "p1")
+        game["_roll_cooldown"] = {}
+        before = json.dumps(serializable_game_state(game), sort_keys=True)
+
+        asyncio.run(handle_zilch_gameplay_action(session, "zilch_roll_dice", {"turn_id": 1, "version": 99}))
+
+        self.assertEqual(sockets[0].messages[-1]["zilch_error"]["code"], "zilch_stale_state")
+        self.assertEqual(game["_roll_cooldown"], {})
+        self.assertEqual(json.dumps(serializable_game_state(game), sort_keys=True), before)
+
+        with (
+            patch("app.zilch_gameplay.roll_cooldown_ok", return_value=True),
+            patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([5, 5, 5, 2, 3, 4])),
+        ):
+            asyncio.run(handle_zilch_gameplay_action(session, "zilch_roll_dice", {"turn_id": 1, "version": 0}))
+        rolled = sockets[0].messages[-1]["scoreboard"]
+        triple = option_for(rolled, combination_type="three_of_a_kind", dice_indices=[0, 1, 2], points=500)
+        game["_roll_cooldown"] = {}
+        before = json.dumps(serializable_game_state(game), sort_keys=True)
+        forged = action_with_option("zilch_roll_dice", rolled, triple)
+        forged["dice_indices"] = [0, 1, 5]
+        asyncio.run(handle_zilch_gameplay_action(session, forged.pop("action"), forged))
+        self.assertEqual(sockets[0].messages[-1]["zilch_error"]["code"], "zilch_option_reference_mismatch")
+        self.assertEqual(game["_roll_cooldown"], {})
+        self.assertEqual(json.dumps(serializable_game_state(game), sort_keys=True), before)
 
     def test_manipulated_or_duplicate_hold_is_rejected_without_state_change(self):
         game, sockets = self.make_game()

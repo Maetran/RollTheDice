@@ -47,22 +47,48 @@ async function completeOpeningRoll(pages) {
   throw new Error("opening roll did not resolve after repeated attempts");
 }
 
-async function selectableQuickHold(pages, { preferNonHot = false } = {}) {
-  const selectors = preferNonHot
-    ? [".zilch-quick-hold:not(.zilch-quick-hold--hot)", ".zilch-quick-hold"]
-    : [".zilch-quick-hold"];
-  for (const selector of selectors) {
-    for (const page of pages) {
-      const quickHold = await enabledLocator(page, selector);
-      if (quickHold) return { page, quickHold };
+async function selectableQuickHold(pages) {
+  for (const page of pages) {
+    // Prefer a regular score. Every recommendation, including Hot Dice, is a
+    // reversible draft until the player explicitly rolls or banks.
+    const regular = page.locator("[data-zilch-recommendation]:not(.is-hot):not([disabled])").first();
+    if (await regular.count()) {
+      return {
+        page,
+        optionId: await regular.getAttribute("data-zilch-recommendation"),
+        hotDice: false,
+      };
+    }
+    const hotDice = page.locator("[data-zilch-recommendation].is-hot:not([disabled])").first();
+    if (await hotDice.count()) {
+      return {
+        page,
+        optionId: await hotDice.getAttribute("data-zilch-recommendation"),
+        hotDice: true,
+      };
     }
   }
   return null;
 }
 
+async function lockQuickHold(choice) {
+  const { page, optionId } = choice;
+  if (!optionId) throw new Error("quick hold has no option id");
+  const option = page.locator(`[data-zilch-recommendation=${JSON.stringify(optionId)}]`);
+  await expect(option).toBeEnabled();
+  if (!await option.evaluate(node => node.classList.contains("is-selected"))) {
+    await option.click();
+    await expect(option).toHaveClass(/is-selected/);
+  }
+  const roll = page.locator("[data-zilch-roll]");
+  await expect(roll).toBeEnabled();
+  await roll.click();
+  await page.waitForTimeout(680);
+}
+
 async function rollUntilQuickHold(pages) {
   for (let attempt = 0; attempt < 16; attempt += 1) {
-    const existing = await selectableQuickHold(pages, { preferNonHot: true });
+    const existing = await selectableQuickHold(pages);
     if (existing) return existing;
     for (const page of pages) {
       const roll = await enabledLocator(page, "[data-zilch-roll]");
@@ -71,7 +97,7 @@ async function rollUntilQuickHold(pages) {
       // The shared server coordinator deliberately rate-limits successive
       // rolls. Waiting here also gives both WebSocket clients a snapshot.
       await page.waitForTimeout(680);
-      const quickHold = await selectableQuickHold(pages, { preferNonHot: true });
+      const quickHold = await selectableQuickHold(pages);
       if (quickHold) return quickHold;
     }
     await pages[0].waitForTimeout(120);
@@ -104,10 +130,38 @@ async function bankWhenPossible(pages) {
         }
       }
     }
-    const quickHold = await selectableQuickHold(pages, { preferNonHot: true });
+    const quickHold = await selectableQuickHold(pages);
     if (quickHold) {
-      await quickHold.quickHold.press("Enter");
-      await quickHold.page.waitForTimeout(180);
+      const { page, optionId } = quickHold;
+      const option = page.locator(`[data-zilch-recommendation=${JSON.stringify(optionId)}]`);
+      if (!await option.evaluate(node => node.classList.contains("is-selected"))) {
+        await option.click();
+        await expect(option).toHaveClass(/is-selected/);
+      }
+      const bank = await enabledLocator(page, "[data-zilch-bank]");
+      if (bank) {
+        const activeBefore = await page.locator(".zilch-board--active").getAttribute("data-zilch-board-id");
+        await bank.click();
+        try {
+          await expect.poll(
+            () => page.locator(".zilch-board--active").getAttribute("data-zilch-board-id"),
+            { timeout: 1_500, intervals: [100, 250, 500] },
+          ).not.toBe(activeBefore);
+          return {
+            page,
+            activeBefore,
+            activeAfter: await page.locator(".zilch-board--active").getAttribute("data-zilch-board-id"),
+          };
+        } catch {
+          await page.waitForTimeout(120);
+        }
+        continue;
+      }
+      const roll = await enabledLocator(page, "[data-zilch-roll]");
+      if (roll) {
+        await roll.click();
+        await page.waitForTimeout(680);
+      }
       continue;
     }
     await rollUntilQuickHold(pages);
@@ -121,7 +175,7 @@ async function visibleGameFacts(page) {
       id: board.dataset.zilchBoardId,
       // Number grouping differs deliberately between the German and English
       // contexts; compare the shown score values, not their locale glyph.
-      values: [...board.querySelectorAll("dd")].map(value => value.textContent.replace(/[^0-9-]/g, "")),
+      values: [board.querySelector("[data-zilch-total]")?.dataset.zilchTotal || ""],
     })),
     dice: [...document.querySelectorAll(".zilch-die__face")].map(face => face.dataset.value),
   }));
@@ -281,14 +335,42 @@ test("Zilch is a separate permission-gated app mode and its hotkey respects inpu
   await expect(page.locator("#createGameCard")).toHaveCount(0);
   await expect(page.locator("#zilchCreateForm")).toBeVisible();
   await expect(page.locator("#zilchMode")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Zilch die Wand an – Würfelspiel online" })).toBeVisible();
+  await expect(page.locator(".zilch-lobby-leaderboard-box")).toHaveCount(3);
+  await expect(page.getByText(/Interne Vorschau|Private Zilch-Vorschau/)).toHaveCount(0);
+  await expect(page.locator("[data-theme-toggle]")).toHaveCount(0);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+
+  await page.evaluate(() => window.ZDWA_UI.toast("Positionstest", { duration: 0 }));
+  const toast = page.locator(".app-toast").last();
+  await expect(toast).toBeVisible();
+  const toastBox = await toast.boundingBox();
+  expect(toastBox.y).toBeLessThan(100);
+  expect(toastBox.x).toBeGreaterThan(400);
+  await toast.locator(".app-toast-close").click();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const menu = page.locator("#zilchNavToggle");
+  const navigation = page.locator("#zilchNavigation");
+  await expect(menu).toHaveCount(0);
+  await expect(navigation).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/\/zilch\/bestenlisten$/),
+    navigation.getByRole("link", { name: "Spieler & Ranking" }).click(),
+  ]);
+  await page.goto("/zilch");
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   // Alt+Shift+Z is intentionally ignored while typing into a Zilch input.
   const lobbyUrl = page.url();
-  await page.locator("#zilchGameName").focus();
+  await page.locator('[data-zilch-play-mode="multiplayer"]').click();
+  await page.locator(".zilch-create-options").evaluate(element => { element.open = true; });
+  await page.locator("#zilchGamePassphrase").focus();
+  await expect(page.locator("#zilchGamePassphrase")).toBeFocused();
   await page.keyboard.press("Alt+Shift+Z");
   await expect.poll(() => page.url()).toBe(lobbyUrl);
 
-  await page.locator("#zilchGameName").evaluate(element => element.blur());
+  await page.locator("#zilchGamePassphrase").evaluate(element => element.blur());
   await Promise.all([
     page.waitForURL(/\/$/),
     page.keyboard.press("Alt+Shift+Z"),
@@ -317,10 +399,9 @@ test("a permitted user can create and reload a private CPU game through the norm
   await page.locator("[data-game-switch]").click();
   await page.waitForURL(/\/zilch$/);
 
-  await page.locator("input[name='zilchPlayMode'][value='cpu']").check();
+  await page.locator("[data-zilch-play-mode='cpu']").click();
   await expect(page.locator("#zilchCpuStrategy")).toBeVisible();
-  await page.locator("input[name='zilchCpuStrategy'][value='aggressive']").check();
-  await page.locator("#zilchGameName").fill("CPU Serverpfad");
+  await page.locator("#zilchCpuStrategySelect").selectOption("aggressive");
   await Promise.all([
     page.waitForURL(/\/zilch\/spiel\/[^/]+$/),
     page.locator("#zilchCreateForm button[type='submit']").click(),
@@ -358,7 +439,8 @@ test("a permitted user can create and reload a private CPU game through the norm
 
   const cpuBoard = page.locator(`[data-zilch-board-id="${cpuParticipant.id}"]`);
   await expect(cpuBoard).toContainText(/CPU/);
-  await expect(cpuBoard).toContainText(/Aggressiv|Aggressive/);
+  // CPU strategy is durable API metadata, not a distracting score-sheet label.
+  await expect(cpuBoard).not.toContainText(/Aggressiv|Aggressive/);
   await expect(cpuBoard).not.toHaveClass(/zilch-board--offline/);
   await expect(cpuBoard.locator(".zilch-connection-dot")).toHaveCount(0);
 
@@ -404,7 +486,7 @@ test("two explicitly allowed humans can create, rejoin, and play a private Zilch
     await expect(mani.locator("#authBadge")).toContainText("Mani");
     await mani.locator("[data-game-switch]").click();
     await mani.waitForURL(/\/zilch$/);
-    await mani.locator("#zilchGameName").fill("Zwei Menschen Alpha");
+    await mani.locator('[data-zilch-play-mode="multiplayer"]').click();
     await Promise.all([
       mani.waitForURL(/\/zilch\/spiel\/[^/]+$/),
       mani.locator("#zilchCreateForm button[type=submit]").click(),
@@ -424,7 +506,7 @@ test("two explicitly allowed humans can create, rejoin, and play a private Zilch
     await expect(preview.locator("[data-game-switch]")).toBeVisible();
     await preview.locator("[data-game-switch]").click();
     await preview.waitForURL(/\/zilch$/);
-    await expect(preview.getByRole("heading", { name: "Your Zilch table" })).toBeVisible();
+    await expect(preview.getByRole("heading", { name: "Zilch die Wand an – Play the dice game online" })).toBeVisible();
     await Promise.all([
       preview.waitForURL(new RegExp(`${gamePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`)),
       preview.locator(`a[href="${gamePath}"]`).click(),
@@ -435,14 +517,24 @@ test("two explicitly allowed humans can create, rejoin, and play a private Zilch
     await completeOpeningRoll([mani, preview]);
     await expect(mani.locator("[data-zilch-start-roll]")).toHaveCount(0);
     await expect(preview.locator("[data-zilch-start-roll]")).toHaveCount(0);
-    await expect(mani.locator(".zilch-start-roll--resolved")).toBeVisible();
-    await expect(preview.locator(".zilch-start-roll--resolved")).toBeVisible();
+    // Once the fair opening roll is resolved, its replay card must leave the
+    // active playing surface instead of competing with score and actions.
+    await expect(mani.locator(".zilch-start-roll--resolved")).toHaveCount(0);
+    await expect(preview.locator(".zilch-start-roll--resolved")).toHaveCount(0);
     await expect(mani.locator("[data-zilch-board-id]")).toHaveCount(2);
     await expect(preview.locator("[data-zilch-board-id]")).toHaveCount(2);
 
+    // The compact game dock deliberately keeps chat closed until requested.
+    await mani.locator("[data-zilch-chat-toggle]").click();
+    await preview.locator("[data-zilch-chat-toggle]").click();
+    await expect(mani.locator("#zilchChatInput")).toBeVisible();
     await mani.locator("#zilchChatInput").fill("server chat stays shared");
     await mani.locator("#zilchChatForm button[type=submit]").click();
     await expect(preview.locator("#zilchChatHistory")).toContainText("server chat stays shared");
+    await expect(preview.locator(".emoji-pop.chat-pop")).toContainText("server chat stays shared");
+    await expect(mani.locator(".emoji-pop.chat-pop")).toHaveCount(0);
+    await mani.locator("[data-zilch-chat-toggle]").click();
+    await preview.locator("[data-zilch-chat-toggle]").click();
 
     await mani.setViewportSize({ width: 1280, height: 900 });
     await expect(mani.locator("[data-zilch-board-id]")).toHaveCount(2);
@@ -452,12 +544,11 @@ test("two explicitly allowed humans can create, rejoin, and play a private Zilch
     await mani.emulateMedia({ reducedMotion: "reduce" });
 
     const selected = await rollUntilQuickHold([mani, preview]);
-    await selected.quickHold.press("Enter");
-    await selected.page.waitForTimeout(220);
+    await lockQuickHold(selected);
     // A full-dice special can legitimately reset the rack for Hot Dice;
-    // ordinary holds mark dice unavailable. In both cases the selected card
-    // disappears because the server moved to the next authoritative phase.
-    await expect.poll(async () => selected.page.locator(".zilch-quick-hold").count()).toBe(0);
+    // ordinary holds mark dice unavailable. In both cases the authoritative
+    // snapshot is shared by the two clients.
+    await expect.poll(async () => selected.page.locator(".zilch-die").count()).toBe(6);
     expect(await visibleGameFacts(mani)).toEqual(await visibleGameFacts(preview));
 
     await mani.reload();
@@ -531,6 +622,7 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
       body: shellHtml,
     }));
 
+    await page.goto("/zilch/historie");
     await expect(page.getByRole("heading", { name: "Deine abgeschlossenen Zilch-Partien" })).toBeVisible();
     const resultLink = page.getByRole("link", { name: "Ergebnis ansehen" });
     await expect(resultLink).toBeVisible();
@@ -558,8 +650,8 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
       page.locator("[data-language-switcher]").selectOption("en"),
     ]);
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.getByText("Private result report")).toBeVisible();
-    await expect(page.getByText("Ruleset")).toBeVisible();
+    await expect(page.getByText("Completed game", { exact: true })).toBeVisible();
+    await expect(page.getByText("Total points", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Back to Zilch lobby" })).toBeVisible();
   } finally {
     await context.close();

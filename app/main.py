@@ -238,7 +238,7 @@ async def response_cache_policy(request: Request, call_next):
     # ``zilch.html`` is an implementation artifact used by the protected
     # routes below.  Unlike public static assets, it must never become a
     # second, unauthenticated page entry point through the static mount.
-    if request.url.path == "/static/zilch.html":
+    if request.url.path in {"/static/zilch.html", "/static/zilch-login.html"}:
         return Response(status_code=404, headers={"Cache-Control": "no-store"})
     legacy_target = _legacy_page_target(request)
     if legacy_target:
@@ -361,6 +361,17 @@ def zilch_preview_page(request: Request):
     return _page("zilch.html")
 
 
+@app.get("/zilch/anmelden", include_in_schema=False)
+def zilch_login_page():
+    """Provide a direct, noindex account entry before the protected Zilch shell.
+
+    This is intentionally public: a future Zilch subdomain needs a place to
+    establish the shared account session. Access to the game itself remains
+    enforced by ``_require_zilch_preview`` after sign-in.
+    """
+    return _page("zilch-login.html")
+
+
 @app.get("/zilch/spiel/{game_id}", include_in_schema=False)
 def zilch_room_page(game_id: str, request: Request):
     """Serve a Zilch room only after both policy and type checks pass."""
@@ -406,6 +417,13 @@ def zilch_leaderboards_page(request: Request):
 @app.get("/zilch/erfolge", include_in_schema=False)
 def zilch_achievements_page(request: Request):
     """Serve the private noindex Zilch award collection."""
+    _require_zilch_preview(request)
+    return _page("zilch.html")
+
+
+@app.get("/zilch/konto", include_in_schema=False)
+def zilch_account_page(request: Request):
+    """Serve the private Zilch account, including its separate awards."""
     _require_zilch_preview(request)
     return _page("zilch.html")
 

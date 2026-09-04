@@ -4,7 +4,9 @@
   const STORAGE_KEY = "wuerfler_theme";
   const DARK_COLOR = "#0b1120";
   const LIGHT_COLOR = "#f4f6f8";
+  const ZILCH_COLOR = "#542d16";
   const media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  const fixedZilchTheme = document.documentElement.dataset.game === "zilch";
 
   function storedTheme() {
     try {
@@ -16,6 +18,7 @@
   }
 
   function preferredTheme() {
+    if (fixedZilchTheme) return "light";
     return storedTheme() || (media && media.matches ? "dark" : "light");
   }
 
@@ -26,7 +29,7 @@
       meta.name = "theme-color";
       document.head.appendChild(meta);
     }
-    meta.content = theme === "dark" ? DARK_COLOR : LIGHT_COLOR;
+    meta.content = fixedZilchTheme ? ZILCH_COLOR : theme === "dark" ? DARK_COLOR : LIGHT_COLOR;
   }
 
   function updateToggles(theme) {
@@ -48,6 +51,7 @@
   }
 
   function toggleTheme() {
+    if (fixedZilchTheme) return;
     const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
     try { localStorage.setItem(STORAGE_KEY, next); } catch (_) {}
     applyTheme(next);
@@ -64,6 +68,7 @@
 
   if (media) {
     const followSystemTheme = function () {
+      if (fixedZilchTheme) return;
       if (!storedTheme()) applyTheme(preferredTheme());
     };
     if (typeof media.addEventListener === "function") media.addEventListener("change", followSystemTheme);

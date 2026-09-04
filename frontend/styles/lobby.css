@@ -95,6 +95,7 @@
   justify-self:end;
 }
 .app-nav-tools .theme-toggle,
+.app-nav-tools .game-switch,
 .app-nav-tools select{
   min-height:44px;
 }
@@ -549,7 +550,8 @@
     padding:.45rem .25rem;
     white-space:normal;
   }
-  .app-nav-tools .theme-toggle{
+  .app-nav-tools .theme-toggle,
+  .app-nav-tools .game-switch{
     min-width:44px;
     min-height:44px;
     padding:.4rem;

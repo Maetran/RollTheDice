@@ -42,14 +42,15 @@ function navigateToMode(mode) {
  * coexisting in a document; this controller only reveals a capability after
  * the server-confirmed auth response has arrived.
  */
-export function initializeAppMode({ mode = document.documentElement.dataset.game || "zdwa" } = {}) {
+export function initializeAppMode({
+  mode = document.documentElement.dataset.game || "zdwa",
+  refreshOnInitialize = true,
+} = {}) {
   const currentMode = mode === "zilch" ? "zilch" : "zdwa";
+  const existingController = window.ZDWA_APP_MODE;
+  if (existingController?.initialized === true) return existingController;
+
   document.documentElement.dataset.game = currentMode;
-  window.ZDWA_APP_MODE = {
-    current: currentMode,
-    hotkey: ZILCH_HOTKEY,
-    set: navigateToMode,
-  };
 
   let allowed = false;
   let stopped = false;
@@ -92,7 +93,16 @@ export function initializeAppMode({ mode = document.documentElement.dataset.game
   }
 
   document.addEventListener("keydown", (event) => {
-    if (event.defaultPrevented || event.repeat || isEditableTarget(event.target)) return;
+    // `KeyboardEvent.target` can briefly fall back to `document` while a
+    // disclosure widget is opening. The focused control is the reliable
+    // second guard: the global game shortcut must never fire while somebody
+    // is typing a room code or using another form control.
+    if (
+      event.defaultPrevented
+      || event.repeat
+      || isEditableTarget(event.target)
+      || isEditableTarget(document.activeElement)
+    ) return;
     if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey || event.key.toLowerCase() !== "z") return;
     if (!allowed) return;
     event.preventDefault();
@@ -105,10 +115,24 @@ export function initializeAppMode({ mode = document.documentElement.dataset.game
     if (document.visibilityState === "visible") void refresh();
   });
 
+  const controller = {
+    initialized: true,
+    current: currentMode,
+    hotkey: ZILCH_HOTKEY,
+    set: navigateToMode,
+    refresh,
+    applyAuth,
+    canUseZilch: () => allowed,
+  };
+  window.ZDWA_APP_MODE = controller;
+
   // The Zilch page has no standard auth controller; polling there keeps an
   // expired/revoked session from leaving an active preview root mounted.
   if (currentMode === "zilch") window.setInterval(() => { void refresh(); }, 12_000);
-  void refresh();
+  // The ZDWA lobby already resolves the identity for its account controls.
+  // It can feed that result through the shared auth-state event and avoid a
+  // duplicate request from the shell bundle.
+  if (refreshOnInitialize) void refresh();
 
-  return { refresh, applyAuth, canUseZilch: () => allowed };
+  return controller;
 }

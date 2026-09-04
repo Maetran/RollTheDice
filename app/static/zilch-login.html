@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="de" data-game="zilch">
+<head>
+  <meta charset="utf-8">
+  <title>Zilch die Wand an – Anmelden</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Melde dich bei Zilch an oder erstelle dein Spielerkonto.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#542d16">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=97dea8584de9" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=97dea8584de9" sizes="180x180">
+  <script>document.documentElement.dataset.theme="light";document.documentElement.style.colorScheme="light";</script>
+  <script src="/static/shell.js?v=97dea8584de9" defer></script>
+  <link rel="stylesheet" href="/static/zilch.css?v=97dea8584de9">
+</head>
+<body class="zilch-page zilch-login-page">
+  <main class="zilch-login-shell">
+    <a class="zilch-brand zilch-login-brand" href="/zilch/anmelden" aria-label="Zilch die Wand an anmelden"><span class="zilch-brand-mark" aria-hidden="true">Z</span><span>Zilch die Wand an</span></a>
+    <section class="zilch-card zilch-login-card" aria-labelledby="zilchLoginTitle">
+      <p class="zilch-eyebrow">Dein Spielerkonto</p>
+      <h1 id="zilchLoginTitle">Bei Zilch anmelden</h1>
+      <p class="zilch-login-intro">Melde dich an, um deine Zilch-Partien auf jedem Gerät fortzusetzen.</p>
+      <form id="zilchLoginForm" class="zilch-login-form">
+        <label for="zilchLoginUsername">Benutzername<input id="zilchLoginUsername" autocomplete="username" required></label>
+        <label for="zilchLoginPassword">Passwort<input id="zilchLoginPassword" type="password" autocomplete="current-password" minlength="8" required></label>
+        <div class="zilch-login-actions"><button class="primary" type="submit">Anmelden</button><button id="zilchRegisterButton" class="ghost" type="button">Konto erstellen</button></div>
+        <div id="zilchRegistrationChallenge" hidden></div>
+      </form>
+      <section id="zilchSignedIn" class="zilch-signed-in" hidden aria-labelledby="zilchLoginAccountName">
+        <p>Angemeldet als <strong id="zilchLoginAccountName"></strong></p>
+        <div class="zilch-login-actions"><a id="zilchContinueButton" class="button-link primary" href="/zilch">Zilch öffnen</a><button id="zilchLoginLogout" class="ghost" type="button">Abmelden</button></div>
+      </section>
+      <p id="zilchLoginMessage" class="zilch-login-message" role="status"></p>
+    </section>
+  </main>
+  <script type="module" src="/static/zilch-login.js?v=97dea8584de9"></script>
+</body>
+</html>

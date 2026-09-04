@@ -93,7 +93,7 @@
 
   function showUpdate(registration) {
     if (!registration?.waiting || updateToast) return;
-    updateToast = toast("Eine neue Version von ZDWA ist verfügbar.", {
+    updateToast = toast("Eine neue Version ist verfügbar.", {
       kind: "info",
       duration: 0,
       actionLabel: "Jetzt aktualisieren",
@@ -120,7 +120,7 @@
     installPrompt = event;
     if (matchMedia("(display-mode: standalone)").matches) return;
     if (installPromptSuppressed()) return;
-    toast("ZDWA kann als App installiert werden.", {
+    toast("Die App kann installiert werden.", {
       kind: "info",
       duration: 0,
       actionLabel: "Installieren",
@@ -136,7 +136,7 @@
   window.addEventListener("appinstalled", () => {
     installPrompt = null;
     try { localStorage.removeItem(INSTALL_DISMISS_KEY); } catch {}
-    toast("ZDWA wurde installiert.", { kind: "success" });
+    toast("Die App wurde installiert.", { kind: "success" });
   });
 
   window.addEventListener("offline", () => {

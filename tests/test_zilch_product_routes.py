@@ -112,6 +112,7 @@ class ZilchProductRoutesTestCase(TestCase):
             "/zilch/historie",
             "/zilch/statistiken",
             "/zilch/bestenlisten",
+            "/zilch/konto",
             "/zilch/regeln",
             "/api/zilch/rules",
         ):
@@ -120,7 +121,7 @@ class ZilchProductRoutesTestCase(TestCase):
             with self.subTest(path=path, identity="normal"):
                 self.assertEqual(self._get(path, normal_token).status_code, 403)
 
-        for path in ("/zilch/historie", "/zilch/statistiken", "/zilch/bestenlisten", "/zilch/regeln"):
+        for path in ("/zilch/historie", "/zilch/statistiken", "/zilch/bestenlisten", "/zilch/konto", "/zilch/regeln"):
             with self.subTest(path=path):
                 response = self._get(path, mani_token)
                 self.assertEqual(response.status_code, 200)
@@ -154,6 +155,15 @@ class ZilchProductRoutesTestCase(TestCase):
             },
         )
         self.assertEqual(self._get("/static/zilch.html", mani_token).status_code, 404)
+
+    def test_login_entry_is_public_but_the_private_shell_stays_protected(self) -> None:
+        login_page = self._get("/zilch/anmelden?return_to=/zilch/statistiken")
+        self.assertEqual(login_page.status_code, 200)
+        self.assertIn('name="robots" content="noindex, nofollow"', login_page.text)
+        self.assertIn("zilchLoginForm", login_page.text)
+        self.assertIn("no-cache", login_page.headers.get("cache-control", ""))
+        self.assertEqual(self._get("/static/zilch-login.html").status_code, 404)
+        self.assertEqual(self._get("/zilch").status_code, 401)
 
     def test_explicit_allowlist_uses_the_same_private_rules_route_policy(self) -> None:
         _preview_id, preview_token = self._identity("PreviewFriend")

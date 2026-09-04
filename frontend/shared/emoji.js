@@ -196,7 +196,7 @@
 
   function syncPopMountPosition(){
     try {
-      const header = document.querySelector('.room-page .room-header');
+      const header = document.querySelector('.room-page .room-header, .zilch-page .zilch-header');
       const top = header ? Math.max(10, Math.ceil(header.getBoundingClientRect().bottom + 8)) : 10;
       document.documentElement.style.setProperty('--emoji-pop-top', `${top}px`);
     } catch {}

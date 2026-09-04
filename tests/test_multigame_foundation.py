@@ -400,6 +400,27 @@ class MultiGameFoundationTestCase(GameStateTestCase):
                 self.assertEqual(projected["_game_type"], ZILCH_GAME_TYPE)
                 self.assertEqual(len(projected["_dice"]), 6)
 
+    def test_zilch_websocket_echoes_emoji_to_its_sender(self):
+        """A Zilch reaction is accepted and returns on the sender's socket."""
+        game = self._track(create_game_state("ws-zilch-emoji", "Socket Zilch", 1, ZILCH_GAME_TYPE))
+        _, mani_token = self._identity("Mani", role="admin")
+
+        with TestClient(main.app) as client:
+            client.cookies.set("rollthedice_session", mani_token)
+            with client.websocket_connect(f"/ws/{game['_id']}") as websocket:
+                websocket.receive_json()
+                websocket.send_json({"action": "join_game"})
+                player_id = websocket.receive_json()["player_id"]
+                websocket.receive_json()  # Directly-started Solo snapshot.
+
+                websocket.send_json({"action": "send_emoji", "emoji": "🎲"})
+                echoed = websocket.receive_json()
+
+        self.assertEqual(echoed["emoji"]["from_id"], player_id)
+        self.assertEqual(echoed["emoji"]["from"], "Mani")
+        self.assertEqual(echoed["emoji"]["emoji"], "🎲")
+        self.assertFalse(game.get("_chat_history"))
+
     def test_zilch_action_is_denied_when_mani_loses_admin_role_after_join(self):
         game = self._track(create_game_state("ws-zilch-revoked", "Socket Zilch", 1, ZILCH_GAME_TYPE))
         _, mani_token = self._identity("Mani", role="admin")

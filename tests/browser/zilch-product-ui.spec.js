@@ -24,6 +24,7 @@ async function signInAsPreviewMani(page) {
   await page.goto("/");
   await signIn(page, "Admin", "temporary-password-123");
   await expect(page.locator("#authBadge")).toContainText("Admin");
+  await expect(page.locator("#authBadge")).toContainText("Admin");
   const mani = await createUser(page, "Mani", "mani-preview-password-123", "admin");
   expect([201, 400]).toContain(mani.status);
 
@@ -33,6 +34,26 @@ async function signInAsPreviewMani(page) {
   await expect(page.locator("#authBadge")).toContainText("Mani");
   await expect(page.locator("[data-game-switch]")).toBeVisible();
 }
+
+test("Zilch has its own sign-in entry and safely returns preview accounts to the requested view", async ({ page }) => {
+  await page.goto("/zilch/anmelden?return_to=/zilch/statistiken");
+  await expect(page.locator("#zilchLoginForm")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bei Zilch anmelden" })).toBeVisible();
+
+  // Provision the preview account through the established workflow, then
+  // exercise the actual Zilch sign-in page as a logged-out visitor.
+  await signInAsPreviewMani(page);
+  await page.click("#logoutBtn");
+
+  await page.goto("/zilch/anmelden?return_to=/zilch/statistiken");
+  await page.fill("#zilchLoginUsername", "Mani");
+  await page.fill("#zilchLoginPassword", "mani-preview-password-123");
+  await Promise.all([
+    page.waitForURL(/\/zilch\/statistiken$/),
+    page.locator("#zilchLoginForm button[type=submit]").click(),
+  ]);
+  await expect(page.getByRole("heading", { name: /Zilch.*Statistiken|Zilch statistics/i })).toBeVisible();
+});
 
 function externalHttpOrigins(requests, origin) {
   return [...new Set(requests
@@ -77,7 +98,7 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await expect(page.locator("html")).toHaveAttribute("data-game", "zilch");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
   await expect(page.locator("[data-zilch-root]")).toBeVisible();
-  await expect(page.locator("[data-zilch-ruleset=\"zilch-house-v1\"]")).toBeVisible();
+  await expect(page.getByText(/Alles Wichtige für deine nächste Partie|Everything important for your next game/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: /^Zilch(?:-| )(?:Regeln|rules)$/i })).toBeVisible();
   await expect(page.locator("#zilchNavigation a[href='/zilch/regeln']")).toHaveAttribute("aria-current", "page");
 
@@ -86,52 +107,29 @@ test("private Zilch rules, history, and product navigation use the protected noi
     text: link.textContent?.trim(),
   })));
   const hrefs = navigation.map(link => link.href);
-  expect(hrefs).toEqual(expect.arrayContaining([
+  expect(hrefs).toEqual([
     "/zilch",
-    "/zilch/historie",
-    "/zilch/statistiken",
     "/zilch/bestenlisten",
-    "/zilch/erfolge",
     "/zilch/regeln",
-    "/konto?return_to=zilch#settings",
-  ]));
-  // A clear return control for ZDWA may live in this list or in the shared
-  // game-switch header.  Apart from that optional route, product navigation
-  // must not advertise a future/non-functional Zilch area.
-  expect(hrefs.filter(href => ![
-    "/zilch",
-    "/zilch/historie",
-    "/zilch/statistiken",
-    "/zilch/bestenlisten",
-    "/zilch/erfolge",
-    "/zilch/regeln",
-    "/konto?return_to=zilch#settings",
-    "/",
-  ].includes(href))).toEqual([]);
+    "/zilch/konto",
+  ]);
   expect(navigation.map(link => link.text)).toEqual(expect.arrayContaining([
-    expect.stringMatching(/^(Statistiken|Statistics)$/),
-    expect.stringMatching(/^(Bestenlisten|Leaderboards)$/),
-    expect.stringMatching(/^(Erfolge|Achievements)$/),
+    expect.stringMatching(/^(Spieler & Ranking|Players & Ranking)$/),
+    expect.stringMatching(/^(Regeln|Rules)$/),
+    expect.stringMatching(/^(Konto|Account)$/),
   ]));
   expect(page.locator("#createGameCard")).toHaveCount(0);
 
   await Promise.all([
-    page.waitForURL(url => (
-      url.pathname === "/konto"
-      && url.searchParams.get("return_to") === "zilch"
-      && url.hash === "#settings"
-    )),
-    page.locator("#zilchNavigation a[href='/konto?return_to=zilch#settings']").click(),
+    page.waitForURL(/\/zilch\/konto$/),
+    page.locator("#zilchNavigation a[href='/zilch/konto']").click(),
   ]);
-  const returnToZilch = page.locator("#returnToZilch");
-  await expect(returnToZilch).toBeVisible();
-  await expect(returnToZilch).toHaveAttribute("href", "/zilch");
-  await expect(page.locator("#settingsTab")).toHaveAttribute("aria-selected", "true");
-  await Promise.all([
-    page.waitForURL(/\/zilch$/),
-    returnToZilch.click(),
-  ]);
-  await expect(page.locator("[data-zilch-root]")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mani", exact: true })).toBeVisible();
+  await expect(page.locator("#zilchAchievementsBody")).toBeVisible();
+
+  await page.goto("/konto#settings");
+  await expect(page.getByRole("heading", { name: /ZDWA(?:-|\s)(Spieleinstellungen|game settings)/i })).toBeVisible();
+  await expect(page.getByText(/gelten nur für ZDWA|apply only to ZDWA/i)).toBeVisible();
 
   // Consume the body as soon as the response arrives. The app can issue a
   // navigation while route initialization finishes, which otherwise makes a
@@ -142,7 +140,7 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await page.goto("/zilch/historie");
   expect(await historyBody).toHaveProperty("results");
   await expect(page.locator("#zilchAllResultsHistory")).toBeVisible();
-  await expect(page.locator("#zilchNavigation a[href='/zilch/historie']")).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("#zilchAllHistoryTitle")).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
 
   const origin = new URL(page.url()).origin;
@@ -164,20 +162,14 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   const navigation = page.locator("#zilchNavigation");
   const navigationList = page.locator("#zilchNavigation .zilch-nav-list");
   const toggle = page.locator("#zilchNavToggle");
-  await expect(toggle).toBeVisible();
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await expect(navigation).toHaveJSProperty("hidden", true);
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-expanded", "true");
-  // The nav itself is a zero-height positioning wrapper on mobile. Its list
-  // is the visible menu surface users interact with.
+  await expect(toggle).toHaveCount(0);
   await expect(navigation).toHaveJSProperty("hidden", false);
   await expect(navigationList).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await expect(navigation).toHaveJSProperty("hidden", true);
-  await expect(navigationList).toBeHidden();
-  await expect(toggle).toBeFocused();
+  const navLinks = navigation.getByRole("link");
+  await expect(navLinks).toHaveCount(4);
+  expect(await navLinks.evaluateAll(links => links.every(link => link.getBoundingClientRect().height >= 40))).toBe(true);
+  await navLinks.nth(2).focus();
+  await expect(navLinks.nth(2)).toBeFocused();
 
   const skipLink = page.locator(".zilch-skip-link");
   await skipLink.focus();
@@ -335,9 +327,9 @@ test("private Zilch statistics and leaderboards render only server projections a
 
   await page.goto("/zilch/statistiken");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-  await expect(page.getByRole("heading", { name: "Zilch-Statistiken", exact: true })).toBeVisible();
-  await expect(page.locator("#zilchNavigation a[href='/zilch/statistiken']")).toHaveAttribute("aria-current", "page");
-  await expect(page.getByText("Gesicherte Gesamtpunkte")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Zilch-(Statistiken|statistics)/i }).first()).toBeVisible();
+  await expect(page.getByText("Partien nach Spielart")).toBeVisible();
+  await expect(page.getByText("Gesicherte Gesamtpunkte")).toHaveCount(0);
 
   const multiplayerTab = page.getByRole("tab", { name: "Zwei Spieler" });
   await multiplayerTab.focus();
@@ -346,7 +338,8 @@ test("private Zilch statistics and leaderboards render only server projections a
   await expect(page.getByText("Alle CPU-Partien", { exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Aggressiv" }).click();
   await expect(page.getByText("CPU-Strategie: Aggressiv", { exact: true })).toBeVisible();
-  await expect(page.getByText("Nicht vollständig verfügbar", { exact: true })).toBeVisible();
+  await expect(page.getByText("Bilanz (S–N–U)", { exact: true })).toBeVisible();
+  await expect(page.getByText("Nicht vollständig verfügbar", { exact: true })).toHaveCount(0);
 
   await page.goto("/zilch/bestenlisten");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
@@ -506,7 +499,6 @@ test("private Zilch awards use server projections and acknowledge a sequential a
 
     await page.goto("/zilch/erfolge");
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-    await expect(page.locator("#zilchNavigation a[href='/zilch/erfolge']")).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("heading", { name: "Zilch-Awards" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Einstieg" })).toBeVisible();
     await expect(page.locator(".zilch-achievement-card.is-unlocked")).toHaveCount(2);

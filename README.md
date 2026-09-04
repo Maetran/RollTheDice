@@ -2,9 +2,9 @@
 
 RollTheDice is a lightweight multiplayer dice game with a FastAPI backend and a static HTML/CSS/JS frontend. It supports German and English, single-player, 2-player, 3-player, 2v2 team games, Hardcore mode, chat, emoji reactions, leaderboards, account achievement milestones, and read-only replay views for completed games.
 
-ZDWA is the public game. The repository also contains an intentionally private,
-playable Zilch preview: its own six-dice, 10,000-point state,
-server-authoritative scoring, Quick Holds, banking, and competitive start-roll/
+ZDWA is the public game. The repository also contains a protected, playable
+Zilch die Wand an game: its own six-dice, 10,000-point state,
+server-authoritative scoring, direct dice selection, banking, and competitive start-roll/
 final-reply handling. By default, only the authenticated admin
 account whose normalized username is `mani` can open it. A second private test
 account can be admitted only through the explicit
@@ -17,16 +17,20 @@ WebSocket; it uses the same server-side dice and scoring path as a human and
 differs only through its conservative, normal, or aggressive decision policy.
 It also supports a genuine one-human `solo` Sprint: the fixed, versioned
 objective `reach_10000_fewest_turns` (v1) starts directly with a normal turn,
-ends at at least 10,000 banked points, and records turns, rolls, Zilchs, Hot
-Dice, highest banked round, and active time. There is no opponent, CPU,
-start roll, final reply, or fabricated winner/tie in Solo. A confirmed
-abandonment remains a private `abandoned` result; pause and restart downtime
-do not count as active time. Future comparison order is turns, rolls, Zilchs,
-then active duration (all ascending). Private, server-calculated Zilch
-statistics keep Solo, human-vs-human, and human-vs-CPU separate. The three
-private leaderboards are the best compatible Solo Sprint per active account,
-human-vs-human wins, and wins against each individual CPU strategy; they never
-feed a ZDWA ranking.
+ends at at least 10,000 banked points. The server retains turns, rolls, Zilchs,
+Hot Dice, highest banked round, and active time only as private completed-Solo
+metrics for compatible standings; the live room deliberately keeps its score
+view to the paper score sheet and current Solo target instead of showing
+running counters. There is no opponent, CPU, start roll, final reply, or
+fabricated winner/tie in Solo. A confirmed abandonment remains a private
+`abandoned` result; pause and restart downtime do not count as active time.
+Future comparison order is turns, rolls, Zilchs, then active duration (all
+ascending). Private, server-calculated Zilch statistics keep Solo,
+human-vs-human, and human-vs-CPU separate, but deliberately curate useful
+completed-game summaries and standings rather than exposing every retained
+engine counter. The three private leaderboards are the best compatible Solo
+Sprint per active account, human-vs-human wins, and wins against each
+individual CPU strategy; they never feed a ZDWA ranking.
 Finished private Zilch games are stored as a separate, versioned result payload
 with a private read-only history; they do not enter any ZDWA scorecard, replay,
 statistic, achievement, or leaderboard path. Private Zilch awards use their
@@ -39,8 +43,19 @@ and remain visible only in Zilch context. The protected Zilch app has its own
 lobby, game view, history, result report, statistics, leaderboards, awards,
 private player-award context, and in-app rule guide. Its
 CSS-only wood-table, paper-card, and dice direction is isolated from ZDWA.
-Manual dice selection, additional Solo objectives/challenges, further Zilch
-award categories, and public release are deliberately deferred.
+The compact setup starts a default game with one click; advanced room protection
+stays optional, and a completed game can be restarted directly with the same mode.
+Additional Solo objectives/challenges, further Zilch award categories, and public
+release are deliberately deferred. A player selects scoring dice directly or
+uses one of at most three useful suggestions. The selection stays reversible
+until **Roll again** or **Bank** validates and commits it atomically. Previously
+held dice remain immutable; invalid dependent dice are removed when a selection
+is reduced. Hot Dice therefore selects all scoring dice in one tap but remains
+optional until the next action. Stacked, internally scrollable paper score sheets
+keep the active player in front and the opponent total visible. The resulting
+turns are recorded there, while chat and short-lived emoji reactions remain separate
+from the score history and are echoed to every connected participant,
+including the sender.
 
 Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
 The private Zilch award boundary, evidence source, delivery lifecycle, and
@@ -63,7 +78,7 @@ version-1 catalog are documented in
 - Self-registration from the lobby with immutable usernames
 - Personal statistics split into Normal, Hardcore, and overall results, with a selectable score chart and median
 - Achievement milestones for special scoring plays, exact final scores, multiplayer victory margins, daily streaks, office-hour game counts, exact upper-section 60s, and Hardcore progress; every achievement awards 1–10 **Ehrenberg-Marken**, the achievement currency named after Ehrenberg in Reutte. When a game unlocks several achievements, each one is presented and acknowledged separately before the final standings; a genuine title increase then receives its own celebratory **LEVEL UP!** card. Profiles show the total, and the player overview includes a sortable Ehrenberg-Marken ranking. The calculated total also assigns an account-only title from Newbie through Godmode with star insignia, shown consistently beside player names in the lobby, live game, chat, profiles, replays, and rankings. Clicking an insignia opens the rank legend at `/rangabzeichen` (as an overlay during live play). Rollout-sensitive gameplay goals, including multiplayer and upper-section-60 goals, start from their introduction while score-based goals and Hardcore game counts remain historical
-- Private Zilch awards are a separate, preview-only collection: they are based
+- Private Zilch awards are a separate, protected collection: they are based
   on newly persisted, validated Zilch results registered by the finalizer, have
   their own private delivery and acknowledgement state, are revocable with
   their source result, and never award Ehrenberg-Marken or alter ZDWA titles,
@@ -78,12 +93,14 @@ User-facing navigation uses short routes without implementation details:
 
 - `/` lobby
 - `/spiel/{game_id}` active player view
-- `/zilch` protected internal Zilch lobby (not public or indexable)
+- `/zilch` protected Zilch lobby (not public or indexable)
+- `/zilch/anmelden` direct, noindex sign-in and registration entry for Zilch
 - `/zilch/spiel/{game_id}` protected Zilch game view (not public or indexable)
 - `/zilch/historie` protected own Zilch history (not public or indexable)
 - `/zilch/ergebnis/{game_id}` protected, read-only Zilch result report (not public or indexable)
 - `/zilch/statistiken` protected own Zilch statistics (not public or indexable)
 - `/zilch/bestenlisten` protected Zilch leaderboards (not public or indexable)
+- `/zilch/konto` protected Zilch account with private statistics and awards
 - `/zilch/erfolge` protected private Zilch awards (not public or indexable)
 - `/zilch/spieler/{username}` protected Zilch-context player-award view (not
   public or indexable)

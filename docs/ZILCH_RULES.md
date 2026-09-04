@@ -126,9 +126,13 @@ und keinen Stechwurf. Der Solo-Sprint hat keinen Gegner, keine Schlussrunde
 und keinen Gegenzug: ein legaler Bank-Vorgang mit mindestens 10.000 Punkten
 schließt sein Objective unmittelbar ab.
 
-Manuelle Punkteingabe ist nicht vorgesehen. Eine spätere manuelle
-Würfelauswahl kann zusätzlich zu Quick Holds entstehen, bestimmt aber niemals
-Punkte auf dem Client.
+Manuelle Punkteingabe ist nicht vorgesehen. Die Oberfläche erlaubt die direkte
+Auswahl noch freier, wertender Würfel oder einer kompakten Empfehlung. Diese
+Auswahl bleibt ein änderbarer Entwurf, bis `Weiterwürfeln` oder `Sichern` sie
+zusammen mit der Folgeaktion atomar übernimmt. Nur eine vollständig wertende
+Auswahl ist dafür gültig; beim Abwählen werden Würfel, die dadurch nicht mehr
+werten, ebenfalls aus dem Entwurf entfernt. Bereits in einem früheren Wurf
+bestätigte Holds lassen sich nicht zurücknehmen.
 
 ## Serververtrag für spätere Bedienung
 
@@ -143,10 +147,15 @@ Die aktuell verfügbaren WebSocket-Aktionen sind:
 - `zilch_start_roll` mit `start_roll_version`; jeder menschliche Teilnehmer
   löst genau seinen eigenen serverseitigen Startwurf aus. Der CPU-Startwurf
   wird ausschließlich über den vertrauenswürdigen Server-Runner ausgelöst;
-- `zilch_roll_dice` mit `turn_id` und `version`;
+- `zilch_roll_dice` mit `turn_id` und `version`; in der Phase `awaiting_hold`
+  zusätzlich mit `roll_id`, `option_id` sowie optional gegengeprüften
+  Würfelindizes, Punkten und Kombinationstyp für Hold und Wurf in einer Action;
 - `zilch_select_hold` mit `turn_id`, `version`, `roll_id`, `option_id` sowie
   optional gegengeprüften Würfelindizes, Punkten und Kombinationstyp;
-- `zilch_bank_points` mit `turn_id` und `version`.
+- `zilch_bank_points` mit `turn_id` und `version`; dieselbe optionale
+  Hold-Referenz übernimmt eine gültige Auswahl und sichert sie atomar. Eine
+  Bestätigungspflicht oder weniger als 400 Rundenpunkte blockieren weiterhin
+  den gesamten Vorgang ohne Zustandsänderung.
 - `zilch_abandon_solo` mit aktuellem `turn_id`, `version` und dem exakten
   Server-Flag `confirmed: true`; die Oberfläche zeigt davor einen
   Bestätigungsdialog. Die Action ist ausschließlich für den menschlichen
@@ -155,8 +164,10 @@ Die aktuell verfügbaren WebSocket-Aktionen sind:
 Eine Quick-Hold-Auswahl wird für den aktuellen Turn und Roll erneut
 berechnet. Alte IDs, falsche Indizes/Punkte, ein falscher Spieler, falscher
 Spieltyp sowie doppelte oder veraltete Versionsstände werden ohne
-Zustandsänderung abgewiesen. Der ältere Platzhalter `zilch_submit_score` wird
-explizit als nicht unterstützte manuelle Punkteingabe abgelehnt.
+Zustandsänderung abgewiesen. Auswahl plus Folgeaktion erzeugt genau einen
+abschließenden Snapshot; ein Zwischenzustand wird nicht veröffentlicht. Der
+ältere Platzhalter `zilch_submit_score` wird explizit als nicht unterstützte
+manuelle Punkteingabe abgelehnt.
 
 ## Private Modi, CPU-Gegner und Ergebnisgrenze
 
@@ -177,10 +188,12 @@ Der aktuelle private Spielmodus unterstützt drei Varianten:
 Der erste echte Solo-Modus ist ein 10.000-Punkte-Sprint: Ziel ist, mindestens
 10.000 gesicherte Punkte in möglichst wenigen **eigenen Zügen** zu erreichen.
 Es gibt kein Rundenlimit. Der Server beobachtet die unveränderten Engine-
-Ereignisse und speichert als Challenge-Metriken Anzahl Züge, Anzahl Würfe,
-Zilchs, Hot-Dice-Ereignisse, höchste gesicherte Runde und aktive Dauer. Die
-spätere, noch nicht implementierte Vergleichsreihenfolge lautet: weniger Züge,
-dann weniger Würfe, weniger Zilchs und kürzere aktive Dauer.
+Ereignisse und behält Anzahl Züge, Anzahl Würfe, Zilchs, Hot-Dice-Ereignisse,
+höchste gesicherte Runde und aktive Dauer ausschließlich als private
+Ergebnismetriken für den passenden Bestenlistenvergleich. Sie sind keine
+laufenden Kennzahlen der Spielansicht. Die spätere, noch nicht implementierte
+Vergleichsreihenfolge lautet: weniger Züge, dann weniger Würfe, weniger
+Zilchs und kürzere aktive Dauer.
 
 Pausen und Neustart-/Offline-Zeit zählen nicht zur aktiven Dauer. Der Spieler
 kann einen laufenden Sprint nach einer sichtbaren Bestätigung aufgeben. Das
@@ -190,10 +203,12 @@ alle Metriken bleiben erhalten. Ein erfolgreicher Zielabschluss heißt
 Gleichstand oder Gegner.
 
 Die beiden Startwerte und ein möglicher Gleichstand bleiben im Snapshot
-sichtbar. Anschließend zeigt die private Spielseite gleichzeitig beide Boards,
-sechs ausschließlich vom Server gelieferte Würfel, Rundenscore, Gesamtpunkte,
-Zilch-Serie, Verbindungsstatus, Start-/Schlussrundenmarker und eine kompakte
-Rundenhistorie.
+sichtbar. Die aktive Spielansicht beschränkt ihre Spielstandsdarstellung
+anschließend auf den Punktezettel und, im Solo-Sprint, auf das aktuelle Ziel.
+Sie zeigt keine gesonderten Laufkennzahlen für Züge, Würfe, Zilchs, Hot Dice,
+beste Runde oder aktive Dauer. Die Würfel, gültigen Wertungen und
+Spielaktionen bleiben selbstverständlich steuerbar; sie sind keine zweite
+Statistikansicht.
 
 Die CPU verwendet genau dieselben gültigen serverseitigen Quick Holds,
 Würfelaktionen, Versionen, Scoring-Regeln und die gleiche faire RNG-Funktion
@@ -215,11 +230,19 @@ und eine CPU würfelt in einem noch legalen Gegenzug weiter, wenn ein sonstiges
 Sichern sicher verlieren würde. Die genaue technische Heuristik steht in
 [MULTIGAME_FOUNDATION.md](MULTIGAME_FOUNDATION.md).
 
-Die Bedienung erfolgt in dieser Stufe nur über serverseitig berechnete
-Quick-Hold-Karten. Einzelne Würfel wirken nicht anklickbar und eine manuelle
-Würfelauswahl oder Punkteingabe existiert nicht. Die Karten, Würfeln und
-Sichern sind Tastatur- und Touch-Buttons; der Browser sendet nur die
-referenzierte Option und übernimmt nie einen lokalen Punktewert.
+Die Bedienung verbindet direkte Würfelauswahl mit serverseitig berechneten
+Wertungsoptionen. Ein Tipp auf einen wertenden, noch freien Würfel markiert ihn
+zunächst; nur dazu passende Wertungsoptionen bleiben wählbar. Ein Tipp auf die
+passende Option hält die Auswahl verbindlich. Ein Hot-Dice-Vorschlag hält mit
+einem einzigen Tipp sofort alle zugehörigen Würfel – ohne zweiten
+Bestätigungsschritt. Die Karten, Würfel und Sichern sind Tastatur- und
+Touch-Buttons; der Browser sendet nur die referenzierte Option und übernimmt
+nie einen lokalen Punktewert.
+
+Der Punktezettel zeigt ausschließlich den serverseitigen Rundenverlauf.
+Chatnachrichten und Schnellreaktionen sind davon getrennte Kommunikation:
+Schnellreaktionen erscheinen kurz bei allen verbundenen Teilnehmern,
+einschließlich des Absenders, und ändern weder Wertung noch Punktezettel.
 
 Nach dem vollen kompetitiven Gegenzug markiert der aktive Zilch-State Gewinner
 oder Gleichstand. Ein Solo-Sprint markiert stattdessen `completed` oder
@@ -237,9 +260,12 @@ Zilch-Ergebnisroute und die private eigene Historie erreichbar. Er wird
 weiterhin **nicht** in ZDWA-Historie, Scorecards, Replay, Statistik,
 Leaderboard, Achievement- oder Profilaggregate geschrieben. Die getrennten
 privaten Zilch-Statistiken und Bestenlisten lesen ausschließlich validierte
-abgeschlossene Zilch-Payloads; sie verändern weder Ergebnisse noch Regeln. Ein alter
-Terminal-State, dem eine autoritative Pflichtangabe wie der Endzeitpunkt fehlt,
-bleibt aktiv und wird protokolliert; die Anwendung erfindet keine Werte.
+abgeschlossene Zilch-Payloads; sie verändern weder Ergebnisse noch Regeln.
+Ihre Darstellung ist bewusst kuratiert: Sie zeigt nur für Spielvergleich und
+persönlichen Rückblick nützliche Zusammenfassungen und Bestenlisten, nicht
+jede intern gespeicherte Solo-Metrik. Ein alter Terminal-State, dem eine
+autoritative Pflichtangabe wie der Endzeitpunkt fehlt, bleibt aktiv und wird
+protokolliert; die Anwendung erfindet keine Werte.
 
 ### Private Erfolge sind keine Spielregel
 
@@ -307,18 +333,19 @@ Ohne diese Konfiguration bleibt ausschließlich Admin `Mani` zugelassen.
   denselben Kriterien je Strategie. Aufgegebene Solo-Läufe und nicht aktive
   Konten sind nicht rankingfähig.
 - Noch offen bleiben insbesondere eine präzise Strafkadenz nach mehr als drei
-  aufeinanderfolgenden Zilchs, weitere Solo-Objectives/Challenges, manuelle
-  Würfelauswahl, finale Interaktions-/Markenpolitur und weitere private
-  Zilch-Erfolgskategorien.
+  aufeinanderfolgenden Zilchs, weitere Solo-Objectives/Challenges, finale
+  Interaktions-/Markenpolitur und weitere private Zilch-Erfolgskategorien.
 
 ## Designrichtung
 
 Die private Oberfläche nutzt die vorhandene `data-game="zilch"`-Grenze mit
-warmen Holz-/Spieltischflächen, physisch wirkenden CSS-Würfeln, deutlich
-leuchtenden gehaltenen/ausgewählten Zuständen, großen papierartigen
-Quick-Hold-/Würfel-/Sichern-Karten, gut lesbarer Standardschrift und großen
-Touch-Zielen. Lobby, Wartesaal, Startwurf (nur kompetitiv), ein oder zwei
-Boards, Ergebnis, Historie und
+Wirtshaus-Holzdielen, physisch wirkenden CSS-Würfeln und klar getrennten
+ausgewählten sowie bereits gehaltenen Zuständen. Der aktive, intern scrollbare
+Notizzettel liegt vorne; im Duell bleibt der Name samt Gesamtstand des anderen
+Teilnehmers auf dem dahinterliegenden Blatt sichtbar. Höchstens drei kompakte
+Wertungsvorschläge bleiben rechts mit dem Daumen erreichbar, während die sechs
+Würfel große responsive Touch-Ziele bilden. Lobby, Wartesaal, Startwurf (nur
+kompetitiv), ein oder zwei Boards, Ergebnis, Historie und
 die private Hilfe bleiben dabei eine eigenständige Zilch-Oberfläche. Zilch, Hot
 Dice, Bestätigungswurf und Spielende erhalten einen zusätzlichen Textstatus und
 kurze reduzierte-Bewegung-freundliche CSS-Effekte. Semantische Buttons,

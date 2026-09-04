@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-game="zdwa">
 <head>
   <meta charset="utf-8" />
   <title>ZDWA – Spiel</title>
@@ -8,9 +8,9 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=77bf4e6608fc">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=77bf4e6608fc" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=77bf4e6608fc" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=97dea8584de9">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=97dea8584de9" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=97dea8584de9" sizes="180x180">
   <!--
     room.html – Spielraum
     ---------------------
@@ -21,8 +21,8 @@
     - Ein schlanker Header bietet Reactions, Regeln-Link und Zurück-zur-Lobby
   -->
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <script src="/static/shell.js?v=77bf4e6608fc" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=77bf4e6608fc">
+  <script src="/static/shell.js?v=97dea8584de9" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=97dea8584de9">
 </head>
 <body class="room-page">
   <h1 class="visually-hidden">ZDWA Spielraum</h1>
@@ -34,6 +34,7 @@
     <button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-pressed="false" aria-label="Dunklen Modus einschalten">
       <span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span>
     </button>
+    <button class="small ghost game-switch room-game-switch" type="button" data-game-switch hidden disabled aria-hidden="true" aria-label="Zilch öffnen (Alt+Shift+Z)" aria-keyshortcuts="Alt+Shift+Z" title="Zilch öffnen (Alt+Shift+Z)"><span aria-hidden="true">⇄</span><span class="room-game-switch-label">Zilch</span></button>
     <button id="rulesSheetOpen" class="small ghost" type="button">Spielregeln</button>
     <button id="rankLegendSheetOpen" class="small ghost rank-legend-trigger" type="button" aria-controls="rankLegendSheet" aria-expanded="false" aria-label="Ränge" title="Ränge"><span aria-hidden="true">⭐</span></button>
     <button id="shareGameBtn" class="small ghost room-share-button" type="button" aria-label="Spiel teilen" title="Spiel teilen">↗</button>
@@ -88,8 +89,8 @@
   </div>
 
   <!-- Scripts: zuerst scoreboard (Renderer), dann room (WS/Steuerung als ES-Modul) -->
-  <script src="/static/scoreboard.js?v=77bf4e6608fc" defer></script>
-  <script src="/static/emoji.js?v=77bf4e6608fc"></script>
-  <script type="module" src="/static/room.js?v=77bf4e6608fc"></script>
+  <script src="/static/scoreboard.js?v=97dea8584de9" defer></script>
+  <script src="/static/emoji.js?v=97dea8584de9"></script>
+  <script type="module" src="/static/room.js?v=97dea8584de9"></script>
 </body>
 </html>

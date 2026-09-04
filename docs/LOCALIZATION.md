@@ -31,8 +31,9 @@ The private Zilch views use the same catalog and language switcher as ZDWA.
 Their authored German text lives in `frontend/zilch/` (and the small protected
 shell in `app/static/zilch.html`), with the matching English text in `EN`.
 
-Zilch gameplay payloads must remain semantic and server-owned: Quick Holds,
-events, and machine-readable errors use stable keys such as
+Zilch gameplay payloads must remain semantic and server-owned: the browser uses
+the server-provided scoring options to validate a direct dice selection locally;
+only the server accepts the final selection. Events and machine-readable errors use stable keys such as
 `zilch.option.*`, `zilch.event.*`, and `zilch.error.*`, plus parameters. The
 matching templates live in `DE_MESSAGES` and `EN_MESSAGES`. The browser may
 format those templates, but it must never reconstruct a scoring combination or

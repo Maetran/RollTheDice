@@ -15,7 +15,12 @@ from .game_state import roll_cooldown_ok, touch
 from .game_types import ZILCH_GAME_TYPE, game_type_from_state
 from .game_ws_session import GameSocketSession
 from .zilch_engine import (
+    ZILCH_PHASE_CONFIRMATION_ROLL_REQUIRED,
+    ZILCH_PHASE_READY_TO_ROLL,
+    ZilchHoldResult,
     ZilchRuleError,
+    ZilchScoringOption,
+    ZilchTurn,
     bank_allowed,
     fair_zilch_randint,
     roll_zilch_start_die,
@@ -215,6 +220,89 @@ def _validate_option_reference(data: dict[str, Any], option) -> None:
         raise ZilchRuleError("zilch_option_reference_mismatch")
 
 
+def _referenced_hold_result(
+    turn: ZilchTurn,
+    *,
+    roll_id: object,
+    option_id: object,
+    dice_indices: object | None = None,
+    points: object | None = None,
+    combination_type: object | None = None,
+) -> ZilchHoldResult:
+    """Return one pure, fully revalidated hold result for a current roll."""
+    result = select_zilch_option(turn, option_id)
+    reference: dict[str, Any] = {"roll_id": roll_id, "option_id": option_id}
+    if dice_indices is not None:
+        reference["dice_indices"] = dice_indices
+    if points is not None:
+        reference["points"] = points
+    if combination_type is not None:
+        reference["combination_type"] = combination_type
+    _validate_option_reference(reference, result.option)
+    return result
+
+
+def _turn_with_optional_hold(
+    turn: ZilchTurn,
+    *,
+    roll_id: object | None = None,
+    option_id: object | None = None,
+    dice_indices: object | None = None,
+    points: object | None = None,
+    combination_type: object | None = None,
+) -> tuple[ZilchTurn, ZilchHoldResult | None]:
+    """Attach an optional current-roll hold without mutating shared state.
+
+    Human clients use this for one-gesture ``Weiterwürfeln`` and ``Sichern``.
+    Supplying mirror fields without an option ID is rejected instead of being
+    silently interpreted as a plain roll or bank command.
+    """
+    if option_id is None:
+        if any(value is not None for value in (roll_id, dice_indices, points, combination_type)):
+            raise ZilchRuleError("zilch_stale_or_invalid_option")
+        return turn, None
+    result = _referenced_hold_result(
+        turn,
+        roll_id=roll_id,
+        option_id=option_id,
+        dice_indices=dice_indices,
+        points=points,
+        combination_type=combination_type,
+    )
+    return result.turn, result
+
+
+def _hold_threshold_loss(
+    game: dict[str, Any],
+    result: ZilchHoldResult | None,
+) -> ZilchActionTransition | None:
+    """Apply the existing third-roll loss boundary for an optional hold."""
+    if result is None or not result.third_roll_threshold_zilch:
+        return None
+    loss = record_zilch_loss(game, result.turn, reason="third_roll_minimum_not_met")
+    outcome = _complete_or_advance(game, result.turn.player_id)
+    return ZilchActionTransition(
+        event={
+            "type": "zilch",
+            "reason": "third_roll_minimum_not_met",
+            "player_id": result.turn.player_id,
+            "penalty": loss["penalty"],
+            "outcome": outcome,
+            "committed_option": result.option.payload(),
+        },
+        terminal=outcome is not None,
+    )
+
+
+def _event_with_committed_option(
+    event: dict[str, Any],
+    option: ZilchScoringOption | None,
+) -> dict[str, Any]:
+    if option is None:
+        return event
+    return {**event, "committed_option": option.payload()}
+
+
 def _require_zilch_live_game(game: dict[str, Any]) -> None:
     """Validate the common live-state boundary for a trusted actor command."""
     try:
@@ -297,46 +385,73 @@ def apply_zilch_roll_dice(
     *,
     turn_id: object,
     version: object,
+    roll_id: object | None = None,
+    option_id: object | None = None,
+    dice_indices: object | None = None,
+    points: object | None = None,
+    combination_type: object | None = None,
     randint_fn=None,
 ) -> ZilchActionTransition:
-    """Apply one authoritative Zilch roll for either valid actor kind."""
+    """Apply a roll, optionally committing its current draft beforehand."""
     turn = _turn_for_actor(game, actor_id, turn_id=turn_id, version=version)
+    turn, hold_result = _turn_with_optional_hold(
+        turn,
+        roll_id=roll_id,
+        option_id=option_id,
+        dice_indices=dice_indices,
+        points=points,
+        combination_type=combination_type,
+    )
+    threshold_loss = _hold_threshold_loss(game, hold_result)
+    if threshold_loss is not None:
+        return threshold_loss
     rolled_turn, evaluation = roll_zilch_turn(turn, randint_fn=randint_fn or fair_zilch_randint)
+    if hold_result is not None and hold_result.option.hot_dice:
+        record_zilch_solo_hot_dice(game, hold_result.turn)
     record_zilch_solo_roll(game, rolled_turn)
     if evaluation.zilch:
         loss = record_zilch_loss(game, rolled_turn, reason="no_scoring_option")
         outcome = _complete_or_advance(game, rolled_turn.player_id)
         return ZilchActionTransition(
-            event={
-                "type": "zilch",
-                "reason": "no_scoring_option",
-                "player_id": rolled_turn.player_id,
-                "penalty": loss["penalty"],
-                "outcome": outcome,
-            },
+            event=_event_with_committed_option(
+                {
+                    "type": "zilch",
+                    "reason": "no_scoring_option",
+                    "player_id": rolled_turn.player_id,
+                    "penalty": loss["penalty"],
+                    "outcome": outcome,
+                },
+                hold_result.option if hold_result is not None else None,
+            ),
             terminal=outcome is not None,
         )
     if evaluation.third_roll_threshold_zilch:
         loss = record_zilch_loss(game, rolled_turn, reason="third_roll_minimum_not_reachable")
         outcome = _complete_or_advance(game, rolled_turn.player_id)
         return ZilchActionTransition(
-            event={
-                "type": "zilch",
-                "reason": "third_roll_minimum_not_reachable",
-                "player_id": rolled_turn.player_id,
-                "penalty": loss["penalty"],
-                "outcome": outcome,
-            },
+            event=_event_with_committed_option(
+                {
+                    "type": "zilch",
+                    "reason": "third_roll_minimum_not_reachable",
+                    "player_id": rolled_turn.player_id,
+                    "penalty": loss["penalty"],
+                    "outcome": outcome,
+                },
+                hold_result.option if hold_result is not None else None,
+            ),
             terminal=outcome is not None,
         )
     sync_zilch_turn(game, rolled_turn)
     return ZilchActionTransition(
-        event={
-            "type": "roll",
-            "player_id": rolled_turn.player_id,
-            "turn_id": rolled_turn.turn_id,
-            "roll_id": rolled_turn.roll_id,
-        }
+        event=_event_with_committed_option(
+            {
+                "type": "roll",
+                "player_id": rolled_turn.player_id,
+                "turn_id": rolled_turn.turn_id,
+                "roll_id": rolled_turn.roll_id,
+            },
+            hold_result.option if hold_result is not None else None,
+        )
     )
 
 
@@ -354,28 +469,17 @@ def apply_zilch_select_hold(
 ) -> ZilchActionTransition:
     """Commit one current Quick Hold after full server-side revalidation."""
     turn = _turn_for_actor(game, actor_id, turn_id=turn_id, version=version)
-    result = select_zilch_option(turn, option_id)
-    reference: dict[str, Any] = {"roll_id": roll_id, "option_id": option_id}
-    if dice_indices is not None:
-        reference["dice_indices"] = dice_indices
-    if points is not None:
-        reference["points"] = points
-    if combination_type is not None:
-        reference["combination_type"] = combination_type
-    _validate_option_reference(reference, result.option)
-    if result.third_roll_threshold_zilch:
-        loss = record_zilch_loss(game, result.turn, reason="third_roll_minimum_not_met")
-        outcome = _complete_or_advance(game, result.turn.player_id)
-        return ZilchActionTransition(
-            event={
-                "type": "zilch",
-                "reason": "third_roll_minimum_not_met",
-                "player_id": result.turn.player_id,
-                "penalty": loss["penalty"],
-                "outcome": outcome,
-            },
-            terminal=outcome is not None,
-        )
+    result = _referenced_hold_result(
+        turn,
+        roll_id=roll_id,
+        option_id=option_id,
+        dice_indices=dice_indices,
+        points=points,
+        combination_type=combination_type,
+    )
+    threshold_loss = _hold_threshold_loss(game, result)
+    if threshold_loss is not None:
+        return threshold_loss
     sync_zilch_turn(game, result.turn)
     if result.option.hot_dice:
         record_zilch_solo_hot_dice(game, result.turn)
@@ -394,9 +498,25 @@ def apply_zilch_bank_points(
     *,
     turn_id: object,
     version: object,
+    roll_id: object | None = None,
+    option_id: object | None = None,
+    dice_indices: object | None = None,
+    points: object | None = None,
+    combination_type: object | None = None,
 ) -> ZilchActionTransition:
-    """Bank only a versioned, currently legal turn through the shared engine."""
+    """Bank a legal turn, optionally committing its current draft first."""
     turn = _turn_for_actor(game, actor_id, turn_id=turn_id, version=version)
+    turn, hold_result = _turn_with_optional_hold(
+        turn,
+        roll_id=roll_id,
+        option_id=option_id,
+        dice_indices=dice_indices,
+        points=points,
+        combination_type=combination_type,
+    )
+    threshold_loss = _hold_threshold_loss(game, hold_result)
+    if threshold_loss is not None:
+        return threshold_loss
     allowed, reason = bank_allowed(turn)
     if not allowed:
         raise ZilchRuleError(str(reason or "zilch_bank_not_allowed"))
@@ -416,14 +536,17 @@ def apply_zilch_bank_points(
         and str(outcome.get("status") or "") == "completed"
     )
     return ZilchActionTransition(
-        event={
-            "type": "solo_completed" if is_solo_completion else "bank",
-            "player_id": turn.player_id,
-            "points": turn.round_points,
-            "total": total,
-            "outcome": outcome,
-            "final_round_started": final_round_started,
-        },
+        event=_event_with_committed_option(
+            {
+                "type": "solo_completed" if is_solo_completion else "bank",
+                "player_id": turn.player_id,
+                "points": turn.round_points,
+                "total": total,
+                "outcome": outcome,
+                "final_round_started": final_round_started,
+            },
+            hold_result.option if hold_result is not None else None,
+        ),
         terminal=outcome is not None,
     )
 
@@ -528,14 +651,39 @@ async def _roll_dice(
 ) -> bool:
     try:
         player_id = _require_human_session_actor(session)
-        if not roll_cooldown_ok(session.game, player_id, cooldown_s=0.6):
-            await _send_error(session, "zilch_roll_cooldown")
-            return False
+        # Validate the versioned command and optional hold before consuming
+        # the cooldown. A stale request from a replaced socket must not block
+        # the current tab's next legitimate roll.
+        turn = _turn_for_actor(
+            session.game,
+            player_id,
+            turn_id=data.get("turn_id"),
+            version=data.get("version"),
+        )
+        turn, hold_result = _turn_with_optional_hold(
+            turn,
+            roll_id=data.get("roll_id") if "roll_id" in data else None,
+            option_id=data.get("option_id") if "option_id" in data else None,
+            dice_indices=data.get("dice_indices") if "dice_indices" in data else None,
+            points=data.get("points") if "points" in data else None,
+            combination_type=data.get("combination_type") if "combination_type" in data else None,
+        )
+        if hold_result is None or not hold_result.third_roll_threshold_zilch:
+            if turn.phase not in {ZILCH_PHASE_READY_TO_ROLL, ZILCH_PHASE_CONFIRMATION_ROLL_REQUIRED}:
+                raise ZilchRuleError("zilch_roll_not_allowed")
+            if not roll_cooldown_ok(session.game, player_id, cooldown_s=0.6):
+                await _send_error(session, "zilch_roll_cooldown")
+                return False
         transition = apply_zilch_roll_dice(
             session.game,
             player_id,
             turn_id=data.get("turn_id"),
             version=data.get("version"),
+            roll_id=data.get("roll_id") if "roll_id" in data else None,
+            option_id=data.get("option_id") if "option_id" in data else None,
+            dice_indices=data.get("dice_indices") if "dice_indices" in data else None,
+            points=data.get("points") if "points" in data else None,
+            combination_type=data.get("combination_type") if "combination_type" in data else None,
             randint_fn=fair_zilch_randint,
         )
     except ZilchRuleError as exc:
@@ -600,6 +748,11 @@ async def _bank_points(
             player_id,
             turn_id=data.get("turn_id"),
             version=data.get("version"),
+            roll_id=data.get("roll_id") if "roll_id" in data else None,
+            option_id=data.get("option_id") if "option_id" in data else None,
+            dice_indices=data.get("dice_indices") if "dice_indices" in data else None,
+            points=data.get("points") if "points" in data else None,
+            combination_type=data.get("combination_type") if "combination_type" in data else None,
         )
     except ZilchRuleError as exc:
         await _send_error(session, exc.code)

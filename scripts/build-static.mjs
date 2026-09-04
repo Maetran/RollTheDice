@@ -20,6 +20,7 @@ const targets = [
   },
   { source: "frontend/lobby/index.js", output: "app/static/lobby.js", format: "esm" },
   { source: "frontend/zilch/index.js", output: "app/static/zilch.js", format: "esm" },
+  { source: "frontend/zilch/login.js", output: "app/static/zilch-login.js", format: "esm" },
   {
     sources: [
       "frontend/room/helpers.js",

@@ -166,7 +166,7 @@ function fixtureSnapshots() {
         hot_dice: false,
         free_roll: false,
         all_available_dice: false,
-        follow_up_actions: ["zilch_roll_dice", "zilch_bank_points"],
+        follow_up_actions: ["zilch_roll_dice"],
       },
       {
         id: "fixture-single-five",
@@ -262,6 +262,71 @@ function fixtureSnapshots() {
   });
 
   return { hotDice, holdOptions, heldForConfirmation, thirdZilch };
+}
+
+function hotDiceChoiceSnapshot() {
+  return baseSnapshot({
+    _turn: { player_id: "p1" },
+    _dice: [1, 2, 3, 4, 5, 6],
+    _holds: [false, false, false, false, false, false],
+    _rolls_used: 2,
+    _zilch_boards: {
+      p1: board({ playerId: "p1", totalPoints: 4200, roundPoints: 0, active: true }),
+      p2: board({ playerId: "p2", totalPoints: 3600, roundPoints: 0 }),
+    },
+    _round_points: { p1: 0, p2: 0 },
+    _total_points: { p1: 4200, p2: 3600 },
+    _zilch_turn_state: {
+      turn_id: 17,
+      version: 8,
+      phase: "awaiting_hold",
+      roll_id: 12,
+      rolls_used: 2,
+      available_dice_indices: [0, 1, 2, 3, 4, 5],
+      held_dice_indices: [],
+      committed_holds: [],
+      round_points: 0,
+      confirmation_required: false,
+      confirmation_reasons: [],
+      can_roll: false,
+      can_select_hold: true,
+      can_bank: false,
+      bank_block_reason: "zilch_hold_required",
+    },
+    _zilch_quick_holds: [
+      {
+        id: "fixture-hot-straight",
+        combination_type: "straight",
+        dice_indices: [0, 1, 2, 3, 4, 5],
+        dice_values: [1, 2, 3, 4, 5, 6],
+        points: 2000,
+        label_key: "zilch.option.straight",
+        label_params: {},
+        roll_id: 12,
+        requires_confirmation: true,
+        hot_dice: true,
+        free_roll: true,
+        all_available_dice: true,
+        follow_up_actions: ["zilch_roll_dice"],
+      },
+      {
+        id: "fixture-single-one-hot-compatible",
+        combination_type: "single_one",
+        dice_indices: [0],
+        dice_values: [1],
+        points: 100,
+        label_key: "zilch.option.single_one",
+        label_params: { count: 1 },
+        roll_id: 12,
+        requires_confirmation: false,
+        hot_dice: false,
+        free_roll: false,
+        all_available_dice: false,
+        follow_up_actions: ["zilch_roll_dice"],
+      },
+    ],
+    _zilch_last_event: { type: "roll" },
+  });
 }
 
 function cpuTurnSnapshot() {
@@ -452,13 +517,21 @@ async function installGameScreenFixture(page, gameId, snapshots, detailsOverride
           this._message({ player_id: "p1", resume_token: "fixture-resume" });
           this._message({ scoreboard: fixtureSnapshots.initial || fixtureSnapshots.hotDice });
         } else if (message.action === "zilch_roll_dice") {
-          const next = window.__zilchGameScreenFixtureMessages
-            .some(item => item.action === "zilch_select_hold")
-            ? fixtureSnapshots.thirdZilch
-            : fixtureSnapshots.holdOptions;
+          const next = message.option_id
+            ? (fixtureSnapshots.thirdZilch || fixtureSnapshots.heldForConfirmation || fixtureSnapshots.initial)
+            : (fixtureSnapshots.holdOptions || fixtureSnapshots.initial);
           this._message({ scoreboard: next, zilch_event: next._zilch_last_event });
         } else if (message.action === "zilch_select_hold") {
           this._message({ scoreboard: fixtureSnapshots.heldForConfirmation, zilch_event: fixtureSnapshots.heldForConfirmation._zilch_last_event });
+        } else if (message.action === "send_emoji") {
+          // The social transport echoes reactions to the sender as well as to
+          // the opponent. This is intentionally different from text chat.
+          this._message({ emoji: {
+            from_id: "p1",
+            from: "Mani",
+            emoji: message.emoji,
+            ts: "2026-09-04T12:00:00+00:00",
+          } });
         }
       }
 
@@ -483,7 +556,7 @@ async function installGameScreenFixture(page, gameId, snapshots, detailsOverride
   }, { fixtureGameId: gameId, fixtureDetails: details, fixtureSnapshots: snapshots });
 }
 
-test("the private CPU create controls are keyboard-operable and send only the selected strategy", async ({ browser, baseURL }) => {
+test("the private CPU create selects send only the selected strategy", async ({ browser, baseURL }) => {
   // Service workers intentionally keep authenticated Zilch documents
   // network-only, but a fresh blocked context also makes this request-payload
   // assertion independent from a prior suite's cached shell.
@@ -493,30 +566,21 @@ test("the private CPU create controls are keyboard-operable and send only the se
     await signInAsPreviewMani(page);
     await page.goto("/zilch");
 
-    const multiplayer = page.locator("input[name='zilchPlayMode'][value='multiplayer']");
-    const cpu = page.locator("input[name='zilchPlayMode'][value='cpu']");
+    const solo = page.locator("[data-zilch-play-mode='solo']");
+    const cpu = page.locator("[data-zilch-play-mode='cpu']");
     const strategy = page.locator("#zilchCpuStrategy");
-    const conservative = page.locator("input[name='zilchCpuStrategy'][value='conservative']");
-    const normal = page.locator("input[name='zilchCpuStrategy'][value='normal']");
-    const aggressive = page.locator("input[name='zilchCpuStrategy'][value='aggressive']");
+    const strategySelect = page.locator("#zilchCpuStrategySelect");
 
-    await expect(multiplayer).toBeChecked();
+    await expect(solo).toHaveAttribute("aria-checked", "true");
+    expect(await page.locator("[data-zilch-play-mode]").evaluateAll(nodes => nodes.map(node => node.dataset.zilchPlayMode))).toEqual(["solo", "multiplayer", "cpu"]);
     await expect(strategy).toBeHidden();
 
-    // Native radio semantics make the game mode and strategy usable without a
-    // pointer. This intentionally exercises the browser's real radio-group
-    // navigation rather than changing a value through page.evaluate().
-    await multiplayer.focus();
-    await page.keyboard.press("ArrowDown");
-    await expect(cpu).toBeChecked();
+    await cpu.click();
+    await expect(cpu).toHaveAttribute("aria-checked", "true");
     await expect(strategy).toBeVisible();
-    await expect(normal).toBeChecked();
-
-    await conservative.focus();
-    await page.keyboard.press("ArrowRight");
-    await expect(normal).toBeChecked();
-    await page.keyboard.press("ArrowRight");
-    await expect(aggressive).toBeChecked();
+    await expect(strategySelect).toHaveValue("normal");
+    await strategySelect.selectOption("aggressive");
+    await expect(strategySelect).toHaveValue("aggressive");
 
     let createPayload = null;
     await page.route("**/api/games", async route => {
@@ -559,13 +623,13 @@ test("the solo create controls expose the fixed sprint and send no client object
     await signInAsPreviewMani(page);
     await page.goto("/zilch");
 
-    const solo = page.locator("input[name='zilchPlayMode'][value='solo']");
-    await solo.check();
-    await expect(solo).toBeChecked();
+    const solo = page.locator("[data-zilch-play-mode='solo']");
+    await solo.click();
+    await expect(solo).toHaveAttribute("aria-checked", "true");
     await expect(page.locator("#zilchSoloObjective")).toBeVisible();
     await expect(page.locator("#zilchSoloObjective")).toContainText(/10(?:'|,|’|\s)000/);
     await expect(page.locator("#zilchCpuStrategy")).toBeHidden();
-    expect(await page.locator("#zilchGamePassphrase").evaluate(input => input.closest("label")?.hidden)).toBe(true);
+    await expect(page.locator(".zilch-create-options")).toBeHidden();
 
     let createPayload = null;
     await page.route("**/api/games", async route => {
@@ -647,7 +711,7 @@ test("a newly created owned solo run is presented as continue, never as a joinab
 
     await page.goto("/zilch");
     const running = page.locator("#zilchRunningGames");
-    await expect(running).toContainText("Mein Sprint");
+    await expect(running).toContainText(/Solo-Sprint|Solo sprint/);
     await expect(running).toContainText(/Solo-Lauf fortsetzen|Continue solo run/);
     await expect(running.getByRole("link", { name: /Solo-Lauf fortsetzen|Continue solo run/ })).toHaveAttribute("href", "/zilch/spiel/solo-owned-lobby-fixture");
     await expect(running).not.toContainText(/Beitreten|Join/);
@@ -657,7 +721,7 @@ test("a newly created owned solo run is presented as continue, never as a joinab
   }
 });
 
-test("a private solo result renders its one board and metrics without match-only sections", async ({ browser, baseURL }) => {
+test("a private solo result keeps the objective compact and the score sheet in focus", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
   const page = await context.newPage();
   try {
@@ -726,8 +790,10 @@ test("a private solo result renders its one board and metrics without match-only
     await page.goto(`/zilch/ergebnis/${resultId}`);
     await expect(page.locator(".zilch-result-board")).toHaveCount(1);
     await expect(page.locator(".zilch-result-summary")).toContainText(/Solo-Ziel erreicht|Solo objective reached/);
-    await expect(page.locator(".zilch-solo-objective")).toContainText(/10(?:'|,|’|\s)000/);
-    await expect(page.locator(".zilch-solo-metrics")).toContainText(/(?:Züge|Turns).*1/);
+    await expect(page.locator(".zilch-result-summary")).toContainText(/10(?:'|,|’|\s)000/);
+    // The result still identifies the sprint, but does not repeat the target,
+    // progress and telemetry in a second card beside the actual score sheet.
+    await expect(page.locator(".zilch-solo-objective, .zilch-solo-metrics")).toHaveCount(0);
     await expect(page.locator(".zilch-result-start-roll")).toHaveCount(0);
     await expect(page.locator(".zilch-result-final-round")).toHaveCount(0);
     await expect(page.locator(".zilch-result-board")).toContainText("Mani");
@@ -765,11 +831,10 @@ test("a CPU participant is rendered from the authoritative participant snapshot 
     const cpuBoard = page.locator('[data-zilch-board-id="cpu-river"]');
     await expect(cpuBoard).toContainText("Tischgeist");
     await expect(cpuBoard).toContainText(/CPU/);
-    await expect(cpuBoard).toContainText(/Aggressiv|Aggressive/);
     await expect(cpuBoard.locator(".zilch-connection-dot")).toHaveCount(0);
     await expect(page.locator("#zilchLiveStatus")).toContainText(/CPU überlegt|CPU is thinking/);
-    await expect(page.locator(".zilch-event")).toContainText(/CPU.*(?:hält|holds).*Drilling|CPU.*(?:hält|holds).*Three/);
-    await expect(page.locator(".zilch-quick-hold")).toBeDisabled();
+    await expect(page.locator(".zilch-event")).toHaveCount(0);
+    await expect(page.locator("[data-zilch-commit-hold]")).toHaveCount(0);
     await expect(page.locator("[data-zilch-roll]")).toBeDisabled();
     await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
   } finally {
@@ -777,7 +842,68 @@ test("a CPU participant is rendered from the authoritative participant snapshot 
   }
 });
 
-test("a server-driven solo snapshot renders one board, objective metrics, and a confirmed abandon action", async ({ browser, baseURL }) => {
+test("a finished Zilch game starts the same mode again with one click", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    const gameId = "finished-restart-fixture";
+    const finished = baseSnapshot({
+      _finished: true,
+      _turn: null,
+      _zilch_outcome: { tied: false, winner_ids: ["p1"] },
+      _zilch_boards: {
+        p1: board({ playerId: "p1", totalPoints: 10400, roundPoints: 0 }),
+        p2: board({ playerId: "p2", totalPoints: 9300, roundPoints: 0 }),
+      },
+      _zilch_turn_state: null,
+      _zilch_quick_holds: [],
+    });
+    await installGameScreenFixture(page, gameId, { initial: finished }, { play_mode: "multiplayer" });
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+
+    let createPayload = null;
+    await page.route("**/api/games", async route => {
+      if (route.request().method() !== "POST") return route.continue();
+      createPayload = route.request().postDataJSON();
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ game_id: "restarted-ui-fixture" }),
+      });
+    });
+    await page.route("**/zilch/spiel/restarted-ui-fixture", route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: "<!doctype html><title>Restart fixture</title>",
+    }));
+
+    await page.goto(`/zilch/spiel/${gameId}`);
+    const restart = page.locator("[data-zilch-new-round]");
+    await expect(restart).toBeVisible();
+    await Promise.all([
+      page.waitForRequest(request => request.method() === "POST" && new URL(request.url()).pathname === "/api/games"),
+      restart.click(),
+    ]);
+    expect(createPayload).toMatchObject({
+      name: "Tischprobe",
+      game_type: "zilch",
+      mode: "2",
+      play_mode: "multiplayer",
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+test("a server-driven solo snapshot keeps the score sheet focused and offers abandon from the compact header", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
   const page = await context.newPage();
   try {
@@ -808,18 +934,116 @@ test("a server-driven solo snapshot renders one board, objective metrics, and a 
     await expect(page.locator('[data-zilch-board-id="p1"]')).toContainText("Mani");
     await expect(page.locator(".zilch-start-roll")).toHaveCount(0);
     await expect(page.locator(".zilch-board--cpu")).toHaveCount(0);
-    await expect(page.locator("#zilchChatForm")).toHaveCount(0);
-    await expect(page.locator(".zilch-solo-objective")).toContainText(/10(?:'|,|’|\s)000/);
-    await expect(page.locator(".zilch-solo-metrics")).toContainText(/(?:Züge|Turns).*3/);
-    await expect(page.locator(".zilch-solo-metrics")).toContainText(/(?:Würfe|Rolls).*5/);
-    await expect(page.locator("[data-zilch-abandon-solo]")).toBeEnabled();
+    await expect(page.locator("#zilchChatForm")).toHaveCount(1);
+    await expect(page.locator(".zilch-score-notebook")).toContainText(/10(?:'|,|’|\s)000/);
+    await expect(page.locator(".zilch-solo-metrics")).toHaveCount(0);
+    await expect(page.locator("[data-zilch-abandon-solo-header]")).toBeEnabled();
 
     await page.evaluate(() => {
       window.ZDWA_UI = { ...(window.ZDWA_UI || {}), confirm: () => Promise.resolve(true) };
     });
-    await page.locator("[data-zilch-abandon-solo]").click();
+    await page.locator("[data-zilch-abandon-solo-header]").click();
     await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
       expect.objectContaining({ action: "zilch_abandon_solo", turn_id: 41, version: 7, confirmed: true }),
+    ]));
+  } finally {
+    await context.close();
+  }
+});
+
+test("a Hot Dice choice stays optional until Weiterwürfeln commits it atomically", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    const gameId = "hot-dice-direct-fixture";
+    const snapshot = hotDiceChoiceSnapshot();
+    await installGameScreenFixture(page, gameId, { initial: snapshot, heldForConfirmation: snapshot });
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    await page.goto(`/zilch/spiel/${gameId}`);
+
+    const hotDice = page.locator("[data-zilch-recommendation='fixture-hot-straight']");
+    await expect(hotDice).toContainText("Hot Dice");
+    await page.locator("[data-zilch-die-index='0']").click();
+    await expect(hotDice).toBeEnabled();
+    await hotDice.click();
+    await expect(page.locator(".zilch-die--selected")).toHaveCount(6);
+    expect(await page.evaluate(() => window.__zilchGameScreenFixtureMessages.some(message => message.action === "zilch_select_hold"))).toBe(false);
+
+    // Removing one die from a straight also removes the now invalid dependent
+    // draft; the committed state still remains untouched.
+    await page.locator("[data-zilch-die-index='0']").click();
+    await expect(page.locator(".zilch-die--selected")).toHaveCount(0);
+    await hotDice.click();
+    await page.locator("[data-zilch-roll]").click();
+    await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        action: "zilch_roll_dice",
+        turn_id: 17,
+        version: 8,
+        roll_id: 12,
+        option_id: "fixture-hot-straight",
+        dice_indices: [0, 1, 2, 3, 4, 5],
+        points: 2000,
+      }),
+    ]));
+  } finally {
+    await context.close();
+  }
+});
+
+test("a selected score is banked atomically with its exact server option", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+
+    const bankable = JSON.parse(JSON.stringify(fixtureSnapshots().holdOptions));
+    bankable._zilch_turn_state.confirmation_required = false;
+    bankable._zilch_turn_state.confirmation_reasons = [];
+    bankable._zilch_quick_holds = bankable._zilch_quick_holds.map(option => (
+      option.id === "fixture-single-five"
+        ? { ...option, follow_up_actions: ["zilch_roll_dice", "zilch_bank_points"] }
+        : option
+    ));
+
+    const gameId = "atomic-bank-fixture";
+    await installGameScreenFixture(page, gameId, { initial: bankable });
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    await page.goto(`/zilch/spiel/${gameId}`);
+
+    const option = page.locator('[data-zilch-recommendation="fixture-single-five"]');
+    await expect(option).toBeEnabled();
+    await option.click();
+    await expect(option).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-zilch-bank]")).toBeEnabled();
+    await page.locator("[data-zilch-bank]").click();
+
+    await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        action: "zilch_bank_points",
+        turn_id: 11,
+        version: 5,
+        roll_id: 8,
+        option_id: "fixture-single-five",
+        dice_indices: [3],
+        points: 50,
+        combination_type: "single_five",
+      }),
     ]));
   } finally {
     await context.close();
@@ -852,37 +1076,98 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
     await expect(page.locator("[data-zilch-board-id]")).toHaveCount(2);
     await expect(page.locator('[data-zilch-board-id="p1"]')).toContainText("Mani");
     await expect(page.locator('[data-zilch-board-id="p2"]')).toContainText("PreviewFriend");
-    await expect(page.locator('[data-zilch-board-id="p2"]')).toContainText(/Schlussrunde ausgelöst|Final round triggered/);
-    await expect(page.locator('[data-zilch-board-id="p1"]')).toContainText(/Gegenzug offen|Reply pending/);
+    await expect(page.locator('[data-zilch-board-id="p1"]')).toHaveClass(/is-active/);
+    await expect(page.locator(".zilch-score-notebook")).not.toContainText(/Gegenzug offen|Reply pending|Schlussrunde ausgelöst|Final round triggered/);
 
     const dice = page.locator(".zilch-die");
     await expect(dice).toHaveCount(6);
     await expect(dice.first()).toHaveAttribute("role", "img");
     await expect(dice.first()).toHaveAttribute("aria-label", /(?:Würfel 1: Noch nicht gewürfelt|Die 1: Not rolled yet)/);
     expect(await dice.evaluateAll(nodes => nodes.every(node => !node.hasAttribute("tabindex")))).toBe(true);
-    await expect(page.locator(".zilch-event--hot")).toContainText("Hot Dice");
+    await expect(page.locator(".zilch-event")).toHaveCount(0);
     await expect(page.locator("#zilchLiveStatus")).toContainText("Hot Dice");
-    await expect(page.locator("[data-zilch-roll]")).toContainText(/Bestätigungswurf|confirmation/i);
+    await expect(page.locator("[data-zilch-roll]")).toContainText(/Bestätigen|confirm/i);
     await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
-    await expect(page.locator(".zilch-bank-reason")).toContainText(/Bestätigungswurf mit Punkten|scoring confirmation roll/i);
+    await expect(page.locator(".zilch-play-layout")).toHaveClass(/zilch-play-layout--no-choices/);
+    await expect(page.locator(".zilch-recommendations")).toHaveCount(0);
+    const initialLayout = await page.evaluate(() => {
+      const layout = document.querySelector(".zilch-play-layout").getBoundingClientRect();
+      const notebook = document.querySelector(".zilch-play-layout__notebook").getBoundingClientRect();
+      return { layoutWidth: layout.width, notebookWidth: notebook.width };
+    });
+    expect(Math.abs(initialLayout.layoutWidth - initialLayout.notebookWidth)).toBeLessThanOrEqual(1);
+
+    // Reactions follow ZDWA's social path: the server echoes them to the
+    // sender and a transient bubble appears without adding a chat line.
+    await expect(page.locator(".emoji-fab")).toBeVisible();
+    await page.locator(".emoji-fab").click();
+    await page.locator(".emoji-btn").first().click();
+    await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: "send_emoji", emoji: "👍" }),
+    ]));
+    await expect(page.locator(".emoji-pop")).toContainText("Mani");
+    await expect(page.locator("#zilchChatHistory")).not.toContainText("👍");
 
     await page.locator("[data-zilch-roll]").click();
     await expect(page.locator(".zilch-die")).toHaveCount(6);
     await expect(page.locator(".zilch-die").nth(0)).toHaveAttribute("aria-label", /(?:Würfel 1: zeigt 1|Die 1: shows 1)/);
     await expect(page.locator(".zilch-die--non-scoring")).toHaveCount(2);
-    await expect(page.locator(".zilch-quick-hold")).toHaveCount(2);
+    await expect(page.locator("[data-zilch-roll]")).toContainText(/Weiterwürfeln|roll again/i);
 
-    const tripleOnes = page.locator('[data-zilch-option="fixture-three-ones"]');
-    await expect(tripleOnes).toHaveAccessibleName(/(?:Drilling Einsen|Three ones).*(?:Würfel|Affected dice).*1 \(1\).*2 \(1\).*3 \(1\)/);
-    await expect(tripleOnes).toContainText(/1(?:'|,|’|\s)000/);
-    await tripleOnes.click();
-    await expect(page.locator(".zilch-die--held")).toHaveCount(3);
-    await expect(page.locator("[data-zilch-roll]")).toContainText(/Bestätigungswurf|confirmation/i);
+    // The active room is deliberately mobile-first: at a regular phone
+    // width the shared score sheet stays on the left and the actionable
+    // score choices stay in the right thumb zone, without horizontal scroll.
+    await page.setViewportSize({ width: 390, height: 827 });
+    const [notebookBox, choicesBox, pageWidths, headerGeometry] = await Promise.all([
+      page.locator(".zilch-play-layout__notebook").boundingBox(),
+      page.locator(".zilch-recommendations").boundingBox(),
+      page.evaluate(() => ({
+        scroll: document.documentElement.scrollWidth,
+        client: document.documentElement.clientWidth,
+        scrollHeight: document.documentElement.scrollHeight,
+        viewportHeight: window.innerHeight,
+      })),
+      page.evaluate(() => {
+        const header = document.querySelector(".zilch-header").getBoundingClientRect();
+        const context = document.querySelector("#zilchRoomContext").getBoundingClientRect();
+        const controls = [...document.querySelectorAll(".zilch-header-tools > *")]
+          .filter(element => element.getClientRects().length)
+          .map(element => element.getBoundingClientRect().height);
+        return {
+          headerHeight: header.height,
+          contextCenter: context.top + context.height / 2,
+          headerCenter: header.top + header.height / 2,
+          controlHeights: controls,
+        };
+      }),
+    ]);
+    expect(notebookBox).not.toBeNull();
+    expect(choicesBox).not.toBeNull();
+    expect(notebookBox.x).toBeLessThan(choicesBox.x);
+    expect(Math.abs(notebookBox.y - choicesBox.y)).toBeLessThanOrEqual(1);
+    expect(pageWidths.scroll).toBeLessThanOrEqual(pageWidths.client);
+    expect(pageWidths.scrollHeight).toBeLessThanOrEqual(pageWidths.viewportHeight);
+    expect(headerGeometry.headerHeight).toBeLessThanOrEqual(56);
+    expect(Math.abs(headerGeometry.contextCenter - headerGeometry.headerCenter)).toBeLessThanOrEqual(3);
+    expect(headerGeometry.controlHeights.length).toBeGreaterThanOrEqual(3);
+    expect(headerGeometry.controlHeights.every(height => Math.abs(height - headerGeometry.controlHeights[0]) <= 1)).toBe(true);
+
+    const scoringDice = page.locator("[data-zilch-die-index]");
+    await expect(scoringDice).toHaveCount(4);
+    await scoringDice.nth(0).click();
+    await scoringDice.nth(1).click();
+    await scoringDice.nth(2).click();
+    const selectedScore = page.locator("[data-zilch-recommendation='fixture-three-ones']");
+    await expect(selectedScore).toContainText(/1(?:'|,|’|\s)000/);
+    await expect(selectedScore).toBeEnabled();
+    await expect(selectedScore).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".zilch-die--selected")).toHaveCount(3);
     await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
-    await expect(page.locator(".zilch-bank-reason")).toContainText(/Bestätigungswurf mit Punkten|scoring confirmation roll/i);
+
+    await page.locator("[data-zilch-roll]").click();
     await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        action: "zilch_select_hold",
+        action: "zilch_roll_dice",
         turn_id: 11,
         version: 5,
         roll_id: 8,
@@ -892,11 +1177,10 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
       }),
     ]));
 
-    await page.locator("[data-zilch-roll]").click();
-    await expect(page.locator(".zilch-event--zilch")).toContainText(/Dritter Zilch|Third Zilch/);
-    await expect(page.locator(".zilch-event--zilch")).toContainText(/500 Punkte Abzug|500-point penalty/);
-    await expect(page.locator('[data-zilch-board-id="p1"]')).toContainText(/Zilch.*500/);
-    await expect(page.locator('[data-zilch-board-id="p2"]')).toContainText(/Am Zug|Active/);
+    await expect(page.locator(".zilch-event")).toHaveCount(0);
+    await expect(page.locator("#zilchLiveStatus")).toContainText(/Dritter Zilch|Third Zilch/);
+    await expect(page.locator('[data-zilch-board-id="p1"]')).toContainText(/(?:Zilch.*500|500.*Zilch|−500)/);
+    await expect(page.locator('[data-zilch-board-id="p2"]')).toHaveClass(/is-active/);
     await expect(page.locator(".zilch-die")).toHaveCount(6);
   } finally {
     await context.close();

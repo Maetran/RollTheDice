@@ -16,6 +16,13 @@
   backdrop-filter:saturate(1.2) blur(12px);
 }
 .room-header .spacer{ flex:1 1 auto; }
+.room-page .room-game-switch{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:.3rem;
+  min-width:2.25rem;
+}
 .header-turn-status,
 .chat-reactions-host{
   display:none;

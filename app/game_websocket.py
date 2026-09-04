@@ -184,7 +184,9 @@ async def _receive_messages(
         # action, however, marks a ZDWA-shaped aborted result and must not
         # bypass the Zilch engine's terminal-state boundary.
         allowed_social_actions = (
-            frozenset({"chat_message", "pause_game"})
+            # Reactions use the same short-lived broadcast path as ZDWA.
+            # They do not belong in the persistent chat history.
+            frozenset({"send_emoji", "chat_message", "pause_game"})
             if game_type_from_state(session.game) == ZILCH_GAME_TYPE
             else SOCIAL_ACTIONS
         )
