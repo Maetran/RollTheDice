@@ -162,6 +162,8 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   await expect(page.locator("#createGameCard")).toHaveCount(0);
   const zilchGameSwitch = page.locator(".zilch-header [data-game-switch]");
   await expect(zilchGameSwitch).toBeVisible();
+  await expect(zilchGameSwitch).toHaveAttribute("aria-label", /^(?:ZDWA öffnen|Open ZDWA) \(Alt\+Shift\+Z\)$/);
+  await expect(zilchGameSwitch.locator(".game-switch-icon")).toHaveText("🎲");
   await expect(zilchGameSwitch).toContainText("ZDWA");
   await expect(zilchGameSwitch.locator("span").last()).toBeVisible();
   const identity = page.locator(".zilch-lobby-identity");
@@ -172,6 +174,8 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   await expect(page.locator(".zilch-header [data-zilch-logout]")).toHaveCount(0);
 
   await page.setViewportSize({ width: 320, height: 844 });
+  await expect(zilchGameSwitch.locator(".game-switch-icon")).toBeVisible();
+  await expect(zilchGameSwitch.locator("span").last()).toBeHidden();
   const lobbyAlignment = await page.evaluate(() => {
     const modes = [...document.querySelectorAll(".zilch-mode-option")].map(option => {
       const style = getComputedStyle(option);

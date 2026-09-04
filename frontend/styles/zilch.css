@@ -3506,6 +3506,14 @@ html[data-game="zilch"] .zilch-header-tools .game-switch {
   line-height: 1;
 }
 
+html[data-game="zilch"] .zilch-header-tools .game-switch-icon {
+  display: inline-grid;
+  place-items: center;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+  font-size: 1rem;
+  line-height: 1;
+}
+
 @media (max-width: 560px) {
   html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch,
   html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch {
@@ -3520,7 +3528,7 @@ html[data-game="zilch"] .zilch-header-tools .game-switch {
 
   html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch > span:first-child,
   html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch > span:first-child {
-    display: inline;
+    display: inline-grid;
   }
 
   html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch > span:last-child,
