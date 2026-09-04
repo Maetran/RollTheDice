@@ -151,7 +151,7 @@ async def _receive_messages(
         action_value = data.get("action")
         action = action_value if isinstance(action_value, str) else None
 
-        # Zilch preview access is checked again for every received action. A
+        # Zilch access is checked again for every received action. A
         # deleted session, role change, or account deactivation therefore does
         # not leave an already-open socket authorized indefinitely.
         if session.game.get("_game_type", "zdwa") == "zilch":
@@ -159,7 +159,7 @@ async def _receive_messages(
             if not can_access_game(session.auth_identity, session.game):
                 await close_with_error(
                     session.websocket,
-                    "Zilch-Vorschau nicht mehr verfügbar",
+                    "Zilch-Zugang nicht mehr verfügbar",
                     fatal=True,
                     code=1008,
                 )

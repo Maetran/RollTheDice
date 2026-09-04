@@ -753,7 +753,7 @@ async function renderLobby() {
         <button class="zilch-create-submit" type="submit">${escapeHtml(t("Partie erstellen"))}</button>
         <details class="zilch-create-options">
           <summary>${escapeHtml(t("Passwortschutz"))}</summary>
-          <label><span>${escapeHtml(t("Raumcode (optional)"))}</span><input id="zilchGamePassphrase" type="password" maxlength="100" autocomplete="new-password" placeholder="${escapeHtml(t("Nur zum privaten Beitritt"))}"></label>
+          <label><span>${escapeHtml(t("Raumcode (optional)"))}</span><input id="zilchGamePassphrase" type="password" maxlength="100" autocomplete="new-password" placeholder="${escapeHtml(t("Nur mit Raumcode"))}"></label>
         </details>
       </form>
       <p id="zilchCreateError" class="zilch-error" role="status"></p>
@@ -796,7 +796,7 @@ async function renderLobby() {
       );
       const runningGames = alphaGames.filter(game => belongsToMe(game) && (game.started || isSoloGame(game)));
       // A CPU game has exactly one human seat, so it must never be presented
-      // to another preview user as a joinable waiting room. The same applies
+      // to another signed-in user as a joinable waiting room. The same applies
       // to solo runs: their only seat belongs to their human owner.
       const waitingGames = alphaGames.filter(game => !game.started && (
         zilchPlayMode(game) === "multiplayer"
@@ -887,7 +887,7 @@ async function renderLobby() {
 async function renderHistory() {
   if (!content) return;
   content.innerHTML = `<section class="zilch-game-head">
-      <div><p class="eyebrow">${escapeHtml(t("Private Historie"))}</p><h1>${escapeHtml(t("Abgeschlossene Spiele"))}</h1><p>${escapeHtml(t("Deine privaten Zilch-Partien bleiben getrennt von ZDWA-Ergebnissen und Ranglisten."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Deine Historie"))}</p><h1>${escapeHtml(t("Abgeschlossene Spiele"))}</h1><p>${escapeHtml(t("Deine Zilch-Partien bleiben getrennt von ZDWA-Ergebnissen und -Ranglisten."))}</p></div>
       <a class="small ghost button-link" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
     </section>
     <section class="zilch-card zilch-results-history" aria-labelledby="zilchAllHistoryTitle">
@@ -905,7 +905,7 @@ async function renderHistory() {
   }
 }
 
-// Zilch achievements deliberately remain a separate private projection.  The
+// Zilch achievements deliberately remain a separate product projection. The
 // browser renders only definitions and unlock state received from the server;
 // it never derives an unlock, progress value, or award acknowledgement.
 const ZILCH_ACHIEVEMENT_CATEGORY_LABELS = {
@@ -1062,7 +1062,7 @@ function achievementCardMarkup(achievement, { unlocked = false, categories = [] 
     : localizedAchievementText(achievement, "title", "Zilch-Award");
   const description = hidden
     ? t("Dieser Award wird erst nach seiner Freischaltung sichtbar.")
-    : localizedAchievementText(achievement, "description", "Private Zilch-Leistung");
+    : localizedAchievementText(achievement, "description", "Zilch-Leistung");
   const unlockedAt = achievementValue(achievement, ["unlocked_at", "unlockedAt"]);
   const stateLabel = unlocked ? t("Freigeschaltet") : t("Gesperrt");
   const icon = achievementIconKey(achievement);
@@ -1165,7 +1165,7 @@ function awardQueue(awards) {
 
 function awardDialogMessage(award, index, total) {
   const category = achievementCategoryLabel(achievementCategoryKey(award), [], award);
-  const description = localizedAchievementText(award, "description", "Private Zilch-Leistung");
+  const description = localizedAchievementText(award, "description", "Zilch-Leistung");
   const lines = [description, `${t("Kategorie")}: ${category}`];
   if (total > 1) lines.push(`${index + 1} / ${total}`);
   return lines.join("\n\n");
@@ -1281,7 +1281,7 @@ function renderAchievementsBody() {
 async function renderAchievements() {
   if (!content) return;
   content.innerHTML = `<section class="zilch-game-head zilch-achievements-head">
-      <div><p class="eyebrow">${escapeHtml(t("Private Sammlung"))}</p><h1>${escapeHtml(t("Zilch-Awards"))}</h1><p>${escapeHtml(t("Deine Awards entstehen aus abgeschlossenen Zilch-Partien. Sie verändern weder ZDWA-Ränge noch Ehrenberg-Marken."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Deine Sammlung"))}</p><h1>${escapeHtml(t("Zilch-Awards"))}</h1><p>${escapeHtml(t("Deine Awards entstehen aus abgeschlossenen Zilch-Partien. Sie verändern weder ZDWA-Ränge noch Ehrenberg-Marken."))}</p></div>
       <a class="small ghost button-link" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
     </section>
     <div id="zilchAchievementsBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Awards werden geladen …"))}</p></section></div>`;
@@ -1298,7 +1298,7 @@ async function renderAccount() {
   if (!content) return;
   const username = state.auth?.user?.username || t("Spieler");
   content.innerHTML = `<section class="zilch-game-head zilch-account-head">
-      <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><h1>${escapeHtml(username)}</h1><p>${escapeHtml(t("Dein Zilch-Konto bündelt deine privaten Statistiken und Awards."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><h1>${escapeHtml(username)}</h1><p>${escapeHtml(t("Dein Zilch-Konto bündelt deine Statistiken und Awards."))}</p></div>
       <a class="small ghost button-link" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
     </section>
     <section class="zilch-account-overview">
@@ -1329,7 +1329,7 @@ async function renderPlayerAchievements() {
   if (!content || !playerAchievementsUsername) return;
   const requestedName = String(playerAchievementsUsername || "").trim();
   content.innerHTML = `<section class="zilch-game-head zilch-achievements-head">
-      <div><p class="eyebrow">${escapeHtml(t("Private Zilch-Sammlung"))}</p><h1>${escapeHtml(t("Zilch-Awards eines Spielers"))}</h1><p>${escapeHtml(t("Diese private Ansicht zeigt ausschließlich Zilch-Awards und keine ZDWA-Ränge oder Ehrenberg-Marken."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><h1>${escapeHtml(t("Zilch-Awards eines Spielers"))}</h1><p>${escapeHtml(t("Diese Ansicht zeigt ausschließlich Zilch-Awards und keine ZDWA-Ränge oder Ehrenberg-Marken."))}</p></div>
       <a class="small ghost button-link" href="${escapeHtml(zilchPath("/erfolge"))}">${escapeHtml(t("Meine Zilch-Awards"))}</a>
     </section>
     <div id="zilchPlayerAchievementsBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Awards werden geladen …"))}</p></section></div>`;
@@ -1338,15 +1338,15 @@ async function renderPlayerAchievements() {
     const slot = document.getElementById("zilchPlayerAchievementsBody");
     const displayName = String(state.playerAchievements.player?.username || state.playerAchievements.player?.display_name || requestedName);
     document.title = `${displayName} – ${t("Zilch-Awards")}`;
-    if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Private Zilch-Sammlung"))}</p><h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2></section>${achievementsCatalogMarkup(state.playerAchievements)}`;
+    if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2></section>${achievementsCatalogMarkup(state.playerAchievements)}`;
   } catch (_) {
     const slot = document.getElementById("zilchPlayerAchievementsBody");
-    if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Awards nicht verfügbar"))}</h2><p>${escapeHtml(t("Dieser private Zilch-Spieler konnte nicht gefunden werden."))}</p><a class="button-link small ghost" href="${escapeHtml(zilchPath("/erfolge"))}">${escapeHtml(t("Meine Zilch-Awards"))}</a></section>`;
+    if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Awards nicht verfügbar"))}</h2><p>${escapeHtml(t("Dieser Zilch-Spieler konnte nicht gefunden werden."))}</p><a class="button-link small ghost" href="${escapeHtml(zilchPath("/erfolge"))}">${escapeHtml(t("Meine Zilch-Awards"))}</a></section>`;
   }
 }
 
 // Statistics and ranking values are intentionally rendered as a projection of
-// the private API response.  The browser never combines results, derives a
+// the account-scoped API response. The browser never combines results, derives a
 // win rate, or rebuilds a ranking tuple: all of that stays in the typed Zilch
 // statistics service.
 function plainObject(value) {
@@ -1479,7 +1479,7 @@ function gamesByModeMarkup(source) {
 function renderOverviewStatistics(statistics) {
   const overview = statisticsScope(statistics, "overview");
   if (!hasStatisticRecords(overview, ["completed_records", "completed_games_and_runs", "completed", "games"])) {
-    return statisticsEmptyMarkup(t("Noch keine Zilch-Partien"), t("Schließe eine private Zilch-Partie ab, damit hier deine getrennten Werte erscheinen."));
+    return statisticsEmptyMarkup(t("Noch keine Zilch-Partien"), t("Schließe eine Zilch-Partie ab, damit hier deine getrennten Werte erscheinen."));
   }
   const entries = [
     statisticEntry(t("Abgeschlossene Partien und Läufe"), overview, ["completed_records", "completed_games_and_runs", "completed", "completed_count", "games"]),
@@ -1487,7 +1487,7 @@ function renderOverviewStatistics(statistics) {
   return `${statisticsSection({
     eyebrow: t("Übersicht"),
     title: t("Deine Zilch-Statistiken"),
-    description: t("Diese Werte stammen nur aus gespeicherten privaten Zilch-Ergebnissen."),
+    description: t("Diese Werte stammen nur aus deinen gespeicherten Zilch-Ergebnissen."),
     entries,
   })}${gamesByModeMarkup(overview)}`;
 }
@@ -1495,7 +1495,7 @@ function renderOverviewStatistics(statistics) {
 function renderMultiplayerStatistics(statistics) {
   const multiplayer = statisticsScope(statistics, "multiplayer");
   if (!hasStatisticRecords(multiplayer, ["games", "completed_games"])) {
-    return statisticsEmptyMarkup(t("Noch keine Human-vs-Human-Partien"), t("Spiele eine private Partie gegen einen anderen Menschen, damit diese Werte erscheinen."));
+    return statisticsEmptyMarkup(t("Noch keine Human-vs-Human-Partien"), t("Spiele eine Partie gegen einen anderen Menschen, damit diese Werte erscheinen."));
   }
   return statisticsSection({
     eyebrow: t("Zwei Spieler"),
@@ -1533,7 +1533,7 @@ function renderCpuStatistics(statistics) {
   if (noGames) {
     return `${cpuStrategyTabsMarkup(cpu)}${statisticsEmptyMarkup(
       selected === "all" ? t("Noch keine CPU-Partien") : t("Noch keine CPU-Partien gegen diese Strategie"),
-      t("Erstelle eine private Partie gegen die CPU, damit diese Werte erscheinen."),
+      t("Erstelle eine Partie gegen die CPU, damit diese Werte erscheinen."),
     )}`;
   }
   return `${cpuStrategyTabsMarkup(cpu)}${statisticsSection({
@@ -1639,7 +1639,7 @@ function renderStatisticsBody() {
 async function renderStatistics() {
   if (!content) return;
   content.innerHTML = `<section class="zilch-game-head zilch-statistics-head">
-      <div><p class="eyebrow">${escapeHtml(t("Private Auswertung"))}</p><h1>${escapeHtml(t("Zilch-Statistiken"))}</h1><p>${escapeHtml(t("Deine Zilch-Werte werden getrennt von ZDWA und ausschließlich aus gespeicherten Ergebnissen berechnet."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Deine Auswertung"))}</p><h1>${escapeHtml(t("Zilch-Statistiken"))}</h1><p>${escapeHtml(t("Deine Zilch-Werte werden getrennt von ZDWA und ausschließlich aus gespeicherten Ergebnissen berechnet."))}</p></div>
       <a class="small ghost button-link" href="${escapeHtml(zilchPath("/bestenlisten"))}">${escapeHtml(t("Zu den Bestenlisten"))}</a>
     </section>
     <div id="zilchStatisticsBody" aria-live="polite">${statisticsTabMarkup()}<section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Statistiken werden geladen …"))}</p></section></div>`;
@@ -1747,7 +1747,7 @@ function zilchPlayerAchievementLink(entry) {
 function leaderboardTableMarkup(leaderboard) {
   const entries = Array.isArray(leaderboard.entries) ? leaderboard.entries : [];
   const columns = leaderboardColumns(state.leaderboardCategory);
-  if (!entries.length) return `<section class="zilch-empty-state"><h2>${escapeHtml(t("Noch keine vergleichbaren Ergebnisse"))}</h2><p>${escapeHtml(t("Sobald eine passende private Zilch-Partie abgeschlossen ist, erscheint sie hier."))}</p></section>`;
+  if (!entries.length) return `<section class="zilch-empty-state"><h2>${escapeHtml(t("Noch keine vergleichbaren Ergebnisse"))}</h2><p>${escapeHtml(t("Sobald eine passende Zilch-Partie abgeschlossen ist, erscheint sie hier."))}</p></section>`;
   return `<div class="zilch-leaderboard-table-wrap" tabindex="0" aria-label="${escapeHtml(t("Zilch-Bestenliste"))}">
     <table class="zilch-leaderboard-table">
       <thead><tr><th scope="col">${escapeHtml(t("Rang"))}</th><th scope="col">${escapeHtml(t("Spieler"))}</th>${columns.map(column => `<th scope="col">${escapeHtml(column.label)}</th>`).join("")}</tr></thead>
@@ -1850,7 +1850,7 @@ function renderLeaderboardBody() {
   if (!slot) return;
   const leaderboard = state.leaderboard || {};
   slot.innerHTML = `<section class="zilch-card zilch-leaderboard-card">
-      <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Private Bestenlisten"))}</p><h2>${escapeHtml(leaderboardCategoryLabel(state.leaderboardCategory))}</h2></div><p class="zilch-leaderboard-sorting">${escapeHtml(leaderboardSortingDescription(state.leaderboardCategory))}</p></div>
+      <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Bestenlisten"))}</p><h2>${escapeHtml(leaderboardCategoryLabel(state.leaderboardCategory))}</h2></div><p class="zilch-leaderboard-sorting">${escapeHtml(leaderboardSortingDescription(state.leaderboardCategory))}</p></div>
       ${leaderboardObjectiveMarkup(leaderboard)}
       ${leaderboardControlsMarkup()}
       ${leaderboardTableMarkup(leaderboard)}
@@ -1883,7 +1883,7 @@ async function renderLeaderboards() {
   state.leaderboardStrategy = CPU_STRATEGIES.has(strategy) ? strategy : "conservative";
   state.leaderboardOffset = 0;
   content.innerHTML = `<section class="zilch-game-head zilch-leaderboards-head">
-      <div><p class="eyebrow">${escapeHtml(t("Private Auswertung"))}</p><h1>${escapeHtml(t("Zilch-Bestenlisten"))}</h1><p>${escapeHtml(t("Die Ranglisten vergleichen deine besten abgeschlossenen Zilch-Partien."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Spieler & Ranking"))}</p><h1>${escapeHtml(t("Zilch-Bestenlisten"))}</h1><p>${escapeHtml(t("Die Ranglisten vergleichen deine besten abgeschlossenen Zilch-Partien."))}</p></div>
       <div class="zilch-actions"><a class="small ghost button-link" href="${escapeHtml(zilchPath("/statistiken"))}">${escapeHtml(t("Deine Statistiken"))}</a><a class="small ghost button-link" href="${escapeHtml(zilchPath("/erfolge"))}">${escapeHtml(t("Zilch-Awards"))}</a></div>
     </section>
     <div id="zilchLeaderboardBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Bestenliste wird geladen …"))}</p></section></div>`;
@@ -1910,7 +1910,7 @@ function renderRulesContent(facts) {
   const target = ruleNumber(facts?.target_score);
   const dice = ruleNumber(facts?.dice_count);
   return `<section class="zilch-game-head zilch-rules-head">
-      <div><p class="eyebrow">${escapeHtml(t("Private Hilfe"))}</p><h1>${escapeHtml(t("Zilch-Regeln"))}</h1><p>${escapeHtml(t("Alles Wichtige für deine nächste Partie auf einen Blick."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Spielhilfe"))}</p><h1>${escapeHtml(t("Zilch-Regeln"))}</h1><p>${escapeHtml(t("Alles Wichtige für deine nächste Partie auf einen Blick."))}</p></div>
       <a class="small ghost button-link" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
     </section>
     <section class="zilch-card zilch-rules-overview">
@@ -1944,7 +1944,7 @@ function renderRulesContent(facts) {
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zilch-Serie"))}</h2><p>${escapeHtml(t("Ein Wurf ohne gültige Wertung – oder eine nicht erreichbare 300er-Regel nach Wurf drei – beendet den Zug als Zilch. Ungesicherte Punkte verfallen."))}</p><p>${escapeHtml(t("Beim Übergang vom zweiten zum dritten Zilch in Folge werden einmalig 500 Punkte abgezogen, niemals unter null."))}</p></section>
     </section>
     <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>
-    <section class="zilch-card zilch-rules-section zilch-rules-section--solo"><p class="eyebrow">${escapeHtml(t("Solo"))}</p><h2>${escapeHtml(t("10’000-Punkte-Sprint"))}</h2><p>${escapeHtml(t("Im Solo-Sprint erreichst du mindestens 10’000 Punkte in möglichst wenigen eigenen Zügen. Der Lauf beginnt direkt mit deinem ersten normalen Zug – ohne Startwurf, Gegner, Schlussrunde oder Gegenzug."))}</p><p>${escapeHtml(t("Bei gleicher Zielerreichung werden später zuerst weniger Züge, dann weniger Würfe, weniger Zilchs und eine kürzere aktive Dauer verglichen. Pausenzeit zählt nicht zur aktiven Dauer."))}</p><p>${escapeHtml(t("Du kannst einen Solo-Lauf nach Bestätigung aufgeben. Er bleibt als privates Ergebnis mit dem Status „Aufgegeben“ erhalten."))}</p></section>
+    <section class="zilch-card zilch-rules-section zilch-rules-section--solo"><p class="eyebrow">${escapeHtml(t("Solo"))}</p><h2>${escapeHtml(t("10’000-Punkte-Sprint"))}</h2><p>${escapeHtml(t("Im Solo-Sprint erreichst du mindestens 10’000 Punkte in möglichst wenigen eigenen Zügen. Der Lauf beginnt direkt mit deinem ersten normalen Zug – ohne Startwurf, Gegner, Schlussrunde oder Gegenzug."))}</p><p>${escapeHtml(t("Bei gleicher Zielerreichung werden später zuerst weniger Züge, dann weniger Würfe, weniger Zilchs und eine kürzere aktive Dauer verglichen. Pausenzeit zählt nicht zur aktiven Dauer."))}</p><p>${escapeHtml(t("Du kannst einen Solo-Lauf nach Bestätigung aufgeben. Er bleibt mit dem Status „Aufgegeben“ in deiner Historie erhalten."))}</p></section>
     <section class="zilch-card zilch-rules-examples"><p class="eyebrow">${escapeHtml(t("Beispiele"))}</p><h2>${escapeHtml(t("Gültige Auswahlen"))}</h2><ul><li><code>5–5–5–5–2–3</code> — ${escapeHtml(t("Drilling Fünfen = 500; alle vier Fünfen = 550; nur eine Fünf = 50."))}</li><li><code>1–1–1–5–5–2</code> — ${escapeHtml(t("Drei Einsen und zwei einzelne Fünfen = 1’100; danach ist ein Bestätigungswurf nötig."))}</li><li><code>1–2–3–4–5–6</code> — ${escapeHtml(t("Straße, 2’000 Punkte, Hot Dice und Bestätigungswurf."))}</li><li><code>2–2–3–4–6–6</code> — ${escapeHtml(t("500 für nichts: alle Würfel werden wieder frei, der Zug läuft weiter."))}</li></ul></section>`;
 }
 
@@ -2281,7 +2281,7 @@ async function renderResult() {
       ${resultStartRollCard(result)}
       ${resultFinalRoundCard(result)}`;
   } catch (_) {
-    // The server intentionally answers private result access with an opaque
+    // The server intentionally answers participant-scoped result access with an opaque
     // failure; preserve that non-disclosing behaviour in the view as well.
     renderNotice("Zilch-Ergebnis nicht verfügbar.", { kind: "error" });
   }
@@ -2586,7 +2586,7 @@ function finalResultAwards(snapshot) {
     <h3 id="zilchFinalAwardsTitle">${escapeHtml(t("In dieser Partie erreicht"))}</h3>
     <ul>${awards.map(award => {
       const title = localizedAchievementText(award, "title", "Zilch-Award");
-      const description = localizedAchievementText(award, "description", "Private Zilch-Leistung");
+      const description = localizedAchievementText(award, "description", "Zilch-Leistung");
       const icon = achievementIconKey(award);
       return `<li class="zilch-final-award">
         <span class="zilch-achievement-card__icon zilch-achievement-card__icon--${escapeHtml(icon)}" aria-hidden="true"></span>
@@ -2987,7 +2987,7 @@ async function confirmSoloAbandon(snapshot, turnState) {
   try {
     const confirmation = {
       title: t("Solo-Lauf aufgeben?"),
-      message: t("Möchtest du diesen Solo-Lauf wirklich aufgeben? Der bisherige Verlauf wird als privates Ergebnis gespeichert."),
+      message: t("Möchtest du diesen Solo-Lauf wirklich aufgeben? Der bisherige Verlauf wird in deiner Historie gespeichert."),
       confirmLabel: t("Lauf aufgeben"),
       cancelLabel: t("Weiter spielen"),
       danger: true,

@@ -1,12 +1,10 @@
 # Zilch-Regelvertrag (intern)
 
 Stand: `zilch-house-v1`. Dieses Dokument ist der verbindliche Regelvertrag für
-die serverseitige Engine. Zilch bleibt eine geschützte `noindex`-Vorschau für
-den Admin-Account `Mani` (mit einer ausdrücklich konfigurierten privaten
-Allowlist für einen zweiten Testspieler). Es gibt ausdrücklich keine
-öffentliche Regelseite. Die aktuelle Oberfläche ist eine private, spielbare
-Human-vs-Human-, Human-vs-CPU- und Solo-Produktoberfläche, keine öffentliche
-Freischaltung.
+die serverseitige Engine. Zilch ist eine geschützte Public Beta für alle
+aktiven, angemeldeten Konten; anonyme Gäste bleiben ausgeschlossen. Die
+loginpflichtige Oberfläche und ihre personalisierten Routen bleiben `noindex`.
+Es gibt noch keine anonym lesbare, canonical Zilch-Regel- oder Landingpage.
 
 ## Begriffe
 
@@ -184,9 +182,9 @@ abschließenden Snapshot; ein Zwischenzustand wird nicht veröffentlicht. Der
 ältere Platzhalter `zilch_submit_score` wird explizit als nicht unterstützte
 manuelle Punkteingabe abgelehnt.
 
-## Private Modi, CPU-Gegner und Ergebnisgrenze
+## Modi, CPU-Gegner und Ergebnisgrenze
 
-Der aktuelle private Spielmodus unterstützt drei Varianten:
+Der aktuelle Spielmodus unterstützt drei Varianten:
 
 - `multiplayer`: genau zwei angemeldete menschliche Teilnehmer. Beide führen
   ihren Startwurf selbst aus.
@@ -272,7 +270,11 @@ Startwurf-/Schlussrunden-/Winner-/Tie-Felder. Erst nach bestätigter Speicherung
 wird der aktive Terminal-State entfernt.
 
 Der Report ist ausschließlich über die geschützte, `noindex`
-Zilch-Ergebnisroute und die private eigene Historie erreichbar. Er wird
+Zilch-Ergebnisroute und die persönliche eigene Historie erreichbar. Die beiden
+verknüpften menschlichen Teilnehmer dürfen ein kompetitives Ergebnis lesen; ein
+anderes Konto erhält ein nicht unterscheidbares 404. Solo-Ergebnisse bleiben auf
+ihren verknüpften Teilnehmer beschränkt, und die HTTP-Projektion enthält keine
+internen `user_id`-Werte. Der Report wird
 weiterhin **nicht** in ZDWA-Historie, Scorecards, Replay, Statistik,
 Leaderboard, Achievement- oder Profilaggregate geschrieben. Die getrennten
 privaten Zilch-Statistiken und Bestenlisten lesen ausschließlich validierte
@@ -283,7 +285,7 @@ jede intern gespeicherte Solo-Metrik. Ein alter Terminal-State, dem eine
 autoritative Pflichtangabe wie der Endzeitpunkt fehlt, bleibt aktiv und wird
 protokolliert; die Anwendung erfindet keine Werte.
 
-### Private Erfolge sind keine Spielregel
+### Geschützte Zilch-Erfolge sind keine Spielregel
 
 Private Zilch-Erfolge bilden einen eigenen, geschützten Zilch-Namensraum. Sie
 sind weder ZDWA-Erfolge noch **Ehrenberg-Marken**: Sie ändern keine
@@ -304,13 +306,13 @@ Wird das Quellergebnis gelöscht, werden daraus abgeleitete private Zilch-
 Erfolge widerrufen. Das berührt weder ZDWA-Aggregate noch Ehrenberg-Marken.
 Unbekannte, unvollständige oder beschädigte Ergebnis-Payloads, CPU-Sitze und
 alte Daten ohne die erforderliche Evidenz bleiben absichtlich ohne Erfolg. Die
-privaten Ansichten `/zilch/erfolge` und `/zilch/spieler/{username}` unterliegen
-derselben Preview-Policy wie die Partie und bleiben `noindex`; sie sind keine
+geschützten Ansichten `/zilch/erfolge` und `/zilch/spieler/{username}` unterliegen
+derselben Konto-Policy wie die Partie und bleiben `noindex`; sie sind keine
 öffentlichen Spielerprofile. Der technische Auslieferungs-, Widerrufs- und
 Katalogvertrag steht in [ACCOUNT_STATISTICS.md](ACCOUNT_STATISTICS.md); er ist
 keine zusätzliche Zilch-Spielregel.
 
-Die private Navigation führt nur zu funktionierenden Bereichen:
+Die Zilch-Navigation führt nur zu funktionierenden Bereichen:
 `/zilch` (Lobby), `/zilch/spiel/{id}` (Partie), `/zilch/historie` (eigene
 abgeschlossene Partien), `/zilch/ergebnis/{id}` (read-only Ergebnis),
 `/zilch/statistiken` (eigene Auswertung), `/zilch/bestenlisten` (private
@@ -318,17 +320,16 @@ Ranglisten), `/zilch/erfolge` (private Erfolge),
 `/zilch/spieler/{username}` (privater Zilch-Spielerkontext) und `/zilch/regeln`
 (diese Regeln als lokalisierte In-App-Hilfe).
 Alle diese Routen
-sind serverseitig durch dieselbe Preview-Policy geschützt und bleiben
+sind serverseitig durch dieselbe Konto-Policy geschützt und bleiben
 `noindex`; die Regelseite ist weder öffentlich noch eine zweite verbindliche
 Regelquelle. Gemeinsame Konto- und Spracheinstellungen bleiben Plattformfunktionen
-und führen bei gültiger Berechtigung zurück zur privaten Zilch-Lobby.
+und führen bei gültiger Berechtigung zurück zur Zilch-Lobby.
 
-Zum manuellen privaten Test kann Admin `Mani` direkt einen Solo-Sprint oder
-eine CPU-Partie anlegen. Für eine Zwei-Menschen-Partie vor dem App-Start den
-normalisierten Namen des zweiten angemeldeten Testkontos in
-`ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` setzen, beide Browser in die private
-Zilch-Lobby wechseln, beitreten und den Startwurf nacheinander ausführen.
-Ohne diese Konfiguration bleibt ausschließlich Admin `Mani` zugelassen.
+Produktion verwendet `ROLLTHEDICE_ZILCH_ACCESS_MODE=authenticated`; damit kann
+jedes aktive angemeldete Konto Solo, CPU oder eine Zwei-Menschen-Partie öffnen.
+Der ältere Modus `preview` samt
+`ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` bleibt ausschließlich als fail-closed
+Betriebsrollback dokumentiert und ist nicht der Public-Beta-Standard.
 
 ## Technische und Produktgrenzen
 
@@ -354,7 +355,7 @@ Ohne diese Konfiguration bleibt ausschließlich Admin `Mani` zugelassen.
 
 ## Designrichtung
 
-Die private Oberfläche nutzt die vorhandene `data-game="zilch"`-Grenze mit
+Die Zilch-Oberfläche nutzt die vorhandene `data-game="zilch"`-Grenze mit
 einer lokal ausgelieferten, gealterten Wirtshaus-Holztextur, physisch wirkenden
 Würfeln und klar getrennten
 ausgewählten sowie bereits gehaltenen Zuständen. Der aktive, intern scrollbare
@@ -367,7 +368,7 @@ Fokusreihenfolge oder Bedienfläche zu verändern. Der Notizzettel belegt vor un
 nach dem ersten Wurf exakt dieselbe linke Hälfte, damit die Empfehlungen ohne
 Layoutsprung rechts dazukommen. Lobby, Wartesaal, Startwurf (nur
 kompetitiv), ein oder zwei Boards, Ergebnis, Historie und
-die private Hilfe bleiben dabei eine eigenständige Zilch-Oberfläche. Zilch, Hot
+die geschützte Hilfe bleiben dabei eine eigenständige Zilch-Oberfläche. Zilch, Hot
 Dice, Bestätigungswurf und Spielende erhalten einen zusätzlichen Textstatus und
 kurze reduzierte-Bewegung-freundliche Effekte. Ein neues Zilch erscheint einmalig
 als großer Stempel über dem betroffenen Blatt; erst danach rückt das Blatt des

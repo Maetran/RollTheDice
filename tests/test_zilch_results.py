@@ -476,7 +476,7 @@ class ZilchResultsTestCase(TestCase):
         self.assertIsNone(self._active_row(game["_id"]))
         self.assertNotIn(game["_id"], games)
 
-    def test_private_result_history_and_detail_api_require_the_preview_policy(self) -> None:
+    def test_result_history_and_detail_are_access_scoped_and_hide_internal_user_ids(self) -> None:
         mani_id, mani_token = self._identity("Mani", role="admin")
         friend_id, friend_token = self._identity("PreviewFriend")
         _normal_id, normal_token = self._identity("Normal")
@@ -493,6 +493,9 @@ class ZilchResultsTestCase(TestCase):
 
         self.assertEqual([entry["game_id"] for entry in mani_history["results"]], [game["_id"]])
         self.assertEqual([entry["game_id"] for entry in friend_history["results"]], [game["_id"]])
+        self.assertNotIn("user_id", mani_history["results"][0]["participants"][0])
+        self.assertNotIn("user_id", friend_history["results"][0]["participants"][1])
+        self.assertTrue(all("user_id" not in participant for participant in detail["result"]["participants"]))
         self.assertEqual(detail["result"]["game_type"], ZILCH_GAME_TYPE)
         self.assertEqual(detail["result"]["outcome"]["winner_id"], "p1")
 
@@ -504,6 +507,36 @@ class ZilchResultsTestCase(TestCase):
                 with self.assertRaises(HTTPException) as denied_detail:
                     main.api_zilch_result(game["_id"], request_for(cookie=f"rollthedice_session={token}"))
                 self.assertEqual(denied_detail.exception.status_code, status_code)
+
+        # Public beta grants every signed-in account access to Zilch, but a
+        # known game ID does not grant access to another account's roll log.
+        with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "authenticated"}):
+            self.assertEqual(
+                main.api_zilch_results(request_for(cookie=f"rollthedice_session={normal_token}")),
+                {"results": []},
+            )
+            self.assertEqual(
+                main.zilch_preview_page(request_for(cookie=f"rollthedice_session={normal_token}")).status_code,
+                200,
+            )
+            for token in (mani_token, friend_token):
+                response = main.api_zilch_result(
+                    game["_id"],
+                    request_for(cookie=f"rollthedice_session={token}"),
+                )
+                self.assertEqual(response["result"]["game_id"], game["_id"])
+            with self.assertRaises(HTTPException) as unrelated_detail:
+                main.api_zilch_result(
+                    game["_id"],
+                    request_for(cookie=f"rollthedice_session={normal_token}"),
+                )
+            self.assertEqual(unrelated_detail.exception.status_code, 404)
+            with self.assertRaises(HTTPException) as unrelated_page:
+                main.zilch_result_page(
+                    game["_id"],
+                    request_for(cookie=f"rollthedice_session={normal_token}"),
+                )
+            self.assertEqual(unrelated_page.exception.status_code, 404)
 
         # A typed ZDWA row is deliberately not projected through the Zilch
         # endpoint even for an approved preview identity.

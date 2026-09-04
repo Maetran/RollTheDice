@@ -25,9 +25,9 @@ check.
 Do not create a separate English copy of a page. Keeping one DOM and one game
 implementation prevents the languages from drifting apart.
 
-## Zilch preview
+## Zilch Public Beta
 
-The private Zilch views use the same catalog and language switcher as ZDWA.
+The login-bound Zilch views use the same catalog and language switcher as ZDWA.
 Their authored German text lives in `frontend/zilch/` (and the small protected
 shell in `app/static/zilch.html`), with the matching English text in `EN`.
 

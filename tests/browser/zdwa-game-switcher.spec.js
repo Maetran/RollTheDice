@@ -57,6 +57,7 @@ test("the permission-gated game switch is available across ZDWA and in its activ
   await signInAsPreviewMani(page);
 
   await page.setViewportSize({ width: 1024, height: 800 });
+  await expect(page.locator("[data-game-switch] .game-switch-icon--zilch")).toHaveText("Z");
   const zdwaDesktopSwitch = await switchControlGeometry(page.locator("[data-game-switch]"));
   await Promise.all([
     page.waitForURL(/\/zilch$/),
@@ -87,6 +88,7 @@ test("the permission-gated game switch is available across ZDWA and in its activ
     await expect(switchButton).toBeEnabled();
     await expect(switchButton).toHaveAttribute("aria-hidden", "false");
     await expect(switchButton).toHaveAttribute("aria-label", /^(?:Zilch öffnen|Open Zilch) \(Alt\+Shift\+Z\)$/);
+    await expect(switchButton.locator(".game-switch-icon--zilch")).toHaveText("Z");
   }
 
   await page.goto("/");
@@ -112,6 +114,7 @@ test("the permission-gated game switch is available across ZDWA and in its activ
   const roomSwitch = page.locator(".room-header [data-game-switch]");
   await expect(roomSwitch).toBeVisible();
   await expect(roomSwitch).toBeEnabled();
+  await expect(roomSwitch.locator(".game-switch-icon--zilch")).toHaveText("Z");
   const zdwaMobileSwitch = await switchControlGeometry(roomSwitch);
   const geometry = await roomSwitch.evaluate(element => {
     const button = element.getBoundingClientRect();

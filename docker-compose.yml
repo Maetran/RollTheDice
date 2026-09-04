@@ -24,10 +24,10 @@ services:
       ROLLTHEDICE_GAME_CREATE_GLOBAL_MAX: ${ROLLTHEDICE_GAME_CREATE_GLOBAL_MAX:-300}
       ROLLTHEDICE_MAX_WEBSOCKETS_PER_ADDRESS: ${ROLLTHEDICE_MAX_WEBSOCKETS_PER_ADDRESS:-30}
       ROLLTHEDICE_MAX_WEBSOCKETS_GLOBAL: ${ROLLTHEDICE_MAX_WEBSOCKETS_GLOBAL:-500}
-      # Private Zilch-preview controls are deliberately operator-only.  The
-      # empty default keeps the production-safe Mani-only policy intact.
+      # Public beta: every signed-in account gets Zilch access. The allowlist
+      # is retained only for an explicit fail-closed rollback to preview mode.
       ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES: ${ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES:-}
-      ROLLTHEDICE_ZILCH_ACCESS_MODE: ${ROLLTHEDICE_ZILCH_ACCESS_MODE:-preview}
+      ROLLTHEDICE_ZILCH_ACCESS_MODE: ${ROLLTHEDICE_ZILCH_ACCESS_MODE:-authenticated}
       ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS: ${ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS:-0.55}
 
 # git clone https://github.com/Maetran/RollTheDice.git

@@ -2,15 +2,16 @@
 
 RollTheDice is a lightweight multiplayer dice game with a FastAPI backend and a static HTML/CSS/JS frontend. It supports German and English, single-player, 2-player, 3-player, 2v2 team games, Hardcore mode, chat, emoji reactions, leaderboards, account achievement milestones, and read-only replay views for completed games.
 
-ZDWA is the public game. The repository also contains a protected, playable
-Zilch die Wand an game: its own six-dice, 10,000-point state,
+ZDWA is the established game. The repository also contains the playable
+**Zilch die Wand an Public Beta**: its own six-dice, 10,000-point state,
 server-authoritative scoring, direct dice selection, banking, and competitive start-roll/
-final-reply handling. By default, only the authenticated admin
-account whose normalized username is `mani` can open it. A second private test
-account can be admitted only through the explicit
-`ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` allowlist; it receives no admin rights.
+final-reply handling. Production runs with
+`ROLLTHEDICE_ZILCH_ACCESS_MODE=authenticated`, so every active, authenticated
+account can open Zilch; anonymous guests remain excluded. The older
+`ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` allowlist belongs only to the fail-closed
+`preview` rollback mode and never grants admin rights.
 Play modes `solo | cpu | multiplayer` and participant types `human | cpu` stay
-separate from WebSocket connections. The preview supports two authenticated
+separate from WebSocket connections. Zilch supports two authenticated
 humans in `multiplayer`, or one authenticated host against a real `cpu`
 participant in `cpu` mode. The CPU has no account, session, resume token, or
 WebSocket; it uses the same server-side dice and scoring path as a human and
@@ -31,8 +32,10 @@ completed-game summaries and standings rather than exposing every retained
 engine counter. The three private leaderboards are the best compatible Solo
 Sprint per active account, human-vs-human wins, and wins against each
 individual CPU strategy; they never feed a ZDWA ranking.
-Finished private Zilch games are stored as a separate, versioned result payload
-with a private read-only history; they do not enter any ZDWA scorecard, replay,
+Finished Zilch games are stored as a separate, versioned result payload with a
+personal read-only history. A detail is readable only by its linked human
+participants, and the HTTP projection omits internal user IDs. Zilch results do
+not enter any ZDWA scorecard, replay,
 statistic, achievement, or leaderboard path. Private Zilch awards use their
 own protected namespace instead: they award neither **Ehrenberg-Marken** nor
 ZDWA titles, ranks, stars, profile values, or public ranking positions. They
@@ -62,8 +65,9 @@ redirects. Existing account sessions are promoted
 to a separate parent-domain cookie through a fixed, allowlisted handoff without
 creating a second database session. Zilch deliberately has no service worker or
 installable manifest during this first split, while the ZDWA PWA stays unchanged.
-Additional Solo objectives/challenges, further Zilch award categories, and public
-release are deliberately deferred. A player selects scoring dice directly or
+Additional Solo objectives/challenges, further Zilch award categories, an
+anonymous SEO landing page, and a dedicated Zilch PWA are deliberately deferred.
+A player selects scoring dice directly or
 uses one of up to eight distinct suggestions; equivalent choices using
 interchangeable dice are deduplicated, while equal scores from genuinely
 different dice remain identifiable. The selection stays reversible until
@@ -121,18 +125,17 @@ User-facing navigation uses short routes without implementation details:
 
 - `/` lobby
 - `/spiel/{game_id}` active player view
-- `/zilch` protected Zilch lobby (not public or indexable)
+- `/zilch` login-required Zilch Public-Beta lobby (`noindex`)
 - `/zilch/anmelden` direct, noindex sign-in and registration entry for Zilch
-- `/zilch/spiel/{game_id}` protected Zilch game view (not public or indexable)
-- `/zilch/historie` protected own Zilch history (not public or indexable)
-- `/zilch/ergebnis/{game_id}` protected, read-only Zilch result report (not public or indexable)
-- `/zilch/statistiken` protected own Zilch statistics (not public or indexable)
-- `/zilch/bestenlisten` protected Zilch leaderboards (not public or indexable)
+- `/zilch/spiel/{game_id}` protected Zilch game view (`noindex`)
+- `/zilch/historie` protected own Zilch history (`noindex`)
+- `/zilch/ergebnis/{game_id}` participant-bound, read-only Zilch result report (`noindex`)
+- `/zilch/statistiken` protected own Zilch statistics (`noindex`)
+- `/zilch/bestenlisten` protected Zilch leaderboards (`noindex`)
 - `/zilch/konto` protected Zilch account with private statistics and awards
-- `/zilch/erfolge` protected private Zilch awards (not public or indexable)
-- `/zilch/spieler/{username}` protected Zilch-context player-award view (not
-  public or indexable)
-- `/zilch/regeln` protected in-app Zilch rule guide (not public or indexable)
+- `/zilch/erfolge` protected private Zilch awards (`noindex`)
+- `/zilch/spieler/{username}` protected Zilch-context player-award view (`noindex`)
+- `/zilch/regeln` protected in-app Zilch rule guide (`noindex`)
 - `/spiel/{game_id}/zuschauen` spectator view
 - `/regeln`, `/rangabzeichen`, `/spieler`, `/spieler/{username}`, `/konto`, and `/admin`
 - `/ergebnis/{game_id}` completed-game view
@@ -141,8 +144,8 @@ User-facing navigation uses short routes without implementation details:
 JavaScript, styles, and icons remain under `/static/`; these asset paths are not
 used for browser navigation. Legacy `*.html` links redirect to the matching
 public route so existing bookmarks and older installed app versions keep working.
-The private Zilch routes above are server-authorized implementation routes,
-remain outside public navigation and the sitemap, and always send `noindex`.
+The login-bound Zilch routes above are server-authorized implementation routes,
+remain outside the anonymous SEO sitemap, and always send `noindex`.
 
 ## Product delivery gate
 
@@ -197,13 +200,13 @@ for the production hostname and set both `ROLLTHEDICE_TURNSTILE_SITE_KEY` and
 empty and does not show a CAPTCHA. A partial Turnstile configuration is rejected
 at startup so registration cannot silently run with broken protection.
 
-Zilch is not a public feature. Keep `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES`
-empty in normal production operation. An authorized `Mani` account can test a
-private Solo Sprint or CPU game alone. For an explicitly private two-browser human test, set
-the variable to a comma-separated list of normalized account usernames; those
-accounts gain only Zilch-preview access, not an admin role. Admin `Mani`
-continues to require both the normalized name and `is_admin=true`, even if
-someone mistakenly puts `mani` in the allowlist. CPU action pacing is an
+Zilch is a Public Beta for every authenticated account. Production must set
+`ROLLTHEDICE_ZILCH_ACCESS_MODE=authenticated`; this does not enable anonymous
+access and does not weaken session, CSRF, WebSocket-origin, room-code, or
+result-ownership checks. Keep `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` empty in
+normal production operation. It is used only with the deliberately restrictive
+`preview` rollback mode, where explicitly named test accounts gain Zilch access
+without receiving an admin role. CPU action pacing is an
 operator-only setting: `ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` defaults to 0.55
 seconds and is bounded to 0–5 seconds; it never changes dice odds or scoring.
 
@@ -347,10 +350,10 @@ destination as a full-width action instead of a raw inline link. Newly unlocked
 private Zilch awards are attributed by their durable source game ID and only
 appear in that live end screen; older pending deliveries remain in the normal
 reload-safe award queue. Zilch JavaScript
-and CSS are deliberately not part of the public
+and CSS are deliberately not part of the ZDWA
 service-worker precache: the browser obtains them only after the protected shell
 has been served, while `/zilch` routes remain network-only so a logout or policy
-change cannot reveal a stale private view.
+change cannot reveal a stale account view.
 
 ## Multi-game foundation
 
@@ -361,17 +364,18 @@ snapshots, and terminal-result finalization are selected through a small
 registry. Existing ZDWA flows remain behind their adapter; Zilch has separate
 modules and cannot call ZDWA scoring or completion code. `CompletedGame` now
 stores an explicit `game_type`; all older records are migrated to `zdwa`, while
-private Zilch results use a versioned `zilch-house-v1` JSON payload. The private
-Zilch Alpha is deliberately `noindex`, guarded on every relevant page, API,
-detail lookup, and WebSocket connection, and defaults to admin `Mani` only
-unless its explicit preview allowlist is configured.
+personal Zilch results use a versioned `zilch-house-v1` JSON payload. The Zilch
+Public Beta is deliberately login-bound and `noindex`, guarded on every relevant
+page, API, participant-owned result lookup, and WebSocket connection. It is
+available to all authenticated accounts in production, but not to guests.
 
 The architecture boundary is documented in
 [docs/MULTIGAME_FOUNDATION.md](docs/MULTIGAME_FOUNDATION.md); the confirmed
 internal rule contract is in [docs/ZILCH_RULES.md](docs/ZILCH_RULES.md). Neither
-document is a public Zilch rules page. The private `/zilch/regeln` view is a
-localized in-app projection of that contract; Zilch remains outside the
-player-facing ZDWA rules and public SEO.
+document is an anonymous Zilch landing page. The protected `/zilch/regeln` view
+is a localized in-app projection of that contract. Login-bound, personalized
+Zilch pages stay out of the sitemap and public SEO until a separate anonymous,
+canonical landing or rules page is shipped.
 
 ## Plain Docker
 

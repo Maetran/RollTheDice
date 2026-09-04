@@ -1,4 +1,4 @@
-"""Central authorization policy for games that are not publicly available."""
+"""Central audience policy for account-bound game products."""
 
 from __future__ import annotations
 
@@ -20,11 +20,11 @@ ZILCH_ACCESS_MODE_AUTHENTICATED = "authenticated"
 
 
 def configured_zilch_access_mode() -> str:
-    """Return the deliberately closed Zilch audience mode.
+    """Return the configured Zilch audience mode.
 
-    ``preview`` remains the safe default. A separate staging environment may
-    opt into ``authenticated`` to exercise the signed-in product audience;
-    unknown values fail closed to preview rather than widening access.
+    ``preview`` remains the fail-closed process default for direct, unconfigured
+    starts. Supported Compose and production deployments explicitly use
+    ``authenticated`` for the public beta. Unknown values never widen access.
     """
     configured = os.getenv(ZILCH_ACCESS_MODE_ENV, ZILCH_ACCESS_MODE_PREVIEW).strip().casefold()
     valid_modes = {ZILCH_ACCESS_MODE_PREVIEW, ZILCH_ACCESS_MODE_AUTHENTICATED}
@@ -51,7 +51,7 @@ def configured_zilch_preview_usernames() -> frozenset[str]:
 
 
 def can_access_zilch_preview(identity: AuthIdentity | None) -> bool:
-    """Return whether an authenticated identity may use the internal preview.
+    """Return whether an authenticated identity belongs to the Zilch audience.
 
     This deliberately combines the existing account role with the existing
     username normalization.  Callers must not reproduce the comparison.
@@ -74,5 +74,9 @@ def can_access_game(identity: AuthIdentity | None, game: dict) -> bool:
 
 
 def public_game_access_payload(identity: AuthIdentity | None) -> dict[str, bool]:
-    """Expose only the client capability derived from the server-side policy."""
+    """Expose only the client capability derived from the server-side policy.
+
+    The payload key is kept for compatibility with already deployed clients;
+    it denotes general Zilch access in ``authenticated`` mode as well.
+    """
     return {"zilch_preview": can_access_zilch_preview(identity)}

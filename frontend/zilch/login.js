@@ -108,7 +108,7 @@ function render(auth) {
   continueButton.hidden = !allowed;
   setMessage(allowed
     ? "Du bist angemeldet und kannst Zilch öffnen."
-    : "Dein Konto ist angemeldet. Zilch ist derzeit nur für eingeladene Testpersonen freigeschaltet.", allowed ? "success" : "info");
+    : "Zilch ist für dieses Konto nicht verfügbar.", allowed ? "success" : "info");
 }
 
 async function refresh({ redirect = false } = {}) {

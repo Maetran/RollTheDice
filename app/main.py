@@ -93,7 +93,7 @@ from .zilch_engine import (
     ZILCH_THIRD_ROLL_MINIMUM,
     ZILCH_ZILCH_STREAK_PENALTY,
 )
-from .zilch_results import list_zilch_results_for_user, load_zilch_result
+from .zilch_results import list_zilch_results_for_user, load_zilch_result_for_user
 from .zilch_solo_objective import (
     ZILCH_SOLO_SPRINT_OBJECTIVE_ID,
     ZILCH_SOLO_SPRINT_OBJECTIVE_VERSION,
@@ -475,11 +475,11 @@ def zilch_room_page(game_id: str, request: Request):
 
 @app.get("/zilch/ergebnis/{game_id}", include_in_schema=False)
 def zilch_result_page(game_id: str, request: Request):
-    """Serve the private noindex Zilch shell for one persisted result."""
-    _identity, redirect = _resolve_zilch_access(request)
+    """Serve the noindex Zilch shell for one participant-owned result."""
+    identity, redirect = _resolve_zilch_access(request)
     if redirect:
         return redirect
-    if load_zilch_result(game_id) is None:
+    if load_zilch_result_for_user(game_id, identity.user_id) is None:
         # Do not distinguish an unknown ID, a ZDWA ID, or a malformed private
         # Zilch payload at this route.
         raise HTTPException(status_code=404, detail="result_not_found")
@@ -605,7 +605,10 @@ def completed_game_page(request: Request, game_id: str | None = None):
         return zilch_result_page(game_id, request)
     if game_id and completed_game_type_for_id(game_id) == ZILCH_GAME_TYPE:
         identity = resolve_session(request)
-        if not can_access_zilch_preview(identity) or load_zilch_result(game_id) is None:
+        if (
+            not can_access_zilch_preview(identity)
+            or load_zilch_result_for_user(game_id, identity.user_id) is None
+        ):
             raise HTTPException(status_code=404, detail="result_not_found")
         return RedirectResponse(f"/zilch/ergebnis/{quote(game_id, safe='')}", status_code=307)
     return _page("game_view.html")
@@ -1099,9 +1102,9 @@ def api_zilch_results(request: Request):
 
 @app.get("/api/zilch/results/{game_id}")
 def api_zilch_result(game_id: str, request: Request):
-    """Read a known-version private Zilch result without ZDWA projection."""
-    _require_zilch_preview(request)
-    result = load_zilch_result(game_id)
+    """Read the caller's known-version Zilch result without ZDWA projection."""
+    identity = _require_zilch_preview(request)
+    result = load_zilch_result_for_user(game_id, identity.user_id)
     if result is None:
         raise HTTPException(status_code=404, detail="result_not_found")
     return {"result": result}

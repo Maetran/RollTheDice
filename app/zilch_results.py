@@ -1178,8 +1178,42 @@ def load_zilch_result(game_id: str) -> dict | None:
         return _stored_payload(row) if row is not None else None
 
 
+def _browser_result_payload(payload: dict) -> dict:
+    """Remove relational account IDs from a validated browser projection."""
+    return {
+        **payload,
+        "participants": [
+            {key: value for key, value in participant.items() if key != "user_id"}
+            for participant in payload["participants"]
+        ],
+    }
+
+
+def load_zilch_result_for_user(game_id: str, user_id: int) -> dict | None:
+    """Load one result only when the requesting account participated in it.
+
+    Public-beta access grants use of Zilch, not access to another account's
+    full roll history. The relational participant row is the authorization
+    source; a guessed ID and an orphaned legacy row therefore remain opaque.
+    """
+    if not database_schema_ready():
+        return None
+    with session_scope() as db:
+        row = db.scalar(
+            select(CompletedGame)
+            .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
+            .where(
+                CompletedGame.game_id == str(game_id),
+                CompletedGame.game_type == ZILCH_GAME_TYPE,
+                GameParticipant.user_id == int(user_id),
+            )
+        )
+        payload = _stored_payload(row) if row is not None else None
+    return _browser_result_payload(payload) if payload is not None else None
+
+
 def list_zilch_results_for_user(user_id: int, *, limit: int = 30) -> list[dict]:
-    """List only a preview user's own Zilch records, newest first."""
+    """List only an account's own Zilch records, newest first."""
     if not database_schema_ready():
         return []
     clean_limit = max(1, min(int(limit), 100))
@@ -1204,7 +1238,7 @@ def list_zilch_results_for_user(user_id: int, *, limit: int = 30) -> list[dict]:
             "game_name": payload["game_name"],
             "finished_at": payload["finished_at"],
             "play_mode": payload["play_mode"],
-            "participants": payload["participants"],
+            "participants": _browser_result_payload(payload)["participants"],
             "totals": payload["totals"],
             "outcome": payload["outcome"],
             "result_url": f"/zilch/ergebnis/{payload['game_id']}",

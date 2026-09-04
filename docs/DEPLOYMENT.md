@@ -153,7 +153,7 @@ dieselbe persistente Datenbank:
 | `zockdiewandan.online` | Bleibt als bestehende ZDWA-, PWA- und Anmelde-Origin erreichbar. |
 | `www.zockdiewandan.online` | Bleibt als bestehender Alias erreichbar. |
 | `zdwa.zockdiewandan.online` | Redirect-only Alias auf die bestehende ZDWA-Apex-Origin. |
-| `zilch.zockdiewandan.online` | Eigener, weiterhin serverseitig geschützter Zilch-Einstieg. |
+| `zilch.zockdiewandan.online` | Eigener, loginpflichtiger Einstieg in die Zilch Public Beta. |
 
 Die Aktivierung verschiebt keine Daten und startet weder Docker noch Uvicorn
 neu. Nginx reicht Apex, `www` und Zilch an denselben einzelnen Container weiter;
@@ -171,12 +171,14 @@ SQLite-Dateien überhaupt nicht.
 
 Vor der Aktivierung müssen alle folgenden Punkte erfüllt sein:
 
-1. Auf allen vier autoritativen IONOS-Nameservern liefern `zdwa` und `zilch`
+1. Auf allen autoritativen Nameservern liefern `zdwa` und `zilch`
    ausschließlich den A-Record `217.154.16.72` mit TTL 3600. Es darf für beide
-   Namen kein AAAA-Record mehr existieren.
+   Namen kein AAAA-Record mehr existieren. Bei einem Nameserver-Wechsel zählt
+   die tatsächlich delegierte Zone, nicht die Ansicht beim alten oder neuen
+   Anbieter.
 2. Auch die öffentlichen Resolver `1.1.1.1`, `8.8.8.8` und `9.9.9.9` liefern
    den neuen A-Record und keinen AAAA-Record. Wegen vorheriger Cache-Einträge
-   erst nach Ablauf der alten TTL aktivieren; eine korrekte IONOS-Übersicht
+   erst nach Ablauf der alten TTL aktivieren; eine korrekte Provider-Übersicht
    allein reicht dafür nicht.
 3. Die Subdomain-Version der Anwendung wurde mit dem normalen Deploy-Skript
    ausgerollt und der Container ist gesund. Dieses App-Deployment erstellt das
@@ -216,11 +218,31 @@ Vor der Aktivierung müssen alle folgenden Punkte erfüllt sein:
    Registrierung angeboten wird) abdeckt. Das Aktivierungsskript kann diese
    externe Einstellung nicht selbst lesen und verlangt deshalb die bewusste
    Bestätigung `TURNSTILE_HOSTNAMES_CONFIRMED=1`.
-7. Der Zilch-Zugriffsmodus ist eine getrennte Produktentscheidung. Der
-   Produktionsstandard `preview` erlaubt weiterhin nur der zentralen
-   Preview-Policy entsprechende Konten; eine neue DNS-Adresse macht Zilch nicht
-   automatisch für alle Benutzer frei. Nur eine ausdrücklich freigegebene
-   Änderung darf den erwarteten Modus auf `authenticated` setzen.
+7. Die Zilch Public Beta läuft in Produktion ausdrücklich mit
+   `ROLLTHEDICE_ZILCH_ACCESS_MODE=authenticated`. Damit sind alle aktiven,
+   angemeldeten Konten zugelassen; Gäste bleiben ausgeschlossen. Das
+   Aktivierungsskript muss denselben erwarteten Modus prüfen. Der Modus
+   `preview` und seine optionale Allowlist sind nur ein fail-closed Rollback für
+   einen bewusst eingeschränkten Betrieb, nicht der Produktionsstandard.
+
+### Cloudflare: schneller Start zunächst DNS-only
+
+Während des laufenden Nameserver-Wechsels werden alle bestehenden A-, MX-,
+SPF-, DKIM-, DMARC-, CAA- und sonstigen TXT-Einträge unverändert nach Cloudflare
+übernommen. Für die erste Subdomain-Aktivierung bleiben Apex, `www`, `zdwa` und
+`zilch` in Cloudflare auf **DNS only** (graue Wolke). Dadurch bleibt
+`217.154.16.72` direkt sichtbar, der bestehende Nginx-/Certbot-Ablauf funktioniert
+unverändert und Cloudflare greift weder in Cookies, WebSockets noch
+Cache-Control ein. Das Aktivierungsskript erwartet absichtlich diese direkte
+A-Adresse und würde einen bereits orange geschalteten Proxy ablehnen.
+
+DNS-only kann unmittelbar nach erfolgreicher NS-Delegation und konsistenten
+Antworten der öffentlichen Resolver ausgerollt werden. Der orange Cloudflare-
+Proxy ist ein separates Folgeinkrement: davor müssen mindestens Full (strict),
+WebSocket-Unterstützung, die vertrauenswürdige Wiederherstellung der echten
+Client-IP sowie Cache-Bypässe für `/api/`, Auth-, WebSocket- und personalisierte
+HTML-Routen geprüft sein. Versionierte statische Assets dürfen weiterhin gemäß
+den vom Origin gelieferten Cache-Headern zwischengespeichert werden.
 
 ### PWA, laufende Spiele und bestehende Logins
 
@@ -232,9 +254,9 @@ Umstellung nicht umgeleitet; bestehende PWA-Installationen, offene Tabs,
 Host-Cookies und lokale Resume-Tokens funktionieren dort weiter.
 
 Die Zilch-Subdomain liefert absichtlich weder den root-gescopten ZDWA-Service-
-Worker noch dessen Manifest aus. Private Zilch-Shells dürfen nicht durch einen
-Precache oder einen Offline-Fallback nach Logout oder einer Policy-Änderung
-sichtbar bleiben. API-Antworten bleiben `no-store`, und Zilch bleibt mit
+Worker noch dessen Manifest aus. Loginpflichtige Zilch-Shells dürfen nicht
+durch einen Precache oder einen Offline-Fallback nach Logout oder einer
+Policy-Änderung sichtbar bleiben. API-Antworten bleiben `no-store`, und Zilch bleibt mit
 `X-Robots-Tag: noindex, nofollow` aus Suchmaschinen ausgeschlossen. Eine eigene
 installierbare Zilch-PWA wäre ein separates, vor der Freigabe zu testendes
 Produktinkrement.
@@ -434,13 +456,13 @@ Nach einer Änderung unter `app/static/` oder an einem Manifest:
    Service Worker übernimmt bestehende Tabs unter Umständen erst nach dem ersten
    Reload vollständig.
 
-Zilch ist eine autorisierungsgebundene private Vorschau. Der Service Worker
+Zilch ist eine autorisierungsgebundene Public Beta. Der Service Worker
 behandelt `/zilch` und alle Unterrouten deshalb ausschließlich per Netzwerk und
 precacht weder die geschützte Shell noch `zilch.js` oder `zilch.css`. Erst eine
-erfolgreiche serverseitige Preview-Prüfung liefert die Shell, die ihre
+erfolgreiche serverseitige Konto- und Zugriffsprüfung liefert die Shell, die ihre
 versionierten Bundles bei Bedarf lädt. Dieses Verhalten darf bei PWA- oder
 Cache-Änderungen nicht in eine Offline-Fallback-Ansicht abgeschwächt werden:
-nach Logout oder einem Policy-Wechsel darf kein alter privater Zilch-Inhalt
+nach Logout oder einem Policy-Wechsel darf kein alter persönlicher Zilch-Inhalt
 sichtbar bleiben.
 
 Beispielprüfung:
@@ -479,19 +501,31 @@ Der Reverse-Proxy muss den ursprünglichen Host und das Protokoll weitergeben,
 insbesondere `X-Forwarded-Host` und `X-Forwarded-Proto`. Diese Werte werden für
 Origin-Prüfungen bei schreibenden Requests und WebSockets benötigt.
 
-### Private Zilch-Vorschau
+### Zilch Public Beta
 
-Zilch ist weder eine öffentliche Produktfunktion noch ein zweites Admin-System.
-Der sichere Standard ist ausschließlich die bestehende Admin-Identität mit
-normalisiertem Username `mani` und `is_admin=true`. Für einen ausdrücklich
-privaten Zwei-Browser-Test kann
-`ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` eine kommagetrennte Liste normalisierter
-zusätzlicher Accountnamen enthalten. Diese Nutzer erhalten nur Zilch-
-Preview-Zugang und keine Adminrechte. Die Variable in der normalen Produktion
-leer lassen; nie Passwörter oder andere Geheimnisse darin hinterlegen.
+Zilch ist für alle aktiven, angemeldeten Konten verfügbar und bleibt vom
+Admin-System getrennt. Produktion setzt zwingend:
 
-Die zentrale Server-Policy schützt die Zilch-Shell, alle privaten Zilch-Routen,
-APIs und WebSockets. `/static/zilch.html` ist kein direkter Einstieg,
+```dotenv
+ROLLTHEDICE_ZILCH_ACCESS_MODE=authenticated
+```
+
+Dieser Wert erlaubt keinen Gastzugriff: Authentifizierung, Session, CSRF,
+WebSocket-Origin-Prüfung, Raumcodes und alle übrigen Zilch-Regeln bleiben aktiv.
+Die persönliche Historie listet nur Partien des angemeldeten Kontos;
+Ergebnisdetails sind auf die verknüpften menschlichen Teilnehmer beschränkt und
+antworten anderen Konten mit einem nicht unterscheidbaren 404. HTTP-Projektionen
+geben keine internen `user_id`-Werte aus.
+
+Der Modus `preview` ist ausschließlich ein fail-closed Betriebsrollback. Nur in
+diesem Modus kann `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` eine kommagetrennte Liste
+normalisierter zusätzlicher Testkonten enthalten. Das verleiht keine
+Adminrechte; `mani` bleibt in diesem Rückfallmodus zusätzlich an die Adminrolle
+gebunden. Die Allowlist in normaler Produktion leer lassen und nie Passwörter
+oder andere Geheimnisse darin hinterlegen.
+
+Die zentrale Server-Policy schützt die Zilch-Shell, alle personalisierten
+Zilch-Routen, APIs und WebSockets. `/static/zilch.html` ist kein direkter Einstieg,
 Zilch-Seiten bleiben `noindex` und gehören nicht in die Sitemap. Das Verbergen
 des App-Switches im Browser ist kein Ersatz für diese Prüfung.
 
@@ -503,17 +537,11 @@ den Container durch. Die CPU-Pause bleibt auf 0 bis 5 Sekunden begrenzt und
 ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS=0.55
 ```
 
-Für eine eindeutig getrennte Staging-Umgebung kann der explizite
-Zielgruppenmodus auf alle **angemeldeten** Accounts erweitert werden:
-
-```dotenv
-ROLLTHEDICE_ZILCH_ACCESS_MODE=authenticated
-```
-
-Dieser Wert ist kein anonymer Zugriff: Authentifizierung, Session, CSRF,
-WebSocket-Origin-Prüfung, Ergebniszugriffe und alle übrigen Zilch-Regeln
-bleiben aktiv. Der sichere Standard und die verpflichtende Einstellung für
-Produktion bis zu einer gesonderten Freigabe ist weiterhin `preview`.
+Die Loginpflicht ist zugleich die SEO-Grenze: Eine Public Beta für registrierte
+Konten ist noch keine anonym indexierbare Website. Bis eine eigene, anonym
+lesbare Zilch-Landing- oder Regelseite mit Canonical ausgeliefert wird, bleiben
+die Anwendung, Kontoseiten und Ergebnisrouten `noindex`; sie werden nicht in
+`app/site_seo.py` und nicht in die Sitemap aufgenommen.
 
 ### Erster Administrator
 
