@@ -128,8 +128,11 @@ scripts/install_nginx_config.sh
 
 Das Skript legt zuerst eine zeitgestempelte Sicherung der bisherigen
 Konfiguration an, führt `nginx -t` aus und stellt sie bei einem Fehler wieder
-her. Diese Systemkonfiguration wird nicht bei jedem App-Deployment ungeprüft
-überschrieben.
+her. Sobald die versionierte Datei die Produkt-Subdomains enthält, verweigert
+dieses allgemeine Installationsskript den Lauf, bis das Zertifikat beide Namen
+abdeckt. Für die erste Umstellung deshalb ausschließlich den kontrollierten
+`scripts/activate_subdomains.sh`-Ablauf weiter unten verwenden. Diese
+Systemkonfiguration wird nicht bei jedem App-Deployment ungeprüft überschrieben.
 
 Bei einem manuellen Aufruf werden alte Datenbackups zunächst nur aufgelistet:
 
@@ -139,6 +142,214 @@ KEEP=5 scripts/prune_data_backups.sh
 ```
 
 Nach Kontrolle der Liste kann dieselbe Auswahl mit `APPLY=1` gelöscht werden.
+
+## Subdomains kontrolliert aktivieren
+
+Die beiden zusätzlichen Produktnamen zeigen auf dieselbe laufende Anwendung und
+dieselbe persistente Datenbank:
+
+| Name | Aufgabe beim Start der Umstellung |
+| --- | --- |
+| `zockdiewandan.online` | Bleibt als bestehende ZDWA-, PWA- und Anmelde-Origin erreichbar. |
+| `www.zockdiewandan.online` | Bleibt als bestehender Alias erreichbar. |
+| `zdwa.zockdiewandan.online` | Redirect-only Alias auf die bestehende ZDWA-Apex-Origin. |
+| `zilch.zockdiewandan.online` | Eigener, weiterhin serverseitig geschützter Zilch-Einstieg. |
+
+Die Aktivierung verschiebt keine Daten und startet weder Docker noch Uvicorn
+neu. Nginx reicht Apex, `www` und Zilch an denselben einzelnen Container weiter;
+der `zdwa`-Alias antwortet mit 308 auf die Apex-Origin. Das Bind-Mount
+`/home/manuel/RollTheDice/data:/app/data` bleibt damit unverändert;
+Konten, Sessions, aktive Spiele, Resultate, Achievements und Leaderboards liegen
+weiterhin im bestehenden Produktionsbestand.
+
+Für die Host-Aufteilung gibt es keine neue Alembic-Revision und keine zweite
+Datenbank. Das normale App-Deployment prüft das bestehende Schema wie bisher
+idempotent; die anschließende Nginx-/TLS-Aktivierung öffnet oder verändert die
+SQLite-Dateien überhaupt nicht.
+
+### Verbindliche Freigabegates
+
+Vor der Aktivierung müssen alle folgenden Punkte erfüllt sein:
+
+1. Auf allen vier autoritativen IONOS-Nameservern liefern `zdwa` und `zilch`
+   ausschließlich den A-Record `217.154.16.72` mit TTL 3600. Es darf für beide
+   Namen kein AAAA-Record mehr existieren.
+2. Auch die öffentlichen Resolver `1.1.1.1`, `8.8.8.8` und `9.9.9.9` liefern
+   den neuen A-Record und keinen AAAA-Record. Wegen vorheriger Cache-Einträge
+   erst nach Ablauf der alten TTL aktivieren; eine korrekte IONOS-Übersicht
+   allein reicht dafür nicht.
+3. Die Subdomain-Version der Anwendung wurde mit dem normalen Deploy-Skript
+   ausgerollt und der Container ist gesund. Dieses App-Deployment erstellt das
+   vorgeschriebene konsistente `data.backup-*`. Für die anschließende reine
+   Nginx-/Zertifikatsaktivierung ist kein weiterer Live-Copy der SQLite-WAL-
+   Dateien zulässig oder erforderlich.
+4. Der produktive Container erhält die gemeinsame Cookie-Domain
+   `zockdiewandan.online`. Der bestehende Host-Cookie bleibt während der
+   Migration als Rückfallpfad erhalten. Origin- und CSRF-Prüfungen bleiben pro
+   tatsächlichem Host aktiv. Ein Domain-Cookie wird vom Browser an jede
+   Subdomain unterhalb von `zockdiewandan.online` gesendet. Deshalb müssen vor
+   der Freigabe alle aktiven DNS-Namen dieser Zone inventarisiert werden: Kein
+   Host darf auf fremdes Hosting, einen nicht mehr kontrollierten Dienst oder
+   einen übernehmbaren CNAME zeigen. Neue Subdomains dürfen künftig nur auf
+   vertrauenswürdiger eigener Infrastruktur betrieben werden. Unbekannte
+   HTTPS-Hostnamen weist die mitgelieferte Nginx-Konfiguration bereits beim
+   TLS-Handshake ab.
+5. Uvicorn vertraut als Forwarded-Header-Quelle exakt dem aktuell beobachteten
+   Docker-Gateway, nicht beliebigen Absendern. Das Gateway lässt sich lesen mit:
+
+   ```bash
+   sudo -n docker inspect rollthedice \
+     --format '{{range .NetworkSettings.Networks}}{{println .Gateway}}{{end}}'
+   ```
+
+   Auf der aktuellen Produktion ist dies `172.18.0.1`. Der Wert muss als
+   `FORWARDED_ALLOW_IPS` im Container ankommen. Port 8000 bleibt durch die
+   produktive, absichtlich nicht eingecheckte `docker-compose.override.yml`
+   ausschließlich an `127.0.0.1` gebunden. Diese Override-Datei und ihre
+   Ressourcen-/Capability-Härtung niemals durch die versionierte Compose-Datei
+   ersetzen oder löschen.
+6. Turnstile ist auf Produktion aktiv. Registrierung und Login für Zilch laufen
+   absichtlich über die bekannte Apex-Origin; der `zdwa`-Alias leitet ebenfalls
+   dorthin weiter. Für diese Umstellung muss daher kein zusätzliches Widget auf
+   Zilch gerendert werden. Vor `APPLY=1` muss trotzdem bestätigt werden, dass
+   die bestehende Widget-Hostname-Policy Apex (und `www`, falls dort weiterhin
+   Registrierung angeboten wird) abdeckt. Das Aktivierungsskript kann diese
+   externe Einstellung nicht selbst lesen und verlangt deshalb die bewusste
+   Bestätigung `TURNSTILE_HOSTNAMES_CONFIRMED=1`.
+7. Der Zilch-Zugriffsmodus ist eine getrennte Produktentscheidung. Der
+   Produktionsstandard `preview` erlaubt weiterhin nur der zentralen
+   Preview-Policy entsprechende Konten; eine neue DNS-Adresse macht Zilch nicht
+   automatisch für alle Benutzer frei. Nur eine ausdrücklich freigegebene
+   Änderung darf den erwarteten Modus auf `authenticated` setzen.
+
+### PWA, laufende Spiele und bestehende Logins
+
+Service Worker, Cache Storage, Local Storage und Session Storage sind an eine
+Browser-Origin gebunden. Eine installierte PWA von
+`https://zockdiewandan.online` kann deshalb nicht automatisch auf eine
+Subdomain umziehen. Die Apex-Origin bleibt erreichbar und wird während dieser
+Umstellung nicht umgeleitet; bestehende PWA-Installationen, offene Tabs,
+Host-Cookies und lokale Resume-Tokens funktionieren dort weiter.
+
+Die Zilch-Subdomain liefert absichtlich weder den root-gescopten ZDWA-Service-
+Worker noch dessen Manifest aus. Private Zilch-Shells dürfen nicht durch einen
+Precache oder einen Offline-Fallback nach Logout oder einer Policy-Änderung
+sichtbar bleiben. API-Antworten bleiben `no-store`, und Zilch bleibt mit
+`X-Robots-Tag: noindex, nofollow` aus Suchmaschinen ausgeschlossen. Eine eigene
+installierbare Zilch-PWA wäre ein separates, vor der Freigabe zu testendes
+Produktinkrement.
+
+Die gemeinsame, `Secure`, `HttpOnly` und `SameSite=Lax` gesetzte Session wird
+beim kontrollierten Handoff aus einem gültigen Apex-Login übernommen. Nutzer,
+die die Apex-Seite noch nicht mit der neuen Version besucht haben, werden zur
+Anmeldung beziehungsweise Promotion über die bekannte Origin geführt. Die
+SQLite-Sitzung selbst bleibt dieselbe. Anonyme Spieler- und Resume-Tokens im
+Local Storage lassen sich dagegen nicht sicher zwischen Origins kopieren;
+deshalb darf die Apex-Origin während laufender Partien nicht erzwungen auf eine
+Subdomain umgeleitet werden.
+
+Ein reiner `nginx reload` ist graceful und lässt bestehende Worker und
+Verbindungen auslaufen. Das vorausgehende App-Deployment ersetzt dagegen den
+einzelnen Uvicorn-Container kurz: WebSockets verbinden sich neu, persistierte
+aktive Spiele werden aus SQLite geladen und pausieren bis zur Rückkehr der
+Teilnehmer. Diesen Schritt möglichst in ein ruhiges Zeitfenster legen. Die
+nachfolgende Subdomain-/Zertifikatsaktivierung verursacht keinen weiteren
+Container- oder Datenbankneustart.
+
+### Dry Run und Aktivierung
+
+`scripts/activate_subdomains.sh` arbeitet nur auf dem Produktionshost und ist
+standardmäßig strikt nicht schreibend. Der Dry Run validiert DNS und TTL,
+Container-Health, das persistente Bind-Mount, Loopback-Portbindung, den exakt
+vertrauten Proxy, Cookie-Domain, Zilch-Modus, PWA-Isolation, Nginx-Syntax und die
+ausstehende Konfigurationsdifferenz. Zusätzlich muss ein aktiver
+`certbot.timer` oder der Certbot-Cronjob vorhanden sein:
+
+```bash
+ssh zdwa 'cd /home/manuel/RollTheDice && scripts/activate_subdomains.sh'
+```
+
+Erst nach manueller Kontrolle der vollständigen Cookie-Trust-Zone und der
+Turnstile-Hostname-Policy darf dieselbe geprüfte Version schreiben:
+
+```bash
+ssh zdwa 'cd /home/manuel/RollTheDice && \
+  COOKIE_TRUST_ZONE_CONFIRMED=1 \
+  TURNSTILE_HOSTNAMES_CONFIRMED=1 \
+  APPLY=1 scripts/activate_subdomains.sh'
+```
+
+Das Skript führt in dieser Reihenfolge aus:
+
+1. Zeitgestempelte Sicherung der aktiven Nginx-Site im selben Verzeichnis.
+2. Installation der versionierten Konfiguration, `nginx -t` und graceful
+   Reload. Bei einem Fehler wird die Sicherung automatisch zurückgespielt.
+3. Erweiterung der bestehenden Certbot-Lineage `zockdiewandan.online` um alle
+   vier SAN-Namen mit `certbot certonly --nginx --expand`. Der bestehende
+   Zertifikatspfad in Nginx ändert sich dadurch nicht.
+4. Erneutes `nginx -t`, Reload sowie lokale SNI-Prüfung von Zertifikat,
+   `/api/health` und allen vorgeschriebenen Security-Headern für jeden Host.
+5. Einen echten Certbot-Erneuerungstest mit
+   `certbot renew --dry-run --cert-name zockdiewandan.online`. Erst wenn auch
+   dieser erfolgreich ist, meldet das Skript die Aktivierung als abgeschlossen.
+
+Die serverlokale CSP steht im selben Nginx-Kontext wie HSTS,
+`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` und
+`Permissions-Policy`. Das ist notwendig, weil ein eigenes `add_header` in
+einem Server-Block die gleichnamige Vererbung aus `conf.d/security.conf`
+vollständig beendet.
+
+Nach erfolgreicher Aktivierung zusätzlich von einem externen Rechner prüfen:
+
+```bash
+for host_name in zockdiewandan.online www.zockdiewandan.online \
+  zilch.zockdiewandan.online; do
+  curl -fsS "https://${host_name}/api/health" >/dev/null
+  curl -sS -D - -o /dev/null "https://${host_name}/api/health"
+done
+
+curl -sS -D - -o /dev/null \
+  'https://zdwa.zockdiewandan.online/api/health?alias-check=1'
+# Erwartet: 308 und Location:
+# https://zockdiewandan.online/api/health?alias-check=1
+
+openssl s_client -connect zdwa.zockdiewandan.online:443 \
+  -servername zdwa.zockdiewandan.online </dev/null 2>/dev/null \
+  | openssl x509 -noout -ext subjectAltName
+```
+
+Danach in echten Browsern mindestens Anmeldung, Abmeldung, ZDWA-Erstellung,
+Zilch-Handoff, HTTP-API, WebSocket-Reconnect und die bereits installierte
+Apex-PWA testen. Die Turnstile-Registrierung nur mit einem bewusst vorgesehenen
+Testkonto prüfen.
+
+### Infrastruktur-Rollback
+
+Ein erfolgreicher Lauf gibt den exakten Pfad seiner Nginx-Sicherung und einen
+fertigen Rollback-Befehl aus. Vor dem Rückweg wieder trocken prüfen und genau
+diesen Pfad einsetzen:
+
+```bash
+ssh zdwa 'cd /home/manuel/RollTheDice && \
+  ACTION=rollback \
+  BACKUP=/etc/nginx/sites-available/rollthedice.backup-subdomains-YYYYMMDD-HHMMSS \
+  scripts/activate_subdomains.sh'
+```
+
+Erst danach mit `APPLY=1` ausführen. Das Skript legt vor dem Rückweg nochmals
+eine Sicherung der aktuellen Site an, prüft Nginx und lädt ihn graceful neu.
+Die um die beiden SANs erweiterte Certbot-Lineage darf bestehen bleiben: Sie ist
+weiterhin für Apex und `www` gültig und verändert weder Routing noch Daten. Ein
+Nginx-Rollback darf niemals mit einem Datenbank-Rollback, `docker compose down
+-v`, dem Löschen der produktiven Override-Datei oder dem Entfernen von
+`data/` verbunden werden.
+
+Bleibt der Fehler in der Anwendung statt in Nginx oder TLS, gilt zusätzlich der
+normale Code-Rollback weiter unten. Wegen bestehender Apex-Host-Cookies bleibt
+die Anmeldung dort rückfallfähig; neu auf einer Subdomain begonnene Browser-
+Sessions müssen nach einem vollständigen Code-Rollback gegebenenfalls erneut
+auf Apex angemeldet werden. Persistierte Konten und Spielergebnisse bleiben
+erhalten.
 
 ## Standard-Deployment
 
@@ -249,6 +460,20 @@ Für HTTPS muss gesetzt sein:
 ```dotenv
 ROLLTHEDICE_COOKIE_SECURE=1
 ```
+
+Vor dem App-Deployment für die Produkt-Hosts müssen zusätzlich diese
+nicht-geheimen Werte in derselben Produktionsdatei stehen:
+
+```dotenv
+ROLLTHEDICE_COOKIE_DOMAIN=zockdiewandan.online
+ROLLTHEDICE_SITE_ORIGIN=https://zockdiewandan.online
+ROLLTHEDICE_ZILCH_ORIGIN=https://zilch.zockdiewandan.online
+FORWARDED_ALLOW_IPS=172.18.0.1
+```
+
+`FORWARDED_ALLOW_IPS` muss stets dem unmittelbar zuvor per Docker-Inspect
+ermittelten Bridge-Gateway entsprechen. Das Aktivierungsskript verweigert den
+Lauf, wenn einer dieser Werte fehlt oder abweicht.
 
 Der Reverse-Proxy muss den ursprünglichen Host und das Protokoll weitergeben,
 insbesondere `X-Forwarded-Host` und `X-Forwarded-Proto`. Diese Werte werden für

@@ -1,4 +1,12 @@
 import { authError, loadAuth, login, logout, register } from "../shared/auth.js";
+import {
+  applyZilchRouteLinks,
+  normalizeZilchPageUrl,
+  zilchPath,
+  zilchRoutePath,
+} from "../multigame/routes.js";
+
+applyZilchRouteLinks();
 
 const form = document.getElementById("zilchLoginForm");
 const username = document.getElementById("zilchLoginUsername");
@@ -18,9 +26,32 @@ function t(value) {
 }
 
 function returnPath() {
-  const candidate = new URLSearchParams(window.location.search).get("return_to") || "/zilch";
-  if (!candidate.startsWith("/zilch") || candidate.startsWith("/zilch/anmelden") || candidate.startsWith("//")) return "/zilch";
-  return candidate;
+  const fallback = zilchPath("/");
+  const candidate = new URLSearchParams(window.location.search).get("return_to");
+  const directZilchPath = normalizeZilchPageUrl(candidate);
+  if (directZilchPath) return directZilchPath;
+
+  // A first visit to the Zilch subdomain returns through this one fixed Apex
+  // endpoint. Rebuild it from validated pieces so `return_to` can never become
+  // an external or arbitrary same-origin redirect after login.
+  if (typeof candidate !== "string" || !candidate.startsWith("/") || candidate.startsWith("//")) return fallback;
+  try {
+    const continuation = new URL(candidate, window.location.origin);
+    if (continuation.origin !== window.location.origin
+      || continuation.pathname !== "/auth/continue"
+      || continuation.searchParams.get("app") !== "zilch") return fallback;
+    const requestedPath = continuation.searchParams.get("path") || "/";
+    const legacyCandidate = requestedPath === "/" ? "/zilch" : `/zilch${requestedPath}`;
+    const validatedLegacyPath = normalizeZilchPageUrl(legacyCandidate);
+    if (!validatedLegacyPath) return fallback;
+    const validated = new URL(validatedLegacyPath, window.location.origin);
+    const cleanRoute = zilchRoutePath(validated.pathname);
+    if (!cleanRoute) return fallback;
+    const cleanPath = `${cleanRoute}${validated.search}`;
+    return `/auth/continue?app=zilch&path=${encodeURIComponent(cleanPath)}`;
+  } catch (_) {
+    return fallback;
+  }
 }
 
 function setMessage(value, kind = "") {

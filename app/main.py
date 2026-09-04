@@ -22,9 +22,11 @@ from .api_auth import router as auth_router
 from .api_users import router as users_router
 from .auth import (
     ensure_bootstrap_admin,
+    promote_legacy_session_cookie,
     require_admin,
     require_csrf,
     resolve_session,
+    validate_session_cookie_config,
     websocket_origin_allowed,
 )
 from .auth_protection import enforce_game_creation_rate_limit, validate_auth_protection_config
@@ -61,6 +63,14 @@ from .leaderboard_service import (
 )
 from .leaderboard_storage import LeaderboardFiles
 from .models import User
+from .product_hosts import (
+    is_site_host,
+    is_zilch_host,
+    safe_zilch_path,
+    site_origin,
+    validate_product_host_config,
+    zilch_url,
+)
 from .security import normalize_username
 from .site_seo import robots_document, sitemap_document
 from .zilch_achievements import (
@@ -149,6 +159,8 @@ configure_database(DATA_DIR)
 async def lifespan(_app: FastAPI):
     upgrade_database(BASE)
     validate_auth_protection_config()
+    validate_session_cookie_config()
+    validate_product_host_config()
     ensure_bootstrap_admin()
     import_legacy_leaderboards(LEADERBOARD_FILES.legacy_paths())
     games.update(load_active_games())
@@ -235,17 +247,36 @@ def _legacy_page_target(request: Request) -> str | None:
 @app.middleware("http")
 async def response_cache_policy(request: Request, call_next):
     """Redirect legacy pages and apply the shared HTTP cache contract."""
+    zilch_host = is_zilch_host(request)
+    if zilch_host and (request.url.path == "/zilch" or request.url.path.startswith("/zilch/")):
+        clean_path = request.url.path.removeprefix("/zilch") or "/"
+        candidate = clean_path + (f"?{request.url.query}" if request.url.query else "")
+        target = safe_zilch_path(candidate)
+        response = RedirectResponse(
+            target,
+            status_code=308,
+            headers={
+                "Cache-Control": "no-store",
+                "X-Robots-Tag": "noindex, nofollow",
+            },
+        )
+        return response
     # ``zilch.html`` is an implementation artifact used by the protected
     # routes below.  Unlike public static assets, it must never become a
     # second, unauthenticated page entry point through the static mount.
     if request.url.path in {"/static/zilch.html", "/static/zilch-login.html"}:
-        return Response(status_code=404, headers={"Cache-Control": "no-store"})
+        headers = {"Cache-Control": "no-store"}
+        if zilch_host:
+            headers["X-Robots-Tag"] = "noindex, nofollow"
+        return Response(status_code=404, headers=headers)
     legacy_target = _legacy_page_target(request)
     if legacy_target:
         response = RedirectResponse(legacy_target, status_code=308)
     else:
         response = await call_next(request)
     apply_cache_policy(request, response, asset_version=STATIC_ASSET_VERSION)
+    if zilch_host:
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
     return response
 
 
@@ -255,19 +286,25 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # Manifest (am Root-Pfad) mit korrektem MIME-Type ausliefern
 @app.get("/manifest.webmanifest", include_in_schema=False)
-def manifest():
+def manifest(request: Request):
+    if is_zilch_host(request):
+        return Response(status_code=404, headers={"Cache-Control": "no-store"})
     # liegt im Repo-Root neben Dockerfile / README
     return FileResponse(str(BASE / "manifest.webmanifest"), media_type="application/manifest+json")
 
 
 @app.get("/manifest-en.webmanifest", include_in_schema=False)
-def manifest_en():
+def manifest_en(request: Request):
+    if is_zilch_host(request):
+        return Response(status_code=404, headers={"Cache-Control": "no-store"})
     return FileResponse(str(BASE / "manifest-en.webmanifest"), media_type="application/manifest+json")
 
 
 # Service Worker (Root-Scope) ausliefern
 @app.get("/sw.js", include_in_schema=False)
-def service_worker():
+def service_worker(request: Request):
+    if is_zilch_host(request):
+        return Response(status_code=404, headers={"Cache-Control": "no-store"})
     return FileResponse(
         str(STATIC_DIR / "sw.js"),
         media_type="text/javascript",
@@ -281,14 +318,18 @@ def favicon():
 
 
 @app.get("/robots.txt", include_in_schema=False, response_class=PlainTextResponse)
-def robots_txt() -> str:
+def robots_txt(request: Request) -> str:
     """Expose crawler rules and the canonical sitemap location."""
+    if is_zilch_host(request):
+        return "User-agent: *\nDisallow: /\n"
     return robots_document()
 
 
 @app.get("/sitemap.xml", include_in_schema=False)
-def sitemap_xml() -> Response:
+def sitemap_xml(request: Request) -> Response:
     """List the stable public pages that are useful in search results."""
+    if is_zilch_host(request):
+        return Response(status_code=404, headers={"Cache-Control": "no-store"})
     return Response(content=sitemap_document(), media_type="application/xml")
 
 
@@ -300,33 +341,45 @@ def _page(filename: str) -> FileResponse:
 
 
 @app.get("/regeln", include_in_schema=False)
-def rules_page():
+def rules_page(request: Request):
+    if is_zilch_host(request):
+        return _serve_zilch_shell(request)
     return _page("rules.html")
 
 
 @app.get("/spieler", include_in_schema=False)
-def players_page():
+def players_page(request: Request):
+    if is_zilch_host(request):
+        return _serve_zilch_shell(request)
     return _page("players.html")
 
 
 @app.get("/spieler/{username}", include_in_schema=False)
-def player_profile_page(username: str):
+def player_profile_page(username: str, request: Request):
+    if is_zilch_host(request):
+        return _serve_zilch_shell(request)
     return _page("profile.html")
 
 
 @app.get("/rangabzeichen", include_in_schema=False)
-def achievement_rank_legend_page():
+def achievement_rank_legend_page(request: Request):
     """Serve the public explanation of achievement rank badges."""
+    if is_zilch_host(request):
+        return RedirectResponse("/erfolge", status_code=308)
     return _page("ranks.html")
 
 
 @app.get("/konto", include_in_schema=False)
-def account_page():
+def account_page(request: Request):
+    if is_zilch_host(request):
+        return _serve_zilch_shell(request)
     return _page("account.html")
 
 
 @app.get("/admin", include_in_schema=False)
-def admin_page():
+def admin_page(request: Request):
+    if is_zilch_host(request):
+        return RedirectResponse(f"{site_origin()}/admin", status_code=308)
     return _page("admin.html")
 
 
@@ -337,6 +390,8 @@ def room_page(game_id: str, request: Request):
     # second server-side check, while the 404 here avoids revealing it to an
     # unauthorized caller who guessed an ID.
     game = games.get(game_id)
+    if is_zilch_host(request):
+        return zilch_room_page(game_id, request)
     if game and game_type_from_state(game) == ZILCH_GAME_TYPE:
         if not can_access_game(resolve_session(request), game):
             raise HTTPException(status_code=404, detail="game_not_found")
@@ -354,11 +409,45 @@ def _require_zilch_preview(request: Request):
     return identity
 
 
+def _clean_zilch_request_path(request: Request) -> str:
+    path = request.url.path
+    if path == "/zilch" or path.startswith("/zilch/"):
+        path = path.removeprefix("/zilch") or "/"
+    if request.url.query:
+        path = f"{path}?{request.url.query}"
+    return safe_zilch_path(path)
+
+
+def _zilch_handoff_url(request: Request) -> str:
+    query = urlencode({"app": "zilch", "path": _clean_zilch_request_path(request)})
+    return f"{site_origin()}/auth/continue?{query}"
+
+
+def _resolve_zilch_access(request: Request):
+    identity = resolve_session(request)
+    if not identity:
+        if is_zilch_host(request):
+            return None, RedirectResponse(_zilch_handoff_url(request), status_code=303)
+        raise HTTPException(status_code=401, detail="authentication_required")
+    if not can_access_zilch_preview(identity):
+        if is_zilch_host(request):
+            return None, RedirectResponse(f"{site_origin()}/zilch/anmelden", status_code=303)
+        raise HTTPException(status_code=403, detail="zilch_preview_required")
+    return identity, None
+
+
+def _serve_zilch_shell(request: Request):
+    """Serve Zilch or move a new subdomain visitor through the apex login handoff."""
+    _identity, redirect = _resolve_zilch_access(request)
+    if redirect:
+        return redirect
+    return _page("zilch.html")
+
+
 @app.get("/zilch", include_in_schema=False)
 def zilch_preview_page(request: Request):
     """Serve the internal, noindex Zilch shell only to the preview identity."""
-    _require_zilch_preview(request)
-    return _page("zilch.html")
+    return _serve_zilch_shell(request)
 
 
 @app.get("/zilch/anmelden", include_in_schema=False)
@@ -375,7 +464,9 @@ def zilch_login_page():
 @app.get("/zilch/spiel/{game_id}", include_in_schema=False)
 def zilch_room_page(game_id: str, request: Request):
     """Serve a Zilch room only after both policy and type checks pass."""
-    identity = _require_zilch_preview(request)
+    identity, redirect = _resolve_zilch_access(request)
+    if redirect:
+        return redirect
     game = games.get(game_id)
     if not game or game_type_from_state(game) != ZILCH_GAME_TYPE or not can_access_game(identity, game):
         raise HTTPException(status_code=404, detail="game_not_found")
@@ -385,7 +476,9 @@ def zilch_room_page(game_id: str, request: Request):
 @app.get("/zilch/ergebnis/{game_id}", include_in_schema=False)
 def zilch_result_page(game_id: str, request: Request):
     """Serve the private noindex Zilch shell for one persisted result."""
-    _require_zilch_preview(request)
+    _identity, redirect = _resolve_zilch_access(request)
+    if redirect:
+        return redirect
     if load_zilch_result(game_id) is None:
         # Do not distinguish an unknown ID, a ZDWA ID, or a malformed private
         # Zilch payload at this route.
@@ -396,50 +489,109 @@ def zilch_result_page(game_id: str, request: Request):
 @app.get("/zilch/historie", include_in_schema=False)
 def zilch_history_page(request: Request):
     """Serve the private, noindex Zilch shell for the history view."""
-    _require_zilch_preview(request)
-    return _page("zilch.html")
+    return _serve_zilch_shell(request)
 
 
 @app.get("/zilch/statistiken", include_in_schema=False)
 def zilch_statistics_page(request: Request):
     """Serve the private, noindex Zilch shell for personal statistics."""
-    _require_zilch_preview(request)
-    return _page("zilch.html")
+    return _serve_zilch_shell(request)
 
 
 @app.get("/zilch/bestenlisten", include_in_schema=False)
 def zilch_leaderboards_page(request: Request):
     """Serve the private, noindex Zilch shell for Zilch leaderboards."""
-    _require_zilch_preview(request)
-    return _page("zilch.html")
+    return _serve_zilch_shell(request)
 
 
 @app.get("/zilch/erfolge", include_in_schema=False)
 def zilch_achievements_page(request: Request):
     """Serve the private noindex Zilch award collection."""
-    _require_zilch_preview(request)
-    return _page("zilch.html")
+    return _serve_zilch_shell(request)
 
 
 @app.get("/zilch/konto", include_in_schema=False)
 def zilch_account_page(request: Request):
     """Serve the private Zilch account, including its separate awards."""
-    _require_zilch_preview(request)
-    return _page("zilch.html")
+    return _serve_zilch_shell(request)
 
 
 @app.get("/zilch/spieler/{username}", include_in_schema=False)
 def zilch_player_achievements_page(username: str, request: Request):
     """Serve a private Zilch-context award profile, never the public ZDWA one."""
-    _require_zilch_preview(request)
-    return _page("zilch.html")
+    return _serve_zilch_shell(request)
 
 
 @app.get("/zilch/regeln", include_in_schema=False)
 def zilch_rules_page(request: Request):
     """Serve the private, noindex Zilch shell for the rules view."""
-    _require_zilch_preview(request)
-    return _page("zilch.html")
+    return _serve_zilch_shell(request)
+
+
+@app.get("/anmelden", include_in_schema=False)
+def zilch_subdomain_login_page(request: Request, return_to: str = Query(default="/")):
+    if not is_zilch_host(request):
+        raise HTTPException(status_code=404, detail="not_found")
+    query = urlencode({"app": "zilch", "path": safe_zilch_path(return_to)})
+    return RedirectResponse(f"{site_origin()}/auth/continue?{query}", status_code=303)
+
+
+@app.get("/historie", include_in_schema=False)
+def zilch_subdomain_history_page(request: Request):
+    if not is_zilch_host(request):
+        raise HTTPException(status_code=404, detail="not_found")
+    return _serve_zilch_shell(request)
+
+
+@app.get("/statistiken", include_in_schema=False)
+def zilch_subdomain_statistics_page(request: Request):
+    if not is_zilch_host(request):
+        raise HTTPException(status_code=404, detail="not_found")
+    return _serve_zilch_shell(request)
+
+
+@app.get("/bestenlisten", include_in_schema=False)
+def zilch_subdomain_leaderboards_page(request: Request):
+    if not is_zilch_host(request):
+        raise HTTPException(status_code=404, detail="not_found")
+    return _serve_zilch_shell(request)
+
+
+@app.get("/erfolge", include_in_schema=False)
+def zilch_subdomain_achievements_page(request: Request):
+    if not is_zilch_host(request):
+        raise HTTPException(status_code=404, detail="not_found")
+    return _serve_zilch_shell(request)
+
+
+@app.get("/auth/continue", include_in_schema=False)
+def continue_to_product(request: Request, app_name: str = Query(alias="app"), path: str = Query(default="/")):
+    """Promote an apex login and continue only to a fixed, allowlisted product URL."""
+    if not is_site_host(request) or app_name != "zilch":
+        raise HTTPException(status_code=404, detail="product_not_found")
+    private_headers = {
+        "Cache-Control": "no-store",
+        "X-Robots-Tag": "noindex, nofollow",
+    }
+    destination_path = safe_zilch_path(path)
+    identity = resolve_session(request)
+    if not identity:
+        return_path = f"/auth/continue?{urlencode({'app': 'zilch', 'path': destination_path})}"
+        login_url = f"{site_origin()}/zilch/anmelden?{urlencode({'return_to': return_path})}"
+        return RedirectResponse(login_url, status_code=303, headers=private_headers)
+    if not can_access_zilch_preview(identity):
+        return RedirectResponse(
+            f"{site_origin()}/zilch/anmelden",
+            status_code=303,
+            headers=private_headers,
+        )
+    response = RedirectResponse(
+        zilch_url(destination_path),
+        status_code=303,
+        headers=private_headers,
+    )
+    promote_legacy_session_cookie(response, request)
+    return response
 
 
 @app.get("/ergebnis", include_in_schema=False)
@@ -447,6 +599,10 @@ def zilch_rules_page(request: Request):
 def completed_game_page(request: Request, game_id: str | None = None):
     # A stored Zilch game must never mount the fixed ZDWA replay renderer.
     # The public route gives no indication that a private result exists.
+    if is_zilch_host(request):
+        if not game_id:
+            raise HTTPException(status_code=404, detail="result_not_found")
+        return zilch_result_page(game_id, request)
     if game_id and completed_game_type_for_id(game_id) == ZILCH_GAME_TYPE:
         identity = resolve_session(request)
         if not can_access_zilch_preview(identity) or load_zilch_result(game_id) is None:
@@ -456,7 +612,9 @@ def completed_game_page(request: Request, game_id: str | None = None):
 
 
 @app.get("/offline", include_in_schema=False)
-def offline_page():
+def offline_page(request: Request):
+    if is_zilch_host(request):
+        return Response(status_code=404, headers={"Cache-Control": "no-store"})
     return _page("offline.html")
 
 
@@ -646,8 +804,10 @@ async def presence(websocket: WebSocket) -> None:
 
 
 @app.get("/")
-def root():
+def root(request: Request):
     """Liefer Startseite (Lobby) aus dem Static-Verzeichnis aus."""
+    if is_zilch_host(request):
+        return _serve_zilch_shell(request)
     return FileResponse(
         str(STATIC_DIR / "index.html"),
         headers={"Cache-Control": "no-cache, must-revalidate"},

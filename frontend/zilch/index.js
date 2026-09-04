@@ -1,24 +1,33 @@
 import { apiFetch, escapeHtml, loadAuth, logout } from "../shared/auth.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
+import {
+  applyZilchRouteLinks,
+  normalizeZilchPageUrl,
+  zdwaAppEntryUrl,
+  zilchPath,
+  zilchRoutePath,
+} from "../multigame/routes.js";
 
 const root = document.querySelector("[data-zilch-root]");
 const content = document.getElementById("zilchContent");
 const liveAnnouncements = document.getElementById("zilchLiveAnnouncements");
-const gameIdMatch = window.location.pathname.match(/^\/zilch\/spiel\/([^/]+)$/);
-const resultIdMatch = window.location.pathname.match(/^\/zilch\/ergebnis\/([^/]+)$/);
+applyZilchRouteLinks();
+const currentZilchRoute = zilchRoutePath(window.location.pathname);
+const gameIdMatch = currentZilchRoute?.match(/^\/spiel\/([^/]+)$/);
+const resultIdMatch = currentZilchRoute?.match(/^\/ergebnis\/([^/]+)$/);
 function decodedPathSegment(match) {
   if (!match?.[1]) return null;
   try { return decodeURIComponent(match[1]); } catch (_) { return null; }
 }
 const gameId = decodedPathSegment(gameIdMatch);
 const resultId = decodedPathSegment(resultIdMatch);
-const historyRoute = window.location.pathname === "/zilch/historie";
-const rulesRoute = window.location.pathname === "/zilch/regeln";
-const statisticsRoute = window.location.pathname === "/zilch/statistiken";
-const leaderboardsRoute = window.location.pathname === "/zilch/bestenlisten";
-const achievementsRoute = window.location.pathname === "/zilch/erfolge";
-const accountRoute = window.location.pathname === "/zilch/konto";
-const playerAchievementsMatch = window.location.pathname.match(/^\/zilch\/spieler\/([^/]+)$/);
+const historyRoute = currentZilchRoute === "/historie";
+const rulesRoute = currentZilchRoute === "/regeln";
+const statisticsRoute = currentZilchRoute === "/statistiken";
+const leaderboardsRoute = currentZilchRoute === "/bestenlisten";
+const achievementsRoute = currentZilchRoute === "/erfolge";
+const accountRoute = currentZilchRoute === "/konto";
+const playerAchievementsMatch = currentZilchRoute?.match(/^\/spieler\/([^/]+)$/);
 const playerAchievementsUsername = decodedPathSegment(playerAchievementsMatch);
 const ZILCH_ACTIVE_GAME_STORAGE_KEY = "zilch_active_game_id";
 const ZILCH_LEADERBOARD_LIMIT = 100;
@@ -387,12 +396,12 @@ function renderNavigation() {
   }
   const current = navigationRouteKind();
   const entries = [
-    { key: "lobby", href: "/zilch", label: t("Lobby") },
-    { key: "leaderboards", href: "/zilch/bestenlisten", label: t("Spieler & Ranking") },
-    { key: "rules", href: "/zilch/regeln", label: t("Regeln") },
+    { key: "lobby", href: zilchPath("/"), label: t("Lobby") },
+    { key: "leaderboards", href: zilchPath("/bestenlisten"), label: t("Spieler & Ranking") },
+    { key: "rules", href: zilchPath("/regeln"), label: t("Regeln") },
     {
       key: "account",
-      href: "/zilch/konto",
+      href: zilchPath("/konto"),
       label: t("Konto"),
     },
   ];
@@ -539,7 +548,7 @@ function gameCard(game, { running = false } = {}) {
       ${running || !points ? "" : `<p class="zilch-game-card__points">${escapeHtml(t("Punktestand"))}: <strong>${escapeHtml(points)}</strong></p>`}
       ${pause}
     </div>
-    <a class="button-link zilch-lobby-action" href="/zilch/spiel/${encodeURIComponent(game.id)}">${escapeHtml(action)}</a>
+    <a class="button-link zilch-lobby-action" href="${escapeHtml(zilchPath(`/spiel/${encodeURIComponent(game.id)}`))}">${escapeHtml(action)}</a>
   </article>`;
 }
 
@@ -659,7 +668,7 @@ function resultHistoryCard(result) {
       <p>${escapeHtml(scores || t("Punktestand nicht verfügbar"))}</p>
       <p class="zilch-result-history-card__outcome">${escapeHtml(t("Ergebnis"))}: <strong>${escapeHtml(resultOutcomeLabel(result))}</strong></p>
     </div>
-    <a class="button-link zilch-lobby-action" href="/zilch/ergebnis/${encodeURIComponent(id)}">${escapeHtml(t("Ergebnis ansehen"))}</a>
+    <a class="button-link zilch-lobby-action" href="${escapeHtml(zilchPath(`/ergebnis/${encodeURIComponent(id)}`))}">${escapeHtml(t("Ergebnis ansehen"))}</a>
   </article>`;
 }
 
@@ -729,7 +738,7 @@ async function renderLobby() {
     <section class="zilch-lobby-identity" aria-label="${escapeHtml(`${t("Du spielst als")} ${username}`)}">
       <span class="eyebrow">${escapeHtml(t("Du spielst als"))}</span>
       <strong>${escapeHtml(username)}</strong>
-      <a class="small ghost button-link" href="/zilch/konto">${escapeHtml(t("Mein Konto"))}</a>
+      <a class="small ghost button-link" href="${escapeHtml(zilchPath("/konto"))}">${escapeHtml(t("Mein Konto"))}</a>
     </section>
     <section class="zilch-card zilch-create-card">
       <h2>${escapeHtml(t("Neue Zilch-Partie"))}</h2>
@@ -760,7 +769,7 @@ async function renderLobby() {
       </section>
     </section>
     <section class="zilch-lobby-ranking" aria-labelledby="zilchLobbyRankingTitle">
-      <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Bestenlisten"))}</p><h2 id="zilchLobbyRankingTitle">${escapeHtml(t("Zilch-Ranglisten"))}</h2></div><a class="small ghost button-link" href="/zilch/bestenlisten">${escapeHtml(t("Alle Bestenlisten"))}</a></div>
+      <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Bestenlisten"))}</p><h2 id="zilchLobbyRankingTitle">${escapeHtml(t("Zilch-Ranglisten"))}</h2></div><a class="small ghost button-link" href="${escapeHtml(zilchPath("/bestenlisten"))}">${escapeHtml(t("Alle Bestenlisten"))}</a></div>
       <div class="zilch-lobby-leaderboards" aria-live="polite">
         ${lobbyLeaderboardShell("solo_sprint")}
         ${lobbyLeaderboardShell("multiplayer_wins")}
@@ -864,7 +873,7 @@ async function renderLobby() {
         try { sessionStorage.setItem(`zilch_pass_${payload.game_id}`, passphrase); } catch (_) {}
       }
       rememberActiveGame(payload.game_id);
-      window.location.assign(`/zilch/spiel/${encodeURIComponent(payload.game_id)}`);
+      window.location.assign(zilchPath(`/spiel/${encodeURIComponent(payload.game_id)}`));
     } catch (error) {
       if (errorSlot) errorSlot.textContent = createGameErrorText(error);
     } finally {
@@ -879,7 +888,7 @@ async function renderHistory() {
   if (!content) return;
   content.innerHTML = `<section class="zilch-game-head">
       <div><p class="eyebrow">${escapeHtml(t("Private Historie"))}</p><h1>${escapeHtml(t("Abgeschlossene Spiele"))}</h1><p>${escapeHtml(t("Deine privaten Zilch-Partien bleiben getrennt von ZDWA-Ergebnissen und Ranglisten."))}</p></div>
-      <a class="small ghost button-link" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
+      <a class="small ghost button-link" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
     </section>
     <section class="zilch-card zilch-results-history" aria-labelledby="zilchAllHistoryTitle">
       <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Ergebnisse"))}</p><h2 id="zilchAllHistoryTitle">${escapeHtml(t("Deine abgeschlossenen Zilch-Partien"))}</h2></div></div>
@@ -1273,7 +1282,7 @@ async function renderAchievements() {
   if (!content) return;
   content.innerHTML = `<section class="zilch-game-head zilch-achievements-head">
       <div><p class="eyebrow">${escapeHtml(t("Private Sammlung"))}</p><h1>${escapeHtml(t("Zilch-Awards"))}</h1><p>${escapeHtml(t("Deine Awards entstehen aus abgeschlossenen Zilch-Partien. Sie verändern weder ZDWA-Ränge noch Ehrenberg-Marken."))}</p></div>
-      <a class="small ghost button-link" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
+      <a class="small ghost button-link" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
     </section>
     <div id="zilchAchievementsBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Awards werden geladen …"))}</p></section></div>`;
   try {
@@ -1281,7 +1290,7 @@ async function renderAchievements() {
     renderAchievementsBody();
   } catch (_) {
     const slot = document.getElementById("zilchAchievementsBody");
-    if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Awards nicht verfügbar"))}</h2><p>${escapeHtml(t("Bitte versuche es später erneut oder kehre zur Zilch-Lobby zurück."))}</p><a class="button-link small ghost" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a></section>`;
+    if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Awards nicht verfügbar"))}</h2><p>${escapeHtml(t("Bitte versuche es später erneut oder kehre zur Zilch-Lobby zurück."))}</p><a class="button-link small ghost" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a></section>`;
   }
 }
 
@@ -1290,17 +1299,17 @@ async function renderAccount() {
   const username = state.auth?.user?.username || t("Spieler");
   content.innerHTML = `<section class="zilch-game-head zilch-account-head">
       <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><h1>${escapeHtml(username)}</h1><p>${escapeHtml(t("Dein Zilch-Konto bündelt deine privaten Statistiken und Awards."))}</p></div>
-      <a class="small ghost button-link" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
+      <a class="small ghost button-link" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
     </section>
     <section class="zilch-account-overview">
-      <a class="zilch-card zilch-account-link" href="/zilch/statistiken"><p class="eyebrow">${escapeHtml(t("Deine Statistiken"))}</p><h2>${escapeHtml(t("Deine Zilch-Werte"))}</h2><p>${escapeHtml(t("Behalte Solo-, CPU- und Zwei-Spieler-Partien im Blick."))}</p></a>
+      <a class="zilch-card zilch-account-link" href="${escapeHtml(zilchPath("/statistiken"))}"><p class="eyebrow">${escapeHtml(t("Deine Statistiken"))}</p><h2>${escapeHtml(t("Deine Zilch-Werte"))}</h2><p>${escapeHtml(t("Behalte Solo-, CPU- und Zwei-Spieler-Partien im Blick."))}</p></a>
       <section class="zilch-card zilch-account-settings"><p class="eyebrow">${escapeHtml(t("Zilch-Einstellungen"))}</p><h2>${escapeHtml(t("Kommt später"))}</h2><p>${escapeHtml(t("Eigene Zilch-Einstellungen ergänzen wir mit den nächsten Spieloptionen."))}</p></section>
     </section>
     <section class="zilch-card zilch-account-session" aria-label="${escapeHtml(`${t("Du spielst als")} ${username}`)}">
       <div><p class="eyebrow">${escapeHtml(t("Du spielst als"))}</p><strong class="zilch-account-session__name">${escapeHtml(username)}</strong></div>
       <button id="zilchAccountLogout" class="small ghost" type="button" data-zilch-logout>${escapeHtml(t("Abmelden"))}</button>
     </section>
-    <section class="zilch-account-awards" aria-labelledby="zilchAccountAwardsTitle"><div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Zilch-Awards"))}</p><h2 id="zilchAccountAwardsTitle">${escapeHtml(t("Deine Erfolge"))}</h2></div><a class="small ghost button-link" href="/zilch/erfolge">${escapeHtml(t("Alle Awards"))}</a></div><div id="zilchAchievementsBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Awards werden geladen …"))}</p></section></div></section>`;
+    <section class="zilch-account-awards" aria-labelledby="zilchAccountAwardsTitle"><div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Zilch-Awards"))}</p><h2 id="zilchAccountAwardsTitle">${escapeHtml(t("Deine Erfolge"))}</h2></div><a class="small ghost button-link" href="${escapeHtml(zilchPath("/erfolge"))}">${escapeHtml(t("Alle Awards"))}</a></div><div id="zilchAchievementsBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Awards werden geladen …"))}</p></section></div></section>`;
   try {
     state.achievements = await fetchZilchAchievements();
     renderAchievementsBody();
@@ -1321,7 +1330,7 @@ async function renderPlayerAchievements() {
   const requestedName = String(playerAchievementsUsername || "").trim();
   content.innerHTML = `<section class="zilch-game-head zilch-achievements-head">
       <div><p class="eyebrow">${escapeHtml(t("Private Zilch-Sammlung"))}</p><h1>${escapeHtml(t("Zilch-Awards eines Spielers"))}</h1><p>${escapeHtml(t("Diese private Ansicht zeigt ausschließlich Zilch-Awards und keine ZDWA-Ränge oder Ehrenberg-Marken."))}</p></div>
-      <a class="small ghost button-link" href="/zilch/erfolge">${escapeHtml(t("Meine Zilch-Awards"))}</a>
+      <a class="small ghost button-link" href="${escapeHtml(zilchPath("/erfolge"))}">${escapeHtml(t("Meine Zilch-Awards"))}</a>
     </section>
     <div id="zilchPlayerAchievementsBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Awards werden geladen …"))}</p></section></div>`;
   try {
@@ -1332,7 +1341,7 @@ async function renderPlayerAchievements() {
     if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Private Zilch-Sammlung"))}</p><h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2></section>${achievementsCatalogMarkup(state.playerAchievements)}`;
   } catch (_) {
     const slot = document.getElementById("zilchPlayerAchievementsBody");
-    if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Awards nicht verfügbar"))}</h2><p>${escapeHtml(t("Dieser private Zilch-Spieler konnte nicht gefunden werden."))}</p><a class="button-link small ghost" href="/zilch/erfolge">${escapeHtml(t("Meine Zilch-Awards"))}</a></section>`;
+    if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Awards nicht verfügbar"))}</h2><p>${escapeHtml(t("Dieser private Zilch-Spieler konnte nicht gefunden werden."))}</p><a class="button-link small ghost" href="${escapeHtml(zilchPath("/erfolge"))}">${escapeHtml(t("Meine Zilch-Awards"))}</a></section>`;
   }
 }
 
@@ -1631,7 +1640,7 @@ async function renderStatistics() {
   if (!content) return;
   content.innerHTML = `<section class="zilch-game-head zilch-statistics-head">
       <div><p class="eyebrow">${escapeHtml(t("Private Auswertung"))}</p><h1>${escapeHtml(t("Zilch-Statistiken"))}</h1><p>${escapeHtml(t("Deine Zilch-Werte werden getrennt von ZDWA und ausschließlich aus gespeicherten Ergebnissen berechnet."))}</p></div>
-      <a class="small ghost button-link" href="/zilch/bestenlisten">${escapeHtml(t("Zu den Bestenlisten"))}</a>
+      <a class="small ghost button-link" href="${escapeHtml(zilchPath("/bestenlisten"))}">${escapeHtml(t("Zu den Bestenlisten"))}</a>
     </section>
     <div id="zilchStatisticsBody" aria-live="polite">${statisticsTabMarkup()}<section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Statistiken werden geladen …"))}</p></section></div>`;
   try {
@@ -1639,7 +1648,7 @@ async function renderStatistics() {
     renderStatisticsBody();
   } catch (_) {
     const slot = document.getElementById("zilchStatisticsBody");
-    if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Statistiken nicht verfügbar"))}</h2><p>${escapeHtml(t("Bitte versuche es später erneut oder kehre zur Zilch-Lobby zurück."))}</p><a class="button-link small ghost" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a></section>`;
+    if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Statistiken nicht verfügbar"))}</h2><p>${escapeHtml(t("Bitte versuche es später erneut oder kehre zur Zilch-Lobby zurück."))}</p><a class="button-link small ghost" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a></section>`;
   }
 }
 
@@ -1732,7 +1741,7 @@ function zilchPlayerAchievementLink(entry) {
   const username = String(entry?.username || entry?.player_username || "").trim();
   const label = leaderboardEntryName(entry);
   if (!username || entry?.participant_type === "cpu") return `<strong>${escapeHtml(label)}</strong>`;
-  return `<a class="zilch-player-achievement-link" href="/zilch/spieler/${encodeURIComponent(username)}">${escapeHtml(label)}</a>`;
+  return `<a class="zilch-player-achievement-link" href="${escapeHtml(zilchPath(`/spieler/${encodeURIComponent(username)}`))}">${escapeHtml(label)}</a>`;
 }
 
 function leaderboardTableMarkup(leaderboard) {
@@ -1809,7 +1818,7 @@ function updateLeaderboardLocation() {
   const params = new URLSearchParams({ category: state.leaderboardCategory });
   if (state.leaderboardCategory === "cpu_wins") params.set("strategy", state.leaderboardStrategy);
   const query = params.toString();
-  window.history.replaceState({}, "", `/zilch/bestenlisten${query ? `?${query}` : ""}`);
+  window.history.replaceState({}, "", zilchPath(`/bestenlisten${query ? `?${query}` : ""}`));
 }
 
 function bindLeaderboardControls() {
@@ -1860,7 +1869,7 @@ async function refreshLeaderboard({ focusSelector = "" } = {}) {
     renderLeaderboardBody();
     if (focusSelector) document.querySelector(focusSelector)?.focus();
   } catch (_) {
-    slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Bestenliste nicht verfügbar"))}</h2><p>${escapeHtml(t("Bitte versuche es später erneut oder kehre zur Zilch-Lobby zurück."))}</p><a class="button-link small ghost" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a></section>`;
+    slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Bestenliste nicht verfügbar"))}</h2><p>${escapeHtml(t("Bitte versuche es später erneut oder kehre zur Zilch-Lobby zurück."))}</p><a class="button-link small ghost" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a></section>`;
   } finally {
     slot.removeAttribute("aria-busy");
   }
@@ -1875,7 +1884,7 @@ async function renderLeaderboards() {
   state.leaderboardOffset = 0;
   content.innerHTML = `<section class="zilch-game-head zilch-leaderboards-head">
       <div><p class="eyebrow">${escapeHtml(t("Private Auswertung"))}</p><h1>${escapeHtml(t("Zilch-Bestenlisten"))}</h1><p>${escapeHtml(t("Die Ranglisten vergleichen deine besten abgeschlossenen Zilch-Partien."))}</p></div>
-      <div class="zilch-actions"><a class="small ghost button-link" href="/zilch/statistiken">${escapeHtml(t("Deine Statistiken"))}</a><a class="small ghost button-link" href="/zilch/erfolge">${escapeHtml(t("Zilch-Awards"))}</a></div>
+      <div class="zilch-actions"><a class="small ghost button-link" href="${escapeHtml(zilchPath("/statistiken"))}">${escapeHtml(t("Deine Statistiken"))}</a><a class="small ghost button-link" href="${escapeHtml(zilchPath("/erfolge"))}">${escapeHtml(t("Zilch-Awards"))}</a></div>
     </section>
     <div id="zilchLeaderboardBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Bestenliste wird geladen …"))}</p></section></div>`;
   await refreshLeaderboard();
@@ -1902,7 +1911,7 @@ function renderRulesContent(facts) {
   const dice = ruleNumber(facts?.dice_count);
   return `<section class="zilch-game-head zilch-rules-head">
       <div><p class="eyebrow">${escapeHtml(t("Private Hilfe"))}</p><h1>${escapeHtml(t("Zilch-Regeln"))}</h1><p>${escapeHtml(t("Alles Wichtige für deine nächste Partie auf einen Blick."))}</p></div>
-      <a class="small ghost button-link" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
+      <a class="small ghost button-link" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
     </section>
     <section class="zilch-card zilch-rules-overview">
       <h2>${escapeHtml(t("Ziel der Partie"))}</h2>
@@ -2265,7 +2274,7 @@ async function renderResult() {
     document.title = `${gameName} – ${t("Zilch-Ergebnis")}`;
     content.innerHTML = `<section class="zilch-game-head zilch-result-head">
         <div><p class="eyebrow">${escapeHtml(solo ? t("Solo-Ergebnis") : t("Abgeschlossene Partie"))}</p><h1>${escapeHtml(gameName)}</h1></div>
-        <a class="small ghost button-link" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
+        <a class="small ghost button-link" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
       </section>
       ${resultSummary(result)}
       <section class="zilch-board-grid zilch-result-board-grid${solo ? " zilch-result-board-grid--solo" : ""}" aria-label="${escapeHtml(t("Zilch-Ergebnisboards"))}">${participants.map(player => resultBoardCard(result, player)).join("") || `<p class="zilch-muted">${escapeHtml(t("Keine Teilnehmerdaten verfügbar"))}</p>`}</section>
@@ -2554,8 +2563,16 @@ function finalResultActions(resultLink) {
   return `<div class="zilch-final-actions" role="group" aria-label="${escapeHtml(t("Nächster Schritt"))}">
     <button type="button" class="zilch-final-action zilch-final-action--primary" data-zilch-new-round>${escapeHtml(t("Neue Runde"))}</button>
     ${resultLink}
-    <a class="zilch-final-action zilch-final-action--quiet" href="/zilch">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
+    <a class="zilch-final-action zilch-final-action--quiet" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
   </div>`;
+}
+
+function zilchResultRoute(candidate) {
+  const normalized = normalizeZilchPageUrl(candidate);
+  if (!normalized) return null;
+  const url = new URL(normalized, window.location.origin);
+  const route = zilchRoutePath(url.pathname);
+  return route && /^\/ergebnis\/[^/?#]+$/.test(route) ? normalized : null;
 }
 
 function finalResultAwards(snapshot) {
@@ -2588,9 +2605,7 @@ function finalResult(snapshot) {
       ? t("Du hast das Solo-Ziel erreicht. Dein Ergebnis wird privat gespeichert.")
       : t("Dieser Solo-Lauf wurde aufgegeben. Dein Ergebnis bleibt privat in deiner Zilch-Historie.");
     const candidateResultRoute = snapshot?._zilch_result?.route || snapshot?._zilch_result?.result_route || snapshot?._zilch_result?.result_url;
-    const resultRoute = typeof candidateResultRoute === "string" && /^\/zilch\/ergebnis\/[^/?#]+$/.test(candidateResultRoute)
-      ? candidateResultRoute
-      : null;
+    const resultRoute = zilchResultRoute(candidateResultRoute);
     const resultLink = resultRoute
       ? `<a class="zilch-final-action zilch-final-action--secondary" data-zilch-final-result-link href="${escapeHtml(resultRoute)}">${escapeHtml(t("Ergebnis ansehen"))}</a>`
       : "";
@@ -2612,9 +2627,7 @@ function finalResult(snapshot) {
     ? t("Die Schlussrunde endet mit Gleichstand.")
     : `${winnerNames} ${t("gewinnt die Partie.")}`;
   const candidateResultRoute = snapshot?._zilch_result?.route || snapshot?._zilch_result?.result_route || snapshot?._zilch_result?.result_url;
-  const resultRoute = typeof candidateResultRoute === "string" && /^\/zilch\/ergebnis\/[^/?#]+$/.test(candidateResultRoute)
-    ? candidateResultRoute
-    : null;
+  const resultRoute = zilchResultRoute(candidateResultRoute);
   const resultLink = resultRoute
     ? `<a class="zilch-final-action zilch-final-action--secondary" data-zilch-final-result-link href="${escapeHtml(resultRoute)}">${escapeHtml(t("Ergebnis ansehen"))}</a>`
     : "";
@@ -2646,7 +2659,7 @@ async function createNewZilchRound(snapshot, button) {
     if (!response.ok || !payload.game_id) throw new Error(payload.detail || "zilch_create_failed");
     rememberPassphrase(payload.game_id, passphrase);
     rememberActiveGame(payload.game_id);
-    window.location.assign(`/zilch/spiel/${encodeURIComponent(payload.game_id)}`);
+    window.location.assign(zilchPath(`/spiel/${encodeURIComponent(payload.game_id)}`));
   } catch (_) {
     window.ZDWA_UI?.toast?.(t("Neue Runde konnte nicht erstellt werden"), { kind: "error" });
     if (button) button.disabled = false;
@@ -3263,7 +3276,7 @@ async function initialize() {
     if (!logoutButton || logoutButton.disabled) return;
     logoutButton.disabled = true;
     logoutButton.setAttribute("aria-busy", "true");
-    try { await logout(); } catch (_) {} finally { window.location.replace("/"); }
+    try { await logout(); } catch (_) {} finally { window.location.replace(zdwaAppEntryUrl()); }
   });
   if (resultId) await renderResult();
   else if (gameId) await renderGame();

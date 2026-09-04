@@ -8,18 +8,19 @@ from sqlalchemy import delete, func, select
 
 from .achievements import achievement_rank_payloads_for_user_ids, public_achievement_ranks
 from .auth import (
-    SESSION_COOKIE,
     auth_identity_payload,
     change_password,
     clear_session_cookie,
     create_user,
     login,
     logout,
+    promote_legacy_session_cookie,
     require_admin,
     require_csrf,
     require_user,
     reset_password,
     resolve_session,
+    session_token_from_connection,
     set_session_cookie,
     validate_request_origin,
 )
@@ -97,8 +98,11 @@ def _user_payload(user: User, *, achievement_rank: dict | None = None) -> dict:
 
 
 @router.get("/auth/me")
-def auth_me(request: Request):
+def auth_me(request: Request, response: Response):
     identity = resolve_session(request)
+    if identity:
+        promote_legacy_session_cookie(response, request)
+    response.headers["Cache-Control"] = "no-store"
     return {
         "authenticated": bool(identity),
         "user": auth_identity_payload(identity, include_csrf=True) if identity else None,
@@ -144,7 +148,8 @@ def auth_register(payload: RegisterRequest, request: Request, response: Response
 def auth_logout(request: Request, response: Response):
     identity = require_user(request)
     require_csrf(request, identity)
-    logout(request.cookies.get(SESSION_COOKIE))
+    raw_token, _source = session_token_from_connection(request)
+    logout(raw_token)
     clear_session_cookie(response)
     response.headers["Cache-Control"] = "no-store"
     return {"authenticated": False}

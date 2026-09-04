@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=ca2037d93b49">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=ca2037d93b49" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=ca2037d93b49" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=c2bdb23ec270">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=c2bdb23ec270" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=c2bdb23ec270" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=ca2037d93b49">
-  <script src="/static/shell.js?v=ca2037d93b49" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=c2bdb23ec270">
+  <script src="/static/shell.js?v=c2bdb23ec270" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -25,7 +25,7 @@
     <section class="card account-header-card">
       <div class="section-title-row">
         <div><p class="eyebrow">Mein Konto</p><h1 id="accountName">Benutzerkonto</h1></div>
-        <div class="section-title-row-actions"><a id="returnToZilch" class="button-link small ghost" href="/zilch" hidden>Zurück zu Zilch</a><a id="publicProfileLink" class="button-link small ghost" href="#">Öffentliches Profil</a></div>
+        <div class="section-title-row-actions"><a id="publicProfileLink" class="button-link small ghost" href="#">Öffentliches Profil</a></div>
       </div>
       <div id="accountNotice" class="connection-error" hidden></div>
     </section>
@@ -124,18 +124,12 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=ca2037d93b49';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=c2bdb23ec270';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace('/');
     const user = auth.user;
     document.getElementById('accountName').innerHTML = playerNameMarkup(user, { name: user.username });
     document.getElementById('publicProfileLink').href = `/spieler/${encodeURIComponent(user.username)}`;
-    const returnToZilch = new URLSearchParams(location.search).get('return_to') === 'zilch';
-    const zilchReturnLink = document.getElementById('returnToZilch');
-    if (returnToZilch && user.game_access?.zilch_preview === true && zilchReturnLink) {
-      zilchReturnLink.hidden = false;
-    }
-
     const accountTabs = {
       statistics: {
         button: document.getElementById('statisticsTab'),

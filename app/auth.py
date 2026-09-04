@@ -35,7 +35,11 @@ from .security import (
 )
 
 logger = logging.getLogger(__name__)
-SESSION_COOKIE = "rollthedice_session"
+LEGACY_SESSION_COOKIE = "rollthedice_session"
+SHARED_SESSION_COOKIE = "rollthedice_shared_session"
+# Kept as a compatibility alias for callers that still refer to the original
+# host-only cookie by its historic constant name.
+SESSION_COOKIE = LEGACY_SESSION_COOKIE
 SESSION_DAYS = 30
 
 
@@ -97,43 +101,110 @@ def _cookie_secure() -> bool:
     return os.getenv("ROLLTHEDICE_COOKIE_SECURE", "0").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def set_session_cookie(response: Response, raw_token: str) -> None:
+def _cookie_domain() -> str | None:
+    """Return the configured parent domain for cross-subdomain sessions."""
+    value = os.getenv("ROLLTHEDICE_COOKIE_DOMAIN", "").strip().lower().lstrip(".")
+    if not value:
+        return None
+    labels = value.split(".")
+    if (
+        len(value) > 253
+        or len(labels) < 2
+        or any(not label or len(label) > 63 for label in labels)
+        or any(not label[0].isalnum() or not label[-1].isalnum() for label in labels if label)
+        or any(character not in "abcdefghijklmnopqrstuvwxyz0123456789-." for character in value)
+    ):
+        raise RuntimeError("ROLLTHEDICE_COOKIE_DOMAIN must be a valid DNS domain")
+    return value
+
+
+def validate_session_cookie_config() -> None:
+    """Fail startup before a shared production cookie can be sent over HTTP."""
+    if _cookie_domain() and not _cookie_secure():
+        raise RuntimeError("ROLLTHEDICE_COOKIE_SECURE must be enabled when ROLLTHEDICE_COOKIE_DOMAIN is set")
+
+
+def _set_cookie(response: Response, name: str, raw_token: str, *, domain: str | None = None) -> None:
     response.set_cookie(
-        SESSION_COOKIE,
+        name,
         raw_token,
         max_age=SESSION_DAYS * 24 * 60 * 60,
         httponly=True,
         secure=_cookie_secure(),
         samesite="lax",
         path="/",
+        domain=domain,
     )
+
+
+def set_session_cookie(response: Response, raw_token: str) -> None:
+    """Write a rollback-safe host cookie and, in production, the shared cookie."""
+    _set_cookie(response, LEGACY_SESSION_COOKIE, raw_token)
+    if domain := _cookie_domain():
+        _set_cookie(response, SHARED_SESSION_COOKIE, raw_token, domain=domain)
+
+
+def session_token_from_connection(connection: Request | WebSocket) -> tuple[str | None, str | None]:
+    """Choose one unambiguous session cookie, preferring the shared migration cookie."""
+    cookies = connection.cookies
+    if SHARED_SESSION_COOKIE in cookies:
+        return cookies.get(SHARED_SESSION_COOKIE) or None, SHARED_SESSION_COOKIE
+    if LEGACY_SESSION_COOKIE in cookies:
+        return cookies.get(LEGACY_SESSION_COOKIE) or None, LEGACY_SESSION_COOKIE
+    return None, None
+
+
+def promote_legacy_session_cookie(response: Response, connection: Request | WebSocket) -> bool:
+    """Copy a valid legacy token into the parent-domain cookie without creating a session."""
+    raw_token, source = session_token_from_connection(connection)
+    domain = _cookie_domain()
+    if not raw_token or source != LEGACY_SESSION_COOKIE or not domain:
+        return False
+    _set_cookie(response, SHARED_SESSION_COOKIE, raw_token, domain=domain)
+    return True
 
 
 def clear_session_cookie(response: Response) -> None:
     response.delete_cookie(
-        SESSION_COOKIE,
+        LEGACY_SESSION_COOKIE,
         httponly=True,
         secure=_cookie_secure(),
         samesite="lax",
         path="/",
     )
+    if domain := _cookie_domain():
+        response.delete_cookie(
+            SHARED_SESSION_COOKIE,
+            httponly=True,
+            secure=_cookie_secure(),
+            samesite="lax",
+            path="/",
+            domain=domain,
+        )
 
 
-def _origin_matches_host(origin: str, expected_host: str) -> bool:
+def _origin_matches_host(origin: str, expected_host: str, expected_scheme: str) -> bool:
     try:
         parsed_origin = urlsplit(origin)
         parsed_expected = urlsplit(f"//{expected_host}")
-        same_hostname = (
-            parsed_origin.scheme.casefold() in {"http", "https"}
-            and bool(parsed_origin.hostname)
-            and parsed_origin.hostname.casefold() == (parsed_expected.hostname or "").casefold()
-        )
-        same_explicit_port = (
-            parsed_origin.port == parsed_expected.port
-            if parsed_origin.port is not None and parsed_expected.port is not None
-            else True
-        )
-        return same_hostname and same_explicit_port
+        normalized_scheme = {"ws": "http", "wss": "https"}.get(expected_scheme.casefold(), expected_scheme.casefold())
+        if normalized_scheme not in {"http", "https"}:
+            return False
+        if (
+            parsed_origin.scheme.casefold() != normalized_scheme
+            or not parsed_origin.hostname
+            or parsed_origin.hostname.casefold() != (parsed_expected.hostname or "").casefold()
+            or parsed_origin.username
+            or parsed_origin.password
+            or parsed_origin.path
+            or parsed_origin.query
+            or parsed_origin.fragment
+        ):
+            return False
+        default_port = 443 if normalized_scheme == "https" else 80
+        origin_port = parsed_origin.port if parsed_origin.port is not None else default_port
+        expected_port = parsed_expected.port if parsed_expected.port is not None else default_port
+        return origin_port == expected_port
     except ValueError:
         return False
 
@@ -143,7 +214,7 @@ def _validate_same_origin(request: Request) -> None:
     if not origin:
         return
     expected_host = request.headers.get("host", "").split(",", 1)[0].strip()
-    if not _origin_matches_host(origin, expected_host):
+    if not _origin_matches_host(origin, expected_host, request.url.scheme):
         logger.warning("Rejected request origin %s for host %s", origin, expected_host)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="origin_rejected")
 
@@ -157,7 +228,7 @@ def websocket_origin_allowed(websocket: WebSocket) -> bool:
     if not origin:
         return True
     expected_host = websocket.headers.get("host", "").split(",", 1)[0].strip()
-    return _origin_matches_host(origin, expected_host)
+    return _origin_matches_host(origin, expected_host, websocket.url.scheme)
 
 
 def username_is_registered(username: str) -> bool:
@@ -211,7 +282,7 @@ def login(request: Request, username: str, password: str) -> tuple[AuthIdentity,
 
 
 def resolve_session(connection: Request | WebSocket) -> AuthIdentity | None:
-    raw_token = connection.cookies.get(SESSION_COOKIE)
+    raw_token, _source = session_token_from_connection(connection)
     if not raw_token:
         return None
     now = utcnow()

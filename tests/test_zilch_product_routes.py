@@ -18,9 +18,10 @@ import httpx
 from starlette.requests import Request
 
 from app import main
-from app.auth import create_user, login
+from app.auth import LEGACY_SESSION_COOKIE, SHARED_SESSION_COOKIE, create_user, login
 from app.database import configure_database, upgrade_database
 from app.game_state import games
+from app.product_hosts import safe_zilch_path, validate_product_host_config
 from app.zilch_engine import (
     ZILCH_BANK_MINIMUM,
     ZILCH_CONFIRMATION_MINIMUM,
@@ -71,6 +72,9 @@ class ZilchProductRoutesTestCase(TestCase):
             os.environ,
             {
                 "ROLLTHEDICE_DATABASE_URL": f"sqlite:///{self.database_path}",
+                "ROLLTHEDICE_COOKIE_DOMAIN": "",
+                "ROLLTHEDICE_SITE_ORIGIN": "https://zockdiewandan.online",
+                "ROLLTHEDICE_ZILCH_ORIGIN": "https://zilch.zockdiewandan.online",
                 "ROLLTHEDICE_TURNSTILE_SITE_KEY": "",
                 "ROLLTHEDICE_TURNSTILE_SECRET": "",
                 "ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES": "",
@@ -88,12 +92,19 @@ class ZilchProductRoutesTestCase(TestCase):
         self.temporary_directory.cleanup()
 
     @staticmethod
-    def _get(path: str, token: str | None = None) -> httpx.Response:
+    def _get(
+        path: str,
+        token: str | None = None,
+        *,
+        host: str = "testserver",
+        cookie_name: str = LEGACY_SESSION_COOKIE,
+        follow_redirects: bool = False,
+    ) -> httpx.Response:
         async def request() -> httpx.Response:
             transport = httpx.ASGITransport(app=main.app)
-            cookies = {"rollthedice_session": token} if token else None
-            async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-                return await client.get(path, cookies=cookies)
+            cookies = {cookie_name: token} if token else None
+            async with httpx.AsyncClient(transport=transport, base_url=f"https://{host}") as client:
+                return await client.get(path, cookies=cookies, follow_redirects=follow_redirects)
 
         return asyncio.run(request())
 
@@ -165,6 +176,214 @@ class ZilchProductRoutesTestCase(TestCase):
         self.assertEqual(self._get("/static/zilch-login.html").status_code, 404)
         self.assertEqual(self._get("/zilch").status_code, 401)
 
+    def test_product_handoff_accepts_only_fixed_zilch_destinations(self) -> None:
+        _mani_id, mani_token = self._identity("Mani", role="admin")
+
+        with patch.dict(
+            os.environ,
+            {
+                "ROLLTHEDICE_COOKIE_DOMAIN": "zockdiewandan.online",
+                "ROLLTHEDICE_COOKIE_SECURE": "1",
+            },
+        ):
+            valid = self._get(
+                "/auth/continue?app=zilch&path=%2Fstatistiken%3Fscope%3Dmine",
+                mani_token,
+                host="zockdiewandan.online",
+            )
+        self.assertEqual(valid.status_code, 303)
+        self.assertEqual(valid.headers["location"], "https://zilch.zockdiewandan.online/statistiken?scope=mine")
+        self.assertEqual(valid.headers["cache-control"], "no-store")
+        promoted_cookie = valid.headers["set-cookie"]
+        self.assertIn(f"{SHARED_SESSION_COOKIE}={mani_token}", promoted_cookie)
+        self.assertIn("Domain=zockdiewandan.online", promoted_cookie)
+        self.assertIn("HttpOnly", promoted_cookie)
+        self.assertIn("Secure", promoted_cookie)
+
+        async def follow_shared_cookie() -> httpx.Response:
+            transport = httpx.ASGITransport(app=main.app)
+            async with httpx.AsyncClient(transport=transport, follow_redirects=True) as client:
+                client.cookies.set(
+                    SHARED_SESSION_COOKIE,
+                    mani_token,
+                    domain="zockdiewandan.online",
+                    path="/",
+                )
+                return await client.get(
+                    "https://zockdiewandan.online/auth/continue?app=zilch&path=%2Fstatistiken"
+                )
+
+        followed = asyncio.run(follow_shared_cookie())
+        self.assertEqual(followed.status_code, 200)
+        self.assertEqual(str(followed.url), "https://zilch.zockdiewandan.online/statistiken")
+        self.assertIn("data-zilch-root", followed.text)
+
+        for malicious_path in (
+            "https%3A%2F%2Fevil.example%2Fsteal",
+            "%2F%2Fevil.example%2Fsteal",
+            "%2Fnot-a-zilch-route",
+        ):
+            with self.subTest(path=malicious_path):
+                rejected = self._get(
+                    f"/auth/continue?app=zilch&path={malicious_path}",
+                    mani_token,
+                    host="zockdiewandan.online",
+                )
+                self.assertEqual(rejected.status_code, 303)
+                self.assertEqual(rejected.headers["location"], "https://zilch.zockdiewandan.online/")
+
+        unknown_product = self._get(
+            "/auth/continue?app=outside&path=%2F",
+            mani_token,
+            host="zockdiewandan.online",
+        )
+        self.assertEqual(unknown_product.status_code, 404)
+
+        for wrong_host in (
+            "www.zockdiewandan.online",
+            "zilch.zockdiewandan.online",
+            "unknown.zockdiewandan.online",
+        ):
+            with self.subTest(wrong_host=wrong_host):
+                wrong_host_response = self._get(
+                    "/auth/continue?app=zilch&path=%2F",
+                    mani_token,
+                    host=wrong_host,
+                )
+                self.assertEqual(wrong_host_response.status_code, 404)
+
+        _normal_id, normal_token = self._identity("NormalHandoff")
+        denied = self._get(
+            "/auth/continue?app=zilch&path=%2Fstatistiken",
+            normal_token,
+            host="zockdiewandan.online",
+        )
+        self.assertEqual(denied.status_code, 303)
+        self.assertEqual(denied.headers["location"], "https://zockdiewandan.online/zilch/anmelden")
+
+        anonymous = self._get(
+            "/auth/continue?app=zilch&path=https%3A%2F%2Fevil.example%2Fsteal",
+            host="zockdiewandan.online",
+        )
+        self.assertEqual(anonymous.status_code, 303)
+        self.assertTrue(anonymous.headers["location"].startswith("https://zockdiewandan.online/zilch/anmelden?"))
+        self.assertNotIn("evil.example", anonymous.headers["location"])
+
+    def test_product_origin_configuration_is_fixed_to_the_shared_cookie_site(self) -> None:
+        self.assertEqual(safe_zilch_path("/spiel/abc?resume=1"), "/spiel/abc?resume=1")
+        self.assertEqual(safe_zilch_path("https://evil.example/spiel/abc"), "/")
+        for unsafe_path in (
+            "/spiel/../admin",
+            "/spiel/%2e%2e/admin",
+            "/spiel/%252e%252e%252fadmin",
+            "/spiel/one/two",
+            "/spieler/name/extra",
+            "/ergebnis/",
+        ):
+            with self.subTest(unsafe_path=unsafe_path):
+                self.assertEqual(safe_zilch_path(unsafe_path), "/")
+        validate_product_host_config()
+
+        with patch.dict(
+            os.environ,
+            {
+                "ROLLTHEDICE_COOKIE_DOMAIN": "zockdiewandan.online",
+                "ROLLTHEDICE_ZILCH_ORIGIN": "https://zilch.unrelated.example",
+            },
+        ):
+            with self.assertRaisesRegex(RuntimeError, "ROLLTHEDICE_COOKIE_DOMAIN"):
+                validate_product_host_config()
+
+        for invalid_zilch_origin in (
+            "https://zockdiewandan.online:444",
+            "https://zilch.zockdiewandan.online:not-a-port",
+            "https://zilch.zockdiewandan.online:70000",
+        ):
+            with self.subTest(invalid_zilch_origin=invalid_zilch_origin):
+                with patch.dict(
+                    os.environ,
+                    {"ROLLTHEDICE_ZILCH_ORIGIN": invalid_zilch_origin},
+                ):
+                    with self.assertRaises(RuntimeError):
+                        validate_product_host_config()
+
+    def test_zilch_host_serves_clean_private_routes_with_noindex_headers(self) -> None:
+        _mani_id, mani_token = self._identity("Mani", role="admin")
+        for path in (
+            "/",
+            "/historie",
+            "/statistiken",
+            "/bestenlisten",
+            "/erfolge",
+            "/konto",
+            "/regeln",
+            "/spieler/Mani",
+        ):
+            with self.subTest(path=path):
+                response = self._get(
+                    path,
+                    mani_token,
+                    host="zilch.zockdiewandan.online",
+                    cookie_name=SHARED_SESSION_COOKIE,
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.headers["x-robots-tag"], "noindex, nofollow")
+                self.assertIn('name="robots" content="noindex, nofollow"', response.text)
+                self.assertIn("data-zilch-root", response.text)
+
+        prefixed = self._get(
+            "/zilch/statistiken?scope=mine",
+            mani_token,
+            host="zilch.zockdiewandan.online",
+            cookie_name=SHARED_SESSION_COOKIE,
+        )
+        self.assertEqual(prefixed.status_code, 308)
+        self.assertEqual(prefixed.headers["location"], "/statistiken?scope=mine")
+        self.assertEqual(prefixed.headers["x-robots-tag"], "noindex, nofollow")
+
+        for malicious_path in ("/zilch//evil.example", "/zilch/%2F%2Fevil.example"):
+            with self.subTest(path=malicious_path):
+                malicious_redirect = self._get(
+                    malicious_path,
+                    mani_token,
+                    host="zilch.zockdiewandan.online",
+                    cookie_name=SHARED_SESSION_COOKIE,
+                )
+                self.assertEqual(malicious_redirect.status_code, 308)
+                self.assertEqual(malicious_redirect.headers["location"], "/")
+
+    def test_anonymous_zilch_host_routes_return_only_to_the_fixed_apex_handoff(self) -> None:
+        root = self._get("/", host="zilch.zockdiewandan.online")
+        self.assertEqual(root.status_code, 303)
+        self.assertEqual(
+            root.headers["location"],
+            "https://zockdiewandan.online/auth/continue?app=zilch&path=%2F",
+        )
+
+        malicious_login_return = self._get(
+            "/anmelden?return_to=https%3A%2F%2Fevil.example%2Fsteal",
+            host="zilch.zockdiewandan.online",
+        )
+        self.assertEqual(malicious_login_return.status_code, 303)
+        self.assertEqual(
+            malicious_login_return.headers["location"],
+            "https://zockdiewandan.online/auth/continue?app=zilch&path=%2F",
+        )
+
+    def test_zilch_host_blocks_the_zdwa_pwa_and_all_crawler_entry_points(self) -> None:
+        host = "zilch.zockdiewandan.online"
+        robots = self._get("/robots.txt", host=host)
+        self.assertEqual(robots.status_code, 200)
+        self.assertEqual(robots.text, "User-agent: *\nDisallow: /\n")
+        self.assertEqual(robots.headers["x-robots-tag"], "noindex, nofollow")
+
+        for path in ("/manifest.webmanifest", "/manifest-en.webmanifest", "/sw.js", "/sitemap.xml"):
+            with self.subTest(path=path):
+                response = self._get(path, host=host)
+                self.assertEqual(response.status_code, 404)
+                self.assertIn("no-store", response.headers["cache-control"])
+                self.assertEqual(response.headers["x-robots-tag"], "noindex, nofollow")
+
     def test_explicit_allowlist_uses_the_same_private_rules_route_policy(self) -> None:
         _preview_id, preview_token = self._identity("PreviewFriend")
 
@@ -184,6 +403,10 @@ class ZilchProductRoutesTestCase(TestCase):
         manifest = (main.BASE / "manifest.webmanifest").read_text(encoding="utf-8")
         self.assertIn('"short_name": "ZDWA"', manifest)
         self.assertNotIn('"url": "/zilch', manifest)
+        for shell_name in ("zilch.html", "zilch-login.html"):
+            with self.subTest(shell_name=shell_name):
+                shell = (main.STATIC_DIR / shell_name).read_text(encoding="utf-8")
+                self.assertNotIn('rel="manifest"', shell)
 
     def test_zilch_lobby_exposes_only_safe_turn_and_final_round_hints(self) -> None:
         mani_id, mani_token = self._identity("Mani", role="admin")

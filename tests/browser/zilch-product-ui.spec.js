@@ -55,6 +55,24 @@ test("Zilch has its own sign-in entry and safely returns preview accounts to the
   await expect(page.getByRole("heading", { name: /Zilch.*Statistiken|Zilch statistics/i })).toBeVisible();
 });
 
+test("a fresh Apex login preserves the fixed Zilch subdomain continuation", async ({ page }) => {
+  await signInAsPreviewMani(page);
+  await page.click("#logoutBtn");
+
+  const continuation = "/auth/continue?app=zilch&path=%2Fstatistiken%3Fscope%3Dmine";
+  await page.goto(`/zilch/anmelden?return_to=${encodeURIComponent(continuation)}`);
+  await page.fill("#zilchLoginUsername", "Mani");
+  await page.fill("#zilchLoginPassword", "mani-preview-password-123");
+  await Promise.all([
+    page.waitForURL(url => (
+      url.pathname === "/auth/continue"
+      && url.searchParams.get("app") === "zilch"
+      && url.searchParams.get("path") === "/statistiken?scope=mine"
+    )),
+    page.locator("#zilchLoginForm button[type=submit]").click(),
+  ]);
+});
+
 function externalHttpOrigins(requests, origin) {
   return [...new Set(requests
     .map(request => request.url())

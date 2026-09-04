@@ -62,6 +62,29 @@
   window.addEventListener("pageshow", connectPresence);
   window.addEventListener("pagehide", () => presenceSocket?.close());
 
+  // Presence belongs to both games and is connected above. Zilch deliberately
+  // has no ZDWA manifest or service-worker lifecycle of its own, especially on
+  // the isolated production subdomain. Remove a stale pre-launch registration
+  // there defensively; never unregister the legitimate Apex PWA on /zilch.
+  if (document.documentElement.dataset.game === "zilch") {
+    if (location.hostname === "zilch.zockdiewandan.online" && "serviceWorker" in navigator) {
+      window.addEventListener("load", async () => {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(registration => registration.unregister()));
+          if ("caches" in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys
+              .filter(key => key.startsWith("precache-assets-") || key.startsWith("runtime-assets-"))
+              .map(key => caches.delete(key)));
+          }
+        } catch (error) {
+          console.warn("Stale Zilch service-worker cleanup failed:", error);
+        }
+      }, { once: true });
+    }
+    return;
+  }
   if (!("serviceWorker" in navigator)) return;
   let installPrompt = null;
   let refreshRequested = false;

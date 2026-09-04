@@ -32,9 +32,14 @@ class _SeoParser(HTMLParser):
 
 
 class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
-    def test_shell_and_service_worker_are_revalidated(self):
-        self.assertIn("no-cache", main.root().headers.get("cache-control", ""))
-        self.assertIn("no-store", main.service_worker().headers.get("cache-control", ""))
+    async def test_shell_and_service_worker_are_revalidated(self):
+        transport = httpx.ASGITransport(app=main.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            root = await client.get("/")
+            service_worker = await client.get("/sw.js")
+
+        self.assertIn("no-cache", root.headers.get("cache-control", ""))
+        self.assertIn("no-store", service_worker.headers.get("cache-control", ""))
 
     def test_health_requires_completed_database_startup(self):
         with patch("app.main.database_schema_ready", return_value=True):

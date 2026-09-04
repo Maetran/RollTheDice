@@ -13,8 +13,9 @@ import httpx
 from alembic.config import Config
 from sqlalchemy import func, select
 from starlette.requests import Request
+from starlette.responses import Response
 from starlette.testclient import TestClient
-from starlette.websockets import WebSocketDisconnect
+from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from alembic import command
 from app import main
@@ -23,6 +24,7 @@ from app.active_games import load_active_games, save_active_game
 from app.api_auth import (
     LanguagePreferenceRequest,
     UserPreferencesRequest,
+    auth_logout,
     auth_me,
     auth_update_language,
     auth_update_preferences,
@@ -36,12 +38,17 @@ from app.api_users import (
     public_player_profile,
 )
 from app.auth import (
+    LEGACY_SESSION_COOKIE,
+    SHARED_SESSION_COOKIE,
     auth_identity_payload,
     change_password,
     create_user,
     login,
     resolve_session,
+    set_session_cookie,
     validate_request_origin,
+    validate_session_cookie_config,
+    websocket_origin_allowed,
 )
 from app.auth_protection import (
     enforce_game_creation_rate_limit,
@@ -73,7 +80,14 @@ from app.trends import recent_points_trend
 from tests.support import GameStateTestCase
 
 
-def request_for(*, cookie: str = "", csrf: str = "", origin: str = "", host: str = "testserver") -> Request:
+def request_for(
+    *,
+    cookie: str = "",
+    csrf: str = "",
+    origin: str = "",
+    host: str = "testserver",
+    scheme: str = "http",
+) -> Request:
     headers = [(b"host", host.encode("ascii"))]
     if cookie:
         headers.append((b"cookie", cookie.encode("ascii")))
@@ -85,12 +99,37 @@ def request_for(*, cookie: str = "", csrf: str = "", origin: str = "", host: str
         {
             "type": "http",
             "method": "GET",
-            "scheme": "http",
+            "scheme": scheme,
             "path": "/",
             "headers": headers,
             "client": ("127.0.0.1", 1234),
             "server": ("testserver", 80),
         }
+    )
+
+
+def websocket_for(*, origin: str, host: str = "testserver", scheme: str = "ws") -> WebSocket:
+    async def receive() -> dict:
+        return {"type": "websocket.disconnect"}
+
+    async def send(_message: dict) -> None:
+        return None
+
+    return WebSocket(
+        {
+            "type": "websocket",
+            "scheme": scheme,
+            "path": "/ws/presence",
+            "query_string": b"",
+            "headers": [
+                (b"host", host.encode("ascii")),
+                (b"origin", origin.encode("ascii")),
+            ],
+            "client": ("127.0.0.1", 1234),
+            "server": ("testserver", 80),
+        },
+        receive=receive,
+        send=send,
     )
 
 
@@ -103,6 +142,8 @@ class AccountDatabaseTestCase(GameStateTestCase):
             os.environ,
             {
                 "ROLLTHEDICE_DATABASE_URL": f"sqlite:///{self.database_path}",
+                "ROLLTHEDICE_COOKIE_DOMAIN": "",
+                "ROLLTHEDICE_COOKIE_SECURE": "0",
                 "ROLLTHEDICE_TURNSTILE_SITE_KEY": "",
                 "ROLLTHEDICE_TURNSTILE_SECRET": "",
             },
@@ -140,6 +181,153 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertFalse(public_payload["preferences"]["keep_screen_awake"])
         self.assertEqual(public_payload["preferences"]["preferred_language"], "de")
         self.assertIn("csrf_token", auth_identity_payload(resolved, include_csrf=True))
+
+    def test_auth_me_promotes_a_valid_legacy_cookie_without_creating_a_second_session(self):
+        create_user("CookieMigration", "cookie-migration-password", must_change_password=False)
+        _identity, raw_token = login(request_for(), "CookieMigration", "cookie-migration-password")
+        response = Response()
+
+        with patch.dict(
+            os.environ,
+            {
+                "ROLLTHEDICE_COOKIE_DOMAIN": "zockdiewandan.online",
+                "ROLLTHEDICE_COOKIE_SECURE": "1",
+            },
+        ):
+            payload = auth_me(
+                request_for(
+                    cookie=f"{LEGACY_SESSION_COOKIE}={raw_token}",
+                    host="zockdiewandan.online",
+                ),
+                response,
+            )
+
+        self.assertTrue(payload["authenticated"])
+        self.assertEqual(payload["user"]["username"], "CookieMigration")
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        set_cookies = response.headers.getlist("set-cookie")
+        self.assertEqual(len(set_cookies), 1)
+        promoted = set_cookies[0]
+        self.assertIn(f"{SHARED_SESSION_COOKIE}={raw_token}", promoted)
+        self.assertIn("Domain=zockdiewandan.online", promoted)
+        self.assertIn("Max-Age=2592000", promoted)
+        self.assertIn("Path=/", promoted)
+        self.assertIn("SameSite=lax", promoted)
+        self.assertIn("HttpOnly", promoted)
+        self.assertIn("Secure", promoted)
+        with session_scope() as db:
+            self.assertEqual(db.scalar(select(func.count()).select_from(Session)), 1)
+
+    def test_new_sessions_write_rollback_cookie_and_shared_cookie_only_when_configured(self):
+        local_response = Response()
+        set_session_cookie(local_response, "local-token")
+        local_cookies = local_response.headers.getlist("set-cookie")
+        self.assertEqual(len(local_cookies), 1)
+        self.assertTrue(local_cookies[0].startswith(f"{LEGACY_SESSION_COOKIE}=local-token"))
+        self.assertNotIn("Domain=", local_cookies[0])
+
+        production_response = Response()
+        with patch.dict(
+            os.environ,
+            {
+                "ROLLTHEDICE_COOKIE_DOMAIN": "zockdiewandan.online",
+                "ROLLTHEDICE_COOKIE_SECURE": "1",
+            },
+        ):
+            set_session_cookie(production_response, "production-token")
+
+        production_cookies = production_response.headers.getlist("set-cookie")
+        self.assertEqual(len(production_cookies), 2)
+        legacy = next(value for value in production_cookies if value.startswith(f"{LEGACY_SESSION_COOKIE}="))
+        shared = next(value for value in production_cookies if value.startswith(f"{SHARED_SESSION_COOKIE}="))
+        self.assertNotIn("Domain=", legacy)
+        self.assertIn("Domain=zockdiewandan.online", shared)
+        for cookie in production_cookies:
+            self.assertIn("Max-Age=2592000", cookie)
+            self.assertIn("Path=/", cookie)
+            self.assertIn("SameSite=lax", cookie)
+            self.assertIn("HttpOnly", cookie)
+            self.assertIn("Secure", cookie)
+
+    def test_shared_cookie_configuration_fails_closed_without_https_cookie_flag(self):
+        with patch.dict(
+            os.environ,
+            {
+                "ROLLTHEDICE_COOKIE_DOMAIN": "zockdiewandan.online",
+                "ROLLTHEDICE_COOKIE_SECURE": "0",
+            },
+        ):
+            with self.assertRaisesRegex(RuntimeError, "ROLLTHEDICE_COOKIE_SECURE"):
+                validate_session_cookie_config()
+
+        with patch.dict(
+            os.environ,
+            {
+                "ROLLTHEDICE_COOKIE_DOMAIN": "zockdiewandan.online",
+                "ROLLTHEDICE_COOKIE_SECURE": "1",
+            },
+        ):
+            validate_session_cookie_config()
+
+    def test_invalid_shared_cookie_does_not_fall_back_to_a_valid_legacy_cookie(self):
+        create_user("CookiePriority", "cookie-priority-password", must_change_password=False)
+        _identity, raw_token = login(request_for(), "CookiePriority", "cookie-priority-password")
+
+        request = request_for(
+            cookie=(
+                f"{LEGACY_SESSION_COOKIE}={raw_token}; "
+                f"{SHARED_SESSION_COOKIE}=invalid-shared-token"
+            )
+        )
+
+        self.assertIsNone(resolve_session(request))
+        self.assertEqual(
+            resolve_session(request_for(cookie=f"{LEGACY_SESSION_COOKIE}={raw_token}")).username,
+            "CookiePriority",
+        )
+
+    def test_logout_revokes_the_shared_session_and_expires_both_cookie_scopes(self):
+        create_user("SharedLogout", "shared-logout-password", must_change_password=False)
+        identity, raw_token = login(request_for(), "SharedLogout", "shared-logout-password")
+        response = Response()
+
+        with patch.dict(
+            os.environ,
+            {
+                "ROLLTHEDICE_COOKIE_DOMAIN": "zockdiewandan.online",
+                "ROLLTHEDICE_COOKIE_SECURE": "1",
+            },
+        ):
+            payload = auth_logout(
+                request_for(
+                    cookie=(
+                        f"{LEGACY_SESSION_COOKIE}={raw_token}; "
+                        f"{SHARED_SESSION_COOKIE}={raw_token}"
+                    ),
+                    csrf=identity.csrf_token,
+                    origin="https://zilch.zockdiewandan.online",
+                    host="zilch.zockdiewandan.online",
+                    scheme="https",
+                ),
+                response,
+            )
+
+        self.assertEqual(payload, {"authenticated": False})
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        set_cookies = response.headers.getlist("set-cookie")
+        self.assertEqual(len(set_cookies), 2)
+        legacy = next(value for value in set_cookies if value.startswith(f'{LEGACY_SESSION_COOKIE}=""'))
+        shared = next(value for value in set_cookies if value.startswith(f'{SHARED_SESSION_COOKIE}=""'))
+        for expired in (legacy, shared):
+            self.assertIn("Max-Age=0", expired)
+            self.assertIn("Path=/", expired)
+            self.assertIn("SameSite=lax", expired)
+            self.assertIn("HttpOnly", expired)
+            self.assertIn("Secure", expired)
+        self.assertNotIn("Domain=", legacy)
+        self.assertIn("Domain=zockdiewandan.online", shared)
+        self.assertIsNone(resolve_session(request_for(cookie=f"{LEGACY_SESSION_COOKIE}={raw_token}")))
+        self.assertIsNone(resolve_session(request_for(cookie=f"{SHARED_SESSION_COOKIE}={raw_token}")))
 
     def test_password_minimum_is_eight_characters(self):
         self.assertEqual(validate_password("12345678"), "12345678")
@@ -182,7 +370,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
                 "preferred_language": "en",
             },
         )
-        account = auth_me(request_for(cookie=f"rollthedice_session={raw_token}"))
+        account = auth_me(request_for(cookie=f"rollthedice_session={raw_token}"), Response())
         self.assertEqual(account["user"]["preferences"], result["preferences"])
         self.assertEqual(account["registration"], registration_public_config())
         with session_scope() as db:
@@ -233,7 +421,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
         result = auth_update_language(LanguagePreferenceRequest(preferred_language="en"), authenticated_request)
 
         self.assertEqual(result, {"preferred_language": "en"})
-        account = auth_me(request_for(cookie=f"rollthedice_session={raw_token}"))
+        account = auth_me(request_for(cookie=f"rollthedice_session={raw_token}"), Response())
         self.assertEqual(account["user"]["preferences"]["preferred_language"], "en")
 
     def test_three_game_trend_compares_recent_average_with_mode_average(self):
@@ -272,12 +460,36 @@ class AccountDatabaseTestCase(GameStateTestCase):
             )["trend"]
         )
 
-    def test_origin_check_accepts_proxy_scheme_but_rejects_other_hosts(self):
-        validate_request_origin(request_for(origin="https://testserver"))
-        validate_request_origin(request_for(origin="https://testserver:443"))
-        with self.assertRaisesRegex(Exception, "origin_rejected") as rejected:
-            validate_request_origin(request_for(origin="https://evil.example"))
-        self.assertEqual(rejected.exception.status_code, 403)
+    def test_origin_check_requires_exact_scheme_host_and_effective_port(self):
+        validate_request_origin(request_for(origin="http://testserver"))
+        validate_request_origin(request_for(origin="https://testserver", scheme="https"))
+        validate_request_origin(request_for(origin="https://testserver:443", scheme="https"))
+        validate_request_origin(request_for(origin="http://testserver:8000", host="testserver:8000"))
+        for origin in (
+            "https://evil.example",
+            "https://testserver:444",
+            "http://testserver",
+            "https://zilch.testserver",
+        ):
+            with self.subTest(origin=origin):
+                with self.assertRaisesRegex(Exception, "origin_rejected") as rejected:
+                    validate_request_origin(request_for(origin=origin, scheme="https"))
+                self.assertEqual(rejected.exception.status_code, 403)
+
+        self.assertTrue(websocket_origin_allowed(websocket_for(origin="https://testserver", scheme="wss")))
+        self.assertTrue(
+            websocket_origin_allowed(
+                websocket_for(
+                    origin="https://testserver:443",
+                    host="testserver:443",
+                    scheme="wss",
+                )
+            )
+        )
+        self.assertFalse(websocket_origin_allowed(websocket_for(origin="http://testserver", scheme="wss")))
+        self.assertFalse(
+            websocket_origin_allowed(websocket_for(origin="https://testserver:444", scheme="wss"))
+        )
 
     def test_database_upgrade_is_idempotent_across_restarts(self):
         upgrade_database(main.BASE)

@@ -50,6 +50,18 @@ same isolated dimensions, padding, and type size in both page and game headers;
 on narrow phones both sides use its square icon-only form.
 The compact setup starts a default game with one click; advanced room protection
 stays optional, and a completed game can be restarted directly with the same mode.
+
+Production keeps `https://zockdiewandan.online` as ZDWA's canonical origin so
+existing installed PWAs, bookmarks, and origin-bound resume data remain valid.
+`https://zdwa.zockdiewandan.online` is only an HTTPS alias and redirects back to
+that origin. Zilch is served from `https://zilch.zockdiewandan.online` with clean
+root-relative routes; the legacy `/zilch/...` routes on the main origin remain
+available during the migration. The Apex and Zilch origins proxy the same
+application process and mounted `data/` directory; the `zdwa` alias only
+redirects. Existing account sessions are promoted
+to a separate parent-domain cookie through a fixed, allowlisted handoff without
+creating a second database session. Zilch deliberately has no service worker or
+installable manifest during this first split, while the ZDWA PWA stays unchanged.
 Additional Solo objectives/challenges, further Zilch award categories, and public
 release are deliberately deferred. A player selects scoring dice directly or
 uses one of up to eight distinct suggestions; equivalent choices using
@@ -101,6 +113,11 @@ version-1 catalog are documented in
 ## Public page URLs
 
 User-facing navigation uses short routes without implementation details:
+
+- `https://zockdiewandan.online/` canonical ZDWA origin
+- `https://zdwa.zockdiewandan.online/` redirect-only ZDWA alias
+- `https://zilch.zockdiewandan.online/` protected Zilch origin; the Zilch paths
+  listed below lose their `/zilch` prefix on this host
 
 - `/` lobby
 - `/spiel/{game_id}` active player view
@@ -157,6 +174,21 @@ username and password, and start the container. There is no default admin
 password. After the first successful login, remove
 `ROLLTHEDICE_ADMIN_PASSWORD` from `.env`. Set
 `ROLLTHEDICE_COOKIE_SECURE=1` for a public HTTPS deployment.
+
+For the production product-host split also set the following values before the
+container is recreated:
+
+```dotenv
+ROLLTHEDICE_COOKIE_DOMAIN=zockdiewandan.online
+ROLLTHEDICE_SITE_ORIGIN=https://zockdiewandan.online
+ROLLTHEDICE_ZILCH_ORIGIN=https://zilch.zockdiewandan.online
+FORWARDED_ALLOW_IPS=172.18.0.1
+```
+
+The last value must be the actual direct Docker bridge gateway observed on the
+server, not a client network or `*`. The production-only Compose override keeps
+port 8000 bound to loopback. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for
+the preflight, certificate activation, rollback, and verification sequence.
 
 Self-registration is protected by persistent SQLite rate limits without any
 extra service. For a public deployment, create a Cloudflare Turnstile widget
@@ -244,6 +276,7 @@ RollTheDice/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI assembly and thin HTTP/WebSocket routes
+│   ├── product_hosts.py     # Fixed product origins and safe cross-host handoff paths
 │   ├── site_seo.py          # Public-page registry plus robots/sitemap rendering
 │   ├── models.py            # User, session, active/completed-game, and participant models
 │   ├── database.py          # Database configuration and Alembic upgrades

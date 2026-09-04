@@ -1,4 +1,5 @@
 import { loadAuth } from "../shared/auth.js";
+import { zdwaAppEntryUrl, zilchAppEntryUrl } from "./routes.js";
 
 export const APP_MODE_STORAGE_KEY = "zdwa_app_mode";
 export const ZILCH_HOTKEY = "Alt+Shift+Z";
@@ -34,7 +35,7 @@ function clearRememberedZilchMode() {
 
 function navigateToMode(mode) {
   rememberMode(mode);
-  window.location.assign(mode === "zilch" ? "/zilch" : "/");
+  window.location.assign(mode === "zilch" ? zilchAppEntryUrl("/") : zdwaAppEntryUrl());
 }
 
 /**
@@ -63,7 +64,7 @@ export function initializeAppMode({
     stopped = true;
     const root = document.querySelector("[data-zilch-root]");
     if (root) root.replaceChildren();
-    window.location.replace("/");
+    window.location.replace(zdwaAppEntryUrl());
   };
 
   const applyAuth = (auth) => {
