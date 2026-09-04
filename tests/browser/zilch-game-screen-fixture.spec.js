@@ -258,7 +258,14 @@ function fixtureSnapshots() {
       bank_block_reason: "zilch_bank_minimum_not_reached",
     },
     _zilch_quick_holds: [],
-    _zilch_last_event: { type: "zilch", reason: "no_scoring_option", penalty: 500 },
+    _zilch_last_event: {
+      type: "zilch",
+      reason: "no_scoring_option",
+      player_id: "p1",
+      penalty: 500,
+      rolled_dice: [1, 1, 1, 2, 3, 4],
+      held_dice_indices: [0, 1, 2],
+    },
   });
 
   return { hotDice, holdOptions, heldForConfirmation, thirdZilch };
@@ -657,6 +664,15 @@ async function installGameScreenFixture(page, gameId, snapshots, detailsOverride
         this.readyState = FixtureWebSocket.CONNECTING;
         this._listeners = new Map();
         window.__zilchGameScreenFixtureMessages = [];
+        const socketPath = new URL(url, window.location.href).pathname;
+        if (socketPath === `/ws/${encodeURIComponent(fixtureGameId)}`) {
+          // Deterministic server-frame seam for presentation-only assertions.
+          // It does not bypass any production endpoint or expose state outside
+          // this isolated browser context.
+          window.__zilchGameScreenFixturePush = payload => {
+            this._emit("message", { data: JSON.stringify(payload) });
+          };
+        }
         window.setTimeout(() => {
           this.readyState = FixtureWebSocket.OPEN;
           this._emit("open", {});
@@ -996,6 +1012,140 @@ test("a CPU participant is rendered from the authoritative participant snapshot 
     await expect(page.locator("[data-zilch-commit-hold]")).toHaveCount(0);
     await expect(page.locator("[data-zilch-roll]")).toBeDisabled();
     await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
+  } finally {
+    await context.close();
+  }
+});
+
+test("a Zilch roll remains visible for 500 ms before the overlay and turn handoff", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  await page.clock.install({ time: new Date("2026-09-04T12:00:00Z") });
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    const snapshots = fixtureSnapshots();
+    const gameId = "zilch-roll-reveal-fixture";
+    await installGameScreenFixture(page, gameId, { initial: snapshots.heldForConfirmation });
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    await page.goto(`/zilch/spiel/${gameId}`);
+
+    await expect(page.locator('[data-zilch-board-id="p1"]')).toHaveClass(/is-active/);
+    await expect.poll(() => page.evaluate(() => typeof window.__zilchGameScreenFixturePush)).toBe("function");
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1_000);
+
+    await page.evaluate(zilchSnapshot => {
+      window.__zilchGameScreenFixturePush({
+        scoreboard: zilchSnapshot,
+        zilch_event: zilchSnapshot._zilch_last_event,
+      });
+    }, snapshots.thirdZilch);
+
+    const visibleFaces = () => page.locator(".zilch-die__pips").evaluateAll(groups => (
+      groups.map(group => group.querySelectorAll("circle").length)
+    ));
+    const overlay = page.locator("[data-zilch-event-overlay]");
+    await expect(page.locator(".zilch-dice")).toHaveClass(/is-landing/);
+    expect(await visibleFaces()).toEqual([1, 1, 1, 2, 3, 4]);
+    await expect(page.locator(".zilch-die--held")).toHaveCount(3);
+    await expect(overlay).toBeHidden();
+    await expect(page.locator('[data-zilch-board-id="p1"]')).toHaveClass(/is-active/);
+    await expect(page.locator('[data-zilch-board-id="p2"]')).toHaveClass(/is-inactive/);
+
+    await page.clock.runFor(499);
+    expect(await visibleFaces()).toEqual([1, 1, 1, 2, 3, 4]);
+    await expect(overlay).toBeHidden();
+    await expect(page.locator('[data-zilch-board-id="p1"]')).toHaveClass(/is-active/);
+
+    await page.clock.runFor(1);
+    await expect(overlay).toBeVisible();
+    await expect(overlay).toContainText("ZILCH!");
+    await expect(overlay).toContainText("−500");
+    await expect(page.locator('[data-zilch-board-id="p1"]')).toHaveClass(/is-active/);
+
+    await page.clock.runFor(1_351);
+    await expect(overlay).toBeHidden();
+    await expect(page.locator('[data-zilch-board-id="p2"]')).toHaveClass(/is-active/);
+    await expect(page.locator('[data-zilch-board-id="p1"]')).toHaveClass(/is-inactive/);
+  } finally {
+    await context.close();
+  }
+});
+
+test("an incoming CPU roll lands visibly without a local roll action", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    const cpuRoll = cpuTurnSnapshot();
+    const cpuRollEvent = {
+      type: "roll",
+      player_id: "cpu-river",
+      actor_participant_id: "cpu-river",
+      turn_id: 19,
+      roll_id: 4,
+      cpu_reason_key: "zilch.cpu_reason.roll_for_target",
+    };
+    cpuRoll._zilch_last_event = cpuRollEvent;
+    const cpuReady = {
+      ...cpuRoll,
+      _dice: [0, 0, 0, 0, 0, 0],
+      _zilch_turn_state: {
+        ...cpuRoll._zilch_turn_state,
+        version: 2,
+        phase: "ready_to_roll",
+        roll_id: 3,
+        rolls_used: 1,
+        can_roll: true,
+        can_select_hold: false,
+        can_bank: false,
+      },
+      _zilch_quick_holds: [],
+      _zilch_last_event: {
+        type: "cpu_thinking",
+        actor_participant_id: "cpu-river",
+      },
+    };
+    const gameId = "cpu-roll-landing-fixture";
+    await installGameScreenFixture(
+      page,
+      gameId,
+      { initial: cpuReady },
+      { play_mode: "cpu", participants: cpuReady._participants },
+    );
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    await page.goto(`/zilch/spiel/${gameId}`);
+
+    await expect.poll(() => page.evaluate(() => typeof window.__zilchGameScreenFixturePush)).toBe("function");
+    await expect(page.locator(".zilch-dice")).not.toHaveClass(/is-landing/);
+    expect(await page.evaluate(() => window.__zilchGameScreenFixtureMessages.some(
+      message => message.action === "zilch_roll_dice",
+    ))).toBe(false);
+
+    await page.evaluate(({ scoreboard, event }) => {
+      window.__zilchGameScreenFixturePush({ scoreboard, zilch_event: event });
+    }, { scoreboard: cpuRoll, event: cpuRollEvent });
+
+    await expect(page.locator(".zilch-dice")).toHaveClass(/is-landing/);
+    expect(await page.locator(".zilch-die__pips").evaluateAll(groups => (
+      groups.map(group => group.querySelectorAll("circle").length)
+    ))).toEqual([4, 4, 4, 5, 2, 6]);
+    expect(await page.evaluate(() => window.__zilchGameScreenFixtureMessages.some(
+      message => message.action === "zilch_roll_dice",
+    ))).toBe(false);
   } finally {
     await context.close();
   }

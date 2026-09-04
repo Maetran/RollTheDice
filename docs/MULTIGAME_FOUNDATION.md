@@ -279,7 +279,7 @@ strategy risk preference only resolves the presentation-equivalent choice.
 CPU and human dice both call the same injectable server-side fair RNG function.
 The runner has no separate random source, does not inspect future values, and
 does not retry an unfavorable result. Its delay is operational pacing only:
-`ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` defaults to 0.55 seconds and is bounded
+`ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` defaults to 0.9 seconds and is bounded
 to 0–5 seconds. The active JSON state persists the CPU participant, strategy,
 turn, boards, start roll, ruleset, and outcome, but never a task or timer. On
 startup/rejoin, the lifecycle derives whether one unpaused CPU turn is due and

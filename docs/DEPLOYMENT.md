@@ -534,7 +534,7 @@ den Container durch. Die CPU-Pause bleibt auf 0 bis 5 Sekunden begrenzt und
 ändert nie Würfelwahrscheinlichkeiten oder Wertung:
 
 ```dotenv
-ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS=0.55
+ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS=0.9
 ```
 
 Die Loginpflicht ist zugleich die SEO-Grenze: Eine Public Beta für registrierte

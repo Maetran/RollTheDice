@@ -1243,6 +1243,8 @@ export const EN = {
     "Verbindlich gehalten": "Held",
     "Quick Hold wird geprüft": "Quick Hold is being checked",
     "Nicht wertend": "Not scoring",
+    "Letzter Wurf": "Last roll",
+    "Bei einem Zilch bleibt der letzte Wurf kurz sichtbar, bevor der Zug wechselt.": "After a Zilch, the final roll remains visible briefly before the turn changes.",
     "Verfügbar": "Available",
     "zeigt": "shows",
     "Freier Wurf": "Free roll",

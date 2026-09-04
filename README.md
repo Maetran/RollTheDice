@@ -77,7 +77,10 @@ reduced. Hot Dice therefore selects all scoring dice in one tap but remains
 optional until the next action. On the active game page, keys 1–6 toggle the
 corresponding selectable dice, Q/W/E/R/T/Z/U/I activate the visible suggestions
 in order, Space performs the enabled start or regular roll, and B banks only
-when permitted. Form fields, open dialogs, and modifier chords suppress these
+when permitted. A Zilch keeps the authoritative final rack visible for 500 ms
+before its result overlay and turn handoff. CPU rolls use the same landing
+presentation, with readable pauses between decisions. Form fields, open
+dialogs, and modifier chords suppress these
 shortcuts. Stacked, internally scrollable spiral score sheets with ruled paper
 and offset page edges keep the active player in front and the opponent total visible. The resulting
 turns are recorded there, while chat and short-lived emoji reactions remain separate
@@ -207,7 +210,7 @@ result-ownership checks. Keep `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` empty in
 normal production operation. It is used only with the deliberately restrictive
 `preview` rollback mode, where explicitly named test accounts gain Zilch access
 without receiving an admin role. CPU action pacing is an
-operator-only setting: `ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` defaults to 0.55
+operator-only setting: `ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` defaults to 0.9
 seconds and is bounded to 0–5 seconds; it never changes dice odds or scoring.
 
 Open:

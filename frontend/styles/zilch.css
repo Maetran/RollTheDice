@@ -2932,6 +2932,11 @@ html[data-game="zilch"] body {
 .zilch-shell--game .zilch-dice.is-landing .zilch-die:nth-child(2n) { animation-delay: 35ms; }
 .zilch-shell--game .zilch-dice.is-landing .zilch-die:nth-child(3n) { animation-delay: 65ms; }
 
+.zilch-shell--game .zilch-dice.is-zilch-reveal .zilch-die--non-scoring {
+  opacity: 1;
+  filter: saturate(.8) brightness(.94);
+}
+
 @keyframes zilch-sheet-forward {
   0% { filter: saturate(.86) brightness(.94); transform: translate3d(0, 100%, 0) rotate(-.65deg) scale(.985); }
   64% { filter: none; transform: translate3d(0, -.36rem, 0) rotate(.24deg) scale(1.004); }

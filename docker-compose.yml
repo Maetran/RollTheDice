@@ -28,7 +28,7 @@ services:
       # is retained only for an explicit fail-closed rollback to preview mode.
       ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES: ${ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES:-}
       ROLLTHEDICE_ZILCH_ACCESS_MODE: ${ROLLTHEDICE_ZILCH_ACCESS_MODE:-authenticated}
-      ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS: ${ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS:-0.55}
+      ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS: ${ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS:-0.9}
 
 # git clone https://github.com/Maetran/RollTheDice.git
 # cd RollTheDice

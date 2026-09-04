@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from app.game_state import games
 from app.game_ws_session import GameSocketSession
-from app.zilch_cpu_runner import cpu_action_is_due, maybe_schedule_cpu_turn, resume_cpu_games, stop_cpu_runners
+from app.zilch_cpu_runner import (
+    cpu_action_delay_seconds,
+    cpu_action_is_due,
+    maybe_schedule_cpu_turn,
+    resume_cpu_games,
+    stop_cpu_runners,
+)
 from app.zilch_gameplay import (
     apply_zilch_roll_dice,
     apply_zilch_start_roll,
@@ -131,6 +138,60 @@ class ZilchCpuRunnerTestCase(TestCase):
         self.assertTrue(any(event.get("type") == "roll" and event.get("actor_participant_id") == cpu_id for event in events))
         self.assertTrue(any(event.get("type") == "hold" and event.get("actor_participant_id") == cpu_id for event in events))
         self.assertTrue(any(event.get("type") == "bank" and event.get("actor_participant_id") == cpu_id for event in events))
+
+    def test_cpu_default_pacing_is_nine_tenths_of_a_second(self) -> None:
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(cpu_action_delay_seconds(), 0.9)
+
+    def test_cpu_waits_for_zilch_presentation_then_uses_default_inter_action_pacing(self) -> None:
+        game, _socket, human_id, cpu_id = self._cpu_game(strategy="conservative")
+        delays: list[float] = []
+
+        async def record_delay(delay: float) -> None:
+            delays.append(delay)
+
+        async def scenario() -> None:
+            record_zilch_start_roll(game, human_id, 2)
+            record_zilch_start_roll(game, cpu_id, 6)
+            # The previous player's terminal roll is already published.  The
+            # CPU must leave enough time for the 500 ms dice reveal and the
+            # following ZILCH presentation before starting its own turn.
+            game["_zilch_last_event"] = {"type": "zilch", "player_id": human_id}
+            with patch.dict(os.environ, {}, clear=True), patch(
+                "app.zilch_cpu_runner.asyncio.sleep",
+                new=record_delay,
+            ):
+                task = maybe_schedule_cpu_turn(
+                    game,
+                    randint_fn=sequence_rng([5, 5, 5, 2, 3, 4]),
+                )
+                self.assertIsNotNone(task)
+                await task
+
+        asyncio.run(scenario())
+        self.assertGreaterEqual(len(delays), 2)
+        self.assertGreaterEqual(delays[0], 1.9)
+        self.assertEqual(delays[1:], [0.9] * (len(delays) - 1))
+
+    def test_explicit_zero_delay_bypasses_even_the_zilch_handoff_pause(self) -> None:
+        game, _socket, human_id, cpu_id = self._cpu_game(strategy="conservative")
+
+        async def scenario() -> None:
+            record_zilch_start_roll(game, human_id, 2)
+            record_zilch_start_roll(game, cpu_id, 6)
+            game["_zilch_last_event"] = {"type": "zilch", "player_id": human_id}
+            sleep = AsyncMock()
+            with patch("app.zilch_cpu_runner.asyncio.sleep", sleep):
+                task = maybe_schedule_cpu_turn(
+                    game,
+                    delay_seconds=0,
+                    randint_fn=sequence_rng([5, 5, 5, 2, 3, 4]),
+                )
+                self.assertIsNotNone(task)
+                await task
+            sleep.assert_not_awaited()
+
+        asyncio.run(scenario())
 
     def test_pause_or_human_disconnect_stops_cpu_before_any_action(self) -> None:
         game, _socket, human_id, cpu_id = self._cpu_game()

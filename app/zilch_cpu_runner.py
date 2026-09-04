@@ -46,7 +46,8 @@ from .zilch_state import (
 logger = logging.getLogger(__name__)
 
 _CPU_TASKS: dict[str, asyncio.Task[None]] = {}
-_DEFAULT_DELAY_SECONDS = 0.55
+_DEFAULT_DELAY_SECONDS = 0.9
+_ZILCH_HANDOFF_DELAY_SECONDS = 1.9
 _MAX_DELAY_SECONDS = 5.0
 
 
@@ -270,14 +271,18 @@ async def _run_cpu_game(
     *,
     finalize_game: FinalizeGame | None,
     delay_seconds: float,
+    first_delay_seconds: float,
     randint_fn: Callable[[int, int], int],
 ) -> None:
     """Run visible CPU steps until the current authoritative CPU turn ends."""
     game_id = _game_id(game)
+    first_step = True
     try:
         while cpu_action_is_due(game):
-            if delay_seconds:
-                await asyncio.sleep(delay_seconds)
+            step_delay = first_delay_seconds if first_step else delay_seconds
+            first_step = False
+            if step_delay:
+                await asyncio.sleep(step_delay)
             # The state may have paused, finished, or been replaced while the
             # CPU was thinking.  Never replay an old decision after a delay.
             if not cpu_action_is_due(game):
@@ -343,11 +348,20 @@ def maybe_schedule_cpu_turn(
         # Startup/recovery callers in a synchronous context cannot create an
         # async task.  The next rejoin/action inside the app loop retries.
         return None
+    resolved_delay = cpu_action_delay_seconds() if delay_seconds is None else max(0.0, delay_seconds)
+    last_event = game.get("_zilch_last_event")
+    last_event_type = str(last_event.get("type") or "") if isinstance(last_event, dict) else ""
+    first_delay = (
+        max(resolved_delay, _ZILCH_HANDOFF_DELAY_SECONDS)
+        if delay_seconds is None and last_event_type == "zilch"
+        else resolved_delay
+    )
     task = loop.create_task(
         _run_cpu_game(
             game,
             finalize_game=finalize_game,
-            delay_seconds=cpu_action_delay_seconds() if delay_seconds is None else max(0.0, delay_seconds),
+            delay_seconds=resolved_delay,
+            first_delay_seconds=first_delay,
             randint_fn=randint_fn or fair_zilch_randint,
         ),
         name=f"zilch-cpu:{game_id}",

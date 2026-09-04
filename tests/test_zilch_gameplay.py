@@ -11,7 +11,12 @@ from unittest.mock import patch
 from app.active_games import serializable_game_state
 from app.game_state import games, new_game
 from app.game_ws_session import GameSocketSession
-from app.zilch_engine import ZILCH_PHASE_READY_TO_ROLL
+from app.zilch_engine import (
+    ZILCH_PHASE_AWAITING_HOLD,
+    ZILCH_PHASE_READY_TO_ROLL,
+    ZilchHoldResult,
+    scoring_options_for_roll,
+)
 from app.zilch_gameplay import ZILCH_GAMEPLAY_ACTIONS, handle_zilch_gameplay_action
 from app.zilch_snapshot import snapshot_zilch
 from app.zilch_state import (
@@ -421,11 +426,94 @@ class ZilchGameplayTestCase(TestCase):
         ):
             asyncio.run(handle_zilch_gameplay_action(session, "zilch_roll_dice", {"turn_id": 1, "version": 0}))
 
+        message = sockets[0].messages[-1]
         self.assertEqual(game["_round_points"]["p1"], 0)
         self.assertEqual(game["_zilch_boards"]["p1"]["rounds"][-1]["event"], "zilch")
         self.assertEqual(game["_zilch_boards"]["p1"]["zilch_streak"], 1)
         self.assertEqual(game["_turn"]["player_id"], "p2")
-        self.assertEqual(sockets[0].messages[-1]["zilch_event"]["reason"], "no_scoring_option")
+        self.assertEqual(game["_dice"], [0, 0, 0, 0, 0, 0])
+        self.assertEqual(message["scoreboard"]["_turn"]["player_id"], "p2")
+        self.assertEqual(message["scoreboard"]["_dice"], [0, 0, 0, 0, 0, 0])
+        self.assertEqual(message["zilch_event"]["reason"], "no_scoring_option")
+        self.assertEqual(message["zilch_event"]["rolled_dice"], [1, 2, 2, 3, 4, 6])
+        self.assertEqual(message["zilch_event"]["held_dice_indices"], [0])
+
+    def test_third_roll_below_300_broadcasts_rolled_dice_before_reset_and_turn_advance(self):
+        game, sockets = self.make_game(players=2)
+        session = self.session(game, sockets[0], "p1")
+        turn = replace(
+            current_zilch_turn(game),
+            dice=(1, 1, 0, 0, 0, 0),
+            held_indices=(0, 1),
+            round_points=200,
+            rolls_used=2,
+            roll_id=2,
+            phase=ZILCH_PHASE_READY_TO_ROLL,
+        )
+        sync_zilch_turn(game, turn)
+
+        with patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([5, 2, 3, 4])):
+            asyncio.run(handle_zilch_gameplay_action(session, "zilch_roll_dice", {"turn_id": 1, "version": 0}))
+
+        message = sockets[0].messages[-1]
+        self.assertEqual(message["zilch_event"]["reason"], "third_roll_minimum_not_reachable")
+        self.assertEqual(message["zilch_event"]["rolled_dice"], [1, 1, 5, 2, 3, 4])
+        self.assertEqual(message["zilch_event"]["held_dice_indices"], [0, 1])
+        self.assertEqual(message["scoreboard"]["_turn"]["player_id"], "p2")
+        self.assertEqual(message["scoreboard"]["_dice"], [0, 0, 0, 0, 0, 0])
+        self.assertEqual(game["_round_points"]["p1"], 0)
+
+    def test_precommit_threshold_loss_broadcasts_the_current_roll_before_reset(self):
+        game, sockets = self.make_game(players=2)
+        session = self.session(game, sockets[0], "p1")
+        turn = replace(
+            current_zilch_turn(game),
+            dice=(5, 2, 3, 4, 6, 2),
+            rolls_used=3,
+            roll_id=3,
+            version=7,
+            phase=ZILCH_PHASE_AWAITING_HOLD,
+        )
+        sync_zilch_turn(game, turn)
+        option = next(
+            option
+            for option in scoring_options_for_roll(turn.dice, turn_id=turn.turn_id, roll_id=turn.roll_id)
+            if option.combination_type == "single_five" and option.dice_indices == (0,)
+        )
+        held_turn = replace(
+            turn,
+            held_indices=(0,),
+            round_points=50,
+            version=8,
+            phase=ZILCH_PHASE_READY_TO_ROLL,
+        )
+        threshold_loss = ZilchHoldResult(
+            turn=held_turn,
+            option=option,
+            third_roll_threshold_zilch=True,
+        )
+        payload = {
+            "turn_id": turn.turn_id,
+            "version": turn.version,
+            "roll_id": option.roll_id,
+            "option_id": option.option_id,
+        }
+
+        # The normal option projection filters this undersized third-roll hold.
+        # Stub the defensive seam so its loss event remains covered if an older
+        # or future command path reaches it.
+        with patch(
+            "app.zilch_gameplay._turn_with_optional_hold",
+            return_value=(held_turn, threshold_loss),
+        ):
+            asyncio.run(handle_zilch_gameplay_action(session, "zilch_roll_dice", payload))
+
+        message = sockets[0].messages[-1]
+        self.assertEqual(message["zilch_event"]["reason"], "third_roll_minimum_not_met")
+        self.assertEqual(message["zilch_event"]["rolled_dice"], [5, 2, 3, 4, 6, 2])
+        self.assertEqual(message["zilch_event"]["held_dice_indices"], [0])
+        self.assertEqual(message["scoreboard"]["_turn"]["player_id"], "p2")
+        self.assertEqual(message["scoreboard"]["_dice"], [0, 0, 0, 0, 0, 0])
 
     def test_successful_bank_resets_zilch_streak_and_three_zilchs_do_not_go_negative(self):
         game, _sockets = self.make_game()

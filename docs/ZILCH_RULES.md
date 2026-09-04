@@ -335,9 +335,12 @@ Betriebsrollback dokumentiert und ist nicht der Public-Beta-Standard.
 
 - Die Engine verwendet für Menschen und CPU-Teilnehmer denselben injizierbaren,
   serverseitigen Zufallsweg. Clients liefern nie Würfelergebnisse. Die
-  serverseitige Denkpause `ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` (Standard 0,55
+  serverseitige Denkpause `ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` (Standard 0,9
   Sekunden, begrenzt auf 0–5) beeinflusst nur die sichtbare Taktung, niemals
-  Würfel oder Wertung.
+  Würfel oder Wertung. Nach einem Zilch bleibt der autoritative letzte
+  Würfelsatz 0,5 Sekunden sichtbar; danach folgt das 1,35-sekündige
+  Zilch-Signal. Eine anschließende CPU-Aktion beginnt frühestens nach 1,9
+  Sekunden und verdeckt diesen Übergang dadurch nicht.
 - Aktive Zustände samt Turn-ID, Holds, Rundenpunkten, Boards und Quick-Hold-
   Grundlage bleiben über die bestehende aktive Persistenz
   restart-sicher. Ein Abschluss wird erst nach einer erfolgreichen,
