@@ -3094,13 +3094,37 @@ html[data-game="zilch"] body {
    320px viewport. Narrower dock gutters turn the reclaimed pixels into useful
    touch target instead of empty chrome. */
 .zilch-shell--game .zilch-dice {
-  --zilch-room-die-size: clamp(2.95rem, calc((100vw - 1.45rem) / 6), 3.85rem);
-  gap: clamp(.08rem, .42vw, .17rem);
+  --zilch-room-die-size: clamp(3rem, calc((100vw - .95rem) / 6), 4rem);
+  gap: clamp(.04rem, .24vw, .1rem);
 }
 
 @media (max-width: 760px) {
-  .zilch-shell--game .zilch-dice-dock { right: .2rem; left: .2rem; }
-  .zilch-shell--game .zilch-dice-dock .zilch-table { padding-inline: .2rem; }
+  /* Keep the strongest choice in the lower thumb zone while preserving the
+     semantic rank and Q-W-E-R-T-Z-U-I shortcut assignment in the DOM. The
+     reversed scroll parent also opens at the useful, strongest end when a
+     short viewport cannot display every choice at once. */
+  .zilch-shell--game .zilch-play-layout:not(.zilch-play-layout--finished) .zilch-recommendations {
+    flex-direction: column-reverse;
+  }
+
+  .zilch-shell--game .zilch-play-layout:not(.zilch-play-layout--finished) .zilch-recommendations__list {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column-reverse;
+  }
+
+  .zilch-shell--game .zilch-recommendations__list > li { flex: 0 0 auto; }
+
+  .zilch-shell--game .zilch-recommendation strong { font-size: 1.08rem; }
+  .zilch-shell--game .zilch-recommendation span { font-size: .78rem; line-height: 1.2; }
+  .zilch-shell--game .zilch-recommendation__shortcut {
+    width: 1.3rem;
+    height: 1.3rem;
+    font-size: .64rem;
+  }
+
+  .zilch-shell--game .zilch-dice-dock { right: .125rem; left: .125rem; }
+  .zilch-shell--game .zilch-dice-dock .zilch-table { padding-inline: .125rem; }
 }
 
 .zilch-shell--game .zilch-final-awards {

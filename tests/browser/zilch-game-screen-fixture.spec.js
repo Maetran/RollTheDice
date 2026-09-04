@@ -1343,6 +1343,53 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
       "Q", "W", "E", "R", "T",
     ]);
 
+    await page.setViewportSize({ width: 390, height: 827 });
+    const mobileRecommendationLayout = await page.evaluate(() => {
+      const rail = document.querySelector(".zilch-recommendations").getBoundingClientRect();
+      const cards = [...document.querySelectorAll("[data-zilch-recommendation]")].map(card => {
+        const box = card.getBoundingClientRect();
+        return {
+          shortcut: card.dataset.zilchShortcut,
+          top: box.top,
+          bottom: box.bottom,
+        };
+      });
+      const best = cards.find(card => card.shortcut === "q");
+      const firstCard = document.querySelector("[data-zilch-recommendation]");
+      return {
+        topToBottom: cards.sort((first, second) => first.top - second.top).map(card => card.shortcut),
+        bestBottom: best.bottom,
+        railBottom: rail.bottom,
+        scoreFontSize: Number.parseFloat(getComputedStyle(firstCard.querySelector("strong")).fontSize),
+        labelFontSize: Number.parseFloat(getComputedStyle(firstCard.querySelector("span")).fontSize),
+      };
+    });
+    expect(mobileRecommendationLayout.topToBottom).toEqual(["t", "r", "e", "w", "q"]);
+    expect(Math.abs(mobileRecommendationLayout.bestBottom - mobileRecommendationLayout.railBottom)).toBeLessThanOrEqual(2);
+    expect(mobileRecommendationLayout.scoreFontSize).toBeGreaterThanOrEqual(17);
+    expect(mobileRecommendationLayout.labelFontSize).toBeGreaterThanOrEqual(12);
+
+    const compactRecommendationLayout = await page.evaluate(() => {
+      const rail = document.querySelector(".zilch-recommendations");
+      rail.style.height = "8rem";
+      const railBox = rail.getBoundingClientRect();
+      const bestBox = document.querySelector('[data-zilch-shortcut="q"]').getBoundingClientRect();
+      return {
+        overflows: rail.scrollHeight > rail.clientHeight,
+        bestBottom: bestBox.bottom,
+        railBottom: railBox.bottom,
+      };
+    });
+    expect(compactRecommendationLayout.overflows).toBe(true);
+    expect(Math.abs(compactRecommendationLayout.bestBottom - compactRecommendationLayout.railBottom)).toBeLessThanOrEqual(2);
+    await page.locator(".zilch-recommendations").evaluate(rail => rail.style.removeProperty("height"));
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    expect(await recommendations.evaluateAll(nodes => nodes
+      .map(node => ({ shortcut: node.dataset.zilchShortcut, top: node.getBoundingClientRect().top }))
+      .sort((first, second) => first.top - second.top)
+      .map(item => item.shortcut))).toEqual(["q", "w", "e", "r", "t"]);
+
     const twoFives = page.locator('[data-zilch-recommendation="fixture-two-fives"]');
     const singleOne = page.locator('[data-zilch-recommendation="fixture-single-one"]');
     await expect(twoFives).toHaveAttribute("aria-label", /\+100.*5 \+ 5/);
@@ -1698,9 +1745,9 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
     await expect(page.locator("[data-zilch-roll]")).toContainText(/Weiterwürfeln|roll again/i);
 
     for (const viewport of [
-      { name: "narrow-phone", width: 320, height: 800, minimumDie: 49 },
-      { name: "phone", width: 390, height: 827, minimumDie: 59 },
-      { name: "desktop", width: 1280, height: 900, minimumDie: 60 },
+      { name: "narrow-phone", width: 320, height: 800, minimumDie: 50 },
+      { name: "phone", width: 390, height: 827, minimumDie: 62 },
+      { name: "desktop", width: 1280, height: 900, minimumDie: 63 },
     ]) {
       await test.step(`first scoring roll preserves notebook geometry on ${viewport.name}`, async () => {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });

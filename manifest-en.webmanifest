@@ -11,12 +11,12 @@
   "background_color": "#0b1120",
   "theme_color": "#0b1120",
   "shortcuts": [
-    { "name": "Lobby", "url": "/", "icons": [{ "src": "/static/icons/icon-192.png?v=4abab21862ac", "sizes": "192x192" }] },
-    { "name": "Players & Ranking", "url": "/spieler", "icons": [{ "src": "/static/icons/icon-192.png?v=4abab21862ac", "sizes": "192x192" }] },
-    { "name": "Game Rules", "url": "/regeln", "icons": [{ "src": "/static/icons/icon-192.png?v=4abab21862ac", "sizes": "192x192" }] }
+    { "name": "Lobby", "url": "/", "icons": [{ "src": "/static/icons/icon-192.png?v=7cf43b20f276", "sizes": "192x192" }] },
+    { "name": "Players & Ranking", "url": "/spieler", "icons": [{ "src": "/static/icons/icon-192.png?v=7cf43b20f276", "sizes": "192x192" }] },
+    { "name": "Game Rules", "url": "/regeln", "icons": [{ "src": "/static/icons/icon-192.png?v=7cf43b20f276", "sizes": "192x192" }] }
   ],
   "icons": [
-    { "src": "/static/icons/icon-192.png?v=4abab21862ac", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/static/icons/icon-512.png?v=4abab21862ac", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { "src": "/static/icons/icon-192.png?v=7cf43b20f276", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-512.png?v=7cf43b20f276", "sizes": "512x512", "type": "image/png", "purpose": "any" }
   ]
 }
