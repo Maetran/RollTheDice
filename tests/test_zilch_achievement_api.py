@@ -169,6 +169,7 @@ class ZilchAchievementApiTestCase(TestCase):
         endpoints = (
             "/api/zilch/achievements?user_id=999999",
             "/api/zilch/achievements/pending?user_id=999999",
+            "/api/zilch/achievement-ranks",
         )
 
         for endpoint in endpoints:
@@ -188,6 +189,20 @@ class ZilchAchievementApiTestCase(TestCase):
         self.assertEqual(response.json(), sentinel)
         profile.assert_called_once_with(mani.id)
 
+        rank_sentinel = {
+            "version": 2,
+            "points_possible": 42,
+            "ranks": [{"key": "newbie", "minimum_points": 0}],
+        }
+        with patch(
+            "app.main.zilch_achievement_rank_legend_payload",
+            return_value=rank_sentinel,
+        ) as rank_legend:
+            response = self._request("GET", "/api/zilch/achievement-ranks", token=mani_token)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), rank_sentinel)
+        rank_legend.assert_called_once_with()
+
     def test_acknowledgement_is_csrf_protected_idempotent_and_owned_by_the_session_user(self) -> None:
         mani, mani_token, mani_csrf = self._identity("Mani", role="admin")
         _other, other_token, other_csrf = self._identity("PreviewFriend")
@@ -198,6 +213,10 @@ class ZilchAchievementApiTestCase(TestCase):
         self.assertIn("zilch.first_game", {award["key"] for award in pending.json()["awards"]})
         self.assertEqual(
             {award["source_game_id"] for award in pending.json()["awards"]},
+            {game_id},
+        )
+        self.assertEqual(
+            {award["presentation_game_id"] for award in pending.json()["awards"]},
             {game_id},
         )
 

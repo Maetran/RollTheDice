@@ -92,7 +92,18 @@ Vor einem regulären Rollout müssen folgende Bedingungen erfüllt sein:
   ihr Downgrade entfernt Auswertungen, Nachweise, Freischaltungen und
   Zustellstatus. Revision `20260904_0018` verknüpft neu verdiente
   ZDWA-Achievements mit ihrem Ursprungsspiel; ihr Downgrade entfernt diese
-  Verknüpfung. Nach produktiven Freischaltungen daher bevorzugt den Code
+  Verknüpfung. Revision `20260904_0019` ergänzt das getrennte Zilch-Punkte- und
+  Rangsystem sowie den monotonen Community-Meilensteinzähler und den dauerhaften
+  Teilnehmer-Ledger. Das Upgrade ignoriert Zilch-Tombstones, rekonstruiert schon
+  erreichte Schwellen exakt aus registrierter Evidence und markiert einen
+  einmaligen Catalog-Resync für den Anwendungsstart. Dessen interner
+  Version-3-Lauf reichert nur
+  abgeschlossene, nicht gelöschte Registrierungen aus ihrem exakt per Spiel-ID
+  geladenen typed Quellergebnis an; er enumeriert die allgemeine
+  `CompletedGame`-Historie nicht und rollt bei Inkonsistenzen atomar zurück.
+  Ihr Downgrade entfernt
+  Zilch-Community-Zähler, Teilnehmer, Empfänger und deren Freischaltungen.
+  Nach produktiven Freischaltungen daher bevorzugt den Code
   vorwärts reparieren. Ist ein Schema-Rückgang unvermeidbar, zuerst den
   bestätigten `data.backup-*`-Stand außerhalb des laufenden `data/` bewahren.
 - Statische Assets sind mit `scripts/sync_static_versions.py --check` synchronisiert.
@@ -628,9 +639,12 @@ den Code vorwärts reparieren oder ein passendes `data.backup-*` wiederherstelle
 
 Ein Downgrade über `20260903_0017` löscht die gesamte getrennte
 Zilch-Achievement-Historie. Ein Downgrade über `20260904_0018` behält die
-ZDWA-Freischaltungen, entfernt aber ihre Zuordnung zum Ursprungsspiel. Beide
-Schritte deshalb nur nach bestätigtem Backup und bewusster Entscheidung über
-diesen Datenverlust ausführen.
+ZDWA-Freischaltungen, entfernt aber ihre Zuordnung zum Ursprungsspiel. Ein
+Downgrade über `20260904_0019` entfernt den Zilch-Community-Zähler, eingefrorene
+Empfängerlisten, den Teilnehmer-Ledger und die zugehörigen Community-
+Freischaltungen. Persönliche Zilch-Freischaltungen und deren Zustellbestätigungen
+bleiben erhalten. Diese Schritte deshalb nur nach bestätigtem Backup und
+bewusster Entscheidung über diesen Datenverlust ausführen.
 
 ### Beschädigte Produktionsdaten
 

@@ -288,8 +288,9 @@ protokolliert; die Anwendung erfindet keine Werte.
 ### Geschützte Zilch-Erfolge sind keine Spielregel
 
 Private Zilch-Erfolge bilden einen eigenen, geschützten Zilch-Namensraum. Sie
-sind weder ZDWA-Erfolge noch **Ehrenberg-Marken**: Sie ändern keine
-ZDWA-Titel, Sterne, öffentlichen Profile, Ranglisten, Statistiken oder
+sind weder ZDWA-Erfolge noch **Ehrenberg-Marken**: persönliche Ziele bringen
+1–10 Zilch-Punkte und ergeben ausschließlich einen Zilch-Rang. Sie ändern
+keine ZDWA-Titel, Sterne, öffentlichen Profile, Ranglisten, Statistiken oder
 Spielregeln. Das gilt ausdrücklich auch dann, wenn derselbe Account ZDWA und
 Zilch verwendet.
 
@@ -297,13 +298,25 @@ Als fachliche Quelle zählt ausschließlich ein erfolgreich gespeichertes,
 validiertes Zilch-Ergebnis, das der Finalizer als neues post-Rollout-Workitem
 registriert. Live-Snapshots, Browseranzeigen und lokale Zählwerte können
 keinen Erfolg auslösen. Die Recovery verarbeitet nur solche ausstehenden
-Workitems; frühere Preview-Partien werden nie rückwirkend gescannt oder
-backfilled. Eine Auslieferung ist pro Freischaltung idempotent. Die Bestätigung
-in der Oberfläche setzt nur den Anzeigezeitpunkt und nicht die fachliche
-Vergabe.
+Workitems; frühere, nie registrierte Preview-Partien werden nicht rückwirkend
+gescannt oder nachgetragen. Bei einer versionierten Katalogerweiterung darf
+ausschliesslich die bereits nach dem ursprünglichen Rollout akzeptierte Evidenz
+einmalig neu ausgewertet werden. Für jede abgeschlossene, nicht gelöschte
+Registrierung wird dabei nur ihr exakt per Spiel-ID geladenes, weiterhin
+vorhandenes und typisiertes Quellergebnis verwendet. Vor einer Anreicherung
+werden Quelle, Sitz, Account-Zuordnung, Metadaten und alle bestehenden Fakten
+geprüft; bei einer Abweichung wird der gesamte Kataloglauf inklusive
+Versionsmarker zurückgerollt. Die allgemeine `CompletedGame`-Historie wird nie
+aufgezählt oder gescannt. Eine Auslieferung ist pro Freischaltung idempotent.
+Die Bestätigung in der Oberfläche setzt nur den Anzeigezeitpunkt und nicht die
+fachliche Vergabe.
 
-Wird das Quellergebnis gelöscht, werden daraus abgeleitete private Zilch-
-Erfolge widerrufen. Das berührt weder ZDWA-Aggregate noch Ehrenberg-Marken.
+Wird das Quellergebnis gelöscht, werden daraus abgeleitete persönliche Zilch-
+Erfolge widerrufen; der separate Punktestand und Rang folgen automatisch.
+Gemeinsame Meilensteine für 100, 500, 1’000, 5’000 und 10’000 qualifizierte
+Partien frieren ihren damaligen Empfängerkreis ein und bleiben als historischer
+Moment bestehen. Sie geben immer 0 Punkte. Das berührt weder ZDWA-Aggregate
+noch Ehrenberg-Marken.
 Unbekannte, unvollständige oder beschädigte Ergebnis-Payloads, CPU-Sitze und
 alte Daten ohne die erforderliche Evidenz bleiben absichtlich ohne Erfolg. Die
 geschützten Ansichten `/zilch/erfolge` und `/zilch/spieler/{username}` unterliegen
@@ -353,8 +366,8 @@ Betriebsrollback dokumentiert und ist nicht der Public-Beta-Standard.
   denselben Kriterien je Strategie. Aufgegebene Solo-Läufe und nicht aktive
   Konten sind nicht rankingfähig.
 - Noch offen bleiben insbesondere eine präzise Strafkadenz nach mehr als drei
-  aufeinanderfolgenden Zilchs, weitere Solo-Objectives/Challenges, finale
-  Interaktions-/Markenpolitur und weitere private Zilch-Erfolgskategorien.
+  aufeinanderfolgenden Zilchs, weitere Solo-Objectives/Challenges und finale
+  Interaktions-/Markenpolitur.
 
 ## Designrichtung
 

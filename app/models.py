@@ -291,8 +291,101 @@ class ZilchAchievementEvidence(Base):
     )
 
 
+class ZilchCommunityState(Base):
+    """Singleton counter for exactly-once qualified Zilch completions."""
+
+    __tablename__ = "zilch_community_state"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    qualified_games: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    achievement_catalog_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_zilch_community_state_singleton"),
+        CheckConstraint("qualified_games >= 0", name="ck_zilch_community_state_games"),
+        CheckConstraint(
+            "achievement_catalog_version >= 0",
+            name="ck_zilch_community_state_catalog_version",
+        ),
+    )
+
+
+class ZilchCommunityGame(Base):
+    """One qualified result counted once in the monotonic community ledger."""
+
+    __tablename__ = "zilch_community_games"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    game_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    counted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("ordinal >= 1", name="ck_zilch_community_games_ordinal"),
+        Index("ix_zilch_community_games_counted", "counted_at"),
+    )
+
+
+class ZilchCommunityParticipant(Base):
+    """Durable account participation in one counted community game."""
+
+    __tablename__ = "zilch_community_participants"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    game_id: Mapped[str] = mapped_column(
+        ForeignKey("zilch_community_games.game_id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    qualified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("game_id", "user_id", name="uq_zilch_community_participant_game_user"),
+        Index("ix_zilch_community_participants_user", "user_id"),
+    )
+
+
+class ZilchCommunityMilestone(Base):
+    """Immutable record of one globally reached community threshold."""
+
+    __tablename__ = "zilch_community_milestones"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    achievement_key: Mapped[str] = mapped_column(String(96), nullable=False, unique=True)
+    threshold: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    reached_ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    trigger_game_id: Mapped[str] = mapped_column(
+        ForeignKey("zilch_community_games.game_id", ondelete="RESTRICT"), nullable=False
+    )
+    reached_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("threshold >= 1", name="ck_zilch_community_milestones_threshold"),
+        CheckConstraint("reached_ordinal = threshold", name="ck_zilch_community_milestones_ordinal"),
+        Index("ix_zilch_community_milestones_reached", "reached_at"),
+    )
+
+
+class ZilchCommunityRecipient(Base):
+    """Frozen account eligibility at the instant a community goal is reached."""
+
+    __tablename__ = "zilch_community_recipients"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    milestone_id: Mapped[int] = mapped_column(
+        ForeignKey("zilch_community_milestones.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    awarded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("milestone_id", "user_id", name="uq_zilch_community_recipient"),
+        Index("ix_zilch_community_recipients_user", "user_id"),
+    )
+
+
 class ZilchAchievementUnlock(Base):
-    """One namespaced, non-Ehrenberg Zilch achievement per account."""
+    """One namespaced Zilch achievement and its auditable source per account."""
 
     __tablename__ = "zilch_achievement_unlocks"
 
@@ -303,6 +396,9 @@ class ZilchAchievementUnlock(Base):
     source_evidence_id: Mapped[int | None] = mapped_column(
         ForeignKey("zilch_achievement_evidence.id", ondelete="SET NULL"), nullable=True
     )
+    source_community_recipient_id: Mapped[int | None] = mapped_column(
+        ForeignKey("zilch_community_recipients.id", ondelete="SET NULL"), nullable=True
+    )
     source_game_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
@@ -310,6 +406,7 @@ class ZilchAchievementUnlock(Base):
         CheckConstraint("definition_version >= 1", name="ck_zilch_achievement_unlocks_definition"),
         UniqueConstraint("user_id", "achievement_key", name="uq_zilch_achievement_unlock_user_key"),
         Index("ix_zilch_achievement_unlocks_user", "user_id"),
+        Index("ix_zilch_achievement_unlocks_community_source", "source_community_recipient_id"),
     )
 
 

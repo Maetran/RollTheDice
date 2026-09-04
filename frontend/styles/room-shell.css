@@ -204,7 +204,9 @@
     grid-template-columns:minmax(0, 1fr) auto auto;
     align-items:center;
     gap:.3rem;
-    padding:.5rem .65rem;
+    /* Preserve a useful turn-status column at the 561px desktop breakpoint.
+       The fixed icon controls otherwise consume its final sub-pixels on Linux. */
+    padding:.5rem .5rem;
     border:1px solid rgba(216,222,232,.88);
     border-top:0;
     border-radius:0 0 8px 8px;

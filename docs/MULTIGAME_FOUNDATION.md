@@ -138,10 +138,12 @@ silently discarding Zilch history.
 ## Private Zilch award boundary
 
 Zilch recognition is a deliberately separate private namespace, not an
-extension of the ZDWA `achievements` catalog. **Option A** applies: Zilch
-awards grant no Ehrenberg-Marken and cannot change ZDWA title tiers, rank
-badges, public profiles, scorecards, statistics, leaderboards, achievements,
-or replay payloads. The only shared concern is authenticated account identity.
+extension of the ZDWA `achievements` catalog. Zilch awards grant no
+Ehrenberg-Marken and cannot change ZDWA title tiers, rank badges, public
+profiles, scorecards, statistics, leaderboards, achievements, or replay
+payloads. They project their own catalog points and Zilch rank so both games
+use the same understandable progression pattern without sharing a currency.
+The only shared concern is authenticated account identity.
 
 The source chain starts with a durably finalized, typed
 `CompletedGame(game_type='zilch')` with a known and validated Zilch payload.
@@ -152,11 +154,19 @@ stored in `zilch_achievement_evidence`, and namespaced `zilch.*` unlocks are
 stored separately in `zilch_achievement_unlocks`. The browser, active state,
 Quick-Hold cache, private statistic projection, and leaderboard are never
 authoritative award inputs. There is no retrospective scan or backfill of
-older preview results.
+older, unregistered preview results. A versioned catalog update may only
+resynchronize evidence explicitly accepted after the original rollout. It
+loads the exact still-present typed source by the registered evaluation's game
+ID, validates source metadata plus the existing seat/user/fact mapping, and
+adds only newly derivable facts. The evaluation set drives the bounded lookup;
+it does not enumerate or discover historic `CompletedGame` rows. Any mismatch
+atomically rolls back the evidence enrichment and catalog marker.
 
 Alembic revision `20260903_0017` creates the isolated evaluation, evidence,
 unlock, and delivery tables. It creates no historic work items, so upgrading a
-database cannot award a pre-rollout Zilch result.
+database cannot award a pre-rollout Zilch result. Revision `20260904_0019`
+marks a versioned, one-time catalog synchronization from that already accepted
+evidence only.
 
 For every durable unlock, `zilch_achievement_deliveries` holds one reload-safe
 presentation delivery. It is idempotent and `acknowledged_at` records only
@@ -170,7 +180,24 @@ the protected Zilch context (`/zilch/erfolge` and
 `/zilch/spieler/{username}`), is `noindex`, and is not a public profile. Its
 protected APIs are `/api/zilch/achievements`, `/api/zilch/achievements/pending`,
 `/api/zilch/achievements/{key}/acknowledge`, and
-`/api/zilch/players/{username}/achievements`.
+`/api/zilch/players/{username}/achievements`; the Zilch-only rank ladder is
+`/api/zilch/achievement-ranks` and the achievement-points table is one of the
+protected Zilch leaderboards.
+
+The expanded catalog adds cumulative, scoring, risk, duel, CPU, combination,
+and Solo-efficiency goals. Positive-point goals count only qualified finishes;
+an abandoned Solo result cannot be farmed for rank. Global community-game
+milestones use an idempotent one-row-per-game ledger and freeze their eligible
+account recipients at the exact threshold transaction. They deliberately
+award 0 points and remain historical if a triggering result is later deleted.
+A durable account-seat ledger preserves eligibility after evidence cleanup.
+The version-2 rollout reconstructs already crossed thresholds at their exact
+Nth registered source, excluding typed tombstones, and an atomic catalog marker
+resynchronizes new personal definitions before startup serves requests. Its
+internal version-3 source-backed enrichment is driven only by completed, non-tombstoned
+registrations and loads each exact typed source by game ID before adding facts
+needed by newer goals. Neither path scans the general completed-result
+population.
 
 If a completed-result deletion commits before its private award cleanup can
 finish, a bounded tombstone recovery consults only typed Zilch `DeletedGame`
@@ -482,10 +509,11 @@ the repository-owned current status.
 - [x] Calculate private Zilch-only personal statistics and separated
   leaderboards from validated completed result payloads, without a ZDWA
   aggregate path.
-- [x] Add a private, forward-only Zilch award namespace with no ZDWA
-  achievement evaluation, Ehrenberg-Marken, titles, or public-profile effect.
-- [ ] Add further private Zilch award categories only from confirmed rules and
-  reliable persisted evidence.
+- [x] Add a private, forward-only Zilch award namespace with separate Zilch
+  points/ranks, no ZDWA achievement evaluation, Ehrenberg-Marken, titles, or
+  public-profile effect.
+- [x] Add further private Zilch award categories only from confirmed rules and
+  reliable persisted evidence, including zero-point community milestones.
 
 ### Phase 5 — productization and release
 

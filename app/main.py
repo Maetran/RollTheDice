@@ -82,6 +82,8 @@ from .zilch_achievements import (
     recover_deleted_zilch_achievement_sources,
     recover_pending_zilch_achievement_evaluations,
     remove_zilch_result_from_achievements,
+    resync_zilch_achievement_catalog,
+    zilch_achievement_rank_legend_payload,
 )
 from .zilch_cpu_strategy import ZilchCpuStrategyError, validate_zilch_cpu_strategy
 from .zilch_engine import (
@@ -189,6 +191,12 @@ async def lifespan(_app: FastAPI):
             logger.warning("Some deleted Zilch achievement sources remain: %s", tombstone_recovery["failed"])
     except ZilchAchievementSyncError:
         logger.exception("Could not recover deleted Zilch achievement sources")
+    # Catalog changes are projected once from the explicit evidence boundary.
+    # This startup gate is atomic and never scans the general result table, so
+    # every account sees the same points/rank rollout before requests are served.
+    catalog_resync = resync_zilch_achievement_catalog()
+    if catalog_resync.get("status") == "resynchronized":
+        logger.info("Resynchronized Zilch achievement catalog: %s", catalog_resync)
     # CPU tasks are deliberately process-local.  Their eligibility is derived
     # from the recovered authoritative state, never serialized alongside a
     # timer or a fake connection.
@@ -1146,6 +1154,13 @@ def api_zilch_leaderboards(
         )
     except ZilchStatisticsInputError as exc:
         raise HTTPException(status_code=400, detail=exc.code) from exc
+
+
+@app.get("/api/zilch/achievement-ranks")
+def api_zilch_achievement_ranks(request: Request) -> dict[str, object]:
+    """Return the Zilch-only rank ladder inside the protected product."""
+    _require_zilch_preview(request)
+    return zilch_achievement_rank_legend_payload()
 
 
 def _safe_zilch_achievement_profile(user_id: int) -> dict[str, object]:

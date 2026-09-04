@@ -1287,8 +1287,34 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
       unlocked_at: "2026-09-03T12:00:00+00:00",
       queued_at: "2026-09-03T12:00:00+00:00",
     };
+    const currentCommunityAward = {
+      key: "zilch.community_games_100",
+      source_game_id: null,
+      presentation_game_id: gameId,
+      source_kind: "community",
+      category: "community",
+      icon_key: "star",
+      title_key: "zilch.achievement.community_games_100.title",
+      description_key: "zilch.achievement.community_games_100.description",
+      points: 0,
+      unlocked_at: "2026-09-04T12:00:01+00:00",
+      queued_at: "2026-09-04T12:00:01+00:00",
+    };
+    const unrelatedCommunityAward = {
+      key: "zilch.community_games_500",
+      source_game_id: null,
+      presentation_game_id: null,
+      source_kind: "community",
+      category: "community",
+      icon_key: "star",
+      title_key: "zilch.achievement.community_games_500.title",
+      description_key: "zilch.achievement.community_games_500.description",
+      points: 0,
+      unlocked_at: "2026-09-03T12:00:01+00:00",
+      queued_at: "2026-09-03T12:00:01+00:00",
+    };
     const acknowledgements = [];
-    let pendingAwards = [olderAward, currentAward];
+    let pendingAwards = [olderAward, unrelatedCommunityAward, currentAward, currentCommunityAward];
     await page.route("**/api/zilch/achievements**", async route => {
       const request = route.request();
       const url = new URL(request.url());
@@ -1312,7 +1338,12 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
       if (url.pathname === "/api/zilch/achievements") {
         await route.fulfill({
           contentType: "application/json",
-          body: JSON.stringify({ version: 1, categories: [], unlocked: [olderAward, currentAward], locked: [] }),
+          body: JSON.stringify({
+            version: 2,
+            categories: [],
+            unlocked: [olderAward, unrelatedCommunityAward, currentAward, currentCommunityAward],
+            locked: [],
+          }),
         });
         return;
       }
@@ -1326,12 +1357,19 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
     await expect(result).toContainText(/Solo-Lauf aufgegeben|Solo run abandoned/);
     const finalAwards = page.locator(".zilch-final-awards");
     await expect(finalAwards).toContainText(/In dieser Partie erreicht|Earned in this game/);
-    await expect(finalAwards.locator(".zilch-final-award")).toHaveCount(1);
+    await expect(finalAwards.locator(".zilch-final-award")).toHaveCount(2);
     await expect(finalAwards).toContainText(/Erster Wurf|First Roll/);
+    await expect(finalAwards).toContainText(/Die ersten Hundert|The First Hundred/);
     await expect(finalAwards).not.toContainText(/Erste sichere Runde|First Safe Round/);
+    await expect(finalAwards).not.toContainText(/Das Wirtshaus füllt sich|The House Is Filling Up/);
     await expect(page.locator("#appDialog")).toContainText(/Erster Wurf|First Roll/);
     await page.getByRole("button", { name: /Weiter|Continue/ }).click();
-    await expect.poll(() => acknowledgements).toEqual(["zilch.first_game"]);
+    await expect(page.locator("#appDialog")).toContainText(/Die ersten Hundert|The First Hundred/);
+    await page.getByRole("button", { name: /Weiter|Continue/ }).click();
+    await expect.poll(() => acknowledgements).toEqual([
+      "zilch.first_game",
+      "zilch.community_games_100",
+    ]);
     await expect(page.locator("#appDialogBackdrop")).toBeHidden();
     await expect(page.locator(".zilch-recommendation")).toHaveCount(0);
     await expect(page.getByRole("button", { name: /Neue Runde|New round/ })).toBeVisible();
@@ -1404,13 +1442,31 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
     expect(narrowGeometry.documentWidth).toBeLessThanOrEqual(narrowGeometry.viewportWidth);
 
     // Acknowledgement empties the current game's delivery queue, but the
-    // durable private profile still restores the exact source-linked award.
+    // durable private profile still restores both the source-linked personal
+    // award and the separately projected community milestone.
     await page.reload();
-    await expect(page.locator(".zilch-final-awards .zilch-final-award")).toHaveCount(1);
+    await expect(page.locator(".zilch-final-awards .zilch-final-award")).toHaveCount(2);
     await expect(page.locator(".zilch-final-awards")).toContainText(/Erster Wurf|First Roll/);
+    await expect(page.locator(".zilch-final-awards")).toContainText(/Die ersten Hundert|The First Hundred/);
     await expect(page.locator(".zilch-final-awards")).not.toContainText(/Erste sichere Runde|First Safe Round/);
+    await expect(page.locator(".zilch-final-awards")).not.toContainText(/Das Wirtshaus füllt sich|The House Is Filling Up/);
     await expect(page.locator("#appDialogBackdrop")).toBeHidden();
-    expect(acknowledgements).toEqual(["zilch.first_game"]);
+    expect(acknowledgements).toEqual(["zilch.first_game", "zilch.community_games_100"]);
+
+    // A recipient who did not play the milestone's trigger game gets no
+    // presentation game id. The award remains private and appears only in
+    // the ordinary account-level pending flow, alongside other older awards.
+    await page.goto("/zilch");
+    await expect(page.locator("#appDialog")).toContainText(/Erste sichere Runde|First Safe Round/);
+    await page.getByRole("button", { name: /Weiter|Continue/ }).click();
+    await expect(page.locator("#appDialog")).toContainText(/Das Wirtshaus füllt sich|The House Is Filling Up/);
+    await page.getByRole("button", { name: /Weiter|Continue/ }).click();
+    await expect.poll(() => acknowledgements).toEqual([
+      "zilch.first_game",
+      "zilch.community_games_100",
+      "zilch.banked_round_500",
+      "zilch.community_games_500",
+    ]);
   } finally {
     await context.close();
   }

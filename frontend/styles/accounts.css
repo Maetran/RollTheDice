@@ -536,7 +536,9 @@ body.app-dialog-open{ overflow:hidden; }
   }
   .room-page #diceBar:has(#mobileRowQuickActions:not([hidden])){
     grid-template-columns:2.5rem minmax(0, 1fr);
-    column-gap:.625rem;
+    /* Leave a little more than the tested 9px separation after Linux/Chromium
+       sub-pixel rounding; the buttons and dice must never visually merge. */
+    column-gap:.75rem;
   }
   .room-page #diceBar .dice-main{
     display:grid;

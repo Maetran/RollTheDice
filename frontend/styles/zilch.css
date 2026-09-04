@@ -1380,6 +1380,8 @@ html[data-game="zilch"] .zilch-leaderboard-table {
   text-align: left;
 }
 
+html[data-game="zilch"] .zilch-leaderboard-table-wrap--compact .zilch-leaderboard-table { min-width: 31rem; }
+
 html[data-game="zilch"] .zilch-leaderboard-table :where(th, td) {
   padding: .72rem .78rem;
   vertical-align: middle;
@@ -1440,8 +1442,8 @@ html[data-game="zilch"] .zilch-player-achievement-link:focus-visible {
   outline-offset: 3px;
 }
 
-/* Awards remain deliberately independent from ZDWA account achievements:
-   no rank, mark, or generic account-card selector is reused here. */
+/* Awards and ranks remain deliberately independent from ZDWA account
+   achievements: no ZDWA rank, mark, or account-card selector is reused. */
 html[data-game="zilch"] .zilch-achievements-head { margin-bottom: var(--zilch-space-5); }
 html[data-game="zilch"] .zilch-achievement-profile {
   max-width: none;
@@ -1449,6 +1451,97 @@ html[data-game="zilch"] .zilch-achievement-profile {
   border-top: .3rem solid var(--zilch-gold);
 }
 html[data-game="zilch"] .zilch-achievement-profile h2 { margin-bottom: 0; }
+html[data-game="zilch"] .zilch-achievement-summary {
+  display: grid;
+  gap: .72rem;
+  max-width: none;
+  margin: 0 0 var(--zilch-space-5);
+  padding: clamp(.72rem, 2.5vw, 1rem);
+  border-top: .3rem solid var(--zilch-gold);
+  background:
+    radial-gradient(circle at 94% 8%, rgba(229, 167, 46, .2), transparent 34%),
+    repeating-linear-gradient(-8deg, rgba(114, 79, 40, .035) 0 1px, transparent 1px 5px),
+    var(--zilch-paper);
+}
+html[data-game="zilch"] .zilch-achievement-summary__rank {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  min-width: 0;
+}
+html[data-game="zilch"] .zilch-achievement-summary__stars {
+  display: inline-grid;
+  place-items: center;
+  min-width: 3rem;
+  min-height: 2.35rem;
+  padding: .28rem .42rem;
+  border: 1px solid color-mix(in srgb, var(--zilch-gold) 72%, var(--zilch-paper-edge));
+  border-radius: var(--zilch-radius-xs);
+  color: #5a310f;
+  background: linear-gradient(145deg, #fff4bf, #e9ba4d);
+  box-shadow: inset 0 1px rgba(255,255,255,.82), .1rem .14rem 0 rgba(84, 43, 16, .16);
+  font: 900 .88rem/1 ui-rounded, "Avenir Next", system-ui, sans-serif;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+html[data-game="zilch"] .zilch-achievement-summary__rank h2 {
+  margin: .08rem 0 0;
+  color: var(--zilch-ink);
+  font: 850 clamp(1.15rem, 4vw, 1.5rem)/1.1 Georgia, "Times New Roman", serif;
+}
+html[data-game="zilch"] .zilch-achievement-summary__rank .eyebrow { color: #70431f; }
+html[data-game="zilch"] .zilch-achievement-summary__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .4rem;
+  margin: 0;
+}
+html[data-game="zilch"] .zilch-achievement-summary__facts div {
+  min-width: 0;
+  padding: .5rem .56rem;
+  border: 1px solid rgba(125, 81, 36, .18);
+  border-radius: var(--zilch-radius-xs);
+  background: rgba(255,255,255,.36);
+}
+html[data-game="zilch"] .zilch-achievement-summary__facts div:last-child { grid-column: 1 / -1; }
+html[data-game="zilch"] .zilch-achievement-summary__facts dt {
+  color: var(--zilch-muted);
+  font-size: .68rem;
+  font-weight: 850;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+html[data-game="zilch"] .zilch-achievement-summary__facts dd {
+  margin: .12rem 0 0;
+  color: var(--zilch-ink);
+  font: 850 .98rem/1.18 ui-rounded, "Avenir Next", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+html[data-game="zilch"] .zilch-achievement-summary__facts dd span {
+  color: var(--zilch-muted);
+  font-size: .82em;
+}
+html[data-game="zilch"] .zilch-achievement-summary__progress {
+  display: block;
+  width: 100%;
+  height: .48rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 99px;
+  accent-color: var(--zilch-success);
+}
+html[data-game="zilch"] .zilch-achievement-summary__progress::-webkit-progress-bar { background: rgba(92, 57, 24, .16); }
+html[data-game="zilch"] .zilch-achievement-summary__progress::-webkit-progress-value { background: var(--zilch-success); }
+html[data-game="zilch"] .zilch-achievement-summary__progress::-moz-progress-bar { background: var(--zilch-success); }
+@media (min-width: 560px) {
+  html[data-game="zilch"] .zilch-achievement-summary {
+    grid-template-columns: minmax(11rem, .8fr) minmax(0, 1.7fr);
+    align-items: center;
+  }
+  html[data-game="zilch"] .zilch-achievement-summary__facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html[data-game="zilch"] .zilch-achievement-summary__facts div:last-child { grid-column: auto; }
+  html[data-game="zilch"] .zilch-achievement-summary__progress { grid-column: 1 / -1; }
+}
 html[data-game="zilch"] .zilch-achievement-groups { display: grid; gap: var(--zilch-space-5); }
 html[data-game="zilch"] .zilch-achievement-group { min-width: 0; }
 html[data-game="zilch"] .zilch-achievement-group > h2 {
@@ -1539,7 +1632,8 @@ html[data-game="zilch"] .zilch-achievement-card__status {
 }
 html[data-game="zilch"] .zilch-achievement-card__state,
 html[data-game="zilch"] .zilch-achievement-card__mode,
-html[data-game="zilch"] .zilch-achievement-card__progress {
+html[data-game="zilch"] .zilch-achievement-card__progress,
+html[data-game="zilch"] .zilch-achievement-card__points {
   display: inline-flex;
   align-items: center;
   min-height: 1.6rem;
@@ -1548,6 +1642,12 @@ html[data-game="zilch"] .zilch-achievement-card__progress {
   border-radius: 99px;
   background: rgba(255,255,255,.43);
   font-weight: 800;
+}
+html[data-game="zilch"] .zilch-achievement-card__points {
+  color: #56300f;
+  border-color: color-mix(in srgb, var(--zilch-gold) 58%, var(--zilch-paper-edge));
+  background: color-mix(in srgb, #f4d374 68%, rgba(255,255,255,.48));
+  font-variant-numeric: tabular-nums;
 }
 html[data-game="zilch"] .zilch-achievement-card__state::before {
   display: inline-block;
@@ -1561,6 +1661,11 @@ html[data-game="zilch"] .zilch-achievement-card.is-unlocked .zilch-achievement-c
   border-color: color-mix(in srgb, var(--zilch-success) 45%, var(--zilch-paper-edge));
 }
 html[data-game="zilch"] .zilch-achievement-card.is-unlocked .zilch-achievement-card__state::before { content: "✓"; }
+html[data-game="zilch"] .zilch-achievement-card.is-missed .zilch-achievement-card__state {
+  color: #70431f;
+  border-color: rgba(112, 67, 31, .34);
+}
+html[data-game="zilch"] .zilch-achievement-card.is-missed .zilch-achievement-card__state::before { content: "–"; }
 html[data-game="zilch"] .zilch-achievement-card__status time { font-variant-numeric: tabular-nums; }
 html[data-game="zilch"] .zilch-award-finalization-note {
   margin: 1rem 0 0;
@@ -2958,7 +3063,8 @@ html[data-game="zilch"] body {
 
 @keyframes zilch-die-land {
   0% { transform: translate3d(.08rem, -.3rem, 0) rotate(5deg) scale(1.025); }
-  52% { transform: translate3d(-.03rem, .08rem, 0) rotate(-2deg) scale(.965); }
+  /* Keep the animated hit target at least as large as its settled target. */
+  52% { transform: translate3d(-.03rem, .08rem, 0) rotate(-2deg) scale(1); }
   76% { transform: translate3d(0, -.06rem, 0) rotate(.7deg) scale(1.008); }
   100% { transform: translate3d(0, 0, 0) rotate(0) scale(1); }
 }
@@ -3099,7 +3205,7 @@ html[data-game="zilch"] body {
    320px viewport. Narrower dock gutters turn the reclaimed pixels into useful
    touch target instead of empty chrome. */
 .zilch-shell--game .zilch-dice {
-  --zilch-room-die-size: clamp(3rem, calc((100vw - .95rem) / 6), 4rem);
+  --zilch-room-die-size: clamp(3rem, calc((100vw - .85rem) / 6), 4rem);
   gap: clamp(.04rem, .24vw, .1rem);
 }
 
@@ -3199,6 +3305,12 @@ html[data-game="zilch"] body {
 .zilch-shell--game .zilch-final-award__copy small {
   color: #70543d;
   font-size: clamp(.58rem, 1.9vw, .68rem);
+}
+
+.zilch-shell--game .zilch-final-award__copy .zilch-final-award__points {
+  color: #5d3514;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }
 
 .zilch-event-overlay {

@@ -29,20 +29,29 @@ Future comparison order is turns, rolls, Zilchs, then active duration (all
 ascending). Private, server-calculated Zilch statistics keep Solo,
 human-vs-human, and human-vs-CPU separate, but deliberately curate useful
 completed-game summaries and standings rather than exposing every retained
-engine counter. The three private leaderboards are the best compatible Solo
-Sprint per active account, human-vs-human wins, and wins against each
-individual CPU strategy; they never feed a ZDWA ranking.
+engine counter. The private leaderboards cover the best compatible Solo Sprint
+per active account, human-vs-human wins, wins against each individual CPU
+strategy, and the separate Zilch achievement score; they never feed a ZDWA
+ranking.
 Finished Zilch games are stored as a separate, versioned result payload with a
 personal read-only history. A detail is readable only by its linked human
 participants, and the HTTP projection omits internal user IDs. Zilch results do
 not enter any ZDWA scorecard, replay,
 statistic, achievement, or leaderboard path. Private Zilch awards use their
-own protected namespace instead: they award neither **Ehrenberg-Marken** nor
-ZDWA titles, ranks, stars, profile values, or public ranking positions. They
+own protected namespace instead: personal awards are worth 1–10 Zilch points
+and contribute to a Zilch-only rank. They award no **Ehrenberg-Marken** and
+never alter ZDWA titles, ranks, stars, profile values, or public ranking
+positions. They
 are considered only when the Zilch finalizer explicitly registers a newly
-persisted authoritative result after the award rollout; older history is never
-rescanned or backfilled. They can be revoked when the source result is deleted
-and remain visible only in Zilch context. The protected Zilch app has its own
+persisted authoritative result after the original award rollout. Older,
+unregistered history is never scanned or backfilled; a versioned catalog
+update may resynchronize only the explicit evidence that was already accepted
+by that rollout. During that bounded pass, each completed registration loads
+only its exact, still-present typed source result by the registered game ID and
+enriches its evidence with newly derivable facts. It never enumerates the
+general `CompletedGame` history, and any source, seat, user, or existing-fact
+mismatch aborts the atomic rollout. Awards can be revoked when the source result is deleted and
+remain visible only in Zilch context. The protected Zilch app has its own
 lobby, game view, history, result report, statistics, leaderboards, awards,
 private player-award context, and in-app rule guide. Its
 first-party wood-table texture, paper-card, and dice direction is isolated from ZDWA.
@@ -65,8 +74,8 @@ redirects. Existing account sessions are promoted
 to a separate parent-domain cookie through a fixed, allowlisted handoff without
 creating a second database session. Zilch deliberately has no service worker or
 installable manifest during this first split, while the ZDWA PWA stays unchanged.
-Additional Solo objectives/challenges, further Zilch award categories, an
-anonymous SEO landing page, and a dedicated Zilch PWA are deliberately deferred.
+Additional Solo objectives/challenges, an anonymous SEO landing page, and a
+dedicated Zilch PWA are deliberately deferred.
 A player selects scoring dice directly or
 uses one of up to eight distinct suggestions; equivalent choices using
 interchangeable dice are deduplicated, while equal scores from genuinely
@@ -89,7 +98,7 @@ including the sender.
 
 Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
 The private Zilch award boundary, evidence source, delivery lifecycle, and
-version-1 catalog are documented in
+expanded points/rank catalog are documented in
 [docs/ACCOUNT_STATISTICS.md](docs/ACCOUNT_STATISTICS.md).
 
 ## Features
@@ -108,10 +117,19 @@ version-1 catalog are documented in
 - Self-registration from the lobby with immutable usernames
 - Personal statistics split into Normal, Hardcore, and overall results, with a selectable score chart and median
 - Achievement milestones for special scoring plays, exact final scores, multiplayer victory margins, daily streaks, office-hour game counts, exact upper-section 60s, and Hardcore progress; every achievement awards 1–10 **Ehrenberg-Marken**, the achievement currency named after Ehrenberg in Reutte. When a game unlocks several achievements, each one is presented and acknowledged separately before the final standings; a genuine title increase then receives its own celebratory **LEVEL UP!** card. Completed-game replays show the achievements that were durably and unambiguously unlocked by that exact game, grouped by participant; account-only milestones and unlocks predating source-game attribution are deliberately not assigned retroactively. Profiles show the total, and the player overview includes a sortable Ehrenberg-Marken ranking. The calculated total also assigns an account-only title from Newbie through Godmode with star insignia, shown consistently beside player names in the lobby, live game, chat, profiles, replays, and rankings. Clicking an insignia opens the rank legend at `/rangabzeichen` (as an overlay during live play). Rollout-sensitive gameplay goals, including multiplayer and upper-section-60 goals, start from their introduction while score-based goals and Hardcore game counts remain historical
-- Private Zilch awards are a separate, protected collection: they are based
-  on newly persisted, validated Zilch results registered by the finalizer, have
-  their own private delivery and acknowledgement state, are revocable with
-  their source result, and never award Ehrenberg-Marken or alter ZDWA titles,
+- Private Zilch awards are a separate, protected collection: 64 namespaced
+  goals cover first games, scoring, combinations, risk, career progress,
+  duels, CPU play, Solo efficiency, and community milestones. Personal goals
+  award 1–10 Zilch points and a Zilch-only rank; community milestones award
+  exactly 0 points and go only to eligible accounts present when the shared
+  threshold is reached. Personal source-based awards are revocable with their
+  source result, while reached community milestones retain their frozen
+  recipient set. A durable per-game participant ledger preserves the historical
+  minimum-one-game eligibility independently of later result deletion. Catalog
+  upgrades enrich and resynchronize only already registered Zilch evidence by
+  loading each exact, still-present typed source by its registered ID; they
+  never scan general completed-game history. Nothing awards Ehrenberg-Marken
+  or alters ZDWA titles,
   profiles, rankings, statistics, achievements, or leaderboards
 - Progressive Web App support with content-hashed asset and service-worker versions
 - Readiness endpoint and container healthcheck for migration-safe deployments

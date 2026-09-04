@@ -3,8 +3,10 @@
 This module is intentionally separate from the established ZDWA statistics
 and legacy JSON leaderboard code.  Its only source of truth is a durable
 ``CompletedGame`` whose explicit ``game_type`` is ``zilch`` and whose result
-payload passes the Zilch result validator.  It has no FastAPI, browser, live
-game, scorecard, or achievement dependencies.
+payload passes the Zilch result validator.  The achievement-points table is
+the one deliberate exception: it projects only the isolated Zilch unlock and
+registered-evidence tables, never ZDWA achievements.  This module otherwise
+has no FastAPI, browser, live game, or scorecard dependencies.
 
 The current preview data set is deliberately calculated on read.  That keeps
 deletion/tombstone behaviour naturally correct: a removed CompletedGame is no
@@ -20,12 +22,23 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Final, Iterable
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from .database import database_schema_ready, session_scope
 from .game_types import ZILCH_GAME_TYPE
-from .models import CompletedGame, GameParticipant
+from .models import (
+    CompletedGame,
+    GameParticipant,
+    User,
+    ZilchAchievementUnlock,
+    ZilchCommunityParticipant,
+)
+from .zilch_achievements import (
+    ZILCH_ACHIEVEMENT_POINTS_POSSIBLE,
+    zilch_achievement_points_for_keys,
+    zilch_achievement_rank_for_points,
+)
 from .zilch_cpu_strategy import ZILCH_CPU_STRATEGIES
 from .zilch_results import validate_stored_zilch_result_payload
 from .zilch_solo_objective import (
@@ -45,11 +58,14 @@ ZILCH_STATISTICS_SOURCE_PAGE_SIZE: Final = 250
 ZILCH_LEADERBOARD_SOLO_SPRINT: Final = "solo_sprint"
 ZILCH_LEADERBOARD_MULTIPLAYER_WINS: Final = "multiplayer_wins"
 ZILCH_LEADERBOARD_CPU_WINS: Final = "cpu_wins"
+ZILCH_LEADERBOARD_ACHIEVEMENT_POINTS: Final = "achievement_points"
+ZILCH_ACHIEVEMENT_LEADERBOARD_ACCOUNT_PAGE_SIZE: Final = 250
 ZILCH_LEADERBOARD_CATEGORIES: Final[frozenset[str]] = frozenset(
     {
         ZILCH_LEADERBOARD_SOLO_SPRINT,
         ZILCH_LEADERBOARD_MULTIPLAYER_WINS,
         ZILCH_LEADERBOARD_CPU_WINS,
+        ZILCH_LEADERBOARD_ACHIEVEMENT_POINTS,
     }
 )
 
@@ -637,6 +653,12 @@ def list_zilch_leaderboard_categories() -> list[dict[str, Any]]:
             "strategies": sorted(ZILCH_CPU_STRATEGIES),
             "sorting": _match_sorting_metadata(),
         },
+        {
+            "id": ZILCH_LEADERBOARD_ACHIEVEMENT_POINTS,
+            "ranking": "competition",
+            "requires_strategy": False,
+            "sorting": _achievement_points_sorting_metadata(),
+        },
     ]
 
 
@@ -654,6 +676,16 @@ def _match_sorting_metadata() -> dict[str, Any]:
             "highest_banked_round": "descending",
         },
         "stable_final_tie_break": "finished_at",
+    }
+
+
+def _achievement_points_sorting_metadata() -> dict[str, Any]:
+    """Describe the isolated Zilch-points order and shared-rank rule."""
+    return {
+        "primary": "points",
+        "direction": "descending",
+        "keys": ["points"],
+        "stable_final_tie_break": "username",
     }
 
 
@@ -831,6 +863,82 @@ def _leaderboard_match(
     return entries
 
 
+def _leaderboard_achievement_points() -> list[tuple[tuple[Any, ...], tuple[Any, ...], dict[str, Any]]]:
+    """Project Zilch-only points for active qualified community participants.
+
+    The participant ledger is created only from explicitly registered,
+    qualified Zilch evidence and remains historical if its result is later
+    removed.  An abandoned Solo attempt can therefore never create a rank.
+    Both account and unlock reads are paged by a fixed number of accounts so
+    this ranking never loads every account relationship into one ORM result.
+    """
+    if not database_schema_ready():
+        return []
+    entries: list[tuple[tuple[Any, ...], tuple[Any, ...], dict[str, Any]]] = []
+    last_user_id = 0
+    with session_scope() as db:
+        while True:
+            account_rows = db.execute(
+                select(
+                    User.id,
+                    User.username,
+                    func.count(func.distinct(ZilchCommunityParticipant.game_id)),
+                )
+                .join(ZilchCommunityParticipant, ZilchCommunityParticipant.user_id == User.id)
+                .where(
+                    User.is_active.is_(True),
+                    User.id > last_user_id,
+                )
+                .group_by(User.id, User.username)
+                .order_by(User.id)
+                .limit(ZILCH_ACHIEVEMENT_LEADERBOARD_ACCOUNT_PAGE_SIZE)
+            ).all()
+            if not account_rows:
+                break
+
+            user_ids = [int(user_id) for user_id, _username, _games in account_rows]
+            keys_by_user: dict[int, set[str]] = {user_id: set() for user_id in user_ids}
+            for user_id, achievement_key in db.execute(
+                select(
+                    ZilchAchievementUnlock.user_id,
+                    ZilchAchievementUnlock.achievement_key,
+                )
+                .where(ZilchAchievementUnlock.user_id.in_(user_ids))
+                .order_by(ZilchAchievementUnlock.user_id, ZilchAchievementUnlock.id)
+            ):
+                keys_by_user[int(user_id)].add(str(achievement_key))
+
+            for user_id, username, games in account_rows:
+                clean_user_id = int(user_id)
+                display_name = str(username or "Player")[:64]
+                points = zilch_achievement_points_for_keys(keys_by_user[clean_user_id])
+                achievement_rank = zilch_achievement_rank_for_points(points)
+                performance = (-points,)
+                entry = {
+                    "user_id": clean_user_id,
+                    "username": display_name,
+                    "display_name": display_name,
+                    "primary_value": points,
+                    "values": {
+                        "points": points,
+                        "achievement_points": points,
+                        "points_possible": ZILCH_ACHIEVEMENT_POINTS_POSSIBLE,
+                    },
+                    "tie_breaks": {},
+                    "games": int(games),
+                    "achievement_rank": achievement_rank,
+                }
+                entries.append(
+                    (
+                        performance,
+                        (*performance, display_name.casefold(), clean_user_id),
+                        entry,
+                    )
+                )
+            last_user_id = user_ids[-1]
+    return entries
+
+
 def get_zilch_leaderboard(
     category: str,
     *,
@@ -856,7 +964,11 @@ def get_zilch_leaderboard(
         clean_current_user_id = None
     else:
         clean_current_user_id = _strict_positive_int(current_user_id, "zilch_statistics_invalid_user")
-    records_by_user = _active_records_by_user(_load_player_results())
+    records_by_user = (
+        {}
+        if clean_category == ZILCH_LEADERBOARD_ACHIEVEMENT_POINTS
+        else _active_records_by_user(_load_player_results())
+    )
     if clean_category == ZILCH_LEADERBOARD_SOLO_SPRINT:
         items = _leaderboard_solo(records_by_user)
         sorting = {
@@ -882,6 +994,10 @@ def get_zilch_leaderboard(
             "direction": "descending",
             "keys": ["wins", "losses", "ties", "highest_final_score", "highest_banked_round"],
         }
+        objective = None
+    elif clean_category == ZILCH_LEADERBOARD_ACHIEVEMENT_POINTS:
+        items = _leaderboard_achievement_points()
+        sorting = _achievement_points_sorting_metadata()
         objective = None
     else:
         raise ZilchStatisticsInputError("zilch_statistics_invalid_leaderboard_category")

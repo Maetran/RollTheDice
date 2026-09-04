@@ -18,6 +18,18 @@ async function createUser(page, username, password, role = "user") {
   }, { username, password, role });
 }
 
+async function signOutFromLobby(page) {
+  const [response] = await Promise.all([
+    page.waitForResponse(candidate => (
+      new URL(candidate.url()).pathname === "/api/auth/logout"
+      && candidate.request().method() === "POST"
+    )),
+    page.click("#logoutBtn"),
+  ]);
+  expect(response.ok()).toBeTruthy();
+  await expect(page.locator("#loginForm")).toBeVisible();
+}
+
 async function signInAsPreviewMani(page) {
   // Browser tests share a disposable database.  Provisioning is idempotent so
   // this file also works when another Zilch spec has already created Mani.
@@ -28,8 +40,7 @@ async function signInAsPreviewMani(page) {
   const mani = await createUser(page, "Mani", "mani-preview-password-123", "admin");
   expect([201, 400]).toContain(mani.status);
 
-  await page.click("#logoutBtn");
-  await expect(page.locator("#loginForm")).toBeVisible();
+  await signOutFromLobby(page);
   await signIn(page, "Mani", "mani-preview-password-123");
   await expect(page.locator("#authBadge")).toContainText("Mani");
   await expect(page.locator("[data-game-switch]")).toBeVisible();
@@ -43,7 +54,7 @@ test("Zilch has its own sign-in entry and safely returns preview accounts to the
   // Provision the preview account through the established workflow, then
   // exercise the actual Zilch sign-in page as a logged-out visitor.
   await signInAsPreviewMani(page);
-  await page.click("#logoutBtn");
+  await signOutFromLobby(page);
 
   await page.goto("/zilch/anmelden?return_to=/zilch/statistiken");
   await page.fill("#zilchLoginUsername", "Mani");
@@ -57,7 +68,7 @@ test("Zilch has its own sign-in entry and safely returns preview accounts to the
 
 test("a fresh Apex login preserves the fixed Zilch subdomain continuation", async ({ page }) => {
   await signInAsPreviewMani(page);
-  await page.click("#logoutBtn");
+  await signOutFromLobby(page);
 
   const continuation = "/auth/continue?app=zilch&path=%2Fstatistiken%3Fscope%3Dmine";
   await page.goto(`/zilch/anmelden?return_to=${encodeURIComponent(continuation)}`);
@@ -386,7 +397,17 @@ test("private Zilch statistics and leaderboards render only server projections a
         },
         tie_breaks: { rolls: 28, zilchs: 1, active_duration_seconds: 740, finished_at: "2026-09-03T10:00:00+00:00" },
       }
-      : {
+      : category === "achievement_points"
+        ? {
+          rank: 1, user_id: 2, username: "Mani", display_name: "Mani", primary_value: 42, games: 7, is_current_user: true,
+          values: { points: 42, achievement_points: 42, points_possible: 273 },
+          achievement_rank: {
+            key: "player", title: "Spieler", title_key: "zilch.rank.player", stars: 2,
+            points: 42, points_possible: 273, minimum_points: 22, next_minimum_points: 46, points_to_next_rank: 4,
+          },
+          tie_breaks: {},
+        }
+        : {
         rank: 1, user_id: 2, username: "Mani", display_name: "Mani", primary_value: 2, games: 3, is_current_user: true,
         values: {
           wins: 2, games: 3, losses: 1, ties: category === "cpu_wins" ? 1 : 0,
@@ -455,6 +476,18 @@ test("private Zilch statistics and leaderboards render only server projections a
   await page.getByRole("button", { name: "Nächste" }).click();
   await nextRequest;
 
+  const pointsRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === "/api/zilch/leaderboards"
+      && url.searchParams.get("category") === "achievement_points";
+  });
+  await category.selectOption("achievement_points");
+  await pointsRequest;
+  await expect(page.locator("#zilchLeaderboardStrategyFilter")).toBeHidden();
+  await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Zilch-Punkte");
+  await expect(page.locator("tr[data-own-entry='true']")).toContainText("Spieler");
+  await expect(page.locator("tr[data-own-entry='true']")).toContainText("42");
+
   for (const width of [320, 375, 430]) {
     await page.setViewportSize({ width, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -493,6 +526,7 @@ test("private Zilch awards use server projections and acknowledge a sequential a
         title_key: "zilch.achievement.first_game.title",
         description_key: "zilch.achievement.first_game.description",
         eligible_modes: ["multiplayer", "cpu", "solo"],
+        points: 1,
       },
       {
         key: "zilch.first_hvh_win",
@@ -503,6 +537,7 @@ test("private Zilch awards use server projections and acknowledge a sequential a
         title_key: "zilch.achievement.first_hvh_win.title",
         description_key: "zilch.achievement.first_hvh_win.description",
         eligible_modes: ["multiplayer"],
+        points: 2,
       },
       {
         key: "zilch.banked_round_1000",
@@ -513,6 +548,19 @@ test("private Zilch awards use server projections and acknowledge a sequential a
         title_key: "zilch.achievement.banked_round_1000.title",
         description_key: "zilch.achievement.banked_round_1000.description",
         eligible_modes: ["multiplayer", "cpu", "solo"],
+        points: 3,
+      },
+      {
+        key: "zilch.community_games_100",
+        definition_version: 1,
+        category: "community",
+        category_key: "zilch.achievement.category.community",
+        icon_key: "star",
+        title_key: "zilch.achievement.community_games_100.title",
+        description_key: "zilch.achievement.community_games_100.description",
+        eligible_modes: ["multiplayer", "cpu", "solo"],
+        points: 0,
+        missed: true,
       },
     ];
     const unlocked = definitions.slice(0, 2).map((definition, index) => ({
@@ -526,7 +574,19 @@ test("private Zilch awards use server projections and acknowledge a sequential a
       const request = route.request();
       const url = new URL(request.url());
       if (url.pathname === "/api/zilch/achievements/pending") {
-        await route.fulfill({ contentType: "application/json", body: JSON.stringify({ version: 1, awards: pending }) });
+        await route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify({
+            version: 2,
+            points: 3,
+            points_possible: 273,
+            rank: {
+              key: "newbie", title: "Newbie", title_key: "zilch.rank.newbie", stars: 0,
+              points: 3, points_possible: 273, minimum_points: 0, next_minimum_points: 7, points_to_next_rank: 4,
+            },
+            awards: pending,
+          }),
+        });
         return;
       }
       if (request.method() === "POST" && /\/acknowledge$/.test(url.pathname)) {
@@ -540,12 +600,19 @@ test("private Zilch awards use server projections and acknowledge a sequential a
         await route.fulfill({
           contentType: "application/json",
           body: JSON.stringify({
-            version: 1,
+            version: 2,
             player: { username: "Mani" },
+            points: 3,
+            points_possible: 273,
+            rank: {
+              key: "newbie", title: "Newbie", title_key: "zilch.rank.newbie", stars: 0,
+              points: 3, points_possible: 273, minimum_points: 0, next_minimum_points: 7, points_to_next_rank: 4,
+            },
             categories: [
               { key: "entry", title_key: "zilch.achievement.category.entry" },
               { key: "scoring", title_key: "zilch.achievement.category.scoring" },
               { key: "multiplayer", title_key: "zilch.achievement.category.multiplayer" },
+              { key: "community", title_key: "zilch.achievement.category.community" },
             ],
             unlocked,
             locked: definitions.slice(2),
@@ -556,15 +623,20 @@ test("private Zilch awards use server projections and acknowledge a sequential a
       await route.fallback();
     });
     await page.route("**/api/zilch/players/Mani/achievements", async route => {
-      // The UI remains tolerant of the earlier nested shape while the current
-      // main API uses top-level unlocked/locked lists.
       await route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
-          version: 1,
+          version: 2,
           player: { username: "Mani" },
+          points: 1,
+          points_possible: 273,
+          rank: {
+            key: "newbie", title: "Newbie", title_key: "zilch.rank.newbie", stars: 0,
+            points: 1, points_possible: 273, minimum_points: 0, next_minimum_points: 7, points_to_next_rank: 6,
+          },
           categories: ["entry"],
-          achievements: { unlocked: [unlocked[0]], locked: [definitions[2]] },
+          unlocked: [unlocked[0]],
+          locked: [definitions[2]],
         }),
       });
     });
@@ -574,14 +646,19 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await expect(page.getByRole("heading", { name: "Zilch-Awards" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Einstieg" })).toBeVisible();
     await expect(page.locator(".zilch-achievement-card.is-unlocked")).toHaveCount(2);
-    await expect(page.locator(".zilch-achievement-card.is-locked")).toHaveCount(1);
+    await expect(page.locator(".zilch-achievement-card.is-locked")).toHaveCount(2);
+    await expect(page.locator(".zilch-achievement-card.is-missed")).toContainText("Verpasst");
     await expect(page.locator(".zilch-achievement-card").first()).toContainText("Zwei Spieler");
+    await expect(page.locator(".zilch-achievement-summary")).toContainText("3 / 273");
+    await expect(page.locator(".zilch-achievement-summary")).toContainText("Newbie");
+    await expect(page.locator(".zilch-achievement-card").first()).toContainText("+1 Zilch-Punkt");
     await expect(page.locator("[data-rank-legend], .player-rank")).toHaveCount(0);
 
     const dialog = page.locator("#appDialog");
     await expect(dialog).toHaveAttribute("data-kind", "zilch-award");
     await expect(dialog).toContainText("Zilch-Award freigeschaltet!");
     await expect(dialog).toContainText("Erster Wurf");
+    await expect(dialog).toContainText("Belohnung: +1 Zilch-Punkt");
     await expect(page.locator("#appDialogActions .primary")).toBeFocused();
     await page.keyboard.press("Escape");
     await expect.poll(() => acknowledgements).toEqual([]);
@@ -609,6 +686,7 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await expect(page.getByRole("heading", { name: "Zilch-Awards eines Spielers" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Mani" })).toBeVisible();
     await expect(page.locator(".zilch-achievement-card.is-unlocked")).toHaveCount(1);
+    await expect(page.locator(".zilch-achievement-summary")).toContainText("1 / 273");
 
     await page.goto("/zilch/erfolge");
     await Promise.all([
@@ -619,6 +697,8 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await expect(page.getByRole("heading", { name: "Zilch awards" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Getting started" })).toBeVisible();
     await expect(page.locator(".zilch-achievement-card").first()).toContainText("First Roll");
+    await expect(page.locator(".zilch-achievement-summary")).toContainText("Zilch points");
+    await expect(page.locator(".zilch-achievement-card.is-missed")).toContainText("Missed");
 
     await page.setViewportSize({ width: 320, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

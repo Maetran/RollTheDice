@@ -17,7 +17,14 @@ from app.auth import create_user
 from app.database import configure_database, session_scope, upgrade_database
 from app.game_history import delete_completed_game, persist_completed_game_result
 from app.game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE
-from app.models import CompletedGame, User
+from app.models import CompletedGame, User, ZilchAchievementUnlock, ZilchCommunityParticipant
+from app.zilch_achievements import (
+    ZILCH_ACHIEVEMENT_DEFINITION_VERSION,
+    ZILCH_ACHIEVEMENT_POINTS_POSSIBLE,
+    remove_zilch_result_from_achievements,
+    zilch_achievement_points_for_keys,
+    zilch_achievement_rank_for_points,
+)
 from app.zilch_engine import ZILCH_RULESET_VERSION
 from app.zilch_results import finalize_zilch_result, validate_stored_zilch_result_payload
 from app.zilch_solo_objective import (
@@ -390,6 +397,150 @@ class ZilchStatisticsTestCase(TestCase):
         self.assertEqual(normal["total"], 1)
         self.assertEqual(normal["entries"][0]["display_name"], "RankBob")
 
+    def test_achievement_points_rank_only_active_accounts_with_registered_zilch_evidence(self) -> None:
+        alice = self._user("AchievementAlice")
+        bob = self._user("AchievementBob")
+        carol = self._user("AchievementCarol")
+        archived = self._user("AchievementArchived")
+        no_game = self._user("AchievementNoGame")
+        abandoned_only = self._user("AchievementAbandoned")
+        for player in (alice, bob, carol, archived):
+            self._persist_solo(
+                user=player,
+                turns=25,
+                rolls=45,
+                zilchs=1,
+                active_duration_seconds=120,
+            )
+        self._persist_solo(
+            user=abandoned_only,
+            turns=2,
+            rolls=3,
+            outcome="abandoned",
+        )
+
+        # Give Alice and Bob the same additional, known Zilch award.  A row
+        # without registered evidence must never be enough to manufacture a
+        # leaderboard place, and an inactive account must disappear even
+        # while its private evidence remains durable.
+        with session_scope() as db:
+            persisted_archived = db.get(User, archived.id)
+            assert persisted_archived is not None
+            persisted_archived.is_active = False
+            unlocked_at = datetime(2026, 8, 1, tzinfo=timezone.utc)
+            for user_id in (alice.id, bob.id, no_game.id):
+                db.add(
+                    ZilchAchievementUnlock(
+                        user_id=user_id,
+                        achievement_key="zilch.first_hvh_win",
+                        definition_version=ZILCH_ACHIEVEMENT_DEFINITION_VERSION,
+                        source_evidence_id=None,
+                        source_game_id=None,
+                        unlocked_at=unlocked_at,
+                    )
+                )
+
+        # Force multiple account pages to exercise the bounded keyset scan.
+        with patch(
+            "app.zilch_statistics.ZILCH_ACHIEVEMENT_LEADERBOARD_ACCOUNT_PAGE_SIZE",
+            1,
+        ):
+            ranking = get_zilch_leaderboard(
+                "achievement_points",
+                current_user_id=bob.id,
+            )
+
+        self.assertEqual(ranking["ranking"], "competition")
+        self.assertEqual(ranking["sorting"]["keys"], ["points"])
+        self.assertEqual(ranking["total"], 3)
+        self.assertEqual(
+            [entry["display_name"] for entry in ranking["entries"]],
+            ["AchievementAlice", "AchievementBob", "AchievementCarol"],
+        )
+        self.assertEqual([entry["rank"] for entry in ranking["entries"]], [1, 1, 3])
+        self.assertEqual(ranking["own_entry"]["user_id"], bob.id)
+        self.assertNotIn(
+            "AchievementArchived",
+            {entry["display_name"] for entry in ranking["entries"]},
+        )
+        self.assertNotIn(
+            "AchievementNoGame",
+            {entry["display_name"] for entry in ranking["entries"]},
+        )
+        self.assertNotIn(
+            "AchievementAbandoned",
+            {entry["display_name"] for entry in ranking["entries"]},
+        )
+
+        with session_scope() as db:
+            keys_by_user = {
+                user_id: set(
+                    db.scalars(
+                        select(ZilchAchievementUnlock.achievement_key).where(
+                            ZilchAchievementUnlock.user_id == user_id
+                        )
+                    )
+                )
+                for user_id in (alice.id, bob.id, carol.id)
+            }
+        entries_by_id = {entry["user_id"]: entry for entry in ranking["entries"]}
+        for user_id, keys in keys_by_user.items():
+            expected_points = zilch_achievement_points_for_keys(keys)
+            entry = entries_by_id[user_id]
+            self.assertEqual(entry["primary_value"], expected_points)
+            self.assertEqual(entry["values"]["points"], expected_points)
+            self.assertEqual(
+                entry["values"]["points_possible"],
+                ZILCH_ACHIEVEMENT_POINTS_POSSIBLE,
+            )
+            self.assertEqual(
+                entry["achievement_rank"],
+                zilch_achievement_rank_for_points(expected_points),
+            )
+            self.assertEqual(entry["games"], 1)
+
+    def test_achievement_rank_eligibility_uses_durable_qualified_participation(self) -> None:
+        player = self._user("AchievementDeletedSource", role="admin")
+        game_id = self._persist_solo(
+            user=player,
+            turns=25,
+            rolls=45,
+            active_duration_seconds=120,
+        )
+
+        delete_completed_game(
+            game_id=game_id,
+            admin_user_id=player.id,
+            reason="Durable participant ledger fixture",
+        )
+        remove_zilch_result_from_achievements(game_id)
+
+        with session_scope() as db:
+            self.assertEqual(
+                db.scalar(
+                    select(ZilchCommunityParticipant).where(
+                        ZilchCommunityParticipant.game_id == game_id,
+                        ZilchCommunityParticipant.user_id == player.id,
+                    )
+                ).user_id,
+                player.id,
+            )
+            self.assertFalse(
+                list(
+                    db.scalars(
+                        select(ZilchAchievementUnlock).where(
+                            ZilchAchievementUnlock.user_id == player.id
+                        )
+                    )
+                )
+            )
+
+        ranking = get_zilch_leaderboard("achievement_points", current_user_id=player.id)
+        self.assertEqual(ranking["total"], 1)
+        self.assertEqual(ranking["entries"][0]["user_id"], player.id)
+        self.assertEqual(ranking["entries"][0]["primary_value"], 0)
+        self.assertEqual(ranking["entries"][0]["games"], 1)
+
     def test_corrupt_rows_and_non_zilch_rows_are_skipped_and_deletion_removes_statistics(self) -> None:
         admin = self._user("StatisticsAdmin", role="admin")
         alice = self._user("HistoryAlice")
@@ -442,6 +593,10 @@ class ZilchStatisticsTestCase(TestCase):
             validate_zilch_leaderboard_query("cpu_wins", strategy="normal", offset=2, limit=500),
             ("cpu_wins", "normal", 2, ZILCH_LEADERBOARD_MAX_LIMIT),
         )
+        self.assertEqual(
+            validate_zilch_leaderboard_query("achievement_points", offset=1, limit=25),
+            ("achievement_points", None, 1, 25),
+        )
         with self.assertRaisesRegex(ZilchStatisticsInputError, "zilch_statistics_invalid_leaderboard_category"):
             get_zilch_leaderboard("unknown")
         with self.assertRaisesRegex(ZilchStatisticsInputError, "zilch_statistics_invalid_cpu_strategy"):
@@ -449,8 +604,12 @@ class ZilchStatisticsTestCase(TestCase):
         with self.assertRaisesRegex(ZilchStatisticsInputError, "zilch_statistics_invalid_offset"):
             get_zilch_leaderboard("solo_sprint", offset=-1)
         categories = list_zilch_leaderboard_categories()
-        self.assertEqual([entry["id"] for entry in categories], ["solo_sprint", "multiplayer_wins", "cpu_wins"])
+        self.assertEqual(
+            [entry["id"] for entry in categories],
+            ["solo_sprint", "multiplayer_wins", "cpu_wins", "achievement_points"],
+        )
         self.assertEqual(categories[2]["strategies"], ["aggressive", "conservative", "normal"])
+        self.assertEqual(categories[3]["sorting"]["keys"], ["points"])
 
     def test_unknown_schema_and_incomplete_historic_hot_dice_are_never_counted_as_zero(self) -> None:
         alice = self._user("MetricsAlice")

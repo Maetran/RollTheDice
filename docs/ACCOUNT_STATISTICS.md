@@ -139,10 +139,11 @@ workflow today.
 ## Protected Zilch awards and player context
 
 Zilch awards are a separate, private namespace. They are not ZDWA
-achievements, do not reuse the ZDWA achievement catalog or rollout markers,
-and never add **Ehrenberg-Marken**, a ZDWA title, stars, a public profile value,
-or a public player-ranking position. This is deliberately **Option A**: Zilch
-recognition is visible only within the protected Zilch product context.
+achievements and do not reuse the ZDWA achievement catalog or rollout markers.
+Personal goals award 1–10 Zilch points and feed a separately calculated
+Zilch-rank ladder; they never add **Ehrenberg-Marken**, alter a ZDWA title or
+stars, or enter a public ZDWA profile/ranking. Zilch recognition remains
+visible only within the protected Zilch product context.
 
 ### Source of truth and eligibility
 
@@ -158,10 +159,17 @@ namespaced outcome. Live snapshots, browser counters, WebSocket notices,
 private statistic aggregates, and leaderboard projections are not sources of
 truth. A CPU seat cannot receive an account award.
 
-The rollout is deliberately forward-only without a retrospective database
-scan. Existing Zilch history is not registered or backfilled, even if its
-payload would otherwise meet a condition. This prevents a later catalog change
-from rewriting the meaning of an earlier pre-rollout result.
+The original rollout is deliberately forward-only without a retrospective
+database scan. Existing Zilch history is not registered or backfilled, even if
+its payload would otherwise meet a condition. A later versioned catalog update
+may synchronize new definitions from the narrow evidence that the original
+rollout already registered. For each completed, non-tombstoned registration it
+may load exactly that registration's still-present typed `CompletedGame` source
+by game ID and enrich only the existing evidence after validating its source,
+seat, user mapping, metadata, and every already stored fact. Evaluations drive
+this bounded lookup; the service never enumerates, discovers, or imports the
+ordinary historic `CompletedGame` population. A mismatch fails closed and
+rolls back both evidence changes and the catalog-version marker.
 
 ### Delivery, acknowledgement, and revocation
 
@@ -210,26 +218,50 @@ Unknown payload schemas, malformed/incomplete result data, results before the
 Zilch award rollout that were never registered, and deleted results deliberately
 produce no award claim. Older result schemas can also lack an event or metric needed for a
 future category; such data is reported as unavailable rather than inferred or
-reconstructed from client state. Zilch awards currently have no public
-aggregate, cross-game rank, or retrospective backfill.
+reconstructed from client state. Zilch awards have no public aggregate and no
+retrospective scan of unregistered results. Their cross-game points and rank
+are projections of durable Zilch unlock keys, not stored browser values.
 
-### Version-1 protected catalog and APIs
+### Version-2 protected catalog, points, ranks, and APIs
 
 All keys are namespaced as `zilch.*` and are versioned separately from the
-ZDWA catalog. The first private catalog contains only conditions supported by
-validated result evidence:
+ZDWA catalog. The expanded catalog contains 64 conditions supported by
+validated result evidence. It includes the original milestones plus cumulative
+games/wins/banked points, 2,500–5,000-point rounds, Hot-Dice streaks, high-risk
+recoveries, close and decisive human wins, 1,000/2,000/3,000-point comebacks,
+start-roll reversals, fast human-vs-human finishes, and Solo turn/roll targets.
 
-| Group | Keys |
-| --- | --- |
-| First milestones | `zilch.first_game`, `zilch.first_hvh_win`, `zilch.first_cpu_win`, `zilch.solo_sprint_completed` |
-| CPU strategy wins | `zilch.cpu_win_conservative`, `zilch.cpu_win_normal`, `zilch.cpu_win_aggressive` |
-| Banked rounds and exact finish | `zilch.banked_round_500`, `zilch.banked_round_1000`, `zilch.banked_round_1500`, `zilch.banked_round_2000`, `zilch.exact_10000` |
-| Confirmed combinations | `zilch.first_straight`, `zilch.first_three_pairs`, `zilch.first_500_for_nothing`, `zilch.first_three_ones`, `zilch.first_hot_dice` |
-| Resilience | `zilch.win_after_three_zilchs`, `zilch.win_after_zilch_penalty`, `zilch.solo_sprint_without_zilch` |
+Point values are immutable catalog metadata. The possible positive-point total
+is derived from that catalog, and the ten familiar rank names are scaled from
+the same proportional thresholds as ZDWA while remaining a different score.
+Deleting a personal source immediately changes the projected Zilch points and
+rank if an award is revoked.
+
+Five additional `zilch.community_games_*` milestones track 100, 500, 1,000,
+5,000, and 10,000 qualified completed Zilch games globally. Each game enters a
+unique ledger once, regardless of player count. At a threshold, the server
+atomically freezes recipients to active accounts that already completed at
+least one qualified Zilch game. Later accounts do not inherit the old award.
+Community awards are always worth 0 points and are not revoked if an old
+triggering result is later deleted; they document a shared moment rather than
+an individual result. A separate per-game account-participant ledger keeps that
+minimum-one-game eligibility stable even when mutable result evidence is later
+removed. At the version-2 rollout, revision `20260904_0019` reconstructs already
+reached thresholds at the exact Nth explicitly registered evidence source,
+excludes typed deletion tombstones, and freezes recipients from qualifying
+account seats at or before that ordinal. Startup then performs one atomic,
+versioned resynchronization from those isolated evidence/recipient tables. Its
+internal version-3 pass additionally enriches only completed, non-tombstoned
+registrations from their exact typed source loaded by game ID. It does not
+enumerate `CompletedGame`; validation failure rolls back the evidence and
+catalog marker together.
 
 The Zilch-only APIs are protected by the same authenticated-account policy as gameplay:
 `GET /api/zilch/achievements`, `GET /api/zilch/achievements/pending`,
 `POST /api/zilch/achievements/{key}/acknowledge`, and
-`GET /api/zilch/players/{username}/achievements`. They return only private
+`GET /api/zilch/players/{username}/achievements`. The separate rank ladder is
+available at `GET /api/zilch/achievement-ranks`, and
+`GET /api/zilch/leaderboards?category=achievement_points` returns its protected
+competition ranking. These endpoints return only private
 Zilch award data; the last endpoint backs the private player-context page and
 does not become a public profile API.
