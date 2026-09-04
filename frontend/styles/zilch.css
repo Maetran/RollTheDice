@@ -1,29 +1,33 @@
 @import "./base.css";
 
 html[data-game="zilch"] {
-  /* Zilch is deliberately self-contained: none of these tokens leak into ZDWA. */
+  /* ZDWA leads layout and interaction; Zilch keeps its warm wood table,
+     paper score sheets and amber game language. */
   --zilch-ink: #2e1d12;
   --zilch-muted: #745e4c;
-  --zilch-ink-soft: #553a28;
+  --zilch-ink-soft: #5b402e;
   --zilch-wood-dark: #351b0d;
   --zilch-wood: #684025;
-  --zilch-wood-light: #a7764f;
-  --zilch-wood-glow: #d39a55;
+  --zilch-wood-light: #a7794d;
+  --zilch-wood-glow: #d9a441;
   --zilch-paper: #fff8de;
-  --zilch-paper-soft: #fffdf1;
-  --zilch-paper-edge: #d9bd8a;
+  --zilch-paper-soft: #fffdf5;
+  --zilch-paper-edge: #ddc89e;
+  --zilch-blue: #b36d25;
+  --zilch-blue-strong: #8f4e17;
+  --zilch-blue-soft: #fff0c8;
   --zilch-red: #c63b2e;
   --zilch-green: #257a57;
   --zilch-gold: #e5a72e;
   --zilch-glow: #f6ca4e;
-  --zilch-focus: #1f9ed7;
+  --zilch-focus: #ba7b23;
   --zilch-focus-ring: color-mix(in srgb, var(--zilch-focus) 74%, white);
   --zilch-warning: #a52821;
   --zilch-success: #176b49;
   --zilch-winner: #9b6515;
-  --zilch-shadow: rgba(36, 18, 7, .38);
-  --zilch-shadow-soft: 0 .28rem .8rem rgba(46, 25, 10, .2);
-  --zilch-shadow-card: 0 .9rem 1.8rem var(--zilch-shadow), inset 0 1px rgba(255, 255, 255, .72);
+  --zilch-shadow: rgba(58, 31, 13, .25);
+  --zilch-shadow-soft: 0 .28rem .8rem rgba(58, 31, 13, .12);
+  --zilch-shadow-card: 0 .7rem 1.65rem var(--zilch-shadow), inset 0 1px rgba(255, 255, 255, .78);
   --zilch-radius-xs: .45rem;
   --zilch-radius-sm: .72rem;
   --zilch-radius: 1rem;
@@ -49,9 +53,10 @@ html[data-game="zilch"] body {
   min-height: 100vh;
   color: var(--zilch-ink);
   background:
-    radial-gradient(circle at 16% 0%, rgba(255, 222, 148, .16), transparent 27rem),
-    repeating-linear-gradient(2deg, rgba(255, 255, 255, .025) 0 1px, transparent 1px 5px),
-    linear-gradient(135deg, var(--zilch-wood-dark), var(--zilch-wood) 46%, #4a2a17);
+    radial-gradient(circle at 12% 0%, rgba(227, 174, 82, .2), transparent 29rem),
+    radial-gradient(circle at 90% 8%, rgba(255, 218, 123, .14), transparent 25rem),
+    repeating-linear-gradient(2deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 5px),
+    linear-gradient(135deg, var(--zilch-wood-dark), var(--zilch-wood) 52%, #4d2c19);
   overflow-x: clip;
   font-family: ui-rounded, "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
 }
@@ -83,9 +88,10 @@ html[data-game="zilch"] .zilch-shell :where(a, button, input, select, textarea, 
 }
 
 .zilch-shell {
-  width: min(1280px, calc(100% - var(--zilch-safe-left) - var(--zilch-safe-right)));
-  margin: 0 auto;
-  padding: var(--zilch-safe-top) 0 var(--zilch-safe-bottom);
+  /* Mirrors ZDWA's readable desktop measure and predictable 16px gutters. */
+  width: min(1120px, calc(100vw - 32px));
+  margin: 1.25rem auto 2rem;
+  padding: 0;
   overflow-x: clip;
 }
 
@@ -121,10 +127,10 @@ html[data-game="zilch"] .zilch-nav {
   margin: 0 0 var(--zilch-space-5);
   padding: .48rem .6rem;
   border: 1px solid rgba(255, 231, 179, .32);
-  border-radius: var(--zilch-radius-lg);
+  border-radius: var(--zilch-radius);
   color: #fff8e8;
-  background: linear-gradient(110deg, rgba(54, 28, 13, .85), rgba(102, 61, 31, .76));
-  box-shadow: 0 .55rem 1.25rem rgba(31, 14, 5, .25), inset 0 1px rgba(255, 244, 205, .12);
+  background: linear-gradient(110deg, rgba(54, 28, 13, .9), rgba(102, 61, 31, .84));
+  box-shadow: 0 .55rem 1.25rem rgba(35, 16, 5, .28), inset 0 1px rgba(255, 238, 203, .13);
   backdrop-filter: blur(8px);
 }
 
@@ -183,7 +189,7 @@ html[data-game="zilch"] .zilch-nav-list :where(a, button).zilch-nav-link--active
   border-color: rgba(255, 237, 175, .55);
   color: #45230f;
   background: linear-gradient(135deg, #fff3b8, #e8bb57);
-  box-shadow: inset 0 1px rgba(255, 255, 255, .72), 0 .15rem .35rem rgba(24, 9, 2, .2);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .82), 0 .15rem .35rem rgba(55, 26, 8, .2);
 }
 
 html[data-game="zilch"] .zilch-nav-list .zilch-nav-back {
@@ -197,12 +203,15 @@ html[data-game="zilch"] .zilch-nav-list .zilch-nav-back::before {
 }
 
 .zilch-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   min-height: 3.5rem;
-  margin-bottom: var(--zilch-space-5);
+  margin-bottom: 1rem;
+  padding: .25rem 0 .7rem;
+  border-bottom: 1px solid rgba(255, 224, 171, .34);
   color: #fff8e8;
 }
 
@@ -264,26 +273,24 @@ html[data-game="zilch"] .eyebrow { margin: 0; color: var(--zilch-gold); font: 75
   position: relative;
   color: var(--zilch-ink);
   border: 1px solid var(--zilch-paper-edge);
-  background:
-    repeating-linear-gradient(-8deg, rgba(114, 79, 40, .035) 0 1px, transparent 1px 5px),
-    var(--zilch-paper);
+  background: repeating-linear-gradient(-8deg, rgba(114, 79, 40, .035) 0 1px, transparent 1px 5px), var(--zilch-paper);
   box-shadow: var(--zilch-shadow-card);
 }
 
 .zilch-card {
   margin: 1.1rem 0;
   padding: clamp(1rem, 3vw, 1.6rem);
-  border-radius: var(--zilch-radius);
+  border-radius: .75rem;
   overflow-wrap: anywhere;
 }
 
 .zilch-card::before,
 .zilch-table::before {
   position: absolute;
-  inset: .3rem;
+  inset: .24rem;
   z-index: 0;
   border: 1px solid rgba(117, 75, 37, .1);
-  border-radius: inherit;
+  border-radius: .52rem;
   pointer-events: none;
   content: "";
 }
@@ -292,12 +299,59 @@ html[data-game="zilch"] .eyebrow { margin: 0; color: var(--zilch-gold); font: 75
 .zilch-table > * { position: relative; z-index: 1; }
 
 .zilch-card h2,
-.zilch-table h2 { margin: .15rem 0 .75rem; font-family: Georgia, "Times New Roman", serif; }
+.zilch-table h2 { margin: .15rem 0 .75rem; font-family: ui-rounded, "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; }
 .zilch-muted { color: var(--zilch-muted); }
 .zilch-error { margin: .8rem 0 0; color: #9f1d17; font-weight: 750; }
 .zilch-notice { max-width: 40rem; margin: clamp(2.5rem, 10vh, 6rem) auto; text-align: center; }
 .zilch-notice--error { border-color: #f08073; }
 .zilch-alpha-note { border-style: dashed; }
+
+/* Lobby: use ZDWA-like dashboard rhythm, but retain a warm Zilch table. */
+html[data-game="zilch"] .zilch-intro--alpha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--zilch-space-4);
+  max-width: none;
+  padding: clamp(1.15rem, 3vw, 1.8rem);
+  border: 1px solid rgba(255, 230, 174, .35);
+  border-radius: var(--zilch-radius-lg);
+  background: linear-gradient(125deg, rgba(57, 30, 14, .94), rgba(107, 65, 33, .86));
+  box-shadow: 0 1rem 2rem rgba(38, 17, 6, .24), inset 0 1px rgba(255, 239, 208, .12);
+}
+
+html[data-game="zilch"] .zilch-intro--alpha::after {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: clamp(4.8rem, 12vw, 7.6rem);
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 245, 205, .56);
+  border-radius: 1.25rem;
+  color: #4c270e;
+  background: linear-gradient(145deg, #fff9d7, #e6b957);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .86), .35rem .45rem 0 rgba(66, 31, 10, .22);
+  font: 900 clamp(2rem, 6vw, 3.35rem)/1 Georgia, "Times New Roman", serif;
+  content: "Z";
+}
+
+html[data-game="zilch"] .zilch-create-card {
+  border-color: #dfc58f;
+  box-shadow: var(--zilch-shadow-card), inset .32rem 0 var(--zilch-blue);
+}
+
+html[data-game="zilch"] .zilch-create-card > .eyebrow { color: var(--zilch-blue); }
+html[data-game="zilch"] .zilch-create-card button[type="submit"],
+html[data-game="zilch"] .zilch-lobby-action {
+  border-color: var(--zilch-blue);
+  color: #fff;
+  background: var(--zilch-blue);
+  box-shadow: 0 .25rem .65rem rgba(126, 69, 20, .22);
+}
+html[data-game="zilch"] .zilch-create-card button[type="submit"]:hover,
+html[data-game="zilch"] .zilch-lobby-action:hover {
+  border-color: var(--zilch-blue-strong);
+  background: var(--zilch-blue-strong);
+}
 
 .zilch-create-form { align-items: end; flex-wrap: wrap; }
 .zilch-create-form label { display: grid; gap: .35rem; flex: 1 1 16rem; font-weight: 700; }
@@ -328,7 +382,7 @@ html[data-game="zilch"] .zilch-cpu-strategy {
   min-width: min(100%, 19rem);
   margin: 0;
   padding: .78rem;
-  border: 1px dashed var(--zilch-paper-edge);
+  border: 1px solid var(--zilch-paper-edge);
   border-radius: var(--zilch-radius-sm);
   background: rgba(136, 90, 40, .055);
 }
@@ -391,7 +445,7 @@ html[data-game="zilch"] .zilch-strategy-card input {
   width: 1.2rem;
   height: 1.2rem;
   margin: .08rem 0 0;
-  accent-color: var(--zilch-wood);
+  accent-color: var(--zilch-blue);
 }
 
 html[data-game="zilch"] .zilch-mode-option input:focus-visible,
@@ -529,7 +583,7 @@ html[data-game="zilch"] .zilch-participant-badge--solo {
   background: rgba(255, 255, 255, .18);
   transition: border-color var(--zilch-motion) var(--zilch-ease), background var(--zilch-motion) var(--zilch-ease), transform var(--zilch-motion) var(--zilch-ease);
 }
-.zilch-game-card:hover { border-color: color-mix(in srgb, var(--zilch-wood-light) 75%, var(--zilch-paper-edge)); background: rgba(255, 255, 255, .31); }
+.zilch-game-card:hover { border-color: color-mix(in srgb, var(--zilch-wood-light) 68%, var(--zilch-paper-edge)); background: rgba(255, 255, 255, .31); transform: translateY(-1px); }
 .zilch-game-card h3,
 .zilch-game-card p { margin: 0; }
 .zilch-game-card h3 { max-width: 36ch; overflow-wrap: anywhere; }
@@ -797,16 +851,17 @@ html[data-game="zilch"] .zilch-participant-badge--solo {
 .zilch-table__heading h2 { color: inherit; }
 .zilch-table__heading p { max-width: 32rem; margin: 0; color: #e4cba7; font-size: .9rem; text-align: right; }
 
-.zilch-dice { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: clamp(.45rem, 1.5vw, .85rem); max-width: 48rem; margin: 1.35rem auto; }
-.zilch-die { position: relative; display: grid; place-items: center; min-width: 0; aspect-ratio: 1; border: 1px solid #d1b184; border-radius: 19%; color: #3a2011; background: linear-gradient(145deg, #fffdf5 0%, #f0dfbc 72%, #d6bb8d 100%); box-shadow: inset .14rem .14rem .3rem rgba(255,255,255,.98), inset -.16rem -.2rem .35rem rgba(89,53,25,.24), .25rem .38rem 0 #724b2d, .42rem .62rem .75rem rgba(0,0,0,.38); outline: none; transition: transform var(--zilch-motion) var(--zilch-ease), box-shadow var(--zilch-motion) var(--zilch-ease), filter var(--zilch-motion) var(--zilch-ease); }
+.zilch-dice { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: clamp(.5rem, 1.5vw, .9rem); max-width: 43rem; margin: 1.45rem auto; }
+.zilch-die { position: relative; display: grid; place-items: center; min-width: 0; aspect-ratio: 1; border: 1px solid #d4bd98; border-radius: 17%; color: #4a2413; background: radial-gradient(circle at 32% 24%, #fff 0 6%, transparent 24%), linear-gradient(145deg, #fffef8 0%, #f7ecd8 58%, #dfc9a8 100%); box-shadow: inset .16rem .16rem .28rem rgba(255,255,255,.98), inset -.13rem -.16rem .28rem rgba(114, 75, 39, .16), 0 .14rem 0 #b99c79, 0 .52rem .8rem rgba(46, 25, 10, .3); outline: none; transition: transform var(--zilch-motion) var(--zilch-ease), box-shadow var(--zilch-motion) var(--zilch-ease), filter var(--zilch-motion) var(--zilch-ease), border-color var(--zilch-motion) var(--zilch-ease); }
+.zilch-die::before { position: absolute; inset: .18rem; border: 1px solid rgba(140, 103, 63, .2); border-radius: 14%; content: ""; pointer-events: none; }
 .zilch-die:focus-visible { outline: 3px solid var(--zilch-focus-ring); outline-offset: 4px; }
-.zilch-die__face { position: relative; display: grid; width: 74%; height: 74%; grid-template: repeat(3, 1fr) / repeat(3, 1fr); }
-.zilch-pip { width: 27%; aspect-ratio: 1; align-self: center; justify-self: center; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #7f5c43, #2e1a0f 67%); box-shadow: inset .04rem .06rem .06rem rgba(255,255,255,.22), 0 .04rem .08rem rgba(0,0,0,.35); }
+.zilch-die__face { position: relative; display: grid; width: 76%; height: 76%; grid-template: repeat(3, 1fr) / repeat(3, 1fr); }
+.zilch-pip { width: 28%; aspect-ratio: 1; align-self: center; justify-self: center; border-radius: 50%; background: radial-gradient(circle at 34% 28%, #a9663c 0 13%, #572b17 57%, #2e160c 100%); box-shadow: inset .04rem .05rem .07rem rgba(255,255,255,.35), 0 .04rem .08rem rgba(46, 22, 9, .25); }
 .zilch-pip--top-left { grid-area: 1 / 1; }.zilch-pip--middle-left { grid-area: 2 / 1; }.zilch-pip--bottom-left { grid-area: 3 / 1; }.zilch-pip--top-right { grid-area: 1 / 3; }.zilch-pip--middle-right { grid-area: 2 / 3; }.zilch-pip--bottom-right { grid-area: 3 / 3; }.zilch-pip--middle { grid-area: 2 / 2; }
-.zilch-die__dash { align-self: center; grid-area: 2 / 2; color: #9c7f61; font: 2.2rem/1 Georgia, serif; }
-.zilch-die--unrolled { opacity: .42; filter: grayscale(.5); box-shadow: inset .14rem .14rem .3rem rgba(255,255,255,.7), .18rem .25rem 0 #59402d; }
+.zilch-die__dash { align-self: center; grid-area: 2 / 2; color: #a98c6a; font: 2.2rem/1 Georgia, serif; }
+.zilch-die--unrolled { opacity: .48; filter: grayscale(.65); box-shadow: inset .14rem .14rem .3rem rgba(255,255,255,.7), 0 .16rem 0 #b99c79; }
 .zilch-die--held,
-.zilch-die--unavailable { transform: translateY(-.18rem) rotate(-1deg); border-color: #f7d058; background: linear-gradient(145deg, #fffbe0, #f6cf62); box-shadow: 0 0 0 .22rem rgba(255, 218, 83, .42), 0 0 1.1rem rgba(255, 211, 70, .86), .25rem .38rem 0 #70491d, .42rem .62rem .75rem rgba(0,0,0,.32); }
+.zilch-die--unavailable { transform: translateY(-.18rem) rotate(-1deg); border-color: #dcaa36; background: radial-gradient(circle at 32% 24%, #fff 0 6%, transparent 24%), linear-gradient(145deg, #fffef8, #fff1c6 68%, #e8c36f); box-shadow: 0 0 0 .22rem rgba(246, 202, 78, .3), 0 .5rem .9rem rgba(96, 49, 13, .28), inset .14rem .14rem .28rem rgba(255,255,255,.96), inset -.13rem -.16rem .28rem rgba(177, 108, 22, .16); }
 .zilch-die--held::after,
 .zilch-die--unavailable::after {
   position: absolute;
@@ -816,17 +871,17 @@ html[data-game="zilch"] .zilch-participant-badge--solo {
   place-items: center;
   width: 1.05rem;
   height: 1.05rem;
-  border: 1px solid rgba(76, 44, 7, .45);
+  border: 1px solid rgba(125, 73, 22, .42);
   border-radius: 50%;
   color: #48280b;
-  background: #fff4aa;
-  box-shadow: 0 .08rem .16rem rgba(47, 23, 3, .25);
+  background: #fff1a4;
+  box-shadow: 0 .08rem .16rem rgba(91, 47, 13, .25);
   content: "✓";
   font-size: .7rem;
   font-weight: 900;
 }
-.zilch-die--selected { transform: translateY(-.24rem); border-color: #fff4b7; box-shadow: 0 0 0 .25rem rgba(255, 217, 78, .8), 0 0 1.4rem #f7cf4c, .25rem .38rem 0 #70491d; }
-.zilch-die--non-scoring { filter: grayscale(.9) brightness(.76); opacity: .64; }
+.zilch-die--selected { transform: translateY(-.24rem); border-color: #f0bf45; box-shadow: 0 0 0 .25rem rgba(246, 202, 78, .66), 0 .56rem 1rem rgba(96, 49, 13, .3), inset .14rem .14rem .28rem rgba(255,255,255,.98); }
+.zilch-die--non-scoring { filter: grayscale(.88) brightness(.84); opacity: .62; }
 .zilch-die--pending { pointer-events: none; }
 
 .zilch-action-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; max-width: 48rem; margin: 0 auto; }
@@ -1476,8 +1531,8 @@ html[data-game="zilch"] .app-dialog :where(button, input):focus-visible {
 }
 
 @media (max-width: 760px) {
-  .zilch-shell { width: min(100% - var(--zilch-safe-left) - var(--zilch-safe-right), 1180px); }
-  .zilch-header { align-items: flex-start; margin-bottom: 1.3rem; }
+  .zilch-shell { width: 100%; margin: .75rem auto 1.25rem; padding: 0 .75rem; }
+  .zilch-header { align-items: flex-start; margin-bottom: .75rem; }
   .zilch-header-tools { gap: .42rem; }
   .zilch-header-tools .zilch-account { flex: 1 1 100%; order: -1; }
 
@@ -1506,7 +1561,7 @@ html[data-game="zilch"] .app-dialog :where(button, input):focus-visible {
     border: 1px solid rgba(255, 231, 179, .36);
     border-radius: var(--zilch-radius);
     background: #4c2b18;
-    box-shadow: 0 .8rem 1.6rem rgba(29, 13, 4, .42);
+    box-shadow: 0 .8rem 1.6rem rgba(35, 16, 5, .42);
   }
   html[data-game="zilch"] .zilch-nav-list :where(li, a, button) { width: 100%; }
   html[data-game="zilch"] .zilch-nav-list :where(a, button) { justify-content: flex-start; }
@@ -1516,6 +1571,8 @@ html[data-game="zilch"] .app-dialog :where(button, input):focus-visible {
   .zilch-table__heading,
   .zilch-section-heading { align-items: flex-start; flex-direction: column; }
   .zilch-table__heading p { text-align: left; }
+  html[data-game="zilch"] .zilch-intro--alpha { grid-template-columns: 1fr; }
+  html[data-game="zilch"] .zilch-intro--alpha::after { display: none; }
   .zilch-board-grid,
   .zilch-action-cards { grid-template-columns: 1fr; }
   html[data-game="zilch"] .zilch-strategy-grid { grid-template-columns: 1fr; }
@@ -1540,7 +1597,7 @@ html[data-game="zilch"] .app-dialog :where(button, input):focus-visible {
 }
 
 @media (max-width: 390px) {
-  .zilch-header { flex-wrap: wrap; gap: .55rem; }
+  .zilch-header { grid-template-columns: 1fr; gap: .55rem; }
   .zilch-brand { flex: 0 0 100%; font-size: 1.1rem; }
   .zilch-brand-mark { width: 2rem; height: 2rem; }
   .zilch-header-tools { width: 100%; justify-content: flex-start; }
@@ -1552,7 +1609,7 @@ html[data-game="zilch"] .app-dialog :where(button, input):focus-visible {
   .zilch-rule-facts { grid-template-columns: 1fr; }
   .zilch-board dl { grid-template-columns: 1fr; }
   .zilch-dice { gap: .42rem; }
-  .zilch-die { box-shadow: inset .12rem .12rem .26rem rgba(255,255,255,.92), inset -.12rem -.15rem .25rem rgba(89,53,25,.24), .16rem .25rem 0 #724b2d, .28rem .42rem .5rem rgba(0,0,0,.34); }
+  .zilch-die { box-shadow: inset .12rem .12rem .26rem rgba(255,255,255,.92), inset -.12rem -.15rem .25rem rgba(114,75,39,.16), 0 .14rem 0 #b99c79, 0 .36rem .55rem rgba(46,25,10,.28); }
   .zilch-quick-hold { grid-template-columns: minmax(0, 1fr) auto; min-height: 5.8rem; }
   .zilch-nav-list { width: calc(100vw - var(--zilch-safe-left) - var(--zilch-safe-right)); }
 }
@@ -1563,7 +1620,6 @@ html[data-game="zilch"] .app-dialog :where(button, input):focus-visible {
 }
 
 @media (min-width: 1440px) {
-  .zilch-shell { width: min(1440px, calc(100% - var(--zilch-safe-left) - var(--zilch-safe-right))); }
   .zilch-game-workspace { grid-template-columns: minmax(14rem, .92fr) minmax(28rem, 1.55fr) minmax(14rem, .92fr); }
   .zilch-game-workspace--solo { grid-template-columns: minmax(15rem, .88fr) minmax(29rem, 1.6fr); }
 }
