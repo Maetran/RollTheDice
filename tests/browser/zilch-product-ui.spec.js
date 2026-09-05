@@ -500,6 +500,15 @@ test("private Zilch statistics and leaderboards render only server projections a
   await expect(page.getByText("Partien nach Spielart")).toBeVisible();
   await expect(page.getByText("Gesicherte Gesamtpunkte")).toHaveCount(0);
 
+  await page.goto("/zilch/konto#statistics");
+  await page.getByRole("tab", { name: "Statistiken" }).click();
+  const accountOverviewCard = page.locator("#zilchAccountPanel-statistics .zilch-statistics-card--overview");
+  const accountByModeCard = page.locator("#zilchAccountPanel-statistics .zilch-statistics-card--by-mode");
+  await expect(accountOverviewCard).toBeVisible();
+  await expect(accountByModeCard).toBeVisible();
+  expect(await accountOverviewCard.evaluate(card => Number.parseFloat(getComputedStyle(card).paddingTop))).toBeLessThan(13);
+
+  await page.goto("/zilch/statistiken");
   const multiplayerTab = page.getByRole("tab", { name: "Zwei Spieler" });
   await multiplayerTab.focus();
   await page.keyboard.press("ArrowRight");

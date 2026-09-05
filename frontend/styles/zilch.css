@@ -1434,6 +1434,31 @@ html[data-game="zilch"] :where(.zilch-stats-tab, .zilch-stat-subtab, .zilch-lead
 html[data-game="zilch"] .zilch-statistics-panel { min-width: 0; }
 html[data-game="zilch"] .zilch-statistics-card { max-width: none; }
 html[data-game="zilch"] .zilch-statistics-card--compact { max-width: 34rem; }
+html[data-game="zilch"] .zilch-account-panel :is(.zilch-statistics-card--overview, .zilch-statistics-card--by-mode) {
+  margin: .5rem 0;
+  padding: .72rem .8rem;
+}
+html[data-game="zilch"] .zilch-account-panel :is(.zilch-statistics-card--overview, .zilch-statistics-card--by-mode) .eyebrow {
+  font-size: .68rem;
+}
+html[data-game="zilch"] .zilch-account-panel :is(.zilch-statistics-card--overview, .zilch-statistics-card--by-mode) h2 {
+  margin: .08rem 0 .34rem;
+  font-size: clamp(1.02rem, 3vw, 1.22rem);
+}
+html[data-game="zilch"] .zilch-account-panel :is(.zilch-statistics-card--overview, .zilch-statistics-card--by-mode) .zilch-statistics-card__description {
+  font-size: .88rem;
+  line-height: 1.4;
+}
+html[data-game="zilch"] .zilch-account-panel :is(.zilch-statistics-card--overview, .zilch-statistics-card--by-mode) .zilch-stat-metrics {
+  gap: .48rem;
+  margin-top: .65rem;
+}
+html[data-game="zilch"] .zilch-account-panel :is(.zilch-statistics-card--overview, .zilch-statistics-card--by-mode) .zilch-stat-metrics div {
+  padding: .5rem .56rem;
+}
+html[data-game="zilch"] .zilch-account-panel :is(.zilch-statistics-card--overview, .zilch-statistics-card--by-mode) .zilch-stat-metrics dd {
+  font-size: clamp(1rem, 2.8vw, 1.2rem);
+}
 html[data-game="zilch"] .zilch-statistics-card__description,
 html[data-game="zilch"] .zilch-leaderboard-sorting { max-width: 68ch; margin: 0; color: var(--zilch-muted); line-height: 1.52; }
 html[data-game="zilch"] .zilch-leaderboard-objective {

@@ -2057,8 +2057,8 @@ function metricsMarkup(entries) {
   return `<dl class="zilch-stat-metrics">${present.map(entry => `<div><dt>${escapeHtml(entry.label)}</dt><dd>${escapeHtml(formattedStatistic(entry.value, entry.format))}</dd></div>`).join("")}</dl>`;
 }
 
-function statisticsSection({ eyebrow, title, description, entries, extra = "" }) {
-  return `<section class="zilch-card zilch-statistics-card">
+function statisticsSection({ eyebrow, title, description, entries, extra = "", className = "" }) {
+  return `<section class="zilch-card zilch-statistics-card${className ? ` ${className}` : ""}">
     <p class="eyebrow">${escapeHtml(eyebrow)}</p>
     <h2>${escapeHtml(title)}</h2>
     ${description ? `<p class="zilch-statistics-card__description">${escapeHtml(description)}</p>` : ""}
@@ -2083,7 +2083,7 @@ function gamesByModeMarkup(source) {
     return value === null ? null : { label: modeLabel(mode), value };
   }).filter(Boolean);
   if (!entries.length) return "";
-  return `<section class="zilch-card zilch-statistics-card zilch-statistics-card--compact"><p class="eyebrow">${escapeHtml(t("Nach Spielart"))}</p><h2>${escapeHtml(t("Partien nach Spielart"))}</h2>${metricsMarkup(entries)}</section>`;
+  return `<section class="zilch-card zilch-statistics-card zilch-statistics-card--compact zilch-statistics-card--by-mode"><p class="eyebrow">${escapeHtml(t("Nach Spielart"))}</p><h2>${escapeHtml(t("Partien nach Spielart"))}</h2>${metricsMarkup(entries)}</section>`;
 }
 
 function renderOverviewStatistics(statistics) {
@@ -2099,6 +2099,7 @@ function renderOverviewStatistics(statistics) {
     title: t("Deine Zilch-Statistiken"),
     description: t("Hier zählt, was du in deinen abgeschlossenen Zilch-Partien erspielt hast."),
     entries,
+    className: "zilch-statistics-card--overview",
   })}${gamesByModeMarkup(overview)}`;
 }
 
