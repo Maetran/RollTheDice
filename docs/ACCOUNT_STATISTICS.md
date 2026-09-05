@@ -231,12 +231,13 @@ are projections of durable Zilch unlock keys, not stored browser values.
 ### Version-2 catalog, points, ranks, and APIs
 
 All keys are namespaced as `zilch.*` and are versioned separately from the
-ZDWA catalog. The expanded catalog contains 72 conditions supported by
+ZDWA catalog. The expanded catalog contains 74 conditions supported by
 validated result evidence. It includes the original milestones plus cumulative
 games/wins/banked points, 2,500–5,000-point rounds, Hot-Dice streaks, high-risk
 recoveries, close and decisive human wins, 1,000/2,000/3,000-point comebacks,
 start-roll reversals, fast human-vs-human finishes, Solo turn/roll targets,
-11,000–15,000 final scores, twenty-Zilch games, and competitive marathon wins.
+four-, five-, and six-of-a-kind groups, 11,000–15,000 final scores,
+twenty-Zilch games, and competitive marathon wins.
 
 Point values are immutable catalog metadata. The possible positive-point total
 is derived from that catalog, and the ten familiar rank names are scaled from

@@ -434,9 +434,29 @@ class ZilchGameplayTestCase(TestCase):
         self.assertEqual(game["_dice"], [0, 0, 0, 0, 0, 0])
         self.assertEqual(message["scoreboard"]["_turn"]["player_id"], "p2")
         self.assertEqual(message["scoreboard"]["_dice"], [0, 0, 0, 0, 0, 0])
+        self.assertEqual(
+            message["scoreboard"]["_zilch_last_zilch_dice"],
+            {
+                "player_id": "p1",
+                "turn_id": 1,
+                "dice": [1, 2, 2, 3, 4, 6],
+                "held_dice_indices": [0],
+            },
+        )
         self.assertEqual(message["zilch_event"]["reason"], "no_scoring_option")
         self.assertEqual(message["zilch_event"]["rolled_dice"], [1, 2, 2, 3, 4, 6])
         self.assertEqual(message["zilch_event"]["held_dice_indices"], [0])
+
+        next_turn = message["scoreboard"]["_zilch_turn_state"]
+        with patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([1, 2, 3, 4, 5, 6])):
+            asyncio.run(
+                handle_zilch_gameplay_action(
+                    self.session(game, sockets[1], "p2"),
+                    "zilch_roll_dice",
+                    {"turn_id": next_turn["turn_id"], "version": next_turn["version"]},
+                )
+            )
+        self.assertIsNone(sockets[1].messages[-1]["scoreboard"]["_zilch_last_zilch_dice"])
 
     def test_third_roll_below_300_broadcasts_rolled_dice_before_reset_and_turn_advance(self):
         game, sockets = self.make_game(players=2)

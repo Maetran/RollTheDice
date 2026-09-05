@@ -408,6 +408,9 @@ def apply_zilch_roll_dice(
     if threshold_loss is not None:
         return threshold_loss
     rolled_turn, evaluation = roll_zilch_turn(turn, randint_fn=randint_fn or fair_zilch_randint)
+    # A previous Zilch rack is a display-only snapshot. The moment anyone
+    # actually rolls again it must yield to this authoritative new result.
+    game["_zilch_last_zilch_dice"] = None
     if hold_result is not None and hold_result.option.hot_dice:
         record_zilch_solo_hot_dice(game, hold_result.turn)
     record_zilch_solo_roll(game, rolled_turn)

@@ -368,7 +368,7 @@ class ZilchAchievementPersistenceTestCase(TestCase):
 
         self.assertEqual(catalog["version"], 2)
         self.assertNotIn("player", catalog)
-        self.assertEqual(len(catalog["definitions"]), 72)
+        self.assertEqual(len(catalog["definitions"]), 74)
         self.assertEqual({item["key"] for item in catalog["definitions"]}, set(ZILCH_ACHIEVEMENT_BY_KEY))
         self.assertEqual(catalog["points_possible"], ZILCH_ACHIEVEMENT_POINTS_POSSIBLE)
         self.assertEqual(
@@ -434,6 +434,9 @@ class ZilchAchievementPersistenceTestCase(TestCase):
                 "three_ones",
                 "two_triples",
                 "double_triple",
+                "four_of_a_kind",
+                "five_of_a_kind",
+                "six_of_a_kind",
             ],
             "hot_dice_events": 5,
             "zilch_count": 20,
@@ -476,6 +479,24 @@ class ZilchAchievementPersistenceTestCase(TestCase):
             and not _criterion_is_satisfied(definition, facts)
         ]
         self.assertEqual(unsatisfied, [])
+
+    def test_escalating_matching_dice_awards_do_not_treat_two_triple_ones_as_a_sixling(self) -> None:
+        facts = {
+            "schema_version": 1,
+            "ruleset": ZILCH_RULESET_VERSION,
+            "play_mode": "multiplayer",
+            "outcome": "win",
+            "history_complete": True,
+            "combination_types": ["double_triple"],
+        }
+        sixling = ZILCH_ACHIEVEMENT_BY_KEY["zilch.first_double_triple"]
+        fourling = ZILCH_ACHIEVEMENT_BY_KEY["zilch.first_four_of_a_kind"]
+        fuenfling = ZILCH_ACHIEVEMENT_BY_KEY["zilch.first_five_of_a_kind"]
+
+        self.assertFalse(_criterion_is_satisfied(sixling, [facts]))
+        self.assertTrue(_criterion_is_satisfied(sixling, [{**facts, "combination_types": ["six_of_a_kind"]}]))
+        self.assertTrue(_criterion_is_satisfied(fourling, [{**facts, "combination_types": ["four_of_a_kind"]}]))
+        self.assertTrue(_criterion_is_satisfied(fuenfling, [{**facts, "combination_types": ["five_of_a_kind"]}]))
 
     def test_achievement_migration_upgrades_and_downgrades_without_touching_result_tables(self) -> None:
         config = Config(str(main.BASE / "alembic.ini"))

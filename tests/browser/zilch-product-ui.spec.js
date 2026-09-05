@@ -122,7 +122,7 @@ test("private Zilch rules, history, and product navigation use the protected noi
     third_roll_minimum: 300,
     confirmation_minimum: 50,
     third_zilch_penalty: 500,
-    scoring: { straight: 2000, three_pairs: 500, nothing_bonus: 500 },
+    scoring: { straight: 2000, three_pairs: 1500, nothing_bonus: 500 },
   });
   await expect(page.locator("html")).toHaveAttribute("data-game", "zilch");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);

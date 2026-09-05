@@ -716,6 +716,10 @@ def new_zilch_game(gid: str, name: str, mode: object) -> GameDict:
         "_spectators": [],
         "_turn": None,
         "_dice": [0] * ZILCH_DICE_COUNT,
+        # A Zilch's final physical rack remains visible while the next player
+        # decides to roll. It is display-only and is cleared by that next
+        # actual roll; the authoritative current turn still starts unrolled.
+        "_zilch_last_zilch_dice": None,
         "_holds": [False] * ZILCH_DICE_COUNT,
         "_rolls_used": 0,
         "_rolls_max": None,
@@ -1108,6 +1112,7 @@ def ensure_zilch_engine_state(game: GameDict) -> None:
     game.setdefault("_zilch_final_round", None)
     game.setdefault("_zilch_outcome", None)
     game.setdefault("_zilch_last_event", None)
+    game.setdefault("_zilch_last_zilch_dice", None)
     game.setdefault("_zilch_cpu_error", None)
     game.setdefault("_zilch_solo_host_user_id", None)
     game.setdefault("_zilch_solo_objective", None)
@@ -1234,6 +1239,7 @@ def record_zilch_bank(game: GameDict, turn: ZilchTurn) -> int:
         ),
     )
     game["_zilch_last_event"] = {"event": "bank", "player_id": player_id, "points": turn.round_points}
+    game["_zilch_last_zilch_dice"] = None
     _record_solo_bank(game, turn, total)
     return total
 
@@ -1270,6 +1276,12 @@ def record_zilch_loss(game: GameDict, turn: ZilchTurn, *, reason: str) -> dict:
             "committed_holds": [dict(entry) for entry in turn.committed_holds],
         },
     )
+    game["_zilch_last_zilch_dice"] = {
+        "player_id": player_id,
+        "turn_id": turn.turn_id,
+        "dice": list(turn.dice),
+        "held_dice_indices": list(turn.held_indices),
+    }
     sync_zilch_turn(
         game,
         replace(
@@ -1390,6 +1402,7 @@ def finish_zilch_solo_game(game: GameDict, *, status: str) -> dict:
     game["_results"] = None
     game["_turn"] = None
     game["_dice"] = [0] * ZILCH_DICE_COUNT
+    game["_zilch_last_zilch_dice"] = None
     game["_holds"] = [False] * ZILCH_DICE_COUNT
     game["_rolls_used"] = 0
     return outcome
@@ -1420,6 +1433,7 @@ def finish_zilch_game(game: GameDict) -> dict:
     game["_results"] = None
     game["_turn"] = None
     game["_dice"] = [0] * ZILCH_DICE_COUNT
+    game["_zilch_last_zilch_dice"] = None
     game["_holds"] = [False] * ZILCH_DICE_COUNT
     game["_rolls_used"] = 0
     return outcome
@@ -1449,6 +1463,7 @@ def start_zilch_game(game: GameDict, *, randint_fn=None) -> None:
     game["_zilch_result"] = None
     game["_completion_persisted"] = False
     game["_finalization_pending"] = False
+    game["_zilch_last_zilch_dice"] = None
     if zilch_is_configured_solo_game(game):
         # The confirmed Sprint begins with a meaningful regular turn. A
         # one-player start roll would decide nothing and is deliberately not

@@ -433,6 +433,30 @@ def _triple_component(indices: tuple[int, ...], value: int) -> ZilchScoringCompo
     )
 
 
+def _of_a_kind_component(indices: tuple[int, ...], value: int) -> ZilchScoringComponent:
+    """Return one escalating 2–6 matching-dice group.
+
+    Ones deliberately retain their separate, fixed three-of-a-kind contract.
+    For every other face the value doubles for each die after the third one.
+    """
+    count = len(indices)
+    if count < 3 or value == 1:
+        raise ValueError("zilch_invalid_of_a_kind")
+    if count == 3:
+        return _triple_component(indices, value)
+    kind_name = {4: "four", 5: "five", 6: "six"}.get(count)
+    if kind_name is None:
+        raise ValueError("zilch_invalid_of_a_kind")
+    return ZilchScoringComponent(
+        f"{kind_name}_of_a_kind",
+        indices,
+        (value,) * count,
+        value * 100 * (2 ** (count - 3)),
+        "zilch.option.of_a_kind",
+        _label_params(count=count, face=value),
+    )
+
+
 def _special_components(
     dice: tuple[int, ...],
     available: tuple[int, ...],
@@ -462,7 +486,7 @@ def _special_components(
                 "three_pairs",
                 available,
                 values,
-                500,
+                1_500,
                 "zilch.option.three_pairs",
                 _label_params(),
             )
@@ -493,9 +517,14 @@ def _primitive_components(dice: tuple[int, ...], available: tuple[int, ...]) -> 
     for value in (1, 5):
         for index in positions_by_value[value]:
             result.append(_single_component(index, value))
-    for value in range(1, 7):
-        for triple in combinations(positions_by_value[value], 3):
-            result.append(_triple_component(tuple(triple), value))
+    for value, positions in positions_by_value.items():
+        if value == 1:
+            for triple in combinations(positions, 3):
+                result.append(_triple_component(tuple(triple), value))
+            continue
+        for count in range(3, len(positions) + 1):
+            for matched_dice in combinations(positions, count):
+                result.append(_of_a_kind_component(tuple(matched_dice), value))
     return result
 
 
@@ -545,25 +574,47 @@ def _selection_respects_triples(
     components: tuple[ZilchScoringComponent, ...],
     selected_indices: tuple[int, ...],
 ) -> bool:
-    """Enforce that a selected triple is scored as a triple, not singles.
+    """Enforce the fixed-one and escalating 2–6 matching-group rules.
 
-    Players may deliberately retain one or two 1s/5s.  Once their selected
-    subset itself contains three of one face, Manuel's contract says that
-    group counts as a triple; four and five add ordinary leftover singles and
-    six are two separate triples.
+    One or two 1s/5s may remain single dice. Three ones are always the fixed
+    1,000-point group. Further selected ones remain ordinary 100-point
+    singles; four or more ones are intentionally not their own group. For
+    2–6, three through six matching selected dice must be one matching group
+    whose score doubles for each die after the third.
     """
     if any(component.combination_type in {"straight", "three_pairs", "nothing_bonus"} for component in components):
         return True
-    triple_counts: dict[int, int] = {}
-    for component in components:
-        if component.combination_type not in {"three_ones", "three_of_a_kind"}:
-            continue
-        face = component.dice_values[0]
-        triple_counts[face] = triple_counts.get(face, 0) + 1
     for face in range(1, 7):
-        selected_count = sum(dice[index] == face for index in selected_indices)
-        expected_triples = selected_count // 3
-        if triple_counts.get(face, 0) != expected_triples:
+        face_indices = tuple(index for index in selected_indices if dice[index] == face)
+        selected_count = len(face_indices)
+        face_components = [
+            component
+            for component in components
+            if component.dice_values and all(value == face for value in component.dice_values)
+        ]
+        if face == 1:
+            triple_count = sum(component.combination_type == "three_ones" for component in face_components)
+            if triple_count != selected_count // 3:
+                return False
+            continue
+        if selected_count < 3:
+            continue
+        if len(face_components) != 1:
+            return False
+        component = face_components[0]
+        expected_type = {
+            3: "three_of_a_kind",
+            4: "four_of_a_kind",
+            5: "five_of_a_kind",
+            6: "six_of_a_kind",
+        }.get(selected_count)
+        expected_points = face * 100 * (2 ** (selected_count - 3))
+        if (
+            expected_type is None
+            or component.combination_type != expected_type
+            or component.dice_indices != face_indices
+            or component.points != expected_points
+        ):
             return False
     return True
 

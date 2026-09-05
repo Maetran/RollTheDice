@@ -75,34 +75,67 @@ class ZilchScoringTestCase(TestCase):
                         "A selected triple of fives must not be reinterpreted as singles.",
                     )
 
-    def test_four_and_five_of_a_kind_have_no_multiplier_but_can_mix_normal_components(self):
-        four_fives = scoring_options_for_roll([5, 5, 5, 5, 2, 3], turn_id=1, roll_id=1)
-        self.assertNotIn("four_of_a_kind", {option.combination_type for option in four_fives})
-        self.assertEqual(
-            option_for(four_fives, combination_type="combined", dice_indices=(0, 1, 2, 3), points=550).points,
-            550,
-        )
-        self.assertEqual(option_for(four_fives, combination_type="single_five", dice_indices=(0,)).points, 50)
+    def test_matching_twos_to_sixes_double_after_the_third_die(self):
+        for face in range(2, 7):
+            fillers = [value for value in range(2, 7) if value != face]
+            for count in range(3, 7):
+                with self.subTest(face=face, count=count):
+                    options = scoring_options_for_roll(
+                        [face] * count + fillers[: 6 - count],
+                        turn_id=1,
+                        roll_id=count,
+                    )
+                    combination_type = {
+                        3: "three_of_a_kind",
+                        4: "four_of_a_kind",
+                        5: "five_of_a_kind",
+                        6: "six_of_a_kind",
+                    }[count]
+                    option = option_for(
+                        options,
+                        combination_type=combination_type,
+                        dice_indices=tuple(range(count)),
+                        points=face * 100 * (2 ** (count - 3)),
+                    )
+                    self.assertEqual(option.dice_values, (face,) * count)
 
-        five_ones = scoring_options_for_roll([1, 1, 1, 1, 1, 2], turn_id=1, roll_id=2)
-        self.assertNotIn("five_of_a_kind", {option.combination_type for option in five_ones})
-        self.assertEqual(
-            option_for(five_ones, combination_type="combined", dice_indices=(0, 1, 2, 3, 4), points=1_200).points,
-            1_200,
-        )
-
-    def test_six_equal_are_two_triples_and_trigger_hot_dice_confirmation(self):
+    def test_ones_remain_fixed_triples_with_individual_extra_ones(self):
         options = scoring_options_for_roll([1, 1, 1, 1, 1, 1], turn_id=2, roll_id=4)
 
-        double_triple = option_for(
-            options,
-            combination_type="double_triple",
-            dice_indices=(0, 1, 2, 3, 4, 5),
-            points=2_000,
+        self.assertEqual(
+            option_for(
+                options,
+                combination_type="three_ones",
+                dice_indices=(0, 1, 2),
+                points=1_000,
+            ).points,
+            1_000,
         )
-        self.assertTrue(double_triple.hot_dice)
-        self.assertTrue(double_triple.free_roll)
-        self.assertTrue(double_triple.requires_confirmation)
+        self.assertFalse(
+            {"four_of_a_kind", "five_of_a_kind", "six_of_a_kind"}
+            & {option.combination_type for option in options}
+        )
+        self.assertEqual(
+            option_for(options, combination_type="combined", dice_indices=(0, 1, 2, 3), points=1_100).points,
+            1_100,
+        )
+        self.assertEqual(
+            option_for(options, combination_type="double_triple", dice_indices=(0, 1, 2, 3, 4, 5), points=2_000).points,
+            2_000,
+        )
+
+    def test_six_matching_twos_are_a_hot_six_of_a_kind(self):
+        options = scoring_options_for_roll([2, 2, 2, 2, 2, 2], turn_id=2, roll_id=4)
+
+        six_of_a_kind = option_for(
+            options,
+            combination_type="six_of_a_kind",
+            dice_indices=(0, 1, 2, 3, 4, 5),
+            points=1_600,
+        )
+        self.assertTrue(six_of_a_kind.hot_dice)
+        self.assertTrue(six_of_a_kind.free_roll)
+        self.assertTrue(six_of_a_kind.requires_confirmation)
 
     def test_straight_three_pairs_and_two_triples_are_supported(self):
         straight = option_for(
@@ -114,7 +147,7 @@ class ZilchScoringTestCase(TestCase):
         pairs = option_for(
             scoring_options_for_roll([2, 2, 3, 3, 6, 6], turn_id=1, roll_id=1),
             combination_type="three_pairs",
-            points=500,
+            points=1_500,
         )
         self.assertTrue(pairs.hot_dice)
         triples = option_for(

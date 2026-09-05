@@ -33,10 +33,12 @@ Punkte.
 | Einzelne 5 | 50 | Jede einzeln gehaltene 5. |
 | Drei 1en | 1.000 | Ein Drilling; löst einen Bestätigungswurf aus. |
 | Drei gleiche 2–6 | Augenzahl × 100 | Beispielsweise drei 4en = 400. |
-| Vier oder fünf Gleiche | keine eigene Sonderwertung | Sie bestehen aus einem Drilling plus möglichen einzelnen 1en/5en. |
-| Sechs Gleiche | zwei getrennte Drillinge | Beispielsweise sechs 1en = 2.000; kein Multiplikator. |
+| Vier gleiche 2–6 | doppelter Drillingwert | Beispielsweise vier 4en = 800. |
+| Fünf gleiche 2–6 | vierfacher Drillingwert | Beispielsweise fünf 4en = 1.600. |
+| Sechs gleiche 2–6 | achtfacher Drillingwert | Beispielsweise sechs 4en = 3.200; alle sechs lösen Hot Dice aus. |
+| Vier oder mehr 1en | keine eigene Gruppe | Bei Einsen bleibt der 1.000-Punkte-Drilling; zusätzliche 1en zählen einzeln mit 100, aber Vierlinge oder mehr entstehen nicht als Wertungsgruppe. |
 | Straße 1–6 | 2.000 | Alle sechs Würfel. |
-| Drei Paare | 500 | Alle sechs Würfel, drei Paare. |
+| Drei Paare | 1.500 | Alle sechs Würfel, drei Paare. |
 | Zwei Drillinge | Summe beider Drillinge | Beispielsweise 3×2 und 3×4 = 600. |
 | „500 für nichts“ | 500 | Nur bei sechs freien Würfeln ohne sonstige wertbare Kombination, etwa 2-2-3-4-6-6. Dies ist **kein** Zilch. |
 
@@ -46,9 +48,13 @@ Es gibt in dieser Regelversion keine weiteren Sonderkombinationen.
 
 - Der Spieler darf jeden gültigen, punktenden Teil eines Wurfs halten. Er darf
   etwa bei 3×5 nur eine 5 für 50 halten oder den Drilling für 500.
-- Werden drei gleiche Würfel gemeinsam gehalten, zählen sie zwingend als
-  Drilling und nicht als drei Einzelwürfel. Bei vier oder fünf gleichen
-  1en/5en ergänzt ein Drilling die übrigen ausgewählten Einzelwürfel.
+- Werden drei bis sechs gleiche 2–6 gemeinsam gehalten, zählen sie zwingend
+  als eine passende Wertungsgruppe und nicht als einzelne Würfel oder mehrere
+  Drillinge. Ab dem vierten Würfel verdoppelt sich der jeweilige Drillingwert
+  pro zusätzlichem Würfel.
+- Drei 1en zählen zwingend als 1.000-Punkte-Drilling. Weitere gleichzeitig
+  gehaltene 1en zählen weiterhin einzeln mit 100; Vierlinge oder mehr haben
+  keine eigene Mehrlingswertung.
 - Ein bereits bestätigter Hold ist endgültig; es gibt keine Unhold-Aktion.
 - Mehrere wertende Gruppen dürfen gemeinsam gehalten werden, zum Beispiel
   3×1 (=1.000) plus zwei weitere einzelne 1en (=200). Die Engine liefert auch
@@ -56,7 +62,7 @@ Es gibt in dieser Regelversion keine weiteren Sonderkombinationen.
 
 Beispiele:
 
-- `5-5-5-5-2-3`: ein Drilling 5 = 500; alle vier 5en zusammen = 550; nur
+- `5-5-5-5-2-3`: ein Drilling 5 = 500; alle vier 5en zusammen = 1.000; nur
   eine 5 = 50.
 - `1-1-1-5-5-2`: drei 1en und zwei einzelne 5en = 1.100. Wegen der drei 1en
   folgt ein Bestätigungswurf.
@@ -95,8 +101,8 @@ Ein weiterer Punktewurf mit mindestens 50 Punkten muss gehalten werden, wenn
 - durch die Holds alle sechs physischen Würfel gehalten wurden.
 
 Der zweite Fall umfasst insbesondere Straße, drei Paare, zwei Drillinge,
-sechs Gleiche und „500 für nichts“. Hot Dice setzt die sechs Würfel wieder auf
-frei; die Rundenpunkte und die Hold-Historie bleiben erhalten. Während ein
+sechs gleiche 2–6 und „500 für nichts“. Hot Dice setzt die sechs Würfel wieder
+auf frei; die Rundenpunkte und die Hold-Historie bleiben erhalten. Während ein
 Bestätigungswurf offen ist, darf nicht angeschrieben werden. Erzeugt der
 Bestätigungswurf erneut drei 1en oder Hot Dice, beginnt die Bestätigung erneut.
 
@@ -109,7 +115,8 @@ Ein Zilch tritt ein, wenn
 - die 300er-Schwelle am dritten Wurf nicht verbindlich erreicht werden kann.
 
 Ungesicherte Rundenpunkte verfallen; das eigene Board protokolliert den Zug
-als `zilch`. Beim **dritten und jedem weiteren dritten aufeinanderfolgenden**
+als `zilch`. Der letzte Zilch-Wurf bleibt sichtbar, bis der nächste Spieler
+tatsächlich würfelt. Beim **dritten und jedem weiteren dritten aufeinanderfolgenden**
 Zilch werden 500 Punkte abgezogen, also bei den Übergängen `2 → 3`, `5 → 6`,
 `8 → 9` und so weiter – niemals unter 0. Ein erfolgreiches Anschreiben setzt
 die Serie zurück.
@@ -130,12 +137,11 @@ Auswahl ist dafür gültig; beim Abwählen werden Würfel, die dadurch nicht meh
 werten, ebenfalls aus dem Entwurf entfernt. Bereits in einem früheren Wurf
 bestätigte Holds lassen sich nicht zurücknehmen.
 
-Die Daumenleiste zeigt höchstens acht unterschiedliche Empfehlungen. Physisch
-austauschbare Würfel derselben Wertung werden zusammengefasst; tatsächlich
-verschiedene Möglichkeiten mit demselben Punktwert bleiben dagegen erhalten.
-Bei `6, 5, 4, 4, 5, 1` sind deshalb sowohl die einzelne `1` als auch die beiden
-`5` als eigene 100-Punkte-Auswahl sichtbar und über ihre Würfelwerte
-unterscheidbar.
+Die Daumenleiste zeigt höchstens acht schlanke Empfehlungen. Sie zeigt eine
+einzelne Wertungsgruppe pro Karte – etwa `1 Einser`, `2 Fünfer`, einen
+Drilling oder einen Vierling – samt Punkten. Zusammengerechnete Mischungen
+werden dort nicht als eigene Karte erklärt. Eine bewusst direkt über Würfel
+zusammengestellte, gültige Auswahl bleibt weiterhin serverseitig prüfbar.
 
 Auf der aktiven Spielseite schalten die Tasten `1` bis `6` den entsprechenden
 noch nicht bestätigten Würfel um. `Q`, `W`, `E`, `R`, `T`, `Z`, `U` und `I`

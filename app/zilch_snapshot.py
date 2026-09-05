@@ -42,6 +42,37 @@ def _six_dice(game: GameDict) -> list[int]:
     return [value if isinstance(value, int) and 0 <= value <= 6 else 0 for value in values]
 
 
+def _last_zilch_dice(game: GameDict) -> dict | None:
+    """Expose a valid final Zilch rack without changing the current turn.
+
+    This is deliberately a small, display-only projection. A reconnecting
+    player can still see the just-lost throw until the next actual roll, while
+    all commands continue to use the fresh ready-to-roll turn in ``_dice``.
+    """
+    raw = game.get("_zilch_last_zilch_dice")
+    if not isinstance(raw, dict):
+        return None
+    dice = raw.get("dice")
+    if (
+        not isinstance(dice, list)
+        or len(dice) != ZILCH_DICE_COUNT
+        or any(type(value) is not int or value < 1 or value > 6 for value in dice)
+    ):
+        return None
+    held = raw.get("held_dice_indices")
+    held_indices = (
+        sorted({index for index in held if type(index) is int and 0 <= index < ZILCH_DICE_COUNT})
+        if isinstance(held, list)
+        else []
+    )
+    return {
+        "player_id": str(raw.get("player_id") or ""),
+        "turn_id": raw.get("turn_id") if type(raw.get("turn_id")) is int else 0,
+        "dice": dice[:],
+        "held_dice_indices": held_indices,
+    }
+
+
 def _boards(
     game: GameDict,
     *,
@@ -258,6 +289,7 @@ def snapshot_zilch(game: GameDict) -> dict:
         "locked": bool(game.get("_passphrase")),
         "_turn": game.get("_turn"),
         "_dice": _six_dice(game),
+        "_zilch_last_zilch_dice": _last_zilch_dice(game),
         "_holds": [bool(value) for value in list(game.get("_holds") or [])[:ZILCH_DICE_COUNT]],
         "_rolls_used": int(game.get("_rolls_used", 0) or 0),
         "_target_score": int(game.get("_target_score", ZILCH_TARGET_SCORE) or ZILCH_TARGET_SCORE),

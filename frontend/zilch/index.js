@@ -2195,8 +2195,10 @@ function renderRulesContent(facts) {
         ${rulesTableRow(t("Einzelne Fünfen"), `${ruleNumber(scoring.single_five)} ${t("Punkte")}`, t("Jede einzeln gehaltene 5 zählt."))}
         ${rulesTableRow(t("Drei Einsen"), `${ruleNumber(scoring.three_ones)} ${t("Punkte")}`, t("Ein Drilling Einsen erfordert danach einen Bestätigungswurf."))}
         ${rulesTableRow(t("Drillinge 2 bis 6"), t("Augenzahl × 100"), t("Drei gleiche Würfel werden als Drilling gewertet."))}
-        ${rulesTableRow(t("Vier oder fünf Gleiche"), t("Keine Sonderwertung"), t("Sie bestehen aus einem Drilling und möglichen einzelnen Einsen oder Fünfen."))}
-        ${rulesTableRow(t("Sechs Gleiche"), t("Zwei Drillinge"), t("Jedes Drilling-Set zählt getrennt; alle sechs Würfel lösen Hot Dice aus."))}
+        ${rulesTableRow(t("Vier Gleiche (2 bis 6)"), t("Doppelter Drillingwert"), t("Vier gleiche Würfel zählen doppelt so viel wie der passende Drilling."))}
+        ${rulesTableRow(t("Fünf Gleiche (2 bis 6)"), t("Vierfacher Drillingwert"), t("Fünf gleiche Würfel zählen viermal so viel wie der passende Drilling."))}
+        ${rulesTableRow(t("Sechs Gleiche (2 bis 6)"), t("Achtfacher Drillingwert"), t("Sechs gleiche Würfel zählen achtmal so viel wie der passende Drilling und lösen Hot Dice aus."))}
+        ${rulesTableRow(t("Vier oder mehr Einsen"), t("Keine eigene Gruppe"), t("Einsen bleiben beim 1’000-Punkte-Drilling; zusätzliche Einsen zählen einzeln, Vierlinge oder mehr werden nicht als eigene Gruppe gewertet."))}
         ${rulesTableRow(t("Straße 1–6"), `${ruleNumber(scoring.straight)} ${t("Punkte")}`, t("Alle sechs Würfel werden gehalten."))}
         ${rulesTableRow(t("Drei Paare"), `${ruleNumber(scoring.three_pairs)} ${t("Punkte")}`, t("Drei verschiedene Paare mit allen sechs Würfeln."))}
         ${rulesTableRow(t("Zwei Drillinge"), t("Summe beider Drillinge"), t("Zum Beispiel drei Zweien und drei Vieren ergeben 600 Punkte."))}
@@ -2207,11 +2209,11 @@ function renderRulesContent(facts) {
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Wertungen auswählen"))}</h2><p>${escapeHtml(t("Tippe eine Wertung oder einzelne Würfel an. Die Auswahl bleibt bis zum Weiterwürfeln oder Sichern änderbar."))}</p><p>${escapeHtml(t("Nur eine gemeinsam wertende Auswahl kann übernommen werden; ungültig gewordene Würfel fallen aus der Auswahl."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Würfeln oder sichern"))}</h2><p>${escapeHtml(t("Nach dem dritten Wurf müssen mindestens 300 Rundenpunkte gehalten sein. Sichern ist ab 400 Punkten möglich, solange kein Bestätigungswurf offen ist."))}</p><p>${escapeHtml(t("Vor dem Sichern kannst du deine Würfelauswahl jederzeit anpassen."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Hot Dice und Bestätigungswurf"))}</h2><p>${escapeHtml(t("Wenn alle sechs Würfel Punkte geben, werden sie wieder frei: Hot Dice. Die Rundenpunkte bleiben bestehen."))}</p><p>${escapeHtml(t("Ein Tipp auf Hot Dice markiert alle passenden Würfel. Erst Weiterwürfeln übernimmt die Auswahl."))}</p><p>${escapeHtml(t("Nach drei Einsen oder einem vollständigen Hold muss ein weiterer Punktewurf von mindestens 50 Punkten bestätigt werden, bevor du sichern darfst."))}</p></section>
-      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zilch-Serie"))}</h2><p>${escapeHtml(t("Ein Wurf ohne gültige Wertung – oder eine nicht erreichbare 300er-Regel nach Wurf drei – beendet den Zug als Zilch. Ungesicherte Punkte verfallen."))}</p><p>${escapeHtml(t("Bei einem Zilch bleibt der letzte Wurf kurz sichtbar, bevor der Zug wechselt."))}</p><p>${escapeHtml(t("Bei jedem dritten Zilch in Folge – also beim dritten, sechsten, neunten und so weiter – werden 500 Punkte abgezogen, niemals unter null."))}</p></section>
+      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zilch-Serie"))}</h2><p>${escapeHtml(t("Ein Wurf ohne gültige Wertung – oder eine nicht erreichbare 300er-Regel nach Wurf drei – beendet den Zug als Zilch. Ungesicherte Punkte verfallen."))}</p><p>${escapeHtml(t("Bei einem Zilch bleibt der letzte Wurf sichtbar, bis der nächste Wurf ausgeführt wird."))}</p><p>${escapeHtml(t("Bei jedem dritten Zilch in Folge – also beim dritten, sechsten, neunten und so weiter – werden 500 Punkte abgezogen, niemals unter null."))}</p></section>
     </section>
     <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>
     <section class="zilch-card zilch-rules-section zilch-rules-section--solo"><p class="eyebrow">${escapeHtml(t("Solo"))}</p><h2>${escapeHtml(t("10’000-Punkte-Sprint"))}</h2><p>${escapeHtml(t("Im Solo-Sprint erreichst du mindestens 10’000 Punkte in möglichst wenigen eigenen Zügen. Der Lauf beginnt direkt mit deinem ersten normalen Zug – ohne Startwurf, Gegner, Schlussrunde oder Gegenzug."))}</p><p>${escapeHtml(t("Bei gleicher Zielerreichung werden später zuerst weniger Züge, dann weniger Würfe, weniger Zilchs und eine kürzere aktive Dauer verglichen. Pausenzeit zählt nicht zur aktiven Dauer."))}</p><p>${escapeHtml(t("Du kannst einen Solo-Lauf nach Bestätigung aufgeben. Er bleibt mit dem Status „Aufgegeben“ in deiner Historie erhalten."))}</p></section>
-    <section class="zilch-card zilch-rules-examples"><p class="eyebrow">${escapeHtml(t("Beispiele"))}</p><h2>${escapeHtml(t("Gültige Auswahlen"))}</h2><ul><li><code>5–5–5–5–2–3</code> — ${escapeHtml(t("Drilling Fünfen = 500; alle vier Fünfen = 550; nur eine Fünf = 50."))}</li><li><code>1–1–1–5–5–2</code> — ${escapeHtml(t("Drei Einsen und zwei einzelne Fünfen = 1’100; danach ist ein Bestätigungswurf nötig."))}</li><li><code>1–2–3–4–5–6</code> — ${escapeHtml(t("Straße, 2’000 Punkte, Hot Dice und Bestätigungswurf."))}</li><li><code>2–2–3–4–6–6</code> — ${escapeHtml(t("500 für nichts: alle Würfel werden wieder frei, der Zug läuft weiter."))}</li></ul></section>`;
+    <section class="zilch-card zilch-rules-examples"><p class="eyebrow">${escapeHtml(t("Beispiele"))}</p><h2>${escapeHtml(t("Gültige Auswahlen"))}</h2><ul><li><code>5–5–5–5–2–3</code> — ${escapeHtml(t("Drilling Fünfen = 500; vier Fünfen = 1’000; nur eine Fünf = 50."))}</li><li><code>1–1–1–5–5–2</code> — ${escapeHtml(t("Drei Einsen und zwei einzelne Fünfen = 1’100; danach ist ein Bestätigungswurf nötig."))}</li><li><code>1–2–3–4–5–6</code> — ${escapeHtml(t("Straße, 2’000 Punkte, Hot Dice und Bestätigungswurf."))}</li><li><code>2–2–3–4–6–6</code> — ${escapeHtml(t("500 für nichts: alle Würfel werden wieder frei, der Zug läuft weiter."))}</li></ul></section>`;
 }
 
 async function renderRules() {
@@ -2662,7 +2664,9 @@ function dieDescription(index, value, turnState, quickHolds) {
   const held = Array.isArray(turnState?.held_dice_indices) && turnState.held_dice_indices.includes(index);
   const selected = draftHoldIndices(turnState).includes(index);
   const scoreable = quickHolds.some(option => Array.isArray(option.dice_indices) && option.dice_indices.includes(index));
-  const stateLabel = !value
+  const stateLabel = turnState?.phase === "zilch_reveal"
+    ? t("Letzter Zilch-Wurf")
+    : !value
     ? t("Noch nicht gewürfelt")
     : held
       ? t("Verbindlich gehalten")
@@ -2677,22 +2681,34 @@ function dieDescription(index, value, turnState, quickHolds) {
 
 function diceRack(snapshot, turnState, quickHolds, isMyTurn) {
   const revealMoment = state.zilchMoment?.phase === "reveal" ? state.zilchMoment : null;
+  const currentDice = Array.isArray(snapshot._dice) ? snapshot._dice.slice(0, 6) : [0, 0, 0, 0, 0, 0];
+  const retainedRack = snapshot?._zilch_last_zilch_dice;
+  const retainedDice = Array.isArray(retainedRack?.dice) ? retainedRack.dice.map(Number) : [];
+  const hasRetainedZilchRack = Boolean(
+    !revealMoment
+    && currentDice.every(value => !Number(value))
+    && retainedDice.length === 6
+    && retainedDice.every(value => Number.isInteger(value) && value >= 1 && value <= 6),
+  );
   const dice = Array.isArray(revealMoment?.rolledDice)
     ? revealMoment.rolledDice.slice(0, 6)
-    : Array.isArray(snapshot._dice) ? snapshot._dice.slice(0, 6) : [0, 0, 0, 0, 0, 0];
+    : hasRetainedZilchRack ? retainedDice : currentDice;
   while (dice.length < 6) dice.push(0);
   const displayTurnState = revealMoment
     ? { ...turnState, phase: "awaiting_hold", held_dice_indices: revealMoment.heldDiceIndices }
+    : hasRetainedZilchRack
+      ? { ...turnState, phase: "zilch_reveal", held_dice_indices: normalizedIndices(retainedRack?.held_dice_indices) }
     : turnState;
-  const displayQuickHolds = revealMoment ? [] : quickHolds;
+  const displayQuickHolds = revealMoment || hasRetainedZilchRack ? [] : quickHolds;
   const rolling = state.pendingAction === "zilch_roll_dice";
   const landing = Boolean(state.diceLandingPending || revealMoment);
-  return `<div class="zilch-dice${rolling ? " is-rolling" : ""}${landing ? " is-landing" : ""}${revealMoment ? " is-zilch-reveal" : ""}" aria-label="${escapeHtml(t("Sechs Würfel"))}" aria-busy="${rolling ? "true" : "false"}">${dice.map((die, index) => {
-    const label = dieDescription(index, die, displayTurnState, displayQuickHolds);
+  return `<div class="zilch-dice${rolling ? " is-rolling" : ""}${landing ? " is-landing" : ""}${revealMoment ? " is-zilch-reveal" : ""}${hasRetainedZilchRack ? " is-zilch-retained" : ""}" aria-label="${escapeHtml(t("Sechs Würfel"))}" aria-busy="${rolling ? "true" : "false"}">${dice.map((die, index) => {
+    const baseLabel = dieDescription(index, die, displayTurnState, displayQuickHolds);
+    const label = hasRetainedZilchRack ? `${t("Letzter Zilch-Wurf")}. ${baseLabel}` : baseLabel;
     const held = Array.isArray(displayTurnState?.held_dice_indices) && displayTurnState.held_dice_indices.includes(index);
     const scoreable = displayQuickHolds.some(option => Array.isArray(option.dice_indices) && option.dice_indices.includes(index));
-    const selectable = Boolean(!revealMoment && isMyTurn && displayTurnState?.can_select_hold && die && !held && scoreable && !snapshot._paused && !snapshot._finished && !state.pendingAction);
-    const classes = `zilch-die ${dieState(index, die, displayTurnState, displayQuickHolds)}${state.pendingAction ? " zilch-die--pending" : ""}`;
+    const selectable = Boolean(!revealMoment && !hasRetainedZilchRack && isMyTurn && displayTurnState?.can_select_hold && die && !held && scoreable && !snapshot._paused && !snapshot._finished && !state.pendingAction);
+    const classes = `zilch-die ${dieState(index, die, displayTurnState, displayQuickHolds)}${hasRetainedZilchRack ? " zilch-die--zilch-retained" : ""}${state.pendingAction ? " zilch-die--pending" : ""}`;
     const face = diePips(die, index);
     return selectable
       ? `<button type="button" class="${classes}" style="--die-index:${index}" data-zilch-die-index="${index}" aria-keyshortcuts="${index + 1}" aria-pressed="${draftHoldIndices(displayTurnState).includes(index) ? "true" : "false"}" aria-label="${escapeHtml(label)}">${face}</button>`
@@ -2710,6 +2726,22 @@ function optionTitle(option) {
 }
 
 function compactOptionTitle(option) {
+  const values = Array.isArray(option?.dice_values)
+    ? option.dice_values.map(Number).filter(value => Number.isInteger(value) && value >= 1 && value <= 6)
+    : [];
+  const face = values[0];
+  if (face && values.length && values.every(value => value === face)) {
+    const count = values.length;
+    const english = String(window.ZDWA_I18N?.getLanguage?.() || document.documentElement.lang || "de").startsWith("en");
+    if (english) {
+      const names = { 1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six" };
+      const singular = names[face] || String(face);
+      const plural = `${singular}s`;
+      return `${count} ${count === 1 ? singular : plural}`;
+    }
+    const name = face === 1 ? "Einser" : face === 5 ? "Fünfer" : `${face}er`;
+    return `${count} ${name}`;
+  }
   return optionTitle(option).replace(/\s*·\s*[+−-]?[\d'’.,\s]+$/, "").trim();
 }
 
@@ -2721,11 +2753,22 @@ function orderedQuickHolds(options) {
   ));
 }
 
+function isLeanRecommendation(option) {
+  const components = Array.isArray(option?.components) ? option.components : [];
+  if (components.length <= 1) return true;
+  const componentTypes = components.map(component => String(component?.combination_type || ""));
+  return componentTypes.length > 0
+    && (componentTypes.every(type => type === "single_one") || componentTypes.every(type => type === "single_five"));
+}
+
 function recommendationOptions(snapshot, options, draft) {
   const dice = Array.isArray(snapshot?._dice) ? snapshot._dice : [];
   const unique = [];
   const signatures = new Set();
-  const source = options.filter(option => optionMatchesDraft(option, draft));
+  const source = options.filter(option => (
+    optionMatchesDraft(option, draft)
+    && (isLeanRecommendation(option) || sameIndices(option?.dice_indices, draft))
+  ));
   for (const option of source) {
     const values = normalizedIndices(option?.dice_indices).map(index => Number(dice[index] || 0)).sort((a, b) => a - b);
     const signature = [
@@ -2752,10 +2795,9 @@ function recommendationOptions(snapshot, options, draft) {
   });
   if (unique.length <= ZILCH_RECOMMENDATION_SHORTCUTS.length) return unique;
 
-  // Combined scores can otherwise crowd a smaller, genuinely different
-  // choice out of the bounded thumb rail. Reserve room for the selected
-  // draft, Hot Dice, and one representative of each ordinary single face;
-  // then fill the remaining slots in the established score order.
+  // Keep the thumb rail focussed on one clear, holdable group per card.
+  // Reserve room for the selected draft, a free roll, and both single-die
+  // families before filling the remaining bounded slots.
   const reserved = [];
   const reserve = predicate => {
     const option = unique.find(predicate);
@@ -2785,27 +2827,24 @@ function recommendationCards(snapshot, turnState, isMyTurn) {
   if (!options.length) return "";
   const draft = draftHoldIndices(turnState);
   const recommendations = recommendationOptions(snapshot, orderedQuickHolds(options), draft);
-  const pointFrequency = recommendations.reduce((counts, option) => {
-    const points = Number(option?.points || 0);
-    counts.set(points, (counts.get(points) || 0) + 1);
-    return counts;
-  }, new Map());
-  return `<ol class="zilch-recommendations__list">${recommendations.map((option, index) => {
+  if (!recommendations.length) return "";
+  // The red stamp describes the roll, not merely the subset of cards that
+  // stays visible in the compact rail. A mixed Hot-Dice selection can be
+  // deliberately hidden as a recommendation while still being a free roll.
+  const hasFreeRoll = options.some(option => Boolean(option?.hot_dice));
+  return `<div class="zilch-recommendations__rail${hasFreeRoll ? " has-free-roll" : ""}">
+    ${hasFreeRoll ? `<div class="zilch-hot-roll-stamp" aria-hidden="true"><strong>${escapeHtml(t("Freier Wurf!"))}</strong></div>` : ""}
+    <ol class="zilch-recommendations__list">${recommendations.map((option, index) => {
     const selected = sameIndices(option.dice_indices, draft);
     const hotDice = Boolean(option.hot_dice);
-    const label = hotDice ? t("Hot Dice") : compactOptionTitle(option);
-    const values = normalizedIndices(option?.dice_indices)
-      .map((dieIndex, valueIndex) => Number(snapshot?._dice?.[dieIndex] ?? option?.dice_values?.[valueIndex] ?? 0))
-      .filter(Boolean);
-    const valueHint = pointFrequency.get(Number(option?.points || 0)) > 1 && values.length
-      ? ` · ${values.join(" + ")}`
-      : "";
+    const label = compactOptionTitle(option);
     const shortcut = ZILCH_RECOMMENDATION_SHORTCUTS[index];
-    const accessibleLabel = `+${number(option.points)} ${label}${valueHint}`;
+    const accessibleLabel = `+${number(option.points)} ${label}${hotDice ? ` · ${t("Freier Wurf")}` : ""}`;
     return `<li><button type="button" class="zilch-recommendation${selected ? " is-selected" : ""}${hotDice ? " is-hot" : ""}" data-zilch-recommendation="${escapeHtml(option.id)}" data-zilch-shortcut="${shortcut}" ${selectable ? "" : "disabled"} aria-keyshortcuts="${shortcut}" aria-label="${escapeHtml(accessibleLabel)}" aria-pressed="${selected ? "true" : "false"}">
-      <strong aria-hidden="true">${selected ? "✓ " : ""}+${number(option.points)}</strong><span aria-hidden="true">${escapeHtml(label)}${escapeHtml(valueHint)}</span><kbd class="zilch-recommendation__shortcut" aria-hidden="true">${shortcut.toUpperCase()}</kbd>
+      <strong aria-hidden="true">${selected ? "✓ " : ""}+${number(option.points)}</strong><span aria-hidden="true">${escapeHtml(label)}</span><kbd class="zilch-recommendation__shortcut" aria-hidden="true">${shortcut.toUpperCase()}</kbd>
     </button></li>`;
-  }).join("")}</ol>`;
+  }).join("")}</ol>
+  </div>`;
 }
 
 function turnScoreMarkup(snapshot, turnState, quickHolds, isMyTurn) {

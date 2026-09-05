@@ -1396,8 +1396,9 @@ def api_zilch_rules(request: Request) -> dict[str, object]:
             "single_one": 100,
             "single_five": 50,
             "three_ones": 1_000,
+            "of_a_kind_multiplier_after_three": 2,
             "straight": 2_000,
-            "three_pairs": 500,
+            "three_pairs": 1_500,
             "nothing_bonus": 500,
         },
     }

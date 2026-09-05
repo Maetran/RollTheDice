@@ -50,10 +50,10 @@ from .zilch_solo_objective import ZILCH_SOLO_SPRINT_OBJECTIVE_ID, ZILCH_SOLO_SPR
 logger = logging.getLogger(__name__)
 
 ZILCH_ACHIEVEMENT_RESPONSE_VERSION: Final = 2
-# Version 4 adds high-score, long-match and twenty-Zilch families. It makes
-# installations that already materialized the previous catalog evaluate the
-# new definitions from their explicitly registered evidence exactly once.
-ZILCH_ACHIEVEMENT_CATALOG_VERSION: Final = 4
+# Version 5 adds the escalating matching-dice families. It makes installations
+# that already materialized the previous catalog evaluate the new definitions
+# from their explicitly registered evidence exactly once.
+ZILCH_ACHIEVEMENT_CATALOG_VERSION: Final = 5
 ZILCH_ACHIEVEMENT_NAMESPACE: Final = "zilch."
 ZILCH_ACHIEVEMENT_DEFINITION_VERSION: Final = 1
 ZILCH_ACHIEVEMENT_RECOVERY_DEFAULT_LIMIT: Final = 50
@@ -976,15 +976,45 @@ ZILCH_ACHIEVEMENTS: Final[tuple[ZilchAchievementDefinition, ...]] = (
         "first_double_triple",
         category="combinations",
         icon_key="star",
-        title_de="Sechslinge",
+        title_de="Sechsling",
         title_en="Six of a Kind",
-        description_de="Zum ersten Mal sechs gleiche Würfel als zwei Drillinge gehalten.",
-        description_en="Hold six matching dice as two triples for the first time.",
+        description_de="Zum ersten Mal sechs gleiche Würfel als Wertungsgruppe gehalten.",
+        description_en="Hold six matching dice as one scoring group for the first time.",
         criterion="combination",
         eligible_modes=_KNOWN_PLAY_MODES,
         result_schema_versions=_KNOWN_RESULT_SCHEMAS,
         points=10,
         target=5,
+        requires_complete_history=True,
+    ),
+    _definition(
+        "first_four_of_a_kind",
+        category="combinations",
+        icon_key="star",
+        title_de="Vierling",
+        title_en="Four of a Kind",
+        description_de="Zum ersten Mal vier gleiche Würfel als Wertungsgruppe gehalten.",
+        description_en="Hold four matching dice as one scoring group for the first time.",
+        criterion="combination",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=4,
+        target=6,
+        requires_complete_history=True,
+    ),
+    _definition(
+        "first_five_of_a_kind",
+        category="combinations",
+        icon_key="flame",
+        title_de="Fünfling",
+        title_en="Five of a Kind",
+        description_de="Zum ersten Mal fünf gleiche Würfel als Wertungsgruppe gehalten.",
+        description_en="Hold five matching dice as one scoring group for the first time.",
+        criterion="combination",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=6,
+        target=7,
         requires_complete_history=True,
     ),
     _definition(
@@ -1185,13 +1215,18 @@ ZILCH_ACHIEVEMENT_CATEGORIES: Final[tuple[str, ...]] = (
     "solo",
     "community",
 )
-_COMBINATION_BY_TARGET: Final[dict[int, str]] = {
-    0: "straight",
-    1: "three_pairs",
-    2: "nothing_bonus",
-    3: "three_ones",
-    4: "two_triples",
-    5: "double_triple",
+_COMBINATION_BY_TARGET: Final[dict[int, frozenset[str]]] = {
+    0: frozenset({"straight"}),
+    1: frozenset({"three_pairs"}),
+    2: frozenset({"nothing_bonus"}),
+    3: frozenset({"three_ones"}),
+    4: frozenset({"two_triples"}),
+    # ``double_triple`` remains in historical result payloads, but it is not
+    # the new escalating six-of-a-kind group. In particular, two fixed
+    # triple-ones must not unlock the 2–6 six-of-a-kind award.
+    5: frozenset({"six_of_a_kind"}),
+    6: frozenset({"four_of_a_kind"}),
+    7: frozenset({"five_of_a_kind"}),
 }
 _CPU_STRATEGY_BY_TARGET: Final[dict[int, str]] = {
     0: "conservative",
@@ -1898,8 +1933,8 @@ def _criterion_is_satisfied(definition: ZilchAchievementDefinition, facts: list[
         target = int(definition.target or 0)
         return any(int(item.get("final_score", 0)) >= target for item in applicable)
     if criterion == "combination":
-        combination = _COMBINATION_BY_TARGET.get(definition.target)
-        return any(combination in item["combination_types"] for item in applicable)
+        combinations = _COMBINATION_BY_TARGET.get(definition.target, frozenset())
+        return any(bool(combinations & set(item["combination_types"])) for item in applicable)
     if criterion == "hot_dice":
         return any(item.get("hot_dice_events") is not None and int(item["hot_dice_events"]) > 0 for item in applicable)
     if criterion == "hot_dice_in_game":

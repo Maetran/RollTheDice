@@ -91,19 +91,23 @@ compatibility route so iOS does not wrap the handoff in an external browser
 sheet; regular browser navigation still uses Zilch's canonical subdomain. The
 public Zilch lobby and rule guide are canonical, indexable pages.
 A player selects scoring dice directly or
-uses one of up to eight distinct suggestions; equivalent choices using
-interchangeable dice are deduplicated, while equal scores from genuinely
-different dice remain identifiable. The selection stays reversible until
-**Roll again** or **Bank** validates and commits it atomically. Previously held
-dice remain immutable; invalid dependent dice are removed when a selection is
-reduced. Hot Dice therefore selects all scoring dice in one tap but remains
-optional until the next action. On the active game page, keys 1–6 toggle the
-corresponding selectable dice, Q/W/E/R/T/Z/U/I activate the visible suggestions
-in order, Space performs the enabled start or regular roll, and B banks only
-when permitted. A Zilch keeps the authoritative final rack visible for 500 ms
-before its result overlay and turn handoff. CPU rolls use the same landing
-presentation, with readable pauses between decisions. Form fields, open
-dialogs, and modifier chords suppress these
+uses one of up to eight compact, single-group suggestions (for example one or
+two ones, one or two fives, a triple, or a four-of-a-kind). Mixed combinations
+are not summarized into suggestion cards, while a deliberately assembled valid
+selection remains server-verified. For twos through sixes, every matching die
+after the third doubles that face's triple value; ones keep their fixed
+1,000-point triple and any extra held ones stay individual 100-point dice,
+while three pairs score 1,500. The selection stays reversible
+until **Roll again** or **Bank** validates and commits it atomically. Previously
+held dice remain immutable; invalid dependent dice are removed when a selection
+is reduced. Hot Dice therefore selects all scoring dice in one tap, shows a
+Free Roll stamp, and remains optional until the next action. On the active game
+page, keys 1–6 toggle the corresponding selectable dice, Q/W/E/R/T/Z/U/I
+activate the visible suggestions in order, Space performs the enabled start or
+regular roll, and B banks only when permitted. A Zilch keeps the authoritative
+final rack visible until the next actual roll. CPU rolls use the same landing
+presentation, with readable pauses between decisions. Form fields, open dialogs,
+and modifier chords suppress these
 shortcuts. Stacked, internally scrollable spiral score sheets with ruled paper
 and offset page edges keep the active player in front and the opponent total visible. The resulting
 turns are recorded there, while chat and short-lived emoji reactions remain separate
@@ -133,7 +137,7 @@ expanded points/rank catalog are documented in
 - Self-registration from the lobby with immutable usernames
 - Personal statistics split into Normal, Hardcore, and overall results, with a selectable score chart and median
 - Achievement milestones for special scoring plays, exact final scores, multiplayer victory margins, daily streaks, office-hour game counts, exact upper-section 60s, and Hardcore progress; every achievement awards 1–10 **Ehrenberg-Marken**, the achievement currency named after Ehrenberg in Reutte. When a game unlocks several achievements, each one is presented and acknowledged separately before the final standings; a genuine title increase then receives its own celebratory **LEVEL UP!** card. Completed-game replays show the achievements that were durably and unambiguously unlocked by that exact game, grouped by participant; account-only milestones and unlocks predating source-game attribution are deliberately not assigned retroactively. Profiles show the total, and the player overview includes a sortable Ehrenberg-Marken ranking. The calculated total also assigns an account-only title from Newbie through Godmode with star insignia, shown consistently beside player names in the lobby, live game, chat, profiles, replays, and rankings. Clicking an insignia opens the rank legend at `/rangabzeichen` (as an overlay during live play). Rollout-sensitive gameplay goals, including multiplayer and upper-section-60 goals, start from their introduction while score-based goals and Hardcore game counts remain historical
-- Zilch awards are a separate collection: 72 namespaced
+- Zilch awards are a separate collection: 74 namespaced
   goals cover first games, scoring, combinations, risk, career progress,
   duels, CPU play, Solo efficiency, and community milestones. Personal goals
   award 1–10 Zilch points and a Zilch-only rank; community milestones award
