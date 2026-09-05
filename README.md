@@ -112,8 +112,9 @@ while three pairs score 1,500. The selection stays reversible
 until **Roll again** or **Bank** validates and commits it atomically. Previously
 held dice remain immutable; invalid dependent dice are removed when a selection
 is reduced. The **Combined score** action beneath the score sheet selects all
-currently scoring dice in one tap; when that produces Hot Dice, its Free Roll
-stamp appears on this action and remains optional until the next action. On the active game
+currently scoring dice in one tap; when a named special roll such as three
+pairs produces Hot Dice, the action names that roll and adds its Free Roll
+stamp, while remaining optional until the next action. On the active game
 page, keys 1–6 toggle the corresponding selectable dice, Q/W/E/R/T/Z/U/I
 activate the visible suggestions in order, Space performs the enabled start or
 regular roll, and B banks only when permitted. A Zilch keeps the authoritative

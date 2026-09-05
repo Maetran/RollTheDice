@@ -336,6 +336,20 @@ function hotDiceChoiceSnapshot() {
   });
 }
 
+function threePairsHotDiceChoiceSnapshot() {
+  const snapshot = hotDiceChoiceSnapshot();
+  snapshot._dice = [2, 2, 3, 3, 6, 6];
+  snapshot._zilch_quick_holds = [{
+    ...snapshot._zilch_quick_holds[0],
+    id: "fixture-hot-three-pairs",
+    combination_type: "three_pairs",
+    dice_values: [2, 2, 3, 3, 6, 6],
+    points: 1500,
+    label_key: "zilch.option.three_pairs",
+  }];
+  return snapshot;
+}
+
 function equalScoreRecommendationSnapshot() {
   const option = ({
     id,
@@ -1818,7 +1832,7 @@ test("Space uses the enabled start roll first and otherwise the current roll act
   }
 });
 
-test("a Hot Dice choice stays optional until Weiterwürfeln commits it atomically", async ({ browser, baseURL }) => {
+test("a three-pairs Hot Dice choice names the roll and stays optional until Weiterwürfeln commits it atomically", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
   const page = await context.newPage();
   try {
@@ -1827,7 +1841,7 @@ test("a Hot Dice choice stays optional until Weiterwürfeln commits it atomicall
     expect(lobbyResponse?.status()).toBe(200);
     const shellHtml = await lobbyResponse.text();
     const gameId = "hot-dice-direct-fixture";
-    const snapshot = hotDiceChoiceSnapshot();
+    const snapshot = threePairsHotDiceChoiceSnapshot();
     await installGameScreenFixture(page, gameId, { initial: snapshot, heldForConfirmation: snapshot });
     await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
       status: 200,
@@ -1837,7 +1851,8 @@ test("a Hot Dice choice stays optional until Weiterwürfeln commits it atomicall
     await page.goto(`/zilch/spiel/${gameId}`);
 
     const combinedScore = page.locator("[data-zilch-combined-score]");
-    await expect(combinedScore).toContainText("Kombinierte Wertung");
+    await expect(combinedScore).toContainText("Drei Paare");
+    await expect(combinedScore).not.toContainText("Kombinierte Wertung");
     await expect(combinedScore).toHaveAttribute("aria-label", /Freier Wurf/);
     await expect(combinedScore.locator(".zilch-combined-score__stamp")).toContainText("Freier Wurf!");
     await expect(page.locator(".zilch-hot-roll-stamp")).toHaveCount(0);
@@ -1848,7 +1863,7 @@ test("a Hot Dice choice stays optional until Weiterwürfeln commits it atomicall
     await expect(page.locator(".zilch-die--selected")).toHaveCount(6);
     expect(await page.evaluate(() => window.__zilchGameScreenFixtureMessages.some(message => message.action === "zilch_select_hold"))).toBe(false);
 
-    // Removing one die from a straight also removes the now invalid dependent
+    // Removing one die from three pairs also removes the now invalid dependent
     // draft; the committed state still remains untouched.
     await page.locator("[data-zilch-die-index='0']").click();
     await expect(page.locator(".zilch-die--selected")).toHaveCount(0);
@@ -1860,9 +1875,9 @@ test("a Hot Dice choice stays optional until Weiterwürfeln commits it atomicall
         turn_id: 17,
         version: 8,
         roll_id: 12,
-        option_id: "fixture-hot-straight",
+        option_id: "fixture-hot-three-pairs",
         dice_indices: [0, 1, 2, 3, 4, 5],
-        points: 2000,
+        points: 1500,
       }),
     ]));
   } finally {

@@ -145,9 +145,10 @@ zusammengestellte, gültige Auswahl bleibt weiterhin serverseitig prüfbar.
 
 Die Schaltfläche **„Kombinierte Wertung“** direkt unter dem Spielblatt wählt
 alle aktuell punktenden Würfel als eine servergeprüfte Auswahl. Führt genau
-diese Auswahl zu Hot Dice, erscheint der Stempel **„Freier Wurf!“** auf der
-Schaltfläche. Auch diese Auswahl bleibt ein Entwurf, bis `Weiterwürfeln` oder
-`Sichern` sie atomar übernimmt.
+diese Auswahl als benannter Spezialwurf zu Hot Dice – etwa drei Paare oder eine
+Straße –, nennt die Schaltfläche den Wurf statt „Kombinierte Wertung“ und zeigt
+den Stempel **„Freier Wurf!“**. Auch diese Auswahl bleibt ein Entwurf, bis
+`Weiterwürfeln` oder `Sichern` sie atomar übernimmt.
 
 Auf der aktiven Spielseite schalten die Tasten `1` bis `6` den entsprechenden
 noch nicht bestätigten Würfel um. `Q`, `W`, `E`, `R`, `T`, `Z`, `U` und `I`

@@ -2477,6 +2477,7 @@ function renderRulesContent(facts) {
       <h2>${escapeHtml(t("Ziel der Partie"))}</h2>
       <p>${escapeHtml(objective)}</p>
       <p class="zilch-rules-overview__note">${escapeHtml(t("Pro Zug entscheidest du: Punkte sichern oder weiterwürfeln. Bei Zilch verfallen nur die noch nicht gesicherten Punkte."))}</p>
+      <p class="zilch-rules-overview__note">${escapeHtml(t("Bei einem Spezialwurf nennt die Kombinierte Wertung den Wurf und zeigt den Stempel „Freier Wurf“."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section" aria-labelledby="zilchScoringTitle">
       <p class="eyebrow">${escapeHtml(t("Wertung"))}</p><h2 id="zilchScoringTitle">${escapeHtml(t("Was Punkte bringt"))}</h2>
@@ -3158,7 +3159,11 @@ function turnScoreMarkup(snapshot, turnState, quickHolds, isMyTurn) {
   );
   const combinedSelected = Boolean(combined && sameIndices(combined.dice_indices, draftHoldIndices(turnState)));
   const freeRoll = Boolean(combined?.hot_dice);
-  const combinedLabel = t("Kombinierte Wertung");
+  // A named all-dice special (for example three pairs) is more useful than
+  // the generic combined-score label. Ordinary mixed holds retain that label.
+  const combinedLabel = freeRoll && combined?.combination_type !== "combined"
+    ? compactOptionTitle(combined)
+    : t("Kombinierte Wertung");
   const accessibleLabel = `${combinedLabel}: +${number(combined?.points)}${freeRoll ? ` · ${t("Freier Wurf")}` : ""}`;
   return `<div class="zilch-play-layout__current-score"><section class="zilch-turn-score" aria-live="polite" aria-label="${escapeHtml(t("Aktueller Wurf"))}">
     <span>${escapeHtml(t("Aktueller Wurf"))}</span>

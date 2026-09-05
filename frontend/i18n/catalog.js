@@ -981,6 +981,7 @@ export const EN = {
     "Tippe eine Wertung oder einzelne Würfel an. Die Auswahl bleibt bis zum Weiterwürfeln oder Sichern änderbar.": "Tap a scoring option or individual dice. You can change the selection until you roll again or bank it.",
     "Nur eine gemeinsam wertende Auswahl kann übernommen werden; ungültig gewordene Würfel fallen aus der Auswahl.": "Only a selection that scores together can be committed; dice that no longer score are removed from it.",
     "Kombinierte Wertung hält alle aktuell punktenden Würfel. Ein möglicher Freier Wurf erscheint dort als Stempel; erst Weiterwürfeln übernimmt die Auswahl.": "Combined score selects every die currently scoring points. A possible Free Roll appears there as a stamp; the selection is committed only when you roll again.",
+    "Bei einem Spezialwurf nennt die Kombinierte Wertung den Wurf und zeigt den Stempel „Freier Wurf“.": "For a special roll, Combined score names the roll and displays the Free Roll stamp.",
     "Vor dem Sichern kannst du deine Würfelauswahl jederzeit anpassen.": "You can adjust your dice selection at any time before locking it in.",
     "Tippe Würfel an und sichere die gewählte Wertung.": "Tap dice, then lock in your selected score.",
     "Wähle Würfel und entscheide dann: weiterwürfeln oder sichern.": "Choose dice, then decide whether to roll again or bank them.",
