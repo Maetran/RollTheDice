@@ -2462,7 +2462,7 @@ async function renderLeaderboards() {
   state.leaderboardOffset = 0;
   content.innerHTML = `<section class="zilch-game-head zilch-leaderboards-head">
       <div><p class="eyebrow">${escapeHtml(t("Spieler & Ranking"))}</p><h1>${escapeHtml(t("Zilch-Bestenlisten"))}</h1><p>${escapeHtml(t("Die Ranglisten vergleichen deine besten abgeschlossenen Zilch-Partien."))}</p></div>
-      <div class="zilch-actions">${zilchNavigationButton(zilchPath("/statistiken"), t("Deine Statistiken"))}${zilchNavigationButton(zilchPath("/erfolge"), t("Zilch-Awards"))}</div>
+      <div class="zilch-actions">${zilchNavigationButton(zilchPath("/statistiken"), t("Deine Statistiken"), "small zilch-header-action")}${zilchNavigationButton(zilchPath("/erfolge"), t("Zilch-Awards"), "small zilch-header-action")}</div>
     </section>
     <div id="zilchLeaderboardBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Bestenliste wird geladen …"))}</p></section></div>`;
   await refreshLeaderboard();

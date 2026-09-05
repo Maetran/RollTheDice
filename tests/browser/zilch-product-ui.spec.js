@@ -502,7 +502,9 @@ test("private Zilch statistics and leaderboards render only server projections a
   await expect(page.locator("tr[data-own-entry='true']")).toContainText("Mani");
   await expect(page.locator(".zilch-leaderboard-table .zilch-rank-badge")).toContainText("Spieler");
   await expect(page.getByRole("button", { name: "Deine Statistiken" })).toHaveAttribute("data-zilch-navigate", "/zilch/statistiken");
+  await expect(page.getByRole("button", { name: "Deine Statistiken" })).toHaveClass(/zilch-header-action/);
   await expect(page.getByRole("button", { name: "Zilch-Awards" })).toHaveAttribute("data-zilch-navigate", "/zilch/erfolge");
+  await expect(page.getByRole("button", { name: "Zilch-Awards" })).toHaveClass(/zilch-header-action/);
   await expect(page.getByText("Objective:", { exact: false })).toBeVisible();
   await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Abgeschlossen am");
   await expect(page.getByRole("button", { name: "Nächste" })).toBeEnabled();
