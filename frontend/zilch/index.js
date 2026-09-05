@@ -1671,6 +1671,17 @@ function zilchAccountTabsMarkup() {
   </nav>`;
 }
 
+function zilchAccountRankMarkup(projection) {
+  const rank = plainObject(projection?.rank);
+  if (!Object.keys(rank).length) return "";
+  return zilchRankBadgeMarkup({ zilch_achievement_rank: rank });
+}
+
+function renderZilchAccountRank(projection) {
+  const slot = document.getElementById("zilchAccountRank");
+  if (slot) slot.innerHTML = zilchAccountRankMarkup(projection);
+}
+
 function zilchAccountStatisticsLoadingMarkup() {
   return `<div id="zilchStatisticsBody" aria-live="polite">${statisticsTabMarkup()}<section class="zilch-card zilch-loading-card" role="status"><p>${escapeHtml(t("Zilch-Statistiken werden geladen …"))}</p></section></div>`;
 }
@@ -1850,7 +1861,7 @@ async function renderAccount() {
     ? "settings"
     : normalizedZilchAccountTab(window.location.hash, defaultTab);
   content.innerHTML = `<section class="zilch-game-head zilch-account-head">
-      <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><h1>${escapeHtml(username)}</h1><p>${escapeHtml(t("Dein Zilch-Konto bündelt deine privaten Statistiken und Awards."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><div class="zilch-account-head__identity"><h1>${escapeHtml(username)}</h1><span id="zilchAccountRank" class="zilch-account-head__rank" aria-live="polite"></span></div><p>${escapeHtml(t("Dein Zilch-Konto bündelt deine privaten Statistiken und Awards."))}</p></div>
     </section>
     ${zilchAccountTabsMarkup()}
     <section id="zilchAccountPanel-statistics" class="zilch-account-panel" data-zilch-account-panel="statistics" role="tabpanel" aria-labelledby="zilchAccountTab-statistics"${state.accountTab === "statistics" ? "" : " hidden"}>${zilchAccountStatisticsLoadingMarkup()}</section>
@@ -1871,6 +1882,7 @@ async function renderAccount() {
   }
   if (achievementsResult.status === "fulfilled") {
     [state.achievements, state.achievementRankLegend] = achievementsResult.value;
+    renderZilchAccountRank(state.achievements);
     renderAchievementsBody();
   } else {
     const slot = document.getElementById("zilchAchievementsBody");

@@ -215,6 +215,22 @@ test("private Zilch rules, history, and product navigation use the protected noi
   expect(externalHttpOrigins(requests, origin)).toEqual([]);
 });
 
+test("Zilch account keeps the player rank and statistic modes compact on mobile", async ({ page }) => {
+  await signInAsPreviewMani(page);
+  await page.goto("/zilch/konto");
+
+  await expect(page.locator(".zilch-account-head h1")).toHaveCSS("color", "rgb(255, 253, 245)");
+  await expect(page.locator("#zilchAccountRank .zilch-rank-badge")).toBeVisible();
+  await page.getByRole("tab", { name: "Statistiken" }).click();
+  await page.setViewportSize({ width: 375, height: 844 });
+
+  const statisticsTabRows = await page.locator("[data-zilch-stats-mode]").evaluateAll(tabs => (
+    [...new Set(tabs.map(tab => Math.round(tab.getBoundingClientRect().top)))]
+  ));
+  expect(statisticsTabRows).toHaveLength(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test("Zilch product navigation is keyboard-friendly, responsive, and localized without mounting ZDWA", async ({ page }) => {
   await signInAsPreviewMani(page);
   await expect(page.locator("html")).toHaveAttribute("data-game", "zdwa");

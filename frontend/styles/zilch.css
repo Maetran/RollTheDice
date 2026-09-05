@@ -332,6 +332,25 @@ html[data-game="zilch"] .zilch-nav-list .zilch-nav-back::before {
   color: #fffdf5;
   text-shadow: 0 .1rem .18rem rgba(35, 15, 6, .9), 0 .38rem .9rem rgba(35, 15, 6, .56);
 }
+.zilch-account-head h1 {
+  color: #fffdf5;
+  text-shadow: 0 .1rem .18rem rgba(35, 15, 6, .9), 0 .38rem .9rem rgba(35, 15, 6, .56);
+}
+.zilch-account-head__identity {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: .25rem .6rem;
+}
+.zilch-account-head__rank .zilch-rank-badge {
+  margin: .15rem 0 .55rem;
+  padding: .24rem .5rem;
+  border-color: rgba(255, 237, 180, .76);
+  color: #45230f;
+  background: linear-gradient(145deg, #fff7c8, #e0a743);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .8), 0 .16rem .4rem rgba(0, 0, 0, .2);
+  font-size: .78rem;
+}
 .zilch-header-action {
   border-color: rgba(255, 246, 212, .68);
   color: #3b1b0d;
@@ -2379,6 +2398,21 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
   .zilch-game-head,
   .zilch-table__heading,
   .zilch-section-heading { align-items: flex-start; flex-direction: column; }
+  .zilch-account-head h1 { font-size: clamp(2.45rem, 10vw, 3.25rem); }
+  html[data-game="zilch"] .zilch-account-panel .zilch-stats-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .35rem;
+    margin-bottom: .8rem;
+  }
+  html[data-game="zilch"] .zilch-account-panel .zilch-stats-tab {
+    min-width: 0;
+    min-height: 2.45rem;
+    padding: .38rem .18rem;
+    font-size: clamp(.64rem, 2.7vw, .76rem);
+    line-height: 1.1;
+    white-space: nowrap;
+  }
   .zilch-table__heading p { text-align: left; }
   .zilch-create-form { grid-template-columns: 1fr; }
   .zilch-create-form > *,
