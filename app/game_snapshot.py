@@ -143,7 +143,11 @@ def snapshot_zdwa(g: GameDict) -> dict:
         if not g.get("_finalization_pending"):
             refresh_game_achievement_ranks(g)
         # Ergebnisse (falls abgeschlossen) berechnen
-        if g["_finished"] and not g.get("_results"):
+        # An inactivity/manual abort is terminal, but it is not a scored
+        # result.  In particular, a timeout snapshot must not manufacture a
+        # ranking-looking result list after ``check_timeout_and_abort`` has
+        # deliberately cleared the durable outcome.
+        if g["_finished"] and not g.get("_aborted") and not g.get("_results"):
             g["_results"] = _compute_results_for_snapshot(g)
 
         # --- Auto-advance roll trigger logic ---
@@ -192,6 +196,7 @@ def snapshot_zdwa(g: GameDict) -> dict:
             "_started_at": g.get("_started_at"),
             "_updated_at": g.get("_updated_at"),
             "_aborted": g.get("_aborted", False),
+            "_abort_reason": g.get("_abort_reason") if g.get("_aborted") else None,
             "_paused": bool(pause_reason),
             "_pause_reason": pause_reason,
             "_manual_pause": bool(g.get("_manual_pause")),

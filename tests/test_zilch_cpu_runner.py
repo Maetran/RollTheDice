@@ -4,16 +4,18 @@ from __future__ import annotations
 
 import asyncio
 import os
+from datetime import datetime, timezone
 from unittest import TestCase
 from unittest.mock import AsyncMock, patch
 
-from app.game_state import games
+from app.game_state import GAME_TIMEOUT, check_timeout_and_abort, games
 from app.game_ws_session import GameSocketSession
 from app.zilch_cpu_runner import (
     cpu_action_delay_seconds,
     cpu_action_is_due,
     maybe_schedule_cpu_turn,
     resume_cpu_games,
+    stop_cpu_runner,
     stop_cpu_runners,
 )
 from app.zilch_gameplay import (
@@ -202,6 +204,28 @@ class ZilchCpuRunnerTestCase(TestCase):
         game["_resume_required"] = True
         self.assertFalse(cpu_action_is_due(game))
         self.assertIsNone(maybe_schedule_cpu_turn(game, delay_seconds=0))
+
+    def test_timeout_aborted_cpu_room_cancels_its_waiting_runner_without_a_move(self) -> None:
+        """An expiry cannot be undone by a CPU task that is still thinking."""
+        game, _socket, human_id, cpu_id = self._cpu_game()
+        record_zilch_start_roll(game, human_id, 2)
+        record_zilch_start_roll(game, cpu_id, 6)
+        self.assertTrue(cpu_action_is_due(game))
+        now = datetime(2031, 4, 5, 14, 30, tzinfo=timezone.utc)
+        game["_last_activity"] = now - GAME_TIMEOUT
+
+        async def scenario() -> None:
+            task = maybe_schedule_cpu_turn(game, delay_seconds=60, randint_fn=sequence_rng([6, 6, 6, 6, 6, 6]))
+            self.assertIsNotNone(task)
+            await asyncio.sleep(0)
+            self.assertTrue(check_timeout_and_abort(game, now=now))
+            self.assertFalse(cpu_action_is_due(game))
+            await stop_cpu_runner(str(game["_id"]))
+            self.assertTrue(task.cancelled())
+
+        asyncio.run(scenario())
+        self.assertEqual(game["_turn"]["player_id"], cpu_id)
+        self.assertEqual(game["_zilch_boards"][cpu_id]["rounds"], [])
 
     def test_unknown_recovered_strategy_stays_a_cpu_state_and_stops_without_inventing_a_move(self) -> None:
         game, socket, human_id, cpu_id = self._cpu_game()

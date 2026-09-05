@@ -15,17 +15,17 @@
   <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=a00d1ac4fd69">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=a00d1ac4fd69" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a00d1ac4fd69" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=eecd289a5fde">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=eecd289a5fde" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=eecd289a5fde" sizes="180x180">
   <!--
     rules.html - Spielanleitung
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi sowie Desktop-/Mobilsteuerung.
   -->
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <script src="/static/shell.js?v=a00d1ac4fd69" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=a00d1ac4fd69" />
+  <script src="/static/shell.js?v=eecd289a5fde" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=eecd289a5fde" />
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
     .doc { width:min(1120px, calc(100vw - 32px)); margin:1.25rem auto 2rem; }
@@ -138,7 +138,7 @@
       <li><strong>Hardcore:</strong> Ein automatischer Wurf pro Zug, kein Halten, keine Ansage, keine Korrektur. Die ❗-Spalte verhält sich wie eine zweite Freireihe.</li>
       <li><strong>Pause &amp; Lobby:</strong> Du kannst das Spiel pausieren und innerhalb der angezeigten Restzeit wieder aufnehmen oder es abbrechen und alle zur Lobby zurückschicken. In Mehrspieler-Partien pausiert das Spiel auch, solange ein Spieler nicht verbunden ist. Abgebrochene Spiele erscheinen nicht in Alltime/7-Tage-Listen.</li>
       <li><strong>Server-Neustart:</strong> Wartende und laufende Partien bleiben erhalten. Nach dem Neustart werden Spieler als offline angezeigt und können die Partie mit ihrem gespeicherten Zugang wieder aufnehmen.</li>
-      <li><strong>Auto-Timeout:</strong> Spiele ohne Aktivität werden nach 1 Stunde automatisch abgebrochen.</li>
+      <li><strong>Auto-Timeout:</strong> Bleibt ein wartender, laufender oder pausierter Tisch eine Stunde ohne angenommene Raumaktion, wird die Partie abgebrochen. Verbundene Spieler und Zuschauer sehen den Abschluss-Hinweis mit Rückweg zur Lobby.</li>
     </ul>
 
     <h2>Erfolge &amp; Fortschritt</h2>

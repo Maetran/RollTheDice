@@ -31,7 +31,13 @@ const accountRoute = currentZilchRoute === "/konto";
 const playerAchievementsMatch = currentZilchRoute?.match(/^\/spieler\/([^/]+)$/);
 const playerAchievementsUsername = decodedPathSegment(playerAchievementsMatch);
 const ZILCH_ACTIVE_GAME_STORAGE_KEY = "zilch_active_game_id";
-const ZILCH_LEADERBOARD_LIMIT = 100;
+// Keep a terminal marker on the concrete connection as well as the rendered
+// snapshot. A delayed earlier frame must never turn a timeout close back into
+// the normal reconnect loop.
+const terminalGameSockets = new WeakSet();
+// The table view deliberately stays short: the leading ten are useful
+// at a glance, while the API separately supplies the signed-in player's row.
+const ZILCH_LEADERBOARD_LIMIT = 10;
 const ZILCH_ROLL_REVEAL_DURATION_MS = 500;
 const ZILCH_EVENT_OVERLAY_DURATION_MS = 1_350;
 const ZILCH_RECOMMENDATION_SHORTCUTS = ["q", "w", "e", "r", "t", "z", "u", "i"];
@@ -67,7 +73,7 @@ const state = {
   leaderboard: null,
   leaderboardCategory: "solo_sprint",
   leaderboardStrategy: "conservative",
-  leaderboardOffset: 0,
+  leaderboardRequestVersion: 0,
   achievements: null,
   achievementRankLegend: null,
   playerAchievements: null,
@@ -402,9 +408,14 @@ function playerCollectionMarkup(value) {
   const identity = `<span class="zilch-player-name">${escapeHtml(label)}</span>${zilchRankBadgeMarkup(value)}`;
   const username = playerUsername(value);
   if (!username || isCpuParticipant(value)) return `<span class="zilch-player-identity">${identity}</span>`;
-  const own = typeOfUserId(value?.user_id) && sameId(value.user_id, state.auth?.user?.id);
+  // Leaderboard projections deliberately flag the signed-in person's row.
+  // Prefer that authoritative marker: it remains correct while the auth
+  // bootstrap is still settling and also keeps the personal award link in
+  // the Konto area instead of opening the public player profile.
+  const own = Boolean(value?.is_current_user)
+    || (typeOfUserId(value?.user_id) && sameId(value.user_id, state.auth?.user?.id));
   const href = own
-    ? zilchPath("/erfolge")
+    ? zilchPath("/konto#achievements")
     : zilchPath(`/spieler/${encodeURIComponent(username)}`);
   return `<a class="zilch-player-achievement-link" href="${escapeHtml(href)}">${identity}</a>`;
 }
@@ -1885,9 +1896,10 @@ async function renderAccount() {
   if (!content) return;
   const username = state.auth?.user?.username || t("Spieler");
   const defaultTab = state.auth?.user?.must_change_password ? "settings" : "statistics";
-  state.accountTab = state.auth?.user?.must_change_password
-    ? "settings"
-    : normalizedZilchAccountTab(window.location.hash, defaultTab);
+  // A fresh account still opens its required password settings by default,
+  // while an explicit personal deep link remains truthful. This makes the
+  // ranking CTAs and old-link aliases land on the requested Konto tab.
+  state.accountTab = normalizedZilchAccountTab(window.location.hash, defaultTab);
   content.innerHTML = `<section class="zilch-game-head zilch-account-head">
       <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><div class="zilch-account-head__identity"><h1>${escapeHtml(username)}</h1><span id="zilchAccountRank" class="zilch-account-head__rank" aria-live="polite"></span></div><p>${escapeHtml(t("Hier warten deine privaten Zilch-Zahlen und Awards."))}</p></div>
     </section>
@@ -1929,7 +1941,7 @@ async function renderPlayerAchievements() {
   const requestedName = String(playerAchievementsUsername || "").trim();
   content.innerHTML = `<section class="zilch-game-head zilch-achievements-head">
       <div><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><h1>${escapeHtml(t("Zilch-Awards eines Spielers"))}</h1><p>${escapeHtml(t("Hier dreht sich alles um Zilch-Awards, Zilch-Punkte und Zilch-Ränge. ZDWA bleibt ein eigener Tisch."))}</p></div>
-      ${zilchNavigationButton(zilchPath("/erfolge"), t("Meine Zilch-Awards"))}
+      ${zilchNavigationButton(zilchPath("/konto#achievements"), t("Meine Zilch-Awards"))}
     </section>
     <div id="zilchPlayerAchievementsBody"><section class="zilch-card zilch-loading-card" role="status"><p>${escapeHtml(t("Zilch-Awards werden geladen …"))}</p></section></div>`;
   try {
@@ -1945,7 +1957,7 @@ async function renderPlayerAchievements() {
     if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2></section>${achievementRankSummaryMarkup(state.playerAchievements)}${achievementRankLegendMarkup(state.playerAchievements, state.achievementRankLegend)}${achievementsCatalogMarkup(state.playerAchievements)}`;
   } catch (_) {
     const slot = document.getElementById("zilchPlayerAchievementsBody");
-    if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Awards nicht verfügbar"))}</h2><p>${escapeHtml(t("Dieser Zilch-Spieler konnte nicht gefunden werden."))}</p>${zilchNavigationButton(zilchPath("/erfolge"), t("Meine Zilch-Awards"))}</section>`;
+    if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Awards nicht verfügbar"))}</h2><p>${escapeHtml(t("Dieser Zilch-Spieler konnte nicht gefunden werden."))}</p>${zilchNavigationButton(zilchPath("/konto#achievements"), t("Meine Zilch-Awards"))}</section>`;
   }
 }
 
@@ -2270,7 +2282,7 @@ function normalizedLeaderboardCategory(value) {
 
 function leaderboardCategoryLabel(category) {
   if (category === "multiplayer_wins") return t("Zwei Spieler · Siege");
-  if (category === "cpu_wins") return t("Gegen den Würfelwirt · Siege");
+  if (category === "cpu_wins") return t("Würfelwirt · Siege");
   if (category === "achievement_points") return t("Zilch-Punkte");
   return t("Solo-Sprint");
 }
@@ -2298,7 +2310,7 @@ async function fetchZilchLeaderboard() {
   const params = new URLSearchParams({
     category: state.leaderboardCategory,
     limit: String(ZILCH_LEADERBOARD_LIMIT),
-    offset: String(Math.max(0, Number(state.leaderboardOffset) || 0)),
+    offset: "0",
   });
   if (state.leaderboardCategory === "cpu_wins") params.set("strategy", state.leaderboardStrategy);
   const response = await fetch(`/api/zilch/leaderboards?${params.toString()}`, { cache: "no-store" });
@@ -2365,7 +2377,9 @@ function zilchPlayerAchievementLink(entry) {
 }
 
 function leaderboardTableMarkup(leaderboard) {
-  const entries = Array.isArray(leaderboard.entries) ? leaderboard.entries : [];
+  const entries = Array.isArray(leaderboard.entries)
+    ? leaderboard.entries.slice(0, ZILCH_LEADERBOARD_LIMIT)
+    : [];
   const columns = leaderboardColumns(state.leaderboardCategory);
   if (!entries.length) return `<section class="zilch-empty-state"><h2>${escapeHtml(t("Noch keine vergleichbaren Ergebnisse"))}</h2><p>${escapeHtml(t("Sobald eine passende Zilch-Partie abgeschlossen ist, erscheint sie hier."))}</p></section>`;
   const compact = state.leaderboardCategory === "achievement_points";
@@ -2390,7 +2404,9 @@ function leaderboardTableMarkup(leaderboard) {
 
 function ownLeaderboardEntryMarkup(leaderboard) {
   const own = plainObject(leaderboard.own_entry);
-  const entries = Array.isArray(leaderboard.entries) ? leaderboard.entries : [];
+  const entries = Array.isArray(leaderboard.entries)
+    ? leaderboard.entries.slice(0, ZILCH_LEADERBOARD_LIMIT)
+    : [];
   if (!Object.keys(own).length || entries.some(entry => isOwnLeaderboardEntry(entry))) return "";
   const rank = leaderboardEntryValue(own, ["rank"]);
   const primary = leaderboardEntryValue(own, state.leaderboardCategory === "achievement_points"
@@ -2400,20 +2416,6 @@ function ownLeaderboardEntryMarkup(leaderboard) {
     ? zilchPointsText(primary)
     : primary === null ? "" : formattedStatistic(primary);
   return `<aside class="zilch-card zilch-own-leaderboard-entry" aria-label="${escapeHtml(t("Dein Eintrag"))}"><p class="eyebrow">${escapeHtml(t("Dein Eintrag"))}</p><h2>${zilchPlayerAchievementLink(own)}</h2><p><strong>${escapeHtml(t("Rang"))} ${escapeHtml(rank === null ? "—" : number(rank))}</strong>${primaryLabel ? ` · ${escapeHtml(primaryLabel)}` : ""}</p></aside>`;
-}
-
-function leaderboardPaginationMarkup(leaderboard) {
-  const offset = Math.max(0, Number(leaderboard.offset ?? state.leaderboardOffset) || 0);
-  const limit = Math.max(1, Number(leaderboard.limit) || ZILCH_LEADERBOARD_LIMIT);
-  const total = Number(leaderboard.total);
-  if (!Number.isFinite(total) || total <= limit) return "";
-  const previousDisabled = offset <= 0;
-  const nextDisabled = offset + limit >= total;
-  return `<nav class="zilch-leaderboard-pagination" aria-label="${escapeHtml(t("Seitennavigation der Bestenliste"))}">
-    <button type="button" class="small ghost" data-zilch-leaderboard-page="previous"${previousDisabled ? " disabled" : ""}>${escapeHtml(t("Vorherige"))}</button>
-    <p>${escapeHtml(interpolated("{from}–{to} von {total}", { from: number(offset + 1), to: number(Math.min(offset + limit, total)), total: number(total) }))}</p>
-    <button type="button" class="small ghost" data-zilch-leaderboard-page="next"${nextDisabled ? " disabled" : ""}>${escapeHtml(t("Nächste"))}</button>
-  </nav>`;
 }
 
 function leaderboardControlsMarkup() {
@@ -2447,6 +2449,64 @@ function updateLeaderboardLocation() {
   window.history.replaceState({}, "", zilchPath(`/bestenlisten${query ? `?${query}` : ""}`));
 }
 
+function showPendingLeaderboardCategory(category) {
+  document.querySelectorAll("[data-zilch-leaderboard-category]").forEach(button => {
+    const active = button.dataset.zilchLeaderboardCategory === category;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+}
+
+function spatialLeaderboardCategoryTarget(buttons, index, key) {
+  const current = buttons[index];
+  if (!current) return null;
+  const currentRect = current.getBoundingClientRect();
+  const center = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+  const currentCenter = center(currentRect);
+  const measured = buttons.map((button, buttonIndex) => ({
+    button,
+    index: buttonIndex,
+    rect: button.getBoundingClientRect(),
+  }));
+  const sameRow = candidate => Math.abs(center(candidate.rect).y - currentCenter.y) < Math.max(2, currentRect.height / 2);
+  const vertical = key === "ArrowUp" || key === "ArrowDown";
+  const forward = key === "ArrowRight" || key === "ArrowDown";
+  let candidates = measured.filter(candidate => candidate.index !== index && (vertical ? !sameRow(candidate) : sameRow(candidate)));
+  candidates = candidates.filter(candidate => {
+    const candidateCenter = center(candidate.rect);
+    return vertical
+      ? (forward ? candidateCenter.y > currentCenter.y + 1 : candidateCenter.y < currentCenter.y - 1)
+      : (forward ? candidateCenter.x > currentCenter.x + 1 : candidateCenter.x < currentCenter.x - 1);
+  });
+  if (!candidates.length && vertical) {
+    // Wrap only between real rows. On a one-row desktop grid, Up/Down keep
+    // the current tile rather than jumping sideways through the categories.
+    const otherRows = measured.filter(candidate => candidate.index !== index && !sameRow(candidate));
+    if (!otherRows.length) return current;
+    const edge = forward
+      ? Math.min(...otherRows.map(candidate => center(candidate.rect).y))
+      : Math.max(...otherRows.map(candidate => center(candidate.rect).y));
+    candidates = otherRows.filter(candidate => Math.abs(center(candidate.rect).y - edge) < 2);
+  }
+  if (!candidates.length && !vertical) {
+    const row = measured.filter(candidate => sameRow(candidate));
+    const edge = forward
+      ? Math.min(...row.map(candidate => center(candidate.rect).x))
+      : Math.max(...row.map(candidate => center(candidate.rect).x));
+    candidates = row.filter(candidate => Math.abs(center(candidate.rect).x - edge) < 2);
+  }
+  candidates.sort((first, second) => {
+    const firstCenter = center(first.rect);
+    const secondCenter = center(second.rect);
+    const firstPrimary = Math.abs((vertical ? firstCenter.y : firstCenter.x) - (vertical ? currentCenter.y : currentCenter.x));
+    const secondPrimary = Math.abs((vertical ? secondCenter.y : secondCenter.x) - (vertical ? currentCenter.y : currentCenter.x));
+    if (firstPrimary !== secondPrimary) return firstPrimary - secondPrimary;
+    return Math.abs((vertical ? firstCenter.x : firstCenter.y) - (vertical ? currentCenter.x : currentCenter.y))
+      - Math.abs((vertical ? secondCenter.x : secondCenter.y) - (vertical ? currentCenter.x : currentCenter.y));
+  });
+  return candidates[0]?.button || current;
+}
+
 function bindLeaderboardControls() {
   const form = document.getElementById("zilchLeaderboardFilters");
   if (form) form.addEventListener("change", event => {
@@ -2454,7 +2514,6 @@ function bindLeaderboardControls() {
     if (!(target instanceof HTMLSelectElement)) return;
     if (target.name !== "strategy" || !CPU_STRATEGIES.has(target.value)) return;
     state.leaderboardStrategy = target.value;
-    state.leaderboardOffset = 0;
     updateLeaderboardLocation();
     void refreshLeaderboard({ focusSelector: '#zilchLeaderboardFilters select[name="strategy"]' });
   });
@@ -2465,17 +2524,23 @@ function bindLeaderboardControls() {
     const category = normalizedLeaderboardCategory(button.dataset.zilchLeaderboardCategory);
     if (category === state.leaderboardCategory) return;
     state.leaderboardCategory = category;
-    state.leaderboardOffset = 0;
+    showPendingLeaderboardCategory(category);
     updateLeaderboardLocation();
     void refreshLeaderboard({ focusSelector: `[data-zilch-leaderboard-category="${category}"]` });
   });
-  document.querySelectorAll("[data-zilch-leaderboard-page]").forEach(button => button.addEventListener("click", () => {
-    const direction = button.dataset.zilchLeaderboardPage;
-    const limit = Math.max(1, Number(state.leaderboard?.limit) || ZILCH_LEADERBOARD_LIMIT);
-    state.leaderboardOffset = direction === "next"
-      ? state.leaderboardOffset + limit
-      : Math.max(0, state.leaderboardOffset - limit);
-    void refreshLeaderboard({ focusSelector: `[data-zilch-leaderboard-page="${direction}"]` });
+  const categoryButtons = [...document.querySelectorAll("[data-zilch-leaderboard-category]")];
+  categoryButtons.forEach((button, index) => button.addEventListener("keydown", event => {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    if (event.key === "Home") {
+      categoryButtons[0]?.focus();
+      return;
+    }
+    if (event.key === "End") {
+      categoryButtons[categoryButtons.length - 1]?.focus();
+      return;
+    }
+    spatialLeaderboardCategoryTarget(categoryButtons, index, event.key)?.focus();
   }));
 }
 
@@ -2483,12 +2548,15 @@ function renderLeaderboardBody() {
   const slot = document.getElementById("zilchLeaderboardBody");
   if (!slot) return;
   const leaderboard = state.leaderboard || {};
+  const total = Number(leaderboard.total);
+  const title = Number.isFinite(total) && total > ZILCH_LEADERBOARD_LIMIT
+    ? `${t("Top 10")} · ${leaderboardCategoryLabel(state.leaderboardCategory)}`
+    : leaderboardCategoryLabel(state.leaderboardCategory);
   slot.innerHTML = `<section class="zilch-card zilch-leaderboard-card">
-      <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Bestenlisten"))}</p><h2>${escapeHtml(leaderboardCategoryLabel(state.leaderboardCategory))}</h2></div><p class="zilch-leaderboard-sorting">${escapeHtml(leaderboardSortingDescription(state.leaderboardCategory))}</p></div>
+      <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Bestenlisten"))}</p><h2>${escapeHtml(title)}</h2></div><p class="zilch-leaderboard-sorting">${escapeHtml(leaderboardSortingDescription(state.leaderboardCategory))}</p></div>
       ${leaderboardObjectiveMarkup(leaderboard)}
       ${leaderboardControlsMarkup()}
       ${leaderboardTableMarkup(leaderboard)}
-      ${leaderboardPaginationMarkup(leaderboard)}
     </section>${ownLeaderboardEntryMarkup(leaderboard)}`;
   bindLeaderboardControls();
 }
@@ -2496,16 +2564,20 @@ function renderLeaderboardBody() {
 async function refreshLeaderboard({ focusSelector = "" } = {}) {
   const slot = document.getElementById("zilchLeaderboardBody");
   if (!slot) return;
+  const requestVersion = state.leaderboardRequestVersion + 1;
+  state.leaderboardRequestVersion = requestVersion;
   slot.setAttribute("aria-busy", "true");
   try {
-    state.leaderboard = await fetchZilchLeaderboard();
-    state.leaderboardOffset = Math.max(0, Number(state.leaderboard.offset ?? state.leaderboardOffset) || 0);
+    const leaderboard = await fetchZilchLeaderboard();
+    if (requestVersion !== state.leaderboardRequestVersion) return;
+    state.leaderboard = leaderboard;
     renderLeaderboardBody();
     if (focusSelector) document.querySelector(focusSelector)?.focus();
   } catch (_) {
+    if (requestVersion !== state.leaderboardRequestVersion) return;
     slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Bestenliste nicht verfügbar"))}</h2><p>${escapeHtml(t("Bitte versuche es später erneut oder kehre zur Zilch-Lobby zurück."))}</p>${zilchNavigationButton(zilchPath("/"), t("Zur Zilch-Lobby"))}</section>`;
   } finally {
-    slot.removeAttribute("aria-busy");
+    if (requestVersion === state.leaderboardRequestVersion) slot.removeAttribute("aria-busy");
   }
 }
 
@@ -2515,10 +2587,9 @@ async function renderLeaderboards() {
   state.leaderboardCategory = normalizedLeaderboardCategory(params.get("category"));
   const strategy = String(params.get("strategy") || state.leaderboardStrategy).toLowerCase();
   state.leaderboardStrategy = CPU_STRATEGIES.has(strategy) ? strategy : "conservative";
-  state.leaderboardOffset = 0;
   content.innerHTML = `<section class="zilch-game-head zilch-leaderboards-head">
       <div><p class="eyebrow">${escapeHtml(t("Spieler & Ranking"))}</p><h1>${escapeHtml(t("Zilch-Bestenlisten"))}</h1><p>${escapeHtml(t("Die Ranglisten vergleichen deine besten abgeschlossenen Zilch-Partien."))}</p></div>
-      <div class="zilch-actions">${zilchNavigationButton(zilchPath("/statistiken"), t("Deine Statistiken"), "small zilch-header-action")}${zilchNavigationButton(zilchPath("/erfolge"), t("Zilch-Awards"), "small zilch-header-action")}</div>
+      <div class="zilch-actions">${zilchNavigationButton(zilchPath("/konto#statistics"), t("Meine Statistiken"), "small zilch-header-action")}${zilchNavigationButton(zilchPath("/konto#achievements"), t("Meine Erfolge"), "small zilch-header-action")}</div>
     </section>
     <div id="zilchLeaderboardBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Bestenliste wird geladen …"))}</p></section></div>`;
   await refreshLeaderboard();
@@ -2577,6 +2648,7 @@ function renderRulesContent(facts) {
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Freier Wurf und Bestätigungswurf"))}</h2><p>${escapeHtml(t("Wenn alle sechs Würfel Punkte bringen, werden sie wieder frei: ein freier Wurf. Die Rundenpunkte bleiben stehen."))}</p><p>${escapeHtml(t("Alle Punktewürfel hält alle Würfel, die gerade Punkte bringen. Ein möglicher Freier Wurf erscheint als Stempel; erst Weiterwürfeln übernimmt die Auswahl."))}</p><p>${escapeHtml(t("Nach drei Einsen oder einem vollen Wurf mit allen sechs Würfeln muss ein weiterer Punktewurf von mindestens 50 Punkten bestätigt werden, bevor du sichern darfst."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zilch-Serie"))}</h2><p>${escapeHtml(t("Ein Wurf ohne gültige Wertung – oder eine nicht erreichbare 300er-Regel nach Wurf drei – beendet den Zug als Zilch. Ungesicherte Punkte verfallen."))}</p><p>${escapeHtml(t("Bei einem Zilch bleibt der letzte Wurf sichtbar, bis der nächste Wurf ausgeführt wird."))}</p><p>${escapeHtml(t("Bei jedem dritten Zilch in Folge – also beim dritten, sechsten, neunten und so weiter – werden 500 Punkte abgezogen, niemals unter null."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Spielweise des Würfelwirts"))}</h2><p>${escapeHtml(t("Beim Start wählst du seine Spielweise: Konservativ sichert ab 500 Punkten eher früh, Normal ab 650 Punkten solide Runden, Aggressiv jagt ab 850 Punkten größere Runden."))}</p><p>${escapeHtml(t("Alle drei würfeln fair nach denselben Regeln wie du. Bei wenigen freien Würfeln oder einem sicheren Sieg sichert der Würfelwirt früher."))}</p></section>
+      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Pause und Ablauf"))}</h2><p>${escapeHtml(t("Bleibt am Tisch eine Stunde lang alles still – egal ob er wartet, läuft oder pausiert –, bricht der Wirt die Partie ab. Wer als Spieler oder Zuschauer noch verbunden ist, sieht den Hinweis und findet direkt zurück in die Lobby."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zuschauen"))}</h2><p>${escapeHtml(t("Laufende Zwei-Personen-Partien werden in der Lobby mit beiden Spielern angezeigt. Über Zuschauen öffnest du eine Live-Ansicht; Würfeln, Halten und Sichern bleiben den beiden Teilnehmern vorbehalten."))}</p></section>
     </section>
     <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>
@@ -3365,6 +3437,35 @@ function finalResultActions(resultLink) {
   </div>`;
 }
 
+function abortedGameTitle(snapshot) {
+  return snapshot?._abort_reason === "inactivity_timeout"
+    ? t("Partie wegen langer Pause beendet")
+    : t("Partie abgebrochen");
+}
+
+function abortedGameDetail(snapshot) {
+  return snapshot?._abort_reason === "inactivity_timeout"
+    ? t("Nach einer Stunde ohne Aktivität wurde diese Partie abgebrochen.")
+    : t("Diese Partie wurde abgebrochen.");
+}
+
+function abortedGameActions() {
+  return `<div class="zilch-final-actions" role="group" aria-label="${escapeHtml(t("Nächster Schritt"))}">
+    <a class="zilch-final-action zilch-final-action--primary" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
+  </div>`;
+}
+
+function abortedGameMarkup(snapshot) {
+  return `<section class="zilch-card zilch-final-result zilch-final-result--aborted" role="status"><p class="eyebrow">${escapeHtml(t("Partie abgebrochen"))}</p><h2>${escapeHtml(abortedGameTitle(snapshot))}</h2><p>${escapeHtml(abortedGameDetail(snapshot))}</p>${abortedGameActions()}</section>`;
+}
+
+function renderAbortedGameDetails(details) {
+  if (!content) return;
+  const terminal = { _abort_reason: details?.abort_reason };
+  const name = String(details?.name || "Zilch");
+  content.innerHTML = `<h1 class="visually-hidden">${escapeHtml(`${name} · ${abortedGameTitle(terminal)}`)}</h1>${abortedGameMarkup(terminal)}`;
+}
+
 function zilchResultRoute(candidate) {
   const normalized = normalizeZilchPageUrl(candidate);
   if (!normalized) return null;
@@ -3395,8 +3496,12 @@ function finalResultAwards(snapshot) {
 }
 
 function finalResult(snapshot) {
+  if (!snapshot._finished) return "";
+  if (snapshot._aborted) {
+    return abortedGameMarkup(snapshot);
+  }
   const outcome = snapshot._zilch_outcome;
-  if (!snapshot._finished || !outcome) return "";
+  if (!outcome) return "";
   if (isSoloGame(snapshot)) {
     const completed = soloOutcomeStatus(snapshot) === "completed";
     const detail = authenticatedZilchPlayer() && completed
@@ -3475,9 +3580,12 @@ function statusText(snapshot, turnState) {
       ? t("Ein Mitspieler ist gerade nicht am Tisch. Die Partie wartet, bis er wieder da ist.")
       : t("Spiel pausiert");
   }
-  if (snapshot._finished) return isSoloGame(snapshot)
-    ? soloOutcomeLabel(snapshot)
-    : snapshot._zilch_outcome?.tied ? t("Gleichstand") : t("Spiel beendet");
+  if (snapshot._finished) {
+    if (snapshot._aborted) return abortedGameTitle(snapshot);
+    return isSoloGame(snapshot)
+      ? soloOutcomeLabel(snapshot)
+      : snapshot._zilch_outcome?.tied ? t("Gleichstand") : t("Spiel beendet");
+  }
   if (isSoloGame(snapshot) && !snapshot._started) return t("Solo-Lauf wird vorbereitet.");
   const start = snapshot._zilch_start_roll;
   if (!snapshot._started) return t("Wartet auf zweiten Teilnehmer");
@@ -3587,7 +3695,12 @@ function actionCards(snapshot, turnState, quickHolds, isMyTurn) {
 }
 
 function reconnectControl() {
-  if (!state.game || (state.socket && state.socket.readyState === WebSocket.OPEN)) return "";
+  if (
+    state.stopped
+    || state.game?._aborted
+    || !state.game
+    || (state.socket && state.socket.readyState === WebSocket.OPEN)
+  ) return "";
   return `<button type="button" class="small ghost" data-zilch-reconnect>${escapeHtml(t("Wieder an den Tisch"))}</button>`;
 }
 
@@ -3598,7 +3711,7 @@ function updateGameHeader(snapshot) {
   const currentLabel = state.zilchMoment
     ? (state.zilchMoment.phase === "reveal" ? t("Letzter Wurf") : "ZILCH!")
     : snapshot?._finished
-      ? (isSoloGame(snapshot) ? soloOutcomeLabel(snapshot) : t("Spiel beendet"))
+      ? (snapshot?._aborted ? abortedGameTitle(snapshot) : isSoloGame(snapshot) ? soloOutcomeLabel(snapshot) : t("Spiel beendet"))
       : snapshot?._paused
         ? t("Spiel pausiert")
         : current
@@ -4083,6 +4196,14 @@ function connectGameSocket() {
       }
       restoreOwnDraftPreview(state.game);
       if (payload.scoreboard._finished && !spectatorRoute) clearRememberedActiveGame(gameId);
+      if (payload.scoreboard._aborted) {
+        // Timeout aborts are terminal. The server closes the room immediately
+        // after this frame, so suppress the generic reconnect path before the
+        // close event arrives and leave the clear lobby route in view.
+        state.stopped = true;
+        terminalGameSockets.add(socket);
+        window.clearTimeout(state.reconnectTimer);
+      }
       state.pendingAction = null;
       state.pendingOptionId = null;
       const eventText = messageForEvent(payload.scoreboard, payload.zilch_event || payload.scoreboard._zilch_last_event);
@@ -4126,6 +4247,14 @@ function connectGameSocket() {
   });
   socket.addEventListener("close", () => {
     if (state.stopped || socket !== state.socket) return;
+    // A terminal timeout frame can arrive immediately before the close event
+    // on a busy mobile connection. The snapshot itself is enough to retire
+    // this client even if another handler has not yet marked it stopped.
+    if (terminalGameSockets.has(socket) || state.game?._aborted) {
+      state.stopped = true;
+      window.clearTimeout(state.reconnectTimer);
+      return;
+    }
     state.pendingAction = null;
     state.pendingOptionId = null;
     updateStatus(t("Der Weg zurück zum Tisch wird gesucht …"), "error");
@@ -4172,6 +4301,15 @@ async function renderGame() {
       return;
     }
     state.details = details;
+    // A synchronous detail request can be the first path to discover a
+    // timeout.  Render its terminal information directly rather than opening
+    // a socket (or asking for a now-useless room code) that is intentionally
+    // no longer allowed to rejoin the room.
+    if (details.aborted) {
+      if (!spectatorRoute) clearRememberedActiveGame(gameId);
+      renderAbortedGameDetails(details);
+      return;
+    }
     if (!spectatorRoute) rememberActiveGame(gameId);
     const passphrase = await resolveGamePassphrase(details);
     if (passphrase === null) return;

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -13,13 +13,11 @@ from fastapi import WebSocket, WebSocketDisconnect
 from .auth import auth_identity_payload, resolve_session, websocket_origin_allowed
 from .game_access import can_access_game
 from .game_admin import action_blocked_by_superadmin
-from .game_realtime import broadcast
 from .game_registry import (
     dispatch_gameplay_action,
     gameplay_actions_for_game,
     superadmin_actions_for_game,
 )
-from .game_snapshot import snapshot
 from .game_state import (
     MULTIPLAYER_PAUSE_BLOCKED_ACTIONS,
     GameDict,
@@ -49,6 +47,34 @@ KNOWN_ACTIONS = SESSION_ACTIONS | GAMEPLAY_ACTIONS | ZILCH_GAMEPLAY_ACTIONS | SU
 ReserveConnection = Callable[[WebSocket], str | None]
 ReleaseConnection = Callable[[str | None], None]
 FinalizeGame = Callable[[GameDict], Any]
+TimeoutAbortPublisher = Callable[[GameDict], Awaitable[None]]
+
+
+def _register_live_socket(game: GameDict, websocket: WebSocket) -> None:
+    """Track an accepted socket before it has chosen a room role.
+
+    Players and spectators are recorded on their respective entities only
+    after their first action. The small interval beforehand still needs to be
+    retired by an inactivity timeout, otherwise a silent client could retain
+    a receive loop and a connection reservation forever.
+    """
+    live = game.get("_live_sockets")
+    if not isinstance(live, list):
+        live = []
+        game["_live_sockets"] = live
+    if not any(candidate is websocket for candidate in live):
+        live.append(websocket)
+
+
+def _unregister_live_socket(game: GameDict, websocket: WebSocket) -> None:
+    live = game.get("_live_sockets")
+    if not isinstance(live, list):
+        return
+    remaining = [candidate for candidate in live if candidate is not websocket]
+    if remaining:
+        game["_live_sockets"] = remaining
+    else:
+        game.pop("_live_sockets", None)
 
 
 class MessageRateLimiter:
@@ -84,6 +110,7 @@ async def serve_game_websocket(
     reserve_connection: ReserveConnection,
     release_connection: ReleaseConnection,
     finalize_game: FinalizeGame,
+    timeout_abort_publisher: TimeoutAbortPublisher | None = None,
 ) -> None:
     """Validate one socket and coordinate its focused action handlers."""
     if not websocket_origin_allowed(websocket):
@@ -103,6 +130,14 @@ async def serve_game_websocket(
         await websocket.close(code=1008, reason="Zilch preview access required")
         return
 
+    # A lifecycle sweep can mark a room terminal while it is still delivering
+    # its final frame to existing peers. Do not let a concurrent new socket
+    # reserve a connection or briefly recreate a participant in that window.
+    if game.get("_aborted") and game.get("_abort_reason") == "inactivity_timeout":
+        await websocket.accept()
+        await close_with_error(websocket, "Spiel ist bereits beendet", fatal=True, code=1000)
+        return
+
     await websocket.accept()
 
     connection_address = reserve_connection(websocket)
@@ -112,7 +147,14 @@ async def serve_game_websocket(
 
     session = GameSocketSession(websocket=websocket, game=game, auth_identity=identity)
     limiter = MessageRateLimiter()
+    _register_live_socket(game, websocket)
     try:
+        # The timeout can race with ``accept``. Registering first makes an
+        # immediately subsequent timeout close this peer too; this second
+        # check covers a sweep that completed just before registration.
+        if game.get("_aborted") and game.get("_abort_reason") == "inactivity_timeout":
+            await close_with_error(websocket, "Spiel ist bereits beendet", fatal=True, code=1000)
+            return
         await websocket.send_json(
             {
                 "auth": {
@@ -127,12 +169,18 @@ async def serve_game_websocket(
                 },
             }
         )
-        await _receive_messages(session, limiter=limiter, finalize_game=finalize_game)
+        await _receive_messages(
+            session,
+            limiter=limiter,
+            finalize_game=finalize_game,
+            timeout_abort_publisher=timeout_abort_publisher,
+        )
     except WebSocketDisconnect:
         pass
     except Exception:
         logger.exception("Unexpected WebSocket failure for game %s", game_id)
     finally:
+        _unregister_live_socket(game, websocket)
         await disconnect_session(session)
         release_connection(connection_address)
 
@@ -142,6 +190,7 @@ async def _receive_messages(
     *,
     limiter: MessageRateLimiter,
     finalize_game: FinalizeGame,
+    timeout_abort_publisher: TimeoutAbortPublisher | None = None,
 ) -> None:
     while True:
         data = await session.websocket.receive_json()
@@ -199,8 +248,30 @@ async def _receive_messages(
             continue
 
         if check_timeout_and_abort(session.game):
-            await broadcast(session.game, {"scoreboard": snapshot(session.game)})
+            # The app lifecycle owns terminal delivery and retirement.  Calling
+            # its injected publisher here gives an action that lands exactly on
+            # the deadline the same immediate final frame as the background
+            # sweeper, without a second broadcast fifteen seconds later.
+            if timeout_abort_publisher is not None:
+                await timeout_abort_publisher(session.game)
+                # The publisher has sent the sole terminal frame and closed
+                # the room sockets. This handler must now reach its ``finally``
+                # so it releases the connection reservation instead of waiting
+                # for one more inbound browser frame.
+                return
+            # Focused lower-level callers without the application lifecycle
+            # injection retain the prior defensive fallback below.
             continue
+        # A room may have been retired by the periodic lifecycle sweep while
+        # this socket still owns its in-memory reference.  Never let a late
+        # chat, reaction, rejoin or game command touch that terminal object:
+        # it must not look active again or schedule a delayed CPU action.
+        if session.game.get("_aborted"):
+            if session.player_id or session.spectator_id:
+                await session.websocket.close(code=1000)
+            else:
+                await close_with_error(session.websocket, "Spiel ist bereits beendet", fatal=True, code=1000)
+            return
         # A Zilch spectator remains a spectator for the entire socket
         # lifetime.  Unlike ZDWA's legacy generic view, its read-only route
         # must not be turned back into a player session by a crafted rejoin

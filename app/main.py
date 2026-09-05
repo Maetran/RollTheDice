@@ -38,10 +38,12 @@ from .game_history import (
     delete_completed_game,
     import_legacy_leaderboards,
 )
+from .game_realtime import broadcast
 from .game_registry import create_game_state, finalize_completed_game, project_game_progress
 from .game_results import remove_deleted_game_from_files
-from .game_snapshot import public_player_payload, refresh_game_achievement_ranks
+from .game_snapshot import public_player_payload, refresh_game_achievement_ranks, snapshot
 from .game_state import (
+    TIMEOUT_SWEEP_INTERVAL_SECONDS,
     GameDict,
     _format_duration_hm,
     _offline_players,
@@ -131,6 +133,109 @@ new_game = _new_game
 
 logger = logging.getLogger(__name__)
 
+
+async def _close_timeout_connections(game: GameDict) -> None:
+    """Close every live room socket after its one terminal timeout frame.
+
+    A timeout has no resumable room behind it.  Leaving a ``receive_json``
+    loop open would otherwise retain its session, connection reservation and
+    a client-side reconnect loop after the game has left the registry.
+    """
+    closed: set[int] = set()
+    sockets: list[object] = []
+    for participant in [*game.get("_players", []), *game.get("_spectators", [])]:
+        websocket = participant.get("ws")
+        # Break the game-to-socket reference even if a broken peer takes too
+        # long to acknowledge the close frame. The session's terminal cleanup
+        # deliberately avoids any follow-up room broadcast.
+        participant["ws"] = None
+        if websocket is not None:
+            sockets.append(websocket)
+    # An accepted connection only appears here until its first join/rejoin/
+    # spectate action. It must be closed too, but never receives a scoreboard
+    # because it has not yet earned room-state visibility.
+    live_sockets = game.pop("_live_sockets", [])
+    if isinstance(live_sockets, list):
+        sockets.extend(live_sockets)
+    for websocket in sockets:
+        if id(websocket) in closed:
+            continue
+        closed.add(id(websocket))
+        try:
+            # The terminal scoreboard already carries the human-readable
+            # reason. A normal close lets every receive loop detach through
+            # its ordinary ``finally`` block without another room broadcast.
+            await websocket.close(code=1000)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.debug("Could not close timeout socket for game %s", game.get("_id"), exc_info=True)
+
+
+async def _publish_timeout_abort(game: GameDict) -> None:
+    """Deliver one terminal timeout frame, then retire the transient room."""
+    game_id = str(game.get("_id") or "")
+    # Claim publication before the first await. A synchronous HTTP sweep or a
+    # direct snapshot may already have changed the state, but must not leave it
+    # pending forever or duplicate the terminal frame.
+    game["_timeout_abort_pending"] = False
+    # CPU moves are guarded against terminal state too, but an already sleeping
+    # runner should not remain around until its presentation delay elapses.
+    # The import stays lazy to keep the shared lifecycle module independent of
+    # Zilch's optional CPU mode.
+    try:
+        from .zilch_cpu_runner import stop_cpu_runner
+
+        await stop_cpu_runner(game_id)
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.exception("Could not stop CPU runner for inactive game %s", game_id)
+    try:
+        await broadcast(game, {"scoreboard": snapshot(game)})
+    except Exception:
+        # The durable active row was already deleted by the timeout transition.
+        # Do not let one broken client projection retain an aborted room forever.
+        logger.exception("Could not publish inactivity timeout for game %s", game_id)
+    finally:
+        await _close_timeout_connections(game)
+        # Existing sockets retain their object long enough to render the final
+        # frame, then their normal disconnect cleanup releases transport
+        # state. New joins must not revive a room whose one-hour lifetime has
+        # ended, and the in-memory registry must not grow with stale games.
+        if game_id and games.get(game_id) is game:
+            games.pop(game_id, None)
+
+
+async def _sweep_timeout_aborts() -> int:
+    """Apply due timeouts and publish every newly terminal room once."""
+    expired = sweep_timeouts()
+    for game in expired:
+        await _publish_timeout_abort(game)
+    return len(expired)
+
+
+async def _run_timeout_sweeper(
+    stop_event: asyncio.Event,
+    *,
+    interval_seconds: float = TIMEOUT_SWEEP_INTERVAL_SECONDS,
+) -> None:
+    """Keep the one-hour room deadline independent of browser traffic."""
+    interval = max(1.0, float(interval_seconds))
+    while not stop_event.is_set():
+        try:
+            await _sweep_timeout_aborts()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Could not sweep inactive games")
+        if stop_event.is_set():
+            return
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=interval)
+        except asyncio.TimeoutError:
+            continue
+
 # ---------------- Pfade robust auflösen (static/ und data/) ----------------
 HERE = Path(__file__).resolve().parent  # .../RollTheDice/app
 BASE = HERE.parent  # .../RollTheDice
@@ -172,6 +277,10 @@ async def lifespan(_app: FastAPI):
     ensure_bootstrap_admin()
     import_legacy_leaderboards(LEADERBOARD_FILES.legacy_paths())
     games.update(load_active_games())
+    # Expire recovered rooms before any CPU runner can resume a turn.  Without
+    # this ordering a stale state could be touched by a newly scheduled task
+    # before the one-hour timeout was evaluated.
+    await _sweep_timeout_aborts()
     _recover_terminal_completed_games()
     # This is deliberately not a historical CompletedGame scan.  It retries
     # only work rows registered by a post-rollout Zilch finalizer after a
@@ -209,9 +318,17 @@ async def lifespan(_app: FastAPI):
     from .zilch_cpu_runner import resume_cpu_games, stop_cpu_runners
 
     await resume_cpu_games(games, finalize_game=_finalize_and_log_results)
+    timeout_sweeper_stop = asyncio.Event()
+    timeout_sweeper = asyncio.create_task(
+        _run_timeout_sweeper(timeout_sweeper_stop),
+        name="active-game-timeout-sweeper",
+    )
     try:
         yield
     finally:
+        timeout_sweeper_stop.set()
+        timeout_sweeper.cancel()
+        await asyncio.gather(timeout_sweeper, return_exceptions=True)
         await stop_cpu_runners()
 
 
@@ -527,7 +644,7 @@ def player_profile_page(username: str, request: Request):
 def achievement_rank_legend_page(request: Request):
     """Serve the public explanation of achievement rank badges."""
     if is_zilch_host(request):
-        return RedirectResponse("/erfolge", status_code=308)
+        return RedirectResponse("/konto#achievements", status_code=308)
     return _page("ranks.html")
 
 
@@ -633,6 +750,24 @@ def _serve_zilch_account_shell(request: Request):
     return _page("zilch.html")
 
 
+def _redirect_zilch_account_tab(request: Request, tab: str) -> RedirectResponse:
+    """Canonicalize private legacy pages to their matching Konto tab.
+
+    The legacy paths stay allowlisted for old bookmarks and login handoffs,
+    but no longer render a second version of the same personal information.
+    Check access before returning the redirect so these aliases retain the
+    account protection of the old pages.
+    """
+    _require_zilch_preview(request)
+    prefix = "" if is_zilch_host(request) else "/zilch"
+    query = f"?{request.url.query}" if request.url.query else ""
+    return RedirectResponse(
+        f"{prefix}/konto{query}#{tab}",
+        status_code=308,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 @app.get("/zilch", include_in_schema=False)
 def zilch_preview_page(request: Request):
     """Serve the Zilch lobby according to the central audience policy."""
@@ -677,8 +812,8 @@ def zilch_history_page(request: Request):
 
 @app.get("/zilch/statistiken", include_in_schema=False)
 def zilch_statistics_page(request: Request):
-    """Serve the private, noindex Zilch shell for personal statistics."""
-    return _serve_zilch_account_shell(request)
+    """Keep the old personal-statistics link as a protected Konto alias."""
+    return _redirect_zilch_account_tab(request, "statistics")
 
 
 @app.get("/zilch/bestenlisten", include_in_schema=False)
@@ -689,8 +824,8 @@ def zilch_leaderboards_page(request: Request):
 
 @app.get("/zilch/erfolge", include_in_schema=False)
 def zilch_achievements_page(request: Request):
-    """Serve the private noindex Zilch award collection."""
-    return _serve_zilch_account_shell(request)
+    """Keep the old award link as a protected Konto alias."""
+    return _redirect_zilch_account_tab(request, "achievements")
 
 
 @app.get("/zilch/konto", include_in_schema=False)
@@ -730,7 +865,7 @@ def zilch_subdomain_history_page(request: Request):
 def zilch_subdomain_statistics_page(request: Request):
     if not is_zilch_host(request):
         raise HTTPException(status_code=404, detail="not_found")
-    return _serve_zilch_account_shell(request)
+    return _redirect_zilch_account_tab(request, "statistics")
 
 
 @app.get("/bestenlisten", include_in_schema=False)
@@ -744,7 +879,7 @@ def zilch_subdomain_leaderboards_page(request: Request):
 def zilch_subdomain_achievements_page(request: Request):
     if not is_zilch_host(request):
         raise HTTPException(status_code=404, detail="not_found")
-    return _serve_zilch_account_shell(request)
+    return _redirect_zilch_account_tab(request, "achievements")
 
 
 @app.get("/auth/continue", include_in_schema=False)
@@ -1156,6 +1291,7 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
                 "started": g["_started"],
                 "finished": g["_finished"],
                 "aborted": g.get("_aborted", False),
+                "abort_reason": g.get("_abort_reason") if g.get("_aborted") else None,
                 "locked": bool(g.get("_passphrase")),
                 "waiting": waiting_names,
                 "connected": {str(p.get("id")): _player_connected(p) for p in g.get("_players", [])},
@@ -1256,6 +1392,7 @@ def game_info(
         "started": g["_started"],
         "finished": g["_finished"],
         "aborted": g.get("_aborted", False),
+        "abort_reason": g.get("_abort_reason") if g.get("_aborted") else None,
         "locked": bool(g.get("_passphrase")),
         "waiting": [p.get("name", "Player") for p in g["_players"]],
         "connected": {str(p.get("id")): _player_connected(p) for p in g.get("_players", [])},
@@ -1664,4 +1801,5 @@ async def ws_game(websocket: WebSocket, game_id: str) -> None:
         reserve_connection=_reserve_websocket,
         release_connection=_release_websocket,
         finalize_game=_finalize_and_log_results,
+        timeout_abort_publisher=_publish_timeout_abort,
     )

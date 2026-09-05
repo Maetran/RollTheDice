@@ -14,7 +14,27 @@ from .game_types import DEFAULT_GAME_TYPE
 logger = logging.getLogger(__name__)
 
 # --- Auto-Timeout (Inaktivität) ---
+#
+# The deadline is shared by waiting, running and paused rooms.  A paused room
+# must not rely on a later lobby request to become terminal: the application
+# lifecycle sweeps this state at the bounded interval below and publishes the
+# resulting terminal snapshot to every connected room socket.
 GAME_TIMEOUT = timedelta(hours=1)
+TIMEOUT_SWEEP_INTERVAL_SECONDS = 15
+
+
+def _utc_timestamp(value: object) -> datetime | None:
+    """Return a UTC-aware timestamp from durable or live activity state."""
+    try:
+        if isinstance(value, datetime):
+            return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+        if isinstance(value, str):
+            text = value[:-1] + "+00:00" if value.endswith("Z") else value
+            parsed = datetime.fromisoformat(text)
+            return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return None
 
 
 def touch(g):
@@ -43,7 +63,7 @@ def _format_duration_hm(seconds: int | float | None) -> str:
 def pause_remaining_seconds(g) -> int:
     """Restzeit bis zum Auto-Timeout auf Basis der letzten Aktivitaet."""
     try:
-        last = g.get("_last_activity")
+        last = _utc_timestamp(g.get("_last_activity"))
         if not last:
             return timeout_seconds()
         now = datetime.now(timezone.utc)
@@ -52,26 +72,51 @@ def pause_remaining_seconds(g) -> int:
         return timeout_seconds()
 
 
-def check_timeout_and_abort(g) -> bool:
-    """Prüft Inaktivität und markiert das Spiel ggf. als abgebrochen.
+def check_timeout_and_abort(g, *, now: datetime | None = None) -> bool:
+    """Mark an inactive room as a terminal, non-persisted abort.
 
     Rückgabe:
     - True, wenn das Spiel soeben als abgebrochen markiert wurde, sonst False.
     """
     try:
-        last = g.get("_last_activity")
-        if not last:
-            g["_last_activity"] = datetime.now(timezone.utc)
+        # ``now`` is an intentionally small test seam.  Production callers
+        # always use the authoritative server clock; tests can prove that the
+        # deadline fires at exactly one hour rather than relying on sleep or
+        # a microsecond race around ``datetime.now``.
+        now = now or datetime.now(timezone.utc)
+        raw_last = g.get("_last_activity")
+        if not raw_last:
+            g["_last_activity"] = now
+            g["_updated_at"] = now.isoformat()
             return False
         if g.get("_finished"):
             return False
-        now = datetime.now(timezone.utc)
-        if now - last > GAME_TIMEOUT:
+        last = _utc_timestamp(raw_last)
+        if last is None:
+            logger.warning("Could not evaluate timeout for game %s: invalid last activity", g.get("_id"))
+            return False
+        if now - last >= GAME_TIMEOUT:
+            finished_at = now.isoformat()
             g["_aborted"] = True
+            g["_abort_reason"] = "inactivity_timeout"
+            # Snapshot construction and synchronous HTTP paths can evaluate a
+            # timeout before the lifecycle task runs.  Keep this marker until
+            # that task has sent the one terminal WebSocket frame and retired
+            # the in-memory room.
+            g["_timeout_abort_pending"] = True
             g["_started"] = False
             g["_finished"] = True
+            g["_finished_at"] = finished_at
+            g["_updated_at"] = finished_at
             # Keine Ergebnisse loggen, Snapshot zeigt _aborted
             g["_results"] = None
+            # A terminal room is neither manually paused nor waiting for a
+            # reconnect. Clearing both keeps its final snapshot unambiguous.
+            g["_manual_pause"] = False
+            g["_manual_pause_by"] = None
+            g["_manual_pause_by_name"] = None
+            g["_manual_pause_at"] = None
+            g["_resume_required"] = False
             delete_active_game(str(g.get("_id") or ""))
             return True
     except (TypeError, ValueError, OverflowError):
@@ -79,10 +124,27 @@ def check_timeout_and_abort(g) -> bool:
     return False
 
 
-def sweep_timeouts():
-    """Iteriert über alle Spiele und wendet `check_timeout_and_abort` an."""
-    for _gid, _g in list(games.items()):
-        check_timeout_and_abort(_g)
+def sweep_timeouts(*, now: datetime | None = None) -> list[GameDict]:
+    """Return each newly expired or still-pending terminal room.
+
+    The caller owns transport work.  HTTP paths can simply discard the return
+    value, while the application lifecycle uses it to broadcast the one final
+    snapshot before removing the room from the in-memory registry.  A timeout
+    discovered by a synchronous HTTP/snapshot path is included again while
+    ``_timeout_abort_pending`` is set, so that terminal transport publication
+    cannot be lost.
+    """
+    expired: list[GameDict] = []
+    for _gid, game in list(games.items()):
+        just_aborted = check_timeout_and_abort(game, now=now)
+        pending_publication = bool(
+            game.get("_aborted")
+            and game.get("_abort_reason") == "inactivity_timeout"
+            and game.get("_timeout_abort_pending")
+        )
+        if just_aborted or pending_publication:
+            expired.append(game)
+    return expired
 
 
 def roll_cooldown_ok(g: dict, player_id, cooldown_s: float = 0.6) -> bool:

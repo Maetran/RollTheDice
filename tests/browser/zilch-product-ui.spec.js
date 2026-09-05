@@ -47,7 +47,8 @@ async function signInAsPreviewMani(page) {
 }
 
 test("Zilch has its own sign-in entry and safely returns preview accounts to the requested view", async ({ page }) => {
-  await page.goto("/zilch/anmelden?return_to=/zilch/statistiken");
+  const returnTo = encodeURIComponent("/zilch/konto#statistics");
+  await page.goto(`/zilch/anmelden?return_to=${returnTo}`);
   await expect(page.locator("#zilchLoginForm")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Bei Zilch anmelden" })).toBeVisible();
 
@@ -56,14 +57,15 @@ test("Zilch has its own sign-in entry and safely returns preview accounts to the
   await signInAsPreviewMani(page);
   await signOutFromLobby(page);
 
-  await page.goto("/zilch/anmelden?return_to=/zilch/statistiken");
+  await page.goto(`/zilch/anmelden?return_to=${returnTo}`);
   await page.fill("#zilchLoginUsername", "Mani");
   await page.fill("#zilchLoginPassword", "mani-preview-password-123");
   await Promise.all([
-    page.waitForURL(/\/zilch\/statistiken$/),
+    page.waitForURL(/\/zilch\/konto#statistics$/),
     page.locator("#zilchLoginForm button[type=submit]").click(),
   ]);
-  await expect(page.getByRole("heading", { name: /Zilch.*Statistiken|Zilch statistics/i })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Statistiken" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#zilchAccountPanel-statistics")).toBeVisible();
 });
 
 test("a fresh Apex login preserves the fixed Zilch subdomain continuation", async ({ page }) => {
@@ -134,6 +136,10 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await expect(page.getByRole("heading", { name: /Spielweise des Würfelwirts|Dice keeper style/i })).toBeVisible();
   await expect(page.getByText(/650 Punkte|650 points/i)).toBeVisible();
   await expect(page.locator(".zilch-rule-facts")).toHaveCount(0);
+  await page.setViewportSize({ width: 320, height: 844 });
+  expect(await page.locator(".zilch-rule-table-wrap").evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 900 });
   await expect(page.locator("#zilchNavigation a[href='/zilch/regeln']")).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("link", { name: "Zur Zilch-Lobby" })).toHaveCount(0);
 
@@ -445,6 +451,7 @@ test("private Zilch statistics and leaderboards render only server projections a
     const category = requestUrl.searchParams.get("category") || "solo_sprint";
     const strategy = requestUrl.searchParams.get("strategy");
     const offset = Number(requestUrl.searchParams.get("offset") || "0");
+    expect(requestUrl.searchParams.get("limit")).toBe("10");
     const common = {
       version: 1,
       category,
@@ -492,25 +499,47 @@ test("private Zilch statistics and leaderboards render only server projections a
         },
         tie_breaks: { losses: 1, ties: 0, highest_final_score: 10900, highest_banked_round: 1600 },
       };
-    await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ...common, entries: [entry], own_entry: entry }) });
+    const topEntries = Array.from({ length: 10 }, (_value, index) => ({
+      ...entry,
+      rank: index + 1,
+      user_id: 100 + index,
+      username: `Tischgast ${index + 1}`,
+      display_name: `Tischgast ${index + 1}`,
+      is_current_user: false,
+    }));
+    const ownEntry = { ...entry, rank: 25, is_current_user: true };
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ...common, entries: topEntries, own_entry: ownEntry }) });
   });
 
   await page.goto("/zilch/statistiken");
+  await expect(page).toHaveURL(/\/zilch\/konto#statistics$/);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-  await expect(page.getByRole("heading", { name: /Zilch-(Statistiken|statistics)/i }).first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Zu den Bestenlisten" })).toHaveAttribute("data-zilch-navigate", "/zilch/bestenlisten");
+  await expect(page.getByRole("tab", { name: "Statistiken" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("Partien nach Spielart")).toBeVisible();
   await expect(page.getByText("Gesicherte Gesamtpunkte")).toHaveCount(0);
 
-  await page.goto("/zilch/konto#statistics");
-  await page.getByRole("tab", { name: "Statistiken" }).click();
   const accountOverviewCard = page.locator("#zilchAccountPanel-statistics .zilch-statistics-card--overview");
   const accountByModeCard = page.locator("#zilchAccountPanel-statistics .zilch-statistics-card--by-mode");
   await expect(accountOverviewCard).toBeVisible();
   await expect(accountByModeCard).toBeVisible();
   expect(await accountOverviewCard.evaluate(card => Number.parseFloat(getComputedStyle(card).paddingTop))).toBeLessThan(13);
 
-  await page.goto("/zilch/statistiken");
+  await page.getByRole("tab", { name: "Gegen den Würfelwirt" }).click();
+  await page.setViewportSize({ width: 320, height: 844 });
+  const accountTabMeasurements = await page.locator("#zilchAccountPanel-statistics").evaluate(panel => {
+    const primary = panel.querySelector(".zilch-stats-tab");
+    const secondary = panel.querySelector(".zilch-stat-subtab");
+    return {
+      panelFits: panel.scrollWidth <= panel.clientWidth,
+      primaryHeight: primary?.getBoundingClientRect().height || 0,
+      secondaryHeight: secondary?.getBoundingClientRect().height || 0,
+    };
+  });
+  expect(accountTabMeasurements.panelFits).toBe(true);
+  expect(accountTabMeasurements.secondaryHeight).toBeLessThanOrEqual(accountTabMeasurements.primaryHeight);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  await page.goto("/zilch/konto#statistics");
   const multiplayerTab = page.getByRole("tab", { name: "Zwei Spieler" });
   await multiplayerTab.focus();
   await page.keyboard.press("ArrowRight");
@@ -526,16 +555,20 @@ test("private Zilch statistics and leaderboards render only server projections a
   await expect(page.getByRole("heading", { name: "Zilch-Bestenlisten" })).toBeVisible();
   await expect(page.locator("#zilchNavigation a[href='/zilch/bestenlisten']")).toHaveAttribute("aria-current", "page");
   await expect(page.locator(".zilch-leaderboard-table")).toBeVisible();
-  await expect(page.locator("tr[data-own-entry='true']")).toContainText("Du");
-  await expect(page.locator("tr[data-own-entry='true']")).toContainText("Mani");
-  await expect(page.locator(".zilch-leaderboard-table .zilch-rank-badge")).toContainText("Spieler");
-  await expect(page.getByRole("button", { name: "Deine Statistiken" })).toHaveAttribute("data-zilch-navigate", "/zilch/statistiken");
-  await expect(page.getByRole("button", { name: "Deine Statistiken" })).toHaveClass(/zilch-header-action/);
-  await expect(page.getByRole("button", { name: "Zilch-Awards" })).toHaveAttribute("data-zilch-navigate", "/zilch/erfolge");
-  await expect(page.getByRole("button", { name: "Zilch-Awards" })).toHaveClass(/zilch-header-action/);
+  await expect(page.locator(".zilch-leaderboard-table tbody tr")).toHaveCount(10);
+  await expect(page.locator("tr[data-own-entry='true']")).toHaveCount(0);
+  await expect(page.locator(".zilch-own-leaderboard-entry")).toContainText("Mani");
+  await expect(page.locator(".zilch-own-leaderboard-entry")).toContainText("Rang 25");
+  await expect(page.locator(".zilch-own-leaderboard-entry a")).toHaveAttribute("href", "/zilch/konto#achievements");
+  await expect(page.locator(".zilch-leaderboard-table .zilch-rank-badge").first()).toContainText("Spieler");
+  await expect(page.getByRole("button", { name: "Meine Statistiken" })).toHaveAttribute("data-zilch-navigate", "/zilch/konto#statistics");
+  await expect(page.getByRole("button", { name: "Meine Statistiken" })).toHaveClass(/zilch-header-action/);
+  await expect(page.getByRole("button", { name: "Meine Statistiken" })).toHaveCSS("color", "rgb(255, 253, 245)");
+  await expect(page.getByRole("button", { name: "Meine Erfolge" })).toHaveAttribute("data-zilch-navigate", "/zilch/konto#achievements");
+  await expect(page.getByRole("button", { name: "Meine Erfolge" })).toHaveClass(/zilch-header-action/);
   await expect(page.getByText("Ziel:", { exact: false })).toBeVisible();
   await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Abgeschlossen am");
-  await expect(page.getByRole("button", { name: "Nächste" })).toBeEnabled();
+  await expect(page.getByRole("heading", { name: /Top 10.*Solo-Sprint/ })).toBeVisible();
 
   const cpuRequest = page.waitForRequest(request => {
     const url = new URL(request.url());
@@ -544,15 +577,36 @@ test("private Zilch statistics and leaderboards render only server projections a
   const category = page.locator("[data-zilch-leaderboard-category='cpu_wins']");
   const categoryTiles = page.locator("[data-zilch-leaderboard-category]");
   await expect(categoryTiles).toHaveCount(4);
+  const categoryGrid = page.locator(".zilch-leaderboard-categories__grid");
+  for (const width of [320, 375]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(await categoryGrid.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    expect(await categoryTiles.evaluateAll(tiles => tiles.every(tile => tile.scrollHeight <= tile.clientHeight))).toBe(true);
+  }
+  await page.setViewportSize({ width: 375, height: 844 });
+  const mobileCategoryGrid = await categoryGrid.boundingBox();
   const firstTile = await categoryTiles.nth(0).boundingBox();
   const secondTile = await categoryTiles.nth(1).boundingBox();
   expect(secondTile.x).toBeGreaterThan(firstTile.x);
   await category.focus();
   await expect(category).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await expect(page.locator("[data-zilch-leaderboard-category='solo_sprint']")).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(category).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("[data-zilch-leaderboard-category='achievement_points']")).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(category).toBeFocused();
   await category.click();
   await cpuRequest;
   await expect(category).toBeFocused();
   await expect(category).toHaveAttribute("aria-pressed", "true");
+  await expect(categoryGrid).toBeVisible();
+  const refreshedMobileCategoryGrid = await categoryGrid.boundingBox();
+  expect(refreshedMobileCategoryGrid).not.toBeNull();
+  expect(refreshedMobileCategoryGrid.height).toBeCloseTo(mobileCategoryGrid?.height || 0, 3);
   await expect(page.locator("#zilchLeaderboardStrategyFilter")).toBeVisible();
   await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Gleichstände");
   await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Beste Endpunktzahl");
@@ -567,13 +621,6 @@ test("private Zilch statistics and leaderboards render only server projections a
   await aggressiveRequest;
   await expect(page).toHaveURL(/category=cpu_wins.*strategy=aggressive/);
 
-  const nextRequest = page.waitForRequest(request => {
-    const url = new URL(request.url());
-    return url.pathname === "/api/zilch/leaderboards" && url.searchParams.get("offset") === "100";
-  });
-  await page.getByRole("button", { name: "Nächste" }).click();
-  await nextRequest;
-
   const pointsRequest = page.waitForRequest(request => {
     const url = new URL(request.url());
     return url.pathname === "/api/zilch/leaderboards"
@@ -583,8 +630,8 @@ test("private Zilch statistics and leaderboards render only server projections a
   await pointsRequest;
   await expect(page.locator("#zilchLeaderboardStrategyFilter")).toBeHidden();
   await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Zilch-Punkte");
-  await expect(page.locator("tr[data-own-entry='true']")).toContainText("Spieler");
-  await expect(page.locator("tr[data-own-entry='true']")).toContainText("42");
+  await expect(page.locator(".zilch-own-leaderboard-entry")).toContainText("Spieler");
+  await expect(page.locator(".zilch-own-leaderboard-entry")).toContainText("42");
 
   for (const width of [320, 375, 430]) {
     await page.setViewportSize({ width, height: 844 });
@@ -599,7 +646,7 @@ test("private Zilch statistics and leaderboards render only server projections a
   ]);
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.getByRole("heading", { name: "Zilch leaderboards" })).toBeVisible();
-  await expect(page.locator("tr[data-own-entry='true']")).toContainText("You");
+  await expect(page.locator(".zilch-own-leaderboard-entry")).toContainText("You");
 
   await Promise.all([
     page.waitForNavigation({ waitUntil: "domcontentloaded" }),
@@ -778,8 +825,9 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     });
 
     await page.goto("/zilch/erfolge");
+    await expect(page).toHaveURL(/\/zilch\/konto#achievements$/);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-    await expect(page.getByRole("heading", { name: "Zilch-Awards" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Erfolge" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("heading", { name: "Einstieg" })).toBeVisible();
     await expect(page.locator(".zilch-achievement-card.is-unlocked")).toHaveCount(2);
     await expect(page.locator(".zilch-achievement-card.is-locked")).toHaveCount(2);
@@ -817,7 +865,7 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     // resumes the same queue; only the explicit Continue action records an
     // acknowledgement and advances to the following award.
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Zilch-Awards" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Erfolge" })).toHaveAttribute("aria-selected", "true");
     await expect(dialog).toContainText("Erster Wurf");
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
     await expect.poll(() => acknowledgements).toEqual(["zilch.first_game"]);
@@ -836,14 +884,14 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     // The rank moment follows the same explicit acknowledgement rule as an
     // award card: closing it keeps the retrospective delivery available.
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Zilch-Awards" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Erfolge" })).toHaveAttribute("aria-selected", "true");
     await expect(dialog).toHaveAttribute("data-kind", "zilch-rank-up");
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
     await expect.poll(() => rankAcknowledgements).toEqual(["rookie"]);
     await expect(page.locator("#appDialogBackdrop")).toBeHidden();
 
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Zilch-Awards" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Erfolge" })).toHaveAttribute("aria-selected", "true");
     await expect(page.locator("#appDialogBackdrop")).toBeHidden();
 
     await page.goto("/zilch/spieler/Mani");
@@ -853,13 +901,13 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await expect(page.locator(".zilch-achievement-card.is-unlocked")).toHaveCount(1);
     await expect(page.locator(".zilch-achievement-summary")).toContainText("1 / 273");
 
-    await page.goto("/zilch/erfolge");
+    await page.goto("/zilch/konto#achievements");
     await Promise.all([
       page.waitForNavigation({ waitUntil: "domcontentloaded" }),
       page.locator("[data-language-switcher]").selectOption("en"),
     ]);
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.getByRole("heading", { name: "Zilch awards" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Achievements" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("heading", { name: "Getting started" })).toBeVisible();
     await expect(page.locator(".zilch-achievement-card").first()).toContainText("Table Victor");
     await expect(page.locator(".zilch-achievement-summary")).toContainText("Zilch points");

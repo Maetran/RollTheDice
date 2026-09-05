@@ -387,6 +387,12 @@ Quick-Hold cards, roll/bank actions, hold/bank constraints, events, connection
 state where applicable, and terminal outcome are projected only from the
 authoritative snapshot.
 
+Every waiting, running, or paused room shares a one-hour inactivity deadline.
+A lifecycle sweep enforces it without requiring later HTTP or WebSocket
+traffic, sends one terminal abort snapshot to connected players and spectators,
+and removes the active room. Only a server-accepted room action refreshes the
+deadline.
+
 The Zilch UI uses scoped CSS variables for a warm wood table, paper-like
 cards, deep dice, high-contrast hold/status states, large touch targets, and
 short optional effects. It has a skip link, semantic navigation, keyboard

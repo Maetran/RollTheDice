@@ -21,7 +21,11 @@ def _json_safe(value: Any) -> Any:
     if isinstance(value, datetime):
         return value.astimezone(timezone.utc).isoformat()
     if isinstance(value, dict):
-        return {str(key): _json_safe(item) for key, item in value.items() if key not in {"ws", "_roll_cooldown"}}
+        return {
+            str(key): _json_safe(item)
+            for key, item in value.items()
+            if key not in {"ws", "_roll_cooldown", "_live_sockets"}
+        }
     if isinstance(value, (list, tuple)):
         return [_json_safe(item) for item in value]
     if value is None or isinstance(value, (str, int, float, bool)):

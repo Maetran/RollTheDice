@@ -691,12 +691,14 @@ async function installGameScreenFixture(page, gameId, snapshots, detailsOverride
         window.__zilchGameScreenFixtureMessages = [];
         const socketPath = new URL(url, window.location.href).pathname;
         if (socketPath === `/ws/${encodeURIComponent(fixtureGameId)}`) {
+          window.__zilchGameScreenFixtureSocketCount = (window.__zilchGameScreenFixtureSocketCount || 0) + 1;
           // Deterministic server-frame seam for presentation-only assertions.
           // It does not bypass any production endpoint or expose state outside
           // this isolated browser context.
           window.__zilchGameScreenFixturePush = payload => {
             this._emit("message", { data: JSON.stringify(payload) });
           };
+          window.__zilchGameScreenFixtureClose = () => this.close();
         }
         window.setTimeout(() => {
           this.readyState = FixtureWebSocket.OPEN;
@@ -1305,6 +1307,63 @@ test("a finished Zilch game starts the same mode again with one click", async ({
   }
 });
 
+test("an inactivity-aborted Zilch game gives every player a clear lobby way out", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    const gameId = "inactivity-abort-fixture";
+    const timedOut = baseSnapshot({
+      _started: false,
+      _finished: true,
+      _aborted: true,
+      _abort_reason: "inactivity_timeout",
+      _turn: null,
+      _zilch_outcome: null,
+      _zilch_boards: {
+        p1: board({ playerId: "p1", totalPoints: 4200, roundPoints: 0 }),
+        p2: board({ playerId: "p2", totalPoints: 3900, roundPoints: 0 }),
+      },
+      _round_points: { p1: 0, p2: 0 },
+      _total_points: { p1: 4200, p2: 3900 },
+      _zilch_turn_state: null,
+      _zilch_quick_holds: [],
+    });
+    const live = fixtureSnapshots().hotDice;
+    await installGameScreenFixture(page, gameId, { initial: live }, {
+      play_mode: "multiplayer",
+      finished: false,
+      aborted: false,
+    });
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+
+    await page.goto(`/zilch/spiel/${gameId}`);
+    await expect(page.locator(".zilch-dice")).toBeVisible();
+    await page.evaluate(snapshot => window.__zilchGameScreenFixturePush({ scoreboard: snapshot }), timedOut);
+
+    const terminal = page.locator(".zilch-final-result--aborted");
+    await expect(terminal).toBeVisible();
+    await expect(terminal).toContainText(/Partie wegen langer Pause beendet|Game ended after a long pause/);
+    await expect(terminal).toContainText(/Nach einer Stunde ohne Aktivität|after one hour without activity/);
+    await expect(terminal.getByRole("link", { name: /Zur Zilch-Lobby|Back to Zilch lobby/ })).toHaveAttribute("href", "/zilch");
+    await expect(page.locator("[data-zilch-new-round]")).toHaveCount(0);
+    await expect(page.locator("[data-zilch-reconnect]")).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureSocketCount)).toBe(1);
+    await page.evaluate(() => window.__zilchGameScreenFixtureClose());
+    await page.waitForTimeout(1_700);
+    await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureSocketCount)).toBe(1);
+  } finally {
+    await context.close();
+  }
+});
+
 test("an abandoned solo run keeps score and result balanced with clear actions", async ({ browser, baseURL }) => {
   const context = await browser.newContext({
     baseURL,
@@ -1673,6 +1732,7 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
     await expect(currentRoll).toContainText("Aktuell gehalten: 0");
 
     await page.setViewportSize({ width: 390, height: 827 });
+    await expect(page.locator(".emoji-fab")).toBeVisible();
     const mobileRecommendationLayout = await page.evaluate(() => {
       const rail = document.querySelector(".zilch-recommendations").getBoundingClientRect();
       const cards = [...document.querySelectorAll("[data-zilch-recommendation]")].map(card => {
@@ -1690,6 +1750,7 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
       const notebook = document.querySelector(".zilch-play-layout__notebook").getBoundingClientRect();
       const diceDock = document.querySelector(".zilch-dice-dock").getBoundingClientRect();
       const chat = document.querySelector(".zilch-chat").getBoundingClientRect();
+      const reaction = document.querySelector(".emoji-fab").getBoundingClientRect();
       return {
         topToBottom: cards.sort((first, second) => first.top - second.top).map(card => card.shortcut),
         bestBottom: best.bottom,
@@ -1703,8 +1764,13 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
         notebookHeight: notebook.height,
         notebookBottom: notebook.bottom,
         diceDockTop: diceDock.top,
-        diceDockBottomGap: window.innerHeight - diceDock.bottom,
+        diceDockBottom: diceDock.bottom,
+        chatTop: chat.top,
         chatBottom: chat.bottom,
+        chatPosition: getComputedStyle(document.querySelector(".zilch-chat")).position,
+        reactionTop: reaction.top,
+        reactionBottom: reaction.bottom,
+        viewportHeight: window.innerHeight,
         scoreFontSize: Number.parseFloat(getComputedStyle(firstCard.querySelector("strong")).fontSize),
         labelFontSize: Number.parseFloat(getComputedStyle(firstCard.querySelector("span")).fontSize),
       };
@@ -1718,12 +1784,39 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
     expect(Math.abs(mobileRecommendationLayout.turnScoreTop - mobileRecommendationLayout.combinedScoreTop)).toBeLessThanOrEqual(2);
     expect(Math.abs(mobileRecommendationLayout.turnScoreBottom - mobileRecommendationLayout.combinedScoreBottom)).toBeLessThanOrEqual(2);
     expect(mobileRecommendationLayout.combinedScoreLeft - mobileRecommendationLayout.turnScoreRight).toBeGreaterThanOrEqual(0);
-    expect(mobileRecommendationLayout.diceDockTop - mobileRecommendationLayout.turnScoreBottom).toBeGreaterThanOrEqual(16);
-    expect(mobileRecommendationLayout.diceDockBottomGap).toBeLessThanOrEqual(8);
-    expect(mobileRecommendationLayout.diceDockTop - mobileRecommendationLayout.chatBottom).toBeGreaterThanOrEqual(0);
-    expect(mobileRecommendationLayout.diceDockTop - mobileRecommendationLayout.chatBottom).toBeLessThanOrEqual(28);
+    expect(mobileRecommendationLayout.diceDockTop - mobileRecommendationLayout.turnScoreBottom).toBeGreaterThanOrEqual(6);
+    // The chat owns the lower edge. Dice/actions are a separate rail directly
+    // above it, so neither can quietly swap places in a future dock change.
+    expect(mobileRecommendationLayout.chatPosition).toBe("fixed");
+    expect(mobileRecommendationLayout.viewportHeight - mobileRecommendationLayout.chatBottom).toBeLessThanOrEqual(1);
+    expect(mobileRecommendationLayout.chatTop - mobileRecommendationLayout.diceDockBottom).toBeGreaterThanOrEqual(4);
+    expect(mobileRecommendationLayout.chatTop - mobileRecommendationLayout.diceDockBottom).toBeLessThanOrEqual(18);
+    expect(mobileRecommendationLayout.reactionTop).toBeGreaterThanOrEqual(mobileRecommendationLayout.chatTop - 1);
+    expect(mobileRecommendationLayout.reactionBottom).toBeLessThanOrEqual(mobileRecommendationLayout.chatBottom + 1);
     expect(mobileRecommendationLayout.scoreFontSize).toBeGreaterThanOrEqual(17);
     expect(mobileRecommendationLayout.labelFontSize).toBeGreaterThanOrEqual(12);
+
+    await page.locator(".emoji-fab").click();
+    await expect(page.locator(".emoji-panel")).toBeVisible();
+    const quickReactionGeometry = await page.evaluate(() => {
+      const panel = document.querySelector(".emoji-panel").getBoundingClientRect();
+      const chat = document.querySelector(".zilch-chat").getBoundingClientRect();
+      return { panelBottom: panel.bottom, chatTop: chat.top };
+    });
+    expect(quickReactionGeometry.panelBottom).toBeLessThanOrEqual(quickReactionGeometry.chatTop + 2);
+
+    await page.locator("[data-zilch-chat-toggle]").click();
+    await expect(page.locator("#zilchChatInput")).toBeVisible();
+    const openChatGeometry = await page.evaluate(() => {
+      const chat = document.querySelector(".zilch-chat").getBoundingClientRect();
+      return {
+        bottomGap: window.innerHeight - chat.bottom,
+        position: getComputedStyle(document.querySelector(".zilch-chat")).position,
+      };
+    });
+    expect(openChatGeometry.position).toBe("fixed");
+    expect(openChatGeometry.bottomGap).toBeLessThanOrEqual(1);
+    await page.locator("[data-zilch-chat-toggle]").click();
 
     const compactRecommendationLayout = await page.evaluate(() => {
       const rail = document.querySelector(".zilch-recommendations");
@@ -1874,6 +1967,13 @@ test("Space uses the enabled start roll first and otherwise the current roll act
           bodyUsesOnlyScrollAttachments: getComputedStyle(document.body).backgroundAttachment
             .split(",")
             .every(value => value.trim() === "scroll"),
+          bodyBackgroundOrigin: getComputedStyle(document.body).backgroundOrigin
+            .split(",")
+            .every(value => value.trim() === "content-box"),
+          bodyBackgroundClip: getComputedStyle(document.body).backgroundClip
+            .split(",")
+            .every(value => value.trim() === "content-box"),
+          rootBackground: getComputedStyle(document.documentElement).backgroundColor,
           viewport: document.querySelector('meta[name="viewport"]')?.getAttribute("content") || "",
         };
       });
@@ -1884,6 +1984,9 @@ test("Space uses the enabled start roll first and otherwise the current roll act
       expect(geometry.reaction.width).toBeGreaterThanOrEqual(33);
       expect(geometry.reaction.height).toBeGreaterThanOrEqual(33);
       expect(geometry.bodyUsesOnlyScrollAttachments, "the PWA does not use a blurry fixed wood bitmap").toBe(true);
+      expect(geometry.bodyBackgroundOrigin, "the wood begins below the PWA safe-top content edge").toBe(true);
+      expect(geometry.bodyBackgroundClip, "the PWA status-bar canvas stays outside the wood bitmap").toBe(true);
+      expect(geometry.rootBackground, "the PWA status-bar canvas stays a crisp solid surface").toBe("rgb(84, 45, 22)");
       expect(geometry.viewport).toContain("viewport-fit=cover");
     });
 

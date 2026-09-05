@@ -1,11 +1,19 @@
 import asyncio
 import json
 from datetime import datetime, timezone
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
+from app import main
 from app.game_snapshot import snapshot
-from app.game_state import WRITABLE_COLS, WRITABLE_ROWS, _passphrase_from_payload
-from app.game_websocket import MessageRateLimiter
+from app.game_state import (
+    GAME_TIMEOUT,
+    WRITABLE_COLS,
+    WRITABLE_ROWS,
+    _passphrase_from_payload,
+    check_timeout_and_abort,
+    games,
+)
+from app.game_websocket import MessageRateLimiter, _receive_messages, serve_game_websocket
 from app.game_ws_gameplay import handle_gameplay_action
 from app.game_ws_session import GameSocketSession, disconnect_session, handle_session_action
 from app.game_ws_social import handle_social_action
@@ -167,6 +175,179 @@ class WebSocketActionGuardTestCase(GameStateTestCase):
             )
         )
         self.assertEqual(game["_holds"], [True, False, True, False, False])
+
+    def test_timeout_aborted_socket_rejects_late_social_activity_without_touching_room(self):
+        """A connected client must not keep an already-expired room alive."""
+        game = self.make_game(mode=1, players=[("p1", "Anna")])
+        now = datetime(2031, 4, 5, 14, 30, tzinfo=timezone.utc)
+        game["_last_activity"] = now - GAME_TIMEOUT
+        self.assertTrue(check_timeout_and_abort(game, now=now))
+        terminal_activity = game["_last_activity"]
+
+        class OneMessageSocket(RecordingSocket):
+            def __init__(self):
+                super().__init__()
+                self._messages_to_receive = [{"action": "send_emoji", "emoji": "🎲"}]
+
+            async def receive_json(self):
+                if self._messages_to_receive:
+                    return self._messages_to_receive.pop(0)
+                from fastapi import WebSocketDisconnect
+
+                raise WebSocketDisconnect()
+
+        socket = OneMessageSocket()
+        session = GameSocketSession(websocket=socket, game=game, auth_identity=None, player_id="p1")
+        game["_players"][0]["ws"] = socket
+
+        asyncio.run(_receive_messages(session, limiter=MessageRateLimiter(), finalize_game=lambda _game: None))
+
+        self.assertEqual(socket.messages, [])
+        self.assertEqual(socket.close_codes, [1000])
+        self.assertEqual(game["_last_activity"], terminal_activity)
+
+    def test_expiring_socket_delegates_terminal_delivery_to_lifecycle_once(self):
+        """A deadline hit by a live message uses the shared retirement path."""
+        game = self.make_game(mode=1, players=[("p1", "Anna")])
+        now = datetime.now(timezone.utc)
+        game["_last_activity"] = now - GAME_TIMEOUT
+
+        class OneMessageSocket(RecordingSocket):
+            def __init__(self):
+                super().__init__()
+                self._messages_to_receive = [{"action": "send_emoji", "emoji": "🎲"}]
+
+            async def receive_json(self):
+                if self._messages_to_receive:
+                    return self._messages_to_receive.pop(0)
+                from fastapi import WebSocketDisconnect
+
+                raise WebSocketDisconnect()
+
+        socket = OneMessageSocket()
+        session = GameSocketSession(websocket=socket, game=game, auth_identity=None, player_id="p1")
+        game["_players"][0]["ws"] = socket
+        publisher = AsyncMock()
+
+        asyncio.run(
+            _receive_messages(
+                session,
+                limiter=MessageRateLimiter(),
+                finalize_game=lambda _game: None,
+                timeout_abort_publisher=publisher,
+            )
+        )
+
+        publisher.assert_awaited_once_with(game)
+        self.assertTrue(game["_aborted"])
+        self.assertTrue(game["_timeout_abort_pending"])
+
+    def test_timeout_abort_disconnect_only_detaches_without_a_second_room_frame(self):
+        """Closing after the terminal frame must not make the room talk again."""
+        game = self.make_game(mode=2, players=[("p1", "Anna"), ("p2", "Ben")])
+        first_socket = RecordingSocket()
+        remaining_socket = RecordingSocket()
+        game["_players"][0]["ws"] = first_socket
+        game["_players"][1]["ws"] = remaining_socket
+        game.update({"_started": False, "_finished": True, "_aborted": True})
+
+        asyncio.run(
+            disconnect_session(
+                GameSocketSession(websocket=first_socket, game=game, auth_identity=None, player_id="p1")
+            )
+        )
+
+        self.assertIsNone(game["_players"][0]["ws"])
+        self.assertEqual(remaining_socket.messages, [])
+
+        spectator_socket = RecordingSocket()
+        game["_spectators"] = [{"id": "s1", "name": "Cleo", "ws": spectator_socket}]
+        asyncio.run(
+            disconnect_session(
+                GameSocketSession(
+                    websocket=spectator_socket,
+                    game=game,
+                    auth_identity=None,
+                    spectator_id="s1",
+                    is_spectator=True,
+                )
+            )
+        )
+
+        self.assertEqual(game["_spectators"], [])
+        self.assertEqual(remaining_socket.messages, [])
+
+
+    def test_timeout_close_releases_a_prejoin_connection_reservation(self):
+        """A silent accepted socket cannot outlive a retired game room."""
+
+        class BlockingSocket:
+            def __init__(self) -> None:
+                self.messages: list[dict] = []
+                self.close_codes: list[int] = []
+                self.initial_frame = asyncio.Event()
+                self.closed = asyncio.Event()
+
+            async def accept(self) -> None:
+                return None
+
+            async def send_json(self, message: dict) -> None:
+                self.messages.append(message)
+                self.initial_frame.set()
+
+            async def receive_json(self):
+                await self.closed.wait()
+                from fastapi import WebSocketDisconnect
+
+                raise WebSocketDisconnect()
+
+            async def close(self, code: int = 1000, **_kwargs) -> None:
+                self.close_codes.append(code)
+                self.closed.set()
+
+        async def scenario() -> None:
+            game = self.make_game(mode=1, players=[("p1", "Anna")])
+            socket = BlockingSocket()
+            reservations: list[str | None] = []
+            releases: list[str | None] = []
+
+            def reserve(_websocket):
+                reservations.append("peer")
+                return "peer"
+
+            def release(address):
+                releases.append(address)
+
+            with patch("app.game_websocket.websocket_origin_allowed", return_value=True), patch(
+                "app.game_websocket.resolve_session", return_value=None
+            ), patch("app.game_websocket.can_access_game", return_value=True), patch(
+                "app.game_realtime.save_active_game"
+            ), patch("app.zilch_cpu_runner.stop_cpu_runner", new=AsyncMock()):
+                task = asyncio.create_task(
+                    serve_game_websocket(
+                        socket,
+                        game["_id"],
+                        reserve_connection=reserve,
+                        release_connection=release,
+                        finalize_game=lambda _game: None,
+                    )
+                )
+                await asyncio.wait_for(socket.initial_frame.wait(), timeout=1)
+                self.assertEqual(game.get("_live_sockets"), [socket])
+
+                now = datetime.now(timezone.utc)
+                game["_last_activity"] = now - GAME_TIMEOUT
+                self.assertTrue(check_timeout_and_abort(game, now=now))
+                await main._publish_timeout_abort(game)
+                await asyncio.wait_for(task, timeout=1)
+
+            self.assertEqual(reservations, ["peer"])
+            self.assertEqual(releases, ["peer"])
+            self.assertEqual(socket.close_codes, [1000])
+            self.assertEqual(len(socket.messages), 1)
+            self.assertNotIn(game["_id"], games)
+
+        asyncio.run(scenario())
 
     def test_field_cannot_be_written_before_the_first_roll(self):
         game = self.make_game(mode=1, players=[("p1", "Anna")])

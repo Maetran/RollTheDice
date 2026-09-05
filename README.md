@@ -315,6 +315,11 @@ Solo active states persist their fixed Objective/metrics and resume only with
 their linked account seat or the guest's local resume/capability session; process downtime and explicit pauses are
 excluded from the stored active duration.
 
+Waiting, running, and paused rooms share a one-hour inactivity deadline. If
+no server-accepted room action occurs in that time, the room is aborted,
+connected players and spectators receive its terminal snapshot, and the active
+record is removed without creating a completed result.
+
 Production deployment details, including the IONOS SSH target and mandatory
 leaderboard backup rules, are documented in `docs/DEPLOYMENT.md`. Use
 `scripts/deploy_zdwa.sh` for the guarded production deploy.

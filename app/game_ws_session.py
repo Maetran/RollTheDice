@@ -329,6 +329,11 @@ async def disconnect_session(session: GameSocketSession) -> None:
     g = session.game
     player_id = session.player_id
     spectator_id = session.spectator_id
+    # The timeout lifecycle has already sent the one final room frame before
+    # retiring an aborted game. Connections may close after that frame, but
+    # their local cleanup must never emit a second scoreboard or spectator
+    # notice into the otherwise terminal room.
+    terminal_abort = bool(g.get("_aborted"))
     correction_cancelled = False
     superadmin_cancelled = False
 
@@ -340,6 +345,8 @@ async def disconnect_session(session: GameSocketSession) -> None:
                     player["ws"] = None
                     owns_player_socket = True
                 break
+        if terminal_abort:
+            return
         # A rejoin replaces the old socket before closing it. The old handler
         # must not pause or alter the newly attached player session.
         if owns_player_socket and player_id in g.get("_superadmins", {}):
@@ -364,6 +371,8 @@ async def disconnect_session(session: GameSocketSession) -> None:
                 left_spectator = spectator
                 spectators.pop(index)
                 break
+        if terminal_abort:
+            return
         try:
             if left_name:
                 notice = {"event": "left", "name": left_name}

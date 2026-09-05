@@ -173,6 +173,14 @@ dem Spielstand und dem sozialen Raum folgen, aber weder würfeln noch Würfel
 halten oder Punkte sichern. Solo-, CPU-, wartende und beendete Partien erlauben
 keinen Zuschauerzugang.
 
+## Pause und Ablauf
+
+Für wartende, laufende und pausierte Zilch-Tische gilt dieselbe Frist: Bleibt
+eine serverseitig angenommene Raumaktion eine volle Stunde aus, wird die Partie
+abgebrochen. Verbundene Spieler und Zuschauer erhalten einen klaren
+Abschluss-Hinweis mit Rückweg zur Lobby. Der Abbruch erzeugt kein
+Zilch-Ergebnis und keine Historie, Statistik, Ranglistenwertung oder Awards.
+
 Auf der aktiven Spielseite schalten die Tasten `1` bis `6` den entsprechenden
 noch nicht bestätigten Würfel um. `Q`, `W`, `E`, `R`, `T`, `Z`, `U` und `I`
 wählen die sichtbaren Empfehlungen in ihrer Reihenfolge. Die Leertaste löst

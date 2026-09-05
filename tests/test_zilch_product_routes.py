@@ -124,6 +124,7 @@ class ZilchProductRoutesTestCase(TestCase):
             "/zilch/historie",
             "/zilch/statistiken",
             "/zilch/bestenlisten",
+            "/zilch/erfolge",
             "/zilch/konto",
             "/zilch/regeln",
             "/api/zilch/rules",
@@ -133,12 +134,22 @@ class ZilchProductRoutesTestCase(TestCase):
             with self.subTest(path=path, identity="normal"):
                 self.assertEqual(self._get(path, normal_token).status_code, 403)
 
-        for path in ("/zilch/historie", "/zilch/statistiken", "/zilch/bestenlisten", "/zilch/konto", "/zilch/regeln"):
+        for path in ("/zilch/historie", "/zilch/bestenlisten", "/zilch/konto", "/zilch/regeln"):
             with self.subTest(path=path):
                 response = self._get(path, mani_token)
                 self.assertEqual(response.status_code, 200)
                 self.assertIn('name="robots" content="noindex, nofollow"', response.text)
                 self.assertIn("no-cache", response.headers.get("cache-control", ""))
+
+        for source, target in (
+            ("/zilch/statistiken?scope=mine", "/zilch/konto?scope=mine#statistics"),
+            ("/zilch/erfolge", "/zilch/konto#achievements"),
+        ):
+            with self.subTest(source=source):
+                response = self._get(source, mani_token)
+                self.assertEqual(response.status_code, 308)
+                self.assertEqual(response.headers["location"], target)
+                self.assertEqual(response.headers["cache-control"], "no-store")
 
         rules = self._get("/api/zilch/rules", mani_token)
         self.assertEqual(rules.status_code, 200)
@@ -217,7 +228,7 @@ class ZilchProductRoutesTestCase(TestCase):
 
         followed = asyncio.run(follow_shared_cookie())
         self.assertEqual(followed.status_code, 200)
-        self.assertEqual(str(followed.url), "https://zilch.zockdiewandan.online/statistiken")
+        self.assertEqual(str(followed.url), "https://zilch.zockdiewandan.online/konto#statistics")
         self.assertIn("data-zilch-root", followed.text)
 
         for malicious_path in (
@@ -314,9 +325,7 @@ class ZilchProductRoutesTestCase(TestCase):
         for path in (
             "/",
             "/historie",
-            "/statistiken",
             "/bestenlisten",
-            "/erfolge",
             "/konto",
             "/regeln",
             "/spieler/Mani",
@@ -332,6 +341,22 @@ class ZilchProductRoutesTestCase(TestCase):
                 self.assertEqual(response.headers["x-robots-tag"], "noindex, nofollow")
                 self.assertIn('name="robots" content="noindex, nofollow"', response.text)
                 self.assertIn("data-zilch-root", response.text)
+
+        for source, target in (
+            ("/statistiken?scope=mine", "/konto?scope=mine#statistics"),
+            ("/erfolge", "/konto#achievements"),
+        ):
+            with self.subTest(source=source):
+                response = self._get(
+                    source,
+                    mani_token,
+                    host="zilch.zockdiewandan.online",
+                    cookie_name=SHARED_SESSION_COOKIE,
+                )
+                self.assertEqual(response.status_code, 308)
+                self.assertEqual(response.headers["location"], target)
+                self.assertEqual(response.headers["cache-control"], "no-store")
+                self.assertEqual(response.headers["x-robots-tag"], "noindex, nofollow")
 
         prefixed = self._get(
             "/zilch/statistiken?scope=mine",
@@ -443,7 +468,8 @@ class ZilchProductRoutesTestCase(TestCase):
 
         with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES": "previewfriend"}):
             self.assertEqual(self._get("/zilch/historie", preview_token).status_code, 200)
-            self.assertEqual(self._get("/zilch/statistiken", preview_token).status_code, 200)
+            self.assertEqual(self._get("/zilch/statistiken", preview_token).status_code, 308)
+            self.assertEqual(self._get("/zilch/erfolge", preview_token).status_code, 308)
             self.assertEqual(self._get("/zilch/bestenlisten", preview_token).status_code, 200)
             self.assertEqual(self._get("/zilch/regeln", preview_token).status_code, 200)
             self.assertEqual(self._get("/api/zilch/rules", preview_token).status_code, 200)
@@ -487,6 +513,7 @@ class ZilchProductRoutesTestCase(TestCase):
             self.assertEqual(self._get("/api/zilch/leaderboards?category=solo_sprint").status_code, 200)
             self.assertEqual(self._get("/api/zilch/statistics").status_code, 401)
             self.assertEqual(self._get("/statistiken", host="zilch.zockdiewandan.online").status_code, 401)
+            self.assertEqual(self._get("/erfolge", host="zilch.zockdiewandan.online").status_code, 401)
 
             create = main.CreateReq.model_validate(
                 {

@@ -386,6 +386,24 @@ async def resume_cpu_games(
         maybe_schedule_cpu_turn(game, finalize_game=finalize_game)
 
 
+async def stop_cpu_runner(game_id: str) -> None:
+    """Cancel one delayed CPU decision when its room is retired.
+
+    The domain guard in :func:`cpu_action_is_due` already prevents an aborted
+    game from making a move after a delay.  Cancelling the process-local task
+    as well frees that delay immediately and makes room retirement explicit.
+    """
+    task = _CPU_TASKS.pop(str(game_id or ""), None)
+    if task is None or task.done():
+        return
+    # This helper is normally called by the lifecycle sweeper, never by the
+    # runner itself.  Keeping the guard makes it safe if that changes later.
+    if task is asyncio.current_task():
+        return
+    task.cancel()
+    await asyncio.gather(task, return_exceptions=True)
+
+
 async def stop_cpu_runners() -> None:
     """Cancel and await all managed tasks during application shutdown."""
     tasks = list(_CPU_TASKS.values())

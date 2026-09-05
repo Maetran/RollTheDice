@@ -295,6 +295,7 @@ def snapshot_zilch(game: GameDict) -> dict:
         "_started": bool(game.get("_started")),
         "_finished": bool(game.get("_finished")),
         "_aborted": bool(game.get("_aborted")),
+        "_abort_reason": game.get("_abort_reason") if game.get("_aborted") else None,
         "_started_at": game.get("_started_at"),
         "_finished_at": game.get("_finished_at"),
         "_updated_at": game.get("_updated_at"),
