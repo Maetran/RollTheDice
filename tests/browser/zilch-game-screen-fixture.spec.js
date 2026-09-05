@@ -705,6 +705,9 @@ async function installGameScreenFixture(page, gameId, snapshots, detailsOverride
         if (message.action === "join_game" || message.action === "rejoin_game") {
           this._message({ player_id: "p1", resume_token: "fixture-resume" });
           this._message({ scoreboard: fixtureSnapshots.initial || fixtureSnapshots.hotDice });
+        } else if (message.action === "spectate_game") {
+          this._message({ spectator_id: "fixture-spectator", spectator: true });
+          this._message({ scoreboard: fixtureSnapshots.initial || fixtureSnapshots.hotDice });
         } else if (message.action === "zilch_roll_dice") {
           const next = message.option_id
             ? (fixtureSnapshots.thirdZilch || fixtureSnapshots.heldForConfirmation || fixtureSnapshots.initial)
@@ -905,6 +908,60 @@ test("a newly created owned solo run is presented as continue, never as a joinab
     await expect(running.getByRole("link", { name: /Solo-Lauf fortsetzen|Continue solo run/ })).toHaveAttribute("href", "/zilch/spiel/solo-owned-lobby-fixture");
     await expect(running).not.toContainText(/Beitreten|Join/);
     await expect(page.locator("#zilchWaitingGames")).not.toContainText("Mein Sprint");
+  } finally {
+    await context.close();
+  }
+});
+
+test("the Zilch lobby lists a live human duel with both players and a watch link", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    await page.route(/\/api\/games(?:\?.*)?$/, async route => {
+      const url = new URL(route.request().url());
+      if (route.request().method() !== "GET" || url.searchParams.get("game_type") !== "zilch") return route.continue();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          games: [{
+            id: "watchable-lobby-fixture",
+            game_type: "zilch",
+            name: "Abendrunde",
+            mode: "2",
+            play_mode: "multiplayer",
+            started: true,
+            finished: false,
+            aborted: false,
+            paused: false,
+            locked: false,
+            participant_count: 2,
+            expected_participants: 2,
+            spectator_available: true,
+            current_player_id: "p2",
+            current_player_name: "Birgit",
+            participants: [
+              { id: "p1", name: "Alice", type: "human", connected: true },
+              { id: "p2", name: "Birgit", type: "human", connected: true },
+            ],
+            progress: [
+              { id: "p1", name: "Alice", points: 1500 },
+              { id: "p2", name: "Birgit", points: 1200 },
+            ],
+          }],
+          online_users: 3,
+        }),
+      });
+    });
+    await page.goto("/zilch");
+
+    const running = page.locator("#zilchRunningGames");
+    await expect(running).toContainText("Alice");
+    await expect(running).toContainText("Birgit");
+    const watch = running.getByRole("link", { name: /Zuschauen|Watch/ });
+    await expect(watch).toHaveAttribute("href", "/zilch/spiel/watchable-lobby-fixture/zuschauen");
+    await expect(page.locator("#zilchWaitingGames")).not.toContainText("Abendrunde");
   } finally {
     await context.close();
   }
@@ -1931,6 +1988,43 @@ test("a human-vs-human Zilch player can copy a clean invitation link", async ({ 
     await expect.poll(() => page.evaluate(() => window.__zilchCopiedInvite)).toBe(
       `${baseURL}/zilch/spiel/${gameId}`,
     );
+  } finally {
+    await context.close();
+  }
+});
+
+test("a Zilch spectator connects read-only without taking a player seat", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    const gameId = "spectator-screen-fixture";
+    await installGameScreenFixture(page, gameId, { initial: hotDiceChoiceSnapshot() }, {
+      play_mode: "multiplayer",
+      spectator_available: true,
+    });
+    await page.route(`**/zilch/spiel/${gameId}/zuschauen`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    await page.goto(`/zilch/spiel/${gameId}/zuschauen`);
+
+    await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: "spectate_game" }),
+    ]));
+    expect(await page.evaluate(() => window.__zilchGameScreenFixtureMessages.some(message => (
+      message.action === "join_game" || message.action === "rejoin_game"
+    )))).toBe(false);
+    await expect(page.locator("#zilchRoomContext")).toContainText(/Zuschauen|Watch/);
+    await expect(page.locator("#zilchLiveStatus")).toContainText(/Du schaust diesem Spiel zu|You are watching this game/);
+    await expect(page.locator("[data-zilch-die-index]")).toHaveCount(0);
+    await expect(page.locator("[data-zilch-roll]")).toBeDisabled();
+    await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
+    await expect(page.locator("#zilchShareGameBtn")).toBeHidden();
   } finally {
     await context.close();
   }

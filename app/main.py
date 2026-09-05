@@ -116,6 +116,7 @@ from .zilch_state import (
     zilch_expected_participant_count,
     zilch_participants,
     zilch_solo_objective_projection,
+    zilch_spectating_available,
 )
 from .zilch_statistics import (
     ZilchStatisticsInputError,
@@ -556,7 +557,8 @@ def room_page(game_id: str, request: Request):
     if game and game_type_from_state(game) == ZILCH_GAME_TYPE:
         if not can_access_game(resolve_session(request), game):
             raise HTTPException(status_code=404, detail="game_not_found")
-        return RedirectResponse(f"/zilch/spiel/{quote(game_id, safe='')}", status_code=307)
+        spectator_suffix = "/zuschauen" if request.url.path.rstrip("/").endswith("/zuschauen") else ""
+        return RedirectResponse(f"/zilch/spiel/{quote(game_id, safe='')}{spectator_suffix}", status_code=307)
     return _page("room.html")
 
 
@@ -644,6 +646,7 @@ def zilch_login_page():
 
 
 @app.get("/zilch/spiel/{game_id}", include_in_schema=False)
+@app.get("/zilch/spiel/{game_id}/zuschauen", include_in_schema=False)
 def zilch_room_page(game_id: str, request: Request):
     """Serve a Zilch room only after both policy and type checks pass."""
     identity, redirect = _resolve_zilch_access(request)
@@ -1186,6 +1189,7 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
                 entry["participant_count"] = len(entry["participants"])
                 entry["expected_participants"] = zilch_expected_participant_count(g)
                 entry["expected_connections"] = zilch_expected_connection_count(g)
+                entry["spectator_available"] = zilch_spectating_available(g)
                 entry["cpu_strategy"] = _zilch_cpu_strategy(g)
                 entry["my_cpu_host"] = _is_zilch_cpu_host(g, auth_identity.user_id if auth_identity else None)
                 solo = zilch_solo_objective_projection(g)
@@ -1283,6 +1287,7 @@ def game_info(
                 "participant_count": len(zilch_participants(g)),
                 "expected_participants": zilch_expected_participant_count(g),
                 "expected_connections": zilch_expected_connection_count(g),
+                "spectator_available": zilch_spectating_available(g),
                 "cpu_strategy": _zilch_cpu_strategy(g),
                 "my_cpu_host": _is_zilch_cpu_host(g, auth_identity.user_id if auth_identity else None),
                 "my_solo_host": _is_zilch_solo_host(g, auth_identity.user_id if auth_identity else None),

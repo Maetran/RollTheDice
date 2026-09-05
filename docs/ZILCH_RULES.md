@@ -155,6 +155,19 @@ Straße –, nennt die Schaltfläche den Wurf statt „Kombinierte Wertung“ un
 den Stempel **„Freier Wurf!“**. Auch diese Auswahl bleibt ein Entwurf, bis
 `Weiterwürfeln` oder `Sichern` sie atomar übernimmt.
 
+## Einladen und Zuschauen
+
+In einer Zwei-Personen-Partie erzeugt **„Spiel teilen“** einen sauberen
+Einladungslink für den freien menschlichen Platz. Der Link enthält weder
+Raumcode noch Konto- oder Wiederaufnahme-Zugangsdaten; geschützte Räume fragen
+den Raumcode weiterhin ab.
+
+Die Lobby zeigt laufende Zwei-Personen-Partien mit beiden Spielern. Über
+**„Zuschauen“** öffnet sich eine schreibgeschützte Live-Ansicht. Zuschauer können
+dem Spielstand und dem sozialen Raum folgen, aber weder würfeln noch Würfel
+halten oder Punkte sichern. Solo-, CPU-, wartende und beendete Partien erlauben
+keinen Zuschauerzugang.
+
 Auf der aktiven Spielseite schalten die Tasten `1` bis `6` den entsprechenden
 noch nicht bestätigten Würfel um. `Q`, `W`, `E`, `R`, `T`, `Z`, `U` und `I`
 wählen die sichtbaren Empfehlungen in ihrer Reihenfolge. Die Leertaste löst

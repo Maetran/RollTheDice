@@ -27,6 +27,7 @@ from .zilch_state import (
     resume_zilch_solo_timer,
     zilch_human_join_error,
     zilch_is_configured_solo_game,
+    zilch_spectating_available,
 )
 
 logger = logging.getLogger(__name__)
@@ -169,11 +170,12 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
 async def _spectate_game(session: GameSocketSession, data: dict[str, Any]) -> bool:
     g = session.game
     websocket = session.websocket
-    # Zilch deliberately has exactly two human seats and no third read-only
-    # seat. This keeps its board/chat scope aligned with the compact lobby
-    # instead of inheriting ZDWA's spectator surface by accident.
-    if game_type_from_state(g) == ZILCH_GAME_TYPE:
-        await close_with_error(websocket, "Zuschauen ist für Zilch derzeit nicht verfügbar.", fatal=True)
+    if game_type_from_state(g) == ZILCH_GAME_TYPE and not zilch_spectating_available(g):
+        await close_with_error(
+            websocket,
+            "Zuschauen ist nur bei laufenden Zilch-Partien zu zweit möglich.",
+            fatal=True,
+        )
         return True
     if not _passphrase_matches(g, data):
         await close_with_error(websocket, "Falsche Passphrase")

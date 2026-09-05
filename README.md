@@ -79,6 +79,11 @@ stays optional, and a completed game can be restarted directly with the same mod
 In a two-person Zilch room, **Share game** creates a clean invitation link for
 the other human seat. It deliberately never includes a room code, account
 session, or resume credential; protected rooms still ask invitees for their code.
+The Zilch lobby also lists live human-versus-human tables with both players.
+**Watch** opens their read-only live view: spectators can follow the board and
+the social room, while rolling, holding, and banking remain limited to the two
+seated players. CPU, Solo, waiting, and finished tables never expose a spectator
+seat; protected live tables still require their room code.
 
 Production keeps `https://zockdiewandan.online` as ZDWA's canonical origin so
 existing installed PWAs, bookmarks, and origin-bound resume data remain valid.
@@ -190,6 +195,7 @@ User-facing navigation uses short routes without implementation details:
 - `/zilch` public Zilch lobby (canonical host: `zilch.zockdiewandan.online/`)
 - `/zilch/anmelden` direct, noindex sign-in and registration entry for Zilch
 - `/zilch/spiel/{game_id}` protected Zilch game view (`noindex`)
+- `/zilch/spiel/{game_id}/zuschauen` protected, read-only Zilch spectator view (`noindex`)
 - `/zilch/historie` protected own Zilch history (`noindex`)
 - `/zilch/ergebnis/{game_id}` participant-bound, read-only Zilch result report (`noindex`)
 - `/zilch/statistiken` protected own Zilch statistics (`noindex`)

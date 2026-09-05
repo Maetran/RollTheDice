@@ -546,4 +546,26 @@ class ZilchProductRoutesTestCase(TestCase):
         self.assertEqual(entry["current_player_id"], "p1")
         self.assertEqual(entry["current_player_name"], "Mani")
         self.assertEqual(entry["final_round"], {"triggered_by": "p1", "pending_player_ids": ["p2"]})
+        self.assertTrue(entry["spectator_available"])
         self.assertNotIn("target_score", entry["final_round"])
+
+        detail = self._get(f"/api/games/{game_id}", mani_token).json()
+        self.assertTrue(detail["spectator_available"])
+
+    def test_zilch_spectator_route_is_noindex_and_legacy_bridge_keeps_the_suffix(self) -> None:
+        mani_id, mani_token = self._identity("Mani", role="admin")
+        preview_id, _preview_token = self._identity("PreviewFriend")
+        game_id = "zilch-spectator-product-route"
+        self.game_ids.append(game_id)
+        game = new_zilch_game(game_id, "Watchable", 2)
+        join_zilch_player(game, {"id": "p1", "name": "Mani", "user_id": mani_id, "ws": None})
+        join_zilch_player(game, {"id": "p2", "name": "PreviewFriend", "user_id": preview_id, "ws": None})
+        start_zilch_game(game)
+
+        bridge = self._get(f"/spiel/{game_id}/zuschauen", mani_token)
+        self.assertEqual(bridge.status_code, 307)
+        self.assertEqual(bridge.headers["location"], f"/zilch/spiel/{game_id}/zuschauen")
+
+        page = self._get(f"/zilch/spiel/{game_id}/zuschauen", mani_token)
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('name="robots" content="noindex, nofollow"', page.text)

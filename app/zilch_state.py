@@ -281,6 +281,25 @@ def zilch_participants(game: GameDict) -> list[dict]:
     return _normalise_existing_participants(game)
 
 
+def zilch_spectating_available(game: GameDict) -> bool:
+    """Return whether a live human-versus-human Zilch game can be watched.
+
+    Spectators are intentionally not a third game seat.  This conservative
+    predicate keeps the WebSocket and lobby policy aligned: only a started,
+    non-terminal two-human game can expose its read-only live view.
+    """
+    if game.get("_play_mode") != ZILCH_MULTIPLAYER_MODE:
+        return False
+    if not game.get("_started") or game.get("_finished") or game.get("_aborted"):
+        return False
+    participants = zilch_participants(game)
+    return (
+        zilch_expected_participant_count(game) == ZILCH_MAX_PLAYERS
+        and len(participants) == ZILCH_MAX_PLAYERS
+        and all(participant.get("type") == ZILCH_HUMAN_PARTICIPANT for participant in participants)
+    )
+
+
 def zilch_cpu_participant(game: GameDict) -> dict | None:
     """Return the sole CPU domain seat, never a transport player."""
     for participant in zilch_participants(game):

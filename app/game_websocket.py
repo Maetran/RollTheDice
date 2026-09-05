@@ -201,7 +201,15 @@ async def _receive_messages(
         if check_timeout_and_abort(session.game):
             await broadcast(session.game, {"scoreboard": snapshot(session.game)})
             continue
-        if session.is_spectator and action not in {"send_emoji", "chat_message", "rejoin_game"}:
+        # A Zilch spectator remains a spectator for the entire socket
+        # lifetime.  Unlike ZDWA's legacy generic view, its read-only route
+        # must not be turned back into a player session by a crafted rejoin
+        # frame. Opening the ordinary player route remains the explicit way
+        # for a seated player to resume.
+        spectator_actions = {"send_emoji", "chat_message"}
+        if game_type_from_state(session.game) != ZILCH_GAME_TYPE:
+            spectator_actions.add("rejoin_game")
+        if session.is_spectator and action not in spectator_actions:
             await session.websocket.send_json({"error": "Nur fuer Spieler"})
             continue
         if allowed_superadmin_actions and action_blocked_by_superadmin(session.game, action):

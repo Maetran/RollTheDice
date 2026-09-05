@@ -47,6 +47,7 @@ from app.zilch_state import (
     finish_zilch_game,
     new_zilch_game,
     new_zilch_participant,
+    zilch_spectating_available,
 )
 from tests.support import GameStateTestCase
 
@@ -303,8 +304,8 @@ class MultiGameFoundationTestCase(GameStateTestCase):
         self.assertEqual(raw_static_page.status_code, 404)
         self.assertIn('name="robots" content="noindex, nofollow"', admin_page.text)
 
-    def test_allowlisted_two_human_websocket_join_rejects_third_player_and_spectator(self):
-        """The Alpha has two private human seats, not inherited ZDWA viewing."""
+    def test_allowlisted_two_human_websocket_join_rejects_third_player_and_allows_read_only_spectator(self):
+        """A live human duel has two seats plus a separate read-only viewer."""
         game = self._track(create_game_state("zilch-hvh-ws", "Private HvH", 2, ZILCH_GAME_TYPE))
         _, mani_token = self._identity("Mani", role="admin")
         _, preview_token = self._identity("PreviewFriend")
@@ -336,6 +337,7 @@ class MultiGameFoundationTestCase(GameStateTestCase):
                         self.assertEqual(started["_players_joined"], 2)
                         self.assertEqual(started["_zilch_start_roll"]["pending_player_ids"], [mani_player, preview_player])
                         self.assertEqual(started["_zilch_start_roll"], mirrored["_zilch_start_roll"])
+                        self.assertTrue(zilch_spectating_available(main.games[game["_id"]]))
 
                         mani_socket.send_json({"action": "end_game"})
                         rejected_end = mani_socket.receive_json()
@@ -352,14 +354,55 @@ class MultiGameFoundationTestCase(GameStateTestCase):
                         with third_client.websocket_connect(f"/ws/{game['_id']}") as spectator_socket:
                             self.assertEqual(spectator_socket.receive_json()["game"]["game_type"], ZILCH_GAME_TYPE)
                             spectator_socket.send_json({"action": "spectate_game"})
-                            rejected_spectator = spectator_socket.receive_json()
-                            self.assertTrue(rejected_spectator["fatal"])
-                            self.assertEqual(
-                                rejected_spectator["error"],
-                            "Zuschauen ist für Zilch derzeit nicht verfügbar.",
-                            )
+                            joined_spectator = spectator_socket.receive_json()
+                            self.assertTrue(joined_spectator["spectator"])
+                            self.assertTrue(joined_spectator["spectator_id"])
+                            self.assertEqual(spectator_socket.receive_json()["spectator"]["event"], "joined")
+                            watched = spectator_socket.receive_json()["scoreboard"]
+                            self.assertTrue(watched["_started"])
+                            self.assertEqual(len(main.games[game["_id"]]["_spectators"]), 1)
+
+                            spectator_socket.send_json({
+                                "action": "rejoin_game",
+                                "player_id": mani_player,
+                                "resume_token": "crafted-resume-token",
+                            })
+                            self.assertEqual(spectator_socket.receive_json()["error"], "Nur fuer Spieler")
+
+                            spectator_socket.send_json({
+                                "action": "zilch_start_roll",
+                                "start_roll_version": watched["_zilch_start_roll"]["version"],
+                            })
+                            self.assertEqual(spectator_socket.receive_json()["error"], "Nur fuer Spieler")
 
         self.assertEqual(len(main.games[game["_id"]]["_players"]), 2)
+
+    def test_zilch_spectator_policy_rejects_waiting_cpu_solo_and_terminal_games(self):
+        waiting = self._track(new_zilch_game("zilch-watch-waiting", "Warten", 2))
+        self.assertFalse(zilch_spectating_available(waiting))
+
+        cpu = self._track(new_zilch_game("zilch-watch-cpu", "CPU", 2))
+        cpu["_play_mode"] = ZILCH_CPU_MODE
+        cpu["_started"] = True
+        cpu["_participants"] = [
+            new_zilch_participant("human", "Mani", participant_type=ZILCH_HUMAN_PARTICIPANT),
+            new_zilch_participant("cpu", "CPU", participant_type=ZILCH_CPU_PARTICIPANT, cpu_strategy="normal"),
+        ]
+        self.assertFalse(zilch_spectating_available(cpu))
+
+        solo = self._track(new_zilch_game("zilch-watch-solo", "Solo", 1))
+        solo["_play_mode"] = ZILCH_SOLO_MODE
+        solo["_started"] = True
+        self.assertFalse(zilch_spectating_available(solo))
+
+        terminal = self._track(new_zilch_game("zilch-watch-terminal", "Ende", 2))
+        terminal["_started"] = True
+        terminal["_finished"] = True
+        terminal["_participants"] = [
+            new_zilch_participant("p1", "Mani", participant_type=ZILCH_HUMAN_PARTICIPANT),
+            new_zilch_participant("p2", "Preview", participant_type=ZILCH_HUMAN_PARTICIPANT),
+        ]
+        self.assertFalse(zilch_spectating_available(terminal))
 
     def test_completed_zilch_active_state_survives_restart_without_zdwa_result_fields(self):
         game = self._track(create_game_state("zilch-terminal-active", "Endstand", 2, ZILCH_GAME_TYPE))
