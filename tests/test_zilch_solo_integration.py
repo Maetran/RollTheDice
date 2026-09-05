@@ -43,6 +43,7 @@ from app.zilch_state import (
     current_zilch_turn,
     join_zilch_player,
     new_zilch_game,
+    settle_zilch_solo_active_duration,
     start_zilch_game,
 )
 
@@ -397,6 +398,20 @@ class ZilchSoloIntegrationTestCase(TestCase):
         self.assertFalse(should_close)
         self.assertEqual(restored["_zilch_solo_objective"]["progress"]["active_duration_seconds"], 20)
         self.assertEqual(restored["_zilch_solo_active_since"], (base + timedelta(seconds=600)).isoformat())
+
+    def test_solo_timer_settles_only_the_new_interval_between_events(self) -> None:
+        game, _player_id, _socket = self._started_solo_game()
+        base = datetime(2030, 1, 1, tzinfo=timezone.utc)
+        game["_zilch_solo_active_since"] = base.isoformat()
+
+        with patch("app.zilch_state._utcnow", return_value=base + timedelta(seconds=10)):
+            self.assertEqual(settle_zilch_solo_active_duration(game), 10)
+        self.assertEqual(game["_zilch_solo_active_since"], (base + timedelta(seconds=10)).isoformat())
+
+        with patch("app.zilch_state._utcnow", return_value=base + timedelta(seconds=25)):
+            self.assertEqual(settle_zilch_solo_active_duration(game), 25)
+        self.assertEqual(game["_zilch_solo_objective"]["progress"]["active_duration_seconds"], 25)
+        self.assertEqual(game["_zilch_solo_active_since"], (base + timedelta(seconds=25)).isoformat())
 
     def test_solo_addition_keeps_competitive_and_zdwa_defaults_intact(self) -> None:
         zdwa = new_game("zdwa-stays-zdwa", "ZDWA", "1")

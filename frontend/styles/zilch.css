@@ -1542,6 +1542,93 @@ html[data-game="zilch"] .zilch-achievement-summary__progress::-moz-progress-bar 
   html[data-game="zilch"] .zilch-achievement-summary__facts div:last-child { grid-column: auto; }
   html[data-game="zilch"] .zilch-achievement-summary__progress { grid-column: 1 / -1; }
 }
+html[data-game="zilch"] .zilch-achievement-rank-legend {
+  margin: 0 0 var(--zilch-space-5);
+  padding: clamp(.75rem, 2.5vw, 1rem);
+  background: var(--zilch-paper-soft);
+}
+html[data-game="zilch"] .zilch-achievement-rank-legend__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: .35rem 1rem;
+  margin-bottom: .7rem;
+}
+html[data-game="zilch"] .zilch-achievement-rank-legend__heading h2 {
+  margin: .08rem 0 0;
+  color: var(--zilch-ink);
+  font: 850 clamp(1.08rem, 3vw, 1.3rem)/1.15 Georgia, "Times New Roman", serif;
+}
+html[data-game="zilch"] .zilch-achievement-rank-legend__heading p:last-child {
+  max-width: 32rem;
+  margin: 0;
+  color: var(--zilch-ink-soft);
+  font-size: .82rem;
+  line-height: 1.35;
+}
+html[data-game="zilch"] .zilch-achievement-rank-legend__list {
+  display: grid;
+  gap: .34rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+html[data-game="zilch"] .zilch-achievement-rank-legend__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .4rem .65rem;
+  min-width: 0;
+  padding: .48rem .56rem;
+  border: 1px solid rgba(125, 81, 36, .16);
+  border-radius: var(--zilch-radius-xs);
+  background: rgba(255,255,255,.32);
+}
+html[data-game="zilch"] .zilch-achievement-rank-legend__row.is-current {
+  border-color: color-mix(in srgb, var(--zilch-gold) 76%, var(--zilch-paper-edge));
+  background: color-mix(in srgb, #fff6c7 60%, var(--zilch-paper-soft));
+  box-shadow: inset .2rem 0 var(--zilch-gold);
+}
+html[data-game="zilch"] .zilch-achievement-rank-legend__stars {
+  min-width: 2.35rem;
+  color: #5a310f;
+  font: 900 .78rem/1 ui-rounded, "Avenir Next", system-ui, sans-serif;
+  letter-spacing: .035em;
+  white-space: nowrap;
+}
+html[data-game="zilch"] .zilch-achievement-rank-legend__title { min-width: 0; }
+html[data-game="zilch"] .zilch-achievement-rank-legend__title strong {
+  display: block;
+  color: var(--zilch-ink);
+  font-size: .9rem;
+}
+html[data-game="zilch"] .zilch-achievement-rank-legend__title small {
+  display: block;
+  margin-top: .08rem;
+  color: var(--zilch-muted);
+  font-size: .72rem;
+  line-height: 1.25;
+}
+html[data-game="zilch"] .zilch-achievement-rank-legend__minimum {
+  color: var(--zilch-ink-soft);
+  font-size: .78rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+html[data-game="zilch"] .zilch-achievement-rank-legend__total {
+  margin: .55rem 0 0;
+  color: var(--zilch-muted);
+  font-size: .76rem;
+  font-weight: 750;
+  text-align: right;
+}
+@media (max-width: 430px) {
+  html[data-game="zilch"] .zilch-achievement-rank-legend__row { grid-template-columns: auto minmax(0, 1fr); }
+  html[data-game="zilch"] .zilch-achievement-rank-legend__minimum { grid-column: 2; text-align: left; }
+}
 html[data-game="zilch"] .zilch-achievement-groups { display: grid; gap: var(--zilch-space-5); }
 html[data-game="zilch"] .zilch-achievement-group { min-width: 0; }
 html[data-game="zilch"] .zilch-achievement-group > h2 {

@@ -108,7 +108,10 @@ relevant metric and are rounded in the server projection.
 Solo statistics keep only compatible Objective ID/version comparisons.
 `reach_10000_fewest_turns` v1 distinguishes completed from abandoned runs;
 abandoned runs appear in personal totals but never in ranking. Active duration
-is the server-stored duration with pause and restart downtime excluded.
+is the server-stored duration with pause and restart downtime excluded. For a
+terminal recovery from the known historical timer overcount, an active duration
+above the complete wall-clock duration is conservatively capped to that wall
+duration; the recovery can therefore never improve a leaderboard position.
 
 ### Zilch leaderboards
 

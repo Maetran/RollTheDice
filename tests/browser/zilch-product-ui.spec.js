@@ -573,6 +573,21 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     let pending = unlocked.map(award => ({ ...award, queued_at: award.unlocked_at }));
     const acknowledgements = [];
 
+    await page.route("**/api/zilch/achievement-ranks", async route => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          version: 2,
+          points_possible: 273,
+          ranks: [
+            { key: "newbie", title: "Newbie", title_key: "zilch.rank.newbie", stars: 0, minimum_points: 0 },
+            { key: "rookie", title: "Rookie", title_key: "zilch.rank.rookie", stars: 1, minimum_points: 7 },
+            { key: "player", title: "Spieler", title_key: "zilch.rank.player", stars: 2, minimum_points: 22 },
+          ],
+        }),
+      });
+    });
+
     await page.route("**/api/zilch/achievements**", async route => {
       const request = route.request();
       const url = new URL(request.url());
@@ -654,6 +669,8 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await expect(page.locator(".zilch-achievement-card").first()).toContainText("Zwei Spieler");
     await expect(page.locator(".zilch-achievement-summary")).toContainText("3 / 273");
     await expect(page.locator(".zilch-achievement-summary")).toContainText("Newbie");
+    await expect(page.locator("[data-zilch-rank-legend]")).toContainText("Ränge und Mindestwerte");
+    await expect(page.locator("[data-zilch-rank-legend] .is-current")).toContainText("Newbie");
     await expect(page.locator(".zilch-achievement-card").first()).toContainText("+1 Zilch-Punkt");
     await expect(page.locator(".zilch-achievement-card__category")).toHaveCount(0);
     await expect(page.locator(".zilch-achievement-card time")).toHaveCount(0);
@@ -703,6 +720,7 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await expect(page.getByRole("heading", { name: "Getting started" })).toBeVisible();
     await expect(page.locator(".zilch-achievement-card").first()).toContainText("First Roll");
     await expect(page.locator(".zilch-achievement-summary")).toContainText("Zilch points");
+    await expect(page.locator("[data-zilch-rank-legend]")).toContainText("Ranks and minimums");
     await expect(page.locator(".zilch-achievement-card.is-missed")).toContainText("Missed");
 
     await page.setViewportSize({ width: 320, height: 844 });

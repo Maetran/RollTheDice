@@ -108,6 +108,7 @@ from .zilch_state import (
     ZILCH_SOLO_MODE,
     configure_zilch_cpu_game,
     configure_zilch_solo_game,
+    repair_overcounted_zilch_solo_terminal_duration,
     validate_zilch_hvh_mode,
     zilch_expected_connection_count,
     zilch_expected_participant_count,
@@ -1466,6 +1467,13 @@ def _recover_terminal_completed_games() -> None:
     for game_id, game in list(games.items()):
         if not game.get("_finished") or game.get("_aborted") or game.get("_completion_persisted"):
             continue
+        prior_completion = game.get("_final_completion")
+        if (
+            isinstance(prior_completion, dict)
+            and prior_completion.get("persistence_error") == "zilch_result_invalid_solo_progress"
+            and repair_overcounted_zilch_solo_terminal_duration(game)
+        ):
+            logger.info("Recovered overcounted active duration for terminal Solo game %s", game_id)
         try:
             completion = _finalize_and_log_results(game)
         except Exception:

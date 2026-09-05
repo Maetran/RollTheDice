@@ -480,15 +480,30 @@ def zilch_solo_active_duration_seconds(game: GameDict, *, now: datetime | None =
 
 
 def settle_zilch_solo_active_duration(game: GameDict, *, now: datetime | None = None) -> int:
-    """Copy elapsed active time into the objective before a durable event."""
+    """Copy one elapsed active-time interval into the objective.
+
+    The active timestamp is an interval anchor, not the beginning of the
+    whole run.  Advance it after every settlement so a later roll, hold or
+    bank adds only the new interval instead of charging the time since the
+    start a second time.
+    """
     state = _solo_objective_state(game)
-    duration = zilch_solo_active_duration_seconds(game, now=now)
+    anchor = _parse_zilch_timestamp(game.get("_zilch_solo_active_since"))
+    if anchor is None:
+        return state.active_duration_seconds
+    current = now or _utcnow()
+    elapsed_seconds = max(0, int((current - anchor).total_seconds()))
+    duration = state.active_duration_seconds + elapsed_seconds
     if duration > state.active_duration_seconds:
         try:
             state = record_solo_objective_active_duration(state, duration)
         except ZilchSoloObjectiveError as exc:
             raise ZilchRuleError(exc.code) from exc
         _store_solo_objective_state(game, state)
+    # Do not move an anchor backwards if a system clock briefly does so.  The
+    # next trustworthy event will settle the missing interval once.
+    if current >= anchor:
+        game["_zilch_solo_active_since"] = current.isoformat()
     return duration
 
 
@@ -512,9 +527,41 @@ def resume_zilch_solo_timer(game: GameDict, *, now: datetime | None = None) -> N
     """Restart Solo time only while a valid, nonterminal run is playable."""
     if not zilch_is_configured_solo_game(game) or game.get("_finished") or game.get("_aborted"):
         return
+    if _parse_zilch_timestamp(game.get("_zilch_solo_active_since")) is not None:
+        return
     current = now or _utcnow()
     game["_zilch_solo_active_since"] = current.isoformat()
     game["_zilch_solo_paused_at"] = None
+
+
+def repair_overcounted_zilch_solo_terminal_duration(game: GameDict) -> bool:
+    """Conservatively cap the known old Solo timer overcount on recovery.
+
+    Earlier snapshots could repeatedly add elapsed time from the same anchor.
+    Such a terminal snapshot cannot produce a result because active time may
+    never exceed the wall-clock duration.  This repair is deliberately
+    narrow: callers invoke it only after that exact historic persistence
+    error.  Capping at wall-clock duration can never improve a sprint's
+    ranking and lets the already-authoritative score and board history be
+    finalized normally.
+    """
+    if not game.get("_finished") or not zilch_is_configured_solo_game(game):
+        return False
+    started_at = _parse_zilch_timestamp(game.get("_started_at"))
+    finished_at = _parse_zilch_timestamp(game.get("_finished_at"))
+    if started_at is None or finished_at is None or finished_at < started_at:
+        return False
+    try:
+        state = _solo_objective_state(game)
+    except ZilchRuleError:
+        return False
+    maximum_duration = int((finished_at - started_at).total_seconds())
+    if state.active_duration_seconds <= maximum_duration:
+        return False
+    _store_solo_objective_state(game, replace(state, active_duration_seconds=maximum_duration))
+    game["_zilch_solo_active_since"] = None
+    game["_zilch_solo_paused_at"] = finished_at.isoformat()
+    return True
 
 
 def zilch_solo_objective_projection(game: GameDict) -> dict | None:

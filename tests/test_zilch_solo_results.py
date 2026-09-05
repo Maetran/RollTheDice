@@ -12,10 +12,13 @@ from unittest.mock import patch
 from sqlalchemy import select
 
 from app import main
+from app.active_games import save_active_game
 from app.auth import create_user
 from app.database import configure_database, session_scope, upgrade_database
+from app.game_state import games
 from app.game_types import ZILCH_GAME_TYPE
-from app.models import CompletedGame
+from app.models import ActiveGame, CompletedGame
+from app.zilch_achievements import get_zilch_achievement_profile
 from app.zilch_engine import ZILCH_RULESET_VERSION
 from app.zilch_results import (
     ZILCH_SOLO_RESULT_PAYLOAD_KIND,
@@ -38,6 +41,7 @@ from app.zilch_state import (
     new_zilch_game,
     start_zilch_game,
 )
+from app.zilch_statistics import get_zilch_leaderboard
 
 
 class ZilchSoloResultsTestCase(TestCase):
@@ -254,3 +258,36 @@ class ZilchSoloResultsTestCase(TestCase):
             stored["metrics"]["turns"] = 99
             row.snapshot_json = json.dumps(stored)
         self.assertIsNone(load_zilch_result(game["_id"]))
+
+    def test_recovery_repairs_only_the_known_overcounted_timer_and_finishes_the_full_pipeline(self) -> None:
+        user = create_user("TimerRecovery", "a-secure-password-123", role="admin", must_change_password=False)
+        game = self._terminal_solo_game(user_id=user.id)
+        game["_id"] = f"{game['_id']}-timer-recovery"
+        # A historical timer bug added elapsed time from the same start anchor
+        # more than once.  The score and complete hold history are otherwise
+        # authoritative and should still reach results, awards and ranking.
+        game["_zilch_solo_objective"]["progress"]["active_duration_seconds"] = 600
+        game["_zilch_solo_metrics"]["active_duration_seconds"] = 600
+        game["_zilch_boards"]["solo-1"]["rounds"][0]["committed_holds"] = [
+            {"id": "straight", "hot_dice": False, "combination_type": "straight"}
+        ]
+        game["_final_completion"] = {
+            "result_persisted": False,
+            "persistence_error": "zilch_result_invalid_solo_progress",
+        }
+        games[game["_id"]] = game
+        save_active_game(game)
+        try:
+            main._recover_terminal_completed_games()
+        finally:
+            games.pop(game["_id"], None)
+
+        with session_scope() as db:
+            self.assertIsNone(db.scalar(select(ActiveGame).where(ActiveGame.game_id == game["_id"])))
+            stored = db.scalar(select(CompletedGame).where(CompletedGame.game_id == game["_id"]))
+            self.assertIsNotNone(stored)
+            payload = json.loads(stored.snapshot_json)
+        self.assertEqual(payload["metrics"]["active_duration_seconds"], 120)
+        self.assertEqual(get_zilch_leaderboard("solo_sprint")["total"], 1)
+        awards = {item["key"] for item in get_zilch_achievement_profile(user.id)["unlocked"]}
+        self.assertIn("zilch.first_straight", awards)

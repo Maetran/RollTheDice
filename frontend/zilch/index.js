@@ -68,6 +68,7 @@ const state = {
   leaderboardStrategy: "conservative",
   leaderboardOffset: 0,
   achievements: null,
+  achievementRankLegend: null,
   playerAchievements: null,
   awardPresentationPromise: null,
   awardPresentationActive: false,
@@ -1178,12 +1179,26 @@ function achievementProjection(payload) {
   };
 }
 
+function achievementRankLegendProjection(payload) {
+  const legend = plainObject(payload);
+  const pointsPossible = Number(legend.points_possible);
+  return {
+    ranks: objectArray(legend.ranks),
+    points_possible: Number.isFinite(pointsPossible) ? Math.max(0, Math.trunc(pointsPossible)) : 0,
+  };
+}
+
+function achievementRankStars(value) {
+  const stars = Math.max(0, Math.min(5, Math.trunc(Number(value) || 0)));
+  return stars ? "★".repeat(stars) : "☆";
+}
+
 function achievementRankSummaryMarkup(projection) {
   const rank = plainObject(projection?.rank);
   if (!Object.keys(rank).length) return "";
   const points = Math.max(0, Math.trunc(Number(projection?.points) || 0));
   const pointsPossible = Math.max(0, Math.trunc(Number(projection?.points_possible) || 0));
-  const stars = Math.max(0, Math.min(5, Math.trunc(Number(rank.stars) || 0)));
+  const stars = achievementRankStars(rank.stars);
   const rankTitle = localizedAchievementValue(rank.title_key || rank.title || rank.name, "Zilch-Rang");
   const unlockedCount = objectArray(projection?.unlocked).length;
   const totalCount = unlockedCount + objectArray(projection?.locked).length;
@@ -1194,7 +1209,7 @@ function achievementRankSummaryMarkup(projection) {
     : t("Höchster Rang erreicht");
   return `<section class="zilch-card zilch-achievement-summary" aria-labelledby="zilchAchievementRankTitle">
     <div class="zilch-achievement-summary__rank">
-      <span class="zilch-achievement-summary__stars" aria-hidden="true">${stars ? "★".repeat(stars) : "☆"}</span>
+      <span class="zilch-achievement-summary__stars" aria-hidden="true">${stars}</span>
       <div><p class="eyebrow">${escapeHtml(t("Zilch-Rang"))}</p><h2 id="zilchAchievementRankTitle">${escapeHtml(rankTitle)}</h2></div>
     </div>
     <dl class="zilch-achievement-summary__facts">
@@ -1203,6 +1218,34 @@ function achievementRankSummaryMarkup(projection) {
       <div><dt>${escapeHtml(t("Bis zum nächsten Rang"))}</dt><dd>${escapeHtml(progressLabel)}</dd></div>
     </dl>
     ${pointsPossible > 0 ? `<progress class="zilch-achievement-summary__progress" max="${pointsPossible}" value="${Math.min(points, pointsPossible)}" aria-label="${escapeHtml(t("Fortschritt der Zilch-Punkte"))}">${escapeHtml(`${number(points)} / ${number(pointsPossible)}`)}</progress>` : ""}
+  </section>`;
+}
+
+function achievementRankLegendMarkup(projection, rankLegend) {
+  const legend = achievementRankLegendProjection(rankLegend);
+  const ranks = legend.ranks;
+  if (!ranks.length) return "";
+  const currentKey = String(plainObject(projection?.rank).key || "").trim();
+  const pointsPossible = legend.points_possible || Math.max(0, Math.trunc(Number(projection?.points_possible) || 0));
+  return `<section class="zilch-card zilch-achievement-rank-legend" data-zilch-rank-legend aria-labelledby="zilchAchievementRankLegendTitle">
+    <div class="zilch-achievement-rank-legend__heading">
+      <div><p class="eyebrow">${escapeHtml(t("Zilch-Rang"))}</p><h2 id="zilchAchievementRankLegendTitle">${escapeHtml(t("Ränge und Mindestwerte"))}</h2></div>
+      <p>${escapeHtml(t("Sterne zeigen deinen Rang. Die Mindestwerte skalieren mit dem Erfolgskatalog."))}</p>
+    </div>
+    <ol class="zilch-achievement-rank-legend__list">
+      ${ranks.map(rank => {
+        const key = String(rank?.key || "").trim();
+        const current = key && key === currentKey;
+        const title = localizedAchievementValue(rank?.title_key || rank?.title || rank?.name, "Zilch-Rang");
+        const minimum = Math.max(0, Math.trunc(Number(rank?.minimum_points) || 0));
+        return `<li class="zilch-achievement-rank-legend__row${current ? " is-current" : ""}"${current ? ' aria-current="true"' : ""}>
+          <span class="zilch-achievement-rank-legend__stars" aria-hidden="true">${escapeHtml(achievementRankStars(rank?.stars))}</span>
+          <span class="zilch-achievement-rank-legend__title"><strong>${escapeHtml(title)}</strong><small>${escapeHtml(t("Ab diesem Wert trägst du dieses Rangabzeichen."))}</small></span>
+          <span class="zilch-achievement-rank-legend__minimum">${escapeHtml(`${t("ab")} ${number(minimum)} ${t("Zilch-Punkte")}`)}</span>
+        </li>`;
+      }).join("")}
+    </ol>
+    ${pointsPossible > 0 ? `<p class="zilch-achievement-rank-legend__total">${escapeHtml(`${number(pointsPossible)} ${t("Zilch-Punkte")}`)}</p>` : ""}
   </section>`;
 }
 
@@ -1285,6 +1328,12 @@ async function fetchZilchAchievements() {
   const response = await fetch("/api/zilch/achievements", { cache: "no-store" });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return achievementProjection(await response.json());
+}
+
+async function fetchZilchAchievementRanks() {
+  const response = await fetch("/api/zilch/achievement-ranks", { cache: "no-store" });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return achievementRankLegendProjection(await response.json());
 }
 
 async function fetchZilchPendingAwards() {
@@ -1432,7 +1481,10 @@ function renderAchievementsBody() {
   const slot = document.getElementById("zilchAchievementsBody");
   if (!slot) return;
   const projection = state.achievements || {};
-  slot.innerHTML = `${achievementsRoute ? achievementRankSummaryMarkup(projection) : ""}${achievementsCatalogMarkup(projection)}`;
+  const rankDetails = achievementsRoute
+    ? `${achievementRankSummaryMarkup(projection)}${achievementRankLegendMarkup(projection, state.achievementRankLegend)}`
+    : "";
+  slot.innerHTML = `${rankDetails}${achievementsCatalogMarkup(projection)}`;
 }
 
 async function renderAchievements() {
@@ -1443,7 +1495,12 @@ async function renderAchievements() {
     </section>
     <div id="zilchAchievementsBody"><section class="zilch-card zilch-loading-card" role="status"><p>${escapeHtml(t("Zilch-Awards werden geladen …"))}</p></section></div>`;
   try {
-    state.achievements = await fetchZilchAchievements();
+    const [achievements, rankLegend] = await Promise.all([
+      fetchZilchAchievements(),
+      fetchZilchAchievementRanks().catch(() => null),
+    ]);
+    state.achievements = achievements;
+    state.achievementRankLegend = rankLegend;
     renderAchievementsBody();
   } catch (_) {
     const slot = document.getElementById("zilchAchievementsBody");
@@ -1491,11 +1548,16 @@ async function renderPlayerAchievements() {
     </section>
     <div id="zilchPlayerAchievementsBody"><section class="zilch-card zilch-loading-card" role="status"><p>${escapeHtml(t("Zilch-Awards werden geladen …"))}</p></section></div>`;
   try {
-    state.playerAchievements = await fetchZilchPlayerAchievements(requestedName);
+    const [playerAchievements, rankLegend] = await Promise.all([
+      fetchZilchPlayerAchievements(requestedName),
+      fetchZilchAchievementRanks().catch(() => null),
+    ]);
+    state.playerAchievements = playerAchievements;
+    state.achievementRankLegend = rankLegend;
     const slot = document.getElementById("zilchPlayerAchievementsBody");
     const displayName = String(state.playerAchievements.player?.username || state.playerAchievements.player?.display_name || requestedName);
     document.title = `${displayName} – ${t("Zilch-Awards")}`;
-    if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2></section>${achievementRankSummaryMarkup(state.playerAchievements)}${achievementsCatalogMarkup(state.playerAchievements)}`;
+    if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2></section>${achievementRankSummaryMarkup(state.playerAchievements)}${achievementRankLegendMarkup(state.playerAchievements, state.achievementRankLegend)}${achievementsCatalogMarkup(state.playerAchievements)}`;
   } catch (_) {
     const slot = document.getElementById("zilchPlayerAchievementsBody");
     if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Awards nicht verfügbar"))}</h2><p>${escapeHtml(t("Dieser Zilch-Spieler konnte nicht gefunden werden."))}</p><a class="button-link small ghost" href="${escapeHtml(zilchPath("/erfolge"))}">${escapeHtml(t("Meine Zilch-Awards"))}</a></section>`;
