@@ -6,7 +6,7 @@
  * installed app can receive controlled updates without retaining private
  * pages or API responses offline.
  */
-const CACHE_VERSION = 'assets-19f3b970236e';
+const CACHE_VERSION = 'assets-84b2b816706a';
 
 self.addEventListener("message", event => {
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();

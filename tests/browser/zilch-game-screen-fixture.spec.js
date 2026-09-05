@@ -982,6 +982,7 @@ test("the Zilch lobby lists a live human duel with both players and a watch link
     const watch = running.getByRole("link", { name: /Zuschauen|Watch/ });
     await expect(watch).toHaveAttribute("href", "/zilch/spiel/watchable-lobby-fixture/zuschauen");
     await expect(page.getByRole("button", { name: "Alle Bestenlisten" })).toHaveClass(/zilch-lobby-ranking-action/);
+    await expect(page.getByRole("heading", { name: "Zilch-Ranglisten" })).toHaveCSS("color", "rgb(255, 253, 245)");
     await expect(page.locator("#zilchWaitingGames")).not.toContainText("Abendrunde");
   } finally {
     await context.close();
