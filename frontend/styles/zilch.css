@@ -2798,27 +2798,33 @@ html[data-game="zilch"] body {
 }
 
 .zilch-shell--game .zilch-play-layout {
-  --zilch-play-layout-max-h: 32rem;
-  height: clamp(18rem, calc(100dvh - var(--zilch-room-chat-h) - var(--zilch-room-dock-h) - 4.6rem), var(--zilch-play-layout-max-h));
+  /* Keep the paper at its expanded in-turn footprint even while there is no
+     running-total tile. That prevents the board from visibly shrinking after
+     a hold is banked or while the next roll is pending. */
+  --zilch-turn-score-slot-h: 3.2rem;
+  --zilch-score-sheet-extension: 3.2rem;
+  --zilch-turn-score-gap: .42rem;
+  --zilch-play-layout-reserved-turn-score-h: calc(var(--zilch-turn-score-slot-h) + var(--zilch-turn-score-gap));
+  --zilch-play-layout-max-h: calc(32rem + var(--zilch-score-sheet-extension));
+  height: clamp(calc(18rem - var(--zilch-play-layout-reserved-turn-score-h)), calc(100dvh - var(--zilch-room-chat-h) - var(--zilch-room-dock-h) - 4.6rem - var(--zilch-play-layout-reserved-turn-score-h)), var(--zilch-play-layout-max-h));
   min-height: 0;
   max-height: var(--zilch-play-layout-max-h);
 }
 
 @supports not (height: 100dvh) {
   .zilch-shell--game .zilch-play-layout {
-    height: clamp(18rem, calc(100vh - var(--zilch-room-chat-h) - var(--zilch-room-dock-h) - 4.6rem), var(--zilch-play-layout-max-h));
+    height: clamp(calc(18rem - var(--zilch-play-layout-reserved-turn-score-h)), calc(100vh - var(--zilch-room-chat-h) - var(--zilch-room-dock-h) - 4.6rem - var(--zilch-play-layout-reserved-turn-score-h)), var(--zilch-play-layout-max-h));
   }
 }
 
-/* A scored roll deserves its own tile below the recommendation rail. Give
-   the paper one additional ruled-card height, then reserve the same amount
-   beneath it for the running total without crowding the dice dock. */
+/* A scored roll receives its own tile below the recommendation rail. Its
+   reserved space is released only while that tile is actually rendered, so
+   the paper above stays exactly the same height in both states. */
 .zilch-shell--game .zilch-play-layout--has-turn-score {
-  --zilch-turn-score-slot-h: 3.2rem;
-  --zilch-score-sheet-extension: 3.2rem;
-  --zilch-play-layout-max-h: calc(32rem + var(--zilch-score-sheet-extension) + var(--zilch-turn-score-slot-h) + .42rem);
+  --zilch-play-layout-reserved-turn-score-h: 0rem;
+  --zilch-play-layout-max-h: calc(32rem + var(--zilch-score-sheet-extension) + var(--zilch-turn-score-slot-h) + var(--zilch-turn-score-gap));
   grid-template-rows: minmax(0, 1fr) var(--zilch-turn-score-slot-h);
-  row-gap: .42rem;
+  row-gap: var(--zilch-turn-score-gap);
 }
 
 .zilch-shell--game .zilch-play-layout__notebook,

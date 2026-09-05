@@ -1571,6 +1571,7 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
         railBottom: rail.bottom,
         turnScoreTop: turnScore.top,
         turnScoreBottom: turnScore.bottom,
+        notebookHeight: notebook.height,
         notebookBottom: notebook.bottom,
         diceDockTop: diceDock.top,
         scoreFontSize: Number.parseFloat(getComputedStyle(firstCard.querySelector("strong")).fontSize),
@@ -1605,6 +1606,18 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
     expect(compactRecommendationLayout.turnScoreTop - compactRecommendationLayout.bestBottom).toBeGreaterThanOrEqual(0);
     expect(compactRecommendationLayout.turnScoreTop - compactRecommendationLayout.railBottom).toBeGreaterThanOrEqual(0);
     await page.locator(".zilch-recommendations").evaluate(rail => rail.style.removeProperty("height"));
+
+    // Once the running-total tile disappears, the paper must retain the same
+    // footprint rather than snapping back to the older, shorter board.
+    const noTurnScoreLayout = await page.evaluate(() => {
+      document.querySelector(".zilch-play-layout--has-turn-score")?.classList.remove("zilch-play-layout--has-turn-score");
+      document.querySelector(".zilch-play-layout__turn-score")?.remove();
+      const notebook = document.querySelector(".zilch-play-layout__notebook").getBoundingClientRect();
+      const rail = document.querySelector(".zilch-recommendations").getBoundingClientRect();
+      return { notebookHeight: notebook.height, notebookBottom: notebook.bottom, railBottom: rail.bottom };
+    });
+    expect(Math.abs(noTurnScoreLayout.notebookHeight - mobileRecommendationLayout.notebookHeight)).toBeLessThanOrEqual(2);
+    expect(Math.abs(noTurnScoreLayout.railBottom - noTurnScoreLayout.notebookBottom)).toBeLessThanOrEqual(2);
 
     await page.setViewportSize({ width: 1280, height: 720 });
     expect(await recommendations.evaluateAll(nodes => nodes
