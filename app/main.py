@@ -80,6 +80,7 @@ from .zilch_achievements import (
     ZilchAchievementSyncError,
     acknowledge_zilch_award,
     get_zilch_achievement_profile,
+    hydrate_zilch_achievement_ranks,
     pending_zilch_awards,
     recover_deleted_zilch_achievement_sources,
     recover_pending_zilch_achievement_evaluations,
@@ -787,29 +788,34 @@ def _zilch_lobby_final_round(game: GameDict) -> dict[str, object] | None:
 
 def _zilch_lobby_participants(game: GameDict) -> list[dict[str, object]]:
     """Project durable Zilch seats without turning a CPU into a connection."""
+    participants = zilch_participants(game)
     connections = {
         str(player.get("id") or ""): player
         for player in game.get("_players", [])
         if isinstance(player, dict) and str(player.get("id") or "")
     }
+    hydrate_zilch_achievement_ranks([*connections.values(), *participants])
     result: list[dict[str, object]] = []
-    for participant in zilch_participants(game):
+    for participant in participants:
         participant_id = str(participant.get("id") or "")
         if not participant_id:
             continue
         is_cpu = participant.get("type") == "cpu"
         connection = connections.get(str(participant.get("connection_player_id") or participant_id))
-        result.append(
-            {
-                "id": participant_id,
-                "name": str(participant.get("name") or "Player"),
-                "participant_type": participant.get("type"),
-                "cpu_strategy": participant.get("cpu_strategy"),
-                "user_id": participant.get("user_id"),
-                "is_cpu": is_cpu,
-                "connected": None if is_cpu else bool(connection and _player_connected(connection)),
-            }
-        )
+        entry: dict[str, object] = {
+            "id": participant_id,
+            "name": str(participant.get("name") or "Player"),
+            "participant_type": participant.get("type"),
+            "cpu_strategy": participant.get("cpu_strategy"),
+            "user_id": participant.get("user_id"),
+            "is_cpu": is_cpu,
+            "connected": None if is_cpu else bool(connection and _player_connected(connection)),
+        }
+        if type(participant.get("user_id")) is int:
+            entry["username"] = str(participant.get("name") or "Player")
+        if isinstance(participant.get("zilch_achievement_rank"), dict):
+            entry["zilch_achievement_rank"] = participant["zilch_achievement_rank"]
+        result.append(entry)
     return result
 
 
@@ -990,11 +996,20 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
             # belongs to private history, not the active-game lobby.
             if g.get("_completion_persisted"):
                 continue
-            if game_type_from_state(g) != requested_game_type:
+            current_game_type = game_type_from_state(g)
+            if current_game_type != requested_game_type:
                 continue
             if not can_access_game(auth_identity, g):
                 continue
-            refresh_game_achievement_ranks(g)
+            if current_game_type == ZILCH_GAME_TYPE:
+                hydrate_zilch_achievement_ranks(
+                    [
+                        *[player for player in g.get("_players", []) if isinstance(player, dict)],
+                        *zilch_participants(g),
+                    ]
+                )
+            else:
+                refresh_game_achievement_ranks(g)
             joined = len(g["_players"])
             waiting_names = [p.get("name", f"Player {i}") for i, p in enumerate(g["_players"], start=1)]
             offline = _offline_players(g)
@@ -1090,7 +1105,15 @@ def game_info(
     if g.get("_passphrase") and passphrase is not None:
         if passphrase != g["_passphrase"]:
             raise HTTPException(status_code=403, detail="wrong_passphrase")
-    refresh_game_achievement_ranks(g)
+    if game_type_from_state(g) == ZILCH_GAME_TYPE:
+        hydrate_zilch_achievement_ranks(
+            [
+                *[player for player in g.get("_players", []) if isinstance(player, dict)],
+                *zilch_participants(g),
+            ]
+        )
+    else:
+        refresh_game_achievement_ranks(g)
     offline = _offline_players(g)
     pause_reason = multiplayer_pause_reason(g)
     pause_left = pause_remaining_seconds(g)

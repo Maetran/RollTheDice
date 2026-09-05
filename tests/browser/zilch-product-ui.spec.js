@@ -132,6 +132,7 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await expect(page.getByText(/Erreiche 10.?000 Punkte/)).toBeVisible();
   await expect(page.locator(".zilch-rule-facts")).toHaveCount(0);
   await expect(page.locator("#zilchNavigation a[href='/zilch/regeln']")).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("link", { name: "Zur Zilch-Lobby" })).toHaveCount(0);
 
   const navigation = await page.locator("#zilchNavigation a").evaluateAll(links => links.map(link => ({
     href: link.getAttribute("href"),
@@ -160,6 +161,9 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await expect(page.locator(".zilch-header [data-zilch-logout]")).toHaveCount(0);
   await expect(page.locator("#zilchAccountLogout")).toBeVisible();
   await expect(page.locator("#zilchAccountLogout")).toHaveText("Abmelden");
+  await expect(page.getByRole("button", { name: "Deine Sammlung" })).toHaveAttribute("data-zilch-navigate", "/zilch/erfolge");
+  await expect(page.getByRole("button", { name: "Alle Awards" })).toHaveAttribute("data-zilch-navigate", "/zilch/erfolge");
+  await expect(page.getByRole("link", { name: "Zur Zilch-Lobby" })).toHaveCount(0);
 
   await page.goto("/konto#settings");
   await expect(page.getByRole("heading", { name: /ZDWA(?:-|\s)(Spieleinstellungen|game settings)/i })).toBeVisible();
@@ -200,7 +204,8 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   const identity = page.locator(".zilch-lobby-identity");
   await expect(identity).toContainText("Du spielst als");
   await expect(identity).toContainText("Mani");
-  await expect(identity.getByRole("link", { name: "Mein Konto" })).toHaveAttribute("href", "/zilch/konto");
+  await expect(identity.getByRole("button", { name: "Mein Konto" })).toHaveAttribute("data-zilch-navigate", "/zilch/konto");
+  await expect(page.getByRole("button", { name: "Alle Bestenlisten" })).toHaveAttribute("data-zilch-navigate", "/zilch/bestenlisten");
   await expect(page.locator("#zilchAccount")).toBeHidden();
   await expect(page.locator(".zilch-header [data-zilch-logout]")).toHaveCount(0);
 
@@ -274,7 +279,7 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("#zilchNavigation a[href='/zilch/regeln']")).toHaveText("Rules");
   await expect(page.locator(".zilch-lobby-identity")).toContainText("Playing as");
-  await expect(page.locator(".zilch-lobby-identity").getByRole("link", { name: "My Account" })).toHaveAttribute("href", "/zilch/konto");
+  await expect(page.locator(".zilch-lobby-identity").getByRole("button", { name: "My Account" })).toHaveAttribute("data-zilch-navigate", "/zilch/konto");
 
   await page.goto("/zilch/konto");
   await expect(page.locator("#zilchAccountLogout")).toHaveText("Sign out");
@@ -284,6 +289,7 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   await expect(page.getByRole("heading", { name: /zilch.*rules/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: /points/i })).toBeVisible();
   await expect(page.getByText(/Reach 10,000 points/)).toBeVisible();
+  await expect(page.getByRole("link", { name: /back to zilch lobby/i })).toHaveCount(0);
 
   // Restore the account preference so this file does not leak a language
   // choice into later independent browser specs.
@@ -391,9 +397,14 @@ test("private Zilch statistics and leaderboards render only server projections a
         objective: { id: "reach_10000_fewest_turns", version: 1 },
       } : {}),
     };
+    const zilchRank = {
+      key: "player", title: "Spieler", title_key: "zilch.rank.player", stars: 2,
+      points: 42, points_possible: 273, minimum_points: 22, next_minimum_points: 46, points_to_next_rank: 4,
+    };
     const entry = category === "solo_sprint"
       ? {
         rank: 1, user_id: 2, username: "Mani", display_name: "Mani", primary_value: 12, games: 1, is_current_user: true,
+        zilch_achievement_rank: zilchRank,
         values: {
           turns: 12, rolls: 28, zilchs: 1, active_duration_seconds: 740,
           highest_banked_round: 2000, finished_at: "2026-09-03T10:00:00+00:00",
@@ -403,6 +414,7 @@ test("private Zilch statistics and leaderboards render only server projections a
       : category === "achievement_points"
         ? {
           rank: 1, user_id: 2, username: "Mani", display_name: "Mani", primary_value: 42, games: 7, is_current_user: true,
+          zilch_achievement_rank: zilchRank,
           values: { points: 42, achievement_points: 42, points_possible: 273 },
           achievement_rank: {
             key: "player", title: "Spieler", title_key: "zilch.rank.player", stars: 2,
@@ -412,6 +424,7 @@ test("private Zilch statistics and leaderboards render only server projections a
         }
         : {
         rank: 1, user_id: 2, username: "Mani", display_name: "Mani", primary_value: 2, games: 3, is_current_user: true,
+        zilch_achievement_rank: zilchRank,
         values: {
           wins: 2, games: 3, losses: 1, ties: category === "cpu_wins" ? 1 : 0,
           win_rate: 0.67, highest_final_score: 10900, highest_banked_round: 1600,
@@ -424,6 +437,7 @@ test("private Zilch statistics and leaderboards render only server projections a
   await page.goto("/zilch/statistiken");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
   await expect(page.getByRole("heading", { name: /Zilch-(Statistiken|statistics)/i }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Zu den Bestenlisten" })).toHaveAttribute("data-zilch-navigate", "/zilch/bestenlisten");
   await expect(page.getByText("Partien nach Spielart")).toBeVisible();
   await expect(page.getByText("Gesicherte Gesamtpunkte")).toHaveCount(0);
 
@@ -443,7 +457,10 @@ test("private Zilch statistics and leaderboards render only server projections a
   await expect(page.locator("#zilchNavigation a[href='/zilch/bestenlisten']")).toHaveAttribute("aria-current", "page");
   await expect(page.locator(".zilch-leaderboard-table")).toBeVisible();
   await expect(page.locator("tr[data-own-entry='true']")).toContainText("Du");
-  await expect(page.locator(".zilch-leaderboard-table a[href='/zilch/spieler/Mani']")).toHaveText("Mani");
+  await expect(page.locator(".zilch-leaderboard-table a[href='/zilch/erfolge']")).toContainText("Mani");
+  await expect(page.locator(".zilch-leaderboard-table .zilch-rank-badge")).toContainText("Spieler");
+  await expect(page.getByRole("button", { name: "Deine Statistiken" })).toHaveAttribute("data-zilch-navigate", "/zilch/statistiken");
+  await expect(page.getByRole("button", { name: "Zilch-Awards" })).toHaveAttribute("data-zilch-navigate", "/zilch/erfolge");
   await expect(page.getByText("Objective:", { exact: false })).toBeVisible();
   await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Abgeschlossen am");
   await expect(page.getByRole("button", { name: "Nächste" })).toBeEnabled();
@@ -545,8 +562,8 @@ test("private Zilch awards use server projections and acknowledge a sequential a
       {
         key: "zilch.banked_round_1000",
         definition_version: 1,
-        category: "scoring",
-        category_key: "zilch.achievement.category.scoring",
+        category: "entry",
+        category_key: "zilch.achievement.category.entry",
         icon_key: "star",
         title_key: "zilch.achievement.banked_round_1000.title",
         description_key: "zilch.achievement.banked_round_1000.description",
@@ -628,7 +645,6 @@ test("private Zilch awards use server projections and acknowledge a sequential a
             },
             categories: [
               { key: "entry", title_key: "zilch.achievement.category.entry" },
-              { key: "scoring", title_key: "zilch.achievement.category.scoring" },
               { key: "multiplayer", title_key: "zilch.achievement.category.multiplayer" },
               { key: "community", title_key: "zilch.achievement.category.community" },
             ],
@@ -666,6 +682,11 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await expect(page.locator(".zilch-achievement-card.is-unlocked")).toHaveCount(2);
     await expect(page.locator(".zilch-achievement-card.is-locked")).toHaveCount(2);
     await expect(page.locator(".zilch-achievement-card.is-missed")).toContainText("Verpasst");
+    await expect(page.locator(".zilch-achievement-sequence")).toHaveCount(3);
+    await expect(page.locator("#zilchAchievementCategory-entry + .zilch-achievement-sequence .zilch-achievement-card")).toHaveClass([
+      /is-unlocked/,
+      /is-locked/,
+    ]);
     await expect(page.locator(".zilch-achievement-card").first()).toContainText("Zwei Spieler");
     await expect(page.locator(".zilch-achievement-summary")).toContainText("3 / 273");
     await expect(page.locator(".zilch-achievement-summary")).toContainText("Newbie");

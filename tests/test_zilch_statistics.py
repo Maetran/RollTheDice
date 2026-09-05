@@ -364,6 +364,8 @@ class ZilchStatisticsTestCase(TestCase):
         self.assertEqual(ranking["objective"], {"id": ZILCH_SOLO_SPRINT_OBJECTIVE_ID, "version": 1})
         self.assertEqual(ranking["total"], 3)
         self.assertEqual([entry["display_name"] for entry in ranking["entries"]], ["SoloBob", "SoloCarol", "SoloAlice"])
+        self.assertEqual([entry["username"] for entry in ranking["entries"]], ["SoloBob", "SoloCarol", "SoloAlice"])
+        self.assertTrue(all(isinstance(entry.get("zilch_achievement_rank"), dict) for entry in ranking["entries"]))
         self.assertEqual(ranking["entries"][2]["games"], 2)
         self.assertEqual(ranking["entries"][2]["values"]["turns"], 2)
         self.assertEqual(ranking["own_entry"]["display_name"], "SoloAlice")
@@ -388,6 +390,8 @@ class ZilchStatisticsTestCase(TestCase):
         self.assertEqual(human_entries["RankAlice"]["rank"], 1)
         self.assertEqual(human_entries["RankBob"]["rank"], 1)
         self.assertEqual(human_entries["RankCarol"]["rank"], 3)
+        self.assertEqual(human_entries["RankAlice"]["username"], "RankAlice")
+        self.assertIn("zilch_achievement_rank", human_entries["RankAlice"])
 
         conservative = get_zilch_leaderboard("cpu_wins", strategy="conservative")
         self.assertEqual(conservative["total"], 1)
@@ -497,6 +501,11 @@ class ZilchStatisticsTestCase(TestCase):
                 entry["achievement_rank"],
                 zilch_achievement_rank_for_points(expected_points),
             )
+            self.assertEqual(
+                entry["zilch_achievement_rank"],
+                zilch_achievement_rank_for_points(expected_points),
+            )
+            self.assertEqual(entry["username"], entry["display_name"])
             self.assertEqual(entry["games"], 1)
 
     def test_achievement_rank_eligibility_uses_durable_qualified_participation(self) -> None:

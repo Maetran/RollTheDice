@@ -15,6 +15,7 @@ from .game_state import (
     timeout_seconds,
 )
 from .game_types import ZILCH_GAME_TYPE
+from .zilch_achievements import hydrate_zilch_achievement_ranks
 from .zilch_engine import (
     ZILCH_DICE_COUNT,
     ZILCH_TARGET_SCORE,
@@ -123,6 +124,13 @@ def snapshot_zilch(game: GameDict) -> dict:
     )
     participants = zilch_participants(game)
     transport_players = [player for player in game.get("_players", []) if isinstance(player, dict)]
+    # Zilch ranks are a separate product projection. Hydrate the matching
+    # transport and durable-seat records together so every live player label
+    # receives the same current Zilch-only badge.
+    hydrate_zilch_achievement_ranks(
+        [*transport_players, *participants],
+        refresh=bool(game.get("_finished")),
+    )
     transport_by_id = {
         str(player.get("id") or ""): player
         for player in transport_players
@@ -173,6 +181,16 @@ def snapshot_zilch(game: GameDict) -> dict:
                 "user_id": participant.get("user_id"),
                 "cpu_strategy": participant.get("cpu_strategy"),
                 "is_cpu": participant.get("type") == "cpu",
+                **(
+                    {"username": str(participant.get("name") or "Player")}
+                    if type(participant.get("user_id")) is int
+                    else {}
+                ),
+                **(
+                    {"zilch_achievement_rank": participant["zilch_achievement_rank"]}
+                    if isinstance(participant.get("zilch_achievement_rank"), dict)
+                    else {}
+                ),
                 "connected": (
                     None
                     if participant.get("type") == "cpu"

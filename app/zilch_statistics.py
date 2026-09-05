@@ -36,6 +36,7 @@ from .models import (
 )
 from .zilch_achievements import (
     ZILCH_ACHIEVEMENT_POINTS_POSSIBLE,
+    hydrate_zilch_achievement_ranks,
     zilch_achievement_points_for_keys,
     zilch_achievement_rank_for_points,
 )
@@ -780,6 +781,7 @@ def _leaderboard_solo(records_by_user: dict[int, list[_PlayerResult]]) -> list[t
         )
         entry = {
             "user_id": user_id,
+            "username": best_record.display_name,
             "display_name": best_record.display_name,
             "primary_value": best_metrics["turns"],
             "values": {
@@ -838,9 +840,11 @@ def _leaderboard_match(
             -values["highest_banked_round"],
         )
         earliest = min(matching_finished)
+        display_name = next(record.display_name for record in records if record.user_id == user_id)
         entry = {
             "user_id": user_id,
-            "display_name": next(record.display_name for record in records if record.user_id == user_id),
+            "username": display_name,
+            "display_name": display_name,
             "primary_value": values["wins"],
             "values": {
                 "wins": values["wins"],
@@ -1001,6 +1005,10 @@ def get_zilch_leaderboard(
         objective = None
     else:
         raise ZilchStatisticsInputError("zilch_statistics_invalid_leaderboard_category")
+    # Every leaderboard category exposes the same isolated Zilch rank beside
+    # a username. This happens after the category-specific metrics are built,
+    # so rank data can never influence a game-performance ordering.
+    hydrate_zilch_achievement_ranks(entry for _performance, _stable, entry in items)
     entries, own_entry, total = _rank_entries(
         items,
         offset=clean_offset,

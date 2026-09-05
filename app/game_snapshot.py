@@ -75,6 +75,8 @@ def public_player_payload(player: dict, *, connected: bool | None = None) -> dic
         payload["connected"] = bool(connected)
     if isinstance(player.get("achievement_rank"), dict):
         payload["achievement_rank"] = player["achievement_rank"]
+    if isinstance(player.get("zilch_achievement_rank"), dict):
+        payload["zilch_achievement_rank"] = player["zilch_achievement_rank"]
     return payload
 
 

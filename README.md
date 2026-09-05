@@ -47,7 +47,10 @@ never alter ZDWA titles, ranks, stars, profile values, or public ranking
 positions. They
 show their complete Zilch rank legend, including stars and minimum points,
 directly in the Zilch awards collection; the legend remains fully separate
-from ZDWA rank badges. They
+from ZDWA rank badges. In the Zilch lobby, live rooms, and leaderboards, an
+authenticated player's current Zilch badge appears beside their username; that
+username opens the player's Zilch collection, while the current account opens
+its own collection. They
 are considered only when the Zilch finalizer explicitly registers a newly
 persisted authoritative result after the original award rollout. Older,
 unregistered history is never scanned or backfilled; a versioned catalog

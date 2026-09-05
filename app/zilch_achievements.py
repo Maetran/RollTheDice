@@ -1358,6 +1358,43 @@ def zilch_achievement_rank_payloads_for_user_ids(db, user_ids: Iterable[int]) ->
     }
 
 
+def hydrate_zilch_achievement_ranks(players: Iterable[dict[str, Any]], *, refresh: bool = False) -> None:
+    """Attach safe, Zilch-only rank projections to mutable player payloads.
+
+    Live rooms and lobby cards keep a small player dictionary in memory.  This
+    helper enriches only authenticated seats with the isolated Zilch rank; it
+    never reuses ZDWA's achievement rank and never exposes award evidence.
+    Existing projections are left alone unless a terminal refresh explicitly
+    asks for the newly earned rank after a completed game.
+    """
+
+    records = [player for player in players if isinstance(player, dict)]
+    if not records or not database_schema_ready():
+        return
+    user_ids = {
+        int(player["user_id"])
+        for player in records
+        if type(player.get("user_id")) is int
+        and int(player["user_id"]) > 0
+        and (refresh or not isinstance(player.get("zilch_achievement_rank"), dict))
+    }
+    if not user_ids:
+        return
+    try:
+        with session_scope() as db:
+            ranks = zilch_achievement_rank_payloads_for_user_ids(db, user_ids)
+    except SQLAlchemyError:
+        # Ranks are supplementary presentation data. A transient read failure
+        # must not block a live game, its snapshot, or an otherwise usable
+        # lobby response.
+        logger.exception("Could not hydrate Zilch achievement ranks")
+        return
+    for player in records:
+        user_id = player.get("user_id")
+        if type(user_id) is int and (rank := ranks.get(user_id)):
+            player["zilch_achievement_rank"] = rank
+
+
 def zilch_achievement_localization_entries() -> dict[str, str]:
     """Return the DE source strings and EN targets needed by the UI catalog.
 

@@ -310,10 +310,15 @@ class ZilchCpuHttpAndSocketTestCase(TestCase):
         cpu_summary = next(participant for participant in listed["participants"] if participant["is_cpu"])
         self.assertEqual(cpu_summary["cpu_strategy"], "normal")
         self.assertIsNone(cpu_summary["connected"])
+        human_summary = next(participant for participant in listed["participants"] if not participant["is_cpu"])
+        self.assertEqual(human_summary["username"], "Mani")
+        self.assertEqual(human_summary["zilch_achievement_rank"]["key"], "newbie")
 
         details = main.game_info(game_id, request_for(cookie=f"rollthedice_session={mani_token}"))
         self.assertEqual(details["participant_count"], 2)
         self.assertEqual(details["expected_connections"], 1)
+        human_details = next(participant for participant in details["participants"] if not participant["is_cpu"])
+        self.assertEqual(human_details["zilch_achievement_rank"]["key"], "newbie")
 
     def test_cpu_rechecks_pause_after_thinking_before_consuming_any_rng_value(self) -> None:
         """A human disconnect during CPU think time must cancel that move."""
