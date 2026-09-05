@@ -122,7 +122,11 @@ pairs produces Hot Dice, the action names that roll and adds its Free Roll
 stamp, while remaining optional until the next action. **Current roll** shows
 the already-held points and the exact currently
 selected score separately; their sum is the value that would be banked, never
-a predicted combined selection. On the active game page, keys 1–6 toggle the
+a predicted combined selection. In a live two-person room, both sides see the
+same server-confirmed recommendations and current-roll tile, including the
+active player's committed round points and current valid draft; only the active
+player can change that draft, and it remains reversible until they roll again
+or bank. On the active game page, keys 1–6 toggle the
 corresponding selectable dice, Q/W/E/R/T/Z/U/I
 activate the visible suggestions in order, Space performs the enabled start or
 regular roll, and B banks only when permitted. A Zilch keeps the authoritative

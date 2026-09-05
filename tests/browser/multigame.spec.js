@@ -549,6 +549,18 @@ test("two explicitly allowed humans can create, rejoin, and play a private Zilch
     await mani.emulateMedia({ reducedMotion: "reduce" });
 
     const selected = await rollUntilQuickHold([mani, preview]);
+    const selectedOption = selected.page.locator(`[data-zilch-recommendation=${JSON.stringify(selected.optionId)}]`);
+    await selectedOption.click();
+    await expect(selectedOption).toHaveClass(/is-selected/);
+    const waitingOpponent = selected.page === mani ? preview : mani;
+    // The selected draft is a live, read-only projection for the other seat:
+    // it mirrors the active person's scoring tile without committing a hold.
+    const mirroredOption = waitingOpponent.locator(`[data-zilch-recommendation=${JSON.stringify(selected.optionId)}]`);
+    await expect(mirroredOption).toBeDisabled();
+    await expect(mirroredOption).toHaveClass(/is-selected/);
+    await expect(waitingOpponent.locator(".zilch-die--selected")).toHaveCount(
+      await selected.page.locator(".zilch-die--selected").count(),
+    );
     await lockQuickHold(selected);
     // A full-dice special can legitimately reset the rack for Hot Dice;
     // ordinary holds mark dice unavailable. In both cases the authoritative

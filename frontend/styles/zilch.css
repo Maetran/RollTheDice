@@ -2681,6 +2681,7 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
   background: #ffe28a;
 }
 .zilch-shell--game .zilch-recommendation:disabled { opacity: .42; cursor: not-allowed; }
+.zilch-shell--game .zilch-recommendation.is-viewing:disabled { opacity: .82; }
 .zilch-shell--game .zilch-recommendation:not(:disabled):hover { border-color: #dcaa36; background: #fff2b8; }
 .zilch-shell--game .zilch-recommendation.is-selected:not(:disabled):hover { background: #512811; }
 
@@ -2763,6 +2764,7 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
 }
 .zilch-shell--game .zilch-combined-score.is-selected > strong { color: #ffe28a; }
 .zilch-shell--game .zilch-combined-score:disabled { opacity: .48; cursor: not-allowed; }
+.zilch-shell--game .zilch-combined-score.is-viewing:disabled { opacity: .82; }
 .zilch-shell--game .zilch-combined-score:not(:disabled):hover { border-color: #744016; background: #ffd66f; }
 .zilch-shell--game .zilch-combined-score.is-selected:not(:disabled):hover { background: #512811; }
 .zilch-shell--game .zilch-combined-score:focus-visible {

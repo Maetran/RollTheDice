@@ -475,6 +475,17 @@ function equalScoreRecommendationSnapshot() {
   });
 }
 
+function opponentTurnRecommendationSnapshot() {
+  const snapshot = equalScoreRecommendationSnapshot();
+  snapshot._turn = { player_id: "p2" };
+  snapshot._zilch_boards = {
+    p1: board({ playerId: "p1", totalPoints: 4200, roundPoints: 0 }),
+    p2: board({ playerId: "p2", totalPoints: 3600, roundPoints: 400, active: true }),
+  };
+  snapshot._round_points = { p1: 0, p2: 400 };
+  return snapshot;
+}
+
 function openingRollShortcutSnapshot() {
   const snapshot = baseSnapshot({
     _turn: { player_id: "p1" },
@@ -715,6 +726,15 @@ async function installGameScreenFixture(page, gameId, snapshots, detailsOverride
           this._message({ scoreboard: next, zilch_event: next._zilch_last_event });
         } else if (message.action === "zilch_select_hold") {
           this._message({ scoreboard: fixtureSnapshots.heldForConfirmation, zilch_event: fixtureSnapshots.heldForConfirmation._zilch_last_event });
+        } else if (message.action === "zilch_preview_selection") {
+          const turn = (fixtureSnapshots.initial || fixtureSnapshots.hotDice)?._zilch_turn_state;
+          if (turn) this._message({ zilch_draft_preview: {
+            player_id: "p1",
+            turn_id: turn.turn_id,
+            version: turn.version,
+            roll_id: turn.roll_id,
+            dice_indices: message.dice_indices,
+          } });
         } else if (message.action === "send_emoji") {
           // The social transport echoes reactions to the sender as well as to
           // the opponent. This is intentionally different from text chat.
@@ -1629,6 +1649,15 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
     await expect(combinedScore).toBeEnabled();
     await expect(combinedScore).toHaveAttribute("aria-label", /\+200/);
     await combinedScore.click();
+    await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        action: "zilch_preview_selection",
+        turn_id: 27,
+        version: 9,
+        roll_id: 22,
+        dice_indices: [1, 4, 5],
+      }),
+    ]));
     await expect(combinedScore).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator(".zilch-die--selected")).toHaveCount(3);
     await expect(currentRoll).toContainText("600");
@@ -1951,6 +1980,64 @@ test("a three-pairs Hot Dice choice names the roll and stays optional until Weit
         points: 1500,
       }),
     ]));
+  } finally {
+    await context.close();
+  }
+});
+
+test("a waiting two-player opponent sees the active player's current scoring choices read-only", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    const gameId = "opponent-current-roll-fixture";
+    await installGameScreenFixture(page, gameId, { initial: opponentTurnRecommendationSnapshot() });
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    await page.goto(`/zilch/spiel/${gameId}`);
+
+    const recommendations = page.locator("[data-zilch-recommendation]");
+    await expect(recommendations).toHaveCount(5);
+    await expect(recommendations.first()).toBeDisabled();
+    await expect(recommendations.first()).toHaveClass(/is-viewing/);
+    expect(await recommendations.first().getAttribute("aria-keyshortcuts")).toBeNull();
+    expect(await recommendations.first().locator(".zilch-recommendation__shortcut").count()).toBe(0);
+    expect(await recommendations.first().evaluate(node => Number(getComputedStyle(node).opacity))).toBeGreaterThan(0.8);
+
+    const currentRoll = page.locator(".zilch-turn-score");
+    await expect(currentRoll).toHaveClass(/is-viewing/);
+    await expect(currentRoll).toContainText("400");
+    await expect(currentRoll).toContainText("Bisher gehalten: 400");
+    await expect(currentRoll).toContainText("Aktuell gehalten: 0");
+
+    const combinedScore = page.locator("[data-zilch-combined-score]");
+    await expect(combinedScore).toBeDisabled();
+    await expect(combinedScore).toHaveClass(/is-viewing/);
+    expect(await combinedScore.evaluate(node => Number(getComputedStyle(node).opacity))).toBeGreaterThan(0.8);
+    await expect(page.locator("[data-zilch-die-index]")).toHaveCount(0);
+
+    await page.evaluate(() => window.__zilchGameScreenFixturePush({ zilch_draft_preview: {
+      player_id: "p2",
+      turn_id: 27,
+      version: 9,
+      roll_id: 22,
+      dice_indices: [1, 4, 5],
+    } }));
+    await expect(recommendations).toHaveCount(1);
+    const selectedRecommendation = page.locator("[data-zilch-recommendation='fixture-one-two-fives']");
+    await expect(selectedRecommendation).toBeDisabled();
+    await expect(selectedRecommendation).toHaveAttribute("aria-pressed", "true");
+    await expect(currentRoll).toContainText("600");
+    await expect(currentRoll).toContainText("Bisher gehalten: 400");
+    await expect(currentRoll).toContainText("Aktuell gehalten: 200");
+    await expect(combinedScore).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".zilch-die--selected")).toHaveCount(3);
   } finally {
     await context.close();
   }

@@ -15,6 +15,8 @@ from .game_state import roll_cooldown_ok, touch
 from .game_types import ZILCH_GAME_TYPE, game_type_from_state
 from .game_ws_session import GameSocketSession
 from .zilch_engine import (
+    ZILCH_DICE_COUNT,
+    ZILCH_PHASE_AWAITING_HOLD,
     ZILCH_PHASE_CONFIRMATION_ROLL_REQUIRED,
     ZILCH_PHASE_READY_TO_ROLL,
     ZilchHoldResult,
@@ -23,6 +25,7 @@ from .zilch_engine import (
     ZilchTurn,
     bank_allowed,
     fair_zilch_randint,
+    options_for_turn,
     roll_zilch_start_die,
     roll_zilch_turn,
     select_zilch_option,
@@ -52,6 +55,7 @@ ZILCH_GAMEPLAY_ACTIONS = frozenset(
         "zilch_start_roll",
         "zilch_roll_dice",
         "zilch_select_hold",
+        "zilch_preview_selection",
         "zilch_bank_points",
         "zilch_abandon_solo",
         "zilch_submit_score",
@@ -348,6 +352,54 @@ def _turn_for_actor(
     if _command_int(version, "version") != turn.version:
         raise ZilchRuleError("zilch_stale_state")
     return turn
+
+
+def _preview_dice_indices(value: object) -> tuple[int, ...]:
+    """Normalize a transient client-side draft without accepting forged dice."""
+    if not isinstance(value, list) or any(type(index) is not int for index in value):
+        raise ZilchRuleError("zilch_invalid_dice_indices")
+    indices = tuple(sorted(value))
+    if len(set(indices)) != len(indices) or any(index < 0 or index >= ZILCH_DICE_COUNT for index in indices):
+        raise ZilchRuleError("zilch_invalid_dice_indices")
+    return indices
+
+
+def apply_zilch_preview_selection(
+    game: dict[str, Any],
+    actor_id: str,
+    *,
+    turn_id: object,
+    version: object,
+    roll_id: object,
+    dice_indices: object,
+) -> dict[str, Any] | None:
+    """Share a valid reversible draft without committing a scoring hold.
+
+    This deliberately carries only the selected dice. The server recalculates
+    whether they are a valid subset of the current Quick Holds, and every
+    viewer derives points from the authoritative options already in its
+    snapshot. No round points, held dice, or engine version changes here.
+    """
+    turn = _turn_for_actor(game, actor_id, turn_id=turn_id, version=version)
+    if turn.phase != ZILCH_PHASE_AWAITING_HOLD:
+        raise ZilchRuleError("zilch_hold_not_allowed")
+    if _command_int(roll_id, "roll_id") != turn.roll_id:
+        raise ZilchRuleError("zilch_stale_option")
+    indices = _preview_dice_indices(dice_indices)
+    options = options_for_turn(turn)
+    if not options or not any(set(indices).issubset(option.dice_indices) for option in options):
+        raise ZilchRuleError("zilch_stale_or_invalid_option")
+    preview = {
+        "player_id": actor_id,
+        "turn_id": turn.turn_id,
+        "version": turn.version,
+        "roll_id": turn.roll_id,
+        "dice_indices": list(indices),
+    }
+    if game.get("_zilch_draft_preview") == preview:
+        return None
+    game["_zilch_draft_preview"] = preview
+    return preview
 
 
 def _start_roll_for_actor(game: dict[str, Any], actor_id: str, *, version: object) -> dict:
@@ -744,6 +796,31 @@ async def _select_hold(
     return True
 
 
+async def _preview_selection(session: GameSocketSession, data: dict[str, Any]) -> bool:
+    """Fan out a validated, display-only draft to the other live viewers."""
+    try:
+        player_id = _require_human_session_actor(session)
+        preview = apply_zilch_preview_selection(
+            session.game,
+            player_id,
+            turn_id=data.get("turn_id"),
+            version=data.get("version"),
+            roll_id=data.get("roll_id"),
+            dice_indices=data.get("dice_indices"),
+        )
+    except ZilchRuleError as exc:
+        await _send_error(session, exc.code)
+        return False
+    if preview is None:
+        return False
+    # A draft is visible live but intentionally excluded from durable active
+    # game state: after a process restart it is safely empty until the player
+    # makes a fresh selection.
+    touch(session.game)
+    await broadcast(session.game, {"zilch_draft_preview": preview})
+    return True
+
+
 async def _bank_points(
     session: GameSocketSession,
     data: dict[str, Any],
@@ -808,6 +885,9 @@ async def handle_zilch_gameplay_action(
         changed = await _roll_dice(session, data, finalize_game=finalize_game)
     elif action == "zilch_select_hold":
         changed = await _select_hold(session, data, finalize_game=finalize_game)
+    elif action == "zilch_preview_selection":
+        await _preview_selection(session, data)
+        return
     elif action == "zilch_bank_points":
         changed = await _bank_points(session, data, finalize_game=finalize_game)
     elif action == "zilch_abandon_solo":

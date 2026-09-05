@@ -147,6 +147,11 @@ zusammengestellte, gültige Auswahl bleibt weiterhin serverseitig prüfbar.
 werden könnte: **„Bisher gehalten“** sind die verbindlichen Rundenpunkte,
 **„Aktuell gehalten“** ist ausschließlich die momentan ausgewählte gültige
 Wertung. Ihre Summe ersetzt keine noch nicht gewählte kombinierte Auswahl.
+In einer laufenden Zwei-Personen-Partie sehen beide Seiten dieselben
+serverbestätigten Empfehlungen, den aktuellen Wurf, die bereits verbindlich
+gehaltenen Rundenpunkte und die gerade gewählte gültige Wertung. Dieser
+gemeinsame Entwurf ist weiterhin keine gehaltene Wertung: Nur die Person am Zug
+kann ihn ändern, und erst `Weiterwürfeln` oder `Sichern` übernimmt ihn atomar.
 
 Die Schaltfläche **„Kombinierte Wertung“** direkt unter dem Spielblatt wählt
 alle aktuell punktenden Würfel als eine servergeprüfte Auswahl. Führt genau

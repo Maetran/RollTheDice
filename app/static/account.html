@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=715397c1f1f8">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=715397c1f1f8" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=715397c1f1f8" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=1958fa20da92">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=1958fa20da92" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=1958fa20da92" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=715397c1f1f8">
-  <script src="/static/shell.js?v=715397c1f1f8" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=1958fa20da92">
+  <script src="/static/shell.js?v=1958fa20da92" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -124,7 +124,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=715397c1f1f8';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=1958fa20da92';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;

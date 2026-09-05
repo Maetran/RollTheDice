@@ -1076,10 +1076,27 @@ def _round_number_for(game: GameDict, turn_id: int) -> int:
 
 def sync_zilch_turn(game: GameDict, turn: ZilchTurn) -> None:
     """Project a pure engine turn into the durable live-game dictionary."""
+    # A browser draft describes exactly one roll/version. ``ensure_*`` also
+    # calls this function to normalize an unchanged projection, so clear the
+    # draft only for a genuine engine transition rather than on every
+    # snapshot read.
+    prior_turn = game.get("_turn")
+    expected_holds = [index in set(turn.held_indices) for index in range(ZILCH_DICE_COUNT)]
+    unchanged_projection = (
+        isinstance(prior_turn, dict)
+        and str(prior_turn.get("player_id") or "") == turn.player_id
+        and prior_turn.get("turn_id") == turn.turn_id
+        and prior_turn.get("version") == turn.version
+        and prior_turn.get("roll_id") == turn.roll_id
+        and game.get("_dice") == list(turn.dice)
+        and game.get("_holds") == expected_holds
+    )
+    if not unchanged_projection:
+        game.pop("_zilch_draft_preview", None)
     player_id = turn.player_id
     game["_turn"] = turn.payload()
     game["_dice"] = list(turn.dice)
-    game["_holds"] = [index in set(turn.held_indices) for index in range(ZILCH_DICE_COUNT)]
+    game["_holds"] = expected_holds
     game["_rolls_used"] = turn.rolls_used
     game["_rolls_max"] = None
     game.setdefault("_round_points", {})[player_id] = turn.round_points

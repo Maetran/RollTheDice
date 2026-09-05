@@ -2495,6 +2495,7 @@ function renderRulesContent(facts) {
       <p class="zilch-rules-overview__note">${escapeHtml(t("Pro Zug entscheidest du: Punkte sichern oder weiterwürfeln. Bei Zilch verfallen nur die noch nicht gesicherten Punkte."))}</p>
       <p class="zilch-rules-overview__note">${escapeHtml(t("Bei einem Spezialwurf nennt die Kombinierte Wertung den Wurf und zeigt den Stempel „Freier Wurf“."))}</p>
       <p class="zilch-rules-overview__note">${escapeHtml(t("Aktueller Wurf zeigt bisher gehaltene und aktuell ausgewählte Punkte getrennt; zusammen ist das der Wert zum Sichern."))}</p>
+      <p class="zilch-rules-overview__note">${escapeHtml(t("In einer Zwei-Personen-Partie sehen beide Seiten dieselben Empfehlungen, bereits gehaltenen Rundenpunkte und die gerade gewählte gültige Wertung. Nur die Person am Zug kann sie ändern."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section" aria-labelledby="zilchScoringTitle">
       <p class="eyebrow">${escapeHtml(t("Wertung"))}</p><h2 id="zilchScoringTitle">${escapeHtml(t("Was Punkte bringt"))}</h2>
@@ -2926,6 +2927,44 @@ function setDraftHoldIndices(turnState, indices) {
   state.draftHoldIndices = normalizedIndices(indices);
 }
 
+function sharedDraftHoldIndices(snapshot, turnState) {
+  const preview = snapshot?._zilch_draft_preview;
+  if (
+    !preview
+    || !turnState?.can_select_hold
+    || !sameId(preview.player_id, snapshot?._turn?.player_id)
+    || Number(preview.turn_id) !== Number(turnState?.turn_id)
+    || Number(preview.version) !== Number(turnState?.version)
+    || Number(preview.roll_id) !== Number(turnState?.roll_id)
+  ) return [];
+  const raw = preview.dice_indices;
+  if (!Array.isArray(raw) || raw.some(index => !Number.isInteger(index))) return [];
+  const indices = normalizedIndices(raw);
+  return indices.length === raw.length ? indices : [];
+}
+
+function visibleDraftHoldIndices(snapshot, turnState, isMyTurn) {
+  return isMyTurn ? draftHoldIndices(turnState) : sharedDraftHoldIndices(snapshot, turnState);
+}
+
+function restoreOwnDraftPreview(snapshot) {
+  const turnState = snapshot?._zilch_turn_state;
+  if (spectatorRoute || !turnState?.can_select_hold || !localPlayerIs(snapshot, snapshot?._turn?.player_id)) return;
+  if (state.draftHoldKey === holdDraftKey(turnState)) return;
+  setDraftHoldIndices(turnState, sharedDraftHoldIndices(snapshot, turnState));
+}
+
+function publishDraftPreview(turnState, indices) {
+  if (!turnState?.can_select_hold || !state.socket || state.socket.readyState !== WebSocket.OPEN) return;
+  state.socket.send(JSON.stringify({
+    action: "zilch_preview_selection",
+    turn_id: turnState.turn_id,
+    version: turnState.version,
+    roll_id: turnState.roll_id,
+    dice_indices: normalizedIndices(indices),
+  }));
+}
+
 function sameIndices(first, second) {
   const left = normalizedIndices(first);
   const right = normalizedIndices(second);
@@ -2966,10 +3005,10 @@ function normalizedDraftAfterRemoval(options, remainingIndices) {
   return normalizedIndices(validSubsets[0]?.dice_indices);
 }
 
-function dieState(index, value, turnState, quickHolds) {
+function dieState(index, value, turnState, quickHolds, draft) {
   const held = Array.isArray(turnState?.held_dice_indices) && turnState.held_dice_indices.includes(index);
   const serverScoring = quickHolds.some(option => Array.isArray(option.dice_indices) && option.dice_indices.includes(index));
-  const selected = draftHoldIndices(turnState).includes(index);
+  const selected = draft.includes(index);
   if (!value) return "zilch-die--unrolled";
   if (held) return "zilch-die--held zilch-die--unavailable";
   if (selected) return "zilch-die--selected";
@@ -2977,9 +3016,9 @@ function dieState(index, value, turnState, quickHolds) {
   return "zilch-die--available";
 }
 
-function dieDescription(index, value, turnState, quickHolds) {
+function dieDescription(index, value, turnState, quickHolds, draft) {
   const held = Array.isArray(turnState?.held_dice_indices) && turnState.held_dice_indices.includes(index);
-  const selected = draftHoldIndices(turnState).includes(index);
+  const selected = draft.includes(index);
   const scoreable = quickHolds.some(option => Array.isArray(option.dice_indices) && option.dice_indices.includes(index));
   const stateLabel = turnState?.phase === "zilch_reveal"
     ? t("Letzter Zilch-Wurf")
@@ -2996,7 +3035,7 @@ function dieDescription(index, value, turnState, quickHolds) {
   return `${t("Würfel")} ${index + 1}: ${valueLabel}. ${stateLabel}.`;
 }
 
-function diceRack(snapshot, turnState, quickHolds, isMyTurn) {
+function diceRack(snapshot, turnState, quickHolds, isMyTurn, canInteract) {
   const revealMoment = state.zilchMoment?.phase === "reveal" ? state.zilchMoment : null;
   const currentDice = Array.isArray(snapshot._dice) ? snapshot._dice.slice(0, 6) : [0, 0, 0, 0, 0, 0];
   const retainedRack = snapshot?._zilch_last_zilch_dice;
@@ -3017,18 +3056,21 @@ function diceRack(snapshot, turnState, quickHolds, isMyTurn) {
       ? { ...turnState, phase: "zilch_reveal", held_dice_indices: normalizedIndices(retainedRack?.held_dice_indices) }
     : turnState;
   const displayQuickHolds = revealMoment || hasRetainedZilchRack ? [] : quickHolds;
+  const displayDraft = revealMoment || hasRetainedZilchRack
+    ? []
+    : visibleDraftHoldIndices(snapshot, turnState, isMyTurn);
   const rolling = state.pendingAction === "zilch_roll_dice";
   const landing = Boolean(state.diceLandingPending || revealMoment);
   return `<div class="zilch-dice${rolling ? " is-rolling" : ""}${landing ? " is-landing" : ""}${revealMoment ? " is-zilch-reveal" : ""}${hasRetainedZilchRack ? " is-zilch-retained" : ""}" aria-label="${escapeHtml(t("Sechs Würfel"))}" aria-busy="${rolling ? "true" : "false"}">${dice.map((die, index) => {
-    const baseLabel = dieDescription(index, die, displayTurnState, displayQuickHolds);
+    const baseLabel = dieDescription(index, die, displayTurnState, displayQuickHolds, displayDraft);
     const label = hasRetainedZilchRack ? `${t("Letzter Zilch-Wurf")}. ${baseLabel}` : baseLabel;
     const held = Array.isArray(displayTurnState?.held_dice_indices) && displayTurnState.held_dice_indices.includes(index);
     const scoreable = displayQuickHolds.some(option => Array.isArray(option.dice_indices) && option.dice_indices.includes(index));
-    const selectable = Boolean(!revealMoment && !hasRetainedZilchRack && isMyTurn && displayTurnState?.can_select_hold && die && !held && scoreable && !snapshot._paused && !snapshot._finished && !state.pendingAction);
-    const classes = `zilch-die ${dieState(index, die, displayTurnState, displayQuickHolds)}${hasRetainedZilchRack ? " zilch-die--zilch-retained" : ""}${state.pendingAction ? " zilch-die--pending" : ""}`;
+    const selectable = Boolean(!revealMoment && !hasRetainedZilchRack && canInteract && displayTurnState?.can_select_hold && die && !held && scoreable && !snapshot._paused && !snapshot._finished && !state.pendingAction);
+    const classes = `zilch-die ${dieState(index, die, displayTurnState, displayQuickHolds, displayDraft)}${hasRetainedZilchRack ? " zilch-die--zilch-retained" : ""}${state.pendingAction ? " zilch-die--pending" : ""}`;
     const face = diePips(die, index);
     return selectable
-      ? `<button type="button" class="${classes}" style="--die-index:${index}" data-zilch-die-index="${index}" aria-keyshortcuts="${index + 1}" aria-pressed="${draftHoldIndices(displayTurnState).includes(index) ? "true" : "false"}" aria-label="${escapeHtml(label)}">${face}</button>`
+      ? `<button type="button" class="${classes}" style="--die-index:${index}" data-zilch-die-index="${index}" aria-keyshortcuts="${index + 1}" aria-pressed="${displayDraft.includes(index) ? "true" : "false"}" aria-label="${escapeHtml(label)}">${face}</button>`
       : `<span class="${classes}" style="--die-index:${index}" role="img" aria-label="${escapeHtml(label)}">${face}</span>`;
   }).join("")}</div>`;
 }
@@ -3138,11 +3180,14 @@ function optionMatchesDraft(option, indices) {
   return selected.every(index => candidate.includes(index));
 }
 
-function recommendationCards(snapshot, turnState, isMyTurn) {
+function recommendationCards(snapshot, turnState, isMyTurn, canInteract) {
   const options = Array.isArray(snapshot._zilch_quick_holds) ? snapshot._zilch_quick_holds : [];
-  const selectable = Boolean(isMyTurn && turnState?.can_select_hold && !snapshot._paused && !snapshot._finished && !state.pendingAction);
+  const selectable = Boolean(canInteract && turnState?.can_select_hold && !snapshot._paused && !snapshot._finished && !state.pendingAction);
   if (!options.length) return "";
-  const draft = draftHoldIndices(turnState);
+  // The server validates and broadcasts the active player's reversible draft
+  // for the other live viewers. The active player still renders immediately
+  // from their local copy while the round remains fully uncommitted.
+  const draft = visibleDraftHoldIndices(snapshot, turnState, isMyTurn);
   const recommendations = recommendationOptions(snapshot, orderedQuickHolds(options), draft);
   if (!recommendations.length) return "";
   return `<div class="zilch-recommendations__rail"><ol class="zilch-recommendations__list">${recommendations.map((option, index) => {
@@ -3151,22 +3196,25 @@ function recommendationCards(snapshot, turnState, isMyTurn) {
     const label = compactOptionTitle(option);
     const shortcut = ZILCH_RECOMMENDATION_SHORTCUTS[index];
     const accessibleLabel = `+${number(option.points)} ${label}${hotDice ? ` · ${t("Freier Wurf")}` : ""}`;
-    return `<li><button type="button" class="zilch-recommendation${selected ? " is-selected" : ""}${hotDice ? " is-hot" : ""}" data-zilch-recommendation="${escapeHtml(option.id)}" data-zilch-shortcut="${shortcut}" ${selectable ? "" : "disabled"} aria-keyshortcuts="${shortcut}" aria-label="${escapeHtml(accessibleLabel)}" aria-pressed="${selected ? "true" : "false"}">
-      <strong aria-hidden="true">${selected ? "✓ " : ""}+${number(option.points)}</strong><span aria-hidden="true">${escapeHtml(label)}</span><kbd class="zilch-recommendation__shortcut" aria-hidden="true">${shortcut.toUpperCase()}</kbd>
+    return `<li><button type="button" class="zilch-recommendation${selected ? " is-selected" : ""}${hotDice ? " is-hot" : ""}${isMyTurn ? "" : " is-viewing"}" data-zilch-recommendation="${escapeHtml(option.id)}" data-zilch-shortcut="${shortcut}" ${selectable ? "" : "disabled"}${selectable ? ` aria-keyshortcuts="${shortcut}"` : ""} aria-label="${escapeHtml(accessibleLabel)}" aria-pressed="${selected ? "true" : "false"}">
+      <strong aria-hidden="true">${selected ? "✓ " : ""}+${number(option.points)}</strong><span aria-hidden="true">${escapeHtml(label)}</span>${selectable ? `<kbd class="zilch-recommendation__shortcut" aria-hidden="true">${shortcut.toUpperCase()}</kbd>` : ""}
     </button></li>`;
   }).join("")}</ol>
   </div>`;
 }
 
-function turnScoreMarkup(snapshot, turnState, quickHolds, isMyTurn) {
+function turnScoreMarkup(snapshot, turnState, quickHolds, isMyTurn, canInteract) {
   // ``round_points`` contains every already committed hold. A draft is not
   // yet authoritative, so only the exact server option selected in the draft
   // may be added to the visible total. Never prefill it from the combined
   // action: that would show points the player has not chosen to hold.
-  if (!isMyTurn || !turnState || snapshot?._finished || snapshot?._paused || state.zilchMoment) return "";
+  if (!turnState || snapshot?._finished || snapshot?._paused || state.zilchMoment) return "";
+  // The opponent gets the same current-roll tile, including the active
+  // player's server-validated display draft. It remains an uncommitted hold.
+  const draft = visibleDraftHoldIndices(snapshot, turnState, isMyTurn);
   const heldPoints = Math.max(0, Number(turnState.round_points) || 0);
   const combined = combinedScoringOption(quickHolds);
-  const selected = exactOptionForDraft(quickHolds, draftHoldIndices(turnState));
+  const selected = exactOptionForDraft(quickHolds, draft);
   const selectedPoints = Math.max(0, Number(selected?.points) || 0);
   const potential = heldPoints + selectedPoints;
   // Keep the all-scoreable action reachable on a fresh roll, while showing a
@@ -3174,10 +3222,11 @@ function turnScoreMarkup(snapshot, turnState, quickHolds, isMyTurn) {
   if (!potential && !combined) return "";
   const selectable = Boolean(
     combined
+    && canInteract
     && turnState?.can_select_hold
     && !state.pendingAction,
   );
-  const combinedSelected = Boolean(combined && sameIndices(combined.dice_indices, draftHoldIndices(turnState)));
+  const combinedSelected = Boolean(combined && sameIndices(combined.dice_indices, draft));
   const freeRoll = Boolean(combined?.hot_dice);
   // A named all-dice special (for example three pairs) is more useful than
   // the generic combined-score label. Ordinary mixed holds retain that label.
@@ -3185,11 +3234,11 @@ function turnScoreMarkup(snapshot, turnState, quickHolds, isMyTurn) {
     ? compactOptionTitle(combined)
     : t("Kombinierte Wertung");
   const accessibleLabel = `${combinedLabel}: +${number(combined?.points)}${freeRoll ? ` · ${t("Freier Wurf")}` : ""}`;
-  return `<div class="zilch-play-layout__current-score"><section class="zilch-turn-score" aria-live="polite" aria-label="${escapeHtml(t("Aktueller Wurf"))}">
+  return `<div class="zilch-play-layout__current-score"><section class="zilch-turn-score${isMyTurn ? "" : " is-viewing"}" aria-live="polite" aria-label="${escapeHtml(t("Aktueller Wurf"))}">
     <span>${escapeHtml(t("Aktueller Wurf"))}</span>
     <strong>${escapeHtml(number(potential))}</strong>
     <small class="zilch-turn-score__breakdown"><span>${escapeHtml(t("Bisher gehalten"))}: ${escapeHtml(number(heldPoints))}</span><span>${escapeHtml(t("Aktuell gehalten"))}: ${escapeHtml(number(selectedPoints))}</span></small>
-  </section></div>${combined ? `<div class="zilch-play-layout__combined-score"><button type="button" class="zilch-combined-score${combinedSelected ? " is-selected" : ""}${freeRoll ? " is-hot" : ""}" data-zilch-combined-score ${selectable ? "" : "disabled"} aria-label="${escapeHtml(accessibleLabel)}" aria-pressed="${combinedSelected ? "true" : "false"}">
+  </section></div>${combined ? `<div class="zilch-play-layout__combined-score"><button type="button" class="zilch-combined-score${combinedSelected ? " is-selected" : ""}${freeRoll ? " is-hot" : ""}${isMyTurn ? "" : " is-viewing"}" data-zilch-combined-score ${selectable ? "" : "disabled"} aria-label="${escapeHtml(accessibleLabel)}" aria-pressed="${combinedSelected ? "true" : "false"}">
     <span aria-hidden="true">${escapeHtml(combinedLabel)}</span><strong aria-hidden="true">+${escapeHtml(number(combined.points))}</strong>${freeRoll ? `<span class="zilch-combined-score__stamp" aria-hidden="true"><strong>${escapeHtml(t("Freier Wurf!"))}</strong></span>` : ""}
   </button></div>` : ""}`;
 }
@@ -3568,8 +3617,8 @@ function renderGameState() {
   const gameName = escapeHtml(snapshot._name || "Zilch");
   const target = Number(snapshot._target_score || 10000);
   const transition = state.notebookTransition;
-  const recommendations = snapshot._finished ? "" : recommendationCards(snapshot, turnState, canInteract);
-  const turnScore = snapshot._finished ? "" : turnScoreMarkup(snapshot, turnState, quickHolds, canInteract);
+  const recommendations = snapshot._finished ? "" : recommendationCards(snapshot, turnState, isMyTurn, canInteract);
+  const turnScore = snapshot._finished ? "" : turnScoreMarkup(snapshot, turnState, quickHolds, isMyTurn, canInteract);
   const resultMarkup = finalResult(snapshot);
   const hasChoices = Boolean(recommendations || turnScore || resultMarkup);
   const finished = Boolean(resultMarkup);
@@ -3624,7 +3673,7 @@ function renderGameState() {
     <section class="zilch-dice-dock">
       <section class="zilch-table" aria-labelledby="zilchDiceTitle">
         <h2 id="zilchDiceTitle" class="visually-hidden">${escapeHtml(t("Sechs Würfel"))}</h2>
-        ${diceRack(snapshot, turnState, quickHolds, canInteract)}
+        ${diceRack(snapshot, turnState, quickHolds, isMyTurn, canInteract)}
         ${actionCards(snapshot, turnState, quickHolds, canInteract)}
       </section>
     </section>
@@ -3826,6 +3875,7 @@ function wireGameInteractions(snapshot, turnState, quickHolds) {
       const next = removing ? normalizedDraftAfterRemoval(quickHolds, candidate) : candidate;
       if (!removing && !draftCanContain(quickHolds, next)) return;
       setDraftHoldIndices(turnState, next);
+      publishDraftPreview(turnState, next);
       renderGameState();
     });
   }
@@ -3839,7 +3889,9 @@ function wireGameInteractions(snapshot, turnState, quickHolds) {
       if (!option || state.zilchMoment || !localPlayerIs(snapshot, snapshot?._turn?.player_id) || state.pendingAction) return;
       const draft = draftHoldIndices(turnState);
       if (!optionMatchesDraft(option, draft)) return;
-      setDraftHoldIndices(turnState, sameIndices(option.dice_indices, draft) ? [] : option.dice_indices);
+      const next = sameIndices(option.dice_indices, draft) ? [] : option.dice_indices;
+      setDraftHoldIndices(turnState, next);
+      publishDraftPreview(turnState, next);
       renderGameState();
     });
   }
@@ -3855,7 +3907,9 @@ function wireGameInteractions(snapshot, turnState, quickHolds) {
     const option = combinedScoringOption(quickHolds);
     if (!option) return;
     const draft = draftHoldIndices(turnState);
-    setDraftHoldIndices(turnState, sameIndices(option.dice_indices, draft) ? [] : option.dice_indices);
+    const next = sameIndices(option.dice_indices, draft) ? [] : option.dice_indices;
+    setDraftHoldIndices(turnState, next);
+    publishDraftPreview(turnState, next);
     renderGameState();
   });
   document.getElementById("zilchChatForm")?.addEventListener("submit", (event) => {
@@ -3969,6 +4023,7 @@ function connectGameSocket() {
         state.draftHoldKey = "";
         state.draftHoldIndices = [];
       }
+      restoreOwnDraftPreview(state.game);
       if (payload.scoreboard._finished && !spectatorRoute) clearRememberedActiveGame(gameId);
       state.pendingAction = null;
       state.pendingOptionId = null;
@@ -3976,6 +4031,11 @@ function connectGameSocket() {
       updateStatus(eventText || null);
       const awardScope = spectatorRoute ? "" : terminalAwardScope(payload.scoreboard);
       if (awardScope) void presentPendingZilchAwards({ scope: awardScope });
+      renderGameState();
+    }
+    if (Object.prototype.hasOwnProperty.call(payload, "zilch_draft_preview") && state.game) {
+      state.game = { ...state.game, _zilch_draft_preview: payload.zilch_draft_preview || null };
+      restoreOwnDraftPreview(state.game);
       renderGameState();
     }
     if (payload.chat && state.game) {

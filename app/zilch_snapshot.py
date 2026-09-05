@@ -18,6 +18,7 @@ from .game_types import ZILCH_GAME_TYPE
 from .zilch_achievements import hydrate_zilch_achievement_ranks
 from .zilch_engine import (
     ZILCH_DICE_COUNT,
+    ZILCH_PHASE_AWAITING_HOLD,
     ZILCH_TARGET_SCORE,
     ZilchRuleError,
     bank_allowed,
@@ -70,6 +71,43 @@ def _last_zilch_dice(game: GameDict) -> dict | None:
         "turn_id": raw.get("turn_id") if type(raw.get("turn_id")) is int else 0,
         "dice": dice[:],
         "held_dice_indices": held_indices,
+    }
+
+
+def _draft_preview(game: GameDict, turn, options) -> dict | None:
+    """Expose only a current, server-validated reversible draft.
+
+    The preview is intentionally presentation state, not a scoring hold. It
+    must match the exact turn/version/roll and stay a subset of a current
+    Quick Hold before another player or spectator is allowed to see it.
+    """
+    raw = game.get("_zilch_draft_preview")
+    if not isinstance(raw, dict) or turn is None or turn.phase != ZILCH_PHASE_AWAITING_HOLD:
+        return None
+    if (
+        str(raw.get("player_id") or "") != str(turn.player_id)
+        or type(raw.get("turn_id")) is not int
+        or raw["turn_id"] != turn.turn_id
+        or type(raw.get("version")) is not int
+        or raw["version"] != turn.version
+        or type(raw.get("roll_id")) is not int
+        or raw["roll_id"] != turn.roll_id
+    ):
+        return None
+    raw_indices = raw.get("dice_indices")
+    if not isinstance(raw_indices, list) or any(type(index) is not int for index in raw_indices):
+        return None
+    indices = tuple(sorted(raw_indices))
+    if len(set(indices)) != len(indices) or any(index < 0 or index >= ZILCH_DICE_COUNT for index in indices):
+        return None
+    if not options or not any(set(indices).issubset(option.dice_indices) for option in options):
+        return None
+    return {
+        "player_id": str(turn.player_id),
+        "turn_id": turn.turn_id,
+        "version": turn.version,
+        "roll_id": turn.roll_id,
+        "dice_indices": list(indices),
     }
 
 
@@ -168,6 +206,7 @@ def snapshot_zilch(game: GameDict) -> dict:
         if str(player.get("id") or "")
     }
     options = options_for_turn(turn) if turn else ()
+    draft_preview = _draft_preview(game, turn, options)
     can_bank, bank_reason = bank_allowed(turn) if turn else (False, "zilch_turn_not_ready")
     current_turn_state = (
         {
@@ -320,6 +359,7 @@ def snapshot_zilch(game: GameDict) -> dict:
         ),
         "_zilch_turn_state": current_turn_state,
         "_zilch_quick_holds": [option.payload() for option in options],
+        "_zilch_draft_preview": draft_preview,
         "_chat_history": list(game.get("_chat_history", []))[-CHAT_HISTORY_LIMIT:],
         "_gameplay_status": "playable",
         "_gameplay_notice": {"message_key": "zilch.playable"},

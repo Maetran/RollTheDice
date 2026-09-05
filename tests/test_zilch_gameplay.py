@@ -202,6 +202,49 @@ class ZilchGameplayTestCase(TestCase):
         self.assertTrue(held["_zilch_turn_state"]["can_bank"])
         self.assertEqual(held["_zilch_turn_state"]["committed_holds"][0]["id"], triple["id"])
 
+    def test_reversible_draft_preview_is_shared_but_never_changes_the_turn(self):
+        game, sockets = self.make_game(players=2)
+        session = self.session(game, sockets[0], "p1")
+        with patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([5, 5, 5, 2, 3, 4])):
+            asyncio.run(handle_zilch_gameplay_action(session, "zilch_roll_dice", {"turn_id": 1, "version": 0}))
+
+        rolled = sockets[0].messages[-1]["scoreboard"]
+        triple = option_for(rolled, combination_type="three_of_a_kind", dice_indices=[0, 1, 2], points=500)
+        before_turn = current_zilch_turn(game)
+        payload = {
+            "turn_id": rolled["_zilch_turn_state"]["turn_id"],
+            "version": rolled["_zilch_turn_state"]["version"],
+            "roll_id": rolled["_zilch_turn_state"]["roll_id"],
+            "dice_indices": triple["dice_indices"],
+        }
+        asyncio.run(handle_zilch_gameplay_action(session, "zilch_preview_selection", payload))
+
+        expected_preview = {
+            "player_id": "p1",
+            "turn_id": 1,
+            "version": 1,
+            "roll_id": 1,
+            "dice_indices": [0, 1, 2],
+        }
+        self.assertEqual(sockets[0].messages[-1], {"zilch_draft_preview": expected_preview})
+        self.assertEqual(sockets[1].messages[-1], {"zilch_draft_preview": expected_preview})
+        self.assertEqual(snapshot_zilch(game)["_zilch_draft_preview"], expected_preview)
+        self.assertEqual(current_zilch_turn(game), before_turn)
+        self.assertNotIn("_zilch_draft_preview", serializable_game_state(game))
+
+        forged = {**payload, "dice_indices": [0, 5]}
+        asyncio.run(handle_zilch_gameplay_action(session, "zilch_preview_selection", forged))
+        self.assertEqual(sockets[0].messages[-1]["zilch_error"]["code"], "zilch_stale_or_invalid_option")
+        self.assertEqual(snapshot_zilch(game)["_zilch_draft_preview"], expected_preview)
+
+        roll_payload = action_with_option("zilch_roll_dice", rolled, triple)
+        with (
+            patch("app.zilch_gameplay.roll_cooldown_ok", return_value=True),
+            patch("app.zilch_gameplay.fair_zilch_randint", new=sequence_rng([1, 2, 3])),
+        ):
+            asyncio.run(handle_zilch_gameplay_action(session, roll_payload.pop("action"), roll_payload))
+        self.assertIsNone(sockets[0].messages[-1]["scoreboard"]["_zilch_draft_preview"])
+
     def test_atomic_hold_and_roll_commits_only_the_selected_option_then_rolls_free_dice(self):
         game, sockets = self.make_game()
         session = self.session(game, sockets[0], "p1")

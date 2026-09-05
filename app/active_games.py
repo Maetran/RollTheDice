@@ -32,6 +32,10 @@ def _json_safe(value: Any) -> Any:
 def serializable_game_state(game: dict) -> dict:
     """Return durable state; live connections are rebuilt on rejoin."""
     state = _json_safe(game)
+    # A reversible in-browser Zilch draft is shared only with people currently
+    # watching the room. It is never a persisted scoring hold and must not
+    # reappear after a process restart.
+    state.pop("_zilch_draft_preview", None)
     # Persist an explicit marker even when the source was restored from an old
     # snapshot.  ``game_type_from_state`` supplies the documented ZDWA default.
     state["_game_type"] = game_type_from_state(game)
