@@ -52,6 +52,10 @@
   text-decoration:none;
 }
 .app-nav-brand h1{ margin:0; font-size:1.45rem; white-space:nowrap; }
+.app-nav-brand .logo{
+  width:var(--header-control-size);
+  height:var(--header-control-size);
+}
 .app-nav-links{
   display:flex;
   align-items:center;
@@ -94,10 +98,10 @@
   min-width:0;
   justify-self:end;
 }
-.app-nav-tools .theme-toggle,
-.app-nav-tools .game-switch,
-.app-nav-tools select{
-  min-height:44px;
+.app-nav-tools :is(.theme-toggle, .game-switch, .language-switcher select){
+  box-sizing:border-box;
+  height:var(--header-control-size);
+  min-height:var(--header-control-size);
 }
 .logo{
   display:inline-flex;
@@ -536,7 +540,7 @@
   }
   .app-nav-brand{ grid-column:1; grid-row:1; }
   .app-nav-brand h1{ font-size:1.28rem; }
-  .app-nav-brand .logo,
+  .app-nav-brand .logo{ width:var(--header-control-size); height:var(--header-control-size); }
   .logo{ width:2rem; height:2rem; }
   .app-nav-tools{ grid-column:2; grid-row:1; }
   .app-nav-links{
@@ -559,8 +563,8 @@
   }
   .app-nav-tools .theme-toggle,
   .app-nav-tools .game-switch{
-    min-width:44px;
-    min-height:44px;
+    min-width:var(--header-control-size);
+    min-height:var(--header-control-size);
     padding:.4rem;
   }
   .lobby-community .stats{
@@ -617,15 +621,14 @@
   .leaderboard-box td{ padding:.38rem .34rem; }
 }
 
-/* One game switch, one muscle memory: the ZDWA page header uses the same
-   isolated geometry as both live rooms. Other header tools retain their own
-   established sizes. */
+/* One game switch, one muscle memory: all compact ZDWA header controls share
+   one height, while the destination control keeps its useful text width. */
 .app-nav-tools .game-switch{
   box-sizing:border-box;
   width:4.5rem;
   min-width:4.5rem;
-  height:2.25rem;
-  min-height:2.25rem;
+  height:var(--header-control-size);
+  min-height:var(--header-control-size);
   padding:0 .44rem;
   gap:.3rem;
   font-size:.75rem;
@@ -635,10 +638,10 @@
 
 @media (max-width:560px){
   .app-nav-tools .game-switch{
-    width:2.25rem;
-    min-width:2.25rem;
-    height:2.25rem;
-    min-height:2.25rem;
+    width:var(--header-control-size);
+    min-width:var(--header-control-size);
+    height:var(--header-control-size);
+    min-height:var(--header-control-size);
     padding:0 .2rem;
   }
 

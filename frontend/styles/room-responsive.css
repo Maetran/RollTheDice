@@ -40,20 +40,21 @@
     min-width:.2rem;
   }
   .room-page .room-header button.small{
-    min-height:1.8rem;
+    height:var(--header-control-size);
+    min-height:var(--header-control-size);
     padding:.22rem .42rem;
     font-size:.78rem;
   }
   .room-page .room-share-button{
-    flex:0 0 1.8rem;
-    width:1.8rem;
+    flex:0 0 var(--header-control-size);
+    width:var(--header-control-size);
     padding:.2rem;
     font-size:1rem;
   }
   .room-page .room-header .emoji-fab{
-    width:34px;
-    height:34px;
-    min-height:34px;
+    width:var(--header-control-size);
+    height:var(--header-control-size);
+    min-height:var(--header-control-size);
   }
   .room-page .room-header #reactionsBar:empty{
     display:none;
@@ -781,10 +782,10 @@
   .room-page .room-header button.room-game-switch.small{
     grid-column:3;
     grid-row:1;
-    width:2.25rem;
-    min-width:2.25rem;
-    height:2.25rem;
-    min-height:2.25rem;
+    width:var(--header-control-size);
+    min-width:var(--header-control-size);
+    height:var(--header-control-size);
+    min-height:var(--header-control-size);
     padding:.22rem .42rem;
     font-size:.78rem;
     line-height:1;
@@ -805,8 +806,8 @@
     grid-row:1;
     width:4.5rem;
     min-width:4.5rem;
-    height:2.25rem;
-    min-height:2.25rem;
+    height:var(--header-control-size);
+    min-height:var(--header-control-size);
     padding:0 .44rem;
     font-size:.75rem;
   }

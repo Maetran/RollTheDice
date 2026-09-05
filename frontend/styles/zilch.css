@@ -259,8 +259,8 @@ html[data-game="zilch"] .zilch-nav-list .zilch-nav-back::before {
 .zilch-brand-mark {
   display: inline-grid;
   place-items: center;
-  width: 2rem;
-  height: 2rem;
+  width: var(--header-control-size);
+  height: var(--header-control-size);
   border: 1px solid rgba(255, 246, 212, .5);
   border-radius: .6rem;
   color: #3b1b0d;
@@ -285,6 +285,36 @@ html[data-game="zilch"] .zilch-nav-list .zilch-nav-back::before {
 .zilch-header-tools { flex-wrap: nowrap; justify-content: flex-end; }
 .zilch-header-tools { justify-self: end; }
 .zilch-account { min-width: 0; overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
+.zilch-header-tools .language-switcher { display: inline-flex; align-items: center; }
+.zilch-header-tools .language-switcher select {
+  box-sizing: border-box;
+  height: var(--header-control-size);
+  min-height: var(--header-control-size);
+}
+.zilch-header-tools :is(button, .zilch-room-lobby, .zilch-room-rules, .zilch-room-abandon) {
+  box-sizing: border-box;
+  min-height: var(--header-control-size);
+}
+.zilch-header-tools :is(.zilch-room-lobby, .zilch-room-rules, .zilch-room-abandon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  height: var(--header-control-size);
+  padding: 0 .52rem;
+  border: 1px solid rgba(255, 237, 184, .38);
+  border-radius: .7rem;
+  color: #fffaf0;
+  background: rgba(255, 255, 255, .1);
+  font-size: .8rem;
+  font-weight: 750;
+  line-height: 1;
+  text-decoration: none;
+}
+.zilch-header-tools :is(.zilch-room-lobby, .zilch-room-rules, .zilch-room-abandon):hover {
+  border-color: rgba(255, 239, 192, .56);
+  background: rgba(255, 248, 226, .18);
+}
 
 .zilch-intro,
 .zilch-game-head { max-width: 780px; margin: 0 0 1.35rem; color: #fff8e8; }
@@ -2231,9 +2261,9 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
   .zilch-brand > span:last-child { display: none; }
   .zilch-header-tools { gap: .25rem; }
   .zilch-header-tools .zilch-account { display: none; }
-  .zilch-header-tools :where(button, select) { min-height: 2.15rem; font-size: .82rem; }
-  .zilch-header-tools .language-switcher select { min-height: 2.15rem; padding: .25rem 1.35rem .25rem .42rem; }
-  .zilch-header-tools :where(.game-switch, #zilchNavToggle) { width: 2.15rem; min-width: 2.15rem; padding: .25rem; }
+  .zilch-header-tools :where(button, select) { min-height: var(--header-control-size); font-size: .82rem; }
+  .zilch-header-tools .language-switcher select { min-height: var(--header-control-size); padding: .25rem 1.35rem .25rem .42rem; }
+  .zilch-header-tools :where(.game-switch, #zilchNavToggle) { width: var(--header-control-size); min-width: var(--header-control-size); padding: .25rem; }
   .zilch-header-tools .game-switch span:last-child,
   .zilch-header-tools #zilchNavToggle span:last-child { display: none; }
 
@@ -2307,7 +2337,7 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
 @media (max-width: 390px) {
   .zilch-header { grid-template-columns: auto minmax(0, 1fr); gap: .35rem; }
   .zilch-brand { flex: 0 0 auto; font-size: 1.1rem; }
-  .zilch-brand-mark { width: 2rem; height: 2rem; }
+  .zilch-brand-mark { width: var(--header-control-size); height: var(--header-control-size); }
   .zilch-header-tools { width: auto; justify-content: flex-end; }
   .zilch-result-facts { grid-template-columns: 1fr; }
   .zilch-rule-facts { grid-template-columns: 1fr; }
@@ -3902,9 +3932,9 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
   gap: .28rem;
   flex: 0 0 auto;
   width: auto;
-  min-width: 2.125rem;
-  height: 2.125rem;
-  min-height: 2.125rem;
+  min-width: var(--header-control-size);
+  height: var(--header-control-size);
+  min-height: var(--header-control-size);
   margin: 0;
   padding: 0 .44rem;
   border: 1px solid rgba(255, 229, 177, .38);
@@ -3934,9 +3964,9 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
 .zilch-shell--game .zilch-room-abandon {
   display: inline-grid;
   place-items: center;
-  flex-basis: 2.125rem;
-  width: 2.125rem;
-  min-width: 2.125rem;
+  flex-basis: var(--header-control-size);
+  width: var(--header-control-size);
+  min-width: var(--header-control-size);
   padding: 0;
   border-color: rgba(255, 194, 166, .48);
   color: #ffe1d4;
@@ -3961,9 +3991,9 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
   }
 
   .zilch-shell:not(.zilch-shell--game) .zilch-brand-mark {
-    flex: 0 0 2.125rem;
-    width: 2.125rem;
-    height: 2.125rem;
+    flex: 0 0 var(--header-control-size);
+    width: var(--header-control-size);
+    height: var(--header-control-size);
   }
 
   .zilch-shell:not(.zilch-shell--game) .zilch-header-tools {
@@ -3973,14 +4003,14 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
   }
 
   .zilch-shell:not(.zilch-shell--game) .zilch-header-tools :where(button, select) {
-    height: 2.125rem;
-    min-height: 2.125rem;
+    height: var(--header-control-size);
+    min-height: var(--header-control-size);
   }
 
   .zilch-shell:not(.zilch-shell--game) .zilch-header-tools .game-switch {
-    flex: 0 0 2.125rem;
-    width: 2.125rem;
-    min-width: 2.125rem;
+    flex: 0 0 var(--header-control-size);
+    width: var(--header-control-size);
+    min-width: var(--header-control-size);
     padding: 0;
   }
 
@@ -4075,15 +4105,14 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
   }
 }
 
-/* Match the sole cross-game control across ZDWA and Zilch without changing
-   the dimensions of neighbouring header actions. Phones use the same square,
-   icon-only form; wider headers expose the destination label. */
+/* Match the cross-game control with the shared header-control system. Phones
+   use its square, icon-only form; wider headers expose the destination label. */
 html[data-game="zilch"] .zilch-header-tools .game-switch {
   box-sizing: border-box;
   width: 4.5rem;
   min-width: 4.5rem;
-  height: 2.25rem;
-  min-height: 2.25rem;
+  height: var(--header-control-size);
+  min-height: var(--header-control-size);
   padding: 0 .44rem;
   gap: .3rem;
   font-size: .75rem;
@@ -4102,10 +4131,10 @@ html[data-game="zilch"] .zilch-header-tools .game-switch-icon {
 @media (max-width: 560px) {
   html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch,
   html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch {
-    width: 2.25rem;
-    min-width: 2.25rem;
-    height: 2.25rem;
-    min-height: 2.25rem;
+    width: var(--header-control-size);
+    min-width: var(--header-control-size);
+    height: var(--header-control-size);
+    min-height: var(--header-control-size);
     padding: .22rem .42rem;
     font-size: .78rem;
     line-height: 1;

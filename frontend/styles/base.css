@@ -42,6 +42,9 @@
   --radius:8px;
   --radius-sm:6px;
   --radius-card:12px;
+  /* Every compact control in a page or game header uses this shared edge.
+     Text navigation deliberately keeps its larger tap target. */
+  --header-control-size:2.25rem;
 
   --col-desc:   96px;
   --col-score:  44px;
@@ -124,7 +127,9 @@ a{ color:var(--accent); }
 
 /* === Theme switch === */
 .language-switcher select{
-  min-height:2rem;
+  box-sizing:border-box;
+  height:var(--header-control-size);
+  min-height:var(--header-control-size);
   padding:.3rem 1.65rem .3rem .55rem;
   border:1px solid var(--border);
   border-radius:var(--radius-sm);
@@ -157,13 +162,19 @@ a{ color:var(--accent); }
   color:var(--text);
 }
 .theme-toggle-compact{
-  width:2.25rem;
-  min-width:2.25rem;
+  box-sizing:border-box;
+  width:var(--header-control-size);
+  min-width:var(--header-control-size);
+  height:var(--header-control-size);
+  min-height:var(--header-control-size);
   padding:.35rem;
 }
 .rank-legend-trigger{
-  width:2.25rem;
-  min-width:2.25rem;
+  box-sizing:border-box;
+  width:var(--header-control-size);
+  min-width:var(--header-control-size);
+  height:var(--header-control-size);
+  min-height:var(--header-control-size);
   padding:.35rem;
   font-size:1rem;
 }

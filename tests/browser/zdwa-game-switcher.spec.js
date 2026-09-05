@@ -47,6 +47,17 @@ async function switchControlGeometry(locator) {
   });
 }
 
+async function controlHeights(locator) {
+  return locator.evaluateAll(elements => elements
+    .filter(element => element.getClientRects().length)
+    .map(element => element.getBoundingClientRect().height));
+}
+
+function expectUniformHeaderControls(heights) {
+  expect(heights.length).toBeGreaterThan(1);
+  expect(heights, `Header control heights: ${heights.join(", ")}`).toEqual(heights.map(() => 36));
+}
+
 test("the permission-gated game switch is available across ZDWA and in its active room", async ({ page }) => {
   await page.goto("/regeln");
   const anonymousSwitch = page.locator("[data-game-switch]");
@@ -58,6 +69,7 @@ test("the permission-gated game switch is available across ZDWA and in its activ
 
   await page.setViewportSize({ width: 1024, height: 800 });
   await expect(page.locator("[data-game-switch] .game-switch-icon--zilch")).toHaveText("Z");
+  expectUniformHeaderControls(await controlHeights(page.locator(".app-nav-tools :is([data-language-switcher], [data-theme-toggle], [data-game-switch])")));
   const zdwaDesktopSwitch = await switchControlGeometry(page.locator("[data-game-switch]"));
   await Promise.all([
     page.waitForURL(/\/zilch$/),
@@ -65,6 +77,7 @@ test("the permission-gated game switch is available across ZDWA and in its activ
   ]);
   const zilchDesktopSwitch = await switchControlGeometry(page.locator(".zilch-header [data-game-switch]"));
   expect(zilchDesktopSwitch).toEqual(zdwaDesktopSwitch);
+  expectUniformHeaderControls(await controlHeights(page.locator(".zilch-header-tools :is([data-language-switcher], [data-game-switch])")));
   await Promise.all([
     page.waitForURL(url => url.pathname === "/"),
     page.locator(".zilch-header [data-game-switch]").click(),
@@ -133,6 +146,7 @@ test("the permission-gated game switch is available across ZDWA and in its activ
   expect(geometry.buttonLeft).toBeGreaterThanOrEqual(geometry.headerLeft);
   expect(geometry.buttonRight).toBeLessThanOrEqual(geometry.headerRight);
   expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+  expectUniformHeaderControls(await controlHeights(page.locator(".room-header > button")));
 
   await Promise.all([
     page.waitForURL(/\/zilch$/),
@@ -141,4 +155,5 @@ test("the permission-gated game switch is available across ZDWA and in its activ
   await expect(page.locator("html")).toHaveAttribute("data-game", "zilch");
   const zilchMobileSwitch = await switchControlGeometry(page.locator(".zilch-header [data-game-switch]"));
   expect(zilchMobileSwitch).toEqual(zdwaMobileSwitch);
+  expectUniformHeaderControls(await controlHeights(page.locator(".zilch-header-tools :is([data-language-switcher], [data-game-switch])")));
 });

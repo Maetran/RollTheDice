@@ -16,6 +16,22 @@
   backdrop-filter:saturate(1.2) blur(12px);
 }
 .room-header .spacer{ flex:1 1 auto; }
+.room-header > button{
+  box-sizing:border-box;
+  height:var(--header-control-size);
+  min-height:var(--header-control-size);
+}
+.room-header :is(.theme-toggle-compact, .rank-legend-trigger, .room-share-button){
+  width:var(--header-control-size);
+  min-width:var(--header-control-size);
+  padding-inline:0;
+}
+.room-header .reactions-host .emoji-fab{
+  box-sizing:border-box;
+  width:var(--header-control-size);
+  height:var(--header-control-size);
+  min-height:var(--header-control-size);
+}
 .room-page .room-header .room-game-switch{
   box-sizing:border-box;
   display:inline-flex;
@@ -24,8 +40,8 @@
   gap:.3rem;
   width:4.5rem;
   min-width:4.5rem;
-  height:2.25rem;
-  min-height:2.25rem;
+  height:var(--header-control-size);
+  min-height:var(--header-control-size);
   padding:0 .44rem;
   font-size:.75rem;
   font-weight:800;
