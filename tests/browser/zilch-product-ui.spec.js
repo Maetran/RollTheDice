@@ -157,12 +157,41 @@ test("private Zilch rules, history, and product navigation use the protected noi
     page.locator("#zilchNavigation a[href='/zilch/konto']").click(),
   ]);
   await expect(page.getByRole("heading", { name: "Mani", exact: true })).toBeVisible();
-  await expect(page.locator("#zilchAchievementsBody")).toBeVisible();
   await expect(page.locator(".zilch-header [data-zilch-logout]")).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Einstellungen" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#zilchAccountPanel-settings")).toBeVisible();
+  await expect(page.locator("#zilchPasswordHint")).toBeVisible();
+  await page.getByRole("tab", { name: "Statistiken" }).click();
+  await expect(page.locator("#zilchAccountPanel-statistics")).toBeVisible();
+  await expect(page.locator("#zilchAchievementsBody")).toBeHidden();
+  await page.getByRole("tab", { name: "Statistiken" }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("tab", { name: "Erfolge" })).toBeFocused();
+  await expect(page.locator("#zilchAccountPanel-achievements")).toBeVisible();
+  await expect(page.locator("#zilchAchievementsBody")).toBeVisible();
+  await page.getByRole("tab", { name: "Einstellungen" }).click();
+  await expect(page).toHaveURL(/\/zilch\/konto#settings$/);
+  await expect(page.locator("#zilchAccountPanel-settings")).toBeVisible();
+  await expect(page.locator("#zilchLanguagePreferencesForm")).toBeVisible();
+  await expect(page.locator("#zilchPasswordForm")).toBeVisible();
   await expect(page.locator("#zilchAccountLogout")).toBeVisible();
   await expect(page.locator("#zilchAccountLogout")).toHaveText("Abmelden");
-  await expect(page.getByRole("button", { name: "Deine Sammlung" })).toHaveAttribute("data-zilch-navigate", "/zilch/erfolge");
-  await expect(page.getByRole("button", { name: "Alle Awards" })).toHaveAttribute("data-zilch-navigate", "/zilch/erfolge");
+  const languageUpdate = page.waitForResponse(response => (
+    new URL(response.url()).pathname === "/api/auth/preferences/language"
+    && response.request().method() === "PUT"
+  ));
+  await page.locator("#zilchLanguagePreferencesForm button[type=submit]").click();
+  expect((await languageUpdate).ok()).toBeTruthy();
+  await expect(page.locator("#zilchLanguagePreferencesMessage")).toHaveText("Sprache gespeichert.");
+  await page.fill("#zilchCurrentPassword", "mani-preview-password-123");
+  await page.fill("#zilchNewPassword", "different-password-123");
+  await page.fill("#zilchConfirmPassword", "another-password-123");
+  await page.locator("#zilchPasswordForm button[type=submit]").click();
+  await expect(page.locator("#zilchPasswordMessage")).toHaveText("Die neuen Passwörter stimmen nicht überein.");
+  for (const width of [320, 375]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
   await expect(page.getByRole("link", { name: "Zur Zilch-Lobby" })).toHaveCount(0);
 
   await page.goto("/konto#settings");
@@ -282,6 +311,7 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   await expect(page.locator(".zilch-lobby-identity").getByRole("button", { name: "My Account" })).toHaveAttribute("data-zilch-navigate", "/zilch/konto");
 
   await page.goto("/zilch/konto");
+  await page.getByRole("tab", { name: "Settings" }).click();
   await expect(page.locator("#zilchAccountLogout")).toHaveText("Sign out");
   await expect(page.locator(".zilch-header [data-zilch-logout]")).toHaveCount(0);
 

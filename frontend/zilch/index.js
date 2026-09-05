@@ -1,9 +1,8 @@
-import { apiFetch, escapeHtml, loadAuth, logout } from "../shared/auth.js";
+import { apiFetch, authError, escapeHtml, loadAuth, logout } from "../shared/auth.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
 import {
   applyZilchRouteLinks,
   normalizeZilchPageUrl,
-  zdwaAppEntryUrl,
   zilchPath,
   zilchRoutePath,
 } from "../multigame/routes.js";
@@ -76,6 +75,8 @@ const state = {
   terminalAwards: [],
   terminalAwardGameId: "",
   chatOpen: false,
+  accountTab: "statistics",
+  accountHashListenerBound: false,
 };
 
 function t(value) {
@@ -1576,7 +1577,7 @@ function presentPendingZilchAwards({ scope = "page" } = {}) {
       if (acknowledgementsCompleted && visibleRankUpgrade) {
         acknowledgementsCompleted = await presentZilchRankUpgrade(visibleRankUpgrade);
       }
-      if (acknowledgementsCompleted && achievementsRoute && state.achievements) {
+      if (acknowledgementsCompleted && (achievementsRoute || accountRoute) && state.achievements) {
         try { state.achievements = await fetchZilchAchievements(); } catch (_) {}
       }
     } catch (_) {
@@ -1588,7 +1589,7 @@ function presentPendingZilchAwards({ scope = "page" } = {}) {
       state.awardPresentationActive = false;
       state.awardPresentationPromise = null;
       renderAwardDependentGameState();
-      if (achievementsRoute && state.achievements) renderAchievementsBody();
+      if ((achievementsRoute || accountRoute) && state.achievements) renderAchievementsBody();
     }
   })();
   state.awardPresentationPromise = presentation;
@@ -1599,7 +1600,7 @@ function renderAchievementsBody() {
   const slot = document.getElementById("zilchAchievementsBody");
   if (!slot) return;
   const projection = state.achievements || {};
-  const rankDetails = achievementsRoute
+  const rankDetails = (achievementsRoute || (accountRoute && state.accountTab === "achievements"))
     ? `${achievementRankSummaryMarkup(projection)}${achievementRankLegendMarkup(projection, state.achievementRankLegend)}`
     : "";
   slot.innerHTML = `${rankDetails}${achievementsCatalogMarkup(projection)}`;
@@ -1625,25 +1626,227 @@ async function renderAchievements() {
   }
 }
 
+const ZILCH_ACCOUNT_TABS = new Set(["statistics", "achievements", "settings"]);
+
+function normalizedZilchAccountTab(value, fallback = "statistics") {
+  const candidate = String(value || "").replace(/^#/, "").trim().toLowerCase();
+  return ZILCH_ACCOUNT_TABS.has(candidate) ? candidate : fallback;
+}
+
+function zilchAccountTabLabel(name) {
+  if (name === "achievements") return t("Erfolge");
+  if (name === "settings") return t("Einstellungen");
+  return t("Statistiken");
+}
+
+function zilchAccountTabsMarkup() {
+  return `<nav class="zilch-account-tabs" role="tablist" aria-label="${escapeHtml(t("Kontobereiche"))}">
+    ${["statistics", "achievements", "settings"].map(name => `<button id="zilchAccountTab-${name}" class="zilch-account-tab${state.accountTab === name ? " is-active" : ""}" type="button" role="tab" data-zilch-account-tab="${name}" aria-selected="${String(state.accountTab === name)}" aria-controls="zilchAccountPanel-${name}" tabindex="${state.accountTab === name ? "0" : "-1"}">${escapeHtml(zilchAccountTabLabel(name))}</button>`).join("")}
+  </nav>`;
+}
+
+function zilchAccountStatisticsLoadingMarkup() {
+  return `<div id="zilchStatisticsBody" aria-live="polite">${statisticsTabMarkup()}<section class="zilch-card zilch-loading-card" role="status"><p>${escapeHtml(t("Zilch-Statistiken werden geladen …"))}</p></section></div>`;
+}
+
+function zilchAccountAchievementsLoadingMarkup() {
+  return `<div id="zilchAchievementsBody" aria-live="polite"><section class="zilch-card zilch-loading-card" role="status"><p>${escapeHtml(t("Zilch-Awards werden geladen …"))}</p></section></div>`;
+}
+
+function zilchAccountSettingsMarkup(username) {
+  const preferredLanguage = state.auth?.user?.preferences?.preferred_language === "en" ? "en" : "de";
+  const passwordHint = state.auth?.user?.must_change_password
+    ? `<p id="zilchPasswordHint" class="zilch-muted">${escapeHtml(t("Das temporäre Passwort muss jetzt geändert werden."))}</p>`
+    : "";
+  return `<div class="zilch-account-settings-grid">
+    <section class="zilch-card zilch-account-settings-card">
+      <p class="eyebrow">${escapeHtml(t("Einstellungen"))}</p>
+      <h2>${escapeHtml(t("Sprache"))}</h2>
+      <p class="zilch-account-settings-card__description">${escapeHtml(t("Die Sprache gilt für ZDWA und Zilch auf allen Geräten."))}</p>
+      <form id="zilchLanguagePreferencesForm" class="zilch-settings-form">
+        <fieldset>
+          <legend>${escapeHtml(t("Bevorzugte Sprache"))}</legend>
+          <label><input type="radio" name="zilchPreferredLanguage" value="de"${preferredLanguage === "de" ? " checked" : ""}> ${escapeHtml(t("Deutsch"))}</label>
+          <label><input type="radio" name="zilchPreferredLanguage" value="en"${preferredLanguage === "en" ? " checked" : ""}> ${escapeHtml(t("Englisch"))}</label>
+        </fieldset>
+        <button class="primary" type="submit">${escapeHtml(t("Sprache speichern"))}</button>
+      </form>
+      <p id="zilchLanguagePreferencesMessage" class="zilch-settings-message" role="status"></p>
+    </section>
+    <section class="zilch-card zilch-account-settings-card">
+      <p class="eyebrow">${escapeHtml(t("Mein Konto"))}</p>
+      <h2>${escapeHtml(t("Passwort ändern"))}</h2>
+      ${passwordHint}
+      <form id="zilchPasswordForm" class="zilch-settings-form">
+        <label>${escapeHtml(t("Aktuelles Passwort"))}<input id="zilchCurrentPassword" type="password" autocomplete="current-password" required></label>
+        <label>${escapeHtml(t("Neues Passwort"))}<input id="zilchNewPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+        <label>${escapeHtml(t("Neues Passwort wiederholen"))}<input id="zilchConfirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+        <button class="primary" type="submit">${escapeHtml(t("Passwort ändern"))}</button>
+      </form>
+      <p id="zilchPasswordMessage" class="zilch-settings-message" role="status"></p>
+    </section>
+  </div>
+  <section class="zilch-card zilch-account-session" aria-label="${escapeHtml(`${t("Du spielst als")} ${username}`)}">
+    <div><p class="eyebrow">${escapeHtml(t("Du spielst als"))}</p><strong class="zilch-account-session__name">${escapeHtml(username)}</strong></div>
+    <button id="zilchAccountLogout" class="small ghost" type="button" data-zilch-logout>${escapeHtml(t("Abmelden"))}</button>
+  </section>`;
+}
+
+function showZilchAccountTab(name, { updateHash = false, focus = false } = {}) {
+  const fallback = state.auth?.user?.must_change_password ? "settings" : "statistics";
+  const selected = normalizedZilchAccountTab(name, fallback);
+  const tabs = [...document.querySelectorAll("[data-zilch-account-tab]")];
+  const panels = [...document.querySelectorAll("[data-zilch-account-panel]")];
+  if (!tabs.length || !panels.length) return;
+  state.accountTab = selected;
+  tabs.forEach(tab => {
+    const active = tab.dataset.zilchAccountTab === selected;
+    tab.classList.toggle("is-active", active);
+    tab.setAttribute("aria-selected", String(active));
+    tab.tabIndex = active ? 0 : -1;
+  });
+  panels.forEach(panel => { panel.hidden = panel.dataset.zilchAccountPanel !== selected; });
+  if (selected === "achievements" && state.achievements) renderAchievementsBody();
+  if (updateHash && window.location.hash !== `#${selected}`) {
+    const url = new URL(window.location.href);
+    url.hash = selected;
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+  if (focus) document.querySelector(`[data-zilch-account-tab="${selected}"]`)?.focus();
+}
+
+function bindZilchAccountTabs() {
+  const tabs = [...document.querySelectorAll("[data-zilch-account-tab]")];
+  tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => showZilchAccountTab(tab.dataset.zilchAccountTab, { updateHash: true, focus: true }));
+    tab.addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      let next = index;
+      if (event.key === "ArrowLeft") next = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+      if (event.key === "Home") next = 0;
+      if (event.key === "End") next = tabs.length - 1;
+      showZilchAccountTab(tabs[next].dataset.zilchAccountTab, { updateHash: true, focus: true });
+    });
+  });
+  if (!state.accountHashListenerBound) {
+    state.accountHashListenerBound = true;
+    window.addEventListener("hashchange", () => {
+      if (accountRoute) showZilchAccountTab(window.location.hash, { updateHash: false });
+    });
+  }
+  showZilchAccountTab(state.accountTab, { updateHash: false });
+}
+
+function bindZilchAccountSettings() {
+  const languageForm = document.getElementById("zilchLanguagePreferencesForm");
+  const passwordForm = document.getElementById("zilchPasswordForm");
+  if (languageForm && !languageForm.dataset.bound) {
+    languageForm.dataset.bound = "true";
+    languageForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const messageSlot = document.getElementById("zilchLanguagePreferencesMessage");
+      const selectedLanguage = languageForm.querySelector('input[name="zilchPreferredLanguage"]:checked')?.value;
+      if (!messageSlot || !["de", "en"].includes(selectedLanguage)) return;
+      const submit = languageForm.querySelector('button[type="submit"]');
+      if (submit) submit.disabled = true;
+      try {
+        const response = await apiFetch("/api/auth/preferences/language", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ preferred_language: selectedLanguage }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          messageSlot.textContent = t(authError(payload.detail));
+          return;
+        }
+        if (state.auth?.user) {
+          state.auth.user.preferences = {
+            ...(state.auth.user.preferences || {}),
+            preferred_language: selectedLanguage,
+          };
+        }
+        messageSlot.textContent = t("Sprache gespeichert.");
+        if (selectedLanguage !== window.ZDWA_I18N?.getLanguage?.()) {
+          await window.ZDWA_I18N?.setLanguage?.(selectedLanguage, { persist: false, reload: true });
+        }
+      } catch (_) {
+        messageSlot.textContent = t("Einstellungen konnten nicht gespeichert werden.");
+      } finally {
+        if (submit && document.contains(submit)) submit.disabled = false;
+      }
+    });
+  }
+  if (passwordForm && !passwordForm.dataset.bound) {
+    passwordForm.dataset.bound = "true";
+    passwordForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const messageSlot = document.getElementById("zilchPasswordMessage");
+      const currentPassword = document.getElementById("zilchCurrentPassword")?.value || "";
+      const newPassword = document.getElementById("zilchNewPassword")?.value || "";
+      const confirmation = document.getElementById("zilchConfirmPassword")?.value || "";
+      if (!messageSlot) return;
+      if (newPassword !== confirmation) {
+        messageSlot.textContent = t("Die neuen Passwörter stimmen nicht überein.");
+        return;
+      }
+      const submit = passwordForm.querySelector('button[type="submit"]');
+      if (submit) submit.disabled = true;
+      try {
+        const response = await apiFetch("/api/auth/change-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          messageSlot.textContent = t(authError(payload.detail));
+          return;
+        }
+        messageSlot.textContent = t("Passwort geändert. Bitte erneut anmelden.");
+        window.setTimeout(() => window.location.replace(zilchPath("/anmelden")), 1_200);
+      } catch (_) {
+        messageSlot.textContent = t("Einstellungen konnten nicht gespeichert werden.");
+      } finally {
+        if (submit && document.contains(submit)) submit.disabled = false;
+      }
+    });
+  }
+}
+
 async function renderAccount() {
   if (!content) return;
   const username = state.auth?.user?.username || t("Spieler");
+  const defaultTab = state.auth?.user?.must_change_password ? "settings" : "statistics";
+  state.accountTab = state.auth?.user?.must_change_password
+    ? "settings"
+    : normalizedZilchAccountTab(window.location.hash, defaultTab);
   content.innerHTML = `<section class="zilch-game-head zilch-account-head">
-      <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><h1>${escapeHtml(username)}</h1><p>${escapeHtml(t("Dein Zilch-Konto bündelt deine Statistiken und Awards."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><h1>${escapeHtml(username)}</h1><p>${escapeHtml(t("Dein Zilch-Konto bündelt deine privaten Statistiken und Awards."))}</p></div>
     </section>
-    <section class="zilch-account-overview">
-      <a class="zilch-card zilch-account-link" href="${escapeHtml(zilchPath("/statistiken"))}"><p class="eyebrow">${escapeHtml(t("Deine Statistiken"))}</p><h2>${escapeHtml(t("Deine Zilch-Werte"))}</h2><p>${escapeHtml(t("Behalte Solo-, CPU- und Zwei-Spieler-Partien im Blick."))}</p></a>
-      <section class="zilch-card zilch-account-collection"><p class="eyebrow">${escapeHtml(t("Zilch-Awards"))}</p><h2>${escapeHtml(t("Deine Sammlung"))}</h2><p>${escapeHtml(t("Deine Zilch-Punkte und dein Zilch-Rang entstehen ausschließlich aus Zilch-Awards. ZDWA bleibt davon getrennt."))}</p>${zilchNavigationButton(zilchPath("/erfolge"), t("Deine Sammlung"))}</section>
-    </section>
-    <section class="zilch-card zilch-account-session" aria-label="${escapeHtml(`${t("Du spielst als")} ${username}`)}">
-      <div><p class="eyebrow">${escapeHtml(t("Du spielst als"))}</p><strong class="zilch-account-session__name">${escapeHtml(username)}</strong></div>
-      <button id="zilchAccountLogout" class="small ghost" type="button" data-zilch-logout>${escapeHtml(t("Abmelden"))}</button>
-    </section>
-    <section class="zilch-account-awards" aria-labelledby="zilchAccountAwardsTitle"><div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Zilch-Awards"))}</p><h2 id="zilchAccountAwardsTitle">${escapeHtml(t("Deine Erfolge"))}</h2></div>${zilchNavigationButton(zilchPath("/erfolge"), t("Alle Awards"))}</div><div id="zilchAchievementsBody"><section class="zilch-card zilch-loading-card" role="status"><p>${escapeHtml(t("Zilch-Awards werden geladen …"))}</p></section></div></section>`;
-  try {
-    state.achievements = await fetchZilchAchievements();
+    ${zilchAccountTabsMarkup()}
+    <section id="zilchAccountPanel-statistics" class="zilch-account-panel" data-zilch-account-panel="statistics" role="tabpanel" aria-labelledby="zilchAccountTab-statistics"${state.accountTab === "statistics" ? "" : " hidden"}>${zilchAccountStatisticsLoadingMarkup()}</section>
+    <section id="zilchAccountPanel-achievements" class="zilch-account-panel" data-zilch-account-panel="achievements" role="tabpanel" aria-labelledby="zilchAccountTab-achievements"${state.accountTab === "achievements" ? "" : " hidden"}>${zilchAccountAchievementsLoadingMarkup()}</section>
+    <section id="zilchAccountPanel-settings" class="zilch-account-panel" data-zilch-account-panel="settings" role="tabpanel" aria-labelledby="zilchAccountTab-settings"${state.accountTab === "settings" ? "" : " hidden"}>${zilchAccountSettingsMarkup(username)}</section>`;
+  bindZilchAccountTabs();
+  bindZilchAccountSettings();
+  const [statisticsResult, achievementsResult] = await Promise.allSettled([
+    fetchZilchStatistics(),
+    Promise.all([fetchZilchAchievements(), fetchZilchAchievementRanks().catch(() => null)]),
+  ]);
+  if (statisticsResult.status === "fulfilled") {
+    state.statistics = statisticsResult.value;
+    renderStatisticsBody();
+  } else {
+    const slot = document.getElementById("zilchStatisticsBody");
+    if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Statistiken nicht verfügbar"))}</h2><p>${escapeHtml(t("Bitte versuche es später erneut oder kehre zur Zilch-Lobby zurück."))}</p>${zilchNavigationButton(zilchPath("/"), t("Zur Zilch-Lobby"))}</section>`;
+  }
+  if (achievementsResult.status === "fulfilled") {
+    [state.achievements, state.achievementRankLegend] = achievementsResult.value;
     renderAchievementsBody();
-  } catch (_) {
+  } else {
     const slot = document.getElementById("zilchAchievementsBody");
     if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Awards nicht verfügbar"))}</h2><p>${escapeHtml(t("Bitte versuche es später erneut oder kehre zur Zilch-Lobby zurück."))}</p></section>`;
   }
@@ -3789,7 +3992,7 @@ async function initialize() {
     if (!logoutButton || logoutButton.disabled) return;
     logoutButton.disabled = true;
     logoutButton.setAttribute("aria-busy", "true");
-    try { await logout(); } catch (_) {} finally { window.location.replace(zdwaAppEntryUrl()); }
+    try { await logout(); } catch (_) {} finally { window.location.replace(zilchPath("/")); }
   });
   if (resultId) await renderResult();
   else if (gameId) await renderGame();

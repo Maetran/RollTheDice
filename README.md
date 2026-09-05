@@ -65,7 +65,9 @@ general `CompletedGame` history, and any source, seat, user, or existing-fact
 mismatch aborts the atomic rollout. Awards can be revoked when the source result is deleted and
 remain visible only in Zilch context. The Zilch app has its own lobby, game
 view, history, result report, statistics, leaderboards, awards, a safe public
-player-award context, and in-app rule guide. Its
+player-award context, and in-app rule guide. Its account mirrors the ZDWA
+structure with separate private statistics, awards, and settings tabs; language
+and password controls stay with the account rather than the game room. Its
 first-party wood-table texture, paper-card, and dice direction is isolated from ZDWA.
 The Zilch lobby mirrors ZDWA's identity pattern, while the compact
 game header keeps Lobby, ZDWA, and Rules explicit. Logout is deliberately
@@ -185,7 +187,7 @@ User-facing navigation uses short routes without implementation details:
 - `/zilch/ergebnis/{game_id}` participant-bound, read-only Zilch result report (`noindex`)
 - `/zilch/statistiken` protected own Zilch statistics (`noindex`)
 - `/zilch/bestenlisten` public Zilch leaderboards (`noindex`)
-- `/zilch/konto` protected Zilch account with private statistics and awards
+- `/zilch/konto` protected Zilch account with private statistics, awards, and settings
 - `/zilch/erfolge` protected private Zilch awards (`noindex`)
 - `/zilch/spieler/{username}` public Zilch-context player-award view without result evidence (`noindex`)
 - `/zilch/regeln` public in-app Zilch rule guide (canonical on the Zilch subdomain)
