@@ -129,6 +129,7 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await expect(page.locator("[data-zilch-root]")).toBeVisible();
   await expect(page.getByText(/Alles Wichtige für deine nächste Partie|Everything important for your next game/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: /^Zilch(?:-| )(?:Regeln|rules)$/i })).toBeVisible();
+  await expect(page.locator(".zilch-rules-head h1")).toHaveCSS("color", "rgb(255, 253, 245)");
   await expect(page.getByText(/Erreiche 10.?000 Punkte/)).toBeVisible();
   await expect(page.locator(".zilch-rule-facts")).toHaveCount(0);
   await expect(page.locator("#zilchNavigation a[href='/zilch/regeln']")).toHaveAttribute("aria-current", "page");

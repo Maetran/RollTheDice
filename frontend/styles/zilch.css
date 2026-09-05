@@ -328,6 +328,10 @@ html[data-game="zilch"] .zilch-nav-list .zilch-nav-back::before {
   color: #fffdf5;
   text-shadow: 0 .1rem .18rem rgba(35, 15, 6, .9), 0 .38rem .9rem rgba(35, 15, 6, .56);
 }
+.zilch-rules-head h1 {
+  color: #fffdf5;
+  text-shadow: 0 .1rem .18rem rgba(35, 15, 6, .9), 0 .38rem .9rem rgba(35, 15, 6, .56);
+}
 .zilch-header-action {
   border-color: rgba(255, 246, 212, .68);
   color: #3b1b0d;
