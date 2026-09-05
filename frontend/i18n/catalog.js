@@ -18,6 +18,8 @@ export const EN = {
     "Regeln": "Rules",
     "Konto": "Account",
     "Spiel verlassen": "Leave game",
+    "Weitere Aktionen": "More actions",
+    "Darstellung": "Appearance",
     "Zock die Wand an · beendete Partien:": "Zock die Wand an · completed games:",
     "Spieler & Ranking": "Players & Ranking",
     "Deine Statistiken": "Your statistics",

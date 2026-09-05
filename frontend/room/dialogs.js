@@ -137,6 +137,61 @@
     } catch {}
   }
 
+  function bindRoomHeaderMenu(){
+    const toggle = document.getElementById("roomHeaderMenuToggle");
+    const panel = document.getElementById("roomHeaderMenuPanel");
+    const container = toggle?.closest(".room-header-overflow");
+    if (!toggle || !panel || !container || toggle._bound) return;
+    toggle._bound = true;
+
+    const isOpen = () => !panel.hidden;
+    const menuItems = () => [...panel.querySelectorAll('[role="menuitem"]')]
+      .filter(item => !item.disabled && item.getClientRects().length);
+    const close = ({ restoreFocus = false } = {}) => {
+      if (!isOpen()) return;
+      panel.hidden = true;
+      toggle.setAttribute("aria-expanded", "false");
+      if (restoreFocus) {
+        try { toggle.focus({ preventScroll: true }); } catch { toggle.focus(); }
+      }
+    };
+    const open = () => {
+      panel.hidden = false;
+      toggle.setAttribute("aria-expanded", "true");
+      const [first] = menuItems();
+      if (first) {
+        try { first.focus({ preventScroll: true }); } catch { first.focus(); }
+      }
+    };
+
+    toggle.addEventListener("click", () => {
+      if (isOpen()) close();
+      else open();
+    });
+    panel.addEventListener("click", event => {
+      if (event.target instanceof Element && event.target.closest('[role="menuitem"]')) close();
+    });
+    panel.addEventListener("keydown", event => {
+      const items = menuItems();
+      const current = event.target instanceof Element ? items.indexOf(event.target.closest('[role="menuitem"]')) : -1;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close({ restoreFocus: true });
+        return;
+      }
+      if (!items.length || !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === "Home" ? 0
+        : event.key === "End" ? items.length - 1
+          : event.key === "ArrowUp" ? (current <= 0 ? items.length - 1 : current - 1)
+            : (current + 1) % items.length;
+      try { items[next].focus({ preventScroll: true }); } catch { items[next].focus(); }
+    });
+    document.addEventListener("pointerdown", event => {
+      if (isOpen() && event.target instanceof Node && !container.contains(event.target)) close();
+    });
+  }
+
   let rankLegendPreviousFocus = null;
   let rankLegendRequestId = 0;
 

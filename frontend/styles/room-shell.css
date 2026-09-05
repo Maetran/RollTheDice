@@ -26,12 +26,99 @@
   min-width:var(--header-control-size);
   padding-inline:0;
 }
+.room-header > #backToLobbyBtn{
+  display:inline-grid;
+  place-items:center;
+  width:var(--header-control-size);
+  min-width:var(--header-control-size);
+  padding:0;
+}
+.room-header > #backToLobbyBtn::before{
+  content:"↩";
+  font-size:1.18rem;
+  line-height:1;
+}
+.room-header-action-label{
+  position:absolute !important;
+  width:1px !important;
+  height:1px !important;
+  padding:0 !important;
+  margin:-1px !important;
+  overflow:hidden !important;
+  clip:rect(0, 0, 0, 0) !important;
+  white-space:nowrap !important;
+  border:0 !important;
+}
 .room-header .reactions-host .emoji-fab{
   box-sizing:border-box;
   width:var(--header-control-size);
   height:var(--header-control-size);
   min-height:var(--header-control-size);
 }
+.room-header-overflow{
+  position:relative;
+  flex:0 0 auto;
+}
+.room-header-menu-toggle{
+  display:inline-grid;
+  place-items:center;
+  box-sizing:border-box;
+  width:var(--header-control-size);
+  min-width:var(--header-control-size);
+  height:var(--header-control-size);
+  min-height:var(--header-control-size);
+  padding:0;
+  font-size:1.3rem;
+  font-weight:900;
+  letter-spacing:.04em;
+  line-height:1;
+}
+.room-header-menu-panel{
+  position:absolute;
+  z-index:1100;
+  top:calc(100% + .4rem);
+  right:0;
+  display:grid;
+  gap:.18rem;
+  width:min(15.5rem, calc(100vw - 1rem));
+  padding:.35rem;
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  background:var(--surface);
+  box-shadow:0 12px 30px rgba(15,23,42,.18);
+}
+.room-header-menu-panel > button{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:.55rem;
+  width:100%;
+  min-width:0;
+  height:2.35rem;
+  min-height:2.35rem;
+  padding:.42rem .55rem;
+  border-color:transparent;
+  box-shadow:none;
+  font-size:.85rem;
+  font-weight:750;
+  text-align:left;
+}
+.room-header-menu-panel > button:hover,
+.room-header-menu-panel > button:focus-visible{
+  border-color:var(--border);
+  background:var(--surface-soft);
+}
+.room-header-menu-panel > :is(.theme-toggle-compact, .rank-legend-trigger, .room-share-button){
+  width:100%;
+  min-width:0;
+}
+.room-header-menu-panel .theme-toggle-icon,
+.room-header-menu-panel > button > [aria-hidden="true"]{
+  flex:0 0 1.2rem;
+  width:1.2rem;
+  text-align:center;
+}
+.room-header-menu-label{ min-width:0; }
 .room-page .room-header .room-game-switch{
   box-sizing:border-box;
   display:inline-flex;

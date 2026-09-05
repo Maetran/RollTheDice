@@ -83,6 +83,8 @@ test("rules keep native scrolling on desktop, tablet, and mobile", async ({ page
 
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
+    await page.locator("#roomHeaderMenuToggle").click();
+    await expect(page.locator("#roomHeaderMenuPanel")).toBeVisible();
     await page.locator("#rulesSheetOpen").click();
     const frame = page.frameLocator("#rulesFrame");
     await expect(frame.getByRole("heading", { name: "Zock die Wand an: Spielregeln" })).toBeVisible();
@@ -501,7 +503,7 @@ test("completed game view shows achievements attributed to that game for every p
 });
 
 
-test("narrow desktop room header keeps the current turn beside icon controls", async ({ page, request }) => {
+test("narrow desktop room header keeps the current turn beside compact actions", async ({ page, request }) => {
   await page.setViewportSize({ width: 561, height: 900 });
   const created = await request.post("/api/games", {
     data: { name: "Header Layout", mode: 1 },
@@ -520,21 +522,31 @@ test("narrow desktop room header keeps the current turn beside icon controls", a
     };
     return {
       status: rect("#headerTurnStatus"),
-      theme: rect("[data-theme-toggle]"),
-      themeText: document.querySelector("[data-theme-toggle]").textContent.trim(),
-      rank: rect("#rankLegendSheetOpen"),
-      rankText: document.querySelector("#rankLegendSheetOpen").textContent.trim(),
-      rankLabel: document.querySelector("#rankLegendSheetOpen").getAttribute("aria-label"),
+      menu: rect("#roomHeaderMenuToggle"),
+      leave: rect("#backToLobbyBtn"),
+      menuText: document.querySelector("#roomHeaderMenuToggle").textContent.trim(),
+      menuLabel: document.querySelector("#roomHeaderMenuToggle").getAttribute("aria-label"),
       secondLine: document.querySelector("#headerTurnStatus .line.secondary")?.textContent.trim() || "",
     };
   });
 
   expect(layout.status.width).toBeGreaterThanOrEqual(48);
-  expect(layout.status.right).toBeLessThanOrEqual(layout.theme.left + 1);
-  expect(layout.themeText).toMatch(/^[☀☾]$/);
-  expect(layout.rankText).toBe("⭐");
-  expect(layout.rankLabel).toBe("Ränge");
+  expect(layout.status.right).toBeLessThanOrEqual(layout.menu.left + 1);
+  expect(layout.menu.width).toBeCloseTo(36, 0);
+  expect(layout.leave.width).toBeCloseTo(36, 0);
+  expect(layout.menuText).toBe("⋯");
+  expect(layout.menuLabel).toBe("Weitere Aktionen");
   expect(layout.secondLine).toContain("Würfe:");
+
+  await page.locator("#roomHeaderMenuToggle").click();
+  await expect(page.locator("#roomHeaderMenuPanel")).toBeVisible();
+  await expect(page.locator("#roomHeaderMenuPanel [data-theme-toggle]")).toBeVisible();
+  await expect(page.locator("#roomHeaderMenuPanel #rulesSheetOpen")).toBeVisible();
+  await expect(page.locator("#roomHeaderMenuPanel #rankLegendSheetOpen")).toBeVisible();
+  await expect(page.locator("#roomHeaderMenuPanel #shareGameBtn")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#roomHeaderMenuPanel")).toBeHidden();
+  await expect(page.locator("#roomHeaderMenuToggle")).toHaveAttribute("aria-expanded", "false");
 });
 
 

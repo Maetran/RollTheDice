@@ -684,6 +684,8 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   await page.waitForTimeout(250);
 
   const beforeRulesUrl = page.url();
+  await page.click("#roomHeaderMenuToggle");
+  await expect(page.locator("#roomHeaderMenuPanel")).toBeVisible();
   await page.click("#rulesSheetOpen");
   await expect(page.locator("#rulesSheet")).toBeVisible();
   await expect(page.locator("#rulesFrame")).toHaveAttribute("src", /\/regeln\?embed=1/);

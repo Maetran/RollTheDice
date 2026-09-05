@@ -772,16 +772,40 @@
   - The dashed outline on .announce-pickable cells supports keyboard focus users by providing a clear visual focus indicator, enhanced by the :focus-visible rules.
 */
 
-/* Final header placement: kept last because the responsive room layout has
-   several specialised board-count breakpoints above. */
+/* Final header hierarchy: the turn stays visible, while secondary room
+   actions share one accessible menu instead of competing for the same row. */
+.room-page .room-header{
+  display:flex;
+  align-items:center;
+  flex-wrap:nowrap;
+  gap:.3rem;
+}
+.room-page .room-header .spacer{ display:none; }
+.room-page .room-header #reactionsBar{
+  flex:0 0 auto;
+  margin:0;
+}
+.room-page .room-header #headerTurnStatus{
+  flex:1 1 auto;
+  min-width:0;
+  max-width:none;
+}
+.room-page .room-header .room-game-switch,
+.room-page .room-header .room-header-overflow,
+.room-page .room-header #backToLobbyBtn{ flex:0 0 auto; }
+.room-page .room-header-menu-panel{
+  right:0;
+  width:min(15.5rem, calc(100vw - 1rem));
+}
+.room-page .room-header-menu-panel > button{
+  width:100%;
+  min-width:0;
+  height:2.35rem;
+  min-height:2.35rem;
+  padding:.42rem .55rem;
+}
 @media (max-width:560px){
-  .room-page .room-header{
-    grid-template-columns:minmax(0, 1fr) auto auto auto auto auto auto;
-  }
-  .room-page .room-header > .theme-toggle{ grid-column:2; grid-row:1; }
   .room-page .room-header button.room-game-switch.small{
-    grid-column:3;
-    grid-row:1;
     width:var(--header-control-size);
     min-width:var(--header-control-size);
     height:var(--header-control-size);
@@ -791,19 +815,9 @@
     line-height:1;
   }
   .room-page .room-game-switch-label{ position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip:rect(0, 0, 0, 0); white-space:nowrap; }
-  .room-page #rulesSheetOpen{ grid-column:4; grid-row:1; }
-  .room-page #rankLegendSheetOpen{ grid-column:5; grid-row:1; }
-  .room-page .room-share-button{ grid-column:6; grid-row:1; }
-  .room-page #backToLobbyBtn{ grid-column:7; grid-row:1; }
 }
 @media (min-width:561px){
-  .room-page .room-header{
-    grid-template-columns:minmax(0, 1fr) auto auto auto auto auto auto;
-  }
-  .room-page .room-header > .theme-toggle{ grid-column:2; grid-row:1; }
   .room-page .room-header button.room-game-switch.small{
-    grid-column:3;
-    grid-row:1;
     width:4.5rem;
     min-width:4.5rem;
     height:var(--header-control-size);
@@ -811,10 +825,6 @@
     padding:0 .44rem;
     font-size:.75rem;
   }
-  .room-page #rulesSheetOpen{ grid-column:4; grid-row:1; }
-  .room-page #rankLegendSheetOpen{ grid-column:5; grid-row:1; }
-  .room-page .room-share-button{ grid-column:6; grid-row:1; }
-  .room-page #backToLobbyBtn{ grid-column:7; grid-row:1; }
 }
 
 /* Installed iPad PWAs can extend beneath the system status bar. Keep the game

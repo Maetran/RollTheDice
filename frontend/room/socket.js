@@ -7,6 +7,7 @@
   function connect() {
       // --- "Zurück zur Lobby" mit Auswahl: pausieren oder abbrechen ---
     bindRulesSheet();
+    bindRoomHeaderMenu();
     bindShareGameButton();
     bindLeaveGameDialog();
     (function bindBackToLobby() {
@@ -16,6 +17,8 @@
       if (IS_SPECTATOR) {
         btn.textContent = "Lobby";
         btn.classList.remove("danger", "leave-game-trigger");
+        btn.setAttribute("aria-label", "Lobby");
+        btn.setAttribute("title", "Lobby");
       } else {
         btn.setAttribute("aria-haspopup", "dialog");
         btn.setAttribute("aria-controls", "leaveGameDialog");
