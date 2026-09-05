@@ -880,17 +880,17 @@ async function renderLobby() {
       <p id="zilchCreateError" class="zilch-error" role="status"></p>
     </section>
     <section class="zilch-lobby-grid" aria-label="${escapeHtml(t("Zilch-Lobby"))}">
-      <section class="zilch-card zilch-lobby-section">
+      <section class="zilch-card zilch-lobby-section zilch-lobby-section--running">
         <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Am Tisch"))}</p><h2>${escapeHtml(t("Laufende Spiele"))}</h2></div><button id="zilchRefresh" class="small ghost" type="button">${escapeHtml(t("Aktualisieren"))}</button></div>
         <div id="zilchRunningGames" class="zilch-game-list" aria-live="polite">${escapeHtml(t("Zilch-Partien werden geladen …"))}</div>
       </section>
-      <section class="zilch-card zilch-lobby-section">
+      <section class="zilch-card zilch-lobby-section zilch-lobby-section--waiting">
         <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Offene Plätze"))}</p><h2>${escapeHtml(t("Wartende Spiele"))}</h2></div></div>
         <div id="zilchWaitingGames" class="zilch-game-list" aria-live="polite">${escapeHtml(t("Zilch-Partien werden geladen …"))}</div>
       </section>
     </section>
     <section class="zilch-lobby-ranking" aria-labelledby="zilchLobbyRankingTitle">
-      <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Bestenlisten"))}</p><h2 id="zilchLobbyRankingTitle">${escapeHtml(t("Zilch-Ranglisten"))}</h2></div>${zilchNavigationButton(zilchPath("/bestenlisten"), t("Alle Bestenlisten"))}</div>
+      <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Bestenlisten"))}</p><h2 id="zilchLobbyRankingTitle">${escapeHtml(t("Zilch-Ranglisten"))}</h2></div>${zilchNavigationButton(zilchPath("/bestenlisten"), t("Alle Bestenlisten"), "small zilch-lobby-ranking-action")}</div>
       <div class="zilch-lobby-leaderboards" aria-live="polite">
         ${lobbyLeaderboardShell("solo_sprint")}
         ${lobbyLeaderboardShell("multiplayer_wins")}

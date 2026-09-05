@@ -436,12 +436,12 @@ html[data-game="zilch"] .zilch-lobby-identity .zilch-inline-navigation {
 
 html[data-game="zilch"] .zilch-create-card {
   margin-top: 0;
-  padding: .8rem .9rem;
+  padding: .7rem .8rem;
   border-color: #dfc58f;
   box-shadow: var(--zilch-shadow-soft);
 }
 
-html[data-game="zilch"] .zilch-create-card > h2 { margin: 0 0 .45rem; font-size: 1.08rem; }
+html[data-game="zilch"] .zilch-create-card > h2 { margin: 0 0 .35rem; font-size: 1.02rem; }
 html[data-game="zilch"] .zilch-create-card button[type="submit"],
 html[data-game="zilch"] .zilch-lobby-action {
   border-color: var(--zilch-blue);
@@ -671,7 +671,7 @@ html[data-game="zilch"] .zilch-cpu-strategy { grid-column: 1 / -1; }
 .zilch-lobby-sections {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--zilch-space-4);
+  gap: .7rem;
   align-items: start;
 }
 
@@ -757,7 +757,11 @@ html[data-game="zilch"] .zilch-cpu-strategy { grid-column: 1 / -1; }
 .zilch-lobby-sections > .zilch-card { margin: 0; }
 
 .zilch-lobby-section,
-.zilch-lobby-panel { min-width: 0; }
+.zilch-lobby-panel { min-width: 0; padding: .72rem .78rem; }
+.zilch-lobby-section .zilch-section-heading { gap: .45rem; }
+.zilch-lobby-section .zilch-section-heading h2 { margin: .05rem 0 0; font-size: 1rem; }
+.zilch-lobby-section .zilch-section-heading .eyebrow { font-size: .67rem; }
+.zilch-lobby-section--running { border-color: #d6b36d; }
 
 .zilch-lobby-ranking {
   margin-top: 1.15rem;
@@ -768,6 +772,19 @@ html[data-game="zilch"] .zilch-cpu-strategy { grid-column: 1 / -1; }
 
 .zilch-lobby-ranking .zilch-section-heading { justify-content: space-between; }
 .zilch-lobby-ranking .zilch-section-heading h2 { margin: .12rem 0 0; }
+html[data-game="zilch"] .zilch-lobby-ranking-action {
+  flex: 0 0 auto;
+  min-height: 2.15rem;
+  border-color: #ffe8a3;
+  color: #45230f;
+  background: linear-gradient(135deg, #fff3b8, #e8bb57);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .82), 0 .15rem .35rem rgba(55, 26, 8, .2);
+  font-weight: 850;
+}
+html[data-game="zilch"] .zilch-lobby-ranking-action:hover {
+  border-color: #fff4c9;
+  background: linear-gradient(135deg, #fff8d4, #f0c767);
+}
 
 .zilch-lobby-leaderboards {
   display: grid;
@@ -914,8 +931,15 @@ html[data-game="zilch"] .zilch-participant-badge--solo {
 .zilch-game-card h3 { max-width: 36ch; overflow-wrap: anywhere; }
 .zilch-game-card p + p { margin-top: .3rem; }
 .zilch-card-title { flex-wrap: wrap; }
-.zilch-game-card--running { min-height: 0; }
+.zilch-game-card--running { min-height: 0; padding: .48rem .55rem; gap: .45rem; }
+.zilch-game-card--running .zilch-card-title { gap: .3rem; }
+.zilch-game-card--running h3 { font-size: .92rem; line-height: 1.15; }
+.zilch-game-card--running .zilch-status-pill { padding: .14rem .34rem; font-size: .68rem; }
 .zilch-game-card__summary { margin-top: .22rem !important; color: var(--zilch-ink-soft); font-size: .88rem; font-weight: 750; }
+.zilch-game-card--running .zilch-game-card__summary { margin-top: .16rem !important; font-size: .8rem; line-height: 1.25; }
+.zilch-game-card--running .zilch-game-card__players { gap: .22rem; margin-top: .28rem !important; }
+.zilch-game-card--running .zilch-player-chip { padding: .12rem .34rem; font-size: .7rem; }
+.zilch-game-card--running .zilch-lobby-action { min-height: 2rem; padding: .35rem .48rem; font-size: .78rem; }
 .zilch-game-card__summary strong { color: var(--zilch-ink); font-variant-numeric: tabular-nums; }
 .zilch-status-pill,
 .zilch-board-marker {
@@ -2356,6 +2380,11 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
   .zilch-dice { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 24rem; }
   .zilch-game-card,
   .zilch-result-history-card { grid-template-columns: 1fr; align-items: flex-start; }
+  .zilch-game-card.zilch-game-card--running {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .zilch-game-card--running .zilch-lobby-action { width: auto; }
   .zilch-chat-form { align-items: stretch; flex-direction: column; }
   .zilch-score-overview,
   .zilch-score-strip { top: 0; margin-inline: calc(var(--zilch-safe-left) * -1) calc(var(--zilch-safe-right) * -1); border-right: 0; border-left: 0; border-radius: 0; }
