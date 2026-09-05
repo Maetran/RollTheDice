@@ -1463,6 +1463,8 @@ export const EN = {
     "Dieser Award wird erst nach seiner Freischaltung sichtbar.": "This award is revealed only after it is unlocked.",
     "Zilch-Award freigeschaltet!": "Zilch award unlocked!",
     "Zilch-Award konnte nicht bestätigt werden.": "The Zilch award could not be acknowledged.",
+    "RANGAUFSTIEG! ✨": "RANK UP! ✨",
+    "Neuer Zilch-Rang erreicht!": "New Zilch rank unlocked!",
     "Neue Zilch-Awards werden vorbereitet. Danach kannst du das Ergebnis öffnen.": "New Zilch awards are being prepared. You can open the result afterwards.",
     "Zwei Spieler · Siege": "Two players · wins",
     "Zwei Spieler": "Two players",

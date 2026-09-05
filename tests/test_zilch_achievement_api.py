@@ -28,6 +28,11 @@ from app import main
 from app.auth import create_user, login
 from app.database import configure_database, session_scope, upgrade_database
 from app.models import ZilchAchievementEvidence, ZilchAchievementUnlock
+from app.zilch_achievements import (
+    ZILCH_ACHIEVEMENTS,
+    zilch_achievement_points_for_keys,
+    zilch_achievement_rank_for_points,
+)
 from app.zilch_results import finalize_zilch_result
 from app.zilch_state import (
     configure_zilch_cpu_game,
@@ -241,6 +246,65 @@ class ZilchAchievementApiTestCase(TestCase):
         # A valid CSRF token for another *preview* session cannot acknowledge
         # Mani's delivery.  There is deliberately no client-supplied user id
         # in this route, and PreviewFriend owns no matching unlock.
+        with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES": "previewfriend"}):
+            other_attempt = self._request("POST", acknowledgement_path, token=other_token, csrf=other_csrf)
+        self.assertEqual(other_attempt.status_code, 404)
+
+    def test_rank_upgrade_acknowledgement_is_csrf_protected_and_retroactive(self) -> None:
+        mani, mani_token, mani_csrf = self._identity("Mani", role="admin")
+        _other, other_token, other_csrf = self._identity("PreviewFriend")
+        keys: set[str] = set()
+        previous = zilch_achievement_rank_for_points(0)
+        transition = None
+        with session_scope() as db:
+            for index, definition in enumerate(
+                (definition for definition in ZILCH_ACHIEVEMENTS if definition.points > 0),
+                start=1,
+            ):
+                keys.add(definition.key)
+                current = zilch_achievement_rank_for_points(zilch_achievement_points_for_keys(keys))
+                db.add(
+                    ZilchAchievementUnlock(
+                        user_id=mani.id,
+                        achievement_key=definition.key,
+                        definition_version=definition.definition_version,
+                        source_evidence_id=None,
+                        source_community_recipient_id=None,
+                        source_game_id=f"retro-rank-api-{index}",
+                        unlocked_at=datetime(2026, 9, 5, 12, 0, tzinfo=timezone.utc) + timedelta(minutes=index),
+                    )
+                )
+                if current["key"] != previous["key"]:
+                    transition = (index, previous, current)
+                    break
+                previous = current
+        self.assertIsNotNone(transition)
+        assert transition is not None
+
+        pending = self._request("GET", "/api/zilch/achievements/pending", token=mani_token)
+        self.assertEqual(pending.status_code, 200)
+        card = pending.json()["rank_upgrade"]
+        self.assertEqual(card["previous"]["key"], transition[1]["key"])
+        self.assertEqual(card["current"]["key"], transition[2]["key"])
+        self.assertEqual(card["source_game_id"], f"retro-rank-api-{transition[0]}")
+
+        acknowledgement_path = "/api/zilch/achievement-rank/acknowledge"
+        self.assertEqual(self._request("POST", acknowledgement_path, token=mani_token).status_code, 403)
+        self.assertEqual(
+            self._request("POST", acknowledgement_path, token=mani_token, csrf="wrong-token").status_code,
+            403,
+        )
+        acknowledged = self._request("POST", acknowledgement_path, token=mani_token, csrf=mani_csrf)
+        self.assertEqual(acknowledged.status_code, 200)
+        self.assertEqual(acknowledged.json()["rank_key"], transition[2]["key"])
+        self.assertIsNotNone(acknowledged.json()["acknowledged_at"])
+        repeated = self._request("POST", acknowledgement_path, token=mani_token, csrf=mani_csrf)
+        self.assertEqual(repeated.status_code, 200)
+        self.assertEqual(repeated.json(), acknowledged.json())
+        self.assertIsNone(
+            self._request("GET", "/api/zilch/achievements/pending", token=mani_token).json()["rank_upgrade"]
+        )
+
         with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES": "previewfriend"}):
             other_attempt = self._request("POST", acknowledgement_path, token=other_token, csrf=other_csrf)
         self.assertEqual(other_attempt.status_code, 404)

@@ -414,6 +414,10 @@ Neue private Zilch-Awards werden am Spielende nur dann direkt im Ergebnisfeld
 gezeigt, wenn ihr persistierter `source_game_id` exakt zur soeben beendeten
 Partie passt. Ältere, noch nicht bestätigte Awards bleiben in der allgemeinen,
 reload-sicheren Zustellwarteschlange und werden diesem Endstand nicht zugerechnet.
+Folgt aus den Awards ein echter Zilch-Rangaufstieg, erscheint danach eine eigene,
+pompös animierte Rang-Karte. Die Zustellung rekonstruiert für bestehende Konten
+einmalig den letzten echten Aufstieg aus ihren langlebigen Award-Freischaltungen;
+auch diese Karte wird erst nach ausdrücklicher Bestätigung als gesehen markiert.
 
 Das ist ausschließlich eine eigene Designrichtung. Es werden keine Grafiken,
 Sounds, Fonts, Logos, Award-Designs, Quellcodes oder pixelgenauen Vorlagen von

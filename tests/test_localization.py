@@ -136,3 +136,14 @@ def test_rank_upgrade_completion_is_localized_and_documented():
     assert '"Neuer Rang erreicht!": "New rank unlocked!"' in catalog
     assert "mehrere Erfolge, wird jeder einzeln gezeigt und bestätigt" in rules
     assert "LEVEL UP!" in readme
+
+
+def test_zilch_rank_upgrade_card_is_localized_and_documented():
+    catalog = (ROOT / "frontend" / "i18n" / "catalog.js").read_text(encoding="utf-8")
+    rules = (ROOT / "docs" / "ZILCH_RULES.md").read_text(encoding="utf-8")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert '"RANGAUFSTIEG! ✨": "RANK UP! ✨"' in catalog
+    assert '"Neuer Zilch-Rang erreicht!": "New Zilch rank unlocked!"' in catalog
+    assert "pompös animierte Rang-Karte" in rules
+    assert "retrospective delivery" in readme

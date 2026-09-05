@@ -50,7 +50,10 @@ directly in the Zilch awards collection; the legend remains fully separate
 from ZDWA rank badges. In the Zilch lobby, live rooms, and leaderboards, an
 authenticated player's current Zilch badge appears beside their username; that
 username opens the player's Zilch collection, while the current account opens
-its own collection. They
+its own collection. Reaching a new Zilch rank also unlocks a distinct, animated
+rank-up card after its award cards; the server reconstructs and queues each
+account's last genuine upward transition once, so existing players receive the
+same celebration on their next private Zilch visit. They
 are considered only when the Zilch finalizer explicitly registers a newly
 persisted authoritative result after the original award rollout. Older,
 unregistered history is never scanned or backfilled; a versioned catalog
@@ -146,7 +149,10 @@ expanded points/rank catalog are documented in
   threshold is reached. Personal source-based awards are revocable with their
   source result, while reached community milestones retain their frozen
   recipient set. A durable per-game participant ledger preserves the historical
-  minimum-one-game eligibility independently of later result deletion. Catalog
+  minimum-one-game eligibility independently of later result deletion. A
+  separately acknowledged, animated rank-up card follows earned award cards;
+  each account's latest genuine rank transition is reconstructed once for an
+  equally visible retrospective delivery. Catalog
   upgrades enrich and resynchronize only already registered Zilch evidence by
   loading each exact, still-present typed source by its registered ID; they
   never scan general completed-game history. Nothing awards Ehrenberg-Marken

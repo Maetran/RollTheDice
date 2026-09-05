@@ -1869,6 +1869,90 @@ html[data-game="zilch"] .app-dialog-input-label[hidden] { display: none; }
 html[data-game="zilch"] .app-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
 html[data-game="zilch"] .app-dialog[data-kind="zilch-award"] .app-dialog-actions { justify-content: center; }
 html[data-game="zilch"] .app-dialog[data-kind="zilch-award"] .app-dialog-actions .primary { min-width: min(13rem, 100%); }
+html[data-game="zilch"] .app-dialog[data-kind="zilch-rank-up"] {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: #87551d;
+  background:
+    radial-gradient(circle at 50% -20%, rgba(255, 247, 181, .95), transparent 47%),
+    radial-gradient(circle at 8% 100%, rgba(143, 45, 29, .36), transparent 48%),
+    radial-gradient(circle at 97% 87%, rgba(211, 151, 40, .38), transparent 50%),
+    linear-gradient(145deg, #fff8d1, #e9b956 50%, #9d4a22);
+  box-shadow: 0 1.5rem 4rem rgba(58, 21, 7, .55), 0 0 0 .27rem rgba(255, 223, 119, .36);
+  animation: zilch-rank-up-arrival .58s cubic-bezier(.17, .92, .29, 1.22) both;
+}
+html[data-game="zilch"] .app-dialog[data-kind="zilch-rank-up"]::before,
+html[data-game="zilch"] .app-dialog[data-kind="zilch-rank-up"]::after {
+  position: absolute;
+  z-index: 0;
+  display: block;
+  content: "";
+  pointer-events: none;
+}
+html[data-game="zilch"] .app-dialog[data-kind="zilch-rank-up"]::before {
+  inset: -9rem -3rem auto;
+  height: 17rem;
+  background: repeating-conic-gradient(
+    from -8deg at 50% 62%,
+    rgba(255, 255, 225, .82) 0deg 4deg,
+    transparent 4deg 15deg
+  );
+  opacity: .72;
+  transform-origin: 50% 62%;
+  animation: zilch-rank-up-rays 9s linear infinite;
+}
+html[data-game="zilch"] .app-dialog[data-kind="zilch-rank-up"]::after {
+  top: .42rem;
+  right: 2.85rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: #fff3af;
+  clip-path: polygon(50% 0, 61% 36%, 100% 50%, 61% 64%, 50% 100%, 39% 64%, 0 50%, 39% 36%);
+  filter: drop-shadow(0 .15rem .1rem rgba(76, 25, 8, .34));
+  animation: zilch-rank-up-spark 1.35s ease-in-out infinite alternate;
+}
+html[data-game="zilch"] .app-dialog[data-kind="zilch-rank-up"] .app-dialog-head,
+html[data-game="zilch"] .app-dialog[data-kind="zilch-rank-up"] .app-dialog-message,
+html[data-game="zilch"] .app-dialog[data-kind="zilch-rank-up"] .app-dialog-actions { position: relative; z-index: 1; }
+html[data-game="zilch"] .app-dialog[data-kind="zilch-rank-up"] .app-dialog-head h2 {
+  padding-right: 2.55rem;
+  color: #5b2010;
+  font-size: clamp(1.45rem, 5vw, 2.2rem);
+  letter-spacing: .08em;
+  text-shadow: 0 .07rem 0 rgba(255, 249, 206, .72);
+}
+html[data-game="zilch"] .app-dialog[data-kind="zilch-rank-up"] .app-dialog-message {
+  margin: .45rem 0 1.2rem;
+  padding: 1.08rem .95rem;
+  border: 2px solid rgba(91, 32, 16, .58);
+  border-radius: .72rem;
+  color: #4a1b0d;
+  background: rgba(255, 250, 216, .8);
+  box-shadow: inset 0 1px rgba(255,255,255,.9), .08rem .12rem 0 rgba(91, 32, 16, .2);
+  font-size: 1.04rem;
+  font-weight: 900;
+  line-height: 1.48;
+  text-align: center;
+}
+html[data-game="zilch"] .app-dialog[data-kind="zilch-rank-up"] .app-dialog-actions { justify-content: center; }
+html[data-game="zilch"] .app-dialog[data-kind="zilch-rank-up"] .app-dialog-actions .primary {
+  min-width: min(14rem, 100%);
+  border-color: #60240f;
+  color: #fff8dd;
+  background: linear-gradient(145deg, #9a3518, #62200e);
+  box-shadow: .08rem .14rem 0 rgba(81, 26, 9, .45);
+}
+@keyframes zilch-rank-up-arrival {
+  0% { opacity: 0; transform: translateY(1.2rem) rotate(-1.5deg) scale(.8); }
+  58% { opacity: 1; transform: translateY(-.16rem) rotate(.5deg) scale(1.035); }
+  100% { opacity: 1; transform: translateY(0) rotate(0) scale(1); }
+}
+@keyframes zilch-rank-up-rays { to { transform: rotate(1turn); } }
+@keyframes zilch-rank-up-spark {
+  from { opacity: .52; transform: rotate(0deg) scale(.74); }
+  to { opacity: 1; transform: rotate(18deg) scale(1.08); }
+}
 html[data-game="zilch"] .app-dialog :where(button, input):focus-visible {
   outline: 3px solid var(--zilch-focus-ring);
   outline-offset: 3px;

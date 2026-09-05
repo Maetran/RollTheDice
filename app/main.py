@@ -79,6 +79,7 @@ from .zilch_achievements import (
     ZilchAchievementError,
     ZilchAchievementSyncError,
     acknowledge_zilch_award,
+    acknowledge_zilch_rank_upgrade,
     get_zilch_achievement_profile,
     hydrate_zilch_achievement_ranks,
     pending_zilch_awards,
@@ -1316,6 +1317,7 @@ def _zilch_achievement_http_error(exc: ZilchAchievementError | ZilchAchievementS
         "zilch_achievement_unknown_key",
         "zilch_achievement_not_unlocked",
         "zilch_achievement_delivery_missing",
+        "zilch_achievement_rank_delivery_missing",
     }:
         return HTTPException(status_code=404, detail="zilch_achievement_not_found")
     return HTTPException(status_code=503, detail="zilch_achievements_unavailable")
@@ -1370,6 +1372,18 @@ def api_acknowledge_zilch_achievement(achievement_key: str, request: Request) ->
     require_csrf(request, identity)
     try:
         acknowledgement = acknowledge_zilch_award(identity.user_id, achievement_key)
+    except (ZilchAchievementError, ZilchAchievementSyncError) as exc:
+        raise _zilch_achievement_http_error(exc) from exc
+    return {"ok": True, **acknowledgement}
+
+
+@app.post("/api/zilch/achievement-rank/acknowledge")
+def api_acknowledge_zilch_rank_upgrade(request: Request) -> dict[str, object]:
+    """Acknowledge only the caller's latest pending Zilch rank-up card."""
+    identity = _require_zilch_preview(request)
+    require_csrf(request, identity)
+    try:
+        acknowledgement = acknowledge_zilch_rank_upgrade(identity.user_id)
     except (ZilchAchievementError, ZilchAchievementSyncError) as exc:
         raise _zilch_achievement_http_error(exc) from exc
     return {"ok": True, **acknowledgement}

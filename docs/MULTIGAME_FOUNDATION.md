@@ -190,7 +190,8 @@ aggregate rebuild is allowed. A Zilch award/player view is available only in
 the protected Zilch context (`/zilch/erfolge` and
 `/zilch/spieler/{username}`), is `noindex`, and is not a public profile. Its
 protected APIs are `/api/zilch/achievements`, `/api/zilch/achievements/pending`,
-`/api/zilch/achievements/{key}/acknowledge`, and
+`/api/zilch/achievements/{key}/acknowledge`,
+`/api/zilch/achievement-rank/acknowledge`, and
 `/api/zilch/players/{username}/achievements`; the Zilch-only rank ladder is
 `/api/zilch/achievement-ranks` and the achievement-points table is one of the
 protected Zilch leaderboards.

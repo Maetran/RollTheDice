@@ -423,3 +423,35 @@ class ZilchAchievementDelivery(Base):
     acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (Index("ix_zilch_achievement_deliveries_pending", "acknowledged_at", "queued_at"),)
+
+
+class ZilchAchievementRankDelivery(Base):
+    """Reload-safe presentation state for one account's latest Zilch rank-up.
+
+    Unlike an individual award delivery, an account only needs to see its most
+    recent upward rank transition.  A later transition replaces this row and
+    clears its acknowledgement, while the source unlock remains available for
+    a terminal-game presentation when it still exists.
+    """
+
+    __tablename__ = "zilch_achievement_rank_deliveries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    source_unlock_id: Mapped[int | None] = mapped_column(
+        ForeignKey("zilch_achievement_unlocks.id", ondelete="SET NULL"), nullable=True
+    )
+    previous_rank_key: Mapped[str] = mapped_column(String(32), nullable=False)
+    rank_key: Mapped[str] = mapped_column(String(32), nullable=False)
+    previous_points: Mapped[int] = mapped_column(Integer, nullable=False)
+    points: Mapped[int] = mapped_column(Integer, nullable=False)
+    queued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("previous_points >= 0", name="ck_zilch_rank_delivery_previous_points"),
+        CheckConstraint("points >= 0", name="ck_zilch_rank_delivery_points"),
+        Index("ix_zilch_rank_deliveries_pending", "acknowledged_at", "queued_at"),
+    )

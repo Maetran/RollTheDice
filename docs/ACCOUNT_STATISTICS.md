@@ -188,6 +188,16 @@ sets `acknowledged_at`; it neither grants an award nor changes its eligibility.
 The authoritative result, registered evaluation, validated evidence, and
 server-side unlock remain decisive.
 
+`zilch_achievement_rank_deliveries` separately retains each account's latest
+genuine upward Zilch-rank transition. The pending-delivery response derives it
+from the authoritative, chronological unlock collection and queues it exactly
+once after the individual award cards. This deliberately gives players who
+already had a rank before the card existed one retrospective presentation on
+their next private Zilch visit, without scanning completed-game history or
+creating an award. A newer upward tier replaces the row and requires a fresh
+acknowledgement; revocation removes or recalculates a stale transition on the
+next private delivery read.
+
 Deleting a Zilch result calls the Zilch-specific cleanup for its source game.
 It removes the normalized evidence and evaluation, synchronizes affected
 private Zilch accounts, and removes any unlock that no longer has supporting
@@ -266,7 +276,9 @@ catalog marker together.
 
 Account-only APIs are `GET /api/zilch/achievements`,
 `GET /api/zilch/achievements/pending`, and
-`POST /api/zilch/achievements/{key}/acknowledge`. Guests may read the safe
+`POST /api/zilch/achievements/{key}/acknowledge`, plus
+`POST /api/zilch/achievement-rank/acknowledge` for the currently pending rank
+card. Guests may read the safe
 `GET /api/zilch/players/{username}/achievements`, the rank ladder at
 `GET /api/zilch/achievement-ranks`, and
 `GET /api/zilch/leaderboards?category=achievement_points`. Public projections

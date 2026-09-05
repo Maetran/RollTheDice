@@ -1220,6 +1220,7 @@ function achievementProjection(payload) {
     unlocked,
     locked: hasExplicitLocked ? explicitLocked : definitions.filter(definition => !unlockedKeys.has(achievementKey(definition))),
     pending: firstObjectArray(outer.awards, outer.pending, nested.awards, nested.pending),
+    rankUpgrade: plainObject(outer.rank_upgrade || outer.rankUpgrade || nested.rank_upgrade || nested.rankUpgrade),
   };
 }
 
@@ -1379,7 +1380,7 @@ async function fetchZilchAchievementRanks() {
 async function fetchZilchPendingAwards() {
   const response = await fetch("/api/zilch/achievements/pending", { cache: "no-store" });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return achievementProjection(await response.json()).pending;
+  return achievementProjection(await response.json());
 }
 
 async function acknowledgeZilchAward(award) {
@@ -1388,6 +1389,12 @@ async function acknowledgeZilchAward(award) {
   const response = await apiFetch(`/api/zilch/achievements/${encodeURIComponent(key)}/acknowledge`, {
     method: "POST",
   });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json().catch(() => ({}));
+}
+
+async function acknowledgeZilchRankUpgrade() {
+  const response = await apiFetch("/api/zilch/achievement-rank/acknowledge", { method: "POST" });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json().catch(() => ({}));
 }
@@ -1434,6 +1441,63 @@ async function presentZilchAward(award, index, total) {
   return true;
 }
 
+function zilchRankUpgradePayload(value) {
+  const upgrade = plainObject(value);
+  const previous = plainObject(upgrade.previous);
+  const current = plainObject(upgrade.current);
+  const previousKey = String(previous.key || "").trim();
+  const currentKey = String(current.key || "").trim();
+  const previousMinimum = Number(previous.minimum_points);
+  const currentMinimum = Number(current.minimum_points);
+  if (!previousKey || !currentKey || previousKey === currentKey) return null;
+  if (!Number.isFinite(previousMinimum) || !Number.isFinite(currentMinimum) || currentMinimum <= previousMinimum) return null;
+  return { previous, current, source: upgrade };
+}
+
+function zilchRankUpgradeMessage(value) {
+  const upgrade = zilchRankUpgradePayload(value);
+  if (!upgrade) return "";
+  const previousTitle = localizedAchievementValue(
+    upgrade.previous.title_key || upgrade.previous.title || upgrade.previous.name,
+    "Zilch-Rang",
+  );
+  const currentTitle = localizedAchievementValue(
+    upgrade.current.title_key || upgrade.current.title || upgrade.current.name,
+    "Zilch-Rang",
+  );
+  const stars = Math.max(1, Math.min(5, Math.trunc(Number(upgrade.current.stars) || 0)));
+  const points = Math.max(0, Math.trunc(Number(upgrade.current.points) || 0));
+  return [
+    "✦".repeat(stars),
+    `${t("Neuer Zilch-Rang erreicht!")} ${currentTitle}`,
+    `${previousTitle} → ${currentTitle}`,
+    zilchPointsText(points),
+  ].join("\n\n");
+}
+
+async function presentZilchRankUpgrade(value) {
+  const message = zilchRankUpgradeMessage(value);
+  if (!message) return true;
+  let seen = false;
+  if (typeof window.ZDWA_UI?.dialog === "function") {
+    const currentKey = String(plainObject(value?.current).key || "rank").trim() || "rank";
+    const choice = await window.ZDWA_UI.dialog({
+      id: `zilch-rank-up-${currentKey}`,
+      title: t("RANGAUFSTIEG! ✨"),
+      message,
+      kind: "zilch-rank-up",
+      dismissible: true,
+      actions: [{ id: "acknowledge-zilch-rank-up", label: t("Weiter"), className: "primary" }],
+    });
+    seen = choice === "acknowledge-zilch-rank-up";
+  } else {
+    seen = window.confirm(`${t("RANGAUFSTIEG! ✨")}\n\n${message}`);
+  }
+  if (!seen) return false;
+  await acknowledgeZilchRankUpgrade();
+  return true;
+}
+
 function terminalAwardScope(snapshot) {
   const result = plainObject(snapshot?._zilch_result);
   const resultIdValue = String(result.game_id || gameId || "").trim();
@@ -1457,6 +1521,11 @@ function awardPresentationGameId(award) {
     || "").trim();
 }
 
+function rankUpgradePresentationGameId(upgrade) {
+  const source = plainObject(upgrade);
+  return String(source.presentation_game_id || source.presentationGameId || source.source_game_id || source.sourceGameId || "").trim();
+}
+
 function renderAwardDependentGameState() {
   if (gameId && state.game?._finished && !state.stopped) renderGameState();
 }
@@ -1469,11 +1538,17 @@ function presentPendingZilchAwards({ scope = "page" } = {}) {
   const presentation = (async () => {
     let acknowledgementsCompleted = false;
     try {
-      const pendingAwards = awardQueue(await fetchZilchPendingAwards());
+      const pendingProjection = await fetchZilchPendingAwards();
+      const pendingAwards = awardQueue(pendingProjection.pending);
       const terminalGameId = terminalGameIdFromScope(scope);
       const awards = terminalGameId
         ? pendingAwards.filter(award => sameId(awardPresentationGameId(award), terminalGameId))
         : pendingAwards;
+      const rankUpgrade = zilchRankUpgradePayload(pendingProjection.rankUpgrade);
+      const visibleRankUpgrade = rankUpgrade && (!terminalGameId
+        || sameId(rankUpgradePresentationGameId(rankUpgrade.source), terminalGameId))
+        ? rankUpgrade.source
+        : null;
       if (terminalGameId) {
         let unlockedForGame = [];
         try {
@@ -1498,6 +1573,9 @@ function presentPendingZilchAwards({ scope = "page" } = {}) {
         acknowledgementsCompleted = true;
       }
       if (!awards.length) acknowledgementsCompleted = true;
+      if (acknowledgementsCompleted && visibleRankUpgrade) {
+        acknowledgementsCompleted = await presentZilchRankUpgrade(visibleRankUpgrade);
+      }
       if (acknowledgementsCompleted && achievementsRoute && state.achievements) {
         try { state.achievements = await fetchZilchAchievements(); } catch (_) {}
       }

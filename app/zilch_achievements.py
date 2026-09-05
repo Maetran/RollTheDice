@@ -34,6 +34,7 @@ from .models import (
     ZilchAchievementDelivery,
     ZilchAchievementEvaluation,
     ZilchAchievementEvidence,
+    ZilchAchievementRankDelivery,
     ZilchAchievementUnlock,
     ZilchCommunityGame,
     ZilchCommunityMilestone,
@@ -2233,6 +2234,159 @@ def _community_presentation_game_ids_in_session(
     }
 
 
+def _zilch_rank_payload_for_key(rank_key: object, points: object) -> dict[str, Any]:
+    """Project a historical rank event without changing its named tier.
+
+    Rank thresholds scale with the catalog, while a delivered celebration must
+    retain the tier that was actually reached.  The saved key therefore wins
+    over a later threshold adjustment; current catalog metadata still provides
+    its localized title key, stars, and the current ladder context.
+    """
+
+    normalized_key = str(rank_key or "").strip()
+    try:
+        earned = min(ZILCH_ACHIEVEMENT_POINTS_POSSIBLE, max(0, int(points or 0)))
+    except (TypeError, ValueError):
+        earned = 0
+    for index, rank in enumerate(ZILCH_ACHIEVEMENT_RANKS):
+        if rank.key != normalized_key:
+            continue
+        next_rank = (
+            ZILCH_ACHIEVEMENT_RANKS[index + 1]
+            if index + 1 < len(ZILCH_ACHIEVEMENT_RANKS)
+            else None
+        )
+        next_minimum = _zilch_rank_minimum_points(next_rank) if next_rank is not None else None
+        return {
+            "key": rank.key,
+            "title": rank.title,
+            "title_key": f"zilch.rank.{rank.key}",
+            "stars": rank.stars,
+            "points": earned,
+            "points_possible": ZILCH_ACHIEVEMENT_POINTS_POSSIBLE,
+            "minimum_points": _zilch_rank_minimum_points(rank),
+            "next_minimum_points": next_minimum,
+            "points_to_next_rank": max(0, next_minimum - earned) if next_minimum is not None else 0,
+        }
+    return zilch_achievement_rank_for_points(earned)
+
+
+def _is_zilch_rank_upgrade(previous: Mapping[str, Any], current: Mapping[str, Any]) -> bool:
+    """Return whether two rank projections describe a genuine upward step."""
+
+    if previous.get("key") == current.get("key"):
+        return False
+    try:
+        return int(current.get("minimum_points", 0)) > int(previous.get("minimum_points", 0))
+    except (TypeError, ValueError):
+        return False
+
+
+def _latest_zilch_rank_upgrade_in_session(
+    db,
+    user_id: int,
+) -> tuple[ZilchAchievementUnlock, dict[str, Any], dict[str, Any]] | None:
+    """Rebuild only an account's latest genuine transition from its unlocks.
+
+    This reads the small, already-authoritative unlock collection instead of
+    any game history.  It makes the first post-rollout delivery correct for
+    accounts that earned a rank before rank-up cards existed.
+    """
+
+    rows = list(
+        db.scalars(
+            select(ZilchAchievementUnlock)
+            .where(
+                ZilchAchievementUnlock.user_id == user_id,
+                ZilchAchievementUnlock.achievement_key.in_(ZILCH_ACHIEVEMENT_BY_KEY),
+            )
+            .order_by(ZilchAchievementUnlock.unlocked_at, ZilchAchievementUnlock.id)
+        )
+    )
+    keys: set[str] = set()
+    previous = zilch_achievement_rank_for_points(0)
+    latest: tuple[ZilchAchievementUnlock, dict[str, Any], dict[str, Any]] | None = None
+    for unlock in rows:
+        key = str(unlock.achievement_key)
+        if key in keys:
+            continue
+        keys.add(key)
+        current = zilch_achievement_rank_for_points(zilch_achievement_points_for_keys(keys))
+        if _is_zilch_rank_upgrade(previous, current):
+            latest = (unlock, previous, current)
+        previous = current
+    return latest
+
+
+def _ensure_zilch_rank_upgrade_delivery_in_session(
+    db,
+    user_id: int,
+) -> tuple[ZilchAchievementRankDelivery, ZilchAchievementUnlock] | None:
+    """Return the current latest delivery, creating/replacing it if needed."""
+
+    latest = _latest_zilch_rank_upgrade_in_session(db, user_id)
+    delivery = db.scalar(
+        select(ZilchAchievementRankDelivery).where(ZilchAchievementRankDelivery.user_id == user_id)
+    )
+    if latest is None:
+        if delivery is not None:
+            db.delete(delivery)
+        return None
+    unlock, previous, current = latest
+    should_replace = delivery is None or any(
+        (
+            delivery.source_unlock_id != unlock.id,
+            delivery.previous_rank_key != str(previous["key"]),
+            delivery.rank_key != str(current["key"]),
+            delivery.previous_points != int(previous["points"]),
+            delivery.points != int(current["points"]),
+        )
+    )
+    if should_replace:
+        if delivery is None:
+            delivery = ZilchAchievementRankDelivery(
+                user_id=user_id,
+                source_unlock_id=unlock.id,
+                previous_rank_key=str(previous["key"]),
+                rank_key=str(current["key"]),
+                previous_points=int(previous["points"]),
+                points=int(current["points"]),
+                queued_at=as_utc(unlock.unlocked_at),
+                acknowledged_at=None,
+            )
+            db.add(delivery)
+        else:
+            delivery.source_unlock_id = unlock.id
+            delivery.previous_rank_key = str(previous["key"])
+            delivery.rank_key = str(current["key"])
+            delivery.previous_points = int(previous["points"])
+            delivery.points = int(current["points"])
+            delivery.queued_at = as_utc(unlock.unlocked_at)
+            delivery.acknowledged_at = None
+    return delivery, unlock
+
+
+def _zilch_rank_upgrade_delivery_payload(
+    delivery: ZilchAchievementRankDelivery,
+    source_unlock: ZilchAchievementUnlock,
+    *,
+    presentation_game_id: object | None = None,
+) -> dict[str, Any]:
+    """Return a private, replay-safe presentation projection for one rank-up."""
+
+    source_game_id = str(source_unlock.source_game_id) if source_unlock.source_game_id else None
+    return {
+        "previous": _zilch_rank_payload_for_key(delivery.previous_rank_key, delivery.previous_points),
+        "current": _zilch_rank_payload_for_key(delivery.rank_key, delivery.points),
+        "source_game_id": source_game_id,
+        "presentation_game_id": str(presentation_game_id) if presentation_game_id else source_game_id,
+        "queued_at": as_utc(delivery.queued_at).isoformat(),
+        "acknowledged_at": (
+            as_utc(delivery.acknowledged_at).isoformat() if delivery.acknowledged_at is not None else None
+        ),
+    }
+
+
 def _normalised_game_id(value: object) -> str:
     return _strict_text(value, "zilch_achievement_invalid_game_id", limit=64)
 
@@ -3226,7 +3380,7 @@ def get_zilch_achievement_profile(user_id: object) -> dict[str, Any]:
 
 
 def pending_zilch_awards(user_id: object) -> dict[str, Any]:
-    """Return unacknowledged, already persisted awards in stable queue order."""
+    """Return the private award queue and the latest pending rank-up card."""
 
     try:
         normalized_user_id = int(user_id)
@@ -3273,12 +3427,27 @@ def pending_zilch_awards(user_id: object) -> dict[str, Any]:
                 )
             unlocked_keys = _known_unlock_rows(db, normalized_user_id)
             points = zilch_achievement_points_for_keys(unlocked_keys)
+            rank_delivery = _ensure_zilch_rank_upgrade_delivery_in_session(db, normalized_user_id)
+            rank_upgrade = None
+            if rank_delivery is not None and rank_delivery[0].acknowledged_at is None:
+                delivery, source_unlock = rank_delivery
+                if source_unlock.source_community_recipient_id is not None:
+                    presentation_game_ids = _community_presentation_game_ids_in_session(db, (source_unlock,))
+                    presentation_game_id = presentation_game_ids.get(int(source_unlock.source_community_recipient_id))
+                else:
+                    presentation_game_id = None
+                rank_upgrade = _zilch_rank_upgrade_delivery_payload(
+                    delivery,
+                    source_unlock,
+                    presentation_game_id=presentation_game_id,
+                )
             return {
                 "version": ZILCH_ACHIEVEMENT_RESPONSE_VERSION,
                 "points": points,
                 "points_possible": ZILCH_ACHIEVEMENT_POINTS_POSSIBLE,
                 "rank": zilch_achievement_rank_for_points(points),
                 "awards": awards,
+                "rank_upgrade": rank_upgrade,
             }
     except ZilchAchievementError:
         raise
@@ -3329,4 +3498,37 @@ def acknowledge_zilch_award(user_id: object, achievement_key: object) -> dict[st
         raise
     except SQLAlchemyError as exc:
         logger.exception("Could not acknowledge Zilch award %s for user %s", normalized_key, normalized_user_id)
+        raise ZilchAchievementSyncError() from exc
+
+
+def acknowledge_zilch_rank_upgrade(user_id: object) -> dict[str, Any]:
+    """Idempotently acknowledge an account's currently latest rank-up card."""
+
+    try:
+        normalized_user_id = int(user_id)
+    except (TypeError, ValueError) as exc:
+        raise ZilchAchievementError("zilch_achievement_user_not_found") from exc
+    if normalized_user_id < 1:
+        raise ZilchAchievementError("zilch_achievement_user_not_found")
+    if not database_schema_ready():
+        raise ZilchAchievementSyncError("zilch_achievement_database_not_ready")
+    try:
+        with session_scope() as db:
+            user = db.get(User, normalized_user_id)
+            if user is None or not user.is_active:
+                raise ZilchAchievementError("zilch_achievement_user_not_found")
+            rank_delivery = _ensure_zilch_rank_upgrade_delivery_in_session(db, normalized_user_id)
+            if rank_delivery is None:
+                raise ZilchAchievementError("zilch_achievement_rank_delivery_missing")
+            delivery, _source_unlock = rank_delivery
+            if delivery.acknowledged_at is None:
+                delivery.acknowledged_at = utcnow()
+            return {
+                "rank_key": str(delivery.rank_key),
+                "acknowledged_at": as_utc(delivery.acknowledged_at).isoformat(),
+            }
+    except ZilchAchievementError:
+        raise
+    except SQLAlchemyError as exc:
+        logger.exception("Could not acknowledge Zilch rank upgrade for user %s", normalized_user_id)
         raise ZilchAchievementSyncError() from exc

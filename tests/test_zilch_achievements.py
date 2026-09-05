@@ -29,6 +29,7 @@ from app.models import (
     ZilchAchievementDelivery,
     ZilchAchievementEvaluation,
     ZilchAchievementEvidence,
+    ZilchAchievementRankDelivery,
     ZilchAchievementUnlock,
     ZilchCommunityGame,
     ZilchCommunityMilestone,
@@ -46,6 +47,7 @@ from app.zilch_achievements import (
     _criterion_is_satisfied,
     _register_evaluation,
     acknowledge_zilch_award,
+    acknowledge_zilch_rank_upgrade,
     get_zilch_achievement_profile,
     pending_zilch_awards,
     recover_deleted_zilch_achievement_sources,
@@ -1091,6 +1093,80 @@ class ZilchAchievementPersistenceTestCase(TestCase):
                 ),
                 len(mani_keys),
             )
+
+    def test_rank_upgrade_delivery_reconstructs_the_latest_transition_once(self) -> None:
+        mani = self._user("Mani", role="admin")
+        positive_definitions = [definition for definition in ZILCH_ACHIEVEMENTS if definition.points > 0]
+        self.assertTrue(positive_definitions)
+        base_time = datetime(2026, 9, 5, 12, 0, tzinfo=timezone.utc)
+        keys: set[str] = set()
+        previous_rank = zilch_achievement_rank_for_points(0)
+        first_transition: tuple[int, object, dict, dict] | None = None
+        second_transition: tuple[int, object, dict, dict] | None = None
+        for index, definition in enumerate(positive_definitions, start=1):
+            keys.add(definition.key)
+            current_rank = zilch_achievement_rank_for_points(zilch_achievement_points_for_keys(keys))
+            if current_rank["key"] != previous_rank["key"]:
+                transition = (index, definition, previous_rank, current_rank)
+                if first_transition is None:
+                    first_transition = transition
+                else:
+                    second_transition = transition
+                    break
+            previous_rank = current_rank
+        self.assertIsNotNone(first_transition)
+        self.assertIsNotNone(second_transition)
+        assert first_transition is not None
+        assert second_transition is not None
+
+        def add_unlocks(start_index: int, through_index: int) -> None:
+            with session_scope() as db:
+                for index, definition in enumerate(
+                    positive_definitions[start_index - 1:through_index],
+                    start=start_index,
+                ):
+                    db.add(
+                        ZilchAchievementUnlock(
+                            user_id=mani.id,
+                            achievement_key=definition.key,
+                            definition_version=definition.definition_version,
+                            source_evidence_id=None,
+                            source_community_recipient_id=None,
+                            source_game_id=f"retro-rank-{index}",
+                            unlocked_at=base_time + timedelta(minutes=index),
+                        )
+                    )
+
+        add_unlocks(1, first_transition[0])
+        pending = pending_zilch_awards(mani.id)
+        first_card = pending["rank_upgrade"]
+        self.assertIsNotNone(first_card)
+        assert first_card is not None
+        self.assertEqual(first_card["previous"]["key"], first_transition[2]["key"])
+        self.assertEqual(first_card["current"]["key"], first_transition[3]["key"])
+        self.assertEqual(first_card["source_game_id"], f"retro-rank-{first_transition[0]}")
+        with session_scope() as db:
+            delivery = db.scalar(
+                select(ZilchAchievementRankDelivery).where(ZilchAchievementRankDelivery.user_id == mani.id)
+            )
+            self.assertIsNotNone(delivery)
+            assert delivery is not None
+            self.assertIsNone(delivery.acknowledged_at)
+
+        first_acknowledgement = acknowledge_zilch_rank_upgrade(mani.id)
+        self.assertEqual(first_acknowledgement, acknowledge_zilch_rank_upgrade(mani.id))
+        self.assertEqual(first_acknowledgement["rank_key"], first_transition[3]["key"])
+        self.assertIsNone(pending_zilch_awards(mani.id)["rank_upgrade"])
+
+        add_unlocks(first_transition[0] + 1, second_transition[0])
+        updated_pending = pending_zilch_awards(mani.id)
+        second_card = updated_pending["rank_upgrade"]
+        self.assertIsNotNone(second_card)
+        assert second_card is not None
+        self.assertEqual(second_card["previous"]["key"], second_transition[2]["key"])
+        self.assertEqual(second_card["current"]["key"], second_transition[3]["key"])
+        self.assertEqual(second_card["source_game_id"], f"retro-rank-{second_transition[0]}")
+        self.assertNotEqual(second_card["current"]["key"], first_acknowledgement["rank_key"])
 
     def test_cpu_result_has_only_the_human_as_evidence_and_recipient(self) -> None:
         mani = self._user("Mani", role="admin")

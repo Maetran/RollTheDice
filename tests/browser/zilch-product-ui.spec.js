@@ -589,6 +589,19 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     }));
     let pending = unlocked.map(award => ({ ...award, queued_at: award.unlocked_at }));
     const acknowledgements = [];
+    const rankAcknowledgements = [];
+    let rankUpgrade = {
+      previous: {
+        key: "newbie", title: "Newbie", title_key: "zilch.rank.newbie", stars: 0,
+        points: 3, points_possible: 273, minimum_points: 0,
+      },
+      current: {
+        key: "rookie", title: "Rookie", title_key: "zilch.rank.rookie", stars: 1,
+        points: 7, points_possible: 273, minimum_points: 7,
+      },
+      source_game_id: "retro-rank-fixture",
+      queued_at: "2026-09-03T10:00:00+00:00",
+    };
 
     await page.route("**/api/zilch/achievement-ranks", async route => {
       await route.fulfill({
@@ -620,6 +633,7 @@ test("private Zilch awards use server projections and acknowledge a sequential a
               points: 3, points_possible: 273, minimum_points: 0, next_minimum_points: 7, points_to_next_rank: 4,
             },
             awards: pending,
+            rank_upgrade: rankUpgrade,
           }),
         });
         return;
@@ -655,6 +669,14 @@ test("private Zilch awards use server projections and acknowledge a sequential a
         return;
       }
       await route.fallback();
+    });
+    await page.route("**/api/zilch/achievement-rank/acknowledge", async route => {
+      rankAcknowledgements.push("rookie");
+      rankUpgrade = null;
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, rank_key: "rookie", acknowledged_at: "2026-09-03T10:02:00+00:00" }),
+      });
     });
     await page.route("**/api/zilch/players/Mani/achievements", async route => {
       await route.fulfill({
@@ -718,6 +740,22 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await expect(dialog).toContainText("Tischsieger");
     await page.getByRole("button", { name: "Weiter" }).click();
     await expect.poll(() => acknowledgements).toEqual(["zilch.first_game", "zilch.first_hvh_win"]);
+    await expect(dialog).toHaveAttribute("data-kind", "zilch-rank-up");
+    await expect(dialog).toContainText("RANGAUFSTIEG!");
+    await expect(dialog).toContainText("Newbie → Rookie");
+    await expect(dialog).toContainText("7 Zilch-Punkte");
+    await expect.poll(async () => dialog.evaluate(element => getComputedStyle(element).animationName)).toContain("zilch-rank-up-arrival");
+    await page.keyboard.press("Escape");
+    await expect.poll(() => rankAcknowledgements).toEqual([]);
+    await expect(page.locator("#appDialogBackdrop")).toBeHidden();
+
+    // The rank moment follows the same explicit acknowledgement rule as an
+    // award card: closing it keeps the retrospective delivery available.
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Zilch-Awards" })).toBeVisible();
+    await expect(dialog).toHaveAttribute("data-kind", "zilch-rank-up");
+    await page.getByRole("button", { name: "Weiter" }).click();
+    await expect.poll(() => rankAcknowledgements).toEqual(["rookie"]);
     await expect(page.locator("#appDialogBackdrop")).toBeHidden();
 
     await page.reload();
