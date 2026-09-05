@@ -76,6 +76,9 @@ same isolated dimensions, padding, and type size in both page and game headers;
 on narrow phones both sides use its square icon-only form.
 The compact setup starts a default game with one click; advanced room protection
 stays optional, and a completed game can be restarted directly with the same mode.
+In a two-person Zilch room, **Share game** creates a clean invitation link for
+the other human seat. It deliberately never includes a room code, account
+session, or resume credential; protected rooms still ask invitees for their code.
 
 Production keeps `https://zockdiewandan.online` as ZDWA's canonical origin so
 existing installed PWAs, bookmarks, and origin-bound resume data remain valid.

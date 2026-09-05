@@ -447,6 +447,13 @@ function renderShell() {
     const label = lobbyLink.querySelector(".zilch-control-label");
     if (label) label.textContent = t("Lobby");
   }
+  const shareButton = document.getElementById("zilchShareGameBtn");
+  if (shareButton) {
+    shareButton.setAttribute("aria-label", t("Spiel teilen"));
+    shareButton.setAttribute("title", t("Spiel teilen"));
+    const label = shareButton.querySelector(".zilch-control-label");
+    if (label) label.textContent = t("Spiel teilen");
+  }
   renderNavigation();
 }
 
@@ -472,12 +479,14 @@ function renderNavigation() {
   const roomContext = document.getElementById("zilchRoomContext");
   const roomLobby = document.getElementById("zilchRoomLobby");
   const roomRules = document.getElementById("zilchRoomRules");
+  const shareButton = document.getElementById("zilchShareGameBtn");
   if (!navigation) return;
   const inGame = routeKind() === "game";
   root?.classList.toggle("zilch-shell--game", inGame);
   if (roomContext) roomContext.hidden = !inGame;
   if (roomLobby) roomLobby.hidden = !inGame;
   if (roomRules) roomRules.hidden = !inGame;
+  if (shareButton) shareButton.hidden = true;
   if (inGame) {
     navigation.innerHTML = "";
     navigation.hidden = true;
@@ -3460,6 +3469,48 @@ function updateGameHeader(snapshot) {
   context.hidden = false;
 }
 
+function canShareZilchInvite(snapshot) {
+  return Boolean(
+    gameId
+    && zilchPlayMode(snapshot) === "multiplayer"
+    && Number(snapshot?._expected_participants || snapshot?._expected || 0) === 2
+    && localParticipantId(snapshot),
+  );
+}
+
+function syncZilchShareControl(snapshot) {
+  const button = document.getElementById("zilchShareGameBtn");
+  if (!button) return;
+  button.hidden = !canShareZilchInvite(snapshot);
+  if (button._bound) return;
+  button._bound = true;
+  button.addEventListener("click", async () => {
+    if (!canShareZilchInvite(state.game)) return;
+    const url = new URL(window.location.href);
+    url.pathname = zilchPath(`/spiel/${encodeURIComponent(gameId)}`);
+    url.search = "";
+    url.hash = "";
+    const shareData = {
+      title: "Zilch die Wand an",
+      text: t("Komm zu meiner Zilch-Partie!"),
+      url: url.toString(),
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard_unavailable");
+      await navigator.clipboard.writeText(shareData.url);
+      window.ZDWA_UI?.toast?.(t("Spielelink kopiert."), { kind: "success" });
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        window.ZDWA_UI?.toast?.(t("Spielelink konnte nicht geteilt werden."), { kind: "error" });
+      }
+    }
+  });
+}
+
 function renderGameState() {
   if (!content) return;
   root?.classList.add("zilch-shell--game");
@@ -3477,6 +3528,7 @@ function renderGameState() {
   const isMyTurn = localPlayerIs(snapshot, currentPlayerId);
   const canInteract = Boolean(isMyTurn && !state.zilchMoment);
   syncSoloAbandonControl(snapshot, turnState, canInteract);
+  syncZilchShareControl(snapshot);
   updateGameHeader(snapshot);
   const gameName = escapeHtml(snapshot._name || "Zilch");
   const target = Number(snapshot._target_score || 10000);

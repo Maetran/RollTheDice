@@ -52,6 +52,7 @@ export const EN = {
     "Spielregeln schließen": "Close game rules",
     "Spiel teilen": "Share game",
     "Komm zu meiner ZDWA-Runde!": "Join my ZDWA game!",
+    "Komm zu meiner Zilch-Partie!": "Join my Zilch game!",
     "Spielelink kopiert.": "Game link copied.",
     "Spielelink konnte nicht geteilt werden.": "The game link could not be shared.",
     "Dunklen Modus einschalten": "Enable dark mode",

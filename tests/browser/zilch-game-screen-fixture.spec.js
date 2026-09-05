@@ -1870,6 +1870,43 @@ test("a Hot Dice choice stays optional until Weiterwürfeln commits it atomicall
   }
 });
 
+test("a human-vs-human Zilch player can copy a clean invitation link", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    const gameId = "invite-link-fixture";
+    await installGameScreenFixture(page, gameId, { initial: hotDiceChoiceSnapshot() });
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    await page.goto(`/zilch/spiel/${gameId}`);
+    await page.evaluate(() => {
+      history.replaceState(null, "", `${location.pathname}?pass=never-share-this`);
+      window.__zilchCopiedInvite = "";
+      Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText: value => { window.__zilchCopiedInvite = value; return Promise.resolve(); } },
+      });
+    });
+
+    const share = page.locator("#zilchShareGameBtn");
+    await expect(share).toBeVisible();
+    await share.click();
+    await expect.poll(() => page.evaluate(() => window.__zilchCopiedInvite)).toBe(
+      `${baseURL}/zilch/spiel/${gameId}`,
+    );
+  } finally {
+    await context.close();
+  }
+});
+
 test("a selected score is banked atomically with its exact server option", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
   const page = await context.newPage();
