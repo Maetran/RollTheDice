@@ -71,6 +71,11 @@ class ZilchCpuHttpAndSocketTestCase(TestCase):
     """Keep CPU creation and joining behind the normal private API boundary."""
 
     def setUp(self) -> None:
+        # This class starts the real application lifespan. Previous unit
+        # fixtures may have created in-memory games for a now-disposed
+        # database; never let startup recovery replay those foreign fixtures
+        # into this fresh database.
+        games.clear()
         self.game_ids: list[str] = []
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.database_path = Path(self.temporary_directory.name) / "zilch-cpu-integration.sqlite3"
@@ -90,8 +95,7 @@ class ZilchCpuHttpAndSocketTestCase(TestCase):
 
     def tearDown(self) -> None:
         asyncio.run(stop_cpu_runners())
-        for game_id in self.game_ids:
-            games.pop(game_id, None)
+        games.clear()
         self.environment.stop()
         configure_database(main.DATA_DIR)
         self.temporary_directory.cleanup()

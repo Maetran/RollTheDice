@@ -945,13 +945,13 @@ test("new achievements are acknowledged individually before the final standings"
   await page.keyboard.press("Escape");
   await expect(dialog).toContainText("Erster Erfolg");
 
-  await page.getByRole("button", { name: "Weiter" }).click();
+  await page.getByRole("button", { name: "Weiter", exact: true }).click();
   await expect(dialog).toHaveAttribute("data-kind", "achievement");
   await expect(dialog).toContainText("Zweiter Erfolg");
   await expect(dialog).toContainText("+7 Ehrenberg-Marken");
   await expect(dialog).toContainText("2 / 2");
 
-  await page.getByRole("button", { name: "Weiter" }).click();
+  await page.getByRole("button", { name: "Weiter", exact: true }).click();
   await expect(dialog).toHaveAttribute("data-kind", "level-up");
   await expect(dialog).toContainText("LEVEL UP!");
   await expect(dialog).toContainText("Newbie → Rookie");
@@ -961,7 +961,7 @@ test("new achievements are acknowledged individually before the final standings"
   await page.keyboard.press("Escape");
   await expect(dialog).toContainText("LEVEL UP!");
 
-  await page.getByRole("button", { name: "Weiter" }).click();
+  await page.getByRole("button", { name: "Weiter", exact: true }).click();
   await expect(dialog).toHaveAttribute("data-kind", "success");
   await expect(dialog).toContainText("1. Achievement – 777 Punkte");
   await expect(page.getByRole("button", { name: "Neue Runde" })).toBeVisible();
@@ -1070,10 +1070,10 @@ test("the last struck field stays visible while finalization waits for achieveme
   await expect(dialog).toHaveAttribute("data-kind", "achievement");
   await expect(dialog).toContainText("Letzter Zug");
   await expect(dialog).toContainText("+4 Ehrenberg-Marken");
-  await page.getByRole("button", { name: "Weiter" }).click();
+  await page.getByRole("button", { name: "Weiter", exact: true }).click();
   await expect(dialog).toHaveAttribute("data-kind", "level-up");
   await expect(dialog).toContainText("Newbie → Rookie");
-  await page.getByRole("button", { name: "Weiter" }).click();
+  await page.getByRole("button", { name: "Weiter", exact: true }).click();
   await expect(dialog).toHaveAttribute("data-kind", "success");
   await expect(dialog).toContainText("1. Finalizer – 0 Punkte");
   await expect(page.getByRole("button", { name: "Neue Runde" })).toBeVisible();
@@ -1119,7 +1119,7 @@ test("a fast completion cannot leave a queued finalization dialog behind", async
   const dialog = page.locator("#appDialog");
   await expect(dialog).toHaveAttribute("data-kind", "achievement");
   await expect(dialog).toContainText("Schnelles Finale");
-  await page.getByRole("button", { name: "Weiter" }).click();
+  await page.getByRole("button", { name: "Weiter", exact: true }).click();
   await expect(dialog).toHaveAttribute("data-kind", "success");
   await expect(dialog).toContainText("1. Fast – 555 Punkte");
   await expect(page.getByRole("button", { name: "Neue Runde" })).toBeVisible();

@@ -23,6 +23,7 @@ from app import main
 from app.auth import create_user
 from app.database import configure_database, get_engine, session_scope, upgrade_database
 from app.game_history import delete_completed_game, persist_completed_game_result
+from app.game_state import games
 from app.game_types import ZILCH_GAME_TYPE
 from app.models import (
     CompletedGame,
@@ -81,6 +82,11 @@ class ZilchAchievementPersistenceTestCase(TestCase):
     """Awards are isolated, explicit, idempotent and reversible by source."""
 
     def setUp(self) -> None:
+        # ``new_zilch_game`` registers its state in the process-local game
+        # registry. Keep each database fixture from leaking its finished test
+        # tables into a later app lifespan, where recovery would otherwise
+        # replay them against a different temporary database.
+        self.initial_game_ids = set(games)
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.database_path = Path(self.temporary_directory.name) / "zilch-achievements.sqlite3"
         self.environment = patch.dict(
@@ -98,6 +104,8 @@ class ZilchAchievementPersistenceTestCase(TestCase):
         self.sequence = 0
 
     def tearDown(self) -> None:
+        for game_id in set(games) - self.initial_game_ids:
+            games.pop(game_id, None)
         self.environment.stop()
         configure_database(main.DATA_DIR)
         self.temporary_directory.cleanup()

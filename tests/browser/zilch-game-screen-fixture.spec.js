@@ -2216,6 +2216,8 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
     await expect(page.locator("#zilchLiveStatus")).toContainText("Hot Dice");
     await expect(page.locator("[data-zilch-roll]")).toContainText(/Bestätigen|confirm/i);
     await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
+    await expect(page.locator(".zilch-action-cards > button").nth(0)).toHaveAttribute("data-zilch-bank", "");
+    await expect(page.locator(".zilch-action-cards > button").nth(1)).toHaveAttribute("data-zilch-roll", "");
     // A confirmed Hot-Dice hold has no new selectable score option yet, but
     // the running total remains visible in the reserved right rail.
     await expect(page.locator(".zilch-play-layout")).toHaveClass(/zilch-play-layout--has-choices/);

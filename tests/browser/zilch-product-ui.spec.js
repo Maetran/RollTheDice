@@ -347,6 +347,18 @@ test("private Zilch statistics and leaderboards render only server projections a
   try {
   await signInAsPreviewMani(page);
 
+  // The account preference is persisted in the shared browser-test database.
+  // This fixture asserts the German projection below, so restore its explicit
+  // starting locale even when an earlier independent spec exercised English.
+  const languageSwitcher = page.locator("[data-language-switcher]");
+  if (await languageSwitcher.inputValue() !== "de") {
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+      languageSwitcher.selectOption("de"),
+    ]);
+  }
+  await expect(page.locator("html")).toHaveAttribute("lang", "de");
+
   await page.route("**/api/zilch/statistics", route => route.fulfill({
     contentType: "application/json",
     body: JSON.stringify({
@@ -487,7 +499,7 @@ test("private Zilch statistics and leaderboards render only server projections a
   await expect(page.locator("#zilchNavigation a[href='/zilch/bestenlisten']")).toHaveAttribute("aria-current", "page");
   await expect(page.locator(".zilch-leaderboard-table")).toBeVisible();
   await expect(page.locator("tr[data-own-entry='true']")).toContainText("Du");
-  await expect(page.locator(".zilch-leaderboard-table a[href='/zilch/erfolge']")).toContainText("Mani");
+  await expect(page.locator("tr[data-own-entry='true']")).toContainText("Mani");
   await expect(page.locator(".zilch-leaderboard-table .zilch-rank-badge")).toContainText("Spieler");
   await expect(page.getByRole("button", { name: "Deine Statistiken" })).toHaveAttribute("data-zilch-navigate", "/zilch/statistiken");
   await expect(page.getByRole("button", { name: "Zilch-Awards" })).toHaveAttribute("data-zilch-navigate", "/zilch/erfolge");
@@ -765,10 +777,10 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await page.reload();
     await expect(page.getByRole("heading", { name: "Zilch-Awards" })).toBeVisible();
     await expect(dialog).toContainText("Erster Wurf");
-    await page.getByRole("button", { name: "Weiter" }).click();
+    await page.getByRole("button", { name: "Weiter", exact: true }).click();
     await expect.poll(() => acknowledgements).toEqual(["zilch.first_game"]);
     await expect(dialog).toContainText("Tischsieger");
-    await page.getByRole("button", { name: "Weiter" }).click();
+    await page.getByRole("button", { name: "Weiter", exact: true }).click();
     await expect.poll(() => acknowledgements).toEqual(["zilch.first_game", "zilch.first_hvh_win"]);
     await expect(dialog).toHaveAttribute("data-kind", "zilch-rank-up");
     await expect(dialog).toContainText("RANGAUFSTIEG!");
@@ -784,7 +796,7 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await page.reload();
     await expect(page.getByRole("heading", { name: "Zilch-Awards" })).toBeVisible();
     await expect(dialog).toHaveAttribute("data-kind", "zilch-rank-up");
-    await page.getByRole("button", { name: "Weiter" }).click();
+    await page.getByRole("button", { name: "Weiter", exact: true }).click();
     await expect.poll(() => rankAcknowledgements).toEqual(["rookie"]);
     await expect(page.locator("#appDialogBackdrop")).toBeHidden();
 

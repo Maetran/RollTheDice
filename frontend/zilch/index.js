@@ -3,6 +3,7 @@ import { initializeAppMode } from "../multigame/app-mode.js";
 import {
   applyZilchRouteLinks,
   normalizeZilchPageUrl,
+  zdwaAppEntryUrl,
   zilchPath,
   zilchRoutePath,
 } from "../multigame/routes.js";
@@ -3519,11 +3520,11 @@ function actionCards(snapshot, turnState, quickHolds, isMyTurn) {
         ? t("Weiterwürfeln")
         : t("Würfeln");
   return `<section class="zilch-action-cards" aria-label="${escapeHtml(t("Spielaktionen"))}">
-    <button type="button" class="zilch-action-card zilch-action-card--roll" data-zilch-roll aria-keyshortcuts="Space" ${canRoll ? "" : "disabled"}>
-      <strong>${escapeHtml(rollLabel)}</strong>
-    </button>
     <button type="button" class="zilch-action-card zilch-action-card--bank" data-zilch-bank aria-keyshortcuts="b B" ${canBank ? "" : "disabled"}>
       <strong>${escapeHtml(t("Sichern"))}</strong>
+    </button>
+    <button type="button" class="zilch-action-card zilch-action-card--roll" data-zilch-roll aria-keyshortcuts="Space" ${canRoll ? "" : "disabled"}>
+      <strong>${escapeHtml(rollLabel)}</strong>
     </button>
   </section>`;
 }
@@ -4151,7 +4152,11 @@ async function initialize() {
     if (!logoutButton || logoutButton.disabled) return;
     logoutButton.disabled = true;
     logoutButton.setAttribute("aria-busy", "true");
-    try { await logout(); } catch (_) {} finally { window.location.replace(zilchPath("/")); }
+    const publicLobby = state.auth?.game_access?.zilch_public === true
+      || state.auth?.user?.game_access?.zilch_public === true;
+    try { await logout(); } catch (_) {} finally {
+      window.location.replace(publicLobby ? zilchPath("/") : zdwaAppEntryUrl());
+    }
   });
   if (resultId) await renderResult();
   else if (gameId) await renderGame();

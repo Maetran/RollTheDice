@@ -92,10 +92,18 @@ export async function register(username, password, turnstileToken = null) {
 export async function logout() {
   const response = await apiFetch('/api/auth/logout', { method: 'POST' });
   if (!response.ok) throw new Error('Abmelden fehlgeschlagen');
+  // An anonymous visitor may still use a public game. Preserve that
+  // server-confirmed capability for the logout notification so a mounted
+  // product shell does not briefly revoke a public route before navigation.
+  const gameAccess = authCache?.game_access || authCache?.user?.game_access;
   authEpoch += 1;
   authCache = null;
   authRequest = null;
-  notifyAuthState({ authenticated: false, user: null });
+  notifyAuthState({
+    authenticated: false,
+    user: null,
+    ...(gameAccess ? { game_access: gameAccess } : {}),
+  });
 }
 
 export function authError(detail) {

@@ -669,7 +669,7 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByText("Completed game", { exact: true })).toBeVisible();
     await expect(page.getByText("Total points", { exact: true }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Back to Zilch lobby" })).toBeVisible();
+    await expect(page.locator("#zilchNavigation a[href='/zilch']")).toBeVisible();
   } finally {
     await context.close();
   }
