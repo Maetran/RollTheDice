@@ -1892,6 +1892,13 @@ html[data-game="zilch"] .zilch-achievement-card__points {
 }
 html[data-game="zilch"] .zilch-achievement-card__mode { font-weight: 750; }
 html[data-game="zilch"] .zilch-achievement-card__state { font-weight: 750; }
+html[data-game="zilch"] .zilch-achievement-card__date {
+  margin-left: auto;
+  color: var(--zilch-ink-soft);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 html[data-game="zilch"] .zilch-achievement-card__state::before {
   display: inline-block;
   width: .75rem;

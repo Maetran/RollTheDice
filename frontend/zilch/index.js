@@ -1199,6 +1199,24 @@ function achievementModeMarkup(achievement) {
     : "";
 }
 
+function achievementUnlockedAt(achievement) {
+  const value = achievementValue(achievement, ["unlocked_at", "unlockedAt"]);
+  const raw = typeof value === "string" ? value.trim() : "";
+  const date = raw ? new Date(raw) : null;
+  return date && !Number.isNaN(date.getTime()) ? { raw, date } : null;
+}
+
+function achievementUnlockedDateMarkup(achievement) {
+  const unlockedAt = achievementUnlockedAt(achievement);
+  if (!unlockedAt) return "";
+  const date = new Intl.DateTimeFormat(window.ZDWA_I18N?.locale?.() || "de-CH", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(unlockedAt.date);
+  return `<time class="zilch-achievement-card__date" datetime="${escapeHtml(unlockedAt.raw)}">${escapeHtml(`${t("Freigeschaltet am")} ${date}`)}</time>`;
+}
+
 function achievementCardMarkup(achievement, { unlocked = false } = {}) {
   const hidden = achievementIsHidden(achievement, unlocked);
   const missed = !unlocked && Boolean(achievementValue(achievement, ["missed"]));
@@ -1218,6 +1236,7 @@ function achievementCardMarkup(achievement, { unlocked = false } = {}) {
       <div class="zilch-achievement-card__status">
         ${achievementModeMarkup(achievement)}
         <span class="zilch-achievement-card__state">${escapeHtml(stateLabel)}</span>
+        ${unlocked ? achievementUnlockedDateMarkup(achievement) : ""}
         ${unlocked || missed ? "" : achievementProgressMarkup(achievement)}
       </div>
     </div>
@@ -1347,26 +1366,29 @@ function achievementFamilyTarget(achievement) {
   return Number(matches.at(-1) || 0);
 }
 
-function achievementEntryOrder(first, second) {
-  // Keep the personal collection immediately legible: awards already earned
-  // come first in each meaningful category, followed by the next goals.
-  return Number(second.unlocked) - Number(first.unlocked)
-    || achievementFamilyKey(first.achievement).localeCompare(achievementFamilyKey(second.achievement))
+function unlockedAchievementOrder(first, second) {
+  const firstTimestamp = achievementUnlockedAt(first)?.date.getTime() || 0;
+  const secondTimestamp = achievementUnlockedAt(second)?.date.getTime() || 0;
+  return secondTimestamp - firstTimestamp
+    || achievementKey(first).localeCompare(achievementKey(second));
+}
+
+function lockedAchievementEntryOrder(first, second) {
+  return achievementFamilyKey(first.achievement).localeCompare(achievementFamilyKey(second.achievement))
     || achievementFamilyTarget(first.achievement) - achievementFamilyTarget(second.achievement)
     || achievementKey(first.achievement).localeCompare(achievementKey(second.achievement));
 }
 
-function achievementGroups(projection) {
+function lockedAchievementGroups(projection) {
   const categories = new Map();
-  const add = (achievement, unlocked) => {
+  const add = achievement => {
     const category = achievementCategoryKey(achievement);
     if (!categories.has(category)) categories.set(category, []);
-    categories.get(category).push({ achievement, unlocked });
+    categories.get(category).push({ achievement, unlocked: false });
   };
-  objectArray(projection?.unlocked).forEach(achievement => add(achievement, true));
-  objectArray(projection?.locked).forEach(achievement => add(achievement, false));
+  objectArray(projection?.locked).forEach(add);
   return [...categories.entries()]
-    .map(([category, entries]) => [category, entries.sort(achievementEntryOrder)])
+    .map(([category, entries]) => [category, entries.sort(lockedAchievementEntryOrder)])
     .sort(([first], [second]) => {
       const firstIndex = ZILCH_ACHIEVEMENT_CATEGORY_ORDER.indexOf(first);
       const secondIndex = ZILCH_ACHIEVEMENT_CATEGORY_ORDER.indexOf(second);
@@ -1377,11 +1399,16 @@ function achievementGroups(projection) {
 }
 
 function achievementsCatalogMarkup(projection) {
-  const groups = achievementGroups(projection);
-  if (!groups.length) {
+  const unlocked = objectArray(projection?.unlocked).sort(unlockedAchievementOrder);
+  const lockedGroups = lockedAchievementGroups(projection);
+  if (!unlocked.length && !lockedGroups.length) {
     return `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Noch keine Zilch-Awards verfügbar"))}</h2><p>${escapeHtml(t("Sobald du eine Zilch-Partie abschließt, erscheinen hier deine Awards."))}</p></section>`;
   }
-  return `<div class="zilch-achievement-groups">${groups.map(([category, entries]) => {
+  const unlockedSection = unlocked.length ? `<section class="zilch-achievement-group" aria-labelledby="zilchAchievementUnlocked">
+      <h2 id="zilchAchievementUnlocked">${escapeHtml(t("Freigeschaltet"))}</h2>
+      <div class="zilch-achievement-sequence">${unlocked.map(achievement => achievementCardMarkup(achievement, { unlocked: true })).join("")}</div>
+    </section>` : "";
+  const lockedSections = lockedGroups.map(([category, entries]) => {
     const id = `zilchAchievementCategory-${category}`;
     return `<section class="zilch-achievement-group" aria-labelledby="${escapeHtml(id)}">
       <h2 id="${escapeHtml(id)}">${escapeHtml(achievementCategoryLabel(category, projection.categories, entries[0]?.achievement))}</h2>
@@ -1389,7 +1416,8 @@ function achievementsCatalogMarkup(projection) {
         unlocked: entry.unlocked,
       })).join("")}</div>
     </section>`;
-  }).join("")}</div>`;
+  }).join("");
+  return `<div class="zilch-achievement-groups">${unlockedSection}${lockedSections}</div>`;
 }
 
 async function fetchZilchAchievements() {

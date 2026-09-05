@@ -766,18 +766,22 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await expect(page.locator(".zilch-achievement-card.is-locked")).toHaveCount(2);
     await expect(page.locator(".zilch-achievement-card.is-missed")).toContainText("Verpasst");
     await expect(page.locator(".zilch-achievement-sequence")).toHaveCount(3);
-    await expect(page.locator("#zilchAchievementCategory-entry + .zilch-achievement-sequence .zilch-achievement-card")).toHaveClass([
+    await expect(page.locator("#zilchAchievementUnlocked + .zilch-achievement-sequence .zilch-achievement-card")).toHaveClass([
       /is-unlocked/,
-      /is-locked/,
+      /is-unlocked/,
     ]);
-    await expect(page.locator(".zilch-achievement-card").first()).toContainText("Zwei Spieler");
+    await expect(page.locator("#zilchAchievementCategory-entry + .zilch-achievement-sequence .zilch-achievement-card")).toHaveClass(/is-locked/);
+    await expect(page.locator(".zilch-achievement-card").first()).toContainText("Tischsieger");
     await expect(page.locator(".zilch-achievement-summary")).toContainText("3 / 273");
     await expect(page.locator(".zilch-achievement-summary")).toContainText("Newbie");
     await expect(page.locator("[data-zilch-rank-legend]")).toContainText("Ränge und Mindestwerte");
     await expect(page.locator("[data-zilch-rank-legend] .is-current")).toContainText("Newbie");
-    await expect(page.locator(".zilch-achievement-card").first()).toContainText("+1 Zilch-Punkt");
+    await expect(page.locator(".zilch-achievement-card").first()).toContainText("+2 Zilch-Punkte");
+    await expect(page.locator(".zilch-achievement-card").nth(1)).toContainText("+1 Zilch-Punkt");
     await expect(page.locator(".zilch-achievement-card__category")).toHaveCount(0);
-    await expect(page.locator(".zilch-achievement-card time")).toHaveCount(0);
+    await expect(page.locator(".zilch-achievement-card time")).toHaveCount(2);
+    await expect(page.locator(".zilch-achievement-card time").first()).toHaveAttribute("datetime", "2026-09-02T10:00:00+00:00");
+    await expect(page.locator(".zilch-achievement-card time").first()).toContainText("Freigeschaltet am");
     await expect(page.locator("[data-rank-legend], .player-rank")).toHaveCount(0);
 
     const dialog = page.locator("#appDialog");
@@ -838,7 +842,7 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByRole("heading", { name: "Zilch awards" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Getting started" })).toBeVisible();
-    await expect(page.locator(".zilch-achievement-card").first()).toContainText("First Roll");
+    await expect(page.locator(".zilch-achievement-card").first()).toContainText("Table Victor");
     await expect(page.locator(".zilch-achievement-summary")).toContainText("Zilch points");
     await expect(page.locator("[data-zilch-rank-legend]")).toContainText("Ranks and minimums");
     await expect(page.locator(".zilch-achievement-card.is-missed")).toContainText("Missed");
