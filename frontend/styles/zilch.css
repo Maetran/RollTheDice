@@ -2896,7 +2896,10 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
   position: fixed;
   z-index: 40;
   right: max(1rem, calc((100vw - 1120px) / 2));
-  bottom: calc(var(--zilch-room-chat-h) + env(safe-area-inset-bottom, 0px));
+  /* The dice are the primary in-game controls, so the dock owns the bottom
+     edge. The chat sits directly above it instead of lifting the dice toward
+     the live-score controls. */
+  bottom: max(.35rem, env(safe-area-inset-bottom, 0px));
   left: max(1rem, calc((100vw - 1120px) / 2));
   margin: 0;
 }
@@ -2993,15 +2996,15 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
   position: fixed;
   z-index: 50;
   right: max(1rem, calc((100vw - 1120px) / 2));
-  bottom: 0;
+  bottom: calc(var(--zilch-room-dock-h) + .5rem + env(safe-area-inset-bottom, 0px));
   left: max(1rem, calc((100vw - 1120px) / 2));
   max-height: min(60vh, 28rem);
   /* The reaction drawer opens upward from the dock. It must not be clipped
      by the otherwise compact chat shell. */
   overflow: visible;
   border: 1px solid rgba(255, 224, 171, .44);
-  border-bottom: 0;
-  border-radius: .65rem .65rem 0 0;
+  border-bottom: 1px solid rgba(255, 224, 171, .44);
+  border-radius: .65rem;
   background: #2b160b;
   box-shadow: 0 -.3rem .9rem rgba(31, 14, 5, .3);
 }

@@ -1688,6 +1688,7 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
       const combinedScore = document.querySelector("[data-zilch-combined-score]").getBoundingClientRect();
       const notebook = document.querySelector(".zilch-play-layout__notebook").getBoundingClientRect();
       const diceDock = document.querySelector(".zilch-dice-dock").getBoundingClientRect();
+      const chat = document.querySelector(".zilch-chat").getBoundingClientRect();
       return {
         topToBottom: cards.sort((first, second) => first.top - second.top).map(card => card.shortcut),
         bestBottom: best.bottom,
@@ -1701,6 +1702,8 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
         notebookHeight: notebook.height,
         notebookBottom: notebook.bottom,
         diceDockTop: diceDock.top,
+        diceDockBottomGap: window.innerHeight - diceDock.bottom,
+        chatBottom: chat.bottom,
         scoreFontSize: Number.parseFloat(getComputedStyle(firstCard.querySelector("strong")).fontSize),
         labelFontSize: Number.parseFloat(getComputedStyle(firstCard.querySelector("span")).fontSize),
       };
@@ -1714,7 +1717,10 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
     expect(Math.abs(mobileRecommendationLayout.turnScoreTop - mobileRecommendationLayout.combinedScoreTop)).toBeLessThanOrEqual(2);
     expect(Math.abs(mobileRecommendationLayout.turnScoreBottom - mobileRecommendationLayout.combinedScoreBottom)).toBeLessThanOrEqual(2);
     expect(mobileRecommendationLayout.combinedScoreLeft - mobileRecommendationLayout.turnScoreRight).toBeGreaterThanOrEqual(0);
-    expect(mobileRecommendationLayout.diceDockTop - mobileRecommendationLayout.turnScoreBottom).toBeGreaterThanOrEqual(6);
+    expect(mobileRecommendationLayout.diceDockTop - mobileRecommendationLayout.turnScoreBottom).toBeGreaterThanOrEqual(16);
+    expect(mobileRecommendationLayout.diceDockBottomGap).toBeLessThanOrEqual(8);
+    expect(mobileRecommendationLayout.diceDockTop - mobileRecommendationLayout.chatBottom).toBeGreaterThanOrEqual(0);
+    expect(mobileRecommendationLayout.diceDockTop - mobileRecommendationLayout.chatBottom).toBeLessThanOrEqual(28);
     expect(mobileRecommendationLayout.scoreFontSize).toBeGreaterThanOrEqual(17);
     expect(mobileRecommendationLayout.labelFontSize).toBeGreaterThanOrEqual(12);
 
