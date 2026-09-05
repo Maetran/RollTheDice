@@ -49,6 +49,10 @@ ZILCH_CPU_MODE: Final[ZilchPlayMode] = "cpu"
 ZILCH_MULTIPLAYER_MODE: Final[ZilchPlayMode] = "multiplayer"
 ZILCH_HUMAN_PARTICIPANT: Final[ZilchParticipantType] = "human"
 ZILCH_CPU_PARTICIPANT: Final[ZilchParticipantType] = "cpu"
+ZILCH_CPU_HOST_USER_KEY: Final = "_zilch_cpu_host_user_id"
+ZILCH_CPU_GUEST_CAPABILITY_DIGEST_KEY: Final = "_zilch_cpu_host_token_hash"
+ZILCH_SOLO_HOST_USER_KEY: Final = "_zilch_solo_host_user_id"
+ZILCH_SOLO_GUEST_CAPABILITY_DIGEST_KEY: Final = "_zilch_solo_host_token_hash"
 # Kept as a backwards-compatible state-module export while the pure strategy
 # module remains the one canonical validation source.
 ZILCH_CPU_STRATEGIES: Final[frozenset[str]] = _CPU_STRATEGY_NAMES
@@ -299,11 +303,11 @@ def zilch_human_join_error(game: GameDict, *, user_id: object, host_token: objec
         # A legacy mode-1 foundation snapshot is not silently assigned the
         # new private challenge policy. It remains loadable for diagnosis.
         return None
-    expected_host = game.get(
-        "_zilch_cpu_host_user_id" if play_mode == ZILCH_CPU_MODE else "_zilch_solo_host_user_id"
-    )
+    expected_host = game.get(ZILCH_CPU_HOST_USER_KEY if play_mode == ZILCH_CPU_MODE else ZILCH_SOLO_HOST_USER_KEY)
     expected_token_hash = game.get(
-        "_zilch_cpu_host_token_hash" if play_mode == ZILCH_CPU_MODE else "_zilch_solo_host_token_hash"
+        ZILCH_CPU_GUEST_CAPABILITY_DIGEST_KEY
+        if play_mode == ZILCH_CPU_MODE
+        else ZILCH_SOLO_GUEST_CAPABILITY_DIGEST_KEY
     )
     if type(expected_host) is int:
         if type(user_id) is not int or user_id != expected_host:
@@ -345,8 +349,8 @@ def configure_zilch_cpu_game(
         game,
         user_id=host_user_id,
         host_token=host_token,
-        user_key="_zilch_cpu_host_user_id",
-        token_hash_key="_zilch_cpu_host_token_hash",
+        user_key=ZILCH_CPU_HOST_USER_KEY,
+        token_hash_key=ZILCH_CPU_GUEST_CAPABILITY_DIGEST_KEY,
         required_code="zilch_cpu_host_required",
     )
     cpu_id = f"cpu-{game_id}"
@@ -451,8 +455,8 @@ def configure_zilch_solo_game(
         game,
         user_id=host_user_id,
         host_token=host_token,
-        user_key="_zilch_solo_host_user_id",
-        token_hash_key="_zilch_solo_host_token_hash",
+        user_key=ZILCH_SOLO_HOST_USER_KEY,
+        token_hash_key=ZILCH_SOLO_GUEST_CAPABILITY_DIGEST_KEY,
         required_code="zilch_solo_host_required",
     )
     game["_mode"] = "1"
@@ -648,15 +652,15 @@ def new_zilch_game(gid: str, name: str, mode: object) -> GameDict:
         # WebSocket players. Humans currently populate both collections;
         # future CPU participants will only exist here.
         "_participants": [],
-        "_zilch_cpu_host_user_id": None,
-        "_zilch_cpu_host_token_hash": None,
+        ZILCH_CPU_HOST_USER_KEY: None,
+        ZILCH_CPU_GUEST_CAPABILITY_DIGEST_KEY: None,
         "_zilch_cpu_participant_id": None,
         # A true Solo run is configured explicitly by the protected create
         # endpoint. Keeping the legacy mode-1 factory state empty prevents an
         # old scaffold or malformed snapshot from receiving invented Sprint
         # progress, a host identity, or a direct-start lifecycle.
-        "_zilch_solo_host_user_id": None,
-        "_zilch_solo_host_token_hash": None,
+        ZILCH_SOLO_HOST_USER_KEY: None,
+        ZILCH_SOLO_GUEST_CAPABILITY_DIGEST_KEY: None,
         "_zilch_solo_objective": None,
         "_zilch_solo_metrics": None,
         "_zilch_solo_active_since": None,
