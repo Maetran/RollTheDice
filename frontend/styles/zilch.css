@@ -2798,21 +2798,47 @@ html[data-game="zilch"] body {
 }
 
 .zilch-shell--game .zilch-play-layout {
-  height: clamp(18rem, calc(100dvh - var(--zilch-room-chat-h) - var(--zilch-room-dock-h) - 4.6rem), 32rem);
+  --zilch-play-layout-max-h: 32rem;
+  height: clamp(18rem, calc(100dvh - var(--zilch-room-chat-h) - var(--zilch-room-dock-h) - 4.6rem), var(--zilch-play-layout-max-h));
   min-height: 0;
-  max-height: 32rem;
+  max-height: var(--zilch-play-layout-max-h);
 }
 
 @supports not (height: 100dvh) {
   .zilch-shell--game .zilch-play-layout {
-    height: clamp(18rem, calc(100vh - var(--zilch-room-chat-h) - var(--zilch-room-dock-h) - 4.6rem), 32rem);
+    height: clamp(18rem, calc(100vh - var(--zilch-room-chat-h) - var(--zilch-room-dock-h) - 4.6rem), var(--zilch-play-layout-max-h));
   }
+}
+
+/* A scored roll deserves its own tile below the recommendation rail. Give
+   the paper one additional ruled-card height, then reserve the same amount
+   beneath it for the running total without crowding the dice dock. */
+.zilch-shell--game .zilch-play-layout--has-turn-score {
+  --zilch-turn-score-slot-h: 3.2rem;
+  --zilch-score-sheet-extension: 3.2rem;
+  --zilch-play-layout-max-h: calc(32rem + var(--zilch-score-sheet-extension) + var(--zilch-turn-score-slot-h) + .42rem);
+  grid-template-rows: minmax(0, 1fr) var(--zilch-turn-score-slot-h);
+  row-gap: .42rem;
 }
 
 .zilch-shell--game .zilch-play-layout__notebook,
 .zilch-shell--game .zilch-recommendations {
   height: 100%;
   min-height: 0;
+}
+
+.zilch-shell--game .zilch-play-layout__turn-score {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+}
+
+.zilch-shell--game .zilch-play-layout__turn-score .zilch-turn-score {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
 }
 
 .zilch-shell--game .zilch-play-layout__notebook {
@@ -3469,9 +3495,9 @@ html[data-game="zilch"] body {
     font-size: .64rem;
   }
 
-  /* The rail is reversed so the best quick hold rests by the thumb. Put the
-     score directly beneath it instead of visually above the choices. */
-  .zilch-shell--game .zilch-turn-score { order: -1; }
+  /* The rail is reversed so the strongest quick hold rests at the lower edge
+     of the extended score sheet. The running total lives in its own tile
+     directly below that edge. */
 
   .zilch-shell--game .zilch-dice-dock { right: .125rem; left: .125rem; }
   .zilch-shell--game .zilch-dice-dock .zilch-table { padding-inline: .125rem; }

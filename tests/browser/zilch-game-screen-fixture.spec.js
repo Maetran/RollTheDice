@@ -1563,22 +1563,27 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
       const best = cards.find(card => card.shortcut === "q");
       const firstCard = document.querySelector("[data-zilch-recommendation]");
       const turnScore = document.querySelector(".zilch-turn-score").getBoundingClientRect();
+      const notebook = document.querySelector(".zilch-play-layout__notebook").getBoundingClientRect();
+      const diceDock = document.querySelector(".zilch-dice-dock").getBoundingClientRect();
       return {
         topToBottom: cards.sort((first, second) => first.top - second.top).map(card => card.shortcut),
         bestBottom: best.bottom,
         railBottom: rail.bottom,
         turnScoreTop: turnScore.top,
         turnScoreBottom: turnScore.bottom,
+        notebookBottom: notebook.bottom,
+        diceDockTop: diceDock.top,
         scoreFontSize: Number.parseFloat(getComputedStyle(firstCard.querySelector("strong")).fontSize),
         labelFontSize: Number.parseFloat(getComputedStyle(firstCard.querySelector("span")).fontSize),
       };
     });
     expect(mobileRecommendationLayout.topToBottom).toEqual(["t", "r", "e", "w", "q"]);
-    // The running total deliberately follows the strongest recommendation:
-    // both stay in the lower thumb zone directly above the dice dock.
-    expect(mobileRecommendationLayout.turnScoreTop - mobileRecommendationLayout.bestBottom).toBeGreaterThanOrEqual(0);
-    expect(mobileRecommendationLayout.turnScoreTop - mobileRecommendationLayout.bestBottom).toBeLessThanOrEqual(12);
-    expect(Math.abs(mobileRecommendationLayout.turnScoreBottom - mobileRecommendationLayout.railBottom)).toBeLessThanOrEqual(2);
+    // Recommendations fill the extended score-sheet edge. The running total
+    // gets its own immediately following tile, before the dice dock.
+    expect(Math.abs(mobileRecommendationLayout.railBottom - mobileRecommendationLayout.notebookBottom)).toBeLessThanOrEqual(2);
+    expect(mobileRecommendationLayout.turnScoreTop - mobileRecommendationLayout.railBottom).toBeGreaterThanOrEqual(0);
+    expect(mobileRecommendationLayout.turnScoreTop - mobileRecommendationLayout.railBottom).toBeLessThanOrEqual(12);
+    expect(mobileRecommendationLayout.diceDockTop - mobileRecommendationLayout.turnScoreBottom).toBeGreaterThanOrEqual(6);
     expect(mobileRecommendationLayout.scoreFontSize).toBeGreaterThanOrEqual(17);
     expect(mobileRecommendationLayout.labelFontSize).toBeGreaterThanOrEqual(12);
 
@@ -1598,8 +1603,7 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
     });
     expect(compactRecommendationLayout.overflows).toBe(true);
     expect(compactRecommendationLayout.turnScoreTop - compactRecommendationLayout.bestBottom).toBeGreaterThanOrEqual(0);
-    expect(compactRecommendationLayout.turnScoreTop - compactRecommendationLayout.bestBottom).toBeLessThanOrEqual(12);
-    expect(Math.abs(compactRecommendationLayout.turnScoreBottom - compactRecommendationLayout.railBottom)).toBeLessThanOrEqual(2);
+    expect(compactRecommendationLayout.turnScoreTop - compactRecommendationLayout.railBottom).toBeGreaterThanOrEqual(0);
     await page.locator(".zilch-recommendations").evaluate(rail => rail.style.removeProperty("height"));
 
     await page.setViewportSize({ width: 1280, height: 720 });

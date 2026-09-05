@@ -3163,8 +3163,14 @@ function renderGameState() {
     : waitingPanelUsesRail
       ? `<aside class="zilch-start-roll-rail">${waitingPanel}</aside>`
     : hasChoices
-      ? `<aside class="zilch-recommendations" aria-label="${escapeHtml(finished ? t("Spielergebnis") : t("Mögliche Wertungen"))}">${recommendations}${turnScore}${resultMarkup}</aside>`
+      ? `<aside class="zilch-recommendations" aria-label="${escapeHtml(finished ? t("Spielergebnis") : t("Mögliche Wertungen"))}">${recommendations}${resultMarkup}</aside>`
       : "";
+  // The running total is deliberately a separate tile beneath the choice
+  // rail. This lets the recommendations share the entire lower edge of the
+  // extended score sheet instead of consuming one of its useful card slots.
+  const turnScoreSlot = turnScore
+    ? `<div class="zilch-play-layout__turn-score">${turnScore}</div>`
+    : "";
   const chatRows = (Array.isArray(snapshot._chat_history) ? snapshot._chat_history : []).map(entry => {
     const sender = participantForId(snapshot, entry?.from_id || entry?.player_id || entry?.participant_id);
     const identity = sender
@@ -3184,7 +3190,7 @@ function renderGameState() {
     ${offline}
     ${cpuError}
     ${reconnectControl()}
-    <section class="zilch-play-layout${hasChoices ? " zilch-play-layout--has-choices" : " zilch-play-layout--no-choices"}${solo ? " zilch-play-layout--solo" : " zilch-play-layout--duel"}${finished ? " zilch-play-layout--finished" : ""}" aria-label="${escapeHtml(t("Zilch-Spielbereich"))}">
+    <section class="zilch-play-layout${hasChoices ? " zilch-play-layout--has-choices" : " zilch-play-layout--no-choices"}${turnScore ? " zilch-play-layout--has-turn-score" : ""}${solo ? " zilch-play-layout--solo" : " zilch-play-layout--duel"}${finished ? " zilch-play-layout--finished" : ""}" aria-label="${escapeHtml(t("Zilch-Spielbereich"))}">
       <div class="zilch-play-layout__notebook">${scoreNotebook(players, boards, {
         solo,
         target,
@@ -3192,6 +3198,7 @@ function renderGameState() {
         activePlayerId: state.zilchMoment?.playerId || "",
       })}</div>
       ${sideRail}
+      ${turnScoreSlot}
     </section>
     ${waitingPanelUsesRail ? "" : waitingPanel}
     <section class="zilch-dice-dock">
