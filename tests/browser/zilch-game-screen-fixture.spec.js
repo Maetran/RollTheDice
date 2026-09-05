@@ -86,7 +86,7 @@ function baseSnapshot(overrides = {}) {
     },
     _zilch_final_round: { triggered_by: "p2", pending_player_ids: ["p1"] },
     _chat_history: [],
-    _gameplay_status: "playable_alpha",
+    _gameplay_status: "playable",
     ...overrides,
   };
 }
@@ -1562,16 +1562,23 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
       });
       const best = cards.find(card => card.shortcut === "q");
       const firstCard = document.querySelector("[data-zilch-recommendation]");
+      const turnScore = document.querySelector(".zilch-turn-score").getBoundingClientRect();
       return {
         topToBottom: cards.sort((first, second) => first.top - second.top).map(card => card.shortcut),
         bestBottom: best.bottom,
         railBottom: rail.bottom,
+        turnScoreTop: turnScore.top,
+        turnScoreBottom: turnScore.bottom,
         scoreFontSize: Number.parseFloat(getComputedStyle(firstCard.querySelector("strong")).fontSize),
         labelFontSize: Number.parseFloat(getComputedStyle(firstCard.querySelector("span")).fontSize),
       };
     });
     expect(mobileRecommendationLayout.topToBottom).toEqual(["t", "r", "e", "w", "q"]);
-    expect(Math.abs(mobileRecommendationLayout.bestBottom - mobileRecommendationLayout.railBottom)).toBeLessThanOrEqual(2);
+    // The running total deliberately follows the strongest recommendation:
+    // both stay in the lower thumb zone directly above the dice dock.
+    expect(mobileRecommendationLayout.turnScoreTop - mobileRecommendationLayout.bestBottom).toBeGreaterThanOrEqual(0);
+    expect(mobileRecommendationLayout.turnScoreTop - mobileRecommendationLayout.bestBottom).toBeLessThanOrEqual(12);
+    expect(Math.abs(mobileRecommendationLayout.turnScoreBottom - mobileRecommendationLayout.railBottom)).toBeLessThanOrEqual(2);
     expect(mobileRecommendationLayout.scoreFontSize).toBeGreaterThanOrEqual(17);
     expect(mobileRecommendationLayout.labelFontSize).toBeGreaterThanOrEqual(12);
 
@@ -1580,14 +1587,19 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
       rail.style.height = "8rem";
       const railBox = rail.getBoundingClientRect();
       const bestBox = document.querySelector('[data-zilch-shortcut="q"]').getBoundingClientRect();
+      const turnScoreBox = document.querySelector(".zilch-turn-score").getBoundingClientRect();
       return {
         overflows: rail.scrollHeight > rail.clientHeight,
         bestBottom: bestBox.bottom,
         railBottom: railBox.bottom,
+        turnScoreTop: turnScoreBox.top,
+        turnScoreBottom: turnScoreBox.bottom,
       };
     });
     expect(compactRecommendationLayout.overflows).toBe(true);
-    expect(Math.abs(compactRecommendationLayout.bestBottom - compactRecommendationLayout.railBottom)).toBeLessThanOrEqual(2);
+    expect(compactRecommendationLayout.turnScoreTop - compactRecommendationLayout.bestBottom).toBeGreaterThanOrEqual(0);
+    expect(compactRecommendationLayout.turnScoreTop - compactRecommendationLayout.bestBottom).toBeLessThanOrEqual(12);
+    expect(Math.abs(compactRecommendationLayout.turnScoreBottom - compactRecommendationLayout.railBottom)).toBeLessThanOrEqual(2);
     await page.locator(".zilch-recommendations").evaluate(rail => rail.style.removeProperty("height"));
 
     await page.setViewportSize({ width: 1280, height: 720 });
@@ -1887,8 +1899,12 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
     await expect(page.locator("#zilchLiveStatus")).toContainText("Hot Dice");
     await expect(page.locator("[data-zilch-roll]")).toContainText(/Bestätigen|confirm/i);
     await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
-    await expect(page.locator(".zilch-play-layout")).toHaveClass(/zilch-play-layout--no-choices/);
-    await expect(page.locator(".zilch-recommendations")).toHaveCount(0);
+    // A confirmed Hot-Dice hold has no new selectable score option yet, but
+    // the running total remains visible in the reserved right rail.
+    await expect(page.locator(".zilch-play-layout")).toHaveClass(/zilch-play-layout--has-choices/);
+    await expect(page.locator(".zilch-recommendations")).toHaveCount(1);
+    await expect(page.locator("[data-zilch-recommendation]")).toHaveCount(0);
+    await expect(page.locator(".zilch-turn-score")).toContainText(/2(?:'|,|’|\s)000/);
     const initialNotebookWidths = new Map();
     // Even before the first recommendation exists, the score sheet keeps the
     // left-hand playing zone and leaves the right thumb rail ready. This avoids

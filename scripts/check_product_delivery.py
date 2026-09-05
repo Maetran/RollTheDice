@@ -94,7 +94,7 @@ def main() -> int:
     for page in public_seo_pages:
         _check((static_dir / page.static_filename).is_file(), f"SEO page is missing: {page.static_filename}", errors)
         _check(
-            f"<loc>{page.canonical_url}</loc>" in sitemap(),
+            f"<loc>{page.canonical_url}</loc>" in sitemap(origin=page.origin),
             f"Sitemap does not include {page.canonical_url}",
             errors,
         )

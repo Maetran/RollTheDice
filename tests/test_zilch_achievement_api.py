@@ -245,6 +245,26 @@ class ZilchAchievementApiTestCase(TestCase):
             other_attempt = self._request("POST", acknowledgement_path, token=other_token, csrf=other_csrf)
         self.assertEqual(other_attempt.status_code, 404)
 
+    def test_public_player_profile_keeps_award_provenance_private(self) -> None:
+        mani, _mani_token, _mani_csrf = self._identity("Mani", role="admin")
+        game_id = self._persist_cpu_win(mani)
+
+        with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "public"}):
+            profile = self._request("GET", "/api/zilch/players/Mani/achievements")
+            self.assertEqual(profile.status_code, 200)
+            payload = profile.json()
+            self.assertEqual(payload["player"], {"username": "Mani"})
+            self.assertTrue(payload["unlocked"])
+            self.assertEqual(self._request("GET", "/api/zilch/achievements").status_code, 401)
+
+        for award in payload["unlocked"] + payload["locked"]:
+            self.assertNotIn("source_game_id", award)
+            self.assertNotIn("presentation_game_id", award)
+            self.assertNotIn("source_evidence_id", award)
+            self.assertNotIn("queued_at", award)
+            self.assertNotIn("acknowledged_at", award)
+        self.assertNotIn(game_id, repr(payload))
+
     def test_cpu_has_no_award_recipient_and_deletion_revokes_zilch_without_zdwa_sync(self) -> None:
         mani, mani_token, mani_csrf = self._identity("Mani", role="admin")
         game_id = self._persist_cpu_win(mani)

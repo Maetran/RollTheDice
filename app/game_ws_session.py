@@ -93,7 +93,11 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
 
     identity = session.auth_identity
     if game_type_from_state(g) == ZILCH_GAME_TYPE:
-        cpu_join_error = zilch_human_join_error(g, user_id=identity.user_id if identity else None)
+        cpu_join_error = zilch_human_join_error(
+            g,
+            user_id=identity.user_id if identity else None,
+            host_token=data.get("host_token"),
+        )
         if cpu_join_error:
             await close_with_error(websocket, cpu_join_error, fatal=True)
             return True
@@ -131,6 +135,10 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
         "ws": websocket,
         "resume_token": uuid.uuid4().hex,
     }
+    if game_type_from_state(g) == ZILCH_GAME_TYPE and not identity and data.get("host_token") is not None:
+        # ``join_zilch_player`` removes this one-use transport field before the
+        # player enters durable state. It is never included in a snapshot.
+        player["_zilch_host_token"] = data.get("host_token")
     if identity:
         player["achievement_rank"] = identity.achievement_rank
     session.player_id = player_id
@@ -161,12 +169,11 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
 async def _spectate_game(session: GameSocketSession, data: dict[str, Any]) -> bool:
     g = session.game
     websocket = session.websocket
-    # The playable Alpha has exactly two human seats and deliberately does not
-    # expose a third read-only seat. This keeps its private board/chat scope
-    # aligned with the compact Zilch lobby rather than inheriting ZDWA's
-    # spectator product surface by accident.
+    # Zilch deliberately has exactly two human seats and no third read-only
+    # seat. This keeps its board/chat scope aligned with the compact lobby
+    # instead of inheriting ZDWA's spectator surface by accident.
     if game_type_from_state(g) == ZILCH_GAME_TYPE:
-        await close_with_error(websocket, "Zuschauen ist in dieser Zilch-Alpha nicht verfügbar.", fatal=True)
+        await close_with_error(websocket, "Zuschauen ist für Zilch derzeit nicht verfügbar.", fatal=True)
         return True
     if not _passphrase_matches(g, data):
         await close_with_error(websocket, "Falsche Passphrase")

@@ -1554,6 +1554,18 @@ html[data-game="zilch"] .zilch-achievement-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   gap: var(--zilch-space-3);
 }
+html[data-game="zilch"] .zilch-achievement-grid.zilch-achievement-families {
+  grid-template-columns: 1fr;
+  gap: var(--zilch-space-3);
+}
+html[data-game="zilch"] .zilch-achievement-family {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--zilch-space-3);
+  min-width: 0;
+  padding-left: .4rem;
+  border-left: .18rem solid color-mix(in srgb, var(--zilch-gold) 46%, transparent);
+}
 html[data-game="zilch"] .zilch-achievement-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -2417,6 +2429,39 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
 .zilch-shell--game .zilch-recommendation:not(:disabled):hover { border-color: #dcaa36; background: #fff2b8; }
 .zilch-shell--game .zilch-recommendation.is-selected:not(:disabled):hover { background: #512811; }
 
+/* A single, non-interrupting score readout answers the only question needed
+   between a roll and the next action: what reaches the score sheet now. */
+.zilch-shell--game .zilch-turn-score {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: .08rem .45rem;
+  margin-top: .42rem;
+  padding: .42rem .5rem;
+  border: 1px solid rgba(255, 224, 171, .5);
+  border-radius: .42rem;
+  color: #fff7e7;
+  background: rgba(45, 22, 10, .72);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .08);
+}
+.zilch-shell--game .zilch-turn-score > span {
+  color: #ffe3a4;
+  font: 800 .68rem/1.1 ui-rounded, "Avenir Next", system-ui, sans-serif;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+.zilch-shell--game .zilch-turn-score > strong {
+  color: #ffe28a;
+  font: 800 1.2rem/1 Georgia, "Times New Roman", serif;
+  font-variant-numeric: tabular-nums;
+}
+.zilch-shell--game .zilch-turn-score > small {
+  grid-column: 1 / -1;
+  color: rgba(255, 247, 231, .72);
+  font-size: .68rem;
+  font-weight: 750;
+}
+
 .zilch-shell--game .zilch-dice-dock {
   position: fixed;
   z-index: 40;
@@ -3233,6 +3278,10 @@ html[data-game="zilch"] body {
     height: 1.3rem;
     font-size: .64rem;
   }
+
+  /* The rail is reversed so the best quick hold rests by the thumb. Put the
+     score directly beneath it instead of visually above the choices. */
+  .zilch-shell--game .zilch-turn-score { order: -1; }
 
   .zilch-shell--game .zilch-dice-dock { right: .125rem; left: .125rem; }
   .zilch-shell--game .zilch-dice-dock .zilch-table { padding-inline: .125rem; }

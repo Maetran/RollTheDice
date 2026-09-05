@@ -356,7 +356,7 @@ class MultiGameFoundationTestCase(GameStateTestCase):
                             self.assertTrue(rejected_spectator["fatal"])
                             self.assertEqual(
                                 rejected_spectator["error"],
-                                "Zuschauen ist in dieser Zilch-Alpha nicht verfügbar.",
+                            "Zuschauen ist für Zilch derzeit nicht verfügbar.",
                             )
 
         self.assertEqual(len(main.games[game["_id"]]["_players"]), 2)
@@ -465,7 +465,7 @@ class MultiGameFoundationTestCase(GameStateTestCase):
 
         projected = update["scoreboard"]
         self.assertEqual(projected["_game_type"], ZILCH_GAME_TYPE)
-        self.assertEqual(projected["_gameplay_status"], "playable_alpha")
+        self.assertEqual(projected["_gameplay_status"], "playable")
         self.assertEqual(projected["_rolls_used"], 1)
         self.assertTrue(projected["_zilch_quick_holds"])
         self.assertNotIn("_scoreboards", game)

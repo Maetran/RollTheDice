@@ -271,6 +271,6 @@ def snapshot_zilch(game: GameDict) -> dict:
         "_zilch_turn_state": current_turn_state,
         "_zilch_quick_holds": [option.payload() for option in options],
         "_chat_history": list(game.get("_chat_history", []))[-CHAT_HISTORY_LIMIT:],
-        "_gameplay_status": "playable_alpha",
-        "_gameplay_notice": {"message_key": "zilch.preview.playable_alpha"},
+        "_gameplay_status": "playable",
+        "_gameplay_notice": {"message_key": "zilch.playable"},
     }

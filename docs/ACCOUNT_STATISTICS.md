@@ -57,8 +57,10 @@ Historical scores are not migrated, recalculated, or rewritten by this change.
 ## Separate Zilch statistics and leaderboards
 
 Zilch has a deliberately separate calculation path. Personal statistics and
-result history remain account-bound even though the Public Beta is available to
-every authenticated account. The calculation does not
+result history remain account-bound even though public Zilch is available to
+guests and active accounts. Guest games intentionally have no account identity
+and therefore never create a personal statistic, leaderboard row, or award.
+The calculation does not
 reuse ZDWA scorecards, `stats.json`, the public leaderboard JSON files,
 achievement metrics, or public player-profile APIs.
 
@@ -112,8 +114,9 @@ is the server-stored duration with pause and restart downtime excluded.
 
 `GET /api/zilch/leaderboards` accepts only a validated category, optional CPU
 strategy, offset, and a bounded limit (maximum 100). Its response contains no
-raw result payload, session, or connection data. All calls require the same
-authenticated-account policy as gameplay and use `Cache-Control: no-store`.
+raw result payload, session, or connection data. Guests may read the public
+tables; only the signed-in caller can receive an `own_entry`. Responses use
+`Cache-Control: no-store`.
 
 | Category | Eligible records | Ordering |
 | --- | --- | --- |
@@ -121,7 +124,7 @@ authenticated-account policy as gameplay and use `Cache-Control: no-store`.
 | `multiplayer_wins` | Human-vs-Human only | most wins; then fewer losses, more ties, higher final score, higher banked round |
 | `cpu_wins` | Human-vs-CPU for one selected strategy | most wins against that strategy; then fewer losses, more ties, higher final score, higher banked round |
 
-The protected Zilch UI lists the best compatible Solo run per active account, so one
+The public Zilch UI lists the best compatible Solo run per active account, so one
 account cannot fill the table with repeated runs. CPU tables remain separate
 for `conservative`, `normal`, and `aggressive`; no cross-difficulty rank is
 created. All three use Competition Ranking (`1, 2, 2, 4`) and show at most the
@@ -136,14 +139,15 @@ does not run ZDWA JSON cleanup or ZDWA achievement synchronization for Zilch.
 It invokes the Zilch-specific award cleanup described below; there is no restore
 workflow today.
 
-## Protected Zilch awards and player context
+## Zilch awards and player context
 
-Zilch awards are a separate, private namespace. They are not ZDWA
+Zilch awards are a separate namespace. They are not ZDWA
 achievements and do not reuse the ZDWA achievement catalog or rollout markers.
 Personal goals award 1–10 Zilch points and feed a separately calculated
 Zilch-rank ladder; they never add **Ehrenberg-Marken**, alter a ZDWA title or
 stars, or enter a public ZDWA profile/ranking. Zilch recognition remains
-visible only within the protected Zilch product context.
+visible only within the Zilch product context. The account collection remains
+private; a public, noindex player view exposes only safe award metadata.
 
 ### Source of truth and eligibility
 
@@ -198,14 +202,13 @@ tombstones that still reference Zilch award state. It removes stale evidence;
 it never scans ordinary completed results and can therefore never act as a
 retrospective unlock backfill.
 
-### Protected views and known data gaps
+### Account and public views
 
-`/zilch/erfolge` and `/zilch/spieler/{username}` are Zilch-context views, not
-public player profiles. They require the same authenticated-account policy as gameplay and
-must not expose ZDWA achievements or data to a user who is not otherwise
-allowed to see it. Historical display names may remain readable in a permitted
-result report, but deleted/inactive accounts and CPU seats are not award
-identities.
+`/zilch/erfolge` is the account collection. `/zilch/spieler/{username}` is a
+public, noindex Zilch-context player view. It never exposes ZDWA achievements,
+result URLs, source game IDs, evidence IDs, queue timestamps, or acknowledgement
+timestamps. Historical display names may remain readable in a permitted result
+report, but deleted/inactive accounts and CPU seats are not award identities.
 
 `GET /api/zilch/results` lists only rows linked to the current account through
 `GameParticipant.user_id`. `GET /api/zilch/results/{game_id}` and the matching
@@ -222,14 +225,15 @@ reconstructed from client state. Zilch awards have no public aggregate and no
 retrospective scan of unregistered results. Their cross-game points and rank
 are projections of durable Zilch unlock keys, not stored browser values.
 
-### Version-2 protected catalog, points, ranks, and APIs
+### Version-2 catalog, points, ranks, and APIs
 
 All keys are namespaced as `zilch.*` and are versioned separately from the
-ZDWA catalog. The expanded catalog contains 64 conditions supported by
+ZDWA catalog. The expanded catalog contains 72 conditions supported by
 validated result evidence. It includes the original milestones plus cumulative
 games/wins/banked points, 2,500–5,000-point rounds, Hot-Dice streaks, high-risk
 recoveries, close and decisive human wins, 1,000/2,000/3,000-point comebacks,
-start-roll reversals, fast human-vs-human finishes, and Solo turn/roll targets.
+start-roll reversals, fast human-vs-human finishes, Solo turn/roll targets,
+11,000–15,000 final scores, twenty-Zilch games, and competitive marathon wins.
 
 Point values are immutable catalog metadata. The possible positive-point total
 is derived from that catalog, and the ten familiar rank names are scaled from
@@ -256,12 +260,11 @@ registrations from their exact typed source loaded by game ID. It does not
 enumerate `CompletedGame`; validation failure rolls back the evidence and
 catalog marker together.
 
-The Zilch-only APIs are protected by the same authenticated-account policy as gameplay:
-`GET /api/zilch/achievements`, `GET /api/zilch/achievements/pending`,
-`POST /api/zilch/achievements/{key}/acknowledge`, and
-`GET /api/zilch/players/{username}/achievements`. The separate rank ladder is
-available at `GET /api/zilch/achievement-ranks`, and
-`GET /api/zilch/leaderboards?category=achievement_points` returns its protected
-competition ranking. These endpoints return only private
-Zilch award data; the last endpoint backs the private player-context page and
-does not become a public profile API.
+Account-only APIs are `GET /api/zilch/achievements`,
+`GET /api/zilch/achievements/pending`, and
+`POST /api/zilch/achievements/{key}/acknowledge`. Guests may read the safe
+`GET /api/zilch/players/{username}/achievements`, the rank ladder at
+`GET /api/zilch/achievement-ranks`, and
+`GET /api/zilch/leaderboards?category=achievement_points`. Public projections
+remove all award provenance and delivery state; the player endpoint therefore
+does not disclose a result or become a general account-profile API.

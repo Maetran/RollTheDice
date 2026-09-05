@@ -12,6 +12,11 @@ module.exports = defineConfig({
   timeout: 30000,
   fullyParallel: false,
   workers: 1,
+  // A browser process can occasionally disappear before a test has received
+  // its first context (not an assertion or application failure). Retry once
+  // in CI so this infrastructure-only launch flake does not hide a real
+  // product regression; a repeated UI assertion still fails the run.
+  retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI
     ? [["line"], ["html", { open: "never" }]]
     : "list",

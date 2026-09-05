@@ -14,7 +14,9 @@ from app.game_state import games
 from app.zilch_snapshot import snapshot_zilch
 from app.zilch_state import (
     ZILCH_CPU_MODE,
+    ZILCH_SOLO_MODE,
     configure_zilch_cpu_game,
+    configure_zilch_solo_game,
     join_zilch_player,
     new_zilch_game,
     start_zilch_game,
@@ -105,6 +107,36 @@ class ZilchCpuStateTestCase(TestCase):
         self.assertEqual(zilch_human_join_error(game, user_id=7), "zilch_cpu_human_seat_taken")
         with self.assertRaisesRegex(ValueError, "zilch_cpu_human_seat_taken"):
             join_zilch_player(game, {"id": "human-2", "name": "Mani", "user_id": 7, "ws": object()})
+
+    def test_guest_host_capability_is_hashed_and_can_open_only_its_cpu_or_solo_seat(self) -> None:
+        token = "guest-capability-token-which-is-long-enough"
+        cpu_game = self._new_game(game_id="zilch-guest-cpu")
+        configure_zilch_cpu_game(cpu_game, host_token=token, cpu_strategy="normal")
+
+        self.assertEqual(cpu_game["_play_mode"], ZILCH_CPU_MODE)
+        self.assertIsNone(cpu_game["_zilch_cpu_host_user_id"])
+        self.assertIn("_zilch_cpu_host_token_hash", cpu_game)
+        self.assertNotIn(token, repr(serializable_game_state(cpu_game)))
+        self.assertEqual(zilch_human_join_error(cpu_game, user_id=None, host_token="wrong"), "zilch_cpu_host_required")
+        self.assertIsNone(zilch_human_join_error(cpu_game, user_id=None, host_token=token))
+
+        guest_player = {"id": "guest-cpu", "name": "Gast", "user_id": None, "ws": object(), "_zilch_host_token": token}
+        join_zilch_player(cpu_game, guest_player)
+        self.assertNotIn("_zilch_host_token", guest_player)
+        self.assertNotIn(token, repr(serializable_game_state(cpu_game)))
+        self.assertEqual(zilch_human_join_error(cpu_game, user_id=None, host_token=token), "zilch_cpu_human_seat_taken")
+
+        solo_game = self._new_game(game_id="zilch-guest-solo")
+        configure_zilch_solo_game(solo_game, host_token=token)
+        self.assertEqual(solo_game["_play_mode"], ZILCH_SOLO_MODE)
+        self.assertIsNone(solo_game["_zilch_solo_host_user_id"])
+        self.assertNotIn(token, repr(serializable_game_state(solo_game)))
+        self.assertEqual(zilch_human_join_error(solo_game, user_id=None, host_token="wrong"), "zilch_solo_host_required")
+        join_zilch_player(
+            solo_game,
+            {"id": "guest-solo", "name": "Gast", "user_id": None, "ws": object(), "_zilch_host_token": token},
+        )
+        self.assertNotIn(token, repr(serializable_game_state(solo_game)))
 
     def test_legacy_human_multiplayer_snapshots_still_require_two_connections(self) -> None:
         game = self._new_game(game_id="zilch-hvh-legacy-connections")

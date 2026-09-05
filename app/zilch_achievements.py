@@ -50,10 +50,10 @@ from .zilch_solo_objective import ZILCH_SOLO_SPRINT_OBJECTIVE_ID, ZILCH_SOLO_SPR
 logger = logging.getLogger(__name__)
 
 ZILCH_ACHIEVEMENT_RESPONSE_VERSION: Final = 2
-# Version 3 keeps the public catalog payload at version 2, but guarantees that
-# installations which already ran the first expanded-catalog materialization
-# retry once with source-backed evidence enrichment.
-ZILCH_ACHIEVEMENT_CATALOG_VERSION: Final = 3
+# Version 4 adds high-score, long-match and twenty-Zilch families. It makes
+# installations that already materialized the previous catalog evaluate the
+# new definitions from their explicitly registered evidence exactly once.
+ZILCH_ACHIEVEMENT_CATALOG_VERSION: Final = 4
 ZILCH_ACHIEVEMENT_NAMESPACE: Final = "zilch."
 ZILCH_ACHIEVEMENT_DEFINITION_VERSION: Final = 1
 ZILCH_ACHIEVEMENT_RECOVERY_DEFAULT_LIMIT: Final = 50
@@ -988,6 +988,118 @@ ZILCH_ACHIEVEMENTS: Final[tuple[ZilchAchievementDefinition, ...]] = (
         requires_complete_history=True,
     ),
     _definition(
+        "final_score_11000",
+        category="scoring",
+        icon_key="star",
+        title_de="Über 11’000",
+        title_en="Over 11,000",
+        description_de="Eine Partie mit mindestens 11’000 eigenen Punkten beendet.",
+        description_en="Finish a game with at least 11,000 points of your own.",
+        criterion="final_score_at_least",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=2,
+        target=11_000,
+    ),
+    _definition(
+        "final_score_12000",
+        category="scoring",
+        icon_key="flame",
+        title_de="Biest",
+        title_en="Beast",
+        description_de="Eine Partie mit mindestens 12’000 eigenen Punkten beendet.",
+        description_en="Finish a game with at least 12,000 points of your own.",
+        criterion="final_score_at_least",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=4,
+        target=12_000,
+    ),
+    _definition(
+        "final_score_13000",
+        category="scoring",
+        icon_key="flame",
+        title_de="Monster",
+        title_en="Monster",
+        description_de="Eine Partie mit mindestens 13’000 eigenen Punkten beendet.",
+        description_en="Finish a game with at least 13,000 points of your own.",
+        criterion="final_score_at_least",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=6,
+        target=13_000,
+    ),
+    _definition(
+        "final_score_14000",
+        category="scoring",
+        icon_key="star",
+        title_de="Legende",
+        title_en="Legend",
+        description_de="Eine Partie mit mindestens 14’000 eigenen Punkten beendet.",
+        description_en="Finish a game with at least 14,000 points of your own.",
+        criterion="final_score_at_least",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=8,
+        target=14_000,
+    ),
+    _definition(
+        "final_score_15000",
+        category="scoring",
+        icon_key="star",
+        title_de="Krösus",
+        title_en="Croesus",
+        description_de="Eine Partie mit mindestens 15’000 eigenen Punkten beendet.",
+        description_en="Finish a game with at least 15,000 points of your own.",
+        criterion="final_score_at_least",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=10,
+        target=15_000,
+    ),
+    _definition(
+        "twenty_zilchs_one_game",
+        category="risk",
+        icon_key="flame",
+        title_de="Zilch-Chaos",
+        title_en="Zilch Chaos",
+        description_de="In einer abgeschlossenen Partie mindestens zwanzig Zilchs geworfen.",
+        description_en="Roll at least twenty Zilchs in one completed game.",
+        criterion="zilchs_in_game",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=10,
+        target=20,
+    ),
+    _definition(
+        "marathon_win_30_turns",
+        category="risk",
+        icon_key="flag",
+        title_de="Langer Abend",
+        title_en="Long Evening",
+        description_de="Eine Partie gegen Mensch oder CPU nach mindestens 30 Gesamtzügen gewonnen.",
+        description_en="Win against a human or CPU after at least 30 total turns.",
+        criterion="competitive_min_game_turns",
+        eligible_modes={"multiplayer", "cpu"},
+        result_schema_versions={1},
+        points=2,
+        target=30,
+    ),
+    _definition(
+        "marathon_win_50_turns",
+        category="risk",
+        icon_key="flag",
+        title_de="Wirtshaus-Marathon",
+        title_en="Tavern Marathon",
+        description_de="Eine Partie gegen Mensch oder CPU nach mindestens 50 Gesamtzügen gewonnen.",
+        description_en="Win against a human or CPU after at least 50 total turns.",
+        criterion="competitive_min_game_turns",
+        eligible_modes={"multiplayer", "cpu"},
+        result_schema_versions={1},
+        points=5,
+        target=50,
+    ),
+    _definition(
         "community_games_100",
         category="community",
         icon_key="star",
@@ -1745,6 +1857,9 @@ def _criterion_is_satisfied(definition: ZilchAchievementDefinition, facts: list[
     if criterion == "exact_target_score":
         target = int(definition.target or 0)
         return any(item.get("final_score") == target for item in applicable)
+    if criterion == "final_score_at_least":
+        target = int(definition.target or 0)
+        return any(int(item.get("final_score", 0)) >= target for item in applicable)
     if criterion == "combination":
         combination = _COMBINATION_BY_TARGET.get(definition.target)
         return any(combination in item["combination_types"] for item in applicable)
@@ -1823,6 +1938,14 @@ def _criterion_is_satisfied(definition: ZilchAchievementDefinition, facts: list[
             and 0 < int(item["game_turns"]) <= target
             for item in applicable
         )
+    if criterion == "competitive_min_game_turns":
+        target = int(definition.target or 0)
+        return any(
+            item.get("outcome") == "win"
+            and item.get("game_turns") is not None
+            and int(item["game_turns"]) >= target
+            for item in applicable
+        )
     if criterion == "solo_max_turns":
         target = int(definition.target or 0)
         return any(
@@ -1890,6 +2013,8 @@ def _progress_for_definition(
         current = sum(sum(int(value) for value in item["banked_rounds"]) for item in applicable)
     elif definition.criterion == "competitive_wins":
         current = sum(item.get("outcome") == "win" for item in applicable)
+    elif definition.criterion == "final_score_at_least":
+        current = max((int(item.get("final_score", 0)) for item in applicable), default=0)
     elif definition.criterion == "hot_dice_in_game":
         current = max(
             (
@@ -1940,6 +2065,15 @@ def _progress_for_definition(
                 int(item["max_deficit_before_finish"])
                 for item in applicable
                 if item.get("outcome") == "win" and item.get("max_deficit_before_finish") is not None
+            ),
+            default=0,
+        )
+    elif definition.criterion == "competitive_min_game_turns":
+        current = max(
+            (
+                int(item["game_turns"])
+                for item in applicable
+                if item.get("outcome") == "win" and item.get("game_turns") is not None
             ),
             default=0,
         )

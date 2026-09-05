@@ -62,7 +62,7 @@ def request_for(*, cookie: str = "") -> Request:
 
 
 class ZilchProductRoutesTestCase(TestCase):
-    """Private route, rules-projection and lobby-summary boundaries."""
+    """Zilch audience, SEO, rules-projection and lobby-summary boundaries."""
 
     def setUp(self) -> None:
         self.game_ids: list[str] = []
@@ -77,6 +77,7 @@ class ZilchProductRoutesTestCase(TestCase):
                 "ROLLTHEDICE_ZILCH_ORIGIN": "https://zilch.zockdiewandan.online",
                 "ROLLTHEDICE_TURNSTILE_SITE_KEY": "",
                 "ROLLTHEDICE_TURNSTILE_SECRET": "",
+                "ROLLTHEDICE_ZILCH_ACCESS_MODE": "preview",
                 "ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES": "",
             },
         )
@@ -370,19 +371,24 @@ class ZilchProductRoutesTestCase(TestCase):
             "https://zockdiewandan.online/auth/continue?app=zilch&path=%2F",
         )
 
-    def test_zilch_host_blocks_the_zdwa_pwa_and_all_crawler_entry_points(self) -> None:
+    def test_private_zilch_host_blocks_the_zdwa_pwa_and_crawler_discovery(self) -> None:
         host = "zilch.zockdiewandan.online"
         robots = self._get("/robots.txt", host=host)
         self.assertEqual(robots.status_code, 200)
         self.assertEqual(robots.text, "User-agent: *\nDisallow: /\n")
-        self.assertEqual(robots.headers["x-robots-tag"], "noindex, nofollow")
+        self.assertNotIn("x-robots-tag", robots.headers)
 
-        for path in ("/manifest.webmanifest", "/manifest-en.webmanifest", "/sw.js", "/sitemap.xml"):
+        for path in ("/manifest.webmanifest", "/manifest-en.webmanifest", "/sw.js"):
             with self.subTest(path=path):
                 response = self._get(path, host=host)
                 self.assertEqual(response.status_code, 404)
                 self.assertIn("no-store", response.headers["cache-control"])
                 self.assertEqual(response.headers["x-robots-tag"], "noindex, nofollow")
+
+        sitemap = self._get("/sitemap.xml", host=host)
+        self.assertEqual(sitemap.status_code, 404)
+        self.assertIn("no-store", sitemap.headers["cache-control"])
+        self.assertNotIn("x-robots-tag", sitemap.headers)
 
     def test_explicit_allowlist_uses_the_same_private_rules_route_policy(self) -> None:
         _preview_id, preview_token = self._identity("PreviewFriend")
@@ -393,6 +399,63 @@ class ZilchProductRoutesTestCase(TestCase):
             self.assertEqual(self._get("/zilch/bestenlisten", preview_token).status_code, 200)
             self.assertEqual(self._get("/zilch/regeln", preview_token).status_code, 200)
             self.assertEqual(self._get("/api/zilch/rules", preview_token).status_code, 200)
+
+    def test_public_mode_admits_guests_but_keeps_account_data_private(self) -> None:
+        with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "public"}):
+            auth = self._get("/api/auth/me")
+            self.assertEqual(auth.status_code, 200)
+            self.assertFalse(auth.json()["authenticated"])
+            self.assertEqual(auth.json()["game_access"], {"zilch_preview": True, "zilch_public": True})
+
+            for path in ("/", "/regeln"):
+                with self.subTest(path=path):
+                    response = self._get(path, host="zilch.zockdiewandan.online")
+                    self.assertEqual(response.status_code, 200)
+                    self.assertNotIn("noindex", response.headers.get("x-robots-tag", ""))
+                    self.assertNotIn('name="robots" content="noindex, nofollow"', response.text)
+                    self.assertEqual(
+                        response.headers["link"],
+                        f"<https://zilch.zockdiewandan.online{path}>; rel=\"canonical\"",
+                    )
+                    self.assertIn("data-zilch-root", response.text)
+
+            robots = self._get("/robots.txt", host="zilch.zockdiewandan.online")
+            self.assertEqual(robots.status_code, 200)
+            self.assertIn("Allow: /", robots.text)
+            self.assertIn("Sitemap: https://zilch.zockdiewandan.online/sitemap.xml", robots.text)
+            sitemap = self._get("/sitemap.xml", host="zilch.zockdiewandan.online")
+            self.assertEqual(sitemap.status_code, 200)
+            self.assertIn("https://zilch.zockdiewandan.online/</loc>", sitemap.text)
+            self.assertIn("https://zilch.zockdiewandan.online/regeln</loc>", sitemap.text)
+
+            for path in ("/bestenlisten", "/spieler/does-not-matter"):
+                with self.subTest(path=path):
+                    response = self._get(path, host="zilch.zockdiewandan.online")
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.headers["x-robots-tag"], "noindex, nofollow")
+
+            self.assertEqual(self._get("/api/zilch/rules").status_code, 200)
+            self.assertEqual(self._get("/api/zilch/leaderboards/categories").status_code, 200)
+            self.assertEqual(self._get("/api/zilch/leaderboards?category=solo_sprint").status_code, 200)
+            self.assertEqual(self._get("/api/zilch/statistics").status_code, 401)
+            self.assertEqual(self._get("/statistiken", host="zilch.zockdiewandan.online").status_code, 401)
+
+            create = main.CreateReq.model_validate(
+                {
+                    "name": "Gast gegen CPU",
+                    "mode": "2",
+                    "game_type": "zilch",
+                    "play_mode": "cpu",
+                    "cpu_strategy": "normal",
+                }
+            )
+            with patch("app.main.enforce_game_creation_rate_limit"):
+                created = asyncio.run(main.api_games_create(create, request_for()))
+            game_id = created["game_id"]
+            self.game_ids.append(game_id)
+            self.assertRegex(created["host_token"], r"^[A-Za-z0-9_-]{32,}$")
+            self.assertIsNone(games[game_id]["_zilch_cpu_host_user_id"])
+            self.assertNotIn(created["host_token"], repr(games[game_id]))
 
     def test_private_zilch_routes_are_not_globally_precached_by_the_shared_pwa(self) -> None:
         service_worker = (main.STATIC_DIR / "sw.js").read_text(encoding="utf-8")

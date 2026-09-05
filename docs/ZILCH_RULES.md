@@ -1,10 +1,11 @@
 # Zilch-Regelvertrag (intern)
 
 Stand: `zilch-house-v1`. Dieses Dokument ist der verbindliche Regelvertrag für
-die serverseitige Engine. Zilch ist eine geschützte Public Beta für alle
-aktiven, angemeldeten Konten; anonyme Gäste bleiben ausgeschlossen. Die
-loginpflichtige Oberfläche und ihre personalisierten Routen bleiben `noindex`.
-Es gibt noch keine anonym lesbare, canonical Zilch-Regel- oder Landingpage.
+die serverseitige Engine. Zilch ist öffentlich: Gäste und aktive Konten können
+spielen. Gäste erhalten bewusst keine kontogebundene Historie, Statistik,
+Ranglistenposition oder Erfolge. Persönliche Routen bleiben `noindex`; die
+Zilch-Lobby und die Regelseite auf der Zilch-Subdomain sind canonical und
+indexierbar.
 
 ## Begriffe
 
@@ -271,13 +272,14 @@ wird der aktive Terminal-State entfernt.
 
 Der Report ist ausschließlich über die geschützte, `noindex`
 Zilch-Ergebnisroute und die persönliche eigene Historie erreichbar. Die beiden
-verknüpften menschlichen Teilnehmer dürfen ein kompetitives Ergebnis lesen; ein
+verknüpften Konto-Teilnehmer dürfen ein kompetitives Ergebnis lesen; ein
 anderes Konto erhält ein nicht unterscheidbares 404. Solo-Ergebnisse bleiben auf
-ihren verknüpften Teilnehmer beschränkt, und die HTTP-Projektion enthält keine
-internen `user_id`-Werte. Der Report wird
+ihren verknüpften Konto-Teilnehmer beschränkt, und die HTTP-Projektion enthält
+keine internen `user_id`-Werte. Gast-Endstände bleiben im aktuellen Spielzustand,
+erzeugen aber weder Report-URL noch persönliche Historie. Der Report wird
 weiterhin **nicht** in ZDWA-Historie, Scorecards, Replay, Statistik,
 Leaderboard, Achievement- oder Profilaggregate geschrieben. Die getrennten
-privaten Zilch-Statistiken und Bestenlisten lesen ausschließlich validierte
+persönlichen Zilch-Statistiken und öffentlichen Bestenlisten lesen ausschließlich validierte
 abgeschlossene Zilch-Payloads; sie verändern weder Ergebnisse noch Regeln.
 Ihre Darstellung ist bewusst kuratiert: Sie zeigt nur für Spielvergleich und
 persönlichen Rückblick nützliche Zusammenfassungen und Bestenlisten, nicht
@@ -287,7 +289,7 @@ protokolliert; die Anwendung erfindet keine Werte.
 
 ### Geschützte Zilch-Erfolge sind keine Spielregel
 
-Private Zilch-Erfolge bilden einen eigenen, geschützten Zilch-Namensraum. Sie
+Zilch-Erfolge bilden einen eigenen, geschützten Zilch-Namensraum. Sie
 sind weder ZDWA-Erfolge noch **Ehrenberg-Marken**: persönliche Ziele bringen
 1–10 Zilch-Punkte und ergeben ausschließlich einen Zilch-Rang. Sie ändern
 keine ZDWA-Titel, Sterne, öffentlichen Profile, Ranglisten, Statistiken oder
@@ -319,28 +321,31 @@ Moment bestehen. Sie geben immer 0 Punkte. Das berührt weder ZDWA-Aggregate
 noch Ehrenberg-Marken.
 Unbekannte, unvollständige oder beschädigte Ergebnis-Payloads, CPU-Sitze und
 alte Daten ohne die erforderliche Evidenz bleiben absichtlich ohne Erfolg. Die
-geschützten Ansichten `/zilch/erfolge` und `/zilch/spieler/{username}` unterliegen
-derselben Konto-Policy wie die Partie und bleiben `noindex`; sie sind keine
-öffentlichen Spielerprofile. Der technische Auslieferungs-, Widerrufs- und
+Ansichten `/zilch/erfolge` und `/zilch/spieler/{username}` trennen Konto- und
+Öffentlichkeitsgrenze: Die eigene Sammlung bleibt kontogebunden; die öffentliche
+Spieleransicht zeigt nur Titel, Fortschritt und Award-Status, niemals Quellspiel,
+Ergebnisroute oder Evidenz. Die öffentliche Spieleransicht bleibt `noindex`.
+Der technische Auslieferungs-, Widerrufs- und
 Katalogvertrag steht in [ACCOUNT_STATISTICS.md](ACCOUNT_STATISTICS.md); er ist
 keine zusätzliche Zilch-Spielregel.
 
 Die Zilch-Navigation führt nur zu funktionierenden Bereichen:
 `/zilch` (Lobby), `/zilch/spiel/{id}` (Partie), `/zilch/historie` (eigene
 abgeschlossene Partien), `/zilch/ergebnis/{id}` (read-only Ergebnis),
-`/zilch/statistiken` (eigene Auswertung), `/zilch/bestenlisten` (private
-Ranglisten), `/zilch/erfolge` (private Erfolge),
-`/zilch/spieler/{username}` (privater Zilch-Spielerkontext) und `/zilch/regeln`
+`/zilch/statistiken` (eigene Auswertung), `/zilch/bestenlisten` (öffentliche
+Ranglisten), `/zilch/erfolge` (eigene Erfolge),
+`/zilch/spieler/{username}` (öffentlicher, evidenzfreier Zilch-Spielerkontext) und `/zilch/regeln`
 (diese Regeln als lokalisierte In-App-Hilfe).
-Alle diese Routen
-sind serverseitig durch dieselbe Konto-Policy geschützt und bleiben
-`noindex`; die Regelseite ist weder öffentlich noch eine zweite verbindliche
-Regelquelle. Gemeinsame Konto- und Spracheinstellungen bleiben Plattformfunktionen
-und führen bei gültiger Berechtigung zurück zur Zilch-Lobby.
+Konto, Historie, Ergebnis, Statistiken und eigene Erfolge sind serverseitig
+kontogebunden. Lobby, Regeln, Bestenlisten und die sichere Spieleransicht sind
+öffentlich; nur Lobby und Regeln erscheinen im Zilch-Sitemap. Gemeinsame Konto-
+und Spracheinstellungen bleiben Plattformfunktionen und führen bei gültiger
+Berechtigung zurück zur Zilch-Lobby.
 
-Produktion verwendet `ROLLTHEDICE_ZILCH_ACCESS_MODE=authenticated`; damit kann
-jedes aktive angemeldete Konto Solo, CPU oder eine Zwei-Menschen-Partie öffnen.
-Der ältere Modus `preview` samt
+Produktion verwendet `ROLLTHEDICE_ZILCH_ACCESS_MODE=public`; damit können Gäste
+und aktive Konten Solo, CPU oder eine Zwei-Menschen-Partie öffnen. Ein Gast-Host
+für Solo/CPU erhält eine lokale Zufallsberechtigung; serverseitig wird nur deren
+Hash gespeichert. Der ältere Modus `preview` samt
 `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` bleibt ausschließlich als fail-closed
 Betriebsrollback dokumentiert und ist nicht der Public-Beta-Standard.
 

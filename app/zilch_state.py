@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Final, Literal
@@ -52,6 +54,46 @@ ZILCH_CPU_PARTICIPANT: Final[ZilchParticipantType] = "cpu"
 ZILCH_CPU_STRATEGIES: Final[frozenset[str]] = _CPU_STRATEGY_NAMES
 ZILCH_START_ROLL_AWAITING: Final = "awaiting_rolls"
 ZILCH_START_ROLL_RESOLVED: Final = "resolved"
+
+
+def _normalized_guest_host_token(value: object) -> str | None:
+    """Accept only an opaque, browser-storable creator token.
+
+    The raw token is returned once from creation and lives only in the
+    creator's session storage. Active-game state stores its digest, never the
+    token itself, so a database backup cannot claim a guest's solo/CPU seat.
+    """
+    if not isinstance(value, str):
+        return None
+    token = value.strip()
+    if not 32 <= len(token) <= 128 or not token.isascii():
+        return None
+    if not all(character.isalnum() or character in "-_" for character in token):
+        return None
+    return token
+
+
+def _guest_host_token_digest(value: object) -> str | None:
+    token = _normalized_guest_host_token(value)
+    return hashlib.sha256(token.encode("ascii")).hexdigest() if token else None
+
+
+def _configure_zilch_host(
+    game: GameDict,
+    *,
+    user_id: int | None,
+    host_token: object,
+    user_key: str,
+    token_hash_key: str,
+    required_code: str,
+) -> None:
+    """Store exactly one durable creator credential for a private seat."""
+    has_user = type(user_id) is int and user_id >= 1
+    token_digest = _guest_host_token_digest(host_token)
+    if has_user == bool(token_digest):
+        raise ValueError(required_code)
+    game[user_key] = user_id if has_user else None
+    game[token_hash_key] = token_digest
 
 
 def validate_zilch_mode(mode: object) -> str:
@@ -243,7 +285,7 @@ def zilch_cpu_participant(game: GameDict) -> dict | None:
     return None
 
 
-def zilch_human_join_error(game: GameDict, *, user_id: object) -> str | None:
+def zilch_human_join_error(game: GameDict, *, user_id: object, host_token: object = None) -> str | None:
     """Return a machine-readable reason when a human cannot take a Zilch seat.
 
     Common session code can use this before allocating a resume token.  It is
@@ -260,8 +302,15 @@ def zilch_human_join_error(game: GameDict, *, user_id: object) -> str | None:
     expected_host = game.get(
         "_zilch_cpu_host_user_id" if play_mode == ZILCH_CPU_MODE else "_zilch_solo_host_user_id"
     )
+    expected_token_hash = game.get(
+        "_zilch_cpu_host_token_hash" if play_mode == ZILCH_CPU_MODE else "_zilch_solo_host_token_hash"
+    )
     if type(expected_host) is int:
         if type(user_id) is not int or user_id != expected_host:
+            return "zilch_cpu_host_required" if play_mode == ZILCH_CPU_MODE else "zilch_solo_host_required"
+    elif isinstance(expected_token_hash, str) and expected_token_hash:
+        candidate_hash = _guest_host_token_digest(host_token)
+        if not candidate_hash or not hmac.compare_digest(candidate_hash, expected_token_hash):
             return "zilch_cpu_host_required" if play_mode == ZILCH_CPU_MODE else "zilch_solo_host_required"
     if len(game.get("_players", [])) >= zilch_expected_connection_count(game):
         return "zilch_cpu_human_seat_taken" if play_mode == ZILCH_CPU_MODE else "zilch_solo_human_seat_taken"
@@ -271,8 +320,9 @@ def zilch_human_join_error(game: GameDict, *, user_id: object) -> str | None:
 def configure_zilch_cpu_game(
     game: GameDict,
     *,
-    host_user_id: int,
     cpu_strategy: object,
+    host_user_id: int | None = None,
+    host_token: str | None = None,
     cpu_name: str = "CPU",
 ) -> dict:
     """Configure a freshly created two-seat Zilch game for one human and CPU.
@@ -283,8 +333,6 @@ def configure_zilch_cpu_game(
     fields (name, passphrase, chat and lifecycle) while making ``_players`` a
     strictly transport-bound collection.
     """
-    if type(host_user_id) is not int or host_user_id < 1:
-        raise ValueError("zilch_cpu_host_required")
     if game.get("_started") or game.get("_finished") or game.get("_aborted"):
         raise ValueError("zilch_cpu_configuration_not_new")
     if game.get("_players") or game.get("_participants"):
@@ -293,6 +341,14 @@ def configure_zilch_cpu_game(
     if not game_id:
         raise ValueError("zilch_cpu_missing_game_id")
     strategy = validate_zilch_cpu_strategy(cpu_strategy)
+    _configure_zilch_host(
+        game,
+        user_id=host_user_id,
+        host_token=host_token,
+        user_key="_zilch_cpu_host_user_id",
+        token_hash_key="_zilch_cpu_host_token_hash",
+        required_code="zilch_cpu_host_required",
+    )
     cpu_id = f"cpu-{game_id}"
     cpu = new_zilch_participant(
         cpu_id,
@@ -306,7 +362,6 @@ def configure_zilch_cpu_game(
     game["_play_mode"] = ZILCH_CPU_MODE
     game["_expected"] = ZILCH_MAX_PLAYERS
     game["_expected_connections"] = 1
-    game["_zilch_cpu_host_user_id"] = host_user_id
     game["_zilch_cpu_participant_id"] = cpu_id
     game["_participants"] = [cpu]
     game.setdefault("_zilch_boards", {})[cpu_id] = new_zilch_board(cpu_id)
@@ -381,19 +436,29 @@ def _store_solo_objective_state(game: GameDict, state) -> None:
     game["_zilch_solo_error"] = None
 
 
-def configure_zilch_solo_game(game: GameDict, *, host_user_id: int) -> None:
+def configure_zilch_solo_game(
+    game: GameDict,
+    *,
+    host_user_id: int | None = None,
+    host_token: str | None = None,
+) -> None:
     """Configure a new one-human Sprint without a fake opponent or start roll."""
-    if type(host_user_id) is not int or host_user_id < 1:
-        raise ValueError("zilch_solo_host_required")
     if game.get("_started") or game.get("_finished") or game.get("_aborted"):
         raise ValueError("zilch_solo_configuration_not_new")
     if game.get("_players") or game.get("_participants"):
         raise ValueError("zilch_solo_configuration_not_new")
+    _configure_zilch_host(
+        game,
+        user_id=host_user_id,
+        host_token=host_token,
+        user_key="_zilch_solo_host_user_id",
+        token_hash_key="_zilch_solo_host_token_hash",
+        required_code="zilch_solo_host_required",
+    )
     game["_mode"] = "1"
     game["_play_mode"] = ZILCH_SOLO_MODE
     game["_expected"] = ZILCH_MIN_PLAYERS
     game["_expected_connections"] = ZILCH_MIN_PLAYERS
-    game["_zilch_solo_host_user_id"] = host_user_id
     game["_zilch_solo_active_since"] = None
     game["_zilch_solo_paused_at"] = None
     _store_solo_objective_state(game, new_zilch_solo_objective_state())
@@ -584,12 +649,14 @@ def new_zilch_game(gid: str, name: str, mode: object) -> GameDict:
         # future CPU participants will only exist here.
         "_participants": [],
         "_zilch_cpu_host_user_id": None,
+        "_zilch_cpu_host_token_hash": None,
         "_zilch_cpu_participant_id": None,
         # A true Solo run is configured explicitly by the protected create
         # endpoint. Keeping the legacy mode-1 factory state empty prevents an
         # old scaffold or malformed snapshot from receiving invented Sprint
         # progress, a host identity, or a direct-start lifecycle.
         "_zilch_solo_host_user_id": None,
+        "_zilch_solo_host_token_hash": None,
         "_zilch_solo_objective": None,
         "_zilch_solo_metrics": None,
         "_zilch_solo_active_since": None,
@@ -662,7 +729,10 @@ def join_zilch_player(game: GameDict, player: dict) -> None:
     player_id = str(player["id"])
     if not player_id:
         raise ValueError("zilch_invalid_human_player")
-    if join_error := zilch_human_join_error(game, user_id=player.get("user_id")):
+    # The raw guest creator token is consumed for the seat check and removed
+    # before the common transport object is persisted or broadcast.
+    host_token = player.pop("_zilch_host_token", None)
+    if join_error := zilch_human_join_error(game, user_id=player.get("user_id"), host_token=host_token):
         raise ValueError(join_error)
     players = game.setdefault("_players", [])
     if any(str(existing.get("id") or "") == player_id for existing in players if isinstance(existing, dict)):

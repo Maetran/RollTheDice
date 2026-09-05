@@ -79,14 +79,15 @@ export function applyZilchRouteLinks(scope = document, locationLike = window.loc
 }
 
 /**
- * Production enters Zilch through the apex continuation endpoint so an
- * existing host-only login can be upgraded to the shared domain cookie before
- * the handoff to the subdomain. Local and legacy installs navigate directly.
+ * Zilch has a public lobby. New production navigation therefore reaches the
+ * subdomain directly instead of forcing guests through a login handoff. The
+ * apex continuation endpoint remains the explicit sign-in bridge and safely
+ * promotes an older host-only account cookie when somebody chooses to use it.
  */
 export function zilchAppEntryUrl(route = "/", locationLike = window.location) {
   const destination = normalizedRoute(route);
   if (!isProductionZdwaLocation(locationLike)) return zilchPath(destination, locationLike);
-  return `${ZDWA_PRODUCTION_ORIGIN}/auth/continue?app=zilch&path=${encodeURIComponent(destination)}`;
+  return `https://${ZILCH_PRODUCTION_HOST}${destination}`;
 }
 
 export function zdwaAppEntryUrl(locationLike = window.location) {

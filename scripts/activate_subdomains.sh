@@ -14,7 +14,7 @@ EXPECTED_TTL="${EXPECTED_TTL:-3600}"
 TURNSTILE_HOSTNAMES_CONFIRMED="${TURNSTILE_HOSTNAMES_CONFIRMED:-0}"
 COOKIE_TRUST_ZONE_CONFIRMED="${COOKIE_TRUST_ZONE_CONFIRMED:-0}"
 CONTAINER_NAME="${CONTAINER_NAME:-rollthedice}"
-EXPECTED_ZILCH_ACCESS_MODE="${EXPECTED_ZILCH_ACCESS_MODE:-authenticated}"
+EXPECTED_ZILCH_ACCESS_MODE="${EXPECTED_ZILCH_ACCESS_MODE:-public}"
 
 BASE_DOMAIN="zockdiewandan.online"
 DOMAINS=(
@@ -223,8 +223,12 @@ check_runtime() {
       || fail "Backend health check failed with Host: $entry"
   done
 
-  [[ "$(curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' -H 'Host: zilch.zockdiewandan.online' http://127.0.0.1:8000/)" == "303" ]] \
-    || fail "The deployed app is not yet serving the unauthenticated Zilch-host handoff"
+  local zilch_root_status="303"
+  if [[ "$zilch_access_mode" == "public" ]]; then
+    zilch_root_status="200"
+  fi
+  [[ "$(curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' -H 'Host: zilch.zockdiewandan.online' http://127.0.0.1:8000/)" == "$zilch_root_status" ]] \
+    || fail "Unexpected unauthenticated Zilch-host root status for access mode $zilch_access_mode"
   [[ "$(curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' -H 'Host: zilch.zockdiewandan.online' http://127.0.0.1:8000/sw.js)" == "404" ]] \
     || fail "The Zilch host must not expose the root-scoped service worker"
   [[ "$(curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' -H 'Host: zilch.zockdiewandan.online' http://127.0.0.1:8000/manifest.webmanifest)" == "404" ]] \

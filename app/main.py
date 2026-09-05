@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import secrets
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -69,10 +70,11 @@ from .product_hosts import (
     safe_zilch_path,
     site_origin,
     validate_product_host_config,
+    zilch_origin,
     zilch_url,
 )
 from .security import normalize_username
-from .site_seo import robots_document, sitemap_document
+from .site_seo import robots_document, sitemap_document, zilch_page_is_indexable
 from .zilch_achievements import (
     ZilchAchievementError,
     ZilchAchievementSyncError,
@@ -272,7 +274,12 @@ async def response_cache_policy(request: Request, call_next):
     # ``zilch.html`` is an implementation artifact used by the protected
     # routes below.  Unlike public static assets, it must never become a
     # second, unauthenticated page entry point through the static mount.
-    if request.url.path in {"/static/zilch.html", "/static/zilch-login.html"}:
+    if request.url.path in {
+        "/static/zilch.html",
+        "/static/zilch-login.html",
+        "/static/zilch-lobby.html",
+        "/static/zilch-rules.html",
+    }:
         headers = {"Cache-Control": "no-store"}
         if zilch_host:
             headers["X-Robots-Tag"] = "noindex, nofollow"
@@ -283,8 +290,22 @@ async def response_cache_policy(request: Request, call_next):
     else:
         response = await call_next(request)
     apply_cache_policy(request, response, asset_version=STATIC_ASSET_VERSION)
-    if zilch_host:
+    public_zilch_document = bool(
+        zilch_host
+        and can_access_zilch_preview(None)
+        and zilch_page_is_indexable(request.url.path)
+    )
+    if (
+        zilch_host
+        and request.url.path not in {"/robots.txt", "/sitemap.xml"}
+        and not public_zilch_document
+    ):
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    if public_zilch_document:
+        # The Zilch origin owns its two indexable documents. A response-level
+        # canonical also keeps the SPA shell honest when a crawler reaches the
+        # clean subdomain route directly rather than through its HTML head.
+        response.headers["Link"] = f'<{zilch_url(request.url.path)}>; rel="canonical"'
     return response
 
 
@@ -329,7 +350,12 @@ def favicon():
 def robots_txt(request: Request) -> str:
     """Expose crawler rules and the canonical sitemap location."""
     if is_zilch_host(request):
-        return "User-agent: *\nDisallow: /\n"
+        # A preview rollback must not accidentally advertise a sitemap that
+        # contains the future public Zilch documents. Once public access is
+        # explicitly enabled, the same origin owns its canonical crawl surface.
+        if not can_access_zilch_preview(None):
+            return "User-agent: *\nDisallow: /\n"
+        return robots_document(origin=zilch_origin())
     return robots_document()
 
 
@@ -337,8 +363,10 @@ def robots_txt(request: Request) -> str:
 def sitemap_xml(request: Request) -> Response:
     """List the stable public pages that are useful in search results."""
     if is_zilch_host(request):
-        return Response(status_code=404, headers={"Cache-Control": "no-store"})
-    return Response(content=sitemap_document(), media_type="application/xml")
+        if not can_access_zilch_preview(None):
+            return Response(status_code=404, headers={"Cache-Control": "no-store"})
+        return Response(content=sitemap_document(origin=zilch_origin()), media_type="application/xml")
+    return Response(content=sitemap_document(origin=site_origin()), media_type="application/xml")
 
 
 def _page(filename: str) -> FileResponse:
@@ -380,7 +408,7 @@ def achievement_rank_legend_page(request: Request):
 @app.get("/konto", include_in_schema=False)
 def account_page(request: Request):
     if is_zilch_host(request):
-        return _serve_zilch_shell(request)
+        return _serve_zilch_account_shell(request)
     return _page("account.html")
 
 
@@ -408,11 +436,21 @@ def room_page(game_id: str, request: Request):
 
 
 def _require_zilch_preview(request: Request):
-    """Resolve the session once and enforce the central Zilch preview policy."""
+    """Require an account for personal Zilch data and account actions."""
     identity = resolve_session(request)
     if not identity:
         raise HTTPException(status_code=401, detail="authentication_required")
     if not can_access_zilch_preview(identity):
+        raise HTTPException(status_code=403, detail="zilch_preview_required")
+    return identity
+
+
+def _require_zilch_access(request: Request):
+    """Apply public/private Zilch audience policy without requiring an account."""
+    identity = resolve_session(request)
+    if not can_access_zilch_preview(identity):
+        if identity is None:
+            raise HTTPException(status_code=401, detail="authentication_required")
         raise HTTPException(status_code=403, detail="zilch_preview_required")
     return identity
 
@@ -433,39 +471,50 @@ def _zilch_handoff_url(request: Request) -> str:
 
 def _resolve_zilch_access(request: Request):
     identity = resolve_session(request)
+    if can_access_zilch_preview(identity):
+        return identity, None
     if not identity:
         if is_zilch_host(request):
             return None, RedirectResponse(_zilch_handoff_url(request), status_code=303)
         raise HTTPException(status_code=401, detail="authentication_required")
-    if not can_access_zilch_preview(identity):
-        if is_zilch_host(request):
-            return None, RedirectResponse(f"{site_origin()}/zilch/anmelden", status_code=303)
-        raise HTTPException(status_code=403, detail="zilch_preview_required")
-    return identity, None
+    if is_zilch_host(request):
+        return None, RedirectResponse(f"{site_origin()}/zilch/anmelden", status_code=303)
+    raise HTTPException(status_code=403, detail="zilch_preview_required")
 
 
 def _serve_zilch_shell(request: Request):
-    """Serve Zilch or move a new subdomain visitor through the apex login handoff."""
+    """Serve the public Zilch shell or enforce a configured private rollout."""
     _identity, redirect = _resolve_zilch_access(request)
     if redirect:
         return redirect
+    # The implementation shell stays noindex so every account, room and legacy
+    # route is private by default. Only the two dedicated public documents on
+    # the actual Zilch origin carry canonical and Open Graph markup.
+    if (
+        is_zilch_host(request)
+        and can_access_zilch_preview(None)
+        and zilch_page_is_indexable(request.url.path)
+    ):
+        filename = "zilch-rules.html" if request.url.path == "/regeln" else "zilch-lobby.html"
+        return _page(filename)
+    return _page("zilch.html")
+
+
+def _serve_zilch_account_shell(request: Request):
+    """Serve an account-only Zilch page while public lobby pages stay open."""
+    _require_zilch_preview(request)
     return _page("zilch.html")
 
 
 @app.get("/zilch", include_in_schema=False)
 def zilch_preview_page(request: Request):
-    """Serve the internal, noindex Zilch shell only to the preview identity."""
+    """Serve the Zilch lobby according to the central audience policy."""
     return _serve_zilch_shell(request)
 
 
 @app.get("/zilch/anmelden", include_in_schema=False)
 def zilch_login_page():
-    """Provide a direct, noindex account entry before the protected Zilch shell.
-
-    This is intentionally public: a future Zilch subdomain needs a place to
-    establish the shared account session. Access to the game itself remains
-    enforced by ``_require_zilch_preview`` after sign-in.
-    """
+    """Provide a direct, noindex account entry for stats and achievements."""
     return _page("zilch-login.html")
 
 
@@ -484,9 +533,7 @@ def zilch_room_page(game_id: str, request: Request):
 @app.get("/zilch/ergebnis/{game_id}", include_in_schema=False)
 def zilch_result_page(game_id: str, request: Request):
     """Serve the noindex Zilch shell for one participant-owned result."""
-    identity, redirect = _resolve_zilch_access(request)
-    if redirect:
-        return redirect
+    identity = _require_zilch_preview(request)
     if load_zilch_result_for_user(game_id, identity.user_id) is None:
         # Do not distinguish an unknown ID, a ZDWA ID, or a malformed private
         # Zilch payload at this route.
@@ -497,42 +544,42 @@ def zilch_result_page(game_id: str, request: Request):
 @app.get("/zilch/historie", include_in_schema=False)
 def zilch_history_page(request: Request):
     """Serve the private, noindex Zilch shell for the history view."""
-    return _serve_zilch_shell(request)
+    return _serve_zilch_account_shell(request)
 
 
 @app.get("/zilch/statistiken", include_in_schema=False)
 def zilch_statistics_page(request: Request):
     """Serve the private, noindex Zilch shell for personal statistics."""
-    return _serve_zilch_shell(request)
+    return _serve_zilch_account_shell(request)
 
 
 @app.get("/zilch/bestenlisten", include_in_schema=False)
 def zilch_leaderboards_page(request: Request):
-    """Serve the private, noindex Zilch shell for Zilch leaderboards."""
+    """Serve the public Zilch leaderboard shell."""
     return _serve_zilch_shell(request)
 
 
 @app.get("/zilch/erfolge", include_in_schema=False)
 def zilch_achievements_page(request: Request):
     """Serve the private noindex Zilch award collection."""
-    return _serve_zilch_shell(request)
+    return _serve_zilch_account_shell(request)
 
 
 @app.get("/zilch/konto", include_in_schema=False)
 def zilch_account_page(request: Request):
     """Serve the private Zilch account, including its separate awards."""
-    return _serve_zilch_shell(request)
+    return _serve_zilch_account_shell(request)
 
 
 @app.get("/zilch/spieler/{username}", include_in_schema=False)
 def zilch_player_achievements_page(username: str, request: Request):
-    """Serve a private Zilch-context award profile, never the public ZDWA one."""
+    """Serve a public Zilch-context award profile without game evidence."""
     return _serve_zilch_shell(request)
 
 
 @app.get("/zilch/regeln", include_in_schema=False)
 def zilch_rules_page(request: Request):
-    """Serve the private, noindex Zilch shell for the rules view."""
+    """Serve the public Zilch rule guide."""
     return _serve_zilch_shell(request)
 
 
@@ -548,14 +595,14 @@ def zilch_subdomain_login_page(request: Request, return_to: str = Query(default=
 def zilch_subdomain_history_page(request: Request):
     if not is_zilch_host(request):
         raise HTTPException(status_code=404, detail="not_found")
-    return _serve_zilch_shell(request)
+    return _serve_zilch_account_shell(request)
 
 
 @app.get("/statistiken", include_in_schema=False)
 def zilch_subdomain_statistics_page(request: Request):
     if not is_zilch_host(request):
         raise HTTPException(status_code=404, detail="not_found")
-    return _serve_zilch_shell(request)
+    return _serve_zilch_account_shell(request)
 
 
 @app.get("/bestenlisten", include_in_schema=False)
@@ -569,7 +616,7 @@ def zilch_subdomain_leaderboards_page(request: Request):
 def zilch_subdomain_achievements_page(request: Request):
     if not is_zilch_host(request):
         raise HTTPException(status_code=404, detail="not_found")
-    return _serve_zilch_shell(request)
+    return _serve_zilch_account_shell(request)
 
 
 @app.get("/auth/continue", include_in_schema=False)
@@ -583,6 +630,21 @@ def continue_to_product(request: Request, app_name: str = Query(alias="app"), pa
     }
     destination_path = safe_zilch_path(path)
     identity = resolve_session(request)
+    account_path = destination_path.split("?", 1)[0] in {
+        "/historie",
+        "/statistiken",
+        "/erfolge",
+        "/konto",
+    } or destination_path.startswith("/ergebnis/")
+    if can_access_zilch_preview(identity) and (identity is not None or not account_path):
+        response = RedirectResponse(
+            zilch_url(destination_path),
+            status_code=303,
+            headers=private_headers,
+        )
+        if identity:
+            promote_legacy_session_cookie(response, request)
+        return response
     if not identity:
         return_path = f"/auth/continue?{urlencode({'app': 'zilch', 'path': destination_path})}"
         login_url = f"{site_origin()}/zilch/anmelden?{urlencode({'return_to': return_path})}"
@@ -593,11 +655,7 @@ def continue_to_product(request: Request, app_name: str = Query(alias="app"), pa
             status_code=303,
             headers=private_headers,
         )
-    response = RedirectResponse(
-        zilch_url(destination_path),
-        status_code=303,
-        headers=private_headers,
-    )
+    response = RedirectResponse(zilch_url(destination_path), status_code=303, headers=private_headers)
     promote_legacy_session_cookie(response, request)
     return response
 
@@ -1129,8 +1187,8 @@ def api_zilch_statistics(request: Request) -> dict[str, object]:
 
 @app.get("/api/zilch/leaderboards/categories")
 def api_zilch_leaderboard_categories(request: Request) -> dict[str, object]:
-    """Expose only safe metadata for the currently implemented private tables."""
-    _require_zilch_preview(request)
+    """Expose safe public metadata for Zilch's account-backed tables."""
+    _require_zilch_access(request)
     return {"version": 1, "categories": list_zilch_leaderboard_categories()}
 
 
@@ -1142,15 +1200,15 @@ def api_zilch_leaderboards(
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1),
 ) -> dict[str, object]:
-    """Read one bounded, server-calculated private Zilch leaderboard."""
-    identity = _require_zilch_preview(request)
+    """Read one bounded, server-calculated public Zilch leaderboard."""
+    identity = _require_zilch_access(request)
     try:
         return get_zilch_leaderboard(
             category,
             strategy=strategy,
             offset=offset,
             limit=limit,
-            current_user_id=identity.user_id,
+            current_user_id=identity.user_id if identity else None,
         )
     except ZilchStatisticsInputError as exc:
         raise HTTPException(status_code=400, detail=exc.code) from exc
@@ -1158,17 +1216,43 @@ def api_zilch_leaderboards(
 
 @app.get("/api/zilch/achievement-ranks")
 def api_zilch_achievement_ranks(request: Request) -> dict[str, object]:
-    """Return the Zilch-only rank ladder inside the protected product."""
-    _require_zilch_preview(request)
+    """Return the public Zilch-only rank ladder."""
+    _require_zilch_access(request)
     return zilch_achievement_rank_legend_payload()
 
 
-def _safe_zilch_achievement_profile(user_id: int) -> dict[str, object]:
-    """Return an award-only projection without leaking a database user ID."""
+def _safe_zilch_achievement_profile(user_id: int, *, public: bool = False) -> dict[str, object]:
+    """Return an award projection without relational or private game evidence.
+
+    A public player page may show the same completed/locked collection as the
+    established ZDWA profile, but it must never reveal a private result URL or
+    the source game that earned an award.  The account owner's own API retains
+    that source only for its terminal-award handoff.
+    """
     profile = get_zilch_achievement_profile(user_id)
     player = profile.get("player") if isinstance(profile, dict) else None
     if isinstance(player, dict) and player.get("username"):
         profile = {**profile, "player": {"username": str(player["username"])}}
+    if public:
+        for collection_name in ("unlocked", "locked", "pending"):
+            collection = profile.get(collection_name) if isinstance(profile, dict) else None
+            if not isinstance(collection, list):
+                continue
+            profile[collection_name] = [
+                {
+                    key: value
+                    for key, value in item.items()
+                    if key not in {
+                        "source_game_id",
+                        "presentation_game_id",
+                        "source_evidence_id",
+                        "queued_at",
+                        "acknowledged_at",
+                    }
+                }
+                for item in collection
+                if isinstance(item, dict)
+            ]
     return profile
 
 
@@ -1197,8 +1281,8 @@ def api_zilch_achievements(request: Request) -> dict[str, object]:
 
 @app.get("/api/zilch/players/{username}/achievements")
 def api_zilch_player_achievements(username: str, request: Request) -> dict[str, object]:
-    """Read another active account's awards only inside the preview product."""
-    _require_zilch_preview(request)
+    """Read an active player's safe public Zilch award collection."""
+    _require_zilch_access(request)
     normalized_username = normalize_username(username)
     if not normalized_username:
         raise HTTPException(status_code=404, detail="zilch_achievement_not_found")
@@ -1212,7 +1296,7 @@ def api_zilch_player_achievements(username: str, request: Request) -> dict[str, 
     if user_id is None:
         raise HTTPException(status_code=404, detail="zilch_achievement_not_found")
     try:
-        return _safe_zilch_achievement_profile(int(user_id))
+        return _safe_zilch_achievement_profile(int(user_id), public=True)
     except (ZilchAchievementError, ZilchAchievementSyncError) as exc:
         raise _zilch_achievement_http_error(exc) from exc
 
@@ -1241,8 +1325,8 @@ def api_acknowledge_zilch_achievement(achievement_key: str, request: Request) ->
 
 @app.get("/api/zilch/rules")
 def api_zilch_rules(request: Request) -> dict[str, object]:
-    """Return the small authoritative rules projection used by the private UI."""
-    _require_zilch_preview(request)
+    """Return the small authoritative rules projection used by the public UI."""
+    _require_zilch_access(request)
     solo_definition = validate_zilch_solo_objective_definition(
         ZILCH_SOLO_SPRINT_OBJECTIVE_ID,
         ZILCH_SOLO_SPRINT_OBJECTIVE_VERSION,
@@ -1271,27 +1355,37 @@ def api_zilch_rules(request: Request) -> dict[str, object]:
 async def api_games_create(req: CreateReq, request: Request):
     """API: Neues Spiel anlegen (Name, Modus, optional Passphrase)."""
     identity = None
+    guest_host_token: str | None = None
     if req.game_type == ZILCH_GAME_TYPE:
-        identity = _require_zilch_preview(request)
+        identity = _require_zilch_access(request)
     enforce_game_creation_rate_limit(request)
     gid = str(uuid.uuid4())[:8]
     g = create_game_state(gid, req.name, req.mode, req.game_type)
     if req.game_type == ZILCH_GAME_TYPE and req.play_mode == ZILCH_CPU_MODE:
         # The creator is the only human seat.  The CPU is a durable domain
         # participant and receives neither account data nor a socket record.
+        if identity is None:
+            guest_host_token = secrets.token_urlsafe(32)
         configure_zilch_cpu_game(
             g,
-            host_user_id=identity.user_id,
             cpu_strategy=req.cpu_strategy,
+            **({"host_user_id": identity.user_id} if identity else {"host_token": guest_host_token}),
         )
     elif req.game_type == ZILCH_GAME_TYPE and req.play_mode == ZILCH_SOLO_MODE:
         # The host is the only durable human seat. The Objective is fixed by
         # the server; no browser parameter can tune target or ranking.
-        configure_zilch_solo_game(g, host_user_id=identity.user_id)
+        if identity:
+            configure_zilch_solo_game(g, host_user_id=identity.user_id)
+        else:
+            guest_host_token = secrets.token_urlsafe(32)
+            configure_zilch_solo_game(g, host_token=guest_host_token)
     g["_passphrase"] = req.passphrase or None
     g["_hardcore"] = bool(req.hardcore or False)
     save_active_game(g)
-    return {"game_id": gid}
+    response: dict[str, str] = {"game_id": gid}
+    if guest_host_token:
+        response["host_token"] = guest_host_token
+    return response
 
 
 # Brave/Chromium DevTools Ping unterdrücken

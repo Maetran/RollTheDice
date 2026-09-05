@@ -164,7 +164,7 @@ dieselbe persistente Datenbank:
 | `zockdiewandan.online` | Bleibt als bestehende ZDWA-, PWA- und Anmelde-Origin erreichbar. |
 | `www.zockdiewandan.online` | Bleibt als bestehender Alias erreichbar. |
 | `zdwa.zockdiewandan.online` | Redirect-only Alias auf die bestehende ZDWA-Apex-Origin. |
-| `zilch.zockdiewandan.online` | Eigener, loginpflichtiger Einstieg in die Zilch Public Beta. |
+| `zilch.zockdiewandan.online` | Eigener öffentlicher Einstieg in Zilch; Kontofunktionen bleiben separat geschützt. |
 
 Die Aktivierung verschiebt keine Daten und startet weder Docker noch Uvicorn
 neu. Nginx reicht Apex, `www` und Zilch an denselben einzelnen Container weiter;
@@ -229,12 +229,13 @@ Vor der Aktivierung müssen alle folgenden Punkte erfüllt sein:
    Registrierung angeboten wird) abdeckt. Das Aktivierungsskript kann diese
    externe Einstellung nicht selbst lesen und verlangt deshalb die bewusste
    Bestätigung `TURNSTILE_HOSTNAMES_CONFIRMED=1`.
-7. Die Zilch Public Beta läuft in Produktion ausdrücklich mit
-   `ROLLTHEDICE_ZILCH_ACCESS_MODE=authenticated`. Damit sind alle aktiven,
-   angemeldeten Konten zugelassen; Gäste bleiben ausgeschlossen. Das
-   Aktivierungsskript muss denselben erwarteten Modus prüfen. Der Modus
-   `preview` und seine optionale Allowlist sind nur ein fail-closed Rollback für
-   einen bewusst eingeschränkten Betrieb, nicht der Produktionsstandard.
+7. Zilch läuft in Produktion ausdrücklich mit
+   `ROLLTHEDICE_ZILCH_ACCESS_MODE=public`. Damit sind Gäste und aktive Konten
+   zugelassen; Gäste bleiben ohne konto-gebundene Historie, Statistik, Awards
+   und Ranglistenposition. Das Aktivierungsskript muss denselben erwarteten
+   Modus prüfen. Der Modus `preview` und seine optionale Allowlist sind nur ein
+   fail-closed Rollback für einen bewusst eingeschränkten Betrieb, nicht der
+   Produktionsstandard.
 
 ### Cloudflare: schneller Start zunächst DNS-only
 
@@ -265,12 +266,13 @@ Umstellung nicht umgeleitet; bestehende PWA-Installationen, offene Tabs,
 Host-Cookies und lokale Resume-Tokens funktionieren dort weiter.
 
 Die Zilch-Subdomain liefert absichtlich weder den root-gescopten ZDWA-Service-
-Worker noch dessen Manifest aus. Loginpflichtige Zilch-Shells dürfen nicht
-durch einen Precache oder einen Offline-Fallback nach Logout oder einer
-Policy-Änderung sichtbar bleiben. API-Antworten bleiben `no-store`, und Zilch bleibt mit
-`X-Robots-Tag: noindex, nofollow` aus Suchmaschinen ausgeschlossen. Eine eigene
-installierbare Zilch-PWA wäre ein separates, vor der Freigabe zu testendes
-Produktinkrement.
+Worker noch dessen Manifest aus. So kann der gemeinsame PWA-Cache keine Zilch-
+Sitzung oder private Spielansicht wiederherstellen. API-Antworten bleiben
+`no-store`; Räume, Konto, Historie, persönliche Statistik, Ergebnisse und
+Spielerprofile erhalten `X-Robots-Tag: noindex, nofollow`. Nur die öffentliche
+Zilch-Lobby `/` und `/regeln` sind auf der Zilch-Origin indexierbar, mit
+eigenem Canonical, `robots.txt` und Sitemap. Eine eigene installierbare
+Zilch-PWA wäre ein separates, vor der Freigabe zu testendes Produktinkrement.
 
 Die gemeinsame, `Secure`, `HttpOnly` und `SameSite=Lax` gesetzte Session wird
 beim kontrollierten Handoff aus einem gültigen Apex-Login übernommen. Nutzer,
@@ -512,21 +514,22 @@ Der Reverse-Proxy muss den ursprünglichen Host und das Protokoll weitergeben,
 insbesondere `X-Forwarded-Host` und `X-Forwarded-Proto`. Diese Werte werden für
 Origin-Prüfungen bei schreibenden Requests und WebSockets benötigt.
 
-### Zilch Public Beta
+### Öffentliches Zilch
 
-Zilch ist für alle aktiven, angemeldeten Konten verfügbar und bleibt vom
-Admin-System getrennt. Produktion setzt zwingend:
+Zilch ist für Gäste und alle aktiven, angemeldeten Konten verfügbar und bleibt
+vom Admin-System getrennt. Produktion setzt zwingend:
 
 ```dotenv
-ROLLTHEDICE_ZILCH_ACCESS_MODE=authenticated
+ROLLTHEDICE_ZILCH_ACCESS_MODE=public
 ```
 
-Dieser Wert erlaubt keinen Gastzugriff: Authentifizierung, Session, CSRF,
+Dieser Wert erlaubt Gastspiel ohne konto-gebundene Persistenz: Session, CSRF,
 WebSocket-Origin-Prüfung, Raumcodes und alle übrigen Zilch-Regeln bleiben aktiv.
 Die persönliche Historie listet nur Partien des angemeldeten Kontos;
-Ergebnisdetails sind auf die verknüpften menschlichen Teilnehmer beschränkt und
-antworten anderen Konten mit einem nicht unterscheidbaren 404. HTTP-Projektionen
-geben keine internen `user_id`-Werte aus.
+Ergebnisdetails sind auf verknüpfte Konto-Teilnehmer beschränkt und antworten
+anderen Konten mit einem nicht unterscheidbaren 404. Gast-Solo/CPU-Hosts erhalten
+eine lokale Zufallsberechtigung, deren Hash allein dauerhaft gespeichert wird.
+HTTP-Projektionen geben keine internen `user_id`-Werte aus.
 
 Der Modus `preview` ist ausschließlich ein fail-closed Betriebsrollback. Nur in
 diesem Modus kann `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` eine kommagetrennte Liste
@@ -535,10 +538,12 @@ Adminrechte; `mani` bleibt in diesem Rückfallmodus zusätzlich an die Adminroll
 gebunden. Die Allowlist in normaler Produktion leer lassen und nie Passwörter
 oder andere Geheimnisse darin hinterlegen.
 
-Die zentrale Server-Policy schützt die Zilch-Shell, alle personalisierten
-Zilch-Routen, APIs und WebSockets. `/static/zilch.html` ist kein direkter Einstieg,
-Zilch-Seiten bleiben `noindex` und gehören nicht in die Sitemap. Das Verbergen
-des App-Switches im Browser ist kein Ersatz für diese Prüfung.
+Die zentrale Server-Policy schützt alle personalisierten Zilch-Routen, APIs
+und WebSockets. `/static/zilch.html` ist kein direkter Einstieg. Die öffentliche
+Lobby `/` und `/regeln` der Zilch-Origin sind die einzigen registrierten
+SEO-Dokumente; Räume, Konto, Historie, persönliche Statistik, Ergebnisse,
+Bestenlisten-Ansichten und Spielerprofile bleiben `noindex`. Das Verbergen des
+App-Switches im Browser ist kein Ersatz für diese Prüfung.
 
 Compose reicht die Allowlist und die rein sichtbare CPU-Denkpause explizit in
 den Container durch. Die CPU-Pause bleibt auf 0 bis 5 Sekunden begrenzt und
@@ -548,11 +553,11 @@ den Container durch. Die CPU-Pause bleibt auf 0 bis 5 Sekunden begrenzt und
 ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS=0.9
 ```
 
-Die Loginpflicht ist zugleich die SEO-Grenze: Eine Public Beta für registrierte
-Konten ist noch keine anonym indexierbare Website. Bis eine eigene, anonym
-lesbare Zilch-Landing- oder Regelseite mit Canonical ausgeliefert wird, bleiben
-die Anwendung, Kontoseiten und Ergebnisrouten `noindex`; sie werden nicht in
-`app/site_seo.py` und nicht in die Sitemap aufgenommen.
+Gäste dürfen Zilch spielen, aber keine konto-gebundene Historie, persönliche
+Statistik, Awards oder Ranglistenposition erhalten. Die SEO-Grenze ist deshalb
+nicht die Anmeldung, sondern die Art der Seite: nur stabile öffentliche
+Einführungs- und Regelseiten stehen in `app/site_seo.py`; alle persönlichen,
+kurzlebigen oder dynamischen Ansichten bleiben `noindex`.
 
 ### Erster Administrator
 

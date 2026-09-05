@@ -12,7 +12,10 @@ function isEditableTarget(target) {
 }
 
 function canUseZilch(auth) {
-  return Boolean(auth?.authenticated && auth?.user?.game_access?.zilch_preview === true);
+  const access = auth?.game_access || auth?.user?.game_access;
+  // Public Zilch is deliberately available before sign-in. The legacy
+  // capability remains authoritative for preview/authenticated rollouts.
+  return Boolean(access?.zilch_public === true || (auth?.authenticated && access?.zilch_preview === true));
 }
 
 function updateSwitch(allowed) {
@@ -127,8 +130,9 @@ export function initializeAppMode({
   };
   window.ZDWA_APP_MODE = controller;
 
-  // The Zilch page has no standard auth controller; polling there keeps an
-  // expired/revoked session from leaving an active preview root mounted.
+  // The Zilch page has no standard auth controller. Refreshing still updates
+  // account controls after an expiry, while a public Zilch table remains
+  // playable as a guest.
   if (currentMode === "zilch") window.setInterval(() => { void refresh(); }, 12_000);
   // The ZDWA lobby already resolves the identity for its account controls.
   // It can feed that result through the shared auth-state event and avoid a

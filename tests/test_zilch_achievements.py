@@ -368,7 +368,7 @@ class ZilchAchievementPersistenceTestCase(TestCase):
 
         self.assertEqual(catalog["version"], 2)
         self.assertNotIn("player", catalog)
-        self.assertEqual(len(catalog["definitions"]), 64)
+        self.assertEqual(len(catalog["definitions"]), 72)
         self.assertEqual({item["key"] for item in catalog["definitions"]}, set(ZILCH_ACHIEVEMENT_BY_KEY))
         self.assertEqual(catalog["points_possible"], ZILCH_ACHIEVEMENT_POINTS_POSSIBLE)
         self.assertEqual(
@@ -426,7 +426,7 @@ class ZilchAchievementPersistenceTestCase(TestCase):
             "history_complete": True,
             "banked_rounds": [5_000, 3_000, 2_000],
             "highest_banked_round": 5_000,
-            "final_score": 10_000,
+            "final_score": 15_000,
             "combination_types": [
                 "straight",
                 "three_pairs",
@@ -436,15 +436,17 @@ class ZilchAchievementPersistenceTestCase(TestCase):
                 "double_triple",
             ],
             "hot_dice_events": 5,
-            "zilch_count": 10,
+            "zilch_count": 20,
             "zilch_penalty_points": 1_000,
             "max_discarded_points": 2_000,
             "score_margin": 3_000,
             "max_deficit_before_finish": 3_000,
             "won_start_roll": False,
-            "game_turns": 14,
+            "game_turns": 50,
         }
         close_win = {**multiplayer, "score_margin": 100, "zilch_count": 0}
+        exact_score = {**multiplayer, "final_score": 10_000}
+        fast_win = {**multiplayer, "game_turns": 12}
         cpu_wins = [
             {
                 **multiplayer,
@@ -465,7 +467,7 @@ class ZilchAchievementPersistenceTestCase(TestCase):
             "roll_count": 30,
             "zilch_count": 0,
         }
-        facts = [multiplayer] * 500 + [close_win, *cpu_wins, solo]
+        facts = [multiplayer] * 500 + [close_win, exact_score, fast_win, *cpu_wins, solo]
 
         unsatisfied = [
             definition.key

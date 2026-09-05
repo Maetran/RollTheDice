@@ -30,6 +30,7 @@ from .auth_protection import (
     verify_registration_challenge,
 )
 from .database import session_scope
+from .game_access import public_game_access_payload
 from .models import Session as LoginSession
 from .models import User
 from .security import utcnow
@@ -106,6 +107,9 @@ def auth_me(request: Request, response: Response):
     return {
         "authenticated": bool(identity),
         "user": auth_identity_payload(identity, include_csrf=True) if identity else None,
+        # Guests need the same server-derived product availability as signed-in
+        # visitors so the app switcher can open a public Zilch table directly.
+        "game_access": public_game_access_payload(identity),
         "registration": registration_public_config(),
     }
 

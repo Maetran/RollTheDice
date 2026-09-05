@@ -7,7 +7,7 @@ import httpx
 
 from app import main
 from app.achievements import ACHIEVEMENT_POINTS_POSSIBLE, ACHIEVEMENT_RANKS, achievement_rank_for_points
-from app.site_seo import PUBLIC_SEO_PAGES, SITE_ORIGIN
+from app.site_seo import PUBLIC_SEO_PAGES, SITE_ORIGIN, ZILCH_ORIGIN
 from scripts.sync_static_versions import content_version, desired_text
 
 
@@ -116,10 +116,28 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Disallow: /api/", robots.text)
         self.assertEqual(sitemap.status_code, 200)
         self.assertEqual(sitemap.headers["content-type"], "application/xml")
-        for page in PUBLIC_SEO_PAGES:
+        for page in (page for page in PUBLIC_SEO_PAGES if page.origin == SITE_ORIGIN):
             self.assertIn(f"<loc>{page.canonical_url}</loc>", sitemap.text)
+        self.assertNotIn(ZILCH_ORIGIN, sitemap.text)
         self.assertNotIn("/konto", sitemap.text)
         self.assertNotIn("/spiel/", sitemap.text)
+
+    async def test_public_zilch_host_has_its_own_two_page_sitemap(self):
+        transport = httpx.ASGITransport(app=main.app)
+        with patch.dict("os.environ", {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "public"}):
+            async with httpx.AsyncClient(transport=transport, base_url=ZILCH_ORIGIN) as client:
+                robots = await client.get("/robots.txt")
+                sitemap = await client.get("/sitemap.xml")
+                lobby = await client.get("/")
+                rules = await client.get("/regeln")
+
+        self.assertEqual(robots.status_code, 200)
+        self.assertIn(f"Sitemap: {ZILCH_ORIGIN}/sitemap.xml", robots.text)
+        self.assertEqual(sitemap.status_code, 200)
+        for page in (page for page in PUBLIC_SEO_PAGES if page.origin == ZILCH_ORIGIN):
+            self.assertIn(f"<loc>{page.canonical_url}</loc>", sitemap.text)
+        self.assertIn(f'<link rel="canonical" href="{ZILCH_ORIGIN}/">', lobby.text)
+        self.assertIn(f'<link rel="canonical" href="{ZILCH_ORIGIN}/regeln">', rules.text)
 
     async def test_achievement_rank_legend_is_public_and_uses_live_catalog_thresholds(self):
         transport = httpx.ASGITransport(app=main.app)

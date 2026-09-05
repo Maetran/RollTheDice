@@ -17,17 +17,23 @@ ZILCH_PREVIEW_ALLOWLIST_ENV = "ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES"
 ZILCH_ACCESS_MODE_ENV = "ROLLTHEDICE_ZILCH_ACCESS_MODE"
 ZILCH_ACCESS_MODE_PREVIEW = "preview"
 ZILCH_ACCESS_MODE_AUTHENTICATED = "authenticated"
+ZILCH_ACCESS_MODE_PUBLIC = "public"
 
 
 def configured_zilch_access_mode() -> str:
     """Return the configured Zilch audience mode.
 
     ``preview`` remains the fail-closed process default for direct, unconfigured
-    starts. Supported Compose and production deployments explicitly use
-    ``authenticated`` for the public beta. Unknown values never widen access.
+    starts. ``authenticated`` is retained for controlled rollouts and ``public``
+    opens the game to guests as well as account holders. Unknown values never
+    widen access.
     """
     configured = os.getenv(ZILCH_ACCESS_MODE_ENV, ZILCH_ACCESS_MODE_PREVIEW).strip().casefold()
-    valid_modes = {ZILCH_ACCESS_MODE_PREVIEW, ZILCH_ACCESS_MODE_AUTHENTICATED}
+    valid_modes = {
+        ZILCH_ACCESS_MODE_PREVIEW,
+        ZILCH_ACCESS_MODE_AUTHENTICATED,
+        ZILCH_ACCESS_MODE_PUBLIC,
+    }
     return configured if configured in valid_modes else ZILCH_ACCESS_MODE_PREVIEW
 
 
@@ -51,14 +57,17 @@ def configured_zilch_preview_usernames() -> frozenset[str]:
 
 
 def can_access_zilch_preview(identity: AuthIdentity | None) -> bool:
-    """Return whether an authenticated identity belongs to the Zilch audience.
+    """Return whether a visitor belongs to the currently configured audience.
 
     This deliberately combines the existing account role with the existing
     username normalization.  Callers must not reproduce the comparison.
     """
+    mode = configured_zilch_access_mode()
+    if mode == ZILCH_ACCESS_MODE_PUBLIC:
+        return True
     if not identity:
         return False
-    if configured_zilch_access_mode() == ZILCH_ACCESS_MODE_AUTHENTICATED:
+    if mode == ZILCH_ACCESS_MODE_AUTHENTICATED:
         return True
     username = normalize_username(identity.username)
     if username == ZILCH_PREVIEW_USERNAME:
@@ -76,7 +85,11 @@ def can_access_game(identity: AuthIdentity | None, game: dict) -> bool:
 def public_game_access_payload(identity: AuthIdentity | None) -> dict[str, bool]:
     """Expose only the client capability derived from the server-side policy.
 
-    The payload key is kept for compatibility with already deployed clients;
-    it denotes general Zilch access in ``authenticated`` mode as well.
+    The legacy ``zilch_preview`` key is kept for compatibility. ``zilch_public``
+    lets an unauthenticated shell expose the game switcher without pretending a
+    guest has an account capability.
     """
-    return {"zilch_preview": can_access_zilch_preview(identity)}
+    return {
+        "zilch_preview": can_access_zilch_preview(identity),
+        "zilch_public": configured_zilch_access_mode() == ZILCH_ACCESS_MODE_PUBLIC,
+    }
