@@ -1378,8 +1378,8 @@ button.zilch-die--available:hover { transform: translateY(-.18rem) rotate(-1deg)
 .zilch-result-final-round p { margin: .55rem 0; }
 
 /* Private statistics and leaderboards are deliberately their own paper-led
-   Zilch components.  The table wrapper owns any narrow-screen scrolling so
-   it never widens the document or leaks a generic leaderboard style to ZDWA. */
+   Zilch components. On a narrow screen each leaderboard row becomes a
+   labelled value card, keeping every score visible without a side scroll. */
 html[data-game="zilch"] .zilch-stats-tabs,
 html[data-game="zilch"] .zilch-stat-subtabs {
   display: flex;
@@ -1469,23 +1469,89 @@ html[data-game="zilch"] .zilch-stat-metrics dd {
 
 html[data-game="zilch"] .zilch-leaderboard-card { max-width: none; }
 html[data-game="zilch"] .zilch-leaderboard-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--zilch-space-3);
-  align-items: end;
+  display: grid;
+  gap: var(--zilch-space-4);
   margin: 1rem 0;
 }
 
-html[data-game="zilch"] .zilch-leaderboard-filters label {
+html[data-game="zilch"] .zilch-leaderboard-categories {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+html[data-game="zilch"] .zilch-leaderboard-categories legend {
+  padding: 0;
+  color: var(--zilch-ink);
+  font: 800 1rem/1.2 Georgia, "Times New Roman", serif;
+}
+
+html[data-game="zilch"] .zilch-leaderboard-categories__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr));
+  gap: .55rem;
+  margin-top: .55rem;
+}
+
+html[data-game="zilch"] button.zilch-leaderboard-category {
+  display: grid;
+  align-content: start;
+  gap: .28rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 5.85rem;
+  padding: .7rem .78rem;
+  border: 1px solid var(--zilch-paper-edge);
+  border-radius: var(--zilch-radius-sm);
+  color: var(--zilch-ink);
+  background: rgba(255, 255, 255, .35);
+  box-shadow: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+html[data-game="zilch"] .zilch-leaderboard-category strong {
+  color: var(--zilch-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: .96rem;
+  line-height: 1.15;
+}
+
+html[data-game="zilch"] .zilch-leaderboard-category span {
+  color: var(--zilch-muted);
+  font-size: .78rem;
+  line-height: 1.32;
+}
+
+html[data-game="zilch"] .zilch-leaderboard-category:hover {
+  border-color: rgba(136, 90, 40, .42);
+  background: rgba(255, 252, 232, .66);
+}
+
+html[data-game="zilch"] .zilch-leaderboard-category.is-active {
+  border-color: #b37627;
+  background: linear-gradient(135deg, rgba(255, 241, 174, .82), rgba(255, 251, 227, .76));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .58);
+}
+
+html[data-game="zilch"] .zilch-leaderboard-category:focus-visible {
+  outline: 3px solid var(--zilch-focus-ring);
+  outline-offset: 3px;
+}
+
+html[data-game="zilch"] .zilch-leaderboard-filters > label {
   display: grid;
   gap: .35rem;
   min-width: min(100%, 13rem);
+  justify-self: start;
   color: var(--zilch-ink-soft);
   font-size: .85rem;
   font-weight: 800;
 }
 
-html[data-game="zilch"] .zilch-leaderboard-filters select {
+html[data-game="zilch"] .zilch-leaderboard-filters > label select {
   min-height: 2.7rem;
   padding: .5rem .65rem;
   border: 1px solid var(--zilch-paper-edge);
@@ -1495,7 +1561,7 @@ html[data-game="zilch"] .zilch-leaderboard-filters select {
   font: inherit;
 }
 
-html[data-game="zilch"] .zilch-leaderboard-filters select:focus-visible {
+html[data-game="zilch"] .zilch-leaderboard-filters > label select:focus-visible {
   border-color: var(--zilch-focus);
   outline: 3px solid color-mix(in srgb, var(--zilch-focus) 36%, transparent);
   outline-offset: 2px;
@@ -1556,6 +1622,90 @@ html[data-game="zilch"] .zilch-own-marker {
   background: #f1cd68;
   font-size: .72rem;
   font-weight: 900;
+}
+
+@media (max-width: 760px) {
+  html[data-game="zilch"] .zilch-leaderboard-categories__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .45rem;
+  }
+
+  html[data-game="zilch"] button.zilch-leaderboard-category {
+    min-height: 6.15rem;
+    padding: .62rem;
+  }
+
+  html[data-game="zilch"] .zilch-leaderboard-category strong { font-size: .88rem; }
+  html[data-game="zilch"] .zilch-leaderboard-category span { font-size: .72rem; }
+
+  html[data-game="zilch"] .zilch-leaderboard-table-wrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+  }
+
+  html[data-game="zilch"] .zilch-leaderboard-table,
+  html[data-game="zilch"] .zilch-leaderboard-table-wrap--compact .zilch-leaderboard-table {
+    display: block;
+    min-width: 0;
+  }
+
+  html[data-game="zilch"] .zilch-leaderboard-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  html[data-game="zilch"] .zilch-leaderboard-table tbody {
+    display: grid;
+    gap: .58rem;
+  }
+
+  html[data-game="zilch"] .zilch-leaderboard-table tbody tr {
+    display: grid;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--zilch-paper-edge);
+    border-radius: var(--zilch-radius-sm);
+    background: rgba(255, 255, 255, .3);
+  }
+
+  html[data-game="zilch"] .zilch-leaderboard-table tbody :where(th, td) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .7rem;
+    align-items: center;
+    min-width: 0;
+    padding: .45rem .62rem;
+  }
+
+  html[data-game="zilch"] .zilch-leaderboard-table tbody :where(th, td)::before {
+    content: attr(data-label);
+    min-width: 0;
+    color: var(--zilch-muted);
+    font-size: .73rem;
+    font-weight: 800;
+  }
+
+  html[data-game="zilch"] .zilch-leaderboard-table tbody th {
+    color: var(--zilch-ink);
+    font-weight: 850;
+  }
+
+  html[data-game="zilch"] .zilch-leaderboard-table tbody .zilch-player-achievement-link,
+  html[data-game="zilch"] .zilch-leaderboard-table tbody .zilch-player-identity {
+    justify-self: end;
+    overflow-wrap: anywhere;
+    text-align: right;
+  }
+
+  html[data-game="zilch"] .zilch-leaderboard-table tbody tr:last-child :where(th, td) { border-bottom: 1px dashed rgba(111, 77, 43, .34); }
+  html[data-game="zilch"] .zilch-leaderboard-table tbody tr :where(th, td):last-child { border-bottom: 0; }
 }
 
 html[data-game="zilch"] .zilch-own-leaderboard-entry { max-width: 26rem; border-top: .3rem solid var(--zilch-gold); }

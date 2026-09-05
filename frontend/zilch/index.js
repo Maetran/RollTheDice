@@ -2274,6 +2274,13 @@ function leaderboardCategoryLabel(category) {
   return t("Solo-Sprint");
 }
 
+function leaderboardCategoryDetail(category) {
+  if (category === "multiplayer_wins") return t("Die meisten Siege im Duell am Tisch.");
+  if (category === "cpu_wins") return t("Die meisten Siege gegen den Würfelwirt.");
+  if (category === "achievement_points") return t("Die meisten gesammelten Zilch-Punkte.");
+  return t("10’000 Punkte in möglichst wenigen Zügen.");
+}
+
 function leaderboardSortingDescription(category) {
   if (category === "multiplayer_wins") return t("Reihenfolge: zuerst Siege, dann weniger Niederlagen, mehr Gleichstände, höhere Endpunktzahl und die beste Runde. Bei Gleichstand teilt ihr euch den Platz.");
   if (category === "cpu_wins") return t("Reihenfolge: zuerst Siege gegen die gewählte Spielweise, dann weniger Niederlagen, mehr Gleichstände, höhere Endpunktzahl und die beste Runde. Bei Gleichstand teilt ihr euch den Platz.");
@@ -2368,11 +2375,11 @@ function leaderboardTableMarkup(leaderboard) {
         const own = isOwnLeaderboardEntry(entry);
         const rank = leaderboardEntryValue(entry, ["rank"]);
         return `<tr${own ? ' class="is-own" data-own-entry="true" aria-label="' + escapeHtml(t("Dein Eintrag")) + '"' : ""}>
-          <th scope="row">${escapeHtml(rank === null ? "—" : number(rank))}</th>
-          <td>${zilchPlayerAchievementLink(entry)}${own ? `<span class="zilch-own-marker">${escapeHtml(t("Du"))}</span>` : ""}</td>
+          <td data-label="${escapeHtml(t("Rang"))}">${escapeHtml(rank === null ? "—" : number(rank))}</td>
+          <th scope="row" data-label="${escapeHtml(t("Spieler"))}">${zilchPlayerAchievementLink(entry)}${own ? `<span class="zilch-own-marker">${escapeHtml(t("Du"))}</span>` : ""}</th>
           ${columns.map(column => {
             const value = leaderboardEntryValue(entry, column.aliases);
-            return `<td>${escapeHtml(value === null ? "—" : formattedStatistic(value, column.format))}</td>`;
+            return `<td data-label="${escapeHtml(column.label)}">${escapeHtml(value === null ? "—" : formattedStatistic(value, column.format))}</td>`;
           }).join("")}
         </tr>`;
       }).join("")}</tbody>
@@ -2412,9 +2419,9 @@ function leaderboardControlsMarkup() {
   const category = state.leaderboardCategory;
   const cpu = category === "cpu_wins";
   return `<form id="zilchLeaderboardFilters" class="zilch-leaderboard-filters" aria-label="${escapeHtml(t("Bestenliste filtern"))}">
-    <label><span>${escapeHtml(t("Kategorie"))}</span><select name="category">
-      ${["solo_sprint", "multiplayer_wins", "cpu_wins", "achievement_points"].map(value => `<option value="${value}"${value === category ? " selected" : ""}>${escapeHtml(leaderboardCategoryLabel(value))}</option>`).join("")}
-    </select></label>
+    <fieldset class="zilch-leaderboard-categories"><legend>${escapeHtml(t("Welche Rangliste soll's sein?"))}</legend><div class="zilch-leaderboard-categories__grid" role="group" aria-label="${escapeHtml(t("Welche Rangliste soll's sein?"))}">
+      ${["solo_sprint", "multiplayer_wins", "cpu_wins", "achievement_points"].map(value => `<button type="button" class="zilch-leaderboard-category${value === category ? " is-active" : ""}" data-zilch-leaderboard-category="${value}" aria-pressed="${String(value === category)}"><strong>${escapeHtml(leaderboardCategoryLabel(value))}</strong><span>${escapeHtml(leaderboardCategoryDetail(value))}</span></button>`).join("")}
+    </div></fieldset>
     <label id="zilchLeaderboardStrategyFilter"${cpu ? "" : " hidden"}><span>${escapeHtml(t("Spielweise des Würfelwirts"))}</span><select name="strategy">
       ${["conservative", "normal", "aggressive"].map(value => `<option value="${value}"${value === state.leaderboardStrategy ? " selected" : ""}>${escapeHtml(strategyLabel(value))}</option>`).join("")}
     </select></label>
@@ -2444,14 +2451,22 @@ function bindLeaderboardControls() {
   if (form) form.addEventListener("change", event => {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement)) return;
-    if (target.name === "category") state.leaderboardCategory = normalizedLeaderboardCategory(target.value);
-    if (target.name === "strategy" && CPU_STRATEGIES.has(target.value)) state.leaderboardStrategy = target.value;
+    if (target.name !== "strategy" || !CPU_STRATEGIES.has(target.value)) return;
+    state.leaderboardStrategy = target.value;
     state.leaderboardOffset = 0;
     updateLeaderboardLocation();
-    const focusSelector = target.name === "strategy"
-      ? '#zilchLeaderboardFilters select[name="strategy"]'
-      : '#zilchLeaderboardFilters select[name="category"]';
-    void refreshLeaderboard({ focusSelector });
+    void refreshLeaderboard({ focusSelector: '#zilchLeaderboardFilters select[name="strategy"]' });
+  });
+  if (form) form.addEventListener("click", event => {
+    if (!(event.target instanceof Element)) return;
+    const button = event.target.closest("[data-zilch-leaderboard-category]");
+    if (!(button instanceof HTMLButtonElement)) return;
+    const category = normalizedLeaderboardCategory(button.dataset.zilchLeaderboardCategory);
+    if (category === state.leaderboardCategory) return;
+    state.leaderboardCategory = category;
+    state.leaderboardOffset = 0;
+    updateLeaderboardLocation();
+    void refreshLeaderboard({ focusSelector: `[data-zilch-leaderboard-category="${category}"]` });
   });
   document.querySelectorAll("[data-zilch-leaderboard-page]").forEach(button => button.addEventListener("click", () => {
     const direction = button.dataset.zilchLeaderboardPage;

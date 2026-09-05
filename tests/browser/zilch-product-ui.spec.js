@@ -530,12 +530,18 @@ test("private Zilch statistics and leaderboards render only server projections a
     const url = new URL(request.url());
     return url.pathname === "/api/zilch/leaderboards" && url.searchParams.get("category") === "cpu_wins";
   });
-  const category = page.locator("#zilchLeaderboardFilters select[name='category']");
+  const category = page.locator("[data-zilch-leaderboard-category='cpu_wins']");
+  const categoryTiles = page.locator("[data-zilch-leaderboard-category]");
+  await expect(categoryTiles).toHaveCount(4);
+  const firstTile = await categoryTiles.nth(0).boundingBox();
+  const secondTile = await categoryTiles.nth(1).boundingBox();
+  expect(secondTile.x).toBeGreaterThan(firstTile.x);
   await category.focus();
   await expect(category).toBeFocused();
-  await category.selectOption("cpu_wins");
+  await category.click();
   await cpuRequest;
   await expect(category).toBeFocused();
+  await expect(category).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#zilchLeaderboardStrategyFilter")).toBeVisible();
   await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Gleichstände");
   await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Beste Endpunktzahl");
@@ -562,7 +568,7 @@ test("private Zilch statistics and leaderboards render only server projections a
     return url.pathname === "/api/zilch/leaderboards"
       && url.searchParams.get("category") === "achievement_points";
   });
-  await category.selectOption("achievement_points");
+  await page.locator("[data-zilch-leaderboard-category='achievement_points']").click();
   await pointsRequest;
   await expect(page.locator("#zilchLeaderboardStrategyFilter")).toBeHidden();
   await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Zilch-Punkte");
@@ -572,6 +578,8 @@ test("private Zilch statistics and leaderboards render only server projections a
   for (const width of [320, 375, 430]) {
     await page.setViewportSize({ width, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(await page.locator(".zilch-leaderboard-table-wrap").evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await expect(page.locator(".zilch-leaderboard-table tbody tr").first().locator("[data-label='Zilch-Punkte']")).toHaveCount(1);
   }
 
   await Promise.all([
