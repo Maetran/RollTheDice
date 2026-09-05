@@ -30,6 +30,20 @@ export function isProductionZdwaLocation(locationLike = window.location) {
 }
 
 /**
+ * Installed app shells may only keep in-app navigation within their own
+ * origin. iOS exposes cross-origin navigation from a standalone PWA as a
+ * browser sheet, whose close action returns to the originating app.
+ */
+export function isStandalonePwa(environmentLike = globalThis) {
+  if (environmentLike?.navigator?.standalone === true) return true;
+  try {
+    return Boolean(environmentLike?.matchMedia?.("(display-mode: standalone)")?.matches);
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
  * Return a Zilch page path for the active deployment shape. The production
  * subdomain owns clean root paths; localhost, preview and legacy deployments
  * keep the established /zilch prefix.
@@ -79,14 +93,17 @@ export function applyZilchRouteLinks(scope = document, locationLike = window.loc
 }
 
 /**
- * Zilch has a public lobby. New production navigation therefore reaches the
- * subdomain directly instead of forcing guests through a login handoff. The
- * apex continuation endpoint remains the explicit sign-in bridge and safely
- * promotes an older host-only account cookie when somebody chooses to use it.
+ * Zilch has a public lobby. Ordinary production navigation reaches its
+ * canonical subdomain directly instead of forcing guests through a login
+ * handoff. A standalone ZDWA PWA stays on its own origin and uses the legacy
+ * /zilch route instead: crossing to a subdomain would make iOS show an
+ * external browser sheet rather than hand the user to the game suite.
  */
-export function zilchAppEntryUrl(route = "/", locationLike = window.location) {
+export function zilchAppEntryUrl(route = "/", locationLike = window.location, environmentLike = globalThis) {
   const destination = normalizedRoute(route);
-  if (!isProductionZdwaLocation(locationLike)) return zilchPath(destination, locationLike);
+  if (!isProductionZdwaLocation(locationLike) || isStandalonePwa(environmentLike)) {
+    return zilchPath(destination, locationLike);
+  }
   return `https://${ZILCH_PRODUCTION_HOST}${destination}`;
 }
 

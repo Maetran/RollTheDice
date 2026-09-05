@@ -51,6 +51,15 @@ progress projection, snapshots, and terminal finalization by a centrally
 validated `zdwa | zilch` type. Legacy active snapshots without `_game_type` are
 restored as `zdwa`.
 
+## Navigation and PWA scope
+
+Regular production browser navigation uses Zilch's canonical subdomain. An
+installed ZDWA PWA instead opens the same-origin legacy `/zilch` route: iOS
+treats a subdomain as an external app origin and would otherwise show a browser
+sheet whose close action returns to ZDWA. This scoped handoff preserves the
+existing ZDWA PWA while Zilch remains without its own service worker or
+installable manifest.
+
 ## Public-Beta access
 
 `app/game_access.py` is the sole policy location for Zilch access. Production

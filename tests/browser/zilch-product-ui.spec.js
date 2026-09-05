@@ -129,6 +129,8 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await expect(page.locator("[data-zilch-root]")).toBeVisible();
   await expect(page.getByText(/Alles Wichtige für deine nächste Partie|Everything important for your next game/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: /^Zilch(?:-| )(?:Regeln|rules)$/i })).toBeVisible();
+  await expect(page.getByText(/Erreiche 10.?000 Punkte/)).toBeVisible();
+  await expect(page.locator(".zilch-rule-facts")).toHaveCount(0);
   await expect(page.locator("#zilchNavigation a[href='/zilch/regeln']")).toHaveAttribute("aria-current", "page");
 
   const navigation = await page.locator("#zilchNavigation a").evaluateAll(links => links.map(link => ({
@@ -281,6 +283,7 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   await page.goto("/zilch/regeln");
   await expect(page.getByRole("heading", { name: /zilch.*rules/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: /points/i })).toBeVisible();
+  await expect(page.getByText(/Reach 10,000 points/)).toBeVisible();
 
   // Restore the account preference so this file does not leak a language
   // choice into later independent browser specs.
@@ -652,6 +655,8 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await expect(page.locator(".zilch-achievement-summary")).toContainText("3 / 273");
     await expect(page.locator(".zilch-achievement-summary")).toContainText("Newbie");
     await expect(page.locator(".zilch-achievement-card").first()).toContainText("+1 Zilch-Punkt");
+    await expect(page.locator(".zilch-achievement-card__category")).toHaveCount(0);
+    await expect(page.locator(".zilch-achievement-card time")).toHaveCount(0);
     await expect(page.locator("[data-rank-legend], .player-rank")).toHaveCount(0);
 
     const dialog = page.locator("#appDialog");

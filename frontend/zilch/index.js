@@ -1097,7 +1097,8 @@ function achievementProgressMarkup(achievement) {
   const current = progress.current;
   const target = progress.target;
   if (!Number.isFinite(Number(current)) || !Number.isFinite(Number(target)) || Number(target) < 1) return "";
-  return `<span class="zilch-achievement-card__progress">${escapeHtml(t("Fortschritt"))}: ${escapeHtml(number(current))} ${escapeHtml(t("von"))} ${escapeHtml(number(target))}</span>`;
+  const label = `${t("Fortschritt")}: ${number(current)} ${t("von")} ${number(target)}`;
+  return `<span class="zilch-achievement-card__progress" aria-label="${escapeHtml(label)}">${escapeHtml(`${number(current)} / ${number(target)}`)}</span>`;
 }
 
 function achievementPoints(achievement) {
@@ -1126,31 +1127,27 @@ function achievementModeMarkup(achievement) {
     : "";
 }
 
-function achievementCardMarkup(achievement, { unlocked = false, categories = [] } = {}) {
+function achievementCardMarkup(achievement, { unlocked = false } = {}) {
   const hidden = achievementIsHidden(achievement, unlocked);
   const missed = !unlocked && Boolean(achievementValue(achievement, ["missed"]));
-  const category = achievementCategoryKey(achievement);
   const title = hidden
     ? t("Versteckter Zilch-Award")
     : localizedAchievementText(achievement, "title", "Zilch-Award");
   const description = hidden
     ? t("Dieser Award wird erst nach seiner Freischaltung sichtbar.")
     : localizedAchievementText(achievement, "description", "Zilch-Leistung");
-  const unlockedAt = achievementValue(achievement, ["unlocked_at", "unlockedAt"]);
   const stateLabel = unlocked ? t("Freigeschaltet") : missed ? t("Verpasst") : t("Gesperrt");
   const icon = achievementIconKey(achievement);
   return `<article class="zilch-achievement-card${unlocked ? " is-unlocked" : missed ? " is-locked is-missed" : " is-locked"}" aria-label="${escapeHtml(`${title} · ${stateLabel}`)}">
     <span class="zilch-achievement-card__icon zilch-achievement-card__icon--${escapeHtml(icon)}" aria-hidden="true"></span>
     <div class="zilch-achievement-card__copy">
-      <p class="zilch-achievement-card__category">${escapeHtml(achievementCategoryLabel(category, categories, achievement))}</p>
-      <h3>${escapeHtml(title)}</h3>
+      <div class="zilch-achievement-card__title"><h3>${escapeHtml(title)}</h3><span class="zilch-achievement-card__points">${escapeHtml(achievementPointsText(achievement))}</span></div>
       <p>${escapeHtml(description)}</p>
-      ${achievementModeMarkup(achievement)}
-    </div>
-    <div class="zilch-achievement-card__status">
-      <span class="zilch-achievement-card__points">${escapeHtml(achievementPointsText(achievement))}</span>
-      <span class="zilch-achievement-card__state">${escapeHtml(stateLabel)}</span>
-      ${unlocked && unlockedAt ? `<time datetime="${escapeHtml(String(unlockedAt))}">${escapeHtml(t("Freigeschaltet am"))}: ${escapeHtml(formattedDateTime(unlockedAt))}</time>` : missed ? "" : achievementProgressMarkup(achievement)}
+      <div class="zilch-achievement-card__status">
+        ${achievementModeMarkup(achievement)}
+        <span class="zilch-achievement-card__state">${escapeHtml(stateLabel)}</span>
+        ${unlocked || missed ? "" : achievementProgressMarkup(achievement)}
+      </div>
     </div>
   </article>`;
 }
@@ -1279,7 +1276,6 @@ function achievementsCatalogMarkup(projection) {
       <h2 id="${escapeHtml(id)}">${escapeHtml(achievementCategoryLabel(category, projection.categories, families[0]?.entries[0]?.achievement))}</h2>
       <div class="zilch-achievement-grid zilch-achievement-families">${families.map(({ family, entries }) => `<div class="zilch-achievement-family" data-achievement-family="${escapeHtml(family)}">${entries.map(entry => achievementCardMarkup(entry.achievement, {
         unlocked: entry.unlocked,
-        categories: projection.categories,
       })).join("")}</div>`).join("")}</div>
     </section>`;
   }).join("")}</div>`;
@@ -2090,19 +2086,15 @@ function rulesTableRow(label, value, detail) {
 function renderRulesContent(facts) {
   const scoring = facts?.scoring && typeof facts.scoring === "object" ? facts.scoring : {};
   const target = ruleNumber(facts?.target_score);
-  const dice = ruleNumber(facts?.dice_count);
+  const objective = interpolated("Erreiche {target} Punkte. Danach spielt die andere Person noch einen vollständigen Zug; anschliessend gewinnt der höchste Punktestand.", { target });
   return `<section class="zilch-game-head zilch-rules-head">
       <div><p class="eyebrow">${escapeHtml(t("Spielhilfe"))}</p><h1>${escapeHtml(t("Zilch-Regeln"))}</h1><p>${escapeHtml(t("Alles Wichtige für deine nächste Partie auf einen Blick."))}</p></div>
       <a class="small ghost button-link" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
     </section>
     <section class="zilch-card zilch-rules-overview">
       <h2>${escapeHtml(t("Ziel der Partie"))}</h2>
-      <p>${escapeHtml(t("Sichere Punkte, bis mindestens das Ziel erreicht ist. Danach erhält der andere Teilnehmer einen vollständigen Gegenzug."))}</p>
-      <dl class="zilch-rule-facts">
-        <div><dt>${escapeHtml(t("Würfel"))}</dt><dd>${escapeHtml(dice)}</dd></div>
-        <div><dt>${escapeHtml(t("Ziel"))}</dt><dd>${escapeHtml(target)} ${escapeHtml(t("Punkte"))}</dd></div>
-        <div><dt>${escapeHtml(t("Sichern ab"))}</dt><dd>${escapeHtml(`${ruleNumber(facts?.bank_minimum)} ${t("Punkte")}`)}</dd></div>
-      </dl>
+      <p>${escapeHtml(objective)}</p>
+      <p class="zilch-rules-overview__note">${escapeHtml(t("Pro Zug entscheidest du: Punkte sichern oder weiterwürfeln. Bei Zilch verfallen nur die noch nicht gesicherten Punkte."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section" aria-labelledby="zilchScoringTitle">
       <p class="eyebrow">${escapeHtml(t("Wertung"))}</p><h2 id="zilchScoringTitle">${escapeHtml(t("Was Punkte bringt"))}</h2>

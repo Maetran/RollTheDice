@@ -1551,134 +1551,115 @@ html[data-game="zilch"] .zilch-achievement-group > h2 {
 }
 html[data-game="zilch"] .zilch-achievement-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-  gap: var(--zilch-space-3);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: .65rem;
 }
 html[data-game="zilch"] .zilch-achievement-grid.zilch-achievement-families {
   grid-template-columns: 1fr;
-  gap: var(--zilch-space-3);
+  gap: .75rem;
 }
 html[data-game="zilch"] .zilch-achievement-family {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-  gap: var(--zilch-space-3);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: .65rem;
   min-width: 0;
-  padding-left: .4rem;
-  border-left: .18rem solid color-mix(in srgb, var(--zilch-gold) 46%, transparent);
+  padding-left: .55rem;
+  border-left: 2px solid color-mix(in srgb, var(--zilch-gold) 42%, transparent);
 }
 html[data-game="zilch"] .zilch-achievement-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--zilch-space-3);
+  gap: .7rem;
   align-items: start;
   min-width: 0;
-  min-height: 10.2rem;
-  padding: var(--zilch-space-4);
+  min-height: 0;
+  padding: .85rem .9rem;
   border: 1px solid var(--zilch-paper-edge);
-  border-radius: var(--zilch-radius);
+  border-radius: .65rem;
   color: var(--zilch-ink);
-  background:
-    linear-gradient(128deg, rgba(255, 255, 255, .64), rgba(250, 225, 164, .28)),
-    var(--zilch-paper-soft);
-  box-shadow: var(--zilch-shadow-soft), inset 0 1px rgba(255, 255, 255, .78);
+  background: var(--zilch-paper-soft);
+  box-shadow: none;
 }
 html[data-game="zilch"] .zilch-achievement-card.is-unlocked {
   border-color: color-mix(in srgb, var(--zilch-success) 62%, var(--zilch-paper-edge));
-  background:
-    radial-gradient(circle at 92% 8%, rgba(245, 205, 95, .42), transparent 34%),
-    linear-gradient(128deg, rgba(255, 255, 255, .7), rgba(193, 228, 187, .26)),
-    var(--zilch-paper-soft);
+  background: color-mix(in srgb, var(--zilch-paper-soft) 92%, #d8ebd4);
 }
 html[data-game="zilch"] .zilch-achievement-card.is-locked {
   border-style: dashed;
-  background: linear-gradient(128deg, rgba(255,255,255,.44), rgba(203, 185, 148, .23)), var(--zilch-paper);
+  background: rgba(255, 252, 239, .66);
 }
 html[data-game="zilch"] .zilch-achievement-card__icon {
   display: grid;
   place-items: center;
-  width: 2.7rem;
-  height: 2.7rem;
-  border: 1px solid color-mix(in srgb, var(--zilch-wood-light) 64%, var(--zilch-paper-edge));
-  border-radius: .72rem;
+  width: 2.15rem;
+  height: 2.15rem;
+  border: 0;
+  border-radius: .5rem;
   color: #4e2a11;
-  background: linear-gradient(145deg, #fff7cf, #e8bc5e);
-  box-shadow: inset 0 1px rgba(255,255,255,.85), .12rem .17rem 0 rgba(84, 43, 16, .2);
-  font: 900 1.4rem/1 Georgia, "Times New Roman", serif;
+  background: rgba(185, 125, 40, .14);
+  font: 900 1.12rem/1 Georgia, "Times New Roman", serif;
 }
 html[data-game="zilch"] .zilch-achievement-card__icon::before { content: "✦"; }
 html[data-game="zilch"] .zilch-achievement-card__icon--dice::before { content: "⠿"; }
 html[data-game="zilch"] .zilch-achievement-card__icon--paper::before { content: "≋"; }
 html[data-game="zilch"] .zilch-achievement-card__icon--flame::before { content: "✶"; }
 html[data-game="zilch"] .zilch-achievement-card__icon--shield::before { content: "◆"; }
+html[data-game="zilch"] .zilch-achievement-card.is-unlocked .zilch-achievement-card__icon { color: var(--zilch-success); background: rgba(41, 121, 71, .12); }
+html[data-game="zilch"] .zilch-achievement-card.is-locked .zilch-achievement-card__icon { color: var(--zilch-muted); background: rgba(111, 77, 43, .09); }
 html[data-game="zilch"] .zilch-achievement-card__copy { min-width: 0; }
-html[data-game="zilch"] .zilch-achievement-card__copy h3 {
-  margin: .12rem 0 .38rem;
-  overflow-wrap: anywhere;
-  color: var(--zilch-ink);
-  font: 800 1.16rem/1.18 Georgia, "Times New Roman", serif;
-}
-html[data-game="zilch"] .zilch-achievement-card__copy p:not(.zilch-achievement-card__category) {
-  margin: 0;
-  color: var(--zilch-ink-soft);
-  font-size: .9rem;
-  line-height: 1.46;
-}
-html[data-game="zilch"] .zilch-achievement-card__category {
-  margin: 0;
-  color: var(--zilch-muted);
-  font-size: .7rem;
-  font-weight: 850;
-  letter-spacing: .09em;
-  text-transform: uppercase;
-}
-html[data-game="zilch"] .zilch-achievement-card__status {
-  grid-column: 1 / -1;
+html[data-game="zilch"] .zilch-achievement-card__title {
   display: flex;
   flex-wrap: wrap;
-  gap: .42rem .6rem;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .2rem .55rem;
+}
+html[data-game="zilch"] .zilch-achievement-card__copy h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--zilch-ink);
+  font: 800 1.03rem/1.2 Georgia, "Times New Roman", serif;
+}
+html[data-game="zilch"] .zilch-achievement-card__copy > p {
+  margin: .2rem 0 0;
+  color: var(--zilch-ink-soft);
+  font-size: .84rem;
+  line-height: 1.4;
+}
+html[data-game="zilch"] .zilch-achievement-card__status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem .55rem;
   align-items: center;
-  padding-top: .12rem;
+  margin-top: .45rem;
   color: var(--zilch-muted);
-  font-size: .78rem;
+  font-size: .75rem;
   line-height: 1.35;
 }
-html[data-game="zilch"] .zilch-achievement-card__state,
-html[data-game="zilch"] .zilch-achievement-card__mode,
-html[data-game="zilch"] .zilch-achievement-card__progress,
 html[data-game="zilch"] .zilch-achievement-card__points {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.6rem;
-  padding: .12rem .42rem;
-  border: 1px solid rgba(107, 70, 37, .25);
-  border-radius: 99px;
-  background: rgba(255,255,255,.43);
-  font-weight: 800;
-}
-html[data-game="zilch"] .zilch-achievement-card__points {
+  flex: 0 0 auto;
   color: #56300f;
-  border-color: color-mix(in srgb, var(--zilch-gold) 58%, var(--zilch-paper-edge));
-  background: color-mix(in srgb, #f4d374 68%, rgba(255,255,255,.48));
+  font-size: .75rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
+html[data-game="zilch"] .zilch-achievement-card__mode { font-weight: 750; }
+html[data-game="zilch"] .zilch-achievement-card__state { font-weight: 750; }
 html[data-game="zilch"] .zilch-achievement-card__state::before {
   display: inline-block;
-  width: .85rem;
+  width: .75rem;
   margin-right: .22rem;
   content: "○";
-  font-size: .95rem;
+  font-size: .86rem;
 }
 html[data-game="zilch"] .zilch-achievement-card.is-unlocked .zilch-achievement-card__state {
   color: var(--zilch-success);
-  border-color: color-mix(in srgb, var(--zilch-success) 45%, var(--zilch-paper-edge));
 }
 html[data-game="zilch"] .zilch-achievement-card.is-unlocked .zilch-achievement-card__state::before { content: "✓"; }
-html[data-game="zilch"] .zilch-achievement-card.is-missed .zilch-achievement-card__state {
-  color: #70431f;
-  border-color: rgba(112, 67, 31, .34);
-}
+html[data-game="zilch"] .zilch-achievement-card.is-missed .zilch-achievement-card__state { color: #70431f; }
 html[data-game="zilch"] .zilch-achievement-card.is-missed .zilch-achievement-card__state::before { content: "–"; }
-html[data-game="zilch"] .zilch-achievement-card__status time { font-variant-numeric: tabular-nums; }
+html[data-game="zilch"] .zilch-achievement-card__progress { margin-left: auto; font-variant-numeric: tabular-nums; }
 html[data-game="zilch"] .zilch-award-finalization-note {
   margin: 1rem 0 0;
   color: var(--zilch-ink-soft);
@@ -1830,24 +1811,14 @@ html[data-game="zilch"] .app-toast-close {
 
 .zilch-rules-head { margin-bottom: var(--zilch-space-5); }
 .zilch-rules-overview { border-top: .3rem solid var(--zilch-gold); }
-
-.zilch-rule-facts {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: .65rem;
-  margin: 1rem 0 0;
+.zilch-rules-overview > p { max-width: 68ch; line-height: 1.58; }
+.zilch-rules-overview__note {
+  margin: .72rem 0 0;
+  padding-top: .72rem;
+  border-top: 1px solid rgba(136, 90, 40, .18);
+  color: var(--zilch-ink-soft);
+  font-size: .92rem;
 }
-
-.zilch-rule-facts div {
-  min-width: 0;
-  padding: .72rem;
-  border: 1px solid rgba(136, 90, 40, .17);
-  border-radius: var(--zilch-radius-xs);
-  background: rgba(136, 90, 40, .075);
-}
-
-.zilch-rule-facts dt { color: var(--zilch-muted); font-size: .76rem; }
-.zilch-rule-facts dd { margin: .18rem 0 0; overflow-wrap: anywhere; color: var(--zilch-ink); font: 800 1.08rem/1.15 Georgia, "Times New Roman", serif; font-variant-numeric: tabular-nums; }
 
 .zilch-rules-grid {
   display: grid;

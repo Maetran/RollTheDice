@@ -6,6 +6,14 @@ const pwaSource = fs.readFileSync(
   path.join(__dirname, "../../frontend/shell/pwa.js"),
   "utf8",
 );
+const routesSource = fs.readFileSync(
+  path.join(__dirname, "../../frontend/multigame/routes.js"),
+  "utf8",
+);
+
+async function loadRoutes() {
+  return import(`data:text/javascript;base64,${Buffer.from(routesSource).toString("base64")}`);
+}
 
 async function openPwaHarness(page, { origin, game }) {
   await page.addInitScript(() => {
@@ -91,6 +99,23 @@ test("legacy Zilch on the Apex leaves the established Apex PWA untouched", async
   expect(state.registerCalls).toEqual([]);
   expect(state.unregisterCalls).toBe(0);
   expect(state.cacheDeletes).toEqual([]);
+});
+
+test("an installed ZDWA PWA keeps the Zilch handoff inside its own origin", async () => {
+  const { zilchAppEntryUrl } = await loadRoutes();
+  const zdwaLocation = { hostname: "zockdiewandan.online" };
+  const standalone = {
+    navigator: { standalone: true },
+    matchMedia: () => ({ matches: true }),
+  };
+  const browser = {
+    navigator: { standalone: false },
+    matchMedia: () => ({ matches: false }),
+  };
+
+  expect(zilchAppEntryUrl("/", zdwaLocation, standalone)).toBe("/zilch");
+  expect(zilchAppEntryUrl("/regeln", zdwaLocation, standalone)).toBe("/zilch/regeln");
+  expect(zilchAppEntryUrl("/", zdwaLocation, browser)).toBe("https://zilch.zockdiewandan.online/");
 });
 
 test("ZDWA still registers its established root-scoped worker", async ({ page }) => {

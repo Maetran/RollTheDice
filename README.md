@@ -77,6 +77,9 @@ redirects. Existing account sessions are promoted
 to a separate parent-domain cookie through a fixed, allowlisted handoff without
 creating a second database session. Zilch deliberately has no service worker or
 installable manifest during this first split, while the ZDWA PWA stays unchanged.
+When that installed ZDWA PWA opens Zilch, it uses the same-origin `/zilch`
+compatibility route so iOS does not wrap the handoff in an external browser
+sheet; regular browser navigation still uses Zilch's canonical subdomain.
 Additional Solo objectives/challenges and a dedicated Zilch PWA are deliberately
 deferred. The public Zilch lobby and rule guide are canonical, indexable pages.
 A player selects scoring dice directly or
