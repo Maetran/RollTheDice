@@ -143,6 +143,11 @@ Drilling oder einen Vierling – samt Punkten. Zusammengerechnete Mischungen
 werden dort nicht als eigene Karte erklärt. Eine bewusst direkt über Würfel
 zusammengestellte, gültige Auswahl bleibt weiterhin serverseitig prüfbar.
 
+**„Aktueller Wurf“** zeigt transparent nur den Wert, der gerade angeschrieben
+werden könnte: **„Bisher gehalten“** sind die verbindlichen Rundenpunkte,
+**„Aktuell gehalten“** ist ausschließlich die momentan ausgewählte gültige
+Wertung. Ihre Summe ersetzt keine noch nicht gewählte kombinierte Auswahl.
+
 Die Schaltfläche **„Kombinierte Wertung“** direkt unter dem Spielblatt wählt
 alle aktuell punktenden Würfel als eine servergeprüfte Auswahl. Führt genau
 diese Auswahl als benannter Spezialwurf zu Hot Dice – etwa drei Paare oder eine

@@ -2478,6 +2478,7 @@ function renderRulesContent(facts) {
       <p>${escapeHtml(objective)}</p>
       <p class="zilch-rules-overview__note">${escapeHtml(t("Pro Zug entscheidest du: Punkte sichern oder weiterwürfeln. Bei Zilch verfallen nur die noch nicht gesicherten Punkte."))}</p>
       <p class="zilch-rules-overview__note">${escapeHtml(t("Bei einem Spezialwurf nennt die Kombinierte Wertung den Wurf und zeigt den Stempel „Freier Wurf“."))}</p>
+      <p class="zilch-rules-overview__note">${escapeHtml(t("Aktueller Wurf zeigt bisher gehaltene und aktuell ausgewählte Punkte getrennt; zusammen ist das der Wert zum Sichern."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section" aria-labelledby="zilchScoringTitle">
       <p class="eyebrow">${escapeHtml(t("Wertung"))}</p><h2 id="zilchScoringTitle">${escapeHtml(t("Was Punkte bringt"))}</h2>
@@ -3142,16 +3143,18 @@ function recommendationCards(snapshot, turnState, isMyTurn) {
 
 function turnScoreMarkup(snapshot, turnState, quickHolds, isMyTurn) {
   // ``round_points`` contains every already committed hold. A draft is not
-  // yet authoritative, so only an exact server option may be added to the
-  // visible total. With no draft, the compact readout previews the complete
-  // server-approved combined choice beside it.
+  // yet authoritative, so only the exact server option selected in the draft
+  // may be added to the visible total. Never prefill it from the combined
+  // action: that would show points the player has not chosen to hold.
   if (!isMyTurn || !turnState || snapshot?._finished || snapshot?._paused || state.zilchMoment) return "";
   const heldPoints = Math.max(0, Number(turnState.round_points) || 0);
   const combined = combinedScoringOption(quickHolds);
   const selected = exactOptionForDraft(quickHolds, draftHoldIndices(turnState));
-  const selectedPoints = Math.max(0, Number((selected || combined)?.points) || 0);
+  const selectedPoints = Math.max(0, Number(selected?.points) || 0);
   const potential = heldPoints + selectedPoints;
-  if (!potential) return "";
+  // Keep the all-scoreable action reachable on a fresh roll, while showing a
+  // truthful zero until the player actually selects a valid hold.
+  if (!potential && !combined) return "";
   const selectable = Boolean(
     combined
     && turnState?.can_select_hold
@@ -3168,6 +3171,7 @@ function turnScoreMarkup(snapshot, turnState, quickHolds, isMyTurn) {
   return `<div class="zilch-play-layout__current-score"><section class="zilch-turn-score" aria-live="polite" aria-label="${escapeHtml(t("Aktueller Wurf"))}">
     <span>${escapeHtml(t("Aktueller Wurf"))}</span>
     <strong>${escapeHtml(number(potential))}</strong>
+    <small class="zilch-turn-score__breakdown"><span>${escapeHtml(t("Bisher gehalten"))}: ${escapeHtml(number(heldPoints))}</span><span>${escapeHtml(t("Aktuell gehalten"))}: ${escapeHtml(number(selectedPoints))}</span></small>
   </section></div>${combined ? `<div class="zilch-play-layout__combined-score"><button type="button" class="zilch-combined-score${combinedSelected ? " is-selected" : ""}${freeRoll ? " is-hot" : ""}" data-zilch-combined-score ${selectable ? "" : "disabled"} aria-label="${escapeHtml(accessibleLabel)}" aria-pressed="${combinedSelected ? "true" : "false"}">
     <span aria-hidden="true">${escapeHtml(combinedLabel)}</span><strong aria-hidden="true">+${escapeHtml(number(combined.points))}</strong>${freeRoll ? `<span class="zilch-combined-score__stamp" aria-hidden="true"><strong>${escapeHtml(t("Freier Wurf!"))}</strong></span>` : ""}
   </button></div>` : ""}`;

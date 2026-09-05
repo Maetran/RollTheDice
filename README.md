@@ -114,8 +114,11 @@ held dice remain immutable; invalid dependent dice are removed when a selection
 is reduced. The **Combined score** action beneath the score sheet selects all
 currently scoring dice in one tap; when a named special roll such as three
 pairs produces Hot Dice, the action names that roll and adds its Free Roll
-stamp, while remaining optional until the next action. On the active game
-page, keys 1–6 toggle the corresponding selectable dice, Q/W/E/R/T/Z/U/I
+stamp, while remaining optional until the next action. **Current roll** shows
+the already-held points and the exact currently
+selected score separately; their sum is the value that would be banked, never
+a predicted combined selection. On the active game page, keys 1–6 toggle the
+corresponding selectable dice, Q/W/E/R/T/Z/U/I
 activate the visible suggestions in order, Space performs the enabled start or
 regular roll, and B banks only when permitted. A Zilch keeps the authoritative
 final rack visible until the next actual roll. CPU rolls use the same landing

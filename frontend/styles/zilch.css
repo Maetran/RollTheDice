@@ -2713,9 +2713,15 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
 }
 .zilch-shell--game .zilch-turn-score > small {
   grid-column: 1 / -1;
+  display: grid;
+  gap: .06rem;
   color: rgba(255, 247, 231, .72);
-  font-size: .68rem;
+  font-size: .62rem;
   font-weight: 750;
+  line-height: 1.15;
+}
+.zilch-shell--game .zilch-turn-score__breakdown > span {
+  white-space: nowrap;
 }
 .zilch-shell--game .zilch-combined-score {
   position: relative;
@@ -3026,8 +3032,8 @@ html[data-game="zilch"] body {
   /* Keep the paper at its expanded in-turn footprint even while there is no
      running-total tile. That prevents the board from visibly shrinking after
      a hold is banked or while the next roll is pending. */
-  --zilch-turn-score-slot-h: 3.2rem;
-  --zilch-score-sheet-extension: 3.2rem;
+  --zilch-turn-score-slot-h: 4rem;
+  --zilch-score-sheet-extension: 4rem;
   --zilch-turn-score-gap: .42rem;
   --zilch-play-layout-reserved-turn-score-h: calc(var(--zilch-turn-score-slot-h) + var(--zilch-turn-score-gap));
   --zilch-play-layout-max-h: calc(32rem + var(--zilch-score-sheet-extension));

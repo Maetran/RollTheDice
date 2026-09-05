@@ -1564,14 +1564,24 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
     ]);
 
     const combinedScore = page.locator("[data-zilch-combined-score]");
+    const currentRoll = page.locator(".zilch-turn-score");
+    await expect(currentRoll).toContainText("400");
+    await expect(currentRoll).toContainText("Bisher gehalten: 400");
+    await expect(currentRoll).toContainText("Aktuell gehalten: 0");
+    await expect(currentRoll).not.toContainText("600");
     await expect(combinedScore).toBeEnabled();
     await expect(combinedScore).toHaveAttribute("aria-label", /\+200/);
     await combinedScore.click();
     await expect(combinedScore).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator(".zilch-die--selected")).toHaveCount(3);
+    await expect(currentRoll).toContainText("600");
+    await expect(currentRoll).toContainText("Bisher gehalten: 400");
+    await expect(currentRoll).toContainText("Aktuell gehalten: 200");
     await combinedScore.click();
     await expect(combinedScore).toHaveAttribute("aria-pressed", "false");
     await expect(page.locator(".zilch-die--selected")).toHaveCount(0);
+    await expect(currentRoll).toContainText("400");
+    await expect(currentRoll).toContainText("Aktuell gehalten: 0");
 
     await page.setViewportSize({ width: 390, height: 827 });
     const mobileRecommendationLayout = await page.evaluate(() => {
@@ -1851,10 +1861,14 @@ test("a three-pairs Hot Dice choice names the roll and stays optional until Weit
     await page.goto(`/zilch/spiel/${gameId}`);
 
     const combinedScore = page.locator("[data-zilch-combined-score]");
+    const currentRoll = page.locator(".zilch-turn-score");
     await expect(combinedScore).toContainText("Drei Paare");
     await expect(combinedScore).not.toContainText("Kombinierte Wertung");
     await expect(combinedScore).toHaveAttribute("aria-label", /Freier Wurf/);
     await expect(combinedScore.locator(".zilch-combined-score__stamp")).toContainText("Freier Wurf!");
+    await expect(currentRoll).toContainText("0");
+    await expect(currentRoll).toContainText("Bisher gehalten: 0");
+    await expect(currentRoll).toContainText("Aktuell gehalten: 0");
     await expect(page.locator(".zilch-hot-roll-stamp")).toHaveCount(0);
     await page.locator("[data-zilch-die-index='0']").click();
     await expect(combinedScore).toBeEnabled();
