@@ -266,3 +266,5 @@ class ZilchTurnEngineTestCase(TestCase):
         total, streak, penalty = apply_zilch_streak(300, 2)
         self.assertEqual((total, streak, penalty), (0, 3, 500))
         self.assertEqual(apply_zilch_streak(0, 3), (0, 4, 0))
+        self.assertEqual(apply_zilch_streak(1_200, 5), (700, 6, 500))
+        self.assertEqual(apply_zilch_streak(500, 8), (0, 9, 500))

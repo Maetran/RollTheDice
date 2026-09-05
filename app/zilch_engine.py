@@ -810,13 +810,8 @@ def bank_allowed(turn: ZilchTurn) -> tuple[bool, str | None]:
 
 
 def apply_zilch_streak(total_points: int, prior_streak: int) -> tuple[int, int, int]:
-    """Apply the confirmed third-consecutive-Zilch penalty without negatives.
-
-    The confirmed contract specifies the transition to a third consecutive
-    Zilch.  Later cadence after a fourth and subsequent consecutive Zilch is
-    intentionally not invented here; only that transition applies the -500.
-    """
+    """Apply every third consecutive-Zilch penalty without negatives."""
     total = max(0, int(total_points))
     streak = max(0, int(prior_streak)) + 1
-    penalty = ZILCH_ZILCH_STREAK_PENALTY if streak == 3 else 0
+    penalty = ZILCH_ZILCH_STREAK_PENALTY if streak % 3 == 0 else 0
     return max(0, total - penalty), streak, penalty

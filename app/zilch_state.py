@@ -1239,7 +1239,7 @@ def record_zilch_bank(game: GameDict, turn: ZilchTurn) -> int:
 
 
 def record_zilch_loss(game: GameDict, turn: ZilchTurn, *, reason: str) -> dict:
-    """Discard unbanked points, apply a possible third-Zilch penalty, and log it."""
+    """Discard unbanked points, apply a possible every-third-Zilch penalty, and log it."""
     ensure_zilch_engine_state(game)
     player_id = turn.player_id
     board = _board_for(game, player_id)

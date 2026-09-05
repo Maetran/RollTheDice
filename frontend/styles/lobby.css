@@ -508,6 +508,13 @@
 .leaderboard-box.wide{ grid-column:1 / -1; }
 .leaderboard-box tbody tr.hc-entry td{ background:#fff4d8; }
 .leaderboard-box tbody tr.hc-entry:hover td{ background:#ffedbd; }
+:root[data-theme="dark"] .leaderboard-box tbody tr.hc-entry td{
+  color:#fff2e5;
+  background:#4a2815;
+  border-color:#78411f;
+}
+:root[data-theme="dark"] .leaderboard-box tbody tr.hc-entry :where(a, .player-profile-link){ color:#ffd5ad; }
+:root[data-theme="dark"] .leaderboard-box tbody tr.hc-entry:hover td{ background:#623617; }
 
 /* The landing page owns the responsive application navigation and rankings.
    Keeping these rules here prevents the lightweight lobby bundle from depending

@@ -515,16 +515,17 @@ class ZilchGameplayTestCase(TestCase):
         self.assertEqual(message["scoreboard"]["_turn"]["player_id"], "p2")
         self.assertEqual(message["scoreboard"]["_dice"], [0, 0, 0, 0, 0, 0])
 
-    def test_successful_bank_resets_zilch_streak_and_three_zilchs_do_not_go_negative(self):
+    def test_successful_bank_resets_zilch_streak_and_every_third_zilch_does_not_go_negative(self):
         game, _sockets = self.make_game()
         game["_total_points"]["p1"] = 200
         game["_zilch_boards"]["p1"]["total_points"] = 200
-        for index in range(3):
+        for index in range(9):
             turn = replace(current_zilch_turn(game), turn_id=index + 1, round_points=100, rolls_used=1)
             record_zilch_loss(game, turn, reason="no_scoring_option")
         self.assertEqual(game["_total_points"]["p1"], 0)
-        self.assertEqual(game["_zilch_boards"]["p1"]["zilch_streak"], 3)
-        self.assertEqual(game["_zilch_boards"]["p1"]["rounds"][-1]["penalty"], 500)
+        self.assertEqual(game["_zilch_boards"]["p1"]["zilch_streak"], 9)
+        penalties = [entry["penalty"] for entry in game["_zilch_boards"]["p1"]["rounds"]]
+        self.assertEqual(penalties, [0, 0, 500, 0, 0, 500, 0, 0, 500])
 
         bank_turn = replace(current_zilch_turn(game), round_points=400, phase=ZILCH_PHASE_READY_TO_ROLL)
         record_zilch_bank(game, bank_turn)

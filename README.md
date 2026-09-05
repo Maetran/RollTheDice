@@ -107,6 +107,8 @@ and offset page edges keep the active player in front and the opponent total vis
 turns are recorded there, while chat and short-lived emoji reactions remain separate
 from the score history and are echoed to every connected participant,
 including the sender.
+Each third consecutive Zilch deducts 500 points (the third, sixth, ninth, and
+so on), never below zero; banking points resets that personal streak.
 
 Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
 The private Zilch award boundary, evidence source, delivery lifecycle, and

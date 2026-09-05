@@ -290,6 +290,10 @@ html[data-game="zilch"] .zilch-nav-list .zilch-nav-back::before {
 .zilch-game-head { max-width: 780px; margin: 0 0 1.35rem; color: #fff8e8; }
 .zilch-intro h1,
 .zilch-game-head h1 { margin: .15rem 0 .55rem; font: 800 clamp(2.2rem, 7vw, 4.1rem)/.98 Georgia, "Times New Roman", serif; letter-spacing: -.035em; }
+.zilch-intro h1 {
+  color: #fffdf5;
+  text-shadow: 0 .1rem .18rem rgba(35, 15, 6, .9), 0 .38rem .9rem rgba(35, 15, 6, .56);
+}
 .zilch-intro p:last-child,
 .zilch-game-head p { max-width: 68ch; margin: .4rem 0; line-height: 1.6; }
 .zilch-game-head { justify-content: space-between; align-items: flex-end; max-width: none; }
@@ -1050,7 +1054,6 @@ html[data-game="zilch"] .zilch-participant-badge--solo {
   color: #fff9e9;
   background: rgba(52, 27, 12, .9);
   box-shadow: 0 .35rem .85rem rgba(27, 12, 4, .3);
-  backdrop-filter: blur(7px);
 }
 .zilch-score-overview--solo { grid-template-columns: minmax(0, 1fr); }
 
@@ -2704,6 +2707,15 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
 .zilch-page .emoji-pop .who { color: #5a3117; }
 .zilch-shell--game .zilch-chat__content { background: var(--zilch-paper); }
 
+.zilch-shell--game .zilch-start-roll-rail {
+  align-self: start;
+  min-width: 0;
+}
+
+.zilch-shell--game .zilch-start-roll-rail .zilch-start-roll {
+  margin: 0;
+}
+
 @media (min-width: 761px) {
   .zilch-shell--game .zilch-play-layout {
     grid-template-columns: minmax(0, 1.16fr) minmax(19rem, .84fr);
@@ -2775,7 +2787,14 @@ html[data-game="zilch"] body {
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
-  background-attachment: fixed;
+  /* Fixed bitmap backgrounds blur intermittently in iOS standalone windows.
+     Scroll with the document on touch/PWA surfaces; desktop keeps the table
+     fixed below where a pointer is available. */
+  background-attachment: scroll;
+}
+
+@media (min-width: 761px) and (hover: hover) {
+  html[data-game="zilch"] body { background-attachment: fixed; }
 }
 
 .zilch-shell--game .zilch-play-layout {
@@ -3249,6 +3268,39 @@ html[data-game="zilch"] body {
 
   .zilch-shell--game .zilch-dice-dock { right: .35rem; left: .35rem; }
   .zilch-shell--game .zilch-dice-dock .zilch-table { padding-inline: .35rem; }
+
+  .zilch-shell--game .zilch-start-roll-rail .zilch-start-roll {
+    padding: .58rem;
+  }
+
+  .zilch-shell--game .zilch-start-roll-rail .zilch-start-roll h2 {
+    margin-bottom: .45rem;
+    font-size: .96rem;
+  }
+
+  .zilch-shell--game .zilch-start-roll-rail .zilch-start-rolls {
+    gap: .28rem;
+    margin: .55rem 0;
+  }
+
+  .zilch-shell--game .zilch-start-roll-rail .zilch-start-rolls li {
+    gap: .4rem;
+    padding: .38rem .42rem;
+    font-size: .78rem;
+  }
+
+  .zilch-shell--game .zilch-start-roll-rail .zilch-start-rolls li > :first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Both controls and their hit areas clear the rounded lower corners. */
+  .zilch-shell--game .zilch-chat__bar {
+    padding-inline:
+      max(1rem, calc(env(safe-area-inset-left, 0px) + .5rem))
+      max(1rem, calc(env(safe-area-inset-right, 0px) + .5rem));
+  }
 }
 
 @media (max-width: 350px) {
@@ -3346,6 +3398,43 @@ html[data-game="zilch"] body {
   font-weight: 800;
   line-height: 1.08;
 }
+
+/* Each ruled row reads like a tiny ledger: turn delta, a physical separator,
+   then the resulting total (and, where applicable, its Zilch marker). */
+.zilch-shell--game .zilch-notebook-player li {
+  display: grid;
+  grid-template-columns: minmax(0, .88fr) 1px minmax(0, 1.12fr);
+  align-items: center;
+  column-gap: .42rem;
+}
+
+.zilch-shell--game .zilch-notebook-entry__change {
+  min-width: 0;
+  padding-right: .08rem;
+  text-align: right;
+}
+
+.zilch-shell--game .zilch-notebook-entry__divider {
+  align-self: stretch;
+  min-height: 1.05rem;
+  background: rgba(109, 70, 37, .54);
+}
+
+.zilch-shell--game .zilch-notebook-entry__total {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .2rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.zilch-shell--game .zilch-notebook-entry__total strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zilch-shell--game .zilch-notebook-entry__total em { margin-left: 0; }
 
 /* The dice remain mathematically square and fit as a single six-die row on a
    320px viewport. Narrower dock gutters turn the reclaimed pixels into useful

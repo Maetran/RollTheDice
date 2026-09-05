@@ -1702,6 +1702,36 @@ test("Space uses the enabled start roll first and otherwise the current roll act
     await expect(startPage.locator("[data-zilch-start-roll]")).toBeEnabled();
     await expect(startPage.locator("[data-zilch-roll]")).toBeEnabled();
 
+    await test.step("the mobile opening roll uses the unused rail and clears rounded chat corners", async () => {
+      await startPage.setViewportSize({ width: 390, height: 844 });
+      await expect(startPage.locator(".zilch-start-roll-rail")).toBeVisible();
+      await expect(startPage.locator(".emoji-fab")).toBeVisible();
+      const geometry = await startPage.evaluate(() => {
+        const box = selector => {
+          const rect = document.querySelector(selector).getBoundingClientRect();
+          return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+        };
+        return {
+          notebook: box(".zilch-play-layout__notebook"),
+          openingRoll: box(".zilch-start-roll-rail"),
+          chatToggle: box("[data-zilch-chat-toggle]"),
+          reaction: box(".emoji-fab"),
+          bodyUsesOnlyScrollAttachments: getComputedStyle(document.body).backgroundAttachment
+            .split(",")
+            .every(value => value.trim() === "scroll"),
+          viewport: document.querySelector('meta[name="viewport"]')?.getAttribute("content") || "",
+        };
+      });
+      expect(geometry.openingRoll.left, "opening roll is in the right rail").toBeGreaterThanOrEqual(geometry.notebook.right - 1);
+      expect(Math.abs(geometry.openingRoll.top - geometry.notebook.top), "opening roll begins beside the notebook").toBeLessThanOrEqual(1);
+      expect(geometry.chatToggle.left, "the complete Chat hit target clears the left corner").toBeGreaterThanOrEqual(15);
+      expect(geometry.reaction.right, "the reaction hit target clears the right corner").toBeLessThanOrEqual(375);
+      expect(geometry.reaction.width).toBeGreaterThanOrEqual(33);
+      expect(geometry.reaction.height).toBeGreaterThanOrEqual(33);
+      expect(geometry.bodyUsesOnlyScrollAttachments, "the PWA does not use a blurry fixed wood bitmap").toBe(true);
+      expect(geometry.viewport).toContain("viewport-fit=cover");
+    });
+
     await startPage.evaluate(() => {
       const dialog = document.createElement("div");
       dialog.id = "space-fixture-dialog";
@@ -2068,7 +2098,7 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
     ]));
 
     await expect(page.locator(".zilch-event")).toHaveCount(0);
-    await expect(page.locator("#zilchLiveStatus")).toContainText(/Dritter Zilch|Third Zilch/);
+    await expect(page.locator("#zilchLiveStatus")).toContainText(/Zilch-Serie|Zilch streak/);
     const zilchOverlay = page.locator("[data-zilch-event-overlay]");
     await expect(zilchOverlay).toBeVisible();
     await expect(zilchOverlay).toContainText("ZILCH!");
@@ -2076,6 +2106,8 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
     await expect(page.locator("#zilchRoomContext")).toContainText("ZILCH!");
     await expect(page.locator('[data-zilch-board-id="p1"]')).toHaveClass(/is-active/);
     await expect(page.locator('[data-zilch-board-id="p2"]')).toHaveClass(/is-inactive/);
+    await expect(page.locator('[data-zilch-board-id="p1"] .zilch-notebook-entry__divider')).toHaveCount(1);
+    await expect(page.locator('[data-zilch-board-id="p1"]')).toContainText(/7(?:'|,|’|\s)900.*Zilch|Zilch.*7(?:'|,|’|\s)900/);
     const overlayGeometry = await page.evaluate(() => {
       const overlay = document.querySelector("[data-zilch-event-overlay]").getBoundingClientRect();
       const notebook = document.querySelector(".zilch-play-layout__notebook").getBoundingClientRect();

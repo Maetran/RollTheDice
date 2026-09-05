@@ -2207,7 +2207,7 @@ function renderRulesContent(facts) {
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Wertungen auswählen"))}</h2><p>${escapeHtml(t("Tippe eine Wertung oder einzelne Würfel an. Die Auswahl bleibt bis zum Weiterwürfeln oder Sichern änderbar."))}</p><p>${escapeHtml(t("Nur eine gemeinsam wertende Auswahl kann übernommen werden; ungültig gewordene Würfel fallen aus der Auswahl."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Würfeln oder sichern"))}</h2><p>${escapeHtml(t("Nach dem dritten Wurf müssen mindestens 300 Rundenpunkte gehalten sein. Sichern ist ab 400 Punkten möglich, solange kein Bestätigungswurf offen ist."))}</p><p>${escapeHtml(t("Vor dem Sichern kannst du deine Würfelauswahl jederzeit anpassen."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Hot Dice und Bestätigungswurf"))}</h2><p>${escapeHtml(t("Wenn alle sechs Würfel Punkte geben, werden sie wieder frei: Hot Dice. Die Rundenpunkte bleiben bestehen."))}</p><p>${escapeHtml(t("Ein Tipp auf Hot Dice markiert alle passenden Würfel. Erst Weiterwürfeln übernimmt die Auswahl."))}</p><p>${escapeHtml(t("Nach drei Einsen oder einem vollständigen Hold muss ein weiterer Punktewurf von mindestens 50 Punkten bestätigt werden, bevor du sichern darfst."))}</p></section>
-    <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zilch-Serie"))}</h2><p>${escapeHtml(t("Ein Wurf ohne gültige Wertung – oder eine nicht erreichbare 300er-Regel nach Wurf drei – beendet den Zug als Zilch. Ungesicherte Punkte verfallen."))}</p><p>${escapeHtml(t("Bei einem Zilch bleibt der letzte Wurf kurz sichtbar, bevor der Zug wechselt."))}</p><p>${escapeHtml(t("Beim Übergang vom zweiten zum dritten Zilch in Folge werden einmalig 500 Punkte abgezogen, niemals unter null."))}</p></section>
+      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zilch-Serie"))}</h2><p>${escapeHtml(t("Ein Wurf ohne gültige Wertung – oder eine nicht erreichbare 300er-Regel nach Wurf drei – beendet den Zug als Zilch. Ungesicherte Punkte verfallen."))}</p><p>${escapeHtml(t("Bei einem Zilch bleibt der letzte Wurf kurz sichtbar, bevor der Zug wechselt."))}</p><p>${escapeHtml(t("Bei jedem dritten Zilch in Folge – also beim dritten, sechsten, neunten und so weiter – werden 500 Punkte abgezogen, niemals unter null."))}</p></section>
     </section>
     <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>
     <section class="zilch-card zilch-rules-section zilch-rules-section--solo"><p class="eyebrow">${escapeHtml(t("Solo"))}</p><h2>${escapeHtml(t("10’000-Punkte-Sprint"))}</h2><p>${escapeHtml(t("Im Solo-Sprint erreichst du mindestens 10’000 Punkte in möglichst wenigen eigenen Zügen. Der Lauf beginnt direkt mit deinem ersten normalen Zug – ohne Startwurf, Gegner, Schlussrunde oder Gegenzug."))}</p><p>${escapeHtml(t("Bei gleicher Zielerreichung werden später zuerst weniger Züge, dann weniger Würfe, weniger Zilchs und eine kürzere aktive Dauer verglichen. Pausenzeit zählt nicht zur aktiven Dauer."))}</p><p>${escapeHtml(t("Du kannst einen Solo-Lauf nach Bestätigung aufgeben. Er bleibt mit dem Status „Aufgegeben“ in deiner Historie erhalten."))}</p></section>
@@ -2232,12 +2232,12 @@ function notebookRound(entry) {
   const event = String(entry.event || entry.type || "");
   const total = number(entry.total_after);
   if (event === "bank") {
-    return `<span class="zilch-notebook-entry__change">+${number(entry.points)}:</span> <strong>${total}<span class="zilch-notebook-entry__unit"> ${escapeHtml(t("Punkte"))}</span></strong>`;
+    return `<span class="zilch-notebook-entry__change">+${number(entry.points)}</span><span class="zilch-notebook-entry__divider" aria-hidden="true"></span><span class="zilch-notebook-entry__total"><strong>${total}<span class="zilch-notebook-entry__unit"> ${escapeHtml(t("Punkte"))}</span></strong></span>`;
   }
   if (event === "zilch") {
     const penalty = Number(entry.penalty || 0);
     const change = penalty ? `−${number(penalty)}` : "+0";
-    return `<span class="zilch-notebook-entry__change">${change}:</span> <strong>${total}<span class="zilch-notebook-entry__unit"> ${escapeHtml(t("Punkte"))}</span></strong> <em>(${escapeHtml(t("Zilch"))})</em>`;
+    return `<span class="zilch-notebook-entry__change">${change}</span><span class="zilch-notebook-entry__divider" aria-hidden="true"></span><span class="zilch-notebook-entry__total"><strong>${total}<span class="zilch-notebook-entry__unit"> ${escapeHtml(t("Punkte"))}</span></strong><em>(${escapeHtml(t("Zilch"))})</em></span>`;
   }
   return `${escapeHtml(t("Runde"))} ${number(entry.round)}`;
 }
@@ -3152,6 +3152,19 @@ function renderGameState() {
   const resultMarkup = finalResult(snapshot);
   const hasChoices = Boolean(recommendations || turnScore || resultMarkup);
   const finished = Boolean(resultMarkup);
+  const openingPanel = openingRollPanel(snapshot);
+  const waitingPanel = waitingRoomPanel(snapshot);
+  // With both human seats filled, the waiting-room card is the next action,
+  // not an afterthought below the paper. Put it into the otherwise unused
+  // right rail; a one-player waiting room still keeps its roomy status card.
+  const waitingPanelUsesRail = Boolean(waitingPanel && players.length > 1);
+  const sideRail = openingPanel
+    ? `<aside class="zilch-start-roll-rail">${openingPanel}</aside>`
+    : waitingPanelUsesRail
+      ? `<aside class="zilch-start-roll-rail">${waitingPanel}</aside>`
+    : hasChoices
+      ? `<aside class="zilch-recommendations" aria-label="${escapeHtml(finished ? t("Spielergebnis") : t("Mögliche Wertungen"))}">${recommendations}${turnScore}${resultMarkup}</aside>`
+      : "";
   const chatRows = (Array.isArray(snapshot._chat_history) ? snapshot._chat_history : []).map(entry => {
     const sender = participantForId(snapshot, entry?.from_id || entry?.player_id || entry?.participant_id);
     const identity = sender
@@ -3178,10 +3191,9 @@ function renderGameState() {
         transition: state.zilchMoment ? null : transition,
         activePlayerId: state.zilchMoment?.playerId || "",
       })}</div>
-      ${hasChoices ? `<aside class="zilch-recommendations" aria-label="${escapeHtml(finished ? t("Spielergebnis") : t("Mögliche Wertungen"))}">${recommendations}${turnScore}${resultMarkup}</aside>` : ""}
+      ${sideRail}
     </section>
-    ${waitingRoomPanel(snapshot)}
-    ${openingRollPanel(snapshot)}
+    ${waitingPanelUsesRail ? "" : waitingPanel}
     <section class="zilch-dice-dock">
       <section class="zilch-table" aria-labelledby="zilchDiceTitle">
         <h2 id="zilchDiceTitle" class="visually-hidden">${escapeHtml(t("Sechs Würfel"))}</h2>
@@ -3445,7 +3457,7 @@ function messageForEvent(snapshot, event) {
   const cpuText = cpuEventText(snapshot, event);
   if (cpuText) return cpuText;
   if (event.type === "hold" && event.option?.hot_dice) return t("Hot Dice – alle sechs Würfel werden erneut frei.");
-  if (event.type === "zilch" && Number(event.penalty || 0)) return t("Dritter Zilch – 500 Punkte Abzug.");
+  if (event.type === "zilch" && Number(event.penalty || 0)) return t("Zilch-Serie – 500 Punkte Abzug.");
   if (["solo_completed", "solo_complete", "objective_completed"].includes(event.type)) return t("Solo-Ziel erreicht");
   if (["solo_abandoned", "abandon_solo"].includes(event.type)) return t("Solo-Lauf aufgegeben");
   return message(`zilch.event.${event.type}`);

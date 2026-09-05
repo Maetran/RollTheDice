@@ -109,13 +109,10 @@ Ein Zilch tritt ein, wenn
 - die 300er-Schwelle am dritten Wurf nicht verbindlich erreicht werden kann.
 
 Ungesicherte Rundenpunkte verfallen; das eigene Board protokolliert den Zug
-als `zilch`. Beim **dritten aufeinanderfolgenden** Zilch werden 500 Punkte
-abgezogen, niemals unter 0. Ein erfolgreiches Anschreiben setzt die Serie
-zurück. Die bestätigte Regel bestimmt den Übergang zur dritten Serie; ob nach
-einem vierten oder weiteren Zilch ohne Anschreiben weitere Abzüge in einer
-festen Kadenz folgen sollen, ist bewusst noch nicht festgelegt. Die aktuelle
-Engine zieht daher genau beim Übergang `2 → 3` einmal 500 Punkte ab und erfindet
-keine weitere Straflogik.
+als `zilch`. Beim **dritten und jedem weiteren dritten aufeinanderfolgenden**
+Zilch werden 500 Punkte abgezogen, also bei den Übergängen `2 → 3`, `5 → 6`,
+`8 → 9` und so weiter – niemals unter 0. Ein erfolgreiches Anschreiben setzt
+die Serie zurück.
 
 In `multiplayer` und `cpu` wird ab mindestens 10.000 angeschriebenen Punkten
 die mögliche Schlussrunde begonnen. Der andere Teilnehmer erhält einen
