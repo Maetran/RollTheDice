@@ -265,14 +265,19 @@ Subdomain umziehen. Die Apex-Origin bleibt erreichbar und wird während dieser
 Umstellung nicht umgeleitet; bestehende PWA-Installationen, offene Tabs,
 Host-Cookies und lokale Resume-Tokens funktionieren dort weiter.
 
-Die Zilch-Subdomain liefert absichtlich weder den root-gescopten ZDWA-Service-
-Worker noch dessen Manifest aus. So kann der gemeinsame PWA-Cache keine Zilch-
-Sitzung oder private Spielansicht wiederherstellen. API-Antworten bleiben
+Die Zilch-Subdomain liefert weiterhin weder den root-gescopten ZDWA-Service-
+Worker noch dessen Manifest aus. Stattdessen hat sie mit
+`/zilch-manifest.webmanifest` und `/zilch-sw.js` eine eigene, isolierte PWA.
+Der Zilch-Worker ist bewusst network-only und verwendet keinen Cache Storage:
+So kann weder ein gemeinsamer noch ein Zilch-spezifischer PWA-Cache eine
+private Sitzung oder Spielansicht wiederherstellen. API-Antworten bleiben
 `no-store`; Räume, Konto, Historie, persönliche Statistik, Ergebnisse und
 Spielerprofile erhalten `X-Robots-Tag: noindex, nofollow`. Nur die öffentliche
 Zilch-Lobby `/` und `/regeln` sind auf der Zilch-Origin indexierbar, mit
-eigenem Canonical, `robots.txt` und Sitemap. Eine eigene installierbare
-Zilch-PWA wäre ein separates, vor der Freigabe zu testendes Produktinkrement.
+eigenem Canonical, `robots.txt` und Sitemap. Der Installationshinweis wird bei
+einem Schließen sieben Tage lang unterdrückt, aber bei einer neuen Asset-Version
+sofort erneut angeboten; ein Worker-Update zeigt einen separaten
+Aktualisieren-Hinweis.
 
 Die gemeinsame, `Secure`, `HttpOnly` und `SameSite=Lax` gesetzte Session wird
 beim kontrollierten Handoff aus einem gültigen Apex-Login übernommen. Nutzer,
@@ -452,8 +457,9 @@ ssh zdwa 'cd /home/manuel/RollTheDice && sudo -n docker compose exec rollthedice
 ## Service Worker und statische Assets
 
 ZDWA verwendet einen Service Worker mit Cache-First-Strategie für statische
-Dateien. Cache-Name und Query-Parameter werden aus dem Inhalt aller statischen
-Dateien und Manifeste abgeleitet und dadurch gemeinsam aktualisiert.
+Dateien; Zilch verwendet einen separaten network-only Worker. Cache-Name und
+Query-Parameter werden aus dem Inhalt aller statischen Dateien und Manifeste
+abgeleitet und dadurch gemeinsam aktualisiert.
 
 Nach einer Änderung unter `app/static/` oder an einem Manifest:
 
@@ -464,7 +470,8 @@ Nach einer Änderung unter `app/static/` oder an einem Manifest:
 4. Prüfen, ob neue **öffentliche** Offline-Assets in `PRECACHE_URLS`
    aufgenommen werden müssen. Geschützte Zilch-Routen und ihre Zilch-JS/CSS-
    Bundles gehören absichtlich nicht in den globalen Precache.
-5. Nach dem Deployment die öffentliche HTML-Datei und `sw.js` kontrollieren.
+5. Nach dem Deployment die öffentliche HTML-Datei sowie `sw.js` und auf der
+   Zilch-Origin `zilch-sw.js` kontrollieren.
 6. Die Seite in einem bereits verwendeten Browser nochmals laden. Der neue
    Service Worker übernimmt bestehende Tabs unter Umständen erst nach dem ersten
    Reload vollständig.
@@ -483,6 +490,7 @@ Beispielprüfung:
 ```bash
 curl -fsS https://zockdiewandan.online/static/sw.js | grep CACHE_VERSION
 curl -fsS https://zockdiewandan.online/spiel/test | grep 'style.css?v='
+curl -fsS https://zilch.zockdiewandan.online/zilch-sw.js | grep CACHE_VERSION
 ```
 
 ## Konfiguration und Geheimnisse

@@ -36,11 +36,14 @@ def test_localization_catalog_is_available_offline():
     assert "'/manifest-en.webmanifest'" in service_worker
 
 
-def test_both_localized_manifests_are_packaged():
+def test_all_localized_manifests_are_packaged():
     assert (ROOT / "manifest.webmanifest").exists()
     assert (ROOT / "manifest-en.webmanifest").exists()
+    assert (ROOT / "zilch-manifest.webmanifest").exists()
+    assert (ROOT / "zilch-manifest-en.webmanifest").exists()
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert "COPY manifest-en.webmanifest /app/manifest-en.webmanifest" in dockerfile
+    assert "COPY zilch-manifest-en.webmanifest /app/zilch-manifest-en.webmanifest" in dockerfile
 
 
 def test_localization_maintenance_guide_exists():

@@ -331,6 +331,20 @@ def manifest_en(request: Request):
     return FileResponse(str(BASE / "manifest-en.webmanifest"), media_type="application/manifest+json")
 
 
+@app.get("/zilch-manifest.webmanifest", include_in_schema=False)
+def zilch_manifest(request: Request):
+    if not is_zilch_host(request):
+        return Response(status_code=404, headers={"Cache-Control": "no-store"})
+    return FileResponse(str(BASE / "zilch-manifest.webmanifest"), media_type="application/manifest+json")
+
+
+@app.get("/zilch-manifest-en.webmanifest", include_in_schema=False)
+def zilch_manifest_en(request: Request):
+    if not is_zilch_host(request):
+        return Response(status_code=404, headers={"Cache-Control": "no-store"})
+    return FileResponse(str(BASE / "zilch-manifest-en.webmanifest"), media_type="application/manifest+json")
+
+
 # Service Worker (Root-Scope) ausliefern
 @app.get("/sw.js", include_in_schema=False)
 def service_worker(request: Request):
@@ -343,9 +357,23 @@ def service_worker(request: Request):
     )
 
 
+@app.get("/zilch-sw.js", include_in_schema=False)
+def zilch_service_worker(request: Request):
+    """Serve Zilch's isolated, network-only root-scoped worker."""
+    if not is_zilch_host(request):
+        return Response(status_code=404, headers={"Cache-Control": "no-store"})
+    return FileResponse(
+        str(STATIC_DIR / "zilch-sw.js"),
+        media_type="text/javascript",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
+
+
 @app.get("/favicon.ico", include_in_schema=False)
-def favicon():
-    return FileResponse(str(STATIC_DIR / "favicon.png"), media_type="image/png")
+def favicon(request: Request):
+    """Use the product-specific favicon on each canonical origin."""
+    icon = STATIC_DIR / "icons" / "zilch-icon-32.png" if is_zilch_host(request) else STATIC_DIR / "favicon.png"
+    return FileResponse(str(icon), media_type="image/png")
 
 
 @app.get("/robots.txt", include_in_schema=False, response_class=PlainTextResponse)

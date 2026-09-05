@@ -233,6 +233,10 @@ check_runtime() {
     || fail "The Zilch host must not expose the root-scoped service worker"
   [[ "$(curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' -H 'Host: zilch.zockdiewandan.online' http://127.0.0.1:8000/manifest.webmanifest)" == "404" ]] \
     || fail "The Zilch host must not expose the ZDWA manifest"
+  [[ "$(curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' -H 'Host: zilch.zockdiewandan.online' http://127.0.0.1:8000/zilch-sw.js)" == "200" ]] \
+    || fail "The Zilch host must expose its isolated service worker"
+  [[ "$(curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' -H 'Host: zilch.zockdiewandan.online' http://127.0.0.1:8000/zilch-manifest.webmanifest)" == "200" ]] \
+    || fail "The Zilch host must expose its own manifest"
   log "host routing and PWA isolation: ready"
 }
 

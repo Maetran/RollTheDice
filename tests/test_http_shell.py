@@ -45,11 +45,15 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         with patch("app.main.database_schema_ready", return_value=True):
             self.assertEqual(main.health(), {"status": "ok", "database": "ready"})
 
-    def test_raster_icons_are_used_consistently(self):
+    async def test_raster_icons_are_used_consistently(self):
         version = content_version()
-        favicon = main.favicon()
-        self.assertTrue(str(favicon.path).endswith("/static/favicon.png"))
+        transport = httpx.ASGITransport(app=main.app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://zockdiewandan.online") as client:
+            favicon = await client.get("/favicon.ico")
+            zilch_favicon = await client.get("https://zilch.zockdiewandan.online/favicon.ico")
         self.assertEqual(favicon.headers.get("content-type"), "image/png")
+        self.assertEqual(zilch_favicon.headers.get("content-type"), "image/png")
+        self.assertNotEqual(favicon.content, zilch_favicon.content)
 
         manifest = json.loads((main.BASE / "manifest.webmanifest").read_text())
         self.assertEqual(
@@ -59,8 +63,25 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
                 f"/static/icons/icon-512.png?v={version}",
             ],
         )
+        zilch_manifest = json.loads((main.BASE / "zilch-manifest.webmanifest").read_text())
+        self.assertEqual(
+            [icon["src"] for icon in zilch_manifest["icons"]],
+            [
+                f"/static/icons/zilch-icon-192.png?v={version}",
+                f"/static/icons/zilch-icon-512.png?v={version}",
+            ],
+        )
+        zilch_shells = {"zilch.html", "zilch-lobby.html", "zilch-rules.html", "zilch-login.html"}
         for html_path in main.STATIC_DIR.glob("*.html"):
             html = html_path.read_text()
+            if html_path.name in zilch_shells:
+                self.assertIn(f"/static/icons/zilch-icon-32.png?v={version}", html, html_path.name)
+                self.assertIn(
+                    f"/static/icons/zilch-apple-touch-icon-180.png?v={version}",
+                    html,
+                    html_path.name,
+                )
+                continue
             self.assertIn(f"/static/favicon.png?v={version}", html, html_path.name)
             self.assertIn(f"/static/icons/apple-touch-icon-180.png?v={version}", html, html_path.name)
 

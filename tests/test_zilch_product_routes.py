@@ -371,7 +371,7 @@ class ZilchProductRoutesTestCase(TestCase):
             "https://zockdiewandan.online/auth/continue?app=zilch&path=%2F",
         )
 
-    def test_private_zilch_host_blocks_the_zdwa_pwa_and_crawler_discovery(self) -> None:
+    def test_private_zilch_host_isolates_the_zdwa_pwa_but_serves_its_own_pwa_assets(self) -> None:
         host = "zilch.zockdiewandan.online"
         robots = self._get("/robots.txt", host=host)
         self.assertEqual(robots.status_code, 200)
@@ -384,6 +384,26 @@ class ZilchProductRoutesTestCase(TestCase):
                 self.assertEqual(response.status_code, 404)
                 self.assertIn("no-store", response.headers["cache-control"])
                 self.assertEqual(response.headers["x-robots-tag"], "noindex, nofollow")
+
+        for path in ("/zilch-manifest.webmanifest", "/zilch-manifest-en.webmanifest"):
+            with self.subTest(path=path):
+                response = self._get(path, host=host)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.headers["content-type"], "application/manifest+json")
+                self.assertIn("no-cache", response.headers["cache-control"])
+                self.assertEqual(response.headers["x-robots-tag"], "noindex, nofollow")
+
+        worker = self._get("/zilch-sw.js", host=host)
+        self.assertEqual(worker.status_code, 200)
+        self.assertTrue(worker.headers["content-type"].startswith("text/javascript"))
+        self.assertIn("no-store", worker.headers["cache-control"])
+        self.assertEqual(worker.headers["x-robots-tag"], "noindex, nofollow")
+
+        for path in ("/zilch-manifest.webmanifest", "/zilch-manifest-en.webmanifest", "/zilch-sw.js"):
+            with self.subTest(apex_path=path):
+                response = self._get(path)
+                self.assertEqual(response.status_code, 404)
+                self.assertIn("no-store", response.headers["cache-control"])
 
         sitemap = self._get("/sitemap.xml", host=host)
         self.assertEqual(sitemap.status_code, 404)
@@ -463,9 +483,17 @@ class ZilchProductRoutesTestCase(TestCase):
         self.assertNotIn("'/static/zilch.css'", service_worker)
         self.assertIn("url.pathname === '/zilch' || url.pathname.startsWith('/zilch/')", service_worker)
 
+        zilch_worker = (main.STATIC_DIR / "zilch-sw.js").read_text(encoding="utf-8")
+        self.assertNotIn("caches.", zilch_worker)
+        self.assertNotIn("cache.put", zilch_worker.lower())
+        self.assertIn("event.respondWith(fetch(event.request));", zilch_worker)
+
         manifest = (main.BASE / "manifest.webmanifest").read_text(encoding="utf-8")
         self.assertIn('"short_name": "ZDWA"', manifest)
         self.assertNotIn('"url": "/zilch', manifest)
+        zilch_manifest = (main.BASE / "zilch-manifest.webmanifest").read_text(encoding="utf-8")
+        self.assertIn('"short_name": "Zilch"', zilch_manifest)
+        self.assertIn('"src": "/static/icons/zilch-icon-512.png', zilch_manifest)
         for shell_name in ("zilch.html", "zilch-login.html"):
             with self.subTest(shell_name=shell_name):
                 shell = (main.STATIC_DIR / shell_name).read_text(encoding="utf-8")

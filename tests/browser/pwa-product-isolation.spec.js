@@ -15,14 +15,26 @@ async function loadRoutes() {
   return import(`data:text/javascript;base64,${Buffer.from(routesSource).toString("base64")}`);
 }
 
-async function openPwaHarness(page, { origin, game }) {
-  await page.addInitScript(() => {
+async function openPwaHarness(page, { origin, game, version = "unversioned", language = "de" }) {
+  await page.addInitScript(({ language: initialLanguage }) => {
     const state = {
       registerCalls: [],
       unregisterCalls: 0,
       cacheDeletes: [],
+      toasts: [],
+      dismissInstall: null,
     };
     globalThis.__pwaHarness = state;
+    globalThis.ZDWA_UI = {
+      toast: (message, options = {}) => {
+        state.toasts.push({ message, actionLabel: options.actionLabel || "" });
+        state.dismissInstall = options.onDismiss || null;
+        return document.createElement("div");
+      },
+    };
+    if (initialLanguage === "en") {
+      globalThis.ZDWA_I18N = { getLanguage: () => "en" };
+    }
 
     Object.defineProperty(Navigator.prototype, "onLine", {
       configurable: true,
@@ -34,6 +46,7 @@ async function openPwaHarness(page, { origin, game }) {
         controller: null,
         addEventListener: () => {},
         getRegistrations: async () => [{
+          active: { scriptURL: new URL("/sw.js", location.href).href },
           unregister: async () => {
             state.unregisterCalls += 1;
             return true;
@@ -59,7 +72,7 @@ async function openPwaHarness(page, { origin, game }) {
         },
       },
     });
-  });
+  }, { language });
 
   await page.route(`${origin}/**`, async route => {
     const url = new URL(route.request().url());
@@ -67,9 +80,13 @@ async function openPwaHarness(page, { origin, game }) {
       await route.fulfill({ contentType: "application/javascript", body: pwaSource });
       return;
     }
+    const pageVersion = url.searchParams.get("pwaVersion") || version;
+    const versionQuery = pageVersion === "unversioned"
+      ? ""
+      : `?v=${encodeURIComponent(pageVersion)}`;
     await route.fulfill({
       contentType: "text/html",
-      body: `<!doctype html><html data-game="${game}"><head><script src="/static/pwa.js"></script></head><body></body></html>`,
+      body: `<!doctype html><html data-game="${game}"><head><script src="/static/pwa.js${versionQuery}"></script></head><body></body></html>`,
     });
   });
 
@@ -77,7 +94,15 @@ async function openPwaHarness(page, { origin, game }) {
   await page.waitForLoadState("load");
 }
 
-test("the isolated Zilch origin never registers the ZDWA worker and removes stale caches", async ({ page }) => {
+async function dispatchInstallPrompt(page) {
+  await page.evaluate(() => {
+    const event = new Event("beforeinstallprompt", { cancelable: true });
+    Object.defineProperty(event, "prompt", { value: async () => {} });
+    window.dispatchEvent(event);
+  });
+}
+
+test("the isolated Zilch origin registers its own worker and removes stale ZDWA state", async ({ page }) => {
   await openPwaHarness(page, {
     origin: "https://zilch.zockdiewandan.online",
     game: "zilch",
@@ -85,8 +110,12 @@ test("the isolated Zilch origin never registers the ZDWA worker and removes stal
 
   await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.unregisterCalls)).toBe(1);
   const state = await page.evaluate(() => globalThis.__pwaHarness);
-  expect(state.registerCalls).toEqual([]);
+  expect(state.registerCalls).toEqual(["/zilch-sw.js"]);
   expect(state.cacheDeletes.sort()).toEqual(["precache-assets-old", "runtime-assets-old"]);
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    "href",
+    "https://zilch.zockdiewandan.online/zilch-manifest.webmanifest",
+  );
 });
 
 test("legacy Zilch on the Apex leaves the established Apex PWA untouched", async ({ page }) => {
@@ -126,4 +155,53 @@ test("ZDWA still registers its established root-scoped worker", async ({ page })
 
   await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.registerCalls)).toEqual(["/sw.js"]);
   expect(await page.evaluate(() => globalThis.__pwaHarness.unregisterCalls)).toBe(0);
+});
+
+test("the Zilch install hint is snoozed for seven days, except after a new version", async ({ page }) => {
+  const origin = "https://zilch.zockdiewandan.online";
+  await openPwaHarness(page, { origin, game: "zilch", version: "version-one" });
+
+  await dispatchInstallPrompt(page);
+  await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.toasts)).toEqual([
+    { message: "Die App kann installiert werden.", actionLabel: "Installieren" },
+  ]);
+  await page.evaluate(() => globalThis.__pwaHarness.dismissInstall());
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("zilch_install_prompt_dismissed"))).not.toBeNull();
+
+  await dispatchInstallPrompt(page);
+  expect(await page.evaluate(() => globalThis.__pwaHarness.toasts)).toHaveLength(1);
+
+  await page.goto(`${origin}/?pwaVersion=version-two`);
+  await page.waitForLoadState("load");
+  await dispatchInstallPrompt(page);
+  await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.toasts)).toEqual([
+    { message: "Die App kann installiert werden.", actionLabel: "Installieren" },
+  ]);
+
+  await page.evaluate(() => globalThis.__pwaHarness.dismissInstall());
+  await page.evaluate(() => {
+    localStorage.setItem("zilch_install_prompt_dismissed", JSON.stringify({
+      version: "version-two",
+      dismissedAt: Date.now() - 8 * 24 * 60 * 60 * 1000,
+    }));
+  });
+  await page.reload();
+  await page.waitForLoadState("load");
+  await dispatchInstallPrompt(page);
+  await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.toasts)).toEqual([
+    { message: "Die App kann installiert werden.", actionLabel: "Installieren" },
+  ]);
+});
+
+test("Zilch selects its English manifest for an English app session", async ({ page }) => {
+  await openPwaHarness(page, {
+    origin: "https://zilch.zockdiewandan.online",
+    game: "zilch",
+    language: "en",
+  });
+
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    "href",
+    "https://zilch.zockdiewandan.online/zilch-manifest-en.webmanifest",
+  );
 });

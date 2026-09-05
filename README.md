@@ -81,13 +81,15 @@ available during the migration. The Apex and Zilch origins proxy the same
 application process and mounted `data/` directory; the `zdwa` alias only
 redirects. Existing account sessions are promoted
 to a separate parent-domain cookie through a fixed, allowlisted handoff without
-creating a second database session. Zilch deliberately has no service worker or
-installable manifest during this first split, while the ZDWA PWA stays unchanged.
-When that installed ZDWA PWA opens Zilch, it uses the same-origin `/zilch`
+creating a second database session. Zilch now has its own installable PWA on
+its canonical origin, with a separate manifest and a network-only service
+worker that never caches private rooms or API data. It notifies users about a
+new deployed version and offers installation again after a new version even if
+the prior prompt was dismissed (otherwise it snoozes for seven days). The ZDWA
+PWA stays unchanged: when it opens Zilch, it uses the same-origin `/zilch`
 compatibility route so iOS does not wrap the handoff in an external browser
-sheet; regular browser navigation still uses Zilch's canonical subdomain.
-Additional Solo objectives/challenges and a dedicated Zilch PWA are deliberately
-deferred. The public Zilch lobby and rule guide are canonical, indexable pages.
+sheet; regular browser navigation still uses Zilch's canonical subdomain. The
+public Zilch lobby and rule guide are canonical, indexable pages.
 A player selects scoring dice directly or
 uses one of up to eight distinct suggestions; equivalent choices using
 interchangeable dice are deduplicated, while equal scores from genuinely
@@ -145,7 +147,9 @@ expanded points/rank catalog are documented in
   never scan general completed-game history. Nothing awards Ehrenberg-Marken
   or alters ZDWA titles,
   profiles, rankings, statistics, achievements, or leaderboards
-- Progressive Web App support with content-hashed asset and service-worker versions
+- Isolated Progressive Web Apps with content-hashed asset and service-worker
+  versions; Zilch update/install notices keep a seven-day dismissal snooze per
+  deployed version without caching private game data
 - Readiness endpoint and container healthcheck for migration-safe deployments
 - Docker Compose setup for local machines, servers, and Raspberry Pi
 
@@ -312,6 +316,9 @@ RollTheDice/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── manifest.webmanifest
+├── manifest-en.webmanifest
+├── zilch-manifest.webmanifest
+├── zilch-manifest-en.webmanifest
 ├── requirements.txt
 ├── app/
 │   ├── __init__.py
@@ -347,7 +354,8 @@ RollTheDice/
 │       ├── scoreboard.js    # Scoreboard renderer and read-only replay renderer
 │       ├── lobby.css        # Generated, schlankes Styling für die Landing-Page
 │       ├── style.css        # Generated, minified shared styling für Spiel-/Kontoseiten
-│       ├── sw.js            # Service worker
+│       ├── sw.js            # ZDWA cache-first service worker
+│       ├── zilch-sw.js      # Zilch network-only service worker
 │       ├── favicon.png
 │       └── icons/
 ├── frontend/                # Authored JS/CSS split by lobby, room, i18n, and style concern

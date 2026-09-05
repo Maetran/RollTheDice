@@ -9,6 +9,8 @@ WORKDIR /app
 COPY requirements.txt .
 COPY manifest.webmanifest /app/manifest.webmanifest
 COPY manifest-en.webmanifest /app/manifest-en.webmanifest
+COPY zilch-manifest.webmanifest /app/zilch-manifest.webmanifest
+COPY zilch-manifest-en.webmanifest /app/zilch-manifest-en.webmanifest
 RUN pip install --no-cache-dir -r requirements.txt
 
 # **Hier korrekt kopieren: kompletter Ordner app/**

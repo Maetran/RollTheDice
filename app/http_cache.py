@@ -51,7 +51,12 @@ def apply_cache_policy(request: Request, response: Response, *, asset_version: s
             response.headers["Cache-Control"] = REVALIDATE
         return
 
-    if path in {"/manifest.webmanifest", "/manifest-en.webmanifest"}:
+    if path in {
+        "/manifest.webmanifest",
+        "/manifest-en.webmanifest",
+        "/zilch-manifest.webmanifest",
+        "/zilch-manifest-en.webmanifest",
+    }:
         response.headers["Cache-Control"] = NO_STORE if response.status_code >= 400 else REVALIDATE
         return
 
