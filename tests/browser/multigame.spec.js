@@ -450,8 +450,9 @@ test("a permitted user can create and reload a private CPU game through the norm
   await expect(cpuBoard.locator(".zilch-connection-dot")).toHaveCount(0);
 
   // The human produces only their own opening roll. The runner then performs
-  // the CPU's server-authoritative opening roll with the normal fair RNG. A
-  // tie is legitimate, so observe CPU activity rather than forcing a result.
+  // the dice keeper's server-authoritative opening roll with the normal fair
+  // RNG. A tie is legitimate, so observe its visible activity rather than
+  // forcing a result.
   const openingRoll = page.locator("[data-zilch-start-roll]");
   await expect(openingRoll).toBeEnabled();
   await openingRoll.click();
@@ -459,7 +460,7 @@ test("a permitted user can create and reload a private CPU game through the norm
   await expect.poll(
     async () => (await cpuActivity.allTextContents()).join(" "),
     { timeout: 5_000, intervals: [50, 100, 200] },
-  ).toMatch(/CPU.*(?:würfelt|rolls)/i);
+  ).toMatch(/(?:Würfelwirt.*(?:überlegt|würfelt)|dice keeper.*(?:thinking|rolls))/i);
 
   // Reload uses the real resume-token path. It must retain the active game
   // and the CPU domain seat rather than creating a fake user or offline CPU.
