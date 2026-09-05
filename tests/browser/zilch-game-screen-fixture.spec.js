@@ -1098,9 +1098,9 @@ test("a CPU participant is rendered from the authoritative participant snapshot 
 
     const cpuBoard = page.locator('[data-zilch-board-id="cpu-river"]');
     await expect(cpuBoard).toContainText("Tischgeist");
-    await expect(cpuBoard).toContainText(/CPU/);
+    await expect(cpuBoard).toContainText(/Würfelwirt|Dice keeper/);
     await expect(cpuBoard.locator(".zilch-connection-dot")).toHaveCount(0);
-    await expect(page.locator("#zilchLiveStatus")).toContainText(/CPU überlegt|CPU is thinking/);
+    await expect(page.locator("#zilchLiveStatus")).toContainText(/Würfelwirt überlegt|dice keeper is thinking/i);
     await expect(page.locator(".zilch-event")).toHaveCount(0);
     await expect(page.locator("[data-zilch-commit-hold]")).toHaveCount(0);
     await expect(page.locator("[data-zilch-roll]")).toBeDisabled();
@@ -1644,6 +1644,7 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
 
     const combinedScore = page.locator("[data-zilch-combined-score]");
     const currentRoll = page.locator(".zilch-turn-score");
+    await expect(combinedScore).toContainText("Alle Punktewürfel");
     await expect(currentRoll).toContainText("400");
     await expect(currentRoll).toContainText("Bisher gehalten: 400");
     await expect(currentRoll).toContainText("Aktuell gehalten: 0");
@@ -2221,7 +2222,7 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
     expect(await dice.evaluateAll(nodes => nodes.every(node => !node.hasAttribute("tabindex")))).toBe(true);
     await expect(page.locator(".zilch-event")).toHaveCount(0);
     await expect(page.locator("[data-zilch-event-overlay]")).toBeHidden();
-    await expect(page.locator("#zilchLiveStatus")).toContainText("Hot Dice");
+    await expect(page.locator("#zilchLiveStatus")).toContainText("Freier Wurf");
     await expect(page.locator("[data-zilch-roll]")).toContainText(/Bestätigen|confirm/i);
     await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
     await expect(page.locator(".zilch-action-cards > button").nth(0)).toHaveAttribute("data-zilch-bank", "");

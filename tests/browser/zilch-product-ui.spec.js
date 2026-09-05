@@ -503,10 +503,10 @@ test("private Zilch statistics and leaderboards render only server projections a
   const multiplayerTab = page.getByRole("tab", { name: "Zwei Spieler" });
   await multiplayerTab.focus();
   await page.keyboard.press("ArrowRight");
-  await expect(page.getByRole("tab", { name: "Gegen CPU" })).toBeFocused();
-  await expect(page.getByText("Alle CPU-Partien", { exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Gegen den Würfelwirt" })).toBeFocused();
+  await expect(page.getByText("Alle Partien gegen den Würfelwirt", { exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Aggressiv" }).click();
-  await expect(page.getByText("CPU-Strategie: Aggressiv", { exact: true })).toBeVisible();
+  await expect(page.getByText("Spielweise des Würfelwirts: Aggressiv", { exact: true })).toBeVisible();
   await expect(page.getByText("Bilanz (S–N–U)", { exact: true })).toBeVisible();
   await expect(page.getByText("Nicht vollständig verfügbar", { exact: true })).toHaveCount(0);
 
@@ -522,7 +522,7 @@ test("private Zilch statistics and leaderboards render only server projections a
   await expect(page.getByRole("button", { name: "Deine Statistiken" })).toHaveClass(/zilch-header-action/);
   await expect(page.getByRole("button", { name: "Zilch-Awards" })).toHaveAttribute("data-zilch-navigate", "/zilch/erfolge");
   await expect(page.getByRole("button", { name: "Zilch-Awards" })).toHaveClass(/zilch-header-action/);
-  await expect(page.getByText("Objective:", { exact: false })).toBeVisible();
+  await expect(page.getByText("Ziel:", { exact: false })).toBeVisible();
   await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Abgeschlossen am");
   await expect(page.getByRole("button", { name: "Nächste" })).toBeEnabled();
 

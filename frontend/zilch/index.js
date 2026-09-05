@@ -370,9 +370,9 @@ function strategyLabel(value) {
 function participantMeta(player, { compact = false } = {}) {
   if (!isCpuParticipant(player)) return "";
   const strategy = strategyLabel(player?.cpu_strategy || player?.strategy);
-  const cpu = `<span class="zilch-participant-badge zilch-participant-badge--cpu">${escapeHtml(t("CPU"))}</span>`;
+  const cpu = `<span class="zilch-participant-badge zilch-participant-badge--cpu">${escapeHtml(t("Würfelwirt"))}</span>`;
   if (compact || !strategy) return cpu;
-  return `${cpu}<span class="zilch-participant-badge zilch-participant-badge--strategy">${escapeHtml(`${t("Strategie")}: ${strategy}`)}</span>`;
+  return `${cpu}<span class="zilch-participant-badge zilch-participant-badge--strategy">${escapeHtml(`${t("Spielweise")}: ${strategy}`)}</span>`;
 }
 
 function zilchAchievementRank(value) {
@@ -410,7 +410,7 @@ function playerCollectionMarkup(value) {
 }
 
 function participantStatusLabel(player, { active = false } = {}) {
-  if (isCpuParticipant(player)) return active ? t("CPU überlegt …") : t("CPU bereit");
+  if (isCpuParticipant(player)) return active ? t("Der Würfelwirt überlegt …") : t("Der Würfelwirt ist bereit");
   const online = player?.connected !== false;
   if (active) return `${t("Am Zug")} · ${online ? t("Online") : t("Offline")}`;
   return online ? t("Online") : t("Offline");
@@ -525,7 +525,7 @@ function gameStatus(game) {
 
 function createGameErrorText(error) {
   const detail = String(error?.message || error || "");
-  if (detail.includes("zilch_invalid_cpu_strategy")) return t("Die gewählte CPU-Strategie ist ungültig.");
+  if (detail.includes("zilch_invalid_cpu_strategy")) return t("Diese Spielweise des Würfelwirts gibt es nicht.");
   return t("Zilch-Partie konnte nicht erstellt werden.");
 }
 
@@ -601,7 +601,7 @@ function lobbyTurnText(game) {
   const finalRound = game?.final_round && typeof game.final_round === "object" ? game.final_round : null;
   if (finalRound?.pending_player_ids?.length) return t("Schlussrunde: Gegenzug offen");
   if (finalRound?.triggered_by) return t("Schlussrunde läuft");
-  if (isCpuParticipant(player)) return t("CPU überlegt …");
+  if (isCpuParticipant(player)) return t("Der Würfelwirt überlegt …");
   if (player?.name) return `${player.name} ${t("ist am Zug.")}`;
   if (game?.current_player_name) return `${game.current_player_name} ${t("ist am Zug.")}`;
   if (game?.paused) return t("Spiel pausiert");
@@ -641,7 +641,7 @@ function gameCard(game, { running = false } = {}) {
   const soloObjective = solo ? soloObjectiveTitle(game) : "";
   const lock = game.locked ? `<span class="zilch-board-marker zilch-lock-label">${escapeHtml(t("Geschützter Raum"))}</span>` : "";
   const pause = game.paused
-    ? `<p class="zilch-game-card__notice">${escapeHtml(Array.isArray(game.offline) && game.offline.length ? t("Ein Teilnehmer ist offline") : t("Spiel pausiert"))}</p>`
+    ? `<p class="zilch-game-card__notice">${escapeHtml(Array.isArray(game.offline) && game.offline.length ? t("Ein Mitspieler ist gerade weg") : t("Spiel pausiert"))}</p>`
     : "";
   const soloProgress = Array.isArray(game?.progress) ? game.progress[0] : null;
   const soloPoints = Number(soloProgress?.points);
@@ -649,7 +649,7 @@ function gameCard(game, { running = false } = {}) {
   const compactTitle = solo
     ? t("Solo-Sprint")
     : cpu
-      ? `${t("Gegen CPU")}${strategy ? ` · ${strategy}` : ""}`
+      ? `${t("Gegen den Würfelwirt")}${strategy ? ` · ${strategy}` : ""}`
       : game.name || "Zilch";
   const runningSummary = solo
     ? `<p class="zilch-game-card__summary"><strong>${escapeHtml(number(Number.isFinite(soloPoints) ? soloPoints : 0))} / ${escapeHtml(number(Number.isFinite(soloTarget) ? soloTarget : 10_000))}</strong> ${escapeHtml(t("Punkte"))}</p>`
@@ -660,7 +660,7 @@ function gameCard(game, { running = false } = {}) {
         : "";
   return `<article class="zilch-game-card${running ? " zilch-game-card--running" : ""}${solo ? " zilch-game-card--solo" : ""}">
     <div>
-      <div class="zilch-card-title"><h3>${escapeHtml(running ? compactTitle : game.name || "Zilch")}</h3><span class="zilch-status-pill" data-status="${gameStatusKind(game)}">${escapeHtml(gameStatus(game))}</span>${running ? "" : solo ? `<span class="zilch-participant-badge zilch-participant-badge--solo">${escapeHtml(t("Solo"))}</span>` : ""}${running ? "" : cpu ? `<span class="zilch-participant-badge zilch-participant-badge--cpu">${escapeHtml(t("Gegen CPU"))}${strategy ? ` · ${escapeHtml(strategy)}` : ""}</span>` : ""}${lock}</div>
+      <div class="zilch-card-title"><h3>${escapeHtml(running ? compactTitle : game.name || "Zilch")}</h3><span class="zilch-status-pill" data-status="${gameStatusKind(game)}">${escapeHtml(gameStatus(game))}</span>${running ? "" : solo ? `<span class="zilch-participant-badge zilch-participant-badge--solo">${escapeHtml(t("Solo"))}</span>` : ""}${running ? "" : cpu ? `<span class="zilch-participant-badge zilch-participant-badge--cpu">${escapeHtml(t("Gegen den Würfelwirt"))}${strategy ? ` · ${escapeHtml(strategy)}` : ""}</span>` : ""}${lock}</div>
       ${running ? runningSummary : solo ? `<p class="zilch-game-card__objective"><strong>${escapeHtml(soloObjective)}</strong></p>` : `<p>${escapeHtml(t("Teilnehmer"))}: <strong>${joined}/${expected}</strong></p>`}
       <p class="zilch-game-card__players">${lobbyPlayerRows(game)}</p>
       ${running ? "" : detail ? `<p class="zilch-game-card__turn">${escapeHtml(detail)}</p>` : ""}
@@ -706,7 +706,7 @@ function resultParticipantMeta(player) {
   const cpu = participantType(player) === "cpu";
   if (!cpu) return "";
   const strategy = strategyLabel(player?.cpu_strategy || player?.strategy);
-  return `<span class="zilch-participant-badge zilch-participant-badge--cpu">${escapeHtml(t("CPU"))}</span>${strategy ? `<span class="zilch-participant-badge zilch-participant-badge--strategy">${escapeHtml(`${t("Strategie")}: ${strategy}`)}</span>` : ""}`;
+  return `<span class="zilch-participant-badge zilch-participant-badge--cpu">${escapeHtml(t("Würfelwirt"))}</span>${strategy ? `<span class="zilch-participant-badge zilch-participant-badge--strategy">${escapeHtml(`${t("Spielweise")}: ${strategy}`)}</span>` : ""}`;
 }
 
 function resultBoardFor(result, player) {
@@ -760,7 +760,7 @@ function resultRoundHistory(entry) {
     const penalty = Number(entry.penalty ?? entry.zilch_penalty ?? 0);
     return penalty ? `${prefix}${t("Zilch")} · −${number(penalty)}` : `${prefix}${t("Zilch")}`;
   }
-  if (event === "hot_dice") return `${prefix}${t("Hot Dice")}`;
+  if (event === "hot_dice") return `${prefix}${t("Freier Wurf")}`;
   return prefix || t("Runde abgeschlossen");
 }
 
@@ -773,7 +773,7 @@ function resultHistoryCard(result) {
     const board = resultBoardFor(result, player);
     const cpu = participantType(player) === "cpu";
     const strategy = strategyLabel(player?.cpu_strategy || player?.strategy);
-    const label = cpu ? `${resultPlayerName(player)} (${t("CPU")}${strategy ? ` · ${strategy}` : ""})` : resultPlayerName(player);
+    const label = cpu ? `${resultPlayerName(player)} (${t("Würfelwirt")}${strategy ? ` · ${strategy}` : ""})` : resultPlayerName(player);
     return `${label} ${resultTotalFor(result, player, board)}`;
   }).join(" · ");
   const participantBadges = participants.map(resultParticipantMeta).filter(Boolean).join("");
@@ -854,7 +854,7 @@ async function renderLobby() {
   content.innerHTML = `<section class="zilch-intro zilch-intro--lobby">
       <p class="eyebrow">${escapeHtml(t("Online würfeln"))}</p>
       <h1>${escapeHtml(t("Zilch die Wand an – Würfelspiel online"))}</h1>
-      <p>${escapeHtml(t("Wähle Solo, CPU oder eine Partie zu zweit. Mit sechs Würfeln sammelst du Punkte, sicherst sie rechtzeitig und erreichst 10’000."))}</p>
+      <p>${escapeHtml(t("Such dir einen Platz am Tisch aus: Solo, gegen den Würfelwirt oder zu zweit. Mit sechs Würfeln sammelst du Punkte, sicherst sie rechtzeitig und jagst die 10’000."))}</p>
     </section>
     <section class="zilch-lobby-identity" aria-label="${escapeHtml(`${t("Du spielst als")} ${username}`)}">
       <span class="eyebrow">${escapeHtml(t("Du spielst als"))}</span>
@@ -865,8 +865,8 @@ async function renderLobby() {
       <h2>${escapeHtml(t("Neue Zilch-Partie"))}</h2>
       <form id="zilchCreateForm" class="zilch-create-form">
         <input id="zilchGameName" type="hidden" value="${escapeHtml(`Zilch · ${username}`)}">
-        <fieldset class="zilch-mode-choice"><legend>${escapeHtml(t("Spielart"))}</legend><div class="zilch-mode-grid" role="radiogroup" aria-label="${escapeHtml(t("Spielart"))}"><button class="zilch-mode-option zilch-mode-option--solo is-selected" type="button" role="radio" aria-checked="true" data-zilch-play-mode="solo"><strong>${escapeHtml(t("Solo"))}</strong></button><button class="zilch-mode-option" type="button" role="radio" aria-checked="false" data-zilch-play-mode="multiplayer"><strong>${escapeHtml(t("Zu zweit"))}</strong></button><button class="zilch-mode-option" type="button" role="radio" aria-checked="false" data-zilch-play-mode="cpu"><strong>${escapeHtml(t("Gegen CPU"))}</strong></button></div></fieldset>
-        <label id="zilchCpuStrategy" class="zilch-create-select zilch-cpu-strategy" for="zilchCpuStrategySelect" hidden><span>${escapeHtml(t("CPU-Strategie"))}</span><select id="zilchCpuStrategySelect" name="zilchCpuStrategy"><option value="conservative">${escapeHtml(t("Konservativ"))}</option><option value="normal" selected>${escapeHtml(t("Normal"))}</option><option value="aggressive">${escapeHtml(t("Aggressiv"))}</option></select></label>
+        <fieldset class="zilch-mode-choice"><legend>${escapeHtml(t("Spielart"))}</legend><div class="zilch-mode-grid" role="radiogroup" aria-label="${escapeHtml(t("Spielart"))}"><button class="zilch-mode-option zilch-mode-option--solo is-selected" type="button" role="radio" aria-checked="true" data-zilch-play-mode="solo"><strong>${escapeHtml(t("Solo"))}</strong></button><button class="zilch-mode-option" type="button" role="radio" aria-checked="false" data-zilch-play-mode="multiplayer"><strong>${escapeHtml(t("Zu zweit"))}</strong></button><button class="zilch-mode-option" type="button" role="radio" aria-checked="false" data-zilch-play-mode="cpu"><strong>${escapeHtml(t("Gegen den Würfelwirt"))}</strong></button></div></fieldset>
+        <label id="zilchCpuStrategy" class="zilch-create-select zilch-cpu-strategy" for="zilchCpuStrategySelect" hidden><span>${escapeHtml(t("Spielweise des Würfelwirts"))}</span><select id="zilchCpuStrategySelect" name="zilchCpuStrategy"><option value="conservative">${escapeHtml(t("Konservativ"))}</option><option value="normal" selected>${escapeHtml(t("Normal"))}</option><option value="aggressive">${escapeHtml(t("Aggressiv"))}</option></select></label>
         <section id="zilchSoloObjective" class="zilch-solo-create-objective" aria-labelledby="zilchSoloObjectiveTitle">
           <strong id="zilchSoloObjectiveTitle">${escapeHtml(t("10’000-Punkte-Sprint"))}</strong>
           <span>${escapeHtml(t("In möglichst wenigen Zügen"))}</span>
@@ -1040,8 +1040,8 @@ const ZILCH_ACHIEVEMENT_CATEGORY_LABELS = {
   scoring: "Wertungen",
   combinations: "Kombinationen",
   risk: "Risiko",
-  multiplayer: "Human-vs-Human",
-  cpu: "CPU",
+  multiplayer: "Duell am Tisch",
+  cpu: "Würfelwirt",
   solo: "Solo",
   milestones: "Meilensteine",
   community: "Community",
@@ -1663,7 +1663,7 @@ function renderAchievementsBody() {
 async function renderAchievements() {
   if (!content) return;
   content.innerHTML = `<section class="zilch-game-head zilch-achievements-head">
-      <div><p class="eyebrow">${escapeHtml(t("Deine Sammlung"))}</p><h1>${escapeHtml(t("Zilch-Awards"))}</h1><p>${escapeHtml(t("Deine Zilch-Punkte und dein Zilch-Rang entstehen ausschließlich aus Zilch-Awards. ZDWA bleibt davon getrennt."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Deine Sammlung"))}</p><h1>${escapeHtml(t("Zilch-Awards"))}</h1><p>${escapeHtml(t("Deine Zilch-Punkte und dein Rang wachsen mit deinen Zilch-Awards. ZDWA bleibt ein eigener Tisch."))}</p></div>
     </section>
     <div id="zilchAchievementsBody"><section class="zilch-card zilch-loading-card" role="status"><p>${escapeHtml(t("Zilch-Awards werden geladen …"))}</p></section></div>`;
   try {
@@ -1889,7 +1889,7 @@ async function renderAccount() {
     ? "settings"
     : normalizedZilchAccountTab(window.location.hash, defaultTab);
   content.innerHTML = `<section class="zilch-game-head zilch-account-head">
-      <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><div class="zilch-account-head__identity"><h1>${escapeHtml(username)}</h1><span id="zilchAccountRank" class="zilch-account-head__rank" aria-live="polite"></span></div><p>${escapeHtml(t("Dein Zilch-Konto bündelt deine privaten Statistiken und Awards."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><div class="zilch-account-head__identity"><h1>${escapeHtml(username)}</h1><span id="zilchAccountRank" class="zilch-account-head__rank" aria-live="polite"></span></div><p>${escapeHtml(t("Hier warten deine privaten Zilch-Zahlen und Awards."))}</p></div>
     </section>
     ${zilchAccountTabsMarkup()}
     <section id="zilchAccountPanel-statistics" class="zilch-account-panel" data-zilch-account-panel="statistics" role="tabpanel" aria-labelledby="zilchAccountTab-statistics"${state.accountTab === "statistics" ? "" : " hidden"}>${zilchAccountStatisticsLoadingMarkup()}</section>
@@ -1928,7 +1928,7 @@ async function renderPlayerAchievements() {
   if (!content || !playerAchievementsUsername) return;
   const requestedName = String(playerAchievementsUsername || "").trim();
   content.innerHTML = `<section class="zilch-game-head zilch-achievements-head">
-      <div><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><h1>${escapeHtml(t("Zilch-Awards eines Spielers"))}</h1><p>${escapeHtml(t("Diese Ansicht zeigt ausschließlich Zilch-Awards, Zilch-Punkte und Zilch-Ränge. ZDWA bleibt davon getrennt."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><h1>${escapeHtml(t("Zilch-Awards eines Spielers"))}</h1><p>${escapeHtml(t("Hier dreht sich alles um Zilch-Awards, Zilch-Punkte und Zilch-Ränge. ZDWA bleibt ein eigener Tisch."))}</p></div>
       ${zilchNavigationButton(zilchPath("/erfolge"), t("Meine Zilch-Awards"))}
     </section>
     <div id="zilchPlayerAchievementsBody"><section class="zilch-card zilch-loading-card" role="status"><p>${escapeHtml(t("Zilch-Awards werden geladen …"))}</p></section></div>`;
@@ -2039,7 +2039,7 @@ function statisticsScope(statistics, key) {
 
 function modeLabel(mode) {
   if (mode === "multiplayer") return t("Zwei Spieler");
-  if (mode === "cpu") return t("Gegen CPU");
+  if (mode === "cpu") return t("Gegen den Würfelwirt");
   if (mode === "solo") return t("Solo");
   return t("Übersicht");
 }
@@ -2097,7 +2097,7 @@ function renderOverviewStatistics(statistics) {
   return `${statisticsSection({
     eyebrow: t("Übersicht"),
     title: t("Deine Zilch-Statistiken"),
-    description: t("Diese Werte stammen nur aus deinen gespeicherten Zilch-Ergebnissen."),
+    description: t("Hier zählt, was du in deinen abgeschlossenen Zilch-Partien erspielt hast."),
     entries,
   })}${gamesByModeMarkup(overview)}`;
 }
@@ -2105,12 +2105,12 @@ function renderOverviewStatistics(statistics) {
 function renderMultiplayerStatistics(statistics) {
   const multiplayer = statisticsScope(statistics, "multiplayer");
   if (!hasStatisticRecords(multiplayer, ["games", "completed_games"])) {
-    return statisticsEmptyMarkup(t("Noch keine Human-vs-Human-Partien"), t("Spiele eine Partie gegen einen anderen Menschen, damit diese Werte erscheinen."));
+    return statisticsEmptyMarkup(t("Noch keine Duelle am Tisch"), t("Spiel ein Duell am Tisch, damit hier deine Bilanz erscheint."));
   }
   return statisticsSection({
     eyebrow: t("Zwei Spieler"),
-    title: t("Human-vs-Human"),
-    description: t("Solo-Läufe und CPU-Partien zählen hier nicht mit."),
+    title: t("Duell am Tisch"),
+    description: t("Solo-Läufe und Partien gegen den Würfelwirt zählen hier nicht mit."),
     entries: [
       statisticEntry(t("Spiele"), multiplayer, ["games", "completed_games"]),
       matchRecordStatisticEntry(multiplayer),
@@ -2121,7 +2121,7 @@ function renderMultiplayerStatistics(statistics) {
 }
 
 function cpuStrategyLabel(strategy) {
-  return strategyLabel(strategy) || t("Alle Strategien");
+  return strategyLabel(strategy) || t("Alle Spielweisen");
 }
 
 function cpuStrategyTabsMarkup(cpu) {
@@ -2129,7 +2129,7 @@ function cpuStrategyTabsMarkup(cpu) {
   const available = ["all", "conservative", "normal", "aggressive"].filter(strategy => (
     strategy === "all" || Object.prototype.hasOwnProperty.call(byStrategy, strategy)
   ));
-  return `<div class="zilch-stat-subtabs" role="tablist" aria-label="${escapeHtml(t("CPU-Strategie auswählen"))}">
+  return `<div class="zilch-stat-subtabs" role="tablist" aria-label="${escapeHtml(t("Spielweise des Würfelwirts wählen"))}">
     ${available.map(strategy => `<button type="button" class="zilch-stat-subtab${state.statisticsCpuStrategy === strategy ? " is-active" : ""}" role="tab" data-zilch-stats-cpu-strategy="${strategy}" aria-selected="${String(state.statisticsCpuStrategy === strategy)}" aria-controls="zilchStatisticsPanel" tabindex="${state.statisticsCpuStrategy === strategy ? "0" : "-1"}">${escapeHtml(cpuStrategyLabel(strategy))}</button>`).join("")}
   </div>`;
 }
@@ -2142,14 +2142,14 @@ function renderCpuStatistics(statistics) {
   const noGames = !hasStatisticRecords(scope, ["games", "completed_games"]);
   if (noGames) {
     return `${cpuStrategyTabsMarkup(cpu)}${statisticsEmptyMarkup(
-      selected === "all" ? t("Noch keine CPU-Partien") : t("Noch keine CPU-Partien gegen diese Strategie"),
-      t("Erstelle eine Partie gegen die CPU, damit diese Werte erscheinen."),
+      selected === "all" ? t("Noch keine Partien gegen den Würfelwirt") : t("Noch keine Partien gegen diese Spielweise"),
+      t("Eröffne eine Partie gegen den Würfelwirt, damit hier deine Bilanz erscheint."),
     )}`;
   }
   return `${cpuStrategyTabsMarkup(cpu)}${statisticsSection({
-    eyebrow: t("Gegen CPU"),
-    title: selected === "all" ? t("Alle CPU-Partien") : `${t("CPU-Strategie")}: ${cpuStrategyLabel(selected)}`,
-    description: t("CPU-Gegner erhalten keinen Account-Rang. Jede Strategie bleibt getrennt auswertbar."),
+    eyebrow: t("Gegen den Würfelwirt"),
+    title: selected === "all" ? t("Alle Partien gegen den Würfelwirt") : `${t("Spielweise des Würfelwirts")}: ${cpuStrategyLabel(selected)}`,
+    description: t("Der Würfelwirt spielt ausser Konkurrenz. Jede Spielweise hat ihre eigene Bilanz."),
     entries: [
       statisticEntry(t("Spiele"), scope, ["games", "completed_games"]),
       matchRecordStatisticEntry(scope),
@@ -2170,7 +2170,7 @@ function personalBestMarkup(solo) {
   return statisticsSection({
     eyebrow: t("Persönliche Bestleistung"),
     title: t("10’000-Punkte-Sprint"),
-    description: t("Vergleichbar sind nur erfolgreich abgeschlossene Solo-Sprints derselben Objective-Version."),
+    description: t("Vergleichbar sind Solo-Sprints mit demselben Ziel."),
     entries,
   });
 }
@@ -2249,7 +2249,7 @@ function renderStatisticsBody() {
 async function renderStatistics() {
   if (!content) return;
   content.innerHTML = `<section class="zilch-game-head zilch-statistics-head">
-      <div><p class="eyebrow">${escapeHtml(t("Deine Auswertung"))}</p><h1>${escapeHtml(t("Zilch-Statistiken"))}</h1><p>${escapeHtml(t("Deine Zilch-Werte werden getrennt von ZDWA und ausschließlich aus gespeicherten Ergebnissen berechnet."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Deine Bilanz"))}</p><h1>${escapeHtml(t("Zilch-Statistiken"))}</h1><p>${escapeHtml(t("Hier siehst du, was du in abgeschlossenen Zilch-Partien erspielt hast. ZDWA bleibt ein eigener Tisch."))}</p></div>
       ${zilchNavigationButton(zilchPath("/bestenlisten"), t("Zu den Bestenlisten"))}
     </section>
     <div id="zilchStatisticsBody" aria-live="polite">${statisticsTabMarkup()}<section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Statistiken werden geladen …"))}</p></section></div>`;
@@ -2269,16 +2269,16 @@ function normalizedLeaderboardCategory(value) {
 
 function leaderboardCategoryLabel(category) {
   if (category === "multiplayer_wins") return t("Zwei Spieler · Siege");
-  if (category === "cpu_wins") return t("Gegen CPU · Siege");
+  if (category === "cpu_wins") return t("Gegen den Würfelwirt · Siege");
   if (category === "achievement_points") return t("Zilch-Punkte");
   return t("Solo-Sprint");
 }
 
 function leaderboardSortingDescription(category) {
-  if (category === "multiplayer_wins") return t("Sortierung: Siege, dann weniger Niederlagen, mehr Gleichstände, höhere Endpunktzahl und höchste Runde; Competition Ranking.");
-  if (category === "cpu_wins") return t("Sortierung: Siege gegen die gewählte Strategie, dann weniger Niederlagen, mehr Gleichstände, höhere Endpunktzahl und höchste Runde; Competition Ranking.");
-  if (category === "achievement_points") return t("Sortierung: meiste Zilch-Punkte; bei Gleichstand wird derselbe Rang geteilt.");
-  return t("Sortierung: wenige Züge, wenige Würfe, wenige Zilchs, kurze aktive Dauer, dann älterer Abschluss.");
+  if (category === "multiplayer_wins") return t("Reihenfolge: zuerst Siege, dann weniger Niederlagen, mehr Gleichstände, höhere Endpunktzahl und die beste Runde. Bei Gleichstand teilt ihr euch den Platz.");
+  if (category === "cpu_wins") return t("Reihenfolge: zuerst Siege gegen die gewählte Spielweise, dann weniger Niederlagen, mehr Gleichstände, höhere Endpunktzahl und die beste Runde. Bei Gleichstand teilt ihr euch den Platz.");
+  if (category === "achievement_points") return t("Reihenfolge: die meisten Zilch-Punkte zuerst. Bei Gleichstand teilt ihr euch den Platz.");
+  return t("Reihenfolge: weniger Züge, weniger Würfe, weniger Zilchs, kürzere aktive Zeit – danach zählt der frühere Abschluss.");
 }
 
 function leaderboardProjection(payload) {
@@ -2415,7 +2415,7 @@ function leaderboardControlsMarkup() {
     <label><span>${escapeHtml(t("Kategorie"))}</span><select name="category">
       ${["solo_sprint", "multiplayer_wins", "cpu_wins", "achievement_points"].map(value => `<option value="${value}"${value === category ? " selected" : ""}>${escapeHtml(leaderboardCategoryLabel(value))}</option>`).join("")}
     </select></label>
-    <label id="zilchLeaderboardStrategyFilter"${cpu ? "" : " hidden"}><span>${escapeHtml(t("CPU-Strategie"))}</span><select name="strategy">
+    <label id="zilchLeaderboardStrategyFilter"${cpu ? "" : " hidden"}><span>${escapeHtml(t("Spielweise des Würfelwirts"))}</span><select name="strategy">
       ${["conservative", "normal", "aggressive"].map(value => `<option value="${value}"${value === state.leaderboardStrategy ? " selected" : ""}>${escapeHtml(strategyLabel(value))}</option>`).join("")}
     </select></label>
   </form>`;
@@ -2429,7 +2429,7 @@ function leaderboardObjectiveMarkup(leaderboard) {
   const title = objectiveId === SOLO_SPRINT_OBJECTIVE_ID
     ? t("10’000-Punkte-Sprint")
     : objectiveId;
-  return `<p class="zilch-leaderboard-objective"><strong>${escapeHtml(t("Objective"))}:</strong> ${escapeHtml(title)} · ${escapeHtml(t("Version"))} ${escapeHtml(String(version))}</p>`;
+  return `<p class="zilch-leaderboard-objective"><strong>${escapeHtml(t("Ziel"))}:</strong> ${escapeHtml(title)} · ${escapeHtml(t("Version"))} ${escapeHtml(String(version))}</p>`;
 }
 
 function updateLeaderboardLocation() {
@@ -2534,7 +2534,7 @@ function renderRulesContent(facts) {
       <h2>${escapeHtml(t("Ziel der Partie"))}</h2>
       <p>${escapeHtml(objective)}</p>
       <p class="zilch-rules-overview__note">${escapeHtml(t("Pro Zug entscheidest du: Punkte sichern oder weiterwürfeln. Bei Zilch verfallen nur die noch nicht gesicherten Punkte."))}</p>
-      <p class="zilch-rules-overview__note">${escapeHtml(t("Bei einem Spezialwurf nennt die Kombinierte Wertung den Wurf und zeigt den Stempel „Freier Wurf“."))}</p>
+      <p class="zilch-rules-overview__note">${escapeHtml(t("Bei einem Spezialwurf nennt Alle Punktewürfel den Wurf und zeigt den Stempel „Freier Wurf“."))}</p>
       <p class="zilch-rules-overview__note">${escapeHtml(t("Aktueller Wurf zeigt bisher gehaltene und aktuell ausgewählte Punkte getrennt; zusammen ist das der Wert zum Sichern."))}</p>
       <p class="zilch-rules-overview__note">${escapeHtml(t("In einer Zwei-Personen-Partie sehen beide Seiten dieselben Empfehlungen, bereits gehaltenen Rundenpunkte und die gerade gewählte gültige Wertung. Nur die Person am Zug kann sie ändern."))}</p>
     </section>
@@ -2547,7 +2547,7 @@ function renderRulesContent(facts) {
         ${rulesTableRow(t("Drillinge 2 bis 6"), t("Augenzahl × 100"), t("Drei gleiche Würfel werden als Drilling gewertet."))}
         ${rulesTableRow(t("Vier Gleiche (2 bis 6)"), t("Doppelter Drillingwert"), t("Vier gleiche Würfel zählen doppelt so viel wie der passende Drilling."))}
         ${rulesTableRow(t("Fünf Gleiche (2 bis 6)"), t("Vierfacher Drillingwert"), t("Fünf gleiche Würfel zählen viermal so viel wie der passende Drilling."))}
-        ${rulesTableRow(t("Sechs Gleiche (2 bis 6)"), t("Achtfacher Drillingwert"), t("Sechs gleiche Würfel zählen achtmal so viel wie der passende Drilling und lösen Hot Dice aus."))}
+        ${rulesTableRow(t("Sechs Gleiche (2 bis 6)"), t("Achtfacher Drillingwert"), t("Sechs gleiche Würfel zählen achtmal so viel wie der passende Drilling und eröffnen einen freien Wurf."))}
         ${rulesTableRow(t("Vier oder mehr Einsen"), t("Keine eigene Gruppe"), t("Einsen bleiben beim 1’000-Punkte-Drilling; zusätzliche Einsen zählen einzeln, Vierlinge oder mehr werden nicht als eigene Gruppe gewertet."))}
         ${rulesTableRow(t("Straße 1–6"), `${ruleNumber(scoring.straight)} ${t("Punkte")}`, t("Alle sechs Würfel werden gehalten."))}
         ${rulesTableRow(t("Drei Paare"), `${ruleNumber(scoring.three_pairs)} ${t("Punkte")}`, t("Drei verschiedene Paare mit allen sechs Würfeln."))}
@@ -2558,13 +2558,13 @@ function renderRulesContent(facts) {
     <section class="zilch-rules-grid">
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Wertungen auswählen"))}</h2><p>${escapeHtml(t("Tippe eine Wertung oder einzelne Würfel an. Die Auswahl bleibt bis zum Weiterwürfeln oder Sichern änderbar."))}</p><p>${escapeHtml(t("Nur eine gemeinsam wertende Auswahl kann übernommen werden; ungültig gewordene Würfel fallen aus der Auswahl."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Würfeln oder sichern"))}</h2><p>${escapeHtml(t("Nach dem dritten Wurf müssen mindestens 300 Rundenpunkte gehalten sein. Sichern ist ab 400 Punkten möglich, solange kein Bestätigungswurf offen ist."))}</p><p>${escapeHtml(t("Vor dem Sichern kannst du deine Würfelauswahl jederzeit anpassen."))}</p></section>
-      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Hot Dice und Bestätigungswurf"))}</h2><p>${escapeHtml(t("Wenn alle sechs Würfel Punkte geben, werden sie wieder frei: Hot Dice. Die Rundenpunkte bleiben bestehen."))}</p><p>${escapeHtml(t("Kombinierte Wertung hält alle aktuell punktenden Würfel. Ein möglicher Freier Wurf erscheint dort als Stempel; erst Weiterwürfeln übernimmt die Auswahl."))}</p><p>${escapeHtml(t("Nach drei Einsen oder einem vollständigen Hold muss ein weiterer Punktewurf von mindestens 50 Punkten bestätigt werden, bevor du sichern darfst."))}</p></section>
+      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Freier Wurf und Bestätigungswurf"))}</h2><p>${escapeHtml(t("Wenn alle sechs Würfel Punkte bringen, werden sie wieder frei: ein freier Wurf. Die Rundenpunkte bleiben stehen."))}</p><p>${escapeHtml(t("Alle Punktewürfel hält alle Würfel, die gerade Punkte bringen. Ein möglicher Freier Wurf erscheint als Stempel; erst Weiterwürfeln übernimmt die Auswahl."))}</p><p>${escapeHtml(t("Nach drei Einsen oder einem vollen Wurf mit allen sechs Würfeln muss ein weiterer Punktewurf von mindestens 50 Punkten bestätigt werden, bevor du sichern darfst."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zilch-Serie"))}</h2><p>${escapeHtml(t("Ein Wurf ohne gültige Wertung – oder eine nicht erreichbare 300er-Regel nach Wurf drei – beendet den Zug als Zilch. Ungesicherte Punkte verfallen."))}</p><p>${escapeHtml(t("Bei einem Zilch bleibt der letzte Wurf sichtbar, bis der nächste Wurf ausgeführt wird."))}</p><p>${escapeHtml(t("Bei jedem dritten Zilch in Folge – also beim dritten, sechsten, neunten und so weiter – werden 500 Punkte abgezogen, niemals unter null."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zuschauen"))}</h2><p>${escapeHtml(t("Laufende Zwei-Personen-Partien werden in der Lobby mit beiden Spielern angezeigt. Über Zuschauen öffnest du eine Live-Ansicht; Würfeln, Halten und Sichern bleiben den beiden Teilnehmern vorbehalten."))}</p></section>
     </section>
     <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>
     <section class="zilch-card zilch-rules-section zilch-rules-section--solo"><p class="eyebrow">${escapeHtml(t("Solo"))}</p><h2>${escapeHtml(t("10’000-Punkte-Sprint"))}</h2><p>${escapeHtml(t("Im Solo-Sprint erreichst du mindestens 10’000 Punkte in möglichst wenigen eigenen Zügen. Der Lauf beginnt direkt mit deinem ersten normalen Zug – ohne Startwurf, Gegner, Schlussrunde oder Gegenzug."))}</p><p>${escapeHtml(t("Bei gleicher Zielerreichung werden später zuerst weniger Züge, dann weniger Würfe, weniger Zilchs und eine kürzere aktive Dauer verglichen. Pausenzeit zählt nicht zur aktiven Dauer."))}</p><p>${escapeHtml(t("Du kannst einen Solo-Lauf nach Bestätigung aufgeben. Er bleibt mit dem Status „Aufgegeben“ in deiner Historie erhalten."))}</p></section>
-    <section class="zilch-card zilch-rules-examples"><p class="eyebrow">${escapeHtml(t("Beispiele"))}</p><h2>${escapeHtml(t("Gültige Auswahlen"))}</h2><ul><li><code>5–5–5–5–2–3</code> — ${escapeHtml(t("Drilling Fünfen = 500; vier Fünfen = 1’000; nur eine Fünf = 50."))}</li><li><code>1–1–1–5–5–2</code> — ${escapeHtml(t("Drei Einsen und zwei einzelne Fünfen = 1’100; danach ist ein Bestätigungswurf nötig."))}</li><li><code>1–2–3–4–5–6</code> — ${escapeHtml(t("Straße, 2’000 Punkte, Hot Dice und Bestätigungswurf."))}</li><li><code>2–2–3–4–6–6</code> — ${escapeHtml(t("500 für nichts: alle Würfel werden wieder frei, der Zug läuft weiter."))}</li></ul></section>`;
+    <section class="zilch-card zilch-rules-examples"><p class="eyebrow">${escapeHtml(t("Beispiele"))}</p><h2>${escapeHtml(t("Gültige Auswahlen"))}</h2><ul><li><code>5–5–5–5–2–3</code> — ${escapeHtml(t("Drilling Fünfen = 500; vier Fünfen = 1’000; nur eine Fünf = 50."))}</li><li><code>1–1–1–5–5–2</code> — ${escapeHtml(t("Drei Einsen und zwei einzelne Fünfen = 1’100; danach ist ein Bestätigungswurf nötig."))}</li><li><code>1–2–3–4–5–6</code> — ${escapeHtml(t("Straße, 2’000 Punkte, freier Wurf und Bestätigungswurf."))}</li><li><code>2–2–3–4–6–6</code> — ${escapeHtml(t("500 für nichts: alle Würfel werden wieder frei, der Zug läuft weiter."))}</li></ul></section>`;
 }
 
 async function renderRules() {
@@ -2878,8 +2878,8 @@ function resultHeadline(result) {
   const cpuWon = winnerIds.some(id => participants.some(player => (
     sameId(id, resultPlayerId(player)) && participantType(player) === "cpu"
   )));
-  if (cpuGame && cpuWon) return t("CPU gewinnt");
-  if (cpuGame) return t("Sieg gegen CPU");
+  if (cpuGame && cpuWon) return t("Der Würfelwirt gewinnt");
+  if (cpuGame) return t("Sieg gegen den Würfelwirt");
   const names = participants
     .filter(player => winnerIds.some(id => sameId(id, resultPlayerId(player))))
     .map(resultPlayerName);
@@ -3273,7 +3273,7 @@ function turnScoreMarkup(snapshot, turnState, quickHolds, isMyTurn, canInteract)
   // the generic combined-score label. Ordinary mixed holds retain that label.
   const combinedLabel = freeRoll && combined?.combination_type !== "combined"
     ? compactOptionTitle(combined)
-    : t("Kombinierte Wertung");
+    : t("Alle Punktewürfel");
   const accessibleLabel = `${combinedLabel}: +${number(combined?.points)}${freeRoll ? ` · ${t("Freier Wurf")}` : ""}`;
   return `<div class="zilch-play-layout__current-score"><section class="zilch-turn-score${isMyTurn ? "" : " is-viewing"}" aria-live="polite" aria-label="${escapeHtml(t("Aktueller Wurf"))}">
     <span>${escapeHtml(t("Aktueller Wurf"))}</span>
@@ -3328,7 +3328,7 @@ function openingRollPanel(snapshot) {
       <p>${escapeHtml(t("Beide würfeln einmal. Bei Gleichstand wird wiederholt."))}</p>
       ${priorTie}
       <ol class="zilch-start-rolls">${attemptRows}</ol>
-      <button type="button" data-zilch-start-roll aria-keyshortcuts="Space" ${disabled ? "disabled" : ""}>${escapeHtml(humanTurn ? t("Startwurf ausführen") : cpuPending ? t("CPU würfelt für den Start …") : t("Warte auf den anderen Startwurf"))}</button>
+      <button type="button" data-zilch-start-roll aria-keyshortcuts="Space" ${disabled ? "disabled" : ""}>${escapeHtml(humanTurn ? t("Startwurf ausführen") : cpuPending ? t("Der Würfelwirt würfelt um den Start …") : t("Warte auf den anderen Startwurf"))}</button>
   </section>`;
 }
 
@@ -3402,9 +3402,9 @@ function finalResult(snapshot) {
   const headline = outcome.tied
     ? t("Gleichstand")
     : cpuGame && cpuWon
-      ? t("CPU gewinnt")
+      ? t("Der Würfelwirt gewinnt")
       : cpuGame
-        ? t("Sieg gegen CPU")
+        ? t("Sieg gegen den Würfelwirt")
         : t("Spiel beendet");
   const detail = outcome.tied
     ? t("Die Schlussrunde endet mit Gleichstand.")
@@ -3452,10 +3452,10 @@ async function createNewZilchRound(snapshot, button) {
 
 function statusText(snapshot, turnState) {
   if (spectatorRoute) return t("Du schaust diesem Spiel zu.");
-  if (snapshot?._zilch_cpu_error) return t("CPU-Spiel kann nicht fortgesetzt werden.");
+  if (snapshot?._zilch_cpu_error) return t("Die Partie gegen den Würfelwirt geht gerade nicht weiter.");
   if (snapshot._paused) {
     return hasOfflineHuman(snapshot)
-      ? t("Ein Teilnehmer ist offline. Das Spiel ist pausiert, bis die Verbindung wiederhergestellt ist.")
+      ? t("Ein Mitspieler ist gerade nicht am Tisch. Die Partie wartet, bis er wieder da ist.")
       : t("Spiel pausiert");
   }
   if (snapshot._finished) return isSoloGame(snapshot)
@@ -3466,7 +3466,7 @@ function statusText(snapshot, turnState) {
   if (!snapshot._started) return t("Wartet auf zweiten Teilnehmer");
   if (start?.phase === "awaiting_rolls") return t("Startspieler wird ermittelt.");
   const current = playerForId(snapshot, snapshot?._turn?.player_id);
-  if (isCpuParticipant(current) && state.statusKind !== "error") return t("CPU überlegt …");
+  if (isCpuParticipant(current) && state.statusKind !== "error") return t("Der Würfelwirt überlegt …");
   if (state.status) return state.status;
   if (turnState?.confirmation_required) return t("Bestätigungswurf erforderlich");
   if (turnState?.phase === "awaiting_hold") return t("Wähle eine Wertung.");
@@ -3500,8 +3500,8 @@ function cpuReasonText(event, fallback = "") {
 function cpuEventText(snapshot, event) {
   const actor = eventActor(snapshot, event);
   if (!isCpuParticipant(actor)) return "";
-  const actorName = actor?.name || t("CPU");
-  const actorLabel = actor?.name ? `${t("CPU")} ${actorName}` : actorName;
+  const actorName = actor?.name || t("Würfelwirt");
+  const actorLabel = actor?.name ? `${t("Würfelwirt")} ${actorName}` : actorName;
   const eventType = String(event?.type || event?.action || "");
   const points = Number(event?.points ?? event?.banked_points ?? event?.option?.points);
   let text = "";
@@ -3514,9 +3514,9 @@ function cpuEventText(snapshot, event) {
   } else if (eventType === "zilch") {
     text = `${actorLabel} ${t("hat Zilch.")}`;
   } else if (["start_roll", "start_roll_tie", "start_roll_resolved"].includes(eventType)) {
-    text = t("CPU würfelt für den Start …");
+    text = t("Der Würfelwirt würfelt um den Start …");
   } else if (eventType === "cpu_thinking") {
-    text = t("CPU überlegt …");
+    text = t("Der Würfelwirt überlegt …");
   }
   // The start-roll event already says exactly what the CPU is doing. Avoid
   // announcing that sentence twice when the runner adds its explanatory key.
@@ -3571,7 +3571,7 @@ function actionCards(snapshot, turnState, quickHolds, isMyTurn) {
 
 function reconnectControl() {
   if (!state.game || (state.socket && state.socket.readyState === WebSocket.OPEN)) return "";
-  return `<button type="button" class="small ghost" data-zilch-reconnect>${escapeHtml(t("Jetzt erneut verbinden"))}</button>`;
+  return `<button type="button" class="small ghost" data-zilch-reconnect>${escapeHtml(t("Wieder an den Tisch"))}</button>`;
 }
 
 function updateGameHeader(snapshot) {
@@ -3689,10 +3689,10 @@ function renderGameState() {
     return `<li><strong>${identity}</strong><span>${escapeHtml(entry?.text || "")}</span></li>`;
   }).join("");
   const offline = hasOfflineHuman(snapshot)
-    ? `<p class="zilch-offline-note">${escapeHtml(t("Ein Teilnehmer ist offline. Das Spiel ist pausiert, bis die Verbindung wiederhergestellt ist."))}</p>`
+    ? `<p class="zilch-offline-note">${escapeHtml(t("Ein Mitspieler ist gerade nicht am Tisch. Die Partie wartet, bis er wieder da ist."))}</p>`
     : "";
   const cpuError = snapshot?._zilch_cpu_error
-    ? `<p class="zilch-error" role="status">${escapeHtml(t("CPU-Spiel kann nicht fortgesetzt werden."))}</p>`
+    ? `<p class="zilch-error" role="status">${escapeHtml(t("Die Partie gegen den Würfelwirt geht gerade nicht weiter."))}</p>`
     : "";
   rememberNotebookScroll();
   content.innerHTML = `<h1 class="visually-hidden">${gameName}</h1>
@@ -3771,13 +3771,13 @@ function mountZilchEmojiToolbar(snapshot) {
 
 function requestAction(action, payload = {}, { optionId = null } = {}) {
   if (!state.socket || state.socket.readyState !== WebSocket.OPEN || state.pendingAction) {
-    updateStatus(t("Verbindung wird wiederhergestellt …"), "error");
+    updateStatus(t("Der Weg zurück zum Tisch wird gesucht …"), "error");
     renderGameState();
     return;
   }
   state.pendingAction = action;
   state.pendingOptionId = optionId;
-  updateStatus(t("Dein Zug wird aktualisiert …"));
+  updateStatus(t("Der Tisch macht deinen Zug bereit …"));
   renderGameState();
   state.socket.send(JSON.stringify({ action, ...payload }));
 }
@@ -3975,25 +3975,25 @@ function friendlySocketError(value) {
   // creator-only guest seats. Translate those codes at the product boundary
   // so a player never sees an implementation detail in the game room.
   const messages = {
-    zilch_cpu_host_required: "Dieses CPU-Spiel kann nur von der Person fortgesetzt werden, die es erstellt hat.",
+    zilch_cpu_host_required: "Diese Partie gegen den Würfelwirt kann nur die Person fortsetzen, die sie eröffnet hat.",
     zilch_solo_host_required: "Diesen Solo-Lauf kann nur die Person fortsetzen, die ihn gestartet hat.",
-    zilch_cpu_human_seat_taken: "Dieses CPU-Spiel ist bereits besetzt.",
+    zilch_cpu_human_seat_taken: "Dieser Tisch gegen den Würfelwirt ist schon besetzt.",
     zilch_solo_human_seat_taken: "Dieser Solo-Lauf ist bereits geöffnet.",
   };
   const raw = String(value || "");
   if (messages[raw]) return t(messages[raw]);
-  if (raw.startsWith("zilch_")) return t("Verbindung zur Partie nicht möglich.");
+  if (raw.startsWith("zilch_")) return t("Du kommst gerade nicht an diesen Tisch.");
   return t(raw || t("Unbekannter Fehler"));
 }
 
 function messageForEvent(snapshot, event) {
   if (!event || typeof event !== "object") return null;
   if (event.type === "cpu_unavailable") {
-    return cpuReasonText(event, t("CPU-Spiel kann nicht fortgesetzt werden."));
+    return cpuReasonText(event, t("Die Partie gegen den Würfelwirt geht gerade nicht weiter."));
   }
   const cpuText = cpuEventText(snapshot, event);
   if (cpuText) return cpuText;
-  if (event.type === "hold" && event.option?.hot_dice) return t("Hot Dice – alle sechs Würfel werden erneut frei.");
+  if (event.type === "hold" && event.option?.hot_dice) return t("Freier Wurf – alle sechs Würfel sind wieder frei.");
   if (event.type === "zilch" && Number(event.penalty || 0)) return t("Zilch-Serie – 500 Punkte Abzug.");
   if (["solo_completed", "solo_complete", "objective_completed"].includes(event.type)) return t("Solo-Ziel erreicht");
   if (["solo_abandoned", "abandon_solo"].includes(event.type)) return t("Solo-Lauf aufgegeben");
@@ -4111,7 +4111,7 @@ function connectGameSocket() {
     if (state.stopped || socket !== state.socket) return;
     state.pendingAction = null;
     state.pendingOptionId = null;
-    updateStatus(t("Verbindung wird wiederhergestellt …"), "error");
+    updateStatus(t("Der Weg zurück zum Tisch wird gesucht …"), "error");
     if (state.game) renderGameState();
     window.clearTimeout(state.reconnectTimer);
     state.reconnectTimer = window.setTimeout(connectGameSocket, 1_500);
@@ -4170,7 +4170,7 @@ async function renderGame() {
     }
     connectGameSocket();
   } catch (_) {
-    renderNotice(state.details?.play_mode === "cpu" ? "CPU-Spiel kann nicht fortgesetzt werden." : "Zilch-Spiel konnte nicht geladen werden.", { kind: "error" });
+    renderNotice(state.details?.play_mode === "cpu" ? "Die Partie gegen den Würfelwirt geht gerade nicht weiter." : "Zilch-Spiel konnte nicht geladen werden.", { kind: "error" });
   }
 }
 
