@@ -1189,6 +1189,61 @@ def _browser_result_payload(payload: dict) -> dict:
     }
 
 
+def _browser_result_moments(payload: dict) -> dict:
+    """Attach the small, participant-safe story of awards at this table."""
+
+    participants = payload.get("participants")
+    if not isinstance(participants, list):
+        return {"status": "unavailable", "participants": []}
+    participant_user_ids: dict[int, str] = {}
+    for participant in participants:
+        if not isinstance(participant, dict):
+            continue
+        user_id = participant.get("user_id")
+        participant_id = participant.get("participant_id")
+        if type(user_id) is int and user_id > 0 and isinstance(participant_id, str) and participant_id:
+            participant_user_ids[user_id] = participant_id
+    if not participant_user_ids:
+        return {"status": "unavailable", "participants": []}
+    try:
+        # Keep the result reader independent from the achievement writer at
+        # import time. The latter already imports this module to validate its
+        # explicitly registered source payloads.
+        from .zilch_achievements import zilch_result_moments_for_user_ids
+
+        projection = zilch_result_moments_for_user_ids(
+            payload.get("game_id"),
+            participant_user_ids,
+        )
+    except Exception:  # pragma: no cover - defensive product enrichment
+        logger.exception("Could not enrich Zilch result %s with table moments", payload.get("game_id"))
+        return {"status": "unavailable", "participants": []}
+    status = str(projection.get("status") or "unavailable")
+    if status not in {"ready", "pending", "unavailable"}:
+        status = "unavailable"
+    by_user = projection.get("by_user")
+    if not isinstance(by_user, dict):
+        by_user = {}
+    moments: list[dict] = []
+    for user_id, participant_id in participant_user_ids.items():
+        entry = by_user.get(user_id)
+        if not isinstance(entry, dict):
+            continue
+        awards = entry.get("awards")
+        rank_ups = entry.get("rank_ups")
+        safe_awards = [award for award in awards if isinstance(award, dict)] if isinstance(awards, list) else []
+        safe_rank_ups = [upgrade for upgrade in rank_ups if isinstance(upgrade, dict)] if isinstance(rank_ups, list) else []
+        if safe_awards or safe_rank_ups:
+            moments.append(
+                {
+                    "participant_id": participant_id,
+                    "awards": safe_awards,
+                    "rank_ups": safe_rank_ups,
+                }
+            )
+    return {"status": status, "participants": moments}
+
+
 def load_zilch_result_for_user(game_id: str, user_id: int) -> dict | None:
     """Load one result only when the requesting account participated in it.
 
@@ -1209,7 +1264,11 @@ def load_zilch_result_for_user(game_id: str, user_id: int) -> dict | None:
             )
         )
         payload = _stored_payload(row) if row is not None else None
-    return _browser_result_payload(payload) if payload is not None else None
+    if payload is None:
+        return None
+    browser_payload = _browser_result_payload(payload)
+    browser_payload["moments"] = _browser_result_moments(payload)
+    return browser_payload
 
 
 def list_zilch_results_for_user(user_id: int, *, limit: int = 30) -> list[dict]:

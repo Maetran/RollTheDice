@@ -328,6 +328,14 @@ jede intern gespeicherte Solo-Metrik. Ein alter Terminal-State, dem eine
 autoritative Pflichtangabe wie der Endzeitpunkt fehlt, bleibt aktiv und wird
 protokolliert; die Anwendung erfindet keine Werte.
 
+Hat genau diese Partie nach der serverseitigen Prüfung einen Zilch-Erfolg
+freigeschaltet oder einen Rangaufstieg ausgelöst, darf der geschützte Report
+den Tischmoment mit dem damaligen Spieler, Erfolg beziehungsweise Rang vor und
+nach dem Aufstieg zeigen. Er enthält dabei weder Konto- oder Evidenz-IDs noch
+private Lebenszeitpunkte. Solange die getrennte Erfolgsprüfung noch läuft,
+meldet der Report nur die Prüfung; alte, nie registrierte Partien behaupten
+nicht nachträglich, es habe keine Ehrung gegeben.
+
 ### Geschützte Zilch-Erfolge sind keine Spielregel
 
 Zilch-Erfolge bilden einen eigenen, geschützten Zilch-Namensraum. Sie

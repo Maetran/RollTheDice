@@ -267,6 +267,37 @@ function completedZilchResultFixture() {
       hot_dice_events: 0,
       hot_dice_events_complete: true,
     },
+    // The report gets a deliberately presentation-safe event projection: it
+    // identifies the participant at this table, but never exposes internal
+    // users, evidence, or a later account state.
+    moments: {
+      status: "ready",
+      participants: [{
+        participant_id: "p1",
+        awards: [{
+          key: "zilch.first_game",
+          icon_key: "die",
+          title_key: "zilch.achievement.first_game.title",
+          description_key: "zilch.achievement.first_game.description",
+          points: 1,
+          unlocked_at: "2026-09-03T12:10:00+00:00",
+          source_kind: "game",
+        }],
+        rank_ups: [{
+          previous: {
+            key: "newbie",
+            title_key: "zilch.rank.newbie",
+            stars: 1,
+          },
+          current: {
+            key: "rookie",
+            title_key: "zilch.rank.rookie",
+            stars: 2,
+          },
+          recorded_at: "2026-09-03T12:10:00+00:00",
+        }],
+      }],
+    },
   };
 }
 
@@ -650,27 +681,91 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
     await page.waitForURL(new RegExp(`/zilch/ergebnis/${result.game_id}$`));
 
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-    await expect(page.getByRole("heading", { name: "Mani gewinnt die Partie." })).toBeVisible();
+    await expect(page.getByText("Der Tisch ist abgerechnet", { exact: true })).toBeVisible();
+    await expect(page.locator(".zilch-result-head h1")).toHaveText("Mani gewinnt die Partie.");
+    await expect(page.locator(".zilch-result-metrics")).toContainText("Höchste gesicherte Runde");
+    await expect(page.locator(".zilch-result-metrics")).toContainText(/8.?000/);
+    await expect(page.locator(".zilch-result-metrics")).toContainText("Zilch-Runden");
     await expect(page.locator(".zilch-result-board")).toHaveCount(2);
     await expect(page.locator(".zilch-result-board").nth(0)).toContainText(/10.?000/);
     await expect(page.locator(".zilch-result-board").nth(1)).toContainText("500");
+    const histories = page.locator("details.zilch-result-history, .zilch-result-history details");
+    await expect(histories).toHaveCount(2);
+    await expect(histories.first()).not.toHaveAttribute("open", "");
+    await expect(histories.first().locator("summary")).toContainText("Was am Tisch geschah");
+    await histories.first().locator("summary").click();
+    await expect(histories.first()).toHaveAttribute("open", "");
+    await expect(histories.first()).toContainText("Runde 1");
+
+    const tableMoments = page.locator(".zilch-result-moments");
+    await expect(tableMoments).toBeVisible();
+    await expect(tableMoments).toContainText("Tischmomente");
+    await expect(tableMoments).toContainText("Mani");
+    await expect(tableMoments).toContainText("Erster Wurf");
+    await expect(tableMoments).toContainText("Newbie → Rookie");
+    await expect(tableMoments).not.toContainText("source_kind");
+    await expect(page.locator(".zilch-result-actions a[href='/zilch']")).toBeVisible();
+    await expect(page.locator(".zilch-result-actions a[href='/zilch/historie']")).toBeVisible();
     await expect(page.getByText("Gleichstand – Startwurf wiederholt")).toBeVisible();
-    await expect(page.getByText("Gegenzug abgeschlossen von")).toBeVisible();
+    await expect(page.locator(".zilch-result-final-round")).toContainText("hat die letzte Runde eingeläutet.");
     await expect(page.locator("#createGameCard")).toHaveCount(0);
 
-    await page.setViewportSize({ width: 390, height: 844 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    // The hero sits on dark wood while the result eyebrow sits on paper. Both
+    // contrast regressions have happened before; verify the intended light /
+    // dark directions without coupling the test to one exact paint value.
+    const contrastColors = await page.evaluate(() => {
+      const rgb = selector => {
+        const value = getComputedStyle(document.querySelector(selector)).color;
+        const channels = value.match(/\d+(?:\.\d+)?/g)?.slice(0, 3).map(Number) || [];
+        return channels;
+      };
+      const luminance = channels => {
+        const linear = channels.map(channel => {
+          const value = channel / 255;
+          return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+        });
+        return .2126 * (linear[0] || 0) + .7152 * (linear[1] || 0) + .0722 * (linear[2] || 0);
+      };
+      return {
+        heroHeading: luminance(rgb(".zilch-result-head h1")),
+        summaryEyebrow: luminance(rgb(".zilch-result-summary .eyebrow")),
+        metricsEyebrow: luminance(rgb(".zilch-result-metrics .eyebrow")),
+      };
+    });
+    expect(contrastColors.heroHeading).toBeGreaterThan(.75);
+    expect(contrastColors.summaryEyebrow).toBeLessThan(.3);
+    expect(contrastColors.metricsEyebrow).toBeLessThan(.3);
+
+    for (const width of [320, 390, 768]) {
+      await page.setViewportSize({ width, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await expect(page.locator(".zilch-result-summary")).toBeVisible();
+      await expect(tableMoments).toBeVisible();
+    }
     await page.reload();
     await expect(page.locator(".zilch-result-board")).toHaveCount(2);
+    await expect(page.locator(".zilch-result-moments")).toContainText("Erster Wurf");
 
     await Promise.all([
       page.waitForNavigation({ waitUntil: "domcontentloaded" }),
       page.locator("[data-language-switcher]").selectOption("en"),
     ]);
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.getByText("Completed game", { exact: true })).toBeVisible();
+    await expect(page.getByText("The table is settled", { exact: true })).toBeVisible();
+    await expect(page.locator(".zilch-result-moments")).toContainText("Table moments");
+    await expect(page.locator(".zilch-result-moments")).toContainText("First Roll");
+    await expect(page.locator(".zilch-result-moments")).toContainText("Newbie → Rookie");
     await expect(page.getByText("Total points", { exact: true }).first()).toBeVisible();
     await expect(page.locator("#zilchNavigation a[href='/zilch']")).toBeVisible();
+
+    // This suite shares the preview account across several fixtures. Restore
+    // the explicit German baseline after exercising the translated report so
+    // the following game-screen fixtures keep testing their German copy.
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+      page.locator("[data-language-switcher]").selectOption("de"),
+    ]);
+    await expect(page.locator("html")).toHaveAttribute("lang", "de");
   } finally {
     await context.close();
   }

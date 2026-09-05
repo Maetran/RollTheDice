@@ -30,6 +30,65 @@ async function signInAsPreviewMani(page) {
   await expect(page.locator("#authBadge")).toContainText("Mani");
 }
 
+async function persistLanguageForFixture(page, language) {
+  // The chooser reloads after persistence. This spec exercises the game
+  // switch, while dedicated localization tests cover the chooser itself. Set
+  // both persistence layers without making the current document navigate.
+  // `page.request` shares the authenticated browser-context cookies but is
+  // independent of a page navigation already being settled by the app.
+  const me = await page.request.get("/api/auth/me", { headers: { "Cache-Control": "no-store" } });
+  expect(me.ok()).toBeTruthy();
+  const auth = await me.json();
+  const csrf = auth?.user?.csrf_token;
+  expect(auth?.authenticated).toBeTruthy();
+  expect(csrf).toBeTruthy();
+  const response = await page.request.put("/api/auth/preferences/language", {
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+    data: { preferred_language: language },
+  });
+  expect(response.status()).toBe(200);
+  await page.addInitScript(preferredLanguage => {
+    localStorage.setItem("zdwa_language", preferredLanguage);
+  }, language);
+}
+
+async function gotoAfterLanguageSync(page, destination) {
+  const destinationPath = new URL(destination, page.url()).pathname;
+  let lastError = null;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      await page.goto(destination, { waitUntil: "domcontentloaded" });
+      if (new URL(page.url()).pathname === destinationPath) return;
+    } catch (error) {
+      lastError = error;
+      if (!/ERR_ABORTED|interrupted by another navigation/i.test(String(error))) throw error;
+    }
+  }
+  throw lastError || new Error(`Could not settle on ${destination}`);
+}
+
+async function restoreGermanPreference(page) {
+  // This spec uses the same preview account as later Zilch fixtures. Reset
+  // it even when an assertion fails, without a second navigation in cleanup.
+  try {
+    const me = await page.request.get("/api/auth/me", { headers: { "Cache-Control": "no-store" } });
+    if (!me.ok()) return;
+    const auth = await me.json();
+    const csrf = auth?.user?.csrf_token;
+    if (!auth?.authenticated || !csrf) return;
+    await page.request.put("/api/auth/preferences/language", {
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+      data: { preferred_language: "de" },
+    });
+  } catch {
+    // Do not replace an original assertion error when its page was torn down.
+  }
+}
+
+test.afterEach(async ({ page }) => {
+  await restoreGermanPreference(page);
+});
+
 async function switchControlGeometry(locator) {
   return locator.evaluate(element => {
     const box = element.getBoundingClientRect();
@@ -105,17 +164,13 @@ test("the permission-gated game switch is available across ZDWA and in its activ
   }
 
   await page.goto("/");
-  await Promise.all([
-    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
-    page.locator("[data-language-switcher]").selectOption("en"),
-  ]);
-  await page.goto("/regeln");
+  await persistLanguageForFixture(page, "en");
+  await gotoAfterLanguageSync(page, "/regeln");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("[data-game-switch]")).toHaveAttribute("aria-label", "Open Zilch (Alt+Shift+Z)");
-  await page.goto("/");
-  await Promise.all([
-    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
-    page.locator("[data-language-switcher]").selectOption("de"),
-  ]);
+  await persistLanguageForFixture(page, "de");
+  await gotoAfterLanguageSync(page, "/");
+  await expect(page.locator("html")).toHaveAttribute("lang", "de");
   await expect(page.locator("#authBadge")).toContainText("Mani");
   await Promise.all([
     page.waitForURL(/\/spiel\/[^/?]+$/),

@@ -1059,14 +1059,24 @@ test("a private solo result keeps the objective compact and the score sheet in f
 
     await page.goto(`/zilch/ergebnis/${resultId}`);
     await expect(page.locator(".zilch-result-board")).toHaveCount(1);
-    await expect(page.locator(".zilch-result-summary")).toContainText(/Solo-Ziel erreicht|Solo objective reached/);
+    await expect(page.locator(".zilch-result-summary")).toContainText(/Solo-Ergebnis|Solo result/);
+    await expect(page.locator(".zilch-result-summary")).toContainText(/Solo-Ziel|Solo objective/);
     await expect(page.locator(".zilch-result-summary")).toContainText(/10(?:'|,|’|\s)000/);
-    // The result still identifies the sprint, but does not repeat the target,
-    // progress and telemetry in a second card beside the actual score sheet.
+    // The result keeps one compact table balance rather than duplicating the
+    // objective/progress cards, but preserves the useful sprint metrics.
     await expect(page.locator(".zilch-solo-objective, .zilch-solo-metrics")).toHaveCount(0);
+    await expect(page.locator(".zilch-result-metrics")).toContainText(/Züge|Turns/);
+    await expect(page.locator(".zilch-result-metrics")).toContainText(/Würfe|Rolls/);
+    await expect(page.locator(".zilch-result-metrics")).toContainText(/Aktive Dauer|Active duration/);
+    await expect(page.locator(".zilch-result-metrics")).toContainText("5");
     await expect(page.locator(".zilch-result-start-roll")).toHaveCount(0);
     await expect(page.locator(".zilch-result-final-round")).toHaveCount(0);
     await expect(page.locator(".zilch-result-board")).toContainText("Mani");
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await expect(page.locator(".zilch-result-metrics")).toBeVisible();
+    }
   } finally {
     await context.close();
   }

@@ -35,6 +35,7 @@ from .models import (
     ZilchAchievementEvaluation,
     ZilchAchievementEvidence,
     ZilchAchievementRankDelivery,
+    ZilchAchievementRankMoment,
     ZilchAchievementUnlock,
     ZilchCommunityGame,
     ZilchCommunityMilestone,
@@ -2173,8 +2174,13 @@ def _unlock_payload(
     presentation_game_id: object | None = None,
 ) -> dict[str, Any]:
     source_game_id = str(unlock.source_game_id) if unlock.source_game_id else None
+    stored_presentation_game_id = (
+        str(unlock.presentation_game_id) if unlock.presentation_game_id else None
+    )
     projected_presentation_game_id = (
-        str(presentation_game_id) if presentation_game_id else source_game_id
+        str(presentation_game_id)
+        if presentation_game_id
+        else stored_presentation_game_id or source_game_id
     )
     payload = _definition_payload(definition)
     payload.update(
@@ -2375,11 +2381,18 @@ def _zilch_rank_upgrade_delivery_payload(
     """Return a private, replay-safe presentation projection for one rank-up."""
 
     source_game_id = str(source_unlock.source_game_id) if source_unlock.source_game_id else None
+    stored_presentation_game_id = (
+        str(source_unlock.presentation_game_id) if source_unlock.presentation_game_id else None
+    )
     return {
         "previous": _zilch_rank_payload_for_key(delivery.previous_rank_key, delivery.previous_points),
         "current": _zilch_rank_payload_for_key(delivery.rank_key, delivery.points),
         "source_game_id": source_game_id,
-        "presentation_game_id": str(presentation_game_id) if presentation_game_id else source_game_id,
+        "presentation_game_id": (
+            str(presentation_game_id)
+            if presentation_game_id
+            else stored_presentation_game_id or source_game_id
+        ),
         "queued_at": as_utc(delivery.queued_at).isoformat(),
         "acknowledged_at": (
             as_utc(delivery.acknowledged_at).isoformat() if delivery.acknowledged_at is not None else None
@@ -2389,6 +2402,147 @@ def _zilch_rank_upgrade_delivery_payload(
 
 def _normalised_game_id(value: object) -> str:
     return _strict_text(value, "zilch_achievement_invalid_game_id", limit=64)
+
+
+def _result_moment_award_payload(
+    unlock: ZilchAchievementUnlock,
+    definition: ZilchAchievementDefinition,
+) -> dict[str, Any]:
+    """Return the deliberately small award card safe for a shared result."""
+
+    return {
+        "key": definition.key,
+        "icon_key": definition.icon_key,
+        "title_key": definition.title_key,
+        "description_key": definition.description_key,
+        "points": definition.points,
+        "unlocked_at": as_utc(unlock.unlocked_at).isoformat(),
+        "source_kind": "community" if unlock.source_community_recipient_id is not None else "game",
+    }
+
+
+def _result_moment_rank_payload(rank_key: object, points: object) -> dict[str, Any]:
+    """Return only the named tier needed in a shared table report.
+
+    A rank delivery and a private achievement profile can safely include an
+    account's lifetime Zilch-point progress.  The report is shared with the
+    other seat, though, so it needs only the visible before/after title and
+    stars—not a participant's full private progression.
+    """
+
+    rank = _zilch_rank_payload_for_key(rank_key, points)
+    return {
+        "key": str(rank["key"]),
+        "title": str(rank["title"]),
+        "title_key": str(rank["title_key"]),
+        "stars": int(rank["stars"]),
+    }
+
+
+def zilch_result_moments_for_user_ids(
+    game_id: object,
+    participant_user_ids: Iterable[object],
+) -> dict[str, Any]:
+    """Project only a finished table's own awards and rank transitions.
+
+    This is intentionally narrower than an achievement profile: a result may
+    be viewed by its participants, but it never needs account IDs, private
+    evidence, lifetime points, or unrelated award history.  ``pending`` is a
+    first-class state because the finished result can be durable before its
+    isolated award evaluation succeeds.
+    """
+
+    try:
+        normalized_game_id = _normalised_game_id(game_id)
+    except ZilchAchievementError:
+        return {"status": "unavailable", "by_user": {}}
+    user_ids: set[int] = set()
+    for raw_user_id in participant_user_ids:
+        try:
+            user_id = int(raw_user_id)
+        except (TypeError, ValueError):
+            continue
+        if user_id > 0:
+            user_ids.add(user_id)
+    if not user_ids or not database_schema_ready():
+        return {"status": "unavailable", "by_user": {}}
+    try:
+        with session_scope() as db:
+            evaluation = db.scalar(
+                select(ZilchAchievementEvaluation).where(
+                    ZilchAchievementEvaluation.game_id == normalized_game_id
+                )
+            )
+            if evaluation is None:
+                return {"status": "unavailable", "by_user": {}}
+            if evaluation.status != "completed":
+                return {"status": "pending", "by_user": {}}
+
+            # Pre-redesign unlock rows do not yet have a presentation link.
+            # Their direct evidence source remains a safe backwards-compatible
+            # fallback. Community awards are associated only when a recipient
+            # really sat at the trigger table.
+            community_recipient_ids = select(ZilchCommunityRecipient.id).join(
+                ZilchCommunityMilestone,
+                ZilchCommunityMilestone.id == ZilchCommunityRecipient.milestone_id,
+            ).where(ZilchCommunityMilestone.trigger_game_id == normalized_game_id)
+            award_rows = list(
+                db.scalars(
+                    select(ZilchAchievementUnlock)
+                    .where(
+                        ZilchAchievementUnlock.user_id.in_(user_ids),
+                        or_(
+                            ZilchAchievementUnlock.presentation_game_id == normalized_game_id,
+                            and_(
+                                ZilchAchievementUnlock.presentation_game_id.is_(None),
+                                ZilchAchievementUnlock.source_game_id == normalized_game_id,
+                            ),
+                            ZilchAchievementUnlock.source_community_recipient_id.in_(community_recipient_ids),
+                        ),
+                    )
+                    .order_by(
+                        ZilchAchievementUnlock.unlocked_at,
+                        ZilchAchievementUnlock.id,
+                    )
+                )
+            )
+            rank_rows = list(
+                db.scalars(
+                    select(ZilchAchievementRankMoment)
+                    .where(
+                        ZilchAchievementRankMoment.game_id == normalized_game_id,
+                        ZilchAchievementRankMoment.user_id.in_(user_ids),
+                    )
+                    .order_by(
+                        ZilchAchievementRankMoment.recorded_at,
+                        ZilchAchievementRankMoment.id,
+                    )
+                )
+            )
+    except SQLAlchemyError:
+        logger.exception("Could not project Zilch result moments for %s", normalized_game_id)
+        return {"status": "unavailable", "by_user": {}}
+
+    by_user: dict[int, dict[str, list[dict[str, Any]]]] = {}
+    for unlock in award_rows:
+        definition = ZILCH_ACHIEVEMENT_BY_KEY.get(str(unlock.achievement_key))
+        if definition is None:
+            continue
+        by_user.setdefault(int(unlock.user_id), {"awards": [], "rank_ups": []})["awards"].append(
+            _result_moment_award_payload(unlock, definition)
+        )
+    for moment in rank_rows:
+        by_user.setdefault(int(moment.user_id), {"awards": [], "rank_ups": []})["rank_ups"].append(
+            {
+                "previous": _result_moment_rank_payload(
+                    moment.previous_rank_key,
+                    moment.previous_points,
+                ),
+                "current": _result_moment_rank_payload(moment.rank_key, moment.points),
+                "recorded_at": as_utc(moment.recorded_at).isoformat(),
+            }
+        )
+    return {"status": "ready", "by_user": by_user}
 
 
 def _json_facts(facts: Mapping[str, Any]) -> str:
@@ -2654,6 +2808,15 @@ def _ensure_community_unlocks_for_user_in_session(
             continue
         recipient, milestone = source
         if unlock is None:
+            # A community recipient may have earned the milestone through a
+            # different table long ago. Only people seated at this trigger
+            # game get this report's presentation link.
+            presentation_game_id = db.scalar(
+                select(ZilchCommunityParticipant.game_id).where(
+                    ZilchCommunityParticipant.game_id == milestone.trigger_game_id,
+                    ZilchCommunityParticipant.user_id == user_id,
+                )
+            )
             unlock = ZilchAchievementUnlock(
                 user_id=user_id,
                 achievement_key=definition.key,
@@ -2661,6 +2824,7 @@ def _ensure_community_unlocks_for_user_in_session(
                 source_evidence_id=None,
                 source_community_recipient_id=recipient.id,
                 source_game_id=None,
+                presentation_game_id=str(presentation_game_id) if presentation_game_id else None,
                 unlocked_at=recipient.awarded_at,
             )
             db.add(unlock)
@@ -2671,12 +2835,6 @@ def _ensure_community_unlocks_for_user_in_session(
                 acknowledged_at=None,
             )
             db.add(delivery)
-            presentation_game_id = db.scalar(
-                select(ZilchCommunityParticipant.game_id).where(
-                    ZilchCommunityParticipant.game_id == milestone.trigger_game_id,
-                    ZilchCommunityParticipant.user_id == user_id,
-                )
-            )
             newly_unlocked.append(
                 _unlock_payload(
                     unlock,
@@ -2831,7 +2989,12 @@ def _register_community_game_in_session(
     return new_unlocks
 
 
-def _sync_user_achievements_in_session(db, user_id: int) -> tuple[list[dict[str, Any]], list[str]]:
+def _sync_user_achievements_in_session(
+    db,
+    user_id: int,
+    *,
+    presentation_game_id: str | None = None,
+) -> tuple[list[dict[str, Any]], list[str]]:
     """Materialize/revoke one user's isolated Zilch awards atomically."""
 
     user = db.get(User, user_id)
@@ -2846,6 +3009,9 @@ def _sync_user_achievements_in_session(db, user_id: int) -> tuple[list[dict[str,
     newly_unlocked: list[dict[str, Any]] = []
     revoked: list[str] = []
     now = utcnow()
+    presentation = str(presentation_game_id).strip() if presentation_game_id else None
+    if presentation and len(presentation) > 64:
+        presentation = None
     for definition in ZILCH_ACHIEVEMENTS:
         if definition.criterion == "community_games":
             continue
@@ -2863,6 +3029,7 @@ def _sync_user_achievements_in_session(db, user_id: int) -> tuple[list[dict[str,
                 definition_version=definition.definition_version,
                 source_evidence_id=source.id,
                 source_game_id=source.source_game_id,
+                presentation_game_id=presentation or source.source_game_id,
                 unlocked_at=now,
             )
             db.add(unlock)
@@ -2997,9 +3164,14 @@ def _process_registered_evaluation(game_id: str) -> ZilchAchievementRegistration
             if claim.rowcount != 1:
                 return ZilchAchievementRegistration(game_id, "already_evaluated", {}, pending=False)
             affected = {int(row.user_id) for row in evidence}
+            ranks_before_by_user = zilch_achievement_rank_payloads_for_user_ids(db, affected)
             new_unlocks: dict[int, list[dict[str, Any]]] = {}
             for user_id in sorted(affected):
-                unlocked, _revoked = _sync_user_achievements_in_session(db, user_id)
+                unlocked, _revoked = _sync_user_achievements_in_session(
+                    db,
+                    user_id,
+                    presentation_game_id=game_id,
+                )
                 if unlocked:
                     new_unlocks[user_id] = unlocked
             community_unlocks = _register_community_game_in_session(
@@ -3009,11 +3181,41 @@ def _process_registered_evaluation(game_id: str) -> ZilchAchievementRegistration
             )
             for user_id, unlocked in community_unlocks.items():
                 new_unlocks.setdefault(user_id, []).extend(unlocked)
-            rank_after_by_user = zilch_achievement_rank_payloads_for_user_ids(db, new_unlocks)
+            rank_after_by_user = zilch_achievement_rank_payloads_for_user_ids(
+                db,
+                set(new_unlocks) | affected,
+            )
             for user_id, unlocked in new_unlocks.items():
                 rank_after = rank_after_by_user[user_id]
                 for award in unlocked:
                     award["rank_after"] = rank_after
+            # A delivery is deliberately only an account's latest unread
+            # celebration. Persist the real before/after transition here as
+            # well, so an old result report remains truthful after later
+            # awards replace that delivery.
+            for user_id in sorted(affected):
+                previous = ranks_before_by_user.get(user_id, zilch_achievement_rank_for_points(0))
+                current = rank_after_by_user.get(user_id, zilch_achievement_rank_for_points(0))
+                if not _is_zilch_rank_upgrade(previous, current):
+                    continue
+                existing_moment = db.scalar(
+                    select(ZilchAchievementRankMoment).where(
+                        ZilchAchievementRankMoment.user_id == user_id,
+                        ZilchAchievementRankMoment.game_id == game_id,
+                    )
+                )
+                if existing_moment is None:
+                    db.add(
+                        ZilchAchievementRankMoment(
+                            user_id=user_id,
+                            game_id=game_id,
+                            previous_rank_key=str(previous["key"]),
+                            rank_key=str(current["key"]),
+                            previous_points=int(previous["points"]),
+                            points=int(current["points"]),
+                            recorded_at=evaluated_at,
+                        )
+                    )
             return ZilchAchievementRegistration(game_id, "evaluated", new_unlocks, pending=False)
     except ZilchAchievementError as exc:
         _record_evaluation_failure(game_id, exc.code)

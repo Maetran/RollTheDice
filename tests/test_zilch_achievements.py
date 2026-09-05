@@ -522,6 +522,8 @@ class ZilchAchievementPersistenceTestCase(TestCase):
                 "zilch_achievement_evidence",
                 "zilch_achievement_unlocks",
                 "zilch_achievement_deliveries",
+                "zilch_achievement_rank_deliveries",
+                "zilch_achievement_rank_moments",
             }
             <= before
         )
@@ -538,6 +540,8 @@ class ZilchAchievementPersistenceTestCase(TestCase):
                 "zilch_achievement_evidence",
                 "zilch_achievement_unlocks",
                 "zilch_achievement_deliveries",
+                "zilch_achievement_rank_deliveries",
+                "zilch_achievement_rank_moments",
                 "zilch_community_state",
                 "zilch_community_games",
                 "zilch_community_participants",
@@ -548,6 +552,11 @@ class ZilchAchievementPersistenceTestCase(TestCase):
         )
         unlock_columns = {item["name"] for item in inspect(get_engine()).get_columns("zilch_achievement_unlocks")}
         self.assertIn("source_community_recipient_id", unlock_columns)
+        self.assertIn("presentation_game_id", unlock_columns)
+        rank_moment_indexes = {
+            item["name"] for item in inspect(get_engine()).get_indexes("zilch_achievement_rank_moments")
+        }
+        self.assertIn("ix_zilch_rank_moments_game", rank_moment_indexes)
 
     def test_community_migration_bootstraps_only_explicit_completed_evaluations(self) -> None:
         mani = self._user("Mani", role="admin")

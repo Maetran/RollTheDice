@@ -42,7 +42,11 @@ Finished Zilch games are stored as a separate, versioned result payload with a
 personal read-only history for linked accounts. A detail is readable only by
 its linked human participants, and the HTTP projection omits internal user IDs.
 Guest results remain in the live session but are intentionally not exposed as
-an account history or result URL. Zilch results do
+an account history or result URL. The protected report can
+show a compact, table-scoped story when this exact game unlocked an award or a
+new Zilch rank: it names the seated player and the visible award or rank tier,
+but never exposes account IDs, evidence, source IDs, or lifetime point totals.
+Results without a completed award evaluation make no claim either way. They do
 not enter any ZDWA scorecard, replay,
 statistic, achievement, or leaderboard path. Zilch awards use their
 own protected namespace instead: personal awards are worth 1–10 Zilch points

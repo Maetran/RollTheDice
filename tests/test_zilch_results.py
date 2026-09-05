@@ -27,13 +27,21 @@ from app.game_history import CompletedGameWriteResult, persist_completed_game_re
 from app.game_registry import finalize_completed_game
 from app.game_state import games
 from app.game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE
-from app.models import ActiveGame, CompletedGame, GameParticipant
+from app.models import (
+    ActiveGame,
+    CompletedGame,
+    GameParticipant,
+    ZilchAchievementRankMoment,
+    ZilchAchievementUnlock,
+)
+from app.zilch_achievements import _register_evaluation
 from app.zilch_results import (
     ZILCH_RESULT_PAYLOAD_KIND,
     ZILCH_RESULT_SCHEMA_VERSION,
     build_zilch_result_payload,
     finalize_zilch_result,
     load_zilch_result,
+    load_zilch_result_for_user,
 )
 from app.zilch_state import (
     configure_zilch_cpu_game,
@@ -251,6 +259,33 @@ class ZilchResultsTestCase(TestCase):
                 )
                 or 0
             )
+
+    def _persist_terminal_game(self, game: dict) -> dict:
+        """Write a result without running its achievement finalizer."""
+
+        payload = build_zilch_result_payload(game)
+        write = persist_completed_game_result(
+            game_id=payload["game_id"],
+            game_name=payload["game_name"],
+            game_type=ZILCH_GAME_TYPE,
+            mode=payload["mode"],
+            hardcore=False,
+            finished_at=datetime.fromisoformat(str(payload["finished_at"]).replace("Z", "+00:00")),
+            snapshot=payload,
+            participants=[
+                {
+                    "position": participant["position"],
+                    "player_key": participant["player_key"],
+                    "display_name": participant["display_name"],
+                    "team": None,
+                    "points": int(payload["totals"][participant["participant_id"]]),
+                    "user_id": participant.get("user_id"),
+                }
+                for participant in payload["participants"]
+            ],
+        )
+        self.assertTrue(write.succeeded, write)
+        return payload
 
     def _identity(self, username: str, *, role: str = "user") -> tuple[int, str]:
         password = f"{username}-secure-password-123"
@@ -475,6 +510,157 @@ class ZilchResultsTestCase(TestCase):
         self.assertEqual(self._completed_count(game["_id"]), 1)
         self.assertIsNone(self._active_row(game["_id"]))
         self.assertNotIn(game["_id"], games)
+
+    def test_result_detail_projects_only_its_table_awards_and_rank_moments(self) -> None:
+        mani_id, _mani_token = self._identity("MomentMani", role="admin")
+        friend_id, _friend_token = self._identity("MomentFriend")
+        game = self._terminal_game(
+            player_one=("MomentMani", mani_id),
+            player_two=("MomentFriend", friend_id),
+        )
+
+        completion = finalize_zilch_result(game)
+
+        self.assertTrue(completion["result_persisted"])
+        self.assertFalse(completion["achievement_sync_pending"])
+        detail = load_zilch_result_for_user(game["_id"], friend_id)
+        self.assertIsNotNone(detail)
+        assert detail is not None
+        moments = detail["moments"]
+        self.assertEqual(moments["status"], "ready")
+        by_participant = {entry["participant_id"]: entry for entry in moments["participants"]}
+        self.assertIn("p1", by_participant)
+        self.assertIn("p2", by_participant)
+        self.assertIn(
+            "zilch.first_game",
+            {award["key"] for award in by_participant["p1"]["awards"]},
+        )
+
+        # The completed-game projection stores a table-local promotion in its
+        # own durable moment, separate from the one-slot inbox delivery.
+        with session_scope() as db:
+            stored_rank_moments = list(
+                db.scalars(
+                    select(ZilchAchievementRankMoment).where(
+                        ZilchAchievementRankMoment.game_id == game["_id"]
+                    )
+                )
+            )
+        self.assertTrue(stored_rank_moments)
+        self.assertTrue(
+            any(entry["rank_ups"] for entry in moments["participants"]),
+            "A high-scoring first game should record its actual rank transition.",
+        )
+
+        # This shared report can name the seat, not the account or private
+        # evidence that caused an award. Historical rank cards deliberately
+        # say which tier changed, without exposing a player's lifetime score.
+        def all_keys(value: object) -> set[str]:
+            if isinstance(value, dict):
+                return set(value) | set().union(*(all_keys(item) for item in value.values()))
+            if isinstance(value, list):
+                return set().union(*(all_keys(item) for item in value)) if value else set()
+            return set()
+
+        private_keys = {
+            "user_id",
+            "source_game_id",
+            "presentation_game_id",
+            "source_evidence_id",
+            "source_community_recipient_id",
+            "points_possible",
+            "minimum_points",
+            "next_minimum_points",
+            "points_to_next_rank",
+        }
+        self.assertFalse(private_keys & all_keys(moments))
+        self.assertNotIn(game["_id"], json.dumps(moments))
+        for entry in moments["participants"]:
+            for award in entry["awards"]:
+                self.assertEqual(
+                    set(award),
+                    {
+                        "key",
+                        "icon_key",
+                        "title_key",
+                        "description_key",
+                        "points",
+                        "unlocked_at",
+                        "source_kind",
+                    },
+                )
+            for rank_up in entry["rank_ups"]:
+                self.assertEqual(
+                    set(rank_up["previous"]),
+                    {"key", "title", "title_key", "stars"},
+                )
+                self.assertEqual(
+                    set(rank_up["current"]),
+                    {"key", "title", "title_key", "stars"},
+                )
+
+    def test_result_detail_exposes_pending_achievement_work_without_claiming_no_moments(self) -> None:
+        mani_id, _mani_token = self._identity("PendingMani", role="admin")
+        friend_id, _friend_token = self._identity("PendingFriend")
+        game = self._terminal_game(
+            player_one=("PendingMani", mani_id),
+            player_two=("PendingFriend", friend_id),
+        )
+        self._persist_terminal_game(game)
+
+        self.assertEqual(_register_evaluation(game["_id"]), "registered")
+        detail = load_zilch_result_for_user(game["_id"], friend_id)
+
+        self.assertIsNotNone(detail)
+        assert detail is not None
+        self.assertEqual(
+            detail["moments"],
+            {"status": "pending", "participants": []},
+        )
+
+    def test_result_detail_keeps_legacy_direct_awards_when_the_presentation_link_is_absent(self) -> None:
+        mani_id, _mani_token = self._identity("LegacyMomentMani", role="admin")
+        friend_id, _friend_token = self._identity("LegacyMomentFriend")
+        game = self._terminal_game(
+            player_one=("LegacyMomentMani", mani_id),
+            player_two=("LegacyMomentFriend", friend_id),
+        )
+        self.assertTrue(finalize_zilch_result(game)["result_persisted"])
+
+        # Rows written before this redesign carry only their direct source
+        # game. That remains a trustworthy report association. A deliberately
+        # different explicit presentation link, however, must win and keeps
+        # that unrelated award out of this report.
+        with session_scope() as db:
+            legacy_unlock = db.scalar(
+                select(ZilchAchievementUnlock).where(
+                    ZilchAchievementUnlock.user_id == mani_id,
+                    ZilchAchievementUnlock.achievement_key == "zilch.first_game",
+                )
+            )
+            unrelated_unlock = db.scalar(
+                select(ZilchAchievementUnlock).where(
+                    ZilchAchievementUnlock.user_id == mani_id,
+                    ZilchAchievementUnlock.achievement_key == "zilch.first_hvh_win",
+                )
+            )
+            self.assertIsNotNone(legacy_unlock)
+            self.assertIsNotNone(unrelated_unlock)
+            assert legacy_unlock is not None
+            assert unrelated_unlock is not None
+            legacy_unlock.presentation_game_id = None
+            unrelated_unlock.presentation_game_id = "another-zilch-table"
+
+        detail = load_zilch_result_for_user(game["_id"], friend_id)
+
+        self.assertIsNotNone(detail)
+        assert detail is not None
+        mani_moments = next(
+            entry for entry in detail["moments"]["participants"] if entry["participant_id"] == "p1"
+        )
+        award_keys = {award["key"] for award in mani_moments["awards"]}
+        self.assertIn("zilch.first_game", award_keys)
+        self.assertNotIn("zilch.first_hvh_win", award_keys)
 
     def test_result_history_and_detail_are_access_scoped_and_hide_internal_user_ids(self) -> None:
         mani_id, mani_token = self._identity("Mani", role="admin")

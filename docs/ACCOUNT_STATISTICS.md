@@ -198,6 +198,19 @@ creating an award. A newer upward tier replaces the row and requires a fresh
 acknowledgement; revocation removes or recalculates a stale transition on the
 next private delivery read.
 
+The protected completed-result projection has a separate, result-scoped
+`moments` envelope. Once its evaluation is completed, it may show every seated
+account's award unlocked at that table and the durable rank transition recorded
+there. `presentation_game_id` deliberately records the table where an aggregate
+award became presentable, independently of its earlier proof source. The
+`zilch_achievement_rank_moments` row keeps the exact historical before/after
+tier even after a later rank-up replaces the account's one-slot delivery. This
+shared report projection contains only participant IDs already present in the
+result, display metadata for the award, and rank key/title/stars; it never
+contains account IDs, evidence/source IDs, or lifetime Zilch-point totals. A
+pending evaluation remains explicitly pending, and an unregistered legacy
+result remains unavailable rather than claiming there were no moments.
+
 Deleting a Zilch result calls the Zilch-specific cleanup for its source game.
 It removes the normalized evidence and evaluation, synchronizes affected
 private Zilch accounts, and removes any unlock that no longer has supporting

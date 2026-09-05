@@ -400,6 +400,11 @@ class ZilchAchievementUnlock(Base):
         ForeignKey("zilch_community_recipients.id", ondelete="SET NULL"), nullable=True
     )
     source_game_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # The first supporting evidence can predate the game that actually
+    # completed an aggregate award. Keep that proof source separate from the
+    # table where the award was presented, so a finished-game report can tell
+    # the story truthfully without exposing private evidence identifiers.
+    presentation_game_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (
@@ -407,6 +412,7 @@ class ZilchAchievementUnlock(Base):
         UniqueConstraint("user_id", "achievement_key", name="uq_zilch_achievement_unlock_user_key"),
         Index("ix_zilch_achievement_unlocks_user", "user_id"),
         Index("ix_zilch_achievement_unlocks_community_source", "source_community_recipient_id"),
+        Index("ix_zilch_achievement_unlocks_presentation_game", "presentation_game_id"),
     )
 
 
@@ -454,4 +460,34 @@ class ZilchAchievementRankDelivery(Base):
         CheckConstraint("previous_points >= 0", name="ck_zilch_rank_delivery_previous_points"),
         CheckConstraint("points >= 0", name="ck_zilch_rank_delivery_points"),
         Index("ix_zilch_rank_deliveries_pending", "acknowledged_at", "queued_at"),
+    )
+
+
+class ZilchAchievementRankMoment(Base):
+    """One durable, result-scoped Zilch rank transition.
+
+    A delivery is intentionally only the latest, acknowledgeable celebration
+    for an account. A finished-game report instead needs an immutable answer
+    to what happened at that table, even after later rank-ups replace the
+    delivery. This narrow event has no profile or evidence payload.
+    """
+
+    __tablename__ = "zilch_achievement_rank_moments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    game_id: Mapped[str] = mapped_column(
+        ForeignKey("zilch_achievement_evaluations.game_id", ondelete="CASCADE"), nullable=False
+    )
+    previous_rank_key: Mapped[str] = mapped_column(String(32), nullable=False)
+    rank_key: Mapped[str] = mapped_column(String(32), nullable=False)
+    previous_points: Mapped[int] = mapped_column(Integer, nullable=False)
+    points: Mapped[int] = mapped_column(Integer, nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("previous_points >= 0", name="ck_zilch_rank_moment_previous_points"),
+        CheckConstraint("points >= 0", name="ck_zilch_rank_moment_points"),
+        UniqueConstraint("user_id", "game_id", name="uq_zilch_rank_moment_user_game"),
+        Index("ix_zilch_rank_moments_game", "game_id", "recorded_at"),
     )

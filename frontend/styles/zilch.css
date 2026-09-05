@@ -1368,23 +1368,89 @@ button.zilch-die--available:hover { transform: translateY(-.18rem) rotate(-1deg)
 .zilch-final-result h2 { font: 800 clamp(2rem, 7vw, 3.3rem)/1 Georgia, serif; }
 .zilch-final-result--solo { border-color: #c58b28; }
 
-.zilch-result-head { margin-bottom: 1.1rem; }
-.zilch-result-summary { max-width: none; }
-.zilch-result-summary h2 { margin: .25rem 0 1rem; font: 800 clamp(2rem, 7vw, 3.3rem)/1 Georgia, serif; }
-.zilch-result-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: .65rem; max-width: 32rem; margin: 1.1rem auto 0; text-align: left; }
-.zilch-result-facts div { min-width: 0; padding: .65rem; border-radius: .55rem; background: rgba(136, 90, 40, .09); }
-.zilch-result-facts dt { color: var(--zilch-muted); font-size: .75rem; }
-.zilch-result-facts dd { margin: .16rem 0 0; overflow-wrap: anywhere; color: var(--zilch-ink); font-weight: 800; }
+/* A finished game is a table story, not a second live board.  The header is
+   deliberately bright on wood, while the paper cards keep the numbers easy
+   to scan in sunlight and in the installed PWA. */
+.zilch-result-head { margin-bottom: 1.1rem; color: #fffdf5; }
+.zilch-result-head h1 { overflow-wrap: anywhere; color: #fffdf5; text-shadow: 0 .1rem .18rem rgba(35, 15, 6, .9), 0 .38rem .9rem rgba(35, 15, 6, .56); }
+.zilch-result-head .eyebrow { color: #fff8e8; text-shadow: 0 1px rgba(35, 15, 6, .72); }
+.zilch-result-head__meta { color: #fff8e8; font-size: .95rem; text-shadow: 0 1px rgba(35, 15, 6, .62); }
+.zilch-result-summary { max-width: none; text-align: left; border-color: #cf9a31; background: radial-gradient(circle at 88% 10%, rgba(234, 184, 67, .24), transparent 31%), linear-gradient(145deg, var(--zilch-paper-soft), var(--zilch-paper)); }
+html[data-game="zilch"] :is(
+  .zilch-result-summary,
+  .zilch-result-metrics,
+  .zilch-result-moments,
+  .zilch-result-start-roll,
+  .zilch-result-final-round
+) .eyebrow { color: var(--zilch-blue); }
+.zilch-result-summary__heading { max-width: 54rem; }
+.zilch-result-summary__heading h2 { margin: .25rem 0 .35rem; color: var(--zilch-ink); font: 800 clamp(1.6rem, 5vw, 2.45rem)/1.04 Georgia, serif; }
+.zilch-result-summary__heading > p:last-child { margin: 0; color: var(--zilch-ink-soft); font-weight: 750; }
+.zilch-result-scoreboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .65rem; margin-top: 1rem; }
+.zilch-result-score { display: flex; align-items: flex-end; justify-content: space-between; gap: .8rem; min-width: 0; padding: .75rem .8rem; border: 1px solid rgba(120, 77, 35, .28); border-radius: var(--zilch-radius-sm); background: rgba(255, 255, 255, .42); }
+.zilch-result-score.is-winner { border-color: rgba(146, 91, 17, .62); background: linear-gradient(135deg, rgba(255, 243, 185, .96), rgba(255, 252, 235, .9)); box-shadow: inset 0 1px rgba(255,255,255,.92), 0 .18rem .55rem rgba(108, 62, 18, .12); }
+.zilch-result-score > div { min-width: 0; }
+.zilch-result-score p { margin: 0 0 .14rem; color: var(--zilch-muted); font-size: .72rem; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.zilch-result-score h3 { margin: 0; overflow-wrap: anywhere; color: var(--zilch-ink); font: 800 clamp(1rem, 3.8vw, 1.22rem)/1.1 Georgia, "Times New Roman", serif; }
+.zilch-result-score .zilch-participant-badges { justify-content: flex-start; margin-top: .35rem; }
+.zilch-result-score > strong { flex: 0 0 auto; color: #43220d; font: 900 clamp(1.38rem, 5vw, 2rem)/.95 Georgia, "Times New Roman", serif; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.zilch-result-score > strong span { display: block; margin-top: .17rem; color: var(--zilch-ink-soft); font: 800 .66rem/1 ui-rounded, system-ui, sans-serif; letter-spacing: .05em; text-transform: uppercase; }
+.zilch-result-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr)); gap: .55rem; max-width: none; margin: .8rem 0 0; text-align: left; }
+.zilch-result-facts div { min-width: 0; padding: .58rem .62rem; border: 1px solid rgba(120, 77, 35, .14); border-radius: .55rem; background: rgba(136, 90, 40, .075); }
+.zilch-result-facts dt { color: var(--zilch-muted); font-size: .72rem; font-weight: 800; }
+.zilch-result-facts dd { margin: .16rem 0 0; overflow-wrap: anywhere; color: var(--zilch-ink); font-weight: 850; }
 .zilch-result-facts code { font: inherit; font-size: .85em; overflow-wrap: anywhere; }
+
+.zilch-result-section-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: .8rem 1rem; }
+.zilch-result-section-heading > div { min-width: 0; }
+.zilch-result-section-heading h2 { margin-bottom: 0; color: var(--zilch-ink); font: 800 clamp(1.16rem, 3.8vw, 1.42rem)/1.15 Georgia, "Times New Roman", serif; }
+.zilch-result-section-heading > p { max-width: 34rem; margin: 0; color: var(--zilch-ink-soft); font-size: .84rem; line-height: 1.42; text-align: right; }
+.zilch-result-metric-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.4rem), 1fr)); gap: .5rem; margin: .85rem 0 0; }
+.zilch-result-metric-list div { min-width: 0; padding: .58rem .62rem; border-radius: .55rem; background: rgba(136, 90, 40, .08); }
+.zilch-result-metric-list dt { color: var(--zilch-muted); font-size: .72rem; font-weight: 800; }
+.zilch-result-metric-list dd { margin: .18rem 0 0; overflow-wrap: anywhere; color: var(--zilch-ink); font: 850 clamp(.98rem, 3.3vw, 1.16rem)/1.08 Georgia, "Times New Roman", serif; font-variant-numeric: tabular-nums; }
+
+.zilch-result-moments { border-top: .28rem solid var(--zilch-gold); }
+.zilch-result-moments--pending { border-top-color: var(--zilch-paper-edge); }
+.zilch-result-moments--pending h2 { margin-bottom: .35rem; color: var(--zilch-ink); font: 800 clamp(1.16rem, 3.8vw, 1.42rem)/1.15 Georgia, "Times New Roman", serif; }
+.zilch-result-moments--pending > p:last-child { margin: 0; color: var(--zilch-ink-soft); line-height: 1.48; }
+.zilch-result-moments__list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: .55rem; margin-top: .85rem; }
+.zilch-result-moment { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: .55rem; min-width: 0; padding: .7rem; border: 1px solid rgba(87, 107, 68, .38); border-radius: .65rem; background: linear-gradient(135deg, rgba(227, 242, 223, .76), rgba(255, 253, 240, .84)); }
+.zilch-result-moment__icon { color: var(--zilch-success) !important; background: rgba(41, 121, 71, .12) !important; }
+.zilch-result-moment__stars { display: inline-grid; place-items: center; min-width: 2.15rem; min-height: 2.15rem; padding: .2rem; border: 1px solid rgba(182, 127, 29, .45); border-radius: .5rem; color: #5a310f; background: linear-gradient(145deg, #fff4bf, #e9ba4d); font: 900 .78rem/1 ui-rounded, system-ui, sans-serif; letter-spacing: .02em; }
+.zilch-result-moment > div { min-width: 0; }
+.zilch-result-moment__player { margin: 0 0 .12rem; color: var(--zilch-muted); font-size: .7rem; font-weight: 850; letter-spacing: .055em; text-transform: uppercase; }
+.zilch-result-moment h3 { margin: 0; overflow-wrap: anywhere; color: var(--zilch-ink); font: 800 1.03rem/1.18 Georgia, "Times New Roman", serif; }
+.zilch-result-moment h3 + p { margin: .2rem 0 0; color: var(--zilch-ink-soft); font-size: .84rem; line-height: 1.4; }
+.zilch-result-moment__points { display: inline-block; margin-top: .38rem; color: #56300f; font-size: .75rem; font-weight: 850; font-variant-numeric: tabular-nums; }
+
 .zilch-result-board { min-height: 0; }
-.zilch-result-board .zilch-board-head { margin-bottom: .85rem; }
-.zilch-result-board__history-title { margin: 1.1rem 0 .1rem; color: var(--zilch-ink); font: 800 1rem/1.2 Georgia, "Times New Roman", serif; }
+.zilch-result-board.is-winner { border-color: rgba(166, 111, 24, .72); box-shadow: 0 0 0 .12rem rgba(229, 167, 46, .16), var(--zilch-shadow-card); }
+.zilch-result-board .zilch-board-head { margin-bottom: .72rem; }
+.zilch-result-board__eyebrow { margin: 0 0 .2rem !important; color: var(--zilch-muted) !important; font-size: .7rem !important; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
+.zilch-result-board.is-winner .zilch-result-board__eyebrow { color: #79500f !important; }
+.zilch-result-board dl { grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.8rem), 1fr)); }
+.zilch-result-history { margin-top: .82rem; border-top: 1px dashed rgba(111, 77, 43, .42); }
+.zilch-result-history > summary { display: flex; align-items: center; justify-content: space-between; gap: .6rem; min-height: 2.75rem; padding: .35rem 0; cursor: pointer; color: var(--zilch-ink); font-weight: 850; list-style: none; }
+.zilch-result-history > summary::-webkit-details-marker { display: none; }
+.zilch-result-history > summary::before { flex: 0 0 auto; width: .56rem; height: .56rem; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; content: ""; transform: rotate(-45deg); transition: transform var(--zilch-motion-fast) var(--zilch-ease); }
+.zilch-result-history[open] > summary::before { transform: rotate(45deg); }
+.zilch-result-history > summary > :first-child { margin-right: auto; }
+.zilch-result-history > summary:focus-visible { outline: 3px solid var(--zilch-focus-ring); outline-offset: 3px; border-radius: .35rem; }
+.zilch-result-history__count { flex: 0 0 auto; color: var(--zilch-muted); font-size: .75rem; font-weight: 800; white-space: nowrap; }
+.zilch-result-history__list { display: grid; gap: .42rem; margin: 0; padding: .45rem 0 0; list-style: none; }
+.zilch-result-history__list li { min-width: 0; padding-top: .45rem; overflow-wrap: anywhere; border-top: 1px dashed rgba(111, 77, 43, .3); color: var(--zilch-ink-soft); font-size: .86rem; line-height: 1.42; }
+
 .zilch-result-start-roll { max-width: 50rem; }
 .zilch-result-start-attempt + .zilch-result-start-attempt { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--zilch-paper-edge); }
 .zilch-result-start-attempt h3 { margin: 0; color: var(--zilch-muted); font-size: .88rem; }
 .zilch-start-roll-value { display: inline-grid; place-items: center; min-width: 2.15rem; min-height: 2.15rem; border: 1px solid #d1b184; border-radius: 45%; color: #3a2011; background: linear-gradient(145deg, #fffdf5, #f0dfbc); box-shadow: inset .08rem .08rem .16rem rgba(255,255,255,.98), .12rem .18rem 0 #724b2d; }
 .zilch-result-final-round { max-width: 50rem; }
 .zilch-result-final-round p { margin: .55rem 0; }
+.zilch-result-actions { display: flex; flex-wrap: wrap; gap: .55rem; justify-content: flex-end; margin: 1.1rem 0 0; }
+.zilch-result-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 2.7rem; padding: .55rem .8rem; border-radius: .55rem; font-weight: 800; text-decoration: none; }
+.zilch-result-actions__history { border: 1px solid var(--zilch-paper-edge); color: #fff8e8; background: rgba(53, 27, 13, .58); }
+.zilch-result-actions__history:hover { border-color: rgba(255, 232, 170, .82); color: #fffdf5; background: rgba(53, 27, 13, .8); }
 
 /* Private statistics and leaderboards are deliberately their own paper-led
    Zilch components. On a narrow screen each leaderboard row becomes a
@@ -2695,6 +2761,8 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
   .zilch-rules-grid,
   html[data-game="zilch"] .zilch-achievement-grid { grid-template-columns: 1fr; }
   .zilch-result-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .zilch-result-section-heading { align-items: flex-start; flex-direction: column; }
+  .zilch-result-section-heading > p { text-align: left; }
   .zilch-rule-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .zilch-board dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .zilch-dice { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 24rem; }
@@ -2722,6 +2790,9 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
   .zilch-brand-mark { width: var(--header-control-size); height: var(--header-control-size); }
   .zilch-header-tools { width: auto; justify-content: flex-end; }
   .zilch-result-facts { grid-template-columns: 1fr; }
+  .zilch-result-metric-list { grid-template-columns: 1fr; }
+  .zilch-result-actions { display: grid; grid-template-columns: 1fr; }
+  .zilch-result-actions a { width: 100%; }
   .zilch-rule-facts { grid-template-columns: 1fr; }
   .zilch-board dl { grid-template-columns: 1fr; }
   .zilch-dice { gap: .42rem; }
