@@ -311,7 +311,7 @@
         const created = await response.json();
         if (!created?.game_id) throw new Error("missing_game_id");
         if (qs.pass) sessionStorage.setItem(`wuerfler_pass_${created.game_id}`, qs.pass);
-        const nextRoom = new URL(`/spiel/${encodeURIComponent(created.game_id)}`, location.origin);
+        const nextRoom = new URL(zdwaPath(`/spiel/${encodeURIComponent(created.game_id)}`), location.origin);
         localStorage.setItem(`wuerfler_player_name_${created.game_id}`, myName || "Gast");
         location.href = nextRoom.toString();
       } catch (error) {
@@ -325,7 +325,7 @@
       }
       return;
     }
-    location.href = "/";
+    location.href = zdwaPath("/");
   }
 
   function userGameplayPreferences(){

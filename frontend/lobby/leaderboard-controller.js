@@ -1,4 +1,5 @@
 import { dom, escapeHtml } from "./context.js";
+import { zdwaPath } from "../multigame/routes.js";
 import { playerNameMarkup } from "../shared/auth.js";
 
 let activeTab = "normal";
@@ -28,7 +29,7 @@ function formatDate(iso) {
 
 function gameViewLink(gameId) {
   return gameId
-    ? `<a href="/ergebnis/${encodeURIComponent(gameId)}" class="leaderboard-view-link" aria-label="Spielansicht" title="Spielansicht">👁️</a>`
+    ? `<a href="${zdwaPath(`/ergebnis/${encodeURIComponent(gameId)}`)}" class="leaderboard-view-link" aria-label="Spielansicht" title="Spielansicht">👁️</a>`
     : "—";
 }
 
@@ -37,7 +38,7 @@ function playerNames(entry) {
   return String(entry.name ?? "—").split(", ").map((name) => {
     const player = links.find((candidate) => String(candidate.display_name) === name);
     return player
-      ? `<a href="/spieler/${encodeURIComponent(player.username)}" class="player-profile-link">${playerNameMarkup(player, { name, compactRank: true })}</a>`
+      ? `<a href="${zdwaPath(`/spieler/${encodeURIComponent(player.username)}`)}" class="player-profile-link">${playerNameMarkup(player, { name, compactRank: true })}</a>`
       : escapeHtml(name);
   }).join(", ");
 }

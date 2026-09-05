@@ -1,3 +1,5 @@
+import { zdwaPath } from "../multigame/routes.js";
+
 /* Shared, accessible feedback primitives for dialogs, toasts and app notices. */
 (function () {
   "use strict";
@@ -255,7 +257,7 @@
         // A room overlay is a convenience. The full legend remains available.
       }
     }
-    const url = new URL("/rangabzeichen", window.location.origin);
+    const url = new URL(zdwaPath("/rangabzeichen"), window.location.origin);
     if (context.points !== null) url.searchParams.set("punkte", String(context.points));
     if (context.owner) url.searchParams.set("spieler", context.owner);
     window.location.assign(url);

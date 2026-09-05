@@ -440,7 +440,7 @@
           setTimeout(() => {
             if (window._pauseRequested) {
               window._fatalWsClose = true;
-              location.href = "/";
+              location.href = zdwaPath("/");
             }
           }, 600);
         });

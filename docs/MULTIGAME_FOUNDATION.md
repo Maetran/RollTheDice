@@ -57,10 +57,16 @@ Regular production browser navigation uses Zilch's canonical subdomain. An
 installed ZDWA PWA instead opens the same-origin legacy `/zilch` route: iOS
 treats a subdomain as an external app origin and would otherwise show a browser
 sheet whose close action returns to ZDWA. This scoped handoff preserves the
-existing ZDWA PWA. On its canonical origin, Zilch has a separate manifest and
-its own network-only service worker (`/zilch-sw.js`), so it can offer install
-and update notices without sharing the ZDWA cache or worker scope. The Apex
-`/zilch` handoff deliberately does not register that worker.
+existing ZDWA PWA. The reverse direction is symmetrical: an installed Zilch
+PWA opens the finite, noindex same-origin `/zdwa` bridge rather than crossing
+to the Apex. Its ZDWA documents, room links, and return paths retain the
+`/zdwa` prefix while this bridge is active, so the device stays in the installed
+app window. Ordinary browser navigation still uses ZDWA's canonical Apex
+origin. On its canonical origin, Zilch has a separate manifest and its own
+network-only service worker (`/zilch-sw.js`), so it can offer install and update
+notices without sharing the ZDWA cache or worker scope. The Apex `/zilch`
+handoff deliberately does not register that worker; the `/zdwa` bridge retains
+Zilch's worker instead of attempting to register the unavailable Apex worker.
 
 ## Public-Beta access
 

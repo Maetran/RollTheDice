@@ -180,7 +180,6 @@
   }
 
   function ensureZilchManifest() {
-    if (document.querySelector('link[rel="manifest"]')) return;
     const language = window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de";
     const manifestPath = language === "en"
       ? "/zilch-manifest-en.webmanifest"
@@ -188,11 +187,11 @@
     const manifestUrl = new URL(manifestPath, location.origin);
     if (APP_VERSION !== "unversioned") manifestUrl.searchParams.set("v", APP_VERSION);
 
-    const link = document.createElement("link");
+    const link = document.querySelector('link[rel="manifest"]') || document.createElement("link");
     link.rel = "manifest";
     link.href = manifestUrl.href;
     link.dataset.pwaProduct = "zilch";
-    document.head.append(link);
+    if (!link.isConnected) document.head.append(link);
   }
 
   function registeredWorkerPath(registration) {
@@ -224,10 +223,19 @@
   }
 
   // Presence belongs to both games and is connected above. The isolated Zilch
-  // production origin has its own network-only worker and manifest; the Apex
-  // /zilch handoff deliberately leaves the established ZDWA PWA untouched.
-  if (document.documentElement.dataset.game === "zilch") {
-    if (!isZilchOrigin()) return;
+  // production origin has its own network-only worker and manifest. A ZDWA
+  // view inside the same-origin `/zdwa` bridge deliberately keeps that worker
+  // too: registering the Apex worker there would fail and can surface an
+  // external browser sheet on iOS.
+  const isZilchDocument = document.documentElement.dataset.game === "zilch";
+  // The Apex `/zilch` handoff stays entirely under its already-installed ZDWA
+  // worker. Only Zilch's own host (including the narrow ZDWA bridge) owns the
+  // isolated Zilch worker.
+  if (isZilchDocument && !isZilchOrigin()) return;
+  const usesZilchPwaLifecycle = isZilchOrigin() && (
+    isZilchDocument || document.documentElement.dataset.zdwaPwaBridge === "true"
+  );
+  if (usesZilchPwaLifecycle) {
     ensureZilchManifest();
     setupPwaLifecycle({
       installDismissKey: "zilch_install_prompt_dismissed",

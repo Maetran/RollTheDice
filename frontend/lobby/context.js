@@ -1,3 +1,5 @@
+import { zdwaPath } from "../multigame/routes.js";
+
 export const dom = {
   nameInput: document.getElementById("playerName"),
   passInput: document.getElementById("passInput"),
@@ -139,7 +141,7 @@ export function rememberPlayerName(gameId, name) {
 
 export function roomUrl(gameId, spectator = false) {
   const base = `/spiel/${encodeURIComponent(gameId)}`;
-  return spectator ? `${base}/zuschauen` : base;
+  return zdwaPath(spectator ? `${base}/zuschauen` : base);
 }
 
 export function defaultGameName(playerName, mode) {

@@ -91,8 +91,11 @@ new deployed version and offers installation again after a new version even if
 the prior prompt was dismissed (otherwise it snoozes for seven days). The ZDWA
 PWA stays unchanged: when it opens Zilch, it uses the same-origin `/zilch`
 compatibility route so iOS does not wrap the handoff in an external browser
-sheet; regular browser navigation still uses Zilch's canonical subdomain. The
-public Zilch lobby and rule guide are canonical, indexable pages.
+sheet; conversely, an installed Zilch PWA opens the private, same-origin
+`/zdwa` bridge so its return to ZDWA remains in the app window. That bridge
+keeps Zilch's network-only worker, is `noindex`, and is never used by ordinary
+browser navigation, which still uses ZDWA's canonical Apex origin. The public
+Zilch lobby and rule guide are canonical, indexable pages.
 A player selects scoring dice directly or
 uses one of up to eight compact, single-group suggestions (for example one or
 two ones, one or two fives, a triple, or a four-of-a-kind). Mixed combinations

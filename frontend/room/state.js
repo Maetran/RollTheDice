@@ -3,7 +3,7 @@
   const IS_SPECTATOR = !!qs.spectator;
   if (!qs.game_id) {
     showNotice({ title: "Spiel nicht gefunden", message: "Die Spiel-ID fehlt.", kind: "error", buttonLabel: "Zur Lobby" })
-      .finally(() => { location.href = "/"; });
+      .finally(() => { location.href = zdwaPath("/"); });
   }
 
   const PID_KEY = `wuerfler_pid_${qs.game_id}`;
@@ -16,7 +16,7 @@
     localStorage.removeItem(PASS_KEY);
   }
   const cleanUrl = new URL(location.href);
-  cleanUrl.pathname = `/spiel/${encodeURIComponent(qs.game_id)}${IS_SPECTATOR ? "/zuschauen" : ""}`;
+  cleanUrl.pathname = zdwaPath(`/spiel/${encodeURIComponent(qs.game_id)}${IS_SPECTATOR ? "/zuschauen" : ""}`);
   for (const key of ["game_id", "name", "pass", "spectator"]) cleanUrl.searchParams.delete(key);
   if (cleanUrl.toString() !== location.href) history.replaceState(null, "", cleanUrl);
   if (qs.name) localStorage.setItem(PLAYER_NAME_KEY, qs.name);

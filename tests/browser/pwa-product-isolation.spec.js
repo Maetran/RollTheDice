@@ -15,7 +15,13 @@ async function loadRoutes() {
   return import(`data:text/javascript;base64,${Buffer.from(routesSource).toString("base64")}`);
 }
 
-async function openPwaHarness(page, { origin, game, version = "unversioned", language = "de" }) {
+async function openPwaHarness(page, {
+  origin,
+  game,
+  version = "unversioned",
+  language = "de",
+  bridge = false,
+}) {
   await page.addInitScript(({ language: initialLanguage }) => {
     const state = {
       registerCalls: [],
@@ -86,7 +92,7 @@ async function openPwaHarness(page, { origin, game, version = "unversioned", lan
       : `?v=${encodeURIComponent(pageVersion)}`;
     await route.fulfill({
       contentType: "text/html",
-      body: `<!doctype html><html data-game="${game}"><head><script src="/static/pwa.js${versionQuery}"></script></head><body></body></html>`,
+      body: `<!doctype html><html data-game="${game}"${bridge ? ' data-zdwa-pwa-bridge="true"' : ""}><head><script src="/static/pwa.js${versionQuery}"></script></head><body></body></html>`,
     });
   });
 
@@ -130,9 +136,11 @@ test("legacy Zilch on the Apex leaves the established Apex PWA untouched", async
   expect(state.cacheDeletes).toEqual([]);
 });
 
-test("an installed ZDWA PWA keeps the Zilch handoff inside its own origin", async () => {
-  const { zilchAppEntryUrl } = await loadRoutes();
+test("installed PWAs keep both game handoffs inside their current origin", async () => {
+  const { zdwaAppEntryUrl, zdwaPath, zdwaRoutePath, zilchAppEntryUrl } = await loadRoutes();
   const zdwaLocation = { hostname: "zockdiewandan.online" };
+  const zilchLocation = { hostname: "zilch.zockdiewandan.online", pathname: "/" };
+  const zilchBridgeLocation = { hostname: "zilch.zockdiewandan.online", pathname: "/zdwa/spiel/room-123" };
   const standalone = {
     navigator: { standalone: true },
     matchMedia: () => ({ matches: true }),
@@ -145,6 +153,27 @@ test("an installed ZDWA PWA keeps the Zilch handoff inside its own origin", asyn
   expect(zilchAppEntryUrl("/", zdwaLocation, standalone)).toBe("/zilch");
   expect(zilchAppEntryUrl("/regeln", zdwaLocation, standalone)).toBe("/zilch/regeln");
   expect(zilchAppEntryUrl("/", zdwaLocation, browser)).toBe("https://zilch.zockdiewandan.online/");
+  expect(zdwaAppEntryUrl(zilchLocation, standalone)).toBe("/zdwa");
+  expect(zdwaAppEntryUrl(zilchLocation, browser)).toBe("https://zockdiewandan.online/");
+  expect(zdwaPath("/spiel/room-456", zilchBridgeLocation)).toBe("/zdwa/spiel/room-456");
+  expect(zdwaRoutePath("/zdwa/spiel/room-456", zilchBridgeLocation)).toBe("/spiel/room-456");
+  expect(zdwaRoutePath("/", zilchLocation)).toBeNull();
+});
+
+test("the ZDWA bridge keeps the installed Zilch worker and manifest", async ({ page }) => {
+  await openPwaHarness(page, {
+    origin: "https://zilch.zockdiewandan.online",
+    game: "zdwa",
+    bridge: true,
+  });
+
+  await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.unregisterCalls)).toBe(1);
+  const state = await page.evaluate(() => globalThis.__pwaHarness);
+  expect(state.registerCalls).toEqual(["/zilch-sw.js"]);
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    "href",
+    "https://zilch.zockdiewandan.online/zilch-manifest.webmanifest",
+  );
 });
 
 test("ZDWA still registers its established root-scoped worker", async ({ page }) => {

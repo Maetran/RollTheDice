@@ -22,7 +22,7 @@
       }
       btn.addEventListener("click", (e) => {
         e.preventDefault();
-        if (IS_SPECTATOR) { location.href = "/"; return; }  // Zuschauer: nur verlassen
+        if (IS_SPECTATOR) { location.href = zdwaPath("/"); return; }  // Zuschauer: nur verlassen
         openLeaveGameDialog();
       });
     })();
@@ -84,7 +84,7 @@
           message: `Du kannst es innerhalb von ${label} wieder aufnehmen.`,
           kind: "info",
           buttonLabel: "Zur Lobby",
-        }).finally(() => { location.href = "/"; });
+        }).finally(() => { location.href = zdwaPath("/"); });
         return;
       }
 
@@ -168,7 +168,7 @@
               message: by ? `${by} hat das Spiel beendet.` : "Das Spiel wurde beendet.",
               kind: "warning",
               buttonLabel: "Zur Lobby",
-            }).finally(() => { location.href = "/"; });
+            }).finally(() => { location.href = zdwaPath("/"); });
             return;
           }
           const unlockedAchievements = msg.achievement_unlocks?.[String(myId)] || [];

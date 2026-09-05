@@ -19,6 +19,7 @@
 
 import { initChat, addChatMessage } from "./chat.js";
 import { ANNOUNCE_FIELDS, calculatePoints, WRITABLE_MAP } from "./scoring.js";
+import { zdwaPath, zdwaRoutePath } from "../multigame/routes.js";
 
   // ---------- Helpers ----------
   const $  = (sel, root = document) => root.querySelector(sel);
@@ -26,7 +27,7 @@ import { ANNOUNCE_FIELDS, calculatePoints, WRITABLE_MAP } from "./scoring.js";
 
   function getQS() {
     const u = new URL(location.href);
-    const pathMatch = u.pathname.match(/^\/spiel\/([^/]+)(\/zuschauen)?\/?$/);
+    const pathMatch = (zdwaRoutePath(u.pathname) || "").match(/^\/spiel\/([^/]+)(\/zuschauen)?\/?$/);
     let pathGameId = "";
     try { pathGameId = pathMatch ? decodeURIComponent(pathMatch[1]) : ""; }
     catch { pathGameId = ""; }
@@ -170,7 +171,7 @@ import { ANNOUNCE_FIELDS, calculatePoints, WRITABLE_MAP } from "./scoring.js";
   function leaveRoomAfterFatalError(message) {
     window._fatalWsClose = true;
     showNotice({ title: "Verbindung beendet", message, kind: "error", buttonLabel: "Zur Lobby" })
-      .finally(() => { location.href = "/"; });
+      .finally(() => { location.href = zdwaPath("/"); });
   }
 
   function pauseDurationLabel(snapshot){

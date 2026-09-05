@@ -8,6 +8,8 @@ const ZDWA_PRODUCTION_HOSTS = new Set([
 ]);
 const ZILCH_LEGACY_PREFIX = "/zilch";
 const ZILCH_PAGE_ROUTE = /^\/(?:$|spiel\/[^/]+|ergebnis\/[^/]+|historie|regeln|statistiken|bestenlisten|erfolge|konto|spieler\/[^/]+)\/?$/;
+export const ZDWA_PWA_BRIDGE_PREFIX = "/zdwa";
+const ZDWA_PAGE_ROUTE = /^\/(?:$|spiel\/[^/]+(?:\/zuschauen)?|ergebnis(?:\/[^/]+)?|regeln|spieler(?:\/[^/]+)?|rangabzeichen|konto|admin|offline)\/?$/;
 
 function activeLocation(locationLike) {
   return locationLike || window.location;
@@ -21,12 +23,32 @@ function normalizedRoute(value = "/") {
   return route || "/";
 }
 
+function normalizedZdwaRoute(value = "/") {
+  let route = String(value || "/").trim();
+  if (!route.startsWith("/") || route.startsWith("//")) route = "/";
+  if (route === ZDWA_PWA_BRIDGE_PREFIX) return "/";
+  if (route.startsWith(`${ZDWA_PWA_BRIDGE_PREFIX}/`)) route = route.slice(ZDWA_PWA_BRIDGE_PREFIX.length);
+  return route || "/";
+}
+
 export function isProductionZilchLocation(locationLike = window.location) {
   return String(activeLocation(locationLike).hostname || "").toLowerCase() === ZILCH_PRODUCTION_HOST;
 }
 
 export function isProductionZdwaLocation(locationLike = window.location) {
   return ZDWA_PRODUCTION_HOSTS.has(String(activeLocation(locationLike).hostname || "").toLowerCase());
+}
+
+/**
+ * An installed Zilch app cannot follow an Apex navigation without iOS
+ * exposing it in a browser sheet. Its private `/zdwa` bridge therefore hosts
+ * the established ZDWA documents on the already-installed Zilch origin.
+ */
+export function isZilchHostedZdwaLocation(locationLike = window.location) {
+  const location = activeLocation(locationLike);
+  const pathname = String(location.pathname || "/");
+  return isProductionZilchLocation(location)
+    && (pathname === ZDWA_PWA_BRIDGE_PREFIX || pathname.startsWith(`${ZDWA_PWA_BRIDGE_PREFIX}/`));
 }
 
 /**
@@ -93,6 +115,53 @@ export function applyZilchRouteLinks(scope = document, locationLike = window.loc
 }
 
 /**
+ * Return the ZDWA route that is relative to its current host. On the Zilch
+ * PWA bridge the visible page path deliberately keeps the `/zdwa` prefix;
+ * canonical ZDWA and local development keep their existing root paths.
+ */
+export function zdwaPath(route = "/", locationLike = window.location) {
+  const normalized = normalizedZdwaRoute(route);
+  if (!isZilchHostedZdwaLocation(locationLike)) return normalized;
+  return normalized === "/" ? ZDWA_PWA_BRIDGE_PREFIX : `${ZDWA_PWA_BRIDGE_PREFIX}${normalized}`;
+}
+
+/**
+ * Project a browser pathname back to the app-relative ZDWA route. Returning
+ * null for a regular Zilch route keeps the bridge from claiming Zilch pages.
+ */
+export function zdwaRoutePath(pathname = window.location.pathname, locationLike = window.location) {
+  const raw = String(pathname || "/");
+  if (!isProductionZilchLocation(locationLike)) return normalizedZdwaRoute(raw);
+  if (raw === ZDWA_PWA_BRIDGE_PREFIX || raw === `${ZDWA_PWA_BRIDGE_PREFIX}/`) return "/";
+  if (!raw.startsWith(`${ZDWA_PWA_BRIDGE_PREFIX}/`)) return null;
+  return normalizedZdwaRoute(raw);
+}
+
+/**
+ * Static ZDWA documents contain root-relative links. Rewrite only known
+ * document routes while rendered inside the bridge; API, worker and asset
+ * paths must stay at the real origin root.
+ */
+export function applyZdwaBridgeLinks(scope = document, locationLike = window.location) {
+  if (!isZilchHostedZdwaLocation(locationLike)) return;
+  const current = activeLocation(locationLike);
+  for (const link of scope.querySelectorAll("a[href]")) {
+    const href = link.getAttribute("href");
+    if (!href || href.startsWith("#")) continue;
+    let target;
+    try {
+      target = new URL(href, current.href);
+    } catch {
+      continue;
+    }
+    if (target.origin !== current.origin) continue;
+    const route = normalizedZdwaRoute(target.pathname);
+    if (!ZDWA_PAGE_ROUTE.test(route)) continue;
+    link.setAttribute("href", `${zdwaPath(route, current)}${target.search}${target.hash}`);
+  }
+}
+
+/**
  * Zilch has a public lobby. Ordinary production navigation reaches its
  * canonical subdomain directly instead of forcing guests through a login
  * handoff. A standalone ZDWA PWA stays on its own origin and uses the legacy
@@ -107,7 +176,10 @@ export function zilchAppEntryUrl(route = "/", locationLike = window.location, en
   return `https://${ZILCH_PRODUCTION_HOST}${destination}`;
 }
 
-export function zdwaAppEntryUrl(locationLike = window.location) {
+export function zdwaAppEntryUrl(locationLike = window.location, environmentLike = globalThis) {
+  if (isProductionZilchLocation(locationLike) && isStandalonePwa(environmentLike)) {
+    return ZDWA_PWA_BRIDGE_PREFIX;
+  }
   return isProductionZilchLocation(locationLike) || isProductionZdwaLocation(locationLike)
     ? `${ZDWA_PRODUCTION_ORIGIN}/`
     : "/";

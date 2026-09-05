@@ -279,6 +279,13 @@ einem Schließen sieben Tage lang unterdrückt, aber bei einer neuen Asset-Versi
 sofort erneut angeboten; ein Worker-Update zeigt einen separaten
 Aktualisieren-Hinweis.
 
+Der Wechsel bleibt auch aus einer installierten Zilch-PWA heraus im
+Standalone-Fenster: Er führt auf den privaten, `noindex` gesetzten
+same-origin-Pfad `/zdwa`. Dieser finite Bridge-Pfad liefert nur ZDWA-Dokumente
+und behält den Zilch-Manifest-/Worker-Kontext; er ist kein weiterer öffentlicher
+Einstieg und darf weder in Sitemap noch in Canonicals aufgenommen werden.
+Normale Browser wechseln weiterhin zur kanonischen ZDWA-Apex-Origin.
+
 Die gemeinsame, `Secure`, `HttpOnly` und `SameSite=Lax` gesetzte Session wird
 beim kontrollierten Handoff aus einem gültigen Apex-Login übernommen. Nutzer,
 die die Apex-Seite noch nicht mit der neuen Version besucht haben, werden zur

@@ -206,7 +206,10 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
   const manifestLink = document.querySelector('link[rel="manifest"]');
   if (manifestLink && getLanguage() === "en") {
     const versionQuery = new URL(manifestLink.href, location.href).search;
-    manifestLink.href = `/manifest-en.webmanifest${versionQuery}`;
+    const manifestPath = manifestLink.dataset.pwaProduct === "zilch"
+      ? "/zilch-manifest-en.webmanifest"
+      : "/manifest-en.webmanifest";
+    manifestLink.href = `${manifestPath}${versionQuery}`;
   }
 
   document.addEventListener("DOMContentLoaded", () => {

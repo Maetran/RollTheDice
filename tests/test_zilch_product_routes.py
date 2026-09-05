@@ -411,6 +411,33 @@ class ZilchProductRoutesTestCase(TestCase):
         self.assertIn("no-store", sitemap.headers["cache-control"])
         self.assertNotIn("x-robots-tag", sitemap.headers)
 
+    def test_zilch_pwa_hosts_a_noindex_zdwa_bridge_without_exposing_zilch_routes(self) -> None:
+        host = "zilch.zockdiewandan.online"
+        for path, marker in (
+            ("/zdwa", 'id="gameSwitchZilch"'),
+            ("/zdwa/regeln", "ZDWA jetzt spielen"),
+            ("/zdwa/spieler", "Spieler &amp; Ranking"),
+            ("/zdwa/spiel/zdwa-bridge-game/zuschauen", 'id="leaveGameDialog"'),
+        ):
+            with self.subTest(path=path):
+                response = self._get(path, host=host)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(marker, response.text)
+                self.assertIn('data-zdwa-pwa-bridge="true"', response.text)
+                self.assertIn('data-pwa-product="zilch"', response.text)
+                self.assertIn('href="/zilch-manifest.webmanifest', response.text)
+                self.assertIn('name="robots" content="noindex, nofollow"', response.text)
+                self.assertEqual(response.headers["x-robots-tag"], "noindex, nofollow")
+
+        bridge_on_apex = self._get("/zdwa")
+        self.assertEqual(bridge_on_apex.status_code, 404)
+        self.assertEqual(self._get("/zdwa/unknown", host=host).status_code, 404)
+
+        game_id = "zilch-bridge-guard"
+        self.game_ids.append(game_id)
+        games[game_id] = new_zilch_game(game_id, "Not a ZDWA room", 2)
+        self.assertEqual(self._get(f"/zdwa/spiel/{game_id}", host=host).status_code, 404)
+
     def test_explicit_allowlist_uses_the_same_private_rules_route_policy(self) -> None:
         _preview_id, preview_token = self._identity("PreviewFriend")
 

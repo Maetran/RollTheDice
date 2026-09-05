@@ -407,6 +407,100 @@ def _page(filename: str) -> FileResponse:
     )
 
 
+ZDWA_PWA_BRIDGE_PREFIX = "/zdwa"
+
+
+def _embedded_zdwa_pwa_page(filename: str) -> Response:
+    """Serve a ZDWA document inside the installed Zilch PWA's origin.
+
+    iOS turns a cross-subdomain navigation from an installed PWA into a
+    browser sheet. The narrow, noindex bridge keeps normal ZDWA navigation on
+    the established Apex but gives the installed Zilch app an equivalent
+    same-origin document route. It deliberately retains the Zilch manifest
+    and network-only worker rather than attempting to register the Apex worker
+    on the wrong host.
+    """
+    content = (STATIC_DIR / filename).read_text(encoding="utf-8")
+    content = content.replace(
+        "<html ",
+        '<html data-zdwa-pwa-bridge="true" ',
+        1,
+    )
+    content = content.replace(
+        '<link rel="manifest" href="/manifest.webmanifest',
+        '<link rel="manifest" data-pwa-product="zilch" href="/zilch-manifest.webmanifest',
+        1,
+    )
+    content = content.replace(
+        "</head>",
+        '  <meta name="robots" content="noindex, nofollow">\n</head>',
+        1,
+    )
+    return Response(
+        content=content,
+        media_type="text/html",
+        headers={"Cache-Control": "no-cache, must-revalidate"},
+    )
+
+
+def _bridge_path_segment(path: str, prefix: str, *, suffix: str = "") -> str | None:
+    """Return one decoded bridge path segment, rejecting nested routes."""
+    if not path.startswith(prefix):
+        return None
+    segment = path.removeprefix(prefix)
+    if suffix and segment.endswith(suffix):
+        segment = segment.removesuffix(suffix)
+    return segment if segment and "/" not in segment else None
+
+
+def _serve_zilch_pwa_zdwa_bridge(request: Request, path: str = "") -> Response:
+    """Map the finite ZDWA document surface onto Zilch's PWA origin."""
+    if not is_zilch_host(request):
+        raise HTTPException(status_code=404, detail="not_found")
+
+    route = f"/{path}".rstrip("/") or "/"
+    if route == "/":
+        return _embedded_zdwa_pwa_page("index.html")
+    if route == "/regeln":
+        return _embedded_zdwa_pwa_page("rules.html")
+    if route == "/spieler":
+        return _embedded_zdwa_pwa_page("players.html")
+    if _bridge_path_segment(route, "/spieler/") is not None:
+        return _embedded_zdwa_pwa_page("profile.html")
+    if route == "/rangabzeichen":
+        return _embedded_zdwa_pwa_page("ranks.html")
+    if route == "/konto":
+        return _embedded_zdwa_pwa_page("account.html")
+    if route == "/admin":
+        return _embedded_zdwa_pwa_page("admin.html")
+    if route == "/offline":
+        return _embedded_zdwa_pwa_page("offline.html")
+
+    game_id = _bridge_path_segment(route, "/spiel/", suffix="/zuschauen")
+    if game_id is not None:
+        game = games.get(game_id)
+        if game and game_type_from_state(game) == ZILCH_GAME_TYPE:
+            raise HTTPException(status_code=404, detail="game_not_found")
+        return _embedded_zdwa_pwa_page("room.html")
+
+    if route == "/ergebnis":
+        return _embedded_zdwa_pwa_page("game_view.html")
+    result_id = _bridge_path_segment(route, "/ergebnis/")
+    if result_id is not None:
+        if completed_game_type_for_id(result_id) == ZILCH_GAME_TYPE:
+            raise HTTPException(status_code=404, detail="result_not_found")
+        return _embedded_zdwa_pwa_page("game_view.html")
+
+    raise HTTPException(status_code=404, detail="not_found")
+
+
+@app.get(ZDWA_PWA_BRIDGE_PREFIX, include_in_schema=False)
+@app.get(f"{ZDWA_PWA_BRIDGE_PREFIX}/{{path:path}}", include_in_schema=False)
+def zilch_pwa_zdwa_bridge_page(request: Request, path: str = "") -> Response:
+    """Keep an installed Zilch PWA inside its own origin during a ZDWA handoff."""
+    return _serve_zilch_pwa_zdwa_bridge(request, path)
+
+
 @app.get("/regeln", include_in_schema=False)
 def rules_page(request: Request):
     if is_zilch_host(request):
