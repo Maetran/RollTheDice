@@ -143,6 +143,12 @@ Drilling oder einen Vierling – samt Punkten. Zusammengerechnete Mischungen
 werden dort nicht als eigene Karte erklärt. Eine bewusst direkt über Würfel
 zusammengestellte, gültige Auswahl bleibt weiterhin serverseitig prüfbar.
 
+Die Schaltfläche **„Kombinierte Wertung“** direkt unter dem Spielblatt wählt
+alle aktuell punktenden Würfel als eine servergeprüfte Auswahl. Führt genau
+diese Auswahl zu Hot Dice, erscheint der Stempel **„Freier Wurf!“** auf der
+Schaltfläche. Auch diese Auswahl bleibt ein Entwurf, bis `Weiterwürfeln` oder
+`Sichern` sie atomar übernimmt.
+
 Auf der aktiven Spielseite schalten die Tasten `1` bis `6` den entsprechenden
 noch nicht bestätigten Würfel um. `Q`, `W`, `E`, `R`, `T`, `Z`, `U` und `I`
 wählen die sichtbaren Empfehlungen in ihrer Reihenfolge. Die Leertaste löst

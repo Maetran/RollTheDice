@@ -1549,6 +1549,16 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
       "Q", "W", "E", "R", "T",
     ]);
 
+    const combinedScore = page.locator("[data-zilch-combined-score]");
+    await expect(combinedScore).toBeEnabled();
+    await expect(combinedScore).toHaveAttribute("aria-label", /\+200/);
+    await combinedScore.click();
+    await expect(combinedScore).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".zilch-die--selected")).toHaveCount(3);
+    await combinedScore.click();
+    await expect(combinedScore).toHaveAttribute("aria-pressed", "false");
+    await expect(page.locator(".zilch-die--selected")).toHaveCount(0);
+
     await page.setViewportSize({ width: 390, height: 827 });
     const mobileRecommendationLayout = await page.evaluate(() => {
       const rail = document.querySelector(".zilch-recommendations").getBoundingClientRect();
@@ -1563,6 +1573,7 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
       const best = cards.find(card => card.shortcut === "q");
       const firstCard = document.querySelector("[data-zilch-recommendation]");
       const turnScore = document.querySelector(".zilch-turn-score").getBoundingClientRect();
+      const combinedScore = document.querySelector("[data-zilch-combined-score]").getBoundingClientRect();
       const notebook = document.querySelector(".zilch-play-layout__notebook").getBoundingClientRect();
       const diceDock = document.querySelector(".zilch-dice-dock").getBoundingClientRect();
       return {
@@ -1571,6 +1582,10 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
         railBottom: rail.bottom,
         turnScoreTop: turnScore.top,
         turnScoreBottom: turnScore.bottom,
+        combinedScoreTop: combinedScore.top,
+        combinedScoreBottom: combinedScore.bottom,
+        turnScoreRight: turnScore.right,
+        combinedScoreLeft: combinedScore.left,
         notebookHeight: notebook.height,
         notebookBottom: notebook.bottom,
         diceDockTop: diceDock.top,
@@ -1579,11 +1594,14 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
       };
     });
     expect(mobileRecommendationLayout.topToBottom).toEqual(["t", "r", "e", "w", "q"]);
-    // Recommendations fill the extended score-sheet edge. The running total
-    // gets its own immediately following tile, before the dice dock.
+    // Recommendations fill the extended score-sheet edge. The current roll
+    // and the combined all-scoreable hold then share the row below it.
     expect(Math.abs(mobileRecommendationLayout.railBottom - mobileRecommendationLayout.notebookBottom)).toBeLessThanOrEqual(2);
     expect(mobileRecommendationLayout.turnScoreTop - mobileRecommendationLayout.railBottom).toBeGreaterThanOrEqual(0);
     expect(mobileRecommendationLayout.turnScoreTop - mobileRecommendationLayout.railBottom).toBeLessThanOrEqual(12);
+    expect(Math.abs(mobileRecommendationLayout.turnScoreTop - mobileRecommendationLayout.combinedScoreTop)).toBeLessThanOrEqual(2);
+    expect(Math.abs(mobileRecommendationLayout.turnScoreBottom - mobileRecommendationLayout.combinedScoreBottom)).toBeLessThanOrEqual(2);
+    expect(mobileRecommendationLayout.combinedScoreLeft - mobileRecommendationLayout.turnScoreRight).toBeGreaterThanOrEqual(0);
     expect(mobileRecommendationLayout.diceDockTop - mobileRecommendationLayout.turnScoreBottom).toBeGreaterThanOrEqual(6);
     expect(mobileRecommendationLayout.scoreFontSize).toBeGreaterThanOrEqual(17);
     expect(mobileRecommendationLayout.labelFontSize).toBeGreaterThanOrEqual(12);
@@ -1611,7 +1629,8 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
     // footprint rather than snapping back to the older, shorter board.
     const noTurnScoreLayout = await page.evaluate(() => {
       document.querySelector(".zilch-play-layout--has-turn-score")?.classList.remove("zilch-play-layout--has-turn-score");
-      document.querySelector(".zilch-play-layout__turn-score")?.remove();
+      document.querySelector(".zilch-play-layout__current-score")?.remove();
+      document.querySelector(".zilch-play-layout__combined-score")?.remove();
       const notebook = document.querySelector(".zilch-play-layout__notebook").getBoundingClientRect();
       const rail = document.querySelector(".zilch-recommendations").getBoundingClientRect();
       return { notebookHeight: notebook.height, notebookBottom: notebook.bottom, railBottom: rail.bottom };
@@ -1627,10 +1646,10 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
 
     const twoFives = page.locator('[data-zilch-recommendation="fixture-two-fives"]');
     const singleOne = page.locator('[data-zilch-recommendation="fixture-single-one"]');
-    await expect(twoFives).toHaveAttribute("aria-label", /\+100.*5 \+ 5/);
+    await expect(twoFives).toHaveAttribute("aria-label", /\+100.*2 Fünfer/);
     await expect(singleOne).toHaveAttribute("aria-label", /\+100.*1/);
-    await expect(twoFives).toContainText("5 + 5");
-    await expect(singleOne).toContainText(/(?:^|\D)1(?:\D|$)/);
+    await expect(twoFives).toContainText("2 Fünfer");
+    await expect(singleOne).toContainText("1 Einser");
     expect(await twoFives.getAttribute("aria-label")).not.toBe(await singleOne.getAttribute("aria-label"));
 
     const dispatchKey = (key, options = {}) => page.evaluate(({ pressed, init }) => {
@@ -1817,11 +1836,15 @@ test("a Hot Dice choice stays optional until Weiterwürfeln commits it atomicall
     }));
     await page.goto(`/zilch/spiel/${gameId}`);
 
-    const hotDice = page.locator("[data-zilch-recommendation='fixture-hot-straight']");
-    await expect(hotDice).toContainText("Hot Dice");
+    const combinedScore = page.locator("[data-zilch-combined-score]");
+    await expect(combinedScore).toContainText("Kombinierte Wertung");
+    await expect(combinedScore).toHaveAttribute("aria-label", /Freier Wurf/);
+    await expect(combinedScore.locator(".zilch-combined-score__stamp")).toContainText("Freier Wurf!");
+    await expect(page.locator(".zilch-hot-roll-stamp")).toHaveCount(0);
     await page.locator("[data-zilch-die-index='0']").click();
-    await expect(hotDice).toBeEnabled();
-    await hotDice.click();
+    await expect(combinedScore).toBeEnabled();
+    await combinedScore.click();
+    await expect(combinedScore).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator(".zilch-die--selected")).toHaveCount(6);
     expect(await page.evaluate(() => window.__zilchGameScreenFixtureMessages.some(message => message.action === "zilch_select_hold"))).toBe(false);
 
@@ -1829,7 +1852,7 @@ test("a Hot Dice choice stays optional until Weiterwürfeln commits it atomicall
     // draft; the committed state still remains untouched.
     await page.locator("[data-zilch-die-index='0']").click();
     await expect(page.locator(".zilch-die--selected")).toHaveCount(0);
-    await hotDice.click();
+    await combinedScore.click();
     await page.locator("[data-zilch-roll]").click();
     await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
       expect.objectContaining({

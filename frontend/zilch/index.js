@@ -2208,7 +2208,7 @@ function renderRulesContent(facts) {
     <section class="zilch-rules-grid">
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Wertungen auswählen"))}</h2><p>${escapeHtml(t("Tippe eine Wertung oder einzelne Würfel an. Die Auswahl bleibt bis zum Weiterwürfeln oder Sichern änderbar."))}</p><p>${escapeHtml(t("Nur eine gemeinsam wertende Auswahl kann übernommen werden; ungültig gewordene Würfel fallen aus der Auswahl."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Würfeln oder sichern"))}</h2><p>${escapeHtml(t("Nach dem dritten Wurf müssen mindestens 300 Rundenpunkte gehalten sein. Sichern ist ab 400 Punkten möglich, solange kein Bestätigungswurf offen ist."))}</p><p>${escapeHtml(t("Vor dem Sichern kannst du deine Würfelauswahl jederzeit anpassen."))}</p></section>
-      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Hot Dice und Bestätigungswurf"))}</h2><p>${escapeHtml(t("Wenn alle sechs Würfel Punkte geben, werden sie wieder frei: Hot Dice. Die Rundenpunkte bleiben bestehen."))}</p><p>${escapeHtml(t("Ein Tipp auf Hot Dice markiert alle passenden Würfel. Erst Weiterwürfeln übernimmt die Auswahl."))}</p><p>${escapeHtml(t("Nach drei Einsen oder einem vollständigen Hold muss ein weiterer Punktewurf von mindestens 50 Punkten bestätigt werden, bevor du sichern darfst."))}</p></section>
+      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Hot Dice und Bestätigungswurf"))}</h2><p>${escapeHtml(t("Wenn alle sechs Würfel Punkte geben, werden sie wieder frei: Hot Dice. Die Rundenpunkte bleiben bestehen."))}</p><p>${escapeHtml(t("Kombinierte Wertung hält alle aktuell punktenden Würfel. Ein möglicher Freier Wurf erscheint dort als Stempel; erst Weiterwürfeln übernimmt die Auswahl."))}</p><p>${escapeHtml(t("Nach drei Einsen oder einem vollständigen Hold muss ein weiterer Punktewurf von mindestens 50 Punkten bestätigt werden, bevor du sichern darfst."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zilch-Serie"))}</h2><p>${escapeHtml(t("Ein Wurf ohne gültige Wertung – oder eine nicht erreichbare 300er-Regel nach Wurf drei – beendet den Zug als Zilch. Ungesicherte Punkte verfallen."))}</p><p>${escapeHtml(t("Bei einem Zilch bleibt der letzte Wurf sichtbar, bis der nächste Wurf ausgeführt wird."))}</p><p>${escapeHtml(t("Bei jedem dritten Zilch in Folge – also beim dritten, sechsten, neunten und so weiter – werden 500 Punkte abgezogen, niemals unter null."))}</p></section>
     </section>
     <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>
@@ -2635,6 +2635,14 @@ function exactOptionForDraft(options, indices) {
   return orderedQuickHolds(options).find(option => sameIndices(option?.dice_indices, indices)) || null;
 }
 
+function combinedScoringOption(options) {
+  // The server enumerates every valid non-overlapping scoring selection. The
+  // union of all scoreable dice is therefore safe only when it is also one of
+  // those exact, server-authoritative options.
+  const scoreable = normalizedIndices((Array.isArray(options) ? options : []).flatMap(option => option?.dice_indices || []));
+  return scoreable.length ? exactOptionForDraft(options, scoreable) : null;
+}
+
 function normalizedDraftAfterRemoval(options, remainingIndices) {
   const remaining = normalizedIndices(remainingIndices);
   if (!remaining.length || exactOptionForDraft(options, remaining)) return remaining;
@@ -2828,13 +2836,7 @@ function recommendationCards(snapshot, turnState, isMyTurn) {
   const draft = draftHoldIndices(turnState);
   const recommendations = recommendationOptions(snapshot, orderedQuickHolds(options), draft);
   if (!recommendations.length) return "";
-  // The red stamp describes the roll, not merely the subset of cards that
-  // stays visible in the compact rail. A mixed Hot-Dice selection can be
-  // deliberately hidden as a recommendation while still being a free roll.
-  const hasFreeRoll = options.some(option => Boolean(option?.hot_dice));
-  return `<div class="zilch-recommendations__rail${hasFreeRoll ? " has-free-roll" : ""}">
-    ${hasFreeRoll ? `<div class="zilch-hot-roll-stamp" aria-hidden="true"><strong>${escapeHtml(t("Freier Wurf!"))}</strong></div>` : ""}
-    <ol class="zilch-recommendations__list">${recommendations.map((option, index) => {
+  return `<div class="zilch-recommendations__rail"><ol class="zilch-recommendations__list">${recommendations.map((option, index) => {
     const selected = sameIndices(option.dice_indices, draft);
     const hotDice = Boolean(option.hot_dice);
     const label = compactOptionTitle(option);
@@ -2850,18 +2852,30 @@ function recommendationCards(snapshot, turnState, isMyTurn) {
 function turnScoreMarkup(snapshot, turnState, quickHolds, isMyTurn) {
   // ``round_points`` contains every already committed hold. A draft is not
   // yet authoritative, so only an exact server option may be added to the
-  // visible "bank now" total.
+  // visible total. With no draft, the compact readout previews the complete
+  // server-approved combined choice beside it.
   if (!isMyTurn || !turnState || snapshot?._finished || snapshot?._paused || state.zilchMoment) return "";
   const heldPoints = Math.max(0, Number(turnState.round_points) || 0);
+  const combined = combinedScoringOption(quickHolds);
   const selected = exactOptionForDraft(quickHolds, draftHoldIndices(turnState));
-  const selectedPoints = Math.max(0, Number(selected?.points) || 0);
+  const selectedPoints = Math.max(0, Number((selected || combined)?.points) || 0);
   const potential = heldPoints + selectedPoints;
   if (!potential) return "";
-  return `<section class="zilch-turn-score" aria-live="polite" aria-label="${escapeHtml(t("Aktueller Wurf"))}">
+  const selectable = Boolean(
+    combined
+    && turnState?.can_select_hold
+    && !state.pendingAction,
+  );
+  const combinedSelected = Boolean(combined && sameIndices(combined.dice_indices, draftHoldIndices(turnState)));
+  const freeRoll = Boolean(combined?.hot_dice);
+  const combinedLabel = t("Kombinierte Wertung");
+  const accessibleLabel = `${combinedLabel}: +${number(combined?.points)}${freeRoll ? ` · ${t("Freier Wurf")}` : ""}`;
+  return `<div class="zilch-play-layout__current-score"><section class="zilch-turn-score" aria-live="polite" aria-label="${escapeHtml(t("Aktueller Wurf"))}">
     <span>${escapeHtml(t("Aktueller Wurf"))}</span>
     <strong>${escapeHtml(number(potential))}</strong>
-    <small>${escapeHtml(t("Sichern"))}</small>
-  </section>`;
+  </section></div>${combined ? `<div class="zilch-play-layout__combined-score"><button type="button" class="zilch-combined-score${combinedSelected ? " is-selected" : ""}${freeRoll ? " is-hot" : ""}" data-zilch-combined-score ${selectable ? "" : "disabled"} aria-label="${escapeHtml(accessibleLabel)}" aria-pressed="${combinedSelected ? "true" : "false"}">
+    <span aria-hidden="true">${escapeHtml(combinedLabel)}</span><strong aria-hidden="true">+${escapeHtml(number(combined.points))}</strong>${freeRoll ? `<span class="zilch-combined-score__stamp" aria-hidden="true"><strong>${escapeHtml(t("Freier Wurf!"))}</strong></span>` : ""}
+  </button></div>` : ""}`;
 }
 
 function waitingRoomPanel(snapshot) {
@@ -3204,12 +3218,11 @@ function renderGameState() {
     : hasChoices
       ? `<aside class="zilch-recommendations" aria-label="${escapeHtml(finished ? t("Spielergebnis") : t("Mögliche Wertungen"))}">${recommendations}${resultMarkup}</aside>`
       : "";
-  // The running total is deliberately a separate tile beneath the choice
-  // rail. This lets the recommendations share the entire lower edge of the
-  // extended score sheet instead of consuming one of its useful card slots.
-  const turnScoreSlot = turnScore
-    ? `<div class="zilch-play-layout__turn-score">${turnScore}</div>`
-    : "";
+  // The current roll and its all-at-once hold sit directly under their
+  // respective columns: score sheet on the left, choice rail on the right.
+  // This keeps every recommendation slot free while making the full scoring
+  // action a clear, thumb-sized control.
+  const turnScoreControls = turnScore;
   const chatRows = (Array.isArray(snapshot._chat_history) ? snapshot._chat_history : []).map(entry => {
     const sender = participantForId(snapshot, entry?.from_id || entry?.player_id || entry?.participant_id);
     const identity = sender
@@ -3237,7 +3250,7 @@ function renderGameState() {
         activePlayerId: state.zilchMoment?.playerId || "",
       })}</div>
       ${sideRail}
-      ${turnScoreSlot}
+      ${turnScoreControls}
     </section>
     ${waitingPanelUsesRail ? "" : waitingPanel}
     <section class="zilch-dice-dock">
@@ -3462,6 +3475,21 @@ function wireGameInteractions(snapshot, turnState, quickHolds) {
       renderGameState();
     });
   }
+  document.querySelector("[data-zilch-combined-score]")?.addEventListener("click", () => {
+    if (
+      state.zilchMoment
+      || !turnState?.can_select_hold
+      || !localPlayerIs(snapshot, snapshot?._turn?.player_id)
+      || snapshot?._paused
+      || snapshot?._finished
+      || state.pendingAction
+    ) return;
+    const option = combinedScoringOption(quickHolds);
+    if (!option) return;
+    const draft = draftHoldIndices(turnState);
+    setDraftHoldIndices(turnState, sameIndices(option.dice_indices, draft) ? [] : option.dice_indices);
+    renderGameState();
+  });
   document.getElementById("zilchChatForm")?.addEventListener("submit", (event) => {
     event.preventDefault();
     const input = document.getElementById("zilchChatInput");

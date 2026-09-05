@@ -2507,33 +2507,6 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
   border-color: #d09323;
   background: #fff0ad;
 }
-.zilch-hot-roll-stamp {
-  position: absolute;
-  z-index: 3;
-  top: 50%;
-  left: 50%;
-  display: grid;
-  place-items: center;
-  width: max-content;
-  max-width: 112%;
-  color: #b32420;
-  filter: drop-shadow(.09rem .13rem 0 rgba(89, 26, 15, .24));
-  pointer-events: none;
-  transform: translate(-50%, -50%) rotate(-7deg);
-  transform-origin: center;
-}
-.zilch-hot-roll-stamp strong {
-  display: block;
-  padding: .08em .2em .12em;
-  border: .1em double currentColor;
-  background: rgba(255, 247, 216, .2);
-  font: 900 clamp(1.8rem, 8vw, 3.8rem)/.86 "Segoe Print", "Bradley Hand", cursive;
-  letter-spacing: .035em;
-  text-align: center;
-  text-shadow: .025em .035em 0 rgba(102, 26, 19, .2);
-  white-space: nowrap;
-  animation: zilch-hot-roll-stamp .82s cubic-bezier(.2, .78, .2, 1) both;
-}
 .zilch-shell--game .zilch-recommendation.is-selected {
   border-color: #dcae43;
   color: #fff8e8;
@@ -2564,8 +2537,9 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
 .zilch-shell--game .zilch-recommendation:not(:disabled):hover { border-color: #dcaa36; background: #fff2b8; }
 .zilch-shell--game .zilch-recommendation.is-selected:not(:disabled):hover { background: #512811; }
 
-/* A single, non-interrupting score readout answers the only question needed
-   between a roll and the next action: what reaches the score sheet now. */
+/* The current roll and the combined, all-scoreable hold share the extension
+   below the board. Their two-column placement mirrors paper left / choices
+   right, while the button remains a single server-authoritative draft. */
 .zilch-shell--game .zilch-turn-score {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2595,6 +2569,79 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
   color: rgba(255, 247, 231, .72);
   font-size: .68rem;
   font-weight: 750;
+}
+.zilch-shell--game .zilch-combined-score {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .18rem .4rem;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: .42rem .5rem;
+  overflow: visible;
+  border: 1px solid #b77a20;
+  border-radius: .42rem;
+  color: #4a260f;
+  background: linear-gradient(145deg, #ffe59d, #e6af43);
+  box-shadow: .08rem .11rem 0 rgba(55, 28, 10, .2), inset 0 1px rgba(255,255,255,.62);
+  text-align: left;
+}
+.zilch-shell--game .zilch-combined-score > span:first-child {
+  min-width: 0;
+  font: 850 clamp(.66rem, 2.05vw, .8rem)/1.08 ui-rounded, "Avenir Next", system-ui, sans-serif;
+  letter-spacing: .025em;
+  overflow-wrap: anywhere;
+}
+.zilch-shell--game .zilch-combined-score > strong {
+  color: #783316;
+  font: 850 clamp(.96rem, 3.6vw, 1.24rem)/1 Georgia, "Times New Roman", serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.zilch-shell--game .zilch-combined-score.is-selected {
+  border-color: #ffdd78;
+  color: #fff8e8;
+  background: #43210f;
+  box-shadow: 0 0 0 .14rem rgba(246, 202, 78, .35), inset 0 1px rgba(255,255,255,.12);
+}
+.zilch-shell--game .zilch-combined-score.is-selected > strong { color: #ffe28a; }
+.zilch-shell--game .zilch-combined-score:disabled { opacity: .48; cursor: not-allowed; }
+.zilch-shell--game .zilch-combined-score:not(:disabled):hover { border-color: #744016; background: #ffd66f; }
+.zilch-shell--game .zilch-combined-score.is-selected:not(:disabled):hover { background: #512811; }
+.zilch-shell--game .zilch-combined-score:focus-visible {
+  outline: 3px solid var(--zilch-focus-ring);
+  outline-offset: 2px;
+}
+.zilch-combined-score__stamp {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 54%;
+  display: grid;
+  place-items: center;
+  width: max-content;
+  max-width: 118%;
+  color: #b32420;
+  filter: drop-shadow(.07rem .1rem 0 rgba(89, 26, 15, .24));
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(-7deg);
+  transform-origin: center;
+}
+.zilch-combined-score__stamp strong {
+  display: block;
+  padding: .08em .17em .11em;
+  border: .09em double currentColor;
+  background: rgba(255, 247, 216, .18);
+  font: 900 clamp(.96rem, 4.2vw, 1.5rem)/.86 "Segoe Print", "Bradley Hand", cursive;
+  letter-spacing: .025em;
+  text-align: center;
+  text-shadow: .025em .035em 0 rgba(102, 26, 19, .2);
+  white-space: nowrap;
+  animation: zilch-hot-roll-stamp .82s cubic-bezier(.2, .78, .2, 1) both;
 }
 
 .zilch-shell--game .zilch-dice-dock {
@@ -2848,9 +2895,9 @@ html[data-game="zilch"] body {
   }
 }
 
-/* A scored roll receives its own tile below the recommendation rail. Its
-   reserved space is released only while that tile is actually rendered, so
-   the paper above stays exactly the same height in both states. */
+/* A scored roll receives a shared control row below the board. Its reserved
+   space is released only while that row is actually rendered, so the paper
+   above stays exactly the same height in both states. */
 .zilch-shell--game .zilch-play-layout--has-turn-score {
   --zilch-play-layout-reserved-turn-score-h: 0rem;
   --zilch-play-layout-max-h: calc(32rem + var(--zilch-score-sheet-extension) + var(--zilch-turn-score-slot-h) + var(--zilch-turn-score-gap));
@@ -2864,14 +2911,18 @@ html[data-game="zilch"] body {
   min-height: 0;
 }
 
-.zilch-shell--game .zilch-play-layout__turn-score {
-  grid-column: 2;
+.zilch-shell--game .zilch-play-layout__current-score,
+.zilch-shell--game .zilch-play-layout__combined-score {
   grid-row: 2;
   min-width: 0;
   min-height: 0;
 }
 
-.zilch-shell--game .zilch-play-layout__turn-score .zilch-turn-score {
+.zilch-shell--game .zilch-play-layout__current-score { grid-column: 1; }
+.zilch-shell--game .zilch-play-layout__combined-score { grid-column: 2; }
+
+.zilch-shell--game .zilch-play-layout__current-score .zilch-turn-score,
+.zilch-shell--game .zilch-play-layout__combined-score .zilch-combined-score {
   box-sizing: border-box;
   height: 100%;
   min-height: 0;
@@ -3688,7 +3739,7 @@ html[data-game="zilch"] body {
   }
 
   .zilch-event-overlay.is-visible strong { animation: none !important; }
-  .zilch-hot-roll-stamp strong { animation: none !important; }
+  .zilch-combined-score__stamp strong { animation: none !important; }
 }
 
 /* -------------------------------------------------------------------------
