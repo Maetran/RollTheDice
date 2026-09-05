@@ -1511,6 +1511,8 @@ export const EN = {
     "Spielweise": "Playing style",
     "Der Würfelwirt überlegt …": "The dice keeper is thinking …",
     "Der Würfelwirt ist bereit": "The dice keeper is ready",
+    "Beim Start wählst du seine Spielweise: Konservativ sichert ab 500 Punkten eher früh, Normal ab 650 Punkten solide Runden, Aggressiv jagt ab 850 Punkten größere Runden.": "Choose its playing style when you start: Conservative banks earlier from 500 points, Normal secures solid rounds from 650 points, and Aggressive chases larger rounds from 850 points.",
+    "Alle drei würfeln fair nach denselben Regeln wie du. Bei wenigen freien Würfeln oder einem sicheren Sieg sichert der Würfelwirt früher.": "All three roll fairly under the same rules as you. With only a few free dice or a certain win, the dice keeper banks earlier.",
     "Diese Spielweise des Würfelwirts gibt es nicht.": "That dice keeper style is not available.",
     "Gegen den Würfelwirt": "Against the dice keeper",
     "Such dir einen Platz am Tisch aus: Solo, gegen den Würfelwirt oder zu zweit. Mit sechs Würfeln sammelst du Punkte, sicherst sie rechtzeitig und jagst die 10’000.": "Choose a seat at the table: solo, against the dice keeper, or head-to-head. With six dice, gather points, bank them in time, and chase 10,000.",

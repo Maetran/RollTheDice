@@ -124,7 +124,7 @@ class ZilchCpuStrategyTestCase(TestCase):
     def test_conservative_banks_earlier_than_normal_and_aggressive(self) -> None:
         decisions = {
             strategy: choose_zilch_cpu_decision(
-                context(strategy=strategy, round_points=650, can_roll=True, can_bank=True)
+                context(strategy=strategy, round_points=600, can_roll=True, can_bank=True)
             )
             for strategy in ("conservative", "normal", "aggressive")
         }
@@ -134,13 +134,26 @@ class ZilchCpuStrategyTestCase(TestCase):
 
     def test_normal_banks_before_aggressive_at_the_same_safe_round(self) -> None:
         normal = choose_zilch_cpu_decision(
-            context(strategy="normal", round_points=900, can_roll=True, can_bank=True)
+            context(strategy="normal", round_points=800, can_roll=True, can_bank=True)
         )
         aggressive = choose_zilch_cpu_decision(
-            context(strategy="aggressive", round_points=900, can_roll=True, can_bank=True)
+            context(strategy="aggressive", round_points=800, can_roll=True, can_bank=True)
         )
         self.assertEqual(normal.action, "bank")
         self.assertEqual(aggressive.action, "roll")
+
+    def test_aggressive_banks_a_solid_round_when_only_two_dice_remain(self) -> None:
+        decision = choose_zilch_cpu_decision(
+            context(
+                strategy="aggressive",
+                round_points=700,
+                available_dice_count=2,
+                can_roll=True,
+                can_bank=True,
+            )
+        )
+        self.assertEqual(decision.action, "bank")
+        self.assertEqual(decision.reason_params["bank_goal"], 700)
 
     def test_few_remaining_dice_lower_the_safe_bank_goal(self) -> None:
         few_dice = choose_zilch_cpu_decision(
@@ -154,12 +167,12 @@ class ZilchCpuStrategyTestCase(TestCase):
 
     def test_hot_dice_context_raises_the_non_confirmation_risk_goal(self) -> None:
         ordinary = choose_zilch_cpu_decision(
-            context(strategy="normal", round_points=800, can_roll=True, can_bank=True)
+            context(strategy="normal", round_points=700, can_roll=True, can_bank=True)
         )
         hot_dice = choose_zilch_cpu_decision(
             context(
                 strategy="normal",
-                round_points=800,
+                round_points=700,
                 hot_dice=True,
                 confirmation_required=False,
                 can_roll=True,

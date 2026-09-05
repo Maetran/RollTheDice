@@ -17,6 +17,10 @@ accounts) in `multiplayer`, or one guest/account host against a real `cpu`
 participant in `cpu` mode. The CPU has no account, session, resume token, or
 WebSocket; it uses the same server-side dice and scoring path as a human and
 differs only through its conservative, normal, or aggressive decision policy.
+Their public base bank goals are 500, 650, and 850 points respectively before
+the same bounded score- and dice-position adjustments: conservative remains
+cautious, normal secures solid rounds sooner, and aggressive still pursues
+larger rounds without routinely gambling away a playable score.
 It also supports a genuine one-human `solo` Sprint: the fixed, versioned
 objective `reach_10000_fewest_turns` (v1) starts directly with a normal turn,
 ends at at least 10,000 banked points. The server retains turns, rolls, Zilchs,

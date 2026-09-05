@@ -17,8 +17,8 @@ The deliberately small product parameters are public and deterministic:
 Strategy          Base bank goal  Intent
 ================  ==============  ==========================================
 conservative      500             Prefer a safe eligible bank.
-normal            750             Balance a useful round with further rolls.
-aggressive        1,100           Seek larger rounds before banking.
+normal            650             Secure solid rounds with measured risk.
+aggressive        850             Seek larger rounds without routinely gambling away a playable score.
 ================  ==============  ==========================================
 
 The base goal is adjusted in a bounded way before it is compared with current
@@ -51,8 +51,8 @@ ZILCH_CPU_STRATEGIES: Final[frozenset[str]] = frozenset(
 
 _BANK_GOALS: Final[dict[str, int]] = {
     "conservative": 500,
-    "normal": 750,
-    "aggressive": 1_100,
+    "normal": 650,
+    "aggressive": 850,
 }
 _MAX_DYNAMIC_BANK_GOAL: Final = 1_800
 _MATERIAL_SCORE_GAP: Final = 1_200

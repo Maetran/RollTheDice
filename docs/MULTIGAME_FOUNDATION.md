@@ -307,8 +307,8 @@ score, or alter RNG. Its public product parameters are deliberately small:
 | Strategy | Base bank goal | Character |
 | --- | ---: | --- |
 | `conservative` | 500 | Prefer a legal safe bank and avoid unnecessary risk. |
-| `normal` | 750 | Balance a useful round with a further roll. |
-| `aggressive` | 1,100 | Seek larger rounds and accept more Zilch risk. |
+| `normal` | 650 | Secure solid rounds sooner while keeping measured risk. |
+| `aggressive` | 850 | Seek larger rounds without routinely gambling away a playable score. |
 
 Before a legal bank is compared, the policy adjusts that goal by the current
 position only: a material 1,200-point deficit raises it by 150, an equivalent

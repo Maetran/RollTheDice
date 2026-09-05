@@ -266,8 +266,8 @@ einzige Auswahl beim Erstellen ist eine fest validierte Strategie:
 | Strategie | Basis zum Sichern | Verhalten |
 | --- | ---: | --- |
 | Konservativ | 500 | sichert eher früh und vermeidet unnötige Risiken |
-| Normal | 750 | hält Risiko und Rundenwert im Gleichgewicht |
-| Aggressiv | 1.100 | spielt häufiger auf größere Runden weiter |
+| Normal | 650 | sichert solide Runden etwas früher |
+| Aggressiv | 850 | jagt größere Runden, lässt gute Punkte aber seltener liegen |
 
 Diese Werte sind transparente Produktparameter, keine abweichenden
 Spielregeln. Die Strategie berücksichtigt zusätzlich Punkteabstand,

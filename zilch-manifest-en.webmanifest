@@ -11,12 +11,12 @@
   "background_color": "#542d16",
   "theme_color": "#542d16",
   "shortcuts": [
-    { "name": "Lobby", "url": "/", "icons": [{ "src": "/static/icons/zilch-icon-192.png?v=6bf47154ea4c", "sizes": "192x192" }] },
-    { "name": "Leaderboards", "url": "/bestenlisten", "icons": [{ "src": "/static/icons/zilch-icon-192.png?v=6bf47154ea4c", "sizes": "192x192" }] },
-    { "name": "Game Rules", "url": "/regeln", "icons": [{ "src": "/static/icons/zilch-icon-192.png?v=6bf47154ea4c", "sizes": "192x192" }] }
+    { "name": "Lobby", "url": "/", "icons": [{ "src": "/static/icons/zilch-icon-192.png?v=a00d1ac4fd69", "sizes": "192x192" }] },
+    { "name": "Leaderboards", "url": "/bestenlisten", "icons": [{ "src": "/static/icons/zilch-icon-192.png?v=a00d1ac4fd69", "sizes": "192x192" }] },
+    { "name": "Game Rules", "url": "/regeln", "icons": [{ "src": "/static/icons/zilch-icon-192.png?v=a00d1ac4fd69", "sizes": "192x192" }] }
   ],
   "icons": [
-    { "src": "/static/icons/zilch-icon-192.png?v=6bf47154ea4c", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/static/icons/zilch-icon-512.png?v=6bf47154ea4c", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { "src": "/static/icons/zilch-icon-192.png?v=a00d1ac4fd69", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/zilch-icon-512.png?v=a00d1ac4fd69", "sizes": "512x512", "type": "image/png", "purpose": "any" }
   ]
 }
