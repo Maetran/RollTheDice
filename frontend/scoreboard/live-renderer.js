@@ -72,7 +72,7 @@ function renderScoreboard(mount, sb, {
     </div>
     <div class="muted turn-status">
       <span id="mobileReactionsBar" class="mobile-reactions-host" aria-label="Reaktionen"></span>
-      <span class="turn-status-text">Am Zug: ${playerNameMarkup(turnPlayer, { name: turnName, compactRank: true })} • ${isHC ? '<span class="hc-badge">Hardcore</span>' : `Würfe: ${rollsUsed ?? 0}/${rollsMax ?? 3} <span id="announceHint"></span>`}</span>
+      <span class="turn-status-text">Am Zug: ${playerNameMarkup(turnPlayer, { name: turnName, showRank: false })} • ${isHC ? '<span class="hc-badge">Hardcore</span>' : `Würfe: ${rollsUsed ?? 0}/${rollsMax ?? 3} <span id="announceHint"></span>`}</span>
     </div>
   `;
 

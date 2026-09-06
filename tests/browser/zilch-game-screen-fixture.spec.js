@@ -2253,10 +2253,14 @@ test("Space uses the enabled start roll first and otherwise the current roll act
 
     const rollPage = await context.newPage();
     const rollGameId = "current-roll-space-fixture";
+    const currentRollSnapshot = soloTurnSnapshot();
+    for (const player of [...currentRollSnapshot._players, ...currentRollSnapshot._participants]) {
+      player.zilch_achievement_rank = { stars: 2, title: "Fortgeschritten" };
+    }
     await installGameScreenFixture(
       rollPage,
       rollGameId,
-      { initial: soloTurnSnapshot() },
+      { initial: currentRollSnapshot },
       {
         mode: "1",
         play_mode: "solo",
@@ -2270,6 +2274,9 @@ test("Space uses the enabled start roll first and otherwise the current roll act
     }));
     await rollPage.goto(`/zilch/spiel/${rollGameId}`);
     await expect(rollPage.locator("[data-zilch-start-roll]")).toHaveCount(0);
+    await expect(rollPage.locator(".zilch-notebook-player header .player-avatar")).toBeVisible();
+    await expect(rollPage.locator(".zilch-notebook-player header")).toContainText("Mani");
+    await expect(rollPage.locator(".zilch-notebook-player header .zilch-rank-badge")).toHaveCount(0);
     await expect(rollPage.locator("[data-zilch-roll]")).toBeEnabled();
     await expect(rollPage.locator("[data-zilch-roll]")).toHaveClass(/is-roll-ready/);
 

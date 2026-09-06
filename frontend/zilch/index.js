@@ -431,9 +431,9 @@ function typeOfUserId(value) {
   return Number.isInteger(Number(value)) && Number(value) > 0;
 }
 
-function playerCollectionMarkup(value) {
+function playerCollectionMarkup(value, { includeRank = true } = {}) {
   const label = playerName(value);
-  const identity = `${avatarMarkup(value, { size: gameId ? "tiny" : "small" })}<span class="zilch-player-name">${escapeHtml(label)}</span>${zilchRankBadgeMarkup(value)}`;
+  const identity = `${avatarMarkup(value, { size: gameId ? "tiny" : "small" })}<span class="zilch-player-name">${escapeHtml(label)}</span>${includeRank ? zilchRankBadgeMarkup(value) : ""}`;
   const username = playerUsername(value);
   if (!username || isCpuParticipant(value)) return `<span class="zilch-player-identity">${identity}</span>`;
   // Leaderboard projections deliberately flag the signed-in person's row.
@@ -3310,7 +3310,7 @@ function scoreNotebook(players, boards, {
     const boardLabel = [player?.name || t("Spieler"), marker, active ? t("Am Zug") : ""].filter(Boolean).join(", ");
     const scoreTotal = solo ? `${number(board.total_points)} / ${number(target)}` : number(board.total_points);
     return `<article class="${classes}" data-zilch-board-id="${escapeHtml(player.id)}" aria-label="${escapeHtml(boardLabel)}">
-      <header><h2>${playerCollectionMarkup(player)} ${participantMeta(player, { compact: true })}</h2><span class="zilch-notebook-total"><span class="visually-hidden">${escapeHtml(t("Stand"))}: </span>${escapeHtml(scoreTotal)}</span></header>
+      <header><h2>${playerCollectionMarkup(player, { includeRank: false })} ${participantMeta(player, { compact: true })}</h2><span class="zilch-notebook-total"><span class="visually-hidden">${escapeHtml(t("Stand"))}: </span>${escapeHtml(scoreTotal)}</span></header>
       <ol data-zilch-round-log="${escapeHtml(player.id)}" style="--zilch-round-rows:${lineCount}">${Array.from({ length: lineCount }, (_unused, index) => {
         const entry = rounds[index];
         return entry ? `<li>${notebookRound(entry)}</li>` : '<li class="zilch-notebook-entry--blank" aria-hidden="true"></li>';
@@ -4350,7 +4350,7 @@ function actionCards(snapshot, turnState, quickHolds, isMyTurn) {
     <button type="button" class="zilch-action-card zilch-action-card--bank" data-zilch-bank aria-keyshortcuts="b B" ${canBank ? "" : "disabled"}>
       <strong>${escapeHtml(t("Sichern"))}</strong>
     </button>
-    <button type="button" class="zilch-action-card zilch-action-card--roll${rollAvailable ? " is-roll-ready" : ""}" data-zilch-roll aria-keyshortcuts="Space" aria-label="${escapeHtml(`${rollLabel}${rollAvailable ? ` · ${t("Du bist am Zug")}` : ""}`)}" ${canRoll ? "" : "disabled"}>
+    <button type="button" class="zilch-action-card zilch-action-card--roll${canRoll ? " is-roll-ready" : ""}" data-zilch-roll aria-keyshortcuts="Space" aria-label="${escapeHtml(`${rollLabel}${canRoll ? ` · ${t("Du bist am Zug")}` : ""}`)}" ${canRoll ? "" : "disabled"}>
       <strong>${escapeHtml(rollLabel)}</strong>
     </button>
   </section>`;

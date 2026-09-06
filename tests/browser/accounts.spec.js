@@ -266,6 +266,8 @@ test("achievement titles follow an account player through lobby, stats, and the 
     page.click("#createBtn"),
   ]);
   await expect(page.locator(".player-card .player-rank")).toHaveText(/☆\s*Newbie/);
+  await expect(page.locator("#headerTurnStatus .player-avatar")).toBeVisible();
+  await expect(page.locator("#headerTurnStatus .player-rank")).toHaveCount(0);
 });
 
 

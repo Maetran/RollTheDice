@@ -275,7 +275,7 @@ function playerAvatarMarkup(player){
   return `<img class="player-avatar" src="${esc(source)}" alt="" width="20" height="20" loading="lazy" decoding="async">`;
 }
 
-function playerNameMarkup(player, { name, compactRank = false, fallback = "Spieler", profileLink = false } = {}){
+function playerNameMarkup(player, { name, compactRank = false, showRank = true, fallback = "Spieler", profileLink = false } = {}){
   const label = name ?? player?.name ?? player?.username ?? fallback;
   const username = player?.username || player?.name;
   const userId = Number(player?.user_id);
@@ -283,7 +283,7 @@ function playerNameMarkup(player, { name, compactRank = false, fallback = "Spiel
   const nameMarkup = profileLink && Number.isInteger(userId) && userId > 0 && username
     ? `<a class="player-name-label" href="${esc(window.ZDWA_ROUTE?.path(path) || path)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`
     : `<span class="player-name-label">${esc(label)}</span>`;
-  return `<span class="player-name-with-rank">${playerAvatarMarkup(player)}${nameMarkup}${playerRankMarkup(player, { compact: compactRank, owner: label })}</span>`;
+  return `<span class="player-name-with-rank">${playerAvatarMarkup(player)}${nameMarkup}${showRank ? playerRankMarkup(player, { compact: compactRank, owner: label }) : ""}</span>`;
 }
 
 // Room modules and the replay chat use this same renderer after the scoreboard

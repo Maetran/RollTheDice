@@ -3409,13 +3409,15 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
   font: 800 .9rem/1 ui-rounded, system-ui, sans-serif;
 }
 .zilch-shell--game .zilch-action-card--roll {
-  border-color: #e0b251;
-  color: #40200e;
-  background: #e7bd5e;
+  border-color: rgba(224, 178, 81, .58);
+  color: #fff7e7;
+  background: rgba(231, 189, 94, .16);
 }
 .zilch-shell--game .zilch-action-card--roll.is-roll-ready {
-  border-color: #ffe7a1;
-  box-shadow: 0 0 0 1px rgba(255, 208, 93, .5), 0 0 .7rem rgba(239, 182, 60, .24);
+  border-color: #f3cf72;
+  color: #fff8e8;
+  background: rgba(218, 164, 53, .24);
+  box-shadow: 0 0 0 1px rgba(255, 208, 93, .4), 0 0 .58rem rgba(239, 182, 60, .19);
   animation: zilch-roll-ready 2.8s ease-in-out infinite;
 }
 .zilch-shell--game .zilch-action-card--bank {
@@ -3426,8 +3428,8 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
 .zilch-shell--game .zilch-action-card:disabled { opacity: .4; }
 
 @keyframes zilch-roll-ready {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(255, 208, 93, .42), 0 0 .45rem rgba(239, 182, 60, .16); }
-  50% { box-shadow: 0 0 0 2px rgba(255, 231, 161, .76), 0 0 .85rem rgba(239, 182, 60, .34); }
+  0%, 100% { box-shadow: 0 0 0 1px rgba(255, 208, 93, .38), 0 0 .4rem rgba(239, 182, 60, .14); }
+  50% { box-shadow: 0 0 0 2px rgba(255, 231, 161, .66), 0 0 .7rem rgba(239, 182, 60, .27); }
 }
 
 @media (prefers-reduced-motion: reduce) {
