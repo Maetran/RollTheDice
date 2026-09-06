@@ -77,11 +77,13 @@ player-award context, and in-app rule guide. Its account mirrors the ZDWA
 structure with separate private statistics, awards, and settings tabs; language
 and password controls stay with the account rather than the game room. Its
 first-party wood-table texture, paper-card, and dice direction is isolated from ZDWA.
-The Zilch lobby mirrors ZDWA's identity pattern, while the compact
-game header keeps Lobby, ZDWA, and Rules explicit. Logout is deliberately
-available only inside the Zilch account page. The ZDWA↔Zilch switch keeps the
-same isolated dimensions, padding, and type size in both page and game headers;
-on narrow phones both sides use its square icon-only form.
+The Zilch lobby mirrors ZDWA's identity pattern, while the compact game header
+keeps **Leave game** and Rules explicit. Leave game uses the same three choices
+as ZDWA: Pause keeps the table resumable until its displayed deadline, Return to
+Lobby ends it for everyone without creating a result, and Stay in Game changes
+nothing. The cross-game switch remains available on app pages and lobbies, but
+not inside an active game room. Logout is deliberately available only inside the
+Zilch account page.
 The compact setup starts a default game with one click; advanced room protection
 stays optional, and a completed game can be restarted directly with the same mode.
 In a two-person Zilch room, **Share game** creates a clean invitation link for

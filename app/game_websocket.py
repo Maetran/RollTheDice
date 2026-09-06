@@ -48,6 +48,7 @@ ReserveConnection = Callable[[WebSocket], str | None]
 ReleaseConnection = Callable[[str | None], None]
 FinalizeGame = Callable[[GameDict], Any]
 TimeoutAbortPublisher = Callable[[GameDict], Awaitable[None]]
+ManualZilchAbortPublisher = Callable[[GameDict], Awaitable[None]]
 
 
 def _register_live_socket(game: GameDict, websocket: WebSocket) -> None:
@@ -111,6 +112,7 @@ async def serve_game_websocket(
     release_connection: ReleaseConnection,
     finalize_game: FinalizeGame,
     timeout_abort_publisher: TimeoutAbortPublisher | None = None,
+    manual_zilch_abort_publisher: ManualZilchAbortPublisher | None = None,
 ) -> None:
     """Validate one socket and coordinate its focused action handlers."""
     if not websocket_origin_allowed(websocket):
@@ -133,7 +135,7 @@ async def serve_game_websocket(
     # A lifecycle sweep can mark a room terminal while it is still delivering
     # its final frame to existing peers. Do not let a concurrent new socket
     # reserve a connection or briefly recreate a participant in that window.
-    if game.get("_aborted") and game.get("_abort_reason") == "inactivity_timeout":
+    if game.get("_aborted"):
         await websocket.accept()
         await close_with_error(websocket, "Spiel ist bereits beendet", fatal=True, code=1000)
         return
@@ -149,10 +151,11 @@ async def serve_game_websocket(
     limiter = MessageRateLimiter()
     _register_live_socket(game, websocket)
     try:
-        # The timeout can race with ``accept``. Registering first makes an
-        # immediately subsequent timeout close this peer too; this second
-        # check covers a sweep that completed just before registration.
-        if game.get("_aborted") and game.get("_abort_reason") == "inactivity_timeout":
+        # A terminal lifecycle transition can race with ``accept``. Registering
+        # first makes an immediately subsequent retirement close this peer too;
+        # this second check covers a transition that completed just before
+        # registration.
+        if game.get("_aborted"):
             await close_with_error(websocket, "Spiel ist bereits beendet", fatal=True, code=1000)
             return
         await websocket.send_json(
@@ -174,6 +177,7 @@ async def serve_game_websocket(
             limiter=limiter,
             finalize_game=finalize_game,
             timeout_abort_publisher=timeout_abort_publisher,
+            manual_zilch_abort_publisher=manual_zilch_abort_publisher,
         )
     except WebSocketDisconnect:
         pass
@@ -191,6 +195,7 @@ async def _receive_messages(
     limiter: MessageRateLimiter,
     finalize_game: FinalizeGame,
     timeout_abort_publisher: TimeoutAbortPublisher | None = None,
+    manual_zilch_abort_publisher: ManualZilchAbortPublisher | None = None,
 ) -> None:
     while True:
         data = await session.websocket.receive_json()
@@ -229,16 +234,11 @@ async def _receive_messages(
 
         allowed_gameplay_actions = gameplay_actions_for_game(session.game)
         allowed_superadmin_actions = superadmin_actions_for_game(session.game)
-        # Chat and pause are transport-neutral. The generic ``end_game``
-        # action, however, marks a ZDWA-shaped aborted result and must not
-        # bypass the Zilch engine's terminal-state boundary.
-        allowed_social_actions = (
-            # Reactions use the same short-lived broadcast path as ZDWA.
-            # They do not belong in the persistent chat history.
-            frozenset({"send_emoji", "chat_message", "pause_game"})
-            if game_type_from_state(session.game) == ZILCH_GAME_TYPE
-            else SOCIAL_ACTIONS
-        )
+        # Chat, pause and the explicit, non-scoring room abort are
+        # transport-neutral. A normal Zilch finish still belongs exclusively to
+        # its rules engine; ``end_game`` is the player's deliberate return to
+        # the lobby and therefore produces no Zilch result.
+        allowed_social_actions = SOCIAL_ACTIONS
         allowed_actions = SESSION_ACTIONS | allowed_gameplay_actions | allowed_superadmin_actions | allowed_social_actions
         if action not in allowed_actions:
             await session.websocket.send_json({"error": f"Unbekannte Aktion: {action_value}"})
@@ -316,5 +316,14 @@ async def _receive_messages(
             )
         elif action in allowed_social_actions:
             await handle_social_action(session, action, data)
+            if (
+                action == "end_game"
+                and game_type_from_state(session.game) == ZILCH_GAME_TYPE
+                and session.game.get("_aborted")
+                and session.game.get("_abort_reason") == "manual"
+            ):
+                if manual_zilch_abort_publisher is not None:
+                    await manual_zilch_abort_publisher(session.game)
+                return
         else:  # Defensive: KNOWN_ACTIONS and the dispatch tables must stay aligned.
             raise RuntimeError(f"Action dispatch is incomplete: {action}")

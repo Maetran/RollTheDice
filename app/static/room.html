@@ -8,9 +8,9 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=90a7fcdf2a4a">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=90a7fcdf2a4a" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=90a7fcdf2a4a" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=ee6c21784b12">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=ee6c21784b12" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=ee6c21784b12" sizes="180x180">
   <!--
     room.html – Spielraum
     ---------------------
@@ -21,8 +21,8 @@
     - Ein schlanker Header bietet Reactions, Regeln-Link und Zurück-zur-Lobby
   -->
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <script src="/static/shell.js?v=90a7fcdf2a4a" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=90a7fcdf2a4a">
+  <script src="/static/shell.js?v=ee6c21784b12" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=ee6c21784b12">
 </head>
 <body class="room-page">
   <h1 class="visually-hidden">ZDWA Spielraum</h1>
@@ -31,7 +31,6 @@
     <div id="reactionsBar" class="reactions-host"></div>
     <div id="headerTurnStatus" class="header-turn-status" aria-live="polite"></div>
     <div class="spacer"></div>
-    <button class="small ghost game-switch room-game-switch" type="button" data-game-switch hidden disabled aria-hidden="true" aria-label="Zilch öffnen (Alt+Shift+Z)" aria-keyshortcuts="Alt+Shift+Z" title="Zilch öffnen (Alt+Shift+Z)"><span class="game-switch-icon game-switch-icon--zilch" aria-hidden="true">Z</span><span class="room-game-switch-label">Zilch</span></button>
     <div class="room-header-overflow">
       <button id="roomHeaderMenuToggle" class="small ghost room-header-menu-toggle" type="button" aria-haspopup="menu" aria-controls="roomHeaderMenuPanel" aria-expanded="false" aria-label="Weitere Aktionen" title="Weitere Aktionen"><span aria-hidden="true">⋯</span></button>
       <div id="roomHeaderMenuPanel" class="room-header-menu-panel" role="menu" aria-label="Weitere Aktionen" hidden>
@@ -92,8 +91,8 @@
   </div>
 
   <!-- Scripts: zuerst scoreboard (Renderer), dann room (WS/Steuerung als ES-Modul) -->
-  <script src="/static/scoreboard.js?v=90a7fcdf2a4a" defer></script>
-  <script src="/static/emoji.js?v=90a7fcdf2a4a"></script>
-  <script type="module" src="/static/room.js?v=90a7fcdf2a4a"></script>
+  <script src="/static/scoreboard.js?v=ee6c21784b12" defer></script>
+  <script src="/static/emoji.js?v=ee6c21784b12"></script>
+  <script type="module" src="/static/room.js?v=ee6c21784b12"></script>
 </body>
 </html>

@@ -790,7 +790,6 @@
   min-width:0;
   max-width:none;
 }
-.room-page .room-header .room-game-switch,
 .room-page .room-header .room-header-overflow,
 .room-page .room-header #backToLobbyBtn{ flex:0 0 auto; }
 .room-page .room-header-menu-panel{
@@ -803,28 +802,6 @@
   height:2.35rem;
   min-height:2.35rem;
   padding:.42rem .55rem;
-}
-@media (max-width:560px){
-  .room-page .room-header button.room-game-switch.small{
-    width:var(--header-control-size);
-    min-width:var(--header-control-size);
-    height:var(--header-control-size);
-    min-height:var(--header-control-size);
-    padding:.22rem .42rem;
-    font-size:.78rem;
-    line-height:1;
-  }
-  .room-page .room-game-switch-label{ position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip:rect(0, 0, 0, 0); white-space:nowrap; }
-}
-@media (min-width:561px){
-  .room-page .room-header button.room-game-switch.small{
-    width:4.5rem;
-    min-width:4.5rem;
-    height:var(--header-control-size);
-    min-height:var(--header-control-size);
-    padding:0 .44rem;
-    font-size:.75rem;
-  }
 }
 
 /* Installed iPad PWAs can extend beneath the system status bar. Keep the game

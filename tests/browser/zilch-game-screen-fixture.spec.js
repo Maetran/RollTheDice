@@ -762,6 +762,8 @@ async function installGameScreenFixture(page, gameId, snapshots, detailsOverride
             roll_id: turn.roll_id,
             dice_indices: message.dice_indices,
           } });
+        } else if (message.action === "pause_game") {
+          this._message({ paused: true, pause_remaining_label: "1 h 0 min" });
         } else if (message.action === "send_emoji") {
           // The social transport echoes reactions to the sender as well as to
           // the opponent. This is intentionally different from text chat.
@@ -1337,6 +1339,82 @@ test("a finished Zilch game starts the same mode again with one click", async ({
       mode: "2",
       play_mode: "multiplayer",
     });
+  } finally {
+    await context.close();
+  }
+});
+
+test("the Zilch leave control mirrors ZDWA's stay, pause, and lobby choices", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    const gameId = "leave-flow-fixture";
+    const live = fixtureSnapshots().hotDice;
+    await installGameScreenFixture(page, gameId, { initial: live }, { play_mode: "multiplayer" });
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+
+    await page.goto(`/zilch/spiel/${gameId}`);
+    const leave = page.locator("#zilchLeaveGameBtn");
+    await expect(leave).toBeVisible();
+    await leave.click();
+    const dialog = page.locator("#appDialog");
+    await expect(dialog).toContainText(/Zur Lobby wechseln|Return to Lobby/);
+    await expect(dialog.getByRole("button", { name: /Pause/ })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: /Zur Lobby|Return to Lobby/ })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: /Im Spiel bleiben|Stay in Game/ })).toBeVisible();
+    await dialog.getByRole("button", { name: /Im Spiel bleiben|Stay in Game/ }).click();
+    await expect(page.locator("#appDialogBackdrop")).toBeHidden();
+    expect(await page.evaluate(() => window.__zilchGameScreenFixtureMessages)).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: "pause_game" }),
+      expect.objectContaining({ action: "end_game" }),
+    ]));
+
+    await leave.click();
+    await dialog.getByRole("button", { name: /Pause/ }).click();
+    await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: "pause_game" }),
+    ]));
+    await expect(dialog).toContainText(/Spiel pausiert|Game paused/);
+    await Promise.all([
+      page.waitForURL(/\/zilch$/),
+      dialog.getByRole("button", { name: /Zur Lobby|Return to Lobby/ }).click(),
+    ]);
+
+    await page.goto(`/zilch/spiel/${gameId}`);
+    const secondLeave = page.locator("#zilchLeaveGameBtn");
+    await expect(secondLeave).toBeVisible();
+    await secondLeave.click();
+    await page.locator("#appDialog").getByRole("button", { name: /Zur Lobby|Return to Lobby/ }).click();
+    await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: "end_game" }),
+    ]));
+    await page.evaluate(snapshot => {
+      window.__zilchGameScreenFixturePush({ notice: { type: "ended", by: "Mani" } });
+      window.__zilchGameScreenFixturePush({ scoreboard: snapshot });
+    }, {
+      ...live,
+      _started: false,
+      _finished: true,
+      _aborted: true,
+      _abort_reason: "manual",
+      _turn: null,
+      _zilch_turn_state: null,
+      _zilch_quick_holds: [],
+    });
+    await expect(page.locator("#appDialog")).toContainText(/Spiel abgebrochen|Game aborted/);
+    await expect(page.locator("#appDialog")).toContainText(/Mani.*(?:beendet|ended)/);
+    await Promise.all([
+      page.waitForURL(/\/zilch$/),
+      page.locator("#appDialog").getByRole("button", { name: /Zur Lobby|Return to Lobby/ }).click(),
+    ]);
   } finally {
     await context.close();
   }
@@ -2298,6 +2376,14 @@ test("a Zilch spectator connects read-only without taking a player seat", async 
     await expect(page.locator("[data-zilch-roll]")).toBeDisabled();
     await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
     await expect(page.locator("#zilchShareGameBtn")).toBeHidden();
+    const leave = page.locator("#zilchLeaveGameBtn");
+    await expect(leave).toBeVisible();
+    await expect(leave).toHaveText(/Lobby/);
+    await expect(leave).not.toHaveClass(/danger/);
+    await Promise.all([
+      page.waitForURL(/\/zilch$/),
+      leave.click(),
+    ]);
   } finally {
     await context.close();
   }
@@ -2384,13 +2470,20 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
     await expect(page.locator(".zilch-score-notebook")).not.toContainText(/Gegenzug offen|Reply pending|Schlussrunde ausgelöst|Final round triggered/);
     await expect(page.locator(".zilch-header [data-zilch-logout]")).toHaveCount(0);
     await expect(page.locator("#zilchAccountLogout")).toHaveCount(0);
-    await expect(page.locator("#zilchRoomLobby")).toBeVisible();
-    await expect(page.locator("#zilchRoomLobby")).toHaveAttribute("href", "/zilch");
-    await expect(page.locator("#zilchRoomLobby .zilch-control-label")).toHaveText(/Lobby/i);
+    const leaveGame = page.locator("#zilchLeaveGameBtn");
+    await expect(leaveGame).toBeVisible();
+    await expect(leaveGame).toBeEnabled();
+    await expect(leaveGame).toHaveAttribute("aria-label", /Spiel verlassen|Leave game/);
+    await expect(leaveGame.locator(".zilch-control-label")).toHaveText(/Spiel verlassen|Leave game/);
     await expect(page.locator("#zilchRoomRules")).toBeVisible();
     await expect(page.locator("#zilchRoomRules .zilch-control-label")).toHaveText(/Regeln|Rules/i);
-    await expect(page.locator(".zilch-header-tools [data-game-switch]")).toBeVisible();
-    await expect(page.locator(".zilch-header-tools [data-game-switch]")).toContainText("ZDWA");
+    await expect(page.locator(".zilch-header-tools [data-game-switch]")).toHaveCount(0);
+    await page.evaluate(() => window.ZDWA_APP_MODE?.refresh());
+    await expect(page.locator(".zilch-header-tools [data-game-switch]")).toHaveCount(0);
+    const roomPath = new URL(page.url()).pathname;
+    await page.keyboard.press("Alt+Shift+Z");
+    await page.waitForTimeout(150);
+    expect(new URL(page.url()).pathname).toBe(roomPath);
 
     const dice = page.locator(".zilch-die");
     await expect(dice).toHaveCount(6);
@@ -2522,16 +2615,13 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
         const header = document.querySelector(".zilch-header").getBoundingClientRect();
         const context = document.querySelector("#zilchRoomContext").getBoundingClientRect();
         const controls = [...document.querySelectorAll(".zilch-header-tools > *")]
-          .filter(element => element.getClientRects().length && !element.matches("[data-game-switch]"))
+          .filter(element => element.getClientRects().length)
           .map(element => element.getBoundingClientRect().height);
-        const gameSwitchHeight = document.querySelector(".zilch-header-tools [data-game-switch]")
-          ?.getBoundingClientRect().height || 0;
         return {
           headerHeight: header.height,
           contextCenter: context.top + context.height / 2,
           headerCenter: header.top + header.height / 2,
           controlHeights: controls,
-          gameSwitchHeight,
         };
       }),
     ]);
@@ -2545,7 +2635,6 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
     expect(Math.abs(headerGeometry.contextCenter - headerGeometry.headerCenter)).toBeLessThanOrEqual(3);
     expect(headerGeometry.controlHeights.length).toBeGreaterThanOrEqual(2);
     expect(headerGeometry.controlHeights.every(height => Math.abs(height - headerGeometry.controlHeights[0]) <= 1)).toBe(true);
-    expect(headerGeometry.gameSwitchHeight).toBeGreaterThanOrEqual(headerGeometry.controlHeights[0]);
 
     const scoringDice = page.locator("[data-zilch-die-index]");
     await expect(scoringDice).toHaveCount(4);

@@ -137,6 +137,39 @@ class GameTimeoutLifecycleTestCase(GameStateTestCase):
         self.assertNotIn("_live_sockets", game)
         self.assertNotIn(game["_id"], games)
 
+    def test_manual_zilch_abort_closes_every_live_socket_and_retires_the_room(self) -> None:
+        """A player-requested Zilch abort has the same transport cleanup."""
+
+        class TerminalSocket:
+            def __init__(self) -> None:
+                self.close_codes: list[int] = []
+
+            async def close(self, code: int = 1000) -> None:
+                self.close_codes.append(code)
+
+        game = self.make_game(mode=2, players=[("p1", "Anna"), ("p2", "Ben")])
+        game.update({"_game_type": "zilch", "_aborted": True, "_abort_reason": "manual"})
+        first = TerminalSocket()
+        second = TerminalSocket()
+        spectator = TerminalSocket()
+        pending = TerminalSocket()
+        game["_players"][0]["ws"] = first
+        game["_players"][1]["ws"] = second
+        game["_spectators"] = [{"id": "s1", "name": "Cleo", "ws": spectator}]
+        game["_live_sockets"] = [pending]
+
+        with patch("app.zilch_cpu_runner.stop_cpu_runner", new=AsyncMock()) as stop_cpu_runner:
+            asyncio.run(main._retire_manual_zilch_abort(game))
+
+        stop_cpu_runner.assert_awaited_once_with(str(game["_id"]))
+        for socket in (first, second, spectator, pending):
+            with self.subTest(socket=socket):
+                self.assertEqual(socket.close_codes, [1000])
+        self.assertTrue(all(player["ws"] is None for player in game["_players"]))
+        self.assertIsNone(game["_spectators"][0]["ws"])
+        self.assertNotIn("_live_sockets", game)
+        self.assertNotIn(game["_id"], games)
+
     def test_periodic_sweeper_stops_cleanly_after_its_initial_pass(self) -> None:
         async def scenario() -> None:
             stop_event = asyncio.Event()

@@ -175,6 +175,17 @@ keinen Zuschauerzugang.
 
 ## Pause und Ablauf
 
+Über **„Spiel verlassen“** im Header öffnet jeder Teilnehmer denselben
+Auswahlweg wie bei ZDWA: **„Pause“** hält den vollständigen Zilch-Zustand bis zur
+angezeigten Frist wiederaufnehmbar und führt danach in die Lobby.
+**„Zur Lobby“** bricht die Partie für alle ab und schickt alle verbundenen
+Teilnehmer mit einem Hinweis zurück; dieser bewusste Abbruch erzeugt kein
+Zilch-Ergebnis und keine Historie, Statistik, Ranglistenwertung oder Awards.
+**„Im Spiel bleiben“** schließt den Dialog ohne Änderung. Zuschauer können den
+Tisch nur direkt zur Lobby verlassen. Der bereits vorhandene Solo-Befehl
+**„Solo-Lauf aufgeben“** bleibt davon getrennt: Er speichert den privaten Lauf
+als aufgegebenes Ergebnis.
+
 Für wartende, laufende und pausierte Zilch-Tische gilt dieselbe Frist: Bleibt
 eine serverseitig angenommene Raumaktion eine volle Stunde aus, wird die Partie
 abgebrochen. Verbundene Spieler und Zuschauer erhalten einen klaren

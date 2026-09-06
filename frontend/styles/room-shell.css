@@ -119,21 +119,6 @@
   text-align:center;
 }
 .room-header-menu-label{ min-width:0; }
-.room-page .room-header .room-game-switch{
-  box-sizing:border-box;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:.3rem;
-  width:4.5rem;
-  min-width:4.5rem;
-  height:var(--header-control-size);
-  min-height:var(--header-control-size);
-  padding:0 .44rem;
-  font-size:.75rem;
-  font-weight:800;
-  line-height:1;
-}
 .header-turn-status,
 .chat-reactions-host{
   display:none;

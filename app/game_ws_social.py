@@ -151,12 +151,6 @@ async def _pause_game(session: GameSocketSession, _data: dict[str, Any]) -> None
 
 
 async def _end_game(session: GameSocketSession, _data: dict[str, Any]) -> None:
-    if game_type_from_state(session.game) == ZILCH_GAME_TYPE:
-        # Zilch reaches its visible terminal state only through its own turn
-        # engine. This guard also protects direct handler calls outside the
-        # normal coordinator vocabulary.
-        await _send_error(session, "Zilch-Partien werden über ihre Spielregeln beendet.")
-        return
     if not session.player_id:
         await _send_error(session, "Nur Spieler koennen das Spiel beenden")
         return
@@ -169,8 +163,13 @@ async def _end_game(session: GameSocketSession, _data: dict[str, Any]) -> None:
     except Exception:
         logger.debug("Could not broadcast game-end notice", exc_info=True)
     session.game["_aborted"] = True
+    session.game["_abort_reason"] = "manual"
     session.game["_results"] = None
     session.game["_started"] = False
     session.game["_finished"] = True
+    session.game["_manual_pause"] = False
+    session.game["_manual_pause_by"] = None
+    session.game["_manual_pause_by_name"] = None
+    session.game["_manual_pause_at"] = None
     touch(session.game)
     await broadcast(session.game, {"scoreboard": snapshot(session.game)})

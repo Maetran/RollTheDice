@@ -117,7 +117,7 @@ function expectUniformHeaderControls(heights) {
   expect(heights, `Header control heights: ${heights.join(", ")}`).toEqual(heights.map(() => 36));
 }
 
-test("the permission-gated game switch is available across ZDWA and in its active room", async ({ page }) => {
+test("the permission-gated game switch is available across ZDWA pages but absent in its active room", async ({ page }) => {
   await page.goto("/regeln");
   const anonymousSwitch = page.locator("[data-game-switch]");
   await expect(anonymousSwitch).toBeHidden();
@@ -179,12 +179,11 @@ test("the permission-gated game switch is available across ZDWA and in its activ
   await expect(page.locator("#diceBar")).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  const roomSwitch = page.locator(".room-header [data-game-switch]");
-  await expect(roomSwitch).toBeVisible();
-  await expect(roomSwitch).toBeEnabled();
-  await expect(roomSwitch.locator(".game-switch-icon--zilch")).toHaveText("Z");
-  const zdwaMobileSwitch = await switchControlGeometry(roomSwitch);
-  const geometry = await roomSwitch.evaluate(element => {
+  const roomPath = new URL(page.url()).pathname;
+  await expect(page.locator(".room-header [data-game-switch]")).toHaveCount(0);
+  const leaveGame = page.locator("#backToLobbyBtn");
+  await expect(leaveGame).toBeVisible();
+  const geometry = await leaveGame.evaluate(element => {
     const button = element.getBoundingClientRect();
     const header = element.closest(".room-header").getBoundingClientRect();
     return {
@@ -201,14 +200,8 @@ test("the permission-gated game switch is available across ZDWA and in its activ
   expect(geometry.buttonLeft).toBeGreaterThanOrEqual(geometry.headerLeft);
   expect(geometry.buttonRight).toBeLessThanOrEqual(geometry.headerRight);
   expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
-  expectUniformHeaderControls(await controlHeights(page.locator(".room-header > button")));
-
-  await Promise.all([
-    page.waitForURL(/\/zilch$/),
-    roomSwitch.click(),
-  ]);
-  await expect(page.locator("html")).toHaveAttribute("data-game", "zilch");
-  const zilchMobileSwitch = await switchControlGeometry(page.locator(".zilch-header [data-game-switch]"));
-  expect(zilchMobileSwitch).toEqual(zdwaMobileSwitch);
-  expectUniformHeaderControls(await controlHeights(page.locator(".zilch-header-tools :is([data-language-switcher], [data-game-switch])")));
+  expectUniformHeaderControls(await controlHeights(page.locator(".room-header button")));
+  await page.keyboard.press("Alt+Shift+Z");
+  await page.waitForTimeout(150);
+  expect(new URL(page.url()).pathname).toBe(roomPath);
 });

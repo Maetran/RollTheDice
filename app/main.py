@@ -134,12 +134,12 @@ new_game = _new_game
 logger = logging.getLogger(__name__)
 
 
-async def _close_timeout_connections(game: GameDict) -> None:
-    """Close every live room socket after its one terminal timeout frame.
+async def _close_terminal_connections(game: GameDict) -> None:
+    """Close every live room socket after its terminal frame.
 
-    A timeout has no resumable room behind it.  Leaving a ``receive_json``
-    loop open would otherwise retain its session, connection reservation and
-    a client-side reconnect loop after the game has left the registry.
+    A terminal room has no resumable room behind it. Leaving a ``receive_json``
+    loop open would otherwise retain its session, connection reservation and a
+    client-side reconnect loop after the game has left the registry.
     """
     closed: set[int] = set()
     sockets: list[object] = []
@@ -169,7 +169,30 @@ async def _close_timeout_connections(game: GameDict) -> None:
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.debug("Could not close timeout socket for game %s", game.get("_id"), exc_info=True)
+            logger.debug("Could not close terminal socket for game %s", game.get("_id"), exc_info=True)
+
+
+async def _stop_retired_cpu_runner(game_id: str) -> None:
+    """Cancel a delayed CPU turn before discarding its terminal room."""
+    try:
+        from .zilch_cpu_runner import stop_cpu_runner
+
+        await stop_cpu_runner(game_id)
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.exception("Could not stop CPU runner for retired game %s", game_id)
+
+
+async def _retire_manual_zilch_abort(game: GameDict) -> None:
+    """Close and remove a Zilch room after its manual terminal frame."""
+    game_id = str(game.get("_id") or "")
+    try:
+        await _stop_retired_cpu_runner(game_id)
+    finally:
+        await _close_terminal_connections(game)
+        if game_id and games.get(game_id) is game:
+            games.pop(game_id, None)
 
 
 async def _publish_timeout_abort(game: GameDict) -> None:
@@ -181,16 +204,7 @@ async def _publish_timeout_abort(game: GameDict) -> None:
     game["_timeout_abort_pending"] = False
     # CPU moves are guarded against terminal state too, but an already sleeping
     # runner should not remain around until its presentation delay elapses.
-    # The import stays lazy to keep the shared lifecycle module independent of
-    # Zilch's optional CPU mode.
-    try:
-        from .zilch_cpu_runner import stop_cpu_runner
-
-        await stop_cpu_runner(game_id)
-    except asyncio.CancelledError:
-        raise
-    except Exception:
-        logger.exception("Could not stop CPU runner for inactive game %s", game_id)
+    await _stop_retired_cpu_runner(game_id)
     try:
         await broadcast(game, {"scoreboard": snapshot(game)})
     except Exception:
@@ -198,7 +212,7 @@ async def _publish_timeout_abort(game: GameDict) -> None:
         # Do not let one broken client projection retain an aborted room forever.
         logger.exception("Could not publish inactivity timeout for game %s", game_id)
     finally:
-        await _close_timeout_connections(game)
+        await _close_terminal_connections(game)
         # Existing sockets retain their object long enough to render the final
         # frame, then their normal disconnect cleanup releases transport
         # state. New joins must not revive a room whose one-hour lifetime has
@@ -1802,4 +1816,5 @@ async def ws_game(websocket: WebSocket, game_id: str) -> None:
         release_connection=_release_websocket,
         finalize_game=_finalize_and_log_results,
         timeout_abort_publisher=_publish_timeout_abort,
+        manual_zilch_abort_publisher=_retire_manual_zilch_abort,
     )

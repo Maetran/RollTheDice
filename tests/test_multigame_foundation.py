@@ -339,11 +339,6 @@ class MultiGameFoundationTestCase(GameStateTestCase):
                         self.assertEqual(started["_zilch_start_roll"], mirrored["_zilch_start_roll"])
                         self.assertTrue(zilch_spectating_available(main.games[game["_id"]]))
 
-                        mani_socket.send_json({"action": "end_game"})
-                        rejected_end = mani_socket.receive_json()
-                        self.assertEqual(rejected_end["error"], "Unbekannte Aktion: end_game")
-                        self.assertFalse(main.games[game["_id"]]["_finished"])
-
                         with third_client.websocket_connect(f"/ws/{game['_id']}") as third_socket:
                             self.assertEqual(third_socket.receive_json()["game"]["game_type"], ZILCH_GAME_TYPE)
                             third_socket.send_json({"action": "join_game"})
@@ -376,6 +371,36 @@ class MultiGameFoundationTestCase(GameStateTestCase):
                             self.assertEqual(spectator_socket.receive_json()["error"], "Nur fuer Spieler")
 
         self.assertEqual(len(main.games[game["_id"]]["_players"]), 2)
+
+    def test_zilch_player_can_pause_then_end_a_game_without_result(self):
+        game = self._track(create_game_state("zilch-manual-end", "Zur Lobby", 1, ZILCH_GAME_TYPE))
+        _, mani_token = self._identity("Mani", role="admin")
+
+        with TestClient(main.app) as client:
+            client.cookies.set("rollthedice_session", mani_token)
+            with client.websocket_connect(f"/ws/{game['_id']}") as websocket:
+                websocket.receive_json()
+                websocket.send_json({"action": "join_game"})
+                websocket.receive_json()
+                opening = websocket.receive_json()["scoreboard"]
+                self.assertTrue(opening["_started"])
+
+                websocket.send_json({"action": "pause_game"})
+                self.assertTrue(websocket.receive_json()["paused"])
+                paused = websocket.receive_json()["scoreboard"]
+                self.assertTrue(paused["_manual_pause"])
+
+                websocket.send_json({"action": "end_game"})
+                notice = websocket.receive_json()
+                terminal = websocket.receive_json()["scoreboard"]
+
+        self.assertEqual(notice["notice"], {"type": "ended", "by": "Mani"})
+        self.assertTrue(terminal["_finished"])
+        self.assertTrue(terminal["_aborted"])
+        self.assertEqual(terminal["_abort_reason"], "manual")
+        self.assertFalse(game["_manual_pause"])
+        self.assertIsNone(game["_results"])
+        self.assertNotIn(game["_id"], main.games)
 
     def test_zilch_spectator_policy_rejects_waiting_cpu_solo_and_terminal_games(self):
         waiting = self._track(new_zilch_game("zilch-watch-waiting", "Warten", 2))

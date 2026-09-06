@@ -4423,10 +4423,21 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
   text-decoration: none;
 }
 
+.zilch-shell--game .zilch-room-leave {
+  border-color: rgba(255, 194, 166, .56);
+  color: #ffe1d4;
+}
+
 .zilch-shell--game .zilch-header-tools :where(button, a):hover {
   border-color: rgba(255, 233, 187, .68);
   color: #3b1d0d;
   background: #f4c868;
+}
+
+.zilch-shell--game .zilch-header-tools .zilch-room-leave:hover {
+  border-color: rgba(255, 216, 195, .82);
+  color: #fff8e8;
+  background: rgba(153, 47, 32, .72);
 }
 
 .zilch-shell--game .zilch-header-tools .game-switch span:last-child,
@@ -4624,4 +4635,15 @@ html[data-game="zilch"] .zilch-header-tools .game-switch-icon {
   html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch > span:last-child {
     display: none;
   }
+}
+
+@media (max-width: 560px) {
+  .zilch-shell--game .zilch-room-leave {
+    flex-basis: var(--header-control-size);
+    width: var(--header-control-size);
+    min-width: var(--header-control-size);
+    padding: 0;
+  }
+
+  .zilch-shell--game .zilch-room-leave .zilch-control-label { display: none; }
 }

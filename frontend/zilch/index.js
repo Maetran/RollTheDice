@@ -22,6 +22,11 @@ function decodedPathSegment(match) {
 }
 const gameId = decodedPathSegment(gameIdMatch);
 const resultId = decodedPathSegment(resultIdMatch);
+// The Zilch shell also serves account and leaderboard routes, where the
+// cross-game switch remains useful. A live table has its own leave flow, so
+// remove that switch before the shared app-mode controller can bind or reveal
+// it on an auth refresh.
+if (gameId) document.querySelector("[data-game-switch]")?.remove();
 const historyRoute = currentZilchRoute === "/historie";
 const rulesRoute = currentZilchRoute === "/regeln";
 const statisticsRoute = currentZilchRoute === "/statistiken";
@@ -85,6 +90,10 @@ const state = {
   chatOpen: false,
   accountTab: "statistics",
   accountHashListenerBound: false,
+  leaveDialogOpen: false,
+  lastEndedBy: null,
+  terminalNoticeShown: false,
+  pauseRedirectTimer: null,
 };
 
 function t(value) {
@@ -453,13 +462,6 @@ function renderShell() {
     const label = rulesLink.querySelector(".zilch-control-label");
     if (label) label.textContent = t("Regeln");
   }
-  const lobbyLink = document.getElementById("zilchRoomLobby");
-  if (lobbyLink) {
-    lobbyLink.setAttribute("aria-label", t("Zur Zilch-Lobby"));
-    lobbyLink.setAttribute("title", t("Zur Zilch-Lobby"));
-    const label = lobbyLink.querySelector(".zilch-control-label");
-    if (label) label.textContent = t("Lobby");
-  }
   const shareButton = document.getElementById("zilchShareGameBtn");
   if (shareButton) {
     shareButton.setAttribute("aria-label", t("Spiel teilen"));
@@ -490,16 +492,17 @@ function navigationRouteKind() {
 function renderNavigation() {
   const navigation = document.getElementById("zilchNavigation");
   const roomContext = document.getElementById("zilchRoomContext");
-  const roomLobby = document.getElementById("zilchRoomLobby");
+  const leaveGameButton = document.getElementById("zilchLeaveGameBtn");
   const roomRules = document.getElementById("zilchRoomRules");
   const shareButton = document.getElementById("zilchShareGameBtn");
   if (!navigation) return;
   const inGame = routeKind() === "game";
   root?.classList.toggle("zilch-shell--game", inGame);
   if (roomContext) roomContext.hidden = !inGame;
-  if (roomLobby) roomLobby.hidden = !inGame;
+  if (leaveGameButton) leaveGameButton.hidden = !inGame;
   if (roomRules) roomRules.hidden = !inGame;
   if (shareButton) shareButton.hidden = true;
+  syncZilchLeaveControl();
   if (inGame) {
     navigation.innerHTML = "";
     navigation.hidden = true;
@@ -519,6 +522,127 @@ function renderNavigation() {
   ];
   navigation.innerHTML = `<ul class="zilch-nav-list">${entries.map(entry => `<li><a href="${escapeHtml(entry.href)}"${entry.key === current ? ' aria-current="page"' : ""}>${escapeHtml(entry.label)}</a></li>`).join("")}</ul>`;
   navigation.hidden = false;
+}
+
+function zilchPauseDurationLabel(snapshot) {
+  const label = snapshot?._timeout_label || snapshot?._pause_remaining_label;
+  if (label) return String(label);
+  const seconds = Number(snapshot?._timeout_seconds || 3600);
+  const totalMinutes = Math.max(1, Math.ceil(seconds / 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours ? `${hours} h ${minutes} min` : `${minutes} min`;
+}
+
+function syncZilchLeaveControl() {
+  const button = document.getElementById("zilchLeaveGameBtn");
+  if (!button) return;
+  const inGame = routeKind() === "game";
+  button.hidden = !inGame;
+  if (!inGame) return;
+
+  const label = button.querySelector(".zilch-control-label");
+  if (spectatorRoute) {
+    button.classList.remove("danger");
+    button.setAttribute("aria-label", t("Lobby"));
+    button.setAttribute("title", t("Lobby"));
+    if (label) label.textContent = t("Lobby");
+    button.disabled = false;
+  } else {
+    button.classList.add("danger");
+    button.setAttribute("aria-label", t("Spiel verlassen"));
+    button.setAttribute("title", t("Spiel verlassen"));
+    if (label) label.textContent = t("Spiel verlassen");
+    button.disabled = Boolean(
+      !state.game
+      || state.game?._finished
+      || state.game?._aborted
+      || state.stopped
+      || state.leaveDialogOpen
+      || state.pendingAction,
+    );
+  }
+
+  if (button._bound) return;
+  button._bound = true;
+  button.addEventListener("click", () => {
+    if (spectatorRoute) {
+      window.location.assign(zilchPath("/"));
+      return;
+    }
+    void openZilchLeaveDialog();
+  });
+}
+
+function stopZilchGameSocket(socket = state.socket) {
+  state.stopped = true;
+  state.pendingAction = null;
+  state.pendingOptionId = null;
+  window.clearTimeout(state.reconnectTimer);
+  window.clearTimeout(state.pauseRedirectTimer);
+  if (socket) terminalGameSockets.add(socket);
+  try { socket?.close?.(1000); } catch (_) {}
+}
+
+function showZilchRoomNotice({ title, message: messageText, kind }) {
+  const goToLobby = () => window.location.assign(zilchPath("/"));
+  if (typeof window.ZDWA_UI?.notice === "function") {
+    void window.ZDWA_UI.notice({
+      title,
+      message: messageText,
+      kind,
+      buttonLabel: t("Zur Lobby"),
+    }).finally(goToLobby);
+    return;
+  }
+  window.alert(`${title}\n\n${messageText}`);
+  goToLobby();
+}
+
+async function openZilchLeaveDialog() {
+  if (
+    spectatorRoute
+    || state.leaveDialogOpen
+    || !state.game
+    || state.game?._finished
+    || state.game?._aborted
+    || state.stopped
+    || state.pendingAction
+  ) return;
+  state.leaveDialogOpen = true;
+  syncZilchLeaveControl();
+  try {
+    const choice = typeof window.ZDWA_UI?.dialog === "function"
+      ? await window.ZDWA_UI.dialog({
+          title: t("Zur Lobby wechseln?"),
+          message: interpolated(
+            "Pause hält das Spiel bis zu {duration} offen. Zur Lobby bricht das Spiel ab und schickt alle zurück.",
+            { duration: zilchPauseDurationLabel(state.game) },
+          ),
+          kind: "warning",
+          cancelValue: "stay",
+          actions: [
+            { id: "pause", label: t("Pause"), className: "primary" },
+            { id: "lobby", label: t("Zur Lobby"), className: "danger" },
+            { id: "stay", label: t("Im Spiel bleiben"), className: "ghost" },
+          ],
+        })
+      : "stay";
+    if (choice === "pause") {
+      requestAction("pause_game");
+      window.clearTimeout(state.pauseRedirectTimer);
+      state.pauseRedirectTimer = window.setTimeout(() => {
+        if (state.stopped || state.pendingAction !== "pause_game") return;
+        stopZilchGameSocket();
+        window.location.assign(zilchPath("/"));
+      }, 650);
+    } else if (choice === "lobby") {
+      requestAction("end_game");
+    }
+  } finally {
+    state.leaveDialogOpen = false;
+    syncZilchLeaveControl();
+  }
 }
 
 function renderNotice(messageText, { kind = "info" } = {}) {
@@ -2658,7 +2782,7 @@ function renderRulesContent(facts) {
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Freier Wurf und Bestätigungswurf"))}</h2><p>${escapeHtml(t("Wenn alle sechs Würfel Punkte bringen, werden sie wieder frei: ein freier Wurf. Die Rundenpunkte bleiben stehen."))}</p><p>${escapeHtml(t("Alle Punktewürfel hält alle Würfel, die gerade Punkte bringen. Ein möglicher Freier Wurf erscheint als Stempel; erst Weiterwürfeln übernimmt die Auswahl."))}</p><p>${escapeHtml(t("Nach drei Einsen oder einem vollen Wurf mit allen sechs Würfeln muss ein weiterer Punktewurf von mindestens 50 Punkten bestätigt werden, bevor du sichern darfst."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zilch-Serie"))}</h2><p>${escapeHtml(t("Ein Wurf ohne gültige Wertung – oder eine nicht erreichbare 300er-Regel nach Wurf drei – beendet den Zug als Zilch. Ungesicherte Punkte verfallen."))}</p><p>${escapeHtml(t("Bei einem Zilch bleibt der letzte Wurf sichtbar, bis der nächste Wurf ausgeführt wird."))}</p><p>${escapeHtml(t("Bei jedem dritten Zilch in Folge – also beim dritten, sechsten, neunten und so weiter – werden 500 Punkte abgezogen, niemals unter null."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Spielweise des Würfelwirts"))}</h2><p>${escapeHtml(t("Beim Start wählst du seine Spielweise: Konservativ sichert ab 500 Punkten eher früh, Normal ab 650 Punkten solide Runden, Aggressiv jagt ab 850 Punkten größere Runden."))}</p><p>${escapeHtml(t("Alle drei würfeln fair nach denselben Regeln wie du. Bei wenigen freien Würfeln oder einem sicheren Sieg sichert der Würfelwirt früher."))}</p></section>
-      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Pause und Ablauf"))}</h2><p>${escapeHtml(t("Bleibt am Tisch eine Stunde lang alles still – egal ob er wartet, läuft oder pausiert –, bricht der Wirt die Partie ab. Wer als Spieler oder Zuschauer noch verbunden ist, sieht den Hinweis und findet direkt zurück in die Lobby."))}</p></section>
+      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Pause und Ablauf"))}</h2><p>${escapeHtml(t("Über Spiel verlassen pausierst du eine Partie bis zur angezeigten Frist oder beendest sie für alle ohne Ergebnis und kehrst zur Lobby zurück. Im Spiel bleiben schließt den Dialog; Zuschauer gehen direkt zur Lobby."))}</p><p>${escapeHtml(t("Bleibt am Tisch eine Stunde lang alles still – egal ob er wartet, läuft oder pausiert –, bricht der Wirt die Partie ab. Wer als Spieler oder Zuschauer noch verbunden ist, sieht den Hinweis und findet direkt zurück in die Lobby."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zuschauen"))}</h2><p>${escapeHtml(t("Laufende Zwei-Personen-Partien werden in der Lobby mit beiden Spielern angezeigt. Über Zuschauen öffnest du eine Live-Ansicht; Würfeln, Halten und Sichern bleiben den beiden Teilnehmern vorbehalten."))}</p></section>
     </section>
     <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>
@@ -4002,6 +4126,7 @@ function renderGameState() {
   const currentPlayerId = snapshot?._turn?.player_id;
   const isMyTurn = !spectatorRoute && localPlayerIs(snapshot, currentPlayerId);
   const canInteract = Boolean(isMyTurn && !state.zilchMoment);
+  syncZilchLeaveControl();
   syncSoloAbandonControl(snapshot, turnState, canInteract);
   syncZilchShareControl(snapshot);
   updateGameHeader(snapshot);
@@ -4316,6 +4441,7 @@ function wireGameInteractions(snapshot, turnState, quickHolds) {
 
 function renderSocketError(value) {
   updateStatus(value, "error");
+  if (state.pendingAction === "pause_game") window.clearTimeout(state.pauseRedirectTimer);
   state.pendingAction = null;
   state.pendingOptionId = null;
   if (state.game) renderGameState();
@@ -4385,11 +4511,24 @@ function connectGameSocket() {
   socket.addEventListener("message", (event) => {
     let payload;
     try { payload = JSON.parse(event.data); } catch (_) { return; }
+    if (payload.notice?.type === "ended") {
+      state.lastEndedBy = String(payload.notice.by || "").trim() || null;
+    }
     if (payload.player_id) {
       state.playerId = String(payload.player_id);
       setLocalValue("player", state.playerId);
     }
     if (payload.resume_token) setLocalValue("resume", payload.resume_token);
+    if (payload.paused) {
+      const label = payload.pause_remaining_label || zilchPauseDurationLabel(state.game);
+      stopZilchGameSocket(socket);
+      showZilchRoomNotice({
+        title: t("Spiel pausiert"),
+        message: interpolated("Du kannst es innerhalb von {duration} wieder aufnehmen.", { duration: label }),
+        kind: "info",
+      });
+      return;
+    }
     if (payload.scoreboard) {
       const previousActivePlayerId = activeNotebookPlayerId(state.game);
       const nextActivePlayerId = activeNotebookPlayerId(payload.scoreboard);
@@ -4427,6 +4566,23 @@ function connectGameSocket() {
       }
       state.pendingAction = null;
       state.pendingOptionId = null;
+      if (
+        payload.scoreboard._aborted
+        && (payload.scoreboard._abort_reason === "manual" || state.lastEndedBy)
+        && !state.terminalNoticeShown
+      ) {
+        state.terminalNoticeShown = true;
+        const by = state.lastEndedBy;
+        stopZilchGameSocket(socket);
+        showZilchRoomNotice({
+          title: t("Spiel abgebrochen"),
+          message: by
+            ? `${by} ${t("hat das Spiel beendet.")}`
+            : t("Das Spiel wurde beendet."),
+          kind: "warning",
+        });
+        return;
+      }
       const eventText = messageForEvent(payload.scoreboard, payload.zilch_event || payload.scoreboard._zilch_last_event);
       updateStatus(eventText || null);
       const awardScope = spectatorRoute ? "" : terminalAwardScope(payload.scoreboard);

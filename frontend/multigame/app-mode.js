@@ -26,6 +26,10 @@ function updateSwitch(allowed) {
   }
 }
 
+function hasGameSwitch() {
+  return Boolean(document.querySelector("[data-game-switch]"));
+}
+
 function rememberMode(mode) {
   try { localStorage.setItem(APP_MODE_STORAGE_KEY, mode); } catch (_) {}
 }
@@ -107,6 +111,7 @@ export function initializeAppMode({
       || isEditableTarget(event.target)
       || isEditableTarget(document.activeElement)
     ) return;
+    if (!hasGameSwitch()) return;
     if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey || event.key.toLowerCase() !== "z") return;
     if (!allowed) return;
     event.preventDefault();
