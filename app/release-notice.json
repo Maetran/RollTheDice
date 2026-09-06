@@ -7,7 +7,7 @@
     "de": {
       "title": "Profilbild ohne Kleingedrucktes",
       "changes": [
-        "Du kannst jetzt normale JPG-, PNG- oder WebP-Fotos bis 8 MB und 4.096 × 4.096 Pixel als Profilbild wählen. Auch typische Handyfotos werden nicht mehr allein wegen ihrer Dateigröße abgewiesen.",
+        "Du kannst jetzt normale JPG-, PNG- oder WebP-Fotos bis 8 MB und 4.096 × 4.096 Pixel als Profilbild wählen. Auch typische Handyfotos werden nicht mehr allein wegen ihrer Dateigröße oder einer zickigen Vorschau abgewiesen.",
         "Dein Bild wird weiterhin sicher zugeschnitten und nur als kleine, neue 256 × 256-WebP-Version ohne Metadaten gespeichert. Das Original bleibt nicht auf dem Server.",
         "Das Profilbild erscheint wie bisher in Profilen, Chats, Spielräumen und Statistiken beider Spiele."
       ]
@@ -15,7 +15,7 @@
     "en": {
       "title": "A profile picture without the fine print",
       "changes": [
-        "You can now choose ordinary JPG, PNG or WebP photos up to 8 MB and 4,096 × 4,096 pixels as a profile picture. Typical phone photos are no longer rejected just because of their file size.",
+        "You can now choose ordinary JPG, PNG or WebP photos up to 8 MB and 4,096 × 4,096 pixels as a profile picture. Typical phone photos are no longer rejected just because of their file size or a fussy preview.",
         "Your picture is still safely cropped and stored only as a small, new 256 × 256 WebP without metadata. The original never remains on the server.",
         "Your profile picture still appears in profiles, chats, game rooms and statistics in both games."
       ]

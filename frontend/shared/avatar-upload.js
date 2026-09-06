@@ -5,7 +5,14 @@ const t = value => window.ZDWA_I18N?.t?.(value) || value;
 const endpoint = "/api/account/avatar";
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const inputLimit = 8 * 1024 * 1024;
-const maxSide = 4096;
+
+function mediaTypeFor(file) {
+  if (allowedTypes.has(file?.type)) return file.type;
+  // Some mobile file pickers omit File.type for otherwise ordinary pictures.
+  // The server still verifies the magic bytes against this declared type.
+  const extension = String(file?.name || "").trim().split(".").pop()?.toLowerCase();
+  return ({ jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" })[extension] || "";
+}
 
 function node(tag, text = "", className = "") {
   const result = document.createElement(tag);
@@ -45,6 +52,7 @@ export function mountAvatarUpload(mount) {
   mount.classList.add("avatar-upload");
   let account = null;
   let selected = null;
+  let selectedType = "";
   let objectUrl = null;
   let epoch = 0;
   let busy = false;
@@ -74,6 +82,7 @@ export function mountAvatarUpload(mount) {
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = null;
     selected = null;
+    selectedType = "";
     input.value = "";
   }
   function controls() {
@@ -114,25 +123,17 @@ export function mountAvatarUpload(mount) {
     controls();
     if (!file) return;
     if (file.size > inputLimit) { message.textContent = errorText(new Error("avatar_too_large")); return; }
-    if (!allowedTypes.has(file.type)) { message.textContent = errorText(new Error("avatar_invalid_format")); return; }
+    const mediaType = mediaTypeFor(file);
+    if (!mediaType) { message.textContent = errorText(new Error("avatar_invalid_format")); return; }
     objectUrl = URL.createObjectURL(file);
-    const candidateUrl = objectUrl;
-    const candidate = new Image();
-    candidate.src = candidateUrl;
-    try {
-      await candidate.decode();
-      if (expectedEpoch !== epoch || !mount.isConnected) return;
-      if (!candidate.naturalWidth || !candidate.naturalHeight || candidate.naturalWidth > maxSide || candidate.naturalHeight > maxSide) {
-        throw new Error("avatar_dimensions_invalid");
-      }
-      selected = file;
-      preview.src = candidateUrl;
-      message.textContent = t("Vorschau bereit. Mit Speichern übernimmst du das Bild für beide Spiele.");
-    } catch (error) {
-      if (expectedEpoch !== epoch) return;
-      clearFile();
-      message.textContent = errorText(error.message === "avatar_dimensions_invalid" ? error : new Error("avatar_invalid_image"));
-    }
+    if (expectedEpoch !== epoch || !mount.isConnected) return;
+    // Image.decode() is unreliable for some otherwise valid mobile picker
+    // files. The server is the single strict boundary: it fully decodes,
+    // checks 4,096 pixels per side and strips/rebuilds the resulting WebP.
+    selected = file;
+    selectedType = mediaType;
+    preview.src = objectUrl;
+    message.textContent = t("Vorschau bereit. Mit Speichern übernimmst du das Bild für beide Spiele.");
     controls();
   });
   async function mutate(method) {
@@ -145,7 +146,7 @@ export function mountAvatarUpload(mount) {
     try {
       const data = await request({ method, headers: {
         "X-Avatar-Viewer-Id": String(viewer),
-        ...(method === "PUT" ? { "Content-Type": selected.type } : {}),
+        ...(method === "PUT" ? { "Content-Type": selectedType } : {}),
       }, ...(method === "PUT" ? { body: selected } : {}) });
       if (expectedEpoch !== epoch || !mount.isConnected) return;
       if (data.viewer_id !== viewer) throw new Error("avatar_viewer_changed");

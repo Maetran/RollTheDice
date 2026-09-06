@@ -100,6 +100,15 @@ test("account avatar upload accepts ordinary phone-photo limits", async ({ page 
   await expect(upload.locator("input[type=file]")).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
   await expect(upload.locator(".avatar-upload-hint")).toContainText("8 MB");
   await expect(upload.locator(".avatar-upload-hint")).toContainText("4.096 × 4.096 Pixel");
+  await upload.locator("input[type=file]").setInputFiles({
+    name: "phone-photo.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEklEQVR4nGNUKt/NwMDAxAAGAA+BAVjtqt5YAAAAAElFTkSuQmCC", "base64"),
+  });
+  await expect(upload).toContainText("Vorschau bereit.");
+  await expect(upload.getByRole("button", { name: "Profilbild speichern" })).toBeEnabled();
+  await upload.getByRole("button", { name: "Profilbild speichern" }).click();
+  await expect(upload).toContainText("Profilbild gespeichert.");
 });
 
 

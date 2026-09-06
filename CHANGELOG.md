@@ -18,6 +18,9 @@ also includes older and internal changes.
 - Profilbilder akzeptieren jetzt normale JPG-, PNG- und WebP-Fotos bis 8 MB
   und 4’096 × 4’096 Pixel. Damit funktionieren auch typische Handyfotos wie
   das bisher abgewiesene, rund 384 KB große PNG zuverlässig.
+- Die Vorschau blockiert Bilder nicht mehr wegen einer unzuverlässigen
+  Browser-Dekodierung. Auch wenn ein mobiles Dateiauswahlfenster keinen
+  Medientyp mitliefert, prüft und verarbeitet der Server das Bild verbindlich.
 - Die Sicherheit und der Speicherbedarf bleiben klein: Der Server prüft das
   Format und alle Pixel vollständig, entfernt Metadaten und speichert nur eine
   neu erzeugte quadratische 256-Pixel-WebP-Datei bis 64 KB. Die hochgeladene
@@ -28,6 +31,9 @@ also includes older and internal changes.
 - Profile pictures now accept ordinary JPG, PNG and WebP photos up to 8 MB and
   4,096 × 4,096 pixels. Typical phone photos, including PNG files around
   384 KB that were previously rejected, now work reliably.
+- Preview no longer blocks pictures because of unreliable browser decoding.
+  Even when a mobile file picker omits a media type, the server remains the
+  strict authority that verifies and processes the image.
 - Safety and storage stay small: the server fully checks the format and every
   pixel, removes metadata and stores only a newly generated square 256-pixel
   WebP up to 64 KB. The uploaded original is never stored.
