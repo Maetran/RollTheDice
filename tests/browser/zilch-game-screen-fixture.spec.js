@@ -2271,6 +2271,7 @@ test("Space uses the enabled start roll first and otherwise the current roll act
     await rollPage.goto(`/zilch/spiel/${rollGameId}`);
     await expect(rollPage.locator("[data-zilch-start-roll]")).toHaveCount(0);
     await expect(rollPage.locator("[data-zilch-roll]")).toBeEnabled();
+    await expect(rollPage.locator("[data-zilch-roll]")).toHaveClass(/is-roll-ready/);
 
     await rollPage.keyboard.press("Space");
     await expect.poll(() => rollPage.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([

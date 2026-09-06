@@ -79,7 +79,7 @@ class LobbyChatTestCase(unittest.TestCase):
         configure_database(main.DATA_DIR)
         self.temporary_directory.cleanup()
 
-    def test_chat_history_has_a_fixed_account_audience_and_presence_events(self) -> None:
+    def test_chat_history_has_a_fixed_account_audience_without_presence_events(self) -> None:
         create_user("Zed", "a-secure-password-123", must_change_password=False)
         create_user("Zilla", "another-secure-password-123", must_change_password=False)
         create_user("LatePlayer", "third-secure-password-123", must_change_password=False)
@@ -98,11 +98,6 @@ class LobbyChatTestCase(unittest.TestCase):
             late_client.cookies.set("rollthedice_session", late_token)
             with zed_client.websocket_connect("/ws/lobby-chat?context=zdwa") as zed_socket:
                 with zilla_client.websocket_connect("/ws/lobby-chat?context=zilch") as zilla_socket:
-                    zilla_connected_for_zed = zed_socket.receive_json()
-                    self.assertEqual(zilla_connected_for_zed["lobby_chat"]["sender"], "Zilla")
-                    self.assertEqual(zilla_connected_for_zed["lobby_chat"]["kind"], "presence")
-                    self.assertEqual(zilla_connected_for_zed["lobby_chat"]["game_type"], "zilch")
-
                     zed_socket.send_json({"action": "lobby_chat_message", "text": "Hallo aus ZDWA"})
                     own = zed_socket.receive_json()["lobby_chat"]
                     received = zilla_socket.receive_json()["lobby_chat"]
@@ -113,21 +108,17 @@ class LobbyChatTestCase(unittest.TestCase):
                     self.assertEqual(received["text"], "Hallo aus ZDWA")
 
             # The same authenticated account receives its authorized history
-            # after reconnecting. It never triggers a popup client-side because
-            # the transport marks replay frames explicitly as history.
+            # after reconnecting. The chat contains player messages only.
             with zed_client.websocket_connect("/ws/lobby-chat?context=zdwa") as reconnected_zed:
-                history = [reconnected_zed.receive_json() for _ in range(2)]
-                self.assertTrue(all(frame["lobby_chat_history"] for frame in history))
-                self.assertEqual([frame["lobby_chat"]["kind"] for frame in history], ["presence", "message"])
-                self.assertEqual(history[-1]["lobby_chat"]["text"], "Hallo aus ZDWA")
+                history = reconnected_zed.receive_json()
+                self.assertTrue(history["lobby_chat_history"])
+                self.assertEqual(history["lobby_chat"]["kind"], "message")
+                self.assertEqual(history["lobby_chat"]["text"], "Hallo aus ZDWA")
 
                 # This account was authenticated but was not connected while
                 # the previous events were sent, so it receives no protected
-                # history. Its arrival is announced only to Zed.
+                # history. Connecting never creates a visible chat message.
                 with late_client.websocket_connect("/ws/lobby-chat?context=zilch") as late_socket:
-                    late_connected_for_zed = reconnected_zed.receive_json()
-                    self.assertEqual(late_connected_for_zed["lobby_chat"]["kind"], "presence")
-                    self.assertEqual(late_connected_for_zed["lobby_chat"]["sender"], "LatePlayer")
                     # A probe would receive replay frames first if this account
                     # had been part of the earlier audience.
                     late_socket.send_json({"action": "probe"})
@@ -243,7 +234,6 @@ class LobbyChatTestCase(unittest.TestCase):
             observer_client.cookies.set("rollthedice_session", observer_token)
             with observer_client.websocket_connect("/ws/lobby-chat?context=zdwa") as observer_socket:
                 with muted_client.websocket_connect("/ws/lobby-chat?context=zilch") as muted_socket:
-                    self.assertEqual(observer_socket.receive_json()["lobby_chat"]["sender"], "MutedPlayer")
                     muted_socket.send_json({"action": "lobby_chat_message", "text": "Ich schreibe nicht"})
                     self.assertEqual(muted_socket.receive_json(), {"error": "lobby_chat_muted"})
                     observer_socket.send_json({"action": "lobby_chat_message", "text": "Du kannst das lesen"})

@@ -132,7 +132,6 @@ Both lobbies share one compact, expandable chat above their leaderboard section.
 - Signed-in accounts can read and write; guests cannot.
 - Each message identifies its sender and originating game: `zdwa` or `zilch`.
 - Filters show ZDWA only, Zilch only, or both.
-- A player's first active chat connection announces that they have connected.
 - The server freezes each message's eligible account audience when it is sent.
   Later logins cannot reveal messages sent while an account was disconnected,
   signed out or had chat disabled.

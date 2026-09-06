@@ -192,6 +192,7 @@ def load_lobby_chat_history(user_id: int, *, now: datetime | None = None) -> lis
             )
             .where(
                 LobbyChatMessageRecipient.user_id == user_id,
+                LobbyChatMessage.kind == "message",
                 LobbyChatMessage.created_at >= cutoff,
             )
             .order_by(LobbyChatMessage.created_at.asc(), LobbyChatMessage.id.asc())
@@ -306,15 +307,8 @@ async def serve_lobby_chat_websocket(
         if identity is not None and identity.lobby_chat_excluded:
             await websocket.send_json({"error": "lobby_chat_excluded"})
         elif identity is not None and identity.lobby_chat_enabled:
-            first_connection = hub.connect(websocket, identity.user_id)
+            hub.connect(websocket, identity.user_id)
             await _send_authorized_history(websocket, identity.user_id)
-            if first_connection:
-                await _publish_lobby_chat_event(
-                    hub=hub,
-                    kind="presence",
-                    sender=identity,
-                    context=sender_context,
-                )
         elif identity is not None:
             await websocket.send_json({"error": "lobby_chat_disabled"})
 
@@ -352,15 +346,8 @@ async def serve_lobby_chat_websocket(
                 await websocket.send_json({"error": "lobby_chat_rate_limited"})
                 continue
             if not hub.is_connected(websocket):
-                first_connection = hub.connect(websocket, identity.user_id)
+                hub.connect(websocket, identity.user_id)
                 await _send_authorized_history(websocket, identity.user_id)
-                if first_connection:
-                    await _publish_lobby_chat_event(
-                        hub=hub,
-                        kind="presence",
-                        sender=identity,
-                        context=sender_context,
-                    )
             purge_expired_lobby_chat_messages()
             await _publish_lobby_chat_event(
                 hub=hub,

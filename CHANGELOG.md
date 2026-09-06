@@ -11,6 +11,32 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Nächster Release / Next release — Zilch-Zug klarer, Lobby-Chat ruhiger
+
+### Deutsch
+
+- Der Zilch-Aktionsknopf orientiert sich nun direkt am serverseitigen Zugrecht.
+  Sobald du würfeln darfst, ist **Würfeln**, **Weiterwürfeln** oder
+  **Bestätigen** eindeutig hervorgehoben – auch wenn die kurze Zilch- oder
+  Zugwechselanimation noch ausläuft. Ein zurückhaltender goldener Rand pulsiert
+  langsam; bei reduzierter Bewegung bleibt er ruhig.
+- Verbindungsstatus sind aus dem Lobby-Chat entfernt. Es entstehen keine neuen
+  Meldungen wie „… ist jetzt verbunden“, und alte Statusereignisse werden nicht
+  mehr aus der dreitägigen persönlichen Historie ausgespielt. Spielertexte,
+  Berechtigungen, Löschfrist und Flood-Schutz bleiben unverändert.
+
+### English
+
+- The Zilch action button now follows the server-authoritative turn right.
+  Whenever you may roll, **Roll**, **Roll again** or **Confirm** is clearly
+  highlighted – including while a brief Zilch or turn-change animation is
+  still finishing. A restrained gold border pulses slowly; it stays still for
+  reduced-motion users.
+- Connection status has been removed from lobby chat. No new “... is now
+  connected” notices are created, and old status events are no longer shown
+  from the three-day personal history. Player messages, authorization,
+  deletion period and flood protection are unchanged.
+
 ## Nächster Release / Next release — Profilbilder & Spielstart live
 
 ### Deutsch

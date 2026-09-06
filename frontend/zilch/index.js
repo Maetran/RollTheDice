@@ -4300,16 +4300,21 @@ function optionAllows(option, action) {
 }
 
 function actionCards(snapshot, turnState, quickHolds, isMyTurn) {
-  const blocked = Boolean(state.pendingAction || snapshot._paused || snapshot._finished || !isMyTurn);
+  const unavailable = Boolean(snapshot._paused || snapshot._finished || !isMyTurn);
   const selectedOption = exactOptionForDraft(quickHolds, draftHoldIndices(turnState));
-  const canRoll = Boolean(!blocked && (
+  // The server's turn state is authoritative. In particular, do not derive the
+  // highlighted roll state from the transient Zilch reveal/turn animation:
+  // that animation may still be visible after the next player can already roll.
+  const rollAvailable = Boolean(!unavailable && (
     turnState?.can_roll
     || (turnState?.can_select_hold && selectedOption && optionAllows(selectedOption, "zilch_roll_dice"))
   ));
-  const canBank = Boolean(!blocked && (
+  const bankAvailable = Boolean(!unavailable && (
     turnState?.can_bank
     || (turnState?.can_select_hold && selectedOption && optionAllows(selectedOption, "zilch_bank_points"))
   ));
+  const canRoll = Boolean(rollAvailable && !state.pendingAction && !state.zilchMoment);
+  const canBank = Boolean(bankAvailable && !state.pendingAction && !state.zilchMoment);
   const rollLabel = turnState?.phase === "awaiting_hold"
     ? t("Weiterwürfeln")
     : turnState?.confirmation_required
@@ -4321,7 +4326,7 @@ function actionCards(snapshot, turnState, quickHolds, isMyTurn) {
     <button type="button" class="zilch-action-card zilch-action-card--bank" data-zilch-bank aria-keyshortcuts="b B" ${canBank ? "" : "disabled"}>
       <strong>${escapeHtml(t("Sichern"))}</strong>
     </button>
-    <button type="button" class="zilch-action-card zilch-action-card--roll" data-zilch-roll aria-keyshortcuts="Space" ${canRoll ? "" : "disabled"}>
+    <button type="button" class="zilch-action-card zilch-action-card--roll${rollAvailable ? " is-roll-ready" : ""}" data-zilch-roll aria-keyshortcuts="Space" aria-label="${escapeHtml(`${rollLabel}${rollAvailable ? ` · ${t("Du bist am Zug")}` : ""}`)}" ${canRoll ? "" : "disabled"}>
       <strong>${escapeHtml(rollLabel)}</strong>
     </button>
   </section>`;

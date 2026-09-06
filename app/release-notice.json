@@ -1,23 +1,23 @@
 {
   "kind": "usability",
   "games": ["zdwa", "zilch"],
-  "summary_de": "Neu: sichere Profilbilder und Live-Hinweise, wenn ausgewählte Spieler eine Partie starten.",
-  "summary_en": "New: safe profile pictures and live notices when selected players start a game.",
+  "summary_de": "Zilch: Dein möglicher Würfelzug wird jetzt immer klar und dezent hervorgehoben.",
+  "summary_en": "Zilch: your available roll is now always clearly and subtly highlighted.",
   "player_notes": {
     "de": {
-      "title": "Dein Bild, deine Spielrunde",
+      "title": "Dein Zug, klar im Blick",
       "changes": [
-        "Unter Konto → Einstellungen kannst du jetzt ein Profilbild für beide Spiele wählen. Es erscheint neben deinem Namen in Profilen, Chats, Spielräumen und Statistiken. JPG, PNG oder WebP bis 200 KB genügen; das Bild wird quadratisch zugeschnitten und ohne Metadaten gespeichert.",
-        "Deine private Spielerauswahl kann dir nun auch live Bescheid geben: Startet jemand daraus eine öffentliche Partie mit Zuschauerplatz, erscheint in beiden Lobbys ein kurzer Hinweis. Außerhalb eines Spiels führt Zuschauen direkt zur Partie.",
-        "Die Startmeldungen sind im Konto standardmäßig an, lassen sich jederzeit ausschalten und sind bewusst keine Push-Nachrichten. Sie bleiben nur kurz live, haben keinen Verlauf und zeigen keine privaten oder geschützten Spielräume."
+        "Wenn du in Zilch würfeln darfst, wird Würfeln, Weiterwürfeln oder Bestätigen nun zuverlässig als dein aktiver Zug angezeigt – auch direkt nach einem Zilch oder Spielerwechsel.",
+        "Ein sehr dezenter goldener Rand weist auf den möglichen Würfelzug hin. Mit reduzierter Bewegung bleibt er statisch; Spielregeln und Tastenkürzel ändern sich nicht.",
+        "Der Lobby-Chat enthält nur noch echte Nachrichten. Verbindungs-Hinweise wie „Simon ist jetzt verbunden“ werden weder neu gesendet noch aus dem Verlauf angezeigt."
       ]
     },
     "en": {
-      "title": "Your picture, your game table",
+      "title": "Your turn, clearly in view",
       "changes": [
-        "Under Account → Settings, you can now choose one profile picture for both games. It appears beside your name in profiles, chats, game rooms and statistics. A JPG, PNG or WebP up to 200 KB is enough; it is square-cropped and stored without metadata.",
-        "Your private player selection can now notify you live: when someone from it starts a public game with spectator access, a short notice appears in both lobbies. Outside a game, Watch takes you straight to the table.",
-        "Game-start notices are on by default in your account, can be turned off any time, and deliberately are not push notifications. They only stay live briefly, have no history, and never expose private or protected rooms."
+        "When you may roll in Zilch, Roll, Roll again or Confirm now reliably shows as your active turn – including directly after a Zilch or player change.",
+        "A very subtle gold border points to the available roll. With reduced motion it stays still; game rules and shortcuts do not change.",
+        "Lobby chat now contains real messages only. Connection notes such as “Simon is now connected” are neither sent again nor shown from history."
       ]
     }
   }
