@@ -4015,10 +4015,11 @@ function renderGameState() {
   const finished = Boolean(resultMarkup);
   const openingPanel = openingRollPanel(snapshot);
   const waitingPanel = waitingRoomPanel(snapshot);
-  // With both human seats filled, the waiting-room card is the next action,
-  // not an afterthought below the paper. Put it into the otherwise unused
-  // right rail; a one-player waiting room still keeps its roomy status card.
-  const waitingPanelUsesRail = Boolean(waitingPanel && players.length > 1);
+  // The waiting room and the opening roll are two steps of the same start
+  // flow. Keep both in the right rail, including while the first player is
+  // still waiting for a second seat, so the score sheet never leaves an
+  // unused column beside it.
+  const waitingPanelUsesRail = Boolean(waitingPanel);
   const sideRail = openingPanel
     ? `<aside class="zilch-start-roll-rail">${openingPanel}</aside>`
     : waitingPanelUsesRail

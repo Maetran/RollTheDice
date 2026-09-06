@@ -520,6 +520,31 @@ function openingRollShortcutSnapshot() {
   return snapshot;
 }
 
+function waitingRoomSnapshot() {
+  return baseSnapshot({
+    _players: [
+      { id: "p1", name: "Mani", user_id: 2, connected: true },
+    ],
+    _participants: [
+      { id: "p1", name: "Mani", type: "human", user_id: 2 },
+    ],
+    _players_joined: 1,
+    _started: false,
+    _turn: null,
+    _dice: [0, 0, 0, 0, 0, 0],
+    _holds: [false, false, false, false, false, false],
+    _rolls_used: 0,
+    _zilch_start_roll: null,
+    _zilch_boards: {
+      p1: board({ playerId: "p1", totalPoints: 0, roundPoints: 0 }),
+    },
+    _round_points: { p1: 0 },
+    _total_points: { p1: 0 },
+    _zilch_turn_state: null,
+    _zilch_quick_holds: [],
+  });
+}
+
 function cpuTurnSnapshot() {
   return baseSnapshot({
     _players: [
@@ -1936,6 +1961,45 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
         combination_type: "single_one",
       }),
     ]));
+  } finally {
+    await context.close();
+  }
+});
+
+test("the waiting room stays in the start-roll rail before a second player joins", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    const gameId = "waiting-room-rail-fixture";
+    await installGameScreenFixture(page, gameId, { initial: waitingRoomSnapshot() });
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/zilch/spiel/${gameId}`);
+    await expect(page.locator(".zilch-start-roll-rail")).toBeVisible();
+    await expect(page.locator(".zilch-start-roll-rail")).toContainText(/Bereit für den Startwurf|Ready for the opening roll/);
+    await expect(page.locator(".zilch-play-layout + .zilch-start-roll")).toHaveCount(0);
+
+    const geometry = await page.evaluate(() => {
+      const box = selector => {
+        const rect = document.querySelector(selector).getBoundingClientRect();
+        return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+      };
+      return {
+        notebook: box(".zilch-play-layout__notebook"),
+        waitingRoom: box(".zilch-start-roll-rail"),
+      };
+    });
+    expect(geometry.waitingRoom.left, "waiting room is in the right rail").toBeGreaterThanOrEqual(geometry.notebook.right - 1);
+    expect(Math.abs(geometry.waitingRoom.top - geometry.notebook.top), "waiting room begins beside the notebook").toBeLessThanOrEqual(1);
   } finally {
     await context.close();
   }
