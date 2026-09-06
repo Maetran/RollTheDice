@@ -125,7 +125,9 @@ git status --short
 ## Reverse-Proxy-Härtung
 
 Die versionierte Nginx-Konfiguration unter `deploy/nginx/rollthedice.conf`
-begrenzt HTTP-Bursts, Request-Grössen und parallele WebSockets pro IP. Sie reicht
+begrenzt HTTP-Bursts, Request-Grössen und parallele WebSockets pro IP. Ihr
+10-MiB-Request-Limit liegt bewusst über dem 8-MiB-Limit für Profilbildquellen,
+damit normale PNG- und WebP-Fotos die geprüfte App-Grenze erreichen. Sie reicht
 für WebSockets außerdem die echte Client-IP an Uvicorn weiter und setzt eine
 Content-Security-Policy.
 
@@ -762,8 +764,10 @@ aktiv. Vor dem Deployment muss das Datenbackup erfolgreich sein; die Migration
 verändert keine vorhandenen Nutzerdaten.
 
 Der Upload akzeptiert nur JPEG, PNG und WebP bis 8 MB und 4’096 × 4’096 Pixel.
-Der Server prüft Magic Bytes und deklarierte Medienart, decodiert das Bild
-vollständig mit einer Pixel- und Text-Metadaten-Grenze und baut daraus ein neues
+Der Server bestimmt das erlaubte Format ausschließlich aus den Magic Bytes; die
+von Browsern oder PWAs gelieferte Medienart ist nur Hinweis und darf davon
+abweichen. Er decodiert das Bild vollständig mit einer Pixel- und
+Text-Metadaten-Grenze und baut daraus ein neues
 256 × 256-WebP (höchstens 64 KB) ohne Originaldaten oder Metadaten. Es werden
 weder Base64 noch die hochgeladene Datei gespeichert. `/api/avatars/{id}` liefert
 `nosniff`, CSP, Same-Site-Resource-Policy, ETag und Noindex-Header; fehlende oder

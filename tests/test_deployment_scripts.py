@@ -8,6 +8,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 PRUNE_SCRIPT = BASE_DIR / "scripts" / "prune_data_backups.sh"
+NGINX_CONFIG = BASE_DIR / "deploy" / "nginx" / "rollthedice.conf"
 
 
 class ReleaseDeploymentTestCase(unittest.TestCase):
@@ -110,3 +111,9 @@ class BackupRetentionTestCase(unittest.TestCase):
             )
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("KEEP must be a positive integer", result.stderr)
+
+
+class NginxAvatarUploadLimitTestCase(unittest.TestCase):
+    def test_proxy_limit_cannot_be_lower_than_the_avatar_source_limit(self):
+        source = NGINX_CONFIG.read_text(encoding="utf-8")
+        self.assertIn("client_max_body_size 10m;", source)

@@ -94,6 +94,11 @@ test("account avatar upload accepts ordinary phone-photo limits", async ({ page 
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#authBadge")).toContainText("Admin");
   await page.goto("/konto");
+  // Reload once the root worker is ready so this request path is exercised
+  // through the PWA service worker, not only as a regular browser tab.
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
 
   const upload = page.locator("[data-avatar-upload]");
   await expect(upload).toBeVisible();
@@ -101,12 +106,14 @@ test("account avatar upload accepts ordinary phone-photo limits", async ({ page 
   await expect(upload.locator(".avatar-upload-hint")).toContainText("8 MB");
   await expect(upload.locator(".avatar-upload-hint")).toContainText("4.096 × 4.096 Pixel");
   await upload.locator("input[type=file]").setInputFiles({
-    name: "phone-photo.png",
-    mimeType: "image/png",
+    // Some mobile pickers label bytes from a camera export based on the file
+    // suffix. The avatar boundary must use the actual PNG bytes instead.
+    name: "phone-photo.jpg",
+    mimeType: "image/jpeg",
     buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEklEQVR4nGNUKt/NwMDAxAAGAA+BAVjtqt5YAAAAAElFTkSuQmCC", "base64"),
   });
   await expect(upload).toContainText("Vorschau bereit.");
-  await expect(upload.locator("input[type=file]")).not.toHaveValue("");
+  await expect(upload.locator("input[type=file]")).toHaveValue("");
   await expect(upload.getByRole("button", { name: "Profilbild speichern" })).toBeEnabled();
   await upload.getByRole("button", { name: "Profilbild speichern" }).click();
   await expect(upload).toContainText("Profilbild gespeichert.");

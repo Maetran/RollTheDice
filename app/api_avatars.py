@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import io
+import logging
 import warnings
 from datetime import timedelta
 
@@ -21,6 +22,7 @@ from .models import AuthRateEvent, User, UserAvatar
 from .security import utcnow
 
 router = APIRouter(prefix="/api", tags=["avatars"])
+logger = logging.getLogger(__name__)
 
 # Source files must accommodate ordinary current phone photos. They are fully
 # decoded under the pixel limit and immediately rebuilt; only the tiny output
@@ -34,6 +36,7 @@ UPLOADS_PER_MINUTE = 6
 UPLOAD_TIMEOUT_SECONDS = 10
 DEFAULT_AVATAR_URL = "/static/default-avatar.svg"
 ACCEPTED_FORMATS = {"image/jpeg": "JPEG", "image/png": "PNG", "image/webp": "WEBP"}
+ACCEPTED_DECODER_FORMATS = frozenset(ACCEPTED_FORMATS.values())
 
 # This is the only image-processing boundary in the application. Configure
 # parser-wide ceilings once; the warning policy itself stays local to a request
@@ -131,16 +134,29 @@ def _check_image(image: Image.Image, expected_format: str) -> None:
         raise HTTPException(status_code=415, detail="avatar_format_unsupported")
     if not (1 <= image.width <= INPUT_MAX_SIDE and 1 <= image.height <= INPUT_MAX_SIDE):
         raise HTTPException(status_code=422, detail="avatar_dimensions")
-    if getattr(image, "is_animated", False) or getattr(image, "n_frames", 1) != 1 or "loop" in image.info:
+    # Pillow records a ``loop`` field even for ordinary, single-frame WebP
+    # files. Frame count (and its explicit animation flag) is authoritative;
+    # a loop metadata key alone must not reject a valid static WebP.
+    if getattr(image, "is_animated", False) or getattr(image, "n_frames", 1) != 1:
         raise HTTPException(status_code=422, detail="avatar_animation_unsupported")
 
 
-def sanitize_avatar(data: bytes, content_type: str) -> bytes:
-    """Never return upload bytes, metadata, filenames, or parser error details."""
+def sanitize_avatar(data: bytes, declared_content_type: str | None = None) -> bytes:
+    """Rebuild a supported image without trusting client-supplied metadata.
+
+    Mobile file pickers and installed PWAs occasionally report the MIME type
+    from a filename rather than the selected file's bytes.  ``Content-Type`` is
+    therefore intentionally advisory: the short, allow-listed image signature
+    chooses the Pillow decoder, which then verifies and fully decodes it.
+    """
     if not data or len(data) > INPUT_MAX_BYTES:
         raise HTTPException(status_code=413 if data else 400, detail="avatar_too_large" if data else "avatar_invalid")
-    expected_format = ACCEPTED_FORMATS.get(content_type)
-    if not expected_format or _magic_format(data) != expected_format:
+    # Never use an untrusted MIME header to select a decoder.  Keeping the
+    # value in the signature documents the boundary and preserves direct
+    # callers, while only byte-derived format data is authoritative.
+    _ = declared_content_type
+    expected_format = _magic_format(data)
+    if expected_format not in ACCEPTED_DECODER_FORMATS:
         raise HTTPException(status_code=415, detail="avatar_format_unsupported")
     try:
         with warnings.catch_warnings():
@@ -199,11 +215,23 @@ def own_avatar(request: Request, response: Response):
 async def upload_avatar(request: Request, response: Response):
     user_id = await run_in_threadpool(_authorize_mutation, request)
     await run_in_threadpool(_claim_upload, user_id)
-    content_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
-    if content_type not in ACCEPTED_FORMATS:
-        raise HTTPException(status_code=415, detail="avatar_format_unsupported")
-    data = await _read_upload(request)
-    clean = await run_in_threadpool(sanitize_avatar, data, content_type)
+    declared_content_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    data = b""
+    try:
+        data = await _read_upload(request)
+        clean = await run_in_threadpool(sanitize_avatar, data, declared_content_type)
+    except HTTPException as exc:
+        # Diagnostics deliberately contain no account, filename, image bytes,
+        # or client address. They make browser/PWA-specific upload failures
+        # distinguishable from a malformed image without exposing user data.
+        logger.info(
+            "avatar upload rejected: status=%s reason=%s type=%r bytes=%d",
+            exc.status_code,
+            exc.detail,
+            declared_content_type[:80],
+            len(data),
+        )
+        raise
     result = await run_in_threadpool(_store_avatar, request, user_id, clean)
     response.headers["Cache-Control"] = "no-store"
     return result

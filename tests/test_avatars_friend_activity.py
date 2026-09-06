@@ -22,7 +22,8 @@ from tests import test_web_push as fixtures
 
 def _image_bytes(*, fmt: str = "PNG", size: tuple[int, int] = (640, 320)) -> bytes:
     output = io.BytesIO()
-    with Image.new("RGBA", size, "#2277bb") as image:
+    mode = "RGB" if fmt == "JPEG" else "RGBA"
+    with Image.new(mode, size, "#2277bb") as image:
         image.save(output, format=fmt)
     return output.getvalue()
 
@@ -73,9 +74,18 @@ class AvatarAndFriendActivityTestCase(unittest.TestCase):
         self.assertTrue(result.startswith(b"RIFF") and result[8:12] == b"WEBP")
         self.assertLessEqual(len(result), OUTPUT_MAX_BYTES)
 
-    def test_avatar_rejects_wrong_media_magic_and_oversized_dimensions(self) -> None:
+    def test_avatar_uses_actual_image_magic_when_a_picker_mislabels_the_file(self) -> None:
+        for source_format, declared_type in (
+            ("JPEG", "image/png"),
+            ("PNG", "image/jpeg"),
+            ("WEBP", "application/octet-stream"),
+        ):
+            result = sanitize_avatar(_image_bytes(fmt=source_format), declared_type)
+            self.assertTrue(result.startswith(b"RIFF") and result[8:12] == b"WEBP")
+
+    def test_avatar_rejects_unknown_magic_and_oversized_dimensions(self) -> None:
         with self.assertRaises(HTTPException) as wrong_type:
-            sanitize_avatar(_image_bytes(fmt="PNG"), "image/jpeg")
+            sanitize_avatar(b"not an image", "image/png")
         self.assertEqual(wrong_type.exception.status_code, 415)
         with self.assertRaises(HTTPException) as dimensions:
             sanitize_avatar(_image_bytes(size=(4097, 32)), "image/png")
