@@ -42,6 +42,7 @@ def publish_release_notice(notice: ReleaseNotice, *, now: datetime | None = None
         inserted = db.execute(insert(PushRelease).values(
             revision=notice.revision, kind=notice.kind, summary_de=notice.summary_de, summary_en=notice.summary_en,
             game_types_json=json.dumps(list(notice.games)), published_at=now,
+            player_notes_json=json.dumps(notice.player_notes, ensure_ascii=False),
         ).on_conflict_do_nothing(index_elements=["revision"]).returning(PushRelease.revision)).scalar_one_or_none()
         if inserted is None:
             return 0

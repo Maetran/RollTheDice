@@ -194,8 +194,18 @@ class PushRelease(Base):
     summary_en: Mapped[str] = mapped_column(String(140), nullable=False)
     game_types_json: Mapped[str] = mapped_column(Text, nullable=False)
     published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    player_notes_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (CheckConstraint("kind IN ('backend', 'usability')", name="ck_push_release_kind"),)
+
+
+class ReleaseAcknowledgement(Base):
+    """Account-wide acknowledgement, independent of push subscriptions."""
+
+    __tablename__ = "release_acknowledgements"
+    revision: Mapped[str] = mapped_column(ForeignKey("push_releases.revision", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class PushReleaseRecipient(Base):

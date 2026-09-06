@@ -1,4 +1,5 @@
 @import "./base.css";
+@import "./release-notes.css";
 
 html[data-game="zilch"],
 html[data-theme="dark"][data-game="zilch"] {

@@ -1,0 +1,34 @@
+.release-notes-dialog {
+  box-sizing: border-box;
+  width: min(40rem, calc(100vw - 2rem));
+  max-width: none;
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, .3);
+}
+.release-notes-dialog[open] { display: flex; flex-direction: column; }
+.release-notes-dialog::backdrop { background: rgba(15, 23, 42, .55); }
+.release-notes-body { overflow-y: auto; overscroll-behavior: contain; min-height: 0; padding: 1.25rem; }
+.release-notes-body h2 { margin: .3rem 0 .6rem; font-size: clamp(1.2rem, 4vw, 1.5rem); line-height: 1.25; }
+.release-notes-eyebrow { margin: 0; color: var(--accent); font-size: .8rem; font-weight: 750; letter-spacing: .05em; }
+.release-notes-date, .release-notes-muted { color: var(--muted); font-size: .85rem; line-height: 1.45; }
+.release-notes-changes { margin: 1rem 0; padding-left: 1.25rem; line-height: 1.5; overflow-wrap: anywhere; }
+.release-notes-changes li + li { margin-top: .7rem; }
+.release-notes-actions { display: flex; flex: 0 0 auto; gap: .65rem; justify-content: flex-end; padding: .9rem 1.25rem; border-top: 1px solid var(--border); }
+.release-notes-actions button { min-height: 44px; }
+.release-notes-error { margin: .5rem 1.25rem; color: var(--danger); font-size: .85rem; }
+.release-notes-error:empty { display: none; }
+.release-notes-entry { padding: .7rem 0; border-bottom: 1px solid var(--border); }
+.release-notes-entry summary { cursor: pointer; line-height: 1.45; overflow-wrap: anywhere; }
+.release-notes-entry summary > span { font-weight: 700; }
+.release-notes-entry summary time { display: block; margin: .2rem 0 0 1rem; }
+.release-notes-support { margin-top: 1rem; font-size: .85rem; line-height: 1.5; }
+.release-notes-support summary { cursor: pointer; color: var(--muted); }
+.release-notes-support a { display: inline-block; margin: .3rem 0; color: var(--accent); }
+html[data-game="zilch"] .release-notes-dialog { background: var(--zilch-paper); color: var(--zilch-ink); }
+html[data-game="zilch"] .release-notes-dialog :is(.release-notes-date, .release-notes-muted) { color: var(--zilch-muted); }

@@ -28,10 +28,12 @@ geteilten Vorschauen auftauchen.
    die Backend-Tests und bei sichtbaren Änderungen die Browser-Tests ausführen.
 5. **Versionshinweis:** Für sichtbare Releases `app/release-notice.json` mit
    `kind: usability`, betroffenen Spielen und einem neuen Kurztext je Sprache
-   (höchstens 140 Zeichen) aktualisieren. Der Deploy prüft die Änderung gegen
+   (höchstens 140 Zeichen) sowie `player_notes` mit übersetztem Titel und
+   verständlichen Stichpunkten aktualisieren. `CHANGELOG.md` hält die
+   ausführlichere Historie fest. Der Deploy prüft die Änderung gegen
    den letzten erfolgreichen Rollout; Backend-Releases ohne neue Notiz nutzen
    automatisch den Stabilitätshinweis. Reine Dokumentationsänderungen lösen
-   keinen Push aus. Kein Testversand an echte Konten.
+   keinen Push und kein neues In-App-Popup aus. Kein Testversand an echte Konten.
 
 `scripts/check_product_delivery.py` wird durch `npm run lint` und die CI
 ausgeführt. Es verhindert Drift zwischen README, Spielanleitung,

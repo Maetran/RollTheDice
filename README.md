@@ -31,6 +31,7 @@ engine, results and rankings: its points never affect ZDWA standings.
 - [Accounts and progress](#accounts-and-progress)
 - [Lobby chat](#lobby-chat)
 - [Push notifications](#push-notifications)
+- [Release notes and feedback](#release-notes-and-feedback)
 - [Progressive Web Apps](#progressive-web-apps)
 - [Local development](#local-development)
 - [Architecture](#architecture)
@@ -210,6 +211,31 @@ table. An empty allowlist blocks every invitation.
 The private, one-way list is shared across games and devices and affects only
 player invitations. It is the foundation for a future friendlist; mutual friend
 requests and public friendship profiles are not implemented.
+
+## Release notes and feedback
+
+After a successful release, a short, player-friendly **What's new?** dialog
+explains the most important changes in German or English. It appears in the
+lobby or account, never over a game room. **Got it** saves the acknowledgement
+to your account across both games and all devices; guests acknowledge in their
+current browser. **Later** or Escape defers the message for that page visit.
+If you've missed several updates, only the latest relevant release pops up.
+
+Revisit the **last ten releases** under **Account → Settings → News & versions**.
+The first announcement also introduces lobby chat, invitation allowlists and
+optional PWA push notifications. In-app notes do not require browser push
+permission and do not change any notification preference.
+
+**Help & more details**, collapsed beneath the history, links to
+[GitHub issues](https://github.com/Maetran/RollTheDice/issues) and the more detailed
+[changelog](CHANGELOG.md). To report a problem, describe what happened, the game,
+your device and steps to reproduce it. A GitHub account is required; never share
+passwords or private room codes.
+
+Authors maintain the bilingual title and bullets in `app/release-notice.json`
+alongside the short push summaries. The deploy archives those exact texts after
+the application is healthy; restarting the server does not publish a release.
+See the [release authoring guide](docs/DEPLOYMENT.md#spielerfreundliche-release-notes).
 
 ## Progressive Web Apps
 

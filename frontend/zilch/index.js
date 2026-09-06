@@ -1,5 +1,6 @@
 import { apiFetch, authError, escapeHtml, loadAuth, logout } from "../shared/auth.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
+import { initializeReleaseNotes } from "../shared/release-notes.js";
 import {
   bindPushPreferences,
   disableGameInvitePush,
@@ -2022,6 +2023,17 @@ function zilchAccountSettingsMarkup(username) {
       </form>
       <p id="zilchPasswordMessage" class="zilch-settings-message" role="status"></p>
     </section>
+    <section class="zilch-card zilch-account-settings-card" aria-labelledby="releaseHistoryTitle">
+      <h2 id="releaseHistoryTitle">${escapeHtml(t("Neuigkeiten & Versionen"))}</h2>
+      <p class="zilch-muted">${escapeHtml(t("Die letzten zehn Releases kannst du jederzeit im Konto nachlesen."))}</p>
+      <div data-release-history><p class="zilch-muted">${escapeHtml(t("Neuigkeiten werden geladen …"))}</p></div>
+      <details class="release-notes-support">
+        <summary>${escapeHtml(t("Hilfe & weitere Details"))}</summary>
+        <p>${escapeHtml(t("Du hast einen Fehler entdeckt? Beschreibe auf GitHub kurz, was passiert ist, in welchem Spiel und auf welchem Gerät. Teile keine Passwörter oder privaten Spielraum-Codes. Zum Melden brauchst du ein GitHub-Konto."))}</p>
+        <a href="https://github.com/Maetran/RollTheDice/issues" target="_blank" rel="noopener noreferrer">${escapeHtml(t("Problem auf GitHub melden"))}</a><br>
+        <a href="https://github.com/Maetran/RollTheDice/blob/master/CHANGELOG.md" target="_blank" rel="noopener noreferrer">${escapeHtml(t("Ausführliche Versionshistorie auf GitHub"))}</a>
+      </details>
+    </section>
   </div>
   <section class="zilch-card zilch-account-session" aria-label="${escapeHtml(`${t("Du spielst als")} ${username}`)}">
     <div><p class="eyebrow">${escapeHtml(t("Du spielst als"))}</p><strong class="zilch-account-session__name">${escapeHtml(username)}</strong></div>
@@ -3005,6 +3017,10 @@ function renderRulesContent(facts) {
     <section class="zilch-card zilch-rules-section">
       <p>${escapeHtml(t("Mitspieler-Einladungen kannst du im Konto auf ausgewählte Spieler begrenzen. Trage bis zu 100 bestehende Benutzernamen ein. Nur der tatsächliche Absender zählt; eine leere Auswahlliste blockiert alle Einladungen. Die private Liste gilt für beide Spiele, nicht für Spielerinnerungen oder Versionshinweise."))}</p>
       <p>${escapeHtml(t("Versionshinweise sind separat aktivierbar und anfangs ausgeschaltet. Nach einem erfolgreichen Update erhältst du pro Version höchstens einen Hinweis je angemeldetem Gerät des ausgewählten Spiels: zu neuen Funktionen oder Verbesserungen an der Stabilität. Ein Klick öffnet dessen Lobby. Frühere Versionen werden nicht nachträglich gemeldet."))}</p>
+    </section>
+    <section class="zilch-card zilch-rules-section">
+      <h2>${escapeHtml(t("Neuigkeiten & Versionen"))}</h2>
+      <p>${escapeHtml(t("Unabhängig von Push erklärt dir die App neue Versionen in einer kurzen Meldung in Lobby oder Konto, nie mitten im Spielraum. Verstanden bestätigt den Hinweis für dein Konto auf allen Geräten und in beiden Spielen; Gäste bestätigen im jeweiligen Browser. Später verschiebt ihn nur für den aktuellen Seitenbesuch. Unter Konto → Einstellungen → Neuigkeiten & Versionen findest du die letzten zehn Releases. Hilfe & weitere Details enthält Links zu Fehlermeldungen auf GitHub und zur ausführlichen Versionshistorie."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section" aria-labelledby="zilchScoringTitle">
       <p class="eyebrow">${escapeHtml(t("Wertung"))}</p><h2 id="zilchScoringTitle">${escapeHtml(t("Was Punkte bringt"))}</h2>
@@ -5034,8 +5050,9 @@ async function initialize() {
   // A historic report has its own game-scoped table moments. Do not interrupt
   // it with an unrelated pending personal award from another game.
   if (authenticatedZilchPlayer() && !gameId && !resultId && !playerAchievementsUsername) {
-    void presentPendingZilchAwards({ scope: "page" });
+    await presentPendingZilchAwards({ scope: "page" });
   }
+  if (accountRoute || currentZilchRoute === "/") initializeReleaseNotes({ context: "zilch" });
 }
 
 window.addEventListener("beforeunload", () => {

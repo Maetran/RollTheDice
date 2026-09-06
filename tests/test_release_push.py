@@ -27,7 +27,9 @@ from scripts.prepare_release_notice import prepare_notice
 from tests import test_web_push as fixtures
 
 REVISION = "a" * 40
-NOTES = {"kind": "usability", "games": ["zdwa", "zilch"], "summary_de": "Jetzt neu: Lobby-Chat", "summary_en": "New: lobby chat"}
+NOTES = {"kind": "usability", "games": ["zdwa", "zilch"], "summary_de": "Jetzt neu: Lobby-Chat", "summary_en": "New: lobby chat",
+         "player_notes": {"de": {"title": "Zusammen spielen", "changes": ["Schreibe anderen Spielern im Lobby-Chat."]},
+                          "en": {"title": "Play together", "changes": ["Talk to other players in the lobby chat."]}}}
 
 
 class ReleaseMetadataTestCase(unittest.TestCase):

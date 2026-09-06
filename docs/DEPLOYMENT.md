@@ -668,7 +668,17 @@ Für sichtbare Änderungen eine **neue, geprüfte** Meldung in
   "kind": "usability",
   "games": ["zdwa", "zilch"],
   "summary_de": "Jetzt neu: Chat in der Lobby",
-  "summary_en": "New: lobby chat"
+  "summary_en": "New: lobby chat",
+  "player_notes": {
+    "de": {
+      "title": "Zusammen spielen, gemeinsam plaudern",
+      "changes": ["Der neue Lobby-Chat verbindet ZDWA und Zilch. Du findest ihn oberhalb der Bestenlisten; im Konto kannst du ihn ausschalten."]
+    },
+    "en": {
+      "title": "Play together, chat together",
+      "changes": ["The new lobby chat connects ZDWA and Zilch. Find it above the leaderboards; you can turn it off in your account."]
+    }
+  }
 }
 ```
 
@@ -698,6 +708,50 @@ geprüft. Die Outbox und die TTL beim Push-Dienst begrenzen die Zustellung auf
 höchstens 24 Stunden nach Veröffentlichung. Ein Klick öffnet die passende Lobby.
 Bereits erfolgtes Spielen und die Einladungsauswahl beeinflussen Versionshinweise
 nicht; der globale Push-Opt-out schaltet auch diese Kategorie aus.
+
+### Spielerfreundliche Release Notes
+
+`app/release-notice.json` ist die gemeinsame Quelle für Push und In-App-Meldung;
+`CHANGELOG.md` ist die ergänzende, ausführlichere GitHub-Historie. Pro sichtbarem
+Release beide pflegen. Die App rendert nur Klartext, kein Markdown oder HTML.
+
+- `player_notes.de` und `.en` enthalten je einen `title` (1–100 Zeichen) und
+  `changes` (1–8 Stichpunkte, je 1–300 Zeichen). Beide Sprachen haben gleich
+  viele Punkte. Normalerweise reichen 2–4 kurze Punkte: Was ist neu, was bringt
+  es den Spielern, wo finden sie es? Keine internen Implementierungsdetails.
+- Die einmalige Einführung bündelt zusätzlich die jüngsten Änderungen zu Chat,
+  Allowlist und Push. Diesen Rückblick nicht in spätere Meldungen kopieren.
+- `npm run lint` validiert die aktuellen Metadaten; der Deploy validiert sie
+  erneut. Backend-Releases ohne neue Notiz erhalten automatisch einen kurzen
+  Stabilitätshinweis auch für die In-App-Anzeige.
+- Erst der erfolgreiche Deploy-Hook speichert `player_notes_json` unveränderlich
+  in `push_releases`, auch ohne Push-Abonnenten. Eine spätere JSON-Änderung
+  verändert keine veröffentlichten Texte; ein erneuter Deploy derselben
+  Git-Revision erzeugt keinen neuen Eintrag.
+- `GET /api/releases` liefert die letzten zehn zum Spiel passenden Releases,
+  lokalisiert und mit dem Quittierungsstatus des angemeldeten Kontos. Die
+  Antworten werden nicht gecacht. Gäste können öffentliche Spielhinweise lesen;
+  bestehende Zilch-Zugangsprüfungen gelten weiterhin.
+- Die App zeigt nur den neuesten unbestätigten Hinweis in Lobby oder Konto,
+  nicht in Spielräumen und nicht über einem anderen Dialog. Ein nötiger
+  Passwortwechsel hat Vorrang. Offene Seiten prüfen einmal pro Minute bzw. bei
+  Rückkehr in den Vordergrund auf neue Hinweise.
+- **Verstanden** speichert je Konto und Git-Revision eine dauerhafte,
+  idempotente Quittierung in `release_acknowledgements`. Der POST verlangt
+  Anmeldung, CSRF und die erwartete Konto-ID; ein Kontowechsel während des
+  Speicherns kann keinen Hinweis für die falsche Person quittieren. Gäste
+  speichern lokal im jeweiligen Browser/Origin, bei blockiertem Speicher nur
+  für den aktuellen Seitenbesuch. **Später** und Escape quittieren nicht.
+- Die Kontohistorie bleibt unabhängig von Quittierungen einsehbar; ältere
+  Releases lösen keine Popup-Kaskade aus. In-App-Meldungen sind unabhängig von
+  allen Push-Einwilligungen und lösen selbst keinen Push aus.
+
+Migration `20260906_0029` ergänzt die optionale Notizspalte und die
+Quittierungstabelle. Bestehende Push-Texte bleiben als kurze Historieneinträge
+erhalten, werden aber nicht rückwirkend als Popup angekündigt. Das Upgrade
+ändert keine Konten, Push-Einwilligungen oder vorgemerkten Empfänger. Ein
+Downgrade entfernt die ausführlichen Texte und Quittierungen; davor ein
+konsistentes Datenbackup sichern, ansonsten bevorzugt vorwärts reparieren.
 
 ### Private Einladungsauswahl
 

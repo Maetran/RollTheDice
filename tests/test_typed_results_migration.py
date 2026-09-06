@@ -19,7 +19,7 @@ PRE_TYPED_RESULTS_REVISION = "20260902_0015"
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20260906_0028"
+LATEST_SCHEMA_REVISION = "20260906_0029"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -144,6 +144,33 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
         with self._connection() as connection:
             self.assertNotIn("release_push_enabled", self._columns(connection, "users"))
             self.assertEqual(connection.execute("SELECT game_invite_push_enabled, daily_reminder_push_enabled FROM users WHERE id=?", (user_id,)).fetchone(), (1, 1))
+        self._upgrade()
+
+    def test_player_notes_migration_preserves_old_releases_and_delivery_claims(self) -> None:
+        self._upgrade("20260906_0028")
+        revision = "a" * 40
+        timestamp = "2026-09-06T10:00:00+00:00"
+        with self._connection() as connection:
+            user_id = self._insert_user(connection)
+            connection.execute(
+                "INSERT INTO push_releases VALUES (?, ?, ?, ?, ?, ?)",
+                (revision, "usability", "Bisheriger Hinweis", "Previous notice", '["zdwa", "zilch"]', timestamp),
+            )
+            connection.execute(
+                "INSERT INTO push_release_recipients VALUES (?, ?, ?, ?, ?)",
+                (revision, user_id, "zilch", "[]", timestamp),
+            )
+        self._upgrade()
+        with self._connection() as connection:
+            self.assertEqual(connection.execute("SELECT player_notes_json, summary_de FROM push_releases").fetchone(), (None, "Bisheriger Hinweis"))
+            self.assertEqual(connection.execute("SELECT claimed_at FROM push_release_recipients").fetchone(), (timestamp,))
+            self.assertEqual(connection.execute("SELECT * FROM release_acknowledgements").fetchall(), [])
+            connection.execute("INSERT INTO release_acknowledgements VALUES (?, ?, ?)", (revision, user_id, timestamp))
+            self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+        self._downgrade("20260906_0028")
+        with self._connection() as connection:
+            self.assertNotIn("player_notes_json", self._columns(connection, "push_releases"))
+            self.assertEqual(connection.execute("SELECT claimed_at FROM push_release_recipients").fetchone(), (timestamp,))
         self._upgrade()
 
     def _insert_deleted_game(

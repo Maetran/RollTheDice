@@ -1,6 +1,32 @@
 {
   "kind": "usability",
   "games": ["zdwa", "zilch"],
-  "summary_de": "Jetzt neu: Versionshinweise und Push-Einladungen nur von deinen Wunschspielern.",
-  "summary_en": "New: app update alerts and push invitations only from players you choose."
+  "summary_de": "Jetzt neu: Die wichtigsten Neuerungen direkt in der App – mit Versionshistorie im Konto.",
+  "summary_en": "New: the latest changes explained in the app, with release history in your account.",
+  "player_notes": {
+    "de": {
+      "title": "Mehr gemeinsam spielen – du entscheidest",
+      "changes": [
+        "Neuigkeiten im Blick: Neue Versionen stellen sich kurz in der App vor. Mit „Verstanden“ verschwindet der Hinweis dauerhaft. Die letzten zehn Releases findest du im Konto.",
+        "Lobby-Chat: Angemeldete Spieler können sich über ZDWA und Zilch hinweg austauschen. Filtere nach Spiel und klappe den Chat bei Bedarf auf. Chat und Popups kannst du im Konto ausschalten.",
+        "Mitspieler gesucht: In einer öffentlichen, wartenden Partie kannst du per Push nach Mitspielern rufen. Empfänger müssen Push vorher freigeben; Sendelimits schützen vor wiederholten Einladungen.",
+        "Nur deine Leute: Wähle im Konto, ob Einladungen von allen Spielern oder nur von deiner privaten Auswahlliste kommen dürfen. Die Liste gilt für beide Spiele.",
+        "Lust auf eine Runde? Spielerinnerungen sind freiwillig. Sie kommen höchstens einmal, zufällig zwischen 17 und 21 Uhr Schweizer Zeit – und nur, wenn du heute noch keines der beiden Spiele gespielt hast.",
+        "Updates nach deinem Geschmack: Kurze Versions-Pushs kannst du getrennt von Einladungen und Erinnerungen aktivieren. Ein Klick öffnet die Lobby; alle Push-Arten lassen sich jederzeit ausschalten.",
+        "Pause oder Schluss: Auch Zilch bietet beim Verlassen die Wahl zwischen Pause, Zur Lobby und Im Spiel bleiben. Zur Lobby beendet die Partie für alle."
+      ]
+    },
+    "en": {
+      "title": "More ways to play together – on your terms",
+      "changes": [
+        "Stay in the loop: New versions introduce their main changes in the app. Choose “Got it” to dismiss the notice permanently. Find the last ten releases in your account.",
+        "Lobby chat: Signed-in players can talk across ZDWA and Zilch. Filter by game and expand the chat when you need more room. Turn chat and popups off in your account.",
+        "Looking for players? Send a push invitation from a public waiting room. Recipients must enable push first; sending limits protect them from repeated invitations.",
+        "Your people, your choice: Accept invitations from all players or only from your private allowlist in account settings. The same list works for both games.",
+        "Fancy a round? Play reminders are optional. Get at most one, at a random time between 17:00 and 21:00 Swiss time – and only if you haven't played either game today.",
+        "Updates your way: Enable short app update pushes separately from invitations and reminders. A click opens the lobby; you can turn off any or all push categories at any time.",
+        "Pause or call it a day: Leaving Zilch now offers Pause, Return to Lobby and Stay in Game. Returning to the lobby ends the game for everyone."
+      ]
+    }
+  }
 }

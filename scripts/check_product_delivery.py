@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
@@ -88,6 +89,14 @@ def main() -> int:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     rules = (static_dir / "rules.html").read_text(encoding="utf-8")
     public_seo_pages, robots, sitemap = seo_contract()
+    from app.release_manifest import ReleaseNotice
+
+    try:
+        notice = json.loads((ROOT / "app" / "release-notice.json").read_text(encoding="utf-8"))
+        ReleaseNotice.from_payload({**notice, "revision": "0" * 40})
+    except (OSError, ValueError, TypeError) as error:
+        errors.append(f"Release metadata is invalid: {error}")
+    _check((ROOT / "CHANGELOG.md").is_file(), "Detailed release history is missing.", errors)
 
     registered = {page.static_filename: page for page in public_seo_pages}
     _check(len(registered) == len(public_seo_pages), "SEO registry has duplicate static filenames.", errors)

@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=52dca4190964">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=52dca4190964" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=52dca4190964" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=45e84f97bd01">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=45e84f97bd01" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=45e84f97bd01" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=52dca4190964">
-  <script src="/static/shell.js?v=52dca4190964" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=45e84f97bd01">
+  <script src="/static/shell.js?v=45e84f97bd01" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -78,6 +78,17 @@
       </section>
     </section>
     <section id="settingsPanel" class="account-panel account-settings-panel" role="tabpanel" aria-labelledby="settingsTab" hidden>
+      <section class="card" aria-labelledby="releaseHistoryTitle">
+        <h2 id="releaseHistoryTitle">Neuigkeiten &amp; Versionen</h2>
+        <p class="muted small">Die letzten zehn Releases kannst du jederzeit im Konto nachlesen.</p>
+        <div data-release-history><p class="muted small">Neuigkeiten werden geladen …</p></div>
+        <details class="release-notes-support">
+          <summary>Hilfe &amp; weitere Details</summary>
+          <p>Du hast einen Fehler entdeckt? Beschreibe auf GitHub kurz, was passiert ist, in welchem Spiel und auf welchem Gerät. Teile keine Passwörter oder privaten Spielraum-Codes. Zum Melden brauchst du ein GitHub-Konto.</p>
+          <a href="https://github.com/Maetran/RollTheDice/issues" target="_blank" rel="noopener noreferrer">Problem auf GitHub melden</a><br>
+          <a href="https://github.com/Maetran/RollTheDice/blob/master/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Ausführliche Versionshistorie auf GitHub</a>
+        </details>
+      </section>
       <section class="card password-card">
         <h2>ZDWA-Spieleinstellungen</h2>
         <p class="muted small">Die Spieleinstellungen gelten nur für ZDWA auf allen Geräten. Die Lobby-Chat-Einstellungen gelten zusätzlich für ZDWA und Zilch.</p>
@@ -155,11 +166,13 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=52dca4190964';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=52dca4190964';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=45e84f97bd01';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=45e84f97bd01';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=45e84f97bd01';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
+    initializeReleaseNotes({ context: 'zdwa' });
     document.getElementById('accountName').innerHTML = playerNameMarkup(user, { name: user.username });
     document.getElementById('publicProfileLink').href = `/spieler/${encodeURIComponent(user.username)}`;
     const accountTabs = {

@@ -20,6 +20,7 @@ from sqlalchemy import select
 from .achievements import sync_achievements_for_users
 from .active_games import load_active_games, save_active_game
 from .api_auth import router as auth_router
+from .api_releases import router as releases_router
 from .api_users import router as users_router
 from .auth import (
     ensure_bootstrap_admin,
@@ -409,6 +410,7 @@ app = FastAPI(lifespan=lifespan)
 
 
 app.include_router(auth_router)
+app.include_router(releases_router)
 app.include_router(users_router)
 
 LEGACY_PAGE_PATHS = {

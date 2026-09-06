@@ -10,6 +10,7 @@ Implementierung der Standard in [docs/PRODUCT_DELIVERY.md](docs/PRODUCT_DELIVERY
 - Vor dem Abschluss `npm run lint`, relevante Backend-Tests und bei sichtbaren
   Änderungen Browser-Tests ausführen.
 - Bei sichtbaren Releases `app/release-notice.json` mit einem neuen, kurzen
-  DE/EN-Usability-Hinweis und den betroffenen Spielen aktualisieren. Der Deploy
-  prüft diesen Hinweis; reine Backend-Releases erhalten automatisch den
+  DE/EN-Usability-Hinweis, spielerfreundlichen `player_notes` und den betroffenen
+  Spielen aktualisieren; die ausführlichere Historie steht in `CHANGELOG.md`.
+  Der Deploy prüft diese Inhalte; reine Backend-Releases erhalten automatisch den
   Stabilitätstext. Versions-Push niemals manuell gegen echte Konten testen.
