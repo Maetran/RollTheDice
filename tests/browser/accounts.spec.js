@@ -106,6 +106,7 @@ test("account avatar upload accepts ordinary phone-photo limits", async ({ page 
     buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEklEQVR4nGNUKt/NwMDAxAAGAA+BAVjtqt5YAAAAAElFTkSuQmCC", "base64"),
   });
   await expect(upload).toContainText("Vorschau bereit.");
+  await expect(upload.locator("input[type=file]")).not.toHaveValue("");
   await expect(upload.getByRole("button", { name: "Profilbild speichern" })).toBeEnabled();
   await upload.getByRole("button", { name: "Profilbild speichern" }).click();
   await expect(upload).toContainText("Profilbild gespeichert.");

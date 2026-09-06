@@ -78,12 +78,12 @@ export function mountAvatarUpload(mount) {
   message.setAttribute("role", "status");
   mount.replaceChildren(previewRow, label, hint, actions, message);
 
-  function clearFile() {
+  function clearFile({ resetInput = true } = {}) {
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = null;
     selected = null;
     selectedType = "";
-    input.value = "";
+    if (resetInput) input.value = "";
   }
   function controls() {
     input.disabled = busy || !account;
@@ -117,14 +117,25 @@ export function mountAvatarUpload(mount) {
   }
   input.addEventListener("change", async () => {
     const file = input.files?.[0];
-    clearFile();
+    // Keep the newly chosen File in the native input until the upload has
+    // finished. WebKit can invalidate its byte stream when value is reset in
+    // this same change event, leaving an otherwise valid image empty.
+    clearFile({ resetInput: false });
     ownPreview();
     const expectedEpoch = ++epoch;
     controls();
     if (!file) return;
-    if (file.size > inputLimit) { message.textContent = errorText(new Error("avatar_too_large")); return; }
+    if (file.size > inputLimit) {
+      clearFile();
+      message.textContent = errorText(new Error("avatar_too_large"));
+      return;
+    }
     const mediaType = mediaTypeFor(file);
-    if (!mediaType) { message.textContent = errorText(new Error("avatar_invalid_format")); return; }
+    if (!mediaType) {
+      clearFile();
+      message.textContent = errorText(new Error("avatar_invalid_format"));
+      return;
+    }
     objectUrl = URL.createObjectURL(file);
     if (expectedEpoch !== epoch || !mount.isConnected) return;
     // Image.decode() is unreliable for some otherwise valid mobile picker

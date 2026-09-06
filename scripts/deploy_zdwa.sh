@@ -5,6 +5,12 @@ REMOTE="${REMOTE:-zdwa}"
 REMOTE_DIR="${REMOTE_DIR:-/home/manuel/RollTheDice}"
 REPO_MATCH="${REPO_MATCH:-Maetran/RollTheDice}"
 BRANCH="${BRANCH:-master}"
+SILENT_RELEASE="${SILENT_RELEASE:-0}"
+
+if [[ "$SILENT_RELEASE" != "0" && "$SILENT_RELEASE" != "1" ]]; then
+  echo "SILENT_RELEASE must be 0 or 1" >&2
+  exit 2
+fi
 
 if [[ "$REMOTE_DIR" == "auto" ]]; then
   REMOTE_DIR="$(
@@ -36,11 +42,12 @@ fi
 
 printf 'Deploy target: %s:%s\n' "$REMOTE" "$REMOTE_DIR"
 
-remote_env="REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") BRANCH=$(printf '%q' "$BRANCH")"
+remote_env="REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") BRANCH=$(printf '%q' "$BRANCH") SILENT_RELEASE=$(printf '%q' "$SILENT_RELEASE")"
 ssh "$REMOTE" "$remote_env bash -s" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
 cd "$REMOTE_DIR"
+SILENT_RELEASE="${SILENT_RELEASE:-0}"
 
 compose() {
   sudo -n docker compose "$@"
@@ -103,7 +110,14 @@ echo "== Static asset versions =="
 python3 scripts/sync_static_versions.py --check
 
 echo "== Release note validation =="
-release_notice="$(python3 scripts/prepare_release_notice.py --previous "$previous_revision")"
+if [[ "$SILENT_RELEASE" == "1" ]]; then
+  # An operator explicitly requested a silent hotfix. It neither creates a
+  # push notification nor a new in-app release history entry.
+  release_notice='{"skip":true}'
+  echo "Silent release: player notification skipped"
+else
+  release_notice="$(python3 scripts/prepare_release_notice.py --previous "$previous_revision")"
+fi
 
 echo "== Docker deploy =="
 compose up -d --build
