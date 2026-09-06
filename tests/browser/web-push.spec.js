@@ -25,17 +25,21 @@ async function mockPush(page, { enabled = false, available = true, denied = fals
   let subscribed = enabled;
   let gameInvites = enabled;
   let dailyReminder = false;
+  let releaseAlerts = false;
+  let audience = "all";
+  let allowedSenders = [];
   const status = () => ({
-    available, enabled: gameInvites || dailyReminder, subscribed,
+    available, enabled: gameInvites || dailyReminder || releaseAlerts, subscribed,
     game_invites_enabled: gameInvites, daily_reminder_enabled: dailyReminder,
+    release_notifications_enabled: releaseAlerts, game_invite_audience: audience, allowed_sender_usernames: allowedSenders,
     daily_reminder_window_start: "17:00", daily_reminder_window_end: "21:00", daily_reminder_timezone: "Europe/Zurich",
     public_key: "BA" + "A".repeat(85),
   });
   await page.route("**/api/web-push/subscription", async route => {
     const method = route.request().method();
     calls.push(method);
-    if (method === "PUT") { subscribed = true; if (!dailyReminder) gameInvites = true; }
-    if (method === "DELETE") { subscribed = false; gameInvites = false; dailyReminder = false; }
+    if (method === "PUT") { subscribed = true; if (!dailyReminder && !releaseAlerts) gameInvites = true; }
+    if (method === "DELETE") { subscribed = false; gameInvites = false; dailyReminder = false; releaseAlerts = false; }
     await route.fulfill({ json: status() });
   });
   await page.route("**/api/web-push/preferences", async route => {
@@ -43,8 +47,15 @@ async function mockPush(page, { enabled = false, available = true, denied = fals
     expect(route.request().headers()["x-csrf-token"]).toBeTruthy();
     const payload = route.request().postDataJSON();
     calls.push(payload);
+    if (payload.allowed_sender_usernames?.includes("UnknownPlayer")) {
+      await route.fulfill({ status: 400, json: { detail: "push_allowlist_invalid" } });
+      return;
+    }
     gameInvites = payload.game_invites_enabled;
     dailyReminder = payload.daily_reminder_enabled;
+    releaseAlerts = payload.release_notifications_enabled ?? releaseAlerts;
+    audience = payload.game_invite_audience ?? audience;
+    allowedSenders = payload.allowed_sender_usernames ?? allowedSenders;
     await route.fulfill({ json: status() });
   });
   await page.addInitScript(({ denied }) => {
@@ -118,7 +129,7 @@ for (const product of [
     await daily.check();
     await page.getByRole("button", { name: "Push-Auswahl speichern" }).click();
     await expect(page.locator('[data-push-preferences-message]')).toHaveText("Push-Auswahl gespeichert.");
-    expect(calls).toContainEqual({ game_invites_enabled: false, daily_reminder_enabled: true });
+    expect(calls).toContainEqual(expect.objectContaining({ game_invites_enabled: false, daily_reminder_enabled: true }));
     await page.reload();
     await expect(invites).not.toBeChecked();
     await expect(daily).toBeChecked();
@@ -134,11 +145,72 @@ for (const product of [
     await changeLanguage("en");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByLabel("Receive a daily play reminder", { exact: true })).toBeChecked();
+    await expect(page.getByLabel("Receive app update alerts", { exact: true })).not.toBeChecked();
+    await expect(page.getByLabel("Accept invitations from")).toHaveValue("all");
     await expect(page.locator('[data-push-reminder-schedule]')).toHaveText("Only if you haven't played ZDWA or Zilch today: at most once, at a random time between 17:00 and 21:00 (Swiss time).");
     await changeLanguage("de");
     await expect(page.locator("html")).toHaveAttribute("lang", "de");
     await page.locator(product.disable).click();
     await expect(daily).toBeHidden();
+  });
+
+  test(`${product.name} release consent and private allowlist persist on mobile without changing other categories`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    const calls = await mockPush(page, { enabled: true });
+    await page.goto(product.path);
+    const releases = page.getByLabel("Versionshinweise erhalten", { exact: true });
+    const audience = page.getByLabel("Einladungen akzeptieren von");
+    const names = page.getByLabel("Erlaubte Spieler", { exact: true });
+    await expect(releases).not.toBeChecked();
+    await expect(names).toBeHidden();
+    await releases.check();
+    await audience.selectOption("allowlist");
+    await names.fill("Admin\nAllowedFriend");
+    await expect(names).toBeVisible();
+    await expect(page.locator('input[name="dailyReminder"]')).not.toBeChecked();
+    await page.getByRole("button", { name: "Push-Auswahl speichern" }).click();
+    await expect(page.locator('[data-push-preferences-message]')).toHaveText("Push-Auswahl gespeichert.");
+    expect(calls).toContainEqual({ game_invites_enabled: true, daily_reminder_enabled: false, release_notifications_enabled: true,
+      game_invite_audience: "allowlist", allowed_sender_usernames: ["Admin", "AllowedFriend"] });
+    await page.reload();
+    await expect(releases).toBeChecked();
+    await expect(audience).toHaveValue("allowlist");
+    await expect(names).toHaveValue("Admin\nAllowedFriend");
+    const box = await names.boundingBox();
+    expect(box.width).toBeGreaterThan(150);
+    expect(box.x + box.width).toBeLessThanOrEqual(391);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    const card = page.locator(product.name === "ZDWA" ? ".password-card:has(#pushPreferencesForm)" : ".zilch-account-settings-card:has(#zilchPushPreferencesForm)");
+    await page.evaluate(() => document.activeElement?.blur());
+    await card.screenshot({ path: testInfo.outputPath("push-settings-mobile.png") });
+    await names.fill("");
+    await page.getByRole("button", { name: "Push-Auswahl speichern" }).click();
+    await expect(page.locator('[data-push-preferences-message]')).toHaveText("Push-Auswahl gespeichert.");
+    await page.reload();
+    await expect(audience).toHaveValue("allowlist");
+    await expect(names).toBeEmpty();
+    await page.locator(product.disable).click();
+    await expect(releases).toBeHidden();
+    await page.reload();
+    await expect(page.locator(product.status)).toContainText("sind ausgeschaltet");
+  });
+
+  test(`${product.name} invalid and oversized allowlists show an actionable error without losing input`, async ({ page }) => {
+    await signIn(page);
+    const calls = await mockPush(page, { enabled: true });
+    await page.goto(product.path);
+    await page.getByLabel("Einladungen akzeptieren von").selectOption("allowlist");
+    const names = page.getByLabel("Erlaubte Spieler", { exact: true });
+    await names.fill("UnknownPlayer");
+    await page.getByRole("button", { name: "Push-Auswahl speichern" }).click();
+    await expect(page.locator('[data-push-preferences-message]')).toHaveText("Bitte verwende nur bestehende, aktive Benutzernamen und nicht deinen eigenen Namen.");
+    await expect(names).toHaveValue("UnknownPlayer");
+    const requests = calls.length;
+    await names.fill(Array.from({ length: 101 }, (_, index) => `Player${index}`).join("\n"));
+    await page.getByRole("button", { name: "Push-Auswahl speichern" }).click();
+    await expect(page.locator('[data-push-preferences-message]')).toHaveText("Du kannst höchstens 100 Spieler auswählen.");
+    expect(calls.length).toBe(requests);
   });
 }
 
@@ -170,7 +242,8 @@ test("both lobby buttons dispatch invitations and show the account flood limit w
 });
 
 for (const worker of ["sw.js", "zilch-sw.js"]) {
-  test(`${worker} opens the reminder lobby and focuses an existing matching window`, async () => {
+  for (const tag of ["daily-reminder-2026-09-06", "app-release-" + "a".repeat(40)]) {
+  test(`${worker} opens the ${tag.split("-")[0]} lobby and focuses an existing matching window`, async () => {
     const fs = require("node:fs");
     const vm = require("node:vm");
     const path = require("node:path");
@@ -188,8 +261,9 @@ for (const worker of ["sw.js", "zilch-sw.js"]) {
       clients: { matchAll: async () => windows, openWindow: async url => { opened = url; } },
     };
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../../app/static", worker), "utf8"), { self, URL });
-    handlers.push({ data: { json: () => ({ title: "Heute schon gespielt?", body: "Die Würfel warten.", url: origin + "/", tag: "daily-reminder-2026-09-06" }) }, waitUntil: promise => { pending = promise; } });
+    handlers.push({ data: { json: () => ({ title: "Neuigkeiten", body: "Die Würfel warten.", url: origin + "/", tag }) }, waitUntil: promise => { pending = promise; } });
     await pending;
+    expect(visibleNotification.tag).toBe(tag);
     const click = () => handlers.notificationclick({ notification: { ...visibleNotification, close() {} }, waitUntil: promise => { pending = promise; } });
     click();
     await pending;
@@ -201,4 +275,5 @@ for (const worker of ["sw.js", "zilch-sw.js"]) {
     expect(focused).toBe(true);
     expect(opened).toBeNull();
   });
+  }
 }

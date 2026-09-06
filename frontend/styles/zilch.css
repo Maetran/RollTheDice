@@ -857,6 +857,11 @@ html[data-game="zilch"] .zilch-cpu-strategy { grid-column: 1 / -1; }
 .zilch-settings-form input { width: 100%; box-sizing: border-box; }
 .zilch-settings-form input[type="radio"] { width: auto; accent-color: var(--zilch-blue); }
 .zilch-settings-form button { justify-self: start; min-height: 2.45rem; }
+#zilchPushPreferencesForm :is(select, textarea) { width: 100%; min-width: 0; box-sizing: border-box; }
+#zilchPushPreferencesForm textarea { padding: .56rem .68rem; border: 1px solid rgba(136, 90, 40, .4); border-radius: var(--zilch-radius-xs); background: var(--zilch-paper); color: var(--zilch-ink); font: inherit; font-size: 16px; line-height: 1.4; resize: vertical; }
+#zilchPushPreferencesForm textarea:focus-visible { outline: 2px solid var(--zilch-blue); outline-offset: 2px; }
+#zilchPushPreferencesForm label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: .45rem; }
+#zilchPushPreferencesForm input[type="checkbox"] { width: auto; flex: 0 0 auto; }
 .zilch-settings-message { min-height: 1.25rem; margin-bottom: 0; color: var(--zilch-muted); font-size: .84rem; font-weight: 700; }
 .zilch-account-session {
   display: flex;

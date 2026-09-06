@@ -645,8 +645,74 @@ Spielaktivität, mit ihren bestehenden separaten Flood-Limits.
 
 Es gibt keinen öffentlichen Trigger-Endpunkt für den Scheduler. In Tests Versand
 und Uhrzeit mocken, niemals einen Test-Batch gegen produktive Empfänger starten.
-Eine Absender-Allowlist/Friendlist für Einladungen ist als spätere Skalierungs-
-Erweiterung vorgesehen, derzeit aber nicht implementiert.
+
+### Versionshinweise nach Deployments
+
+Revision `20260906_0028` ergänzt separat aktivierbare Versionshinweise
+(`release_push_enabled`, Standard **aus**) und eine private Absender-Allowlist.
+Bestehende Push-Einwilligungen werden nicht auf die neue Kategorie erweitert.
+
+`scripts/deploy_zdwa.sh` veröffentlicht erst **nach erfolgreichem Build und
+Healthcheck** die neue Git-Revision in einer dauerhaften Outbox. Ein
+Serverneustart allein veröffentlicht nichts. Ein Scheduler leert alle 30 Sekunden
+bis zu 50 vorgemerkte Konten. Ein Konto wird vor jedem externen Versand atomar
+für die Revision reserviert: erneute Deployments, parallele Scheduler und
+Neustarts lösen keinen zweiten Versuch aus. Auch bei Versandfehlern wird diese
+Reservierung nicht zurückgesetzt; Push bleibt eine Best-Effort-Zustellung.
+
+Für sichtbare Änderungen eine **neue, geprüfte** Meldung in
+`app/release-notice.json` committen, z. B.:
+
+```json
+{
+  "kind": "usability",
+  "games": ["zdwa", "zilch"],
+  "summary_de": "Jetzt neu: Chat in der Lobby",
+  "summary_en": "New: lobby chat"
+}
+```
+
+Die Kurztexte müssen beide vorhanden sein, dürfen keine Zeilenumbrüche enthalten
+und höchstens 140 Zeichen lang sein. `games` grenzt ein produktspezifisches
+Release ein. Die Revision liefert Git; sie gehört nicht in die JSON-Datei.
+Frontend-, HTML-, CSS- oder Manifest-Änderungen ohne aktualisierte Usability-Notiz
+stoppen den Deploy vor dem Build. Bei reinen Backend-Änderungen ohne neue Notiz
+wird automatisch **„Verbesserungen an der Stabilität“ / „Stability improvements“**
+verwendet, niemals ein alter Feature-Text. Reine Änderungen an Dokumentation,
+Tests oder Betriebsskripten senden keine Meldung. Backend-Änderungen mit sichtbarer
+Wirkung brauchen ebenfalls einen bewusst formulierten Usability-Hinweis.
+
+Der private Git-Marker `rollthedice-last-deployed` enthält die letzte erfolgreich
+ausgerollte Revision. Er wird beim ersten Aufruf aus dem bisherigen Checkout
+initialisiert und erst nach erfolgreicher Veröffentlichung fortgeschrieben.
+So funktioniert ein erneuter Versuch auch dann, wenn ein fehlgeschlagener Build
+bereits neuen Code ausgecheckt hat. Den Marker nicht für Testsendungen verändern.
+
+Bei Veröffentlichung werden nur aktive, berechtigte und ausdrücklich angemeldete
+Konten samt damaliger Geräte vorgemerkt. Spätere Opt-ins und neue Geräte bekommen
+keine alten Meldungen. Bei gemeinsamen Releases wird das zuletzt angemeldete,
+betroffene Produkt gewählt, nicht je ein Push aus beiden PWAs. Dessen damalige
+Geräte erhalten den kurzen Text in der aktuellen Kontosprache. Vor jedem Gerät
+werden Konto, Einwilligung, Eigentümer des Abonnements und Spielzugang erneut
+geprüft. Die Outbox und die TTL beim Push-Dienst begrenzen die Zustellung auf
+höchstens 24 Stunden nach Veröffentlichung. Ein Klick öffnet die passende Lobby.
+Bereits erfolgtes Spielen und die Einladungsauswahl beeinflussen Versionshinweise
+nicht; der globale Push-Opt-out schaltet auch diese Kategorie aus.
+
+### Private Einladungsauswahl
+
+`game_invite_push_audience` ist standardmäßig `all`. Mit `allowlist` erhalten
+Konten nur Einladungen von den in `push_invite_allowed_senders` gespeicherten
+Absender-IDs. Die Kontoeinstellung akzeptiert bis zu 100 aktive, bestehende
+Benutzernamen, normalisiert und dedupliziert sie und verwirft unbekannte oder
+eigene Namen atomar. Eine leere Allowlist sperrt alle Einladungen. Es zählt
+der authentifizierte Auslöser, nicht ein anderer Spieler am Tisch.
+
+Die Liste ist privat, gerichtet und spiel-/geräteübergreifend. Sie gilt nicht
+für Erinnerungen und Versionshinweise; die bisherigen Einladungslimits bleiben
+unverändert. Das ist die Grundlage einer späteren Friendlist, noch kein System
+für gegenseitige Freundschaftsanfragen. Alte Clients können ihre bisherigen
+Push-Schalter weiter speichern, ohne neue Einstellungen zurückzusetzen.
 
 ### Erster Administrator
 
@@ -694,6 +760,12 @@ ssh zdwa
 cd /home/manuel/RollTheDice
 git status --short --branch
 
+# Persist the comparison base before pulling; preserve it on retries.
+set -euo pipefail
+deployment_marker="$(git rev-parse --git-path rollthedice-last-deployed)"
+test -s "$deployment_marker" || git rev-parse HEAD > "$deployment_marker"
+previous_revision="$(< "$deployment_marker")"
+
 docker compose stop rollthedice
 cp -a data "data.backup-$(date +%Y%m%d-%H%M%S)"
 docker compose start rollthedice
@@ -702,11 +774,16 @@ git fetch origin master
 git checkout master
 git pull --ff-only origin master
 python3 scripts/sync_static_versions.py --check
+release_notice="$(python3 scripts/prepare_release_notice.py --previous "$previous_revision")"
 docker compose up -d --build
 
 docker compose ps
 curl --retry 15 --retry-delay 2 --retry-connrefused --retry-all-errors \
   -fsS http://127.0.0.1:8000/api/health >/dev/null
+
+# Run only if the build AND health check succeeded.
+printf '%s\n' "$release_notice" | docker compose exec -T rollthedice python -m app.release_push
+git rev-parse HEAD > "$deployment_marker"
 ```
 
 Wenn `git status --short` Änderungen zeigt, nicht weitermachen. Zuerst klären,

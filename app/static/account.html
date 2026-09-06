@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=0f3e408a8ff5">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=0f3e408a8ff5" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=0f3e408a8ff5" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=52dca4190964">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=52dca4190964" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=52dca4190964" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=0f3e408a8ff5">
-  <script src="/static/shell.js?v=0f3e408a8ff5" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=52dca4190964">
+  <script src="/static/shell.js?v=52dca4190964" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -117,7 +117,7 @@
       </section>
       <section class="card password-card" aria-labelledby="pushSettingsTitle">
         <h2 id="pushSettingsTitle">Push-Benachrichtigungen</h2>
-        <p class="muted small">Melde dieses Gerät für Push an. Mitspieler-Einladungen und tägliche Spielerinnerungen kannst du getrennt wählen oder für alle Geräte ausschalten.</p>
+        <p class="muted small">Melde dieses Gerät für Push an. Wähle Mitspieler-Einladungen, Spielerinnerungen und Versionshinweise getrennt oder schalte alles für alle Geräte aus.</p>
         <div class="account-push-actions">
           <button id="enableGameInvitePush" class="primary" type="button">Push-Benachrichtigungen aktivieren</button>
           <button id="disableGameInvitePush" class="secondary" type="button" hidden>Push-Benachrichtigungen deaktivieren</button>
@@ -125,9 +125,18 @@
         <p id="gameInvitePushStatus" class="muted small" role="status"></p>
         <form id="pushPreferencesForm" class="form-stack" hidden>
           <label><input type="checkbox" name="gameInvites"> Mitspieler-Einladungen erhalten</label>
+          <label>Einladungen akzeptieren von
+            <select name="inviteAudience"><option value="all">Allen Spielern</option><option value="allowlist">Nur ausgewählten Spielern</option></select>
+          </label>
+          <div data-push-allowlist hidden>
+            <label>Erlaubte Spieler<textarea name="allowedSenders" rows="3" maxlength="3300" autocomplete="off" spellcheck="false"></textarea></label>
+            <p class="muted small">Ein Benutzername pro Zeile, höchstens 100. Eine leere Auswahlliste blockiert alle Mitspieler-Einladungen. Deine Liste ist privat und gilt für beide Spiele.</p>
+          </div>
           <label><input type="checkbox" name="dailyReminder"> Tägliche Spielerinnerung erhalten</label>
           <p class="muted small" data-push-reminder-schedule></p>
           <p class="muted small">Bei beiden angemeldeten Spielen wechseln sich ZDWA und Zilch ab. Der Klick auf eine Erinnerung öffnet die passende Lobby.</p>
+          <label><input type="checkbox" name="releaseNotifications"> Versionshinweise erhalten</label>
+          <p class="muted small">Nach einem erfolgreichen Update: kurze Hinweise zu neuen Funktionen oder Verbesserungen an der Stabilität. Ein Klick öffnet die passende Lobby. Deine Spielaktivität und die Spielerauswahl gelten nur für die anderen Push-Arten.</p>
           <button class="primary" type="submit">Push-Auswahl speichern</button>
           <p class="muted small" data-push-preferences-message role="status"></p>
         </form>
@@ -146,8 +155,8 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=0f3e408a8ff5';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=0f3e408a8ff5';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=52dca4190964';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=52dca4190964';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;

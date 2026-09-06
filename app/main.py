@@ -84,6 +84,7 @@ from .product_hosts import (
     zilch_url,
 )
 from .push_reminders import run_daily_reminder_scheduler
+from .release_push import run_release_push_scheduler
 from .security import normalize_username
 from .site_seo import robots_document, sitemap_document, zilch_page_is_indexable
 from .web_push import (
@@ -389,6 +390,7 @@ async def lifespan(_app: FastAPI):
     )
     reminder_stop = asyncio.Event()
     reminder_scheduler = asyncio.create_task(run_daily_reminder_scheduler(reminder_stop), name="daily-push-reminders")
+    release_scheduler = asyncio.create_task(run_release_push_scheduler(reminder_stop), name="release-push-notifications")
     try:
         yield
     finally:
@@ -398,7 +400,8 @@ async def lifespan(_app: FastAPI):
         timeout_sweeper.cancel()
         lobby_chat_purger.cancel()
         reminder_scheduler.cancel()
-        await asyncio.gather(timeout_sweeper, lobby_chat_purger, reminder_scheduler, return_exceptions=True)
+        release_scheduler.cancel()
+        await asyncio.gather(timeout_sweeper, lobby_chat_purger, reminder_scheduler, release_scheduler, return_exceptions=True)
         await stop_cpu_runners()
 
 
@@ -1439,7 +1442,7 @@ async def api_game_notify_open_seat(game_id: str, request: Request):
             detail={"code": "game_invite_account_cooldown", "retry_after_seconds": account_cooldown},
             headers={"Retry-After": str(account_cooldown)},
         )
-    subscriptions = game_invite_push_recipients(game)
+    subscriptions = game_invite_push_recipients(game, sender_user_id=identity.user_id)
     if not subscriptions:
         # Do not reveal whether particular players use Push. The actor merely
         # learns that no delivery was attempted. The account cooldown still
@@ -1449,7 +1452,7 @@ async def api_game_notify_open_seat(game_id: str, request: Request):
     # requests, so a double click or concurrent tab cannot dispatch duplicates.
     mark_game_invite_push_sent(game)
     save_active_game(game)
-    dispatch = await dispatch_game_invite_push(game, subscriptions)
+    dispatch = await dispatch_game_invite_push(game, subscriptions, sender_user_id=identity.user_id)
     return {
         "ok": True,
         "notified": bool(dispatch.accepted),

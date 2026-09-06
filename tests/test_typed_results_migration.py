@@ -19,7 +19,7 @@ PRE_TYPED_RESULTS_REVISION = "20260902_0015"
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20260906_0027"
+LATEST_SCHEMA_REVISION = "20260906_0028"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -83,6 +83,8 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
             "daily_reminder_push_enabled": 0,
             "daily_reminder_push_last_sent_on": None,
             "daily_reminder_push_sequence": 0,
+            "release_push_enabled": 0,
+            "game_invite_push_audience": "all",
             "last_played_on": None,
             "created_at": timestamp,
             "updated_at": timestamp,
@@ -124,6 +126,25 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
             tuple(values[column] for column in columns),
         )
         return int(cursor.lastrowid)
+
+    def test_release_migration_preserves_existing_consent_and_can_be_reversed(self) -> None:
+        self._upgrade("20260906_0027")
+        with self._connection() as connection:
+            user_id = self._insert_user(connection)
+            connection.execute("UPDATE users SET game_invite_push_enabled=1, daily_reminder_push_enabled=1 WHERE id=?", (user_id,))
+        self._upgrade()
+        with self._connection() as connection:
+            self.assertEqual(connection.execute(
+                "SELECT game_invite_push_enabled, daily_reminder_push_enabled, release_push_enabled, game_invite_push_audience FROM users WHERE id=?", (user_id,),
+            ).fetchone(), (1, 1, 0, "all"))
+            self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+            tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            self.assertTrue({"push_releases", "push_release_recipients", "push_invite_allowed_senders"}.issubset(tables))
+        self._downgrade("20260906_0027")
+        with self._connection() as connection:
+            self.assertNotIn("release_push_enabled", self._columns(connection, "users"))
+            self.assertEqual(connection.execute("SELECT game_invite_push_enabled, daily_reminder_push_enabled FROM users WHERE id=?", (user_id,)).fetchone(), (1, 1))
+        self._upgrade()
 
     def _insert_deleted_game(
         self,

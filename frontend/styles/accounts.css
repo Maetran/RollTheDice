@@ -82,6 +82,11 @@
 .account-tab.active { color: #fff; background: var(--accent); border-color: var(--accent); }
 .account-panel[hidden] { display: none; }
 .account-settings-panel { display: grid; gap: 1rem; }
+#pushPreferencesForm :is(select, textarea) { width: 100%; min-width: 0; box-sizing: border-box; }
+#pushPreferencesForm textarea { padding: .56rem .68rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; font-size: 16px; line-height: 1.4; resize: vertical; }
+#pushPreferencesForm textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#pushPreferencesForm label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: .45rem; }
+#pushPreferencesForm input[type="checkbox"] { width: auto; flex: 0 0 auto; }
 .statistics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 .achievements-section{ margin-top:1.25rem; padding-top:1.1rem; border-top:1px solid var(--border); }
 .achievements-section h2{ margin:0; }

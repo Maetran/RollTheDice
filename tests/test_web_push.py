@@ -210,7 +210,7 @@ class WebPushTestCase(unittest.TestCase):
             result = asyncio.run(main.api_game_notify_open_seat("push-game", request))
             self.assertEqual(result, {"ok": True, "notified": True})
             self.assertGreater(game_invite_cooldown_remaining(game), 0)
-            dispatch.assert_awaited_once_with(game, [subscription])
+            dispatch.assert_awaited_once_with(game, [subscription], sender_user_id=player.id)
             with self.assertRaises(HTTPException) as rejected:
                 asyncio.run(main.api_game_notify_open_seat("push-game", request))
 

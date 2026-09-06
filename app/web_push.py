@@ -18,18 +18,19 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from ipaddress import ip_address
+from typing import Literal
 from urllib.parse import quote, urlsplit
 
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import and_, delete, or_, select, update
 
 from .database import session_scope
 from .game_access import can_account_access_zilch
 from .game_activity import PLAY_DAY_TIMEZONE
 from .game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
-from .models import User, WebPushSubscription
+from .models import PushInviteAllowedSender, User, WebPushSubscription
 from .product_hosts import site_origin, zilch_url
-from .security import as_utc, utcnow
+from .security import as_utc, normalize_username, utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,11 @@ class WebPushSubscriptionRequest(BaseModel):
 class WebPushPreferencesRequest(BaseModel):
     game_invites_enabled: bool
     daily_reminder_enabled: bool
+    # Older installed clients may still save only the original two switches.
+    # Omitted new fields preserve the current settings, never reset them.
+    release_notifications_enabled: bool | None = None
+    game_invite_audience: Literal["all", "allowlist"] | None = None
+    allowed_sender_usernames: list[str] | None = Field(default=None, max_length=100)
 
 
 def web_push_config() -> WebPushConfig:
@@ -202,13 +208,21 @@ def web_push_subscription_status(user_id: int) -> dict[str, object]:
         )
         game_invites_enabled = bool(user and user.game_invite_push_enabled and subscribed)
         daily_reminder_enabled = bool(user and user.daily_reminder_push_enabled and subscribed)
+        release_enabled = bool(user and user.release_push_enabled and subscribed)
+        audience = user.game_invite_push_audience if user else "all"
+        allowed_names = list(db.scalars(select(User.username).join(
+            PushInviteAllowedSender, PushInviteAllowedSender.sender_user_id == User.id,
+        ).where(PushInviteAllowedSender.recipient_user_id == user_id, User.is_active.is_(True)).order_by(User.username_normalized)))
     return {
         "available": config.enabled,
         "public_key": config.public_key if config.enabled else None,
-        "enabled": game_invites_enabled or daily_reminder_enabled,
+        "enabled": game_invites_enabled or daily_reminder_enabled or release_enabled,
         "subscribed": subscribed,
         "game_invites_enabled": game_invites_enabled,
         "daily_reminder_enabled": daily_reminder_enabled,
+        "release_notifications_enabled": release_enabled,
+        "game_invite_audience": audience,
+        "allowed_sender_usernames": allowed_names,
         "daily_reminder_window_start": f"{DAILY_REMINDER_START_HOUR:02d}:00",
         "daily_reminder_window_end": f"{DAILY_REMINDER_END_HOUR:02d}:00",
         "daily_reminder_timezone": DAILY_REMINDER_TIMEZONE,
@@ -254,7 +268,7 @@ def save_web_push_subscription(
             subscription.updated_at = now
         # Initial registration retains the established invitation opt-in. An
         # additional device must not override a reminders-only preference.
-        if not user.game_invite_push_enabled and not user.daily_reminder_push_enabled:
+        if not user.game_invite_push_enabled and not user.daily_reminder_push_enabled and not user.release_push_enabled:
             user.game_invite_push_enabled = True
         user.updated_at = now
         db.flush()
@@ -269,6 +283,7 @@ def update_web_push_preferences(user_id: int, payload: WebPushPreferencesRequest
         enabling = (
             payload.game_invites_enabled and not user.game_invite_push_enabled
             or payload.daily_reminder_enabled and not user.daily_reminder_push_enabled
+            or payload.release_notifications_enabled and not user.release_push_enabled
         )
         if enabling:
             if not web_push_available():
@@ -277,6 +292,19 @@ def update_web_push_preferences(user_id: int, payload: WebPushPreferencesRequest
                 raise ValueError("web_push_device_required")
         user.game_invite_push_enabled = payload.game_invites_enabled
         user.daily_reminder_push_enabled = payload.daily_reminder_enabled
+        if payload.release_notifications_enabled is not None:
+            user.release_push_enabled = payload.release_notifications_enabled
+        if payload.game_invite_audience is not None:
+            user.game_invite_push_audience = payload.game_invite_audience
+        if payload.allowed_sender_usernames is not None:
+            names = {normalize_username(name.strip()) for name in payload.allowed_sender_usernames}
+            if any(not name or len(name) > 32 for name in names):
+                raise ValueError("push_allowlist_invalid")
+            senders = list(db.scalars(select(User).where(User.username_normalized.in_(names), User.is_active.is_(True))))
+            if len(senders) != len(names) or any(sender.id == user_id for sender in senders):
+                raise ValueError("push_allowlist_invalid")
+            db.execute(delete(PushInviteAllowedSender).where(PushInviteAllowedSender.recipient_user_id == user_id))
+            db.add_all(PushInviteAllowedSender(recipient_user_id=user_id, sender_user_id=sender.id, created_at=utcnow()) for sender in senders)
         user.updated_at = utcnow()
     return web_push_subscription_status(user_id)
 
@@ -289,6 +317,7 @@ def remove_web_push_subscriptions(user_id: int) -> dict[str, object]:
         db.execute(delete(WebPushSubscription).where(WebPushSubscription.user_id == user.id))
         user.game_invite_push_enabled = False
         user.daily_reminder_push_enabled = False
+        user.release_push_enabled = False
         user.updated_at = utcnow()
     return web_push_subscription_status(user_id)
 
@@ -426,7 +455,16 @@ def game_invite_destinations(game: dict, subscriptions: list[StoredSubscription]
     return [(subscription, destination) for subscription in subscriptions]
 
 
-def game_invite_push_recipients(game: dict) -> list[StoredSubscription]:
+def invitation_sender_allowed(sender_user_id: int | None):
+    """Evaluate the actual authenticated trigger, never another seated player."""
+    listed = select(PushInviteAllowedSender.sender_user_id).where(
+        PushInviteAllowedSender.recipient_user_id == User.id,
+        PushInviteAllowedSender.sender_user_id == sender_user_id,
+    ).exists()
+    return or_(User.game_invite_push_audience == "all", and_(User.game_invite_push_audience == "allowlist", listed))
+
+
+def game_invite_push_recipients(game: dict, *, sender_user_id: int | None = None) -> list[StoredSubscription]:
     """Load only opted-in accounts allowed to see this product and not seated."""
     game_type = game_type_from_state(game)
     seated_ids = {
@@ -438,7 +476,7 @@ def game_invite_push_recipients(game: dict) -> list[StoredSubscription]:
         rows = db.execute(
             select(WebPushSubscription, User)
             .join(User, WebPushSubscription.user_id == User.id)
-            .where(User.is_active.is_(True), User.game_invite_push_enabled.is_(True))
+            .where(User.is_active.is_(True), User.game_invite_push_enabled.is_(True), invitation_sender_allowed(sender_user_id))
         ).all()
     recipients: list[StoredSubscription] = []
     for subscription, user in rows:
@@ -497,11 +535,16 @@ def _send_web_push(subscription: StoredSubscription, payload: dict[str, object],
         return False, expired
 
 
-async def dispatch_game_invite_push(game: dict, subscriptions: list[StoredSubscription]) -> GameInviteDispatch:
+async def dispatch_game_invite_push(
+    game: dict, subscriptions: list[StoredSubscription], *, sender_user_id: int | None = None,
+) -> GameInviteDispatch:
     """Dispatch one waiting-room invite without retaining endpoint details in logs."""
     if not subscriptions:
         return GameInviteDispatch(attempted=0, accepted=0, expired=0)
-    deliveries = game_invite_destinations(game, subscriptions)
+    # A queued fan-out must honor an opt-out/allowlist edit before it starts.
+    original_devices = {(item.id, item.user_id, item.endpoint) for item in subscriptions}
+    current = game_invite_push_recipients(game, sender_user_id=sender_user_id)
+    deliveries = game_invite_destinations(game, [item for item in current if (item.id, item.user_id, item.endpoint) in original_devices])
     results = await asyncio.gather(
         *(
             asyncio.to_thread(

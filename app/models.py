@@ -45,6 +45,8 @@ class User(Base):
     game_invite_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     game_invite_push_last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     daily_reminder_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    release_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    game_invite_push_audience: Mapped[str] = mapped_column(String(16), nullable=False, default="all")
     daily_reminder_push_last_sent_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     daily_reminder_push_sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_played_on: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -168,6 +170,47 @@ class WebPushSubscription(Base):
             name="ck_web_push_subscriptions_product_context",
         ),
         Index("ix_web_push_subscriptions_user", "user_id"),
+    )
+
+
+class PushInviteAllowedSender(Base):
+    """A private, directed allowlist; never a public friendship relationship."""
+
+    __tablename__ = "push_invite_allowed_senders"
+    recipient_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    sender_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (CheckConstraint("recipient_user_id != sender_user_id", name="ck_push_allowlist_not_self"),)
+
+
+class PushRelease(Base):
+    """Immutable successful deployment and its bilingual announcement."""
+
+    __tablename__ = "push_releases"
+    revision: Mapped[str] = mapped_column(String(40), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    summary_de: Mapped[str] = mapped_column(String(140), nullable=False)
+    summary_en: Mapped[str] = mapped_column(String(140), nullable=False)
+    game_types_json: Mapped[str] = mapped_column(Text, nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (CheckConstraint("kind IN ('backend', 'usability')", name="ck_push_release_kind"),)
+
+
+class PushReleaseRecipient(Base):
+    """Frozen release audience with a durable, at-most-once dispatch claim."""
+
+    __tablename__ = "push_release_recipients"
+    revision: Mapped[str] = mapped_column(ForeignKey("push_releases.revision", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    product_context: Mapped[str] = mapped_column(String(16), nullable=False)
+    subscription_snapshot_json: Mapped[str] = mapped_column(Text, nullable=False)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("product_context IN ('zdwa', 'zilch')", name="ck_push_release_recipient_context"),
+        Index("ix_push_release_pending", "claimed_at", "revision"),
     )
 
 

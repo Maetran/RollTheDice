@@ -26,6 +26,12 @@ geteilten Vorschauen auftauchen.
    Endpunkte, nicht die Seiten, die ihr `noindex` selbst ausliefern müssen.
 4. **Qualitätssicherung:** Vor Commit und Deploy mindestens `npm run lint`,
    die Backend-Tests und bei sichtbaren Änderungen die Browser-Tests ausführen.
+5. **Versionshinweis:** Für sichtbare Releases `app/release-notice.json` mit
+   `kind: usability`, betroffenen Spielen und einem neuen Kurztext je Sprache
+   (höchstens 140 Zeichen) aktualisieren. Der Deploy prüft die Änderung gegen
+   den letzten erfolgreichen Rollout; Backend-Releases ohne neue Notiz nutzen
+   automatisch den Stabilitätshinweis. Reine Dokumentationsänderungen lösen
+   keinen Push aus. Kein Testversand an echte Konten.
 
 `scripts/check_product_delivery.py` wird durch `npm run lint` und die CI
 ausgeführt. Es verhindert Drift zwischen README, Spielanleitung,

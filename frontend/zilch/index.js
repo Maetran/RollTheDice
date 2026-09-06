@@ -1986,7 +1986,7 @@ function zilchAccountSettingsMarkup(username) {
     <section class="zilch-card zilch-account-settings-card">
       <p class="eyebrow">${escapeHtml(t("Gemeinsame Lobby"))}</p>
       <h2>${escapeHtml(t("Push-Benachrichtigungen"))}</h2>
-      <p class="zilch-account-settings-card__description">${escapeHtml(t("Melde dieses Gerät für Push an. Mitspieler-Einladungen und tägliche Spielerinnerungen kannst du getrennt wählen oder für alle Geräte ausschalten."))}</p>
+      <p class="zilch-account-settings-card__description">${escapeHtml(t("Melde dieses Gerät für Push an. Wähle Mitspieler-Einladungen, Spielerinnerungen und Versionshinweise getrennt oder schalte alles für alle Geräte aus."))}</p>
       <div class="zilch-settings-form">
         <button id="zilchEnableGameInvitePush" class="primary" type="button">${escapeHtml(t("Push-Benachrichtigungen aktivieren"))}</button>
         <button id="zilchDisableGameInvitePush" class="secondary" type="button" hidden>${escapeHtml(t("Push-Benachrichtigungen deaktivieren"))}</button>
@@ -1994,9 +1994,18 @@ function zilchAccountSettingsMarkup(username) {
       <p id="zilchGameInvitePushStatus" class="zilch-settings-message" role="status"></p>
       <form id="zilchPushPreferencesForm" class="zilch-settings-form" hidden>
         <label><input type="checkbox" name="gameInvites"> ${escapeHtml(t("Mitspieler-Einladungen erhalten"))}</label>
+        <label>${escapeHtml(t("Einladungen akzeptieren von"))}
+          <select name="inviteAudience"><option value="all">${escapeHtml(t("Allen Spielern"))}</option><option value="allowlist">${escapeHtml(t("Nur ausgewählten Spielern"))}</option></select>
+        </label>
+        <div data-push-allowlist hidden>
+          <label>${escapeHtml(t("Erlaubte Spieler"))}<textarea name="allowedSenders" rows="3" maxlength="3300" autocomplete="off" spellcheck="false"></textarea></label>
+          <p class="zilch-muted">${escapeHtml(t("Ein Benutzername pro Zeile, höchstens 100. Eine leere Auswahlliste blockiert alle Mitspieler-Einladungen. Deine Liste ist privat und gilt für beide Spiele."))}</p>
+        </div>
         <label><input type="checkbox" name="dailyReminder"> ${escapeHtml(t("Tägliche Spielerinnerung erhalten"))}</label>
         <p class="zilch-muted" data-push-reminder-schedule></p>
         <p class="zilch-muted">${escapeHtml(t("Bei beiden angemeldeten Spielen wechseln sich ZDWA und Zilch ab. Der Klick auf eine Erinnerung öffnet die passende Lobby."))}</p>
+        <label><input type="checkbox" name="releaseNotifications"> ${escapeHtml(t("Versionshinweise erhalten"))}</label>
+        <p class="zilch-muted">${escapeHtml(t("Nach einem erfolgreichen Update: kurze Hinweise zu neuen Funktionen oder Verbesserungen an der Stabilität. Ein Klick öffnet die passende Lobby. Deine Spielaktivität und die Spielerauswahl gelten nur für die anderen Push-Arten."))}</p>
         <button class="primary" type="submit">${escapeHtml(t("Push-Auswahl speichern"))}</button>
         <p class="zilch-settings-message" data-push-preferences-message role="status"></p>
       </form>
@@ -2992,6 +3001,10 @@ function renderRulesContent(facts) {
       <p>${escapeHtml(t("Mitspieler benachrichtigen sendet auf deinen Klick eine Einladung für einen öffentlichen, wartenden Spielraum. Erlaubt ist ein Versuch pro Konto und Minute, zusätzlich eine Einladung pro Raum in zehn Minuten. Du erhältst einen kurzen Hinweis im Spiel, keine eigene Push-Nachricht."))}</p>
       <p>${escapeHtml(t("Push-Einladungen empfängst du erst nach Aktivierung im Konto und Freigabe im Browser. Melde jedes Gerät einzeln an; Ausschalten gilt für alle Geräte. Auf iPhone und iPad nutzt du dafür die installierte Home-Bildschirm-App."))}</p>
       <p>${escapeHtml(t("Im Konto kannst du Spielerinnerungen separat aktivieren. Nur wenn du heute weder ZDWA noch Zilch gespielt hast, kommt höchstens eine Erinnerung zu einer täglich zufälligen Zeit zwischen 17 und 21 Uhr (Schweizer Zeit). Ein gültiger Wurf oder eine Wertung zählt bereits – du musst die Partie nicht beenden. Je Spiel wechseln 32 Texte; ein Klick öffnet dessen Lobby. Sind beide Spiele für Push angemeldet, wechseln sie sich ab. Manuell ausgelöste Mitspieler-Einladungen bleiben unabhängig von Uhrzeit und Spielaktivität möglich."))}</p>
+    </section>
+    <section class="zilch-card zilch-rules-section">
+      <p>${escapeHtml(t("Mitspieler-Einladungen kannst du im Konto auf ausgewählte Spieler begrenzen. Trage bis zu 100 bestehende Benutzernamen ein. Nur der tatsächliche Absender zählt; eine leere Auswahlliste blockiert alle Einladungen. Die private Liste gilt für beide Spiele, nicht für Spielerinnerungen oder Versionshinweise."))}</p>
+      <p>${escapeHtml(t("Versionshinweise sind separat aktivierbar und anfangs ausgeschaltet. Nach einem erfolgreichen Update erhältst du pro Version höchstens einen Hinweis je angemeldetem Gerät des ausgewählten Spiels: zu neuen Funktionen oder Verbesserungen an der Stabilität. Ein Klick öffnet dessen Lobby. Frühere Versionen werden nicht nachträglich gemeldet."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section" aria-labelledby="zilchScoringTitle">
       <p class="eyebrow">${escapeHtml(t("Wertung"))}</p><h2 id="zilchScoringTitle">${escapeHtml(t("Was Punkte bringt"))}</h2>

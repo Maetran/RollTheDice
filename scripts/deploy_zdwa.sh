@@ -57,6 +57,16 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+# Keep the last successful deployment separate from checkout HEAD: a failed
+# build may already have pulled the new commit, and its retry still needs
+# the original comparison base. This private Git marker is not app data.
+deployment_marker="$(git rev-parse --git-path rollthedice-last-deployed)"
+if [[ ! -s "$deployment_marker" ]]; then
+  git rev-parse HEAD > "$deployment_marker"
+fi
+previous_revision="$(< "$deployment_marker")"
+command -v curl >/dev/null || { echo "curl is required to verify a release before announcing it." >&2; exit 1; }
+
 echo "== Data backup =="
 if [[ -d data ]]; then
   service_was_running=0
@@ -92,6 +102,9 @@ git pull --ff-only origin "$BRANCH"
 echo "== Static asset versions =="
 python3 scripts/sync_static_versions.py --check
 
+echo "== Release note validation =="
+release_notice="$(python3 scripts/prepare_release_notice.py --previous "$previous_revision")"
+
 echo "== Docker deploy =="
 compose up -d --build
 compose ps
@@ -101,9 +114,13 @@ if command -v curl >/dev/null 2>&1; then
   curl --retry 15 --retry-delay 2 --retry-connrefused --retry-all-errors \
     -fsS http://127.0.0.1:8000/api/health >/dev/null
   echo "local app and database ready"
-else
-  echo "curl not installed; skipped local HTTP check"
 fi
+
+echo "== Release notification =="
+# No public trigger and no startup broadcast: only a healthy deployment
+# enters the durable outbox. Repeating a revision cannot re-notify accounts.
+printf '%s\n' "$release_notice" | compose exec -T rollthedice python -m app.release_push
+git rev-parse HEAD > "$deployment_marker"
 
 echo "== Backup retention =="
 # Erst nach dem erfolgreichen Rollout aufräumen. Das soeben erstellte Backup

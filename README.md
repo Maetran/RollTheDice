@@ -151,8 +151,8 @@ quick reactions also appear in each connected participant's live chat.
 ## Push notifications
 
 Push is optional. Register each device from account settings and grant browser
-permission. Invitations and reminders have separate switches; daily reminders
-are **off by default**. The account-wide off switch removes every stored device
+permission. Invitations, reminders and app update alerts have separate switches;
+reminders and update alerts are **off by default**. The account-wide off switch removes every stored device
 subscription, even when used from a browser that cannot itself receive push.
 
 | | Player invitations | Daily play reminders |
@@ -184,9 +184,32 @@ Production requires the three VAPID settings in the
 [Web Push operations guide](docs/DEPLOYMENT.md#web-push). Push-service acceptance
 does not guarantee when a device displays a notification.
 
-**Planned, not yet implemented:** an invitation sender allowlist/friendlist, so
-players can restrict incoming invitations to selected accounts as the community
-grows.
+### App update alerts
+
+After a successful production deployment, opted-in accounts receive a short
+German or English release notice. Backend-only updates say **“Stability
+improvements”**; usability releases have a reviewed feature summary, such as
+**“New: lobby chat.”** Clicking opens the matching game's lobby.
+
+Release publication is tied to a healthy deploy, never a process restart.
+Durable claims allow one attempt per account and Git revision, across the chosen
+game's registered devices. For shared releases, only the most recently registered
+eligible product is selected, avoiding duplicate alerts from both PWAs.
+The eligible audience and devices are frozen at publication; later opt-ins do
+not receive old releases. Consent is checked again before each device, and
+pending releases expire after 24 hours. Play activity and invitation filters do
+not suppress separately enabled update alerts.
+
+### Private invitation allowlist
+
+Account settings offer **All players** (the existing default) or **Selected
+players only**. Add up to 100 existing usernames, one per line. Only the actual
+authenticated sender can satisfy the list, not another player seated at their
+table. An empty allowlist blocks every invitation.
+
+The private, one-way list is shared across games and devices and affects only
+player invitations. It is the foundation for a future friendlist; mutual friend
+requests and public friendship profiles are not implemented.
 
 ## Progressive Web Apps
 
