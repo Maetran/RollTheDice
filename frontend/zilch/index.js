@@ -1,10 +1,12 @@
 import { apiFetch, authError, escapeHtml, loadAuth, logout } from "../shared/auth.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import {
+  bindPushPreferences,
   disableGameInvitePush,
   enableGameInvitePush,
   getGameInvitePushStatus,
   requestGameInvitePush,
+  syncPushPreferences,
   webPushErrorMessage,
 } from "../shared/web-push.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
@@ -1983,13 +1985,21 @@ function zilchAccountSettingsMarkup(username) {
     </section>
     <section class="zilch-card zilch-account-settings-card">
       <p class="eyebrow">${escapeHtml(t("Gemeinsame Lobby"))}</p>
-      <h2>${escapeHtml(t("Spielraum-Einladungen per Push"))}</h2>
-      <p class="zilch-account-settings-card__description">${escapeHtml(t("Erhalte eine Benachrichtigung, wenn in einem öffentlichen ZDWA- oder Zilch-Spielraum ein Platz frei ist. Du kannst sie jederzeit für alle deine Geräte ausschalten."))}</p>
+      <h2>${escapeHtml(t("Push-Benachrichtigungen"))}</h2>
+      <p class="zilch-account-settings-card__description">${escapeHtml(t("Melde dieses Gerät für Push an. Mitspieler-Einladungen und tägliche Spielerinnerungen kannst du getrennt wählen oder für alle Geräte ausschalten."))}</p>
       <div class="zilch-settings-form">
         <button id="zilchEnableGameInvitePush" class="primary" type="button">${escapeHtml(t("Push-Benachrichtigungen aktivieren"))}</button>
         <button id="zilchDisableGameInvitePush" class="secondary" type="button" hidden>${escapeHtml(t("Push-Benachrichtigungen deaktivieren"))}</button>
       </div>
       <p id="zilchGameInvitePushStatus" class="zilch-settings-message" role="status"></p>
+      <form id="zilchPushPreferencesForm" class="zilch-settings-form" hidden>
+        <label><input type="checkbox" name="gameInvites"> ${escapeHtml(t("Mitspieler-Einladungen erhalten"))}</label>
+        <label><input type="checkbox" name="dailyReminder"> ${escapeHtml(t("Tägliche Spielerinnerung erhalten"))}</label>
+        <p class="zilch-muted" data-push-reminder-schedule></p>
+        <p class="zilch-muted">${escapeHtml(t("Bei beiden angemeldeten Spielen wechseln sich ZDWA und Zilch ab. Der Klick auf eine Erinnerung öffnet die passende Lobby."))}</p>
+        <button class="primary" type="submit">${escapeHtml(t("Push-Auswahl speichern"))}</button>
+        <p class="zilch-settings-message" data-push-preferences-message role="status"></p>
+      </form>
     </section>
     <section class="zilch-card zilch-account-settings-card">
       <p class="eyebrow">${escapeHtml(t("Mein Konto"))}</p>
@@ -2155,7 +2165,8 @@ function bindZilchAccountSettings() {
       try {
         const status = await getGameInvitePushStatus();
         const enabled = status.enabled === true;
-        pushDisableButton.hidden = !enabled;
+        syncPushPreferences(document.getElementById("zilchPushPreferencesForm"), status);
+        pushDisableButton.hidden = !status.subscribed;
         pushDisableButton.disabled = false;
         pushEnableButton.hidden = false;
         pushEnableButton.textContent = t(enabled
@@ -2164,7 +2175,8 @@ function bindZilchAccountSettings() {
         if (state.auth?.user) {
           state.auth.user.preferences = {
             ...(state.auth.user.preferences || {}),
-            game_invite_push_enabled: status.enabled === true,
+            game_invite_push_enabled: status.game_invites_enabled ?? status.enabled === true,
+            daily_reminder_push_enabled: status.daily_reminder_enabled === true,
           };
         }
         if (!status.available) {
@@ -2179,7 +2191,7 @@ function bindZilchAccountSettings() {
         }
         pushEnableButton.disabled = false;
         pushStatus.textContent = t(enabled
-          ? "Push-Benachrichtigungen für offene Spielräume sind aktiviert."
+          ? "Push-Benachrichtigungen sind aktiviert."
           : "Push-Benachrichtigungen sind ausgeschaltet.");
       } catch (error) {
         pushEnableButton.disabled = true;
@@ -2200,6 +2212,7 @@ function bindZilchAccountSettings() {
     };
     pushEnableButton.addEventListener("click", () => { void changePushSetting(enableGameInvitePush, pushEnableButton); });
     pushDisableButton.addEventListener("click", () => { void changePushSetting(disableGameInvitePush, pushDisableButton); });
+    bindPushPreferences(document.getElementById("zilchPushPreferencesForm"), refreshPushSettings);
     void refreshPushSettings();
   }
   if (passwordForm && !passwordForm.dataset.bound) {
@@ -2978,6 +2991,7 @@ function renderRulesContent(facts) {
       <p>${escapeHtml(t("Im Lobby-Chat sind höchstens 400 Zeichen je Nachricht und fünf Nachrichten pro Konto in 30 Sekunden erlaubt. Admins können Konten stummschalten oder vom Chat ausschließen."))}</p>
       <p>${escapeHtml(t("Mitspieler benachrichtigen sendet auf deinen Klick eine Einladung für einen öffentlichen, wartenden Spielraum. Erlaubt ist ein Versuch pro Konto und Minute, zusätzlich eine Einladung pro Raum in zehn Minuten. Du erhältst einen kurzen Hinweis im Spiel, keine eigene Push-Nachricht."))}</p>
       <p>${escapeHtml(t("Push-Einladungen empfängst du erst nach Aktivierung im Konto und Freigabe im Browser. Melde jedes Gerät einzeln an; Ausschalten gilt für alle Geräte. Auf iPhone und iPad nutzt du dafür die installierte Home-Bildschirm-App."))}</p>
+      <p>${escapeHtml(t("Im Konto kannst du tägliche Spielerinnerungen separat aktivieren – unabhängig von Mitspieler-Einladungen. Höchstens eine Erinnerung pro Tag lädt dich mit wechselnden Texten in die passende Lobby ein. Sind beide Spiele für Push angemeldet, wechseln sich ZDWA und Zilch ab; alle Geräte des ausgewählten Spiels erhalten dieselbe Erinnerung."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section" aria-labelledby="zilchScoringTitle">
       <p class="eyebrow">${escapeHtml(t("Wertung"))}</p><h2 id="zilchScoringTitle">${escapeHtml(t("Was Punkte bringt"))}</h2>

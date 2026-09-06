@@ -185,7 +185,7 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await expect(page.locator("#zilchLobbyChatPreferencesForm")).toBeVisible();
   await expect(page.locator('input[name="zilchLobbyChatEnabled"]')).toBeChecked();
   await expect(page.locator('input[name="zilchLobbyChatPopups"]')).toBeChecked();
-  await expect(page.getByRole("heading", { name: "Spielraum-Einladungen per Push" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Push-Benachrichtigungen" })).toBeVisible();
   await expect(page.locator("#zilchEnableGameInvitePush")).toBeDisabled();
   await expect(page.locator("#zilchGameInvitePushStatus")).toContainText("Push-Benachrichtigungen sind momentan noch nicht eingerichtet.");
   await expect(page.locator("#zilchPasswordForm")).toBeVisible();

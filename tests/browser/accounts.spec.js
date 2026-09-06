@@ -979,7 +979,7 @@ test("account gameplay preferences persist and control announce behavior", async
   await expect(page.locator('input[name="keepScreenAwake"]')).not.toBeChecked();
   await expect(page.locator('input[name="lobbyChatEnabled"]')).toBeChecked();
   await expect(page.locator('input[name="lobbyChatPopups"]')).toBeChecked();
-  await expect(page.getByRole("heading", { name: "Spielraum-Einladungen per Push" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Push-Benachrichtigungen" })).toBeVisible();
   await expect(page.locator("#enableGameInvitePush")).toBeDisabled();
   await expect(page.locator("#gameInvitePushStatus")).toContainText("Push-Benachrichtigungen sind momentan noch nicht eingerichtet.");
   await page.check('input[name="announceSelectionMode"][value="table"]');

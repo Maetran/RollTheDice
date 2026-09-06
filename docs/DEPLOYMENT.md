@@ -613,6 +613,27 @@ muss für ausgehende HTTPS-Anfragen gewährleistet sein. Abgelaufene Endpoints
 des Kontos. Ein Versandversuch bestätigt nur die Annahme durch den Push-Dienst,
 nicht die Anzeige auf einem Gerät. Keine Testeinladung an echte Konten senden.
 
+Tägliche Spielerinnerungen (Revision `20260906_0026`) sind zusätzlich und
+standardmäßig **nicht** aktiviert. Pro Konto werden der eigene Opt-in und der
+zuletzt beanspruchte Schweizer Kalendertag persistiert. Der Lifespan-Scheduler
+prüft minütlich während der konfigurierten Stunde; vor dem Versand wird der Tag
+atomar reserviert. Neustarts oder Versandfehler lösen keinen zweiten Versuch am
+selben Tag aus. Verpasste Stunden werden nicht später nachgesendet. Auch während
+eines Batches werden deaktivierte Konten und entfernte Abonnements vor jedem
+weiteren Versand erneut geprüft.
+
+```dotenv
+ROLLTHEDICE_DAILY_REMINDER_HOUR=18
+```
+
+Der Wert ist eine Stunde von 0 bis 23 in `Europe/Zurich`, einschließlich
+Sommerzeit; die UI liest dieselbe Einstellung. Der Container benötigt die
+Zeitzonendaten für `Europe/Zurich`. Eine Erinnerung verfällt beim Push-Dienst
+nach einer Stunde. Bei zwei angemeldeten Produkten wechseln sich diese ab;
+gesendet wird nur an Geräte des für diesen Tag ausgewählten Spiels. Es gibt
+keinen öffentlichen Trigger-Endpunkt für den Scheduler. In Tests Versand und
+Uhrzeit mocken, niemals testweise einen Batch gegen produktive Empfänger starten.
+
 ### Erster Administrator
 
 Nur für die erstmalige Erstellung eines Administrators werden folgende Werte

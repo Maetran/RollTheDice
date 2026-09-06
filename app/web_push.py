@@ -38,6 +38,8 @@ WEB_PUSH_SUBJECT_ENV = "ROLLTHEDICE_WEB_PUSH_VAPID_SUBJECT"
 GAME_INVITE_PUSH_COOLDOWN_SECONDS = 10 * 60
 GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS = 60
 GAME_INVITE_PUSH_SENT_AT_KEY = "_game_invite_push_sent_at"
+DAILY_REMINDER_HOUR_ENV = "ROLLTHEDICE_DAILY_REMINDER_HOUR"
+DAILY_REMINDER_TIMEZONE = "Europe/Zurich"
 _MAX_ENDPOINT_LENGTH = 2_048
 _MAX_KEY_LENGTH = 256
 _PUSH_ENDPOINT_SUFFIXES = (
@@ -88,6 +90,21 @@ class WebPushSubscriptionRequest(BaseModel):
     keys: WebPushSubscriptionKeys
 
 
+class WebPushPreferencesRequest(BaseModel):
+    game_invites_enabled: bool
+    daily_reminder_enabled: bool
+
+
+def daily_reminder_hour() -> int:
+    try:
+        hour = int(os.getenv(DAILY_REMINDER_HOUR_ENV, "18"))
+    except ValueError:
+        raise RuntimeError(f"{DAILY_REMINDER_HOUR_ENV} must be between 0 and 23") from None
+    if not 0 <= hour <= 23:
+        raise RuntimeError(f"{DAILY_REMINDER_HOUR_ENV} must be between 0 and 23")
+    return hour
+
+
 def web_push_config() -> WebPushConfig:
     return WebPushConfig(
         public_key=os.getenv(WEB_PUSH_PUBLIC_KEY_ENV, "").strip(),
@@ -112,6 +129,7 @@ def _valid_vapid_public_key(value: str) -> bool:
 
 def validate_web_push_config() -> None:
     """Reject ambiguous production configuration before accepting traffic."""
+    daily_reminder_hour()
     config = web_push_config()
     configured = (bool(config.public_key), bool(config.private_key), bool(config.subject))
     if any(configured) and not all(configured):
@@ -191,12 +209,17 @@ def web_push_subscription_status(user_id: int) -> dict[str, object]:
             user
             and db.scalar(select(WebPushSubscription.id).where(WebPushSubscription.user_id == user_id).limit(1))
         )
-        enabled = bool(user and user.game_invite_push_enabled and subscribed)
+        game_invites_enabled = bool(user and user.game_invite_push_enabled and subscribed)
+        daily_reminder_enabled = bool(user and user.daily_reminder_push_enabled and subscribed)
     return {
         "available": config.enabled,
         "public_key": config.public_key if config.enabled else None,
-        "enabled": enabled,
+        "enabled": game_invites_enabled or daily_reminder_enabled,
         "subscribed": subscribed,
+        "game_invites_enabled": game_invites_enabled,
+        "daily_reminder_enabled": daily_reminder_enabled,
+        "daily_reminder_time": f"{daily_reminder_hour():02d}:00",
+        "daily_reminder_timezone": DAILY_REMINDER_TIMEZONE,
     }
 
 
@@ -237,10 +260,33 @@ def save_web_push_subscription(
             subscription.auth = auth
             subscription.product_context = context
             subscription.updated_at = now
-        user.game_invite_push_enabled = True
+        # Initial registration retains the established invitation opt-in. An
+        # additional device must not override a reminders-only preference.
+        if not user.game_invite_push_enabled and not user.daily_reminder_push_enabled:
+            user.game_invite_push_enabled = True
         user.updated_at = now
         db.flush()
-    return {"available": True, "enabled": True, "subscribed": True}
+    return web_push_subscription_status(user_id)
+
+
+def update_web_push_preferences(user_id: int, payload: WebPushPreferencesRequest) -> dict[str, object]:
+    with session_scope() as db:
+        user = db.get(User, user_id)
+        if user is None:
+            raise LookupError("user_not_found")
+        enabling = (
+            payload.game_invites_enabled and not user.game_invite_push_enabled
+            or payload.daily_reminder_enabled and not user.daily_reminder_push_enabled
+        )
+        if enabling:
+            if not web_push_available():
+                raise RuntimeError("web_push_unavailable")
+            if db.scalar(select(WebPushSubscription.id).where(WebPushSubscription.user_id == user_id).limit(1)) is None:
+                raise ValueError("web_push_device_required")
+        user.game_invite_push_enabled = payload.game_invites_enabled
+        user.daily_reminder_push_enabled = payload.daily_reminder_enabled
+        user.updated_at = utcnow()
+    return web_push_subscription_status(user_id)
 
 
 def remove_web_push_subscriptions(user_id: int) -> dict[str, object]:
@@ -250,8 +296,9 @@ def remove_web_push_subscriptions(user_id: int) -> dict[str, object]:
             raise LookupError("user_not_found")
         db.execute(delete(WebPushSubscription).where(WebPushSubscription.user_id == user.id))
         user.game_invite_push_enabled = False
+        user.daily_reminder_push_enabled = False
         user.updated_at = utcnow()
-    return {"available": web_push_available(), "enabled": False, "subscribed": False}
+    return web_push_subscription_status(user_id)
 
 
 def game_invite_cooldown_remaining(game: dict) -> int:
@@ -429,7 +476,7 @@ def _push_failure_status(error: BaseException) -> int | None:
     return None
 
 
-def _send_web_push(subscription: StoredSubscription, payload: dict[str, object]) -> tuple[bool, bool]:
+def _send_web_push(subscription: StoredSubscription, payload: dict[str, object], *, ttl: int = 300) -> tuple[bool, bool]:
     """Return (accepted_by_push_service, subscription_expired)."""
     config = web_push_config()
     try:
@@ -443,7 +490,7 @@ def _send_web_push(subscription: StoredSubscription, payload: dict[str, object])
             data=json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
             vapid_private_key=config.private_key,
             vapid_claims={"sub": config.subject},
-            ttl=300,
+            ttl=ttl,
             timeout=8,
         )
         return True, False

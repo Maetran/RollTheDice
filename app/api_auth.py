@@ -36,9 +36,11 @@ from .models import User
 from .product_hosts import is_zilch_host
 from .security import utcnow
 from .web_push import (
+    WebPushPreferencesRequest,
     WebPushSubscriptionRequest,
     remove_web_push_subscriptions,
     save_web_push_subscription,
+    update_web_push_preferences,
     web_push_subscription_status,
 )
 
@@ -220,6 +222,7 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
                 "lobby_chat_muted": user.lobby_chat_muted,
                 "lobby_chat_excluded": user.lobby_chat_excluded,
                 "game_invite_push_enabled": user.game_invite_push_enabled,
+                "daily_reminder_push_enabled": user.daily_reminder_push_enabled,
                 "preferred_language": user.preferred_language,
             }
         }
@@ -290,6 +293,20 @@ def web_push_subscription_delete(request: Request):
     require_csrf(request, identity)
     try:
         return remove_web_push_subscriptions(identity.user_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.put("/web-push/preferences")
+def web_push_preferences_put(payload: WebPushPreferencesRequest, request: Request):
+    identity = require_user(request)
+    require_csrf(request, identity)
+    try:
+        return update_web_push_preferences(identity.user_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 

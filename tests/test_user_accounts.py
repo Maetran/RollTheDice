@@ -372,6 +372,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
                 "lobby_chat_muted": False,
                 "lobby_chat_excluded": False,
                 "game_invite_push_enabled": False,
+                "daily_reminder_push_enabled": False,
                 "preferred_language": "en",
             },
         )

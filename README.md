@@ -112,6 +112,21 @@ Lobby messages are limited to **400 characters** and **five messages per account
 per 30 seconds** (shared across tabs and reconnects). Administrators can mute
 accounts (read-only chat) or exclude them from the lobby chat entirely, and lift
 either restriction in user administration.
+
+Daily play reminders have their own **off-by-default** push preference. Accounts
+can receive invitations, reminders, both, or neither; registering another device
+does not re-enable invitations for reminder-only accounts. The server scheduler
+checks once a minute during **18:00–18:59 Europe/Zurich** (configurable with
+`ROLLTHEDICE_DAILY_REMINDER_HOUR`). Before delivery it atomically claims the Swiss
+calendar day for that account in SQLite. Restarts, parallel runs, failures and
+preference toggles cannot produce another attempt that day; missed time windows
+are not caught up overnight. Six German/English variants per game rotate daily.
+If both products have subscriptions, games alternate and only the selected
+product's subscribed devices receive that day's reminder. Reminder clicks open
+that game's lobby. Room-invitation clicks still open the specific room and use
+normal join/rejoin checks; full or started rooms do not automatically become a
+spectator view.
+
 The compact setup starts a default game with one click; advanced room protection
 stays optional, and a completed game can be restarted directly with the same mode.
 In a two-person Zilch room, **Share game** creates a clean invitation link for

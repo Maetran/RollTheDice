@@ -22,12 +22,30 @@ async function signIn(page) {
 
 async function mockPush(page, { enabled = false, available = true, denied = false } = {}) {
   const calls = [];
+  let subscribed = enabled;
+  let gameInvites = enabled;
+  let dailyReminder = false;
+  const status = () => ({
+    available, enabled: gameInvites || dailyReminder, subscribed,
+    game_invites_enabled: gameInvites, daily_reminder_enabled: dailyReminder,
+    daily_reminder_time: "18:00", daily_reminder_timezone: "Europe/Zurich",
+    public_key: "BA" + "A".repeat(85),
+  });
   await page.route("**/api/web-push/subscription", async route => {
     const method = route.request().method();
     calls.push(method);
-    if (method === "PUT") enabled = true;
-    if (method === "DELETE") enabled = false;
-    await route.fulfill({ json: { available, enabled, subscribed: enabled, public_key: "BA" + "A".repeat(85) } });
+    if (method === "PUT") { subscribed = true; if (!dailyReminder) gameInvites = true; }
+    if (method === "DELETE") { subscribed = false; gameInvites = false; dailyReminder = false; }
+    await route.fulfill({ json: status() });
+  });
+  await page.route("**/api/web-push/preferences", async route => {
+    expect(route.request().method()).toBe("PUT");
+    expect(route.request().headers()["x-csrf-token"]).toBeTruthy();
+    const payload = route.request().postDataJSON();
+    calls.push(payload);
+    gameInvites = payload.game_invites_enabled;
+    dailyReminder = payload.daily_reminder_enabled;
+    await route.fulfill({ json: status() });
   });
   await page.addInitScript(({ denied }) => {
     const subscription = {
@@ -86,6 +104,42 @@ for (const product of [
     await expect(page.locator(product.disable)).toBeHidden();
     expect(unavailableCalls).toContain("DELETE");
   });
+
+  test(`${product.name} lets users choose reminders independently and preserves the choice on reload`, async ({ page }) => {
+    await signIn(page);
+    const calls = await mockPush(page, { enabled: true });
+    await page.goto(product.path);
+    const invites = page.locator('input[name="gameInvites"]');
+    const daily = page.locator('input[name="dailyReminder"]');
+    await expect(invites).toBeChecked();
+    await expect(daily).not.toBeChecked();
+    await expect(page.locator('[data-push-reminder-schedule]')).toContainText("18:00");
+    await invites.uncheck();
+    await daily.check();
+    await page.getByRole("button", { name: "Push-Auswahl speichern" }).click();
+    await expect(page.locator('[data-push-preferences-message]')).toHaveText("Push-Auswahl gespeichert.");
+    expect(calls).toContainEqual({ game_invites_enabled: false, daily_reminder_enabled: true });
+    await page.reload();
+    await expect(invites).not.toBeChecked();
+    await expect(daily).toBeChecked();
+    const changeLanguage = async language => {
+      if (product.name === "ZDWA") {
+        await page.locator(`input[name="preferredLanguage"][value="${language}"]`).check();
+        await page.locator("#preferencesForm button").click();
+      } else {
+        await page.locator("[data-language-switcher]").selectOption(language);
+      }
+      await expect(page.locator("html")).toHaveAttribute("lang", language);
+    };
+    await changeLanguage("en");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.getByLabel("Receive a daily play reminder", { exact: true })).toBeChecked();
+    await expect(page.locator('[data-push-reminder-schedule]')).toHaveText("Daily at 18:00 (Swiss time), at most once across both games.");
+    await changeLanguage("de");
+    await expect(page.locator("html")).toHaveAttribute("lang", "de");
+    await page.locator(product.disable).click();
+    await expect(daily).toBeHidden();
+  });
 }
 
 test("both lobby buttons dispatch invitations and show the account flood limit without a dialog", async ({ page }) => {
@@ -114,3 +168,37 @@ test("both lobby buttons dispatch invitations and show the account flood limit w
   await expect(page.getByText("Du kannst höchstens eine Einladung pro Minute senden – auch über mehrere Spielräume hinweg.")).toBeVisible();
   expect(attempts).toBe(2);
 });
+
+for (const worker of ["sw.js", "zilch-sw.js"]) {
+  test(`${worker} opens the reminder lobby and focuses an existing matching window`, async () => {
+    const fs = require("node:fs");
+    const vm = require("node:vm");
+    const path = require("node:path");
+    const origin = worker === "sw.js" ? "https://zockdiewandan.online" : "https://zilch.zockdiewandan.online";
+    const handlers = {};
+    let visibleNotification;
+    let opened;
+    let focused = false;
+    let windows = [];
+    let pending;
+    const self = {
+      location: { origin },
+      addEventListener: (name, handler) => { handlers[name] = handler; },
+      registration: { showNotification: async (title, options) => { visibleNotification = { title, ...options }; } },
+      clients: { matchAll: async () => windows, openWindow: async url => { opened = url; } },
+    };
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../../app/static", worker), "utf8"), { self, URL });
+    handlers.push({ data: { json: () => ({ title: "Heute schon gespielt?", body: "Die Würfel warten.", url: origin + "/", tag: "daily-reminder-2026-09-06" }) }, waitUntil: promise => { pending = promise; } });
+    await pending;
+    const click = () => handlers.notificationclick({ notification: { ...visibleNotification, close() {} }, waitUntil: promise => { pending = promise; } });
+    click();
+    await pending;
+    expect(opened).toBe(origin + "/");
+    opened = null;
+    windows = [{ url: origin + "/", focus: async () => { focused = true; } }];
+    click();
+    await pending;
+    expect(focused).toBe(true);
+    expect(opened).toBeNull();
+  });
+}

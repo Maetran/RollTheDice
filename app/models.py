@@ -1,8 +1,19 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, validates
 
 from .game_types import DEFAULT_GAME_TYPE, normalize_game_type
@@ -33,6 +44,8 @@ class User(Base):
     lobby_chat_excluded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     game_invite_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     game_invite_push_last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    daily_reminder_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    daily_reminder_push_last_sent_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     preferred_language: Mapped[str] = mapped_column(String(2), nullable=False, default="de")
     statistics_views: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     achievement_gameplay_started_at: Mapped[datetime] = mapped_column(

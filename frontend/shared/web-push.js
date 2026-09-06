@@ -104,12 +104,53 @@ export async function requestGameInvitePush(gameId) {
   return data;
 }
 
+export function syncPushPreferences(form, status) {
+  if (!form) return;
+  form.hidden = !status.subscribed;
+  form.elements.gameInvites.checked = status.game_invites_enabled ?? status.enabled ?? false;
+  form.elements.dailyReminder.checked = status.daily_reminder_enabled === true;
+  const schedule = form.querySelector("[data-push-reminder-schedule]");
+  if (schedule) schedule.textContent = translated("Täglich um {time} Uhr (Schweizer Zeit), höchstens einmal für beide Spiele.")
+    .replace("{time}", status.daily_reminder_time || "18:00");
+}
+
+export function bindPushPreferences(form, refresh) {
+  if (!form || form.dataset.bound) return;
+  form.dataset.bound = "true";
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = form.querySelector("button[type=submit]");
+    const message = form.querySelector("[data-push-preferences-message]");
+    button.disabled = true;
+    message.textContent = translated("Push-Einstellung wird gespeichert …");
+    try {
+      const response = await apiFetch("/api/web-push/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          game_invites_enabled: form.elements.gameInvites.checked,
+          daily_reminder_enabled: form.elements.dailyReminder.checked,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw apiError(data);
+      await refresh();
+      message.textContent = translated("Push-Auswahl gespeichert.");
+    } catch (error) {
+      message.textContent = webPushErrorMessage(error);
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
 export function webPushErrorMessage(error) {
   const messages = {
     web_push_unavailable: "Push-Benachrichtigungen sind gerade nicht eingerichtet.",
     web_push_browser_unsupported: "Dieser Browser unterstützt keine Push-Benachrichtigungen.",
     web_push_permission_denied: "Die Push-Berechtigung wurde nicht erteilt.",
     web_push_subscription_invalid: "Die Push-Anmeldung konnte nicht gespeichert werden.",
+    web_push_device_required: "Bitte aktiviere zuerst Push auf einem deiner Geräte.",
     game_invite_private_room: "Für geschützte Spielräume können keine Einladungen gesendet werden.",
     game_invite_not_waiting: "Diese Partie wartet nicht mehr auf Mitspieler.",
     game_invite_not_player: "Nur Spieler in dieser Partie können eine Einladung senden.",

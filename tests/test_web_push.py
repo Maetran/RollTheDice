@@ -105,7 +105,9 @@ class WebPushTestCase(unittest.TestCase):
             payload=self.subscription(),
             product_context="zilch",
         )
-        self.assertEqual(saved, {"available": True, "enabled": True, "subscribed": True})
+        self.assertTrue(saved["available"] and saved["enabled"] and saved["subscribed"])
+        self.assertTrue(saved["game_invites_enabled"])
+        self.assertFalse(saved["daily_reminder_enabled"])
         with session_scope() as db:
             subscription = db.query(WebPushSubscription).one()
             self.assertEqual(subscription.user_id, player.id)

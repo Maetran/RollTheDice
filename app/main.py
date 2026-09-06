@@ -83,6 +83,7 @@ from .product_hosts import (
     zilch_origin,
     zilch_url,
 )
+from .push_reminders import run_daily_reminder_scheduler
 from .security import normalize_username
 from .site_seo import robots_document, sitemap_document, zilch_page_is_indexable
 from .web_push import (
@@ -386,14 +387,18 @@ async def lifespan(_app: FastAPI):
         _run_lobby_chat_history_purger(lobby_chat_purger_stop),
         name="lobby-chat-history-purger",
     )
+    reminder_stop = asyncio.Event()
+    reminder_scheduler = asyncio.create_task(run_daily_reminder_scheduler(reminder_stop), name="daily-push-reminders")
     try:
         yield
     finally:
         timeout_sweeper_stop.set()
         lobby_chat_purger_stop.set()
+        reminder_stop.set()
         timeout_sweeper.cancel()
         lobby_chat_purger.cancel()
-        await asyncio.gather(timeout_sweeper, lobby_chat_purger, return_exceptions=True)
+        reminder_scheduler.cancel()
+        await asyncio.gather(timeout_sweeper, lobby_chat_purger, reminder_scheduler, return_exceptions=True)
         await stop_cpu_runners()
 
 
