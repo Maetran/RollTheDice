@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Geschützter Administrationsbereich von ZDWA.">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="manifest" href="/manifest.webmanifest?v=5ca0b139410a">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=5ca0b139410a" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=5ca0b139410a" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=eb18a034d46f">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=eb18a034d46f" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=eb18a034d46f" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=5ca0b139410a">
-  <script src="/static/shell.js?v=5ca0b139410a" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=eb18a034d46f">
+  <script src="/static/shell.js?v=eb18a034d46f" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
@@ -56,7 +56,7 @@
         <button class="primary">Benutzer anlegen</button>
       </form>
       <div class="table-scroll"><table class="admin-table">
-        <thead><tr><th>Benutzer</th><th>Rolle</th><th>Status</th><th>Passwort</th><th>Aktion</th></tr></thead>
+        <thead><tr><th>Benutzer</th><th>Rolle</th><th>Status</th><th>Lobby-Chat</th><th>Passwort</th><th>Aktion</th></tr></thead>
         <tbody id="usersBody"></tbody>
       </table></div>
     </section>
@@ -82,7 +82,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=5ca0b139410a';
+    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=eb18a034d46f';
     const auth = await loadAuth();
     if (!auth?.user?.is_admin) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const usersBody = document.getElementById('usersBody');
@@ -119,8 +119,9 @@
         <td><a href="/spieler/${encodeURIComponent(user.username)}">${playerNameMarkup(user, { name: user.username, compactRank: true })}</a>${user.must_change_password ? '<span class="badge">PW-Wechsel offen</span>' : ''}</td>
         <td><select class="role-select"><option value="user" ${user.role === 'user' ? 'selected' : ''}>Benutzer</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option></select></td>
         <td>${user.is_active ? 'Aktiv' : 'Deaktiviert'}</td>
+        <td>${user.lobby_chat_excluded ? '<span class="badge">Ausgeschlossen</span>' : user.lobby_chat_muted ? '<span class="badge">Stumm</span>' : 'Aktiv'}</td>
         <td><button class="small secondary reset-password">Zurücksetzen</button></td>
-        <td><button class="small ghost toggle-active">${user.is_active ? 'Deaktivieren' : 'Aktivieren'}</button></td>
+        <td><button class="small ghost toggle-active">${user.is_active ? 'Deaktivieren' : 'Aktivieren'}</button><button class="small ghost toggle-chat-muted">${user.lobby_chat_muted ? 'Stummschaltung aufheben' : 'Stummschalten'}</button><button class="small ghost toggle-chat-excluded">${user.lobby_chat_excluded ? 'Chat-Ausschluss aufheben' : 'Vom Chat ausschließen'}</button></td>
       </tr>`).join('');
     }
 
@@ -175,6 +176,22 @@
       if (event.target.classList.contains('toggle-active')) {
         try { await updateUser(userId, { is_active: !user.is_active }); }
         catch (error) { message.textContent = error.message; }
+      }
+      if (event.target.classList.contains('toggle-chat-muted')) {
+        try {
+          await updateUser(userId, { lobby_chat_muted: !user.lobby_chat_muted });
+          message.textContent = user.lobby_chat_muted
+            ? `Stummschaltung für ${user.username} aufgehoben.`
+            : `${user.username} wurde im Lobby-Chat stummgeschaltet.`;
+        } catch (error) { message.textContent = error.message; }
+      }
+      if (event.target.classList.contains('toggle-chat-excluded')) {
+        try {
+          await updateUser(userId, { lobby_chat_excluded: !user.lobby_chat_excluded });
+          message.textContent = user.lobby_chat_excluded
+            ? `Chat-Ausschluss für ${user.username} aufgehoben.`
+            : `${user.username} wurde vom Lobby-Chat ausgeschlossen.`;
+        } catch (error) { message.textContent = error.message; }
       }
     });
 

@@ -367,6 +367,11 @@ class AccountDatabaseTestCase(GameStateTestCase):
                 "mobile_row_quick_entry": True,
                 "haptic_feedback": True,
                 "keep_screen_awake": True,
+                "lobby_chat_popups": True,
+                "lobby_chat_enabled": True,
+                "lobby_chat_muted": False,
+                "lobby_chat_excluded": False,
+                "game_invite_push_enabled": False,
                 "preferred_language": "en",
             },
         )
@@ -380,6 +385,11 @@ class AccountDatabaseTestCase(GameStateTestCase):
             self.assertTrue(user.mobile_row_quick_entry)
             self.assertTrue(user.haptic_feedback)
             self.assertTrue(user.keep_screen_awake)
+            self.assertTrue(user.lobby_chat_popups)
+            self.assertTrue(user.lobby_chat_enabled)
+            self.assertFalse(user.lobby_chat_muted)
+            self.assertFalse(user.lobby_chat_excluded)
+            self.assertFalse(user.game_invite_push_enabled)
             self.assertEqual(user.preferred_language, "en")
 
     def test_mobile_quick_entry_migration_enables_existing_but_not_new_accounts(self):

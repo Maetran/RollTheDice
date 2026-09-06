@@ -45,6 +45,22 @@ results, statistics, leaderboards, achievements, and replay views.
   are never ZDWA achievements and never contribute Ehrenberg-Marken, titles,
   stars, public profiles, or public rankings.
 
+### Shared live lobby chat
+
+`/ws/lobby-chat` is a process-local, cross-product channel with a short-lived,
+account-scoped history. Only a currently resolved session whose
+`lobby_chat_enabled` preference is true enters the live audience. When an event
+is created, `lobby_chat_message_recipients` snapshots exactly those account IDs;
+the history query joins through that table, so no guest, later sign-in, or
+currently disabled account receives an event it was not eligible to see. Events
+expire after three days and the startup, hourly, and chat-access cleanup paths
+permanently delete expired rows. The first enabled socket for an account emits a
+`presence` event (`<name> is now connected`) to the other eligible accounts.
+Each event carries the sender's `zdwa | zilch` lobby context; clients filter the
+authorized stream locally. `lobby_chat_enabled` controls participation and
+`lobby_chat_popups` controls only lobby-level visual popups; both shared account
+preferences default to enabled for ZDWA and Zilch.
+
 `app/game_registry.py` is the intentionally small composition point. It
 selects state creation, per-game join/start setup, gameplay-action dispatch,
 progress projection, snapshots, and terminal finalization by a centrally

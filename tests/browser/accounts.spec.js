@@ -57,6 +57,36 @@ test("global navigation exposes the same destinations and current section", asyn
 });
 
 
+test("lobby chat is account-only, compact, filterable, and placed before the leaderboard", async ({ page }) => {
+  await page.goto("/");
+  const chat = page.locator(".lobby-chat");
+  await expect(chat).toBeVisible();
+  await expect(chat.locator("[data-lobby-chat-input]")).toBeDisabled();
+  await expect(chat.locator("[data-lobby-chat-status]")).toHaveText("Melde dich an, um den Lobby-Chat zu sehen und mitzuschreiben.");
+  await expect(chat.getByRole("button", { name: "Nur Zilch" })).toBeHidden();
+  await expect(chat.getByRole("button", { name: "Chat ausklappen" })).toBeHidden();
+
+  await page.fill("#loginUsername", "Admin");
+  await page.fill("#loginPassword", "temporary-password-123");
+  await page.click("#loginForm button[type=submit]");
+  await expect(page.locator("#authBadge")).toContainText("Admin");
+  await expect(chat.getByRole("button", { name: "Nur Zilch" })).toBeVisible();
+  await expect(chat.getByRole("button", { name: "Nur ZDWA" })).toBeVisible();
+  await expect(chat.getByRole("button", { name: "Chat ausklappen" })).toHaveAttribute("aria-expanded", "false");
+  await chat.getByRole("button", { name: "Nur Zilch" }).click();
+  await expect(chat.getByRole("button", { name: "Nur Zilch" })).toHaveAttribute("aria-pressed", "true");
+  await chat.getByRole("button", { name: "Chat ausklappen" }).click();
+  await expect(chat.getByRole("button", { name: "Chat einklappen" })).toHaveAttribute("aria-expanded", "true");
+  expect(await page.evaluate(() => {
+    const chatNode = document.querySelector(".lobby-chat");
+    const leaderboard = document.querySelector(".leaderboard-heading");
+    return Boolean(chatNode && leaderboard && (chatNode.compareDocumentPosition(leaderboard) & Node.DOCUMENT_POSITION_FOLLOWING));
+  })).toBeTruthy();
+  await page.setViewportSize({ width: 375, height: 812 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+
 test("rules keep native scrolling on desktop, tablet, and mobile", async ({ page }) => {
   const viewports = [
     { width: 1440, height: 900 },
@@ -947,10 +977,16 @@ test("account gameplay preferences persist and control announce behavior", async
   await expect(page.locator('input[name="autoWriteAnnounced"][value="true"]')).toBeChecked();
   await expect(page.locator('input[name="hapticFeedback"]')).not.toBeChecked();
   await expect(page.locator('input[name="keepScreenAwake"]')).not.toBeChecked();
+  await expect(page.locator('input[name="lobbyChatEnabled"]')).toBeChecked();
+  await expect(page.locator('input[name="lobbyChatPopups"]')).toBeChecked();
+  await expect(page.getByRole("heading", { name: "Spielraum-Einladungen per Push" })).toBeVisible();
+  await expect(page.locator("#enableGameInvitePush")).toBeDisabled();
+  await expect(page.locator("#gameInvitePushStatus")).toContainText("Push-Benachrichtigungen sind momentan noch nicht eingerichtet.");
   await page.check('input[name="announceSelectionMode"][value="table"]');
   await page.check('input[name="autoWriteAnnounced"][value="false"]');
   await page.check('input[name="hapticFeedback"]');
   await page.check('input[name="keepScreenAwake"]');
+  await page.uncheck('input[name="lobbyChatPopups"]');
   await page.click("#preferencesForm button");
   await expect(page.locator("#preferencesMessage")).toHaveText("Spieleinstellungen gespeichert.");
   await page.reload();
@@ -958,6 +994,21 @@ test("account gameplay preferences persist and control announce behavior", async
   await expect(page.locator('input[name="autoWriteAnnounced"][value="false"]')).toBeChecked();
   await expect(page.locator('input[name="hapticFeedback"]')).toBeChecked();
   await expect(page.locator('input[name="keepScreenAwake"]')).toBeChecked();
+  await expect(page.locator('input[name="lobbyChatEnabled"]')).toBeChecked();
+  await expect(page.locator('input[name="lobbyChatPopups"]')).not.toBeChecked();
+
+  await page.uncheck('input[name="lobbyChatEnabled"]');
+  await expect(page.locator('input[name="lobbyChatPopups"]')).toBeDisabled();
+  await page.click("#preferencesForm button");
+  await page.reload();
+  await expect(page.locator('input[name="lobbyChatEnabled"]')).not.toBeChecked();
+  await expect(page.locator('input[name="lobbyChatPopups"]')).toBeDisabled();
+  await page.goto("/");
+  await expect(page.locator(".lobby-chat")).toContainText("Der Lobby-Chat ist in deinen Einstellungen deaktiviert.");
+  await page.goto("/konto#settings");
+  await page.check('input[name="lobbyChatEnabled"]');
+  await page.click("#preferencesForm button");
+  await expect(page.locator('input[name="lobbyChatEnabled"]')).toBeChecked();
 
   const gameId = await page.evaluate(async () => {
     const response = await fetch('/api/games', {
@@ -996,6 +1047,7 @@ test("account gameplay preferences persist and control announce behavior", async
   await page.check('input[name="autoWriteAnnounced"][value="true"]');
   await page.uncheck('input[name="hapticFeedback"]');
   await page.uncheck('input[name="keepScreenAwake"]');
+  await page.check('input[name="lobbyChatPopups"]');
   await page.click("#preferencesForm button");
   await expect(page.locator("#preferencesMessage")).toHaveText("Spieleinstellungen gespeichert.");
 });

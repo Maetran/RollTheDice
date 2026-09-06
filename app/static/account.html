@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=5ca0b139410a">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=5ca0b139410a" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=5ca0b139410a" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=eb18a034d46f">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=eb18a034d46f" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=eb18a034d46f" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=5ca0b139410a">
-  <script src="/static/shell.js?v=5ca0b139410a" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=eb18a034d46f">
+  <script src="/static/shell.js?v=eb18a034d46f" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -80,7 +80,7 @@
     <section id="settingsPanel" class="account-panel account-settings-panel" role="tabpanel" aria-labelledby="settingsTab" hidden>
       <section class="card password-card">
         <h2>ZDWA-Spieleinstellungen</h2>
-        <p class="muted small">Diese Einstellungen gelten nur für ZDWA auf allen Geräten. Eigene Zilch-Einstellungen kommen mit weiteren Zilch-Spieloptionen hinzu.</p>
+        <p class="muted small">Die Spieleinstellungen gelten nur für ZDWA auf allen Geräten. Die Lobby-Chat-Einstellungen gelten zusätzlich für ZDWA und Zilch.</p>
         <form id="preferencesForm" class="form-stack account-preferences-form">
           <fieldset>
             <legend>Bevorzugte Sprache</legend>
@@ -106,9 +106,23 @@
             <label><input type="checkbox" name="hapticFeedback"> Sanftes haptisches Feedback für Würfeln, Halten und Schreiben verwenden</label>
             <label><input type="checkbox" name="keepScreenAwake"> Bildschirm während eines laufenden Spiels wach halten</label>
           </fieldset>
+          <fieldset>
+            <legend>Lobby-Chat</legend>
+            <label><input type="checkbox" name="lobbyChatEnabled"> Lobby-Chat aktivieren (gilt für ZDWA und Zilch)</label>
+            <label><input type="checkbox" name="lobbyChatPopups"> Neue Nachrichten im Lobby-Chat oben einblenden (gilt für ZDWA und Zilch)</label>
+          </fieldset>
           <button class="primary">Spieleinstellungen speichern</button>
         </form>
         <div id="preferencesMessage" class="muted small" role="status"></div>
+      </section>
+      <section class="card password-card" aria-labelledby="pushSettingsTitle">
+        <h2 id="pushSettingsTitle">Spielraum-Einladungen per Push</h2>
+        <p class="muted small">Erhalte eine Benachrichtigung, wenn in einem öffentlichen ZDWA- oder Zilch-Spielraum ein Platz frei ist. Du kannst sie jederzeit für alle deine Geräte ausschalten.</p>
+        <div class="account-push-actions">
+          <button id="enableGameInvitePush" class="primary" type="button">Push-Benachrichtigungen aktivieren</button>
+          <button id="disableGameInvitePush" class="secondary" type="button" hidden>Push-Benachrichtigungen deaktivieren</button>
+        </div>
+        <p id="gameInvitePushStatus" class="muted small" role="status"></p>
       </section>
       <section class="card password-card">
         <h2>Passwort ändern</h2>
@@ -124,7 +138,8 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=5ca0b139410a';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=eb18a034d46f';
+    import { disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, webPushErrorMessage } from '/static/web-push.js?v=eb18a034d46f';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
@@ -170,6 +185,8 @@
     const mobileRowQuickEntry = preferences.mobile_row_quick_entry === true;
     const hapticFeedback = preferences.haptic_feedback === true;
     const keepScreenAwake = preferences.keep_screen_awake === true;
+    const lobbyChatPopups = preferences.lobby_chat_popups !== false;
+    const lobbyChatEnabled = preferences.lobby_chat_enabled !== false;
     const preferredLanguage = preferences.preferred_language === 'en' ? 'en' : 'de';
     document.querySelector(`input[name="preferredLanguage"][value="${preferredLanguage}"]`).checked = true;
     document.querySelector(`input[name="announceSelectionMode"][value="${announceMode}"]`).checked = true;
@@ -177,6 +194,66 @@
     document.querySelector('input[name="mobileRowQuickEntry"]').checked = mobileRowQuickEntry;
     document.querySelector('input[name="hapticFeedback"]').checked = hapticFeedback;
     document.querySelector('input[name="keepScreenAwake"]').checked = keepScreenAwake;
+    document.querySelector('input[name="lobbyChatPopups"]').checked = lobbyChatPopups;
+    document.querySelector('input[name="lobbyChatEnabled"]').checked = lobbyChatEnabled;
+    const lobbyChatEnabledInput = document.querySelector('input[name="lobbyChatEnabled"]');
+    const lobbyChatPopupsInput = document.querySelector('input[name="lobbyChatPopups"]');
+    function syncLobbyChatPopupAvailability() {
+      lobbyChatPopupsInput.disabled = !lobbyChatEnabledInput.checked;
+    }
+    lobbyChatEnabledInput.addEventListener('change', syncLobbyChatPopupAvailability);
+    syncLobbyChatPopupAvailability();
+
+    const pushEnableButton = document.getElementById('enableGameInvitePush');
+    const pushDisableButton = document.getElementById('disableGameInvitePush');
+    const pushStatus = document.getElementById('gameInvitePushStatus');
+    function translated(value) {
+      return window.ZDWA_I18N?.t?.(value) || value;
+    }
+    async function refreshGameInvitePushSettings() {
+      try {
+        const status = await getGameInvitePushStatus();
+        const enabled = status.enabled === true;
+        pushDisableButton.hidden = !enabled;
+        pushDisableButton.disabled = false;
+        pushEnableButton.hidden = false;
+        pushEnableButton.textContent = translated(enabled
+          ? 'Dieses Gerät für Push anmelden'
+          : 'Push-Benachrichtigungen aktivieren');
+        if (!status.available) {
+          pushEnableButton.disabled = true;
+          pushStatus.textContent = translated('Push-Benachrichtigungen sind momentan noch nicht eingerichtet.');
+          return;
+        }
+        if (!status.browser_supported) {
+          pushEnableButton.disabled = true;
+          pushStatus.textContent = translated('Dieser Browser unterstützt keine Push-Benachrichtigungen.');
+          return;
+        }
+        pushEnableButton.disabled = false;
+        pushStatus.textContent = enabled
+          ? translated('Push-Benachrichtigungen für offene Spielräume sind aktiviert.')
+          : translated('Push-Benachrichtigungen sind ausgeschaltet.');
+      } catch (error) {
+        pushEnableButton.disabled = true;
+        pushDisableButton.hidden = true;
+        pushStatus.textContent = webPushErrorMessage(error);
+      }
+    }
+    async function changeGameInvitePush(action, button) {
+      button.disabled = true;
+      pushStatus.textContent = translated('Push-Einstellung wird gespeichert …');
+      try {
+        await action();
+        await refreshGameInvitePushSettings();
+      } catch (error) {
+        pushStatus.textContent = webPushErrorMessage(error);
+        button.disabled = false;
+      }
+    }
+    pushEnableButton.addEventListener('click', () => changeGameInvitePush(enableGameInvitePush, pushEnableButton));
+    pushDisableButton.addEventListener('click', () => changeGameInvitePush(disableGameInvitePush, pushDisableButton));
+    void refreshGameInvitePushSettings();
 
     document.getElementById('preferencesForm').addEventListener('submit', async event => {
       event.preventDefault();
@@ -186,6 +263,8 @@
       const selectedMobileRowQuickEntry = document.querySelector('input[name="mobileRowQuickEntry"]').checked;
       const selectedHapticFeedback = document.querySelector('input[name="hapticFeedback"]').checked;
       const selectedKeepScreenAwake = document.querySelector('input[name="keepScreenAwake"]').checked;
+      const selectedLobbyChatPopups = document.querySelector('input[name="lobbyChatPopups"]').checked;
+      const selectedLobbyChatEnabled = document.querySelector('input[name="lobbyChatEnabled"]').checked;
       const selectedLanguage = document.querySelector('input[name="preferredLanguage"]:checked')?.value || 'de';
       const response = await apiFetch('/api/auth/preferences', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -195,6 +274,8 @@
           mobile_row_quick_entry: selectedMobileRowQuickEntry,
           haptic_feedback: selectedHapticFeedback,
           keep_screen_awake: selectedKeepScreenAwake,
+          lobby_chat_popups: selectedLobbyChatPopups,
+          lobby_chat_enabled: selectedLobbyChatEnabled,
           preferred_language: selectedLanguage,
         }),
       });

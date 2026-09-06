@@ -574,6 +574,45 @@ nicht die Anmeldung, sondern die Art der Seite: nur stabile öffentliche
 Einführungs- und Regelseiten stehen in `app/site_seo.py`; alle persönlichen,
 kurzlebigen oder dynamischen Ansichten bleiben `noindex`.
 
+### Web Push
+
+Wartende öffentliche Räume können per bewusstem Klick andere Konten einladen.
+Empfang ist standardmäßig aus und benötigt zusätzlich die Browser-Berechtigung.
+Der persistierte Konto-Cooldown erlaubt einen Versuch pro 60 Sekunden über beide
+Spiele hinweg, zusätzlich gilt pro Raum ein Versandabstand von zehn Minuten.
+Revision `20260906_0025` speichert den Konto-Cooldown; `0024` enthält die
+Abonnements und Moderationsflags, `0022`/`0023` die Chat-Einstellungen und die
+nach drei Tagen automatisch gelöschte, empfängergebundene Lobby-Historie.
+
+Diese drei Werte müssen gemeinsam gesetzt oder gemeinsam leer bleiben:
+
+```dotenv
+ROLLTHEDICE_WEB_PUSH_VAPID_PUBLIC_KEY=<Base64url-P-256-Public-Key>
+ROLLTHEDICE_WEB_PUSH_VAPID_PRIVATE_KEY=<Base64url-DER-Private-Key>
+ROLLTHEDICE_WEB_PUSH_VAPID_SUBJECT=https://zockdiewandan.online
+```
+
+Auf einem Host mit Python und `cryptography` erzeugt der folgende einmalige
+Aufruf die Schlüssel direkt in der vorhandenen `.env` und sichert den Altstand
+mit Dateimodus 0600, ohne Schlüssel auszugeben:
+
+```bash
+python3 scripts/configure_web_push.py --env-file .env \
+  --subject https://zockdiewandan.online
+```
+
+Vollständige bestehende Konfiguration bleibt unverändert; eine Teilkonfiguration
+wird nicht überschrieben. Anschließend regulär deployen, damit Compose die Werte
+übernimmt. Schlüssel geschützt in `.env` ablegen und nie bei regulären
+Rollouts rotieren: bestehende Abonnements sind an den Public Key gebunden.
+Private Keys und Push-Endpoints gehören weder in Git noch in Logs. Vor Änderungen
+an `.env` eine nur für den Besitzer lesbare Kopie sichern. Compose übergibt alle
+drei Werte. Die Erreichbarkeit der Push-Dienste von Apple, Google und Mozilla
+muss für ausgehende HTTPS-Anfragen gewährleistet sein. Abgelaufene Endpoints
+(HTTP 404/410) werden automatisch entfernt; Opt-out löscht alle Abonnements
+des Kontos. Ein Versandversuch bestätigt nur die Annahme durch den Push-Dienst,
+nicht die Anzeige auf einem Gerät. Keine Testeinladung an echte Konten senden.
+
 ### Erster Administrator
 
 Nur für die erstmalige Erstellung eines Administrators werden folgende Werte

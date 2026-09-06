@@ -13,7 +13,7 @@
     `scripts/sync_static_versions.py` ausführen, nicht manuell hochzählen.
 */
 
-const CACHE_VERSION = 'assets-5ca0b139410a';
+const CACHE_VERSION = 'assets-eb18a034d46f';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
@@ -26,6 +26,7 @@ const PRECACHE_URLS = [
   '/admin',
   '/offline',
   '/static/auth.js',
+  '/static/web-push.js',
   '/static/shell.js',
   '/static/lobby.js',
   '/static/lobby.css',
@@ -60,6 +61,48 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
+function pushNotificationPayload(event) {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (_) {
+    payload = {};
+  }
+  const url = typeof payload.url === 'string' ? payload.url : '/';
+  return {
+    title: typeof payload.title === 'string' && payload.title ? payload.title : 'Spiel-Update',
+    options: {
+      body: typeof payload.body === 'string' ? payload.body : '',
+      icon: typeof payload.icon === 'string' ? payload.icon : '/static/icons/icon-192.png',
+      badge: typeof payload.badge === 'string' ? payload.badge : '/static/icons/icon-192.png',
+      tag: typeof payload.tag === 'string' ? payload.tag : 'game-update',
+      renotify: false,
+      data: { url },
+    },
+  };
+}
+
+self.addEventListener('push', (event) => {
+  const notification = pushNotificationPayload(event);
+  event.waitUntil(self.registration.showNotification(notification.title, notification.options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    let target;
+    try {
+      target = new URL(event.notification.data?.url || '/', self.location.origin).href;
+    } catch (_) {
+      target = new URL('/', self.location.origin).href;
+    }
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const existing = windows.find(client => client.url === target);
+    if (existing) return existing.focus();
+    return self.clients.openWindow(target);
+  })());
 });
 
 // — Activate: alte Caches aufräumen

@@ -33,7 +33,14 @@ from .database import session_scope
 from .game_access import public_game_access_payload
 from .models import Session as LoginSession
 from .models import User
+from .product_hosts import is_zilch_host
 from .security import utcnow
+from .web_push import (
+    WebPushSubscriptionRequest,
+    remove_web_push_subscriptions,
+    save_web_push_subscription,
+    web_push_subscription_status,
+)
 
 router = APIRouter(prefix="/api", tags=["authentication"])
 
@@ -61,11 +68,20 @@ class UserPreferencesRequest(BaseModel):
     mobile_row_quick_entry: bool
     haptic_feedback: bool = False
     keep_screen_awake: bool = False
+    # Kept optional so a tab with a previous static bundle cannot accidentally
+    # re-enable a user's explicit lobby-chat choice during a normal save.
+    lobby_chat_popups: bool | None = None
+    lobby_chat_enabled: bool | None = None
     preferred_language: Literal["de", "en"] = "de"
 
 
 class LanguagePreferenceRequest(BaseModel):
     preferred_language: Literal["de", "en"]
+
+
+class LobbyChatPreferenceRequest(BaseModel):
+    lobby_chat_popups: bool | None = None
+    lobby_chat_enabled: bool | None = None
 
 
 class AdminUserCreateRequest(BaseModel):
@@ -81,6 +97,8 @@ class AdminPasswordResetRequest(BaseModel):
 class AdminUserUpdateRequest(BaseModel):
     role: Literal["user", "admin"] | None = None
     is_active: bool | None = None
+    lobby_chat_muted: bool | None = None
+    lobby_chat_excluded: bool | None = None
 
 
 def _user_payload(user: User, *, achievement_rank: dict | None = None) -> dict:
@@ -90,6 +108,8 @@ def _user_payload(user: User, *, achievement_rank: dict | None = None) -> dict:
         "role": user.role,
         "is_active": user.is_active,
         "must_change_password": user.must_change_password,
+        "lobby_chat_muted": user.lobby_chat_muted,
+        "lobby_chat_excluded": user.lobby_chat_excluded,
         "created_at": user.created_at,
         "updated_at": user.updated_at,
     }
@@ -181,6 +201,10 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
         user.mobile_row_quick_entry = payload.mobile_row_quick_entry
         user.haptic_feedback = payload.haptic_feedback
         user.keep_screen_awake = payload.keep_screen_awake
+        if payload.lobby_chat_popups is not None:
+            user.lobby_chat_popups = payload.lobby_chat_popups
+        if payload.lobby_chat_enabled is not None:
+            user.lobby_chat_enabled = payload.lobby_chat_enabled
         user.preferred_language = payload.preferred_language
         user.updated_at = utcnow()
         db.flush()
@@ -191,6 +215,11 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
                 "mobile_row_quick_entry": user.mobile_row_quick_entry,
                 "haptic_feedback": user.haptic_feedback,
                 "keep_screen_awake": user.keep_screen_awake,
+                "lobby_chat_popups": user.lobby_chat_popups,
+                "lobby_chat_enabled": user.lobby_chat_enabled,
+                "lobby_chat_muted": user.lobby_chat_muted,
+                "lobby_chat_excluded": user.lobby_chat_excluded,
+                "game_invite_push_enabled": user.game_invite_push_enabled,
                 "preferred_language": user.preferred_language,
             }
         }
@@ -208,6 +237,61 @@ def auth_update_language(payload: LanguagePreferenceRequest, request: Request):
         user.updated_at = utcnow()
         db.flush()
         return {"preferred_language": user.preferred_language}
+
+
+@router.put("/auth/preferences/lobby-chat")
+def auth_update_lobby_chat_preference(payload: LobbyChatPreferenceRequest, request: Request):
+    identity = require_user(request)
+    require_csrf(request, identity)
+    with session_scope() as db:
+        user = db.get(User, identity.user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
+        if payload.lobby_chat_popups is not None:
+            user.lobby_chat_popups = payload.lobby_chat_popups
+        if payload.lobby_chat_enabled is not None:
+            user.lobby_chat_enabled = payload.lobby_chat_enabled
+        user.updated_at = utcnow()
+        db.flush()
+        return {
+            "lobby_chat_popups": user.lobby_chat_popups,
+            "lobby_chat_enabled": user.lobby_chat_enabled,
+        }
+
+
+@router.get("/web-push/subscription")
+def web_push_subscription_get(request: Request, response: Response):
+    identity = require_user(request)
+    response.headers["Cache-Control"] = "no-store"
+    return web_push_subscription_status(identity.user_id)
+
+
+@router.put("/web-push/subscription")
+def web_push_subscription_put(payload: WebPushSubscriptionRequest, request: Request):
+    identity = require_user(request)
+    require_csrf(request, identity)
+    try:
+        return save_web_push_subscription(
+            user_id=identity.user_id,
+            payload=payload,
+            product_context="zilch" if is_zilch_host(request) else "zdwa",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.delete("/web-push/subscription")
+def web_push_subscription_delete(request: Request):
+    identity = require_user(request)
+    require_csrf(request, identity)
+    try:
+        return remove_web_push_subscriptions(identity.user_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.get("/admin/users")
@@ -261,7 +345,12 @@ def admin_reset_password(user_id: int, payload: AdminPasswordResetRequest, reque
 def admin_update_user(user_id: int, payload: AdminUserUpdateRequest, request: Request):
     identity = require_admin(request)
     require_csrf(request, identity)
-    if payload.role is None and payload.is_active is None:
+    if (
+        payload.role is None
+        and payload.is_active is None
+        and payload.lobby_chat_muted is None
+        and payload.lobby_chat_excluded is None
+    ):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="no_changes")
 
     with session_scope() as db:
@@ -280,8 +369,16 @@ def admin_update_user(user_id: int, payload: AdminUserUpdateRequest, request: Re
             user.role = payload.role
         if payload.is_active is not None:
             user.is_active = payload.is_active
+        if payload.lobby_chat_muted is not None:
+            user.lobby_chat_muted = payload.lobby_chat_muted
+        if payload.lobby_chat_excluded is not None:
+            user.lobby_chat_excluded = payload.lobby_chat_excluded
         user.updated_at = utcnow()
-        db.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
+        # Chat moderation is enforced on every chat event and does not need to
+        # throw the player out of an otherwise active game. Role/account-state
+        # changes retain the existing session invalidation boundary.
+        if payload.role is not None or payload.is_active is not None:
+            db.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
         db.flush()
         rank = achievement_rank_payloads_for_user_ids(db, {user.id}).get(user.id)
         return {"user": _user_payload(user, achievement_rank=rank)}

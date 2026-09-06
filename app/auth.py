@@ -54,6 +54,11 @@ class AuthIdentity:
     mobile_row_quick_entry: bool
     haptic_feedback: bool
     keep_screen_awake: bool
+    lobby_chat_popups: bool
+    lobby_chat_enabled: bool
+    lobby_chat_muted: bool
+    lobby_chat_excluded: bool
+    game_invite_push_enabled: bool
     preferred_language: str
     csrf_token: str
     session_id: int
@@ -82,6 +87,11 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
             "mobile_row_quick_entry": identity.mobile_row_quick_entry,
             "haptic_feedback": identity.haptic_feedback,
             "keep_screen_awake": identity.keep_screen_awake,
+            "lobby_chat_popups": identity.lobby_chat_popups,
+            "lobby_chat_enabled": identity.lobby_chat_enabled,
+            "lobby_chat_muted": identity.lobby_chat_muted,
+            "lobby_chat_excluded": identity.lobby_chat_excluded,
+            "game_invite_push_enabled": identity.game_invite_push_enabled,
             "preferred_language": identity.preferred_language,
         },
     }
@@ -273,6 +283,11 @@ def login(request: Request, username: str, password: str) -> tuple[AuthIdentity,
             mobile_row_quick_entry=user.mobile_row_quick_entry,
             haptic_feedback=user.haptic_feedback,
             keep_screen_awake=user.keep_screen_awake,
+            lobby_chat_popups=user.lobby_chat_popups,
+            lobby_chat_enabled=user.lobby_chat_enabled,
+            lobby_chat_muted=user.lobby_chat_muted,
+            lobby_chat_excluded=user.lobby_chat_excluded,
+            game_invite_push_enabled=user.game_invite_push_enabled,
             preferred_language=user.preferred_language,
             csrf_token=login_session.csrf_token,
             session_id=login_session.id,
@@ -308,6 +323,11 @@ def resolve_session(connection: Request | WebSocket) -> AuthIdentity | None:
             mobile_row_quick_entry=user.mobile_row_quick_entry,
             haptic_feedback=user.haptic_feedback,
             keep_screen_awake=user.keep_screen_awake,
+            lobby_chat_popups=user.lobby_chat_popups,
+            lobby_chat_enabled=user.lobby_chat_enabled,
+            lobby_chat_muted=user.lobby_chat_muted,
+            lobby_chat_excluded=user.lobby_chat_excluded,
+            game_invite_push_enabled=user.game_invite_push_enabled,
             preferred_language=user.preferred_language,
             csrf_token=login_session.csrf_token,
             session_id=login_session.id,

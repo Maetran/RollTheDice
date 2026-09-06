@@ -26,6 +26,7 @@ from .auth import (
     promote_legacy_session_cookie,
     require_admin,
     require_csrf,
+    require_user,
     resolve_session,
     validate_session_cookie_config,
     websocket_origin_allowed,
@@ -65,6 +66,13 @@ from .leaderboard_service import (
     game_from_leaderboard,
 )
 from .leaderboard_storage import LeaderboardFiles
+from .lobby_chat import (
+    LOBBY_CHAT_PURGE_INTERVAL_SECONDS,
+    LobbyChatHub,
+    lobby_chat_context,
+    purge_expired_lobby_chat_messages,
+    serve_lobby_chat_websocket,
+)
 from .models import User
 from .product_hosts import (
     is_site_host,
@@ -77,6 +85,16 @@ from .product_hosts import (
 )
 from .security import normalize_username
 from .site_seo import robots_document, sitemap_document, zilch_page_is_indexable
+from .web_push import (
+    claim_game_invite_push,
+    dispatch_game_invite_push,
+    game_invite_cooldown_remaining,
+    game_invite_push_recipients,
+    mark_game_invite_push_sent,
+    open_seat_invitation_error,
+    validate_web_push_config,
+    web_push_available,
+)
 from .zilch_achievements import (
     ZilchAchievementError,
     ZilchAchievementSyncError,
@@ -250,6 +268,30 @@ async def _run_timeout_sweeper(
         except asyncio.TimeoutError:
             continue
 
+
+async def _run_lobby_chat_history_purger(
+    stop_event: asyncio.Event,
+    *,
+    interval_seconds: float = LOBBY_CHAT_PURGE_INTERVAL_SECONDS,
+) -> None:
+    """Permanently remove lobby-chat rows as soon as their three days expire."""
+    interval = max(1.0, float(interval_seconds))
+    while not stop_event.is_set():
+        try:
+            deleted = purge_expired_lobby_chat_messages()
+            if deleted:
+                logger.info("Deleted %s expired lobby-chat events", deleted)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Could not purge expired lobby-chat events")
+        if stop_event.is_set():
+            return
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=interval)
+        except asyncio.TimeoutError:
+            continue
+
 # ---------------- Pfade robust auflösen (static/ und data/) ----------------
 HERE = Path(__file__).resolve().parent  # .../RollTheDice/app
 BASE = HERE.parent  # .../RollTheDice
@@ -285,9 +327,11 @@ configure_database(DATA_DIR)
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     upgrade_database(BASE)
+    purge_expired_lobby_chat_messages()
     validate_auth_protection_config()
     validate_session_cookie_config()
     validate_product_host_config()
+    validate_web_push_config()
     ensure_bootstrap_admin()
     import_legacy_leaderboards(LEADERBOARD_FILES.legacy_paths())
     games.update(load_active_games())
@@ -337,12 +381,19 @@ async def lifespan(_app: FastAPI):
         _run_timeout_sweeper(timeout_sweeper_stop),
         name="active-game-timeout-sweeper",
     )
+    lobby_chat_purger_stop = asyncio.Event()
+    lobby_chat_purger = asyncio.create_task(
+        _run_lobby_chat_history_purger(lobby_chat_purger_stop),
+        name="lobby-chat-history-purger",
+    )
     try:
         yield
     finally:
         timeout_sweeper_stop.set()
+        lobby_chat_purger_stop.set()
         timeout_sweeper.cancel()
-        await asyncio.gather(timeout_sweeper, return_exceptions=True)
+        lobby_chat_purger.cancel()
+        await asyncio.gather(timeout_sweeper, lobby_chat_purger, return_exceptions=True)
         await stop_cpu_runners()
 
 
@@ -976,6 +1027,7 @@ def health() -> dict[str, str]:
 # als ein Nutzer; ein Heartbeat entfernt abgebrochene Verbindungen zeitnah.
 presence_connections: dict[str, int] = {}
 websocket_connections_by_address: dict[str, int] = {}
+lobby_chat_hub = LobbyChatHub()
 
 
 def _positive_int_setting(name: str, default: int) -> int:
@@ -1351,6 +1403,52 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
             logger.warning("Skipping malformed game %s in lobby response", gid, exc_info=True)
             continue
     return {"games": lst, "online_users": online_user_count()}
+
+
+@app.post("/api/games/{game_id}/notify-open-seat")
+async def api_game_notify_open_seat(game_id: str, request: Request):
+    """Let a signed-in seated player invite opted-in accounts to a public room."""
+    identity = require_user(request)
+    require_csrf(request, identity)
+    if not web_push_available():
+        raise HTTPException(status_code=503, detail="web_push_unavailable")
+    sweep_timeouts()
+    game = games.get(game_id)
+    if not game or not can_access_game(identity, game):
+        raise HTTPException(status_code=404, detail="game_not_found")
+    invitation_error = open_seat_invitation_error(game, user_id=identity.user_id)
+    if invitation_error:
+        status_code = 403 if invitation_error == "game_invite_not_player" else 409
+        raise HTTPException(status_code=status_code, detail=invitation_error)
+    cooldown_seconds = game_invite_cooldown_remaining(game)
+    if cooldown_seconds:
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "game_invite_cooldown", "retry_after_seconds": cooldown_seconds},
+            headers={"Retry-After": str(cooldown_seconds)},
+        )
+    account_cooldown = claim_game_invite_push(identity.user_id)
+    if account_cooldown:
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "game_invite_account_cooldown", "retry_after_seconds": account_cooldown},
+            headers={"Retry-After": str(account_cooldown)},
+        )
+    subscriptions = game_invite_push_recipients(game)
+    if not subscriptions:
+        # Do not reveal whether particular players use Push. The actor merely
+        # learns that no delivery was attempted. The account cooldown still
+        # applies, even when no opted-in player is currently reachable.
+        return {"ok": True, "notified": False}
+    # Persist the room-level flood barrier before issuing external network
+    # requests, so a double click or concurrent tab cannot dispatch duplicates.
+    mark_game_invite_push_sent(game)
+    save_active_game(game)
+    dispatch = await dispatch_game_invite_push(game, subscriptions)
+    return {
+        "ok": True,
+        "notified": bool(dispatch.accepted),
+    }
 
 
 @app.get("/api/games/{game_id}")
@@ -1807,6 +1905,22 @@ def _recover_terminal_completed_games() -> None:
 # -----------------------------
 # WebSocket
 # -----------------------------
+@app.websocket("/ws/lobby-chat")
+async def ws_lobby_chat(websocket: WebSocket) -> None:
+    host_context = ZILCH_GAME_TYPE if is_zilch_host(websocket) else DEFAULT_GAME_TYPE
+    # The canonical Zilch host supplies the same context automatically.  The
+    # explicit value keeps the legacy same-origin /zilch compatibility lobby
+    # correctly labelled without turning a game room route into a special case.
+    context = lobby_chat_context(websocket.query_params.get("context"), fallback=host_context)
+    await serve_lobby_chat_websocket(
+        websocket,
+        hub=lobby_chat_hub,
+        context=context,
+        reserve_connection=_reserve_websocket,
+        release_connection=_release_websocket,
+    )
+
+
 @app.websocket("/ws/{game_id}")
 async def ws_game(websocket: WebSocket, game_id: str) -> None:
     await serve_game_websocket(

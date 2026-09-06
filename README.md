@@ -84,6 +84,34 @@ Lobby ends it for everyone without creating a result, and Stay in Game changes
 nothing. The cross-game switch remains available on app pages and lobbies, but
 not inside an active game room. Logout is deliberately available only inside the
 Zilch account page.
+
+Both lobbies also share one account-only **Lobby Chat**. Each event is tagged
+`zdwa` or `zilch` from the sender's current lobby, and the lobby can filter to
+either game or show both. The server records the accounts that were eligible
+when each event was sent, retains that account-scoped history for three days,
+and permanently deletes older rows. A later sign-in therefore cannot reveal a
+message from a period in which that account was signed out or had its chat
+disabled. The first active connection of a player announces that player to the
+other active chat users. The compact view can be expanded; accounts can enable
+or disable the chat itself and the separate lobby-only, top-of-screen popup
+preference from either account settings page. Both choices apply to ZDWA and
+Zilch on all devices and default to enabled.
+Accounts can additionally opt in to Web Push invitations in either account
+settings page. A seated account player can alert opted-in players when a public,
+not-yet-full room waits for another player; private, full, started, and solo
+rooms never send invitations. The sender sees no recipient identities, invitations
+are sent only after clicking **Notify players**, and the sender receives a brief
+in-app confirmation, not a push. The server atomically permits at most one attempt
+per account every **60 seconds**, across games, tabs, logins and restarts. Each
+room additionally allows only one dispatch every **10 minutes**. The account-wide
+opt-out removes all stored browser subscriptions, even on an unsupported device.
+Each device can be registered separately. On iPhone/iPad, enable push from the
+installed home-screen app. Deployment requires all three VAPID settings described
+in [the operations guide](docs/DEPLOYMENT.md#web-push).
+Lobby messages are limited to **400 characters** and **five messages per account
+per 30 seconds** (shared across tabs and reconnects). Administrators can mute
+accounts (read-only chat) or exclude them from the lobby chat entirely, and lift
+either restriction in user administration.
 The compact setup starts a default game with one click; advanced room protection
 stays optional, and a completed game can be restarted directly with the same mode.
 In a two-person Zilch room, **Share game** creates a clean invitation link for

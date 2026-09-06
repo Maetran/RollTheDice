@@ -439,6 +439,90 @@ html[data-game="zilch"] .zilch-intro--lobby p:last-child {
   line-height: 1.45;
 }
 
+html[data-game="zilch"] .lobby-chat {
+  margin: .8rem 0;
+  padding: .9rem;
+  border: 1px solid rgba(221, 190, 125, .62);
+  border-radius: .75rem;
+  color: var(--zilch-ink);
+  background: repeating-linear-gradient(-8deg, rgba(114, 79, 40, .035) 0 1px, transparent 1px 5px), var(--zilch-paper);
+  box-shadow: var(--zilch-shadow-card);
+}
+html[data-game="zilch"] .lobby-chat__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
+html[data-game="zilch"] .lobby-chat__heading .eyebrow { margin: 0 0 .18rem; color: var(--zilch-gold); }
+html[data-game="zilch"] .lobby-chat__heading h2 { margin: 0; font: 800 1.1rem/1.15 ui-rounded, "Avenir Next", Avenir, system-ui, sans-serif; }
+html[data-game="zilch"] .lobby-chat__filters { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .3rem; }
+html[data-game="zilch"] .lobby-chat__filters button { min-height: 2rem; padding: .26rem .52rem; font-size: .76rem; }
+html[data-game="zilch"] .lobby-chat__filters button.is-active { border-color: #a3692d; color: #fff4ca; background: #6c3517; }
+html[data-game="zilch"] .lobby-chat__hint { margin: .38rem 0 .52rem; color: var(--zilch-muted); font-size: .8rem; line-height: 1.35; }
+html[data-game="zilch"] .lobby-chat__feed {
+  max-height: 7.45rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(119, 77, 37, .26);
+  border-radius: .52rem;
+  background: rgba(255, 250, 232, .67);
+  transition: max-height .18s ease;
+}
+html[data-game="zilch"] .lobby-chat__feed.is-expanded { max-height: min(58vh, 29rem); }
+html[data-game="zilch"] .lobby-chat__messages { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+html[data-game="zilch"] .lobby-chat__message {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: .42rem;
+  padding: .42rem .52rem;
+  border-bottom: 1px solid rgba(119, 77, 37, .2);
+  font-size: .86rem;
+  line-height: 1.32;
+}
+html[data-game="zilch"] .lobby-chat__message:last-child { border-bottom: 0; }
+html[data-game="zilch"] .lobby-chat__message--presence { background: rgba(246, 215, 142, .28); }
+html[data-game="zilch"] .lobby-chat__message--presence .lobby-chat__text { color: var(--zilch-muted); font-style: italic; }
+html[data-game="zilch"] .lobby-chat__sender { display: inline-flex; align-items: center; gap: .28rem; min-width: 0; white-space: nowrap; }
+html[data-game="zilch"] .lobby-chat__sender strong { overflow: hidden; max-width: 9rem; text-overflow: ellipsis; }
+html[data-game="zilch"] .lobby-chat__game-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.2rem;
+  padding: 0 .28rem;
+  border: 1px solid #bb813b;
+  border-radius: 999px;
+  color: #6a3515;
+  background: #f6d78e;
+  font-size: .66rem;
+  font-weight: 850;
+  letter-spacing: .02em;
+}
+html[data-game="zilch"] .lobby-chat__message[data-game-type="zilch"] .lobby-chat__game-badge { border-color: #6a3515; color: #fff6cf; background: #713617; }
+html[data-game="zilch"] .lobby-chat__text { min-width: 0; overflow-wrap: anywhere; }
+html[data-game="zilch"] .lobby-chat__empty { padding: .62rem; color: var(--zilch-muted); font-size: .84rem; }
+html[data-game="zilch"] .lobby-chat__expand { margin-top: .42rem; padding: .24rem .45rem; font-size: .76rem; }
+html[data-game="zilch"] .lobby-chat__composer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .42rem; margin-top: .48rem; }
+html[data-game="zilch"] .lobby-chat__composer input { min-width: 0; }
+html[data-game="zilch"] .lobby-chat__composer button { min-height: 2.5rem; }
+html[data-game="zilch"] .lobby-chat__status { min-height: 1.1rem; margin: .32rem 0 0; color: var(--zilch-muted); font-size: .78rem; line-height: 1.3; }
+html[data-game="zilch"] .lobby-chat-toasts {
+  position: fixed;
+  z-index: 120;
+  top: max(.75rem, env(safe-area-inset-top, 0px));
+  right: max(.75rem, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: .45rem;
+  width: min(23rem, calc(100vw - 1.5rem));
+  pointer-events: none;
+}
+html[data-game="zilch"] .lobby-chat-toast {
+  padding: .65rem .75rem;
+  border: 1px solid #bd853d;
+  border-radius: .52rem;
+  color: #fff8de;
+  background: #48210f;
+  box-shadow: 0 .45rem 1rem rgba(42, 19, 7, .35);
+  font-size: .86rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 html[data-game="zilch"] .zilch-lobby-identity {
   display: flex;
   align-items: center;
@@ -979,6 +1063,9 @@ html[data-game="zilch"] .zilch-participant-badge--solo {
 .zilch-game-card:hover { border-color: color-mix(in srgb, var(--zilch-wood-light) 68%, var(--zilch-paper-edge)); background: #fffdf5; transform: translateY(-1px); }
 .zilch-game-card h3,
 .zilch-game-card p { margin: 0; }
+.zilch-game-card__actions { display: grid; gap: .32rem; justify-items: stretch; }
+.zilch-game-card__actions .zilch-lobby-action { text-align: center; }
+.zilch-game-card__actions .zilch-game-invite-button { min-height: 2rem; padding: .32rem .48rem; font-size: .75rem; white-space: normal; }
 .zilch-game-card h3 { max-width: 36ch; overflow-wrap: anywhere; }
 .zilch-game-card p + p { margin-top: .3rem; }
 .zilch-card-title { flex-wrap: wrap; }
@@ -4646,4 +4733,12 @@ html[data-game="zilch"] .zilch-header-tools .game-switch-icon {
   }
 
   .zilch-shell--game .zilch-room-leave .zilch-control-label { display: none; }
+}
+
+@media (max-width: 640px) {
+  html[data-game="zilch"] .lobby-chat__heading { align-items: stretch; flex-direction: column; gap: .45rem; }
+  html[data-game="zilch"] .lobby-chat__filters { justify-content: flex-start; }
+  html[data-game="zilch"] .lobby-chat__filters button { flex: 1 1 0; }
+  html[data-game="zilch"] .lobby-chat__message { grid-template-columns: 1fr; gap: .16rem; }
+  html[data-game="zilch"] .lobby-chat__sender strong { max-width: min(16rem, 72vw); }
 }

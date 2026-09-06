@@ -182,6 +182,12 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await expect(page).toHaveURL(/\/zilch\/konto#settings$/);
   await expect(page.locator("#zilchAccountPanel-settings")).toBeVisible();
   await expect(page.locator("#zilchLanguagePreferencesForm")).toBeVisible();
+  await expect(page.locator("#zilchLobbyChatPreferencesForm")).toBeVisible();
+  await expect(page.locator('input[name="zilchLobbyChatEnabled"]')).toBeChecked();
+  await expect(page.locator('input[name="zilchLobbyChatPopups"]')).toBeChecked();
+  await expect(page.getByRole("heading", { name: "Spielraum-Einladungen per Push" })).toBeVisible();
+  await expect(page.locator("#zilchEnableGameInvitePush")).toBeDisabled();
+  await expect(page.locator("#zilchGameInvitePushStatus")).toContainText("Push-Benachrichtigungen sind momentan noch nicht eingerichtet.");
   await expect(page.locator("#zilchPasswordForm")).toBeVisible();
   await expect(page.locator("#zilchAccountLogout")).toBeVisible();
   await expect(page.locator("#zilchAccountLogout")).toHaveText("Abmelden");
@@ -192,6 +198,40 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await page.locator("#zilchLanguagePreferencesForm button[type=submit]").click();
   expect((await languageUpdate).ok()).toBeTruthy();
   await expect(page.locator("#zilchLanguagePreferencesMessage")).toHaveText("Sprache gespeichert.");
+  const disableLobbyChat = page.waitForResponse(response => (
+    new URL(response.url()).pathname === "/api/auth/preferences/lobby-chat"
+    && response.request().method() === "PUT"
+  ));
+  await page.locator('input[name="zilchLobbyChatEnabled"]').uncheck();
+  await expect(page.locator('input[name="zilchLobbyChatPopups"]')).toBeDisabled();
+  await page.locator("#zilchLobbyChatPreferencesForm button[type=submit]").click();
+  expect((await disableLobbyChat).ok()).toBeTruthy();
+  await expect(page.locator('input[name="zilchLobbyChatEnabled"]')).not.toBeChecked();
+  const enableLobbyChat = page.waitForResponse(response => (
+    new URL(response.url()).pathname === "/api/auth/preferences/lobby-chat"
+    && response.request().method() === "PUT"
+  ));
+  await page.locator('input[name="zilchLobbyChatEnabled"]').check();
+  await expect(page.locator('input[name="zilchLobbyChatPopups"]')).toBeEnabled();
+  await page.locator("#zilchLobbyChatPreferencesForm button[type=submit]").click();
+  expect((await enableLobbyChat).ok()).toBeTruthy();
+  await expect(page.locator('input[name="zilchLobbyChatEnabled"]')).toBeChecked();
+  const lobbyChatUpdate = page.waitForResponse(response => (
+    new URL(response.url()).pathname === "/api/auth/preferences/lobby-chat"
+    && response.request().method() === "PUT"
+  ));
+  await page.locator('input[name="zilchLobbyChatPopups"]').uncheck();
+  await page.locator("#zilchLobbyChatPreferencesForm button[type=submit]").click();
+  expect((await lobbyChatUpdate).ok()).toBeTruthy();
+  await expect(page.locator("#zilchLobbyChatPreferencesMessage")).toHaveText("Lobby-Chat-Einstellung gespeichert.");
+  await expect(page.locator('input[name="zilchLobbyChatPopups"]')).not.toBeChecked();
+  const restoreLobbyChat = page.waitForResponse(response => (
+    new URL(response.url()).pathname === "/api/auth/preferences/lobby-chat"
+    && response.request().method() === "PUT"
+  ));
+  await page.locator('input[name="zilchLobbyChatPopups"]').check();
+  await page.locator("#zilchLobbyChatPreferencesForm button[type=submit]").click();
+  expect((await restoreLobbyChat).ok()).toBeTruthy();
   await page.fill("#zilchCurrentPassword", "mani-preview-password-123");
   await page.fill("#zilchNewPassword", "different-password-123");
   await page.fill("#zilchConfirmPassword", "another-password-123");
@@ -259,6 +299,14 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   await expect(identity).toContainText("Du spielst als");
   await expect(identity).toContainText("Mani");
   await expect(identity.getByRole("button", { name: "Mein Konto" })).toHaveAttribute("data-zilch-navigate", "/zilch/konto");
+  const lobbyChat = page.locator(".lobby-chat");
+  await expect(lobbyChat).toBeVisible();
+  await expect(lobbyChat.getByRole("button", { name: "Chat ausklappen" })).toHaveAttribute("aria-expanded", "false");
+  expect(await page.evaluate(() => {
+    const chat = document.querySelector(".lobby-chat");
+    const leaderboard = document.querySelector(".zilch-lobby-ranking");
+    return Boolean(chat && leaderboard && (chat.compareDocumentPosition(leaderboard) & Node.DOCUMENT_POSITION_FOLLOWING));
+  })).toBeTruthy();
   await expect(page.getByRole("button", { name: "Alle Bestenlisten" })).toHaveAttribute("data-zilch-navigate", "/zilch/bestenlisten");
   await expect(page.locator("#zilchAccount")).toBeHidden();
   await expect(page.locator(".zilch-header [data-zilch-logout]")).toHaveCount(0);

@@ -1,4 +1,12 @@
 import { apiFetch, authError, escapeHtml, loadAuth, logout } from "../shared/auth.js";
+import { mountLobbyChat } from "../shared/lobby-chat.js";
+import {
+  disableGameInvitePush,
+  enableGameInvitePush,
+  getGameInvitePushStatus,
+  requestGameInvitePush,
+  webPushErrorMessage,
+} from "../shared/web-push.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
 import {
   applyZilchRouteLinks,
@@ -54,6 +62,7 @@ const state = {
   game: null,
   result: null,
   socket: null,
+  lobbyChat: null,
   playerId: null,
   reconnectTimer: null,
   stopped: false,
@@ -755,6 +764,71 @@ function canSpectateZilchGame(game) {
   );
 }
 
+function canRequestZilchGameInvite(game, { inRoom = false } = {}) {
+  if (!authenticatedZilchPlayer() || !game || zilchPlayMode(game) !== "multiplayer") return false;
+  const expected = expectedParticipantCount(game);
+  const joined = inRoom
+    ? snapshotParticipants(game).filter(participant => !isCpuParticipant(participant)).length
+    : gameParticipantCount(game);
+  const ownSeat = inRoom
+    ? snapshotParticipants(game).some(participant => (
+      !isCpuParticipant(participant)
+      && Number(participant?.user_id) === Number(state.auth?.user?.id)
+    ))
+    : Boolean(game.my_participant_id || game.my_player_id);
+  return Boolean(
+    ownSeat
+    && !game.locked
+    && !game._passphrase
+    && !game.started
+    && !game._started
+    && !game.finished
+    && !game._finished
+    && !game.aborted
+    && !game._aborted
+    && expected >= 2
+    && joined < expected,
+  );
+}
+
+function zilchGameInviteButtonMarkup(id) {
+  const gameIdentifier = String(id || "").trim();
+  if (!gameIdentifier) return "";
+  return '<button type="button" class="secondary zilch-game-invite-button" data-zilch-game-invite-push="'
+    + escapeHtml(gameIdentifier)
+    + '">'
+    + escapeHtml(t("Mitspieler benachrichtigen"))
+    + "</button>";
+}
+
+async function sendZilchGameInvite(button) {
+  const invitationGameId = String(button?.dataset?.zilchGameInvitePush || "");
+  if (!invitationGameId || button?.disabled) return;
+  button.disabled = true;
+  try {
+    const result = await requestGameInvitePush(invitationGameId);
+    window.ZDWA_UI?.toast?.(
+      t(result.notified
+        ? "Spieler mit aktivierten Push-Benachrichtigungen wurden informiert."
+        : "Aktuell konnten keine Spieler mit aktivierten Push-Benachrichtigungen informiert werden."),
+      { kind: result.notified ? "success" : "info" },
+    );
+  } catch (error) {
+    window.ZDWA_UI?.toast?.(webPushErrorMessage(error), { kind: "error" });
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function bindZilchGameInviteButtons(scope = document) {
+  const buttons = scope?.querySelectorAll ? scope.querySelectorAll("[data-zilch-game-invite-push]") : [];
+  for (const button of buttons) {
+    if (button.dataset.bound) continue;
+    button.dataset.bound = "true";
+    button.addEventListener("click", () => { void sendZilchGameInvite(button); });
+  }
+}
+
 function gameCard(game, { running = false } = {}) {
   const joined = gameParticipantCount(game);
   const expected = expectedParticipantCount(game);
@@ -776,6 +850,7 @@ function gameCard(game, { running = false } = {}) {
   const cpu = zilchPlayMode(game) === "cpu";
   const strategy = strategyLabel(game?.cpu_strategy);
   const soloObjective = solo ? soloObjectiveTitle(game) : "";
+  const invite = !running && canRequestZilchGameInvite(game) ? zilchGameInviteButtonMarkup(game.id) : "";
   const lock = game.locked ? `<span class="zilch-board-marker zilch-lock-label">${escapeHtml(t("Geschützter Raum"))}</span>` : "";
   const pause = game.paused
     ? `<p class="zilch-game-card__notice">${escapeHtml(Array.isArray(game.offline) && game.offline.length ? t("Ein Mitspieler ist gerade weg") : t("Spiel pausiert"))}</p>`
@@ -804,7 +879,7 @@ function gameCard(game, { running = false } = {}) {
       ${running || !points ? "" : `<p class="zilch-game-card__points">${escapeHtml(t("Punktestand"))}: <strong>${escapeHtml(points)}</strong></p>`}
       ${pause}
     </div>
-    <a class="button-link zilch-lobby-action" href="${escapeHtml(zilchPath(`/spiel/${encodeURIComponent(game.id)}${spectator ? "/zuschauen" : ""}`))}">${escapeHtml(action)}</a>
+    <div class="zilch-game-card__actions"><a class="button-link zilch-lobby-action" href="${escapeHtml(zilchPath(`/spiel/${encodeURIComponent(game.id)}${spectator ? "/zuschauen" : ""}`))}">${escapeHtml(action)}</a>${invite}</div>
   </article>`;
 }
 
@@ -994,6 +1069,8 @@ async function refreshLobbyLeaderboards() {
 }
 
 async function renderLobby() {
+  state.lobbyChat?.destroy();
+  state.lobbyChat = null;
   if (!content) return;
   const hasAccount = authenticatedZilchPlayer();
   const username = state.auth?.user?.username || t("Gast");
@@ -1036,6 +1113,7 @@ async function renderLobby() {
         <div id="zilchWaitingGames" class="zilch-game-list" aria-live="polite">${escapeHtml(t("Zilch-Partien werden geladen …"))}</div>
       </section>
     </section>
+    <div id="zilchLobbyChatMount"></div>
     <section class="zilch-lobby-ranking" aria-labelledby="zilchLobbyRankingTitle">
       <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Bestenlisten"))}</p><h2 id="zilchLobbyRankingTitle">${escapeHtml(t("Zilch-Ranglisten"))}</h2></div>${zilchNavigationButton(zilchPath("/bestenlisten"), t("Alle Bestenlisten"), "small zilch-lobby-ranking-action")}</div>
       <div class="zilch-lobby-leaderboards" aria-live="polite">
@@ -1047,6 +1125,10 @@ async function renderLobby() {
 
   const runningSlot = document.getElementById("zilchRunningGames");
   const waitingSlot = document.getElementById("zilchWaitingGames");
+  state.lobbyChat = mountLobbyChat(document.getElementById("zilchLobbyChatMount"), {
+    context: "zilch",
+    initialAuth: state.auth,
+  });
   const refreshGames = async () => {
     try {
       const games = await fetchZilchGames();
@@ -1085,6 +1167,7 @@ async function renderLobby() {
       if (waitingSlot) waitingSlot.innerHTML = waitingGames.length
         ? waitingGames.map(game => gameCard(game)).join("")
         : `<p class="zilch-muted">${escapeHtml(t("Keine wartende Zilch-Partie"))}</p>`;
+      if (waitingSlot) bindZilchGameInviteButtons(waitingSlot);
     } catch (_) {
       const failure = `<p class="zilch-error">${escapeHtml(t("Zilch-Lobby konnte nicht geladen werden."))}</p>`;
       if (runningSlot) runningSlot.innerHTML = failure;
@@ -1867,6 +1950,8 @@ function zilchAccountAchievementsLoadingMarkup() {
 
 function zilchAccountSettingsMarkup(username) {
   const preferredLanguage = state.auth?.user?.preferences?.preferred_language === "en" ? "en" : "de";
+  const lobbyChatPopups = state.auth?.user?.preferences?.lobby_chat_popups !== false;
+  const lobbyChatEnabled = state.auth?.user?.preferences?.lobby_chat_enabled !== false;
   const passwordHint = state.auth?.user?.must_change_password
     ? `<p id="zilchPasswordHint" class="zilch-muted">${escapeHtml(t("Das temporäre Passwort muss jetzt geändert werden."))}</p>`
     : "";
@@ -1884,6 +1969,27 @@ function zilchAccountSettingsMarkup(username) {
         <button class="primary" type="submit">${escapeHtml(t("Sprache speichern"))}</button>
       </form>
       <p id="zilchLanguagePreferencesMessage" class="zilch-settings-message" role="status"></p>
+    </section>
+    <section class="zilch-card zilch-account-settings-card">
+      <p class="eyebrow">${escapeHtml(t("Gemeinsame Lobby"))}</p>
+      <h2>${escapeHtml(t("Lobby-Chat"))}</h2>
+      <p class="zilch-account-settings-card__description">${escapeHtml(t("Diese Einstellung gilt für ZDWA und Zilch auf allen Geräten."))}</p>
+      <form id="zilchLobbyChatPreferencesForm" class="zilch-settings-form">
+        <label><input type="checkbox" name="zilchLobbyChatEnabled"${lobbyChatEnabled ? " checked" : ""}> ${escapeHtml(t("Lobby-Chat aktivieren"))}</label>
+        <label><input type="checkbox" name="zilchLobbyChatPopups"${lobbyChatPopups ? " checked" : ""}${lobbyChatEnabled ? "" : " disabled"}> ${escapeHtml(t("Neue Nachrichten im Lobby-Chat oben einblenden"))}</label>
+        <button class="primary" type="submit">${escapeHtml(t("Chat-Einstellung speichern"))}</button>
+      </form>
+      <p id="zilchLobbyChatPreferencesMessage" class="zilch-settings-message" role="status"></p>
+    </section>
+    <section class="zilch-card zilch-account-settings-card">
+      <p class="eyebrow">${escapeHtml(t("Gemeinsame Lobby"))}</p>
+      <h2>${escapeHtml(t("Spielraum-Einladungen per Push"))}</h2>
+      <p class="zilch-account-settings-card__description">${escapeHtml(t("Erhalte eine Benachrichtigung, wenn in einem öffentlichen ZDWA- oder Zilch-Spielraum ein Platz frei ist. Du kannst sie jederzeit für alle deine Geräte ausschalten."))}</p>
+      <div class="zilch-settings-form">
+        <button id="zilchEnableGameInvitePush" class="primary" type="button">${escapeHtml(t("Push-Benachrichtigungen aktivieren"))}</button>
+        <button id="zilchDisableGameInvitePush" class="secondary" type="button" hidden>${escapeHtml(t("Push-Benachrichtigungen deaktivieren"))}</button>
+      </div>
+      <p id="zilchGameInvitePushStatus" class="zilch-settings-message" role="status"></p>
     </section>
     <section class="zilch-card zilch-account-settings-card">
       <p class="eyebrow">${escapeHtml(t("Mein Konto"))}</p>
@@ -1953,6 +2059,10 @@ function bindZilchAccountTabs() {
 
 function bindZilchAccountSettings() {
   const languageForm = document.getElementById("zilchLanguagePreferencesForm");
+  const lobbyChatForm = document.getElementById("zilchLobbyChatPreferencesForm");
+  const pushEnableButton = document.getElementById("zilchEnableGameInvitePush");
+  const pushDisableButton = document.getElementById("zilchDisableGameInvitePush");
+  const pushStatus = document.getElementById("zilchGameInvitePushStatus");
   const passwordForm = document.getElementById("zilchPasswordForm");
   if (languageForm && !languageForm.dataset.bound) {
     languageForm.dataset.bound = "true";
@@ -1990,6 +2100,107 @@ function bindZilchAccountSettings() {
         if (submit && document.contains(submit)) submit.disabled = false;
       }
     });
+  }
+  if (lobbyChatForm && !lobbyChatForm.dataset.bound) {
+    lobbyChatForm.dataset.bound = "true";
+    const enabledCheckbox = lobbyChatForm.querySelector('input[name="zilchLobbyChatEnabled"]');
+    const popupsCheckbox = lobbyChatForm.querySelector('input[name="zilchLobbyChatPopups"]');
+    if (!(enabledCheckbox instanceof HTMLInputElement) || !(popupsCheckbox instanceof HTMLInputElement)) return;
+    const syncPopupAvailability = () => { popupsCheckbox.disabled = !enabledCheckbox.checked; };
+    enabledCheckbox.addEventListener("change", syncPopupAvailability);
+    syncPopupAvailability();
+    lobbyChatForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const messageSlot = document.getElementById("zilchLobbyChatPreferencesMessage");
+      const submit = lobbyChatForm.querySelector('button[type="submit"]');
+      if (!messageSlot) return;
+      if (submit) submit.disabled = true;
+      try {
+        const response = await apiFetch("/api/auth/preferences/lobby-chat", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lobby_chat_enabled: enabledCheckbox.checked,
+            lobby_chat_popups: popupsCheckbox.checked,
+          }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          messageSlot.textContent = t(authError(payload.detail));
+          return;
+        }
+        if (state.auth?.user) {
+          state.auth.user.preferences = {
+            ...(state.auth.user.preferences || {}),
+            lobby_chat_enabled: enabledCheckbox.checked,
+            lobby_chat_popups: popupsCheckbox.checked,
+          };
+        }
+        messageSlot.textContent = t("Lobby-Chat-Einstellung gespeichert.");
+      } catch (_) {
+        messageSlot.textContent = t("Einstellungen konnten nicht gespeichert werden.");
+      } finally {
+        if (submit && document.contains(submit)) submit.disabled = false;
+      }
+    });
+  }
+  if (
+    pushEnableButton instanceof HTMLButtonElement
+    && pushDisableButton instanceof HTMLButtonElement
+    && pushStatus instanceof HTMLElement
+    && !pushStatus.dataset.bound
+  ) {
+    pushStatus.dataset.bound = "true";
+    const refreshPushSettings = async () => {
+      try {
+        const status = await getGameInvitePushStatus();
+        const enabled = status.enabled === true;
+        pushDisableButton.hidden = !enabled;
+        pushDisableButton.disabled = false;
+        pushEnableButton.hidden = false;
+        pushEnableButton.textContent = t(enabled
+          ? "Dieses Gerät für Push anmelden"
+          : "Push-Benachrichtigungen aktivieren");
+        if (state.auth?.user) {
+          state.auth.user.preferences = {
+            ...(state.auth.user.preferences || {}),
+            game_invite_push_enabled: status.enabled === true,
+          };
+        }
+        if (!status.available) {
+          pushEnableButton.disabled = true;
+          pushStatus.textContent = t("Push-Benachrichtigungen sind momentan noch nicht eingerichtet.");
+          return;
+        }
+        if (!status.browser_supported) {
+          pushEnableButton.disabled = true;
+          pushStatus.textContent = t("Dieser Browser unterstützt keine Push-Benachrichtigungen.");
+          return;
+        }
+        pushEnableButton.disabled = false;
+        pushStatus.textContent = t(enabled
+          ? "Push-Benachrichtigungen für offene Spielräume sind aktiviert."
+          : "Push-Benachrichtigungen sind ausgeschaltet.");
+      } catch (error) {
+        pushEnableButton.disabled = true;
+        pushDisableButton.hidden = true;
+        pushStatus.textContent = webPushErrorMessage(error);
+      }
+    };
+    const changePushSetting = async (action, button) => {
+      button.disabled = true;
+      pushStatus.textContent = t("Push-Einstellung wird gespeichert …");
+      try {
+        await action();
+        await refreshPushSettings();
+      } catch (error) {
+        pushStatus.textContent = webPushErrorMessage(error);
+        button.disabled = false;
+      }
+    };
+    pushEnableButton.addEventListener("click", () => { void changePushSetting(enableGameInvitePush, pushEnableButton); });
+    pushDisableButton.addEventListener("click", () => { void changePushSetting(disableGameInvitePush, pushDisableButton); });
+    void refreshPushSettings();
   }
   if (passwordForm && !passwordForm.dataset.bound) {
     passwordForm.dataset.bound = "true";
@@ -2760,6 +2971,13 @@ function renderRulesContent(facts) {
       <p class="zilch-rules-overview__note">${escapeHtml(t("Bei einem Spezialwurf nennt Alle Punktewürfel den Wurf und zeigt den Stempel „Freier Wurf“."))}</p>
       <p class="zilch-rules-overview__note">${escapeHtml(t("Aktueller Wurf zeigt bisher gehaltene und aktuell ausgewählte Punkte getrennt; zusammen ist das der Wert zum Sichern."))}</p>
       <p class="zilch-rules-overview__note">${escapeHtml(t("In einer Zwei-Personen-Partie sehen beide Seiten dieselben Empfehlungen, bereits gehaltenen Rundenpunkte und die gerade gewählte gültige Wertung. Nur die Person am Zug kann sie ändern."))}</p>
+    </section>
+    <section class="zilch-card zilch-rules-section">
+      <h2>${escapeHtml(t("Lobby-Chat und Einladungen"))}</h2>
+      <p>${escapeHtml(t("Der gemeinsame Lobby-Chat für ZDWA und Zilch ist für angemeldete Konten verfügbar. Du siehst nur Nachrichten, für die du beim Senden verbunden und berechtigt warst; nach drei Tagen werden sie gelöscht. Chat und Lobby-Popups lassen sich im Konto ausschalten."))}</p>
+      <p>${escapeHtml(t("Im Lobby-Chat sind höchstens 400 Zeichen je Nachricht und fünf Nachrichten pro Konto in 30 Sekunden erlaubt. Admins können Konten stummschalten oder vom Chat ausschließen."))}</p>
+      <p>${escapeHtml(t("Mitspieler benachrichtigen sendet auf deinen Klick eine Einladung für einen öffentlichen, wartenden Spielraum. Erlaubt ist ein Versuch pro Konto und Minute, zusätzlich eine Einladung pro Raum in zehn Minuten. Du erhältst einen kurzen Hinweis im Spiel, keine eigene Push-Nachricht."))}</p>
+      <p>${escapeHtml(t("Push-Einladungen empfängst du erst nach Aktivierung im Konto und Freigabe im Browser. Melde jedes Gerät einzeln an; Ausschalten gilt für alle Geräte. Auf iPhone und iPad nutzt du dafür die installierte Home-Bildschirm-App."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section" aria-labelledby="zilchScoringTitle">
       <p class="eyebrow">${escapeHtml(t("Wertung"))}</p><h2 id="zilchScoringTitle">${escapeHtml(t("Was Punkte bringt"))}</h2>
@@ -3724,6 +3942,7 @@ function waitingRoomPanel(snapshot) {
   if (snapshot?._started || snapshot?._finished) return "";
   const participants = snapshotParticipants(snapshot);
   const expected = Number(snapshot?._expected_participants || snapshot?._expected || 2);
+  const invite = canRequestZilchGameInvite(snapshot, { inRoom: true }) ? zilchGameInviteButtonMarkup(gameId) : "";
   const playerRows = participants.map(player => `<li><span>${playerCollectionMarkup(player)} ${participantMeta(player, { compact: true })}</span><strong>${escapeHtml(participantStatusLabel(player))}</strong></li>`).join("");
   return `<section class="zilch-card zilch-start-roll" aria-labelledby="zilchWaitingRoomTitle">
     <p class="eyebrow">${escapeHtml(t("Wartesaal"))}</p>
@@ -3733,6 +3952,7 @@ function waitingRoomPanel(snapshot) {
       : t("Beide Teilnehmer sind da. Der Startwurf wird vorbereitet."))}</p>
     <ol class="zilch-start-rolls">${playerRows || `<li class="zilch-muted">${escapeHtml(t("Noch keine Spieler"))}</li>`}</ol>
     <p class="zilch-muted">${escapeHtml(`${t("Teilnehmer")}: ${participants.length}/${expected}`)}</p>
+    ${invite}
   </section>`;
 }
 
@@ -4388,6 +4608,7 @@ async function confirmSoloAbandon(snapshot, turnState) {
 }
 
 function wireGameInteractions(snapshot, turnState, quickHolds) {
+  bindZilchGameInviteButtons();
   document.querySelector("[data-zilch-new-round]")?.addEventListener("click", event => {
     void createNewZilchRound(snapshot, event.currentTarget);
   });
@@ -4795,6 +5016,7 @@ window.addEventListener("beforeunload", () => {
   window.clearTimeout(state.reconnectTimer);
   window.clearTimeout(state.zilchMomentTimer);
   state.socket?.close();
+  state.lobbyChat?.destroy();
 });
 
 window.addEventListener("resize", positionZilchEventOverlay);

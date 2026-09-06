@@ -1,3 +1,53 @@
+  import { requestGameInvitePush, webPushErrorMessage } from "../shared/web-push.js";
+
+  function syncOpenSeatPushControl(snapshot = sb) {
+    const button = document.getElementById("notifyOpenSeatBtn");
+    if (!(button instanceof HTMLButtonElement)) return;
+    const player = Array.isArray(snapshot?._players)
+      ? snapshot._players.find(candidate => String(candidate?.id || "") === String(myId || ""))
+      : null;
+    const expected = Number(snapshot?._expected || 0);
+    const joined = Number(snapshot?._players_joined ?? snapshot?._players?.length ?? 0);
+    const ownAccountSeat = Boolean(
+      authState?.authenticated
+      && authState?.user?.id
+      && player
+      && Number(player.user_id) === Number(authState.user.id),
+    );
+    const available = Boolean(
+      !IS_SPECTATOR
+      && ownAccountSeat
+      && !snapshot?.locked
+      && !snapshot?._passphrase
+      && !snapshot?._started
+      && !snapshot?._finished
+      && !snapshot?._aborted
+      && expected >= 2
+      && joined < expected,
+    );
+    button.hidden = !available;
+    if (button.dataset.bound) return;
+    button.dataset.bound = "true";
+    button.addEventListener("click", async () => {
+      if (button.disabled || !qs.game_id) return;
+      const translate = window.ZDWA_I18N?.t || (value => value);
+      button.disabled = true;
+      try {
+        const result = await requestGameInvitePush(qs.game_id);
+        showToast(
+          translate(result.notified
+            ? "Spieler mit aktivierten Push-Benachrichtigungen wurden informiert."
+            : "Aktuell konnten keine Spieler mit aktivierten Push-Benachrichtigungen informiert werden."),
+          { kind: result.notified ? "success" : "info" },
+        );
+      } catch (error) {
+        showToast(webPushErrorMessage(error), { kind: "error", duration: 5000 });
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+
   // ---------- WebSocket ----------
   /**
    * Stellt die WebSocket-Verbindung her und verarbeitet Server-Events.
@@ -57,6 +107,7 @@
       if (msg.auth) {
         authState = msg.auth;
         if (authState?.user?.username) myName = String(authState.user.username);
+        syncOpenSeatPushControl();
       }
 
       // Abbruch-Notice (kommt vor dem Snapshot)
@@ -144,6 +195,7 @@
         const wasSuperadminActive = lastSuperadminSnapshotActive;
         celebrateSixtyScore(msg.score_event);
         sb = msg.scoreboard;
+        syncOpenSeatPushControl(sb);
         const isSuperadminActive = !!sb?._superadmin_active;
         lastSuperadminSnapshotActive = isSuperadminActive;
         seedChatHistoryFromSnapshot(sb);

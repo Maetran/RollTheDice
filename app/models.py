@@ -27,6 +27,12 @@ class User(Base):
     mobile_row_quick_entry: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     haptic_feedback: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     keep_screen_awake: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    lobby_chat_popups: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    lobby_chat_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    lobby_chat_muted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    lobby_chat_excluded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    game_invite_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    game_invite_push_last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     preferred_language: Mapped[str] = mapped_column(String(2), nullable=False, default="de")
     statistics_views: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     achievement_gameplay_started_at: Mapped[datetime] = mapped_column(
@@ -55,6 +61,9 @@ class User(Base):
         back_populates="user", foreign_keys="GameParticipant.user_id"
     )
     achievements: Mapped[list[UserAchievement]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    web_push_subscriptions: Mapped[list[WebPushSubscription]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Session(Base):
@@ -84,6 +93,66 @@ class AuthRateEvent(Base):
     __table_args__ = (
         Index("ix_auth_rate_events_kind_client_time", "kind", "client_key", "occurred_at"),
         Index("ix_auth_rate_events_kind_time", "kind", "occurred_at"),
+    )
+
+
+class LobbyChatMessage(Base):
+    """A short-lived lobby-chat event with a fixed authorized audience."""
+
+    __tablename__ = "lobby_chat_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    sender_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    sender_username: Mapped[str] = mapped_column(String(32), nullable=False)
+    game_type: Mapped[str] = mapped_column(String(16), nullable=False, default=DEFAULT_GAME_TYPE)
+    text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('message', 'presence')", name="ck_lobby_chat_messages_kind"),
+        CheckConstraint("game_type IN ('zdwa', 'zilch')", name="ck_lobby_chat_messages_game_type"),
+        Index("ix_lobby_chat_messages_created_at", "created_at"),
+    )
+
+
+class LobbyChatMessageRecipient(Base):
+    """An account that was eligible to receive a lobby-chat event when sent."""
+
+    __tablename__ = "lobby_chat_message_recipients"
+
+    message_id: Mapped[int] = mapped_column(
+        ForeignKey("lobby_chat_messages.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+
+    __table_args__ = (Index("ix_lobby_chat_recipients_user_message", "user_id", "message_id"),)
+
+
+class WebPushSubscription(Base):
+    """A browser-owned endpoint authorized by one signed-in account."""
+
+    __tablename__ = "web_push_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    endpoint: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    p256dh: Mapped[str] = mapped_column(String(256), nullable=False)
+    auth: Mapped[str] = mapped_column(String(128), nullable=False)
+    product_context: Mapped[str] = mapped_column(String(16), nullable=False, default=DEFAULT_GAME_TYPE)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="web_push_subscriptions")
+
+    __table_args__ = (
+        CheckConstraint(
+            "product_context IN ('zdwa', 'zilch')",
+            name="ck_web_push_subscriptions_product_context",
+        ),
+        Index("ix_web_push_subscriptions_user", "user_id"),
     )
 
 

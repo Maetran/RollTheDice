@@ -56,25 +56,31 @@ def configured_zilch_preview_usernames() -> frozenset[str]:
     return frozenset(usernames)
 
 
-def can_access_zilch_preview(identity: AuthIdentity | None) -> bool:
-    """Return whether a visitor belongs to the currently configured audience.
+def can_account_access_zilch(*, username: str, role: str) -> bool:
+    """Return whether one signed-in account belongs to Zilch's audience.
 
-    This deliberately combines the existing account role with the existing
-    username normalization.  Callers must not reproduce the comparison.
+    Push delivery uses the same policy as page access, but deliberately has no
+    session object to construct or trust.  Keeping the account variant here
+    avoids accidental notification delivery outside a preview cohort.
     """
     mode = configured_zilch_access_mode()
     if mode == ZILCH_ACCESS_MODE_PUBLIC:
         return True
-    if not identity:
-        return False
     if mode == ZILCH_ACCESS_MODE_AUTHENTICATED:
         return True
-    username = normalize_username(identity.username)
-    if username == ZILCH_PREVIEW_USERNAME:
-        return identity.is_admin
+    normalized_username = normalize_username(username)
+    if normalized_username == ZILCH_PREVIEW_USERNAME:
+        return role == "admin"
     # Explicit allowlisted identities get only the Zilch preview capability;
     # their normal application role stays untouched.
-    return username in configured_zilch_preview_usernames()
+    return normalized_username in configured_zilch_preview_usernames()
+
+
+def can_access_zilch_preview(identity: AuthIdentity | None) -> bool:
+    """Return whether a visitor belongs to the currently configured audience."""
+    if identity is None:
+        return configured_zilch_access_mode() == ZILCH_ACCESS_MODE_PUBLIC
+    return can_account_access_zilch(username=identity.username, role=identity.role)
 
 
 def can_access_game(identity: AuthIdentity | None, game: dict) -> bool:

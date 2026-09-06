@@ -392,6 +392,118 @@
   color:var(--muted);
   font-size:.85rem;
 }
+.lobby-chat{
+  margin:.3rem 0 .2rem;
+  padding:.85rem;
+  border:1px solid var(--border);
+  border-radius:var(--radius-card);
+  background:var(--card);
+  box-shadow:var(--shadow-sm);
+}
+.lobby-chat__heading{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:.75rem;
+}
+.lobby-chat__heading .eyebrow{ margin:0 0 .18rem; }
+.lobby-chat__heading h2{ margin:0; font-size:1.1rem; }
+.lobby-chat__filters{ display:flex; flex-wrap:wrap; justify-content:flex-end; gap:.3rem; }
+.lobby-chat__filters button{ min-height:2rem; padding:.26rem .52rem; font-size:.76rem; }
+.lobby-chat__filters button.is-active{
+  border-color:color-mix(in srgb, var(--accent) 55%, var(--border));
+  color:var(--accent-strong);
+  background:var(--info-soft);
+}
+.lobby-chat__hint{
+  margin:.38rem 0 .52rem;
+  color:var(--muted);
+  font-size:.8rem;
+  line-height:1.35;
+}
+.lobby-chat__feed{
+  max-height:7.45rem;
+  overflow:auto;
+  overscroll-behavior:contain;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  background:var(--surface-soft);
+  transition:max-height .18s ease;
+}
+.lobby-chat__feed.is-expanded{ max-height:min(58vh, 29rem); }
+.lobby-chat__messages{
+  display:grid;
+  gap:0;
+  margin:0;
+  padding:0;
+  list-style:none;
+}
+.lobby-chat__message{
+  display:grid;
+  grid-template-columns:max-content minmax(0, 1fr);
+  gap:.42rem;
+  padding:.42rem .52rem;
+  border-bottom:1px solid var(--border);
+  color:var(--text);
+  font-size:.86rem;
+  line-height:1.32;
+}
+.lobby-chat__message:last-child{ border-bottom:0; }
+.lobby-chat__message--presence{ background:color-mix(in srgb, var(--info-soft) 55%, transparent); }
+.lobby-chat__message--presence .lobby-chat__text{ color:var(--muted); font-style:italic; }
+.lobby-chat__sender{ display:inline-flex; align-items:center; gap:.28rem; min-width:0; white-space:nowrap; }
+.lobby-chat__sender strong{ overflow:hidden; max-width:9rem; text-overflow:ellipsis; }
+.lobby-chat__game-badge{
+  display:inline-flex;
+  align-items:center;
+  min-height:1.2rem;
+  padding:0 .28rem;
+  border:1px solid var(--info-border);
+  border-radius:999px;
+  color:var(--accent-strong);
+  background:var(--info-soft);
+  font-size:.66rem;
+  font-weight:800;
+  letter-spacing:.02em;
+}
+.lobby-chat__message[data-game-type="zilch"] .lobby-chat__game-badge{
+  border-color:var(--warning-border);
+  color:var(--warning);
+  background:var(--warning-soft);
+}
+.lobby-chat__text{ min-width:0; overflow-wrap:anywhere; }
+.lobby-chat__empty{ padding:.62rem; color:var(--muted); font-size:.84rem; }
+.lobby-chat__expand{ margin-top:.42rem; padding:.24rem .45rem; font-size:.76rem; }
+.lobby-chat__composer{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto;
+  gap:.42rem;
+  margin-top:.48rem;
+}
+.lobby-chat__composer input{ min-width:0; }
+.lobby-chat__composer button{ min-height:2.5rem; }
+.lobby-chat__status{ min-height:1.1rem; margin:.32rem 0 0; color:var(--muted); font-size:.78rem; line-height:1.3; }
+.lobby-chat-toasts{
+  position:fixed;
+  z-index:120;
+  top:max(.75rem, env(safe-area-inset-top, 0px));
+  right:max(.75rem, env(safe-area-inset-right, 0px));
+  display:grid;
+  gap:.45rem;
+  width:min(23rem, calc(100vw - 1.5rem));
+  pointer-events:none;
+}
+.lobby-chat-toast{
+  padding:.65rem .75rem;
+  border:1px solid var(--info-border);
+  border-radius:var(--radius-sm);
+  color:var(--text);
+  background:var(--card);
+  box-shadow:var(--shadow-md);
+  font-size:.86rem;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+}
 .leaderboard-heading{
   display:flex;
   align-items:center;
@@ -619,6 +731,11 @@
   .leaderboard-box table{ font-size:.84rem; }
   .leaderboard-box th,
   .leaderboard-box td{ padding:.38rem .34rem; }
+  .lobby-chat__heading{ align-items:stretch; flex-direction:column; gap:.45rem; }
+  .lobby-chat__filters{ justify-content:flex-start; }
+  .lobby-chat__filters button{ flex:1 1 0; }
+  .lobby-chat__message{ grid-template-columns:1fr; gap:.16rem; }
+  .lobby-chat__sender strong{ max-width:min(16rem, 72vw); }
 }
 
 /* One game switch, one muscle memory: all compact ZDWA header controls share

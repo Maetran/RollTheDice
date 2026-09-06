@@ -15,6 +15,7 @@ import {
   storeGamePass,
 } from "./context.js";
 import { playerNameMarkup } from "../shared/auth.js";
+import { requestGameInvitePush, webPushErrorMessage } from "../shared/web-push.js";
 
 function renderOnlineUsers(value) {
   if (!dom.onlineUsers) return;
@@ -41,6 +42,14 @@ function renderOpenGames(games) {
     const expected = game.expected ?? game.mode ?? "?";
     const gameId = game.id || "";
     const disabled = joined >= expected || game.started || game.finished ? "disabled" : "";
+    const canInvite = Boolean(
+      game.my_player_id
+      && !game.locked
+      && joined < expected
+      && !game.started
+      && !game.finished
+      && !game.aborted,
+    );
     const mode = game.mode === "2v2" ? "2 vs 2" : `${game.mode || expected}`;
     const hardcore = game.hardcore ? '<span class="hc-badge">Hardcore</span>' : "";
     const statuses = Array.isArray(game.player_statuses) ? game.player_statuses : [];
@@ -63,6 +72,7 @@ function renderOpenGames(games) {
       </div>
       <div class="actions">
         <button class="joinBtn" data-id="${escapeAttribute(gameId)}" data-pass="${game.locked ? "1" : "0"}" ${disabled}>Beitreten</button>
+        ${canInvite ? `<button class="small secondary notifyOpenSeatBtn" type="button" data-id="${escapeAttribute(gameId)}">Mitspieler benachrichtigen</button>` : ""}
       </div>
     </div>`;
   }).join("");
@@ -250,6 +260,31 @@ async function joinOpenGame(event) {
       () => dom.modeButtons.find((button) => button.getAttribute("aria-checked") === "true")?.focus(),
       250,
     );
+    return;
+  }
+  const inviteButton = event.target.closest(".notifyOpenSeatBtn");
+  if (inviteButton) {
+    const gameId = inviteButton.dataset.id;
+    if (!gameId || inviteButton.disabled) return;
+    const translate = window.ZDWA_I18N?.t || (value => value);
+    inviteButton.disabled = true;
+    try {
+      const result = await requestGameInvitePush(gameId);
+      window.ZDWA_UI?.toast?.(
+        translate(result.notified
+          ? "Spieler mit aktivierten Push-Benachrichtigungen wurden informiert."
+          : "Aktuell konnten keine Spieler mit aktivierten Push-Benachrichtigungen informiert werden."),
+        { kind: result.notified ? "success" : "info", duration: 3500 },
+      );
+    } catch (error) {
+      window.ZDWA_UI?.toast?.(webPushErrorMessage(error), {
+        kind: "error",
+        duration: 5000,
+      });
+    } finally {
+      inviteButton.disabled = false;
+      void fetchGames();
+    }
     return;
   }
   const button = event.target.closest(".joinBtn");
