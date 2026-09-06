@@ -46,6 +46,8 @@ class User(Base):
     game_invite_push_last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     daily_reminder_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     daily_reminder_push_last_sent_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    daily_reminder_push_sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_played_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     preferred_language: Mapped[str] = mapped_column(String(2), nullable=False, default="de")
     statistics_views: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     achievement_gameplay_started_at: Mapped[datetime] = mapped_column(

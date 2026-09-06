@@ -3,24 +3,28 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, or_, select, update
 
 from .database import session_scope
 from .game_access import can_account_access_zilch
-from .game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE
+from .game_activity import not_played_on
+from .game_types import ZILCH_GAME_TYPE
 from .models import User, WebPushSubscription
 from .product_hosts import site_origin, zilch_url
+from .push_reminder_copy import REMINDER_COPY
 from .security import as_utc, utcnow
 from .web_push import (
+    DAILY_REMINDER_END_HOUR,
+    DAILY_REMINDER_START_HOUR,
     DAILY_REMINDER_TIMEZONE,
     StoredSubscription,
     _send_web_push,
-    daily_reminder_hour,
     web_push_available,
 )
 
@@ -28,39 +32,6 @@ logger = logging.getLogger(__name__)
 REMINDER_POLL_SECONDS = 60
 REMINDER_BATCH_SIZE = 50
 REMINDER_TTL_SECONDS = 60 * 60
-
-# Each row is one DE/EN pair; the daily rotation is deterministic so retries
-# and multiple devices never choose a different message for the same account.
-REMINDER_COPY = {
-    ZILCH_GAME_TYPE: (
-        ("Heute schon gezilcht? Die Würfel haben keine Lust auf einen Ruhetag.",
-         "Played Zilch today? The dice aren't in the mood for a day off."),
-        ("Dein Würfelarm hatte genug Pause. Eine Runde Zilch?",
-         "Your dice-rolling arm has had enough rest. Fancy a round of Zilch?"),
-        ("Neue Runde, neue Chancen: Schnapp dir Mitspieler und jag ein paar Zilch-Achievements!",
-         "New round, new chances: grab some friends and chase a few Zilch achievements!"),
-        ("Die 10’000 rufen. Zeit für eine Runde Zilch!",
-         "10,000 points are calling. Time for a round of Zilch!"),
-        ("Weniger scrollen, mehr rollen. Wer sitzt heute mit dir am Zilch-Tisch?",
-         "Less scrolling, more rolling. Who's joining you at the Zilch table today?"),
-        ("Ein Zilch kommt selten allein. Deine Mitspieler hoffentlich auch nicht!",
-         "One Zilch often brings another. Let's hope it brings some friends, too!"),
-    ),
-    DEFAULT_GAME_TYPE: (
-        ("Heute schon die Wand angezockt? Dein Punkteblock wird langsam ungeduldig.",
-         "Played ZDWA today? Your score sheet is getting impatient."),
-        ("Die Wand steht noch. Zeit, sie mit einer guten Runde zu beeindrucken!",
-         "The wall is still standing. Time to impress it with a great round!"),
-        ("Ein paar Würfel, nette Leute, neue Achievements. Klingt nach einem ZDWA-Abend.",
-         "A few dice, good company, new achievements. Sounds like a ZDWA evening."),
-        ("Dein Highscore hat es sich bequem gemacht. Bring ihn bei ZDWA ins Schwitzen!",
-         "Your high score is getting comfortable. Give it a workout in ZDWA!"),
-        ("Ansagen kann jeder. Heute wird gewürfelt! Wer zockt mit dir die Wand an?",
-         "Talk is cheap. Today we roll! Who's joining you for ZDWA?"),
-        ("Die Würfel sind bereit. Deine nächste ZDWA-Runde und neue Achievements warten.",
-         "The dice are ready. Your next ZDWA round and new achievements await."),
-    ),
-}
 
 
 @dataclass(frozen=True)
@@ -74,12 +45,30 @@ class DailyReminder:
 
 
 def reminder_day(now: datetime) -> date | None:
-    """Allow this hour only; never catch up old reminders late at night."""
+    """Only 17:00 <= Swiss time < 21:00; never catch up at night."""
     local = as_utc(now).astimezone(ZoneInfo(DAILY_REMINDER_TIMEZONE))
-    return local.date() if local.hour == daily_reminder_hour() else None
+    return local.date() if DAILY_REMINDER_START_HOUR <= local.hour < DAILY_REMINDER_END_HOUR else None
 
 
-def claim_daily_reminder(user_id: int, day: date) -> DailyReminder | None:
+def reminder_scheduled_at(user_id: int, day: date) -> datetime:
+    """A new pseudorandom minute per account/day, stable across workers/restarts.
+
+    This is scheduling, not a secret or authorization token. Using a stable
+    hash avoids Python's per-process hash seed or re-randomizing every poll.
+    """
+    seed = hashlib.sha256(f"daily-reminder-v1:{user_id}:{day.isoformat()}".encode()).digest()
+    minutes = int.from_bytes(seed[:8], "big") % ((DAILY_REMINDER_END_HOUR - DAILY_REMINDER_START_HOUR) * 60)
+    return datetime.combine(day, time(DAILY_REMINDER_START_HOUR), ZoneInfo(DAILY_REMINDER_TIMEZONE)) + timedelta(minutes=minutes)
+
+
+def reminder_expires_at(day: date) -> datetime:
+    return datetime.combine(day, time(DAILY_REMINDER_END_HOUR), ZoneInfo(DAILY_REMINDER_TIMEZONE))
+
+
+def claim_daily_reminder(user_id: int, now: datetime) -> DailyReminder | None:
+    day = reminder_day(now)
+    if day is None or as_utc(now) < reminder_scheduled_at(user_id, day):
+        return None
     with session_scope() as db:
         user = db.get(User, user_id)
         if user is None or not user.is_active or not user.daily_reminder_push_enabled:
@@ -100,23 +89,28 @@ def claim_daily_reminder(user_id: int, day: date) -> DailyReminder | None:
                 User.id == user_id,
                 User.is_active.is_(True),
                 User.daily_reminder_push_enabled.is_(True),
+                not_played_on(day),
                 or_(User.daily_reminder_push_last_sent_on.is_(None), User.daily_reminder_push_last_sent_on < day),
             )
-            .values(daily_reminder_push_last_sent_on=day)
-            .returning(User.id)
+            .values(
+                daily_reminder_push_last_sent_on=day,
+                daily_reminder_push_sequence=User.daily_reminder_push_sequence + 1,
+            )
+            .returning(User.daily_reminder_push_sequence)
         ).scalar_one_or_none()
         if claimed is None:
             return None
         # When both PWAs are installed, alternate games instead of sending
         # two reminders. All subscribed devices of the selected game receive
         # the same reminder; other game subscriptions are left alone today.
-        context = contexts[(day.toordinal() + user_id) % len(contexts)]
+        sequence = claimed - 1
+        context = contexts[(sequence + user_id) % len(contexts)]
         return DailyReminder(
             user_id=user_id,
             day=day,
             game_type=context,
             language="en" if user.preferred_language == "en" else "de",
-            variant=(day.toordinal() // len(contexts) + user_id) % len(REMINDER_COPY[context]),
+            variant=(sequence // len(contexts) + user_id) % len(REMINDER_COPY[context]),
             subscriptions=tuple(StoredSubscription(
                 id=subscription.id, user_id=user.id, endpoint=subscription.endpoint,
                 p256dh=subscription.p256dh, auth=subscription.auth, product_context=context,
@@ -144,7 +138,8 @@ def reminder_payload(reminder: DailyReminder) -> dict[str, object]:
 
 async def dispatch_daily_reminders(*, now: datetime | None = None) -> int:
     """Claim each account once per Swiss calendar day, including on failure."""
-    day = reminder_day(now or utcnow())
+    current = now or utcnow()
+    day = reminder_day(current)
     if day is None or not web_push_available():
         return 0
     with session_scope() as db:
@@ -153,6 +148,7 @@ async def dispatch_daily_reminders(*, now: datetime | None = None) -> int:
             .join(WebPushSubscription, WebPushSubscription.user_id == User.id)
             .where(
                 User.is_active.is_(True), User.daily_reminder_push_enabled.is_(True),
+                not_played_on(day),
                 or_(User.daily_reminder_push_last_sent_on.is_(None), User.daily_reminder_push_last_sent_on < day),
             )
             .distinct().order_by(User.id)
@@ -162,14 +158,16 @@ async def dispatch_daily_reminders(*, now: datetime | None = None) -> int:
     for user_id in user_ids:
         if dispatched >= REMINDER_BATCH_SIZE:
             break
-        if now is None and reminder_day(utcnow()) != day:
+        current = now or utcnow()
+        if reminder_day(current) != day:
             break
-        reminder = claim_daily_reminder(user_id, day)
+        reminder = claim_daily_reminder(user_id, current)
         if reminder is None:
             continue
         payload = reminder_payload(reminder)
         for subscription in reminder.subscriptions:
-            if now is None and reminder_day(utcnow()) != day:
+            current = now or utcnow()
+            if reminder_day(current) != day:
                 break
             # Check again after preceding deliveries: a global opt-out while
             # a batch is running must remove any not-yet-dispatched endpoints.
@@ -178,10 +176,12 @@ async def dispatch_daily_reminders(*, now: datetime | None = None) -> int:
                     WebPushSubscription.id == subscription.id,
                     WebPushSubscription.user_id == user_id,
                     User.is_active.is_(True), User.daily_reminder_push_enabled.is_(True),
+                    not_played_on(day),
                 ))
             if still_eligible is None:
                 continue
-            sent, expired = await asyncio.to_thread(_send_web_push, subscription, payload, ttl=REMINDER_TTL_SECONDS)
+            ttl = min(REMINDER_TTL_SECONDS, max(0, int((reminder_expires_at(day) - as_utc(current)).total_seconds())))
+            sent, expired = await asyncio.to_thread(_send_web_push, subscription, payload, ttl=ttl)
             accepted += int(sent)
             if expired:
                 with session_scope() as db:

@@ -145,7 +145,9 @@ export function zdwaRoutePath(pathname = window.location.pathname, locationLike 
 export function applyZdwaBridgeLinks(scope = document, locationLike = window.location) {
   if (!isZilchHostedZdwaLocation(locationLike)) return;
   const current = activeLocation(locationLike);
-  for (const link of scope.querySelectorAll("a[href]")) {
+  const links = [...scope.querySelectorAll("a[href]")];
+  if (scope.matches?.("a[href]")) links.unshift(scope);
+  for (const link of links) {
     const href = link.getAttribute("href");
     if (!href || href.startsWith("#")) continue;
     let target;
@@ -157,7 +159,8 @@ export function applyZdwaBridgeLinks(scope = document, locationLike = window.loc
     if (target.origin !== current.origin) continue;
     const route = normalizedZdwaRoute(target.pathname);
     if (!ZDWA_PAGE_ROUTE.test(route)) continue;
-    link.setAttribute("href", `${zdwaPath(route, current)}${target.search}${target.hash}`);
+    const destination = `${zdwaPath(route, current)}${target.search}${target.hash}`;
+    if (href !== destination) link.setAttribute("href", destination);
   }
 }
 

@@ -613,26 +613,40 @@ muss für ausgehende HTTPS-Anfragen gewährleistet sein. Abgelaufene Endpoints
 des Kontos. Ein Versandversuch bestätigt nur die Annahme durch den Push-Dienst,
 nicht die Anzeige auf einem Gerät. Keine Testeinladung an echte Konten senden.
 
-Tägliche Spielerinnerungen (Revision `20260906_0026`) sind zusätzlich und
-standardmäßig **nicht** aktiviert. Pro Konto werden der eigene Opt-in und der
-zuletzt beanspruchte Schweizer Kalendertag persistiert. Der Lifespan-Scheduler
-prüft minütlich während der konfigurierten Stunde; vor dem Versand wird der Tag
-atomar reserviert. Neustarts oder Versandfehler lösen keinen zweiten Versuch am
-selben Tag aus. Verpasste Stunden werden nicht später nachgesendet. Auch während
-eines Batches werden deaktivierte Konten und entfernte Abonnements vor jedem
-weiteren Versand erneut geprüft.
+Tägliche Spielerinnerungen (Revisionen `20260906_0026` und `20260906_0027`)
+sind separat und standardmäßig **nicht** aktiviert. Der Lifespan-Scheduler
+prüft minütlich zwischen **17:00 und 21:00 Europe/Zurich**. Ein stabiler Hash
+aus Konto-ID und Datum bestimmt eine neue pseudozufällige Minute pro Tag;
+Neustarts und mehrere Scheduler ändern den Termin nicht. Verpasste Termine
+können noch innerhalb des Fensters bedient werden, niemals ab 21 Uhr oder am
+nächsten Tag. Die frühere feste Stundenkonfiguration entfällt.
 
-```dotenv
-ROLLTHEDICE_DAILY_REMINDER_HOUR=18
-```
+Erinnert wird nur, wenn das Konto an diesem Schweizer Kalendertag in **keinem**
+der beiden Spiele gespielt hat. Akzeptierte menschliche Würfe (einschließlich
+Zilch-Entscheidungswurf) und Wertungen speichern dafür nur das letzte Spieldatum.
+Login, Beitritt, Chat, Zuschauen, CPU-Aktionen und abgewiesene Befehle zählen
+nicht. Vorhandene abgeschlossene Partien werden zusätzlich abgefragt, damit auch
+vor diesem Rollout beendete Spiele desselben Tages berücksichtigt werden.
 
-Der Wert ist eine Stunde von 0 bis 23 in `Europe/Zurich`, einschließlich
-Sommerzeit; die UI liest dieselbe Einstellung. Der Container benötigt die
-Zeitzonendaten für `Europe/Zurich`. Eine Erinnerung verfällt beim Push-Dienst
-nach einer Stunde. Bei zwei angemeldeten Produkten wechseln sich diese ab;
-gesendet wird nur an Geräte des für diesen Tag ausgewählten Spiels. Es gibt
-keinen öffentlichen Trigger-Endpunkt für den Scheduler. In Tests Versand und
-Uhrzeit mocken, niemals testweise einen Batch gegen produktive Empfänger starten.
+Vor dem Versand werden Tagesreservierung und Textzähler atomar persistiert.
+Neustarts, Versandfehler und Opt-in-Wechsel erzeugen keinen zweiten Versuch am
+selben Tag. Opt-in, Kontoaktivierung, Abonnement und Spielaktivität werden vor
+jedem weiteren Gerät erneut geprüft. Beim Push-Dienst beträgt die Lebensdauer
+höchstens eine Stunde, begrenzt auf die verbleibende Zeit bis 21 Uhr; wann ein
+Betriebssystem eine bereits zugestellte Meldung anzeigt, ist nicht steuerbar.
+Der Container benötigt die Zeitzonendaten für `Europe/Zurich` inklusive Sommerzeit.
+
+Je Spiel rotieren 32 DE/EN-Textpaare anhand tatsächlicher Versandversuche, nicht
+verstrichener Tage. Bei unveränderten Produkt-Abonnements wiederholt sich ein
+Text erst nach einem vollständigen Umlauf. Sind beide Spiele angemeldet,
+wechseln sie sich ab; nur die Geräte des ausgewählten Spiels erhalten die
+Erinnerung. Manuelle Mitspieler-Einladungen bleiben unabhängig von Uhrzeit und
+Spielaktivität, mit ihren bestehenden separaten Flood-Limits.
+
+Es gibt keinen öffentlichen Trigger-Endpunkt für den Scheduler. In Tests Versand
+und Uhrzeit mocken, niemals einen Test-Batch gegen produktive Empfänger starten.
+Eine Absender-Allowlist/Friendlist für Einladungen ist als spätere Skalierungs-
+Erweiterung vorgesehen, derzeit aber nicht implementiert.
 
 ### Erster Administrator
 

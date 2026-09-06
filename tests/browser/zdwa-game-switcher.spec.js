@@ -106,6 +106,63 @@ async function switchControlGeometry(locator) {
   });
 }
 
+test.describe("installed PWA account navigation", () => {
+  test.use({ serviceWorkers: "block" });
+
+  for (const source of ["zilch", "zdwa"]) {
+    test(`${source} PWA keeps the other game's account after switching`, async ({ page, baseURL }) => {
+      await signInAsPreviewMani(page);
+      const hostname = source === "zilch" ? "zilch.zockdiewandan.online" : "zockdiewandan.online";
+      const origin = `https://${hostname}`;
+      const cookies = await page.context().cookies(baseURL);
+      await page.context().addCookies(cookies.map(cookie => ({ ...cookie, domain: hostname })));
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, "standalone", { configurable: true, value: true });
+      });
+      // Exercise the real documents, auth refresh and generated bundles with
+      // production Host routing, but never contact production or its sockets.
+      await page.routeWebSocket("**/*", socket => socket.close());
+      await page.route(`${origin}/**`, async route => {
+        const url = new URL(route.request().url());
+        const response = await route.fetch({
+          url: `${baseURL}${url.pathname}${url.search}`,
+          headers: { ...route.request().headers(), host: hostname },
+          maxRedirects: 0,
+        });
+        await route.fulfill({ response });
+      });
+      await page.goto(`${origin}/`);
+      await expect(page.locator("[data-game-switch]")).toBeEnabled();
+      await page.locator("[data-game-switch]").click();
+      const destination = source === "zilch" ? "zdwa" : "zilch";
+      await expect(page).toHaveURL(`${origin}/${destination}`);
+      await expect(page.locator("html")).toHaveAttribute("data-game", destination);
+      const accountLink = source === "zilch"
+        ? page.locator("#headerAccountLink")
+        : page.getByRole("navigation", { name: "Zilch-Navigation" }).getByRole("link", { name: "Konto", exact: true });
+      await expect(accountLink).toHaveAttribute("href", `/${destination}/konto`);
+      await accountLink.click();
+      await expect(page).toHaveURL(`${origin}/${destination}/konto`);
+      await expect(page.locator("html")).toHaveAttribute("data-game", destination);
+      await expect(page.getByRole("heading", { name: "Push-Benachrichtigungen", exact: true })).toBeVisible();
+      await page.reload();
+      await expect(page.locator("html")).toHaveAttribute("data-game", destination);
+      // Attribute changes and individually inserted links are handled too.
+      if (destination === "zdwa") {
+        await page.evaluate(() => {
+          const link = document.createElement("a");
+          link.id = "late-account-link";
+          link.href = "/konto";
+          document.body.append(link);
+        });
+        await expect(page.locator("#late-account-link")).toHaveAttribute("href", "/zdwa/konto");
+        await page.locator("#late-account-link").evaluate(link => { link.href = "/regeln"; });
+        await expect(page.locator("#late-account-link")).toHaveAttribute("href", "/zdwa/regeln");
+      }
+    });
+  }
+});
+
 async function controlHeights(locator) {
   return locator.evaluateAll(elements => elements
     .filter(element => element.getClientRects().length)

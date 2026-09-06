@@ -1,524 +1,346 @@
 # RollTheDice
 
-RollTheDice is a lightweight multiplayer dice game with a FastAPI backend and a static HTML/CSS/JS frontend. It supports German and English, single-player, 2-player, 3-player, 2v2 team games, Hardcore mode, chat, emoji reactions, leaderboards, account achievement milestones, and read-only replay views for completed games.
+Two dice games. One account. A table for your next game night.
 
-ZDWA is the established game. The repository also contains the public
-**Zilch die Wand an**: its own six-dice, 10,000-point state,
-server-authoritative scoring, direct dice selection, banking, and competitive start-roll/
-final-reply handling. Production runs with
-`ROLLTHEDICE_ZILCH_ACCESS_MODE=public`, so guests and active accounts can
-open Zilch. Guests can start and play a table, but receive no account-linked
-history, statistics, leaderboard row, or achievements. The older
-`ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` allowlist belongs only to the fail-closed
-`preview` rollback mode and never grants admin rights.
-Play modes `solo | cpu | multiplayer` and participant types `human | cpu` stay
-separate from WebSocket connections. Zilch supports two humans (guests or
-accounts) in `multiplayer`, or one guest/account host against a real `cpu`
-participant in `cpu` mode. The CPU has no account, session, resume token, or
-WebSocket; it uses the same server-side dice and scoring path as a human and
-differs only through its conservative, normal, or aggressive decision policy.
-Their public base bank goals are 500, 650, and 850 points respectively before
-the same bounded score- and dice-position adjustments: conservative remains
-cautious, normal secures solid rounds sooner, and aggressive still pursues
-larger rounds without routinely gambling away a playable score.
-It also supports a genuine one-human `solo` Sprint: the fixed, versioned
-objective `reach_10000_fewest_turns` (v1) starts directly with a normal turn,
-ends at at least 10,000 banked points. The server retains turns, rolls, Zilchs,
-Hot Dice, highest banked round, and active time only as private completed-Solo
-metrics for compatible standings; the live room deliberately keeps its score
-view to the paper score sheet and current Solo target instead of showing
-running counters. There is no opponent, CPU, start roll, final reply, or
-fabricated winner/tie in Solo. A confirmed abandonment remains a private
-`abandoned` result; pause and restart downtime do not count as active time.
-Future comparison order is turns, rolls, Zilchs, then active duration (all
-ascending). Account-bound, server-calculated Zilch statistics keep Solo,
-human-vs-human, and human-vs-CPU separate, but deliberately curate useful
-completed-game summaries and standings rather than exposing every retained
-engine counter. The public leaderboards cover the best compatible Solo Sprint
-per active account, human-vs-human wins, wins against each individual CPU
-strategy, and the separate Zilch achievement score; they never feed a ZDWA
-ranking.
-Finished Zilch games are stored as a separate, versioned result payload with a
-personal read-only history for linked accounts. A detail is readable only by
-its linked human participants, and the HTTP projection omits internal user IDs.
-Guest results remain in the live session but are intentionally not exposed as
-an account history or result URL. The protected report can
-show a compact, table-scoped story when this exact game unlocked an award or a
-new Zilch rank: it names the seated player and the visible award or rank tier,
-but never exposes account IDs, evidence, source IDs, or lifetime point totals.
-Results without a completed award evaluation make no claim either way. They do
-not enter any ZDWA scorecard, replay,
-statistic, achievement, or leaderboard path. Zilch awards use their
-own protected namespace instead: personal awards are worth 1–10 Zilch points
-and contribute to a Zilch-only rank. They award no **Ehrenberg-Marken** and
-never alter ZDWA titles, ranks, stars, profile values, or public ranking
-positions. They
-show their complete Zilch rank legend, including stars and minimum points,
-directly in the Zilch awards collection; the legend remains fully separate
-from ZDWA rank badges. In the Zilch lobby, live rooms, and leaderboards, an
-authenticated player's current Zilch badge appears beside their username; that
-username opens the player's Zilch collection, while the current account opens
-its own collection. Reaching a new Zilch rank also unlocks a distinct, animated
-rank-up card after its award cards; the server reconstructs and queues each
-account's last genuine upward transition once, so existing players receive the
-same celebration on their next private Zilch visit. They
-are considered only when the Zilch finalizer explicitly registers a newly
-persisted authoritative result after the original award rollout. Older,
-unregistered history is never scanned or backfilled; a versioned catalog
-update may resynchronize only the explicit evidence that was already accepted
-by that rollout. During that bounded pass, each completed registration loads
-only its exact, still-present typed source result by the registered game ID and
-enriches its evidence with newly derivable facts. It never enumerates the
-general `CompletedGame` history, and any source, seat, user, or existing-fact
-mismatch aborts the atomic rollout. Awards can be revoked when the source result is deleted and
-remain visible only in Zilch context. The Zilch app has its own lobby, game
-view, history, result report, statistics, leaderboards, awards, a safe public
-player-award context, and in-app rule guide. Its account mirrors the ZDWA
-structure with separate private statistics, awards, and settings tabs; language
-and password controls stay with the account rather than the game room. Its
-first-party wood-table texture, paper-card, and dice direction is isolated from ZDWA.
-The Zilch lobby mirrors ZDWA's identity pattern, while the compact game header
-keeps **Leave game** and Rules explicit. Leave game uses the same three choices
-as ZDWA: Pause keeps the table resumable until its displayed deadline, Return to
-Lobby ends it for everyone without creating a result, and Stay in Game changes
-nothing. The cross-game switch remains available on app pages and lobbies, but
-not inside an active game room. Logout is deliberately available only inside the
-Zilch account page.
+- [Play ZDWA — Zock die Wand an](https://zockdiewandan.online/)
+- [Play Zilch — Zilch die Wand an](https://zilch.zockdiewandan.online/)
 
-Both lobbies also share one account-only **Lobby Chat**. Each event is tagged
-`zdwa` or `zilch` from the sender's current lobby, and the lobby can filter to
-either game or show both. The server records the accounts that were eligible
-when each event was sent, retains that account-scoped history for three days,
-and permanently deletes older rows. A later sign-in therefore cannot reveal a
-message from a period in which that account was signed out or had its chat
-disabled. The first active connection of a player announces that player to the
-other active chat users. The compact view can be expanded; accounts can enable
-or disable the chat itself and the separate lobby-only, top-of-screen popup
-preference from either account settings page. Both choices apply to ZDWA and
-Zilch on all devices and default to enabled.
-Accounts can additionally opt in to Web Push invitations in either account
-settings page. A seated account player can alert opted-in players when a public,
-not-yet-full room waits for another player; private, full, started, and solo
-rooms never send invitations. The sender sees no recipient identities, invitations
-are sent only after clicking **Notify players**, and the sender receives a brief
-in-app confirmation, not a push. The server atomically permits at most one attempt
-per account every **60 seconds**, across games, tabs, logins and restarts. Each
-room additionally allows only one dispatch every **10 minutes**. The account-wide
-opt-out removes all stored browser subscriptions, even on an unsupported device.
-Each device can be registered separately. On iPhone/iPad, enable push from the
-installed home-screen app. Deployment requires all three VAPID settings described
-in [the operations guide](docs/DEPLOYMENT.md#web-push).
-Lobby messages are limited to **400 characters** and **five messages per account
-per 30 seconds** (shared across tabs and reconnects). Administrators can mute
-accounts (read-only chat) or exclude them from the lobby chat entirely, and lift
-either restriction in user administration.
+RollTheDice is a self-hostable, real-time game platform with German and English
+interfaces. Play in your browser or install either game as a Progressive Web App.
+Guests can play; accounts add personal history, statistics, achievements and
+community features.
 
-Daily play reminders have their own **off-by-default** push preference. Accounts
-can receive invitations, reminders, both, or neither; registering another device
-does not re-enable invitations for reminder-only accounts. The server scheduler
-checks once a minute during **18:00–18:59 Europe/Zurich** (configurable with
-`ROLLTHEDICE_DAILY_REMINDER_HOUR`). Before delivery it atomically claims the Swiss
-calendar day for that account in SQLite. Restarts, parallel runs, failures and
-preference toggles cannot produce another attempt that day; missed time windows
-are not caught up overnight. Six German/English variants per game rotate daily.
-If both products have subscriptions, games alternate and only the selected
-product's subscribed devices receive that day's reminder. Reminder clicks open
-that game's lobby. Room-invitation clicks still open the specific room and use
-normal join/rejoin checks; full or started rooms do not automatically become a
-spectator view.
+## The games
 
-The compact setup starts a default game with one click; advanced room protection
-stays optional, and a completed game can be restarted directly with the same mode.
-In a two-person Zilch room, **Share game** creates a clean invitation link for
-the other human seat. It deliberately never includes a room code, account
-session, or resume credential; protected rooms still ask invitees for their code.
-The Zilch lobby also lists live human-versus-human tables with both players.
-**Watch** opens their read-only live view: spectators can follow the board and
-the social room, while rolling, holding, and banking remain limited to the two
-seated players. CPU, Solo, waiting, and finished tables never expose a spectator
-seat; protected live tables still require their room code.
+| | ZDWA | Zilch |
+| --- | --- | --- |
+| Dice | Five | Six |
+| Goal | Build the best score across the score sheet | Bank 10,000 points before your opponent |
+| Modes | Solo, two or three players, 2v2 teams; Normal or Hardcore | Two players, three CPU difficulty styles, or Solo Sprint |
+| Solo challenge | Complete your own score sheet | Reach 10,000 in as few turns as possible |
+| Progress | Ehrenberg-Marken, titles and rank badges | Separate Zilch points, ranks and achievements |
+| Rules | [ZDWA guide](https://zockdiewandan.online/regeln) | [Zilch guide](https://zilch.zockdiewandan.online/regeln) |
 
-Production keeps `https://zockdiewandan.online` as ZDWA's canonical origin so
-existing installed PWAs, bookmarks, and origin-bound resume data remain valid.
-`https://zdwa.zockdiewandan.online` is only an HTTPS alias and redirects back to
-that origin. Zilch is served from `https://zilch.zockdiewandan.online` with clean
-root-relative routes; the legacy `/zilch/...` routes on the main origin remain
-available during the migration. The Apex and Zilch origins proxy the same
-application process and mounted `data/` directory; the `zdwa` alias only
-redirects. Existing account sessions are promoted
-to a separate parent-domain cookie through a fixed, allowlisted handoff without
-creating a second database session. Zilch now has its own installable PWA on
-its canonical origin, with a separate manifest and a network-only service
-worker that never caches private rooms or API data. It notifies users about a
-new deployed version and offers installation again after a new version even if
-the prior prompt was dismissed (otherwise it snoozes for seven days). The ZDWA
-PWA stays unchanged: when it opens Zilch, it uses the same-origin `/zilch`
-compatibility route so iOS does not wrap the handoff in an external browser
-sheet; conversely, an installed Zilch PWA opens the private, same-origin
-`/zdwa` bridge so its return to ZDWA remains in the app window. That bridge
-keeps Zilch's network-only worker, is `noindex`, and is never used by ordinary
-browser navigation, which still uses ZDWA's canonical Apex origin. The public
-Zilch lobby and rule guide are canonical, indexable pages.
-A player selects scoring dice directly or
-uses one of up to eight compact, single-group suggestions (for example one or
-two ones, one or two fives, a triple, or a four-of-a-kind). Mixed combinations
-are not summarized into suggestion cards, while a deliberately assembled valid
-selection remains server-verified. For twos through sixes, every matching die
-after the third doubles that face's triple value; ones keep their fixed
-1,000-point triple and any extra held ones stay individual 100-point dice,
-while three pairs score 1,500. The selection stays reversible
-until **Roll again** or **Bank** validates and commits it atomically. Previously
-held dice remain immutable; invalid dependent dice are removed when a selection
-is reduced. The **Combined score** action beneath the score sheet selects all
-currently scoring dice in one tap; when a named special roll such as three
-pairs produces Hot Dice, the action names that roll and adds its Free Roll
-stamp, while remaining optional until the next action. **Current roll** shows
-the already-held points and the exact currently
-selected score separately; their sum is the value that would be banked, never
-a predicted combined selection. In a live two-person room, both sides see the
-same server-confirmed recommendations and current-roll tile, including the
-active player's committed round points and current valid draft; only the active
-player can change that draft, and it remains reversible until they roll again
-or bank. On the active game page, keys 1–6 toggle the
-corresponding selectable dice, Q/W/E/R/T/Z/U/I
-activate the visible suggestions in order, Space performs the enabled start or
-regular roll, and B banks only when permitted. A Zilch keeps the authoritative
-final rack visible until the next actual roll. CPU rolls use the same landing
-presentation, with readable pauses between decisions. Form fields, open dialogs,
-and modifier chords suppress these
-shortcuts. Stacked, internally scrollable spiral score sheets with ruled paper
-and offset page edges keep the active player in front and the opponent total visible. The resulting
-turns are recorded there, while chat and short-lived emoji reactions remain separate
-from the score history. Text chat is retained in the active game state for reconnects;
-quick reactions are echoed to every connected participant, including the sender, and
-appear as reaction lines in that connection's live chat.
-Each third consecutive Zilch deducts 500 points (the third, sixth, ninth, and
-so on), never below zero; banking points resets that personal streak.
+Both games use server-authoritative dice and scoring. Zilch has its own rules
+engine, results and rankings: its points never affect ZDWA standings.
 
-Localization conventions and terminology are documented in [docs/LOCALIZATION.md](docs/LOCALIZATION.md).
-The private Zilch award boundary, evidence source, delivery lifecycle, and
-expanded points/rank catalog are documented in
-[docs/ACCOUNT_STATISTICS.md](docs/ACCOUNT_STATISTICS.md).
+## Contents
 
-## Features
+- [Quick start](#quick-start)
+- [Playing together](#playing-together)
+- [Accounts and progress](#accounts-and-progress)
+- [Lobby chat](#lobby-chat)
+- [Push notifications](#push-notifications)
+- [Progressive Web Apps](#progressive-web-apps)
+- [Local development](#local-development)
+- [Architecture](#architecture)
+- [Data and deployment](#data-and-deployment)
+- [Documentation](#documentation)
+- [Product delivery gate](#product-delivery-gate)
 
-- Responsive lobby and game room with fixed mobile controls and sticky chat
-- Anonymous live count of connected visitors across lobby, games, spectator views, and other app pages
-- REST API for lobby, games, leaderboard, and replay data
-- WebSocket game room for rolling, scoring, chat, spectators, and corrections
-- Restart-safe live games plus typed completed-game persistence in `./data`;
-  ZDWA aggregates and private Zilch results/statistics/leaderboards stay
-  separate
-- User accounts, admin management, public profiles, search, and player rankings
-- Audited deletion of invalid ZDWA results with automatic statistic updates;
-  private Zilch deletion never mutates ZDWA aggregates and revokes only the
-  affected private Zilch-derived award state
-- Self-registration from the lobby with immutable usernames
-- Personal statistics split into Normal, Hardcore, and overall results, with a selectable score chart and median
-- Achievement milestones for special scoring plays, exact final scores, multiplayer victory margins, daily streaks, office-hour game counts, exact upper-section 60s, and Hardcore progress; every achievement awards 1–10 **Ehrenberg-Marken**, the achievement currency named after Ehrenberg in Reutte. When a game unlocks several achievements, each one is presented and acknowledged separately before the final standings; a genuine title increase then receives its own celebratory **LEVEL UP!** card. Completed-game replays show the achievements that were durably and unambiguously unlocked by that exact game, grouped by participant; account-only milestones and unlocks predating source-game attribution are deliberately not assigned retroactively. Profiles show the total, and the player overview includes a sortable Ehrenberg-Marken ranking. The calculated total also assigns an account-only title from Newbie through Godmode with star insignia, shown consistently beside player names in the lobby, live game, chat, profiles, replays, and rankings. Clicking an insignia opens the rank legend at `/rangabzeichen` (as an overlay during live play). Rollout-sensitive gameplay goals, including multiplayer and upper-section-60 goals, start from their introduction while score-based goals and Hardcore game counts remain historical
-- Zilch awards are a separate collection: 74 namespaced
-  goals cover first games, scoring, combinations, risk, career progress,
-  duels, CPU play, Solo efficiency, and community milestones. Personal goals
-  award 1–10 Zilch points and a Zilch-only rank; community milestones award
-  exactly 0 points and go only to eligible accounts present when the shared
-  threshold is reached. Personal source-based awards are revocable with their
-  source result, while reached community milestones retain their frozen
-  recipient set. A durable per-game participant ledger preserves the historical
-  minimum-one-game eligibility independently of later result deletion. A
-  separately acknowledged, animated rank-up card follows earned award cards;
-  each account's latest genuine rank transition is reconstructed once for an
-  equally visible retrospective delivery. Catalog
-  upgrades enrich and resynchronize only already registered Zilch evidence by
-  loading each exact, still-present typed source by its registered ID; they
-  never scan general completed-game history. Nothing awards Ehrenberg-Marken
-  or alters ZDWA titles,
-  profiles, rankings, statistics, achievements, or leaderboards
-- Isolated Progressive Web Apps with content-hashed asset and service-worker
-  versions; Zilch update/install notices keep a seven-day dismissal snooze per
-  deployed version without caching private game data
-- Readiness endpoint and container healthcheck for migration-safe deployments
-- Docker Compose setup for local machines, servers, and Raspberry Pi
+## Quick start
 
-## Public page URLs
-
-User-facing navigation uses short routes without implementation details:
-
-- `https://zockdiewandan.online/` canonical ZDWA origin
-- `https://zdwa.zockdiewandan.online/` redirect-only ZDWA alias
-- `https://zilch.zockdiewandan.online/` public Zilch origin; the Zilch paths
-  listed below lose their `/zilch` prefix on this host
-
-- `/` lobby
-- `/spiel/{game_id}` active player view
-- `/zilch` public Zilch lobby (canonical host: `zilch.zockdiewandan.online/`)
-- `/zilch/anmelden` direct, noindex sign-in and registration entry for Zilch
-- `/zilch/spiel/{game_id}` protected Zilch game view (`noindex`)
-- `/zilch/spiel/{game_id}/zuschauen` protected, read-only Zilch spectator view (`noindex`)
-- `/zilch/historie` protected own Zilch history (`noindex`)
-- `/zilch/ergebnis/{game_id}` participant-bound, read-only Zilch result report (`noindex`)
-- `/zilch/statistiken` protected own Zilch statistics (`noindex`)
-- `/zilch/bestenlisten` public Zilch leaderboards (`noindex`)
-- `/zilch/konto` protected Zilch account with private statistics, awards, and settings
-- `/zilch/erfolge` protected private Zilch awards (`noindex`)
-- `/zilch/spieler/{username}` public Zilch-context player-award view without result evidence (`noindex`)
-- `/zilch/regeln` public in-app Zilch rule guide (canonical on the Zilch subdomain)
-- `/spiel/{game_id}/zuschauen` spectator view
-- `/regeln`, `/rangabzeichen`, `/spieler`, `/spieler/{username}`, `/konto`, and `/admin`
-- `/ergebnis/{game_id}` completed-game view
-- `/robots.txt` crawler rules and `/sitemap.xml` for the stable, indexable public pages
-
-JavaScript, styles, and icons remain under `/static/`; these asset paths are not
-used for browser navigation. Legacy `*.html` links redirect to the matching
-public route so existing bookmarks and older installed app versions keep working.
-Personal Zilch routes are server-authorized implementation routes and always
-send `noindex`. The Zilch root and `/regeln` are the only Zilch URLs in the
-Zilch-host sitemap.
-
-## Product delivery gate
-
-Every user-visible change ships with documentation, localization, and search
-visibility checks. The mandatory process is defined in
-[docs/PRODUCT_DELIVERY.md](docs/PRODUCT_DELIVERY.md): update this README,
-update the player-facing rules when gameplay changes, translate every visible
-string, and register every evergreen public page in the SEO registry. The
-automated `scripts/check_product_delivery.py` runs as part of `npm run lint`
-and CI, so sitemap, robots, canonical metadata, Open Graph data, achievement
-translations, and documentation cannot silently drift apart.
-
-## Requirements
-
-- Docker with the Compose plugin
-- Git, if cloning from GitHub
-- Optional for local development: Python 3.12+ or 3.13 with the packages from `requirements.txt`
-
-## Run With Docker Compose
+You need Docker with the Compose plugin and Git.
 
 ```bash
 git clone https://github.com/Maetran/RollTheDice.git
 cd RollTheDice
-docker compose up -d --build
+cp .env.example .env
 ```
 
-For the first administrator, copy `.env.example` to `.env`, set a temporary
-username and password, and start the container. There is no default admin
-password. After the first successful login, remove
-`ROLLTHEDICE_ADMIN_PASSWORD` from `.env`. Set
-`ROLLTHEDICE_COOKIE_SECURE=1` for a public HTTPS deployment.
-
-For the production product-host split also set the following values before the
-container is recreated:
-
-```dotenv
-ROLLTHEDICE_COOKIE_DOMAIN=zockdiewandan.online
-ROLLTHEDICE_SITE_ORIGIN=https://zockdiewandan.online
-ROLLTHEDICE_ZILCH_ORIGIN=https://zilch.zockdiewandan.online
-FORWARDED_ALLOW_IPS=172.18.0.1
-```
-
-The last value must be the actual direct Docker bridge gateway observed on the
-server, not a client network or `*`. The production-only Compose override keeps
-port 8000 bound to loopback. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for
-the preflight, certificate activation, rollback, and verification sequence.
-
-Self-registration is protected by persistent SQLite rate limits without any
-extra service. For a public deployment, create a Cloudflare Turnstile widget
-for the production hostname and set both `ROLLTHEDICE_TURNSTILE_SITE_KEY` and
-`ROLLTHEDICE_TURNSTILE_SECRET` in `.env`. Local development leaves both values
-empty and does not show a CAPTCHA. A partial Turnstile configuration is rejected
-at startup so registration cannot silently run with broken protection.
-
-Zilch is public. Production sets `ROLLTHEDICE_ZILCH_ACCESS_MODE=public`; this
-allows guest play without weakening session, CSRF, WebSocket-origin, room-code,
-or result-ownership checks. Guest CPU/Solo hosts receive a random, session-local
-capability whose hash alone is persisted; it only permits their one human seat.
-Keep `ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES` empty in normal production operation.
-It is used only with the deliberately restrictive `preview` rollback mode,
-where explicitly named test accounts gain Zilch access without receiving an
-admin role. CPU action pacing is an
-operator-only setting: `ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` defaults to 0.9
-seconds and is bounded to 0–5 seconds; it never changes dice odds or scoring.
-
-Open:
-
-- Lobby: `http://localhost:8000/`
-- API docs: `http://localhost:8000/docs`
-
-On a server or Raspberry Pi, replace `localhost` with the device IP.
-
-## Update
+For the first administrator, set `ROLLTHEDICE_ADMIN_USERNAME` and a strong
+temporary `ROLLTHEDICE_ADMIN_PASSWORD` in `.env`. There is no default password.
+Set `ROLLTHEDICE_ZILCH_ACCESS_MODE=public` to allow guests and accounts into Zilch.
 
 ```bash
-git pull
 docker compose up -d --build
 ```
 
-Game data is stored in `./data` and is preserved across rebuilds. Waiting and
-running games are restored after an application restart; connected human
-players appear offline until they rejoin with their locally stored resume token.
-A CPU is never a connection and never appears offline. Its process-local runner
-is not serialized; after recovery or rejoin the authoritative state schedules
-at most one eligible, unpaused CPU turn. A terminal game is first retained as
-an active recovery snapshot, then stored idempotently as a typed result, and
-removed from active storage only after the write succeeds. Finished Zilch games
-use their own private `zilch-house-v1` payload and never enter ZDWA history.
-Solo active states persist their fixed Objective/metrics and resume only with
-their linked account seat or the guest's local resume/capability session; process downtime and explicit pauses are
-excluded from the stored active duration.
+Open [ZDWA](http://localhost:8000/), [Zilch](http://localhost:8000/zilch), or the
+[API documentation](http://localhost:8000/docs).
 
-Waiting, running, and paused rooms share a one-hour inactivity deadline. If
-no server-accepted room action occurs in that time, the room is aborted,
-connected players and spectators receive its terminal snapshot, and the active
-record is removed without creating a completed result.
+After the first successful administrator login, remove the bootstrap password
+from `.env` and recreate the container. Game data lives in the mounted
+`./data` directory and survives container rebuilds.
 
-Production deployment details, including the IONOS SSH target and mandatory
-leaderboard backup rules, are documented in `docs/DEPLOYMENT.md`. Use
-`scripts/deploy_zdwa.sh` for the guarded production deploy.
+For an internet-facing server, follow the
+[deployment guide](docs/DEPLOYMENT.md) before exposing the application. It covers
+HTTPS, secure cookies, the reverse proxy, trusted forwarding and registration
+protection.
 
-## Local Development
+## Playing together
+
+- Create a table quickly, or add an optional room code.
+- Share an invitation link without exposing room codes or resume credentials.
+- Rejoin your seat after a disconnect; active games also survive server restarts.
+- Chat and send quick reactions in the game room.
+- Watch eligible multiplayer tables in a read-only spectator view.
+- Leave a game through **Pause**, **Return to Lobby**, or **Stay in Game**.
+  Pausing preserves the table until its displayed deadline. Returning to the
+  lobby ends the room for everyone without creating a completed result.
+- Switch between games from lobbies and app pages. Live game rooms deliberately
+  have no game switcher.
+
+Waiting, running and paused rooms expire after one hour without a
+server-accepted room action. They are then aborted without a completed result.
+
+### Zilch at the table
+
+Select scoring dice directly or use compact suggestions. Selections remain
+reversible until **Roll again** or **Bank** commits them; **Combined score**
+selects all currently scoring dice in one action. Hot Dice, the competitive
+start roll and the final reply are handled by the server.
+
+CPU opponents use the same dice and scoring path as humans, with conservative,
+normal or aggressive decisions. Solo Sprint has no opponent or final reply;
+its private metrics exclude pauses and server downtime.
+
+Keyboard controls include 1–6 for dice, Space to roll, B to bank, and
+Q/W/E/R/T/Z/U/I for visible suggestions. Shortcuts are disabled while typing or
+using dialogs. See the [full Zilch rule contract](docs/ZILCH_RULES.md).
+
+## Accounts and progress
+
+One account works across both games, with shared language and comfort settings.
+Usernames are immutable; administrators manage accounts and moderation.
+
+**ZDWA** offers public profiles and rankings, Normal/Hardcore statistics, score
+charts and completed-game replays. Achievement milestones award
+**Ehrenberg-Marken**, which contribute to titles and star insignia. Newly earned
+awards are celebrated individually, followed by a **LEVEL UP!** card for a
+genuine title increase.
+
+**Zilch** offers personal history, participant-only result reports, statistics
+split by Solo/human/CPU play, and separate leaderboards. Its 74 namespaced
+achievements cover scoring, risk, duels, CPU play, Solo efficiency and community
+milestones. Personal awards contribute Zilch points; community milestones have a
+fixed eligible audience and award no personal points. An animated rank-up card
+follows earned award cards; the latest genuine rank transition also supports
+one-time retrospective delivery for existing accounts.
+
+Guest play creates no account-linked history, statistics, ranking or
+achievements. Administrative result deletion is audited; affected derived
+statistics and revocable awards are updated within the correct game's boundary.
+
+Details: [account statistics and achievement lifecycle](docs/ACCOUNT_STATISTICS.md).
+
+## Lobby chat
+
+Both lobbies share one compact, expandable chat above their leaderboard section.
+
+- Signed-in accounts can read and write; guests cannot.
+- Each message identifies its sender and originating game: `zdwa` or `zilch`.
+- Filters show ZDWA only, Zilch only, or both.
+- A player's first active chat connection announces that they have connected.
+- The server freezes each message's eligible account audience when it is sent.
+  Later logins cannot reveal messages sent while an account was disconnected,
+  signed out or had chat disabled.
+- Eligible history is retained for three days; older messages and audience
+  records are permanently deleted.
+- Chat and lobby-only message popups have separate account settings, both on
+  by default and shared across devices.
+
+Flood protection allows **400 characters per message** and **five messages per
+account per 30 seconds**, shared across tabs and reconnects. Administrators can
+mute an account (read-only) or exclude it from lobby chat, and remove either
+restriction.
+
+Game-room chat is separate: text survives reconnects in the active room state;
+quick reactions also appear in each connected participant's live chat.
+
+## Push notifications
+
+Push is optional. Register each device from account settings and grant browser
+permission. Invitations and reminders have separate switches; daily reminders
+are **off by default**. The account-wide off switch removes every stored device
+subscription, even when used from a browser that cannot itself receive push.
+
+| | Player invitations | Daily play reminders |
+| --- | --- | --- |
+| Trigger | A seated player clicks **Notify players** in a public waiting room | The server, only after a separate opt-in |
+| Eligibility | Room still has an open seat; recipient opted in and is not already seated | Account has played neither ZDWA nor Zilch today |
+| Timing | Any time, including after the recipient has already played | A new random time between 17:00 and 21:00, Europe/Zurich |
+| Limits | One attempt per sender per minute across both games; one dispatch per room per ten minutes | At most one reminder attempt per account per Swiss calendar day |
+| Click destination | The specific room, with normal join/rejoin checks | The selected game's lobby |
+
+A valid human roll or scoring action counts as playing; finishing a game is not
+required. Login, chat, spectating and CPU actions do not count. Existing
+completed results are also checked. Activity and opt-out are checked again
+immediately before dispatch.
+
+Reminder schedules are stable across restarts. There is no overnight catch-up,
+and durable daily claims prevent repeat attempts after failures or preference
+changes. Each game has **32 German/English variants**: pub-table banter for
+Zilch, cheerful challenges for ZDWA. The rotation advances with reminder
+attempts, so skipped days do not skip texts. If both products are registered,
+they alternate; the chosen game's subscribed devices receive the same message.
+
+Invitation senders get brief in-app feedback, not a push themselves, and never
+see recipient identities. Private, full, started and Solo rooms do not send
+invitations. Clicking an invitation to a full or started room does not
+automatically switch the recipient into spectator mode.
+
+Production requires the three VAPID settings in the
+[Web Push operations guide](docs/DEPLOYMENT.md#web-push). Push-service acceptance
+does not guarantee when a device displays a notification.
+
+**Planned, not yet implemented:** an invitation sender allowlist/friendlist, so
+players can restrict incoming invitations to selected accounts as the community
+grows.
+
+## Progressive Web Apps
+
+Each game has its own installable PWA, manifest and versioned assets.
+
+- ZDWA stays on `zockdiewandan.online`, preserving existing installations,
+  bookmarks and origin-bound resume data.
+- Zilch uses `zilch.zockdiewandan.online` and a network-only service worker;
+  private room and API data are not cached.
+- `zdwa.zockdiewandan.online` is a redirect-only alias.
+- Installed PWAs keep game switching inside their existing app window:
+  ZDWA uses the same-origin `/zilch` compatibility routes; Zilch uses the private
+  `/zdwa` bridge. Account navigation preserves the currently selected game.
+- Ordinary browser navigation uses each game's canonical origin.
+- Zilch provides version-aware update/install notices. Dismissed install
+  prompts snooze for seven days unless a new version is deployed.
+
+On iPhone and iPad, enable push from the installed home-screen app.
+
+The canonical lobbies and public rule pages are indexable. Personal pages,
+temporary rooms and compatibility bridges stay `noindex`; the SEO registry
+generates the corresponding sitemaps.
+
+## Local development
+
+Use Python 3.12+ (CI uses 3.13) and Node.js 22.
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --host 127.0.0.1 --port 8000
+pip install -r requirements-dev.txt
+npm ci
+npx playwright install chromium
 ```
 
-Install `requirements-dev.txt` when running the HTTP integration tests.
-
-Useful checks:
+Start the application:
 
 ```bash
-python3 -m py_compile app/main.py app/rules.py
-node --check app/static/scoreboard.js
-node --input-type=module --check < app/static/room.js
-python3 scripts/sync_static_versions.py --check
-pytest --cov --cov-report=term-missing
-ruff check .
-bandit -q -r app scripts -c pyproject.toml
-vulture app scripts tests --min-confidence 80
-pip-audit -r requirements-dev.txt --progress-spinner off
+ROLLTHEDICE_ZILCH_ACCESS_MODE=public \
+  uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Environment variables are read by the application; Compose loads `.env`
+automatically, while a direct Uvicorn launch requires exporting the variables
+you need. Leave Turnstile and VAPID settings empty for ordinary local work.
+Never use production push subscriptions for tests.
+
+### Frontend workflow
+
+Edit JavaScript and CSS in `frontend/`, then rebuild the committed assets:
+
+```bash
+npm run build:static
+```
+
+For changes only to static HTML, images or manifests, use `npm run sync:assets`.
+The build creates deterministic content hashes for assets and service workers.
+Generated files under `app/static/` must be committed alongside their sources.
+
+### Quality checks
+
+```bash
+npm run lint
+npm run test:backend
 npm run test:browser
 git diff --check
 ```
 
-## Project Structure
+Browser tests start a separate server on port 8010 with a disposable SQLite
+database. CI also runs security and dependency checks; see
+[the quality workflow](.github/workflows/quality.yml).
+
+## Architecture
+
+FastAPI serves static pages, REST endpoints and WebSocket rooms. SQLAlchemy and
+Alembic manage SQLite persistence. Browser code uses native JavaScript modules,
+bundled with esbuild; no separate frontend application server is required.
 
 ```text
-RollTheDice/
-├── Dockerfile
-├── docker-compose.yml
-├── manifest.webmanifest
-├── manifest-en.webmanifest
-├── zilch-manifest.webmanifest
-├── zilch-manifest-en.webmanifest
-├── requirements.txt
-├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI assembly and thin HTTP/WebSocket routes
-│   ├── product_hosts.py     # Fixed product origins and safe cross-host handoff paths
-│   ├── site_seo.py          # Public-page registry plus robots/sitemap rendering
-│   ├── models.py            # User, session, active/completed-game, and participant models
-│   ├── database.py          # Database configuration and Alembic upgrades
-│   ├── active_games.py      # Restart-safe snapshots of waiting and running games
-│   ├── auth.py              # Password, session, and role logic
-│   ├── api_auth.py          # Login, password, and admin-user API
-│   ├── api_users.py         # Profiles, stats, search, ranking, and assignments
-│   ├── game_history.py      # Typed completed results and legacy ZDWA JSON import
-│   ├── game_state.py        # Live-game state, boards, timeouts, and connection state
-│   ├── game_engine.py       # Turn validation, rolls, suggestions, and score projections
-│   ├── game_websocket.py    # WebSocket coordinator; action handlers live in game_ws_*.py
-│   ├── game_results.py      # ZDWA result projection and statistic persistence
-│   ├── zilch_results.py     # Private, versioned Zilch result payload/projection
-│   ├── zilch_cpu_strategy.py # Pure conservative/normal/aggressive CPU policy
-│   ├── zilch_cpu_runner.py  # Cancellable trusted CPU-turn runner
-│   ├── zilch_solo_objective.py # Pure versioned Solo Sprint objective/metrics
-│   ├── zilch_statistics.py  # Private Zilch-only statistics and leaderboard service
-│   ├── leaderboard_service.py # Leaderboard aggregation and replay/profile reads
-│   ├── leaderboard_storage.py # Locked legacy-JSON compatibility storage
-│   ├── rules.py             # Server-side subtotal and total calculations
-│   └── static/
-│       ├── index.html       # Lobby
-│       ├── room.html        # Game room shell
-│       ├── game_view.html   # Read-only leaderboard replay view
-│       ├── rules.html       # Player-facing game rules
-│       ├── emoji.js         # Emoji reactions
-│       ├── room.js          # Generated, bundled game-room client
-│       ├── scoreboard.js    # Scoreboard renderer and read-only replay renderer
-│       ├── lobby.css        # Generated, schlankes Styling für die Landing-Page
-│       ├── style.css        # Generated, minified shared styling für Spiel-/Kontoseiten
-│       ├── sw.js            # ZDWA cache-first service worker
-│       ├── zilch-sw.js      # Zilch network-only service worker
-│       ├── favicon.png
-│       └── icons/
-├── frontend/                # Authored JS/CSS split by lobby, room, i18n, and style concern
-├── alembic/                 # Versioned database schema migrations
-├── scripts/
-│   ├── deploy_zdwa.sh       # Guarded production deployment
-│   ├── install_nginx_config.sh # Validated installation of production proxy limits
-│   ├── prune_data_backups.sh # Keeps five deploy backups; manual use is dry-run-first
-│   ├── build-static.mjs     # Bundles/minifies frontend sources into app/static
-│   ├── check_product_delivery.py # Documentation, localization, and SEO delivery gate
-│   └── sync_static_versions.py # Content-hashed PWA/asset version synchronization
-└── data/                    # Persistent runtime data, ignored by Git
-    ├── leaderboard_recent.json
-    ├── leaderboard_alltime.json
-    ├── stats.json
-    └── rollthedice.sqlite3  # Accounts, active games, sessions, and completed-game history
+app/
+  main.py                 HTTP routes, lifecycle and application assembly
+  game_websocket.py       Shared realtime coordinator
+  game_ws_*.py            Session, gameplay, social and admin actions
+  game_registry.py        Game-specific adapters
+  game_engine.py          ZDWA turn/scoring engine
+  zilch_*.py              Zilch engine, CPU, Solo, results and achievements
+  lobby_chat.py           Audience-scoped cross-game chat
+  web_push.py             Subscriptions, preferences and room invitations
+  push_reminders.py       Activity-aware daily scheduler
+  push_reminder_copy.py   Bilingual reminder catalog
+  game_activity.py        Minimal cross-game play-day evidence
+  models.py               Accounts, sessions, game and community data
+  product_hosts.py        Canonical origins and safe handoffs
+  site_seo.py             Public-page registry, robots and sitemaps
+  static/                 HTML, generated browser assets and PWA workers
+frontend/                 Authored JavaScript and CSS
+alembic/                  Versioned database migrations
+tests/                    Backend and browser regression suites
+scripts/                  Builds, validation, backups and deployment
+docs/                     Rules, architecture and operations
+data/                     Runtime SQLite/JSON data; never committed
 ```
 
-## Data
+The shared account, session, chat, rejoin and transport infrastructure does not
+mix game rules or result processing. Completed results carry an explicit
+`game_type`; private Zilch payloads never enter ZDWA aggregates.
+See [the multi-game foundation](docs/MULTIGAME_FOUNDATION.md).
 
-The application writes leaderboard JSON files and its SQLite database to
-`./data`. Copy the complete directory only while the container is stopped; the
-deployment script handles this automatically. Existing JSON snapshots are
-imported idempotently by `game_id`. Historical user statistics can only include
-the snapshots that still exist in the capped legacy lists.
+## Data and deployment
 
-After changing authored files under `frontend/`, run `npm run build:static`.
-It bundles and minifies the browser assets, then writes one deterministic content
-version to all asset references and the service-worker cache. For direct changes
-to static HTML, images, or a manifest, `npm run sync:assets` is sufficient. CI
-rejects stale generated files; CI and the deployment guard reject unsynchronized
-asset versions. The protected Zilch shell uses the local
-`app/static/zilch-wood-table-v1.jpg` texture; it must remain a bundled first-party
-asset so the game room never depends on an external image host. A finished Zilch
-room keeps the score sheet and result panel equally sized and exposes every next
-destination as a full-width action instead of a raw inline link. Newly unlocked
-private Zilch awards are attributed by their durable source game ID and only
-appear in that live end screen; older pending deliveries remain in the normal
-reload-safe award queue. Zilch JavaScript
-and CSS are deliberately not part of the ZDWA
-service-worker precache: the browser obtains them only after the protected shell
-has been served, while Zilch routes remain network-only so a logout or policy
-change cannot reveal a stale account view.
+The SQLite database stores accounts, sessions, active-game recovery snapshots,
+typed completed results, achievements, chat audiences and push subscriptions.
+Legacy ZDWA leaderboard JSON files remain in `data/` for compatibility.
 
-## Multi-game foundation
+Back up the **entire data directory while the application is stopped**, including
+SQLite WAL files when present. Do not replace or delete it during an update.
+Completed results are finalized idempotently; active recovery state is retained
+until persistence succeeds.
 
-The shared account, session cookie, roles, player identities, chat, rejoin,
-WebSocket transport, and active-game persistence can serve more than one game.
-Game-specific state creation, join/start setup, gameplay actions, lobby progress,
-snapshots, and terminal-result finalization are selected through a small
-registry. Existing ZDWA flows remain behind their adapter; Zilch has separate
-modules and cannot call ZDWA scoring or completion code. `CompletedGame` now
-stores an explicit `game_type`; all older records are migrated to `zdwa`, while
-personal Zilch results use a versioned `zilch-house-v1` JSON payload. Zilch is
-public for guest and account play; account-bound results, history, statistics,
-awards, and result lookup stay private. Only its canonical lobby and rule guide
-are indexable; all rooms and personal routes remain `noindex`.
-
-The architecture boundary is documented in
-[docs/MULTIGAME_FOUNDATION.md](docs/MULTIGAME_FOUNDATION.md); the confirmed
-internal rule contract is in [docs/ZILCH_RULES.md](docs/ZILCH_RULES.md). Neither
-document is the authoritative game contract. The public `/regeln` view is its
-localized in-app projection. Personalized Zilch pages stay out of the sitemap
-and public SEO.
-
-## Plain Docker
+For production, use the guarded deployment workflow:
 
 ```bash
-docker build -t rollthedice .
-docker run -d --name rollthedice --restart=unless-stopped \
-  -p 8000:8000 \
-  -v "$(pwd)/data:/app/data" \
-  rollthedice
+scripts/deploy_zdwa.sh
 ```
+
+It checks the remote worktree, briefly stops the service for a consistent backup,
+fast-forwards the selected branch, verifies asset versions, rebuilds the
+container and checks `/api/health`. After success it retains the five newest
+deployment backups. Startup applies Alembic migrations before readiness.
+
+The documented deployment uses one application process behind Nginx and a
+loopback-bound container port. The two canonical origins share that process and
+one data directory. Do not add application workers without redesigning the
+process-local realtime room ownership.
+
+See [deployment, host setup and rollback](docs/DEPLOYMENT.md) for the complete
+preflight and production verification procedure.
+
+## Documentation
+
+- [Player rules: ZDWA](https://zockdiewandan.online/regeln) ·
+  [Zilch](https://zilch.zockdiewandan.online/regeln)
+- [Zilch rule contract](docs/ZILCH_RULES.md)
+- [Multi-game architecture](docs/MULTIGAME_FOUNDATION.md)
+- [Statistics, achievements and ranks](docs/ACCOUNT_STATISTICS.md)
+- [Localization conventions](docs/LOCALIZATION.md)
+- [Deployment and operations](docs/DEPLOYMENT.md)
+
+## Product delivery gate
+
+Every visible change ships as a complete German/English product increment:
+update this README, update player rules when behavior changes, and keep
+canonical URLs, Open Graph metadata and indexing policy correct.
+
+The mandatory [product delivery standard](docs/PRODUCT_DELIVERY.md) is enforced
+through `npm run lint` and CI. Backend tests and, for visible changes, browser
+tests are required before committing and deploying.

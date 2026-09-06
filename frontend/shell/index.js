@@ -14,9 +14,10 @@ function initializeZdwaPwaBridgeNavigation() {
   applyLinks(document);
   new MutationObserver((records) => {
     for (const record of records) {
+      if (record.type === "attributes") applyLinks(record.target);
       for (const node of record.addedNodes) applyLinks(node);
     }
-  }).observe(document.body, { childList: true, subtree: true });
+  }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["href"] });
 
   // Small compatibility bridge for the few static account documents whose
   // inline redirect runs outside the bundled route modules.

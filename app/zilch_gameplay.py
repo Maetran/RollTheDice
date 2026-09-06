@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from .game_activity import record_gameplay
 from .game_realtime import broadcast, send_game_message
 from .game_snapshot import snapshot
 from .game_state import roll_cooldown_ok, touch
@@ -750,6 +751,7 @@ async def _roll_dice(
     except ZilchRuleError as exc:
         await _send_error(session, exc.code)
         return False
+    record_gameplay(session)
     await publish_zilch_transition(session.game, transition, finalize_game=finalize_game)
     return True
 
@@ -766,6 +768,7 @@ async def _start_roll(session: GameSocketSession, data: dict[str, Any]) -> bool:
     except ZilchRuleError as exc:
         await _send_error(session, exc.code)
         return False
+    record_gameplay(session)
     await publish_zilch_transition(session.game, transition)
     return True
 
@@ -792,6 +795,7 @@ async def _select_hold(
     except ZilchRuleError as exc:
         await _send_error(session, exc.code)
         return False
+    record_gameplay(session)
     await publish_zilch_transition(session.game, transition, finalize_game=finalize_game)
     return True
 
@@ -843,6 +847,7 @@ async def _bank_points(
     except ZilchRuleError as exc:
         await _send_error(session, exc.code)
         return False
+    record_gameplay(session)
     await publish_zilch_transition(session.game, transition, finalize_game=finalize_game)
     return True
 

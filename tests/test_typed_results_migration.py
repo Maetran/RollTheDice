@@ -19,7 +19,7 @@ PRE_TYPED_RESULTS_REVISION = "20260902_0015"
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20260906_0026"
+LATEST_SCHEMA_REVISION = "20260906_0027"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -82,6 +82,8 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
             "game_invite_push_last_sent_at": None,
             "daily_reminder_push_enabled": 0,
             "daily_reminder_push_last_sent_on": None,
+            "daily_reminder_push_sequence": 0,
+            "last_played_on": None,
             "created_at": timestamp,
             "updated_at": timestamp,
         }

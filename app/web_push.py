@@ -25,6 +25,7 @@ from sqlalchemy import delete, or_, select, update
 
 from .database import session_scope
 from .game_access import can_account_access_zilch
+from .game_activity import PLAY_DAY_TIMEZONE
 from .game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
 from .models import User, WebPushSubscription
 from .product_hosts import site_origin, zilch_url
@@ -38,8 +39,9 @@ WEB_PUSH_SUBJECT_ENV = "ROLLTHEDICE_WEB_PUSH_VAPID_SUBJECT"
 GAME_INVITE_PUSH_COOLDOWN_SECONDS = 10 * 60
 GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS = 60
 GAME_INVITE_PUSH_SENT_AT_KEY = "_game_invite_push_sent_at"
-DAILY_REMINDER_HOUR_ENV = "ROLLTHEDICE_DAILY_REMINDER_HOUR"
-DAILY_REMINDER_TIMEZONE = "Europe/Zurich"
+DAILY_REMINDER_START_HOUR = 17
+DAILY_REMINDER_END_HOUR = 21
+DAILY_REMINDER_TIMEZONE = PLAY_DAY_TIMEZONE
 _MAX_ENDPOINT_LENGTH = 2_048
 _MAX_KEY_LENGTH = 256
 _PUSH_ENDPOINT_SUFFIXES = (
@@ -95,16 +97,6 @@ class WebPushPreferencesRequest(BaseModel):
     daily_reminder_enabled: bool
 
 
-def daily_reminder_hour() -> int:
-    try:
-        hour = int(os.getenv(DAILY_REMINDER_HOUR_ENV, "18"))
-    except ValueError:
-        raise RuntimeError(f"{DAILY_REMINDER_HOUR_ENV} must be between 0 and 23") from None
-    if not 0 <= hour <= 23:
-        raise RuntimeError(f"{DAILY_REMINDER_HOUR_ENV} must be between 0 and 23")
-    return hour
-
-
 def web_push_config() -> WebPushConfig:
     return WebPushConfig(
         public_key=os.getenv(WEB_PUSH_PUBLIC_KEY_ENV, "").strip(),
@@ -129,7 +121,6 @@ def _valid_vapid_public_key(value: str) -> bool:
 
 def validate_web_push_config() -> None:
     """Reject ambiguous production configuration before accepting traffic."""
-    daily_reminder_hour()
     config = web_push_config()
     configured = (bool(config.public_key), bool(config.private_key), bool(config.subject))
     if any(configured) and not all(configured):
@@ -218,7 +209,8 @@ def web_push_subscription_status(user_id: int) -> dict[str, object]:
         "subscribed": subscribed,
         "game_invites_enabled": game_invites_enabled,
         "daily_reminder_enabled": daily_reminder_enabled,
-        "daily_reminder_time": f"{daily_reminder_hour():02d}:00",
+        "daily_reminder_window_start": f"{DAILY_REMINDER_START_HOUR:02d}:00",
+        "daily_reminder_window_end": f"{DAILY_REMINDER_END_HOUR:02d}:00",
         "daily_reminder_timezone": DAILY_REMINDER_TIMEZONE,
     }
 

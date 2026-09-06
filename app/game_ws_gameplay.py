@@ -7,6 +7,7 @@ import inspect
 import logging
 from typing import Any, Awaitable, Callable
 
+from .game_activity import record_gameplay
 from .game_engine import (
     _begin_next_turn,
     _filled_rows_in_board,
@@ -148,6 +149,7 @@ async def _roll_dice(session: GameSocketSession, _data: dict[str, Any]) -> None:
     if not roll_cooldown_ok(g, session.player_id, cooldown_s=0.6):
         return
     apply_roll(g)
+    record_gameplay(session)
     await _publish_scoreboard(session)
 
 
@@ -293,6 +295,7 @@ async def _write_field(
     # einem veralteten oder leeren Würfelzustand übernehmen.
     value = 0 if strike or terminal_write_without_roll else score_field_value(field, dice)
     board[key] = value
+    record_gameplay(session)
     g["_last_write"][player_id] = (row, column, g["_rolls_used"])
     g["_last_dice"][player_id] = dice[:]
     turn = g.get("_turn", {}) or {}
@@ -480,6 +483,7 @@ async def _write_field_correction(session: GameSocketSession, data: dict[str, An
     value = 0 if strike else score_field_value(field, dice)
     board.pop(old_key, None)
     board[new_key] = value
+    record_gameplay(session)
     g["_last_write"][player_id] = (row, column, old_rolls_used)
     _clear_correction(g)
     touch(g)

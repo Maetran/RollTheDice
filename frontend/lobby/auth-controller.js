@@ -1,4 +1,5 @@
 import { loadAuth, login, logout, playerNameMarkup, register } from "../shared/auth.js";
+import { zdwaPath } from "../multigame/routes.js";
 import { dom, storageKeys } from "./context.js";
 
 const turnstileState = {
@@ -67,7 +68,7 @@ async function refreshAuthUi(refresh = false) {
     dom.playerSectionTitle.hidden = Boolean(user);
     dom.playerNameRow.hidden = Boolean(user);
     if (user) {
-      dom.headerAccountLink.href = "/konto";
+      dom.headerAccountLink.href = zdwaPath("/konto");
       dom.authBadge.innerHTML = `${playerNameMarkup(user, { compactRank: true })}${user.is_admin ? ' <span class="badge">Admin</span>' : ''}`;
       dom.nameInput.value = user.username;
       dom.nameInput.disabled = true;

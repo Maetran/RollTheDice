@@ -110,8 +110,9 @@ export function syncPushPreferences(form, status) {
   form.elements.gameInvites.checked = status.game_invites_enabled ?? status.enabled ?? false;
   form.elements.dailyReminder.checked = status.daily_reminder_enabled === true;
   const schedule = form.querySelector("[data-push-reminder-schedule]");
-  if (schedule) schedule.textContent = translated("Täglich um {time} Uhr (Schweizer Zeit), höchstens einmal für beide Spiele.")
-    .replace("{time}", status.daily_reminder_time || "18:00");
+  if (schedule) schedule.textContent = translated("Nur wenn du heute weder ZDWA noch Zilch gespielt hast: höchstens einmal, zufällig zwischen {start} und {end} Uhr (Schweizer Zeit).")
+    .replace("{start}", status.daily_reminder_window_start || "17:00")
+    .replace("{end}", status.daily_reminder_window_end || "21:00");
 }
 
 export function bindPushPreferences(form, refresh) {

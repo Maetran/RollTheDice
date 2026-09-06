@@ -28,7 +28,7 @@ async function mockPush(page, { enabled = false, available = true, denied = fals
   const status = () => ({
     available, enabled: gameInvites || dailyReminder, subscribed,
     game_invites_enabled: gameInvites, daily_reminder_enabled: dailyReminder,
-    daily_reminder_time: "18:00", daily_reminder_timezone: "Europe/Zurich",
+    daily_reminder_window_start: "17:00", daily_reminder_window_end: "21:00", daily_reminder_timezone: "Europe/Zurich",
     public_key: "BA" + "A".repeat(85),
   });
   await page.route("**/api/web-push/subscription", async route => {
@@ -113,7 +113,7 @@ for (const product of [
     const daily = page.locator('input[name="dailyReminder"]');
     await expect(invites).toBeChecked();
     await expect(daily).not.toBeChecked();
-    await expect(page.locator('[data-push-reminder-schedule]')).toContainText("18:00");
+    await expect(page.locator('[data-push-reminder-schedule]')).toHaveText("Nur wenn du heute weder ZDWA noch Zilch gespielt hast: höchstens einmal, zufällig zwischen 17:00 und 21:00 Uhr (Schweizer Zeit).");
     await invites.uncheck();
     await daily.check();
     await page.getByRole("button", { name: "Push-Auswahl speichern" }).click();
@@ -134,7 +134,7 @@ for (const product of [
     await changeLanguage("en");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByLabel("Receive a daily play reminder", { exact: true })).toBeChecked();
-    await expect(page.locator('[data-push-reminder-schedule]')).toHaveText("Daily at 18:00 (Swiss time), at most once across both games.");
+    await expect(page.locator('[data-push-reminder-schedule]')).toHaveText("Only if you haven't played ZDWA or Zilch today: at most once, at a random time between 17:00 and 21:00 (Swiss time).");
     await changeLanguage("de");
     await expect(page.locator("html")).toHaveAttribute("lang", "de");
     await page.locator(product.disable).click();
