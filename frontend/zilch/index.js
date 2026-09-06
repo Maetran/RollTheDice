@@ -1,6 +1,7 @@
 import { apiFetch, authError, escapeHtml, loadAuth, logout } from "../shared/auth.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
+import { mountAllowlistSettings, mountProfileAllowlist } from "../shared/player-allowlist.js";
 import {
   bindPushPreferences,
   disableGameInvitePush,
@@ -440,7 +441,7 @@ function playerCollectionMarkup(value) {
   const href = own
     ? zilchPath("/konto#achievements")
     : zilchPath(`/spieler/${encodeURIComponent(username)}`);
-  return `<a class="zilch-player-achievement-link" href="${escapeHtml(href)}">${identity}</a>`;
+  return `<a class="zilch-player-achievement-link" href="${escapeHtml(href)}"${gameId ? ' target="_blank" rel="noopener noreferrer"' : ""}>${identity}</a>`;
 }
 
 function participantStatusLabel(player, { active = false } = {}) {
@@ -1995,13 +1996,6 @@ function zilchAccountSettingsMarkup(username) {
       <p id="zilchGameInvitePushStatus" class="zilch-settings-message" role="status"></p>
       <form id="zilchPushPreferencesForm" class="zilch-settings-form" hidden>
         <label><input type="checkbox" name="gameInvites"> ${escapeHtml(t("Mitspieler-Einladungen erhalten"))}</label>
-        <label>${escapeHtml(t("Einladungen akzeptieren von"))}
-          <select name="inviteAudience"><option value="all">${escapeHtml(t("Allen Spielern"))}</option><option value="allowlist">${escapeHtml(t("Nur ausgewählten Spielern"))}</option></select>
-        </label>
-        <div data-push-allowlist hidden>
-          <label>${escapeHtml(t("Erlaubte Spieler"))}<textarea name="allowedSenders" rows="3" maxlength="3300" autocomplete="off" spellcheck="false"></textarea></label>
-          <p class="zilch-muted">${escapeHtml(t("Ein Benutzername pro Zeile, höchstens 100. Eine leere Auswahlliste blockiert alle Mitspieler-Einladungen. Deine Liste ist privat und gilt für beide Spiele."))}</p>
-        </div>
         <label><input type="checkbox" name="dailyReminder"> ${escapeHtml(t("Tägliche Spielerinnerung erhalten"))}</label>
         <p class="zilch-muted" data-push-reminder-schedule></p>
         <p class="zilch-muted">${escapeHtml(t("Bei beiden angemeldeten Spielen wechseln sich ZDWA und Zilch ab. Der Klick auf eine Erinnerung öffnet die passende Lobby."))}</p>
@@ -2010,6 +2004,10 @@ function zilchAccountSettingsMarkup(username) {
         <button class="primary" type="submit">${escapeHtml(t("Push-Auswahl speichern"))}</button>
         <p class="zilch-settings-message" data-push-preferences-message role="status"></p>
       </form>
+    </section>
+    <section class="zilch-card zilch-account-settings-card" aria-labelledby="allowlistSettingsTitle">
+      <h2 id="allowlistSettingsTitle">${escapeHtml(t("Deine Spielerauswahl"))}</h2>
+      <div data-allowlist-settings></div>
     </section>
     <section class="zilch-card zilch-account-settings-card">
       <p class="eyebrow">${escapeHtml(t("Mein Konto"))}</p>
@@ -2234,6 +2232,7 @@ function bindZilchAccountSettings() {
     pushEnableButton.addEventListener("click", () => { void changePushSetting(enableGameInvitePush, pushEnableButton); });
     pushDisableButton.addEventListener("click", () => { void changePushSetting(disableGameInvitePush, pushDisableButton); });
     bindPushPreferences(document.getElementById("zilchPushPreferencesForm"), refreshPushSettings);
+    mountAllowlistSettings(document.querySelector("[data-allowlist-settings]"), { context: "zilch" });
     void refreshPushSettings();
   }
   if (passwordForm && !passwordForm.dataset.bound) {
@@ -2335,7 +2334,8 @@ async function renderPlayerAchievements() {
     const slot = document.getElementById("zilchPlayerAchievementsBody");
     const displayName = String(state.playerAchievements.player?.username || state.playerAchievements.player?.display_name || requestedName);
     document.title = `${displayName} – ${t("Zilch-Awards")}`;
-    if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2></section>${achievementRankSummaryMarkup(state.playerAchievements)}${achievementRankLegendMarkup(state.playerAchievements, state.achievementRankLegend)}${achievementsCatalogMarkup(state.playerAchievements)}`;
+    if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2><div id="zilchProfileAllowlist"></div></section>${achievementRankSummaryMarkup(state.playerAchievements)}${achievementRankLegendMarkup(state.playerAchievements, state.achievementRankLegend)}${achievementsCatalogMarkup(state.playerAchievements)}`;
+    mountProfileAllowlist(document.getElementById("zilchProfileAllowlist"), { userId: state.playerAchievements.player?.id, context: "zilch" });
   } catch (_) {
     const slot = document.getElementById("zilchPlayerAchievementsBody");
     if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Awards nicht verfügbar"))}</h2><p>${escapeHtml(t("Dieser Zilch-Spieler konnte nicht gefunden werden."))}</p>${zilchNavigationButton(zilchPath("/konto#achievements"), t("Meine Zilch-Awards"))}</section>`;
@@ -3005,6 +3005,7 @@ function renderRulesContent(facts) {
       <p class="zilch-rules-overview__note">${escapeHtml(t("Bei einem Spezialwurf nennt Alle Punktewürfel den Wurf und zeigt den Stempel „Freier Wurf“."))}</p>
       <p class="zilch-rules-overview__note">${escapeHtml(t("Aktueller Wurf zeigt bisher gehaltene und aktuell ausgewählte Punkte getrennt; zusammen ist das der Wert zum Sichern."))}</p>
       <p class="zilch-rules-overview__note">${escapeHtml(t("In einer Zwei-Personen-Partie sehen beide Seiten dieselben Empfehlungen, bereits gehaltenen Rundenpunkte und die gerade gewählte gültige Wertung. Nur die Person am Zug kann sie ändern."))}</p>
+      <p class="zilch-rules-overview__note">${escapeHtml(t("Die größeren Empfehlungskacheln zeigen die passenden Würfel: gleiche Augen mit Anzahl, gemischte Kombinationen mit allen beteiligten Würfeln. Ab 1’000 Punkten hilft ein goldener Akzent beim Erkennen. Antippen wählt nur vor; erst Weiterwürfeln oder Sichern übernimmt die Auswahl."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section">
       <h2>${escapeHtml(t("Lobby-Chat und Einladungen"))}</h2>
@@ -3015,7 +3016,7 @@ function renderRulesContent(facts) {
       <p>${escapeHtml(t("Im Konto kannst du Spielerinnerungen separat aktivieren. Nur wenn du heute weder ZDWA noch Zilch gespielt hast, kommt höchstens eine Erinnerung zu einer täglich zufälligen Zeit zwischen 17 und 21 Uhr (Schweizer Zeit). Ein gültiger Wurf oder eine Wertung zählt bereits – du musst die Partie nicht beenden. Je Spiel wechseln 32 Texte; ein Klick öffnet dessen Lobby. Sind beide Spiele für Push angemeldet, wechseln sie sich ab. Manuell ausgelöste Mitspieler-Einladungen bleiben unabhängig von Uhrzeit und Spielaktivität möglich."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section">
-      <p>${escapeHtml(t("Mitspieler-Einladungen kannst du im Konto auf ausgewählte Spieler begrenzen. Trage bis zu 100 bestehende Benutzernamen ein. Nur der tatsächliche Absender zählt; eine leere Auswahlliste blockiert alle Einladungen. Die private Liste gilt für beide Spiele, nicht für Spielerinnerungen oder Versionshinweise."))}</p>
+      <p>${escapeHtml(t("Tippe auf einen Spielernamen und wähle im Profil Zur Spielerauswahl hinzufügen. Gespeichert wird das feste Konto, nicht ein eingetippter Name. Unter Konto → Einstellungen → Deine Spielerauswahl kannst du bis zu 100 Spieler verwalten, einzeln entfernen und Einladungen auf sie begrenzen. Eine leere Liste mit dem Filter Nur ausgewählte Spieler blockiert alle Mitspieler-Einladungen. Die private Auswahl gilt für beide Spiele, ohne Freundschaftsanfrage; Hinzufügen aktiviert kein Push. Erinnerungen und Versionshinweise bleiben unabhängig."))}</p>
       <p>${escapeHtml(t("Versionshinweise sind separat aktivierbar und anfangs ausgeschaltet. Nach einem erfolgreichen Update erhältst du pro Version höchstens einen Hinweis je angemeldetem Gerät des ausgewählten Spiels: zu neuen Funktionen oder Verbesserungen an der Stabilität. Ein Klick öffnet dessen Lobby. Frühere Versionen werden nicht nachträglich gemeldet."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section">
@@ -3917,6 +3918,15 @@ function optionMatchesDraft(option, indices) {
   return selected.every(index => candidate.includes(index));
 }
 
+function recommendationPreview(snapshot, option, recommendationIndex) {
+  const values = normalizedIndices(option.dice_indices).map(index => Number(snapshot._dice?.[index]))
+    .filter(value => Number.isInteger(value) && value >= 1 && value <= 6).sort((a, b) => a - b);
+  if (!values.length) return "";
+  const sameFace = values.every(value => value === values[0]);
+  const dice = sameFace ? values.slice(0, 1) : values;
+  return `<span class="zilch-recommendation__visual${sameFace ? " is-single-face" : " is-dice-group"}${values.length === 6 && !sameFace ? " is-six-dice" : ""}" aria-hidden="true" data-zilch-preview-values="${values.join(",")}">${dice.map((value, index) => diePips(value, `recommendation-${recommendationIndex}-${index}`)).join("")}${sameFace && values.length > 1 ? `<b class="zilch-recommendation__count">×${values.length}</b>` : ""}</span>`;
+}
+
 function recommendationCards(snapshot, turnState, isMyTurn, canInteract) {
   const options = Array.isArray(snapshot._zilch_quick_holds) ? snapshot._zilch_quick_holds : [];
   const selectable = Boolean(canInteract && turnState?.can_select_hold && !snapshot._paused && !snapshot._finished && !state.pendingAction);
@@ -3933,8 +3943,8 @@ function recommendationCards(snapshot, turnState, isMyTurn, canInteract) {
     const label = compactOptionTitle(option);
     const shortcut = ZILCH_RECOMMENDATION_SHORTCUTS[index];
     const accessibleLabel = `+${number(option.points)} ${label}${hotDice ? ` · ${t("Freier Wurf")}` : ""}`;
-    return `<li><button type="button" class="zilch-recommendation${selected ? " is-selected" : ""}${hotDice ? " is-hot" : ""}${isMyTurn ? "" : " is-viewing"}" data-zilch-recommendation="${escapeHtml(option.id)}" data-zilch-shortcut="${shortcut}" ${selectable ? "" : "disabled"}${selectable ? ` aria-keyshortcuts="${shortcut}"` : ""} aria-label="${escapeHtml(accessibleLabel)}" aria-pressed="${selected ? "true" : "false"}">
-      <strong aria-hidden="true">${selected ? "✓ " : ""}+${number(option.points)}</strong><span aria-hidden="true">${escapeHtml(label)}</span>${selectable ? `<kbd class="zilch-recommendation__shortcut" aria-hidden="true">${shortcut.toUpperCase()}</kbd>` : ""}
+    return `<li><button type="button" class="zilch-recommendation${selected ? " is-selected" : ""}${hotDice ? " is-hot" : ""}${Number(option.points) >= 1000 ? " is-high-value" : ""}${isMyTurn ? "" : " is-viewing"}" data-zilch-recommendation="${escapeHtml(option.id)}" data-zilch-shortcut="${shortcut}" ${selectable ? "" : "disabled"}${selectable ? ` aria-keyshortcuts="${shortcut}"` : ""} aria-label="${escapeHtml(accessibleLabel)}" aria-pressed="${selected ? "true" : "false"}">
+      <strong aria-hidden="true">${selected ? "✓ " : ""}+${number(option.points)}</strong><span class="zilch-recommendation__label" aria-hidden="true">${escapeHtml(label)}</span>${recommendationPreview(snapshot, option, index)}${selectable ? `<kbd class="zilch-recommendation__shortcut" aria-hidden="true">${shortcut.toUpperCase()}</kbd>` : ""}
     </button></li>`;
   }).join("")}</ol>
   </div>`;

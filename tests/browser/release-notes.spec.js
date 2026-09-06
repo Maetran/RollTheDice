@@ -118,7 +118,7 @@ for (const product of [
     await expect(history.locator("details")).toHaveCount(10);
     await expect(dialog).toHaveCount(0);
     await history.locator("summary").first().click();
-    await expect(history.locator("details").first().locator("li")).toHaveCount(7);
+    await expect(history.locator("details").first().locator("li")).toHaveCount(authored.player_notes.de.changes.length);
     await page.evaluate(() => window.ZDWA_RELEASE_NOTES.refresh());
     await expect(history.locator("details").first()).toHaveAttribute("open", "");
     const support = page.locator(".release-notes-support");

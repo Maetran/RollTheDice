@@ -159,6 +159,17 @@ test.describe("installed PWA account navigation", () => {
         await page.locator("#late-account-link").evaluate(link => { link.href = "/regeln"; });
         await expect(page.locator("#late-account-link")).toHaveAttribute("href", "/zdwa/regeln");
       }
+      await page.goto(`${origin}/${destination}/spieler/Admin`);
+      await expect(page.locator("html")).toHaveAttribute("data-game", destination);
+      await expect(page.getByRole("button", { name: "Zur Spielerauswahl hinzufügen", exact: true })).toBeEnabled();
+      await expect(page.getByRole("link", { name: "Spielerauswahl im Konto verwalten", exact: true })).toHaveAttribute("href", `/${destination}/konto#settings`);
+      if (source === "zilch") {
+        // The clean Zilch profile and the ZDWA bridge use the same account.
+        await page.goto(`${origin}/spieler/Admin`);
+        await expect(page.locator("html")).toHaveAttribute("data-game", "zilch");
+        await expect(page.getByRole("button", { name: "Zur Spielerauswahl hinzufügen", exact: true })).toBeEnabled();
+        await expect(page.getByRole("link", { name: "Spielerauswahl im Konto verwalten", exact: true })).toHaveAttribute("href", "/konto#settings");
+      }
     });
   }
 });

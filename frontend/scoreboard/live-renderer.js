@@ -97,13 +97,13 @@ function renderScoreboard(mount, sb, {
       const members = (ent.members || [])
         .map(pid => sb._players.find(p => String(p.id) === String(pid)) || { id: pid, name: pid })
         .filter(Boolean);
-      membersHTML = members.map(player => `<span class="badge">${playerNameMarkup(player, { compactRank: true })}</span>`).join(" ");
+      membersHTML = members.map(player => `<span class="badge">${playerNameMarkup(player, { compactRank: true, profileLink: true })}</span>`).join(" ");
     }
 
     grid += `
       <div class="player-card${isTurn ? " turn": ""}${isMyBoard ? " me": ""}" data-board-id="${esc(id)}">
         <div class="pc-head">
-          <div class="pc-name">${isTeamMode ? esc(ent.name || "—") : playerNameMarkup(ent, { compactRank: true, fallback: "—" })}</div>
+          <div class="pc-name">${isTeamMode ? esc(ent.name || "—") : playerNameMarkup(ent, { compactRank: true, fallback: "—", profileLink: true })}</div>
           <div class="pc-total">Total: ${overall}</div>
         </div>
         ${isTeamMode ? `<div class="pc-members">${membersHTML}</div>` : ``}

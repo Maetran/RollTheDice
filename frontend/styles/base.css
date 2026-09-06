@@ -9,6 +9,7 @@
 
 /* === Vars & Reset === */
 [hidden]{ display:none !important; }
+a.player-name-label { color: inherit; text-underline-offset: .15em; }
 
 :root{
   --bg:#f4f6f8;

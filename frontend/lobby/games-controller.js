@@ -58,7 +58,7 @@ function renderOpenGames(games) {
       ? statuses
       : waiting.map((name) => ({ name }));
     const badges = listedPlayers.length
-      ? listedPlayers.map((player) => `<span class="badge">${playerNameMarkup(player, { compactRank: true })}</span>`).join(" ")
+      ? listedPlayers.map((player) => `<span class="badge">${playerNameMarkup(player, { compactRank: true, profileLink: true })}</span>`).join(" ")
       : '<span class="muted small">Noch keine Spieler</span>';
     return `<div class="game-row">
       <div class="meta">
@@ -111,7 +111,7 @@ function renderRunningGames(games) {
         const name = typeof player === "string" ? player : player.name || "Spieler";
         const connected = typeof player === "string" || Boolean(player.connected);
         const playerData = typeof player === "string" ? { name } : player;
-        return `<span class="badge ${connected ? "online" : "offline"}">${playerNameMarkup(playerData, { compactRank: true })}${connected ? "" : " offline"}</span>`;
+        return `<span class="badge ${connected ? "online" : "offline"}">${playerNameMarkup(playerData, { compactRank: true, profileLink: true })}${connected ? "" : " offline"}</span>`;
       }).join(" ")
       : '<span class="muted small">Spieler unbekannt</span>';
     const canResume = Boolean(localPlayerIdFor(gameId) || game.my_player_id);
@@ -120,7 +120,7 @@ function renderRunningGames(games) {
         const remaining = game.pause_remaining_label || game.timeout_label || "";
         const offline = Array.isArray(game.offline) ? game.offline : [];
         const waitText = offline.length
-          ? `wartet auf ${offline.map((player) => playerNameMarkup(player, { compactRank: true })).join(", ")}`
+          ? `wartet auf ${offline.map((player) => playerNameMarkup(player, { compactRank: true, profileLink: true })).join(", ")}`
           : "manuell pausiert";
         const timeText = remaining ? ` • Restzeit: ${escapeHtml(remaining)}` : "";
         return `<div class="sub warn-line">Pausiert: ${waitText}${timeText}</div>`;
@@ -130,9 +130,9 @@ function renderRunningGames(games) {
       const translate = window.ZDWA_I18N?.t || ((text) => text);
       const player = progress.members?.length
         ? `${escapeHtml(progress.name)} <span class="muted small">(${progress.members.map((member) => (
-          typeof member === "string" ? escapeHtml(member) : playerNameMarkup(member, { compactRank: true })
+          typeof member === "string" ? escapeHtml(member) : playerNameMarkup(member, { compactRank: true, profileLink: true })
         )).join(", ")})</span>`
-        : playerNameMarkup(progress, { compactRank: true });
+        : playerNameMarkup(progress, { compactRank: true, profileLink: true });
       return `<div class="muted small progress-line">
         <b>${player}</b> — ${escapeHtml(translate("Felder"))} <b>${progress.filled}/${progress.of || 48}</b> • ${escapeHtml(translate("Punkte"))} <b>${progress.points}</b>
       </div>`;

@@ -1,4 +1,5 @@
 @import "./base.css";
+@import "./player-allowlist.css";
 @import "./release-notes.css";
 
 html[data-game="zilch"],
@@ -4277,6 +4278,35 @@ html[data-game="zilch"] body {
   margin-top: .7rem;
   padding-top: .55rem;
   border-top: 1px dashed rgba(132, 83, 36, .48);
+}
+
+/* Quick holds: 56px touch targets (+27% over 44px) and a literal preview of
+   the scoring dice. Text, points, selection and keyboard shortcuts remain
+   explicit; artwork never substitutes for the server's recommendation. */
+.zilch-shell--game .zilch-recommendation {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) 2.5rem;
+  grid-template-areas: "score dice" "label dice";
+  min-height: 3.5rem;
+  row-gap: .18rem;
+  column-gap: .35rem;
+  padding: .38rem .45rem;
+}
+.zilch-shell--game .zilch-recommendation > strong { grid-area: score; align-self: end; font-size: 1.15rem; }
+.zilch-shell--game .zilch-recommendation > .zilch-recommendation__label { grid-area: label; align-self: start; white-space: normal; overflow: visible; font-size: .82rem; line-height: 1.15; }
+.zilch-shell--game .zilch-recommendation > .zilch-recommendation__visual { grid-area: dice; display: grid; justify-content: center; align-content: center; gap: .1rem; overflow: visible; }
+.zilch-recommendation__visual.is-single-face { justify-items: center; }
+.zilch-recommendation__visual.is-dice-group { grid-template-columns: repeat(2, auto); }
+.zilch-recommendation__visual.is-six-dice { grid-template-columns: repeat(3, auto); }
+.zilch-shell--game .zilch-recommendation__visual .zilch-die__face { display: block; width: 1.05rem; height: 1.05rem; filter: none; }
+.zilch-shell--game .zilch-recommendation__visual.is-single-face .zilch-die__face { width: 1.6rem; height: 1.6rem; }
+.zilch-shell--game .zilch-recommendation__visual.is-six-dice .zilch-die__face { width: .78rem; height: .78rem; }
+.zilch-recommendation__count { font-size: .75rem; line-height: 1; }
+.zilch-shell--game .zilch-recommendation__shortcut { position: absolute; top: .2rem; right: .2rem; width: .8rem; height: .8rem; font-size: .54rem; }
+.zilch-shell--game .zilch-recommendation.is-high-value:not(.is-selected) { border-color: #c18a25; background: #fff0bb; box-shadow: inset .18rem 0 #d69e32, .08rem .11rem 0 rgba(55, 28, 10, .18); }
+@media (max-width: 760px) {
+  .zilch-shell--game .zilch-recommendation > strong { font-size: 1.18rem; }
+  .zilch-shell--game .zilch-recommendation > .zilch-recommendation__label { font-size: .86rem; }
 }
 
 .zilch-shell--game .zilch-final-awards h3 {

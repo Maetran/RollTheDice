@@ -10,6 +10,7 @@ const targets = [
   { source: "frontend/shared/auth.js", output: "app/static/auth.js", format: "esm" },
   { source: "frontend/shared/web-push.js", output: "app/static/web-push.js", format: "esm" },
   { source: "frontend/shared/release-notes.js", output: "app/static/release-notes.js", format: "esm" },
+  { source: "frontend/shared/player-allowlist.js", output: "app/static/player-allowlist.js", format: "esm" },
   { source: "frontend/shared/emoji.js", output: "app/static/emoji.js", format: "iife" },
   {
     sources: [

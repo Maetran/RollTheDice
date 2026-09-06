@@ -757,9 +757,10 @@ konsistentes Datenbackup sichern, ansonsten bevorzugt vorwärts reparieren.
 
 `game_invite_push_audience` ist standardmäßig `all`. Mit `allowlist` erhalten
 Konten nur Einladungen von den in `push_invite_allowed_senders` gespeicherten
-Absender-IDs. Die Kontoeinstellung akzeptiert bis zu 100 aktive, bestehende
-Benutzernamen, normalisiert und dedupliziert sie und verwirft unbekannte oder
-eigene Namen atomar. Eine leere Allowlist sperrt alle Einladungen. Es zählt
+Absender-IDs. Über ein Spielerprofil in ZDWA oder Zilch werden bis zu 100 aktive
+Konten hinzugefügt; die Kontoeinstellung zeigt die Liste mit einzelnen
+Entfernen-Aktionen. Freie Namenseingabe ist in der Oberfläche nicht mehr nötig.
+Eine leere Allowlist sperrt im Modus `allowlist` alle Einladungen. Es zählt
 der authentifizierte Auslöser, nicht ein anderer Spieler am Tisch.
 
 Die Liste ist privat, gerichtet und spiel-/geräteübergreifend. Sie gilt nicht
@@ -767,6 +768,21 @@ für Erinnerungen und Versionshinweise; die bisherigen Einladungslimits bleiben
 unverändert. Das ist die Grundlage einer späteren Friendlist, noch kein System
 für gegenseitige Freundschaftsanfragen. Alte Clients können ihre bisherigen
 Push-Schalter weiter speichern, ohne neue Einstellungen zurückzusetzen.
+
+`GET /api/web-push/allowlist` liefert ausschließlich die eigene Liste ohne
+Cache. `PUT /api/web-push/allowlist` ändert nur den Filter; `PUT` und `DELETE`
+auf `/api/web-push/allowlist/{sender_user_id}` bearbeiten genau eine Mitgliedschaft.
+Schreibzugriffe verlangen Anmeldung, CSRF und die erwartete `viewer_id`.
+SQLite-Schreibreservierung vor dem Zählen schützt auch parallele Hinzufügungen
+vor Überschreiten des Limits oder verlorenen Einträgen. Erneutes Hinzufügen und
+Entfernen sind idempotent. Deaktivierte Mitglieder bleiben zum Entfernen sichtbar,
+können aber nicht neu hinzugefügt werden.
+
+Diese Änderung benötigt keine Migration. Bestehende Konto-IDs, Filter und
+Einwilligungen bleiben erhalten. Die Liste ist auch ohne eingerichtetes Push
+bearbeitbar und aktiviert niemals selbst eine Push-Kategorie. Für ältere PWA-
+Clients bleibt der bisherige Namenslisten-Parameter kompatibel; neue Clients
+senden beim Speichern der Push-Schalter keine komplette Liste mehr zurück.
 
 ### Erster Administrator
 

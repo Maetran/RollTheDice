@@ -11,7 +11,51 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
-## Nächster Release / Next release — Neuigkeiten direkt in der App
+## Nächster Release / Next release — Deine Leute, klarere Würfel
+
+### Deutsch
+
+- In beiden Spielen lassen sich Spieler direkt am Profil zur privaten
+  Spielerauswahl hinzufügen oder daraus entfernen. Die Liste speichert feste
+  Konten; Namen müssen nicht mehr fehlerfrei eingetippt werden. Spielernamen im
+  Lobby-Chat führen ebenfalls zum Profil. Aus einer laufenden Partie öffnet
+  sich das Profil separat, damit die Spielverbindung bestehen bleibt.
+- **Konto → Einstellungen → Deine Spielerauswahl** zeigt die ausgewählten
+  Konten mit einzelnen Entfernen-Aktionen. Du kannst die Liste auch bei
+  ausgeschaltetem Push pflegen. Hinzufügen aktiviert weder Push noch den
+  Filter automatisch. Es bleibt eine private, einseitige Auswahl ohne
+  Freundschaftsanfragen; bestehende Einträge und Einwilligungen bleiben erhalten.
+- Zilch-Empfehlungen sind mit mindestens 56 Pixeln Höhe rund 27 % größer.
+  Passende Würfel, Mengenangaben und ein goldener Akzent ab 1’000 Punkten helfen
+  beim schnellen Erkennen. Beschriftungen, Punkte und Tastenkürzel bleiben
+  sichtbar. Spielregeln und Bestätigung durch Weiterwürfeln oder Sichern ändern
+  sich nicht.
+- Technisch: einzelne kontogebundene Änderungen statt kompletter Textlisten,
+  Schutz gegen veraltete Kontositzungen und parallele Hinzufügungen. Keine neue
+  Datenbankmigration; ältere Push-Clients bleiben kompatibel.
+
+### English
+
+- Add or remove players from your private selection directly on their profile
+  in either game. The list stores fixed accounts, so usernames no longer need
+  to be typed correctly. Names in lobby chat also link to profiles. From a
+  live game, profiles open separately to preserve the game connection.
+- **Account → Settings → Your player selection** lists the selected accounts
+  with individual remove actions. Manage it even with push off. Adding someone
+  enables neither push nor the filter automatically. This remains a private,
+  one-way selection without friend requests; existing entries and consent are
+  preserved.
+- Zilch recommendation tiles have a minimum height of 56 pixels, about 27 %
+  larger. Matching dice, counts and a gold accent for at least 1,000 points make
+  them easier to recognize. Labels, points and shortcuts stay visible. Scoring
+  rules and confirmation through rolling again or banking are unchanged.
+- Internally: account-bound individual edits replace whole text lists, with
+  protection against stale account sessions and concurrent additions. No new
+  database migration; older push clients remain compatible.
+
+## 2026-09-06 — Neuigkeiten direkt in der App / In-app release notes
+
+[Release-Code: 743cff7](https://github.com/Maetran/RollTheDice/commit/743cff7d779c318aab8ff20df878171368df520c)
 
 ### Deutsch
 

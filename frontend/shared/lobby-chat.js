@@ -1,4 +1,5 @@
 import { loadAuth } from "./auth.js";
+import { playerProfileHref } from "./player-allowlist.js";
 
 const CONTEXTS = new Set(["all", "zdwa", "zilch"]);
 
@@ -210,8 +211,10 @@ export function mountLobbyChat(mount, { context = "zdwa", initialAuth = null } =
         row.dataset.gameType = message.game_type;
         const meta = document.createElement("span");
         meta.className = "lobby-chat__sender";
-        const sender = document.createElement("strong");
+        const hasAccount = Number.isInteger(Number(message.user_id)) && Number(message.user_id) > 0;
+        const sender = document.createElement(hasAccount ? "a" : "strong");
         sender.textContent = message.sender;
+        if (hasAccount) sender.href = playerProfileHref(message.sender, context);
         const badge = document.createElement("span");
         badge.className = "lobby-chat__game-badge";
         badge.textContent = gameLabel(message.game_type);

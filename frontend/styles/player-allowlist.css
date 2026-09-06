@@ -1,0 +1,14 @@
+.player-allowlist { margin-block: 1rem; }
+.player-allowlist-controls { min-width: 0; }
+.player-allowlist-hint, .player-allowlist-message, .player-allowlist-count { font-size: .85rem; line-height: 1.5; color: var(--muted); }
+.player-allowlist-message:empty { display: none; }
+.player-allowlist-audience { display: flex; align-items: end; flex-wrap: wrap; gap: .65rem; }
+.player-allowlist-audience label { display: grid; gap: .35rem; flex: 1 1 12rem; }
+.player-allowlist-audience select { width: 100%; }
+.player-allowlist button, .player-allowlist select { min-height: 44px; }
+.player-allowlist a { color: var(--accent); overflow-wrap: anywhere; }
+.player-allowlist-list { margin: .6rem 0; padding: 0; list-style: none; max-height: 22rem; overflow-y: auto; }
+.player-allowlist-list li { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; padding: .5rem 0; border-bottom: 1px solid var(--border); }
+.player-allowlist-list li > :first-child { flex: 1 1 8rem; min-width: 0; }
+.player-allowlist-list small { flex-basis: 100%; color: var(--muted); }
+html[data-game="zilch"] .player-allowlist :is(.player-allowlist-hint, .player-allowlist-message, .player-allowlist-count) { color: var(--zilch-muted); }

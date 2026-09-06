@@ -1187,7 +1187,7 @@ test("a Zilch roll remains visible for 500 ms before the overlay and turn handof
       });
     }, snapshots.thirdZilch);
 
-    const visibleFaces = () => page.locator(".zilch-die__pips").evaluateAll(groups => (
+    const visibleFaces = () => page.locator(".zilch-dice .zilch-die__pips").evaluateAll(groups => (
       groups.map(group => group.querySelectorAll("circle").length)
     ));
     const overlay = page.locator("[data-zilch-event-overlay]");
@@ -1280,7 +1280,7 @@ test("an incoming CPU roll lands visibly without a local roll action", async ({ 
     }, { scoreboard: cpuRoll, event: cpuRollEvent });
 
     await expect(page.locator(".zilch-dice")).toHaveClass(/is-landing/);
-    expect(await page.locator(".zilch-die__pips").evaluateAll(groups => (
+    expect(await page.locator(".zilch-dice .zilch-die__pips").evaluateAll(groups => (
       groups.map(group => group.querySelectorAll("circle").length)
     ))).toEqual([4, 4, 4, 5, 2, 6]);
     expect(await page.evaluate(() => window.__zilchGameScreenFixtureMessages.some(
@@ -2050,6 +2050,87 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
   } finally {
     await context.close();
   }
+});
+
+test("larger recommendation tiles preview actual dice without clipping or committing the draft", async ({ browser, baseURL }, testInfo) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const shellHtml = await (await page.goto("/zilch")).text();
+    const gameId = "recommendation-preview-fixture";
+    await installGameScreenFixture(page, gameId, { initial: fixtureSnapshots().holdOptions });
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({ contentType: "text/html; charset=utf-8", body: shellHtml }));
+    await page.goto(`/zilch/spiel/${gameId}`);
+    const triple = page.locator('[data-zilch-recommendation="fixture-three-ones"]');
+    const five = page.locator('[data-zilch-recommendation="fixture-single-five"]');
+    await expect(triple.locator("[data-zilch-preview-values]")).toHaveAttribute("data-zilch-preview-values", "1,1,1");
+    await expect(triple.locator(".zilch-recommendation__count")).toHaveText("×3");
+    await expect(triple).toHaveClass(/is-high-value/);
+    await expect(five.locator("[data-zilch-preview-values]")).toHaveAttribute("data-zilch-preview-values", "5");
+    await expect(five).not.toHaveClass(/is-high-value/);
+    await expect(triple.locator("[data-zilch-preview-values]")).toHaveAttribute("aria-hidden", "true");
+    await expect(page.locator(".zilch-die")).toHaveCount(6);
+
+    for (const width of [320, 390, 768, 1280]) {
+      await page.setViewportSize({ width, height: 844 });
+      await triple.scrollIntoViewIfNeeded();
+      const geometry = await triple.evaluate(button => ({
+        height: button.getBoundingClientRect().height,
+        overflow: document.documentElement.scrollWidth > innerWidth + 1,
+        clipped: [...button.querySelectorAll("strong, .zilch-recommendation__label")]
+          .filter(node => node.scrollWidth > node.clientWidth + 1).map(node => node.textContent),
+      }));
+      await page.screenshot({ path: testInfo.outputPath(`recommendations-${width}.png`) });
+      expect(geometry.height, `${width}px touch target`).toBeGreaterThanOrEqual(56);
+      expect(geometry.overflow, `${width}px page fits`).toBe(false);
+      expect(geometry.clipped, `${width}px labels fit`).toEqual([]);
+    }
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await triple.locator("svg").click();
+    await expect(triple).toHaveAttribute("aria-pressed", "true");
+    expect(await triple.locator("strong").evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+    expect(await page.evaluate(() => window.__zilchGameScreenFixtureMessages.some(message =>
+      ["zilch_select_hold", "zilch_roll_dice", "zilch_bank_points"].includes(message.action)))).toBe(false);
+    await triple.focus();
+    await page.keyboard.press("Enter");
+    await expect(triple).toHaveAttribute("aria-pressed", "false");
+    const profile = page.locator('.zilch-play-layout a.zilch-player-achievement-link').first();
+    await expect(profile).toHaveAttribute("target", "_blank");
+    expect(await page.evaluate(() => {
+      const ids = [...document.querySelectorAll(".zilch-die__face [id]")].map(node => node.id);
+      return new Set(ids).size === ids.length;
+    })).toBe(true);
+  } finally { await context.close(); }
+});
+
+test("recommendation previews distinguish straights and three pairs for players and viewers", async ({ browser, baseURL }, testInfo) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block", viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const shellHtml = await (await page.goto("/zilch")).text();
+    const gameId = "mixed-recommendation-preview-fixture";
+    await installGameScreenFixture(page, gameId, { initial: hotDiceChoiceSnapshot() });
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({ contentType: "text/html; charset=utf-8", body: shellHtml }));
+    await page.goto(`/zilch/spiel/${gameId}`);
+    const preview = page.locator('.zilch-recommendation [data-zilch-preview-values="1,2,3,4,5,6"]');
+    await expect(preview.locator("svg")).toHaveCount(6);
+    await expect(preview).toHaveClass(/is-six-dice/);
+    await page.screenshot({ path: testInfo.outputPath("straight-mobile.png") });
+    const pairs = threePairsHotDiceChoiceSnapshot();
+    await page.evaluate(snapshot => window.__zilchGameScreenFixturePush({ scoreboard: snapshot }), pairs);
+    const pairCard = page.locator('[data-zilch-recommendation="fixture-hot-three-pairs"]');
+    await expect(pairCard.locator("[data-zilch-preview-values]")).toHaveAttribute("data-zilch-preview-values", "2,2,3,3,6,6");
+    await expect(pairCard.locator("svg")).toHaveCount(6);
+    await expect(pairCard).toBeEnabled();
+    await page.screenshot({ path: testInfo.outputPath("three-pairs-mobile.png") });
+    pairs._turn = { player_id: "p2" };
+    await page.evaluate(snapshot => window.__zilchGameScreenFixturePush({ scoreboard: snapshot }), pairs);
+    await expect(pairCard).toBeDisabled();
+    await expect(pairCard.locator("svg")).toHaveCount(6);
+  } finally { await context.close(); }
 });
 
 test("the waiting room stays in the start-roll rail before a second player joins", async ({ browser, baseURL }) => {

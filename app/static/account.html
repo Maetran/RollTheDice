@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=45e84f97bd01">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=45e84f97bd01" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=45e84f97bd01" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=6f54056fc1ab">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=6f54056fc1ab" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=6f54056fc1ab" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=45e84f97bd01">
-  <script src="/static/shell.js?v=45e84f97bd01" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=6f54056fc1ab">
+  <script src="/static/shell.js?v=6f54056fc1ab" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -136,13 +136,6 @@
         <p id="gameInvitePushStatus" class="muted small" role="status"></p>
         <form id="pushPreferencesForm" class="form-stack" hidden>
           <label><input type="checkbox" name="gameInvites"> Mitspieler-Einladungen erhalten</label>
-          <label>Einladungen akzeptieren von
-            <select name="inviteAudience"><option value="all">Allen Spielern</option><option value="allowlist">Nur ausgewählten Spielern</option></select>
-          </label>
-          <div data-push-allowlist hidden>
-            <label>Erlaubte Spieler<textarea name="allowedSenders" rows="3" maxlength="3300" autocomplete="off" spellcheck="false"></textarea></label>
-            <p class="muted small">Ein Benutzername pro Zeile, höchstens 100. Eine leere Auswahlliste blockiert alle Mitspieler-Einladungen. Deine Liste ist privat und gilt für beide Spiele.</p>
-          </div>
           <label><input type="checkbox" name="dailyReminder"> Tägliche Spielerinnerung erhalten</label>
           <p class="muted small" data-push-reminder-schedule></p>
           <p class="muted small">Bei beiden angemeldeten Spielen wechseln sich ZDWA und Zilch ab. Der Klick auf eine Erinnerung öffnet die passende Lobby.</p>
@@ -151,6 +144,10 @@
           <button class="primary" type="submit">Push-Auswahl speichern</button>
           <p class="muted small" data-push-preferences-message role="status"></p>
         </form>
+      </section>
+      <section class="card password-card" aria-labelledby="allowlistSettingsTitle">
+        <h2 id="allowlistSettingsTitle">Deine Spielerauswahl</h2>
+        <div data-allowlist-settings></div>
       </section>
       <section class="card password-card">
         <h2>Passwort ändern</h2>
@@ -166,13 +163,15 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=45e84f97bd01';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=45e84f97bd01';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=45e84f97bd01';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=6f54056fc1ab';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=6f54056fc1ab';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=6f54056fc1ab';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=6f54056fc1ab';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
     initializeReleaseNotes({ context: 'zdwa' });
+    mountAllowlistSettings(document.querySelector('[data-allowlist-settings]'), { context: 'zdwa' });
     document.getElementById('accountName').innerHTML = playerNameMarkup(user, { name: user.username });
     document.getElementById('publicProfileLink').href = `/spieler/${encodeURIComponent(user.username)}`;
     const accountTabs = {

@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Öffentliches ZDWA Spielerprofil mit Statistiken und letzten Spielen.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=45e84f97bd01">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=45e84f97bd01" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=45e84f97bd01" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=6f54056fc1ab">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=6f54056fc1ab" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=6f54056fc1ab" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=45e84f97bd01">
-  <script src="/static/shell.js?v=45e84f97bd01" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=6f54056fc1ab">
+  <script src="/static/shell.js?v=6f54056fc1ab" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -25,6 +25,7 @@
     <section class="card">
       <p class="eyebrow">Öffentliches Spielerprofil</p>
       <h1 id="profileName">Spielerprofil</h1>
+      <div id="profileAllowlist"></div>
       <div id="profileError" class="connection-error" hidden></div>
       <div id="statistics" class="statistics-grid"></div>
       <section class="achievements-section" aria-labelledby="achievementsTitle">
@@ -45,8 +46,9 @@
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=45e84f97bd01';
-    const profilePath = location.pathname.match(/^\/spieler\/([^/]+)\/?$/);
+    import { escapeHtml, formatNumber, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=6f54056fc1ab';
+    import { mountProfileAllowlist } from '/static/player-allowlist.js?v=6f54056fc1ab';
+    const profilePath = location.pathname.match(/^(?:\/zdwa)?\/spieler\/([^/]+)\/?$/);
     let username = new URLSearchParams(location.search).get('user') || '';
     try { if (profilePath) username = decodeURIComponent(profilePath[1]); }
     catch { username = ''; }
@@ -121,6 +123,7 @@
       if (!response.ok) throw new Error(response.status === 404 ? 'Spieler wurde nicht gefunden.' : 'Profil konnte nicht geladen werden.');
       const player = (await response.json()).player;
       document.getElementById('profileName').innerHTML = playerNameMarkup(player, { name: player.username });
+      mountProfileAllowlist(document.getElementById('profileAllowlist'), { userId: player.id, context: 'zdwa' });
       statisticsEl.innerHTML = bucket('Gesamt', player.statistics.overall, { details: false })
         + bucket('Normal', player.statistics.normal)
         + bucket('Hardcore', player.statistics.hardcore);

@@ -317,7 +317,7 @@ class ZilchAchievementApiTestCase(TestCase):
             profile = self._request("GET", "/api/zilch/players/Mani/achievements")
             self.assertEqual(profile.status_code, 200)
             payload = profile.json()
-            self.assertEqual(payload["player"], {"username": "Mani"})
+            self.assertEqual(payload["player"], {"id": mani.id, "username": "Mani"})
             self.assertTrue(payload["unlocked"])
             self.assertEqual(self._request("GET", "/api/zilch/achievements").status_code, 401)
 

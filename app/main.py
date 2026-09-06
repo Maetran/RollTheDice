@@ -19,6 +19,7 @@ from sqlalchemy import select
 
 from .achievements import sync_achievements_for_users
 from .active_games import load_active_games, save_active_game
+from .api_allowlist import router as allowlist_router
 from .api_auth import router as auth_router
 from .api_releases import router as releases_router
 from .api_users import router as users_router
@@ -411,6 +412,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.include_router(auth_router)
 app.include_router(releases_router)
+app.include_router(allowlist_router)
 app.include_router(users_router)
 
 LEGACY_PAGE_PATHS = {
@@ -1633,7 +1635,7 @@ def api_zilch_achievement_ranks(request: Request) -> dict[str, object]:
 
 
 def _safe_zilch_achievement_profile(user_id: int, *, public: bool = False) -> dict[str, object]:
-    """Return an award projection without relational or private game evidence.
+    """Return an award projection without private game evidence.
 
     A public player page may show the same completed/locked collection as the
     established ZDWA profile, but it must never reveal a private result URL or
@@ -1643,7 +1645,11 @@ def _safe_zilch_achievement_profile(user_id: int, *, public: bool = False) -> di
     profile = get_zilch_achievement_profile(user_id)
     player = profile.get("player") if isinstance(profile, dict) else None
     if isinstance(player, dict) and player.get("username"):
-        profile = {**profile, "player": {"username": str(player["username"])}}
+        # The public account ID, also exposed by the ZDWA profile, lets the
+        # viewer select this exact account without trusting a typed name.
+        profile = {**profile, "player": {
+            "username": str(player["username"]), **({"id": user_id} if public else {}),
+        }}
     if public:
         for collection_name in ("unlocked", "locked", "pending"):
             collection = profile.get(collection_name) if isinstance(profile, dict) else None

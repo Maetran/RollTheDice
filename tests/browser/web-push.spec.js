@@ -28,6 +28,17 @@ async function mockPush(page, { enabled = false, available = true, denied = fals
   let releaseAlerts = false;
   let audience = "all";
   let allowedSenders = [];
+  const viewer = (await (await page.request.get("/api/auth/me")).json()).user.id;
+  await page.route("**/api/web-push/allowlist", async route => {
+    if (route.request().method() === "PUT") {
+      const payload = route.request().postDataJSON();
+      expect(payload.viewer_id).toBe(viewer);
+      expect(route.request().headers()["x-csrf-token"]).toBeTruthy();
+      audience = payload.audience;
+      calls.push({ allowlist: payload });
+    }
+    await route.fulfill({ json: { viewer_id: viewer, audience, players: [], limit: 100 } });
+  });
   const status = () => ({
     available, enabled: gameInvites || dailyReminder || releaseAlerts, subscribed,
     game_invites_enabled: gameInvites, daily_reminder_enabled: dailyReminder,
@@ -161,56 +172,44 @@ for (const product of [
     await page.goto(product.path);
     const releases = page.getByLabel("Versionshinweise erhalten", { exact: true });
     const audience = page.getByLabel("Einladungen akzeptieren von");
-    const names = page.getByLabel("Erlaubte Spieler", { exact: true });
     await expect(releases).not.toBeChecked();
-    await expect(names).toBeHidden();
+    await expect(page.locator('textarea[name="allowedSenders"]')).toHaveCount(0);
     await releases.check();
     await audience.selectOption("allowlist");
-    await names.fill("Admin\nAllowedFriend");
-    await expect(names).toBeVisible();
+    await page.getByRole("button", { name: "Einladungsauswahl speichern" }).click();
+    await expect(page.locator(".player-allowlist-message")).toHaveText("Spielerauswahl gespeichert.");
     await expect(page.locator('input[name="dailyReminder"]')).not.toBeChecked();
     await page.getByRole("button", { name: "Push-Auswahl speichern" }).click();
     await expect(page.locator('[data-push-preferences-message]')).toHaveText("Push-Auswahl gespeichert.");
-    expect(calls).toContainEqual({ game_invites_enabled: true, daily_reminder_enabled: false, release_notifications_enabled: true,
-      game_invite_audience: "allowlist", allowed_sender_usernames: ["Admin", "AllowedFriend"] });
+    expect(calls).toContainEqual({ game_invites_enabled: true, daily_reminder_enabled: false, release_notifications_enabled: true });
     await page.reload();
     await expect(releases).toBeChecked();
     await expect(audience).toHaveValue("allowlist");
-    await expect(names).toHaveValue("Admin\nAllowedFriend");
-    const box = await names.boundingBox();
+    const box = await audience.boundingBox();
     expect(box.width).toBeGreaterThan(150);
     expect(box.x + box.width).toBeLessThanOrEqual(391);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     const card = page.locator(product.name === "ZDWA" ? ".password-card:has(#pushPreferencesForm)" : ".zilch-account-settings-card:has(#zilchPushPreferencesForm)");
     await page.evaluate(() => document.activeElement?.blur());
     await card.screenshot({ path: testInfo.outputPath("push-settings-mobile.png") });
-    await names.fill("");
-    await page.getByRole("button", { name: "Push-Auswahl speichern" }).click();
-    await expect(page.locator('[data-push-preferences-message]')).toHaveText("Push-Auswahl gespeichert.");
-    await page.reload();
-    await expect(audience).toHaveValue("allowlist");
-    await expect(names).toBeEmpty();
     await page.locator(product.disable).click();
     await expect(releases).toBeHidden();
     await page.reload();
     await expect(page.locator(product.status)).toContainText("sind ausgeschaltet");
+    await expect(audience).toHaveValue("allowlist");
   });
 
-  test(`${product.name} invalid and oversized allowlists show an actionable error without losing input`, async ({ page }) => {
+  test(`${product.name} the account list remains usable without push or a free-text name field`, async ({ page }) => {
     await signIn(page);
-    const calls = await mockPush(page, { enabled: true });
+    const calls = await mockPush(page, { available: false });
     await page.goto(product.path);
     await page.getByLabel("Einladungen akzeptieren von").selectOption("allowlist");
-    const names = page.getByLabel("Erlaubte Spieler", { exact: true });
-    await names.fill("UnknownPlayer");
-    await page.getByRole("button", { name: "Push-Auswahl speichern" }).click();
-    await expect(page.locator('[data-push-preferences-message]')).toHaveText("Bitte verwende nur bestehende, aktive Benutzernamen und nicht deinen eigenen Namen.");
-    await expect(names).toHaveValue("UnknownPlayer");
-    const requests = calls.length;
-    await names.fill(Array.from({ length: 101 }, (_, index) => `Player${index}`).join("\n"));
-    await page.getByRole("button", { name: "Push-Auswahl speichern" }).click();
-    await expect(page.locator('[data-push-preferences-message]')).toHaveText("Du kannst höchstens 100 Spieler auswählen.");
-    expect(calls.length).toBe(requests);
+    await page.getByRole("button", { name: "Einladungsauswahl speichern" }).click();
+    await expect(page.locator(".player-allowlist-message")).toHaveText("Spielerauswahl gespeichert.");
+    await expect(page.locator('textarea[name="allowedSenders"]')).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Spieler finden" })).toBeVisible();
+    await expect(page.locator(product.enable)).toBeDisabled();
+    expect(calls).not.toContain("PUT");
   });
 }
 

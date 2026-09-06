@@ -110,24 +110,15 @@ export function syncPushPreferences(form, status) {
   form.elements.gameInvites.checked = status.game_invites_enabled ?? status.enabled ?? false;
   form.elements.dailyReminder.checked = status.daily_reminder_enabled === true;
   if (form.elements.releaseNotifications) form.elements.releaseNotifications.checked = status.release_notifications_enabled === true;
-  if (form.elements.inviteAudience) form.elements.inviteAudience.value = status.game_invite_audience || "all";
-  if (form.elements.allowedSenders) form.elements.allowedSenders.value = (status.allowed_sender_usernames || []).join("\n");
-  syncAllowlistVisibility(form);
   const schedule = form.querySelector("[data-push-reminder-schedule]");
   if (schedule) schedule.textContent = translated("Nur wenn du heute weder ZDWA noch Zilch gespielt hast: höchstens einmal, zufällig zwischen {start} und {end} Uhr (Schweizer Zeit).")
     .replace("{start}", status.daily_reminder_window_start || "17:00")
     .replace("{end}", status.daily_reminder_window_end || "21:00");
 }
 
-function syncAllowlistVisibility(form) {
-  const fields = form.querySelector("[data-push-allowlist]");
-  if (fields) fields.hidden = form.elements.inviteAudience?.value !== "allowlist";
-}
-
 export function bindPushPreferences(form, refresh) {
   if (!form || form.dataset.bound) return;
   form.dataset.bound = "true";
-  form.elements.inviteAudience?.addEventListener("change", () => syncAllowlistVisibility(form));
   form.addEventListener("submit", async event => {
     event.preventDefault();
     const button = form.querySelector("button[type=submit]");
@@ -135,8 +126,6 @@ export function bindPushPreferences(form, refresh) {
     button.disabled = true;
     message.textContent = translated("Push-Einstellung wird gespeichert …");
     try {
-      const allowedNames = form.elements.allowedSenders?.value.split(/[\n,]+/).map(name => name.trim()).filter(Boolean);
-      if (allowedNames?.length > 100) throw apiError({ detail: "push_allowlist_limit" });
       const response = await apiFetch("/api/web-push/preferences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -144,8 +133,6 @@ export function bindPushPreferences(form, refresh) {
           game_invites_enabled: form.elements.gameInvites.checked,
           daily_reminder_enabled: form.elements.dailyReminder.checked,
           ...(form.elements.releaseNotifications ? { release_notifications_enabled: form.elements.releaseNotifications.checked } : {}),
-          ...(form.elements.inviteAudience ? { game_invite_audience: form.elements.inviteAudience.value } : {}),
-          ...(allowedNames ? { allowed_sender_usernames: allowedNames } : {}),
         }),
       });
       const data = await response.json().catch(() => ({}));

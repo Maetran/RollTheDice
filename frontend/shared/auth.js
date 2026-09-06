@@ -1,3 +1,5 @@
+import { zdwaPath } from "../multigame/routes.js";
+
 let authCache = null;
 let authRequest = null;
 let authEpoch = 0;
@@ -160,7 +162,12 @@ export function playerRankBadge(player, { compact = false, owner = '' } = {}) {
   return `<span class="player-rank player-rank--${escapeHtml(key)}${compact ? ' player-rank--compact' : ''}" role="link" tabindex="0" data-rank-legend data-rank-key="${escapeHtml(key)}" data-rank-points="${points}" data-rank-points-possible="${pointsPossible}"${owner ? ` data-rank-owner="${escapeHtml(owner)}"` : ''} title="${escapeHtml(rankTitle)}" aria-label="${escapeHtml(rankTitle)}"><span class="player-rank-stars" aria-hidden="true">${starText}</span><span class="player-rank-title">${escapeHtml(label)}</span></span>`;
 }
 
-export function playerNameMarkup(player, { name, compactRank = false, fallback = 'Spieler' } = {}) {
+export function playerNameMarkup(player, { name, compactRank = false, fallback = 'Spieler', profileLink = false } = {}) {
   const label = name ?? player?.name ?? player?.username ?? fallback;
-  return `<span class="player-name-with-rank"><span class="player-name-label">${escapeHtml(label)}</span>${playerRankBadge(player, { compact: compactRank, owner: label })}</span>`;
+  const username = player?.username || player?.name;
+  const userId = Number(player?.user_id ?? player?.id);
+  const nameMarkup = profileLink && Number.isInteger(userId) && userId > 0 && username
+    ? `<a class="player-name-label" href="${escapeHtml(zdwaPath(`/spieler/${encodeURIComponent(username)}`))}">${escapeHtml(label)}</a>`
+    : `<span class="player-name-label">${escapeHtml(label)}</span>`;
+  return `<span class="player-name-with-rank">${nameMarkup}${playerRankBadge(player, { compact: compactRank, owner: label })}</span>`;
 }

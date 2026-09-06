@@ -204,13 +204,30 @@ not suppress separately enabled update alerts.
 ### Private invitation allowlist
 
 Account settings offer **All players** (the existing default) or **Selected
-players only**. Add up to 100 existing usernames, one per line. Only the actual
-authenticated sender can satisfy the list, not another player seated at their
-table. An empty allowlist blocks every invitation.
+players only**. Open a player's profile in either game and choose **Add to player
+selection**. Up to 100 accounts are stored by stable user ID, not typed names.
+Player names in the lobby, chat and game link to profiles; opening a profile
+from a live game uses a separate tab so the table stays connected.
+
+Under **Account → Settings → Your player selection**, review the selected
+accounts, remove them individually and save the invitation filter. The list
+remains manageable when push is off. Adding a player enables neither push nor
+the filter automatically. Only the actual authenticated sender can satisfy the
+list, not another player seated at their table. An empty list with **Selected
+players only** blocks every invitation.
 
 The private, one-way list is shared across games and devices and affects only
 player invitations. It is the foundation for a future friendlist; mutual friend
 requests and public friendship profiles are not implemented.
+
+### Zilch recommendation tiles
+
+Quick-hold tiles have 56px minimum touch targets (about 27% larger), clearer
+labels and previews of the dice they select. Matching dice use a face plus a
+count, such as **1 ×3**; mixed combinations show their actual faces. Selections
+worth at least 1,000 points have a gold accent. Points, accessible labels and
+keyboard shortcuts remain explicit. Tapping still only selects a reversible
+draft; the scoring rules and roll/bank confirmation flow are unchanged.
 
 ## Release notes and feedback
 
