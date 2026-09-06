@@ -47,6 +47,7 @@ const ZILCH_ROLL_REVEAL_DURATION_MS = 500;
 const ZILCH_EVENT_OVERLAY_DURATION_MS = 1_350;
 const ZILCH_RECOMMENDATION_SHORTCUTS = ["q", "w", "e", "r", "t", "z", "u", "i"];
 const ZILCH_LEADERBOARD_CATEGORIES = new Set(["solo_sprint", "multiplayer_wins", "cpu_wins", "achievement_points"]);
+const ZILCH_CHAT_HISTORY_LIMIT = 300;
 const state = {
   auth: null,
   details: null,
@@ -88,6 +89,7 @@ const state = {
   terminalAwards: [],
   terminalAwardGameId: "",
   chatOpen: false,
+  reactionChatEntries: [],
   accountTab: "statistics",
   accountHashListenerBound: false,
   leaveDialogOpen: false,
@@ -4110,6 +4112,44 @@ function syncZilchShareControl(snapshot) {
   });
 }
 
+function chatEntryKey(entry) {
+  return [
+    entry?.from_id,
+    entry?.sender,
+    entry?.text,
+    entry?.ts,
+    entry?.kind || "chat",
+  ].map(value => String(value ?? "")).join("\u0000");
+}
+
+function visibleChatHistory(snapshot) {
+  const persisted = Array.isArray(snapshot?._chat_history) ? snapshot._chat_history : [];
+  if (!state.reactionChatEntries.length) return persisted;
+  const persistedKeys = new Set(persisted.map(chatEntryKey));
+  return [...persisted, ...state.reactionChatEntries.filter(entry => !persistedKeys.has(chatEntryKey(entry)))]
+    .sort((left, right) => String(left?.ts || "").localeCompare(String(right?.ts || "")))
+    .slice(-ZILCH_CHAT_HISTORY_LIMIT);
+}
+
+function rememberReactionChatEntry(reaction) {
+  const text = String(reaction?.emoji || "").trim();
+  if (!text || !state.game) return false;
+  const entry = {
+    from_id: reaction?.from_id,
+    sender: String(reaction?.from || t("Spieler")),
+    text,
+    ts: reaction?.ts,
+    kind: "reaction",
+    ...(reaction?.achievement_rank ? { achievement_rank: reaction.achievement_rank } : {}),
+  };
+  const key = chatEntryKey(entry);
+  const persisted = Array.isArray(state.game._chat_history) ? state.game._chat_history : [];
+  if (persisted.some(candidate => chatEntryKey(candidate) === key)) return false;
+  if (state.reactionChatEntries.some(candidate => chatEntryKey(candidate) === key)) return false;
+  state.reactionChatEntries = [...state.reactionChatEntries, entry].slice(-ZILCH_CHAT_HISTORY_LIMIT);
+  return true;
+}
+
 function renderGameState() {
   if (!content) return;
   root?.classList.add("zilch-shell--game");
@@ -4157,7 +4197,7 @@ function renderGameState() {
   // This keeps every recommendation slot free while making the full scoring
   // action a clear, thumb-sized control.
   const turnScoreControls = turnScore;
-  const chatRows = (Array.isArray(snapshot._chat_history) ? snapshot._chat_history : []).map(entry => {
+  const chatRows = visibleChatHistory(snapshot).map(entry => {
     const sender = participantForId(snapshot, entry?.from_id || entry?.player_id || entry?.participant_id);
     const identity = sender
       ? playerCollectionMarkup(sender)
@@ -4602,16 +4642,19 @@ function connectGameSocket() {
         && sameId(payload.chat.from_id, ownParticipantId),
       );
       const history = Array.isArray(state.game._chat_history) ? state.game._chat_history : [];
-      state.game = { ...state.game, _chat_history: [...history, payload.chat].slice(-80) };
+      state.game = { ...state.game, _chat_history: [...history, payload.chat].slice(-ZILCH_CHAT_HISTORY_LIMIT) };
       renderGameState();
       // Match ZDWA's social convention: a received text gets a brief bubble,
       // while the sender only sees it in the shared chat history.
       if (!ownChat && payload.chat?.text) window.emojiUI?.handleChat?.(payload.chat);
     }
-    // Unlike text chat, reactions are deliberately broadcast back to the
-    // sender too. ZDWA uses the same behaviour: every player gets one clear
-    // transient bubble, while no reaction is stored as a chat line.
-    if (payload.emoji) window.emojiUI?.handleRemote?.(payload.emoji);
+    // Reactions are echoed to the sender as well as every other participant.
+    // Keep their matching ZDWA-style chat line across board re-renders for
+    // this connection; unlike text messages, it remains deliberately local.
+    if (payload.emoji) {
+      window.emojiUI?.handleRemote?.(payload.emoji);
+      if (rememberReactionChatEntry(payload.emoji)) renderGameState();
+    }
     if (payload.zilch_error) {
       renderSocketError(message(payload.zilch_error.message_key, payload.zilch_error.params || {}));
     } else if (payload.error) {

@@ -146,8 +146,9 @@ and modifier chords suppress these
 shortcuts. Stacked, internally scrollable spiral score sheets with ruled paper
 and offset page edges keep the active player in front and the opponent total visible. The resulting
 turns are recorded there, while chat and short-lived emoji reactions remain separate
-from the score history and are echoed to every connected participant,
-including the sender.
+from the score history. Text chat is retained in the active game state for reconnects;
+quick reactions are echoed to every connected participant, including the sender, and
+appear as reaction lines in that connection's live chat.
 Each third consecutive Zilch deducts 500 points (the third, sixth, ninth, and
 so on), never below zero; banking points resets that personal streak.
 

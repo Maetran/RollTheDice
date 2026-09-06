@@ -308,8 +308,11 @@ sendet nur die referenzierte Option und übernimmt nie einen lokalen Punktewert.
 
 Der Punktezettel zeigt ausschließlich den serverseitigen Rundenverlauf.
 Chatnachrichten und Schnellreaktionen sind davon getrennte Kommunikation:
-Schnellreaktionen erscheinen kurz bei allen verbundenen Teilnehmern,
-einschließlich des Absenders, und ändern weder Wertung noch Punktezettel.
+Textnachrichten werden im aktiven Spielzustand mitgeführt und erscheinen daher
+auch nach einer Wiederverbindung wieder. Schnellreaktionen erscheinen kurz bei
+allen verbundenen Teilnehmern, einschließlich des Absenders, und zusätzlich
+als Reaktionszeile im Chat der aktuellen Verbindung. Sie ändern weder Wertung
+noch Punktezettel.
 
 Nach dem vollen kompetitiven Gegenzug markiert der aktive Zilch-State Gewinner
 oder Gleichstand. Ein Solo-Sprint markiert stattdessen `completed` oder

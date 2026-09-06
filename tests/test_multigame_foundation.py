@@ -468,8 +468,8 @@ class MultiGameFoundationTestCase(GameStateTestCase):
                 self.assertEqual(projected["_game_type"], ZILCH_GAME_TYPE)
                 self.assertEqual(len(projected["_dice"]), 6)
 
-    def test_zilch_websocket_echoes_emoji_to_its_sender(self):
-        """A Zilch reaction is accepted and returns on the sender's socket."""
+    def test_zilch_websocket_echoes_social_activity_and_persists_text_chat(self):
+        """Zilch text chat is durable for the active game; reactions stay transient."""
         game = self._track(create_game_state("ws-zilch-emoji", "Socket Zilch", 1, ZILCH_GAME_TYPE))
         _, mani_token = self._identity("Mani", role="admin")
 
@@ -481,13 +481,21 @@ class MultiGameFoundationTestCase(GameStateTestCase):
                 player_id = websocket.receive_json()["player_id"]
                 websocket.receive_json()  # Directly-started Solo snapshot.
 
+                websocket.send_json({"action": "chat_message", "text": "Bereit zum Wurf?"})
+                chat = websocket.receive_json()
+
                 websocket.send_json({"action": "send_emoji", "emoji": "🎲"})
                 echoed = websocket.receive_json()
 
+        self.assertEqual(chat["chat"]["from_id"], player_id)
+        self.assertEqual(chat["chat"]["sender"], "Mani")
+        self.assertEqual(chat["chat"]["text"], "Bereit zum Wurf?")
+        self.assertEqual(chat["chat"]["kind"], "chat")
         self.assertEqual(echoed["emoji"]["from_id"], player_id)
         self.assertEqual(echoed["emoji"]["from"], "Mani")
         self.assertEqual(echoed["emoji"]["emoji"], "🎲")
-        self.assertFalse(game.get("_chat_history"))
+        restored = load_active_games()[game["_id"]]
+        self.assertEqual(snapshot(restored)["_chat_history"], [chat["chat"]])
 
     def test_zilch_action_is_denied_when_mani_loses_admin_role_after_join(self):
         game = self._track(create_game_state("ws-zilch-revoked", "Socket Zilch", 1, ZILCH_GAME_TYPE))

@@ -764,6 +764,14 @@ async function installGameScreenFixture(page, gameId, snapshots, detailsOverride
           } });
         } else if (message.action === "pause_game") {
           this._message({ paused: true, pause_remaining_label: "1 h 0 min" });
+        } else if (message.action === "chat_message") {
+          this._message({ chat: {
+            from_id: "p1",
+            sender: "Mani",
+            text: message.text,
+            ts: "2026-09-04T12:00:00+00:00",
+            kind: "chat",
+          } });
         } else if (message.action === "send_emoji") {
           // The social transport echoes reactions to the sender as well as to
           // the opponent. This is intentionally different from text chat.
@@ -2547,8 +2555,19 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
       });
     }
 
+    // Text chat is sent through the shared social transport and rendered live.
+    await page.locator("[data-zilch-chat-toggle]").click();
+    await expect(page.locator("#zilchChatInput")).toBeVisible();
+    await page.locator("#zilchChatInput").fill("Der Tisch ist bereit.");
+    await page.locator("#zilchChatForm button[type='submit']").click();
+    await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: "chat_message", text: "Der Tisch ist bereit." }),
+    ]));
+    await expect(page.locator("#zilchChatHistory")).toContainText("Der Tisch ist bereit.");
+    await page.locator("[data-zilch-chat-toggle]").click();
+
     // Reactions follow ZDWA's social path: the server echoes them to the
-    // sender and a transient bubble appears without adding a chat line.
+    // sender, shows a transient bubble, and adds a reaction line to the chat.
     await expect(page.locator(".emoji-fab")).toBeVisible();
     await page.locator(".emoji-fab").click();
     await page.locator(".emoji-btn").first().click();
@@ -2556,9 +2575,10 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
       expect.objectContaining({ action: "send_emoji", emoji: "👍" }),
     ]));
     await expect(page.locator(".emoji-pop")).toContainText("Mani");
-    await expect(page.locator("#zilchChatHistory")).not.toContainText("👍");
+    await expect(page.locator("#zilchChatHistory")).toContainText("👍");
 
     await page.locator("[data-zilch-roll]").click();
+    await expect(page.locator("#zilchChatHistory")).toContainText("👍");
     await expect(page.locator(".zilch-die")).toHaveCount(6);
     await expect(page.locator(".zilch-die").nth(0)).toHaveAttribute("aria-label", /(?:Würfel 1: zeigt 1|Die 1: shows 1)/);
     await expect(page.locator(".zilch-die--non-scoring")).toHaveCount(2);
