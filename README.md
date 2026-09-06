@@ -151,7 +151,7 @@ quick reactions also appear in each connected participant's live chat.
 ## Profiles and live game-start notices
 
 Every account can add one small public profile picture in **Account**. The
-server accepts JPG, PNG and WebP uploads up to **200 KB** and **1,024 × 1,024
+server accepts JPG, PNG and WebP uploads up to **8 MB** and **4,096 × 4,096
 pixels**, fully decodes them, then stores a fresh **256 × 256 WebP** without
 original bytes or metadata. The stored image is capped at **64 KB**. This keeps
 profiles, lobby chat, game rooms and statistics lightweight while preventing

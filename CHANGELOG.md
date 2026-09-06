@@ -11,6 +11,27 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Nächster Release / Next release — Profilbilder für echte Fotos
+
+### Deutsch
+
+- Profilbilder akzeptieren jetzt normale JPG-, PNG- und WebP-Fotos bis 8 MB
+  und 4’096 × 4’096 Pixel. Damit funktionieren auch typische Handyfotos wie
+  das bisher abgewiesene, rund 384 KB große PNG zuverlässig.
+- Die Sicherheit und der Speicherbedarf bleiben klein: Der Server prüft das
+  Format und alle Pixel vollständig, entfernt Metadaten und speichert nur eine
+  neu erzeugte quadratische 256-Pixel-WebP-Datei bis 64 KB. Die hochgeladene
+  Originaldatei wird nie gespeichert.
+
+### English
+
+- Profile pictures now accept ordinary JPG, PNG and WebP photos up to 8 MB and
+  4,096 × 4,096 pixels. Typical phone photos, including PNG files around
+  384 KB that were previously rejected, now work reliably.
+- Safety and storage stay small: the server fully checks the format and every
+  pixel, removes metadata and stores only a newly generated square 256-pixel
+  WebP up to 64 KB. The uploaded original is never stored.
+
 ## Nächster Release / Next release — Zilch-Zug klarer, Lobby-Chat ruhiger
 
 ### Deutsch
@@ -42,8 +63,8 @@ also includes older and internal changes.
 ### Deutsch
 
 - Konten können unter **Konto → Einstellungen** ein kleines Profilbild für
-  ZDWA und Zilch hinterlegen. Akzeptiert werden JPG, PNG und WebP bis 200 KB
-  sowie 1’024 × 1’024 Pixel. Der Server decodiert jedes Bild vollständig und
+  ZDWA und Zilch hinterlegen. Akzeptiert werden JPG, PNG und WebP bis 8 MB
+  sowie 4’096 × 4’096 Pixel. Der Server decodiert jedes Bild vollständig und
   speichert nur eine frisch erzeugte quadratische 256-Pixel-WebP-Datei ohne
   Originaldatei, Metadaten oder Animation. Das gespeicherte Bild bleibt auf
   64 KB begrenzt und erscheint in Profilen, Chat, Spielraum und Statistiken.
@@ -60,7 +81,7 @@ also includes older and internal changes.
 ### English
 
 - Accounts can add one small profile picture for ZDWA and Zilch under
-  **Account → Settings**. JPG, PNG and WebP up to 200 KB and 1,024 × 1,024
+  **Account → Settings**. JPG, PNG and WebP up to 8 MB and 4,096 × 4,096
   pixels are accepted. The server fully decodes every image and stores only a
   newly generated square 256-pixel WebP without original bytes, metadata or
   animation. The stored image remains capped at 64 KB and appears in profiles,

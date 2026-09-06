@@ -87,6 +87,22 @@ test("lobby chat is account-only, compact, filterable, and placed before the lea
 });
 
 
+test("account avatar upload accepts ordinary phone-photo limits", async ({ page }) => {
+  await page.goto("/");
+  await page.fill("#loginUsername", "Admin");
+  await page.fill("#loginPassword", "temporary-password-123");
+  await page.click("#loginForm button[type=submit]");
+  await expect(page.locator("#authBadge")).toContainText("Admin");
+  await page.goto("/konto");
+
+  const upload = page.locator("[data-avatar-upload]");
+  await expect(upload).toBeVisible();
+  await expect(upload.locator("input[type=file]")).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
+  await expect(upload.locator(".avatar-upload-hint")).toContainText("8 MB");
+  await expect(upload.locator(".avatar-upload-hint")).toContainText("4.096 × 4.096 Pixel");
+});
+
+
 test("rules keep native scrolling on desktop, tablet, and mobile", async ({ page }) => {
   const viewports = [
     { width: 1440, height: 900 },

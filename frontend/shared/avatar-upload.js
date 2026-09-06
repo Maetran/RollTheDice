@@ -4,8 +4,8 @@ import { avatarSource, DEFAULT_AVATAR, refreshAccountAvatars } from "./avatar.js
 const t = value => window.ZDWA_I18N?.t?.(value) || value;
 const endpoint = "/api/account/avatar";
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-const inputLimit = 200 * 1024;
-const maxSide = 1024;
+const inputLimit = 8 * 1024 * 1024;
+const maxSide = 4096;
 
 function node(tag, text = "", className = "") {
   const result = document.createElement(tag);
@@ -16,9 +16,9 @@ function node(tag, text = "", className = "") {
 
 function errorText(error) {
   const errors = {
-    avatar_too_large: "Das Bild darf höchstens 200 KB groß sein.",
-    avatar_dimensions: "Das Bild darf höchstens 1.024 × 1.024 Pixel groß sein.",
-    avatar_dimensions_invalid: "Das Bild darf höchstens 1.024 × 1.024 Pixel groß sein.",
+    avatar_too_large: "Das Bild darf höchstens 8 MB groß sein.",
+    avatar_dimensions: "Das Bild darf höchstens 4.096 × 4.096 Pixel groß sein.",
+    avatar_dimensions_invalid: "Das Bild darf höchstens 4.096 × 4.096 Pixel groß sein.",
     avatar_format_unsupported: "Bitte wähle ein gültiges JPG-, PNG- oder WebP-Bild ohne Animation.",
     avatar_animation_unsupported: "Bitte wähle ein Bild ohne Animation.",
     avatar_invalid: "Das Bild konnte nicht gelesen werden. Bitte wähle ein anderes Bild.",
@@ -59,7 +59,7 @@ export function mountAvatarUpload(mount) {
   input.type = "file";
   input.accept = "image/jpeg,image/png,image/webp";
   label.append(input);
-  const hint = node("p", t("JPG, PNG oder WebP, höchstens 200 KB und 1.024 × 1.024 Pixel. Das Bild wird mittig quadratisch auf 256 × 256 Pixel zugeschnitten und ist öffentlich sichtbar. Keine Animationen. Metadaten werden entfernt."), "avatar-upload-hint");
+  const hint = node("p", t("JPG, PNG oder WebP, höchstens 8 MB und 4.096 × 4.096 Pixel. Das Bild wird mittig quadratisch auf 256 × 256 Pixel zugeschnitten und ist öffentlich sichtbar. Keine Animationen. Metadaten werden entfernt."), "avatar-upload-hint");
   const save = node("button", t("Profilbild speichern"), "primary");
   const remove = node("button", t("Profilbild entfernen"), "small ghost");
   const retry = node("button", t("Erneut versuchen"), "small ghost");

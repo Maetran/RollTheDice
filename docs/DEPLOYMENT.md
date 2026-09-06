@@ -761,7 +761,7 @@ pro Konto, die neue Konto-Einstellung `friend_activity_enabled` ist standardmä�
 aktiv. Vor dem Deployment muss das Datenbackup erfolgreich sein; die Migration
 verändert keine vorhandenen Nutzerdaten.
 
-Der Upload akzeptiert nur JPEG, PNG und WebP bis 200 KB und 1’024 × 1’024 Pixel.
+Der Upload akzeptiert nur JPEG, PNG und WebP bis 8 MB und 4’096 × 4’096 Pixel.
 Der Server prüft Magic Bytes und deklarierte Medienart, decodiert das Bild
 vollständig mit einer Pixel- und Text-Metadaten-Grenze und baut daraus ein neues
 256 × 256-WebP (höchstens 64 KB) ohne Originaldaten oder Metadaten. Es werden

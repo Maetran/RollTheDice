@@ -22,8 +22,12 @@ from .security import utcnow
 
 router = APIRouter(prefix="/api", tags=["avatars"])
 
-INPUT_MAX_BYTES = 200 * 1024
-INPUT_MAX_SIDE = 1024
+# Source files must accommodate ordinary current phone photos. They are fully
+# decoded under the pixel limit and immediately rebuilt; only the tiny output
+# below is retained. This is deliberately distinct from stored-avatar limits.
+INPUT_MAX_BYTES = 8 * 1024 * 1024
+INPUT_MAX_SIDE = 4096
+INPUT_MAX_PIXELS = INPUT_MAX_SIDE * INPUT_MAX_SIDE
 OUTPUT_SIDE = 256
 OUTPUT_MAX_BYTES = 64 * 1024
 UPLOADS_PER_MINUTE = 6
@@ -34,7 +38,7 @@ ACCEPTED_FORMATS = {"image/jpeg": "JPEG", "image/png": "PNG", "image/webp": "WEB
 # This is the only image-processing boundary in the application. Configure
 # parser-wide ceilings once; the warning policy itself stays local to a request
 # so image handling cannot change warning behaviour elsewhere in the server.
-Image.MAX_IMAGE_PIXELS = INPUT_MAX_SIDE * INPUT_MAX_SIDE
+Image.MAX_IMAGE_PIXELS = INPUT_MAX_PIXELS
 PngImagePlugin.MAX_TEXT_CHUNK = 64 * 1024
 PngImagePlugin.MAX_TEXT_MEMORY = 256 * 1024
 

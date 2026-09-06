@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from PIL import Image
 from starlette.requests import Request
 
-from app.api_avatars import DEFAULT_AVATAR_URL, OUTPUT_MAX_BYTES, public_avatar, sanitize_avatar
+from app.api_avatars import DEFAULT_AVATAR_URL, INPUT_MAX_BYTES, OUTPUT_MAX_BYTES, public_avatar, sanitize_avatar
 from app.auth import login
 from app.database import session_scope
 from app.friend_activity import _recipient_payload
@@ -24,6 +24,14 @@ def _image_bytes(*, fmt: str = "PNG", size: tuple[int, int] = (640, 320)) -> byt
     output = io.BytesIO()
     with Image.new("RGBA", size, "#2277bb") as image:
         image.save(output, format=fmt)
+    return output.getvalue()
+
+
+def _phone_photo_sized_png() -> bytes:
+    """A valid, detailed phone-photo-sized source, larger than the old 200 KB cap."""
+    output = io.BytesIO()
+    with Image.effect_noise((675, 675), 100).convert("RGB") as image:
+        image.save(output, format="PNG")
     return output.getvalue()
 
 
@@ -57,12 +65,20 @@ class AvatarAndFriendActivityTestCase(unittest.TestCase):
             self.assertEqual(image.size, (256, 256))
             self.assertFalse(image.info.get("exif"))
 
+    def test_avatar_accepts_an_ordinary_photo_larger_than_the_old_200_kb_cap(self) -> None:
+        source = _phone_photo_sized_png()
+        self.assertGreater(len(source), 200 * 1024)
+        self.assertLessEqual(len(source), INPUT_MAX_BYTES)
+        result = sanitize_avatar(source, "image/png")
+        self.assertTrue(result.startswith(b"RIFF") and result[8:12] == b"WEBP")
+        self.assertLessEqual(len(result), OUTPUT_MAX_BYTES)
+
     def test_avatar_rejects_wrong_media_magic_and_oversized_dimensions(self) -> None:
         with self.assertRaises(HTTPException) as wrong_type:
             sanitize_avatar(_image_bytes(fmt="PNG"), "image/jpeg")
         self.assertEqual(wrong_type.exception.status_code, 415)
         with self.assertRaises(HTTPException) as dimensions:
-            sanitize_avatar(_image_bytes(size=(1025, 32)), "image/png")
+            sanitize_avatar(_image_bytes(size=(4097, 32)), "image/png")
         self.assertEqual(dimensions.exception.status_code, 422)
 
     def test_public_avatar_uses_safe_headers_etag_and_default_redirect(self) -> None:
