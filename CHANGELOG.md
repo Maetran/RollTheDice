@@ -11,6 +11,43 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Nächster Release / Next release — Profilbilder & Spielstart live
+
+### Deutsch
+
+- Konten können unter **Konto → Einstellungen** ein kleines Profilbild für
+  ZDWA und Zilch hinterlegen. Akzeptiert werden JPG, PNG und WebP bis 200 KB
+  sowie 1’024 × 1’024 Pixel. Der Server decodiert jedes Bild vollständig und
+  speichert nur eine frisch erzeugte quadratische 256-Pixel-WebP-Datei ohne
+  Originaldatei, Metadaten oder Animation. Das gespeicherte Bild bleibt auf
+  64 KB begrenzt und erscheint in Profilen, Chat, Spielraum und Statistiken.
+- **Startmeldungen ausgewählter Spieler** sind eine neue, standardmäßig aktive
+  Konto-Einstellung. Wenn ein Konto aus der privaten Spielerauswahl eine
+  öffentliche zuschauerfähige Partie startet, sehen verbundene Empfänger in
+  beiden Lobbys eine kurze Meldung. Außerhalb eines Spiels führt
+  **Zuschauen** direkt in die Zuschaueransicht.
+- Die Meldungen sind weder Push noch Chat und werden nicht gespeichert.
+  Auswahl, Kontostatus, Zilch-Zugang, Raumstatus und Zuschauerberechtigung
+  werden beim Versand nochmals geprüft. Teilnehmer, private und geschützte
+  Räume bleiben ausgeschlossen; nach einer Minute ist das Ereignis ungültig.
+
+### English
+
+- Accounts can add one small profile picture for ZDWA and Zilch under
+  **Account → Settings**. JPG, PNG and WebP up to 200 KB and 1,024 × 1,024
+  pixels are accepted. The server fully decodes every image and stores only a
+  newly generated square 256-pixel WebP without original bytes, metadata or
+  animation. The stored image remains capped at 64 KB and appears in profiles,
+  chat, game rooms and statistics.
+- **Game start notices from selected players** are a new, enabled-by-default
+  account setting. When an account from a private player selection starts a
+  public watchable game, connected recipients see a short notice in either
+  lobby. Outside a game, **Watch** opens spectator mode directly.
+- Notices are neither push nor chat and are never stored. Selection,
+  account state, Zilch access, room state and spectator access are checked
+  again at delivery. Participants, private and protected rooms are excluded;
+  the event expires after one minute.
+
 ## Nächster Release / Next release — Deine Leute, klarere Würfel
 
 ### Deutsch

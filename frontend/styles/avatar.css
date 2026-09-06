@@ -1,0 +1,18 @@
+.player-avatar { display: inline-block; width: 20px; height: 20px; flex: 0 0 auto; border: 1px solid var(--border, #d8dee8); border-radius: 50%; object-fit: cover; vertical-align: middle; background: #fff8e7; }
+.player-avatar--small { width: 28px; height: 28px; }
+.player-avatar--medium { width: 48px; height: 48px; }
+.player-avatar--large { width: 80px; height: 80px; }
+.avatar-profile-heading { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
+.avatar-profile-heading h1, .avatar-profile-heading h2 { min-width: 0; }
+#profileName .player-avatar, #accountName .player-avatar { width: 64px; height: 64px; }
+.avatar-upload { display: grid; gap: .7rem; min-width: 0; }
+.avatar-upload-preview { display: flex; align-items: center; gap: .75rem; }
+.avatar-upload input[type="file"] { width: 100%; min-width: 0; max-width: 100%; font-size: .85rem; }
+.avatar-upload-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.avatar-upload-actions button { min-height: 44px; }
+.avatar-upload-hint, .avatar-upload-message { font-size: .85rem; line-height: 1.5; color: var(--muted); }
+.avatar-upload-message:empty { display: none; }
+html[data-game="zilch"] .avatar-upload :is(.avatar-upload-hint, .avatar-upload-message) { color: var(--zilch-muted); }
+.lobby-chat__sender .player-avatar { width: 18px; height: 18px; }
+.zilch-player-achievement-link .player-avatar, .zilch-player-identity .player-avatar { margin-inline-end: .2rem; }
+.zilch-notebook-player .player-avatar { width: 16px; height: 16px; }

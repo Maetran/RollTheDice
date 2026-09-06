@@ -1,0 +1,5 @@
+.friend-activity-settings { display: grid; gap: .65rem; }
+.friend-activity-settings > label { font-weight: 700; }
+.friend-activity-settings__hint, .friend-activity-settings__message { margin: 0; font-size: .85rem; line-height: 1.5; color: var(--muted); }
+.friend-activity-settings__message:empty { display: none; }
+html[data-game="zilch"] .friend-activity-settings :is(.friend-activity-settings__hint, .friend-activity-settings__message) { color: var(--zilch-muted); }

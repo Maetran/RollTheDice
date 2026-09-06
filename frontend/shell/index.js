@@ -4,6 +4,8 @@ import { applyZdwaBridgeLinks, isZilchHostedZdwaLocation, zdwaPath } from "../mu
 import "./ui.js";
 import "./pwa.js";
 import "./theme.js";
+import { initializeAvatarFallbacks } from "../shared/avatar.js";
+import { initializeFriendActivity } from "../shared/friend-activity.js";
 
 function initializeZdwaPwaBridgeNavigation() {
   if (!isZilchHostedZdwaLocation()) return;
@@ -25,6 +27,8 @@ function initializeZdwaPwaBridgeNavigation() {
 }
 
 initializeZdwaPwaBridgeNavigation();
+initializeAvatarFallbacks();
+initializeFriendActivity();
 
 // Zilch owns the same controller inside its protected application bundle.
 // Every ZDWA document, including the otherwise script-light public pages and

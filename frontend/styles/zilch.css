@@ -1,5 +1,7 @@
 @import "./base.css";
 @import "./player-allowlist.css";
+@import "./avatar.css";
+@import "./friend-activity.css";
 @import "./release-notes.css";
 
 html[data-game="zilch"],

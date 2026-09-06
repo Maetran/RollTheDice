@@ -221,6 +221,7 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
                 "lobby_chat_enabled": user.lobby_chat_enabled,
                 "lobby_chat_muted": user.lobby_chat_muted,
                 "lobby_chat_excluded": user.lobby_chat_excluded,
+                "friend_activity_enabled": user.friend_activity_enabled,
                 "game_invite_push_enabled": user.game_invite_push_enabled,
                 "daily_reminder_push_enabled": user.daily_reminder_push_enabled,
                 "preferred_language": user.preferred_language,

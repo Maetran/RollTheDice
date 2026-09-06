@@ -2,6 +2,9 @@ import { apiFetch, authError, escapeHtml, loadAuth, logout } from "../shared/aut
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
 import { mountAllowlistSettings, mountProfileAllowlist } from "../shared/player-allowlist.js";
+import { avatarMarkup } from "../shared/avatar.js";
+import { mountAvatarUpload } from "../shared/avatar-upload.js";
+import { mountFriendActivitySettings } from "../shared/friend-activity.js";
 import {
   bindPushPreferences,
   disableGameInvitePush,
@@ -429,7 +432,7 @@ function typeOfUserId(value) {
 
 function playerCollectionMarkup(value) {
   const label = playerName(value);
-  const identity = `<span class="zilch-player-name">${escapeHtml(label)}</span>${zilchRankBadgeMarkup(value)}`;
+  const identity = `${avatarMarkup(value, { size: gameId ? "tiny" : "small" })}<span class="zilch-player-name">${escapeHtml(label)}</span>${zilchRankBadgeMarkup(value)}`;
   const username = playerUsername(value);
   if (!username || isCpuParticipant(value)) return `<span class="zilch-player-identity">${identity}</span>`;
   // Leaderboard projections deliberately flag the signed-in person's row.
@@ -2009,6 +2012,14 @@ function zilchAccountSettingsMarkup(username) {
       <h2 id="allowlistSettingsTitle">${escapeHtml(t("Deine Spielerauswahl"))}</h2>
       <div data-allowlist-settings></div>
     </section>
+    <section class="zilch-card zilch-account-settings-card" aria-labelledby="avatarSettingsTitle">
+      <h2 id="avatarSettingsTitle">${escapeHtml(t("Dein Profilbild"))}</h2>
+      <div data-avatar-upload></div>
+    </section>
+    <section class="zilch-card zilch-account-settings-card" aria-labelledby="friendActivitySettingsTitle">
+      <h2 id="friendActivitySettingsTitle">${escapeHtml(t("Startmeldungen deiner Spielerauswahl"))}</h2>
+      <div data-friend-activity-settings></div>
+    </section>
     <section class="zilch-card zilch-account-settings-card">
       <p class="eyebrow">${escapeHtml(t("Mein Konto"))}</p>
       <h2>${escapeHtml(t("Passwort ändern"))}</h2>
@@ -2233,6 +2244,8 @@ function bindZilchAccountSettings() {
     pushDisableButton.addEventListener("click", () => { void changePushSetting(disableGameInvitePush, pushDisableButton); });
     bindPushPreferences(document.getElementById("zilchPushPreferencesForm"), refreshPushSettings);
     mountAllowlistSettings(document.querySelector("[data-allowlist-settings]"), { context: "zilch" });
+    mountAvatarUpload(document.querySelector("[data-avatar-upload]"));
+    mountFriendActivitySettings(document.querySelector("[data-friend-activity-settings]"));
     void refreshPushSettings();
   }
   if (passwordForm && !passwordForm.dataset.bound) {
@@ -2281,7 +2294,7 @@ async function renderAccount() {
   // ranking CTAs and old-link aliases land on the requested Konto tab.
   state.accountTab = normalizedZilchAccountTab(window.location.hash, defaultTab);
   content.innerHTML = `<section class="zilch-game-head zilch-account-head">
-      <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><div class="zilch-account-head__identity"><h1>${escapeHtml(username)}</h1><span id="zilchAccountRank" class="zilch-account-head__rank" aria-live="polite"></span></div><p>${escapeHtml(t("Hier warten deine privaten Zilch-Zahlen und Awards."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><div class="zilch-account-head__identity">${avatarMarkup(state.auth?.user, { size: "large" })}<h1>${escapeHtml(username)}</h1><span id="zilchAccountRank" class="zilch-account-head__rank" aria-live="polite"></span></div><p>${escapeHtml(t("Hier warten deine privaten Zilch-Zahlen und Awards."))}</p></div>
     </section>
     ${zilchAccountTabsMarkup()}
     <section id="zilchAccountPanel-statistics" class="zilch-account-panel" data-zilch-account-panel="statistics" role="tabpanel" aria-labelledby="zilchAccountTab-statistics"${state.accountTab === "statistics" ? "" : " hidden"}>${zilchAccountStatisticsLoadingMarkup()}</section>
@@ -2334,7 +2347,7 @@ async function renderPlayerAchievements() {
     const slot = document.getElementById("zilchPlayerAchievementsBody");
     const displayName = String(state.playerAchievements.player?.username || state.playerAchievements.player?.display_name || requestedName);
     document.title = `${displayName} – ${t("Zilch-Awards")}`;
-    if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2><div id="zilchProfileAllowlist"></div></section>${achievementRankSummaryMarkup(state.playerAchievements)}${achievementRankLegendMarkup(state.playerAchievements, state.achievementRankLegend)}${achievementsCatalogMarkup(state.playerAchievements)}`;
+    if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><div class="avatar-profile-heading">${avatarMarkup(state.playerAchievements.player, { size: "large" })}<h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2></div><div id="zilchProfileAllowlist"></div></section>${achievementRankSummaryMarkup(state.playerAchievements)}${achievementRankLegendMarkup(state.playerAchievements, state.achievementRankLegend)}${achievementsCatalogMarkup(state.playerAchievements)}`;
     mountProfileAllowlist(document.getElementById("zilchProfileAllowlist"), { userId: state.playerAchievements.player?.id, context: "zilch" });
   } catch (_) {
     const slot = document.getElementById("zilchPlayerAchievementsBody");
@@ -3017,6 +3030,7 @@ function renderRulesContent(facts) {
     </section>
     <section class="zilch-card zilch-rules-section">
       <p>${escapeHtml(t("Tippe auf einen Spielernamen und wähle im Profil Zur Spielerauswahl hinzufügen. Gespeichert wird das feste Konto, nicht ein eingetippter Name. Unter Konto → Einstellungen → Deine Spielerauswahl kannst du bis zu 100 Spieler verwalten, einzeln entfernen und Einladungen auf sie begrenzen. Eine leere Liste mit dem Filter Nur ausgewählte Spieler blockiert alle Mitspieler-Einladungen. Die private Auswahl gilt für beide Spiele, ohne Freundschaftsanfrage; Hinzufügen aktiviert kein Push. Erinnerungen und Versionshinweise bleiben unabhängig."))}</p>
+      <p>${escapeHtml(t("Im Konto kannst du ein kleines Profilbild für beide Spiele hinterlegen. Erlaubt sind JPG, PNG oder WebP bis 200 KB und 1’024 × 1’024 Pixel; gespeichert wird ausschließlich eine neu erzeugte, quadratische WebP-Version ohne Metadaten. Das Bild erscheint neben deinem Namen in Profilen, Chats, Spielräumen und Statistiken. Nachrichten über Spielstarts aus deiner privaten Spielerauswahl lassen sich dort ebenfalls ein- oder ausschalten. Sie sind nur live, nur in den Lobbys und öffnen außerhalb eines Spiels eine öffentliche, zuschauerfähige Partie – ohne Push und ohne Verlauf."))}</p>
       <p>${escapeHtml(t("Versionshinweise sind separat aktivierbar und anfangs ausgeschaltet. Nach einem erfolgreichen Update erhältst du pro Version höchstens einen Hinweis je angemeldetem Gerät des ausgewählten Spiels: zu neuen Funktionen oder Verbesserungen an der Stabilität. Ein Klick öffnet dessen Lobby. Frühere Versionen werden nicht nachträglich gemeldet."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section">

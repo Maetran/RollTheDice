@@ -21,6 +21,8 @@ from .achievements import sync_achievements_for_users
 from .active_games import load_active_games, save_active_game
 from .api_allowlist import router as allowlist_router
 from .api_auth import router as auth_router
+from .api_avatars import router as avatars_router
+from .api_friend_activity import router as friend_activity_router
 from .api_releases import router as releases_router
 from .api_users import router as users_router
 from .auth import (
@@ -35,6 +37,7 @@ from .auth import (
 )
 from .auth_protection import enforce_game_creation_rate_limit, validate_auth_protection_config
 from .database import configure_database, database_schema_ready, session_scope, upgrade_database
+from .friend_activity import serve_friend_activity_websocket, shutdown_friend_activity
 from .game_access import can_access_game, can_access_zilch_preview
 from .game_history import (
     completed_game_type_for_id,
@@ -405,6 +408,7 @@ async def lifespan(_app: FastAPI):
         release_scheduler.cancel()
         await asyncio.gather(timeout_sweeper, lobby_chat_purger, reminder_scheduler, release_scheduler, return_exceptions=True)
         await stop_cpu_runners()
+        await shutdown_friend_activity()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -413,6 +417,8 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(releases_router)
 app.include_router(allowlist_router)
+app.include_router(avatars_router)
+app.include_router(friend_activity_router)
 app.include_router(users_router)
 
 LEGACY_PAGE_PATHS = {
@@ -1932,6 +1938,16 @@ async def ws_lobby_chat(websocket: WebSocket) -> None:
         websocket,
         hub=lobby_chat_hub,
         context=context,
+        reserve_connection=_reserve_websocket,
+        release_connection=_release_websocket,
+    )
+
+
+@app.websocket("/ws/friend-activity")
+async def ws_friend_activity(websocket: WebSocket) -> None:
+    """Independent, account-only live notices for selected players' starts."""
+    await serve_friend_activity_websocket(
+        websocket,
         reserve_connection=_reserve_websocket,
         release_connection=_release_websocket,
     )

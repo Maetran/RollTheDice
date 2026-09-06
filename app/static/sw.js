@@ -13,7 +13,7 @@
     `scripts/sync_static_versions.py` ausführen, nicht manuell hochzählen.
 */
 
-const CACHE_VERSION = 'assets-6f54056fc1ab';
+const CACHE_VERSION = 'assets-877462df63fb';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
@@ -35,6 +35,7 @@ const PRECACHE_URLS = [
   '/static/emoji.js',
   '/static/room.js',
   '/static/favicon.png',
+  '/static/default-avatar.svg',
   '/static/icons/apple-touch-icon-180.png',
   '/static/icons/icon-192.png',
   '/static/icons/icon-512.png',

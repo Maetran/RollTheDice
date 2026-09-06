@@ -269,6 +269,12 @@ function playerRankMarkup(player, { compact = false, owner = "" } = {}){
   return `<span class="player-rank player-rank--${esc(key)}${compact ? " player-rank--compact" : ""}" role="link" tabindex="0" data-rank-legend data-rank-key="${esc(key)}" data-rank-points="${points}" data-rank-points-possible="${pointsPossible}"${owner ? ` data-rank-owner="${esc(owner)}"` : ""} title="${esc(title)}" aria-label="${esc(title)}"><span class="player-rank-stars" aria-hidden="true">${starText}</span><span class="player-rank-title">${esc(label)}</span></span>`;
 }
 
+function playerAvatarMarkup(player){
+  const userId = Number(player?.user_id ?? player?.id);
+  const source = Number.isSafeInteger(userId) && userId > 0 ? `/api/avatars/${userId}` : "/static/default-avatar.svg";
+  return `<img class="player-avatar" src="${esc(source)}" alt="" width="20" height="20" loading="lazy" decoding="async">`;
+}
+
 function playerNameMarkup(player, { name, compactRank = false, fallback = "Spieler", profileLink = false } = {}){
   const label = name ?? player?.name ?? player?.username ?? fallback;
   const username = player?.username || player?.name;
@@ -277,7 +283,7 @@ function playerNameMarkup(player, { name, compactRank = false, fallback = "Spiel
   const nameMarkup = profileLink && Number.isInteger(userId) && userId > 0 && username
     ? `<a class="player-name-label" href="${esc(window.ZDWA_ROUTE?.path(path) || path)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`
     : `<span class="player-name-label">${esc(label)}</span>`;
-  return `<span class="player-name-with-rank">${nameMarkup}${playerRankMarkup(player, { compact: compactRank, owner: label })}</span>`;
+  return `<span class="player-name-with-rank">${playerAvatarMarkup(player)}${nameMarkup}${playerRankMarkup(player, { compact: compactRank, owner: label })}</span>`;
 }
 
 // Room modules and the replay chat use this same renderer after the scoreboard

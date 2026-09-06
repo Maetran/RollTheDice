@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import WebSocket
 
 from .auth import AuthIdentity, username_is_registered
+from .friend_activity import publish_friend_game_start
 from .game_realtime import broadcast, send_game_message
 from .game_registry import join_player_to_game, start_game_if_ready
 from .game_snapshot import snapshot
@@ -148,6 +149,7 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
     # Player identity, lifecycle and connection handling stay common.  The
     # adapter owns only the game-specific board shape and start metadata.
     try:
+        was_started = bool(g.get("_started"))
         join_player_to_game(g, player)
         start_game_if_ready(g)
     except ValueError as exc:
@@ -160,6 +162,8 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
     await websocket.send_json({"player_id": player_id, "resume_token": player["resume_token"]})
     touch(g)
     await broadcast(g, {"scoreboard": snapshot(g)})
+    if not was_started and g.get("_started"):
+        await publish_friend_game_start(g)
     if game_type_from_state(g) == ZILCH_GAME_TYPE:
         from .zilch_cpu_runner import maybe_schedule_cpu_turn
 

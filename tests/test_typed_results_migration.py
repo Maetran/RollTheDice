@@ -19,7 +19,7 @@ PRE_TYPED_RESULTS_REVISION = "20260902_0015"
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20260906_0029"
+LATEST_SCHEMA_REVISION = "20260906_0031"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -78,6 +78,7 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
             "lobby_chat_enabled": 1,
             "lobby_chat_muted": 0,
             "lobby_chat_excluded": 0,
+            "friend_activity_enabled": 1,
             "game_invite_push_enabled": 0,
             "game_invite_push_last_sent_at": None,
             "daily_reminder_push_enabled": 0,

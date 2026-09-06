@@ -58,6 +58,7 @@ class AuthIdentity:
     lobby_chat_enabled: bool
     lobby_chat_muted: bool
     lobby_chat_excluded: bool
+    friend_activity_enabled: bool
     game_invite_push_enabled: bool
     daily_reminder_push_enabled: bool
     preferred_language: str
@@ -92,6 +93,7 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
             "lobby_chat_enabled": identity.lobby_chat_enabled,
             "lobby_chat_muted": identity.lobby_chat_muted,
             "lobby_chat_excluded": identity.lobby_chat_excluded,
+            "friend_activity_enabled": identity.friend_activity_enabled,
             "game_invite_push_enabled": identity.game_invite_push_enabled,
             "daily_reminder_push_enabled": identity.daily_reminder_push_enabled,
             "preferred_language": identity.preferred_language,
@@ -289,6 +291,7 @@ def login(request: Request, username: str, password: str) -> tuple[AuthIdentity,
             lobby_chat_enabled=user.lobby_chat_enabled,
             lobby_chat_muted=user.lobby_chat_muted,
             lobby_chat_excluded=user.lobby_chat_excluded,
+            friend_activity_enabled=user.friend_activity_enabled,
             game_invite_push_enabled=user.game_invite_push_enabled,
             daily_reminder_push_enabled=user.daily_reminder_push_enabled,
             preferred_language=user.preferred_language,
@@ -330,6 +333,7 @@ def resolve_session(connection: Request | WebSocket) -> AuthIdentity | None:
             lobby_chat_enabled=user.lobby_chat_enabled,
             lobby_chat_muted=user.lobby_chat_muted,
             lobby_chat_excluded=user.lobby_chat_excluded,
+            friend_activity_enabled=user.friend_activity_enabled,
             game_invite_push_enabled=user.game_invite_push_enabled,
             daily_reminder_push_enabled=user.daily_reminder_push_enabled,
             preferred_language=user.preferred_language,

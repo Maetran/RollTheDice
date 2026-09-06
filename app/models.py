@@ -10,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -42,6 +43,7 @@ class User(Base):
     lobby_chat_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     lobby_chat_muted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     lobby_chat_excluded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    friend_activity_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     game_invite_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     game_invite_push_last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     daily_reminder_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -81,6 +83,19 @@ class User(Base):
     web_push_subscriptions: Mapped[list[WebPushSubscription]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+
+
+class UserAvatar(Base):
+    """Only a sanitized, bounded WebP; original uploads are never persisted."""
+
+    __tablename__ = "user_avatars"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (CheckConstraint("length(data) BETWEEN 1 AND 65536", name="ck_user_avatar_size"),)
 
 
 class Session(Base):

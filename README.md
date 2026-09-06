@@ -149,6 +149,22 @@ restriction.
 Game-room chat is separate: text survives reconnects in the active room state;
 quick reactions also appear in each connected participant's live chat.
 
+## Profiles and live game-start notices
+
+Every account can add one small public profile picture in **Account**. The
+server accepts JPG, PNG and WebP uploads up to **200 KB** and **1,024 × 1,024
+pixels**, fully decodes them, then stores a fresh **256 × 256 WebP** without
+original bytes or metadata. The stored image is capped at **64 KB**. This keeps
+profiles, lobby chat, game rooms and statistics lightweight while preventing
+uploaded image markup, script payloads and metadata from being served back.
+
+**Game-start notices** use the existing private, account-bound player selection:
+when a selected account starts a public, watchable ZDWA or Zilch game, connected
+users who enabled the account setting see a short live banner in either lobby.
+It links to spectator mode unless the recipient is already in a game. These
+notices are neither push notifications nor persisted history; recipient consent,
+selection membership, room access and account status are rechecked at delivery.
+
 ## Push notifications
 
 Push is optional. Register each device from account settings and grant browser

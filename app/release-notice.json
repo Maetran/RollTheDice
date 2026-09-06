@@ -1,23 +1,23 @@
 {
   "kind": "usability",
   "games": ["zdwa", "zilch"],
-  "summary_de": "Neu: Spieler direkt am Profil auswählen und größere Zilch-Empfehlungen mit Würfelvorschau.",
-  "summary_en": "New: select players from their profiles and see larger Zilch recommendations with dice previews.",
+  "summary_de": "Neu: sichere Profilbilder und Live-Hinweise, wenn ausgewählte Spieler eine Partie starten.",
+  "summary_en": "New: safe profile pictures and live notices when selected players start a game.",
   "player_notes": {
     "de": {
-      "title": "Deine Leute, klarere Würfel",
+      "title": "Dein Bild, deine Spielrunde",
       "changes": [
-        "Name antippen, Spieler auswählen: In ZDWA und Zilch fügst du Spieler jetzt direkt am Profil zu deiner privaten Auswahl hinzu. Gespeichert wird das feste Konto – ohne Namen abzutippen.",
-        "Deine Auswahl findest du unter Konto → Einstellungen. Dort entfernst du Spieler einzeln und wählst, wer dich einladen darf. Das geht auch bei ausgeschaltetem Push; Hinzufügen aktiviert keine Benachrichtigungen.",
-        "Zilch-Empfehlungen sind jetzt rund ein Viertel größer. Würfelvorschauen zeigen die passende Kombination, goldene Akzente markieren Wertungen ab 1’000 Punkten. Antippen wählt weiterhin nur vor; Weiterwürfeln oder Sichern bestätigt."
+        "Unter Konto → Einstellungen kannst du jetzt ein Profilbild für beide Spiele wählen. Es erscheint neben deinem Namen in Profilen, Chats, Spielräumen und Statistiken. JPG, PNG oder WebP bis 200 KB genügen; das Bild wird quadratisch zugeschnitten und ohne Metadaten gespeichert.",
+        "Deine private Spielerauswahl kann dir nun auch live Bescheid geben: Startet jemand daraus eine öffentliche Partie mit Zuschauerplatz, erscheint in beiden Lobbys ein kurzer Hinweis. Außerhalb eines Spiels führt Zuschauen direkt zur Partie.",
+        "Die Startmeldungen sind im Konto standardmäßig an, lassen sich jederzeit ausschalten und sind bewusst keine Push-Nachrichten. Sie bleiben nur kurz live, haben keinen Verlauf und zeigen keine privaten oder geschützten Spielräume."
       ]
     },
     "en": {
-      "title": "Your people, clearer dice",
+      "title": "Your picture, your game table",
       "changes": [
-        "Tap a name, select a player: In ZDWA and Zilch, add players to your private selection directly from their profiles. The exact account is saved – no need to type usernames.",
-        "Find your selection under Account → Settings. Remove players individually and choose who may invite you. Manage it even with push off; adding someone does not enable notifications.",
-        "Zilch recommendations are now about a quarter larger. Dice previews show the matching combination, with gold accents for at least 1,000 points. Tapping still only creates a draft; rolling again or banking confirms it."
+        "Under Account → Settings, you can now choose one profile picture for both games. It appears beside your name in profiles, chats, game rooms and statistics. A JPG, PNG or WebP up to 200 KB is enough; it is square-cropped and stored without metadata.",
+        "Your private player selection can now notify you live: when someone from it starts a public game with spectator access, a short notice appears in both lobbies. Outside a game, Watch takes you straight to the table.",
+        "Game-start notices are on by default in your account, can be turned off any time, and deliberately are not push notifications. They only stay live briefly, have no history, and never expose private or protected rooms."
       ]
     }
   }

@@ -753,6 +753,30 @@ erhalten, werden aber nicht rückwirkend als Popup angekündigt. Das Upgrade
 Downgrade entfernt die ausführlichen Texte und Quittierungen; davor ein
 konsistentes Datenbackup sichern, ansonsten bevorzugt vorwärts reparieren.
 
+### Profilbilder und Live-Startmeldungen
+
+Die Migrationen `20260906_0030` und `20260906_0031` legen jeweils additive,
+rückfallfähige Strukturen an: `user_avatars` enthält genau ein bereinigtes WebP
+pro Konto, die neue Konto-Einstellung `friend_activity_enabled` ist standardmäßig
+aktiv. Vor dem Deployment muss das Datenbackup erfolgreich sein; die Migration
+verändert keine vorhandenen Nutzerdaten.
+
+Der Upload akzeptiert nur JPEG, PNG und WebP bis 200 KB und 1’024 × 1’024 Pixel.
+Der Server prüft Magic Bytes und deklarierte Medienart, decodiert das Bild
+vollständig mit einer Pixel- und Text-Metadaten-Grenze und baut daraus ein neues
+256 × 256-WebP (höchstens 64 KB) ohne Originaldaten oder Metadaten. Es werden
+weder Base64 noch die hochgeladene Datei gespeichert. `/api/avatars/{id}` liefert
+`nosniff`, CSP, Same-Site-Resource-Policy, ETag und Noindex-Header; fehlende oder
+deaktivierte Konten erhalten nur das feste Standardbild.
+
+Live-Startmeldungen nutzen einen eigenen WebSocket und werden nicht persistiert
+oder als Push zugestellt. Beim tatsächlichen Start einer öffentlichen,
+zuschauerfähigen Partie prüft der Server für jeden bereits verbundenen Empfänger
+erneut dessen Konto, Opt-out, private Auswahl, Spielzugang und Zuschauerstatus.
+Die Ereignisse laufen nach 60 Sekunden ab; Teilnehmer, geschützte und private
+Räume erhalten keine Meldung. Echte Push-Geräte nicht manuell mit diesen
+Meldungen testen.
+
 ### Private Einladungsauswahl
 
 `game_invite_push_audience` ist standardmäßig `all`. Mit `allowlist` erhalten
