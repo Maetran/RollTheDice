@@ -148,6 +148,27 @@ import { zdwaPath } from "../multigame/routes.js";
       button.disabled = Boolean(definition.disabled);
       button.addEventListener("click", () => {
         const value = definition.useInput ? input.value : definition.value ?? definition.id;
+        // Some browser APIs (notably Web Push permission in Safari) require
+        // their very first call to happen synchronously in this click handler.
+        // Keep the hook narrow and optional so ordinary dialogs retain their
+        // immediate, simple close behaviour.
+        if (typeof definition.onAction === "function") {
+          let action;
+          try {
+            action = definition.onAction({ value, button, dialog, backdrop });
+          } catch (_) {
+            button.disabled = false;
+            return;
+          }
+          if (action && typeof action.then === "function") {
+            button.disabled = true;
+            Promise.resolve(action).then(
+              () => finish(value),
+              () => { button.disabled = false; },
+            );
+            return;
+          }
+        }
         finish(value);
       });
       actions.appendChild(button);

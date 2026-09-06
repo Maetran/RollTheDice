@@ -1,23 +1,23 @@
 {
   "kind": "usability",
   "games": ["zdwa", "zilch"],
-  "summary_de": "Profilbilder: Normale Fotos bis 8 MB funktionieren jetzt zuverlässig.",
-  "summary_en": "Profile pictures: ordinary photos up to 8 MB now work reliably.",
+  "summary_de": "Jetzt neu: Push-Auswahl für Mitspieler-Rufe und mehr.",
+  "summary_en": "New: choose Push alerts for player calls and more.",
   "player_notes": {
     "de": {
-      "title": "Profilbild ohne Kleingedrucktes",
+      "title": "Ruf nach Mitspielern",
       "changes": [
-        "Du kannst jetzt normale JPG-, PNG- oder WebP-Fotos bis 8 MB und 4.096 × 4.096 Pixel als Profilbild wählen. Auch typische Handyfotos werden nicht mehr allein wegen ihrer Dateigröße oder einer zickigen Vorschau abgewiesen.",
-        "Dein Bild wird weiterhin sicher zugeschnitten und nur als kleine, neue 256 × 256-WebP-Version ohne Metadaten gespeichert. Das Original bleibt nicht auf dem Server.",
-        "Das Profilbild erscheint wie bisher in Profilen, Chats, Spielräumen und Statistiken beider Spiele."
+        "Wenn du noch keine Push-Hinweise ausgewählt hast, erinnert dich die Lobby höchstens alle 14 Tage daran – freundlich und nur, während du verbunden bist.",
+        "Mit „Push zulassen & auswählen“ fragt dein Gerät erst nach deiner Erlaubnis. Danach entscheidest du selbst über Mitspieler-Rufe, tägliche Spielideen und Versionshinweise. Alles bleibt jederzeit ausschaltbar.",
+        "Mitspieler-Rufe helfen dir, freie Plätze in öffentlichen ZDWA- und Zilch-Runden zu erwischen. Mit deiner Spielerauswahl kannst du sie auf bekannte Leute begrenzen."
       ]
     },
     "en": {
-      "title": "A profile picture without the fine print",
+      "title": "A call to play",
       "changes": [
-        "You can now choose ordinary JPG, PNG or WebP photos up to 8 MB and 4,096 × 4,096 pixels as a profile picture. Typical phone photos are no longer rejected just because of their file size or a fussy preview.",
-        "Your picture is still safely cropped and stored only as a small, new 256 × 256 WebP without metadata. The original never remains on the server.",
-        "Your profile picture still appears in profiles, chats, game rooms and statistics in both games."
+        "If you have not selected any Push alerts yet, the lobby may remind you at most every 14 days – gently and only while you are connected.",
+        "“Allow push & choose” asks your device for permission first. Then you decide on player calls, daily play ideas and app update alerts. Everything can be turned off at any time.",
+        "Player calls help you catch free seats in public ZDWA and Zilch games. Your player selection can limit them to people you know."
       ]
     }
   }

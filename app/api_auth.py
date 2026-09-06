@@ -38,6 +38,7 @@ from .security import utcnow
 from .web_push import (
     WebPushPreferencesRequest,
     WebPushSubscriptionRequest,
+    claim_web_push_opt_in_prompt,
     remove_web_push_subscriptions,
     save_web_push_subscription,
     update_web_push_preferences,
@@ -294,6 +295,18 @@ def web_push_subscription_delete(request: Request):
     require_csrf(request, identity)
     try:
         return remove_web_push_subscriptions(identity.user_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/web-push/opt-in-prompt")
+def web_push_opt_in_prompt_post(request: Request, response: Response):
+    """Claim the gentle lobby prompt; browser permission remains client-side."""
+    identity = require_user(request)
+    require_csrf(request, identity)
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        return claim_web_push_opt_in_prompt(identity.user_id)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 

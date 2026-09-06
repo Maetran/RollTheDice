@@ -19,7 +19,7 @@ PRE_TYPED_RESULTS_REVISION = "20260902_0015"
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20260906_0031"
+LATEST_SCHEMA_REVISION = "20260906_0032"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -172,6 +172,25 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
         with self._connection() as connection:
             self.assertNotIn("player_notes_json", self._columns(connection, "push_releases"))
             self.assertEqual(connection.execute("SELECT claimed_at FROM push_release_recipients").fetchone(), (timestamp,))
+        self._upgrade()
+
+    def test_push_opt_in_prompt_timestamp_is_nullable_and_reversible(self) -> None:
+        self._upgrade("20260906_0031")
+        with self._connection() as connection:
+            user_id = self._insert_user(connection)
+        self._upgrade()
+        with self._connection() as connection:
+            self.assertIn("push_opt_in_prompted_at", self._columns(connection, "users"))
+            self.assertIsNone(connection.execute(
+                "SELECT push_opt_in_prompted_at FROM users WHERE id=?", (user_id,)
+            ).fetchone()[0])
+            connection.execute(
+                "UPDATE users SET push_opt_in_prompted_at=? WHERE id=?",
+                ("2026-09-06T12:00:00+00:00", user_id),
+            )
+        self._downgrade("20260906_0031")
+        with self._connection() as connection:
+            self.assertNotIn("push_opt_in_prompted_at", self._columns(connection, "users"))
         self._upgrade()
 
     def _insert_deleted_game(

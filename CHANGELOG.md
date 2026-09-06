@@ -11,6 +11,34 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Nächster Release / Next release — Push-Auswahl mit Mitspieler-Rufen
+
+### Deutsch
+
+- Die Lobby kann angemeldete Konten ohne aktivierte Push-Art höchstens alle
+  14 Tage freundlich in die Push-Einstellungen einladen. Die Begrenzung gilt
+  kontoweit, also auch bei mehreren Tabs und zwischen ZDWA und Zilch.
+- Der Hinweis öffnet den Systemdialog nie von selbst. Erst der bewusste Klick
+  auf **Push zulassen & auswählen** fragt das Gerät nach der Freigabe, meldet
+  dieses Gerät an und führt direkt zur Auswahl im Konto.
+- Neue Geräte aktivieren keine Nachrichtenart mehr automatisch. Spieler wählen
+  Mitspieler-Rufe für freie öffentliche Plätze, tägliche Spielideen und
+  Versionshinweise einzeln; alles bleibt jederzeit ausschaltbar. Die private
+  Spielerauswahl kann Mitspieler-Rufe weiterhin auf bekannte Konten begrenzen.
+
+### English
+
+- The lobby may gently invite signed-in accounts with no active Push category
+  to review Push settings at most every 14 days. The limit is account-wide,
+  including across tabs and between ZDWA and Zilch.
+- The hint never opens the system permission sheet by itself. Only the
+  deliberate **Allow push & choose** click asks the device for permission,
+  registers that device and takes the player straight to the account choices.
+- New devices no longer enable any message category automatically. Players
+  choose player calls for free public seats, daily play ideas and release
+  notes separately; everything remains switchable off. The private player
+  selection can still limit player calls to known accounts.
+
 ## Nächster Release / Next release — Profilbilder für echte Fotos
 
 ### Deutsch

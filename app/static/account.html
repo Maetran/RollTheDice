@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=8026f01965ee">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=8026f01965ee" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=8026f01965ee" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=7ceb9636160d">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=7ceb9636160d" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=7ceb9636160d" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=8026f01965ee">
-  <script src="/static/shell.js?v=8026f01965ee" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=7ceb9636160d">
+  <script src="/static/shell.js?v=7ceb9636160d" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -126,16 +126,17 @@
         </form>
         <div id="preferencesMessage" class="muted small" role="status"></div>
       </section>
-      <section class="card password-card" aria-labelledby="pushSettingsTitle">
+      <section id="pushSettingsCard" class="card password-card" aria-labelledby="pushSettingsTitle" tabindex="-1">
         <h2 id="pushSettingsTitle">Push-Benachrichtigungen</h2>
-        <p class="muted small">Melde dieses Gerät für Push an. Wähle Mitspieler-Einladungen, Spielerinnerungen und Versionshinweise getrennt oder schalte alles für alle Geräte aus.</p>
+        <p class="muted small">Verpass keinen freien Platz: Mitspieler-Rufe bringen dich direkt in öffentliche ZDWA- oder Zilch-Runden. Erlaube zuerst Push auf diesem Gerät und wähle danach selbst, welche Hinweise zu dir passen.</p>
+        <p class="muted small">Mit „Push auf diesem Gerät zulassen“ fragt dein Gerät als Nächstes nach der Erlaubnis. Danach entscheidest du unten getrennt über Mitspieler-Rufe, tägliche Spielideen und Versionshinweise.</p>
         <div class="account-push-actions">
-          <button id="enableGameInvitePush" class="primary" type="button">Push-Benachrichtigungen aktivieren</button>
+          <button id="enableGameInvitePush" class="primary" type="button">Push auf diesem Gerät zulassen</button>
           <button id="disableGameInvitePush" class="secondary" type="button" hidden>Push-Benachrichtigungen deaktivieren</button>
         </div>
         <p id="gameInvitePushStatus" class="muted small" role="status"></p>
         <form id="pushPreferencesForm" class="form-stack" hidden>
-          <label><input type="checkbox" name="gameInvites"> Mitspieler-Einladungen erhalten</label>
+          <label><input type="checkbox" name="gameInvites"> Mitspieler-Rufe erhalten (wenn ein Platz frei ist)</label>
           <label><input type="checkbox" name="dailyReminder"> Tägliche Spielerinnerung erhalten</label>
           <p class="muted small" data-push-reminder-schedule></p>
           <p class="muted small">Bei beiden angemeldeten Spielen wechseln sich ZDWA und Zilch ab. Der Klick auf eine Erinnerung öffnet die passende Lobby.</p>
@@ -171,12 +172,12 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=8026f01965ee';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=8026f01965ee';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=8026f01965ee';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=8026f01965ee';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=8026f01965ee';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=8026f01965ee';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=7ceb9636160d';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=7ceb9636160d';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=7ceb9636160d';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=7ceb9636160d';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=7ceb9636160d';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=7ceb9636160d';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
@@ -208,7 +209,11 @@
         tab.button.setAttribute('aria-selected', String(active));
         tab.panel.hidden = !active;
       });
-      if (updateHash) history.replaceState(null, '', `#${selected}`);
+      if (updateHash) {
+        const url = new URL(location.href);
+        url.hash = selected;
+        history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+      }
     }
     Object.entries(accountTabs).forEach(([name, tab]) => {
       tab.button.addEventListener('click', () => showAccountPanel(name));
@@ -248,20 +253,33 @@
     const pushEnableButton = document.getElementById('enableGameInvitePush');
     const pushDisableButton = document.getElementById('disableGameInvitePush');
     const pushStatus = document.getElementById('gameInvitePushStatus');
+    let focusRequestedPushSettings = new URLSearchParams(location.search).has('push');
     function translated(value) {
       return window.ZDWA_I18N?.t?.(value) || value;
     }
+    function focusPushSettings(status) {
+      if (!focusRequestedPushSettings) return;
+      focusRequestedPushSettings = false;
+      window.requestAnimationFrame(() => {
+        document.getElementById('pushSettingsCard')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        const form = document.getElementById('pushPreferencesForm');
+        const target = status?.subscribed ? form?.elements?.gameInvites : pushEnableButton;
+        target?.focus?.({ preventScroll: true });
+      });
+    }
     async function refreshGameInvitePushSettings() {
+      let latestStatus = null;
       try {
         const status = await getGameInvitePushStatus();
+        latestStatus = status;
         const enabled = status.enabled === true;
         syncPushPreferences(document.getElementById('pushPreferencesForm'), status);
         pushDisableButton.hidden = !status.subscribed;
         pushDisableButton.disabled = false;
         pushEnableButton.hidden = false;
-        pushEnableButton.textContent = translated(enabled
+        pushEnableButton.textContent = translated(status.subscribed || enabled
           ? 'Dieses Gerät für Push anmelden'
-          : 'Push-Benachrichtigungen aktivieren');
+          : 'Push auf diesem Gerät zulassen');
         if (!status.available) {
           pushEnableButton.disabled = true;
           pushStatus.textContent = translated('Push-Benachrichtigungen sind momentan noch nicht eingerichtet.');
@@ -272,14 +290,23 @@
           pushStatus.textContent = translated('Dieser Browser unterstützt keine Push-Benachrichtigungen.');
           return;
         }
+        if (status.permission === 'denied') {
+          pushEnableButton.disabled = true;
+          pushStatus.textContent = translated('Die Push-Berechtigung wurde nicht erteilt. Du kannst sie in den Browser- oder Geräteeinstellungen wieder zulassen.');
+          return;
+        }
         pushEnableButton.disabled = false;
         pushStatus.textContent = enabled
           ? translated('Push-Benachrichtigungen sind aktiviert.')
-          : translated('Push-Benachrichtigungen sind ausgeschaltet.');
+          : status.subscribed
+            ? translated('Push ist für dieses Gerät bereit. Wähle unten aus, wofür du benachrichtigt werden möchtest.')
+            : translated('Push-Benachrichtigungen sind ausgeschaltet.');
       } catch (error) {
         pushEnableButton.disabled = true;
         pushDisableButton.hidden = true;
         pushStatus.textContent = webPushErrorMessage(error);
+      } finally {
+        focusPushSettings(latestStatus);
       }
     }
     async function changeGameInvitePush(action, button) {

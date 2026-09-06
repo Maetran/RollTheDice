@@ -1,6 +1,7 @@
 import { apiFetch, authError, escapeHtml, loadAuth, logout } from "../shared/auth.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
+import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
 import { mountAllowlistSettings, mountProfileAllowlist } from "../shared/player-allowlist.js";
 import { avatarMarkup } from "../shared/avatar.js";
 import { mountAvatarUpload } from "../shared/avatar-upload.js";
@@ -1988,17 +1989,18 @@ function zilchAccountSettingsMarkup(username) {
       </form>
       <p id="zilchLobbyChatPreferencesMessage" class="zilch-settings-message" role="status"></p>
     </section>
-    <section class="zilch-card zilch-account-settings-card">
+    <section id="zilchPushSettingsCard" class="zilch-card zilch-account-settings-card" tabindex="-1">
       <p class="eyebrow">${escapeHtml(t("Gemeinsame Lobby"))}</p>
       <h2>${escapeHtml(t("Push-Benachrichtigungen"))}</h2>
-      <p class="zilch-account-settings-card__description">${escapeHtml(t("Melde dieses Gerät für Push an. Wähle Mitspieler-Einladungen, Spielerinnerungen und Versionshinweise getrennt oder schalte alles für alle Geräte aus."))}</p>
+      <p class="zilch-account-settings-card__description">${escapeHtml(t("Verpass keinen freien Platz: Mitspieler-Rufe bringen dich direkt in öffentliche ZDWA- oder Zilch-Runden. Erlaube zuerst Push auf diesem Gerät und wähle danach selbst, welche Hinweise zu dir passen."))}</p>
+      <p class="zilch-muted">${escapeHtml(t("Mit „Push auf diesem Gerät zulassen“ fragt dein Gerät als Nächstes nach der Erlaubnis. Danach entscheidest du unten getrennt über Mitspieler-Rufe, tägliche Spielideen und Versionshinweise."))}</p>
       <div class="zilch-settings-form">
-        <button id="zilchEnableGameInvitePush" class="primary" type="button">${escapeHtml(t("Push-Benachrichtigungen aktivieren"))}</button>
+        <button id="zilchEnableGameInvitePush" class="primary" type="button">${escapeHtml(t("Push auf diesem Gerät zulassen"))}</button>
         <button id="zilchDisableGameInvitePush" class="secondary" type="button" hidden>${escapeHtml(t("Push-Benachrichtigungen deaktivieren"))}</button>
       </div>
       <p id="zilchGameInvitePushStatus" class="zilch-settings-message" role="status"></p>
       <form id="zilchPushPreferencesForm" class="zilch-settings-form" hidden>
-        <label><input type="checkbox" name="gameInvites"> ${escapeHtml(t("Mitspieler-Einladungen erhalten"))}</label>
+        <label><input type="checkbox" name="gameInvites"> ${escapeHtml(t("Mitspieler-Rufe erhalten (wenn ein Platz frei ist)"))}</label>
         <label><input type="checkbox" name="dailyReminder"> ${escapeHtml(t("Tägliche Spielerinnerung erhalten"))}</label>
         <p class="zilch-muted" data-push-reminder-schedule></p>
         <p class="zilch-muted">${escapeHtml(t("Bei beiden angemeldeten Spielen wechseln sich ZDWA und Zilch ab. Der Klick auf eine Erinnerung öffnet die passende Lobby."))}</p>
@@ -2104,6 +2106,17 @@ function bindZilchAccountSettings() {
   const pushDisableButton = document.getElementById("zilchDisableGameInvitePush");
   const pushStatus = document.getElementById("zilchGameInvitePushStatus");
   const passwordForm = document.getElementById("zilchPasswordForm");
+  let focusRequestedPushSettings = new URLSearchParams(window.location.search).has("push");
+  const focusPushSettings = status => {
+    if (!focusRequestedPushSettings) return;
+    focusRequestedPushSettings = false;
+    window.requestAnimationFrame(() => {
+      document.getElementById("zilchPushSettingsCard")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      const form = document.getElementById("zilchPushPreferencesForm");
+      const target = status?.subscribed ? form?.elements?.gameInvites : pushEnableButton;
+      target?.focus?.({ preventScroll: true });
+    });
+  };
   if (languageForm && !languageForm.dataset.bound) {
     languageForm.dataset.bound = "true";
     languageForm.addEventListener("submit", async event => {
@@ -2192,16 +2205,18 @@ function bindZilchAccountSettings() {
   ) {
     pushStatus.dataset.bound = "true";
     const refreshPushSettings = async () => {
+      let latestStatus = null;
       try {
         const status = await getGameInvitePushStatus();
+        latestStatus = status;
         const enabled = status.enabled === true;
         syncPushPreferences(document.getElementById("zilchPushPreferencesForm"), status);
         pushDisableButton.hidden = !status.subscribed;
         pushDisableButton.disabled = false;
         pushEnableButton.hidden = false;
-        pushEnableButton.textContent = t(enabled
+        pushEnableButton.textContent = t(status.subscribed || enabled
           ? "Dieses Gerät für Push anmelden"
-          : "Push-Benachrichtigungen aktivieren");
+          : "Push auf diesem Gerät zulassen");
         if (state.auth?.user) {
           state.auth.user.preferences = {
             ...(state.auth.user.preferences || {}),
@@ -2219,14 +2234,23 @@ function bindZilchAccountSettings() {
           pushStatus.textContent = t("Dieser Browser unterstützt keine Push-Benachrichtigungen.");
           return;
         }
+        if (status.permission === "denied") {
+          pushEnableButton.disabled = true;
+          pushStatus.textContent = t("Die Push-Berechtigung wurde nicht erteilt. Du kannst sie in den Browser- oder Geräteeinstellungen wieder zulassen.");
+          return;
+        }
         pushEnableButton.disabled = false;
         pushStatus.textContent = t(enabled
           ? "Push-Benachrichtigungen sind aktiviert."
-          : "Push-Benachrichtigungen sind ausgeschaltet.");
+          : status.subscribed
+            ? "Push ist für dieses Gerät bereit. Wähle unten aus, wofür du benachrichtigt werden möchtest."
+            : "Push-Benachrichtigungen sind ausgeschaltet.");
       } catch (error) {
         pushEnableButton.disabled = true;
         pushDisableButton.hidden = true;
         pushStatus.textContent = webPushErrorMessage(error);
+      } finally {
+        focusPushSettings(latestStatus);
       }
     };
     const changePushSetting = async (action, button) => {
@@ -5082,6 +5106,7 @@ async function initialize() {
     await presentPendingZilchAwards({ scope: "page" });
   }
   if (accountRoute || currentZilchRoute === "/") initializeReleaseNotes({ context: "zilch" });
+  if (currentZilchRoute === "/") initializePushOptInPrompt({ context: "zilch" });
 }
 
 window.addEventListener("beforeunload", () => {

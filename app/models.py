@@ -46,6 +46,11 @@ class User(Base):
     friend_activity_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     game_invite_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     game_invite_push_last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # A gentle, account-wide reminder to review optional Push settings.  This
+    # is deliberately separate from delivery claims: it never authorizes a
+    # notification and only limits how often the lobby may invite a player to
+    # make an informed choice.
+    push_opt_in_prompted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     daily_reminder_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     release_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     game_invite_push_audience: Mapped[str] = mapped_column(String(16), nullable=False, default="all")

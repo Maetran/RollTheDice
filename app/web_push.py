@@ -40,6 +40,7 @@ WEB_PUSH_SUBJECT_ENV = "ROLLTHEDICE_WEB_PUSH_VAPID_SUBJECT"
 GAME_INVITE_PUSH_COOLDOWN_SECONDS = 10 * 60
 GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS = 60
 GAME_INVITE_PUSH_SENT_AT_KEY = "_game_invite_push_sent_at"
+PUSH_OPT_IN_PROMPT_INTERVAL = timedelta(days=14)
 DAILY_REMINDER_START_HOUR = 17
 DAILY_REMINDER_END_HOUR = 21
 DAILY_REMINDER_TIMEZONE = PLAY_DAY_TIMEZONE
@@ -266,10 +267,13 @@ def save_web_push_subscription(
             subscription.auth = auth
             subscription.product_context = context
             subscription.updated_at = now
-        # Initial registration retains the established invitation opt-in. An
-        # additional device must not override a reminders-only preference.
+        # Browser permission only prepares this device.  It is not consent for
+        # a message category: the player explicitly chooses invitations,
+        # reminders and release notes below in the account settings.  Treating
+        # a fresh device registration as an interaction also prevents the
+        # lobby from immediately asking the same account again.
         if not user.game_invite_push_enabled and not user.daily_reminder_push_enabled and not user.release_push_enabled:
-            user.game_invite_push_enabled = True
+            user.push_opt_in_prompted_at = now
         user.updated_at = now
         db.flush()
     return web_push_subscription_status(user_id)
@@ -305,7 +309,13 @@ def update_web_push_preferences(user_id: int, payload: WebPushPreferencesRequest
                 raise ValueError("push_allowlist_invalid")
             db.execute(delete(PushInviteAllowedSender).where(PushInviteAllowedSender.recipient_user_id == user_id))
             db.add_all(PushInviteAllowedSender(recipient_user_id=user_id, sender_user_id=sender.id, created_at=utcnow()) for sender in senders)
-        user.updated_at = utcnow()
+        now = utcnow()
+        # Saving all categories off is an explicit choice, not a reason to
+        # show the opt-in nudge again in the same visit.  It remains eligible
+        # after the documented two-week interval.
+        if not user.game_invite_push_enabled and not user.daily_reminder_push_enabled and not user.release_push_enabled:
+            user.push_opt_in_prompted_at = now
+        user.updated_at = now
     return web_push_subscription_status(user_id)
 
 
@@ -318,8 +328,48 @@ def remove_web_push_subscriptions(user_id: int) -> dict[str, object]:
         user.game_invite_push_enabled = False
         user.daily_reminder_push_enabled = False
         user.release_push_enabled = False
-        user.updated_at = utcnow()
+        now = utcnow()
+        user.push_opt_in_prompted_at = now
+        user.updated_at = now
     return web_push_subscription_status(user_id)
+
+
+def claim_web_push_opt_in_prompt(user_id: int) -> dict[str, object]:
+    """Atomically reserve the optional lobby Push invitation for 14 days.
+
+    A prompt never requests browser permission by itself and is shown only to
+    active accounts with *no* enabled Push category.  The compare-and-set
+    update makes parallel ZDWA/Zilch tabs share one account-wide cooldown.
+    """
+    if not web_push_available():
+        return {"show": False, "interval_days": PUSH_OPT_IN_PROMPT_INTERVAL.days}
+    now = utcnow()
+    cutoff = now - PUSH_OPT_IN_PROMPT_INTERVAL
+    disabled_categories = and_(
+        User.game_invite_push_enabled.is_(False),
+        User.daily_reminder_push_enabled.is_(False),
+        User.release_push_enabled.is_(False),
+    )
+    # A provider may expire every endpoint while a historical category flag is
+    # still true. From the player's point of view Push is then off, so let the
+    # same gentle path help them register a current device again.
+    has_registered_device = select(WebPushSubscription.id).where(WebPushSubscription.user_id == user_id).exists()
+    no_effective_push = or_(disabled_categories, ~has_registered_device)
+    with session_scope() as db:
+        claimed = db.execute(
+            update(User)
+            .where(
+                User.id == user_id,
+                User.is_active.is_(True),
+                no_effective_push,
+                or_(User.push_opt_in_prompted_at.is_(None), User.push_opt_in_prompted_at <= cutoff),
+            )
+            .values(push_opt_in_prompted_at=now, updated_at=now)
+            .returning(User.id)
+        ).scalar_one_or_none()
+        if claimed is None and db.get(User, user_id) is None:
+            raise LookupError("user_not_found")
+    return {"show": claimed is not None, "interval_days": PUSH_OPT_IN_PROMPT_INTERVAL.days}
 
 
 def game_invite_cooldown_remaining(game: dict) -> int:

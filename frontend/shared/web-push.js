@@ -22,7 +22,7 @@ function applicationServerKey(value) {
   return Uint8Array.from(binary, character => character.charCodeAt(0));
 }
 
-function browserPushAvailable() {
+export function canUseWebPush() {
   return Boolean(
     window.isSecureContext
     && "serviceWorker" in navigator
@@ -37,7 +37,7 @@ export async function getGameInvitePushStatus() {
   if (!response.ok) throw apiError(data);
   lastPushStatus = {
     ...data,
-    browser_supported: browserPushAvailable(),
+    browser_supported: canUseWebPush(),
     permission: "Notification" in window ? Notification.permission : "unsupported",
   };
   return lastPushStatus;
@@ -46,7 +46,7 @@ export async function getGameInvitePushStatus() {
 export async function enableGameInvitePush() {
   // Settings preload the server configuration. Do not put a network await
   // before the permission prompt: Safari requires this user-click gesture.
-  if (!browserPushAvailable()) throw apiError({ detail: "web_push_browser_unsupported" });
+  if (!canUseWebPush()) throw apiError({ detail: "web_push_browser_unsupported" });
   const status = lastPushStatus;
   if (!status?.available) throw apiError({ detail: "web_push_unavailable" });
   const permission = Notification.permission === "granted"
@@ -84,7 +84,7 @@ export async function disableGameInvitePush() {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw apiError(data);
   try {
-    if (browserPushAvailable()) {
+    if (canUseWebPush()) {
       const registration = await navigator.serviceWorker.getRegistration();
       const subscription = await registration?.pushManager.getSubscription();
       if (subscription) await subscription.unsubscribe();

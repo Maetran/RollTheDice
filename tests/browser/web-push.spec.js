@@ -49,7 +49,7 @@ async function mockPush(page, { enabled = false, available = true, denied = fals
   await page.route("**/api/web-push/subscription", async route => {
     const method = route.request().method();
     calls.push(method);
-    if (method === "PUT") { subscribed = true; if (!dailyReminder && !releaseAlerts) gameInvites = true; }
+    if (method === "PUT") { subscribed = true; }
     if (method === "DELETE") { subscribed = false; gameInvites = false; dailyReminder = false; releaseAlerts = false; }
     await route.fulfill({ json: status() });
   });
@@ -81,8 +81,13 @@ async function mockPush(page, { enabled = false, available = true, denied = fals
     navigator.serviceWorker.getRegistration = async () => ({
       pushManager: { getSubscription: async () => subscription },
     });
+    // Headless Chromium may start with a denied permission policy.  Each UI
+    // test needs to exercise the deliberate in-app request from a neutral
+    // browser state instead; the request mock below supplies its outcome.
+    Object.defineProperty(Notification, "permission", { configurable: true, get: () => "default" });
     Notification.requestPermission = async () => {
       window.pushPermissionHadUserGesture = navigator.userActivation.isActive;
+      sessionStorage.setItem("pushPermissionHadUserGesture", String(window.pushPermissionHadUserGesture));
       return denied ? "denied" : "granted";
     };
   }, { denied });
@@ -90,8 +95,8 @@ async function mockPush(page, { enabled = false, available = true, denied = fals
 }
 
 for (const product of [
-  { name: "ZDWA", path: "/konto", enable: "#enableGameInvitePush", disable: "#disableGameInvitePush", status: "#gameInvitePushStatus" },
-  { name: "Zilch", path: "/zilch/konto", enable: "#zilchEnableGameInvitePush", disable: "#zilchDisableGameInvitePush", status: "#zilchGameInvitePushStatus" },
+  { name: "ZDWA", path: "/konto", lobby: "/", enable: "#enableGameInvitePush", disable: "#disableGameInvitePush", status: "#gameInvitePushStatus" },
+  { name: "Zilch", path: "/zilch/konto", lobby: "/zilch", enable: "#zilchEnableGameInvitePush", disable: "#zilchDisableGameInvitePush", status: "#zilchGameInvitePushStatus" },
 ]) {
   test(`${product.name} push permission preserves the click and account opt-out survives browser failure`, async ({ page }) => {
     await signIn(page);
@@ -99,10 +104,13 @@ for (const product of [
     await page.goto(product.path);
     await expect(page.locator(product.enable)).toBeEnabled();
     await page.locator(product.enable).click();
-    await expect(page.locator(product.status)).toContainText("sind aktiviert");
-    expect(await page.evaluate(() => window.pushPermissionHadUserGesture)).toBe(true);
+    await expect(page.locator(product.status)).toContainText("bereit");
+    expect(await page.evaluate(() => sessionStorage.getItem("pushPermissionHadUserGesture") === "true")).toBe(true);
     expect(calls).toContain("PUT");
-    // Registering another device stays possible even when the account is on.
+    await page.locator('input[name="gameInvites"]').check();
+    await page.getByRole("button", { name: "Push-Auswahl speichern" }).click();
+    await expect(page.locator(product.status)).toContainText("sind aktiviert");
+    // Registering another device stays possible after an explicit category choice.
     await expect(page.locator(product.enable)).toHaveText("Dieses Gerät für Push anmelden");
     await page.locator(product.disable).click();
     await expect(page.locator(product.status)).toContainText("sind ausgeschaltet");
@@ -210,6 +218,30 @@ for (const product of [
     await expect(page.getByRole("link", { name: "Spieler finden" })).toBeVisible();
     await expect(page.locator(product.enable)).toBeDisabled();
     expect(calls).not.toContain("PUT");
+  });
+
+  test(`${product.name} gently leads a lobby player to choose Push alerts`, async ({ page }) => {
+    await signIn(page);
+    const calls = await mockPush(page);
+    let promptClaims = 0;
+    await page.route("**/api/web-push/opt-in-prompt", route => {
+      expect(route.request().method()).toBe("POST");
+      expect(route.request().headers()["x-csrf-token"]).toBeTruthy();
+      promptClaims += 1;
+      return route.fulfill({ json: { show: true, interval_days: 14 } });
+    });
+    await page.goto(product.lobby);
+    const prompt = page.getByRole("dialog");
+    await expect(prompt).toContainText("Lust auf eine Runde?");
+    await expect(prompt).toContainText("Mitspieler-Rufe");
+    await prompt.getByRole("button", { name: "Push zulassen & auswählen" }).click();
+    const escapedPath = product.path.replaceAll("/", "\\/");
+    await expect(page).toHaveURL(new RegExp(`${escapedPath}\\?push=1#settings$`));
+    await expect(page.locator(product.status)).toContainText("bereit");
+    await expect(page.locator('input[name="gameInvites"]')).not.toBeChecked();
+    expect(await page.evaluate(() => sessionStorage.getItem("pushPermissionHadUserGesture") === "true")).toBe(true);
+    expect(calls).toContain("PUT");
+    expect(promptClaims).toBe(1);
   });
 }
 

@@ -14,25 +14,29 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from fastapi import HTTPException
+from fastapi import HTTPException, Response
 from starlette.requests import Request
 
 from app import main
+from app.api_auth import web_push_opt_in_prompt_post
 from app.auth import create_user, login
 from app.database import configure_database, session_scope, upgrade_database
-from app.models import WebPushSubscription
+from app.models import User, WebPushSubscription
 from app.web_push import (
     GameInviteDispatch,
     StoredSubscription,
+    WebPushPreferencesRequest,
     WebPushSubscriptionKeys,
     WebPushSubscriptionRequest,
     _send_web_push,
     claim_game_invite_push,
+    claim_web_push_opt_in_prompt,
     game_invite_cooldown_remaining,
     game_invite_notification_payload,
     game_invite_push_recipients,
     remove_web_push_subscriptions,
     save_web_push_subscription,
+    update_web_push_preferences,
 )
 
 
@@ -97,7 +101,7 @@ class WebPushTestCase(unittest.TestCase):
             keys=WebPushSubscriptionKeys(p256dh=TEST_SUBSCRIPTION_KEY, auth=TEST_AUTH_SECRET),
         )
 
-    def test_subscription_is_opt_in_and_removing_it_is_an_account_wide_opt_out(self) -> None:
+    def test_subscription_prepares_a_device_and_removing_it_is_an_account_wide_opt_out(self) -> None:
         player = create_user("PushPlayer", "a-secure-password-123", must_change_password=False)
 
         saved = save_web_push_subscription(
@@ -105,14 +109,17 @@ class WebPushTestCase(unittest.TestCase):
             payload=self.subscription(),
             product_context="zilch",
         )
-        self.assertTrue(saved["available"] and saved["enabled"] and saved["subscribed"])
-        self.assertTrue(saved["game_invites_enabled"])
+        self.assertTrue(saved["available"] and saved["subscribed"])
+        self.assertFalse(saved["enabled"])
+        self.assertFalse(saved["game_invites_enabled"])
         self.assertFalse(saved["daily_reminder_enabled"])
         with session_scope() as db:
             subscription = db.query(WebPushSubscription).one()
             self.assertEqual(subscription.user_id, player.id)
             self.assertEqual(subscription.product_context, "zilch")
-            self.assertTrue(db.get(type(player), player.id).game_invite_push_enabled)
+            user = db.get(type(player), player.id)
+            self.assertFalse(user.game_invite_push_enabled)
+            self.assertIsNotNone(user.push_opt_in_prompted_at)
 
         removed = remove_web_push_subscriptions(player.id)
         self.assertEqual(removed["enabled"], False)
@@ -120,11 +127,63 @@ class WebPushTestCase(unittest.TestCase):
             self.assertEqual(db.query(WebPushSubscription).count(), 0)
             self.assertFalse(db.get(type(player), player.id).game_invite_push_enabled)
 
+    def test_opt_in_prompt_is_atomic_account_wide_and_requires_authentication(self) -> None:
+        player = create_user("GentlePrompt", "a-secure-password-123", must_change_password=False)
+        now = datetime(2026, 9, 6, 12, tzinfo=timezone.utc)
+        with patch("app.web_push.utcnow", return_value=now), ThreadPoolExecutor(max_workers=6) as pool:
+            results = list(pool.map(claim_web_push_opt_in_prompt, [player.id] * 6))
+        self.assertEqual(sum(result["show"] for result in results), 1)
+        self.assertTrue(all(result["interval_days"] == 14 for result in results))
+        with patch("app.web_push.utcnow", return_value=now + timedelta(days=13, hours=23, minutes=59)):
+            self.assertFalse(claim_web_push_opt_in_prompt(player.id)["show"])
+        with patch("app.web_push.utcnow", return_value=now + timedelta(days=14)):
+            self.assertTrue(claim_web_push_opt_in_prompt(player.id)["show"])
+
+        save_web_push_subscription(user_id=player.id, payload=self.subscription(), product_context="zdwa")
+        update_web_push_preferences(player.id, WebPushPreferencesRequest(
+            game_invites_enabled=True, daily_reminder_enabled=False, release_notifications_enabled=False,
+        ))
+        with patch("app.web_push.utcnow", return_value=now + timedelta(days=28)):
+            self.assertFalse(claim_web_push_opt_in_prompt(player.id)["show"])
+        with session_scope() as db:
+            db.query(WebPushSubscription).delete()
+            db.get(User, player.id).push_opt_in_prompted_at = now + timedelta(days=13)
+        with patch("app.web_push.utcnow", return_value=now + timedelta(days=28)):
+            self.assertTrue(claim_web_push_opt_in_prompt(player.id)["show"])
+        # Restore a device so the explicit account-wide opt-out below can
+        # exercise its own fresh 14-day cooldown.
+        save_web_push_subscription(user_id=player.id, payload=self.subscription(), product_context="zdwa")
+        with patch("app.web_push.utcnow", return_value=now + timedelta(days=28)):
+            self.assertFalse(claim_web_push_opt_in_prompt(player.id)["show"])
+            remove_web_push_subscriptions(player.id)
+        with patch("app.web_push.utcnow", return_value=now + timedelta(days=28, seconds=1)):
+            self.assertFalse(claim_web_push_opt_in_prompt(player.id)["show"])
+
+        guest = request_for(token="missing", csrf="missing")
+        with self.assertRaises(HTTPException) as denied:
+            web_push_opt_in_prompt_post(guest, Response())
+        self.assertEqual(denied.exception.status_code, 401)
+        identity, token = login(guest, "GentlePrompt", "a-secure-password-123")
+        with self.assertRaises(HTTPException) as denied:
+            web_push_opt_in_prompt_post(request_for(token=token, csrf="wrong"), Response())
+        self.assertEqual(denied.exception.status_code, 403)
+        with session_scope() as db:
+            db.get(User, player.id).game_invite_push_enabled = False
+            db.get(User, player.id).push_opt_in_prompted_at = now - timedelta(days=14)
+        response = Response()
+        with patch("app.web_push.utcnow", return_value=now):
+            result = web_push_opt_in_prompt_post(request_for(token=token, csrf=identity.csrf_token), response)
+        self.assertTrue(result["show"])
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+
     def test_only_opted_in_unseated_accounts_receive_a_public_room_invitation(self) -> None:
         seated = create_user("Seated", "a-secure-password-123", must_change_password=False)
         recipient = create_user("Recipient", "another-secure-password-123", must_change_password=False)
         opted_out = create_user("OptedOut", "third-secure-password-123", must_change_password=False)
         save_web_push_subscription(user_id=recipient.id, payload=self.subscription(), product_context="zdwa")
+        update_web_push_preferences(recipient.id, WebPushPreferencesRequest(
+            game_invites_enabled=True, daily_reminder_enabled=False,
+        ))
         save_web_push_subscription(
             user_id=opted_out.id,
             payload=self.subscription("https://fcm.googleapis.com/fcm/send/other-endpoint"),

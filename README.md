@@ -167,9 +167,19 @@ selection membership, room access and account status are rechecked at delivery.
 ## Push notifications
 
 Push is optional. Register each device from account settings and grant browser
-permission. Invitations, reminders and app update alerts have separate switches;
-reminders and update alerts are **off by default**. The account-wide off switch removes every stored device
+permission. Registering a device only prepares it; invitations, reminders and
+app update alerts are separate switches and **all start off** until the player
+chooses them. In a supported lobby, a signed-in account with no enabled Push
+category may see a friendly invitation to review the settings at most once per
+14 days. It never opens the system permission sheet on its own: only the
+player's explicit **Allow push on this device** click does that, then the player
+chooses the categories. The account-wide off switch removes every stored device
 subscription, even when used from a browser that cannot itself receive push.
+
+The invitation is deliberately useful rather than generic: **player calls**
+make it easy to join a public room with a free seat. A player can restrict those
+calls to their private, account-bound player selection, while daily play ideas
+and release notes remain separate choices.
 
 | | Player invitations | Daily play reminders |
 | --- | --- | --- |

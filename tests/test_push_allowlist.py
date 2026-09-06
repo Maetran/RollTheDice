@@ -38,6 +38,9 @@ class PushAllowlistTestCase(unittest.TestCase):
         self.friend = create_user("AllowedFriend", "another-password-123", must_change_password=False)
         self.stranger = create_user("Stranger", "another-password-123", must_change_password=False)
         save_web_push_subscription(user_id=self.player.id, payload=fixtures.WebPushTestCase.subscription(), product_context="zdwa")
+        update_web_push_preferences(self.player.id, WebPushPreferencesRequest(
+            game_invites_enabled=True, daily_reminder_enabled=False,
+        ))
         self.game = {"_id": "allowlist-room", "_game_type": "zdwa", "_expected": 3, "_players": [
             {"user_id": self.friend.id, "name": "AllowedFriend"}, {"user_id": self.stranger.id, "name": "Stranger"},
         ]}
