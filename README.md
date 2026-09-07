@@ -350,6 +350,21 @@ Browser tests start a separate server on port 8010 with a disposable SQLite
 database. CI also runs security and dependency checks; see
 [the quality workflow](.github/workflows/quality.yml).
 
+Backend tests use `pytest-xdist`: pytest automatically selects up to four workers,
+keeping tests from the same file together. This applies to Codex, the terminal,
+CI and PyCharm pytest runs through `pyproject.toml`. Install the updated development
+dependencies with `.venv/bin/python -m pip install -r requirements-dev.txt`.
+Use `npm run test:backend -- -n 2` for two workers, or
+`npm run test:backend -- -n 0` for a serial run. For a quick check without coverage,
+run `.venv/bin/python -m pytest tests/test_scoring_logic.py -n 0`.
+
+In PyCharm, select the project's `.venv/bin/python` interpreter and pytest as the
+default test runner under Python Integrated Tools. You can then right-click
+`tests` or an individual test file to run it; no pre-existing run configuration
+is needed. Add `-n 0` to the generated pytest configuration when debugging with
+breakpoints. Browser tests retain one worker because they share a server and
+database; increasing their worker count requires a separate isolation check.
+
 ## Architecture
 
 FastAPI serves static pages, REST endpoints and WebSocket rooms. SQLAlchemy and

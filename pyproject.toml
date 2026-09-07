@@ -1,6 +1,7 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+# Keep each file together and limit CPU/RAM use on development machines and CI.
+addopts = "-ra -n auto --maxprocesses=4 --dist=loadfile"
 
 [tool.coverage.run]
 branch = true
