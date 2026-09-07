@@ -14,6 +14,18 @@ from tests.support import GameStateTestCase
 
 
 class GameTimeoutLifecycleTestCase(GameStateTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        # This class asserts the exact set of pending timeouts. Other test
+        # modules may intentionally leave an in-memory room behind, so clear
+        # the process-local registry before xdist schedules this file on a
+        # reused worker.
+        games.clear()
+
+    def tearDown(self) -> None:
+        games.clear()
+        super().tearDown()
+
     def test_exactly_one_hour_marks_a_paused_room_terminal(self) -> None:
         game = self.make_game(mode=2, players=[("p1", "Anna"), ("p2", "Ben")])
         now = datetime(2031, 4, 5, 14, 30, tzinfo=timezone.utc)
