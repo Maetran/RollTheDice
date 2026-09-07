@@ -178,20 +178,31 @@ this bounded lookup; the service never enumerates, discovers, or imports the
 ordinary historic `CompletedGame` population. A mismatch fails closed and
 rolls back both evidence changes and the catalog-version marker.
 
+The one narrowly scoped account-interaction correction is `avatar_set`: an
+account that already has a current `user_avatars` row when that award repair
+ships receives this first-picture award once in both collections, using the
+row's stored timestamp. That is not a scan of game history and does not infer
+or grant `avatar_changed`; a historic replacement has no durable proof and
+remains forward-only.
+
 ### Delivery, acknowledgement, and revocation
 
-After evaluation has durably unlocked an award, the server creates one private
-`zilch_achievement_deliveries` row for it. Delivery is idempotent per unlock,
-so terminal-state recovery or a browser reload cannot create a duplicate. The
-pending-delivery API is only a presentation queue. A client acknowledgement
-sets `acknowledged_at`; it neither grants an award nor changes its eligibility.
-The authoritative result, registered evaluation, validated evidence, and
+After a result or community evaluation has durably unlocked an award, the
+server creates one private `zilch_achievement_deliveries` row for it. Delivery
+is idempotent per unlock, so terminal-state recovery or a browser reload cannot
+create a duplicate. Account-interaction awards have no truthful result moment:
+they appear directly in the private collection and deliberately never enter
+this modal presentation queue. A client acknowledgement sets
+`acknowledged_at`; it neither grants an award nor changes its eligibility. The
+authoritative result, registered evaluation, validated evidence, and
 server-side unlock remain decisive.
 
 `zilch_achievement_rank_deliveries` separately retains each account's latest
-genuine upward Zilch-rank transition. The pending-delivery response derives it
-from the authoritative, chronological unlock collection and queues it exactly
-once after the individual award cards. This deliberately gives players who
+genuine result/community-driven upward Zilch-rank transition. The
+pending-delivery response derives it from the authoritative, chronological
+unlock collection and queues it exactly once after the individual award cards.
+Interaction points can advance the visible rank but do not create a blocking
+result-style rank card. This deliberately gives players who
 already had a rank before the card existed one retrospective presentation on
 their next private Zilch visit, without scanning completed-game history or
 creating an award. A newer upward tier replaces the row and requires a fresh
@@ -251,10 +262,10 @@ reconstructed from client state. Zilch awards have no public aggregate and no
 retrospective scan of unregistered results. Their cross-game points and rank
 are projections of durable Zilch unlock keys, not stored browser values.
 
-### Version-6 catalog, points, ranks, and APIs
+### Version-7 catalog, points, ranks, and APIs
 
 All keys are namespaced as `zilch.*` and are versioned separately from the
-ZDWA catalog. The expanded version-6 catalog contains 95 conditions: personal
+ZDWA catalog. The expanded version-7 catalog contains 110 conditions: personal
 goals for scoring, risk, duels, CPU play, Solo efficiency, high-end
 games/wins/banked rounds and human-table participation; a separate same-day
 series shared with ZDWA; and eight zero-point community milestones. Personal

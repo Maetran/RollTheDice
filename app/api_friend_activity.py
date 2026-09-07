@@ -8,6 +8,7 @@ from sqlalchemy import update
 
 from .auth import require_csrf, require_user
 from .database import session_scope
+from .engagement import record_engagement_safely
 from .models import User
 from .security import utcnow
 
@@ -41,4 +42,5 @@ def save_friend_activity_preferences(payload: FriendActivityPreference, request:
         ))
         if not result.rowcount:
             raise HTTPException(status_code=401, detail="authentication_required")
+    record_engagement_safely(identity.user_id, "settings_saved")
     return {"viewer_id": identity.user_id, "enabled": payload.enabled}

@@ -11,6 +11,7 @@ from sqlalchemy.dialects.sqlite import insert
 
 from .auth import require_csrf, require_user
 from .database import session_scope
+from .engagement import record_engagement_safely
 from .models import PushInviteAllowedSender, User
 from .security import utcnow
 
@@ -71,7 +72,9 @@ def save_allowlist_audience(payload: AllowlistAudience, request: Request, respon
         _lock_recipient(db, user_id)
         db.get(User, user_id).game_invite_push_audience = payload.audience
         db.flush()
-        return _payload(db, user_id)
+        result = _payload(db, user_id)
+    record_engagement_safely(user_id, "settings_saved")
+    return result
 
 
 @router.put("/{sender_user_id}")
@@ -90,7 +93,9 @@ def add_allowlist_player(sender_user_id: int, payload: AllowlistViewer, request:
             if count >= ALLOWLIST_LIMIT:
                 raise HTTPException(status_code=409, detail="push_allowlist_limit")
             db.execute(insert(PushInviteAllowedSender).values(**key, created_at=utcnow()).on_conflict_do_nothing())
-        return _payload(db, user_id)
+        result = _payload(db, user_id)
+    record_engagement_safely(user_id, "settings_saved")
+    return result
 
 
 @router.delete("/{sender_user_id}")
@@ -102,4 +107,6 @@ def remove_allowlist_player(sender_user_id: int, payload: AllowlistViewer, reque
             PushInviteAllowedSender.recipient_user_id == user_id,
             PushInviteAllowedSender.sender_user_id == sender_user_id,
         ))
-        return _payload(db, user_id)
+        result = _payload(db, user_id)
+    record_engagement_safely(user_id, "settings_saved")
+    return result

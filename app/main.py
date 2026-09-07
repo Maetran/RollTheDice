@@ -38,6 +38,7 @@ from .auth import (
 )
 from .auth_protection import enforce_game_creation_rate_limit, validate_auth_protection_config
 from .database import configure_database, database_schema_ready, session_scope, upgrade_database
+from .engagement import record_request_engagement
 from .friend_activity import serve_friend_activity_websocket, shutdown_friend_activity
 from .game_access import can_access_game, can_access_zilch_preview
 from .game_history import (
@@ -612,6 +613,34 @@ def _page(filename: str) -> FileResponse:
 
 
 ZDWA_PWA_BRIDGE_PREFIX = "/zdwa"
+_GAME_SWITCH_QUERY_KEY = "game_switch_from"
+
+
+def _consume_game_switch_marker(request: Request, *, target: str) -> RedirectResponse | None:
+    """Award a completed game switch only on its matching destination route."""
+    expected_source = {"zdwa": "zilch", "zilch": "zdwa"}.get(target)
+    # Starlette always supplies ``query_string`` for real ASGI requests.  The
+    # explicit guard also keeps direct route callers with a minimal request
+    # scope on the ordinary, no-marker path.
+    if not request.scope.get("query_string"):
+        return None
+    query_params = request.query_params
+    if query_params.get(_GAME_SWITCH_QUERY_KEY) != expected_source:
+        return None
+    record_request_engagement(request, "game_switcher_used")
+    query = [
+        (key, value)
+        for key, value in query_params.multi_items()
+        if key != _GAME_SWITCH_QUERY_KEY
+    ]
+    destination = request.url.path
+    if query:
+        destination = f"{destination}?{urlencode(query)}"
+    return RedirectResponse(
+        destination,
+        status_code=303,
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 def _embedded_zdwa_pwa_page(filename: str) -> Response:
@@ -702,20 +731,25 @@ def _serve_zilch_pwa_zdwa_bridge(request: Request, path: str = "") -> Response:
 @app.get(f"{ZDWA_PWA_BRIDGE_PREFIX}/{{path:path}}", include_in_schema=False)
 def zilch_pwa_zdwa_bridge_page(request: Request, path: str = "") -> Response:
     """Keep an installed Zilch PWA inside its own origin during a ZDWA handoff."""
+    redirect = _consume_game_switch_marker(request, target="zdwa")
+    if redirect:
+        return redirect
     return _serve_zilch_pwa_zdwa_bridge(request, path)
 
 
 @app.get("/regeln", include_in_schema=False)
 def rules_page(request: Request):
     if is_zilch_host(request):
-        return _serve_zilch_shell(request)
+        return _serve_zilch_shell(request, engagement_event="rules_viewed")
+    record_request_engagement(request, "rules_viewed")
     return _page("rules.html")
 
 
 @app.get("/spieler", include_in_schema=False)
 def players_page(request: Request):
     if is_zilch_host(request):
-        return _serve_zilch_shell(request)
+        return _serve_zilch_shell(request, engagement_event="leaderboard_viewed")
+    record_request_engagement(request, "leaderboard_viewed")
     return _page("players.html")
 
 
@@ -812,11 +846,13 @@ def _resolve_zilch_access(request: Request):
     raise HTTPException(status_code=403, detail="zilch_preview_required")
 
 
-def _serve_zilch_shell(request: Request):
+def _serve_zilch_shell(request: Request, *, engagement_event: str | None = None):
     """Serve the public Zilch shell or enforce a configured private rollout."""
     _identity, redirect = _resolve_zilch_access(request)
     if redirect:
         return redirect
+    if engagement_event:
+        record_request_engagement(request, engagement_event)
     # The implementation shell stays noindex so every account, room and legacy
     # route is private by default. Only the two dedicated public documents on
     # the actual Zilch origin carry canonical and Open Graph markup.
@@ -830,13 +866,20 @@ def _serve_zilch_shell(request: Request):
     return _page("zilch.html")
 
 
-def _serve_zilch_account_shell(request: Request):
+def _serve_zilch_account_shell(request: Request, *, engagement_event: str | None = None):
     """Serve an account-only Zilch page while public lobby pages stay open."""
     _require_zilch_preview(request)
+    if engagement_event:
+        record_request_engagement(request, engagement_event)
     return _page("zilch.html")
 
 
-def _redirect_zilch_account_tab(request: Request, tab: str) -> RedirectResponse:
+def _redirect_zilch_account_tab(
+    request: Request,
+    tab: str,
+    *,
+    engagement_event: str | None = None,
+) -> RedirectResponse:
     """Canonicalize private legacy pages to their matching Konto tab.
 
     The legacy paths stay allowlisted for old bookmarks and login handoffs,
@@ -845,6 +888,8 @@ def _redirect_zilch_account_tab(request: Request, tab: str) -> RedirectResponse:
     account protection of the old pages.
     """
     _require_zilch_preview(request)
+    if engagement_event:
+        record_request_engagement(request, engagement_event)
     prefix = "" if is_zilch_host(request) else "/zilch"
     query = f"?{request.url.query}" if request.url.query else ""
     return RedirectResponse(
@@ -857,6 +902,9 @@ def _redirect_zilch_account_tab(request: Request, tab: str) -> RedirectResponse:
 @app.get("/zilch", include_in_schema=False)
 def zilch_preview_page(request: Request):
     """Serve the Zilch lobby according to the central audience policy."""
+    redirect = _consume_game_switch_marker(request, target="zilch")
+    if redirect:
+        return redirect
     return _serve_zilch_shell(request)
 
 
@@ -893,25 +941,25 @@ def zilch_result_page(game_id: str, request: Request):
 @app.get("/zilch/historie", include_in_schema=False)
 def zilch_history_page(request: Request):
     """Serve the private, noindex Zilch shell for the history view."""
-    return _serve_zilch_account_shell(request)
+    return _serve_zilch_account_shell(request, engagement_event="history_viewed")
 
 
 @app.get("/zilch/statistiken", include_in_schema=False)
 def zilch_statistics_page(request: Request):
     """Keep the old personal-statistics link as a protected Konto alias."""
-    return _redirect_zilch_account_tab(request, "statistics")
+    return _redirect_zilch_account_tab(request, "statistics", engagement_event="statistics_viewed")
 
 
 @app.get("/zilch/bestenlisten", include_in_schema=False)
 def zilch_leaderboards_page(request: Request):
     """Serve the public Zilch leaderboard shell."""
-    return _serve_zilch_shell(request)
+    return _serve_zilch_shell(request, engagement_event="leaderboard_viewed")
 
 
 @app.get("/zilch/erfolge", include_in_schema=False)
 def zilch_achievements_page(request: Request):
     """Keep the old award link as a protected Konto alias."""
-    return _redirect_zilch_account_tab(request, "achievements")
+    return _redirect_zilch_account_tab(request, "achievements", engagement_event="achievements_viewed")
 
 
 @app.get("/zilch/konto", include_in_schema=False)
@@ -929,7 +977,7 @@ def zilch_player_achievements_page(username: str, request: Request):
 @app.get("/zilch/regeln", include_in_schema=False)
 def zilch_rules_page(request: Request):
     """Serve the public Zilch rule guide."""
-    return _serve_zilch_shell(request)
+    return _serve_zilch_shell(request, engagement_event="rules_viewed")
 
 
 @app.get("/anmelden", include_in_schema=False)
@@ -944,28 +992,28 @@ def zilch_subdomain_login_page(request: Request, return_to: str = Query(default=
 def zilch_subdomain_history_page(request: Request):
     if not is_zilch_host(request):
         raise HTTPException(status_code=404, detail="not_found")
-    return _serve_zilch_account_shell(request)
+    return _serve_zilch_account_shell(request, engagement_event="history_viewed")
 
 
 @app.get("/statistiken", include_in_schema=False)
 def zilch_subdomain_statistics_page(request: Request):
     if not is_zilch_host(request):
         raise HTTPException(status_code=404, detail="not_found")
-    return _redirect_zilch_account_tab(request, "statistics")
+    return _redirect_zilch_account_tab(request, "statistics", engagement_event="statistics_viewed")
 
 
 @app.get("/bestenlisten", include_in_schema=False)
 def zilch_subdomain_leaderboards_page(request: Request):
     if not is_zilch_host(request):
         raise HTTPException(status_code=404, detail="not_found")
-    return _serve_zilch_shell(request)
+    return _serve_zilch_shell(request, engagement_event="leaderboard_viewed")
 
 
 @app.get("/erfolge", include_in_schema=False)
 def zilch_subdomain_achievements_page(request: Request):
     if not is_zilch_host(request):
         raise HTTPException(status_code=404, detail="not_found")
-    return _redirect_zilch_account_tab(request, "achievements")
+    return _redirect_zilch_account_tab(request, "achievements", engagement_event="achievements_viewed")
 
 
 @app.get("/auth/continue", include_in_schema=False)
@@ -1231,7 +1279,13 @@ async def presence(websocket: WebSocket) -> None:
 def root(request: Request):
     """Liefer Startseite (Lobby) aus dem Static-Verzeichnis aus."""
     if is_zilch_host(request):
+        redirect = _consume_game_switch_marker(request, target="zilch")
+        if redirect:
+            return redirect
         return _serve_zilch_shell(request)
+    redirect = _consume_game_switch_marker(request, target="zdwa")
+    if redirect:
+        return redirect
     return FileResponse(
         str(STATIC_DIR / "index.html"),
         headers={"Cache-Control": "no-cache, must-revalidate"},

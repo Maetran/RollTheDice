@@ -1,50 +1,57 @@
 import { apiFetch, loadAuth } from "./auth.js";
 
-const ROUTE_EVENTS = new Map([
-  ["/regeln", "rules_viewed"], ["/statistiken", "statistics_viewed"],
-  ["/historie", "history_viewed"], ["/spieler", "leaderboard_viewed"],
-  ["/bestenlisten", "leaderboard_viewed"], ["/erfolge", "achievements_viewed"],
-  ["/konto", "settings_viewed"],
-]);
+const ACCOUNT_TAB_ENDPOINTS = Object.freeze({
+  statistics: "/api/account/engagement/account-tab/statistics",
+  achievements: "/api/account/engagement/account-tab/achievements",
+  settings: "/api/account/engagement/account-tab/settings",
+});
 
-export function recordEngagement(event) {
+const sentAccountTabs = new Set();
+
+function postInteraction(path) {
   void loadAuth().then((auth) => {
-    if (!auth?.authenticated) return;
-    return apiFetch("/api/account/engagement", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event }),
-    });
+    if (!auth?.authenticated) return null;
+    return apiFetch(path, { method: "POST" });
   }).catch(() => {});
 }
 
-const path = window.location.pathname.replace(/\/$/, "") || "/";
-const routeEvent = [...ROUTE_EVENTS].find(([prefix]) => path === prefix || path.startsWith(`${prefix}/`))?.[1];
-if (routeEvent) recordEngagement(routeEvent);
+function recordAccountTab(tab) {
+  const normalized = String(tab || "").trim();
+  const path = ACCOUNT_TAB_ENDPOINTS[normalized];
+  if (!path || sentAccountTabs.has(normalized)) return;
+  sentAccountTabs.add(normalized);
+  postInteraction(path);
+}
+
+function recordInitialAccountTab() {
+  const zilchTab = document.querySelector("[data-zilch-account-tab][aria-selected='true']")?.dataset.zilchAccountTab;
+  if (zilchTab) {
+    recordAccountTab(zilchTab);
+    return;
+  }
+  const zdwaTab = document.querySelector(".account-tab[aria-selected='true']")?.id;
+  recordAccountTab({
+    statisticsTab: "statistics",
+    achievementsTab: "achievements",
+    settingsTab: "settings",
+  }[zdwaTab]);
+}
+
+window.addEventListener("zdwa:account-tab", (event) => {
+  recordAccountTab(event.detail?.tab);
+});
+
+window.addEventListener("zdwa:theme-changed", () => {
+  postInteraction("/api/account/engagement/theme");
+});
 
 document.addEventListener("click", (event) => {
-  const target = event.target instanceof Element ? event.target.closest("a,button") : null;
-  if (!target) return;
-  if (target.matches("[data-theme-toggle]")) recordEngagement("theme_changed");
-  if (target.matches("[data-game-switch]")) recordEngagement("game_switcher_used");
-  if (target.matches("[data-avatar-upload] button") || target.closest("[data-avatar-upload]")) return;
-  if (target.closest("[data-push-settings], #zilchPushSettingsCard")) recordEngagement("push_settings_viewed");
-  if (target.closest("[data-zilch-account-tab='settings'], #accountSettings, [data-account-settings]")) recordEngagement("settings_viewed");
-  if (target instanceof HTMLAnchorElement && /github\.com/i.test(target.href)) recordEngagement("github_clicked");
+  const target = event.target instanceof Element ? event.target.closest("#pushSettingsCard, #zilchPushSettingsCard") : null;
+  if (target) postInteraction("/api/account/engagement/push-settings");
 });
 
-document.addEventListener("change", (event) => {
-  if (event.target instanceof HTMLSelectElement && event.target.matches("[data-language-switcher]")) {
-    recordEngagement("language_changed");
-  }
-});
-
-document.addEventListener("submit", (event) => {
-  const form = event.target;
-  if (!(form instanceof HTMLFormElement)) return;
-  if (form.id.includes("Preferences") || form.id.includes("preferences")) recordEngagement("settings_saved");
-  if (form.id.includes("LobbyChat")) recordEngagement("chat_settings_saved");
-});
-
-window.addEventListener("zdwa:avatar-updated", (event) => {
-  recordEngagement(event.detail?.replaced ? "avatar_changed" : "avatar_set");
-});
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", recordInitialAccountTab, { once: true });
+} else {
+  queueMicrotask(recordInitialAccountTab);
+}

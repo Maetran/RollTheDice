@@ -42,7 +42,13 @@ function clearRememberedZilchMode() {
 
 function navigateToMode(mode) {
   rememberMode(mode);
-  window.location.assign(mode === "zilch" ? zilchAppEntryUrl("/") : zdwaAppEntryUrl());
+  const destination = mode === "zilch" ? zilchAppEntryUrl("/") : zdwaAppEntryUrl();
+  const url = new URL(destination, window.location.href);
+  url.searchParams.set(
+    "game_switch_from",
+    document.documentElement.dataset.game === "zilch" ? "zilch" : "zdwa",
+  );
+  window.location.assign(url.toString());
 }
 
 /**

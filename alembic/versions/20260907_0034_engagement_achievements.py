@@ -5,6 +5,7 @@ Revises: 20260907_0033
 """
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "20260907_0034"

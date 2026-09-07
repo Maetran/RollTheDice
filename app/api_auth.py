@@ -30,6 +30,7 @@ from .auth_protection import (
     verify_registration_challenge,
 )
 from .database import session_scope
+from .engagement import record_engagement_safely
 from .game_access import public_game_access_payload
 from .models import Session as LoginSession
 from .models import User
@@ -199,6 +200,8 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
         user = db.get(User, identity.user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
+        language_changed = user.preferred_language != payload.preferred_language
+        chat_settings_saved = payload.lobby_chat_popups is not None or payload.lobby_chat_enabled is not None
         user.announce_selection_mode = payload.announce_selection_mode
         user.auto_write_announced = payload.auto_write_announced
         user.mobile_row_quick_entry = payload.mobile_row_quick_entry
@@ -211,7 +214,7 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
         user.preferred_language = payload.preferred_language
         user.updated_at = utcnow()
         db.flush()
-        return {
+        result = {
             "preferences": {
                 "announce_selection_mode": user.announce_selection_mode,
                 "auto_write_announced": user.auto_write_announced,
@@ -228,6 +231,12 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
                 "preferred_language": user.preferred_language,
             }
         }
+    record_engagement_safely(identity.user_id, "settings_saved")
+    if chat_settings_saved:
+        record_engagement_safely(identity.user_id, "chat_settings_saved")
+    if language_changed:
+        record_engagement_safely(identity.user_id, "language_changed")
+    return result
 
 
 @router.put("/auth/preferences/language")
@@ -238,10 +247,14 @@ def auth_update_language(payload: LanguagePreferenceRequest, request: Request):
         user = db.get(User, identity.user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
+        language_changed = user.preferred_language != payload.preferred_language
         user.preferred_language = payload.preferred_language
         user.updated_at = utcnow()
         db.flush()
-        return {"preferred_language": user.preferred_language}
+        result = {"preferred_language": user.preferred_language}
+    if language_changed:
+        record_engagement_safely(identity.user_id, "language_changed")
+    return result
 
 
 @router.put("/auth/preferences/lobby-chat")
@@ -258,10 +271,13 @@ def auth_update_lobby_chat_preference(payload: LobbyChatPreferenceRequest, reque
             user.lobby_chat_enabled = payload.lobby_chat_enabled
         user.updated_at = utcnow()
         db.flush()
-        return {
+        result = {
             "lobby_chat_popups": user.lobby_chat_popups,
             "lobby_chat_enabled": user.lobby_chat_enabled,
         }
+    record_engagement_safely(identity.user_id, "settings_saved")
+    record_engagement_safely(identity.user_id, "chat_settings_saved")
+    return result
 
 
 @router.get("/web-push/subscription")
@@ -276,7 +292,7 @@ def web_push_subscription_put(payload: WebPushSubscriptionRequest, request: Requ
     identity = require_user(request)
     require_csrf(request, identity)
     try:
-        return save_web_push_subscription(
+        result = save_web_push_subscription(
             user_id=identity.user_id,
             payload=payload,
             product_context="zilch" if is_zilch_host(request) else "zdwa",
@@ -287,6 +303,9 @@ def web_push_subscription_put(payload: WebPushSubscriptionRequest, request: Requ
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    record_engagement_safely(identity.user_id, "settings_saved")
+    record_engagement_safely(identity.user_id, "push_settings_viewed")
+    return result
 
 
 @router.delete("/web-push/subscription")
@@ -294,9 +313,12 @@ def web_push_subscription_delete(request: Request):
     identity = require_user(request)
     require_csrf(request, identity)
     try:
-        return remove_web_push_subscriptions(identity.user_id)
+        result = remove_web_push_subscriptions(identity.user_id)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    record_engagement_safely(identity.user_id, "settings_saved")
+    record_engagement_safely(identity.user_id, "push_settings_viewed")
+    return result
 
 
 @router.post("/web-push/opt-in-prompt")
@@ -316,13 +338,16 @@ def web_push_preferences_put(payload: WebPushPreferencesRequest, request: Reques
     identity = require_user(request)
     require_csrf(request, identity)
     try:
-        return update_web_push_preferences(identity.user_id, payload)
+        result = update_web_push_preferences(identity.user_id, payload)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    record_engagement_safely(identity.user_id, "settings_saved")
+    record_engagement_safely(identity.user_id, "push_settings_viewed")
+    return result
 
 
 @router.get("/admin/users")

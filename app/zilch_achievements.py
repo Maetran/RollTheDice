@@ -31,6 +31,7 @@ from .models import (
     DeletedGame,
     GameParticipant,
     User,
+    UserEngagementEvent,
     ZilchAchievementDelivery,
     ZilchAchievementEvaluation,
     ZilchAchievementEvidence,
@@ -42,8 +43,6 @@ from .models import (
     ZilchCommunityParticipant,
     ZilchCommunityRecipient,
     ZilchCommunityState,
-    UserEngagementEvent,
-    UserEngagementEvent,
 )
 from .security import as_utc, utcnow
 from .zilch_cpu_strategy import ZILCH_CPU_STRATEGIES
@@ -54,9 +53,9 @@ from .zilch_solo_objective import ZILCH_SOLO_SPRINT_OBJECTIVE_ID, ZILCH_SOLO_SPR
 logger = logging.getLogger(__name__)
 
 ZILCH_ACHIEVEMENT_RESPONSE_VERSION: Final = 2
-# Version 6 adds late-game progress, social milestones and shared ZDWA/Zilch
-# play-day goals.  Existing Zilch evidence remains the only source for normal
-# Zilch definitions; cross-game facts have their own rollout marker.
+# Version 7 adds explicit account-interaction goals. Existing Zilch evidence
+# remains the only source for normal game definitions; cross-game facts have
+# their own rollout marker.
 ZILCH_ACHIEVEMENT_CATALOG_VERSION: Final = 7
 ZILCH_ACHIEVEMENT_NAMESPACE: Final = "zilch."
 ZILCH_ACHIEVEMENT_DEFINITION_VERSION: Final = 1
@@ -2205,6 +2204,10 @@ def _criterion_is_satisfied(definition: ZilchAchievementDefinition, facts: list[
         # of both products, never from a single game's private evidence.
         # Their dedicated synchronizer owns materialization and revocation.
         return False
+    if definition.criterion == "engagement_event":
+        # Account interactions are measured in their own durable event ledger,
+        # never inferred from a Zilch result payload.
+        return False
     applicable = [
         item
         for item in facts
@@ -2657,7 +2660,13 @@ def _latest_zilch_rank_upgrade_in_session(
         keys.add(key)
         current = zilch_achievement_rank_for_points(zilch_achievement_points_for_keys(keys))
         if _is_zilch_rank_upgrade(previous, current):
-            latest = (unlock, previous, current)
+            definition = ZILCH_ACHIEVEMENT_BY_KEY.get(key)
+            # Account-interaction points can advance a rank, but a blocking
+            # result-style rank card has no truthful game moment to present.
+            # Keep those rank changes visible in the collection and reserve
+            # this delivery channel for game/community transitions.
+            if definition is not None and definition.criterion != "engagement_event":
+                latest = (unlock, previous, current)
         previous = current
     return latest
 
@@ -3448,10 +3457,11 @@ def _sync_user_achievements_in_session(
                 )
                 db.add(unlock)
                 db.flush()
-                delivery = ZilchAchievementDelivery(unlock_id=unlock.id, queued_at=now, acknowledged_at=None)
-                db.add(delivery)
+                # Interaction awards belong in the collection, but must not
+                # reopen a result-award modal over the action that earned it.
+                # The delivery queue is reserved for result/community moments.
                 newly_unlocked.append(_unlock_payload(
-                    unlock, definition, delivery=delivery, progress={"current": 1, "target": 1},
+                    unlock, definition, progress={"current": 1, "target": 1},
                 ))
                 continue
             if source is None:
@@ -3581,10 +3591,8 @@ def sync_zilch_engagement_achievements_for_users(
                 )
                 db.add(unlock)
                 db.flush()
-                delivery = ZilchAchievementDelivery(unlock_id=unlock.id, queued_at=utcnow(), acknowledged_at=None)
-                db.add(delivery)
                 unlocked.append(_unlock_payload(
-                    unlock, definition, delivery=delivery, progress={"current": 1, "target": 1},
+                    unlock, definition, progress={"current": 1, "target": 1},
                 ))
             if unlocked:
                 result[user_id] = unlocked

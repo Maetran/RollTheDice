@@ -124,7 +124,7 @@ for (const product of [
     const support = page.locator(".release-notes-support");
     await expect(support.locator("a").first()).toBeHidden();
     await support.locator("summary").click();
-    await expect(support.getByRole("link", { name: "Problem auf GitHub melden" })).toHaveAttribute("href", "https://github.com/Maetran/RollTheDice/issues");
+    await expect(support.getByRole("link", { name: "Problem auf GitHub melden" })).toHaveAttribute("href", "/go/github/issues");
     await expect(support.getByRole("link", { name: "Ausführliche Versionshistorie auf GitHub" })).toHaveAttribute("rel", "noopener noreferrer");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     await page.evaluate(() => document.activeElement?.blur());

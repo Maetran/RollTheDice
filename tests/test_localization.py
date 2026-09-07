@@ -102,7 +102,7 @@ def test_achievement_points_are_visible_catalog_data_and_logically_ordered():
 
 
 def test_achievement_rank_tiers_follow_the_public_point_distribution():
-    assert ACHIEVEMENT_POINTS_POSSIBLE == 703
+    assert ACHIEVEMENT_POINTS_POSSIBLE == 726
     assert achievement_rank_for_points(0)["title"] == "Newbie"
     assert achievement_rank_for_points(13)["title"] == "Rookie"
     assert achievement_rank_for_points(43)["title"] == "Spieler"

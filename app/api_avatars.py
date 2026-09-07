@@ -18,6 +18,7 @@ from starlette.responses import RedirectResponse
 
 from .auth import require_csrf, require_user
 from .database import session_scope
+from .engagement import record_engagement_safely
 from .models import AuthRateEvent, User, UserAvatar
 from .security import utcnow
 
@@ -190,7 +191,7 @@ def sanitize_avatar(data: bytes, declared_content_type: str | None = None) -> by
         raise HTTPException(status_code=400, detail="avatar_invalid") from exc
 
 
-def _store_avatar(request: Request, original_viewer: int, data: bytes) -> dict:
+def _store_avatar(request: Request, original_viewer: int, data: bytes) -> tuple[dict, bool]:
     # A logout, deactivation, or account change during upload is not authority
     # to persist a previously authenticated request after its slow body read.
     if _authorize_mutation(request) != original_viewer:
@@ -198,10 +199,11 @@ def _store_avatar(request: Request, original_viewer: int, data: bytes) -> dict:
     values = {"data": data, "sha256": hashlib.sha256(data).hexdigest(), "updated_at": utcnow()}
     with session_scope() as db:
         _lock_account(db, original_viewer)
+        replaced = db.get(UserAvatar, original_viewer) is not None
         db.execute(insert(UserAvatar).values(user_id=original_viewer, **values).on_conflict_do_update(
             index_elements=[UserAvatar.user_id], set_=values,
         ))
-    return _metadata(original_viewer)
+    return _metadata(original_viewer), replaced
 
 
 @router.get("/account/avatar")
@@ -232,7 +234,12 @@ async def upload_avatar(request: Request, response: Response):
             len(data),
         )
         raise
-    result = await run_in_threadpool(_store_avatar, request, user_id, clean)
+    result, replaced = await run_in_threadpool(_store_avatar, request, user_id, clean)
+    await run_in_threadpool(
+        record_engagement_safely,
+        user_id,
+        "avatar_changed" if replaced else "avatar_set",
+    )
     response.headers["Cache-Control"] = "no-store"
     return result
 

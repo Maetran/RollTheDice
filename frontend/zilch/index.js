@@ -2041,8 +2041,8 @@ function zilchAccountSettingsMarkup(username) {
       <details class="release-notes-support">
         <summary>${escapeHtml(t("Hilfe & weitere Details"))}</summary>
         <p>${escapeHtml(t("Du hast einen Fehler entdeckt? Beschreibe auf GitHub kurz, was passiert ist, in welchem Spiel und auf welchem Gerät. Teile keine Passwörter oder privaten Spielraum-Codes. Zum Melden brauchst du ein GitHub-Konto."))}</p>
-        <a href="https://github.com/Maetran/RollTheDice/issues" target="_blank" rel="noopener noreferrer">${escapeHtml(t("Problem auf GitHub melden"))}</a><br>
-        <a href="https://github.com/Maetran/RollTheDice/blob/master/CHANGELOG.md" target="_blank" rel="noopener noreferrer">${escapeHtml(t("Ausführliche Versionshistorie auf GitHub"))}</a>
+        <a href="/go/github/issues" target="_blank" rel="noopener noreferrer">${escapeHtml(t("Problem auf GitHub melden"))}</a><br>
+        <a href="/go/github/changelog" target="_blank" rel="noopener noreferrer">${escapeHtml(t("Ausführliche Versionshistorie auf GitHub"))}</a>
       </details>
     </section>
   </div>
@@ -2072,6 +2072,7 @@ function showZilchAccountTab(name, { updateHash = false, focus = false } = {}) {
     url.hash = selected;
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }
+  window.dispatchEvent(new CustomEvent("zdwa:account-tab", { detail: { tab: selected } }));
   if (focus) document.querySelector(`[data-zilch-account-tab="${selected}"]`)?.focus();
 }
 

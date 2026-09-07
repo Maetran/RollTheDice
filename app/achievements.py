@@ -1630,7 +1630,11 @@ def _progress_for_user(
 
 
 def _is_unlocked(achievement: Achievement, progress: dict[str, int | bool]) -> bool:
-    value = progress[achievement.kind]
+    # Interaction awards share one criterion kind but have individually
+    # persisted counters.  Their progress therefore lives under the concrete
+    # achievement/event key rather than the shared ``engagement_event`` name.
+    progress_key = achievement.key if achievement.kind == "engagement_event" else achievement.kind
+    value = progress[progress_key]
     return bool(value) if isinstance(value, bool) else int(value) >= achievement.target
 
 
@@ -1722,7 +1726,14 @@ def sync_user_achievements(
             "description": achievement.description,
             "icon_key": achievement.icon_key,
             "points": achievement.points,
-            "progress": {"current": int(progress[achievement.kind]), "target": achievement.target},
+            "progress": {
+                "current": int(
+                    progress[achievement.key]
+                    if achievement.kind == "engagement_event"
+                    else progress[achievement.kind]
+                ),
+                "target": achievement.target,
+            },
         }
         row = unlocked_rows.get(achievement.key)
         if row:

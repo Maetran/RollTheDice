@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=83f1f5626512">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=83f1f5626512" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=83f1f5626512" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=7824ab53ef78">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=7824ab53ef78" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=7824ab53ef78" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=83f1f5626512">
-  <script src="/static/shell.js?v=83f1f5626512" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=7824ab53ef78">
+  <script src="/static/shell.js?v=7824ab53ef78" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -85,8 +85,8 @@
         <details class="release-notes-support">
           <summary>Hilfe &amp; weitere Details</summary>
           <p>Du hast einen Fehler entdeckt? Beschreibe auf GitHub kurz, was passiert ist, in welchem Spiel und auf welchem Gerät. Teile keine Passwörter oder privaten Spielraum-Codes. Zum Melden brauchst du ein GitHub-Konto.</p>
-          <a href="https://github.com/Maetran/RollTheDice/issues" target="_blank" rel="noopener noreferrer">Problem auf GitHub melden</a><br>
-          <a href="https://github.com/Maetran/RollTheDice/blob/master/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Ausführliche Versionshistorie auf GitHub</a>
+          <a href="/go/github/issues" target="_blank" rel="noopener noreferrer">Problem auf GitHub melden</a><br>
+          <a href="/go/github/changelog" target="_blank" rel="noopener noreferrer">Ausführliche Versionshistorie auf GitHub</a>
         </details>
       </section>
       <section class="card password-card">
@@ -172,12 +172,12 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=83f1f5626512';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=83f1f5626512';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=83f1f5626512';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=83f1f5626512';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=83f1f5626512';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=83f1f5626512';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=7824ab53ef78';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=7824ab53ef78';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=7824ab53ef78';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=7824ab53ef78';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=7824ab53ef78';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=7824ab53ef78';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
@@ -214,6 +214,7 @@
         url.hash = selected;
         history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
       }
+      window.dispatchEvent(new CustomEvent('zdwa:account-tab', { detail: { tab: selected } }));
     }
     Object.entries(accountTabs).forEach(([name, tab]) => {
       tab.button.addEventListener('click', () => showAccountPanel(name));

@@ -55,6 +55,7 @@
     const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
     try { localStorage.setItem(STORAGE_KEY, next); } catch (_) {}
     applyTheme(next);
+    window.dispatchEvent(new CustomEvent("zdwa:theme-changed", { detail: { theme: next } }));
   }
 
   applyTheme(preferredTheme());

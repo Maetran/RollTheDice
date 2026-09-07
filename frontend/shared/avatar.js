@@ -35,5 +35,4 @@ export function initializeAvatarFallbacks() {
     if (image instanceof HTMLImageElement && image.classList.contains("player-avatar")
       && new URL(image.src, location.href).pathname !== DEFAULT_AVATAR) image.src = DEFAULT_AVATAR;
   }, true);
-  window.addEventListener("zdwa:avatar-updated", event => refreshAccountAvatars(event.detail?.userId));
 }

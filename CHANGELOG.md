@@ -11,6 +11,32 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Nächster Release / Next release — Erkundung, die zählt
+
+### Deutsch
+
+- Ein schon gespeichertes Profilbild erhält einmalig den Erst-Erfolg in ZDWA
+  und Zilch. Die Korrektur stützt sich ausschließlich auf das aktuelle,
+  dauerhafte Profilbild; frühere Wechsel werden weder erraten noch
+  rückwirkend vergeben.
+- Konto-Tabs erfassen jetzt den tatsächlich geöffneten Bereich. Erfolgreich
+  gespeicherte Einstellungen, Push-Bereiche, GitHub-Links und der Wechsel
+  zwischen den Spielen zählen über den passenden Ablauf statt über einen
+  freien Event-Aufruf.
+- Bestehende Achievement-Werte und Ranggrenzen bleiben unverändert; niemand
+  wird heruntergestuft. Neue Punkte gibt es nur für die dazugehörigen Aktionen.
+
+### English
+
+- An already stored profile picture receives the first-picture award once in
+  ZDWA and Zilch. The repair uses only the current durable profile-picture
+  record; earlier changes are neither guessed nor granted retroactively.
+- Account tabs now track the area that was actually opened. Successful setting
+  changes, Push areas, GitHub links and switching games use their matching
+  product flow instead of a free-form event call.
+- Existing achievement values and rank thresholds remain unchanged, and nobody
+  is demoted. New points are available only for their matching actions.
+
 ## Nächster Release / Next release — Mehr Ziele, klarer Tisch
 
 ### Deutsch

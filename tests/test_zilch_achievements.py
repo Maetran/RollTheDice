@@ -380,7 +380,7 @@ class ZilchAchievementPersistenceTestCase(TestCase):
         # catalog version advances when server-side definitions grow.
         self.assertEqual(catalog["version"], 2)
         self.assertNotIn("player", catalog)
-        self.assertEqual(len(catalog["definitions"]), 95)
+        self.assertEqual(len(catalog["definitions"]), 110)
         self.assertEqual({item["key"] for item in catalog["definitions"]}, set(ZILCH_ACHIEVEMENT_BY_KEY))
         self.assertEqual(catalog["points_possible"], ZILCH_ACHIEVEMENT_POINTS_POSSIBLE)
         self.assertEqual(
@@ -487,7 +487,12 @@ class ZilchAchievementPersistenceTestCase(TestCase):
         unsatisfied = [
             definition.key
             for definition in ZILCH_ACHIEVEMENTS
-            if definition.criterion not in {"community_games", "cross_game_days", "cross_game_streak"}
+            if definition.criterion not in {
+                "community_games",
+                "cross_game_days",
+                "cross_game_streak",
+                "engagement_event",
+            }
             and not _criterion_is_satisfied(definition, facts)
         ]
         self.assertEqual(unsatisfied, [])

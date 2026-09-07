@@ -113,8 +113,9 @@ class UserEngagementEvent(Base):
     """One durable, explicit post-rollout account interaction.
 
     Keeping interactions separate from game history makes these awards
-    non-retroactive: only actions sent by the live UI after the rollout can
-    create a row.
+    non-retroactive. The only exception is the one-time ``avatar_set`` repair
+    for an already persisted current avatar, whose durable timestamp is a
+    stronger source than a browser click.
     """
 
     __tablename__ = "user_engagement_events"
