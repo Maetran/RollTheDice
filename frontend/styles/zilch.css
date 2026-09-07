@@ -3573,6 +3573,28 @@ html[data-game="zilch"] body {
   background-attachment: scroll;
 }
 
+/* iOS can intermittently soften the upper part of a standalone window when a
+   large raster texture is painted on `body`. Keep the status canvas solid and
+   paint the tavern table on the game surface instead. The image then belongs
+   to a regular scrolling element, not the PWA viewport compositor. */
+@media (display-mode: standalone) {
+  html[data-game="zilch"] body {
+    background-image: none;
+  }
+
+  html[data-game="zilch"] .zilch-shell--game {
+    background-color: #5a3018;
+    background-image:
+      radial-gradient(ellipse at 48% 18%, rgba(210, 151, 82, .12), transparent 58%),
+      linear-gradient(105deg, rgba(38, 17, 8, .18), rgba(116, 70, 37, .04) 48%, rgba(35, 15, 7, .2)),
+      url("/static/zilch-wood-table-v1.jpg");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: scroll;
+  }
+}
+
 .zilch-shell--game .zilch-play-layout {
   /* Keep the paper at its expanded in-turn footprint even while there is no
      running-total tile. That prevents the board from visibly shrinking after
@@ -3758,7 +3780,9 @@ html[data-game="zilch"] body {
   overscroll-behavior: contain;
   scrollbar-color: rgba(123, 78, 39, .48) transparent;
   scrollbar-width: thin;
-  font-size: clamp(.84rem, 2.45vw, .96rem);
+  /* A little larger for phone play, while the fixed ruled-row height keeps
+     the score sheet just as dense as before. */
+  font-size: clamp(.92rem, 2.7vw, 1rem);
   line-height: 1.05;
 }
 
