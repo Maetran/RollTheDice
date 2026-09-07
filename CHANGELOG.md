@@ -22,7 +22,8 @@ also includes older and internal changes.
 - Konto-Tabs erfassen jetzt den tatsächlich geöffneten Bereich. Erfolgreich
   gespeicherte Einstellungen, Push-Bereiche, GitHub-Links und der Wechsel
   zwischen den Spielen zählen über den passenden Ablauf statt über einen
-  freien Event-Aufruf.
+  freien Event-Aufruf. Zilch-Erkundungs-Auszeichnungen blockieren dabei keine
+  Bedienung mit einem Ergebnisdialog.
 - Bestehende Achievement-Werte und Ranggrenzen bleiben unverändert; niemand
   wird heruntergestuft. Neue Punkte gibt es nur für die dazugehörigen Aktionen.
 
@@ -33,7 +34,8 @@ also includes older and internal changes.
   record; earlier changes are neither guessed nor granted retroactively.
 - Account tabs now track the area that was actually opened. Successful setting
   changes, Push areas, GitHub links and switching games use their matching
-  product flow instead of a free-form event call.
+  product flow instead of a free-form event call. Zilch exploration awards do
+  not block controls with a result dialog.
 - Existing achievement values and rank thresholds remain unchanged, and nobody
   is demoted. New points are available only for their matching actions.
 

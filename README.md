@@ -116,7 +116,8 @@ one-time repair is **Profile Picture** for accounts that already had a
 currently stored avatar when the award shipped; it uses that durable avatar
 record only. Historic avatar replacements and all game-history awards remain
 forward-only. Rank thresholds remain fixed, so this expansion cannot demote a
-player.
+player. In Zilch, interaction awards appear in the collection without opening
+a result dialog over account or game controls.
 **Ehrenberg-Marken**, which contribute to titles and star insignia. Newly earned
 awards are celebrated individually, followed by a **LEVEL UP!** card for a
 genuine title increase.

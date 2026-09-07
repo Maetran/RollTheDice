@@ -8,7 +8,7 @@
       "title": "Erkundung, die zählt",
       "changes": [
         "Ein bereits gespeichertes Profilbild erhält einmalig den Erst-Erfolg in ZDWA und Zilch. Frühere Bildwechsel werden nicht geschätzt oder nachträglich vergeben.",
-        "Konto-Tabs, erfolgreiche Einstellungen, Push-Bereiche, GitHub-Links und der Spielwechsel werden jetzt über den passenden Ablauf erfasst.",
+        "Konto-Tabs, erfolgreiche Einstellungen, Push-Bereiche, GitHub-Links und der Spielwechsel werden jetzt passend erfasst; Zilch-Erkundungs-Auszeichnungen blockieren keine Bedienung.",
         "Bestehende Achievement-Werte und Ranggrenzen bleiben unverändert, niemand wird heruntergestuft; neue Punkte kommen nur durch passende Aktionen hinzu."
       ]
     },
@@ -16,7 +16,7 @@
       "title": "Exploration that counts",
       "changes": [
         "An already stored profile picture receives the first-picture award once in ZDWA and Zilch. Earlier picture changes are neither guessed nor granted retroactively.",
-        "Account tabs, successful setting changes, Push areas, GitHub links and game switching now use the matching product flow for tracking.",
+        "Account tabs, successful setting changes, Push areas, GitHub links and game switching now use their matching flow; Zilch exploration awards do not block controls.",
         "Existing achievement values and rank thresholds remain unchanged, and nobody is demoted; new points only come from matching actions."
       ]
     }

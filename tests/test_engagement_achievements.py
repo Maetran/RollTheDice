@@ -23,6 +23,7 @@ from app.models import (
     UserAchievement,
     UserAvatar,
     UserEngagementEvent,
+    ZilchAchievementDelivery,
     ZilchAchievementUnlock,
 )
 from app.zilch_achievements import pending_zilch_awards
@@ -141,3 +142,53 @@ class EngagementAchievementTestCase(TestCase):
         zdwa_avatar = next(row for row in zdwa if row.achievement_key == "avatar_set")
         self.assertEqual(zdwa_avatar.unlocked_at.replace(tzinfo=timezone.utc), avatar_time)
         self.assertEqual(zilch[0].unlocked_at.replace(tzinfo=timezone.utc), avatar_time)
+
+    def test_stale_interaction_delivery_is_settled_without_touching_game_delivery(self) -> None:
+        user = create_user("DeliveryRepair", "a-secure-password-123", must_change_password=False)
+        delivery_time = datetime(2026, 9, 7, 15, 45, tzinfo=timezone.utc)
+        with session_scope() as db:
+            interaction = ZilchAchievementUnlock(
+                user_id=user.id,
+                achievement_key="zilch.leaderboard_viewed",
+                definition_version=1,
+                source_evidence_id=None,
+                source_community_recipient_id=None,
+                source_game_id=None,
+                presentation_game_id=None,
+                unlocked_at=delivery_time,
+            )
+            game = ZilchAchievementUnlock(
+                user_id=user.id,
+                achievement_key="zilch.first_game",
+                definition_version=1,
+                source_evidence_id=None,
+                source_community_recipient_id=None,
+                source_game_id="delivery-repair-game",
+                presentation_game_id="delivery-repair-game",
+                unlocked_at=delivery_time,
+            )
+            db.add_all((interaction, game))
+            db.flush()
+            db.add_all((
+                ZilchAchievementDelivery(unlock_id=interaction.id, queued_at=delivery_time, acknowledged_at=None),
+                ZilchAchievementDelivery(unlock_id=game.id, queued_at=delivery_time, acknowledged_at=None),
+            ))
+
+        command.downgrade(self._config(), "20260907_0035")
+        command.upgrade(self._config(), "head")
+        command.upgrade(self._config(), "head")
+
+        with session_scope() as db:
+            deliveries = {
+                unlock.achievement_key: delivery
+                for delivery, unlock in db.execute(
+                    select(ZilchAchievementDelivery, ZilchAchievementUnlock)
+                    .join(ZilchAchievementUnlock, ZilchAchievementDelivery.unlock_id == ZilchAchievementUnlock.id)
+                    .where(ZilchAchievementUnlock.user_id == user.id)
+                )
+            }
+        self.assertEqual(
+            deliveries["zilch.leaderboard_viewed"].acknowledged_at.replace(tzinfo=timezone.utc),
+            delivery_time,
+        )
+        self.assertIsNone(deliveries["zilch.first_game"].acknowledged_at)
