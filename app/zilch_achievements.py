@@ -18,12 +18,12 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from math import ceil
 from typing import Any, Final, Iterable, Mapping
 
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
+from .cross_game_activity import CrossGameActivity, cross_game_activity_for_user
 from .database import database_schema_ready, session_scope
 from .game_types import ZILCH_GAME_TYPE
 from .models import (
@@ -52,10 +52,10 @@ from .zilch_solo_objective import ZILCH_SOLO_SPRINT_OBJECTIVE_ID, ZILCH_SOLO_SPR
 logger = logging.getLogger(__name__)
 
 ZILCH_ACHIEVEMENT_RESPONSE_VERSION: Final = 2
-# Version 5 adds the escalating matching-dice families. It makes installations
-# that already materialized the previous catalog evaluate the new definitions
-# from their explicitly registered evidence exactly once.
-ZILCH_ACHIEVEMENT_CATALOG_VERSION: Final = 5
+# Version 6 adds late-game progress, social milestones and shared ZDWA/Zilch
+# play-day goals.  Existing Zilch evidence remains the only source for normal
+# Zilch definitions; cross-game facts have their own rollout marker.
+ZILCH_ACHIEVEMENT_CATALOG_VERSION: Final = 6
 ZILCH_ACHIEVEMENT_NAMESPACE: Final = "zilch."
 ZILCH_ACHIEVEMENT_DEFINITION_VERSION: Final = 1
 ZILCH_ACHIEVEMENT_RECOVERY_DEFAULT_LIMIT: Final = 50
@@ -1132,6 +1132,258 @@ ZILCH_ACHIEVEMENTS: Final[tuple[ZilchAchievementDefinition, ...]] = (
         target=50,
     ),
     _definition(
+        "games_played_1000",
+        category="milestones",
+        icon_key="star",
+        title_de="Wirtshaus-Inventar I",
+        title_en="Tavern Fixture I",
+        description_de="1’000 Zilch-Partien abgeschlossen.",
+        description_en="Complete 1,000 Zilch games.",
+        criterion="games_played",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=8,
+        target=1_000,
+    ),
+    _definition(
+        "games_played_2500",
+        category="milestones",
+        icon_key="flame",
+        title_de="Wirtshaus-Inventar II",
+        title_en="Tavern Fixture II",
+        description_de="2’500 Zilch-Partien abgeschlossen.",
+        description_en="Complete 2,500 Zilch games.",
+        criterion="games_played",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=10,
+        target=2_500,
+    ),
+    _definition(
+        "career_banked_2000000",
+        category="milestones",
+        icon_key="star",
+        title_de="Schatzkammer I",
+        title_en="Treasure Vault I",
+        description_de="Insgesamt 2’000’000 Punkte sicher angeschrieben.",
+        description_en="Bank 2,000,000 points in total.",
+        criterion="career_banked_points",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=8,
+        target=2_000_000,
+    ),
+    _definition(
+        "career_banked_5000000",
+        category="milestones",
+        icon_key="flame",
+        title_de="Schatzkammer II",
+        title_en="Treasure Vault II",
+        description_de="Insgesamt 5’000’000 Punkte sicher angeschrieben.",
+        description_en="Bank 5,000,000 points in total.",
+        criterion="career_banked_points",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=10,
+        target=5_000_000,
+    ),
+    _definition(
+        "competitive_wins_100",
+        category="milestones",
+        icon_key="star",
+        title_de="Hundert Siege",
+        title_en="One Hundred Wins",
+        description_de="100 Partien gegen Menschen oder CPU gewonnen.",
+        description_en="Win 100 games against people or the CPU.",
+        criterion="competitive_wins",
+        eligible_modes={"multiplayer", "cpu"},
+        result_schema_versions={1},
+        points=7,
+        target=100,
+    ),
+    _definition(
+        "competitive_wins_500",
+        category="milestones",
+        icon_key="flame",
+        title_de="Tischherrschaft",
+        title_en="Table Dominion",
+        description_de="500 Partien gegen Menschen oder CPU gewonnen.",
+        description_en="Win 500 games against people or the CPU.",
+        criterion="competitive_wins",
+        eligible_modes={"multiplayer", "cpu"},
+        result_schema_versions={1},
+        points=10,
+        target=500,
+    ),
+    _definition(
+        "banked_round_6000",
+        category="scoring",
+        icon_key="flame",
+        title_de="Sechstausender",
+        title_en="Six Thousand Bank",
+        description_de="In einer Runde mindestens 6’000 Punkte sicher angeschrieben.",
+        description_en="Bank at least 6,000 points in one round.",
+        criterion="banked_round",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=10,
+        target=6_000,
+    ),
+    _definition(
+        "multiplayer_games_25",
+        category="multiplayer",
+        icon_key="games",
+        title_de="Tischrunde I",
+        title_en="Table Regular I",
+        description_de="25 Zilch-Partien gegen andere Menschen abgeschlossen.",
+        description_en="Complete 25 Zilch games against other people.",
+        criterion="multiplayer_games",
+        eligible_modes={"multiplayer"},
+        result_schema_versions={1},
+        points=3,
+        target=25,
+    ),
+    _definition(
+        "multiplayer_games_100",
+        category="multiplayer",
+        icon_key="games",
+        title_de="Tischrunde II",
+        title_en="Table Regular II",
+        description_de="100 Zilch-Partien gegen andere Menschen abgeschlossen.",
+        description_en="Complete 100 Zilch games against other people.",
+        criterion="multiplayer_games",
+        eligible_modes={"multiplayer"},
+        result_schema_versions={1},
+        points=7,
+        target=100,
+    ),
+    _definition(
+        "cross_game_days_1",
+        category="crossplay",
+        icon_key="games",
+        title_de="Doppelrunde I",
+        title_en="Double Round I",
+        description_de="Zum ersten Mal Zilch und ZDWA am selben Kalendertag gespielt.",
+        description_en="Play Zilch and ZDWA on the same calendar day for the first time.",
+        criterion="cross_game_days",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=2,
+        target=1,
+    ),
+    _definition(
+        "cross_game_days_10",
+        category="crossplay",
+        icon_key="games",
+        title_de="Doppelrunde II",
+        title_en="Double Round II",
+        description_de="An 10 Kalendertagen sowohl Zilch als auch ZDWA gespielt.",
+        description_en="Play both Zilch and ZDWA on 10 calendar days.",
+        criterion="cross_game_days",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=4,
+        target=10,
+    ),
+    _definition(
+        "cross_game_days_50",
+        category="crossplay",
+        icon_key="games",
+        title_de="Doppelrunde III",
+        title_en="Double Round III",
+        description_de="An 50 Kalendertagen sowohl Zilch als auch ZDWA gespielt.",
+        description_en="Play both Zilch and ZDWA on 50 calendar days.",
+        criterion="cross_game_days",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=6,
+        target=50,
+    ),
+    _definition(
+        "cross_game_days_100",
+        category="crossplay",
+        icon_key="flame",
+        title_de="Doppelrunde IV",
+        title_en="Double Round IV",
+        description_de="An 100 Kalendertagen sowohl Zilch als auch ZDWA gespielt.",
+        description_en="Play both Zilch and ZDWA on 100 calendar days.",
+        criterion="cross_game_days",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=8,
+        target=100,
+    ),
+    _definition(
+        "cross_game_days_500",
+        category="crossplay",
+        icon_key="flame",
+        title_de="Doppelrunde V",
+        title_en="Double Round V",
+        description_de="An 500 Kalendertagen sowohl Zilch als auch ZDWA gespielt.",
+        description_en="Play both Zilch and ZDWA on 500 calendar days.",
+        criterion="cross_game_days",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=10,
+        target=500,
+    ),
+    _definition(
+        "cross_game_streak_3",
+        category="crossplay",
+        icon_key="games",
+        title_de="Doppelrunde-Serie I",
+        title_en="Double Round Streak I",
+        description_de="Während 3 Tagen in Folge Zilch und ZDWA gespielt.",
+        description_en="Play Zilch and ZDWA on 3 consecutive days.",
+        criterion="cross_game_streak",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=3,
+        target=3,
+    ),
+    _definition(
+        "cross_game_streak_7",
+        category="crossplay",
+        icon_key="games",
+        title_de="Doppelrunde-Serie II",
+        title_en="Double Round Streak II",
+        description_de="Während 7 Tagen in Folge Zilch und ZDWA gespielt.",
+        description_en="Play Zilch and ZDWA on 7 consecutive days.",
+        criterion="cross_game_streak",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=5,
+        target=7,
+    ),
+    _definition(
+        "cross_game_streak_14",
+        category="crossplay",
+        icon_key="flame",
+        title_de="Doppelrunde-Serie III",
+        title_en="Double Round Streak III",
+        description_de="Während 14 Tagen in Folge Zilch und ZDWA gespielt.",
+        description_en="Play Zilch and ZDWA on 14 consecutive days.",
+        criterion="cross_game_streak",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=7,
+        target=14,
+    ),
+    _definition(
+        "cross_game_streak_30",
+        category="crossplay",
+        icon_key="flame",
+        title_de="Doppelrunde-Serie IV",
+        title_en="Double Round Streak IV",
+        description_de="Während 30 Tagen in Folge Zilch und ZDWA gespielt.",
+        description_en="Play Zilch and ZDWA on 30 consecutive days.",
+        criterion="cross_game_streak",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=10,
+        target=30,
+    ),
+    _definition(
         "community_games_100",
         category="community",
         icon_key="star",
@@ -1201,6 +1453,48 @@ ZILCH_ACHIEVEMENTS: Final[tuple[ZilchAchievementDefinition, ...]] = (
         points=0,
         target=10_000,
     ),
+    _definition(
+        "community_games_25000",
+        category="community",
+        icon_key="star",
+        title_de="Stadtgespräch",
+        title_en="Talk of the Town",
+        description_de="Die Zilch-Community hat gemeinsam 25’000 Partien abgeschlossen.",
+        description_en="The Zilch community has completed 25,000 games together.",
+        criterion="community_games",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=0,
+        target=25_000,
+    ),
+    _definition(
+        "community_games_50000",
+        category="community",
+        icon_key="flame",
+        title_de="Wirtshaus-Legende",
+        title_en="Tavern Legend",
+        description_de="Die Zilch-Community hat gemeinsam 50’000 Partien abgeschlossen.",
+        description_en="The Zilch community has completed 50,000 games together.",
+        criterion="community_games",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=0,
+        target=50_000,
+    ),
+    _definition(
+        "community_games_100000",
+        category="community",
+        icon_key="flame",
+        title_de="Das ganze Dorf würfelt",
+        title_en="The Whole Town Rolls",
+        description_de="Die Zilch-Community hat gemeinsam 100’000 Partien abgeschlossen.",
+        description_en="The Zilch community has completed 100,000 games together.",
+        criterion="community_games",
+        eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS,
+        points=0,
+        target=100_000,
+    ),
 )
 
 ZILCH_ACHIEVEMENT_BY_KEY: Final[dict[str, ZilchAchievementDefinition]] = {
@@ -1215,8 +1509,10 @@ ZILCH_ACHIEVEMENT_CATEGORIES: Final[tuple[str, ...]] = (
     "multiplayer",
     "cpu",
     "solo",
+    "crossplay",
     "community",
 )
+_CROSS_GAME_CRITERIA: Final[frozenset[str]] = frozenset({"cross_game_days", "cross_game_streak"})
 _COMBINATION_BY_TARGET: Final[dict[int, frozenset[str]]] = {
     0: frozenset({"straight"}),
     1: frozenset({"three_pairs"}),
@@ -1279,31 +1575,27 @@ ZILCH_ACHIEVEMENT_POINTS_BY_KEY: Final[dict[str, int]] = {
 }
 ZILCH_ACHIEVEMENT_POINTS_POSSIBLE: Final[int] = sum(ZILCH_ACHIEVEMENT_POINTS_BY_KEY.values())
 
-# Use the same proportional ladder and star language as ZDWA while keeping the
-# currency and title calculation in this isolated Zilch namespace.
-_ZILCH_RANK_REFERENCE_MAXIMUM: Final = 451
+# The existing 330-point catalog established these absolute thresholds.  They
+# must not move when future Zilch content arrives: a player keeps their rank
+# and new high-end tiers provide the additional runway instead.
 ZILCH_ACHIEVEMENT_RANKS: Final[tuple[ZilchAchievementRank, ...]] = (
     ZilchAchievementRank("newbie", "Newbie", 0, 0),
-    ZilchAchievementRank("rookie", "Rookie", 1, 10),
-    ZilchAchievementRank("player", "Spieler", 2, 35),
-    ZilchAchievementRank("advanced", "Fortgeschritten", 2, 75),
-    ZilchAchievementRank("pro", "Pro", 3, 120),
-    ZilchAchievementRank("expert", "Experte", 3, 170),
-    ZilchAchievementRank("master", "Meister", 4, 230),
-    ZilchAchievementRank("elite", "Elite", 4, 300),
-    ZilchAchievementRank("legend", "Legende", 5, 375),
-    ZilchAchievementRank("godmode", "Godmode", 5, 430),
+    ZilchAchievementRank("rookie", "Rookie", 1, 8),
+    ZilchAchievementRank("player", "Spieler", 2, 26),
+    ZilchAchievementRank("advanced", "Fortgeschritten", 2, 55),
+    ZilchAchievementRank("pro", "Pro", 3, 88),
+    ZilchAchievementRank("expert", "Experte", 3, 125),
+    ZilchAchievementRank("master", "Meister", 4, 169),
+    ZilchAchievementRank("elite", "Elite", 4, 220),
+    ZilchAchievementRank("legend", "Legende", 5, 275),
+    ZilchAchievementRank("godmode", "Godmode", 5, 315),
+    ZilchAchievementRank("grandmaster", "Wirtshausmeister", 5, 370),
+    ZilchAchievementRank("mythic", "Würfelmythos", 6, 440),
 )
 
 
 def _zilch_rank_minimum_points(rank: ZilchAchievementRank) -> int:
-    if rank.reference_minimum_points <= 0:
-        return 0
-    return ceil(
-        ZILCH_ACHIEVEMENT_POINTS_POSSIBLE
-        * rank.reference_minimum_points
-        / _ZILCH_RANK_REFERENCE_MAXIMUM
-    )
+    return max(0, int(rank.reference_minimum_points))
 
 
 def zilch_achievement_points_for_keys(keys: Iterable[str]) -> int:
@@ -1890,6 +2182,11 @@ def _criterion_is_satisfied(definition: ZilchAchievementDefinition, facts: list[
         # Community unlocks have their own monotonic ledger and frozen source
         # recipient.  Personal evidence resync must never grant or revoke one.
         return False
+    if definition.criterion in _CROSS_GAME_CRITERIA:
+        # Same-day ZDWA/Zilch goals are derived from the typed result ledger
+        # of both products, never from a single game's private evidence.
+        # Their dedicated synchronizer owns materialization and revocation.
+        return False
     applicable = [
         item
         for item in facts
@@ -1901,6 +2198,8 @@ def _criterion_is_satisfied(definition: ZilchAchievementDefinition, facts: list[
     if criterion == "first_registered_game":
         return bool(applicable)
     if criterion == "games_played":
+        return len(applicable) >= int(definition.target or 0)
+    if criterion == "multiplayer_games":
         return len(applicable) >= int(definition.target or 0)
     if criterion == "career_banked_points":
         return sum(sum(int(value) for value in item["banked_rounds"]) for item in applicable) >= int(
@@ -2068,6 +2367,7 @@ def _progress_for_definition(
     facts: list[dict[str, Any]],
     *,
     community_games: int | None = None,
+    cross_game_activity: CrossGameActivity | None = None,
 ) -> dict[str, int] | None:
     """Expose progress only where a stable numeric denominator exists."""
 
@@ -2076,12 +2376,22 @@ def _progress_for_definition(
             "current": max(0, int(community_games or 0)),
             "target": int(definition.target or 0),
         }
+    if definition.criterion == "cross_game_days":
+        return {
+            "current": max(0, int(cross_game_activity.paired_days if cross_game_activity else 0)),
+            "target": int(definition.target or 0),
+        }
+    if definition.criterion == "cross_game_streak":
+        return {
+            "current": max(0, int(cross_game_activity.longest_streak if cross_game_activity else 0)),
+            "target": int(definition.target or 0),
+        }
     applicable = [
         item
         for item in facts
         if _definition_applies(definition, item) and _is_qualified_completion(item)
     ]
-    if definition.criterion == "games_played":
+    if definition.criterion in {"games_played", "multiplayer_games"}:
         current = len(applicable)
     elif definition.criterion == "career_banked_points":
         current = sum(sum(int(value) for value in item["banked_rounds"]) for item in applicable)
@@ -2989,6 +3299,83 @@ def _register_community_game_in_session(
     return new_unlocks
 
 
+def _cross_game_criterion_is_satisfied(
+    definition: ZilchAchievementDefinition,
+    activity: CrossGameActivity,
+) -> bool:
+    if definition.criterion == "cross_game_days":
+        return int(activity.paired_days) >= int(definition.target or 0)
+    if definition.criterion == "cross_game_streak":
+        return int(activity.longest_streak) >= int(definition.target or 0)
+    raise RuntimeError(f"Unknown cross-game Zilch achievement criterion: {definition.criterion}")
+
+
+def _sync_cross_game_achievements_in_session(
+    db,
+    user: User,
+    existing: dict[str, ZilchAchievementUnlock],
+    *,
+    presentation_game_id: str | None = None,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Materialize the rollout-safe ZDWA/Zilch awards for one account."""
+
+    activity = cross_game_activity_for_user(db, user)
+    now = utcnow()
+    newly_unlocked: list[dict[str, Any]] = []
+    revoked: list[str] = []
+    for definition in ZILCH_ACHIEVEMENTS:
+        if definition.criterion not in _CROSS_GAME_CRITERIA:
+            continue
+        should_unlock = _cross_game_criterion_is_satisfied(definition, activity)
+        unlock = existing.get(definition.key)
+        if should_unlock and unlock is None:
+            # A paired day always has a Zilch result.  Keep that result as the
+            # presentation-safe source even if the later ZDWA game completed
+            # the pair, so the Zilch client never points at a foreign report.
+            source_game_id = activity.latest_zilch_game_id
+            if not source_game_id:
+                continue
+            unlock = ZilchAchievementUnlock(
+                user_id=user.id,
+                achievement_key=definition.key,
+                definition_version=definition.definition_version,
+                source_evidence_id=None,
+                source_community_recipient_id=None,
+                source_game_id=source_game_id,
+                presentation_game_id=presentation_game_id or source_game_id,
+                unlocked_at=now,
+            )
+            db.add(unlock)
+            db.flush()
+            delivery = ZilchAchievementDelivery(unlock_id=unlock.id, queued_at=now, acknowledged_at=None)
+            db.add(delivery)
+            newly_unlocked.append(
+                _unlock_payload(
+                    unlock,
+                    definition,
+                    delivery=delivery,
+                    progress=_progress_for_definition(
+                        definition,
+                        [],
+                        cross_game_activity=activity,
+                    ),
+                )
+            )
+        elif should_unlock and unlock is not None:
+            # This source is a durable completed Zilch report, not mutable
+            # evidence.  Repair only an old NULL reference without replaying
+            # the unlock or changing its delivery date.
+            if unlock.source_game_id is None and activity.latest_zilch_game_id:
+                unlock.source_evidence_id = None
+                unlock.source_community_recipient_id = None
+                unlock.source_game_id = activity.latest_zilch_game_id
+                unlock.presentation_game_id = presentation_game_id or activity.latest_zilch_game_id
+        elif not should_unlock and unlock is not None:
+            revoked.append(definition.key)
+            db.delete(unlock)
+    return newly_unlocked, revoked
+
+
 def _sync_user_achievements_in_session(
     db,
     user_id: int,
@@ -3013,7 +3400,7 @@ def _sync_user_achievements_in_session(
     if presentation and len(presentation) > 64:
         presentation = None
     for definition in ZILCH_ACHIEVEMENTS:
-        if definition.criterion == "community_games":
+        if definition.criterion == "community_games" or definition.criterion in _CROSS_GAME_CRITERIA:
             continue
         should_unlock = _criterion_is_satisfied(definition, facts)
         unlock = existing.get(definition.key)
@@ -3060,7 +3447,53 @@ def _sync_user_achievements_in_session(
     community_unlocked, community_revoked = _ensure_community_unlocks_for_user_in_session(db, user_id, existing)
     newly_unlocked.extend(community_unlocked)
     revoked.extend(community_revoked)
+    cross_unlocked, cross_revoked = _sync_cross_game_achievements_in_session(
+        db,
+        user,
+        existing,
+        presentation_game_id=presentation,
+    )
+    newly_unlocked.extend(cross_unlocked)
+    revoked.extend(cross_revoked)
     return newly_unlocked, revoked
+
+
+def sync_zilch_cross_game_achievements_for_users(
+    user_ids: Iterable[object],
+) -> dict[int, list[dict[str, Any]]]:
+    """Refresh only shared-game Zilch awards after a ZDWA result changes.
+
+    This intentionally does not inspect or re-deliver ordinary Zilch evidence.
+    A ZDWA completion can finish a paired day, so this narrow bridge keeps the
+    independent Zilch collection current without coupling the two game result
+    pipelines.
+    """
+
+    normalized_user_ids: set[int] = set()
+    for raw_user_id in user_ids:
+        try:
+            user_id = int(raw_user_id)
+        except (TypeError, ValueError):
+            continue
+        if user_id > 0:
+            normalized_user_ids.add(user_id)
+    if not normalized_user_ids or not database_schema_ready():
+        return {}
+    try:
+        with session_scope() as db:
+            newly_unlocked: dict[int, list[dict[str, Any]]] = {}
+            for user_id in sorted(normalized_user_ids):
+                user = db.get(User, user_id)
+                if user is None or not user.is_active:
+                    continue
+                existing = _known_unlock_rows(db, user_id)
+                unlocked, _revoked = _sync_cross_game_achievements_in_session(db, user, existing)
+                if unlocked:
+                    newly_unlocked[user_id] = unlocked
+            return newly_unlocked
+    except SQLAlchemyError as exc:
+        logger.exception("Could not synchronize shared-game Zilch achievements")
+        raise ZilchAchievementSyncError() from exc
 
 
 def _record_evaluation_failure(game_id: str, code: str) -> None:
@@ -3496,6 +3929,7 @@ def _profile_in_session(db, user_id: int) -> dict[str, Any]:
     )
     points = zilch_achievement_points_for_keys(unlocks)
     community_games = _community_count_in_session(db)
+    cross_game_activity = cross_game_activity_for_user(db, user)
     reached_community_keys = {
         str(key) for key in db.scalars(select(ZilchCommunityMilestone.achievement_key))
     }
@@ -3517,6 +3951,7 @@ def _profile_in_session(db, user_id: int) -> dict[str, Any]:
             definition,
             facts,
             community_games=community_games,
+            cross_game_activity=cross_game_activity,
         )
         row = unlocks.get(definition.key)
         if row is None:

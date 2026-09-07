@@ -112,12 +112,19 @@ awards are celebrated individually, followed by a **LEVEL UP!** card for a
 genuine title increase.
 
 **Zilch** offers personal history, participant-only result reports, statistics
-split by Solo/human/CPU play, and separate leaderboards. Its 74 namespaced
-achievements cover scoring, risk, duels, CPU play, Solo efficiency and community
-milestones. Personal awards contribute Zilch points; community milestones have a
-fixed eligible audience and award no personal points. An animated rank-up card
-follows earned award cards; the latest genuine rank transition also supports
-one-time retrospective delivery for existing accounts.
+split by Solo/human/CPU play, and separate leaderboards. Its 95 namespaced
+achievements cover scoring, risk, duels, CPU play, Solo efficiency, cross-game
+play and community milestones. Personal awards contribute Zilch points;
+community milestones have a fixed eligible audience and award no personal
+points. An animated rank-up card follows earned award cards; the latest genuine
+rank transition also supports one-time retrospective delivery for existing
+accounts.
+
+The account has a separate same-day series in both collections: finish a valid
+ZDWA game and a valid Zilch game on the same Zurich calendar day to earn points
+in each game. The series starts at its rollout boundary, so historic games are
+not reinterpreted as a bulk of new awards. Existing rank thresholds stay fixed;
+new high-end titles add room to progress without demoting anyone.
 
 Guest play creates no account-linked history, statistics, ranking or
 achievements. Administrative result deletion is audited; affected derived

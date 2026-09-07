@@ -1,23 +1,23 @@
 {
   "kind": "usability",
   "games": ["zdwa", "zilch"],
-  "summary_de": "Jetzt neu: Push-Auswahl für Mitspieler-Rufe und mehr.",
-  "summary_en": "New: choose Push alerts for player calls and more.",
+  "summary_de": "Jetzt neu: Doppelwurf-Serien und neue Langzeit-Erfolge.",
+  "summary_en": "New: Double Roll series and fresh long-term achievements.",
   "player_notes": {
     "de": {
-      "title": "Ruf nach Mitspielern",
+      "title": "Mehr Ziele am Tisch",
       "changes": [
-        "Wenn du noch keine Push-Hinweise ausgewählt hast, erinnert dich die Lobby höchstens alle 14 Tage daran – freundlich und nur, während du verbunden bist.",
-        "Mit „Push zulassen & auswählen“ fragt dein Gerät erst nach deiner Erlaubnis. Danach entscheidest du selbst über Mitspieler-Rufe, tägliche Spielideen und Versionshinweise. Alles bleibt jederzeit ausschaltbar.",
-        "Mitspieler-Rufe helfen dir, freie Plätze in öffentlichen ZDWA- und Zilch-Runden zu erwischen. Mit deiner Spielerauswahl kannst du sie auf bekannte Leute begrenzen."
+        "Spiele ZDWA und Zilch am selben Zürcher Kalendertag und verdiene den neuen Doppelwurf-Fortschritt in beiden Sammlungen – auch als Serie über mehrere Tage.",
+        "Neue Langzeit-, Mehrspieler- und Community-Ziele geben dir in ZDWA und Zilch mehr zu sammeln. Deine bisherigen Erfolge und Rangstufen bleiben dabei erhalten.",
+        "ZDWA-Highscores haben jetzt gleich hohe Zeilen. In Zilch ist der Wechsel zu ZDWA kontrastreicher, und die Holzfläche füllt die installierte App wieder durchgehend."
       ]
     },
     "en": {
-      "title": "A call to play",
+      "title": "More goals at the table",
       "changes": [
-        "If you have not selected any Push alerts yet, the lobby may remind you at most every 14 days – gently and only while you are connected.",
-        "“Allow push & choose” asks your device for permission first. Then you decide on player calls, daily play ideas and app update alerts. Everything can be turned off at any time.",
-        "Player calls help you catch free seats in public ZDWA and Zilch games. Your player selection can limit them to people you know."
+        "Play ZDWA and Zilch on the same Zurich calendar day to earn new Double Roll progress in both collections – including runs over several days.",
+        "New long-term, multiplayer and community goals give you more to collect in ZDWA and Zilch. Your existing achievements and rank tiers stay intact.",
+        "ZDWA high scores now have even row heights. In Zilch, the route to ZDWA has better contrast and the wood table again fills the installed app throughout."
       ]
     }
   }

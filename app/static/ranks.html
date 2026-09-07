@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>ZDWA Rangabzeichen &amp; Ehrenberg-Marken</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Erfahre, wie ZDWA Rangabzeichen und Ehrenberg-Marken funktionieren, welche Sterne und Punkte für Newbie bis Godmode erforderlich sind.">
+  <meta name="description" content="Erfahre, wie ZDWA Rangabzeichen und Ehrenberg-Marken funktionieren, welche Sterne und Punkte für Newbie bis Mythos erforderlich sind.">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
   <link rel="canonical" href="https://zockdiewandan.online/rangabzeichen">
@@ -15,12 +15,12 @@
   <meta property="og:url" content="https://zockdiewandan.online/rangabzeichen">
   <meta property="og:image" content="https://zockdiewandan.online/static/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="manifest" href="/manifest.webmanifest?v=ee1f5048ee3b">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=ee1f5048ee3b" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=ee1f5048ee3b" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=278442c078f1">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=278442c078f1" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=278442c078f1" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=ee1f5048ee3b">
-  <script src="/static/shell.js?v=ee1f5048ee3b" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=278442c078f1">
+  <script src="/static/shell.js?v=278442c078f1" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell rank-legend-page">
@@ -34,7 +34,7 @@
     <section class="page-intro" aria-labelledby="rankLegendTitle">
       <p class="eyebrow">ZDWA Fortschritt</p>
       <h1 id="rankLegendTitle">Rangabzeichen &amp; Ehrenberg-Marken</h1>
-      <p>Sterne zeigen deinen Rang. Die Rangschwellen wachsen mit dem Erfolgskatalog, damit der Weg von Newbie bis Godmode immer anspruchsvoll bleibt.</p>
+      <p>Sterne zeigen deinen Rang. Die veröffentlichten Mindestwerte bleiben fest; neue hohe Ränge erweitern den Weg von Newbie bis Mythos, ohne jemanden zurückzustufen.</p>
     </section>
     <section class="card" aria-labelledby="rankLegendListTitle">
       <div id="rankLegendError" class="connection-error" hidden></div>
@@ -45,7 +45,7 @@
     </section>
   </main>
   <script type="module">
-    import { formatNumber } from '/static/auth.js?v=ee1f5048ee3b';
+    import { formatNumber } from '/static/auth.js?v=278442c078f1';
 
     const t = value => window.ZDWA_I18N?.t?.(value) || value;
     const currentElement = document.getElementById('rankLegendCurrent');
@@ -64,7 +64,7 @@
     }
 
     function rankStars(value) {
-      const count = Math.max(0, Math.min(5, Math.trunc(Number(value) || 0)));
+      const count = Math.max(0, Math.min(6, Math.trunc(Number(value) || 0)));
       return count ? '★'.repeat(count) : '☆';
     }
 

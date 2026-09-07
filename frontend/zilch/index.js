@@ -1518,7 +1518,7 @@ function achievementRankLegendProjection(payload) {
 }
 
 function achievementRankStars(value) {
-  const stars = Math.max(0, Math.min(5, Math.trunc(Number(value) || 0)));
+  const stars = Math.max(0, Math.min(6, Math.trunc(Number(value) || 0)));
   return stars ? "★".repeat(stars) : "☆";
 }
 
@@ -1559,7 +1559,7 @@ function achievementRankLegendMarkup(projection, rankLegend) {
   return `<section class="zilch-card zilch-achievement-rank-legend" data-zilch-rank-legend aria-labelledby="zilchAchievementRankLegendTitle">
     <div class="zilch-achievement-rank-legend__heading">
       <div><p class="eyebrow">${escapeHtml(t("Zilch-Rang"))}</p><h2 id="zilchAchievementRankLegendTitle">${escapeHtml(t("Ränge und Mindestwerte"))}</h2></div>
-      <p>${escapeHtml(t("Sterne zeigen deinen Rang. Die Mindestwerte skalieren mit dem Erfolgskatalog."))}</p>
+      <p>${escapeHtml(t("Sterne zeigen deinen Rang. Die veröffentlichten Mindestwerte bleiben fest; neue hohe Ränge erweitern den Weg."))}</p>
     </div>
     <ol class="zilch-achievement-rank-legend__list">
       ${ranks.map(rank => {
@@ -1758,7 +1758,7 @@ function zilchRankUpgradeMessage(value) {
     upgrade.current.title_key || upgrade.current.title || upgrade.current.name,
     "Zilch-Rang",
   );
-  const stars = Math.max(1, Math.min(5, Math.trunc(Number(upgrade.current.stars) || 0)));
+  const stars = Math.max(1, Math.min(6, Math.trunc(Number(upgrade.current.stars) || 0)));
   const points = Math.max(0, Math.trunc(Number(upgrade.current.points) || 0));
   return [
     "✦".repeat(stars),
@@ -2439,7 +2439,7 @@ function formattedStatistic(value, format = "number") {
   if (format === "percentage") return formattedPercentage(value);
   if (format === "achievement-rank") {
     const rank = plainObject(value);
-    const stars = Math.max(0, Math.min(5, Math.trunc(Number(rank.stars) || 0)));
+    const stars = Math.max(0, Math.min(6, Math.trunc(Number(rank.stars) || 0)));
     const title = localizedAchievementValue(rank.title_key || rank.title || rank.name, "Zilch-Rang");
     return `${stars ? `${"★".repeat(stars)} ` : ""}${title}`;
   }

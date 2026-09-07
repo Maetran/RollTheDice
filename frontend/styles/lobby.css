@@ -584,6 +584,7 @@
   text-align:center;
 }
 .leaderboard-box tbody tr:last-child td{ border-bottom:0; }
+.leaderboard-box tbody tr{ height:2.9rem; }
 .leaderboard-box thead th{ background:var(--table-head); font-weight:800; color:#42516a; }
 .leaderboard-view-link{
   display:inline-flex;
@@ -596,6 +597,16 @@
   font-size:1.1rem;
   line-height:1;
   text-decoration:none;
+}
+.leaderboard-view-placeholder{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:2rem;
+  min-width:2rem;
+  min-height:2rem;
+  color:var(--muted);
+  line-height:1;
 }
 .leaderboard-view-link:hover,
 .leaderboard-view-link:focus-visible{

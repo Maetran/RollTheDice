@@ -5,13 +5,13 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, replace
 from datetime import timedelta
-from math import ceil
 from typing import Iterable
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from .cross_game_activity import cross_game_activity_for_user
 from .game_types import DEFAULT_GAME_TYPE
 from .models import CompletedGame, GameParticipant, User, UserAchievement
 from .rules import compute_row_subtotals
@@ -38,9 +38,9 @@ class Achievement:
 class AchievementRank:
     """A title tier derived from the cumulative achievement score.
 
-    The thresholds intentionally scale from the catalog maximum.  Adding a
-    future achievement therefore keeps the rank distribution balanced instead
-    of making every existing title progressively easier to obtain.
+    ``reference_minimum_points`` is the published absolute lower bound.  Rank
+    thresholds are frozen when the catalog grows so no player can be demoted
+    just because additional achievements are released later.
     """
 
     key: str
@@ -83,6 +83,8 @@ _ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
             (100_000, "Punktesammler III", "Insgesamt 100’000 Punkte erreicht."),
             (500_000, "Punktesammler IV", "Insgesamt 500’000 Punkte erreicht."),
             (1_000_000, "Punktesammler V", "Insgesamt 1’000’000 Punkte erreicht."),
+            (2_000_000, "Punktesammler VI", "Insgesamt 2’000’000 Punkte erreicht."),
+            (5_000_000, "Punktesammler VII", "Insgesamt 5’000’000 Punkte erreicht."),
         ],
     )
     + _tiered(
@@ -95,6 +97,8 @@ _ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
             (500, "Ausdauer", "500 Spiele mit deinem Konto abgeschlossen."),
             (800, "Unermüdlich", "800 Spiele mit deinem Konto abgeschlossen."),
             (1_000, "Tausenderclub", "1’000 Spiele mit deinem Konto abgeschlossen."),
+            (2_000, "Doppeltausender", "2’000 Spiele mit deinem Konto abgeschlossen."),
+            (5_000, "Dauergast", "5’000 Spiele mit deinem Konto abgeschlossen."),
             (10_000, "Legende", "10’000 Spiele mit deinem Konto abgeschlossen."),
         ],
     )
@@ -421,6 +425,94 @@ _ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
             "daily_streak",
             30,
         ),
+        Achievement(
+            "daily_streak_60",
+            "Zwei-Monats-Lauf",
+            "Während 60 aufeinanderfolgenden Tagen je ein Spiel beendet.",
+            "games",
+            "daily_streak",
+            60,
+        ),
+        Achievement(
+            "daily_streak_100",
+            "Hundert-Tage-Lauf",
+            "Während 100 aufeinanderfolgenden Tagen je ein Spiel beendet.",
+            "games",
+            "daily_streak",
+            100,
+        ),
+        Achievement(
+            "cross_game_days_1",
+            "Doppelwurf I",
+            "Zum ersten Mal ZDWA und Zilch am selben Kalendertag gespielt.",
+            "games",
+            "cross_game_days",
+            1,
+        ),
+        Achievement(
+            "cross_game_days_10",
+            "Doppelwurf II",
+            "An 10 Kalendertagen sowohl ZDWA als auch Zilch gespielt.",
+            "games",
+            "cross_game_days",
+            10,
+        ),
+        Achievement(
+            "cross_game_days_50",
+            "Doppelwurf III",
+            "An 50 Kalendertagen sowohl ZDWA als auch Zilch gespielt.",
+            "games",
+            "cross_game_days",
+            50,
+        ),
+        Achievement(
+            "cross_game_days_100",
+            "Doppelwurf IV",
+            "An 100 Kalendertagen sowohl ZDWA als auch Zilch gespielt.",
+            "games",
+            "cross_game_days",
+            100,
+        ),
+        Achievement(
+            "cross_game_days_500",
+            "Doppelwurf V",
+            "An 500 Kalendertagen sowohl ZDWA als auch Zilch gespielt.",
+            "games",
+            "cross_game_days",
+            500,
+        ),
+        Achievement(
+            "cross_game_streak_3",
+            "Doppelschicht I",
+            "Während 3 Tagen in Folge ZDWA und Zilch gespielt.",
+            "games",
+            "cross_game_streak",
+            3,
+        ),
+        Achievement(
+            "cross_game_streak_7",
+            "Doppelschicht II",
+            "Während 7 Tagen in Folge ZDWA und Zilch gespielt.",
+            "games",
+            "cross_game_streak",
+            7,
+        ),
+        Achievement(
+            "cross_game_streak_14",
+            "Doppelschicht III",
+            "Während 14 Tagen in Folge ZDWA und Zilch gespielt.",
+            "games",
+            "cross_game_streak",
+            14,
+        ),
+        Achievement(
+            "cross_game_streak_30",
+            "Doppelschicht IV",
+            "Während 30 Tagen in Folge ZDWA und Zilch gespielt.",
+            "games",
+            "cross_game_streak",
+            30,
+        ),
     ]
     + _tiered(
         "hardcore_games",
@@ -458,6 +550,22 @@ _ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
             "games",
             "hardcore_streak",
             7,
+        ),
+        Achievement(
+            "hardcore_streak_14",
+            "Hardcore-Fortsetzung",
+            "Während 14 aufeinanderfolgenden Tagen je ein Hardcore-Spiel beendet.",
+            "games",
+            "hardcore_streak",
+            14,
+        ),
+        Achievement(
+            "hardcore_streak_30",
+            "Hardcore-Monat",
+            "Während 30 aufeinanderfolgenden Tagen je ein Hardcore-Spiel beendet.",
+            "games",
+            "hardcore_streak",
+            30,
         ),
         # Mehrspieler-Ziele sind bewusst nach Spielmodus gegliedert. Die
         # eigenständige Dreier-Serie misst den Vorsprung auf den letzten Platz,
@@ -579,6 +687,46 @@ _ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
             "score",
             "multiplayer_blowout",
         ),
+        Achievement(
+            "multiplayer_games_10",
+            "Stammtisch I",
+            "10 Mehrspieler-Spiele mit deinem Konto abgeschlossen.",
+            "games",
+            "multiplayer_games",
+            10,
+        ),
+        Achievement(
+            "multiplayer_games_50",
+            "Stammtisch II",
+            "50 Mehrspieler-Spiele mit deinem Konto abgeschlossen.",
+            "games",
+            "multiplayer_games",
+            50,
+        ),
+        Achievement(
+            "multiplayer_games_100",
+            "Stammtisch III",
+            "100 Mehrspieler-Spiele mit deinem Konto abgeschlossen.",
+            "games",
+            "multiplayer_games",
+            100,
+        ),
+        Achievement(
+            "team_games_10",
+            "Teamgeist I",
+            "10 Teamspiele abgeschlossen.",
+            "games",
+            "team_games",
+            10,
+        ),
+        Achievement(
+            "team_games_50",
+            "Teamgeist II",
+            "50 Teamspiele abgeschlossen.",
+            "games",
+            "team_games",
+            50,
+        ),
         # Zeitbasierte Ziele bleiben am Ende des Katalogs, damit sie in der
         # Profilansicht nach den Spiel- und Hardcore-Zielen erscheinen.
         Achievement(
@@ -646,8 +794,8 @@ _ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
 # catalog data rather than UI-only decoration: profile totals and the public
 # achievement ranking use the exact same values.
 _TIER_POINTS: dict[str, dict[int, int]] = {
-    "career_points": {1_000: 1, 10_000: 2, 100_000: 4, 500_000: 7, 1_000_000: 10},
-    "games_played": {10: 1, 100: 2, 200: 3, 500: 5, 800: 6, 1_000: 7, 10_000: 10},
+    "career_points": {1_000: 1, 10_000: 2, 100_000: 4, 500_000: 7, 1_000_000: 10, 2_000_000: 10, 5_000_000: 10},
+    "games_played": {10: 1, 100: 2, 200: 3, 500: 5, 800: 6, 1_000: 7, 2_000: 8, 5_000: 9, 10_000: 10},
     "single_game_score": {1_000: 2, 1_100: 3, 1_200: 4, 1_300: 5, 1_400: 6, 1_500: 7, 1_600: 8},
     "hardcore_games": {1: 2, 10: 3, 30: 4, 50: 5, 100: 6, 300: 7, 500: 8, 1_000: 10},
     "hardcore_score": {300: 3, 400: 4, 500: 5, 600: 6, 700: 7, 800: 8, 900: 9, 1_000: 10},
@@ -699,7 +847,20 @@ _KEY_POINTS: dict[str, int] = {
     "daily_streak_7": 4,
     "daily_streak_14": 6,
     "daily_streak_30": 8,
+    "daily_streak_60": 9,
+    "daily_streak_100": 10,
+    "cross_game_days_1": 2,
+    "cross_game_days_10": 4,
+    "cross_game_days_50": 6,
+    "cross_game_days_100": 8,
+    "cross_game_days_500": 10,
+    "cross_game_streak_3": 3,
+    "cross_game_streak_7": 5,
+    "cross_game_streak_14": 7,
+    "cross_game_streak_30": 10,
     "hardcore_streak_7": 7,
+    "hardcore_streak_14": 8,
+    "hardcore_streak_30": 10,
     "office_hours": 1,
     "office_hours_10": 3,
     "office_hours_25": 5,
@@ -719,6 +880,11 @@ _KEY_POINTS: dict[str, int] = {
     "multiplayer_close_win": 3,
     "multiplayer_one_point_win": 7,
     "multiplayer_blowout": 10,
+    "multiplayer_games_10": 2,
+    "multiplayer_games_50": 5,
+    "multiplayer_games_100": 8,
+    "team_games_10": 3,
+    "team_games_50": 7,
     "night_owl": 2,
     "weekend_games": 3,
     "early_bird_games": 3,
@@ -746,31 +912,29 @@ if not all(1 <= achievement.points <= 10 for achievement in ACHIEVEMENTS):
     raise RuntimeError("Every achievement must award between 1 and 10 points.")
 
 
-# The first catalog with achievement ranks awards 451 points in total.  The
-# reference thresholds are the published distribution and are scaled to the
-# actual catalog total by ``achievement_rank_for_points``.  This keeps the
-# advertised nine progression steps and the final Godmode tier stable even
-# when the catalog grows later.
-_RANK_REFERENCE_MAXIMUM = 451
+# These are the thresholds published by the pre-expansion catalog (549
+# obtainable points).  They are deliberately absolute.  Scaling thresholds
+# with the catalog total would demote a real player merely because new content
+# was released, which is not an acceptable progression contract.
 ACHIEVEMENT_RANKS: tuple[AchievementRank, ...] = (
     AchievementRank("newbie", "Newbie", 0, 0),
-    AchievementRank("rookie", "Rookie", 1, 10),
-    AchievementRank("player", "Spieler", 2, 35),
-    AchievementRank("advanced", "Fortgeschritten", 2, 75),
-    AchievementRank("pro", "Pro", 3, 120),
-    AchievementRank("expert", "Expert", 3, 170),
-    AchievementRank("master", "Meister", 4, 230),
-    AchievementRank("elite", "Elite", 4, 300),
-    AchievementRank("legend", "Legende", 5, 375),
-    AchievementRank("godmode", "Godmode", 5, 430),
+    AchievementRank("rookie", "Rookie", 1, 13),
+    AchievementRank("player", "Spieler", 2, 43),
+    AchievementRank("advanced", "Fortgeschritten", 2, 92),
+    AchievementRank("pro", "Pro", 3, 147),
+    AchievementRank("expert", "Expert", 3, 207),
+    AchievementRank("master", "Meister", 4, 280),
+    AchievementRank("elite", "Elite", 4, 366),
+    AchievementRank("legend", "Legende", 5, 457),
+    AchievementRank("godmode", "Godmode", 5, 524),
+    AchievementRank("grandmaster", "Großmeister", 5, 620),
+    AchievementRank("mythic", "Mythos", 6, 680),
 )
 
-
 def _rank_minimum_points(rank: AchievementRank) -> int:
-    """Return the current catalog-scaled lower bound for one rank."""
-    if rank.reference_minimum_points <= 0 or _RANK_REFERENCE_MAXIMUM <= 0:
-        return 0
-    return ceil(ACHIEVEMENT_POINTS_POSSIBLE * rank.reference_minimum_points / _RANK_REFERENCE_MAXIMUM)
+    """Return the non-regressing lower bound for one public rank."""
+
+    return max(0, int(rank.reference_minimum_points))
 
 
 def achievement_rank_for_points(points: int | float | None) -> dict:
@@ -802,14 +966,7 @@ def achievement_rank_for_points(points: int | float | None) -> dict:
 
 
 def achievement_rank_legend_payload(points: int | float | None = None) -> dict:
-    """Serialize the public, catalog-scaled rank ladder for the client.
-
-    The minimums are deliberately evaluated here instead of duplicated in a
-    template or JavaScript.  As the achievement catalog grows, this endpoint
-    and every rank badge continue to describe the same scaled thresholds.
-    ``points`` is optional so the public legend can be fetched anonymously;
-    authenticated callers may include their current rank as a convenience.
-    """
+    """Serialize the public, non-regressing rank ladder for the client."""
     payload = {
         "points_possible": ACHIEVEMENT_POINTS_POSSIBLE,
         "ranks": [
@@ -1029,6 +1186,8 @@ def achievement_sort_key(achievement: Achievement) -> tuple[int, int, int, str]:
         "multiplayer_close_win",
         "multiplayer_one_point_win",
         "multiplayer_blowout",
+        "multiplayer_games",
+        "team_games",
     }:
         return (
             60,
@@ -1040,20 +1199,33 @@ def achievement_sort_key(achievement: Achievement) -> tuple[int, int, int, str]:
                 "multiplayer_close_win": 4,
                 "multiplayer_one_point_win": 5,
                 "multiplayer_blowout": 6,
+                "multiplayer_games": 7,
+                "team_games": 8,
             }[kind],
             achievement.target,
             achievement.key,
         )
-    if kind in {"daily_streak", "office_hours", "office_hours_count", "night_owl", "weekend_games", "early_bird_games"}:
+    if kind in {
+        "daily_streak",
+        "cross_game_days",
+        "cross_game_streak",
+        "office_hours",
+        "office_hours_count",
+        "night_owl",
+        "weekend_games",
+        "early_bird_games",
+    }:
         return (
             65,
             {
                 "daily_streak": 0,
-                "office_hours": 1,
-                "office_hours_count": 2,
-                "night_owl": 3,
-                "weekend_games": 4,
-                "early_bird_games": 5,
+                "cross_game_days": 1,
+                "cross_game_streak": 2,
+                "office_hours": 3,
+                "office_hours_count": 4,
+                "night_owl": 5,
+                "weekend_games": 6,
+                "early_bird_games": 7,
             }[kind],
             achievement.target,
             achievement.key,
@@ -1267,10 +1439,24 @@ def _progress_for_user(
     office_hours_games = [entry for entry in games if as_utc(entry[0].finished_at) >= office_hours_started_at]
     multiplayer_started_at = as_utc(user.achievement_multiplayer_started_at or utcnow())
     multiplayer_games = [entry for entry in games if as_utc(entry[0].finished_at) >= multiplayer_started_at]
+    # The historic multiplayer metrics intentionally receive every post-marker
+    # result and decide whether they apply from their own row data.  Counting
+    # a new participation series is stricter: Solo tables must never advance
+    # a "Stammtisch" or team achievement.
+    actual_multiplayer_games = [
+        entry
+        for entry in multiplayer_games
+        if str(entry[0].mode or "").lower() in {"2", "3", "2v2"}
+    ]
     top_section_started_at = as_utc(user.achievement_top_section_started_at or utcnow())
     top_section_games = [entry for entry in games if as_utc(entry[0].finished_at) >= top_section_started_at]
     hardcore_games = [entry for entry in games if bool(entry[0].hardcore)]
     extra_hardcore_games = [entry for entry in extra_games if bool(entry[0].hardcore)]
+    cross_game_activity = cross_game_activity_for_user(
+        db,
+        user,
+        excluded_completed_game_id=excluded_completed_game_id,
+    )
     scores = {int(participant.points) for _game, participant, _metrics in games}
     progress: dict[str, int | bool] = {
         "career_points": sum(int(participant.points) for _game, participant, _metrics in games),
@@ -1341,6 +1527,8 @@ def _progress_for_user(
             int(metrics["styler_full_count"]) for _game, _participant, metrics in extra_games
         ),
         "daily_streak": _longest_daily_streak(extra_games),
+        "cross_game_days": cross_game_activity.paired_days,
+        "cross_game_streak": cross_game_activity.longest_streak,
         # Diese zwei Hardcore-Reihen sind ausdrücklich rückwirkend: alle
         # gespeicherten Hardcore-Partien zählen, unabhängig vom Rolloutmarker.
         "hardcore_games": len(hardcore_games),
@@ -1376,6 +1564,12 @@ def _progress_for_user(
         ),
         "multiplayer_blowout": any(
             bool(metrics["multiplayer_blowout"]) for _game, _participant, metrics in multiplayer_games
+        ),
+        "multiplayer_games": len(actual_multiplayer_games),
+        "team_games": sum(
+            1
+            for game, _participant, _metrics in actual_multiplayer_games
+            if str(game.mode or "").lower() == "2v2"
         ),
         "night_owl": any(bool(metrics["night_owl"]) for _game, _participant, metrics in gameplay_games),
         "weekend_games": sum(1 for _game, _participant, metrics in gameplay_games if metrics["weekend"]),

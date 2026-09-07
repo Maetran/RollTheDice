@@ -114,6 +114,7 @@ from .zilch_achievements import (
     recover_pending_zilch_achievement_evaluations,
     remove_zilch_result_from_achievements,
     resync_zilch_achievement_catalog,
+    sync_zilch_cross_game_achievements_for_users,
     zilch_achievement_rank_legend_payload,
 )
 from .zilch_cpu_strategy import ZilchCpuStrategyError, validate_zilch_cpu_strategy
@@ -1860,7 +1861,13 @@ def admin_delete_completed_game(game_id: str, payload: DeleteCompletedGameReq, r
         raise HTTPException(status_code=status_code, detail=detail) from exc
     if deleted["game_type"] == DEFAULT_GAME_TYPE:
         _remove_deleted_game_from_files(deleted)
-        sync_achievements_for_users(set(deleted["affected_user_ids"]))
+        affected_user_ids = set(deleted["affected_user_ids"])
+        sync_achievements_for_users(affected_user_ids)
+        try:
+            sync_zilch_cross_game_achievements_for_users(affected_user_ids)
+        except ZilchAchievementSyncError:
+            logger.exception("Queued shared Zilch achievement cleanup after deleting %s", deleted["game_id"])
+            deleted["achievement_cleanup_pending"] = True
     elif deleted["game_type"] == ZILCH_GAME_TYPE:
         # The isolated service removes source evidence and recomputes only
         # these private Zilch awards.  It never touches ZDWA achievement
@@ -1877,6 +1884,10 @@ def admin_delete_completed_game(game_id: str, payload: DeleteCompletedGameReq, r
             # still-pending private cleanup.
             logger.exception("Queued Zilch achievement cleanup after deleting %s", deleted["game_id"])
             deleted["achievement_cleanup_pending"] = True
+        # Removing a Zilch result can also break a paired-day condition in the
+        # public ZDWA collection.  That collection remains isolated, so refresh
+        # it explicitly after the typed deletion is durable.
+        sync_achievements_for_users(set(deleted["affected_user_ids"]))
     return {
         "ok": True,
         "game_id": deleted["game_id"],

@@ -11,6 +11,46 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Nächster Release / Next release — Mehr Ziele, klarer Tisch
+
+### Deutsch
+
+- Die beiden Erfolgs-Sammlungen wachsen unabhängig weiter. Die neue Serie
+  **Doppelwurf** zählt einen Zürcher Kalendertag, an dem du eine gültige ZDWA-
+  und eine gültige Zilch-Partie abschließt. Es gibt Ziele für das erste Mal,
+  10, 50, 100 und 500 solcher Tage sowie für 3, 7, 14 und 30 Tage am Stück.
+  Beide Spiele vergeben dafür eigene Punkte und eigene Abzeichen.
+- Weitere Ziele würdigen lange Spielserien, große Punktesammlungen,
+  Mehrspieler- und Teamrunden sowie Zilch-Runden mit hohen Bankwerten. Die
+  Zilch-Community kann nun außerdem 25’000, 50’000 und 100’000 abgeschlossene
+  Partien gemeinsam feiern.
+- Bestehende Rangschwellen bleiben unverändert. Neue hohe Stufen verlängern den
+  Weg nach oben, sodass kein Konto durch die Erweiterung zurückgestuft wird.
+  Die neue Doppelwurf-Serie startet erst mit diesem Release; alte oder
+  importierte Partien werden nicht nachträglich als neue Erfolge gezählt.
+- In ZDWA behalten Highscore-Tabellen auch ohne Ergebnis-Link eine einheitliche
+  Zeilenhöhe. Zilch zeigt den Wechsel zu ZDWA mit besserem Kontrast; in der
+  installierten Zilch-App liegt die Holztextur wieder hinter Lobby und Spiel
+  über die volle sichtbare Fläche.
+
+### English
+
+- Both achievement collections grow independently. The new **Double Roll**
+  series counts a Zurich calendar day on which you finish one valid ZDWA game
+  and one valid Zilch game. Goals cover the first day, 10, 50, 100 and 500
+  such days, plus runs of 3, 7, 14 and 30 days. Each game grants its own
+  points and badge.
+- More goals celebrate long runs, big point collections, multiplayer and team
+  tables, and high-value Zilch banks. The Zilch community can now also
+  celebrate 25,000, 50,000 and 100,000 completed games together.
+- Existing rank thresholds remain unchanged. New high tiers extend the path
+  upward, so no account is demoted by this expansion. The Double Roll series
+  begins with this release; old or imported games are not retroactively turned
+  into new awards.
+- ZDWA high-score tables keep a uniform row height even without a result link.
+  Zilch gives the route to ZDWA better contrast; in the installed Zilch app,
+  the wood texture again fills the entire visible lobby and game surface.
+
 ## Nächster Release / Next release — Push-Auswahl mit Mitspieler-Rufen
 
 ### Deutsch

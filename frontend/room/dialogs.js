@@ -212,7 +212,7 @@
   }
 
   function rankLegendStars(value){
-    const count = Math.max(0, Math.min(5, Math.trunc(Number(value) || 0)));
+    const count = Math.max(0, Math.min(6, Math.trunc(Number(value) || 0)));
     return count ? "★".repeat(count) : "☆";
   }
 
@@ -252,7 +252,7 @@
     const introduction = document.createElement("p");
     introduction.id = "rankLegendSheetIntroduction";
     introduction.textContent = rankLegendText(
-      "Sterne zeigen deinen Rang. Die Mindestwerte skalieren mit dem Erfolgskatalog.",
+      "Sterne zeigen deinen Rang. Die veröffentlichten Mindestwerte bleiben fest; neue hohe Ränge erweitern den Weg.",
     );
     const current = document.createElement("section");
     current.id = "rankLegendSheetCurrent";
@@ -314,7 +314,7 @@
     if (!current || !summary || !list) return;
     if (introduction) {
       introduction.textContent = rankLegendText(
-        "Sterne zeigen deinen Rang. Die Mindestwerte skalieren mit dem Erfolgskatalog.",
+        "Sterne zeigen deinen Rang. Die veröffentlichten Mindestwerte bleiben fest; neue hohe Ränge erweitern den Weg.",
       );
     }
 

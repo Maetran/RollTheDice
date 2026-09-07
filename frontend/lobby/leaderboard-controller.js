@@ -30,7 +30,10 @@ function formatDate(iso) {
 function gameViewLink(gameId) {
   return gameId
     ? `<a href="${zdwaPath(`/ergebnis/${encodeURIComponent(gameId)}`)}" class="leaderboard-view-link" aria-label="Spielansicht" title="Spielansicht">👁️</a>`
-    : "—";
+    // Keep every ranking row on the same rhythm even when an older imported
+    // result has no replay route.  The visual placeholder reserves the same
+    // compact hit-area as the eye link without pretending to be interactive.
+    : '<span class="leaderboard-view-placeholder" aria-hidden="true">—</span>';
 }
 
 function playerNames(entry) {

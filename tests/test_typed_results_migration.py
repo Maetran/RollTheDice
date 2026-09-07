@@ -19,7 +19,7 @@ PRE_TYPED_RESULTS_REVISION = "20260902_0015"
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20260906_0032"
+LATEST_SCHEMA_REVISION = "20260907_0033"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -267,6 +267,14 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
             }
             self.assertEqual(
                 achievement_columns["source_completed_game_id"],
+                {"notnull": 0, "default": None},
+            )
+            user_columns = {
+                str(row[1]): {"notnull": int(row[3]), "default": row[4]}
+                for row in connection.execute("PRAGMA table_info(users)")
+            }
+            self.assertEqual(
+                user_columns["achievement_cross_game_started_at"],
                 {"notnull": 0, "default": None},
             )
             achievement_indexes = {

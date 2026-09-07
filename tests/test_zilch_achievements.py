@@ -376,9 +376,11 @@ class ZilchAchievementPersistenceTestCase(TestCase):
     def test_catalog_is_namespaced_localized_and_has_isolated_points_and_ranks(self) -> None:
         catalog = zilch_achievement_definitions_payload()
 
+        # The response schema remains compatible; the separately persisted
+        # catalog version advances when server-side definitions grow.
         self.assertEqual(catalog["version"], 2)
         self.assertNotIn("player", catalog)
-        self.assertEqual(len(catalog["definitions"]), 74)
+        self.assertEqual(len(catalog["definitions"]), 95)
         self.assertEqual({item["key"] for item in catalog["definitions"]}, set(ZILCH_ACHIEVEMENT_BY_KEY))
         self.assertEqual(catalog["points_possible"], ZILCH_ACHIEVEMENT_POINTS_POSSIBLE)
         self.assertEqual(
@@ -396,7 +398,7 @@ class ZilchAchievementPersistenceTestCase(TestCase):
             self.assertNotIn("rank", definition)
         legend = zilch_achievement_rank_legend_payload()
         self.assertEqual(legend["points_possible"], ZILCH_ACHIEVEMENT_POINTS_POSSIBLE)
-        self.assertEqual(len(legend["ranks"]), 10)
+        self.assertEqual(len(legend["ranks"]), 12)
         self.assertEqual(legend["ranks"][0]["minimum_points"], 0)
         self.assertEqual(
             [item["minimum_points"] for item in legend["ranks"]],
@@ -407,7 +409,7 @@ class ZilchAchievementPersistenceTestCase(TestCase):
         self.assertEqual(zilch_achievement_rank_for_points(-50)["key"], "newbie")
         self.assertEqual(
             zilch_achievement_rank_for_points(ZILCH_ACHIEVEMENT_POINTS_POSSIBLE + 50)["key"],
-            "godmode",
+            "mythic",
         )
 
     def test_abandoned_solo_evidence_never_qualifies_for_personal_awards(self) -> None:
@@ -423,7 +425,7 @@ class ZilchAchievementPersistenceTestCase(TestCase):
             any(
                 _criterion_is_satisfied(definition, [abandoned])
                 for definition in ZILCH_ACHIEVEMENTS
-                if definition.criterion != "community_games"
+                if definition.criterion not in {"community_games", "cross_game_days", "cross_game_streak"}
             )
         )
 
@@ -434,8 +436,8 @@ class ZilchAchievementPersistenceTestCase(TestCase):
             "play_mode": "multiplayer",
             "outcome": "win",
             "history_complete": True,
-            "banked_rounds": [5_000, 3_000, 2_000],
-            "highest_banked_round": 5_000,
+            "banked_rounds": [6_000, 3_000, 2_000],
+            "highest_banked_round": 6_000,
             "final_score": 15_000,
             "combination_types": [
                 "straight",
@@ -480,12 +482,12 @@ class ZilchAchievementPersistenceTestCase(TestCase):
             "roll_count": 30,
             "zilch_count": 0,
         }
-        facts = [multiplayer] * 500 + [close_win, exact_score, fast_win, *cpu_wins, solo]
+        facts = [multiplayer] * 2_500 + [close_win, exact_score, fast_win, *cpu_wins, solo]
 
         unsatisfied = [
             definition.key
             for definition in ZILCH_ACHIEVEMENTS
-            if definition.criterion != "community_games"
+            if definition.criterion not in {"community_games", "cross_game_days", "cross_game_streak"}
             and not _criterion_is_satisfied(definition, facts)
         ]
         self.assertEqual(unsatisfied, [])

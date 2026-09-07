@@ -329,7 +329,7 @@ class ZilchAchievementApiTestCase(TestCase):
             self.assertNotIn("acknowledged_at", award)
         self.assertNotIn(game_id, repr(payload))
 
-    def test_cpu_has_no_award_recipient_and_deletion_revokes_zilch_without_zdwa_sync(self) -> None:
+    def test_cpu_has_no_award_recipient_and_deletion_refreshes_the_shared_zdwa_series(self) -> None:
         mani, mani_token, mani_csrf = self._identity("Mani", role="admin")
         game_id = self._persist_cpu_win(mani)
 
@@ -352,7 +352,10 @@ class ZilchAchievementApiTestCase(TestCase):
                 },
             )
         self.assertEqual(response.status_code, 200)
-        zdwa_sync.assert_not_called()
+        # Ordinary ZDWA stats and private Zilch evidence stay separate. The
+        # narrow public refresh is nevertheless necessary because deleting a
+        # Zilch result can break a same-day ZDWA/Zilch achievement pair.
+        zdwa_sync.assert_called_once_with({mani.id})
 
         profile = self._request("GET", "/api/zilch/achievements", token=mani_token)
         self.assertEqual(profile.status_code, 200)

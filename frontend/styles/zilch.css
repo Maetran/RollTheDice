@@ -3579,10 +3579,23 @@ html[data-game="zilch"] body {
    to a regular scrolling element, not the PWA viewport compositor. */
 @media (display-mode: standalone) {
   html[data-game="zilch"] body {
+    position: relative;
+    isolation: isolate;
+    min-height: 100dvh;
     background-image: none;
   }
 
-  html[data-game="zilch"] .zilch-shell--game {
+  /* The PWA used to put the table texture on the active-game shell only.
+     That left the lobby plain and exposed empty edges whenever the shell was
+     shorter than the installed viewport.  A normal, document-bound layer
+     covers both routes without a fixed bitmap behind the iOS status area. */
+  html[data-game="zilch"] body::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    min-height: 100dvh;
+    pointer-events: none;
     background-color: #5a3018;
     background-image:
       radial-gradient(ellipse at 48% 18%, rgba(210, 151, 82, .12), transparent 58%),
@@ -3593,6 +3606,13 @@ html[data-game="zilch"] body {
     background-size: cover;
     background-attachment: scroll;
   }
+
+  html[data-game="zilch"] .zilch-shell {
+    position: relative;
+    z-index: 1;
+  }
+
+  html[data-game="zilch"] .zilch-shell--game { background: transparent; }
 }
 
 .zilch-shell--game .zilch-play-layout {
@@ -4777,6 +4797,35 @@ html[data-game="zilch"] .zilch-header-tools .game-switch-icon {
   font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
   font-size: 1rem;
   line-height: 1;
+}
+
+/* The route to ZDWA is a real destination, not a low-contrast emoji tucked
+   into the wood.  The compact W die echoes the Zilch mark while giving the
+   label a crisp, accessible contrast on desktop and in the installed app. */
+html[data-game="zilch"] .zilch-header-tools .game-switch {
+  border-color: #fff0b7;
+  color: #48200c;
+  background: linear-gradient(145deg, #fff7d4, #e6ad46);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .88), 0 .16rem .38rem rgba(34, 14, 5, .28);
+}
+html[data-game="zilch"] .zilch-header-tools .game-switch:hover,
+html[data-game="zilch"] .zilch-header-tools .game-switch:focus-visible {
+  border-color: #fff8d8;
+  color: #351508;
+  background: linear-gradient(145deg, #fffbe5, #efc363);
+}
+html[data-game="zilch"] .zilch-header-tools .game-switch-icon--zdwa {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 1.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px solid rgba(73, 27, 9, .66);
+  border-radius: .35rem;
+  color: #fff8dd;
+  background: linear-gradient(145deg, #874219, #54200b);
+  box-shadow: inset 0 1px rgba(255, 234, 181, .26), 0 1px 1px rgba(50, 18, 4, .24);
+  font: 900 .72rem/1 Georgia, "Times New Roman", serif;
 }
 
 @media (max-width: 560px) {

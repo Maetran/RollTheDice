@@ -377,11 +377,17 @@ Die Bestätigung in der Oberfläche setzt nur den Anzeigezeitpunkt und nicht die
 fachliche Vergabe.
 
 Wird das Quellergebnis gelöscht, werden daraus abgeleitete persönliche Zilch-
-Erfolge widerrufen; der separate Punktestand und Rang folgen automatisch.
-Gemeinsame Meilensteine für 100, 500, 1’000, 5’000 und 10’000 qualifizierte
-Partien frieren ihren damaligen Empfängerkreis ein und bleiben als historischer
-Moment bestehen. Sie geben immer 0 Punkte. Das berührt weder ZDWA-Aggregate
-noch Ehrenberg-Marken.
+Erfolge widerrufen; der separate Punktestand und Rang folgen automatisch. Die
+gemeinsame Serie „Doppelrunde“ zählt für Zilch und ZDWA getrennt: Mindestens
+eine abgeschlossene, nicht importierte Partie jedes Spiels am selben Zürcher
+Kalendertag bringt in beiden Sammlungen eigene Punkte. Doppelrunde und die
+aufeinanderfolgenden Doppelrunden zählen erst ab ihrer Einführung; alte
+Historie wird nicht nachträglich umgedeutet. Die bestehenden Rangschwellen
+bleiben fest, neue hohe Ränge schaffen Fortschritt ohne Rückstufung.
+Gemeinsame Meilensteine für 100, 500, 1’000, 5’000, 10’000, 25’000, 50’000 und
+100’000 qualifizierte Partien frieren ihren damaligen Empfängerkreis ein und
+bleiben als historischer Moment bestehen. Sie geben immer 0 Punkte. Das berührt
+weder ZDWA-Aggregate noch Ehrenberg-Marken.
 Unbekannte, unvollständige oder beschädigte Ergebnis-Payloads, CPU-Sitze und
 alte Daten ohne die erforderliche Evidenz bleiben absichtlich ohne Erfolg. Die
 Ansichten `/zilch/erfolge` und `/zilch/spieler/{username}` trennen Konto- und

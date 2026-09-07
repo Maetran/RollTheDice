@@ -382,6 +382,8 @@ input[type="checkbox"]{
 .player-rank--expert,.player-rank--master{ --rank-color:#7c3aed; }
 .player-rank--elite,.player-rank--legend{ --rank-color:#b7791f; }
 .player-rank--godmode{ --rank-color:#c026d3; }
+.player-rank--grandmaster{ --rank-color:#a44a16; }
+.player-rank--mythic{ --rank-color:#9b1c7a; }
 .player-rank--compact{ font-size:.64rem; padding:.06rem .28rem; }
 .player-rank--compact .player-rank-stars{ font-size:.67rem; }
 @media (max-width:420px){

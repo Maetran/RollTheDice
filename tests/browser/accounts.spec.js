@@ -282,7 +282,7 @@ test("rank badges open the public legend and the live-game overlay", async ({ pa
     page.locator("#authBadge .player-rank").click(),
   ]);
   await expect(page.getByRole("heading", { name: "Rangabzeichen & Ehrenberg-Marken" })).toBeVisible();
-  await expect(page.locator("#rankLegendList .rank-legend-row")).toHaveCount(10);
+  await expect(page.locator("#rankLegendList .rank-legend-row")).toHaveCount(12);
   await expect(page.locator("#rankLegendCurrent")).toContainText("Ehrenberg-Marken");
 
   await page.goto("/");
@@ -294,7 +294,7 @@ test("rank badges open the public legend and the live-game overlay", async ({ pa
   await expect(page.locator(".player-card .player-rank")).toBeVisible();
   await page.locator(".player-card .player-rank").click();
   await expect(page.locator("#rankLegendSheet:not([hidden])")).toBeVisible();
-  await expect(page.locator("#rankLegendSheetList .rank-legend-row")).toHaveCount(10);
+  await expect(page.locator("#rankLegendSheetList .rank-legend-row")).toHaveCount(12);
   await expect(page.locator("#rankLegendSheetOpen")).toHaveAttribute("aria-expanded", "true");
   await page.keyboard.press("Escape");
   await expect(page.locator("#rankLegendSheet")).toBeHidden();
@@ -493,6 +493,42 @@ test("mobile leaderboard gives ranked player names room and uses an icon-only ga
   expect(layout.cellWidths[1]).toBeGreaterThan(layout.cellWidths[0]);
   expect(layout.cellWidths[1]).toBeGreaterThan(layout.cellWidths[2]);
   expect(layout.viewLink.width).toBeGreaterThanOrEqual(32);
+});
+
+test("desktop leaderboard rows stay uniform when an older result has no replay link", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const linked = {
+    game_id: "uniform-linked-game",
+    finished_at: "2026-09-03T10:00:00.000Z",
+    name: "Mit Ergebnis",
+    points: 834,
+    linked_players: [],
+  };
+  const legacy = {
+    ...linked,
+    game_id: null,
+    name: "Ohne Ergebnis-Link",
+  };
+  await page.route("**/api/leaderboard", route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      recent: { normal: [linked, legacy], hc: [] },
+      alltime: { normal: [linked, legacy], hc: [] },
+      shame: { recent: [], alltime: [] },
+      last_games: [linked, legacy],
+      stats: { games_played: 2, average_points: { normal: {}, hc: {} } },
+    }),
+  }));
+  await page.goto("/");
+
+  await expect(page.locator("#alltimeTable .leaderboard-view-link")).toHaveCount(1);
+  await expect(page.locator("#alltimeTable .leaderboard-view-placeholder")).toHaveCount(1);
+  const heights = await page.locator("#alltimeTable tbody tr").evaluateAll(rows => (
+    rows.map(row => Math.round(row.getBoundingClientRect().height))
+  ));
+  expect(heights).toHaveLength(2);
+  expect(heights[0]).toBeGreaterThanOrEqual(46);
+  expect(heights[1]).toBe(heights[0]);
 });
 
 
@@ -729,7 +765,7 @@ test("English localization covers lobby, rules, account preference and game UI",
 
   await page.goto("/rangabzeichen");
   await expect(page.getByRole("heading", { name: "Rank Insignia & Ehrenberg Marks" })).toBeVisible();
-  await expect(page.locator("#rankLegendList .rank-legend-row")).toHaveCount(10);
+  await expect(page.locator("#rankLegendList .rank-legend-row")).toHaveCount(12);
   await expectNoGermanUi(page);
 
   await page.goto("/spieler/Admin");

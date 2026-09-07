@@ -16,9 +16,11 @@ from app.auth import create_user, login
 from app.database import configure_database, session_scope, upgrade_database
 from app.game_history import persist_runtime_game
 from app.game_results import build_leaderboard_snapshot_fields, finalize_and_log_results
+from app.game_types import ZILCH_GAME_TYPE
 from app.leaderboard_service import game_from_leaderboard
 from app.leaderboard_storage import LeaderboardFiles
-from app.models import CompletedGame, GameParticipant, User, UserAchievement
+from app.models import CompletedGame, GameParticipant, User, UserAchievement, ZilchAchievementUnlock
+from app.zilch_achievements import sync_zilch_cross_game_achievements_for_users
 from tests.support import GameStateTestCase
 
 
@@ -113,6 +115,88 @@ class AchievementGameLinkTestCase(GameStateTestCase):
         self.assertIn("career_points_1000", {item["key"] for item in by_player["p1"]})
         self.assertNotIn("account_created", {item["key"] for item in by_player["p1"]})
         self.assertTrue(all(isinstance(item["unlocked_at"], str) for item in by_player["p1"]))
+
+    def test_same_day_cross_game_awards_are_forward_only_and_keep_each_games_source(self) -> None:
+        """One paired Swiss calendar day rewards both isolated collections."""
+
+        user = create_user("DoubleDay", "double-day-password", must_change_password=False)
+        rollout = datetime(2026, 9, 1, tzinfo=timezone.utc)
+        zilch_time = datetime(2026, 9, 4, 17, 15, tzinfo=timezone.utc)
+        zdwa_time = datetime(2026, 9, 4, 19, 45, tzinfo=timezone.utc)
+        with session_scope() as db:
+            managed_user = db.get(User, user.id)
+            self.assertIsNotNone(managed_user)
+            assert managed_user is not None
+            managed_user.achievement_cross_game_started_at = rollout
+            zilch = CompletedGame(
+                game_id="cross-zilch",
+                game_type=ZILCH_GAME_TYPE,
+                game_name="Cross Zilch",
+                finished_at=zilch_time,
+                mode="solo",
+                hardcore=False,
+                snapshot_json="{}",
+                imported_from_legacy=False,
+                created_at=zilch_time,
+            )
+            db.add(zilch)
+            db.flush()
+            db.add(
+                GameParticipant(
+                    game_id=zilch.id,
+                    position=0,
+                    player_key="zilch-player",
+                    display_name=user.username,
+                    points=10_000,
+                    user_id=user.id,
+                )
+            )
+            zdwa = CompletedGame(
+                game_id="cross-zdwa",
+                game_name="Cross ZDWA",
+                finished_at=zdwa_time,
+                mode="1",
+                hardcore=False,
+                snapshot_json="{}",
+                imported_from_legacy=False,
+                created_at=zdwa_time,
+            )
+            db.add(zdwa)
+            db.flush()
+            db.add(
+                GameParticipant(
+                    game_id=zdwa.id,
+                    position=0,
+                    player_key="zdwa-player",
+                    display_name=user.username,
+                    points=900,
+                    user_id=user.id,
+                )
+            )
+            zdwa_id = int(zdwa.id)
+
+        public_unlocks = sync_achievements_for_users({user.id}, source_completed_game_id=zdwa_id)
+        self.assertIn(user.id, public_unlocks)
+        self.assertIn("cross_game_days_1", {item["key"] for item in public_unlocks[user.id]})
+        private_unlocks = sync_zilch_cross_game_achievements_for_users({user.id})
+        self.assertIn(user.id, private_unlocks)
+        self.assertIn("zilch.cross_game_days_1", {item["key"] for item in private_unlocks[user.id]})
+
+        with session_scope() as db:
+            public_source = db.scalar(
+                select(UserAchievement.source_completed_game_id).where(
+                    UserAchievement.user_id == user.id,
+                    UserAchievement.achievement_key == "cross_game_days_1",
+                )
+            )
+            private_source = db.scalar(
+                select(ZilchAchievementUnlock.source_game_id).where(
+                    ZilchAchievementUnlock.user_id == user.id,
+                    ZilchAchievementUnlock.achievement_key == "zilch.cross_game_days_1",
+                )
+            )
+        self.assertEqual(public_source, zdwa_id)
+        self.assertEqual(private_source, "cross-zilch")
 
     def test_late_sync_does_not_misattribute_an_old_unlock_to_the_latest_game(self) -> None:
         user = create_user("LateSource", "late-source-password", must_change_password=False)

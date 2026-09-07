@@ -259,7 +259,7 @@ function playerRankMarkup(player, { compact = false, owner = "" } = {}){
   const rank = player?.achievement_rank;
   if (!rank || typeof rank !== "object") return "";
   const key = String(rank.key || "newbie").replace(/[^a-z0-9-]/gi, "") || "newbie";
-  const stars = Math.max(0, Math.min(5, Math.trunc(Number(rank.stars) || 0)));
+  const stars = Math.max(0, Math.min(6, Math.trunc(Number(rank.stars) || 0)));
   const points = Math.max(0, Math.trunc(Number(rank.points) || 0));
   const pointsPossible = Math.max(0, Math.trunc(Number(rank.points_possible) || 0));
   const starText = stars ? "★".repeat(stars) : "☆";

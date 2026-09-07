@@ -292,7 +292,8 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   const zilchGameSwitch = page.locator(".zilch-header [data-game-switch]");
   await expect(zilchGameSwitch).toBeVisible();
   await expect(zilchGameSwitch).toHaveAttribute("aria-label", /^(?:ZDWA öffnen|Open ZDWA) \(Alt\+Shift\+Z\)$/);
-  await expect(zilchGameSwitch.locator(".game-switch-icon")).toHaveText("🎲");
+  await expect(zilchGameSwitch.locator(".game-switch-icon--zdwa")).toHaveText("W");
+  await expect(zilchGameSwitch).toHaveCSS("color", "rgb(72, 32, 12)");
   await expect(zilchGameSwitch).toContainText("ZDWA");
   await expect(zilchGameSwitch.locator("span").last()).toBeVisible();
   const identity = page.locator(".zilch-lobby-identity");

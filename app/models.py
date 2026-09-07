@@ -77,6 +77,12 @@ class User(Base):
     achievement_top_section_started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
+    # Shared ZDWA/Zilch activity goals have their own rollout boundary.  This
+    # keeps freshly introduced cross-game badges from reinterpreting old or
+    # imported history as a new player achievement.
+    achievement_cross_game_started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 

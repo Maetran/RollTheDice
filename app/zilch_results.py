@@ -784,6 +784,29 @@ def _write_response(result: CompletedGameWriteResult, *, payload: dict | None = 
     return response
 
 
+def _sync_shared_zdwa_achievements_safely(payload: dict) -> None:
+    """Let a persisted Zilch result finish the ZDWA same-day objectives."""
+
+    user_ids = {
+        int(participant["user_id"])
+        for participant in payload.get("participants", [])
+        if isinstance(participant, dict) and isinstance(participant.get("user_id"), int)
+    }
+    if not user_ids:
+        return
+    try:
+        # ZDWA keeps its public achievement collection and source-proof model
+        # separately.  It can safely derive the paired-day status from this
+        # already committed typed result without a foreign game-source link.
+        from .achievements import sync_achievements_for_users  # pylint: disable=import-outside-toplevel
+
+        sync_achievements_for_users(user_ids)
+    except Exception:
+        # The authoritative Zilch result must remain final even if the other
+        # game's profile projection has a transient database problem.
+        logger.exception("Could not synchronize shared ZDWA achievements for Zilch game %s", payload.get("game_id"))
+
+
 def finalize_zilch_result(game: dict) -> dict:
     """Persist one terminal Zilch result and register its private awards.
 
@@ -821,6 +844,7 @@ def finalize_zilch_result(game: dict) -> dict:
             result.reason or result.status,
         )
         return response
+    _sync_shared_zdwa_achievements_safely(payload)
     # This state may still be in memory long enough to deliver the terminal
     # socket snapshot.  The marker prevents that final broadcast from creating
     # a new ActiveGame record after the confirmed deletion.

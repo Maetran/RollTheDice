@@ -120,7 +120,7 @@
     const translate = text => window.ZDWA_I18N?.t?.(text) || String(text ?? "");
     const previousTitle = translate(rankUpgrade.previous.title || "Newbie");
     const currentTitle = translate(rankUpgrade.current.title || "Newbie");
-    const stars = Math.max(1, Math.min(5, Math.trunc(Number(rankUpgrade.current.stars) || 0)));
+    const stars = Math.max(1, Math.min(6, Math.trunc(Number(rankUpgrade.current.stars) || 0)));
     const points = Math.max(0, Math.trunc(Number(rankUpgrade.current.points) || 0));
     return [
       "✦".repeat(stars),
@@ -174,7 +174,7 @@
         const name = entry.player || entry.name || "Spieler";
         const rank = entry.achievement_rank;
         if (!rank || typeof rank !== "object") return name;
-        const stars = Math.max(0, Math.min(5, Math.trunc(Number(rank.stars) || 0)));
+        const stars = Math.max(0, Math.min(6, Math.trunc(Number(rank.stars) || 0)));
         const insignia = stars ? "★".repeat(stars) : "☆";
         const title = window.ZDWA_I18N?.t?.(rank.title || "Newbie") || rank.title || "Newbie";
         return `${name} · ${insignia} ${title}`;
@@ -186,7 +186,7 @@
         const name = member?.name || member?.player || "Spieler";
         const rank = member?.achievement_rank;
         if (!rank || typeof rank !== "object") return name;
-        const stars = Math.max(0, Math.min(5, Math.trunc(Number(rank.stars) || 0)));
+        const stars = Math.max(0, Math.min(6, Math.trunc(Number(rank.stars) || 0)));
         const insignia = stars ? "★".repeat(stars) : "☆";
         const title = window.ZDWA_I18N?.t?.(rank.title || "Newbie") || rank.title || "Newbie";
         return `${name} · ${insignia} ${title}`;

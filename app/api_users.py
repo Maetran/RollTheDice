@@ -20,6 +20,7 @@ from .game_types import DEFAULT_GAME_TYPE
 from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User, UserAchievement
 from .security import normalize_username, utcnow
 from .trends import recent_points_trend
+from .zilch_achievements import sync_zilch_cross_game_achievements_for_users
 
 router = APIRouter(prefix="/api", tags=["players"])
 
@@ -556,6 +557,10 @@ def assign_game_participant(participant_id: int, payload: AssignmentRequest, req
         affected_user_ids,
         source_completed_game_id=source_completed_game_id,
     )
+    # An administrative ZDWA seat correction can add or remove one side of a
+    # same-day pair. Refresh the intentionally separate Zilch collection too;
+    # this narrow bridge does not touch ordinary Zilch evidence or statistics.
+    sync_zilch_cross_game_achievements_for_users(affected_user_ids)
     return {"ok": True, "changed": True}
 
 

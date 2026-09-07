@@ -251,41 +251,50 @@ reconstructed from client state. Zilch awards have no public aggregate and no
 retrospective scan of unregistered results. Their cross-game points and rank
 are projections of durable Zilch unlock keys, not stored browser values.
 
-### Version-2 catalog, points, ranks, and APIs
+### Version-6 catalog, points, ranks, and APIs
 
 All keys are namespaced as `zilch.*` and are versioned separately from the
-ZDWA catalog. The expanded catalog contains 74 conditions supported by
-validated result evidence. It includes the original milestones plus cumulative
-games/wins/banked points, 2,500–5,000-point rounds, Hot-Dice streaks, high-risk
-recoveries, close and decisive human wins, 1,000/2,000/3,000-point comebacks,
-start-roll reversals, fast human-vs-human finishes, Solo turn/roll targets,
-four-, five-, and six-of-a-kind groups, 11,000–15,000 final scores,
-twenty-Zilch games, and competitive marathon wins.
+ZDWA catalog. The expanded version-6 catalog contains 95 conditions: personal
+goals for scoring, risk, duels, CPU play, Solo efficiency, high-end
+games/wins/banked rounds and human-table participation; a separate same-day
+series shared with ZDWA; and eight zero-point community milestones. Personal
+Zilch-result conditions remain supported by validated, isolated evidence. The
+same-day series is instead derived from the durable typed-result ledger of both
+games: a day counts only when the same active account has at least one
+non-imported, completed Zilch result and one non-imported, completed ZDWA
+result in the Europe/Zurich calendar.
 
 Point values are immutable catalog metadata. The possible positive-point total
-is derived from that catalog, and the ten familiar rank names are scaled from
-the same proportional thresholds as ZDWA while remaining a different score.
-Deleting a personal source immediately changes the projected Zilch points and
-rank if an award is revoked.
+is derived from that catalog. Published rank thresholds are absolute and do not
+move when the catalog grows, so an existing player can never be demoted by a
+release. The original ten tiers are followed by Wirtshausmeister and
+Würfelmythos at the high end. Deleting a personal source immediately changes the
+projected Zilch points and rank if an award is revoked.
 
-Five additional `zilch.community_games_*` milestones track 100, 500, 1,000,
-5,000, and 10,000 qualified completed Zilch games globally. Each game enters a
-unique ledger once, regardless of player count. At a threshold, the server
-atomically freezes recipients to active accounts that already completed at
-least one qualified Zilch game. Later accounts do not inherit the old award.
-Community awards are always worth 0 points and are not revoked if an old
-triggering result is later deleted; they document a shared moment rather than
-an individual result. A separate per-game account-participant ledger keeps that
-minimum-one-game eligibility stable even when mutable result evidence is later
-removed. At the version-2 rollout, revision `20260904_0019` reconstructs already
-reached thresholds at the exact Nth explicitly registered evidence source,
-excludes typed deletion tombstones, and freezes recipients from qualifying
-account seats at or before that ordinal. Startup then performs one atomic,
-versioned resynchronization from those isolated evidence/recipient tables. Its
-internal version-3 pass additionally enriches only completed, non-tombstoned
-registrations from their exact typed source loaded by game ID. It does not
-enumerate `CompletedGame`; validation failure rolls back the evidence and
-catalog marker together.
+The eight `zilch.community_games_*` milestones track 100, 500, 1,000, 5,000,
+10,000, 25,000, 50,000 and 100,000 qualified completed Zilch games globally.
+Each game enters a unique ledger once, regardless of player count. At a
+threshold, the server atomically freezes recipients to active accounts that
+already completed at least one qualified Zilch game. Later accounts do not
+inherit the old award. Community awards are always worth 0 points and are not
+revoked if an old triggering result is later deleted; they document a shared
+moment rather than an individual result. A separate per-game
+account-participant ledger keeps that minimum-one-game eligibility stable even
+when mutable result evidence is later removed. At the version-2 rollout,
+revision `20260904_0019` reconstructs already reached thresholds at the exact
+Nth explicitly registered evidence source, excludes typed deletion tombstones,
+and freezes recipients from qualifying account seats at or before that ordinal.
+Startup then performs one atomic, versioned resynchronization from those
+isolated evidence/recipient tables. Its internal version-3 pass additionally
+enriches only completed, non-tombstoned registrations from their exact typed
+source loaded by game ID. It does not enumerate `CompletedGame`; validation
+failure rolls back the evidence and catalog marker together.
+
+The new cross-game series starts at the user-specific migration marker in
+revision `20260907_0033`, so old or imported history cannot cause surprise
+bulk unlocks. It awards ZDWA and Zilch separately, uses a source from the
+respective game for safe result presentation, and is recalculated if a result
+is deleted or a ZDWA participant assignment changes.
 
 Account-only APIs are `GET /api/zilch/achievements`,
 `GET /api/zilch/achievements/pending`, and

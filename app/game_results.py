@@ -73,6 +73,27 @@ def _achievement_ranks_safely(user_ids: set[int], *, game_id: object) -> dict[in
         return {}
 
 
+def _sync_shared_zilch_achievements_safely(user_ids: set[int], *, game_id: object) -> None:
+    """Let a ZDWA result complete the separate Zilch same-day goals."""
+
+    if not user_ids:
+        return
+    try:
+        # Keep the product modules independent at import time.  Zilch owns its
+        # own unlock/delivery tables; this is only the deliberate cross-game
+        # bridge after an already durable ZDWA result.
+        from .zilch_achievements import (  # pylint: disable=import-outside-toplevel
+            sync_zilch_cross_game_achievements_for_users,
+        )
+
+        sync_zilch_cross_game_achievements_for_users(user_ids)
+    except Exception:
+        # The completed result and its ZDWA rewards must not be held hostage by
+        # an independent profile projection.  A later game or profile refresh
+        # can safely repeat this idempotent synchronization.
+        logger.exception("Could not synchronize shared Zilch achievements for game %s", game_id)
+
+
 def mutate_stats(
     files: LeaderboardFiles, incr_games=False, *, average_points: int | None = None, hardcore: bool = False
 ):
@@ -288,6 +309,7 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
             achievement_user_ids,
             source_completed_game_id=write_result.completed_game_id,
         )
+        _sync_shared_zilch_achievements_safely(achievement_user_ids, game_id=g.get("_id"))
         ranks_after = _achievement_ranks_safely(achievement_user_ids, game_id=g.get("_id"))
         achievement_rank_ups = _rank_ups_for_completed_game(
             g,
@@ -315,6 +337,7 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
             achievement_user_ids,
             source_completed_game_id=write_result.completed_game_id,
         )
+        _sync_shared_zilch_achievements_safely(achievement_user_ids, game_id=g.get("_id"))
         ranks_after = _achievement_ranks_safely(achievement_user_ids, game_id=g.get("_id"))
         achievement_rank_ups = _rank_ups_for_completed_game(
             g,
