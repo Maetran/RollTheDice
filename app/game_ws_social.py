@@ -90,6 +90,7 @@ async def _send_emoji(session: GameSocketSession, data: dict[str, Any]) -> None:
             "emoji": {
                 "from_id": sender_id,
                 "from": sender_name,
+                "user_id": sender_player.get("user_id"),
                 "emoji": emoji,
                 "ts": datetime.now(timezone.utc).isoformat(),
                 **({"achievement_rank": sender_rank} if isinstance(sender_rank, dict) else {}),

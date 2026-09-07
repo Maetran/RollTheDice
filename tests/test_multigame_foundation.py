@@ -493,6 +493,7 @@ class MultiGameFoundationTestCase(GameStateTestCase):
         self.assertEqual(chat["chat"]["kind"], "chat")
         self.assertEqual(echoed["emoji"]["from_id"], player_id)
         self.assertEqual(echoed["emoji"]["from"], "Mani")
+        self.assertEqual(echoed["emoji"]["user_id"], chat["chat"]["user_id"])
         self.assertEqual(echoed["emoji"]["emoji"], "🎲")
         restored = load_active_games()[game["_id"]]
         self.assertEqual(snapshot(restored)["_chat_history"], [chat["chat"]])

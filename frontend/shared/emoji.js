@@ -94,14 +94,38 @@
       }
       .emoji-pop.chat-pop{
         cursor:pointer;
+        width:min(34rem, calc(100vw - 24px));
       }
       .emoji-pop .who{
-        flex:0 0 auto;
+        flex:0 1 auto;
+        min-width:0;
+        max-width:min(11rem, 38vw);
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
         font-weight:700; color:#333; font-size:.95rem;
       }
-      .emoji-pop .txt{
+      .emoji-pop .player-name-with-rank,
+      .emoji-pop-identity{
+        display:inline-flex;
+        align-items:center;
+        gap:.35rem;
         min-width:0;
-        max-width:min(520px, 70vw);
+        max-width:100%;
+        flex-wrap:nowrap;
+      }
+      .emoji-pop .player-avatar,
+      .emoji-pop-avatar{
+        width:24px;
+        height:24px;
+        flex:0 0 24px;
+        border-radius:50%;
+        object-fit:cover;
+      }
+      .emoji-pop .txt{
+        flex:1 1 auto;
+        min-width:2rem;
+        max-width:none;
         overflow:hidden;
         text-overflow:ellipsis;
         white-space:nowrap;
@@ -227,24 +251,32 @@
     }
   }
 
-  function playerNameMarkup(name, achievementRank){
-    if (typeof window.ZDWA_PLAYER_NAME_MARKUP === 'function') {
-      return window.ZDWA_PLAYER_NAME_MARKUP(
-        { name, achievement_rank: achievementRank },
-        { compactRank: true, fallback: 'Spieler' },
-      );
-    }
-    return escapeHtml(name || 'Spieler');
+  function fallbackAvatarMarkup(userId){
+    const numericId = Number(userId);
+    const source = Number.isSafeInteger(numericId) && numericId > 0
+      ? `/api/avatars/${numericId}`
+      : '/static/default-avatar.svg';
+    return `<img class="emoji-pop-avatar" src="${source}" alt="" width="24" height="24" loading="lazy" decoding="async">`;
   }
 
-  function showPop({from, emoji, text, kind, achievement_rank: achievementRank}, {ttlMs=5000}={}){
+  function playerNameMarkup(name, userId){
+    if (typeof window.ZDWA_PLAYER_NAME_MARKUP === 'function') {
+      return window.ZDWA_PLAYER_NAME_MARKUP(
+        { name, user_id: userId },
+        { showRank: false, fallback: 'Spieler' },
+      );
+    }
+    return `<span class="emoji-pop-identity">${fallbackAvatarMarkup(userId)}<span class="player-name-label">${escapeHtml(name || 'Spieler')}</span></span>`;
+  }
+
+  function showPop({from, user_id: userId, emoji, text, kind}, {ttlMs=5000}={}){
     ensureStyles();
     const mount = ensurePopMount();
     syncPopMountPosition();
     const el = document.createElement('div');
     const isChat = kind === 'chat';
     el.className = `emoji-pop${isChat ? ' chat-pop' : ''}`;
-    const senderMarkup = playerNameMarkup(from, achievementRank);
+    const senderMarkup = playerNameMarkup(from, userId);
     if (isChat) {
       el.innerHTML = `<span class="who">${senderMarkup}:</span> <span class="txt">${escapeHtml(text || '')}</span>`;
       el.addEventListener('click', scrollToChat);
@@ -305,8 +337,8 @@
     if (!payload || !payload.emoji) return;
     showPop({
       from: payload.from || 'Spieler',
+      user_id: payload.user_id,
       emoji: payload.emoji,
-      achievement_rank: payload.achievement_rank,
     });
   }
 
@@ -314,9 +346,9 @@
     if (!payload || !payload.text) return;
     showPop({
       from: payload.sender || payload.from || 'Spieler',
+      user_id: payload.user_id,
       text: payload.text,
       kind: 'chat',
-      achievement_rank: payload.achievement_rank,
     });
   }
 

@@ -1,4 +1,4 @@
-(()=>{(function(){let h=["👍","👎","🤞","🙏","🖕","😂","😲","😡","😜","🙄","🤦","😭","🤮","🎉","💩","FEIG!"];function l(){if(document.getElementById("emoji-ui-css"))return;let e=`
+(()=>{(function(){let h=["👍","👎","🤞","🙏","🖕","😂","😲","😡","😜","🙄","🤦","😭","🤮","🎉","💩","FEIG!"];function p(){if(document.getElementById("emoji-ui-css"))return;let e=`
       .emoji-dock{
         position:relative;
         display:inline-flex;
@@ -85,14 +85,38 @@
       }
       .emoji-pop.chat-pop{
         cursor:pointer;
+        width:min(34rem, calc(100vw - 24px));
       }
       .emoji-pop .who{
-        flex:0 0 auto;
+        flex:0 1 auto;
+        min-width:0;
+        max-width:min(11rem, 38vw);
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
         font-weight:700; color:#333; font-size:.95rem;
       }
-      .emoji-pop .txt{
+      .emoji-pop .player-name-with-rank,
+      .emoji-pop-identity{
+        display:inline-flex;
+        align-items:center;
+        gap:.35rem;
         min-width:0;
-        max-width:min(520px, 70vw);
+        max-width:100%;
+        flex-wrap:nowrap;
+      }
+      .emoji-pop .player-avatar,
+      .emoji-pop-avatar{
+        width:24px;
+        height:24px;
+        flex:0 0 24px;
+        border-radius:50%;
+        object-fit:cover;
+      }
+      .emoji-pop .txt{
+        flex:1 1 auto;
+        min-width:2rem;
+        max-width:none;
         overflow:hidden;
         text-overflow:ellipsis;
         white-space:nowrap;
@@ -111,4 +135,4 @@
         .emoji-pop{ font-size:1rem; }
         .emoji-pop .txt{ max-width:62vw; }
       }
-    `,t=document.createElement("style");t.id="emoji-ui-css",t.textContent=e,document.head.appendChild(t)}function b(e){let t=document.createElement("div");t.className="emoji-dock";let o=document.createElement("button");o.className="emoji-fab",o.type="button",o.title="Reaktionen",o.setAttribute("aria-expanded","false"),o.textContent="😊";let i=document.createElement("div");i.className="emoji-panel";let r=()=>{t.classList.remove("open"),o.setAttribute("aria-expanded","false")};return h.forEach(n=>{let a=document.createElement("button");a.className="emoji-btn",String(n).length>2&&a.classList.add("emoji-btn-text"),a.type="button",a.textContent=n,a.title=`Schnellreaktion ${n}`,a.setAttribute("aria-label",`Schnellreaktion ${n}`),a.addEventListener("click",()=>{e(n),r()}),i.appendChild(a)}),o.addEventListener("click",()=>{let n=t.classList.toggle("open");o.setAttribute("aria-expanded",n?"true":"false")}),document.addEventListener("pointerdown",n=>{t.classList.contains("open")&&(t.contains(n.target)||r())},!0),document.addEventListener("keydown",n=>{n.key==="Escape"&&t.classList.contains("open")&&r()}),t.appendChild(o),t.appendChild(i),t}function g(){let e=document.getElementById("emojiPopMount");return e||(e=document.createElement("div"),e.id="emojiPopMount",e.className="emoji-pop-wrap",document.body.appendChild(e)),e}function x(){try{let e=document.querySelector(".room-page .room-header, .zilch-page .zilch-header"),t=e?Math.max(10,Math.ceil(e.getBoundingClientRect().bottom+8)):10;document.documentElement.style.setProperty("--emoji-pop-top",`${t}px`)}catch{}}function j(){let e=document.getElementById("chatPanel"),t=document.getElementById("chatToggle"),o=document.getElementById("chatBackdrop"),i=document.getElementById("chatToggleCount");e&&(e.classList.add("open"),document.documentElement.classList.add("chat-open"),document.body.classList.add("chat-open")),t&&t.setAttribute("aria-expanded","true"),o&&(o.hidden=!1),i&&(i.textContent="0",i.hidden=!0);let r=e||document.getElementById("chatBox");r&&r.scrollIntoView({behavior:"smooth",block:"start"});let n=document.getElementById("chatInput");if(n)try{n.focus({preventScroll:!0})}catch{n.focus()}}function k(e,t){return typeof window.ZDWA_PLAYER_NAME_MARKUP=="function"?window.ZDWA_PLAYER_NAME_MARKUP({name:e,achievement_rank:t},{compactRank:!0,fallback:"Spieler"}):m(e||"Spieler")}function p({from:e,emoji:t,text:o,kind:i,achievement_rank:r},{ttlMs:n=5e3}={}){l();let a=g();x();let s=document.createElement("div"),u=i==="chat";s.className=`emoji-pop${u?" chat-pop":""}`;let f=k(e,r);u?(s.innerHTML=`<span class="who">${f}:</span> <span class="txt">${m(o||"")}</span>`,s.addEventListener("click",j)):s.innerHTML=`<span class="who">${f}</span> <span class="em">${m(t)}</span>`,a.appendChild(s),setTimeout(()=>{s.classList.add("fade-out"),setTimeout(()=>s.remove(),320)},Math.max(1e3,n|0))}function m(e){return String(e).replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[t])}let d=null,c=null;function w({mount:e,ws:t,getMyName:o}={}){l(),d=t||d;let i=a=>{if(!d)return console.warn("emojiUI: ws fehlt");try{d.send(JSON.stringify({action:"send_emoji",emoji:a}))}catch(s){console.warn("emojiUI: send failed",s)}},r=e||document.getElementById("reactionsBar")||document.getElementById("roomStatusLine")||document.querySelector(".room-header")||document.body;c||(c=b(i));let n=c.classList.contains("open");if(r.appendChild(c),n){c.classList.add("open");let a=c.querySelector(".emoji-fab");a&&a.setAttribute("aria-expanded","true")}}function v(e){!e||!e.emoji||p({from:e.from||"Spieler",emoji:e.emoji,achievement_rank:e.achievement_rank})}function y(e){!e||!e.text||p({from:e.sender||e.from||"Spieler",text:e.text,kind:"chat",achievement_rank:e.achievement_rank})}window.emojiUI={init:w,handleRemote:v,handleChat:y}})();})();
+    `,t=document.createElement("style");t.id="emoji-ui-css",t.textContent=e,document.head.appendChild(t)}function g(e){let t=document.createElement("div");t.className="emoji-dock";let n=document.createElement("button");n.className="emoji-fab",n.type="button",n.title="Reaktionen",n.setAttribute("aria-expanded","false"),n.textContent="😊";let i=document.createElement("div");i.className="emoji-panel";let r=()=>{t.classList.remove("open"),n.setAttribute("aria-expanded","false")};return h.forEach(o=>{let a=document.createElement("button");a.className="emoji-btn",String(o).length>2&&a.classList.add("emoji-btn-text"),a.type="button",a.textContent=o,a.title=`Schnellreaktion ${o}`,a.setAttribute("aria-label",`Schnellreaktion ${o}`),a.addEventListener("click",()=>{e(o),r()}),i.appendChild(a)}),n.addEventListener("click",()=>{let o=t.classList.toggle("open");n.setAttribute("aria-expanded",o?"true":"false")}),document.addEventListener("pointerdown",o=>{t.classList.contains("open")&&(t.contains(o.target)||r())},!0),document.addEventListener("keydown",o=>{o.key==="Escape"&&t.classList.contains("open")&&r()}),t.appendChild(n),t.appendChild(i),t}function b(){let e=document.getElementById("emojiPopMount");return e||(e=document.createElement("div"),e.id="emojiPopMount",e.className="emoji-pop-wrap",document.body.appendChild(e)),e}function x(){try{let e=document.querySelector(".room-page .room-header, .zilch-page .zilch-header"),t=e?Math.max(10,Math.ceil(e.getBoundingClientRect().bottom+8)):10;document.documentElement.style.setProperty("--emoji-pop-top",`${t}px`)}catch{}}function j(){let e=document.getElementById("chatPanel"),t=document.getElementById("chatToggle"),n=document.getElementById("chatBackdrop"),i=document.getElementById("chatToggleCount");e&&(e.classList.add("open"),document.documentElement.classList.add("chat-open"),document.body.classList.add("chat-open")),t&&t.setAttribute("aria-expanded","true"),n&&(n.hidden=!1),i&&(i.textContent="0",i.hidden=!0);let r=e||document.getElementById("chatBox");r&&r.scrollIntoView({behavior:"smooth",block:"start"});let o=document.getElementById("chatInput");if(o)try{o.focus({preventScroll:!0})}catch{o.focus()}}function w(e){let t=Number(e);return`<img class="emoji-pop-avatar" src="${Number.isSafeInteger(t)&&t>0?`/api/avatars/${t}`:"/static/default-avatar.svg"}" alt="" width="24" height="24" loading="lazy" decoding="async">`}function y(e,t){return typeof window.ZDWA_PLAYER_NAME_MARKUP=="function"?window.ZDWA_PLAYER_NAME_MARKUP({name:e,user_id:t},{showRank:!1,fallback:"Spieler"}):`<span class="emoji-pop-identity">${w(t)}<span class="player-name-label">${l(e||"Spieler")}</span></span>`}function m({from:e,user_id:t,emoji:n,text:i,kind:r},{ttlMs:o=5e3}={}){p();let a=b();x();let s=document.createElement("div"),u=r==="chat";s.className=`emoji-pop${u?" chat-pop":""}`;let f=y(e,t);u?(s.innerHTML=`<span class="who">${f}:</span> <span class="txt">${l(i||"")}</span>`,s.addEventListener("click",j)):s.innerHTML=`<span class="who">${f}</span> <span class="em">${l(n)}</span>`,a.appendChild(s),setTimeout(()=>{s.classList.add("fade-out"),setTimeout(()=>s.remove(),320)},Math.max(1e3,o|0))}function l(e){return String(e).replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[t])}let d=null,c=null;function v({mount:e,ws:t,getMyName:n}={}){p(),d=t||d;let i=a=>{if(!d)return console.warn("emojiUI: ws fehlt");try{d.send(JSON.stringify({action:"send_emoji",emoji:a}))}catch(s){console.warn("emojiUI: send failed",s)}},r=e||document.getElementById("reactionsBar")||document.getElementById("roomStatusLine")||document.querySelector(".room-header")||document.body;c||(c=g(i));let o=c.classList.contains("open");if(r.appendChild(c),o){c.classList.add("open");let a=c.querySelector(".emoji-fab");a&&a.setAttribute("aria-expanded","true")}}function k(e){!e||!e.emoji||m({from:e.from||"Spieler",user_id:e.user_id,emoji:e.emoji})}function E(e){!e||!e.text||m({from:e.sender||e.from||"Spieler",user_id:e.user_id,text:e.text,kind:"chat"})}window.emojiUI={init:v,handleRemote:k,handleChat:E}})();})();

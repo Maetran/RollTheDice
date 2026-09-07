@@ -2665,6 +2665,16 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
     ]));
     await expect(page.locator(".emoji-pop")).toContainText("Mani");
     await expect(page.locator("#zilchChatHistory")).toContainText("👍");
+    await page.evaluate(() => window.emojiUI.handleChat({
+      sender: "Mani",
+      user_id: 2,
+      achievement_rank: { stars: 2, title: "Fortgeschritten" },
+      text: "Der Nachrichtentext bleibt sichtbar.",
+    }));
+    const incomingBubble = page.locator(".emoji-pop.chat-pop").last();
+    await expect(incomingBubble.locator(".player-avatar, .emoji-pop-avatar")).toHaveAttribute("src", "/api/avatars/2");
+    await expect(incomingBubble.locator(".player-rank, .zilch-rank-badge")).toHaveCount(0);
+    await expect(incomingBubble.locator(".txt")).toContainText("Der Nachrichtentext bleibt sichtbar.");
 
     await page.locator("[data-zilch-roll]").click();
     await expect(page.locator("#zilchChatHistory")).toContainText("👍");
