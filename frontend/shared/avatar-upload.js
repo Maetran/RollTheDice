@@ -199,6 +199,7 @@ export function mountAvatarUpload(mount) {
   async function mutate(method) {
     if (busy || !account || (method === "PUT" && !selected)) return;
     const viewer = account.viewer_id;
+    const replacedAvatar = method === "PUT" && Boolean(account.has_avatar);
     const expectedEpoch = ++epoch;
     busy = true;
     controls();
@@ -214,7 +215,9 @@ export function mountAvatarUpload(mount) {
       clearFile();
       ownPreview();
       refreshAccountAvatars(viewer);
-      window.dispatchEvent(new CustomEvent("zdwa:avatar-updated", { detail: { userId: viewer } }));
+      window.dispatchEvent(new CustomEvent("zdwa:avatar-updated", {
+        detail: { userId: viewer, replaced: replacedAvatar },
+      }));
       message.textContent = t(method === "PUT" ? "Profilbild gespeichert." : "Profilbild entfernt. Das Standardbild wird verwendet.");
     } catch (error) {
       if (expectedEpoch === epoch) message.textContent = errorText(error);

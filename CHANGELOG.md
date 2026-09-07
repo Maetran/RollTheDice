@@ -15,6 +15,20 @@ also includes older and internal changes.
 
 ### Deutsch
 
+- Neue Erkundungs-Erfolge in beiden Spielen belohnen Profilbild setzen und
+  wechseln, Einstellungen und Übersichten öffnen, GitHub-Links, Theme- und
+  Sprachwechsel, Chat-/Push-Einstellungen sowie den Wechsel zwischen ZDWA und
+  Zilch. Nur ausdrücklich aufgezeichnete Aktionen ab diesem Rollout zählen;
+  bestehende Ränge und historische Achievements bleiben unverändert.
+
+### English
+
+- New exploration achievements in both games reward setting and changing a
+  profile picture, opening settings and overviews, GitHub links, theme and
+  language changes, chat/push settings, and switching between ZDWA and Zilch.
+  Only explicitly recorded actions from this rollout count; existing ranks and
+  historical achievements remain unchanged.
+
 - Die beiden Erfolgs-Sammlungen wachsen unabhängig weiter. Die neue Serie
   **Doppelwurf** zählt einen Zürcher Kalendertag, an dem du eine gültige ZDWA-
   und eine gültige Zilch-Partie abschließt. Es gibt Ziele für das erste Mal,

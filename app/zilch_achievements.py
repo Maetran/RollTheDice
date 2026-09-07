@@ -42,6 +42,8 @@ from .models import (
     ZilchCommunityParticipant,
     ZilchCommunityRecipient,
     ZilchCommunityState,
+    UserEngagementEvent,
+    UserEngagementEvent,
 )
 from .security import as_utc, utcnow
 from .zilch_cpu_strategy import ZILCH_CPU_STRATEGIES
@@ -55,7 +57,7 @@ ZILCH_ACHIEVEMENT_RESPONSE_VERSION: Final = 2
 # Version 6 adds late-game progress, social milestones and shared ZDWA/Zilch
 # play-day goals.  Existing Zilch evidence remains the only source for normal
 # Zilch definitions; cross-game facts have their own rollout marker.
-ZILCH_ACHIEVEMENT_CATALOG_VERSION: Final = 6
+ZILCH_ACHIEVEMENT_CATALOG_VERSION: Final = 7
 ZILCH_ACHIEVEMENT_NAMESPACE: Final = "zilch."
 ZILCH_ACHIEVEMENT_DEFINITION_VERSION: Final = 1
 ZILCH_ACHIEVEMENT_RECOVERY_DEFAULT_LIMIT: Final = 50
@@ -1495,6 +1497,21 @@ ZILCH_ACHIEVEMENTS: Final[tuple[ZilchAchievementDefinition, ...]] = (
         points=0,
         target=100_000,
     ),
+    _definition("avatar_set", category="exploration", icon_key="avatar", title_de="Profilbildner", title_en="Profile Picture", description_de="Zum ersten Mal ein eigenes Profilbild gesetzt.", description_en="Set a profile picture for the first time.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=2, target=1),
+    _definition("avatar_changed", category="exploration", icon_key="avatar", title_de="Neuer Look", title_en="New Look", description_de="Das Profilbild mindestens einmal gewechselt.", description_en="Change your profile picture at least once.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=3, target=1),
+    _definition("settings_viewed", category="exploration", icon_key="settings", title_de="Einstellungsdetektiv", title_en="Settings Detective", description_de="Die persönlichen Einstellungen geöffnet.", description_en="Open your personal settings.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=1, target=1),
+    _definition("settings_saved", category="exploration", icon_key="settings", title_de="Feinjustiert", title_en="Fine-Tuned", description_de="Eine persönliche Einstellung gespeichert.", description_en="Save a personal setting.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=2, target=1),
+    _definition("statistics_viewed", category="exploration", icon_key="statistics", title_de="Zahlenmensch", title_en="Numbers Person", description_de="Die eigenen Statistiken geöffnet.", description_en="Open your statistics.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=1, target=1),
+    _definition("achievements_viewed", category="exploration", icon_key="achievement", title_de="Auf Schatzsuche", title_en="Treasure Hunt", description_de="Die Achievement-Sammlung geöffnet.", description_en="Open the achievement collection.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=1, target=1),
+    _definition("rules_viewed", category="exploration", icon_key="rules", title_de="Regelkundig", title_en="Rule Reader", description_de="Die Spielregeln geöffnet.", description_en="Open the game rules.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=1, target=1),
+    _definition("history_viewed", category="exploration", icon_key="history", title_de="Rückblick", title_en="Looking Back", description_de="Die eigene Spielhistorie geöffnet.", description_en="Open your game history.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=1, target=1),
+    _definition("leaderboard_viewed", category="exploration", icon_key="leaderboard", title_de="Blick nach oben", title_en="Look Up", description_de="Eine Rangliste geöffnet.", description_en="Open a leaderboard.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=1, target=1),
+    _definition("github_clicked", category="exploration", icon_key="github", title_de="Neugierig geblieben", title_en="Curious Explorer", description_de="Einen GitHub-Link der App geöffnet.", description_en="Open an app GitHub link.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=2, target=1),
+    _definition("theme_changed", category="exploration", icon_key="theme", title_de="Stimmungswechsler", title_en="Mood Changer", description_de="Das Erscheinungsbild der App gewechselt.", description_en="Change the app appearance.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=1, target=1),
+    _definition("language_changed", category="exploration", icon_key="language", title_de="Sprachgewandt", title_en="Multilingual", description_de="Die App-Sprache gewechselt.", description_en="Change the app language.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=2, target=1),
+    _definition("game_switcher_used", category="exploration", icon_key="switch", title_de="Spielwechsler", title_en="Game Switcher", description_de="Zwischen ZDWA und Zilch gewechselt.", description_en="Switch between ZDWA and Zilch.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=2, target=1),
+    _definition("push_settings_viewed", category="exploration", icon_key="push", title_de="Immer informiert", title_en="Stay Informed", description_de="Die Push-Einstellungen geöffnet.", description_en="Open push settings.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=1, target=1),
+    _definition("chat_settings_saved", category="exploration", icon_key="chat", title_de="Gesprächig", title_en="Chatty", description_de="Die Chat-Einstellungen gespeichert.", description_en="Save chat settings.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=2, target=1),
 )
 
 ZILCH_ACHIEVEMENT_BY_KEY: Final[dict[str, ZilchAchievementDefinition]] = {
@@ -1511,6 +1528,7 @@ ZILCH_ACHIEVEMENT_CATEGORIES: Final[tuple[str, ...]] = (
     "solo",
     "crossplay",
     "community",
+    "exploration",
 )
 _CROSS_GAME_CRITERIA: Final[frozenset[str]] = frozenset({"cross_game_days", "cross_game_streak"})
 _COMBINATION_BY_TARGET: Final[dict[int, frozenset[str]]] = {
@@ -2345,6 +2363,12 @@ def _criterion_is_satisfied(definition: ZilchAchievementDefinition, facts: list[
     raise RuntimeError(f"Unknown Zilch achievement criterion: {criterion}")
 
 
+def _engagement_counts(db, user_id: int) -> dict[str, int]:
+    return {str(row.event_key): int(row.count) for row in db.scalars(
+        select(UserEngagementEvent).where(UserEngagementEvent.user_id == user_id)
+    )}
+
+
 def _first_supporting_evidence(
     definition: ZilchAchievementDefinition,
     facts_by_evidence: list[tuple[ZilchAchievementEvidence, dict[str, Any]]],
@@ -2368,6 +2392,7 @@ def _progress_for_definition(
     *,
     community_games: int | None = None,
     cross_game_activity: CrossGameActivity | None = None,
+    engagement_counts: Mapping[str, int] | None = None,
 ) -> dict[str, int] | None:
     """Expose progress only where a stable numeric denominator exists."""
 
@@ -2386,6 +2411,9 @@ def _progress_for_definition(
             "current": max(0, int(cross_game_activity.longest_streak if cross_game_activity else 0)),
             "target": int(definition.target or 0),
         }
+    if definition.criterion == "engagement_event":
+        key = definition.key.removeprefix("zilch.")
+        return {"current": int((engagement_counts or {}).get(key, 0)), "target": 1}
     applicable = [
         item
         for item in facts
@@ -3397,15 +3425,35 @@ def _sync_user_achievements_in_session(
     revoked: list[str] = []
     now = utcnow()
     presentation = str(presentation_game_id).strip() if presentation_game_id else None
+    engagement_counts = _engagement_counts(db, user_id)
     if presentation and len(presentation) > 64:
         presentation = None
     for definition in ZILCH_ACHIEVEMENTS:
         if definition.criterion == "community_games" or definition.criterion in _CROSS_GAME_CRITERIA:
             continue
-        should_unlock = _criterion_is_satisfied(definition, facts)
+        is_engagement = definition.criterion == "engagement_event"
+        should_unlock = (
+            int(engagement_counts.get(definition.key.removeprefix("zilch."), 0)) >= int(definition.target or 0)
+            if is_engagement else _criterion_is_satisfied(definition, facts)
+        )
         unlock = existing.get(definition.key)
         if should_unlock and unlock is None:
-            source = _first_supporting_evidence(definition, evidence_pairs)
+            source = _first_supporting_evidence(definition, evidence_pairs) if not is_engagement else None
+            if is_engagement:
+                unlock = ZilchAchievementUnlock(
+                    user_id=user_id, achievement_key=definition.key,
+                    definition_version=definition.definition_version,
+                    source_evidence_id=None, source_game_id=None,
+                    presentation_game_id=None, unlocked_at=now,
+                )
+                db.add(unlock)
+                db.flush()
+                delivery = ZilchAchievementDelivery(unlock_id=unlock.id, queued_at=now, acknowledged_at=None)
+                db.add(delivery)
+                newly_unlocked.append(_unlock_payload(
+                    unlock, definition, delivery=delivery, progress={"current": 1, "target": 1},
+                ))
+                continue
             if source is None:
                 # A malformed evidence row cannot turn into an unlock merely
                 # because a broad aggregate happened to be truthy.
@@ -3494,6 +3542,53 @@ def sync_zilch_cross_game_achievements_for_users(
     except SQLAlchemyError as exc:
         logger.exception("Could not synchronize shared-game Zilch achievements")
         raise ZilchAchievementSyncError() from exc
+
+
+def sync_zilch_engagement_achievements_for_users(
+    user_ids: Iterable[object],
+) -> dict[int, list[dict[str, Any]]]:
+    """Refresh only awards caused by explicit account interactions."""
+    normalized: set[int] = set()
+    for raw in user_ids:
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            normalized.add(value)
+    if not normalized or not database_schema_ready():
+        return {}
+    with session_scope() as db:
+        result: dict[int, list[dict[str, Any]]] = {}
+        for user_id in sorted(normalized):
+            user = db.get(User, user_id)
+            if user is None or not user.is_active:
+                continue
+            existing = _known_unlock_rows(db, user_id)
+            counts = _engagement_counts(db, user_id)
+            unlocked: list[dict[str, Any]] = []
+            for definition in ZILCH_ACHIEVEMENTS:
+                if definition.criterion != "engagement_event":
+                    continue
+                key = definition.key.removeprefix("zilch.")
+                if counts.get(key, 0) < int(definition.target or 0) or definition.key in existing:
+                    continue
+                unlock = ZilchAchievementUnlock(
+                    user_id=user_id, achievement_key=definition.key,
+                    definition_version=definition.definition_version,
+                    source_evidence_id=None, source_game_id=None,
+                    presentation_game_id=None, unlocked_at=utcnow(),
+                )
+                db.add(unlock)
+                db.flush()
+                delivery = ZilchAchievementDelivery(unlock_id=unlock.id, queued_at=utcnow(), acknowledged_at=None)
+                db.add(delivery)
+                unlocked.append(_unlock_payload(
+                    unlock, definition, delivery=delivery, progress={"current": 1, "target": 1},
+                ))
+            if unlocked:
+                result[user_id] = unlocked
+        return result
 
 
 def _record_evaluation_failure(game_id: str, code: str) -> None:
@@ -3930,6 +4025,7 @@ def _profile_in_session(db, user_id: int) -> dict[str, Any]:
     points = zilch_achievement_points_for_keys(unlocks)
     community_games = _community_count_in_session(db)
     cross_game_activity = cross_game_activity_for_user(db, user)
+    engagement_counts = _engagement_counts(db, user_id)
     reached_community_keys = {
         str(key) for key in db.scalars(select(ZilchCommunityMilestone.achievement_key))
     }
@@ -3952,6 +4048,7 @@ def _profile_in_session(db, user_id: int) -> dict[str, Any]:
             facts,
             community_games=community_games,
             cross_game_activity=cross_game_activity,
+            engagement_counts=engagement_counts,
         )
         row = unlocks.get(definition.key)
         if row is None:

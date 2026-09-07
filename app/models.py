@@ -109,6 +109,29 @@ class UserAvatar(Base):
     __table_args__ = (CheckConstraint("length(data) BETWEEN 1 AND 65536", name="ck_user_avatar_size"),)
 
 
+class UserEngagementEvent(Base):
+    """One durable, explicit post-rollout account interaction.
+
+    Keeping interactions separate from game history makes these awards
+    non-retroactive: only actions sent by the live UI after the rollout can
+    create a row.
+    """
+
+    __tablename__ = "user_engagement_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    event_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "event_key", name="uq_user_engagement_event"),
+        Index("ix_user_engagement_events_user", "user_id"),
+    )
+
+
 class Session(Base):
     __tablename__ = "sessions"
 

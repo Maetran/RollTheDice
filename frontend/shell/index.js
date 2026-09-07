@@ -6,6 +6,7 @@ import "./pwa.js";
 import "./theme.js";
 import { initializeAvatarFallbacks } from "../shared/avatar.js";
 import { initializeFriendActivity } from "../shared/friend-activity.js";
+import "../shared/engagement.js";
 
 function initializeZdwaPwaBridgeNavigation() {
   if (!isZilchHostedZdwaLocation()) return;

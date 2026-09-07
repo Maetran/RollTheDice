@@ -22,6 +22,7 @@ from .active_games import load_active_games, save_active_game
 from .api_allowlist import router as allowlist_router
 from .api_auth import router as auth_router
 from .api_avatars import router as avatars_router
+from .api_engagement import router as engagement_router
 from .api_friend_activity import router as friend_activity_router
 from .api_releases import router as releases_router
 from .api_users import router as users_router
@@ -419,6 +420,7 @@ app.include_router(auth_router)
 app.include_router(releases_router)
 app.include_router(allowlist_router)
 app.include_router(avatars_router)
+app.include_router(engagement_router)
 app.include_router(friend_activity_router)
 app.include_router(users_router)
 

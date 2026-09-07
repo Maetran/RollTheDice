@@ -107,12 +107,17 @@ Usernames are immutable; administrators manage accounts and moderation.
 
 **ZDWA** offers public profiles and rankings, Normal/Hardcore statistics, score
 charts and completed-game replays. Achievement milestones award
+additional points for exploring the account: setting or changing an avatar,
+opening settings, statistics, rules, history, achievements and leaderboards,
+using the GitHub links, changing language/theme, switching games, and saving
+chat or push settings. These interaction awards are available in both ZDWA
+and Zilch and are recorded only from the rollout onward.
 **Ehrenberg-Marken**, which contribute to titles and star insignia. Newly earned
 awards are celebrated individually, followed by a **LEVEL UP!** card for a
 genuine title increase.
 
 **Zilch** offers personal history, participant-only result reports, statistics
-split by Solo/human/CPU play, and separate leaderboards. Its 95 namespaced
+split by Solo/human/CPU play, and separate leaderboards. Its expanded namespaced
 achievements cover scoring, risk, duels, CPU play, Solo efficiency, cross-game
 play and community milestones. Personal awards contribute Zilch points;
 community milestones have a fixed eligible audience and award no personal

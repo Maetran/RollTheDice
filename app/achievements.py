@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from .cross_game_activity import cross_game_activity_for_user
 from .game_types import DEFAULT_GAME_TYPE
-from .models import CompletedGame, GameParticipant, User, UserAchievement
+from .models import CompletedGame, GameParticipant, User, UserAchievement, UserEngagementEvent
 from .rules import compute_row_subtotals
 from .security import as_utc, utcnow
 
@@ -777,6 +777,21 @@ _ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
             "early_bird_games",
             10,
         ),
+        Achievement("avatar_set", "Profilbildner", "Zum ersten Mal ein eigenes Profilbild gesetzt.", "avatar", "engagement_event"),
+        Achievement("avatar_changed", "Neuer Look", "Das Profilbild mindestens einmal gewechselt.", "avatar", "engagement_event"),
+        Achievement("settings_viewed", "Einstellungsdetektiv", "Die persönlichen Einstellungen geöffnet.", "settings", "engagement_event"),
+        Achievement("settings_saved", "Feinjustiert", "Eine persönliche Einstellung gespeichert.", "settings", "engagement_event"),
+        Achievement("statistics_viewed", "Zahlenmensch", "Die eigenen Statistiken geöffnet.", "statistics", "engagement_event"),
+        Achievement("achievements_viewed", "Auf Schatzsuche", "Die Achievement-Sammlung geöffnet.", "achievement", "engagement_event"),
+        Achievement("rules_viewed", "Regelkundig", "Die Spielregeln geöffnet.", "rules", "engagement_event"),
+        Achievement("history_viewed", "Rückblick", "Die eigene Spielhistorie geöffnet.", "history", "engagement_event"),
+        Achievement("leaderboard_viewed", "Blick nach oben", "Eine Rangliste geöffnet.", "leaderboard", "engagement_event"),
+        Achievement("github_clicked", "Neugierig geblieben", "Einen GitHub-Link der App geöffnet.", "github", "engagement_event"),
+        Achievement("theme_changed", "Stimmungswechsler", "Das Erscheinungsbild der App gewechselt.", "theme", "engagement_event"),
+        Achievement("language_changed", "Sprachgewandt", "Die App-Sprache gewechselt.", "language", "engagement_event"),
+        Achievement("game_switcher_used", "Spielwechsler", "Zwischen ZDWA und Zilch gewechselt.", "switch", "engagement_event"),
+        Achievement("push_settings_viewed", "Immer informiert", "Die Push-Einstellungen geöffnet.", "push", "engagement_event"),
+        Achievement("chat_settings_saved", "Gesprächig", "Die Chat-Einstellungen gespeichert.", "chat", "engagement_event"),
         Achievement(
             "statistics_views",
             "Statistiker",
@@ -888,6 +903,21 @@ _KEY_POINTS: dict[str, int] = {
     "night_owl": 2,
     "weekend_games": 3,
     "early_bird_games": 3,
+    "avatar_set": 2,
+    "avatar_changed": 3,
+    "settings_viewed": 1,
+    "settings_saved": 2,
+    "statistics_viewed": 1,
+    "achievements_viewed": 1,
+    "rules_viewed": 1,
+    "history_viewed": 1,
+    "leaderboard_viewed": 1,
+    "github_clicked": 2,
+    "theme_changed": 1,
+    "language_changed": 2,
+    "game_switcher_used": 2,
+    "push_settings_viewed": 1,
+    "chat_settings_saved": 2,
 }
 
 
@@ -1232,6 +1262,8 @@ def achievement_sort_key(achievement: Achievement) -> tuple[int, int, int, str]:
         )
     if kind in {"hardcore_games", "hardcore_score", "hardcore_streak"}:
         return (70, {"hardcore_games": 0, "hardcore_score": 1, "hardcore_streak": 2}[kind], achievement.target, achievement.key)
+    if kind == "engagement_event":
+        return (80, 0, achievement.target, achievement.key)
     raise RuntimeError(f"Achievement {achievement.key} has no display order.")
 
 
@@ -1583,6 +1615,17 @@ def _progress_for_user(
             for score in EXACT_GAME_SCORE_TARGETS
         }
     )
+    engagement_rows = db.scalars(
+        select(UserEngagementEvent).where(UserEngagementEvent.user_id == user.id)
+    )
+    progress.update({row.event_key: int(row.count) for row in engagement_rows})
+    for event_key in (
+        "avatar_set", "avatar_changed", "settings_viewed", "settings_saved",
+        "statistics_viewed", "achievements_viewed", "rules_viewed", "history_viewed",
+        "leaderboard_viewed", "github_clicked", "theme_changed", "language_changed",
+        "game_switcher_used", "push_settings_viewed", "chat_settings_saved",
+    ):
+        progress.setdefault(event_key, 0)
     return progress
 
 
@@ -1728,4 +1771,31 @@ def sync_achievements_for_users(
                 ]
                 if unlocked_now:
                     newly_unlocked[user_id] = unlocked_now
-    return newly_unlocked
+        return newly_unlocked
+
+
+def sync_engagement_achievements_for_users(user_ids: Iterable[object]) -> None:
+    """Materialize only interaction awards; never scan or award game history."""
+    from .database import database_schema_ready, session_scope
+
+    normalized = {int(value) for value in user_ids if str(value).isdigit() and int(value) > 0}
+    if not normalized or not database_schema_ready():
+        return
+    with session_scope() as db:
+        for user_id in normalized:
+            user = db.get(User, user_id)
+            if user is None or not user.is_active:
+                continue
+            counts = {row.event_key: int(row.count) for row in db.scalars(
+                select(UserEngagementEvent).where(UserEngagementEvent.user_id == user_id)
+            )}
+            existing = {row.achievement_key for row in user.achievements}
+            for achievement in ACHIEVEMENTS:
+                if achievement.kind != "engagement_event" or achievement.key in existing:
+                    continue
+                if counts.get(achievement.key, 0) >= achievement.target:
+                    db.add(UserAchievement(
+                        user_id=user_id, achievement_key=achievement.key,
+                        source_completed_game_id=None, unlocked_at=utcnow(),
+                    ))
+            db.flush()

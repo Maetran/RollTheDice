@@ -1,21 +1,21 @@
 {
   "kind": "usability",
   "games": ["zdwa", "zilch"],
-  "summary_de": "Jetzt neu: Doppelwurf-Serien und neue Langzeit-Erfolge.",
-  "summary_en": "New: Double Roll series and fresh long-term achievements.",
+  "summary_de": "Neu: Entdecke die App und sammle Punkte für deine ersten Klicks.",
+  "summary_en": "New: Explore the app and collect points for your first clicks.",
   "player_notes": {
     "de": {
-      "title": "Mehr Ziele am Tisch",
+      "title": "Mehr zu entdecken",
       "changes": [
-        "Spiele ZDWA und Zilch am selben Zürcher Kalendertag und verdiene den neuen Doppelwurf-Fortschritt in beiden Sammlungen – auch als Serie über mehrere Tage.",
+        "Erkunde Konto, Einstellungen, Profilbild, Ranglisten und GitHub-Links und sammle dafür neue Punkte in beiden Spielen.",
         "Neue Langzeit-, Mehrspieler- und Community-Ziele geben dir in ZDWA und Zilch mehr zu sammeln. Deine bisherigen Erfolge und Rangstufen bleiben dabei erhalten.",
         "ZDWA-Highscores haben jetzt gleich hohe Zeilen. In Zilch ist der Wechsel zu ZDWA kontrastreicher, und die Holzfläche füllt die installierte App wieder durchgehend."
       ]
     },
     "en": {
-      "title": "More goals at the table",
+      "title": "More to explore",
       "changes": [
-        "Play ZDWA and Zilch on the same Zurich calendar day to earn new Double Roll progress in both collections – including runs over several days.",
+        "Explore your account, settings, profile picture, leaderboards and GitHub links to collect new points in both games.",
         "New long-term, multiplayer and community goals give you more to collect in ZDWA and Zilch. Your existing achievements and rank tiers stay intact.",
         "ZDWA high scores now have even row heights. In Zilch, the route to ZDWA has better contrast and the wood table again fills the installed app throughout."
       ]
