@@ -11,6 +11,18 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Stille Korrektur / Silent fix — Würfel und Schreibblock
+
+- **Deutsch:** LCARS-Würfel zeichnen ihre Farben direkt statt mit
+  verschachtelten Bildfiltern; Auswahl und Konturen bleiben erhalten.
+  Der Schreibblock springt bei jedem Wurf und neuen Punkteeintrag ans Ende;
+  zwischen Würfen lassen sich ältere Einträge
+  weiterhin in Ruhe lesen.
+- **English:** LCARS dice use direct colours instead of nested image filters;
+  selection and outlines are preserved. The score notebook returns to the
+  bottom on every roll and new score entry; older entries can still be read
+  between rolls.
+
 ## Stille Korrektur / Silent fix — Freier Wurf in LCARS
 
 - **Deutsch:** „Freier Wurf“ erscheint im LCARS-Design als helles Statusband

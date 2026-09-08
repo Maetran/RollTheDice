@@ -843,6 +843,7 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die {
   border-radius: .38rem;
   background: transparent;
   box-shadow: none;
+  filter: none;
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die::before {
@@ -852,13 +853,41 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die::befor
   box-shadow: none;
 }
 
+/* Paint the LCARS palette in the SVG itself instead of recolouring nested
+   filtered layers. Selection still uses the existing outline and transform,
+   but replacing a selected button no longer changes its filter composition. */
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__face {
-  filter: drop-shadow(0 .14rem .16rem rgba(0, 0, 0, .58)) saturate(.88) hue-rotate(172deg);
+  filter: none;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__face stop:first-child {
+  stop-color: #1e4859;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__face stop:nth-child(2) {
+  stop-color: #0b2329;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__face stop:last-child {
+  stop-color: #050f11;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__body {
+  stroke: #8abcff;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__highlight {
+  stroke: rgba(186, 240, 255, .42);
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__shade {
+  stroke: rgba(1, 13, 18, .58);
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__pips {
-  fill: #fff1c9;
-  stroke: var(--lcars-apricot);
+  fill: #e0f3ff;
+  stroke: #89caf8;
+  filter: none;
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__dash {

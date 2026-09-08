@@ -79,6 +79,7 @@ const state = {
   draftHoldKey: "",
   draftHoldIndices: [],
   notebookScroll: new Map(),
+  notebookProgressKey: "",
   notebookTransition: null,
   zilchMoment: null,
   zilchMomentTimer: null,
@@ -3318,18 +3319,18 @@ function rememberNotebookScroll() {
   }
 }
 
-function restoreNotebookScroll() {
-  window.requestAnimationFrame(() => {
-    for (const log of document.querySelectorAll("[data-zilch-round-log]")) {
-      const playerId = String(log.dataset.zilchRoundLog || "");
-      const remembered = state.notebookScroll.get(playerId);
-      if (!remembered || remembered.followLatest) {
-        log.scrollTop = log.scrollHeight;
-      } else {
-        log.scrollTop = Math.min(remembered.top, Math.max(0, log.scrollHeight - log.clientHeight));
-      }
+function restoreNotebookScroll({ followLatest = false } = {}) {
+  // Restore before another socket/draft render can remember the freshly
+  // replaced list's temporary scrollTop=0. Layout is complete at this point.
+  for (const log of document.querySelectorAll("[data-zilch-round-log]")) {
+    const playerId = String(log.dataset.zilchRoundLog || "");
+    const remembered = state.notebookScroll.get(playerId);
+    if (followLatest || !remembered || remembered.followLatest) {
+      log.scrollTop = log.scrollHeight;
+    } else {
+      log.scrollTop = Math.min(remembered.top, Math.max(0, log.scrollHeight - log.clientHeight));
     }
-  });
+  }
 }
 
 function scoreNotebook(players, boards, {
@@ -4669,7 +4670,7 @@ function mountZilchGameChat(snapshot) {
   return chat;
 }
 
-function renderGameState() {
+function renderGameState({ followNotebookLatest = false } = {}) {
   if (!content) return;
   root?.classList.add("zilch-shell--game");
   const snapshot = state.game;
@@ -4687,6 +4688,16 @@ function renderGameState() {
   const quickHolds = Array.isArray(snapshot._zilch_quick_holds) ? snapshot._zilch_quick_holds : [];
   const solo = isSoloGame(snapshot);
   const currentPlayerId = snapshot?._turn?.player_id;
+  // New rolls (even with identical dice), turns and written scores resume
+  // following the latest entry. Draft/chat updates preserve manual reading.
+  const notebookProgressKey = JSON.stringify([
+    currentPlayerId,
+    turnState?.turn_id,
+    turnState?.roll_id,
+    turnState?.rolls_used ?? snapshot._rolls_used,
+    players.map(player => [player.id, boards[player.id]?.rounds?.length || 0]),
+  ]);
+  const notebookAdvanced = notebookProgressKey !== state.notebookProgressKey;
   const isMyTurn = !spectatorRoute && localPlayerIs(snapshot, currentPlayerId);
   const canInteract = Boolean(isMyTurn && !state.zilchMoment);
   syncZilchLeaveControl();
@@ -4756,7 +4767,8 @@ function renderGameState() {
   syncZilchEventOverlay();
   state.notebookTransition = null;
   state.diceLandingPending = false;
-  restoreNotebookScroll();
+  state.notebookProgressKey = notebookProgressKey;
+  restoreNotebookScroll({ followLatest: followNotebookLatest || notebookAdvanced });
 }
 
 function syncSoloAbandonControl(snapshot, turnState, isMyTurn) {
@@ -4807,7 +4819,7 @@ function requestAction(action, payload = {}, { optionId = null } = {}) {
   state.pendingAction = action;
   state.pendingOptionId = optionId;
   updateStatus(t("Der Tisch macht deinen Zug bereit …"));
-  renderGameState();
+  renderGameState({ followNotebookLatest: action === "zilch_roll_dice" || action === "zilch_start_roll" });
   state.socket.send(JSON.stringify({ action, ...payload }));
 }
 

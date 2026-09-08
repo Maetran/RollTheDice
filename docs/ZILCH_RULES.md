@@ -137,6 +137,11 @@ Auswahl ist dafür gültig; beim Abwählen werden Würfel, die dadurch nicht meh
 werten, ebenfalls aus dem Entwurf entfernt. Bereits in einem früheren Wurf
 bestätigte Holds lassen sich nicht zurücknehmen.
 
+Der Schreibblock folgt bei jedem Wurf und jedem neuen Punkteeintrag wieder
+dem unteren Ende. Zwischen Würfen kann man ältere Einträge lesen; Änderungen
+an der Würfelauswahl oder neue Chatnachrichten verändern diese Leseposition
+nicht.
+
 Die Daumenleiste zeigt höchstens acht schlanke Empfehlungen. Sie zeigt eine
 einzelne Wertungsgruppe pro Karte – etwa `1 Einser`, `2 Fünfer`, einen
 Drilling oder einen Vierling – samt Punkten. Zusammengerechnete Mischungen

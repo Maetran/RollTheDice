@@ -93,6 +93,10 @@ reversible until **Roll again** or **Bank** commits them; **Combined score**
 selects all currently scoring dice in one action. Hot Dice, the competitive
 start roll and the final reply are handled by the server.
 
+The score notebook returns to its latest entries on every roll and newly
+recorded score. Reading older entries stays possible between rolls, including
+while changing dice selections or receiving chat messages.
+
 CPU opponents use the same dice and scoring path as humans, with conservative,
 normal or aggressive decisions. Solo Sprint has no opponent or final reply;
 its private metrics exclude pauses and server downtime.
