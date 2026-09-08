@@ -50,8 +50,8 @@ import { zdwaPath, zdwaRoutePath } from "../multigame/routes.js";
 
   const ROLL_GUARD_MS = 600;
   const ROLL_ANIMATION_SEND_DELAY_MS = 120;
-  const ROLL_ANIMATION_MS = 650;
-  const ROLL_FACE_ANIMATION_STEP_MS = 100;
+  const ROLL_ANIMATION_MS = 600;
+  const ROLL_FACE_ANIMATION_STEP_MS = 90;
   const ROLL_PENDING_TIMEOUT_MS = 5000;
   const WRITE_PENDING_TIMEOUT_MS = 8000;
   const AUTO_ANNOUNCE_WRITE_DELAY_MS = 500;

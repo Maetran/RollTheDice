@@ -120,7 +120,7 @@
     const dots = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="8"></circle>`).join("");
     return `
       <svg viewBox="0 0 100 100" width="100%" height="100%" role="img" aria-label="Würfel ${Number(v) || 0}">
-        <rect x="5" y="5" width="90" height="90" rx="12" ry="12" fill="white" stroke="black" stroke-width="6"></rect>
+        <rect x="5" y="5" width="90" height="90" rx="20" ry="20" fill="white" stroke="black" stroke-width="6"></rect>
         <g fill="black">${dots}</g>
       </svg>
     `;

@@ -4051,7 +4051,7 @@ html[data-game="zilch"] body {
 /* The JS applies these rack classes only to an actual roll. Staggering keeps
    the six dice from moving as one synthetic slab. */
 .zilch-shell--game .zilch-dice.is-rolling .zilch-die:not(.zilch-die--held):not(.zilch-die--unavailable) {
-  animation: zilch-die-tumble 390ms cubic-bezier(.36, .08, .4, 1) infinite;
+  animation: zilch-die-tumble 360ms cubic-bezier(.36, .08, .4, 1) infinite;
 }
 
 .zilch-shell--game .zilch-dice.is-rolling .zilch-die:nth-child(2n) { animation-delay: -90ms; }
@@ -4059,7 +4059,7 @@ html[data-game="zilch"] body {
 .zilch-shell--game .zilch-dice.is-rolling .zilch-die:nth-child(5n) { animation-delay: -245ms; }
 
 .zilch-shell--game .zilch-dice.is-landing .zilch-die:not(.zilch-die--held):not(.zilch-die--unavailable) {
-  animation: zilch-die-land 440ms var(--zilch-ease) both;
+  animation: zilch-die-land 400ms var(--zilch-ease) both;
 }
 
 .zilch-shell--game .zilch-dice.is-landing .zilch-die:nth-child(2n) { animation-delay: 35ms; }

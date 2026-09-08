@@ -73,7 +73,7 @@ body.superadmin-active button.die.superadmin-die-editable{
   80%{transform:translate(-2px,1px) rotate(-3deg)}
   100%{transform:translate(0,0) rotate(0deg)}
 }
-button.die.shaking{ animation: dice-shake .65s ease-in-out; will-change: transform; }
+button.die.shaking{ animation: dice-shake .60s ease-in-out; will-change: transform; }
 
 /* Ein erfolgreicher 60er bewegt die sichtbaren Ebenen kurz gemeinsam. */
 @keyframes sixty-score-shake{

@@ -481,8 +481,15 @@ body.app-dialog-open{ overflow:hidden; }
 
 /* Canonical mobile action dock. Keep all fixed dice/controls geometry here. */
 @media (max-width:560px){
-  :root{
-    --mobile-actionbar-h:clamp(8rem, calc(20vw + 3.5rem), 10.75rem);
+  .room-page{
+    --mobile-actionbar-base-h:clamp(8rem, calc(20vw + 3.5rem), 10.75rem);
+    --mobile-actionbar-h:var(--mobile-actionbar-base-h);
+  }
+  /* The correction action occupies its own row. Reserve that exact row in
+     the fixed dock and in the page's scroll clearance, rather than letting
+     the chat bar cover it on shorter phones. */
+  .room-page:has(#requestCorrectionBtn){
+    --mobile-actionbar-h:calc(var(--mobile-actionbar-base-h) + 3.25rem);
   }
   .room-page #diceBar{
     grid-template-columns:minmax(0, 1fr);
@@ -555,6 +562,12 @@ body.app-dialog-open{ overflow:hidden; }
     min-width:0;
     min-height:0;
   }
+  .room-page #diceBar .dice-main:has(#requestCorrectionBtn){
+    grid-template-rows:minmax(0, 1fr) auto;
+  }
+  .room-page #diceBar:has(#requestCorrectionBtn){
+    padding-bottom:.5rem;
+  }
   .room-page #diceBar:has(#mobileRowQuickActions:not([hidden])) .dice-main{
     grid-column:2;
   }
@@ -583,6 +596,9 @@ body.app-dialog-open{ overflow:hidden; }
   }
   .room-page #diceBar .dice-actions:not(:has(#announceBtnInline)){
     grid-template-columns:minmax(0, 1fr);
+  }
+  .room-page #diceBar .dice-actions:has(#requestCorrectionBtn){
+    grid-template-rows:2.35rem 2.35rem;
   }
   .room-page #mobileRowQuickActions:not([hidden]){
     display:grid;
@@ -624,6 +640,8 @@ body.app-dialog-open{ overflow:hidden; }
   .room-page #requestCorrectionBtn{
     grid-row:2 !important;
     grid-column:1 / -1 !important;
+    height:2.35rem;
+    min-height:2.35rem;
     margin:.15rem 0 0 !important;
   }
 }

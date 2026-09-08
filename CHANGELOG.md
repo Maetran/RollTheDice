@@ -11,6 +11,28 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Nächster Release / Next release — Classic am Kaffeetisch
+
+### Deutsch
+
+- ZDWA bietet über den bekannten Design-Schalter nun Hell, Dunkel und Classic.
+  Die Auswahl bleibt lokal in diesem Browser gespeichert.
+- Classic legt die Würfel auf grüne Filzoptik, gibt ihnen eine sanft gebrauchte
+  Sepia-Note und zeigt Punkteblätter, Tabellen sowie Legenden wie handschriftlich
+  auf Papier. Regeln und Wertung bleiben unverändert.
+- Die sichtbaren Fake-Würfe drehen in ZDWA und Zilch ein wenig schneller, ohne
+  Zufall, Serverentscheidung oder Spielergebnis zu verändern.
+
+### English
+
+- ZDWA now offers Light, Dark, and Classic through the familiar appearance
+  button. The choice stays saved locally in the current browser.
+- Classic puts the dice on green felt, gives them a gently worn sepia look, and
+  renders score sheets, tables, and legends like handwritten paper. Rules and
+  scoring remain unchanged.
+- Visible fake rolls spin a little faster in ZDWA and Zilch without changing
+  randomness, server decisions, or any player result.
+
 ## Nächster Release / Next release — Klar zwischen den Spielen wechseln
 
 ### Deutsch

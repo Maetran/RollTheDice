@@ -1,21 +1,23 @@
 {
   "kind": "usability",
   "games": ["zdwa", "zilch"],
-  "summary_de": "ZDWA und Zilch verwenden jetzt ein gemeinsames, klares Symbol für den Spielwechsel.",
-  "summary_en": "ZDWA and Zilch now use one clear, shared symbol for switching games.",
+  "summary_de": "Mit viel Liebe: Der Retro-Look für ZDWA ist da – der grüne Filz ist zurück.",
+  "summary_en": "Made with love: ZDWA's retro look is here, and green felt is back.",
   "player_notes": {
     "de": {
-      "title": "Klar zwischen den Spielen wechseln",
+      "title": "Der grüne Filz ist zurück",
       "changes": [
-        "Oben rechts führt in beiden Spielen derselbe Z-förmige Wechselpfeil zum jeweils anderen Spiel.",
-        "Auf breiten Bildschirmen nennt der Button das Ziel mit sauberem Abstand; auf Mobilgeräten bleibt er kompakt."
+        "Der bekannte Design-Schalter in ZDWA wechselt jetzt zwischen Hell, Dunkel und Classic; deine Wahl bleibt in diesem Browser erhalten.",
+        "Classic bringt den Retro-Look mit viel Liebe zurück: grüne Filzoptik, sanft gebrauchte Sepia-Würfel und handschriftlich wirkende Punkteblätter, Tabellen und Legenden.",
+        "Die sichtbaren Fake-Würfe laufen in ZDWA und Zilch etwas schneller, ohne Regeln, Wertung oder das Serverergebnis zu verändern."
       ]
     },
     "en": {
-      "title": "A clearer switch between games",
+      "title": "Green felt is back",
       "changes": [
-        "At the top right, both games now use the same Z-shaped transfer arrow to reach the other game.",
-        "On wider screens, the button names its destination with clear spacing; on mobile, it stays compact."
+        "ZDWA's familiar appearance button now cycles through Light, Dark, and Classic; your choice stays in this browser.",
+        "Classic brings the retro feel back with green felt, gently worn sepia dice, and score sheets, tables, and legends that feel handwritten.",
+        "Visible fake rolls are a little faster in ZDWA and Zilch without changing rules, scoring, or the server result."
       ]
     }
   }

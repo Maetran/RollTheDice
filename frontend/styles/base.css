@@ -157,7 +157,7 @@ a{ color:var(--accent); }
   font-size:1.2rem;
   line-height:1;
 }
-.theme-toggle[aria-pressed="true"]{
+.theme-toggle[data-theme-current="dark"]{
   border-color:var(--accent);
   background:var(--info-soft);
   color:var(--text);

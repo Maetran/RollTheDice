@@ -603,31 +603,52 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
     const labels = () => Array.from(document.querySelectorAll("#diceBar .die"))
       .map((die) => die.querySelector("svg")?.getAttribute("aria-label") || "");
     const before = labels();
-    document.querySelector("#rollBtnInline").click();
-    const frames = [];
-    const transforms = [];
-    let suggestionsDuring = null;
-    let suggestionsAfter = null;
-    for (let i = 0; i < 6; i += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      if (i === 1 && window.__rtDebugRenderSuggestionsForSnapshot) {
-        window.__rtDebugRenderSuggestionsForSnapshot({
-          suggestions: [{ type: "KENTER", label: "Kenter", points: 35, eligible: true }],
-        });
-        suggestionsDuring = document.querySelector("#suggestions").textContent.trim();
+    const originalSend = WebSocket.prototype.send;
+    let delayedRoll = null;
+    // The test-only suggestion belongs to the current animation. Let the
+    // authoritative roll follow after that visual assertion; otherwise its
+    // valid empty suggestion list can race the deferred test snapshot.
+    WebSocket.prototype.send = function(data) {
+      try {
+        if (!delayedRoll && JSON.parse(data)?.action === "roll_dice") {
+          delayedRoll = { socket: this, data };
+          return;
+        }
+      } catch {}
+      return originalSend.call(this, data);
+    };
+    try {
+      document.querySelector("#rollBtnInline").click();
+      const frames = [];
+      const transforms = [];
+      let suggestionsDuring = null;
+      let suggestionsAfter = null;
+      for (let i = 0; i < 6; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        if (i === 1 && window.__rtDebugRenderSuggestionsForSnapshot) {
+          window.__rtDebugRenderSuggestionsForSnapshot({
+            suggestions: [{ type: "KENTER", label: "Kenter", points: 35, eligible: true }],
+          });
+          suggestionsDuring = document.querySelector("#suggestions").textContent.trim();
+        }
+        frames.push(labels());
+        transforms.push(Array.from(document.querySelectorAll("#diceBar .die"))
+          .map((die) => window.getComputedStyle(die).transform));
       }
-      frames.push(labels());
-      transforms.push(Array.from(document.querySelectorAll("#diceBar .die"))
-        .map((die) => window.getComputedStyle(die).transform));
+      const changedDice = before.filter((label, index) => {
+        return frames.some((frame) => frame[index] && frame[index] !== label);
+      }).length;
+      const shakingCount = document.querySelectorAll("#diceBar .die.shaking").length;
+      const transformedFrames = transforms.flat().filter((value) => value && value !== "none").length;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      suggestionsAfter = document.querySelector("#suggestions").textContent.trim();
+      return { before, frames, changedDice, shakingCount, transformedFrames, suggestionsDuring, suggestionsAfter };
+    } finally {
+      WebSocket.prototype.send = originalSend;
+      if (delayedRoll?.socket?.readyState === WebSocket.OPEN) {
+        originalSend.call(delayedRoll.socket, delayedRoll.data);
+      }
     }
-    const changedDice = before.filter((label, index) => {
-      return frames.some((frame) => frame[index] && frame[index] !== label);
-    }).length;
-    const shakingCount = document.querySelectorAll("#diceBar .die.shaking").length;
-    const transformedFrames = transforms.flat().filter((value) => value && value !== "none").length;
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    suggestionsAfter = document.querySelector("#suggestions").textContent.trim();
-    return { before, frames, changedDice, shakingCount, transformedFrames, suggestionsDuring, suggestionsAfter };
   });
   expect(rollVisual.shakingCount).toBeGreaterThan(0);
   expect(rollVisual.changedDice).toBeGreaterThanOrEqual(3);
