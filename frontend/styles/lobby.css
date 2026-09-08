@@ -753,8 +753,8 @@
    one height, while the destination control keeps its useful text width. */
 .app-nav-tools .game-switch{
   box-sizing:border-box;
-  width:4.5rem;
-  min-width:4.5rem;
+  width:5rem;
+  min-width:5rem;
   height:var(--header-control-size);
   min-height:var(--header-control-size);
   padding:0 .44rem;
@@ -764,7 +764,9 @@
   line-height:1;
 }
 
-@media (max-width:560px){
+/* Match Zilch's compact header threshold: below a small desktop width both
+   games keep the same icon-only switch while retaining the button's label. */
+@media (max-width:760px){
   .app-nav-tools .game-switch{
     width:var(--header-control-size);
     min-width:var(--header-control-size);
@@ -773,7 +775,7 @@
     padding:0 .2rem;
   }
 
-  .app-nav-tools .game-switch span:last-child{
+  .app-nav-tools .game-switch .game-switch-label{
     position:absolute;
     width:1px;
     height:1px;

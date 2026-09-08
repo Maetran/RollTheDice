@@ -292,10 +292,33 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   const zilchGameSwitch = page.locator(".zilch-header [data-game-switch]");
   await expect(zilchGameSwitch).toBeVisible();
   await expect(zilchGameSwitch).toHaveAttribute("aria-label", /^(?:ZDWA öffnen|Open ZDWA) \(Alt\+Shift\+Z\)$/);
-  await expect(zilchGameSwitch.locator(".game-switch-icon--zdwa")).toHaveText("W");
+  await expect(zilchGameSwitch.locator("svg.game-switch-icon")).toBeVisible();
   await expect(zilchGameSwitch).toHaveCSS("color", "rgb(72, 32, 12)");
   await expect(zilchGameSwitch).toContainText("ZDWA");
-  await expect(zilchGameSwitch.locator("span").last()).toBeVisible();
+  const zilchSwitchLayout = await zilchGameSwitch.evaluate(button => {
+    const icon = button.querySelector("svg.game-switch-icon");
+    const label = [...button.querySelectorAll("span")].find(element => element.textContent.trim() === "ZDWA");
+    if (!icon || !label) return null;
+    const iconBox = icon.getBoundingClientRect();
+    const labelBox = label.getBoundingClientRect();
+    return {
+      iconWidth: iconBox.width,
+      iconHeight: iconBox.height,
+      labelWidth: labelBox.width,
+      labelHeight: labelBox.height,
+      horizontalGap: labelBox.left - iconBox.right,
+      verticalCenterDelta: Math.abs(
+        (iconBox.top + iconBox.height / 2) - (labelBox.top + labelBox.height / 2),
+      ),
+    };
+  });
+  expect(zilchSwitchLayout).not.toBeNull();
+  expect(zilchSwitchLayout.iconWidth).toBeGreaterThan(0);
+  expect(zilchSwitchLayout.iconHeight).toBeGreaterThan(0);
+  expect(zilchSwitchLayout.labelWidth).toBeGreaterThan(0);
+  expect(zilchSwitchLayout.labelHeight).toBeGreaterThan(0);
+  expect(zilchSwitchLayout.horizontalGap).toBeGreaterThanOrEqual(3);
+  expect(zilchSwitchLayout.verticalCenterDelta).toBeLessThanOrEqual(1.5);
   const identity = page.locator(".zilch-lobby-identity");
   await expect(identity).toContainText("Du spielst als");
   await expect(identity).toContainText("Mani");
@@ -314,7 +337,28 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
 
   await page.setViewportSize({ width: 320, height: 844 });
   await expect(zilchGameSwitch.locator(".game-switch-icon")).toBeVisible();
-  await expect(zilchGameSwitch.locator("span").last()).toBeHidden();
+  const compactZilchSwitch = await zilchGameSwitch.evaluate(button => {
+    const icon = button.querySelector("svg.game-switch-icon");
+    const label = [...button.querySelectorAll("span")].find(element => element.textContent.trim() === "ZDWA");
+    if (!icon || !label) return null;
+    const iconBox = icon.getBoundingClientRect();
+    const labelBox = label.getBoundingClientRect();
+    return {
+      iconWidth: iconBox.width,
+      iconHeight: iconBox.height,
+      labelDisplay: getComputedStyle(label).display,
+      labelWidth: labelBox.width,
+      labelHeight: labelBox.height,
+      labelPosition: getComputedStyle(label).position,
+    };
+  });
+  expect(compactZilchSwitch).not.toBeNull();
+  expect(compactZilchSwitch.iconWidth).toBeGreaterThan(0);
+  expect(compactZilchSwitch.iconHeight).toBeGreaterThan(0);
+  expect(
+    compactZilchSwitch.labelDisplay === "none"
+      || (compactZilchSwitch.labelWidth <= 1 && compactZilchSwitch.labelHeight <= 1 && compactZilchSwitch.labelPosition === "absolute"),
+  ).toBeTruthy();
   const lobbyAlignment = await page.evaluate(() => {
     const modes = [...document.querySelectorAll(".zilch-mode-option")].map(option => {
       const style = getComputedStyle(option);

@@ -13,7 +13,7 @@
     `scripts/sync_static_versions.py` ausführen, nicht manuell hochzählen.
 */
 
-const CACHE_VERSION = 'assets-134ad8c0ed50';
+const CACHE_VERSION = 'assets-c743baa8a09c';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 

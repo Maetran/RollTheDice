@@ -11,6 +11,26 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Nächster Release / Next release — Klar zwischen den Spielen wechseln
+
+### Deutsch
+
+- Der Wechsel zwischen ZDWA und Zilch verwendet oben rechts nun in beiden
+  Spielen denselben Z-förmigen Wechselpfeil. Das Symbol zeigt die Richtung des
+  Wechsels, der sichtbare Zielname macht die Aktion eindeutig.
+- Auf breiten Bildschirmen stehen Symbol und Zielname mit sauberem Abstand
+  nebeneinander. Auf Mobilgeräten bleibt der Button bewusst kompakt, ohne dass
+  seine Bezeichnung für Hilfstechnologien verloren geht.
+
+### English
+
+- Switching between ZDWA and Zilch now uses the same Z-shaped transfer arrow
+  at the top right of both games. The symbol conveys the change while the
+  visible destination name makes the action unambiguous.
+- On wider screens, the symbol and destination name sit side by side with
+  clear spacing. On mobile, the button intentionally remains compact without
+  losing its accessible name.
+
 ## Nächster Release / Next release — Alle Würfelwirt-Siege im Blick
 
 ### Deutsch

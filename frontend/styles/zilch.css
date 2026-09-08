@@ -2773,7 +2773,7 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
   .zilch-header-tools :where(button, select) { min-height: var(--header-control-size); font-size: .82rem; }
   .zilch-header-tools .language-switcher select { min-height: var(--header-control-size); padding: .25rem 1.35rem .25rem .42rem; }
   .zilch-header-tools :where(.game-switch, #zilchNavToggle) { width: var(--header-control-size); min-width: var(--header-control-size); padding: .25rem; }
-  .zilch-header-tools .game-switch span:last-child,
+  .zilch-header-tools .game-switch .game-switch-label,
   .zilch-header-tools #zilchNavToggle span:last-child { display: none; }
 
   html[data-game="zilch"] .zilch-nav {
@@ -4629,7 +4629,7 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
   background: rgba(153, 47, 32, .72);
 }
 
-.zilch-shell--game .zilch-header-tools .game-switch span:last-child,
+.zilch-shell--game .zilch-header-tools .game-switch .game-switch-label,
 .zilch-shell--game .zilch-header-tools .zilch-control-label {
   display: inline;
 }
@@ -4689,7 +4689,7 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
     padding: 0;
   }
 
-  .zilch-shell:not(.zilch-shell--game) .zilch-header-tools .game-switch span:last-child,
+  .zilch-shell:not(.zilch-shell--game) .zilch-header-tools .game-switch .game-switch-label,
   .zilch-shell:not(.zilch-shell--game) .zilch-header-tools .zilch-control-label {
     display: none;
   }
@@ -4784,8 +4784,8 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
    use its square, icon-only form; wider headers expose the destination label. */
 html[data-game="zilch"] .zilch-header-tools .game-switch {
   box-sizing: border-box;
-  width: 4.5rem;
-  min-width: 4.5rem;
+  width: 5rem;
+  min-width: 5rem;
   height: var(--header-control-size);
   min-height: var(--header-control-size);
   padding: 0 .44rem;
@@ -4795,17 +4795,8 @@ html[data-game="zilch"] .zilch-header-tools .game-switch {
   line-height: 1;
 }
 
-html[data-game="zilch"] .zilch-header-tools .game-switch-icon {
-  display: inline-grid;
-  place-items: center;
-  font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
-  font-size: 1rem;
-  line-height: 1;
-}
-
-/* The route to ZDWA is a real destination, not a low-contrast emoji tucked
-   into the wood.  The compact W die echoes the Zilch mark while giving the
-   label a crisp, accessible contrast on desktop and in the installed app. */
+/* The shared transfer mark keeps the action recognisable; the label names the
+   destination in both games. */
 html[data-game="zilch"] .zilch-header-tools .game-switch {
   border-color: #fff0b7;
   color: #48200c;
@@ -4818,20 +4809,6 @@ html[data-game="zilch"] .zilch-header-tools .game-switch:focus-visible {
   color: #351508;
   background: linear-gradient(145deg, #fffbe5, #efc363);
 }
-html[data-game="zilch"] .zilch-header-tools .game-switch-icon--zdwa {
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 1.25rem;
-  width: 1.25rem;
-  height: 1.25rem;
-  border: 1px solid rgba(73, 27, 9, .66);
-  border-radius: .35rem;
-  color: #fff8dd;
-  background: linear-gradient(145deg, #874219, #54200b);
-  box-shadow: inset 0 1px rgba(255, 234, 181, .26), 0 1px 1px rgba(50, 18, 4, .24);
-  font: 900 .72rem/1 Georgia, "Times New Roman", serif;
-}
-
 @media (max-width: 560px) {
   html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch,
   html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch {
@@ -4844,13 +4821,13 @@ html[data-game="zilch"] .zilch-header-tools .game-switch-icon--zdwa {
     line-height: 1;
   }
 
-  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch > span:first-child,
-  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch > span:first-child {
-    display: inline-grid;
+  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch > .game-switch-icon,
+  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch > .game-switch-icon {
+    display: block;
   }
 
-  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch > span:last-child,
-  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch > span:last-child {
+  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch > .game-switch-label,
+  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch > .game-switch-label {
     display: none;
   }
 }

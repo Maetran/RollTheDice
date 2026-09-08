@@ -1,21 +1,21 @@
 {
   "kind": "usability",
-  "games": ["zilch"],
-  "summary_de": "Die Zilch-Lobby zählt alle Siege gegen den Würfelwirt jetzt zusammen.",
-  "summary_en": "The Zilch lobby now combines all wins against the dice keeper.",
+  "games": ["zdwa", "zilch"],
+  "summary_de": "ZDWA und Zilch verwenden jetzt ein gemeinsames, klares Symbol für den Spielwechsel.",
+  "summary_en": "ZDWA and Zilch now use one clear, shared symbol for switching games.",
   "player_notes": {
     "de": {
-      "title": "Alle Würfelwirt-Siege im Blick",
+      "title": "Klar zwischen den Spielen wechseln",
       "changes": [
-        "Die Würfelwirt-Rangliste in der Zilch-Lobby fasst deine Siege gegen Konservativ, Normal und Aggressiv jetzt zusammen.",
-        "In den ausführlichen Bestenlisten kannst du die drei Spielweisen weiterhin einzeln vergleichen."
+        "Oben rechts führt in beiden Spielen derselbe Z-förmige Wechselpfeil zum jeweils anderen Spiel.",
+        "Auf breiten Bildschirmen nennt der Button das Ziel mit sauberem Abstand; auf Mobilgeräten bleibt er kompakt."
       ]
     },
     "en": {
-      "title": "All Dice Keeper wins at a glance",
+      "title": "A clearer switch between games",
       "changes": [
-        "The Dice Keeper ranking in the Zilch lobby now combines your wins against Conservative, Normal, and Aggressive.",
-        "In the detailed leaderboards, you can still compare the three playing styles separately."
+        "At the top right, both games now use the same Z-shaped transfer arrow to reach the other game.",
+        "On wider screens, the button names its destination with clear spacing; on mobile, it stays compact."
       ]
     }
   }
