@@ -180,6 +180,46 @@ class ZilchProductRoutesTestCase(TestCase):
         )
         self.assertEqual(self._get("/static/zilch.html", mani_token).status_code, 404)
 
+    def test_only_public_lobby_documents_can_render_before_auth(self) -> None:
+        marker = 'data-zilch-public-lobby="true"'
+        host = "zilch.zockdiewandan.online"
+        _mani_id, mani_token = self._identity("Mani", role="admin")
+        with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "public"}):
+            lobby = self._get("/", host=host)
+            legacy_lobby = self._get("/zilch")
+            rules = self._get("/regeln", host=host)
+            account = self._get("/konto", host=host)
+            signed_in_account = self._get("/konto", mani_token, host=host)
+            static_shell = self._get("/static/zilch-lobby.html", host=host)
+
+        for response in (lobby, legacy_lobby):
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(marker, response.text)
+            self.assertIn("no-cache", response.headers.get("cache-control", ""))
+            self.assertIn("<h1>Zilch die Wand an – Würfelspiel online</h1>", response.text)
+            self.assertIn('class="zilch-intro zilch-intro--lobby"', response.text)
+            self.assertNotIn("Zilch wird geladen", response.text)
+        self.assertIn('name="robots" content="noindex, nofollow"', legacy_lobby.text)
+        self.assertNotIn(marker, rules.text)
+        self.assertEqual(account.status_code, 401)
+        self.assertNotIn(marker, account.text)
+        self.assertEqual(signed_in_account.status_code, 200)
+        self.assertNotIn(marker, signed_in_account.text)
+        self.assertEqual(static_shell.status_code, 404)
+
+        # The implementation artifacts are not public-access declarations.
+        for filename in ("zilch.html", "zilch-lobby.html", "zilch-rules.html"):
+            self.assertNotIn(marker, (main.STATIC_DIR / filename).read_text(encoding="utf-8"))
+        for mode in ("preview", "authenticated"):
+            with self.subTest(mode=mode):
+                with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": mode}):
+                    anonymous = self._get("/", host=host)
+                    authorized = self._get("/", mani_token, host=host)
+                self.assertEqual(anonymous.status_code, 303)
+                self.assertNotIn(marker, anonymous.text)
+                self.assertEqual(authorized.status_code, 200)
+                self.assertNotIn(marker, authorized.text)
+
     def test_login_entry_is_public_but_the_private_shell_stays_protected(self) -> None:
         login_page = self._get("/zilch/anmelden?return_to=/zilch/statistiken")
         self.assertEqual(login_page.status_code, 200)

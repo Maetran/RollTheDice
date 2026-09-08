@@ -128,6 +128,14 @@ Free rolls appear as a bright LCARS status band inside the scoring tile, with
 the throw name and points remaining readable.
 Usernames are immutable; administrators manage accounts and moderation.
 
+The public Zilch lobby paints its heading directly from HTML and shows its
+controls without waiting for the account check. Creating a game, account data
+and chat still require the confirmed identity. LCARS preloads its versioned,
+immutable-cached font only when selected; a slow font keeps the fallback for
+that page instead of moving the layout later. Private preview routes retain
+their access checks. See the [loading-performance audit](docs/ZILCH_LOADING_AUDIT_2026-09-08.md)
+for measured frontend improvements and the separate production transport issue.
+
 **ZDWA** offers public profiles and rankings, Normal/Hardcore statistics, score
 charts and completed-game replays. Achievement milestones award
 additional points for exploring the account: setting or changing an avatar,

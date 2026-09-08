@@ -1103,14 +1103,16 @@ async function refreshLobbyLeaderboards() {
   }));
 }
 
-async function renderLobby() {
+async function renderLobby({ authReady = null } = {}) {
   state.lobbyChat?.destroy();
   state.lobbyChat = null;
   if (!content) return;
   const hasAccount = authenticatedZilchPlayer();
-  const username = state.auth?.user?.username || t("Gast");
+  let identityReady = !authReady;
+  const username = state.auth?.user?.username || (identityReady ? t("Gast") : "…");
   const accountEntry = zilchAccountEntry();
-  content.innerHTML = `<section class="zilch-intro zilch-intro--lobby">
+  const existingIntro = authReady ? content.querySelector(".zilch-intro--lobby") : null;
+  const lobbyMarkup = `<section class="zilch-intro zilch-intro--lobby">
       <p class="eyebrow">${escapeHtml(t("Online würfeln"))}</p>
       <h1>${escapeHtml(t("Zilch die Wand an – Würfelspiel online"))}</h1>
       <p>${escapeHtml(t("Such dir einen Platz am Tisch aus: Solo, gegen den Würfelwirt oder zu zweit. Mit sechs Würfeln sammelst du Punkte, sicherst sie rechtzeitig und jagst die 10’000."))}</p>
@@ -1158,12 +1160,26 @@ async function renderLobby() {
       </div>
     </section>`;
 
+  if (existingIntro) {
+    // Keep the server-painted hero connected even while a delayed JS bundle
+    // hydrates the controls. Removing it would create a new late LCP candidate.
+    const additions = document.createElement("template");
+    additions.innerHTML = lobbyMarkup;
+    additions.content.querySelector(".zilch-intro--lobby")?.remove();
+    existingIntro.after(additions.content);
+  } else {
+    content.innerHTML = lobbyMarkup;
+  }
+
   const runningSlot = document.getElementById("zilchRunningGames");
   const waitingSlot = document.getElementById("zilchWaitingGames");
-  state.lobbyChat = mountLobbyChat(document.getElementById("zilchLobbyChatMount"), {
-    context: "zilch",
-    initialAuth: state.auth,
-  });
+  const createForm = document.getElementById("zilchCreateForm");
+  const submitButton = createForm?.querySelector("button[type='submit']");
+  const identity = content.querySelector(".zilch-lobby-identity");
+  const accountButton = identity?.querySelector("[data-zilch-navigate]");
+  if (submitButton) submitButton.disabled = !identityReady;
+  if (accountButton) accountButton.disabled = !identityReady;
+  if (!identityReady) createForm?.setAttribute("aria-busy", "true");
   const refreshGames = async () => {
     try {
       const games = await fetchZilchGames();
@@ -1210,6 +1226,7 @@ async function renderLobby() {
     }
   };
   document.getElementById("zilchRefresh")?.addEventListener("click", () => {
+    if (!identityReady) return;
     void refreshGames();
     void refreshLobbyLeaderboards();
   });
@@ -1236,6 +1253,7 @@ async function renderLobby() {
   syncCpuCreateOptions();
   document.getElementById("zilchCreateForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!identityReady) return;
     const errorSlot = document.getElementById("zilchCreateError");
     if (errorSlot) errorSlot.textContent = "";
     const name = document.getElementById("zilchGameName")?.value?.trim() || "Zilch";
@@ -1272,6 +1290,41 @@ async function renderLobby() {
     } finally {
       if (submit) submit.disabled = false;
     }
+  });
+  if (authReady) {
+    const authorized = await authReady;
+    if (!content.isConnected || !content.contains(createForm)) return;
+    if (!authorized) {
+      createForm?.removeAttribute("aria-busy");
+      const errorSlot = document.getElementById("zilchCreateError");
+      if (errorSlot) errorSlot.textContent = t("Zilch-Lobby konnte nicht geladen werden.");
+      const nameSlot = identity?.querySelector("strong");
+      if (nameSlot) nameSlot.textContent = "—";
+      identity?.setAttribute("aria-label", `${t("Du spielst als")} —`);
+      return;
+    }
+    // Hydrate only identity-dependent fields. Replacing the whole lobby here
+    // would reset the hero's LCP and discard choices made during a slow /me.
+    identityReady = true;
+    const authenticated = authenticatedZilchPlayer();
+    const resolvedUsername = state.auth?.user?.username || t("Gast");
+    const resolvedAccount = zilchAccountEntry();
+    identity?.setAttribute("aria-label", `${t("Du spielst als")} ${resolvedUsername}`);
+    const nameSlot = identity?.querySelector("strong");
+    if (nameSlot) nameSlot.textContent = resolvedUsername;
+    if (accountButton) {
+      accountButton.dataset.zilchNavigate = resolvedAccount.href;
+      accountButton.textContent = authenticated ? t("Mein Konto") : resolvedAccount.label;
+      accountButton.disabled = false;
+    }
+    const gameName = document.getElementById("zilchGameName");
+    if (gameName) gameName.value = `Zilch · ${resolvedUsername}`;
+    if (submitButton) submitButton.disabled = false;
+    createForm?.removeAttribute("aria-busy");
+  }
+  state.lobbyChat = mountLobbyChat(document.getElementById("zilchLobbyChatMount"), {
+    context: "zilch",
+    initialAuth: state.auth,
   });
   await refreshGames();
   await refreshLobbyLeaderboards();
@@ -5265,12 +5318,17 @@ async function renderGame() {
 async function initialize() {
   if (!root || !content) return;
   const appMode = initializeAppMode({ mode: "zilch" });
-  try {
-    state.auth = await loadAuth({ refresh: true });
-  } catch (_) {
-    return;
+  const authReady = loadAuth({ refresh: true }).then(auth => {
+    state.auth = auth;
+    return appMode.applyAuth(auth);
+  }).catch(() => false);
+  const publicLobby = currentZilchRoute === "/" && root.dataset.zilchPublicLobby === "true";
+  let lobbyReady = null;
+  if (publicLobby) {
+    renderShell();
+    lobbyReady = renderLobby({ authReady });
   }
-  if (!appMode.applyAuth(state.auth)) return;
+  if (!await authReady) return;
   renderShell();
   if (gameId) document.addEventListener("keydown", handleZilchGameShortcut);
   document.addEventListener("click", async (event) => {
@@ -5295,7 +5353,7 @@ async function initialize() {
   else if (statisticsRoute) await renderStatistics();
   else if (leaderboardsRoute) await renderLeaderboards();
   else if (rulesRoute) await renderRules();
-  else await renderLobby();
+  else await (lobbyReady || renderLobby());
   // A terminal redirect may occur after an award dialog was dismissed or its
   // acknowledgement temporarily failed. On its own result page we can safely
   // resume only that game's pending presentation; unrelated historic reports

@@ -8,6 +8,14 @@ import { initializeAvatarFallbacks } from "../shared/avatar.js";
 import { initializeFriendActivity } from "../shared/friend-activity.js";
 import "../shared/engagement.js";
 
+// The public hero is useful before the application bundle arrives. Deferred
+// shell execution already sees its markup, so translate it without waiting
+// for DOMContentLoaded, which is held up by a stalled zilch.js module.
+const publicZilchIntro = document.querySelector(
+  '[data-zilch-root][data-zilch-public-lobby="true"] .zilch-intro--lobby',
+);
+if (publicZilchIntro) window.ZDWA_I18N?.translateElement(publicZilchIntro);
+
 function initializeZdwaPwaBridgeNavigation() {
   if (!isZilchHostedZdwaLocation()) return;
 

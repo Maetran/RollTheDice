@@ -11,6 +11,25 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Stille Korrektur / Silent fix — Zilch lädt unabhängig von Schrift und Konto
+
+- **Deutsch:** Die öffentliche Zilch-Überschrift steht bereits im HTML; die
+  Lobby wartet beim Anzeigen nicht mehr auf die Kontoabfrage. Spielstart,
+  Kontodaten und Chat bleiben bis zur bestätigten Identität geschützt.
+  Die LCARS-Schrift wird nur im gewählten Design früh geladen und versioniert
+  gecacht. Bei langsamen Downloads bleibt die Ersatzschrift ohne späten
+  Layout-Sprung. Spielregeln und Wertung ändern sich nicht.
+- **English:** The public Zilch heading is included in the HTML, and displaying
+  the lobby no longer waits for the account check. Starting games, account
+  data and chat remain protected until identity is confirmed. The LCARS font
+  is preloaded only for the selected theme and uses versioned caching. Slow
+  downloads keep the fallback font without a late layout jump. Rules and
+  scoring are unchanged.
+- **Technisch / Technical:** Browser-Traces und getrennte Origin-/CDN-Messungen:
+  [Ladezeit-Audit / loading audit](docs/ZILCH_LOADING_AUDIT_2026-09-08.md).
+  Zeitweise öffentliche Download-Stalls sind damit nicht infrastrukturell
+  behoben / this does not resolve the separate intermittent public download stalls.
+
 ## Stille Korrektur / Silent fix — Würfel und Schreibblock
 
 - **Deutsch:** LCARS-Würfel zeichnen ihre Farben direkt statt mit

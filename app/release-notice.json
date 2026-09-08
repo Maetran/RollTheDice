@@ -1,23 +1,23 @@
 {
   "kind": "usability",
   "games": ["zilch"],
-  "summary_de": "Brücke nachgeschärft: Zilch zeigt LCARS jetzt mit schwarzem Hintergrund, klaren Konsolenrahmen und schmaler Displayschrift.",
-  "summary_en": "Bridge refined: Zilch now shows LCARS with a black background, crisp console rails and narrow display lettering.",
+  "summary_de": "Zilch zeigt die Lobby früher. Eine langsame Kontoabfrage oder LCARS-Schrift hält den Hauptinhalt nicht mehr zurück.",
+  "summary_en": "Zilch shows its lobby sooner. A slow account check or LCARS font no longer holds back the main content.",
   "player_notes": {
     "de": {
-      "title": "LCARS näher am Original",
+      "title": "Schneller am Zilch-Tisch",
       "changes": [
-        "Im LCARS-Design ist der Hintergrund jetzt durchgehend schwarz – auch in der installierten App.",
-        "Flache Farbsegmente, markante Konsolenrahmen und eine schmale Displayschrift bringen mehr LCARS auf deinen Bildschirm.",
-        "Die vertrauten Aktionen bleiben an ihrem Platz; Würfeln, Halten und Sichern funktionieren wie bisher."
+        "Die öffentliche Lobby erscheint schon während der Kontoabfrage; ein Spiel kannst du nach deren Abschluss starten.",
+        "Lädt die LCARS-Schrift langsam, bleibt der Text mit einer Ersatzschrift lesbar und springt nicht später um.",
+        "Dein Konto bleibt geschützt. Spielregeln und Wertung funktionieren wie bisher."
       ]
     },
     "en": {
-      "title": "LCARS closer to the original",
+      "title": "At the Zilch table sooner",
       "changes": [
-        "LCARS now has a solid black background, including in the installed app.",
-        "Flat colour segments, distinctive console rails and narrow display lettering bring more LCARS to your screen.",
-        "Familiar actions remain in place; rolling, holding and banking work as before."
+        "The public lobby appears while the account check is running; you can start a game once it finishes.",
+        "If the LCARS font loads slowly, text stays readable in a fallback font without jumping later.",
+        "Your account stays protected. Rules and scoring work as before."
       ]
     }
   }

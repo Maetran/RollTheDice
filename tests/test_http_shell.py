@@ -198,6 +198,30 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIn("no-cache", shell.headers.get("cache-control", ""))
         self.assertIn("no-store", games.headers.get("cache-control", ""))
 
+    async def test_lcars_font_uses_the_same_immutable_version_in_css_and_preloads(self):
+        version = content_version()
+        font_url = f"/static/antonio-lcars-v1.ttf?v={version}"
+        css_path = main.STATIC_DIR / "zilch-lcars.css"
+        css = css_path.read_text()
+        self.assertIn(font_url, css)
+        self.assertIn("font-display:optional", css)
+        self.assertEqual(desired_text(css_path, version), css)
+        for name in ("zilch.html", "zilch-lobby.html", "zilch-rules.html", "zilch-login.html"):
+            html = (main.STATIC_DIR / name).read_text()
+            self.assertIn(font_url, html, name)
+            self.assertIn('if(document.documentElement.dataset.theme==="lcars")', html, name)
+            self.assertIn('f.crossOrigin="anonymous"', html, name)
+        transport = httpx.ASGITransport(app=main.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            font = await client.get(font_url)
+            unversioned = await client.get("/static/antonio-lcars-v1.ttf")
+            stale = await client.get("/static/antonio-lcars-v1.ttf?v=stale")
+        self.assertEqual(font.status_code, 200)
+        self.assertEqual(font.content, unversioned.content)
+        self.assertEqual(font.headers["cache-control"], "public, max-age=31536000, immutable")
+        self.assertIn("no-cache", unversioned.headers["cache-control"])
+        self.assertIn("no-cache", stale.headers["cache-control"])
+
     async def test_clean_page_routes_and_legacy_redirects(self):
         transport = httpx.ASGITransport(app=main.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:

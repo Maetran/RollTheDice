@@ -856,14 +856,35 @@ def _serve_zilch_shell(request: Request, *, engagement_event: str | None = None)
     # The implementation shell stays noindex so every account, room and legacy
     # route is private by default. Only the two dedicated public documents on
     # the actual Zilch origin carry canonical and Open Graph markup.
+    filename = "zilch.html"
+    public_access = can_access_zilch_preview(None)
     if (
         is_zilch_host(request)
-        and can_access_zilch_preview(None)
+        and public_access
         and zilch_page_is_indexable(request.url.path)
     ):
         filename = "zilch-rules.html" if request.url.path == "/regeln" else "zilch-lobby.html"
-        return _page(filename)
-    return _page("zilch.html")
+    if public_access and request.url.path in {"/", "/zilch"}:
+        # This is only a public-rendering hint, never an account capability.
+        # Keep it out of the generic artifact so private rollouts and personal
+        # routes still wait for their server-confirmed identity in the client.
+        html = (STATIC_DIR / filename).read_text(encoding="utf-8").replace(
+            "data-zilch-root>", 'data-zilch-root data-zilch-public-lobby="true">', 1,
+        )
+        if filename == "zilch.html":
+            # Reuse the public document's real hero on the legacy lobby too,
+            # without sharing its canonical/SEO policy with private routes.
+            public_template = (STATIC_DIR / "zilch-lobby.html").read_text(encoding="utf-8")
+            public_intro = public_template.split("<!-- zilch-public-intro:start -->", 1)[1].split(
+                "<!-- zilch-public-intro:end -->", 1,
+            )[0]
+            html = html.replace("<h1>Zilch wird geladen …</h1>", public_intro, 1)
+        return Response(
+            html,
+            media_type="text/html",
+            headers={"Cache-Control": "no-cache, must-revalidate"},
+        )
+    return _page(filename)
 
 
 def _serve_zilch_account_shell(request: Request, *, engagement_event: str | None = None):

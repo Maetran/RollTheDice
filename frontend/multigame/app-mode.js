@@ -53,8 +53,8 @@ function navigateToMode(mode) {
 
 /**
  * Mount the one active app mode. Page routing keeps ZDWA and Zilch roots from
- * coexisting in a document; this controller only reveals a capability after
- * the server-confirmed auth response has arrived.
+ * coexisting in a document. Access comes from the server-confirmed auth
+ * response, or from its explicitly public lobby document while auth loads.
  */
 export function initializeAppMode({
   mode = document.documentElement.dataset.game || "zdwa",
@@ -66,8 +66,13 @@ export function initializeAppMode({
 
   document.documentElement.dataset.game = currentMode;
 
-  let allowed = false;
+  // Only the server's public lobby document may paint ahead of /auth/me.
+  // This hint grants no account identity or permission to any API action.
+  let publicLobby = currentMode === "zilch"
+    && document.querySelector('[data-zilch-root][data-zilch-public-lobby="true"]') !== null;
+  let allowed = publicLobby;
   let stopped = false;
+  if (publicLobby) updateSwitch(true);
 
   const revokeZilch = () => {
     allowed = false;
@@ -82,6 +87,8 @@ export function initializeAppMode({
 
   const applyAuth = (auth) => {
     const nextAllowed = canUseZilch(auth);
+    const access = auth?.game_access || auth?.user?.game_access;
+    publicLobby = publicLobby && access?.zilch_public === true;
     if (!nextAllowed) {
       revokeZilch();
       return false;
@@ -95,6 +102,10 @@ export function initializeAppMode({
     try {
       return applyAuth(await loadAuth({ refresh: true }));
     } catch (_) {
+      // A network failure cannot turn an already public document into a
+      // private one. Keep its read-only shell; a successful denial above
+      // still revokes access immediately, including after a rollout change.
+      if (publicLobby && !stopped) return true;
       revokeZilch();
       return false;
     }

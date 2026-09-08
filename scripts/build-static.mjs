@@ -6,6 +6,11 @@ import { dirname, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const check = process.argv.includes("--check");
+// Font URL placeholders are resolved by sync_static_versions.py after the
+// build. Compare their normalized form here; the asset check separately
+// validates that every shipped URL uses the actual content fingerprint.
+const fontVersion = /((?:\/static\/|\.\/)[A-Za-z0-9_./-]+\.(?:ttf|woff2?)\?v=)[A-Za-z0-9._-]+/g;
+const normalizedBundle = bytes => Buffer.from(bytes).toString("utf8").replace(fontVersion, "$1ASSET_VERSION");
 const targets = [
   { source: "frontend/shared/auth.js", output: "app/static/auth.js", format: "esm" },
   { source: "frontend/shared/web-push.js", output: "app/static/web-push.js", format: "esm" },
@@ -89,7 +94,7 @@ for (const target of targets) {
   } catch {
     committed = null;
   }
-  if (!generated || !committed || !Buffer.from(generated).equals(committed)) {
+  if (!generated || !committed || normalizedBundle(generated) !== normalizedBundle(committed)) {
     stale.push(target.output);
   }
 }
