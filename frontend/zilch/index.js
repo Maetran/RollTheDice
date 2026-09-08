@@ -666,6 +666,7 @@ async function openZilchLeaveDialog() {
 
 function renderNotice(messageText, { kind = "info" } = {}) {
   if (!content) return;
+  root?.querySelector("[data-zilch-game-chat]")?.remove();
   content.innerHTML = `<section class="zilch-card zilch-notice zilch-notice--${escapeHtml(kind)}" role="status"><p>${escapeHtml(t(messageText))}</p></section>`;
 }
 
@@ -3048,6 +3049,7 @@ function renderRulesContent(facts) {
     <section class="zilch-card zilch-rules-section">
       <h2>${escapeHtml(t("Lobby-Chat und Einladungen"))}</h2>
       <p>${escapeHtml(t("Der gemeinsame Lobby-Chat für ZDWA und Zilch ist für angemeldete Konten verfügbar. Du siehst nur Nachrichten, für die du beim Senden verbunden und berechtigt warst; nach drei Tagen werden sie gelöscht. Chat und Lobby-Popups lassen sich im Konto ausschalten."))}</p>
+      <p>${escapeHtml(t("Ein geöffneter Spiel-Chat und ein begonnener Text bleiben bei Live-Nachrichten, Spielstandsaktualisierungen und Wiederverbindungen erhalten."))}</p>
       <p>${escapeHtml(t("Im Lobby-Chat sind höchstens 400 Zeichen je Nachricht und fünf Nachrichten pro Konto in 30 Sekunden erlaubt. Admins können Konten stummschalten oder vom Chat ausschließen."))}</p>
       <p>${escapeHtml(t("Mitspieler benachrichtigen sendet auf deinen Klick eine Einladung für einen öffentlichen, wartenden Spielraum. Erlaubt ist ein Versuch pro Konto und Minute, zusätzlich eine Einladung pro Raum in zehn Minuten. Du erhältst einen kurzen Hinweis im Spiel, keine eigene Push-Nachricht."))}</p>
       <p>${escapeHtml(t("Push-Einladungen empfängst du erst nach Aktivierung im Konto und Freigabe im Browser. Melde jedes Gerät einzeln an; Ausschalten gilt für alle Geräte. Auf iPhone und iPad nutzt du dafür die installierte Home-Bildschirm-App."))}</p>
@@ -4467,6 +4469,59 @@ function rememberReactionChatEntry(reaction) {
   return true;
 }
 
+function zilchChatRows(snapshot) {
+  return visibleChatHistory(snapshot).map(entry => {
+    const sender = participantForId(snapshot, entry?.from_id || entry?.player_id || entry?.participant_id);
+    const identity = sender
+      ? playerCollectionMarkup(sender)
+      : `<span class="zilch-player-identity">${escapeHtml(entry?.sender || t("Spieler"))}</span>`;
+    return `<li><strong>${identity}</strong><span>${escapeHtml(entry?.text || "")}</span></li>`;
+  }).join("");
+}
+
+function mountZilchGameChat(snapshot) {
+  if (!root) return;
+  let chat = root.querySelector("[data-zilch-game-chat]");
+  if (!chat) {
+    chat = document.createElement("section");
+    chat.className = "zilch-chat";
+    chat.dataset.zilchGameChat = "";
+    chat.innerHTML = `<div class="zilch-chat__bar"><button type="button" class="zilch-chat__toggle" data-zilch-chat-toggle aria-expanded="false">${escapeHtml(t("Chat"))}<span class="zilch-chat__toggle-icon" aria-hidden="true">⌃</span></button><div id="zilchChatReactionsBar" class="zilch-chat-reactions-host" aria-label="${escapeHtml(t("Schnellreaktionen"))}"></div></div>
+      <div class="zilch-chat__content"><ul id="zilchChatHistory" class="zilch-chat-history"></ul><form id="zilchChatForm" class="zilch-chat-form"><label class="visually-hidden" for="zilchChatInput">${escapeHtml(t("Nachricht"))}</label><input id="zilchChatInput" maxlength="400" placeholder="${escapeHtml(t("Nachricht eingeben …"))}"><button type="submit" class="secondary">${escapeHtml(t("Senden"))}</button></form></div>`;
+    root.append(chat);
+
+    chat.querySelector("[data-zilch-chat-toggle]")?.addEventListener("click", () => {
+      state.chatOpen = !state.chatOpen;
+      mountZilchGameChat(state.game);
+    });
+    chat.querySelector("#zilchChatForm")?.addEventListener("submit", event => {
+      event.preventDefault();
+      const input = chat.querySelector("#zilchChatInput");
+      const text = input?.value?.trim();
+      if (!text || !state.socket || state.socket.readyState !== WebSocket.OPEN) return;
+      state.socket.send(JSON.stringify({ action: "chat_message", text }));
+      input.value = "";
+    });
+  }
+
+  const open = Boolean(state.chatOpen);
+  chat.classList.toggle("is-open", open);
+  chat.querySelector("[data-zilch-chat-toggle]")?.setAttribute("aria-expanded", open ? "true" : "false");
+
+  const history = chat.querySelector("#zilchChatHistory");
+  if (!history) return chat;
+  const rows = zilchChatRows(snapshot) || `<li class="zilch-muted">${escapeHtml(t("Noch keine Nachrichten"))}</li>`;
+  if (history._zilchRows === rows) return chat;
+
+  const firstRender = !history._zilchRows;
+  const distanceToLatest = history.scrollHeight - history.clientHeight - history.scrollTop;
+  const wasAtLatest = distanceToLatest <= 4;
+  history.innerHTML = rows;
+  history._zilchRows = rows;
+  if (firstRender || wasAtLatest) history.scrollTop = history.scrollHeight;
+  return chat;
+}
+
 function renderGameState() {
   if (!content) return;
   root?.classList.add("zilch-shell--game");
@@ -4514,13 +4569,6 @@ function renderGameState() {
   // This keeps every recommendation slot free while making the full scoring
   // action a clear, thumb-sized control.
   const turnScoreControls = turnScore;
-  const chatRows = visibleChatHistory(snapshot).map(entry => {
-    const sender = participantForId(snapshot, entry?.from_id || entry?.player_id || entry?.participant_id);
-    const identity = sender
-      ? playerCollectionMarkup(sender)
-      : `<span class="zilch-player-identity">${escapeHtml(entry?.sender || t("Spieler"))}</span>`;
-    return `<li><strong>${identity}</strong><span>${escapeHtml(entry?.text || "")}</span></li>`;
-  }).join("");
   const offline = hasOfflineHuman(snapshot)
     ? `<p class="zilch-offline-note">${escapeHtml(t("Ein Mitspieler ist gerade nicht am Tisch. Die Partie wartet, bis er wieder da ist."))}</p>`
     : "";
@@ -4550,12 +4598,9 @@ function renderGameState() {
         ${diceRack(snapshot, turnState, quickHolds, isMyTurn, canInteract)}
         ${actionCards(snapshot, turnState, quickHolds, canInteract)}
       </section>
-    </section>
-    <section class="zilch-chat${state.chatOpen ? " is-open" : ""}">
-      <div class="zilch-chat__bar"><button type="button" class="zilch-chat__toggle" data-zilch-chat-toggle aria-expanded="${state.chatOpen ? "true" : "false"}">${escapeHtml(t("Chat"))}<span class="zilch-chat__toggle-icon" aria-hidden="true">⌃</span></button><div id="zilchChatReactionsBar" class="zilch-chat-reactions-host" aria-label="${escapeHtml(t("Schnellreaktionen"))}"></div></div>
-      <div class="zilch-chat__content"><ul id="zilchChatHistory" class="zilch-chat-history">${chatRows || `<li class="zilch-muted">${escapeHtml(t("Noch keine Nachrichten"))}</li>`}</ul><form id="zilchChatForm" class="zilch-chat-form"><label class="visually-hidden" for="zilchChatInput">${escapeHtml(t("Nachricht"))}</label><input id="zilchChatInput" maxlength="400" placeholder="${escapeHtml(t("Nachricht eingeben …"))}"><button type="submit" class="secondary">${escapeHtml(t("Senden"))}</button></form></div>
     </section>`;
   wireGameInteractions(snapshot, turnState, quickHolds);
+  mountZilchGameChat(snapshot);
   mountZilchEmojiToolbar(snapshot);
   syncZilchEventOverlay();
   state.notebookTransition = null;
@@ -4754,10 +4799,6 @@ function wireGameInteractions(snapshot, turnState, quickHolds) {
       renderGameState();
     });
   }
-  document.querySelector("[data-zilch-chat-toggle]")?.addEventListener("click", () => {
-    state.chatOpen = !state.chatOpen;
-    renderGameState();
-  });
   for (const reaction of document.querySelectorAll("[data-zilch-recommendation]")) {
     reaction.addEventListener("click", () => {
       const option = quickHolds.find(candidate => candidate.id === reaction.dataset.zilchRecommendation);
@@ -4786,14 +4827,6 @@ function wireGameInteractions(snapshot, turnState, quickHolds) {
     setDraftHoldIndices(turnState, next);
     publishDraftPreview(turnState, next);
     renderGameState();
-  });
-  document.getElementById("zilchChatForm")?.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const input = document.getElementById("zilchChatInput");
-    const text = input?.value?.trim();
-    if (!text || !state.socket || state.socket.readyState !== WebSocket.OPEN) return;
-    state.socket.send(JSON.stringify({ action: "chat_message", text }));
-    input.value = "";
   });
 }
 

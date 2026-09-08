@@ -250,6 +250,79 @@ test("multiplayer game pauses on disconnect and resumes from the lobby", async (
   await player2Context.close();
 });
 
+test("ZDWA keeps an open mobile chat stable across a socket reconnect", async ({ browser, baseURL, request }) => {
+  const created = await request.post("/api/games", {
+    data: { name: "Chat Reconnect Smoke", mode: 1 },
+  });
+  expect(created.ok()).toBeTruthy();
+  const { game_id: gameId } = await created.json();
+
+  const context = await browser.newContext({
+    baseURL,
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  try {
+    await page.addInitScript(() => {
+      const NativeWebSocket = window.WebSocket;
+      window.__zdwaChatSocketCount = 0;
+      class TrackingWebSocket extends NativeWebSocket {
+        constructor(...args) {
+          super(...args);
+          window.__zdwaChatSocketCount += 1;
+          window.__zdwaChatSocket = this;
+        }
+      }
+      window.WebSocket = TrackingWebSocket;
+    });
+    await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Chatspieler`);
+    await page.waitForSelector("#diceBar");
+    await expect
+      .poll(() => page.evaluate(() => window.__zdwaChatSocketCount))
+      .toBeGreaterThan(0);
+    await expect
+      .poll(() => page.evaluate(() => window.__zdwaChatSocket?.readyState))
+      .toBe(1);
+
+    await page.click("#chatToggle");
+    const input = page.locator("#chatInput");
+    await expect(input).toBeVisible();
+    await input.fill("Dieser Entwurf bleibt offen");
+    await input.focus();
+    const socketCountBeforeReconnect = await page.evaluate(() => {
+      window.__zdwaChatInput = document.getElementById("chatInput");
+      const socketCount = window.__zdwaChatSocketCount;
+      window.__zdwaChatSocket.close();
+      return socketCount;
+    });
+
+    await expect
+      .poll(() => page.evaluate(() => window.__zdwaChatSocketCount))
+      .toBeGreaterThan(socketCountBeforeReconnect);
+    await expect.poll(() => page.evaluate(() => (
+      document.getElementById("connectionStatus")?.dataset.state
+    ))).toBe("online");
+    expect(await page.evaluate(() => {
+      const current = document.getElementById("chatInput");
+      return {
+        sameNode: current === window.__zdwaChatInput,
+        focused: document.activeElement === current,
+        draft: current?.value,
+        open: document.getElementById("chatPanel")?.classList.contains("open"),
+      };
+    })).toEqual({
+      sameNode: true,
+      focused: true,
+      draft: "Dieser Entwurf bleibt offen",
+      open: true,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
 test("tablet multiplayer layout shows up to three boards side by side", async ({ page, browser, request }) => {
   await page.setViewportSize({ width: 900, height: 780 });
   const created = await request.post("/api/games", {

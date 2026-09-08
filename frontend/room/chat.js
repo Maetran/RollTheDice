@@ -2,6 +2,7 @@ let ws = null;
 let chatBox, chatInput, chatSend;
 let chatPanel, chatToggle, chatClose, chatBackdrop, chatToggleCount;
 let unreadCount = 0;
+let chatSheetInitialized = false;
 
 let meName = "Ich";
 
@@ -27,14 +28,17 @@ export function initChat(websocket, opts = {}) {
     chatInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") sendMessage();
     });
-	  }
-	  bindChatSheet();
-	  setChatOpen(shouldDefaultOpenChat(), { focus: false });
-	}
+  }
+  bindChatSheet();
+  if (!chatSheetInitialized) {
+    chatSheetInitialized = true;
+    setChatOpen(shouldDefaultOpenChat(), { focus: false });
+  }
+}
 
 function shouldDefaultOpenChat() {
   return false;
-	}
+}
 
 function sendMessage() {
   if (!chatInput) chatInput = document.getElementById("chatInput");

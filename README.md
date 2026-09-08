@@ -74,7 +74,8 @@ protection.
 - Create a table quickly, or add an optional room code.
 - Share an invitation link without exposing room codes or resume credentials.
 - Rejoin your seat after a disconnect; active games also survive server restarts.
-- Chat and send quick reactions in the game room.
+- Chat and send quick reactions in the game room. An open chat keeps its draft
+  while live messages, game updates, or a reconnect arrive.
 - Watch eligible multiplayer tables in a read-only spectator view.
 - Leave a game through **Pause**, **Return to Lobby**, or **Stay in Game**.
   Pausing preserves the table until its displayed deadline. Returning to the

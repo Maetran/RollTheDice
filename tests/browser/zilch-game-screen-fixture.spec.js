@@ -2537,6 +2537,84 @@ test("a selected score is banked atomically with its exact server option", async
   }
 });
 
+test("the mobile Zilch chat keeps a focused draft while a filled history receives live updates", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({
+    baseURL,
+    serviceWorkers: "block",
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    const snapshot = fixtureSnapshots().hotDice;
+    snapshot._chat_history = [
+      "Der Tisch ist gedeckt.",
+      "Ich bin bereit.",
+      "Gutes Würfeln!",
+      "Die Runde läuft.",
+      "Der nächste Zug gehört dir.",
+      "Das wird spannend.",
+    ].map((text, index) => ({
+      from_id: index % 2 ? "p2" : "p1",
+      sender: index % 2 ? "PreviewFriend" : "Mani",
+      text,
+      ts: `2026-09-04T12:0${index}:00+00:00`,
+      kind: "chat",
+    }));
+    const gameId = "mobile-chat-focus-fixture";
+    await installGameScreenFixture(page, gameId, { initial: snapshot });
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    await page.goto(`/zilch/spiel/${gameId}`);
+
+    await expect(page.locator("#zilchChatHistory li")).toHaveCount(6);
+    await page.locator("[data-zilch-chat-toggle]").click();
+    const input = page.locator("#zilchChatInput");
+    await expect(input).toBeVisible();
+    await input.fill("Ich kann diese Nachricht ohne Unterbruch weiterschreiben");
+    await input.focus();
+    await page.evaluate(() => {
+      window.__zilchGameScreenFixtureChatInput = document.getElementById("zilchChatInput");
+    });
+
+    await page.evaluate(() => window.__zilchGameScreenFixturePush({
+      chat: {
+        from_id: "p2",
+        sender: "PreviewFriend",
+        text: "Eine neue Nachricht kommt herein.",
+        ts: "2026-09-04T12:10:00+00:00",
+        kind: "chat",
+      },
+    }));
+    await expect(page.locator("#zilchChatHistory")).toContainText("Eine neue Nachricht kommt herein.");
+
+    expect(await page.evaluate(() => {
+      const current = document.getElementById("zilchChatInput");
+      return {
+        sameNode: current === window.__zilchGameScreenFixtureChatInput,
+        focused: document.activeElement === current,
+        draft: current?.value,
+        open: document.querySelector(".zilch-chat")?.classList.contains("is-open"),
+      };
+    })).toEqual({
+      sameNode: true,
+      focused: true,
+      draft: "Ich kann diese Nachricht ohne Unterbruch weiterschreiben",
+      open: true,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
 test("a controlled server snapshot drives both boards, dice, Quick Holds, and high-risk Zilch states", async ({ browser, baseURL }) => {
   // The client fixture intercepts only a private game's detail request and
   // WebSocket frames. It uses the real protected shell and never adds a test

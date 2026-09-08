@@ -11,6 +11,30 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Nächster Release / Next release — Chat ohne Unterbruch
+
+### Deutsch
+
+- Im aktiven Zilch-Spiel bleibt der geöffnete Chat als eigenes, stabiles
+  Element erhalten. Eingehende Nachrichten, Schnellreaktionen und
+  Spielstandsaktualisierungen ersetzen weder das Eingabefeld noch einen
+  begonnenen Text.
+- ZDWA setzt einen geöffneten Chat bei einer Wiederverbindung nicht mehr auf
+  „geschlossen“ zurück. Damit bleibt die laufende Texteingabe auch bei einem
+  kurzen Netzwechsel nutzbar.
+- Der Zilch-Verlauf bleibt live und zeigt bei einer bereits längeren
+  Nachrichtenliste weiter die neuesten Einträge, ohne die Bedienung zu stören.
+
+### English
+
+- In an active Zilch game, the open chat now remains a stable element. Incoming
+  messages, quick reactions, and game updates neither replace the input nor a
+  started draft.
+- ZDWA no longer resets an open chat to closed when it reconnects, so a short
+  network change does not interrupt typing.
+- Zilch history remains live and keeps the latest entries accessible even when
+  the message list is already longer.
+
 ## Nächster Release / Next release — Erkundung, die zählt
 
 ### Deutsch

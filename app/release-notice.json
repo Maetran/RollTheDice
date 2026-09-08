@@ -1,23 +1,23 @@
 {
   "kind": "usability",
   "games": ["zdwa", "zilch"],
-  "summary_de": "Erkundungs-Erfolge zählen jetzt zuverlässig; vorhandene Profilbilder werden einmalig erkannt.",
-  "summary_en": "Exploration achievements now count reliably; existing profile pictures are recognized once.",
+  "summary_de": "Chats bleiben bei Live-Updates und Wiederverbindungen ruhig geöffnet.",
+  "summary_en": "Chats stay open during live updates and reconnects.",
   "player_notes": {
     "de": {
-      "title": "Erkundung, die zählt",
+      "title": "Chat ohne Unterbruch",
       "changes": [
-        "Ein bereits gespeichertes Profilbild erhält einmalig den Erst-Erfolg in ZDWA und Zilch. Frühere Bildwechsel werden nicht geschätzt oder nachträglich vergeben.",
-        "Konto-Tabs, erfolgreiche Einstellungen, Push-Bereiche, GitHub-Links und der Spielwechsel werden jetzt passend erfasst; Zilch-Erkundungs-Auszeichnungen blockieren keine Bedienung.",
-        "Bestehende Achievement-Werte und Ranggrenzen bleiben unverändert, niemand wird heruntergestuft; neue Punkte kommen nur durch passende Aktionen hinzu."
+        "Im Zilch-Spiel bleibt ein geöffneter Chat samt begonnenem Text stehen, wenn Nachrichten, Reaktionen oder Spielstände live eintreffen.",
+        "ZDWA lässt einen offenen Chat auch nach einer erneuten Verbindung geöffnet, damit du ohne Unterbruch weiterschreiben kannst.",
+        "Der Chatverlauf aktualisiert sich weiter live, ohne das Eingabefeld zu ersetzen oder den Textentwurf zu verlieren."
       ]
     },
     "en": {
-      "title": "Exploration that counts",
+      "title": "Chat without interruptions",
       "changes": [
-        "An already stored profile picture receives the first-picture award once in ZDWA and Zilch. Earlier picture changes are neither guessed nor granted retroactively.",
-        "Account tabs, successful setting changes, Push areas, GitHub links and game switching now use their matching flow; Zilch exploration awards do not block controls.",
-        "Existing achievement values and rank thresholds remain unchanged, and nobody is demoted; new points only come from matching actions."
+        "In Zilch, an open chat and a started message stay in place while messages, reactions, or game updates arrive live.",
+        "ZDWA now keeps an open chat open after reconnecting, so you can keep writing without interruption.",
+        "Chat history still updates live without replacing the input or losing your draft."
       ]
     }
   }

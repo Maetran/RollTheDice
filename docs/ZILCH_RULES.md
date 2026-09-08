@@ -309,7 +309,9 @@ sendet nur die referenzierte Option und übernimmt nie einen lokalen Punktewert.
 Der Punktezettel zeigt ausschließlich den serverseitigen Rundenverlauf.
 Chatnachrichten und Schnellreaktionen sind davon getrennte Kommunikation:
 Textnachrichten werden im aktiven Spielzustand mitgeführt und erscheinen daher
-auch nach einer Wiederverbindung wieder. Schnellreaktionen erscheinen kurz bei
+auch nach einer Wiederverbindung wieder. Ein geöffneter Chat und ein noch nicht
+gesendeter Text bleiben bei eingehenden Nachrichten, Schnellreaktionen und
+Spielstandsaktualisierungen erhalten. Schnellreaktionen erscheinen kurz bei
 allen verbundenen Teilnehmern, einschließlich des Absenders, und zusätzlich
 als Reaktionszeile im Chat der aktuellen Verbindung. Sie ändern weder Wertung
 noch Punktezettel.
