@@ -305,6 +305,15 @@ class ZilchResultsTestCase(TestCase):
         self.assertEqual(set(payload["boards"]), {"p1", "p2"})
         self.assertEqual(payload["outcome"]["winner_id"], "p1")
 
+    def test_result_keeps_only_safe_room_protection_state(self) -> None:
+        game = self._terminal_game()
+        game["_passphrase"] = "private-room-code-never-persisted"
+
+        payload = build_zilch_result_payload(game)
+
+        self.assertIs(payload["was_locked"], True)
+        self.assertNotIn(game["_passphrase"], json.dumps(payload))
+
     def test_v1_result_keeps_the_positive_third_zilch_deduction_consistent_with_board_history(self) -> None:
         game = self._terminal_game()
         board = game["_zilch_boards"]["p1"]
@@ -744,3 +753,49 @@ class ZilchResultsTestCase(TestCase):
                     request_for(cookie=f"rollthedice_session={friend_token}"),
                 )
         self.assertEqual(wrong_type.exception.status_code, 404)
+
+    def test_persisted_result_redirects_a_participant_from_a_completed_room_and_hides_it_from_others(self) -> None:
+        mani_id, mani_token = self._identity("RedirectMani")
+        friend_id, _friend_token = self._identity("RedirectFriend")
+        _normal_id, normal_token = self._identity("RedirectNormal")
+        game = self._terminal_game(
+            player_one=("RedirectMani", mani_id),
+            player_two=("RedirectFriend", friend_id),
+        )
+        games[game["_id"]] = game
+        self.assertTrue(finalize_zilch_result(game)["result_persisted"])
+        self.assertIs(games[game["_id"]], game)
+        self.assertTrue(game["_completion_persisted"])
+
+        with patch.dict(
+            os.environ,
+            {"ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES": "redirectmani,redirectfriend,redirectnormal"},
+        ):
+            response = main.zilch_room_page(
+                game["_id"],
+                request_for(cookie=f"rollthedice_session={mani_token}"),
+            )
+            self.assertEqual(response.status_code, 307)
+            self.assertEqual(response.headers["location"], f"/zilch/ergebnis/{game['_id']}")
+
+            with self.assertRaises(HTTPException) as unrelated:
+                main.zilch_room_page(
+                    game["_id"],
+                    request_for(cookie=f"rollthedice_session={normal_token}"),
+                )
+            self.assertEqual(unrelated.exception.status_code, 404)
+
+    def test_public_guest_completed_room_stays_available_until_the_local_state_is_gone(self) -> None:
+        game = self._terminal_game()
+        games[game["_id"]] = game
+        self.assertTrue(finalize_zilch_result(game)["result_persisted"])
+        self.assertTrue(game["_completion_persisted"])
+
+        with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "public"}):
+            response = main.zilch_room_page(game["_id"], request_for())
+            self.assertEqual(response.status_code, 200)
+
+            games.pop(game["_id"])
+            with self.assertRaises(HTTPException) as missing:
+                main.zilch_room_page(game["_id"], request_for())
+            self.assertEqual(missing.exception.status_code, 404)

@@ -301,6 +301,46 @@ function completedZilchResultFixture() {
   };
 }
 
+function completedCpuZilchResultFixture() {
+  const result = completedZilchResultFixture();
+  const cpuId = "cpu-aggressive";
+  const cpuBoard = {
+    ...result.boards.p2,
+    participant_id: cpuId,
+  };
+  delete result.boards.p2;
+  result.game_id = "browser-zilch-cpu-result";
+  result.game_name = "Private CPU-Revanche";
+  result.play_mode = "cpu";
+  result.participants = [
+    result.participants[0],
+    {
+      ...result.participants[1],
+      participant_id: cpuId,
+      player_key: cpuId,
+      display_name: "Tischgeist",
+      username: null,
+      user_id: null,
+      participant_type: "cpu",
+      cpu_strategy: "aggressive",
+    },
+  ];
+  result.participant_order = ["p1", cpuId];
+  result.boards[cpuId] = cpuBoard;
+  result.totals = { p1: 10000, [cpuId]: 9700 };
+  result.final_round = { ...result.final_round, pending_player_ids: [] };
+  result.outcome = {
+    ...result.outcome,
+    totals: result.totals,
+    winner_ids: ["p1"],
+    winner_id: "p1",
+  };
+  // A completed result may retain the protected-room marker. The stored
+  // room code lets the rematch stay one-click rather than asking again.
+  result.was_locked = true;
+  return result;
+}
+
 async function mockPrivateZilchResultEndpoints(page, result) {
   const history = {
     results: [{
@@ -704,8 +744,14 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
     await expect(tableMoments).toContainText("Erster Wurf");
     await expect(tableMoments).toContainText("Newbie → Rookie");
     await expect(tableMoments).not.toContainText("source_kind");
-    await expect(page.locator(".zilch-result-actions a[href='/zilch']")).toBeVisible();
-    await expect(page.locator(".zilch-result-actions a[href='/zilch/historie']")).toBeVisible();
+    const resultActions = page.locator(".zilch-result-actions");
+    await expect(resultActions.getByRole("button", { name: "Revanche" })).toBeVisible();
+    await expect(resultActions.getByRole("link", { name: "Zur Zilch-Lobby" })).toHaveAttribute("href", "/zilch");
+    await expect(resultActions.locator("a[href='/zilch/historie']")).toHaveCount(0);
+    expect(await resultActions.evaluate(actions => {
+      const summary = document.querySelector(".zilch-result-summary");
+      return Boolean(summary && (actions.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING));
+    })).toBe(true);
     await expect(page.getByText("Gleichstand – Startwurf wiederholt")).toBeVisible();
     await expect(page.locator(".zilch-result-final-round")).toContainText("hat die letzte Runde eingeläutet.");
     await expect(page.locator("#createGameCard")).toHaveCount(0);
@@ -766,6 +812,131 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
       page.locator("[data-language-switcher]").selectOption("de"),
     ]);
     await expect(page.locator("html")).toHaveAttribute("lang", "de");
+  } finally {
+    await context.close();
+  }
+});
+
+test("a persisted CPU Zilch result rematches with its strategy and saved room code", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await page.goto("/");
+    await signIn(page, "Admin", "temporary-password-123");
+    await expect(page.locator("#authBadge")).toContainText("Admin");
+    await ensurePreviewAccounts(page);
+
+    await page.click("#logoutBtn");
+    await expect(page.locator("#loginForm")).toBeVisible();
+    await signIn(page, "Mani", "mani-preview-password-123");
+    await expect(page.locator("[data-game-switch]")).toBeVisible();
+
+    const result = completedCpuZilchResultFixture();
+    await mockPrivateZilchResultEndpoints(page, result);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    await page.evaluate(({ gameId }) => {
+      sessionStorage.setItem(`zilch_pass_${gameId}`, "cpu-private-room-code");
+    }, { gameId: result.game_id });
+
+    await page.route(`**/zilch/ergebnis/${result.game_id}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    let createPayload = null;
+    await page.route("**/api/games", async route => {
+      if (route.request().method() !== "POST") return route.continue();
+      createPayload = route.request().postDataJSON();
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ game_id: "cpu-rematch-ui-fixture" }),
+      });
+    });
+    await page.route("**/zilch/spiel/cpu-rematch-ui-fixture", route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: "<!doctype html><title>CPU rematch fixture</title>",
+    }));
+
+    await page.goto(`/zilch/ergebnis/${result.game_id}`);
+    const actions = page.locator(".zilch-result-actions");
+    const rematch = actions.getByRole("button", { name: "Revanche" });
+    await expect(rematch).toBeVisible();
+    await expect(actions.getByRole("link", { name: "Zur Zilch-Lobby" })).toHaveAttribute("href", "/zilch");
+    expect(await actions.evaluate(node => {
+      const summary = document.querySelector(".zilch-result-summary");
+      return Boolean(summary && (node.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING));
+    })).toBe(true);
+
+    await Promise.all([
+      page.waitForRequest(request => request.method() === "POST" && new URL(request.url()).pathname === "/api/games"),
+      rematch.click(),
+    ]);
+    expect(createPayload).toMatchObject({
+      name: "Private CPU-Revanche",
+      game_type: "zilch",
+      mode: "2",
+      play_mode: "cpu",
+      cpu_strategy: "aggressive",
+      pass: "cpu-private-room-code",
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+test("a legacy CPU result without room-code metadata asks before it can create a rematch", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await page.goto("/");
+    await signIn(page, "Admin", "temporary-password-123");
+    await expect(page.locator("#authBadge")).toContainText("Admin");
+    await ensurePreviewAccounts(page);
+
+    await page.click("#logoutBtn");
+    await expect(page.locator("#loginForm")).toBeVisible();
+    await signIn(page, "Mani", "mani-preview-password-123");
+    await expect(page.locator("[data-game-switch]")).toBeVisible();
+
+    const result = completedCpuZilchResultFixture();
+    delete result.was_locked;
+    await mockPrivateZilchResultEndpoints(page, result);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    await page.evaluate(({ gameId }) => {
+      sessionStorage.removeItem(`zilch_pass_${gameId}`);
+    }, { gameId: result.game_id });
+    await page.route(`**/zilch/ergebnis/${result.game_id}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    let createPayload = null;
+    await page.route("**/api/games", async route => {
+      if (route.request().method() !== "POST") return route.continue();
+      createPayload = route.request().postDataJSON();
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ game_id: "unexpected-legacy-cpu-rematch" }),
+      });
+    });
+
+    await page.goto(`/zilch/ergebnis/${result.game_id}`);
+    await page.getByRole("button", { name: "Revanche" }).click();
+    await expect(page.locator("#appDialogTitle")).toHaveText(/Geschützte Revanche|Protected rematch/);
+    await expect(page.locator("#appDialogInput")).toBeVisible();
+    await page.locator("[data-dialog-action='cancel']").click();
+    await expect(page.locator("#appDialogBackdrop")).toBeHidden();
+    // Cancelling a conservative legacy-code prompt must leave the original
+    // table untouched; especially never send a `pass: \"\"` create request.
+    await page.waitForTimeout(100);
+    expect(createPayload).toBeNull();
   } finally {
     await context.close();
   }

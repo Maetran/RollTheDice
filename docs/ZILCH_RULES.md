@@ -332,8 +332,18 @@ Zilch-Ergebnisroute und die persönliche eigene Historie erreichbar. Die beiden
 verknüpften Konto-Teilnehmer dürfen ein kompetitives Ergebnis lesen; ein
 anderes Konto erhält ein nicht unterscheidbares 404. Solo-Ergebnisse bleiben auf
 ihren verknüpften Konto-Teilnehmer beschränkt, und die HTTP-Projektion enthält
-keine internen `user_id`-Werte. Gast-Endstände bleiben im aktuellen Spielzustand,
-erzeugen aber weder Report-URL noch persönliche Historie. Der Report wird
+keine internen `user_id`-Werte. Nach jedem abgeschlossenen oder aufgegebenen
+Solo-Lauf sowie nach jeder abgeschlossenen CPU- oder Zwei-Personen-Partie
+öffnet sich die Ende-Ansicht automatisch: angemeldete Teilnehmer wechseln nach
+dem bestätigten Persistenz-Frame in ihren privaten Report, Gäste sehen dieselbe
+Zusammenfassung im aktuellen Browser-Tab. Direkt oberhalb der Zusammenfassung
+stehen **„Neues Solo“** für Solo beziehungsweise **„Revanche“** für CPU- und
+Zwei-Personen-Partien sowie **„Zur Zilch-Lobby“**. Für Gäste bleibt ein
+privater Report nicht erreichbar und es gibt keine persönliche Historie.
+Bei einer geschützten CPU- oder Zwei-Personen-Revanche bleibt der Raumcode nur
+im aktuellen Browser-Tab erhalten; aus einem älteren Report wird er erneut
+abgefragt und nie in der Ergebnis-Historie gespeichert.
+Der Report wird
 weiterhin **nicht** in ZDWA-Historie, Scorecards, Replay, Statistik,
 Leaderboard, Achievement- oder Profilaggregate geschrieben. Die getrennten
 persönlichen Zilch-Statistiken und öffentlichen Bestenlisten lesen ausschließlich validierte
@@ -466,9 +476,9 @@ kurze reduzierte-Bewegung-freundliche Effekte. Ein neues Zilch erscheint einmali
 als großer Stempel über dem betroffenen Blatt; erst danach rückt das Blatt des
 nächsten Teilnehmers nach vorne. Semantische Buttons,
 sichtbarer Fokus, Live-Status und nicht allein farbbasierte Zustände gehören zur
-Bedienung. Nach Spielende bleiben Notizzettel und Ergebnisfläche gleich hoch und
-gleich breit; neue Runde, Ergebnisansicht und Lobby sind als eindeutige,
-untereinander angeordnete Aktionen erreichbar. Finales Branding, eine lizenzierte
+Bedienung. Nach Spielende führt die Ende-Ansicht mit ihrer Zusammenfassung klar
+zurück in den nächsten Ablauf: neues Solo beziehungsweise Revanche oder Lobby.
+Finales Branding, eine lizenzierte
 Akzentschrift und weitere
 Produktpolitur sind nicht Teil dieser Regelversion.
 

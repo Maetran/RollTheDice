@@ -101,6 +101,15 @@ Keyboard controls include 1–6 for dice, Space to roll, B to bank, and
 Q/W/E/R/T/Z/U/I for visible suggestions. Shortcuts are disabled while typing or
 using dialogs. See the [full Zilch rule contract](docs/ZILCH_RULES.md).
 
+After every completed or abandoned Solo Sprint, and every completed CPU or
+two-player Zilch game, the end screen opens automatically. Its actions sit
+above the summary: start a new Solo run, request a rematch, or return to the
+lobby. Signed-in players receive their private report; guests retain the same
+current-session summary without a personal history entry. A protected CPU or
+two-player rematch keeps its room code in the current browser session; when
+reopening an older report, players enter the code again so it is never stored
+in the result history.
+
 ## Accounts and progress
 
 One account works across both games, with shared language and comfort settings.

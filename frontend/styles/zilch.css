@@ -331,19 +331,11 @@ html[data-game="zilch"] .zilch-nav-list .zilch-nav-back::before {
 .zilch-game-head { max-width: 780px; margin: 0 0 1.35rem; color: #fff8e8; }
 .zilch-intro h1,
 .zilch-game-head h1 { margin: .15rem 0 .55rem; font: 800 clamp(2.2rem, 7vw, 4.1rem)/.98 Georgia, "Times New Roman", serif; letter-spacing: -.035em; }
-.zilch-intro h1 {
-  color: #fffdf5;
-  text-shadow: 0 .1rem .18rem rgba(35, 15, 6, .9), 0 .38rem .9rem rgba(35, 15, 6, .56);
-}
-.zilch-leaderboards-head h1 {
-  color: #fffdf5;
-  text-shadow: 0 .1rem .18rem rgba(35, 15, 6, .9), 0 .38rem .9rem rgba(35, 15, 6, .56);
-}
-.zilch-rules-head h1 {
-  color: #fffdf5;
-  text-shadow: 0 .1rem .18rem rgba(35, 15, 6, .9), 0 .38rem .9rem rgba(35, 15, 6, .56);
-}
-.zilch-account-head h1 {
+.zilch-intro h1,
+.zilch-leaderboards-head h1,
+.zilch-rules-head h1,
+.zilch-account-head h1,
+.zilch-achievements-head h1 {
   color: #fffdf5;
   text-shadow: 0 .1rem .18rem rgba(35, 15, 6, .9), 0 .38rem .9rem rgba(35, 15, 6, .56);
 }
@@ -1543,10 +1535,12 @@ html[data-game="zilch"] :is(
 .zilch-start-roll-value { display: inline-grid; place-items: center; min-width: 2.15rem; min-height: 2.15rem; border: 1px solid #d1b184; border-radius: 45%; color: #3a2011; background: linear-gradient(145deg, #fffdf5, #f0dfbc); box-shadow: inset .08rem .08rem .16rem rgba(255,255,255,.98), .12rem .18rem 0 #724b2d; }
 .zilch-result-final-round { max-width: 50rem; }
 .zilch-result-final-round p { margin: .55rem 0; }
-.zilch-result-actions { display: flex; flex-wrap: wrap; gap: .55rem; justify-content: flex-end; margin: 1.1rem 0 0; }
-.zilch-result-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 2.7rem; padding: .55rem .8rem; border-radius: .55rem; font-weight: 800; text-decoration: none; }
-.zilch-result-actions__history { border: 1px solid var(--zilch-paper-edge); color: #fff8e8; background: rgba(53, 27, 13, .58); }
-.zilch-result-actions__history:hover { border-color: rgba(255, 232, 170, .82); color: #fffdf5; background: rgba(53, 27, 13, .8); }
+.zilch-result-actions { display: flex; flex-wrap: wrap; gap: .55rem; justify-content: flex-start; margin: 0 0 1.1rem; }
+.zilch-result-actions :is(a, button) { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; min-height: 2.7rem; padding: .55rem .8rem; border-radius: .55rem; font: inherit; font-weight: 800; text-decoration: none; }
+.zilch-result-actions__new-round { border-color: #875220; color: #fffdf5; background: linear-gradient(145deg, #8a5427, #4c2813); box-shadow: inset 0 1px rgba(255, 245, 214, .24), 0 .2rem .45rem rgba(55, 27, 10, .22); }
+.zilch-result-actions__new-round:hover { border-color: #b37a3b; color: #fffdf5; background: linear-gradient(145deg, #9f6532, #593015); }
+.zilch-result-actions__lobby { border-color: var(--zilch-paper-edge); color: #fff8e8; background: rgba(53, 27, 13, .58); }
+.zilch-result-actions__lobby:hover { border-color: rgba(255, 232, 170, .82); color: #fffdf5; background: rgba(53, 27, 13, .8); }
 
 /* Private statistics and leaderboards are deliberately their own paper-led
    Zilch components. On a narrow screen each leaderboard row becomes a
@@ -1987,6 +1981,16 @@ html[data-game="zilch"] .zilch-rank-badge {
 /* Awards and ranks remain deliberately independent from ZDWA account
    achievements: no ZDWA rank, mark, or account-card selector is reused. */
 html[data-game="zilch"] .zilch-achievements-head { margin-bottom: var(--zilch-space-5); }
+html[data-game="zilch"] .zilch-achievements-head > button.ghost {
+  border-color: rgba(255, 235, 188, .62);
+  color: #fffdf5;
+  background: rgba(44, 20, 8, .28);
+}
+html[data-game="zilch"] .zilch-achievements-head > button.ghost:hover {
+  border-color: rgba(255, 244, 211, .88);
+  color: #fffdf5;
+  background: rgba(44, 20, 8, .52);
+}
 html[data-game="zilch"] .zilch-achievement-profile {
   max-width: none;
   margin-bottom: var(--zilch-space-4);
@@ -2888,7 +2892,7 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
   .zilch-result-facts { grid-template-columns: 1fr; }
   .zilch-result-metric-list { grid-template-columns: 1fr; }
   .zilch-result-actions { display: grid; grid-template-columns: 1fr; }
-  .zilch-result-actions a { width: 100%; }
+  .zilch-result-actions :is(a, button) { width: 100%; }
   .zilch-rule-facts { grid-template-columns: 1fr; }
   .zilch-board dl { grid-template-columns: 1fr; }
   .zilch-dice { gap: .42rem; }

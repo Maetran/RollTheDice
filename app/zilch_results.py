@@ -655,6 +655,7 @@ def _build_zilch_solo_result_payload(game: dict) -> dict:
         "ruleset": ZILCH_RULESET_VERSION,
         "play_mode": "solo",
         "mode": "1",
+        "was_locked": False,
         "target_score": target_score,
         "started_at": _timestamp_payload(started_at),
         "finished_at": _timestamp_payload(finished_at),
@@ -729,6 +730,7 @@ def _build_competitive_zilch_result_payload(game: dict) -> dict:
         "ruleset": ZILCH_RULESET_VERSION,
         "play_mode": play_mode,
         "mode": mode,
+        "was_locked": bool(game.get("_passphrase")),
         "target_score": target_score,
         "started_at": _timestamp_payload(started_at),
         "finished_at": _timestamp_payload(finished_at),
@@ -914,6 +916,8 @@ def _validate_v1_stored_payload(payload: dict) -> None:
     play_mode = _required_text(payload.get("play_mode"), "zilch_result_invalid_mode", limit=24)
     if _required_text(payload.get("mode"), "zilch_result_invalid_mode", limit=16) != "2":
         raise ZilchResultValidationError("zilch_result_invalid_mode")
+    if "was_locked" in payload and type(payload["was_locked"]) is not bool:
+        raise ZilchResultValidationError("zilch_result_invalid_lock_state")
 
     raw_participants = payload.get("participants")
     if not isinstance(raw_participants, list) or not 1 <= len(raw_participants) <= 2:
@@ -1061,6 +1065,8 @@ def _validate_v2_solo_stored_payload(payload: dict) -> None:
         raise ZilchResultValidationError("zilch_result_unknown_ruleset")
     if payload.get("play_mode") != "solo" or payload.get("mode") != "1":
         raise ZilchResultValidationError("zilch_result_invalid_solo_mode")
+    if "was_locked" in payload and type(payload["was_locked"]) is not bool:
+        raise ZilchResultValidationError("zilch_result_invalid_lock_state")
     started_at = _timestamp(payload.get("started_at"), "zilch_result_missing_started_at")
     finished_at = _timestamp(payload.get("finished_at"), "zilch_result_missing_finished_at")
     duration_seconds = _integer(payload.get("duration_seconds"), "zilch_result_invalid_duration")

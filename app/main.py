@@ -922,7 +922,24 @@ def zilch_room_page(game_id: str, request: Request):
     if redirect:
         return redirect
     game = games.get(game_id)
-    if not game or game_type_from_state(game) != ZILCH_GAME_TYPE or not can_access_game(identity, game):
+    if not game or game.get("_completion_persisted"):
+        # A regular terminal Zilch room remains in the in-memory registry
+        # until its normal cleanup, even though its private report is already
+        # durable. Treat that archived state like a retired room so reloads
+        # and old room bookmarks lead participants straight back to their
+        # result, without exposing it to another signed-in account.
+        if identity is not None and load_zilch_result_for_user(game_id, identity.user_id) is not None:
+            prefix = "" if is_zilch_host(request) else "/zilch"
+            return RedirectResponse(
+                f"{prefix}/ergebnis/{quote(game_id, safe='')}",
+                status_code=307,
+                headers={"Cache-Control": "no-store"},
+            )
+        if not game or identity is not None:
+            raise HTTPException(status_code=404, detail="game_not_found")
+        # A still-connected public guest has no durable private result, but
+        # can keep the in-memory terminal screen after a reload.
+    if game_type_from_state(game) != ZILCH_GAME_TYPE or not can_access_game(identity, game):
         raise HTTPException(status_code=404, detail="game_not_found")
     return _page("zilch.html")
 

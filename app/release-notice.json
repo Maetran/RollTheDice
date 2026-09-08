@@ -1,23 +1,23 @@
 {
   "kind": "usability",
-  "games": ["zdwa", "zilch"],
-  "summary_de": "Chats bleiben bei Live-Updates und Wiederverbindungen ruhig geöffnet.",
-  "summary_en": "Chats stay open during live updates and reconnects.",
+  "games": ["zilch"],
+  "summary_de": "Zilch-Ergebnisse öffnen nach jeder Partie direkt mit klaren nächsten Schritten.",
+  "summary_en": "Zilch results now open directly after every game with clear next steps.",
   "player_notes": {
     "de": {
-      "title": "Chat ohne Unterbruch",
+      "title": "Klarer Abschluss bei Zilch",
       "changes": [
-        "Im Zilch-Spiel bleibt ein geöffneter Chat samt begonnenem Text stehen, wenn Nachrichten, Reaktionen oder Spielstände live eintreffen.",
-        "ZDWA lässt einen offenen Chat auch nach einer erneuten Verbindung geöffnet, damit du ohne Unterbruch weiterschreiben kannst.",
-        "Der Chatverlauf aktualisiert sich weiter live, ohne das Eingabefeld zu ersetzen oder den Textentwurf zu verlieren."
+        "Nach einem abgeschlossenen oder aufgegebenen Solo-Lauf sowie nach jeder abgeschlossenen Würfelwirt- oder Zwei-Personen-Partie öffnet sich dein Ergebnis automatisch.",
+        "Oberhalb der Zusammenfassung startest du ein neues Solo oder eine Revanche oder kehrst direkt zur Lobby zurück.",
+        "Auf Zilch-Spielerprofilen sind Überschrift und Awards-Button auf dem Desktop jetzt deutlich lesbarer."
       ]
     },
     "en": {
-      "title": "Chat without interruptions",
+      "title": "A clear Zilch finish",
       "changes": [
-        "In Zilch, an open chat and a started message stay in place while messages, reactions, or game updates arrive live.",
-        "ZDWA now keeps an open chat open after reconnecting, so you can keep writing without interruption.",
-        "Chat history still updates live without replacing the input or losing your draft."
+        "After a completed or abandoned Solo run, and every completed Dice Keeper or two-player game, your result opens automatically.",
+        "Above the summary, start a new Solo run or a rematch, or return directly to the lobby.",
+        "The heading and awards button on Zilch player profiles are now much easier to read on desktop."
       ]
     }
   }

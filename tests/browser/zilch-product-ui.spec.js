@@ -946,6 +946,8 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await page.goto("/zilch/spieler/Mani");
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     await expect(page.getByRole("heading", { name: "Zilch-Awards eines Spielers" })).toBeVisible();
+    await expect(page.locator(".zilch-achievements-head h1")).toHaveCSS("color", "rgb(255, 253, 245)");
+    await expect(page.getByRole("button", { name: "Meine Zilch-Awards" })).toHaveCSS("color", "rgb(255, 253, 245)");
     await expect(page.getByRole("heading", { name: "Mani" })).toBeVisible();
     await expect(page.locator(".zilch-achievement-card.is-unlocked")).toHaveCount(1);
     await expect(page.locator(".zilch-achievement-summary")).toContainText("1 / 273");

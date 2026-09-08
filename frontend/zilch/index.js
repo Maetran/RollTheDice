@@ -112,6 +112,7 @@ const state = {
   leaveDialogOpen: false,
   lastEndedBy: null,
   terminalNoticeShown: false,
+  terminalResultNavigation: "",
   pauseRedirectTimer: null,
 };
 
@@ -270,6 +271,21 @@ async function requestPassphrase(gameName) {
   return window.prompt(messageText);
 }
 
+async function requestRematchPassphrase(gameName) {
+  const title = t("Geschützte Revanche");
+  const messageText = `${t("Der Raumcode dieses Ergebnisberichts ist nicht gespeichert. Gib ihn ein, damit die Revanche geschützt startet.")} ${gameName || ""}`.trim();
+  if (typeof window.ZDWA_UI?.prompt === "function") {
+    return window.ZDWA_UI.prompt({
+      title,
+      message: messageText,
+      label: t("Raumcode"),
+      input: { label: t("Raumcode"), type: "password", autocomplete: "new-password" },
+      confirmLabel: t("Revanche starten"),
+    });
+  }
+  return window.prompt(messageText);
+}
+
 function rememberedActiveGameId() {
   try { return sessionStorage.getItem(ZILCH_ACTIVE_GAME_STORAGE_KEY) || ""; } catch (_) { return ""; }
 }
@@ -348,7 +364,12 @@ function snapshotParticipants(snapshot) {
   // Older active Zilch states used transport players for both roles. Keep the
   // old projection readable while treating the new domain participants as the
   // source of truth as soon as they are available.
-  return participants.length ? participants : (Array.isArray(snapshot?._players) ? snapshot._players : []);
+  if (participants.length) return participants;
+  const players = Array.isArray(snapshot?._players) ? snapshot._players : [];
+  if (players.length) return players;
+  // Result reports retain only durable participants, but a rematch needs the
+  // same CPU seat and strategy as the just-finished table.
+  return Array.isArray(snapshot?.participants) ? snapshot.participants : [];
 }
 
 function participantType(participant) {
@@ -1799,6 +1820,38 @@ function terminalAwardScope(snapshot) {
   return `terminal:${resultIdValue}`;
 }
 
+function terminalResultRoute(snapshot) {
+  const result = plainObject(snapshot?._zilch_result);
+  const resultIdValue = String(result.game_id || gameId || "").trim();
+  if (
+    spectatorRoute
+    || !authenticatedZilchPlayer()
+    || !snapshot?._finished
+    || snapshot?._aborted
+    || snapshot?._finalization_pending
+    || !resultIdValue
+    || !sameId(resultIdValue, gameId)
+  ) return "";
+  return zilchResultRoute(result.route || result.result_route || result.result_url) || "";
+}
+
+function navigateToTerminalResult(snapshot) {
+  const route = terminalResultRoute(snapshot);
+  if (!route || state.terminalResultNavigation) return;
+  state.terminalResultNavigation = route;
+  // The active room can disappear immediately after its durable finalizer
+  // commits. Stop reconnecting while an award acknowledgement is shown, then
+  // replace the room history entry with the participant-only result report.
+  state.stopped = true;
+  window.clearTimeout(state.reconnectTimer);
+  state.socket?.close();
+  const awardScope = terminalAwardScope(snapshot);
+  void (async () => {
+    if (awardScope) await presentPendingZilchAwards({ scope: awardScope });
+    if (state.terminalResultNavigation === route) window.location.replace(route);
+  })();
+}
+
 function terminalGameIdFromScope(scope) {
   const prefix = "terminal:";
   const value = String(scope || "");
@@ -3090,7 +3143,7 @@ function renderRulesContent(facts) {
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Pause und Ablauf"))}</h2><p>${escapeHtml(t("Über Spiel verlassen pausierst du eine Partie bis zur angezeigten Frist oder beendest sie für alle ohne Ergebnis und kehrst zur Lobby zurück. Im Spiel bleiben schließt den Dialog; Zuschauer gehen direkt zur Lobby."))}</p><p>${escapeHtml(t("Bleibt am Tisch eine Stunde lang alles still – egal ob er wartet, läuft oder pausiert –, bricht der Wirt die Partie ab. Wer als Spieler oder Zuschauer noch verbunden ist, sieht den Hinweis und findet direkt zurück in die Lobby."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zuschauen"))}</h2><p>${escapeHtml(t("Laufende Zwei-Personen-Partien werden in der Lobby mit beiden Spielern angezeigt. Über Zuschauen öffnest du eine Live-Ansicht; Würfeln, Halten und Sichern bleiben den beiden Teilnehmern vorbehalten."))}</p></section>
     </section>
-    <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>
+    <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p>${escapeHtml(t("Nach jedem abgeschlossenen oder aufgegebenen Solo-Lauf sowie nach jeder abgeschlossenen Würfelwirt- oder Zwei-Personen-Partie öffnet sich dein Ergebnis automatisch. Dort startest du ein neues Solo oder eine Revanche oder kehrst zur Lobby zurück."))}</p><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>
     <section class="zilch-card zilch-rules-section zilch-rules-section--solo"><p class="eyebrow">${escapeHtml(t("Solo"))}</p><h2>${escapeHtml(t("10’000-Punkte-Sprint"))}</h2><p>${escapeHtml(t("Im Solo-Sprint erreichst du mindestens 10’000 Punkte in möglichst wenigen eigenen Zügen. Der Lauf beginnt direkt mit deinem ersten normalen Zug – ohne Startwurf, Gegner, Schlussrunde oder Gegenzug."))}</p><p>${escapeHtml(t("Bei gleicher Zielerreichung werden später zuerst weniger Züge, dann weniger Würfe, weniger Zilchs und eine kürzere aktive Dauer verglichen. Pausenzeit zählt nicht zur aktiven Dauer."))}</p><p>${escapeHtml(t("Du kannst einen Solo-Lauf nach Bestätigung aufgeben. Er bleibt mit dem Status „Aufgegeben“ in deiner Historie erhalten."))}</p></section>
     <section class="zilch-card zilch-rules-examples"><p class="eyebrow">${escapeHtml(t("Beispiele"))}</p><h2>${escapeHtml(t("Gültige Auswahlen"))}</h2><ul><li><code>5–5–5–5–2–3</code> — ${escapeHtml(t("Drilling Fünfen = 500; vier Fünfen = 1’000; nur eine Fünf = 50."))}</li><li><code>1–1–1–5–5–2</code> — ${escapeHtml(t("Drei Einsen und zwei einzelne Fünfen = 1’100; danach ist ein Bestätigungswurf nötig."))}</li><li><code>1–2–3–4–5–6</code> — ${escapeHtml(t("Straße, 2’000 Punkte, freier Wurf und Bestätigungswurf."))}</li><li><code>2–2–3–4–6–6</code> — ${escapeHtml(t("500 für nichts: alle Würfel werden wieder frei, der Zug läuft weiter."))}</li></ul></section>`;
 }
@@ -3626,11 +3679,94 @@ function resultSummary(result) {
   </section>`;
 }
 
-function resultActionsMarkup() {
+function resultNextRoundLabel(result) {
+  return isSoloGame(result) ? t("Neues Solo") : t("Revanche");
+}
+
+function resultActionsMarkup(result) {
   return `<nav class="zilch-result-actions" aria-label="${escapeHtml(t("Nächster Schritt"))}">
-    <a class="button-link zilch-lobby-action" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
-    <a class="button-link zilch-result-actions__history" href="${escapeHtml(zilchPath("/historie"))}">${escapeHtml(t("Deine Historie"))}</a>
+    <button type="button" class="button-link zilch-result-actions__new-round" data-zilch-new-round>${escapeHtml(resultNextRoundLabel(result))}</button>
+    <a class="button-link zilch-result-actions__lobby" href="${escapeHtml(zilchPath("/"))}">${escapeHtml(t("Zur Zilch-Lobby"))}</a>
   </nav>`;
+}
+
+function bindResultActions(result) {
+  content?.querySelector("[data-zilch-new-round]")?.addEventListener("click", event => {
+    void createNewZilchRound(result, event.currentTarget);
+  });
+}
+
+function resultDurationFromSnapshot(snapshot) {
+  const started = new Date(snapshot?._started_at || "").getTime();
+  const finished = new Date(snapshot?._finished_at || "").getTime();
+  return Number.isFinite(started) && Number.isFinite(finished) && finished >= started
+    ? Math.floor((finished - started) / 1_000)
+    : undefined;
+}
+
+function terminalResultRecord(snapshot) {
+  const participants = snapshotParticipants(snapshot).map(participant => ({
+    ...participant,
+    participant_id: resultPlayerId(participant),
+    display_name: resultPlayerName(participant),
+    participant_type: participantType(participant),
+  }));
+  return {
+    game_id: String(snapshot?._id || gameId || ""),
+    game_name: String(snapshot?._name || "Zilch"),
+    play_mode: zilchPlayMode(snapshot),
+    mode: String(snapshot?._mode || ""),
+    target_score: snapshot?._target_score,
+    was_locked: Boolean(snapshot?.locked),
+    started_at: snapshot?._started_at,
+    finished_at: snapshot?._finished_at,
+    duration_seconds: resultDurationFromSnapshot(snapshot),
+    participants,
+    boards: snapshot?._zilch_boards || {},
+    totals: snapshot?._total_points || {},
+    objective: snapshot?._zilch_solo_objective || {},
+    outcome: snapshot?._zilch_outcome || {},
+    metrics: snapshot?._zilch_solo_metrics || snapshot?._zilch_metrics || {},
+    start_roll: snapshot?._zilch_start_roll || {},
+    final_round: snapshot?._zilch_final_round || {},
+  };
+}
+
+function renderResultContent(result) {
+  if (!content) return;
+  const participants = resultParticipants(result);
+  const solo = isSoloGame(result);
+  const gameName = String(result?.game_name || result?.name || "Zilch");
+  document.title = `${gameName} – ${t("Zilch-Ergebnis")}`;
+  content.innerHTML = `<section class="zilch-game-head zilch-result-head">
+      <div><p class="eyebrow">${escapeHtml(solo ? t("Solo-Ergebnis") : t("Der Tisch ist abgerechnet"))}</p><h1>${escapeHtml(resultHeadline(result))}</h1><p class="zilch-result-head__meta"><strong>${escapeHtml(gameName)}</strong> · ${escapeHtml(resultModeLabel(result))}</p></div>
+    </section>
+    ${resultActionsMarkup(result)}
+    ${resultSummary(result)}
+    ${resultMetricsMarkup(result)}
+    ${resultMomentsMarkup(result)}
+    <section class="zilch-board-grid zilch-result-board-grid${solo ? " zilch-result-board-grid--solo" : ""}" aria-label="${escapeHtml(t("Zilch-Ergebnisboards"))}">${participants.map(player => resultBoardCard(result, player)).join("") || `<p class="zilch-muted">${escapeHtml(t("Keine Teilnehmerdaten verfügbar"))}</p>`}</section>
+    ${resultStartRollCard(result)}
+    ${resultFinalRoundCard(result)}`;
+  bindResultActions(result);
+}
+
+function prepareTerminalResultChrome() {
+  root?.classList.remove("zilch-shell--game");
+  root?.querySelector("[data-zilch-game-chat]")?.remove();
+  state.chatOpen = false;
+  document.getElementById("zilchRoomContext")?.setAttribute("hidden", "");
+  document.getElementById("zilchLeaveGameBtn")?.setAttribute("hidden", "");
+  document.getElementById("zilchRoomRules")?.setAttribute("hidden", "");
+  document.getElementById("zilchShareGameBtn")?.setAttribute("hidden", "");
+  document.querySelector("[data-zilch-abandon-solo-header]")?.remove();
+}
+
+function renderTerminalResultScreen(snapshot) {
+  const result = terminalResultRecord(snapshot);
+  state.result = result;
+  prepareTerminalResultChrome();
+  renderResultContent(result);
 }
 
 async function fetchZilchResult(id) {
@@ -3650,20 +3786,7 @@ async function renderResult() {
       return;
     }
     state.result = result;
-    const participants = resultParticipants(result);
-    const solo = isSoloGame(result);
-    const gameName = String(result?.game_name || result?.name || "Zilch");
-    document.title = `${gameName} – ${t("Zilch-Ergebnis")}`;
-    content.innerHTML = `<section class="zilch-game-head zilch-result-head">
-        <div><p class="eyebrow">${escapeHtml(solo ? t("Solo-Ergebnis") : t("Der Tisch ist abgerechnet"))}</p><h1>${escapeHtml(resultHeadline(result))}</h1><p class="zilch-result-head__meta"><strong>${escapeHtml(gameName)}</strong> · ${escapeHtml(resultModeLabel(result))}</p></div>
-      </section>
-      ${resultSummary(result)}
-      ${resultMetricsMarkup(result)}
-      ${resultMomentsMarkup(result)}
-      <section class="zilch-board-grid zilch-result-board-grid${solo ? " zilch-result-board-grid--solo" : ""}" aria-label="${escapeHtml(t("Zilch-Ergebnisboards"))}">${participants.map(player => resultBoardCard(result, player)).join("") || `<p class="zilch-muted">${escapeHtml(t("Keine Teilnehmerdaten verfügbar"))}</p>`}</section>
-      ${resultStartRollCard(result)}
-      ${resultFinalRoundCard(result)}
-      ${resultActionsMarkup()}`;
+    renderResultContent(result);
   } catch (_) {
     // The server intentionally answers participant-scoped result access with an opaque
     // failure; preserve that non-disclosing behaviour in the view as well.
@@ -4200,19 +4323,39 @@ function finalResult(snapshot) {
 }
 
 async function createNewZilchRound(snapshot, button) {
-  if (spectatorRoute || !snapshot?._finished || button?.disabled) return;
+  const persistedResult = Boolean(resultIdFor(snapshot) && snapshot?.outcome && typeof snapshot.outcome === "object");
+  if (spectatorRoute || (!snapshot?._finished && !persistedResult) || button?.disabled) return;
   const playMode = zilchPlayMode(snapshot);
   const cpu = snapshotParticipants(snapshot).find(isCpuParticipant);
   const selectedStrategy = String(cpu?.cpu_strategy || cpu?.strategy || "normal").toLowerCase();
   const cpuStrategy = CPU_STRATEGIES.has(selectedStrategy) ? selectedStrategy : "normal";
-  const passphrase = playMode === "solo" ? "" : state.gamePassphrase;
+  const sourceGameId = resultIdFor(snapshot) || gameId;
+  let passphrase = playMode === "solo" ? "" : (state.gamePassphrase || storedPassphrase(sourceGameId));
+  const lockStatusUnknown = persistedResult
+    && !Object.prototype.hasOwnProperty.call(snapshot || {}, "was_locked")
+    && !Object.prototype.hasOwnProperty.call(snapshot || {}, "locked");
+  const protectedRematch = snapshot?.was_locked === true || snapshot?.locked === true || lockStatusUnknown;
   if (button) button.disabled = true;
   try {
+    if (playMode !== "solo" && protectedRematch && !passphrase) {
+      const provided = await requestRematchPassphrase(String(snapshot?._name || snapshot?.game_name || snapshot?.name || ""));
+      if (provided === null) {
+        if (button) button.disabled = false;
+        return;
+      }
+      passphrase = String(provided || "").trim();
+      if (!passphrase) {
+        window.ZDWA_UI?.toast?.(t("Für eine geschützte Revanche brauchst du den Raumcode."), { kind: "warning" });
+        if (button) button.disabled = false;
+        return;
+      }
+      rememberPassphrase(sourceGameId, passphrase);
+    }
     const response = await apiFetch("/api/games", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name: String(snapshot?._name || snapshot?.name || `Zilch · ${state.auth?.user?.username || t("Gast")}`).slice(0, 80),
+        name: String(snapshot?._name || snapshot?.game_name || snapshot?.name || `Zilch · ${state.auth?.user?.username || t("Gast")}`).slice(0, 80),
         mode: playMode === "solo" ? "1" : "2",
         game_type: "zilch",
         play_mode: playMode,
@@ -4528,6 +4671,10 @@ function renderGameState() {
   const snapshot = state.game;
   if (!snapshot) {
     renderNotice("Zilch-Spiel wird geladen …");
+    return;
+  }
+  if (snapshot._finished && !snapshot._aborted && !spectatorRoute) {
+    renderTerminalResultScreen(snapshot);
     return;
   }
   const players = snapshotParticipants(snapshot);
@@ -4976,9 +5123,8 @@ function connectGameSocket() {
       }
       const eventText = messageForEvent(payload.scoreboard, payload.zilch_event || payload.scoreboard._zilch_last_event);
       updateStatus(eventText || null);
-      const awardScope = spectatorRoute ? "" : terminalAwardScope(payload.scoreboard);
-      if (awardScope) void presentPendingZilchAwards({ scope: awardScope });
       renderGameState();
+      navigateToTerminalResult(payload.scoreboard);
     }
     if (Object.prototype.hasOwnProperty.call(payload, "zilch_draft_preview") && state.game) {
       state.game = { ...state.game, _zilch_draft_preview: payload.zilch_draft_preview || null };
@@ -5134,9 +5280,13 @@ async function initialize() {
   else if (leaderboardsRoute) await renderLeaderboards();
   else if (rulesRoute) await renderRules();
   else await renderLobby();
-  // A historic report has its own game-scoped table moments. Do not interrupt
-  // it with an unrelated pending personal award from another game.
-  if (authenticatedZilchPlayer() && !gameId && !resultId && !playerAchievementsUsername) {
+  // A terminal redirect may occur after an award dialog was dismissed or its
+  // acknowledgement temporarily failed. On its own result page we can safely
+  // resume only that game's pending presentation; unrelated historic reports
+  // stay uninterrupted.
+  if (authenticatedZilchPlayer() && resultId) {
+    await presentPendingZilchAwards({ scope: `terminal:${resultId}` });
+  } else if (authenticatedZilchPlayer() && !gameId && !playerAchievementsUsername) {
     await presentPendingZilchAwards({ scope: "page" });
   }
   if (accountRoute || currentZilchRoute === "/") initializeReleaseNotes({ context: "zilch" });

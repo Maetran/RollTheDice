@@ -1097,6 +1097,13 @@ test("a private solo result keeps the objective compact and the score sheet in f
     await expect(page.locator(".zilch-result-summary")).toContainText(/Solo-Ergebnis|Solo result/);
     await expect(page.locator(".zilch-result-summary")).toContainText(/Solo-Ziel|Solo objective/);
     await expect(page.locator(".zilch-result-summary")).toContainText(/10(?:'|,|’|\s)000/);
+    const soloActions = page.locator(".zilch-result-actions");
+    await expect(soloActions.getByRole("button", { name: /Neues Solo|New solo/ })).toBeVisible();
+    await expect(soloActions.getByRole("link", { name: /Zur Zilch-Lobby|Back to Zilch lobby/ })).toBeVisible();
+    expect(await soloActions.evaluate(actions => {
+      const summary = document.querySelector(".zilch-result-summary");
+      return Boolean(summary && (actions.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING));
+    })).toBe(true);
     // The result keeps one compact table balance rather than duplicating the
     // objective/progress cards, but preserves the useful sprint metrics.
     await expect(page.locator(".zilch-solo-objective, .zilch-solo-metrics")).toHaveCount(0);
@@ -1337,6 +1344,8 @@ test("a finished Zilch game starts the same mode again with one click", async ({
     await page.goto(`/zilch/spiel/${gameId}`);
     const restart = page.locator("[data-zilch-new-round]");
     await expect(restart).toBeVisible();
+    await expect(restart).toHaveText(/Revanche|Rematch/);
+    await expect(page.locator(".zilch-result-summary")).toBeVisible();
     await Promise.all([
       page.waitForRequest(request => request.method() === "POST" && new URL(request.url()).pathname === "/api/games"),
       restart.click(),
@@ -1498,13 +1507,17 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
     expect(lobbyResponse?.status()).toBe(200);
     const shellHtml = await lobbyResponse.text();
     const gameId = "abandoned-solo-layout-fixture";
-    const finished = baseSnapshot({
+    // The first terminal broadcast is deliberately not yet durable.  It must
+    // keep the player on the local completion summary until the finalizer
+    // publishes its result route in the following frame.
+    const terminalPending = baseSnapshot({
       _players: [{ id: "p1", name: "Mani", user_id: 2, connected: true }],
       _participants: [{ id: "p1", name: "Mani", type: "human", user_id: 2 }],
       _play_mode: "solo",
       _mode: "1",
       _turn: null,
       _finished: true,
+      _finalization_pending: true,
       _zilch_outcome: { status: "abandoned", tied: false, winner_ids: [] },
       _zilch_result: {
         game_id: gameId,
@@ -1529,7 +1542,56 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
       _zilch_quick_holds: [{ id: "stale-finished-option", points: 100 }],
       _zilch_can_abandon: false,
     });
-    await installGameScreenFixture(page, gameId, { initial: finished }, {
+    const terminalPersisted = { ...terminalPending, _finalization_pending: false };
+    const resultReport = {
+      schema_version: 2,
+      payload_kind: "zilch_solo_result",
+      game_type: "zilch",
+      game_id: gameId,
+      game_name: "Tischprobe",
+      ruleset: "zilch-house-v1",
+      play_mode: "solo",
+      mode: "1",
+      target_score: 10000,
+      started_at: "2026-09-04T11:50:00+00:00",
+      finished_at: "2026-09-04T12:00:00+00:00",
+      duration_seconds: 600,
+      participants: [{ participant_id: "p1", display_name: "Mani", participant_type: "human", user_id: 2 }],
+      participant_order: ["p1"],
+      boards: {
+        p1: {
+          participant_id: "p1",
+          total_points: 1800,
+          round_points: 0,
+          zilch_streak: 0,
+          rounds: [
+            { turn_id: 1, round: 1, event: "bank", points: 1000, total_points: 1000 },
+            { turn_id: 2, round: 2, event: "bank", points: 800, total_points: 1800 },
+          ],
+        },
+      },
+      totals: { p1: 1800 },
+      objective: {
+        id: "reach_10000_fewest_turns",
+        version: 1,
+        parameters: {},
+        progress: { target_score: 10000, total_points: 1800, turns: 2, rolls: 4, zilchs: 0, hot_dice_events: 0, highest_banked_round: 1000, active_duration_seconds: 600 },
+        outcome: "abandoned",
+      },
+      outcome: { status: "abandoned", tied: false, winner_ids: [] },
+      metrics: {
+        turns: 2,
+        rolls: 4,
+        zilch_count: 0,
+        hot_dice_events: 0,
+        hot_dice_events_complete: true,
+        highest_banked_round: 1000,
+        active_duration_seconds: 600,
+        remaining_points: 8200,
+        zilch_penalties: [],
+      },
+    };
+    await installGameScreenFixture(page, gameId, { initial: terminalPending }, {
       mode: "1",
       play_mode: "solo",
       participants: [{ id: "p1", name: "Mani", type: "human", user_id: 2 }],
@@ -1538,6 +1600,16 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
       status: 200,
       contentType: "text/html; charset=utf-8",
       body: shellHtml,
+    }));
+    await page.route(`**/zilch/ergebnis/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    await page.route(`**/api/zilch/results/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ result: resultReport }),
     }));
 
     const currentAward = {
@@ -1625,106 +1697,37 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
 
     await page.goto(`/zilch/spiel/${gameId}`);
 
-    const result = page.locator(".zilch-final-result");
-    await expect(result).toBeVisible();
-    await expect(result).toContainText(/Solo-Lauf aufgegeben|Solo run abandoned/);
-    const finalAwards = page.locator(".zilch-final-awards");
-    await expect(finalAwards).toContainText(/In dieser Partie erreicht|Earned in this game/);
-    await expect(finalAwards.locator(".zilch-final-award")).toHaveCount(2);
-    await expect(finalAwards).toContainText(/Erster Wurf|First Roll/);
-    await expect(finalAwards).toContainText(/Die ersten Hundert|The First Hundred/);
-    await expect(finalAwards).not.toContainText(/Erste sichere Runde|First Safe Round/);
-    await expect(finalAwards).not.toContainText(/Das Wirtshaus füllt sich|The House Is Filling Up/);
+    await expect(page).toHaveURL(new RegExp(`/zilch/spiel/${gameId}$`));
+    await expect(page.locator(".zilch-result-head")).toContainText(/Solo-Lauf aufgegeben|Solo run abandoned/);
+    await expect(page.locator("#appDialogBackdrop")).toBeHidden();
+
+    await expect.poll(() => page.evaluate(() => typeof window.__zilchGameScreenFixturePush)).toBe("function");
+    await page.evaluate(scoreboard => {
+      window.__zilchGameScreenFixturePush({ scoreboard });
+    }, terminalPersisted);
+
     await expect(page.locator("#appDialog")).toContainText(/Erster Wurf|First Roll/);
     await page.getByRole("button", { name: /Weiter|Continue/ }).click();
     await expect(page.locator("#appDialog")).toContainText(/Die ersten Hundert|The First Hundred/);
-    await page.getByRole("button", { name: /Weiter|Continue/ }).click();
+    await Promise.all([
+      page.waitForURL(new RegExp(`/zilch/ergebnis/${gameId}$`)),
+      page.getByRole("button", { name: /Weiter|Continue/ }).click(),
+    ]);
     await expect.poll(() => acknowledgements).toEqual([
       "zilch.first_game",
       "zilch.community_games_100",
     ]);
+    expect(acknowledgements).not.toContain("zilch.banked_round_500");
+    expect(acknowledgements).not.toContain("zilch.community_games_500");
     await expect(page.locator("#appDialogBackdrop")).toBeHidden();
-    await expect(page.locator(".zilch-recommendation")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /Neue Runde|New round/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Ergebnis ansehen|View result/ })).toHaveAttribute(
-      "href",
-      `/zilch/ergebnis/${gameId}`,
-    );
-    await expect(page.locator(".zilch-final-actions").getByRole("link", { name: /Zur Zilch-Lobby|Back to Zilch lobby/ })).toHaveAttribute("href", "/zilch");
-
-    const geometry = await page.evaluate(() => {
-      const compactRect = element => {
-        const { x, y, width, height } = element.getBoundingClientRect();
-        return { x, y, width, height };
-      };
-      const notebook = compactRect(document.querySelector(".zilch-play-layout__notebook"));
-      const resultCard = compactRect(document.querySelector(".zilch-final-result"));
-      const actionBoxes = [...document.querySelectorAll(".zilch-final-actions > *")]
-        .map(compactRect);
-      const die = compactRect(document.querySelector(".zilch-die"));
-      const title = document.querySelector(".zilch-final-result h2");
-      return {
-        notebook,
-        resultCard,
-        actionBoxes,
-        die,
-        titleFits: title.scrollWidth <= title.clientWidth,
-        documentWidth: document.documentElement.scrollWidth,
-        viewportWidth: window.innerWidth,
-      };
-    });
-    expect(Math.abs(geometry.notebook.height - geometry.resultCard.height)).toBeLessThanOrEqual(1);
-    expect(Math.abs(geometry.notebook.width - geometry.resultCard.width)).toBeLessThanOrEqual(1);
-    expect(geometry.resultCard.x).toBeGreaterThan(geometry.notebook.x);
-    expect(geometry.titleFits).toBe(true);
-    expect(geometry.actionBoxes).toHaveLength(3);
-    expect(geometry.actionBoxes.every(box => Math.abs(box.width - geometry.actionBoxes[0].width) <= 1)).toBe(true);
-    expect(geometry.actionBoxes[1].y).toBeGreaterThanOrEqual(geometry.actionBoxes[0].y + geometry.actionBoxes[0].height);
-    expect(geometry.actionBoxes[2].y).toBeGreaterThanOrEqual(geometry.actionBoxes[1].y + geometry.actionBoxes[1].height);
-    expect(Math.abs(geometry.die.width - geometry.die.height)).toBeLessThanOrEqual(1);
-    expect(geometry.die.width).toBeGreaterThan(54);
-    expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
-
-    await page.setViewportSize({ width: 320, height: 800 });
-    const narrowGeometry = await page.evaluate(() => {
-      const notebook = document.querySelector(".zilch-play-layout__notebook").getBoundingClientRect();
-      const resultCard = document.querySelector(".zilch-final-result").getBoundingClientRect();
-      const title = document.querySelector(".zilch-final-result h2");
-      const actions = [...document.querySelectorAll(".zilch-final-actions > *")]
-        .map(element => element.getBoundingClientRect());
-      const die = document.querySelector(".zilch-die").getBoundingClientRect();
-      return {
-        notebookWidth: notebook.width,
-        notebookHeight: notebook.height,
-        resultWidth: resultCard.width,
-        resultHeight: resultCard.height,
-        titleFits: title.scrollWidth <= title.clientWidth,
-        actionsStack: actions.every((box, index) => index === 0 || box.y >= actions[index - 1].bottom),
-        squareDie: Math.abs(die.width - die.height) <= 1,
-        dieWidth: die.width,
-        documentWidth: document.documentElement.scrollWidth,
-        viewportWidth: window.innerWidth,
-      };
-    });
-    expect(Math.abs(narrowGeometry.notebookHeight - narrowGeometry.resultHeight)).toBeLessThanOrEqual(1);
-    expect(Math.abs(narrowGeometry.notebookWidth - narrowGeometry.resultWidth)).toBeLessThanOrEqual(1);
-    expect(narrowGeometry.titleFits).toBe(true);
-    expect(narrowGeometry.actionsStack).toBe(true);
-    expect(narrowGeometry.squareDie).toBe(true);
-    expect(narrowGeometry.dieWidth).toBeGreaterThanOrEqual(49);
-    expect(narrowGeometry.documentWidth).toBeLessThanOrEqual(narrowGeometry.viewportWidth);
-
-    // Acknowledgement empties the current game's delivery queue, but the
-    // durable private profile still restores both the source-linked personal
-    // award and the separately projected community milestone.
-    await page.reload();
-    await expect(page.locator(".zilch-final-awards .zilch-final-award")).toHaveCount(2);
-    await expect(page.locator(".zilch-final-awards")).toContainText(/Erster Wurf|First Roll/);
-    await expect(page.locator(".zilch-final-awards")).toContainText(/Die ersten Hundert|The First Hundred/);
-    await expect(page.locator(".zilch-final-awards")).not.toContainText(/Erste sichere Runde|First Safe Round/);
-    await expect(page.locator(".zilch-final-awards")).not.toContainText(/Das Wirtshaus füllt sich|The House Is Filling Up/);
-    await expect(page.locator("#appDialogBackdrop")).toBeHidden();
-    expect(acknowledgements).toEqual(["zilch.first_game", "zilch.community_games_100"]);
+    await expect(page.locator(".zilch-result-head")).toContainText(/Solo-Lauf aufgegeben|Solo run abandoned/);
+    const resultActions = page.locator(".zilch-result-actions");
+    await expect(resultActions.getByRole("button", { name: /Neues Solo|New solo/ })).toBeVisible();
+    await expect(resultActions.getByRole("link", { name: /Zur Zilch-Lobby|Back to Zilch lobby/ })).toHaveAttribute("href", "/zilch");
+    expect(await resultActions.evaluate(actions => {
+      const summary = document.querySelector(".zilch-result-summary");
+      return Boolean(summary && (actions.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING));
+    })).toBe(true);
 
     // A recipient who did not play the milestone's trigger game gets no
     // presentation game id. The award remains private and appears only in

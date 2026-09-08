@@ -11,6 +11,33 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Nächster Release / Next release — Klarer Abschluss bei Zilch
+
+### Deutsch
+
+- Nach jedem abgeschlossenen oder aufgegebenen Solo-Lauf sowie nach jeder
+  abgeschlossenen Würfelwirt- oder Zwei-Personen-Partie öffnet Zilch
+  automatisch die Ende-Ansicht. Angemeldete Teilnehmer erhalten nach der
+  serverbestätigten Speicherung ihren privaten Bericht; Gäste sehen dieselbe
+  Zusammenfassung im aktuellen Browser-Tab.
+- Oberhalb der Zusammenfassung stehen die nächsten Schritte: **Neues Solo** im
+  Solo-Sprint, **Revanche** gegen den Würfelwirt oder nach einem Duell sowie
+  **Zur Zilch-Lobby**.
+- Die Überschrift und der Button auf Zilch-Spielerprofilen heben sich auf dem
+  Desktop wieder klar vom Holz-Hintergrund ab.
+
+### English
+
+- After every completed or abandoned Solo run, and every completed Dice Keeper
+  or two-player game, Zilch opens its end screen automatically. Signed-in
+  participants receive their private report after server-confirmed persistence;
+  guests see the same summary in their current browser tab.
+- The next actions now sit above the summary: **New solo** for the Solo Sprint,
+  **Rematch** against the Dice Keeper or after a duel, and **Back to Zilch
+  lobby**.
+- The heading and button on Zilch player profiles now stand out clearly from
+  the wood background on desktop.
+
 ## Nächster Release / Next release — Chat ohne Unterbruch
 
 ### Deutsch

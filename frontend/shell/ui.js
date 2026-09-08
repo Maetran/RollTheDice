@@ -147,7 +147,12 @@ import { zdwaPath } from "../multigame/routes.js";
       button.textContent = t(definition.label);
       button.disabled = Boolean(definition.disabled);
       button.addEventListener("click", () => {
-        const value = definition.useInput ? input.value : definition.value ?? definition.id;
+        // `null` is a meaningful explicit result for prompt cancellation.
+        // Do not collapse it into the action id (for example the literal
+        // string "cancel"), which could accidentally be used as input.
+        const value = definition.useInput
+          ? input.value
+          : (Object.prototype.hasOwnProperty.call(definition, "value") ? definition.value : definition.id);
         // Some browser APIs (notably Web Push permission in Safari) require
         // their very first call to happen synchronously in this click handler.
         // Keep the hook narrow and optional so ordinary dialogs retain their
