@@ -120,6 +120,8 @@ scoring. Zilch remembers its separate Classic or LCARS choice locally in the
 same browser. LCARS uses a solid black canvas, flat segmented console rails,
 rounded LCARS elbows and locally hosted condensed display lettering, including
 in the installed PWA. Controls, rules, randomness and scoring stay the same.
+Free rolls appear as a bright LCARS status band inside the scoring tile, with
+the throw name and points remaining readable.
 Usernames are immutable; administrators manage accounts and moderation.
 
 **ZDWA** offers public profiles and rankings, Normal/Hardcore statistics, score

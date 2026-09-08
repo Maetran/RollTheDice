@@ -2349,6 +2349,114 @@ test("a three-pairs Hot Dice choice names the roll and stays optional until Weit
   }
 });
 
+test("LCARS free-roll badge remains readable beside the score and selects the same hold on narrow screens", async ({ browser, baseURL }, testInfo) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await page.addInitScript(() => localStorage.setItem("zilch_theme", "lcars"));
+    await signInAsPreviewMani(page);
+    const lobbyResponse = await page.goto("/zilch");
+    expect(lobbyResponse?.status()).toBe(200);
+    const shellHtml = await lobbyResponse.text();
+    const gameId = "lcars-free-roll-fixture";
+    const snapshot = threePairsHotDiceChoiceSnapshot();
+    await installGameScreenFixture(page, gameId, { initial: snapshot, heldForConfirmation: snapshot });
+    await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: shellHtml,
+    }));
+    await page.goto(`/zilch/spiel/${gameId}`);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "lcars");
+
+    const combinedScore = page.locator("[data-zilch-combined-score]");
+    const stamp = combinedScore.locator(".zilch-combined-score__stamp");
+    await expect(stamp).toHaveText("Freier Wurf!");
+    await expect(combinedScore).toHaveAttribute("aria-label", /Drei Paare.*Freier Wurf/);
+
+    const expectReadableBadge = async () => {
+      const appearance = await combinedScore.evaluate(tile => {
+        const badge = tile.querySelector(".zilch-combined-score__stamp");
+        const text = badge.querySelector("strong");
+        const rect = element => {
+          const { top, right, bottom, left } = element.getBoundingClientRect();
+          return { top, right, bottom, left };
+        };
+        const rgba = value => value.match(/[\d.]+/g).map(Number);
+        const luminance = color => color.slice(0, 3).map(channel => {
+          const value = channel / 255;
+          return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+        let surface = text;
+        let background = rgba(getComputedStyle(surface).backgroundColor);
+        while (background[3] === 0 && surface.parentElement) {
+          surface = surface.parentElement;
+          background = rgba(getComputedStyle(surface).backgroundColor);
+        }
+        const foregroundLuminance = luminance(rgba(getComputedStyle(text).color));
+        const backgroundLuminance = luminance(background);
+        return {
+          badge: rect(badge),
+          tile: rect(tile),
+          label: rect(tile.querySelector(":scope > span:first-child")),
+          points: rect(tile.querySelector(":scope > strong")),
+          contrast: (Math.max(foregroundLuminance, backgroundLuminance) + 0.05)
+            / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05),
+          pageWidth: document.documentElement.scrollWidth,
+          viewportWidth: innerWidth,
+        };
+      });
+      expect(appearance.contrast).toBeGreaterThanOrEqual(4.5);
+      expect(appearance.pageWidth).toBeLessThanOrEqual(appearance.viewportWidth);
+      expect(appearance.badge.left).toBeGreaterThanOrEqual(appearance.tile.left);
+      expect(appearance.badge.right).toBeLessThanOrEqual(appearance.tile.right);
+      expect(appearance.badge.top).toBeGreaterThanOrEqual(appearance.tile.top);
+      expect(appearance.badge.bottom).toBeLessThanOrEqual(appearance.tile.bottom);
+      for (const content of [appearance.label, appearance.points]) {
+        const overlaps = appearance.badge.left < content.right && appearance.badge.right > content.left
+          && appearance.badge.top < content.bottom && appearance.badge.bottom > content.top;
+        expect(overlaps, `The free-roll badge must not obscure the combination or points: ${JSON.stringify({ badge: appearance.badge, content, width: appearance.viewportWidth })}`).toBe(false);
+      }
+      return {
+        x: (appearance.badge.left + appearance.badge.right) / 2 - appearance.tile.left,
+        y: (appearance.badge.top + appearance.badge.bottom) / 2 - appearance.tile.top,
+      };
+    };
+
+    for (const viewport of [
+      { width: 1440, height: 844 },
+      { width: 390, height: 844 },
+      { width: 667, height: 375 },
+      { width: 320, height: 844 },
+    ]) {
+      const { width } = viewport;
+      await page.setViewportSize(viewport);
+      await expect(combinedScore).toBeEnabled();
+      const badgePosition = await expectReadableBadge();
+      await page.screenshot({ path: testInfo.outputPath(`lcars-free-roll-${width}.png`), fullPage: true });
+      // The decorative badge belongs to the existing choice button; tapping
+      // its area must keep selecting a draft, without committing a hold.
+      await combinedScore.click({ position: badgePosition });
+      await expect(combinedScore).toHaveAttribute("aria-pressed", "true");
+      await expect(page.locator(".zilch-die--selected")).toHaveCount(6);
+      await expectReadableBadge();
+      if (width !== 320) await combinedScore.click();
+    }
+    expect(await page.evaluate(() => window.__zilchGameScreenFixtureMessages.some(message => message.action === "zilch_select_hold"))).toBe(false);
+    await page.locator("[data-zilch-roll]").click();
+    await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        action: "zilch_roll_dice",
+        option_id: "fixture-hot-three-pairs",
+        dice_indices: [0, 1, 2, 3, 4, 5],
+        points: 1500,
+      }),
+    ]));
+  } finally {
+    await context.close();
+  }
+});
+
 test("a waiting two-player opponent sees the active player's current scoring choices read-only", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
   const page = await context.newPage();

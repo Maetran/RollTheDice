@@ -780,17 +780,48 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-combined-s
   box-shadow: inset 0 0 0 2px var(--lcars-focus);
 }
 
-html[data-game="zilch"][data-theme="lcars"] .zilch-combined-score__stamp {
-  color: var(--lcars-alert);
-  filter: none;
+/* Free rolls are a flat console status band inside the existing action tile.
+   Keep the throw name and score readable and the whole tile clickable. */
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-combined-score.is-hot {
+  grid-template-areas: "status status" "label score";
+  grid-template-rows: auto minmax(0, 1fr);
+  row-gap: .15rem;
+  padding-block: .15rem;
 }
 
-html[data-game="zilch"][data-theme="lcars"] .zilch-combined-score__stamp strong {
-  border-color: currentColor;
-  background: var(--lcars-void);
-  font-family: var(--lcars-display);
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-combined-score.is-hot > span:first-child {
+  grid-area: label;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-combined-score.is-hot > strong {
+  grid-area: score;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-combined-score .zilch-combined-score__stamp {
+  position: static;
+  z-index: auto;
+  grid-area: status;
+  display: block;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--lcars-void);
+  filter: none;
+  transform: none;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-combined-score .zilch-combined-score__stamp strong {
+  padding: .16em .55em .2em;
+  border: 0;
+  border-radius: var(--lcars-pill);
+  color: var(--lcars-void);
+  background: var(--lcars-cyan);
+  font: 600 clamp(.66rem, 2.2vw, .84rem)/1.1 var(--lcars-display);
+  letter-spacing: .03em;
+  text-align: left;
   text-shadow: none;
   transform: none;
+  animation: none;
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-dice-dock .zilch-table {

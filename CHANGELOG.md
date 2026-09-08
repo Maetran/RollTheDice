@@ -11,6 +11,15 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Stille Korrektur / Silent fix — Freier Wurf in LCARS
+
+- **Deutsch:** „Freier Wurf“ erscheint im LCARS-Design als helles Statusband
+  direkt auf der Punktekachel. Wurfbezeichnung und Punkte bleiben lesbar;
+  Auswahl und Weiterwürfeln funktionieren wie bisher.
+- **English:** LCARS shows “Free roll” as a bright status band inside the
+  scoring tile. The throw name and points remain readable; selecting dice and
+  rolling again work as before.
+
 ## Nächster Release / Next release — LCARS näher am Original
 
 ### Deutsch
