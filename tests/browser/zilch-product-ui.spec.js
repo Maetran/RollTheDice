@@ -411,6 +411,69 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   await expect(page.locator("#createGameCard")).toBeVisible();
 });
 
+test("Zilch lobby combines Dice Keeper wins across every strategy", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+
+    // Other independent browser tests can persist the account's language.
+    // This fixture deliberately asserts the German lobby wording below.
+    const languageSwitcher = page.locator("[data-language-switcher]");
+    if (await languageSwitcher.inputValue() !== "de") {
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+        languageSwitcher.selectOption("de"),
+      ]);
+    }
+
+    const cpuRequests = [];
+    page.on("request", request => {
+      const url = new URL(request.url());
+      if (url.pathname === "/api/zilch/leaderboards" && url.searchParams.get("category") === "cpu_wins") {
+        cpuRequests.push(url);
+      }
+    });
+    await page.route("**/api/zilch/leaderboards**", async route => {
+      const requestUrl = new URL(route.request().url());
+      if (requestUrl.searchParams.get("category") !== "cpu_wins") return route.continue();
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          version: 1,
+          category: "cpu_wins",
+          strategy: "all",
+          ranking: "competition",
+          sorting: { direction: "descending" },
+          offset: 0,
+          limit: 5,
+          total: 1,
+          entries: [{
+            rank: 1,
+            user_id: 2,
+            username: "Simon",
+            display_name: "Simon",
+            primary_value: 3,
+            values: { wins: 3, games: 3, losses: 0, ties: 0 },
+          }],
+          own_entry: null,
+        }),
+      });
+    });
+
+    await page.goto("/zilch");
+    await expect.poll(() => cpuRequests.length).toBe(1);
+    expect(cpuRequests[0].searchParams.get("strategy")).toBe("all");
+
+    const cpuLobbyBox = page.locator("[data-zilch-lobby-leaderboard='cpu_wins']");
+    await expect(cpuLobbyBox).toContainText("Alle Siege gegen den Würfelwirt");
+    await expect(cpuLobbyBox).toContainText("Simon");
+    await expect(cpuLobbyBox).toContainText("3 Siege");
+  } finally {
+    await context.close();
+  }
+});
+
 test("private Zilch statistics and leaderboards render only server projections accessibly", async ({ browser, baseURL }) => {
   // The private shell registers a service worker in normal contexts.  Use an
   // isolated blocked-SW context so these browser-only projection fixtures

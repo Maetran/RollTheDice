@@ -1,23 +1,21 @@
 {
   "kind": "usability",
   "games": ["zilch"],
-  "summary_de": "Zilch-Ergebnisse öffnen nach jeder Partie direkt mit klaren nächsten Schritten.",
-  "summary_en": "Zilch results now open directly after every game with clear next steps.",
+  "summary_de": "Die Zilch-Lobby zählt alle Siege gegen den Würfelwirt jetzt zusammen.",
+  "summary_en": "The Zilch lobby now combines all wins against the dice keeper.",
   "player_notes": {
     "de": {
-      "title": "Klarer Abschluss bei Zilch",
+      "title": "Alle Würfelwirt-Siege im Blick",
       "changes": [
-        "Nach einem abgeschlossenen oder aufgegebenen Solo-Lauf sowie nach jeder abgeschlossenen Würfelwirt- oder Zwei-Personen-Partie öffnet sich dein Ergebnis automatisch.",
-        "Oberhalb der Zusammenfassung startest du ein neues Solo oder eine Revanche oder kehrst direkt zur Lobby zurück.",
-        "Auf Zilch-Spielerprofilen sind Überschrift und Awards-Button auf dem Desktop jetzt deutlich lesbarer."
+        "Die Würfelwirt-Rangliste in der Zilch-Lobby fasst deine Siege gegen Konservativ, Normal und Aggressiv jetzt zusammen.",
+        "In den ausführlichen Bestenlisten kannst du die drei Spielweisen weiterhin einzeln vergleichen."
       ]
     },
     "en": {
-      "title": "A clear Zilch finish",
+      "title": "All Dice Keeper wins at a glance",
       "changes": [
-        "After a completed or abandoned Solo run, and every completed Dice Keeper or two-player game, your result opens automatically.",
-        "Above the summary, start a new Solo run or a rematch, or return directly to the lobby.",
-        "The heading and awards button on Zilch player profiles are now much easier to read on desktop."
+        "The Dice Keeper ranking in the Zilch lobby now combines your wins against Conservative, Normal, and Aggressive.",
+        "In the detailed leaderboards, you can still compare the three playing styles separately."
       ]
     }
   }

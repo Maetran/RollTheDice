@@ -1053,7 +1053,11 @@ async function fetchZilchResults() {
 
 function lobbyLeaderboardShell(category) {
   const title = leaderboardCategoryLabel(category);
-  const detail = category === "solo_sprint" ? t("Wenigste Züge") : t("Meiste Siege");
+  const detail = category === "solo_sprint"
+    ? t("Wenigste Züge")
+    : category === "cpu_wins"
+      ? t("Alle Siege gegen den Würfelwirt")
+      : t("Meiste Siege");
   return `<section class="zilch-lobby-leaderboard-box" data-zilch-lobby-leaderboard="${category}">
     <h3>${escapeHtml(title)}</h3>
     <p>${escapeHtml(detail)}</p>
@@ -1063,7 +1067,7 @@ function lobbyLeaderboardShell(category) {
 
 async function fetchLobbyLeaderboard(category) {
   const params = new URLSearchParams({ category, limit: "5", offset: "0" });
-  if (category === "cpu_wins") params.set("strategy", "normal");
+  if (category === "cpu_wins") params.set("strategy", "all");
   const response = await fetch(`/api/zilch/leaderboards?${params.toString()}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return leaderboardProjection(await response.json());

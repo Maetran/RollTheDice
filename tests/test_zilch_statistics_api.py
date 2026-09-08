@@ -141,6 +141,7 @@ class ZilchStatisticsApiTestCase(TestCase):
         _mani_id, mani_token = self._identity("Mani", role="admin")
         invalid_category = self._get("/api/zilch/leaderboards?category=zdwa", mani_token)
         missing_cpu_strategy = self._get("/api/zilch/leaderboards?category=cpu_wins", mani_token)
+        aggregate_cpu_strategy = self._get("/api/zilch/leaderboards?category=cpu_wins&strategy=all", mani_token)
         invalid_cpu_strategy = self._get(
             "/api/zilch/leaderboards?category=cpu_wins&strategy=unfair",
             mani_token,
@@ -151,6 +152,8 @@ class ZilchStatisticsApiTestCase(TestCase):
         self.assertEqual(invalid_category.json()["detail"], "zilch_statistics_invalid_leaderboard_category")
         self.assertEqual(missing_cpu_strategy.status_code, 400)
         self.assertEqual(missing_cpu_strategy.json()["detail"], "zilch_statistics_invalid_cpu_strategy")
+        self.assertEqual(aggregate_cpu_strategy.status_code, 200)
+        self.assertEqual(aggregate_cpu_strategy.json()["strategy"], "all")
         self.assertEqual(invalid_cpu_strategy.status_code, 400)
         self.assertEqual(invalid_cpu_strategy.json()["detail"], "zilch_statistics_invalid_cpu_strategy")
         self.assertEqual(bounded_limit.status_code, 200)

@@ -1300,6 +1300,7 @@ export const EN = {
     "In möglichst wenigen Zügen": "In as few turns as possible",
     "Wenigste Züge": "Fewest turns",
     "Meiste Siege": "Most wins",
+    "Alle Siege gegen den Würfelwirt": "All wins against the dice keeper",
     "Zilch-Ranglisten": "Zilch rankings",
     "Alle Bestenlisten": "All leaderboards",
     "Zilch erstellen": "Create Zilch game",

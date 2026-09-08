@@ -11,6 +11,25 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Nächster Release / Next release — Alle Würfelwirt-Siege im Blick
+
+### Deutsch
+
+- Die kompakte Würfelwirt-Rangliste in der Zilch-Lobby zählt nun alle Siege
+  gegen Konservativ, Normal und Aggressiv zusammen. Sie zeigt damit dieselbe
+  Gesamtbilanz, die die Überschrift schon immer erwarten ließ.
+- Die ausführlichen Zilch-Bestenlisten bleiben bewusst nach Spielweise
+  filterbar, damit sich die einzelnen Schwierigkeitsgrade weiterhin direkt
+  vergleichen lassen.
+
+### English
+
+- The compact Dice Keeper ranking in the Zilch lobby now combines all wins
+  against Conservative, Normal, and Aggressive, matching the total implied by
+  its heading.
+- The detailed Zilch leaderboards remain filterable by playing style so the
+  individual difficulty levels can still be compared directly.
+
 ## Nächster Release / Next release — Klarer Abschluss bei Zilch
 
 ### Deutsch

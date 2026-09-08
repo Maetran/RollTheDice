@@ -401,6 +401,34 @@ class ZilchStatisticsTestCase(TestCase):
         self.assertEqual(normal["total"], 1)
         self.assertEqual(normal["entries"][0]["display_name"], "RankBob")
 
+    def test_cpu_leaderboard_can_consolidate_all_dice_keeper_strategies(self) -> None:
+        alice = self._user("AllCpuAlice")
+        bob = self._user("AllCpuBob")
+        for strategy in ("conservative", "normal", "aggressive"):
+            self._persist_competitive(
+                human_one=alice,
+                cpu_strategy=strategy,
+                first_score=10_000,
+                second_score=9_000,
+            )
+        self._persist_competitive(
+            human_one=bob,
+            cpu_strategy="normal",
+            first_score=10_000,
+            second_score=9_000,
+        )
+
+        aggregate = get_zilch_leaderboard("cpu_wins", strategy="all")
+        entries = {entry["display_name"]: entry for entry in aggregate["entries"]}
+
+        self.assertEqual(aggregate["strategy"], "all")
+        self.assertEqual(entries["AllCpuAlice"]["values"]["games"], 3)
+        self.assertEqual(entries["AllCpuAlice"]["values"]["wins"], 3)
+        self.assertEqual(entries["AllCpuAlice"]["rank"], 1)
+        self.assertEqual(entries["AllCpuBob"]["values"]["games"], 1)
+        self.assertEqual(entries["AllCpuBob"]["values"]["wins"], 1)
+        self.assertEqual(entries["AllCpuBob"]["rank"], 2)
+
     def test_achievement_points_rank_only_active_accounts_with_registered_zilch_evidence(self) -> None:
         alice = self._user("AchievementAlice")
         bob = self._user("AchievementBob")
@@ -603,6 +631,10 @@ class ZilchStatisticsTestCase(TestCase):
             ("cpu_wins", "normal", 2, ZILCH_LEADERBOARD_MAX_LIMIT),
         )
         self.assertEqual(
+            validate_zilch_leaderboard_query("cpu_wins", strategy="all", offset=0, limit=25),
+            ("cpu_wins", "all", 0, 25),
+        )
+        self.assertEqual(
             validate_zilch_leaderboard_query("achievement_points", offset=1, limit=25),
             ("achievement_points", None, 1, 25),
         )
@@ -618,6 +650,7 @@ class ZilchStatisticsTestCase(TestCase):
             ["solo_sprint", "multiplayer_wins", "cpu_wins", "achievement_points"],
         )
         self.assertEqual(categories[2]["strategies"], ["aggressive", "conservative", "normal"])
+        self.assertEqual(categories[2]["aggregate_strategy"], "all")
         self.assertEqual(categories[3]["sorting"]["keys"], ["points"])
 
     def test_unknown_schema_and_incomplete_historic_hot_dice_are_never_counted_as_zero(self) -> None:

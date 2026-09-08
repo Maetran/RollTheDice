@@ -59,6 +59,10 @@ ZILCH_STATISTICS_SOURCE_PAGE_SIZE: Final = 250
 ZILCH_LEADERBOARD_SOLO_SPRINT: Final = "solo_sprint"
 ZILCH_LEADERBOARD_MULTIPLAYER_WINS: Final = "multiplayer_wins"
 ZILCH_LEADERBOARD_CPU_WINS: Final = "cpu_wins"
+# ``all`` is a leaderboard filter, not a fourth CPU behaviour.  It exists so
+# compact surfaces such as the lobby can show one honest total across the
+# deliberately distinct conservative, normal and aggressive records.
+ZILCH_LEADERBOARD_CPU_ALL_STRATEGY: Final = "all"
 ZILCH_LEADERBOARD_ACHIEVEMENT_POINTS: Final = "achievement_points"
 ZILCH_ACHIEVEMENT_LEADERBOARD_ACCOUNT_PAGE_SIZE: Final = 250
 ZILCH_LEADERBOARD_CATEGORIES: Final[frozenset[str]] = frozenset(
@@ -652,6 +656,7 @@ def list_zilch_leaderboard_categories() -> list[dict[str, Any]]:
             "ranking": "competition",
             "requires_strategy": True,
             "strategies": sorted(ZILCH_CPU_STRATEGIES),
+            "aggregate_strategy": ZILCH_LEADERBOARD_CPU_ALL_STRATEGY,
             "sorting": _match_sorting_metadata(),
         },
         {
@@ -705,7 +710,10 @@ def validate_zilch_leaderboard_query(
     if clean_limit > ZILCH_LEADERBOARD_MAX_LIMIT:
         clean_limit = ZILCH_LEADERBOARD_MAX_LIMIT
     if category == ZILCH_LEADERBOARD_CPU_WINS:
-        if not isinstance(strategy, str) or strategy not in ZILCH_CPU_STRATEGIES:
+        if not isinstance(strategy, str) or strategy not in {
+            *ZILCH_CPU_STRATEGIES,
+            ZILCH_LEADERBOARD_CPU_ALL_STRATEGY,
+        }:
             raise ZilchStatisticsInputError("zilch_statistics_invalid_cpu_strategy")
         return category, strategy, clean_offset, clean_limit
     if strategy not in {None, ""}:
@@ -817,8 +825,13 @@ def _leaderboard_match(
             if cpu_strategy is None:
                 if not _is_human_match(record):
                     continue
-            elif _cpu_strategy_for(record) != cpu_strategy:
-                continue
+            else:
+                record_strategy = _cpu_strategy_for(record)
+                if record_strategy is None or (
+                    cpu_strategy != ZILCH_LEADERBOARD_CPU_ALL_STRATEGY
+                    and record_strategy != cpu_strategy
+                ):
+                    continue
             outcome = _match_outcome(record)
             if outcome is None:
                 # A valid terminal match must have a typed outcome.  Do not
@@ -991,7 +1004,10 @@ def get_zilch_leaderboard(
         }
         objective = None
     elif clean_category == ZILCH_LEADERBOARD_CPU_WINS:
-        if clean_strategy not in ZILCH_CPU_STRATEGIES:
+        if clean_strategy not in {
+            *ZILCH_CPU_STRATEGIES,
+            ZILCH_LEADERBOARD_CPU_ALL_STRATEGY,
+        }:
             raise ZilchStatisticsInputError("zilch_statistics_invalid_cpu_strategy")
         items = _leaderboard_match(records_by_user, cpu_strategy=clean_strategy)
         sorting = {
