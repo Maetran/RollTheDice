@@ -117,9 +117,10 @@ ZDWA offers locally saved Light, Dark and Classic appearances through its compac
 header appearance button. Classic turns the table into a coffee-table score
 sheet with green felt and hand-written paper styling; it never changes rules or
 scoring. Zilch remembers its separate Classic or LCARS choice locally in the
-same browser. LCARS changes the surface into a bridge-console palette without
-changing controls, rules, randomness, or scoring. Usernames are immutable;
-administrators manage accounts and moderation.
+same browser. LCARS uses a solid black canvas, flat segmented console rails,
+rounded LCARS elbows and locally hosted condensed display lettering, including
+in the installed PWA. Controls, rules, randomness and scoring stay the same.
+Usernames are immutable; administrators manage accounts and moderation.
 
 **ZDWA** offers public profiles and rankings, Normal/Hardcore statistics, score
 charts and completed-game replays. Achievement milestones award

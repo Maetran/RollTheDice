@@ -1,23 +1,23 @@
 {
   "kind": "usability",
   "games": ["zilch"],
-  "summary_de": "Zilch meldet sich von der Brücke: Der LCARS-Look ist da – bereit für deine nächste Würfelmission.",
-  "summary_en": "Zilch reports from the bridge: the LCARS look is here for your next dice mission.",
+  "summary_de": "Brücke nachgeschärft: Zilch zeigt LCARS jetzt mit schwarzem Hintergrund, klaren Konsolenrahmen und schmaler Displayschrift.",
+  "summary_en": "Bridge refined: Zilch now shows LCARS with a black background, crisp console rails and narrow display lettering.",
   "player_notes": {
     "de": {
-      "title": "Zilch auf der Brücke",
+      "title": "LCARS näher am Original",
       "changes": [
-        "Der neue Design-Schalter in Zilch wechselt zwischen Klassisch und LCARS; deine Wahl bleibt in diesem Browser erhalten.",
-        "LCARS bringt leuchtende Konsolenfarben, abgerundete Bedienfelder und eine klare Brücken-Optik, ohne den vertrauten Spielablauf zu verändern.",
-        "Würfeln, Halten, Weiterwürfeln und Sichern funktionieren unverändert; Regeln, Wertung und serverseitige Würfe bleiben exakt gleich."
+        "Im LCARS-Design ist der Hintergrund jetzt durchgehend schwarz – auch in der installierten App.",
+        "Flache Farbsegmente, markante Konsolenrahmen und eine schmale Displayschrift bringen mehr LCARS auf deinen Bildschirm.",
+        "Die vertrauten Aktionen bleiben an ihrem Platz; Würfeln, Halten und Sichern funktionieren wie bisher."
       ]
     },
     "en": {
-      "title": "Zilch on the bridge",
+      "title": "LCARS closer to the original",
       "changes": [
-        "Zilch's new appearance button switches between Classic and LCARS; your choice stays in this browser.",
-        "LCARS brings bright console colours, rounded controls, and a clear bridge look without changing the familiar flow of play.",
-        "Roll, hold, roll again, and bank work exactly as before; rules, scoring, and server-side rolls stay the same."
+        "LCARS now has a solid black background, including in the installed app.",
+        "Flat colour segments, distinctive console rails and narrow display lettering bring more LCARS to your screen.",
+        "Familiar actions remain in place; rolling, holding and banking work as before."
       ]
     }
   }

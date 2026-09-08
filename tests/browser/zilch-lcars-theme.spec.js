@@ -1,5 +1,79 @@
 const { test, expect } = require("@playwright/test");
 
+const LCARS_VIEWPORTS = [
+  { width: 1440, height: 900 },
+  { width: 390, height: 844 },
+  { width: 320, height: 844 },
+  { width: 844, height: 390 },
+  { width: 667, height: 375 },
+];
+
+async function expectImageFreeCanvas(page) {
+  const canvas = await page.evaluate(() => (
+    [document.documentElement, document.body].flatMap(element => (
+      [null, "::before", "::after"].map(pseudo => ({
+        surface: `${element.tagName.toLowerCase()}${pseudo || ""}`,
+        backgroundImage: getComputedStyle(element, pseudo).backgroundImage,
+      }))
+    ))
+  ));
+  for (const surface of canvas) {
+    expect(surface.backgroundImage, surface.surface).toBe("none");
+  }
+}
+
+async function enableInstalledAppStyles(page) {
+  // Chromium's media emulation does not support display-mode. Activate the
+  // shipped standalone media rules through CSSOM to exercise their real
+  // cascade, including the classic wood layer on body::before.
+  const enabled = await page.evaluate(() => {
+    let count = 0;
+    const visit = rules => {
+      for (const rule of rules) {
+        if (rule instanceof CSSMediaRule && rule.conditionText.includes("display-mode: standalone")) {
+          rule.media.mediaText = "all";
+          count += 1;
+        }
+        if (rule.cssRules) visit(rule.cssRules);
+      }
+    };
+    for (const sheet of document.styleSheets) visit(sheet.cssRules);
+    return count;
+  });
+  expect(enabled).toBeGreaterThan(0);
+}
+
+async function expectLcarsViewports(page) {
+  for (const viewport of LCARS_VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    await expectImageFreeCanvas(page);
+    await expect(page.locator("[data-theme-toggle]")).toBeVisible();
+    const layout = await page.evaluate(() => {
+      const toggle = document.querySelector("[data-theme-toggle]").getBoundingClientRect();
+      const player = document.querySelector(".zilch-notebook-player.is-active");
+      const dock = document.querySelector(".zilch-dice-dock");
+      return {
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: window.innerWidth,
+        toggleLeft: toggle.left,
+        toggleRight: toggle.right,
+        score: player && dock ? {
+          historyHeight: player.querySelector("ol").clientHeight,
+          footerBottom: player.querySelector("footer").getBoundingClientRect().bottom,
+          dockTop: dock.getBoundingClientRect().top,
+        } : null,
+      };
+    });
+    expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+    expect(layout.toggleLeft).toBeGreaterThanOrEqual(-1);
+    expect(layout.toggleRight).toBeLessThanOrEqual(layout.viewportWidth + 1);
+    if (layout.score) {
+      expect(layout.score.historyHeight).toBeGreaterThanOrEqual(16);
+      expect(layout.score.footerBottom).toBeLessThanOrEqual(layout.score.dockTop);
+    }
+  }
+}
+
 async function signIn(page, username, password) {
   await page.fill("#loginUsername", username);
   await page.fill("#loginPassword", password);
@@ -55,8 +129,13 @@ test("Zilch retains its independent LCARS appearance through reloads, languages,
     await loginAppearance.click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "lcars");
     await expect.poll(() => page.evaluate(() => localStorage.getItem("zilch_theme"))).toBe("lcars");
+    await expectLcarsViewports(page);
+    await enableInstalledAppStyles(page);
+    await expectLcarsViewports(page);
     await loginAppearance.click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect.poll(() => page.evaluate(() => getComputedStyle(document.body, "::before").backgroundImage)).toContain("url(");
+    await page.setViewportSize({ width: 1440, height: 900 });
 
     await signInAsPreviewMani(page);
     await page.goto("/zilch");
@@ -80,30 +159,13 @@ test("Zilch retains its independent LCARS appearance through reloads, languages,
       "aria-label",
       "Darstellung wechseln: LCARS. Nächstes Design: Klassisch.",
     );
-    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#050508");
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#000000");
     await expect.poll(() => page.evaluate(() => ({
       zilch: localStorage.getItem("zilch_theme"),
       zdwa: localStorage.getItem("wuerfler_theme"),
     }))).toEqual({ zilch: "lcars", zdwa: "classic" });
-    await page.mouse.move(0, 200);
-    await expect(appearance).toHaveCSS("background-color", "rgb(139, 215, 235)");
-
-    const lcarsLook = await page.evaluate(() => {
-      const button = document.querySelector("[data-theme-toggle]");
-      const header = document.querySelector(".zilch-header");
-      return {
-        void: getComputedStyle(document.documentElement).getPropertyValue("--lcars-void").trim(),
-        colorScheme: document.documentElement.style.colorScheme,
-        buttonRadius: getComputedStyle(button).borderTopRightRadius,
-        displayFont: getComputedStyle(button).fontFamily,
-        headerRail: getComputedStyle(header).borderBottomColor,
-      };
-    });
-    expect(lcarsLook.void).toBe("#050508");
-    expect(lcarsLook.colorScheme).toBe("dark");
-    expect(Number.parseFloat(lcarsLook.buttonRadius)).toBeGreaterThan(0);
-    expect(lcarsLook.displayFont).toContain("Impact");
-    expect(lcarsLook.headerRail).toBe("rgb(205, 168, 219)");
+    await expectImageFreeCanvas(page);
+    expect(await page.evaluate(() => document.documentElement.style.colorScheme)).toBe("dark");
 
     // The opt-in style survives a document rebuild, while the ZDWA choice is
     // neither read nor overwritten by the Zilch switcher.
@@ -136,22 +198,9 @@ test("Zilch retains its independent LCARS appearance through reloads, languages,
       "Change appearance: LCARS. Next design: Classic.",
     );
 
-    for (const viewport of [{ width: 320, height: 844 }, { width: 390, height: 844 }]) {
-      await page.setViewportSize(viewport);
-      await expect(appearance).toBeVisible();
-      const mobile = await page.evaluate(() => {
-        const toggle = document.querySelector("[data-theme-toggle]").getBoundingClientRect();
-        return {
-          documentWidth: document.documentElement.scrollWidth,
-          viewportWidth: window.innerWidth,
-          toggleLeft: toggle.left,
-          toggleRight: toggle.right,
-        };
-      });
-      expect(mobile.documentWidth).toBeLessThanOrEqual(mobile.viewportWidth);
-      expect(mobile.toggleLeft).toBeGreaterThanOrEqual(-1);
-      expect(mobile.toggleRight).toBeLessThanOrEqual(mobile.viewportWidth + 1);
-    }
+    await expectLcarsViewports(page);
+    await enableInstalledAppStyles(page);
+    await expectLcarsViewports(page);
 
     // The active-room header intentionally becomes denser at 320px. Its
     // icon-only appearance switch must remain visible rather than inheriting
@@ -162,9 +211,12 @@ test("Zilch retains its independent LCARS appearance through reloads, languages,
       page.locator("#zilchCreateForm button[type='submit']").click(),
     ]);
     await expect(page.locator(".zilch-shell--game")).toBeVisible();
+    await expect(page.locator("[data-zilch-board-id]").first()).toBeVisible();
     await expect(appearance.locator("[data-theme-icon]")).toBeVisible();
     await expect(appearance.locator("[data-theme-icon]")).toHaveText("✦");
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expectLcarsViewports(page);
+    await enableInstalledAppStyles(page);
+    await expectLcarsViewports(page);
   } finally {
     await context.close();
   }

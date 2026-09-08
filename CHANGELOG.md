@@ -11,6 +11,26 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Nächster Release / Next release — LCARS näher am Original
+
+### Deutsch
+
+- Der LCARS-Hintergrund ist durchgehend schwarz, auch in der installierten
+  App. Holztextur, Hintergrundraster und Papierdekorationen sind entfernt.
+- Flache Farbsegmente, kräftige L-förmige Konsolenrahmen und eine lokal
+  mitgelieferte schmale Displayschrift orientieren sich stärker an LCARS.
+- Spielauswahl, Punktedisplay und Würfelaktionen tragen dieselbe Designsprache.
+  Bedienung und Spielregeln bleiben erhalten.
+
+### English
+
+- LCARS now has a solid black background, including in the installed app.
+  Wood textures, background grids and paper decorations are removed.
+- Flat colour segments, prominent L-shaped console rails and a bundled narrow
+  display font bring the appearance closer to LCARS.
+- Game selection, score displays and dice actions share the same visual style.
+  Controls and game rules are unchanged.
+
 ## Nächster Release / Next release — Zilch auf der Brücke
 
 ### Deutsch
