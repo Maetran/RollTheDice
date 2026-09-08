@@ -216,7 +216,10 @@
   background-size: 20px 3px, 3px 20px !important;
 }
 
-:root[data-game="zdwa"][data-theme="classic"] :is(table.grid th:last-child, table.grid td:last-child, .leaderboard-box th:last-child, .leaderboard-box td:last-child, .grid-fields th:last-child, .grid-fields td:last-child) {
+/* Keep the header's shared paper wash intact. The right edge treatment belongs
+   to score cells only; applying it to the final header erased its background
+   gradient and made the ❗ column look unlike the other score columns. */
+:root[data-game="zdwa"][data-theme="classic"] :is(table.grid tbody td:last-child, .leaderboard-box tbody td:last-child, .grid-fields tbody td:last-child) {
   background-image: var(--classic-wavy-horizontal) !important;
   background-repeat: repeat-x !important;
   background-position: left bottom !important;

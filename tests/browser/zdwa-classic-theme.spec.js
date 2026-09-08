@@ -104,6 +104,26 @@ test("ZDWA cycles and retains Light, Dark, and Classic without changing game UI 
   expect(roomLook.scoreLineImage).toContain("data:image/svg+xml");
   expect(roomLook.scoreLineImage).toContain("%23174a8b");
 
+  // The announced (❗) column is the final table header. Its paper wash must
+  // match the three score-column headers rather than losing the gradient to a
+  // last-column body-cell edge treatment.
+  const scoreHeaders = page.locator(
+    ".player-card.me table.grid > thead > tr > th:not(.sticky)",
+  );
+  const headerBackgrounds = await scoreHeaders.evaluateAll((headers) =>
+    headers.map((header) => {
+      const style = getComputedStyle(header);
+      return {
+        backgroundColor: style.backgroundColor,
+        backgroundImage: style.backgroundImage,
+      };
+    }),
+  );
+  expect(headerBackgrounds).toHaveLength(4);
+  for (const otherHeader of headerBackgrounds.slice(0, 3)) {
+    expect(headerBackgrounds[3]).toEqual(otherHeader);
+  }
+
   // A multiplayer correction adds a real second row to the mobile action dock.
   // The same responsive state must reserve enough space above chat and keep the
   // final score row reachable on short screens.
