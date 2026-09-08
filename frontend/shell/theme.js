@@ -1,19 +1,25 @@
 (function () {
   "use strict";
 
-  const STORAGE_KEY = "wuerfler_theme";
-  const THEMES = ["light", "dark", "classic"];
+  const isZilch = document.documentElement.dataset.game === "zilch";
+  const STORAGE_KEY = isZilch ? "zilch_theme" : "wuerfler_theme";
+  const THEMES = isZilch ? ["light", "lcars"] : ["light", "dark", "classic"];
   const DARK_COLOR = "#0b1120";
   const LIGHT_COLOR = "#f4f6f8";
   const CLASSIC_COLOR = "#31583a";
   const ZILCH_COLOR = "#542d16";
+  const LCARS_COLOR = "#050508";
   const media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
-  const fixedZilchTheme = document.documentElement.dataset.game === "zilch";
-  const themeUi = {
-    light: { icon: "☀", label: "Hell" },
-    dark: { icon: "☾", label: "Dunkel" },
-    classic: { icon: "⚄", label: "Classic" },
-  };
+  const themeUi = isZilch
+    ? {
+      light: { icon: "◒", label: "Klassisch" },
+      lcars: { icon: "✦", label: "LCARS" },
+    }
+    : {
+      light: { icon: "☀", label: "Hell" },
+      dark: { icon: "☾", label: "Dunkel" },
+      classic: { icon: "⚄", label: "Classic" },
+    };
 
   function translate(value) {
     return window.ZDWA_I18N?.t?.(value) || String(value ?? "");
@@ -33,7 +39,7 @@
   }
 
   function preferredTheme() {
-    if (fixedZilchTheme) return "light";
+    if (isZilch) return storedTheme() || "light";
     return storedTheme() || (media && media.matches ? "dark" : "light");
   }
 
@@ -44,8 +50,8 @@
       meta.name = "theme-color";
       document.head.appendChild(meta);
     }
-    meta.content = fixedZilchTheme
-      ? ZILCH_COLOR
+    meta.content = isZilch
+      ? theme === "lcars" ? LCARS_COLOR : ZILCH_COLOR
       : theme === "dark"
         ? DARK_COLOR
         : theme === "classic"
@@ -71,13 +77,12 @@
   function applyTheme(theme) {
     const resolved = isTheme(theme) ? theme : "light";
     document.documentElement.dataset.theme = resolved;
-    document.documentElement.style.colorScheme = resolved === "dark" ? "dark" : "light";
+    document.documentElement.style.colorScheme = resolved === "dark" || resolved === "lcars" ? "dark" : "light";
     updateThemeColor(resolved);
     updateToggles(resolved);
   }
 
   function toggleTheme() {
-    if (fixedZilchTheme) return;
     const current = isTheme(document.documentElement.dataset.theme)
       ? document.documentElement.dataset.theme
       : preferredTheme();
@@ -98,7 +103,7 @@
 
   if (media) {
     const followSystemTheme = function () {
-      if (fixedZilchTheme) return;
+      if (isZilch) return;
       if (!storedTheme()) applyTheme(preferredTheme());
     };
     if (typeof media.addEventListener === "function") media.addEventListener("change", followSystemTheme);

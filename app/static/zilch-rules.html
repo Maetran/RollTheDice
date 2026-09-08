@@ -15,11 +15,12 @@
   <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#542d16">
   <meta name="color-scheme" content="light">
-  <link rel="icon" type="image/png" href="/static/icons/zilch-icon-32.png?v=895d62beba99" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/zilch-apple-touch-icon-180.png?v=895d62beba99" sizes="180x180">
-  <script>document.documentElement.dataset.theme="light";document.documentElement.style.colorScheme="light";</script>
-  <script src="/static/shell.js?v=895d62beba99" defer></script>
-  <link rel="stylesheet" href="/static/zilch.css?v=895d62beba99">
+  <link rel="icon" type="image/png" href="/static/icons/zilch-icon-32.png?v=a3a26b8f49f5" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/zilch-apple-touch-icon-180.png?v=a3a26b8f49f5" sizes="180x180">
+  <script>(()=>{let t="light";try{t=localStorage.getItem("zilch_theme")==="lcars"?"lcars":"light"}catch(_){}document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t==="lcars"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=t==="lcars"?"#050508":"#542d16"})()</script>
+  <script src="/static/shell.js?v=a3a26b8f49f5" defer></script>
+  <link rel="stylesheet" href="/static/zilch.css?v=a3a26b8f49f5">
+  <link rel="stylesheet" href="/static/zilch-lcars.css?v=a3a26b8f49f5">
 </head>
 <body class="zilch-page">
   <a class="zilch-skip-link" href="#zilchContent">Zum Zilch-Inhalt springen</a>
@@ -31,6 +32,7 @@
       <div class="zilch-header-tools">
         <span id="zilchAccount"></span>
         <label class="language-switcher" aria-label="Sprache wählen"><select data-language-switcher aria-label="Sprache wählen"><option value="de">DE</option><option value="en">EN</option></select></label>
+        <button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-label="Darstellung wechseln"><span class="theme-toggle-icon" data-theme-icon aria-hidden="true">◒</span></button>
         <a id="zilchRoomLobby" class="small ghost zilch-room-lobby" href="/" data-zilch-path="/" aria-label="Zur Zilch-Lobby" title="Zur Zilch-Lobby" hidden><span aria-hidden="true">⌂</span><span class="zilch-control-label">Lobby</span></a>
         <button class="small ghost game-switch" type="button" data-game-switch hidden disabled aria-hidden="true" aria-label="ZDWA öffnen (Alt+Shift+Z)" aria-keyshortcuts="Alt+Shift+Z" title="ZDWA öffnen (Alt+Shift+Z)"><svg class="game-switch-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 4 4 7l3 3M4 7h15L5 17h15m-3-3 3 3-3 3"/></svg><span class="game-switch-label">ZDWA</span></button>
         <a id="zilchRoomRules" class="small ghost zilch-room-rules" href="/regeln" data-zilch-path="/regeln" aria-label="Spielregeln" title="Spielregeln" hidden><span aria-hidden="true">?</span><span class="zilch-control-label">Regeln</span></a>
@@ -39,7 +41,7 @@
     <div id="zilchLiveAnnouncements" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
     <div id="zilchContent" tabindex="-1"><h1>Zilch-Spielregeln werden geladen …</h1></div>
   </main>
-  <script src="/static/emoji.js?v=895d62beba99" defer></script>
-  <script type="module" src="/static/zilch.js?v=895d62beba99"></script>
+  <script src="/static/emoji.js?v=a3a26b8f49f5" defer></script>
+  <script type="module" src="/static/zilch.js?v=a3a26b8f49f5"></script>
 </body>
 </html>

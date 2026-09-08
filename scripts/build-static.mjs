@@ -49,6 +49,7 @@ const targets = [
   { source: "frontend/shell/index.js", output: "app/static/shell.js", format: "iife" },
   { source: "frontend/styles/lobby-entry.css", output: "app/static/lobby.css" },
   { source: "frontend/styles/zilch.css", output: "app/static/zilch.css" },
+  { source: "frontend/styles/zilch-lcars.css", output: "app/static/zilch-lcars.css" },
   { source: "frontend/styles/index.css", output: "app/static/style.css" },
 ];
 

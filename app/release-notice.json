@@ -1,23 +1,23 @@
 {
   "kind": "usability",
-  "games": ["zdwa", "zilch"],
-  "summary_de": "Mit viel Liebe: Der Retro-Look für ZDWA ist da – der grüne Filz ist zurück.",
-  "summary_en": "Made with love: ZDWA's retro look is here, and green felt is back.",
+  "games": ["zilch"],
+  "summary_de": "Zilch meldet sich von der Brücke: Der LCARS-Look ist da – bereit für deine nächste Würfelmission.",
+  "summary_en": "Zilch reports from the bridge: the LCARS look is here for your next dice mission.",
   "player_notes": {
     "de": {
-      "title": "Der grüne Filz ist zurück",
+      "title": "Zilch auf der Brücke",
       "changes": [
-        "Der bekannte Design-Schalter in ZDWA wechselt jetzt zwischen Hell, Dunkel und Classic; deine Wahl bleibt in diesem Browser erhalten.",
-        "Classic bringt den Retro-Look mit viel Liebe zurück: grüne Filzoptik, sanft gebrauchte Sepia-Würfel und handschriftlich wirkende Punkteblätter, Tabellen und Legenden.",
-        "Die sichtbaren Fake-Würfe laufen in ZDWA und Zilch etwas schneller, ohne Regeln, Wertung oder das Serverergebnis zu verändern."
+        "Der neue Design-Schalter in Zilch wechselt zwischen Klassisch und LCARS; deine Wahl bleibt in diesem Browser erhalten.",
+        "LCARS bringt leuchtende Konsolenfarben, abgerundete Bedienfelder und eine klare Brücken-Optik, ohne den vertrauten Spielablauf zu verändern.",
+        "Würfeln, Halten, Weiterwürfeln und Sichern funktionieren unverändert; Regeln, Wertung und serverseitige Würfe bleiben exakt gleich."
       ]
     },
     "en": {
-      "title": "Green felt is back",
+      "title": "Zilch on the bridge",
       "changes": [
-        "ZDWA's familiar appearance button now cycles through Light, Dark, and Classic; your choice stays in this browser.",
-        "Classic brings the retro feel back with green felt, gently worn sepia dice, and score sheets, tables, and legends that feel handwritten.",
-        "Visible fake rolls are a little faster in ZDWA and Zilch without changing rules, scoring, or the server result."
+        "Zilch's new appearance button switches between Classic and LCARS; your choice stays in this browser.",
+        "LCARS brings bright console colours, rounded controls, and a clear bridge look without changing the familiar flow of play.",
+        "Roll, hold, roll again, and bank work exactly as before; rules, scoring, and server-side rolls stay the same."
       ]
     }
   }

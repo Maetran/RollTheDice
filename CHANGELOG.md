@@ -11,6 +11,27 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Nächster Release / Next release — Zilch auf der Brücke
+
+### Deutsch
+
+- Zilch hat einen eigenen, lokalen Design-Schalter: **Klassisch** oder
+  **LCARS**. Die Wahl bleibt in diesem Browser gespeichert und ist bewusst von
+  der ZDWA-Auswahl getrennt.
+- LCARS bringt ein dunkles Konsolendisplay mit Apricot-, Lila-, Blau- und
+  Türkisflächen, abgerundeten Bedienfeldern und technischer Display-Typografie.
+- Würfeln, Halten, Weiterwürfeln, Sichern, Regeln, Wertung und serverseitige
+  Ergebnisse funktionieren unverändert.
+
+### English
+
+- Zilch has its own local appearance button: **Classic** or **LCARS**. The
+  choice stays in this browser and is deliberately separate from ZDWA's theme.
+- LCARS adds a dark console display with apricot, lilac, blue, and cyan panels,
+  rounded controls, and technical display typography.
+- Roll, hold, roll again, bank, rules, scoring, and server-side results work
+  exactly as before.
+
 ## Nächster Release / Next release — Classic am Kaffeetisch
 
 ### Deutsch

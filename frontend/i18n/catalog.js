@@ -279,6 +279,8 @@ export const EN = {
     "Dunkel": "Dark",
     "Hell": "Light",
     "Classic": "Classic",
+    "Klassisch": "Classic",
+    "LCARS": "LCARS",
     "Mit dem Design-Schalter wählst du Hell, Dunkel oder Classic. Classic ändert nur die Darstellung, nie Regeln oder Wertung.": "Use the appearance button to choose Light, Dark, or Classic. Classic changes only the look, never the rules or scoring.",
     "⌀ Punkte": "Avg. points",
     "Durchschnittspunkte": "Average points",

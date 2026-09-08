@@ -8,14 +8,18 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#542d16">
   <meta name="color-scheme" content="light">
-  <link rel="icon" type="image/png" href="/static/icons/zilch-icon-32.png?v=895d62beba99" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/zilch-apple-touch-icon-180.png?v=895d62beba99" sizes="180x180">
-  <script>document.documentElement.dataset.theme="light";document.documentElement.style.colorScheme="light";</script>
-  <script src="/static/shell.js?v=895d62beba99" defer></script>
-  <link rel="stylesheet" href="/static/zilch.css?v=895d62beba99">
+  <link rel="icon" type="image/png" href="/static/icons/zilch-icon-32.png?v=a3a26b8f49f5" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/zilch-apple-touch-icon-180.png?v=a3a26b8f49f5" sizes="180x180">
+  <script>(()=>{let t="light";try{t=localStorage.getItem("zilch_theme")==="lcars"?"lcars":"light"}catch(_){}document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t==="lcars"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=t==="lcars"?"#050508":"#542d16"})()</script>
+  <script src="/static/shell.js?v=a3a26b8f49f5" defer></script>
+  <link rel="stylesheet" href="/static/zilch.css?v=a3a26b8f49f5">
+  <link rel="stylesheet" href="/static/zilch-lcars.css?v=a3a26b8f49f5">
 </head>
 <body class="zilch-page zilch-login-page">
   <main class="zilch-login-shell">
+    <div class="zilch-login-tools">
+      <button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-label="Darstellung wechseln"><span class="theme-toggle-icon" data-theme-icon aria-hidden="true">◒</span></button>
+    </div>
     <a class="zilch-brand zilch-login-brand" href="/zilch/anmelden" data-zilch-path="/anmelden" aria-label="Zilch die Wand an anmelden"><span class="zilch-brand-mark" aria-hidden="true">Z</span><span>Zilch die Wand an</span></a>
     <section class="zilch-card zilch-login-card" aria-labelledby="zilchLoginTitle">
       <p class="zilch-eyebrow">Dein Spielerkonto</p>
@@ -34,6 +38,6 @@
       <p id="zilchLoginMessage" class="zilch-login-message" role="status"></p>
     </section>
   </main>
-  <script type="module" src="/static/zilch-login.js?v=895d62beba99"></script>
+  <script type="module" src="/static/zilch-login.js?v=a3a26b8f49f5"></script>
 </body>
 </html>

@@ -2930,6 +2930,14 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
   margin: auto;
 }
 
+.zilch-login-tools { display: flex; justify-content: flex-end; }
+.zilch-login-tools .theme-toggle {
+  border-color: rgba(255, 237, 184, .5);
+  color: #fffaf0;
+  background: rgba(58, 27, 13, .44);
+}
+.zilch-login-tools .theme-toggle:hover { background: rgba(90, 43, 18, .68); }
+
 .zilch-login-brand { justify-self: center; color: var(--zilch-paper); text-decoration: none; }
 
 .zilch-login-card { padding: clamp(1.1rem, 4vw, 1.7rem); }
@@ -4767,6 +4775,7 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
   }
 
   .zilch-shell--game .zilch-header-tools :where(button, a) > [aria-hidden="true"] { display: none; }
+  .zilch-shell--game .zilch-header-tools .theme-toggle > .theme-toggle-icon { display: inline-flex; }
 
   .zilch-shell--game .zilch-room-abandon { padding: 0; }
 

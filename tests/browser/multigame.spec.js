@@ -409,7 +409,9 @@ test("Zilch is a separate permission-gated app mode and its hotkey respects inpu
   await expect(page.getByRole("heading", { name: "Zilch die Wand an – Würfelspiel online" })).toBeVisible();
   await expect(page.locator(".zilch-lobby-leaderboard-box")).toHaveCount(3);
   await expect(page.getByText(/Interne Vorschau|Private Zilch-Vorschau/)).toHaveCount(0);
-  await expect(page.locator("[data-theme-toggle]")).toHaveCount(0);
+  const zilchAppearance = page.locator("[data-theme-toggle]");
+  await expect(zilchAppearance).toBeVisible();
+  await expect(zilchAppearance).toHaveAttribute("data-theme-current", "light");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
   await page.evaluate(() => window.ZDWA_UI.toast("Positionstest", { duration: 0 }));
