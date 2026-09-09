@@ -1455,7 +1455,7 @@ export const EN = {
     "Startwurf abgeschlossen": "Opening roll complete",
     "{player} beginnt.": "{player} starts.",
     "Die Startwürfe erscheinen als kleine Würfel. Beide Ergebnisse bleiben kurz sichtbar, bevor das Spiel oder der nächste Startversuch beginnt.": "Opening rolls appear as small dice. Both results stay visible briefly before play or the next opening attempt begins.",
-    "Im LCARS-Punktebuch siehst du beide Gesamtstände und Verläufe gleichzeitig. Der Würfelwirt lässt nach seinen Würfen kurz Zeit zum Lesen.": "The LCARS notebook shows both players' totals and histories together. The dice keeper pauses briefly after rolling so you can read the result.",
+    "Im LCARS-Punktebuch steht der aktive Verlauf oben. Unten bleibt der andere Spieler mit Name und Gesamtstand sichtbar; beim Zugwechsel gleitet sein Blatt nach oben. Der Würfelwirt lässt nach seinen Würfen kurz Zeit zum Lesen.": "The LCARS notebook shows the active player's history at the top. The other player's name and total stay visible below; their sheet slides up when their turn begins. The dice keeper pauses briefly after rolling so you can read the result.",
     "beginnt die Partie.": "starts the game.",
     "Der Startspieler steht fest.": "The starting player is decided.",
     "Wer höher würfelt, beginnt.": "The higher roll starts.",

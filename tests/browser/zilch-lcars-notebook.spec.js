@@ -78,6 +78,7 @@ async function installFixture(page, cpu) {
         this.listeners = new Map();
         if (new URL(url, location.href).pathname === `/ws/${game}`) {
           window.__pushNotebookSnapshot = next => this.emit("message", { data: JSON.stringify({ scoreboard: next }) });
+          window.__pushNotebookFrame = payload => this.emit("message", { data: JSON.stringify(payload) });
         }
         setTimeout(() => { this.readyState = 1; this.emit("open", {}); }, 0);
       }
@@ -99,6 +100,125 @@ async function installFixture(page, cpu) {
   await expect(page.locator("[data-zilch-board-id]")).toHaveCount(2);
 }
 
+for (const cpu of [false, true]) {
+  test(`LCARS ${cpu ? "CPU" : "multiplayer"} visibly slides both ways without restarting on repeated frames or chat`, async ({ browser, baseURL }, testInfo) => {
+    const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+    const page = await context.newPage();
+    try {
+      await installFixture(page, cpu);
+      await enableStandaloneStyles(page);
+      for (const active of ["p2", "p1"]) {
+        const motion = await page.evaluate(async next => {
+          const read = () => [...document.querySelectorAll("[data-zilch-board-id]")].map(board => {
+            const bounds = board.getBoundingClientRect();
+            const animation = board.getAnimations().find(item => item.playState === "running");
+            return {
+              id: board.dataset.zilchBoardId, top: bounds.top,
+              historyVisibility: getComputedStyle(board.querySelector("ol")).visibility,
+              animation: animation ? {
+                name: animation.animationName,
+                progress: animation.effect.getComputedTiming().progress,
+                duration: animation.effect.getTiming().duration,
+              } : null,
+            };
+          });
+          const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+          window.__pushNotebookSnapshot(next);
+          await frame();
+          const start = read();
+          await new Promise(resolve => setTimeout(resolve, 110));
+          const beforeRefresh = read();
+          // Real same-turn socket frames recreate the notebook. They must
+          // continue the existing slide instead of replaying its first frame.
+          window.__pushNotebookSnapshot(next);
+          await frame();
+          const afterRefresh = read();
+          window.__pushNotebookFrame({ chat: {
+            from_id: "p2", sender: "PreviewFriend", text: "Weiter geht's!",
+            ts: "2026-09-09T08:00:00+00:00", kind: "chat",
+          } });
+          await frame();
+          const afterChat = read();
+          await new Promise(resolve => setTimeout(resolve, 100));
+          const later = read();
+          const running = [...document.querySelectorAll("[data-zilch-board-id]")]
+            .flatMap(board => board.getAnimations({ subtree: true })).filter(animation => (
+              animation.playState === "running" && /^zilch-lcars-sheet-/.test(animation.animationName)
+            ));
+          await Promise.all(running.map(animation => animation.finished.catch(() => {})));
+          await frame();
+          const end = read();
+          // The transition has genuinely elapsed; do not advance CSS time
+          // independently of the application's performance.now() timestamp.
+          window.__pushNotebookSnapshot(next);
+          await frame();
+          const settledRefresh = read();
+          return { start, beforeRefresh, afterRefresh, afterChat, later, end, settledRefresh };
+        }, snapshot(active, cpu));
+        const incoming = phase => motion[phase].find(board => board.id === active);
+        const outgoing = phase => motion[phase].find(board => board.id !== active);
+        for (const board of motion.start) {
+          expect(board.animation, `${board.id} needs a running slide`).not.toBeNull();
+          expect(board.animation.duration).toBeGreaterThanOrEqual(300);
+          expect(board.animation.duration).toBeLessThanOrEqual(800);
+        }
+        expect(incoming("start").animation.name).toBe("zilch-lcars-sheet-open");
+        expect(outgoing("start").animation.name).toBe("zilch-lcars-sheet-close");
+        expect(incoming("beforeRefresh").top).toBeLessThan(incoming("start").top - 2);
+        expect(outgoing("beforeRefresh").top).toBeGreaterThan(outgoing("start").top + 2);
+        for (const playerId of ["p1", "p2"]) {
+          const before = motion.beforeRefresh.find(board => board.id === playerId).animation.progress;
+          for (const phase of ["afterRefresh", "afterChat"]) {
+            const current = motion[phase].find(board => board.id === playerId).animation;
+            expect(current, `${playerId} slide survives ${phase}`).not.toBeNull();
+            expect(current.progress, `${playerId} slide must not restart`).toBeGreaterThanOrEqual(before - 0.05);
+          }
+        }
+        expect(incoming("later").top).toBeLessThan(incoming("afterRefresh").top - 2);
+        expect(outgoing("later").top).toBeGreaterThan(outgoing("afterRefresh").top + 2);
+        for (const phase of ["start", "beforeRefresh", "afterRefresh", "afterChat", "later"]) {
+          expect(outgoing(phase).historyVisibility, `the leaving sheet keeps its score ink during ${phase}`).toBe("visible");
+          expect(incoming(phase).historyVisibility).toBe("visible");
+        }
+        expect(outgoing("end").historyVisibility).toBe("hidden");
+        for (const board of motion.settledRefresh) expect(board.animation).toBeNull();
+        await expectSlidingNotebook(page, active);
+        await testInfo.attach(`slide-${active}.json`, { body: JSON.stringify(motion, null, 2), contentType: "application/json" });
+      }
+      await page.reload();
+      await expect(page.locator('[data-zilch-board-id="p1"]')).toHaveClass(/is-active/);
+      const replaying = await page.locator("[data-zilch-board-id]").evaluateAll(boards => boards
+        .flatMap(board => board.getAnimations({ subtree: true })).filter(animation => animation.playState === "running").length);
+      expect(replaying, "reloading an already running game must not replay an old switch").toBe(0);
+      await expectSlidingNotebook(page, "p1");
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test("LCARS reduced motion switches directly to the same maximized sheet and compact opponent rail", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, reducedMotion: "reduce", serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await installFixture(page, true);
+    await enableStandaloneStyles(page);
+    for (const viewport of VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      for (const active of ["p2", "p1"]) {
+        await page.evaluate(next => window.__pushNotebookSnapshot(next), snapshot(active, true));
+        await expectSlidingNotebook(page, active);
+        const animations = await page.locator("[data-zilch-board-id]").evaluateAll(boards => boards
+          .flatMap(board => board.getAnimations({ subtree: true })).filter(animation => animation.playState === "running").length);
+        expect(animations).toBe(0);
+        await expectLatestWrittenScore(page, active);
+      }
+    }
+  } finally {
+    await context.close();
+  }
+});
+
 async function enableStandaloneStyles(page) {
   const changed = await page.evaluate(() => {
     let count = 0;
@@ -117,10 +237,29 @@ async function enableStandaloneStyles(page) {
   expect(changed).toBeGreaterThan(0);
 }
 
-async function expectBothNotebooks(page, { scrollable = true, totals = [6400, 3200] } = {}) {
+async function settleNotebook(page) {
+  await page.evaluate(async () => {
+    const animations = [...document.querySelectorAll("[data-zilch-board-id]")]
+      .flatMap(board => board.getAnimations({ subtree: true })).filter(animation => (
+        animation.playState === "running" && /^zilch-lcars-sheet-/.test(animation.animationName)
+      ));
+    await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
+    // Let both the compositor transform and the child visibility animation
+    // commit their final paint before measuring the compact rail in WebKit.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+}
+
+async function expectSlidingNotebook(page, activePlayerId, { scrollable = true, totals = [6400, 3200], activeCue = true } = {}) {
   const geometry = await page.evaluate(() => {
     const notebook = document.querySelector(".zilch-score-notebook").getBoundingClientRect();
     const dock = document.querySelector(".zilch-dice-dock").getBoundingClientRect();
+    const visibleHeight = element => {
+      const style = getComputedStyle(element);
+      if (style.visibility === "hidden" || style.display === "none") return 0;
+      const bounds = element.getBoundingClientRect();
+      return Math.max(0, Math.min(bounds.bottom, notebook.bottom) - Math.max(bounds.top, notebook.top));
+    };
     return {
       documentWidth: document.documentElement.scrollWidth,
       viewportWidth: innerWidth,
@@ -132,16 +271,23 @@ async function expectBothNotebooks(page, { scrollable = true, totals = [6400, 32
         const total = board.querySelector(".zilch-notebook-total");
         const totalBounds = total.getBoundingClientRect();
         const log = board.querySelector("ol");
-        const center = document.elementFromPoint(header.left + header.width / 2, header.top + header.height / 2);
         const style = getComputedStyle(board);
         return {
           id: board.dataset.zilchBoardId, top: bounds.top, bottom: bounds.bottom,
           left: bounds.left, right: bounds.right, height: bounds.height,
+          visibleHeight: visibleHeight(board),
           headerTop: header.top, headerBottom: header.bottom,
           totalTop: totalBounds.top, totalBottom: totalBounds.bottom,
-          totalText: total.textContent, historyHeight: log.clientHeight,
+          totalLeft: totalBounds.left, totalRight: totalBounds.right,
+          totalText: total.textContent, historyHeight: visibleHeight(log),
+          footerHeight: visibleHeight(board.querySelector("footer")),
           historyScrollHeight: log.scrollHeight, pointerEvents: style.pointerEvents,
-          transform: style.transform, headerUncovered: board.contains(center),
+          historyAnimations: log.getAnimations().map(animation => ({
+            name: animation.animationName, state: animation.playState,
+            progress: animation.effect.getComputedTiming().progress,
+            currentTime: animation.currentTime, delay: animation.effect.getTiming().delay,
+          })),
+          transform: style.transform,
           activeColor: getComputedStyle(board.querySelector("header")).borderBottomColor,
         };
       }),
@@ -149,27 +295,86 @@ async function expectBothNotebooks(page, { scrollable = true, totals = [6400, 32
   });
   expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
   expect(geometry.notebook.bottom).toBeLessThanOrEqual(geometry.dockTop + 1);
+  const active = geometry.boards.find(board => board.id === activePlayerId);
+  const inactive = geometry.boards.find(board => board.id !== activePlayerId);
   for (const board of geometry.boards) {
-    expect(board.height, board.id).toBeGreaterThan(0);
+    expect(board.visibleHeight, board.id).toBeGreaterThan(0);
     expect(board.top, board.id).toBeGreaterThanOrEqual(geometry.notebook.top - 1);
-    expect(board.bottom, board.id).toBeLessThanOrEqual(geometry.notebook.bottom + 1);
     expect(board.left, board.id).toBeGreaterThanOrEqual(geometry.notebook.left - 1);
     expect(board.right, board.id).toBeLessThanOrEqual(geometry.notebook.right + 1);
-    expect(board.headerUncovered, `${board.id} header is occluded`).toBe(true);
+    expect(board.headerTop, board.id).toBeGreaterThanOrEqual(geometry.notebook.top - 1);
+    expect(board.headerBottom, `${board.id} name must remain visible`).toBeLessThanOrEqual(geometry.notebook.bottom + 1);
     expect(board.totalTop, board.id).toBeGreaterThanOrEqual(board.top);
-    expect(board.totalBottom, board.id).toBeLessThanOrEqual(board.bottom);
-    expect(board.historyHeight, `${board.id} needs a readable history row`).toBeGreaterThanOrEqual(20);
-    if (scrollable) expect(board.historyScrollHeight).toBeGreaterThan(board.historyHeight);
-    expect(board.pointerEvents).toBe("auto");
-    expect(board.transform).toBe("none");
+    expect(board.totalBottom, `${board.id} total must remain visible`).toBeLessThanOrEqual(geometry.notebook.bottom + 1);
+    expect(board.totalLeft, board.id).toBeGreaterThanOrEqual(geometry.notebook.left);
+    expect(board.totalRight, board.id).toBeLessThanOrEqual(geometry.notebook.right + 1);
   }
-  expect(geometry.boards[0].activeColor).not.toBe(geometry.boards[1].activeColor);
-  const [first, second] = geometry.boards;
-  expect(first.bottom <= second.top + 1 || first.right <= second.left + 1).toBe(true);
+  expect(active.visibleHeight).toBeGreaterThan(inactive.visibleHeight + 12);
+  expect(active.bottom).toBeLessThanOrEqual(inactive.headerTop + 1);
+  expect(active.headerTop).toBeLessThan(inactive.headerTop);
+  expect(active.historyHeight, "the maximized player needs a readable history row").toBeGreaterThanOrEqual(16);
+  if (scrollable) expect(active.historyScrollHeight).toBeGreaterThan(active.historyHeight);
+  expect(active.pointerEvents).toBe("auto");
+  expect(inactive.visibleHeight, "the other player is only a compact bottom rail").toBeLessThanOrEqual(64);
+  expect(inactive.historyHeight, JSON.stringify(inactive.historyAnimations)).toBe(0);
+  expect(inactive.footerHeight).toBe(0);
+  if (activeCue) expect(active.activeColor).not.toBe(inactive.activeColor);
   for (const [index, playerId] of ["p1", "p2"].entries()) {
     const total = page.locator(`[data-zilch-board-id="${playerId}"] .zilch-notebook-total`);
     expect((await total.textContent()).replace(/\D/g, "")).toBe(String(totals[index]));
   }
+}
+
+test("LCARS awaiting the opening rolls keeps the first sheet above a readable second-player rail", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await installFixture(page, false);
+    await enableStandaloneStyles(page);
+    const waiting = snapshot("p1", false);
+    waiting._turn = null;
+    waiting._dice = [0, 0, 0, 0, 0, 0];
+    waiting._rolls_used = 0;
+    waiting._zilch_turn_state = null;
+    waiting._zilch_quick_holds = [];
+    waiting._zilch_start_roll = {
+      phase: "awaiting_rolls", player_ids: ["p1", "p2"], pending_player_ids: ["p1", "p2"],
+      rolls: {}, winner_id: null, version: 0,
+    };
+    for (const playerId of ["p1", "p2"]) {
+      waiting._zilch_boards[playerId] = {
+        ...waiting._zilch_boards[playerId], active: false, rounds: [], total_points: 0,
+      };
+      waiting._total_points[playerId] = 0;
+    }
+    for (const viewport of VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      await page.evaluate(next => window.__pushNotebookSnapshot(next), waiting);
+      await expect(page.locator("[data-zilch-start-roll]")).toBeVisible();
+      await expect(page.locator(".zilch-notebook-player.is-active")).toHaveCount(0);
+      await expectSlidingNotebook(page, "p1", { scrollable: false, totals: [0, 0], activeCue: false });
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+async function expectLatestWrittenScore(page, playerId) {
+  const written = page.locator(`[data-zilch-round-log="${playerId}"] > li:not(.zilch-notebook-entry--blank)`).last();
+  const writtenScore = await written.evaluate(entry => {
+    const log = entry.parentElement.getBoundingClientRect();
+    const text = [...entry.querySelectorAll(".zilch-notebook-entry__change, strong")].map(element => {
+      const bounds = element.getBoundingClientRect();
+      return { top: bounds.top, bottom: bounds.bottom };
+    });
+    return { log: { top: log.top, bottom: log.bottom }, text };
+  });
+  expect(writtenScore.text.length).toBeGreaterThan(0);
+  for (const text of writtenScore.text) {
+    expect(text.top, `${playerId}'s latest points`).toBeGreaterThanOrEqual(writtenScore.log.top - 1);
+    expect(text.bottom, `${playerId}'s latest points`).toBeLessThanOrEqual(writtenScore.log.bottom + 1);
+  }
+  await expect(page.locator(`[data-zilch-round-log="${playerId}"] > .zilch-notebook-entry--blank:visible`)).toHaveCount(0);
 }
 
 test("LCARS follows each player's latest written score instead of the other player's blank paper rows", async ({ browser, baseURL }) => {
@@ -197,23 +402,9 @@ test("LCARS follows each player's latest written score instead of the other play
         });
         await page.evaluate(value => window.__pushNotebookSnapshot(value), next);
         await expect(page.locator(`[data-zilch-board-id="${active}"]`)).toHaveClass(/is-active/);
-        await expectBothNotebooks(page, { scrollable: false, totals: [400, 800] });
-        for (const playerId of ["p1", "p2"]) {
-          const written = page.locator(`[data-zilch-round-log="${playerId}"] > li:not(.zilch-notebook-entry--blank)`).last();
-          const writtenScore = await written.evaluate(entry => {
-            const log = entry.parentElement.getBoundingClientRect();
-            const text = [...entry.querySelectorAll(".zilch-notebook-entry__change, strong")].map(element => {
-              const bounds = element.getBoundingClientRect();
-              return { top: bounds.top, bottom: bounds.bottom };
-            });
-            return { log: { top: log.top, bottom: log.bottom }, text };
-          });
-          for (const text of writtenScore.text) {
-            expect(text.top, `${playerId}'s latest points at ${viewport.width}×${viewport.height}`).toBeGreaterThanOrEqual(writtenScore.log.top - 1);
-            expect(text.bottom, `${playerId}'s latest points at ${viewport.width}×${viewport.height}`).toBeLessThanOrEqual(writtenScore.log.bottom + 1);
-          }
-          await expect(page.locator(`[data-zilch-round-log="${playerId}"] > .zilch-notebook-entry--blank:visible`)).toHaveCount(0);
-        }
+        await settleNotebook(page);
+        await expectSlidingNotebook(page, active, { scrollable: false, totals: [400, 800] });
+        await expectLatestWrittenScore(page, active);
       }
     }
   } finally {
@@ -222,7 +413,7 @@ test("LCARS follows each player's latest written score instead of the other play
 });
 
 for (const cpu of [false, true]) {
-  test(`LCARS ${cpu ? "CPU" : "multiplayer"} keeps both score histories and totals visible on every turn`, async ({ browser, baseURL }, testInfo) => {
+  test(`LCARS ${cpu ? "CPU" : "multiplayer"} maximizes the active history above the opponent's compact total rail`, async ({ browser, baseURL }, testInfo) => {
     const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
     const page = await context.newPage();
     try {
@@ -235,7 +426,9 @@ for (const cpu of [false, true]) {
             await test.step(`${viewport.width}×${viewport.height}, ${standalone ? "standalone" : "browser"}, ${active} active`, async () => {
               await page.evaluate(next => window.__pushNotebookSnapshot(next), snapshot(active, cpu));
               await expect(page.locator(`[data-zilch-board-id="${active}"]`)).toHaveClass(/is-active/);
-              await expectBothNotebooks(page);
+              await settleNotebook(page);
+              await expectSlidingNotebook(page, active);
+              await expectLatestWrittenScore(page, active);
             });
           }
         }
@@ -248,23 +441,28 @@ for (const cpu of [false, true]) {
         next._zilch_turn_state.roll_id = viewport.width;
         next._zilch_last_event = { type: "roll" };
         await page.evaluate(value => window.__pushNotebookSnapshot(value), next);
+        await settleNotebook(page);
         const screenshot = testInfo.outputPath(`both-notebooks-${viewport.width}x${viewport.height}.png`);
         await page.screenshot({ path: screenshot });
         await testInfo.attach(`both-notebooks-${viewport.width}x${viewport.height}`, { path: screenshot, contentType: "image/png" });
       }
 
       await page.setViewportSize({ width: 390, height: 844 });
-      await page.evaluate(next => window.__pushNotebookSnapshot(next), snapshot("p2", cpu));
+      await page.evaluate(next => window.__pushNotebookSnapshot(next), snapshot("p1", cpu));
+      await settleNotebook(page);
       const humanLog = page.locator('[data-zilch-round-log="p1"]');
-      const opponentLog = page.locator('[data-zilch-round-log="p2"]');
       await humanLog.evaluate(log => { log.scrollTop = 0; });
-      await opponentLog.evaluate(log => { log.scrollTop = log.scrollHeight; });
-      await page.evaluate(next => window.__pushNotebookSnapshot(next), snapshot("p2", cpu));
+      await page.evaluate(next => window.__pushNotebookSnapshot(next), snapshot("p1", cpu));
       await expect.poll(() => humanLog.evaluate(log => log.scrollTop)).toBe(0);
-      expect(await opponentLog.evaluate(log => log.scrollHeight - log.scrollTop - log.clientHeight)).toBeLessThan(2);
       await humanLog.hover();
       await page.mouse.wheel(0, 100);
       await expect.poll(() => humanLog.evaluate(log => log.scrollTop)).toBeGreaterThan(0);
+      const newRoll = snapshot("p1", cpu);
+      newRoll._zilch_turn_state.roll_id = 99;
+      newRoll._zilch_turn_state.version = 99;
+      newRoll._zilch_last_event = { type: "roll" };
+      await page.evaluate(next => window.__pushNotebookSnapshot(next), newRoll);
+      await expectLatestWrittenScore(page, "p1");
       const screenshot = testInfo.outputPath("both-notebooks-mobile-pwa.png");
       await page.screenshot({ path: screenshot });
       await testInfo.attach("both-notebooks-mobile-pwa", { path: screenshot, contentType: "image/png" });

@@ -96,10 +96,13 @@ start roll and the final reply are handled by the server.
 The score notebook returns to its latest entries on every roll and newly
 recorded score. Reading older entries stays possible between rolls, including
 while changing dice selections or receiving chat messages.
-LCARS keeps both players' score histories and totals visible together, with
-independently scrollable logs. Opening rolls use the same miniature dice as
-scoring suggestions; both results remain visible for 1.2 seconds before play
-or a tied opening attempt continues. Rejoining a running game skips that pause.
+LCARS gives the active player's scrollable score history the large upper
+sheet. The other player's name and total remain visible in a compact strip
+below. When turns change, the newly active sheet slides from bottom to top;
+the Classic notebook is unchanged. Opening rolls use the same miniature dice
+as scoring suggestions; both results remain visible for 1.2 seconds before
+play or a tied opening attempt continues. Rejoining a running game skips that
+pause.
 
 CPU opponents use the same dice and scoring path as humans, with conservative,
 normal or aggressive decisions. Solo Sprint has no opponent or final reply;

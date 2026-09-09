@@ -144,9 +144,12 @@ Der Schreibblock folgt bei jedem Wurf und jedem neuen Punkteeintrag wieder
 dem unteren Ende. Zwischen Würfen kann man ältere Einträge lesen; Änderungen
 an der Würfelauswahl oder neue Chatnachrichten verändern diese Leseposition
 nicht.
-Im LCARS-Design bleiben beide Gesamtstände und beide Verläufe gleichzeitig
-sichtbar. Die Listen lassen sich unabhängig scrollen; nur der aktive Spieler
-wird hervorgehoben. Das Classic-Blattstapel-Design bleibt unverändert.
+Im LCARS-Design liegt das Punkteblatt des aktiven Spielers groß oben und
+nutzt den verfügbaren Platz für seinen scrollbar bleibenden Verlauf. Der
+andere Spieler bleibt darunter als kompakte Leiste mit Name und Gesamtstand
+sichtbar. Beim Zugwechsel schiebt sich das neu aktive Blatt von unten nach
+oben; das bisher aktive wird zur unteren Leiste. Das Classic-Blattstapel-Design
+bleibt unverändert.
 
 Die Daumenleiste zeigt höchstens acht schlanke Empfehlungen. Sie zeigt eine
 einzelne Wertungsgruppe pro Karte – etwa `1 Einser`, `2 Fünfer`, einen

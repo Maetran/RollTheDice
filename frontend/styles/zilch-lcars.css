@@ -652,34 +652,73 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-p
   background: var(--lcars-void);
 }
 
-/* Classic uses overlapping, translated paper sheets. The general LCARS
-   panel's relative positioning must not leave those sheet transforms in
-   place: it pushes the second player's entire display below the console.
-   Give both players a stable panel, including the inactive player's history
-   and total, with each existing round log retaining its own scroll position. */
+/* One expanded console slides above the other player's compact name/total
+   rail. Keep absolute positioning explicit: the generic LCARS panel is
+   relative, which otherwise pushes translated sheets outside the notebook. */
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  --zilch-sheet-peek: 3rem;
+  display: block;
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player {
-  position: relative;
-  inset: auto;
-  z-index: auto;
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
   width: auto;
-  height: auto;
+  height: calc(100% - var(--zilch-sheet-peek));
   min-height: 0;
+  padding: .35rem .45rem .35rem .65rem;
   pointer-events: auto;
   filter: none;
-  transform: none;
+  transform: translate3d(0, 100%, 0);
   animation: none;
   transition: none;
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player + .zilch-notebook-player {
-  border-left: 0;
-  border-top: .18rem solid var(--lcars-lilac);
+  border: 0;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player.is-active,
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel:not(:has(.is-active)) .zilch-notebook-player:first-of-type {
+  z-index: 3;
+  transform: translate3d(0, 0, 0);
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player.is-inactive :is(ol, footer) {
+  visibility: hidden;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel:not(:has(.is-active)) .zilch-notebook-player:first-of-type :is(ol, footer) {
+  visibility: visible;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player.is-turn-entering {
+  animation: zilch-lcars-sheet-open var(--zilch-notebook-slide-duration, 480ms) var(--zilch-ease) var(--zilch-notebook-slide-delay, 0ms) both;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player.is-turn-leaving {
+  z-index: 2;
+  animation: zilch-lcars-sheet-close var(--zilch-notebook-slide-duration, 480ms) var(--zilch-ease) var(--zilch-notebook-slide-delay, 0ms) both;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player.is-turn-leaving :is(ol, footer) {
+  animation: zilch-lcars-sheet-fold var(--zilch-notebook-slide-duration, 480ms) linear var(--zilch-notebook-slide-delay, 0ms) both;
+}
+
+@keyframes zilch-lcars-sheet-open {
+  from { transform: translate3d(0, 100%, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes zilch-lcars-sheet-close {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, 100%, 0); }
+}
+
+@keyframes zilch-lcars-sheet-fold {
+  from { visibility: visible; }
+  to { visibility: hidden; }
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player::after {
@@ -1128,7 +1167,22 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-event-overlay span {
   }
 
   html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player header {
+    align-items: center;
     min-height: 22px;
+    padding-bottom: 0;
+    border-bottom-width: 3px;
+  }
+
+  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player header h2 {
+    display: flex;
+    align-items: center;
+    gap: .2rem;
+  }
+
+  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player .zilch-participant-badge {
+    flex-shrink: 0;
+    min-height: 1rem;
+    padding-block: 0;
   }
 
   html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player footer {
@@ -1143,13 +1197,15 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-event-overlay span {
   }
 
   html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: minmax(0, 1fr);
+    --zilch-sheet-peek: 2rem;
   }
 
-  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player + .zilch-notebook-player {
-    border-top: 0;
-    border-left: .18rem solid var(--lcars-lilac);
+  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player {
+    padding-block: 2px;
+  }
+
+  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player footer {
+    display: none;
   }
 
   html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-dice-dock .zilch-table {
@@ -1174,6 +1230,10 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-event-overlay span {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player.is-turn-leaving :is(ol, footer) {
+    animation: none !important;
+  }
+
   html[data-game="zilch"][data-theme="lcars"] :where(*, *::before, *::after) {
     scroll-behavior: auto;
   }

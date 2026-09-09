@@ -1,23 +1,23 @@
 {
   "kind": "usability",
   "games": ["zilch"],
-  "summary_de": "Zilch: Startwürfel bleiben kurz sichtbar, LCARS zeigt beide Punktestände und der Würfelwirt spielt ruhiger.",
-  "summary_en": "Zilch: opening dice stay visible briefly, LCARS shows both scores and the dice keeper plays at a calmer pace.",
+  "summary_de": "Zilch LCARS: Das aktive Punkteblatt liegt groß oben, das andere zeigt unten Name und Gesamtstand.",
+  "summary_en": "Zilch LCARS: the active score sheet fills the top; the other player's name and total stay visible below.",
   "player_notes": {
     "de": {
-      "title": "Mehr Überblick am Zilch-Tisch",
+      "title": "LCARS: mehr Platz für den aktiven Verlauf",
       "changes": [
-        "Beim Startwurf zeigen kleine Würfel beide Ergebnisse. Sie bleiben kurz sichtbar, bevor es weitergeht.",
-        "LCARS zeigt beide Punktestände und Verläufe gleichzeitig – unabhängig davon, wer gerade am Zug ist.",
-        "Der Würfelwirt lässt nach seinen Würfen mehr Zeit zum Mitlesen. Regeln und Wertung bleiben gleich."
+        "Das aktive Punkteblatt liegt groß oben und bietet mehr Platz zum Lesen und Scrollen.",
+        "Name und Gesamtstand des anderen Spielers bleiben darunter in einer kompakten Leiste sichtbar.",
+        "Beim Zugwechsel schiebt sich das neu aktive Blatt von unten nach oben. Classic, Regeln und Wertung bleiben gleich."
       ]
     },
     "en": {
-      "title": "A clearer view at the Zilch table",
+      "title": "LCARS: more room for the active history",
       "changes": [
-        "Small opening dice show both results and stay visible briefly before play continues.",
-        "LCARS shows both players' scores and histories together, regardless of whose turn it is.",
-        "The dice keeper leaves more time to read each roll. Rules and scoring are unchanged."
+        "The active score sheet fills the upper area, with more room to read and scroll.",
+        "The other player's name and total remain visible in a compact strip below.",
+        "When turns change, the newly active sheet slides from bottom to top. Classic, rules and scoring are unchanged."
       ]
     }
   }

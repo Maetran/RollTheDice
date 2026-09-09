@@ -11,6 +11,18 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Stille Korrektur / Silent fix — LCARS-Punkteblätter im Wechsel
+
+- **Deutsch:** Das aktive LCARS-Punkteblatt liegt groß oben und bietet mehr
+  Platz für den Verlauf. Darunter bleiben Name und Gesamtstand des anderen
+  Spielers in einer kompakten Leiste sichtbar. Beim Zugwechsel schiebt sich
+  das neu aktive Blatt von unten nach oben. Classic, Spielregeln und Wertung
+  bleiben unverändert.
+- **English:** The active LCARS score sheet occupies the large upper area,
+  giving its history more room. The other player's name and total remain
+  visible in a compact strip below. When turns change, the newly active sheet
+  slides from bottom to top. Classic, game rules and scoring are unchanged.
+
 ## Stille Korrektur / Silent fix — Startwürfel, LCARS-Punktebuch und ruhigerer Würfelwirt
 
 - **Deutsch:** Startwürfe erscheinen als Miniwürfel; beide Ergebnisse bleiben
