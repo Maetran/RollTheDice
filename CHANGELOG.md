@@ -11,6 +11,19 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Stille Korrektur / Silent fix — Ruhigere LCARS-Kontraste
+
+- **Deutsch:** Im LCARS-Spielraum sind Rahmen und Chat gedämpfter, die Würfel
+  haben weniger Leuchteffekt und doppelte Konturen. Die Auswahl bleibt klar
+  erkennbar. Positive Punkte erscheinen in hellem, gedecktem Apricot;
+  Würfelwirt-Badges erhalten flache LCARS-Farben mit dunkler Schrift.
+  Schwarzer Hintergrund, Layout, Blattwechsel und Spielregeln bleiben gleich.
+- **English:** LCARS game rooms use quieter frame and chat colours, with less
+  dice glow and fewer doubled outlines. Selections remain clear. Positive
+  scores use a light, muted apricot; dice keeper badges use flat LCARS colours
+  with dark lettering. The black background, layout, sliding score sheets
+  and game rules are unchanged.
+
 ## Stille Korrektur / Silent fix — LCARS-Punkteblätter im Wechsel
 
 - **Deutsch:** Das aktive LCARS-Punkteblatt liegt groß oben und bietet mehr

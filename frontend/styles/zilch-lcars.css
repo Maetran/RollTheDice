@@ -591,9 +591,27 @@ html[data-game="zilch"][data-theme="lcars"] .lobby-chat__game-badge {
 
 /* Active game: turn the score sheet, recommendation rail, dice dock and chat
    into one coherent bridge console while preserving the established layout. */
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game {
+  /* Large decorative areas are quieter than text, selected dice and primary
+     actions. Do not dim the shared LCARS palette or other product screens. */
+  --lcars-room-frame-lilac: #a68cb2;
+  --lcars-room-frame-cyan: #69aebd;
+  --lcars-room-frame-blue: #6277b0;
+  --lcars-room-frame-apricot: #bc956f;
+  --lcars-room-chat: #74afbd;
+  --lcars-room-chat-hover: #83bfcd;
+  --lcars-room-score: #d5a77c;
+  --lcars-room-cpu: #83b7c5;
+  --lcars-room-die-outline: #789fbe;
+}
+
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-header {
-  border-left-color: var(--lcars-cyan);
-  border-bottom-color: var(--lcars-cyan);
+  border-left-color: var(--lcars-room-frame-cyan);
+  border-bottom-color: var(--lcars-room-frame-cyan);
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-header::after {
+  background: var(--lcars-room-frame-cyan);
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-header-tools :where(button, a),
@@ -619,9 +637,9 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-header-too
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook {
   border: 0;
-  border-left: .85rem solid var(--lcars-lilac);
-  border-top: .55rem solid var(--lcars-lilac);
-  border-bottom: .3rem solid var(--lcars-lilac);
+  border-left: .85rem solid var(--lcars-room-frame-lilac);
+  border-top: .55rem solid var(--lcars-room-frame-lilac);
+  border-bottom: .3rem solid var(--lcars-room-frame-lilac);
   border-radius: 1.6rem 0 0 1.1rem;
   color: var(--lcars-text);
   background: var(--lcars-void);
@@ -645,7 +663,7 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-p
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player + .zilch-notebook-player {
-  border-left: .18rem solid var(--lcars-lilac);
+  border-left: .18rem solid var(--lcars-room-frame-lilac);
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player.is-active {
@@ -742,16 +760,33 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-p
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player footer {
-  border-top: .25rem solid var(--lcars-lilac);
+  border-top: .25rem solid var(--lcars-room-frame-lilac);
   background: var(--lcars-void);
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player header {
-  border-bottom: .25rem solid var(--lcars-apricot);
+  border-bottom: .25rem solid var(--lcars-room-frame-apricot);
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player.is-active header {
-  border-bottom-color: var(--lcars-cyan);
+  border-bottom-color: var(--lcars-room-frame-cyan);
+}
+
+/* Paper's rust ink and pale CPU gradient do not belong on the black console.
+   Keep the score change readable and prevent header-span cyan from washing
+   out the CPU label. Badge dimensions and participant metadata stay intact. */
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-entry__change {
+  color: var(--lcars-room-score);
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player li em {
+  color: var(--lcars-alert);
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-participant-badge.zilch-participant-badge--cpu {
+  border-color: var(--lcars-room-frame-cyan);
+  color: #17131b;
+  background: var(--lcars-room-cpu);
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player li {
@@ -766,7 +801,7 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-p
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-entry__divider {
-  background: var(--lcars-blue);
+  background: var(--lcars-room-frame-blue);
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game :is(.zilch-notebook-player ol, .zilch-recommendations) {
@@ -824,7 +859,7 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-recommenda
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-turn-score {
   border: 0;
-  border-left: .5rem solid var(--lcars-lilac);
+  border-left: .5rem solid var(--lcars-room-frame-lilac);
   border-radius: .18rem 1.1rem 1.1rem .18rem;
   color: var(--lcars-text);
   background: var(--lcars-panel-raised);
@@ -910,8 +945,8 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-combined-s
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-dice-dock .zilch-table {
   border: 0;
-  border-top: .45rem solid var(--lcars-lilac);
-  border-bottom: .3rem solid var(--lcars-lilac);
+  border-top: .45rem solid var(--lcars-room-frame-lilac);
+  border-bottom: .3rem solid var(--lcars-room-frame-lilac);
   border-radius: 1.5rem 0 0 1.5rem;
   color: var(--lcars-text);
   background: var(--lcars-void);
@@ -924,6 +959,7 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-dice-dock 
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die {
+  border: 0;
   border-radius: .38rem;
   background: transparent;
   box-shadow: none;
@@ -957,11 +993,11 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__face 
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__body {
-  stroke: #8abcff;
+  stroke: var(--lcars-room-die-outline);
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__highlight {
-  stroke: rgba(186, 240, 255, .42);
+  stroke: rgba(186, 240, 255, .3);
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__shade {
@@ -980,7 +1016,7 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__dash 
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game :is(.zilch-die--held, .zilch-die--unavailable, .zilch-die--selected)::before {
   border: 2px solid var(--lcars-cyan);
-  box-shadow: 0 0 0 .14rem rgba(139, 215, 235, .34);
+  box-shadow: none;
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game :is(.zilch-die--held, .zilch-die--unavailable)::after {
@@ -1005,6 +1041,11 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-action-car
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-action-card--roll {
   color: #17131b;
   background: var(--lcars-apricot);
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-action-card--roll.is-roll-ready {
+  animation: none;
+  box-shadow: none;
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-action-card--bank {
@@ -1034,6 +1075,18 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-chat__toggle {
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-chat-history li {
   border-color: var(--lcars-panel-line);
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-chat {
+  border-top-color: var(--lcars-room-frame-blue);
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-chat__toggle {
+  background: var(--lcars-room-chat);
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-chat__toggle:not(:disabled):hover {
+  background: var(--lcars-room-chat-hover);
 }
 
 /* Results, status, achievements and dialogs share the display surface. */

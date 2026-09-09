@@ -1,23 +1,23 @@
 {
   "kind": "usability",
   "games": ["zilch"],
-  "summary_de": "Zilch LCARS: Das aktive Punkteblatt liegt groß oben, das andere zeigt unten Name und Gesamtstand.",
-  "summary_en": "Zilch LCARS: the active score sheet fills the top; the other player's name and total stay visible below.",
+  "summary_de": "Zilch LCARS: ruhigere Rahmen und Würfel, besser lesbare Punkte und Würfelwirt-Badges.",
+  "summary_en": "Zilch LCARS: quieter frames and dice, with clearer scores and dice keeper badges.",
   "player_notes": {
     "de": {
-      "title": "LCARS: mehr Platz für den aktiven Verlauf",
+      "title": "LCARS: ruhigere Farben, klare Anzeigen",
       "changes": [
-        "Das aktive Punkteblatt liegt groß oben und bietet mehr Platz zum Lesen und Scrollen.",
-        "Name und Gesamtstand des anderen Spielers bleiben darunter in einer kompakten Leiste sichtbar.",
-        "Beim Zugwechsel schiebt sich das neu aktive Blatt von unten nach oben. Classic, Regeln und Wertung bleiben gleich."
+        "Rahmen und Chat treten zurück; Würfel leuchten weniger, bleiben aber klar auswählbar.",
+        "Positive Punkte erscheinen in hellem Apricot, Würfelwirt-Badges mit dunkler Schrift auf flachen LCARS-Farben.",
+        "Nur die Darstellung im LCARS-Spielraum ändert sich. Layout, Blattwechsel und Regeln bleiben gleich."
       ]
     },
     "en": {
-      "title": "LCARS: more room for the active history",
+      "title": "LCARS: calmer colours, clearer displays",
       "changes": [
-        "The active score sheet fills the upper area, with more room to read and scroll.",
-        "The other player's name and total remain visible in a compact strip below.",
-        "When turns change, the newly active sheet slides from bottom to top. Classic, rules and scoring are unchanged."
+        "Frames and chat are more subdued; dice have less glow while selections remain clear.",
+        "Positive scores use light apricot, and dice keeper badges use dark lettering on flat LCARS colours.",
+        "Only the game room's appearance changes. Layout, sliding score sheets and rules stay the same."
       ]
     }
   }

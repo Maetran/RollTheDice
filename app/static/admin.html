@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Geschützter Administrationsbereich von ZDWA.">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="manifest" href="/manifest.webmanifest?v=5a840f944a98">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=5a840f944a98" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=5a840f944a98" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=f662745659ce">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=f662745659ce" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=f662745659ce" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=5a840f944a98">
-  <script src="/static/shell.js?v=5a840f944a98" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=f662745659ce">
+  <script src="/static/shell.js?v=f662745659ce" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
@@ -82,7 +82,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=5a840f944a98';
+    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=f662745659ce';
     const auth = await loadAuth();
     if (!auth?.user?.is_admin) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const usersBody = document.getElementById('usersBody');

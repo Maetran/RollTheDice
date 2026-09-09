@@ -137,6 +137,10 @@ rounded LCARS elbows and locally hosted condensed display lettering, including
 in the installed PWA. Controls, rules, randomness and scoring stay the same.
 Free rolls appear as a bright LCARS status band inside the scoring tile, with
 the throw name and points remaining readable.
+Inside LCARS game rooms, quieter frame and chat colours and reduced dice glow
+keep selections clear. Positive scores use a light, muted apricot, and CPU
+badges use flat LCARS colours with dark lettering. The black background,
+layout and sliding score sheets are unchanged.
 Usernames are immutable; administrators manage accounts and moderation.
 
 The public Zilch lobby paints its heading directly from HTML and shows its
