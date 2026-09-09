@@ -77,7 +77,10 @@ Beispiele:
    einmal. Der höhere Wert beginnt; bei Gleichstand wird erneut gewürfelt.
    Jeder Startwurf wird ausschließlich serverseitig erzeugt. In einer
    CPU-Partie würfelt zuerst der Mensch; der serverseitige CPU-Runner erzeugt
-   danach den gleichwertigen CPU-Wurf. Im Solo-Sprint gibt es bewusst keinen
+   danach den gleichwertigen CPU-Wurf. Die Oberfläche zeigt beide Ergebnisse
+   als Miniwürfel für 1,2 Sekunden, bevor der erste Zug oder ein erneuter
+   Startversuch freigegeben wird. Ein Wiedereinstieg in eine bereits laufende
+   Partie wiederholt diese Anzeige nicht. Im Solo-Sprint gibt es bewusst keinen
    bedeutungslosen Startwurf: der einzige Mensch beginnt direkt mit seinem
    ersten normalen Zug.
 2. Der aktive Teilnehmer würfelt ausschließlich auf dem Server alle noch
@@ -141,6 +144,9 @@ Der Schreibblock folgt bei jedem Wurf und jedem neuen Punkteeintrag wieder
 dem unteren Ende. Zwischen Würfen kann man ältere Einträge lesen; Änderungen
 an der Würfelauswahl oder neue Chatnachrichten verändern diese Leseposition
 nicht.
+Im LCARS-Design bleiben beide Gesamtstände und beide Verläufe gleichzeitig
+sichtbar. Die Listen lassen sich unabhängig scrollen; nur der aktive Spieler
+wird hervorgehoben. Das Classic-Blattstapel-Design bleibt unverändert.
 
 Die Daumenleiste zeigt höchstens acht schlanke Empfehlungen. Sie zeigt eine
 einzelne Wertungsgruppe pro Karte – etwa `1 Einser`, `2 Fünfer`, einen
@@ -439,9 +445,13 @@ Betriebsrollback dokumentiert und ist nicht der Public-Beta-Standard.
 
 - Die Engine verwendet für Menschen und CPU-Teilnehmer denselben injizierbaren,
   serverseitigen Zufallsweg. Clients liefern nie Würfelergebnisse. Die
-  serverseitige Denkpause `ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` (Standard 0,9
+  serverseitige Denkpause `ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` (Standard 1,25
   Sekunden, begrenzt auf 0–5) beeinflusst nur die sichtbare Taktung, niemals
-  Würfel oder Wertung. Nach einem Zilch bleibt der autoritative letzte
+  Würfel oder Wertung. Bei positiver Taktung bleiben nach einem Wurf mindestens
+  1,8 Sekunden zum Lesen, nach einem entschiedenen Startwurf mindestens 1,5
+  Sekunden bis zur nächsten CPU-Aktion; diese Pausen werden nicht addiert.
+  Explizite Test-Overrides und der konfigurierte Wert `0` bleiben sofortig.
+  Nach einem Zilch bleibt der autoritative letzte
   Würfelsatz 0,5 Sekunden sichtbar; danach folgt das 1,35-sekündige
   Zilch-Signal. Eine anschließende CPU-Aktion beginnt frühestens nach 1,9
   Sekunden und verdeckt diesen Übergang dadurch nicht.

@@ -652,6 +652,40 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-p
   background: var(--lcars-void);
 }
 
+/* Classic uses overlapping, translated paper sheets. The general LCARS
+   panel's relative positioning must not leave those sheet transforms in
+   place: it pushes the second player's entire display below the console.
+   Give both players a stable panel, including the inactive player's history
+   and total, with each existing round log retaining its own scroll position. */
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  pointer-events: auto;
+  filter: none;
+  transform: none;
+  animation: none;
+  transition: none;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player + .zilch-notebook-player {
+  border-left: 0;
+  border-top: .18rem solid var(--lcars-lilac);
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player::after {
+  content: none;
+}
+
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player :is(h2, header span, footer, footer strong, li) {
   color: var(--lcars-text);
   font-family: var(--lcars-display);
@@ -677,8 +711,19 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-p
   border-bottom: .25rem solid var(--lcars-apricot);
 }
 
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player.is-active header {
+  border-bottom-color: var(--lcars-cyan);
+}
+
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player li {
   border-bottom: 1px solid var(--lcars-panel-line);
+}
+
+/* The shared paper notebook pads both histories to equal row counts. Empty
+   paper lines are not console data: following the latest roll must reach a
+   written entry, not scroll a shorter player's history into blank padding. */
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-player .zilch-notebook-entry--blank {
+  display: none;
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-notebook-entry__divider {
@@ -1091,14 +1136,20 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-event-overlay span {
     margin-top: 2px;
   }
 
-  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game :is(.zilch-start-roll-rail, .zilch-score-notebook--duel) {
+  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-start-roll-rail {
     max-height: 100%;
     min-height: 0;
     overflow-y: auto;
   }
 
-  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player {
-    min-height: 96px;
+  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player + .zilch-notebook-player {
+    border-top: 0;
+    border-left: .18rem solid var(--lcars-lilac);
   }
 
   html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-dice-dock .zilch-table {

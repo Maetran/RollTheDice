@@ -61,6 +61,7 @@ const terminalGameSockets = new WeakSet();
 const ZILCH_LEADERBOARD_LIMIT = 10;
 const ZILCH_ROLL_REVEAL_DURATION_MS = 500;
 const ZILCH_EVENT_OVERLAY_DURATION_MS = 1_350;
+const ZILCH_START_ROLL_RESULT_DURATION_MS = 1_200;
 const ZILCH_RECOMMENDATION_SHORTCUTS = ["q", "w", "e", "r", "t", "z", "u", "i"];
 const ZILCH_LEADERBOARD_CATEGORIES = new Set(["solo_sprint", "multiplayer_wins", "cpu_wins", "achievement_points"]);
 const ZILCH_CHAT_HISTORY_LIMIT = 300;
@@ -83,6 +84,8 @@ const state = {
   notebookTransition: null,
   zilchMoment: null,
   zilchMomentTimer: null,
+  startRollMoment: null,
+  startRollMomentTimer: null,
   presentedZilchEvents: new Set(),
   diceLandingPending: false,
   status: null,
@@ -621,6 +624,7 @@ function stopZilchGameSocket(socket = state.socket) {
   state.pendingOptionId = null;
   window.clearTimeout(state.reconnectTimer);
   window.clearTimeout(state.pauseRedirectTimer);
+  clearStartRollMoment();
   if (socket) terminalGameSockets.add(socket);
   try { socket?.close?.(1000); } catch (_) {}
 }
@@ -3201,7 +3205,7 @@ function renderRulesContent(facts) {
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Pause und Ablauf"))}</h2><p>${escapeHtml(t("Über Spiel verlassen pausierst du eine Partie bis zur angezeigten Frist oder beendest sie für alle ohne Ergebnis und kehrst zur Lobby zurück. Im Spiel bleiben schließt den Dialog; Zuschauer gehen direkt zur Lobby."))}</p><p>${escapeHtml(t("Bleibt am Tisch eine Stunde lang alles still – egal ob er wartet, läuft oder pausiert –, bricht der Wirt die Partie ab. Wer als Spieler oder Zuschauer noch verbunden ist, sieht den Hinweis und findet direkt zurück in die Lobby."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zuschauen"))}</h2><p>${escapeHtml(t("Laufende Zwei-Personen-Partien werden in der Lobby mit beiden Spielern angezeigt. Über Zuschauen öffnest du eine Live-Ansicht; Würfeln, Halten und Sichern bleiben den beiden Teilnehmern vorbehalten."))}</p></section>
     </section>
-    <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p>${escapeHtml(t("Nach jedem abgeschlossenen oder aufgegebenen Solo-Lauf sowie nach jeder abgeschlossenen Würfelwirt- oder Zwei-Personen-Partie öffnet sich dein Ergebnis automatisch. Dort startest du ein neues Solo oder eine Revanche oder kehrst zur Lobby zurück."))}</p><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>
+    <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p>${escapeHtml(t("Die Startwürfe erscheinen als kleine Würfel. Beide Ergebnisse bleiben kurz sichtbar, bevor das Spiel oder der nächste Startversuch beginnt."))}</p><p>${escapeHtml(t("Im LCARS-Punktebuch siehst du beide Gesamtstände und Verläufe gleichzeitig. Der Würfelwirt lässt nach seinen Würfen kurz Zeit zum Lesen."))}</p><p>${escapeHtml(t("Nach jedem abgeschlossenen oder aufgegebenen Solo-Lauf sowie nach jeder abgeschlossenen Würfelwirt- oder Zwei-Personen-Partie öffnet sich dein Ergebnis automatisch. Dort startest du ein neues Solo oder eine Revanche oder kehrst zur Lobby zurück."))}</p><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>
     <section class="zilch-card zilch-rules-section zilch-rules-section--solo"><p class="eyebrow">${escapeHtml(t("Solo"))}</p><h2>${escapeHtml(t("10’000-Punkte-Sprint"))}</h2><p>${escapeHtml(t("Im Solo-Sprint erreichst du mindestens 10’000 Punkte in möglichst wenigen eigenen Zügen. Der Lauf beginnt direkt mit deinem ersten normalen Zug – ohne Startwurf, Gegner, Schlussrunde oder Gegenzug."))}</p><p>${escapeHtml(t("Bei gleicher Zielerreichung werden später zuerst weniger Züge, dann weniger Würfe, weniger Zilchs und eine kürzere aktive Dauer verglichen. Pausenzeit zählt nicht zur aktiven Dauer."))}</p><p>${escapeHtml(t("Du kannst einen Solo-Lauf nach Bestätigung aufgeben. Er bleibt mit dem Status „Aufgegeben“ in deiner Historie erhalten."))}</p></section>
     <section class="zilch-card zilch-rules-examples"><p class="eyebrow">${escapeHtml(t("Beispiele"))}</p><h2>${escapeHtml(t("Gültige Auswahlen"))}</h2><ul><li><code>5–5–5–5–2–3</code> — ${escapeHtml(t("Drilling Fünfen = 500; vier Fünfen = 1’000; nur eine Fünf = 50."))}</li><li><code>1–1–1–5–5–2</code> — ${escapeHtml(t("Drei Einsen und zwei einzelne Fünfen = 1’100; danach ist ein Bestätigungswurf nötig."))}</li><li><code>1–2–3–4–5–6</code> — ${escapeHtml(t("Straße, 2’000 Punkte, freier Wurf und Bestätigungswurf."))}</li><li><code>2–2–3–4–6–6</code> — ${escapeHtml(t("500 für nichts: alle Würfel werden wieder frei, der Zug läuft weiter."))}</li></ul></section>`;
 }
@@ -4235,31 +4239,78 @@ function openingRollPanel(snapshot) {
   if (isSoloGame(snapshot)) return "";
   const start = snapshot._zilch_start_roll;
   if (!snapshot._started || !start) return "";
-  // The start roll explains the transition into a game. Once resolved it has
-  // no place on the permanent play surface.
-  if (start.phase === "resolved") return "";
-  const playerIds = Array.isArray(start.player_ids) ? start.player_ids : [];
-  const pending = Array.isArray(start.pending_player_ids) ? start.pending_player_ids : [];
-  const rolls = start.rolls || {};
+  const moment = state.startRollMoment;
+  // Only a live transition gets a brief result view. Rejoining an already
+  // running game must not replay an obsolete opening roll.
+  if (start.phase === "resolved" && !moment) return "";
+  const playerIds = moment?.playerIds || (Array.isArray(start.player_ids) ? start.player_ids : []);
+  const pending = moment ? [] : (Array.isArray(start.pending_player_ids) ? start.pending_player_ids : []);
+  const rolls = moment?.rolls || start.rolls || {};
   const ownParticipantId = localParticipantId(snapshot);
   const humanTurn = Boolean(ownParticipantId && pending.some(playerId => sameId(playerId, ownParticipantId)));
   const cpuPending = pending.some(playerId => isCpuParticipant(participantForId(snapshot, playerId)));
-  const disabled = !humanTurn || snapshot._paused || Boolean(state.pendingAction);
-  const attemptRows = playerIds.map(playerId => {
+  const disabled = Boolean(moment) || !humanTurn || snapshot._paused || Boolean(state.pendingAction);
+  const attemptRows = playerIds.map((playerId, index) => {
     const player = playerForId(snapshot, playerId);
     const rolled = Number(rolls[playerId] || 0);
-    const result = rolled ? String(rolled) : t("wartet");
-    return `<li><span>${playerCollectionMarkup(player)} ${participantMeta(player, { compact: true })}</span><strong>${escapeHtml(result)}</strong></li>`;
+    const result = rolled >= 1 && rolled <= 6
+      ? `<span class="zilch-start-roll-die" data-start-roll-value="${rolled}" role="img" aria-label="${escapeHtml(`${t("Würfel")}: ${rolled}`)}">${diePips(rolled, `opening-${index}`)}</span>`
+      : `<strong>${escapeHtml(t("wartet"))}</strong>`;
+    return `<li data-start-roll-player="${escapeHtml(playerId)}"><span>${playerCollectionMarkup(player)} ${participantMeta(player, { compact: true })}</span>${result}</li>`;
   }).join("");
   const priorTie = start.tied ? `<p class="zilch-event zilch-event--zilch">${escapeHtml(t("Gleichstand beim Startwurf – beide würfeln erneut."))}</p>` : "";
-  return `<section class="zilch-card zilch-start-roll" aria-labelledby="zilchStartRollTitle">
+  const resultMessage = moment && !moment.tied
+    ? `<p role="status">${escapeHtml(interpolated("{player} beginnt.", { player: playerForId(snapshot, moment.winnerId)?.name || t("Spieler") }))}</p>`
+    : "";
+  return `<section class="zilch-card zilch-start-roll" ${moment ? 'data-start-roll-result' : ""} aria-labelledby="zilchStartRollTitle">
       <p class="eyebrow">${escapeHtml(t("Startwurf"))}</p>
-      <h2 id="zilchStartRollTitle">${escapeHtml(t("Wer höher würfelt, beginnt."))}</h2>
+      <h2 id="zilchStartRollTitle">${escapeHtml(moment ? (moment.tied ? t("Gleichstand") : t("Startwurf abgeschlossen")) : t("Wer höher würfelt, beginnt."))}</h2>
       <p>${escapeHtml(t("Beide würfeln einmal. Bei Gleichstand wird wiederholt."))}</p>
       ${priorTie}
       <ol class="zilch-start-rolls">${attemptRows}</ol>
-      <button type="button" data-zilch-start-roll aria-keyshortcuts="Space" ${disabled ? "disabled" : ""}>${escapeHtml(humanTurn ? t("Startwurf ausführen") : cpuPending ? t("Der Würfelwirt würfelt um den Start …") : t("Warte auf den anderen Startwurf"))}</button>
+      ${resultMessage}
+      <button type="button" data-zilch-start-roll aria-keyshortcuts="Space" ${disabled ? "disabled" : ""}>${escapeHtml(moment ? t("Startwurf abgeschlossen") : humanTurn ? t("Startwurf ausführen") : cpuPending ? t("Der Würfelwirt würfelt um den Start …") : t("Warte auf den anderen Startwurf"))}</button>
   </section>`;
+}
+
+function clearStartRollMoment() {
+  window.clearTimeout(state.startRollMomentTimer);
+  state.startRollMoment = null;
+  state.startRollMomentTimer = null;
+}
+
+function beginStartRollMoment(previousSnapshot, snapshot, incomingEvent) {
+  if (snapshot?._paused || snapshot?._finished || snapshot?._aborted) {
+    clearStartRollMoment();
+    return;
+  }
+  const previous = previousSnapshot?._zilch_start_roll;
+  const next = snapshot?._zilch_start_roll;
+  if (previous?.phase !== "awaiting_rolls" || !next || isSoloGame(snapshot)) return;
+  const attempts = Array.isArray(next.attempts) ? next.attempts : [];
+  const resolved = next.phase === "resolved";
+  const tied = next.phase === "awaiting_rolls" && next.tied && (
+    Number(next.attempt) > Number(previous.attempt || 1)
+    || attempts.length > (previous.attempts?.length || 0)
+  );
+  if (!resolved && !tied) return;
+  // A reconnect may skip the opening result and already contain a later
+  // turn. Only present the current event, never revive a missed old result.
+  const eventType = String(incomingEvent?.type || "");
+  if (eventType !== (resolved ? "start_roll_resolved" : "start_roll_tie")) return;
+  const playerIds = Array.isArray(next.player_ids) ? next.player_ids : [];
+  const rolls = resolved ? next.rolls : attempts.at(-1)?.rolls;
+  if (playerIds.length !== 2 || !playerIds.every(id => (
+    Number.isInteger(rolls?.[id]) && rolls[id] >= 1 && rolls[id] <= 6
+  ))) return;
+  clearStartRollMoment();
+  state.startRollMoment = { playerIds: [...playerIds], rolls: { ...rolls }, winnerId: next.winner_id, tied };
+  state.startRollMomentTimer = window.setTimeout(() => {
+    clearStartRollMoment();
+    // Do not restore a saved snapshot here: newer socket frames and chat
+    // remain authoritative throughout this presentation-only reading pause.
+    if (!state.stopped && state.game) renderGameState();
+  }, ZILCH_START_ROLL_RESULT_DURATION_MS);
 }
 
 function finalResultActions(resultLink) {
@@ -4574,7 +4625,9 @@ function updateGameHeader(snapshot) {
   const context = document.getElementById("zilchRoomContext");
   if (!context) return;
   const current = playerForId(snapshot, snapshot?._turn?.player_id);
-  const currentLabel = state.zilchMoment
+  const currentLabel = state.startRollMoment
+    ? t("Startwurf abgeschlossen")
+    : state.zilchMoment
     ? (state.zilchMoment.phase === "reveal" ? t("Letzter Wurf") : "ZILCH!")
     : snapshot?._finished
       ? (snapshot?._aborted ? abortedGameTitle(snapshot) : isSoloGame(snapshot) ? soloOutcomeLabel(snapshot) : t("Spiel beendet"))
@@ -4752,7 +4805,7 @@ function renderGameState({ followNotebookLatest = false } = {}) {
   ]);
   const notebookAdvanced = notebookProgressKey !== state.notebookProgressKey;
   const isMyTurn = !spectatorRoute && localPlayerIs(snapshot, currentPlayerId);
-  const canInteract = Boolean(isMyTurn && !state.zilchMoment);
+  const canInteract = Boolean(isMyTurn && !state.zilchMoment && !state.startRollMoment);
   syncZilchLeaveControl();
   syncSoloAbandonControl(snapshot, turnState, canInteract);
   syncZilchShareControl(snapshot);
@@ -4760,8 +4813,8 @@ function renderGameState({ followNotebookLatest = false } = {}) {
   const gameName = escapeHtml(snapshot._name || "Zilch");
   const target = Number(snapshot._target_score || 10000);
   const transition = state.notebookTransition;
-  const recommendations = snapshot._finished ? "" : recommendationCards(snapshot, turnState, isMyTurn, canInteract);
-  const turnScore = snapshot._finished ? "" : turnScoreMarkup(snapshot, turnState, quickHolds, isMyTurn, canInteract);
+  const recommendations = snapshot._finished || state.startRollMoment ? "" : recommendationCards(snapshot, turnState, isMyTurn, canInteract);
+  const turnScore = snapshot._finished || state.startRollMoment ? "" : turnScoreMarkup(snapshot, turnState, quickHolds, isMyTurn, canInteract);
   const resultMarkup = finalResult(snapshot);
   const hasChoices = Boolean(recommendations || turnScore || resultMarkup);
   const finished = Boolean(resultMarkup);
@@ -4864,6 +4917,7 @@ function mountZilchEmojiToolbar(snapshot) {
 }
 
 function requestAction(action, payload = {}, { optionId = null } = {}) {
+  if (state.startRollMoment && ["zilch_start_roll", "zilch_roll_dice", "zilch_select_hold", "zilch_bank_points"].includes(action)) return;
   if (!state.socket || state.socket.readyState !== WebSocket.OPEN || state.pendingAction) {
     updateStatus(t("Der Weg zurück zum Tisch wird gesucht …"), "error");
     renderGameState();
@@ -4898,7 +4952,7 @@ function zilchDialogIsOpen() {
 }
 
 function handleZilchGameShortcut(event) {
-  if (spectatorRoute || !gameId || !state.game || state.game?._finished || state.pendingAction || state.zilchMoment) return;
+  if (spectatorRoute || !gameId || !state.game || state.game?._finished || state.pendingAction || state.zilchMoment || state.startRollMoment) return;
   if (event.defaultPrevented || event.repeat || event.isComposing) return;
   const key = String(event.key || "");
   const normalizedKey = key.toLowerCase();
@@ -5149,6 +5203,7 @@ function connectGameSocket() {
         state.diceLandingPending = true;
       }
       const previousDraftKey = state.game ? holdDraftKey(state.game?._zilch_turn_state) : "";
+      beginStartRollMoment(state.game, payload.scoreboard, incomingEvent);
       state.game = payload.scoreboard;
       const startedZilchMoment = beginZilchMoment(state.game, payload.zilch_event, {
         previousPlayerId: previousActivePlayerId,
@@ -5371,6 +5426,7 @@ window.addEventListener("beforeunload", () => {
   state.stopped = true;
   window.clearTimeout(state.reconnectTimer);
   window.clearTimeout(state.zilchMomentTimer);
+  clearStartRollMoment();
   state.socket?.close();
   state.lobbyChat?.destroy();
 });

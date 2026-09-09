@@ -567,8 +567,13 @@ den Container durch. Die CPU-Pause bleibt auf 0 bis 5 Sekunden begrenzt und
 ändert nie Würfelwahrscheinlichkeiten oder Wertung:
 
 ```dotenv
-ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS=0.9
+ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS=1.25
 ```
+
+Bei positiver Taktung bleiben Würfe mindestens 1,8 Sekunden, ein entschiedener
+Startwurf mindestens 1,5 Sekunden und ein Zilch-Übergang mindestens 1,9 Sekunden
+vor der nächsten CPU-Aktion lesbar. Die Pausen werden nicht addiert. Der
+explizite Wert `0` deaktiviert diese Präsentationspausen für Testbetrieb.
 
 Gäste dürfen Zilch spielen, aber keine konto-gebundene Historie, persönliche
 Statistik, Awards oder Ranglistenposition erhalten. Die SEO-Grenze ist deshalb

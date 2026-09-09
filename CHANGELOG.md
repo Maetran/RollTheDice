@@ -11,6 +11,18 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Stille Korrektur / Silent fix — Startwürfel, LCARS-Punktebuch und ruhigerer Würfelwirt
+
+- **Deutsch:** Startwürfe erscheinen als Miniwürfel; beide Ergebnisse bleiben
+  kurz sichtbar, auch vor einem erneuten Versuch bei Gleichstand. Das
+  LCARS-Punktebuch zeigt beide Spieler mit Gesamtstand und separat scrollbar
+  bleibendem Verlauf. Der Würfelwirt lässt mehr Zeit zwischen Wurf und
+  Entscheidung. Zufall, Regeln und Wertung bleiben unverändert.
+- **English:** Opening rolls use miniature dice, with both results briefly
+  visible even before retrying a tie. The LCARS notebook shows both players'
+  totals and independently scrollable histories. The dice keeper leaves more
+  time between rolling and deciding. Randomness, rules and scoring are unchanged.
+
 ## Stille Korrektur / Silent fix — Zilch lädt unabhängig von Schrift und Konto
 
 - **Deutsch:** Die öffentliche Zilch-Überschrift steht bereits im HTML; die

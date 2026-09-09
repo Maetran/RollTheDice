@@ -46,7 +46,9 @@ from .zilch_state import (
 logger = logging.getLogger(__name__)
 
 _CPU_TASKS: dict[str, asyncio.Task[None]] = {}
-_DEFAULT_DELAY_SECONDS = 0.9
+_DEFAULT_DELAY_SECONDS = 1.25
+_ROLL_READING_DELAY_SECONDS = 1.8
+_OPENING_RESULT_DELAY_SECONDS = 1.5
 _ZILCH_HANDOFF_DELAY_SECONDS = 1.9
 _MAX_DELAY_SECONDS = 5.0
 
@@ -271,16 +273,14 @@ async def _run_cpu_game(
     *,
     finalize_game: FinalizeGame | None,
     delay_seconds: float,
-    first_delay_seconds: float,
+    preserve_presentation: bool,
     randint_fn: Callable[[int, int], int],
 ) -> None:
     """Run visible CPU steps until the current authoritative CPU turn ends."""
     game_id = _game_id(game)
-    first_step = True
     try:
         while cpu_action_is_due(game):
-            step_delay = first_delay_seconds if first_step else delay_seconds
-            first_step = False
+            step_delay = _presentation_delay_seconds(game, delay_seconds) if preserve_presentation else delay_seconds
             if step_delay:
                 await asyncio.sleep(step_delay)
             # The state may have paused, finished, or been replaced while the
@@ -312,6 +312,24 @@ async def _run_cpu_game(
         logger.exception("CPU runner failed for Zilch game %s", game_id)
 
 
+def _presentation_delay_seconds(game: dict[str, Any], delay_seconds: float) -> float:
+    """Leave each published result readable before the next CPU command.
+
+    Delays are measured from publication, not added together. A regular roll
+    needs time for the 500 ms dice reveal and then to read its result; the
+    opening result stays visible for 1.2 s and ZILCH uses a 1.85 s presentation.
+    Holds still get the normal pause before banking or rolling again.
+    """
+    last_event = game.get("_zilch_last_event")
+    event_type = str(last_event.get("type") or "") if isinstance(last_event, dict) else ""
+    minimum = {
+        "roll": _ROLL_READING_DELAY_SECONDS,
+        "start_roll_resolved": _OPENING_RESULT_DELAY_SECONDS,
+        "zilch": _ZILCH_HANDOFF_DELAY_SECONDS,
+    }.get(event_type, 0.0)
+    return max(delay_seconds, minimum)
+
+
 async def _publish_cpu_failure(game: dict[str, Any], game_id: str) -> None:
     """Make a damaged CPU configuration visible without inventing a move."""
     game["_zilch_cpu_error"] = "zilch_cpu_game_cannot_continue"
@@ -333,6 +351,8 @@ def maybe_schedule_cpu_turn(
     ``delay_seconds`` and ``randint_fn`` are internal test seams.  Production
     callers do not accept client-controlled timing or randomness; they use the
     bounded environment pacing and the same fair Zilch RNG as human actions.
+    Positive production pacing also preserves each visible result. Explicit
+    test delays and the configured zero-delay mode bypass presentation pauses.
     """
     if not cpu_action_is_due(game):
         return None
@@ -349,19 +369,12 @@ def maybe_schedule_cpu_turn(
         # async task.  The next rejoin/action inside the app loop retries.
         return None
     resolved_delay = cpu_action_delay_seconds() if delay_seconds is None else max(0.0, delay_seconds)
-    last_event = game.get("_zilch_last_event")
-    last_event_type = str(last_event.get("type") or "") if isinstance(last_event, dict) else ""
-    first_delay = (
-        max(resolved_delay, _ZILCH_HANDOFF_DELAY_SECONDS)
-        if delay_seconds is None and last_event_type == "zilch"
-        else resolved_delay
-    )
     task = loop.create_task(
         _run_cpu_game(
             game,
             finalize_game=finalize_game,
             delay_seconds=resolved_delay,
-            first_delay_seconds=first_delay,
+            preserve_presentation=delay_seconds is None and resolved_delay > 0,
             randint_fn=randint_fn or fair_zilch_randint,
         ),
         name=f"zilch-cpu:{game_id}",

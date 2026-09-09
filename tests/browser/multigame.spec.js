@@ -33,6 +33,9 @@ async function enabledLocator(page, selector) {
 
 async function completeOpeningRoll(pages) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
+    // Both live results deliberately stay readable before play or a tied
+    // retry. Waiting for that bounded presentation is not another attempt.
+    await expect(pages[0].locator("[data-start-roll-result]")).toHaveCount(0, { timeout: 3000 });
     if (await pages[0].locator("[data-zilch-start-roll]").count() === 0) return;
     let clicked = false;
     for (const page of pages) {

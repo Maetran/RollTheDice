@@ -96,10 +96,18 @@ start roll and the final reply are handled by the server.
 The score notebook returns to its latest entries on every roll and newly
 recorded score. Reading older entries stays possible between rolls, including
 while changing dice selections or receiving chat messages.
+LCARS keeps both players' score histories and totals visible together, with
+independently scrollable logs. Opening rolls use the same miniature dice as
+scoring suggestions; both results remain visible for 1.2 seconds before play
+or a tied opening attempt continues. Rejoining a running game skips that pause.
 
 CPU opponents use the same dice and scoring path as humans, with conservative,
 normal or aggressive decisions. Solo Sprint has no opponent or final reply;
 its private metrics exclude pauses and server downtime.
+The dice keeper's default action pause is 1.25 seconds, with at least 1.8
+seconds after rolling to read the result and 1.5 seconds after the opening
+result. The existing 1.9-second Zilch handoff remains; pauses are not added
+together and do not alter decisions, randomness or scoring.
 
 Keyboard controls include 1–6 for dice, Space to roll, B to bank, and
 Q/W/E/R/T/Z/U/I for visible suggestions. Shortcuts are disabled while typing or

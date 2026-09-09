@@ -1226,6 +1226,8 @@ html[data-game="zilch"] .zilch-participant-badge--solo {
 .zilch-start-rolls li { display: flex; justify-content: space-between; gap: 1rem; min-width: 0; padding: .55rem .7rem; border-radius: .45rem; background: rgba(135, 91, 44, .1); }
 .zilch-start-rolls li > :first-child { min-width: 0; overflow-wrap: anywhere; }
 .zilch-start-rolls li strong { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.zilch-start-rolls li { align-items: center; }
+.zilch-start-roll-die { display: inline-flex; flex: 0 0 2.2rem; width: 2.2rem; height: 2.2rem; }
 
 .zilch-board-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 1rem 0; }
 .zilch-result-board-grid--solo { grid-template-columns: minmax(0, 1fr); }
