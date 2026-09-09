@@ -327,6 +327,21 @@ to your account across both games and all devices; guests acknowledge in their
 current browser. **Later** or Escape defers the message for that page visit.
 If you've missed several updates, only the latest relevant release pops up.
 
+On a guest's first visit, the current release becomes that browser's starting
+point without opening a dialog. Future updates are still announced, and
+existing guest acknowledgements and account notifications continue to work.
+The ZDWA lobby loads its registration security check only when you use the
+username/password fields or choose **Register**, keeping it out of the initial
+page load. Registration still requires the configured security check.
+
+**Deutsch:** Beim ersten Gastbesuch öffnet sich kein Versionsdialog; der Browser
+merkt sich den aktuellen Stand und zeigt spätere neue Updates weiterhin an.
+Bestehende Gastbestätigungen und Kontohinweise bleiben erhalten. Die ZDWA-Lobby
+lädt die Sicherheitsprüfung erst beim Nutzen der Benutzername-/Passwortfelder
+oder bei **Registrieren**. Die Prüfung bleibt für die Registrierung erforderlich.
+
+Measurement details: [ZDWA loading audit](docs/ZDWA_LOADING_AUDIT_2026-09-09.md).
+
 Revisit the **last ten releases** under **Account → Settings → News & versions**.
 The first announcement also introduces lobby chat, invitation allowlists and
 optional PWA push notifications. In-app notes do not require browser push

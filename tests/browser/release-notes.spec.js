@@ -30,6 +30,20 @@ function release(index = 10, language = "de") {
   };
 }
 
+async function returningGuest(scope) {
+  await scope.addInitScript(revision => {
+    const key = "rollthedice:release-notes:guest";
+    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify([revision]));
+  }, release(9).revision);
+}
+
+async function expectGuestBaseline(page, revision, context = "zdwa") {
+  await expect.poll(() => page.evaluate(game => {
+    const value = localStorage.getItem(`rollthedice:release-notes:baseline:${game}`);
+    return value ? JSON.parse(value) : null;
+  }, context)).toEqual({ revision });
+}
+
 async function mockReleases(page, { viewer = null, count = 1, acknowledged = false, canPrompt = true } = {}) {
   const state = { viewer, canPrompt, latest: 10, fail: false, ackFail: false, gets: 0, posts: [], read: new Set(), held: null, holdNext: false };
   if (acknowledged) state.read.add(release().revision);
@@ -64,7 +78,121 @@ async function mockReleases(page, { viewer = null, count = 1, acknowledged = fal
   return state;
 }
 
-test("guest acknowledgement persists, later defers, and only the latest release is announced", async ({ page }) => {
+test("a first-time guest starts without an update modal and sees only later releases", async ({ page }) => {
+  const server = await mockReleases(page, { count: 10 });
+  await page.goto("/");
+  await expectGuestBaseline(page, release().revision);
+  const dialog = page.locator(".release-notes-dialog");
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Zock die Wand an – Würfelspiel online", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("rollthedice:release-notes:guest"))).toBeNull();
+  await page.reload();
+  await page.evaluate(() => window.ZDWA_RELEASE_NOTES.refresh());
+  await expect(dialog).toHaveCount(0);
+  server.latest = 11;
+  await page.evaluate(() => window.ZDWA_RELEASE_NOTES.refresh());
+  await expect(dialog).toHaveAttribute("data-revision", release(11).revision);
+  await dialog.getByRole("button", { name: "Verstanden", exact: true }).click();
+  await page.reload();
+  await page.evaluate(() => window.ZDWA_RELEASE_NOTES.refresh());
+  await expect(dialog).toHaveCount(0);
+  expect(server.posts).toHaveLength(0);
+});
+
+test("a delayed first history request survives matching initial auth responses", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__releaseAuthEvents = 0;
+    window.addEventListener("zdwa:auth-state", () => { window.__releaseAuthEvents += 1; });
+  });
+  const server = await mockReleases(page);
+  server.holdNext = true;
+  await page.goto("/");
+  await expect.poll(() => Boolean(server.held)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__releaseAuthEvents)).toBeGreaterThan(0);
+  await server.held();
+  await expectGuestBaseline(page, release().revision);
+  await expect(page.locator(".release-notes-dialog")).toHaveCount(0);
+  expect(server.gets).toBe(1);
+});
+
+test("a stale guest history response cannot hide an account update after initial auth", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__releaseAuthEvents = 0;
+    window.addEventListener("zdwa:auth-state", () => { window.__releaseAuthEvents += 1; });
+  });
+  const authRequests = [];
+  await page.route("**/api/auth/me", route => { authRequests.push(route); });
+  const server = await mockReleases(page);
+  server.holdNext = true;
+  await page.goto("/");
+  await expect.poll(() => Boolean(server.held) && authRequests.length > 0).toBe(true);
+  const user = await signIn(page);
+  const auth = await (await page.request.get("/api/auth/me")).json();
+  server.viewer = user.id;
+  await page.unroute("**/api/auth/me");
+  await Promise.all(authRequests.map(route => route.fulfill({ json: auth })));
+  await expect.poll(() => page.evaluate(() => window.__releaseAuthEvents)).toBeGreaterThan(0);
+  await server.held();
+  await expect(page.locator(".release-notes-dialog")).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("rollthedice:release-notes:baseline:zdwa"))).toBeNull();
+  expect(server.gets).toBe(2);
+});
+
+test("history accepts a session change without a local auth event and does not retry endlessly", async ({ page }) => {
+  const user = await signIn(page);
+  const server = await mockReleases(page, { viewer: user.id });
+  await page.goto("/");
+  await expect(page.locator(".release-notes-dialog")).toBeVisible();
+  const gets = server.gets;
+  // Another tab can sign out, or a session can expire, without this page
+  // dispatching zdwa:auth-state. The history endpoint owns its current viewer.
+  server.viewer = null;
+  await page.evaluate(() => window.ZDWA_RELEASE_NOTES.refresh());
+  await expectGuestBaseline(page, release().revision);
+  await expect(page.locator(".release-notes-dialog")).toHaveCount(0);
+  expect(server.gets).toBe(gets + 1);
+  await page.evaluate(() => window.ZDWA_RELEASE_NOTES.refresh());
+  expect(server.gets).toBe(gets + 2);
+  server.viewer = user.id;
+  await page.evaluate(account => window.dispatchEvent(new CustomEvent("zdwa:auth-state", {
+    detail: { authenticated: true, user: account },
+  })), user);
+  await expect(page.locator(".release-notes-dialog")).toBeVisible();
+  expect(server.gets).toBe(gets + 3);
+});
+
+test("a language change during the initial request reloads the recap in the selected language", async ({ page }) => {
+  await returningGuest(page);
+  const server = await mockReleases(page);
+  server.holdNext = true;
+  await page.goto("/");
+  await expect.poll(() => Boolean(server.held)).toBe(true);
+  await page.evaluate(() => window.ZDWA_I18N.setLanguage("en", { persist: false, reload: false }));
+  await server.held();
+  const dialog = page.locator(".release-notes-dialog");
+  await expect(dialog.getByRole("heading")).toHaveText(authored.player_notes.en.title);
+  await expect(dialog.locator("li")).toHaveText(authored.player_notes.en.changes);
+  expect(server.gets).toBe(2);
+});
+
+test("a failed first history request establishes no baseline before a successful retry", async ({ page }) => {
+  const server = await mockReleases(page);
+  server.fail = true;
+  await page.goto("/");
+  await expect.poll(() => server.gets).toBeGreaterThan(0);
+  await page.evaluate(() => window.ZDWA_RELEASE_NOTES.refresh());
+  expect(await page.evaluate(() => localStorage.getItem("rollthedice:release-notes:baseline:zdwa"))).toBeNull();
+  server.fail = false;
+  await expect.poll(async () => {
+    await page.evaluate(() => window.ZDWA_RELEASE_NOTES.refresh());
+    return page.evaluate(() => Boolean(localStorage.getItem("rollthedice:release-notes:baseline:zdwa")));
+  }).toBe(true);
+  await expectGuestBaseline(page, release().revision);
+  await expect(page.locator(".release-notes-dialog")).toHaveCount(0);
+});
+
+test("returning guest acknowledgement persists, later defers, and only the latest release is announced", async ({ page }) => {
+  await returningGuest(page);
   const server = await mockReleases(page, { count: 10 });
   await page.goto("/");
   const dialog = page.locator(".release-notes-dialog");
@@ -224,7 +352,7 @@ test("history failures have retry and required-password prompts suppress release
 test("an existing modal takes priority and the release follows after it closes", async ({ page }) => {
   const server = await mockReleases(page, { count: 0 });
   await page.goto("/");
-  await expect.poll(() => page.evaluate(() => Boolean(window.ZDWA_RELEASE_NOTES))).toBe(true);
+  await expectGuestBaseline(page, null);
   await page.evaluate(() => {
     const modal = document.createElement("dialog");
     modal.id = "otherModal";
@@ -262,11 +390,16 @@ test("guest notes are text-only and still dismiss when browser storage is unavai
     };
   });
   const literal = '<img src=x onerror="window.releaseNoteInjected=true">';
+  let latest = 10;
   await page.route("**/api/releases**", route => route.fulfill({ json: {
-    viewer_id: null, can_prompt: true, releases: [{ ...release(), title: literal, changes: [literal] }],
+    viewer_id: null, can_prompt: true, releases: [{ ...release(latest), title: literal, changes: [literal] }],
   } }));
   await page.goto("/");
   const dialog = page.locator(".release-notes-dialog");
+  await page.evaluate(() => window.ZDWA_RELEASE_NOTES.refresh());
+  await expect(dialog).toHaveCount(0);
+  latest = 11;
+  await page.evaluate(() => window.ZDWA_RELEASE_NOTES.refresh());
   await expect(dialog.getByRole("heading")).toHaveText(literal);
   await expect(dialog.locator("img")).toHaveCount(0);
   expect(await page.evaluate(() => window.releaseNoteInjected)).toBeUndefined();
@@ -276,6 +409,7 @@ test("guest notes are text-only and still dismiss when browser storage is unavai
 });
 
 test("guest acknowledgement never hides a signed-in account's release note", async ({ page }) => {
+  await returningGuest(page);
   const server = await mockReleases(page);
   await page.goto("/");
   await page.locator(".release-notes-dialog").getByRole("button", { name: "Verstanden", exact: true }).click();
@@ -290,6 +424,7 @@ test("guest acknowledgement never hides a signed-in account's release note", asy
 });
 
 test("guest acknowledgements synchronize across open tabs", async ({ page, context }) => {
+  await returningGuest(context);
   await context.route("**/api/releases**", route => route.fulfill({ json: {
     viewer_id: null, can_prompt: true, releases: [release()],
   } }));

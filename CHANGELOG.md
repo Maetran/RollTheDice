@@ -11,6 +11,21 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Stille Korrektur / Silent fix — Schneller in die Lobby
+
+- **Deutsch:** Neue Gäste gelangen direkt in die Lobby. Der Browser merkt sich
+  den aktuellen Versionsstand; spätere neue Updates erscheinen weiterhin.
+  Die Sicherheitsprüfung für ZDWA-Registrierungen lädt erst beim Nutzen der
+  Kontofelder oder bei „Registrieren“. Der Registrierungsschutz bleibt erhalten.
+- **English:** New guests go straight to the lobby. The browser remembers the
+  current release and still announces future updates. The ZDWA registration
+  security check loads when using the account fields or choosing “Register”.
+  Registration remains protected.
+- **Technisch / Technical:** Der mobile Produktionsbericht erfasste den
+  Versionsdialog als LCP und 508 KB vorzeitig geladene CAPTCHA-Ressourcen.
+  Messdaten und Prüfumfang / measurements and validation:
+  [ZDWA loading audit](docs/ZDWA_LOADING_AUDIT_2026-09-09.md).
+
 ## Stille Korrektur / Silent fix — Ruhigere LCARS-Kontraste
 
 - **Deutsch:** Im LCARS-Spielraum sind Rahmen und Chat gedämpfter, die Würfel

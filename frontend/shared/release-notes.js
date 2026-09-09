@@ -1,6 +1,7 @@
 import { apiFetch } from "./auth.js";
 
 const GUEST_KEY = "rollthedice:release-notes:guest";
+const GUEST_BASELINE_PREFIX = "rollthedice:release-notes:baseline:";
 const ACCOUNT_SIGNAL_KEY = "rollthedice:release-notes:acknowledged";
 const HISTORY_SELECTOR = "[data-release-history]";
 const t = value => window.ZDWA_I18N?.t?.(value) || value;
@@ -18,6 +19,14 @@ function guestAcknowledgements() {
     const value = JSON.parse(localStorage.getItem(GUEST_KEY) || "[]");
     return new Set(Array.isArray(value) ? value.filter(item => typeof item === "string").slice(-50) : []);
   } catch { return new Set(); }
+}
+
+function guestBaseline(context) {
+  try {
+    const value = JSON.parse(localStorage.getItem(`${GUEST_BASELINE_PREFIX}${context}`) || "null");
+    if (value && (value.revision === null || typeof value.revision === "string")) return value;
+  } catch { /* The first-visit baseline can still live in this page session. */ }
+  return null;
 }
 
 function releaseDate(release) {
@@ -44,8 +53,11 @@ export function initializeReleaseNotes({ context }) {
   let inFlight = false;
   let epoch = 0;
   let saveInFlight = false;
+  let knownViewer;
+  let authVersion = 0;
   const later = new Set();
   const guestRead = guestAcknowledgements();
+  let baseline = guestBaseline(context);
   const snapshots = new WeakMap();
 
   function closeDialog() {
@@ -56,6 +68,15 @@ export function initializeReleaseNotes({ context }) {
 
   function isRead(release) {
     return release.acknowledged || (data.viewer_id === null && guestRead.has(release.revision));
+  }
+
+  function rememberGuestVisit() {
+    if (data.viewer_id !== null || baseline) return;
+    // An update recap is useful only after a guest has visited this game.
+    // Keep this separate from explicit acknowledgements and preserve the
+    // behaviour of browsers that already acknowledged an older release.
+    baseline = guestBaseline(context) || { revision: guestRead.size ? null : data.releases[0]?.revision || null };
+    try { localStorage.setItem(`${GUEST_BASELINE_PREFIX}${context}`, JSON.stringify(baseline)); } catch { /* Session-only fallback. */ }
   }
 
   function renderHistory() {
@@ -83,9 +104,10 @@ export function initializeReleaseNotes({ context }) {
 
   function maybeAnnounce() {
     const latest = data?.releases?.[0];
-    if (currentDialog && (!latest || !data.can_prompt || !latest.can_announce || isRead(latest) || currentDialog.dataset.revision !== latest.revision)) closeDialog();
+    const dismissed = latest && (isRead(latest) || (data.viewer_id === null && baseline?.revision === latest.revision));
+    if (currentDialog && (!latest || !data.can_prompt || !latest.can_announce || dismissed || currentDialog.dataset.revision !== latest.revision)) closeDialog();
     if (!latest || !data.can_prompt || !latest.can_announce || document.hidden) return;
-    if (currentDialog || isRead(latest) || later.has(`${data.viewer_id}:${latest.revision}`)) return;
+    if (currentDialog || dismissed || later.has(`${data.viewer_id}:${latest.revision}`)) return;
     // Do not stack over password prompts, achievements or another app dialog.
     if (Array.from(document.querySelectorAll('dialog[open], [role="dialog"][aria-modal="true"]')).some(element => element.getClientRects().length)) return;
     const expectedViewer = data.viewer_id;
@@ -153,13 +175,23 @@ export function initializeReleaseNotes({ context }) {
     if (inFlight || document.hidden) return;
     inFlight = true;
     const requestEpoch = epoch;
+    const requestAuthVersion = authVersion;
+    const requestLanguage = language();
     try {
-      const response = await fetch(`/api/releases?game_type=${context}&language=${language()}`, { cache: "no-store", signal: AbortSignal.timeout(10000) });
+      const response = await fetch(`/api/releases?game_type=${context}&language=${requestLanguage}`, { cache: "no-store", signal: AbortSignal.timeout(10000) });
       if (!response.ok) throw new Error("releases_unavailable");
       const result = await response.json();
       if (requestEpoch !== epoch) return;
+      // An initial /me response need not restart this request when both see
+      // the same viewer. A real account change must still discard stale data.
+      if ((requestAuthVersion !== authVersion && result.viewer_id !== knownViewer) || requestLanguage !== language()) {
+        epoch += 1;
+        return;
+      }
       if (data && data.viewer_id !== result.viewer_id) closeDialog();
       data = result;
+      knownViewer = result.viewer_id;
+      rememberGuestVisit();
       renderHistory();
       maybeAnnounce();
     } catch {
@@ -177,13 +209,22 @@ export function initializeReleaseNotes({ context }) {
 
   window.addEventListener("zdwa:auth-state", event => {
     const viewer = event.detail?.authenticated ? event.detail.user?.id : null;
+    if (knownViewer === viewer) return;
+    const initialAuth = knownViewer === undefined;
+    knownViewer = viewer;
+    authVersion += 1;
     if (data && viewer === data.viewer_id) return;
+    if (initialAuth && inFlight) return;
     epoch += 1;
     data = null;
     closeDialog();
     void refresh();
   });
   window.addEventListener("storage", event => {
+    if (event.key === `${GUEST_BASELINE_PREFIX}${context}`) {
+      baseline = guestBaseline(context) || baseline;
+      maybeAnnounce();
+    }
     if (event.key === GUEST_KEY && data?.viewer_id === null) {
       for (const revision of guestAcknowledgements()) guestRead.add(revision);
       maybeAnnounce();

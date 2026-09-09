@@ -1,23 +1,21 @@
 {
   "kind": "usability",
-  "games": ["zilch"],
-  "summary_de": "Zilch LCARS: ruhigere Rahmen und Würfel, besser lesbare Punkte und Würfelwirt-Badges.",
-  "summary_en": "Zilch LCARS: quieter frames and dice, with clearer scores and dice keeper badges.",
+  "games": ["zdwa", "zilch"],
+  "summary_de": "Direkt in die Lobby: Neue Gäste starten ohne Versionsdialog; ZDWA lädt die Sicherheitsprüfung erst bei Kontonutzung.",
+  "summary_en": "Straight to the lobby: new guests start without an update dialog; ZDWA loads its security check when using the account form.",
   "player_notes": {
     "de": {
-      "title": "LCARS: ruhigere Farben, klare Anzeigen",
+      "title": "Schneller in die Lobby",
       "changes": [
-        "Rahmen und Chat treten zurück; Würfel leuchten weniger, bleiben aber klar auswählbar.",
-        "Positive Punkte erscheinen in hellem Apricot, Würfelwirt-Badges mit dunkler Schrift auf flachen LCARS-Farben.",
-        "Nur die Darstellung im LCARS-Spielraum ändert sich. Layout, Blattwechsel und Regeln bleiben gleich."
+        "Beim ersten Gastbesuch siehst du direkt die Lobby. Spätere neue Versionshinweise erscheinen weiterhin.",
+        "ZDWA lädt die Sicherheitsprüfung erst, wenn du die Kontofelder nutzt oder Registrieren wählst."
       ]
     },
     "en": {
-      "title": "LCARS: calmer colours, clearer displays",
+      "title": "A quicker start in the lobby",
       "changes": [
-        "Frames and chat are more subdued; dice have less glow while selections remain clear.",
-        "Positive scores use light apricot, and dice keeper badges use dark lettering on flat LCARS colours.",
-        "Only the game room's appearance changes. Layout, sliding score sheets and rules stay the same."
+        "Your first guest visit opens straight into the lobby. Future updates are still announced.",
+        "ZDWA loads its security check when you use the account fields or choose Register."
       ]
     }
   }
