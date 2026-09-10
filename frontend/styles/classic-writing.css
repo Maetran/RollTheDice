@@ -1,0 +1,51 @@
+/* Accessible numeric text remains the only semantic value. SVG centre-lines
+   are a local, decorative ink layer, never a network/font prerequisite. */
+.classic-written-score__ink {
+  display: none;
+}
+
+:root[data-game="zdwa"][data-theme="classic"] .classic-written-score {
+  position: relative;
+  display: inline-block;
+  vertical-align: -.15em;
+}
+
+:root[data-game="zdwa"][data-theme="classic"] .classic-written-score__text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+:root[data-game="zdwa"][data-theme="classic"] .classic-written-score__ink {
+  display: block;
+  width: var(--pen-width);
+  height: 1em;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.15;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.classic-written-score__stroke {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-game="zdwa"][data-theme="classic"] .classic-written-score.is-writing .classic-written-score__stroke {
+    animation: classic-ink-write var(--pen-duration) cubic-bezier(.37, .08, .62, .97) var(--pen-delay) both;
+  }
+}
+
+@keyframes classic-ink-write {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}

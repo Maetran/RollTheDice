@@ -8,17 +8,27 @@ const PUBLIC_AUTH = {
 };
 const TURNSTILE_SCRIPT = /https:\/\/challenges\.cloudflare\.com\/turnstile\/v0\/api\.js\?/;
 const TURNSTILE_FIXTURE = `
-  window.__turnstileFixture = { renders: 0, resets: [], options: null };
+  window.__turnstileFixture = { renders: 0, resets: [], removed: [], options: null, container: null };
   window.turnstile = {
     render(container, options) {
       window.__turnstileFixture.renders += 1;
       window.__turnstileFixture.options = options;
+      window.__turnstileFixture.container = container;
       container.textContent = "Local verification fixture";
       return "local-registration-widget";
     },
-    reset(widgetId) { window.__turnstileFixture.resets.push(widgetId); }
+    reset(widgetId) { window.__turnstileFixture.resets.push(widgetId); },
+    remove(widgetId) {
+      window.__turnstileFixture.removed.push(widgetId);
+      window.__turnstileFixture.container.replaceChildren();
+    }
   };
 `;
+const ACCOUNT_AUTH = {
+  ...PUBLIC_AUTH,
+  authenticated: true,
+  user: { id: 12345, username: "LocalOnly", is_admin: false, preferences: {} },
+};
 
 function gate() {
   let release;
@@ -39,7 +49,7 @@ test.beforeEach(async ({ page, baseURL }) => {
   await page.route("**/api/auth/me", route => route.fulfill({ json: PUBLIC_AUTH }));
 });
 
-test("anonymous lobby and guest controls do not request registration CAPTCHA", async ({ page }) => {
+test("anonymous lobby, guest controls and ordinary login focus do not request CAPTCHA", async ({ page }) => {
   const challengeRequests = [];
   page.on("request", request => {
     if (new URL(request.url()).hostname === "challenges.cloudflare.com") challengeRequests.push(request.url());
@@ -49,12 +59,217 @@ test("anonymous lobby and guest controls do not request registration CAPTCHA", a
   await expect(page.locator("#registrationChallenge")).toBeHidden();
   await page.fill("#playerName", "GuestPerformance");
   await page.getByRole("radio", { name: "1 Spieler, Solo" }).click();
+  await page.fill("#loginUsername", "LocalOnly");
+  await page.fill("#loginPassword", "local-password-123");
   await expect(page.locator("#createBtn")).toBeEnabled();
   expect(challengeRequests).toEqual([]);
   await expect(page.locator("script[data-rollthedice-turnstile]")).toHaveCount(0);
 });
 
-test("account intent shares one deferred widget and registration requires a fresh token", async ({ page }) => {
+test("Classic lobby paints while identity and handwriting fonts are stalled without a late font shift", async ({ page }, testInfo) => {
+  const authGate = gate();
+  const fontGate = gate();
+  let fontRequests = 0;
+  await page.addInitScript(() => {
+    localStorage.setItem("wuerfler_theme", "classic");
+    window.__fontLayoutShifts = [];
+    if (PerformanceObserver.supportedEntryTypes.includes("layout-shift")) {
+      new PerformanceObserver(list => {
+        for (const entry of list.getEntries()) {
+          if (!entry.hadRecentInput) window.__fontLayoutShifts.push({ at: entry.startTime, value: entry.value });
+        }
+      }).observe({ type: "layout-shift", buffered: true });
+    }
+  });
+  await page.route("**/api/auth/me", async route => {
+    await authGate.promise;
+    await route.fulfill({ json: PUBLIC_AUTH });
+  });
+  await page.route("**/static/kalam-classic-*.woff2*", async route => {
+    fontRequests += 1;
+    await fontGate.promise;
+    await route.continue();
+  });
+  try {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("h1")).toBeVisible({ timeout: 2000 });
+    await expect(page.locator("#createBtn")).toBeVisible({ timeout: 2000 });
+    await expect(page.locator("#createBtn")).toBeEnabled();
+    const contentVisibleAt = await page.evaluate(() => performance.now());
+    expect(contentVisibleAt).toBeLessThan(2500);
+    await expect.poll(() => fontRequests).toBeGreaterThan(0);
+    // Deliberately exceed the optional font's first-paint window. Auth stays
+    // blocked while the late fonts finish, isolating font-induced movement.
+    await page.waitForTimeout(3000);
+    const before = await page.locator("h1").boundingBox();
+    const fontsReleasedAt = await page.evaluate(() => performance.now());
+    fontGate.release();
+    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const after = await page.locator("h1").boundingBox();
+    const lateCls = await page.evaluate(since => PerformanceObserver.supportedEntryTypes.includes("layout-shift")
+      ? window.__fontLayoutShifts.filter(entry => entry.at >= since).reduce((sum, entry) => sum + entry.value, 0)
+      : null, fontsReleasedAt);
+    if (lateCls !== null) expect(lateCls).toBeLessThan(0.01);
+    expect(after.width).toBeCloseTo(before.width, 0);
+    expect(after.height).toBeCloseTo(before.height, 0);
+    await expect(page.locator("#createBtn")).toBeEnabled();
+    await expect(page.locator("script[data-rollthedice-turnstile]")).toHaveCount(0);
+    await testInfo.attach("stalled-auth-font-metrics", {
+      body: JSON.stringify({ contentVisibleAt, fontRequests, before, after, lateCls }),
+      contentType: "application/json",
+    });
+  } finally {
+    authGate.release();
+    fontGate.release();
+  }
+});
+
+for (const registrationClick of [false, true]) {
+  test(`delayed signed-in identity does not start a hidden CAPTCHA (${registrationClick ? "registration click" : "restored login focus"})`, async ({ page }) => {
+    const authGate = gate();
+    let challengeRequests = 0;
+    let registrationRequests = 0;
+    await page.route("**/api/auth/me", async route => {
+      await authGate.promise;
+      await route.fulfill({ json: ACCOUNT_AUTH });
+    });
+    await page.route(TURNSTILE_SCRIPT, async route => {
+      challengeRequests += 1;
+      await serveTurnstile(route);
+    });
+    await page.route("**/api/auth/register", async route => {
+      registrationRequests += 1;
+      await route.fulfill({ status: 403, json: { detail: "captcha_required" } });
+    });
+    try {
+      await page.goto("/", { waitUntil: "domcontentloaded" });
+      await page.locator("#loginUsername").focus();
+      if (registrationClick) {
+        await page.click("#registerBtn");
+        await expect(page.locator("#registerBtn")).toBeDisabled();
+      }
+      await expect(page.locator("h1")).toBeVisible();
+      await expect(page.locator("#createBtn")).toBeEnabled();
+      expect(challengeRequests).toBe(0);
+      authGate.release();
+      await expect(page.locator("#authBadge")).toContainText("LocalOnly");
+      await expect(page.locator("#loginForm")).toBeHidden();
+      await expect(page.locator("#registrationChallenge")).toBeHidden();
+      await expect(page.locator("#registerBtn")).toBeEnabled();
+      await expect(page.locator("#loginError")).toBeEmpty();
+      await expect(page.locator("script[data-rollthedice-turnstile]")).toHaveCount(0);
+      expect(challengeRequests).toBe(0);
+      expect(registrationRequests).toBe(0);
+    } finally {
+      authGate.release();
+    }
+  });
+}
+
+test("ordinary successful login makes no CAPTCHA request", async ({ page }) => {
+  let challengeRequests = 0;
+  await page.route(TURNSTILE_SCRIPT, async route => {
+    challengeRequests += 1;
+    await serveTurnstile(route);
+  });
+  await page.route("**/api/auth/login", route => route.fulfill({ json: ACCOUNT_AUTH }));
+  await page.goto("/");
+  await page.fill("#loginUsername", "LocalOnly");
+  await page.fill("#loginPassword", "local-password-123");
+  await page.click("#loginForm button[type=submit]");
+  await expect(page.locator("#authBadge")).toContainText("LocalOnly");
+  await expect(page.locator("#loginForm")).toBeHidden();
+  expect(challengeRequests).toBe(0);
+  await expect(page.locator("script[data-rollthedice-turnstile]")).toHaveCount(0);
+});
+
+test("login cancels a pending registration script without rendering a hidden widget", async ({ page }) => {
+  const scriptGate = gate();
+  let challengeRequests = 0;
+  let scriptSettled = false;
+  let registrationRequests = 0;
+  await page.route(TURNSTILE_SCRIPT, async route => {
+    challengeRequests += 1;
+    await scriptGate.promise;
+    await serveTurnstile(route);
+    scriptSettled = true;
+  });
+  await page.route("**/api/auth/login", route => route.fulfill({ json: ACCOUNT_AUTH }));
+  await page.route("**/api/auth/register", async route => {
+    registrationRequests += 1;
+    await route.fulfill({ status: 403, json: { detail: "captcha_required" } });
+  });
+  try {
+    await page.goto("/");
+    await page.fill("#loginUsername", "LocalOnly");
+    await page.fill("#loginPassword", "local-password-123");
+    await page.click("#registerBtn");
+    await expect.poll(() => challengeRequests).toBe(1);
+    await expect(page.locator("#registerBtn")).toBeDisabled();
+    await page.click("#loginForm button[type=submit]");
+    await expect(page.locator("#authBadge")).toContainText("LocalOnly");
+    await expect(page.locator("#registerBtn")).toBeEnabled();
+    await expect(page.locator("#registrationChallenge")).toBeHidden();
+    await expect(page.locator("script[data-rollthedice-turnstile]")).toHaveCount(0);
+    scriptGate.release();
+    await expect.poll(() => scriptSettled).toBe(true);
+    await page.waitForLoadState("networkidle");
+    expect(await page.evaluate(() => window.__turnstileFixture?.renders || 0)).toBe(0);
+    await expect(page.locator("#loginError")).toBeEmpty();
+    expect(registrationRequests).toBe(0);
+  } finally {
+    scriptGate.release();
+  }
+});
+
+test("login removes an active widget and retired callbacks cannot restore a token after logout", async ({ page }) => {
+  let signedIn = false;
+  const registrations = [];
+  await page.route("**/api/auth/me", route => route.fulfill({ json: signedIn ? ACCOUNT_AUTH : PUBLIC_AUTH }));
+  await page.route("**/api/auth/login", async route => {
+    signedIn = true;
+    await route.fulfill({ json: ACCOUNT_AUTH });
+  });
+  await page.route("**/api/auth/logout", async route => {
+    signedIn = false;
+    await route.fulfill({ json: { ok: true } });
+  });
+  await page.route(TURNSTILE_SCRIPT, serveTurnstile);
+  await page.route("**/api/auth/register", async route => {
+    registrations.push(route.request().postDataJSON());
+    await route.fulfill({ status: 400, json: { detail: "captcha_invalid" } });
+  });
+  await page.goto("/");
+  await page.fill("#loginUsername", "LocalOnly");
+  await page.fill("#loginPassword", "local-password-123");
+  await page.click("#registerBtn");
+  await expect(page.locator("#registrationChallenge")).toHaveText("Local verification fixture");
+  await page.evaluate(() => { window.__retiredTurnstileOptions = window.__turnstileFixture.options; });
+  await page.click("#loginForm button[type=submit]");
+  await expect(page.locator("#authBadge")).toContainText("LocalOnly");
+  await expect(page.locator("#registrationChallenge")).toBeHidden();
+  await expect(page.locator("#registrationChallenge")).toBeEmpty();
+  expect(await page.evaluate(() => window.__turnstileFixture.removed)).toEqual(["local-registration-widget"]);
+  expect(await page.evaluate(() => window.__turnstileFixture.resets)).toEqual([]);
+  await page.click("#logoutBtn");
+  await expect(page.locator("#loginForm")).toBeVisible();
+  await page.fill("#loginPassword", "local-password-123");
+  await page.click("#registerBtn");
+  await expect.poll(() => page.evaluate(() => window.__turnstileFixture.renders)).toBe(2);
+  await page.evaluate(() => window.__retiredTurnstileOptions.callback("retired-token"));
+  await page.click("#registerBtn");
+  await expect(page.locator("#loginError")).toHaveText("Bitte bestätige zuerst, dass du kein Bot bist.");
+  expect(registrations).toEqual([]);
+  await page.evaluate(() => window.__turnstileFixture.options.callback("current-token"));
+  await page.click("#registerBtn");
+  await expect(page.locator("#loginError")).toContainText("abgelaufen oder ungültig");
+  expect(registrations).toHaveLength(1);
+  expect(registrations[0].turnstile_token).toBe("current-token");
+  expect(await page.evaluate(() => window.__turnstileFixture.resets)).toEqual(["local-registration-widget"]);
+});
+
+test("explicit registration shares one deferred widget and requires a fresh token", async ({ page }) => {
   const scriptGate = gate();
   let scriptRequests = 0;
   const registrations = [];
@@ -71,6 +286,7 @@ test("account intent shares one deferred widget and registration requires a fres
     await page.goto("/");
     await page.fill("#loginUsername", "LocalOnly");
     await page.fill("#loginPassword", "local-password-123");
+    expect(scriptRequests).toBe(0);
     await page.click("#registerBtn");
     await expect(page.locator("#registerBtn")).toBeDisabled();
     expect(scriptRequests).toBe(1);
@@ -101,15 +317,12 @@ test("expired and failed challenges cannot register before a new successful chal
   await page.route(TURNSTILE_SCRIPT, serveTurnstile);
   await page.route("**/api/auth/register", async route => {
     registrations.push(route.request().postDataJSON());
-    await route.fulfill({ json: {
-      ...PUBLIC_AUTH,
-      authenticated: true,
-      user: { id: 12345, username: "LocalOnly", is_admin: false, preferences: {} },
-    } });
+    await route.fulfill({ json: ACCOUNT_AUTH });
   });
   await page.goto("/");
   await page.fill("#loginUsername", "LocalOnly");
   await page.fill("#loginPassword", "local-password-123");
+  await page.click("#registerBtn");
   await expect(page.locator("#registrationChallenge")).toHaveText("Local verification fixture");
   for (const callback of ["expired-callback", "error-callback", "timeout-callback"]) {
     await page.evaluate(name => {
@@ -126,7 +339,8 @@ test("expired and failed challenges cannot register before a new successful chal
   await expect(page.locator("#loginForm")).toBeHidden();
   expect(registrations).toHaveLength(1);
   expect(registrations[0].turnstile_token).toBe("fresh-local-token");
-  expect(await page.evaluate(() => window.__turnstileFixture.resets)).toEqual(["local-registration-widget"]);
+  expect(await page.evaluate(() => window.__turnstileFixture.resets)).toEqual([]);
+  expect(await page.evaluate(() => window.__turnstileFixture.removed)).toEqual(["local-registration-widget"]);
 });
 
 test("a failed deferred script can be retried and never blocks ordinary login", async ({ page }) => {
@@ -153,6 +367,7 @@ test("a failed deferred script can be retried and never blocks ordinary login", 
     await page.goto("/");
     await page.fill("#loginUsername", "LocalOnly");
     await page.fill("#loginPassword", "local-password-123");
+    await page.click("#registerBtn");
     await expect.poll(() => scriptRequests).toBe(1);
     scriptGate.release();
     await expect(page.locator("#loginError")).toContainText("Sicherheitsprüfung ist momentan nicht erreichbar");

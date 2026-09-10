@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=91f6668cbceb">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=91f6668cbceb" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=91f6668cbceb" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=80291a90d02d">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=80291a90d02d" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=80291a90d02d" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=91f6668cbceb">
-  <script src="/static/shell.js?v=91f6668cbceb" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=80291a90d02d">
+  <script src="/static/shell.js?v=80291a90d02d" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -172,12 +172,12 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=91f6668cbceb';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=91f6668cbceb';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=91f6668cbceb';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=91f6668cbceb';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=91f6668cbceb';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=91f6668cbceb';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=80291a90d02d';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=80291a90d02d';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=80291a90d02d';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=80291a90d02d';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=80291a90d02d';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=80291a90d02d';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;

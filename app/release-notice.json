@@ -1,23 +1,23 @@
 {
   "kind": "usability",
   "games": ["zdwa"],
-  "summary_de": "Classic wird gemütlicher: wärmeres Papier, echterer Filz und Sepia-Würfel mit Charakter – bei vertrauter Bedienung.",
-  "summary_en": "Classic feels cosier: warmer paper, more natural felt and sepia dice with character, with the same familiar controls.",
+  "summary_de": "Classic schreibt neue Punkte wie mit Kugelschreiber. Die Lobby startet keine unnötige Sicherheitsprüfung beim Anmelden.",
+  "summary_en": "Classic writes new scores like a ballpoint pen. The lobby no longer starts an unnecessary security check when signing in.",
   "player_notes": {
     "de": {
-      "title": "Classic näher am Kaffeetisch",
+      "title": "Punkte wie von Hand geschrieben",
       "changes": [
-        "Wärmeres Papier nimmt dem Schreibblock die grelle Helligkeit; blaue Kugelschreiber-Schrift und locker gezeichnete Linien bleiben gut lesbar.",
-        "Die Handschrift ist mitgeliefert, der Filz wirkt unregelmäßiger und die glatten Sepia-Würfel zeigen dezente Gebrauchsspuren.",
-        "Auch im Handy-Querformat liegt alles auf Filz. Bedienung, Regeln und Wertung bleiben gleich."
+        "Neue Classic-Punkte entstehen Strich für Strich, auch beim Mitspieler. Du kannst sofort weiterspielen.",
+        "Alte Einträge werden nicht erneut geschrieben. Bei reduzierter Bewegung erscheinen Zahlen sofort vollständig.",
+        "Die Sicherheitsprüfung lädt nur bei Registrieren; Anmelden und bestehende Sitzungen bleiben davon frei."
       ]
     },
     "en": {
-      "title": "Classic feels more like a coffee table",
+      "title": "Scores written by hand",
       "changes": [
-        "Warmer paper takes the glare off the score sheet; blue ballpoint lettering and loosely drawn lines stay easy to read.",
-        "The handwriting is bundled, the felt looks less uniform and the smooth sepia dice show subtle signs of use.",
-        "Mobile landscape backgrounds stay on felt too. Controls, rules and scoring are unchanged."
+        "New Classic scores appear stroke by stroke, including on the other player's screen. You can keep playing immediately.",
+        "Existing entries are not written again. Reduced motion shows the complete numbers immediately.",
+        "Security verification loads only on Register; signing in and existing sessions stay free of it."
       ]
     }
   }

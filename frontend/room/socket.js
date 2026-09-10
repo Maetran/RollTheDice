@@ -81,6 +81,8 @@
     })();
     setConnectionStatus(reconnectAttempts ? "reconnecting" : "connecting", reconnectAttempts ? "Verbindung wird wiederhergestellt …" : "Verbindung wird hergestellt …");
     ws = new WebSocket(wsURL(qs.game_id));
+    // Each new connection hydrates silently, including writes missed offline.
+    let receivedScoreboard = false;
 
 	    ws.addEventListener("open", () => {
 	      reconnectAttempts = 0;
@@ -203,7 +205,8 @@
         // enhancement fails (for example a malformed rank badge). Rendering
         // cannot be allowed to swallow the only completion frame.
         try {
-          renderFromSnapshot(sb);
+          renderFromSnapshot(sb, { animateWrites: receivedScoreboard, resetWrites: !receivedScoreboard });
+          receivedScoreboard = true;
         } catch (error) {
           console.error("Spielstand konnte nicht vollständig gerendert werden:", error);
         }

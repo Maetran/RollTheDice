@@ -33,7 +33,7 @@
  * (Ansage, Korrektur, Auto-Follow, Mobile-Layout).
  * @param {object} snapshot - Server-Snapshot der aktuellen Spielsituation
  */
-function renderFromSnapshot(snapshot) {
+function renderFromSnapshot(snapshot, { animateWrites = false, resetWrites = false } = {}) {
     settlePendingRollFromSnapshot(snapshot);
     const turnPid   = snapshot?._turn?.player_id || null;
     const iAmTurn   = turnPid && String(turnPid) === String(myId);
@@ -56,6 +56,8 @@ function renderFromSnapshot(snapshot) {
       rollsUsed,
       rollsMax,
       announcedRow4: announced,
+      animateWrites,
+      resetWrites,
       canRequestCorrection: canRequestCorrection(snapshot)
     });
     syncBoardCountClasses();

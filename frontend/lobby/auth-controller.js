@@ -7,8 +7,11 @@ const turnstileState = {
   token: null,
   widgetId: null,
   scriptPromise: null,
+  cancelScript: null,
   initializationPromise: null,
   registering: false,
+  authenticated: false,
+  epoch: 0,
 };
 
 function loadTurnstileScript() {
@@ -21,6 +24,7 @@ function loadTurnstileScript() {
       window.clearTimeout(timeout);
       script.removeEventListener("load", loaded);
       script.removeEventListener("error", failed);
+      if (turnstileState.cancelScript === failed) turnstileState.cancelScript = null;
     };
     const failed = () => {
       cleanup();
@@ -36,6 +40,7 @@ function loadTurnstileScript() {
       resolve();
     };
     const timeout = window.setTimeout(failed, 15000);
+    turnstileState.cancelScript = failed;
     script.addEventListener("load", loaded, { once: true });
     script.addEventListener("error", failed, { once: true });
     if (script.isConnected) return;
@@ -53,31 +58,55 @@ function loadTurnstileScript() {
 }
 
 function initializeRegistrationProtection() {
-  if (turnstileState.widgetId !== null) return Promise.resolve();
+  if (turnstileState.authenticated) return Promise.resolve(false);
+  if (turnstileState.widgetId !== null) return Promise.resolve(true);
   if (turnstileState.initializationPromise) return turnstileState.initializationPromise;
-  turnstileState.initializationPromise = (async () => {
+  const epoch = turnstileState.epoch;
+  const isCurrent = () => epoch === turnstileState.epoch && !turnstileState.authenticated;
+  const request = (async () => {
     const auth = await loadAuth();
+    if (!isCurrent() || auth?.authenticated || auth?.user) return false;
     const config = auth?.registration || {};
     if (typeof config.turnstile_enabled !== "boolean"
       || (config.turnstile_enabled && (typeof config.turnstile_site_key !== "string" || !config.turnstile_site_key.trim()))) {
       throw new Error("Die Sicherheitsprüfung ist momentan nicht erreichbar. Bitte versuche es später erneut.");
     }
-    if (!config.turnstile_enabled) return;
+    if (!config.turnstile_enabled) return true;
     turnstileState.enabled = true;
     dom.registrationChallenge.hidden = false;
     await loadTurnstileScript();
+    if (!isCurrent()) return false;
     turnstileState.widgetId = window.turnstile.render(dom.registrationChallenge, {
       sitekey: config.turnstile_site_key,
       action: "register",
-      callback: (token) => { turnstileState.token = token; },
-      "expired-callback": () => { turnstileState.token = null; },
-      "error-callback": () => { turnstileState.token = null; },
-      "timeout-callback": () => { turnstileState.token = null; },
+      callback: (token) => { if (isCurrent()) turnstileState.token = token; },
+      "expired-callback": () => { if (isCurrent()) turnstileState.token = null; },
+      "error-callback": () => { if (isCurrent()) turnstileState.token = null; },
+      "timeout-callback": () => { if (isCurrent()) turnstileState.token = null; },
     });
-  })().finally(() => {
-    turnstileState.initializationPromise = null;
+    return true;
+  })().catch((error) => {
+    if (!isCurrent()) return false;
+    throw error;
+  }).finally(() => {
+    if (turnstileState.initializationPromise === request) turnstileState.initializationPromise = null;
   });
-  return turnstileState.initializationPromise;
+  turnstileState.initializationPromise = request;
+  return request;
+}
+
+function discardRegistrationProtection() {
+  // A login can finish while /me, the script or a widget callback is pending.
+  // Invalidate all of them before removing the widget; never reset a hidden
+  // challenge and accidentally start another round of background work.
+  turnstileState.epoch += 1;
+  turnstileState.token = null;
+  turnstileState.enabled = false;
+  turnstileState.cancelScript?.();
+  if (turnstileState.widgetId !== null) window.turnstile?.remove(turnstileState.widgetId);
+  turnstileState.widgetId = null;
+  dom.registrationChallenge.replaceChildren();
+  dom.registrationChallenge.hidden = true;
 }
 
 function resetRegistrationChallenge() {
@@ -115,15 +144,12 @@ async function refreshAuthUi(refresh = false) {
 }
 
 export function initializeAuthentication() {
-  // Account intent starts the optional registration challenge. Guest play and
-  // the first lobby paint do not need to download or execute Turnstile.
-  for (const input of [dom.loginUsername, dom.loginPassword]) {
-    input.addEventListener("focus", () => {
-      void initializeRegistrationProtection().catch(() => {
-        dom.loginError.textContent = "Die Sicherheitsprüfung ist momentan nicht erreichbar. Bitte versuche es später erneut.";
-      });
-    });
-  }
+  // Only explicit registration needs CAPTCHA. Login-field focus may be
+  // restored by the browser before /me reveals an existing signed-in user.
+  window.addEventListener("zdwa:auth-state", (event) => {
+    turnstileState.authenticated = Boolean(event.detail?.authenticated || event.detail?.user);
+    if (turnstileState.authenticated) discardRegistrationProtection();
+  });
 
   dom.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -147,7 +173,7 @@ export function initializeAuthentication() {
       try {
         // Even a click before /auth/me completes must wait for its protection
         // configuration; unknown or unavailable configuration fails closed.
-        await initializeRegistrationProtection();
+        if (!await initializeRegistrationProtection()) return;
       } catch {
         dom.loginError.textContent = "Die Sicherheitsprüfung ist momentan nicht erreichbar. Bitte versuche es später erneut.";
         return;

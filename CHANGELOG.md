@@ -11,6 +11,22 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Stille Korrektur / Silent fix — Geschriebene Punkte und ruhigeres Laden
+
+- **Deutsch:** Neue Classic-Punkte werden Ziffer für Ziffer mit echten
+  Kugelschreiber-Pfaden geschrieben, auch beim Mitspieler. Bestehende Einträge
+  bleiben bei Neuladen und Wiederverbinden ruhig; reduzierte Bewegung zeigt
+  sofort die fertigen Zahlen. Wertung und Bedienung warten nie auf die Animation.
+  Die Registrierungsprüfung startet nur noch bei „Registrieren“, nicht bei
+  Login-Fokus oder Autofill, und wird nach einer Anmeldung entfernt.
+- **English:** New Classic scores are written digit by digit with real ballpoint
+  paths, including on the other player's screen. Existing entries do not replay
+  on reload or reconnect; reduced motion shows the finished numbers immediately.
+  Scoring and controls never wait for the animation. Registration verification
+  starts only on “Register”, not login focus or autofill, and is removed on login.
+- **Messung / Measurement:**
+  [Classic loading and handwriting audit](docs/ZDWA_CLASSIC_LOADING_2026-09-10.md).
+
 ## Stille Korrektur / Silent fix — Classic näher am Kaffeetisch
 
 - **Deutsch:** Der ZDWA-Classic-Schreibblock hat wärmeres, gedämpftes Papier

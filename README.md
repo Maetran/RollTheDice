@@ -134,7 +134,12 @@ sheet: softer, warm paper rests on irregular green felt, with blue ballpoint
 lettering and loosely drawn lines. Bundled handwriting keeps the style
 consistent across devices; smooth sepia dice have subtle, individual patina.
 The felt also fills mobile landscape backgrounds. Short screens retain
-scrollable access to the sheet and its actions. Controls, rules and scoring
+scrollable access to the sheet and its actions. Newly recorded Classic scores
+are drawn as blue ballpoint centre-line strokes, digit by digit, in about half
+a second. Opponents see the same writing; existing scores, reloads and reconnects
+do not replay it. Reduced-motion preferences show the final ink immediately.
+The score and controls never wait for the animation, which needs no extra font
+or network request. Controls, rules and scoring
 are unchanged. Zilch remembers its separate Classic or LCARS choice locally in the
 same browser. LCARS uses a solid black canvas, flat segmented console rails,
 rounded LCARS elbows and locally hosted condensed display lettering, including
@@ -334,17 +339,20 @@ If you've missed several updates, only the latest relevant release pops up.
 On a guest's first visit, the current release becomes that browser's starting
 point without opening a dialog. Future updates are still announced, and
 existing guest acknowledgements and account notifications continue to work.
-The ZDWA lobby loads its registration security check only when you use the
-username/password fields or choose **Register**, keeping it out of the initial
-page load. Registration still requires the configured security check.
+The ZDWA lobby loads its registration security check only when you choose
+**Register**. Focusing or autofilling login fields does not start it, and signing
+in removes any obsolete check. Registration still requires the configured
+security check; ordinary login and existing sessions do not run a hidden widget.
 
 **Deutsch:** Beim ersten Gastbesuch öffnet sich kein Versionsdialog; der Browser
 merkt sich den aktuellen Stand und zeigt spätere neue Updates weiterhin an.
 Bestehende Gastbestätigungen und Kontohinweise bleiben erhalten. Die ZDWA-Lobby
-lädt die Sicherheitsprüfung erst beim Nutzen der Benutzername-/Passwortfelder
-oder bei **Registrieren**. Die Prüfung bleibt für die Registrierung erforderlich.
+lädt die Sicherheitsprüfung erst bei **Registrieren**, nicht beim Fokussieren
+oder automatischen Ausfüllen der Anmeldefelder. Nach erfolgreicher Anmeldung
+wird eine überholte Prüfung entfernt. Für die Registrierung bleibt sie erforderlich.
 
 Measurement details: [ZDWA loading audit](docs/ZDWA_LOADING_AUDIT_2026-09-09.md).
+Follow-up: [Classic loading and handwriting audit](docs/ZDWA_CLASSIC_LOADING_2026-09-10.md).
 
 Revisit the **last ten releases** under **Account → Settings → News & versions**.
 The first announcement also introduces lobby chat, invitation allowlists and

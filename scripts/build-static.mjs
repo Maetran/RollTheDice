@@ -23,6 +23,7 @@ const targets = [
   {
     sources: [
       "frontend/scoreboard/core.js",
+      "frontend/scoreboard/classic-writing.js",
       "frontend/scoreboard/live-renderer.js",
       "frontend/scoreboard/replay-renderer.js",
     ],

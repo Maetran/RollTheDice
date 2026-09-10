@@ -1,5 +1,6 @@
 function renderScoreboard(mount, sb, {
-  myPlayerId, iAmTurn, rollsUsed, rollsMax, announcedRow4, canRequestCorrection = false, readOnly = false
+  myPlayerId, iAmTurn, rollsUsed, rollsMax, announcedRow4, canRequestCorrection = false, readOnly = false,
+  animateWrites = false, resetWrites = false
 } = {}) {
   if (!sb) { if (mount) mount.innerHTML = ""; return; }
 
@@ -7,6 +8,7 @@ function renderScoreboard(mount, sb, {
 
   const nameEl   = document.getElementById("roomGameName");
   const contentEl= mount || document.getElementById("scoreOut");
+  const writing = prepareClassicWriting(contentEl, sb, { animateWrites, resetWrites, readOnly });
 
   const dice  = sb._dice  || [];
   const holds = sb._holds || [false,false,false,false,false];
@@ -120,6 +122,7 @@ function renderScoreboard(mount, sb, {
             </thead>
             <tbody>
               ${renderRows(sc, sb, {
+                writing,
                 myPlayerId,
                 pid: id,
                 isMyBoard,
@@ -297,7 +300,10 @@ function renderRows(sc, sb, ctx){
 
       const dataAttr  = rowFieldKey ? ` data-row="${ri}" data-field="${colKey}"` : "";
       const titleAttr = titleText ? ` title="${esc(titleText)}"` : "";
-      return `<td class="${classes.join(" ")}"${dataAttr}${titleAttr}>${has ? esc(String(val)) : ""}</td>`;
+      const valueMarkup = has
+        ? (rowFieldKey ? classicWrittenScore(val, ctx.pid, ri, colKey, ctx.writing) : esc(String(val)))
+        : "";
+      return `<td class="${classes.join(" ")}"${dataAttr}${titleAttr}>${valueMarkup}</td>`;
     }
 
     const rowClasses = [];
