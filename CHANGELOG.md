@@ -11,6 +11,24 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Stille Korrektur / Silent fix — Classic näher am Kaffeetisch
+
+- **Deutsch:** Der ZDWA-Classic-Schreibblock hat wärmeres, gedämpftes Papier
+  statt einer grell hellen Fläche. Blaue Kugelschreiber-Schrift und locker
+  gezeichnete Linien bleiben klar lesbar. Die Handschrift wird lokal
+  mitgeliefert. Unregelmäßige Filzfasern und glatte Sepia-Würfel mit dezenter,
+  individueller Patina machen den Tisch lebendiger. Auch im Handy-Querformat
+  bleibt der Hintergrund auf Filz. Auf kurzen Bildschirmen bleiben Block
+  und Aktionen per Scrollen erreichbar; Bedienung, Regeln und Wertung
+  ändern sich nicht.
+- **English:** ZDWA Classic uses warmer, muted score-sheet paper instead of
+  a glaringly bright surface. Blue ballpoint lettering and loosely drawn
+  lines stay clearly legible. Handwriting is bundled locally. Irregular felt
+  fibres and smooth sepia dice with subtle, individual patina bring more
+  character to the table. Mobile landscape backgrounds stay on felt too.
+  Short screens keep the sheet and its actions reachable by scrolling;
+  controls, rules and scoring are unchanged.
+
 ## Stille Korrektur / Silent fix — Schneller in die Lobby
 
 - **Deutsch:** Neue Gäste gelangen direkt in die Lobby. Der Browser merkt sich

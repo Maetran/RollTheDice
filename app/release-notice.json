@@ -1,21 +1,23 @@
 {
   "kind": "usability",
-  "games": ["zdwa", "zilch"],
-  "summary_de": "Direkt in die Lobby: Neue Gäste starten ohne Versionsdialog; ZDWA lädt die Sicherheitsprüfung erst bei Kontonutzung.",
-  "summary_en": "Straight to the lobby: new guests start without an update dialog; ZDWA loads its security check when using the account form.",
+  "games": ["zdwa"],
+  "summary_de": "Classic wird gemütlicher: wärmeres Papier, echterer Filz und Sepia-Würfel mit Charakter – bei vertrauter Bedienung.",
+  "summary_en": "Classic feels cosier: warmer paper, more natural felt and sepia dice with character, with the same familiar controls.",
   "player_notes": {
     "de": {
-      "title": "Schneller in die Lobby",
+      "title": "Classic näher am Kaffeetisch",
       "changes": [
-        "Beim ersten Gastbesuch siehst du direkt die Lobby. Spätere neue Versionshinweise erscheinen weiterhin.",
-        "ZDWA lädt die Sicherheitsprüfung erst, wenn du die Kontofelder nutzt oder Registrieren wählst."
+        "Wärmeres Papier nimmt dem Schreibblock die grelle Helligkeit; blaue Kugelschreiber-Schrift und locker gezeichnete Linien bleiben gut lesbar.",
+        "Die Handschrift ist mitgeliefert, der Filz wirkt unregelmäßiger und die glatten Sepia-Würfel zeigen dezente Gebrauchsspuren.",
+        "Auch im Handy-Querformat liegt alles auf Filz. Bedienung, Regeln und Wertung bleiben gleich."
       ]
     },
     "en": {
-      "title": "A quicker start in the lobby",
+      "title": "Classic feels more like a coffee table",
       "changes": [
-        "Your first guest visit opens straight into the lobby. Future updates are still announced.",
-        "ZDWA loads its security check when you use the account fields or choose Register."
+        "Warmer paper takes the glare off the score sheet; blue ballpoint lettering and loosely drawn lines stay easy to read.",
+        "The handwriting is bundled, the felt looks less uniform and the smooth sepia dice show subtle signs of use.",
+        "Mobile landscape backgrounds stay on felt too. Controls, rules and scoring are unchanged."
       ]
     }
   }

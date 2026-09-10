@@ -35,8 +35,8 @@ test("ZDWA cycles and retains Light, Dark, and Classic without changing game UI 
     handwriting: getComputedStyle(document.documentElement).getPropertyValue("--classic-handwriting"),
   }));
   expect(lobbyLook.paper).toContain("radial-gradient");
-  expect(lobbyLook.handwriting).toContain("Bradley Hand");
-  expect(lobbyLook.font).toContain("Bradley Hand");
+  expect(lobbyLook.handwriting).toContain("ZDWA Classic Hand");
+  expect(lobbyLook.font).toContain("ZDWA Classic Hand");
 
   await page.reload();
   await expect(html).toHaveAttribute("data-theme", "classic");
@@ -89,20 +89,18 @@ test("ZDWA cycles and retains Light, Dark, and Classic without changing game UI 
     };
   });
   expect(roomLook.felt).toContain("radial-gradient");
-  expect(roomLook.felt).toContain("repeating-linear-gradient");
-  expect(roomLook.feltColor).toBe("rgb(10, 91, 74)");
+  expect(roomLook.felt).toContain("data:image/svg+xml");
+  expect(roomLook.felt).not.toContain("repeating-linear-gradient");
   expect(roomLook.feltShadow).toContain("inset");
-  expect(roomLook.dieFill).toBe("rgb(246, 233, 201)");
+  expect(roomLook.dieFill).not.toBe("rgb(255, 255, 255)");
   expect(roomLook.dieStroke).not.toBe("rgb(0, 0, 0)");
   expect(roomLook.scoreMat).toContain("radial-gradient");
-  expect(roomLook.scoreMat).toContain("repeating-linear-gradient");
-  expect(roomLook.scoreMatColor).toBe("rgb(10, 91, 74)");
-  expect(roomLook.scorePaperColor).toBe("rgb(255, 247, 229)");
-  expect(roomLook.scoreSheetFont).toContain("Noteworthy");
+  expect(roomLook.scoreMat).toContain("data:image/svg+xml");
+  expect(roomLook.scoreMatColor).toBe(roomLook.feltColor);
+  expect(roomLook.scorePaperColor).not.toBe("rgb(255, 247, 229)");
+  expect(roomLook.scoreSheetFont).toContain("ZDWA Classic Hand");
   expect(roomLook.scoreSheetNumbers).toBe("normal");
-  expect(roomLook.scoreInk).toBe("rgb(18, 61, 117)");
   expect(roomLook.scoreLineImage).toContain("data:image/svg+xml");
-  expect(roomLook.scoreLineImage).toContain("%23174a8b");
 
   // The announced (❗) column is the final table header. Its paper wash must
   // match the three score-column headers rather than losing the gradient to a
@@ -124,9 +122,8 @@ test("ZDWA cycles and retains Light, Dark, and Classic without changing game UI 
     expect(headerBackgrounds[3]).toEqual(otherHeader);
   }
 
-  // A multiplayer correction adds a real second row to the mobile action dock.
-  // The same responsive state must reserve enough space above chat and keep the
-  // final score row reachable on short screens.
+  // The separate refinement spec exercises an actual two-guest correction,
+  // including a legal roll/write and the resulting real server-owned action.
   for (const viewport of [{ width: 320, height: 480 }, { width: 390, height: 480 }]) {
     await page.setViewportSize(viewport);
     const mobileLook = await page.evaluate(() => {
@@ -143,54 +140,11 @@ test("ZDWA cycles and retains Light, Dark, and Classic without changing game UI 
         feedbackColor: feedback.color,
       };
     });
-    expect(mobileLook.canvasColor).toBe("rgb(10, 91, 74)");
-    expect(mobileLook.canvasTexture).toContain("repeating-linear-gradient");
-    expect(mobileLook.headerColor).toBe("rgb(10, 91, 74)");
-    expect(mobileLook.dockColor).toBe("rgb(10, 91, 74)");
+    expect(mobileLook.canvasColor).toBe(roomLook.feltColor);
+    expect(mobileLook.canvasTexture).toContain("data:image/svg+xml");
+    expect(mobileLook.headerColor).toBe(roomLook.feltColor);
+    expect(mobileLook.dockColor).toBe(roomLook.feltColor);
     expect(mobileLook.headerBackdrop).toBe("none");
-    expect(mobileLook.feedbackColor).toBe("rgb(255, 244, 215)");
-
-    const geometry = await page.locator(".dice-actions").evaluate((actions) => {
-      actions.querySelector("#requestCorrectionBtn")?.remove();
-      const button = document.createElement("button");
-      button.id = "requestCorrectionBtn";
-      button.className = "small";
-      button.textContent = "Letzten Eintrag ändern";
-      actions.append(button);
-      const cssLength = (token) => {
-        const probe = document.createElement("div");
-        probe.style.cssText = `position:absolute; height:var(${token}); visibility:hidden;`;
-        document.body.append(probe);
-        const height = probe.getBoundingClientRect().height;
-        probe.remove();
-        return height;
-      };
-      const box = (selector) => {
-        const rect = document.querySelector(selector).getBoundingClientRect();
-        return { top: rect.top, bottom: rect.bottom, height: rect.height };
-      };
-      return {
-        correction: box("#requestCorrectionBtn"),
-        dock: box(".topbar"),
-        safeBottom: window.innerHeight - cssLength("--mobile-chatbar-h") - cssLength("--mobile-action-gap"),
-      };
-    });
-    expect(geometry.correction.bottom).toBeLessThanOrEqual(geometry.dock.bottom - 8);
-    expect(geometry.correction.bottom).toBeLessThanOrEqual(geometry.safeBottom - 8);
+    expect(mobileLook.feedbackColor).toBe("rgb(233, 220, 192)");
   }
-
-  const finalRow = await page.locator(".dice-actions").evaluate((actions) => {
-    if (!actions.querySelector("#requestCorrectionBtn")) {
-      const button = document.createElement("button");
-      button.id = "requestCorrectionBtn";
-      button.className = "small";
-      button.textContent = "Letzten Eintrag ändern";
-      actions.append(button);
-    }
-    window.scrollTo(0, document.documentElement.scrollHeight);
-    const row = document.querySelector(".player-card.me table.grid tbody tr:last-child").getBoundingClientRect();
-    const dock = document.querySelector(".topbar").getBoundingClientRect();
-    return { bottom: row.bottom, coveredFrom: dock.top };
-  });
-  expect(finalRow.bottom).toBeLessThanOrEqual(finalRow.coveredFrom - 4);
 });

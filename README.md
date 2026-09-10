@@ -130,8 +130,12 @@ in the result history.
 One account works across both games, with shared language and comfort settings.
 ZDWA offers locally saved Light, Dark and Classic appearances through its compact
 header appearance button. Classic turns the table into a coffee-table score
-sheet with green felt and hand-written paper styling; it never changes rules or
-scoring. Zilch remembers its separate Classic or LCARS choice locally in the
+sheet: softer, warm paper rests on irregular green felt, with blue ballpoint
+lettering and loosely drawn lines. Bundled handwriting keeps the style
+consistent across devices; smooth sepia dice have subtle, individual patina.
+The felt also fills mobile landscape backgrounds. Short screens retain
+scrollable access to the sheet and its actions. Controls, rules and scoring
+are unchanged. Zilch remembers its separate Classic or LCARS choice locally in the
 same browser. LCARS uses a solid black canvas, flat segmented console rails,
 rounded LCARS elbows and locally hosted condensed display lettering, including
 in the installed PWA. Controls, rules, randomness and scoring stay the same.

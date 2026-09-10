@@ -1,12 +1,13 @@
+@import "./classic-font.css";
+
 /* === Classic: Würfelspiel am Kaffeetisch ===
-   The theme stays entirely local to ZDWA. It relies on an intentionally broad
-   system handwriting stack, so it remains usable offline and does not add a
-   third-party font request to the game table. */
+   Local handwriting and static SVG fibres keep the material language portable.
+   No remote font, full-screen live filter or image download blocks the game. */
 :root[data-game="zdwa"][data-theme="classic"] {
-  --bg: #d8c8a7;
-  --surface: #fbf1d8;
-  --surface-soft: #f1dfbd;
-  --card: #fff5df;
+  --bg: #c9bfa8;
+  --surface: #e7d9bb;
+  --surface-soft: #daccad;
+  --card: #e9dcc0;
   --text: #382717;
   --border: #bda278;
   --border-strong: #7d5b3d;
@@ -25,45 +26,45 @@
   --danger-soft: #f5d9ca;
   --info-soft: #e6dfbe;
   --info-border: #b6a370;
-  --table-head: #ebdcba;
+  --table-head: #d6c6a4;
   --warning-border: #c8a14f;
-  --header-bg: rgba(251, 241, 216, .92);
+  --header-bg: rgba(231, 217, 187, .96);
   --header-border: rgba(155, 123, 84, .58);
   --shadow-sm: 0 .08rem .16rem rgba(70, 45, 24, .16);
   --shadow-md: .14rem .38rem .85rem rgba(70, 45, 24, .2);
   --radius: 4px;
   --radius-sm: 3px;
   --radius-card: 5px;
-  --classic-paper: #fff5df;
-  --classic-paper-line: rgba(123, 90, 52, .14);
+  --classic-paper: #e7d9bb;
+  --classic-paper-line: rgba(105, 79, 49, .075);
   --classic-ink: #3b2918;
   --classic-ink-stroke: rgba(101, 62, 35, .68);
-  --classic-score-paper: #fff7e5;
-  --classic-score-ink: #174a8b;
-  --classic-score-ink-strong: #123d75;
-  --classic-score-ink-wash: rgba(23, 74, 139, .1);
-  --classic-handwriting: "Bradley Hand", "Noteworthy", "Segoe Print", "Chalkboard SE", "Comic Sans MS", cursive;
-  --classic-score-handwriting: "Noteworthy", "Bradley Hand", "Segoe Print", "Chalkboard SE", cursive;
+  --classic-score-paper: #e4d6b5;
+  --classic-score-ink: #2b4e73;
+  --classic-score-ink-strong: #244566;
+  --classic-score-ink-wash: rgba(43, 78, 115, .045);
+  --classic-handwriting: "ZDWA Classic Hand", "Bradley Hand", "Noteworthy", "Segoe Print", "Chalkboard SE", cursive;
+  --classic-score-handwriting: var(--classic-handwriting);
+  --classic-felt-fibres: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22384%22%20height%3D%22384%22%20viewBox%3D%220%200%20384%20384%22%3E%3Cfilter%20id%3D%22felt%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%22.47%20.19%22%20numOctaves%3D%223%22%20stitchTiles%3D%22stitch%22%2F%3E%3CfeColorMatrix%20type%3D%22saturate%22%20values%3D%220%22%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%22384%22%20height%3D%22384%22%20filter%3D%22url(%23felt)%22%20opacity%3D%22.12%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23c1d2a9%22%20stroke-width%3D%22.65%22%20stroke-linecap%3D%22round%22%20opacity%3D%22.06%22%3E%3Cpath%20d%3D%22M17%2042q4-3%207-1m32%2017q-3%205-7%205m45%2044q7-3%2010%201m-65%2046q5%203%206%207m72-24q3-4%208-3m24%2052q7%201%209%204m-104%2039q5-1%208-5m36%2056q3-2%207-1m77%2043q5%200%209-4m24-75q-2-5%201-9m32-103q5-3%2010-1m39%2051q5%202%206%208m45-26q6-4%2010-2m-35-96q1-6%205-9m-92-36q3%204%208%205m-18%20263q6-1%208-5m63-9q4%201%207%204m38%2059q4-2%208-1m-276-6q3-4%208-3%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
   --classic-felt-surface:
-    radial-gradient(ellipse at 13% 19%, rgba(229, 244, 187, .17), transparent 19%),
-    radial-gradient(ellipse at 82% 72%, rgba(10, 43, 24, .32), transparent 25%),
-    repeating-linear-gradient(14deg, rgba(225, 244, 184, .08) 0 .5px, transparent .5px 3px),
-    repeating-linear-gradient(103deg, rgba(8, 42, 22, .11) 0 .65px, transparent .65px 4px),
-    #0a5b4a;
-  --classic-felt-text: #fff4d7;
-  --classic-wavy-horizontal: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2020%203'%3E%3Cpath%20d='M0%201.6%20C3%20.5%205%202.35%208%201.5%20S13%20.55%2016%201.45%20S19%202.1%2020%201.2'%20fill='none'%20stroke='%236b4327'%20stroke-opacity='.7'%20stroke-width='1.1'%20stroke-linecap='round'/%3E%3C/svg%3E");
-  --classic-wavy-vertical: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%203%2020'%3E%3Cpath%20d='M1.45%200%20C.4%203%202.4%205%201.4%208%20S.5%2013%201.5%2016%20S2.1%2019%201.2%2020'%20fill='none'%20stroke='%236b4327'%20stroke-opacity='.7'%20stroke-width='1.1'%20stroke-linecap='round'/%3E%3C/svg%3E");
-  --classic-score-wavy-horizontal: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2020%203'%3E%3Cpath%20d='M0%201.55%20C2.7%20.38%205.35%202.5%208.15%201.42%20S13.25%20.45%2016%201.5%20S18.9%202.2%2020%201.15'%20fill='none'%20stroke='%23174a8b'%20stroke-opacity='.82'%20stroke-width='1.12'%20stroke-linecap='round'/%3E%3C/svg%3E");
-  --classic-score-wavy-vertical: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%203%2020'%3E%3Cpath%20d='M1.42%200%20C.3%202.8%202.45%205.25%201.36%208.1%20S.42%2013.15%201.52%2016.1%20S2.2%2018.9%201.15%2020'%20fill='none'%20stroke='%23174a8b'%20stroke-opacity='.82'%20stroke-width='1.12'%20stroke-linecap='round'/%3E%3C/svg%3E");
+    radial-gradient(ellipse at 17% 12%, rgba(184, 199, 151, .035), transparent 62%),
+    var(--classic-felt-fibres),
+    #285b49;
+  --classic-felt-text: #e9dcc0;
+  --classic-wavy-horizontal: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20320%205%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%202.5%20C13%202.95%2027%201.38%2040%201.98%20C53%202.43%2067%201.37%2080%201.97%20C93%202.42%20107%202.68%20120%203.28%20C133%203.73%20147%201.72%20160%202.32%20C173%202.77%20187%201.12%20200%201.72%20C213%202.17%20227%202.52%20240%203.12%20C253%203.57%20267%202.08%20280%202.68%20C293%203.13%20307%201.00%20320%201.6%22%20fill%3D%22none%22%20stroke%3D%22%23654e37%22%20stroke-opacity%3D%22.58%22%20stroke-width%3D%221%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E");
+  --classic-wavy-vertical: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%205%20320%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%202.5%20C13%202.95%2027%202.67%2040%203.27%20C53%203.72%2067%201.33%2080%201.93%20C93%202.38%20107%201.42%20120%202.02%20C133%202.47%20147%202.69%20160%203.29%20C173%203.74%20187%201.66%20200%202.26%20C213%202.71%20227%201.15%20240%201.75%20C253%202.20%20267%202.56%20280%203.16%20C293%203.61%20307%202.02%20320%202.62%22%20transform%3D%22matrix(0%201%201%200%200%200)%22%20fill%3D%22none%22%20stroke%3D%22%23654e37%22%20stroke-opacity%3D%22.58%22%20stroke-width%3D%221%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E");
+  --classic-score-wavy-horizontal: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20320%205%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%202.5%20C13%202.95%2027%201.38%2040%201.98%20C53%202.43%2067%201.37%2080%201.97%20C93%202.42%20107%202.68%20120%203.28%20C133%203.73%20147%201.72%20160%202.32%20C173%202.77%20187%201.12%20200%201.72%20C213%202.17%20227%202.52%20240%203.12%20C253%203.57%20267%202.08%20280%202.68%20C293%203.13%20307%201.00%20320%201.6%22%20fill%3D%22none%22%20stroke%3D%22%23315579%22%20stroke-opacity%3D%22.58%22%20stroke-width%3D%221%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E");
+  --classic-score-wavy-vertical: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%205%20320%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%202.5%20C13%202.95%2027%202.67%2040%203.27%20C53%203.72%2067%201.33%2080%201.93%20C93%202.38%20107%201.42%20120%202.02%20C133%202.47%20147%202.69%20160%203.29%20C173%203.74%20187%201.66%20200%202.26%20C213%202.71%20227%201.15%20240%201.75%20C253%202.20%20267%202.56%20280%203.16%20C293%203.61%20307%202.02%20320%202.62%22%20transform%3D%22matrix(0%201%201%200%200%200)%22%20fill%3D%22none%22%20stroke%3D%22%23315579%22%20stroke-opacity%3D%22.58%22%20stroke-width%3D%221%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E");
+  --classic-score-wavy-horizontal-alt: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20320%205%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%202.5%20C13%202.95%2027%201.07%2040%201.67%20C53%202.12%2067%201.83%2080%202.43%20C93%202.88%20107%202.65%20120%203.25%20C133%203.70%20147%201.28%20160%201.88%20C173%202.33%20187%201.48%20200%202.08%20C213%202.53%20227%202.70%20240%203.3%20C253%203.75%20267%201.59%20280%202.19%20C293%202.64%20307%201.19%20320%201.79%22%20fill%3D%22none%22%20stroke%3D%22%23315579%22%20stroke-opacity%3D%22.58%22%20stroke-width%3D%221%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E");
+  --classic-score-wavy-vertical-alt: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%205%20320%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%202.5%20C13%202.95%2027%202.69%2040%203.29%20C53%203.74%2067%201.67%2080%202.27%20C93%202.72%20107%201.14%20120%201.74%20C133%202.19%20147%202.55%20160%203.15%20C173%203.60%20187%202.04%20200%202.64%20C213%203.09%20227%201.01%20240%201.61%20C253%202.06%20267%202.29%20280%202.89%20C293%203.34%20307%202.37%20320%202.97%22%20transform%3D%22matrix(0%201%201%200%200%200)%22%20fill%3D%22none%22%20stroke%3D%22%23315579%22%20stroke-opacity%3D%22.58%22%20stroke-width%3D%221%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E");
 }
 
 :root[data-game="zdwa"][data-theme="classic"] body {
   background:
-    radial-gradient(circle at 18% 12%, rgba(255, 253, 232, .62), transparent 22rem),
-    repeating-linear-gradient(18deg, rgba(101, 75, 42, .035) 0 1px, transparent 1px 5px),
+    radial-gradient(circle at 18% 12%, rgba(239, 231, 209, .2), transparent 22rem),
     var(--bg);
   font-family: var(--classic-handwriting);
-  letter-spacing: .022em;
+  letter-spacing: .006em;
   text-rendering: geometricPrecision;
 }
 
@@ -116,7 +117,7 @@
 :root[data-game="zdwa"][data-theme="classic"] .player-card.me {
   background:
     repeating-linear-gradient(to bottom, transparent 0 1.58rem, var(--classic-paper-line) 1.58rem 1.64rem),
-    #fff8e8;
+    var(--classic-score-paper);
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .player-card.turn {
@@ -181,21 +182,21 @@
 
 :root[data-game="zdwa"][data-theme="classic"] :is(table.grid thead th, .leaderboard-box thead th, .grid-fields thead th) {
   color: #4b351f;
-  background: linear-gradient(174deg, rgba(234, 211, 164, .72), rgba(205, 174, 116, .48)) !important;
+  background: linear-gradient(174deg, rgba(196, 176, 134, .2), rgba(169, 146, 105, .12)) !important;
   font-weight: 650;
 }
 
 :root[data-game="zdwa"][data-theme="classic"] :is(table.grid th.sticky, table.grid td.desc.sticky) {
-  background: #fbefd3;
+  background: var(--classic-score-paper);
 }
 
 :root[data-game="zdwa"][data-theme="classic"] td.cell.clickable {
-  background: rgba(255, 251, 234, .72);
+  background: rgba(239, 227, 199, .3);
 }
 
 :root[data-game="zdwa"][data-theme="classic"] td.cell.clickable:hover,
 :root[data-game="zdwa"][data-theme="classic"] td.cell.announce-pickable {
-  background: rgba(216, 231, 180, .72);
+  background: rgba(166, 186, 137, .28);
 }
 
 :root[data-game="zdwa"][data-theme="classic"] td.cell.announced {
@@ -206,14 +207,14 @@
 :root[data-game="zdwa"][data-theme="classic"] td.cell.compute,
 :root[data-game="zdwa"][data-theme="classic"] td.desc.compute {
   color: #634d36;
-  background: rgba(232, 215, 179, .64);
+  background: rgba(174, 151, 108, .13);
 }
 
 :root[data-game="zdwa"][data-theme="classic"] :is(table.grid th, table.grid td, .leaderboard-box th, .leaderboard-box td, .grid-fields th, .grid-fields td) {
   background-image: var(--classic-wavy-horizontal), var(--classic-wavy-vertical) !important;
   background-repeat: repeat-x, repeat-y !important;
   background-position: left bottom, right top !important;
-  background-size: 20px 3px, 3px 20px !important;
+  background-size: 100% 4px, 4px 100% !important;
 }
 
 /* Keep the header's shared paper wash intact. The right edge treatment belongs
@@ -223,14 +224,14 @@
   background-image: var(--classic-wavy-horizontal) !important;
   background-repeat: repeat-x !important;
   background-position: left bottom !important;
-  background-size: 20px 3px !important;
+  background-size: 100% 4px !important;
 }
 
 :root[data-game="zdwa"][data-theme="classic"] :is(table.grid tr:last-child td, .leaderboard-box tr:last-child td, .grid-fields tr:last-child td) {
   background-image: var(--classic-wavy-vertical) !important;
   background-repeat: repeat-y !important;
   background-position: right top !important;
-  background-size: 3px 20px !important;
+  background-size: 4px 100% !important;
 }
 
 :root[data-game="zdwa"][data-theme="classic"] :is(table.grid tr:last-child td:last-child, .leaderboard-box tr:last-child td:last-child, .grid-fields tr:last-child td:last-child) {
@@ -261,7 +262,7 @@
   right: -.07rem;
   left: -.07rem;
   height: 2.1px;
-  background: var(--classic-wavy-horizontal) repeat-x left center / 15px 3px;
+  background: var(--classic-wavy-horizontal) no-repeat left center / 100% 4px;
   content: "";
   opacity: .98;
   pointer-events: none;
@@ -278,7 +279,7 @@
 :root[data-game="zdwa"][data-theme="classic"] :is(table.grid tbody td.cell, .leaderboard-box tbody td, .grid-fields tbody td) {
   font-family: var(--classic-score-handwriting);
   letter-spacing: .05em;
-  text-shadow: .02em .025em 0 rgba(87, 48, 26, .18);
+  text-shadow: none;
 }
 
 :root[data-game="zdwa"][data-theme="classic"] table.grid tbody tr:nth-child(3n + 1) td.cell {
@@ -303,12 +304,7 @@
   --classic-wavy-vertical: var(--classic-score-wavy-vertical);
   color: #fff4d7;
   border-color: #0c4033;
-  background:
-    radial-gradient(ellipse at 15% 13%, rgba(100, 184, 148, .25), transparent 31%),
-    radial-gradient(ellipse at 84% 83%, rgba(0, 28, 19, .39), transparent 49%),
-    repeating-linear-gradient(19deg, rgba(223, 247, 218, .065) 0 .55px, transparent .55px 3.1px),
-    repeating-linear-gradient(107deg, rgba(0, 31, 20, .15) 0 .7px, transparent .7px 4.4px),
-    #0a5b4a;
+  background: var(--classic-felt-surface);
   box-shadow:
     inset 0 .14rem .4rem rgba(0, 26, 16, .62),
     inset 0 0 0 1px rgba(221, 244, 192, .13),
@@ -316,9 +312,9 @@
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .room-page .player-card.turn {
-  border-color: #d6e7b5;
+  border-color: #8da481;
   box-shadow:
-    0 0 0 .16rem rgba(153, 207, 159, .32),
+    0 0 0 .1rem rgba(153, 183, 144, .2),
     inset 0 .14rem .4rem rgba(0, 26, 16, .62),
     inset 0 0 0 1px rgba(221, 244, 192, .13),
     0 .2rem .45rem rgba(36, 35, 19, .27);
@@ -333,7 +329,7 @@
   background:
     repeating-linear-gradient(to bottom, transparent 0 1.45rem, var(--classic-score-ink-wash) 1.45rem 1.5rem),
     var(--classic-score-paper);
-  box-shadow: 0 .1rem .22rem rgba(0, 26, 16, .34), inset 0 .05rem rgba(255, 255, 255, .72);
+  box-shadow: 0 .1rem .22rem rgba(0, 26, 16, .23);
   font-family: var(--classic-score-handwriting);
   letter-spacing: .028em;
   text-shadow: .012em .018em 0 rgba(18, 61, 117, .16);
@@ -349,21 +345,21 @@
   background:
     repeating-linear-gradient(to bottom, transparent 0 1.58rem, var(--classic-score-ink-wash) 1.58rem 1.635rem),
     var(--classic-score-paper);
-  box-shadow: 0 .16rem .34rem rgba(0, 26, 16, .48), inset 0 .06rem rgba(255, 255, 255, .72);
+  box-shadow: 0 .14rem .3rem rgba(0, 26, 16, .3);
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .room-page .player-card table.grid :is(th, td) {
   color: var(--classic-score-ink);
   font-family: var(--classic-score-handwriting);
-  font-weight: 600;
-  letter-spacing: .028em;
-  text-shadow: .012em .018em 0 rgba(18, 61, 117, .16);
+  font-weight: 400;
+  letter-spacing: .008em;
+  text-shadow: none;
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .room-page .player-card table.grid thead th,
 :root[data-game="zdwa"][data-theme="classic"] .room-page .player-card table.grid :is(th.sticky, td.desc.sticky) {
   color: var(--classic-score-ink-strong);
-  background-color: rgba(23, 74, 139, .075) !important;
+  background-color: rgba(91, 86, 65, .06) !important;
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .room-page .player-card table.grid :is(th.sticky, td.desc.sticky) {
@@ -376,33 +372,45 @@
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .room-page .player-card table.grid td.cell.announced {
-  background-color: rgba(246, 220, 147, .62) !important;
+  background-color: rgba(198, 171, 105, .32) !important;
 }
 
-/* The five dice sit on a dense, brushed green felt mat. Several softly offset
-   fibres keep it tactile without downloading a texture or losing crispness. */
+:root[data-game="zdwa"][data-theme="classic"] .room-page .player-card table.grid td.cell.clickable:active {
+  background-color: #d2c7a8;
+}
+
+:root[data-game="zdwa"][data-theme="classic"] .room-page .player-card table.grid td.cell.last-write:not(.admin-edited) {
+  background-color: #dec99b !important;
+  box-shadow: inset 0 0 0 2px #936e28;
+}
+
+/* Each stroke spans its cell instead of repeating a 20px wave. Adjacent rows
+   use different, gently wandering pen paths; grouping remains easy to scan. */
+:root[data-game="zdwa"][data-theme="classic"] .room-page table.grid tr:nth-child(3n + 2) {
+  --classic-wavy-horizontal: var(--classic-score-wavy-horizontal-alt);
+}
+
+:root[data-game="zdwa"][data-theme="classic"] .room-page table.grid :is(th, td):nth-child(2n) {
+  --classic-wavy-vertical: var(--classic-score-wavy-vertical-alt);
+}
+
+:root[data-game="zdwa"][data-theme="classic"] .room-page .player-card table.grid :is(th, td.desc, td.compute) {
+  font-weight: 700;
+}
+
+/* Static, stitched SVG noise suggests interlocked felt fibres. It is decoded
+   as a background image, never animated or filtered across the live page. */
 :root[data-game="zdwa"][data-theme="classic"] .room-page #diceBar {
   position: relative;
   isolation: isolate;
   border: 2px solid #163f27;
   border-radius: 11px 8px 10px 9px;
   background: var(--classic-felt-surface);
-  box-shadow: inset 0 .14rem .34rem rgba(1, 24, 11, .66), inset 0 0 0 1px rgba(226, 243, 183, .18), 0 .18rem .32rem rgba(67, 43, 22, .25);
+  box-shadow: inset 0 .1rem .25rem rgba(1, 24, 11, .36), 0 .12rem .24rem rgba(35, 36, 22, .2);
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .room-page #diceBar::before {
-  position: absolute;
-  z-index: 0;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(circle at 9% 24%, rgba(245, 250, 205, .24) 0 .035rem, transparent .065rem) 0 0 / .47rem .39rem,
-    radial-gradient(circle at 73% 67%, rgba(6, 35, 18, .3) 0 .04rem, transparent .07rem) .13rem .08rem / .61rem .53rem,
-    repeating-linear-gradient(72deg, transparent 0 2px, rgba(237, 248, 201, .08) 2px 2.5px, transparent 2.5px 5px);
-  content: "";
-  mix-blend-mode: soft-light;
-  opacity: .86;
-  pointer-events: none;
+  content: none;
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .room-page #diceBar > * {
@@ -411,19 +419,31 @@
 }
 
 :root[data-game="zdwa"][data-theme="classic"] button.die {
+  --classic-die-face: #e9d8af;
+  --classic-patina-x: 14%;
+  --classic-patina-y: 83%;
+  --classic-wear-angle: 168deg;
   position: relative;
   overflow: hidden;
-  border-color: #c8a871;
+  border-color: #a48b61;
   border-radius: .9rem 1.02rem .82rem 1rem !important;
-  background: linear-gradient(135deg, #fff0d0, #e9cc91);
-  box-shadow: inset .14rem .16rem .2rem rgba(255, 255, 240, .94), inset -.13rem -.14rem .2rem rgba(150, 108, 56, .2), 0 .14rem .24rem rgba(8, 36, 19, .48);
+  background: linear-gradient(135deg, #eaddba, #c3aa7e);
+  box-shadow: inset .08rem .1rem .13rem rgba(248, 236, 205, .48), inset -.1rem -.12rem .18rem rgba(114, 85, 45, .2), 0 .12rem .21rem rgba(8, 36, 19, .34);
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .dice-row button.die:nth-child(3n + 2) {
+  --classic-die-face: #e3cfaa;
+  --classic-patina-x: 82%;
+  --classic-patina-y: 24%;
+  --classic-wear-angle: 23deg;
   border-radius: 1.04rem .82rem 1rem .88rem !important;
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .dice-row button.die:nth-child(3n) {
+  --classic-die-face: #edddba;
+  --classic-patina-x: 27%;
+  --classic-patina-y: 18%;
+  --classic-wear-angle: -8deg;
   border-radius: .84rem 1rem .92rem 1.08rem !important;
 }
 
@@ -433,14 +453,30 @@
 }
 
 :root[data-game="zdwa"][data-theme="classic"] button.die svg rect {
-  fill: #f6e9c9;
-  stroke: rgba(96, 68, 35, .32);
-  stroke-width: 3;
+  fill: var(--classic-die-face);
+  stroke: rgba(96, 68, 35, .24);
+  stroke-width: 2;
 }
 
 :root[data-game="zdwa"][data-theme="classic"] button.die svg g {
-  fill: #27231f;
-  filter: drop-shadow(0 .5px .35px rgba(83, 54, 29, .24));
+  fill: #393126;
+  filter: none;
+}
+
+/* Polished old ivory, not rough stone: translucent uneven ageing around the
+   edges, one faint handling mark, and a soft highlight. Pips stay legible. */
+:root[data-game="zdwa"][data-theme="classic"] button.die::before {
+  position: absolute;
+  z-index: 2;
+  inset: 9% 10% 13%;
+  border-radius: 23%;
+  background:
+    radial-gradient(ellipse at var(--classic-patina-x) var(--classic-patina-y), rgba(123, 83, 36, .22), transparent 37%),
+    radial-gradient(ellipse at calc(100% - var(--classic-patina-x)) 92%, rgba(135, 91, 35, .12), transparent 30%),
+    radial-gradient(ellipse at 30% 12%, rgba(255, 247, 218, .26), transparent 47%),
+    linear-gradient(var(--classic-wear-angle), transparent 79%, rgba(116, 84, 43, .15) 80%, transparent 81%);
+  content: "";
+  pointer-events: none;
 }
 
 :root[data-game="zdwa"][data-theme="classic"] button.die::after {
@@ -449,12 +485,12 @@
 
 :root[data-game="zdwa"][data-theme="classic"] button.die.held {
   border-color: #426d3a;
-  background: linear-gradient(135deg, #fbefd3, #d7e2b6);
-  box-shadow: inset .14rem .16rem .2rem rgba(255, 255, 240, .94), inset -.13rem -.14rem .2rem rgba(52, 83, 35, .2), 0 0 0 .1rem rgba(218, 235, 170, .52), 0 .14rem .24rem rgba(8, 36, 19, .48);
+  background: linear-gradient(135deg, #dcd8b0, #a6b58a);
+  box-shadow: inset .08rem .1rem .13rem rgba(248, 236, 205, .48), inset -.1rem -.12rem .18rem rgba(52, 83, 35, .2), 0 0 0 .1rem rgba(189, 211, 157, .6), 0 .12rem .21rem rgba(8, 36, 19, .34);
 }
 
 :root[data-game="zdwa"][data-theme="classic"] button.die.held svg rect {
-  fill: #f6e9c9;
+  fill: var(--classic-die-face);
   stroke: #426d3a;
 }
 
@@ -520,12 +556,11 @@
   border-radius: 5px 8px 4px 7px;
   color: #3b2918;
   background:
-    linear-gradient(106deg, rgba(255, 255, 242, .66), transparent 42%),
-    repeating-linear-gradient(14deg, rgba(119, 82, 47, .035) 0 .55px, transparent .55px 3px),
-    #fff1d1;
-  box-shadow: 0 .13rem 0 rgba(100, 65, 33, .32), inset 0 .06rem rgba(255, 255, 246, .82);
+    linear-gradient(106deg, rgba(244, 232, 202, .16), transparent 42%),
+    var(--classic-paper);
+  box-shadow: 0 .1rem 0 rgba(100, 65, 33, .23);
   font-weight: 700;
-  text-shadow: .01em .015em 0 rgba(255, 255, 255, .45);
+  text-shadow: none;
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .room-page .room-header button {
@@ -542,7 +577,7 @@
 :root[data-game="zdwa"][data-theme="classic"] .room-page .room-header-menu-panel > button:focus-visible {
   border-color: rgba(23, 74, 139, .55);
   color: var(--classic-score-ink-strong);
-  background: #fff9e9;
+  background: #eadebe;
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .room-page #announceBtnInline,
@@ -550,10 +585,9 @@
   border-color: rgba(23, 74, 139, .76);
   color: var(--classic-score-ink-strong);
   background:
-    linear-gradient(106deg, rgba(255, 255, 255, .76), transparent 44%),
-    repeating-linear-gradient(14deg, rgba(23, 74, 139, .035) 0 .55px, transparent .55px 3px),
+    linear-gradient(106deg, rgba(244, 232, 202, .16), transparent 44%),
     var(--classic-score-paper);
-  box-shadow: 0 .13rem 0 rgba(17, 54, 98, .3), inset 0 .06rem rgba(255, 255, 255, .86);
+  box-shadow: 0 .1rem 0 rgba(17, 54, 98, .22);
   transform: rotate(-.35deg);
 }
 
@@ -562,18 +596,13 @@
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .room-page #rollBtnInline {
-  border: 1px solid rgba(226, 239, 184, .78);
+  border: 1px solid rgba(181, 199, 152, .66);
   border-radius: 7px 4px 8px 5px;
-  color: #fff9df;
-  background:
-    radial-gradient(ellipse at 17% 20%, rgba(232, 248, 195, .2), transparent 26%),
-    radial-gradient(ellipse at 82% 77%, rgba(0, 31, 20, .34), transparent 40%),
-    repeating-linear-gradient(18deg, rgba(224, 246, 199, .075) 0 .55px, transparent .55px 3px),
-    repeating-linear-gradient(108deg, rgba(0, 29, 19, .14) 0 .65px, transparent .65px 4px),
-    #0a5b4a;
-  box-shadow: 0 .14rem 0 rgba(0, 28, 17, .68), inset 0 .08rem rgba(239, 250, 209, .18), inset 0 -.12rem rgba(0, 31, 20, .26);
+  color: var(--classic-felt-text);
+  background: var(--classic-felt-surface);
+  box-shadow: 0 .1rem 0 rgba(0, 28, 17, .36), inset 0 -.08rem rgba(0, 31, 20, .16);
   font-weight: 750;
-  text-shadow: 0 .07rem .08rem rgba(0, 24, 14, .72);
+  text-shadow: none;
   transform: rotate(.28deg);
 }
 
@@ -581,10 +610,8 @@
   opacity: 1;
   filter: none;
   border-color: rgba(186, 205, 164, .56);
-  color: rgba(255, 249, 223, .7);
-  background:
-    repeating-linear-gradient(18deg, rgba(224, 246, 199, .045) 0 .55px, transparent .55px 3px),
-    #315b4d;
+  color: #c3bda5;
+  background: #345747;
   box-shadow: inset 0 .08rem rgba(239, 250, 209, .1), inset 0 -.1rem rgba(0, 31, 20, .18);
 }
 
@@ -592,9 +619,9 @@
   opacity: 1;
   filter: none;
   border-color: rgba(23, 74, 139, .42);
-  color: rgba(18, 61, 117, .62);
-  background: #ede1c8;
-  box-shadow: inset 0 .06rem rgba(255, 255, 255, .55);
+  color: #5c6873;
+  background: #d5c9ac;
+  box-shadow: none;
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .room-page #requestCorrectionBtn {
@@ -604,13 +631,13 @@
   background:
     repeating-linear-gradient(to bottom, transparent 0 1.42rem, var(--classic-score-ink-wash) 1.42rem 1.47rem),
     var(--classic-score-paper);
-  box-shadow: 0 .11rem 0 rgba(17, 54, 98, .26), inset 0 .06rem rgba(255, 255, 255, .82);
+  box-shadow: 0 .1rem 0 rgba(17, 54, 98, .2);
   transform: rotate(.18deg);
 }
 
 :root[data-game="zdwa"][data-theme="classic"] .room-page :is(#announceBtnInline, #rollBtnInline, #requestCorrectionBtn, .suggestion-btn):not(:disabled):hover {
   filter: none;
-  box-shadow: 0 .19rem 0 rgba(52, 42, 25, .34), inset 0 .07rem rgba(255, 255, 255, .78);
+  box-shadow: 0 .15rem 0 rgba(52, 42, 25, .28);
   translate: 0 -.04rem;
 }
 
@@ -619,10 +646,14 @@
   outline-offset: 2px;
 }
 
+:root[data-game="zdwa"][data-theme="classic"] .room-page #diceBar button:focus-visible {
+  outline-color: var(--classic-felt-text);
+}
+
 /* On a phone there is no exposed tabletop edge: the browser canvas, sticky
    header and fixed dice dock are one continuous felt mat. Paper stays reserved
    for objects resting on it, such as the score pad and small action notes. */
-@media (max-width: 560px) {
+@media (max-width: 1024px), (hover: none) and (pointer: coarse) {
   :root[data-game="zdwa"][data-theme="classic"],
   :root[data-game="zdwa"][data-theme="classic"] body.room-page {
     background: var(--classic-felt-surface);
@@ -666,5 +697,13 @@
   :root[data-game="zdwa"][data-theme="classic"] .room-page .chat-toggle-count {
     background: #fff5df;
     color: #23462e;
+  }
+
+  :root[data-game="zdwa"][data-theme="classic"] .room-page :is(.room-header button, .chat-toggle, .chat-reactions-host button):focus-visible {
+    outline-color: var(--classic-felt-text);
+  }
+
+  :root[data-game="zdwa"][data-theme="classic"] .room-page .room-header-menu-panel button:focus-visible {
+    outline-color: var(--classic-score-ink);
   }
 }

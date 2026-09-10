@@ -1,0 +1,28 @@
+/* Kalam by Indian Type Foundry, SIL Open Font License 1.1.
+   License: /static/licenses/kalam-OFL.txt
+   Source: https://github.com/google/fonts/tree/main/ofl/kalam
+   Unmodified Google Fonts v18 Latin subsets (including German umlauts/ß):
+   https://fonts.gstatic.com/s/kalam/v18/YA9dr0Wd4kDdMthROCc.woff2
+   https://fonts.gstatic.com/s/kalam/v18/YA9Qr0Wd4kDdMtDqHTLMkiQ.woff2
+
+   Local, versioned WOFF2 only. A font face is fetched only when a matching
+   Classic element uses it; do not preload it for Light, Dark or Zilch. On a
+   slow first visit, optional keeps the readable system fallback for that
+   navigation rather than causing a late font swap or moving the score sheet. */
+@font-face {
+  font-family: "ZDWA Classic Hand";
+  src: url("/static/kalam-classic-latin-regular-v1.woff2?v=ASSET_VERSION") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "ZDWA Classic Hand";
+  src: url("/static/kalam-classic-latin-bold-v1.woff2?v=ASSET_VERSION") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: optional;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
