@@ -1,4 +1,4 @@
-import { apiFetch, authError, escapeHtml, loadAuth, logout } from "../shared/auth.js";
+import { apiFetch, authError, escapeHtml, loadAuth, logout, mountUsernameSettings } from "../shared/auth.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
 import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
@@ -471,7 +471,9 @@ function playerCollectionMarkup(value, { includeRank = true } = {}) {
     || (typeOfUserId(value?.user_id) && sameId(value.user_id, state.auth?.user?.id));
   const href = own
     ? zilchPath("/konto#achievements")
-    : zilchPath(`/spieler/${encodeURIComponent(username)}`);
+    : typeOfUserId(value?.user_id)
+      ? `/api/players/by-id/${Number(value.user_id)}/profile?game=zilch`
+      : zilchPath(`/spieler/${encodeURIComponent(username)}`);
   return `<a class="zilch-player-achievement-link" href="${escapeHtml(href)}"${gameId ? ' target="_blank" rel="noopener noreferrer"' : ""}>${identity}</a>`;
 }
 
@@ -2082,6 +2084,10 @@ function zilchAccountSettingsMarkup(username) {
     ? `<p id="zilchPasswordHint" class="zilch-muted">${escapeHtml(t("Das temporäre Passwort muss jetzt geändert werden."))}</p>`
     : "";
   return `<div class="zilch-account-settings-grid">
+    <section class="zilch-card zilch-account-settings-card" aria-labelledby="usernameSettingsTitle">
+      <h2 id="usernameSettingsTitle">${escapeHtml(t("Benutzername ändern"))}</h2>
+      <div data-username-settings></div>
+    </section>
     <section class="zilch-card zilch-account-settings-card">
       <p class="eyebrow">${escapeHtml(t("Einstellungen"))}</p>
       <h2>${escapeHtml(t("Sprache"))}</h2>
@@ -2219,6 +2225,18 @@ function bindZilchAccountTabs() {
 }
 
 function bindZilchAccountSettings() {
+  mountUsernameSettings(document.querySelector("[data-username-settings]"), {
+    user: state.auth.user,
+    zilch: true,
+    onChanged(data) {
+      state.auth = data;
+      const username = data.user.username;
+      document.querySelector(".zilch-account-head__identity h1").textContent = username;
+      document.querySelector(".zilch-account-session__name").textContent = username;
+      document.querySelector(".zilch-account-session").setAttribute("aria-label", `${t("Du spielst als")} ${username}`);
+      renderShell();
+    },
+  });
   const languageForm = document.getElementById("zilchLanguagePreferencesForm");
   const lobbyChatForm = document.getElementById("zilchLobbyChatPreferencesForm");
   const pushEnableButton = document.getElementById("zilchEnableGameInvitePush");
@@ -3165,6 +3183,7 @@ function renderRulesContent(facts) {
     </section>
     <section class="zilch-card zilch-rules-section">
       <h2>${escapeHtml(t("Lobby-Chat und Einladungen"))}</h2>
+      <p>${escapeHtml(t("Unter Konto → Einstellungen kannst du deinen Benutzernamen mit deinem aktuellen Passwort ändern. Der neue Name gilt für Anmeldung, Profil und neue Partien in ZDWA und Zilch. Statistiken, Erfolge und Spielerauswahl bleiben erhalten. Bestehende Partien und Nachrichten behalten ihren bisherigen Namen. Dein Profillink ändert sich; der alte Name wird wieder frei."))}</p>
       <p>${escapeHtml(t("Der gemeinsame Lobby-Chat für ZDWA und Zilch ist für angemeldete Konten verfügbar. Du siehst nur Nachrichten, für die du beim Senden verbunden und berechtigt warst; nach drei Tagen werden sie gelöscht. Chat und Lobby-Popups lassen sich im Konto ausschalten."))}</p>
       <p>${escapeHtml(t("Ein geöffneter Spiel-Chat und ein begonnener Text bleiben bei Live-Nachrichten, Spielstandsaktualisierungen und Wiederverbindungen erhalten."))}</p>
       <p>${escapeHtml(t("Im Lobby-Chat sind höchstens 400 Zeichen je Nachricht und fünf Nachrichten pro Konto in 30 Sekunden erlaubt. Admins können Konten stummschalten oder vom Chat ausschließen."))}</p>

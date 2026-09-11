@@ -23,7 +23,9 @@ from app.achievements import ACHIEVEMENTS
 from app.active_games import load_active_games, save_active_game
 from app.api_auth import (
     LanguagePreferenceRequest,
+    UsernameChangeRequest,
     UserPreferencesRequest,
+    auth_change_username,
     auth_logout,
     auth_me,
     auth_update_language,
@@ -34,6 +36,7 @@ from app.api_users import (
     _recent_games_for_user,
     assign_game_participant,
     own_game_history,
+    player_profile_by_id,
     player_ranking,
     public_player_profile,
 )
@@ -42,6 +45,7 @@ from app.auth import (
     SHARED_SESSION_COOKIE,
     auth_identity_payload,
     change_password,
+    change_username,
     create_user,
     login,
     resolve_session,
@@ -71,11 +75,12 @@ from app.models import (
     CompletedGame,
     DeletedGame,
     GameParticipant,
+    PushInviteAllowedSender,
     Session,
     User,
     UserAchievement,
 )
-from app.security import validate_password
+from app.security import utcnow, validate_password
 from app.trends import recent_points_trend
 from tests.support import GameStateTestCase
 
@@ -134,6 +139,123 @@ def websocket_for(*, origin: str, host: str = "testserver", scheme: str = "ws") 
 
 
 class AccountDatabaseTestCase(GameStateTestCase):
+    def test_username_change_preserves_games_selection_and_old_game_profile_links(self):
+        user = create_user("OriginalName", "rename-password", must_change_password=False)
+        friend = create_user("SelectedFriend", "friend-password", must_change_password=False)
+        game = self.make_game(mode=1, players=[("p1", user.username)])
+        game["_players"][0]["user_id"] = user.id
+        game["_scoreboards"]["p1"] = self.high_scoreboard()
+        self.assertTrue(persist_runtime_game(game, {"p1": 410}, build_leaderboard_snapshot_fields(game)))
+        with session_scope() as db:
+            db.add(PushInviteAllowedSender(recipient_user_id=friend.id, sender_user_id=user.id, created_at=utcnow()))
+        identity, _ = login(request_for(), user.username, "rename-password")
+        change_username(identity, "RenamedPlayer", "rename-password", request_for())
+        replacement = create_user("OriginalName", "replacement-password", must_change_password=False)
+        self.assertNotEqual(replacement.id, user.id)
+        profile = public_player_profile("RenamedPlayer")["player"]
+        self.assertEqual(profile["statistics"]["overall"]["games_played"], 1)
+        self.assertEqual(profile["recent_games"][0]["points"], 410)
+        self.assertEqual(game["_players"][0]["name"], "OriginalName")
+        with session_scope() as db:
+            self.assertEqual(db.scalar(select(GameParticipant.user_id)), user.id)
+            self.assertEqual(db.scalar(select(PushInviteAllowedSender.sender_user_id)), user.id)
+        for host, context, prefix in (
+            ("testserver", "zdwa", ""), ("testserver", "zilch", "/zilch"),
+            ("zilch.zockdiewandan.online", "zdwa", "/zdwa"),
+            ("zilch.zockdiewandan.online", "zilch", ""),
+        ):
+            redirect = player_profile_by_id(user.id, request_for(host=host), game=context)
+            self.assertEqual(redirect.headers["location"], f"{prefix}/spieler/RenamedPlayer")
+            self.assertEqual(redirect.headers["Cache-Control"], "no-store")
+            self.assertEqual(redirect.headers["X-Robots-Tag"], "noindex")
+
+    def test_username_change_limits_password_guesses(self):
+        create_user("RenameOwner", "rename-password", must_change_password=False)
+        identity, _ = login(request_for(), "RenameOwner", "rename-password")
+        for index in range(5):
+            with self.assertRaises(main.HTTPException) as rejected:
+                change_username(identity, f"NewName{index}", "wrong-password", request_for())
+            self.assertEqual(rejected.exception.detail, "current_password_invalid")
+        with self.assertRaises(main.HTTPException) as rejected:
+            change_username(identity, "NewName", "rename-password", request_for())
+        self.assertEqual(rejected.exception.status_code, 429)
+
+    def test_username_change_preserves_identity_sessions_and_progress(self):
+        user = create_user("BeforeRename", "rename-password", must_change_password=False, preferred_language="en")
+        identity, token = login(request_for(), user.username, "rename-password")
+        _, other_token = login(request_for(), user.username, "rename-password")
+        response = Response()
+        payload = auth_change_username(
+            UsernameChangeRequest(username="  AfterRename  ", current_password="rename-password"),
+            request_for(cookie=f"rollthedice_session={token}", csrf=identity.csrf_token),
+            response,
+        )
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        self.assertEqual(payload["user"]["id"], user.id)
+        self.assertEqual(payload["user"]["username"], "AfterRename")
+        self.assertEqual(payload["user"]["preferences"]["preferred_language"], "en")
+        self.assertEqual(payload["user"]["csrf_token"], identity.csrf_token)
+        for session_token in (token, other_token):
+            resolved = resolve_session(request_for(cookie=f"rollthedice_session={session_token}"))
+            self.assertEqual(resolved.username, "AfterRename")
+            self.assertEqual(resolved.user_id, user.id)
+        with session_scope() as db:
+            self.assertEqual(db.scalar(select(UserAchievement.user_id)), user.id)
+            self.assertEqual(db.scalar(select(User.username_normalized)), "afterrename")
+        with self.assertRaises(main.HTTPException) as rejected:
+            login(request_for(), "BeforeRename", "rename-password")
+        self.assertEqual(rejected.exception.status_code, 401)
+        renamed, _ = login(request_for(), "aFtErReNaMe", "rename-password")
+        self.assertEqual(renamed.user_id, user.id)
+        self.assertEqual(public_player_profile("AfterRename")["player"]["id"], user.id)
+
+    def test_username_change_validation_password_and_case_conflicts(self):
+        create_user("RenameOwner", "rename-password", must_change_password=False)
+        create_user("AlreadyTaken", "another-password", must_change_password=False)
+        identity, _ = login(request_for(), "RenameOwner", "rename-password")
+        for invalid in ("ab", "x" * 33, "bad name", ".start", "-start", "<script>"):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                change_username(identity, invalid, "rename-password", request_for())
+        for name, password, expected in (
+            ("NewName", "wrong-password", "current_password_invalid"),
+            ("alreadyTAKEN", "rename-password", "username_taken"),
+        ):
+            with self.subTest(name=name), self.assertRaises(main.HTTPException) as rejected:
+                change_username(identity, name, password, request_for())
+            self.assertEqual(rejected.exception.detail, expected)
+        change_username(identity, "RENAMEOWNER", "rename-password", request_for())
+        change_username(identity, "RENAMEOWNER", "rename-password", request_for())
+        with session_scope() as db:
+            self.assertEqual(db.get(User, identity.user_id).username, "RENAMEOWNER")
+
+    def test_username_change_requires_session_csrf_and_same_origin(self):
+        create_user("RenameOwner", "rename-password", must_change_password=False)
+        identity, token = login(request_for(), "RenameOwner", "rename-password")
+        cookie = f"rollthedice_session={token}"
+        for request, expected in (
+            (request_for(), 401),
+            (request_for(cookie=cookie), 403),
+            (request_for(cookie=cookie, csrf="wrong"), 403),
+            (request_for(cookie=cookie, csrf=identity.csrf_token, origin="https://evil.example"), 403),
+        ):
+            with self.subTest(expected=expected), self.assertRaises(main.HTTPException) as rejected:
+                auth_change_username(
+                    UsernameChangeRequest(username="NewName", current_password="rename-password"), request, Response()
+                )
+            self.assertEqual(rejected.exception.status_code, expected)
+        with session_scope() as db:
+            self.assertEqual(db.get(User, identity.user_id).username, "RenameOwner")
+
+    def test_username_change_cannot_transfer_preview_access(self):
+        create_user("PreviewMember", "rename-password", must_change_password=False)
+        identity, _ = login(request_for(), "PreviewMember", "rename-password")
+        with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "preview", "ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES": "PreviewMember"}):
+            with self.assertRaises(main.HTTPException) as rejected:
+                change_username(identity, "NewName", "rename-password", request_for())
+            self.assertEqual(rejected.exception.detail, "username_preview_managed")
+        with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "public"}):
+            change_username(identity, "NewName", "rename-password", request_for())
+
     def setUp(self):
         super().setUp()
         self.temporary_directory = tempfile.TemporaryDirectory()

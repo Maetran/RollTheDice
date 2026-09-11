@@ -279,9 +279,9 @@ function playerNameMarkup(player, { name, compactRank = false, showRank = true, 
   const label = name ?? player?.name ?? player?.username ?? fallback;
   const username = player?.username || player?.name;
   const userId = Number(player?.user_id);
-  const path = `/spieler/${encodeURIComponent(username || "")}`;
+  const path = `/api/players/by-id/${userId}/profile?game=zdwa`;
   const nameMarkup = profileLink && Number.isInteger(userId) && userId > 0 && username
-    ? `<a class="player-name-label" href="${esc(window.ZDWA_ROUTE?.path(path) || path)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`
+    ? `<a class="player-name-label" href="${esc(path)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`
     : `<span class="player-name-label">${esc(label)}</span>`;
   return `<span class="player-name-with-rank">${playerAvatarMarkup(player)}${nameMarkup}${showRank ? playerRankMarkup(player, { compact: compactRank, owner: label }) : ""}</span>`;
 }

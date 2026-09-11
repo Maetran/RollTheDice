@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from statistics import median
 from typing import Literal
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import selectinload
@@ -18,6 +20,7 @@ from .auth import require_admin, require_csrf, require_user, resolve_session
 from .database import database_schema_ready, session_scope
 from .game_types import DEFAULT_GAME_TYPE
 from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User, UserAchievement
+from .product_hosts import is_zilch_host
 from .security import normalize_username, utcnow
 from .trends import recent_points_trend
 from .zilch_achievements import sync_zilch_cross_game_achievements_for_users
@@ -283,6 +286,23 @@ def player_ranking(
             "limit": limit,
             "offset": offset,
         }
+
+
+@router.get("/players/by-id/{user_id}/profile", include_in_schema=False)
+def player_profile_by_id(user_id: int, request: Request, game: Literal["zdwa", "zilch"] = "zdwa"):
+    """Resolve stored game identities at click time, even after a rename."""
+    with session_scope() as db:
+        user = db.get(User, user_id)
+        if not user or not user.is_active:
+            raise HTTPException(status_code=404, detail="user_not_found")
+        username = quote(user.username, safe="")
+    prefix = ("" if is_zilch_host(request) else "/zilch") if game == "zilch" else (
+        "/zdwa" if is_zilch_host(request) else ""
+    )
+    return RedirectResponse(
+        f"{prefix}/spieler/{username}", status_code=302,
+        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"},
+    )
 
 
 @router.get("/players/{username}")

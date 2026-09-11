@@ -9,6 +9,7 @@ const pythonExecutable = process.env.PLAYWRIGHT_PYTHON
 
 module.exports = defineConfig({
   testDir: "tests/browser",
+  testIgnore: "**/username-change.spec.js",
   timeout: 30000,
   fullyParallel: false,
   workers: 1,

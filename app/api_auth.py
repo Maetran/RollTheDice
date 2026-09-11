@@ -10,6 +10,7 @@ from .achievements import achievement_rank_payloads_for_user_ids, public_achieve
 from .auth import (
     auth_identity_payload,
     change_password,
+    change_username,
     clear_session_cookie,
     create_user,
     login,
@@ -64,6 +65,11 @@ class RegisterRequest(BaseModel):
 class PasswordChangeRequest(BaseModel):
     current_password: str = Field(min_length=1, max_length=256)
     new_password: str = Field(min_length=1, max_length=256)
+
+
+class UsernameChangeRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    current_password: str = Field(min_length=1, max_length=256)
 
 
 class UserPreferencesRequest(BaseModel):
@@ -237,6 +243,18 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
     if language_changed:
         record_engagement_safely(identity.user_id, "language_changed")
     return result
+
+
+@router.post("/auth/change-username")
+def auth_change_username(payload: UsernameChangeRequest, request: Request, response: Response):
+    identity = require_user(request)
+    require_csrf(request, identity)
+    try:
+        change_username(identity, payload.username, payload.current_password, request)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    response.headers["Cache-Control"] = "no-store"
+    return {"authenticated": True, "user": auth_identity_payload(require_user(request), include_csrf=True)}
 
 
 @router.put("/auth/preferences/language")

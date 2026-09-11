@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=80291a90d02d">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=80291a90d02d" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=80291a90d02d" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=7dc00718e29c">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=7dc00718e29c" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=7dc00718e29c" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=80291a90d02d">
-  <script src="/static/shell.js?v=80291a90d02d" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=7dc00718e29c">
+  <script src="/static/shell.js?v=7dc00718e29c" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -159,6 +159,10 @@
         <div data-friend-activity-settings></div>
       </section>
       <section class="card password-card">
+        <h2 id="usernameSettingsTitle">Benutzername ändern</h2>
+        <div data-username-settings></div>
+      </section>
+      <section class="card password-card">
         <h2>Passwort ändern</h2>
         <p id="passwordHint" class="muted small"></p>
         <form id="passwordForm" class="form-stack">
@@ -172,15 +176,23 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=80291a90d02d';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=80291a90d02d';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=80291a90d02d';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=80291a90d02d';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=80291a90d02d';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=80291a90d02d';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=7dc00718e29c';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=7dc00718e29c';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=7dc00718e29c';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=7dc00718e29c';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=7dc00718e29c';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=7dc00718e29c';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
+    mountUsernameSettings(document.querySelector('[data-username-settings]'), {
+      user,
+      onChanged(data) {
+        Object.assign(user, data.user);
+        document.getElementById('accountName').innerHTML = playerNameMarkup(user, { name: user.username, avatarSize: 'large' });
+        document.getElementById('publicProfileLink').href = (window.ZDWA_ROUTE?.path || (path => path))(`/spieler/${encodeURIComponent(user.username)}`);
+      },
+    });
     initializeReleaseNotes({ context: 'zdwa' });
     mountAllowlistSettings(document.querySelector('[data-allowlist-settings]'), { context: 'zdwa' });
     mountAvatarUpload(document.querySelector('[data-avatar-upload]'));
@@ -550,7 +562,7 @@
     if (statsResponse.ok) {
       const player = (await statsResponse.json()).player;
       const stats = player.statistics;
-      document.getElementById('accountName').innerHTML = playerNameMarkup(player, { name: player.username, avatarSize: 'large' });
+      document.getElementById('accountName').innerHTML = playerNameMarkup(player, { name: user.username, avatarSize: 'large' });
       document.getElementById('statistics').innerHTML = bucket('Gesamt', stats.overall, { details: false })
         + bucket('Normal', stats.normal) + bucket('Hardcore', stats.hardcore);
       const achievements = player.achievements || {};

@@ -11,6 +11,20 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Benutzername ändern / Change username — 2026-09-11
+
+- **Deutsch:** In den Einstellungen von ZDWA und Zilch lässt sich der gemeinsame
+  Benutzername mit dem aktuellen Passwort ändern. Vergebene und ungültige Namen
+  werden verständlich abgefangen. Anmeldung, Profil und neue Partien verwenden
+  den neuen Namen; Statistiken, Erfolge, Sitzungen und Spielerauswahl bleiben
+  erhalten. Bestehende Partien und Nachrichten behalten ihren gespeicherten
+  Namen. Der Profillink ändert sich und der bisherige Name wird frei.
+- **English:** Change the shared username in either game's settings using the
+  current password. Clear messages explain invalid or taken names. Signing in,
+  profiles and new games use the new name; statistics, achievements, sessions
+  and player selection are preserved. Existing games and messages keep their
+  recorded names. The profile link changes and the previous name becomes available.
+
 ## Stille Korrektur / Silent fix — Geschriebene Punkte und ruhigeres Laden
 
 - **Deutsch:** Neue Classic-Punkte werden Ziffer für Ziffer mit echten

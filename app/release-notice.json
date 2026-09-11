@@ -1,23 +1,26 @@
 {
   "kind": "usability",
-  "games": ["zdwa"],
-  "summary_de": "Classic schreibt neue Punkte wie mit Kugelschreiber. Die Lobby startet keine unnötige Sicherheitsprüfung beim Anmelden.",
-  "summary_en": "Classic writes new scores like a ballpoint pen. The lobby no longer starts an unnecessary security check when signing in.",
+  "games": [
+    "zdwa",
+    "zilch"
+  ],
+  "summary_de": "Neuer Name, gleiches Konto: Ändere deinen Benutzernamen in den Einstellungen von ZDWA oder Zilch.",
+  "summary_en": "New name, same account: change your username in the settings of ZDWA or Zilch.",
   "player_notes": {
     "de": {
-      "title": "Punkte wie von Hand geschrieben",
+      "title": "Dein Konto, dein neuer Name",
       "changes": [
-        "Neue Classic-Punkte entstehen Strich für Strich, auch beim Mitspieler. Du kannst sofort weiterspielen.",
-        "Alte Einträge werden nicht erneut geschrieben. Bei reduzierter Bewegung erscheinen Zahlen sofort vollständig.",
-        "Die Sicherheitsprüfung lädt nur bei Registrieren; Anmelden und bestehende Sitzungen bleiben davon frei."
+        "Ändere deinen Benutzernamen unter Konto → Einstellungen mit deinem aktuellen Passwort.",
+        "Der neue Name gilt für die Anmeldung und neue Partien in beiden Spielen. Statistiken, Erfolge und Spielerauswahl bleiben erhalten.",
+        "Bestehende Partien und Nachrichten behalten ihren Namen. Dein Profillink ändert sich; der alte Name wird wieder frei."
       ]
     },
     "en": {
-      "title": "Scores written by hand",
+      "title": "Your account, your new name",
       "changes": [
-        "New Classic scores appear stroke by stroke, including on the other player's screen. You can keep playing immediately.",
-        "Existing entries are not written again. Reduced motion shows the complete numbers immediately.",
-        "Security verification loads only on Register; signing in and existing sessions stay free of it."
+        "Change your username under Account → Settings using your current password.",
+        "The new name applies to signing in and new games in both products. Statistics, achievements and player selection are preserved.",
+        "Existing games and messages keep their name. Your profile link changes; the old name becomes available again."
       ]
     }
   }

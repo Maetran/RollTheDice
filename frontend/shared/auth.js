@@ -1,4 +1,3 @@
-import { zdwaPath } from "../multigame/routes.js";
 import { avatarMarkup } from "./avatar.js";
 
 let authCache = null;
@@ -109,8 +108,64 @@ export async function logout() {
   });
 }
 
+export async function changeUsername(username, currentPassword) {
+  const response = await apiFetch('/api/auth/change-username', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, current_password: currentPassword }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(authError(Array.isArray(data.detail) ? 'username_invalid' : data.detail));
+  authEpoch += 1;
+  authRequest = null;
+  authCache = data;
+  notifyAuthState(data);
+  return data;
+}
+
+export function mountUsernameSettings(container, { user, onChanged, zilch = false }) {
+  if (!container || container.dataset.bound) return;
+  container.dataset.bound = 'true';
+  container.innerHTML = `
+    <p>${escapeHtml(translate('Dein Benutzername gilt für ZDWA und Zilch sowie für die Anmeldung. Statistiken, Erfolge und deine Spielerauswahl bleiben erhalten.'))}</p>
+    <p class="muted small">${escapeHtml(translate('Bestehende Partien und Nachrichten behalten ihren bisherigen Namen. Dein Profillink ändert sich; der alte Name wird wieder frei.'))}</p>
+    <form class="${zilch ? 'zilch-settings-form' : 'form-stack'}" data-username-form>
+      <label>${escapeHtml(translate('Neuer Benutzername'))}<input name="username" autocomplete="username" minlength="3" maxlength="32" required aria-describedby="usernameRules"></label>
+      <p id="usernameRules" class="muted small">${escapeHtml(translate('3–32 Zeichen: Buchstaben, Zahlen, Punkt, Unterstrich oder Bindestrich. Kein Punkt oder Bindestrich am Anfang.'))}</p>
+      <label>${escapeHtml(translate('Aktuelles Passwort'))}<input name="current_password" type="password" autocomplete="current-password" maxlength="256" required></label>
+      <button type="submit" class="primary">${escapeHtml(translate('Benutzername speichern'))}</button>
+    </form>
+    <p data-username-message role="status" aria-live="polite"></p>`;
+  const form = container.querySelector('form');
+  const username = form.elements.username;
+  const password = form.elements.current_password;
+  const button = form.querySelector('button');
+  const message = container.querySelector('[data-username-message]');
+  username.value = user.username;
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (button.disabled) return;
+    button.disabled = true;
+    message.textContent = translate('Benutzername wird gespeichert …');
+    try {
+      const data = await changeUsername(username.value.trim(), password.value);
+      username.value = data.user.username;
+      password.value = '';
+      onChanged(data);
+      message.textContent = translate('Benutzername geändert. Melde dich künftig mit dem neuen Namen an.');
+    } catch (error) {
+      message.textContent = translate(error instanceof TypeError ? 'Einstellungen konnten nicht gespeichert werden.' : error.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
 export function authError(detail) {
   const messages = {
+    username_taken: 'Benutzername ist bereits vergeben',
+    username_invalid: 'Bitte prüfe deinen neuen Benutzernamen und das aktuelle Passwort.',
+    username_preview_managed: 'Dieser Name ist an einen Zilch-Testzugang gebunden. Bitte wende dich an die Administration.',
     invalid_credentials: 'Benutzername oder Passwort ist falsch.',
     login_temporarily_blocked: 'Zu viele Fehlversuche. Bitte später erneut versuchen.',
     registration_temporarily_blocked: 'Zu viele Registrierungen. Bitte warte kurz und versuche es später erneut.',
@@ -168,7 +223,7 @@ export function playerNameMarkup(player, { name, compactRank = false, fallback =
   const username = player?.username || player?.name;
   const userId = Number(player?.user_id ?? player?.id);
   const nameMarkup = profileLink && Number.isInteger(userId) && userId > 0 && username
-    ? `<a class="player-name-label" href="${escapeHtml(zdwaPath(`/spieler/${encodeURIComponent(username)}`))}">${escapeHtml(label)}</a>`
+    ? `<a class="player-name-label" href="/api/players/by-id/${userId}/profile?game=zdwa">${escapeHtml(label)}</a>`
     : `<span class="player-name-label">${escapeHtml(label)}</span>`;
   return `<span class="player-name-with-rank">${avatarMarkup(player, { size: avatarSize })}${nameMarkup}${playerRankBadge(player, { compact: compactRank, owner: label })}</span>`;
 }

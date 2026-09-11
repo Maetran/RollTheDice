@@ -7,7 +7,7 @@
     "sync:assets": "python3 scripts/sync_static_versions.py",
     "check:assets": "python3 scripts/sync_static_versions.py --check",
     "test:backend": "pytest --cov --cov-report=term-missing",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test && playwright test --config=playwright.username.config.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

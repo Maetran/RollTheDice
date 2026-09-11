@@ -150,7 +150,25 @@ Inside LCARS game rooms, quieter frame and chat colours and reduced dice glow
 keep selections clear. Positive scores use a light, muted apricot, and CPU
 badges use flat LCARS colours with dark lettering. The black background,
 layout and sliding score sheets are unchanged.
-Usernames are immutable; administrators manage accounts and moderation.
+Under **Account → Settings → Change username**, enter a new name and your
+current password. Names follow the registration rules (3–32 characters) and
+are unique regardless of case. The new name applies to signing in, profiles
+and new games in both products. Sessions, statistics, achievements, avatars
+and saved player selections remain attached to the same account. Existing
+games and messages keep their recorded names. Profile links change and the old
+name becomes available again. In the private Zilch preview mode, names tied to
+preview access require an administrator to adjust the access configuration first.
+
+**Deutsch:** Unter **Konto → Einstellungen → Benutzername ändern** kannst du
+mit deinem aktuellen Passwort einen neuen Namen wählen. Er gilt für Anmeldung,
+Profil und neue Partien in beiden Spielen. Konto, Statistiken, Erfolge und
+Spielerauswahl bleiben erhalten. Bestehende Partien und Nachrichten behalten
+ihren bisherigen Namen; dein Profillink ändert sich und der alte Name wird frei.
+
+Administrators manage accounts and moderation.
+
+Email registration, address verification and password recovery are assessed in
+[the email account plan](docs/EMAIL_ACCOUNTS_PLAN.md); they are not implemented.
 
 The public Zilch lobby paints its heading directly from HTML and shows its
 controls without waiting for the account check. Creating a game, account data
@@ -438,7 +456,9 @@ git diff --check
 ```
 
 Browser tests start a separate server on port 8010 with a disposable SQLite
-database. CI also runs security and dependency checks; see
+database. `npm run test:browser` also runs the username-change suite against a
+fresh server in public Zilch mode (`playwright.username.config.js`), separately
+from the private-preview scenarios. CI also runs security and dependency checks; see
 [the quality workflow](.github/workflows/quality.yml).
 
 Backend tests use `pytest-xdist`: pytest automatically selects up to four workers,

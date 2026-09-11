@@ -18,7 +18,12 @@ from .auth_protection import (
     record_login_failure,
 )
 from .database import session_scope
-from .game_access import public_game_access_payload
+from .game_access import (
+    ZILCH_PREVIEW_USERNAME,
+    configured_zilch_access_mode,
+    configured_zilch_preview_usernames,
+    public_game_access_payload,
+)
 from .models import Session as LoginSession
 from .models import User, UserAchievement
 from .security import (
@@ -383,6 +388,38 @@ def change_password(identity: AuthIdentity, current_password: str, new_password:
         user.must_change_password = False
         user.updated_at = utcnow()
         db.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
+
+
+def change_username(identity: AuthIdentity, username: str, current_password: str, request: Request) -> None:
+    clean_username = validate_username(username)
+    normalized = normalize_username(clean_username)
+    # Use an immutable account key so renaming cannot reset password-guess limits.
+    key = enforce_login_rate_limit(request, f"username-change:{identity.user_id}")
+    try:
+        with session_scope() as db:
+            user = db.get(User, identity.user_id)
+            if not user or not verify_password(current_password, user.password_hash):
+                record_login_failure(key)
+                raise HTTPException(status_code=400, detail="current_password_invalid")
+            # Preview grants are still configured by name. Do not allow gaining,
+            # losing or transferring one through a self-service rename.
+            preview_names = configured_zilch_preview_usernames() | {ZILCH_PREVIEW_USERNAME}
+            if (
+                configured_zilch_access_mode() == "preview"
+                and normalized != user.username_normalized
+                and (normalized in preview_names or user.username_normalized in preview_names)
+            ):
+                raise HTTPException(status_code=409, detail="username_preview_managed")
+            if db.scalar(select(User.id).where(User.username_normalized == normalized, User.id != user.id)):
+                raise HTTPException(status_code=409, detail="username_taken")
+            user.username = clean_username
+            user.username_normalized = normalized
+            user.updated_at = utcnow()
+            db.flush()
+    except IntegrityError as exc:
+        # The unique constraint also protects concurrent rename/register requests.
+        raise HTTPException(status_code=409, detail="username_taken") from exc
+    clear_login_failures(key)
 
 
 def create_user(
