@@ -15,17 +15,17 @@
   <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=360bc3c057ea">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=360bc3c057ea" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=360bc3c057ea" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=724904bfe9a8">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=724904bfe9a8" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=724904bfe9a8" sizes="180x180">
   <!--
     rules.html - Spielanleitung
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi sowie Desktop-/Mobilsteuerung.
   -->
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=360bc3c057ea" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=360bc3c057ea" />
+  <script src="/static/shell.js?v=724904bfe9a8" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=724904bfe9a8" />
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
     .doc { width:min(1120px, calc(100vw - 32px)); margin:1.25rem auto 2rem; }
@@ -136,13 +136,14 @@
       <li><strong>Korrekturmodus:</strong> Den letzten Eintrag kannst du mit den gespeicherten Würfeln dieses Zugs neu eintragen oder in ein anderes erlaubtes Feld verschieben. Das geht nur direkt danach, sofern es kein Ansage-Zug war und der nächste Spieler noch nicht gewürfelt hat. Abbrechen mit <span class="kbd">Esc</span>. Nicht im 1-Spieler- oder Hardcore-Modus.</li>
       <li><strong>Single-Player:</strong> Der erste Wurf eines Zuges startet automatisch. Keine Korrekturen im Single-Player-Modus.</li>
       <li><strong>Hardcore:</strong> Ein automatischer Wurf pro Zug, kein Halten, keine Ansage, keine Korrektur. Die ❗-Spalte verhält sich wie eine zweite Freireihe.</li>
-      <li><strong>Pause &amp; Lobby:</strong> Du kannst das Spiel pausieren und innerhalb der angezeigten Restzeit wieder aufnehmen oder es abbrechen und alle zur Lobby zurückschicken. In Mehrspieler-Partien pausiert das Spiel auch, solange ein Spieler nicht verbunden ist. Abgebrochene Spiele erscheinen nicht in Alltime/7-Tage-Listen.</li>
+      <li><strong>Pause &amp; Lobby:</strong> Du kannst das Spiel pausieren und innerhalb der angezeigten Restzeit wieder aufnehmen oder es abbrechen und alle zur Lobby zurückschicken. In Mehrspieler-Partien pausiert das Spiel auch, solange ein Spieler nicht verbunden ist. Abgebrochene Spiele erscheinen nicht in den Punkte-Bestenlisten.</li>
       <li><strong>Server-Neustart:</strong> Wartende und laufende Partien bleiben erhalten. Nach dem Neustart werden Spieler als offline angezeigt und können die Partie mit ihrem gespeicherten Zugang wieder aufnehmen.</li>
       <li><strong>Auto-Timeout:</strong> Bleibt ein wartender, laufender oder pausierter Tisch eine Stunde ohne angenommene Raumaktion, wird die Partie abgebrochen. Verbundene Spieler und Zuschauer sehen den Abschluss-Hinweis mit Rückweg zur Lobby.</li>
     </ul>
 
     <h2>Selbst abgebrochene Partien</h2>
     <p>Wer eine gestartete Partie ausdrücklich abbricht, erhält dafür einen öffentlichen Abbruchzähler im Profil. Timeouts, Verbindungsabbrüche, abgesagte Warteräume und Abbrüche durch Mitspieler zählen nicht. Die Ergebniswertung bleibt unverändert.</p>
+    <p>Die Wall of Shame in der Lobby zeigt die drei Konten mit den meisten selbst abgebrochenen ZDWA-Partien: in den letzten zehn Tagen (240 Stunden) und insgesamt seit Beginn der Erfassung. Normal und Hardcore sowie Solo und Mehrspieler zählen zusammen. Angezeigt werden aktuelle Namen aktiver Konten. Gleiche Abbruchzahlen teilen sich einen Rang; jede Liste zeigt höchstens drei Konten.</p>
     <p>Die Fairplay-Hinweise Offener Zettel und Vor dem Schluss erscheinen bei 1, 5 und 10 selbst abgebrochenen ZDWA-Partien, getrennt für Solo und Mehrspieler. Sie vergeben keine Ehrenberg-Marken: Auch ein unperfektes Spiel verdient ein Ende.</p>
 
     <h2>Erfolge &amp; Fortschritt</h2>

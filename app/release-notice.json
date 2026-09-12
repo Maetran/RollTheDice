@@ -1,28 +1,27 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch"
+    "zdwa"
   ],
-  "summary_de": "Melde dich bevorzugt mit Passkey an. Dein Konto hilft dir bei der Einrichtung; die Passwort-Anmeldung öffnest du bei Bedarf.",
-  "summary_en": "Sign in with a passkey first. Your account guides you through setup; open password sign-in when you need it.",
+  "summary_de": "Neu in der Lobby: die Top 3 selbst abgebrochener ZDWA-Partien – letzte zehn Tage und insgesamt. Timeouts zählen nicht.",
+  "summary_en": "New in the lobby: the top 3 for self-abandoned ZDWA games, over the last ten days and all time. Timeouts do not count.",
   "player_notes": {
     "de": {
-      "title": "Dein Passkey, dein schneller Zugang",
+      "title": "Wall of Shame: Auch ein unperfekter Zettel verdient ein Ende",
       "changes": [
-        "Passkeys stehen bei der Anmeldung vorne. Die Passwortfelder öffnest du über „Mit Passwort anmelden“.",
-        "Du hast noch keinen Passkey? Lobby und Konto führen dich direkt zur Einrichtung.",
-        "Nach dem Speichern verschwindet der Hinweis. Entfernst du den letzten Passkey, erinnern wir dich wieder an die Einrichtung.",
-        "Passwort-Anmeldung und Passwort-Reset bleiben als Alternativen erreichbar. Laufende Spiele werden nicht unterbrochen."
+        "Unter den Bestenlisten siehst du die drei Konten mit den meisten selbst abgebrochenen ZDWA-Partien.",
+        "Zwei Listen zeigen die letzten zehn Tage und alle Abbrüche seit Beginn der Erfassung – Normal und Hardcore zusammen.",
+        "Nur selbst ausgelöste Abbrüche gestarteter Partien zählen. Timeouts, Verbindungsabbrüche und Abbrüche durch Mitspieler zählen nicht.",
+        "Die Einträge zeigen den aktuellen Namen und führen direkt zum Spielerprofil."
       ]
     },
     "en": {
-      "title": "Your passkey, your quick way in",
+      "title": "Wall of Shame: Even an imperfect scorecard deserves a finish",
       "changes": [
-        "Passkeys lead the sign-in screen. Open the password fields by choosing “Sign in with password”.",
-        "No passkey yet? The lobby and your account take you straight to setup.",
-        "The reminder disappears after saving a passkey and returns if you remove your last one.",
-        "Password sign-in and password recovery remain available. Active games stay uninterrupted."
+        "Below the leaderboards, see the three accounts with the most ZDWA games they abandoned themselves.",
+        "Two lists cover the last ten days and all abandonments since tracking began, with Normal and Hardcore combined.",
+        "Only started games abandoned by the player count. Timeouts, disconnections and opponents’ aborts do not count.",
+        "Entries show each player’s current name and link directly to their profile."
       ]
     }
   }

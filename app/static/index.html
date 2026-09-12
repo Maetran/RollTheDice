@@ -22,14 +22,14 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=360bc3c057ea">
+  <link rel="manifest" href="/manifest.webmanifest?v=724904bfe9a8">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=360bc3c057ea" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=360bc3c057ea" sizes="180x180">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=724904bfe9a8" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=724904bfe9a8" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=360bc3c057ea" defer></script>
-  <link rel="stylesheet" href="/static/lobby.css?v=360bc3c057ea">
+  <script src="/static/shell.js?v=724904bfe9a8" defer></script>
+  <link rel="stylesheet" href="/static/lobby.css?v=724904bfe9a8">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -280,6 +280,30 @@
       </div>
     </div>
 
+    <section id="abandonmentLeaderboard" class="card abandonment-leaderboard" aria-labelledby="abandonmentTitle">
+      <div class="abandonment-heading">
+        <div>
+          <h2 id="abandonmentTitle">Wall of Shame</h2>
+          <p class="abandonment-subtitle">Meiste Spiele abgebrochen</p>
+        </div>
+        <p class="muted small">Auch ein unperfekter Zettel verdient ein Ende.</p>
+      </div>
+      <div class="abandonment-buckets">
+        <section class="abandonment-bucket" aria-labelledby="abandonmentRecentTitle">
+          <h3 id="abandonmentRecentTitle"><span>Letzte 10 Tage</span> <span class="abandonment-limit">Top 3</span></h3>
+          <ol id="abandonmentRecentList" class="abandonment-list" hidden></ol>
+          <p id="abandonmentRecentStatus" class="muted small" role="status">Laden…</p>
+        </section>
+        <section class="abandonment-bucket" aria-labelledby="abandonmentAlltimeTitle">
+          <h3 id="abandonmentAlltimeTitle"><span>Insgesamt</span> <span class="abandonment-limit">Top 3</span></h3>
+          <ol id="abandonmentAlltimeList" class="abandonment-list" hidden></ol>
+          <p id="abandonmentAlltimeStatus" class="muted small" role="status">Laden…</p>
+          <p class="muted small abandonment-history">Seit Beginn der Abbrucherfassung.</p>
+        </section>
+      </div>
+      <p class="muted small abandonment-scope">Nur selbst ausgelöste Abbrüche gestarteter ZDWA-Partien. Normal und Hardcore zusammen; keine Timeouts oder Verbindungsabbrüche.</p>
+    </section>
+
     <section class="card about-game" aria-labelledby="aboutGameTitle">
       <p class="eyebrow">Über das Spiel</p>
       <h2 id="aboutGameTitle">Was ist Zock die Wand an?</h2>
@@ -289,6 +313,6 @@
   </div>
 
   <!-- Lobby-Controller: eigenständiges ES-Modul. -->
-  <script type="module" src="/static/lobby.js?v=360bc3c057ea"></script>
+  <script type="module" src="/static/lobby.js?v=724904bfe9a8"></script>
 </body>
 </html>

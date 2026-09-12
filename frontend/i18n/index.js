@@ -133,7 +133,7 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
   function translateElement(root) {
     if (getLanguage() !== "en" || !root) return;
     if (root.nodeType === Node.TEXT_NODE) {
-      if (root.parentElement && !root.parentElement.closest("script, style")) {
+      if (root.parentElement && !root.parentElement.closest('script, style, [translate="no"]')) {
         const translated = translateString(root.nodeValue);
         if (translated !== root.nodeValue) root.nodeValue = translated;
       }
@@ -142,7 +142,8 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
     if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_NODE) return;
     const elements = root.nodeType === Node.ELEMENT_NODE ? [root, ...root.querySelectorAll("*")] : [...root.querySelectorAll("*")];
     for (const element of elements) {
-      if (element.matches("script, style")) continue;
+      // Account names and other literal user content are not interface copy.
+      if (element.closest('script, style, [translate="no"]')) continue;
       for (const attr of ["placeholder", "title", "aria-label"]) {
         if (element.hasAttribute(attr)) {
           const current = element.getAttribute(attr);

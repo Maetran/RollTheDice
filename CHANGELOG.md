@@ -11,6 +11,23 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Wall of Shame — 2026-09-12
+
+- **Deutsch:** Unter den ZDWA-Bestenlisten stehen jetzt die drei Konten mit
+  den meisten selbst abgebrochenen gestarteten Partien: letzte zehn Tage und
+  insgesamt seit Beginn der Erfassung. Normal und Hardcore sowie Solo und
+  Mehrspieler zählen zusammen. Timeouts, Verbindungsabbrüche und Abbrüche
+  durch Mitspieler zählen weiterhin nicht. Die Listen zeigen aktuelle Namen
+  aktiver Konten und verlinken ihre Profile; gleiche Zahlen teilen sich einen
+  Rang. Auch ein unperfekter Zettel verdient ein Ende.
+- **English:** Below the ZDWA score leaderboards, two new lists show the three
+  accounts with the most started games they abandoned themselves: the last
+  ten days and all time since tracking began. Normal and Hardcore, Solo and
+  multiplayer count together. Timeouts, disconnections and opponents' aborts
+  still do not count. Active accounts appear under their current names with
+  profile links; equal counts share a rank. Even an imperfect scorecard
+  deserves a finish.
+
 ## Passkey zuerst / Passkey first — 2026-09-12
 
 - **Deutsch:** Die Anmeldung stellt Passkeys nach vorne. Benutzername und

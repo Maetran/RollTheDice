@@ -300,6 +300,15 @@ Solo and multiplayer, with **zero rank points**. Old private Solo history is
 not reclassified. Waiting for a timeout deliberately also remains uncounted;
 the app cannot reliably distinguish intent from a connection failure.
 
+The ZDWA lobby's **Wall of Shame**, below the score leaderboards, lists the
+three active accounts with the most self-initiated abandonments in the last
+ten days (a rolling 240 hours) and all time since tracking began. Normal and
+Hardcore, Solo and multiplayer count together. Entries use account IDs and
+current names, so renaming an account keeps its counts and reusing an old name
+does not transfer them. Equal counts share a rank; a stable account-ID tie
+break keeps each list to at most three accounts. The lists refresh with the
+existing leaderboards and show an empty state until there are eligible games.
+
 **Deutsch:** Öffentliche Profile zeigen selbst abgebrochene gestartete Partien
 getrennt für ZDWA und Zilch. Nur das ausdrücklich abbrechende Konto erhält den
 Zähler. Timeouts, Verbindungsabbrüche, abgesagte Warteräume und Abbrüche durch
@@ -309,6 +318,16 @@ Abbrüchen getrennt für Solo und Mehrspieler daran, Partien zu Ende zu spielen 
 mit **null Rangpunkten**. Alte private Solo-Historie wird nicht umgedeutet.
 Bewusstes Warten auf einen Timeout bleibt ebenfalls ungezählt; die Anwendung
 kann Absicht nicht sicher von einer Verbindungsstörung unterscheiden.
+
+Die **Wall of Shame** unter den Punkte-Bestenlisten der ZDWA-Lobby zeigt die
+drei aktiven Konten mit den meisten selbst ausgelösten Abbrüchen: in den
+letzten zehn Tagen (rollierende 240 Stunden) und insgesamt seit Beginn der
+Erfassung. Normal und Hardcore sowie Solo und Mehrspieler zählen zusammen.
+Die Zuordnung folgt dem Konto, angezeigt wird der aktuelle Name. Umbenennen
+erhält die eigenen Zähler; wer einen früheren Namen übernimmt, erbt sie nicht.
+Gleiche Abbruchzahlen teilen sich einen Rang. Die stabile Reihenfolge nach
+Konto-ID begrenzt jede Liste auf höchstens drei Konten. Die Listen laden mit
+den bestehenden Bestenlisten nach und bleiben ohne passende Partien leer.
 
 ## Lobby chat
 

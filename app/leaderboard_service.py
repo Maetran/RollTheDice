@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from sqlalchemy import select
 
+from .abandonment_leaderboard import abandonment_leaderboard
 from .achievements import earned_achievement_payloads_for_game, public_achievement_ranks
 from .api_users import profile_links_for_games
 from .database import database_schema_ready, session_scope
@@ -316,6 +317,7 @@ async def build_leaderboard(files: LeaderboardFiles):
         "recent": {"normal": with_profile_links(recent_norm_f), "hc": with_profile_links(recent_hc_f)},
         "alltime": {"normal": with_profile_links(alltime_norm), "hc": with_profile_links(alltime_hc)},
         "shame": {"recent": with_profile_links(shame_recent_f), "alltime": with_profile_links(shame_alltime_f)},
+        "abandonments": abandonment_leaderboard(now=now_utc),
         "last_games": with_profile_links(last_games_f),
         "stats": stats_f,
     }

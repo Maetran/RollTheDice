@@ -98,6 +98,45 @@ function renderRows(table, entries, { absolute = false, emptyText = "Keine Eintr
   }).join("") || `<tr><td colspan="4" class="muted">${emptyText}</td></tr>`;
 }
 
+function renderAbandonments(list, status, entries, { failed = false } = {}) {
+  if (!list || !status) return;
+  const translate = value => window.ZDWA_I18N?.t?.(value) || value;
+  const rows = Array.isArray(entries) ? entries.filter(entry => (
+    Number.isInteger(entry?.user_id) && entry.user_id > 0
+    && typeof entry.username === 'string' && entry.username.trim()
+    && Number.isInteger(entry.count) && entry.count > 0
+    && Number.isInteger(entry.rank) && entry.rank > 0
+  )).slice(0, 3) : [];
+  list.replaceChildren();
+  list.hidden = failed || rows.length === 0;
+  status.hidden = !failed && rows.length > 0;
+  status.textContent = failed ? translate('Fehler beim Laden')
+    : rows.length ? '' : translate('Noch keine selbst abgebrochenen Partien.');
+  if (failed) return;
+  for (const entry of rows) {
+    const item = document.createElement('li');
+    item.value = entry.rank;
+    item.dataset.userId = String(entry.user_id);
+    const rank = document.createElement('span');
+    rank.className = 'abandonment-rank';
+    rank.textContent = `${entry.rank}.`;
+    const profile = document.createElement('a');
+    profile.className = 'player-profile-link';
+    profile.href = `/api/players/by-id/${entry.user_id}/profile?game=zdwa`;
+    profile.setAttribute('translate', 'no');
+    profile.textContent = entry.username;
+    const count = document.createElement('strong');
+    count.className = 'abandonment-count';
+    count.textContent = localizedNumber(entry.count);
+    const label = document.createElement('span');
+    label.className = 'visually-hidden';
+    label.textContent = ` ${translate('Abbrüche')}`;
+    count.append(label);
+    item.append(rank, profile, count);
+    list.append(item);
+  }
+}
+
 export async function loadLeaderboard() {
   try {
     const response = await fetch("/api/leaderboard", { cache: "no-store" });
@@ -112,6 +151,8 @@ export async function loadLeaderboard() {
     const recent = payload.recent || { normal: [], hc: [] };
     const alltime = payload.alltime || { normal: [], hc: [] };
     const shame = payload.shame || { recent: [], alltime: [] };
+    renderAbandonments(dom.abandonmentRecentList, dom.abandonmentRecentStatus, payload.abandonments?.recent);
+    renderAbandonments(dom.abandonmentAlltimeList, dom.abandonmentAlltimeStatus, payload.abandonments?.alltime);
     if (dom.alltimeBox) dom.alltimeBox.hidden = false;
     dom.recentBox?.classList.toggle("wide", activeTab === "last");
 
@@ -134,6 +175,8 @@ export async function loadLeaderboard() {
     }
   } catch (error) {
     console.warn("Leaderboard konnte nicht geladen werden", error);
+    renderAbandonments(dom.abandonmentRecentList, dom.abandonmentRecentStatus, [], { failed: true });
+    renderAbandonments(dom.abandonmentAlltimeList, dom.abandonmentAlltimeStatus, [], { failed: true });
     if (dom.recentTable) {
       dom.recentTable.innerHTML = '<tr><td colspan="4" class="muted">Fehler beim Laden</td></tr>';
     }
