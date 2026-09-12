@@ -37,6 +37,13 @@ function gameViewLink(gameId) {
 }
 
 function playerNames(entry) {
+  if (Array.isArray(entry.entry_players)) {
+    return entry.entry_players.map(player => playerNameMarkup(player, {
+      name: player.name,
+      compactRank: true,
+      profileLink: player.is_active,
+    })).join(", ");
+  }
   const links = Array.isArray(entry.linked_players) ? entry.linked_players : [];
   return String(entry.name ?? "—").split(", ").map((name) => {
     const player = links.find((candidate) => String(candidate.display_name) === name);

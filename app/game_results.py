@@ -376,6 +376,8 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
         rec = {
             "ts": entry_time,
             "points": wt_total,
+            "entry_player_keys": list(mA if winner_team == "A" else mB),
+            "opponent_player_keys": list(mB if winner_team == "A" else mA),
             "name": winners,
             "gamename": game_name,
             "opponent": losers,
@@ -388,6 +390,8 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
         shame_rec = {
             "ts": entry_time,
             "points": lt_total,
+            "entry_player_keys": list(mB if winner_team == "A" else mA),
+            "opponent_player_keys": list(mA if winner_team == "A" else mB),
             "name": losers,
             "gamename": game_name,
             "opponent": winners,
@@ -424,6 +428,8 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
         rec = {
             "ts": entry_time,
             "points": winner_pts,
+            "entry_player_keys": [winner["id"]],
+            "opponent_player_keys": [ordered[1]["id"]] if len(ordered) >= 2 else [],
             "name": winner["name"],
             "gamename": game_name,
             "opponent": opp_name,
@@ -436,6 +442,8 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
         shame_rec = {
             "ts": entry_time,
             "points": worst_pts,
+            "entry_player_keys": [worst["id"]],
+            "opponent_player_keys": [winner["id"]] if len(ordered) >= 2 else [],
             "name": worst["name"],
             "gamename": game_name,
             "opponent": shame_opp_name,

@@ -17,9 +17,10 @@ from .achievements import (
     sync_user_achievements,
 )
 from .auth import require_admin, require_csrf, require_user, resolve_session
-from .database import database_schema_ready, session_scope
+from .database import session_scope
 from .game_types import DEFAULT_GAME_TYPE
 from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User, UserAchievement
+from .player_names import completed_player_identities
 from .product_hosts import is_zilch_host
 from .security import normalize_username, utcnow
 from .trends import recent_points_trend
@@ -585,30 +586,14 @@ def assign_game_participant(participant_id: int, payload: AssignmentRequest, req
 
 
 def profile_links_for_games(game_ids: set[str]) -> dict[str, list[dict]]:
-    if not game_ids or not database_schema_ready():
-        return {}
-    with session_scope() as db:
-        rows = db.execute(
-            select(CompletedGame.game_id, GameParticipant.display_name, GameParticipant.points, User.id, User.username)
-            .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
-            .join(User, User.id == GameParticipant.user_id)
-            .where(
-                CompletedGame.game_type == DEFAULT_GAME_TYPE,
-                CompletedGame.game_id.in_(game_ids),
-                User.is_active.is_(True),
-            )
-            .order_by(GameParticipant.position)
-        ).all()
-        ranks = achievement_rank_payloads_for_user_ids(db, {user_id for *_values, user_id, _username in rows})
-        result: dict[str, list[dict]] = {}
-        for game_id, display_name, points, user_id, username in rows:
-            result.setdefault(game_id, []).append(
-                {
-                    "user_id": user_id,
-                    "username": username,
-                    "display_name": display_name,
-                    "points": int(points),
-                    "achievement_rank": ranks.get(int(user_id)),
-                }
-            )
+    result = completed_player_identities(game_ids, game_type=DEFAULT_GAME_TYPE)
+    if not result:
         return result
+    with session_scope() as db:
+        ranks = achievement_rank_payloads_for_user_ids(db, {
+            seat["user_id"] for seats in result.values() for seat in seats if seat["is_active"]
+        })
+    for seats in result.values():
+        for seat in seats:
+            seat["achievement_rank"] = ranks.get(seat["user_id"])
+    return result

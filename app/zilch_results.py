@@ -20,6 +20,7 @@ from .database import database_schema_ready, session_scope
 from .game_history import CompletedGameWriteResult, persist_completed_game_result
 from .game_types import ZILCH_GAME_TYPE, game_type_from_state
 from .models import CompletedGame, GameParticipant
+from .player_names import completed_player_identities, project_completed_players
 from .zilch_cpu_strategy import ZilchCpuStrategyError, validate_zilch_cpu_strategy
 from .zilch_engine import ZILCH_RULESET_VERSION, ZILCH_TARGET_SCORE
 from .zilch_solo_objective import (
@@ -1208,13 +1209,13 @@ def load_zilch_result(game_id: str) -> dict | None:
         return _stored_payload(row) if row is not None else None
 
 
-def _browser_result_payload(payload: dict) -> dict:
+def _browser_result_payload(payload: dict, identities: list[dict]) -> dict:
     """Remove relational account IDs from a validated browser projection."""
     return {
         **payload,
         "participants": [
             {key: value for key, value in participant.items() if key != "user_id"}
-            for participant in payload["participants"]
+            for participant in project_completed_players(payload["participants"], identities, zilch=True)
         ],
     }
 
@@ -1296,7 +1297,8 @@ def load_zilch_result_for_user(game_id: str, user_id: int) -> dict | None:
         payload = _stored_payload(row) if row is not None else None
     if payload is None:
         return None
-    browser_payload = _browser_result_payload(payload)
+    identities = completed_player_identities({game_id}, game_type=ZILCH_GAME_TYPE).get(game_id, [])
+    browser_payload = _browser_result_payload(payload, identities)
     browser_payload["moments"] = _browser_result_moments(payload)
     return browser_payload
 
@@ -1319,6 +1321,9 @@ def list_zilch_results_for_user(user_id: int, *, limit: int = 30) -> list[dict]:
         ).all()
         payloads = [_stored_payload(row) for row in rows]
     summaries: list[dict] = []
+    identities = completed_player_identities(
+        {payload["game_id"] for payload in payloads if payload is not None}, game_type=ZILCH_GAME_TYPE,
+    )
     for payload in payloads:
         if payload is None:
             continue
@@ -1327,7 +1332,7 @@ def list_zilch_results_for_user(user_id: int, *, limit: int = 30) -> list[dict]:
             "game_name": payload["game_name"],
             "finished_at": payload["finished_at"],
             "play_mode": payload["play_mode"],
-            "participants": _browser_result_payload(payload)["participants"],
+            "participants": _browser_result_payload(payload, identities.get(payload["game_id"], []))["participants"],
             "totals": payload["totals"],
             "outcome": payload["outcome"],
             "result_url": f"/zilch/ergebnis/{payload['game_id']}",

@@ -1,5 +1,50 @@
 const { test, expect } = require("@playwright/test");
 
+test("historic leaderboard renders account identities separately from guests with the same name", async ({ page }) => {
+  const entry = {
+    game_id: "renamed-history", name: "FormerName", points: 410,
+    ts: new Date().toISOString(),
+    entry_players: [
+      { name: "CurrentName", username: "CurrentName", user_id: 71, is_active: true },
+      { name: "CurrentName", username: null, user_id: null, is_active: false },
+    ],
+  };
+  await page.route("**/api/leaderboard", route => route.fulfill({
+    json: { recent: { normal: [entry], hc: [] }, alltime: { normal: [entry], hc: [] }, stats: {} },
+  }));
+  await page.goto("/");
+  const row = page.locator("#recentTable tbody tr").first();
+  await expect(row).toContainText("CurrentName");
+  await expect(row).not.toContainText("FormerName");
+  await expect(row.locator(".player-name-label")).toHaveCount(2);
+  await expect(row.locator("a.player-name-label")).toHaveCount(1);
+  await expect(row.locator("a.player-name-label")).toHaveAttribute("href", "/api/players/by-id/71/profile?game=zdwa");
+});
+
+test("historic replay displays the renamed participant without linking a guest to the reused name", async ({ page }) => {
+  const gameId = "renamed-replay";
+  await page.route(`**/api/game_from_leaderboard/${gameId}`, route => route.fulfill({
+    json: {
+      game_id: gameId, gamename: "Our old game", mode: "2", hardcore: false,
+      finished_at: "2026-09-11T12:00:00Z",
+      players: [
+        { id: "p1", name: "CurrentName", username: "CurrentName", user_id: 71 },
+        { id: "p2", name: "FormerName", user_id: null },
+      ],
+      scoreboards: {
+        p1: { reihen: [{ index: 1, rows: { "1": 1 } }] },
+        p2: { reihen: [{ index: 1, rows: { "1": 1 } }] },
+      },
+      chat_history: [], admin_edits: {},
+    },
+  }));
+  await page.goto(`/ergebnis/${gameId}`);
+  await expect(page.locator(".player-name-label").filter({ hasText: "CurrentName" }).first()).toBeVisible();
+  const guest = page.locator(".player-name-label").filter({ hasText: "FormerName" }).first();
+  await expect(guest).toBeVisible();
+  expect(await guest.evaluate(element => element.tagName)).toBe("SPAN");
+});
+
 // Run with ROLLTHEDICE_ZILCH_ACCESS_MODE=public to cover normal public accounts.
 for (const product of ["zdwa", "zilch"]) {
   for (const language of ["de", "en"]) {

@@ -4,23 +4,21 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Neuer Name, gleiches Konto: Ändere deinen Benutzernamen in den Einstellungen von ZDWA oder Zilch.",
-  "summary_en": "New name, same account: change your username in the settings of ZDWA or Zilch.",
+  "summary_de": "Dein neuer Benutzername erscheint jetzt auch in abgeschlossenen Partien und Bestenlisten – sicher deinem Konto zugeordnet.",
+  "summary_en": "Your new username now appears in completed games and leaderboards, safely linked to your account.",
   "player_notes": {
     "de": {
-      "title": "Dein Konto, dein neuer Name",
+      "title": "Dein neuer Name auch in früheren Partien",
       "changes": [
-        "Ändere deinen Benutzernamen unter Konto → Einstellungen mit deinem aktuellen Passwort.",
-        "Der neue Name gilt für die Anmeldung und neue Partien in beiden Spielen. Statistiken, Erfolge und Spielerauswahl bleiben erhalten.",
-        "Bestehende Partien und Nachrichten behalten ihren Namen. Dein Profillink ändert sich; der alte Name wird wieder frei."
+        "Abgeschlossene Partien, Spielhistorie und Bestenlisten zeigen deinen aktuellen Kontonamen.",
+        "Übernimmt jemand deinen alten Namen, bleiben frühere Partien weiterhin deinem Konto zugeordnet. Gastnamen und Nachrichtentexte bleiben unverändert."
       ]
     },
     "en": {
-      "title": "Your account, your new name",
+      "title": "Your new name in earlier games too",
       "changes": [
-        "Change your username under Account → Settings using your current password.",
-        "The new name applies to signing in and new games in both products. Statistics, achievements and player selection are preserved.",
-        "Existing games and messages keep their name. Your profile link changes; the old name becomes available again."
+        "Completed games, game history and leaderboards show your current account name.",
+        "If someone takes your old name, earlier games still belong to your account. Guest names and message text stay unchanged."
       ]
     }
   }

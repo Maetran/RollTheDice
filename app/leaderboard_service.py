@@ -20,6 +20,7 @@ from .game_history import (
 from .game_types import DEFAULT_GAME_TYPE
 from .leaderboard_storage import LeaderboardFiles, read_json, write_json_if_changed
 from .models import CompletedGame
+from .player_names import current_account_names, project_completed_players
 from .security import as_utc
 from .trends import recent_points_trend
 
@@ -122,34 +123,39 @@ def _empty_average_points() -> dict:
     return {"normal": _average_bucket(), "hc": _average_bucket()}
 
 
-def linked_players_for_entry(entry: dict, candidates: list[dict]) -> list[dict]:
-    """Match a legacy leaderboard row to assigned SQL participants.
+def linked_players_for_entry(entry: dict, candidates: list[dict], *, opponent: bool = False) -> list[dict]:
+    """Resolve a row to known seats, retaining guests when scores/names collide.
 
-    Old snapshots can produce a slightly different total under today's scoring
-    rules. The game ID remains authoritative; within that game an exact score
-    wins, followed by an unambiguous display-name match or sole participant.
+    New rows carry seat keys. Legacy rows may identify a unique seat/team by
+    their recorded label within this game; a current username is never evidence.
+    Ambiguous labels or scores do not produce an invented account association.
     """
     if not candidates:
         return []
+    keys = entry.get("opponent_player_keys" if opponent else "entry_player_keys")
+    if isinstance(keys, list):
+        by_key = {seat["player_key"]: seat for seat in candidates if seat.get("player_key")}
+        if keys and len(keys) == len(set(keys)) and all(key in by_key for key in keys):
+            return [by_key[key] for key in keys]
+        return []
+    groups: list[list[dict]] = []
+    if str(entry.get("mode") or "").lower() == "2v2":
+        for team in ("A", "B"):
+            group = [seat for seat in candidates if seat.get("team") == team]
+            if group:
+                groups.append(group)
+    else:
+        groups = [[seat] for seat in candidates]
+    label = str(entry.get("opponent" if opponent else "name") or "").strip()
+    matches = [group for group in groups if ", ".join(seat["display_name"] for seat in group) == label]
+    if len(matches) == 1:
+        return matches[0]
     try:
-        entry_points = int(entry.get("points"))
+        points = int(entry.get("opp_points" if opponent else "points"))
     except (AttributeError, TypeError, ValueError):
-        entry_points = None
-    if entry_points is not None:
-        exact = [player for player in candidates if player.get("points") == entry_points]
-        if exact:
-            return exact
-
-    entry_names = {name.strip().casefold() for name in str(entry.get("name") or "").split(",") if name.strip()}
-    named = [
-        player
-        for player in candidates
-        if str(player.get("display_name") or "").strip().casefold() in entry_names
-        or str(player.get("username") or "").strip().casefold() in entry_names
-    ]
-    if named:
-        return named
-    return candidates if len(candidates) == 1 else []
+        return []
+    exact = [group for group in matches if all(seat.get("points") == points for seat in group)]
+    return exact[0] if len(exact) == 1 else []
 
 
 def _stats_with_average_points(stats: dict) -> dict:
@@ -272,8 +278,28 @@ async def build_leaderboard(files: LeaderboardFiles):
             item = dict(entry)
             candidates = links_by_game.get(stable_game_id(item) or "", [])
             linked_players = linked_players_for_entry(item, candidates)
+            item.pop("linked_players", None)
             if linked_players:
-                item["linked_players"] = linked_players
+                item["entry_players"] = [
+                    {
+                        "name": seat["username"] or seat["display_name"],
+                        "username": seat["username"],
+                        "user_id": seat["user_id"],
+                        "is_active": seat["is_active"],
+                        "achievement_rank": seat["achievement_rank"],
+                    }
+                    for seat in linked_players
+                ]
+                item["name"] = ", ".join(player["name"] for player in item["entry_players"])
+                item["linked_players"] = [
+                    {**seat, "display_name": seat["username"]}
+                    for seat in linked_players if seat["is_active"]
+                ]
+            opponents = linked_players_for_entry(entry, candidates, opponent=True)
+            if opponents:
+                item["opponent"] = ", ".join(seat["username"] or seat["display_name"] for seat in opponents)
+            if isinstance(item.get("players"), list):
+                item["players"] = project_completed_players(item["players"], candidates)
             enriched.append(item)
         return enriched
 
@@ -340,32 +366,18 @@ def game_from_leaderboard(files: LeaderboardFiles, game_id: str):
             [],
         )
 
-        def linked_player_for_name(name):
-            normalized = str(name or "").strip().casefold()
-            return next(
-                (
-                    candidate
-                    for candidate in linked_players
-                    if normalized
-                    and normalized
-                    in {
-                        str(candidate.get("display_name") or "").strip().casefold(),
-                        str(candidate.get("username") or "").strip().casefold(),
-                    }
-                ),
-                None,
-            )
-
-        for player in players_copy:
-            if player.get("user_id") is None and (linked := linked_player_for_name(player.get("name"))):
-                player["user_id"] = linked.get("user_id")
-                if linked.get("achievement_rank"):
-                    player["achievement_rank"] = linked["achievement_rank"]
+        players_copy = project_completed_players(players_copy, linked_players)
+        # Imported JSON account IDs may belong to a different database. A
+        # historical sender label alone never proves who wrote a message.
+        trusted_chat_ids = bool(linked_players) and not linked_players[0]["imported_from_legacy"]
+        if not trusted_chat_ids:
+            for message in chat_history:
+                message.pop("user_id", None)
+                message.pop("achievement_rank", None)
+        names = current_account_names(message.get("user_id") for message in chat_history)
         for message in chat_history:
-            if message.get("user_id") is None and (linked := linked_player_for_name(message.get("sender"))):
-                message["user_id"] = linked.get("user_id")
-                if linked.get("achievement_rank"):
-                    message["achievement_rank"] = linked["achievement_rank"]
+            if name := names.get(message.get("user_id")):
+                message["sender"] = name
         ranks = public_achievement_ranks(
             [
                 *[player.get("user_id") for player in players_copy],

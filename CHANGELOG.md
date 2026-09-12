@@ -11,6 +11,23 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Stille Korrektur / Silent fix — Aktuelle Namen in früheren Partien — 2026-09-12
+
+- **Deutsch:** Abgeschlossene ZDWA- und Zilch-Partien, Spielhistorie und
+  Bestenlisten zeigen den aktuellen Kontonamen. Die Zuordnung verwendet feste
+  Teilnehmer- und Konto-IDs; die Übernahme eines freigewordenen Namens überträgt
+  keine alten Partien. Gleichstände, Teams und namensgleiche Gäste werden
+  getrennt behandelt. Gastnamen, unklare Altbestände, Nachrichtentexte und
+  selbst gewählte Spieltitel bleiben unverändert. Gespeicherte Spielverläufe und
+  Punkte werden nicht umgeschrieben. Dieser Rollout sendet keinen Versions-Push
+  und veröffentlicht kein neues In-App-Popup.
+- **English:** Completed ZDWA and Zilch games, history and leaderboards show
+  the current account name. Fixed participant and account IDs preserve ownership
+  when a released username is reused. Ties, teams and guests sharing a name
+  remain distinct. Guest names, ambiguous legacy records, message text and
+  custom game titles stay unchanged. Stored gameplay and scores are not
+  rewritten. This rollout sends no release push and creates no new in-app popup.
+
 ## Benutzername ändern / Change username — 2026-09-11
 
 - **Deutsch:** In den Einstellungen von ZDWA und Zilch lässt sich der gemeinsame

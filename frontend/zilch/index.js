@@ -449,6 +449,7 @@ function zilchRankBadgeMarkup(value) {
 }
 
 function playerUsername(value) {
+  if (value?.is_registered === false) return "";
   const direct = String(value?.username || value?.player_username || "").trim();
   if (direct) return direct;
   return typeOfUserId(value?.user_id) ? String(value?.name || "").trim() : "";
@@ -3183,7 +3184,7 @@ function renderRulesContent(facts) {
     </section>
     <section class="zilch-card zilch-rules-section">
       <h2>${escapeHtml(t("Lobby-Chat und Einladungen"))}</h2>
-      <p>${escapeHtml(t("Unter Konto → Einstellungen kannst du deinen Benutzernamen mit deinem aktuellen Passwort ändern. Der neue Name gilt für Anmeldung, Profil und neue Partien in ZDWA und Zilch. Statistiken, Erfolge und Spielerauswahl bleiben erhalten. Bestehende Partien und Nachrichten behalten ihren bisherigen Namen. Dein Profillink ändert sich; der alte Name wird wieder frei."))}</p>
+      <p>${escapeHtml(t("Unter Konto → Einstellungen kannst du deinen Benutzernamen mit deinem aktuellen Passwort ändern. Der neue Name gilt für Anmeldung, Profil und neue Partien in ZDWA und Zilch. Statistiken, Erfolge und Spielerauswahl bleiben erhalten. Auch abgeschlossene Partien zeigen deinen aktuellen Kontonamen. Gastnamen und Nachrichtentexte bleiben unverändert. Dein Profillink ändert sich; der alte Name wird wieder frei."))}</p>
       <p>${escapeHtml(t("Der gemeinsame Lobby-Chat für ZDWA und Zilch ist für angemeldete Konten verfügbar. Du siehst nur Nachrichten, für die du beim Senden verbunden und berechtigt warst; nach drei Tagen werden sie gelöscht. Chat und Lobby-Popups lassen sich im Konto ausschalten."))}</p>
       <p>${escapeHtml(t("Ein geöffneter Spiel-Chat und ein begonnener Text bleiben bei Live-Nachrichten, Spielstandsaktualisierungen und Wiederverbindungen erhalten."))}</p>
       <p>${escapeHtml(t("Im Lobby-Chat sind höchstens 400 Zeichen je Nachricht und fünf Nachrichten pro Konto in 30 Sekunden erlaubt. Admins können Konten stummschalten oder vom Chat ausschließen."))}</p>

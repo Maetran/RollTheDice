@@ -21,7 +21,7 @@ from starlette.requests import Request
 
 from app import main
 from app.active_games import save_active_game
-from app.auth import create_user, login
+from app.auth import change_username, create_user, login
 from app.database import configure_database, session_scope, upgrade_database
 from app.game_history import CompletedGameWriteResult, persist_completed_game_result, recent_winner_points_by_mode
 from app.game_registry import finalize_completed_game
@@ -40,6 +40,7 @@ from app.zilch_results import (
     ZILCH_RESULT_SCHEMA_VERSION,
     build_zilch_result_payload,
     finalize_zilch_result,
+    list_zilch_results_for_user,
     load_zilch_result,
     load_zilch_result_for_user,
 )
@@ -72,6 +73,24 @@ def request_for(*, cookie: str = "") -> Request:
 
 class ZilchResultsTestCase(TestCase):
     """Result payload, idempotency, recovery and access contracts."""
+
+    def test_history_and_results_use_current_names_without_transferring_old_games(self):
+        user_id, _ = self._identity("FormerName")
+        identity, _ = login(request_for(), "FormerName", "FormerName-secure-password-123")
+        game = self._terminal_game(player_one=("FormerName", user_id), player_two=("FormerName", None))
+        self.assertTrue(finalize_zilch_result(game)["result_persisted"])
+        stored = load_zilch_result(game["_id"])
+        change_username(identity, "CurrentName", "FormerName-secure-password-123", request_for())
+        replacement_id, _ = self._identity("FormerName")
+        detail = load_zilch_result_for_user(game["_id"], user_id)
+        history = list_zilch_results_for_user(user_id)
+        for participants in (detail["participants"], history[0]["participants"]):
+            self.assertEqual([p["display_name"] for p in participants], ["CurrentName", "FormerName"])
+            self.assertEqual([p["is_registered"] for p in participants], [True, False])
+            self.assertTrue(all("user_id" not in p for p in participants))
+        self.assertIsNone(load_zilch_result_for_user(game["_id"], replacement_id))
+        self.assertEqual(list_zilch_results_for_user(replacement_id), [])
+        self.assertEqual(load_zilch_result(game["_id"]), stored)
 
     def setUp(self) -> None:
         self.game_ids: list[str] = []

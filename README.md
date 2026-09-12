@@ -154,16 +154,22 @@ Under **Account → Settings → Change username**, enter a new name and your
 current password. Names follow the registration rules (3–32 characters) and
 are unique regardless of case. The new name applies to signing in, profiles
 and new games in both products. Sessions, statistics, achievements, avatars
-and saved player selections remain attached to the same account. Existing
-games and messages keep their recorded names. Profile links change and the old
+and saved player selections remain attached to the same account. Completed
+game views, history and leaderboards show the current account name, resolved
+through the stored participant/account IDs. Reusing a released name never
+transfers earlier games. Guest names, ambiguous unassigned legacy entries,
+message text and game titles stay unchanged. Profile links change and the old
 name becomes available again. In the private Zilch preview mode, names tied to
 preview access require an administrator to adjust the access configuration first.
 
 **Deutsch:** Unter **Konto → Einstellungen → Benutzername ändern** kannst du
 mit deinem aktuellen Passwort einen neuen Namen wählen. Er gilt für Anmeldung,
 Profil und neue Partien in beiden Spielen. Konto, Statistiken, Erfolge und
-Spielerauswahl bleiben erhalten. Bestehende Partien und Nachrichten behalten
-ihren bisherigen Namen; dein Profillink ändert sich und der alte Name wird frei.
+Spielerauswahl bleiben erhalten. Auch abgeschlossene Partien und Bestenlisten
+zeigen deinen aktuellen Kontonamen. Die Zuordnung erfolgt über feste IDs,
+auch wenn jemand deinen alten Namen übernimmt. Gastnamen, nicht eindeutig
+zugeordnete Altbestände, Nachrichtentexte und Spieltitel bleiben unverändert.
+Dein Profillink ändert sich und der alte Name wird frei.
 
 Administrators manage accounts and moderation.
 

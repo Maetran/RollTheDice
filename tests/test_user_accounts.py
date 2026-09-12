@@ -66,8 +66,9 @@ from app.auth_protection import (
 from app.database import configure_database, session_scope, upgrade_database
 from app.game_engine import _compute_final_totals
 from app.game_history import import_legacy_leaderboards, persist_runtime_game, stable_game_id
-from app.game_results import build_leaderboard_snapshot_fields
+from app.game_results import build_leaderboard_snapshot_fields, finalize_and_log_results
 from app.game_state import WRITABLE_COLS, WRITABLE_ROWS
+from app.leaderboard_service import build_leaderboard, game_from_leaderboard
 from app.leaderboard_storage import LeaderboardFiles
 from app.models import (
     ActiveGame,
@@ -83,6 +84,7 @@ from app.models import (
 from app.security import utcnow, validate_password
 from app.trends import recent_points_trend
 from tests.support import GameStateTestCase
+from tests.test_leaderboard_persistence import patched_leaderboard_files
 
 
 def request_for(
@@ -139,6 +141,51 @@ def websocket_for(*, origin: str, host: str = "testserver", scheme: str = "ws") 
 
 
 class AccountDatabaseTestCase(GameStateTestCase):
+    def test_historic_names_follow_account_ids_after_reuse_in_replays_and_rankings(self):
+        user = create_user("FormerName", "rename-password", must_change_password=False)
+        game = self.make_game(mode=2, players=[("owner", "FormerName"), ("guest", "FormerName")])
+        game["_players"][0]["user_id"] = user.id
+        # Equal scores and equal recorded names must not turn the guest into
+        # the account owner (or later the new owner of the released name).
+        for key in ("owner", "guest"):
+            game["_scoreboards"][key] = self.high_scoreboard()
+        game["_chat_history"] = [
+            {"sender": "FormerName", "user_id": user.id, "text": "FormerName stays in message text"},
+            {"sender": "FormerName", "text": "guest message"},
+        ]
+        with patched_leaderboard_files() as (files, recent, _alltime, _shame, _last, _stats):
+            finalize_and_log_results(files, game)
+            with session_scope() as db:
+                original_snapshot = db.scalar(select(CompletedGame.snapshot_json))
+            identity, _ = login(request_for(), "FormerName", "rename-password")
+            change_username(identity, "CurrentName", "rename-password", request_for())
+            replacement = create_user("FormerName", "replacement-password", must_change_password=False)
+            replay = game_from_leaderboard(files, game["_id"])
+            self.assertEqual([p["name"] for p in replay["players"]], ["CurrentName", "FormerName"])
+            self.assertEqual([p["user_id"] for p in replay["players"]], [user.id, None])
+            self.assertEqual([m["sender"] for m in replay["chat_history"]], ["CurrentName", "FormerName"])
+            self.assertEqual(replay["chat_history"][0]["text"], "FormerName stays in message text")
+            board = asyncio.run(build_leaderboard(files))
+            winner = board["alltime"]["normal"][0]
+            loser = board["shame"]["alltime"][0]
+            self.assertEqual(winner["name"], "CurrentName")
+            self.assertEqual(winner["opponent"], "FormerName")
+            self.assertEqual(winner["entry_players"][0]["user_id"], user.id)
+            self.assertEqual(loser["name"], "FormerName")
+            self.assertEqual(loser["linked_players"], [])
+            self.assertIsNone(loser["entry_players"][0]["user_id"])
+            self.assertEqual(loser["opponent"], "CurrentName")
+            self.assertEqual(public_player_profile(replacement.username)["player"]["statistics"]["overall"]["games_played"], 0)
+            self.assertEqual(json.loads(recent.read_text())["normal"][0]["name"], "FormerName")
+            # Resolve at read time, including the uncapped relational replay.
+            change_username(identity, "NewestName", "rename-password", request_for())
+            for path in (files.recent, files.alltime, files.shame, files.last_games):
+                path.write_text("[]")
+            replay = game_from_leaderboard(files, game["_id"])
+            self.assertEqual(replay["players"][0]["name"], "NewestName")
+            with session_scope() as db:
+                self.assertEqual(db.scalar(select(CompletedGame.snapshot_json)), original_snapshot)
+
     def test_username_change_preserves_games_selection_and_old_game_profile_links(self):
         user = create_user("OriginalName", "rename-password", must_change_password=False)
         friend = create_user("SelectedFriend", "friend-password", must_change_password=False)

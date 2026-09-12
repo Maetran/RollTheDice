@@ -69,6 +69,28 @@ class FinalTotalsTestCase(GameStateTestCase):
 
 
 class LeaderboardPersistenceTestCase(GameStateTestCase):
+    def test_legacy_names_do_not_link_a_guest_or_tied_opponent_to_an_account(self):
+        account = {"player_key": "p1", "display_name": "OldAccount", "username": "NewAccount", "points": 410, "user_id": 7}
+        guest = {"player_key": "p2", "display_name": "Guest", "username": None, "points": 410, "user_id": None}
+        candidates = [account, guest]
+        self.assertEqual(leaderboard_service.linked_players_for_entry({"name": "Guest", "points": 410}, candidates), [guest])
+        self.assertEqual(leaderboard_service.linked_players_for_entry({"name": "NewAccount", "points": 410}, candidates), [])
+        duplicate = {**guest, "display_name": "OldAccount"}
+        self.assertEqual(leaderboard_service.linked_players_for_entry({"name": "OldAccount", "points": 410}, [account, duplicate]), [])
+        explicit = {"name": "OldAccount", "points": 410, "entry_player_keys": ["p1"]}
+        self.assertEqual(leaderboard_service.linked_players_for_entry(explicit, [account, duplicate]), [account])
+
+    def test_legacy_team_labels_keep_account_and_guest_seats_separate(self):
+        candidates = [
+            {"player_key": "p1", "team": "A", "display_name": "OldName", "username": "NewName", "points": 410},
+            {"player_key": "p2", "team": "B", "display_name": "Other", "username": "Other", "points": 410},
+            {"player_key": "p3", "team": "A", "display_name": "Guest", "username": None, "points": 410},
+            {"player_key": "p4", "team": "B", "display_name": "Guest", "username": None, "points": 410},
+        ]
+        entry = {"mode": "2v2", "name": "OldName, Guest", "opponent": "Other, Guest", "points": 410, "opp_points": 410}
+        self.assertEqual(leaderboard_service.linked_players_for_entry(entry, candidates), [candidates[0], candidates[2]])
+        self.assertEqual(leaderboard_service.linked_players_for_entry(entry, candidates, opponent=True), [candidates[1], candidates[3]])
+
     def test_completed_game_rank_upgrade_only_reports_a_genuine_higher_tier(self):
         game = self.make_game(players=[("p1", "Anna"), ("p2", "Ben")])
         game["_players"][0]["user_id"] = 71
@@ -115,7 +137,7 @@ class LeaderboardPersistenceTestCase(GameStateTestCase):
         )
         self.assertEqual(
             leaderboard_service.linked_players_for_entry({"name": "Unbekannt", "points": 753}, candidates),
-            candidates,
+            [],
         )
         self.assertEqual(
             leaderboard_service.linked_players_for_entry(

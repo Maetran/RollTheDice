@@ -128,7 +128,7 @@ export function mountUsernameSettings(container, { user, onChanged, zilch = fals
   container.dataset.bound = 'true';
   container.innerHTML = `
     <p>${escapeHtml(translate('Dein Benutzername gilt für ZDWA und Zilch sowie für die Anmeldung. Statistiken, Erfolge und deine Spielerauswahl bleiben erhalten.'))}</p>
-    <p class="muted small">${escapeHtml(translate('Bestehende Partien und Nachrichten behalten ihren bisherigen Namen. Dein Profillink ändert sich; der alte Name wird wieder frei.'))}</p>
+    <p class="muted small">${escapeHtml(translate('Auch abgeschlossene Partien zeigen deinen aktuellen Kontonamen. Gastnamen und Nachrichtentexte bleiben unverändert. Dein Profillink ändert sich; der alte Name wird wieder frei.'))}</p>
     <form class="${zilch ? 'zilch-settings-form' : 'form-stack'}" data-username-form>
       <label>${escapeHtml(translate('Neuer Benutzername'))}<input name="username" autocomplete="username" minlength="3" maxlength="32" required aria-describedby="usernameRules"></label>
       <p id="usernameRules" class="muted small">${escapeHtml(translate('3–32 Zeichen: Buchstaben, Zahlen, Punkt, Unterstrich oder Bindestrich. Kein Punkt oder Bindestrich am Anfang.'))}</p>
