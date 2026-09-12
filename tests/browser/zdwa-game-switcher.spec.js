@@ -173,6 +173,21 @@ test.describe("installed PWA account navigation", () => {
           headers: { ...route.request().headers(), host: hostname },
           maxRedirects: 0,
         });
+        if ([301, 302, 303, 307, 308].includes(response.status())) {
+          // Playwright only routes the first request in an HTTP redirect
+          // chain. Forwarding this 303 would let its next hop reach the real
+          // production host. Turn the locally verified redirect into a new
+          // browser navigation, which is intercepted by this proxy again.
+          const target = new URL(response.headers().location, url);
+          expect(target.origin).toBe(origin);
+          const escapedTarget = target.href.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
+          await route.fulfill({
+            status: 200,
+            contentType: "text/html",
+            body: `<!doctype html><meta http-equiv="refresh" content="0;url=${escapedTarget}">`,
+          });
+          return;
+        }
         await route.fulfill({ response });
       });
       await page.goto(`${origin}/`);

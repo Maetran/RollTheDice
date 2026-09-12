@@ -237,7 +237,7 @@ async def _receive_messages(
         # Chat, pause and the explicit, non-scoring room abort are
         # transport-neutral. A normal Zilch finish still belongs exclusively to
         # its rules engine; ``end_game`` is the player's deliberate return to
-        # the lobby and therefore produces no Zilch result.
+        # the lobby and therefore produces no scored Zilch result.
         allowed_social_actions = SOCIAL_ACTIONS
         allowed_actions = SESSION_ACTIONS | allowed_gameplay_actions | allowed_superadmin_actions | allowed_social_actions
         if action not in allowed_actions:
@@ -316,12 +316,7 @@ async def _receive_messages(
             )
         elif action in allowed_social_actions:
             await handle_social_action(session, action, data)
-            if (
-                action == "end_game"
-                and game_type_from_state(session.game) == ZILCH_GAME_TYPE
-                and session.game.get("_aborted")
-                and session.game.get("_abort_reason") == "manual"
-            ):
+            if action == "end_game" and session.game.get("_aborted") and session.game.get("_abort_reason") == "manual":
                 if manual_zilch_abort_publisher is not None:
                     await manual_zilch_abort_publisher(session.game)
                 return

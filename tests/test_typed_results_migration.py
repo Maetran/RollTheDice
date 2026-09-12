@@ -15,11 +15,11 @@ from alembic import command
 
 BASE = Path(__file__).resolve().parents[1]
 PRE_TYPED_RESULTS_REVISION = "20260902_0015"
-# ``head`` now includes the isolated Zilch-achievement tables.  The typed
+# ``head`` now includes email accounts, abandoned games and passkeys. The typed
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20260907_0036"
+LATEST_SCHEMA_REVISION = "20260912_0039"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -63,6 +63,10 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
         values = {
             "username": "Migration User",
             "username_normalized": "migrationuser",
+            "email": None,
+            "email_normalized": None,
+            "email_confirmed_at": None,
+            "webauthn_user_handle": None,
             "password_hash": "not-used-by-this-migration-test",
             "role": "admin",
             "is_active": 1,
@@ -277,6 +281,8 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
                 user_columns["achievement_cross_game_started_at"],
                 {"notnull": 0, "default": None},
             )
+            for column in ("email", "email_normalized", "email_confirmed_at", "webauthn_user_handle"):
+                self.assertEqual(user_columns[column], {"notnull": 0, "default": None})
             achievement_indexes = {
                 str(row[1]): [str(column[2]) for column in connection.execute(f"PRAGMA index_info({row[1]})")]
                 for row in connection.execute("PRAGMA index_list(user_achievements)")
@@ -285,6 +291,57 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
                 achievement_indexes["ix_user_achievements_source_game"],
                 ["source_completed_game_id"],
             )
+
+    def test_account_migrations_preserve_legacy_identity_and_game_links_on_roundtrip(self) -> None:
+        self._upgrade("20260907_0036")
+        with self._connection() as connection:
+            user_id = self._insert_user(connection)
+            completed_id = self._insert_completed_game(connection, game_id="account-migration-history", game_type="zdwa")
+            connection.execute(
+                """INSERT INTO game_participants
+                   (game_id, position, player_key, display_name, points, user_id)
+                   VALUES (?, 0, 'legacy-player', 'Migration User', 777, ?)""",
+                (completed_id, user_id),
+            )
+            connection.execute(
+                "INSERT INTO user_achievements (user_id, achievement_key, unlocked_at) VALUES (?, ?, ?)",
+                (user_id, "account_created", "2026-09-03T12:00:00+00:00"),
+            )
+            expected_user = connection.execute(
+                "SELECT id, username, username_normalized, password_hash FROM users WHERE id=?", (user_id,)
+            ).fetchone()
+
+        self._upgrade()
+        with self._connection() as connection:
+            self.assertEqual(connection.execute(
+                "SELECT email, email_normalized, email_confirmed_at, webauthn_user_handle FROM users WHERE id=?", (user_id,)
+            ).fetchone(), (None, None, None, None))
+            connection.execute(
+                "UPDATE users SET email=?, email_normalized=?, email_confirmed_at=?, webauthn_user_handle=? WHERE id=?",
+                ("migration@example.test", "migration@example.test", "2026-09-12T12:00:00+00:00", b"random-user-handle", user_id),
+            )
+            self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+
+        self._downgrade("20260907_0036")
+        with self._connection() as connection:
+            self.assertEqual(connection.execute(
+                "SELECT id, username, username_normalized, password_hash FROM users WHERE id=?", (user_id,)
+            ).fetchone(), expected_user)
+            self.assertEqual(connection.execute(
+                "SELECT game_id, user_id, player_key, points FROM game_participants WHERE game_id=?", (completed_id,)
+            ).fetchone(), (completed_id, user_id, "legacy-player", 777))
+            self.assertEqual(connection.execute(
+                "SELECT user_id, achievement_key FROM user_achievements WHERE user_id=?", (user_id,)
+            ).fetchall(), [(user_id, "account_created")])
+            self.assertNotIn("email", self._columns(connection, "users"))
+            self.assertNotIn("webauthn_user_handle", self._columns(connection, "users"))
+            self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+
+        self._upgrade()
+        with self._connection() as connection:
+            self.assertEqual(connection.execute(
+                "SELECT user_id FROM game_participants WHERE game_id=?", (completed_id,)
+            ).fetchone(), (user_id,))
 
     def test_achievement_source_migration_keeps_history_unlinked_and_sets_null_on_delete(self) -> None:
         self._upgrade("20260903_0017")

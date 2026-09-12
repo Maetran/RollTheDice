@@ -1,4 +1,4 @@
-import { loadAuth, login, logout, playerNameMarkup, register } from "../shared/auth.js";
+import { loadAuth, login, loginWithPasskey, logout, passkeysSupported, playerNameMarkup, register } from "../shared/auth.js";
 import { zdwaPath } from "../multigame/routes.js";
 import { dom, storageKeys } from "./context.js";
 
@@ -120,7 +120,15 @@ async function refreshAuthUi(refresh = false) {
   try {
     const auth = await loadAuth({ refresh });
     const user = auth?.user;
+    dom.passkeyLogin.hidden = Boolean(user) || !auth?.passkeys?.enabled || !passkeysSupported();
     dom.loginForm.hidden = Boolean(user);
+    dom.registrationForm.hidden = Boolean(user);
+    const emailEnabled = auth?.registration?.email_enabled !== false;
+    dom.registrationEmail.closest('label').hidden = !emailEnabled;
+    dom.registrationEmail.required = emailEnabled;
+    dom.registrationPassword.closest('label').hidden = emailEnabled;
+    dom.registrationPassword.required = !emailEnabled;
+    dom.registerButton.textContent = emailEnabled ? 'Konto per E-Mail erstellen' : 'Konto erstellen';
     dom.authActions.hidden = !user;
     dom.authBadge.hidden = !user;
     dom.adminLink.hidden = !user?.is_admin;
@@ -144,6 +152,20 @@ async function refreshAuthUi(refresh = false) {
 }
 
 export function initializeAuthentication() {
+  dom.passkeyLoginButton.addEventListener('click', async () => {
+    if (dom.passkeyLoginButton.disabled) return;
+    dom.passkeyLoginButton.disabled = true;
+    dom.loginError.textContent = '';
+    try {
+      await loginWithPasskey();
+      dom.loginPassword.value = '';
+      await refreshAuthUi(true);
+    } catch (error) {
+      dom.loginError.textContent = error.message;
+    } finally {
+      dom.passkeyLoginButton.disabled = false;
+    }
+  });
   // Only explicit registration needs CAPTCHA. Login-field focus may be
   // restored by the browser before /me reveals an existing signed-in user.
   window.addEventListener("zdwa:auth-state", (event) => {
@@ -164,7 +186,8 @@ export function initializeAuthentication() {
     }
   });
 
-  dom.registerButton.addEventListener("click", async () => {
+  dom.registrationForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
     if (turnstileState.registering) return;
     turnstileState.registering = true;
     dom.registerButton.disabled = true;
@@ -183,13 +206,18 @@ export function initializeAuthentication() {
         return;
       }
       try {
-        await register(
-          dom.loginUsername.value,
-          dom.loginPassword.value,
+        const result = await register(
+          dom.registrationUsername.value,
+          dom.registrationEmail.value,
           turnstileState.token,
+          dom.registrationPassword.required ? dom.registrationPassword.value : null,
         );
-        dom.loginPassword.value = "";
-        await refreshAuthUi();
+        dom.registrationForm.reset();
+        if (result.authenticated) {
+          await refreshAuthUi(true);
+        } else {
+          dom.loginError.textContent = 'Wenn diese Adresse noch kein Konto hat, erhältst du einen Bestätigungslink. Öffne ihn, um dein Passwort festzulegen.';
+        }
       } finally {
         // Tokens are single-use, including a rejected registration attempt.
         resetRegistrationChallenge();

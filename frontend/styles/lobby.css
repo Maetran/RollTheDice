@@ -202,6 +202,10 @@
   margin-top:.65rem;
 }
 .player-setup-card .login-inline input{ min-width:0; }
+.passkey-login{ display:grid; gap:.35rem; margin-top:.65rem; }
+.passkey-login button{ width:100%; }
+.passkey-login .muted{ margin:0; }
+.login-divider{ margin:.1rem 0 0; color:var(--muted); font-size:.82rem; text-align:center; }
 .account-form-actions{ display:grid; grid-template-columns:1fr 1fr; gap:.45rem; }
 .account-form-actions button{ width:100%; }
 .player-setup-card .auth-actions{

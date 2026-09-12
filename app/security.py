@@ -10,6 +10,7 @@ from pwdlib import PasswordHash
 PASSWORD_MIN_LENGTH = 8
 USERNAME_MIN_LENGTH = 3
 USERNAME_MAX_LENGTH = 32
+EMAIL_MAX_LENGTH = 254
 _password_hash = PasswordHash.recommended()
 
 
@@ -23,6 +24,52 @@ def as_utc(value: datetime) -> datetime:
 
 def normalize_username(username: str) -> str:
     return str(username or "").strip().casefold()
+
+
+def validate_email_address(email: str) -> str:
+    """Accept a practical mailbox address without allowing header injection.
+
+    The provider performs the final mailbox-level validation.  This deliberately
+    keeps the account boundary small: we only need a stable, safe address for a
+    unique login identifier and outbound transactional mail.
+    """
+    value = str(email or "").strip()
+    if not 3 <= len(value) <= EMAIL_MAX_LENGTH or any(character.isspace() for character in value):
+        raise ValueError("Bitte gib eine gültige E-Mail-Adresse ein")
+    if value.count("@") != 1 or "\x00" in value or "\r" in value or "\n" in value:
+        raise ValueError("Bitte gib eine gültige E-Mail-Adresse ein")
+    local, domain = value.rsplit("@", 1)
+    if (
+        not local
+        or len(local) > 64
+        or not re.fullmatch(r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~.\-]+", local)
+        or local.startswith(".")
+        or local.endswith(".")
+        or ".." in local
+        or not domain
+    ):
+        raise ValueError("Bitte gib eine gültige E-Mail-Adresse ein")
+    try:
+        ascii_domain = domain.encode("idna").decode("ascii")
+    except UnicodeError as exc:
+        raise ValueError("Bitte gib eine gültige E-Mail-Adresse ein") from exc
+    labels = ascii_domain.split(".")
+    if (
+        len(f"{local}@{ascii_domain}") > EMAIL_MAX_LENGTH
+        or len(labels) < 2
+        or any(
+            not label
+            or len(label) > 63
+            or not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?", label)
+            for label in labels
+        )
+    ):
+        raise ValueError("Bitte gib eine gültige E-Mail-Adresse ein")
+    return f"{local}@{ascii_domain.casefold()}"
+
+
+def normalize_email_address(email: str) -> str:
+    return validate_email_address(email).casefold()
 
 
 def validate_username(username: str) -> str:

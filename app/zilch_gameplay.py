@@ -633,6 +633,9 @@ def apply_zilch_abandon_solo(
     if not zilch_is_configured_solo_game(game):
         raise ZilchRuleError("zilch_solo_action_not_allowed")
     outcome = finish_zilch_solo_game(game, status="abandoned")
+    game["_manual_solo_abandonment"] = True
+    game["_abort_reason"] = "manual"
+    game["_aborted_by_player_id"] = actor_id
     return ZilchActionTransition(
         event={
             "type": "solo_abandoned",

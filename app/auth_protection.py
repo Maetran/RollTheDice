@@ -37,6 +37,14 @@ REGISTER_IP_WINDOW = timedelta(hours=1)
 REGISTER_IP_MAX = 3
 REGISTER_GLOBAL_WINDOW = timedelta(hours=1)
 REGISTER_GLOBAL_MAX = 20
+EMAIL_REQUEST_BURST_WINDOW = timedelta(minutes=5)
+EMAIL_REQUEST_BURST_MAX = 3
+EMAIL_REQUEST_IP_WINDOW = timedelta(hours=1)
+EMAIL_REQUEST_IP_MAX = 10
+EMAIL_REQUEST_TARGET_WINDOW = timedelta(hours=1)
+EMAIL_REQUEST_TARGET_MAX = 5
+EMAIL_REQUEST_GLOBAL_WINDOW = timedelta(hours=1)
+EMAIL_REQUEST_GLOBAL_MAX = 120
 GAME_CREATE_BURST_WINDOW = timedelta(minutes=1)
 GAME_CREATE_BURST_MAX = _positive_int_env("ROLLTHEDICE_GAME_CREATE_BURST_MAX", 5)
 GAME_CREATE_IP_WINDOW = timedelta(hours=1)
@@ -85,19 +93,21 @@ def _login_key(request: Request, normalized_username: str) -> str:
     return _key(f"{_client_address(request)}\0{normalized_username}")
 
 
-def _event_count(kind: str, since, *, client_key: str | None = None) -> int:
-    with session_scope() as db:
-        stmt = (
-            select(func.count())
-            .select_from(AuthRateEvent)
-            .where(
-                AuthRateEvent.kind == kind,
-                AuthRateEvent.occurred_at >= since,
-            )
+def _event_count(kind: str, since, *, client_key: str | None = None, db=None) -> int:
+    if db is None:
+        with session_scope() as db:
+            return _event_count(kind, since, client_key=client_key, db=db)
+    stmt = (
+        select(func.count())
+        .select_from(AuthRateEvent)
+        .where(
+            AuthRateEvent.kind == kind,
+            AuthRateEvent.occurred_at >= since,
         )
-        if client_key is not None:
-            stmt = stmt.where(AuthRateEvent.client_key == client_key)
-        return int(db.scalar(stmt) or 0)
+    )
+    if client_key is not None:
+        stmt = stmt.where(AuthRateEvent.client_key == client_key)
+    return int(db.scalar(stmt) or 0)
 
 
 def _record_event(kind: str, client_key: str) -> None:
@@ -111,20 +121,23 @@ def _record_event(kind: str, client_key: str) -> None:
 def enforce_registration_rate_limit(request: Request) -> None:
     now = utcnow()
     client_key = _client_key(request)
-    burst_limited = _event_count("register", now - REGISTER_BURST_WINDOW, client_key=client_key) >= REGISTER_BURST_MAX
-    hourly_limited = (
-        _event_count("register", now - REGISTER_IP_WINDOW, client_key=client_key) >= REGISTER_IP_MAX
-        or _event_count("register", now - REGISTER_GLOBAL_WINDOW) >= REGISTER_GLOBAL_MAX
-    )
-    if burst_limited or hourly_limited:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="registration_temporarily_blocked",
-            headers={"Retry-After": "3600" if hourly_limited else "60"},
+    with session_scope() as db:
+        # Begin a SQLite write transaction before counting. Parallel requests
+        # cannot all observe the same free slot and overrun the mail budget.
+        db.execute(delete(AuthRateEvent).where(AuthRateEvent.occurred_at < now - EVENT_RETENTION))
+        burst_limited = _event_count("register", now - REGISTER_BURST_WINDOW, client_key=client_key, db=db) >= REGISTER_BURST_MAX
+        hourly_limited = (
+            _event_count("register", now - REGISTER_IP_WINDOW, client_key=client_key, db=db) >= REGISTER_IP_MAX
+            or _event_count("register", now - REGISTER_GLOBAL_WINDOW, db=db) >= REGISTER_GLOBAL_MAX
         )
-    # Record before CAPTCHA and password hashing so rejected bot traffic cannot
-    # repeatedly consume either external verification or CPU resources.
-    _record_event("register", client_key)
+        if burst_limited or hourly_limited:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="registration_temporarily_blocked",
+                headers={"Retry-After": "3600" if hourly_limited else "60"},
+            )
+        # Reserve before CAPTCHA and password hashing.
+        db.add(AuthRateEvent(kind="register", client_key=client_key, occurred_at=now))
 
 
 def enforce_game_creation_rate_limit(request: Request) -> None:
@@ -156,6 +169,36 @@ def enforce_login_rate_limit(request: Request, normalized_username: str) -> str:
             headers={"Retry-After": str(int(LOGIN_WINDOW.total_seconds()))},
         )
     return key
+
+
+def enforce_email_request_rate_limit(request: Request, purpose: str, normalized_email: str) -> None:
+    """Bound account-email delivery by sender network and target address.
+
+    Database keys are hashes only.  This protects the delivery provider from
+    abuse without making a private email address visible in telemetry.
+    """
+    if purpose not in {"registration", "password_reset", "email_verify"}:
+        raise ValueError("unknown_email_request_purpose")
+    now = utcnow()
+    ip_key = _key(f"{purpose}\0{_client_address(request)}")
+    target_key = _key(f"{purpose}\0{normalized_email}")
+    global_key = _key(purpose)
+    with session_scope() as db:
+        db.execute(delete(AuthRateEvent).where(AuthRateEvent.occurred_at < now - EVENT_RETENTION))
+        burst_limited = _event_count("email_request_ip", now - EMAIL_REQUEST_BURST_WINDOW, client_key=ip_key, db=db) >= EMAIL_REQUEST_BURST_MAX
+        hourly_limited = (
+            _event_count("email_request_ip", now - EMAIL_REQUEST_IP_WINDOW, client_key=ip_key, db=db) >= EMAIL_REQUEST_IP_MAX
+            or _event_count("email_request_target", now - EMAIL_REQUEST_TARGET_WINDOW, client_key=target_key, db=db) >= EMAIL_REQUEST_TARGET_MAX
+            or _event_count("email_request_global", now - EMAIL_REQUEST_GLOBAL_WINDOW, client_key=global_key, db=db) >= EMAIL_REQUEST_GLOBAL_MAX
+        )
+        if burst_limited or hourly_limited:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="email_request_temporarily_blocked",
+                headers={"Retry-After": "3600" if hourly_limited else str(int(EMAIL_REQUEST_BURST_WINDOW.total_seconds()))},
+            )
+        for kind, key in (("email_request_ip", ip_key), ("email_request_target", target_key), ("email_request_global", global_key)):
+            db.add(AuthRateEvent(kind=kind, client_key=key, occurred_at=now))
 
 
 def record_login_failure(key: str) -> None:

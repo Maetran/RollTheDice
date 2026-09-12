@@ -84,8 +84,20 @@ def test_every_private_zilch_award_and_category_has_de_and_en_message_keys():
 
 def test_achievement_points_are_visible_catalog_data_and_logically_ordered():
     assert ACHIEVEMENTS
-    assert all(1 <= achievement.points <= 10 for achievement in ACHIEVEMENTS)
+    fairplay_keys = {
+        "manual_solo_aborts_1", "manual_solo_aborts_5", "manual_solo_aborts_10",
+        "manual_multiplayer_aborts_1", "manual_multiplayer_aborts_5", "manual_multiplayer_aborts_10",
+    }
+    # Exactly these non-scoring reminders may have zero points. Ordinary
+    # achievements must retain the published 1–10 point range.
+    assert {achievement.key for achievement in ACHIEVEMENTS if achievement.points == 0} == fairplay_keys
+    assert all(
+        1 <= achievement.points <= 10
+        for achievement in ACHIEVEMENTS if achievement.key not in fairplay_keys
+    )
     ordered_keys = [achievement.key for achievement in sorted(ACHIEVEMENTS, key=achievement_sort_key)]
+    for prefix in ("manual_solo_aborts", "manual_multiplayer_aborts"):
+        assert ordered_keys.index(f"{prefix}_1") < ordered_keys.index(f"{prefix}_5") < ordered_keys.index(f"{prefix}_10")
     assert ordered_keys.index("five_ones_written") < ordered_keys.index("five_twos_written")
     assert ordered_keys.index("five_fives_written") < ordered_keys.index("six_thirty")
     assert ordered_keys.index("exact_game_score_555") < ordered_keys.index("exact_game_score_1555")

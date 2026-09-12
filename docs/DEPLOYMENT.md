@@ -853,6 +853,43 @@ curl -fsS https://zockdiewandan.online/api/auth/registration-config
 Die produktive Antwort muss bei aktivem Schutz
 `"turnstile_enabled":true` enthalten und darf nur den Site Key offenlegen.
 
+## E-Mail-Konten und Passkeys (vorbereitet, standardmäßig aus)
+
+Der Branch enthält E-Mail-Registrierung, Adressbestätigung, angeforderten
+Passwort-Reset und WebAuthn-Passkeys, aktiviert aber nichts automatisch. Die
+folgenden Werte bleiben bis zu einer bewusst geplanten Freigabe auf `0` bzw.
+leer:
+
+```dotenv
+ROLLTHEDICE_EMAIL_ENABLED=0
+ROLLTHEDICE_RESEND_API_KEY=
+ROLLTHEDICE_EMAIL_FROM=
+ROLLTHEDICE_PASSKEYS_ENABLED=0
+ROLLTHEDICE_WEBAUTHN_RP_ID=zockdiewandan.online
+ROLLTHEDICE_WEBAUTHN_RP_NAME=Zock die Wand an
+```
+
+Für eine spätere E-Mail-Aktivierung wird eine bei Resend verifizierte
+Absenderdomain mit dessen SPF-/DKIM- und passender DMARC-Konfiguration benötigt.
+`ROLLTHEDICE_EMAIL_FROM` ist nur ein Transaktions-Absender, etwa
+`konto@auth.zockdiewandan.online`; dafür wird kein Postfach, Empfang, Weiterleitung
+oder Betreiber-CC eingerichtet. Der API-Key gehört ausschließlich in das
+Produktions-Secret. Die Anwendung versendet nur Bestätigungen und angeforderte
+Passwort-Resets.
+
+Bei ausgeschaltetem E-Mail-Feature bleibt die vorhandene Registrierung mit
+Benutzername und Passwort nutzbar. Angenommene Mailanfragen werden nach der
+HTTP-Antwort versandt; ein Neustart vor dem Versand kann eine Wiederholung
+erfordern. Recovery widerruft alle Sitzungen, Passkeys und offene
+Adressänderungen. Vorhandene Passkeys können danach neu eingerichtet werden.
+
+Passkeys dürfen erst mit den festen HTTPS-Origins aktiviert werden. Die RP-ID
+muss genau dem Hostnamen von `ROLLTHEDICE_SITE_ORIGIN` entsprechen; Zilch darf
+nur als kontrollierte Subdomain desselben Hosts erscheinen. Vor der Freigabe auf
+einem vorgesehenen Testkonto Registrierung, Anmeldung, Entfernen und Passwort-
+Fallback testen. Keine Versions-Pushes, Testmails oder Versuche gegen echte
+Spielerkonten auslösen.
+
 ## Manuelles Deployment
 
 Nur verwenden, wenn das Skript selbst nicht ausgeführt werden kann. Die

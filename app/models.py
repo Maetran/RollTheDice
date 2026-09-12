@@ -30,6 +30,14 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(String(32), nullable=False)
     username_normalized: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
+    # Email addresses are private account recovery data.  They are intentionally
+    # absent from public player projections and may stay unset for legacy users.
+    email: Mapped[str | None] = mapped_column(String(254), nullable=True)
+    email_normalized: Mapped[str | None] = mapped_column(String(254), nullable=True, unique=True)
+    email_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # A random WebAuthn user handle is deliberately distinct from a public
+    # username or recovery email. It remains stable across account renames.
+    webauthn_user_handle: Mapped[bytes | None] = mapped_column(LargeBinary(32), nullable=True, unique=True)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="user")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -94,6 +102,9 @@ class User(Base):
     web_push_subscriptions: Mapped[list[WebPushSubscription]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    passkey_credentials: Mapped[list[PasskeyCredential]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class UserAvatar(Base):
@@ -149,6 +160,78 @@ class Session(Base):
     __table_args__ = (Index("ix_sessions_user_expires", "user_id", "expires_at"),)
 
 
+class PasskeyCredential(Base):
+    """One server-side half of a WebAuthn credential.
+
+    Only the public credential material belongs here. The authenticator keeps
+    the private key, while browser-provided device hints stay optional and are
+    never used as an authorization decision.
+    """
+
+    __tablename__ = "passkey_credentials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    credential_id: Mapped[bytes] = mapped_column(LargeBinary(1024), nullable=False)
+    credential_public_key: Mapped[bytes] = mapped_column(LargeBinary(8192), nullable=False)
+    sign_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    device_type: Mapped[str] = mapped_column(String(24), nullable=False, default="single_device")
+    backed_up: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # A friendly device name is optional and only supplied deliberately by the
+    # account holder. Browser transport hints are not persisted.
+    label: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped[User] = relationship(back_populates="passkey_credentials")
+
+    __table_args__ = (
+        UniqueConstraint("credential_id", name="uq_passkey_credentials_credential_id"),
+        CheckConstraint("length(credential_id) BETWEEN 1 AND 1024", name="ck_passkey_credentials_id_size"),
+        CheckConstraint(
+            "length(credential_public_key) BETWEEN 1 AND 8192",
+            name="ck_passkey_credentials_public_key_size",
+        ),
+        CheckConstraint("sign_count >= 0", name="ck_passkey_credentials_sign_count"),
+        Index("ix_passkey_credentials_user_last_used", "user_id", "last_used_at"),
+    )
+
+
+class WebAuthnCeremony(Base):
+    """Short-lived, one-time server state for a WebAuthn ceremony.
+
+    The state cookie is opaque and stored only as a hash. The raw challenge is
+    intentionally retained for a few minutes because the verifier must compare
+    it byte-for-byte with the signed client data.
+    """
+
+    __tablename__ = "webauthn_ceremonies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    state_token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    purpose: Mapped[str] = mapped_column(String(16), nullable=False)
+    challenge: Mapped[bytes] = mapped_column(LargeBinary(64), nullable=False)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    session_id: Mapped[int | None] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "purpose IN ('registration', 'authentication')",
+            name="ck_webauthn_ceremonies_purpose",
+        ),
+        CheckConstraint(
+            "(purpose = 'registration' AND user_id IS NOT NULL AND session_id IS NOT NULL) "
+            "OR (purpose = 'authentication' AND user_id IS NULL AND session_id IS NULL)",
+            name="ck_webauthn_ceremonies_subject",
+        ),
+        CheckConstraint("length(challenge) BETWEEN 32 AND 64", name="ck_webauthn_ceremonies_challenge_size"),
+        Index("ix_webauthn_ceremonies_expires", "expires_at"),
+    )
+
+
 class AuthRateEvent(Base):
     __tablename__ = "auth_rate_events"
 
@@ -160,6 +243,50 @@ class AuthRateEvent(Base):
     __table_args__ = (
         Index("ix_auth_rate_events_kind_client_time", "kind", "client_key", "occurred_at"),
         Index("ix_auth_rate_events_kind_time", "kind", "occurred_at"),
+    )
+
+
+class PendingEmailRegistration(Base):
+    """A non-loginable account request that expires unless its email is confirmed."""
+
+    __tablename__ = "pending_email_registrations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(32), nullable=False)
+    username_normalized: Mapped[str] = mapped_column(String(32), nullable=False)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    email_normalized: Mapped[str] = mapped_column(String(254), nullable=False)
+    preferred_language: Mapped[str] = mapped_column(String(2), nullable=False, default="de")
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("preferred_language IN ('de', 'en')", name="ck_pending_email_registration_language"),
+        Index("ix_pending_email_registrations_expires", "expires_at"),
+    )
+
+
+class AccountEmailToken(Base):
+    """One-time actions for a confirmed account email or password reset."""
+
+    __tablename__ = "account_email_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(24), nullable=False)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    email_normalized: Mapped[str] = mapped_column(String(254), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("purpose IN ('email_verify', 'password_reset')", name="ck_account_email_token_purpose"),
+        Index("ix_account_email_tokens_user_purpose", "user_id", "purpose", "expires_at"),
+        Index("ix_account_email_tokens_expires", "expires_at"),
     )
 
 
@@ -310,6 +437,79 @@ class CompletedGame(Base):
             return normalize_game_type(value)
         except ValueError as exc:
             raise ValueError("invalid_game_type") from exc
+
+
+class AbandonedGame(Base):
+    """Minimal, account-safe record for a started game that was abandoned.
+
+    This is deliberately separate from ``CompletedGame``.  It provides the
+    source for aggregate abandonment statistics without making an interrupted
+    game eligible for completed-game rankings, achievements, or result pages.
+    No live snapshot is retained here.
+    """
+
+    __tablename__ = "abandoned_games"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    game_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    game_type: Mapped[str] = mapped_column(String(16), nullable=False, default=DEFAULT_GAME_TYPE)
+    game_name: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    hardcore: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    abandoned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reason: Mapped[str] = mapped_column(String(32), nullable=False)
+    aborted_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    participants: Mapped[list[AbandonedGameParticipant]] = relationship(
+        back_populates="game", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        CheckConstraint("game_type IN ('zdwa', 'zilch')", name="ck_abandoned_games_game_type"),
+        CheckConstraint(
+            "reason IN ('manual', 'inactivity_timeout')",
+            name="ck_abandoned_games_reason",
+        ),
+        Index("ix_abandoned_games_game_type_abandoned_at", "game_type", "abandoned_at"),
+        Index("ix_abandoned_games_abandoned_at", "abandoned_at"),
+    )
+
+    @validates("game_type")
+    def _validate_game_type(self, _key: str, value: object) -> str:
+        """Keep abandoned-game writers on the shared type contract."""
+        try:
+            return normalize_game_type(value)
+        except ValueError as exc:
+            raise ValueError("invalid_game_type") from exc
+
+
+class AbandonedGameParticipant(Base):
+    """One account associated with an abandoned game, at most once per game.
+
+    Guests and CPU seats are intentionally not represented.  The relational
+    association is enough for aggregate profile counts and avoids keeping an
+    interrupted game's names, scores, chat, or board state.
+    """
+
+    __tablename__ = "abandoned_game_participants"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    abandoned_game_id: Mapped[int] = mapped_column(
+        ForeignKey("abandoned_games.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    was_abort_initiator: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    game: Mapped[AbandonedGame] = relationship(back_populates="participants")
+
+    __table_args__ = (
+        UniqueConstraint("abandoned_game_id", "user_id", name="uq_abandoned_game_participant_user"),
+        Index("ix_abandoned_game_participants_user", "user_id"),
+    )
 
 
 class ActiveGame(Base):

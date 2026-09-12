@@ -13,7 +13,7 @@
     `scripts/sync_static_versions.py` ausführen, nicht manuell hochzählen.
 */
 
-const CACHE_VERSION = 'assets-543aa760f736';
+const CACHE_VERSION = 'assets-5bb74204c51f';
 const PRECACHE = `precache-${CACHE_VERSION}`;
 const RUNTIME  = `runtime-${CACHE_VERSION}`;
 
@@ -42,6 +42,13 @@ const PRECACHE_URLS = [
   '/manifest.webmanifest',
   '/manifest-en.webmanifest',
 ];
+
+const ACCOUNT_ACTION_PATHS = new Set([
+  '/registrierung/bestaetigen',
+  '/passwort-vergessen',
+  '/passwort-zuruecksetzen',
+  '/email-bestaetigen',
+]);
 
 // — Install: robust gegen einzelne 404/Netzfehler
 self.addEventListener('install', (event) => {
@@ -130,6 +137,13 @@ self.addEventListener('fetch', (event) => {
   // statt eines browserabhängigen "Failed to fetch".
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(apiNetworkOnly(req));
+    return;
+  }
+
+  // Confirmation and recovery pages can carry a one-time action in the URL
+  // fragment. They must never be recovered from a runtime cache.
+  if (ACCOUNT_ACTION_PATHS.has(url.pathname)) {
+    event.respondWith(fetch(req));
     return;
   }
 

@@ -17,14 +17,17 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
 
+from .abandoned_games import persist_abandoned_game
 from .achievements import sync_achievements_for_users
-from .active_games import load_active_games, save_active_game
+from .active_games import delete_active_game, load_active_games, save_active_game
 from .api_allowlist import router as allowlist_router
 from .api_auth import router as auth_router
 from .api_avatars import router as avatars_router
 from .api_engagement import router as engagement_router
 from .api_friend_activity import router as friend_activity_router
+from .api_passkeys import router as passkeys_router
 from .api_releases import router as releases_router
+from .api_users import abandonment_statistics_for_user
 from .api_users import router as users_router
 from .auth import (
     ensure_bootstrap_admin,
@@ -38,6 +41,7 @@ from .auth import (
 )
 from .auth_protection import enforce_game_creation_rate_limit, validate_auth_protection_config
 from .database import configure_database, database_schema_ready, session_scope, upgrade_database
+from .email_delivery import validate_account_email_config
 from .engagement import record_request_engagement
 from .friend_activity import serve_friend_activity_websocket, shutdown_friend_activity
 from .game_access import can_access_game, can_access_zilch_preview
@@ -81,6 +85,7 @@ from .lobby_chat import (
     serve_lobby_chat_websocket,
 )
 from .models import User
+from .passkeys import validate_passkey_config
 from .product_hosts import (
     is_site_host,
     is_zilch_host,
@@ -212,15 +217,42 @@ async def _stop_retired_cpu_runner(game_id: str) -> None:
         logger.exception("Could not stop CPU runner for retired game %s", game_id)
 
 
-async def _retire_manual_zilch_abort(game: GameDict) -> None:
-    """Close and remove a Zilch room after its manual terminal frame."""
+def _persist_abandonment(game: GameDict) -> bool:
+    """Write terminal abandonment accounting and retain failures for retry."""
+    result = persist_abandoned_game(
+        game,
+        aborted_by_player_id=game.get("_aborted_by_player_id"),
+    )
+    if result.succeeded or result.status == "skipped":
+        # ``skipped`` is terminally safe for cancelled lobbies and guest-only
+        # rooms. A started account table has a durable aggregate at this point.
+        game["_abandonment_accounted"] = True
+        return True
+    # Preserve the complete terminal room snapshot for startup recovery. This
+    # makes a transient accounting error retriable instead of silently losing a
+    # public statistic when the in-memory room is retired.
+    save_active_game(game)
+    logger.error("Could not persist abandoned game %s: %s", result.game_id, result.reason or result.status)
+    return False
+
+
+async def _retire_manual_abort(game: GameDict) -> None:
+    """Close and remove any manually abandoned room after its terminal frame."""
     game_id = str(game.get("_id") or "")
+    accounted = _persist_abandonment(game)
     try:
         await _stop_retired_cpu_runner(game_id)
     finally:
         await _close_terminal_connections(game)
+        if accounted:
+            delete_active_game(game_id)
         if game_id and games.get(game_id) is game:
             games.pop(game_id, None)
+
+
+async def _retire_manual_zilch_abort(game: GameDict) -> None:
+    """Compatibility entry point for existing Zilch lifecycle callers."""
+    await _retire_manual_abort(game)
 
 
 async def _publish_timeout_abort(game: GameDict) -> None:
@@ -230,17 +262,19 @@ async def _publish_timeout_abort(game: GameDict) -> None:
     # direct snapshot may already have changed the state, but must not leave it
     # pending forever or duplicate the terminal frame.
     game["_timeout_abort_pending"] = False
+    # An automatic expiry never attributes an active abandonment to anyone.
+    game["_abandonment_accounted"] = True
     # CPU moves are guarded against terminal state too, but an already sleeping
     # runner should not remain around until its presentation delay elapses.
     await _stop_retired_cpu_runner(game_id)
     try:
         await broadcast(game, {"scoreboard": snapshot(game)})
     except Exception:
-        # The durable active row was already deleted by the timeout transition.
-        # Do not let one broken client projection retain an aborted room forever.
+        # Transport failure never revives the terminal room in memory.
         logger.exception("Could not publish inactivity timeout for game %s", game_id)
     finally:
         await _close_terminal_connections(game)
+        delete_active_game(game_id)
         # Existing sockets retain their object long enough to render the final
         # frame, then their normal disconnect cleanup releases transport
         # state. New joins must not revive a room whose one-hour lifetime has
@@ -339,8 +373,10 @@ async def lifespan(_app: FastAPI):
     upgrade_database(BASE)
     purge_expired_lobby_chat_messages()
     validate_auth_protection_config()
+    validate_account_email_config()
     validate_session_cookie_config()
     validate_product_host_config()
+    validate_passkey_config()
     validate_web_push_config()
     ensure_bootstrap_admin()
     import_legacy_leaderboards(LEADERBOARD_FILES.legacy_paths())
@@ -418,6 +454,7 @@ app = FastAPI(lifespan=lifespan)
 
 
 app.include_router(auth_router)
+app.include_router(passkeys_router)
 app.include_router(releases_router)
 app.include_router(allowlist_router)
 app.include_router(avatars_router)
@@ -612,6 +649,20 @@ def _page(filename: str) -> FileResponse:
     )
 
 
+def _private_account_action_page(request: Request, filename: str) -> FileResponse:
+    """Serve a short-lived account-action page only from the fixed apex."""
+    if not is_site_host(request):
+        raise HTTPException(status_code=404, detail="not_found")
+    return FileResponse(
+        str(STATIC_DIR / filename),
+        headers={
+            "Cache-Control": "no-store",
+            "X-Robots-Tag": "noindex, nofollow",
+            "Referrer-Policy": "no-referrer",
+        },
+    )
+
+
 ZDWA_PWA_BRIDGE_PREFIX = "/zdwa"
 _GAME_SWITCH_QUERY_KEY = "game_switch_from"
 
@@ -773,6 +824,26 @@ def account_page(request: Request):
     if is_zilch_host(request):
         return _serve_zilch_account_shell(request)
     return _page("account.html")
+
+
+@app.get("/registrierung/bestaetigen", include_in_schema=False)
+def registration_confirmation_page(request: Request):
+    return _private_account_action_page(request, "registration-confirm.html")
+
+
+@app.get("/passwort-vergessen", include_in_schema=False)
+def password_forgot_page(request: Request):
+    return _private_account_action_page(request, "password-forgot.html")
+
+
+@app.get("/passwort-zuruecksetzen", include_in_schema=False)
+def password_reset_page(request: Request):
+    return _private_account_action_page(request, "password-reset.html")
+
+
+@app.get("/email-bestaetigen", include_in_schema=False)
+def email_confirmation_page(request: Request):
+    return _private_account_action_page(request, "email-confirm.html")
 
 
 @app.get("/admin", include_in_schema=False)
@@ -1815,9 +1886,12 @@ def api_zilch_player_achievements(username: str, request: Request) -> dict[str, 
     if user_id is None:
         raise HTTPException(status_code=404, detail="zilch_achievement_not_found")
     try:
-        return _safe_zilch_achievement_profile(int(user_id), public=True)
+        profile = _safe_zilch_achievement_profile(int(user_id), public=True)
     except (ZilchAchievementError, ZilchAchievementSyncError) as exc:
         raise _zilch_achievement_http_error(exc) from exc
+    with session_scope() as db:
+        profile["abandonment_statistics"] = abandonment_statistics_for_user(db, int(user_id))
+    return profile
 
 
 @app.get("/api/zilch/achievements/pending")
@@ -2067,5 +2141,5 @@ async def ws_game(websocket: WebSocket, game_id: str) -> None:
         release_connection=_release_websocket,
         finalize_game=_finalize_and_log_results,
         timeout_abort_publisher=_publish_timeout_abort,
-        manual_zilch_abort_publisher=_retire_manual_zilch_abort,
+        manual_zilch_abort_publisher=_retire_manual_abort,
     )

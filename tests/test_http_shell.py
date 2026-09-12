@@ -91,8 +91,19 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(path.read_text(), desired_text(path, version), path.name)
 
     def test_shared_head_scripts_do_not_block_rendering(self):
+        account_actions = {
+            "email-confirm.html", "password-forgot.html", "password-reset.html", "registration-confirm.html"
+        }
         for html_path in main.STATIC_DIR.glob("*.html"):
             html = html_path.read_text(encoding="utf-8")
+            if html_path.name in account_actions:
+                # Secret-bearing actions use one deferred module and never
+                # boot the general shell/PWA, prefetchers or third-party scripts.
+                self.assertNotIn("/static/shell.js", html, html_path.name)
+                self.assertEqual(html.count("<script"), 1, html_path.name)
+                self.assertIn('<script type="module" src="/static/email-action.js?v=', html, html_path.name)
+                self.assertIn('<meta name="referrer" content="no-referrer">', html, html_path.name)
+                continue
             self.assertEqual(html.count('<script src="/static/shell.js?v='), 1, html_path.name)
             start = html.index('<script src="/static/shell.js?v=')
             end = html.index(">", start)

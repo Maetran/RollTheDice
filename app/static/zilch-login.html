@@ -8,13 +8,13 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#542d16">
   <meta name="color-scheme" content="light">
-  <link rel="icon" type="image/png" href="/static/icons/zilch-icon-32.png?v=543aa760f736" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/zilch-apple-touch-icon-180.png?v=543aa760f736" sizes="180x180">
+  <link rel="icon" type="image/png" href="/static/icons/zilch-icon-32.png?v=5bb74204c51f" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/zilch-apple-touch-icon-180.png?v=5bb74204c51f" sizes="180x180">
   <script>(()=>{let t="light";try{t=localStorage.getItem("zilch_theme")==="lcars"?"lcars":"light"}catch(_){}document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t==="lcars"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=t==="lcars"?"#000000":"#542d16"})()</script>
-  <script>if(document.documentElement.dataset.theme==="lcars"){const f=document.createElement("link");f.rel="preload";f.as="font";f.type="font/ttf";f.crossOrigin="anonymous";f.href="/static/antonio-lcars-v1.ttf?v=543aa760f736";document.head.append(f)}</script>
-  <script src="/static/shell.js?v=543aa760f736" defer></script>
-  <link rel="stylesheet" href="/static/zilch.css?v=543aa760f736">
-  <link rel="stylesheet" href="/static/zilch-lcars.css?v=543aa760f736">
+  <script>if(document.documentElement.dataset.theme==="lcars"){const f=document.createElement("link");f.rel="preload";f.as="font";f.type="font/ttf";f.crossOrigin="anonymous";f.href="/static/antonio-lcars-v1.ttf?v=5bb74204c51f";document.head.append(f)}</script>
+  <script src="/static/shell.js?v=5bb74204c51f" defer></script>
+  <link rel="stylesheet" href="/static/zilch.css?v=5bb74204c51f">
+  <link rel="stylesheet" href="/static/zilch-lcars.css?v=5bb74204c51f">
 </head>
 <body class="zilch-page zilch-login-page">
   <main class="zilch-login-shell">
@@ -26,10 +26,22 @@
       <p class="zilch-eyebrow">Dein Spielerkonto</p>
       <h1 id="zilchLoginTitle">Bei Zilch anmelden</h1>
       <p class="zilch-login-intro">Melde dich an, um deine Zilch-Partien auf jedem Gerät fortzusetzen.</p>
+      <div id="zilchPasskeyLogin" class="zilch-passkey-login" hidden>
+        <button id="zilchPasskeyLoginButton" class="primary" type="button">Mit Passkey anmelden</button>
+        <p class="zilch-muted">Schnell und ohne Passwort auf diesem Gerät anmelden.</p>
+        <p class="zilch-login-divider" aria-hidden="true">oder mit Passwort</p>
+      </div>
       <form id="zilchLoginForm" class="zilch-login-form">
-        <label for="zilchLoginUsername">Benutzername<input id="zilchLoginUsername" autocomplete="username" required></label>
+        <label for="zilchLoginUsername">Benutzername oder E-Mail-Adresse<input id="zilchLoginUsername" autocomplete="username" required></label>
         <label for="zilchLoginPassword">Passwort<input id="zilchLoginPassword" type="password" autocomplete="current-password" minlength="8" required></label>
-        <div class="zilch-login-actions"><button class="primary" type="submit">Anmelden</button><button id="zilchRegisterButton" class="ghost" type="button">Konto erstellen</button></div>
+        <div class="zilch-login-actions"><button class="primary" type="submit">Anmelden</button><a id="zilchForgotPassword" class="button-link ghost" href="/passwort-vergessen">Passwort vergessen?</a></div>
+      </form>
+      <form id="zilchRegistrationForm" class="zilch-login-form">
+        <p class="zilch-muted">Neues Konto per E-Mail bestätigen</p>
+        <label for="zilchRegistrationUsername">Neuer Benutzername<input id="zilchRegistrationUsername" autocomplete="username" minlength="3" maxlength="32" required></label>
+        <label for="zilchRegistrationEmail">E-Mail-Adresse<input id="zilchRegistrationEmail" type="email" autocomplete="email" maxlength="254" required></label>
+        <label for="zilchRegistrationPassword" hidden>Passwort<input id="zilchRegistrationPassword" type="password" autocomplete="new-password" minlength="8" maxlength="256"></label>
+        <div class="zilch-login-actions"><button id="zilchRegisterButton" class="ghost" type="submit">Konto erstellen</button></div>
         <div id="zilchRegistrationChallenge" hidden></div>
       </form>
       <section id="zilchSignedIn" class="zilch-signed-in" hidden aria-labelledby="zilchLoginAccountName">
@@ -39,6 +51,6 @@
       <p id="zilchLoginMessage" class="zilch-login-message" role="status"></p>
     </section>
   </main>
-  <script type="module" src="/static/zilch-login.js?v=543aa760f736"></script>
+  <script type="module" src="/static/zilch-login.js?v=5bb74204c51f"></script>
 </body>
 </html>

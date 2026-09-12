@@ -8,7 +8,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
-from .active_games import delete_active_game, save_active_game
+from .active_games import save_active_game
 from .game_types import DEFAULT_GAME_TYPE
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,10 @@ def check_timeout_and_abort(g, *, now: datetime | None = None) -> bool:
             g["_manual_pause_by_name"] = None
             g["_manual_pause_at"] = None
             g["_resume_required"] = False
-            delete_active_game(str(g.get("_id") or ""))
+            # Timeouts terminate the room but never count against any player.
+            # This explicit marker also lets startup remove stale timeouts.
+            g["_abandonment_accounted"] = True
+            save_active_game(g)
             return True
     except (TypeError, ValueError, OverflowError):
         logger.warning("Could not evaluate timeout for game %s", g.get("_id"), exc_info=True)

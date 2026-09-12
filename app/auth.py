@@ -8,7 +8,7 @@ from datetime import timedelta
 from urllib.parse import urlsplit
 
 from fastapi import HTTPException, Request, Response, WebSocket, status
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 
 from .achievements import achievement_rank_for_keys
@@ -24,14 +24,15 @@ from .game_access import (
     configured_zilch_preview_usernames,
     public_game_access_payload,
 )
+from .models import AccountEmailToken, AuthRateEvent, PasskeyCredential, User, UserAchievement, WebAuthnCeremony
 from .models import Session as LoginSession
-from .models import User, UserAchievement
 from .security import (
     as_utc,
     hash_password,
     hash_session_token,
     new_csrf_token,
     new_session_token,
+    normalize_email_address,
     normalize_username,
     utcnow,
     validate_password,
@@ -46,6 +47,7 @@ SHARED_SESSION_COOKIE = "rollthedice_shared_session"
 # host-only cookie by its historic constant name.
 SESSION_COOKIE = LEGACY_SESSION_COOKIE
 SESSION_DAYS = 30
+_UNKNOWN_USER_PASSWORD_HASH = hash_password(secrets.token_urlsafe(32))
 
 
 @dataclass(frozen=True)
@@ -114,6 +116,70 @@ def _achievement_rank_for_user(db, user_id: int) -> dict:
         select(UserAchievement.achievement_key).where(UserAchievement.user_id == user_id)
     )
     return achievement_rank_for_keys(keys)
+
+
+def _identity_for_user(db, user: User, login_session: LoginSession) -> AuthIdentity:
+    """Build the durable session identity from one already-loaded account."""
+    return AuthIdentity(
+        user_id=user.id,
+        username=user.username,
+        role=user.role,
+        must_change_password=user.must_change_password,
+        announce_selection_mode=user.announce_selection_mode,
+        auto_write_announced=user.auto_write_announced,
+        mobile_row_quick_entry=user.mobile_row_quick_entry,
+        haptic_feedback=user.haptic_feedback,
+        keep_screen_awake=user.keep_screen_awake,
+        lobby_chat_popups=user.lobby_chat_popups,
+        lobby_chat_enabled=user.lobby_chat_enabled,
+        lobby_chat_muted=user.lobby_chat_muted,
+        lobby_chat_excluded=user.lobby_chat_excluded,
+        friend_activity_enabled=user.friend_activity_enabled,
+        game_invite_push_enabled=user.game_invite_push_enabled,
+        daily_reminder_push_enabled=user.daily_reminder_push_enabled,
+        preferred_language=user.preferred_language,
+        csrf_token=login_session.csrf_token,
+        session_id=login_session.id,
+        achievement_rank=_achievement_rank_for_user(db, user.id),
+    )
+
+
+def issue_session_for_user(db, user: User) -> tuple[AuthIdentity, str]:
+    """Create a normal browser session inside the caller's transaction.
+
+    Registration confirmation and passkey ceremonies must create their account
+    state and their first session atomically.  Keeping this small helper here
+    gives all login variants identical session and CSRF semantics.
+    """
+    now = utcnow()
+    raw_token = new_session_token()
+    login_session = LoginSession(
+        token_hash=hash_session_token(raw_token),
+        csrf_token=new_csrf_token(),
+        user_id=user.id,
+        created_at=now,
+        last_seen_at=now,
+        expires_at=now + timedelta(days=SESSION_DAYS),
+    )
+    db.add(login_session)
+    db.flush()
+    return _identity_for_user(db, user, login_session), raw_token
+
+
+def lock_verified_password(db, user: User) -> bool:
+    """Keep a verified password current until the sensitive write commits.
+
+    The conditional write also serializes SQLite transactions: a concurrent
+    recovery either removes this session afterwards, or invalidates the proof
+    before a new session/email change can be created.
+    """
+    result = db.execute(
+        update(User).where(
+            User.id == user.id, User.password_hash == user.password_hash,
+            User.is_active.is_(True),
+        ).values(updated_at=User.updated_at).execution_options(synchronize_session=False)
+    )
+    return result.rowcount == 1
 
 
 def _cookie_secure() -> bool:
@@ -260,51 +326,28 @@ def username_is_registered(username: str) -> bool:
 
 def login(request: Request, username: str, password: str) -> tuple[AuthIdentity, str]:
     _validate_same_origin(request)
-    normalized = normalize_username(username)
-    key = enforce_login_rate_limit(request, normalized)
+    normalized_username = normalize_username(username)
+    try:
+        normalized_email = normalize_email_address(username) if "@" in str(username or "") else None
+    except ValueError:
+        normalized_email = None
+    # Normalize the supplied identifier consistently for case-insensitive
+    # username and confirmed-address login.
+    key = enforce_login_rate_limit(request, normalized_email or normalized_username)
 
     with session_scope() as db:
-        user = db.scalar(select(User).where(User.username_normalized == normalized))
-        if not user or not user.is_active or not verify_password(password, user.password_hash):
+        predicates = [User.username_normalized == normalized_username]
+        if normalized_email:
+            predicates.append((User.email_normalized == normalized_email) & User.email_confirmed_at.is_not(None))
+        user = db.scalar(select(User).where(or_(*predicates)))
+        password_valid = verify_password(password, user.password_hash if user else _UNKNOWN_USER_PASSWORD_HASH)
+        if not user or not user.is_active or not password_valid or not lock_verified_password(db, user):
+            db.rollback()
             record_login_failure(key)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_credentials")
 
-        clear_login_failures(key)
-        now = utcnow()
-        raw_token = new_session_token()
-        login_session = LoginSession(
-            token_hash=hash_session_token(raw_token),
-            csrf_token=new_csrf_token(),
-            user_id=user.id,
-            created_at=now,
-            last_seen_at=now,
-            expires_at=now + timedelta(days=SESSION_DAYS),
-        )
-        db.add(login_session)
-        db.flush()
-        identity = AuthIdentity(
-            user_id=user.id,
-            username=user.username,
-            role=user.role,
-            must_change_password=user.must_change_password,
-            announce_selection_mode=user.announce_selection_mode,
-            auto_write_announced=user.auto_write_announced,
-            mobile_row_quick_entry=user.mobile_row_quick_entry,
-            haptic_feedback=user.haptic_feedback,
-            keep_screen_awake=user.keep_screen_awake,
-            lobby_chat_popups=user.lobby_chat_popups,
-            lobby_chat_enabled=user.lobby_chat_enabled,
-            lobby_chat_muted=user.lobby_chat_muted,
-            lobby_chat_excluded=user.lobby_chat_excluded,
-            friend_activity_enabled=user.friend_activity_enabled,
-            game_invite_push_enabled=user.game_invite_push_enabled,
-            daily_reminder_push_enabled=user.daily_reminder_push_enabled,
-            preferred_language=user.preferred_language,
-            csrf_token=login_session.csrf_token,
-            session_id=login_session.id,
-            achievement_rank=_achievement_rank_for_user(db, user.id),
-        )
-        return identity, raw_token
+        db.execute(delete(AuthRateEvent).where(AuthRateEvent.kind == "login_failure", AuthRateEvent.client_key == key))
+        return issue_session_for_user(db, user)
 
 
 def resolve_session(connection: Request | WebSocket) -> AuthIdentity | None:
@@ -324,28 +367,7 @@ def resolve_session(connection: Request | WebSocket) -> AuthIdentity | None:
             return None
         if now - as_utc(login_session.last_seen_at) > timedelta(minutes=5):
             login_session.last_seen_at = now
-        return AuthIdentity(
-            user_id=user.id,
-            username=user.username,
-            role=user.role,
-            must_change_password=user.must_change_password,
-            announce_selection_mode=user.announce_selection_mode,
-            auto_write_announced=user.auto_write_announced,
-            mobile_row_quick_entry=user.mobile_row_quick_entry,
-            haptic_feedback=user.haptic_feedback,
-            keep_screen_awake=user.keep_screen_awake,
-            lobby_chat_popups=user.lobby_chat_popups,
-            lobby_chat_enabled=user.lobby_chat_enabled,
-            lobby_chat_muted=user.lobby_chat_muted,
-            lobby_chat_excluded=user.lobby_chat_excluded,
-            friend_activity_enabled=user.friend_activity_enabled,
-            game_invite_push_enabled=user.game_invite_push_enabled,
-            daily_reminder_push_enabled=user.daily_reminder_push_enabled,
-            preferred_language=user.preferred_language,
-            csrf_token=login_session.csrf_token,
-            session_id=login_session.id,
-            achievement_rank=_achievement_rank_for_user(db, user.id),
-        )
+        return _identity_for_user(db, user, login_session)
 
 
 def require_user(request: Request) -> AuthIdentity:
@@ -384,10 +406,25 @@ def change_password(identity: AuthIdentity, current_password: str, new_password:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="current_password_invalid")
         if verify_password(new_password, user.password_hash):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="password_unchanged")
+        if not lock_verified_password(db, user):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="current_password_invalid")
         user.password_hash = hash_password(new_password)
         user.must_change_password = False
         user.updated_at = utcnow()
         db.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
+        revoke_account_recovery_state(db, user.id)
+
+
+def revoke_account_recovery_state(db, user_id: int, *, remove_passkeys: bool = False) -> None:
+    """Invalidate unfinished sensitive actions after a password change.
+
+    Recovery also evicts passkeys so an intruder cannot retain a credential
+    created before the owner recovered the account.
+    """
+    db.execute(delete(AccountEmailToken).where(AccountEmailToken.user_id == user_id))
+    db.execute(delete(WebAuthnCeremony).where(WebAuthnCeremony.user_id == user_id))
+    if remove_passkeys:
+        db.execute(delete(PasskeyCredential).where(PasskeyCredential.user_id == user_id))
 
 
 def change_username(identity: AuthIdentity, username: str, current_password: str, request: Request) -> None:
@@ -398,7 +435,8 @@ def change_username(identity: AuthIdentity, username: str, current_password: str
     try:
         with session_scope() as db:
             user = db.get(User, identity.user_id)
-            if not user or not verify_password(current_password, user.password_hash):
+            if not user or not verify_password(current_password, user.password_hash) or not lock_verified_password(db, user):
+                db.rollback()
                 record_login_failure(key)
                 raise HTTPException(status_code=400, detail="current_password_invalid")
             # Preview grants are still configured by name. Do not allow gaining,
@@ -422,6 +460,56 @@ def change_username(identity: AuthIdentity, username: str, current_password: str
     clear_login_failures(key)
 
 
+def create_user_in_session(
+    db,
+    username: str,
+    password: str,
+    *,
+    role: str = "user",
+    must_change_password: bool = True,
+    preferred_language: str = "de",
+    email: str | None = None,
+    email_confirmed: bool = False,
+) -> User:
+    """Create an account using a transaction owned by the caller.
+
+    This is deliberately separate from :func:`create_user`: confirmation
+    tokens need to be consumed together with the account they unlock.
+    """
+    clean_username = validate_username(username)
+    normalized = normalize_username(clean_username)
+    clean_email = normalize_email_address(email) if email is not None else None
+    if role not in {"user", "admin"}:
+        raise ValueError("Unbekannte Rolle")
+    if preferred_language not in {"de", "en"}:
+        raise ValueError("Unbekannte Sprache")
+    now = utcnow()
+    if db.scalar(select(User.id).where(User.username_normalized == normalized)):
+        raise ValueError("Benutzername ist bereits vergeben")
+    if clean_email and db.scalar(select(User.id).where(User.email_normalized == clean_email)):
+        raise ValueError("E-Mail-Adresse ist bereits vergeben")
+    user = User(
+        username=clean_username,
+        username_normalized=normalized,
+        email=clean_email,
+        email_normalized=clean_email,
+        email_confirmed_at=now if clean_email and email_confirmed else None,
+        password_hash=hash_password(password),
+        role=role,
+        is_active=True,
+        must_change_password=must_change_password,
+        preferred_language=preferred_language,
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(user)
+    db.flush()
+    # Keep the materialized achievement score correct even before a player
+    # opens a profile or finishes their first game.
+    db.add(UserAchievement(user_id=user.id, achievement_key="account_created", unlocked_at=now))
+    return user
+
+
 def create_user(
     username: str,
     password: str,
@@ -429,37 +517,25 @@ def create_user(
     role: str = "user",
     must_change_password: bool = True,
     preferred_language: str = "de",
+    email: str | None = None,
+    email_confirmed: bool = False,
 ) -> User:
-    clean_username = validate_username(username)
-    normalized = normalize_username(clean_username)
-    if role not in {"user", "admin"}:
-        raise ValueError("Unbekannte Rolle")
-    if preferred_language not in {"de", "en"}:
-        raise ValueError("Unbekannte Sprache")
-    now = utcnow()
     try:
         with session_scope() as db:
-            if db.scalar(select(User.id).where(User.username_normalized == normalized)):
-                raise ValueError("Benutzername ist bereits vergeben")
-            user = User(
-                username=clean_username,
-                username_normalized=normalized,
-                password_hash=hash_password(password),
+            return create_user_in_session(
+                db,
+                username,
+                password,
                 role=role,
-                is_active=True,
                 must_change_password=must_change_password,
                 preferred_language=preferred_language,
-                created_at=now,
-                updated_at=now,
+                email=email,
+                email_confirmed=email_confirmed,
             )
-            db.add(user)
-            db.flush()
-            # Keep the materialized achievement score correct even before a
-            # player opens a profile or finishes their first game.
-            db.add(UserAchievement(user_id=user.id, achievement_key="account_created", unlocked_at=now))
-            return user
     except IntegrityError as exc:
-        raise ValueError("Benutzername ist bereits vergeben") from exc
+        # Both unique account identifiers are protected against concurrent
+        # registration requests.  The caller only needs a safe retry message.
+        raise ValueError("Benutzername oder E-Mail-Adresse ist bereits vergeben") from exc
 
 
 def reset_password(user_id: int, temporary_password: str) -> None:
@@ -472,6 +548,7 @@ def reset_password(user_id: int, temporary_password: str) -> None:
         user.must_change_password = True
         user.updated_at = utcnow()
         db.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
+        revoke_account_recovery_state(db, user.id, remove_passkeys=True)
 
 
 def ensure_bootstrap_admin() -> bool:

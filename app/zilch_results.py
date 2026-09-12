@@ -884,6 +884,14 @@ def finalize_zilch_result(game: dict) -> dict:
     if registration.pending:
         # Preserve the same recovery contract if evaluation becomes async.
         return response
+    if game.get("_manual_solo_abandonment") is True:
+        from .abandoned_games import persist_abandoned_game
+
+        abandonment = persist_abandoned_game(game)
+        if not abandonment.succeeded and abandonment.status != "skipped":
+            response["abandonment_sync_pending"] = True
+            return response
+        game["_abandonment_accounted"] = True
     game["_completion_persisted"] = True
     delete_active_game(payload["game_id"])
     return response

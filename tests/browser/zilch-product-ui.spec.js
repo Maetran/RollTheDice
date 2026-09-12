@@ -68,11 +68,24 @@ test("Zilch has its own sign-in entry and safely returns preview accounts to the
   await expect(page.locator("#zilchAccountPanel-statistics")).toBeVisible();
 });
 
+test.describe("isolated account continuation", () => {
+test.use({ serviceWorkers: "block" });
+
 test("a fresh Apex login preserves the fixed Zilch subdomain continuation", async ({ page }) => {
   await signInAsPreviewMani(page);
   await signOutFromLobby(page);
 
   const continuation = "/auth/continue?app=zilch&path=%2Fstatistiken%3Fscope%3Dmine";
+  let continuationVerified = false;
+  await page.route("**/auth/continue?**", async route => {
+    const response = await route.fetch({ maxRedirects: 0 });
+    expect(response.status()).toBe(303);
+    expect(response.headers().location).toBe("https://zilch.zockdiewandan.online/statistiken?scope=mine");
+    continuationVerified = true;
+    // Validate the real local redirect, then stop here: a redirected request
+    // could bypass Playwright routing and contact production.
+    await route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><p>Zilch continuation checked locally.</p>" });
+  });
   await page.goto(`/zilch/anmelden?return_to=${encodeURIComponent(continuation)}`);
   await page.fill("#zilchLoginUsername", "Mani");
   await page.fill("#zilchLoginPassword", "mani-preview-password-123");
@@ -84,6 +97,8 @@ test("a fresh Apex login preserves the fixed Zilch subdomain continuation", asyn
     )),
     page.locator("#zilchLoginForm button[type=submit]").click(),
   ]);
+  expect(continuationVerified).toBe(true);
+});
 });
 
 function externalHttpOrigins(requests, origin) {
@@ -1057,7 +1072,8 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await expect(page.getByRole("button", { name: "Meine Zilch-Awards" })).toHaveCSS("color", "rgb(255, 253, 245)");
     await expect(page.getByRole("heading", { name: "Mani" })).toBeVisible();
     await expect(page.locator(".zilch-achievement-card.is-unlocked")).toHaveCount(1);
-    await expect(page.locator(".zilch-achievement-summary")).toContainText("1 / 273");
+    await expect(page.locator('[aria-labelledby="zilchAchievementRankTitle"]')).toContainText("1 / 273");
+    await expect(page.locator('[aria-labelledby="zilchAbandonmentStatisticsTitle"]')).toContainText("Abgebrochene Partien");
 
     await page.goto("/zilch/konto#achievements");
     await Promise.all([

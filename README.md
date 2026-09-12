@@ -79,7 +79,11 @@ protection.
 - Watch eligible multiplayer tables in a read-only spectator view.
 - Leave a game through **Pause**, **Return to Lobby**, or **Stay in Game**.
   Pausing preserves the table until its displayed deadline. Returning to the
-  lobby ends the room for everyone without creating a completed result.
+  lobby ends the room for everyone without creating a completed result. A
+  started table ended this way counts only for the signed-in account that
+  actively ends it. Timeouts and disconnects do not count. ZDWA Fairplay
+  reminders award zero rank points; scores and completed-game totals remain
+  unchanged.
 - Switch between games from lobbies and app pages. Live game rooms deliberately
   have no game switcher.
 
@@ -174,7 +178,41 @@ Dein Profillink ändert sich und der alte Name wird frei.
 Administrators manage accounts and moderation.
 
 Email registration, address verification and password recovery are assessed in
-[the email account plan](docs/EMAIL_ACCOUNTS_PLAN.md); they are not implemented.
+[the email account plan](docs/EMAIL_ACCOUNTS_PLAN.md). The implementation is
+prepared on the feature branch and deliberately disabled by default: enabling it
+requires a verified transactional sender and an explicit deployment setting.
+It sends only account confirmation, requested password reset and address
+confirmation messages. It has no inbox, operator copy, newsletter or personal
+mailbox requirement. New accounts become usable only after the email link and
+password setup; existing accounts can add an address in settings without
+replacing their current confirmed address first.
+
+Passkeys are prepared as the preferred sign-in choice on devices that support
+them. They use the fixed ZDWA origin as the WebAuthn relying party and work
+across ZDWA and the controlled Zilch subdomain. The server stores public
+credential material only; passwords remain a fallback. Passkeys can be added,
+named and removed from account settings once the separately disabled feature is
+enabled.
+
+While email registration is disabled, the existing username/password sign-up
+continues to work. Password recovery signs out every device and removes existing
+passkeys; enroll them again after signing in. An ordinary password change keeps
+your passkeys.
+
+**Deutsch:** Die E-Mail-Registrierung, Adressbestätigung und Passwort-Rücksetzung
+sind im Feature-Branch vorbereitet, aber standardmäßig ausgeschaltet. Nach einer
+bewussten Aktivierung versendet die Anwendung nur Konto-Bestätigungen,
+angeforderte Passwort-Resets und Adressbestätigungen. Es gibt kein Postfach,
+keine Kopie an die Administration und keinen Newsletter. Neue Konten entstehen
+erst nach dem Link und der Passwortwahl; bestehende Konten können eine Adresse
+in den Einstellungen ergänzen. Passkeys sind als bevorzugte Anmeldung auf
+unterstützten Geräten vorbereitet und gelten für ZDWA sowie die kontrollierte
+Zilch-Subdomain. Der Server speichert nur öffentliche Credential-Daten,
+Passwörter bleiben die Rückfall-Anmeldung.
+Solange E-Mail-Registrierung ausgeschaltet ist, bleibt die bisherige Anmeldung
+eines neuen Kontos mit Benutzername und Passwort verfügbar. Ein Passwort-Reset
+meldet alle Geräte ab und entfernt bisherige Passkeys; danach lassen sie sich
+neu hinzufügen. Ein normaler Passwortwechsel behält die Passkeys.
 
 The public Zilch lobby paints its heading directly from HTML and shows its
 controls without waiting for the account check. Creating a game, account data
@@ -221,6 +259,26 @@ achievements. Administrative result deletion is audited; affected derived
 statistics and revocable awards are updated within the correct game's boundary.
 
 Details: [account statistics and achievement lifecycle](docs/ACCOUNT_STATISTICS.md).
+Branch audit: [account security and Fairplay review](docs/ACCOUNT_SECURITY_REVIEW_2026-09-12.md).
+
+Public profiles show deliberately abandoned started games separately for ZDWA
+and Zilch. Only the account that explicitly ends the game receives the count.
+Timeouts, disconnections, waiting-room cancellations and opponents' aborts do
+not count. Scores and completed-game rankings remain based on finished games.
+Six ZDWA Fairplay reminders mark 1, 5 and 10 deliberate aborts, separately for
+Solo and multiplayer, with **zero rank points**. Old private Solo history is
+not reclassified. Waiting for a timeout deliberately also remains uncounted;
+the app cannot reliably distinguish intent from a connection failure.
+
+**Deutsch:** Öffentliche Profile zeigen selbst abgebrochene gestartete Partien
+getrennt für ZDWA und Zilch. Nur das ausdrücklich abbrechende Konto erhält den
+Zähler. Timeouts, Verbindungsabbrüche, abgesagte Warteräume und Abbrüche durch
+Mitspieler zählen nicht. Punkte und Ergebnisranglisten beruhen weiter auf
+abgeschlossenen Partien. Sechs ZDWA-Fairplay-Hinweise erinnern bei 1, 5 und 10
+Abbrüchen getrennt für Solo und Mehrspieler daran, Partien zu Ende zu spielen –
+mit **null Rangpunkten**. Alte private Solo-Historie wird nicht umgedeutet.
+Bewusstes Warten auf einen Timeout bleibt ebenfalls ungezählt; die Anwendung
+kann Absicht nicht sicher von einer Verbindungsstörung unterscheiden.
 
 ## Lobby chat
 
@@ -437,7 +495,8 @@ ROLLTHEDICE_ZILCH_ACCESS_MODE=public \
 
 Environment variables are read by the application; Compose loads `.env`
 automatically, while a direct Uvicorn launch requires exporting the variables
-you need. Leave Turnstile and VAPID settings empty for ordinary local work.
+you need. Leave Turnstile, transactional email, passkeys and VAPID settings
+disabled for ordinary local work.
 Never use production push subscriptions for tests.
 
 ### Frontend workflow
@@ -521,7 +580,8 @@ See [the multi-game foundation](docs/MULTIGAME_FOUNDATION.md).
 ## Data and deployment
 
 The SQLite database stores accounts, sessions, active-game recovery snapshots,
-typed completed results, achievements, chat audiences and push subscriptions.
+typed completed results, account-safe abandoned-game aggregates, achievements,
+chat audiences and push subscriptions.
 Legacy ZDWA leaderboard JSON files remain in `data/` for compatibility.
 
 Back up the **entire data directory while the application is stopped**, including

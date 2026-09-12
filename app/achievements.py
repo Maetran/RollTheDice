@@ -8,12 +8,12 @@ from datetime import timedelta
 from typing import Iterable
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, inspect, select
 from sqlalchemy.orm import selectinload
 
 from .cross_game_activity import cross_game_activity_for_user
 from .game_types import DEFAULT_GAME_TYPE
-from .models import CompletedGame, GameParticipant, User, UserAchievement, UserEngagementEvent
+from .models import AbandonedGame, CompletedGame, GameParticipant, User, UserAchievement, UserEngagementEvent
 from .rules import compute_row_subtotals
 from .security import as_utc, utcnow
 
@@ -71,6 +71,26 @@ def _exact_score_achievements() -> list[Achievement]:
         )
         for score in EXACT_GAME_SCORE_TARGETS
     ]
+
+
+def _fairplay_achievements() -> list[Achievement]:
+    """Non-scoring reminders never make deliberately ending games profitable."""
+    definitions = []
+    for count, tier in ((1, "I"), (5, "II"), (10, "III")):
+        for kind, name, mode, reminder in (
+            ("manual_solo_aborts", "Offener Zettel", "Solopartie", "Auch ein unperfekter Zettel verdient ein Ende."),
+            (
+                "manual_multiplayer_aborts", "Vor dem Schluss", "Mehrspielerpartie",
+                "Gemeinsam anfangen, gemeinsam zu Ende spielen.",
+            ),
+        ):
+            plural = "" if count == 1 else "n"
+            definitions.append(Achievement(
+                f"{kind}_{count}", f"{name} {tier}",
+                f"{count} ZDWA-{mode}{plural} selbst abgebrochen. {reminder} Keine Rangpunkte.",
+                "history", kind, count, points=0,
+            ))
+    return definitions
 
 
 _ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
@@ -801,6 +821,7 @@ _ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
             10,
         ),
         Achievement("account_created", "Konto eröffnet", "Ein ZDWA-Konto erstellt.", "account", "account_created"),
+        *_fairplay_achievements(),
     ]
 )
 
@@ -922,6 +943,8 @@ _KEY_POINTS: dict[str, int] = {
 
 
 def _achievement_points(achievement: Achievement) -> int:
+    if achievement.kind in {"manual_solo_aborts", "manual_multiplayer_aborts"}:
+        return 0
     if achievement.kind in _TIER_POINTS:
         return _TIER_POINTS[achievement.kind][achievement.target]
     if achievement.kind.startswith("exact_game_score_"):
@@ -938,8 +961,13 @@ ACHIEVEMENT_POINTS_POSSIBLE = sum(achievement.points for achievement in ACHIEVEM
 
 if len(ACHIEVEMENT_BY_KEY) != len(ACHIEVEMENTS):
     raise RuntimeError("Achievement keys must be unique.")
-if not all(1 <= achievement.points <= 10 for achievement in ACHIEVEMENTS):
-    raise RuntimeError("Every achievement must award between 1 and 10 points.")
+if not all(
+    achievement.points == 0
+    if achievement.kind in {"manual_solo_aborts", "manual_multiplayer_aborts"}
+    else 1 <= achievement.points <= 10
+    for achievement in ACHIEVEMENTS
+):
+    raise RuntimeError("Fairplay reminders award zero points; other achievements award between 1 and 10.")
 
 
 # These are the thresholds published by the pre-expansion catalog (549
@@ -1122,6 +1150,8 @@ def achievement_sort_key(achievement: Achievement) -> tuple[int, int, int, str]:
     kind = achievement.kind
     if kind == "account_created":
         return (0, 0, 0, achievement.key)
+    if kind in {"manual_solo_aborts", "manual_multiplayer_aborts"}:
+        return (200, int(kind == "manual_multiplayer_aborts"), achievement.target, achievement.key)
     if kind in {"games_played", "career_points", "statistics_views"}:
         return (10, {"games_played": 0, "career_points": 1, "statistics_views": 2}[kind], achievement.target, achievement.key)
     if kind == "normal_under_700":
@@ -1490,7 +1520,26 @@ def _progress_for_user(
         excluded_completed_game_id=excluded_completed_game_id,
     )
     scores = {int(participant.points) for _game, participant, _metrics in games}
+    manual_solo_aborts, manual_multiplayer_aborts = 0, 0
+    # Historic migrations invoke the current evaluator before this new table
+    # exists. No old result scan guesses the new fairplay history.
+    if inspect(db.connection()).has_table(AbandonedGame.__tablename__):
+        for mode, count in db.execute(
+            select(AbandonedGame.mode, func.count(AbandonedGame.id))
+            .where(
+                AbandonedGame.game_type == DEFAULT_GAME_TYPE,
+                AbandonedGame.reason == "manual",
+                AbandonedGame.aborted_by_user_id == user.id,
+            )
+            .group_by(AbandonedGame.mode)
+        ):
+            if mode == "1":
+                manual_solo_aborts += int(count)
+            elif mode in {"2", "3", "2v2"}:
+                manual_multiplayer_aborts += int(count)
     progress: dict[str, int | bool] = {
+        "manual_solo_aborts": manual_solo_aborts,
+        "manual_multiplayer_aborts": manual_multiplayer_aborts,
         "career_points": sum(int(participant.points) for _game, participant, _metrics in games),
         "games_played": len(games),
         "single_game_score": max((int(participant.points) for _game, participant, _metrics in games), default=0),

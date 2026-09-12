@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
@@ -26,17 +26,40 @@ from .auth import (
     validate_request_origin,
 )
 from .auth_protection import (
+    clear_login_failures,
+    enforce_email_request_rate_limit,
+    enforce_login_rate_limit,
     enforce_registration_rate_limit,
+    record_login_failure,
     registration_public_config,
     verify_registration_challenge,
 )
 from .database import session_scope
+from .email_accounts import (
+    account_email_status,
+    begin_email_verification,
+    begin_password_reset,
+    begin_registration,
+    complete_password_reset,
+    complete_registration,
+    confirm_email,
+    inspect_account_email_token,
+    inspect_registration,
+)
+from .email_delivery import (
+    EmailDeliveryFailed,
+    EmailDeliveryUnavailable,
+    account_email_available,
+    account_email_config,
+    send_account_email_safely,
+)
 from .engagement import record_engagement_safely
 from .game_access import public_game_access_payload
 from .models import Session as LoginSession
 from .models import User
+from .passkeys import passkey_public_config
 from .product_hosts import is_zilch_host
-from .security import utcnow
+from .security import normalize_email_address, utcnow
 from .web_push import (
     WebPushPreferencesRequest,
     WebPushSubscriptionRequest,
@@ -51,15 +74,40 @@ router = APIRouter(prefix="/api", tags=["authentication"])
 
 
 class LoginRequest(BaseModel):
-    username: str = Field(min_length=1, max_length=64)
+    username: str = Field(min_length=1, max_length=254)
     password: str = Field(min_length=1, max_length=256)
 
 
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=1, max_length=64)
-    password: str = Field(min_length=1, max_length=256)
+    email: str | None = Field(default=None, min_length=3, max_length=254)
+    password: str | None = Field(default=None, min_length=1, max_length=256)
     turnstile_token: str | None = Field(default=None, max_length=4096)
     preferred_language: Literal["de", "en"] = "de"
+
+
+class RegistrationCompletionRequest(BaseModel):
+    token: str = Field(min_length=20, max_length=256)
+    password: str = Field(min_length=1, max_length=256)
+
+
+class TokenInspectionRequest(BaseModel):
+    token: str = Field(min_length=20, max_length=256)
+
+
+class PasswordResetRequest(BaseModel):
+    email: str = Field(min_length=1, max_length=254)
+    preferred_language: Literal["de", "en"] = "de"
+
+
+class PasswordResetCompletionRequest(BaseModel):
+    token: str = Field(min_length=20, max_length=256)
+    password: str = Field(min_length=1, max_length=256)
+
+
+class AccountEmailRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    current_password: str = Field(min_length=1, max_length=256)
 
 
 class PasswordChangeRequest(BaseModel):
@@ -140,13 +188,14 @@ def auth_me(request: Request, response: Response):
         # Guests need the same server-derived product availability as signed-in
         # visitors so the app switcher can open a public Zilch table directly.
         "game_access": public_game_access_payload(identity),
-        "registration": registration_public_config(),
+        "registration": {**registration_public_config(), "email_enabled": account_email_available()},
+        "passkeys": passkey_public_config(),
     }
 
 
 @router.get("/auth/registration-config")
 def auth_registration_config():
-    return registration_public_config()
+    return {**registration_public_config(), "email_enabled": account_email_available()}
 
 
 @router.post("/auth/login")
@@ -157,25 +206,100 @@ def auth_login(payload: LoginRequest, request: Request, response: Response):
     return {"authenticated": True, "user": auth_identity_payload(identity, include_csrf=True)}
 
 
-@router.post("/auth/register", status_code=status.HTTP_201_CREATED)
-def auth_register(payload: RegisterRequest, request: Request, response: Response):
+@router.post("/auth/register", status_code=status.HTTP_202_ACCEPTED)
+def auth_register(payload: RegisterRequest, request: Request, response: Response, background_tasks: BackgroundTasks):
     validate_request_origin(request)
     enforce_registration_rate_limit(request)
     verify_registration_challenge(request, payload.turnstile_token)
     try:
-        create_user(
-            payload.username,
-            payload.password,
-            role="user",
-            must_change_password=False,
+        if not account_email_config().enabled:
+            if payload.password is None:
+                raise HTTPException(status_code=422, detail="password_required")
+            user = create_user(
+                payload.username, payload.password, must_change_password=False,
+                preferred_language=payload.preferred_language,
+            )
+            identity, raw_token = login(request, user.username, payload.password)
+            set_session_cookie(response, raw_token)
+            response.status_code = status.HTTP_201_CREATED
+            response.headers["Cache-Control"] = "no-store"
+            return {"authenticated": True, "user": auth_identity_payload(identity, include_csrf=True)}
+        _require_account_email()
+        if payload.email is None:
+            raise HTTPException(status_code=422, detail="email_required")
+        normalized_email = normalize_email_address(payload.email)
+        enforce_email_request_rate_limit(request, "registration", normalized_email)
+        result = begin_registration(
+            username=payload.username,
+            email=payload.email,
             preferred_language=payload.preferred_language,
+            delivery=lambda **message: background_tasks.add_task(send_account_email_safely, **message),
         )
+    except (EmailDeliveryUnavailable, EmailDeliveryFailed) as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="email_delivery_unavailable") from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    identity, raw_token = login(request, payload.username, payload.password)
+    response.headers["Cache-Control"] = "no-store"
+    return result
+
+
+@router.post("/auth/registration/inspect")
+def auth_registration_inspect(payload: TokenInspectionRequest, request: Request, response: Response):
+    validate_request_origin(request)
+    _require_account_email()
+    response.headers["Cache-Control"] = "no-store"
+    return inspect_registration(payload.token)
+
+
+@router.post("/auth/registration/complete")
+def auth_registration_complete(payload: RegistrationCompletionRequest, request: Request, response: Response):
+    validate_request_origin(request)
+    _require_account_email()
+    try:
+        identity, raw_token = complete_registration(raw_token=payload.token, password=payload.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     set_session_cookie(response, raw_token)
     response.headers["Cache-Control"] = "no-store"
     return {"authenticated": True, "user": auth_identity_payload(identity, include_csrf=True)}
+
+
+@router.post("/auth/password-reset", status_code=status.HTTP_202_ACCEPTED)
+def auth_password_reset_request(payload: PasswordResetRequest, request: Request, response: Response, background_tasks: BackgroundTasks):
+    validate_request_origin(request)
+    if not account_email_available():
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="email_delivery_unavailable")
+    try:
+        normalized_email = normalize_email_address(payload.email)
+    except ValueError:
+        normalized_email = f"invalid:{payload.email.strip().casefold()}"
+    enforce_email_request_rate_limit(request, "password_reset", normalized_email)
+    # Lookup and provider latency happen only after the response has been sent,
+    # for known and unknown addresses alike. No mailbox-presence timing oracle.
+    background_tasks.add_task(begin_password_reset, email=payload.email, preferred_language=payload.preferred_language)
+    response.headers["Cache-Control"] = "no-store"
+    return {"accepted": True}
+
+
+@router.post("/auth/password-reset/inspect")
+def auth_password_reset_inspect(payload: TokenInspectionRequest, request: Request, response: Response):
+    validate_request_origin(request)
+    _require_account_email()
+    response.headers["Cache-Control"] = "no-store"
+    return inspect_account_email_token(raw_token=payload.token, purpose="password_reset")
+
+
+@router.post("/auth/password-reset/complete")
+def auth_password_reset_complete(payload: PasswordResetCompletionRequest, request: Request, response: Response):
+    validate_request_origin(request)
+    _require_account_email()
+    try:
+        complete_password_reset(raw_token=payload.token, password=payload.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    clear_session_cookie(response)
+    response.headers["Cache-Control"] = "no-store"
+    return {"ok": True}
 
 
 @router.post("/auth/logout")
@@ -196,6 +320,67 @@ def auth_change_password(payload: PasswordChangeRequest, request: Request, respo
     change_password(identity, payload.current_password, payload.new_password)
     clear_session_cookie(response)
     return {"ok": True, "login_required": True}
+
+
+@router.get("/auth/email")
+def auth_email_status(request: Request, response: Response):
+    identity = require_user(request)
+    response.headers["Cache-Control"] = "no-store"
+    return account_email_status(identity.user_id)
+
+
+@router.post("/auth/email", status_code=status.HTTP_202_ACCEPTED)
+def auth_email_request(payload: AccountEmailRequest, request: Request, response: Response):
+    identity = require_user(request)
+    require_csrf(request, identity)
+    if not account_email_available():
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="email_delivery_unavailable")
+    try:
+        normalized_email = normalize_email_address(payload.email)
+        enforce_email_request_rate_limit(request, "email_verify", normalized_email)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    password_key = enforce_login_rate_limit(request, f"email-change:{identity.user_id}")
+    try:
+        result = begin_email_verification(
+            identity=identity,
+            email=payload.email,
+            current_password=payload.current_password,
+        )
+    except ValueError as exc:
+        if str(exc) == "current_password_invalid":
+            record_login_failure(password_key)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except (EmailDeliveryUnavailable, EmailDeliveryFailed) as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="email_delivery_unavailable") from exc
+    clear_login_failures(password_key)
+    response.headers["Cache-Control"] = "no-store"
+    return result
+
+
+@router.post("/auth/email/inspect")
+def auth_email_inspect(payload: TokenInspectionRequest, request: Request, response: Response):
+    validate_request_origin(request)
+    _require_account_email()
+    response.headers["Cache-Control"] = "no-store"
+    return inspect_account_email_token(raw_token=payload.token, purpose="email_verify")
+
+
+@router.post("/auth/email/confirm")
+def auth_email_confirm(payload: TokenInspectionRequest, request: Request, response: Response):
+    validate_request_origin(request)
+    _require_account_email()
+    try:
+        confirm_email(raw_token=payload.token)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    response.headers["Cache-Control"] = "no-store"
+    return {"ok": True}
+
+
+def _require_account_email() -> None:
+    if not account_email_available():
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="email_delivery_unavailable")
 
 
 @router.put("/auth/preferences")

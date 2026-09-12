@@ -53,12 +53,14 @@ def serializable_game_state(game: dict) -> dict:
 
 
 def save_active_game(game: dict) -> None:
-    """Upsert a live game, retaining terminal state until typed persistence.
+    """Upsert a live game, retaining terminal state until durable accounting.
 
     A terminal board is itself recovery data: the completed-result finalizer
     needs it after a database failure or a restart.  It is removed only after
-    the successful finalizer marks ``_completion_persisted``.  This applies to
-    both supported game types; their payload construction remains separate.
+    the successful finalizer marks ``_completion_persisted``.  An aborted board
+    similarly remains until its separate abandonment aggregate is written (or
+    safely found inapplicable for an unstarted/guest-only room). This applies
+    to both supported game types; their payload construction remains separate.
     """
     if not database_schema_ready():
         return
@@ -68,7 +70,9 @@ def save_active_game(game: dict) -> None:
     # Resolve/validate the marker before serializing an active state.  Missing
     # historical markers still default to ZDWA through the shared contract.
     game_type_from_state(game)
-    if game.get("_aborted") or game.get("_completion_persisted"):
+    if game.get("_completion_persisted") or (
+        game.get("_aborted") and game.get("_abandonment_accounted")
+    ):
         delete_active_game(game_id)
         return
     now = utcnow()
@@ -115,53 +119,59 @@ def load_active_games() -> dict[str, dict]:
     restored: dict[str, dict] = {}
     try:
         with session_scope() as db:
-            rows = list(db.scalars(select(ActiveGame)).all())
-            for row in rows:
-                game: dict | None = None
-                try:
-                    game = json.loads(row.state_json)
-                    if not isinstance(game, dict):
-                        db.delete(row)
-                        continue
-                    # Missing type markers belong to pre-multigame ZDWA
-                    # snapshots. Unknown markers are malformed and must never
-                    # be silently routed through a different rules engine.
-                    game["_game_type"] = game_type_from_state(game)
-                    if game.get("_aborted") or game.get("_completion_persisted"):
-                        db.delete(row)
-                        continue
-                    game["_id"] = row.game_id
-                    game["_last_activity"] = _parse_activity(game.get("_last_activity"))
-                    game["_spectators"] = []
-                    game["_superadmins"] = {}
-                    game["_roll_cooldown"] = {}
-                    game["_correction"] = {"active": False}
-                    for player in game.get("_players", []):
-                        player["ws"] = None
-                    if game.get("_started") and game.get("_players"):
-                        game["_resume_required"] = True
-                    # Active Solo duration intentionally excludes the process
-                    # downtime between persistence and restart.  Import here
-                    # rather than at module scope because zilch_state itself
-                    # persists new games through this module.
-                    if game.get("_started") and game.get("_game_type") == "zilch":
-                        from .zilch_state import pause_zilch_solo_timer, zilch_is_configured_solo_game
-
-                        if zilch_is_configured_solo_game(game):
-                            pause_zilch_solo_timer(game, count_elapsed=False)
-                    restored[row.game_id] = game
-                except (TypeError, ValueError, json.JSONDecodeError):
-                    # A terminal state with an unknown game type may contain
-                    # the only surviving evidence of a result.  It cannot be
-                    # routed safely, but Part 4 must not silently delete it
-                    # during startup recovery.  Keep the row for inspection;
-                    # ordinary malformed live snapshots retain the previous
-                    # cleanup behaviour.
-                    if isinstance(game, dict) and game.get("_finished"):
-                        logger.exception("Retaining unrouteable terminal active game %s", row.game_id)
-                        continue
-                    logger.exception("Could not restore active game %s", row.game_id)
-                    db.delete(row)
+            # Materialize plain values and release the read transaction before
+            # any recovery writer opens its own session. Otherwise a pending
+            # delete can lock SQLite and starve all following recovery writes.
+            rows = list(db.execute(select(ActiveGame.game_id, ActiveGame.state_json)).all())
     except SQLAlchemyError:
         logger.exception("Could not load active games")
+        return restored
+    for game_id, state_json in rows:
+        game: dict | None = None
+        try:
+            game = json.loads(state_json)
+            if not isinstance(game, dict):
+                delete_active_game(game_id)
+                continue
+            game["_id"] = game_id
+            game["_game_type"] = game_type_from_state(game)
+            if game.get("_completion_persisted") or (
+                game.get("_aborted") and game.get("_abandonment_accounted")
+            ):
+                delete_active_game(game_id)
+                continue
+            if game.get("_aborted"):
+                from .abandoned_games import persist_abandoned_game
+
+                result = persist_abandoned_game(game)
+                if result.succeeded or result.status == "skipped":
+                    delete_active_game(game_id)
+                else:
+                    logger.error(
+                        "Retaining abandoned active game %s until accounting succeeds: %s",
+                        game_id,
+                        result.reason or result.status,
+                    )
+                continue
+            game["_last_activity"] = _parse_activity(game.get("_last_activity"))
+            game["_spectators"] = []
+            game["_superadmins"] = {}
+            game["_roll_cooldown"] = {}
+            game["_correction"] = {"active": False}
+            for player in game.get("_players", []):
+                player["ws"] = None
+            if game.get("_started") and game.get("_players"):
+                game["_resume_required"] = True
+            if game.get("_started") and game.get("_game_type") == "zilch":
+                from .zilch_state import pause_zilch_solo_timer, zilch_is_configured_solo_game
+
+                if zilch_is_configured_solo_game(game):
+                    pause_zilch_solo_timer(game, count_elapsed=False)
+            restored[game_id] = game
+        except (TypeError, ValueError, json.JSONDecodeError):
+            if isinstance(game, dict) and game.get("_finished"):
+                logger.exception("Retaining unrouteable terminal active game %s", game_id)
+                continue
+            logger.exception("Could not restore active game %s", game_id)
+            delete_active_game(game_id)
     return restored

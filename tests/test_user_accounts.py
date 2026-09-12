@@ -315,6 +315,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
                 "ROLLTHEDICE_COOKIE_SECURE": "0",
                 "ROLLTHEDICE_TURNSTILE_SITE_KEY": "",
                 "ROLLTHEDICE_TURNSTILE_SECRET": "",
+                "ROLLTHEDICE_EMAIL_ENABLED": "0",
             },
         )
         self.env_patch.start()
@@ -548,7 +549,10 @@ class AccountDatabaseTestCase(GameStateTestCase):
         )
         account = auth_me(request_for(cookie=f"rollthedice_session={raw_token}"), Response())
         self.assertEqual(account["user"]["preferences"], result["preferences"])
-        self.assertEqual(account["registration"], registration_public_config())
+        self.assertEqual(
+            account["registration"],
+            {**registration_public_config(), "email_enabled": False},
+        )
         with session_scope() as db:
             user = db.scalar(select(User).where(User.username == "PrefsUser"))
             self.assertEqual(user.announce_selection_mode, "table")

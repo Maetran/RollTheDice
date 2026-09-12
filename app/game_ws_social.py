@@ -6,6 +6,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
+from .active_games import save_active_game
 from .game_realtime import broadcast, broadcast_chat
 from .game_snapshot import snapshot
 from .game_state import (
@@ -152,19 +153,21 @@ async def _pause_game(session: GameSocketSession, _data: dict[str, Any]) -> None
 
 
 async def _end_game(session: GameSocketSession, _data: dict[str, Any]) -> None:
-    if not session.player_id:
+    if not session.player_id or not any(
+        player.get("id") == session.player_id and player.get("ws") is session.websocket
+        for player in session.game.get("_players", [])
+    ):
         await _send_error(session, "Nur Spieler koennen das Spiel beenden")
         return
     if session.game.get("_finished") or session.game.get("_aborted"):
         await _send_error(session, "Spiel ist bereits beendet")
         return
     by_name = _player_name(session.game, session.player_id)
-    try:
-        await broadcast(session.game, {"notice": {"type": "ended", "by": by_name}})
-    except Exception:
-        logger.debug("Could not broadcast game-end notice", exc_info=True)
+    # Claim the terminal state and actor before any await: simultaneous end
+    # actions must not overwrite the responsible player or double-count.
     session.game["_aborted"] = True
     session.game["_abort_reason"] = "manual"
+    session.game["_aborted_by_player_id"] = session.player_id
     session.game["_results"] = None
     session.game["_started"] = False
     session.game["_finished"] = True
@@ -173,4 +176,10 @@ async def _end_game(session: GameSocketSession, _data: dict[str, Any]) -> None:
     session.game["_manual_pause_by_name"] = None
     session.game["_manual_pause_at"] = None
     touch(session.game)
+    session.game["_finished_at"] = session.game.get("_updated_at")
+    save_active_game(session.game)
+    try:
+        await broadcast(session.game, {"notice": {"type": "ended", "by": by_name}})
+    except Exception:
+        logger.debug("Could not broadcast game-end notice", exc_info=True)
     await broadcast(session.game, {"scoreboard": snapshot(session.game)})

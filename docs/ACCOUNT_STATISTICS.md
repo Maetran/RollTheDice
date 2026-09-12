@@ -45,6 +45,26 @@ result only for the chart's oldest-to-newest time axis.
 
 ## Existing-data audit
 
+### Explicit abandonment counters (feature branch, September 2026)
+
+`abandoned_games` and `abandoned_game_participants` retain a separate durable
+record for explicitly ended, started games. The public `statistics.abandoned`
+projection contains `zdwa_games` and `zilch_games`; `games` and
+`self_ended_games` both mean the initiating account's total. Only rows with
+`reason = manual` and the matching initiator count. A terminal game ID can
+contribute once even after retries/restarts. Waiting-room cancellations,
+timeouts, lost connections, guests/CPU initiators and other participants never
+increment a player's public count. Existing private Zilch Solo abandoned
+results remain private; only new explicit abandonment markers feed the public
+counter. Result scores and completed-game rankings remain unchanged.
+
+ZDWA uses these counters for six zero-point Fairplay reminders at 1, 5 and 10,
+separately for Solo and multiplayer. They carry no Ehrenberg Marks and cannot
+increase rank. These counters deliberately cannot determine why a disconnected
+player waited for a timeout; such games remain uncounted.
+
+### Original completed-game audit
+
 The pre-implementation read-only audit found no ambiguous completed games:
 
 | Database | Completed | Normal | Hardcore | Missing mode |

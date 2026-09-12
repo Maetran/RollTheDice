@@ -234,8 +234,8 @@ test("guest sees login and registration while a new account sees only logout", a
   await expect(page.locator("#authActions")).toBeHidden();
   await expect(page.locator("#headerAccountLink")).toHaveAttribute("href", "#loginForm");
 
-  await page.fill("#loginUsername", username);
-  await page.fill("#loginPassword", "self-register-password-123");
+  await page.fill("#registrationUsername", username);
+  await page.fill("#registrationPassword", "self-register-password-123");
   await page.click("#registerBtn");
   await expect(page.locator("#authBadge")).toContainText(username);
   await expect(page.locator("#loginForm")).toBeHidden();
@@ -832,7 +832,8 @@ test("admin can log in, create a user and open the public profile", async ({ pag
 
   await page.goto("/spieler/RegisteredSmoke");
   await expect(page.getByRole("heading", { name: "RegisteredSmoke" })).toBeVisible();
-  await expect(page.locator(".stat-bucket")).toHaveCount(3);
+  await expect(page.locator(".stat-bucket")).toHaveCount(4);
+  await expect(page.locator(".stat-bucket").last()).toContainText("Abgebrochene Partien");
   await expect(page.locator(".stat-bucket").first()).toContainText("Spiele");
   await expect(page.locator(".stat-bucket").first()).not.toContainText("Maximum");
   await expect(page.locator(".stat-bucket").nth(1)).toContainText("Maximum");

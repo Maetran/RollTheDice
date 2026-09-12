@@ -2947,6 +2947,10 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
 .zilch-login-intro { margin: 0 0 1.15rem; color: var(--zilch-muted); line-height: 1.45; }
 
 .zilch-login-form { display: grid; gap: .8rem; }
+.zilch-passkey-login { display: grid; gap: .45rem; margin-bottom: .9rem; }
+.zilch-passkey-login > button { width: 100%; }
+.zilch-passkey-login .zilch-muted { margin: 0; text-align: center; }
+.zilch-login-divider { margin: 0; color: var(--zilch-muted); font-size: .84rem; text-align: center; }
 .zilch-login-form label { display: grid; gap: .32rem; color: var(--zilch-ink); font-size: .9rem; font-weight: 750; }
 .zilch-login-form input { width: 100%; }
 .zilch-login-actions { display: flex; flex-wrap: wrap; gap: .55rem; align-items: center; }

@@ -1,7 +1,8 @@
-import { authError, loadAuth, login, logout, register } from "../shared/auth.js";
+import { authError, loadAuth, login, loginWithPasskey, logout, passkeysSupported, register } from "../shared/auth.js";
 import {
   applyZilchRouteLinks,
   normalizeZilchPageUrl,
+  zdwaAppEntryUrl,
   zilchPath,
   zilchRoutePath,
 } from "../multigame/routes.js";
@@ -9,9 +10,16 @@ import {
 applyZilchRouteLinks();
 
 const form = document.getElementById("zilchLoginForm");
+const passkeyPanel = document.getElementById("zilchPasskeyLogin");
+const passkeyButton = document.getElementById("zilchPasskeyLoginButton");
 const username = document.getElementById("zilchLoginUsername");
 const password = document.getElementById("zilchLoginPassword");
+const registrationForm = document.getElementById("zilchRegistrationForm");
+const registrationUsername = document.getElementById("zilchRegistrationUsername");
+const registrationEmail = document.getElementById("zilchRegistrationEmail");
+const registrationPassword = document.getElementById("zilchRegistrationPassword");
 const registerButton = document.getElementById("zilchRegisterButton");
+const forgotPassword = document.getElementById("zilchForgotPassword");
 const message = document.getElementById("zilchLoginMessage");
 const challenge = document.getElementById("zilchRegistrationChallenge");
 const signedIn = document.getElementById("zilchSignedIn");
@@ -100,7 +108,15 @@ function resetChallenge() {
 function render(auth) {
   const user = auth?.user;
   const allowed = user?.game_access?.zilch_preview === true;
+  passkeyPanel.hidden = Boolean(user) || !auth?.passkeys?.enabled || !passkeysSupported();
   form.hidden = Boolean(user);
+  registrationForm.hidden = Boolean(user);
+  const emailEnabled = auth?.registration?.email_enabled !== false;
+  registrationEmail.closest('label').hidden = !emailEnabled;
+  registrationEmail.required = emailEnabled;
+  registrationPassword.closest('label').hidden = emailEnabled;
+  registrationPassword.required = !emailEnabled;
+  registrationForm.querySelector('p').textContent = t(emailEnabled ? 'Neues Konto per E-Mail bestätigen' : 'Konto erstellen');
   signedIn.hidden = !user;
   if (!user) return;
   accountName.textContent = user.username;
@@ -113,6 +129,11 @@ function render(auth) {
 
 async function refresh({ redirect = false } = {}) {
   const auth = await loadAuth({ refresh: true });
+  // loadAuth schedules a reload when the account language differs. Let that
+  // navigation finish before the freshly translated login page continues;
+  // competing reload/assign calls can otherwise cancel each other.
+  const accountLanguage = auth.user?.preferences?.preferred_language;
+  if (accountLanguage && accountLanguage !== document.documentElement.lang) return auth;
   render(auth);
   if (redirect && auth.user?.game_access?.zilch_preview === true) window.location.assign(returnPath());
   return auth;
@@ -130,16 +151,42 @@ form.addEventListener("submit", async event => {
   }
 });
 
-registerButton.addEventListener("click", async () => {
+passkeyButton.addEventListener('click', async () => {
+  if (passkeyButton.disabled) return;
+  passkeyButton.disabled = true;
+  setMessage('');
+  try {
+    await loginWithPasskey();
+    password.value = '';
+    await refresh({ redirect: true });
+  } catch (error) {
+    setMessage(error.message, 'error');
+  } finally {
+    passkeyButton.disabled = false;
+  }
+});
+
+registrationForm.addEventListener("submit", async event => {
+  event.preventDefault();
   setMessage("");
+  if (!turnstile.enabled && turnstile.widgetId === null) {
+    try {
+      await initializeRegistrationProtection(await loadAuth());
+    } catch {
+      setMessage("Registrierung ist momentan nicht verfügbar. Die Anmeldung funktioniert weiterhin.", "error");
+      return;
+    }
+  }
   if (turnstile.enabled && !turnstile.token) {
     setMessage("Bitte bestätige zuerst, dass du kein Bot bist.", "error");
     return;
   }
   try {
-    await register(username.value, password.value, turnstile.token);
-    password.value = "";
-    await refresh({ redirect: true });
+    const result = await register(registrationUsername.value, registrationEmail.value, turnstile.token,
+      registrationPassword.required ? registrationPassword.value : null);
+    registrationForm.reset();
+    if (result.authenticated) await refresh({ redirect: true });
+    else setMessage('Wenn diese Adresse noch kein Konto hat, erhältst du einen Bestätigungslink. Öffne ihn, um dein Passwort festzulegen.', 'success');
   } catch (error) {
     setMessage(error.message || authError(), "error");
   } finally {
@@ -159,8 +206,9 @@ logoutButton.addEventListener("click", async () => {
 
 void (async () => {
   try {
-    const auth = await refresh();
-    await initializeRegistrationProtection(auth);
+    await refresh({ redirect: true });
+    const entry = zdwaAppEntryUrl();
+    forgotPassword.href = `${entry.replace(/\/$/, "")}/passwort-vergessen`;
   } catch {
     setMessage("Der Anmeldestatus konnte nicht geladen werden. Bitte versuche es erneut.", "error");
   }

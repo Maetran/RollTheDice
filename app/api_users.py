@@ -19,7 +19,15 @@ from .achievements import (
 from .auth import require_admin, require_csrf, require_user, resolve_session
 from .database import session_scope
 from .game_types import DEFAULT_GAME_TYPE
-from .models import AssignmentAudit, CompletedGame, DeletedGame, GameParticipant, User, UserAchievement
+from .models import (
+    AbandonedGame,
+    AssignmentAudit,
+    CompletedGame,
+    DeletedGame,
+    GameParticipant,
+    User,
+    UserAchievement,
+)
 from .player_names import completed_player_identities
 from .product_hosts import is_zilch_host
 from .security import normalize_username, utcnow
@@ -110,6 +118,23 @@ def _statistics_for_user(db, user_id: int) -> dict:
     }
 
 
+def abandonment_statistics_for_user(db, user_id: int) -> dict:
+    """Count only authoritative manual aborts initiated by this account.
+
+    Opponents, timeouts and disconnects contribute nothing. No historical
+    result scan reconstructs intent or publishes private Solo result details.
+    """
+    counts = {"zdwa": 0, "zilch": 0}
+    for game_type, count in db.execute(
+        select(AbandonedGame.game_type, func.count(AbandonedGame.id))
+        .where(AbandonedGame.aborted_by_user_id == user_id, AbandonedGame.reason == "manual")
+        .group_by(AbandonedGame.game_type)
+    ):
+        counts[game_type] = int(count)
+    total = sum(counts.values())
+    return {"games": total, "self_ended_games": total, "zdwa_games": counts["zdwa"], "zilch_games": counts["zilch"]}
+
+
 def _recent_games_for_user(
     db,
     user_id: int,
@@ -144,6 +169,7 @@ def _recent_games_for_user(
 def _public_profile(db, user: User) -> dict:
     achievements = sync_user_achievements(db, user)
     statistics = _statistics_for_user(db, user.id)
+    statistics["abandoned"] = abandonment_statistics_for_user(db, user.id)
     statistics["overall"].update(
         {
             "achievement_points": achievements["points_earned"],

@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=543aa760f736">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=543aa760f736" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=543aa760f736" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=5bb74204c51f">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5bb74204c51f" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=5bb74204c51f" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=543aa760f736">
-  <script src="/static/shell.js?v=543aa760f736" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=5bb74204c51f">
+  <script src="/static/shell.js?v=5bb74204c51f" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -162,6 +162,14 @@
         <h2 id="usernameSettingsTitle">Benutzername ändern</h2>
         <div data-username-settings></div>
       </section>
+      <section class="card password-card" aria-labelledby="emailSettingsTitle">
+        <h2 id="emailSettingsTitle">E-Mail-Adresse für Anmeldung</h2>
+        <div data-email-settings></div>
+      </section>
+      <section class="card password-card" aria-labelledby="passkeySettingsTitle">
+        <h2 id="passkeySettingsTitle">Passkeys</h2>
+        <div data-passkey-settings></div>
+      </section>
       <section class="card password-card">
         <h2>Passwort ändern</h2>
         <p id="passwordHint" class="muted small"></p>
@@ -176,12 +184,12 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=543aa760f736';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=543aa760f736';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=543aa760f736';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=543aa760f736';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=543aa760f736';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=543aa760f736';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountEmailSettings, mountPasskeySettings, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=5bb74204c51f';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=5bb74204c51f';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=5bb74204c51f';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=5bb74204c51f';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=5bb74204c51f';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=5bb74204c51f';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
@@ -193,6 +201,8 @@
         document.getElementById('publicProfileLink').href = (window.ZDWA_ROUTE?.path || (path => path))(`/spieler/${encodeURIComponent(user.username)}`);
       },
     });
+    mountEmailSettings(document.querySelector('[data-email-settings]'));
+    mountPasskeySettings(document.querySelector('[data-passkey-settings]'));
     initializeReleaseNotes({ context: 'zdwa' });
     mountAllowlistSettings(document.querySelector('[data-allowlist-settings]'), { context: 'zdwa' });
     mountAvatarUpload(document.querySelector('[data-avatar-upload]'));

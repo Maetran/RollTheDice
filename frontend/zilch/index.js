@@ -1,4 +1,4 @@
-import { apiFetch, authError, escapeHtml, loadAuth, logout, mountUsernameSettings } from "../shared/auth.js";
+import { apiFetch, authError, escapeHtml, loadAuth, logout, mountEmailSettings, mountPasskeySettings, mountUsernameSettings } from "../shared/auth.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
 import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
@@ -1594,7 +1594,23 @@ function achievementProjection(payload) {
     locked: hasExplicitLocked ? explicitLocked : definitions.filter(definition => !unlockedKeys.has(achievementKey(definition))),
     pending: firstObjectArray(outer.awards, outer.pending, nested.awards, nested.pending),
     rankUpgrade: plainObject(outer.rank_upgrade || outer.rankUpgrade || nested.rank_upgrade || nested.rankUpgrade),
+    abandonment_statistics: plainObject(outer.abandonment_statistics),
   };
+}
+
+function abandonmentStatisticsMarkup(statistics) {
+  const games = Math.max(0, Math.trunc(Number(statistics?.zilch_games) || 0));
+  const zdwaGames = Math.max(0, Math.trunc(Number(statistics?.zdwa_games) || 0));
+  return `<section class="zilch-card zilch-achievement-summary" aria-labelledby="zilchAbandonmentStatisticsTitle">
+    <p class="eyebrow">${escapeHtml(t("Öffentliche Statistik"))}</p>
+    <h2 id="zilchAbandonmentStatisticsTitle">${escapeHtml(t("Abgebrochene Partien"))}</h2>
+    <dl class="zilch-achievement-summary__facts">
+      <div><dt>Zilch</dt><dd>${escapeHtml(number(games))}</dd></div>
+      <div><dt>ZDWA</dt><dd>${escapeHtml(number(zdwaGames))}</dd></div>
+    </dl>
+    <p class="zilch-muted">${escapeHtml(t("Abbrüche zählen nicht als abgeschlossene Spiele und verändern weder Punkte noch Rankings."))}</p>
+    <p class="zilch-muted">${escapeHtml(t("Nur selbst beendete, bereits gestartete Partien zählen. Timeouts, Verbindungsabbrüche und Abbrüche durch Mitspieler zählen nicht."))}</p>
+  </section>`;
 }
 
 function achievementRankLegendProjection(payload) {
@@ -2089,6 +2105,14 @@ function zilchAccountSettingsMarkup(username) {
       <h2 id="usernameSettingsTitle">${escapeHtml(t("Benutzername ändern"))}</h2>
       <div data-username-settings></div>
     </section>
+    <section class="zilch-card zilch-account-settings-card" aria-labelledby="emailSettingsTitle">
+      <h2 id="emailSettingsTitle">${escapeHtml(t("E-Mail-Adresse für Anmeldung"))}</h2>
+      <div data-email-settings></div>
+    </section>
+    <section class="zilch-card zilch-account-settings-card" aria-labelledby="passkeySettingsTitle">
+      <h2 id="passkeySettingsTitle">${escapeHtml(t("Passkeys"))}</h2>
+      <div data-passkey-settings></div>
+    </section>
     <section class="zilch-card zilch-account-settings-card">
       <p class="eyebrow">${escapeHtml(t("Einstellungen"))}</p>
       <h2>${escapeHtml(t("Sprache"))}</h2>
@@ -2238,6 +2262,8 @@ function bindZilchAccountSettings() {
       renderShell();
     },
   });
+  void mountEmailSettings(document.querySelector("[data-email-settings]"), { zilch: true });
+  void mountPasskeySettings(document.querySelector("[data-passkey-settings]"), { zilch: true });
   const languageForm = document.getElementById("zilchLanguagePreferencesForm");
   const lobbyChatForm = document.getElementById("zilchLobbyChatPreferencesForm");
   const pushEnableButton = document.getElementById("zilchEnableGameInvitePush");
@@ -2509,7 +2535,7 @@ async function renderPlayerAchievements() {
     const slot = document.getElementById("zilchPlayerAchievementsBody");
     const displayName = String(state.playerAchievements.player?.username || state.playerAchievements.player?.display_name || requestedName);
     document.title = `${displayName} – ${t("Zilch-Awards")}`;
-    if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><div class="avatar-profile-heading">${avatarMarkup(state.playerAchievements.player, { size: "large" })}<h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2></div><div id="zilchProfileAllowlist"></div></section>${achievementRankSummaryMarkup(state.playerAchievements)}${achievementRankLegendMarkup(state.playerAchievements, state.achievementRankLegend)}${achievementsCatalogMarkup(state.playerAchievements)}`;
+    if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><div class="avatar-profile-heading">${avatarMarkup(state.playerAchievements.player, { size: "large" })}<h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2></div><div id="zilchProfileAllowlist"></div></section>${achievementRankSummaryMarkup(state.playerAchievements)}${abandonmentStatisticsMarkup(state.playerAchievements.abandonment_statistics)}${achievementRankLegendMarkup(state.playerAchievements, state.achievementRankLegend)}${achievementsCatalogMarkup(state.playerAchievements)}`;
     mountProfileAllowlist(document.getElementById("zilchProfileAllowlist"), { userId: state.playerAchievements.player?.id, context: "zilch" });
   } catch (_) {
     const slot = document.getElementById("zilchPlayerAchievementsBody");
@@ -3225,6 +3251,7 @@ function renderRulesContent(facts) {
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zilch-Serie"))}</h2><p>${escapeHtml(t("Ein Wurf ohne gültige Wertung – oder eine nicht erreichbare 300er-Regel nach Wurf drei – beendet den Zug als Zilch. Ungesicherte Punkte verfallen."))}</p><p>${escapeHtml(t("Bei einem Zilch bleibt der letzte Wurf sichtbar, bis der nächste Wurf ausgeführt wird."))}</p><p>${escapeHtml(t("Bei jedem dritten Zilch in Folge – also beim dritten, sechsten, neunten und so weiter – werden 500 Punkte abgezogen, niemals unter null."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Spielweise des Würfelwirts"))}</h2><p>${escapeHtml(t("Beim Start wählst du seine Spielweise: Konservativ sichert ab 500 Punkten eher früh, Normal ab 650 Punkten solide Runden, Aggressiv jagt ab 850 Punkten größere Runden."))}</p><p>${escapeHtml(t("Alle drei würfeln fair nach denselben Regeln wie du. Bei wenigen freien Würfeln oder einem sicheren Sieg sichert der Würfelwirt früher."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Pause und Ablauf"))}</h2><p>${escapeHtml(t("Über Spiel verlassen pausierst du eine Partie bis zur angezeigten Frist oder beendest sie für alle ohne Ergebnis und kehrst zur Lobby zurück. Im Spiel bleiben schließt den Dialog; Zuschauer gehen direkt zur Lobby."))}</p><p>${escapeHtml(t("Bleibt am Tisch eine Stunde lang alles still – egal ob er wartet, läuft oder pausiert –, bricht der Wirt die Partie ab. Wer als Spieler oder Zuschauer noch verbunden ist, sieht den Hinweis und findet direkt zurück in die Lobby."))}</p></section>
+      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Selbst abgebrochene Partien"))}</h2><p>${escapeHtml(t("Wer eine gestartete Partie ausdrücklich abbricht, erhält dafür einen öffentlichen Abbruchzähler im Profil. Timeouts, Verbindungsabbrüche, abgesagte Warteräume und Abbrüche durch Mitspieler zählen nicht. Die Ergebniswertung bleibt unverändert."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zuschauen"))}</h2><p>${escapeHtml(t("Laufende Zwei-Personen-Partien werden in der Lobby mit beiden Spielern angezeigt. Über Zuschauen öffnest du eine Live-Ansicht; Würfeln, Halten und Sichern bleiben den beiden Teilnehmern vorbehalten."))}</p></section>
     </section>
     <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p>${escapeHtml(t("Die Startwürfe erscheinen als kleine Würfel. Beide Ergebnisse bleiben kurz sichtbar, bevor das Spiel oder der nächste Startversuch beginnt."))}</p><p>${escapeHtml(t("Im LCARS-Punktebuch steht der aktive Verlauf oben. Unten bleibt der andere Spieler mit Name und Gesamtstand sichtbar; beim Zugwechsel gleitet sein Blatt nach oben. Der Würfelwirt lässt nach seinen Würfen kurz Zeit zum Lesen."))}</p><p>${escapeHtml(t("Nach jedem abgeschlossenen oder aufgegebenen Solo-Lauf sowie nach jeder abgeschlossenen Würfelwirt- oder Zwei-Personen-Partie öffnet sich dein Ergebnis automatisch. Dort startest du ein neues Solo oder eine Revanche oder kehrst zur Lobby zurück."))}</p><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>

@@ -11,6 +11,27 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Unveröffentlicht / Unreleased — Kontozugang und Fairplay
+
+- **Deutsch:** Im Feature-Branch vorbereitet: E-Mail-Registrierung mit
+  Bestätigungslink, bestätigte Kontoadressen und Passwort-Reset sowie Passkeys
+  als bevorzugte Anmeldung in beiden Spielen. Passwort-Anmeldung bleibt
+  verfügbar. Passwort-Recovery meldet alle Geräte ab und entfernt bisherige
+  Passkeys. Beide neuen Anmeldefunktionen bleiben standardmäßig ausgeschaltet.
+  Öffentliche Profile zählen ausdrücklich selbst abgebrochene gestartete
+  Partien je Spiel; Timeouts und Abbrüche durch Mitspieler zählen nicht.
+  Sechs neue ZDWA-Fairplay-Hinweise für Solo und Mehrspieler vergeben null
+  Rangpunkte. Kein Rollout und kein Versions-Push.
+- **English:** Prepared on the feature branch: email registration with a
+  confirmation link, verified account addresses, password recovery, and
+  passkeys as the preferred sign-in choice in both games. Password sign-in
+  remains available. Password recovery signs out all devices and removes
+  existing passkeys. Both new sign-in features remain disabled by default.
+  Public profiles count started games deliberately ended by that account,
+  separately for each game; timeouts and opponents' aborts do not count.
+  Six new ZDWA Fairplay reminders for Solo and multiplayer award zero rank
+  points. No rollout or release push.
+
 ## Stille Korrektur / Silent fix — Aktuelle Namen in früheren Partien — 2026-09-12
 
 - **Deutsch:** Abgeschlossene ZDWA- und Zilch-Partien, Spielhistorie und

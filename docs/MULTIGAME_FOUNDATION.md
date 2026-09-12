@@ -125,6 +125,18 @@ unpersisted terminal states; a malformed legacy Zilch terminal (for example
 without an authoritative end timestamp) is logged and retained rather than
 invented, converted to ZDWA, or deleted.
 
+Started tables that terminate through an explicit manual abort also receive a
+separate, idempotent `abandoned_games` record. Public aggregates count only the
+initiating account, separately for ZDWA and Zilch. Timeouts, disconnections,
+waiting-room cancellations and opponents' aborts never increment them. Stored
+records exclude scores, chat, snapshots and room secrets. Explicit new Zilch
+Solo abandonments use the same durable counter while retaining their existing
+private result; historic private snapshots are not scanned. Six ZDWA Fairplay
+reminders use manual Solo/multiplayer counts at 1/5/10 with zero rank points.
+Scoring achievements, rankings and completed-game totals retain their existing
+completed-result sources. Deliberately waiting for a timeout remains outside
+the active-only policy because connection loss does not prove intent.
+
 ZDWA keeps its existing scorecard payload, legacy replay, leaderboard JSON,
 statistics, and achievement pipeline behind the `zdwa` finalizer. All of those
 SQL readers explicitly filter `game_type = zdwa`. Competitive Zilch uses the

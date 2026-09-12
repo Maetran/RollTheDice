@@ -1,6 +1,8 @@
 # E-Mail-Konten: Machbarkeit und Plan
 
-Stand: 11.09.2026. **Nur Planung; keine E-Mail-Funktion implementiert oder aktiviert.**
+Stand: 12.09.2026. **Im Branch `feature/email-accounts` implementiert, aber
+nicht aktiviert oder ausgerollt.** `ROLLTHEDICE_EMAIL_ENABLED=0` und
+`ROLLTHEDICE_PASSKEYS_ENABLED=0` halten beide Funktionen standardmäßig ausgeschaltet.
 
 ## Einschätzung
 
@@ -9,8 +11,51 @@ neuen Auth-Anbieter und keinen Umbau der Spiele: ZDWA und Zilch teilen bereits
 `User`, Passwort-Hashes, serverseitige Sitzungen und feste Konto-IDs.
 `app/auth.py` enthält Anmeldung und Passwortwechsel, `app/api_auth.py` die API,
 `app/auth_protection.py` Schutz vor häufigen Versuchen. SQLAlchemy/Alembic sind
-für zusätzliche Felder und Tabellen vorhanden. Es gibt bisher keine
-E-Mail-Adresse am Konto und keinen E-Mail-Versand.
+für zusätzliche Felder und Tabellen vorhanden. Vor diesem Branch gab es keine
+E-Mail-Adresse am Konto und keinen E-Mail-Versand. Der Branch ergänzt diese
+Bausteine, ohne eine bestehende Konto-ID oder Spielzuordnung zu ändern.
+
+## Umsetzungsstand dieses Branches
+
+Die geplante erste Ausbaustufe ist vorbereitet und bleibt bis zu einer bewussten
+Produktionsfreigabe ausgeschaltet:
+
+- Neue Konten speichern zunächst nur eine befristete Anmeldung. Erst der
+  E-Mail-Link und die eigene Passwortwahl erzeugen das Konto mit bestätigter
+  Adresse. Unbestätigte Anfragen reservieren weder Namen noch Adressen; die
+  Eindeutigkeit wird beim Abschluss atomar geprüft. Bei ausgeschaltetem
+  E-Mail-Feature bleibt die bisherige Registrierung mit Passwort verfügbar.
+- Bestehende Konten können eine Adresse ergänzen oder ändern. Die bisherige
+  bestätigte Adresse bleibt gültig, bis die neue Adresse bestätigt wurde.
+- Anmeldung akzeptiert weiterhin Benutzernamen und zusätzlich bestätigte
+  E-Mail-Adressen. Passwort-Reset-Anfragen bleiben bei bekannten und unbekannten
+  Adressen gleichartig; ein erfolgreicher Reset widerruft bestehende Sitzungen,
+  Passkeys und offene Adressänderungen. Auch bereits laufende Prüfungen eines
+  alten Passworts können danach keine neue Sitzung anlegen.
+- Resend wird ausschließlich über seine serverseitige HTTP-API angesprochen.
+  Der Versand umfasst Registrierungsbestätigung, Adressbestätigung, angeforderten
+  Passwort-Reset und die Bestätigung nach einem Reset. Es gibt keinen Empfang,
+  kein Betreiber-CC, keinen Newsletter und kein benötigtes persönliches
+  Postfach.
+- Registrierungs- und Reset-Mails werden nach der neutralen HTTP-Antwort
+  versandt. Eine angenommene Anfrage ist keine Zustellgarantie. Der
+  Hintergrundversand ist keine dauerhafte Warteschlange: Bei einem Neustart
+  zwischen Antwort und Versand kann ein erneuter Versuch nötig sein. Bereits
+  versandte, gültige Links bleiben beim Wiederholen gültig. Zeitnahe und
+  parallele Anfragen werden je IP und Ziel begrenzt.
+- Einmal-Token werden nur gehasht gespeichert, haben Zweck und Ablaufzeit und
+  erscheinen in Links ausschließlich im URL-Fragment. Die kurzen Aktionsseiten
+  sind `noindex`, `no-store` und entfernen das Fragment vor weiterer Bedienung.
+- WebAuthn-Passkeys sind als bevorzugte Anmeldung vorbereitet. Der Browser
+  verwendet discoverable Credentials mit verpflichtender Benutzerbestätigung;
+  der Server speichert nur Credential-ID, öffentlichen Schlüssel, Counter und
+  optionalen Gerätenamen. Die feste RP-ID ist der ZDWA-Host und erlaubt die
+  kontrollierte Zilch-Subdomain. Das Passwort bleibt eine Rückfall-Anmeldung.
+
+Die Datenbankrevisionen `20260912_0037` bis `20260912_0039` sind additiv. Sie
+halten E-Mail-Identität und kurzlebige Token, abgebrochene gestartete Spiele
+sowie Passkey-Credentials und kurzlebige WebAuthn-Ceremonies getrennt von
+Spielergebnissen.
 
 Meine projektspezifische Schätzung für eine fertige erste Version einschließlich
 Bestandskonten, DE/EN, Tests und Einrichtung: **2–4 Entwicklungstage**.
@@ -40,12 +85,13 @@ Return-Path-MX für technische Rückmeldungen und ist kein Benutzerpostfach.
 Bestehende Mail-DNS-Einträge der Hauptdomain müssen dafür nicht ersetzt werden.
 [Domain-Verifizierung](https://resend.com/docs/dashboard/domains/introduction).
 
-Aktuell enthält Resends kostenloser Transaktionsmail-Tarif **3.000 E-Mails pro
+Die ursprüngliche Preisschätzung verwendete für Resends kostenlosen Tarif **3.000 E-Mails pro
 Monat, höchstens 100 pro Tag**. Pro kostet **20 USD/Monat für 50.000 E-Mails**
 ohne Tageslimit. Für einen kleinen Nutzerkreis dürfte der kostenlose Tarif
 reichen; Bestätigungen, erneute Zustellversuche und Passwort-Resets verbrauchen
-dasselbe Kontingent. Das ist eine Einschätzung, da das erwartete Volumen nicht
-bekannt ist. [Aktuelle Preise](https://resend.com/pricing).
+dasselbe Kontingent. Das ist eine frühere Planungsschätzung, da das erwartete
+Volumen nicht bekannt ist; Preise vor Aktivierung erneut prüfen.
+[Aktuelle Preise](https://resend.com/pricing).
 
 ## Vorgeschlagener Ablauf
 
@@ -56,16 +102,20 @@ bekannt ist. [Aktuelle Preise](https://resend.com/pricing).
 2. **Adressbestätigung:** Der Link öffnet eine Seite, auf der der Nutzer sein
    Passwort selbst setzt und die Registrierung ausdrücklich abschließt.
    Erst danach entsteht das nutzbare Konto. Ein automatischer Link-Vorababruf
-   durch Mailprogramme darf den Token nicht verbrauchen. Vorschlag: Link
+   durch Mailprogramme darf den Token nicht verbrauchen. Der Link ist
    24 Stunden gültig, erneutes Anfordern mit Wartezeit, alte Anfragen bereinigen.
    Damit ist der gewünschte Ablauf „Anmelden und per E-Mail bestätigen“
    abgedeckt; Newsletter-Einwilligungen sind kein Bestandteil dieser Funktion.
-3. **Anmelden:** Benutzername oder bestätigte E-Mail-Adresse plus Passwort.
+3. **Anmelden:** Bevorzugt per Passkey auf unterstützten Geräten, alternativ
+   Benutzername oder bestätigte E-Mail-Adresse plus Passwort.
    Der Benutzername bleibt der öffentliche Spielname. E-Mail-Adressen erscheinen
    weder in Profilen noch in Chat, Ranking, Spielansichten oder Push-Nachrichten.
 4. **Passwort vergessen:** E-Mail-Adresse eingeben, Reset-Link öffnen, neues
-   Passwort setzen. Vorschlag: 30 Minuten Gültigkeit. Danach werden bestehende
-   Sitzungen und weitere Reset-Tokens ungültig, anschließend normale Anmeldung.
+   Passwort setzen. Der Link ist 30 Minuten gültig. Danach werden bestehende
+   Sitzungen, Passkeys, weitere Reset-Tokens und offene Adressänderungen
+   ungültig; anschließend erfolgt die normale Anmeldung. Passkeys können
+   danach neu eingerichtet werden. Ein gewöhnlicher Passwortwechsel in den
+   Einstellungen behält vorhandene Passkeys.
 5. **Bestehende Konten:** Anmeldung mit Benutzername bleibt möglich. In den
    Einstellungen lässt sich eine E-Mail-Adresse mit aktuellem Passwort und
    Bestätigungslink ergänzen. Erst bestätigte Adressen dürfen zum Reset dienen.
@@ -92,17 +142,40 @@ Bot-Prüfung. Reset-Seiten und Logs dürfen Tokens nicht an Dritte weitergeben;
 Links werden ausschließlich aus konfigurierten Produkt-Origins gebaut.
 [OWASP-Empfehlungen zum Passwort-Reset](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html).
 
-Zu prüfen sind insbesondere abgelaufene und bereits benutzte Links, parallele
+Die Regressionstests prüfen insbesondere abgelaufene und bereits benutzte Links, parallele
 Bestätigungen, doppelte Adressen, ausbleibende Zustellung, Wiederholungen,
-Sitzungswiderruf und das Wechseln zwischen beiden Spielen. Vor Umsetzung werden
-Absenderdomain und Versanddienst festgelegt; die Empfehlung ist ein gemeinsamer
-Versand für beide Spiele. Das bestehende Deployment bleibt erhalten.
+Sitzungswiderruf und das Wechseln zwischen beiden Spielen. Vor Aktivierung wird
+die Absenderdomain verifiziert; beide Spiele verwenden denselben Resend-Sender.
+Das bestehende Deployment bleibt erhalten.
+
+## Activation checklist (not performed on this branch)
+
+1. Verify a dedicated sender domain with Resend and add only the SPF/DKIM/DMARC
+   records it supplies. Do not replace existing mail records or enable incoming
+   routing. A sender such as `konto@auth.zockdiewandan.online` needs no mailbox.
+2. Store a restricted Resend API key and the verified sender only in the
+   production secret store. Set `ROLLTHEDICE_EMAIL_ENABLED=1` only after both
+   values are present and the normal test suite has passed.
+3. Keep `ROLLTHEDICE_COOKIE_SECURE=1`, a controlled cookie domain and the two
+   fixed HTTPS product origins. Test the registration and reset flow only with
+   a designated test recipient, never a real player account.
+4. Enable passkeys separately with `ROLLTHEDICE_PASSKEYS_ENABLED=1`. Set the
+   RP ID exactly to the hostname of `ROLLTHEDICE_SITE_ORIGIN`; both configured
+   origins must be HTTPS in production. Test registration, sign-in, removal and
+   password fallback on an authenticator-backed test account.
+5. Roll back email registration, email actions or passkey login by setting the
+   corresponding feature flag to `0`. Existing credentials and confirmed
+   addresses remain stored. Password sign-in continues to work, including an
+   already confirmed email identifier; legacy password registration is restored
+   while the email feature is off.
 
 ## English summary
 
-Planning only; email registration and sending remain unimplemented. The shared
-account system can support email verification, password resets and optional
-email linking for existing users without changing game identities. Estimated
-effort is 2–4 development days including bilingual flows, migration and tests.
-The proposed Resend integration sends account emails automatically; no personal
-mailbox, inbound mail service or self-hosted mail server is required.
+The email and passkey implementation is prepared on `feature/email-accounts`,
+but neither feature is enabled or deployed. Email confirmation, requested
+password reset and optional confirmed email login use a Resend HTTP sender only;
+there is no personal mailbox, inbound service, operator copy or newsletter.
+Passkeys are the preferred supported-device sign-in choice, scoped to the fixed
+ZDWA WebAuthn relying party and controlled Zilch subdomain. Password sign-in
+remains available. Both features require their own explicit production flags
+and configuration review.

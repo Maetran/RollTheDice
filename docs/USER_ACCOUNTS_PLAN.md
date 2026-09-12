@@ -130,7 +130,10 @@ explizit zu trennen.
 Für eine eindeutige und testbare Umsetzung wird empfohlen:
 
 - `gespielte Spiele`: nur regulär vollständig beendete Spiele; abgebrochene
-  Spiele zählen nicht
+  Spiele zählen nicht. Zusätzlich zeigt das öffentliche Profil die getrennte,
+  nicht wertungsrelevante Zahl ausdrücklich selbst abgebrochener gestarteter
+  Partien je Spiel. Timeouts, Verbindungsabbrüche, Warteraumabsagen und Abbrüche
+  durch Mitspieler zählen nicht. ZDWA-Fairplay-Hinweise vergeben dafür null Marken.
 - `Gesamtpunkte`: Summe der persönlichen Endwerte
 - `Maximum` und `Minimum`: nur vollständige Spiele
 - `Durchschnitt`: Gesamtpunkte geteilt durch vollständige Spiele
