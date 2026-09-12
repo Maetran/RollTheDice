@@ -458,6 +458,8 @@ narrow phones without splitting words. Scoring choices, dice states, shortcuts
 and room layout retain their behavior. The LCARS theme remains independent.
 The installed app's solid system canvas matches Classic's walnut palette;
 its scrolling wood layer preserves the existing iOS safe-area handling.
+The game chat bar keeps its dark background when opened or closed, including
+after tapping on touchscreens.
 
 **Deutsch:** Classic behält Wirtshaustisch, Notizblock, Würfel und vertraute
 Begriffe. Das Remaster bringt ruhigere Nussbaumtöne, Naturpapier und matte
@@ -466,6 +468,8 @@ Spielartnamen passen auch auf schmale Handys ohne zerrissene Wörter.
 Wertung, Würfelzustände, Tastenkürzel und Spielaufteilung funktionieren wie
 bisher. LCARS bleibt eigenständig; auch der Systemrand der installierten App
 passt zur neuen Holzpalette.
+Die Chatleiste im Spiel bleibt beim Öffnen und Schließen dunkel, auch nach
+dem Antippen auf Touchscreens.
 
 Zilch's public lobby and rules page have host-specific canonicals and a
 sitemap. The rules include core gameplay and the scoring table in the initial

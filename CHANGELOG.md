@@ -11,6 +11,15 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Zilch Classic Chatleiste / Chat bar — 2026-09-12
+
+- **Deutsch:** Die Chatleiste bleibt beim Öffnen, Schließen und erneuten
+  Antippen dunkel und lesbar. Ein allgemeiner Hover-Effekt übermalt ihren
+  Hintergrund nicht mehr. Stiller Hotfix ohne Versions-Push oder neues Popup.
+- **English:** The chat bar stays dark and readable when opened, closed or
+  tapped again. A generic hover effect no longer covers its background.
+  Silent hotfix without a release push or new popup.
+
 ## Zilch Classic Remaster — 2026-09-12
 
 - **Deutsch:** Classic behält den Wirtshauslook mit Notizblock und Würfeln,

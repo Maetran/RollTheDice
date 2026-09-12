@@ -1,5 +1,6 @@
 const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
 const { test, expect } = require("@playwright/test");
+const { expectTextContrast } = require("./contrast");
 
 async function signIn(page, username, password) {
   await openPasswordLogin(page);
@@ -2888,6 +2889,70 @@ test("a selected score is banked atomically with its exact server option", async
     ]));
   } finally {
     await context.close();
+  }
+});
+
+test.describe("Classic chat bar", () => {
+  for (const touch of [false, true]) {
+    test(`keeps its dark surface through ${touch ? "touch" : "mouse and keyboard"} open/close cycles`, async ({ browser, baseURL, browserName }, testInfo) => {
+      const context = await browser.newContext({
+        baseURL, serviceWorkers: "block", isMobile: touch, hasTouch: touch,
+        viewport: touch ? { width: 390, height: 844 } : { width: 1280, height: 900 },
+      });
+      const page = await context.newPage();
+      try {
+        await page.addInitScript(() => localStorage.setItem("zilch_theme", "light"));
+        await signInAsPreviewMani(page);
+        const lobby = await page.goto("/zilch");
+        expect(lobby.status()).toBe(200);
+        const shellHtml = await lobby.text();
+        const gameId = `classic-chat-${browserName}-${touch}`;
+        await installGameScreenFixture(page, gameId, { initial: fixtureSnapshots().holdOptions });
+        await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+          status: 200, contentType: "text/html; charset=utf-8", body: shellHtml,
+        }));
+        await page.goto(`/zilch/spiel/${gameId}`);
+        const toggle = page.locator("[data-zilch-chat-toggle]");
+        const input = page.locator("#zilchChatInput");
+        const finishColorTransition = () => toggle.evaluate(async element => {
+          await new Promise(requestAnimationFrame);
+          await Promise.all(element.getAnimations().map(animation => animation.finished));
+        });
+        await expect(toggle).toBeVisible();
+        await expect(toggle).toHaveAttribute("aria-expanded", "false");
+        const background = await toggle.evaluate(element => getComputedStyle(element).backgroundColor);
+        await expectTextContrast(toggle);
+        if (!touch) {
+          await toggle.hover();
+          await finishColorTransition();
+          await expect(toggle).toHaveCSS("background-color", background);
+          await expectTextContrast(toggle);
+        }
+        for (const expanded of [true, false, true, false]) {
+          if (touch) await toggle.tap();
+          else await toggle.click();
+          await finishColorTransition();
+          await expect(toggle).toHaveAttribute("aria-expanded", String(expanded));
+          if (expanded) await expect(input).toBeVisible();
+          else await expect(input).toBeHidden();
+          // Keep the pointer/finger on the toggle: touch browsers may retain
+          // :hover after tapping, even after the chat closes again.
+          await expect(toggle).toHaveCSS("background-color", background);
+          await expectTextContrast(toggle);
+        }
+        if (!touch) {
+          await toggle.focus();
+          await page.keyboard.press("Tab");
+          await page.keyboard.press("Shift+Tab");
+          await expect(toggle).toBeFocused();
+          expect(await toggle.evaluate(element => element.matches(":focus-visible"))).toBe(true);
+          await page.keyboard.press("Enter");
+          await expect(input).toBeVisible();
+          await expectTextContrast(toggle);
+        }
+        await page.screenshot({ path: testInfo.outputPath("classic-chat.png"), fullPage: true });
+      } finally { await context.close(); }
+    });
   }
 });
 

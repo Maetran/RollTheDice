@@ -3,25 +3,19 @@
   "games": [
     "zilch"
   ],
-  "summary_de": "Zilch Classic aufgefrischt: ruhigeres Holz, Naturpapier und klarere Würfel. Die Regeln sind jetzt sofort lesbar.",
-  "summary_en": "Zilch Classic refreshed: quieter wood, natural paper and clearer dice. The rules are now readable immediately.",
+  "summary_de": "Die Chatleiste in Zilch Classic bleibt beim Öffnen und Schließen dunkel und gut lesbar.",
+  "summary_en": "The Zilch Classic chat bar stays dark and easy to read when opened and closed.",
   "player_notes": {
     "de": {
-      "title": "Frisch aufpoliert, vertraut am Wirtshaustisch",
+      "title": "Chatleiste bleibt gut lesbar",
       "changes": [
-        "Classic erhält ruhigere Holztöne, helles Naturpapier, matte Messingakzente und klarere Schrift.",
-        "Würfel und Auswahlfelder sind übersichtlicher. Notizblock, Wirtshausbegriffe und vertraute Bedienung bleiben erhalten.",
-        "LCARS bleibt unverändert und ist weiterhin über den Designwechsel erreichbar.",
-        "Regeln und Punktetabelle sind direkt lesbar, auch wenn das Nachladen einmal ausfällt."
+        "Die Chatleiste bleibt auch nach dem Antippen dunkel, beim Öffnen ebenso wie beim Schließen."
       ]
     },
     "en": {
-      "title": "A fresh polish for your familiar tavern table",
+      "title": "A consistently readable chat bar",
       "changes": [
-        "Classic gains quieter wood tones, natural paper, matte brass accents and clearer type.",
-        "Dice and scoring choices are easier to read. The notebook, tavern wording and familiar controls stay.",
-        "LCARS remains unchanged and is still available through the theme switch.",
-        "Rules and the scoring table are readable immediately, even if loading the full help fails."
+        "The chat bar stays dark after tapping, both when opening and closing it."
       ]
     }
   }

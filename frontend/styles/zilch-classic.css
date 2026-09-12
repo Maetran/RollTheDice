@@ -330,6 +330,8 @@ html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-acti
 }
 html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-action-card--bank { color: #f6efe2; background: #3b352c; border-color: #9d8b6c; }
 html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-chat { background: #29251f; border-color: #a68c635e; }
+/* Keep the dark rail visible even when touch browsers retain button:hover. */
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-chat__toggle { background: transparent; }
 
 html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-page :is(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid #805b2f;
