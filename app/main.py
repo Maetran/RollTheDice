@@ -1091,10 +1091,16 @@ def zilch_rules_page(request: Request):
 
 @app.get("/anmelden", include_in_schema=False)
 def zilch_subdomain_login_page(request: Request, return_to: str = Query(default="/")):
+    """An explicit login request must reach the login form even in public mode."""
     if not is_zilch_host(request):
         raise HTTPException(status_code=404, detail="not_found")
     query = urlencode({"app": "zilch", "path": safe_zilch_path(return_to)})
-    return RedirectResponse(f"{site_origin()}/auth/continue?{query}", status_code=303)
+    continuation = f"/auth/continue?{query}"
+    return RedirectResponse(
+        f"{site_origin()}/zilch/anmelden?{urlencode({'return_to': continuation})}",
+        status_code=303,
+        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"},
+    )
 
 
 @app.get("/historie", include_in_schema=False)

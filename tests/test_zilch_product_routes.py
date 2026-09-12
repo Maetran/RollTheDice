@@ -13,6 +13,7 @@ import tempfile
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 import httpx
 from starlette.requests import Request
@@ -434,8 +435,46 @@ class ZilchProductRoutesTestCase(TestCase):
         self.assertEqual(malicious_login_return.status_code, 303)
         self.assertEqual(
             malicious_login_return.headers["location"],
-            "https://zockdiewandan.online/auth/continue?app=zilch&path=%2F",
+            "https://zockdiewandan.online/zilch/anmelden?return_to=%2Fauth%2Fcontinue%3Fapp%3Dzilch%26path%3D%252F",
         )
+
+    def test_public_guest_explicit_login_reaches_apex_form_with_safe_continuation(self) -> None:
+        with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "public"}):
+            for requested_path, expected_path in (
+                ("/", "/"),
+                ("/statistiken?scope=mine", "/statistiken?scope=mine"),
+                ("https://evil.example/steal", "/"),
+                ("//evil.example/steal", "/"),
+                ("/admin", "/"),
+            ):
+                with self.subTest(return_to=requested_path):
+                    response = self._get(
+                        f"/anmelden?{urlencode({'return_to': requested_path})}",
+                        host="zilch.zockdiewandan.online",
+                    )
+                    self.assertEqual(response.status_code, 303)
+                    self.assertEqual(response.headers["cache-control"], "no-store")
+                    target = urlsplit(response.headers["location"])
+                    self.assertEqual((target.scheme, target.netloc, target.path), (
+                        "https", "zockdiewandan.online", "/zilch/anmelden",
+                    ))
+                    continuation = urlsplit(parse_qs(target.query)["return_to"][0])
+                    self.assertEqual(continuation.netloc, "")
+                    self.assertEqual(continuation.path, "/auth/continue")
+                    self.assertEqual(parse_qs(continuation.query), {"app": ["zilch"], "path": [expected_path]})
+
+            followed = self._get("/anmelden", host="zilch.zockdiewandan.online", follow_redirects=True)
+            self.assertEqual(followed.status_code, 200)
+            self.assertEqual(followed.url.host, "zockdiewandan.online")
+            self.assertEqual(followed.url.path, "/zilch/anmelden")
+            self.assertIn('id="zilchLoginForm"', followed.text)
+            self.assertIn('id="zilchPasskeyLoginButton"', followed.text)
+
+            # Generic game-switch navigation deliberately remains available to
+            # guests. Only the explicit /anmelden entry forces the login UI.
+            continuation = self._get("/auth/continue?app=zilch&path=%2F", host="zockdiewandan.online")
+            self.assertEqual(continuation.status_code, 303)
+            self.assertEqual(continuation.headers["location"], "https://zilch.zockdiewandan.online/")
 
     def test_private_zilch_host_isolates_the_zdwa_pwa_but_serves_its_own_pwa_assets(self) -> None:
         host = "zilch.zockdiewandan.online"

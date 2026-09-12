@@ -22,6 +22,8 @@ also includes older and internal changes.
   für Solo und Mehrspieler ans Fertigspielen und vergeben null Rangpunkte.
   Alte private Solo-Historie wird nicht nachträglich umgedeutet. Der ausgewählte
   Rollout aktiviert Passkeys und Fairplay; E-Mail-Funktionen bleiben aus.
+  Der Anmelden-Link auf der öffentlichen Zilch-Seite öffnet zuverlässig das
+  gemeinsame Anmeldeformular und behält das gewählte Rückkehrziel.
 - **English:** Passkeys become the preferred sign-in choice in ZDWA and Zilch.
   Add, name and remove them in account settings; password sign-in remains
   available. Public profiles count started games explicitly ended early by
@@ -31,6 +33,8 @@ also includes older and internal changes.
   Solo and multiplayer, with zero rank points. Earlier private Solo history
   is not reclassified. The selected rollout enables passkeys and Fairplay;
   email features remain off.
+  Sign in on the public Zilch site reliably opens the shared login form and
+  preserves the selected return destination.
 - **Prüfung / Review:** [Account security and Fairplay review](docs/ACCOUNT_SECURITY_REVIEW_2026-09-12.md).
 
 ## Unveröffentlicht / Unreleased — E-Mail-Konten / Email accounts
