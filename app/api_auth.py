@@ -189,7 +189,7 @@ def auth_me(request: Request, response: Response):
         # visitors so the app switcher can open a public Zilch table directly.
         "game_access": public_game_access_payload(identity),
         "registration": {**registration_public_config(), "email_enabled": account_email_available()},
-        "passkeys": passkey_public_config(),
+        "passkeys": passkey_public_config(request),
     }
 
 

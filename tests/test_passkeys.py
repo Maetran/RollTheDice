@@ -21,6 +21,7 @@ from sqlalchemy import select
 
 from app import main
 from app import passkeys as passkey_service
+from app.api_auth import router as auth_router
 from app.api_passkeys import router
 from app.auth import create_user, issue_session_for_user, reset_password
 from app.database import configure_database, get_engine, session_scope
@@ -97,6 +98,7 @@ class PasskeyTestCase(TestCase):
         Base.metadata.create_all(get_engine())
         self.user = create_user("Passkey_User", PASSWORD, must_change_password=False)
         app = FastAPI()
+        app.include_router(auth_router)
         app.include_router(router)
         self.client = TestClient(app, base_url=ORIGIN, headers={"Origin": ORIGIN})
         with session_scope() as db:
@@ -257,6 +259,25 @@ class PasskeyTestCase(TestCase):
             "ROLLTHEDICE_COOKIE_SECURE": "0",
         }):
             self.assertEqual(passkey_config().expected_origins, ("http://localhost:8012", "http://zilch.localhost:8012"))
+
+    def test_public_capability_only_advertises_the_actual_allowed_origin(self):
+        self.client.cookies.clear()
+        for origin, enabled in (
+            (ORIGIN, True),
+            ("https://zilch.example.test", True),
+            ("https://www.example.test", False),
+            ("https://other.example.test", False),
+            ("http://example.test", False),
+        ):
+            with self.subTest(origin=origin):
+                # The optional Origin header cannot make a different document
+                # host advertise passkeys. GET /me uses the request URL itself.
+                response = self.client.get(f"{origin}/api/auth/me", headers={"Origin": ORIGIN})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["passkeys"], {"enabled": enabled})
+                self.assertEqual(response.headers["cache-control"], "no-store")
+        with patch.dict(os.environ, {"ROLLTHEDICE_PASSKEYS_ENABLED": "0"}):
+            self.assertEqual(self.client.get("/api/auth/me").json()["passkeys"], {"enabled": False})
 
     def test_registration_rejects_missing_uv_and_duplicate_credential(self):
         self._register()

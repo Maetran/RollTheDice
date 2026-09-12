@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from typing import Any, Mapping
 from urllib.parse import urlsplit
 
+from fastapi import Request
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session as DatabaseSession
 
@@ -159,9 +160,16 @@ def validate_passkey_config() -> None:
         _webauthn()
 
 
-def passkey_public_config() -> dict[str, bool]:
-    """Small non-sensitive capability payload suitable for ``/auth/me`` later."""
-    return {"enabled": passkey_config().enabled}
+def passkey_public_config(request: Request) -> dict[str, bool]:
+    """Advertise passkeys only where the actual document can use them.
+
+    Aliases such as www may serve the password login without belonging to the
+    fixed WebAuthn origin policy. Never advertise a control that must fail its
+    Origin check there, and never expand that policy from request headers.
+    """
+    config = passkey_config()
+    request_origin = f"{request.url.scheme}://{request.url.netloc}"
+    return {"enabled": config.enabled and request_origin in config.expected_origins}
 
 
 def ceremony_cookie_settings() -> dict[str, object]:

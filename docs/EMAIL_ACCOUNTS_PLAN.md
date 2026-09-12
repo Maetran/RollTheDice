@@ -1,8 +1,14 @@
 # E-Mail-Konten: Machbarkeit und Plan
 
-Stand: 12.09.2026. **Im Branch `feature/email-accounts` implementiert, aber
-nicht aktiviert oder ausgerollt.** `ROLLTHEDICE_EMAIL_ENABLED=0` und
-`ROLLTHEDICE_PASSKEYS_ENABLED=0` halten beide Funktionen standardmäßig ausgeschaltet.
+Stand: 12.09.2026. **Passkeys und Fairplay sind für den Produktions-Rollout
+freigegeben. Der Deploy prüft die Bereitschaft vor Veröffentlichung des
+Versionshinweises. E-Mail-Funktionen bleiben
+mit `ROLLTHEDICE_EMAIL_ENABLED=0` ausgeschaltet.** Versanddienst und gewünschter
+Absender `noreply@zockdiewandan.online` werden später in Work eingerichtet.
+Beide Feature-Flags bleiben in den Konfigurationsvorlagen standardmäßig `0`;
+der ausgewählte Produktions-Rollout setzt nur `ROLLTHEDICE_PASSKEYS_ENABLED=1`.
+Der tatsächliche Deployment-Status steht im
+[Sicherheitsreview](ACCOUNT_SECURITY_REVIEW_2026-09-12.md).
 
 ## Einschätzung
 
@@ -15,10 +21,11 @@ für zusätzliche Felder und Tabellen vorhanden. Vor diesem Branch gab es keine
 E-Mail-Adresse am Konto und keinen E-Mail-Versand. Der Branch ergänzt diese
 Bausteine, ohne eine bestehende Konto-ID oder Spielzuordnung zu ändern.
 
-## Umsetzungsstand dieses Branches
+## Umsetzungsstand und gewählter Rollout
 
-Die geplante erste Ausbaustufe ist vorbereitet und bleibt bis zu einer bewussten
-Produktionsfreigabe ausgeschaltet:
+Die E-Mail-Ausbaustufe ist implementiert und bleibt bis zur späteren Einrichtung
+ausgeschaltet. Die folgenden E-Mail-Abläufe beschreiben das Verhalten nach der
+Aktivierung. Passkeys sind unabhängig davon für den aktuellen Rollout ausgewählt:
 
 - Neue Konten speichern zunächst nur eine befristete Anmeldung. Erst der
   E-Mail-Link und die eigene Passwortwahl erzeugen das Konto mit bestätigter
@@ -65,21 +72,22 @@ Freischaltung beim Versanddienst können zusätzliche Wartezeit verursachen.
 
 ## Was du selbst betreiben musst
 
-Die App verschickt automatisch ausschließlich Kontomails an die Nutzer:
+Nach der späteren E-Mail-Aktivierung verschickt die App ausschließlich Kontomails an die Nutzer:
 Adressbestätigung, angeforderter Passwort-Reset und eine kurze Bestätigung nach
 erfolgtem Reset. Keine Kopie an dich, keine Newsletter, kein persönliches
 Postfach und kein eigener Mailserver. Dafür braucht es trotzdem einen Dienst,
 der diese automatischen E-Mails tatsächlich zustellt.
 
-Als einfache erste Wahl schlage ich **Resend über die HTTP-API** vor.
-Ein Absender wie `konto@auth.zockdiewandan.online` genügt nach Verifizierung der
-Domain; diese Adresse muss kein separat eingerichtetes Postfach sein.
+Der vorbereitete Versand verwendet **Resend über die HTTP-API**.
+Gewünschter Absender ist `noreply@zockdiewandan.online`, der später in Work
+nach Verifizierung der Domain eingerichtet wird. Diese Adresse benötigt kein
+separates Postfach.
 Eingehende E-Mails werden nicht aktiviert. Technische Zustellfehler lassen sich
 beim Anbieter bzw. in der Anwendung erkennen, ohne sie an dich weiterzuleiten.
 Quellen: [Absender ohne Postfach](https://resend.com/docs/knowledge-base/how-do-i-create-an-email-address-or-sender-in-resend),
 [separates Aktivieren des Empfangs](https://resend.com/docs/dashboard/receiving/custom-domains).
 
-Die Versand-Subdomain wird mit den vom Anbieter vorgegebenen SPF-/DKIM-Einträgen
+Die Absenderdomain wird mit den vom Anbieter vorgegebenen SPF-/DKIM-Einträgen
 verifiziert; DMARC wird passend ergänzt. Das umfasst gegebenenfalls einen
 Return-Path-MX für technische Rückmeldungen und ist kein Benutzerpostfach.
 Bestehende Mail-DNS-Einträge der Hauptdomain müssen dafür nicht ersetzt werden.
@@ -148,18 +156,20 @@ Sitzungswiderruf und das Wechseln zwischen beiden Spielen. Vor Aktivierung wird
 die Absenderdomain verifiziert; beide Spiele verwenden denselben Resend-Sender.
 Das bestehende Deployment bleibt erhalten.
 
-## Activation checklist (not performed on this branch)
+## Later email activation and selected passkey rollout
 
-1. Verify a dedicated sender domain with Resend and add only the SPF/DKIM/DMARC
+1. Configure the requested `noreply@zockdiewandan.online` sender later in Work.
+   Verify its domain with Resend and add only the SPF/DKIM/DMARC
    records it supplies. Do not replace existing mail records or enable incoming
-   routing. A sender such as `konto@auth.zockdiewandan.online` needs no mailbox.
+   routing. The sender address needs no mailbox.
 2. Store a restricted Resend API key and the verified sender only in the
    production secret store. Set `ROLLTHEDICE_EMAIL_ENABLED=1` only after both
    values are present and the normal test suite has passed.
 3. Keep `ROLLTHEDICE_COOKIE_SECURE=1`, a controlled cookie domain and the two
    fixed HTTPS product origins. Test the registration and reset flow only with
    a designated test recipient, never a real player account.
-4. Enable passkeys separately with `ROLLTHEDICE_PASSKEYS_ENABLED=1`. Set the
+4. The selected production rollout enables passkeys separately with
+   `ROLLTHEDICE_PASSKEYS_ENABLED=1`, while email stays off. Set the
    RP ID exactly to the hostname of `ROLLTHEDICE_SITE_ORIGIN`; both configured
    origins must be HTTPS in production. Test registration, sign-in, removal and
    password fallback on an authenticator-backed test account.
@@ -171,11 +181,11 @@ Das bestehende Deployment bleibt erhalten.
 
 ## English summary
 
-The email and passkey implementation is prepared on `feature/email-accounts`,
-but neither feature is enabled or deployed. Email confirmation, requested
-password reset and optional confirmed email login use a Resend HTTP sender only;
-there is no personal mailbox, inbound service, operator copy or newsletter.
-Passkeys are the preferred supported-device sign-in choice, scoped to the fixed
-ZDWA WebAuthn relying party and controlled Zilch subdomain. Password sign-in
-remains available. Both features require their own explicit production flags
-and configuration review.
+The selected production rollout enables passkeys and Fairplay; the deployment
+checks readiness before publishing its release notice. Email features remain disabled. The Resend
+sending service and requested `noreply@zockdiewandan.online` sender will be
+configured later in Work. Email confirmation, password recovery and confirmed
+email login need no personal mailbox, inbound service, operator copy or
+newsletter. Passkeys are the preferred supported-device sign-in choice, scoped
+to the fixed ZDWA WebAuthn relying party and controlled Zilch subdomain. Password
+sign-in and existing username/password registration remain available.

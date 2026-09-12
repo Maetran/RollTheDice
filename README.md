@@ -177,42 +177,48 @@ Dein Profillink ändert sich und der alte Name wird frei.
 
 Administrators manage accounts and moderation.
 
-Email registration, address verification and password recovery are assessed in
-[the email account plan](docs/EMAIL_ACCOUNTS_PLAN.md). The implementation is
-prepared on the feature branch and deliberately disabled by default: enabling it
-requires a verified transactional sender and an explicit deployment setting.
-It sends only account confirmation, requested password reset and address
-confirmation messages. It has no inbox, operator copy, newsletter or personal
-mailbox requirement. New accounts become usable only after the email link and
-password setup; existing accounts can add an address in settings without
-replacing their current confirmed address first.
+The selected production release enables passkeys and public Fairplay counters.
+Deployment verification is recorded in the
+[account security review](docs/ACCOUNT_SECURITY_REVIEW_2026-09-12.md).
+Email registration, address verification and password recovery remain
+implemented but disabled; see [the email account plan](docs/EMAIL_ACCOUNTS_PLAN.md).
+The sending service and `noreply@zockdiewandan.online` sender will be configured
+later in Work. Once enabled, the service sends only account/address
+confirmations, requested password resets and the confirmation after a reset.
+It has no inbox, operator copy, newsletter or personal mailbox requirement.
+Email registration will create a usable account only after the email link and
+password setup; existing accounts will be able to add an address in settings.
 
-Passkeys are prepared as the preferred sign-in choice on devices that support
-them. They use the fixed ZDWA origin as the WebAuthn relying party and work
+Passkeys are the preferred sign-in choice on devices that support them in the
+selected release. They use the fixed ZDWA origin as the WebAuthn relying party and work
 across ZDWA and the controlled Zilch subdomain. The server stores public
 credential material only; passwords remain a fallback. Passkeys can be added,
-named and removed from account settings once the separately disabled feature is
-enabled.
+named and removed from account settings.
 
 While email registration is disabled, the existing username/password sign-up
-continues to work. Password recovery signs out every device and removes existing
-passkeys; enroll them again after signing in. An ordinary password change keeps
-your passkeys.
+continues to work. Once email recovery is enabled, a reset signs out every
+device and removes existing passkeys; enroll them again after signing in.
+An ordinary password change keeps your passkeys.
 
-**Deutsch:** Die E-Mail-Registrierung, Adressbestätigung und Passwort-Rücksetzung
-sind im Feature-Branch vorbereitet, aber standardmäßig ausgeschaltet. Nach einer
-bewussten Aktivierung versendet die Anwendung nur Konto-Bestätigungen,
-angeforderte Passwort-Resets und Adressbestätigungen. Es gibt kein Postfach,
-keine Kopie an die Administration und keinen Newsletter. Neue Konten entstehen
-erst nach dem Link und der Passwortwahl; bestehende Konten können eine Adresse
-in den Einstellungen ergänzen. Passkeys sind als bevorzugte Anmeldung auf
-unterstützten Geräten vorbereitet und gelten für ZDWA sowie die kontrollierte
-Zilch-Subdomain. Der Server speichert nur öffentliche Credential-Daten,
-Passwörter bleiben die Rückfall-Anmeldung.
+**Deutsch:** Für den ausgewählten Produktions-Rollout sind Passkeys und
+öffentliche Fairplay-Zähler vorgesehen; die Deployment-Prüfung steht im
+[Sicherheitsreview](docs/ACCOUNT_SECURITY_REVIEW_2026-09-12.md). Die
+E-Mail-Registrierung, Adressbestätigung und Passwort-Rücksetzung bleiben
+implementiert, aber ausgeschaltet. Versanddienst und Absender
+`noreply@zockdiewandan.online` werden später in Work eingerichtet. Nach einer
+bewussten Aktivierung versendet die Anwendung nur Konto-/Adressbestätigungen,
+angeforderte Passwort-Resets und die Bestätigung nach einem Reset. Es gibt kein
+Postfach, keine Kopie an die Administration und keinen Newsletter. Bei der
+späteren E-Mail-Registrierung entstehen Konten erst nach Link und Passwortwahl;
+bestehende Konten können dann eine Adresse in den Einstellungen ergänzen.
+Passkeys sind im ausgewählten Release die bevorzugte Anmeldung auf unterstützten
+Geräten und gelten für ZDWA sowie die kontrollierte Zilch-Subdomain. Der Server
+speichert nur öffentliche Credential-Daten, Passwörter bleiben eine Alternative.
 Solange E-Mail-Registrierung ausgeschaltet ist, bleibt die bisherige Anmeldung
-eines neuen Kontos mit Benutzername und Passwort verfügbar. Ein Passwort-Reset
-meldet alle Geräte ab und entfernt bisherige Passkeys; danach lassen sie sich
-neu hinzufügen. Ein normaler Passwortwechsel behält die Passkeys.
+eines neuen Kontos mit Benutzername und Passwort verfügbar. Sobald E-Mail-Recovery
+aktiviert wird, meldet ein Passwort-Reset alle Geräte ab und entfernt bisherige
+Passkeys; danach lassen sie sich neu hinzufügen. Ein normaler Passwortwechsel
+behält die Passkeys.
 
 The public Zilch lobby paints its heading directly from HTML and shows its
 controls without waiting for the account check. Creating a game, account data

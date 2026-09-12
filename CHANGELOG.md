@@ -11,26 +11,42 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
-## Unveröffentlicht / Unreleased — Kontozugang und Fairplay
+## Passkeys und Fairplay / Passkeys and fair play — 2026-09-12
 
-- **Deutsch:** Im Feature-Branch vorbereitet: E-Mail-Registrierung mit
-  Bestätigungslink, bestätigte Kontoadressen und Passwort-Reset sowie Passkeys
-  als bevorzugte Anmeldung in beiden Spielen. Passwort-Anmeldung bleibt
-  verfügbar. Passwort-Recovery meldet alle Geräte ab und entfernt bisherige
-  Passkeys. Beide neuen Anmeldefunktionen bleiben standardmäßig ausgeschaltet.
-  Öffentliche Profile zählen ausdrücklich selbst abgebrochene gestartete
-  Partien je Spiel; Timeouts und Abbrüche durch Mitspieler zählen nicht.
-  Sechs neue ZDWA-Fairplay-Hinweise für Solo und Mehrspieler vergeben null
-  Rangpunkte. Kein Rollout und kein Versions-Push.
-- **English:** Prepared on the feature branch: email registration with a
-  confirmation link, verified account addresses, password recovery, and
-  passkeys as the preferred sign-in choice in both games. Password sign-in
-  remains available. Password recovery signs out all devices and removes
-  existing passkeys. Both new sign-in features remain disabled by default.
-  Public profiles count started games deliberately ended by that account,
-  separately for each game; timeouts and opponents' aborts do not count.
-  Six new ZDWA Fairplay reminders for Solo and multiplayer award zero rank
-  points. No rollout or release push.
+- **Deutsch:** Passkeys werden zur bevorzugten Anmeldung in ZDWA und Zilch.
+  In den Kontoeinstellungen lassen sie sich hinzufügen, benennen und entfernen;
+  die Passwort-Anmeldung bleibt verfügbar. Öffentliche Profile zählen selbst
+  ausdrücklich abgebrochene gestartete Partien getrennt je Spiel. Timeouts,
+  Verbindungsabbrüche, abgesagte Warteräume und Abbrüche durch Mitspieler zählen
+  nicht. Sechs ZDWA-Fairplay-Hinweise bei 1, 5 und 10 Abbrüchen erinnern getrennt
+  für Solo und Mehrspieler ans Fertigspielen und vergeben null Rangpunkte.
+  Alte private Solo-Historie wird nicht nachträglich umgedeutet. Der ausgewählte
+  Rollout aktiviert Passkeys und Fairplay; E-Mail-Funktionen bleiben aus.
+- **English:** Passkeys become the preferred sign-in choice in ZDWA and Zilch.
+  Add, name and remove them in account settings; password sign-in remains
+  available. Public profiles count started games explicitly ended early by
+  that account, separately for each game. Timeouts, disconnections, cancelled
+  waiting rooms and games ended by opponents do not count. Six ZDWA Fairplay
+  reminders at 1, 5 and 10 early endings encourage finishing, separately for
+  Solo and multiplayer, with zero rank points. Earlier private Solo history
+  is not reclassified. The selected rollout enables passkeys and Fairplay;
+  email features remain off.
+- **Prüfung / Review:** [Account security and Fairplay review](docs/ACCOUNT_SECURITY_REVIEW_2026-09-12.md).
+
+## Unveröffentlicht / Unreleased — E-Mail-Konten / Email accounts
+
+- **Deutsch:** E-Mail-Registrierung mit Bestätigungslink, bestätigte
+  Kontoadressen und Passwort-Reset sind implementiert, bleiben aber deaktiviert.
+  Versanddienst und Absender `noreply@zockdiewandan.online` werden später in
+  Work eingerichtet. Bis dahin bleibt die Registrierung mit Benutzername und
+  Passwort nutzbar. Die spätere E-Mail-Recovery meldet alle Geräte ab und
+  entfernt bisherige Passkeys; ein normaler Passwortwechsel behält sie.
+- **English:** Email registration with a confirmation link, verified account
+  addresses and password recovery are implemented but remain disabled. The
+  sending service and `noreply@zockdiewandan.online` sender will be configured
+  later in Work. Username/password registration remains available meanwhile.
+  Future email recovery signs out all devices and removes existing passkeys;
+  an ordinary password change keeps them.
 
 ## Stille Korrektur / Silent fix — Aktuelle Namen in früheren Partien — 2026-09-12
 

@@ -2,8 +2,24 @@
 
 Scope: `feature/email-accounts`, including email registration/recovery, shared
 ZDWA/Zilch passkeys, public manual-abort counters and six ZDWA Fairplay
-achievements. This is branch preparation; no deployment, domain configuration,
-provider activation, real account mail or release push was performed.
+achievements. The review phase performed no deployment, domain configuration,
+provider activation, real account mail or release push.
+
+## Selected release and deployment verification
+
+The user has authorized merging to `master` and a production release of
+passkeys plus Fairplay. The guarded deployment records its successful revision
+in the server's private `rollthedice-last-deployed` Git marker after the health
+check and release publication. The selected
+production configuration enables `ROLLTHEDICE_PASSKEYS_ENABLED=1` and keeps
+`ROLLTHEDICE_EMAIL_ENABLED=0`. The DE/EN release notice covers only passkeys,
+manual-abort counters and the six zero-point ZDWA reminders.
+
+Email sender/provider setup remains later work in Work, using the requested
+`noreply@zockdiewandan.online` sender. No email activation is part of this
+release. The existing password login and username/password registration remain
+available. Passkeys use only the configured canonical ZDWA and Zilch origins;
+unsupported aliases keep the password alternative.
 
 ## Findings resolved
 
@@ -51,9 +67,10 @@ cases** verified across the full and focused runs.
   test recipient remain activation work.
 - Browser passkeys are exercised with Chromium's virtual authenticator.
   Hardware/device and production HTTPS/cookie checks remain part of activation.
-- Email and passkey feature flags default to off. Release notes must match the
-  features selected for a later rollout; this branch only adds an Unreleased
-  changelog entry. No test proves the absence of every possible vulnerability.
+- Email and passkey feature flags default to off in configuration templates.
+  This selected deployment explicitly enables passkeys only; email remains
+  off. Release notes describe passkeys/Fairplay, while the email changes stay
+  under Unreleased. No test proves the absence of every possible vulnerability.
 
 ## Deutsch
 
@@ -61,6 +78,11 @@ Die Prüfung hat konkrete Fehler bei Token-Einmalverbrauch, paralleler Recovery,
 unbestätigten Namensreservierungen, Übersetzungen und Abbruchzuordnung behoben.
 Es zählen ausschließlich ausdrücklich selbst abgebrochene gestartete Partien;
 Timeouts und Verbindungsverlust bleiben ungezählt. Die sechs neuen
-ZDWA-Fairplay-Hinweise vergeben null Rangpunkte. Beide Kontofunktionen sind
-standardmäßig ausgeschaltet und wurden nicht ausgerollt. Reale Zustellung und
-Gerätetests gehören zur späteren Aktivierung.
+ZDWA-Fairplay-Hinweise vergeben null Rangpunkte. Der Nutzer hat den Merge nach
+`master` und den Produktions-Rollout von Passkeys und Fairplay freigegeben;
+der Deploy prüft die Bereitschaft vor Veröffentlichung des Versionshinweises.
+E-Mail bleibt ausgeschaltet. Der
+Versanddienst und der gewünschte Absender `noreply@zockdiewandan.online` werden
+später in Work eingerichtet. Reale E-Mail-Zustellung gehört zu dieser späteren
+Aktivierung; Geräte- und Produktionsprüfungen für Passkeys gehören zum
+ausgewählten Rollout.

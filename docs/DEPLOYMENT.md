@@ -853,27 +853,30 @@ curl -fsS https://zockdiewandan.online/api/auth/registration-config
 Die produktive Antwort muss bei aktivem Schutz
 `"turnstile_enabled":true` enthalten und darf nur den Site Key offenlegen.
 
-## E-Mail-Konten und Passkeys (vorbereitet, standardmäßig aus)
+## E-Mail-Konten und Passkeys
 
-Der Branch enthält E-Mail-Registrierung, Adressbestätigung, angeforderten
-Passwort-Reset und WebAuthn-Passkeys, aktiviert aber nichts automatisch. Die
-folgenden Werte bleiben bis zu einer bewusst geplanten Freigabe auf `0` bzw.
-leer:
+Der Code enthält E-Mail-Registrierung, Adressbestätigung, angeforderten
+Passwort-Reset und WebAuthn-Passkeys. Die Konfigurationsvorlagen aktivieren
+nichts automatisch. Für den freigegebenen Passkey-/Fairplay-Rollout vom
+12.09.2026 ist die folgende Produktionskonfiguration ausgewählt; die
+Deployment-Bestätigung steht im
+[Sicherheitsreview](ACCOUNT_SECURITY_REVIEW_2026-09-12.md):
 
 ```dotenv
 ROLLTHEDICE_EMAIL_ENABLED=0
 ROLLTHEDICE_RESEND_API_KEY=
 ROLLTHEDICE_EMAIL_FROM=
-ROLLTHEDICE_PASSKEYS_ENABLED=0
+ROLLTHEDICE_PASSKEYS_ENABLED=1
 ROLLTHEDICE_WEBAUTHN_RP_ID=zockdiewandan.online
 ROLLTHEDICE_WEBAUTHN_RP_NAME=Zock die Wand an
 ```
 
 Für eine spätere E-Mail-Aktivierung wird eine bei Resend verifizierte
 Absenderdomain mit dessen SPF-/DKIM- und passender DMARC-Konfiguration benötigt.
-`ROLLTHEDICE_EMAIL_FROM` ist nur ein Transaktions-Absender, etwa
-`konto@auth.zockdiewandan.online`; dafür wird kein Postfach, Empfang, Weiterleitung
-oder Betreiber-CC eingerichtet. Der API-Key gehört ausschließlich in das
+Der gewünschte Transaktions-Absender `noreply@zockdiewandan.online` wird später
+in Work eingerichtet und dann als `ROLLTHEDICE_EMAIL_FROM` gesetzt; dafür wird
+kein Postfach, Empfang, Weiterleitung oder Betreiber-CC eingerichtet.
+E-Mail bleibt bis dahin ausgeschaltet. Der API-Key gehört ausschließlich in das
 Produktions-Secret. Die Anwendung versendet nur Bestätigungen und angeforderte
 Passwort-Resets.
 

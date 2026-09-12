@@ -4,21 +4,27 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Dein neuer Benutzername erscheint jetzt auch in abgeschlossenen Partien und Bestenlisten – sicher deinem Konto zugeordnet.",
-  "summary_en": "Your new username now appears in completed games and leaderboards, safely linked to your account.",
+  "summary_de": "Melde dich mit Passkey an. Profile zeigen selbst abgebrochene Partien; neue ZDWA-Fairplay-Hinweise erinnern ans Fertigspielen.",
+  "summary_en": "Sign in with a passkey. Profiles show games you ended early, with new zero-point ZDWA fair play reminders.",
   "player_notes": {
     "de": {
-      "title": "Dein neuer Name auch in früheren Partien",
+      "title": "Passkeys und Fairplay",
       "changes": [
-        "Abgeschlossene Partien, Spielhistorie und Bestenlisten zeigen deinen aktuellen Kontonamen.",
-        "Übernimmt jemand deinen alten Namen, bleiben frühere Partien weiterhin deinem Konto zugeordnet. Gastnamen und Nachrichtentexte bleiben unverändert."
+        "Richte unter Konto → Einstellungen einen Passkey ein und melde dich in ZDWA und Zilch per Fingerabdruck, Gesichtserkennung oder Geräte-PIN an. Dein Passwort bleibt als Alternative verfügbar.",
+        "Öffentliche Profile zeigen getrennt für ZDWA und Zilch, wie viele bereits gestartete Partien du selbst ausdrücklich abgebrochen hast.",
+        "Timeouts, Verbindungsabbrüche, abgesagte Warteräume und Abbrüche durch Mitspieler zählen nicht gegen dich.",
+        "Sechs neue ZDWA-Fairplay-Hinweise erinnern nach 1, 5 und 10 eigenen Abbrüchen ans Fertigspielen – getrennt für Solo und Mehrspieler, mit null Rangpunkten.",
+        "Die neuen Abbruchzähler beginnen mit dieser Version. Alte Partien werden nicht nachträglich als Abbruch gewertet."
       ]
     },
     "en": {
-      "title": "Your new name in earlier games too",
+      "title": "Passkeys and fair play",
       "changes": [
-        "Completed games, game history and leaderboards show your current account name.",
-        "If someone takes your old name, earlier games still belong to your account. Guest names and message text stay unchanged."
+        "Set up a passkey under Account → Settings, then sign in to ZDWA and Zilch with your fingerprint, face or device PIN. Your password remains available as an alternative.",
+        "Public profiles show how many started games you explicitly ended early yourself, separately for ZDWA and Zilch.",
+        "Timeouts, disconnections, cancelled waiting rooms and games ended by opponents do not count against you.",
+        "Six new ZDWA fair play reminders encourage finishing after 1, 5 and 10 games ended early – separately for Solo and multiplayer, with zero rank points.",
+        "The new abandonment counters start with this version. Older games are not retrospectively counted as abandoned."
       ]
     }
   }
