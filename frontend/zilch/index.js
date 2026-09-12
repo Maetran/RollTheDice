@@ -1125,6 +1125,7 @@ async function renderLobby({ authReady = null } = {}) {
       <p class="eyebrow">${escapeHtml(t("Online würfeln"))}</p>
       <h1>${escapeHtml(t("Zilch die Wand an – Würfelspiel online"))}</h1>
       <p>${escapeHtml(t("Such dir einen Platz am Tisch aus: Solo, gegen den Würfelwirt oder zu zweit. Mit sechs Würfeln sammelst du Punkte, sicherst sie rechtzeitig und jagst die 10’000."))}</p>
+      <p class="zilch-intro-help"><span>${escapeHtml(t("Direkt im Browser, auch als Gast ohne Anmeldung."))}</span> <a href="${zilchPath("/regeln")}" data-zilch-path="/regeln">${escapeHtml(t("Zilch-Regeln und Punktetabelle"))}</a></p>
     </section>
     <section class="zilch-lobby-identity" aria-label="${escapeHtml(`${t("Du spielst als")} ${username}`)}">
       <span class="eyebrow">${escapeHtml(t("Du spielst als"))}</span>
@@ -3260,14 +3261,18 @@ function renderRulesContent(facts) {
 
 async function renderRules() {
   if (!content) return;
-  document.title = t("Zilch die Wand an – Spielregeln");
-  renderNotice("Zilch-Regeln werden geladen …");
+  document.title = t("Zilch-Regeln und Punktetabelle – Zilch die Wand an");
+  // Public rules are already useful before JavaScript or the rules API loads.
+  // Keep that identical core guidance readable when a crawler cannot fetch
+  // /api/ or a visitor temporarily loses their connection.
+  const publicSummary = content.querySelector("[data-zilch-rules-summary]");
+  if (!publicSummary) renderNotice("Zilch-Regeln werden geladen …");
   try {
     state.rules = await fetchZilchRules();
     if (!state.rules) throw new Error("zilch_rules_unavailable");
     content.innerHTML = renderRulesContent(state.rules);
   } catch (_) {
-    renderNotice("Zilch-Regeln sind derzeit nicht verfügbar.", { kind: "error" });
+    if (!publicSummary) renderNotice("Zilch-Regeln sind derzeit nicht verfügbar.", { kind: "error" });
   }
 }
 

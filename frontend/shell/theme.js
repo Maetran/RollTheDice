@@ -7,7 +7,7 @@
   const DARK_COLOR = "#0b1120";
   const LIGHT_COLOR = "#f4f6f8";
   const CLASSIC_COLOR = "#31583a";
-  const ZILCH_COLOR = "#542d16";
+  const ZILCH_COLOR = "#2d261f";
   const LCARS_COLOR = "#000000";
   const media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   const themeUi = isZilch

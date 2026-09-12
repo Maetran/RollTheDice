@@ -5,6 +5,7 @@
 @import "./avatar.css";
 @import "./friend-activity.css";
 @import "./release-notes.css";
+@import "./zilch-classic.css";
 
 html[data-game="zilch"],
 html[data-theme="dark"][data-game="zilch"] {

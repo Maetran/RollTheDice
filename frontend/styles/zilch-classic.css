@@ -1,0 +1,353 @@
+/* Classic remaster: walnut, natural paper and brushed brass. This layer is
+   presentation only: room measurements, input states and motion stay in the
+   game stylesheet. LCARS never matches these selectors. */
+html[data-game="zilch"]:not([data-theme="lcars"]) {
+  background: #2d261f;
+  --zilch-ink: #302b25;
+  --zilch-muted: #6c6256;
+  --zilch-ink-soft: #51483d;
+  --zilch-wood-dark: #241f1b;
+  --zilch-wood: #44372c;
+  --zilch-wood-light: #897056;
+  --zilch-wood-glow: #c5a46d;
+  --zilch-paper: #f6f2e9;
+  --zilch-paper-soft: #fffcf6;
+  --zilch-paper-edge: #d6cbbb;
+  --zilch-blue: #725030;
+  --zilch-blue-strong: #50361f;
+  --zilch-blue-soft: #ece2cf;
+  --zilch-gold: #d3b987;
+  --zilch-glow: #d3b987;
+  --zilch-focus: #805b2f;
+  --zilch-focus-ring: #805b2f;
+  --zilch-shadow-soft: 0 2px 5px #17120d18;
+  --zilch-shadow-card: 0 2px 5px #17120d14, 0 8px 24px #17120d1a;
+  --zilch-classic-font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --zilch-classic-table:
+    linear-gradient(105deg, #241f1bca, #3a3027b5 52%, #241f1bd4),
+    url("/static/zilch-wood-table-v1.jpg");
+  --bg: #44372c;
+  --surface: #f6f2e9;
+  --surface-soft: #fffcf6;
+  --card: #f6f2e9;
+  --text: #302b25;
+  --border: #d6cbbb;
+  --border-strong: #897056;
+  --muted: #6c6256;
+  --accent: #725030;
+  --accent-strong: #50361f;
+  --table-head: #ece5d8;
+}
+
+html[data-game="zilch"]:not([data-theme="lcars"]) body {
+  font-family: var(--zilch-classic-font);
+  background-color: #332920;
+  background-image: var(--zilch-classic-table);
+  /* A regular grain scale avoids stretching the planks on a long lobby or
+     rules page. Keep the existing scrolling/content-box PWA safety model. */
+  background-size: auto, 1024px 1024px;
+  background-repeat: no-repeat, repeat;
+  background-position: center top;
+}
+
+@media (display-mode: standalone) {
+  html[data-game="zilch"]:not([data-theme="lcars"]) body { background-image: none; }
+  html[data-game="zilch"]:not([data-theme="lcars"]) body::before {
+    background-color: #332920;
+    background-image: var(--zilch-classic-table);
+    background-size: auto, 1024px 1024px;
+    background-repeat: no-repeat, repeat;
+    background-position: center top;
+  }
+  /* The dedicated login has its own shell. Keep its brand and theme tool
+     above the same document-bound wood layer as every other Classic page. */
+  html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-login-shell {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-header {
+  color: #f6efe2;
+  border-bottom-color: #cfb58a38;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-brand {
+  font-family: var(--zilch-classic-font);
+  font-weight: 650;
+  letter-spacing: -.025em;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-brand-mark {
+  color: #33271b;
+  background: #d3b987;
+  border-color: #e4cfaa;
+  box-shadow: 0 2px 5px #0002;
+  font-family: Georgia, serif;
+  font-weight: 700;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-nav-list, .zilch-header-tools) :is(a, button, select) {
+  font-family: var(--zilch-classic-font);
+  font-weight: 600;
+  text-shadow: none;
+  box-shadow: none;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-nav-list :is(a, button) {
+  border-color: transparent;
+  color: #f6efe2;
+  background: transparent;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-nav-list :is([aria-current="page"], .is-active, .zilch-nav-link--active) {
+  color: #f8edd8;
+  border-color: #cdb08466;
+  background: #e4c8991a;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-nav-list :is(a, button):hover {
+  color: #fff8eb;
+  background: #e4c89926;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-header-tools :is(.game-switch, .language-switcher select, .theme-toggle) {
+  color: #f6efe2;
+  border-color: #cfb58a55;
+  background: #29231e;
+}
+
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-intro, .zilch-rules-head, .zilch-account-head, .zilch-leaderboards-head, .zilch-result-head, .zilch-achievements-head) h1 {
+  color: #faf4e8;
+  text-shadow: none;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: -.035em;
+  line-height: 1.12;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro--lobby {
+  padding-block: .7rem .5rem;
+  margin-bottom: 1.1rem;
+  max-width: 880px;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro--lobby h1 {
+  font-size: clamp(1.85rem, 3.5vw, 2.9rem);
+  margin-block: .4rem .6rem;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro > p:not(.eyebrow) {
+  color: #e5dacc;
+  line-height: 1.6;
+  max-width: 67ch;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro a { color: #e3cda5; text-underline-offset: .2em; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro a:hover { color: #fff5df; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .eyebrow {
+  font-family: var(--zilch-classic-font);
+  font-weight: 650;
+  letter-spacing: .13em;
+}
+
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-card, .zilch-board, .lobby-chat, .zilch-lobby-leaderboard-box) {
+  color: var(--zilch-ink);
+  border-color: var(--zilch-paper-edge);
+  background: var(--zilch-paper);
+  box-shadow: var(--zilch-shadow-card);
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-card, .zilch-table)::before { content: none; }
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-card, .lobby-chat, .zilch-lobby-leaderboard-box) .eyebrow {
+  color: #78603d;
+  text-shadow: none;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-card, .lobby-chat, .zilch-lobby-leaderboard-box) :is(h2, h3) {
+  font-family: var(--zilch-classic-font);
+  font-weight: 650;
+  letter-spacing: -.025em;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell:not(.zilch-shell--game) :is(.zilch-create-card, .zilch-lobby-section, .lobby-chat, .zilch-lobby-leaderboard-box) {
+  padding: clamp(1rem, 2.2vw, 1.4rem);
+  border-radius: .8rem;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell:not(.zilch-shell--game) :is(button, input, select, textarea) {
+  font-family: var(--zilch-classic-font);
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-lobby-identity {
+  color: #f4ecdd;
+  background: #2b251fcf;
+  border-color: #c6b19445;
+  box-shadow: none;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-lobby-identity :is(.eyebrow, strong, button, a) {
+  color: #eee2ce;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-lobby-identity :is(button, a) {
+  border-color: #c6b19466;
+  background: transparent;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-create-card > h2 {
+  margin-bottom: .85rem;
+  font-size: 1.1rem;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-mode-choice, .zilch-cpu-strategy) legend {
+  margin-bottom: .35rem;
+  padding-left: 0;
+  color: var(--zilch-muted);
+  font-size: .8rem;
+  font-weight: 550;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-mode-option, .zilch-strategy-card) {
+  min-height: 3rem;
+  color: var(--zilch-ink);
+  border-color: #c9bda9;
+  background: #fffcf6;
+  border-radius: .55rem;
+  box-shadow: none;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-mode-option, .zilch-strategy-card) strong {
+  font-family: var(--zilch-classic-font);
+  font-size: clamp(.74rem, 2.8vw, .94rem);
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-mode-option.is-selected, .zilch-mode-option:has(input:checked), .zilch-strategy-card:has(input:checked)) {
+  color: #342e22;
+  border-color: #8a7048;
+  background: #e9dfcb;
+  box-shadow: inset 0 -2px #8a7048;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-mode-option, .zilch-strategy-card):hover {
+  border-color: #8a7048;
+  background: #eee7d9;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-solo-create-objective {
+  margin-top: .15rem;
+  border: 0;
+  border-left: 2px solid #b79b6b;
+  border-radius: 0;
+  background: transparent;
+  padding: .4rem .65rem;
+  flex-wrap: wrap;
+  gap: .25rem .55rem;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-solo-create-objective strong { font-size: .85rem; font-weight: 600; }
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-create-submit, .zilch-lobby-action) {
+  border-radius: .55rem;
+  font-weight: 600;
+  box-shadow: 0 2px 5px #3d29191a;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-header-action, .zilch-lobby-ranking-action, .zilch-account-tab.is-active) {
+  color: #32291e;
+  background: #d3b987;
+  border-color: #d3b987;
+  box-shadow: none;
+  text-shadow: none;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-header-action, .zilch-lobby-ranking-action):hover {
+  color: #32291e;
+  background: #e3cda5;
+  border-color: #e3cda5;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-lobby-ranking { border-color: #cfb58a38; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-lobby-ranking h2 { font-family: var(--zilch-classic-font); font-weight: 600; text-shadow: none; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .lobby-chat__feed { background: #fffcf6; border-color: var(--zilch-paper-edge); }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-login-actions .secondary {
+  color: #fff9ed;
+  border-color: #725030;
+  background: #725030;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-login-actions .secondary:hover {
+  border-color: #50361f;
+  background: #50361f;
+}
+
+/* Keep a real score sheet, but remove the multiple yellow bevels. */
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game :is(.zilch-score-notebook, .zilch-notebook-player) {
+  color: #302b25;
+  border-color: #c8bba6;
+  background-color: #f6f2e9;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-score-notebook { box-shadow: 0 4px 12px #17120d30; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-notebook-player {
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0 1.82rem, #6b8ca333 1.82rem calc(1.82rem + 1px)),
+    linear-gradient(90deg, transparent 0 1rem, #a66f5e40 1rem calc(1rem + 1px), transparent calc(1rem + 1px));
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-play-layout__notebook::before {
+  background: #d9cebb;
+  border-color: #b0a18b;
+  box-shadow: 0 3px 8px #17120d30;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-play-layout__notebook::after { background: #ebe3d4; border-color: #c2b6a2; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-notebook-entry__divider { background: #8f7e6259; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-recommendation {
+  color: #302b25;
+  background: #f6f2e9;
+  border-color: #c9bca5;
+  box-shadow: 0 2px 4px #17120d20;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-recommendation strong { color: #644827; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-recommendation.is-high-value:not(.is-selected) {
+  background: #e9dfcb;
+  border-color: #b69a68;
+  box-shadow: inset 3px 0 #b69a68;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game :is(.zilch-recommendation.is-selected, .zilch-combined-score.is-selected) {
+  color: #fff9ed;
+  background: #58432c;
+  border-color: #d5b77f;
+  box-shadow: inset 0 0 0 1px #d5b77f;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game :is(.zilch-recommendation.is-selected, .zilch-combined-score.is-selected) > :is(strong, span) { color: #fff9ed; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game :is(.zilch-turn-score, .zilch-combined-score) {
+  color: #302b25;
+  border-color: #b69a68;
+  background: #e9dfcb;
+  box-shadow: none;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-turn-score > :is(span, strong, small) { color: #51402a; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-dice-dock .zilch-table {
+  color: #f6efe2;
+  background: #29251f;
+  border-color: #a68c635e;
+  box-shadow: 0 -4px 20px #17120d45;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-die {
+  border-color: #bca77e88;
+  background: linear-gradient(145deg, #514637, #2b241e);
+  box-shadow: inset 0 1px #e8d9ba33, 0 2px 0 #17130f, 0 5px 8px #17120d45;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-die__body {
+  fill: #3a3025;
+  stroke: #bba17a;
+  stroke-width: 2;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-die__pips { fill: #f8eedb; stroke: none; filter: none; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-die__highlight { stroke: #f1dfbf44; stroke-width: 2; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-die__shade { stroke: #17120d77; stroke-width: 2; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-die--selected { border-color: #f4d299; box-shadow: 0 0 0 3px #d3b987, 0 5px 8px #17120d45; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game :is(.zilch-die--held, .zilch-die--unavailable)::after { background: #d3b987; border-color: #8a7048; box-shadow: none; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-action-card--roll.is-roll-ready {
+  color: #32291e;
+  background: #d3b987;
+  border-color: #e3cda5;
+  box-shadow: none;
+  animation: none;
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-action-card--bank { color: #f6efe2; background: #3b352c; border-color: #9d8b6c; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-chat { background: #29251f; border-color: #a68c635e; }
+
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-page :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #805b2f;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px #fff8e8;
+}
+
+@media (max-width: 760px) {
+  html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell:not(.zilch-shell--game) .zilch-nav-list a {
+    font-weight: 600;
+    background: #e4c8990e;
+    border-color: #cfb58a38;
+  }
+  html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell:not(.zilch-shell--game) .zilch-nav-list a[aria-current="page"] {
+    color: #f8edd8;
+    border-color: #cdb08499;
+    background: #e4c89926;
+  }
+  html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-mode-option { min-height: 3.55rem; padding-inline: .25rem; }
+  html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro--lobby { padding-top: .45rem; }
+}

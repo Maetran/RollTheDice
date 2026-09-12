@@ -449,6 +449,40 @@ The private, one-way list is shared across games and devices and affects only
 player invitations. It is the foundation for a future friendlist; mutual friend
 requests and public friendship profiles are not implemented.
 
+### Zilch Classic
+
+Classic keeps the tavern table, score notebook, dice and familiar wording.
+The remaster uses restrained walnut tones, natural paper and matte brass
+accents, with clearer type, fewer bevels and quieter shadows. Mode labels fit
+narrow phones without splitting words. Scoring choices, dice states, shortcuts
+and room layout retain their behavior. The LCARS theme remains independent.
+The installed app's solid system canvas matches Classic's walnut palette;
+its scrolling wood layer preserves the existing iOS safe-area handling.
+
+**Deutsch:** Classic behält Wirtshaustisch, Notizblock, Würfel und vertraute
+Begriffe. Das Remaster bringt ruhigere Nussbaumtöne, Naturpapier und matte
+Messingakzente, klarere Schrift und weniger Glanz- und Schatteneffekte.
+Spielartnamen passen auch auf schmale Handys ohne zerrissene Wörter.
+Wertung, Würfelzustände, Tastenkürzel und Spielaufteilung funktionieren wie
+bisher. LCARS bleibt eigenständig; auch der Systemrand der installierten App
+passt zur neuen Holzpalette.
+
+Zilch's public lobby and rules page have host-specific canonicals and a
+sitemap. The rules include core gameplay and the scoring table in the initial
+HTML, and remain readable if the rules API is unavailable. Public product
+icons are discoverable; private game and account pages stay noindex.
+There is one canonical German page per route; the English interface is a
+client-side preference, not a separate indexed language URL.
+
+**Deutsch:** Lobby und Regeln haben eigene Canonicals und eine Sitemap für
+die Zilch-Domain. Kernregeln und Punktetabelle stehen bereits im HTML und
+bleiben auch bei einer gestörten Regeln-API lesbar. Öffentliche Produkticons
+sind auffindbar; persönliche Spiel- und Kontoseiten bleiben ausgeschlossen.
+Pro Route gibt es eine kanonische deutsche Seite. Die englische Oberfläche
+ist eine Spracheinstellung, keine eigene indexierte Sprachadresse.
+
+Details: [Zilch SEO review](docs/ZILCH_SEO_REVIEW_2026-09-12.md).
+
 ### Zilch recommendation tiles
 
 Quick-hold tiles have 56px minimum touch targets (about 27% larger), clearer

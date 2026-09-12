@@ -7,6 +7,16 @@ from dataclasses import dataclass
 SITE_ORIGIN = "https://zockdiewandan.online"
 ZILCH_ORIGIN = "https://zilch.zockdiewandan.online"
 
+# Public product artwork can appear in search/site-name previews. Keep this
+# explicit: user uploads, app shells and API responses retain their noindex.
+PUBLIC_ZILCH_IMAGE_PATHS = frozenset({
+    "/favicon.ico",
+    "/static/icons/zilch-icon-32.png",
+    "/static/icons/zilch-icon-192.png",
+    "/static/icons/zilch-icon-512.png",
+    "/static/icons/zilch-apple-touch-icon-180.png",
+})
+
 
 @dataclass(frozen=True)
 class PublicSeoPage:

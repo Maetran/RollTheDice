@@ -2456,6 +2456,8 @@ test("Space uses the enabled start roll first and otherwise the current roll act
             .split(",")
             .every(value => value.trim() === "content-box"),
           rootBackground: getComputedStyle(document.documentElement).backgroundColor,
+          rootBackgroundImage: getComputedStyle(document.documentElement).backgroundImage,
+          themeColor: document.querySelector('meta[name="theme-color"]')?.content || "",
           viewport: document.querySelector('meta[name="viewport"]')?.getAttribute("content") || "",
         };
       });
@@ -2468,7 +2470,10 @@ test("Space uses the enabled start roll first and otherwise the current roll act
       expect(geometry.bodyUsesOnlyScrollAttachments, "the PWA does not use a blurry fixed wood bitmap").toBe(true);
       expect(geometry.bodyBackgroundOrigin, "the wood begins below the PWA safe-top content edge").toBe(true);
       expect(geometry.bodyBackgroundClip, "the PWA status-bar canvas stays outside the wood bitmap").toBe(true);
-      expect(geometry.rootBackground, "the PWA status-bar canvas stays a crisp solid surface").toBe("rgb(84, 45, 22)");
+      expect(geometry.themeColor).toMatch(/^#[a-f\d]{6}$/i);
+      const themeChannels = geometry.themeColor.slice(1).match(/.{2}/g).map(channel => parseInt(channel, 16));
+      expect(geometry.rootBackground, "the solid PWA canvas matches the current system-bar theme").toBe(`rgb(${themeChannels.join(", ")})`);
+      expect(geometry.rootBackgroundImage, "the status-bar canvas remains free of bitmaps").toBe("none");
       expect(geometry.viewport).toContain("viewport-fit=cover");
     });
 

@@ -1,5 +1,6 @@
 const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
 const { test, expect } = require("@playwright/test");
+const { expectTextContrast } = require("./contrast");
 
 async function openAccountSection(page, section) {
   const details = page.locator(`details[data-account-section="${section}"]`);
@@ -186,7 +187,7 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await expect(page.locator("[data-zilch-root]")).toBeVisible();
   await expect(page.getByText(/Alles Wichtige für deine nächste Partie|Everything important for your next game/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: /^Zilch(?:-| )(?:Regeln|rules)$/i })).toBeVisible();
-  await expect(page.locator(".zilch-rules-head h1")).toHaveCSS("color", "rgb(255, 253, 245)");
+  await expectTextContrast(page.locator(".zilch-rules-head h1"));
   await expect(page.getByText(/Erreiche 10.?000 Punkte/)).toBeVisible();
   await expect(page.getByRole("heading", { name: /Spielweise des Würfelwirts|Dice keeper style/i })).toBeVisible();
   await expect(page.getByText(/650 Punkte|650 points/i)).toBeVisible();
@@ -325,7 +326,7 @@ test("Zilch account keeps the player rank and statistic modes compact on mobile"
   await signInAsPreviewMani(page);
   await page.goto("/zilch/konto");
 
-  await expect(page.locator(".zilch-account-head h1")).toHaveCSS("color", "rgb(255, 253, 245)");
+  await expectTextContrast(page.locator(".zilch-account-head h1"));
   await expect(page.locator("#zilchAccountRank .zilch-rank-badge")).toBeVisible();
   await page.getByRole("tab", { name: "Statistiken" }).click();
   await page.setViewportSize({ width: 375, height: 844 });
@@ -351,7 +352,16 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   await expect(zilchGameSwitch).toBeVisible();
   await expect(zilchGameSwitch).toHaveAttribute("aria-label", /^(?:ZDWA öffnen|Open ZDWA) \(Alt\+Shift\+Z\)$/);
   await expect(zilchGameSwitch.locator("svg.game-switch-icon")).toBeVisible();
-  await expect(zilchGameSwitch).toHaveCSS("color", "rgb(72, 32, 12)");
+  expect(await zilchGameSwitch.evaluate(button => {
+    const luminance = color => color.match(/[\d.]+/g).slice(0, 3).map(channel => {
+      const value = Number(channel) / 255;
+      return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+    }).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+    const style = getComputedStyle(button);
+    const foreground = luminance(style.color);
+    const background = luminance(style.backgroundColor);
+    return (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
+  }), "game switch text remains readable on its surface").toBeGreaterThanOrEqual(4.5);
   await expect(zilchGameSwitch).toContainText("ZDWA");
   const zilchSwitchLayout = await zilchGameSwitch.evaluate(button => {
     const icon = button.querySelector("svg.game-switch-icon");
@@ -778,7 +788,7 @@ test("private Zilch statistics and leaderboards render only server projections a
   await expect(page.locator(".zilch-leaderboard-table .zilch-rank-badge").first()).toContainText("Spieler");
   await expect(page.getByRole("button", { name: "Meine Statistiken" })).toHaveAttribute("data-zilch-navigate", "/zilch/konto#statistics");
   await expect(page.getByRole("button", { name: "Meine Statistiken" })).toHaveClass(/zilch-header-action/);
-  await expect(page.getByRole("button", { name: "Meine Statistiken" })).toHaveCSS("color", "rgb(255, 253, 245)");
+  await expectTextContrast(page.getByRole("button", { name: "Meine Statistiken" }));
   await expect(page.getByRole("button", { name: "Meine Erfolge" })).toHaveAttribute("data-zilch-navigate", "/zilch/konto#achievements");
   await expect(page.getByRole("button", { name: "Meine Erfolge" })).toHaveClass(/zilch-header-action/);
   await expect(page.getByText("Ziel:", { exact: false })).toBeVisible();
@@ -1113,8 +1123,8 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await page.goto("/zilch/spieler/Mani");
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     await expect(page.getByRole("heading", { name: "Zilch-Awards eines Spielers" })).toBeVisible();
-    await expect(page.locator(".zilch-achievements-head h1")).toHaveCSS("color", "rgb(255, 253, 245)");
-    await expect(page.getByRole("button", { name: "Meine Zilch-Awards" })).toHaveCSS("color", "rgb(255, 253, 245)");
+    await expectTextContrast(page.locator(".zilch-achievements-head h1"));
+    await expectTextContrast(page.getByRole("button", { name: "Meine Zilch-Awards" }));
     await expect(page.getByRole("heading", { name: "Mani" })).toBeVisible();
     await expect(page.locator(".zilch-achievement-card.is-unlocked")).toHaveCount(1);
     await expect(page.locator('[aria-labelledby="zilchAchievementRankTitle"]')).toContainText("1 / 273");

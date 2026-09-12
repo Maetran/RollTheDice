@@ -2,26 +2,26 @@
 <html lang="de" data-game="zilch">
 <head>
   <meta charset="utf-8">
-  <title>Zilch die Wand an – Spielregeln</title>
+  <title>Zilch-Regeln und Punktetabelle – Zilch die Wand an</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="Die Regeln zu Zilch die Wand an erklären Punkte, Zilch, Hot Dice, Halten, Weiterwürfeln und das Anschreiben bis 10’000 Punkte.">
+  <meta name="description" content="Zilch-Regeln mit Punktetabelle: Einsen, Fünfen, Drillinge, Straße, Hot Dice und Zilch. So spielst du mit sechs Würfeln bis 10’000 Punkte.">
   <link rel="canonical" href="https://zilch.zockdiewandan.online/regeln">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Zilch die Wand an">
-  <meta property="og:title" content="Zilch die Wand an – Spielregeln">
-  <meta property="og:description" content="So funktionieren Punkte, Hot Dice, Zilch und das Anschreiben bei Zilch die Wand an.">
+  <meta property="og:title" content="Zilch-Regeln und Punktetabelle – Zilch die Wand an">
+  <meta property="og:description" content="Die Zilch-Punktetabelle und Spielregeln: Punkte sichern, weiterwürfeln, Hot Dice und die Schlussrunde bis 10’000 Punkte.">
   <meta property="og:url" content="https://zilch.zockdiewandan.online/regeln">
   <meta property="og:image" content="https://zilch.zockdiewandan.online/static/icons/zilch-icon-512.png">
   <meta name="twitter:card" content="summary">
-  <meta name="theme-color" content="#542d16">
+  <meta name="theme-color" content="#2d261f">
   <meta name="color-scheme" content="light">
-  <link rel="icon" type="image/png" href="/static/icons/zilch-icon-32.png?v=724904bfe9a8" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/zilch-apple-touch-icon-180.png?v=724904bfe9a8" sizes="180x180">
-  <script>(()=>{let t="light";try{t=localStorage.getItem("zilch_theme")==="lcars"?"lcars":"light"}catch(_){}document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t==="lcars"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=t==="lcars"?"#000000":"#542d16"})()</script>
-  <script>if(document.documentElement.dataset.theme==="lcars"){const f=document.createElement("link");f.rel="preload";f.as="font";f.type="font/ttf";f.crossOrigin="anonymous";f.href="/static/antonio-lcars-v1.ttf?v=724904bfe9a8";document.head.append(f)}</script>
-  <script src="/static/shell.js?v=724904bfe9a8" defer></script>
-  <link rel="stylesheet" href="/static/zilch.css?v=724904bfe9a8">
-  <link rel="stylesheet" href="/static/zilch-lcars.css?v=724904bfe9a8">
+  <link rel="icon" type="image/png" href="/static/icons/zilch-icon-32.png?v=eb205bee5f63" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/zilch-apple-touch-icon-180.png?v=eb205bee5f63" sizes="180x180">
+  <script>(()=>{let t="light";try{t=localStorage.getItem("zilch_theme")==="lcars"?"lcars":"light"}catch(_){}document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t==="lcars"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=t==="lcars"?"#000000":"#2d261f"})()</script>
+  <script>if(document.documentElement.dataset.theme==="lcars"){const f=document.createElement("link");f.rel="preload";f.as="font";f.type="font/ttf";f.crossOrigin="anonymous";f.href="/static/antonio-lcars-v1.ttf?v=eb205bee5f63";document.head.append(f)}</script>
+  <script src="/static/shell.js?v=eb205bee5f63" defer></script>
+  <link rel="stylesheet" href="/static/zilch.css?v=eb205bee5f63">
+  <link rel="stylesheet" href="/static/zilch-lcars.css?v=eb205bee5f63">
 </head>
 <body class="zilch-page">
   <a class="zilch-skip-link" href="#zilchContent">Zum Zilch-Inhalt springen</a>
@@ -40,9 +40,45 @@
       </div>
     </header>
     <div id="zilchLiveAnnouncements" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
-    <div id="zilchContent" tabindex="-1"><h1>Zilch-Spielregeln werden geladen …</h1></div>
+    <div id="zilchContent" tabindex="-1">
+      <article data-zilch-rules-summary>
+        <section class="zilch-game-head zilch-rules-head">
+          <div><p class="eyebrow">Spielhilfe</p><h1>Zilch-Regeln</h1><p>Alles Wichtige für deine nächste Partie auf einen Blick.</p></div>
+        </section>
+        <section class="zilch-card zilch-rules-overview">
+          <h2>Ziel der Partie</h2>
+          <p>Erreiche 10’000 Punkte. Danach spielt die andere Person noch einen vollständigen Zug; anschliessend gewinnt der höchste Punktestand.</p>
+          <p class="zilch-rules-overview__note">Pro Zug entscheidest du: Punkte sichern oder weiterwürfeln. Bei Zilch verfallen nur die noch nicht gesicherten Punkte.</p>
+        </section>
+        <section class="zilch-card zilch-rules-section" aria-labelledby="zilchScoringTitle">
+          <p class="eyebrow">Wertung</p><h2 id="zilchScoringTitle">Was Punkte bringt</h2>
+          <div class="zilch-rule-table-wrap"><table class="zilch-rule-table"><tbody>
+            <tr><th scope="row">Einzelne Einsen</th><td><strong>100 Punkte</strong><span>Jede einzeln gehaltene 1 zählt.</span></td></tr>
+            <tr><th scope="row">Einzelne Fünfen</th><td><strong>50 Punkte</strong><span>Jede einzeln gehaltene 5 zählt.</span></td></tr>
+            <tr><th scope="row">Drei Einsen</th><td><strong>1’000 Punkte</strong><span>Ein Drilling Einsen erfordert danach einen Bestätigungswurf.</span></td></tr>
+            <tr><th scope="row">Drillinge 2 bis 6</th><td><strong>Augenzahl × 100</strong><span>Drei gleiche Würfel werden als Drilling gewertet.</span></td></tr>
+            <tr><th scope="row">Vier Gleiche (2 bis 6)</th><td><strong>Doppelter Drillingwert</strong><span>Vier gleiche Würfel zählen doppelt so viel wie der passende Drilling.</span></td></tr>
+            <tr><th scope="row">Fünf Gleiche (2 bis 6)</th><td><strong>Vierfacher Drillingwert</strong><span>Fünf gleiche Würfel zählen viermal so viel wie der passende Drilling.</span></td></tr>
+            <tr><th scope="row">Sechs Gleiche (2 bis 6)</th><td><strong>Achtfacher Drillingwert</strong><span>Sechs gleiche Würfel zählen achtmal so viel wie der passende Drilling und eröffnen einen freien Wurf.</span></td></tr>
+            <tr><th scope="row">Vier oder mehr Einsen</th><td><strong>Keine eigene Gruppe</strong><span>Einsen bleiben beim 1’000-Punkte-Drilling; zusätzliche Einsen zählen einzeln, Vierlinge oder mehr werden nicht als eigene Gruppe gewertet.</span></td></tr>
+            <tr><th scope="row">Straße 1–6</th><td><strong>2’000 Punkte</strong><span>Alle sechs Würfel werden gehalten.</span></td></tr>
+            <tr><th scope="row">Drei Paare</th><td><strong>1’500 Punkte</strong><span>Drei verschiedene Paare mit allen sechs Würfeln.</span></td></tr>
+            <tr><th scope="row">Zwei Drillinge</th><td><strong>Summe beider Drillinge</strong><span>Zum Beispiel drei Zweien und drei Vieren ergeben 600 Punkte.</span></td></tr>
+            <tr><th scope="row">500 für nichts</th><td><strong>500 Punkte</strong><span>Nur mit sechs freien Würfeln ohne andere Wertung; dies ist kein Zilch.</span></td></tr>
+          </tbody></table></div>
+        </section>
+        <section class="zilch-rules-grid">
+          <section class="zilch-card zilch-rules-section"><h2>Wertungen auswählen</h2><p>Tippe eine Wertung oder einzelne Würfel an. Die Auswahl bleibt bis zum Weiterwürfeln oder Sichern änderbar.</p><p>Nur eine gemeinsam wertende Auswahl kann übernommen werden; ungültig gewordene Würfel fallen aus der Auswahl.</p></section>
+          <section class="zilch-card zilch-rules-section"><h2>Würfeln oder sichern</h2><p>Nach dem dritten Wurf müssen mindestens 300 Rundenpunkte gehalten sein. Sichern ist ab 400 Punkten möglich, solange kein Bestätigungswurf offen ist.</p><p>Vor dem Sichern kannst du deine Würfelauswahl jederzeit anpassen.</p></section>
+          <section class="zilch-card zilch-rules-section"><h2>Freier Wurf und Bestätigungswurf</h2><p>Wenn alle sechs Würfel Punkte bringen, werden sie wieder frei: ein freier Wurf. Die Rundenpunkte bleiben stehen.</p><p>Nach drei Einsen oder einem vollen Wurf mit allen sechs Würfeln muss ein weiterer Punktewurf von mindestens 50 Punkten bestätigt werden, bevor du sichern darfst.</p></section>
+          <section class="zilch-card zilch-rules-section"><h2>Zilch-Serie</h2><p>Ein Wurf ohne gültige Wertung – oder eine nicht erreichbare 300er-Regel nach Wurf drei – beendet den Zug als Zilch. Ungesicherte Punkte verfallen.</p><p>Bei jedem dritten Zilch in Folge – also beim dritten, sechsten, neunten und so weiter – werden 500 Punkte abgezogen, niemals unter null.</p></section>
+        </section>
+        <section class="zilch-card zilch-rules-section"><h2>Start und Spielende</h2><ol class="zilch-rule-steps"><li>Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt.</li><li>Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde.</li><li>Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug.</li><li>Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf.</li></ol></section>
+        <section class="zilch-card zilch-rules-section zilch-rules-section--solo"><p class="eyebrow">Solo</p><h2>10’000-Punkte-Sprint</h2><p>Im Solo-Sprint erreichst du mindestens 10’000 Punkte in möglichst wenigen eigenen Zügen. Der Lauf beginnt direkt mit deinem ersten normalen Zug – ohne Startwurf, Gegner, Schlussrunde oder Gegenzug.</p></section>
+      </article>
+    </div>
   </main>
-  <script src="/static/emoji.js?v=724904bfe9a8" defer></script>
-  <script type="module" src="/static/zilch.js?v=724904bfe9a8"></script>
+  <script src="/static/emoji.js?v=eb205bee5f63" defer></script>
+  <script type="module" src="/static/zilch.js?v=eb205bee5f63"></script>
 </body>
 </html>

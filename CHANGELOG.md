@@ -11,6 +11,26 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Zilch Classic Remaster — 2026-09-12
+
+- **Deutsch:** Classic behält den Wirtshauslook mit Notizblock und Würfeln,
+  erhält aber ruhigere Nussbaumtöne, helle Naturpapierflächen und matte
+  Messingakzente. Klarere Schrift, zurückhaltende Schatten und besser lesbare
+  Auswahlfelder lösen die kräftigen Glanz- und Gelbeffekte ab. Die Bedienung
+  und das Wording bleiben erhalten; LCARS bleibt unverändert.
+  Die Zilch-Regeln samt Punktetabelle sind schon ohne JavaScript lesbar und
+  bleiben bei einer gestörten Regeln-API verfügbar. Such- und Vorschautexte,
+  der direkte Regeln-Link und öffentlich indexierbare Produkticons ergänzen
+  die vorhandenen Canonicals und Sitemap.
+- **English:** Classic keeps its tavern table, score notebook and dice, with
+  quieter walnut tones, natural paper and matte brass accents. Clearer type,
+  restrained shadows and readable mode choices replace heavy gloss and yellow
+  highlights. Controls and familiar wording stay intact; LCARS is unchanged.
+  Core Zilch rules and the scoring table are readable without JavaScript and
+  survive a rules API outage. Clearer search and preview copy, a direct rules
+  link and indexable public product icons complement the existing canonicals
+  and sitemap.
+
 ## Wall of Shame — 2026-09-12
 
 - **Deutsch:** Unter den ZDWA-Bestenlisten stehen jetzt die drei Konten mit

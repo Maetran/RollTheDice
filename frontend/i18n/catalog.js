@@ -1,4 +1,13 @@
 export const EN = {
+    "Zilch online spielen – Zilch die Wand an": "Play Zilch online – Zilch die Wand an",
+    "Zilch online mit sechs Würfeln spielen: solo im 10’000-Punkte-Sprint, gegen den Würfelwirt oder zu zweit. Direkt im Browser, auch als Gast ohne Anmeldung.": "Play Zilch online with six dice: solo in the 10,000-point sprint, against the Dice Host, or with another player. Right in your browser, including as a guest without signing up.",
+    "Such dir einen Platz am Tisch aus: solo, gegen den Würfelwirt oder zu zweit. Mit sechs Würfeln bis 10’000 Punkte – auch als Gast ohne Anmeldung.": "Take a seat at the table: solo, against the Dice Host, or with another player. Race to 10,000 points with six dice, including as a guest without signing up.",
+    "Direkt im Browser, auch als Gast ohne Anmeldung.": "Right in your browser, including as a guest without signing up.",
+    "Zilch-Regeln und Punktetabelle": "Zilch rules and scoring table",
+    "Zilch-Regeln und Punktetabelle – Zilch die Wand an": "Zilch rules and scoring table – Zilch die Wand an",
+    "Zilch-Regeln mit Punktetabelle: Einsen, Fünfen, Drillinge, Straße, Hot Dice und Zilch. So spielst du mit sechs Würfeln bis 10’000 Punkte.": "Zilch rules and scoring table: ones, fives, three of a kind, straights, Hot Dice, and Zilch. Learn to play with six dice and reach 10,000 points.",
+    "Die Zilch-Punktetabelle und Spielregeln: Punkte sichern, weiterwürfeln, Hot Dice und die Schlussrunde bis 10’000 Punkte.": "The Zilch scoring table and rules: banking points, rolling again, Hot Dice, and the final round to 10,000 points.",
+    "Erreiche 10’000 Punkte. Danach spielt die andere Person noch einen vollständigen Zug; anschliessend gewinnt der höchste Punktestand.": "Reach 10,000 points. The other player then takes one full turn; the highest total wins.",
     "Wall of Shame": "Wall of Shame",
     "Meiste Spiele abgebrochen": "Most games abandoned",
     "Letzte 10 Tage": "Last 10 days",

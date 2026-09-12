@@ -1,27 +1,27 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa"
+    "zilch"
   ],
-  "summary_de": "Neu in der Lobby: die Top 3 selbst abgebrochener ZDWA-Partien – letzte zehn Tage und insgesamt. Timeouts zählen nicht.",
-  "summary_en": "New in the lobby: the top 3 for self-abandoned ZDWA games, over the last ten days and all time. Timeouts do not count.",
+  "summary_de": "Zilch Classic aufgefrischt: ruhigeres Holz, Naturpapier und klarere Würfel. Die Regeln sind jetzt sofort lesbar.",
+  "summary_en": "Zilch Classic refreshed: quieter wood, natural paper and clearer dice. The rules are now readable immediately.",
   "player_notes": {
     "de": {
-      "title": "Wall of Shame: Auch ein unperfekter Zettel verdient ein Ende",
+      "title": "Frisch aufpoliert, vertraut am Wirtshaustisch",
       "changes": [
-        "Unter den Bestenlisten siehst du die drei Konten mit den meisten selbst abgebrochenen ZDWA-Partien.",
-        "Zwei Listen zeigen die letzten zehn Tage und alle Abbrüche seit Beginn der Erfassung – Normal und Hardcore zusammen.",
-        "Nur selbst ausgelöste Abbrüche gestarteter Partien zählen. Timeouts, Verbindungsabbrüche und Abbrüche durch Mitspieler zählen nicht.",
-        "Die Einträge zeigen den aktuellen Namen und führen direkt zum Spielerprofil."
+        "Classic erhält ruhigere Holztöne, helles Naturpapier, matte Messingakzente und klarere Schrift.",
+        "Würfel und Auswahlfelder sind übersichtlicher. Notizblock, Wirtshausbegriffe und vertraute Bedienung bleiben erhalten.",
+        "LCARS bleibt unverändert und ist weiterhin über den Designwechsel erreichbar.",
+        "Regeln und Punktetabelle sind direkt lesbar, auch wenn das Nachladen einmal ausfällt."
       ]
     },
     "en": {
-      "title": "Wall of Shame: Even an imperfect scorecard deserves a finish",
+      "title": "A fresh polish for your familiar tavern table",
       "changes": [
-        "Below the leaderboards, see the three accounts with the most ZDWA games they abandoned themselves.",
-        "Two lists cover the last ten days and all abandonments since tracking began, with Normal and Hardcore combined.",
-        "Only started games abandoned by the player count. Timeouts, disconnections and opponents’ aborts do not count.",
-        "Entries show each player’s current name and link directly to their profile."
+        "Classic gains quieter wood tones, natural paper, matte brass accents and clearer type.",
+        "Dice and scoring choices are easier to read. The notebook, tavern wording and familiar controls stay.",
+        "LCARS remains unchanged and is still available through the theme switch.",
+        "Rules and the scoring table are readable immediately, even if loading the full help fails."
       ]
     }
   }

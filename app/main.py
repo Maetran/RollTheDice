@@ -98,7 +98,7 @@ from .product_hosts import (
 from .push_reminders import run_daily_reminder_scheduler
 from .release_push import run_release_push_scheduler
 from .security import normalize_username
-from .site_seo import robots_document, sitemap_document, zilch_page_is_indexable
+from .site_seo import PUBLIC_ZILCH_IMAGE_PATHS, robots_document, sitemap_document, zilch_page_is_indexable
 from .web_push import (
     claim_game_invite_push,
     dispatch_game_invite_push,
@@ -540,10 +540,23 @@ async def response_cache_policy(request: Request, call_next):
         and can_access_zilch_preview(None)
         and zilch_page_is_indexable(request.url.path)
     )
+    public_zilch_image = bool(
+        zilch_host
+        and can_access_zilch_preview(None)
+        and request.url.path in PUBLIC_ZILCH_IMAGE_PATHS
+        and (
+            response.status_code == 304
+            or (
+                response.status_code in {200, 206}
+                and response.headers.get("content-type", "").startswith("image/")
+            )
+        )
+    )
     if (
         zilch_host
         and request.url.path not in {"/robots.txt", "/sitemap.xml"}
         and not public_zilch_document
+        and not public_zilch_image
     ):
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
     if public_zilch_document:
@@ -949,6 +962,7 @@ def _serve_zilch_shell(request: Request, *, engagement_event: str | None = None)
             public_intro = public_template.split("<!-- zilch-public-intro:start -->", 1)[1].split(
                 "<!-- zilch-public-intro:end -->", 1,
             )[0]
+            public_intro = public_intro.replace('href="/regeln"', 'href="/zilch/regeln"')
             html = html.replace("<h1>Zilch wird geladen …</h1>", public_intro, 1)
         return Response(
             html,

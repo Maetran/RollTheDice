@@ -244,7 +244,8 @@ test("the public hero respects English before the delayed Zilch application arri
     const title = "Zilch die Wand an – Play the dice game online";
     await expect(intro.locator("h1")).toHaveText(title, { timeout: 1000 });
     await expect(intro.locator(".eyebrow")).toHaveText("Roll online");
-    await expect(intro.locator("p").last()).toContainText("Choose a seat at the table");
+    await expect(intro.locator("h1 + p")).toContainText("Choose a seat at the table");
+    await expect(intro.locator(".zilch-intro-help a")).toHaveText("Zilch rules and scoring table");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("#zilchCreateForm")).toHaveCount(0);
     const heading = await intro.locator("h1").elementHandle();
