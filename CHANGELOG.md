@@ -11,6 +11,27 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Erreichbare Erfolge / Reachable achievements — 2026-09-12
+
+- **Deutsch:** Zilchs Konto verlinkt die eigene Historie direkt aus den
+  Statistiken. ZDWA zählt den sichtbar geöffneten Verlauf für Rückblick;
+  versteckte oder fehlgeschlagene Ladevorgänge zählen nicht. Erfolgsanzeigen
+  werden nach neuen Aktionen aktualisiert. GitHub-Klicks bleiben auch beim
+  Wechsel aus der installierten App einem angemeldeten Konto zugeordnet.
+  Regel- und Ranglistenbesuche über die ZDWA-Ansicht der Zilch-App sowie
+  gespeicherte Sprachänderungen lösen ihre Erfolge zuverlässig aus.
+  Styler Full und Styler-Show zählen künftig nur belegte Fünflings-Fulls;
+  alte mehrdeutige Ergebnisse vergeben keine neuen Erfolge. Bereits vergebene
+  Auszeichnungen bleiben erhalten. Kein Backfill, stiller Rollout.
+- **English:** Zilch links personal history directly from account statistics.
+  ZDWA counts visibly opened history for Looking Back; hidden or failed loads
+  do not count. Collections refresh after new actions. GitHub clicks retain
+  account attribution when leaving an installed app. Rule and leaderboard
+  visits through Zilch's embedded ZDWA pages and saved language changes trigger
+  their achievements. Styler Full and Styler Show now require proven
+  five-of-a-kind Full entries; ambiguous old scores grant no new awards.
+  Existing awards stay intact. No backfill; silent rollout.
+
 ## Zilch Classic Chatleiste / Chat bar — 2026-09-12
 
 - **Deutsch:** Die Chatleiste bleibt beim Öffnen, Schließen und erneuten

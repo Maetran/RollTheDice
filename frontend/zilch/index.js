@@ -115,6 +115,7 @@ const state = {
   reactionChatEntries: [],
   accountTab: "statistics",
   accountHashListenerBound: false,
+  accountAchievementsRequestVersion: 0,
   leaveDialogOpen: false,
   lastEndedBy: null,
   terminalNoticeShown: false,
@@ -1342,7 +1343,7 @@ async function renderLobby({ authReady = null } = {}) {
 
 async function renderHistory() {
   if (!content) return;
-  content.innerHTML = `<section class="zilch-game-head">
+  content.innerHTML = `<section class="zilch-game-head zilch-history-head">
       <div><p class="eyebrow">${escapeHtml(t("Deine Historie"))}</p><h1>${escapeHtml(t("Abgeschlossene Spiele"))}</h1><p>${escapeHtml(t("Deine Zilch-Partien bleiben getrennt von ZDWA-Ergebnissen und -Ranglisten."))}</p></div>
     </section>
     <section class="zilch-card zilch-results-history" aria-labelledby="zilchAllHistoryTitle">
@@ -2087,7 +2088,8 @@ function renderZilchAccountRank(projection) {
 }
 
 function zilchAccountStatisticsLoadingMarkup() {
-  return `<div id="zilchStatisticsBody" aria-live="polite">${statisticsTabMarkup()}<section class="zilch-card zilch-loading-card" role="status"><p>${escapeHtml(t("Zilch-Statistiken werden geladen …"))}</p></section></div>`;
+  return `<div class="zilch-actions">${zilchNavigationButton(zilchPath("/historie"), t("Deine Historie"), "small zilch-header-action")}</div>
+    <div id="zilchStatisticsBody" aria-live="polite">${statisticsTabMarkup()}<section class="zilch-card zilch-loading-card" role="status"><p>${escapeHtml(t("Zilch-Statistiken werden geladen …"))}</p></section></div>`;
 }
 
 function zilchAccountAchievementsLoadingMarkup() {
@@ -2204,6 +2206,7 @@ function showZilchAccountTab(name, { updateHash = false, focus = false } = {}) {
   const tabs = [...document.querySelectorAll("[data-zilch-account-tab]")];
   const panels = [...document.querySelectorAll("[data-zilch-account-panel]")];
   if (!tabs.length || !panels.length) return;
+  document.documentElement.dataset.accountTabReady = "true";
   state.accountTab = selected;
   tabs.forEach(tab => {
     const active = tab.dataset.zilchAccountTab === selected;
@@ -2212,7 +2215,10 @@ function showZilchAccountTab(name, { updateHash = false, focus = false } = {}) {
     tab.tabIndex = active ? 0 : -1;
   });
   panels.forEach(panel => { panel.hidden = panel.dataset.zilchAccountPanel !== selected; });
-  if (selected === "achievements" && state.achievements) renderAchievementsBody();
+  if (selected === "achievements" && state.achievements) {
+    renderAchievementsBody();
+    void refreshZilchAccountAchievements();
+  }
   if (updateHash && window.location.hash !== `#${selected}`) {
     const url = new URL(window.location.href);
     url.hash = selected;
@@ -2220,6 +2226,19 @@ function showZilchAccountTab(name, { updateHash = false, focus = false } = {}) {
   }
   window.dispatchEvent(new CustomEvent("zdwa:account-tab", { detail: { tab: selected } }));
   if (focus) document.querySelector(`[data-zilch-account-tab="${selected}"]`)?.focus();
+}
+
+async function refreshZilchAccountAchievements() {
+  const requestVersion = ++state.accountAchievementsRequestVersion;
+  try {
+    const achievements = await fetchZilchAchievements();
+    if (requestVersion !== state.accountAchievementsRequestVersion) return;
+    state.achievements = achievements;
+    renderZilchAccountRank(achievements);
+    renderAchievementsBody();
+  } catch (_) {
+    // Keep the last readable collection when a refresh is temporarily offline.
+  }
 }
 
 function bindZilchAccountTabs() {
@@ -2242,6 +2261,15 @@ function bindZilchAccountTabs() {
     window.addEventListener("hashchange", () => {
       if (accountRoute) showZilchAccountTab(window.location.hash, { updateHash: false });
     });
+    const refreshVisibleAchievements = () => {
+      if (accountRoute && state.accountTab === "achievements" && state.auth?.authenticated) {
+        void refreshZilchAccountAchievements();
+      }
+    };
+    // A settings action or a GitHub tab can earn an award after account load.
+    // Refresh from the server; merely reading the collection grants nothing.
+    window.addEventListener("focus", refreshVisibleAchievements);
+    window.addEventListener("zdwa:engagement-recorded", refreshVisibleAchievements);
   }
   showZilchAccountTab(state.accountTab, { updateHash: false });
 }
@@ -2490,6 +2518,7 @@ async function renderAccount() {
     <section id="zilchAccountPanel-settings" class="zilch-account-panel" data-zilch-account-panel="settings" role="tabpanel" aria-labelledby="zilchAccountTab-settings"${state.accountTab === "settings" ? "" : " hidden"}>${zilchAccountSettingsMarkup(username)}</section>`;
   bindZilchAccountTabs();
   bindZilchAccountSettings();
+  const achievementRequestVersion = ++state.accountAchievementsRequestVersion;
   const [statisticsResult, achievementsResult] = await Promise.allSettled([
     fetchZilchStatistics(),
     Promise.all([fetchZilchAchievements(), fetchZilchAchievementRanks().catch(() => null)]),
@@ -2502,7 +2531,11 @@ async function renderAccount() {
     if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Statistiken nicht verfügbar"))}</h2><p>${escapeHtml(t("Bitte versuche es später erneut oder kehre zur Zilch-Lobby zurück."))}</p>${zilchNavigationButton(zilchPath("/"), t("Zur Zilch-Lobby"))}</section>`;
   }
   if (achievementsResult.status === "fulfilled") {
-    [state.achievements, state.achievementRankLegend] = achievementsResult.value;
+    const [achievements, rankLegend] = achievementsResult.value;
+    if (achievementRequestVersion === state.accountAchievementsRequestVersion || !state.achievements) {
+      state.achievements = achievements;
+    }
+    state.achievementRankLegend = rankLegend;
     renderZilchAccountRank(state.achievements);
     renderAchievementsBody();
   } else {
@@ -3221,6 +3254,7 @@ function renderRulesContent(facts) {
     <section class="zilch-card zilch-rules-section">
       <p>${escapeHtml(t("Tippe auf einen Spielernamen und wähle im Profil Zur Spielerauswahl hinzufügen. Gespeichert wird das feste Konto, nicht ein eingetippter Name. Unter Konto → Einstellungen → Deine Spielerauswahl kannst du bis zu 100 Spieler verwalten, einzeln entfernen und Einladungen auf sie begrenzen. Eine leere Liste mit dem Filter Nur ausgewählte Spieler blockiert alle Mitspieler-Einladungen. Die private Auswahl gilt für beide Spiele, ohne Freundschaftsanfrage; Hinzufügen aktiviert kein Push. Erinnerungen und Versionshinweise bleiben unabhängig."))}</p>
       <p>${escapeHtml(t("Im Konto kannst du ein kleines Profilbild für beide Spiele hinterlegen. Erlaubt sind JPG, PNG oder WebP bis 8 MB und 4’096 × 4’096 Pixel; gespeichert wird ausschließlich eine neu erzeugte, quadratische WebP-Version ohne Metadaten. Das Bild erscheint neben deinem Namen in Profilen, Chats, Spielräumen und Statistiken. Nachrichten über Spielstarts aus deiner privaten Spielerauswahl lassen sich dort ebenfalls ein- oder ausschalten. Sie sind nur live, nur in den Lobbys und öffnen außerhalb eines Spiels eine öffentliche, zuschauerfähige Partie – ohne Push und ohne Verlauf."))}</p>
+      <p>${escapeHtml(t("In Zilch findest du deine Spielhistorie unter Konto → Statistiken → Deine Historie. In ZDWA steht sie unter Konto → Statistik. „Rückblick“ wird erst beim Öffnen der eigenen Historie verdient."))}</p>
       <p>${escapeHtml(t("Versionshinweise sind separat aktivierbar und anfangs ausgeschaltet. Nach einem erfolgreichen Update erhältst du pro Version höchstens einen Hinweis je angemeldetem Gerät des ausgewählten Spiels: zu neuen Funktionen oder Verbesserungen an der Stabilität. Ein Klick öffnet dessen Lobby. Frühere Versionen werden nicht nachträglich gemeldet."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section">

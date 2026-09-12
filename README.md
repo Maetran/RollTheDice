@@ -265,7 +265,26 @@ record only. Historic avatar replacements and all game-history awards remain
 forward-only. Rank thresholds remain fixed, so this expansion cannot demote a
 player. In Zilch, interaction awards appear in the collection without opening
 a result dialog over account or game controls.
-**Ehrenberg-Marken**, which contribute to titles and star insignia. Newly earned
+
+Find Zilch history at **Account → Statistics → Your history**, and ZDWA history
+under **Account → Statistics**. Looking Back is earned only when your history
+is opened; loading a hidden tab does not count. Collections refresh after new
+interactions. GitHub clicks are recorded in the signed-in app before an external
+browser handoff. Styler Full and Styler Show now require recorded five-of-a-kind
+Full entries; ambiguous older Full scores never grant new awards. Previously
+earned awards stay intact. These repairs do not backfill missing achievements.
+
+**Deutsch:** Zilchs Historie findest du unter **Konto → Statistiken → Deine
+Historie**, ZDWAs Verlauf unter **Konto → Statistik**. Rückblick gibt es erst
+beim Öffnen der eigenen Historie. Versteckte Bereiche zählen nicht. Die Sammlung
+aktualisiert sich nach neuen Aktionen; GitHub-Klicks werden vor dem Wechsel in
+einen externen Browser dem angemeldeten Konto zugeordnet. Styler Full und
+Styler-Show erfordern künftig belegte Full-Einträge aus fünf gleichen Würfeln.
+Alte mehrdeutige Punktestände vergeben keine neuen Erfolge. Bestehende
+Auszeichnungen bleiben erhalten; fehlende werden nicht nachgetragen.
+Details: [Achievement-Erreichbarkeit / reachability audit](docs/ACHIEVEMENT_REACHABILITY_2026-09-12.md).
+
+Achievements award **Ehrenberg-Marken**, which contribute to titles and star insignia. Newly earned
 awards are celebrated individually, followed by a **LEVEL UP!** card for a
 genuine title increase.
 

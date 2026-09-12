@@ -124,6 +124,8 @@ export const EN = {
     "Regelkundig": "Rule Reader",
     "Die Spielregeln geöffnet.": "Open the game rules.",
     "Rückblick": "Looking Back",
+    "In Zilch findest du deine Spielhistorie unter Konto → Statistiken → Deine Historie. In ZDWA steht sie unter Konto → Statistik. „Rückblick“ wird erst beim Öffnen der eigenen Historie verdient.": "Find your Zilch game history under Account → Statistics → Your history. In ZDWA, it is under Account → Statistics. Looking Back is earned only when you open your own history.",
+    "Für „Styler Full“ und „Styler-Show“ zählen nur Full-Einträge aus fünf gleichen Würfeln. Ein gewöhnliches Full House aus drei und zwei gleichen Würfeln zählt dafür nicht.": "Styler Full and Styler Show count only Full entries made with five identical dice. An ordinary full house with three of one value and two of another does not count.",
     "Die eigene Spielhistorie geöffnet.": "Open your game history.",
     "Blick nach oben": "Look Up",
     "Eine Rangliste geöffnet.": "Open a leaderboard.",

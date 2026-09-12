@@ -7,6 +7,7 @@ import inspect
 import logging
 from typing import Any, Awaitable, Callable
 
+from .game_achievement_evidence import clear_styler_full_evidence, record_styler_full_evidence
 from .game_activity import record_gameplay
 from .game_engine import (
     _begin_next_turn,
@@ -295,6 +296,7 @@ async def _write_field(
     # einem veralteten oder leeren Würfelzustand übernehmen.
     value = 0 if strike or terminal_write_without_roll else score_field_value(field, dice)
     board[key] = value
+    record_styler_full_evidence(g, board_key_for_actor(g, player_id), key, value, dice)
     record_gameplay(session)
     g["_last_write"][player_id] = (row, column, g["_rolls_used"])
     g["_last_dice"][player_id] = dice[:]
@@ -483,6 +485,9 @@ async def _write_field_correction(session: GameSocketSession, data: dict[str, An
     value = 0 if strike else score_field_value(field, dice)
     board.pop(old_key, None)
     board[new_key] = value
+    board_id = board_key_for_actor(g, player_id)
+    clear_styler_full_evidence(g, board_id, old_key)
+    record_styler_full_evidence(g, board_id, new_key, value, dice)
     record_gameplay(session)
     g["_last_write"][player_id] = (row, column, old_rolls_used)
     _clear_correction(g)

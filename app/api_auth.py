@@ -465,6 +465,7 @@ def auth_update_language(payload: LanguagePreferenceRequest, request: Request):
         db.flush()
         result = {"preferred_language": user.preferred_language}
     if language_changed:
+        record_engagement_safely(identity.user_id, "settings_saved")
         record_engagement_safely(identity.user_id, "language_changed")
     return result
 

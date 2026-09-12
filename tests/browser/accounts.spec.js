@@ -271,6 +271,7 @@ test("achievement titles follow an account player through lobby, stats, and the 
   await expect(page.locator("#authBadge .player-rank")).toHaveText(/☆\s*Newbie/);
   await page.goto("/konto");
   await expect(page.locator("#accountName .player-rank")).toHaveText(/☆\s*Newbie/);
+  await page.locator("#statisticsTab").click();
   await expect(page.locator("#statistics .player-rank")).toHaveText(/☆\s*Newbie/);
 
   await page.goto("/");

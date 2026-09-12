@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 from datetime import datetime, timezone
 
+from .game_achievement_evidence import clear_styler_full_evidence
 from .game_engine import _set_roll_cap_for_current_turn
 from .game_scoring import has_n_of_a_kind
 from .game_state import (
@@ -92,6 +93,7 @@ def apply_superadmin_changes(g: GameDict, player_id: str, board_id: str, changes
         old_raw = board.get(c["key"])
         old_value = int(old_raw) if isinstance(old_raw, (int, float)) else 0
         board.pop(c["key"], None)
+        clear_styler_full_evidence(g, board_id, c["key"])
         meta = {
             "row": c["row"],
             "field": c["field"],
@@ -108,6 +110,7 @@ def apply_superadmin_changes(g: GameDict, player_id: str, board_id: str, changes
         old_raw = board.get(c["key"])
         old_value = int(old_raw) if isinstance(old_raw, (int, float)) else None
         board[c["key"]] = int(c["value"])
+        clear_styler_full_evidence(g, board_id, c["key"])
         meta = {
             "row": c["row"],
             "field": c["field"],

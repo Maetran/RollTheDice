@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from .achievements import public_achievement_ranks, sync_achievements_for_users
 from .active_games import delete_active_game
+from .game_achievement_evidence import styler_full_snapshot_evidence
 from .game_engine import _compute_final_totals, _rows_from_scoreboard
 from .game_history import persist_runtime_game_result, stable_game_id
 from .game_state import CHAT_HISTORY_LIMIT, GameDict, is_team_mode
@@ -228,6 +229,7 @@ def build_leaderboard_snapshot_fields(g: GameDict) -> dict:
             "hardcore": bool(g.get("_hardcore", False)),
             "players": players,
             "scoreboards": scoreboards,
+            "styler_full_evidence": styler_full_snapshot_evidence(g),
             "chat_history": list(g.get("_chat_history", []))[-CHAT_HISTORY_LIMIT:],
             "admin_edits": g.get("_admin_edits", {}),
         }

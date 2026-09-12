@@ -37,6 +37,14 @@ def theme_engagement(request: Request):
     return record_engagement_safely(identity.user_id, "theme_changed")
 
 
+@router.post("/api/account/engagement/history")
+def history_engagement(request: Request):
+    """Track the account's rendered history after its visible UI was opened."""
+    identity = require_user(request)
+    require_csrf(request, identity)
+    return record_engagement_safely(identity.user_id, "history_viewed")
+
+
 @router.post("/api/account/engagement/push-settings")
 def push_settings_engagement(request: Request):
     """Track an actual interaction inside the dedicated push-settings card."""
@@ -56,3 +64,11 @@ def github_redirect(
     response.headers["Cache-Control"] = "no-store"
     response.headers["Referrer-Policy"] = "no-referrer"
     return response
+
+
+@router.post("/api/account/engagement/github/{destination}")
+def github_link_engagement(destination: Literal["issues", "changelog"], request: Request):
+    """Keep the real link click attached to the app's authenticated session."""
+    identity = require_user(request)
+    require_csrf(request, identity)
+    return record_engagement_safely(identity.user_id, "github_clicked")

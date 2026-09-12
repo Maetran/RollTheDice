@@ -10,12 +10,20 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from alembic.config import Config
+from fastapi import HTTPException
 from sqlalchemy import select
 
 from alembic import command
 from app import main
-from app.api_auth import UserPreferencesRequest, auth_update_preferences
+from app.api_auth import (
+    LanguagePreferenceRequest,
+    UserPreferencesRequest,
+    auth_update_language,
+    auth_update_preferences,
+)
+from app.api_engagement import history_engagement
 from app.api_engagement import router as engagement_router
+from app.api_users import own_game_history, public_player_profile
 from app.auth import create_user, login
 from app.database import configure_database, session_scope, upgrade_database
 from app.engagement import record_account_tab_engagement, record_engagement
@@ -112,6 +120,54 @@ class EngagementAchievementTestCase(TestCase):
         with session_scope() as db:
             events = list(db.scalars(select(UserEngagementEvent).where(UserEngagementEvent.user_id == user.id)))
         self.assertEqual([(event.event_key, event.count) for event in events], [("statistics_viewed", 1)])
+
+    def test_history_read_does_not_award_until_authenticated_visible_action(self) -> None:
+        user = create_user("VisibleHistory", "a-secure-password-123", must_change_password=False)
+        identity, token = login(request_for(), user.username, "a-secure-password-123")
+        request = request_for(cookie=f"rollthedice_session={token}", csrf=identity.csrf_token)
+
+        self.assertEqual(own_game_history(request)["games"], [])
+        before = public_player_profile(user.username)["player"]["achievements"]["unlocked"]
+        self.assertNotIn("history_viewed", {item["key"] for item in before})
+        for unauthorized in (request_for(), request_for(cookie=f"rollthedice_session={token}")):
+            with self.assertRaises(HTTPException):
+                history_engagement(unauthorized)
+        self.assertEqual(history_engagement(request), {"recorded": True, "event": "history_viewed"})
+        with session_scope() as db:
+            events = list(db.scalars(select(UserEngagementEvent).where(UserEngagementEvent.user_id == user.id)))
+            zdwa = self._keys(db.scalars(select(UserAchievement).where(UserAchievement.user_id == user.id)))
+            zilch = self._keys(db.scalars(select(ZilchAchievementUnlock).where(ZilchAchievementUnlock.user_id == user.id)))
+        self.assertEqual([(event.event_key, event.count) for event in events], [("history_viewed", 1)])
+        self.assertIn("history_viewed", zdwa)
+        self.assertIn("zilch.history_viewed", zilch)
+
+    def test_zdwa_bridge_navigation_records_rules_and_ranking_for_its_visitor(self) -> None:
+        user = create_user("BridgeExplorer", "a-secure-password-123", must_change_password=False)
+        _identity, token = login(request_for(), user.username, "a-secure-password-123")
+        request = request_for(cookie=f"rollthedice_session={token}", host="zilch.zockdiewandan.online")
+        for path in ("regeln", "spieler"):
+            with self.subTest(path=path):
+                self.assertEqual(main._serve_zilch_pwa_zdwa_bridge(request, path).status_code, 200)
+        with session_scope() as db:
+            events = {row.event_key for row in db.scalars(select(UserEngagementEvent).where(UserEngagementEvent.user_id == user.id))}
+            zdwa = self._keys(db.scalars(select(UserAchievement).where(UserAchievement.user_id == user.id)))
+            zilch = self._keys(db.scalars(select(ZilchAchievementUnlock).where(ZilchAchievementUnlock.user_id == user.id)))
+        self.assertEqual(events, {"rules_viewed", "leaderboard_viewed"})
+        self.assertTrue(events <= zdwa)
+        self.assertTrue({f"zilch.{event}" for event in events} <= zilch)
+
+    def test_dedicated_language_change_earns_settings_save_without_replay(self) -> None:
+        user = create_user("LanguageExplorer", "a-secure-password-123", must_change_password=False)
+        identity, token = login(request_for(), user.username, "a-secure-password-123")
+        request = request_for(cookie=f"rollthedice_session={token}", csrf=identity.csrf_token)
+        auth_update_language(LanguagePreferenceRequest(preferred_language="de"), request)
+        with session_scope() as db:
+            self.assertEqual(list(db.scalars(select(UserEngagementEvent).where(UserEngagementEvent.user_id == user.id))), [])
+        auth_update_language(LanguagePreferenceRequest(preferred_language="en"), request)
+        auth_update_language(LanguagePreferenceRequest(preferred_language="en"), request)
+        with session_scope() as db:
+            events = {row.event_key: row.count for row in db.scalars(select(UserEngagementEvent).where(UserEngagementEvent.user_id == user.id))}
+        self.assertEqual(events, {"settings_saved": 1, "language_changed": 1})
 
     def test_avatar_backfill_is_idempotent_and_never_invents_a_change(self) -> None:
         user = create_user("ExistingAvatar", "a-secure-password-123", must_change_password=False)

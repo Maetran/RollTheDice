@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=34b53960df8f">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=34b53960df8f" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=34b53960df8f" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=6cd64280bdfe">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=6cd64280bdfe" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=6cd64280bdfe" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=34b53960df8f">
-  <script src="/static/shell.js?v=34b53960df8f" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=6cd64280bdfe">
+  <script src="/static/shell.js?v=6cd64280bdfe" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -205,12 +205,12 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=34b53960df8f';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=34b53960df8f';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=34b53960df8f';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=34b53960df8f';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=34b53960df8f';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=34b53960df8f';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=6cd64280bdfe';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=6cd64280bdfe';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=6cd64280bdfe';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=6cd64280bdfe';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=6cd64280bdfe';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=6cd64280bdfe';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
@@ -247,6 +247,7 @@
         panel: document.getElementById('settingsPanel'),
       },
     };
+    let achievementRefreshVersion = 0;
     function showAccountPanel(name, { updateHash = true } = {}) {
       const selected = ['statistics', 'achievements', 'settings'].includes(name) ? name : 'statistics';
       Object.entries(accountTabs).forEach(([key, tab]) => {
@@ -261,7 +262,9 @@
         url.hash = selected;
         history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
       }
+      document.documentElement.dataset.accountTabReady = 'true';
       window.dispatchEvent(new CustomEvent('zdwa:account-tab', { detail: { tab: selected } }));
+      if (selected === 'achievements') void refreshAccountAchievements();
     }
     Object.entries(accountTabs).forEach(([name, tab], index, tabs) => {
       tab.button.addEventListener('click', () => showAccountPanel(name));
@@ -495,6 +498,36 @@
       </article>`;
     }
 
+    function renderAccountAchievements(player) {
+      const achievements = player.achievements || {};
+      const unlocked = Array.isArray(achievements.unlocked) ? achievements.unlocked : [];
+      const locked = Array.isArray(achievements.locked) ? achievements.locked : [];
+      const t = window.ZDWA_I18N?.t || (value => value);
+      document.getElementById('accountName').innerHTML = playerNameMarkup(player, { name: user.username, avatarSize: 'large' });
+      document.getElementById('achievementSummary').textContent = `${unlocked.length} ${t('von')} ${unlocked.length + locked.length} ${t('erreicht')} · ${formatNumber(achievements.points_earned || 0, '0')} / ${formatNumber(achievements.points_possible || 0, '0')} ${t('Ehrenberg-Marken')}`;
+      document.getElementById('unlockedAchievements').innerHTML = unlocked.length
+        ? unlocked.map(item => achievementCard(item, true)).join('')
+        : '<p class="muted">Noch keine Erfolge erreicht – das erste Ziel wartet bereits.</p>';
+      document.getElementById('lockedAchievements').innerHTML = locked.length
+        ? locked.map(item => achievementCard(item, false)).join('')
+        : '<p class="muted">Alle derzeitigen Erfolge sind erreicht.</p>';
+    }
+
+    async function refreshAccountAchievements() {
+      if (accountTabs.achievements.panel.hidden) return;
+      const version = ++achievementRefreshVersion;
+      try {
+        // Reading the existing public projection does not count another
+        // statistics visit or manufacture an account interaction.
+        const response = await apiFetch(`/api/players/${encodeURIComponent(user.username)}`, { cache: 'no-store' });
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (version === achievementRefreshVersion && payload.player) renderAccountAchievements(payload.player);
+      } catch { /* Keep the last successful collection available offline. */ }
+    }
+    window.addEventListener('focus', refreshAccountAchievements);
+    window.addEventListener('zdwa:engagement-recorded', refreshAccountAchievements);
+
     function renderHistoryChart(payload) {
       const newestFirst = Array.isArray(payload.games) ? payload.games : [];
       const games = [...newestFirst].reverse();
@@ -599,6 +632,19 @@
     }
 
     const historyState = { mode: 'normal', limit: '10' };
+    let historyLoaded = false;
+    let historyRecorded = false;
+    async function recordVisibleHistory() {
+      if (!historyLoaded || historyRecorded || accountTabs.statistics.panel.hidden) return;
+      historyRecorded = true;
+      try {
+        const response = await apiFetch('/api/account/engagement/history', { method: 'POST' });
+        if (!response.ok) { historyRecorded = false; return; }
+        const result = await response.json();
+        if (!result.recorded) { historyRecorded = false; return; }
+        window.dispatchEvent(new CustomEvent('zdwa:engagement-recorded', { detail: { event: 'history_viewed' } }));
+      } catch { historyRecorded = false; }
+    }
     async function loadHistory() {
       const chart = document.getElementById('historyChart');
       chart.innerHTML = '<p class="muted">Laden…</p>';
@@ -609,6 +655,8 @@
         return;
       }
       renderHistoryChart(await response.json());
+      historyLoaded = true;
+      void recordVisibleHistory();
     }
 
     document.querySelectorAll('[data-history-limit]').forEach(button => {
@@ -625,26 +673,35 @@
         loadHistory();
       });
     });
-    loadHistory();
+    window.addEventListener('zdwa:account-tab', event => {
+      if (event.detail?.tab !== 'statistics') return;
+      if (historyLoaded) void recordVisibleHistory();
+      else void loadHistory();
+      void loadAccountStatistics();
+    });
 
-    const statsResponse = await fetch('/api/users/me/statistics', { cache: 'no-store' });
-    if (statsResponse.ok) {
-      const player = (await statsResponse.json()).player;
-      const stats = player.statistics;
-      document.getElementById('accountName').innerHTML = playerNameMarkup(player, { name: user.username, avatarSize: 'large' });
-      document.getElementById('statistics').innerHTML = bucket('Gesamt', stats.overall, { details: false })
-        + bucket('Normal', stats.normal) + bucket('Hardcore', stats.hardcore);
-      const achievements = player.achievements || {};
-      const unlocked = Array.isArray(achievements.unlocked) ? achievements.unlocked : [];
-      const locked = Array.isArray(achievements.locked) ? achievements.locked : [];
-      const t = window.ZDWA_I18N?.t || (value => value);
-      document.getElementById('achievementSummary').textContent = `${unlocked.length} ${t('von')} ${unlocked.length + locked.length} ${t('erreicht')} · ${formatNumber(achievements.points_earned || 0, '0')} / ${formatNumber(achievements.points_possible || 0, '0')} ${t('Ehrenberg-Marken')}`;
-      document.getElementById('unlockedAchievements').innerHTML = unlocked.length
-        ? unlocked.map(item => achievementCard(item, true)).join('')
-        : '<p class="muted">Noch keine Erfolge erreicht – das erste Ziel wartet bereits.</p>';
-      document.getElementById('lockedAchievements').innerHTML = locked.length
-        ? locked.map(item => achievementCard(item, false)).join('')
-        : '<p class="muted">Alle derzeitigen Erfolge sind erreicht.</p>';
+    let statisticsLoaded = false;
+    let statisticsLoading = false;
+    async function loadAccountStatistics() {
+      if (statisticsLoaded || statisticsLoading || accountTabs.statistics.panel.hidden) return;
+      statisticsLoading = true;
+      try {
+        const statsResponse = await fetch('/api/users/me/statistics', { cache: 'no-store' });
+        if (!statsResponse.ok) return;
+        const player = (await statsResponse.json()).player;
+        const stats = player.statistics;
+        document.getElementById('accountName').innerHTML = playerNameMarkup(player, { name: user.username, avatarSize: 'large' });
+        document.getElementById('statistics').innerHTML = bucket('Gesamt', stats.overall, { details: false })
+          + bucket('Normal', stats.normal) + bucket('Hardcore', stats.hardcore);
+        renderAccountAchievements(player);
+        statisticsLoaded = true;
+        void refreshAccountAchievements();
+      } catch { /* A later visible visit can retry a failed statistics load. */ }
+      finally { statisticsLoading = false; }
+    }
+    if (!accountTabs.statistics.panel.hidden) {
+      void loadHistory();
+      void loadAccountStatistics();
     }
 
     document.getElementById('passwordForm').addEventListener('submit', async event => {

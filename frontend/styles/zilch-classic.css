@@ -110,7 +110,7 @@ html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-header-tools :is(.game-
   background: #29231e;
 }
 
-html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-intro, .zilch-rules-head, .zilch-account-head, .zilch-leaderboards-head, .zilch-result-head, .zilch-achievements-head) h1 {
+html[data-game="zilch"]:not([data-theme="lcars"]) :is(.zilch-intro, .zilch-rules-head, .zilch-account-head, .zilch-leaderboards-head, .zilch-result-head, .zilch-achievements-head, .zilch-history-head) h1 {
   color: #faf4e8;
   text-shadow: none;
   font-family: Georgia, "Times New Roman", serif;

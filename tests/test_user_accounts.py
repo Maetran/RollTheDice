@@ -66,6 +66,7 @@ from app.auth_protection import (
     verify_registration_challenge,
 )
 from app.database import configure_database, session_scope, upgrade_database
+from app.game_achievement_evidence import record_styler_full_evidence
 from app.game_engine import _compute_final_totals
 from app.game_history import import_legacy_leaderboards, persist_runtime_game, stable_game_id
 from app.game_results import build_leaderboard_snapshot_fields, finalize_and_log_results
@@ -1202,6 +1203,9 @@ class AccountDatabaseTestCase(GameStateTestCase):
             game["_players"][0]["user_id"] = user.id
             game["_hardcore"] = day >= 20
             game["_scoreboards"]["p1"] = self.full_scoreboard(columns)
+            # Explicitly model a verified five-six Full; totals alone do not
+            # distinguish it from an ordinary three-six/two-other Full.
+            record_styler_full_evidence(game, "p1", "13,down", 58, [6] * 5)
             snapshot = build_leaderboard_snapshot_fields(game)
             snapshot["finished_at"] = (rollout + timedelta(days=day)).isoformat()
             self.assertTrue(
@@ -1247,6 +1251,112 @@ class AccountDatabaseTestCase(GameStateTestCase):
             }.issubset(unlocked),
             unlocked,
         )
+
+    def test_styler_unlocks_count_new_dice_proof_without_backfilling_ambiguous_fulls(self):
+        user = create_user("VerifiedStyler", "temporary-styler-123", must_change_password=False)
+        with session_scope() as db:
+            db.get(User, user.id).achievement_extra_started_at = utcnow() - timedelta(days=1)
+
+        def persist_full(*, verified):
+            game = self.make_game(mode=1, players=[("p1", user.username)])
+            game["_players"][0]["user_id"] = user.id
+            game["_scoreboards"]["p1"] = self.full_scoreboard({"free": {"full": 46}})
+            if verified:
+                record_styler_full_evidence(game, "p1", "13,free", 46, [2] * 5)
+            self.assertTrue(persist_runtime_game(game, {"p1": 46}, build_leaderboard_snapshot_fields(game)))
+            return game["_id"]
+
+        for _ in range(10):
+            persist_full(verified=False)
+        payload = public_player_profile(user.username)["player"]["achievements"]
+        self.assertFalse(any(item["key"].startswith("styler_full_") for item in payload["unlocked"]))
+
+        verified_games = [persist_full(verified=True)]
+        payload = public_player_profile(user.username)["player"]["achievements"]
+        self.assertIn("styler_full_once", {item["key"] for item in payload["unlocked"]})
+        series = next(item for item in payload["locked"] if item["key"] == "styler_full_10")
+        self.assertEqual(series["progress"], {"current": 1, "target": 10})
+        for _ in range(9):
+            verified_games.append(persist_full(verified=True))
+        for _ in range(2):
+            payload = public_player_profile(user.username)["player"]["achievements"]
+            series = next(item for item in payload["unlocked"] if item["key"] == "styler_full_10")
+            self.assertEqual(series["progress"], {"current": 10, "target": 10})
+        with session_scope() as db:
+            self.assertEqual(db.scalar(select(func.count(UserAchievement.id)).where(
+                UserAchievement.user_id == user.id, UserAchievement.achievement_key.like("styler_full_%"),
+            )), 2)
+            self.assertFalse(any(award.legacy_styler for award in db.scalars(select(UserAchievement).where(
+                UserAchievement.user_id == user.id, UserAchievement.achievement_key.like("styler_full_%"),
+            ))))
+            for game in db.scalars(select(CompletedGame).where(CompletedGame.game_id.in_(verified_games))):
+                db.delete(game)
+        # New awards still lose eligibility after their actual result is
+        # removed, including profile-created awards without a source link.
+        payload = public_player_profile(user.username)["player"]["achievements"]
+        self.assertFalse(any(item["key"].startswith("styler_full_") for item in payload["unlocked"]))
+
+    def test_styler_fix_keeps_existing_award_dates_without_creating_missing_tiers(self):
+        user = create_user("LegacyStyler", "temporary-styler-123", must_change_password=False)
+        earned_at = datetime(2026, 9, 1, 12, tzinfo=timezone.utc)
+        with session_scope() as db:
+            db.add(UserAchievement(
+                user_id=user.id, achievement_key="styler_full_once", unlocked_at=earned_at, legacy_styler=True,
+            ))
+        for _ in range(2):
+            payload = public_player_profile(user.username)["player"]["achievements"]
+            unlocked = {item["key"]: item for item in payload["unlocked"]}
+            self.assertIn("styler_full_once", unlocked)
+            self.assertNotIn("styler_full_10", unlocked)
+            self.assertEqual(unlocked["styler_full_once"]["unlocked_at"].replace(tzinfo=timezone.utc), earned_at)
+            self.assertEqual(unlocked["styler_full_once"]["progress"], {"current": 1, "target": 1})
+            series = next(item for item in payload["locked"] if item["key"] == "styler_full_10")
+            self.assertEqual(series["progress"], {"current": 0, "target": 10})
+
+    def test_styler_migration_marks_existing_awards_only_and_never_grants_missing_tiers(self):
+        once = create_user("StylerBeforeOnce", "temporary-styler-123", must_change_password=False)
+        series = create_user("StylerBeforeSeries", "temporary-styler-123", must_change_password=False)
+        missing = create_user("StylerBeforeMissing", "temporary-styler-123", must_change_password=False)
+        game = self.make_game(mode=1, players=[("p1", once.username)])
+        game["_players"][0]["user_id"] = once.id
+        game["_scoreboards"]["p1"] = self.full_scoreboard({"free": {"full": 46}})
+        self.assertTrue(persist_runtime_game(game, {"p1": 46}, build_leaderboard_snapshot_fields(game)))
+        earned_at = datetime(2026, 9, 1, 12, tzinfo=timezone.utc)
+        with session_scope() as db:
+            result_id = db.scalar(select(CompletedGame.id).where(CompletedGame.game_id == game["_id"]))
+            db.add_all([
+                UserAchievement(user_id=once.id, achievement_key="styler_full_once", unlocked_at=earned_at,
+                                source_completed_game_id=result_id),
+                UserAchievement(user_id=series.id, achievement_key="styler_full_10", unlocked_at=earned_at),
+            ])
+        with session_scope() as db:
+            before = list(db.execute(select(
+                UserAchievement.id, UserAchievement.user_id, UserAchievement.achievement_key,
+                UserAchievement.unlocked_at, UserAchievement.source_completed_game_id,
+            ).order_by(UserAchievement.id)))
+        config = Config(str(main.BASE / "alembic.ini"))
+        config.set_main_option("script_location", str(main.BASE / "alembic"))
+        config.set_main_option("sqlalchemy.url", f"sqlite:///{self.database_path}")
+        command.downgrade(config, "20260912_0039")
+        command.upgrade(config, "head")
+        with session_scope() as db:
+            after = list(db.execute(select(
+                UserAchievement.id, UserAchievement.user_id, UserAchievement.achievement_key,
+                UserAchievement.unlocked_at, UserAchievement.source_completed_game_id,
+            ).order_by(UserAchievement.id)))
+            self.assertEqual(after, before)
+            for award in db.scalars(select(UserAchievement)):
+                self.assertEqual(award.legacy_styler, award.achievement_key.startswith("styler_full_"))
+            db.add(UserAchievement(user_id=missing.id, achievement_key="styler_full_once", unlocked_at=utcnow()))
+        command.upgrade(config, "head")  # Retrying a deploy must not preserve newly earned rows.
+        with session_scope() as db:
+            self.assertFalse(db.scalar(select(UserAchievement.legacy_styler).where(
+                UserAchievement.user_id == missing.id, UserAchievement.achievement_key == "styler_full_once",
+            )))
+        expected = ((once, {"styler_full_once"}), (series, {"styler_full_10"}), (missing, set()))
+        for user, keys in expected:
+            payload = public_player_profile(user.username)["player"]["achievements"]
+            self.assertEqual({item["key"] for item in payload["unlocked"] if item["key"].startswith("styler_full_")}, keys)
 
     def test_office_hours_series_counts_only_games_after_its_rollout_marker(self):
         user = create_user("OfficeFraud", "temporary-office-fraud-123", must_change_password=False)

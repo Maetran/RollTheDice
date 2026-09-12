@@ -600,6 +600,9 @@ class UserAchievement(Base):
     source_completed_game_id: Mapped[int | None] = mapped_column(
         ForeignKey("completed_games.id", ondelete="SET NULL"), nullable=True
     )
+    # Only already-existing Styler awards are preserved when replacing the
+    # ambiguous score-based rule. New awards must retain real dice evidence.
+    legacy_styler: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     user: Mapped[User] = relationship(back_populates="achievements")

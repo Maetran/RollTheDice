@@ -20,7 +20,6 @@ from .security import as_utc, utcnow
 ZURICH = ZoneInfo("Europe/Zurich")
 TOP_FIELDS = tuple(str(number) for number in range(1, 7))
 LOWER_FIELDS = ("kenter", "full", "poker")
-STYLER_FULL_VALUES = frozenset(40 + 3 * face for face in range(1, 7))
 
 
 @dataclass(frozen=True)
@@ -1317,6 +1316,42 @@ def _snapshot_rows(snapshot_json: str, participant: GameParticipant, mode: str) 
     return result
 
 
+def _styler_full_count(game: CompletedGame, participant: GameParticipant) -> int:
+    """Count only explicit dice proof that still matches the final Full cell.
+
+    Old Full scores are ambiguous and deliberately contribute zero. Evidence
+    uses board identity, keeping the existing shared-score semantics for 2v2.
+    """
+    try:
+        snapshot = json.loads(game.snapshot_json)
+    except (TypeError, json.JSONDecodeError):
+        return 0
+    if not isinstance(snapshot, dict):
+        return 0
+    evidence = snapshot.get("styler_full_evidence")
+    if not isinstance(evidence, dict) or type(evidence.get("version")) is not int or evidence["version"] != 1:
+        return 0
+    boards = evidence.get("boards")
+    scoreboards = snapshot.get("scoreboards")
+    if not isinstance(boards, dict) or not isinstance(scoreboards, dict):
+        return 0
+    board_key = participant.team if str(game.mode).lower() == "2v2" and participant.team else participant.player_key
+    fields, board = boards.get(str(board_key)), scoreboards.get(str(board_key))
+    if not isinstance(fields, dict) or not isinstance(board, dict) or not isinstance(board.get("reihen"), list):
+        return 0
+    fulls = {
+        row["index"]: row["rows"].get("full") for row in board["reihen"]
+        if isinstance(row, dict) and type(row.get("index")) is int and isinstance(row.get("rows"), dict)
+    }
+    return sum(
+        type(fields.get(f"13,{column}")) is int
+        and 1 <= fields[f"13,{column}"] <= 6
+        and type(fulls.get(index)) is int
+        and fulls[index] == 40 + 3 * fields[f"13,{column}"]
+        for index, column in enumerate(("down", "free", "up", "ang"), start=1)
+    )
+
+
 def _multiplayer_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str, int | bool]:
     """Return outcome metrics for the account that occupied ``participant``.
 
@@ -1450,7 +1485,7 @@ def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str
         "min_over_25": any(value > 25 for value in minimums),
         "max_thirty": any(value == 30 for value in maximums),
         "six_thirty": any(value == 30 for value in number_fields[6]),
-        "styler_full_count": sum(value in STYLER_FULL_VALUES for value in fulls),
+        "styler_full_count": _styler_full_count(game, participant),
         "office_hours": local_finished.weekday() < 5 and 7 <= local_finished.hour < 17,
         "night_owl": 2 <= local_finished.hour < 5,
         "weekend": local_finished.weekday() >= 5,
@@ -1760,7 +1795,10 @@ def sync_user_achievements(
             # its source-aware finalizer sync. Repair only such chronologically
             # possible NULL links; pre-migration history remains untouched.
             row.source_completed_game_id = source_id
-        elif not unlocked and row is not None:
+        elif not unlocked and row is not None and not (
+            achievement.kind == "styler_full_count"
+            and row.legacy_styler
+        ):
             db.delete(row)
     db.flush()
     unlocked_rows = {
@@ -1786,6 +1824,10 @@ def sync_user_achievements(
         }
         row = unlocked_rows.get(achievement.key)
         if row:
+            if achievement.kind == "styler_full_count":
+                # Retained legacy badges stay visibly complete without adding
+                # unproven progress toward a still-locked higher tier.
+                payload["progress"]["current"] = max(payload["progress"]["current"], achievement.target)
             payload["unlocked_at"] = row.unlocked_at
             unlocked.append(payload)
         else:

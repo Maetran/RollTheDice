@@ -759,8 +759,10 @@ def _serve_zilch_pwa_zdwa_bridge(request: Request, path: str = "") -> Response:
     if route == "/":
         return _embedded_zdwa_pwa_page("index.html")
     if route == "/regeln":
+        record_request_engagement(request, "rules_viewed")
         return _embedded_zdwa_pwa_page("rules.html")
     if route == "/spieler":
+        record_request_engagement(request, "leaderboard_viewed")
         return _embedded_zdwa_pwa_page("players.html")
     if _bridge_path_segment(route, "/spieler/") is not None:
         return _embedded_zdwa_pwa_page("profile.html")

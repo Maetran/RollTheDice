@@ -1,21 +1,26 @@
 {
   "kind": "usability",
   "games": [
+    "zdwa",
     "zilch"
   ],
-  "summary_de": "Die Chatleiste in Zilch Classic bleibt beim Öffnen und Schließen dunkel und gut lesbar.",
-  "summary_en": "The Zilch Classic chat bar stays dark and easy to read when opened and closed.",
+  "summary_de": "Historie leichter finden, Erfolge zuverlässig verdienen: korrigierte Auslöser und aktuelle Sammlungen.",
+  "summary_en": "Find your history and earn achievements reliably: fixed triggers and up-to-date collections.",
   "player_notes": {
     "de": {
-      "title": "Chatleiste bleibt gut lesbar",
+      "title": "Erfolge wieder verlässlich verdienen",
       "changes": [
-        "Die Chatleiste bleibt auch nach dem Antippen dunkel, beim Öffnen ebenso wie beim Schließen."
+        "Zilchs eigene Historie findest du direkt in den Konto-Statistiken.",
+        "Historie, GitHub und weitere Konto-Aktionen werden zuverlässig erkannt; die Sammlung bleibt aktuell.",
+        "Styler-Erfolge zählen Fulls aus fünf gleichen Würfeln. Fehlende Erfolge werden nicht nachgetragen."
       ]
     },
     "en": {
-      "title": "A consistently readable chat bar",
+      "title": "Earn achievements reliably",
       "changes": [
-        "The chat bar stays dark after tapping, both when opening and closing it."
+        "Find your Zilch history directly in account statistics.",
+        "History, GitHub and other account actions are recognized reliably; collections stay current.",
+        "Styler achievements count Fulls with five identical dice. Missing achievements are not granted retroactively."
       ]
     }
   }
