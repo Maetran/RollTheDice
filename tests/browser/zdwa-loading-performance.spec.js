@@ -1,3 +1,4 @@
+const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
 const { test, expect } = require("@playwright/test");
 
 const PUBLIC_AUTH = {
@@ -60,10 +61,11 @@ test("anonymous lobby, guest controls and ordinary login focus do not request CA
     if (new URL(request.url()).hostname === "challenges.cloudflare.com") challengeRequests.push(request.url());
   });
   await page.goto("/", { waitUntil: "networkidle" });
-  await expect(page.locator("#loginForm")).toBeVisible();
+  await expectPasswordLoginClosed(page);
   await expect(page.locator("#registrationChallenge")).toBeHidden();
   await page.fill("#playerName", "GuestPerformance");
   await page.getByRole("radio", { name: "1 Spieler, Solo" }).click();
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "LocalOnly");
   await page.fill("#loginPassword", "local-password-123");
   await expect(page.locator("#createBtn")).toBeEnabled();
@@ -149,6 +151,7 @@ for (const registrationClick of [false, true]) {
     });
     try {
       await page.goto("/", { waitUntil: "domcontentloaded" });
+      await openPasswordLogin(page);
       await page.locator("#loginUsername").focus();
       if (registrationClick) {
         await fillRegistration(page);
@@ -174,13 +177,19 @@ for (const registrationClick of [false, true]) {
 }
 
 test("ordinary successful login makes no CAPTCHA request", async ({ page }) => {
+  let signedIn = false;
   let challengeRequests = 0;
   await page.route(TURNSTILE_SCRIPT, async route => {
     challengeRequests += 1;
     await serveTurnstile(route);
   });
-  await page.route("**/api/auth/login", route => route.fulfill({ json: ACCOUNT_AUTH }));
+  await page.route("**/api/auth/me", route => route.fulfill({ json: signedIn ? ACCOUNT_AUTH : PUBLIC_AUTH }));
+  await page.route("**/api/auth/login", async route => {
+    signedIn = true;
+    await route.fulfill({ json: ACCOUNT_AUTH });
+  });
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "LocalOnly");
   await page.fill("#loginPassword", "local-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -191,6 +200,7 @@ test("ordinary successful login makes no CAPTCHA request", async ({ page }) => {
 });
 
 test("login cancels a pending registration script without rendering a hidden widget", async ({ page }) => {
+  let signedIn = false;
   const scriptGate = gate();
   let challengeRequests = 0;
   let scriptSettled = false;
@@ -201,13 +211,18 @@ test("login cancels a pending registration script without rendering a hidden wid
     await serveTurnstile(route);
     scriptSettled = true;
   });
-  await page.route("**/api/auth/login", route => route.fulfill({ json: ACCOUNT_AUTH }));
+  await page.route("**/api/auth/me", route => route.fulfill({ json: signedIn ? ACCOUNT_AUTH : PUBLIC_AUTH }));
+  await page.route("**/api/auth/login", async route => {
+    signedIn = true;
+    await route.fulfill({ json: ACCOUNT_AUTH });
+  });
   await page.route("**/api/auth/register", async route => {
     registrationRequests += 1;
     await route.fulfill({ status: 403, json: { detail: "captcha_required" } });
   });
   try {
     await page.goto("/");
+    await openPasswordLogin(page);
     await page.fill("#loginUsername", "LocalOnly");
     await page.fill("#loginPassword", "local-password-123");
     await fillRegistration(page);
@@ -248,6 +263,7 @@ test("login removes an active widget and retired callbacks cannot restore a toke
     await route.fulfill({ status: 400, json: { detail: "captcha_invalid" } });
   });
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "LocalOnly");
   await page.fill("#loginPassword", "local-password-123");
   await fillRegistration(page);
@@ -261,7 +277,8 @@ test("login removes an active widget and retired callbacks cannot restore a toke
   expect(await page.evaluate(() => window.__turnstileFixture.removed)).toEqual(["local-registration-widget"]);
   expect(await page.evaluate(() => window.__turnstileFixture.resets)).toEqual([]);
   await page.click("#logoutBtn");
-  await expect(page.locator("#loginForm")).toBeVisible();
+  await expectPasswordLoginClosed(page);
+  await openPasswordLogin(page);
   await page.fill("#loginPassword", "local-password-123");
   await fillRegistration(page);
   await page.click("#registerBtn");
@@ -295,6 +312,7 @@ test("explicit registration shares one deferred widget and requires a fresh toke
   });
   try {
     await page.goto("/");
+    await openPasswordLogin(page);
     await page.fill("#loginUsername", "LocalOnly");
     await page.fill("#loginPassword", "local-password-123");
     expect(scriptRequests).toBe(0);
@@ -335,6 +353,7 @@ test("expired and failed challenges cannot register before a new successful chal
     await route.fulfill({ status: 202, json: { accepted: true } });
   });
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "LocalOnly");
   await page.fill("#loginPassword", "local-password-123");
   await fillRegistration(page);
@@ -383,6 +402,7 @@ test("a failed deferred script can be retried and never blocks ordinary login", 
   });
   try {
     await page.goto("/");
+    await openPasswordLogin(page);
     await page.fill("#loginUsername", "LocalOnly");
     await page.fill("#loginPassword", "local-password-123");
     await fillRegistration(page);

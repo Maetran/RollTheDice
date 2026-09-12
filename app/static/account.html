@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=601410b1cf7a">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=601410b1cf7a" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=601410b1cf7a" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=360bc3c057ea">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=360bc3c057ea" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=360bc3c057ea" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=601410b1cf7a">
-  <script src="/static/shell.js?v=601410b1cf7a" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=360bc3c057ea">
+  <script src="/static/shell.js?v=360bc3c057ea" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -29,6 +29,7 @@
       </div>
       <div id="accountNotice" class="connection-error" hidden></div>
     </section>
+    <aside data-passkey-prompt hidden></aside>
     <nav class="account-tabs" role="tablist" aria-label="Kontobereiche">
       <button id="statisticsTab" class="account-tab active" type="button" role="tab" aria-selected="true" aria-controls="statisticsPanel">Statistik</button>
       <button id="achievementsTab" class="account-tab" type="button" role="tab" aria-selected="false" aria-controls="achievementsPanel">Erfolge</button>
@@ -204,15 +205,18 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=601410b1cf7a';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=601410b1cf7a';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=601410b1cf7a';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=601410b1cf7a';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=601410b1cf7a';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=601410b1cf7a';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=360bc3c057ea';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=360bc3c057ea';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=360bc3c057ea';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=360bc3c057ea';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=360bc3c057ea';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=360bc3c057ea';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
+    mountPasskeyPrompt(document.querySelector('[data-passkey-prompt]'), {
+      auth, accountUrl: (window.ZDWA_ROUTE?.path || (path => path))('/konto?passkey=1#settings'),
+    });
     mountUsernameSettings(document.querySelector('[data-username-settings]'), {
       user,
       onChanged(data) {

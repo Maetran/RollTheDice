@@ -3,9 +3,11 @@ import { createPasskeyCredential, requestPasskeyAssertion, passkeysSupported } f
 
 export { passkeysSupported };
 
-let authCache = null;
-let authRequest = null;
-let authEpoch = 0;
+// Several page bundles include this module. Share identity, in-flight reads and
+// their generation so an older response from another bundle cannot restore a
+// removed session or stale passkey inventory. This state lives only in memory.
+const authStateKey = Symbol.for('rollthedice.auth-state');
+const authState = window[authStateKey] ||= { cache: null, request: null, epoch: 0 };
 
 function notifyAuthState(data) {
   window.dispatchEvent(new CustomEvent("zdwa:auth-state", { detail: data || { authenticated: false, user: null } }));
@@ -17,26 +19,26 @@ function syncLanguage(data) {
 }
 
 export function loadAuth({ refresh = false } = {}) {
-  if (authCache && !refresh) return Promise.resolve(authCache);
+  if (authState.cache && !refresh) return Promise.resolve(authState.cache);
   // One identity request is enough even when multiple UI components mount together.
-  if (authRequest) return authRequest;
-  const requestEpoch = authEpoch;
+  if (authState.request) return authState.request;
+  const requestEpoch = authState.epoch;
   const request = (async () => {
     const response = await fetch('/api/auth/me', { cache: 'no-store' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     // A successful login/logout supersedes an older in-flight /me response.
-    if (requestEpoch !== authEpoch) {
-      return authCache ?? data;
+    if (requestEpoch !== authState.epoch) {
+      return authState.cache ?? loadAuth({ refresh: true });
     }
-    authCache = data;
-    syncLanguage(authCache);
-    notifyAuthState(authCache);
-    return authCache;
+    authState.cache = data;
+    syncLanguage(authState.cache);
+    notifyAuthState(authState.cache);
+    return authState.cache;
   })();
-  authRequest = request;
+  authState.request = request;
   return request.finally(() => {
-    if (authRequest === request) authRequest = null;
+    if (authState.request === request) authState.request = null;
   });
 }
 
@@ -50,9 +52,9 @@ export async function apiFetch(url, options = {}) {
   }
   const response = await fetch(url, { ...options, headers, cache: options.cache || 'no-store' });
   if (response.status === 401) {
-    authEpoch += 1;
-    authCache = null;
-    authRequest = null;
+    authState.epoch += 1;
+    authState.cache = null;
+    authState.request = null;
   }
   return response;
 }
@@ -65,9 +67,9 @@ export async function login(username, password) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(authError(data.detail));
-  authEpoch += 1;
-  authRequest = null;
-  authCache = data;
+  authState.epoch += 1;
+  authState.request = null;
+  authState.cache = data;
   syncLanguage(data);
   notifyAuthState(data);
   return data;
@@ -90,9 +92,9 @@ export async function loginWithPasskey() {
     const { options } = await publicAuthPost('/api/auth/passkeys/authentication/options', {});
     const credential = await requestPasskeyAssertion(options);
     const data = await publicAuthPost('/api/auth/passkeys/authentication/verify', { credential });
-    authEpoch += 1;
-    authRequest = null;
-    authCache = data;
+    authState.epoch += 1;
+    authState.request = null;
+    authState.cache = data;
     syncLanguage(data);
     notifyAuthState(data);
     return data;
@@ -120,6 +122,39 @@ export function revealAccountSetting(target, { focus = false, scroll = false } =
   });
 }
 
+export function mountPasskeyPrompt(container, { auth, accountUrl } = {}) {
+  if (!container) return;
+  if (!container._passkeyPrompt) {
+    let currentAuth = null;
+    let destination = '';
+    const render = (data, url = destination) => {
+      if (data?.user?.id === currentAuth?.user?.id && !data?.passkeys && currentAuth?.passkeys) {
+        data = { ...data, passkeys: currentAuth.passkeys };
+      }
+      currentAuth = data;
+      destination = url;
+      const visible = Boolean(data?.user && !data.user.must_change_password
+        && data.passkeys?.enabled && data.passkeys.has_credentials === false && passkeysSupported());
+      container.hidden = !visible;
+      if (!visible) {
+        container.replaceChildren();
+        return;
+      }
+      container.className = 'passkey-setup-prompt';
+      container.innerHTML = `<div><h2>${escapeHtml(translate('Richte jetzt deinen Passkey ein'))}</h2><p>${escapeHtml(translate('Dein Konto hat noch keinen Passkey. Melde dich künftig mit Fingerabdruck, Gesichtserkennung oder Geräte-PIN an.'))}</p></div><a class="button-link primary" data-passkey-prompt-link href="${escapeHtml(destination)}">${escapeHtml(translate('Passkey einrichten'))}</a>`;
+    };
+    window.addEventListener('zdwa:auth-state', event => render(event.detail));
+    window.addEventListener('pageshow', event => {
+      if (event.persisted && container.isConnected) {
+        container.hidden = true;
+        void loadAuth({ refresh: true }).catch(() => render(null));
+      }
+    });
+    container._passkeyPrompt = (data, url) => render(data ?? currentAuth, url);
+  }
+  container._passkeyPrompt(auth, accountUrl);
+}
+
 export async function mountPasskeySettings(container, { zilch = false } = {}) {
   if (!container || container.dataset.bound) return;
   container.dataset.bound = 'true';
@@ -128,8 +163,18 @@ export async function mountPasskeySettings(container, { zilch = false } = {}) {
     const section = container.closest('[data-passkey-section]') || container.closest('section');
     if (section) section.hidden = !auth.passkeys?.enabled;
     if (!auth.passkeys?.enabled) return;
+    let focusRequested = !auth.user?.must_change_password
+      && new URLSearchParams(window.location.search).has('passkey');
     const render = async (notice = '') => {
       const status = await passkeyRequest();
+      // Publish the current inventory after creation/removal, including to
+      // prompts owned by other bundles. Older /me responses cannot restore it.
+      if (authState.cache?.user?.id === auth.user?.id) {
+        authState.epoch += 1;
+        authState.request = null;
+        authState.cache = { ...authState.cache, passkeys: { ...auth.passkeys, has_credentials: Boolean(status.credentials?.length) } };
+        notifyAuthState(authState.cache);
+      }
       container.innerHTML = `
         <p>${escapeHtml(translate('Mit einem Passkey meldest du dich per Fingerabdruck, Gesichtserkennung oder Geräte-PIN an. Dein Passwort bleibt als Alternative verfügbar.'))}</p>
         <ul data-passkey-list>${(status.credentials || []).map(key => `<li><span>${escapeHtml(key.label || translate('Passkey'))}</span> <button class="small ghost" type="button" data-remove-passkey="${Number(key.id)}">${escapeHtml(translate('Entfernen'))}</button></li>`).join('')}</ul>
@@ -143,6 +188,10 @@ export async function mountPasskeySettings(container, { zilch = false } = {}) {
         <p data-passkey-message role="status">${escapeHtml(translate(notice))}</p>`;
       const form = container.querySelector('form');
       const message = container.querySelector('[data-passkey-message]');
+      if (focusRequested) {
+        focusRequested = false;
+        revealAccountSetting(form.elements.current_password, { focus: true, scroll: true });
+      }
       let busy = false;
       const run = async action => {
         if (busy) return;
@@ -203,9 +252,9 @@ export async function register(username, email, turnstileToken = null, password 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(authError(data.detail));
   if (data.authenticated) {
-    authEpoch += 1;
-    authRequest = null;
-    authCache = data;
+    authState.epoch += 1;
+    authState.request = null;
+    authState.cache = data;
     syncLanguage(data);
     notifyAuthState(data);
   }
@@ -220,9 +269,9 @@ export function inspectRegistration(token) {
 
 export async function completeRegistration(token, password) {
   const data = await publicAuthPost('/api/auth/registration/complete', { token, password });
-  authEpoch += 1;
-  authRequest = null;
-  authCache = data;
+  authState.epoch += 1;
+  authState.request = null;
+  authState.cache = data;
   syncLanguage(data);
   notifyAuthState(data);
   return data;
@@ -275,10 +324,10 @@ export async function logout() {
   // An anonymous visitor may still use a public game. Preserve that
   // server-confirmed capability for the logout notification so a mounted
   // product shell does not briefly revoke a public route before navigation.
-  const gameAccess = authCache?.game_access || authCache?.user?.game_access;
-  authEpoch += 1;
-  authCache = null;
-  authRequest = null;
+  const gameAccess = authState.cache?.game_access || authState.cache?.user?.game_access;
+  authState.epoch += 1;
+  authState.cache = null;
+  authState.request = null;
   notifyAuthState({
     authenticated: false,
     user: null,
@@ -294,9 +343,9 @@ export async function changeUsername(username, currentPassword) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(authError(Array.isArray(data.detail) ? 'username_invalid' : data.detail));
-  authEpoch += 1;
-  authRequest = null;
-  authCache = data;
+  authState.epoch += 1;
+  authState.request = null;
+  authState.cache = data;
   notifyAuthState(data);
   return data;
 }

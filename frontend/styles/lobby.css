@@ -1,3 +1,4 @@
+@import "./passkey-login.css";
 /* === Lobby === */
 .wrap{
   width:min(1120px, calc(100vw - 32px));

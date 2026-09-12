@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const port = Number(process.env.ROLLTHEDICE_TEST_PORT || 8010);
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${port}`;
 const testDatabase = `/tmp/rollthedice-playwright-${process.pid}.sqlite3`;
-const previewAccounts = "previewfriend,settings_zilch_de,settings_zilch_en,forcedsettings_zilch,settings_savedchoices,pushsettings,zilchsigninready,emailsettings_zilch_de,emailsettings_zilch_en";
+const previewAccounts = "previewfriend,settings_zilch_de,settings_zilch_en,forcedsettings_zilch,settings_savedchoices,pushsettings,zilchsigninready,emailsettings_zilch_de,emailsettings_zilch_en,passkeyprompt_zilch_de,passkeyprompt_zilch_en,passkeyguard_zilch";
 const pythonExecutable = process.env.PLAYWRIGHT_PYTHON
   || (fs.existsSync(".venv/bin/python") ? ".venv/bin/python" : "python3");
 

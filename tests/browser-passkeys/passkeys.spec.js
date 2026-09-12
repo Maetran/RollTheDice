@@ -1,4 +1,5 @@
 const { test, expect } = require("@playwright/test");
+const { openPasswordLogin } = require("../browser/password-login");
 
 const temporaryPassword = "temporary-account-password";
 const password = "passkey-browser-password-123";
@@ -37,6 +38,7 @@ async function logout(page) {
 async function passwordLogin(page, product, username) {
   const zilch = product === "zilch";
   await page.goto(zilch ? "/zilch/anmelden?return_to=/zilch/konto" : "/");
+  await openPasswordLogin(page, zilch);
   await page.locator(zilch ? "#zilchLoginUsername" : "#loginUsername").fill(username);
   await page.locator(zilch ? "#zilchLoginPassword" : "#loginPassword").fill(password);
   await Promise.all([
@@ -67,19 +69,28 @@ for (const product of ["zdwa", "zilch"]) {
       try {
         await passwordLogin(page, product, username);
         const accountPath = product === "zilch" ? "/zilch/konto#settings" : "/konto#settings";
-        await page.goto(accountPath);
+        const prompt = page.locator("[data-passkey-prompt]");
+        await expect(prompt).toBeVisible();
+        const promptLink = prompt.locator("[data-passkey-prompt-link]");
+        const promptDestination = new URL(await promptLink.getAttribute("href"), page.url());
+        expect(promptDestination.pathname).toBe(product === "zilch" ? "/zilch/konto" : "/konto");
+        expect(promptDestination.searchParams.get("passkey")).toBe("1");
+        expect(promptDestination.hash).toBe("#settings");
+        await promptLink.click();
         await expect(page.locator("details[data-account-section=access]")).toHaveAttribute("open", "");
         await expect(page.locator("details[data-account-action=profile]")).not.toHaveAttribute("open", "");
         await expect(page.locator("details[data-account-action=password]")).not.toHaveAttribute("open", "");
         const settings = page.locator("details[data-account-section=access] [data-passkey-settings]");
         const currentPassword = settings.locator('[name="current_password"]');
         await expect(currentPassword).toBeVisible();
+        await expect(currentPassword).toBeFocused();
         await currentPassword.fill(password);
         await settings.locator('[name="label"]').fill("Browser test device");
         await settings.getByRole("button", { name: language === "en" ? "Add passkey" : "Passkey hinzufügen" }).click();
         await expect(settings.locator("[data-passkey-list]")).toContainText("Browser test device");
         await expect(settings.locator("[data-passkey-message]")).toContainText(language === "en" ? "Passkey saved" : "Passkey gespeichert");
         await expect(currentPassword).toHaveValue("");
+        await expect(prompt).toBeHidden();
         const credentials = (await client.send("WebAuthn.getCredentials", { authenticatorId })).credentials;
         expect(credentials).toHaveLength(1);
         expect(credentials[0].rpId).toBe("rollthedice.localhost");
@@ -101,7 +112,10 @@ for (const product of ["zdwa", "zilch"]) {
         const login = page.locator(product === "zilch" ? "#zilchPasskeyLoginButton" : "#passkeyLoginButton");
         await expect(login).toBeVisible();
         const passwordForm = page.locator(product === "zilch" ? "#zilchLoginForm" : "#loginForm");
-        expect((await login.boundingBox()).y).toBeLessThan((await passwordForm.boundingBox()).y);
+        await expect(passwordForm).toBeHidden();
+        const fallback = page.locator(product === "zilch" ? "#zilchPasswordLogin > summary" : "#passwordLogin > summary");
+        await expect(fallback).toBeVisible();
+        expect((await login.boundingBox()).y).toBeLessThan((await fallback.boundingBox()).y);
         await Promise.all([
           page.waitForResponse(response => response.url().endsWith("/api/auth/passkeys/authentication/verify") && response.status() === 200),
           login.click(),
@@ -113,6 +127,7 @@ for (const product of ["zdwa", "zilch"]) {
         else await expect(page.locator("#authBadge")).toContainText(username);
         const authenticated = await (await page.request.get("/api/auth/me")).json();
         expect(authenticated.user.id).toBe(userId);
+        await expect(prompt).toBeHidden();
 
         await page.goto(accountPath);
         await currentPassword.fill(password);
@@ -120,9 +135,11 @@ for (const product of ["zdwa", "zilch"]) {
         await settings.locator("[data-remove-passkey]").click();
         await expect(settings.locator("[data-passkey-list] li")).toHaveCount(0);
         await expect(settings.locator("[data-passkey-message]")).toContainText(language === "en" ? "Passkey removed" : "Passkey entfernt");
+        await expect(prompt).toBeVisible();
         expect((await (await page.request.get("/api/auth/passkeys")).json()).credentials).toEqual([]);
         await logout(page);
         await passwordLogin(page, product, username);
+        await expect(prompt).toBeVisible();
         expect((await (await page.request.get("/api/auth/me")).json()).user.id).toBe(userId);
       } finally {
         await client.send("WebAuthn.removeVirtualAuthenticator", { authenticatorId });

@@ -6,7 +6,8 @@ test("explicit public Zilch login opens the apex login form and preserves its de
   const login = new URL("/anmelden", zilchOrigin);
   login.searchParams.set("return_to", "/statistiken?scope=mine");
   await page.goto(login.href);
-  await expect(page.locator("#zilchLoginForm")).toBeVisible();
+  await expect(page.locator("#zilchLoginForm")).toBeHidden();
+  await expect(page.locator("#zilchPasswordLogin > summary")).toBeVisible();
   await expect(page.locator("#zilchPasskeyLoginButton")).toBeVisible();
   const destination = new URL(page.url());
   expect(destination.origin).toBe(new URL(baseURL).origin);

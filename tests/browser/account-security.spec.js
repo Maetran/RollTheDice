@@ -25,7 +25,8 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#loginError')).toContainText(language === 'en' ? 'confirmation link' : 'Bestätigungslink');
     expect(body).toMatchObject({ username: 'MailPlayer', email: 'mail@example.test', password: null, preferred_language: language });
     await expect(page.locator('#authActions')).toBeHidden();
-    await expect(page.locator('#loginForm')).toBeVisible();
+    await expect(page.locator('#loginForm')).toBeHidden();
+    await expect(page.locator('#passwordLogin > summary')).toBeVisible();
   });
 
   test(`confirmation requires a click and removes the secret from the URL (${language})`, async ({ page }) => {
@@ -78,10 +79,13 @@ test('passkey login is primary, converts binary values and retains password fall
   await page.goto('/');
   const passkey = page.locator('#passkeyLoginButton');
   await expect(passkey).toBeVisible();
-  expect(await passkey.evaluate(el => Boolean(el.compareDocumentPosition(document.querySelector('#loginForm')) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  expect(await passkey.evaluate(el => Boolean(el.compareDocumentPosition(document.querySelector('#passwordLogin')) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  await expect(page.locator('#loginForm')).toBeHidden();
   await passkey.click();
   await expect(page.locator('#loginError')).toContainText('Passkey-Anmeldung wurde abgebrochen');
   expect(await page.evaluate(() => window.__passkeyChallenge)).toEqual([1, 2, 3]);
+  await expect(page.locator('#loginForm')).toBeHidden();
+  await page.locator('#passwordLoginFallback').click();
   await expect(page.locator('#loginForm')).toBeVisible();
   await expect(passkey).toBeEnabled();
 });

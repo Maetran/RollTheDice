@@ -295,6 +295,7 @@ select, input, button { font-family: inherit; font-size: 16px; line-height: 1.2;
 input:not([type]),
 input[type="text"],
 input[type="password"],
+input[type="email"],
 input[type="search"],
 select{
   min-height:2.45rem;
@@ -308,10 +309,12 @@ select{
 input:not([type])::placeholder,
 input[type="text"]::placeholder,
 input[type="password"]::placeholder,
+input[type="email"]::placeholder,
 input[type="search"]::placeholder{ color:#94a0b2; }
 input:not([type]):focus,
 input[type="text"]:focus,
 input[type="password"]:focus,
+input[type="email"]:focus,
 input[type="search"]:focus,
 select:focus{
   border-color:var(--accent);

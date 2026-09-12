@@ -1,0 +1,18 @@
+.password-login-disclosure {
+  margin-block: .75rem 1rem;
+  border-block: 1px solid var(--border, var(--zilch-paper-edge));
+  color: var(--text, var(--zilch-ink));
+}
+.password-login-disclosure > summary {
+  padding-block: .8rem;
+  cursor: pointer;
+  font-size: .9rem;
+  font-weight: 650;
+}
+.password-login-disclosure > summary:focus-visible {
+  outline: 2px solid var(--accent, var(--zilch-blue));
+  outline-offset: 3px;
+  border-radius: .2rem;
+}
+.password-login-disclosure[open] { padding-bottom: .8rem; }
+.password-login-disclosure > form { margin-top: .2rem; }

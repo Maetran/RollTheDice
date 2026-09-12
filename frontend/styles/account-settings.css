@@ -1,4 +1,13 @@
 /* One account structure, with each product's existing colours. */
+.passkey-setup-prompt { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: 1rem; margin-block: 1rem; border: 2px solid var(--accent); border-radius: 14px; background: var(--card); color: var(--text); }
+.passkey-setup-prompt[hidden] { display: none; }
+.passkey-setup-prompt > div { flex: 1 1 240px; min-width: 0; }
+.passkey-setup-prompt h2 { margin: 0 0 .4rem; font-size: 1.1rem; }
+.passkey-setup-prompt p { margin: 0; line-height: 1.5; }
+.passkey-setup-prompt a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: .6rem 1rem; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 10px; background: var(--accent); color: #fff; text-align: center; text-decoration: none; white-space: normal; }
+.passkey-setup-prompt a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+html[data-game="zilch"] .passkey-setup-prompt { background: var(--zilch-paper-soft); color: var(--zilch-ink); border-color: var(--zilch-blue); }
+html[data-game="zilch"] .passkey-setup-prompt a { background: var(--zilch-blue); border-color: var(--zilch-blue); color: #fff; }
 .account-settings-panel,
 .zilch-account-settings-grid {
   --account-settings-surface: var(--card);

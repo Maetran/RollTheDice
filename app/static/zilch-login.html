@@ -8,13 +8,13 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#542d16">
   <meta name="color-scheme" content="light">
-  <link rel="icon" type="image/png" href="/static/icons/zilch-icon-32.png?v=601410b1cf7a" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/zilch-apple-touch-icon-180.png?v=601410b1cf7a" sizes="180x180">
+  <link rel="icon" type="image/png" href="/static/icons/zilch-icon-32.png?v=360bc3c057ea" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/zilch-apple-touch-icon-180.png?v=360bc3c057ea" sizes="180x180">
   <script>(()=>{let t="light";try{t=localStorage.getItem("zilch_theme")==="lcars"?"lcars":"light"}catch(_){}document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t==="lcars"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=t==="lcars"?"#000000":"#542d16"})()</script>
-  <script>if(document.documentElement.dataset.theme==="lcars"){const f=document.createElement("link");f.rel="preload";f.as="font";f.type="font/ttf";f.crossOrigin="anonymous";f.href="/static/antonio-lcars-v1.ttf?v=601410b1cf7a";document.head.append(f)}</script>
-  <script src="/static/shell.js?v=601410b1cf7a" defer></script>
-  <link rel="stylesheet" href="/static/zilch.css?v=601410b1cf7a">
-  <link rel="stylesheet" href="/static/zilch-lcars.css?v=601410b1cf7a">
+  <script>if(document.documentElement.dataset.theme==="lcars"){const f=document.createElement("link");f.rel="preload";f.as="font";f.type="font/ttf";f.crossOrigin="anonymous";f.href="/static/antonio-lcars-v1.ttf?v=360bc3c057ea";document.head.append(f)}</script>
+  <script src="/static/shell.js?v=360bc3c057ea" defer></script>
+  <link rel="stylesheet" href="/static/zilch.css?v=360bc3c057ea">
+  <link rel="stylesheet" href="/static/zilch-lcars.css?v=360bc3c057ea">
 </head>
 <body class="zilch-page zilch-login-page">
   <main class="zilch-login-shell">
@@ -29,13 +29,17 @@
       <div id="zilchPasskeyLogin" class="zilch-passkey-login" hidden>
         <button id="zilchPasskeyLoginButton" class="primary" type="button">Mit Passkey anmelden</button>
         <p class="zilch-muted">Schnell und ohne Passwort auf diesem Gerät anmelden.</p>
-        <p class="zilch-login-divider" aria-hidden="true">oder mit Passwort</p>
       </div>
+      <p id="zilchPasskeyUnavailable" class="zilch-muted" hidden>Passkeys sind hier gerade nicht verfügbar. Öffne „Mit Passwort anmelden“, um dich anzumelden.</p>
+      <button id="zilchPasswordLoginFallback" type="button" class="ghost" hidden>Mit Passwort anmelden</button>
+      <details id="zilchPasswordLogin" class="password-login-disclosure">
+        <summary>Mit Passwort anmelden</summary>
       <form id="zilchLoginForm" class="zilch-login-form">
         <label for="zilchLoginUsername">Benutzername oder E-Mail-Adresse<input id="zilchLoginUsername" autocomplete="username" required></label>
         <label for="zilchLoginPassword">Passwort<input id="zilchLoginPassword" type="password" autocomplete="current-password" minlength="8" required></label>
-        <div class="zilch-login-actions"><button class="primary" type="submit">Anmelden</button><a id="zilchForgotPassword" class="button-link ghost" href="/passwort-vergessen">Passwort vergessen?</a></div>
+        <div class="zilch-login-actions"><button class="secondary" type="submit">Anmelden</button><a id="zilchForgotPassword" class="button-link ghost" href="/passwort-vergessen">Passwort vergessen?</a></div>
       </form>
+      </details>
       <form id="zilchRegistrationForm" class="zilch-login-form">
         <p class="zilch-muted">Neues Konto per E-Mail bestätigen</p>
         <label for="zilchRegistrationUsername">Neuer Benutzername<input id="zilchRegistrationUsername" autocomplete="username" minlength="3" maxlength="32" required></label>
@@ -51,6 +55,6 @@
       <p id="zilchLoginMessage" class="zilch-login-message" role="status"></p>
     </section>
   </main>
-  <script type="module" src="/static/zilch-login.js?v=601410b1cf7a"></script>
+  <script type="module" src="/static/zilch-login.js?v=360bc3c057ea"></script>
 </body>
 </html>

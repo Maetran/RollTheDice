@@ -1,3 +1,4 @@
+const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
 const { test, expect } = require("@playwright/test");
 
 const LCARS_VIEWPORTS = [
@@ -75,6 +76,7 @@ async function expectLcarsViewports(page) {
 }
 
 async function signIn(page, username, password) {
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", username);
   await page.fill("#loginPassword", password);
   await page.click("#loginForm button[type=submit]");
@@ -103,7 +105,7 @@ async function signInAsPreviewMani(page) {
   expect([201, 400]).toContain(mani.status);
 
   await page.click("#logoutBtn");
-  await expect(page.locator("#loginForm")).toBeVisible();
+  await expectPasswordLoginClosed(page);
   await signIn(page, "Mani", "mani-preview-password-123");
   await expect(page.locator("[data-game-switch]")).toBeVisible();
 }

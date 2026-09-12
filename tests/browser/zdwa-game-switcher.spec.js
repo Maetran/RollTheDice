@@ -1,6 +1,8 @@
+const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
 const { test, expect } = require("@playwright/test");
 
 async function signIn(page, username, password) {
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", username);
   await page.fill("#loginPassword", password);
   await page.click("#loginForm button[type=submit]");
@@ -25,7 +27,7 @@ async function signInAsPreviewMani(page) {
   const mani = await createUser(page, "Mani", "mani-preview-password-123", "admin");
   expect([201, 400]).toContain(mani.status);
   await page.click("#logoutBtn");
-  await expect(page.locator("#loginForm")).toBeVisible();
+  await expectPasswordLoginClosed(page);
   await signIn(page, "Mani", "mani-preview-password-123");
   await expect(page.locator("#authBadge")).toContainText("Mani");
 }
@@ -203,6 +205,10 @@ test.describe("installed PWA account navigation", () => {
       await accountLink.click();
       await expect(page).toHaveURL(`${origin}/${destination}/konto`);
       await expect(page.locator("html")).toHaveAttribute("data-game", destination);
+      await page.getByRole("tab", { name: "Einstellungen", exact: true }).click();
+      const socialSettings = page.locator('details[data-account-section="social"]');
+      await expect(socialSettings).not.toHaveAttribute("open", "");
+      await socialSettings.locator(":scope > summary").click();
       await expect(page.getByRole("heading", { name: "Push-Benachrichtigungen", exact: true })).toBeVisible();
       await page.reload();
       await expect(page.locator("html")).toHaveAttribute("data-game", destination);

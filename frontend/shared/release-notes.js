@@ -103,6 +103,9 @@ export function initializeReleaseNotes({ context }) {
   }
 
   function maybeAnnounce() {
+    // An explicit passkey setup entry keeps focus on the account form. The
+    // unread release remains available in history and on the next visit.
+    if (new URLSearchParams(window.location.search).has('passkey') && document.querySelector('[data-passkey-settings]')) return;
     const latest = data?.releases?.[0];
     const dismissed = latest && (isRead(latest) || (data.viewer_id === null && baseline?.revision === latest.revision));
     if (currentDialog && (!latest || !data.can_prompt || !latest.can_announce || dismissed || currentDialog.dataset.revision !== latest.revision)) closeDialog();

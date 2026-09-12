@@ -1,4 +1,4 @@
-import { apiFetch, authError, escapeHtml, loadAuth, logout, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountUsernameSettings } from "../shared/auth.js";
+import { apiFetch, authError, escapeHtml, loadAuth, logout, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings } from "../shared/auth.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
 import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
@@ -5444,6 +5444,11 @@ async function initialize() {
   }
   if (!await authReady) return;
   renderShell();
+  if (accountRoute || currentZilchRoute === "/") {
+    mountPasskeyPrompt(document.querySelector('[data-passkey-prompt]'), {
+      auth: state.auth, accountUrl: zilchPath('/konto?passkey=1#settings'),
+    });
+  }
   if (gameId) document.addEventListener("keydown", handleZilchGameShortcut);
   document.addEventListener("click", async (event) => {
     const logoutButton = event.target instanceof Element

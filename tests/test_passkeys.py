@@ -131,8 +131,14 @@ class PasskeyTestCase(TestCase):
         return response.json()["options"]
 
     def test_full_registration_login_and_owned_deletion(self):
+        self.assertEqual(self.client.get("/api/auth/me").json()["passkeys"], {
+            "enabled": True, "has_credentials": False,
+        })
         registered = self._register()
         self.assertEqual(set(registered), {"id", "label", "created_at", "last_used_at"})
+        self.assertEqual(self.client.get("/api/auth/me").json()["passkeys"], {
+            "enabled": True, "has_credentials": True,
+        })
         self.client.cookies.clear()
         options = self._authentication_options()
         self.assertFalse(options.get("allowCredentials"))
@@ -155,6 +161,46 @@ class PasskeyTestCase(TestCase):
         deleted = self.client.request("DELETE", f"/api/auth/passkeys/{registered['id']}", json={"current_password": PASSWORD}, headers=csrf)
         self.assertEqual(deleted.status_code, 200, deleted.text)
         self.assertEqual(self.client.get("/api/auth/passkeys").json()["credentials"], [])
+        self.assertEqual(self.client.get("/api/auth/me").json()["passkeys"], {
+            "enabled": True, "has_credentials": False,
+        })
+
+    def test_credential_presence_is_private_and_scoped_to_the_current_account(self):
+        self._register()
+        other = create_user("No_Passkey_User", PASSWORD, must_change_password=False)
+        with session_scope() as db:
+            other = db.get(User, other.id)
+            _identity, raw = issue_session_for_user(db, other)
+        url = f"/api/auth/me?user_id={self.user.id}&username={self.user.username}"
+        response = self.client.get(url, headers={"Cookie": f"rollthedice_session={raw}"})
+        self.assertEqual(response.json()["user"]["id"], other.id)
+        self.assertEqual(response.json()["passkeys"], {"enabled": True, "has_credentials": False})
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        # An unsupported alias or a disabled feature must not turn a present
+        # credential into a missing one; the frontend checks both capabilities.
+        with patch.dict(os.environ, {"ROLLTHEDICE_PASSKEYS_ENABLED": "0"}):
+            self.assertEqual(self.client.get("/api/auth/me").json()["passkeys"], {
+                "enabled": False, "has_credentials": True,
+            })
+        response = self.client.get("https://www.example.test/api/auth/me")
+        self.assertEqual(response.json()["passkeys"], {"enabled": False, "has_credentials": True})
+        self.client.cookies.clear()
+        self.assertEqual(self.client.get(url).json()["passkeys"], {"enabled": True})
+
+    def test_credential_presence_reflects_password_recovery_and_revoked_sessions(self):
+        self._register()
+        recovered_password = "recovered-secure-password"
+        reset_password(self.user.id, recovered_password)
+        response = self.client.get("/api/auth/me")
+        self.assertFalse(response.json()["authenticated"])
+        self.assertEqual(response.json()["passkeys"], {"enabled": True})
+        response = self.client.post("/api/auth/login", json={
+            "username": self.user.username, "password": recovered_password,
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        response = self.client.get("/api/auth/me")
+        self.assertTrue(response.json()["user"]["must_change_password"])
+        self.assertEqual(response.json()["passkeys"], {"enabled": True, "has_credentials": False})
 
     def test_authentication_rejects_tampering_wrong_origin_rp_and_absent_uv(self):
         self._register()

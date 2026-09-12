@@ -12,6 +12,9 @@ applyZilchRouteLinks();
 const form = document.getElementById("zilchLoginForm");
 const passkeyPanel = document.getElementById("zilchPasskeyLogin");
 const passkeyButton = document.getElementById("zilchPasskeyLoginButton");
+const passkeyUnavailable = document.getElementById("zilchPasskeyUnavailable");
+const passwordLogin = document.getElementById("zilchPasswordLogin");
+const passwordFallback = document.getElementById("zilchPasswordLoginFallback");
 const username = document.getElementById("zilchLoginUsername");
 const password = document.getElementById("zilchLoginPassword");
 const registrationForm = document.getElementById("zilchRegistrationForm");
@@ -108,7 +111,12 @@ function resetChallenge() {
 function render(auth) {
   const user = auth?.user;
   const allowed = user?.game_access?.zilch_preview === true;
-  passkeyPanel.hidden = Boolean(user) || !auth?.passkeys?.enabled || !passkeysSupported();
+  const passkeyAvailable = auth?.passkeys?.enabled && passkeysSupported();
+  passkeyPanel.hidden = Boolean(user) || !passkeyAvailable;
+  passkeyUnavailable.hidden = Boolean(user) || passkeyAvailable;
+  passwordLogin.hidden = Boolean(user);
+  passwordFallback.hidden = true;
+  if (user) passwordLogin.open = false;
   form.hidden = Boolean(user);
   registrationForm.hidden = Boolean(user);
   const emailEnabled = auth?.registration?.email_enabled !== false;
@@ -151,16 +159,28 @@ form.addEventListener("submit", async event => {
   }
 });
 
+passwordLogin.addEventListener('toggle', () => {
+  if (passwordLogin.open) passwordFallback.hidden = true;
+});
+
+passwordFallback.addEventListener('click', () => {
+  passwordLogin.open = true;
+  username.focus();
+  passwordFallback.hidden = true;
+});
+
 passkeyButton.addEventListener('click', async () => {
   if (passkeyButton.disabled) return;
   passkeyButton.disabled = true;
   setMessage('');
+  passwordFallback.hidden = true;
   try {
     await loginWithPasskey();
     password.value = '';
     await refresh({ redirect: true });
   } catch (error) {
     setMessage(error.message, 'error');
+    passwordFallback.hidden = false;
   } finally {
     passkeyButton.disabled = false;
   }

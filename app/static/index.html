@@ -22,14 +22,14 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=601410b1cf7a">
+  <link rel="manifest" href="/manifest.webmanifest?v=360bc3c057ea">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=601410b1cf7a" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=601410b1cf7a" sizes="180x180">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=360bc3c057ea" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=360bc3c057ea" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=601410b1cf7a" defer></script>
-  <link rel="stylesheet" href="/static/lobby.css?v=601410b1cf7a">
+  <script src="/static/shell.js?v=360bc3c057ea" defer></script>
+  <link rel="stylesheet" href="/static/lobby.css?v=360bc3c057ea">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -56,7 +56,7 @@
         <a class="app-nav-link" href="/" aria-current="page">Lobby</a>
         <a class="app-nav-link" href="/spieler">Spieler &amp; Ranking</a>
         <a class="app-nav-link" href="/regeln">Regeln</a>
-        <a id="headerAccountLink" class="app-nav-link" href="#loginForm">Konto</a>
+        <a id="headerAccountLink" class="app-nav-link" href="#accountLogin">Konto</a>
       </nav>
       <div class="app-nav-tools">
         <label class="language-switcher" aria-label="Sprache wählen">
@@ -96,7 +96,7 @@
           </label>
           <p id="guestPlayHint" class="muted small">Du kannst ohne Konto spielen.</p>
         </div>
-        <div class="guest-account-panel">
+        <div id="accountLogin" class="guest-account-panel" tabindex="-1">
           <div class="account-intro">
             <h3>Spielerkonto</h3>
             <p class="muted small">Optional für Statistiken, Rankings und gespeicherte Einstellungen.</p>
@@ -104,8 +104,11 @@
           <div id="passkeyLogin" class="passkey-login" hidden>
             <button id="passkeyLoginButton" type="button" class="small primary">Mit Passkey anmelden</button>
             <p class="muted small">Schnell und ohne Passwort auf diesem Gerät anmelden.</p>
-            <p class="login-divider" aria-hidden="true">oder mit Passwort</p>
           </div>
+          <p id="passkeyUnavailable" class="muted small" hidden>Passkeys sind hier gerade nicht verfügbar. Öffne „Mit Passwort anmelden“, um dich anzumelden.</p>
+          <button id="passwordLoginFallback" type="button" class="small ghost" hidden>Mit Passwort anmelden</button>
+          <details id="passwordLogin" class="password-login-disclosure">
+            <summary>Mit Passwort anmelden</summary>
           <form id="loginForm" class="login-inline">
             <label class="form-field compact" for="loginUsername">
               <span>Benutzername oder E-Mail-Adresse</span>
@@ -120,6 +123,7 @@
               <a class="small ghost button-link" href="/passwort-vergessen">Passwort vergessen?</a>
             </div>
           </form>
+          </details>
           <form id="registrationForm" class="login-inline registration-inline">
             <label class="form-field compact" for="registrationUsername">
               <span>Neuer Benutzername</span>
@@ -146,7 +150,8 @@
           <a id="adminLink" class="button-link small ghost" href="/admin" hidden>Administration</a>
           <button id="logoutBtn" type="button" class="small ghost">Abmelden</button>
         </div>
-        <div id="loginError" class="muted small"></div>
+        <aside data-passkey-prompt hidden></aside>
+        <div id="loginError" class="muted small" role="status"></div>
       </section>
 
       <!-- 2) Neues Spiel – Modus/Passphrase, erzeugt via /api/games (POST) -->
@@ -284,6 +289,6 @@
   </div>
 
   <!-- Lobby-Controller: eigenständiges ES-Modul. -->
-  <script type="module" src="/static/lobby.js?v=601410b1cf7a"></script>
+  <script type="module" src="/static/lobby.js?v=360bc3c057ea"></script>
 </body>
 </html>

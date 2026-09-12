@@ -1,4 +1,9 @@
 export const EN = {
+    "Mit Passwort anmelden": "Sign in with password",
+    "Passkeys sind hier gerade nicht verfügbar. Öffne „Mit Passwort anmelden“, um dich anzumelden.": "Passkeys are currently unavailable here. Open “Sign in with password” to sign in.",
+    "Richte jetzt deinen Passkey ein": "Set up your passkey now",
+    "Dein Konto hat noch keinen Passkey. Melde dich künftig mit Fingerabdruck, Gesichtserkennung oder Geräte-PIN an.": "Your account has no passkey yet. Use your fingerprint, face recognition or device PIN to sign in next time.",
+    "Passkey einrichten": "Set up passkey",
     "Die Spieleinstellungen gelten nur für ZDWA auf allen Geräten.": "Game settings apply only to ZDWA across all devices.",
     "Ein Konto für ZDWA und Zilch. Profil, Anmeldung und Hinweise gelten für beide Spiele.": "One account for ZDWA and Zilch. Your profile, sign-in and notifications apply to both games.",
     "Empfohlen für deine Anmeldung": "Recommended for sign-in",

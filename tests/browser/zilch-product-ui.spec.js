@@ -1,3 +1,4 @@
+const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
 const { test, expect } = require("@playwright/test");
 
 async function openAccountSection(page, section) {
@@ -7,6 +8,7 @@ async function openAccountSection(page, section) {
 
 
 async function signIn(page, username, password) {
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", username);
   await page.fill("#loginPassword", password);
   await page.click("#loginForm button[type=submit]");
@@ -33,7 +35,7 @@ async function signOutFromLobby(page) {
     page.click("#logoutBtn"),
   ]);
   expect(response.ok()).toBeTruthy();
-  await expect(page.locator("#loginForm")).toBeVisible();
+  await expectPasswordLoginClosed(page);
 }
 
 async function signInAsPreviewMani(page) {
@@ -68,7 +70,7 @@ async function mockCompletedPasswordSetup(page) {
 test("Zilch has its own sign-in entry and safely returns preview accounts to the requested view", async ({ page }) => {
   const returnTo = encodeURIComponent("/zilch/konto#statistics");
   await page.goto(`/zilch/anmelden?return_to=${returnTo}`);
-  await expect(page.locator("#zilchLoginForm")).toBeVisible();
+  await expectPasswordLoginClosed(page, true);
   await expect(page.getByRole("heading", { name: "Bei Zilch anmelden" })).toBeVisible();
 
   // Use a distinct account with completed password setup so its requested
@@ -91,6 +93,7 @@ test("Zilch has its own sign-in entry and safely returns preview accounts to the
   expect(changed.ok()).toBeTruthy();
 
   await page.goto(`/zilch/anmelden?return_to=${returnTo}`);
+  await openPasswordLogin(page, true);
   await page.fill("#zilchLoginUsername", username);
   await page.fill("#zilchLoginPassword", password);
   await Promise.all([
@@ -123,6 +126,7 @@ test("a fresh Apex login preserves the fixed Zilch subdomain continuation", asyn
     await route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><p>Zilch continuation checked locally.</p>" });
   });
   await page.goto(`/zilch/anmelden?return_to=${encodeURIComponent(continuation)}`);
+  await openPasswordLogin(page, true);
   await page.fill("#zilchLoginUsername", "Mani");
   await page.fill("#zilchLoginPassword", "mani-preview-password-123");
   await Promise.all([

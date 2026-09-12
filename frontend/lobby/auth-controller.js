@@ -1,4 +1,4 @@
-import { loadAuth, login, loginWithPasskey, logout, passkeysSupported, playerNameMarkup, register } from "../shared/auth.js";
+import { loadAuth, login, loginWithPasskey, logout, mountPasskeyPrompt, passkeysSupported, playerNameMarkup, register } from "../shared/auth.js";
 import { zdwaPath } from "../multigame/routes.js";
 import { dom, storageKeys } from "./context.js";
 
@@ -120,7 +120,12 @@ async function refreshAuthUi(refresh = false) {
   try {
     const auth = await loadAuth({ refresh });
     const user = auth?.user;
-    dom.passkeyLogin.hidden = Boolean(user) || !auth?.passkeys?.enabled || !passkeysSupported();
+    const passkeyAvailable = auth?.passkeys?.enabled && passkeysSupported();
+    dom.passkeyLogin.hidden = Boolean(user) || !passkeyAvailable;
+    dom.passkeyUnavailable.hidden = Boolean(user) || passkeyAvailable;
+    dom.passwordLogin.hidden = Boolean(user);
+    dom.passwordLoginFallback.hidden = true;
+    if (user) dom.passwordLogin.open = false;
     dom.loginForm.hidden = Boolean(user);
     dom.registrationForm.hidden = Boolean(user);
     const emailEnabled = auth?.registration?.email_enabled !== false;
@@ -142,26 +147,37 @@ async function refreshAuthUi(refresh = false) {
       dom.nameInput.disabled = true;
       localStorage.setItem(storageKeys.name, user.username);
     } else {
-      dom.headerAccountLink.href = "#loginForm";
+      dom.headerAccountLink.href = "#accountLogin";
       dom.nameInput.disabled = false;
       dom.nameInput.value = localStorage.getItem(storageKeys.name) || "";
     }
+    mountPasskeyPrompt(dom.passkeyPrompt, { auth, accountUrl: zdwaPath('/konto?passkey=1#settings') });
   } catch {
     dom.loginError.textContent = "Anmeldestatus konnte nicht geladen werden.";
   }
 }
 
 export function initializeAuthentication() {
+  dom.passwordLogin.addEventListener('toggle', () => {
+    if (dom.passwordLogin.open) dom.passwordLoginFallback.hidden = true;
+  });
+  dom.passwordLoginFallback.addEventListener('click', () => {
+    dom.passwordLogin.open = true;
+    dom.loginUsername.focus();
+    dom.passwordLoginFallback.hidden = true;
+  });
   dom.passkeyLoginButton.addEventListener('click', async () => {
     if (dom.passkeyLoginButton.disabled) return;
     dom.passkeyLoginButton.disabled = true;
     dom.loginError.textContent = '';
+    dom.passwordLoginFallback.hidden = true;
     try {
       await loginWithPasskey();
       dom.loginPassword.value = '';
       await refreshAuthUi(true);
     } catch (error) {
       dom.loginError.textContent = error.message;
+      dom.passwordLoginFallback.hidden = false;
     } finally {
       dom.passkeyLoginButton.disabled = false;
     }
@@ -179,7 +195,7 @@ export function initializeAuthentication() {
     try {
       await login(dom.loginUsername.value, dom.loginPassword.value);
       dom.loginPassword.value = "";
-      await refreshAuthUi();
+      await refreshAuthUi(true);
     } catch (error) {
       dom.loginError.textContent = error.message;
       dom.loginError.classList.add("connection-error");

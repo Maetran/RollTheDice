@@ -1,6 +1,8 @@
+const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
 const { test, expect } = require("@playwright/test");
 
 async function signIn(page, username, password) {
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", username);
   await page.fill("#loginPassword", password);
   await page.click("#loginForm button[type=submit]");
@@ -393,7 +395,7 @@ test("Zilch is a separate permission-gated app mode and its hotkey respects inpu
   await ensurePreviewAccounts(page);
 
   await page.click("#logoutBtn");
-  await expect(page.locator("#loginForm")).toBeVisible();
+  await expectPasswordLoginClosed(page);
   await signIn(page, "Mani", "mani-preview-password-123");
   const switchButton = page.locator("[data-game-switch]");
   await expect(switchButton).toBeVisible();
@@ -474,7 +476,7 @@ test("a permitted user can create and reload a private CPU game through the norm
   await ensurePreviewAccounts(page);
 
   await page.click("#logoutBtn");
-  await expect(page.locator("#loginForm")).toBeVisible();
+  await expectPasswordLoginClosed(page);
   await signIn(page, "Mani", "mani-preview-password-123");
   await expect(page.locator("[data-game-switch]")).toBeVisible();
   await page.locator("[data-game-switch]").click();
@@ -701,7 +703,7 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
     await ensurePreviewAccounts(page);
 
     await page.click("#logoutBtn");
-    await expect(page.locator("#loginForm")).toBeVisible();
+    await expectPasswordLoginClosed(page);
     await signIn(page, "Mani", "mani-preview-password-123");
     await expect(page.locator("[data-game-switch]")).toBeVisible();
 
@@ -832,7 +834,7 @@ test("a persisted CPU Zilch result rematches with its strategy and saved room co
     await ensurePreviewAccounts(page);
 
     await page.click("#logoutBtn");
-    await expect(page.locator("#loginForm")).toBeVisible();
+    await expectPasswordLoginClosed(page);
     await signIn(page, "Mani", "mani-preview-password-123");
     await expect(page.locator("[data-game-switch]")).toBeVisible();
 
@@ -903,7 +905,7 @@ test("a legacy CPU result without room-code metadata asks before it can create a
     await ensurePreviewAccounts(page);
 
     await page.click("#logoutBtn");
-    await expect(page.locator("#loginForm")).toBeVisible();
+    await expectPasswordLoginClosed(page);
     await signIn(page, "Mani", "mani-preview-password-123");
     await expect(page.locator("[data-game-switch]")).toBeVisible();
 

@@ -55,8 +55,8 @@ from .email_delivery import (
 )
 from .engagement import record_engagement_safely
 from .game_access import public_game_access_payload
+from .models import PasskeyCredential, User
 from .models import Session as LoginSession
-from .models import User
 from .passkeys import passkey_public_config
 from .product_hosts import is_zilch_host
 from .security import normalize_email_address, utcnow
@@ -179,8 +179,16 @@ def _user_payload(user: User, *, achievement_rank: dict | None = None) -> dict:
 @router.get("/auth/me")
 def auth_me(request: Request, response: Response):
     identity = resolve_session(request)
+    passkeys = passkey_public_config(request)
     if identity:
         promote_legacy_session_cookie(response, request)
+        # Only the current account receives this hint. Read the live credential
+        # rows so enrollment, removal and account recovery are reflected without
+        # storing another preference or disclosing credential material.
+        with session_scope() as db:
+            passkeys["has_credentials"] = db.scalar(
+                select(PasskeyCredential.id).where(PasskeyCredential.user_id == identity.user_id).limit(1)
+            ) is not None
     response.headers["Cache-Control"] = "no-store"
     return {
         "authenticated": bool(identity),
@@ -189,7 +197,7 @@ def auth_me(request: Request, response: Response):
         # visitors so the app switcher can open a public Zilch table directly.
         "game_access": public_game_access_payload(identity),
         "registration": {**registration_public_config(), "email_enabled": account_email_available()},
-        "passkeys": passkey_public_config(request),
+        "passkeys": passkeys,
     }
 
 

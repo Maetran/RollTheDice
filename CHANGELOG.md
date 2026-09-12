@@ -11,6 +11,22 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Passkey zuerst / Passkey first — 2026-09-12
+
+- **Deutsch:** Die Anmeldung stellt Passkeys nach vorne. Benutzername und
+  Passwort erscheinen erst nach „Mit Passwort anmelden“. Nach einem Abbruch
+  bleibt diese Alternative über einen ausdrücklichen Schritt erreichbar.
+  Konten ohne Passkey erhalten in beiden Lobbys und Kontoseiten einen direkten
+  Einrichtungshinweis. Er verschwindet nach der Einrichtung und kommt nach
+  dem Entfernen des letzten Passkeys wieder. Erforderliche Passwortwechsel
+  haben Vorrang; laufende Spiele werden nicht unterbrochen.
+- **English:** Sign-in leads with passkeys. Username and password fields appear
+  after choosing “Sign in with password”, including after cancelling a passkey
+  attempt. Accounts without a passkey receive a direct setup reminder in both
+  lobbies and account pages. It disappears after setup and returns when the
+  last passkey is removed. Required password changes take priority; active
+  games remain uninterrupted.
+
 ## Klarere Kontoeinstellungen und E-Mail / Clearer account settings and email — 2026-09-12
 
 - **Deutsch:** ZDWA und Zilch ordnen die Einstellungen gleich: Profil und

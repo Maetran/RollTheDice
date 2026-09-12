@@ -4,27 +4,25 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Dein Konto ist klarer geordnet. Bestätige deine E-Mail-Adresse und setze ein vergessenes Passwort selbst zurück.",
-  "summary_en": "Your account has a clearer layout. Confirm your email address and reset a forgotten password yourself.",
+  "summary_de": "Melde dich bevorzugt mit Passkey an. Dein Konto hilft dir bei der Einrichtung; die Passwort-Anmeldung öffnest du bei Bedarf.",
+  "summary_en": "Sign in with a passkey first. Your account guides you through setup; open password sign-in when you need it.",
   "player_notes": {
     "de": {
-      "title": "Klareres Konto und E-Mail-Zugang",
+      "title": "Dein Passkey, dein schneller Zugang",
       "changes": [
-        "Die Einstellungen folgen in beiden Spielen derselben Reihenfolge: Profil & Zugang, Sprache & Spiel, Mitspieler & Hinweise sowie Hilfe & Neuigkeiten.",
-        "Passkeys stehen beim Zugang vorne. Profilbearbeitung und Passwortwechsel öffnest du bei Bedarf.",
-        "Sprache, Lobby-Chat und ZDWA-Spieloptionen lassen sich getrennt speichern. Deine anderen Einstellungen bleiben dabei erhalten.",
-        "Versionshinweise und Hilfe findest du gesammelt am Ende der Einstellungen.",
-        "Neue Konten bestätigst du per E-Mail. Bestehende Konten können unter Profil & Zugang eine Adresse für Passwort-Resets ergänzen. Ein Reset meldet alle Geräte ab und entfernt bisherige Passkeys."
+        "Passkeys stehen bei der Anmeldung vorne. Die Passwortfelder öffnest du über „Mit Passwort anmelden“.",
+        "Du hast noch keinen Passkey? Lobby und Konto führen dich direkt zur Einrichtung.",
+        "Nach dem Speichern verschwindet der Hinweis. Entfernst du den letzten Passkey, erinnern wir dich wieder an die Einrichtung.",
+        "Passwort-Anmeldung und Passwort-Reset bleiben als Alternativen erreichbar. Laufende Spiele werden nicht unterbrochen."
       ]
     },
     "en": {
-      "title": "A clearer account and email access",
+      "title": "Your passkey, your quick way in",
       "changes": [
-        "Both games use the same settings order: Profile & sign-in, Language & play, Players & notifications, then Help & updates.",
-        "Passkeys lead the sign-in section. Open profile editing and password changes when you need them.",
-        "Save language, lobby chat and ZDWA game options separately. Your other preferences stay as you set them.",
-        "Find release notes and help together at the end of settings.",
-        "Confirm new accounts by email. Existing accounts can add an address for password recovery under Profile & sign-in. A reset signs out every device and removes existing passkeys."
+        "Passkeys lead the sign-in screen. Open the password fields by choosing “Sign in with password”.",
+        "No passkey yet? The lobby and your account take you straight to setup.",
+        "The reminder disappears after saving a passkey and returns if you remove your last one.",
+        "Password sign-in and password recovery remain available. Active games stay uninterrupted."
       ]
     }
   }

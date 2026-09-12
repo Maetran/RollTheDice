@@ -1,3 +1,4 @@
+const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
 const { test, expect } = require("@playwright/test");
 
 async function openAccountSection(page, section) {
@@ -72,6 +73,7 @@ test("lobby chat is account-only, compact, filterable, and placed before the lea
   await expect(chat.getByRole("button", { name: "Nur Zilch" })).toBeHidden();
   await expect(chat.getByRole("button", { name: "Chat ausklappen" })).toBeHidden();
 
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "Admin");
   await page.fill("#loginPassword", "temporary-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -95,6 +97,7 @@ test("lobby chat is account-only, compact, filterable, and placed before the lea
 
 test("account avatar upload accepts ordinary phone-photo limits", async ({ page }) => {
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "Admin");
   await page.fill("#loginPassword", "temporary-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -201,6 +204,7 @@ test("mobile global navigation remains touch-friendly and inside the viewport", 
 test("mobile navigation keeps identical geometry between app sections", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "Admin");
   await page.fill("#loginPassword", "temporary-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -238,10 +242,10 @@ test("mobile navigation keeps identical geometry between app sections", async ({
 test("guest sees login and registration while a new account sees only logout", async ({ page }) => {
   const username = `SelfRegistered${Date.now()}`;
   await page.goto("/");
-  await expect(page.locator("#loginForm")).toBeVisible();
+  await expectPasswordLoginClosed(page);
   await expect(page.locator("#registerBtn")).toBeVisible();
   await expect(page.locator("#authActions")).toBeHidden();
-  await expect(page.locator("#headerAccountLink")).toHaveAttribute("href", "#loginForm");
+  await expect(page.locator("#headerAccountLink")).toHaveAttribute("href", "#accountLogin");
 
   await page.fill("#registrationUsername", username);
   await page.fill("#registrationPassword", "self-register-password-123");
@@ -259,6 +263,7 @@ test("guest sees login and registration while a new account sees only logout", a
 
 test("achievement titles follow an account player through lobby, stats, and the live game", async ({ page }) => {
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "Admin");
   await page.fill("#loginPassword", "temporary-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -282,6 +287,7 @@ test("achievement titles follow an account player through lobby, stats, and the 
 
 test("rank badges open the public legend and the live-game overlay", async ({ page }) => {
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "Admin");
   await page.fill("#loginPassword", "temporary-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -314,6 +320,7 @@ test("rank badges open the public legend and the live-game overlay", async ({ pa
 test("mobile quick entry is opt-in for new accounts and writes the next ordered field", async ({ page }) => {
   await page.setViewportSize({ width: 472, height: 1024 });
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "Admin");
   await page.fill("#loginPassword", "temporary-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -741,6 +748,7 @@ test("English localization covers lobby, rules, account preference and game UI",
   await expectNoGermanUi(page);
 
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "Admin");
   await page.fill("#loginPassword", "temporary-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -815,6 +823,7 @@ test("English localization covers lobby, rules, account preference and game UI",
 
 test("admin can log in, create a user and open the public profile", async ({ page }) => {
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "Admin");
   await page.fill("#loginPassword", "temporary-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -858,6 +867,7 @@ test("admin can log in, create a user and open the public profile", async ({ pag
 
 test("superadmin can make a neutral extra roll and a scored 60 triggers the celebration", async ({ page }) => {
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "Admin");
   await page.fill("#loginPassword", "temporary-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -958,6 +968,7 @@ test("superadmin can make a neutral extra roll and a scored 60 triggers the cele
 
 test("logged-in user sees the personal landing page", async ({ page }) => {
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "RegisteredSmoke");
   await page.fill("#loginPassword", "registered-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -987,6 +998,7 @@ test("logged-in user sees the personal landing page", async ({ page }) => {
 
 test("account history keeps Normal and Hardcore in separate chart datasets", async ({ page }) => {
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "RegisteredSmoke");
   await page.fill("#loginPassword", "registered-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -1056,6 +1068,7 @@ test("account history keeps Normal and Hardcore in separate chart datasets", asy
 test("account gameplay preferences persist and control announce behavior", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "RegisteredSmoke");
   await page.fill("#loginPassword", "registered-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -1160,6 +1173,7 @@ test("account gameplay preferences persist and control announce behavior", async
 
 test("logged-in player can resume on another browser without a local token", async ({ page, browser }) => {
   await page.goto("/");
+  await openPasswordLogin(page);
   await page.fill("#loginUsername", "RegisteredSmoke");
   await page.fill("#loginPassword", "registered-password-123");
   await page.click("#loginForm button[type=submit]");
@@ -1179,6 +1193,7 @@ test("logged-in player can resume on another browser without a local token", asy
   const secondContext = await browser.newContext();
   const secondPage = await secondContext.newPage();
   await secondPage.goto("/");
+  await openPasswordLogin(secondPage);
   await secondPage.fill("#loginUsername", "RegisteredSmoke");
   await secondPage.fill("#loginPassword", "registered-password-123");
   await secondPage.click("#loginForm button[type=submit]");

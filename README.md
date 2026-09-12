@@ -201,6 +201,13 @@ There is no inbox, operator copy or newsletter. New accounts become usable
 only after following the confirmation link and choosing a password; existing
 accounts can add a confirmed address under **Profile & sign-in**.
 
+Passkeys lead the sign-in screen. Password fields open only after choosing
+**Sign in with password**, including on devices where passkeys are unavailable.
+Accounts without a passkey see a setup reminder in the lobby and account page;
+its link opens and focuses the setup form. The reminder disappears after a
+passkey is saved and returns if the last one is removed. Required password
+changes take priority, and active games are not interrupted.
+
 Passkeys are the preferred sign-in choice on supported devices. They use the
 fixed ZDWA origin as the WebAuthn relying party and work across ZDWA and the
 controlled Zilch subdomain. The server stores public credential material only;
@@ -220,6 +227,13 @@ nach einem Reset. Es gibt kein Postfach, keine Kopie an die Administration und
 keinen Newsletter. Neue Konten entstehen erst nach Bestätigungslink und eigener
 Passwortwahl. Bestehende Konten können unter **Profil & Zugang** eine bestätigte
 Adresse ergänzen.
+
+Passkeys stehen beim Anmelden vorne. Die Passwortfelder erscheinen erst nach
+**Mit Passwort anmelden**, auch wenn das Gerät keine Passkeys unterstützt.
+Konten ohne Passkey erhalten in Lobby und Konto einen Einrichtungshinweis,
+der direkt zum passenden Formular führt. Nach dem Speichern verschwindet er;
+nach dem Entfernen des letzten Passkeys erscheint er wieder. Erforderliche
+Passwortwechsel haben Vorrang, laufende Spiele bleiben ungestört.
 
 Passkeys sind die bevorzugte Anmeldung auf unterstützten Geräten und gelten
 für ZDWA sowie die kontrollierte Zilch-Subdomain. Der Server speichert nur
