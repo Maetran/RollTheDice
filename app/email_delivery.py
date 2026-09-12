@@ -135,6 +135,7 @@ def send_account_email(
         headers={
             "Authorization": f"Bearer {config.api_key}",
             "Content-Type": "application/json",
+            "User-Agent": "RollTheDice/1.0 (+https://zockdiewandan.online)",
             "Idempotency-Key": idempotency_key[:256],
         },
         method="POST",

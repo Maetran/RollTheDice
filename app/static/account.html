@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=5bb74204c51f">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=5bb74204c51f" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=5bb74204c51f" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=601410b1cf7a">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=601410b1cf7a" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=601410b1cf7a" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=5bb74204c51f">
-  <script src="/static/shell.js?v=5bb74204c51f" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=601410b1cf7a">
+  <script src="/static/shell.js?v=601410b1cf7a" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -78,26 +78,50 @@
       </section>
     </section>
     <section id="settingsPanel" class="account-panel account-settings-panel" role="tabpanel" aria-labelledby="settingsTab" hidden>
-      <section class="card" aria-labelledby="releaseHistoryTitle">
-        <h2 id="releaseHistoryTitle">Neuigkeiten &amp; Versionen</h2>
-        <p class="muted small">Die letzten zehn Releases kannst du jederzeit im Konto nachlesen.</p>
-        <div data-release-history><p class="muted small">Neuigkeiten werden geladen …</p></div>
-        <details class="release-notes-support">
-          <summary>Hilfe &amp; weitere Details</summary>
-          <p>Du hast einen Fehler entdeckt? Beschreibe auf GitHub kurz, was passiert ist, in welchem Spiel und auf welchem Gerät. Teile keine Passwörter oder privaten Spielraum-Codes. Zum Melden brauchst du ein GitHub-Konto.</p>
-          <a href="/go/github/issues" target="_blank" rel="noopener noreferrer">Problem auf GitHub melden</a><br>
-          <a href="/go/github/changelog" target="_blank" rel="noopener noreferrer">Ausführliche Versionshistorie auf GitHub</a>
-        </details>
+      <p class="account-settings-intro">Ein Konto für ZDWA und Zilch. Profil, Anmeldung und Hinweise gelten für beide Spiele.</p>
+      <details class="account-settings-group" data-account-section="access" open>
+        <summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">Profil &amp; Zugang</span><span class="account-settings-group__description">Passkeys, Profil und Passwort</span></h2></summary>
+        <div class="account-settings-group__body">
+<section class="account-settings-block" aria-labelledby="passkeySettingsTitle" data-passkey-section hidden>
+        <h3 id="passkeySettingsTitle">Passkeys</h3><p class="account-settings-recommendation">Empfohlen für deine Anmeldung</p>
+        <div data-passkey-settings></div>
       </section>
-      <section class="card password-card">
-        <h2>ZDWA-Spieleinstellungen</h2>
-        <p class="muted small">Die Spieleinstellungen gelten nur für ZDWA auf allen Geräten. Die Lobby-Chat-Einstellungen gelten zusätzlich für ZDWA und Zilch.</p>
-        <form id="preferencesForm" class="form-stack account-preferences-form">
-          <fieldset>
+<section class="account-settings-block" aria-labelledby="emailSettingsTitle" data-email-section hidden>
+        <h3 id="emailSettingsTitle">E-Mail-Adresse für Anmeldung</h3>
+        <div data-email-settings></div>
+      </section>
+          <details class="account-settings-action" data-account-action="profile"><summary>Profil bearbeiten</summary><div class="account-settings-action__body"><section class="account-settings-block">
+        <h3 id="usernameSettingsTitle">Benutzername ändern</h3>
+        <div data-username-settings></div>
+      </section><section class="account-settings-block" aria-labelledby="avatarSettingsTitle">
+        <h3 id="avatarSettingsTitle">Dein Profilbild</h3>
+        <div data-avatar-upload></div>
+      </section></div></details>
+          <details class="account-settings-action" data-account-action="password"><summary>Passwort ändern</summary><div class="account-settings-action__body"><section class="account-settings-block">
+        <h3>Passwort ändern</h3>
+        <p id="passwordHint" class="muted small"></p>
+        <form id="passwordForm" class="form-stack">
+          <label>Aktuelles Passwort<input id="currentPassword" type="password" autocomplete="current-password" required></label>
+          <label>Neues Passwort<input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+          <label>Neues Passwort wiederholen<input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+          <button class="primary">Passwort ändern</button>
+        </form>
+        <div id="passwordMessage" class="muted small" role="status"></div>
+      </section></div></details>
+        </div>
+      </details>
+      <details class="account-settings-group" data-account-section="play">
+        <summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">Sprache &amp; Spiel</span><span class="account-settings-group__description">Sprache und persönliche Spielbedienung</span></h2></summary>
+        <div class="account-settings-group__body">
+          <section class="account-settings-block" aria-labelledby="languageSettingsTitle"><h3 id="languageSettingsTitle">Sprache</h3><p class="muted small">Die Sprache gilt für ZDWA und Zilch auf allen Geräten.</p><form id="languagePreferencesForm" class="form-stack account-preferences-form">          <fieldset>
             <legend>Bevorzugte Sprache</legend>
             <label><input type="radio" name="preferredLanguage" value="de"> Deutsch</label>
             <label><input type="radio" name="preferredLanguage" value="en"> Englisch</label>
-          </fieldset>
+          </fieldset><button class="primary" type="submit">Sprache speichern</button></form><p id="languagePreferencesMessage" class="muted small" role="status"></p></section>
+<section class="account-settings-block">
+        <h3>ZDWA-Spieleinstellungen</h3>
+        <p class="muted small">Die Spieleinstellungen gelten nur für ZDWA auf allen Geräten.</p>
+        <form id="preferencesForm" class="form-stack account-preferences-form">
           <fieldset>
             <legend>Ansagefeld auswählen</legend>
             <label><input type="radio" name="announceSelectionMode" value="overlay"> Auswahlfenster: Nach „Ansagen“ werden alle freien ❗-Felder kompakt angezeigt</label>
@@ -117,17 +141,30 @@
             <label><input type="checkbox" name="hapticFeedback"> Sanftes haptisches Feedback für Würfeln, Halten und Schreiben verwenden</label>
             <label><input type="checkbox" name="keepScreenAwake"> Bildschirm während eines laufenden Spiels wach halten</label>
           </fieldset>
-          <fieldset>
-            <legend>Lobby-Chat</legend>
-            <label><input type="checkbox" name="lobbyChatEnabled"> Lobby-Chat aktivieren (gilt für ZDWA und Zilch)</label>
-            <label><input type="checkbox" name="lobbyChatPopups"> Neue Nachrichten im Lobby-Chat oben einblenden (gilt für ZDWA und Zilch)</label>
-          </fieldset>
           <button class="primary">Spieleinstellungen speichern</button>
         </form>
         <div id="preferencesMessage" class="muted small" role="status"></div>
       </section>
-      <section id="pushSettingsCard" class="card password-card" aria-labelledby="pushSettingsTitle" tabindex="-1">
-        <h2 id="pushSettingsTitle">Push-Benachrichtigungen</h2>
+        </div>
+      </details>
+      <details class="account-settings-group" data-account-section="social">
+        <summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">Mitspieler &amp; Hinweise</span><span class="account-settings-group__description">Chat, Spielerauswahl und Benachrichtigungen</span></h2></summary>
+        <div class="account-settings-group__body">
+          <section class="account-settings-block" aria-labelledby="chatSettingsTitle"><h3 id="chatSettingsTitle">Lobby-Chat</h3><p class="muted small">Diese Einstellung gilt für ZDWA und Zilch auf allen Geräten.</p><form id="lobbyChatPreferencesForm" class="form-stack account-preferences-form">          <fieldset>
+            <legend>Lobby-Chat</legend>
+            <label><input type="checkbox" name="lobbyChatEnabled"> Lobby-Chat aktivieren (gilt für ZDWA und Zilch)</label>
+            <label><input type="checkbox" name="lobbyChatPopups"> Neue Nachrichten im Lobby-Chat oben einblenden (gilt für ZDWA und Zilch)</label>
+          </fieldset><button class="primary" type="submit">Chat-Einstellung speichern</button></form><p id="lobbyChatPreferencesMessage" class="muted small" role="status"></p></section>
+<section class="account-settings-block" aria-labelledby="allowlistSettingsTitle">
+        <h3 id="allowlistSettingsTitle">Deine Spielerauswahl</h3>
+        <div data-allowlist-settings></div>
+      </section>
+<section class="account-settings-block" aria-labelledby="friendActivitySettingsTitle">
+        <h3 id="friendActivitySettingsTitle">Startmeldungen deiner Spielerauswahl</h3>
+        <div data-friend-activity-settings></div>
+      </section>
+<section id="pushSettingsCard" class="account-settings-block" aria-labelledby="pushSettingsTitle" tabindex="-1">
+        <h3 id="pushSettingsTitle">Push-Benachrichtigungen</h3>
         <p class="muted small">Verpass keinen freien Platz: Mitspieler-Rufe bringen dich direkt in öffentliche ZDWA- oder Zilch-Runden. Erlaube zuerst Push auf diesem Gerät und wähle danach selbst, welche Hinweise zu dir passen.</p>
         <p class="muted small">Mit „Push auf diesem Gerät zulassen“ fragt dein Gerät als Nächstes nach der Erlaubnis. Danach entscheidest du unten getrennt über Mitspieler-Rufe, tägliche Spielideen und Versionshinweise.</p>
         <div class="account-push-actions">
@@ -146,50 +183,33 @@
           <p class="muted small" data-push-preferences-message role="status"></p>
         </form>
       </section>
-      <section class="card password-card" aria-labelledby="allowlistSettingsTitle">
-        <h2 id="allowlistSettingsTitle">Deine Spielerauswahl</h2>
-        <div data-allowlist-settings></div>
+        </div>
+      </details>
+      <details class="account-settings-group" data-account-section="help">
+        <summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">Hilfe &amp; Neuigkeiten</span><span class="account-settings-group__description">Versionshistorie und Unterstützung</span></h2></summary>
+        <div class="account-settings-group__body">
+<section class="account-settings-block" aria-labelledby="releaseHistoryTitle">
+        <h3 id="releaseHistoryTitle">Neuigkeiten &amp; Versionen</h3>
+        <p class="muted small">Die letzten zehn Releases kannst du jederzeit im Konto nachlesen.</p>
+        <div data-release-history><p class="muted small">Neuigkeiten werden geladen …</p></div>
+        <details class="release-notes-support">
+          <summary>Hilfe &amp; weitere Details</summary>
+          <p>Du hast einen Fehler entdeckt? Beschreibe auf GitHub kurz, was passiert ist, in welchem Spiel und auf welchem Gerät. Teile keine Passwörter oder privaten Spielraum-Codes. Zum Melden brauchst du ein GitHub-Konto.</p>
+          <a href="/go/github/issues" target="_blank" rel="noopener noreferrer">Problem auf GitHub melden</a><br>
+          <a href="/go/github/changelog" target="_blank" rel="noopener noreferrer">Ausführliche Versionshistorie auf GitHub</a>
+        </details>
       </section>
-      <section class="card password-card" aria-labelledby="avatarSettingsTitle">
-        <h2 id="avatarSettingsTitle">Dein Profilbild</h2>
-        <div data-avatar-upload></div>
-      </section>
-      <section class="card password-card" aria-labelledby="friendActivitySettingsTitle">
-        <h2 id="friendActivitySettingsTitle">Startmeldungen deiner Spielerauswahl</h2>
-        <div data-friend-activity-settings></div>
-      </section>
-      <section class="card password-card">
-        <h2 id="usernameSettingsTitle">Benutzername ändern</h2>
-        <div data-username-settings></div>
-      </section>
-      <section class="card password-card" aria-labelledby="emailSettingsTitle">
-        <h2 id="emailSettingsTitle">E-Mail-Adresse für Anmeldung</h2>
-        <div data-email-settings></div>
-      </section>
-      <section class="card password-card" aria-labelledby="passkeySettingsTitle">
-        <h2 id="passkeySettingsTitle">Passkeys</h2>
-        <div data-passkey-settings></div>
-      </section>
-      <section class="card password-card">
-        <h2>Passwort ändern</h2>
-        <p id="passwordHint" class="muted small"></p>
-        <form id="passwordForm" class="form-stack">
-          <label>Aktuelles Passwort<input id="currentPassword" type="password" autocomplete="current-password" required></label>
-          <label>Neues Passwort<input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></label>
-          <label>Neues Passwort wiederholen<input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>
-          <button class="primary">Passwort ändern</button>
-        </form>
-        <div id="passwordMessage" class="muted small"></div>
-      </section>
+        </div>
+      </details>
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountEmailSettings, mountPasskeySettings, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=5bb74204c51f';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=5bb74204c51f';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=5bb74204c51f';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=5bb74204c51f';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=5bb74204c51f';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=5bb74204c51f';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=601410b1cf7a';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=601410b1cf7a';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=601410b1cf7a';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=601410b1cf7a';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=601410b1cf7a';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=601410b1cf7a';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
@@ -229,6 +249,7 @@
         const active = key === selected;
         tab.button.classList.toggle('active', active);
         tab.button.setAttribute('aria-selected', String(active));
+        tab.button.tabIndex = active ? 0 : -1;
         tab.panel.hidden = !active;
       });
       if (updateHash) {
@@ -238,14 +259,23 @@
       }
       window.dispatchEvent(new CustomEvent('zdwa:account-tab', { detail: { tab: selected } }));
     }
-    Object.entries(accountTabs).forEach(([name, tab]) => {
+    Object.entries(accountTabs).forEach(([name, tab], index, tabs) => {
       tab.button.addEventListener('click', () => showAccountPanel(name));
+      tab.button.addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
+          : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        showAccountPanel(tabs[next][0]);
+        tabs[next][1].button.focus();
+      });
     });
     window.addEventListener('hashchange', () => showAccountPanel(location.hash.slice(1), { updateHash: false }));
     showAccountPanel(user.must_change_password ? 'settings' : location.hash.slice(1), { updateHash: false });
 
     if (user.must_change_password) {
       document.getElementById('passwordHint').textContent = 'Das temporäre Passwort muss jetzt geändert werden.';
+      revealAccountSetting(document.getElementById('currentPassword'), { focus: true, scroll: true });
     }
 
     const preferences = user.preferences || {};
@@ -276,7 +306,7 @@
     const pushEnableButton = document.getElementById('enableGameInvitePush');
     const pushDisableButton = document.getElementById('disableGameInvitePush');
     const pushStatus = document.getElementById('gameInvitePushStatus');
-    let focusRequestedPushSettings = new URLSearchParams(location.search).has('push');
+    let focusRequestedPushSettings = !user.must_change_password && new URLSearchParams(location.search).has('push');
     function translated(value) {
       return window.ZDWA_I18N?.t?.(value) || value;
     }
@@ -284,10 +314,11 @@
       if (!focusRequestedPushSettings) return;
       focusRequestedPushSettings = false;
       window.requestAnimationFrame(() => {
-        document.getElementById('pushSettingsCard')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        showAccountPanel('settings');
+        revealAccountSetting(document.getElementById('pushSettingsCard'), { scroll: true });
         const form = document.getElementById('pushPreferencesForm');
         const target = status?.subscribed ? form?.elements?.gameInvites : pushEnableButton;
-        target?.focus?.({ preventScroll: true });
+        (target?.disabled ? document.getElementById('pushSettingsCard') : target)?.focus?.({ preventScroll: true });
       });
     }
     async function refreshGameInvitePushSettings() {
@@ -348,6 +379,40 @@
     bindPushPreferences(document.getElementById('pushPreferencesForm'), refreshGameInvitePushSettings);
     void refreshGameInvitePushSettings();
 
+    function bindSharedPreferenceForm(id, messageId, endpoint, values, success, afterSave) {
+      const form = document.getElementById(id);
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const submit = form.querySelector('button[type="submit"]');
+        const message = document.getElementById(messageId);
+        if (submit.disabled) return;
+        submit.disabled = true;
+        try {
+          const data = values();
+          const response = await apiFetch(endpoint, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) { message.textContent = translated(authError(result.detail)); return; }
+          Object.assign(user.preferences, data);
+          message.textContent = translated(success);
+          await afterSave?.(data);
+        } catch (_) {
+          message.textContent = translated('Einstellungen konnten nicht gespeichert werden.');
+        } finally { submit.disabled = false; }
+      });
+    }
+    bindSharedPreferenceForm('languagePreferencesForm', 'languagePreferencesMessage', '/api/auth/preferences/language',
+      () => ({ preferred_language: document.querySelector('input[name="preferredLanguage"]:checked').value }),
+      'Sprache gespeichert.', async data => {
+        if (data.preferred_language !== window.ZDWA_I18N?.getLanguage?.()) {
+          await window.ZDWA_I18N?.setLanguage(data.preferred_language, { persist: false, reload: true });
+        }
+      });
+    bindSharedPreferenceForm('lobbyChatPreferencesForm', 'lobbyChatPreferencesMessage', '/api/auth/preferences/lobby-chat',
+      () => ({ lobby_chat_enabled: lobbyChatEnabledInput.checked, lobby_chat_popups: lobbyChatPopupsInput.checked }),
+      'Lobby-Chat-Einstellung gespeichert.');
+
     document.getElementById('preferencesForm').addEventListener('submit', async event => {
       event.preventDefault();
       const message = document.getElementById('preferencesMessage');
@@ -356,9 +421,6 @@
       const selectedMobileRowQuickEntry = document.querySelector('input[name="mobileRowQuickEntry"]').checked;
       const selectedHapticFeedback = document.querySelector('input[name="hapticFeedback"]').checked;
       const selectedKeepScreenAwake = document.querySelector('input[name="keepScreenAwake"]').checked;
-      const selectedLobbyChatPopups = document.querySelector('input[name="lobbyChatPopups"]').checked;
-      const selectedLobbyChatEnabled = document.querySelector('input[name="lobbyChatEnabled"]').checked;
-      const selectedLanguage = document.querySelector('input[name="preferredLanguage"]:checked')?.value || 'de';
       const response = await apiFetch('/api/auth/preferences', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -367,17 +429,10 @@
           mobile_row_quick_entry: selectedMobileRowQuickEntry,
           haptic_feedback: selectedHapticFeedback,
           keep_screen_awake: selectedKeepScreenAwake,
-          lobby_chat_popups: selectedLobbyChatPopups,
-          lobby_chat_enabled: selectedLobbyChatEnabled,
-          preferred_language: selectedLanguage,
         }),
       });
       const data = await response.json().catch(() => ({}));
       message.textContent = response.ok ? 'Spieleinstellungen gespeichert.' : authError(data.detail);
-      if (response.ok && selectedLanguage !== window.ZDWA_I18N?.getLanguage?.()) {
-        window.ZDWA_I18N?.setLanguage(selectedLanguage, { persist: false, reload: false });
-        setTimeout(() => location.reload(), 500);
-      }
     });
 
     function bucket(title, data, { details = true } = {}) {

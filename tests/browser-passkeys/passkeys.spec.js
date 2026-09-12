@@ -68,7 +68,10 @@ for (const product of ["zdwa", "zilch"]) {
         await passwordLogin(page, product, username);
         const accountPath = product === "zilch" ? "/zilch/konto#settings" : "/konto#settings";
         await page.goto(accountPath);
-        const settings = page.locator("[data-passkey-settings]");
+        await expect(page.locator("details[data-account-section=access]")).toHaveAttribute("open", "");
+        await expect(page.locator("details[data-account-action=profile]")).not.toHaveAttribute("open", "");
+        await expect(page.locator("details[data-account-action=password]")).not.toHaveAttribute("open", "");
+        const settings = page.locator("details[data-account-section=access] [data-passkey-settings]");
         const currentPassword = settings.locator('[name="current_password"]');
         await expect(currentPassword).toBeVisible();
         await currentPassword.fill(password);
@@ -82,6 +85,16 @@ for (const product of ["zdwa", "zilch"]) {
         expect(credentials[0].rpId).toBe("rollthedice.localhost");
         expect(credentials[0].isResidentCredential).toBe(true);
         await testInfo.attach(`${product}-${language}-passkey-settings`, { body: await settings.screenshot(), contentType: "image/png" });
+        for (const [layout, viewport] of [["desktop", { width: 1280, height: 900 }], ["mobile", { width: 375, height: 844 }]]) {
+          await page.setViewportSize(viewport);
+          await page.evaluate(() => {
+            document.activeElement?.blur();
+            window.scrollTo({ top: 0, behavior: "instant" });
+          });
+          await page.screenshot({ path: `/tmp/rollthedice-account-${product}-${language}-${layout}.png`, fullPage: true });
+          expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        }
+        await page.setViewportSize({ width: 1280, height: 720 });
 
         await logout(page);
         await page.goto(product === "zilch" ? "/zilch/anmelden?return_to=/zilch/konto" : "/");

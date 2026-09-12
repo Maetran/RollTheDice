@@ -1,4 +1,10 @@
 const { test, expect } = require("@playwright/test");
+
+async function openAccountSection(page, section) {
+  const details = page.locator(`details[data-account-section="${section}"]`);
+  if (await details.getAttribute("open") === null) await details.locator(":scope > summary").click();
+}
+
 const authored = require("../../app/release-notice.json");
 
 test.use({ serviceWorkers: "block" });
@@ -242,6 +248,7 @@ for (const product of [
     await expect(dialog).toHaveCount(0);
     expect(server.posts).toEqual([{ viewer_id: user.id }]);
     await page.goto(product.account);
+    await openAccountSection(page, "help");
     const history = page.locator("[data-release-history]");
     await expect(history.locator("details")).toHaveCount(10);
     await expect(dialog).toHaveCount(0);
@@ -258,6 +265,7 @@ for (const product of [
     await page.evaluate(() => document.activeElement?.blur());
     await history.locator("details").first().screenshot({ path: testInfo.outputPath("release-history-mobile.png") });
     await page.goto(product.other);
+    await openAccountSection(page, "help");
     await expect(page.locator("[data-release-history] details")).toHaveCount(10);
     await expect(dialog).toHaveCount(0);
     expect(server.posts).toHaveLength(1);
@@ -290,6 +298,7 @@ for (const product of [
     await expect(dialog.getByRole("heading")).toHaveText(authored.player_notes.en.title);
     await expect(dialog.locator("li")).toHaveText(authored.player_notes.en.changes);
     await dialog.getByRole("button", { name: "Got it", exact: true }).click();
+    await openAccountSection(page, "help");
     await expect(page.getByRole("heading", { name: "News & versions", exact: true })).toBeVisible();
     await page.locator(".release-notes-support summary").click();
     await expect(page.getByRole("link", { name: "Report a problem on GitHub" })).toBeVisible();
@@ -339,6 +348,7 @@ test("history failures have retry and required-password prompts suppress release
   const server = await mockReleases(page, { viewer: user.id, canPrompt: false });
   server.fail = true;
   await page.goto("/konto#settings");
+  await openAccountSection(page, "help");
   await expect(page.locator("[data-release-history]")).toContainText("Neuigkeiten sind gerade nicht erreichbar.");
   server.fail = false;
   await page.getByRole("button", { name: "Neuigkeiten erneut laden" }).click();

@@ -1,14 +1,17 @@
 # E-Mail-Konten: Machbarkeit und Plan
 
-Stand: 12.09.2026. **Passkeys und Fairplay sind für den Produktions-Rollout
-freigegeben. Der Deploy prüft die Bereitschaft vor Veröffentlichung des
-Versionshinweises. E-Mail-Funktionen bleiben
-mit `ROLLTHEDICE_EMAIL_ENABLED=0` ausgeschaltet.** Versanddienst und gewünschter
-Absender `noreply@zockdiewandan.online` werden später in Work eingerichtet.
-Beide Feature-Flags bleiben in den Konfigurationsvorlagen standardmäßig `0`;
-der ausgewählte Produktions-Rollout setzt nur `ROLLTHEDICE_PASSKEYS_ENABLED=1`.
-Der tatsächliche Deployment-Status steht im
-[Sicherheitsreview](ACCOUNT_SECURITY_REVIEW_2026-09-12.md).
+Stand: 12.09.2026. **Passkeys und Fairplay sind produktiv. E-Mail ist für den
+nächsten vollständigen Rollout nach Versand- und Funktionsabnahme ausgewählt.**
+Resend, die verifizierte Absenderdomain für `noreply@zockdiewandan.online` und
+der eingeschränkte serverseitige Schlüssel sind eingerichtet. Öffentliche
+DNS-Prüfungen und die Providerannahme isolierter Registrierungs-/Reset-Testmails
+sind erfolgreich. Der Nutzer hat beide echten, gekennzeichneten Testmails ohne
+aktive Kontolinks im Posteingang bestätigt; Mailheader wurden nicht ausgelesen.
+Die Abnahmeschritte stehen im [Versandprotokoll](MAIL_SETUP_2026-09-12.md).
+Der Zielzustand des freigegebenen Rollouts ist `ROLLTHEDICE_EMAIL_ENABLED=1`
+zusammen mit `ROLLTHEDICE_PASSKEYS_ENABLED=1`. Die Konfigurationsvorlagen
+aktivieren weiterhin nichts automatisch. Deployment-Ergebnisse werden im
+[Sicherheitsreview](ACCOUNT_SECURITY_REVIEW_2026-09-12.md) festgehalten.
 
 ## Einschätzung
 
@@ -23,9 +26,9 @@ Bausteine, ohne eine bestehende Konto-ID oder Spielzuordnung zu ändern.
 
 ## Umsetzungsstand und gewählter Rollout
 
-Die E-Mail-Ausbaustufe ist implementiert und bleibt bis zur späteren Einrichtung
-ausgeschaltet. Die folgenden E-Mail-Abläufe beschreiben das Verhalten nach der
-Aktivierung. Passkeys sind unabhängig davon für den aktuellen Rollout ausgewählt:
+Die E-Mail-Ausbaustufe ist implementiert; Versanddienst und Serveranbindung
+sind eingerichtet. Die folgenden Abläufe beschreiben das Verhalten nach der
+Abnahme und Aktivierung. Passkeys bleiben davon unabhängig verfügbar:
 
 - Neue Konten speichern zunächst nur eine befristete Anmeldung. Erst der
   E-Mail-Link und die eigene Passwortwahl erzeugen das Konto mit bestätigter
@@ -53,7 +56,7 @@ Aktivierung. Passkeys sind unabhängig davon für den aktuellen Rollout ausgewä
 - Einmal-Token werden nur gehasht gespeichert, haben Zweck und Ablaufzeit und
   erscheinen in Links ausschließlich im URL-Fragment. Die kurzen Aktionsseiten
   sind `noindex`, `no-store` und entfernen das Fragment vor weiterer Bedienung.
-- WebAuthn-Passkeys sind als bevorzugte Anmeldung vorbereitet. Der Browser
+- WebAuthn-Passkeys sind als bevorzugte Anmeldung verfügbar. Der Browser
   verwendet discoverable Credentials mit verpflichtender Benutzerbestätigung;
   der Server speichert nur Credential-ID, öffentlichen Schlüssel, Counter und
   optionalen Gerätenamen. Die feste RP-ID ist der ZDWA-Host und erlaubt die
@@ -72,25 +75,27 @@ Freischaltung beim Versanddienst können zusätzliche Wartezeit verursachen.
 
 ## Was du selbst betreiben musst
 
-Nach der späteren E-Mail-Aktivierung verschickt die App ausschließlich Kontomails an die Nutzer:
+Nach der E-Mail-Aktivierung verschickt die App ausschließlich Kontomails an die Nutzer:
 Adressbestätigung, angeforderter Passwort-Reset und eine kurze Bestätigung nach
 erfolgtem Reset. Keine Kopie an dich, keine Newsletter, kein persönliches
 Postfach und kein eigener Mailserver. Dafür braucht es trotzdem einen Dienst,
 der diese automatischen E-Mails tatsächlich zustellt.
 
-Der vorbereitete Versand verwendet **Resend über die HTTP-API**.
-Gewünschter Absender ist `noreply@zockdiewandan.online`, der später in Work
-nach Verifizierung der Domain eingerichtet wird. Diese Adresse benötigt kein
-separates Postfach.
+Der Versand verwendet **Resend über die HTTP-API** mit explizitem
+Anwendungs-User-Agent. Konfigurierter Absender ist `noreply@zockdiewandan.online`;
+die Domain ist verifiziert. Diese Adresse benötigt kein separates Postfach.
 Eingehende E-Mails werden nicht aktiviert. Technische Zustellfehler lassen sich
 beim Anbieter bzw. in der Anwendung erkennen, ohne sie an dich weiterzuleiten.
 Quellen: [Absender ohne Postfach](https://resend.com/docs/knowledge-base/how-do-i-create-an-email-address-or-sender-in-resend),
 [separates Aktivieren des Empfangs](https://resend.com/docs/dashboard/receiving/custom-domains).
 
-Die Absenderdomain wird mit den vom Anbieter vorgegebenen SPF-/DKIM-Einträgen
-verifiziert; DMARC wird passend ergänzt. Das umfasst gegebenenfalls einen
-Return-Path-MX für technische Rückmeldungen und ist kein Benutzerpostfach.
-Bestehende Mail-DNS-Einträge der Hauptdomain müssen dafür nicht ersetzt werden.
+Die Absenderdomain ist mit den vom Anbieter vorgegebenen SPF-/DKIM-Einträgen
+verifiziert; der vorhandene strikte DMARC-Eintrag bleibt erhalten. Unter `send`
+liegen SPF und Return-Path-MX für technische Rückmeldungen, kein Benutzerpostfach.
+Der bei der Einrichtung gefundene Root-Null-MX wurde entfernt, weil Empfänger
+sonst laut RFC 7505 Abschnitt 4.2 Mails des gewünschten Root-Absenders ablehnen dürfen.
+Das richtet kein Postfach ein; Einzelheiten stehen im
+[DNS-Protokoll](MAIL_SETUP_2026-09-12.md).
 [Domain-Verifizierung](https://resend.com/docs/dashboard/domains/introduction).
 
 Die ursprüngliche Preisschätzung verwendete für Resends kostenlosen Tarif **3.000 E-Mails pro
@@ -152,24 +157,28 @@ Links werden ausschließlich aus konfigurierten Produkt-Origins gebaut.
 
 Die Regressionstests prüfen insbesondere abgelaufene und bereits benutzte Links, parallele
 Bestätigungen, doppelte Adressen, ausbleibende Zustellung, Wiederholungen,
-Sitzungswiderruf und das Wechseln zwischen beiden Spielen. Vor Aktivierung wird
-die Absenderdomain verifiziert; beide Spiele verwenden denselben Resend-Sender.
+Sitzungswiderruf und das Wechseln zwischen beiden Spielen. Die Absenderdomain
+ist verifiziert; beide Spiele verwenden denselben Resend-Sender.
 Das bestehende Deployment bleibt erhalten.
 
-## Later email activation and selected passkey rollout
+## Email activation acceptance and existing passkeys
 
-1. Configure the requested `noreply@zockdiewandan.online` sender later in Work.
-   Verify its domain with Resend and add only the SPF/DKIM/DMARC
-   records it supplies. Do not replace existing mail records or enable incoming
-   routing. The sender address needs no mailbox.
-2. Store a restricted Resend API key and the verified sender only in the
-   production secret store. Set `ROLLTHEDICE_EMAIL_ENABLED=1` only after both
-   values are present and the normal test suite has passed.
+1. The `noreply@zockdiewandan.online` sender domain is verified with Resend.
+   Its SPF/DKIM records and existing strict DMARC policy pass public DNS checks.
+   Receiving and tracking remain off; the root null MX was removed, as recorded
+   in the [DNS setup record](MAIL_SETUP_2026-09-12.md). No mailbox is required.
+2. The domain-restricted sending key is stored only in the production server's
+   `.env`. An isolated application process has submitted registration and reset
+   messages successfully to Resend's simulated recipients. The user also
+   confirmed both marked delivery-test messages in the real inbox. These had
+   no active account links, and received headers were not inspected.
+   Set `ROLLTHEDICE_EMAIL_ENABLED=1` for the
+   authorized full deployment after sending acceptance and the normal test
+   suite have passed; verify both products' public feature status afterward.
 3. Keep `ROLLTHEDICE_COOKIE_SECURE=1`, a controlled cookie domain and the two
    fixed HTTPS product origins. Test the registration and reset flow only with
    a designated test recipient, never a real player account.
-4. The selected production rollout enables passkeys separately with
-   `ROLLTHEDICE_PASSKEYS_ENABLED=1`, while email stays off. Set the
+4. Keep existing passkeys enabled with `ROLLTHEDICE_PASSKEYS_ENABLED=1`. Set the
    RP ID exactly to the hostname of `ROLLTHEDICE_SITE_ORIGIN`; both configured
    origins must be HTTPS in production. Test registration, sign-in, removal and
    password fallback on an authenticator-backed test account.
@@ -181,11 +190,13 @@ Das bestehende Deployment bleibt erhalten.
 
 ## English summary
 
-The selected production rollout enables passkeys and Fairplay; the deployment
-checks readiness before publishing its release notice. Email features remain disabled. The Resend
-sending service and requested `noreply@zockdiewandan.online` sender will be
-configured later in Work. Email confirmation, password recovery and confirmed
-email login need no personal mailbox, inbound service, operator copy or
-newsletter. Passkeys are the preferred supported-device sign-in choice, scoped
-to the fixed ZDWA WebAuthn relying party and controlled Zilch subdomain. Password
-sign-in and existing username/password registration remain available.
+Passkeys and Fairplay are live. The verified Resend sender
+`noreply@zockdiewandan.online`, public SPF/DKIM/DMARC records and restricted
+server-side key are ready. Resend accepted simulated registration/reset messages,
+and the user confirmed both marked test messages in the real inbox. Received
+headers were not inspected and no live account links were used. Email activation
+is selected for the authorized full rollout after validation. Email confirmation,
+recovery and confirmed-email login need
+no personal mailbox, inbound service, operator copy or newsletter. Existing
+accounts retain password and passkey sign-in; after activation new accounts
+require email confirmation and a password selected by the mailbox owner.

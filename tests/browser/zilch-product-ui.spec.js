@@ -1,5 +1,11 @@
 const { test, expect } = require("@playwright/test");
 
+async function openAccountSection(page, section) {
+  const details = page.locator(`details[data-account-section="${section}"]`);
+  if (await details.getAttribute("open") === null) await details.locator(":scope > summary").click();
+}
+
+
 async function signIn(page, username, password) {
   await page.fill("#loginUsername", username);
   await page.fill("#loginPassword", password);
@@ -46,26 +52,56 @@ async function signInAsPreviewMani(page) {
   await expect(page.locator("[data-game-switch]")).toBeVisible();
 }
 
+async function mockCompletedPasswordSetup(page) {
+  // Projection fixtures model an established account. Keep its real identity
+  // and permissions while omitting the unrelated temporary-password prompt.
+  await page.route("**/api/auth/me", async route => {
+    const response = await route.fetch();
+    const auth = await response.json();
+    expect(auth.authenticated).toBe(true);
+    await route.fulfill({ response, json: {
+      ...auth, user: { ...auth.user, must_change_password: false },
+    } });
+  });
+}
+
 test("Zilch has its own sign-in entry and safely returns preview accounts to the requested view", async ({ page }) => {
   const returnTo = encodeURIComponent("/zilch/konto#statistics");
   await page.goto(`/zilch/anmelden?return_to=${returnTo}`);
   await expect(page.locator("#zilchLoginForm")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Bei Zilch anmelden" })).toBeVisible();
 
-  // Provision the preview account through the established workflow, then
-  // exercise the actual Zilch sign-in page as a logged-out visitor.
+  // Use a distinct account with completed password setup so its requested
+  // view can take precedence without changing the shared Mani fixture.
   await signInAsPreviewMani(page);
-  await signOutFromLobby(page);
+  const username = "ZilchSignInReady";
+  const temporaryPassword = "zilch-sign-in-temporary-password";
+  const password = "zilch-sign-in-final-password";
+  const created = await createUser(page, username, temporaryPassword);
+  expect(created.status).toBe(201);
+  const initial = await page.request.post("/api/auth/login", {
+    data: { username, password: temporaryPassword },
+  });
+  expect(initial.ok()).toBeTruthy();
+  const identity = (await initial.json()).user;
+  const changed = await page.request.post("/api/auth/change-password", {
+    headers: { "X-CSRF-Token": identity.csrf_token },
+    data: { current_password: temporaryPassword, new_password: password },
+  });
+  expect(changed.ok()).toBeTruthy();
 
   await page.goto(`/zilch/anmelden?return_to=${returnTo}`);
-  await page.fill("#zilchLoginUsername", "Mani");
-  await page.fill("#zilchLoginPassword", "mani-preview-password-123");
+  await page.fill("#zilchLoginUsername", username);
+  await page.fill("#zilchLoginPassword", password);
   await Promise.all([
     page.waitForURL(/\/zilch\/konto#statistics$/),
     page.locator("#zilchLoginForm button[type=submit]").click(),
   ]);
   await expect(page.getByRole("tab", { name: "Statistiken" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#zilchAccountPanel-statistics")).toBeVisible();
+  const authenticated = (await (await page.request.get("/api/auth/me")).json()).user;
+  expect(authenticated.id).toBe(identity.id);
+  expect(authenticated.must_change_password).toBe(false);
 });
 
 test.describe("isolated account continuation", () => {
@@ -196,6 +232,8 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await page.getByRole("tab", { name: "Einstellungen" }).click();
   await expect(page).toHaveURL(/\/zilch\/konto#settings$/);
   await expect(page.locator("#zilchAccountPanel-settings")).toBeVisible();
+  await openAccountSection(page, "play");
+  await openAccountSection(page, "social");
   await expect(page.locator("#zilchLanguagePreferencesForm")).toBeVisible();
   await expect(page.locator("#zilchLobbyChatPreferencesForm")).toBeVisible();
   await expect(page.locator('input[name="zilchLobbyChatEnabled"]')).toBeChecked();
@@ -259,6 +297,7 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await expect(page.getByRole("link", { name: "Zur Zilch-Lobby" })).toHaveCount(0);
 
   await page.goto("/konto#settings");
+  await openAccountSection(page, "play");
   await expect(page.getByRole("heading", { name: /ZDWA(?:-|\s)(Spieleinstellungen|game settings)/i })).toBeVisible();
   await expect(page.getByText(/gelten nur für ZDWA|apply only to ZDWA/i)).toBeVisible();
 
@@ -542,6 +581,7 @@ test("private Zilch statistics and leaderboards render only server projections a
   const page = await context.newPage();
   try {
   await signInAsPreviewMani(page);
+  await mockCompletedPasswordSetup(page);
 
   // The account preference is persisted in the shared browser-test database.
   // This fixture asserts the German projection below, so restore its explicit
@@ -833,6 +873,7 @@ test("private Zilch awards use server projections and acknowledge a sequential a
   const page = await context.newPage();
   try {
     await signInAsPreviewMani(page);
+    await mockCompletedPasswordSetup(page);
 
     const definitions = [
       {

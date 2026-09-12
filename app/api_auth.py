@@ -130,7 +130,7 @@ class UserPreferencesRequest(BaseModel):
     # re-enable a user's explicit lobby-chat choice during a normal save.
     lobby_chat_popups: bool | None = None
     lobby_chat_enabled: bool | None = None
-    preferred_language: Literal["de", "en"] = "de"
+    preferred_language: Literal["de", "en"] | None = None
 
 
 class LanguagePreferenceRequest(BaseModel):
@@ -391,7 +391,7 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
         user = db.get(User, identity.user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
-        language_changed = user.preferred_language != payload.preferred_language
+        language_changed = payload.preferred_language is not None and user.preferred_language != payload.preferred_language
         chat_settings_saved = payload.lobby_chat_popups is not None or payload.lobby_chat_enabled is not None
         user.announce_selection_mode = payload.announce_selection_mode
         user.auto_write_announced = payload.auto_write_announced
@@ -402,7 +402,8 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
             user.lobby_chat_popups = payload.lobby_chat_popups
         if payload.lobby_chat_enabled is not None:
             user.lobby_chat_enabled = payload.lobby_chat_enabled
-        user.preferred_language = payload.preferred_language
+        if payload.preferred_language is not None:
+            user.preferred_language = payload.preferred_language
         user.updated_at = utcnow()
         db.flush()
         result = {

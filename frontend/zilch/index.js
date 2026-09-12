@@ -1,4 +1,4 @@
-import { apiFetch, authError, escapeHtml, loadAuth, logout, mountEmailSettings, mountPasskeySettings, mountUsernameSettings } from "../shared/auth.js";
+import { apiFetch, authError, escapeHtml, loadAuth, logout, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountUsernameSettings } from "../shared/auth.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
 import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
@@ -2101,21 +2101,35 @@ function zilchAccountSettingsMarkup(username) {
     ? `<p id="zilchPasswordHint" class="zilch-muted">${escapeHtml(t("Das temporäre Passwort muss jetzt geändert werden."))}</p>`
     : "";
   return `<div class="zilch-account-settings-grid">
-    <section class="zilch-card zilch-account-settings-card" aria-labelledby="usernameSettingsTitle">
-      <h2 id="usernameSettingsTitle">${escapeHtml(t("Benutzername ändern"))}</h2>
-      <div data-username-settings></div>
-    </section>
-    <section class="zilch-card zilch-account-settings-card" aria-labelledby="emailSettingsTitle">
-      <h2 id="emailSettingsTitle">${escapeHtml(t("E-Mail-Adresse für Anmeldung"))}</h2>
-      <div data-email-settings></div>
-    </section>
-    <section class="zilch-card zilch-account-settings-card" aria-labelledby="passkeySettingsTitle">
-      <h2 id="passkeySettingsTitle">${escapeHtml(t("Passkeys"))}</h2>
+    <p class="account-settings-intro">${escapeHtml(t("Ein Konto für ZDWA und Zilch. Profil, Anmeldung und Hinweise gelten für beide Spiele."))}</p>
+    <details class="account-settings-group" data-account-section="access" open><summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">${escapeHtml(t("Profil & Zugang"))}</span><span class="account-settings-group__description">${escapeHtml(t("Passkeys, Profil und Passwort"))}</span></h2></summary><div class="account-settings-group__body"><section class="account-settings-block" aria-labelledby="passkeySettingsTitle" data-passkey-section hidden>
+      <h3 id="passkeySettingsTitle">${escapeHtml(t("Passkeys"))}</h3><p class="account-settings-recommendation">${escapeHtml(t("Empfohlen für deine Anmeldung"))}</p>
       <div data-passkey-settings></div>
     </section>
-    <section class="zilch-card zilch-account-settings-card">
-      <p class="eyebrow">${escapeHtml(t("Einstellungen"))}</p>
-      <h2>${escapeHtml(t("Sprache"))}</h2>
+<section class="account-settings-block" aria-labelledby="emailSettingsTitle" data-email-section hidden>
+      <h3 id="emailSettingsTitle">${escapeHtml(t("E-Mail-Adresse für Anmeldung"))}</h3>
+      <div data-email-settings></div>
+    </section>
+<details class="account-settings-action" data-account-action="profile"><summary>${escapeHtml(t("Profil bearbeiten"))}</summary><div class="account-settings-action__body"><section class="account-settings-block" aria-labelledby="usernameSettingsTitle">
+      <h3 id="usernameSettingsTitle">${escapeHtml(t("Benutzername ändern"))}</h3>
+      <div data-username-settings></div>
+    </section><section class="account-settings-block" aria-labelledby="avatarSettingsTitle">
+      <h3 id="avatarSettingsTitle">${escapeHtml(t("Dein Profilbild"))}</h3>
+      <div data-avatar-upload></div>
+    </section></div></details>
+<details class="account-settings-action" data-account-action="password"><summary>${escapeHtml(t("Passwort ändern"))}</summary><div class="account-settings-action__body"><section class="account-settings-block">
+      <h3>${escapeHtml(t("Passwort ändern"))}</h3>
+      ${passwordHint}
+      <form id="zilchPasswordForm" class="zilch-settings-form">
+        <label>${escapeHtml(t("Aktuelles Passwort"))}<input id="zilchCurrentPassword" type="password" autocomplete="current-password" required></label>
+        <label>${escapeHtml(t("Neues Passwort"))}<input id="zilchNewPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+        <label>${escapeHtml(t("Neues Passwort wiederholen"))}<input id="zilchConfirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+        <button class="primary" type="submit">${escapeHtml(t("Passwort ändern"))}</button>
+      </form>
+      <p id="zilchPasswordMessage" class="zilch-settings-message" role="status"></p>
+    </section></div></details></div></details>
+    <details class="account-settings-group" data-account-section="play"><summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">${escapeHtml(t("Sprache & Spiel"))}</span><span class="account-settings-group__description">${escapeHtml(t("Sprache und persönliche Spielbedienung"))}</span></h2></summary><div class="account-settings-group__body"><section class="account-settings-block">
+      <h3>${escapeHtml(t("Sprache"))}</h3>
       <p class="zilch-account-settings-card__description">${escapeHtml(t("Die Sprache gilt für ZDWA und Zilch auf allen Geräten."))}</p>
       <form id="zilchLanguagePreferencesForm" class="zilch-settings-form">
         <fieldset>
@@ -2126,10 +2140,9 @@ function zilchAccountSettingsMarkup(username) {
         <button class="primary" type="submit">${escapeHtml(t("Sprache speichern"))}</button>
       </form>
       <p id="zilchLanguagePreferencesMessage" class="zilch-settings-message" role="status"></p>
-    </section>
-    <section class="zilch-card zilch-account-settings-card">
-      <p class="eyebrow">${escapeHtml(t("Gemeinsame Lobby"))}</p>
-      <h2>${escapeHtml(t("Lobby-Chat"))}</h2>
+    </section></div></details>
+    <details class="account-settings-group" data-account-section="social"><summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">${escapeHtml(t("Mitspieler & Hinweise"))}</span><span class="account-settings-group__description">${escapeHtml(t("Chat, Spielerauswahl und Benachrichtigungen"))}</span></h2></summary><div class="account-settings-group__body"><section class="account-settings-block">
+      <h3>${escapeHtml(t("Lobby-Chat"))}</h3>
       <p class="zilch-account-settings-card__description">${escapeHtml(t("Diese Einstellung gilt für ZDWA und Zilch auf allen Geräten."))}</p>
       <form id="zilchLobbyChatPreferencesForm" class="zilch-settings-form">
         <label><input type="checkbox" name="zilchLobbyChatEnabled"${lobbyChatEnabled ? " checked" : ""}> ${escapeHtml(t("Lobby-Chat aktivieren"))}</label>
@@ -2138,9 +2151,16 @@ function zilchAccountSettingsMarkup(username) {
       </form>
       <p id="zilchLobbyChatPreferencesMessage" class="zilch-settings-message" role="status"></p>
     </section>
-    <section id="zilchPushSettingsCard" class="zilch-card zilch-account-settings-card" tabindex="-1">
-      <p class="eyebrow">${escapeHtml(t("Gemeinsame Lobby"))}</p>
-      <h2>${escapeHtml(t("Push-Benachrichtigungen"))}</h2>
+<section class="account-settings-block" aria-labelledby="allowlistSettingsTitle">
+      <h3 id="allowlistSettingsTitle">${escapeHtml(t("Deine Spielerauswahl"))}</h3>
+      <div data-allowlist-settings></div>
+    </section>
+<section class="account-settings-block" aria-labelledby="friendActivitySettingsTitle">
+      <h3 id="friendActivitySettingsTitle">${escapeHtml(t("Startmeldungen deiner Spielerauswahl"))}</h3>
+      <div data-friend-activity-settings></div>
+    </section>
+<section id="zilchPushSettingsCard" class="account-settings-block" tabindex="-1">
+      <h3>${escapeHtml(t("Push-Benachrichtigungen"))}</h3>
       <p class="zilch-account-settings-card__description">${escapeHtml(t("Verpass keinen freien Platz: Mitspieler-Rufe bringen dich direkt in öffentliche ZDWA- oder Zilch-Runden. Erlaube zuerst Push auf diesem Gerät und wähle danach selbst, welche Hinweise zu dir passen."))}</p>
       <p class="zilch-muted">${escapeHtml(t("Mit „Push auf diesem Gerät zulassen“ fragt dein Gerät als Nächstes nach der Erlaubnis. Danach entscheidest du unten getrennt über Mitspieler-Rufe, tägliche Spielideen und Versionshinweise."))}</p>
       <div class="zilch-settings-form">
@@ -2158,33 +2178,9 @@ function zilchAccountSettingsMarkup(username) {
         <button class="primary" type="submit">${escapeHtml(t("Push-Auswahl speichern"))}</button>
         <p class="zilch-settings-message" data-push-preferences-message role="status"></p>
       </form>
-    </section>
-    <section class="zilch-card zilch-account-settings-card" aria-labelledby="allowlistSettingsTitle">
-      <h2 id="allowlistSettingsTitle">${escapeHtml(t("Deine Spielerauswahl"))}</h2>
-      <div data-allowlist-settings></div>
-    </section>
-    <section class="zilch-card zilch-account-settings-card" aria-labelledby="avatarSettingsTitle">
-      <h2 id="avatarSettingsTitle">${escapeHtml(t("Dein Profilbild"))}</h2>
-      <div data-avatar-upload></div>
-    </section>
-    <section class="zilch-card zilch-account-settings-card" aria-labelledby="friendActivitySettingsTitle">
-      <h2 id="friendActivitySettingsTitle">${escapeHtml(t("Startmeldungen deiner Spielerauswahl"))}</h2>
-      <div data-friend-activity-settings></div>
-    </section>
-    <section class="zilch-card zilch-account-settings-card">
-      <p class="eyebrow">${escapeHtml(t("Mein Konto"))}</p>
-      <h2>${escapeHtml(t("Passwort ändern"))}</h2>
-      ${passwordHint}
-      <form id="zilchPasswordForm" class="zilch-settings-form">
-        <label>${escapeHtml(t("Aktuelles Passwort"))}<input id="zilchCurrentPassword" type="password" autocomplete="current-password" required></label>
-        <label>${escapeHtml(t("Neues Passwort"))}<input id="zilchNewPassword" type="password" autocomplete="new-password" minlength="8" required></label>
-        <label>${escapeHtml(t("Neues Passwort wiederholen"))}<input id="zilchConfirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>
-        <button class="primary" type="submit">${escapeHtml(t("Passwort ändern"))}</button>
-      </form>
-      <p id="zilchPasswordMessage" class="zilch-settings-message" role="status"></p>
-    </section>
-    <section class="zilch-card zilch-account-settings-card" aria-labelledby="releaseHistoryTitle">
-      <h2 id="releaseHistoryTitle">${escapeHtml(t("Neuigkeiten & Versionen"))}</h2>
+    </section></div></details>
+    <details class="account-settings-group" data-account-section="help"><summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">${escapeHtml(t("Hilfe & Neuigkeiten"))}</span><span class="account-settings-group__description">${escapeHtml(t("Versionshistorie und Unterstützung"))}</span></h2></summary><div class="account-settings-group__body"><section class="account-settings-block" aria-labelledby="releaseHistoryTitle">
+      <h3 id="releaseHistoryTitle">${escapeHtml(t("Neuigkeiten & Versionen"))}</h3>
       <p class="zilch-muted">${escapeHtml(t("Die letzten zehn Releases kannst du jederzeit im Konto nachlesen."))}</p>
       <div data-release-history><p class="zilch-muted">${escapeHtml(t("Neuigkeiten werden geladen …"))}</p></div>
       <details class="release-notes-support">
@@ -2193,7 +2189,7 @@ function zilchAccountSettingsMarkup(username) {
         <a href="/go/github/issues" target="_blank" rel="noopener noreferrer">${escapeHtml(t("Problem auf GitHub melden"))}</a><br>
         <a href="/go/github/changelog" target="_blank" rel="noopener noreferrer">${escapeHtml(t("Ausführliche Versionshistorie auf GitHub"))}</a>
       </details>
-    </section>
+    </section></div></details>
   </div>
   <section class="zilch-card zilch-account-session" aria-label="${escapeHtml(`${t("Du spielst als")} ${username}`)}">
     <div><p class="eyebrow">${escapeHtml(t("Du spielst als"))}</p><strong class="zilch-account-session__name">${escapeHtml(username)}</strong></div>
@@ -2270,15 +2266,19 @@ function bindZilchAccountSettings() {
   const pushDisableButton = document.getElementById("zilchDisableGameInvitePush");
   const pushStatus = document.getElementById("zilchGameInvitePushStatus");
   const passwordForm = document.getElementById("zilchPasswordForm");
-  let focusRequestedPushSettings = new URLSearchParams(window.location.search).has("push");
+  if (state.auth?.user?.must_change_password) {
+    revealAccountSetting(document.getElementById("zilchCurrentPassword"), { focus: true, scroll: true });
+  }
+  let focusRequestedPushSettings = !state.auth?.user?.must_change_password && new URLSearchParams(window.location.search).has("push");
   const focusPushSettings = status => {
     if (!focusRequestedPushSettings) return;
     focusRequestedPushSettings = false;
     window.requestAnimationFrame(() => {
-      document.getElementById("zilchPushSettingsCard")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      showZilchAccountTab("settings", { updateHash: true });
+      revealAccountSetting(document.getElementById("zilchPushSettingsCard"), { scroll: true });
       const form = document.getElementById("zilchPushPreferencesForm");
       const target = status?.subscribed ? form?.elements?.gameInvites : pushEnableButton;
-      target?.focus?.({ preventScroll: true });
+      (target?.disabled ? document.getElementById("zilchPushSettingsCard") : target)?.focus?.({ preventScroll: true });
     });
   };
   if (languageForm && !languageForm.dataset.bound) {
@@ -2476,11 +2476,10 @@ function bindZilchAccountSettings() {
 async function renderAccount() {
   if (!content) return;
   const username = state.auth?.user?.username || t("Spieler");
-  const defaultTab = state.auth?.user?.must_change_password ? "settings" : "statistics";
-  // A fresh account still opens its required password settings by default,
-  // while an explicit personal deep link remains truthful. This makes the
-  // ranking CTAs and old-link aliases land on the requested Konto tab.
-  state.accountTab = normalizedZilchAccountTab(window.location.hash, defaultTab);
+  // A required password change is the first task, even when an older link
+  // requested another tab. The account tabs remain available afterwards.
+  state.accountTab = state.auth?.user?.must_change_password
+    ? "settings" : normalizedZilchAccountTab(window.location.hash);
   content.innerHTML = `<section class="zilch-game-head zilch-account-head">
       <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><div class="zilch-account-head__identity">${avatarMarkup(state.auth?.user, { size: "large" })}<h1>${escapeHtml(username)}</h1><span id="zilchAccountRank" class="zilch-account-head__rank" aria-live="polite"></span></div><p>${escapeHtml(t("Hier warten deine privaten Zilch-Zahlen und Awards."))}</p></div>
     </section>

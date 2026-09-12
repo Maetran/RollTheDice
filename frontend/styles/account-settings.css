@@ -1,0 +1,75 @@
+/* One account structure, with each product's existing colours. */
+.account-settings-panel,
+.zilch-account-settings-grid {
+  --account-settings-surface: var(--card);
+  --account-settings-border: var(--border);
+  --account-settings-ink: var(--text);
+  --account-settings-muted: var(--muted);
+  --account-settings-accent: var(--accent);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  width: 100%;
+  max-width: 850px;
+  margin-inline: auto;
+}
+.zilch-account-settings-grid {
+  --account-settings-surface: var(--zilch-paper-soft);
+  --account-settings-border: var(--zilch-paper-edge);
+  --account-settings-ink: var(--zilch-ink);
+  --account-settings-muted: var(--zilch-muted);
+  --account-settings-accent: var(--zilch-blue);
+}
+.account-settings-intro { margin: 0; color: var(--account-settings-muted); line-height: 1.5; }
+.zilch-account-settings-grid > .account-settings-intro { color: #fff8e8; }
+.account-settings-group {
+  min-width: 0;
+  border: 1px solid var(--account-settings-border);
+  border-radius: 14px;
+  background: var(--account-settings-surface);
+  color: var(--account-settings-ink);
+}
+.account-settings-group > summary {
+  position: relative;
+  display: grid;
+  gap: .25rem;
+  padding: 1rem 3rem 1rem 1rem;
+  min-height: 44px;
+  box-sizing: border-box;
+  cursor: pointer;
+  list-style: none;
+}
+.account-settings-group > summary::-webkit-details-marker { display: none; }
+.account-settings-group > summary::after {
+  content: '+';
+  position: absolute;
+  right: 1.1rem;
+  top: 1.05rem;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--account-settings-accent);
+}
+.account-settings-group[open] > summary::after { content: '−'; }
+.account-settings-group__heading { display: grid; gap: .25rem; margin: 0; }
+.account-settings-group__title { font-size: 1.12rem; font-weight: 800; }
+.account-settings-group__description { color: var(--account-settings-muted); font-size: .88rem; font-weight: 400; line-height: 1.4; }
+.account-settings-group__body { display: grid; gap: 1.15rem; padding: 0 1rem 1rem; }
+.account-settings-block { display: grid; gap: .65rem; min-width: 0; padding-top: 1rem; border-top: 1px solid var(--account-settings-border); }
+.account-settings-block[hidden] { display: none; }
+.account-settings-block > :is(h3, p) { margin: 0; }
+.account-settings-block h3 { font-size: 1rem; }
+.account-settings-block p { line-height: 1.5; }
+.account-settings-block form { max-width: 620px; }
+.account-settings-block input:not([type='checkbox']):not([type='radio']) { width: 100%; min-width: 0; box-sizing: border-box; }
+.account-settings-block label:has(input[type='checkbox']) { display: flex; align-items: center; gap: .5rem; }
+.account-settings-block input[type='checkbox'] { flex: 0 0 auto; width: auto; }
+.account-settings-recommendation { color: var(--account-settings-accent); font-size: .85rem; font-weight: 750; }
+.account-settings-action { min-width: 0; border-top: 1px solid var(--account-settings-border); }
+.account-settings-action > summary { padding: .85rem 0; min-height: 44px; box-sizing: border-box; cursor: pointer; font-weight: 700; }
+.account-settings-action__body { display: grid; gap: 1rem; }
+.account-settings-action__body > .account-settings-block:first-child { padding-top: 0; border-top: 0; }
+.account-settings-group summary:focus-visible { outline: 3px solid var(--account-settings-accent); outline-offset: 3px; border-radius: 6px; }
+@media (max-width: 400px) {
+  .account-settings-group > summary { padding-left: .8rem; }
+  .account-settings-group__body { padding-inline: .8rem; }
+}

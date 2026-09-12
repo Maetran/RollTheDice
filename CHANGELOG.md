@@ -11,6 +11,31 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Klarere Kontoeinstellungen und E-Mail / Clearer account settings and email — 2026-09-12
+
+- **Deutsch:** ZDWA und Zilch ordnen die Einstellungen gleich: Profil und
+  Zugang, Sprache und Spiel, Mitspieler und Hinweise sowie Hilfe und
+  Neuigkeiten. Passkeys stehen beim Zugang vorne; Profilbearbeitung und
+  Passwortwechsel öffnen sich bei Bedarf. Deaktivierte E-Mail-Funktionen
+  belegen keine eigene Karte. Sprache, Lobby-Chat und ZDWA-Spieloptionen
+  lassen sich getrennt speichern, ohne sich gegenseitig zurückzusetzen.
+- **English:** Both games use the same settings order: profile and sign-in,
+  language and play, players and notifications, then help and updates. Passkeys
+  lead the sign-in section; profile editing and password changes open when
+  needed. Disabled email features no longer occupy a separate card. Language,
+  lobby chat and ZDWA gameplay preferences save independently without resetting
+  one another.
+
+- **Deutsch:** Neue Konten werden per E-Mail-Link bestätigt; Bestandskonten
+  können eine bestätigte Adresse ergänzen und ihr Passwort selbst zurücksetzen.
+  Beide Spiele senden über Resend von `noreply@zockdiewandan.online`, mit
+  verifiziertem SPF/DKIM, striktem DMARC und verschlüsselter Zustellung.
+  Ein Reset meldet alle Geräte ab und entfernt bisherige Passkeys.
+- **English:** New accounts are confirmed by email; existing accounts can add
+  a verified address and reset their password. Both games send through Resend
+  from `noreply@zockdiewandan.online`, using verified SPF/DKIM, strict DMARC and
+  encrypted delivery. A reset signs out every device and removes existing passkeys.
+
 ## Passkeys und Fairplay / Passkeys and fair play — 2026-09-12
 
 - **Deutsch:** Passkeys werden zur bevorzugten Anmeldung in ZDWA und Zilch.
@@ -36,21 +61,6 @@ also includes older and internal changes.
   Sign in on the public Zilch site reliably opens the shared login form and
   preserves the selected return destination.
 - **Prüfung / Review:** [Account security and Fairplay review](docs/ACCOUNT_SECURITY_REVIEW_2026-09-12.md).
-
-## Unveröffentlicht / Unreleased — E-Mail-Konten / Email accounts
-
-- **Deutsch:** E-Mail-Registrierung mit Bestätigungslink, bestätigte
-  Kontoadressen und Passwort-Reset sind implementiert, bleiben aber deaktiviert.
-  Versanddienst und Absender `noreply@zockdiewandan.online` werden später in
-  Work eingerichtet. Bis dahin bleibt die Registrierung mit Benutzername und
-  Passwort nutzbar. Die spätere E-Mail-Recovery meldet alle Geräte ab und
-  entfernt bisherige Passkeys; ein normaler Passwortwechsel behält sie.
-- **English:** Email registration with a confirmation link, verified account
-  addresses and password recovery are implemented but remain disabled. The
-  sending service and `noreply@zockdiewandan.online` sender will be configured
-  later in Work. Username/password registration remains available meanwhile.
-  Future email recovery signs out all devices and removes existing passkeys;
-  an ordinary password change keeps them.
 
 ## Stille Korrektur / Silent fix — Aktuelle Namen in früheren Partien — 2026-09-12
 

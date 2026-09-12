@@ -109,15 +109,25 @@ async function passkeyRequest(path = '', body, method = 'POST') {
   return data;
 }
 
+export function revealAccountSetting(target, { focus = false, scroll = false } = {}) {
+  if (!target) return;
+  for (let parent = target.parentElement; parent; parent = parent.parentElement) {
+    if (parent instanceof HTMLDetailsElement) parent.open = true;
+  }
+  if (focus || scroll) window.requestAnimationFrame(() => {
+    if (scroll) target.scrollIntoView({ block: 'center', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ? 'auto' : 'smooth' });
+    if (focus) target.focus({ preventScroll: scroll });
+  });
+}
+
 export async function mountPasskeySettings(container, { zilch = false } = {}) {
   if (!container || container.dataset.bound) return;
   container.dataset.bound = 'true';
   try {
     const auth = await loadAuth();
-    if (!auth.passkeys?.enabled) {
-      container.closest('section')?.setAttribute('hidden', '');
-      return;
-    }
+    const section = container.closest('[data-passkey-section]') || container.closest('section');
+    if (section) section.hidden = !auth.passkeys?.enabled;
+    if (!auth.passkeys?.enabled) return;
     const render = async (notice = '') => {
       const status = await passkeyRequest();
       container.innerHTML = `
@@ -337,6 +347,8 @@ export async function mountEmailSettings(container, { zilch = false } = {}) {
     const confirmed = status?.email_confirmed && status?.email;
     const pending = status?.pending_email;
     const unavailable = status?.delivery_available === false;
+    const section = container.closest('[data-email-section]') || container.closest('section');
+    if (section) section.hidden = unavailable;
     container.innerHTML = unavailable
       ? `<p>${escapeHtml(translate('E-Mail-Anmeldung und Passwort-Reset werden für dieses Konto noch vorbereitet.'))}</p>`
       : `<p>${escapeHtml(confirmed
@@ -375,8 +387,16 @@ export async function mountEmailSettings(container, { zilch = false } = {}) {
     });
   };
   try {
+    const auth = await loadAuth();
+    if (auth.registration?.email_enabled === false) {
+      const section = container.closest('[data-email-section]') || container.closest('section');
+      if (section) section.hidden = true;
+      return;
+    }
     render(await getEmailStatus());
   } catch (error) {
+    const section = container.closest('[data-email-section]') || container.closest('section');
+    if (section) section.hidden = false;
     container.innerHTML = `<p role="status">${escapeHtml(translate(error instanceof TypeError ? 'Einstellungen konnten nicht geladen werden.' : error.message))}</p>`;
   }
 }

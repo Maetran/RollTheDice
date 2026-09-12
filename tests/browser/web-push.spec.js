@@ -1,8 +1,16 @@
 const { test, expect } = require("@playwright/test");
 
+async function openAccountSection(page, section) {
+  const details = page.locator(`details[data-account-section="${section}"]`);
+  if (await details.getAttribute("open") === null) await details.locator(":scope > summary").click();
+}
+
 test.use({ serviceWorkers: "block" });
 
 async function signIn(page) {
+  const username = "PushSettings";
+  const temporaryPassword = "push-temporary-password-123";
+  const password = "push-browser-password-123";
   const admin = await page.request.post("/api/auth/login", {
     data: { username: "Admin", password: "temporary-password-123" },
   });
@@ -10,13 +18,21 @@ async function signIn(page) {
   const adminUser = (await admin.json()).user;
   const created = await page.request.post("/api/admin/users", {
     headers: { "X-CSRF-Token": adminUser.csrf_token },
-    data: { username: "Mani", temporary_password: "mani-preview-password-123", role: "admin" },
+    data: { username, temporary_password: temporaryPassword, role: "admin" },
   });
   expect([201, 400]).toContain(created.status());
   await page.request.post("/api/auth/logout", { headers: { "X-CSRF-Token": adminUser.csrf_token } });
-  const signedIn = await page.request.post("/api/auth/login", {
-    data: { username: "Mani", password: "mani-preview-password-123" },
-  });
+  if (created.status() === 201) {
+    const initial = await page.request.post("/api/auth/login", { data: { username, password: temporaryPassword } });
+    expect(initial.ok()).toBeTruthy();
+    const user = (await initial.json()).user;
+    const changed = await page.request.post("/api/auth/change-password", {
+      headers: { "X-CSRF-Token": user.csrf_token },
+      data: { current_password: temporaryPassword, new_password: password },
+    });
+    expect(changed.ok()).toBeTruthy();
+  }
+  const signedIn = await page.request.post("/api/auth/login", { data: { username, password } });
   expect(signedIn.ok()).toBeTruthy();
 }
 
@@ -101,7 +117,8 @@ for (const product of [
   test(`${product.name} push permission preserves the click and account opt-out survives browser failure`, async ({ page }) => {
     await signIn(page);
     const calls = await mockPush(page);
-    await page.goto(product.path);
+    await page.goto(`${product.path}#settings`);
+    await openAccountSection(page, "social");
     await expect(page.locator(product.enable)).toBeEnabled();
     await page.locator(product.enable).click();
     await expect(page.locator(product.status)).toContainText("bereit");
@@ -120,7 +137,8 @@ for (const product of [
   test(`${product.name} preserves permission errors and allows opt-out when push is unavailable`, async ({ page }) => {
     await signIn(page);
     const calls = await mockPush(page, { denied: true });
-    await page.goto(product.path);
+    await page.goto(`${product.path}#settings`);
+    await openAccountSection(page, "social");
     await expect(page.locator(product.enable)).toBeEnabled();
     await page.locator(product.enable).click();
     await expect(page.locator(product.status)).toHaveText("Die Push-Berechtigung wurde nicht erteilt.");
@@ -128,6 +146,7 @@ for (const product of [
     await page.unroute("**/api/web-push/subscription");
     const unavailableCalls = await mockPush(page, { available: false, enabled: true });
     await page.reload();
+    await openAccountSection(page, "social");
     await expect(page.locator(product.enable)).toBeDisabled();
     await expect(page.locator(product.disable)).toBeVisible();
     await page.locator(product.disable).click();
@@ -138,7 +157,8 @@ for (const product of [
   test(`${product.name} lets users choose reminders independently and preserves the choice on reload`, async ({ page }) => {
     await signIn(page);
     const calls = await mockPush(page, { enabled: true });
-    await page.goto(product.path);
+    await page.goto(`${product.path}#settings`);
+    await openAccountSection(page, "social");
     const invites = page.locator('input[name="gameInvites"]');
     const daily = page.locator('input[name="dailyReminder"]');
     await expect(invites).toBeChecked();
@@ -150,16 +170,19 @@ for (const product of [
     await expect(page.locator('[data-push-preferences-message]')).toHaveText("Push-Auswahl gespeichert.");
     expect(calls).toContainEqual(expect.objectContaining({ game_invites_enabled: false, daily_reminder_enabled: true }));
     await page.reload();
+    await openAccountSection(page, "social");
     await expect(invites).not.toBeChecked();
     await expect(daily).toBeChecked();
     const changeLanguage = async language => {
       if (product.name === "ZDWA") {
+        await openAccountSection(page, "play");
         await page.locator(`input[name="preferredLanguage"][value="${language}"]`).check();
-        await page.locator("#preferencesForm button").click();
+        await Promise.all([page.waitForEvent("load"), page.locator("#languagePreferencesForm button").click()]);
       } else {
-        await page.locator("[data-language-switcher]").selectOption(language);
+        await Promise.all([page.waitForEvent("load"), page.locator("[data-language-switcher]").selectOption(language)]);
       }
       await expect(page.locator("html")).toHaveAttribute("lang", language);
+      await openAccountSection(page, "social");
     };
     await changeLanguage("en");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
@@ -177,7 +200,8 @@ for (const product of [
     await page.setViewportSize({ width: 390, height: 844 });
     await signIn(page);
     const calls = await mockPush(page, { enabled: true });
-    await page.goto(product.path);
+    await page.goto(`${product.path}#settings`);
+    await openAccountSection(page, "social");
     const releases = page.getByLabel("Versionshinweise erhalten", { exact: true });
     const audience = page.getByLabel("Einladungen akzeptieren von");
     await expect(releases).not.toBeChecked();
@@ -191,18 +215,20 @@ for (const product of [
     await expect(page.locator('[data-push-preferences-message]')).toHaveText("Push-Auswahl gespeichert.");
     expect(calls).toContainEqual({ game_invites_enabled: true, daily_reminder_enabled: false, release_notifications_enabled: true });
     await page.reload();
+    await openAccountSection(page, "social");
     await expect(releases).toBeChecked();
     await expect(audience).toHaveValue("allowlist");
     const box = await audience.boundingBox();
     expect(box.width).toBeGreaterThan(150);
     expect(box.x + box.width).toBeLessThanOrEqual(391);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-    const card = page.locator(product.name === "ZDWA" ? ".password-card:has(#pushPreferencesForm)" : ".zilch-account-settings-card:has(#zilchPushPreferencesForm)");
+    const card = page.locator("details[data-account-section=social]");
     await page.evaluate(() => document.activeElement?.blur());
     await card.screenshot({ path: testInfo.outputPath("push-settings-mobile.png") });
     await page.locator(product.disable).click();
     await expect(releases).toBeHidden();
     await page.reload();
+    await openAccountSection(page, "social");
     await expect(page.locator(product.status)).toContainText("sind ausgeschaltet");
     await expect(audience).toHaveValue("allowlist");
   });
@@ -210,7 +236,8 @@ for (const product of [
   test(`${product.name} the account list remains usable without push or a free-text name field`, async ({ page }) => {
     await signIn(page);
     const calls = await mockPush(page, { available: false });
-    await page.goto(product.path);
+    await page.goto(`${product.path}#settings`);
+    await openAccountSection(page, "social");
     await page.getByLabel("Einladungen akzeptieren von").selectOption("allowlist");
     await page.getByRole("button", { name: "Einladungsauswahl speichern" }).click();
     await expect(page.locator(".player-allowlist-message")).toHaveText("Spielerauswahl gespeichert.");
@@ -237,6 +264,7 @@ for (const product of [
     await prompt.getByRole("button", { name: "Push zulassen & auswählen" }).click();
     const escapedPath = product.path.replaceAll("/", "\\/");
     await expect(page).toHaveURL(new RegExp(`${escapedPath}\\?push=1#settings$`));
+    await expect(page.locator("details[data-account-section=social]")).toHaveAttribute("open", "");
     await expect(page.locator(product.status)).toContainText("bereit");
     await expect(page.locator('input[name="gameInvites"]')).not.toBeChecked();
     expect(await page.evaluate(() => sessionStorage.getItem("pushPermissionHadUserGesture") === "true")).toBe(true);
@@ -249,7 +277,7 @@ test("both lobby buttons dispatch invitations and show the account flood limit w
   await signIn(page);
   const auth = await (await page.request.get("/api/auth/me")).json();
   const game = { id: "push-ui-test", game_type: "zdwa", mode: 2, expected: 2, players: 1, my_player_id: "seat", started: false, finished: false, locked: false,
-    player_statuses: [{ id: "seat", name: "Mani", user_id: auth.user.id, connected: true }] };
+    player_statuses: [{ id: "seat", name: auth.user.username, user_id: auth.user.id, connected: true }] };
   await page.route("**/api/games", route => route.request().method() === "GET"
     ? route.fulfill({ json: { games: [game], online_users: 1 } }) : route.continue());
   await page.route("**/api/games?game_type=zilch", route => route.fulfill({ json: { games: [{ ...game, game_type: "zilch", play_mode: "multiplayer" }] } }));

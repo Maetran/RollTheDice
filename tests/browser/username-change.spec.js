@@ -70,6 +70,7 @@ for (const product of ["zdwa", "zilch"]) {
       })).ok()).toBeTruthy();
       const accountPath = product === "zilch" ? "/zilch/konto" : "/konto";
       await page.goto(`${accountPath}#settings`);
+      await page.locator("details[data-account-action=profile] > summary").click();
       const settings = page.locator("[data-username-settings]");
       const name = settings.locator('[name="username"]');
       const secret = settings.locator('[name="current_password"]');
@@ -102,8 +103,10 @@ for (const product of ["zdwa", "zilch"]) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await testInfo.attach(`${product}-${language}-username`, { body: await settings.screenshot(), contentType: "image/png" });
       await page.reload();
+      await page.locator("details[data-account-action=profile] > summary").click();
       await expect(name).toHaveValue(renamed);
       await page.goto(`${product === "zilch" ? "/konto" : "/zilch/konto"}#settings`);
+      await page.locator("details[data-account-action=profile] > summary").click();
       await expect(page.locator('[data-username-settings] [name="username"]')).toHaveValue(renamed);
       const oldLogin = await page.request.post("/api/auth/login", { data: { username: original, password } });
       expect(oldLogin.status()).toBe(401);

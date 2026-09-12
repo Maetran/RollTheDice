@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const port = Number(process.env.ROLLTHEDICE_TEST_PORT || 8010);
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${port}`;
 const testDatabase = `/tmp/rollthedice-playwright-${process.pid}.sqlite3`;
+const previewAccounts = "previewfriend,settings_zilch_de,settings_zilch_en,forcedsettings_zilch,settings_savedchoices,pushsettings,zilchsigninready,emailsettings_zilch_de,emailsettings_zilch_en";
 const pythonExecutable = process.env.PLAYWRIGHT_PYTHON
   || (fs.existsSync(".venv/bin/python") ? ".venv/bin/python" : "python3");
 
@@ -28,7 +29,7 @@ module.exports = defineConfig({
     trace: "retain-on-failure",
   },
   webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
-    command: `ROLLTHEDICE_SITE_ORIGIN=http://127.0.0.1:${port} ROLLTHEDICE_EMAIL_ENABLED=0 ROLLTHEDICE_PASSKEYS_ENABLED=0 ROLLTHEDICE_DATABASE_URL=sqlite:///${testDatabase} ROLLTHEDICE_ADMIN_USERNAME=Admin ROLLTHEDICE_ADMIN_PASSWORD=temporary-password-123 ROLLTHEDICE_COOKIE_SECURE=0 ROLLTHEDICE_GAME_CREATE_BURST_MAX=100 ROLLTHEDICE_GAME_CREATE_IP_MAX=200 ROLLTHEDICE_GAME_CREATE_GLOBAL_MAX=500 ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES=previewfriend ${pythonExecutable} -m uvicorn app.main:app --host 127.0.0.1 --port ${port} --ws-max-size 65536`,
+    command: `ROLLTHEDICE_SITE_ORIGIN=http://127.0.0.1:${port} ROLLTHEDICE_EMAIL_ENABLED=0 ROLLTHEDICE_PASSKEYS_ENABLED=0 ROLLTHEDICE_DATABASE_URL=sqlite:///${testDatabase} ROLLTHEDICE_ADMIN_USERNAME=Admin ROLLTHEDICE_ADMIN_PASSWORD=temporary-password-123 ROLLTHEDICE_COOKIE_SECURE=0 ROLLTHEDICE_GAME_CREATE_BURST_MAX=100 ROLLTHEDICE_GAME_CREATE_IP_MAX=200 ROLLTHEDICE_GAME_CREATE_GLOBAL_MAX=500 ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES=${previewAccounts} ${pythonExecutable} -m uvicorn app.main:app --host 127.0.0.1 --port ${port} --ws-max-size 65536`,
     url: baseURL,
     reuseExistingServer: false,
     timeout: 15000,

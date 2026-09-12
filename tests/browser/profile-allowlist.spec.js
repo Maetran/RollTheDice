@@ -1,5 +1,10 @@
 const { test, expect } = require("@playwright/test");
 
+async function openAccountSection(page, section) {
+  const details = page.locator(`details[data-account-section="${section}"]`);
+  if (await details.getAttribute("open") === null) await details.locator(":scope > summary").click();
+}
+
 test.use({ serviceWorkers: "block" });
 
 async function signIn(page) {
@@ -47,6 +52,7 @@ for (const product of [
     await page.goto(product.other);
     await expect(page.getByRole("button", { name: "Aus Spielerauswahl entfernen", exact: true })).toBeVisible();
     await page.goto(product.account);
+    await openAccountSection(page, "social");
     const settings = page.locator("[data-allowlist-settings]");
     await expect(settings.getByRole("link", { name: "ListFriend", exact: true })).toBeVisible();
     await expect(settings.locator("textarea")).toHaveCount(0);
@@ -93,6 +99,7 @@ for (const product of [
     await page.getByRole("button", { name: "Add to player selection", exact: true }).click();
     await expect(page.locator(".player-allowlist-message")).toHaveText("Player selection saved.");
     await page.goto(product.account);
+    await openAccountSection(page, "social");
     await expect(page.getByRole("heading", { name: "Your player selection", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Remove ListFriend from player selection", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Save invitation selection", exact: true })).toBeVisible();

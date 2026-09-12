@@ -23,12 +23,14 @@ from app.achievements import ACHIEVEMENTS
 from app.active_games import load_active_games, save_active_game
 from app.api_auth import (
     LanguagePreferenceRequest,
+    LobbyChatPreferenceRequest,
     UsernameChangeRequest,
     UserPreferencesRequest,
     auth_change_username,
     auth_logout,
     auth_me,
     auth_update_language,
+    auth_update_lobby_chat_preference,
     auth_update_preferences,
 )
 from app.api_users import (
@@ -566,6 +568,27 @@ class AccountDatabaseTestCase(GameStateTestCase):
             self.assertFalse(user.lobby_chat_excluded)
             self.assertFalse(user.game_invite_push_enabled)
             self.assertEqual(user.preferred_language, "en")
+
+    def test_gameplay_save_preserves_separately_saved_language_and_chat(self):
+        create_user("SeparatePrefs", "a-secure-password-123", must_change_password=False)
+        identity, raw_token = login(request_for(), "SeparatePrefs", "a-secure-password-123")
+        authenticated_request = request_for(cookie=f"rollthedice_session={raw_token}", csrf=identity.csrf_token)
+        auth_update_language(LanguagePreferenceRequest(preferred_language="en"), authenticated_request)
+        auth_update_lobby_chat_preference(
+            LobbyChatPreferenceRequest(lobby_chat_enabled=False, lobby_chat_popups=False), authenticated_request
+        )
+        for language in ({}, {"preferred_language": None}):
+            with self.subTest(language=language):
+                result = auth_update_preferences(
+                    UserPreferencesRequest(
+                        announce_selection_mode="table", auto_write_announced=False, mobile_row_quick_entry=True, **language
+                    ),
+                    authenticated_request,
+                )
+                self.assertEqual(result["preferences"]["preferred_language"], "en")
+                self.assertFalse(result["preferences"]["lobby_chat_enabled"])
+                self.assertFalse(result["preferences"]["lobby_chat_popups"])
+                self.assertEqual(result["preferences"]["announce_selection_mode"], "table")
 
     def test_mobile_quick_entry_migration_enables_existing_but_not_new_accounts(self):
         create_user("ExistingUser", "a-secure-password-123", must_change_password=False)

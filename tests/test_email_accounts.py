@@ -431,4 +431,5 @@ class EmailAccountsTestCase(TestCase):
         for call in send.call_args_list:
             request = call.args[0]
             self.assertEqual(request.full_url, "https://api.resend.com/emails")
+            self.assertEqual(request.get_header("User-agent"), "RollTheDice/1.0 (+https://zockdiewandan.online)")
             self.assertEqual(request.get_header("Idempotency-key"), "retry-key")

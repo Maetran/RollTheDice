@@ -131,7 +131,22 @@ in the result history.
 
 ## Accounts and progress
 
-One account works across both games, with shared language and comfort settings.
+One account works across both games. Both settings pages follow the same four
+sections: **Profile & sign-in**, **Language & play**, **Players & notifications**,
+and **Help & updates**. Profile and sign-in open first, with passkeys as the
+preferred sign-in method. Open profile editing or password changes when needed;
+email settings appear only when email is enabled. Shared language and lobby-chat
+preferences save separately from ZDWA gameplay options. Statistics and
+achievements keep their own tabs.
+
+**Deutsch:** Die Einstellungen beider Spiele folgen derselben Reihenfolge:
+**Profil & Zugang**, **Sprache & Spiel**, **Mitspieler & Hinweise** und
+**Hilfe & Neuigkeiten**. Profil und Zugang sind zuerst geöffnet, mit Passkeys
+als bevorzugter Anmeldung. Profilbearbeitung und Passwortwechsel öffnest du
+bei Bedarf; E-Mail-Einstellungen erscheinen erst bei aktiviertem Versand.
+Gemeinsame Sprache und Lobby-Chat werden getrennt von ZDWA-Spieloptionen
+gespeichert. Statistik und Erfolge behalten eigene Tabs.
+
 ZDWA offers locally saved Light, Dark and Classic appearances through its compact
 header appearance button. Classic turns the table into a coffee-table score
 sheet: softer, warm paper rests on irregular green felt, with blue ballpoint
@@ -154,7 +169,7 @@ Inside LCARS game rooms, quieter frame and chat colours and reduced dice glow
 keep selections clear. Positive scores use a light, muted apricot, and CPU
 badges use flat LCARS colours with dark lettering. The black background,
 layout and sliding score sheets are unchanged.
-Under **Account → Settings → Change username**, enter a new name and your
+Under **Account → Settings → Profile & sign-in → Change username**, enter a new name and your
 current password. Names follow the registration rules (3–32 characters) and
 are unique regardless of case. The new name applies to signing in, profiles
 and new games in both products. Sessions, statistics, achievements, avatars
@@ -166,7 +181,7 @@ message text and game titles stay unchanged. Profile links change and the old
 name becomes available again. In the private Zilch preview mode, names tied to
 preview access require an administrator to adjust the access configuration first.
 
-**Deutsch:** Unter **Konto → Einstellungen → Benutzername ändern** kannst du
+**Deutsch:** Unter **Konto → Einstellungen → Profil & Zugang → Benutzername ändern** kannst du
 mit deinem aktuellen Passwort einen neuen Namen wählen. Er gilt für Anmeldung,
 Profil und neue Partien in beiden Spielen. Konto, Statistiken, Erfolge und
 Spielerauswahl bleiben erhalten. Auch abgeschlossene Partien und Bestenlisten
@@ -177,48 +192,43 @@ Dein Profillink ändert sich und der alte Name wird frei.
 
 Administrators manage accounts and moderation.
 
-The selected production release enables passkeys and public Fairplay counters.
-Deployment verification is recorded in the
+The production account release enables email registration and recovery alongside
+passkeys and public Fairplay counters. Resend sends from
+`noreply@zockdiewandan.online`; the [mail setup record](docs/MAIL_SETUP_2026-09-12.md)
+describes DNS, delivery checks and operating limits. Only account/address
+confirmations, requested password resets and reset confirmations are sent.
+There is no inbox, operator copy or newsletter. New accounts become usable
+only after following the confirmation link and choosing a password; existing
+accounts can add a confirmed address under **Profile & sign-in**.
+
+Passkeys are the preferred sign-in choice on supported devices. They use the
+fixed ZDWA origin as the WebAuthn relying party and work across ZDWA and the
+controlled Zilch subdomain. The server stores public credential material only;
+passwords remain a fallback. Add, name or remove passkeys in account settings.
+A password reset signs out every device and removes existing passkeys; enroll
+them again after signing in. An ordinary password change keeps passkeys.
+Disabling email through its deployment flag restores legacy password sign-up.
+See the [email account plan](docs/EMAIL_ACCOUNTS_PLAN.md) and
 [account security review](docs/ACCOUNT_SECURITY_REVIEW_2026-09-12.md).
-Email registration, address verification and password recovery remain
-implemented but disabled; see [the email account plan](docs/EMAIL_ACCOUNTS_PLAN.md).
-The sending service and `noreply@zockdiewandan.online` sender will be configured
-later in Work. Once enabled, the service sends only account/address
-confirmations, requested password resets and the confirmation after a reset.
-It has no inbox, operator copy, newsletter or personal mailbox requirement.
-Email registration will create a usable account only after the email link and
-password setup; existing accounts will be able to add an address in settings.
 
-Passkeys are the preferred sign-in choice on devices that support them in the
-selected release. They use the fixed ZDWA origin as the WebAuthn relying party and work
-across ZDWA and the controlled Zilch subdomain. The server stores public
-credential material only; passwords remain a fallback. Passkeys can be added,
-named and removed from account settings.
+**Deutsch:** Der Konto-Release aktiviert E-Mail-Registrierung und Wiederherstellung
+zusätzlich zu Passkeys und öffentlichen Fairplay-Zählern. Resend versendet von
+`noreply@zockdiewandan.online`; DNS, Versandprüfungen und Betriebsgrenzen stehen
+im [Versandprotokoll](docs/MAIL_SETUP_2026-09-12.md). Die Anwendung verschickt nur
+Konto-/Adressbestätigungen, angeforderte Passwort-Resets und die Bestätigung
+nach einem Reset. Es gibt kein Postfach, keine Kopie an die Administration und
+keinen Newsletter. Neue Konten entstehen erst nach Bestätigungslink und eigener
+Passwortwahl. Bestehende Konten können unter **Profil & Zugang** eine bestätigte
+Adresse ergänzen.
 
-While email registration is disabled, the existing username/password sign-up
-continues to work. Once email recovery is enabled, a reset signs out every
-device and removes existing passkeys; enroll them again after signing in.
-An ordinary password change keeps your passkeys.
-
-**Deutsch:** Für den ausgewählten Produktions-Rollout sind Passkeys und
-öffentliche Fairplay-Zähler vorgesehen; die Deployment-Prüfung steht im
-[Sicherheitsreview](docs/ACCOUNT_SECURITY_REVIEW_2026-09-12.md). Die
-E-Mail-Registrierung, Adressbestätigung und Passwort-Rücksetzung bleiben
-implementiert, aber ausgeschaltet. Versanddienst und Absender
-`noreply@zockdiewandan.online` werden später in Work eingerichtet. Nach einer
-bewussten Aktivierung versendet die Anwendung nur Konto-/Adressbestätigungen,
-angeforderte Passwort-Resets und die Bestätigung nach einem Reset. Es gibt kein
-Postfach, keine Kopie an die Administration und keinen Newsletter. Bei der
-späteren E-Mail-Registrierung entstehen Konten erst nach Link und Passwortwahl;
-bestehende Konten können dann eine Adresse in den Einstellungen ergänzen.
-Passkeys sind im ausgewählten Release die bevorzugte Anmeldung auf unterstützten
-Geräten und gelten für ZDWA sowie die kontrollierte Zilch-Subdomain. Der Server
-speichert nur öffentliche Credential-Daten, Passwörter bleiben eine Alternative.
-Solange E-Mail-Registrierung ausgeschaltet ist, bleibt die bisherige Anmeldung
-eines neuen Kontos mit Benutzername und Passwort verfügbar. Sobald E-Mail-Recovery
-aktiviert wird, meldet ein Passwort-Reset alle Geräte ab und entfernt bisherige
-Passkeys; danach lassen sie sich neu hinzufügen. Ein normaler Passwortwechsel
-behält die Passkeys.
+Passkeys sind die bevorzugte Anmeldung auf unterstützten Geräten und gelten
+für ZDWA sowie die kontrollierte Zilch-Subdomain. Der Server speichert nur
+öffentliche Credential-Daten; Passwörter bleiben eine Alternative. Passkeys
+lassen sich in den Kontoeinstellungen hinzufügen, benennen und entfernen.
+Ein Passwort-Reset meldet alle Geräte ab und entfernt bisherige Passkeys;
+danach lassen sie sich neu hinzufügen. Ein normaler Passwortwechsel behält sie.
+Bei deaktiviertem E-Mail-Feature ist die bisherige Registrierung mit
+Benutzername und Passwort wieder verfügbar.
 
 The public Zilch lobby paints its heading directly from HTML and shows its
 controls without waiting for the account check. Creating a game, account data

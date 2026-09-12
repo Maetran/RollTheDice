@@ -857,28 +857,40 @@ Die produktive Antwort muss bei aktivem Schutz
 
 Der Code enthält E-Mail-Registrierung, Adressbestätigung, angeforderten
 Passwort-Reset und WebAuthn-Passkeys. Die Konfigurationsvorlagen aktivieren
-nichts automatisch. Für den freigegebenen Passkey-/Fairplay-Rollout vom
-12.09.2026 ist die folgende Produktionskonfiguration ausgewählt; die
-Deployment-Bestätigung steht im
+nichts automatisch. Passkeys und Fairplay sind bereits produktiv. Für den
+freigegebenen vollständigen Konto-/E-Mail-Rollout vom 12.09.2026 ist nach
+Versand- und Funktionsabnahme die folgende Produktionskonfiguration ausgewählt;
+die Deployment-Bestätigung steht im
 [Sicherheitsreview](ACCOUNT_SECURITY_REVIEW_2026-09-12.md):
 
 ```dotenv
-ROLLTHEDICE_EMAIL_ENABLED=0
-ROLLTHEDICE_RESEND_API_KEY=
-ROLLTHEDICE_EMAIL_FROM=
+ROLLTHEDICE_EMAIL_ENABLED=1
+ROLLTHEDICE_EMAIL_FROM=noreply@zockdiewandan.online
 ROLLTHEDICE_PASSKEYS_ENABLED=1
 ROLLTHEDICE_WEBAUTHN_RP_ID=zockdiewandan.online
 ROLLTHEDICE_WEBAUTHN_RP_NAME=Zock die Wand an
 ```
 
-Für eine spätere E-Mail-Aktivierung wird eine bei Resend verifizierte
-Absenderdomain mit dessen SPF-/DKIM- und passender DMARC-Konfiguration benötigt.
-Der gewünschte Transaktions-Absender `noreply@zockdiewandan.online` wird später
-in Work eingerichtet und dann als `ROLLTHEDICE_EMAIL_FROM` gesetzt; dafür wird
-kein Postfach, Empfang, Weiterleitung oder Betreiber-CC eingerichtet.
-E-Mail bleibt bis dahin ausgeschaltet. Der API-Key gehört ausschließlich in das
-Produktions-Secret. Die Anwendung versendet nur Bestätigungen und angeforderte
-Passwort-Resets.
+`ROLLTHEDICE_RESEND_API_KEY` ist bereits sicher in der serverseitigen `.env`
+hinterlegt und wird hier nicht abgebildet. Der Schlüssel hat nur Versandrechte
+für die verifizierte Domain `zockdiewandan.online`. SPF, DKIM und DMARC wurden
+öffentlich geprüft. Der Absender benötigt kein Postfach, Empfang, Weiterleitung
+oder Betreiber-CC.
+Der konkrete DNS-Bestand, die Null-MX-Korrektur für die Absenderdomain und die
+Prüfung vor Aktivierung stehen im [Versandprotokoll](MAIL_SETUP_2026-09-12.md).
+Ein isolierter Prozess auf dem Produktionsserver hat Registrierungs- und
+Reset-Mails erfolgreich an Resends simulierte Empfänger eingeliefert. Der
+Adapter muss seinen expliziten Anwendungs-User-Agent senden; ohne ihn trat beim
+Preflight `403 / 1010` auf. Zusätzlich bestätigte der Nutzer den Eingang echter
+Registrierungs- und Reset-Testmails aus dem finalen Adapter. Sie waren als
+Versandtest gekennzeichnet und enthielten keine aktiven Kontolinks. Empfangene
+Mailheader wurden nicht ausgelesen; DNS und Provider-Domainprüfung sind
+bestätigt. Den geprüften Adapter nach erfolgreichen Backend- und Browsertests
+mit der Zielkonfiguration ausrollen.
+Danach Gesundheit und `registration.email_enabled=true` in `/api/auth/me`
+für beide Spiele kontrollieren. Der API-Key gehört ausschließlich in das
+Produktions-Secret. Die Anwendung versendet Registrierungs-/Adressbestätigungen,
+angeforderte Passwort-Resets und eine Bestätigung nach einem Reset.
 
 Bei ausgeschaltetem E-Mail-Feature bleibt die vorhandene Registrierung mit
 Benutzername und Passwort nutzbar. Angenommene Mailanfragen werden nach der

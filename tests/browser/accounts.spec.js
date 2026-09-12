@@ -1,5 +1,11 @@
 const { test, expect } = require("@playwright/test");
 
+async function openAccountSection(page, section) {
+  const details = page.locator(`details[data-account-section="${section}"]`);
+  if (await details.getAttribute("open") === null) await details.locator(":scope > summary").click();
+}
+
+
 
 async function expectNoGermanUi(page) {
   const leftovers = await page.evaluate(() => {
@@ -100,6 +106,7 @@ test("account avatar upload accepts ordinary phone-photo limits", async ({ page 
   await page.reload();
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
 
+  await page.locator("details[data-account-action=profile] > summary").click();
   const upload = page.locator("[data-avatar-upload]");
   await expect(upload).toBeVisible();
   await expect(upload.locator("input[type=file]")).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
@@ -203,9 +210,11 @@ test("mobile navigation keeps identical geometry between app sections", async ({
     const nav = document.querySelector(".app-nav").getBoundingClientRect();
     const links = Array.from(document.querySelectorAll(".app-nav-link")).map(link => {
       const rect = link.getBoundingClientRect();
-      return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+      return { left: rect.left, top: rect.top + window.scrollY, width: rect.width, height: rect.height };
     });
-    return { left: nav.left, top: nav.top, width: nav.width, height: nav.height, links };
+    // Account security can deliberately scroll to a required password change.
+    // Compare the navigation's document geometry, independent of that focus.
+    return { left: nav.left, top: nav.top + window.scrollY, width: nav.width, height: nav.height, links };
   });
 
   const expected = await geometry();
@@ -311,6 +320,7 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
   await expect(page.locator("#authBadge")).toContainText("Admin");
 
   await page.goto("/konto#settings");
+  await openAccountSection(page, "play");
   const preference = page.locator('input[name="mobileRowQuickEntry"]');
   await expect(preference).not.toBeChecked();
   await preference.check();
@@ -736,10 +746,15 @@ test("English localization covers lobby, rules, account preference and game UI",
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#authBadge")).toContainText("Admin");
   await page.goto("/konto#settings");
+  await openAccountSection(page, "play");
   await page.check('input[name="preferredLanguage"][value="en"]');
-  await page.click("#preferencesForm button");
-  await page.waitForLoadState("load");
-  await expect(page.getByRole("heading", { name: "Game Settings" })).toBeVisible();
+  const switchesLanguage = await page.locator("html").getAttribute("lang") !== "en";
+  await Promise.all([
+    ...(switchesLanguage ? [page.waitForEvent("load")] : []),
+    page.click("#languagePreferencesForm button"),
+  ]);
+  await openAccountSection(page, "play");
+  await expect(page.getByRole("heading", { name: "ZDWA game settings" })).toBeVisible();
   await expect(page.locator('input[name="preferredLanguage"][value="en"]')).toBeChecked();
   await expect(page.getByText("Preferred language", { exact: true })).toBeVisible();
   await expectNoGermanUi(page);
@@ -791,8 +806,9 @@ test("English localization covers lobby, rules, account preference and game UI",
   await expectNoGermanUi(page);
 
   await page.goto("/konto#settings");
+  await openAccountSection(page, "play");
   await page.check('input[name="preferredLanguage"][value="de"]');
-  await page.click("#preferencesForm button");
+  await page.click("#languagePreferencesForm button");
   await expect(page.locator("html")).toHaveAttribute("lang", "de", { timeout: 3000 });
 });
 
@@ -963,7 +979,8 @@ test("logged-in user sees the personal landing page", async ({ page }) => {
   await expect(page.locator(".stat-bucket").nth(2)).toContainText("Durchschnitt");
   await expect(page.locator(".stat-bucket").nth(2)).toContainText("Trend (3 Spiele)");
   await page.getByRole("tab", { name: "Einstellungen" }).click();
-  await expect(page.getByRole("heading", { name: "Spieleinstellungen" })).toBeVisible();
+  await openAccountSection(page, "play");
+  await expect(page.getByRole("heading", { name: "ZDWA-Spieleinstellungen" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Passwort ändern" })).toBeVisible();
 });
 
@@ -1045,6 +1062,8 @@ test("account gameplay preferences persist and control announce behavior", async
   await expect(page.locator("#authBadge")).toContainText("RegisteredSmoke");
 
   await page.goto("/konto#settings");
+  await openAccountSection(page, "play");
+  await openAccountSection(page, "social");
   await expect(page.locator('input[name="announceSelectionMode"][value="overlay"]')).toBeChecked();
   await expect(page.locator('input[name="autoWriteAnnounced"][value="true"]')).toBeChecked();
   await expect(page.locator('input[name="hapticFeedback"]')).not.toBeChecked();
@@ -1059,9 +1078,13 @@ test("account gameplay preferences persist and control announce behavior", async
   await page.check('input[name="hapticFeedback"]');
   await page.check('input[name="keepScreenAwake"]');
   await page.uncheck('input[name="lobbyChatPopups"]');
+  await page.click("#lobbyChatPreferencesForm button");
+  await expect(page.locator("#lobbyChatPreferencesMessage")).toHaveText("Lobby-Chat-Einstellung gespeichert.");
   await page.click("#preferencesForm button");
   await expect(page.locator("#preferencesMessage")).toHaveText("Spieleinstellungen gespeichert.");
   await page.reload();
+  await openAccountSection(page, "play");
+  await openAccountSection(page, "social");
   await expect(page.locator('input[name="announceSelectionMode"][value="table"]')).toBeChecked();
   await expect(page.locator('input[name="autoWriteAnnounced"][value="false"]')).toBeChecked();
   await expect(page.locator('input[name="hapticFeedback"]')).toBeChecked();
@@ -1071,15 +1094,21 @@ test("account gameplay preferences persist and control announce behavior", async
 
   await page.uncheck('input[name="lobbyChatEnabled"]');
   await expect(page.locator('input[name="lobbyChatPopups"]')).toBeDisabled();
-  await page.click("#preferencesForm button");
+  await page.click("#lobbyChatPreferencesForm button");
+  await expect(page.locator("#lobbyChatPreferencesMessage")).toHaveText("Lobby-Chat-Einstellung gespeichert.");
   await page.reload();
+  await openAccountSection(page, "play");
+  await openAccountSection(page, "social");
   await expect(page.locator('input[name="lobbyChatEnabled"]')).not.toBeChecked();
   await expect(page.locator('input[name="lobbyChatPopups"]')).toBeDisabled();
   await page.goto("/");
   await expect(page.locator(".lobby-chat")).toContainText("Der Lobby-Chat ist in deinen Einstellungen deaktiviert.");
   await page.goto("/konto#settings");
+  await openAccountSection(page, "play");
+  await openAccountSection(page, "social");
   await page.check('input[name="lobbyChatEnabled"]');
-  await page.click("#preferencesForm button");
+  await page.click("#lobbyChatPreferencesForm button");
+  await expect(page.locator("#lobbyChatPreferencesMessage")).toHaveText("Lobby-Chat-Einstellung gespeichert.");
   await expect(page.locator('input[name="lobbyChatEnabled"]')).toBeChecked();
 
   const gameId = await page.evaluate(async () => {
@@ -1115,11 +1144,15 @@ test("account gameplay preferences persist and control announce behavior", async
   await expect(pokerAnnounced).toHaveText("");
 
   await page.goto("/konto#settings");
+  await openAccountSection(page, "play");
+  await openAccountSection(page, "social");
   await page.check('input[name="announceSelectionMode"][value="overlay"]');
   await page.check('input[name="autoWriteAnnounced"][value="true"]');
   await page.uncheck('input[name="hapticFeedback"]');
   await page.uncheck('input[name="keepScreenAwake"]');
   await page.check('input[name="lobbyChatPopups"]');
+  await page.click("#lobbyChatPreferencesForm button");
+  await expect(page.locator("#lobbyChatPreferencesMessage")).toHaveText("Lobby-Chat-Einstellung gespeichert.");
   await page.click("#preferencesForm button");
   await expect(page.locator("#preferencesMessage")).toHaveText("Spieleinstellungen gespeichert.");
 });

@@ -1,3 +1,4 @@
+@import "./account-settings.css";
 /* Benutzerkonten, Profile und Administration */
 .button-link {
   display:inline-flex;
@@ -77,7 +78,7 @@
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(12px);
 }
-.account-tab { min-height: 44px; border-color: transparent; background: transparent; color: var(--muted); box-shadow: none; }
+.account-tab { min-width: 0; min-height: 44px; padding-inline: .35rem; font-size: clamp(.8rem, 3.6vw, 1rem); border-color: transparent; background: transparent; color: var(--muted); box-shadow: none; }
 .account-tab:hover { transform: none; border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
 .account-tab.active { color: #fff; background: var(--accent); border-color: var(--accent); }
 .account-panel[hidden] { display: none; }
