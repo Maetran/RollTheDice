@@ -719,6 +719,8 @@ class AccountDatabaseTestCase(GameStateTestCase):
         game = self.make_game(mode=2, players=[("p1", "Anna"), ("p2", "Berta")])
         game["_players"][0]["resume_token"] = "resume-anna"
         game["_players"][0]["ws"] = object()
+        game["_players"][0]["achievement_rank"] = {"key": "rookie", "points": 13}
+        game["_achievement_ranks_finalized"] = True
         game["_spectators"] = [{"id": "s1", "name": "Gast", "ws": object()}]
         game["_scoreboards"]["p1"]["0,down"] = 3
         game["_dice"] = [1, 2, 3, 4, 5]
@@ -730,6 +732,8 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertEqual(restored["_dice"], [1, 2, 3, 4, 5])
         self.assertEqual(restored["_players"][0]["resume_token"], "resume-anna")
         self.assertIsNone(restored["_players"][0]["ws"])
+        self.assertNotIn("achievement_rank", restored["_players"][0])
+        self.assertNotIn("_achievement_ranks_finalized", restored)
         self.assertEqual(restored["_spectators"], [])
         self.assertTrue(restored["_resume_required"])
 
@@ -1162,6 +1166,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
             player = db.get(User, user.id)
             player.achievement_gameplay_started_at = rollout
             player.achievement_extra_started_at = rollout
+            player.achievement_styler_started_at = rollout
             player.achievement_expansion_started_at = rollout
 
         columns = {
@@ -1296,7 +1301,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
         payload = public_player_profile(user.username)["player"]["achievements"]
         self.assertFalse(any(item["key"].startswith("styler_full_") for item in payload["unlocked"]))
 
-    def test_styler_fix_keeps_existing_award_dates_without_creating_missing_tiers(self):
+    def test_styler_reset_no_longer_preserves_legacy_awards_without_new_progress(self):
         user = create_user("LegacyStyler", "temporary-styler-123", must_change_password=False)
         earned_at = datetime(2026, 9, 1, 12, tzinfo=timezone.utc)
         with session_scope() as db:
@@ -1306,10 +1311,10 @@ class AccountDatabaseTestCase(GameStateTestCase):
         for _ in range(2):
             payload = public_player_profile(user.username)["player"]["achievements"]
             unlocked = {item["key"]: item for item in payload["unlocked"]}
-            self.assertIn("styler_full_once", unlocked)
+            self.assertNotIn("styler_full_once", unlocked)
             self.assertNotIn("styler_full_10", unlocked)
-            self.assertEqual(unlocked["styler_full_once"]["unlocked_at"].replace(tzinfo=timezone.utc), earned_at)
-            self.assertEqual(unlocked["styler_full_once"]["progress"], {"current": 1, "target": 1})
+            once = next(item for item in payload["locked"] if item["key"] == "styler_full_once")
+            self.assertEqual(once["progress"], {"current": 0, "target": 1})
             series = next(item for item in payload["locked"] if item["key"] == "styler_full_10")
             self.assertEqual(series["progress"], {"current": 0, "target": 10})
 
@@ -1338,7 +1343,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
         config.set_main_option("script_location", str(main.BASE / "alembic"))
         config.set_main_option("sqlalchemy.url", f"sqlite:///{self.database_path}")
         command.downgrade(config, "20260912_0039")
-        command.upgrade(config, "head")
+        command.upgrade(config, "20260912_0040")
         with session_scope() as db:
             after = list(db.execute(select(
                 UserAchievement.id, UserAchievement.user_id, UserAchievement.achievement_key,
@@ -1348,15 +1353,15 @@ class AccountDatabaseTestCase(GameStateTestCase):
             for award in db.scalars(select(UserAchievement)):
                 self.assertEqual(award.legacy_styler, award.achievement_key.startswith("styler_full_"))
             db.add(UserAchievement(user_id=missing.id, achievement_key="styler_full_once", unlocked_at=utcnow()))
-        command.upgrade(config, "head")  # Retrying a deploy must not preserve newly earned rows.
+        command.upgrade(config, "20260912_0040")  # The historical preservation step is idempotent.
         with session_scope() as db:
             self.assertFalse(db.scalar(select(UserAchievement.legacy_styler).where(
                 UserAchievement.user_id == missing.id, UserAchievement.achievement_key == "styler_full_once",
             )))
-        expected = ((once, {"styler_full_once"}), (series, {"styler_full_10"}), (missing, set()))
-        for user, keys in expected:
+        command.upgrade(config, "head")  # The later requested reset removes both tiers for everyone.
+        for user in (once, series, missing):
             payload = public_player_profile(user.username)["player"]["achievements"]
-            self.assertEqual({item["key"] for item in payload["unlocked"] if item["key"].startswith("styler_full_")}, keys)
+            self.assertFalse(any(item["key"].startswith("styler_full_") for item in payload["unlocked"]))
 
     def test_office_hours_series_counts_only_games_after_its_rollout_marker(self):
         user = create_user("OfficeFraud", "temporary-office-fraud-123", must_change_password=False)

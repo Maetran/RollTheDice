@@ -1,5 +1,14 @@
 # Achievement-Erreichbarkeit / Achievement reachability
 
+Nachtrag vom 13. September 2026: Der hier beschriebene Styler-Bestandsschutz
+wurde auf Wunsch zurückgenommen. Migration 0041 setzt beide Styler-Erfolge,
+ihren Fortschritt und die zugehörigen Marken zurück. Nur neue Beweise zählen.
+Andere Ergebnisse dieses Audits bleiben gültig.
+
+Update, 13 September 2026: Styler preservation described below was withdrawn
+on request. Migration 0041 resets both Styler awards, progress and their points.
+Only new evidence counts. The other audit findings remain applicable.
+
 Prüfung vom 12. September 2026: 156 ZDWA- und 110 Zilch-Definitionen, einschließlich
 aller 15 gemeinsamen Interaktionsziele. Die Prüfung verbindet Katalog,
 Auswertung, gespeicherte Belege und sichtbare Bedienwege. Seltene Spielziele

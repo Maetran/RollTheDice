@@ -278,8 +278,11 @@ under **Account → Statistics**. Looking Back is earned only when your history
 is opened; loading a hidden tab does not count. Collections refresh after new
 interactions. GitHub clicks are recorded in the signed-in app before an external
 browser handoff. Styler Full and Styler Show now require recorded five-of-a-kind
-Full entries; ambiguous older Full scores never grant new awards. Previously
-earned awards stay intact. These repairs do not backfill missing achievements.
+Full entries; ambiguous older Full scores never grant new awards. Both Styler
+awards and their progress were reset for all accounts on 13 September 2026.
+Only new evidence counts after its game finishes: 4 points for the first Full,
+another 8 at ten Fulls. Current points and ranks follow the remaining awards;
+other achievements and all game scores stay intact. No historic re-grants.
 
 **Deutsch:** Zilchs Historie findest du unter **Konto → Statistiken → Deine
 Historie**, ZDWAs Verlauf unter **Konto → Statistik**. Rückblick gibt es erst
@@ -287,8 +290,11 @@ beim Öffnen der eigenen Historie. Versteckte Bereiche zählen nicht. Die Sammlu
 aktualisiert sich nach neuen Aktionen; GitHub-Klicks werden vor dem Wechsel in
 einen externen Browser dem angemeldeten Konto zugeordnet. Styler Full und
 Styler-Show erfordern künftig belegte Full-Einträge aus fünf gleichen Würfeln.
-Alte mehrdeutige Punktestände vergeben keine neuen Erfolge. Bestehende
-Auszeichnungen bleiben erhalten; fehlende werden nicht nachgetragen.
+Beide Styler-Erfolge und ihr Fortschritt wurden am 13. September 2026 für alle
+Konten zurückgesetzt. Nur neue Belege zählen nach Abschluss ihrer Partie:
+4 Marken für den ersten Full, weitere 8 bei zehn Fulls. Punkte und Rang folgen
+den verbleibenden Auszeichnungen; andere Erfolge und Spielpunkte bleiben
+erhalten. Alte Einträge vergeben Styler nicht erneut.
 Details: [Achievement-Erreichbarkeit / reachability audit](docs/ACHIEVEMENT_REACHABILITY_2026-09-12.md).
 
 Achievements award **Ehrenberg-Marken**, which contribute to titles and star insignia. Newly earned

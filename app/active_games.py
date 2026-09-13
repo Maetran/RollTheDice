@@ -158,8 +158,12 @@ def load_active_games() -> dict[str, dict]:
             game["_superadmins"] = {}
             game["_roll_cooldown"] = {}
             game["_correction"] = {"active": False}
+            # Current achievement points can change while the server is down
+            # (for example a scoped award reset). Rehydrate cached ZDWA ranks.
+            game.pop("_achievement_ranks_finalized", None)
             for player in game.get("_players", []):
                 player["ws"] = None
+                player.pop("achievement_rank", None)
             if game.get("_started") and game.get("_players"):
                 game["_resume_required"] = True
             if game.get("_started") and game.get("_game_type") == "zilch":

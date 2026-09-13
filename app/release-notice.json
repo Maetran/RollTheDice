@@ -1,26 +1,25 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch"
+    "zdwa"
   ],
-  "summary_de": "Gegnerwürfe sichtbar animiert, kompakte Korrektur und ein etwas flotterer, vorsichtigerer Würfelwirt.",
-  "summary_en": "Animated opponent rolls, compact correction controls and a slightly faster, more cautious dice keeper.",
+  "summary_de": "Styler Full und Styler-Show starten neu: Nur frisch verdiente Fulls zählen, Punkte und Rang bleiben konsistent.",
+  "summary_en": "Styler Full and Styler Show start afresh: only newly earned Fulls count, with consistent points and ranks.",
   "player_notes": {
     "de": {
-      "title": "Mehr Spielfläche, besser lesbare Würfe",
+      "title": "Styler neu verdienen",
       "changes": [
-        "ZDWA zeigt die Würfelanimation auch bei Gegnerwürfen.",
-        "Das kleine Radiergummi nutzt vor dem ersten Wurf die Fläche von Ansagen.",
-        "Zilchs Würfelwirt spielt etwas flotter und sichert auf Normal und Aggressiv früher."
+        "Styler Full und Styler-Show sowie ihr Fortschritt wurden für alle Konten zurückgesetzt.",
+        "Neue Fulls aus fünf gleichen Würfeln zählen nach Spielabschluss: 4 Marken beim ersten, weitere 8 bei zehn Fulls.",
+        "Spielpunkte und andere Erfolge bleiben erhalten."
       ]
     },
     "en": {
-      "title": "More room to play, clearer rolls",
+      "title": "Earn Styler afresh",
       "changes": [
-        "ZDWA also shows dice animations for opponent rolls.",
-        "Before the first roll, a small eraser uses the Announce button’s space.",
-        "Zilch’s dice keeper plays a little faster and banks earlier on Normal and Aggressive."
+        "Styler Full and Styler Show and their progress have been reset for every account.",
+        "New Fulls with five matching dice count after game completion: 4 points for the first and another 8 at ten.",
+        "Game scores and other achievements are preserved."
       ]
     }
   }

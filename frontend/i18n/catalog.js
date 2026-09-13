@@ -126,6 +126,7 @@ export const EN = {
     "Rückblick": "Looking Back",
     "In Zilch findest du deine Spielhistorie unter Konto → Statistiken → Deine Historie. In ZDWA steht sie unter Konto → Statistik. „Rückblick“ wird erst beim Öffnen der eigenen Historie verdient.": "Find your Zilch game history under Account → Statistics → Your history. In ZDWA, it is under Account → Statistics. Looking Back is earned only when you open your own history.",
     "Für „Styler Full“ und „Styler-Show“ zählen nur Full-Einträge aus fünf gleichen Würfeln. Ein gewöhnliches Full House aus drei und zwei gleichen Würfeln zählt dafür nicht.": "Styler Full and Styler Show count only Full entries made with five identical dice. An ordinary full house with three of one value and two of another does not count.",
+    "Am 13. September 2026 wurden beide Styler-Erfolge samt Fortschritt zurückgesetzt. Neue gültige Fulls zählen nach Abschluss der Partie: der erste für 4 Marken, zehn insgesamt für weitere 8 Marken. Alte Einträge vergeben diese Erfolge nicht erneut; Spielpunkte und andere Erfolge bleiben erhalten.": "Both Styler achievements and their progress were reset on 13 September 2026. New valid Fulls count once the game is completed: the first earns 4 points, and ten in total earn another 8. Old entries do not unlock these achievements again; game scores and other achievements are preserved.",
     "Die eigene Spielhistorie geöffnet.": "Open your game history.",
     "Blick nach oben": "Look Up",
     "Eine Rangliste geöffnet.": "Open a leaderboard.",

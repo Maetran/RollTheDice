@@ -1530,6 +1530,12 @@ def _progress_for_user(
     gameplay_games = [entry for entry in games if as_utc(entry[0].finished_at) >= gameplay_started_at]
     extra_started_at = as_utc(user.achievement_extra_started_at or utcnow())
     extra_games = [entry for entry in games if as_utc(entry[0].finished_at) >= extra_started_at]
+    styler_started_at = as_utc(user.achievement_styler_started_at or utcnow())
+    styler_games = [
+        entry for entry in extra_games
+        if as_utc(entry[0].finished_at) >= styler_started_at
+        and as_utc(entry[0].created_at) >= styler_started_at
+    ]
     expansion_started_at = as_utc(user.achievement_expansion_started_at or utcnow())
     expansion_games = [entry for entry in games if as_utc(entry[0].finished_at) >= expansion_started_at]
     office_hours_started_at = as_utc(user.achievement_office_hours_started_at or utcnow())
@@ -1640,7 +1646,7 @@ def _progress_for_user(
         "max_thirty": any(bool(metrics["max_thirty"]) for _game, _participant, metrics in extra_games),
         "six_thirty": any(bool(metrics["six_thirty"]) for _game, _participant, metrics in extra_games),
         "styler_full_count": sum(
-            int(metrics["styler_full_count"]) for _game, _participant, metrics in extra_games
+            int(metrics["styler_full_count"]) for _game, _participant, metrics in styler_games
         ),
         "daily_streak": _longest_daily_streak(extra_games),
         "cross_game_days": cross_game_activity.paired_days,
@@ -1795,10 +1801,7 @@ def sync_user_achievements(
             # its source-aware finalizer sync. Repair only such chronologically
             # possible NULL links; pre-migration history remains untouched.
             row.source_completed_game_id = source_id
-        elif not unlocked and row is not None and not (
-            achievement.kind == "styler_full_count"
-            and row.legacy_styler
-        ):
+        elif not unlocked and row is not None:
             db.delete(row)
     db.flush()
     unlocked_rows = {
@@ -1824,10 +1827,6 @@ def sync_user_achievements(
         }
         row = unlocked_rows.get(achievement.key)
         if row:
-            if achievement.kind == "styler_full_count":
-                # Retained legacy badges stay visibly complete without adding
-                # unproven progress toward a still-locked higher tier.
-                payload["progress"]["current"] = max(payload["progress"]["current"], achievement.target)
             payload["unlocked_at"] = row.unlocked_at
             unlocked.append(payload)
         else:

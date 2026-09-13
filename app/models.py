@@ -73,6 +73,11 @@ class User(Base):
     achievement_extra_started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
+    # Styler was reset separately; its fresh start must not reset other goals
+    # that share the older extra-achievement rollout boundary.
+    achievement_styler_started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
     achievement_expansion_started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
@@ -600,8 +605,8 @@ class UserAchievement(Base):
     source_completed_game_id: Mapped[int | None] = mapped_column(
         ForeignKey("completed_games.id", ondelete="SET NULL"), nullable=True
     )
-    # Only already-existing Styler awards are preserved when replacing the
-    # ambiguous score-based rule. New awards must retain real dice evidence.
+    # Historical migration metadata only. The later Styler reset removed
+    # preserved awards; this flag no longer exempts any award from validation.
     legacy_styler: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 

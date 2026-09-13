@@ -11,6 +11,21 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Styler-Neustart / Styler fresh start — 2026-09-13
+
+- **Deutsch:** Styler Full und Styler-Show werden bei allen Konten samt
+  Fortschritt zurückgesetzt. Die zugehörigen 4 bzw. 8 Ehrenberg-Marken entfallen;
+  Punkte und Rang folgen den verbleibenden Erfolgen. Nur neue belegte Fulls aus
+  fünf gleichen Würfeln zählen wieder, nach Abschluss ihrer Partie. Alte
+  abgeschlossene und bereits laufende Nachweise vergeben nichts erneut.
+  Spielstände, andere Erfolge und Zilch bleiben unverändert. Stiller Rollout.
+- **English:** Styler Full and Styler Show are reset for every account,
+  including their progress. Their 4 and 8 achievement points are removed;
+  points and rank follow the remaining awards. Only new proven Fulls with
+  five identical dice count again once their game is completed. Evidence from
+  earlier completed or ongoing games does not grant them again. Game scores,
+  other achievements and Zilch are unchanged. Silent rollout.
+
 ## Würfe und kompakte Bedienung / Rolls and compact controls — 2026-09-13
 
 - **Deutsch:** ZDWA animiert angenommene Würfe auch bei Mitspielern und
