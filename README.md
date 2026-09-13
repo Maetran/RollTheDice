@@ -77,6 +77,10 @@ protection.
 - Chat and send quick reactions in the game room. An open chat keeps its draft
   while live messages, game updates, or a reconnect arrive.
 - Watch eligible multiplayer tables in a read-only spectator view.
+- Opponents and spectators see each accepted roll animate; held dice stay still.
+  In normal ZDWA multiplayer games, a compact eraser beside **Roll** corrects
+  your previous entry until the next player rolls. **Announce** uses the same
+  space after the first roll, so correction no longer needs an extra row.
 - Leave a game through **Pause**, **Return to Lobby**, or **Stay in Game**.
   Pausing preserves the table until its displayed deadline. Returning to the
   lobby ends the room for everyone without creating a completed result. A
@@ -111,10 +115,13 @@ pause.
 CPU opponents use the same dice and scoring path as humans, with conservative,
 normal or aggressive decisions. Solo Sprint has no opponent or final reply;
 its private metrics exclude pauses and server downtime.
-The dice keeper's default action pause is 1.25 seconds, with at least 1.8
+The dice keeper's default action pause is 1.25 seconds, with at least 1.65
 seconds after rolling to read the result and 1.5 seconds after the opening
 result. The existing 1.9-second Zilch handoff remains; pauses are not added
-together and do not alter decisions, randomness or scoring.
+together. Normal now starts from a 600-point bank goal and Aggressive from
+700 points, with Conservative unchanged at 500. Remaining dice and match
+position still adjust these goals; mandatory confirmation rolls, final
+replies, randomness and scoring are unchanged.
 
 Keyboard controls include 1–6 for dice, Space to roll, B to bank, and
 Q/W/E/R/T/Z/U/I for visible suggestions. Shortcuts are disabled while typing or

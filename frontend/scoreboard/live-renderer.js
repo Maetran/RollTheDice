@@ -46,7 +46,7 @@ function renderScoreboard(mount, sb, {
   const rollDisabledAttr = (!iAmTurn || correctionActive || rollsNum >= rollsCap) ? "disabled" : "";
 
   const requestBtnHTML = (canRequestCorrection && !isHC)
-    ? `<button id="requestCorrectionBtn" class="small">Letzten Eintrag ändern</button>`
+    ? `<button id="requestCorrectionBtn" class="small correction-icon-button" type="button" aria-label="Letzten Eintrag ändern" title="Letzten Eintrag ändern" aria-keyshortcuts="k"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m14 3 7 7-10 10H6l-4-4L14 3Z"/><path d="m8 10 7 7M10 20h11"/></svg></button>`
     : ``;
 
   const dicebar = readOnly ? "" : `
@@ -64,9 +64,8 @@ function renderScoreboard(mount, sb, {
             ).join("")}
           </div>
           <div class="dice-actions">
-            ${isHC ? '' : `<button id="announceBtnInline" class="small" ${announceDisabledAttr}>Ansagen</button>`}
+            ${requestBtnHTML || (isHC ? '' : `<button id="announceBtnInline" class="small" ${announceDisabledAttr} ${rollsNum < 1 ? 'hidden' : ''}>Ansagen</button>`)}
             ${isHC ? '' : `<button id="rollBtnInline" data-action="roll" ${rollDisabledAttr}>🎲 Würfeln</button>`}
-            ${requestBtnHTML}
           </div>
         </div>
       </div>

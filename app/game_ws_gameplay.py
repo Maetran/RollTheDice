@@ -149,9 +149,21 @@ async def _roll_dice(session: GameSocketSession, _data: dict[str, Any]) -> None:
         return
     if not roll_cooldown_ok(g, session.player_id, cooldown_s=0.6):
         return
+    holds = g.get("_holds") or []
+    rolled_indices = [index for index in range(5) if index >= len(holds) or not holds[index]]
     apply_roll(g)
+    # A later player's first accepted roll closes every older correction
+    # window permanently, even after that player writes and resets rolls to 0.
+    for previous_player_id in g.get("_last_write", {}):
+        g.setdefault("_last_meta", {}).setdefault(previous_player_id, {})["correction_expired"] = True
     record_gameplay(session)
-    await _publish_scoreboard(session)
+    touch(g)
+    # A transient event distinguishes accepted rolls from holds, corrections
+    # and reconnect snapshots, even when every die lands on its previous face.
+    await broadcast(g, {
+        "scoreboard": snapshot(g),
+        "roll_event": {"player_id": session.player_id, "dice_indices": rolled_indices},
+    })
 
 
 async def _announce_row4(session: GameSocketSession, data: dict[str, Any]) -> None:
@@ -397,7 +409,7 @@ async def _request_correction(session: GameSocketSession, _data: dict[str, Any])
     if not g.get("_turn") or g["_turn"]["player_id"] == player_id:
         await _send_error(session, "Korrektur nur direkt nach deinem Zug")
         return
-    if g.get("_rolls_used", 0) > 0:
+    if g.get("_rolls_used", 0) > 0 or meta.get("correction_expired"):
         await _send_error(session, "Korrektur nicht möglich: Es wurde bereits weiter gewürfelt")
         return
 
@@ -457,6 +469,14 @@ async def _write_field_correction(session: GameSocketSession, data: dict[str, An
     new_key = f"{row},{column}"
     board_without_old = dict(board)
     board_without_old.pop(old_key, None)
+
+    original_roll = int(correction.get("roll_index", 0) or old_rolls_used or 0)
+    if column == "ang" and new_key != old_key and original_roll != 1:
+        # Moving a later roll into an unannounced cell must follow the same
+        # rule as a normal write. Keep the legal last-cell exception editable
+        # in place: that existing cell was already validated when written.
+        await _send_error(session, "Keine Ansage aktiv")
+        return
 
     if column in {"down", "up"}:
         next_row = _next_required_row(column, _filled_rows_in_board(board_without_old, column))

@@ -174,7 +174,10 @@ class ZilchCpuRunnerTestCase(TestCase):
         asyncio.run(scenario())
         events = [message["zilch_event"]["type"] for message in socket.messages if "zilch_event" in message]
         self.assertEqual(events, ["start_roll_resolved", "roll", "hold", "roll", "hold", "bank"])
-        self.assertEqual(delays, [1.25, 1.5, 1.8, 1.25, 1.8, 1.25])
+        self.assertEqual(delays, [1.25, 1.5, 1.65, 1.25, 1.65, 1.25])
+        # Exactly 150 ms less after each of the two regular rolls; the
+        # opening, hold and bank pauses must not be shortened a second time.
+        self.assertAlmostEqual(1.25 + 1.5 + 1.8 + 1.25 + 1.8 + 1.25 - sum(delays), 0.3)
         self.assertEqual(game["_zilch_boards"][cpu_id]["total_points"], 600)
         self.assertEqual(game["_turn"]["player_id"], human_id)
 
@@ -204,7 +207,7 @@ class ZilchCpuRunnerTestCase(TestCase):
                 await task
 
         asyncio.run(scenario())
-        self.assertEqual(delays, [1.9, 1.8, 1.25])
+        self.assertEqual(delays, [1.9, 1.65, 1.25])
 
     def test_cpu_rechecks_disconnect_during_the_roll_reading_pause(self) -> None:
         game, socket, human_id, cpu_id = self._cpu_game(strategy="conservative")
@@ -227,7 +230,7 @@ class ZilchCpuRunnerTestCase(TestCase):
                 await task
 
         asyncio.run(scenario())
-        self.assertEqual(delays, [1.25, 1.8])
+        self.assertEqual(delays, [1.25, 1.65])
         self.assertEqual([message["zilch_event"]["type"] for message in socket.messages], ["roll"])
         self.assertEqual(game["_zilch_boards"][cpu_id]["rounds"], [])
         self.assertFalse(game.get("_zilch_cpu_error"))

@@ -24,7 +24,25 @@
 .pc-name{ font-weight:800; }
 .pc-total{ font-weight:800; color:#23416d; }
 .pc-members{ margin:.25rem 0 .5rem; }
-#requestCorrectionBtn{ margin-left:.5rem; }
+#requestCorrectionBtn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  justify-self:center;
+  width:2.75rem !important;
+  min-width:2.75rem;
+  margin:0 !important;
+  padding:.45rem;
+}
+.correction-icon-button svg{
+  width:1.4rem;
+  height:1.4rem;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
 
 /* === Dice (Basis) – Grid + Buttons === */
 #diceBar{
@@ -394,12 +412,10 @@ td.cell.announce-pickable{
     margin-top: 0 !important;
     max-width: none !important;
   }
-  /* Mobile: Korrektur-Button in eigene Zeile, damit Ansage/Würfeln nebeneinander bleiben */
+  /* Correction replaces the otherwise unavailable announce control. */
   #requestCorrectionBtn{
-    grid-row: 3 !important;
-    grid-column: 1 / -1 !important;
-    width: 100% !important;
-    margin-top: .25rem !important;
+    grid-row: 2 !important;
+    grid-column: 1 / span 2 !important;
   }
   .room-header #roomGameName, .room-header a[href="/regeln"]{ display: none !important; }
   .room-header{
@@ -568,7 +584,7 @@ td.cell.announce-pickable{
     align-self: stretch !important; width: 100% !important;
     margin-top: .15rem !important; order: 0 !important;
   }
-  #requestCorrectionBtn{ grid-row: 3 !important; grid-column: 1 / -1 !important; }
+  #requestCorrectionBtn{ grid-row: 2 !important; grid-column: 1 / span 2 !important; }
   #diceBar .die{
     width: 2.6rem !important;
     height: 2.6rem !important;

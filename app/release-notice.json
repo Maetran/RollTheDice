@@ -4,23 +4,23 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Historie leichter finden, Erfolge zuverlässig verdienen: korrigierte Auslöser und aktuelle Sammlungen.",
-  "summary_en": "Find your history and earn achievements reliably: fixed triggers and up-to-date collections.",
+  "summary_de": "Gegnerwürfe sichtbar animiert, kompakte Korrektur und ein etwas flotterer, vorsichtigerer Würfelwirt.",
+  "summary_en": "Animated opponent rolls, compact correction controls and a slightly faster, more cautious dice keeper.",
   "player_notes": {
     "de": {
-      "title": "Erfolge wieder verlässlich verdienen",
+      "title": "Mehr Spielfläche, besser lesbare Würfe",
       "changes": [
-        "Zilchs eigene Historie findest du direkt in den Konto-Statistiken.",
-        "Historie, GitHub und weitere Konto-Aktionen werden zuverlässig erkannt; die Sammlung bleibt aktuell.",
-        "Styler-Erfolge zählen Fulls aus fünf gleichen Würfeln. Fehlende Erfolge werden nicht nachgetragen."
+        "ZDWA zeigt die Würfelanimation auch bei Gegnerwürfen.",
+        "Das kleine Radiergummi nutzt vor dem ersten Wurf die Fläche von Ansagen.",
+        "Zilchs Würfelwirt spielt etwas flotter und sichert auf Normal und Aggressiv früher."
       ]
     },
     "en": {
-      "title": "Earn achievements reliably",
+      "title": "More room to play, clearer rolls",
       "changes": [
-        "Find your Zilch history directly in account statistics.",
-        "History, GitHub and other account actions are recognized reliably; collections stay current.",
-        "Styler achievements count Fulls with five identical dice. Missing achievements are not granted retroactively."
+        "ZDWA also shows dice animations for opponent rolls.",
+        "Before the first roll, a small eraser uses the Announce button’s space.",
+        "Zilch’s dice keeper plays a little faster and banks earlier on Normal and Aggressive."
       ]
     }
   }

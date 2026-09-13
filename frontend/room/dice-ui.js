@@ -11,7 +11,7 @@
     if (IS_SPECTATOR) {
       const rollBtn0 = $("#rollBtnInline", mount);
       if (rollBtn0) { rollBtn0.disabled = true; rollBtn0.title = "Zuschauer können nicht würfeln"; }
-      $$("#diceBar .die", mount).forEach(btn => { btn.style.pointerEvents = "none"; btn.title = "Nur Spieler"; btn.classList.remove("shaking"); });
+      $$("#diceBar .die", mount).forEach(btn => { btn.style.pointerEvents = "none"; btn.title = "Nur Spieler"; });
       const reqBtn0 = $("#requestCorrectionBtn", mount);
       if (reqBtn0) { reqBtn0.disabled = true; reqBtn0.title = "Nur Spieler"; }
       return;

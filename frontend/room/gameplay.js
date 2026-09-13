@@ -206,9 +206,14 @@
   }
 
   function startRollAnimation(snapshot, explicitIndices = null){
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      clearRollAnimation();
+      return;
+    }
     rollAnimationIndices = Array.isArray(explicitIndices)
       ? explicitIndices.map(Number).filter(i => i >= 0 && i < 5)
       : activeRollDiceIndices(snapshot);
+    if (!rollAnimationIndices.length) return;
     rollAnimationUntil = Date.now() + ROLL_ANIMATION_MS;
     applyRollAnimation();
     if (rollAnimationTimer) {
@@ -224,6 +229,28 @@
       renderRollingDiceFaces();
     }, ROLL_FACE_ANIMATION_STEP_MS);
     rollAnimationTimer = setTimeout(clearRollAnimation, ROLL_ANIMATION_MS + 40);
+  }
+
+  function syncRollAnimationFromServer(previous, next, event, { hydrated = false } = {}) {
+    const previousTurn = String(previous?._turn?.player_id || "");
+    const nextTurn = String(next?._turn?.player_id || "");
+    const invalidated = !next?._started || next._finished || next._aborted || next._paused
+      || next._correction?.active || previousTurn !== nextTurn
+      || Number(next._rolls_used || 0) < Number(previous?._rolls_used || 0);
+    if (invalidated) {
+      clearRollAnimation();
+      return;
+    }
+    // The initiating client already animates immediately on its own click.
+    // Other players and spectators animate only a new accepted roll, never a
+    // repeated frame or a snapshot received when (re)joining the room.
+    if (!hydrated || !event || String(event.player_id || "") !== nextTurn
+      || String(event.player_id) === String(myId)
+      || Number(next._rolls_used || 0) <= Number(previous?._rolls_used || 0)) return;
+    const indices = Array.isArray(event.dice_indices)
+      ? [...new Set(event.dice_indices.filter(index => Number.isInteger(index) && index >= 0 && index < 5))]
+      : [];
+    if (indices.length) startRollAnimation(next, indices);
   }
 
   function clearPendingRoll(){

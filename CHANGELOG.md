@@ -11,6 +11,27 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Würfe und kompakte Bedienung / Rolls and compact controls — 2026-09-13
+
+- **Deutsch:** ZDWA animiert angenommene Würfe auch bei Mitspielern und
+  Zuschauern; gehaltene Würfel bleiben liegen. Die Korrektur sitzt als kleines
+  Radiergummi neben Würfeln und benötigt keine eigene Zeile. Nach dem ersten
+  Wurf übernimmt Ansagen dieselbe Fläche. Die bisherigen Zeitfenster sowie
+  Solo- und Hardcore-Regeln gelten weiter. Ein verstrichenes Korrekturfenster
+  öffnet sich auch bei drei Spielern oder Teams nicht erneut. Der Server prüft
+  die Ansageregel auch beim Verschieben eines korrigierten Eintrags.
+  Zilchs Würfelwirt lässt nach
+  regulären Würfen 0,15 Sekunden weniger Pause. Normal sichert etwas früher,
+  Aggressiv deutlich früher; Konservativ bleibt unverändert. Stiller Rollout.
+- **English:** ZDWA animates accepted rolls for other players and spectators;
+  held dice stay still. A small eraser next to Roll replaces the separate
+  correction row. Announce takes that space after the first roll. Existing
+  action windows and solo/Hardcore rules still apply. Expired correction
+  windows stay closed in three-player and team games too. The server enforces
+  the announcement rule when moving a corrected entry as well. Zilch's dice keeper
+  pauses 0.15 seconds less after regular rolls. Normal banks slightly earlier,
+  Aggressive noticeably earlier; Conservative is unchanged. Silent rollout.
+
 ## Erreichbare Erfolge / Reachable achievements — 2026-09-12
 
 - **Deutsch:** Zilchs Konto verlinkt die eigene Historie direkt aus den

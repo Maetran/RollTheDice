@@ -190,7 +190,7 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await expectTextContrast(page.locator(".zilch-rules-head h1"));
   await expect(page.getByText(/Erreiche 10.?000 Punkte/)).toBeVisible();
   await expect(page.getByRole("heading", { name: /Spielweise des Würfelwirts|Dice keeper style/i })).toBeVisible();
-  await expect(page.getByText(/650 Punkte|650 points/i)).toBeVisible();
+  await expect(page.getByText(/Normal.*600 (?:Punkte|points).*700 (?:Punkte|points)/i)).toBeVisible();
   await expect(page.locator(".zilch-rule-facts")).toHaveCount(0);
   await page.setViewportSize({ width: 320, height: 844 });
   expect(await page.locator(".zilch-rule-table-wrap").evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);

@@ -196,7 +196,9 @@
         clearPendingWrite();
         const wasSuperadminActive = lastSuperadminSnapshotActive;
         celebrateSixtyScore(msg.score_event);
+        const previousSnapshot = sb;
         sb = msg.scoreboard;
+        syncRollAnimationFromServer(previousSnapshot, sb, msg.roll_event, { hydrated: receivedScoreboard });
         syncOpenSeatPushControl(sb);
         const isSuperadminActive = !!sb?._superadmin_active;
         lastSuperadminSnapshotActive = isSuperadminActive;

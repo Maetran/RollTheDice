@@ -299,8 +299,8 @@ einzige Auswahl beim Erstellen ist eine fest validierte Strategie:
 | Strategie | Basis zum Sichern | Verhalten |
 | --- | ---: | --- |
 | Konservativ | 500 | sichert eher früh und vermeidet unnötige Risiken |
-| Normal | 650 | sichert solide Runden etwas früher |
-| Aggressiv | 850 | jagt größere Runden, lässt gute Punkte aber seltener liegen |
+| Normal | 600 | sichert solide Runden etwas früher |
+| Aggressiv | 700 | jagt größere Runden, lässt gute Punkte aber seltener liegen |
 
 Diese Werte sind transparente Produktparameter, keine abweichenden
 Spielregeln. Die Strategie berücksichtigt zusätzlich Punkteabstand,
@@ -451,7 +451,7 @@ Betriebsrollback dokumentiert und ist nicht der Public-Beta-Standard.
   serverseitige Denkpause `ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` (Standard 1,25
   Sekunden, begrenzt auf 0–5) beeinflusst nur die sichtbare Taktung, niemals
   Würfel oder Wertung. Bei positiver Taktung bleiben nach einem Wurf mindestens
-  1,8 Sekunden zum Lesen, nach einem entschiedenen Startwurf mindestens 1,5
+  1,65 Sekunden zum Lesen, nach einem entschiedenen Startwurf mindestens 1,5
   Sekunden bis zur nächsten CPU-Aktion; diese Pausen werden nicht addiert.
   Explizite Test-Overrides und der konfigurierte Wert `0` bleiben sofortig.
   Nach einem Zilch bleibt der autoritative letzte

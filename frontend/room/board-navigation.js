@@ -175,11 +175,18 @@
   function canRequestCorrection(snapshot) {
     const isSingle  = Number(snapshot?._expected || 0) === 1;
     const isHC      = !!(snapshot && snapshot._hardcore);
-    if (snapshot?._paused) return false;
+    if (IS_SPECTATOR || !snapshot || snapshot._finished || snapshot._paused || snapshot._superadmin_active) return false;
     if (isSingle || isHC) return false;
+    const turn = snapshot._turn;
+    if (!turn || String(turn.player_id) === String(myId) || Number(snapshot._rolls_used || 0) > 0) return false;
+    if (snapshot._correction?.active) return false;
+    // New snapshots can prove the full server permission, including whether
+    // the previous write came from an explicit announcement.
+    if (typeof snapshot._can_request_correction?.[myId] === "boolean") {
+      return snapshot._can_request_correction[myId];
+    }
     const hasLast   = snapshot?._has_last && snapshot._has_last[myId];
-    const corrActive= !!(snapshot?._correction?.active);
-    return !!(hasLast && !corrActive);
+    return !!hasLast;
   }
 
   // --- Chatbreite ---

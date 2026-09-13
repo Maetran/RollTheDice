@@ -19,6 +19,7 @@ from .game_state import (
     _offline_players,
     _player_connected,
     check_timeout_and_abort,
+    correction_disabled_reason,
     is_team_mode,
     multiplayer_pause_reason,
     pause_remaining_seconds,
@@ -180,6 +181,16 @@ def snapshot_zdwa(g: GameDict) -> dict:
         offline_players = _offline_players(g)
         pause_reason = multiplayer_pause_reason(g)
         pause_left = pause_remaining_seconds(g)
+        correction_window = bool(
+            g.get("_started")
+            and not g.get("_finished")
+            and not pause_reason
+            and not superadmin_edit_active(g)
+            and not correction_disabled_reason(g)
+            and not g.get("_correction", {}).get("active")
+            and g.get("_turn")
+            and int(g.get("_rolls_used", 0) or 0) == 0
+        )
         return {
             "_game_type": "zdwa",
             "_name": g["_name"],
@@ -245,6 +256,19 @@ def snapshot_zdwa(g: GameDict) -> dict:
                 for pid, rc in g.get("_last_write", {}).items()
             },
             "_has_last": {pid: bool(g["_last_write"].get(pid)) for pid in g["_scoreboards"].keys()},
+            # Only expose availability, not the saved dice or private turn
+            # metadata. A direct first-roll entry in ang is not an announcement.
+            "_can_request_correction": {
+                pid: bool(
+                    correction_window
+                    and pid != g["_turn"]["player_id"]
+                    and g.get("_last_write", {}).get(pid)
+                    and g.get("_last_dice", {}).get(pid)
+                    and not g.get("_last_meta", {}).get(pid, {}).get("announced")
+                    and not g.get("_last_meta", {}).get(pid, {}).get("correction_expired")
+                )
+                for pid in g["_scoreboards"]
+            },
             "_auto_single": _auto_single,
             "_chat_history": list(g.get("_chat_history", []))[-CHAT_HISTORY_LIMIT:],
             # Serverseitig berechnete Vorschläge für den aktiven Spieler.
