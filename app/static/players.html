@@ -13,12 +13,12 @@
   <meta property="og:url" content="https://zockdiewandan.online/spieler">
   <meta property="og:image" content="https://zockdiewandan.online/static/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="manifest" href="/manifest.webmanifest?v=71bd2d641919">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=71bd2d641919" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=71bd2d641919" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=64085922edf9">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=64085922edf9" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=64085922edf9" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=71bd2d641919">
-  <script src="/static/shell.js?v=71bd2d641919" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=64085922edf9">
+  <script src="/static/shell.js?v=64085922edf9" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -34,7 +34,7 @@
       <h1 id="playersTitle">Spieler &amp; Ranking</h1>
       <p>Finde öffentliche Spielerprofile und vergleiche Spiele, Durchschnitt, Trend, Bestwerte und Ehrenberg-Marken getrennt nach Normal- und Hardcore-Modus.</p>
     </section>
-    <section class="card">
+    <section id="player-search" class="card">
       <h2>Spieler suchen</h2>
       <form id="searchForm" class="search-row">
         <input id="searchInput" type="search" placeholder="Benutzername" autocomplete="off">
@@ -69,10 +69,7 @@
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber, playerNameMarkup } from '/static/auth.js?v=71bd2d641919';
-    const searchForm = document.getElementById('searchForm');
-    const searchInput = document.getElementById('searchInput');
-    const searchResults = document.getElementById('searchResults');
+    import { escapeHtml, formatNumber, playerNameMarkup, mountPlayerSearch } from '/static/auth.js?v=64085922edf9';
     const rankingSort = document.getElementById('rankingSort');
     const rankingNormal = document.getElementById('rankingNormal');
     const rankingHardcore = document.getElementById('rankingHardcore');
@@ -81,14 +78,9 @@
     const profileUrl = username => `/spieler/${encodeURIComponent(username)}`;
     let rankingMode = 'normal';
 
-    async function searchPlayers() {
-      const response = await fetch(`/api/players/search?query=${encodeURIComponent(searchInput.value.trim())}`, { cache: 'no-store' });
-      const players = response.ok ? (await response.json()).players : [];
-      searchResults.classList.remove('muted');
-      searchResults.innerHTML = players.map(player =>
-        `<a class="player-result" href="${profileUrl(player.username)}">${playerNameMarkup(player, { name: player.username, compactRank: true })}</a>`
-      ).join('') || '<span class="muted">Keine Spieler gefunden.</span>';
-    }
+    mountPlayerSearch(document.getElementById('player-search'), {
+      renderPlayer: player => playerNameMarkup(player, { name: player.username, compactRank: true }),
+    });
 
     async function loadRanking() {
       rankingBody.innerHTML = '<tr><td colspan="8" class="muted">Laden…</td></tr>';
@@ -119,7 +111,6 @@
       }).join('') || '<tr><td colspan="8" class="muted">Noch keine registrierten Spieler.</td></tr>';
     }
 
-    searchForm.addEventListener('submit', event => { event.preventDefault(); searchPlayers(); });
     rankingSort.addEventListener('change', loadRanking);
     function setRankingMode(mode) {
       rankingMode = mode;
@@ -139,7 +130,7 @@
     rankingNormal.addEventListener('click', () => setRankingMode('normal'));
     rankingHardcore.addEventListener('click', () => setRankingMode('hardcore'));
     rankingAchievements.addEventListener('click', () => setRankingMode('achievements'));
-    await Promise.all([searchPlayers(), loadRanking()]);
+    await loadRanking();
   </script>
 </body>
 </html>

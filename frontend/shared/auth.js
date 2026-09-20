@@ -2,6 +2,7 @@ import { avatarMarkup } from "./avatar.js";
 import { createPasskeyCredential, requestPasskeyAssertion, passkeysSupported } from "./passkeys.js";
 
 export { passkeysSupported };
+export { mountPlayerSearch } from "./player-search.js";
 
 // Several page bundles include this module. Share identity, in-flight reads and
 // their generation so an older response from another bundle cannot restore a

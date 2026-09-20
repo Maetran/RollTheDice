@@ -7,7 +7,7 @@ const ZDWA_PRODUCTION_HOSTS = new Set([
   "zdwa.zockdiewandan.online",
 ]);
 const ZILCH_LEGACY_PREFIX = "/zilch";
-const ZILCH_PAGE_ROUTE = /^\/(?:$|spiel\/[^/]+(?:\/zuschauen)?|ergebnis\/[^/]+|historie|regeln|statistiken|bestenlisten|erfolge|konto|spieler\/[^/]+)\/?$/;
+const ZILCH_PAGE_ROUTE = /^\/(?:$|spiel\/[^/]+(?:\/zuschauen)?|ergebnis\/[^/]+|historie|regeln|statistiken|bestenlisten|erfolge|konto|spieler(?:\/[^/]+)?)\/?$/;
 export const ZDWA_PWA_BRIDGE_PREFIX = "/zdwa";
 const ZDWA_PAGE_ROUTE = /^\/(?:$|spiel\/[^/]+(?:\/zuschauen)?|ergebnis(?:\/[^/]+)?|regeln|spieler(?:\/[^/]+)?|rangabzeichen|konto|admin|offline)\/?$/;
 
@@ -157,6 +157,12 @@ export function applyZdwaBridgeLinks(scope = document, locationLike = window.loc
       continue;
     }
     if (target.origin !== current.origin) continue;
+    // Account-action documents deliberately live only on the fixed apex.
+    // The ZDWA bridge must not send its password-help link to a Zilch 404.
+    if (target.pathname === "/passwort-vergessen") {
+      link.setAttribute("href", `${ZDWA_PRODUCTION_ORIGIN}${target.pathname}${target.search}`);
+      continue;
+    }
     const route = normalizedZdwaRoute(target.pathname);
     if (!ZDWA_PAGE_ROUTE.test(route)) continue;
     const destination = `${zdwaPath(route, current)}${target.search}${target.hash}`;

@@ -4,6 +4,7 @@ import { initializeGameViewport } from "../shared/game-viewport.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
 import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
 import { mountAllowlistSettings, mountProfileAllowlist } from "../shared/player-allowlist.js";
+import { mountPlayerSearch } from "../shared/player-search.js";
 import { avatarMarkup } from "../shared/avatar.js";
 import { mountAvatarUpload } from "../shared/avatar-upload.js";
 import { mountFriendActivitySettings } from "../shared/friend-activity.js";
@@ -2324,6 +2325,12 @@ function bindZilchAccountSettings() {
   if (state.auth?.user?.must_change_password) {
     revealAccountSetting(document.getElementById("zilchCurrentPassword"), { focus: true, scroll: true });
   }
+  if (!state.auth?.user?.must_change_password && new URLSearchParams(window.location.search).has("allowlist")) {
+    showZilchAccountTab("settings", { updateHash: true });
+    const selectionHeading = document.getElementById("allowlistSettingsTitle");
+    selectionHeading.tabIndex = -1;
+    revealAccountSetting(selectionHeading, { focus: true, scroll: true });
+  }
   let focusRequestedPushSettings = !state.auth?.user?.must_change_password && new URLSearchParams(window.location.search).has("push");
   const focusPushSettings = status => {
     if (!focusRequestedPushSettings) return;
@@ -3087,7 +3094,7 @@ function updateLeaderboardLocation() {
   const params = new URLSearchParams({ category: state.leaderboardCategory });
   if (state.leaderboardCategory === "cpu_wins") params.set("strategy", state.leaderboardStrategy);
   const query = params.toString();
-  window.history.replaceState({}, "", zilchPath(`/bestenlisten${query ? `?${query}` : ""}`));
+  window.history.replaceState({}, "", zilchPath(`/bestenlisten${query ? `?${query}` : ""}${window.location.hash}`));
 }
 
 function showPendingLeaderboardCategory(category) {
@@ -3232,7 +3239,9 @@ async function renderLeaderboards() {
       <div><p class="eyebrow">${escapeHtml(t("Spieler & Ranking"))}</p><h1>${escapeHtml(t("Zilch-Bestenlisten"))}</h1><p>${escapeHtml(t("Die Ranglisten vergleichen deine besten abgeschlossenen Zilch-Partien."))}</p></div>
       <div class="zilch-actions">${zilchNavigationButton(zilchPath("/konto#statistics"), t("Meine Statistiken"), "small zilch-header-action")}${zilchNavigationButton(zilchPath("/konto#achievements"), t("Meine Erfolge"), "small zilch-header-action")}</div>
     </section>
+    <section id="player-search" class="zilch-card"></section>
     <div id="zilchLeaderboardBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Bestenliste wird geladen …"))}</p></section></div>`;
+  mountPlayerSearch(document.getElementById("player-search"), { context: "zilch" });
   await refreshLeaderboard();
 }
 
@@ -3279,6 +3288,7 @@ function renderRulesContent(facts) {
     </section>
     <section class="zilch-card zilch-rules-section">
       <p>${escapeHtml(t("Tippe auf einen Spielernamen und wähle im Profil Zur Spielerauswahl hinzufügen. Gespeichert wird das feste Konto, nicht ein eingetippter Name. Unter Konto → Einstellungen → Deine Spielerauswahl kannst du bis zu 100 Spieler verwalten, einzeln entfernen und Einladungen auf sie begrenzen. Eine leere Liste mit dem Filter Nur ausgewählte Spieler blockiert alle Mitspieler-Einladungen. Die private Auswahl gilt für beide Spiele, ohne Freundschaftsanfrage; Hinzufügen aktiviert kein Push. Erinnerungen und Versionshinweise bleiben unabhängig."))}</p>
+      <p>${escapeHtml(t("Spieler finden öffnet in beiden Spielen die Suche, auch für Konten ohne abgeschlossene Partie. Alle Spieler anzeigen und Weitere Spieler laden machen weitere Profile erreichbar. Spielerauswahl im Konto verwalten führt vom Profil direkt zum geöffneten Einstellungsbereich zurück."))}</p>
       <p>${escapeHtml(t("Im Konto kannst du ein kleines Profilbild für beide Spiele hinterlegen. Erlaubt sind JPG, PNG oder WebP bis 8 MB und 4’096 × 4’096 Pixel; gespeichert wird ausschließlich eine neu erzeugte, quadratische WebP-Version ohne Metadaten. Das Bild erscheint neben deinem Namen in Profilen, Chats, Spielräumen und Statistiken. Nachrichten über Spielstarts aus deiner privaten Spielerauswahl lassen sich dort ebenfalls ein- oder ausschalten. Sie sind nur live, nur in den Lobbys und öffnen außerhalb eines Spiels eine öffentliche, zuschauerfähige Partie – ohne Push und ohne Verlauf."))}</p>
       <p>${escapeHtml(t("In Zilch findest du deine Spielhistorie unter Konto → Statistiken → Deine Historie. In ZDWA steht sie unter Konto → Statistik. „Rückblick“ wird erst beim Öffnen der eigenen Historie verdient."))}</p>
       <p>${escapeHtml(t("Versionshinweise sind separat aktivierbar und anfangs ausgeschaltet. Nach einem erfolgreichen Update erhältst du pro Version höchstens einen Hinweis je angemeldetem Gerät des ausgewählten Spiels: zu neuen Funktionen oder Verbesserungen an der Stabilität. Ein Klick öffnet dessen Lobby. Frühere Versionen werden nicht nachträglich gemeldet."))}</p>

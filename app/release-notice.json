@@ -4,25 +4,23 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Mehr Übersicht auf dem Tablet: eigene Spieltische für Hoch- und Querformat, mit gut erreichbaren Touch-Aktionen.",
-  "summary_en": "More room to play on tablets: dedicated portrait and landscape tables with easy-to-reach touch controls.",
+  "summary_de": "Spieler leichter finden, direkt zur Spielerauswahl zurückkehren und nützliche Ziele bei Spiel- und Kontolinks erreichen.",
+  "summary_en": "Find players, return directly to your selection and reach useful destinations from game and account links.",
   "player_notes": {
     "de": {
-      "title": "Mehr Überblick auf dem Tablet",
+      "title": "Spieler finden und sicher ans Ziel kommen",
       "changes": [
-        "Beide Spiele nutzen Tablets im Hoch- und Querformat besser: mit lesbaren Spielzetteln und Hauptaktionen unten in Griffweite.",
-        "ZDWA zeigt im Solospiel eine Spaltenhilfe mit offenen Feldern. Zwischen weiteren Zetteln wechselst du durch Wischen oder Antippen der Pfeile.",
-        "Zilch zeigt auf Tablets beide Punkteverläufe gemeinsam und gibt den Wertungsvorschlägen mehr Platz.",
-        "Alle Designs sind angepasst. Die vertrauten Handyansichten bleiben erhalten."
+        "Die Spielersuche findet auch Konten ohne abgeschlossene Partie und kann weitere Treffer nachladen.",
+        "Vom Spielerprofil kehrst du direkt zur geöffneten Spielerauswahl zurück.",
+        "Spielwechsel, Zuschauerlinks und Kontoseiten führen zuverlässiger ans Ziel."
       ]
     },
     "en": {
-      "title": "A clearer table on your tablet",
+      "title": "Find players and reach the right page",
       "changes": [
-        "Both games make better use of portrait and landscape tablets, with readable score sheets and main actions within reach at the bottom.",
-        "ZDWA adds a solo column guide with open fields. Swipe or use the arrow buttons to move between more score sheets.",
-        "On tablets, Zilch shows both score histories together and gives scoring choices more space.",
-        "Every theme is covered. Your familiar phone layouts stay the same."
+        "Player search includes accounts with no completed games and can load more results.",
+        "Player profiles link directly back to your open selection settings.",
+        "Game switching, spectator links and account pages lead to useful destinations."
       ]
     }
   }

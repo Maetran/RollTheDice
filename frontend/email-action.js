@@ -10,9 +10,15 @@ import {
 
 import { EN } from "./i18n/catalog.js";
 
+const actionParameters = new URLSearchParams(window.location.search);
+const zilchContext = actionParameters.get("app") === "zilch";
 const language = (() => {
-  const requested = new URLSearchParams(window.location.search).get('lang');
-  if (['de', 'en'].includes(requested)) return requested;
+  const requested = actionParameters.get('lang');
+  if (['de', 'en'].includes(requested)) {
+    // Keep the language from the account email when returning to the app.
+    try { localStorage.setItem("zdwa_language", requested); } catch (_) {}
+    return requested;
+  }
   try {
     return localStorage.getItem("zdwa_language") === "en" ? "en" : "de";
   } catch (_) {
@@ -43,8 +49,35 @@ function tokenFromFragment() {
   return token;
 }
 
+function actionHref(path, hash = "") {
+  const parameters = new URLSearchParams({ lang: language });
+  if (zilchContext) {
+    parameters.set("app", "zilch");
+    // This is only carried back to the fixed login page. Its existing
+    // returnPath validator decides the eventual authenticated destination.
+    const returnTo = actionParameters.get("return_to");
+    if (returnTo) parameters.set("return_to", returnTo);
+  }
+  return `${path}?${parameters}${hash}`;
+}
+
+function loginHref() {
+  return zilchContext ? actionHref("/zilch/anmelden") : actionHref("/", "#accountLogin");
+}
+
+function accountHref() {
+  return actionHref(zilchContext ? "/zilch/konto" : "/konto");
+}
+
+function recoveryMarkup(container) {
+  const resetLink = container.dataset.emailAction === "reset"
+    ? `<p><a class="button-link primary" href="${escapeHtml(actionHref("/passwort-vergessen"))}">${escapeHtml(t("Neuen Passwort-Link anfordern"))}</a></p>`
+    : "";
+  return `${resetLink}<p><a class="button-link ghost" href="${escapeHtml(loginHref())}">${escapeHtml(t("Zur Anmeldung"))}</a></p>`;
+}
+
 function showError(container, value) {
-  container.innerHTML = `<h1>${escapeHtml(document.title)}</h1><p class="connection-error" role="alert">${escapeHtml(t(value))}</p>`;
+  container.innerHTML = `<h1>${escapeHtml(document.title)}</h1><p class="connection-error" role="alert">${escapeHtml(t(value))}</p>${recoveryMarkup(container)}`;
 }
 
 function successMarkup(heading, href, label) {
@@ -64,7 +97,7 @@ async function renderRegistration(container) {
       <label>${escapeHtml(t("Neues Passwort wiederholen"))}<input name="confirmation" type="password" autocomplete="new-password" minlength="8" maxlength="256" required></label>
       <button class="primary" type="submit">${escapeHtml(t("Passwort festlegen"))}</button>
       <p data-message role="status"></p>
-    </form>`;
+    </form>${recoveryMarkup(container)}`;
   const form = container.querySelector("form");
   form.addEventListener("submit", async event => {
     event.preventDefault();
@@ -80,7 +113,7 @@ async function renderRegistration(container) {
     message.textContent = t("Bitte warte …");
     try {
       await completeRegistration(token, password);
-      container.innerHTML = successMarkup("Dein Konto ist bestätigt.", "/konto", "Zum Konto");
+      container.innerHTML = successMarkup("Dein Konto ist bestätigt.", accountHref(), "Zum Konto");
     } catch (error) {
       message.textContent = t(error.message || "Der Bestätigungslink fehlt, ist ungültig oder abgelaufen.");
     } finally {
@@ -96,7 +129,7 @@ async function renderForgotPassword(container) {
       <label>${escapeHtml(t("E-Mail-Adresse"))}<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
       <button class="primary" type="submit">${escapeHtml(t("Link zum Zurücksetzen senden"))}</button>
       <p data-message role="status"></p>
-    </form>`;
+    </form>${recoveryMarkup(container)}`;
   const form = container.querySelector("form");
   form.addEventListener("submit", async event => {
     event.preventDefault();
@@ -128,7 +161,7 @@ async function renderPasswordReset(container) {
       <label>${escapeHtml(t("Neues Passwort wiederholen"))}<input name="confirmation" type="password" autocomplete="new-password" minlength="8" maxlength="256" required></label>
       <button class="primary" type="submit">${escapeHtml(t("Passwort speichern"))}</button>
       <p data-message role="status"></p>
-    </form>`;
+    </form>${recoveryMarkup(container)}`;
   const form = container.querySelector("form");
   form.addEventListener("submit", async event => {
     event.preventDefault();
@@ -144,7 +177,7 @@ async function renderPasswordReset(container) {
     message.textContent = t("Bitte warte …");
     try {
       await completePasswordReset(token, password);
-      container.innerHTML = successMarkup("Dein Passwort wurde geändert.", "/", "Zur Anmeldung");
+      container.innerHTML = successMarkup("Dein Passwort wurde geändert.", loginHref(), "Zur Anmeldung");
     } catch (error) {
       message.textContent = t(error.message || "Dieser Passwort-Link ist ungültig oder abgelaufen.");
     } finally {
@@ -161,7 +194,7 @@ async function renderEmailConfirmation(container) {
     return;
   }
   container.innerHTML = `<h1>${escapeHtml(t("E-Mail-Adresse bestätigen"))}</h1><p>${escapeHtml(t("Bestätige diese Adresse für Anmeldung und Passwort-Reset."))}</p>
-    <button class="primary" type="button">${escapeHtml(t("Bestätigung abschließen"))}</button><p data-message role="status"></p>`;
+    <button class="primary" type="button">${escapeHtml(t("Bestätigung abschließen"))}</button><p data-message role="status"></p>${recoveryMarkup(container)}`;
   const button = container.querySelector("button");
   const message = container.querySelector("[data-message]");
   button.addEventListener("click", async () => {
@@ -169,7 +202,7 @@ async function renderEmailConfirmation(container) {
     message.textContent = t("Bitte warte …");
     try {
       await confirmEmail(token);
-      container.innerHTML = successMarkup("Deine E-Mail-Adresse ist bestätigt.", "/konto", "Zum Konto");
+      container.innerHTML = successMarkup("Deine E-Mail-Adresse ist bestätigt.", accountHref(), "Zum Konto");
     } catch (error) {
       message.textContent = t(error.message || "Dieser E-Mail-Link ist ungültig oder abgelaufen.");
       button.disabled = false;

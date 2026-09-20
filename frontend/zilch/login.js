@@ -1,8 +1,9 @@
 import { authError, loadAuth, login, loginWithPasskey, logout, passkeysSupported, register } from "../shared/auth.js";
 import {
   applyZilchRouteLinks,
+  isProductionZilchLocation,
   normalizeZilchPageUrl,
-  zdwaAppEntryUrl,
+  ZDWA_PRODUCTION_ORIGIN,
   zilchPath,
   zilchRoutePath,
 } from "../multigame/routes.js";
@@ -36,11 +37,22 @@ function t(value) {
   return window.ZDWA_I18N?.t?.(value) || String(value || "");
 }
 
+function accountTabHash(route, preferred = "") {
+  if (route !== "/konto") return "";
+  const hash = preferred || window.location.hash;
+  return ["#statistics", "#achievements", "#settings"].includes(hash) ? hash : "";
+}
+
 function returnPath() {
   const fallback = zilchPath("/");
   const candidate = new URLSearchParams(window.location.search).get("return_to");
   const directZilchPath = normalizeZilchPageUrl(candidate);
-  if (directZilchPath) return directZilchPath;
+  if (directZilchPath) {
+    const destination = new URL(directZilchPath, window.location.origin);
+    const route = zilchRoutePath(destination.pathname);
+    if (route === "/konto") destination.hash = accountTabHash(route, destination.hash);
+    return `${destination.pathname}${destination.search}${destination.hash}`;
+  }
 
   // A first visit to the Zilch subdomain returns through this one fixed Apex
   // endpoint. Rebuild it from validated pieces so `return_to` can never become
@@ -59,7 +71,11 @@ function returnPath() {
     const cleanRoute = zilchRoutePath(validated.pathname);
     if (!cleanRoute) return fallback;
     const cleanPath = `${cleanRoute}${validated.search}`;
-    return `/auth/continue?app=zilch&path=${encodeURIComponent(cleanPath)}`;
+    // HTTP redirects inherit the incoming fragment, which the server cannot
+    // read. Keep a known account tab outside the handoff's validated path so
+    // the browser carries it through the final cross-origin redirect too.
+    const hash = accountTabHash(cleanRoute, validated.hash || continuation.hash);
+    return `/auth/continue?app=zilch&path=${encodeURIComponent(cleanPath)}${hash}`;
   } catch (_) {
     return fallback;
   }
@@ -227,8 +243,14 @@ logoutButton.addEventListener("click", async () => {
 void (async () => {
   try {
     await refresh({ redirect: true });
-    const entry = zdwaAppEntryUrl();
-    forgotPassword.href = `${entry.replace(/\/$/, "")}/passwort-vergessen`;
+    const accountOrigin = isProductionZilchLocation() ? ZDWA_PRODUCTION_ORIGIN : window.location.origin;
+    const resetLink = new URL("/passwort-vergessen", accountOrigin);
+    resetLink.searchParams.set("app", "zilch");
+    resetLink.searchParams.set("lang", window.ZDWA_I18N?.getLanguage?.() || "de");
+    if (new URLSearchParams(window.location.search).has("return_to")) {
+      resetLink.searchParams.set("return_to", returnPath());
+    }
+    forgotPassword.href = resetLink.href;
   } catch {
     setMessage("Der Anmeldestatus konnte nicht geladen werden. Bitte versuche es erneut.", "error");
   }

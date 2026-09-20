@@ -515,6 +515,21 @@ the filter automatically. Only the actual authenticated sender can satisfy the
 list, not another player seated at their table. An empty list with **Selected
 players only** blocks every invitation.
 
+**Find players** opens a searchable directory in the current game, including
+accounts without completed games. Use **Show all players** and **Load more
+players** to browse beyond the first 20 accounts. After adding someone on their
+profile, **Manage player selection in account** opens the exact settings section.
+
+**Deutsch:** **Spieler finden** öffnet die Suche im jeweiligen Spiel, auch für
+Konten ohne abgeschlossene Partien. **Alle Spieler anzeigen** und **Weitere
+Spieler laden** machen auch Konten nach den ersten 20 Treffern erreichbar.
+Nach dem Hinzufügen im Profil öffnet **Spielerauswahl im Konto verwalten**
+direkt den passenden Einstellungsbereich.
+
+The [navigation audit](docs/NAVIGATION_AUDIT.md) records the page inventory and
+repaired entry points, including PWA game links and account recovery pages.
+This navigation rollout is silent: no version push or new in-app announcement.
+
 The private, one-way list is shared across games and devices and affects only
 player invitations. It is the foundation for a future friendlist; mutual friend
 requests and public friendship profiles are not implemented.

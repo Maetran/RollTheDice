@@ -1,5 +1,5 @@
 import { apiFetch, loadAuth } from "./auth.js";
-import { zdwaPath, zilchPath } from "../multigame/routes.js";
+import { isProductionZilchLocation, isZilchHostedZdwaLocation, zdwaAppEntryUrl, zdwaPath, zilchPath } from "../multigame/routes.js";
 
 const t = value => window.ZDWA_I18N?.t?.(value) || value;
 const endpoint = "/api/friend-activity/preferences";
@@ -18,9 +18,14 @@ function currentGameRoom() {
 function spectatorUrl(game) {
   const id = String(game.game_id || "");
   if (!/^[a-zA-Z0-9-]{1,64}$/.test(id)) return null;
-  return game.game_type === "zilch"
-    ? zilchPath(`/spiel/${encodeURIComponent(id)}/zuschauen`)
-    : zdwaPath(`/spiel/${encodeURIComponent(id)}/zuschauen`);
+  const room = `/spiel/${encodeURIComponent(id)}/zuschauen`;
+  if (game.game_type === "zilch") return zilchPath(room);
+  // A regular Zilch page owns /spiel itself. Enter ZDWA through the same
+  // product handoff as the game switch; installed PWAs use the /zdwa bridge.
+  if (isProductionZilchLocation() && !isZilchHostedZdwaLocation()) {
+    return `${zdwaAppEntryUrl().replace(/\/$/, "")}${room}`;
+  }
+  return zdwaPath(room);
 }
 
 function gameText(game) {

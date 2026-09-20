@@ -16,7 +16,7 @@ export function playerProfileHref(username, context = "zdwa") {
 }
 
 function accountHref(context) {
-  return (context === "zilch" ? zilchPath : zdwaPath)("/konto#settings");
+  return (context === "zilch" ? zilchPath : zdwaPath)("/konto?allowlist=1#settings");
 }
 
 function errorText(error) {
@@ -62,7 +62,9 @@ function mountController(mount, render, context) {
       message.textContent = errorText(error);
       if (error.message === "authentication_required") {
         const link = element("a", t("Anmelden"));
-        link.href = (context === "zilch" ? zilchPath : zdwaPath)("/");
+        link.href = context === "zilch"
+          ? zilchPath(`/anmelden?return_to=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+          : zdwaPath("/#accountLogin");
         controls.append(link);
       } else {
         const retry = element("button", t("Erneut versuchen"), "small ghost");
@@ -164,7 +166,7 @@ export function mountAllowlistSettings(mount, { context = "zdwa" } = {}) {
     }
     if (!data.players.length) list.append(element("li", t("Noch keine Spieler ausgewählt. Füge Spieler direkt über ihr Profil hinzu.")));
     const find = element("a", t("Spieler finden"));
-    find.href = context === "zilch" ? zilchPath("/bestenlisten") : zdwaPath("/spieler");
+    find.href = context === "zilch" ? zilchPath("/bestenlisten#player-search") : zdwaPath("/spieler#player-search");
     controls.replaceChildren(form, hint, count, list, find);
   }, context);
 }

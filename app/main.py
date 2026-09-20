@@ -814,7 +814,7 @@ def rules_page(request: Request):
 @app.get("/spieler", include_in_schema=False)
 def players_page(request: Request):
     if is_zilch_host(request):
-        return _serve_zilch_shell(request, engagement_event="leaderboard_viewed")
+        return zilch_player_search_page(request)
     record_request_engagement(request, "leaderboard_viewed")
     return _page("players.html")
 
@@ -974,8 +974,24 @@ def _serve_zilch_shell(request: Request, *, engagement_event: str | None = None)
     return _page(filename)
 
 
+def _zilch_account_login_redirect(request: Request) -> RedirectResponse | None:
+    """Keep private browser bookmarks useful after a session expires."""
+    if "text/html" not in request.headers.get("accept", "").lower() or resolve_session(request):
+        return None
+    prefix = "" if is_zilch_host(request) else "/zilch"
+    destination = f"{prefix}{_clean_zilch_request_path(request)}"
+    return RedirectResponse(
+        f"{prefix}/anmelden?{urlencode({'return_to': destination})}",
+        status_code=303,
+        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"},
+    )
+
+
 def _serve_zilch_account_shell(request: Request, *, engagement_event: str | None = None):
     """Serve an account-only Zilch page while public lobby pages stay open."""
+    redirect = _zilch_account_login_redirect(request)
+    if redirect:
+        return redirect
     _require_zilch_preview(request)
     if engagement_event:
         record_request_engagement(request, engagement_event)
@@ -995,6 +1011,9 @@ def _redirect_zilch_account_tab(
     Check access before returning the redirect so these aliases retain the
     account protection of the old pages.
     """
+    redirect = _zilch_account_login_redirect(request)
+    if redirect:
+        return redirect
     _require_zilch_preview(request)
     if engagement_event:
         record_request_engagement(request, engagement_event)
@@ -1022,6 +1041,27 @@ def zilch_login_page():
     return _page("zilch-login.html")
 
 
+def _zilch_unavailable_page(request: Request, detail: str, *, signed_in: bool) -> Response:
+    """Give document visitors a way back without disclosing private game IDs."""
+    if "text/html" not in request.headers.get("accept", "").lower():
+        raise HTTPException(status_code=404, detail=detail)
+    prefix = "" if is_zilch_host(request) else "/zilch"
+    html = (STATIC_DIR / "zilch-unavailable.html").read_text(encoding="utf-8")
+    html = html.replace('href="/zilch"', f'href="{prefix or "/"}"')
+    recovery = "historie" if signed_in else "anmelden"
+    label = "Deine Historie" if signed_in else "Anmelden"
+    html = html.replace(
+        'href="/zilch/anmelden">Anmelden</a>',
+        f'href="{prefix}/{recovery}">{label}</a>',
+    )
+    return Response(
+        html,
+        status_code=404,
+        media_type="text/html",
+        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"},
+    )
+
+
 @app.get("/zilch/spiel/{game_id}", include_in_schema=False)
 @app.get("/zilch/spiel/{game_id}/zuschauen", include_in_schema=False)
 def zilch_room_page(game_id: str, request: Request):
@@ -1044,22 +1084,25 @@ def zilch_room_page(game_id: str, request: Request):
                 headers={"Cache-Control": "no-store"},
             )
         if not game or identity is not None:
-            raise HTTPException(status_code=404, detail="game_not_found")
+            return _zilch_unavailable_page(request, "game_not_found", signed_in=identity is not None)
         # A still-connected public guest has no durable private result, but
         # can keep the in-memory terminal screen after a reload.
     if game_type_from_state(game) != ZILCH_GAME_TYPE or not can_access_game(identity, game):
-        raise HTTPException(status_code=404, detail="game_not_found")
+        return _zilch_unavailable_page(request, "game_not_found", signed_in=identity is not None)
     return _page("zilch.html")
 
 
 @app.get("/zilch/ergebnis/{game_id}", include_in_schema=False)
 def zilch_result_page(game_id: str, request: Request):
     """Serve the noindex Zilch shell for one participant-owned result."""
+    redirect = _zilch_account_login_redirect(request)
+    if redirect:
+        return redirect
     identity = _require_zilch_preview(request)
     if load_zilch_result_for_user(game_id, identity.user_id) is None:
         # Do not distinguish an unknown ID, a ZDWA ID, or a malformed private
         # Zilch payload at this route.
-        raise HTTPException(status_code=404, detail="result_not_found")
+        return _zilch_unavailable_page(request, "result_not_found", signed_in=True)
     return _page("zilch.html")
 
 
@@ -1097,6 +1140,14 @@ def zilch_account_page(request: Request):
 def zilch_player_achievements_page(username: str, request: Request):
     """Serve a public Zilch-context award profile without game evidence."""
     return _serve_zilch_shell(request)
+
+
+@app.get("/zilch/spieler", include_in_schema=False)
+def zilch_player_search_page(request: Request):
+    """Keep player-directory bookmarks on the useful search and ranking page."""
+    prefix = "" if is_zilch_host(request) else "/zilch"
+    query = f"?{request.url.query}" if request.url.query else ""
+    return RedirectResponse(f"{prefix}/bestenlisten{query}#player-search", status_code=308)
 
 
 @app.get("/zilch/regeln", include_in_schema=False)

@@ -15,6 +15,7 @@ _ZILCH_EXACT_PATHS = frozenset(
         "/historie",
         "/statistiken",
         "/bestenlisten",
+        "/spieler",
         "/erfolge",
         "/konto",
         "/regeln",

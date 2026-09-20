@@ -117,6 +117,20 @@ class ZilchProductRoutesTestCase(TestCase):
         _identity, token = login(request_for(), username, password)
         return user.id, token
 
+    def test_player_directory_aliases_reach_search_in_the_same_product(self) -> None:
+        for host, path, destination in (
+            ("testserver", "/zilch/spieler", "/zilch/bestenlisten#player-search"),
+            ("zilch.zockdiewandan.online", "/spieler", "/bestenlisten#player-search"),
+            ("zilch.zockdiewandan.online", "/zilch/spieler", "/spieler"),
+            ("zilch.zockdiewandan.online", "/spieler?category=cpu_wins", "/bestenlisten?category=cpu_wins#player-search"),
+        ):
+            with self.subTest(host=host, path=path):
+                response = self._get(path, host=host)
+                self.assertEqual(response.status_code, 308)
+                self.assertEqual(response.headers["location"], destination)
+        self.assertIn('id="player-search"', self._get("/spieler").text)
+        self.assertIn('id="player-search"', self._get("/zdwa/spieler", host="zilch.zockdiewandan.online").text)
+
     def test_history_rules_shells_and_rules_api_use_the_central_preview_policy(self) -> None:
         _mani_id, mani_token = self._identity("Mani", role="admin")
         _normal_id, normal_token = self._identity("Normal")

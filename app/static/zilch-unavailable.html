@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="de" data-game="zilch">
+<head>
+  <meta charset="utf-8">
+  <title>Zilch-Link nicht verfügbar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Dieser Zilch-Link ist nicht verfügbar.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#2d261f">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/png" href="/static/icons/zilch-icon-32.png?v=64085922edf9" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/zilch-apple-touch-icon-180.png?v=64085922edf9" sizes="180x180">
+  <script>(()=>{let t="light";try{t=localStorage.getItem("zilch_theme")==="lcars"?"lcars":"light"}catch(_){}document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t==="lcars"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=t==="lcars"?"#000000":"#2d261f"})()</script>
+  <script src="/static/shell.js?v=64085922edf9" defer></script>
+  <link rel="stylesheet" href="/static/zilch.css?v=64085922edf9">
+  <link rel="stylesheet" href="/static/zilch-lcars.css?v=64085922edf9">
+  <style>
+    .zilch-unavailable-actions { flex-wrap: wrap; }
+    .zilch-unavailable-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: .6rem .85rem; border-radius: var(--zilch-radius-sm); font-weight: 700; text-decoration: none; white-space: normal; }
+  </style>
+</head>
+<body class="zilch-page">
+  <main class="zilch-shell">
+    <header class="zilch-header">
+      <a class="zilch-brand" href="/zilch" aria-label="Zilch die Wand an-Lobby"><span class="zilch-brand-mark" aria-hidden="true">Z</span><span>Zilch die Wand an</span></a>
+      <div class="zilch-header-tools">
+        <label class="language-switcher" aria-label="Sprache wählen"><select data-language-switcher aria-label="Sprache wählen"><option value="de">DE</option><option value="en">EN</option></select></label>
+        <button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-label="Darstellung wechseln"><span class="theme-toggle-icon" data-theme-icon aria-hidden="true">◒</span></button>
+      </div>
+    </header>
+    <section class="zilch-card zilch-empty-state" aria-labelledby="zilchUnavailableTitle">
+      <h1 id="zilchUnavailableTitle">Dieser Zilch-Link ist nicht verfügbar.</h1>
+      <p>Öffne die Lobby für aktuelle Spiele. Deine abgeschlossenen Partien findest du nach der Anmeldung in deiner Historie.</p>
+      <div class="zilch-actions zilch-unavailable-actions">
+        <a class="button-link zilch-lobby-action" href="/zilch">Zur Zilch-Lobby</a>
+        <a class="button-link zilch-lobby-action" id="zilchUnavailableRecovery" href="/zilch/anmelden">Anmelden</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

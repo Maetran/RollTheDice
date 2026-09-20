@@ -1,0 +1,14 @@
+.player-finder { min-width: 0; scroll-margin-top: 1rem; }
+.player-finder h2 { margin-top: 0; }
+.player-finder-hint, .player-finder-message { color: var(--muted); font-size: .9rem; line-height: 1.5; }
+.player-finder-form { display: flex; align-items: end; flex-wrap: wrap; gap: .65rem; }
+.player-finder-form label { display: grid; flex: 1 1 14rem; gap: .35rem; min-width: 0; }
+.player-finder-form input { width: 100%; min-width: 0; font-size: 1rem; }
+.player-finder :is(input, button, .player-result) { min-height: 44px; }
+.player-finder .player-search-results { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .5rem; }
+.player-finder .player-result { display: inline-flex; align-items: center; gap: .4rem; max-width: 100%; padding: .55rem .8rem; border: 1px solid var(--border); border-radius: .8rem; text-decoration: none; overflow-wrap: anywhere; }
+.player-finder .player-result .player-name-with-rank { flex-wrap: wrap; }
+.player-finder-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; margin-top: .75rem; }
+.player-finder-manage { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); }
+html[data-game="zilch"] .player-finder :is(.player-finder-hint, .player-finder-message) { color: var(--zilch-muted); }
+html[data-game="zilch"] .player-finder .player-result { color: var(--zilch-ink); border-color: var(--zilch-paper-edge); }

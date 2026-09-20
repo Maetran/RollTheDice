@@ -11,6 +11,21 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Spielersuche und zuverlässige Links / Player search and reliable links — 2026-09-20
+
+- **Deutsch:** Spieler finden führt in beiden Spielen zur Suche, auch ohne
+  abgeschlossene Partien. Weitere Treffer lassen sich nachladen; der Rückweg
+  vom Profil öffnet direkt die Spielerauswahl. ZDWA-Ergebnisse und Zuschauerlinks
+  funktionieren beim Spielwechsel innerhalb der Zilch-PWA. Passwort- und
+  E-Mail-Seiten bieten Rückwege; ungültige Zilch-Spiel- und Ergebnislinks zeigen
+  eine hilfreiche Fehlerseite. Stiller Rollout ohne Versions-Push oder App-Hinweis.
+- **English:** Find players opens search in both games, including accounts with
+  no completed games. More results can be loaded, and the profile return link
+  opens the exact player-selection settings. ZDWA results and spectator links
+  work across games inside the Zilch PWA. Password and email pages offer useful
+  exits; invalid Zilch game and result links show a helpful error page.
+  Silent rollout without a version push or in-app announcement.
+
 ## Spieltische fürs Tablet / Tables for tablets — 2026-09-20
 
 - **Deutsch:** Eigene Touch-Layouts für beide Spiele im Hoch- und Querformat,

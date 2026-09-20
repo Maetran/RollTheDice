@@ -71,7 +71,7 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
                 f"/static/icons/zilch-icon-512.png?v={version}",
             ],
         )
-        zilch_shells = {"zilch.html", "zilch-lobby.html", "zilch-rules.html", "zilch-login.html"}
+        zilch_shells = {"zilch.html", "zilch-lobby.html", "zilch-rules.html", "zilch-login.html", "zilch-unavailable.html"}
         for html_path in main.STATIC_DIR.glob("*.html"):
             html = html_path.read_text()
             if html_path.name in zilch_shells:
