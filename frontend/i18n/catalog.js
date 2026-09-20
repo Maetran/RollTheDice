@@ -1,5 +1,5 @@
 export const EN = {
-    "Eingeklappt zeigt der Spiel-Chat nur den Balken am unteren Bildschirmrand. Tippe darauf, um den Chat zu öffnen.": "When collapsed, game chat shows only the bar at the bottom of the screen. Tap it to open the chat.",
+    "Eingeklappt liegt der Chatbalken bündig am unteren Bildschirmrand. Der Schutzabstand zum Home-Indikator bleibt innerhalb der Leiste. Tippe darauf, um den Chat zu öffnen.": "When collapsed, the chat bar sits flush with the bottom edge. Home-indicator protection stays inside the bar. Tap it to open the chat.",
     "Die Vorschläge stehen auf allen Geräten untereinander. Der stärkste Vorschlag steht direkt über Alle Punktewürfel.": "Suggestions are stacked vertically on every device. The strongest suggestion sits directly above All scoring dice.",
     "Du bist am Zug": "Your turn",
     "Unentschieden": "Draw",

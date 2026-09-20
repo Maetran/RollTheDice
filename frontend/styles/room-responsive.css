@@ -493,9 +493,9 @@
   }
 }
 
-/* A side rail needs landscape width. iPad Pro portrait otherwise pushes the
-   reaction trigger and its panel beyond the left viewport edge. */
-@media (min-width:900px) and (orientation:landscape){
+/* Side chat belongs to wide mouse layouts. Touch devices, including phones
+   held in landscape, keep the reachable bottom dock from room-shell.css. */
+@media (min-width:900px) and (orientation:landscape) and (hover:hover) and (pointer:fine){
   .room-page{
     --desktop-side-chat-w:min(20rem, calc((100vw - var(--desktop-shell-max)) / 2 - 2rem));
     padding-bottom:1.5rem;

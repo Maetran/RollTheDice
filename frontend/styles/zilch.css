@@ -3479,11 +3479,21 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
   padding-bottom: var(--zilch-room-safe-bottom);
 }
 .zilch-shell--game .zilch-chat__bar { display: flex; align-items: center; height: var(--zilch-room-chat-h); }
-/* Keep the closed dock itself compact. The home-indicator safe area is
-   outside its frame, so it cannot look like a preview below the chat bar. */
+/* Fill the bottom safe area with the bar itself. Padding belongs to its
+   controls so their label/reaction remain above the home indicator without
+   leaving an empty strip or a differently colored chat-body extension. */
 .zilch-shell--game .zilch-chat:not(.is-open) {
-  bottom: calc(var(--game-viewport-bottom, 0px) + var(--zilch-room-safe-bottom));
+  bottom: var(--game-viewport-bottom, 0px);
   padding-bottom: 0;
+}
+.zilch-shell--game .zilch-chat:not(.is-open) .zilch-chat__bar {
+  height: var(--zilch-room-chat-footprint);
+}
+.zilch-shell--game .zilch-chat:not(.is-open) :is(.zilch-chat__toggle, .zilch-chat-reactions-host) {
+  height: 100%;
+  padding-bottom: var(--zilch-room-safe-bottom);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 .zilch-shell--game .zilch-chat:not(.is-open) .zilch-chat__content,
 .zilch-shell--game .zilch-chat .zilch-chat__content[hidden] { display: none; }

@@ -151,7 +151,7 @@
     top:auto;
     right:auto;
     left:calc((100vw - var(--tablet-table-width)) / 2 + var(--mobile-reactionbar-w));
-    bottom:calc(var(--room-safe-bottom) + var(--game-viewport-bottom, 0px));
+    bottom:var(--game-viewport-bottom, 0px);
     width:calc(var(--tablet-table-width) - var(--mobile-reactionbar-w)) !important;
     min-width:0;
     height:auto;
@@ -163,7 +163,7 @@
     top:auto;
     right:auto;
     left:calc((100vw - var(--tablet-table-width)) / 2);
-    bottom:calc(var(--room-safe-bottom) + var(--game-viewport-bottom, 0px));
+    bottom:var(--game-viewport-bottom, 0px);
     width:var(--tablet-table-width) !important;
     height:auto;
     transform:none;
@@ -180,7 +180,7 @@
     top:auto;
     right:auto;
     left:calc((100vw - var(--tablet-table-width)) / 2);
-    bottom:calc(var(--room-safe-bottom) + var(--game-viewport-bottom, 0px));
+    bottom:var(--game-viewport-bottom, 0px);
     width:var(--mobile-reactionbar-w);
     min-width:var(--mobile-reactionbar-w);
     height:var(--desktop-chatbar-h);
@@ -195,10 +195,10 @@
     left:0;
     transform:none;
   }
-  /* Multi-board desktop selectors also match landscape tablets. Keep both
-     halves of this bottom dock above the PWA inset and software keyboard. */
+  /* Multi-board desktop selectors also match landscape tablets. Both dock
+     halves meet the visible bottom edge, including above the keyboard. */
   body.room-page :is(#chatPanel, #chatReactionsBar){
-    bottom:calc(var(--room-safe-bottom) + var(--game-viewport-bottom, 0px));
+    bottom:var(--game-viewport-bottom, 0px);
   }
 
   /* One sheet has room for a quiet reference; two or more use that space to

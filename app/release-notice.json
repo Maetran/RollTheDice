@@ -4,21 +4,21 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Geschlossene Chats zeigen nur den unteren Balken. Zilch-Vorschläge stehen überall untereinander, der stärkste direkt über Alle Punktewürfel.",
-  "summary_en": "Closed chats show only the bottom bar. Zilch suggestions stack everywhere, with the strongest directly above All scoring dice.",
+  "summary_de": "Die mobilen Chatleisten schließen bündig am unteren Bildschirmrand ab, ohne Leerraum darunter. Tippen öffnet den Chat.",
+  "summary_en": "Mobile chat bars sit flush with the bottom edge, with no empty gap underneath. Tap to open the chat.",
   "player_notes": {
     "de": {
-      "title": "Chatleisten und Vorschläge aufgeräumt",
+      "title": "Chatleisten direkt am unteren Rand",
       "changes": [
-        "Der geschlossene Spielchat zeigt nur den festen Balken am unteren Rand. Tippen öffnet den Chat.",
-        "Zilch zeigt die Vorschläge auf allen Geräten untereinander, mit dem stärksten direkt über Alle Punktewürfel."
+        "Die Chatleiste bleibt in beiden Spielen direkt am sichtbaren unteren Bildschirmrand.",
+        "Der Schutzabstand zum Home-Indikator liegt innerhalb der Leiste. Darunter bleibt keine Lücke."
       ]
     },
     "en": {
-      "title": "Tidier chat bars and suggestions",
+      "title": "Chat bars at the bottom edge",
       "changes": [
-        "Closed game chat shows only the fixed bottom bar. Tap to open it.",
-        "Zilch stacks suggestions on every device, with the strongest directly above All scoring dice."
+        "The chat bar stays at the visible bottom edge in both games.",
+        "Home-indicator protection sits inside the bar, leaving no gap underneath."
       ]
     }
   }

@@ -321,13 +321,16 @@ Querformat mittig in einer eigenen Zeile unter Titel und Werkzeugen.
 Der mobile Zuschauerchat hält die Eingabe auch bei geöffneter Tastatur
 erreichbar und zeigt Zuschauer mit ihrem Profilbild. Tablet-Spielblöcke nutzen
 den verfügbaren Platz, ohne die Bedienelemente abzuschneiden.
-Geschlossen bleibt nur der feste Chatbalken am unteren Rand sichtbar;
-Antippen klappt den vollständigen Chat auf. Zilch ordnet seine Vorschläge
+Geschlossen bleibt nur der feste Chatbalken bündig am sichtbaren unteren Rand;
+der Schutzabstand zum Home-Indikator liegt innerhalb der Leiste, ohne Lücke
+darunter. Antippen klappt den vollständigen Chat auf. Zilch ordnet seine Vorschläge
 überall untereinander an, mit dem stärksten direkt über **Alle Punktewürfel**.
 Mobile spectator chat keeps the input reachable with the keyboard open and
 shows spectators with their profile picture. Tablet score sheets use the
 available space without clipping the controls.
-Collapsed chats show only the fixed bottom bar; tapping opens the full chat.
+Collapsed chats show only the fixed bar, flush with the visible bottom edge.
+Home-indicator protection sits inside the bar, with no gap underneath;
+tapping opens the full chat.
 Zilch stacks suggestions vertically everywhere, with the strongest directly
 above **All scoring dice**.
 

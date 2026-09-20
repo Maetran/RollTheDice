@@ -227,24 +227,12 @@
   }
 
   function scrollToChat(){
-    const panel = document.getElementById('chatPanel');
-    const toggle = document.getElementById('chatToggle');
-    const backdrop = document.getElementById('chatBackdrop');
-    const count = document.getElementById('chatToggleCount');
-    if (panel) {
-      panel.classList.add('open');
-      document.documentElement.classList.add('chat-open');
-      document.body.classList.add('chat-open');
-    }
-    if (toggle) toggle.setAttribute('aria-expanded', 'true');
-    if (backdrop) backdrop.hidden = false;
-    if (count) {
-      count.textContent = '0';
-      count.hidden = true;
-    }
-    const target = panel || document.getElementById('chatBox');
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    const input = document.getElementById('chatInput');
+    const toggle = document.getElementById('chatToggle')
+      || document.querySelector('[data-zilch-chat-toggle]');
+    // Reuse the game's own state transition, including hidden content and
+    // unread counts. Keep this synchronous for the iOS keyboard gesture.
+    if (toggle && toggle.getAttribute('aria-expanded') !== 'true') toggle.click();
+    const input = document.getElementById('chatInput') || document.getElementById('zilchChatInput');
     if (input) {
       try { input.focus({ preventScroll: true }); }
       catch { input.focus(); }

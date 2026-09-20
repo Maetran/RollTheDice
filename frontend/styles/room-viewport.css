@@ -61,7 +61,25 @@ body.room-page{
 }
 .room-page #scoreOut > :is(.topbar, .suggestions-area){ flex:0 0 auto; }
 .room-page .chat-panel,
-.room-page .chat-reactions-host{ bottom:calc(var(--room-safe-bottom) + var(--game-viewport-bottom, 0px)); }
+.room-page .chat-reactions-host{ bottom:var(--game-viewport-bottom, 0px); }
+@media (max-width:899px), (orientation:portrait), (hover:none), (pointer:coarse),
+  (any-pointer:coarse) and (min-width:768px) and (min-height:600px) and (max-width:1600px){
+  /* The dock reaches the visible bottom edge. Its safe area is part of the
+     colored controls, not an empty strip below them. Desktop mouse side
+     chat retains its separate center alignment and compact dimensions. */
+  .room-page #chatPanel:not(.open) #chatToggle{
+    height:calc(var(--chat-bar-height) + var(--room-safe-bottom));
+    padding-bottom:calc(.55rem + var(--room-safe-bottom));
+  }
+  .room-page #chatReactionsBar{
+    height:calc(var(--desktop-chatbar-h) + var(--room-safe-bottom));
+    padding-bottom:calc(.28rem + var(--room-safe-bottom));
+    transform:none;
+  }
+  .room-page #chatPanel.open .chat-content{
+    padding-bottom:calc(.75rem + var(--room-safe-bottom));
+  }
+}
 /* A closed drawer contains only its toggle. Translating a still-rendered
    history below the screen exposes it again inside iOS's bottom safe area. */
 .room-page .chat-panel:not(.open) .chat-content,

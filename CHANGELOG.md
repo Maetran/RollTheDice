@@ -22,6 +22,22 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.38.2 — Chatleisten bündig am Rand / Chat bars flush with the edge — 2026-09-20
+
+- **Deutsch:** Die mobilen Chatleisten schließen in beiden Spielen bündig mit
+  dem sichtbaren unteren Bildschirmrand ab. Der Schutzabstand zum Home-Indikator
+  liegt innerhalb der Leiste; darunter bleibt keine ungenutzte Lücke.
+  Chatinhalt bleibt eingeklappt verborgen, Eingabe und Reaktionen erreichbar.
+  Das Antippen einer Nachrichtenvorschau öffnet in beiden Spielen den Chat
+  mit fokussierter Eingabe über denselben Ablauf wie der Chatbalken.
+  Stiller Rollout ohne Versions-Push oder neues Versionspopup.
+- **English:** Mobile chat bars in both games sit flush with the visible bottom
+  edge. Home-indicator protection sits inside the bar, with no unused gap below.
+  Collapsed chat content stays hidden, while typing and reactions remain
+  accessible. Tapping a message preview opens either game's chat and focuses
+  its input through the same flow as the chat bar. Silent rollout without a
+  version push or a new release popup.
+
 ## 2.38.1 — Chatleisten und Zilch-Vorschläge / Chat bars and Zilch suggestions — 2026-09-20
 
 - **Deutsch:** Eingeklappte Spielchats zeigen nur den fest am unteren Rand

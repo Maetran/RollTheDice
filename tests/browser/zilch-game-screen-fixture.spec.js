@@ -3512,6 +3512,7 @@ test("Zilch spectator avatars survive history, live messages and reactions outsi
 
 for (const theme of ["light", "lcars"]) {
   test(`Zilch ${theme}: closed chat is only its bottom bar across phone and tablet safe areas`, async ({ browser, baseURL }, testInfo) => {
+    test.setTimeout(90000);
     const { exerciseCollapsedChatDock } = require("./chat-mobile");
     const context = await browser.newContext({ baseURL, serviceWorkers:"block", hasTouch:true, isMobile:true, viewport:{ width:440, height:956 } });
     await context.addInitScript(value => localStorage.setItem("zilch_theme", value), theme);
@@ -3531,6 +3532,21 @@ for (const theme of ["light", "lcars"]) {
       await expect(page.locator("#zilchChatHistory li")).toHaveCount(30);
       await exerciseCollapsedChatDock(page, "zilch", testInfo);
       await page.screenshot({ path:testInfo.outputPath(`closed-chat-${theme}.png`) });
+      await page.evaluate(() => {
+        document.addEventListener("click", event => {
+          if (event.target.closest(".chat-pop")) window.__chatPopupFocusedDuringTap = document.activeElement?.id === "zilchChatInput";
+        });
+        window.emojiUI.handleChat({ sender:"PreviewFriend", text:"Öffnen über Nachrichtenvorschau" });
+      });
+      const chatPreview = page.locator(".chat-pop", { hasText:"Öffnen über Nachrichtenvorschau" });
+      await chatPreview.tap();
+      expect(await page.evaluate(() => window.__chatPopupFocusedDuringTap)).toBe(true);
+      await expect(page.locator("#zilchChatContent")).toBeVisible();
+      await page.locator("#zilchChatInput").fill("Entwurf aus der Nachrichtenvorschau");
+      await chatPreview.tap();
+      await expect(page.locator("#zilchChatInput")).toBeFocused();
+      await expect(page.locator("#zilchChatInput")).toHaveValue("Entwurf aus der Nachrichtenvorschau");
+      await page.locator("[data-zilch-chat-toggle]").tap();
       await openChatWithKeyboardFocus(page, "[data-zilch-chat-toggle]", "#zilchChatInput");
       await page.locator("#zilchChatInput").fill("Zuschauen und mitreden");
       await expectChatAboveKeyboard(page, "#zilchChatInput", "#zilchChatForm button[type='submit']");
