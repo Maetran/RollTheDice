@@ -82,7 +82,7 @@
 
   function autoFollowTurn(snapshot){
     try {
-      if (!isMobileNarrow()) return;
+      if (!window.matchMedia?.("(max-width: 560px), (min-width: 561px) and (max-height: 600px)").matches) return;
 
       const turnPid = snapshot?._turn?.player_id || null;
       const filledNow = countFilledWritableCells(snapshot);

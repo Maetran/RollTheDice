@@ -20,6 +20,9 @@
 import { initChat, addChatMessage } from "./chat.js";
 import { ANNOUNCE_FIELDS, calculatePoints, WRITABLE_MAP } from "./scoring.js";
 import { zdwaPath, zdwaRoutePath } from "../multigame/routes.js";
+import { initializeGameViewport } from "../shared/game-viewport.js";
+
+initializeGameViewport();
 
   // ---------- Helpers ----------
   const $  = (sel, root = document) => root.querySelector(sel);

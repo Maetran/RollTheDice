@@ -201,7 +201,7 @@ test("mobile global navigation remains touch-friendly and inside the viewport", 
 });
 
 
-test("mobile navigation keeps identical geometry between app sections", async ({ page }) => {
+test("mobile navigation keeps aligned destinations and touch targets between app sections", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/");
   await openPasswordLogin(page);
@@ -226,12 +226,13 @@ test("mobile navigation keeps identical geometry between app sections", async ({
     await page.goto(path);
     await expect(page.locator(".app-nav")).toBeVisible();
     const actual = await geometry();
-    for (const key of ["left", "top", "width", "height"]) {
+    for (const key of ["left", "top", "width"]) {
       expect(actual[key]).toBeCloseTo(expected[key], 1);
     }
     expect(actual.links).toHaveLength(expected.links.length);
     actual.links.forEach((link, index) => {
-      for (const key of ["left", "top", "width", "height"]) {
+      expect(link.height).toBeGreaterThanOrEqual(44);
+      for (const key of ["left", "width"]) {
         expect(link[key]).toBeCloseTo(expected.links[index][key], 1);
       }
     });
@@ -430,7 +431,8 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
 test("mobile lobby cards and leaderboard tabs stay inside the viewport", async ({ page }) => {
   await page.setViewportSize({ width: 440, height: 956 });
   await page.goto("/");
-  await expect(page.locator(".avg-label")).toHaveText("⌀ Punkte");
+  await expect(page.locator(".lobby-header-stats")).toContainText("⌀ Normal");
+  await expect(page.locator(".lobby-header-stats")).toContainText("⌀ Hardcore");
   await page.locator("#lbTabLast").click();
 
   const layout = await page.evaluate(() => {
@@ -720,7 +722,10 @@ test("tablet new-game controls stay inside their card", async ({ page }) => {
     });
 
     expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewportWidth);
-    expect(layout.inputWidth).toBeGreaterThan(layout.rowWidth - 1);
+    // The optional passphrase shares a compact row with Start. Both remain
+    // usable and inside the card instead of requiring a full-width input.
+    expect(layout.inputWidth).toBeGreaterThan(120);
+    expect(layout.inputWidth).toBeLessThanOrEqual(layout.rowWidth);
     for (const right of layout.controlRights) expect(right).toBeLessThanOrEqual(layout.cardRight);
   }
 });

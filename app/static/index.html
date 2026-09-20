@@ -22,14 +22,14 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=531bf38a7e7f">
+  <link rel="manifest" href="/manifest.webmanifest?v=986b55dae9c2">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=531bf38a7e7f" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=531bf38a7e7f" sizes="180x180">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=986b55dae9c2" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=986b55dae9c2" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=531bf38a7e7f" defer></script>
-  <link rel="stylesheet" href="/static/lobby.css?v=531bf38a7e7f">
+  <script src="/static/shell.js?v=986b55dae9c2" defer></script>
+  <link rel="stylesheet" href="/static/lobby.css?v=986b55dae9c2">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -52,6 +52,12 @@
         <span class="logo" aria-hidden="true">🎲</span>
         <span>ZDWA</span>
       </a>
+      <aside class="lobby-header-stats" aria-label="ZDWA Community">
+        <span id="onlineUsers" class="online-user-count" aria-live="polite"><span class="online-dot" aria-hidden="true"></span><b>0</b> Nutzer online</span>
+        <span><b id="gamesPlayed">0</b> <span>beendete Partien</span></span>
+        <span title="Durchschnittspunkte"><span>⌀ Normal</span> <b id="avgNormalPoints">—</b><span id="avgNormalTrend" class="avg-trend avg-same">-</span></span>
+        <span title="Durchschnittspunkte"><span>⌀ Hardcore</span> <b id="avgHardcorePoints">—</b><span id="avgHardcoreTrend" class="avg-trend avg-same">-</span></span>
+      </aside>
       <nav class="app-nav-links" aria-label="Hauptnavigation">
         <a class="app-nav-link" href="/" aria-current="page">Lobby</a>
         <a class="app-nav-link" href="/spieler">Spieler &amp; Ranking</a>
@@ -156,7 +162,6 @@
 
       <!-- 2) Neues Spiel – Modus/Passphrase, erzeugt via /api/games (POST) -->
       <section id="createGameCard" class="card setup-card create-game-card priority-card">
-        <p class="eyebrow">Loslegen</p>
         <h2>Neues Spiel</h2>
         <div class="row create-row">
           <fieldset class="create-fieldset player-count-fieldset">
@@ -193,36 +198,21 @@
       </section>
     </div>
 
-    <!-- 3) Offene Spiele – noch nicht gestartete Spiele -->
-    <section id="openGamesCard" class="card">
+    <section id="gamesHub" class="card games-hub" aria-labelledby="gamesHubTitle">
       <div class="section-title-row">
-        <h2>Offene Spiele</h2>
-        <button id="refreshBtn" class="small">Aktualisieren</button>
+        <h2 id="gamesHubTitle">Spiele</h2>
+        <button id="refreshBtn" class="small secondary">Aktualisieren</button>
       </div>
-      <p class="muted small section-hint">Klicke auf „Beitreten“, um in den Spielraum zu wechseln.</p>
-      <div id="gamesList" class="games"><div class="lobby-state" role="status">Offene Spiele werden geladen …</div></div>
+      <section id="runningGamesCard" class="games-group" aria-labelledby="runningGamesTitle">
+        <h3 id="runningGamesTitle">Laufende Spiele</h3>
+        <div id="runningList" class="games"><div class="lobby-state" role="status">Laufende Spiele werden geladen …</div></div>
+      </section>
+      <section id="openGamesCard" class="games-group" aria-labelledby="openGamesTitle">
+        <h3 id="openGamesTitle">Offene Spiele</h3>
+        <div id="gamesList" class="games"><div class="lobby-state" role="status">Offene Spiele werden geladen …</div></div>
+      </section>
+      <p id="gamesEmpty" class="lobby-state" hidden>Keine offenen oder laufenden Spiele. Starte eine neue Partie.</p>
     </section>
-
-    <!-- 3b) Laufende Spiele – beitreten als Zuschauer -->
-    <section id="runningGamesCard" class="card secondary-card">
-      <div class="section-title-row">
-        <h2 id="runningGamesTitle">Laufende Spiele</h2>
-        <button id="refreshRunningBtn" class="small">Aktualisieren</button>
-      </div>
-      <p class="muted small section-hint">Klicke auf „Zuschauen“, um dem laufenden Spiel beizutreten (ohne Aktionen).</p>
-      <div id="runningList" class="games"><div class="lobby-state" role="status">Laufende Spiele werden geladen …</div></div>
-    </section>
-
-    <aside class="lobby-community" aria-label="ZDWA Community">
-      <p class="eyebrow">ZDWA Community</p>
-      <div class="stats">
-        <span id="onlineUsers" class="online-user-count" aria-live="polite"><span class="online-dot" aria-hidden="true"></span><b>0</b> Nutzer online</span>
-        <span>Zock die Wand an · beendete Partien: <b id="gamesPlayed">0</b></span>
-        <span class="avg-label" title="Durchschnittspunkte">⌀ Punkte</span>
-        <span>Normale Spiele: <b id="avgNormalPoints">—</b><span id="avgNormalTrend" class="avg-trend avg-same">-</span></span>
-        <span>Hardcore Spiele: <b id="avgHardcorePoints">—</b><span id="avgHardcoreTrend" class="avg-trend avg-same">-</span></span>
-      </div>
-    </aside>
 
     <div id="lobbyChatMount"></div>
 
@@ -286,7 +276,7 @@
           <h2 id="abandonmentTitle">Wall of Shame</h2>
           <p class="abandonment-subtitle">Meiste Spiele abgebrochen</p>
         </div>
-        <p class="muted small">Auch ein unperfekter Zettel verdient ein Ende.</p>
+
       </div>
       <div class="abandonment-buckets">
         <section class="abandonment-bucket" aria-labelledby="abandonmentRecentTitle">
@@ -298,10 +288,10 @@
           <h3 id="abandonmentAlltimeTitle"><span>Insgesamt</span> <span class="abandonment-limit">Top 3</span></h3>
           <ol id="abandonmentAlltimeList" class="abandonment-list" hidden></ol>
           <p id="abandonmentAlltimeStatus" class="muted small" role="status">Laden…</p>
-          <p class="muted small abandonment-history">Seit Beginn der Abbrucherfassung.</p>
+
         </section>
       </div>
-      <p class="muted small abandonment-scope">Nur selbst ausgelöste Abbrüche gestarteter ZDWA-Partien. Normal und Hardcore zusammen; keine Timeouts oder Verbindungsabbrüche.</p>
+      <details class="abandonment-explanation"><summary>Was zählt als Abbruch?</summary><p class="muted small abandonment-scope">Nur selbst ausgelöste Abbrüche gestarteter ZDWA-Partien. Normal und Hardcore zusammen; keine Timeouts oder Verbindungsabbrüche.</p><p class="muted small">Seit Beginn der Abbrucherfassung.</p></details>
     </section>
 
     <section class="card about-game" aria-labelledby="aboutGameTitle">
@@ -313,6 +303,6 @@
   </div>
 
   <!-- Lobby-Controller: eigenständiges ES-Modul. -->
-  <script type="module" src="/static/lobby.js?v=531bf38a7e7f"></script>
+  <script type="module" src="/static/lobby.js?v=986b55dae9c2"></script>
 </body>
 </html>

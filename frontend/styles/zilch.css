@@ -4868,3 +4868,152 @@ html[data-game="zilch"] .zilch-header-tools .game-switch:focus-visible {
   html[data-game="zilch"] .lobby-chat__message { grid-template-columns: 1fr; gap: .16rem; }
   html[data-game="zilch"] .lobby-chat__sender strong { max-width: min(16rem, 72vw); }
 }
+
+/* Keep the game table inside the visible PWA/browser viewport. The dock is
+   measured by layout, so larger text, shorter screens and safe areas never
+   turn its estimated height into document scrolling or covered controls. */
+html[data-game="zilch"]:has(.zilch-shell--game) {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html[data-game="zilch"]:has(.zilch-shell--game) body {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  margin: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html[data-game="zilch"] body .zilch-shell.zilch-shell--game {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  padding-bottom: calc(var(--zilch-room-chat-footprint) + var(--zilch-room-dock-gap));
+  overflow: visible;
+}
+.zilch-shell--game > .zilch-header { flex: 0 0 auto; }
+.zilch-shell--game #zilchContent {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  gap: .5rem;
+}
+html[data-game="zilch"] body .zilch-shell.zilch-shell--game .zilch-play-layout {
+  flex: 1 1 0;
+  box-sizing: border-box;
+  height: auto;
+  min-height: 0;
+  padding-bottom: var(--zilch-play-layout-reserved-turn-score-h);
+  max-height: calc(36rem + var(--zilch-turn-score-slot-h) + var(--zilch-turn-score-gap));
+}
+.zilch-shell--game .zilch-start-roll-rail {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+html[data-game="zilch"] body .zilch-shell.zilch-shell--game .zilch-dice-dock {
+  position: relative;
+  inset: auto;
+  flex: 0 0 auto;
+  margin-top: auto;
+}
+.zilch-shell--game #zilchContent > :is(.zilch-offline-note, .zilch-error, .zilch-reconnect) {
+  flex: 0 0 auto;
+  margin-block: 0;
+}
+html[data-game="zilch"]:has(.zilch-shell--game) body {
+  height: var(--game-viewport-height, 100dvh);
+}
+.zilch-shell--game .zilch-chat {
+  bottom: var(--game-viewport-bottom, 0px);
+  max-height: calc(var(--game-viewport-height, 100dvh) - var(--zilch-room-safe-top) - .5rem);
+}
+.zilch-shell--game .zilch-chat.is-open .zilch-chat__content {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(var(--game-viewport-height, 100dvh) - var(--zilch-room-safe-top) - var(--zilch-room-chat-footprint) - .75rem);
+}
+.zilch-shell--game .zilch-chat-history {
+  flex: 1 1 auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+.zilch-shell--game #zilchChatForm { flex: 0 0 auto; }
+
+/* Lobby only: one place for current games and a short, complete setup form. */
+html[data-game="zilch"] .zilch-create-heading{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  gap:.2rem .65rem;
+  margin-bottom:.35rem;
+}
+html[data-game="zilch"] .zilch-create-heading h2{ margin:0; font-size:1.02rem; }
+html[data-game="zilch"] .zilch-create-heading .zilch-lobby-identity{
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+html[data-game="zilch"] .zilch-create-heading .zilch-inline-navigation{ min-height:44px; }
+html[data-game="zilch"] .zilch-create-heading .zilch-lobby-identity .eyebrow{ margin:0; letter-spacing:0; }
+html[data-game="zilch"] .zilch-create-card .zilch-solo-create-objective{
+  padding:.2rem 0;
+  flex-wrap:wrap;
+  gap:.15rem .45rem;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  font-size:.82rem;
+}
+html[data-game="zilch"] .zilch-create-card .zilch-solo-create-objective span{ font-size:.78rem; }
+html[data-game="zilch"] #zilchCreateError:empty{ display:none; }
+html[data-game="zilch"] .zilch-games-hub{ padding:.65rem .8rem; }
+html[data-game="zilch"] .zilch-games-hub > .zilch-section-heading{ margin-bottom:.2rem; justify-content:space-between; flex-direction:row; align-items:center; }
+html[data-game="zilch"] .zilch-games-hub > .zilch-section-heading h2{ margin:0; font-size:1.1rem; }
+html[data-game="zilch"] .zilch-games-hub .zilch-lobby-grid{ grid-template-columns:minmax(0, 1fr); gap:.5rem; }
+html[data-game="zilch"] .zilch-games-hub .zilch-lobby-section{ padding:0; }
+html[data-game="zilch"] .zilch-games-hub .zilch-lobby-section > h3{ margin:.2rem 0 .35rem; font-size:.8rem; color:var(--zilch-muted); }
+html[data-game="zilch"] .zilch-games-hub .zilch-game-card{ padding:.4rem .5rem; box-shadow:none; }
+html[data-game="zilch"] .zilch-games-hub .zilch-game-card h3{ font-size:.9rem; }
+html[data-game="zilch"] .zilch-games-hub .zilch-game-card__actions :is(button, a),
+html[data-game="zilch"] #zilchRefresh{ min-height:44px; }
+html[data-game="zilch"] .zilch-create-options > summary{ display:flex; align-items:center; min-height:44px; }
+html[data-game="zilch"] .zilch-create-options > summary::before{ content:'▸'; margin-right:.35rem; }
+html[data-game="zilch"] .zilch-create-options[open] > summary::before{ content:'▾'; }
+@media (max-width:760px){
+  html[data-game="zilch"] .zilch-intro--lobby h1{ font-size:clamp(1.2rem, 4.5vw, 1.7rem); }
+  html[data-game="zilch"] .zilch-intro--lobby p{ font-size:.84rem; line-height:1.4; }
+  html[data-game="zilch"] .zilch-create-heading{ gap:0 .5rem; }
+  html[data-game="zilch"] .zilch-create-card .zilch-create-form{ grid-template-columns:minmax(0, 1fr) auto; gap:.35rem .5rem; }
+  html[data-game="zilch"] .zilch-create-card .zilch-mode-choice{ grid-column:1 / -1; grid-row:1; }
+  html[data-game="zilch"] .zilch-create-card .zilch-mode-option{ padding:.35rem .4rem; font-size:.85rem; }
+  html[data-game="zilch"] .zilch-create-card .zilch-solo-create-objective,
+  html[data-game="zilch"] .zilch-create-card .zilch-cpu-strategy{ grid-column:1; grid-row:2; }
+  html[data-game="zilch"] .zilch-create-card .zilch-create-submit{ grid-column:2; grid-row:2; min-width:0; padding:.4rem .6rem; font-size:.82rem; }
+  html[data-game="zilch"] .zilch-create-card .zilch-create-options{ grid-column:1 / -1; grid-row:auto; }
+  html[data-game="zilch"] .zilch-create-card .zilch-create-form[data-play-mode="multiplayer"] .zilch-create-options{ grid-column:1; grid-row:2; }
+  html[data-game="zilch"] .zilch-create-card .zilch-create-form[data-play-mode="multiplayer"] .zilch-create-options[open]{ grid-column:1 / -1; grid-row:3; }
+  html[data-game="zilch"] .zilch-create-card .zilch-create-form[data-play-mode="multiplayer"] .zilch-create-options[open] ~ *{ grid-row:auto; }
+  html[data-game="zilch"] .zilch-create-card .zilch-cpu-strategy{ font-size:.75rem; }
+  html[data-game="zilch"] .zilch-games-hub .zilch-game-card__actions{ display:flex; flex-wrap:wrap; gap:.35rem; }
+  html[data-game="zilch"] .zilch-games-hub .zilch-game-card__actions > *{ flex:1 1 0; }
+}
+html[data-game="zilch"]:has(.zilch-shell--game) body {
+  top: var(--game-viewport-top, 0px);
+}
+@media (min-width: 761px) {
+  html[data-game="zilch"] body .zilch-shell.zilch-shell--game {
+    width: min(1120px, calc(100vw - max(1rem, env(safe-area-inset-left, 0px)) - max(1rem, env(safe-area-inset-right, 0px))));
+  }
+}

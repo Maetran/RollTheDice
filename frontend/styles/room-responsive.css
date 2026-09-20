@@ -847,10 +847,8 @@
 /* The fluid mobile size keeps all five dice on one row on narrow phones. */
 @media (max-width:560px){
   :root{
-    /* Keep the score table comfortably readable even when mobile browser
-       chrome reduces the viewport height. The page may scroll instead of
-       squeezing all 19 rows into the remaining space. */
-    --mobile-grid-row-h:clamp(1.55rem, calc((100vh - 17.8rem) / 19), 1.84rem);
+    /* Short screens keep readable rows inside their bounded score sheet. */
+    --mobile-grid-row-h:clamp(1.55rem, calc((100dvh - 17.8rem) / 19), 1.84rem);
   }
   .room-page #diceBar{
     grid-template-columns:repeat(5, clamp(3.25rem, calc((100vw - 3rem) / 5), 3.65rem));

@@ -353,3 +353,16 @@ html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-page :is(a, button, inp
   html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-mode-option { min-height: 3.55rem; padding-inline: .25rem; }
   html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro--lobby { padding-top: .45rem; }
 }
+
+/* The lobby identity now sits on the setup card's paper surface. */
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-create-heading .zilch-lobby-identity :is(.eyebrow, strong, button, a){
+  color:var(--zilch-ink);
+}
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-create-heading .zilch-lobby-identity .eyebrow{ color:var(--zilch-muted); }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-create-heading .zilch-lobby-identity :is(button, a){ border-color:var(--zilch-paper-edge); }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell:not(.zilch-shell--game) .zilch-create-card{ padding:.7rem .8rem; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell:not(.zilch-shell--game) .zilch-games-hub .zilch-lobby-section{ padding:0; }
+@media (max-width:760px){
+  html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro--lobby h1{ font-size:clamp(1.2rem, 4.5vw, 1.65rem); }
+  html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro--lobby p{ font-size:.84rem; line-height:1.4; }
+}

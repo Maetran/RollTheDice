@@ -41,6 +41,10 @@ function renderFromSnapshot(snapshot, { animateWrites = false, resetWrites = fal
     // aktuelle Scrollposition des alten Grids sichern (wichtig fuer Mobile)
     const _oldGrid = document.querySelector("#scoreOut .players-grid");
     const _oldScrollLeft = _oldGrid ? _oldGrid.scrollLeft : 0;
+    const sheetPositions = new Map(Array.from(_oldGrid?.querySelectorAll(".player-card") || [], card => {
+      const sheet = card.querySelector(".table-wrap");
+      return [card.dataset.boardId, { top: sheet?.scrollTop || 0, left: sheet?.scrollLeft || 0 }];
+    }));
     const rollsUsed = snapshot?._rolls_used ?? 0;
     const rollsMax  = snapshot?._rolls_max ?? 3;
     const announced = snapshot?._announced_row4 || null;
@@ -150,6 +154,14 @@ function renderFromSnapshot(snapshot, { animateWrites = false, resetWrites = fal
     // fuer ~1s bestehen, bevor der Auto-Follow greift – fuer alle Nutzer.
     if (_newGrid) {
       _newGrid.scrollLeft = _oldScrollLeft;
+      _newGrid.querySelectorAll(".player-card").forEach(card => {
+        const position = sheetPositions.get(card.dataset.boardId);
+        const sheet = card.querySelector(".table-wrap");
+        if (position && sheet) {
+          sheet.scrollTop = position.top;
+          sheet.scrollLeft = position.left;
+        }
+      });
     }
 
     // --- Swipe-Override Binding (einmalig pro DOM-Aufbau) ---

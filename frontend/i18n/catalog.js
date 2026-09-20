@@ -1,4 +1,10 @@
 export const EN = {
+    "beendete Partien": "completed games",
+    "⌀ Normal": "⌀ Normal",
+    "⌀ Hardcore": "⌀ Hardcore",
+    "Keine offenen oder laufenden Spiele. Starte eine neue Partie.": "No open or running games. Start a new game.",
+    "Was zählt als Abbruch?": "What counts as an abandoned game?",
+    "Der Spieltisch bleibt im sichtbaren Bildschirm. Auf kleinen Geräten bewegst du längere Spielzettel und Dialoge innerhalb ihres Bereichs; Würfel und Aktionen bleiben erreichbar.": "The table stays within the visible screen. On small devices, scroll longer score sheets and dialogs within their own areas; dice and actions remain reachable.",
     "Zilch online spielen – Zilch die Wand an": "Play Zilch online – Zilch die Wand an",
     "Zilch online mit sechs Würfeln spielen: solo im 10’000-Punkte-Sprint, gegen den Würfelwirt oder zu zweit. Direkt im Browser, auch als Gast ohne Anmeldung.": "Play Zilch online with six dice: solo in the 10,000-point sprint, against the Dice Host, or with another player. Right in your browser, including as a guest without signing up.",
     "Such dir einen Platz am Tisch aus: solo, gegen den Würfelwirt oder zu zweit. Mit sechs Würfeln bis 10’000 Punkte – auch als Gast ohne Anmeldung.": "Take a seat at the table: solo, against the Dice Host, or with another player. Race to 10,000 points with six dice, including as a guest without signing up.",

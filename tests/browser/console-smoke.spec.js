@@ -551,6 +551,7 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
         height: Math.round(lr.height),
       },
       tableWrap: rect(".player-card .table-wrap"),
+      tableContentHeight: document.querySelector(".player-card .table-wrap").scrollHeight,
       scrollHeight: document.documentElement.scrollHeight,
       viewportHeight: window.innerHeight,
       viewportWidth: window.innerWidth,
@@ -575,23 +576,31 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   expect(layout.die.width).toBeLessThanOrEqual(75);
   expect(layout.die.height).toBe(layout.die.width);
   expect(layout.heldDieBorderWidth).toBe("2px");
-  expect(layout.tableWrap.height).toBeGreaterThanOrEqual(460);
-  expect(layout.scrollHeight).toBeGreaterThan(layout.viewportHeight);
+  expect(layout.tableContentHeight).toBeGreaterThanOrEqual(460);
+  expect(layout.tableWrap.height).toBeLessThan(layout.tableContentHeight);
+  expect(layout.scrollHeight).toBeLessThanOrEqual(layout.viewportHeight);
 
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-  await page.waitForTimeout(100);
+  await page.locator(".player-card tbody tr").last().scrollIntoViewIfNeeded();
   const bottomDock = await page.evaluate(() => {
     const topbar = document.querySelector(".topbar").getBoundingClientRect();
     const chatToggle = document.querySelector("#chatToggle").getBoundingClientRect();
     const rows = Array.from(document.querySelectorAll(".player-card tbody tr"));
     const lastRow = rows.at(-1).getBoundingClientRect();
+    const sheet = document.querySelector(".player-card .table-wrap");
+    const sheetBox = sheet.getBoundingClientRect();
     return {
       topbarBottom: Math.round(topbar.bottom),
       chatTop: Math.round(chatToggle.top),
       lastRowBottom: Math.round(lastRow.bottom),
       topbarTop: Math.round(topbar.top),
+      sheetScroll: sheet.scrollTop,
+      windowScroll: window.scrollY,
+      visibleTotalHeight: Math.min(lastRow.bottom, sheetBox.bottom) - Math.max(lastRow.top, sheetBox.top),
     };
   });
+  expect(bottomDock.sheetScroll).toBeGreaterThan(0);
+  expect(bottomDock.windowScroll).toBe(0);
+  expect(bottomDock.visibleTotalHeight).toBeGreaterThan(10);
   expect(bottomDock.topbarBottom).toBeLessThanOrEqual(bottomDock.chatTop - 5);
   expect(bottomDock.lastRowBottom).toBeLessThanOrEqual(bottomDock.topbarTop - 1);
 

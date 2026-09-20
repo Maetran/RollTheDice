@@ -28,14 +28,7 @@ function renderOnlineUsers(value) {
 
 function renderOpenGames(games) {
   if (!dom.gamesList) return;
-  if (!games.length) {
-    dom.gamesList.innerHTML = `<div class="lobby-empty-state">
-      <strong>Keine offenen Spiele</strong>
-      <p>Aktuell wartet niemand auf Mitspieler. Starte einfach selbst eines.</p>
-      <button type="button" class="small secondary focus-create-btn">Neues Spiel</button>
-    </div>`;
-    return;
-  }
+  dom.openGamesCard.hidden = games.length === 0;
 
   dom.gamesList.innerHTML = games.map((game) => {
     const joined = game.players ?? 0;
@@ -67,8 +60,7 @@ function renderOpenGames(games) {
           ${game.locked ? '<span class="locked-label">Passwortgeschützt</span>' : ""}
           ${hardcore}
         </div>
-        <div class="sub">Spieler: <b>${joined}/${expected}</b> • Modus: ${mode}</div>
-        <div class="sub">Wartende: ${badges}</div>
+        <div class="sub lobby-player-summary"><span><b>${joined}/${expected}</b> ${game.mode === "2v2" ? mode : "Spieler"}</span>${badges}</div>
       </div>
       <div class="actions">
         <button class="joinBtn" data-id="${escapeAttribute(gameId)}" data-pass="${game.locked ? "1" : "0"}" ${disabled}>Beitreten</button>
@@ -80,21 +72,18 @@ function renderOpenGames(games) {
 
 function prioritizeResumableGames() {
   const hasResumableGame = Boolean(dom.runningList?.querySelector(".resumeBtn"));
-  dom.runningGamesCard?.classList.toggle("priority-card", hasResumableGame);
+  dom.gamesHub?.classList.toggle("priority-card", hasResumableGame);
   if (dom.runningGamesTitle) {
     dom.runningGamesTitle.textContent = hasResumableGame ? "Spiel fortsetzen" : "Laufende Spiele";
   }
-  if (hasResumableGame) dom.setupGrid?.before(dom.runningGamesCard);
-  else dom.openGamesCard?.after(dom.runningGamesCard);
+  if (hasResumableGame) {
+    if (dom.gamesHub?.nextElementSibling !== dom.setupGrid) dom.setupGrid?.before(dom.gamesHub);
+  } else if (dom.setupGrid?.nextElementSibling !== dom.gamesHub) dom.setupGrid?.after(dom.gamesHub);
 }
 
 function renderRunningGames(games) {
   if (!dom.runningList) return;
-  if (!games.length) {
-    dom.runningList.innerHTML = '<div class="lobby-state">Aktuell keine laufenden Spiele.</div>';
-    prioritizeResumableGames();
-    return;
-  }
+  dom.runningGamesCard.hidden = games.length === 0;
 
   dom.runningList.innerHTML = games.map((game) => {
     const gameId = game.id || "";
@@ -126,29 +115,36 @@ function renderRunningGames(games) {
         return `<div class="sub warn-line">Pausiert: ${waitText}${timeText}</div>`;
       })()
       : "";
+    const progressPlayer = (entry) => {
+      const data = typeof entry === "string" ? { name: entry } : entry;
+      const status = players.find(player => data.id
+        ? player.id === data.id
+        : player.name === data.name) || {};
+      return `${playerNameMarkup({ ...status, ...data }, { compactRank: true, profileLink: true })}${status.connected === false ? " offline" : ""}`;
+    };
     const progressRows = (Array.isArray(game.progress) ? game.progress : []).map((progress) => {
       const translate = window.ZDWA_I18N?.t || ((text) => text);
       const player = progress.members?.length
-        ? `${escapeHtml(progress.name)} <span class="muted small">(${progress.members.map((member) => (
-          typeof member === "string" ? escapeHtml(member) : playerNameMarkup(member, { compactRank: true, profileLink: true })
-        )).join(", ")})</span>`
-        : playerNameMarkup(progress, { compactRank: true, profileLink: true });
+        ? `${escapeHtml(progress.name)} <span class="muted small">(${progress.members.map(progressPlayer).join(", ")})</span>`
+        : progressPlayer(progress);
       return `<div class="muted small progress-line">
-        <b>${player}</b> — ${escapeHtml(translate("Felder"))} <b>${progress.filled}/${progress.of || 48}</b> • ${escapeHtml(translate("Punkte"))} <b>${progress.points}</b>
+        <span class="lobby-progress-player">${player}</span><span class="lobby-progress-score">${escapeHtml(translate("Felder"))} <b>${progress.filled}/${progress.of || 48}</b> · ${escapeHtml(translate("Punkte"))} <b>${progress.points}</b></span>
       </div>`;
     }).join("");
 
+    const modeLabel = game.mode === "2v2" ? mode : `${mode} Spieler`;
+    const nameIncludesMode = String(game.name || "").startsWith(`${modeLabel} ·`);
+    const defaultName = players.some(player => game.name === defaultGameName(player.name, game.mode));
     return `<div class="game-row">
       <div class="meta">
         <div class="name">
-          ${escapeHtml(game.name || "(ohne Titel)")}
+          ${escapeHtml(defaultName ? modeLabel : game.name || modeLabel)}
           ${game.locked ? '<span class="locked-label">Passwortgeschützt</span>' : ""}
           ${hardcore}
         </div>
-        <div class="sub">Modus: ${mode} Spieler • Gestartet: ${formatDateTime(game.started_at)}</div>
-        <div class="sub">Spieler: ${playerBadges}</div>
+        <div class="sub game-time">${nameIncludesMode ? "" : `${escapeHtml(modeLabel)} · `}<span>Gestartet:</span> ${formatDateTime(game.started_at)}</div>
+        ${progressRows ? `<div class="sub progress-stack">${progressRows}</div>` : `<div class="sub">${playerBadges}</div>`}
         ${pauseLine}
-        ${progressRows ? `<div class="sub progress-stack">${progressRows}</div>` : ""}
       </div>
       <div class="actions">
         ${canResume ? `<button class="resumeBtn" data-id="${escapeAttribute(gameId)}" data-player-id="${escapeAttribute(game.my_player_id || "")}" data-pass="${game.locked ? "1" : "0"}">Wieder aufnehmen</button>` : ""}
@@ -172,19 +168,24 @@ export async function fetchGames({ showLoading = false } = {}) {
     const payload = await response.json();
     const games = Array.isArray(payload.games) ? payload.games : [];
     renderOnlineUsers(payload.online_users);
-    renderOpenGames(games.filter((game) => !game.started && !game.finished));
+    const availableGames = games.filter((game) => !game.finished && !game.aborted);
+    if (dom.gamesEmpty) dom.gamesEmpty.hidden = availableGames.length > 0;
+    renderOpenGames(availableGames.filter((game) => !game.started)
+      .sort((left, right) => Number(Boolean(right.my_player_id)) - Number(Boolean(left.my_player_id))));
     renderRunningGames(
       games
         .filter((game) => game.started && !game.finished && !game.aborted)
-        .sort((left, right) => Date.parse(right.updated_at || right.started_at || 0)
+        .sort((left, right) => Number(Boolean(localPlayerIdFor(right.id) || right.my_player_id))
+          - Number(Boolean(localPlayerIdFor(left.id) || left.my_player_id))
+          || Date.parse(right.updated_at || right.started_at || 0)
           - Date.parse(left.updated_at || left.started_at || 0)),
     );
   } catch {
     renderOnlineUsers(null);
+    dom.openGamesCard.hidden = false;
+    dom.runningGamesCard.hidden = true;
+    if (dom.gamesEmpty) dom.gamesEmpty.hidden = true;
     dom.gamesList.innerHTML = '<div class="connection-error">Spielserver nicht erreichbar. Bitte Server starten und die Seite neu laden.</div>';
-    if (dom.runningList) {
-      dom.runningList.innerHTML = '<div class="connection-error">Keine Verbindung zum Spielserver.</div>';
-    }
   } finally {
     dom.openGamesCard?.removeAttribute("aria-busy");
     dom.runningGamesCard?.removeAttribute("aria-busy");

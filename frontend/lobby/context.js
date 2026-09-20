@@ -10,6 +10,8 @@ export const dom = {
   refreshButton: document.getElementById("refreshBtn"),
   runningList: document.getElementById("runningList"),
   setupGrid: document.getElementById("setupGrid"),
+  gamesHub: document.getElementById("gamesHub"),
+  gamesEmpty: document.getElementById("gamesEmpty"),
   openGamesCard: document.getElementById("openGamesCard"),
   runningGamesCard: document.getElementById("runningGamesCard"),
   runningGamesTitle: document.getElementById("runningGamesTitle"),

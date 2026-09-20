@@ -829,3 +829,98 @@
     white-space:nowrap;
   }
 }
+
+/* Keep the lobby's decisions together; statistics and repeated labels do not
+   need separate full-width cards on a phone. Touch targets remain 44px. */
+.lobby-page .lobby-header.app-nav{
+  grid-template-columns:auto minmax(0, 1fr) auto;
+  gap:.4rem .8rem;
+}
+.lobby-page .lobby-header .app-nav-brand{ grid-column:1; grid-row:1; }
+.lobby-page .lobby-header .app-nav-tools{ grid-column:3; grid-row:1; }
+.lobby-page .lobby-header .app-nav-links{ grid-column:1 / -1; grid-row:2; justify-content:flex-start; }
+.lobby-header-stats{
+  grid-column:2;
+  grid-row:1;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:flex-end;
+  gap:.2rem .8rem;
+  min-width:0;
+  color:var(--muted);
+  font-size:.72rem;
+  line-height:1.4;
+}
+.lobby-header-stats > span{ white-space:nowrap; }
+.lobby-header-stats b{ color:var(--text); }
+.lobby-header-stats .online-user-count{ font-size:inherit; }
+.lobby-page .lobby-intro{ padding:0; }
+.lobby-page .lobby-intro .eyebrow{ margin-bottom:.2rem; }
+.lobby-page .lobby-intro h1{ font-size:clamp(1.16rem, 3.8vw, 1.7rem); }
+.lobby-page .lobby-intro p:last-child{ font-size:.88rem; line-height:1.4; }
+.lobby-page .setup-grid{ align-items:start; gap:.6rem; }
+.lobby-page .create-game-card{ padding:.7rem .8rem; }
+.lobby-page .create-game-card h2{ font-size:1.1rem; margin-bottom:.45rem; }
+.lobby-page .create-game-card .create-row{ gap:.5rem .65rem; }
+.lobby-page .create-fieldset legend{ margin-bottom:.24rem; font-size:.78rem; }
+.lobby-page .choice-button{ padding:.35rem .4rem; }
+.lobby-page .passphrase-field{ grid-column:1; font-size:.78rem; gap:.24rem; }
+.lobby-page .create-game-card #createBtn{ grid-column:2; align-self:end; min-height:44px; }
+.lobby-page #createErr:empty{ display:none; }
+.lobby-page .player-setup-card.authenticated .auth-actions{ display:flex; flex-wrap:wrap; gap:.35rem; align-items:center; }
+.lobby-page .player-setup-card.authenticated .account-identity{ flex:1 1 100%; gap:.4rem; }
+.lobby-page .games-hub{ padding:.65rem .8rem; }
+.lobby-page .games-hub > .section-title-row{ margin-bottom:.3rem; }
+.lobby-page .games-hub > .section-title-row h2{ font-size:1.15rem; }
+.lobby-page .games-hub > .section-title-row button{ min-height:44px; }
+.games-group > h3{ margin:.5rem 0 .35rem; color:var(--muted); font-size:.8rem; font-weight:750; }
+.lobby-page .games{ gap:.4rem; }
+.lobby-page .game-row{ padding:.5rem .6rem; gap:.5rem; box-shadow:none; border-radius:var(--radius-sm); }
+.lobby-page .game-row .meta{ flex:1 1 auto; }
+.lobby-page .game-row .name{ font-size:.9rem; }
+.lobby-page .game-row .sub{ margin-top:.2rem; font-size:.8rem; }
+.lobby-page .game-row .game-time{ font-size:.7rem; }
+.lobby-page .game-row .actions{ flex-wrap:wrap; gap:.35rem; }
+.lobby-page .game-row .actions button{ min-height:44px; padding:.35rem .6rem; font-size:.8rem; }
+.lobby-player-summary{ display:flex; flex-wrap:wrap; gap:.25rem .5rem; align-items:center; }
+.lobby-page .progress-line{ display:flex; align-items:center; flex-wrap:wrap; gap:.16rem .7rem; margin:0; }
+.lobby-progress-player{ display:flex; flex-wrap:wrap; align-items:center; gap:.3rem; min-width:0; }
+.lobby-progress-score{ white-space:nowrap; }
+.lobby-page .game-row .player-name-with-rank{ max-width:100%; }
+.lobby-page .game-row .player-name-label{ overflow-wrap:anywhere; }
+.lobby-page .game-row .badge{ padding:.1rem .25rem; }
+.lobby-page .abandonment-leaderboard{ padding:.65rem .8rem; }
+.lobby-page .abandonment-heading > div{ display:flex; align-items:baseline; flex-wrap:wrap; gap:.2rem .65rem; }
+.lobby-page .abandonment-heading h2{ font-size:1.05rem; }
+.lobby-page .abandonment-heading p{ margin:0; font-size:.75rem; }
+.lobby-page .abandonment-buckets{ grid-template-columns:repeat(2, minmax(0, 1fr)); gap:.7rem; margin-top:.55rem; }
+.lobby-page .abandonment-bucket h3{ gap:.3rem; font-size:.78rem; margin-bottom:.15rem; }
+.lobby-page .abandonment-limit{ font-size:.7rem; }
+.lobby-page .abandonment-list li{ align-items:center; gap:.3rem; padding:.1rem 0; font-size:.8rem; }
+.lobby-page .abandonment-list a{ display:flex; align-items:center; min-height:44px; line-height:1.2; }
+.abandonment-explanation{ margin-top:.35rem; color:var(--muted); font-size:.75rem; }
+.abandonment-explanation summary{ display:flex; align-items:center; min-height:44px; cursor:pointer; }
+.abandonment-explanation summary::before{ content:'▸'; margin-right:.35rem; }
+.abandonment-explanation[open] summary::before{ content:'▾'; }
+.lobby-page .abandonment-scope{ margin:.15rem 0; }
+@media (max-width:760px){
+  .lobby-page .lobby-header.app-nav{ grid-template-columns:minmax(0, 1fr) auto; gap:.35rem .5rem; }
+  .lobby-page .lobby-header .app-nav-tools{ grid-column:2; }
+  .lobby-header-stats{ grid-column:1 / -1; grid-row:2; justify-content:flex-start; gap:.15rem .65rem; font-size:.7rem; }
+  .lobby-page .lobby-header .app-nav-links{ grid-row:3; }
+  .lobby-page .setup-grid{ grid-template-columns:minmax(0, 1fr); }
+}
+@media (max-width:560px){
+  .lobby-page .lobby-header .app-nav-links{ grid-auto-rows:44px; }
+  .lobby-page .lobby-header .app-nav-link{ height:44px; min-height:44px; font-size:.8rem; }
+  .lobby-page .create-game-card .create-row{ grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); }
+  .lobby-page .create-row .player-count-fieldset{ grid-column:1 / -1; }
+  .lobby-page .create-row .game-type-fieldset{ grid-column:1 / -1; }
+  .lobby-page .create-row .passphrase-field{ grid-column:1; }
+  .lobby-page .create-row input[type="text"]{ min-width:0; }
+  .lobby-page .game-row{ flex-direction:column; align-items:stretch; }
+  .lobby-page .game-row .actions{ display:flex; }
+  .lobby-page .game-row .actions button{ flex:1 1 0; width:auto; }
+  .lobby-page .abandonment-bucket h3{ flex-wrap:wrap; }
+}

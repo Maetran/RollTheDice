@@ -93,8 +93,17 @@ class ZilchSeoTestCase(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(document.canonical, f"{ZILCH_ORIGIN}{path}")
                     self.assertEqual(document.meta["og:url"], document.canonical)
                     self.assertEqual(response.headers["link"], f'<{document.canonical}>; rel="canonical"')
-                    self.assertNotIn("noindex", response.headers.get("x-robots-tag", ""))
-                    self.assertNotIn("noindex", document.meta.get("robots", ""))
+                    for directives in (
+                        response.headers.get("x-robots-tag", ""),
+                        document.meta.get("robots", ""),
+                        document.meta.get("googlebot", ""),
+                    ):
+                        self.assertTrue(
+                            {"noindex", "nofollow", "none"}.isdisjoint(re.split(r"\W+", directives.lower())),
+                            directives,
+                        )
+                    for link in document.links:
+                        self.assertNotIn("nofollow", link.get("rel", "").lower().split())
                     self.assertIn("Zilch", document.meta["description"])
                     self.assertNotIn("werden geladen", response.text)
                     if path == "/":
@@ -107,6 +116,19 @@ class ZilchSeoTestCase(unittest.IsolatedAsyncioTestCase):
                         self.assertIn("data-zilch-rules-summary", response.text)
                         self.assertIn("Zilch-Serie", response.text)
                         self.assertIn("Freier Wurf und Bestätigungswurf", response.text)
+
+    async def test_public_query_variants_keep_the_clean_canonical_and_discovery_policy(self):
+        async with self.client() as client:
+            for path in ("/", "/regeln"):
+                with self.subTest(path=path):
+                    response = await client.get(f"{path}?lang=en&utm_source=discovery-test")
+                    document = _PublicDocument(response.text)
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(document.canonical, f"{ZILCH_ORIGIN}{path}")
+                    self.assertEqual(document.meta["og:url"], document.canonical)
+                    self.assertEqual(response.headers["link"], f'<{document.canonical}>; rel="canonical"')
+                    self.assertNotIn("x-robots-tag", response.headers)
+                    self.assertNotIn("robots", document.meta)
 
     async def test_initial_scoring_table_and_thresholds_match_the_authoritative_rules(self):
         async with self.client() as client:

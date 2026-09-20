@@ -1,5 +1,6 @@
 import { apiFetch, authError, escapeHtml, loadAuth, logout, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings } from "../shared/auth.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
+import { initializeGameViewport } from "../shared/game-viewport.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
 import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
 import { mountAllowlistSettings, mountProfileAllowlist } from "../shared/player-allowlist.js";
@@ -25,6 +26,7 @@ import {
 } from "../multigame/routes.js";
 
 const root = document.querySelector("[data-zilch-root]");
+initializeGameViewport();
 const content = document.getElementById("zilchContent");
 const liveAnnouncements = document.getElementById("zilchLiveAnnouncements");
 applyZilchRouteLinks();
@@ -1128,13 +1130,12 @@ async function renderLobby({ authReady = null } = {}) {
       <p>${escapeHtml(t("Such dir einen Platz am Tisch aus: Solo, gegen den Würfelwirt oder zu zweit. Mit sechs Würfeln sammelst du Punkte, sicherst sie rechtzeitig und jagst die 10’000."))}</p>
       <p class="zilch-intro-help"><span>${escapeHtml(t("Direkt im Browser, auch als Gast ohne Anmeldung."))}</span> <a href="${zilchPath("/regeln")}" data-zilch-path="/regeln">${escapeHtml(t("Zilch-Regeln und Punktetabelle"))}</a></p>
     </section>
-    <section class="zilch-lobby-identity" aria-label="${escapeHtml(`${t("Du spielst als")} ${username}`)}">
+    <section class="zilch-card zilch-create-card">
+      <div class="zilch-create-heading"><h2>${escapeHtml(t("Neue Zilch-Partie"))}</h2><section class="zilch-lobby-identity" aria-label="${escapeHtml(`${t("Du spielst als")} ${username}`)}">
       <span class="eyebrow">${escapeHtml(t("Du spielst als"))}</span>
       <strong>${escapeHtml(username)}</strong>
       ${zilchNavigationButton(accountEntry.href, hasAccount ? t("Mein Konto") : accountEntry.label, "small ghost zilch-inline-navigation")}
-    </section>
-    <section class="zilch-card zilch-create-card">
-      <h2>${escapeHtml(t("Neue Zilch-Partie"))}</h2>
+    </section></div>
       <form id="zilchCreateForm" class="zilch-create-form">
         <input id="zilchGameName" type="hidden" value="${escapeHtml(`Zilch · ${username}`)}">
         <fieldset class="zilch-mode-choice"><legend>${escapeHtml(t("Spielart"))}</legend><div class="zilch-mode-grid" role="radiogroup" aria-label="${escapeHtml(t("Spielart"))}"><button class="zilch-mode-option zilch-mode-option--solo is-selected" type="button" role="radio" aria-checked="true" data-zilch-play-mode="solo"><strong>${escapeHtml(t("Solo"))}</strong></button><button class="zilch-mode-option" type="button" role="radio" aria-checked="false" data-zilch-play-mode="multiplayer"><strong>${escapeHtml(t("Zu zweit"))}</strong></button><button class="zilch-mode-option" type="button" role="radio" aria-checked="false" data-zilch-play-mode="cpu"><strong>${escapeHtml(t("Gegen den Würfelwirt"))}</strong></button></div></fieldset>
@@ -1151,15 +1152,19 @@ async function renderLobby({ authReady = null } = {}) {
       </form>
       <p id="zilchCreateError" class="zilch-error" role="status"></p>
     </section>
-    <section class="zilch-lobby-grid" aria-label="${escapeHtml(t("Zilch-Lobby"))}">
-      <section class="zilch-card zilch-lobby-section zilch-lobby-section--running">
-        <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Am Tisch"))}</p><h2>${escapeHtml(t("Laufende Spiele"))}</h2></div><button id="zilchRefresh" class="small ghost" type="button">${escapeHtml(t("Aktualisieren"))}</button></div>
-        <div id="zilchRunningGames" class="zilch-game-list" aria-live="polite">${escapeHtml(t("Zilch-Partien werden geladen …"))}</div>
-      </section>
-      <section class="zilch-card zilch-lobby-section zilch-lobby-section--waiting">
-        <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Offene Plätze"))}</p><h2>${escapeHtml(t("Wartende Spiele"))}</h2></div></div>
-        <div id="zilchWaitingGames" class="zilch-game-list" aria-live="polite">${escapeHtml(t("Zilch-Partien werden geladen …"))}</div>
-      </section>
+    <section id="zilchGamesHub" class="zilch-card zilch-games-hub" aria-labelledby="zilchGamesHubTitle">
+      <div class="zilch-section-heading"><h2 id="zilchGamesHubTitle">${escapeHtml(t("Spiele"))}</h2><button id="zilchRefresh" class="small ghost" type="button">${escapeHtml(t("Aktualisieren"))}</button></div>
+      <div class="zilch-lobby-grid" aria-label="${escapeHtml(t("Zilch-Lobby"))}">
+        <section class="zilch-lobby-section zilch-lobby-section--running" aria-labelledby="zilchRunningTitle">
+          <h3 id="zilchRunningTitle">${escapeHtml(t("Laufende Spiele"))}</h3>
+          <div id="zilchRunningGames" class="zilch-game-list" aria-live="polite">${escapeHtml(t("Zilch-Partien werden geladen …"))}</div>
+        </section>
+        <section class="zilch-lobby-section zilch-lobby-section--waiting" aria-labelledby="zilchWaitingTitle">
+          <h3 id="zilchWaitingTitle">${escapeHtml(t("Wartende Spiele"))}</h3>
+          <div id="zilchWaitingGames" class="zilch-game-list" aria-live="polite"></div>
+        </section>
+      </div>
+      <p id="zilchGamesEmpty" class="zilch-muted" hidden>${escapeHtml(t("Keine offenen oder laufenden Spiele. Starte eine neue Partie."))}</p>
     </section>
     <div id="zilchLobbyChatMount"></div>
     <section class="zilch-lobby-ranking" aria-labelledby="zilchLobbyRankingTitle">
@@ -1212,28 +1217,41 @@ async function renderLobby({ authReady = null } = {}) {
       const runningGames = zilchGames.filter(game => (
         (belongsToMe(game) && (game.started || isSoloGame(game)))
         || (!belongsToMe(game) && canSpectateZilchGame(game))
-      ));
+      )).sort((left, right) => Number(belongsToMe(right)) - Number(belongsToMe(left)));
       // A CPU game has exactly one human seat, so it must never be presented
       // to another signed-in user as a joinable waiting room. The same applies
       // to solo runs: their only seat belongs to their human owner.
       const waitingGames = zilchGames.filter(game => !game.started && (
         zilchPlayMode(game) === "multiplayer"
         || (zilchPlayMode(game) === "cpu" && belongsToMe(game))
-      ));
+      )).sort((left, right) => Number(belongsToMe(right)) - Number(belongsToMe(left)));
       const active = ownRunningGames[0] || waitingGames.find(belongsToMe);
       if (active?.id) rememberActiveGame(active.id);
       else if (routeKind() === "lobby") clearRememberedActiveGame();
-      if (runningSlot) runningSlot.innerHTML = runningGames.length
-        ? runningGames.map(game => gameCard(game, { running: true })).join("")
-        : `<p class="zilch-muted">${escapeHtml(t("Keine laufende Zilch-Partie"))}</p>`;
-      if (waitingSlot) waitingSlot.innerHTML = waitingGames.length
-        ? waitingGames.map(game => gameCard(game)).join("")
-        : `<p class="zilch-muted">${escapeHtml(t("Keine wartende Zilch-Partie"))}</p>`;
+      if (runningSlot) {
+        runningSlot.closest(".zilch-lobby-section").hidden = runningGames.length === 0;
+        runningSlot.innerHTML = runningGames.map(game => gameCard(game, { running: true })).join("");
+      }
+      if (waitingSlot) {
+        waitingSlot.closest(".zilch-lobby-section").hidden = waitingGames.length === 0;
+        waitingSlot.innerHTML = waitingGames.map(game => gameCard(game)).join("");
+      }
+      const empty = document.getElementById("zilchGamesEmpty");
+      if (empty) empty.hidden = runningGames.length + waitingGames.length > 0;
+      const gamesHub = document.getElementById("zilchGamesHub");
+      const createCard = createForm?.closest(".zilch-create-card");
+      if (active) createCard?.before(gamesHub);
+      else createCard?.after(gamesHub);
       if (waitingSlot) bindZilchGameInviteButtons(waitingSlot);
     } catch (_) {
       const failure = `<p class="zilch-error">${escapeHtml(t("Zilch-Lobby konnte nicht geladen werden."))}</p>`;
-      if (runningSlot) runningSlot.innerHTML = failure;
-      if (waitingSlot) waitingSlot.innerHTML = failure;
+      if (runningSlot) {
+        runningSlot.closest(".zilch-lobby-section").hidden = false;
+        runningSlot.innerHTML = failure;
+      }
+      if (waitingSlot) waitingSlot.closest(".zilch-lobby-section").hidden = true;
+      const empty = document.getElementById("zilchGamesEmpty");
+      if (empty) empty.hidden = true;
     }
   };
   document.getElementById("zilchRefresh")?.addEventListener("click", () => {
@@ -1302,10 +1320,21 @@ async function renderLobby({ authReady = null } = {}) {
       if (submit) submit.disabled = false;
     }
   });
+  // Paint the public, disabled chat shell alongside the compact lobby.
+  // Its shared auth request and auth-state listener keep account history and
+  // the socket gated until identity is confirmed, without inserting a whole
+  // new panel above the rankings when a slow /me finally responds.
+  const chatMount = document.getElementById("zilchLobbyChatMount");
+  if (!identityReady) chatMount?.setAttribute("aria-busy", "true");
+  state.lobbyChat = mountLobbyChat(chatMount, {
+    context: "zilch",
+    initialAuth: identityReady ? state.auth : null,
+  });
   if (authReady) {
     const authorized = await authReady;
     if (!content.isConnected || !content.contains(createForm)) return;
     if (!authorized) {
+      chatMount?.removeAttribute("aria-busy");
       createForm?.removeAttribute("aria-busy");
       const errorSlot = document.getElementById("zilchCreateError");
       if (errorSlot) errorSlot.textContent = t("Zilch-Lobby konnte nicht geladen werden.");
@@ -1333,10 +1362,7 @@ async function renderLobby({ authReady = null } = {}) {
     if (submitButton) submitButton.disabled = false;
     createForm?.removeAttribute("aria-busy");
   }
-  state.lobbyChat = mountLobbyChat(document.getElementById("zilchLobbyChatMount"), {
-    context: "zilch",
-    initialAuth: state.auth,
-  });
+  document.getElementById("zilchLobbyChatMount")?.removeAttribute("aria-busy");
   await refreshGames();
   await refreshLobbyLeaderboards();
 }

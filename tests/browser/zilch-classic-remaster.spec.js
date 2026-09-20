@@ -62,7 +62,7 @@ for (const language of ['de', 'en']) {
       await page.goto('/zilch');
       await expect(page.locator('#zilchCreateForm')).toBeVisible();
       await expectReadable(page.locator('.zilch-intro-help a'));
-      for (const selector of ['.zilch-lobby-section .eyebrow', '.zilch-create-card h2', '.zilch-mode-choice legend']) {
+      for (const selector of ['#zilchGamesHubTitle', '.zilch-create-card h2', '.zilch-mode-choice legend']) {
         await expectReadable(page.locator(selector).first());
       }
       const options = page.locator('[data-zilch-play-mode]');

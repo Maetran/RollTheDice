@@ -144,6 +144,18 @@ Der Schreibblock folgt bei jedem Wurf und jedem neuen Punkteeintrag wieder
 dem unteren Ende. Zwischen Würfen kann man ältere Einträge lesen; Änderungen
 an der Würfelauswahl oder neue Chatnachrichten verändern diese Leseposition
 nicht.
+
+Der Spieltisch bleibt auf die sichtbare Bildschirmhöhe begrenzt, auch in der
+installierten PWA und nach einem Wechsel ins Querformat. Würfel, Aktionen und
+Chat bleiben erreichbar; längere Punkteverläufe, Wertungsauswahlen und Dialoge
+lassen sich innerhalb ihres Bereichs bewegen, ohne den ganzen Tisch zu
+verschieben. Browser-Zoom bleibt möglich.
+
+**English:** The table stays within the visible screen, including the installed
+PWA and after rotating to landscape. Dice, actions and chat remain reachable;
+long score histories, scoring choices and dialogs scroll within their own
+areas without moving the entire table. Browser zoom remains available.
+
 Im LCARS-Design liegt das Punkteblatt des aktiven Spielers groß oben und
 nutzt den verfügbaren Platz für seinen scrollbar bleibenden Verlauf. Der
 andere Spieler bleibt darunter als kompakte Leiste mit Name und Gesamtstand

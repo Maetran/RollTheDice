@@ -3309,3 +3309,43 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
     await context.close();
   }
 });
+
+for (const theme of ["light", "lcars"]) {
+  test(`Zilch ${theme} keeps the table fixed across phone, landscape and keyboard viewports`, async ({ browser, baseURL }, testInfo) => {
+    const { expectFixedTable, expectReachable } = require("./table-viewport");
+    const context = await browser.newContext({ baseURL, serviceWorkers: "block", hasTouch: true, isMobile: true, viewport: { width: 440, height: 956 } });
+    await context.addInitScript(value => localStorage.setItem("zilch_theme", value), theme);
+    const page = await context.newPage();
+    try {
+      await signInAsPreviewMani(page);
+      const lobby = await page.goto("/zilch");
+      const shellHtml = await lobby.text();
+      const gameId = `fixed-table-${theme}`;
+      await installGameScreenFixture(page, gameId, fixtureSnapshots());
+      await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: shellHtml }));
+      await page.goto(`/zilch/spiel/${gameId}`);
+      await expect(page.locator(".zilch-die")).toHaveCount(6);
+      for (const viewport of [{ width: 440, height: 956 }, { width: 390, height: 844 }, { width: 320, height: 480 }, { width: 844, height: 390 }, { width: 1024, height: 1366 }]) {
+        await page.setViewportSize(viewport);
+        await expectFixedTable(page, [".zilch-header", ".zilch-play-layout", ".zilch-dice-dock"]);
+        await expectReachable(page, "[data-zilch-roll]");
+        await expectReachable(page, "[data-zilch-bank]");
+        await expectReachable(page, "#zilchLeaveGameBtn");
+        const notebook = await page.locator(".zilch-play-layout__notebook").boundingBox();
+        const dock = await page.locator(".zilch-dice-dock").boundingBox();
+        expect(notebook.height).toBeGreaterThan(70);
+        expect(notebook.y + notebook.height).toBeLessThan(dock.y);
+        await page.screenshot({ path: testInfo.outputPath(`table-${viewport.width}x${viewport.height}.png`) });
+      }
+      await page.setViewportSize({ width: 320, height: 480 });
+      await page.locator("[data-zilch-chat-toggle]").click();
+      await page.locator("#zilchChatInput").fill("Mein Entwurf bleibt sichtbar");
+      await page.locator("#zilchChatInput").focus();
+      await page.setViewportSize({ width: 320, height: 340 });
+      await expectReachable(page, "#zilchChatInput");
+      await expectReachable(page, "#zilchChatForm button[type='submit']");
+      await expect(page.locator("#zilchChatInput")).toHaveValue("Mein Entwurf bleibt sichtbar");
+      expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    } finally { await context.close(); }
+  });
+}

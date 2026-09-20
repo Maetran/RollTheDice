@@ -1,25 +1,28 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa"
+    "zdwa",
+    "zilch"
   ],
-  "summary_de": "Styler Full und Styler-Show starten neu: Nur frisch verdiente Fulls zählen, Punkte und Rang bleiben konsistent.",
-  "summary_en": "Styler Full and Styler Show start afresh: only newly earned Fulls count, with consistent points and ranks.",
+  "summary_de": "Mehr App-Gefühl: feste Spieltische, kompaktere Lobbys und alle laufenden oder wartenden Partien an einem Ort.",
+  "summary_en": "A more app-like feel: fixed game tables, compact lobbies and all running or waiting games in one place.",
   "player_notes": {
     "de": {
-      "title": "Styler neu verdienen",
+      "title": "Mehr Spiel, weniger Scrollen",
       "changes": [
-        "Styler Full und Styler-Show sowie ihr Fortschritt wurden für alle Konten zurückgesetzt.",
-        "Neue Fulls aus fünf gleichen Würfeln zählen nach Spielabschluss: 4 Marken beim ersten, weitere 8 bei zehn Fulls.",
-        "Spielpunkte und andere Erfolge bleiben erhalten."
+        "Der Spieltisch bleibt im Bildschirm. Würfel, Aktionen und Chat bleiben auch auf kleinen Geräten erreichbar.",
+        "Längere Spielzettel und Verläufe bewegst du direkt in ihrem Bereich, ohne den ganzen Tisch zu verschieben.",
+        "Die Lobbys bündeln laufende und wartende Partien, zeigen Spielerangaben nur einmal und brauchen weniger Platz zum Loslegen.",
+        "Community-Zahlen stehen oben im Header. Die Wall of Shame in ZDWA zeigt beide Zeiträume kompakter."
       ]
     },
     "en": {
-      "title": "Earn Styler afresh",
+      "title": "More play, less scrolling",
       "changes": [
-        "Styler Full and Styler Show and their progress have been reset for every account.",
-        "New Fulls with five matching dice count after game completion: 4 points for the first and another 8 at ten.",
-        "Game scores and other achievements are preserved."
+        "The table stays on screen. Dice, actions and chat remain reachable on smaller devices too.",
+        "Scroll longer score sheets and histories within their own areas without moving the whole table.",
+        "The lobbies group running and waiting games, show player details once and use less space to get started.",
+        "Community figures sit in the header. ZDWA's Wall of Shame shows both periods in a more compact view."
       ]
     }
   }

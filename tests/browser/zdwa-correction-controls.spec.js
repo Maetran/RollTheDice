@@ -184,3 +184,36 @@ test("mandatory announcement remains reachable and spectators never get correcti
   await expect(watcher.locator("#rollBtnInline")).toBeDisabled();
   await watcher.close();
 });
+
+test("short landscape follows the active multiplayer/team sheet for players and spectators", async ({ page }) => {
+  const { expectFixedTable, expectReachable } = require("./table-viewport");
+  await page.setViewportSize({ width: 844, height: 390 });
+  for (const team of [false, true]) {
+    for (const spectator of [false, true]) {
+      const state = correctionSnapshot();
+      if (team) Object.assign(state, {
+        _mode: "2v2", _expected: 4, _players_joined: 4,
+        _players: [...state._players, { id: "p3", name: "Cora" }, { id: "p4", name: "Dan" }],
+        _teams: [{ id: "A", name: "Team A", members: ["p1", "p3"] }, { id: "B", name: "Team B", members: ["p2", "p4"] }],
+        _scoreboards_by_team: { A: { "0,free": 3 }, B: {} },
+      });
+      const room = await fixture(page, { initial: state, spectator });
+      const active = page.locator(".player-card.turn");
+      await expect(active).toBeInViewport({ ratio: .95 });
+      await expectFixedTable(page, [".room-header", ".players-grid", ".topbar"]);
+      await expectReachable(page, "#rollBtnInline");
+      if (spectator) await expect(page.locator("#rollBtnInline")).toBeDisabled();
+      const sheet = active.locator(".table-wrap");
+      expect(await sheet.evaluate(element => element.clientHeight)).toBeGreaterThan(70);
+      await sheet.evaluate(element => { element.scrollTop = element.scrollHeight; });
+      const position = await sheet.evaluate(element => element.scrollTop);
+      room.push({ ...state, _dice: [1, 2, 3, 4, 5], _rolls_used: 1 });
+      await expect.poll(() => active.locator(".table-wrap").evaluate(element => element.scrollTop)).toBe(position);
+      state._turn.player_id = "p1";
+      if (team) state._scoreboards_by_team.B["0,free"] = 4;
+      else state._scoreboards.p2["0,free"] = 4;
+      room.push(state);
+      await expect(page.locator(team ? '.player-card[data-board-id="A"]' : '.player-card[data-board-id="p1"]')).toBeInViewport({ ratio: .95 });
+    }
+  }
+});

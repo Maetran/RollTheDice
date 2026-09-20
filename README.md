@@ -94,6 +94,28 @@ protection.
 Waiting, running and paused rooms expire after one hour without a
 server-accepted room action. They are then aborted without a completed result.
 
+Both lobbies group resumable, running and waiting tables in one compact games
+section. Player names, ranks and progress appear together without repeating
+the same identity. Community figures sit in the header, new-game forms take
+less space, and ZDWA's Wall of Shame keeps both periods in a compact view.
+
+**Deutsch:** Beide Lobbys bündeln fortsetzbare, laufende und wartende Partien
+in einem kompakten Spielbereich. Name, Rang und Fortschritt stehen zusammen,
+ohne dieselbe Person mehrfach aufzuführen. Die Community-Zahlen stehen im
+Header, neue Spiele brauchen weniger Platz und ZDWAs Wall of Shame zeigt
+beide Zeiträume kompakter.
+
+The game table stays within the visible screen in both apps, including the
+installed PWA. Dice, actions and chat remain reachable. On smaller screens,
+long score sheets, histories and dialogs scroll within their own areas without
+moving the whole table. Browser zoom remains available.
+
+**Deutsch:** Der Spieltisch bleibt in beiden Apps innerhalb des sichtbaren
+Bildschirms, auch in der installierten PWA. Würfel, Aktionen und Chat bleiben
+erreichbar. Auf kleineren Geräten lassen sich lange Spielzettel, Verläufe und
+Dialoge in ihrem eigenen Bereich bewegen, ohne den ganzen Tisch zu
+verschieben. Der Browser-Zoom bleibt verfügbar.
+
 ### Zilch at the table
 
 Select scoring dice directly or use compact suggestions. Selections remain
@@ -160,7 +182,7 @@ sheet: softer, warm paper rests on irregular green felt, with blue ballpoint
 lettering and loosely drawn lines. Bundled handwriting keeps the style
 consistent across devices; smooth sepia dice have subtle, individual patina.
 The felt also fills mobile landscape backgrounds. Short screens retain
-scrollable access to the sheet and its actions. Newly recorded Classic scores
+scrollable access within the sheet while the actions stay in view. Newly recorded Classic scores
 are drawn as blue ballpoint centre-line strokes, digit by digit, in about half
 a second. Opponents see the same writing; existing scores, reloads and reconnects
 do not replay it. Reduced-motion preferences show the final ink immediately.

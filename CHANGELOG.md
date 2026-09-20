@@ -11,6 +11,25 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Feste Spieltische und kompakte Lobbys / Fixed tables and compact lobbies — 2026-09-20
+
+- **Deutsch:** ZDWA und Zilch halten den Spieltisch innerhalb des sichtbaren
+  Bildschirms. Lange Zettel, Punkteverläufe und Dialoge bleiben in ihrem eigenen
+  Bereich erreichbar; Würfel, Aktionen und Chat rutschen nicht mit der Seite weg.
+  Beide Lobbys bündeln fortsetzbare, laufende und wartende Partien, reduzieren
+  wiederholte Spielerangaben und verkleinern den Spielstart. Community-Zahlen
+  stehen im Header; ZDWAs Wall of Shame bleibt mit beiden Zeiträumen kompakter.
+  Zilchs öffentliche Start- und Regelseite wurden live auf Indexierbarkeit,
+  Canonicals, robots.txt und Sitemap geprüft.
+- **English:** ZDWA and Zilch keep the table within the visible screen. Long
+  score sheets, histories and dialogs remain accessible within their own areas;
+  dice, actions and chat no longer move away with the page. Both lobbies group
+  resumable, running and waiting games, remove repeated player information and
+  reduce the space needed to start a game. Community figures sit in the header;
+  ZDWA's Wall of Shame retains both periods in a compact view. Zilch's public
+  landing and rules pages were checked live for indexing directives, canonicals,
+  robots.txt and sitemap coverage.
+
 ## Styler-Neustart / Styler fresh start — 2026-09-13
 
 - **Deutsch:** Styler Full und Styler-Show werden bei allen Konten samt
