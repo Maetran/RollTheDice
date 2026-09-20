@@ -1,4 +1,4 @@
-"""Optional passkey login and password-confirmed credential management."""
+"""Passkey login and account-bound passkey/password credential management."""
 
 from __future__ import annotations
 
@@ -14,12 +14,15 @@ from sqlalchemy.exc import IntegrityError
 from .auth import (
     auth_identity_payload,
     issue_session_for_user,
+    lock_current_account_session,
     lock_verified_password,
+    require_account_reauthentication,
     require_csrf,
     require_user,
     set_session_cookie,
     validate_request_origin,
 )
+from .auth_proofs import CONFIRMATION_FAILURES, AccountAction, AccountConfirmation
 from .auth_protection import clear_login_failures, enforce_login_rate_limit, record_login_failure
 from .database import session_scope
 from .models import AuthRateEvent, User
@@ -28,6 +31,7 @@ from .passkeys import (
     CEREMONY_COOKIE_PATH,
     PasskeyError,
     begin_authentication_ceremony,
+    begin_reauthentication_ceremony,
     begin_registration_ceremony,
     ceremony_cookie_settings,
     complete_authentication_ceremony,
@@ -36,7 +40,7 @@ from .passkeys import (
     passkey_config,
     remove_passkey_credential,
 )
-from .security import utcnow, verify_password
+from .security import utcnow
 
 router = APIRouter(prefix="/api/auth/passkeys", tags=["authentication"])
 PASSKEY_RATE_WINDOW = timedelta(minutes=15)
@@ -44,8 +48,9 @@ PASSKEY_RATE_IP_MAX = 60
 PASSKEY_RATE_GLOBAL_MAX = 1000
 
 
-class ReauthenticationRequest(BaseModel):
-    current_password: str = Field(min_length=1, max_length=256)
+class ReauthenticationOptionsRequest(BaseModel):
+    action: AccountAction
+    target: str = Field(default="", max_length=254)
 
 
 class CredentialRequest(BaseModel):
@@ -123,16 +128,35 @@ def _payload(record) -> dict:
     return {"id": record.id, "label": record.label, "created_at": record.created_at, "last_used_at": record.last_used_at}
 
 
-def _reauthenticated_user(db, identity, password: str) -> User:
-    user = db.get(User, identity.user_id)
-    if (
-        user is None or not user.is_active or not verify_password(password, user.password_hash)
-        or not lock_verified_password(db, user)
-    ):
-        raise HTTPException(status_code=400, detail="current_password_invalid")
+def _reauthenticated_user(db, identity, payload: AccountConfirmation, request: Request, *, action: str, target: str = "") -> User:
+    user = require_account_reauthentication(
+        db, identity, payload.current_password, passkey=payload.passkey, request=request, action=action, target=target,
+    )
     if user.must_change_password:
         raise HTTPException(status_code=403, detail="password_change_required")
     return user
+
+
+@router.post("/reauthentication/options")
+def reauthentication_options(payload: ReauthenticationOptionsRequest, request: Request, response: Response):
+    origin = _prepare(request, response)
+    identity = require_user(request)
+    require_csrf(request, identity)
+    try:
+        with session_scope() as db:
+            lock_current_account_session(db, identity)
+            user = db.get(User, identity.user_id)
+            if user is None or not user.is_active:
+                raise HTTPException(status_code=401, detail="authentication_required")
+            start = begin_reauthentication_ceremony(
+                db, user=user, session_id=identity.session_id, action=payload.action,
+                target=payload.target, request_origin=origin,
+            )
+    except PasskeyError as exc:
+        raise _error(exc) from exc
+    # Inline proof is carried only to the chosen mutation. No cross-path cookie
+    # or general-purpose reauthentication grant is introduced.
+    return {"options": start.options, "token": start.state_token}
 
 
 @router.post("/authentication/options")
@@ -177,17 +201,20 @@ def credentials_list(request: Request, response: Response):
 
 
 @router.post("/registration/options")
-def registration_options(payload: ReauthenticationRequest, request: Request, response: Response):
+def registration_options(payload: AccountConfirmation, request: Request, response: Response):
     _prepare(request, response)
     identity = require_user(request)
     require_csrf(request, identity)
     key = enforce_login_rate_limit(request, f"passkey-management:{identity.user_id}")
     try:
         with session_scope() as db:
-            user = _reauthenticated_user(db, identity, payload.current_password)
-            start = begin_registration_ceremony(db, user=user, session_id=identity.session_id)
+            user = _reauthenticated_user(db, identity, payload, request, action="add_passkey")
+            start = begin_registration_ceremony(
+                db, user=user, session_id=identity.session_id,
+                authorizing_credential=payload.passkey.credential if payload.passkey else None,
+            )
     except HTTPException as exc:
-        if exc.detail == "current_password_invalid":
+        if exc.detail in CONFIRMATION_FAILURES:
             record_login_failure(key)
         raise
     except PasskeyError as exc:
@@ -216,6 +243,9 @@ def registration_verify(payload: RegistrationCredentialRequest, request: Request
                 label=payload.label,
                 request_origin=origin,
             )
+            if not lock_verified_password(db, user):
+                raise HTTPException(status_code=400, detail="passkey_verification_failed")
+            lock_current_account_session(db, identity)
             result = _payload(record)
     except PasskeyError as exc:
         raise _error(exc) from exc
@@ -227,17 +257,17 @@ def registration_verify(payload: RegistrationCredentialRequest, request: Request
 
 
 @router.delete("/{credential_id}")
-def credentials_delete(credential_id: int, payload: ReauthenticationRequest, request: Request, response: Response):
+def credentials_delete(credential_id: int, payload: AccountConfirmation, request: Request, response: Response):
     _prepare(request, response)
     identity = require_user(request)
     require_csrf(request, identity)
     key = enforce_login_rate_limit(request, f"passkey-management:{identity.user_id}")
     try:
         with session_scope() as db:
-            _reauthenticated_user(db, identity, payload.current_password)
+            _reauthenticated_user(db, identity, payload, request, action="delete_passkey", target=str(credential_id))
             removed = remove_passkey_credential(db, user_id=identity.user_id, credential_id=credential_id)
     except HTTPException as exc:
-        if exc.detail == "current_password_invalid":
+        if exc.detail in CONFIRMATION_FAILURES:
             record_login_failure(key)
         raise
     clear_login_failures(key)

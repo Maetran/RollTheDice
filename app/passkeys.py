@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import secrets
@@ -33,6 +34,7 @@ USER_HANDLE_BYTES = 32
 MAX_PASSKEY_LABEL_LENGTH = 64
 MAX_CREDENTIAL_RESPONSE_BYTES = 64 * 1024
 MAX_PASSKEYS_PER_USER = 20
+ACCOUNT_ACTIONS = {"change_username", "change_email", "change_password", "add_passkey", "delete_passkey"}
 
 
 class PasskeyError(ValueError):
@@ -58,7 +60,7 @@ class PasskeyConfig:
 
 @dataclass(frozen=True)
 class CeremonyStart:
-    """Options for the browser and an opaque value for an HttpOnly cookie."""
+    """Browser options and an opaque one-time state identifier."""
 
     state_token: str
     options: dict[str, Any]
@@ -264,6 +266,10 @@ def _start_ceremony(
     challenge: bytes,
     user_id: int | None = None,
     session_id: int | None = None,
+    action: str | None = None,
+    target_hash: str | None = None,
+    request_origin: str | None = None,
+    authorizing_credential_id: int | None = None,
 ) -> tuple[WebAuthnCeremony, str]:
     now = utcnow()
     purge_expired_ceremonies(db, now=now)
@@ -274,6 +280,10 @@ def _start_ceremony(
         challenge=challenge,
         user_id=user_id,
         session_id=session_id,
+        action=action,
+        target_hash=target_hash,
+        request_origin=request_origin,
+        authorizing_credential_id=authorizing_credential_id,
         created_at=now,
         expires_at=now + CEREMONY_TTL,
     )
@@ -341,6 +351,7 @@ def begin_registration_ceremony(
     *,
     user: User,
     session_id: int,
+    authorizing_credential: Mapping[str, Any] | None = None,
 ) -> CeremonyStart:
     """Create discoverable, user-verified passkey options for a signed-in user."""
     config = _require_enabled()
@@ -352,6 +363,12 @@ def begin_registration_ceremony(
     credentials = list(
         db.scalars(select(PasskeyCredential).where(PasskeyCredential.user_id == user.id)).all()
     )
+    authorizing_id = None
+    if authorizing_credential is not None:
+        credential_id = _credential_id_from_response(library, authorizing_credential)
+        authorizing_id = next((item.id for item in credentials if item.credential_id == credential_id), None)
+        if authorizing_id is None:
+            raise PasskeyError("passkey_verification_failed")
     if len(credentials) >= MAX_PASSKEYS_PER_USER:
         raise PasskeyError("passkey_limit_reached")
     challenge = secrets.token_bytes(CHALLENGE_BYTES)
@@ -379,6 +396,7 @@ def begin_registration_ceremony(
         challenge=challenge,
         user_id=user.id,
         session_id=session_id,
+        authorizing_credential_id=authorizing_id,
     )
     return CeremonyStart(raw_state, _options_payload(library["options_to_json"], options), ceremony.expires_at)
 
@@ -396,6 +414,61 @@ def begin_authentication_ceremony(db: DatabaseSession) -> CeremonyStart:
     )
     ceremony, raw_state = _start_ceremony(db, purpose="authentication", challenge=challenge)
     return CeremonyStart(raw_state, _options_payload(library["options_to_json"], options), ceremony.expires_at)
+
+
+def _action_target_hash(action: str, target: str) -> str:
+    if action not in ACCOUNT_ACTIONS or not isinstance(target, str) or len(target) > 254:
+        raise PasskeyError("passkey_ceremony_invalid")
+    needs_target = action in {"change_username", "change_email", "delete_passkey"}
+    if bool(target) != needs_target:
+        raise PasskeyError("passkey_ceremony_invalid")
+    return hashlib.sha256(target.encode("utf-8")).hexdigest()
+
+
+def begin_reauthentication_ceremony(
+    db: DatabaseSession, *, user: User, session_id: int, action: str, target: str, request_origin: str,
+) -> CeremonyStart:
+    """Prepare one account action; this never creates or switches a login session."""
+    config = _require_enabled()
+    _expected_origin(config, request_origin)
+    _current_login_session(db, user_id=user.id, session_id=session_id)
+    if not user.is_active:
+        raise PasskeyError("authentication_required")
+    target_hash = _action_target_hash(action, target)
+    credentials = list_passkey_credentials(db, user_id=user.id)
+    if not credentials:
+        raise PasskeyError("passkey_not_found")
+    library = _webauthn()
+    challenge = secrets.token_bytes(CHALLENGE_BYTES)
+    options = library["generate_authentication_options"](
+        rp_id=config.rp_id, challenge=challenge, timeout=CEREMONY_TIMEOUT_MS,
+        user_verification=library["UserVerificationRequirement"].REQUIRED,
+        allow_credentials=[library["PublicKeyCredentialDescriptor"](id=item.credential_id) for item in credentials],
+    )
+    ceremony, raw_state = _start_ceremony(
+        db, purpose="reauthentication", challenge=challenge, user_id=user.id, session_id=session_id,
+        action=action, target_hash=target_hash, request_origin=request_origin,
+    )
+    return CeremonyStart(raw_state, _options_payload(library["options_to_json"], options), ceremony.expires_at)
+
+
+def complete_reauthentication_ceremony(
+    db: DatabaseSession, *, raw_state: str, credential: Mapping[str, Any], user_id: int, session_id: int,
+    action: str, target: str, request_origin: str,
+) -> AuthenticationResult:
+    """Consume a signed action proof in the same transaction as its mutation."""
+    config = _require_enabled()
+    _expected_origin(config, request_origin)
+    _current_login_session(db, user_id=user_id, session_id=session_id)
+    ceremony = _valid_ceremony(
+        db, raw_state=raw_state, purpose="reauthentication", user_id=user_id, session_id=session_id,
+    )
+    if (
+        ceremony.action != action or ceremony.request_origin != request_origin
+        or ceremony.target_hash != _action_target_hash(action, target)
+    ):
+        raise PasskeyError("passkey_ceremony_invalid")
+    return _complete_assertion(db, ceremony=ceremony, credential=credential, request_origin=request_origin)
 
 
 def _valid_ceremony(
@@ -558,16 +631,32 @@ def complete_authentication_ceremony(
     The API layer should call ``issue_session_for_user`` in this same database
     transaction before committing, then set the normal session cookie.
     """
+    ceremony = _valid_ceremony(db, raw_state=raw_state, purpose="authentication")
+    return _complete_assertion(db, ceremony=ceremony, credential=credential, request_origin=request_origin)
+
+
+def _complete_assertion(
+    db: DatabaseSession, *, ceremony: WebAuthnCeremony, credential: Mapping[str, Any], request_origin: str | None,
+) -> AuthenticationResult:
     config = _require_enabled()
     library = _webauthn()
-    ceremony = _valid_ceremony(db, raw_state=raw_state, purpose="authentication")
     payload = _credential_payload(credential)
     credential_id = _credential_id_from_response(library, payload)
     record = db.scalar(select(PasskeyCredential).where(PasskeyCredential.credential_id == credential_id))
     if record is None:
         raise PasskeyError("passkey_verification_failed")
     user = db.get(User, record.user_id)
-    if user is None or not user.is_active or not _user_handle_matches(library, payload, user):
+    response = payload.get("response", {})
+    supplied_handle = response.get("userHandle") if isinstance(response, Mapping) else None
+    # Account-scoped allowCredentials requests may omit userHandle. Ownership
+    # is still checked against the authenticated account; discoverable login
+    # continues to require a matching handle.
+    handle_required = ceremony.purpose == "authentication" or supplied_handle not in (None, "")
+    if (
+        user is None or not user.is_active
+        or (ceremony.user_id is not None and record.user_id != ceremony.user_id)
+        or (handle_required and not _user_handle_matches(library, payload, user))
+    ):
         raise PasskeyError("passkey_verification_failed")
     try:
         verified = library["verify_authentication_response"](

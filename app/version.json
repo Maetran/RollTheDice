@@ -1,10 +1,10 @@
 {
-  "version": "2.36.0",
+  "version": "2.37.0",
   "bump": "minor",
   "date": "2026-09-20",
-  "previous_revision": "a04c83120cb84d5028e247fcd772c6770fe6ae51",
+  "previous_revision": "0069e900ab6b80480078878d1ffd2969bb74d332",
   "summary": {
-    "de": "Versionsnummern und lesbare Aktionen",
-    "en": "Version numbers and readable actions"
+    "de": "Kontoaktionen mit Passkey bestätigen",
+    "en": "Confirm account changes with a passkey"
   }
 }

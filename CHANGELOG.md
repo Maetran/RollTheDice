@@ -22,6 +22,26 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.37.0 — Kontoaktionen mit Passkey / Confirm account changes with a passkey — 2026-09-20
+
+- **Deutsch:** Benutzername, E-Mail und Passwort sowie weitere Passkeys lassen
+  sich in beiden Spielen bevorzugt mit einem vorhandenen Passkey bestätigen.
+  Das Passwort bleibt eine ausdrücklich wählbare Alternative. Jede Bestätigung
+  gilt nur für das angemeldete Konto und die angeforderte Aktion; Abbrechen
+  lässt das Konto unverändert. Die Hauptnavigation steht auf Touch-Tablets in
+  allen Hauptansichten im Hoch- und Querformat mittig. Gleichzeitiges Öffnen von
+  Profil und Kontostatistik erzeugt keine konkurrierenden Erfolgseinträge mehr.
+  Regulärer Rollout mit
+  Versionshinweis und Push für Konten mit aktivierten Versionsbenachrichtigungen.
+- **English:** Both games prefer an existing passkey when confirming username,
+  email or password changes and when adding or removing passkeys. Passwords
+  remain an explicit fallback. Each confirmation belongs to the signed-in
+  account and requested action; cancelling leaves the account unchanged.
+  Main navigation is centered across the main views on touch tablets in both
+  orientations. Concurrent profile and account-statistics visits no longer
+  compete to create the same achievement. Regular rollout with release notes and push for accounts that
+  have enabled version notifications.
+
 ## 2.36.0 — Versionsnummern und lesbare Aktionen / Version numbers and readable actions — 2026-09-20
 
 - **Deutsch:** Beide Spiele zeigen gemeinsame Versionsnummern nach

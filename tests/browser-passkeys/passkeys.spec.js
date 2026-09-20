@@ -129,8 +129,10 @@ for (const product of ["zdwa", "zilch"]) {
         expect(authenticated.user.id).toBe(userId);
         await expect(prompt).toBeHidden();
 
-        await page.goto(accountPath);
-        await currentPassword.fill(password);
+        await page.goto(accountPath.replace("#settings", "?passkey=1#settings"));
+        await expect(settings.locator("button[type=submit]")).toBeFocused();
+        await expect(currentPassword).toBeHidden();
+        await expect(settings.locator("[data-account-verification]")).toHaveAttribute("data-verification-method", "passkey");
         page.once("dialog", dialog => dialog.accept());
         await settings.locator("[data-remove-passkey]").click();
         await expect(settings.locator("[data-passkey-list] li")).toHaveCount(0);

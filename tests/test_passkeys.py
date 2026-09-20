@@ -7,8 +7,10 @@ import hashlib
 import json
 import os
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from pathlib import Path
+from threading import Barrier
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -17,7 +19,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 
 from app import main
 from app import passkeys as passkey_service
@@ -25,10 +27,10 @@ from app.api_auth import router as auth_router
 from app.api_passkeys import router
 from app.auth import create_user, issue_session_for_user, reset_password
 from app.database import configure_database, get_engine, session_scope
-from app.models import Base, PasskeyCredential, User, WebAuthnCeremony
+from app.models import AccountEmailToken, Base, PasskeyCredential, User, WebAuthnCeremony
 from app.models import Session as LoginSession
 from app.passkeys import CEREMONY_COOKIE_NAME, passkey_config
-from app.security import hash_session_token, utcnow
+from app.security import hash_password, hash_session_token, utcnow, verify_password
 
 ORIGIN = "https://example.test"
 RP_ID = "example.test"
@@ -404,18 +406,342 @@ class PasskeyTestCase(TestCase):
             self.assertIsNone(replacement.consumed_at)
 
     def test_management_rejects_a_password_proof_superseded_by_recovery(self):
-        from app import api_passkeys
+        from app import auth
 
-        verify = api_passkeys.verify_password
+        verify = auth.verify_password
 
         def recover_after_password_verification(*args):
             result = verify(*args)
             reset_password(self.user.id, "recovered-secure-password")
             return result
 
-        with patch("app.api_passkeys.verify_password", side_effect=recover_after_password_verification):
+        with patch("app.auth.verify_password", side_effect=recover_after_password_verification):
             response = self.client.post("/api/auth/passkeys/registration/options", json={"current_password": PASSWORD}, headers=self.csrf)
         self.assertEqual(response.status_code, 400, response.text)
         self.assertEqual(response.json()["detail"], "current_password_invalid")
         with session_scope() as db:
             self.assertEqual(list(db.scalars(select(WebAuthnCeremony))), [])
+
+    def _reauthentication(self, action="change_username", target="Renamed_Player", **authenticator_kwargs):
+        response = self.client.post(
+            "/api/auth/passkeys/reauthentication/options", json={"action": action, "target": target}, headers=self.csrf,
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        self.assertNotIn("set-cookie", response.headers)
+        options = response.json()["options"]
+        self.assertEqual(options["userVerification"], "required")
+        self.assertIn(b64(self.authenticator.credential_id), [item["id"] for item in options["allowCredentials"]])
+        return {"token": response.json()["token"], "credential": self.authenticator.authentication(options, **authenticator_kwargs)}
+
+    def _rename_with(self, proof, *, username="Renamed_Player", headers=None):
+        return self.client.post(
+            "/api/auth/change-username", json={"username": username, "passkey": proof},
+            headers=self.csrf if headers is None else headers,
+        )
+
+    def test_passkey_confirms_every_account_action_without_the_current_password(self):
+        self._register()
+        original_cookie = self.client.cookies.get("rollthedice_session")
+        response = self._rename_with(self._reauthentication())
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["user"]["username"], "Renamed_Player")
+        self.assertEqual(response.json()["passkeys"], {"enabled": True, "has_credentials": True})
+        self.assertEqual(response.json()["user"]["csrf_token"], self.identity.csrf_token)
+        self.assertNotIn("set-cookie", response.headers)
+        self.assertEqual(self.client.cookies.get("rollthedice_session"), original_cookie)
+
+        proof = self._reauthentication("change_email", "changed@example.test", count=2)
+        email_env = {"ROLLTHEDICE_EMAIL_ENABLED": "1", "ROLLTHEDICE_RESEND_API_KEY": "test-key",
+                     "ROLLTHEDICE_EMAIL_FROM": "konto@auth.example.test"}
+        with patch.dict(os.environ, email_env), patch("app.email_accounts.send_account_email") as send:
+            response = self.client.post("/api/auth/email", json={"email": "changed@example.test", "passkey": proof}, headers=self.csrf)
+        self.assertEqual(response.status_code, 202, response.text)
+        send.assert_called_once()
+        with session_scope() as db:
+            self.assertEqual(db.scalar(select(AccountEmailToken)).email, "changed@example.test")
+            self.assertIsNone(db.get(User, self.user.id).email)
+
+        proof = self._reauthentication("add_passkey", "", count=3)
+        response = self.client.post("/api/auth/passkeys/registration/options", json={"passkey": proof}, headers=self.csrf)
+        self.assertEqual(response.status_code, 200, response.text)
+        second_authenticator = SoftwareAuthenticator()
+        response = self.client.post("/api/auth/passkeys/registration/verify", json={
+            "credential": second_authenticator.registration(response.json()["options"]), "label": "Second device",
+        }, headers=self.csrf)
+        self.assertEqual(response.status_code, 200, response.text)
+        second_id = response.json()["credential"]["id"]
+        proof = self._reauthentication("delete_passkey", str(second_id), count=4)
+        response = self.client.request("DELETE", f"/api/auth/passkeys/{second_id}", json={"passkey": proof}, headers=self.csrf)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(len(self.client.get("/api/auth/passkeys").json()["credentials"]), 1)
+
+        proof = self._reauthentication("change_password", "", count=5)
+        response = self.client.post("/api/auth/change-password", json={
+            "new_password": "new-secret-known-to-the-owner", "passkey": proof,
+        }, headers=self.csrf)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json()["login_required"])
+        self.assertFalse(self.client.get("/api/auth/me").json()["authenticated"])
+        with session_scope() as db:
+            self.assertTrue(verify_password("new-secret-known-to-the-owner", db.get(User, self.user.id).password_hash))
+            self.assertEqual(list(db.scalars(select(LoginSession))), [])
+            self.assertEqual(list(db.scalars(select(WebAuthnCeremony))), [])
+            self.assertEqual(list(db.scalars(select(AccountEmailToken))), [])
+
+    def test_reauthentication_allows_null_user_handle_only_for_the_bound_account(self):
+        self._register()
+        proof = self._reauthentication(handle="")
+        proof["credential"]["response"]["userHandle"] = None
+        self.assertEqual(self._rename_with(proof).status_code, 200)
+        proof = self._reauthentication(target="Renamed_Again", count=2, handle=b64(b"wrong-account"))
+        self.assertEqual(self._rename_with(proof, username="Renamed_Again").status_code, 400)
+
+    def test_reauthentication_rejects_replay_and_consumes_only_with_a_successful_mutation(self):
+        self._register()
+        create_user("Taken_Name", PASSWORD, must_change_password=False)
+        proof = self._reauthentication(target="Taken_Name")
+        self.assertEqual(self._rename_with(proof, username="Taken_Name").status_code, 409)
+        with session_scope() as db:
+            ceremony = db.scalar(select(WebAuthnCeremony).where(WebAuthnCeremony.purpose == "reauthentication"))
+            self.assertIsNone(ceremony.consumed_at)
+            self.assertEqual(db.scalar(select(PasskeyCredential)).sign_count, 0)
+        proof = self._reauthentication()
+        self.assertEqual(self._rename_with(proof).status_code, 200)
+        self.assertEqual(self._rename_with(proof).status_code, 400)
+
+    def test_reauthentication_rejects_other_action_or_changed_target(self):
+        self._register()
+        proof = self._reauthentication()
+        self.assertEqual(self._rename_with(proof, username="Different_Player").status_code, 400)
+        response = self.client.post("/api/auth/change-password", json={"new_password": "different-password-123", "passkey": proof}, headers=self.csrf)
+        self.assertEqual(response.status_code, 400)
+        with session_scope() as db:
+            self.assertEqual(db.get(User, self.user.id).username, "Passkey_User")
+            self.assertTrue(verify_password(PASSWORD, db.get(User, self.user.id).password_hash))
+        self.assertEqual(self._rename_with(proof).status_code, 200)
+
+    def test_reauthentication_requires_csrf_origin_and_known_action(self):
+        self._register()
+        url = "/api/auth/passkeys/reauthentication/options"
+        payload = {"action": "change_username", "target": "Renamed_Player"}
+        self.assertEqual(self.client.post(url, json=payload).status_code, 403)
+        self.assertEqual(self.client.post(url, json=payload, headers={**self.csrf, "Origin": "https://evil.example.test"}).status_code, 403)
+        self.assertEqual(self.client.post(url, json=payload, headers={**self.csrf, "Origin": ""}).status_code, 403)
+        self.assertEqual(self.client.post(url, json={"action": "admin"}, headers=self.csrf).status_code, 422)
+        self.assertEqual(self.client.post(url, json={"action": "change_username"}, headers=self.csrf).status_code, 400)
+        proof = self._reauthentication()
+        self.assertEqual(self._rename_with(proof, headers={}).status_code, 403)
+        self.assertEqual(self._rename_with(proof, headers={**self.csrf, "Origin": "https://evil.example.test"}).status_code, 403)
+        self.assertEqual(self._rename_with(proof, headers={**self.csrf, "Origin": ""}).status_code, 400)
+        self.assertEqual(self._rename_with(proof).status_code, 200)
+
+    def test_reauthentication_cannot_cross_product_origins_even_with_shared_login(self):
+        self._register()
+        proof = self._reauthentication(origin="https://zilch.example.test")
+        response = self.client.post("https://zilch.example.test/api/auth/change-username", json={
+            "username": "Renamed_Player", "passkey": proof,
+        }, headers={**self.csrf, "Origin": "https://zilch.example.test"})
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertEqual(response.json()["detail"], "passkey_ceremony_invalid")
+
+    @patch("app.auth_protection.LOGIN_MAX_FAILURES", 20)
+    def test_reauthentication_rejects_wrong_signature_origin_rp_and_missing_user_verification(self):
+        self._register()
+        for arguments in ({"origin": "https://evil.example.test"}, {"origin": "https://zilch.example.test"},
+                          {"rp_id": "evil.example.test"}, {"flags": 0x01}, {"flags": 0x04}, {"cross_origin": True}):
+            with self.subTest(arguments=arguments):
+                self.assertEqual(self._rename_with(self._reauthentication(**arguments)).status_code, 400)
+        proof = self._reauthentication()
+        proof["credential"]["response"]["signature"] = b64(b"tampered")
+        self.assertEqual(self._rename_with(proof).status_code, 400)
+
+    @patch("app.auth_protection.LOGIN_MAX_FAILURES", 1)
+    def test_bad_passkey_proofs_are_rate_limited_for_every_account_action(self):
+        self._register()
+        email_env = {"ROLLTHEDICE_EMAIL_ENABLED": "1", "ROLLTHEDICE_RESEND_API_KEY": "test-key",
+                     "ROLLTHEDICE_EMAIL_FROM": "konto@auth.example.test"}
+        for action, target, url, fields in (
+            ("change_username", "Renamed_Player", "/api/auth/change-username", {"username": "Renamed_Player"}),
+            ("change_password", "", "/api/auth/change-password", {"new_password": "changed-password-123"}),
+            ("change_email", "changed@example.test", "/api/auth/email", {"email": "changed@example.test"}),
+            ("add_passkey", "", "/api/auth/passkeys/registration/options", {}),
+        ):
+            with self.subTest(action=action), patch.dict(os.environ, email_env):
+                proof = self._reauthentication(action, target)
+                proof["credential"]["response"]["signature"] = b64(b"tampered")
+                response = self.client.post(url, json={**fields, "passkey": proof}, headers=self.csrf)
+                self.assertEqual(response.status_code, 400, response.text)
+                response = self.client.post(url, json={**fields, "passkey": proof}, headers=self.csrf)
+                self.assertEqual(response.status_code, 429, response.text)
+
+    def test_concurrent_assertion_replay_commits_only_one_mutation(self):
+        self._register()
+        proof = self._reauthentication()
+        library = passkey_service._webauthn()
+        verify = library["verify_authentication_response"]
+        verified_together = Barrier(2)
+        original_cookie = self.client.cookies.get("rollthedice_session")
+
+        def verify_together(**kwargs):
+            result = verify(**kwargs)
+            verified_together.wait(timeout=5)
+            return result
+
+        def rename():
+            with TestClient(self.client.app, base_url=ORIGIN, headers={"Origin": ORIGIN}) as client:
+                client.cookies.set("rollthedice_session", original_cookie)
+                return client.post("/api/auth/change-username", json={"username": "Renamed_Player", "passkey": proof}, headers=self.csrf)
+
+        with patch("app.passkeys._webauthn", return_value={**library, "verify_authentication_response": verify_together}):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                responses = list(pool.map(lambda _: rename(), range(2)))
+        self.assertEqual(sorted(response.status_code for response in responses), [200, 400])
+        with session_scope() as db:
+            self.assertEqual(db.get(User, self.user.id).username, "Renamed_Player")
+            self.assertEqual(db.scalar(select(PasskeyCredential)).sign_count, 1)
+
+    def test_reauthentication_rejects_a_different_accounts_valid_passkey(self):
+        self._register()
+        original_authenticator = self.authenticator
+        original_cookie = self.client.cookies.get("rollthedice_session")
+        original_csrf = self.csrf
+        other = create_user("Another_Passkey", PASSWORD, must_change_password=False)
+        with session_scope() as db:
+            identity, raw = issue_session_for_user(db, db.get(User, other.id))
+        self.client.cookies.clear()
+        self.client.cookies.set("rollthedice_session", raw)
+        self.csrf = {"X-CSRF-Token": identity.csrf_token}
+        self.authenticator = SoftwareAuthenticator()
+        self._register()
+        other_authenticator = self.authenticator
+        self.client.cookies.clear()
+        self.client.cookies.set("rollthedice_session", original_cookie)
+        self.csrf = original_csrf
+        self.authenticator = original_authenticator
+        response = self.client.post("/api/auth/passkeys/reauthentication/options", json={
+            "action": "change_username", "target": "Renamed_Player",
+        }, headers=self.csrf)
+        options = response.json()["options"]
+        self.assertEqual([item["id"] for item in options["allowCredentials"]], [b64(original_authenticator.credential_id)])
+        proof = {"token": response.json()["token"], "credential": other_authenticator.authentication(options)}
+        self.assertEqual(self._rename_with(proof).status_code, 400)
+        self.assertEqual(self.client.get("/api/auth/me").json()["user"]["id"], self.user.id)
+
+    def test_reauthentication_rejects_expiry_and_a_different_session_for_the_same_account(self):
+        self._register()
+        proof = self._reauthentication()
+        with session_scope() as db:
+            other_identity, raw = issue_session_for_user(db, db.get(User, self.user.id))
+        headers = {"X-CSRF-Token": other_identity.csrf_token, "Cookie": f"rollthedice_session={raw}"}
+        self.assertEqual(self._rename_with(proof, headers=headers).status_code, 400)
+        with session_scope() as db:
+            db.execute(update(WebAuthnCeremony).where(WebAuthnCeremony.purpose == "reauthentication").values(expires_at=utcnow() - timedelta(seconds=1)))
+        self.assertEqual(self._rename_with(proof).status_code, 400)
+
+    def test_in_flight_reauthentication_rejects_session_revocation_and_reused_session_id(self):
+        self._register()
+        proof = self._reauthentication()
+        library = passkey_service._webauthn()
+        verify = library["verify_authentication_response"]
+
+        def revoke_after_verification(**kwargs):
+            verified = verify(**kwargs)
+            with session_scope() as db:
+                db.execute(delete(LoginSession).where(LoginSession.id == self.identity.session_id))
+                replacement, _ = issue_session_for_user(db, db.get(User, self.user.id))
+                self.assertEqual(replacement.session_id, self.identity.session_id)
+            return verified
+
+        with patch("app.passkeys._webauthn", return_value={**library, "verify_authentication_response": revoke_after_verification}):
+            response = self._rename_with(proof)
+        self.assertIn(response.status_code, (400, 401), response.text)
+        with session_scope() as db:
+            self.assertEqual(db.get(User, self.user.id).username, "Passkey_User")
+            self.assertEqual(db.scalar(select(PasskeyCredential)).sign_count, 0)
+
+    def test_in_flight_reauthentication_rejects_a_revoked_or_replaced_passkey(self):
+        registered = self._register()
+        proof = self._reauthentication()
+        library = passkey_service._webauthn()
+        verify = library["verify_authentication_response"]
+        replacement_id = os.urandom(32)
+
+        def replace_after_verification(**kwargs):
+            verified = verify(**kwargs)
+            with session_scope() as db:
+                db.execute(delete(PasskeyCredential).where(PasskeyCredential.id == registered["id"]))
+                db.add(PasskeyCredential(id=registered["id"], user_id=self.user.id, credential_id=replacement_id,
+                                        credential_public_key=self.authenticator.cose, sign_count=0, created_at=utcnow()))
+            return verified
+
+        with patch("app.passkeys._webauthn", return_value={**library, "verify_authentication_response": replace_after_verification}):
+            response = self._rename_with(proof)
+        self.assertEqual(response.status_code, 400, response.text)
+        with session_scope() as db:
+            self.assertEqual(db.get(User, self.user.id).username, "Passkey_User")
+            self.assertEqual(db.get(PasskeyCredential, registered["id"]).credential_id, replacement_id)
+            self.assertIsNone(db.get(PasskeyCredential, registered["id"]).last_used_at)
+
+    def test_in_flight_reauthentication_rejects_password_change_or_deactivation(self):
+        self._register()
+        library = passkey_service._webauthn()
+        verify = library["verify_authentication_response"]
+        for values in ({"password_hash": hash_password("changed-underneath-proof")}, {"is_active": False}):
+            with self.subTest(values=tuple(values)):
+                proof = self._reauthentication()
+
+                def change_after_verification(**kwargs):
+                    verified = verify(**kwargs)
+                    with session_scope() as db:
+                        db.execute(update(User).where(User.id == self.user.id).values(**values))
+                    return verified
+
+                with patch("app.passkeys._webauthn", return_value={**library, "verify_authentication_response": change_after_verification}):
+                    self.assertEqual(self._rename_with(proof).status_code, 400)
+                with session_scope() as db:
+                    user = db.get(User, self.user.id)
+                    self.assertEqual(user.username, "Passkey_User")
+                    user.is_active = True
+
+    def test_new_registration_cannot_outlive_its_authorizing_passkey(self):
+        registered = self._register()
+        proof = self._reauthentication("add_passkey", "")
+        response = self.client.post("/api/auth/passkeys/registration/options", json={"passkey": proof}, headers=self.csrf)
+        self.assertEqual(response.status_code, 200, response.text)
+        credential = SoftwareAuthenticator().registration(response.json()["options"])
+        response = self.client.request("DELETE", f"/api/auth/passkeys/{registered['id']}", json={"current_password": PASSWORD}, headers=self.csrf)
+        self.assertEqual(response.status_code, 200)
+        response = self.client.post("/api/auth/passkeys/registration/verify", json={"credential": credential}, headers=self.csrf)
+        self.assertEqual(response.status_code, 400)
+        with session_scope() as db:
+            self.assertEqual(list(db.scalars(select(PasskeyCredential))), [])
+
+    def test_password_fallback_cannot_mutate_after_session_revocation(self):
+        from app import auth
+
+        verify = auth.verify_password
+
+        def revoke_after_password(*args):
+            valid = verify(*args)
+            with session_scope() as db:
+                db.execute(delete(LoginSession).where(LoginSession.id == self.identity.session_id))
+            return valid
+
+        with patch("app.auth.verify_password", side_effect=revoke_after_password):
+            response = self.client.post("/api/auth/change-username", json={"username": "Renamed_Player", "current_password": PASSWORD}, headers=self.csrf)
+        self.assertEqual(response.status_code, 401, response.text)
+        with session_scope() as db:
+            self.assertEqual(db.get(User, self.user.id).username, "Passkey_User")
+
+    def test_confirmation_requires_exactly_one_method_and_no_passkey_bypass(self):
+        self._register()
+        proof = self._reauthentication()
+        for confirmation in ({}, {"current_password": PASSWORD, "passkey": proof}):
+            with self.subTest(fields=tuple(confirmation)):
+                response = self.client.post("/api/auth/change-username", json={"username": "Renamed_Player", **confirmation}, headers=self.csrf)
+                self.assertEqual(response.status_code, 422)
+        with patch.dict(os.environ, {"ROLLTHEDICE_PASSKEYS_ENABLED": "0"}):
+            self.assertEqual(self._rename_with(proof).status_code, 503)
+        with session_scope() as db:
+            self.assertEqual(db.get(User, self.user.id).username, "Passkey_User")

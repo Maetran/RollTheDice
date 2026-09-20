@@ -904,6 +904,20 @@
 .abandonment-explanation summary::before{ content:'▸'; margin-right:.35rem; }
 .abandonment-explanation[open] summary::before{ content:'▾'; }
 .lobby-page .abandonment-scope{ margin:.15rem 0; }
+/* Tablets keep the same centered navigation row on every page. Its own row
+   leaves enough space for the brand, community totals and account tools. */
+@media (any-pointer: coarse) and (min-width: 768px) and (min-height: 600px) and (max-width: 1600px){
+  .app-nav{ grid-template-columns:minmax(0, 1fr) auto; }
+  .app-nav-brand{ grid-column:1; grid-row:1; }
+  .app-nav-tools{ grid-column:-2 / -1; grid-row:1; }
+  .app-nav .app-nav-links,
+  .lobby-page .lobby-header .app-nav-links{
+    grid-column:1 / -1;
+    grid-row:2;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+}
 @media (max-width:760px){
   .lobby-page .lobby-header.app-nav{ grid-template-columns:minmax(0, 1fr) auto; gap:.35rem .5rem; }
   .lobby-page .lobby-header .app-nav-tools{ grid-column:2; }

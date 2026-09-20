@@ -25,6 +25,7 @@ from .auth import (
     set_session_cookie,
     validate_request_origin,
 )
+from .auth_proofs import CONFIRMATION_FAILURES, AccountConfirmation
 from .auth_protection import (
     clear_login_failures,
     enforce_email_request_rate_limit,
@@ -105,19 +106,16 @@ class PasswordResetCompletionRequest(BaseModel):
     password: str = Field(min_length=1, max_length=256)
 
 
-class AccountEmailRequest(BaseModel):
+class AccountEmailRequest(AccountConfirmation):
     email: str = Field(min_length=3, max_length=254)
-    current_password: str = Field(min_length=1, max_length=256)
 
 
-class PasswordChangeRequest(BaseModel):
-    current_password: str = Field(min_length=1, max_length=256)
+class PasswordChangeRequest(AccountConfirmation):
     new_password: str = Field(min_length=1, max_length=256)
 
 
-class UsernameChangeRequest(BaseModel):
+class UsernameChangeRequest(AccountConfirmation):
     username: str = Field(min_length=1, max_length=64)
-    current_password: str = Field(min_length=1, max_length=256)
 
 
 class UserPreferencesRequest(BaseModel):
@@ -325,7 +323,16 @@ def auth_logout(request: Request, response: Response):
 def auth_change_password(payload: PasswordChangeRequest, request: Request, response: Response):
     identity = require_user(request)
     require_csrf(request, identity)
-    change_password(identity, payload.current_password, payload.new_password)
+    key = enforce_login_rate_limit(request, f"password-change:{identity.user_id}")
+    try:
+        change_password(
+            identity, payload.current_password, payload.new_password, passkey=payload.passkey, request=request,
+        )
+    except HTTPException as exc:
+        if exc.detail in CONFIRMATION_FAILURES:
+            record_login_failure(key)
+        raise
+    clear_login_failures(key)
     clear_session_cookie(response)
     return {"ok": True, "login_required": True}
 
@@ -354,11 +361,17 @@ def auth_email_request(payload: AccountEmailRequest, request: Request, response:
             identity=identity,
             email=payload.email,
             current_password=payload.current_password,
+            passkey=payload.passkey,
+            request=request,
         )
     except ValueError as exc:
         if str(exc) == "current_password_invalid":
             record_login_failure(password_key)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except HTTPException as exc:
+        if exc.detail in CONFIRMATION_FAILURES:
+            record_login_failure(password_key)
+        raise
     except (EmailDeliveryUnavailable, EmailDeliveryFailed) as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="email_delivery_unavailable") from exc
     clear_login_failures(password_key)
@@ -444,11 +457,20 @@ def auth_change_username(payload: UsernameChangeRequest, request: Request, respo
     identity = require_user(request)
     require_csrf(request, identity)
     try:
-        change_username(identity, payload.username, payload.current_password, request)
+        change_username(identity, payload.username, payload.current_password, request, passkey=payload.passkey)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     response.headers["Cache-Control"] = "no-store"
-    return {"authenticated": True, "user": auth_identity_payload(require_user(request), include_csrf=True)}
+    passkeys = passkey_public_config(request)
+    with session_scope() as db:
+        passkeys["has_credentials"] = db.scalar(
+            select(PasskeyCredential.id).where(PasskeyCredential.user_id == identity.user_id).limit(1)
+        ) is not None
+    return {
+        "authenticated": True,
+        "user": auth_identity_payload(require_user(request), include_csrf=True),
+        "passkeys": passkeys,
+    }
 
 
 @router.put("/auth/preferences/language")

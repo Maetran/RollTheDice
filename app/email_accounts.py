@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import Callable
 from urllib.parse import quote
 
+from fastapi import HTTPException, Request
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 
@@ -14,9 +15,10 @@ from .auth import (
     AuthIdentity,
     create_user_in_session,
     issue_session_for_user,
-    lock_verified_password,
+    require_account_reauthentication,
     revoke_account_recovery_state,
 )
+from .auth_proofs import PasskeyProof
 from .database import session_scope
 from .email_delivery import (
     EmailDeliveryFailed,
@@ -38,7 +40,6 @@ from .security import (
     validate_email_address,
     validate_password,
     validate_username,
-    verify_password,
 )
 
 logger = logging.getLogger(__name__)
@@ -222,7 +223,10 @@ def account_email_status(user_id: int) -> dict:
         }
 
 
-def begin_email_verification(*, identity: AuthIdentity, email: str, current_password: str) -> dict:
+def begin_email_verification(
+    *, identity: AuthIdentity, email: str, current_password: str | None,
+    passkey: PasskeyProof | None = None, request: Request | None = None,
+) -> dict:
     _ensure_delivery_available()
     clean_email = validate_email_address(email)
     email_normalized = normalize_email_address(clean_email)
@@ -232,12 +236,14 @@ def begin_email_verification(*, identity: AuthIdentity, email: str, current_pass
     language = "de"
     try:
         with session_scope() as db:
-            user = db.get(User, identity.user_id)
-            if (
-                not user or not user.is_active or not verify_password(current_password, user.password_hash)
-                or not lock_verified_password(db, user)
-            ):
-                raise ValueError("current_password_invalid")
+            try:
+                user = require_account_reauthentication(
+                    db, identity, current_password, passkey=passkey, request=request, action="change_email", target=email,
+                )
+            except HTTPException as exc:
+                if exc.detail == "current_password_invalid":
+                    raise ValueError("current_password_invalid") from exc
+                raise
             language = user.preferred_language
             if user.email_normalized == email_normalized and user.email_confirmed_at:
                 return {"accepted": True, "already_confirmed": True}

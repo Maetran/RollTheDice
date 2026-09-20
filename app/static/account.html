@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=1cd85be2afea">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=1cd85be2afea" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=1cd85be2afea" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=b5c2bfef7d8e">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=b5c2bfef7d8e" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=b5c2bfef7d8e" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=1cd85be2afea">
-  <script src="/static/shell.js?v=1cd85be2afea" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=b5c2bfef7d8e">
+  <script src="/static/shell.js?v=b5c2bfef7d8e" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -102,10 +102,10 @@
         <h3>Passwort ändern</h3>
         <p id="passwordHint" class="muted small"></p>
         <form id="passwordForm" class="form-stack">
-          <label>Aktuelles Passwort<input id="currentPassword" type="password" autocomplete="current-password" required></label>
+          <div data-account-verification></div>
           <label>Neues Passwort<input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></label>
           <label>Neues Passwort wiederholen<input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>
-          <button class="primary">Passwort ändern</button>
+          <button class="primary" type="submit">Passwort ändern</button>
         </form>
         <div id="passwordMessage" class="muted small" role="status"></div>
       </section></div></details>
@@ -205,12 +205,12 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=1cd85be2afea';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=1cd85be2afea';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=1cd85be2afea';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=1cd85be2afea';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=1cd85be2afea';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=1cd85be2afea';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=b5c2bfef7d8e';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=b5c2bfef7d8e';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=b5c2bfef7d8e';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=b5c2bfef7d8e';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=b5c2bfef7d8e';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=b5c2bfef7d8e';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
@@ -287,9 +287,10 @@
       revealAccountSetting(selectionHeading, { focus: true, scroll: true });
     }
 
+    const passwordVerification = mountAccountVerification(document.querySelector('#passwordForm [data-account-verification]'), { passwordId: 'currentPassword' });
     if (user.must_change_password) {
       document.getElementById('passwordHint').textContent = 'Das temporäre Passwort muss jetzt geändert werden.';
-      revealAccountSetting(document.getElementById('currentPassword'), { focus: true, scroll: true });
+      passwordVerification.focus();
     }
 
     const preferences = user.preferences || {};
@@ -714,20 +715,28 @@
     document.getElementById('passwordForm').addEventListener('submit', async event => {
       event.preventDefault();
       const message = document.getElementById('passwordMessage');
-      const current = document.getElementById('currentPassword').value;
       const next = document.getElementById('newPassword').value;
       if (next !== document.getElementById('confirmPassword').value) {
         message.textContent = 'Die neuen Passwörter stimmen nicht überein.';
         return;
       }
-      const response = await apiFetch('/api/auth/change-password', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ current_password: current, new_password: next }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) { message.textContent = authError(data.detail); return; }
-      message.textContent = 'Passwort geändert. Bitte erneut anmelden.';
-      setTimeout(() => location.replace(window.ZDWA_ROUTE?.path('/') || '/'), 1200);
+      const button = event.currentTarget.querySelector('button[type=submit]');
+      if (button.disabled) return;
+      button.disabled = true;
+      try {
+        const proof = await passwordVerification.proof('change_password');
+        const response = await apiFetch('/api/auth/change-password', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...proof, new_password: next }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) { message.textContent = authError(data.detail); return; }
+        passwordVerification.clear();
+        message.textContent = 'Passwort geändert. Bitte erneut anmelden.';
+        setTimeout(() => location.replace(window.ZDWA_ROUTE?.path('/') || '/'), 1200);
+      } catch (error) {
+        message.textContent = error instanceof TypeError ? 'Einstellungen konnten nicht gespeichert werden.' : error.message;
+      } finally { button.disabled = false; }
     });
   </script>
 </body>

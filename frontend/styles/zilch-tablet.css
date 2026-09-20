@@ -6,6 +6,30 @@
 html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendations--tablet-only { display: none; }
 
 @media (any-pointer: coarse) and (min-width: 768px) and (min-height: 600px) and (max-width: 1600px) {
+  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-brand {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+  }
+  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-nav-list {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-nav-list :where(a, button) {
+    min-height: 44px;
+  }
+
   html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] {
     --zilch-room-chat-h: 3.25rem;
     --zilch-room-dock-gap: .75rem;

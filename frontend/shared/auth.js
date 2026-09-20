@@ -112,6 +112,79 @@ async function passkeyRequest(path = '', body, method = 'POST') {
   return data;
 }
 
+// The proof is requested for one concrete action and sent with that mutation.
+// Never turn a successful assertion into a reusable browser-side permission.
+export function mountAccountVerification(container, { passwordId = '', firstPasskey = false } = {}) {
+  if (!container) return null;
+  if (container._accountVerification) return container._accountVerification;
+  container.innerHTML = `<p class="muted small" data-verification-hint></p>
+    <label data-verification-password>${escapeHtml(translate('Aktuelles Passwort'))}<input ${passwordId ? `id="${escapeHtml(passwordId)}"` : ''} name="current_password" type="password" autocomplete="current-password" maxlength="256" required></label>
+    <button class="small ghost" type="button" data-verification-switch hidden></button>`;
+  const hint = container.querySelector('[data-verification-hint]');
+  const label = container.querySelector('[data-verification-password]');
+  const password = container.querySelector('input');
+  const toggle = container.querySelector('button');
+  let available = false;
+  let usePassword = false;
+  const render = auth => {
+    available = Boolean(auth?.passkeys?.enabled && auth.passkeys.has_credentials && passkeysSupported());
+    const passkey = available && !usePassword;
+    container.dataset.verificationMethod = passkey ? 'passkey' : 'password';
+    label.hidden = passkey;
+    password.disabled = passkey;
+    password.required = !passkey;
+    if (passkey) password.value = '';
+    hint.textContent = translate(passkey
+      ? 'Bestätige diese Aktion mit deinem Passkey. Beim Speichern öffnet sich die Gerätebestätigung.'
+      : available || !auth?.passkeys?.enabled ? 'Bestätige diese Aktion mit deinem aktuellen Passwort.'
+        : auth?.passkeys?.has_credentials && !passkeysSupported()
+          ? 'Dieser Browser unterstützt keine Passkeys. Nutze einen aktuellen Browser auf einem unterstützten Gerät.'
+          : firstPasskey ? 'Bestätige deinen ersten Passkey einmalig mit deinem aktuellen Passwort.'
+            : 'Für die Bestätigung mit Passkey richte zuerst einen Passkey in deinen Kontoeinstellungen ein.');
+    toggle.hidden = !available;
+    toggle.textContent = translate(passkey ? 'Stattdessen Passwort verwenden' : 'Passkey verwenden (empfohlen)');
+  };
+  toggle.addEventListener('click', () => {
+    usePassword = !usePassword;
+    render(authState.cache);
+    if (usePassword) password.focus();
+  });
+  const onAuth = event => {
+    if (!container.isConnected) window.removeEventListener('zdwa:auth-state', onAuth);
+    else render(event.detail);
+  };
+  window.addEventListener('zdwa:auth-state', onAuth);
+  render(authState.cache);
+  const ready = loadAuth().then(render);
+  // Mounting happens before the user submits; preserve a failed lookup for the
+  // action's visible error handler without an unhandled promise rejection.
+  void ready.catch(() => {});
+  const controller = {
+    focus() {
+      const preferred = available && !usePassword
+        ? container.closest('form')?.querySelector('button[type=submit]') || toggle : password;
+      revealAccountSetting(preferred, { focus: true, scroll: true });
+    },
+    clear() { password.value = ''; },
+    async proof(action, target) {
+      await ready;
+      if (!available || usePassword) {
+        if (!password.reportValidity()) throw new Error(translate('Bitte gib dein aktuelles Passwort ein.'));
+        return { current_password: password.value };
+      }
+      try {
+        const { options, token } = await passkeyRequest('/reauthentication/options', { action, ...(target === undefined ? {} : { target }) });
+        const credential = await requestPasskeyAssertion(options);
+        return { passkey: { token, credential } };
+      } catch (error) {
+        throw new Error(translate(authError(error.code === 'passkey_cancelled' ? 'passkey_confirmation_cancelled' : error.code || error.message)));
+      }
+    },
+  };
+  container._accountVerification = controller;
+  return controller;
+}
+
 export function revealAccountSetting(target, { focus = false, scroll = false } = {}) {
   if (!target) return;
   for (let parent = target.parentElement; parent; parent = parent.parentElement) {
@@ -181,7 +254,7 @@ export async function mountPasskeySettings(container, { zilch = false } = {}) {
         <ul data-passkey-list>${(status.credentials || []).map(key => `<li><span>${escapeHtml(key.label || translate('Passkey'))}</span> <button class="small ghost" type="button" data-remove-passkey="${Number(key.id)}">${escapeHtml(translate('Entfernen'))}</button></li>`).join('')}</ul>
         ${status.credentials?.length ? '' : `<p>${escapeHtml(translate('Noch kein Passkey eingerichtet.'))}</p>`}
         <form class="${zilch ? 'zilch-settings-form' : 'form-stack'}" data-passkey-form>
-          <label>${escapeHtml(translate('Aktuelles Passwort'))}<input name="current_password" type="password" autocomplete="current-password" maxlength="256" required></label>
+          <div data-account-verification></div>
           <label>${escapeHtml(translate('Name für den Passkey (optional)'))}<input name="label" maxlength="64" autocomplete="off" placeholder="${escapeHtml(translate('Zum Beispiel: Mein Handy'))}"></label>
           <button class="primary" type="submit"${passkeysSupported() ? '' : ' disabled'}>${escapeHtml(translate('Passkey hinzufügen'))}</button>
         </form>
@@ -189,9 +262,10 @@ export async function mountPasskeySettings(container, { zilch = false } = {}) {
         <p data-passkey-message role="status">${escapeHtml(translate(notice))}</p>`;
       const form = container.querySelector('form');
       const message = container.querySelector('[data-passkey-message]');
+      const verification = mountAccountVerification(form.querySelector('[data-account-verification]'), { firstPasskey: true });
       if (focusRequested) {
         focusRequested = false;
-        revealAccountSetting(form.elements.current_password, { focus: true, scroll: true });
+        verification.focus();
       }
       let busy = false;
       const run = async action => {
@@ -204,17 +278,18 @@ export async function mountPasskeySettings(container, { zilch = false } = {}) {
         } catch (error) {
           message.textContent = translate(authError(error.code || (error instanceof TypeError ? 'Einstellungen konnten nicht gespeichert werden.' : error.message)));
           container.querySelectorAll('button').forEach(button => { button.disabled = false; });
-          form.querySelector('button').disabled = !passkeysSupported();
+          form.querySelector('button[type=submit]').disabled = !passkeysSupported();
         } finally {
           busy = false;
-          form.elements.current_password.value = '';
+          verification.clear();
         }
       };
       form.addEventListener('submit', event => {
         event.preventDefault();
         void run(async () => {
-          const { options } = await passkeyRequest('/registration/options', { current_password: form.elements.current_password.value });
-          form.elements.current_password.value = '';
+          const proof = await verification.proof('add_passkey');
+          const { options } = await passkeyRequest('/registration/options', proof);
+          verification.clear();
           const credential = await createPasskeyCredential(options);
           await passkeyRequest('/registration/verify', { credential, label: form.elements.label.value.trim() });
           await render('Passkey gespeichert. Du kannst dich jetzt damit anmelden.');
@@ -222,10 +297,10 @@ export async function mountPasskeySettings(container, { zilch = false } = {}) {
       });
       container.querySelectorAll('[data-remove-passkey]').forEach(button => {
         button.addEventListener('click', () => {
-          if (!form.elements.current_password.reportValidity()) return;
-          if (!window.confirm(translate('Diesen Passkey entfernen? Du kannst dich weiterhin mit deinem Passwort anmelden.'))) return;
+          if (!window.confirm(translate('Diesen Passkey entfernen? Stelle sicher, dass du einen anderen Passkey oder dein Passwort kennst.'))) return;
           void run(async () => {
-            await passkeyRequest(`/${button.dataset.removePasskey}`, { current_password: form.elements.current_password.value }, 'DELETE');
+            const proof = await verification.proof('delete_passkey', button.dataset.removePasskey);
+            await passkeyRequest(`/${button.dataset.removePasskey}`, proof, 'DELETE');
             await render('Passkey entfernt.');
           });
         });
@@ -308,11 +383,11 @@ export async function getEmailStatus() {
   return data;
 }
 
-export async function requestAccountEmail(email, currentPassword) {
+export async function requestAccountEmail(email, verification) {
   const response = await apiFetch('/api/auth/email', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, current_password: currentPassword }),
+    body: JSON.stringify({ email, ...(typeof verification === 'string' ? { current_password: verification } : verification) }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(authError(data.detail));
@@ -336,11 +411,11 @@ export async function logout() {
   });
 }
 
-export async function changeUsername(username, currentPassword) {
+export async function changeUsername(username, verification) {
   const response = await apiFetch('/api/auth/change-username', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, current_password: currentPassword }),
+    body: JSON.stringify({ username, ...(typeof verification === 'string' ? { current_password: verification } : verification) }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(authError(Array.isArray(data.detail) ? 'username_invalid' : data.detail));
@@ -360,14 +435,14 @@ export function mountUsernameSettings(container, { user, onChanged, zilch = fals
     <form class="${zilch ? 'zilch-settings-form' : 'form-stack'}" data-username-form>
       <label>${escapeHtml(translate('Neuer Benutzername'))}<input name="username" autocomplete="username" minlength="3" maxlength="32" required aria-describedby="usernameRules"></label>
       <p id="usernameRules" class="muted small">${escapeHtml(translate('3–32 Zeichen: Buchstaben, Zahlen, Punkt, Unterstrich oder Bindestrich. Kein Punkt oder Bindestrich am Anfang.'))}</p>
-      <label>${escapeHtml(translate('Aktuelles Passwort'))}<input name="current_password" type="password" autocomplete="current-password" maxlength="256" required></label>
+      <div data-account-verification></div>
       <button type="submit" class="primary">${escapeHtml(translate('Benutzername speichern'))}</button>
     </form>
     <p data-username-message role="status" aria-live="polite"></p>`;
   const form = container.querySelector('form');
   const username = form.elements.username;
-  const password = form.elements.current_password;
-  const button = form.querySelector('button');
+  const verification = mountAccountVerification(form.querySelector('[data-account-verification]'));
+  const button = form.querySelector('button[type=submit]');
   const message = container.querySelector('[data-username-message]');
   username.value = user.username;
   form.addEventListener('submit', async event => {
@@ -376,9 +451,11 @@ export function mountUsernameSettings(container, { user, onChanged, zilch = fals
     button.disabled = true;
     message.textContent = translate('Benutzername wird gespeichert …');
     try {
-      const data = await changeUsername(username.value.trim(), password.value);
+      const nextUsername = username.value.trim();
+      const proof = await verification.proof('change_username', nextUsername);
+      const data = await changeUsername(nextUsername, proof);
       username.value = data.user.username;
-      password.value = '';
+      verification.clear();
       onChanged(data);
       message.textContent = translate('Benutzername geändert. Melde dich künftig mit dem neuen Namen an.');
     } catch (error) {
@@ -407,22 +484,25 @@ export async function mountEmailSettings(container, { zilch = false } = {}) {
         ${pending ? `<p class="muted small">${escapeHtml(translate('Bestätigung ausstehend für'))} <strong>${escapeHtml(pending)}</strong>.</p>` : ''}
         <form class="${formClass}" data-email-form>
           <label>${escapeHtml(translate('E-Mail-Adresse'))}<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
-          <label>${escapeHtml(translate('Aktuelles Passwort'))}<input name="current_password" type="password" autocomplete="current-password" maxlength="256" required></label>
+          <div data-account-verification></div>
           <button type="submit" class="primary">${escapeHtml(translate('Bestätigungs-E-Mail senden'))}</button>
         </form>
         <p data-email-message role="status" aria-live="polite"></p>`;
     if (unavailable) return;
     const form = container.querySelector('[data-email-form]');
     const message = container.querySelector('[data-email-message]');
-    const button = form?.querySelector('button');
+    const verification = mountAccountVerification(form.querySelector('[data-account-verification]'));
+    const button = form?.querySelector('button[type=submit]');
     form?.addEventListener('submit', async event => {
       event.preventDefault();
       if (button?.disabled) return;
       button.disabled = true;
       message.textContent = translate('Bestätigungs-E-Mail wird gesendet …');
       try {
-        const result = await requestAccountEmail(form.elements.email.value.trim(), form.elements.current_password.value);
-        form.elements.current_password.value = '';
+        const nextEmail = form.elements.email.value.trim();
+        const proof = await verification.proof('change_email', nextEmail);
+        const result = await requestAccountEmail(nextEmail, proof);
+        verification.clear();
         const notice = result.already_confirmed
           ? translate('Diese E-Mail-Adresse ist bereits bestätigt.')
           : translate('Bestätigungs-E-Mail gesendet. Öffne den Link in der Nachricht.');
@@ -455,6 +535,9 @@ export function authError(detail) {
   const messages = {
     passkeys_unavailable: 'Passkeys sind momentan nicht verfügbar.',
     passkey_temporarily_blocked: 'Zu viele Passkey-Anfragen. Bitte versuche es später erneut.',
+    passkey_confirmation_cancelled: 'Die Passkey-Bestätigung wurde abgebrochen oder ist abgelaufen. Es wurde nichts geändert. Versuche es erneut oder wähle Passwort verwenden.',
+    passkey_reauthentication_invalid: 'Die Bestätigung ist abgelaufen oder passt nicht zu dieser Aktion. Bitte bestätige erneut.',
+    passkey_required: 'Für dieses Konto ist noch kein Passkey eingerichtet. Verwende dein Passwort und richte danach einen Passkey ein.',
     passkey_not_found: 'Dieser Passkey wurde bereits entfernt.',
     password_change_required: 'Bitte ändere zuerst dein temporäres Passwort.',
     passkey_not_supported: 'Dieser Browser unterstützt keine Passkeys. Nutze einen aktuellen Browser auf einem unterstützten Gerät.',
@@ -468,7 +551,7 @@ export function authError(detail) {
     passkey_options_invalid: 'Die Passkey-Anfrage ist ungültig. Bitte starte erneut.',
     passkey_response_invalid: 'Der Passkey konnte nicht bestätigt werden. Versuche es erneut oder nutze dein Passwort.',
     username_taken: 'Benutzername ist bereits vergeben',
-    username_invalid: 'Bitte prüfe deinen neuen Benutzernamen und das aktuelle Passwort.',
+    username_invalid: 'Bitte prüfe deinen neuen Benutzernamen.',
     username_preview_managed: 'Dieser Name ist an einen Zilch-Testzugang gebunden. Bitte wende dich an die Administration.',
     invalid_credentials: 'Benutzername oder Passwort ist falsch.',
     login_temporarily_blocked: 'Zu viele Fehlversuche. Bitte später erneut versuchen.',

@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.36.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.37.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.36.0 | 2026-09-20 | minor | Versionsnummern und lesbare Aktionen / Version numbers and readable actions | [0069e90](https://github.com/Maetran/RollTheDice/commit/0069e900ab6b80480078878d1ffd2969bb74d332) |
 | 2.35.1 | 2026-09-20 | patch | Fix player discovery and navigation recovery across both games | [a04c831](https://github.com/Maetran/RollTheDice/commit/a04c83120cb84d5028e247fcd772c6770fe6ae51) |
 | 2.35.0 | 2026-09-20 | minor | Optimize tablet game tables while preserving phone layouts | [8a00d7e](https://github.com/Maetran/RollTheDice/commit/8a00d7e41a2456bc518f42a6cc68101aa9b41b61) |
 | 2.34.0 | 2026-09-20 | minor | feat: keep game tables fixed and compact both lobbies | [36f2755](https://github.com/Maetran/RollTheDice/commit/36f2755752aeb3309bc4da1168cc3003e6582ed8) |

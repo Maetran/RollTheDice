@@ -205,7 +205,7 @@ class PasskeyCredential(Base):
 class WebAuthnCeremony(Base):
     """Short-lived, one-time server state for a WebAuthn ceremony.
 
-    The state cookie is opaque and stored only as a hash. The raw challenge is
+    The browser state token is opaque and stored only as a hash. The raw challenge is
     intentionally retained for a few minutes because the verifier must compare
     it byte-for-byte with the signed client data.
     """
@@ -221,16 +221,27 @@ class WebAuthnCeremony(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    action: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    target_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    request_origin: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    authorizing_credential_id: Mapped[int | None] = mapped_column(
+        ForeignKey("passkey_credentials.id", ondelete="CASCADE"), nullable=True,
+    )
 
     __table_args__ = (
         CheckConstraint(
-            "purpose IN ('registration', 'authentication')",
+            "purpose IN ('registration', 'authentication', 'reauthentication')",
             name="ck_webauthn_ceremonies_purpose",
         ),
         CheckConstraint(
-            "(purpose = 'registration' AND user_id IS NOT NULL AND session_id IS NOT NULL) "
+            "(purpose IN ('registration', 'reauthentication') AND user_id IS NOT NULL AND session_id IS NOT NULL) "
             "OR (purpose = 'authentication' AND user_id IS NULL AND session_id IS NULL)",
             name="ck_webauthn_ceremonies_subject",
+        ),
+        CheckConstraint(
+            "purpose != 'reauthentication' OR "
+            "(action IS NOT NULL AND target_hash IS NOT NULL AND request_origin IS NOT NULL)",
+            name="ck_webauthn_ceremonies_reauthentication",
         ),
         CheckConstraint("length(challenge) BETWEEN 32 AND 64", name="ck_webauthn_ceremonies_challenge_size"),
         Index("ix_webauthn_ceremonies_expires", "expires_at"),

@@ -9,6 +9,7 @@ from typing import Iterable
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, inspect, select
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import selectinload
 
 from .cross_game_activity import cross_game_activity_for_user
@@ -1781,15 +1782,24 @@ def sync_user_achievements(
         )
         if unlocked and row is None:
             unlocked_at = user.created_at if achievement.kind == "account_created" else utcnow()
-            db.add(
-                UserAchievement(
+            # A profile read and a visible account-tab action can materialize
+            # the same award concurrently. Let the unique key choose the first
+            # unlock without failing either request or replacing its timestamp.
+            db.execute(
+                insert(UserAchievement).values(
                     user_id=user.id,
                     achievement_key=achievement.key,
                     source_completed_game_id=source_id,
                     unlocked_at=unlocked_at,
-                )
+                ).on_conflict_do_nothing(index_elements=["user_id", "achievement_key"])
             )
-        elif (
+            if source_id is not None:
+                # If a concurrent profile won the insert, still apply the
+                # existing proven-source repair rules below.
+                row = db.scalar(select(UserAchievement).where(
+                    UserAchievement.user_id == user.id, UserAchievement.achievement_key == achievement.key,
+                ))
+        if (
             unlocked
             and row is not None
             and row.source_completed_game_id is None
@@ -1895,8 +1905,8 @@ def sync_engagement_achievements_for_users(user_ids: Iterable[object]) -> None:
                 if achievement.kind != "engagement_event" or achievement.key in existing:
                     continue
                 if counts.get(achievement.key, 0) >= achievement.target:
-                    db.add(UserAchievement(
+                    db.execute(insert(UserAchievement).values(
                         user_id=user_id, achievement_key=achievement.key,
                         source_completed_game_id=None, unlocked_at=utcnow(),
-                    ))
+                    ).on_conflict_do_nothing(index_elements=["user_id", "achievement_key"]))
             db.flush()

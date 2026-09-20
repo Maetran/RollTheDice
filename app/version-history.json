@@ -1846,5 +1846,12 @@
     "date": "2026-09-20",
     "bump": "patch",
     "summary": "Fix player discovery and navigation recovery across both games"
+  },
+  {
+    "version": "2.36.0",
+    "revision": "0069e900ab6b80480078878d1ffd2969bb74d332",
+    "date": "2026-09-20",
+    "bump": "minor",
+    "summary": "Versionsnummern und lesbare Aktionen / Version numbers and readable actions"
   }
 ]

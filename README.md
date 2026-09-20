@@ -214,8 +214,9 @@ Inside LCARS game rooms, quieter frame and chat colours and reduced dice glow
 keep selections clear. Positive scores use a light, muted apricot, and CPU
 badges use flat LCARS colours with dark lettering. The black background,
 layout and sliding score sheets are unchanged.
-Under **Account → Settings → Profile & sign-in → Change username**, enter a new name and your
-current password. Names follow the registration rules (3–32 characters) and
+Under **Account → Settings → Profile & sign-in → Change username**, enter a new name and
+confirm it with an existing passkey, or choose your current password as a fallback.
+Names follow the registration rules (3–32 characters) and
 are unique regardless of case. The new name applies to signing in, profiles
 and new games in both products. Sessions, statistics, achievements, avatars
 and saved player selections remain attached to the same account. Completed
@@ -227,7 +228,8 @@ name becomes available again. In the private Zilch preview mode, names tied to
 preview access require an administrator to adjust the access configuration first.
 
 **Deutsch:** Unter **Konto → Einstellungen → Profil & Zugang → Benutzername ändern** kannst du
-mit deinem aktuellen Passwort einen neuen Namen wählen. Er gilt für Anmeldung,
+einen neuen Namen wählen und bevorzugt mit einem vorhandenen Passkey bestätigen.
+Dein aktuelles Passwort bleibt als Alternative verfügbar. Der Name gilt für Anmeldung,
 Profil und neue Partien in beiden Spielen. Konto, Statistiken, Erfolge und
 Spielerauswahl bleiben erhalten. Auch abgeschlossene Partien und Bestenlisten
 zeigen deinen aktuellen Kontonamen. Die Zuordnung erfolgt über feste IDs,
@@ -259,6 +261,17 @@ controlled Zilch subdomain. The server stores public credential material only;
 passwords remain a fallback. Add, name or remove passkeys in account settings.
 A password reset signs out every device and removes existing passkeys; enroll
 them again after signing in. An ordinary password change keeps passkeys.
+Account changes also prefer passkeys: username, email, password, adding another
+passkey and removing a passkey. Each confirmation belongs to the current account,
+session and requested action, expires after five minutes and can be used once.
+Cancelling leaves the account unchanged; password confirmation is an explicit
+fallback. The first passkey still needs the existing password because there is
+no registered credential yet. Choosing a new password during initial email
+registration or recovery and administrator-issued temporary passwords remain
+bootstrap/recovery flows; room passwords are game access codes, not account
+reauthentication. See the [password-flow audit](docs/PASSKEY_FLOW_AUDIT.md).
+Simultaneous profile and account-statistics visits preserve one achievement
+record and its original unlock time instead of failing on duplicate awards.
 Disabling email through its deployment flag restores legacy password sign-up.
 See the [email account plan](docs/EMAIL_ACCOUNTS_PLAN.md) and
 [account security review](docs/ACCOUNT_SECURITY_REVIEW_2026-09-12.md).
@@ -286,8 +299,29 @@ für ZDWA sowie die kontrollierte Zilch-Subdomain. Der Server speichert nur
 lassen sich in den Kontoeinstellungen hinzufügen, benennen und entfernen.
 Ein Passwort-Reset meldet alle Geräte ab und entfernt bisherige Passkeys;
 danach lassen sie sich neu hinzufügen. Ein normaler Passwortwechsel behält sie.
+Auch Benutzername, E-Mail, Passwort und das Hinzufügen oder Entfernen von Passkeys
+lassen sich bevorzugt mit einem vorhandenen Passkey bestätigen. Jede Bestätigung
+gilt einmalig für das aktuelle Konto, die Sitzung und die gewählte Aktion und
+läuft nach fünf Minuten ab. Abbrechen ändert nichts; das Passwort ist eine
+bewusst wählbare Alternative. Beim ersten Passkey wird noch das vorhandene
+Passwort gebraucht. Die erste Passwortwahl, Wiederherstellung und temporäre
+Admin-Passwörter bleiben Einrichtungs-/Wiederherstellungswege; Spielraum-Passwörter
+sind Zugangscodes. Details stehen im [Passwort-Flow-Audit](docs/PASSKEY_FLOW_AUDIT.md).
+Gleichzeitige Profil- und Statistikaufrufe behalten einen gemeinsamen
+Erfolgseintrag samt ursprünglichem Freischaltdatum und scheitern nicht an
+doppelten Vergabeversuchen.
 Bei deaktiviertem E-Mail-Feature ist die bisherige Registrierung mit
 Benutzername und Passwort wieder verfügbar.
+
+On touch tablets, both products center their main navigation in a dedicated
+row below the title and tools in portrait and landscape. Phone and mouse
+desktop layouts keep their existing arrangement.
+Auf Touch-Tablets steht die Hauptnavigation in beiden Spielen im Hoch- und
+Querformat mittig in einer eigenen Zeile unter Titel und Werkzeugen.
+
+Offline play is currently a design assessment, not an enabled feature. The
+[offline-mode assessment](docs/OFFLINE_MODE_ASSESSMENT.md) recommends separate
+offline results and records the remaining fairness limits before implementation.
 
 The public Zilch lobby paints its heading directly from HTML and shows its
 controls without waiting for the account check. Creating a game, account data

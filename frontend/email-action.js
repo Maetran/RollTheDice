@@ -84,6 +84,10 @@ function successMarkup(heading, href, label) {
   return `<h1>${escapeHtml(t(heading))}</h1><p><a class="button-link primary" href="${escapeHtml(href)}">${escapeHtml(t(label))}</a></p>`;
 }
 
+function passkeyRecoveryMarkup() {
+  return `<aside data-passkey-recovery><p>${escapeHtml(t("Hast du einen Passkey? Melde dich damit an. Ein Passwort-Reset ist dann nicht nötig."))}</p><p><a class="button-link primary" href="${escapeHtml(loginHref())}">${escapeHtml(t("Mit Passkey anmelden"))}</a></p></aside>`;
+}
+
 async function renderRegistration(container) {
   document.title = t("Konto bestätigen");
   const token = tokenFromFragment();
@@ -124,10 +128,10 @@ async function renderRegistration(container) {
 
 async function renderForgotPassword(container) {
   document.title = t("Passwort vergessen");
-  container.innerHTML = `<h1>${escapeHtml(t("Passwort vergessen"))}</h1><p>${escapeHtml(t("Hinterlege deine E-Mail-Adresse, damit wir dir einen Link zum Zurücksetzen senden können."))}</p>
+  container.innerHTML = `<h1>${escapeHtml(t("Passwort vergessen"))}</h1>${passkeyRecoveryMarkup()}<p>${escapeHtml(t("Hinterlege deine E-Mail-Adresse, damit wir dir einen Link zum Zurücksetzen senden können."))}</p>
     <form class="form-stack" data-forgot-form>
       <label>${escapeHtml(t("E-Mail-Adresse"))}<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
-      <button class="primary" type="submit">${escapeHtml(t("Link zum Zurücksetzen senden"))}</button>
+      <button class="ghost" type="submit">${escapeHtml(t("Link zum Zurücksetzen senden"))}</button>
       <p data-message role="status"></p>
     </form>${recoveryMarkup(container)}`;
   const form = container.querySelector("form");
@@ -156,10 +160,10 @@ async function renderPasswordReset(container) {
     showError(container, "Dieser Passwort-Link ist ungültig oder abgelaufen.");
     return;
   }
-  container.innerHTML = `<h1>${escapeHtml(t("Passwort zurücksetzen"))}</h1><p>${escapeHtml(t("Dabei werden alle Geräte abgemeldet und bisherige Passkeys entfernt. Du kannst sie danach in den Einstellungen neu hinzufügen."))}</p><form class="form-stack" data-password-form>
+  container.innerHTML = `<h1>${escapeHtml(t("Passwort zurücksetzen"))}</h1>${passkeyRecoveryMarkup()}<p>${escapeHtml(t("Dabei werden alle Geräte abgemeldet und bisherige Passkeys entfernt. Du kannst sie danach in den Einstellungen neu hinzufügen."))}</p><form class="form-stack" data-password-form>
       <label>${escapeHtml(t("Neues Passwort"))}<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="256" required></label>
       <label>${escapeHtml(t("Neues Passwort wiederholen"))}<input name="confirmation" type="password" autocomplete="new-password" minlength="8" maxlength="256" required></label>
-      <button class="primary" type="submit">${escapeHtml(t("Passwort speichern"))}</button>
+      <button class="ghost" type="submit">${escapeHtml(t("Passwort speichern"))}</button>
       <p data-message role="status"></p>
     </form>${recoveryMarkup(container)}`;
   const form = container.querySelector("form");

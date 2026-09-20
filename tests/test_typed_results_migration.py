@@ -19,7 +19,7 @@ PRE_TYPED_RESULTS_REVISION = "20260902_0015"
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20260920_0042"
+LATEST_SCHEMA_REVISION = "20260920_0043"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):

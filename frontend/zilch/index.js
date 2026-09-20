@@ -1,4 +1,4 @@
-import { apiFetch, authError, escapeHtml, loadAuth, logout, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings } from "../shared/auth.js";
+import { apiFetch, authError, escapeHtml, loadAuth, logout, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings } from "../shared/auth.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initializeGameViewport } from "../shared/game-viewport.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
@@ -2154,7 +2154,7 @@ function zilchAccountSettingsMarkup(username) {
       <h3>${escapeHtml(t("Passwort ändern"))}</h3>
       ${passwordHint}
       <form id="zilchPasswordForm" class="zilch-settings-form">
-        <label>${escapeHtml(t("Aktuelles Passwort"))}<input id="zilchCurrentPassword" type="password" autocomplete="current-password" required></label>
+        <div data-account-verification></div>
         <label>${escapeHtml(t("Neues Passwort"))}<input id="zilchNewPassword" type="password" autocomplete="new-password" minlength="8" required></label>
         <label>${escapeHtml(t("Neues Passwort wiederholen"))}<input id="zilchConfirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>
         <button class="primary" type="submit">${escapeHtml(t("Passwort ändern"))}</button>
@@ -2325,8 +2325,9 @@ function bindZilchAccountSettings() {
   const pushDisableButton = document.getElementById("zilchDisableGameInvitePush");
   const pushStatus = document.getElementById("zilchGameInvitePushStatus");
   const passwordForm = document.getElementById("zilchPasswordForm");
+  const passwordVerification = mountAccountVerification(passwordForm?.querySelector("[data-account-verification]"), { passwordId: "zilchCurrentPassword" });
   if (state.auth?.user?.must_change_password) {
-    revealAccountSetting(document.getElementById("zilchCurrentPassword"), { focus: true, scroll: true });
+    passwordVerification.focus();
   }
   if (!state.auth?.user?.must_change_password && new URLSearchParams(window.location.search).has("allowlist")) {
     showZilchAccountTab("settings", { updateHash: true });
@@ -2506,7 +2507,6 @@ function bindZilchAccountSettings() {
     passwordForm.addEventListener("submit", async event => {
       event.preventDefault();
       const messageSlot = document.getElementById("zilchPasswordMessage");
-      const currentPassword = document.getElementById("zilchCurrentPassword")?.value || "";
       const newPassword = document.getElementById("zilchNewPassword")?.value || "";
       const confirmation = document.getElementById("zilchConfirmPassword")?.value || "";
       if (!messageSlot) return;
@@ -2515,22 +2515,25 @@ function bindZilchAccountSettings() {
         return;
       }
       const submit = passwordForm.querySelector('button[type="submit"]');
+      if (submit?.disabled) return;
       if (submit) submit.disabled = true;
       try {
+        const proof = await passwordVerification.proof("change_password");
         const response = await apiFetch("/api/auth/change-password", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+          body: JSON.stringify({ ...proof, new_password: newPassword }),
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
           messageSlot.textContent = t(authError(payload.detail));
           return;
         }
+        passwordVerification.clear();
         messageSlot.textContent = t("Passwort geändert. Bitte erneut anmelden.");
         window.setTimeout(() => window.location.replace(zilchPath("/anmelden")), 1_200);
-      } catch (_) {
-        messageSlot.textContent = t("Einstellungen konnten nicht gespeichert werden.");
+      } catch (error) {
+        messageSlot.textContent = t(error instanceof TypeError ? "Einstellungen konnten nicht gespeichert werden." : error.message);
       } finally {
         if (submit && document.contains(submit)) submit.disabled = false;
       }
@@ -3281,7 +3284,8 @@ function renderRulesContent(facts) {
     </section>
     <section class="zilch-card zilch-rules-section">
       <h2>${escapeHtml(t("Lobby-Chat und Einladungen"))}</h2>
-      <p>${escapeHtml(t("Unter Konto → Einstellungen kannst du deinen Benutzernamen mit deinem aktuellen Passwort ändern. Der neue Name gilt für Anmeldung, Profil und neue Partien in ZDWA und Zilch. Statistiken, Erfolge und Spielerauswahl bleiben erhalten. Auch abgeschlossene Partien zeigen deinen aktuellen Kontonamen. Gastnamen und Nachrichtentexte bleiben unverändert. Dein Profillink ändert sich; der alte Name wird wieder frei."))}</p>
+      <p>${escapeHtml(t("Auch Änderungen an E-Mail und Passwort sowie das Hinzufügen oder Entfernen von Passkeys bestätigst du bevorzugt mit einem vorhandenen Passkey. Ohne nutzbaren Passkey steht die Passwortbestätigung bereit. Beim ersten Einrichten eines Passkeys brauchst du noch dein aktuelles Passwort."))}</p>
+      <p>${escapeHtml(t("Unter Konto → Einstellungen kannst du deinen Benutzernamen bevorzugt mit einem eingerichteten Passkey bestätigen. Dein aktuelles Passwort bleibt als Alternative verfügbar. Der neue Name gilt für Anmeldung, Profil und neue Partien in ZDWA und Zilch. Statistiken, Erfolge und Spielerauswahl bleiben erhalten. Auch abgeschlossene Partien zeigen deinen aktuellen Kontonamen. Gastnamen und Nachrichtentexte bleiben unverändert. Dein Profillink ändert sich; der alte Name wird wieder frei."))}</p>
       <p>${escapeHtml(t("Der gemeinsame Lobby-Chat für ZDWA und Zilch ist für angemeldete Konten verfügbar. Du siehst nur Nachrichten, für die du beim Senden verbunden und berechtigt warst; nach drei Tagen werden sie gelöscht. Chat und Lobby-Popups lassen sich im Konto ausschalten."))}</p>
       <p>${escapeHtml(t("Ein geöffneter Spiel-Chat und ein begonnener Text bleiben bei Live-Nachrichten, Spielstandsaktualisierungen und Wiederverbindungen erhalten."))}</p>
       <p>${escapeHtml(t("Im Lobby-Chat sind höchstens 400 Zeichen je Nachricht und fünf Nachrichten pro Konto in 30 Sekunden erlaubt. Admins können Konten stummschalten oder vom Chat ausschließen."))}</p>

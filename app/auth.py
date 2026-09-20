@@ -12,6 +12,7 @@ from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 
 from .achievements import achievement_rank_for_keys
+from .auth_proofs import CONFIRMATION_FAILURES, PasskeyProof
 from .auth_protection import (
     clear_login_failures,
     enforce_login_rate_limit,
@@ -180,6 +181,52 @@ def lock_verified_password(db, user: User) -> bool:
         ).values(updated_at=User.updated_at).execution_options(synchronize_session=False)
     )
     return result.rowcount == 1
+
+
+def lock_current_account_session(db, identity: AuthIdentity) -> None:
+    """Recheck the exact session under the mutation's write lock, not a stale ORM row."""
+    result = db.execute(
+        update(LoginSession).where(
+            LoginSession.id == identity.session_id,
+            LoginSession.user_id == identity.user_id,
+            LoginSession.csrf_token == identity.csrf_token,
+            LoginSession.expires_at > utcnow(),
+        ).values(last_seen_at=LoginSession.last_seen_at).execution_options(synchronize_session=False)
+    )
+    if result.rowcount != 1:
+        raise HTTPException(status_code=401, detail="authentication_required")
+
+
+def require_account_reauthentication(
+    db, identity: AuthIdentity, current_password: str | None, *, passkey: PasskeyProof | None = None,
+    request: Request | None = None, action: str, target: str = "",
+) -> User:
+    """Keep the confirmed credential, session and sensitive mutation atomic."""
+    from .passkeys import PasskeyError, complete_reauthentication_ceremony
+
+    user = db.get(User, identity.user_id)
+    if user is None or not user.is_active:
+        raise HTTPException(status_code=401, detail="authentication_required")
+    if passkey is not None:
+        if current_password is not None or request is None:
+            raise HTTPException(status_code=400, detail="passkey_ceremony_invalid")
+        try:
+            complete_reauthentication_ceremony(
+                db, raw_state=passkey.token, credential=passkey.credential, user_id=identity.user_id,
+                session_id=identity.session_id, action=action, target=target,
+                request_origin=request.headers.get("origin", ""),
+            )
+        except PasskeyError as exc:
+            raise HTTPException(status_code=503 if exc.code == "passkeys_unavailable" else 400, detail=exc.code) from exc
+    elif not current_password or not verify_password(current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="current_password_invalid")
+    # The conditional write checks the user snapshot loaded before crypto work.
+    # Recovery/password changes, deactivation and deleted/reused sessions cannot
+    # leave a previously verified proof usable for a later write.
+    if not lock_verified_password(db, user):
+        raise HTTPException(status_code=400, detail="passkey_verification_failed" if passkey else "current_password_invalid")
+    lock_current_account_session(db, identity)
+    return user
 
 
 def _cookie_secure() -> bool:
@@ -398,16 +445,17 @@ def logout(raw_token: str | None) -> None:
         db.execute(delete(LoginSession).where(LoginSession.token_hash == hash_session_token(raw_token)))
 
 
-def change_password(identity: AuthIdentity, current_password: str, new_password: str) -> None:
+def change_password(
+    identity: AuthIdentity, current_password: str | None, new_password: str, *,
+    passkey: PasskeyProof | None = None, request: Request | None = None,
+) -> None:
     validate_password(new_password)
     with session_scope() as db:
-        user = db.get(User, identity.user_id)
-        if not user or not verify_password(current_password, user.password_hash):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="current_password_invalid")
+        user = require_account_reauthentication(
+            db, identity, current_password, passkey=passkey, request=request, action="change_password",
+        )
         if verify_password(new_password, user.password_hash):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="password_unchanged")
-        if not lock_verified_password(db, user):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="current_password_invalid")
         user.password_hash = hash_password(new_password)
         user.must_change_password = False
         user.updated_at = utcnow()
@@ -427,18 +475,19 @@ def revoke_account_recovery_state(db, user_id: int, *, remove_passkeys: bool = F
         db.execute(delete(PasskeyCredential).where(PasskeyCredential.user_id == user_id))
 
 
-def change_username(identity: AuthIdentity, username: str, current_password: str, request: Request) -> None:
+def change_username(
+    identity: AuthIdentity, username: str, current_password: str | None, request: Request, *,
+    passkey: PasskeyProof | None = None,
+) -> None:
     clean_username = validate_username(username)
     normalized = normalize_username(clean_username)
     # Use an immutable account key so renaming cannot reset password-guess limits.
     key = enforce_login_rate_limit(request, f"username-change:{identity.user_id}")
     try:
         with session_scope() as db:
-            user = db.get(User, identity.user_id)
-            if not user or not verify_password(current_password, user.password_hash) or not lock_verified_password(db, user):
-                db.rollback()
-                record_login_failure(key)
-                raise HTTPException(status_code=400, detail="current_password_invalid")
+            user = require_account_reauthentication(
+                db, identity, current_password, passkey=passkey, request=request, action="change_username", target=username,
+            )
             # Preview grants are still configured by name. Do not allow gaining,
             # losing or transferring one through a self-service rename.
             preview_names = configured_zilch_preview_usernames() | {ZILCH_PREVIEW_USERNAME}
@@ -457,6 +506,10 @@ def change_username(identity: AuthIdentity, username: str, current_password: str
     except IntegrityError as exc:
         # The unique constraint also protects concurrent rename/register requests.
         raise HTTPException(status_code=409, detail="username_taken") from exc
+    except HTTPException as exc:
+        if exc.detail in CONFIRMATION_FAILURES:
+            record_login_failure(key)
+        raise
     clear_login_failures(key)
 
 
