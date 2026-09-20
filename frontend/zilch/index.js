@@ -4949,13 +4949,20 @@ function renderGameState({ followNotebookLatest = false } = {}) {
   // still waiting for a second seat, so the score sheet never leaves an
   // unused column beside it.
   const waitingPanelUsesRail = Boolean(waitingPanel);
+  // The larger touch table can keep the next step and the game objective
+  // beside both histories. This guide is hidden on phones and mouse layouts;
+  // the authoritative actions and their server-derived choices stay shared.
+  const tabletGuide = !finished ? `<section class="zilch-tablet-guide" aria-label="${escapeHtml(t("Nächster Schritt"))}">
+    <div class="zilch-tablet-guide__objective"><span>${escapeHtml(t("Ziel der Partie"))}</span><strong>${escapeHtml(solo ? soloObjectiveTitle(snapshot) : `${number(target)} ${t("Punkte")}`)}</strong></div>
+    <h2>${escapeHtml(t("Nächster Schritt"))}</h2><p>${escapeHtml(statusText(snapshot, turnState))}</p>
+  </section>` : "";
   const sideRail = openingPanel
     ? `<aside class="zilch-start-roll-rail">${openingPanel}</aside>`
     : waitingPanelUsesRail
       ? `<aside class="zilch-start-roll-rail">${waitingPanel}</aside>`
     : hasChoices
-      ? `<aside class="zilch-recommendations" aria-label="${escapeHtml(finished ? t("Spielergebnis") : t("Mögliche Wertungen"))}">${recommendations}${resultMarkup}</aside>`
-      : "";
+      ? `<aside class="zilch-recommendations" aria-label="${escapeHtml(finished ? t("Spielergebnis") : t("Mögliche Wertungen"))}">${tabletGuide}${recommendations}${resultMarkup}</aside>`
+      : `<aside class="zilch-recommendations zilch-recommendations--tablet-only">${tabletGuide}</aside>`;
   // The current roll and its all-at-once hold sit directly under their
   // respective columns: score sheet on the left, choice rail on the right.
   // This keeps every recommendation slot free while making the full scoring

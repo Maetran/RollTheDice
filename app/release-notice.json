@@ -4,25 +4,25 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Mehr App-Gefühl: feste Spieltische, kompaktere Lobbys und alle laufenden oder wartenden Partien an einem Ort.",
-  "summary_en": "A more app-like feel: fixed game tables, compact lobbies and all running or waiting games in one place.",
+  "summary_de": "Mehr Übersicht auf dem Tablet: eigene Spieltische für Hoch- und Querformat, mit gut erreichbaren Touch-Aktionen.",
+  "summary_en": "More room to play on tablets: dedicated portrait and landscape tables with easy-to-reach touch controls.",
   "player_notes": {
     "de": {
-      "title": "Mehr Spiel, weniger Scrollen",
+      "title": "Mehr Überblick auf dem Tablet",
       "changes": [
-        "Der Spieltisch bleibt im Bildschirm. Würfel, Aktionen und Chat bleiben auch auf kleinen Geräten erreichbar.",
-        "Längere Spielzettel und Verläufe bewegst du direkt in ihrem Bereich, ohne den ganzen Tisch zu verschieben.",
-        "Die Lobbys bündeln laufende und wartende Partien, zeigen Spielerangaben nur einmal und brauchen weniger Platz zum Loslegen.",
-        "Community-Zahlen stehen oben im Header. Die Wall of Shame in ZDWA zeigt beide Zeiträume kompakter."
+        "Beide Spiele nutzen Tablets im Hoch- und Querformat besser: mit lesbaren Spielzetteln und Hauptaktionen unten in Griffweite.",
+        "ZDWA zeigt im Solospiel eine Spaltenhilfe mit offenen Feldern. Zwischen weiteren Zetteln wechselst du durch Wischen oder Antippen der Pfeile.",
+        "Zilch zeigt auf Tablets beide Punkteverläufe gemeinsam und gibt den Wertungsvorschlägen mehr Platz.",
+        "Alle Designs sind angepasst. Die vertrauten Handyansichten bleiben erhalten."
       ]
     },
     "en": {
-      "title": "More play, less scrolling",
+      "title": "A clearer table on your tablet",
       "changes": [
-        "The table stays on screen. Dice, actions and chat remain reachable on smaller devices too.",
-        "Scroll longer score sheets and histories within their own areas without moving the whole table.",
-        "The lobbies group running and waiting games, show player details once and use less space to get started.",
-        "Community figures sit in the header. ZDWA's Wall of Shame shows both periods in a more compact view."
+        "Both games make better use of portrait and landscape tablets, with readable score sheets and main actions within reach at the bottom.",
+        "ZDWA adds a solo column guide with open fields. Swipe or use the arrow buttons to move between more score sheets.",
+        "On tablets, Zilch shows both score histories together and gives scoring choices more space.",
+        "Every theme is covered. Your familiar phone layouts stay the same."
       ]
     }
   }

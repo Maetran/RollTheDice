@@ -1,0 +1,253 @@
+/* Touch tablets get a score-sheet workspace and an edge-reachable action bar.
+   The short-side guard deliberately excludes phones held in landscape. */
+.tablet-column-guide,
+.tablet-board-navigation,
+.tablet-sheet-scroll-hint{ display:none; }
+
+@media (any-pointer:coarse) and (min-width:768px) and (min-height:600px) and (max-width:1600px){
+  body.room-page{
+    --tablet-table-width:min(1400px, calc(100vw - 2.5rem));
+    --desktop-shell-max:var(--tablet-table-width);
+    --desktop-two-board-shell-max:var(--tablet-table-width);
+    --desktop-three-board-shell-max:var(--tablet-table-width);
+    --header-control-size:2.75rem;
+    --col-desc:clamp(4rem, 18%, 6rem);
+    --tablet-write-row:clamp(44px, calc((100dvh - 33rem) / 12), 56px);
+    --tablet-compute-row:26px;
+    padding-top:max(.65rem, var(--room-safe-top));
+  }
+  .room-page .room-header,
+  .room-page #scoreOut{
+    width:var(--tablet-table-width);
+    max-width:1400px;
+  }
+  .room-page .room-header{
+    min-height:3.75rem;
+    padding:.4rem .65rem;
+    margin-bottom:.65rem;
+    border-radius:var(--radius);
+  }
+  .room-page .header-turn-status{ font-size:.9rem; gap:.2rem; }
+  .room-page .room-header-menu-panel > button{
+    height:auto;
+    min-height:44px;
+    padding:.55rem .65rem;
+    font-size:.95rem;
+  }
+  .room-page #scoreOut .players-grid{
+    gap:1rem;
+    align-items:center;
+    padding:.2rem .2rem .4rem;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    scroll-padding-inline:.2rem;
+    scrollbar-width:thin;
+  }
+  .room-page #scoreOut .players-grid > .player-card{
+    flex:0 0 calc((100% - 1rem) / 2);
+    width:calc((100% - 1rem) / 2);
+    padding:.75rem;
+    scroll-snap-align:start;
+    scroll-snap-stop:always;
+  }
+  .room-page #scoreOut .pc-head{
+    align-items:center;
+    min-height:2.5rem;
+    margin-bottom:.55rem;
+    font-size:1rem;
+  }
+  .room-page #scoreOut .pc-members{ line-height:1.7; }
+  .room-page .tablet-sheet-scroll-hint{
+    display:block;
+    flex:0 0 auto;
+    padding:.3rem .15rem 0;
+    color:var(--muted);
+    font-size:.75rem;
+    line-height:1.3;
+    text-align:right;
+  }
+  .room-page #scoreOut .player-card table.grid{ font-size:1rem; overflow:visible; }
+  .room-page #scoreOut .player-card table.grid :is(th, td){
+    height:var(--tablet-write-row);
+    padding:.12rem .4rem !important;
+    line-height:1.15;
+  }
+  .room-page #scoreOut .player-card table.grid :is(thead th, tr.is-compute td){
+    height:var(--tablet-compute-row);
+    font-size:.85rem;
+  }
+  .room-page #scoreOut .player-card table.grid thead th{
+    position:sticky;
+    top:0;
+    z-index:3;
+    background:var(--table-head);
+  }
+  .room-page #scoreOut .player-card table.grid td.cell.clickable:active{
+    box-shadow:inset 0 0 0 2px var(--accent);
+  }
+  .room-page #scoreOut .topbar{
+    width:100%;
+    max-width:none;
+    margin:.45rem 0 0;
+    padding:.45rem .65rem .65rem;
+    gap:.3rem;
+  }
+  .room-page .action-feedback{
+    min-height:1.25rem;
+    font-size:.85rem;
+    line-height:1.3;
+  }
+  .room-page #scoreOut #diceBar{
+    grid-template-columns:minmax(8rem, 1fr) repeat(5, 3.6rem) minmax(8rem, 1fr);
+    grid-template-rows:3.6rem;
+    column-gap:clamp(.45rem, 1.3vw, 1.25rem);
+    row-gap:0;
+    align-items:center;
+    padding:.45rem .55rem;
+  }
+  .room-page #diceBar .die{
+    grid-row:1;
+    width:3.6rem !important;
+    height:3.6rem !important;
+    max-width:3.6rem !important;
+    max-height:3.6rem !important;
+  }
+  .room-page #diceBar .die[data-i="0"]{ grid-column:2; }
+  .room-page #diceBar .die[data-i="1"]{ grid-column:3; }
+  .room-page #diceBar .die[data-i="2"]{ grid-column:4; }
+  .room-page #diceBar .die[data-i="3"]{ grid-column:5; }
+  .room-page #diceBar .die[data-i="4"]{ grid-column:6; }
+  .room-page #diceBar :is(#announceBtnInline, #requestCorrectionBtn, #rollBtnInline){
+    grid-row:1 !important;
+    min-width:0 !important;
+    width:100% !important;
+    height:3.25rem !important;
+    min-height:3.25rem !important;
+    margin:0 !important;
+    padding:.55rem .65rem;
+    font-size:1rem;
+    justify-self:stretch;
+    align-self:center !important;
+  }
+  .room-page #diceBar :is(#announceBtnInline, #requestCorrectionBtn){ grid-column:1 !important; }
+  .room-page #diceBar #rollBtnInline{ grid-column:7 !important; }
+  .room-page #scoreOut .suggestions-area{
+    height:auto;
+    min-height:1.75rem;
+    margin:.4rem 0 0;
+  }
+  .room-page .suggestions{ flex-wrap:wrap; gap:.4rem; }
+  .room-page .suggestion-btn{ font-size:.85rem; padding:.25rem .65rem; max-width:none; }
+  .room-page .mobile-announce-option{ min-height:48px; font-size:1rem; }
+  .room-page :is(.rules-sheet-close, .chat-close){ width:44px; height:44px; min-height:44px; }
+  .room-page .chat-reactions-host .emoji-fab{ width:44px; height:44px; min-height:44px; flex-basis:44px; }
+  .room-page .chat-input-row :is(input, button){ min-height:44px; }
+  /* A full-width tablet workspace has no outside gutter for desktop side chat. */
+  body.room-page .chat-panel{
+    --chat-bar-height:var(--desktop-chatbar-h);
+    top:auto;
+    right:auto;
+    left:calc((100vw - var(--tablet-table-width)) / 2 + var(--mobile-reactionbar-w));
+    bottom:calc(var(--room-safe-bottom) + var(--game-viewport-bottom, 0px));
+    width:calc(var(--tablet-table-width) - var(--mobile-reactionbar-w)) !important;
+    min-width:0;
+    height:auto;
+    max-height:min(62dvh, 30rem);
+    border-radius:0 8px 0 0;
+    transform:translateY(calc(100% - var(--chat-bar-height)));
+  }
+  body.room-page .chat-panel.open{
+    top:auto;
+    right:auto;
+    left:calc((100vw - var(--tablet-table-width)) / 2);
+    bottom:calc(var(--room-safe-bottom) + var(--game-viewport-bottom, 0px));
+    width:var(--tablet-table-width) !important;
+    height:auto;
+    transform:none;
+  }
+  body.room-page .chat-panel .chat-content{
+    display:flex;
+    height:calc(min(62dvh, 30rem) - var(--chat-bar-height));
+    max-height:calc(var(--game-viewport-height, 100dvh) - var(--room-safe-top) - var(--room-safe-bottom) - 5rem);
+  }
+  body.room-page .chat-panel .chat-head{ display:flex; }
+  body.room-page .chat-panel .chat-input-row{ order:2; }
+  body.room-page .chat-panel .chat-box{ order:1; }
+  body.room-page .chat-reactions-host{
+    top:auto;
+    right:auto;
+    left:calc((100vw - var(--tablet-table-width)) / 2);
+    bottom:calc(var(--room-safe-bottom) + var(--game-viewport-bottom, 0px));
+    width:var(--mobile-reactionbar-w);
+    min-width:var(--mobile-reactionbar-w);
+    height:var(--desktop-chatbar-h);
+    min-height:var(--desktop-chatbar-h);
+    border-radius:8px 0 0 0;
+    transform:none;
+  }
+  body.room-page .chat-reactions-host .emoji-panel{
+    top:auto;
+    right:auto;
+    bottom:calc(100% + .5rem);
+    left:0;
+    transform:none;
+  }
+
+  /* One sheet has room for a quiet reference; two or more use that space to
+     compare scores. The game actions stay in exactly the same lower band. */
+  .room-page.board-count-1 #scoreOut{
+    display:grid;
+    grid-template-columns:minmax(0, 1.9fr) minmax(14rem, 1fr);
+    grid-template-rows:minmax(0, 1fr) auto auto;
+    column-gap:clamp(1.25rem, 3vw, 3rem);
+  }
+  .room-page.board-count-1 #scoreOut .players-grid{ grid-column:1; grid-row:1; height:100%; }
+  .room-page.board-count-1 #scoreOut .players-grid > .player-card{ width:100%; flex-basis:100%; }
+  .room-page.board-count-1 #scoreOut .suggestions-area{ grid-column:1 / -1; grid-row:2; }
+  .room-page.board-count-1 #scoreOut .topbar{ grid-column:1 / -1; grid-row:3; }
+  .room-page.board-count-1 #scoreOut #overlayMount{ grid-column:1 / -1; }
+  .room-page .tablet-column-guide{
+    display:grid;
+    grid-column:2;
+    grid-row:1;
+    align-self:center;
+    gap:.65rem;
+    min-height:0;
+    max-height:100%;
+    padding:.2rem .2rem .4rem;
+    overflow:auto;
+    overscroll-behavior:contain;
+  }
+  .tablet-column-guide h2{ margin:.25rem 0 .35rem; color:var(--muted); font-size:.9rem; font-weight:750; }
+  .tablet-column-guide article{
+    padding:.85rem 1rem;
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    background:var(--surface);
+  }
+  .tablet-column-guide article > div{ display:flex; align-items:center; gap:.7rem; }
+  .tablet-column-guide article > div > span{ font-size:1.3rem; color:var(--accent); }
+  .tablet-column-guide p{ margin:.45rem 0 .75rem; color:var(--muted); font-size:.9rem; line-height:1.4; }
+  .tablet-column-guide small{ display:flex; justify-content:space-between; color:var(--muted); font-size:.8rem; }
+  .tablet-column-guide small b{ color:var(--text); font-variant-numeric:tabular-nums; }
+  .room-page .tablet-board-navigation{
+    order:1;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:.5rem;
+    flex:0 0 auto;
+    padding:.2rem .2rem 0;
+  }
+  .tablet-board-navigation button{ min-width:44px; min-height:44px; padding:.4rem 1rem; }
+  .tablet-board-navigation span{ color:var(--muted); font-variant-numeric:tabular-nums; font-size:.85rem; }
+  :root[data-game="zdwa"][data-theme="classic"] .tablet-column-guide article{
+    background:var(--classic-score-paper);
+    border-color:#c5ab7a;
+    box-shadow:0 .14rem .3rem rgba(0,26,16,.2);
+  }
+  :root[data-game="zdwa"][data-theme="classic"] .tablet-column-guide :is(article, p, small, b, article > div > span){ color:var(--classic-score-ink); }
+  :root[data-game="zdwa"][data-theme="classic"] .tablet-column-guide h2{ color:#fff4d7; }
+  :root[data-game="zdwa"][data-theme="classic"] .room-page .tablet-sheet-scroll-hint{ color:#fff4d7; }
+  :root[data-game="zdwa"][data-theme="classic"] .room-page #scoreOut .player-card table.grid thead th{ background:var(--classic-score-paper) !important; }
+}

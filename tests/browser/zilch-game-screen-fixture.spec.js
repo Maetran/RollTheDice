@@ -2619,7 +2619,12 @@ test("LCARS free-roll badge remains readable beside the score and selects the sa
     await expect(combinedScore).toHaveAttribute("aria-label", /Drei Paare.*Freier Wurf/);
 
     const expectReadableBadge = async () => {
-      const appearance = await combinedScore.evaluate(tile => {
+      // A draft echo replaces the game DOM after a tap. Resolve the tile and
+      // read its styles in the same browser task: a locator's element handle
+      // can otherwise detach between resolution and evaluation, yielding
+      // empty computed colors even though the new badge is visible.
+      const appearance = await page.evaluate(() => {
+        const tile = document.querySelector("[data-zilch-combined-score]");
         const badge = tile.querySelector(".zilch-combined-score__stamp");
         const text = badge.querySelector("strong");
         const rect = element => {

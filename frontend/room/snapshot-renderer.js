@@ -40,6 +40,7 @@ function renderFromSnapshot(snapshot, { animateWrites = false, resetWrites = fal
     const isHC      = !!(snapshot && snapshot._hardcore);
     // aktuelle Scrollposition des alten Grids sichern (wichtig fuer Mobile)
     const _oldGrid = document.querySelector("#scoreOut .players-grid");
+    _oldGrid?._tabletSheetObserver?.disconnect();
     const _oldScrollLeft = _oldGrid ? _oldGrid.scrollLeft : 0;
     const sheetPositions = new Map(Array.from(_oldGrid?.querySelectorAll(".player-card") || [], card => {
       const sheet = card.querySelector(".table-wrap");
@@ -142,6 +143,7 @@ function renderFromSnapshot(snapshot, { animateWrites = false, resetWrites = fal
 	    // Chat-Breite angleichen
 	    syncChatWidth();
 	    syncSideChatAnchor();
+    syncTabletTableExtras(snapshot);
 
 	    // --- Scrollposition nach Re-Render bewahren, ausser bei gewolltem Fokuswechsel (Write+TurnChange)
     const filledNow = countFilledWritableCells(snapshot);

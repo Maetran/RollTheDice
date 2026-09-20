@@ -11,6 +11,21 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
+## Spieltische fürs Tablet / Tables for tablets — 2026-09-20
+
+- **Deutsch:** Eigene Touch-Layouts für beide Spiele im Hoch- und Querformat,
+  einschließlich des 12,9-Zoll-iPads. Spielzettel und Verläufe nutzen den Platz;
+  Würfel bleiben maßvoll groß und Hauptaktionen liegen unten in Griffweite.
+  ZDWA ergänzt eine Solo-Spaltenhilfe und eine Navigation zwischen den Zetteln;
+  Zilch zeigt beide Punkteverläufe gemeinsam. Alle Designs sind berücksichtigt.
+  Die Handyansichten und die bisherigen Maus-Desktop-Layouts bleiben erhalten.
+- **English:** Dedicated touch layouts for both games in portrait and landscape,
+  including the 12.9-inch iPad. Score sheets and histories use the available room;
+  dice remain moderately sized and the main actions stay within reach at the bottom.
+  ZDWA adds a solo column guide and score-sheet navigation; Zilch shows both
+  players' histories together. All themes are covered. Phone and existing mouse
+  desktop layouts are preserved.
+
 ## Feste Spieltische und kompakte Lobbys / Fixed tables and compact lobbies — 2026-09-20
 
 - **Deutsch:** ZDWA und Zilch halten den Spieltisch innerhalb des sichtbaren

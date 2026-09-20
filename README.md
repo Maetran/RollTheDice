@@ -116,6 +116,22 @@ erreichbar. Auf kleineren Geräten lassen sich lange Spielzettel, Verläufe und
 Dialoge in ihrem eigenen Bereich bewegen, ohne den ganzen Tisch zu
 verschieben. Der Browser-Zoom bleibt verfügbar.
 
+Touch tablets have their own portrait and landscape table layouts, including
+the 12.9-inch iPad. Readable score sheets and histories use the extra room,
+while moderately sized dice and the main actions sit within reach near the
+bottom. ZDWA adds a solo column guide with remaining fields and touch navigation
+between score sheets. Zilch shows both players' histories together. Light,
+Dark, Classic and LCARS retain their respective appearance; phone and mouse
+desktop layouts stay unchanged.
+
+**Deutsch:** Touch-Tablets erhalten eigene Spieltische für Hoch- und Querformat,
+auch das 12,9-Zoll-iPad. Lesbare Spielzettel und Verläufe nutzen den zusätzlichen
+Platz; maßvoll große Würfel und die Hauptaktionen liegen unten in Griffweite.
+ZDWA ergänzt eine Solo-Spaltenhilfe mit offenen Feldern und eine Navigation
+zwischen den Spielzetteln. Zilch zeigt beide Punkteverläufe gemeinsam. Hell,
+Dunkel, Classic und LCARS behalten ihre Gestaltung; Handy- und Maus-Desktop-
+Ansichten bleiben unverändert.
+
 ### Zilch at the table
 
 Select scoring dice directly or use compact suggestions. Selections remain
@@ -126,7 +142,7 @@ start roll and the final reply are handled by the server.
 The score notebook returns to its latest entries on every roll and newly
 recorded score. Reading older entries stays possible between rolls, including
 while changing dice selections or receiving chat messages.
-LCARS gives the active player's scrollable score history the large upper
+On phones and desktops, LCARS gives the active player's scrollable score history the large upper
 sheet. The other player's name and total remain visible in a compact strip
 below. When turns change, the newly active sheet slides from bottom to top;
 the Classic notebook is unchanged. Opening rolls use the same miniature dice

@@ -3,6 +3,90 @@
     catch { return false; }
   }
 
+  function syncTabletTableExtras(snapshot){
+    const score = document.querySelector("#scoreOut");
+    const grid = score?.querySelector(".players-grid");
+    if (!grid) return;
+    grid._tabletSheetObserver?.disconnect();
+    delete grid._tabletSheetObserver;
+    if (grid._tabletNavigationUpdate) {
+      grid.removeEventListener("scroll", grid._tabletNavigationUpdate);
+      delete grid._tabletNavigationUpdate;
+    }
+    score.querySelectorAll(".tablet-column-guide, .tablet-board-navigation, .tablet-sheet-scroll-hint").forEach(element => element.remove());
+    if (!window.matchMedia?.("(any-pointer: coarse) and (min-width: 768px) and (min-height: 600px) and (max-width: 1600px)").matches) return;
+    const cards = Array.from(grid.querySelectorAll(":scope > .player-card"));
+    const translate = value => window.ZDWA_I18N?.t?.(value) || value;
+    if (cards.length === 1) {
+      const guide = document.createElement("aside");
+      guide.className = "tablet-column-guide";
+      const guideTitle = cards[0].classList.contains("me") ? "Deine vier Spalten" : "Reihen-Regeln (Spalten)";
+      guide.setAttribute("aria-label", translate(guideTitle));
+      const columns = [
+        ["down", "⬇︎", "Abwärts", "Von 1 bis 60"],
+        ["free", "／", "Freireihe", "Freie Reihenfolge"],
+        ["up", "⬆︎", "Aufwärts", "Von 60 bis 1"],
+        ["ang", "❗", "Angesagt", snapshot?._hardcore ? "Freie Reihenfolge" : "Nach dem ersten Wurf wählen"],
+      ];
+      guide.innerHTML = `<h2>${esc(translate(guideTitle))}</h2>` + columns.map(([field, icon, name, hint]) => {
+        const open = Array.from(cards[0].querySelectorAll(`td.cell[data-field="${field}"]`))
+          .filter(cell => !cell.textContent.trim()).length;
+        return `<article><div><span aria-hidden="true">${icon}</span><strong>${esc(translate(name))}</strong></div><p>${esc(translate(hint))}</p><small><span>${esc(translate("Offene Felder"))}</span><b>${open}</b></small></article>`;
+      }).join("");
+      score.appendChild(guide);
+    }
+    if (cards.length > 2) {
+      const navigation = document.createElement("nav");
+      navigation.className = "tablet-board-navigation";
+      const previous = document.createElement("button");
+      const next = document.createElement("button");
+      const position = document.createElement("span");
+      previous.type = next.type = "button";
+      previous.textContent = "←";
+      next.textContent = "→";
+      previous.setAttribute("aria-label", translate("Vorherige Spielzettel"));
+      next.setAttribute("aria-label", translate("Nächste Spielzettel"));
+      const cardStep = () => cards[0].getBoundingClientRect().width + (Number.parseFloat(getComputedStyle(grid).columnGap) || 0);
+      const update = () => {
+        const first = Math.min(cards.length - 2, Math.max(0, Math.round(grid.scrollLeft / cardStep())));
+        position.textContent = `${first + 1}–${Math.min(cards.length, first + 2)} / ${cards.length}`;
+        previous.disabled = grid.scrollLeft < 4;
+        next.disabled = grid.scrollLeft >= grid.scrollWidth - grid.clientWidth - 4;
+      };
+      const move = direction => {
+        _userScrollOverride = true;
+        const index = Math.round(grid.scrollLeft / cardStep());
+        scrollGridToCard(grid, cards[Math.max(0, Math.min(cards.length - 2, index + direction))]);
+      };
+      previous.addEventListener("click", () => move(-1));
+      next.addEventListener("click", () => move(1));
+      grid._tabletNavigationUpdate = update;
+      grid.addEventListener("scroll", update, { passive:true });
+      navigation.append(previous, position, next);
+      score.appendChild(navigation);
+      requestAnimationFrame(update);
+    }
+    const updateScrollHints = () => cards.forEach(card => {
+      const sheet = card.querySelector(".table-wrap");
+      if (!sheet) return;
+      const hint = card.querySelector(".tablet-sheet-scroll-hint");
+      // Test the space available without the footer so it cannot create its
+      // own overflow. Resizing or opening the keyboard updates this affordance.
+      const overflows = sheet.scrollHeight > sheet.clientHeight + (hint?.offsetHeight || 0) + 1;
+      if (!overflows) { hint?.remove(); return; }
+      if (hint) return;
+      const nextHint = document.createElement("div");
+      nextHint.className = "tablet-sheet-scroll-hint";
+      nextHint.textContent = `↕ ${translate("Weitere Felder durch Wischen")}`;
+      card.appendChild(nextHint);
+    });
+    updateScrollHints();
+    if (typeof ResizeObserver === "function") {
+      grid._tabletSheetObserver = new ResizeObserver(updateScrollHints);
+      cards.forEach(card => grid._tabletSheetObserver.observe(card.querySelector(".table-wrap")));
+    }
+  }
+
   function currentReactionsMount(){
     const mobileMount = document.getElementById("chatReactionsBar");
     return mobileMount || reactionsMount;
@@ -82,7 +166,7 @@
 
   function autoFollowTurn(snapshot){
     try {
-      if (!window.matchMedia?.("(max-width: 560px), (min-width: 561px) and (max-height: 600px)").matches) return;
+      if (!window.matchMedia?.("(max-width: 560px), (min-width: 561px) and (max-height: 600px), (any-pointer: coarse) and (min-width: 768px) and (min-height: 600px) and (max-width: 1600px)").matches) return;
 
       const turnPid = snapshot?._turn?.player_id || null;
       const filledNow = countFilledWritableCells(snapshot);
@@ -234,6 +318,7 @@
 	  }
 
 	  window.addEventListener("resize", () => {
+	    syncTabletTableExtras(sb);
 	    syncChatWidth();
 	    syncSideChatAnchor();
 	    syncReactionsMount();

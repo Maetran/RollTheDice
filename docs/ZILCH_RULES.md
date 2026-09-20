@@ -156,7 +156,19 @@ PWA and after rotating to landscape. Dice, actions and chat remain reachable;
 long score histories, scoring choices and dialogs scroll within their own
 areas without moving the entire table. Browser zoom remains available.
 
-Im LCARS-Design liegt das Punkteblatt des aktiven Spielers groß oben und
+Touch-Tablets erhalten ein eigenes Layout für Hoch- und Querformat. Beide
+Punkteverläufe bleiben nebeneinander lesbar, Wertungsvorschläge nutzen den
+zusätzlichen Platz. Würfel bleiben maßvoll groß; Sichern und Würfeln liegen
+an den äußeren Enden der unteren Aktionsleiste. Classic und LCARS behalten
+ihre eigene Gestaltung. Handy- und Maus-Desktop-Ansichten bleiben unverändert.
+
+**English:** Touch tablets have dedicated portrait and landscape layouts.
+Both score histories stay readable side by side, with more room for scoring
+choices. Dice stay moderately sized; Bank and Roll sit at the outer ends of
+the bottom action dock. Classic and LCARS keep their own appearance. Phone
+and mouse desktop layouts remain unchanged.
+
+Außerhalb der Tablet-Ansicht liegt im LCARS-Design das Punkteblatt des aktiven Spielers groß oben und
 nutzt den verfügbaren Platz für seinen scrollbar bleibenden Verlauf. Der
 andere Spieler bleibt darunter als kompakte Leiste mit Name und Gesamtstand
 sichtbar. Beim Zugwechsel schiebt sich das neu aktive Blatt von unten nach
