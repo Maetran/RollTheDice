@@ -48,5 +48,40 @@ Navigation aufgenommen. Das Audit prüft keine Verfügbarkeit beliebiger von
 Nutzern geteilter alter Partien; solche Ziele erhalten einen hilfreichen
 Rückweg, ohne Auskunft über fremde private Ergebnisse zu geben.
 
+## Dauerhafte Pfadprüfungen und Pflege
+
+Die bereits vorhandenen Browserprüfungen testen die vollständigen Wege durch
+Spielersuche und Spielerauswahl, E-Mail-/Passwort-Aktionen, Konto-Anmeldung mit
+Rückkehr zum gewünschten Reiter, PWA-Spielwechsel, Ergebnisse und Zuschauerlinks.
+Sie bleiben die Grundlage; identische Tests werden nicht nochmals angelegt.
+
+`tests/test_navigation_contract.py` ergänzt zwei bisher fehlende Sicherungen:
+
+- Alle registrierten GET-Pfade außerhalb der API müssen in `DOCUMENT_ROUTES`
+  einer bestehenden Regression zugeordnet sein. Das umfasst auch eingebundene
+  Router, Weiterleitungen, persönliche Seiten und parametrisierte Spielpfade.
+  Technische Endpunkte haben eine einzeln begründete Ausnahme. Neue oder
+  entfernte Routen sowie verschwundene referenzierte Tests lassen den Test
+  fehlschlagen.
+- Alle internen HTML-Links der registrierten öffentlichen SEO-Seiten werden
+  gegen die lokale Anwendung verfolgt. Das prüft erfolgreiche Dokumentziele,
+  vorhandene Fragmentziele und einen Zugang von einer anderen öffentlichen
+  Seite. Neu registrierte SEO-Seiten werden automatisch aufgenommen; verwaiste
+  Seiten oder tote Links lassen den Test fehlschlagen. Externe Dienste und
+  echte Nutzerkonten werden dabei nicht kontaktiert.
+
+Bei jedem neuen oder geänderten Pfad:
+
+1. Einen sinnvollen Einstieg und das endgültige Ziel festlegen; Spielkontext,
+   Anmeldung und gegebenenfalls alte Links mit berücksichtigen.
+2. Die passende bestehende Backend-/Browserprüfung erweitern oder eine neue
+   Prüfung anlegen, die den nutzbaren Endzustand überprüft. Ein bloßer HTTP-200
+   reicht für eine dynamisch gerenderte Seite nicht aus.
+3. Die Zuordnung in `DOCUMENT_ROUTES` aktualisieren. Dauerhafte öffentliche
+   Seiten zusätzlich in `PUBLIC_SEO_PAGES` registrieren und sinnvoll verlinken.
+4. Den Pfadvertrag und die betroffenen Flowtests vor dem Release ausführen.
+   Der Pfadvertrag läuft automatisch mit `npm run test:backend`; alle
+   vorhandenen Browserpfade laufen mit `npm run test:browser`.
+
 Der Rollout erfolgt mit `SILENT_RELEASE=1`: kein Versions-Push und kein neuer
 In-App-Versionshinweis.

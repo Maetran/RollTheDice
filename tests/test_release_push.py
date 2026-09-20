@@ -16,6 +16,7 @@ from app.database import configure_database, session_scope
 from app.models import PushRelease, PushReleaseRecipient, User, WebPushSubscription
 from app.release_manifest import STABILITY_DE, STABILITY_EN, ReleaseNotice
 from app.release_push import dispatch_release_notifications, publish_release_notice
+from app.versioning import current_version
 from app.web_push import (
     WebPushPreferencesRequest,
     remove_web_push_subscriptions,
@@ -44,7 +45,7 @@ class ReleaseMetadataTestCase(unittest.TestCase):
         for path in ("frontend/zilch/index.js", "app/static/account.html", "zilch-manifest.webmanifest"):
             with self.subTest(path=path), self.assertRaisesRegex(ValueError, "fresh"):
                 prepare_notice(revision=REVISION, changed=[path], notes=NOTES)
-        self.assertEqual(prepare_notice(revision=REVISION, changed=["frontend/zilch/index.js", "app/release-notice.json"], notes=NOTES), {**NOTES, "revision": REVISION})
+        self.assertEqual(prepare_notice(revision=REVISION, changed=["frontend/zilch/index.js", "app/release-notice.json"], notes=NOTES), {**NOTES, "revision": REVISION, "version": current_version()})
         with self.assertRaisesRegex(ValueError, "usability"):
             prepare_notice(revision=REVISION, changed=["app/static/account.html", "app/release-notice.json"], notes={**NOTES, "kind": "backend"})
 

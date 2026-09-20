@@ -471,3 +471,29 @@ for (const cpu of [false, true]) {
     }
   });
 }
+
+test("LCARS viewport resizing follows the latest score but preserves manual reading", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 1440, height: 900 }, reducedMotion: "reduce", serviceWorkers: "block" });
+  const page = await context.newPage();
+  try {
+    await installFixture(page, true);
+    await enableStandaloneStyles(page);
+    const log = page.locator('[data-zilch-round-log="p1"]');
+    await log.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect.poll(() => log.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThanOrEqual(1);
+    await expectLatestWrittenScore(page, "p1");
+
+    await log.evaluate(element => { element.scrollTop = 120; });
+    await page.setViewportSize({ width: 667, height: 375 });
+    // The hook runs with the actual visual-viewport update. Wait for that
+    // update, then check that reading older rows was not changed to "latest".
+    await expect.poll(() => page.evaluate(() => Number.parseFloat(document.documentElement.style.getPropertyValue("--game-viewport-height"))))
+      .toBe(375);
+    await expect(log).toHaveJSProperty("scrollTop", 120);
+    await log.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect.poll(() => log.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThanOrEqual(1);
+    await expectLatestWrittenScore(page, "p1");
+  } finally { await context.close(); }
+});

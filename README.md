@@ -792,6 +792,39 @@ preflight and production verification procedure.
 
 ## Product delivery gate
 
+Both apps share a `Major.Minor.Patch` product version in `app/version.json`.
+The current version appears under **Account → Settings → Help & news → News &
+versions**, including silent releases. Published history entries show their
+assigned version while retaining their existing acknowledgement state.
+See the [complete version history](docs/VERSION_HISTORY.md) for all retrospective
+assignments and [CHANGELOG](CHANGELOG.md) for player-facing descriptions.
+
+**Deutsch:** Beide Apps teilen eine Version nach `Major.Minor.Patch`: große
+Produktmeilensteine, neue Funktionen, Fehlerkorrekturen/Wartung. Die aktuelle
+Nummer steht unter **Konto → Einstellungen → Hilfe & Neuigkeiten → Neuigkeiten
+& Versionen**, auch bei stillen Updates. Bestehende Hinweise behalten ihre
+Bestätigungen und erhalten ihre zugeordnete Versionsnummer.
+
+Before committing the next release's changes, explicitly choose the increment,
+then update the bilingual changelog and release notice. The current `HEAD` must
+still identify the preceding version. For example, using the configured Python environment:
+
+```bash
+python scripts/product_versions.py bump patch --summary-de "Lesbare Aktionen" --summary-en "Readable actions"
+```
+
+The command archives the previous committed version and updates the history
+document. Lint validates the sequence; deployment also rejects an unchanged or
+older version for a new revision, including silent deployment. After a successful
+rollout, tag the deployed commit as `v<Major.Minor.Patch>`. A redeploy of the same
+commit keeps its version. Asset-cache hashes remain independent of product versions.
+
+New or changed HTML paths must update `tests/test_navigation_contract.py` and
+their concrete destination, login-return or browser-flow checks. The inventory
+guard rejects unclassified routes, including routes added through routers;
+public SEO pages are also checked for reachable links and fragment targets.
+Existing path tests should be extended rather than duplicated.
+
 Every visible change ships as a complete German/English product increment:
 update this README, update player rules when behavior changes, and keep
 canonical URLs, Open Graph metadata and indexing policy correct.

@@ -1206,7 +1206,13 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-event-overlay span {
     min-height: 44px;
     padding-block: 0 3px;
     border-bottom-width: 5px;
-    margin-bottom: 6px;
+    margin-bottom: 2px;
+  }
+
+  /* The touch header is eight pixels taller. Reclaim decorative gaps on a
+     short landscape screen so the latest score still fits a complete row. */
+  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game #zilchContent {
+    gap: .25rem;
   }
 
   html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-play-layout {

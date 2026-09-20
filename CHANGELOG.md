@@ -11,7 +11,38 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
-## Spielersuche und zuverlässige Links / Player search and reliable links — 2026-09-20
+ZDWA und Zilch verwenden eine gemeinsame Versionsfolge: Major für neue
+Produktgenerationen, Minor für neue Funktionen, Patch für Fehlerkorrekturen
+und Wartung. Historische Nummern wurden rückwirkend anhand der Git-Änderungen
+zugeordnet; ihre Daten sind Commitdaten, keine behaupteten Deploymentdaten.
+Die vollständige Zuordnung steht in der [Versionsübersicht](docs/VERSION_HISTORY.md).
+
+ZDWA and Zilch share one version sequence: Major for new product generations,
+Minor for new features, Patch for fixes and maintenance. Historical numbers
+were assigned retrospectively from Git changes; their dates are commit dates,
+not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
+
+## 2.36.0 — Versionsnummern und lesbare Aktionen / Version numbers and readable actions — 2026-09-20
+
+- **Deutsch:** Beide Spiele zeigen gemeinsame Versionsnummern nach
+  Major.Minor.Patch. Die bisherige Entwicklung ist rückwirkend nummeriert;
+  vorhandene Versionshinweise erhalten ihre passende Nummer. Pfadtests prüfen
+  wichtige Einstiege, Rückwege und Produktwechsel; neue oder geänderte Pfade
+  müssen ihre Tests mitbringen. Die kompakten Aktionen in Spiel-, Warte- und
+  Beitrittsansichten bleiben auf schmalen Bildschirmen lesbar und antippbar,
+  einschließlich aller Designs. Das Zilch-Punktebuch behält beim Drehen seine
+  Leseposition und folgt weiterhin den neuesten Punkten. Stiller Rollout ohne Versions-Push oder neuen
+  In-App-Versionshinweis.
+- **English:** Both games display shared Major.Minor.Patch version numbers.
+  Previous development is numbered retrospectively, and existing release
+  notes receive their matching version. Route tests check important entry
+  points, return paths and product switches; new or changed routes must update
+  their tests. Compact actions in game, waiting and join views remain readable
+  and touchable on narrow screens, including every theme. Zilch's score history
+  preserves its reading position when rotating and keeps following the latest scores. Silent rollout with
+  no version push or new in-app release announcement.
+
+## 2.35.1 — Spielersuche und zuverlässige Links / Player search and reliable links — 2026-09-20
 
 - **Deutsch:** Spieler finden führt in beiden Spielen zur Suche, auch ohne
   abgeschlossene Partien. Weitere Treffer lassen sich nachladen; der Rückweg
@@ -26,7 +57,7 @@ also includes older and internal changes.
   exits; invalid Zilch game and result links show a helpful error page.
   Silent rollout without a version push or in-app announcement.
 
-## Spieltische fürs Tablet / Tables for tablets — 2026-09-20
+## 2.35.0 — Spieltische fürs Tablet / Tables for tablets — 2026-09-20
 
 - **Deutsch:** Eigene Touch-Layouts für beide Spiele im Hoch- und Querformat,
   einschließlich des 12,9-Zoll-iPads. Spielzettel und Verläufe nutzen den Platz;
@@ -41,7 +72,7 @@ also includes older and internal changes.
   players' histories together. All themes are covered. Phone and existing mouse
   desktop layouts are preserved.
 
-## Feste Spieltische und kompakte Lobbys / Fixed tables and compact lobbies — 2026-09-20
+## 2.34.0 — Feste Spieltische und kompakte Lobbys / Fixed tables and compact lobbies — 2026-09-20
 
 - **Deutsch:** ZDWA und Zilch halten den Spieltisch innerhalb des sichtbaren
   Bildschirms. Lange Zettel, Punkteverläufe und Dialoge bleiben in ihrem eigenen
@@ -60,7 +91,7 @@ also includes older and internal changes.
   landing and rules pages were checked live for indexing directives, canonicals,
   robots.txt and sitemap coverage.
 
-## Styler-Neustart / Styler fresh start — 2026-09-13
+## 2.33.4 — Styler-Neustart / Styler fresh start — 2026-09-13
 
 - **Deutsch:** Styler Full und Styler-Show werden bei allen Konten samt
   Fortschritt zurückgesetzt. Die zugehörigen 4 bzw. 8 Ehrenberg-Marken entfallen;
@@ -75,7 +106,7 @@ also includes older and internal changes.
   earlier completed or ongoing games does not grant them again. Game scores,
   other achievements and Zilch are unchanged. Silent rollout.
 
-## Würfe und kompakte Bedienung / Rolls and compact controls — 2026-09-13
+## 2.33.3 — Würfe und kompakte Bedienung / Rolls and compact controls — 2026-09-13
 
 - **Deutsch:** ZDWA animiert angenommene Würfe auch bei Mitspielern und
   Zuschauern; gehaltene Würfel bleiben liegen. Die Korrektur sitzt als kleines
@@ -96,7 +127,7 @@ also includes older and internal changes.
   pauses 0.15 seconds less after regular rolls. Normal banks slightly earlier,
   Aggressive noticeably earlier; Conservative is unchanged. Silent rollout.
 
-## Erreichbare Erfolge / Reachable achievements — 2026-09-12
+## 2.33.2 — Erreichbare Erfolge / Reachable achievements — 2026-09-12
 
 - **Deutsch:** Zilchs Konto verlinkt die eigene Historie direkt aus den
   Statistiken. ZDWA zählt den sichtbar geöffneten Verlauf für Rückblick;
@@ -117,7 +148,7 @@ also includes older and internal changes.
   five-of-a-kind Full entries; ambiguous old scores grant no new awards.
   Existing awards stay intact. No backfill; silent rollout.
 
-## Zilch Classic Chatleiste / Chat bar — 2026-09-12
+## 2.33.1 — Zilch Classic Chatleiste / Chat bar — 2026-09-12
 
 - **Deutsch:** Die Chatleiste bleibt beim Öffnen, Schließen und erneuten
   Antippen dunkel und lesbar. Ein allgemeiner Hover-Effekt übermalt ihren
@@ -126,7 +157,7 @@ also includes older and internal changes.
   tapped again. A generic hover effect no longer covers its background.
   Silent hotfix without a release push or new popup.
 
-## Zilch Classic Remaster — 2026-09-12
+## 2.33.0 — Zilch Classic Remaster — 2026-09-12
 
 - **Deutsch:** Classic behält den Wirtshauslook mit Notizblock und Würfeln,
   erhält aber ruhigere Nussbaumtöne, helle Naturpapierflächen und matte
@@ -146,7 +177,7 @@ also includes older and internal changes.
   link and indexable public product icons complement the existing canonicals
   and sitemap.
 
-## Wall of Shame — 2026-09-12
+## 2.32.0 — Wall of Shame — 2026-09-12
 
 - **Deutsch:** Unter den ZDWA-Bestenlisten stehen jetzt die drei Konten mit
   den meisten selbst abgebrochenen gestarteten Partien: letzte zehn Tage und
@@ -163,7 +194,7 @@ also includes older and internal changes.
   profile links; equal counts share a rank. Even an imperfect scorecard
   deserves a finish.
 
-## Passkey zuerst / Passkey first — 2026-09-12
+## 2.31.0 — Passkey zuerst / Passkey first — 2026-09-12
 
 - **Deutsch:** Die Anmeldung stellt Passkeys nach vorne. Benutzername und
   Passwort erscheinen erst nach „Mit Passwort anmelden“. Nach einem Abbruch
@@ -179,7 +210,7 @@ also includes older and internal changes.
   last passkey is removed. Required password changes take priority; active
   games remain uninterrupted.
 
-## Klarere Kontoeinstellungen und E-Mail / Clearer account settings and email — 2026-09-12
+## 2.30.0 — Klarere Kontoeinstellungen und E-Mail / Clearer account settings and email — 2026-09-12
 
 - **Deutsch:** ZDWA und Zilch ordnen die Einstellungen gleich: Profil und
   Zugang, Sprache und Spiel, Mitspieler und Hinweise sowie Hilfe und
@@ -204,7 +235,7 @@ also includes older and internal changes.
   from `noreply@zockdiewandan.online`, using verified SPF/DKIM, strict DMARC and
   encrypted delivery. A reset signs out every device and removes existing passkeys.
 
-## Passkeys und Fairplay / Passkeys and fair play — 2026-09-12
+## 2.29.0–2.29.2 — Passkeys und Fairplay / Passkeys and fair play — 2026-09-12
 
 - **Deutsch:** Passkeys werden zur bevorzugten Anmeldung in ZDWA und Zilch.
   In den Kontoeinstellungen lassen sie sich hinzufügen, benennen und entfernen;
@@ -230,7 +261,7 @@ also includes older and internal changes.
   preserves the selected return destination.
 - **Prüfung / Review:** [Account security and Fairplay review](docs/ACCOUNT_SECURITY_REVIEW_2026-09-12.md).
 
-## Stille Korrektur / Silent fix — Aktuelle Namen in früheren Partien — 2026-09-12
+## 2.28.1 — Stille Korrektur / Silent fix — Aktuelle Namen in früheren Partien — 2026-09-12
 
 - **Deutsch:** Abgeschlossene ZDWA- und Zilch-Partien, Spielhistorie und
   Bestenlisten zeigen den aktuellen Kontonamen. Die Zuordnung verwendet feste
@@ -247,7 +278,7 @@ also includes older and internal changes.
   custom game titles stay unchanged. Stored gameplay and scores are not
   rewritten. This rollout sends no release push and creates no new in-app popup.
 
-## Benutzername ändern / Change username — 2026-09-11
+## 2.28.0 — Benutzername ändern / Change username — 2026-09-11
 
 - **Deutsch:** In den Einstellungen von ZDWA und Zilch lässt sich der gemeinsame
   Benutzername mit dem aktuellen Passwort ändern. Vergebene und ungültige Namen
@@ -261,7 +292,7 @@ also includes older and internal changes.
   and player selection are preserved. Existing games and messages keep their
   recorded names. The profile link changes and the previous name becomes available.
 
-## Stille Korrektur / Silent fix — Geschriebene Punkte und ruhigeres Laden
+## 2.27.10 — Stille Korrektur / Silent fix — Geschriebene Punkte und ruhigeres Laden — 2026-09-10
 
 - **Deutsch:** Neue Classic-Punkte werden Ziffer für Ziffer mit echten
   Kugelschreiber-Pfaden geschrieben, auch beim Mitspieler. Bestehende Einträge
@@ -277,7 +308,7 @@ also includes older and internal changes.
 - **Messung / Measurement:**
   [Classic loading and handwriting audit](docs/ZDWA_CLASSIC_LOADING_2026-09-10.md).
 
-## Stille Korrektur / Silent fix — Classic näher am Kaffeetisch
+## 2.27.9 — Stille Korrektur / Silent fix — Classic näher am Kaffeetisch — 2026-09-10
 
 - **Deutsch:** Der ZDWA-Classic-Schreibblock hat wärmeres, gedämpftes Papier
   statt einer grell hellen Fläche. Blaue Kugelschreiber-Schrift und locker
@@ -295,7 +326,7 @@ also includes older and internal changes.
   Short screens keep the sheet and its actions reachable by scrolling;
   controls, rules and scoring are unchanged.
 
-## Stille Korrektur / Silent fix — Schneller in die Lobby
+## 2.27.8 — Stille Korrektur / Silent fix — Schneller in die Lobby — 2026-09-09
 
 - **Deutsch:** Neue Gäste gelangen direkt in die Lobby. Der Browser merkt sich
   den aktuellen Versionsstand; spätere neue Updates erscheinen weiterhin.
@@ -310,7 +341,7 @@ also includes older and internal changes.
   Messdaten und Prüfumfang / measurements and validation:
   [ZDWA loading audit](docs/ZDWA_LOADING_AUDIT_2026-09-09.md).
 
-## Stille Korrektur / Silent fix — Ruhigere LCARS-Kontraste
+## 2.27.7 — Stille Korrektur / Silent fix — Ruhigere LCARS-Kontraste — 2026-09-09
 
 - **Deutsch:** Im LCARS-Spielraum sind Rahmen und Chat gedämpfter, die Würfel
   haben weniger Leuchteffekt und doppelte Konturen. Die Auswahl bleibt klar
@@ -323,7 +354,7 @@ also includes older and internal changes.
   with dark lettering. The black background, layout, sliding score sheets
   and game rules are unchanged.
 
-## Stille Korrektur / Silent fix — LCARS-Punkteblätter im Wechsel
+## 2.27.6 — Stille Korrektur / Silent fix — LCARS-Punkteblätter im Wechsel — 2026-09-09
 
 - **Deutsch:** Das aktive LCARS-Punkteblatt liegt groß oben und bietet mehr
   Platz für den Verlauf. Darunter bleiben Name und Gesamtstand des anderen
@@ -335,7 +366,7 @@ also includes older and internal changes.
   visible in a compact strip below. When turns change, the newly active sheet
   slides from bottom to top. Classic, game rules and scoring are unchanged.
 
-## Stille Korrektur / Silent fix — Startwürfel, LCARS-Punktebuch und ruhigerer Würfelwirt
+## 2.27.5 — Stille Korrektur / Silent fix — Startwürfel, LCARS-Punktebuch und ruhigerer Würfelwirt — 2026-09-09
 
 - **Deutsch:** Startwürfe erscheinen als Miniwürfel; beide Ergebnisse bleiben
   kurz sichtbar, auch vor einem erneuten Versuch bei Gleichstand. Das
@@ -347,7 +378,7 @@ also includes older and internal changes.
   totals and independently scrollable histories. The dice keeper leaves more
   time between rolling and deciding. Randomness, rules and scoring are unchanged.
 
-## Stille Korrektur / Silent fix — Zilch lädt unabhängig von Schrift und Konto
+## 2.27.4 — Stille Korrektur / Silent fix — Zilch lädt unabhängig von Schrift und Konto — 2026-09-08
 
 - **Deutsch:** Die öffentliche Zilch-Überschrift steht bereits im HTML; die
   Lobby wartet beim Anzeigen nicht mehr auf die Kontoabfrage. Spielstart,
@@ -366,7 +397,7 @@ also includes older and internal changes.
   Zeitweise öffentliche Download-Stalls sind damit nicht infrastrukturell
   behoben / this does not resolve the separate intermittent public download stalls.
 
-## Stille Korrektur / Silent fix — Würfel und Schreibblock
+## 2.27.3 — Stille Korrektur / Silent fix — Würfel und Schreibblock — 2026-09-08
 
 - **Deutsch:** LCARS-Würfel zeichnen ihre Farben direkt statt mit
   verschachtelten Bildfiltern; Auswahl und Konturen bleiben erhalten.
@@ -378,7 +409,7 @@ also includes older and internal changes.
   bottom on every roll and new score entry; older entries can still be read
   between rolls.
 
-## Stille Korrektur / Silent fix — Freier Wurf in LCARS
+## 2.27.2 — Stille Korrektur / Silent fix — Freier Wurf in LCARS — 2026-09-08
 
 - **Deutsch:** „Freier Wurf“ erscheint im LCARS-Design als helles Statusband
   direkt auf der Punktekachel. Wurfbezeichnung und Punkte bleiben lesbar;
@@ -387,7 +418,7 @@ also includes older and internal changes.
   scoring tile. The throw name and points remain readable; selecting dice and
   rolling again work as before.
 
-## Nächster Release / Next release — LCARS näher am Original
+## 2.27.1 — LCARS näher am Original — 2026-09-08
 
 ### Deutsch
 
@@ -407,7 +438,7 @@ also includes older and internal changes.
 - Game selection, score displays and dice actions share the same visual style.
   Controls and game rules are unchanged.
 
-## Nächster Release / Next release — Zilch auf der Brücke
+## 2.27.0 — Zilch auf der Brücke — 2026-09-08
 
 ### Deutsch
 
@@ -428,7 +459,7 @@ also includes older and internal changes.
 - Roll, hold, roll again, bank, rules, scoring, and server-side results work
   exactly as before.
 
-## Nächster Release / Next release — Classic am Kaffeetisch
+## 2.26.0 — Classic am Kaffeetisch — 2026-09-08
 
 ### Deutsch
 
@@ -450,7 +481,7 @@ also includes older and internal changes.
 - Visible fake rolls spin a little faster in ZDWA and Zilch without changing
   randomness, server decisions, or any player result.
 
-## Nächster Release / Next release — Klar zwischen den Spielen wechseln
+## 2.25.6 — Klar zwischen den Spielen wechseln — 2026-09-08
 
 ### Deutsch
 
@@ -470,7 +501,7 @@ also includes older and internal changes.
   clear spacing. On mobile, the button intentionally remains compact without
   losing its accessible name.
 
-## Nächster Release / Next release — Alle Würfelwirt-Siege im Blick
+## 2.25.5 — Alle Würfelwirt-Siege im Blick — 2026-09-08
 
 ### Deutsch
 
@@ -489,7 +520,7 @@ also includes older and internal changes.
 - The detailed Zilch leaderboards remain filterable by playing style so the
   individual difficulty levels can still be compared directly.
 
-## Nächster Release / Next release — Klarer Abschluss bei Zilch
+## 2.25.4 — Klarer Abschluss bei Zilch — 2026-09-08
 
 ### Deutsch
 
@@ -516,7 +547,7 @@ also includes older and internal changes.
 - The heading and button on Zilch player profiles now stand out clearly from
   the wood background on desktop.
 
-## Nächster Release / Next release — Chat ohne Unterbruch
+## 2.25.3 — Chat ohne Unterbruch — 2026-09-08
 
 ### Deutsch
 
@@ -540,7 +571,7 @@ also includes older and internal changes.
 - Zilch history remains live and keeps the latest entries accessible even when
   the message list is already longer.
 
-## Nächster Release / Next release — Erkundung, die zählt
+## 2.25.1–2.25.2 — Erkundung, die zählt — 2026-09-07
 
 ### Deutsch
 
@@ -568,7 +599,7 @@ also includes older and internal changes.
 - Existing achievement values and rank thresholds remain unchanged, and nobody
   is demoted. New points are available only for their matching actions.
 
-## Nächster Release / Next release — Mehr Ziele, klarer Tisch
+## 2.24.0–2.25.0 — Mehr Ziele, klarer Tisch — 2026-09-07
 
 ### Deutsch
 
@@ -622,7 +653,7 @@ also includes older and internal changes.
   Zilch gives the route to ZDWA better contrast; in the installed Zilch app,
   the wood texture again fills the entire visible lobby and game surface.
 
-## Nächster Release / Next release — Push-Auswahl mit Mitspieler-Rufen
+## 2.23.0 — Push-Auswahl mit Mitspieler-Rufen — 2026-09-06
 
 ### Deutsch
 
@@ -650,7 +681,7 @@ also includes older and internal changes.
   notes separately; everything remains switchable off. The private player
   selection can still limit player calls to known accounts.
 
-## Nächster Release / Next release — Profilbilder für echte Fotos
+## 2.22.2–2.22.5 — Profilbilder für echte Fotos — 2026-09-06
 
 ### Deutsch
 
@@ -677,7 +708,7 @@ also includes older and internal changes.
   pixel, removes metadata and stores only a newly generated square 256-pixel
   WebP up to 64 KB. The uploaded original is never stored.
 
-## Nächster Release / Next release — Zilch-Zug klarer, Lobby-Chat ruhiger
+## 2.22.1 — Zilch-Zug klarer, Lobby-Chat ruhiger — 2026-09-06
 
 ### Deutsch
 
@@ -703,7 +734,7 @@ also includes older and internal changes.
   from the three-day personal history. Player messages, authorization,
   deletion period and flood protection are unchanged.
 
-## Nächster Release / Next release — Profilbilder & Spielstart live
+## 2.22.0 — Profilbilder & Spielstart live — 2026-09-06
 
 ### Deutsch
 
@@ -740,7 +771,7 @@ also includes older and internal changes.
   again at delivery. Participants, private and protected rooms are excluded;
   the event expires after one minute.
 
-## Nächster Release / Next release — Deine Leute, klarere Würfel
+## 2.21.0 — Deine Leute, klarere Würfel — 2026-09-06
 
 ### Deutsch
 
@@ -782,7 +813,7 @@ also includes older and internal changes.
   protection against stale account sessions and concurrent additions. No new
   database migration; older push clients remain compatible.
 
-## 2026-09-06 — Neuigkeiten direkt in der App / In-app release notes
+## 2.20.0 — Neuigkeiten direkt in der App / In-app release notes — 2026-09-06
 
 [Release-Code: 743cff7](https://github.com/Maetran/RollTheDice/commit/743cff7d779c318aab8ff20df878171368df520c)
 
@@ -826,7 +857,7 @@ also includes older and internal changes.
   after a successful rollout. Acknowledgements survive restarts. Existing short
   push summaries stay in the history without retroactively showing popups.
 
-## 2026-09-06 — Versions-Push und private Spielerauswahl
+## 2.19.0 — Versions-Push und private Spielerauswahl — 2026-09-06
 
 [Release-Code: 3a514f9](https://github.com/Maetran/RollTheDice/commit/3a514f95105c83e8d61c9394d3026570ee279d3e)
 
@@ -853,7 +884,7 @@ also includes older and internal changes.
   the announcement. Later opt-ins do not receive old pushes, and opt-out is
   checked again before sending.
 
-## 2026-09-06 — Rückblick: zusammen spielen / Catch-up: playing together
+## 2.15.1–2.18.1 — Rückblick: zusammen spielen / Catch-up: playing together — 2026-09-06
 
 Diese Zusammenfassung gruppiert die unmittelbar vorherigen Änderungen; sie
 erfindet keine rückwirkenden In-App-Releases.

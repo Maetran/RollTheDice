@@ -1,4 +1,6 @@
 export const EN = {
+    "Aktuelle Version": "Current version",
+    "Unter Neuigkeiten & Versionen steht auch die aktuelle gemeinsame Version beider Spiele. Die drei Zahlen stehen für große Produktmeilensteine, neue Funktionen und Fehlerkorrekturen. Stille Updates ändern die Versionsnummer ohne zusätzliche Meldung.": "News & versions also shows the current shared version of both games. The three numbers represent major product milestones, new features and bug fixes. Silent updates change the version number without an additional announcement.",
     "Spieler finden öffnet in beiden Spielen die Suche, auch für Konten ohne abgeschlossene Partie. Alle Spieler anzeigen und Weitere Spieler laden machen weitere Profile erreichbar. Spielerauswahl im Konto verwalten führt vom Profil direkt zum geöffneten Einstellungsbereich zurück.": "Find players opens search in both games, including accounts without a completed game. Show all players and Load more players reveal more profiles. Manage player selection in account takes you from a profile straight back to the open settings section.",
     "Zilch-Link nicht verfügbar": "Zilch link unavailable",
     "Dieser Zilch-Link ist nicht verfügbar.": "This Zilch link is unavailable.",

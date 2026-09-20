@@ -99,6 +99,7 @@ from .push_reminders import run_daily_reminder_scheduler
 from .release_push import run_release_push_scheduler
 from .security import normalize_username
 from .site_seo import PUBLIC_ZILCH_IMAGE_PATHS, robots_document, sitemap_document, zilch_page_is_indexable
+from .versioning import current_version
 from .web_push import (
     claim_game_invite_push,
     dispatch_game_invite_push,
@@ -450,7 +451,7 @@ async def lifespan(_app: FastAPI):
         await shutdown_friend_activity()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, version=current_version())
 
 
 app.include_router(auth_router)

@@ -126,6 +126,8 @@ const state = {
   pauseRedirectTimer: null,
 };
 
+let notebookResizeObserver = null;
+
 function t(value) {
   return window.ZDWA_I18N?.t?.(value) || String(value || "");
 }
@@ -700,6 +702,7 @@ async function openZilchLeaveDialog() {
 }
 
 function renderNotice(messageText, { kind = "info" } = {}) {
+  notebookResizeObserver?.disconnect();
   if (!content) return;
   root?.querySelector("[data-zilch-game-chat]")?.remove();
   content.innerHTML = `<section class="zilch-card zilch-notice zilch-notice--${escapeHtml(kind)}" role="status"><p>${escapeHtml(t(messageText))}</p></section>`;
@@ -3292,6 +3295,7 @@ function renderRulesContent(facts) {
       <p>${escapeHtml(t("Im Konto kannst du ein kleines Profilbild für beide Spiele hinterlegen. Erlaubt sind JPG, PNG oder WebP bis 8 MB und 4’096 × 4’096 Pixel; gespeichert wird ausschließlich eine neu erzeugte, quadratische WebP-Version ohne Metadaten. Das Bild erscheint neben deinem Namen in Profilen, Chats, Spielräumen und Statistiken. Nachrichten über Spielstarts aus deiner privaten Spielerauswahl lassen sich dort ebenfalls ein- oder ausschalten. Sie sind nur live, nur in den Lobbys und öffnen außerhalb eines Spiels eine öffentliche, zuschauerfähige Partie – ohne Push und ohne Verlauf."))}</p>
       <p>${escapeHtml(t("In Zilch findest du deine Spielhistorie unter Konto → Statistiken → Deine Historie. In ZDWA steht sie unter Konto → Statistik. „Rückblick“ wird erst beim Öffnen der eigenen Historie verdient."))}</p>
       <p>${escapeHtml(t("Versionshinweise sind separat aktivierbar und anfangs ausgeschaltet. Nach einem erfolgreichen Update erhältst du pro Version höchstens einen Hinweis je angemeldetem Gerät des ausgewählten Spiels: zu neuen Funktionen oder Verbesserungen an der Stabilität. Ein Klick öffnet dessen Lobby. Frühere Versionen werden nicht nachträglich gemeldet."))}</p>
+      <p>${escapeHtml(t("Unter Neuigkeiten & Versionen steht auch die aktuelle gemeinsame Version beider Spiele. Die drei Zahlen stehen für große Produktmeilensteine, neue Funktionen und Fehlerkorrekturen. Stille Updates ändern die Versionsnummer ohne zusätzliche Meldung."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section">
       <h2>${escapeHtml(t("Neuigkeiten & Versionen"))}</h2>
@@ -3492,11 +3496,40 @@ function rememberNotebookScroll() {
     const playerId = String(log.dataset.zilchRoundLog || "");
     if (!playerId) continue;
     const distanceFromBottom = Math.max(0, log.scrollHeight - log.clientHeight - log.scrollTop);
+    const resized = log._zilchReading && log.clientHeight !== log._zilchReading.height;
     state.notebookScroll.set(playerId, {
       top: log.scrollTop,
-      followLatest: distanceFromBottom < 12,
+      followLatest: resized ? log._zilchReading.followLatest : distanceFromBottom < 12,
     });
   }
+}
+
+function trackNotebookReading(log, followLatest) {
+  const wasTracked = Boolean(log._zilchReading);
+  log._zilchReading = { height: log.clientHeight, top: log.scrollTop, followLatest };
+  if (wasTracked) return;
+  log.addEventListener("scroll", () => {
+    const reading = log._zilchReading;
+    const maximum = Math.max(0, log.scrollHeight - log.clientHeight);
+    const resized = log.clientHeight !== reading.height;
+    // A browser can clamp scrollTop while resizing. A different position is
+    // an actual reading change, including one made before the observer runs.
+    if (!resized || Math.abs(log.scrollTop - Math.min(reading.top, maximum)) > 1) {
+      reading.followLatest = maximum - log.scrollTop < 12;
+    }
+    reading.top = log.scrollTop;
+  }, { passive: true });
+  notebookResizeObserver ||= new ResizeObserver(entries => {
+    for (const { target: list } of entries) {
+      if (!list.isConnected || !list._zilchReading) continue;
+      const reading = list._zilchReading;
+      if (reading.height === list.clientHeight) continue;
+      if (reading.followLatest) list.scrollTop = list.scrollHeight;
+      reading.height = list.clientHeight;
+      reading.top = list.scrollTop;
+    }
+  });
+  notebookResizeObserver.observe(log);
 }
 
 function restoreNotebookScroll({ followLatest = false } = {}) {
@@ -3505,11 +3538,13 @@ function restoreNotebookScroll({ followLatest = false } = {}) {
   for (const log of document.querySelectorAll("[data-zilch-round-log]")) {
     const playerId = String(log.dataset.zilchRoundLog || "");
     const remembered = state.notebookScroll.get(playerId);
-    if (followLatest || !remembered || remembered.followLatest) {
+    const keepLatest = followLatest || !remembered || remembered.followLatest;
+    if (keepLatest) {
       log.scrollTop = log.scrollHeight;
     } else {
       log.scrollTop = Math.min(remembered.top, Math.max(0, log.scrollHeight - log.clientHeight));
     }
+    trackNotebookReading(log, keepLatest);
   }
 }
 
@@ -3922,6 +3957,7 @@ function terminalResultRecord(snapshot) {
 
 function renderResultContent(result) {
   if (!content) return;
+  notebookResizeObserver?.disconnect();
   const participants = resultParticipants(result);
   const solo = isSoloGame(result);
   const gameName = String(result?.game_name || result?.name || "Zilch");
@@ -4479,6 +4515,7 @@ function abortedGameMarkup(snapshot) {
 
 function renderAbortedGameDetails(details) {
   if (!content) return;
+  notebookResizeObserver?.disconnect();
   const terminal = { _abort_reason: details?.abort_reason };
   const name = String(details?.name || "Zilch");
   content.innerHTML = `<h1 class="visually-hidden">${escapeHtml(`${name} · ${abortedGameTitle(terminal)}`)}</h1>${abortedGameMarkup(terminal)}`;
@@ -4985,6 +5022,7 @@ function renderGameState({ followNotebookLatest = false } = {}) {
     ? `<p class="zilch-error" role="status">${escapeHtml(t("Die Partie gegen den Würfelwirt geht gerade nicht weiter."))}</p>`
     : "";
   rememberNotebookScroll();
+  notebookResizeObserver?.disconnect();
   content.innerHTML = `<h1 class="visually-hidden">${gameName}</h1>
     <p id="zilchLiveStatus" class="visually-hidden zilch-live-status--${escapeHtml(state.statusKind)}">${escapeHtml(statusText(snapshot, turnState))}</p>
     ${offline}
@@ -5569,6 +5607,7 @@ async function initialize() {
 }
 
 window.addEventListener("beforeunload", () => {
+  notebookResizeObserver?.disconnect();
   state.stopped = true;
   window.clearTimeout(state.reconnectTimer);
   window.clearTimeout(state.zilchMomentTimer);

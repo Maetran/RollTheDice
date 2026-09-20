@@ -4,23 +4,23 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Spieler leichter finden, direkt zur Spielerauswahl zurückkehren und nützliche Ziele bei Spiel- und Kontolinks erreichen.",
-  "summary_en": "Find players, return directly to your selection and reach useful destinations from game and account links.",
+  "summary_de": "Versionsnummern machen Änderungen nachvollziehbar. Kleine Aktionsfelder bleiben auf schmalen Bildschirmen lesbar.",
+  "summary_en": "Version numbers make changes easier to follow. Compact actions stay readable on narrow screens.",
   "player_notes": {
     "de": {
-      "title": "Spieler finden und sicher ans Ziel kommen",
+      "title": "Klare Versionen und lesbare Aktionen",
       "changes": [
-        "Die Spielersuche findet auch Konten ohne abgeschlossene Partie und kann weitere Treffer nachladen.",
-        "Vom Spielerprofil kehrst du direkt zur geöffneten Spielerauswahl zurück.",
-        "Spielwechsel, Zuschauerlinks und Kontoseiten führen zuverlässiger ans Ziel."
+        "Im Konto findest du die aktuelle Versionsnummer und nummerierte frühere Hinweise.",
+        "Kleine Aktionen in Spiel-, Warte- und Beitrittsansichten bleiben lesbar und gut antippbar.",
+        "Zusätzliche automatische Pfadprüfungen sichern die Navigation auch bei künftigen Erweiterungen ab."
       ]
     },
     "en": {
-      "title": "Find players and reach the right page",
+      "title": "Clear versions and readable actions",
       "changes": [
-        "Player search includes accounts with no completed games and can load more results.",
-        "Player profiles link directly back to your open selection settings.",
-        "Game switching, spectator links and account pages lead to useful destinations."
+        "Your account shows the current version number and numbered earlier release notes.",
+        "Compact actions in game, waiting and join views stay readable and easy to tap.",
+        "Additional automatic route checks protect navigation as new pages are added."
       ]
     }
   }

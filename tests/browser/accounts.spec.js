@@ -653,8 +653,8 @@ test("narrow desktop room header keeps the current turn beside compact actions",
 
   expect(layout.status.width).toBeGreaterThanOrEqual(48);
   expect(layout.status.right).toBeLessThanOrEqual(layout.menu.left + 1);
-  expect(layout.menu.width).toBeCloseTo(36, 0);
-  expect(layout.leave.width).toBeCloseTo(36, 0);
+  expect(layout.menu.width).toBeCloseTo(44, 0);
+  expect(layout.leave.width).toBeCloseTo(44, 0);
   expect(layout.menuText).toBe("⋯");
   expect(layout.menuLabel).toBe("Weitere Aktionen");
   expect(layout.secondLine).toContain("Würfe:");

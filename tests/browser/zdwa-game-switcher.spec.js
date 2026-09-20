@@ -245,9 +245,9 @@ async function controlHeights(locator) {
     .map(element => element.getBoundingClientRect().height));
 }
 
-function expectUniformHeaderControls(heights) {
+function expectUniformHeaderControls(heights, size = 36) {
   expect(heights.length).toBeGreaterThan(1);
-  expect(heights, `Header control heights: ${heights.join(", ")}`).toEqual(heights.map(() => 36));
+  expect(heights, `Header control heights: ${heights.join(", ")}`).toEqual(heights.map(() => size));
 }
 
 test("the permission-gated game switch is available across ZDWA pages but absent in its active room", async ({ page }) => {
@@ -345,11 +345,11 @@ test("the permission-gated game switch is available across ZDWA pages but absent
       documentWidth: document.documentElement.scrollWidth,
     };
   });
-  expect(geometry.buttonHeight).toBeGreaterThanOrEqual(28);
+  expect(geometry.buttonHeight).toBeGreaterThanOrEqual(44);
   expect(geometry.buttonLeft).toBeGreaterThanOrEqual(geometry.headerLeft);
   expect(geometry.buttonRight).toBeLessThanOrEqual(geometry.headerRight);
   expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
-  expectUniformHeaderControls(await controlHeights(page.locator(".room-header button")));
+  expectUniformHeaderControls(await controlHeights(page.locator(".room-header button")), 44);
   await page.keyboard.press("Alt+Shift+Z");
   await page.waitForTimeout(150);
   expect(new URL(page.url()).pathname).toBe(roomPath);

@@ -679,7 +679,10 @@ test("direct Zilch URLs remain server-protected", async ({ page }) => {
   expect(response?.status()).toBe(401);
   await expect(page.locator("[data-zilch-root]")).toHaveCount(0);
   const resultPage = await page.goto("/zilch/ergebnis/not-a-private-result");
-  expect(resultPage?.status()).toBe(401);
+  expect(resultPage?.status()).toBe(200);
+  await expect(page).toHaveURL(/\/zilch\/anmelden\?return_to=%2Fzilch%2Fergebnis%2Fnot-a-private-result$/);
+  await expect(page.locator("[data-zilch-root]")).toHaveCount(0);
+  await expect(page.locator("#zilchPasswordLogin")).toBeVisible();
   const resultsApi = await page.request.get("/api/zilch/results");
   expect(resultsApi.status()).toBe(401);
   const resultApi = await page.request.get("/api/zilch/results/not-a-private-result");

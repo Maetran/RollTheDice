@@ -1,0 +1,53 @@
+/* Compact controls still need a full touch target. Keep text actions at their
+   natural width; square controls contain an icon and an accessible name. */
+@media (any-pointer: coarse), (max-width: 760px) {
+  .room-page .room-header,
+  html[data-game="zilch"] .zilch-shell--game .zilch-header {
+    --header-control-size: 44px;
+  }
+
+  .room-page .room-header .room-header-menu-panel > button {
+    height: auto;
+    min-height: 44px;
+    padding: .55rem .65rem;
+    font-size: .9rem;
+    line-height: 1.25;
+    white-space: normal;
+  }
+  .room-page .room-header-menu-panel > button > span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools :is(button, a) {
+    min-height: 44px;
+    font-size: .8125rem;
+  }
+  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools .zilch-control-label {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .app-dialog .app-dialog-close,
+  html[data-game="zilch"] .app-dialog .app-dialog-close {
+    flex-basis: 44px;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+  .app-dialog .app-dialog-actions > button {
+    min-height: 44px;
+    height: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 340px) {
+  /* Only text actions may lose their decorative icon. The leave control is
+     icon-only on phones and must never become an empty tile. */
+  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools .zilch-room-leave > [aria-hidden="true"] {
+    display: inline-flex;
+    font-size: 1.1rem;
+  }
+}

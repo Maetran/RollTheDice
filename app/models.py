@@ -371,6 +371,7 @@ class PushRelease(Base):
 
     __tablename__ = "push_releases"
     revision: Mapped[str] = mapped_column(String(40), primary_key=True)
+    version: Mapped[str | None] = mapped_column(String(32), nullable=True)
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     summary_de: Mapped[str] = mapped_column(String(140), nullable=False)
     summary_en: Mapped[str] = mapped_column(String(140), nullable=False)

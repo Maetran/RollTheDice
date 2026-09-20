@@ -82,11 +82,14 @@ export function initializeReleaseNotes({ context }) {
   function renderHistory() {
     const mount = document.querySelector(HISTORY_SELECTOR);
     if (!mount || !data) return;
-    const snapshot = JSON.stringify([language(), data.viewer_id, data.releases]);
+    const snapshot = JSON.stringify([language(), data.viewer_id, data.current_version, data.releases]);
     if (snapshots.get(mount) === snapshot) return;
     snapshots.set(mount, snapshot);
     const opened = new Set(Array.from(mount.querySelectorAll("details[open]"), item => item.dataset.revision));
     mount.replaceChildren();
+    if (data.current_version) {
+      mount.appendChild(node("p", `${t("Aktuelle Version")}: ${data.current_version}`, "release-notes-current-version"));
+    }
     if (!data.releases.length) {
       mount.appendChild(node("p", t("Noch keine Versionshinweise veröffentlicht."), "release-notes-muted"));
       return;
@@ -96,6 +99,7 @@ export function initializeReleaseNotes({ context }) {
       details.dataset.revision = release.revision;
       details.open = opened.has(release.revision);
       const summary = node("summary");
+      if (release.version) summary.append(node("span", `v${release.version}`, "release-notes-version"));
       summary.append(node("span", release.title), releaseDate(release));
       details.append(summary, changeList(release));
       mount.appendChild(details);
@@ -120,7 +124,7 @@ export function initializeReleaseNotes({ context }) {
     const heading = node("h2", latest.title);
     heading.id = "releaseNotesTitle";
     const body = node("div", "", "release-notes-body");
-    body.append(node("p", t("Was ist neu?"), "release-notes-eyebrow"), heading, releaseDate(latest), changeList(latest));
+    body.append(node("p", `${t("Was ist neu?")}${latest.version ? ` · v${latest.version}` : ""}`, "release-notes-eyebrow"), heading, releaseDate(latest), changeList(latest));
     body.appendChild(node("p", t("Die letzten zehn Releases kannst du jederzeit im Konto nachlesen."), "release-notes-muted"));
     const error = node("p", "", "release-notes-error");
     error.setAttribute("role", "status");

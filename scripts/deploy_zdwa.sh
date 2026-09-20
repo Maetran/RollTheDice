@@ -109,6 +109,9 @@ git pull --ff-only origin "$BRANCH"
 echo "== Static asset versions =="
 python3 scripts/sync_static_versions.py --check
 
+echo "== Product version =="
+python3 scripts/product_versions.py check --previous "$previous_revision"
+
 echo "== Release note validation =="
 if [[ "$SILENT_RELEASE" == "1" ]]; then
   # An operator explicitly requested a silent hotfix. It neither creates a

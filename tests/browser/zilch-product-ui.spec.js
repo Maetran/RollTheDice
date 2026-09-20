@@ -153,14 +153,18 @@ function externalHttpOrigins(requests, origin) {
 test("private Zilch rules, history, and product navigation use the protected noindex shell", async ({ page }) => {
   const anonymousRules = await page.goto("/zilch/regeln");
   expect(anonymousRules?.status()).toBe(401);
-  const anonymousHistory = await page.goto("/zilch/historie");
-  expect(anonymousHistory?.status()).toBe(401);
-  const anonymousStatistics = await page.goto("/zilch/statistiken");
-  expect(anonymousStatistics?.status()).toBe(401);
+  for (const path of ["/zilch/historie", "/zilch/statistiken", "/zilch/erfolge"]) {
+    const document = await page.goto(path);
+    expect(document?.status()).toBe(200);
+    await expect(page).toHaveURL(new URL(`/zilch/anmelden?return_to=${encodeURIComponent(path)}`, page.url()).href);
+    await expect(page.locator("#zilchPasswordLogin")).toBeVisible();
+    await expect(page.locator("[data-zilch-root]")).toHaveCount(0);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    const apiClient = await page.request.get(path, { headers: { Accept: "application/json" } });
+    expect(apiClient.status()).toBe(401);
+  }
   const anonymousLeaderboards = await page.goto("/zilch/bestenlisten");
   expect(anonymousLeaderboards?.status()).toBe(401);
-  const anonymousAchievements = await page.goto("/zilch/erfolge");
-  expect(anonymousAchievements?.status()).toBe(401);
   const anonymousPlayerAchievements = await page.goto("/zilch/spieler/Mani");
   expect(anonymousPlayerAchievements?.status()).toBe(401);
 

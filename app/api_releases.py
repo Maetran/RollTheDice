@@ -15,6 +15,7 @@ from .database import session_scope
 from .game_access import can_access_zilch_preview
 from .models import PushRelease, ReleaseAcknowledgement
 from .security import as_utc, utcnow
+from .versioning import current_version, version_for_revision
 
 router = APIRouter(prefix="/api/releases", tags=["release notes"])
 HISTORY_LIMIT = 10
@@ -53,13 +54,15 @@ def release_history(request: Request, response: Response, game_type: Literal["zd
             }
             items.append({
                 "revision": release.revision, "published_at": as_utc(release.published_at).isoformat(),
+                "version": release.version or version_for_revision(release.revision),
                 "title": notes["title"], "changes": notes["changes"],
                 "acknowledged": release.revision in acknowledged,
                 # Historic push-only releases stay readable, but are never
                 # retroactively turned into popup announcements.
                 "can_announce": bool(release.player_notes_json),
             })
-    return {"viewer_id": user_id, "releases": items, "can_prompt": not (identity and identity.must_change_password)}
+    return {"viewer_id": user_id, "current_version": current_version(), "releases": items,
+            "can_prompt": not (identity and identity.must_change_password)}
 
 
 @router.post("/{revision}/acknowledge")

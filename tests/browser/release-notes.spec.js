@@ -6,6 +6,7 @@ async function openAccountSection(page, section) {
 }
 
 const authored = require("../../app/release-notice.json");
+const productVersion = require("../../app/version.json").version;
 
 test.use({ serviceWorkers: "block" });
 
@@ -31,6 +32,7 @@ async function signIn(page) {
 function release(index = 10, language = "de") {
   return {
     revision: index.toString(16).padStart(40, "0"),
+    version: `2.20.${index}`,
     published_at: new Date(Date.UTC(2026, 8, 6, 10, index)).toISOString(),
     ...authored.player_notes[language], acknowledged: false, can_announce: true,
   };
@@ -51,7 +53,7 @@ async function expectGuestBaseline(page, revision, context = "zdwa") {
 }
 
 async function mockReleases(page, { viewer = null, count = 1, acknowledged = false, canPrompt = true } = {}) {
-  const state = { viewer, canPrompt, latest: 10, fail: false, ackFail: false, gets: 0, posts: [], read: new Set(), held: null, holdNext: false };
+  const state = { viewer, canPrompt, currentVersion: productVersion, latest: 10, fail: false, ackFail: false, gets: 0, posts: [], read: new Set(), held: null, holdNext: false };
   if (acknowledged) state.read.add(release().revision);
   await page.route("**/api/releases**", async route => {
     const request = route.request();
@@ -73,7 +75,7 @@ async function mockReleases(page, { viewer = null, count = 1, acknowledged = fal
       const item = release(state.latest - offset, language === "en" ? "en" : "de");
       return { ...item, acknowledged: state.read.has(item.revision) };
     });
-    const response = { viewer_id: state.viewer, releases, can_prompt: state.canPrompt };
+    const response = { viewer_id: state.viewer, current_version: state.currentVersion, releases, can_prompt: state.canPrompt };
     if (state.holdNext) {
       state.holdNext = false;
       state.held = () => route.fulfill({ json: response });
@@ -227,6 +229,41 @@ for (const product of [
   { name: "ZDWA", lobby: "/", account: "/konto#settings", other: "/zilch/konto#settings" },
   { name: "Zilch", lobby: "/zilch", account: "/zilch/konto#settings", other: "/konto#settings" },
 ]) {
+  for (const language of ["de", "en"]) {
+    test(`${product.name} ${language} shows semantic versions and a silent update never re-announces history`, async ({ page }, testInfo) => {
+      const user = await signIn(page);
+      const auth = await (await page.request.get("/api/auth/me")).json();
+      await page.route("**/api/auth/me", route => route.fulfill({ json: { ...auth,
+        user: { ...auth.user, preferences: { ...auth.user.preferences, preferred_language: language } },
+      } }));
+      await page.addInitScript(language => {
+        localStorage.setItem("zdwa_language", language);
+        localStorage.setItem("zilch_theme", language === "en" ? "lcars" : "light");
+        localStorage.setItem("wuerfler_theme", language === "en" ? "dark" : "light");
+      }, language);
+      await page.setViewportSize({ width: 320, height: 740 });
+      const server = await mockReleases(page, { viewer: user.id, acknowledged: true });
+      await page.goto(product.account);
+      await openAccountSection(page, "help");
+      const history = page.locator("[data-release-history]");
+      const label = language === "en" ? "Current version" : "Aktuelle Version";
+      await expect(history.locator(".release-notes-current-version")).toHaveText(`${label}: ${productVersion}`);
+      await expect(history.locator(".release-notes-version")).toHaveText("v2.20.10");
+      await history.locator("summary").click();
+      const parts = productVersion.split(".").map(Number);
+      parts[2] += 1;
+      server.currentVersion = parts.join(".");
+      await page.evaluate(() => window.ZDWA_RELEASE_NOTES.refresh());
+      await expect(history.locator(".release-notes-current-version")).toHaveText(`${label}: ${server.currentVersion}`);
+      await expect(history.locator("details")).toHaveAttribute("open", "");
+      await expect(history.locator(".release-notes-version")).toHaveText("v2.20.10");
+      await expect(page.locator(".release-notes-dialog")).toHaveCount(0);
+      expect(server.posts).toHaveLength(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+      await history.screenshot({ path: testInfo.outputPath("semantic-versions-mobile.png") });
+    });
+  }
+
   test(`${product.name} mobile recap, account-wide acknowledgement and ten-entry settings history`, async ({ page }, testInfo) => {
     const user = await signIn(page);
     await page.setViewportSize({ width: 390, height: 844 });

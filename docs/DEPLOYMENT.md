@@ -907,6 +907,14 @@ Spielerkonten auslösen.
 
 ## Manuelles Deployment
 
+Beide Apps verwenden dieselbe Produktversion aus `app/version.json`. Vor dem
+Commit der nächsten Änderung mit `scripts/product_versions.py bump major|minor|patch`
+und den Parametern `--summary-de`/`--summary-en` erhöhen: Der Befehl archiviert
+den bisherigen `HEAD` als Vorgängerversion. Danach Changelog und Release-Notiz
+pflegen. Der Deploy prüft die Versionsfolge auch bei einem stillen Rollout;
+ein erneuter Deploy desselben Commits benötigt keine neue Nummer. Nach einem
+erfolgreichen Rollout den ausgelieferten Commit als `v<Major.Minor.Patch>` taggen.
+
 Nur verwenden, wenn das Skript selbst nicht ausgeführt werden kann. Die
 Reihenfolge darf wegen SQLite/WAL nicht verkürzt werden:
 
@@ -929,7 +937,13 @@ git fetch origin master
 git checkout master
 git pull --ff-only origin master
 python3 scripts/sync_static_versions.py --check
-release_notice="$(python3 scripts/prepare_release_notice.py --previous "$previous_revision")"
+python3 scripts/product_versions.py check --previous "$previous_revision"
+# Set SILENT_RELEASE=1 only for an explicitly silent rollout.
+if [[ "${SILENT_RELEASE:-0}" == "1" ]]; then
+  release_notice='{"skip":true}'
+else
+  release_notice="$(python3 scripts/prepare_release_notice.py --previous "$previous_revision")"
+fi
 docker compose up -d --build
 
 docker compose ps
@@ -952,6 +966,8 @@ Wenn Daten und Schema intakt sind, wird der fehlerhafte Commit lokal mit
 `git revert` rückgängig gemacht, getestet, auf `master` gepusht und mit dem
 normalen Skript erneut ausgerollt. Dadurch bleibt die Historie nachvollziehbar
 und das Deployment erstellt nochmals ein aktuelles Datenbackup.
+Auch diese Korrektur erhält eine neue Patch-Version; frühere Versionsnummern
+werden weder wiederverwendet noch umgeschrieben.
 
 Alembic-Downgrades passieren nicht automatisch. Vor einem Rollback über eine
 Schemaänderung muss geprüft werden, ob der ältere Code mit dem bereits

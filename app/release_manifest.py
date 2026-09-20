@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from .versioning import current_version, version_tuple
+
 STABILITY_DE = "Verbesserungen an der Stabilität"
 STABILITY_EN = "Stability improvements"
 
@@ -40,6 +42,7 @@ class ReleaseNotice:
     summary_de: str
     summary_en: str
     player_notes: dict
+    version: str
 
     @classmethod
     def from_payload(cls, payload: dict) -> ReleaseNotice:
@@ -61,11 +64,14 @@ class ReleaseNotice:
             "de": {"title": STABILITY_DE, "changes": ["Wir haben die Zuverlässigkeit der App verbessert, damit deine Partien rund laufen."]},
             "en": {"title": STABILITY_EN, "changes": ["We've improved the app's reliability to help your games run smoothly."]},
         }
-        return cls(payload["revision"], kind, tuple(sorted(set(games))), *(summary.strip() for summary in summaries), validate_player_notes(player_notes))
+        version = payload.get("version", current_version())
+        version_tuple(version)
+        return cls(payload["revision"], kind, tuple(sorted(set(games))), *(summary.strip() for summary in summaries), validate_player_notes(player_notes), version)
 
     def payload(self) -> dict:
         return {
             "revision": self.revision, "kind": self.kind, "games": list(self.games),
             "summary_de": self.summary_de, "summary_en": self.summary_en,
             "player_notes": self.player_notes,
+            "version": self.version,
         }
