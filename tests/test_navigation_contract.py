@@ -45,6 +45,10 @@ DOCUMENT_ROUTES = (
     ),
     RouteCoverage(("/ergebnis",), "tests/browser/navigation-destinations.spec.js"),
     RouteCoverage(
+        ("/offline-spielen", "/zilch/offline-spielen"), "tests/test_offline_routes.py",
+        "test_offline_entries_are_anonymous_noindex_and_keep_the_correct_game_and_home",
+    ),
+    RouteCoverage(
         ("/registrierung/bestaetigen", "/passwort-vergessen", "/passwort-zuruecksetzen", "/email-bestaetigen"),
         "tests/browser/email-navigation.spec.js",
     ),

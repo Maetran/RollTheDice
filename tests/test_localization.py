@@ -31,9 +31,14 @@ def test_every_user_facing_page_loads_shared_localization_catalog():
 
 
 def test_localization_catalog_is_available_offline():
-    service_worker = (STATIC / "sw.js").read_text(encoding="utf-8")
-    assert "'/static/shell.js'" in service_worker
-    assert "'/manifest-en.webmanifest'" in service_worker
+    # The local entry bundles its own catalog; the online account shell must
+    # no longer be cached just to make language selection available offline.
+    for worker in ("sw.js", "zilch-sw.js"):
+        service_worker = (STATIC / worker).read_text(encoding="utf-8")
+        assert '"/static/offline-play.js"' in service_worker
+    bundle = (STATIC / "offline-play.js").read_text(encoding="utf-8")
+    assert "Offline-Modus aktivieren?" in bundle
+    assert "Activate offline mode?" in bundle
 
 
 def test_all_localized_manifests_are_packaged():

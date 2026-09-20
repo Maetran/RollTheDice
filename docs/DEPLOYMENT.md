@@ -270,9 +270,12 @@ Host-Cookies und lokale Resume-Tokens funktionieren dort weiter.
 Die Zilch-Subdomain liefert weiterhin weder den root-gescopten ZDWA-Service-
 Worker noch dessen Manifest aus. Stattdessen hat sie mit
 `/zilch-manifest.webmanifest` und `/zilch-sw.js` eine eigene, isolierte PWA.
-Der Zilch-Worker ist bewusst network-only und verwendet keinen Cache Storage:
-So kann weder ein gemeinsamer noch ein Zilch-spezifischer PWA-Cache eine
-private Sitzung oder Spielansicht wiederherstellen. API-Antworten bleiben
+Beide Worker speichern ausschließlich das feste Paket für den ausdrücklich
+aktivierten Offline-Modus in Cache Storage. Online-Spielräume, Kontoseiten und
+API-Antworten bleiben network-only. So kann weder ein gemeinsamer noch ein
+Zilch-spezifischer PWA-Cache eine private Sitzung oder Online-Spielansicht
+wiederherstellen. Bei Netzverlust kann nur der anonyme Offline-Einstieg mit
+erneuter Bestätigung erscheinen; er übernimmt keine Online-Partie. API-Antworten bleiben
 `no-store`; Räume, Konto, Historie, persönliche Statistik, Ergebnisse und
 Spielerprofile erhalten `X-Robots-Tag: noindex, nofollow`. Nur die öffentliche
 Zilch-Lobby `/` und `/regeln` sind auf der Zilch-Origin indexierbar, mit
@@ -465,10 +468,12 @@ ssh zdwa 'cd /home/manuel/RollTheDice && sudo -n docker compose exec rollthedice
 
 ## Service Worker und statische Assets
 
-ZDWA verwendet einen Service Worker mit Cache-First-Strategie für statische
-Dateien; Zilch verwendet einen separaten network-only Worker. Cache-Name und
-Query-Parameter werden aus dem Inhalt aller statischen Dateien und Manifeste
-abgeleitet und dadurch gemeinsam aktualisiert.
+ZDWA und Zilch verwenden getrennte Service Worker. Beide cachen ausschließlich
+die in `OFFLINE_PAGES` und `OFFLINE_ASSETS` aufgeführten anonymen Offline-Seiten
+und deren feste Assets. Online-Spielräume, Kontoseiten, Ergebnisse und APIs
+werden nicht in Cache Storage gespeichert. Cache-Name und Query-Parameter
+werden aus dem Inhalt aller statischen Dateien und Manifeste abgeleitet und
+dadurch gemeinsam aktualisiert.
 
 Nach einer Änderung unter `app/static/` oder an einem Manifest:
 
@@ -476,23 +481,26 @@ Nach einer Änderung unter `app/static/` oder an einem Manifest:
 2. Die dabei mechanisch geänderten Referenzen zusammen mit dem Asset committen.
 3. Mit `python3 scripts/sync_static_versions.py --check` prüfen. Das Deployment
    bricht bei einem nicht synchronisierten Stand ab.
-4. Prüfen, ob neue **öffentliche** Offline-Assets in `PRECACHE_URLS`
-   aufgenommen werden müssen. Geschützte Zilch-Routen und ihre Zilch-JS/CSS-
-   Bundles gehören absichtlich nicht in den globalen Precache.
+4. Prüfen, ob neue **öffentliche** Offline-Assets in `OFFLINE_ASSETS` und neue
+   anonyme Offline-Einstiege in `OFFLINE_PAGES` aufgenommen werden müssen.
+   Daraus entsteht `PRECACHE_URLS`. Online-Zilch-Routen und deren `zilch.js`-/
+   `zilch.css`-Bundles gehören nicht in dieses feste Offline-Paket.
 5. Nach dem Deployment die öffentliche HTML-Datei sowie `sw.js` und auf der
    Zilch-Origin `zilch-sw.js` kontrollieren.
 6. Die Seite in einem bereits verwendeten Browser nochmals laden. Der neue
    Service Worker übernimmt bestehende Tabs unter Umständen erst nach dem ersten
    Reload vollständig.
 
-Zilch ist eine autorisierungsgebundene Public Beta. Der Service Worker
-behandelt `/zilch` und alle Unterrouten deshalb ausschließlich per Netzwerk und
-precacht weder die geschützte Shell noch `zilch.js` oder `zilch.css`. Erst eine
-erfolgreiche serverseitige Konto- und Zugriffsprüfung liefert die Shell, die ihre
-versionierten Bundles bei Bedarf lädt. Dieses Verhalten darf bei PWA- oder
-Cache-Änderungen nicht in eine Offline-Fallback-Ansicht abgeschwächt werden:
-nach Logout oder einem Policy-Wechsel darf kein alter persönlicher Zilch-Inhalt
-sichtbar bleiben.
+Zilchs Online-Spiele bleiben eine autorisierungsgebundene Public Beta. Der
+Service Worker lädt Online-Seiten per Netzwerk und precacht weder die
+persönliche Shell noch `zilch.js` oder `zilch.css`. Erst die serverseitige Konto-
+und Zugriffsprüfung liefert geschützte Inhalte. Schlägt die Verbindung fehl,
+darf der Worker ausschließlich den getrennten, anonymen Offline-Einstieg
+anzeigen. Dieser verlangt eine ausdrückliche Aktivierung, zeigt keine alten
+Kontodaten und führt keine Online-Partie fort. Nach Logout oder einem
+Policy-Wechsel darf kein persönlicher Zilch-Inhalt aus einem Cache erscheinen.
+Lokale Spielergebnisse werden auch bei wiederkehrender Verbindung niemals
+hochgeladen.
 
 Beispielprüfung:
 

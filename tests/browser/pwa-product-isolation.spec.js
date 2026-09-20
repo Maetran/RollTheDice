@@ -137,7 +137,7 @@ test("legacy Zilch on the Apex leaves the established Apex PWA untouched", async
 });
 
 test("installed PWAs keep both game handoffs inside their current origin", async () => {
-  const { zdwaAppEntryUrl, zdwaPath, zdwaRoutePath, zilchAppEntryUrl } = await loadRoutes();
+  const { normalizeZilchPageUrl, zdwaAppEntryUrl, zdwaPath, zdwaRoutePath, zilchAppEntryUrl } = await loadRoutes();
   const zdwaLocation = { hostname: "zockdiewandan.online" };
   const zilchLocation = { hostname: "zilch.zockdiewandan.online", pathname: "/" };
   const zilchBridgeLocation = { hostname: "zilch.zockdiewandan.online", pathname: "/zdwa/spiel/room-123" };
@@ -158,6 +158,10 @@ test("installed PWAs keep both game handoffs inside their current origin", async
   expect(zdwaPath("/spiel/room-456", zilchBridgeLocation)).toBe("/zdwa/spiel/room-456");
   expect(zdwaRoutePath("/zdwa/spiel/room-456", zilchBridgeLocation)).toBe("/spiel/room-456");
   expect(zdwaRoutePath("/", zilchLocation)).toBeNull();
+  expect(zdwaPath("/offline-spielen", zilchBridgeLocation)).toBe("/zdwa/offline-spielen");
+  expect(zdwaRoutePath("/zdwa/offline-spielen", zilchBridgeLocation)).toBe("/offline-spielen");
+  expect(normalizeZilchPageUrl("/offline-spielen", zilchLocation)).toBe("/offline-spielen");
+  expect(normalizeZilchPageUrl("/zilch/offline-spielen", zdwaLocation)).toBe("/zilch/offline-spielen");
 });
 
 test("the ZDWA bridge keeps the installed Zilch worker and manifest", async ({ page }) => {

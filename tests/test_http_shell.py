@@ -96,6 +96,14 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         }
         for html_path in main.STATIC_DIR.glob("*.html"):
             html = html_path.read_text(encoding="utf-8")
+            if html_path.name == "offline-play.html":
+                # Local practice must never bootstrap accounts, presence or
+                # online results; its single module is deferred by definition.
+                self.assertNotIn("/static/shell.js", html)
+                self.assertNotIn("/static/auth.js", html)
+                self.assertEqual(html.count("<script"), 1)
+                self.assertIn('<script type="module" src="/static/offline-play.js?v=', html)
+                continue
             if html_path.name in account_actions:
                 # Secret-bearing actions use one deferred module and never
                 # boot the general shell/PWA, prefetchers or third-party scripts.
@@ -266,16 +274,14 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
 
     def test_pwa_update_and_offline_assets_are_precached(self):
         service_worker = (main.STATIC_DIR / "sw.js").read_text()
-        self.assertIn("'/static/shell.js'", service_worker)
-        self.assertIn("'/static/lobby.js'", service_worker)
-        self.assertIn("'/rangabzeichen'", service_worker)
-        self.assertNotIn("'/static/room-scoring.js'", service_worker)
-        self.assertNotIn("'/static/chat.js'", service_worker)
-        self.assertNotIn("'/static/pwa.js'", service_worker)
-        self.assertIn("'/offline'", service_worker)
+        self.assertIn('"/static/offline-play.js"', service_worker)
+        self.assertIn('"/offline-spielen"', service_worker)
+        self.assertIn('"/zilch/offline-spielen"', service_worker)
+        for private_path in ("/konto", "/admin", "/static/room.js", "/static/auth.js"):
+            self.assertNotIn(f'"{private_path}"', service_worker)
         self.assertIn("SKIP_WAITING", service_worker)
-        self.assertIn("await cache.put(req, res.clone())", service_worker)
-        self.assertIn("await runtime.put(req, res.clone())", service_worker)
+        self.assertIn("OFFLINE_STATUS", service_worker)
+        self.assertNotIn("runtime.put", service_worker)
         self.assertIn("await self.clients.claim()", service_worker)
         install_handler = service_worker.split("self.addEventListener('message'", 1)[0]
         self.assertNotIn("self.skipWaiting()", install_handler)

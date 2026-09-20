@@ -7,9 +7,9 @@ const ZDWA_PRODUCTION_HOSTS = new Set([
   "zdwa.zockdiewandan.online",
 ]);
 const ZILCH_LEGACY_PREFIX = "/zilch";
-const ZILCH_PAGE_ROUTE = /^\/(?:$|spiel\/[^/]+(?:\/zuschauen)?|ergebnis\/[^/]+|historie|regeln|statistiken|bestenlisten|erfolge|konto|spieler(?:\/[^/]+)?)\/?$/;
+const ZILCH_PAGE_ROUTE = /^\/(?:$|spiel\/[^/]+(?:\/zuschauen)?|ergebnis\/[^/]+|historie|regeln|statistiken|bestenlisten|erfolge|konto|offline-spielen|spieler(?:\/[^/]+)?)\/?$/;
 export const ZDWA_PWA_BRIDGE_PREFIX = "/zdwa";
-const ZDWA_PAGE_ROUTE = /^\/(?:$|spiel\/[^/]+(?:\/zuschauen)?|ergebnis(?:\/[^/]+)?|regeln|spieler(?:\/[^/]+)?|rangabzeichen|konto|admin|offline)\/?$/;
+const ZDWA_PAGE_ROUTE = /^\/(?:$|spiel\/[^/]+(?:\/zuschauen)?|ergebnis(?:\/[^/]+)?|regeln|spieler(?:\/[^/]+)?|rangabzeichen|konto|admin|offline|offline-spielen)\/?$/;
 
 function activeLocation(locationLike) {
   return locationLike || window.location;

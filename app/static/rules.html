@@ -15,17 +15,17 @@
   <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=e6777ba2487c">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=e6777ba2487c" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=e6777ba2487c" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=848524f74c25">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=848524f74c25" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=848524f74c25" sizes="180x180">
   <!--
     rules.html - Spielanleitung
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi sowie Desktop-/Mobilsteuerung.
   -->
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=e6777ba2487c" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=e6777ba2487c" />
+  <script src="/static/shell.js?v=848524f74c25" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=848524f74c25" />
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
     .doc { width:min(1120px, calc(100vw - 32px)); margin:1.25rem auto 2rem; }
@@ -192,6 +192,11 @@
       <summary>2 v 2 (Team-Modus)</summary>
       <p>Spieler 1 &amp; 3 bilden Team A, 2 &amp; 4 Team B. Teams teilen sich je ein gemeinsames Board. Gewertet wird das Team-Total.</p>
     </details>
+
+    <h2>Offline spielen</h2>
+    <p>Über Offline spielen in der Lobby startest du ein normales Solospiel nur auf diesem Gerät. Jeder Einstieg wird bestätigt: keine Erfolge, keine Ranglistenwertung und kein Upload. Auch beim Zurückwechseln in den Online-Modus erscheint eine Bestätigung.</p>
+    <p>Spielstand und Bestwerte bleiben in diesem Browser. Öffne den Offline-Bereich einmal mit Internet, bis die Dateien bereit sind. Eine unterbrochene Online-Partie wird nicht automatisch zum Offline-Spiel.</p>
+    <p><a href="/offline-spielen">Offline spielen</a></p>
 
     <!-- Steuerung & Shortcuts -->
     <h2>Steuerung & Shortcuts</h2>

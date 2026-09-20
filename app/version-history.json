@@ -1860,5 +1860,12 @@
     "date": "2026-09-20",
     "bump": "minor",
     "summary": "Kontoaktionen mit Passkey bestätigen / Confirm account changes with a passkey"
+  },
+  {
+    "version": "2.37.1",
+    "revision": "8a85db2d9e351c0bca934bbef48c24f6378181fb",
+    "date": "2026-09-20",
+    "bump": "patch",
+    "summary": "Zuschauerchat und vollständige Tablet-Spielblöcke / Spectator chat and complete tablet score sheets"
   }
 ]

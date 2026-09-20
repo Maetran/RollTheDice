@@ -79,8 +79,10 @@ to the Apex. Its ZDWA documents, room links, and return paths retain the
 `/zdwa` prefix while this bridge is active, so the device stays in the installed
 app window. Ordinary browser navigation still uses ZDWA's canonical Apex
 origin. On its canonical origin, Zilch has a separate manifest and its own
-network-only service worker (`/zilch-sw.js`), so it can offer install and update
-notices without sharing the ZDWA cache or worker scope. The Apex `/zilch`
+service worker (`/zilch-sw.js`), so it can offer install and update notices
+without sharing the ZDWA cache or worker scope. Both workers cache only their
+explicit, anonymous offline-play package; online rooms, account pages and API
+responses remain network-only. The Apex `/zilch`
 handoff deliberately does not register that worker; the `/zdwa` bridge retains
 Zilch's worker instead of attempting to register the unavailable Apex worker.
 
@@ -428,10 +430,14 @@ focus, live status announcements, responsive two-board layouts, and a
 reduced-motion path. This is an independent direction, not a copy of Bubblebox
 or another game's assets, sounds, fonts, code, logos, or layout.
 
-The service worker never precaches Zilch pages or the Zilch JS/CSS bundles.
-Protected `/zilch` navigation is network-only; this prevents an old cached
-account shell from surviving logout or a policy change. The authorized shell
-loads its versioned Zilch assets on demand.
+The service worker never precaches online Zilch pages or the online Zilch
+JS/CSS bundles. Protected navigation remains network-only; this prevents an
+old cached account shell from surviving logout or a policy change. The
+authorized shell loads its versioned Zilch assets on demand. A connection
+failure may show only the separate, anonymous offline entry, which requires
+explicit activation and never restores an online game or account state.
+Only its fixed local-play package is cached. Local games grant no achievements
+and never submit scores or progress to the online system.
 
 ## Verified repository architecture
 

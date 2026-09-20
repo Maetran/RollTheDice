@@ -325,9 +325,23 @@ Mobile spectator chat keeps the input reachable with the keyboard open and
 shows spectators with their profile picture. Tablet score sheets use the
 available space without clipping the controls.
 
-Offline play is currently a design assessment, not an enabled feature. The
-[offline-mode assessment](docs/OFFLINE_MODE_ASSESSMENT.md) recommends separate
-offline results and records the remaining fairness limits before implementation.
+**Offline spielen** steht in beiden Lobbys bereit: ZDWA als normales Solospiel,
+Zilch solo oder gegen den Würfelwirt. Jeder Einstieg und jedes Fortsetzen nach
+einer Pause oder einem Neustart verlangt eine Bestätigung: keine Erfolge,
+keine Ranglistenwertung und keine Übertragung an das Konto. Auch der Rückweg
+zu Online-Spielen wird bestätigt. Netzverlust schaltet bestehende Online-Partien
+nicht um. Spielstände und persönliche Bestwerte bleiben ausschließlich im
+Browser auf diesem Gerät; gelöschte Browserdaten entfernen sie. Die Seite muss
+einmal online geöffnet werden, bis sie die Offline-Bereitschaft bestätigt.
+
+**Play offline** is available in both lobbies: normal solo ZDWA, and solo Zilch
+or Zilch against the Dice Innkeeper. Every entry and resume after a pause or
+reload requires confirmation: no achievements, leaderboard entries or account
+uploads. Returning online also requires confirmation. Losing the connection
+never converts an online game. Saves and personal records stay in this browser
+on this device and disappear when its data is cleared. Open the page online
+once and wait for the offline-ready message before using it without internet.
+See the [offline-mode design and boundaries](docs/OFFLINE_MODE_ASSESSMENT.md).
 
 The public Zilch lobby paints its heading directly from HTML and shows its
 controls without waiting for the account check. Creating a game, account data
@@ -670,8 +684,9 @@ Each game has its own installable PWA, manifest and versioned assets.
 
 - ZDWA stays on `zockdiewandan.online`, preserving existing installations,
   bookmarks and origin-bound resume data.
-- Zilch uses `zilch.zockdiewandan.online` and a network-only service worker;
-  private room and API data are not cached.
+- Zilch uses `zilch.zockdiewandan.online` and its own service worker. Both
+  workers cache only the explicit, anonymous offline-play package; online
+  room, account and API data remain network-only.
 - `zdwa.zockdiewandan.online` is a redirect-only alias.
 - Installed PWAs keep game switching inside their existing app window:
   ZDWA uses the same-origin `/zilch` compatibility routes; Zilch uses the private

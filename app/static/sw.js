@@ -1,74 +1,43 @@
-/*
-  sw.js — Service Worker (Root-Scope: /)
-  --------------------------------------
-  Aufgaben:
-  - Pre-Caching zentraler Assets für Offline/Low-Connectivity
-  - Cleanup alter Cache-Versionen beim Activate-Event
-  - Vorsichtiger Fetch-Handler nur für GET-Anfragen der eigenen Origin
-
-  Hinweise zu Entscheidungen:
-  - Precache-Fehlschläge (404/Netz) werden bewusst ignoriert, damit eine fehlende
-    einzelne Datei die Installation nicht blockiert.
-  - Cache-Name und Asset-Querys werden aus dem Dateiinhalt erzeugt; dazu
-    `scripts/sync_static_versions.py` ausführen, nicht manuell hochzählen.
-*/
-
-const CACHE_VERSION = 'assets-e6777ba2487c';
-const PRECACHE = `precache-${CACHE_VERSION}`;
-const RUNTIME  = `runtime-${CACHE_VERSION}`;
-
-const PRECACHE_URLS = [
-  '/',
-  '/regeln',
-  '/spieler',
-  '/rangabzeichen',
-  '/konto',
-  '/admin',
-  '/offline',
-  '/static/auth.js',
-  '/static/web-push.js',
-  '/static/shell.js',
-  '/static/lobby.js',
-  '/static/lobby.css',
-  '/static/style.css',
-  '/static/scoreboard.js',
-  '/static/emoji.js',
-  '/static/room.js',
-  '/static/favicon.png',
-  '/static/default-avatar.svg',
-  '/static/icons/apple-touch-icon-180.png',
-  '/static/icons/icon-192.png',
-  '/static/icons/icon-512.png',
-  '/manifest.webmanifest',
-  '/manifest-en.webmanifest',
-];
-
-const ACCOUNT_ACTION_PATHS = new Set([
-  '/registrierung/bestaetigen',
-  '/passwort-vergessen',
-  '/passwort-zuruecksetzen',
-  '/email-bestaetigen',
+/* ZDWA PWA: cache only the explicit local-play package. */
+const CACHE_VERSION = 'assets-848524f74c25';
+const PRECACHE = `offline-zdwa-${CACHE_VERSION}`;
+const OFFLINE_PAGES = new Set([
+  "/offline-spielen",
+  "/zilch/offline-spielen",
 ]);
+const OFFLINE_ASSETS = new Set([
+  "/static/style.css",
+  "/static/offline-play.css",
+  "/static/offline-play.js",
+  "/static/favicon.png",
+  "/static/icons/apple-touch-icon-180.png",
+  "/static/icons/icon-192.png",
+  "/static/icons/icon-512.png",
+  "/static/kalam-classic-latin-regular-v1.woff2",
+  "/static/kalam-classic-latin-bold-v1.woff2",
+]);
+const PRECACHE_URLS = [...OFFLINE_PAGES, ...OFFLINE_ASSETS];
 
-// — Install: robust gegen einzelne 404/Netzfehler
-self.addEventListener('install', (event) => {
+self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(PRECACHE);
-    await Promise.all(
-      PRECACHE_URLS.map(async (url) => {
-        try {
-          const res = await fetch(url, { cache: 'no-cache' });
-          if (res && res.ok) await cache.put(url, res.clone());
-        } catch (e) {
-          // fehlende/temporär nicht erreichbare Dateien ignorieren
-        }
-      })
-    );
+    // A complete package is required before the new worker can activate.
+    // These documents carry no account data and do not need credentials.
+    await cache.addAll(PRECACHE_URLS.map(url => new Request(url, { credentials: 'omit', cache: 'reload' })));
   })());
 });
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
+self.addEventListener('message', event => {
+  if (event.data?.type !== 'OFFLINE_STATUS' || !event.ports?.[0]) return;
+  event.waitUntil((async () => {
+    const cache = await caches.open(PRECACHE);
+    const assets = await Promise.all(PRECACHE_URLS.map(url => cache.match(url)));
+    event.ports[0].postMessage({ ready: assets.every(Boolean), version: CACHE_VERSION });
+  })());
 });
 
 function pushNotificationPayload(event) {
@@ -113,83 +82,62 @@ self.addEventListener('notificationclick', (event) => {
   })());
 });
 
-// — Activate: alte Caches aufräumen
-self.addEventListener('activate', (event) => {
+
+self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(
-      keys
-        .filter((k) => k !== PRECACHE && k !== RUNTIME)
-        .map((k) => caches.delete(k))
-    );
+    await Promise.all(keys.filter(key => key !== PRECACHE && /^(?:precache-|runtime-|offline-zdwa-|offline-zilch-)/.test(key)).map(key => caches.delete(key)));
     await self.clients.claim();
   })());
 });
 
-// — Fetch-Routing
-self.addEventListener('fetch', (event) => {
+
+const ACCOUNT_ACTION_PATHS = new Set(['/registrierung/bestaetigen', '/passwort-vergessen', '/passwort-zuruecksetzen', '/email-bestaetigen']);
+self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-
-  // API-Aufrufe dürfen nie aus einem alten Runtime-Cache beantwortet werden.
-  // Bei einem nicht erreichbaren Backend liefern wir eine eindeutige 503-Antwort
-  // statt eines browserabhängigen "Failed to fetch".
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(apiNetworkOnly(req));
+  if (url.pathname.startsWith('/api/')) { event.respondWith(apiNetworkOnly(req)); return; }
+  if (req.method !== 'GET' || ACCOUNT_ACTION_PATHS.has(url.pathname)) { event.respondWith(fetch(req)); return; }
+  if (OFFLINE_ASSETS.has(url.pathname)) { event.respondWith(offlineAsset(req)); return; }
+  if (req.mode === 'navigate') {
+    const zilch = url.pathname === '/zilch' || url.pathname.startsWith('/zilch/');
+    event.respondWith(offlineNavigation(req, zilch ? '/zilch/offline-spielen' : '/offline-spielen'));
     return;
   }
-
-  // Confirmation and recovery pages can carry a one-time action in the URL
-  // fragment. They must never be recovered from a runtime cache.
-  if (ACCOUNT_ACTION_PATHS.has(url.pathname)) {
-    event.respondWith(fetch(req));
-    return;
-  }
-
-  // Zilch pages are deliberately authorization-bound. Never serve a stale
-  // runtime copy after logout or a server-side permission change.
-  if (url.pathname === '/zilch' || url.pathname.startsWith('/zilch/')) {
-    event.respondWith(fetch(req));
-    return;
-  }
-
-  // Nur statische GET-Anfragen und Navigationen cachen.
-  if (req.method !== 'GET') return;
-
-  if (url.pathname.startsWith('/static/')) {
-    event.respondWith(cacheFirst(req));
-    return;
-  }
-
-  event.respondWith(networkFirst(req));
+  event.respondWith(fetch(req));
 });
 
-// --- Strategien ---
-async function cacheFirst(req) {
-  const cache = await caches.open(PRECACHE);
-  // Eine neue Versionsnummer muss online wirklich die neue Datei laden.
-  // Der kanonische Precache-Eintrag dient nur als Offline-Fallback.
-  const url = new URL(req.url);
-  const exact = await cache.match(req, { ignoreSearch: false });
-  if (exact) return exact;
 
+// Only the explicit offline package enters Cache Storage. Online rooms,
+// account documents, result pages and every API response stay network-only.
+async function offlineAsset(req) {
+  const cache = await caches.open(PRECACHE);
+  const exact = await cache.match(req);
+  if (exact) return exact;
   try {
-    const res = await fetch(req, { cache: 'no-cache' });
-    if (res && res.ok) {
-      try { await cache.put(req, res.clone()); } catch (cacheError) {
-        // Eine volle/gesperrte Cache Storage darf eine gute Netzantwort nicht verwerfen.
-      }
+    const response = await fetch(req, { cache: 'no-cache' });
+    if (response.ok) {
+      try { await cache.put(req, response.clone()); } catch (_) { /* Keep the good network response. */ }
     }
-    return res;
-  } catch (e) {
-    const canonical = await cache.match(url.pathname, { ignoreSearch: true });
-    if (canonical) return canonical;
-    if (req.destination === 'document') {
-      const fallback = await cache.match('/offline');
-      if (fallback) return fallback;
-    }
-    throw e;
+    return response;
+  } catch (error) {
+    const fallback = await cache.match(new URL(req.url).pathname);
+    if (fallback) return fallback;
+    throw error;
+  }
+}
+
+async function offlineNavigation(req, fallbackPath) {
+  try {
+    return await fetch(req);
+  } catch (error) {
+    const cache = await caches.open(PRECACHE);
+    // This is only an entry/confirmation screen, never a continuation of the
+    // online game whose document could not be reached.
+    const fallback = await cache.match(fallbackPath);
+    if (fallback) return fallback;
+    throw error;
   }
 }
 
@@ -207,28 +155,5 @@ async function apiNetworkOnly(req) {
         'Cache-Control': 'no-store'
       }
     });
-  }
-}
-
-async function networkFirst(req) {
-  const runtime = await caches.open(RUNTIME);
-  try {
-    const res = await fetch(req);
-    if (res && res.ok) {
-      try { await runtime.put(req, res.clone()); } catch (cacheError) {
-        // Netzantwort bleibt auch dann nutzbar, wenn Cache Storage fehlschlägt.
-      }
-    }
-    return res;
-  } catch (e) {
-    const cached = await runtime.match(req);
-    if (cached) return cached;
-
-    if (req.destination === 'document') {
-      const precache = await caches.open(PRECACHE);
-      const fallback = await precache.match('/offline');
-      if (fallback) return fallback;
-    }
-    throw e;
   }
 }

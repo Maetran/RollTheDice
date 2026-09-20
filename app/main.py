@@ -525,6 +525,7 @@ async def response_cache_policy(request: Request, call_next):
         "/static/zilch-login.html",
         "/static/zilch-lobby.html",
         "/static/zilch-rules.html",
+        "/static/offline-play.html",
     }:
         headers = {"Cache-Control": "no-store"}
         if zilch_host:
@@ -715,8 +716,8 @@ def _embedded_zdwa_pwa_page(filename: str) -> Response:
     browser sheet. The narrow, noindex bridge keeps normal ZDWA navigation on
     the established Apex but gives the installed Zilch app an equivalent
     same-origin document route. It deliberately retains the Zilch manifest
-    and network-only worker rather than attempting to register the Apex worker
-    on the wrong host.
+    and Zilch worker, whose online pages stay network-only, rather than
+    attempting to register the Apex worker on the wrong host.
     """
     content = (STATIC_DIR / filename).read_text(encoding="utf-8")
     content = content.replace(
@@ -775,6 +776,8 @@ def _serve_zilch_pwa_zdwa_bridge(request: Request, path: str = "") -> Response:
         return _embedded_zdwa_pwa_page("admin.html")
     if route == "/offline":
         return _embedded_zdwa_pwa_page("offline.html")
+    if route == "/offline-spielen":
+        return _offline_play_page("zdwa", home="/zdwa", zilch_manifest=True)
 
     game_id = _bridge_path_segment(route, "/spiel/", suffix="/zuschauen")
     if game_id is not None:
@@ -1265,6 +1268,36 @@ def offline_page(request: Request):
     if is_zilch_host(request):
         return Response(status_code=404, headers={"Cache-Control": "no-store"})
     return _page("offline.html")
+
+
+def _offline_play_page(game: str, *, home: str, zilch_manifest: bool = False) -> Response:
+    """Render an anonymous, local-only game entry without account state."""
+    content = (STATIC_DIR / "offline-play.html").read_text(encoding="utf-8")
+    replacements = {
+        "__OFFLINE_GAME__": game,
+        "__OFFLINE_HOME__": home,
+        "__OFFLINE_MANIFEST__": "/zilch-manifest.webmanifest" if zilch_manifest else "/manifest.webmanifest",
+    }
+    for placeholder, value in replacements.items():
+        content = content.replace(placeholder, value)
+    return Response(
+        content=content,
+        media_type="text/html",
+        headers={"Cache-Control": "no-cache, must-revalidate", "X-Robots-Tag": "noindex, nofollow"},
+    )
+
+
+@app.get("/offline-spielen", include_in_schema=False)
+def offline_play_page(request: Request):
+    """The same entry path belongs to the host's game; no login is required."""
+    zilch_host = is_zilch_host(request)
+    return _offline_play_page("zilch" if zilch_host else "zdwa", home="/", zilch_manifest=zilch_host)
+
+
+@app.get("/zilch/offline-spielen", include_in_schema=False)
+def zilch_offline_play_page():
+    """Keep the local/development and same-origin Zilch entry usable offline."""
+    return _offline_play_page("zilch", home="/zilch")
 
 
 @app.get("/api/health", include_in_schema=False)

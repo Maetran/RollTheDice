@@ -127,7 +127,7 @@ test("dismissed install prompt stays hidden for seven days or until a new app ve
   await expect(prompt).toBeVisible();
 });
 
-test("service worker serves core pages while offline", async ({ page, context }) => {
+test("service worker offers an explicit local-play entry instead of stale online pages", async ({ page, context }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     if (!("serviceWorker" in navigator)) throw new Error("service_worker_unavailable");
@@ -139,7 +139,13 @@ test("service worker serves core pages while offline", async ({ page, context })
   await context.setOffline(true);
   try {
     await page.goto("/regeln");
-    await expect(page.getByRole("heading", { name: "Zock die Wand an: Spielregeln" })).toBeVisible();
+    await expect(page).toHaveURL(/\/offline-spielen$/);
+    await expect(page.getByRole("heading", { name: "Einfach für dich würfeln" })).toBeVisible();
+    await expect(page.locator(".practice-workspace")).toHaveCount(0);
+    await page.getByRole("button", { name:"Offline-Spiel starten", exact:true }).click();
+    await expect(page.locator("#appDialog")).toContainText("keine Erfolge");
+    await page.locator("#appDialogActions .ghost").click();
+    await expect(page.locator(".practice-workspace")).toHaveCount(0);
   } finally {
     await context.setOffline(false);
   }

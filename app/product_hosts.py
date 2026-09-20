@@ -19,6 +19,7 @@ _ZILCH_EXACT_PATHS = frozenset(
         "/erfolge",
         "/konto",
         "/regeln",
+        "/offline-spielen",
     }
 )
 _ZILCH_PATH_PREFIXES = ("/spiel/", "/ergebnis/", "/spieler/")

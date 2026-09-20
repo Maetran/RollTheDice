@@ -22,6 +22,28 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.38.0 — Bewusst offline spielen / Choose offline play — 2026-09-20
+
+- **Deutsch:** Beide Lobbys bieten einen ausdrücklich aktivierten Offline-Modus:
+  ZDWA solo, Zilch solo oder gegen den Würfelwirt. Jeder Einstieg beziehungsweise
+  jedes Fortsetzen und der Rückwechsel zu Online-Spielen werden bestätigt.
+  Offline-Partien vergeben keine Erfolge und beeinflussen weder Ranglisten noch
+  Kontostatistiken. Spielstand und eigene Bestwerte bleiben im Browser auf dem
+  Gerät; es gibt keinen Ergebnis-Upload. Einmal vollständig geladene Offline-Dateien
+  ermöglichen den nächsten Start ohne Internet. Verbindungsverlust wandelt keine
+  laufende Online-Partie um. Lokale Regeln werden gegen die Serverwertung und
+  vollständige Spielverläufe geprüft. Stiller Rollout ohne Versions-Push oder
+  neuen In-App-Versionshinweis.
+- **English:** Both lobbies offer deliberately activated offline play: solo
+  ZDWA, solo Zilch or Zilch against the Dice Innkeeper. Every entry or resume and
+  the return to online play require confirmation. Offline games grant no
+  achievements and affect neither leaderboards nor account statistics. Saves
+  and personal records stay in the device's browser; results are never uploaded.
+  Once the offline package is fully loaded, the next launch works without an
+  internet connection. Connection loss never converts an active online game.
+  Local rules are checked against server scoring and complete game histories.
+  Silent rollout without a version push or a new in-app release announcement.
+
 ## 2.37.1 — Zuschauerchat und Tablet-Spielblöcke / Spectator chat and tablet score sheets — 2026-09-20
 
 - **Deutsch:** Der Zuschauerchat hält die Texteingabe auf dem iPhone sichtbar

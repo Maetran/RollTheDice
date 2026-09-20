@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.37.1**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.38.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.37.1 | 2026-09-20 | patch | Zuschauerchat und vollständige Tablet-Spielblöcke / Spectator chat and complete tablet score sheets | [8a85db2](https://github.com/Maetran/RollTheDice/commit/8a85db2d9e351c0bca934bbef48c24f6378181fb) |
 | 2.37.0 | 2026-09-20 | minor | Kontoaktionen mit Passkey bestätigen / Confirm account changes with a passkey | [5d8312d](https://github.com/Maetran/RollTheDice/commit/5d8312ddff86a93acf042ee35dee9f794607887a) |
 | 2.36.0 | 2026-09-20 | minor | Versionsnummern und lesbare Aktionen / Version numbers and readable actions | [0069e90](https://github.com/Maetran/RollTheDice/commit/0069e900ab6b80480078878d1ffd2969bb74d332) |
 | 2.35.1 | 2026-09-20 | patch | Fix player discovery and navigation recovery across both games | [a04c831](https://github.com/Maetran/RollTheDice/commit/a04c83120cb84d5028e247fcd772c6770fe6ae51) |

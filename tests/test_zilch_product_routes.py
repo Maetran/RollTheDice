@@ -632,9 +632,12 @@ class ZilchProductRoutesTestCase(TestCase):
         self.assertIn("url.pathname === '/zilch' || url.pathname.startsWith('/zilch/')", service_worker)
 
         zilch_worker = (main.STATIC_DIR / "zilch-sw.js").read_text(encoding="utf-8")
-        self.assertNotIn("caches.", zilch_worker)
-        self.assertNotIn("cache.put", zilch_worker.lower())
-        self.assertIn("event.respondWith(fetch(event.request));", zilch_worker)
+        self.assertIn('"/offline-spielen"', zilch_worker)
+        self.assertIn('"/zdwa/offline-spielen"', zilch_worker)
+        self.assertIn("OFFLINE_ASSETS.has(url.pathname)", zilch_worker)
+        self.assertIn("event.respondWith(fetch(req));", zilch_worker)
+        for private_path in ("/konto", "/spiel/", "/api/", "/static/zilch.js"):
+            self.assertNotIn(f'"{private_path}"', zilch_worker)
 
         manifest = (main.BASE / "manifest.webmanifest").read_text(encoding="utf-8")
         self.assertIn('"short_name": "ZDWA"', manifest)

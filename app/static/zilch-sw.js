@@ -1,15 +1,44 @@
-/*
- * Zilch PWA worker.
- *
- * This worker deliberately never writes to Cache Storage. Zilch rooms,
- * account data and game state must always be fetched from the network, so an
- * installed app can receive controlled updates without retaining private
- * pages or API responses offline.
- */
-const CACHE_VERSION = 'assets-e6777ba2487c';
+/* Zilch PWA: private game/account data stays network-only.
+   Only the explicit, anonymous local-play package is cached. */
+const CACHE_VERSION = 'assets-848524f74c25';
+const PRECACHE = `offline-zilch-${CACHE_VERSION}`;
+const OFFLINE_PAGES = new Set([
+  "/offline-spielen",
+  "/zdwa/offline-spielen",
+]);
+const OFFLINE_ASSETS = new Set([
+  "/static/style.css",
+  "/static/offline-play.css",
+  "/static/offline-play.js",
+  "/static/favicon.png",
+  "/static/icons/apple-touch-icon-180.png",
+  "/static/icons/icon-192.png",
+  "/static/icons/icon-512.png",
+  "/static/kalam-classic-latin-regular-v1.woff2",
+  "/static/kalam-classic-latin-bold-v1.woff2",
+]);
+const PRECACHE_URLS = [...OFFLINE_PAGES, ...OFFLINE_ASSETS];
+
+self.addEventListener('install', event => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(PRECACHE);
+    // A complete package is required before the new worker can activate.
+    // These documents carry no account data and do not need credentials.
+    await cache.addAll(PRECACHE_URLS.map(url => new Request(url, { credentials: 'omit', cache: 'reload' })));
+  })());
+});
 
 self.addEventListener("message", event => {
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
+
+self.addEventListener('message', event => {
+  if (event.data?.type !== 'OFFLINE_STATUS' || !event.ports?.[0]) return;
+  event.waitUntil((async () => {
+    const cache = await caches.open(PRECACHE);
+    const assets = await Promise.all(PRECACHE_URLS.map(url => cache.match(url)));
+    event.ports[0].postMessage({ ready: assets.every(Boolean), version: CACHE_VERSION });
+  })());
 });
 
 function pushNotificationPayload(event) {
@@ -54,12 +83,58 @@ self.addEventListener("notificationclick", event => {
   })());
 });
 
-self.addEventListener("activate", event => {
-  event.waitUntil(self.clients.claim());
+
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key !== PRECACHE && /^(?:precache-|runtime-|offline-zdwa-|offline-zilch-)/.test(key)).map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
-self.addEventListener("fetch", event => {
-  const url = new URL(event.request.url);
+self.addEventListener('fetch', event => {
+  const req = event.request;
+  const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  event.respondWith(fetch(event.request));
+  if (req.method !== 'GET') { event.respondWith(fetch(req)); return; }
+  if (OFFLINE_ASSETS.has(url.pathname)) { event.respondWith(offlineAsset(req)); return; }
+  if (req.mode === 'navigate') {
+    const zdwa = url.pathname === '/zdwa' || url.pathname.startsWith('/zdwa/');
+    event.respondWith(offlineNavigation(req, zdwa ? '/zdwa/offline-spielen' : '/offline-spielen'));
+    return;
+  }
+  event.respondWith(fetch(req));
 });
+
+
+// Only the explicit offline package enters Cache Storage. Online rooms,
+// account documents, result pages and every API response stay network-only.
+async function offlineAsset(req) {
+  const cache = await caches.open(PRECACHE);
+  const exact = await cache.match(req);
+  if (exact) return exact;
+  try {
+    const response = await fetch(req, { cache: 'no-cache' });
+    if (response.ok) {
+      try { await cache.put(req, response.clone()); } catch (_) { /* Keep the good network response. */ }
+    }
+    return response;
+  } catch (error) {
+    const fallback = await cache.match(new URL(req.url).pathname);
+    if (fallback) return fallback;
+    throw error;
+  }
+}
+
+async function offlineNavigation(req, fallbackPath) {
+  try {
+    return await fetch(req);
+  } catch (error) {
+    const cache = await caches.open(PRECACHE);
+    // This is only an entry/confirmation screen, never a continuation of the
+    // online game whose document could not be reached.
+    const fallback = await cache.match(fallbackPath);
+    if (fallback) return fallback;
+    throw error;
+  }
+}

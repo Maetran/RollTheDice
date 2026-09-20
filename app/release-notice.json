@@ -4,23 +4,23 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Der Zuschauerchat bleibt auf dem iPhone bedienbar und zeigt dein Profilbild. Tablet-Spielblöcke nutzen den Platz besser.",
-  "summary_en": "Spectator chat stays usable on iPhone and shows your profile picture. Tablet score sheets make better use of the available space.",
+  "summary_de": "Spiele bewusst offline: nur für dich, ohne Erfolge oder Rangliste. Spielstand und Bestwerte bleiben auf deinem Gerät.",
+  "summary_en": "Choose offline play just for fun, without achievements or leaderboards. Games and personal records stay on your device.",
   "player_notes": {
     "de": {
-      "title": "Zuschauerchat und Tablet-Spielblöcke",
+      "title": "Offline würfeln – einfach zum Spaß",
       "changes": [
-        "Die Chateingabe bleibt sichtbar und öffnet sich auf dem iPhone direkt beim Antippen.",
-        "Zuschauer sehen ihr Profilbild auch im Chat und bei Reaktionen.",
-        "Tablet-Spielblöcke passen sich an den verfügbaren Platz an."
+        "Starte ZDWA solo oder Zilch solo beziehungsweise gegen den Würfelwirt ohne Verbindung.",
+        "Jeder Einstieg und der Rückweg zum Online-Spiel werden bestätigt.",
+        "Offline-Spiele bleiben auf diesem Gerät und geben weder Erfolge noch Ranglistenpunkte."
       ]
     },
     "en": {
-      "title": "Spectator chat and tablet score sheets",
+      "title": "Roll offline – just for fun",
       "changes": [
-        "Chat input stays visible and opens directly on tap on iPhone.",
-        "Spectators keep their profile picture in chat and reactions.",
-        "Tablet score sheets fit the available space."
+        "Play solo ZDWA or solo Zilch, or face the Dice Innkeeper without a connection.",
+        "Confirm each entry and the return to online play.",
+        "Offline games stay on this device and grant no achievements or leaderboard points."
       ]
     }
   }
