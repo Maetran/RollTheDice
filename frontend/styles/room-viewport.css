@@ -62,6 +62,10 @@ body.room-page{
 .room-page #scoreOut > :is(.topbar, .suggestions-area){ flex:0 0 auto; }
 .room-page .chat-panel,
 .room-page .chat-reactions-host{ bottom:calc(var(--room-safe-bottom) + var(--game-viewport-bottom, 0px)); }
+/* A closed drawer contains only its toggle. Translating a still-rendered
+   history below the screen exposes it again inside iOS's bottom safe area. */
+.room-page .chat-panel:not(.open) .chat-content,
+.room-page .chat-panel .chat-content[hidden]{ display:none; }
 .room-page .chat-panel .chat-content{
   /* Preserve the drawer's own cap as well as the keyboard's visible space.
      A taller child is clipped by the panel and strands its composer below it. */

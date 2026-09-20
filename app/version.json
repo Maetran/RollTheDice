@@ -1,10 +1,10 @@
 {
-  "version": "2.38.0",
-  "bump": "minor",
+  "version": "2.38.1",
+  "bump": "patch",
   "date": "2026-09-20",
-  "previous_revision": "8a85db2d9e351c0bca934bbef48c24f6378181fb",
+  "previous_revision": "39355723f9b405e48555c6355ff489b4fd9876fb",
   "summary": {
-    "de": "Bewusst offline spielen mit privaten Bestwerten",
-    "en": "Choose offline play with private personal records"
+    "de": "Saubere Chatleisten und einheitliche Zilch-Vorschläge",
+    "en": "Clean chat bars and consistent Zilch suggestions"
   }
 }

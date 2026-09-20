@@ -3324,7 +3324,7 @@ function renderRulesContent(facts) {
       </tbody></table></div>
     </section>
     <section class="zilch-rules-grid">
-      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Wertungen auswählen"))}</h2><p>${escapeHtml(t("Tippe eine Wertung oder einzelne Würfel an. Die Auswahl bleibt bis zum Weiterwürfeln oder Sichern änderbar."))}</p><p>${escapeHtml(t("Nur eine gemeinsam wertende Auswahl kann übernommen werden; ungültig gewordene Würfel fallen aus der Auswahl."))}</p></section>
+      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Wertungen auswählen"))}</h2><p>${escapeHtml(t("Die Vorschläge stehen auf allen Geräten untereinander. Der stärkste Vorschlag steht direkt über Alle Punktewürfel."))}</p><p>${escapeHtml(t("Tippe eine Wertung oder einzelne Würfel an. Die Auswahl bleibt bis zum Weiterwürfeln oder Sichern änderbar."))}</p><p>${escapeHtml(t("Nur eine gemeinsam wertende Auswahl kann übernommen werden; ungültig gewordene Würfel fallen aus der Auswahl."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Würfeln oder sichern"))}</h2><p>${escapeHtml(t("Nach dem dritten Wurf müssen mindestens 300 Rundenpunkte gehalten sein. Sichern ist ab 400 Punkten möglich, solange kein Bestätigungswurf offen ist."))}</p><p>${escapeHtml(t("Vor dem Sichern kannst du deine Würfelauswahl jederzeit anpassen."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Freier Wurf und Bestätigungswurf"))}</h2><p>${escapeHtml(t("Wenn alle sechs Würfel Punkte bringen, werden sie wieder frei: ein freier Wurf. Die Rundenpunkte bleiben stehen."))}</p><p>${escapeHtml(t("Alle Punktewürfel hält alle Würfel, die gerade Punkte bringen. Ein möglicher Freier Wurf erscheint als Stempel; erst Weiterwürfeln übernimmt die Auswahl."))}</p><p>${escapeHtml(t("Nach drei Einsen oder einem vollen Wurf mit allen sechs Würfeln muss ein weiterer Punktewurf von mindestens 50 Punkten bestätigt werden, bevor du sichern darfst."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zilch-Serie"))}</h2><p>${escapeHtml(t("Ein Wurf ohne gültige Wertung – oder eine nicht erreichbare 300er-Regel nach Wurf drei – beendet den Zug als Zilch. Ungesicherte Punkte verfallen."))}</p><p>${escapeHtml(t("Bei einem Zilch bleibt der letzte Wurf sichtbar, bis der nächste Wurf ausgeführt wird."))}</p><p>${escapeHtml(t("Bei jedem dritten Zilch in Folge – also beim dritten, sechsten, neunten und so weiter – werden 500 Punkte abgezogen, niemals unter null."))}</p></section>
@@ -4916,8 +4916,8 @@ function mountZilchGameChat(snapshot) {
     chat = document.createElement("section");
     chat.className = "zilch-chat";
     chat.dataset.zilchGameChat = "";
-    chat.innerHTML = `<div class="zilch-chat__bar"><button type="button" class="zilch-chat__toggle" data-zilch-chat-toggle aria-expanded="false">${escapeHtml(t("Chat"))}<span class="zilch-chat__toggle-icon" aria-hidden="true">⌃</span></button><div id="zilchChatReactionsBar" class="zilch-chat-reactions-host" aria-label="${escapeHtml(t("Schnellreaktionen"))}"></div></div>
-      <div class="zilch-chat__content"><ul id="zilchChatHistory" class="zilch-chat-history"></ul><form id="zilchChatForm" class="zilch-chat-form"><label class="visually-hidden" for="zilchChatInput">${escapeHtml(t("Nachricht"))}</label><input id="zilchChatInput" maxlength="400" placeholder="${escapeHtml(t("Nachricht eingeben …"))}"><button type="submit" class="secondary">${escapeHtml(t("Senden"))}</button></form></div>`;
+    chat.innerHTML = `<div class="zilch-chat__bar"><button type="button" class="zilch-chat__toggle" data-zilch-chat-toggle aria-expanded="false" aria-controls="zilchChatContent">${escapeHtml(t("Chat"))}<span class="zilch-chat__toggle-icon" aria-hidden="true">⌃</span></button><div id="zilchChatReactionsBar" class="zilch-chat-reactions-host" aria-label="${escapeHtml(t("Schnellreaktionen"))}"></div></div>
+      <div id="zilchChatContent" class="zilch-chat__content" hidden><ul id="zilchChatHistory" class="zilch-chat-history"></ul><form id="zilchChatForm" class="zilch-chat-form"><label class="visually-hidden" for="zilchChatInput">${escapeHtml(t("Nachricht"))}</label><input id="zilchChatInput" maxlength="400" placeholder="${escapeHtml(t("Nachricht eingeben …"))}"><button type="submit" class="secondary">${escapeHtml(t("Senden"))}</button></form></div>`;
     root.append(chat);
 
     chat.querySelector("[data-zilch-chat-toggle]")?.addEventListener("click", () => {
@@ -4940,6 +4940,7 @@ function mountZilchGameChat(snapshot) {
 
   const open = Boolean(state.chatOpen);
   chat.classList.toggle("is-open", open);
+  chat.querySelector("#zilchChatContent").hidden = !open;
   chat.querySelector("[data-zilch-chat-toggle]")?.setAttribute("aria-expanded", open ? "true" : "false");
 
   const history = chat.querySelector("#zilchChatHistory");

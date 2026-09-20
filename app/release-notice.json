@@ -4,23 +4,21 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Spiele bewusst offline: nur für dich, ohne Erfolge oder Rangliste. Spielstand und Bestwerte bleiben auf deinem Gerät.",
-  "summary_en": "Choose offline play just for fun, without achievements or leaderboards. Games and personal records stay on your device.",
+  "summary_de": "Geschlossene Chats zeigen nur den unteren Balken. Zilch-Vorschläge stehen überall untereinander, der stärkste direkt über Alle Punktewürfel.",
+  "summary_en": "Closed chats show only the bottom bar. Zilch suggestions stack everywhere, with the strongest directly above All scoring dice.",
   "player_notes": {
     "de": {
-      "title": "Offline würfeln – einfach zum Spaß",
+      "title": "Chatleisten und Vorschläge aufgeräumt",
       "changes": [
-        "Starte ZDWA solo oder Zilch solo beziehungsweise gegen den Würfelwirt ohne Verbindung.",
-        "Jeder Einstieg und der Rückweg zum Online-Spiel werden bestätigt.",
-        "Offline-Spiele bleiben auf diesem Gerät und geben weder Erfolge noch Ranglistenpunkte."
+        "Der geschlossene Spielchat zeigt nur den festen Balken am unteren Rand. Tippen öffnet den Chat.",
+        "Zilch zeigt die Vorschläge auf allen Geräten untereinander, mit dem stärksten direkt über Alle Punktewürfel."
       ]
     },
     "en": {
-      "title": "Roll offline – just for fun",
+      "title": "Tidier chat bars and suggestions",
       "changes": [
-        "Play solo ZDWA or solo Zilch, or face the Dice Innkeeper without a connection.",
-        "Confirm each entry and the return to online play.",
-        "Offline games stay on this device and grant no achievements or leaderboard points."
+        "Closed game chat shows only the fixed bottom bar. Tap to open it.",
+        "Zilch stacks suggestions on every device, with the strongest directly above All scoring dice."
       ]
     }
   }

@@ -2984,7 +2984,8 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
 html[data-game="zilch"]:has(.zilch-shell--game) {
   --zilch-room-safe-top: env(safe-area-inset-top, 0px);
   --zilch-room-chat-h: 3rem;
-  --zilch-room-chat-footprint: calc(var(--zilch-room-chat-h) + env(safe-area-inset-bottom, 0px));
+  --zilch-room-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --zilch-room-chat-footprint: calc(var(--zilch-room-chat-h) + var(--zilch-room-safe-bottom));
   --zilch-room-dock-gap: .5rem;
   --zilch-room-dock-h: 7.6rem;
 }
@@ -3475,9 +3476,17 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
   border-radius: .65rem .65rem 0 0;
   background: #2b160b;
   box-shadow: 0 -.3rem .9rem rgba(31, 14, 5, .3);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--zilch-room-safe-bottom);
 }
 .zilch-shell--game .zilch-chat__bar { display: flex; align-items: center; height: var(--zilch-room-chat-h); }
+/* Keep the closed dock itself compact. The home-indicator safe area is
+   outside its frame, so it cannot look like a preview below the chat bar. */
+.zilch-shell--game .zilch-chat:not(.is-open) {
+  bottom: calc(var(--game-viewport-bottom, 0px) + var(--zilch-room-safe-bottom));
+  padding-bottom: 0;
+}
+.zilch-shell--game .zilch-chat:not(.is-open) .zilch-chat__content,
+.zilch-shell--game .zilch-chat .zilch-chat__content[hidden] { display: none; }
 .zilch-shell--game .zilch-chat__toggle {
   justify-content: flex-start;
   padding: 0 .8rem;
@@ -4327,23 +4336,23 @@ html[data-game="zilch"] body {
   gap: clamp(.04rem, .24vw, .1rem);
 }
 
+/* Every table shares the phone's choice order: the strongest recommendation
+   rests directly above "All scoring dice". Keep the semantic best-first rank
+   and Q-W-E-R-T-Z-U-I shortcuts in the DOM; a reversed scroll parent opens at
+   that useful end when the available space cannot show every choice. */
+.zilch-shell--game .zilch-play-layout:not(.zilch-play-layout--finished) .zilch-recommendations {
+  flex-direction: column-reverse;
+}
+
+.zilch-shell--game .zilch-play-layout:not(.zilch-play-layout--finished) .zilch-recommendations__list {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column-reverse;
+}
+
+.zilch-shell--game .zilch-recommendations__list > li { flex: 0 0 auto; }
+
 @media (max-width: 760px) {
-  /* Keep the strongest choice in the lower thumb zone while preserving the
-     semantic rank and Q-W-E-R-T-Z-U-I shortcut assignment in the DOM. The
-     reversed scroll parent also opens at the useful, strongest end when a
-     short viewport cannot display every choice at once. */
-  .zilch-shell--game .zilch-play-layout:not(.zilch-play-layout--finished) .zilch-recommendations {
-    flex-direction: column-reverse;
-  }
-
-  .zilch-shell--game .zilch-play-layout:not(.zilch-play-layout--finished) .zilch-recommendations__list {
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: column-reverse;
-  }
-
-  .zilch-shell--game .zilch-recommendations__list > li { flex: 0 0 auto; }
-
   .zilch-shell--game .zilch-recommendation strong { font-size: 1.08rem; }
   .zilch-shell--game .zilch-recommendation span { font-size: .78rem; line-height: 1.2; }
   .zilch-shell--game .zilch-recommendation__shortcut {

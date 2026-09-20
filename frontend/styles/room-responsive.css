@@ -254,7 +254,7 @@
     border-bottom:0;
     border-radius:0 8px 0 0;
     box-shadow:0 -16px 34px rgba(15,23,42,.18);
-    transform:translateY(calc(100% - var(--chat-bar-height)));
+    transform:none;
     transition:transform .22s ease;
     overflow:hidden;
   }
@@ -651,7 +651,7 @@
     border-bottom:0;
     border-radius:0 8px 0 0;
     background:#172033;
-    transform:translateY(calc(100% - var(--chat-bar-height)));
+    transform:none;
     transition:transform .22s ease;
   }
   .room-page.board-count-2 .chat-panel.open,

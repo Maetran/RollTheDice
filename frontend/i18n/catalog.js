@@ -1,4 +1,6 @@
 export const EN = {
+    "Eingeklappt zeigt der Spiel-Chat nur den Balken am unteren Bildschirmrand. Tippe darauf, um den Chat zu öffnen.": "When collapsed, game chat shows only the bar at the bottom of the screen. Tap it to open the chat.",
+    "Die Vorschläge stehen auf allen Geräten untereinander. Der stärkste Vorschlag steht direkt über Alle Punktewürfel.": "Suggestions are stacked vertically on every device. The strongest suggestion sits directly above All scoring dice.",
     "Du bist am Zug": "Your turn",
     "Unentschieden": "Draw",
     "Dritter Zilch in Folge: 500 Punkte Abzug, höchstens bis auf null.": "Third consecutive zilch: a 500-point penalty, down to zero at most.",

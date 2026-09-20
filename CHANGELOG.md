@@ -22,6 +22,20 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.38.1 — Chatleisten und Zilch-Vorschläge / Chat bars and Zilch suggestions — 2026-09-20
+
+- **Deutsch:** Eingeklappte Spielchats zeigen nur den fest am unteren Rand
+  liegenden Balken; darunter ragen keine Inhalte mehr hervor, auch in der PWA
+  und auf Tablets. Antippen öffnet den vollständigen Chat. Zilch zeigt seine
+  Wertungsvorschläge in allen Designs und Bildschirmformaten untereinander,
+  mit dem stärksten Vorschlag direkt über „Alle Punktewürfel“.
+  Stiller Rollout ohne Versions-Push oder neuen In-App-Versionshinweis.
+- **English:** Collapsed game chats show only their fixed bottom bar, with no
+  content peeking out underneath, including PWAs and tablets. Tapping opens the
+  full chat. Zilch stacks scoring suggestions vertically across themes and
+  screen sizes, with the strongest suggestion directly above “All scoring dice”.
+  Silent rollout without a version push or a new in-app release announcement.
+
 ## 2.38.0 — Bewusst offline spielen / Choose offline play — 2026-09-20
 
 - **Deutsch:** Beide Lobbys bieten einen ausdrücklich aktivierten Offline-Modus:

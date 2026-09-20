@@ -3,7 +3,10 @@
       const chatPanel = document.getElementById("chatPanel");
       const chatToggle = document.getElementById("chatToggle");
       const chatBackdrop = document.getElementById("chatBackdrop");
+      const chatContent = document.getElementById("chatContent");
+      if (chatContent?.contains(document.activeElement)) document.activeElement.blur();
       if (chatPanel) chatPanel.classList.remove("open");
+      if (chatContent) chatContent.hidden = true;
       if (chatToggle) chatToggle.setAttribute("aria-expanded", "false");
       if (chatBackdrop) chatBackdrop.hidden = true;
       document.body.classList.remove("chat-open");

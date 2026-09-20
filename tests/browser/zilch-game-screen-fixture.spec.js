@@ -2036,6 +2036,107 @@ test("a server-driven solo snapshot keeps the score sheet focused and offers aba
   }
 });
 
+for (const theme of ["light", "lcars"]) {
+  for (const touch of [false, true]) {
+    test(`recommendation stack keeps the strongest choice above all scoring dice: ${theme}, ${touch ? "touch" : "desktop"}`, async ({ browser, baseURL }, testInfo) => {
+      test.setTimeout(90000);
+      const context = await browser.newContext({
+        baseURL, serviceWorkers: "block", hasTouch: touch, isMobile: touch,
+        reducedMotion: "reduce", viewport: { width: 1280, height: 900 },
+      });
+      const page = await context.newPage();
+      try {
+        await page.addInitScript(theme => localStorage.setItem("zilch_theme", theme), theme);
+        await signInAsPreviewMani(page);
+        const shellHtml = await page.goto("/zilch").then(response => response.text());
+        const gameId = `recommendation-stack-${theme}-${touch}`;
+        await installGameScreenFixture(page, gameId, { initial: equalScoreRecommendationSnapshot() });
+        await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({
+          status: 200, contentType: "text/html; charset=utf-8", body: shellHtml,
+        }));
+        await page.goto(`/zilch/spiel/${gameId}`);
+        await expect(page.locator("[data-zilch-recommendation]")).toHaveCount(5);
+        const viewports = touch ? [
+          { width: 320, height: 800 }, { width: 440, height: 956 },
+          { width: 768, height: 1024 }, { width: 820, height: 1180 },
+          { width: 1024, height: 1366 }, { width: 1366, height: 1024 },
+          { width: 956, height: 440 },
+        ] : [{ width: 1280, height: 900 }, { width: 1024, height: 768 }];
+        for (const language of ["de", "en"]) {
+          await page.evaluate(language => window.ZDWA_I18N.setLanguage(language, { persist: false, reload: false }), language);
+          for (const viewport of viewports) {
+            await test.step(`${language}, ${viewport.width}x${viewport.height}`, async () => {
+              await page.setViewportSize(viewport);
+              await page.evaluate(async () => {
+                await document.fonts.ready;
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+              });
+              await expect(async () => {
+                const layout = await page.evaluate(() => {
+                  const rect = element => {
+                    const box = element.getBoundingClientRect();
+                    return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height };
+                  };
+                  const cards = [...document.querySelectorAll("[data-zilch-recommendation]")].map(card => ({
+                    ...rect(card), shortcut: card.dataset.zilchShortcut,
+                  }));
+                  const best = document.querySelector('[data-zilch-shortcut="q"]');
+                  const box = rect(best);
+                  return {
+                    cards, combined: rect(document.querySelector("[data-zilch-combined-score]")),
+                    bestReachable: best.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)),
+                    documentWidth: document.documentElement.scrollWidth, viewportWidth: innerWidth,
+                  };
+                });
+                expect(layout.cards.map(card => card.shortcut)).toEqual(["q", "w", "e", "r", "t"]);
+                expect([...layout.cards].sort((a, b) => a.top - b.top).map(card => card.shortcut)).toEqual(["t", "r", "e", "w", "q"]);
+                for (let index = 0; index < layout.cards.length; index += 1) {
+                  const card = layout.cards[index];
+                  expect(Math.abs(card.left - layout.cards[0].left)).toBeLessThanOrEqual(1);
+                  expect(Math.abs(card.width - layout.cards[0].width)).toBeLessThanOrEqual(1);
+                  expect(card.height).toBeGreaterThanOrEqual(44);
+                  if (index) expect(card.bottom).toBeLessThanOrEqual(layout.cards[index - 1].top);
+                }
+                expect(layout.bestReachable).toBe(true);
+                expect(layout.combined.top - layout.cards[0].bottom).toBeGreaterThanOrEqual(0);
+                expect(layout.combined.top - layout.cards[0].bottom).toBeLessThanOrEqual(16);
+                expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+              }).toPass({ timeout: 5000 });
+
+              // Overflow may be local to the choices, but every alternative
+              // must remain reachable without moving the pinned controls.
+              const dockBefore = await page.locator(".zilch-dice-dock").boundingBox();
+              for (const shortcut of ["q", "w", "e", "r", "t"]) {
+                const card = page.locator(`[data-zilch-shortcut="${shortcut}"]`);
+                await card.scrollIntoViewIfNeeded();
+                expect(await card.evaluate(element => {
+                  const box = element.getBoundingClientRect();
+                  return element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+                }), `${shortcut}: reachable through local scrolling`).toBe(true);
+              }
+              const weakest = page.locator('[data-zilch-recommendation="fixture-single-five"]');
+              if (touch) await weakest.tap();
+              else await weakest.click();
+              await expect(weakest).toHaveAttribute("aria-pressed", "true");
+              if (touch) await weakest.tap();
+              else await weakest.click();
+              await expect(page.locator("[data-zilch-recommendation]")).toHaveCount(5);
+              await expect(async () => {
+                const dockAfter = await page.locator(".zilch-dice-dock").boundingBox();
+                expect(dockAfter).not.toBeNull();
+                expect(Math.abs(dockBefore.y - dockAfter.y)).toBeLessThanOrEqual(1);
+              }).toPass({ timeout: 5000 });
+              if (language === "de" && viewport.width === 1024) {
+                await page.screenshot({ path: testInfo.outputPath(`recommendation-stack-${viewport.width}x${viewport.height}.png`) });
+              }
+            });
+          }
+        }
+      } finally { await context.close(); }
+    });
+  }
+}
+
 test("equal-score recommendations stay distinct and game hotkeys respect interaction guards", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
   const page = await context.newPage();
@@ -2097,6 +2198,7 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
 
     await page.setViewportSize({ width: 390, height: 827 });
     await expect(page.locator(".emoji-fab")).toBeVisible();
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const mobileRecommendationLayout = await page.evaluate(() => {
       const rail = document.querySelector(".zilch-recommendations").getBoundingClientRect();
       const cards = [...document.querySelectorAll("[data-zilch-recommendation]")].map(card => {
@@ -2218,7 +2320,7 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
     expect(await recommendations.evaluateAll(nodes => nodes
       .map(node => ({ shortcut: node.dataset.zilchShortcut, top: node.getBoundingClientRect().top }))
       .sort((first, second) => first.top - second.top)
-      .map(item => item.shortcut))).toEqual(["q", "w", "e", "r", "t"]);
+      .map(item => item.shortcut))).toEqual(["t", "r", "e", "w", "q"]);
 
     const twoFives = page.locator('[data-zilch-recommendation="fixture-two-fives"]');
     const singleOne = page.locator('[data-zilch-recommendation="fixture-single-one"]');
@@ -3407,3 +3509,36 @@ test("Zilch spectator avatars survive history, live messages and reactions outsi
     await expect(page.locator("#zilchChatHistory li", { hasText: "😲" }).locator(".player-avatar")).toHaveAttribute("src", "/api/avatars/4242");
   } finally { await context.close(); }
 });
+
+for (const theme of ["light", "lcars"]) {
+  test(`Zilch ${theme}: closed chat is only its bottom bar across phone and tablet safe areas`, async ({ browser, baseURL }, testInfo) => {
+    const { exerciseCollapsedChatDock } = require("./chat-mobile");
+    const context = await browser.newContext({ baseURL, serviceWorkers:"block", hasTouch:true, isMobile:true, viewport:{ width:440, height:956 } });
+    await context.addInitScript(value => localStorage.setItem("zilch_theme", value), theme);
+    const page = await context.newPage();
+    try {
+      await signInAsPreviewMani(page);
+      const lobby = await page.goto("/zilch");
+      const shellHtml = await lobby.text();
+      const gameId = `collapsed-chat-${theme}`;
+      const snapshot = fixtureSnapshots().hotDice;
+      snapshot._chat_history = Array.from({ length:30 }, (_, index) => ({
+        from_id:"p2", sender:"PreviewFriend", text:`Nachricht ${index}`, kind:"chat", ts:"2026-09-20T19:00:00Z",
+      }));
+      await installGameScreenFixture(page, gameId, { initial:snapshot });
+      await page.route(`**/zilch/spiel/${gameId}/zuschauen`, route => route.fulfill({ status:200, contentType:"text/html; charset=utf-8", body:shellHtml }));
+      await page.goto(`/zilch/spiel/${gameId}/zuschauen`);
+      await expect(page.locator("#zilchChatHistory li")).toHaveCount(30);
+      await exerciseCollapsedChatDock(page, "zilch", testInfo);
+      await page.screenshot({ path:testInfo.outputPath(`closed-chat-${theme}.png`) });
+      await openChatWithKeyboardFocus(page, "[data-zilch-chat-toggle]", "#zilchChatInput");
+      await page.locator("#zilchChatInput").fill("Zuschauen und mitreden");
+      await expectChatAboveKeyboard(page, "#zilchChatInput", "#zilchChatForm button[type='submit']");
+      await page.locator("#zilchChatForm button[type='submit']").tap();
+      await expect(page.locator("#zilchChatHistory")).toContainText("Zuschauen und mitreden");
+      await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
+        expect.objectContaining({ action:"chat_message", text:"Zuschauen und mitreden" }),
+      ]));
+    } finally { await context.close(); }
+  });
+}

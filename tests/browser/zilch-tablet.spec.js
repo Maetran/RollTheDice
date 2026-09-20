@@ -128,15 +128,29 @@ for (const theme of ["light", "lcars"]) {
         expect(die.width).toBeGreaterThanOrEqual(48);
         expect(die.width).toBeLessThanOrEqual(65);
         await expect(page.locator(".zilch-recommendation__shortcut").first()).toBeHidden();
-        if (viewport.height > viewport.width) {
-          // The portrait grid fits six choices without needing to scroll
-          // the choices rail; short tablets retain readable touch targets.
-          for (const choice of await page.locator("[data-zilch-recommendation]").all()) {
-            const id = await choice.getAttribute("data-zilch-recommendation");
-            await expectReachable(page, `[data-zilch-recommendation="${id}"]`);
-            expect((await choice.boundingBox()).height).toBeGreaterThanOrEqual(64);
-          }
+        // Every orientation shares the phone's vertical order. The strongest
+        // choice starts at the lower edge above the combined scoring action;
+        // a short rail scrolls its alternatives without moving the touch dock.
+        await expectReachable(page, '[data-zilch-recommendation="three-ones"]');
+        const choiceLayout = await page.locator("[data-zilch-recommendation]").evaluateAll(choices => choices.map(choice => {
+          const rect = choice.getBoundingClientRect();
+          return { id: choice.dataset.zilchRecommendation, top: rect.top, bottom: rect.bottom, left: rect.left, width: rect.width, height: rect.height };
+        }));
+        expect([...choiceLayout].sort((a, b) => a.top - b.top).map(choice => choice.id)).toEqual(choiceLayout.map(choice => choice.id).reverse());
+        const combined = await page.locator("[data-zilch-combined-score]").boundingBox();
+        expect(combined.y - choiceLayout[0].bottom).toBeGreaterThanOrEqual(0);
+        expect(combined.y - choiceLayout[0].bottom).toBeLessThanOrEqual(16);
+        for (const choice of choiceLayout) {
+          expect(choice.height).toBeGreaterThanOrEqual(64);
+          expect(Math.abs(choice.left - choiceLayout[0].left)).toBeLessThanOrEqual(1);
+          expect(Math.abs(choice.width - choiceLayout[0].width)).toBeLessThanOrEqual(1);
+          const selector = `[data-zilch-recommendation="${choice.id}"]`;
+          await page.locator(selector).scrollIntoViewIfNeeded();
+          await expectReachable(page, selector);
+          expect((await page.locator(".zilch-dice-dock").boundingBox()).y).toBeCloseTo(dock.y, 0);
         }
+        await page.locator(".zilch-recommendations__rail").evaluate(rail => { rail.scrollTop = 0; });
+        await expectReachable(page, '[data-zilch-recommendation="three-ones"]');
         // Internal history scrolling never moves the overall touch table.
         await page.locator('[data-zilch-board-id="p2"] ol').evaluate(list => { list.scrollTop = 0; });
         await expect.poll(() => page.locator('[data-zilch-board-id="p2"] ol').evaluate(list => list.scrollTop)).toBe(0);

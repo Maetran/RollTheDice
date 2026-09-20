@@ -114,7 +114,17 @@ html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-r
     overflow-y: auto;
     overscroll-behavior: contain;
   }
-  html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendations__rail { margin-top: auto; }
+  /* The guide keeps its place while only the choices scroll. Start at the
+     strongest choice next to the lower action row, just like the phone. */
+  html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendations__rail {
+    display: flex;
+    flex-direction: column-reverse;
+    min-height: 0;
+    max-height: 100%;
+    margin-top: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
   html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendations__list { gap: .65rem; }
   html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendation {
     min-height: 64px;
@@ -211,12 +221,12 @@ html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-r
     html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] :is(.zilch-recommendations, .zilch-start-roll-rail) { grid-column: 1 / -1; grid-row: 2; }
     html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendations {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 1rem;
       align-items: end;
     }
     html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendations > * { min-width: 0; }
-    html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendations__rail { margin-top: 0; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; }
-    html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendations__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendations__rail { margin-top: 0; }
     html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] :is(.zilch-play-layout__current-score, .zilch-play-layout__combined-score) { grid-row: 3; }
   }
 

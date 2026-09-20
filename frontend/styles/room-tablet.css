@@ -157,7 +157,7 @@
     height:auto;
     max-height:min(62dvh, 30rem);
     border-radius:0 8px 0 0;
-    transform:translateY(calc(100% - var(--chat-bar-height)));
+    transform:none;
   }
   body.room-page .chat-panel.open{
     top:auto;
@@ -194,6 +194,11 @@
     bottom:calc(100% + .5rem);
     left:0;
     transform:none;
+  }
+  /* Multi-board desktop selectors also match landscape tablets. Keep both
+     halves of this bottom dock above the PWA inset and software keyboard. */
+  body.room-page :is(#chatPanel, #chatReactionsBar){
+    bottom:calc(var(--room-safe-bottom) + var(--game-viewport-bottom, 0px));
   }
 
   /* One sheet has room for a quiet reference; two or more use that space to

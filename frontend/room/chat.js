@@ -125,6 +125,8 @@ function setChatOpen(open, opts = {}) {
   if (!chatPanel) return;
 
   chatPanel.classList.toggle("open", !!open);
+  const chatContent = chatPanel.querySelector(".chat-content");
+  if (chatContent) chatContent.hidden = !open;
   document.documentElement.classList.toggle("chat-open", !!open);
   document.body.classList.toggle("chat-open", !!open);
   if (chatToggle) chatToggle.setAttribute("aria-expanded", open ? "true" : "false");

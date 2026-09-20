@@ -1,6 +1,6 @@
 const { test, expect } = require("@playwright/test");
 const { expectReachable } = require("./table-viewport");
-const { openChatWithKeyboardFocus, expectChatAboveKeyboard } = require("./chat-mobile");
+const { openChatWithKeyboardFocus, expectChatAboveKeyboard, exerciseCollapsedChatDock } = require("./chat-mobile");
 
 for (const theme of ["light", "dark", "classic"]) {
   test(`ZDWA ${theme}: iPhone spectator can type and send in a 2v2 chat`, async ({ browser, baseURL }, testInfo) => {
@@ -45,6 +45,7 @@ for (const theme of ["light", "dark", "classic"]) {
       await page.goto("/spiel/spectator-chat-mobile/zuschauen?name=Observer");
       await expect(page.locator(".player-card")).toHaveCount(2);
       expect(actions.some(action => ["join_game", "rejoin_game"].includes(action.action))).toBe(false);
+      await exerciseCollapsedChatDock(page, "zdwa", testInfo);
       await openChatWithKeyboardFocus(page, "#chatToggle", "#chatInput");
       const historyAvatar = page.locator("#chatBox .chat-line", { hasText:"Nachricht 29" }).locator(".player-avatar");
       await expect(historyAvatar).toHaveAttribute("src", "/api/avatars/4242");
