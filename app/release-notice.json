@@ -4,23 +4,23 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Konto ändern? Bestätige jetzt mit Passkey statt Passwort. Auf Tablets steht das Hauptmenü überall mittig.",
-  "summary_en": "Confirm account changes with a passkey instead of a password. Tablet navigation is now centered throughout.",
+  "summary_de": "Der Zuschauerchat bleibt auf dem iPhone bedienbar und zeigt dein Profilbild. Tablet-Spielblöcke nutzen den Platz besser.",
+  "summary_en": "Spectator chat stays usable on iPhone and shows your profile picture. Tablet score sheets make better use of the available space.",
   "player_notes": {
     "de": {
-      "title": "Dein Passkey kann jetzt mehr",
+      "title": "Zuschauerchat und Tablet-Spielblöcke",
       "changes": [
-        "Bestätige Änderungen an Name, E-Mail und Passwort bevorzugt mit deinem vorhandenen Passkey.",
-        "Auch weitere Passkeys kannst du mit einem Passkey hinzufügen oder entfernen. Dein Passwort bleibt eine Alternative.",
-        "Auf Tablets steht das Hauptmenü in beiden Spielen im Hoch- und Querformat mittig."
+        "Die Chateingabe bleibt sichtbar und öffnet sich auf dem iPhone direkt beim Antippen.",
+        "Zuschauer sehen ihr Profilbild auch im Chat und bei Reaktionen.",
+        "Tablet-Spielblöcke passen sich an den verfügbaren Platz an."
       ]
     },
     "en": {
-      "title": "Your passkey can now do more",
+      "title": "Spectator chat and tablet score sheets",
       "changes": [
-        "Use your existing passkey as the preferred way to confirm name, email and password changes.",
-        "Use a passkey to add or remove passkeys too. Your password remains an alternative.",
-        "Tablet navigation is centered in both games, in portrait and landscape."
+        "Chat input stays visible and opens directly on tap on iPhone.",
+        "Spectators keep their profile picture in chat and reactions.",
+        "Tablet score sheets fit the available space."
       ]
     }
   }

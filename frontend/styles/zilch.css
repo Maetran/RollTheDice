@@ -4949,6 +4949,7 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
   overscroll-behavior: contain;
 }
 .zilch-shell--game #zilchChatForm { flex: 0 0 auto; }
+.zilch-shell--game #zilchChatInput { font-size: 1rem; }
 
 /* Lobby only: one place for current games and a short, complete setup form. */
 html[data-game="zilch"] .zilch-create-heading{

@@ -1,6 +1,7 @@
 const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
 const { test, expect } = require("@playwright/test");
 const { expectTextContrast } = require("./contrast");
+const { openChatWithKeyboardFocus, expectChatAboveKeyboard } = require("./chat-mobile");
 
 async function signIn(page, username, password) {
   await openPasswordLogin(page);
@@ -2802,7 +2803,7 @@ test("a human-vs-human Zilch player can copy a clean invitation link", async ({ 
 });
 
 test("a Zilch spectator connects read-only without taking a player seat", async ({ browser, baseURL }) => {
-  const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block", isMobile:true, hasTouch:true, viewport:{ width:440, height:956 } });
   const page = await context.newPage();
   try {
     await signInAsPreviewMani(page);
@@ -2833,6 +2834,17 @@ test("a Zilch spectator connects read-only without taking a player seat", async 
     await expect(page.locator("[data-zilch-roll]")).toBeDisabled();
     await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
     await expect(page.locator("#zilchShareGameBtn")).toBeHidden();
+    await openChatWithKeyboardFocus(page, "[data-zilch-chat-toggle]", "#zilchChatInput");
+    await page.locator("#zilchChatInput").pressSequentially("Spectator chat stays usable");
+    await expectChatAboveKeyboard(page, "#zilchChatInput", "#zilchChatForm button[type=submit]");
+    await page.locator("#zilchChatForm button[type=submit]").tap();
+    await expect(page.locator("#zilchChatHistory")).toContainText("Spectator chat stays usable");
+    await page.locator("[data-zilch-chat-toggle]").tap();
+    await expect(page.locator("#zilchChatInput")).not.toBeFocused();
+    await page.evaluate(() => {
+      delete window.visualViewport.height;
+      window.visualViewport.dispatchEvent(new Event("resize"));
+    });
     const leave = page.locator("#zilchLeaveGameBtn");
     await expect(leave).toBeVisible();
     await expect(leave).toHaveText(/Lobby/);
@@ -3354,3 +3366,44 @@ for (const theme of ["light", "lcars"]) {
     } finally { await context.close(); }
   });
 }
+
+test("Zilch spectator avatars survive history, live messages and reactions outside the player roster", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, serviceWorkers: "block", hasTouch: true, isMobile: true, viewport: { width: 440, height: 956 } });
+  const page = await context.newPage();
+  try {
+    await signInAsPreviewMani(page);
+    const lobby = await page.goto("/zilch");
+    const shellHtml = await lobby.text();
+    const gameId = "spectator-avatar-fixture";
+    const snapshot = fixtureSnapshots().hotDice;
+    snapshot._chat_history = [{
+      from_id: "S-departed", sender: "Former viewer", user_id: 4242,
+      text: "History avatar", ts: "2026-09-20T12:00:00+00:00", kind: "chat",
+    }];
+    await installGameScreenFixture(page, gameId, { initial: snapshot });
+    await page.route("**/api/avatars/4242", route => route.fulfill({
+      status: 200, contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="purple"/></svg>',
+    }));
+    await page.route(`**/zilch/spiel/${gameId}/zuschauen`, route => route.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: shellHtml }));
+    await page.goto(`/zilch/spiel/${gameId}/zuschauen`);
+    await page.locator("[data-zilch-chat-toggle]").click();
+    const historyAvatar = page.locator("#zilchChatHistory li", { hasText: "History avatar" }).locator(".player-avatar");
+    await expect(historyAvatar).toHaveAttribute("src", "/api/avatars/4242");
+    await expect(historyAvatar).toHaveJSProperty("naturalWidth", 20);
+    await page.evaluate(() => window.__zilchGameScreenFixturePush({ chat: {
+      from_id: "S-viewer", sender: "Current viewer", user_id: 4242,
+      text: "Live spectator avatar", ts: "2026-09-20T12:01:00+00:00", kind: "chat",
+    } }));
+    await expect(page.locator("#zilchChatHistory li", { hasText: "Live spectator avatar" }).locator(".player-avatar")).toHaveAttribute("src", "/api/avatars/4242");
+    await page.evaluate(() => window.__zilchGameScreenFixturePush({ emoji: {
+      from_id: "S-viewer", from: "Current viewer", user_id: 4242,
+      emoji: "😲", ts: "2026-09-20T12:02:00+00:00",
+    } }));
+    await expect(page.locator("#zilchChatHistory li", { hasText: "😲" }).locator(".player-avatar")).toHaveAttribute("src", "/api/avatars/4242");
+    await expect(page.locator("#zilchChatHistory li", { hasText: "Current viewer" }).locator("a")).toHaveCount(2);
+    // A normal game refresh must not discard reaction identity metadata.
+    await page.evaluate(value => window.__zilchGameScreenFixturePush({ scoreboard: value }), snapshot);
+    await expect(page.locator("#zilchChatHistory li", { hasText: "😲" }).locator(".player-avatar")).toHaveAttribute("src", "/api/avatars/4242");
+  } finally { await context.close(); }
+});

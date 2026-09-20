@@ -250,6 +250,7 @@
         addChatMessage(msg.emoji.from || "???", msg.emoji.emoji || "", {
           ts: msg.emoji.ts,
           kind: "reaction",
+          user_id: msg.emoji.user_id,
           achievement_rank: msg.emoji.achievement_rank,
         });
       }
@@ -262,6 +263,7 @@
           addChatMessage(sender, text, {
             ts: msg.chat.ts,
             kind: msg.chat.kind,
+            user_id: msg.chat.user_id,
             achievement_rank: msg.chat.achievement_rank,
           });
           const ownIds = [myId, mySpectatorId ? `S-${mySpectatorId}` : null].filter(Boolean).map(String);
@@ -271,11 +273,11 @@
           }
         }
       } else if (msg.type === "chat" && msg.text) {
-        addChatMessage(msg.sender || "???", msg.text);
+        addChatMessage(msg.sender || "???", msg.text, { user_id: msg.user_id });
       } else if (msg.message && msg.sender) {
-        addChatMessage(msg.sender, msg.message);
+        addChatMessage(msg.sender, msg.message, { user_id: msg.user_id });
       } else if (msg.kind === "chat" && msg.payload?.text) {
-        addChatMessage(msg.payload.sender || "???", msg.payload.text);
+        addChatMessage(msg.payload.sender || "???", msg.payload.text, { user_id: msg.payload.user_id });
       }
 
       // Zuschauer-Toast
@@ -288,6 +290,7 @@
           if (m?.text) addChatMessage(m.sender || "???", m.text, {
             ts: m.ts,
             kind: m.kind,
+            user_id: m.user_id,
             achievement_rank: m.achievement_rank,
           });
         });
@@ -323,6 +326,7 @@
         if (m && m.text) addChatMessage(m.sender || "???", m.text, {
           ts: m.ts,
           kind: m.kind,
+          user_id: m.user_id,
           achievement_rank: m.achievement_rank,
         });
       });

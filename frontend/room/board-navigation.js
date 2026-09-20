@@ -69,6 +69,30 @@
     const updateScrollHints = () => cards.forEach(card => {
       const sheet = card.querySelector(".table-wrap");
       if (!sheet) return;
+      const table = sheet.querySelector("table.grid");
+      const writableRows = Array.from(table?.querySelectorAll("tbody tr:not(.is-compute)") || []);
+      if (writableRows.length) {
+        const styleHeight = (element, properties) => {
+          const style = getComputedStyle(element);
+          return properties.reduce((sum, name) => sum + (Number.parseFloat(style[name]) || 0), 0);
+        };
+        // Fit to the actual workspace, rather than a viewport estimate that
+        // omitted PWA safe areas, team names and the action/chat bars. The
+        // minimum remains finger-friendly; shorter tablets keep sheet scroll.
+        const gridPadding = styleHeight(grid, ["paddingTop", "paddingBottom"]);
+        const cardEdges = styleHeight(card, ["paddingTop", "paddingBottom", "borderTopWidth", "borderBottomWidth"]);
+        const sheetEdges = styleHeight(sheet, ["borderTopWidth", "borderBottomWidth"]);
+        const headings = Array.from(card.children)
+          .filter(child => child !== sheet && !child.classList.contains("tablet-sheet-scroll-hint"))
+          .reduce((sum, child) => sum + child.getBoundingClientRect().height + styleHeight(child, ["marginTop", "marginBottom"]), 0);
+        const fixedRows = Array.from(table.rows)
+          .filter(row => !writableRows.includes(row))
+          .reduce((sum, row) => sum + row.getBoundingClientRect().height, 0);
+        const available = grid.clientHeight - gridPadding - cardEdges - sheetEdges - headings;
+        const rowHeight = Math.max(44, Math.min(56, Math.floor((available - fixedRows - 1) / writableRows.length * 10) / 10));
+        const nextHeight = `${rowHeight}px`;
+        if (card.style.getPropertyValue("--tablet-write-row") !== nextHeight) card.style.setProperty("--tablet-write-row", nextHeight);
+      }
       const hint = card.querySelector(".tablet-sheet-scroll-hint");
       // Test the space available without the footer so it cannot create its
       // own overflow. Resizing or opening the keyboard updates this affordance.
@@ -83,6 +107,7 @@
     updateScrollHints();
     if (typeof ResizeObserver === "function") {
       grid._tabletSheetObserver = new ResizeObserver(updateScrollHints);
+      grid._tabletSheetObserver.observe(grid);
       cards.forEach(card => grid._tabletSheetObserver.observe(card.querySelector(".table-wrap")));
     }
   }

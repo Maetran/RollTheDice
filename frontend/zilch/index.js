@@ -4876,6 +4876,7 @@ function rememberReactionChatEntry(reaction) {
   if (!text || !state.game) return false;
   const entry = {
     from_id: reaction?.from_id,
+    user_id: reaction?.user_id,
     sender: String(reaction?.from || t("Spieler")),
     text,
     ts: reaction?.ts,
@@ -4893,8 +4894,14 @@ function rememberReactionChatEntry(reaction) {
 function zilchChatRows(snapshot) {
   return visibleChatHistory(snapshot).map(entry => {
     const sender = participantForId(snapshot, entry?.from_id || entry?.player_id || entry?.participant_id);
-    const identity = sender
-      ? playerCollectionMarkup(sender)
+    // Spectators are not game participants, and may already have left. The
+    // authenticated sender ID travels with both live messages and history.
+    const accountSender = sender || (typeOfUserId(entry?.user_id) ? {
+      name: entry?.sender || t("Spieler"),
+      user_id: entry?.user_id,
+    } : null);
+    const identity = accountSender
+      ? playerCollectionMarkup(accountSender)
       : `<span class="zilch-player-identity">${escapeHtml(entry?.sender || t("Spieler"))}</span>`;
     return `<li><strong>${identity}</strong><span>${escapeHtml(entry?.text || "")}</span></li>`;
   }).join("");
@@ -4914,6 +4921,10 @@ function mountZilchGameChat(snapshot) {
     chat.querySelector("[data-zilch-chat-toggle]")?.addEventListener("click", () => {
       state.chatOpen = !state.chatOpen;
       mountZilchGameChat(state.game);
+      const input = chat.querySelector("#zilchChatInput");
+      // Keep focus in the tap handler so iOS can open the software keyboard.
+      if (state.chatOpen) input?.focus({ preventScroll: true });
+      else if (document.activeElement === input) input.blur();
     });
     chat.querySelector("#zilchChatForm")?.addEventListener("submit", event => {
       event.preventDefault();

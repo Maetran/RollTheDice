@@ -145,6 +145,35 @@ class WebSocketActionGuardTestCase(GameStateTestCase):
             is_spectator=bool(spectator_id),
         )
 
+    def test_spectator_chat_and_reactions_keep_the_authenticated_avatar_identity(self):
+        for game_type in ("zdwa", "zilch"):
+            with self.subTest(game_type=game_type):
+                game = self.make_game(mode="2v2")
+                game["_game_type"] = game_type
+                session = self.session(game, spectator_id="viewer")
+                game["_spectators"] = [{
+                    "id": "viewer", "name": "Viewer", "user_id": 42,
+                    "ws": session.websocket,
+                }]
+                # Incoming identity fields must never impersonate another
+                # account. Both products use the shared social transport.
+                asyncio.run(handle_social_action(session, "chat_message", {
+                    "text": "Hello", "user_id": 99, "sender": "Impostor",
+                }))
+                message = session.websocket.messages[-1]["chat"]
+                self.assertEqual(message["user_id"], 42)
+                self.assertEqual(message["from_id"], "S-viewer")
+                self.assertEqual(message["sender"], "Viewer")
+                self.assertEqual(game["_chat_history"][-1]["user_id"], 42)
+
+                asyncio.run(handle_social_action(session, "send_emoji", {
+                    "emoji": "🎲", "user_id": 99, "from": "Impostor",
+                }))
+                reaction = session.websocket.messages[-1]["emoji"]
+                self.assertEqual(reaction["user_id"], 42)
+                self.assertEqual(reaction["from_id"], "S-viewer")
+                self.assertEqual(reaction["from"], "Viewer")
+
     def test_hold_payload_requires_a_roll_and_five_real_booleans(self):
         game = self.make_game(mode=1, players=[("p1", "Anna")])
         session = self.session(game, player_id="p1")

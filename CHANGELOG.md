@@ -22,6 +22,19 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.37.1 — Zuschauerchat und Tablet-Spielblöcke / Spectator chat and tablet score sheets — 2026-09-20
+
+- **Deutsch:** Der Zuschauerchat hält die Texteingabe auf dem iPhone sichtbar
+  und öffnet sie direkt beim Antippen. Zuschauer erhalten auch im Chat und bei
+  Reaktionen ihr eigenes Profilbild. Tablet-Spielblöcke passen ihre Zeilen an
+  den tatsächlich verfügbaren Platz an; die Bedienfelder bleiben erreichbar.
+  Stiller Rollout ohne Versions-Push oder neuen In-App-Versionshinweis.
+- **English:** Spectator chat keeps its input visible on iPhone and focuses it
+  directly on tap. Spectators also retain their own profile picture in chat
+  and reactions. Tablet score sheets fit their rows to the space actually
+  available while keeping controls accessible. Silent rollout without a
+  version push or a new in-app release announcement.
+
 ## 2.37.0 — Kontoaktionen mit Passkey / Confirm account changes with a passkey — 2026-09-20
 
 - **Deutsch:** Benutzername, E-Mail und Passwort sowie weitere Passkeys lassen

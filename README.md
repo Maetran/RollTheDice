@@ -318,6 +318,12 @@ row below the title and tools in portrait and landscape. Phone and mouse
 desktop layouts keep their existing arrangement.
 Auf Touch-Tablets steht die Hauptnavigation in beiden Spielen im Hoch- und
 Querformat mittig in einer eigenen Zeile unter Titel und Werkzeugen.
+Der mobile Zuschauerchat hält die Eingabe auch bei geöffneter Tastatur
+erreichbar und zeigt Zuschauer mit ihrem Profilbild. Tablet-Spielblöcke nutzen
+den verfügbaren Platz, ohne die Bedienelemente abzuschneiden.
+Mobile spectator chat keeps the input reachable with the keyboard open and
+shows spectators with their profile picture. Tablet score sheets use the
+available space without clipping the controls.
 
 Offline play is currently a design assessment, not an enabled feature. The
 [offline-mode assessment](docs/OFFLINE_MODE_ASSESSMENT.md) recommends separate

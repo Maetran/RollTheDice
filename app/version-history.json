@@ -1853,5 +1853,12 @@
     "date": "2026-09-20",
     "bump": "minor",
     "summary": "Versionsnummern und lesbare Aktionen / Version numbers and readable actions"
+  },
+  {
+    "version": "2.37.0",
+    "revision": "5d8312ddff86a93acf042ee35dee9f794607887a",
+    "date": "2026-09-20",
+    "bump": "minor",
+    "summary": "Kontoaktionen mit Passkey bestätigen / Confirm account changes with a passkey"
   }
 ]

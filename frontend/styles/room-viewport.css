@@ -63,8 +63,12 @@ body.room-page{
 .room-page .chat-panel,
 .room-page .chat-reactions-host{ bottom:calc(var(--room-safe-bottom) + var(--game-viewport-bottom, 0px)); }
 .room-page .chat-panel .chat-content{
-  max-height:calc(var(--game-viewport-height, 100dvh) - var(--room-safe-top) - var(--room-safe-bottom) - 5rem);
+  /* Preserve the drawer's own cap as well as the keyboard's visible space.
+     A taller child is clipped by the panel and strands its composer below it. */
+  max-height:min(calc(30rem - var(--chat-bar-height)), calc(var(--game-viewport-height, 100dvh) - var(--room-safe-top) - var(--room-safe-bottom) - 5rem));
 }
+.room-page .chat-panel :is(.chat-head, .chat-input-row){ flex:0 0 auto; }
+.room-page #chatInput{ font-size:1rem; }
 .room-page .room-header-menu-panel,
 .room-page .leave-game-dialog,
 .room-page .mobile-announce-picker{
@@ -74,6 +78,9 @@ body.room-page{
 }
 
 @media (max-width:560px){
+  .room-page .chat-panel .chat-content{
+    max-height:min(calc(34rem - var(--chat-bar-height)), calc(var(--game-viewport-height, 100dvh) - var(--room-safe-top) - var(--room-safe-bottom) - 5rem));
+  }
   body.room-page{
     padding-bottom:calc(var(--mobile-chatbar-h) + var(--room-safe-bottom) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .5rem);
   }

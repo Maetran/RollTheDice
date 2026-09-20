@@ -1,10 +1,10 @@
 {
-  "version": "2.37.0",
-  "bump": "minor",
+  "version": "2.37.1",
+  "bump": "patch",
   "date": "2026-09-20",
-  "previous_revision": "0069e900ab6b80480078878d1ffd2969bb74d332",
+  "previous_revision": "5d8312ddff86a93acf042ee35dee9f794607887a",
   "summary": {
-    "de": "Kontoaktionen mit Passkey bestätigen",
-    "en": "Confirm account changes with a passkey"
+    "de": "Zuschauerchat und vollständige Tablet-Spielblöcke",
+    "en": "Spectator chat and complete tablet score sheets"
   }
 }

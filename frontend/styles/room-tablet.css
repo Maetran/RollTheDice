@@ -12,7 +12,9 @@
     --desktop-three-board-shell-max:var(--tablet-table-width);
     --header-control-size:2.75rem;
     --col-desc:clamp(4rem, 18%, 6rem);
-    --tablet-write-row:clamp(44px, calc((100dvh - 33rem) / 12), 56px);
+    /* JavaScript fits these rows to the measured sheet area, including PWA
+       safe areas and team headings. Start at a usable touch size. */
+    --tablet-write-row:44px;
     --tablet-compute-row:26px;
     padding-top:max(.65rem, var(--room-safe-top));
   }
@@ -68,6 +70,7 @@
   }
   .room-page #scoreOut .player-card table.grid{ font-size:1rem; overflow:visible; }
   .room-page #scoreOut .player-card table.grid :is(th, td){
+    box-sizing:border-box;
     height:var(--tablet-write-row);
     padding:.12rem .4rem !important;
     line-height:1.15;
@@ -168,7 +171,7 @@
   body.room-page .chat-panel .chat-content{
     display:flex;
     height:calc(min(62dvh, 30rem) - var(--chat-bar-height));
-    max-height:calc(var(--game-viewport-height, 100dvh) - var(--room-safe-top) - var(--room-safe-bottom) - 5rem);
+    max-height:min(calc(30rem - var(--chat-bar-height)), calc(var(--game-viewport-height, 100dvh) - var(--room-safe-top) - var(--room-safe-bottom) - 5rem));
   }
   body.room-page .chat-panel .chat-head{ display:flex; }
   body.room-page .chat-panel .chat-input-row{ order:2; }

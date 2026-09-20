@@ -2,7 +2,7 @@ const { test, expect } = require("@playwright/test");
 const { expectFixedTable, expectReachable } = require("./table-viewport");
 
 const TABLET = "(any-pointer: coarse) and (min-width: 768px) and (min-height: 600px) and (max-width: 1600px)";
-const sizes = [{ width:1024, height:1366 }, { width:1366, height:1024 }, { width:768, height:1024 }, { width:1024, height:768 }];
+const sizes = [{ width:1024, height:1366 }, { width:1366, height:1024 }, { width:820, height:1180 }, { width:768, height:1024 }, { width:1024, height:768 }];
 
 function snapshot(count = 2, mode = String(count)) {
   const players = ["Anna", "Ben", "Clara", "David"].slice(0, count).map((name, index) => ({ id:`p${index + 1}`, name }));
@@ -69,6 +69,10 @@ for (const theme of ["light", "dark", "classic"]) {
         expect(boxes.roll.x + boxes.roll.width / 2).toBeGreaterThan(viewport.width * .78);
         expect(boxes.announce.x).toBeLessThan(viewport.width * .1);
         expect(boxes.roll.y).toBeGreaterThan(viewport.height * .75);
+        if (viewport.height >= 1180) {
+          await expect.poll(() => page.locator(".player-card.me .table-wrap").evaluate(sheet => sheet.scrollHeight - sheet.clientHeight)).toBeLessThanOrEqual(1);
+          await expect(page.locator(".player-card.me .tablet-sheet-scroll-hint")).toHaveCount(0);
+        }
         const lastRow = page.locator(".player-card.me table.grid tbody tr:last-child");
         await lastRow.scrollIntoViewIfNeeded();
         await expect(lastRow).toBeInViewport();
@@ -101,6 +105,36 @@ for (const theme of ["light", "dark", "classic"]) {
       await expectReachable(page, "#chatInput");
       await expectReachable(page, "#chatSend");
       await expect(page.locator("#chatInput")).toHaveValue("Tablet chat draft");
+    } finally { await context.close(); }
+  });
+
+  test(`ZDWA tablet ${theme}: complete portrait sheets fit with PWA safe areas and team headings`, async ({ browser, baseURL }, testInfo) => {
+    const context = await browser.newContext({ baseURL, viewport:{ width:820, height:1180 }, isMobile:true, hasTouch:true, serviceWorkers:"block" });
+    await context.addInitScript(value => localStorage.setItem("wuerfler_theme", value), theme);
+    const page = await context.newPage();
+    try {
+      const server = await fixture(page, snapshot());
+      await page.addStyleTag({ content:"body.room-page { --room-safe-top:24px; --room-safe-bottom:20px; }" });
+      for (const mode of ["2", "2v2"]) {
+        if (mode === "2v2") server.push(snapshot(4, mode));
+        await expect(page.locator(".player-card")).toHaveCount(2);
+        await expect.poll(() => page.locator(".table-wrap").evaluateAll(sheets => Math.max(...sheets.map(sheet => sheet.scrollHeight - sheet.clientHeight)))).toBeLessThanOrEqual(1);
+        await expect(page.locator(".tablet-sheet-scroll-hint")).toHaveCount(0);
+        for (const card of await page.locator(".player-card").all()) {
+          await expect(card.locator("table.grid tbody tr:last-child")).toBeInViewport();
+          // WebKit rounds the table's last border to a fractional pixel;
+          // verify the actual bottom edge with one physical CSS pixel slack.
+          expect(await card.evaluate(element => {
+            const last = element.querySelector("table.grid tbody tr:last-child").getBoundingClientRect();
+            const sheet = element.querySelector(".table-wrap").getBoundingClientRect();
+            return last.bottom - sheet.bottom;
+          })).toBeLessThanOrEqual(1);
+          expect(await card.locator("td.cell[data-row='15'][data-field='free']").evaluate(cell => cell.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+        }
+        await expectReachable(page, "#rollBtnInline");
+        await expectReachable(page, "#chatToggle");
+        await page.screenshot({ path:testInfo.outputPath(`${theme}-${mode}-pwa.png`) });
+      }
     } finally { await context.close(); }
   });
 }

@@ -69,7 +69,7 @@ export function addChatMessage(sender, text, opts = {}) {
   line.className = `chat-line${opts.kind === "reaction" ? " reaction" : ""}${opts.kind === "system" ? " system" : ""}`;
   const senderMarkup = typeof window.ZDWA_PLAYER_NAME_MARKUP === "function"
     ? window.ZDWA_PLAYER_NAME_MARKUP(
-      opts.achievement_rank ? { name: sender, achievement_rank: opts.achievement_rank } : { name: sender },
+      { name: sender, user_id: opts.user_id, achievement_rank: opts.achievement_rank },
       { compactRank: true },
     )
     : escapeHtml(sender);
@@ -133,8 +133,12 @@ function setChatOpen(open, opts = {}) {
     unreadCount = 0;
     renderUnreadCount();
     if (opts.focus && chatInput) {
-      setTimeout(() => chatInput.focus({ preventScroll: true }), 220);
+      // iOS only opens its keyboard while focus belongs to the original tap.
+      // Waiting for the drawer animation loses that user activation.
+      chatInput.focus({ preventScroll: true });
     }
+  } else if (document.activeElement === chatInput) {
+    chatInput.blur();
   }
 }
 

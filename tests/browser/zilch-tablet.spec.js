@@ -101,7 +101,7 @@ for (const theme of ["light", "lcars"]) {
     const page = await context.newPage();
     try {
       await openTabletFixture(page, { theme });
-      for (const viewport of [{ width: 1024, height: 1366 }, { width: 1366, height: 1024 }, { width: 768, height: 1024 }, { width: 1024, height: 768 }, { width: 1180, height: 820 }]) {
+      for (const viewport of [{ width: 1024, height: 1366 }, { width: 1366, height: 1024 }, { width: 820, height: 1180 }, { width: 768, height: 1024 }, { width: 1024, height: 768 }, { width: 1180, height: 820 }]) {
         await page.setViewportSize(viewport);
         await expect(page.locator(".zilch-tablet-guide")).toBeVisible();
         await expectFixedTable(page, [".zilch-header", ".zilch-play-layout", ".zilch-dice-dock"]);
