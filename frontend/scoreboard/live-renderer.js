@@ -73,7 +73,7 @@ function renderScoreboard(mount, sb, {
     </div>
     <div class="muted turn-status">
       <span id="mobileReactionsBar" class="mobile-reactions-host" aria-label="Reaktionen"></span>
-      <span class="turn-status-text">Am Zug: ${playerNameMarkup(turnPlayer, { name: turnName, showRank: false })} • ${isHC ? '<span class="hc-badge">Hardcore</span>' : `Würfe: ${rollsUsed ?? 0}/${rollsMax ?? 3} <span id="announceHint"></span>`}</span>
+      <span class="turn-status-text">Am Zug: ${playerNameMarkup(turnPlayer, { name: turnName, showRank: false, avatarKey: "score-turn" })} • ${isHC ? '<span class="hc-badge">Hardcore</span>' : `Würfe: ${rollsUsed ?? 0}/${rollsMax ?? 3} <span id="announceHint"></span>`}</span>
     </div>
   `;
 
@@ -98,13 +98,13 @@ function renderScoreboard(mount, sb, {
       const members = (ent.members || [])
         .map(pid => sb._players.find(p => String(p.id) === String(pid)) || { id: pid, name: pid })
         .filter(Boolean);
-      membersHTML = members.map(player => `<span class="badge">${playerNameMarkup(player, { compactRank: true, profileLink: true })}</span>`).join(" ");
+      membersHTML = members.map(player => `<span class="badge">${playerNameMarkup(player, { compactRank: true, profileLink: true, avatarKey: `board:${id}:member:${player.id}` })}</span>`).join(" ");
     }
 
     grid += `
       <div class="player-card${isTurn ? " turn": ""}${isMyBoard ? " me": ""}" data-board-id="${esc(id)}">
         <div class="pc-head">
-          <div class="pc-name">${isTeamMode ? esc(ent.name || "—") : playerNameMarkup(ent, { compactRank: true, fallback: "—", profileLink: true })}</div>
+          <div class="pc-name">${isTeamMode ? esc(ent.name || "—") : playerNameMarkup(ent, { compactRank: true, fallback: "—", profileLink: true, avatarKey: `board:${id}` })}</div>
           <div class="pc-total">Total: ${overall}</div>
         </div>
         ${isTeamMode ? `<div class="pc-members">${membersHTML}</div>` : ``}
@@ -142,11 +142,11 @@ function renderScoreboard(mount, sb, {
   }
   grid += `</div>`;
 
-  (contentEl || mount).innerHTML =
+  replaceChildrenPreservingAvatars(contentEl || mount,
     dicebar +
     (readOnly ? "" : `<div class="suggestions-area"><div id="suggestions" class="suggestions"></div></div>`) +
     `<div id="overlayMount"></div>` +
-    grid;
+    grid);
 }
 
 /**

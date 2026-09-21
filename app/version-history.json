@@ -1888,5 +1888,12 @@
     "date": "2026-09-20",
     "bump": "patch",
     "summary": "Mobile Chatleisten bündig am unteren Rand / Mobile chat bars flush with the bottom edge"
+  },
+  {
+    "version": "2.38.3",
+    "revision": "f8b42569db01eb8f66bb3d1fe186a41caabf5819",
+    "date": "2026-09-21",
+    "bump": "patch",
+    "summary": "Kompakte Chatleisten und vollständig sichtbarer ZDWA-Zettel / Compact chat bars and a fully visible ZDWA score sheet"
   }
 ]

@@ -1,24 +1,23 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch"
+    "zdwa"
   ],
-  "summary_de": "Kompakte Chatleisten geben dem Spiel mehr Platz. Der responsive ZDWA-Zettel bleibt vollständig ohne internes Scrollen sichtbar.",
-  "summary_en": "Compact chat bars leave more room for play. The responsive ZDWA sheet stays fully visible without internal scrolling.",
+  "summary_de": "Avatare in ZDWA bleiben beim Würfeln, Halten und Schreiben ruhig, statt bei jedem Spielstand neu zu laden.",
+  "summary_en": "Avatars in ZDWA stay steady during rolls, holds and score entries instead of reloading with each game update.",
   "player_notes": {
     "de": {
-      "title": "Mehr Platz für den Spielzettel",
+      "title": "Ruhige Profilbilder im Spiel",
       "changes": [
-        "Die Chatleiste bleibt unten bündig und ist wieder kompakt.",
-        "ZDWA zeigt den vollständigen Spielzettel ohne internes vertikales Scrollen."
+        "Dein Profilbild blinkt bei Würfel- und Halteaktionen nicht mehr auf.",
+        "Auch beim Eintragen eines Werts bleiben Zugstatus und Spielzettel ruhig."
       ]
     },
     "en": {
-      "title": "More room for the score sheet",
+      "title": "Steady profile pictures in play",
       "changes": [
-        "The chat bar stays flush with the bottom edge and is compact again.",
-        "ZDWA shows the complete score sheet without internal vertical scrolling."
+        "Your profile picture no longer flashes during rolls or hold changes.",
+        "Turn status and score sheet also stay steady when entering a score."
       ]
     }
   }

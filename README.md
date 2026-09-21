@@ -326,6 +326,9 @@ Rand; der Home-Indikator vergrößert ihn nicht. Antippen klappt den vollständi
 Chat auf. Der responsive ZDWA-Spielzettel passt alle Zeilen in den verfügbaren
 Bereich ein und benötigt kein internes vertikales Scrollen. Zilch ordnet seine Vorschläge
 überall untereinander an, mit dem stärksten direkt über **Alle Punktewürfel**.
+Profilbilder im ZDWA-Zugstatus und in den Spielzettel-Überschriften bleiben bei
+Würfel-, Halte- und Schreibaktionen ruhig und werden nur bei einem tatsächlichen
+Spielerwechsel ausgetauscht.
 Mobile spectator chat keeps the input reachable with the keyboard open and
 shows spectators with their profile picture. Tablet score sheets use the
 available space without clipping the controls.
@@ -335,6 +338,9 @@ The responsive ZDWA score sheet fits every row into its available space without
 internal vertical scrolling.
 Zilch stacks suggestions vertically everywhere, with the strongest directly
 above **All scoring dice**.
+Profile pictures in ZDWA's turn status and score sheet headers stay steady
+through rolls, holds and score entries, changing only when the displayed
+player actually changes.
 
 **Offline spielen** steht in beiden Lobbys bereit: ZDWA als normales Solospiel,
 Zilch solo oder gegen den Würfelwirt. Jeder Einstieg und jedes Fortsetzen nach

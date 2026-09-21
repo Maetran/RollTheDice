@@ -173,6 +173,110 @@ test("the accepted local roll does not restart its already running animation", a
   expect(await faces(page)).toEqual([1, 2, 3, 4, 5]);
 });
 
+test("unchanged avatars stay decoded through hold, roll and score updates", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  let ownAvatarRequests = 0;
+  await page.route(/\/api\/avatars\/(701|702)(?:\?.*)?$/, async route => {
+    const userId = new URL(route.request().url()).pathname.split("/").pop();
+    if (userId === "701") ownAvatarRequests += 1;
+    await route.fulfill({
+      status: 200,
+      contentType: "image/svg+xml",
+      headers: { "Cache-Control": "no-store" },
+      body: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="${userId === "701" ? "#d23" : "#27c"}"/></svg>`,
+    });
+  });
+  await page.addInitScript(() => {
+    window.__trackedAvatarLoads = 0;
+    document.addEventListener("load", event => {
+      if (event.target instanceof HTMLImageElement
+        && event.target.matches('img.player-avatar[data-user-avatar="701"][data-avatar-key]')) {
+        window.__trackedAvatarLoads += 1;
+      }
+    }, true);
+  });
+
+  const initial = {
+    ...state(),
+    _players: [
+      { id: "p1", user_id: 701, name: "Anna" },
+      { id: "p2", user_id: 702, name: "Ben" },
+    ],
+    _turn: { player_id: "p1", roll_index: 1 },
+    _dice: [1, 2, 3, 4, 5],
+    _holds: [false, false, false, false, false],
+    _rolls_used: 1,
+  };
+  const server = await fixture(page, { initial });
+  const selectors = [
+    "#headerTurnStatus img.player-avatar",
+    ".turn-status-text img.player-avatar",
+    ".player-card.me .pc-head img.player-avatar",
+  ];
+  await expect.poll(() => page.evaluate(items => items.every((selector, index) => {
+    const image = document.querySelector(selector);
+    return image instanceof HTMLImageElement
+      && (index === 1 || (image.complete && image.naturalWidth > 0));
+  }), selectors)).toBe(true);
+  await page.evaluate(items => {
+    window.__stableAvatarNodes = items.map(selector => document.querySelector(selector));
+    window.__stableAvatarSources = window.__stableAvatarNodes.map(image => image.currentSrc);
+  }, selectors);
+  const initialLoads = await page.evaluate(() => window.__trackedAvatarLoads);
+  const initialRequests = ownAvatarRequests;
+  expect(initialLoads).toBeGreaterThanOrEqual(2);
+  expect(initialRequests).toBeGreaterThan(0);
+
+  const expectStableAvatars = async () => {
+    await expect.poll(() => page.evaluate(items => {
+      const current = items.map(selector => document.querySelector(selector));
+      return current.every((image, index) => image === window.__stableAvatarNodes[index]
+        && image.isConnected
+        && (index === 1 || (image.complete && image.naturalWidth > 0))
+        && image.currentSrc === window.__stableAvatarSources[index]);
+    }, selectors)).toBe(true);
+    expect(await page.evaluate(() => window.__trackedAvatarLoads)).toBe(initialLoads);
+    expect(ownAvatarRequests).toBe(initialRequests);
+  };
+
+  await page.locator('#diceBar .die[data-i="0"]').click();
+  await expect.poll(() => server.actions.filter(action => action.action === "set_hold").length).toBe(1);
+  const held = { ...initial, _holds: [true, false, false, false, false] };
+  server.push(held);
+  await expect(page.locator('#diceBar .die[data-i="0"]')).toHaveClass(/held/);
+  await expectStableAvatars();
+
+  await page.locator('#diceBar .die[data-i="0"]').click();
+  await expect.poll(() => server.actions.filter(action => action.action === "set_hold").length).toBe(2);
+  const released = { ...held, _holds: [false, false, false, false, false] };
+  server.push(released);
+  await expect(page.locator('#diceBar .die[data-i="0"]')).not.toHaveClass(/held/);
+  await expectStableAvatars();
+
+  await page.locator("#rollBtnInline").click();
+  await expect.poll(() => server.actions.filter(action => action.action === "roll_dice").length).toBe(1);
+  const rolled = {
+    ...released,
+    _turn: { player_id: "p1", roll_index: 2 },
+    _dice: [1, 1, 2, 3, 4],
+    _rolls_used: 2,
+  };
+  server.push(rolled, { player_id: "p1", dice_indices: [0, 1, 2, 3, 4] });
+  await expect.poll(() => faces(page)).toEqual([1, 1, 2, 3, 4]);
+  await expectStableAvatars();
+
+  await page.locator('.player-card.me td.cell[data-row="0"][data-field="free"]').click();
+  await expect.poll(() => server.actions.filter(action => action.action === "write_field").length).toBe(1);
+  const written = {
+    ...rolled,
+    _scoreboards: { ...rolled._scoreboards, p1: { "0,free": 2 } },
+  };
+  server.push(written);
+  await expect(page.locator('.player-card.me td.cell[data-row="0"][data-field="free"]')).toHaveText("2");
+  await expectStableAvatars();
+});
+
 test("reduced motion reveals opponent results directly without random face cycling", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   const initial = state();

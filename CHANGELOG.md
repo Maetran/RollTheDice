@@ -22,6 +22,21 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.38.4 — Ruhige Avatare bei Spielaktionen / Stable avatars during game actions — 2026-09-21
+
+- **Deutsch:** ZDWA behält bereits geladene Profilbilder im Zugstatus und in
+  den Spielzettel-Überschriften bei, während Würfel gehalten oder gelöst,
+  gewürfelt und Werte geschrieben werden. Die Bilder werden bei unveränderter
+  Person nicht mehr neu geladen oder kurz leer dargestellt. Ein Browsertest
+  prüft Knoten, Bildquelle und Ladezustand über diese Aktionen hinweg. Stiller
+  Rollout ohne Versions-Push oder neues Versionspopup.
+- **English:** ZDWA keeps decoded profile pictures in the turn status and score
+  sheet headers while dice are held or released, rolled, and scores are
+  entered. Images for the same person no longer reload or briefly appear
+  empty. A browser regression covers node identity, source and load state
+  across these actions. Silent rollout without a version push or a new release
+  popup.
+
 ## 2.38.3 — Kompakte Chatleisten und ganzer ZDWA-Zettel / Compact chat bars and full ZDWA sheet — 2026-09-20
 
 - **Deutsch:** Die eingeklappten Chatleisten bleiben bündig am unteren Rand,

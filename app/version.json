@@ -1,10 +1,10 @@
 {
-  "version": "2.38.3",
+  "version": "2.38.4",
   "bump": "patch",
-  "date": "2026-09-20",
-  "previous_revision": "ff4e70d4a183eeb7bd02f290c57c8460a5a30b4a",
+  "date": "2026-09-21",
+  "previous_revision": "f8b42569db01eb8f66bb3d1fe186a41caabf5819",
   "summary": {
-    "de": "Kompakte Chatleisten und vollständig sichtbarer ZDWA-Zettel",
-    "en": "Compact chat bars and a fully visible ZDWA score sheet"
+    "de": "Ruhige Avatare bei ZDWA-Spielaktionen",
+    "en": "Stable avatars during ZDWA game actions"
   }
 }
