@@ -22,6 +22,19 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.38.3 — Kompakte Chatleisten und ganzer ZDWA-Zettel / Compact chat bars and full ZDWA sheet — 2026-09-20
+
+- **Deutsch:** Die eingeklappten Chatleisten bleiben bündig am unteren Rand,
+  belegen aber nur noch eine kompakte Bedienhöhe; der Home-Indikator vergrößert
+  die Leiste nicht mehr. ZDWA passt den vollständigen Spielzettel an den
+  verfügbaren Bereich an, sodass alle Zeilen ohne internes Scrollen sichtbar
+  bleiben. Stiller Rollout ohne Versions-Push oder neues Versionspopup.
+- **English:** Collapsed chat bars remain flush with the bottom edge while
+  using only a compact control height; the home-indicator inset no longer makes
+  the bar taller. ZDWA fits the complete score sheet into the available space,
+  keeping every row visible without internal scrolling. Silent rollout without
+  a version push or a new release popup.
+
 ## 2.38.2 — Chatleisten bündig am Rand / Chat bars flush with the edge — 2026-09-20
 
 - **Deutsch:** Die mobilen Chatleisten schließen in beiden Spielen bündig mit

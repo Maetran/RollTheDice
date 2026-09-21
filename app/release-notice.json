@@ -4,21 +4,21 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Die mobilen Chatleisten schließen bündig am unteren Bildschirmrand ab, ohne Leerraum darunter. Tippen öffnet den Chat.",
-  "summary_en": "Mobile chat bars sit flush with the bottom edge, with no empty gap underneath. Tap to open the chat.",
+  "summary_de": "Kompakte Chatleisten geben dem Spiel mehr Platz. Der responsive ZDWA-Zettel bleibt vollständig ohne internes Scrollen sichtbar.",
+  "summary_en": "Compact chat bars leave more room for play. The responsive ZDWA sheet stays fully visible without internal scrolling.",
   "player_notes": {
     "de": {
-      "title": "Chatleisten direkt am unteren Rand",
+      "title": "Mehr Platz für den Spielzettel",
       "changes": [
-        "Die Chatleiste bleibt in beiden Spielen direkt am sichtbaren unteren Bildschirmrand.",
-        "Der Schutzabstand zum Home-Indikator liegt innerhalb der Leiste. Darunter bleibt keine Lücke."
+        "Die Chatleiste bleibt unten bündig und ist wieder kompakt.",
+        "ZDWA zeigt den vollständigen Spielzettel ohne internes vertikales Scrollen."
       ]
     },
     "en": {
-      "title": "Chat bars at the bottom edge",
+      "title": "More room for the score sheet",
       "changes": [
-        "The chat bar stays at the visible bottom edge in both games.",
-        "Home-indicator protection sits inside the bar, leaving no gap underneath."
+        "The chat bar stays flush with the bottom edge and is compact again.",
+        "ZDWA shows the complete score sheet without internal vertical scrolling."
       ]
     }
   }

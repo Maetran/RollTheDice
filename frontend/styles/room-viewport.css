@@ -8,6 +8,7 @@ html:has(body.room-page){
 body.room-page{
   --room-safe-top:env(safe-area-inset-top, 0px);
   --room-safe-bottom:env(safe-area-inset-bottom, 0px);
+  --room-chat-control-safe-pad:min(var(--room-safe-bottom), .875rem);
   position:fixed;
   inset:0;
   top:var(--game-viewport-top, 0px);
@@ -19,7 +20,7 @@ body.room-page{
   height:var(--game-viewport-height, 100dvh);
   min-height:0;
   margin:0;
-  padding:var(--room-safe-top) 0 calc(var(--desktop-chatbar-h) + var(--room-safe-bottom) + .45rem);
+  padding:var(--room-safe-top) 0 calc(var(--desktop-chatbar-h) + .45rem);
   overflow:hidden;
   overscroll-behavior:none;
 }
@@ -64,20 +65,34 @@ body.room-page{
 .room-page .chat-reactions-host{ bottom:var(--game-viewport-bottom, 0px); }
 @media (max-width:899px), (orientation:portrait), (hover:none), (pointer:coarse),
   (any-pointer:coarse) and (min-width:768px) and (min-height:600px) and (max-width:1600px){
-  /* The dock reaches the visible bottom edge. Its safe area is part of the
-     colored controls, not an empty strip below them. Desktop mouse side
-     chat retains its separate center alignment and compact dimensions. */
+  /* The dock reaches the visible bottom edge while staying one compact
+     control row. A capped inset shifts its contents clear of the home
+     indicator without adding the full safe area to the row height. */
   .room-page #chatPanel:not(.open) #chatToggle{
-    height:calc(var(--chat-bar-height) + var(--room-safe-bottom));
-    padding-bottom:calc(.55rem + var(--room-safe-bottom));
+    height:var(--chat-bar-height);
+    padding-top:0;
+    padding-bottom:var(--room-chat-control-safe-pad);
   }
   .room-page #chatReactionsBar{
-    height:calc(var(--desktop-chatbar-h) + var(--room-safe-bottom));
-    padding-bottom:calc(.28rem + var(--room-safe-bottom));
+    height:var(--desktop-chatbar-h);
+    padding-top:0;
+    padding-bottom:var(--room-chat-control-safe-pad);
     transform:none;
   }
   .room-page #chatPanel.open .chat-content{
     padding-bottom:calc(.75rem + var(--room-safe-bottom));
+  }
+}
+@media (any-pointer:coarse) and (min-width:768px) and (min-height:600px) and (max-width:1600px){
+  body.room-page{
+    /* Tablet reactions keep their 44px target inside the same compact rail. */
+    --room-chat-control-safe-pad:min(var(--room-safe-bottom), .25rem);
+  }
+  body.room-page .chat-reactions-host .emoji-fab{
+    width:44px;
+    height:44px;
+    min-height:44px;
+    flex-basis:44px;
   }
 }
 /* A closed drawer contains only its toggle. Translating a still-rendered
@@ -104,22 +119,22 @@ body.room-page{
     max-height:min(calc(34rem - var(--chat-bar-height)), calc(var(--game-viewport-height, 100dvh) - var(--room-safe-top) - var(--room-safe-bottom) - 5rem));
   }
   body.room-page{
-    padding-bottom:calc(var(--mobile-chatbar-h) + var(--room-safe-bottom) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .5rem);
+    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .5rem);
   }
   body.room-page.superadmin-active{
-    padding-bottom:calc(var(--mobile-chatbar-h) + var(--room-safe-bottom) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + 5.4rem);
+    padding-bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + 5.4rem);
   }
   .room-page .room-header{ width:100%; }
   .room-page #scoreOut{ width:100%; }
-  .room-page .topbar{ bottom:calc(var(--mobile-chatbar-h) + var(--room-safe-bottom) + var(--mobile-action-gap) + var(--game-viewport-bottom, 0px)); }
+  .room-page .topbar{ bottom:calc(var(--mobile-chatbar-h) + var(--mobile-action-gap) + var(--game-viewport-bottom, 0px)); }
   .room-page .suggestions-area{
-    bottom:calc(var(--mobile-chatbar-h) + var(--room-safe-bottom) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--game-viewport-bottom, 0px));
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--game-viewport-bottom, 0px));
   }
   .room-page .mobile-announce-picker{
-    bottom:calc(var(--mobile-chatbar-h) + var(--room-safe-bottom) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + .35rem);
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + .35rem);
   }
   .room-page .superadmin-bar{
-    bottom:calc(var(--mobile-chatbar-h) + var(--room-safe-bottom) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .45rem);
+    bottom:calc(var(--mobile-chatbar-h) + var(--mobile-actionbar-h) + var(--mobile-action-gap) + var(--mobile-suggestionsbar-h) + .45rem);
   }
 }
 

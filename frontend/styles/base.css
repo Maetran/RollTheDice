@@ -54,7 +54,7 @@ a.player-name-label { color: inherit; text-underline-offset: .15em; }
   --card-w: calc(var(--col-desc) + 4 * var(--col-score) + 22px);
   --cards-gap: 16px;
   --mobile-grid-row-h: 1.74rem;
-  --mobile-chatbar-h: 3.1rem;
+  --mobile-chatbar-h: 3rem;
   --mobile-actionbar-h: 6.85rem;
   --mobile-action-gap: .45rem;
   --mobile-suggestionsbar-h: 1.35rem;
@@ -64,7 +64,7 @@ a.player-name-label { color: inherit; text-underline-offset: .15em; }
   --desktop-two-board-shell-max: 900px;
   --desktop-three-board-shell-max: 1320px;
   --desktop-actionbar-h: 6.75rem;
-  --desktop-chatbar-h: 3.1rem;
+  --desktop-chatbar-h: 3rem;
 }
 
 :root[data-theme="dark"]{

@@ -1881,5 +1881,12 @@
     "date": "2026-09-20",
     "bump": "patch",
     "summary": "Saubere Chatleisten und einheitliche Zilch-Vorschläge / Clean chat bars and consistent Zilch suggestions"
+  },
+  {
+    "version": "2.38.2",
+    "revision": "ff4e70d4a183eeb7bd02f290c57c8460a5a30b4a",
+    "date": "2026-09-20",
+    "bump": "patch",
+    "summary": "Mobile Chatleisten bündig am unteren Rand / Mobile chat bars flush with the bottom edge"
   }
 ]

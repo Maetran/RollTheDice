@@ -1,7 +1,7 @@
 const { test, expect } = require("@playwright/test");
-const { expectFixedTable, expectReachable } = require("./table-viewport");
+const { expectFixedTable, expectReachable, expectCompleteScoreSheet } = require("./table-viewport");
 
-const TABLET = "(any-pointer: coarse) and (min-width: 768px) and (min-height: 600px) and (max-width: 1600px)";
+const TABLET = "(any-pointer: coarse) and (min-width: 768px) and (min-height: 601px) and (max-width: 1600px)";
 const sizes = [{ width:1024, height:1366 }, { width:1366, height:1024 }, { width:820, height:1180 }, { width:768, height:1024 }, { width:1024, height:768 }];
 
 function snapshot(count = 2, mode = String(count)) {
@@ -62,25 +62,24 @@ for (const theme of ["light", "dark", "classic"]) {
         expect(boxes.sheet.width).toBeGreaterThan(viewport.width * .42);
         expect(boxes.sheet.right).toBeLessThan(boxes.other.x);
         expect(boxes.other.right).toBeLessThanOrEqual(viewport.width);
-        expect(boxes.cell.height).toBeGreaterThanOrEqual(44);
+        expect(boxes.cell.height).toBeGreaterThan(0);
         expect(boxes.die.width).toBeGreaterThanOrEqual(44);
         expect(boxes.die.width).toBeLessThanOrEqual(60);
         expect(boxes.roll.height).toBeGreaterThanOrEqual(48);
         expect(boxes.roll.x + boxes.roll.width / 2).toBeGreaterThan(viewport.width * .78);
         expect(boxes.announce.x).toBeLessThan(viewport.width * .1);
         expect(boxes.roll.y).toBeGreaterThan(viewport.height * .75);
-        if (viewport.height >= 1180) {
-          await expect.poll(() => page.locator(".player-card.me .table-wrap").evaluate(sheet => sheet.scrollHeight - sheet.clientHeight)).toBeLessThanOrEqual(1);
-          await expect(page.locator(".player-card.me .tablet-sheet-scroll-hint")).toHaveCount(0);
-        }
+        await expectCompleteScoreSheet(page, ".player-card.me .table-wrap", {
+          minWritableRowHeight:viewport.height >= 1180 ? 38 : 21.25,
+          minFixedRowHeight:14,
+          minFontSize:theme === "classic" && viewport.height < 1180 ? 11.8 : 12,
+        });
+        await expect(page.locator(".player-card.me .tablet-sheet-scroll-hint")).toHaveCount(0);
         const lastRow = page.locator(".player-card.me table.grid tbody tr:last-child");
-        await lastRow.scrollIntoViewIfNeeded();
         await expect(lastRow).toBeInViewport();
         const lastWritable = page.locator(".player-card.me td.cell[data-row='15'][data-field='free']");
-        await lastWritable.scrollIntoViewIfNeeded();
         await expectReachable(page, ".player-card.me td.cell[data-row='15'][data-field='free']");
         await expectReachable(page, ".player-card.me table.grid thead th:nth-child(2)");
-        if (viewport.height <= 1024) await expect(page.locator(".player-card.me .tablet-sheet-scroll-hint")).toBeVisible();
         await expectReachable(page, "#rollBtnInline");
         await page.screenshot({ path:testInfo.outputPath(`${theme}-${viewport.width}x${viewport.height}.png`) });
       }
@@ -118,9 +117,13 @@ for (const theme of ["light", "dark", "classic"]) {
       for (const mode of ["2", "2v2"]) {
         if (mode === "2v2") server.push(snapshot(4, mode));
         await expect(page.locator(".player-card")).toHaveCount(2);
-        await expect.poll(() => page.locator(".table-wrap").evaluateAll(sheets => Math.max(...sheets.map(sheet => sheet.scrollHeight - sheet.clientHeight)))).toBeLessThanOrEqual(1);
         await expect(page.locator(".tablet-sheet-scroll-hint")).toHaveCount(0);
         for (const card of await page.locator(".player-card").all()) {
+          await expectCompleteScoreSheet(page, `.player-card[data-board-id='${await card.getAttribute("data-board-id")}'] .table-wrap`, {
+            minWritableRowHeight:38,
+            minFixedRowHeight:14,
+            minFontSize:12,
+          });
           await expect(card.locator("table.grid tbody tr:last-child")).toBeInViewport();
           // WebKit rounds the table's last border to a fractional pixel;
           // verify the actual bottom edge with one physical CSS pixel slack.
@@ -129,7 +132,7 @@ for (const theme of ["light", "dark", "classic"]) {
             const sheet = element.querySelector(".table-wrap").getBoundingClientRect();
             return last.bottom - sheet.bottom;
           })).toBeLessThanOrEqual(1);
-          expect(await card.locator("td.cell[data-row='15'][data-field='free']").evaluate(cell => cell.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+          expect(await card.locator("td.cell[data-row='15'][data-field='free']").evaluate(cell => cell.getBoundingClientRect().height)).toBeGreaterThan(0);
         }
         await expectReachable(page, "#rollBtnInline");
         await expectReachable(page, "#chatToggle");

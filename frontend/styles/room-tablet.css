@@ -4,7 +4,7 @@
 .tablet-board-navigation,
 .tablet-sheet-scroll-hint{ display:none; }
 
-@media (any-pointer:coarse) and (min-width:768px) and (min-height:600px) and (max-width:1600px){
+@media (any-pointer:coarse) and (min-width:768px) and (min-height:601px) and (max-width:1600px){
   body.room-page{
     --tablet-table-width:min(1400px, calc(100vw - 2.5rem));
     --desktop-shell-max:var(--tablet-table-width);
@@ -12,8 +12,8 @@
     --desktop-three-board-shell-max:var(--tablet-table-width);
     --header-control-size:2.75rem;
     --col-desc:clamp(4rem, 18%, 6rem);
-    /* JavaScript fits these rows to the measured sheet area, including PWA
-       safe areas and team headings. Start at a usable touch size. */
+    /* JavaScript fits every row to the measured sheet area, including PWA
+       safe areas, team names, actions and the bottom dock. */
     --tablet-write-row:44px;
     --tablet-compute-row:26px;
     padding-top:max(.65rem, var(--room-safe-top));
@@ -52,6 +52,63 @@
     scroll-snap-align:start;
     scroll-snap-stop:always;
   }
+  .room-page #scoreOut .players-grid > .player-card:has(> .pc-members){
+    display:grid;
+    grid-template-columns:minmax(3rem, .7fr) minmax(0, 1.3fr) auto;
+    grid-template-rows:auto minmax(0, 1fr);
+    align-items:center;
+    column-gap:.35rem;
+    padding-block:.4rem;
+  }
+  .room-page #scoreOut .player-card:has(> .pc-members) > .pc-head{ display:contents; }
+  .room-page #scoreOut .player-card:has(> .pc-members) > .pc-head .pc-name{
+    grid-column:1;
+    grid-row:1;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .room-page #scoreOut .player-card:has(> .pc-members) > .pc-head .pc-total{
+    grid-column:3;
+    grid-row:1;
+    white-space:nowrap;
+  }
+  .room-page #scoreOut .player-card:has(> .pc-members) > .pc-members{
+    grid-column:2;
+    grid-row:1;
+    display:flex;
+    min-width:0;
+    max-width:100%;
+    margin:0;
+    gap:.12rem;
+    overflow:hidden;
+    line-height:1;
+    white-space:nowrap;
+  }
+  .room-page #scoreOut .player-card:has(> .pc-members) > .pc-members .badge{
+    flex:1 1 0;
+    min-width:0;
+    max-width:calc(50% - .06rem);
+    margin-left:0;
+    overflow:hidden;
+  }
+  .room-page #scoreOut .player-card:has(> .pc-members) > .pc-members .player-name-with-rank{
+    width:100%;
+    max-width:100%;
+    flex-wrap:nowrap;
+    overflow:hidden;
+  }
+  .room-page #scoreOut .player-card:has(> .pc-members) > .pc-members .player-name-label{
+    flex:1 1 auto;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .room-page #scoreOut .player-card:has(> .pc-members) > .table-wrap{
+    grid-column:1 / -1;
+    grid-row:2;
+  }
   .room-page #scoreOut .pc-head{
     align-items:center;
     min-height:2.5rem;
@@ -59,25 +116,25 @@
     font-size:1rem;
   }
   .room-page #scoreOut .pc-members{ line-height:1.7; }
-  .room-page .tablet-sheet-scroll-hint{
-    display:block;
-    flex:0 0 auto;
-    padding:.3rem .15rem 0;
-    color:var(--muted);
-    font-size:.75rem;
-    line-height:1.3;
-    text-align:right;
+  .room-page #scoreOut .player-card .table-wrap{
+    overflow:hidden !important;
+    scrollbar-width:none;
   }
-  .room-page #scoreOut .player-card table.grid{ font-size:1rem; overflow:visible; }
+  .room-page #scoreOut .player-card table.grid{
+    font-size:var(--responsive-score-font, 1rem);
+    overflow:visible;
+  }
   .room-page #scoreOut .player-card table.grid :is(th, td){
     box-sizing:border-box;
-    height:var(--tablet-write-row);
-    padding:.12rem .4rem !important;
+    height:var(--responsive-score-row, var(--tablet-write-row));
+    padding:var(--responsive-score-pad-y, .12rem) .4rem !important;
     line-height:1.15;
   }
   .room-page #scoreOut .player-card table.grid :is(thead th, tr.is-compute td){
-    height:var(--tablet-compute-row);
-    font-size:.85rem;
+    height:var(--responsive-score-fixed-row, var(--tablet-compute-row));
+    padding-block:var(--responsive-score-fixed-pad-y, .12rem) !important;
+    font-size:var(--responsive-score-fixed-font, .85rem);
+    line-height:1.08;
   }
   .room-page #scoreOut .player-card table.grid thead th{
     position:sticky;
@@ -256,6 +313,5 @@
   }
   :root[data-game="zdwa"][data-theme="classic"] .tablet-column-guide :is(article, p, small, b, article > div > span){ color:var(--classic-score-ink); }
   :root[data-game="zdwa"][data-theme="classic"] .tablet-column-guide h2{ color:#fff4d7; }
-  :root[data-game="zdwa"][data-theme="classic"] .room-page .tablet-sheet-scroll-hint{ color:#fff4d7; }
   :root[data-game="zdwa"][data-theme="classic"] .room-page #scoreOut .player-card table.grid thead th{ background:var(--classic-score-paper) !important; }
 }

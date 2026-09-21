@@ -179,6 +179,9 @@
     const suggestionSnapshot = deferredSuggestionSnapshot || sb;
     deferredSuggestionSnapshot = null;
     renderSuggestionsForSnapshot(suggestionSnapshot);
+    // The suggestion rail reclaims vertical room as soon as the roll stops.
+    // Refit in the same task so the score sheet never has a scrollable frame.
+    refitResponsiveScoreSheets();
   }
 
   function isRollAnimationActive(){

@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.38.2**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.38.3**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.38.2 | 2026-09-20 | patch | Mobile Chatleisten bündig am unteren Rand / Mobile chat bars flush with the bottom edge | [ff4e70d](https://github.com/Maetran/RollTheDice/commit/ff4e70d4a183eeb7bd02f290c57c8460a5a30b4a) |
 | 2.38.1 | 2026-09-20 | patch | Saubere Chatleisten und einheitliche Zilch-Vorschläge / Clean chat bars and consistent Zilch suggestions | [4450428](https://github.com/Maetran/RollTheDice/commit/445042884ba30c3523fcdcbcbaca6fd88353660e) |
 | 2.38.0 | 2026-09-20 | minor | Bewusst offline spielen mit privaten Bestwerten / Choose offline play with private personal records | [3935572](https://github.com/Maetran/RollTheDice/commit/39355723f9b405e48555c6355ff489b4fd9876fb) |
 | 2.37.1 | 2026-09-20 | patch | Zuschauerchat und vollständige Tablet-Spielblöcke / Spectator chat and complete tablet score sheets | [8a85db2](https://github.com/Maetran/RollTheDice/commit/8a85db2d9e351c0bca934bbef48c24f6378181fb) |

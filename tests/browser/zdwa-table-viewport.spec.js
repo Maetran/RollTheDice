@@ -1,5 +1,5 @@
 const { test, expect } = require("@playwright/test");
-const { expectFixedTable, expectReachable } = require("./table-viewport");
+const { expectFixedTable, expectReachable, expectCompleteScoreSheet } = require("./table-viewport");
 
 for (const theme of ["light", "dark", "classic"]) {
   test(`ZDWA ${theme} keeps its table fixed and every score reachable across device sizes`, async ({ browser, baseURL, request }, testInfo) => {
@@ -15,13 +15,32 @@ for (const theme of ["light", "dark", "classic"]) {
       expect(response.ok()).toBeTruthy();
       await page.goto(`/spiel/${(await response.json()).game_id}?name=Anna`);
       await expect(page.locator(".player-card.me table.grid")).toBeVisible();
-      for (const viewport of [{ width: 440, height: 956 }, { width: 390, height: 844 }, { width: 320, height: 480 }, { width: 844, height: 390 }, { width: 1024, height: 1366 }]) {
+      for (const viewport of [
+        { width:320, height:480 }, { width:320, height:568 }, { width:367, height:703 },
+        { width:390, height:844 }, { width:440, height:956 }, { width:600, height:960 },
+        { width:956, height:440 }, { width:820, height:1180 },
+        { width:768, height:600 }, { width:1024, height:1366 }, { width:1366, height:1024 },
+      ]) {
         await page.setViewportSize(viewport);
+        const safeArea = viewport.width === 440 && viewport.height === 956
+          ? { top:59, bottom:34 }
+          : (viewport.width === 320 && viewport.height === 568 ? { top:20, bottom:0 } : { top:0, bottom:0 });
+        await page.evaluate(({ top, bottom }) => {
+          document.body.style.setProperty("--room-safe-top", `${top}px`);
+          document.body.style.setProperty("--room-safe-bottom", `${bottom}px`);
+        }, safeArea);
         await expectFixedTable(page, [".room-header", ".players-grid", ".topbar"]);
+        const tablet = viewport.width >= 768 && viewport.height >= 601;
+        await expectCompleteScoreSheet(page, ".player-card.me .table-wrap", {
+          minWritableRowHeight:tablet ? (viewport.height >= 1180 ? 38 : 22) : (viewport.height <= 480 ? 10.5 : (viewport.height < 600 ? 14 : 15)),
+          minFixedRowHeight:tablet ? 14 : (viewport.height < 600 ? 10 : 15),
+          minFontSize:tablet ? 12 : (viewport.height <= 480 ? 9.8 : 10),
+        });
         await expectReachable(page, "#rollBtnInline");
         await expectReachable(page, "#announceBtnInline");
+        await expectReachable(page, "#chatToggle");
+        await expectReachable(page, "#roomHeaderMenuToggle");
         const lastRow = page.locator(".player-card.me table.grid tbody tr:last-child");
-        await lastRow.scrollIntoViewIfNeeded();
         await expect(lastRow).toBeInViewport();
         const visible = await lastRow.evaluate(row => {
           const box = row.getBoundingClientRect();
@@ -40,14 +59,16 @@ for (const theme of ["light", "dark", "classic"]) {
       const sheet = page.locator(".player-card.me .table-wrap");
       await sheet.evaluate(element => { element.scrollTop = element.scrollHeight; });
       const readingPosition = await sheet.evaluate(element => element.scrollTop);
-      expect(readingPosition).toBeGreaterThan(50);
+      expect(readingPosition).toBeLessThanOrEqual(1);
       const beforeHold = snapshots;
       await page.locator("#diceBar .die").first().click();
       await expect.poll(() => snapshots).toBeGreaterThan(beforeHold);
       await expect(page.locator("#diceBar .die").first()).toHaveAttribute("aria-pressed", "true");
-      // The server replaces the sheet during the hold response. A one-shot
-      // evaluate can retain the detached old node, whose scrollTop is zero.
-      await expect(sheet).toHaveJSProperty("scrollTop", readingPosition);
+      await expectCompleteScoreSheet(page, ".player-card.me .table-wrap", {
+        minWritableRowHeight:10.5,
+        minFixedRowHeight:10,
+        minFontSize:9.8,
+      });
       await page.locator("#roomHeaderMenuToggle").click();
       await page.locator("#rulesSheetOpen").click();
       await expectReachable(page, "#rulesSheetClose");

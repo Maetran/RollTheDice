@@ -1081,6 +1081,11 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-chat {
   border-top-color: var(--lcars-room-frame-blue);
 }
 
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-chat:not(.is-open) {
+  /* Keep the status-rail accent inside the compact closed-chat footprint. */
+  border-top-width: .125rem;
+}
+
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-chat__toggle {
   background: var(--lcars-room-chat);
 }

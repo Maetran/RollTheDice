@@ -30,10 +30,14 @@ async function expectChatAboveKeyboard(page, inputSelector, sendSelector) {
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
 }
 
-async function expectCollapsedChatDock(page, { panel, bar, content, toggle, reactionHost, bottomInset = 0 }) {
+async function expectCollapsedChatDock(page, {
+  panel, bar, content, toggle, reactionHost, bottomInset = 0, safePadCap = 0, minReactionTarget = 0,
+}) {
   await expect(page.locator(toggle)).toHaveAttribute("aria-expanded", "false");
   await expect(page.locator(content)).toBeHidden();
-  await expect.poll(() => page.evaluate(({ panel, bar, content, toggle, reactionHost, bottomInset }) => {
+  await expect.poll(() => page.evaluate(({
+    panel, bar, content, toggle, reactionHost, bottomInset, safePadCap, minReactionTarget,
+  }) => {
     const shell = document.querySelector(panel);
     const rail = document.querySelector(bar);
     const body = document.querySelector(content);
@@ -57,29 +61,44 @@ async function expectCollapsedChatDock(page, { panel, bar, content, toggle, reac
     const reaction = document.querySelector(reactionHost);
     const reactionBox = reaction.getBoundingClientRect();
     const emojiBox = reaction.querySelector(".emoji-fab").getBoundingClientRect();
+    const controlStyle = getComputedStyle(control);
+    const emojiStyle = getComputedStyle(reaction.querySelector(".emoji-fab"));
+    const safePad = Math.min(bottomInset, safePadCap);
     return {
       // No offscreen drawer content may peek through a PWA safe area.
       contentHasNoLayout: body.getClientRects().length === 0,
       barEndsAtPanelBottom: Math.abs(barBox.bottom - shellBox.bottom) <= 1,
       panelIsAtViewportBottom: Math.abs(shellBox.bottom - visibleBottom) <= 1,
       onlyBarAndBorder: Math.abs(shellBox.height - barBox.height - parseFloat(getComputedStyle(shell).borderTopWidth)) <= 1,
+      compactPanel: shellBox.height <= 50,
+      compactBar: barBox.height <= 50,
       bottomPixelBelongsToBar: shell.contains(document.elementFromPoint(barBox.left + barBox.width / 2, visibleBottom - 1)),
       safeAreaIsPainted: painted(shell) || painted(rail),
-      usableToggleAboveHomeIndicator: Math.min(controlBox.bottom, visibleBottom - bottomInset) - controlBox.top >= 44,
-      toggleTextAboveHomeIndicator: textBoxes.every(box => box.bottom <= visibleBottom - bottomInset + 1),
-      reactionAboveHomeIndicator: emojiBox.bottom <= visibleBottom - bottomInset + 1,
+      usableToggle: controlBox.height >= 44 && controlBox.top >= barBox.top - 1 && controlBox.bottom <= barBox.bottom + 1,
+      toggleTextVisible: textBoxes.length > 0 && textBoxes.every(box => (
+        box.top >= barBox.top - 1 && box.bottom <= barBox.bottom + 1 && box.width > 0 && box.height > 0
+      )) && controlStyle.visibility === "visible" && Number(controlStyle.opacity) > 0,
+      reactionVisible: emojiBox.top >= barBox.top - 1 && emojiBox.bottom <= barBox.bottom + 1
+        && emojiBox.width > 0 && emojiBox.height > 0 && emojiStyle.visibility === "visible" && Number(emojiStyle.opacity) > 0,
+      reactionTargetLargeEnough: emojiBox.width >= minReactionTarget && emojiBox.height >= minReactionTarget,
+      toggleTextClearsCappedInset: textBoxes.every(box => box.bottom <= visibleBottom - safePad + 1),
+      reactionClearsCappedInset: emojiBox.bottom <= visibleBottom - safePad + 1,
       // ZDWA renders reactions as a separate painted half of its bottom bar.
       reactionHalfReachesBottom: reactionHost !== "#chatReactionsBar" || Math.abs(reactionBox.bottom - visibleBottom) <= 1,
       reactionHalfIsPainted: reactionHost !== "#chatReactionsBar" || painted(reaction),
     };
-  }, { panel, bar, content, toggle, reactionHost, bottomInset })).toEqual({
+  }, { panel, bar, content, toggle, reactionHost, bottomInset, safePadCap, minReactionTarget })).toEqual({
     contentHasNoLayout: true, barEndsAtPanelBottom: true,
     panelIsAtViewportBottom: true, onlyBarAndBorder: true,
+    compactPanel: true, compactBar: true,
     bottomPixelBelongsToBar: true, safeAreaIsPainted: true,
-    usableToggleAboveHomeIndicator: true, toggleTextAboveHomeIndicator: true,
-    reactionAboveHomeIndicator: true, reactionHalfReachesBottom: true, reactionHalfIsPainted: true,
+    usableToggle: true, toggleTextVisible: true,
+    reactionVisible: true, reactionTargetLargeEnough: true,
+    toggleTextClearsCappedInset: true, reactionClearsCappedInset: true,
+    reactionHalfReachesBottom: true, reactionHalfIsPainted: true,
   });
   await expectReachable(page, toggle);
+  await expectReachable(page, `${reactionHost} .emoji-fab`);
   expect(await page.locator(toggle).evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
 }
 
@@ -89,6 +108,12 @@ async function exerciseCollapsedChatDock(page, game, testInfo) {
     ? { panel:"#chatPanel", bar:"#chatToggle", content:"#chatContent", toggle:"#chatToggle", input:"#chatInput", reactionHost:"#chatReactionsBar", send:"#chatSend" }
     : { panel:".zilch-chat", bar:".zilch-chat__bar", content:"#zilchChatContent", toggle:"[data-zilch-chat-toggle]", input:"#zilchChatInput", reactionHost:"#zilchChatReactionsBar", send:"#zilchChatForm button[type='submit']" };
   await page.emulateMedia({ reducedMotion:"reduce" });
+  const viewports = [
+    { width:320, height:568 }, { width:367, height:703 },
+    { width:390, height:844 }, { width:440, height:956 }, { width:600, height:960 },
+    { width:956, height:440 }, { width:820, height:1180 },
+    { width:768, height:600 }, { width:1024, height:1366 }, { width:1366, height:1024 },
+  ];
   for (const standalone of [false, true]) {
     if (standalone) await page.evaluate(() => {
       const visit = rules => {
@@ -99,21 +124,27 @@ async function exerciseCollapsedChatDock(page, game, testInfo) {
       };
       for (const sheet of document.styleSheets) visit(sheet.cssRules);
     });
-    for (const viewport of [{ width:440, height:956 }, { width:956, height:440 }, { width:820, height:1180 }, { width:1024, height:1366 }, { width:1366, height:1024 }]) {
+    for (const viewport of viewports) {
       await page.setViewportSize(viewport);
-      for (const inset of [0, 34]) {
+      // Browser tabs exercise the normal viewport; standalone PWA mode adds
+      // the largest iPhone home-indicator inset. Together these scenarios
+      // ensure that neither environment makes the collapsed bar taller.
+      for (const inset of [standalone ? 34 : 0]) {
         await page.evaluate(({ zdwa, inset }) => {
           const host = zdwa ? document.body : document.documentElement;
           host.style.setProperty(zdwa ? "--room-safe-bottom" : "--zilch-room-safe-bottom", `${inset}px`);
         }, { zdwa, inset });
-        await expectCollapsedChatDock(page, { ...selectors, bottomInset: inset });
+        const tablet = viewport.width >= 768 && viewport.height >= 600;
+        const safePadCap = tablet ? 4 : (zdwa ? 14 : 9.6);
+        const minReactionTarget = tablet ? 44 : 0;
+        await expectCollapsedChatDock(page, { ...selectors, bottomInset:inset, safePadCap, minReactionTarget });
         await page.evaluate(() => window.scrollTo(0, 400));
-        await expectCollapsedChatDock(page, { ...selectors, bottomInset: inset });
+        await expectCollapsedChatDock(page, { ...selectors, bottomInset:inset, safePadCap, minReactionTarget });
         await openChatWithKeyboardFocus(page, selectors.toggle, selectors.input);
         await page.locator(selectors.input).fill("Mein Entwurf bleibt beim Einklappen erhalten");
         await page.locator(selectors.toggle).tap();
         await expect(page.locator(selectors.input)).not.toBeFocused();
-        await expectCollapsedChatDock(page, { ...selectors, bottomInset: inset });
+        await expectCollapsedChatDock(page, { ...selectors, bottomInset:inset, safePadCap, minReactionTarget });
         await openChatWithKeyboardFocus(page, selectors.toggle, selectors.input);
         await expect(page.locator(selectors.input)).toHaveValue("Mein Entwurf bleibt beim Einklappen erhalten");
         // Keep layout/dvh tall while iOS's visible viewport moves and shrinks.
@@ -135,14 +166,14 @@ async function exerciseCollapsedChatDock(page, game, testInfo) {
         ))).toBeLessThanOrEqual(1);
         await expect(page.locator(selectors.input)).toHaveValue("Mein Entwurf bleibt beim Einklappen erhalten");
         await page.locator(selectors.toggle).tap();
-        await expectCollapsedChatDock(page, { ...selectors, bottomInset:inset });
+        await expectCollapsedChatDock(page, { ...selectors, bottomInset:inset, safePadCap, minReactionTarget });
         await page.evaluate(() => {
           delete visualViewport.height;
           delete visualViewport.offsetTop;
           visualViewport.dispatchEvent(new Event("resize"));
           visualViewport.dispatchEvent(new Event("scroll"));
         });
-        await expectCollapsedChatDock(page, { ...selectors, bottomInset:inset });
+        await expectCollapsedChatDock(page, { ...selectors, bottomInset:inset, safePadCap, minReactionTarget });
         if (testInfo && inset === 34 && standalone && [440, 1024].includes(viewport.width)) {
           await page.evaluate(async () => {
             await document.fonts.ready;

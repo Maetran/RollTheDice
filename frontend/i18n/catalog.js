@@ -1,5 +1,5 @@
 export const EN = {
-    "Eingeklappt liegt der Chatbalken bündig am unteren Bildschirmrand. Der Schutzabstand zum Home-Indikator bleibt innerhalb der Leiste. Tippe darauf, um den Chat zu öffnen.": "When collapsed, the chat bar sits flush with the bottom edge. Home-indicator protection stays inside the bar. Tap it to open the chat.",
+    "Eingeklappt liegt der kompakte Chatbalken bündig am unteren Bildschirmrand; der Home-Indikator vergrößert ihn nicht. Tippe darauf, um den Chat zu öffnen. Auf responsiven Geräten bleibt der vollständige ZDWA-Spielzettel ohne internes vertikales Scrollen sichtbar.": "When collapsed, the compact chat bar sits flush with the bottom edge; the home indicator does not make it taller. Tap it to open the chat. On responsive devices, the complete ZDWA score sheet stays visible without internal vertical scrolling.",
     "Die Vorschläge stehen auf allen Geräten untereinander. Der stärkste Vorschlag steht direkt über Alle Punktewürfel.": "Suggestions are stacked vertically on every device. The strongest suggestion sits directly above All scoring dice.",
     "Du bist am Zug": "Your turn",
     "Unentschieden": "Draw",

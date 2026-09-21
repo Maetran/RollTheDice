@@ -31,7 +31,8 @@ html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-r
   }
 
   html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] {
-    --zilch-room-chat-h: 3.25rem;
+    --zilch-room-chat-h: 3rem;
+    --zilch-room-chat-control-safe-pad: min(var(--zilch-room-safe-bottom), .25rem);
     --zilch-room-dock-gap: .75rem;
     width: calc(100vw - max(1rem, env(safe-area-inset-left, 0px)) - max(1rem, env(safe-area-inset-right, 0px)));
     max-width: 1520px;
@@ -188,7 +189,8 @@ html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-r
   html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-action-card--roll { grid-column: 3; justify-self: end; }
   html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-action-card strong { font-size: 1rem; }
   html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-chat { right: max(1rem, env(safe-area-inset-right, 0px)); left: max(1rem, env(safe-area-inset-left, 0px)); }
-  html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] :is(.zilch-chat__toggle, .zilch-chat .emoji-toggle, #zilchChatForm button, #zilchChatInput) { min-height: 44px; }
+  html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] :is(.zilch-chat__toggle, .zilch-chat .emoji-fab, #zilchChatForm button, #zilchChatInput) { min-height: 44px; }
+  html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-chat .emoji-fab { width:44px; min-width:44px; height:44px; flex-basis:44px; }
 
   html[data-game="zilch"][data-theme="lcars"] body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-score-notebook {
     gap: .75rem;

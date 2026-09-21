@@ -52,4 +52,49 @@ async function expectReachable(page, selector) {
   }), { message: `${selector} remains inside the visible viewport and accepts taps` }).toEqual({ top: true, bottom: true, hit: true });
 }
 
-module.exports = { expectFixedTable, expectReachable };
+async function expectCompleteScoreSheet(page, selector = ".player-card.me .table-wrap", {
+  minWritableRowHeight = 14,
+  minFixedRowHeight = 10,
+  minFontSize = 10,
+} = {}) {
+  const sheet = page.locator(selector);
+  await expect(sheet).toBeVisible();
+  await expect.poll(() => sheet.evaluate(element => element.scrollHeight - element.clientHeight), {
+    message: `${selector} shows the complete score sheet without internal scrolling`,
+  }).toBeLessThanOrEqual(1);
+  await expect.poll(() => sheet.evaluate(element => {
+    const bounds = element.getBoundingClientRect();
+    const header = element.querySelector("thead")?.getBoundingClientRect();
+    const rows = Array.from(element.querySelectorAll("tbody tr"));
+    const last = rows.at(-1)?.getBoundingClientRect();
+    return {
+      headerVisible: !!header && header.top >= bounds.top - 1,
+      everyRowRendered: rows.length === 18 && rows.every(row => row.getBoundingClientRect().height > 0),
+      totalsVisible: !!last && last.bottom <= bounds.bottom + 1,
+    };
+  }), { message: `${selector} keeps its header, all rows and bottom totals visible` }).toEqual({
+    headerVisible: true,
+    everyRowRendered: true,
+    totalsVisible: true,
+  });
+  await expect.poll(() => sheet.evaluate(element => Math.min(
+    ...Array.from(element.querySelectorAll("tbody tr:not(.is-compute)"), row => row.getBoundingClientRect().height),
+  )), { message: `${selector} keeps writable score rows readable` }).toBeGreaterThanOrEqual(minWritableRowHeight);
+  await expect.poll(() => sheet.evaluate(element => Math.min(
+    ...Array.from(element.querySelectorAll("thead tr, tbody tr.is-compute"), row => row.getBoundingClientRect().height),
+  )), { message: `${selector} keeps computed score rows readable` }).toBeGreaterThanOrEqual(minFixedRowHeight);
+  await expect.poll(() => sheet.evaluate(element => parseFloat(getComputedStyle(
+    element.querySelector("tbody tr:not(.is-compute) td"),
+  ).fontSize)), {
+    message: `${selector} keeps writable score text readable`,
+  }).toBeGreaterThanOrEqual(minFontSize);
+  await sheet.evaluate(element => {
+    element.scrollTop = element.scrollHeight;
+    element.dispatchEvent(new WheelEvent("wheel", { deltaY: 500, bubbles: true }));
+  });
+  await expect.poll(() => sheet.evaluate(element => element.scrollTop), {
+    message: `${selector} does not move when a user tries to scroll it`,
+  }).toBeLessThanOrEqual(1);
+}
+
+module.exports = { expectFixedTable, expectReachable, expectCompleteScoreSheet };

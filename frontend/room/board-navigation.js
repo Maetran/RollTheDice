@@ -1,6 +1,118 @@
-  function isMobileNarrow(){
-    try { return window.matchMedia && window.matchMedia("(max-width: 560px)").matches; }
-    catch { return false; }
+  const RESPONSIVE_SCORE_SHEET_QUERY = "(max-width: 767px), (min-width: 561px) and (max-height: 600px), (any-pointer: coarse) and (min-width: 768px) and (min-height: 600px) and (max-width: 1600px)";
+  const TABLET_SCORE_SHEET_QUERY = "(any-pointer: coarse) and (min-width: 768px) and (min-height: 601px) and (max-width: 1600px)";
+
+  function fitResponsiveScoreSheets(grid, cards){
+    const responsive = window.matchMedia?.(RESPONSIVE_SCORE_SHEET_QUERY).matches;
+    const tablet = window.matchMedia?.(TABLET_SCORE_SHEET_QUERY).matches;
+    const properties = [
+      "--responsive-score-row",
+      "--responsive-score-fixed-row",
+      "--responsive-score-font",
+      "--responsive-score-fixed-font",
+      "--responsive-score-pad-y",
+      "--responsive-score-fixed-pad-y",
+    ];
+    if (!responsive) {
+      cards.forEach(card => {
+        properties.forEach(property => card.style.removeProperty(property));
+        card.classList.remove("score-sheet-fitted");
+      });
+      return;
+    }
+
+    const styleHeight = (element, names) => {
+      const style = getComputedStyle(element);
+      return names.reduce((sum, name) => sum + (Number.parseFloat(style[name]) || 0), 0);
+    };
+    const gridPadding = styleHeight(grid, ["paddingTop", "paddingBottom"]);
+    cards.forEach(card => {
+      const sheet = card.querySelector(".table-wrap");
+      const table = sheet?.querySelector("table.grid");
+      if (!sheet || !table) return;
+      const writableRows = Array.from(table.querySelectorAll("tbody tr:not(.is-compute)"));
+      const fixedRows = Array.from(table.rows).filter(row => !writableRows.includes(row));
+      if (!writableRows.length || !fixedRows.length) return;
+
+      const cardEdges = styleHeight(card, ["paddingTop", "paddingBottom", "borderTopWidth", "borderBottomWidth"]);
+      const sheetEdges = styleHeight(sheet, ["borderTopWidth", "borderBottomWidth"]);
+      const headings = Array.from(card.children)
+        .filter(child => child !== sheet && !child.classList.contains("tablet-sheet-scroll-hint"))
+        .reduce((sum, child) => sum + child.getBoundingClientRect().height + styleHeight(child, ["marginTop", "marginBottom"]), 0);
+      const available = Math.max(1, grid.clientHeight - gridPadding - cardEdges - sheetEdges - headings);
+      const writeCount = writableRows.length;
+      const fixedCount = fixedRows.length;
+      // Cells use border-box sizing, so separators are already included in
+      // their measured row height and must not be reserved a second time.
+      const rowSpace = available;
+
+      let writeHeight;
+      let fixedHeight;
+      let writeFont;
+      let fixedFont;
+      if (tablet) {
+        const minimumWrite = 22;
+        const minimumFixed = 14;
+        const minimumTotal = minimumWrite * writeCount + minimumFixed * fixedCount;
+        if (rowSpace < minimumTotal) {
+          const scale = rowSpace / minimumTotal;
+          writeHeight = minimumWrite * scale;
+          fixedHeight = minimumFixed * scale;
+        } else {
+          const average = rowSpace / (writeCount + fixedCount);
+          const desiredFixed = Math.max(minimumFixed, Math.min(26, average * .78));
+          const fixedLimit = (rowSpace - minimumWrite * writeCount) / fixedCount;
+          fixedHeight = Math.max(minimumFixed, Math.min(desiredFixed, fixedLimit));
+          writeHeight = Math.max(minimumWrite, Math.min(56, (rowSpace - fixedHeight * fixedCount) / writeCount));
+        }
+        writeFont = Math.max(12, Math.min(16, writeHeight * .48));
+        fixedFont = Math.max(12, Math.min(13.6, fixedHeight * .75));
+      } else {
+        const rowCount = writeCount + fixedCount;
+        const rowMaximum = window.matchMedia?.("(max-height: 600px)").matches ? 22.08 : 29.44;
+        writeHeight = fixedHeight = Math.max(8, Math.min(rowMaximum, rowSpace / rowCount));
+        writeFont = fixedFont = Math.max(10, Math.min(13.44, writeHeight * .72));
+      }
+
+      const writePadding = Math.max(0, Math.min(2, (writeHeight - writeFont * (tablet ? 1.15 : 1.05) - 1) / 2));
+      const fixedPadding = Math.max(0, Math.min(1.4, (fixedHeight - fixedFont * (tablet ? 1.08 : 1.05) - 1) / 2));
+      const setPixels = (property, value) => card.style.setProperty(property, `${Math.floor(value * 100) / 100}px`);
+      const suggestionInset = Number.parseFloat(getComputedStyle(card).getPropertyValue("--responsive-score-suggestion-inset")) || 0;
+      let fitted = { writeHeight, fixedHeight, writeFont, fixedFont, writePadding, fixedPadding };
+      const applyFit = () => {
+        setPixels("--responsive-score-row", fitted.writeHeight + suggestionInset);
+        setPixels("--responsive-score-fixed-row", fitted.fixedHeight + suggestionInset);
+        setPixels("--responsive-score-font", fitted.writeFont);
+        setPixels("--responsive-score-fixed-font", fitted.fixedFont);
+        setPixels("--responsive-score-pad-y", fitted.writePadding);
+        setPixels("--responsive-score-fixed-pad-y", fitted.fixedPadding);
+      };
+      applyFit();
+      // Content can still impose a slightly larger used row height (for
+      // example on an exceptionally short legacy viewport). Refine from the
+      // rendered result; a second pass covers nonlinear text/border rounding.
+      for (let pass = 0; pass < 3; pass += 1) {
+        const renderedHeight = table.getBoundingClientRect().height;
+        if (renderedHeight <= available + .5) break;
+        const scale = available / renderedHeight;
+        fitted = {
+          writeHeight:fitted.writeHeight * scale,
+          fixedHeight:fitted.fixedHeight * scale,
+          writeFont:Math.max(tablet ? 12 : 7.5, fitted.writeFont * scale),
+          fixedFont:Math.max(tablet ? 12 : 7.5, fitted.fixedFont * scale),
+          writePadding:fitted.writePadding * scale,
+          fixedPadding:fitted.fixedPadding * scale,
+        };
+        applyFit();
+      }
+      card.classList.add("score-sheet-fitted");
+      sheet.scrollTop = 0;
+    });
+  }
+
+  function refitResponsiveScoreSheets(){
+    const grid = document.querySelector("#scoreOut .players-grid");
+    if (!grid) return;
+    fitResponsiveScoreSheets(grid, Array.from(grid.querySelectorAll(":scope > .player-card")));
   }
 
   function syncTabletTableExtras(snapshot){
@@ -14,10 +126,10 @@
       delete grid._tabletNavigationUpdate;
     }
     score.querySelectorAll(".tablet-column-guide, .tablet-board-navigation, .tablet-sheet-scroll-hint").forEach(element => element.remove());
-    if (!window.matchMedia?.("(any-pointer: coarse) and (min-width: 768px) and (min-height: 600px) and (max-width: 1600px)").matches) return;
     const cards = Array.from(grid.querySelectorAll(":scope > .player-card"));
     const translate = value => window.ZDWA_I18N?.t?.(value) || value;
-    if (cards.length === 1) {
+    const tablet = window.matchMedia?.(TABLET_SCORE_SHEET_QUERY).matches;
+    if (tablet && cards.length === 1) {
       const guide = document.createElement("aside");
       guide.className = "tablet-column-guide";
       const guideTitle = cards[0].classList.contains("me") ? "Deine vier Spalten" : "Reihen-Regeln (Spalten)";
@@ -35,7 +147,7 @@
       }).join("");
       score.appendChild(guide);
     }
-    if (cards.length > 2) {
+    if (tablet && cards.length > 2) {
       const navigation = document.createElement("nav");
       navigation.className = "tablet-board-navigation";
       const previous = document.createElement("button");
@@ -66,50 +178,27 @@
       score.appendChild(navigation);
       requestAnimationFrame(update);
     }
-    const updateScrollHints = () => cards.forEach(card => {
-      const sheet = card.querySelector(".table-wrap");
-      if (!sheet) return;
-      const table = sheet.querySelector("table.grid");
-      const writableRows = Array.from(table?.querySelectorAll("tbody tr:not(.is-compute)") || []);
-      if (writableRows.length) {
-        const styleHeight = (element, properties) => {
-          const style = getComputedStyle(element);
-          return properties.reduce((sum, name) => sum + (Number.parseFloat(style[name]) || 0), 0);
-        };
-        // Fit to the actual workspace, rather than a viewport estimate that
-        // omitted PWA safe areas, team names and the action/chat bars. The
-        // minimum remains finger-friendly; shorter tablets keep sheet scroll.
-        const gridPadding = styleHeight(grid, ["paddingTop", "paddingBottom"]);
-        const cardEdges = styleHeight(card, ["paddingTop", "paddingBottom", "borderTopWidth", "borderBottomWidth"]);
-        const sheetEdges = styleHeight(sheet, ["borderTopWidth", "borderBottomWidth"]);
-        const headings = Array.from(card.children)
-          .filter(child => child !== sheet && !child.classList.contains("tablet-sheet-scroll-hint"))
-          .reduce((sum, child) => sum + child.getBoundingClientRect().height + styleHeight(child, ["marginTop", "marginBottom"]), 0);
-        const fixedRows = Array.from(table.rows)
-          .filter(row => !writableRows.includes(row))
-          .reduce((sum, row) => sum + row.getBoundingClientRect().height, 0);
-        const available = grid.clientHeight - gridPadding - cardEdges - sheetEdges - headings;
-        const rowHeight = Math.max(44, Math.min(56, Math.floor((available - fixedRows - 1) / writableRows.length * 10) / 10));
-        const nextHeight = `${rowHeight}px`;
-        if (card.style.getPropertyValue("--tablet-write-row") !== nextHeight) card.style.setProperty("--tablet-write-row", nextHeight);
-      }
-      const hint = card.querySelector(".tablet-sheet-scroll-hint");
-      // Test the space available without the footer so it cannot create its
-      // own overflow. Resizing or opening the keyboard updates this affordance.
-      const overflows = sheet.scrollHeight > sheet.clientHeight + (hint?.offsetHeight || 0) + 1;
-      if (!overflows) { hint?.remove(); return; }
-      if (hint) return;
-      const nextHint = document.createElement("div");
-      nextHint.className = "tablet-sheet-scroll-hint";
-      nextHint.textContent = `↕ ${translate("Weitere Felder durch Wischen")}`;
-      card.appendChild(nextHint);
-    });
-    updateScrollHints();
-    if (typeof ResizeObserver === "function") {
-      grid._tabletSheetObserver = new ResizeObserver(updateScrollHints);
+    const fitScoreSheets = () => fitResponsiveScoreSheets(grid, cards);
+    let frame = 0;
+    const scheduleFit = () => {
+      if (!grid.isConnected) return;
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        fitScoreSheets();
+      });
+    };
+    fitScoreSheets();
+    if (window.matchMedia?.(RESPONSIVE_SCORE_SHEET_QUERY).matches && typeof ResizeObserver === "function") {
+      grid._tabletSheetObserver = new ResizeObserver(scheduleFit);
       grid._tabletSheetObserver.observe(grid);
-      cards.forEach(card => grid._tabletSheetObserver.observe(card.querySelector(".table-wrap")));
+      cards.forEach(card => {
+        grid._tabletSheetObserver.observe(card);
+        const sheet = card.querySelector(".table-wrap");
+        if (sheet) grid._tabletSheetObserver.observe(sheet);
+      });
     }
+    document.fonts?.ready?.then(scheduleFit);
   }
 
   function currentReactionsMount(){

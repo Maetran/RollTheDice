@@ -2985,7 +2985,9 @@ html[data-game="zilch"]:has(.zilch-shell--game) {
   --zilch-room-safe-top: env(safe-area-inset-top, 0px);
   --zilch-room-chat-h: 3rem;
   --zilch-room-safe-bottom: env(safe-area-inset-bottom, 0px);
-  --zilch-room-chat-footprint: calc(var(--zilch-room-chat-h) + var(--zilch-room-safe-bottom));
+  --zilch-room-chat-footprint: var(--zilch-room-chat-h);
+  --zilch-room-chat-open-footprint: calc(var(--zilch-room-chat-h) + var(--zilch-room-safe-bottom));
+  --zilch-room-chat-control-safe-pad: min(var(--zilch-room-safe-bottom), .6rem);
   --zilch-room-dock-gap: .5rem;
   --zilch-room-dock-h: 7.6rem;
 }
@@ -3479,9 +3481,9 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
   padding-bottom: var(--zilch-room-safe-bottom);
 }
 .zilch-shell--game .zilch-chat__bar { display: flex; align-items: center; height: var(--zilch-room-chat-h); }
-/* Fill the bottom safe area with the bar itself. Padding belongs to its
-   controls so their label/reaction remain above the home indicator without
-   leaving an empty strip or a differently colored chat-body extension. */
+/* Keep the closed rail at one compact row. A capped part of the safe inset
+   sits inside its controls, so the rail still reaches the screen edge without
+   growing by the full home-indicator area. */
 .zilch-shell--game .zilch-chat:not(.is-open) {
   bottom: var(--game-viewport-bottom, 0px);
   padding-bottom: 0;
@@ -3491,7 +3493,8 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
 }
 .zilch-shell--game .zilch-chat:not(.is-open) :is(.zilch-chat__toggle, .zilch-chat-reactions-host) {
   height: 100%;
-  padding-bottom: var(--zilch-room-safe-bottom);
+  padding-top: 0;
+  padding-bottom: var(--zilch-room-chat-control-safe-pad);
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
 }
@@ -4960,7 +4963,7 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
 .zilch-shell--game .zilch-chat.is-open .zilch-chat__content {
   display: flex;
   flex-direction: column;
-  max-height: calc(var(--game-viewport-height, 100dvh) - var(--zilch-room-safe-top) - var(--zilch-room-chat-footprint) - .75rem);
+  max-height: calc(var(--game-viewport-height, 100dvh) - var(--zilch-room-safe-top) - var(--zilch-room-chat-open-footprint) - .75rem);
 }
 .zilch-shell--game .zilch-chat-history {
   flex: 1 1 auto;

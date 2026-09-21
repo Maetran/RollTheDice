@@ -186,7 +186,7 @@ test("mandatory announcement remains reachable and spectators never get correcti
 });
 
 test("short landscape follows the active multiplayer/team sheet for players and spectators", async ({ page }) => {
-  const { expectFixedTable, expectReachable } = require("./table-viewport");
+  const { expectFixedTable, expectReachable, expectCompleteScoreSheet } = require("./table-viewport");
   await page.setViewportSize({ width: 844, height: 390 });
   for (const team of [false, true]) {
     for (const spectator of [false, true]) {
@@ -205,8 +205,14 @@ test("short landscape follows the active multiplayer/team sheet for players and 
       if (spectator) await expect(page.locator("#rollBtnInline")).toBeDisabled();
       const sheet = active.locator(".table-wrap");
       expect(await sheet.evaluate(element => element.clientHeight)).toBeGreaterThan(70);
+      await expectCompleteScoreSheet(page, ".player-card.turn .table-wrap", {
+        minWritableRowHeight:13,
+        minFixedRowHeight:10,
+        minFontSize:10,
+      });
       await sheet.evaluate(element => { element.scrollTop = element.scrollHeight; });
       const position = await sheet.evaluate(element => element.scrollTop);
+      expect(position).toBeLessThanOrEqual(1);
       room.push({ ...state, _dice: [1, 2, 3, 4, 5], _rolls_used: 1 });
       await expect.poll(() => active.locator(".table-wrap").evaluate(element => element.scrollTop)).toBe(position);
       state._turn.player_id = "p1";

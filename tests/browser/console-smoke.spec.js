@@ -582,11 +582,9 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   expect(layout.die.width).toBeLessThanOrEqual(75);
   expect(layout.die.height).toBe(layout.die.width);
   expect(layout.heldDieBorderWidth).toBe("2px");
-  expect(layout.tableContentHeight).toBeGreaterThanOrEqual(460);
-  expect(layout.tableWrap.height).toBeLessThan(layout.tableContentHeight);
+  expect(layout.tableContentHeight).toBeLessThanOrEqual(layout.tableWrap.height + 1);
   expect(layout.scrollHeight).toBeLessThanOrEqual(layout.viewportHeight);
 
-  await page.locator(".player-card tbody tr").last().scrollIntoViewIfNeeded();
   const bottomDock = await page.evaluate(() => {
     const topbar = document.querySelector(".topbar").getBoundingClientRect();
     const chatToggle = document.querySelector("#chatToggle").getBoundingClientRect();
@@ -599,12 +597,12 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
       chatTop: Math.round(chatToggle.top),
       lastRowBottom: Math.round(lastRow.bottom),
       topbarTop: Math.round(topbar.top),
-      sheetScroll: sheet.scrollTop,
+      sheetScroll: (() => { sheet.scrollTop = sheet.scrollHeight; return sheet.scrollTop; })(),
       windowScroll: window.scrollY,
       visibleTotalHeight: Math.min(lastRow.bottom, sheetBox.bottom) - Math.max(lastRow.top, sheetBox.top),
     };
   });
-  expect(bottomDock.sheetScroll).toBeGreaterThan(0);
+  expect(bottomDock.sheetScroll).toBeLessThanOrEqual(1);
   expect(bottomDock.windowScroll).toBe(0);
   expect(bottomDock.visibleTotalHeight).toBeGreaterThan(10);
   expect(bottomDock.topbarBottom).toBeLessThanOrEqual(bottomDock.chatTop - 5);
