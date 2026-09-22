@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.39.2**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.39.3**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.39.2 | 2026-09-22 | patch | Stabile Spielflächen nach dem Drehen / Stable game surfaces after rotation | [1503d10](https://github.com/Maetran/RollTheDice/commit/1503d104547d3b9bc268e4c8ac98580dbf6a3e79) |
 | 2.39.1 | 2026-09-22 | patch | Achievement-Details und lesbare Menüs / Achievement details and readable menus | [406fa8e](https://github.com/Maetran/RollTheDice/commit/406fa8e2443cdab7ddcdb2197a2350bd7f0d516b) |
 | 2.39.0 | 2026-09-22 | minor | Neueste Erfolge der Community / Latest community achievements | [91f3901](https://github.com/Maetran/RollTheDice/commit/91f3901189269f55fa9e91ec057ba4ea372b299d) |
 | 2.38.4 | 2026-09-21 | patch | Ruhige Avatare bei ZDWA-Spielaktionen / Stable avatars during ZDWA game actions | [59d0c19](https://github.com/Maetran/RollTheDice/commit/59d0c19d5da85c06759b9962a1ddffbf972a52bc) |

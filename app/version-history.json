@@ -1916,5 +1916,12 @@
     "date": "2026-09-22",
     "bump": "patch",
     "summary": "Achievement-Details und lesbare Menüs / Achievement details and readable menus"
+  },
+  {
+    "version": "2.39.2",
+    "revision": "1503d104547d3b9bc268e4c8ac98580dbf6a3e79",
+    "date": "2026-09-22",
+    "bump": "patch",
+    "summary": "Stabile Spielflächen nach dem Drehen / Stable game surfaces after rotation"
   }
 ]

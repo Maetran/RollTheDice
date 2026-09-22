@@ -35,6 +35,7 @@ function renderOpenGames(games) {
     const expected = game.expected ?? game.mode ?? "?";
     const gameId = game.id || "";
     const disabled = joined >= expected || game.started || game.finished ? "disabled" : "";
+    const canResume = Boolean(localPlayerIdFor(gameId) || game.my_player_id);
     const canInvite = Boolean(
       game.my_player_id
       && !game.locked
@@ -63,7 +64,10 @@ function renderOpenGames(games) {
         <div class="sub lobby-player-summary"><span><b>${joined}/${expected}</b> ${game.mode === "2v2" ? mode : "Spieler"}</span>${badges}</div>
       </div>
       <div class="actions">
-        <button class="joinBtn" data-id="${escapeAttribute(gameId)}" data-pass="${game.locked ? "1" : "0"}" ${disabled}>Beitreten</button>
+        ${canResume
+          ? `<button class="resumeBtn" data-id="${escapeAttribute(gameId)}" data-player-id="${escapeAttribute(game.my_player_id || "")}" data-pass="${game.locked ? "1" : "0"}">Wieder aufnehmen</button>`
+          : `<button class="joinBtn" data-id="${escapeAttribute(gameId)}" data-pass="${game.locked ? "1" : "0"}" ${disabled}>Beitreten</button>`}
+        <button class="spectateBtn" data-id="${escapeAttribute(gameId)}" data-pass="${game.locked ? "1" : "0"}">Zuschauen</button>
         ${canInvite ? `<button class="small secondary notifyOpenSeatBtn" type="button" data-id="${escapeAttribute(gameId)}">Mitspieler benachrichtigen</button>` : ""}
       </div>
     </div>`;
@@ -71,10 +75,12 @@ function renderOpenGames(games) {
 }
 
 function prioritizeResumableGames() {
-  const hasResumableGame = Boolean(dom.runningList?.querySelector(".resumeBtn"));
+  const hasResumableGame = Boolean(dom.gamesHub?.querySelector(".resumeBtn"));
   dom.gamesHub?.classList.toggle("priority-card", hasResumableGame);
   if (dom.runningGamesTitle) {
-    dom.runningGamesTitle.textContent = hasResumableGame ? "Spiel fortsetzen" : "Laufende Spiele";
+    dom.runningGamesTitle.textContent = dom.runningList?.querySelector(".resumeBtn")
+      ? "Spiel fortsetzen"
+      : "Laufende Spiele";
   }
   if (hasResumableGame) {
     if (dom.gamesHub?.nextElementSibling !== dom.setupGrid) dom.setupGrid?.before(dom.gamesHub);
@@ -171,7 +177,8 @@ export async function fetchGames({ showLoading = false } = {}) {
     const availableGames = games.filter((game) => !game.finished && !game.aborted);
     if (dom.gamesEmpty) dom.gamesEmpty.hidden = availableGames.length > 0;
     renderOpenGames(availableGames.filter((game) => !game.started)
-      .sort((left, right) => Number(Boolean(right.my_player_id)) - Number(Boolean(left.my_player_id))));
+      .sort((left, right) => Number(Boolean(localPlayerIdFor(right.id) || right.my_player_id))
+        - Number(Boolean(localPlayerIdFor(left.id) || left.my_player_id))));
     renderRunningGames(
       games
         .filter((game) => game.started && !game.finished && !game.aborted)
@@ -227,7 +234,7 @@ async function validatePassphrase(gameId, passphrase) {
   return false;
 }
 
-async function openRunningGame(event) {
+async function openExistingGame(event) {
   const resumeButton = event.target.closest(".resumeBtn");
   const button = resumeButton || event.target.closest(".spectateBtn");
   if (!button) return;
@@ -237,7 +244,7 @@ async function openRunningGame(event) {
     await lobbyNotice("Ungültige Spiel-ID. Bitte aktualisieren.");
     return;
   }
-  if (resume && !localPlayerIdFor(gameId) && button.dataset.playerId) {
+  if (resume && button.dataset.playerId) {
     localStorage.setItem(`${storageKeys.playerIdPrefix}${gameId}`, button.dataset.playerId);
   }
   const playerName = ((resume ? localNameFor(gameId) : "") || dom.nameInput.value || "Gast").trim() || "Gast";
@@ -254,6 +261,10 @@ async function openRunningGame(event) {
 }
 
 async function joinOpenGame(event) {
+  if (event.target.closest(".resumeBtn, .spectateBtn")) {
+    await openExistingGame(event);
+    return;
+  }
   const focusCreateButton = event.target.closest(".focus-create-btn");
   if (focusCreateButton) {
     dom.createGameCard?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -352,7 +363,7 @@ async function createGame() {
 }
 
 export function initializeGames() {
-  dom.runningList?.addEventListener("click", openRunningGame);
+  dom.runningList?.addEventListener("click", openExistingGame);
   dom.gamesList.addEventListener("click", joinOpenGame);
   dom.createButton.addEventListener("click", createGame);
   dom.refreshButton.addEventListener("click", () => fetchGames({ showLoading: true }));

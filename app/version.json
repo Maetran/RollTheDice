@@ -1,10 +1,10 @@
 {
-  "version": "2.39.2",
+  "version": "2.39.3",
   "bump": "patch",
   "date": "2026-09-22",
-  "previous_revision": "406fa8e2443cdab7ddcdb2197a2350bd7f0d516b",
+  "previous_revision": "1503d104547d3b9bc268e4c8ac98580dbf6a3e79",
   "summary": {
-    "de": "Stabile Spielflächen nach dem Drehen",
-    "en": "Stable game surfaces after rotation"
+    "de": "Eigenes Spiel nach Gerätewechsel fortsetzen",
+    "en": "Resume your game after switching devices"
   }
 }

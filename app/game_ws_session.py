@@ -54,12 +54,15 @@ async def close_with_error(
     *,
     fatal: bool = False,
     code: int = 1008,
+    error_code: str | None = None,
 ) -> None:
     """Send a final structured error before closing a game socket."""
     try:
         payload: dict[str, Any] = {"error": error}
         if fatal:
             payload["fatal"] = True
+        if error_code:
+            payload["error_code"] = error_code
         await websocket.send_json(payload)
     except Exception:
         logger.debug("Could not send final WebSocket error payload", exc_info=True)
@@ -94,6 +97,20 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
         return True
 
     identity = session.auth_identity
+    if identity:
+        account_player = next(
+            (p for p in g.get("_players", []) if p.get("user_id") == identity.user_id),
+            None,
+        )
+        if account_player:
+            # A shared link on a new device has no local player ID or token.
+            # Recover the authenticated seat before checking capacity/start;
+            # this is a reconnect, even when the room is already full.
+            return await _rejoin_game(
+                session,
+                {**data, "player_id": account_player["id"]},
+                finalize_game=finalize_game,
+            )
     if game_type_from_state(g) == ZILCH_GAME_TYPE:
         cpu_join_error = zilch_human_join_error(
             g,
@@ -110,17 +127,6 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
     requested_name = (str(data.get("name") or "Gast").strip() or "Gast")[:64]
     if identity:
         requested_name = identity.username
-        duplicate_account = next(
-            (p for p in g.get("_players", []) if p.get("user_id") == identity.user_id),
-            None,
-        )
-        if duplicate_account:
-            await close_with_error(
-                websocket,
-                "Dieser Benutzer ist der Partie bereits beigetreten. Bitte Spiel fortsetzen.",
-                fatal=True,
-            )
-            return True
     elif username_is_registered(requested_name):
         await close_with_error(
             websocket,
@@ -274,7 +280,15 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any], *, fina
         player["achievement_rank"] = identity.achievement_rank
     if old_websocket and old_websocket is not websocket:
         try:
-            await old_websocket.close(code=1000)
+            # Stop the previous device's auto-reconnect before closing it;
+            # otherwise both browsers repeatedly reclaim the same seat.
+            await close_with_error(
+                old_websocket,
+                "Das Spiel wurde auf einem anderen Gerät fortgesetzt.",
+                fatal=True,
+                code=1000,
+                error_code="session_replaced",
+            )
         except Exception:
             logger.debug("Could not close replaced WebSocket", exc_info=True)
 

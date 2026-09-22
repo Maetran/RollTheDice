@@ -105,6 +105,29 @@ ohne dieselbe Person mehrfach aufzuführen. Die Community-Zahlen stehen im
 Header, neue Spiele brauchen weniger Platz und ZDWAs Wall of Shame zeigt
 beide Zeiträume kompakter.
 
+**Deutsch:** Melde dich nach einem Gerätewechsel mit demselben Konto an, um
+deinen vorhandenen Platz in ZDWA oder Zilch wieder aufzunehmen. Bei öffentlichen
+ZDWA-Partien führt dich auch der geteilte Spiellink zurück auf deinen Platz,
+ohne einen zweiten Spieler anzulegen. Bei passwortgeschützten ZDWA-Partien
+nutzt du **Wieder aufnehmen** in der Lobby mit dem Spielpasswort.
+Ein noch offener Spieltab auf dem vorherigen Gerät zeigt in beiden Spielen die
+Übernahme an und verbindet sich nicht automatisch wieder als Spieler.
+In der ZDWA-Lobby bietet deine wartende Partie bereits
+**Wieder aufnehmen**; Warteräume lassen sich auch über **Zuschauen** öffnen,
+bei geschützten Spielen mit Passwort. Das gilt, solange die Partie noch nicht
+beendet oder abgelaufen ist.
+
+**English:** After switching devices, sign in to the same account to resume
+your existing seat in ZDWA or Zilch. For public ZDWA games, the shared game link
+also returns you to your seat without adding a second player. For protected
+ZDWA games, use **Resume** in the lobby with the game password.
+In both games, a game tab still open on the previous device shows that the
+game continued elsewhere and stops reconnecting as a
+player. Your waiting game already offers
+**Resume** in the ZDWA lobby; waiting rooms also offer **Watch**, with a
+password required for protected games. This works while the game has not
+ended or expired.
+
 The game table stays within the visible screen in both apps, including the
 installed PWA. Dice, actions and chat remain reachable. On smaller screens,
 long score sheets, histories and dialogs scroll within their own areas without

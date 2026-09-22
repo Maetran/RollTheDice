@@ -5536,7 +5536,9 @@ function connectGameSocket() {
     } else if (payload.error) {
       if (payload.fatal) {
         state.stopped = true;
-        if (!spectatorRoute) clearLocalSession();
+        // Tabs on the same device share these credentials. A transferred
+        // connection stops here without erasing the new tab's resume data.
+        if (!spectatorRoute && payload.error_code !== "session_replaced") clearLocalSession();
       }
       renderSocketError(friendlySocketError(payload.error));
     }

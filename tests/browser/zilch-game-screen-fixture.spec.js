@@ -2,6 +2,8 @@ const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-log
 const { test, expect } = require("@playwright/test");
 const { expectTextContrast } = require("./contrast");
 const { openChatWithKeyboardFocus, expectChatAboveKeyboard } = require("./chat-mobile");
+const { readFile } = require("node:fs/promises");
+const path = require("node:path");
 
 async function signIn(page, username, password) {
   await openPasswordLogin(page);
@@ -822,6 +824,53 @@ async function enableStandaloneGameStyles(page) {
       }
     };
     for (const sheet of document.styleSheets) visit(sheet.cssRules);
+  });
+}
+
+for (const transferred of [true, false]) {
+  test(`a Zilch fatal ${transferred ? "session transfer preserves" : "rejection clears"} guest resume credentials`, async ({ browser, baseURL }) => {
+    const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
+    const page = await context.newPage();
+    try {
+      const gameId = `session-transfer-fixture-${transferred}`;
+      const shell = await readFile(path.join(__dirname, "../../app/static/zilch.html"), "utf8");
+      // Reuse the shipped room with browser-only auth and socket fixtures.
+      // This regression never creates an account, game or Push notification.
+      await page.route("**/api/**", route => route.fulfill({ json: {} }));
+      await page.route("**/api/auth/me", route => route.fulfill({ json: {
+        authenticated: false, user: null, game_access: { zilch_public: true },
+      } }));
+      await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({ contentType: "text/html", body: shell }));
+      await installGameScreenFixture(page, gameId, { initial: hotDiceChoiceSnapshot() });
+      await page.addInitScript(id => {
+        localStorage.setItem("zdwa_language", "de");
+        localStorage.setItem(`zilch_player_${id}`, "p1");
+        localStorage.setItem(`zilch_resume_${id}`, "fixture-resume");
+        sessionStorage.setItem(`zilch_guest_host_${id}`, "fixture-host");
+      }, gameId);
+      await page.goto(`/zilch/spiel/${gameId}`);
+      await expect(page.locator("[data-zilch-board-id]")).toHaveCount(2);
+      const error = transferred
+        ? "Das Spiel wurde auf einem anderen Gerät fortgesetzt."
+        : "Wiederaufnahme abgelehnt. Die gespeicherte Spieler-Sitzung passt nicht.";
+      await page.evaluate(({ error, transferred }) => {
+        window.__zilchGameScreenFixturePush({ error, fatal: true, ...(transferred ? { error_code: "session_replaced" } : {}) });
+        window.__zilchGameScreenFixtureClose();
+        window.dispatchEvent(new Event("online"));
+      }, { error, transferred });
+      await expect(page.locator("#zilchLiveStatus")).toContainText(error);
+      expect(await page.evaluate(id => ({
+        player: localStorage.getItem(`zilch_player_${id}`),
+        resume: localStorage.getItem(`zilch_resume_${id}`),
+        host: sessionStorage.getItem(`zilch_guest_host_${id}`),
+      }), gameId)).toEqual(transferred
+        ? { player: "p1", resume: "fixture-resume", host: "fixture-host" }
+        : { player: null, resume: null, host: null });
+      await page.waitForTimeout(1_700);
+      expect(await page.evaluate(() => window.__zilchGameScreenFixtureSocketCount)).toBe(1);
+    } finally {
+      await context.close();
+    }
   });
 }
 

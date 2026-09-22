@@ -1,6 +1,7 @@
 import asyncio
 import json
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from app import main
@@ -44,6 +45,96 @@ class JsonRecordingSocket(RecordingSocket):
 
 
 class RejoinDisconnectTestCase(GameStateTestCase):
+    def test_account_join_from_a_new_device_resumes_the_existing_seat(self):
+        for started, full in ((False, False), (False, True), (True, True)):
+            with self.subTest(started=started, full=full):
+                players = [("p1", "Anna"), ("p2", "Ben")] if full else [("p1", "Anna")]
+                game = self.make_game(mode=2, players=players)
+                game["_started"] = started
+                game["_scoreboards"]["p1"] = {"1,down": 3} if started else {}
+                original_board = dict(game["_scoreboards"]["p1"])
+                old_socket = RecordingSocket()
+                game["_players"][0].update(user_id=42, resume_token="tablet-token", ws=old_socket)
+                socket = RecordingSocket()
+                session = GameSocketSession(
+                    websocket=socket,
+                    game=game,
+                    auth_identity=SimpleNamespace(user_id=42, username="Anna", achievement_rank={}),
+                )
+
+                should_close = asyncio.run(handle_session_action(session, "join_game", {"name": "ignored"}))
+
+                self.assertFalse(should_close)
+                self.assertEqual(session.player_id, "p1")
+                self.assertEqual(socket.messages[0], {
+                    "player_id": "p1", "resume_token": "tablet-token", "resumed": True,
+                })
+                self.assertEqual([player["id"] for player in game["_players"]], [pid for pid, _ in players])
+                self.assertIs(game["_players"][0]["ws"], socket)
+                self.assertEqual(old_socket.close_codes, [1000])
+                self.assertEqual(old_socket.messages, [{
+                    "error": "Das Spiel wurde auf einem anderen Gerät fortgesetzt.", "fatal": True,
+                    "error_code": "session_replaced",
+                }])
+                self.assertEqual(game["_started"], started)
+                self.assertEqual(game["_scoreboards"]["p1"], original_board)
+                self.assertIn("scoreboard", socket.messages[-1])
+
+    def test_account_join_cannot_bypass_passphrase_or_revive_an_aborted_game(self):
+        for protected in (True, False):
+            with self.subTest(protected=protected):
+                game = self.make_game(mode=2, players=[("p1", "Anna")])
+                game["_started"] = False
+                game["_passphrase"] = "secret" if protected else ""
+                game["_aborted"] = not protected
+                game["_players"][0]["user_id"] = 42
+                session = GameSocketSession(
+                    websocket=RecordingSocket(), game=game,
+                    auth_identity=SimpleNamespace(user_id=42, username="Anna", achievement_rank={}),
+                )
+
+                should_close = asyncio.run(handle_session_action(session, "join_game", {}))
+
+                self.assertTrue(should_close)
+                self.assertIsNone(session.player_id)
+                self.assertIsNone(game["_players"][0]["ws"])
+                self.assertEqual(session.websocket.messages[0]["error"],
+                                 "Falsche Passphrase" if protected else "Spiel ist bereits beendet")
+
+    def test_another_account_or_guest_cannot_claim_a_seat_through_join_payload(self):
+        for identity in (None, SimpleNamespace(user_id=99, username="Anna", achievement_rank={})):
+            with self.subTest(identity=identity):
+                game = self.make_game(mode=2, players=[("p1", "Anna"), ("p2", "Ben")])
+                game["_players"][0].update(user_id=42, resume_token="private-token")
+                session = GameSocketSession(websocket=RecordingSocket(), game=game, auth_identity=identity)
+
+                should_close = asyncio.run(handle_session_action(session, "join_game", {
+                    "name": "Anna", "user_id": 42, "player_id": "p1",
+                }))
+
+                self.assertTrue(should_close)
+                self.assertIsNone(session.player_id)
+                self.assertIsNone(game["_players"][0]["ws"])
+                self.assertNotIn("resume_token", session.websocket.messages[0])
+
+    def test_account_owner_can_explicitly_watch_a_waiting_game_without_taking_the_seat(self):
+        game = self.make_game(mode=2, players=[("p1", "Anna")])
+        game["_started"] = False
+        game["_players"][0]["user_id"] = 42
+        session = GameSocketSession(
+            websocket=RecordingSocket(), game=game,
+            auth_identity=SimpleNamespace(user_id=42, username="Anna", achievement_rank={}),
+        )
+
+        should_close = asyncio.run(handle_session_action(session, "spectate_game", {}))
+
+        self.assertFalse(should_close)
+        self.assertTrue(session.is_spectator)
+        self.assertIsNone(session.player_id)
+        self.assertIsNone(game["_players"][0]["ws"])
+        self.assertEqual(len(game["_players"]), 1)
+        self.assertEqual(game["_spectators"][0]["user_id"], 42)
+
     def test_non_string_passphrase_payload_is_rejected_without_crashing(self):
         self.assertEqual(_passphrase_from_payload({"pass": 123}), "")
 

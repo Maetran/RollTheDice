@@ -22,6 +22,31 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.39.3 — Eigenes Spiel nach Gerätewechsel fortsetzen / Resume your game after switching devices — 2026-09-22
+
+- **Deutsch:** Ein geteilter Link zu einer öffentlichen ZDWA-Partie führt
+  angemeldete Teilnehmer auch auf einem anderen Gerät auf ihren bestehenden
+  Platz zurück. Der Versuch wird nicht mehr als doppelter Beitritt desselben
+  Kontos abgewiesen. Die ZDWA-Lobby bietet Wieder aufnehmen bereits für eigene
+  wartende Partien und Zuschauen für Warteräume. Bei passwortgeschützten
+  ZDWA-Partien führt der Rückweg über Wieder aufnehmen in der Lobby mit dem
+  Spielpasswort; auch Zuschauen verlangt weiterhin das Passwort. So bleibt die Rückkehr
+  nach dem Teilen des Links oder einem Mitspieler-Ruf erreichbar, solange
+  die Partie noch offen ist. Voraussetzung ist dasselbe Konto auf dem neuen
+  Gerät. In ZDWA und Zilch meldet ein noch offener Spieltab auf dem vorherigen
+  Gerät die Übernahme und nimmt den Platz nicht durch automatisches
+  Wiederverbinden zurück.
+- **English:** Shared links to public ZDWA games return signed-in participants
+  to their existing seat, including on another device. The attempt is no
+  longer rejected as a duplicate join by the same account. The ZDWA
+  lobby now offers Resume for your own waiting games and Watch for waiting
+  rooms. For protected ZDWA games, return through Resume in the lobby with
+  the game password; spectating also still requires the password.
+  You can return after sharing the link or notifying players
+  while the game remains open. Sign in to the same account on the new device.
+  In ZDWA and Zilch, a game tab still open on the previous device reports the
+  transfer and no longer reclaims the seat through automatic reconnects.
+
 ## 2.39.2 — Stabile Spielflächen nach dem Drehen / Stable game surfaces after rotation — 2026-09-22
 
 - **Deutsch:** Nach Hochformat → Querformat → Hochformat verschieben alte

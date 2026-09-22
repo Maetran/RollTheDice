@@ -55,7 +55,9 @@ for (const language of ["de", "en"]) {
       await expect(hub.locator(".game-row")).toHaveCount(2);
       await expect(hub.locator("#refreshBtn")).toHaveCount(1);
       await expect(hub.locator(".resumeBtn")).toBeVisible();
-      await expect(hub.locator(".spectateBtn")).toBeVisible();
+      await expect(hub.locator(".spectateBtn")).toHaveCount(2);
+      await expect(page.locator("#gamesList .spectateBtn")).toBeVisible();
+      await expect(page.locator("#runningList .spectateBtn")).toBeVisible();
       await expect(hub.locator(".joinBtn")).toBeVisible();
       const own = page.locator("#runningList .game-row");
       await expect(own.locator("a.player-name-label")).toHaveCount(1);

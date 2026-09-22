@@ -4,21 +4,23 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Stabil nach dem Drehen: Spielkopf und Chat bleiben an ihrem Platz und lassen sich zuverlässig antippen.",
-  "summary_en": "Stable after rotation: the game header and chat stay in place and respond reliably to taps.",
+  "summary_de": "Vom Tablet aufs Handy: Mit demselben Konto findest du auch im wartenden Spiel auf deinen Platz zurück.",
+  "summary_en": "From tablet to phone: sign in to the same account to return to your seat, even while your game is waiting for players.",
   "player_notes": {
     "de": {
-      "title": "Drehen und weiterspielen",
+      "title": "Gerät wechseln und weiterspielen",
       "changes": [
-        "Beim Wechsel zwischen Hoch- und Querformat bleiben Spielkopf, Spielzettel und Chat richtig ausgerichtet.",
-        "Die Chatleiste bleibt erreichbar. Begonnene Nachrichten bleiben beim Drehen erhalten und die Eingabe passt sich weiter an die Tastatur an."
+        "Der Link einer öffentlichen ZDWA-Partie bringt dich auf einem anderen Gerät mit demselben Konto auf deinen vorhandenen Platz zurück.",
+        "Deine wartende ZDWA-Partie bietet jetzt Wieder aufnehmen; bei geschützten Spielen gibst du dort das Spielpasswort ein. Warteräume bieten auch Zuschauen.",
+        "In ZDWA und Zilch zeigt das vorherige Gerät die Übernahme an. Ein noch offener Spieltab nimmt dir den Platz nicht mehr automatisch wieder weg."
       ]
     },
     "en": {
-      "title": "Rotate and keep playing",
+      "title": "Switch devices and keep playing",
       "changes": [
-        "When switching between portrait and landscape, the game header, score sheet and chat stay correctly aligned.",
-        "The chat bar remains reachable. Drafts survive rotation, and the input still adjusts to the on-screen keyboard."
+        "A public ZDWA game link returns you to your existing seat on another device when you are signed in to the same account.",
+        "Your waiting ZDWA game now offers Resume in the lobby; enter the game password there for protected games. Waiting rooms also offer Watch.",
+        "In ZDWA and Zilch, the previous device shows that the game continued elsewhere. A game tab still open there no longer takes your seat back automatically."
       ]
     }
   }
