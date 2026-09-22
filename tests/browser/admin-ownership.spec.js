@@ -3,6 +3,10 @@ const { readFile } = require('node:fs/promises');
 
 test.use({ serviceWorkers: 'block' });
 
+async function openUserCard(card) {
+  if (await card.getAttribute('open') === null) await card.locator(':scope > summary').click();
+}
+
 test('real founder grants and revokes ownership while protected accounts remain uneditable', async ({ browser }) => {
   const contexts = await Promise.all([browser.newContext(), browser.newContext()]);
   let founder;
@@ -42,15 +46,16 @@ test('real founder grants and revokes ownership while protected accounts remain 
     }
     await founder.goto('/admin');
     await founder.locator('[data-admin-panel="usersPanel"]').click();
-    const founderTarget = founder.locator(`tr[data-user-id="${first.id}"]`);
+    const founderTarget = founder.locator(`[data-user-id="${first.id}"]`);
+    await openUserCard(founderTarget);
     await founderTarget.locator('[data-ownership="grant"]').click();
     await founder.getByRole('dialog').getByRole('button', { name: 'Appoint owner', exact: true }).click();
     await expect(founderTarget.locator('[data-staff-label]')).toHaveText('Owner');
     expect((await (await delegate.request.get('/api/auth/me')).json()).user).toMatchObject({ is_owner: true, is_founder: false });
     await delegate.goto('/admin');
     await delegate.locator('[data-admin-panel="usersPanel"]').click();
-    const self = delegate.locator(`tr[data-user-id="${first.id}"]`);
-    const protectedFounder = delegate.locator('tr[data-user-id="1"]');
+    const self = delegate.locator(`[data-user-id="${first.id}"]`);
+    const protectedFounder = delegate.locator('[data-user-id="1"]');
     await expect(self.locator('[data-staff-label]')).toHaveText('Owner');
     for (const selector of ['.role-select', '.reset-password', '.toggle-active', '.toggle-chat-muted', '.toggle-chat-excluded']) {
       await expect(self.locator(selector)).toBeDisabled();
@@ -58,6 +63,7 @@ test('real founder grants and revokes ownership while protected accounts remain 
     }
     await expect(delegate.locator('#newRole')).toBeEnabled();
     await expect(delegate.locator('[data-ownership]')).toHaveCount(0);
+    await openUserCard(founderTarget);
     await founderTarget.locator('[data-ownership="revoke"]').click();
     await founder.getByRole('dialog').getByRole('button', { name: 'Revoke ownership', exact: true }).click();
     await expect(founderTarget.locator('[data-staff-label]')).toHaveText('Admin');
@@ -124,7 +130,7 @@ async function ownershipFixture(page, language, actor) {
   });
   await page.goto('/admin');
   await page.locator('[data-admin-panel="usersPanel"]').click();
-  return { changes, row: id => page.locator(`tr[data-user-id="${id}"]`) };
+  return { changes, row: id => page.locator(`[data-user-id="${id}"]`) };
 }
 
 for (const language of ['de', 'en']) {
@@ -143,6 +149,7 @@ for (const language of ['de', 'en']) {
       if (actor === 'founder') {
         await expect(row(2).locator('.reset-password')).toBeEnabled();
         await expect(page.locator('#adminRoleHint')).toContainText(language === 'en' ? 'permanently protected' : 'dauerhaft geschützt');
+        await openUserCard(row(3));
         await row(3).locator('[data-ownership="grant"]').click();
         await expect(page.getByRole('dialog')).toContainText(language === 'en' ? 'Only you as the founder' : 'Nur du als Gründer');
         await page.getByRole('dialog').getByRole('button', { name: language === 'en' ? 'Appoint owner' : 'Owner ernennen', exact: true }).click();
@@ -151,6 +158,7 @@ for (const language of ['de', 'en']) {
         await expect(row(3).locator('.reset-password')).toBeEnabled();
         expect(changes[0]).toMatchObject({ path: '/api/admin/users/3/ownership', method: 'PUT' });
         await expect(page.locator('#adminMessage')).toHaveText(language === 'en' ? 'Ownership granted.' : 'Owner-Rechte wurden vergeben.');
+        await openUserCard(row(3));
         await row(3).locator('[data-ownership="revoke"]').click();
         await page.getByRole('dialog').getByRole('button', { name: language === 'en' ? 'Revoke ownership' : 'Owner-Rechte entziehen', exact: true }).click();
         await expect(row(3).locator('[data-staff-label]')).toHaveText('Admin');
@@ -161,6 +169,7 @@ for (const language of ['de', 'en']) {
         await expect(page.locator('[data-ownership]')).toHaveCount(0);
         if (actor === 'owner') {
           for (const selector of ['.role-select', '.reset-password', '.toggle-active', '.toggle-chat-muted', '.toggle-chat-excluded']) await expect(row(3).locator(selector)).toBeEnabled();
+          await openUserCard(row(3));
           await row(3).locator('.role-select').selectOption('user');
           await expect(row(3).locator('[data-staff-label]')).toHaveText(language === 'en' ? 'User' : 'Benutzer');
           expect(changes[0]).toMatchObject({ method: 'PATCH', path: '/api/admin/users/3', body: { role: 'user' } });
@@ -170,6 +179,7 @@ for (const language of ['de', 'en']) {
           await expect(row(4).locator('.reset-password')).toBeEnabled();
           await expect(row(4).locator('.toggle-active')).toBeEnabled();
           await expect(page.locator('#newRole')).toBeDisabled();
+          await page.locator('#createUserDetails > summary').click();
           await page.locator('#newUsername').fill('AnotherPlayer');
           await page.locator('#newPassword').fill('temporary-password-123');
           await page.locator('#createUserForm button').click();

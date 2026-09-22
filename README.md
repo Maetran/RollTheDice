@@ -339,6 +339,21 @@ retains the binding after the variable is removed; a conflicting ID prevents
 startup. Delegated ownership changes are audited. Direct control over server
 files or database definitions remains outside this application-level boundary.
 
+**Deutsch – Benutzerverwaltung:** Admins finden Konten in einer kompakten,
+durchsuchbaren Liste. Die Details jedes Kontos lassen sich einzeln aufklappen;
+Kontorechte, Chat, Sperren und Passwort sind klar getrennt. Die Kontoanlage
+hat beschriftete Felder, und Rückmeldungen erscheinen direkt bei der jeweiligen
+Aktion. Die Verwaltung passt sich Desktop, Tablet und Smartphone an; bedienbare
+Elemente bieten mindestens 44 Pixel große Touch-Ziele. Die bestehenden
+Berechtigungen und der Eigentümerschutz gelten weiterhin.
+
+**English – User management:** Admins find accounts in a compact, searchable
+list. Each account opens individually, with separate groups for account
+permissions, chat, bans and passwords. Account creation uses labelled fields,
+and feedback appears next to the relevant action. The layout adapts to desktop,
+tablet and phone screens, with touch targets of at least 44 pixels. Existing
+permissions and ownership protection continue to apply.
+
 The production account release enables email registration and recovery alongside
 passkeys and public Fairplay counters. Resend sends from
 `noreply@zockdiewandan.online`; the [mail setup record](docs/MAIL_SETUP_2026-09-12.md)

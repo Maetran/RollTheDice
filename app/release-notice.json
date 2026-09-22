@@ -1,25 +1,21 @@
 {
   "kind": "usability",
-  "games": ["zilch"],
-  "summary_de": "Zilch: Der Würfelwirt überrascht dich, die Punkte-Vorschau hilft beim Sichern und der letzte Wurf bleibt länger sichtbar.",
-  "summary_en": "Zilch: A random Dice Host, a clearer total before banking, and more time to see the final roll.",
+  "games": ["zdwa", "zilch"],
+  "summary_de": "Die Benutzerverwaltung ist übersichtlicher: Konten suchen, Details aufklappen und Aktionen direkt zuordnen.",
+  "summary_en": "Clearer user management: find accounts, open their details and see feedback beside each action.",
   "player_notes": {
     "de": {
-      "title": "Mehr Überblick am Zilch-Tisch",
+      "title": "Mehr Übersicht für Admins",
       "changes": [
-        "Der Würfelwirt bekommt in jeder neuen Partie eine zufällige Spielweise. Alle bisherigen Erfolge und Punkte bleiben erhalten.",
-        "Stand beim Sichern zeigt, wie viele Punkte du mit deiner Auswahl insgesamt hättest. Die Tablet-Hilfe sagt dir, was als Nächstes ansteht.",
-        "Beide Papierblöcke haben eigene Ringe; den doppelten Stand unten gibt es nicht mehr. Der Startwurf passt besser auf Tablets.",
-        "Die Würfel shaken deutlicher und etwas länger. Am Ende kannst du den letzten Wurf noch kurz ansehen, bevor dein Ergebnis erscheint."
+        "Admins finden Konten schneller in einer kompakten Liste mit Suche und einzeln aufklappbaren Details.",
+        "Rechte, Chat, Sperren und Passwort haben eigene Bereiche. Beschriftete Felder und direkte Rückmeldungen erleichtern die Bedienung auch am Handy."
       ]
     },
     "en": {
-      "title": "A clearer view at the Zilch table",
+      "title": "Clearer account management for admins",
       "changes": [
-        "The Dice Host gets a random play style for every new game. All existing achievements and points are preserved.",
-        "Total if banked shows what your overall score would be with your selection. Tablet guidance explains your next decision.",
-        "Both paper pads have their own rings, with no duplicate total at the bottom. Opening rolls fit better on tablets.",
-        "The dice shake more clearly and a little longer. The final roll stays on screen briefly before your result appears."
+        "Admins find accounts faster in a compact, searchable list with details that open individually.",
+        "Permissions, chat, bans and passwords have their own sections. Labelled fields and feedback beside each action make the page easier to use on phones too."
       ]
     }
   }

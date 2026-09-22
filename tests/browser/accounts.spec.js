@@ -852,14 +852,22 @@ test("admin can log in, create a user and open the public profile", async ({ pag
   await expect(page.locator("#usersPanel")).toBeHidden();
   await page.locator('[data-admin-panel="usersPanel"]').click();
 
-  const existing = page.locator("#usersBody tr", { hasText: "RegisteredSmoke" });
-  if (await existing.count() === 0) {
+  const [searchResponse] = await Promise.all([
+    page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return url.pathname === '/api/admin/users' && url.searchParams.get('query') === 'RegisteredSmoke';
+    }),
+    page.locator('#userQuery').fill('RegisteredSmoke'),
+  ]);
+  const matchingUsers = (await searchResponse.json()).users || [];
+  if (!matchingUsers.some(user => user.username === 'RegisteredSmoke')) {
+    await page.locator('#createUserDetails > summary').click();
     await page.fill("#newUsername", "RegisteredSmoke");
     await page.fill("#newPassword", "registered-password-123");
     await page.selectOption("#newRole", "user");
     await page.click("#createUserForm button");
   }
-  await expect(page.locator("#usersBody tr", { hasText: "RegisteredSmoke" })).toBeVisible();
+  await expect(page.locator("#usersBody [data-user-id]", { hasText: "RegisteredSmoke" })).toBeVisible();
 
   await page.goto("/spieler/RegisteredSmoke");
   await expect(page.getByRole("heading", { name: "RegisteredSmoke" })).toBeVisible();

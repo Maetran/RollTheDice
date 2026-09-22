@@ -29,11 +29,13 @@ for (const language of ['de', 'en']) {
     });
     await page.goto('/admin');
     await page.locator('[data-admin-panel="usersPanel"]').click();
-    const row = page.locator('tr[data-user-id="2"]');
-    const adminRow = page.locator('tr[data-user-id="1"]');
+    const row = page.locator('[data-user-id="2"]');
+    const adminRow = page.locator('[data-user-id="1"]');
+    await adminRow.locator(':scope > summary').click();
     await adminRow.locator('[data-ban-editor] summary').click();
     await expect(adminRow.locator('[data-ban-editor]')).toContainText(language === 'en' ? 'Change the admin role' : 'Ändere zuerst die Adminrolle');
     await expect(adminRow.locator('[data-ban-form]')).toHaveCount(0);
+    await row.locator(':scope > summary').click();
     await row.locator('[data-ban-editor] summary').click();
     await row.locator('select[name="scope"]').selectOption('help');
     await row.locator('select[name="days"]').selectOption('14');
@@ -45,6 +47,7 @@ for (const language of ['de', 'en']) {
     await expect(row.locator('.admin-ban-list misuse')).toHaveCount(0);
     await page.reload();
     await page.locator('[data-admin-panel="usersPanel"]').click();
+    await row.locator(':scope > summary').click();
     await expect(row.locator('.admin-ban-list')).toContainText(language === 'en' ? 'Admin help blocked' : 'Adminhilfe gesperrt');
     await row.locator('[data-revoke-ban="help"]').click();
     await expect.poll(() => revoked).toEqual(['DELETE']);

@@ -22,6 +22,24 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.42.1 — Klarere Benutzerverwaltung / Clearer user management — 2026-09-22
+
+**Deutsch:** Die interne Benutzerverwaltung zeigt Konten als kompakte,
+durchsuchbare Liste. Einzeln aufklappbare Konten gruppieren Rechte, Chat,
+Sperren und Passwort. Beschriftete Felder vereinfachen die Kontoanlage;
+Rückmeldungen stehen direkt bei der jeweiligen Aktion. Die Ansicht passt sich
+Desktop, Tablet und Smartphone an und bietet mindestens 44 Pixel große
+Touch-Ziele. Berechtigungen und Eigentümerschutz bleiben bestehen.
+Stiller Rollout ohne neue Push- oder In-App-Versionsmeldung.
+
+**English:** Internal user management presents accounts in a compact,
+searchable list. Each account opens individually and groups permissions, chat,
+bans and passwords. Labelled fields make account creation clearer, with
+feedback next to the relevant action. The layout adapts to desktop, tablet and
+phone screens and provides touch targets of at least 44 pixels. Permissions
+and ownership protection remain in place. Silent rollout without a new push
+or in-app release announcement.
+
 ## 2.42.0 — Zilch: klarer am Tisch / Clearer at the Zilch table — 2026-09-22
 
 **Deutsch:** Jede neue Partie gegen den Würfelwirt lost seine Spielweise aus,

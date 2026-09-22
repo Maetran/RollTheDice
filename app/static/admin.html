@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Geschützter Administrationsbereich von ZDWA.">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="manifest" href="/manifest.webmanifest?v=4501061b3326">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=4501061b3326" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=4501061b3326" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=6064ef46b35e">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=6064ef46b35e" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=6064ef46b35e" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=4501061b3326">
-  <script src="/static/shell.js?v=4501061b3326" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=6064ef46b35e">
+  <script src="/static/shell.js?v=6064ef46b35e" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
@@ -46,20 +46,34 @@
       <div id="adminMessage" class="muted small admin-message" aria-live="polite"></div>
     </section>
 
-    <section id="usersPanel" class="card admin-panel" hidden>
-      <p class="eyebrow">Accounts</p>
-      <h2>Benutzerverwaltung</h2>
-      <p id="adminRoleHint" class="muted small"></p>
-      <form id="createUserForm" class="admin-create-grid">
-        <input id="newUsername" placeholder="Benutzername" autocomplete="off" required>
-        <input id="newPassword" type="password" placeholder="Temporäres Passwort (min. 8 Zeichen)" minlength="8" required>
-        <select id="newRole" disabled><option value="user">Benutzer</option><option value="admin">Admin</option></select>
-        <button class="primary">Benutzer anlegen</button>
-      </form>
-      <div class="table-scroll"><table class="admin-table">
-        <thead><tr><th>Benutzer</th><th>Rolle</th><th>Status</th><th>Lobby-Chat</th><th>Sperren</th><th>Passwort</th><th>Aktion</th></tr></thead>
-        <tbody id="usersBody"></tbody>
-      </table></div>
+    <section id="usersPanel" class="card admin-panel admin-users-panel" hidden>
+      <header class="admin-users-heading">
+        <div><p class="eyebrow">Accounts</p><h2>Benutzerverwaltung</h2></div>
+        <button id="reloadUsers" type="button" class="small secondary">Aktualisieren</button>
+      </header>
+      <p class="muted">Finde ein Konto und öffne die Verwaltung für Rechte, Chat oder Sperren.</p>
+      <details class="admin-permissions"><summary>Deine Berechtigungen</summary><p id="adminRoleHint" class="muted small"></p></details>
+      <details id="createUserDetails" class="admin-create-user">
+        <summary>Benutzer anlegen</summary>
+        <form id="createUserForm" class="admin-create-grid">
+          <label>Benutzername<input id="newUsername" autocomplete="off" required></label>
+          <label>Temporäres Passwort<input id="newPassword" type="password" autocomplete="new-password" minlength="8" aria-describedby="newPasswordHint" required><small id="newPasswordHint" class="muted">Mindestens 8 Zeichen. Wird beim ersten Login geändert.</small></label>
+          <label>Rolle<select id="newRole" disabled><option value="user">Benutzer</option><option value="admin">Admin</option></select></label>
+          <button class="primary" type="submit">Benutzer anlegen</button>
+        </form>
+        <p id="createUserFeedback" class="admin-user-feedback" role="status"></p>
+      </details>
+      <div class="admin-users-toolbar">
+        <label class="admin-user-search" for="userQuery">Benutzer suchen<input id="userQuery" type="search" placeholder="Benutzername eingeben" autocomplete="off" aria-controls="usersBody"></label>
+        <button id="clearUserSearch" type="button" class="small ghost" hidden>Suche löschen</button>
+        <span id="userResultCount" class="muted small" role="status"></span>
+      </div>
+      <div id="userListStatus" class="admin-user-empty" hidden><p></p><button type="button" class="secondary" data-retry-users hidden>Erneut versuchen</button></div>
+      <div id="usersBody" class="admin-user-list" aria-busy="true"></div>
+      <nav class="admin-users-pagination" aria-label="Seiten der Benutzerliste" hidden>
+        <button id="previousUsers" type="button" class="secondary">Zurück</button>
+        <button id="nextUsers" type="button" class="secondary">Weiter</button>
+      </nav>
     </section>
 
     <section id="assignmentsPanel" class="card admin-panel" hidden>
@@ -83,7 +97,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=4501061b3326';
+    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=6064ef46b35e';
     const auth = await loadAuth();
     if (!auth?.user?.is_admin) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const usersBody = document.getElementById('usersBody');
@@ -94,6 +108,16 @@
     const adminPanels = [...document.querySelectorAll('.admin-panel')];
     const adminTiles = [...document.querySelectorAll('.admin-module-tile')];
     let users = [];
+    const userQuery = document.getElementById('userQuery');
+    const userListStatus = document.getElementById('userListStatus');
+    const userPageSize = 30;
+    let userOffset = 0;
+    let usersHaveNextPage = false;
+    let activeUserId = null;
+    let userRequest = 0;
+    let searchTimer;
+    let userActionPending = false;
+    let userFeedbackTarget = null;
     let viewer = { is_owner: auth?.user?.is_owner === true || auth?.user?.is_founder === true, is_founder: auth?.user?.is_founder === true };
     const t = value => window.ZDWA_I18N?.t?.(value) || value;
 
@@ -131,11 +155,10 @@
 
     function roleControls(user) {
       const rights = permissions(user);
-      const label = user.is_founder ? 'Gründer' : user.is_owner ? 'Owner' : user.role === 'admin' ? 'Admin' : 'Benutzer';
-      const ownership = viewer.is_founder && !user.is_founder
+      const ownership = viewer.is_founder && !user.is_founder && (user.role === 'admin' || user.is_owner)
         ? `<button type="button" class="small ghost" data-ownership="${user.is_owner ? 'revoke' : 'grant'}"${restrictionAttributes(user.is_owner ? rights.can_revoke_owner : rights.can_grant_owner, t('Owner-Rechte sind nur für aktive Admin-Konten ohne Sperren oder Chat-Einschränkungen möglich.'))}>${escapeHtml(t(user.is_owner ? 'Owner-Rechte entziehen' : 'Owner ernennen'))}</button>`
         : '';
-      return `<div class="form-stack"><strong data-staff-label>${escapeHtml(t(label))}</strong><select class="role-select" aria-label="${escapeHtml(t('Rolle'))}"${restrictionAttributes(rights.can_change_role, protectedReason(user, 'role'))}><option value="user" ${user.role === 'user' ? 'selected' : ''}>${escapeHtml(t('Benutzer'))}</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>${escapeHtml(t('Admin'))}</option></select>${ownership}${user.is_founder ? `<span class="muted small">${escapeHtml(t('Dauerhaft geschütztes Gründerkonto'))}</span>` : ''}</div>`;
+      return `<div class="form-stack"><label>${escapeHtml(t('Rolle'))}<select class="role-select" data-focus-key="role"${restrictionAttributes(rights.can_change_role, protectedReason(user, 'role'))}><option value="user" ${user.role === 'user' ? 'selected' : ''}>${escapeHtml(t('Benutzer'))}</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>${escapeHtml(t('Admin'))}</option></select></label><p class="muted small">${escapeHtml(rights.can_change_role ? t('Rollenänderungen werden direkt gespeichert.') : protectedReason(user, 'role'))}</p>${ownership}</div>`;
     }
 
     function syncViewerControls() {
@@ -183,8 +206,8 @@
       const editor = !rights.can_set_ban
         ? `<p class="muted small">${escapeHtml(user.is_owner || user.is_founder ? protectedReason(user, 'ban') : user.role === 'admin' ? t('Ändere zuerst die Adminrolle, bevor du dieses Konto sperrst.') : protectedReason(user, 'ban'))}</p>`
         : `<form data-ban-form class="form-stack admin-ban-form">
-          <label>${escapeHtml(t('Bereich'))}<select name="scope"><option value="play">${escapeHtml(t('Spielen'))}</option><option value="help">${escapeHtml(t('Adminhilfe'))}</option></select></label>
-          <label>${escapeHtml(t('Dauer'))}<select name="days">${[3, 5, 7, 14, 30, 60].map(days => `<option value="${days}">${days} ${escapeHtml(t('Tage'))}</option>`).join('')}<option value="permanent">${escapeHtml(t('Dauerhaft'))}</option></select></label>
+          <div class="admin-ban-options"><label>${escapeHtml(t('Bereich'))}<select name="scope"><option value="play">${escapeHtml(t('Spielen'))}</option><option value="help">${escapeHtml(t('Adminhilfe'))}</option></select></label>
+          <label>${escapeHtml(t('Dauer'))}<select name="days">${[3, 5, 7, 14, 30, 60].map(days => `<option value="${days}">${days} ${escapeHtml(t('Tage'))}</option>`).join('')}<option value="permanent">${escapeHtml(t('Dauerhaft'))}</option></select></label></div>
           <label>${escapeHtml(t('Grund'))}<textarea name="reason" rows="2" maxlength="500" required></textarea></label>
           <p class="muted small">${escapeHtml(t('Eine Spielsperre verhindert auch neue Hilferufe. Das Konto bleibt erreichbar.'))}</p>
           <button type="submit" class="small danger">${escapeHtml(t('Sperre setzen'))}</button>
@@ -211,12 +234,13 @@
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(banError(data.detail));
       await loadUsers();
-      const editor = usersBody.querySelector(`tr[data-user-id="${userId}"] [data-ban-editor]`);
+      const editor = usersBody.querySelector(`[data-user-id="${userId}"] [data-ban-editor]`);
       if (editor) { editor.open = true; editor.querySelector('summary')?.focus(); }
-      message.textContent = t(payload ? 'Sperre wurde gesetzt.' : 'Sperre wurde aufgehoben.');
+      userFeedback(t(payload ? 'Sperre wurde gesetzt.' : 'Sperre wurde aufgehoben.'), userId);
     }
 
     function toggleAdminPanel(tile) {
+      message.setAttribute('aria-live', 'polite');
       const panel = document.getElementById(tile.dataset.adminPanel);
       const shouldOpen = panel.hidden;
       adminPanels.forEach(item => { item.hidden = true; });
@@ -233,22 +257,156 @@
 
     adminTiles.forEach(tile => tile.addEventListener('click', () => toggleAdminPanel(tile)));
 
+    function userFeedback(text, userId = activeUserId, { error = false, creation = false } = {}) {
+      const local = creation ? document.getElementById('createUserFeedback')
+        : usersBody.querySelector(`[data-user-id="${userId}"] [data-user-feedback]`);
+      if (local && !creation && userFeedbackTarget?.userId === userId) {
+        const section = usersBody.querySelector(`[data-user-id="${userId}"] ${userFeedbackTarget.selector}`)?.closest('.admin-user-section');
+        if (section && local.parentElement !== section) section.append(local);
+      }
+      // Keep the shared message for the other admin modules, but announce user
+      // changes next to the action so touch and keyboard users keep their place.
+      message.setAttribute('aria-live', local ? 'off' : 'polite');
+      message.textContent = text;
+      if (local) { local.textContent = text; local.dataset.kind = error ? 'error' : 'success'; }
+    }
+
+    function userCard(user) {
+      const rights = permissions(user);
+      const staffLabel = user.is_founder ? 'Gründer' : user.is_owner ? 'Owner' : user.role === 'admin' ? 'Admin' : 'Benutzer';
+      const badge = (label, warning = false) => `<span class="admin-user-badge${warning ? ' admin-user-badge--warning' : ''}">${escapeHtml(t(label))}</span>`;
+      return `<details class="admin-user-card" data-user-id="${user.id}"${activeUserId === user.id ? ' open' : ''}>
+        <summary class="admin-user-summary">
+          <span class="admin-user-identity">${playerNameMarkup({ ...user, achievement_rank: null }, { name: user.username, avatarKey: `admin-user-${user.id}` })}</span>
+          <span class="admin-user-badges"><span class="admin-user-badge" data-staff-label>${escapeHtml(t(staffLabel))}</span>${badge(user.is_active ? 'Aktiv' : 'Deaktiviert', !user.is_active)}${user.lobby_chat_excluded ? badge('Chat ausgeschlossen', true) : user.lobby_chat_muted ? badge('Chat stumm', true) : ''}${(user.bans || []).map(ban => badge(ban.scope === 'play' ? 'Spielen gesperrt' : 'Adminhilfe gesperrt', true)).join('')}${user.must_change_password ? badge('PW-Wechsel offen', true) : ''}</span>
+          <span class="admin-user-manage">${escapeHtml(t('Verwalten'))}</span>
+        </summary>
+        <div class="admin-user-details">
+          <a class="admin-user-profile" href="/spieler/${encodeURIComponent(user.username)}">${escapeHtml(t('Profil öffnen'))} ↗</a>
+          <div class="admin-user-sections">
+            <section class="admin-user-section"><h3>${escapeHtml(t('Zugriffsrechte'))}</h3>${roleControls(user)}</section>
+            <section class="admin-user-section"><h3>${escapeHtml(t('Passwort'))}</h3>
+              <details data-password-editor><summary>${escapeHtml(t('Passwort zurücksetzen'))}</summary>
+              <p class="muted small">${escapeHtml(rights.can_reset_password ? t('Ein neues temporäres Passwort meldet das Konto auf allen Geräten ab. Passkeys werden entfernt; beim nächsten Login muss das Passwort geändert werden.') : protectedReason(user, 'password'))}</p>
+              <form data-password-form class="form-stack"><label>${escapeHtml(t('Temporäres Passwort'))}<input type="password" name="temporary_password" autocomplete="new-password" minlength="8" required${restrictionAttributes(rights.can_reset_password, protectedReason(user, 'password'))} aria-describedby="passwordHint-${user.id}"></label><small id="passwordHint-${user.id}" class="muted">${escapeHtml(t('Mindestens 8 Zeichen'))}</small><button type="submit" class="small secondary reset-password"${restrictionAttributes(rights.can_reset_password, protectedReason(user, 'password'))}>${escapeHtml(t('Zurücksetzen'))}</button></form></details>
+            </section>
+            <section class="admin-user-section"><h3>${escapeHtml(t('Lobby-Chat'))}</h3>
+              <p class="muted small">${escapeHtml(rights.can_moderate_chat ? t(user.lobby_chat_excluded ? 'Dieses Konto kann den Lobby-Chat nicht öffnen.' : user.lobby_chat_muted ? 'Dieses Konto kann mitlesen, aber keine Nachrichten senden.' : 'Dieses Konto kann im Lobby-Chat lesen und schreiben.') : protectedReason(user, 'chat'))}</p>
+              <div class="admin-user-actions"><button type="button" class="small ghost toggle-chat-muted"${restrictionAttributes(rights.can_moderate_chat, protectedReason(user, 'chat'))}>${escapeHtml(t(user.lobby_chat_muted ? 'Stummschaltung aufheben' : 'Stummschalten'))}</button><button type="button" class="small ghost toggle-chat-excluded"${restrictionAttributes(rights.can_moderate_chat, protectedReason(user, 'chat'))}>${escapeHtml(t(user.lobby_chat_excluded ? 'Chat-Ausschluss aufheben' : 'Vom Chat ausschließen'))}</button></div>
+            </section>
+            <section class="admin-user-section"><h3>${escapeHtml(t('Sperren'))}</h3>${banControls(user)}</section>
+            <section class="admin-user-section admin-user-section--access"><h3>${escapeHtml(t('Kontozugang'))}</h3><p class="muted small">${escapeHtml(rights.can_toggle_active ? t('Deaktivierte Konten können sich nicht anmelden. Für einen zeitweisen Ausschluss vom Spiel verwende eine Spielsperre.') : protectedReason(user, 'active'))}</p><button type="button" class="small ghost toggle-active"${restrictionAttributes(rights.can_toggle_active, protectedReason(user, 'active'))}>${escapeHtml(t(user.is_active ? 'Deaktivieren' : 'Aktivieren'))}</button></section>
+          </div>
+          <p class="admin-user-feedback" data-user-feedback role="status"></p>
+          <button type="button" class="small ghost" data-close-user>${escapeHtml(t('Verwaltung schließen'))}</button>
+        </div>
+      </details>`;
+    }
+
+    function userNavigation(loading = false) {
+      document.getElementById('previousUsers').disabled = loading || userActionPending || userOffset === 0;
+      document.getElementById('nextUsers').disabled = loading || userActionPending || !usersHaveNextPage;
+      document.getElementById('reloadUsers').disabled = loading || userActionPending;
+      document.getElementById('clearUserSearch').disabled = userActionPending;
+      document.getElementById('clearUserSearch').hidden = !userQuery.value;
+      userQuery.disabled = userActionPending;
+      document.getElementById('createUserForm').inert = userActionPending;
+      document.querySelector('#createUserForm button').disabled = userActionPending;
+      adminTiles.forEach(tile => { tile.disabled = userActionPending; });
+      document.querySelector('.admin-users-pagination').hidden = !userOffset && !usersHaveNextPage;
+    }
+
     async function loadUsers() {
-      const response = await fetch('/api/admin/users?limit=200', { cache: 'no-store' });
-      if (!response.ok) return;
-      const payload = await response.json();
-      users = payload.users;
-      viewer = { ...viewer, ...payload.viewer };
-      syncViewerControls();
-      usersBody.innerHTML = users.map(user => `<tr data-user-id="${user.id}">
-        <td><a href="/spieler/${encodeURIComponent(user.username)}">${playerNameMarkup(user, { name: user.username, compactRank: true })}</a>${user.must_change_password ? '<span class="badge">PW-Wechsel offen</span>' : ''}</td>
-        <td>${roleControls(user)}</td>
-        <td>${user.is_active ? 'Aktiv' : 'Deaktiviert'}</td>
-        <td>${user.lobby_chat_excluded ? '<span class="badge">Ausgeschlossen</span>' : user.lobby_chat_muted ? '<span class="badge">Stumm</span>' : 'Aktiv'}</td>
-        <td>${banControls(user)}</td>
-        <td><button class="small secondary reset-password"${restrictionAttributes(permissions(user).can_reset_password, protectedReason(user, 'password'))}>Zurücksetzen</button></td>
-        <td><button class="small ghost toggle-active"${restrictionAttributes(permissions(user).can_toggle_active, protectedReason(user, 'active'))}>${user.is_active ? 'Deaktivieren' : 'Aktivieren'}</button><button class="small ghost toggle-chat-muted"${restrictionAttributes(permissions(user).can_moderate_chat, protectedReason(user, 'chat'))}>${user.lobby_chat_muted ? 'Stummschaltung aufheben' : 'Stummschalten'}</button><button class="small ghost toggle-chat-excluded"${restrictionAttributes(permissions(user).can_moderate_chat, protectedReason(user, 'chat'))}>${user.lobby_chat_excluded ? 'Chat-Ausschluss aufheben' : 'Vom Chat ausschließen'}</button></td>
-      </tr>`).join('');
+      const request = ++userRequest;
+      usersBody.setAttribute('aria-busy', 'true');
+      usersBody.inert = true;
+      userListStatus.hidden = true;
+      userNavigation(true);
+      document.getElementById('userResultCount').textContent = t('Benutzer werden geladen …');
+      try {
+        const response = await fetch(`/api/admin/users?limit=${userPageSize + 1}&offset=${userOffset}&query=${encodeURIComponent(userQuery.value.trim())}`, { cache: 'no-store' });
+        if (!response.ok) throw new Error('users_unavailable');
+        const payload = await response.json();
+        if (request !== userRequest) return;
+        usersHaveNextPage = payload.users.length > userPageSize;
+        users = payload.users.slice(0, userPageSize);
+        viewer = { ...viewer, ...payload.viewer };
+        syncViewerControls();
+        usersBody.innerHTML = users.map(userCard).join('');
+        document.getElementById('userResultCount').textContent = users.length
+          ? `${userOffset + 1}–${userOffset + users.length} · ${t('Benutzer')}` : '';
+        if (!users.length) {
+          userListStatus.hidden = false;
+          userListStatus.querySelector('p').textContent = t(userQuery.value.trim() ? 'Keine passenden Benutzer gefunden. Versuche einen anderen Namen.' : 'Keine Benutzer auf dieser Seite.');
+          userListStatus.querySelector('button').hidden = true;
+        }
+      } catch (_) {
+        if (request !== userRequest) return;
+        usersBody.replaceChildren();
+        users = [];
+        usersHaveNextPage = false;
+        document.getElementById('userResultCount').textContent = '';
+        userListStatus.hidden = false;
+        userListStatus.querySelector('p').textContent = t('Benutzer konnten nicht geladen werden. Bitte versuche es erneut.');
+        userListStatus.querySelector('button').hidden = false;
+      } finally {
+        if (request === userRequest) {
+          usersBody.setAttribute('aria-busy', 'false');
+          usersBody.inert = userActionPending;
+          userNavigation();
+        }
+      }
+    }
+
+    userQuery.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      ++userRequest; // Discard an older response even during the debounce.
+      userOffset = 0;
+      activeUserId = null;
+      usersBody.inert = true;
+      userNavigation(true);
+      searchTimer = setTimeout(loadUsers, 250);
+    });
+    document.getElementById('clearUserSearch').addEventListener('click', () => {
+      clearTimeout(searchTimer); userQuery.value = ''; userOffset = 0; activeUserId = null;
+      userQuery.focus(); loadUsers();
+    });
+    document.getElementById('reloadUsers').addEventListener('click', () => loadUsers());
+    userListStatus.querySelector('button').addEventListener('click', () => loadUsers());
+    for (const [id, direction] of [['previousUsers', -1], ['nextUsers', 1]]) {
+      document.getElementById(id).addEventListener('click', async () => {
+        clearTimeout(searchTimer); userOffset = Math.max(0, userOffset + direction * userPageSize); activeUserId = null;
+        await loadUsers(); userQuery.focus();
+      });
+    }
+    usersBody.addEventListener('toggle', event => {
+      const card = event.target;
+      if (!card.matches('.admin-user-card')) return;
+      if (card.open) {
+        activeUserId = Number(card.dataset.userId);
+        usersBody.querySelectorAll('.admin-user-card[open]').forEach(other => { if (other !== card) other.open = false; });
+      } else if (activeUserId === Number(card.dataset.userId)) activeUserId = null;
+    }, true);
+
+    async function runUserAction(userId, action, focusSelector) {
+      if (userActionPending) return;
+      userFeedbackTarget = { userId, selector: focusSelector };
+      userActionPending = true;
+      usersBody.inert = true;
+      userNavigation();
+      userFeedback(t('Wird gespeichert …'), userId);
+      try { await action(); }
+      catch (error) {
+        userFeedback(error instanceof TypeError ? t('Änderung fehlgeschlagen. Bitte versuche es erneut.') : error.message, userId, { error: true });
+      } finally {
+        userActionPending = false;
+        userFeedbackTarget = null;
+        usersBody.inert = false;
+        userNavigation();
+        const card = usersBody.querySelector(`[data-user-id="${userId}"]`);
+        const focus = card?.querySelector(focusSelector);
+        (focus && !focus.disabled ? focus : card?.querySelector('summary'))?.focus({ preventScroll: true });
+      }
     }
 
     async function updateUser(userId, payload) {
@@ -261,58 +419,101 @@
     }
 
     document.getElementById('createUserForm').addEventListener('submit', async event => {
-      event.preventDefault(); message.textContent = '';
-      const response = await apiFetch('/api/admin/users', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: document.getElementById('newUsername').value,
-          temporary_password: document.getElementById('newPassword').value,
-          role: document.getElementById('newRole').disabled ? 'user' : document.getElementById('newRole').value,
-        }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) { message.textContent = managementError(data.detail); return; }
-      event.target.reset(); message.textContent = 'Benutzer wurde angelegt.';
-      await loadUsers();
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector('button');
+      if (button.disabled || userActionPending) return;
+      let focusAfter = form.contains(document.activeElement) ? document.activeElement : button;
+      userActionPending = true;
+      usersBody.inert = true;
+      form.setAttribute('aria-busy', 'true');
+      userNavigation();
+      userFeedback(t('Wird gespeichert …'), null, { creation: true });
+      try {
+        const username = document.getElementById('newUsername').value;
+        const response = await apiFetch('/api/admin/users', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username,
+            temporary_password: document.getElementById('newPassword').value,
+            role: document.getElementById('newRole').disabled ? 'user' : document.getElementById('newRole').value,
+          }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(managementError(data.detail));
+        form.reset();
+        clearTimeout(searchTimer); userQuery.value = username; userOffset = 0; activeUserId = data.user?.id ?? null;
+        await loadUsers();
+        userFeedback(t('Benutzer wurde angelegt.'), null, { creation: true });
+        focusAfter = usersBody.querySelector(`[data-user-id="${activeUserId}"] > summary`) || button;
+      } catch (error) {
+        userFeedback(error instanceof TypeError ? t('Änderung fehlgeschlagen. Bitte versuche es erneut.') : error.message, null, { error: true, creation: true });
+      } finally {
+        userActionPending = false;
+        usersBody.inert = false;
+        form.setAttribute('aria-busy', 'false');
+        userNavigation();
+        focusAfter?.focus();
+      }
     });
 
     usersBody.addEventListener('change', async event => {
       if (!event.target.classList.contains('role-select')) return;
       if (event.target.disabled) return;
-      const row = event.target.closest('tr');
-      try { await updateUser(Number(row.dataset.userId), { role: event.target.value }); }
-      catch (error) { message.textContent = error.message; await loadUsers(); }
+      const row = event.target.closest('[data-user-id]');
+      const userId = Number(row.dataset.userId);
+      const user = users.find(item => item.id === userId);
+      const role = event.target.value;
+      if (!user || role === user.role) return;
+      await runUserAction(userId, async () => {
+        try { await updateUser(userId, { role }); }
+        catch (error) { event.target.value = user.role; throw error; }
+        userFeedback(t('Rolle wurde gespeichert.'), userId);
+      }, '.role-select');
     });
 
     usersBody.addEventListener('input', event => {
       if (event.target.matches('[data-ban-form] textarea')) event.target.setCustomValidity('');
     });
     usersBody.addEventListener('submit', async event => {
-      const form = event.target.closest('[data-ban-form]');
+      const form = event.target.closest('[data-ban-form], [data-password-form]');
       if (!form) return;
       event.preventDefault();
       const button = form.querySelector('button[type="submit"]');
       if (button.disabled) return;
+      const userId = Number(form.closest('[data-user-id]').dataset.userId);
+      if (form.matches('[data-password-form]')) {
+        await runUserAction(userId, async () => {
+          const response = await apiFetch(`/api/admin/users/${userId}/reset-password`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ temporary_password: form.elements.temporary_password.value }),
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(managementError(data.detail));
+          await loadUsers();
+          const editor = usersBody.querySelector(`[data-user-id="${userId}"] [data-password-editor]`);
+          if (editor) editor.open = true;
+          userFeedback(t('Passwort wurde zurückgesetzt.'), userId);
+        }, '.reset-password');
+        return;
+      }
       const reason = form.elements.reason.value.trim();
       if (!reason) { form.elements.reason.setCustomValidity(t('Bitte begründe die Sperre.')); form.elements.reason.reportValidity(); return; }
-      button.disabled = true;
-      message.textContent = '';
-      try {
-        await changeBan(Number(form.closest('tr').dataset.userId), form.elements.scope.value, {
+      await runUserAction(userId, async () => {
+        await changeBan(userId, form.elements.scope.value, {
           scope: form.elements.scope.value,
           days: form.elements.days.value === 'permanent' ? null : Number(form.elements.days.value), reason,
         });
-      } catch (error) { message.textContent = error instanceof TypeError ? banError() : error.message; }
-      finally { button.disabled = false; }
+      }, '[data-ban-editor] > summary');
     });
 
     usersBody.addEventListener('click', async event => {
-      const row = event.target.closest('tr');
+      const row = event.target.closest('[data-user-id]');
       if (!row) return;
       const userId = Number(row.dataset.userId);
       const user = users.find(item => item.id === userId);
       const clicked = event.target.closest('button');
-      if (clicked?.disabled) return;
+      if (!clicked || clicked.disabled || !user) return;
+      if (clicked.matches('[data-close-user]')) { row.open = false; row.querySelector('summary').focus(); return; }
       const ownership = event.target.closest('[data-ownership]');
       if (ownership) {
         const revoke = ownership.dataset.ownership === 'revoke';
@@ -322,55 +523,27 @@
           confirmLabel: t(revoke ? 'Owner-Rechte entziehen' : 'Owner ernennen'),
         });
         if (!confirmed) return;
-        ownership.disabled = true;
-        try {
+        await runUserAction(userId, async () => {
           const response = await apiFetch(`/api/admin/users/${userId}/ownership`, { method: revoke ? 'DELETE' : 'PUT' });
           const data = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(managementError(data.detail));
           await loadUsers();
-          message.textContent = t(revoke ? 'Owner-Rechte wurden entzogen.' : 'Owner-Rechte wurden vergeben.');
-        } catch (error) { message.textContent = error.message; ownership.disabled = false; }
+          userFeedback(t(revoke ? 'Owner-Rechte wurden entzogen.' : 'Owner-Rechte wurden vergeben.'), userId);
+        }, '[data-ownership]');
         return;
       }
       const revoke = event.target.closest('[data-revoke-ban]');
       if (revoke) {
-        if (revoke.disabled) return;
-        revoke.disabled = true;
-        try { await changeBan(userId, revoke.dataset.revokeBan); }
-        catch (error) { message.textContent = error instanceof TypeError ? banError() : error.message; }
-        finally { revoke.disabled = false; }
+        await runUserAction(userId, () => changeBan(userId, revoke.dataset.revokeBan), '[data-ban-editor] > summary');
         return;
       }
-      if (event.target.classList.contains('reset-password')) {
-        const temporary = prompt(`Temporäres Passwort für ${user.username} (mindestens 8 Zeichen)`);
-        if (temporary === null) return;
-        const response = await apiFetch(`/api/admin/users/${userId}/reset-password`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ temporary_password: temporary }),
-        });
-        const data = await response.json().catch(() => ({}));
-        message.textContent = response.ok ? 'Passwort wurde zurückgesetzt.' : managementError(data.detail);
-        await loadUsers();
-      }
-      if (event.target.classList.contains('toggle-active')) {
-        try { await updateUser(userId, { is_active: !user.is_active }); }
-        catch (error) { message.textContent = error.message; }
-      }
-      if (event.target.classList.contains('toggle-chat-muted')) {
-        try {
-          await updateUser(userId, { lobby_chat_muted: !user.lobby_chat_muted });
-          message.textContent = user.lobby_chat_muted
-            ? `Stummschaltung für ${user.username} aufgehoben.`
-            : `${user.username} wurde im Lobby-Chat stummgeschaltet.`;
-        } catch (error) { message.textContent = error.message; }
-      }
-      if (event.target.classList.contains('toggle-chat-excluded')) {
-        try {
-          await updateUser(userId, { lobby_chat_excluded: !user.lobby_chat_excluded });
-          message.textContent = user.lobby_chat_excluded
-            ? `Chat-Ausschluss für ${user.username} aufgehoben.`
-            : `${user.username} wurde vom Lobby-Chat ausgeschlossen.`;
-        } catch (error) { message.textContent = error.message; }
+      for (const [selector, field] of [['.toggle-active', 'is_active'], ['.toggle-chat-muted', 'lobby_chat_muted'], ['.toggle-chat-excluded', 'lobby_chat_excluded']]) {
+        if (!clicked.matches(selector)) continue;
+        await runUserAction(userId, async () => {
+          await updateUser(userId, { [field]: !user[field] });
+          userFeedback(t('Änderung wurde gespeichert.'), userId);
+        }, selector);
+        return;
       }
     });
 
@@ -378,7 +551,10 @@
       assignmentList.innerHTML = '<div class="muted">Laden…</div>';
       const response = await fetch('/api/admin/game-participants?unassigned=true&limit=200', { cache: 'no-store' });
       const participants = response.ok ? (await response.json()).participants : [];
-      const options = users.filter(user => user.is_active).map(user =>
+      // Assignment choices are independent of the currently searched user page.
+      const usersResponse = await fetch('/api/admin/users?limit=200', { cache: 'no-store' });
+      const assignmentUsers = usersResponse.ok ? (await usersResponse.json()).users : [];
+      const options = assignmentUsers.filter(user => user.is_active).map(user =>
         `<option value="${user.id}">${escapeHtml(user.username)}</option>`
       ).join('');
       assignmentList.innerHTML = participants.map(item => `<article class="assignment-row" data-participant-id="${item.id}">

@@ -1951,5 +1951,12 @@
     "date": "2026-09-22",
     "bump": "minor",
     "summary": "Geschütztes Gründerkonto, delegierte Ownerrechte und sichtbarer Start der Adminhilfe / Protected founder account, delegated ownership and public admin-help announcement"
+  },
+  {
+    "version": "2.42.0",
+    "revision": "0704c6f766ee98414a7778c11db32fb82015d733",
+    "date": "2026-09-22",
+    "bump": "minor",
+    "summary": "Zilch mit zufälligem Würfelwirt, klarer Punkte-Vorschau und besser lesbarem Spieltisch / Zilch with a random Dice Host, clear score preview and a more readable game table"
   }
 ]
