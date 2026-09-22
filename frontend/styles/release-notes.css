@@ -17,14 +17,20 @@
 .release-notes-body h2 { margin: .3rem 0 .6rem; font-size: clamp(1.2rem, 4vw, 1.5rem); line-height: 1.25; }
 .release-notes-eyebrow { margin: 0; color: var(--accent); font-size: .8rem; font-weight: 750; letter-spacing: .05em; }
 .release-notes-date, .release-notes-muted { color: var(--muted); font-size: .85rem; line-height: 1.45; }
-.release-notes-changes { margin: 1rem 0; padding-left: 1.25rem; line-height: 1.5; overflow-wrap: anywhere; }
+.release-notes-changes { margin: 1rem 0; padding-left: 1.25rem; line-height: 1.5; }
 .release-notes-changes li + li { margin-top: .7rem; }
 .release-notes-actions { display: flex; flex: 0 0 auto; gap: .65rem; justify-content: flex-end; padding: .9rem 1.25rem; border-top: 1px solid var(--border); }
 .release-notes-actions button { min-height: 44px; }
 .release-notes-error { margin: .5rem 1.25rem; color: var(--danger); font-size: .85rem; }
 .release-notes-error:empty { display: none; }
 .release-notes-entry { padding: .7rem 0; border-bottom: 1px solid var(--border); }
-.release-notes-entry summary { cursor: pointer; line-height: 1.45; overflow-wrap: anywhere; }
+.release-notes-entry summary { cursor: pointer; line-height: 1.45; }
+.release-notes-changes, .release-notes-entry summary {
+  overflow-wrap: normal;
+  word-break: normal;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
 .release-notes-entry summary > span { font-weight: 700; }
 .release-notes-current-version { margin: .5rem 0 1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .release-notes-version { display: inline-block; margin-right: .6rem; font-variant-numeric: tabular-nums; }

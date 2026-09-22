@@ -593,10 +593,6 @@
   .room-page .room-header .spacer{
     display:none;
   }
-  .room-page #rulesSheetOpen{
-    grid-column:2;
-    grid-row:1;
-  }
   .room-page #backToLobbyBtn{
     grid-column:3;
     grid-row:1;

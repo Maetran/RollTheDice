@@ -4,23 +4,23 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Unter Spieler & Ranking siehst du jetzt die neuesten Erfolge mit Schwierigkeit, Zeitpunkt und 20 Einträgen pro Seite.",
-  "summary_en": "Players & Ranking now shows the latest achievements with difficulty, time earned, and 20 entries per page.",
+  "summary_de": "Neu: das Achievement-Board unter Spieler & Ranking! Entdecke die neuesten Erfolge mit Beschreibungen, Details und Filtern.",
+  "summary_en": "New: the achievement board under Players & Ranking! Explore the latest achievements with descriptions, details and filters.",
   "player_notes": {
     "de": {
-      "title": "Neue Erfolge der Community",
+      "title": "Entdecke das Achievement-Board",
       "changes": [
-        "Wechsle direkt zwischen Ranglisten und den neuesten freigeschalteten Erfolgen.",
-        "Filtere mit einem Tipp nach leichten, mittleren oder schweren Erfolgen und blättere in 20er-Seiten.",
-        "ZDWA öffnet bei eindeutig zugeordneten Erfolgen die passende Partie; private Zilch-Partien bleiben geschützt."
+        "Unter Spieler & Ranking zeigt Neueste Erfolge, wer welches Achievement wann verdient hat – mit Filtern und 20 Einträgen pro Seite.",
+        "Jeder Erfolg hat jetzt eine Kurzbeschreibung und lässt sich für weitere Details antippen. In ZDWA führt ein vorhandener Partielink zum passenden Spiel.",
+        "Menüs und Dialoge lassen Wörter vollständig stehen oder trennen sie sprachgerecht."
       ]
     },
     "en": {
-      "title": "Latest community achievements",
+      "title": "Discover the achievement board",
       "changes": [
-        "Switch directly between rankings and the latest unlocked achievements.",
-        "Tap to filter easy, medium or hard achievements and browse them in pages of 20.",
-        "ZDWA opens the matching game when an achievement has one proven source; private Zilch games stay protected."
+        "Under Players & Ranking, Latest achievements shows who earned which achievement and when, with filters and 20 entries per page.",
+        "Every achievement now has a short description and opens further details when tapped. In ZDWA, an available game link leads to the matching game.",
+        "Menus and dialogs keep words intact or hyphenate them according to the selected language."
       ]
     }
   }

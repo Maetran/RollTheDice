@@ -27,6 +27,12 @@ const copy = {
     hard: "Schwer",
     zdwaTitle: "Warmgelaufen",
     zilchTitle: "Erster Wurf",
+    zdwaDescription: "10 Spiele mit deinem Konto abgeschlossen.",
+    zilchDescription: "Deine erste abgeschlossene Zilch-Partie gespeichert.",
+    accountTitle: "Profilbildner",
+    accountDescription: "Zum ersten Mal ein eigenes Profilbild gesetzt.",
+    close: "Schließen",
+    viewGame: "Partie ansehen",
   },
   en: {
     achievements: "Latest achievements",
@@ -36,6 +42,12 @@ const copy = {
     hard: "Hard",
     zdwaTitle: "Warming Up",
     zilchTitle: "First Roll",
+    zdwaDescription: "Completed 10 games with your account.",
+    zilchDescription: "Your first completed Zilch game has been saved.",
+    accountTitle: "Profile Picture",
+    accountDescription: "Set a profile picture for the first time.",
+    close: "Close",
+    viewGame: "View game",
   },
 };
 
@@ -71,6 +83,16 @@ function feedItem(product, { index, page, difficulty }) {
       difficulty: resolvedDifficulty,
     },
   };
+  if (product === "zdwa" && page === 1 && index === 1 && !difficulty) {
+    item.achievement = {
+      key: "avatar_set",
+      title: copy.de.accountTitle,
+      description: copy.de.accountDescription,
+      icon_key: "avatar",
+      points: 2,
+      difficulty: "easy",
+    };
+  }
   if (product === "zdwa" && page === 1 && index === 0) item.game_url = "/ergebnis/feed-result-1";
   return item;
 }
@@ -217,6 +239,25 @@ async function expectChronologicalPage(feed, count) {
   );
 }
 
+async function openAchievementDetails(page, item, { product, language, title, description } = {}) {
+  const opener = item.locator("button[data-achievement-details]");
+  await expect(opener).toHaveAttribute("aria-haspopup", "dialog");
+  await opener.tap();
+  const dialog = page.locator('#appDialog[data-kind="achievement-detail"]');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator("#appDialogTitle")).toHaveText(title || copy[language][`${product}Title`]);
+  await expect(dialog.locator("[data-achievement-description]")).toHaveText(description || copy[language][`${product}Description`]);
+  if (language) await expect(dialog.locator('[data-dialog-action="close-achievement"]')).toHaveText(copy[language].close);
+  await expect.poll(() => dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
+  return { dialog, opener };
+}
+
+async function closeAchievementDetails(dialog, opener) {
+  await dialog.locator('[data-dialog-action="close-achievement"]').tap();
+  await expect(dialog).toBeHidden();
+  await expect(opener).toBeFocused();
+}
+
 test("ZDWA shows the newest public achievements, result links, paging, and exclusive filters on mobile", async ({ browser, baseURL }) => {
   const { context, page, requests } = await openFeedPage(browser, baseURL, { product: "zdwa", language: "de" });
   try {
@@ -229,11 +270,11 @@ test("ZDWA shows the newest public achievements, result links, paging, and exclu
     await expect(first.locator(".achievement-feed-player-link")).toContainText("Newest Player 01");
     await expect(first.locator(".achievement-feed-player-link")).toHaveAttribute("href", "/api/players/by-id/10001/profile?game=zdwa");
     await expect(first).toContainText(copy.de.zdwaTitle);
+    await expect(first.locator("[data-achievement-description]")).toHaveText(copy.de.zdwaDescription);
     await expect(first.locator(".achievement-feed-difficulty")).toHaveText(copy.de.easy);
     await expect(first.locator("time")).toHaveAttribute("datetime", "2026-09-22T11:59:00.000Z");
-    await expect(first.locator("[data-achievement-game-link]")).toHaveAttribute("href", "/ergebnis/feed-result-1");
-    expect((await first.locator("[data-achievement-game-link]").boundingBox()).height).toBeGreaterThanOrEqual(44);
-    await expect(feed.locator("[data-achievement-item]").nth(1).locator("[data-achievement-game-link]")).toHaveCount(0);
+    await expect(feed.locator("button[data-achievement-details]")).toHaveCount(20);
+    expect((await first.locator("button[data-achievement-details]").boundingBox()).height).toBeGreaterThanOrEqual(44);
 
     // Follow the real result page through its existing API projection, rather
     // than replacing the destination document with a placeholder page.
@@ -252,13 +293,31 @@ test("ZDWA shows the newest public achievements, result links, paging, and exclu
       chat_history: [],
       admin_edits: {},
     } }));
-    await first.locator("[data-achievement-game-link]").tap();
+    const { dialog: sourceDialog } = await openAchievementDetails(page, first, { product: "zdwa", language: "de" });
+    await expect(sourceDialog.locator(".achievement-feed-detail-player")).toContainText("Newest Player 01");
+    await expect(sourceDialog.locator("time")).toHaveAttribute("datetime", "2026-09-22T11:59:00.000Z");
+    await sourceDialog.locator('[data-dialog-action="achievement-game"]').tap();
     await expect(page).toHaveURL(/\/ergebnis\/feed-result-1$/);
     await expect(page.locator(".readonly-achievements")).toContainText("Newest Player 01");
     await expect(page.locator(".readonly-achievements")).toContainText("Warmgelaufen");
     await page.goBack();
     await expect(feed).toBeVisible();
     await expectChronologicalPage(feed, 20);
+
+    const account = feed.locator("[data-achievement-item]").nth(1);
+    await expect(account.locator("[data-achievement-description]")).toHaveText(copy.de.accountDescription);
+    const { dialog: accountDialog, opener: accountOpener } = await openAchievementDetails(page, account, {
+      title: copy.de.accountTitle, description: copy.de.accountDescription,
+    });
+    await expect(accountDialog.locator(".achievement-feed-detail-player")).toHaveText("Insgesamt");
+    await expect(accountDialog.locator(".achievement-feed-detail-player")).toHaveAttribute("translate", "no");
+    await expect(accountDialog.locator('[data-dialog-action="achievement-game"]')).toHaveCount(0);
+    await closeAchievementDetails(accountDialog, accountOpener);
+    await page.keyboard.press("Enter");
+    await expect(accountDialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(accountDialog).toBeHidden();
+    await expect(accountOpener).toBeFocused();
 
     await feed.locator('button[data-achievement-page="2"]:visible').last().tap();
     await expectRequest(requests, { page: 2, difficulty: null });
@@ -292,6 +351,8 @@ test("Zilch translates the feed without exposing private game links and keeps th
     await expectChronologicalPage(feed, 20);
     const first = feed.locator("[data-achievement-item]").first();
     await expect(first).toContainText(copy.en.zilchTitle);
+    await expect(first.locator("[data-achievement-description]")).toHaveText(copy.en.zilchDescription);
+    await expect(feed.locator("button[data-achievement-details]")).toHaveCount(20);
     await expect(first.locator(".achievement-feed-difficulty")).toHaveText(copy.en.easy);
     await expect(first.locator(".achievement-feed-player-link")).toHaveAttribute("href", "/api/players/by-id/10001/profile?game=zilch");
     await expect(feed.locator("[data-achievement-game-link], a[href^='/ergebnis/']")).toHaveCount(0);
@@ -301,8 +362,23 @@ test("Zilch translates the feed without exposing private game links and keeps th
     await expect(names.nth(2)).toHaveText('<img src=x onerror="window.feedInjected=true">');
     await expect(names.nth(2).locator("img")).toHaveCount(0);
     expect(await page.evaluate(() => window.feedInjected)).toBeUndefined();
+    const { dialog, opener } = await openAchievementDetails(page, first, { product: "zilch", language: "en" });
+    await expect(dialog.locator('[data-dialog-action="achievement-game"]')).toHaveCount(0);
+    await closeAchievementDetails(dialog, opener);
+    const unsafeName = await openAchievementDetails(page, feed.locator("[data-achievement-item]").nth(2), { product: "zilch", language: "en" });
+    await expect(unsafeName.dialog.locator(".achievement-feed-detail-player")).toHaveText('<img src=x onerror="window.feedInjected=true">');
+    await expect(unsafeName.dialog.locator("[onerror]")).toHaveCount(0);
+    expect(await page.evaluate(() => window.feedInjected)).toBeUndefined();
+    await closeAchievementDetails(unsafeName.dialog, unsafeName.opener);
 
     await feed.locator('button[data-achievement-page="2"]:visible').last().tap();
+    await expectRequest(requests, { page: 2, difficulty: null });
+    await expectChronologicalPage(feed, 3);
+    const pageTwo = await openAchievementDetails(page, first, { product: "zilch", language: "en" });
+    await expect(pageTwo.dialog.locator(".achievement-feed-detail-player")).toContainText("PageTwo Player 21");
+    await page.keyboard.press("Escape");
+    await expect(pageTwo.dialog).toBeHidden();
+    await expect(pageTwo.opener).toBeFocused();
     await expectRequest(requests, { page: 2, difficulty: null });
     await expectChronologicalPage(feed, 3);
     await tapFilter(feed, requests, "easy");
@@ -395,10 +471,10 @@ async function expectTouchLayout(page, feed, viewport) {
       return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
     };
     const items = [...element.querySelectorAll("[data-achievement-item]")].map(bounds);
-    const targets = [...document.querySelectorAll("[data-achievement-tab], [data-achievement-filter], [data-achievement-page], .achievement-feed-player-link, [data-achievement-game-link]")]
+    const targets = [...document.querySelectorAll("[data-achievement-tab], [data-achievement-filter], [data-achievement-page], .achievement-feed-player-link, [data-achievement-details]")]
       .filter(node => node.getClientRects().length)
       .map(node => ({ ...bounds(node), label: node.textContent.trim() }));
-    const labels = [...element.querySelectorAll("time, .achievement-feed-award-copy > strong, .achievement-feed-difficulty")]
+    const labels = [...element.querySelectorAll("time, .achievement-feed-award-copy > strong, .achievement-feed-difficulty, [data-achievement-description]")]
       .map(node => ({ ...bounds(node), card: bounds(node.closest("[data-achievement-item]")) }));
     return {
       documentWidth: document.documentElement.scrollWidth,
@@ -431,6 +507,37 @@ async function expectTouchLayout(page, feed, viewport) {
   }
 }
 
+async function expectAchievementDialogLayout(dialog, viewport) {
+  const geometry = await dialog.evaluate(element => {
+    const bounds = node => {
+      const rect = node.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
+    };
+    return {
+      dialog: bounds(element),
+      contentWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      contents: [...element.querySelectorAll("#appDialogTitle, [data-achievement-description], .achievement-feed-detail-player, time, [data-dialog-action]")].map(bounds),
+      actions: [...element.querySelectorAll("[data-dialog-action]")].map(bounds),
+    };
+  });
+  expect(geometry.dialog.left).toBeGreaterThanOrEqual(0);
+  expect(geometry.dialog.right).toBeLessThanOrEqual(viewport.width);
+  expect(geometry.dialog.top).toBeGreaterThanOrEqual(0);
+  expect(geometry.dialog.bottom).toBeLessThanOrEqual(viewport.height);
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.contentWidth + 1);
+  for (const content of geometry.contents) {
+    expect(content.left).toBeGreaterThanOrEqual(geometry.dialog.left);
+    expect(content.right).toBeLessThanOrEqual(geometry.dialog.right);
+    expect(content.top).toBeGreaterThanOrEqual(geometry.dialog.top);
+    expect(content.bottom).toBeLessThanOrEqual(geometry.dialog.bottom);
+  }
+  for (const action of geometry.actions) {
+    expect(action.width).toBeGreaterThanOrEqual(44);
+    expect(action.height).toBeGreaterThanOrEqual(44);
+  }
+}
+
 for (const [product, configuration] of Object.entries(products)) {
   for (const [index, theme] of configuration.themes.entries()) {
     const language = index % 2 ? "en" : "de";
@@ -445,9 +552,11 @@ for (const [product, configuration] of Object.entries(products)) {
         await expect(feed.locator('[data-achievement-filter="hard"]')).toHaveText(copy[language].hard);
         await expect(feed.locator("[data-achievement-item]").first()).toContainText(copy[language][`${product}Title`]);
         const first = feed.locator("[data-achievement-item]").first();
+        await expect(first.locator("[data-achievement-description]")).toHaveText(copy[language][`${product}Description`]);
         await expectTextContrast(first.locator(".achievement-feed-player-name"));
         await expectTextContrast(first.locator("time"));
         await expectTextContrast(first.locator(".achievement-feed-award-copy > strong"));
+        await expectTextContrast(first.locator("[data-achievement-description]"));
         await expectTextContrast(feed.locator('[data-achievement-filter="easy"]'));
         await expectTextContrast(page.locator('[data-achievement-tab="achievements"]'));
         const easyFilter = feed.locator('[data-achievement-filter="easy"]');
@@ -470,6 +579,20 @@ for (const [product, configuration] of Object.entries(products)) {
           if (viewport.width >= 700) await expectTextContrast(feed.locator('[data-achievement-page][aria-current="page"]'));
           await page.evaluate(() => window.scrollTo(0, 0));
           await page.screenshot({ path: testInfo.outputPath(`achievement-feed-${product}-${theme}-${viewport.width}x${viewport.height}.png`) });
+          const { dialog, opener } = await openAchievementDetails(page, first, { product, language });
+          await expectAchievementDialogLayout(dialog, viewport);
+          await expectTextContrast(dialog.locator("[data-achievement-description]"));
+          await expectTextContrast(dialog.locator('[data-dialog-action="close-achievement"]'));
+          if (product === "zdwa") {
+            await expect(dialog.locator('[data-dialog-action="achievement-game"]')).toHaveText(copy[language].viewGame);
+            await expectTextContrast(dialog.locator('[data-dialog-action="achievement-game"]'));
+          } else {
+            await expect(dialog.locator('[data-dialog-action="achievement-game"]')).toHaveCount(0);
+          }
+          await page.screenshot({ path: testInfo.outputPath(`achievement-details-${product}-${theme}-${viewport.width}x${viewport.height}.png`) });
+          await closeAchievementDetails(dialog, opener);
+          await expectTextContrast(first.locator(".achievement-feed-award-copy > strong"));
+          await expectTextContrast(first.locator("[data-achievement-description]"));
         }
       } finally {
         await context.close();

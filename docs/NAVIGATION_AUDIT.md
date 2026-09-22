@@ -58,6 +58,11 @@ prüft diesen Einstieg, das Zurückschalten, Filter und Seitenwechsel sowie die
 öffentlichen ZDWA-Partielinks. Die bestehenden Produkt-Routentests prüfen
 weiterhin Gastzugang, Preview-Schutz und die kanonische Zilch-Adresse.
 
+Seit Version 2.39.1 öffnet jeder Feed-Eintrag einen Detaildialog mit Beschreibung.
+Ein vorhandener ZDWA-Partielink ist darin erreichbar; Erfolge ohne Partie und
+Zilch-Erfolge führen ebenfalls zu nutzbaren Details. Die Browserprüfungen sichern
+Schließen, Fokusrückgabe und den Erhalt von Filter und Seite ab.
+
 Die bereits vorhandenen Browserprüfungen testen die vollständigen Wege durch
 Spielersuche und Spielerauswahl, E-Mail-/Passwort-Aktionen, Konto-Anmeldung mit
 Rückkehr zum gewünschten Reiter, PWA-Spielwechsel, Ergebnisse und Zuschauerlinks.

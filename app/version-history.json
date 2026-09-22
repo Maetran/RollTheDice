@@ -1902,5 +1902,12 @@
     "date": "2026-09-21",
     "bump": "patch",
     "summary": "Ruhige Avatare bei ZDWA-Spielaktionen / Stable avatars during ZDWA game actions"
+  },
+  {
+    "version": "2.39.0",
+    "revision": "91f3901189269f55fa9e91ec057ba4ea372b299d",
+    "date": "2026-09-22",
+    "bump": "minor",
+    "summary": "Neueste Erfolge der Community / Latest community achievements"
   }
 ]

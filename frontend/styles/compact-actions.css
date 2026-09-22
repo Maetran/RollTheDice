@@ -1,5 +1,15 @@
 /* Compact controls still need a full touch target. Keep text actions at their
    natural width; square controls contain an icon and an accessible name. */
+.room-page .room-header-menu-panel > button > span:last-child,
+.app-dialog .app-dialog-actions > button,
+.room-page .leave-game-actions > button,
+html[data-game="zilch"] .zilch-game-invite-button {
+  overflow-wrap: normal;
+  word-break: normal;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
+
 @media (any-pointer: coarse), (max-width: 760px) {
   .room-page .room-header,
   html[data-game="zilch"] .zilch-shell--game .zilch-header {
@@ -16,7 +26,6 @@
   }
   .room-page .room-header-menu-panel > button > span:last-child {
     min-width: 0;
-    overflow-wrap: anywhere;
   }
 
   html[data-game="zilch"] .zilch-shell--game .zilch-header-tools :is(button, a) {
@@ -35,11 +44,12 @@
     height: 44px;
     min-height: 44px;
   }
-  .app-dialog .app-dialog-actions > button {
+  .app-dialog .app-dialog-actions > button,
+  .room-page .leave-game-actions > button,
+  html[data-game="zilch"] .zilch-game-invite-button {
     min-height: 44px;
     height: auto;
     white-space: normal;
-    overflow-wrap: anywhere;
   }
 }
 

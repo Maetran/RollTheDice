@@ -346,16 +346,20 @@ Unter **Spieler & Ranking → Neueste Erfolge** zeigt jedes Spiel die jüngsten
 Freischaltungen der Community mit Spieler, Zeitpunkt und Schwierigkeit, fest
 auf 20 Einträge pro Seite begrenzt. **Leicht**, **Mittel** und **Schwer** lassen
 sich einzeln ein- und durch erneutes Antippen wieder ausschalten. In ZDWA öffnet
-ein verknüpfter Erfolg die konkrete öffentliche Partie. Konto- und
-Sammelerfolge ohne eindeutig belegte Partie bleiben ohne Spiellink; private
-Zilch-Ergebnisse werden nie aus dem Feed offengelegt.
+ein Erfolg seine Details mit einem Link zur konkreten öffentlichen Partie,
+sofern sie eindeutig zugeordnet ist. Jeder Eintrag zeigt eine Kurzbeschreibung
+und ist antippbar, auch Konto- und Sammelerfolge ohne Spiellink. Private
+Zilch-Ergebnisse werden nie aus dem Feed offengelegt. Menüs und Dialogaktionen
+behalten ganze Wörter bei und trennen bei Bedarf passend zur gewählten Sprache.
 
 Under **Players & Ranking → Latest achievements**, each game shows the newest
 community unlocks with player, time and difficulty, limited to 20 entries per
 page. **Easy**, **medium** and **hard** can each be selected and toggled off by
-tapping again. In ZDWA, a linked achievement opens the specific public game.
-Account and aggregate achievements without one proven game remain unlinked;
-private Zilch results are never exposed by the feed.
+tapping again. Tapping any achievement opens its details, with a link to the
+specific public ZDWA game when one is proven. Every entry includes a short
+description, including account and aggregate achievements without a game link;
+private Zilch results are never exposed by the feed. Menus and dialog actions
+keep words intact and hyphenate according to the selected language when needed.
 
 **Offline spielen** steht in beiden Lobbys bereit: ZDWA als normales Solospiel,
 Zilch solo oder gegen den Würfelwirt. Jeder Einstieg und jedes Fortsetzen nach

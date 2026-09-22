@@ -1,4 +1,5 @@
 import { avatarMarkup } from "./avatar.js";
+import { zdwaPath } from "../multigame/routes.js";
 
 const DIFFICULTIES = new Set(["easy", "medium", "hard"]);
 const ICONS = new Set([
@@ -110,27 +111,71 @@ function playerMarkup(player, context) {
     : `<span class="achievement-feed-player-link">${identity}</span>`;
 }
 
-function itemMarkup(item, options) {
+function itemMarkup(item, options, index) {
   const player = plainObject(item.player);
   const achievement = plainObject(item.achievement);
   const difficulty = normalizedDifficulty(achievement);
   const title = localizedAchievementText(achievement, "title", "Achievement");
+  const description = localizedAchievementText(achievement, "description", "Eine besondere Leistung wurde freigeschaltet.");
   const date = formattedDateTime(item.unlocked_at);
   const points = pointsText(achievement.points, options.context);
   const icon = normalizedIcon(achievement);
   const gameUrl = options.linkGames ? internalGameUrl(item.game_url) : "";
   const awardContents = `<span class="achievement-feed-icon achievement-feed-icon--${escapeHtml(icon)}" aria-hidden="true"></span>
-      <span class="achievement-feed-award-copy"><strong>${escapeHtml(title)}</strong><span class="achievement-feed-award-meta"><span class="achievement-feed-difficulty achievement-feed-difficulty--${difficulty}">${escapeHtml(difficultyLabel(difficulty))}</span>${points ? `<span>${escapeHtml(points)}</span>` : ""}${gameUrl ? `<span class="achievement-feed-game-label">${escapeHtml(t("Partie ansehen"))}</span>` : ""}</span></span>
-      ${gameUrl ? '<span class="achievement-feed-open" aria-hidden="true">›</span>' : ""}`;
+      <span class="achievement-feed-award-copy"><strong>${escapeHtml(title)}</strong><span class="achievement-feed-description" data-achievement-description>${escapeHtml(description)}</span><span class="achievement-feed-award-meta"><span class="achievement-feed-difficulty achievement-feed-difficulty--${difficulty}">${escapeHtml(difficultyLabel(difficulty))}</span>${points ? `<span>${escapeHtml(points)}</span>` : ""}${gameUrl ? `<span class="achievement-feed-game-label">${escapeHtml(t("Partie verfügbar"))}</span>` : ""}</span></span>
+      <span class="achievement-feed-open" aria-hidden="true">›</span>`;
   return `<article class="achievement-feed-item" data-achievement-item data-achievement-difficulty="${difficulty}">
     <div class="achievement-feed-earned">
       <div class="achievement-feed-player">${playerMarkup(player, options.context)}</div>
       <time datetime="${escapeHtml(date.raw)}">${escapeHtml(date.label)}</time>
     </div>
-    ${gameUrl
-      ? `<a class="achievement-feed-award" data-achievement-game-link href="${escapeHtml(gameUrl)}" aria-label="${escapeHtml(`${title} · ${t("Partie ansehen")}`)}">${awardContents}</a>`
-      : `<div class="achievement-feed-award">${awardContents}</div>`}
+    <button type="button" class="achievement-feed-award" data-achievement-details="${index}" aria-haspopup="dialog" aria-label="${escapeHtml(`${title} · ${t("Erfolg ansehen")}`)}">${awardContents}</button>
   </article>`;
+}
+
+async function showAchievementDetails(item, options) {
+  const achievement = plainObject(item.achievement);
+  const title = localizedAchievementText(achievement, "title", "Achievement");
+  const description = localizedAchievementText(achievement, "description", "Eine besondere Leistung wurde freigeschaltet.");
+  const date = formattedDateTime(item.unlocked_at);
+  const difficulty = difficultyLabel(normalizedDifficulty(achievement));
+  const points = pointsText(achievement.points, options.context);
+  const gameUrl = options.linkGames ? internalGameUrl(item.game_url) : "";
+  const actions = [{ id: "close-achievement", label: t("Schließen"), className: gameUrl ? "ghost" : "primary" }];
+  if (gameUrl) actions.push({ id: "achievement-game", label: t("Partie ansehen"), className: "primary" });
+  const choice = await window.ZDWA_UI.dialog({
+    title,
+    message: description,
+    kind: "achievement-detail",
+    actions,
+    onOpen({ message }) {
+      const text = document.createElement("p");
+      text.className = "achievement-feed-detail-description";
+      text.dataset.achievementDescription = "";
+      text.textContent = description;
+      const meta = document.createElement("p");
+      meta.className = "achievement-feed-detail-meta";
+      meta.textContent = [difficulty, points].filter(Boolean).join(" · ");
+      const earned = document.createElement("p");
+      earned.className = "achievement-feed-detail-earned";
+      const player = document.createElement("strong");
+      player.className = "achievement-feed-detail-player";
+      player.setAttribute("translate", "no");
+      player.textContent = playerName(plainObject(item.player));
+      const time = document.createElement("time");
+      time.dateTime = date.raw;
+      time.textContent = date.label;
+      earned.append(player, document.createTextNode(" · "), time);
+      message.replaceChildren(text, meta, earned);
+      if (!gameUrl) {
+        const note = document.createElement("p");
+        note.className = "achievement-feed-detail-note";
+        note.textContent = t(options.context === "zilch" ? "Zilch-Partien bleiben privat." : "Für diesen Erfolg ist keine öffentliche Partie verlinkt.");
+        message.append(note);
+      }
+    },
+  });
+  if (choice === "achievement-game" && gameUrl) window.location.assign(zdwaPath(gameUrl));
 }
 
 function paginationTokens(page, pages) {
@@ -177,7 +222,7 @@ export function mountAchievementFeed(mount, {
 } = {}) {
   if (!mount || !endpoint) return null;
   const options = { context, linkGames };
-  const state = { difficulty: null, page: 1, pages: 1, requestVersion: 0, loaded: false };
+  const state = { difficulty: null, page: 1, pages: 1, requestVersion: 0, loaded: false, items: [], detailsOpen: false };
   mount.classList.add("achievement-feed");
   mount.dataset.achievementFeed = context;
   mount.innerHTML = `<div class="achievement-feed-heading">
@@ -207,6 +252,7 @@ export function mountAchievementFeed(mount, {
     mount.setAttribute("aria-busy", "true");
     status.textContent = t("Neueste Achievements werden geladen …");
     list.replaceChildren();
+    state.items = [];
     pagination.replaceChildren();
     const params = new URLSearchParams({ page: String(state.page) });
     if (state.difficulty) params.set("difficulty", state.difficulty);
@@ -218,9 +264,10 @@ export function mountAchievementFeed(mount, {
       state.page = payload.page;
       state.pages = payload.pages;
       state.loaded = true;
+      state.items = payload.items.map(plainObject);
       status.textContent = "";
       list.innerHTML = payload.items.length
-        ? payload.items.map(item => itemMarkup(plainObject(item), options)).join("")
+        ? state.items.map((item, index) => itemMarkup(item, options, index)).join("")
         : `<div class="achievement-feed-empty" role="status"><strong>${escapeHtml(t("Noch keine passenden Achievements"))}</strong><span>${escapeHtml(t("Sobald jemand ein passendes Achievement verdient, erscheint es hier."))}</span></div>`;
       pagination.innerHTML = paginationMarkup(payload.page, payload.pages, payload.total);
       if (focus === "filter") mount.querySelector(`[data-achievement-difficulty-filter="${state.difficulty || ""}"]`)?.focus();
@@ -238,6 +285,17 @@ export function mountAchievementFeed(mount, {
 
   mount.addEventListener("click", event => {
     if (!(event.target instanceof Element)) return;
+    const detailButton = event.target.closest("[data-achievement-details]");
+    if (detailButton instanceof HTMLButtonElement && !state.detailsOpen) {
+      const item = state.items[Number(detailButton.dataset.achievementDetails)];
+      if (!item) return;
+      // Touch Safari does not always focus a tapped button. Give the shared
+      // dialog a stable focus target to restore after it closes.
+      detailButton.focus({ preventScroll: true });
+      state.detailsOpen = true;
+      void showAchievementDetails(item, options).finally(() => { state.detailsOpen = false; });
+      return;
+    }
     const filter = event.target.closest("[data-achievement-difficulty-filter]");
     if (filter instanceof HTMLButtonElement) {
       const difficulty = filter.dataset.achievementDifficultyFilter;

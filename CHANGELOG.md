@@ -22,6 +22,23 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.39.1 — Achievement-Details und lesbare Menüs / Achievement details and readable menus — 2026-09-22
+
+- **Deutsch:** Das neue Achievement-Board unter **Spieler & Ranking → Neueste
+  Erfolge** zeigt nun zu jedem Erfolg eine Kurzbeschreibung. Alle Einträge öffnen
+  eine Detailansicht, auch Kontoerfolge und Zilch-Erfolge ohne öffentliche Partie.
+  Eindeutig zugeordnete ZDWA-Partien bleiben aus den Details erreichbar. Menüs
+  und Dialogaktionen umbrechen Wörter natürlich und nutzen bei Bedarf die
+  Silbentrennung der gewählten Sprache. Ankündigung des Achievement-Boards per
+  Versionshinweis und Push an dafür angemeldete Geräte.
+- **English:** The new achievement board under **Players & Ranking → Latest
+  achievements** now shows a short description for every achievement. All
+  entries open details, including account and Zilch achievements without a
+  public game. Proven ZDWA source games remain accessible from the details.
+  Menus and dialog actions wrap at natural word boundaries and use hyphenation
+  for the selected language when needed. The achievement board is announced
+  through release notes and push to devices subscribed to release updates.
+
 ## 2.39.0 — Neue Erfolge der Community / Latest community achievements — 2026-09-22
 
 - **Deutsch:** Unter **Spieler & Ranking** bündeln ZDWA und Zilch ihre

@@ -182,6 +182,9 @@ import { zdwaPath } from "../multigame/routes.js";
     backdrop.hidden = false;
     document.documentElement.classList.add("app-dialog-open");
     document.body.classList.add("app-dialog-open");
+    // Rich read-only details can use safe DOM nodes while retaining this
+    // dialog's keyboard handling, queue and focus restoration.
+    if (typeof options.onOpen === "function") options.onOpen({ dialog, message });
     setTimeout(() => {
       const target = inputOptions ? input : actions.querySelector(".primary:not(:disabled), button:not(:disabled)");
       try { (target || dialog).focus({ preventScroll: true }); } catch (_) { (target || dialog).focus(); }
