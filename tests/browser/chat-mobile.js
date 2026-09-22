@@ -1,4 +1,4 @@
-const { expect } = require("@playwright/test");
+const { test, expect } = require("@playwright/test");
 const { expectReachable } = require("./table-viewport");
 
 async function openChatWithKeyboardFocus(page, toggleSelector, inputSelector) {
@@ -96,6 +96,30 @@ async function expectCollapsedChatDock(page, {
     reactionVisible: true, reactionTargetLargeEnough: true,
     toggleTextClearsCappedInset: true, reactionClearsCappedInset: true,
     reactionHalfReachesBottom: true, reactionHalfIsPainted: true,
+  }).catch(async error => {
+    try {
+      const geometry = await page.evaluate(({ panel, toggle, reactionHost }) => ({
+        viewport: {
+          width:innerWidth, height:innerHeight, visualWidth:window.visualViewport?.width,
+          visualHeight:window.visualViewport?.height, visualTop:window.visualViewport?.offsetTop,
+          scale:window.visualViewport?.scale,
+        },
+        coarse:matchMedia("(any-pointer:coarse)").matches,
+        tablet:matchMedia("(any-pointer:coarse) and (min-width:768px) and (min-height:600px)").matches,
+        cssHeight:document.documentElement?.style.getPropertyValue("--game-viewport-height"),
+        targets:[panel, toggle, `${reactionHost} .emoji-fab`].map(selector => {
+          const element = document.querySelector(selector);
+          if (!element) return { selector, missing:true };
+          const style = getComputedStyle(element);
+          return { selector, rect:element.getBoundingClientRect().toJSON(), width:style.width, height:style.height,
+            minHeight:style.minHeight, flexBasis:style.flexBasis, transform:style.transform, active:element.matches(":active") };
+        }),
+      }), { panel, toggle, reactionHost });
+      await test.info().attach("chat-dock-geometry", {
+        body:JSON.stringify({ requestedViewport:page.viewportSize(), ...geometry }, null, 2), contentType:"application/json",
+      });
+    } catch { /* A closed page or failed attachment must preserve the original assertion. */ }
+    throw error;
   });
   await expectReachable(page, toggle);
   await expectReachable(page, `${reactionHost} .emoji-fab`);

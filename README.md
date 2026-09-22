@@ -297,6 +297,48 @@ sign-in stays available. Bans apply to the account, not to unidentified guests
 across devices. Help-request push has a separate setting, enabled by default
 for admins; browser permission and a registered push device are still required.
 
+**Deutsch – Eigentümerschutz:** Der Gründer ist dauerhaft an eine feste
+Konto-ID gebunden, unabhängig vom Spielernamen. Die Anwendung und
+Datenbankregeln verhindern, dass Gründer oder Owner gesperrt, deaktiviert,
+stummgeschaltet, ausgeschlossen oder zu normalen Nutzern herabgestuft werden.
+Nur der Gründer kann weitere Owner ernennen oder deren Ownerrechte entziehen;
+seine eigene Bindung ist unveränderlich. Owner verwalten normale Adminrechte.
+Admins können keine anderen Mitarbeiterkonten übernehmen oder deren Rechte
+ändern. Ein administrativer Passwort-Reset ist beim Gründer vollständig
+gesperrt; persönliche Passwort- und Wiederherstellungswege bleiben verfügbar.
+Weitere Owner behalten ihre Adminrechte, wenn ihre Ownerberechtigung entzogen
+wird. Danach können sie wie andere Admins herabgestuft werden. Im Spiel sehen
+alle dieselbe dezente Admin-Kennzeichnung, keine zusätzliche Statuskette.
+
+Die einmalige Einrichtung erfolgt ausdrücklich mit der geprüften numerischen
+Konto-ID: `FOUNDER_USER_ID=<id> scripts/deploy_zdwa.sh` oder beim Start mit
+`ROLLTHEDICE_FOUNDER_USER_ID=<id>`. Der Zielaccount muss ein aktiver,
+ungesperrter Admin sein. Ohne Angabe wird nichts automatisch zugeordnet.
+Die Bindung bleibt in der Datenbank bestehen, auch wenn die Variable später
+entfernt wird; eine widersprüchliche ID verhindert den Start. Erteilung und
+Entzug weiterer Ownerrechte werden protokolliert. Server- und Datenbankzugang
+sind davon getrennt: Wer beliebig Datenbankregeln oder Serverdateien ändern
+kann, liegt außerhalb dieses Anwendungsschutzes.
+
+**English – Ownership protection:** The founder is permanently bound to a
+stable account ID, independently of their player name. Application checks and
+database rules prevent bans, deactivation, chat restrictions and demotion of
+the founder and owners. Only the founder can grant or revoke delegated
+ownership; the founder binding cannot be removed. Owners manage ordinary
+admin permissions. Admins cannot take over other staff accounts or change
+their permissions. Administrative password resets are always blocked for the
+founder; personal password and recovery flows remain available. Revoking
+delegated ownership retains ordinary admin access, which can then be removed
+separately. Games keep the same discreet admin badge for all support staff.
+
+Initial binding requires an explicitly verified numeric account ID through
+`FOUNDER_USER_ID=<id> scripts/deploy_zdwa.sh` or startup environment variable
+`ROLLTHEDICE_FOUNDER_USER_ID=<id>`. The account must be an active, unrestricted
+admin. No automatic assignment occurs without this setting. The database
+retains the binding after the variable is removed; a conflicting ID prevents
+startup. Delegated ownership changes are audited. Direct control over server
+files or database definitions remains outside this application-level boundary.
+
 The production account release enables email registration and recovery alongside
 passkeys and public Fairplay counters. Resend sends from
 `noreply@zockdiewandan.online`; the [mail setup record](docs/MAIL_SETUP_2026-09-12.md)

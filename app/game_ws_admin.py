@@ -8,6 +8,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+from fastapi import WebSocketDisconnect
+
+from .auth import resolve_session
 from .game_admin import (
     apply_superadmin_changes,
     apply_superadmin_die_change,
@@ -49,6 +52,13 @@ async def handle_superadmin_action(
     *,
     finalize_game: FinalizeGame,
 ) -> None:
+    if action != "superadmin_deactivate":
+        session.auth_identity = resolve_session(session.websocket)
+        if not _admin_allowed(session):
+            if session.player_id in session.game.get("_superadmins", {}):
+                await _deactivate(session)
+            await _send_error(session, "Admin-Berechtigung erforderlich")
+            return
     if action == "superadmin_activate":
         await _activate(session, data)
     elif action == "superadmin_deactivate":
@@ -71,6 +81,29 @@ def _admin_allowed(session: GameSocketSession) -> bool:
     return bool(session.auth_identity and session.auth_identity.is_admin)
 
 
+async def release_revoked_superadmin_locks(game: dict[str, Any]) -> None:
+    """A revoked idle editor must not keep other players' game actions locked."""
+    editors = game.get("_superadmins", {})
+    changed = False
+    for player_id, editor in list(editors.items()):
+        player = next((p for p in game.get("_players", []) if p.get("id") == player_id), None)
+        websocket = player.get("ws") if player else None
+        identity = resolve_session(websocket) if websocket else None
+        if (identity and identity.is_admin and identity.user_id == editor.get("user_id")
+                and identity.session_id == editor.get("session_id")):
+            continue
+        editors.pop(player_id, None)
+        changed = True
+        if websocket:
+            try:
+                await websocket.send_json({"superadmin": {"active": False}})
+            except (WebSocketDisconnect, RuntimeError, OSError):
+                pass
+    if changed:
+        touch(game)
+        await broadcast(game, {"scoreboard": snapshot(game)})
+
+
 async def _activate(session: GameSocketSession, data: dict[str, Any]) -> None:
     g = session.game
     player_id = session.player_id
@@ -88,7 +121,10 @@ async def _activate(session: GameSocketSession, data: dict[str, Any]) -> None:
         await _send_error(session, "Board nicht gefunden")
         return
 
-    g.setdefault("_superadmins", {})[player_id] = {"board_id": board_id}
+    g.setdefault("_superadmins", {})[player_id] = {
+        "board_id": board_id, "user_id": session.auth_identity.user_id,
+        "session_id": session.auth_identity.session_id,
+    }
     name = _player_name(g, player_id)
     await session.websocket.send_json({"superadmin": {"active": True, "board_id": board_id}})
     touch(g)

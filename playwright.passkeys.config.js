@@ -49,6 +49,7 @@ module.exports = defineConfig({
       ROLLTHEDICE_WEB_PUSH_VAPID_PRIVATE_KEY: "",
       ROLLTHEDICE_WEB_PUSH_VAPID_SUBJECT: "",
       ROLLTHEDICE_ADMIN_USERNAME: "Admin",
+      ROLLTHEDICE_FOUNDER_USER_ID: "1",
       ROLLTHEDICE_ADMIN_PASSWORD: "temporary-password-123",
       ROLLTHEDICE_ZILCH_ACCESS_MODE: "public",
     },

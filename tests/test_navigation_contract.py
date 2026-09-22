@@ -47,7 +47,9 @@ DOCUMENT_ROUTES = (
         ("/spiel/{game_id}",), "tests/browser/zdwa-device-switch.spec.js",
     ),
     RouteCoverage(("/spiel/{game_id}/zuschauen",), "tests/browser/admin-help-ui.spec.js"),
-    RouteCoverage(("/admin",), "tests/browser/admin-restrictions.spec.js"),
+    # Ownership adds a real signed-in browser flow; existing restriction tests
+    # continue covering ordinary moderation on the same page.
+    RouteCoverage(("/admin",), "tests/browser/admin-ownership.spec.js"),
     RouteCoverage(("/ergebnis",), "tests/browser/navigation-destinations.spec.js"),
     RouteCoverage(
         ("/spieler", "/zilch/bestenlisten"), "tests/browser/achievement-feed.spec.js",

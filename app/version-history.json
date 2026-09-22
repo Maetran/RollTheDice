@@ -1937,5 +1937,12 @@
     "date": "2026-09-22",
     "bump": "patch",
     "summary": "Ruhige Profilbilder und zentrierte Desktop-Menüs / Stable profile pictures and centered desktop menus"
+  },
+  {
+    "version": "2.40.0",
+    "revision": "d534fc9baa4e82c34495f927bb364fd34ace3f8d",
+    "date": "2026-09-22",
+    "bump": "minor",
+    "summary": "Adminhilfe im Spiel und gezielte Kontosperren / In-game admin help and scoped account bans"
   }
 ]

@@ -301,11 +301,16 @@ async def _run_timeout_sweeper(
     *,
     interval_seconds: float = TIMEOUT_SWEEP_INTERVAL_SECONDS,
 ) -> None:
-    """Keep the one-hour room deadline independent of browser traffic."""
+    """Expire rooms and revoked editor locks without relying on browser traffic."""
+    from .game_ws_admin import release_revoked_superadmin_locks
+
     interval = max(1.0, float(interval_seconds))
     while not stop_event.is_set():
         try:
             await _sweep_timeout_aborts()
+            for game in list(games.values()):
+                if game.get("_superadmins"):
+                    await release_revoked_superadmin_locks(game)
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -384,6 +389,8 @@ async def lifespan(_app: FastAPI):
     validate_passkey_config()
     validate_web_push_config()
     ensure_bootstrap_admin()
+    from .owner_bootstrap import ensure_configured_founder
+    ensure_configured_founder()
     import_legacy_leaderboards(LEADERBOARD_FILES.legacy_paths())
     games.update(load_active_games())
     # Expire recovered rooms before any CPU runner can resume a turn.  Without

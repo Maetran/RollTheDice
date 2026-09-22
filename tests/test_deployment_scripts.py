@@ -29,7 +29,7 @@ git() {
 }
 sudo() {
   case "$*" in
-    *"docker compose up"*) echo BUILD; return "$BUILD_FAIL" ;;
+    *"docker compose up"*) echo BUILD; echo "COMPOSE_ARGS:$*"; return "$BUILD_FAIL" ;;
     *"docker compose exec"*) echo PUBLISH; return "$QUEUE_FAIL" ;;
     *"prune_data_backups.sh"*) echo RETENTION ;;
   esac
@@ -53,8 +53,9 @@ curl() { echo HEALTH >&2; return "$HEALTH_FAIL"; }
                 if failure:
                     flags[failure] = "1"
                 result = subprocess.run(["bash", "-s"], input=doubles + remote, capture_output=True, text=True,
-                                        env={**os.environ, **flags, "REMOTE_DIR": directory, "BRANCH": "master", "DEPLOY_HEAD": new, "NEW_REVISION": new})
+                                        env={**os.environ, **flags, "FOUNDER_USER_ID": "2", "REMOTE_DIR": directory, "BRANCH": "master", "DEPLOY_HEAD": new, "NEW_REVISION": new})
                 self.assertIn(f"BASE:{old}", result.stderr)
+                self.assertIn("env ROLLTHEDICE_FOUNDER_USER_ID=2 docker compose up", result.stdout)
                 self.assertEqual(result.returncode == 0, failure is None)
                 self.assertEqual(marker.read_text(encoding="utf-8").strip(), new if failure is None else old)
                 if failure in ("BUILD_FAIL", "HEALTH_FAIL"):
@@ -65,6 +66,16 @@ curl() { echo HEALTH >&2; return "$HEALTH_FAIL"; }
                     self.assertLess(result.stdout.index("BUILD"), result.stdout.index("PUBLISH"))
                     self.assertIn("HEALTH", result.stderr)
                     self.assertLess(result.stdout.index("PUBLISH"), result.stdout.index("RETENTION"))
+
+    def test_founder_binding_rejects_names_and_shell_input_before_ssh(self):
+        for invalid in ("Mani", "0", "-1", "2;exit", "2 3"):
+            with self.subTest(value=invalid):
+                result = subprocess.run(
+                    [str(BASE_DIR / "scripts" / "deploy_zdwa.sh")], capture_output=True, text=True,
+                    env={**os.environ, "FOUNDER_USER_ID": invalid},
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("FOUNDER_USER_ID must be a positive account ID", result.stderr)
 
 
 class BackupRetentionTestCase(unittest.TestCase):

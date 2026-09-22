@@ -73,6 +73,8 @@ class AuthIdentity:
     csrf_token: str
     session_id: int
     achievement_rank: dict
+    is_owner: bool = False
+    is_founder: bool = False
 
     @property
     def is_admin(self) -> bool:
@@ -88,6 +90,8 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
         "username": identity.username,
         "role": identity.role,
         "is_admin": identity.is_admin,
+        "is_owner": identity.is_owner,
+        "is_founder": identity.is_founder,
         "bans": account_bans(identity.user_id),
         # The browser receives a capability calculated by the same policy the
         # HTTP and WebSocket layers use; it never decides access from a name.
@@ -124,6 +128,8 @@ def _achievement_rank_for_user(db, user_id: int) -> dict:
 
 def _identity_for_user(db, user: User, login_session: LoginSession) -> AuthIdentity:
     """Build the durable session identity from one already-loaded account."""
+    from .ownership import ownership_flags
+
     return AuthIdentity(
         user_id=user.id,
         username=user.username,
@@ -145,6 +151,7 @@ def _identity_for_user(db, user: User, login_session: LoginSession) -> AuthIdent
         csrf_token=login_session.csrf_token,
         session_id=login_session.id,
         achievement_rank=_achievement_rank_for_user(db, user.id),
+        **ownership_flags(db, user.id),
     )
 
 
@@ -594,12 +601,15 @@ def create_user(
         raise ValueError("Benutzername oder E-Mail-Adresse ist bereits vergeben") from exc
 
 
-def reset_password(user_id: int, temporary_password: str) -> None:
+def reset_password(user_id: int, temporary_password: str, *, actor_user_id: int | None = None) -> None:
+    from .ownership import ensure_can_reset_password
+
     validate_password(temporary_password)
     with session_scope() as db:
         user = db.get(User, user_id)
         if not user:
             raise LookupError("user_not_found")
+        ensure_can_reset_password(db, actor_user_id, user)
         user.password_hash = hash_password(temporary_password)
         user.must_change_password = True
         user.updated_at = utcnow()

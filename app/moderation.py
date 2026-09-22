@@ -51,6 +51,12 @@ def ensure_play_allowed(identity) -> None:
 
 
 def revoke_bans(db, user_id: int, scope: str, admin_id: int) -> None:
+    from .ownership import ensure_can_moderate
+
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="user_not_found")
+    ensure_can_moderate(db, admin_id, user)
     for ban in active_bans(db, user_id, scope=scope):
         ban.revoked_at = utcnow()
         ban.revoked_by_user_id = admin_id
@@ -65,6 +71,8 @@ def apply_ban(db, user_id: int, admin_id: int, *, scope: str, days: int | None, 
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="user_not_found")
+    from .ownership import ensure_can_moderate
+    ensure_can_moderate(db, admin_id, user)
     if user.role == "admin":
         raise HTTPException(status_code=409, detail="admin_ban_requires_role_change")
     revoke_bans(db, user_id, scope, admin_id)

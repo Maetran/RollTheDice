@@ -6,9 +6,15 @@ REMOTE_DIR="${REMOTE_DIR:-/home/manuel/RollTheDice}"
 REPO_MATCH="${REPO_MATCH:-Maetran/RollTheDice}"
 BRANCH="${BRANCH:-master}"
 SILENT_RELEASE="${SILENT_RELEASE:-0}"
+FOUNDER_USER_ID="${FOUNDER_USER_ID:-}"
 
 if [[ "$SILENT_RELEASE" != "0" && "$SILENT_RELEASE" != "1" ]]; then
   echo "SILENT_RELEASE must be 0 or 1" >&2
+  exit 2
+fi
+
+if [[ -n "$FOUNDER_USER_ID" && ! "$FOUNDER_USER_ID" =~ ^[1-9][0-9]*$ ]]; then
+  echo "FOUNDER_USER_ID must be a positive account ID" >&2
   exit 2
 fi
 
@@ -42,15 +48,22 @@ fi
 
 printf 'Deploy target: %s:%s\n' "$REMOTE" "$REMOTE_DIR"
 
-remote_env="REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") BRANCH=$(printf '%q' "$BRANCH") SILENT_RELEASE=$(printf '%q' "$SILENT_RELEASE")"
+remote_env="REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") BRANCH=$(printf '%q' "$BRANCH") SILENT_RELEASE=$(printf '%q' "$SILENT_RELEASE") FOUNDER_USER_ID=$(printf '%q' "$FOUNDER_USER_ID")"
 ssh "$REMOTE" "$remote_env bash -s" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
 cd "$REMOTE_DIR"
 SILENT_RELEASE="${SILENT_RELEASE:-0}"
+FOUNDER_USER_ID="${FOUNDER_USER_ID:-}"
 
 compose() {
-  sudo -n docker compose "$@"
+  if [[ -n "$FOUNDER_USER_ID" ]]; then
+    # Pass through sudo explicitly. Startup binds this ID before becoming
+    # healthy; an invalid or conflicting account prevents the announcement.
+    sudo -n env ROLLTHEDICE_FOUNDER_USER_ID="$FOUNDER_USER_ID" docker compose "$@"
+  else
+    sudo -n docker compose "$@"
+  fi
 }
 
 echo "== Remote =="

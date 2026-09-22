@@ -13,6 +13,7 @@ from .auth import (
     change_username,
     clear_session_cookie,
     create_user,
+    create_user_in_session,
     login,
     logout,
     promote_legacy_session_cookie,
@@ -58,6 +59,14 @@ from .engagement import record_engagement_safely
 from .game_access import public_game_access_payload
 from .models import PasskeyCredential, User
 from .models import Session as LoginSession
+from .ownership import (
+    administration_capabilities,
+    ensure_can_change_role,
+    ensure_can_create_user,
+    grant_ownership,
+    ownership_flags,
+    revoke_ownership,
+)
 from .passkeys import passkey_public_config
 from .product_hosts import is_zilch_host
 from .security import normalize_email_address, utcnow
@@ -157,9 +166,12 @@ class AdminUserUpdateRequest(BaseModel):
     lobby_chat_excluded: bool | None = None
 
 
-def _user_payload(user: User, *, achievement_rank: dict | None = None) -> dict:
+def _user_payload(user: User, *, achievement_rank: dict | None = None, viewer_id: int | None = None, db=None) -> dict:
     from .moderation import account_bans
 
+    if db is None:
+        with session_scope() as current_db:
+            return _user_payload(user, achievement_rank=achievement_rank, viewer_id=viewer_id, db=current_db)
     payload = {
         "id": user.id,
         "username": user.username,
@@ -171,7 +183,10 @@ def _user_payload(user: User, *, achievement_rank: dict | None = None) -> dict:
         "created_at": user.created_at,
         "updated_at": user.updated_at,
         "bans": account_bans(user.id),
+        **ownership_flags(db, user.id),
     }
+    if viewer_id is not None:
+        payload.update(administration_capabilities(db, viewer_id, user))
     if achievement_rank is not None:
         payload["achievement_rank"] = achievement_rank
     return payload
@@ -590,7 +605,7 @@ def web_push_preferences_put(payload: WebPushPreferencesRequest, request: Reques
 
 @router.get("/admin/users")
 def admin_list_users(request: Request, query: str = "", limit: int = 100, offset: int = 0):
-    require_admin(request)
+    identity = require_admin(request)
     limit = min(max(limit, 1), 200)
     offset = max(offset, 0)
     with session_scope() as db:
@@ -600,7 +615,8 @@ def admin_list_users(request: Request, query: str = "", limit: int = 100, offset
         users = list(db.scalars(stmt.order_by(User.username_normalized).offset(offset).limit(limit)))
         ranks = achievement_rank_payloads_for_user_ids(db, {user.id for user in users})
         return {
-            "users": [_user_payload(user, achievement_rank=ranks.get(user.id)) for user in users],
+            "users": [_user_payload(user, achievement_rank=ranks.get(user.id), viewer_id=identity.user_id, db=db) for user in users],
+            "viewer": {**ownership_flags(db, identity.user_id), "can_create_admin": identity.is_owner},
             "limit": limit,
             "offset": offset,
         }
@@ -611,15 +627,14 @@ def admin_create_user(payload: AdminUserCreateRequest, request: Request):
     identity = require_admin(request)
     require_csrf(request, identity)
     try:
-        user = create_user(
-            payload.username,
-            payload.temporary_password,
-            role=payload.role,
-            must_change_password=True,
-        )
+        with session_scope() as db:
+            ensure_can_create_user(db, identity.user_id, payload.role)
+            user = create_user_in_session(
+                db, payload.username, payload.temporary_password, role=payload.role, must_change_password=True,
+            )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return {"user": _user_payload(user, achievement_rank=public_achievement_ranks({user.id}).get(user.id))}
+    return {"user": _user_payload(user, achievement_rank=public_achievement_ranks({user.id}).get(user.id), viewer_id=identity.user_id)}
 
 
 @router.post("/admin/users/{user_id}/reset-password")
@@ -627,7 +642,7 @@ def admin_reset_password(user_id: int, payload: AdminPasswordResetRequest, reque
     identity = require_admin(request)
     require_csrf(request, identity)
     try:
-        reset_password(user_id, payload.temporary_password)
+        reset_password(user_id, payload.temporary_password, actor_user_id=identity.user_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except LookupError as exc:
@@ -651,6 +666,7 @@ def admin_update_user(user_id: int, payload: AdminUserUpdateRequest, request: Re
         user = db.get(User, user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
+        ensure_can_change_role(db, identity.user_id, user, payload.role)
         removes_admin = user.role == "admin" and (payload.role == "user" or payload.is_active is False)
         if removes_admin:
             active_admins = int(
@@ -675,4 +691,22 @@ def admin_update_user(user_id: int, payload: AdminUserUpdateRequest, request: Re
             db.execute(delete(LoginSession).where(LoginSession.user_id == user.id))
         db.flush()
         rank = achievement_rank_payloads_for_user_ids(db, {user.id}).get(user.id)
-        return {"user": _user_payload(user, achievement_rank=rank)}
+        return {"user": _user_payload(user, achievement_rank=rank, viewer_id=identity.user_id, db=db)}
+
+
+@router.put("/admin/users/{user_id}/ownership")
+def admin_grant_ownership(user_id: int, request: Request):
+    identity = require_admin(request)
+    require_csrf(request, identity)
+    with session_scope() as db:
+        grant_ownership(db, user_id, identity.user_id)
+        return {"user": _user_payload(db.get(User, user_id), viewer_id=identity.user_id, db=db)}
+
+
+@router.delete("/admin/users/{user_id}/ownership")
+def admin_revoke_ownership(user_id: int, request: Request):
+    identity = require_admin(request)
+    require_csrf(request, identity)
+    with session_scope() as db:
+        revoke_ownership(db, user_id, identity.user_id)
+        return {"user": _user_payload(db.get(User, user_id), viewer_id=identity.user_id, db=db)}

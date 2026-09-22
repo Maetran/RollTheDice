@@ -26,7 +26,7 @@ from .game_state import (
     multiplayer_pause_reason,
 )
 from .game_types import ZILCH_GAME_TYPE, game_type_from_state
-from .game_ws_admin import SUPERADMIN_ACTIONS, handle_superadmin_action
+from .game_ws_admin import SUPERADMIN_ACTIONS, handle_superadmin_action, release_revoked_superadmin_locks
 from .game_ws_gameplay import GAMEPLAY_ACTIONS
 from .game_ws_session import (
     SESSION_ACTIONS,
@@ -304,6 +304,8 @@ async def _receive_messages(
         if session.is_spectator and action not in spectator_actions:
             await session.websocket.send_json({"error": "Nur fuer Spieler"})
             continue
+        if allowed_superadmin_actions:
+            await release_revoked_superadmin_locks(session.game)
         if allowed_superadmin_actions and action_blocked_by_superadmin(session.game, action):
             await session.websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
             continue

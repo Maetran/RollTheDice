@@ -22,6 +22,34 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.41.0 — Call for help — 2026-09-22
+
+**Deutsch:** Erster sichtbarer Hinweis auf die zuvor still ausgelieferte
+Adminhilfe: Angemeldete Spieler können direkt aus beiden Spielen Hilfe rufen,
+Admins übernehmen mit einem Klick und behalten ihren Platz in der eigenen
+Partie. Ruhige Avatare und zentrierte Desktop-Menüs sind ebenfalls enthalten.
+Neu schützt eine feste Konto-ID den Gründer dauerhaft vor Sperren,
+Deaktivierung, Chat-Ausschluss, administrativem Passwort-Reset und
+Rechteentzug. Der Gründer kann vertrauenswürdige Admins zu Ownern ernennen
+und diese Berechtigung wieder entziehen. Owner verwalten normale Adminrechte;
+Admins können keine anderen Mitarbeiterkonten übernehmen. Datenbankregeln
+sichern den Schutz zusätzlich ab. Die private Verwaltung zeigt die Rollen
+und zulässigen Aktionen in beiden Sprachen; öffentliche Profile behalten das
+dezente Admin-Schild. Ein entzogener Adminzugang beendet auch bestehende
+ZDWA-Bearbeitungssitzungen.
+
+**English:** First public announcement of the previously silent admin-help
+release: signed-in players can request help from either game, admins can
+respond with one click and retain their seat in their own game. Stable avatars
+and centered desktop menus are included. A stable account ID now permanently
+protects the founder against bans, deactivation, chat exclusion,
+administrative password resets and permission removal. The founder can grant
+and revoke ownership for trusted admins. Owners manage ordinary admin rights;
+admins cannot take over other staff accounts. Database rules reinforce these
+boundaries. Private administration shows roles and permitted actions in both
+languages; public profiles retain the discreet admin badge. Revoked admin
+access also terminates existing ZDWA editing sessions.
+
 ## 2.40.0 — 2026-09-22
 
 **Deutsch:** Dezente Admin-Schilder erscheinen an Profilbildern in Lobby, Partie

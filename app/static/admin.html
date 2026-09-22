@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Geschützter Administrationsbereich von ZDWA.">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="manifest" href="/manifest.webmanifest?v=855e6882657c">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=855e6882657c" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=855e6882657c" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=b36442f7a543">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=b36442f7a543" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=b36442f7a543" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=855e6882657c">
-  <script src="/static/shell.js?v=855e6882657c" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=b36442f7a543">
+  <script src="/static/shell.js?v=b36442f7a543" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
@@ -49,10 +49,11 @@
     <section id="usersPanel" class="card admin-panel" hidden>
       <p class="eyebrow">Accounts</p>
       <h2>Benutzerverwaltung</h2>
+      <p id="adminRoleHint" class="muted small"></p>
       <form id="createUserForm" class="admin-create-grid">
         <input id="newUsername" placeholder="Benutzername" autocomplete="off" required>
         <input id="newPassword" type="password" placeholder="Temporäres Passwort (min. 8 Zeichen)" minlength="8" required>
-        <select id="newRole"><option value="user">Benutzer</option><option value="admin">Admin</option></select>
+        <select id="newRole" disabled><option value="user">Benutzer</option><option value="admin">Admin</option></select>
         <button class="primary">Benutzer anlegen</button>
       </form>
       <div class="table-scroll"><table class="admin-table">
@@ -82,7 +83,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=855e6882657c';
+    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=b36442f7a543';
     const auth = await loadAuth();
     if (!auth?.user?.is_admin) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const usersBody = document.getElementById('usersBody');
@@ -93,13 +94,83 @@
     const adminPanels = [...document.querySelectorAll('.admin-panel')];
     const adminTiles = [...document.querySelectorAll('.admin-module-tile')];
     let users = [];
+    let viewer = { is_owner: auth?.user?.is_owner === true || auth?.user?.is_founder === true, is_founder: auth?.user?.is_founder === true };
     const t = value => window.ZDWA_I18N?.t?.(value) || value;
+
+    function permissions(user) {
+      const owner = user.is_owner === true || user.is_founder === true;
+      const managesStaff = viewer.is_owner || viewer.is_founder;
+      const managesTarget = !owner && (user.role !== 'admin' || managesStaff);
+      const fallback = {
+        can_change_role: managesStaff && !owner,
+        can_reset_password: !user.is_founder && (owner ? viewer.is_founder : managesTarget),
+        can_toggle_active: managesTarget,
+        can_moderate_chat: managesTarget,
+        can_set_ban: managesTarget && user.role !== 'admin',
+        can_revoke_ban: managesTarget,
+        can_grant_owner: viewer.is_founder && !owner && user.role === 'admin' && user.is_active
+          && !user.lobby_chat_muted && !user.lobby_chat_excluded && !user.bans?.length,
+        can_revoke_owner: viewer.is_founder && owner && !user.is_founder,
+      };
+      return Object.fromEntries(Object.entries(fallback).map(([key, value]) => [key, typeof user[key] === 'boolean' ? user[key] : Boolean(value)]));
+    }
+
+    function protectedReason(user, action) {
+      if (user.is_founder) return t(action === 'password'
+        ? 'Das Gründerpasswort lässt sich nur im eigenen Konto oder über die persönliche Wiederherstellung ändern.'
+        : 'Das Gründerkonto kann weder herabgestuft noch deaktiviert oder gesperrt werden.');
+      if (user.is_owner) return t(action === 'password'
+        ? 'Nur der Gründer kann das Passwort eines Owners administrativ zurücksetzen.'
+        : 'Entziehe zuerst die Owner-Rechte, bevor du dieses Konto verwaltest.');
+      return t('Nur Owner dürfen Admin-Konten verwalten und Rollen ändern.');
+    }
+
+    function restrictionAttributes(allowed, reason) {
+      return allowed ? '' : ` disabled title="${escapeHtml(reason)}"`;
+    }
+
+    function roleControls(user) {
+      const rights = permissions(user);
+      const label = user.is_founder ? 'Gründer' : user.is_owner ? 'Owner' : user.role === 'admin' ? 'Admin' : 'Benutzer';
+      const ownership = viewer.is_founder && !user.is_founder
+        ? `<button type="button" class="small ghost" data-ownership="${user.is_owner ? 'revoke' : 'grant'}"${restrictionAttributes(user.is_owner ? rights.can_revoke_owner : rights.can_grant_owner, t('Owner-Rechte sind nur für aktive Admin-Konten ohne Sperren oder Chat-Einschränkungen möglich.'))}>${escapeHtml(t(user.is_owner ? 'Owner-Rechte entziehen' : 'Owner ernennen'))}</button>`
+        : '';
+      return `<div class="form-stack"><strong data-staff-label>${escapeHtml(t(label))}</strong><select class="role-select" aria-label="${escapeHtml(t('Rolle'))}"${restrictionAttributes(rights.can_change_role, protectedReason(user, 'role'))}><option value="user" ${user.role === 'user' ? 'selected' : ''}>${escapeHtml(t('Benutzer'))}</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>${escapeHtml(t('Admin'))}</option></select>${ownership}${user.is_founder ? `<span class="muted small">${escapeHtml(t('Dauerhaft geschütztes Gründerkonto'))}</span>` : ''}</div>`;
+    }
+
+    function syncViewerControls() {
+      const createRole = document.getElementById('newRole');
+      createRole.disabled = !(viewer.can_create_admin ?? (viewer.is_owner || viewer.is_founder));
+      if (createRole.disabled) createRole.value = 'user';
+      createRole.title = createRole.disabled ? t('Nur Owner dürfen Admin-Konten verwalten und Rollen ändern.') : '';
+      document.getElementById('adminRoleHint').textContent = t(viewer.is_founder
+        ? 'Nur der Gründer kann Owner ernennen oder abberufen. Das Gründerkonto bleibt dauerhaft geschützt.'
+        : viewer.is_owner ? 'Owner verwalten Spieler und Admins. Nur der Gründer kann Owner-Rechte vergeben oder entziehen.'
+          : 'Admins verwalten Spielerkonten. Änderungen an Admins und Rollen bleiben Ownern vorbehalten.');
+    }
+
+    const managementErrors = {
+      owner_required: 'Diese Aktion ist Ownern vorbehalten.',
+      founder_required: 'Diese Aktion ist dem Gründer vorbehalten.',
+      owner_protected: 'Entziehe zuerst die Owner-Rechte, bevor du dieses Konto verwaltest.',
+      founder_protected: 'Das Gründerkonto bleibt dauerhaft geschützt.',
+      staff_protected: 'Nur Owner dürfen Admin-Konten verwalten und Rollen ändern.',
+      ownership_requires_eligible_admin: 'Owner-Rechte sind nur für aktive Admin-Konten ohne Sperren oder Chat-Einschränkungen möglich.',
+      founder_already_bound: 'Das Gründerkonto ist bereits dauerhaft festgelegt.',
+      ownership_not_found: 'Dieses Konto hat keine Owner-Rechte mehr.',
+    };
+    function managementError(detail) {
+      const code = detail?.code || detail;
+      return managementErrors[code] ? t(managementErrors[code]) : authError(code);
+    }
+    syncViewerControls();
 
     function banLabel(scope) {
       return t(scope === 'play' ? 'Spielen gesperrt' : 'Adminhilfe gesperrt');
     }
 
     function banControls(user) {
+      const rights = permissions(user);
       const bans = Array.isArray(user.bans) ? user.bans : [];
       const current = bans.map(ban => {
         const reason = ban.reason === 'admin_help_misuse' ? t('Missbrauch der Adminhilfe') : ban.reason || '';
@@ -107,10 +178,10 @@
         const duration = expiration && Number.isFinite(expiration.getTime())
           ? `${t('Bis')} ${expiration.toLocaleString(window.ZDWA_I18N?.getLanguage?.() === 'en' ? 'en-GB' : 'de-CH')}`
           : t('Dauerhaft');
-        return `<li><strong>${escapeHtml(banLabel(ban.scope))}</strong><span>${escapeHtml(duration)}</span><span>${escapeHtml(t('Grund'))}: ${escapeHtml(reason)}</span><button type="button" class="small ghost" data-revoke-ban="${ban.scope === 'play' ? 'play' : 'help'}">${escapeHtml(t('Sperre aufheben'))}</button></li>`;
+        return `<li><strong>${escapeHtml(banLabel(ban.scope))}</strong><span>${escapeHtml(duration)}</span><span>${escapeHtml(t('Grund'))}: ${escapeHtml(reason)}</span><button type="button" class="small ghost" data-revoke-ban="${ban.scope === 'play' ? 'play' : 'help'}"${restrictionAttributes(rights.can_revoke_ban, protectedReason(user, 'ban'))}>${escapeHtml(t('Sperre aufheben'))}</button></li>`;
       }).join('');
-      const editor = user.role === 'admin'
-        ? `<p class="muted small">${escapeHtml(t('Ändere zuerst die Adminrolle, bevor du dieses Konto sperrst.'))}</p>`
+      const editor = !rights.can_set_ban
+        ? `<p class="muted small">${escapeHtml(user.is_owner || user.is_founder ? protectedReason(user, 'ban') : user.role === 'admin' ? t('Ändere zuerst die Adminrolle, bevor du dieses Konto sperrst.') : protectedReason(user, 'ban'))}</p>`
         : `<form data-ban-form class="form-stack admin-ban-form">
           <label>${escapeHtml(t('Bereich'))}<select name="scope"><option value="play">${escapeHtml(t('Spielen'))}</option><option value="help">${escapeHtml(t('Adminhilfe'))}</option></select></label>
           <label>${escapeHtml(t('Dauer'))}<select name="days">${[3, 5, 7, 14, 30, 60].map(days => `<option value="${days}">${days} ${escapeHtml(t('Tage'))}</option>`).join('')}<option value="permanent">${escapeHtml(t('Dauerhaft'))}</option></select></label>
@@ -122,12 +193,14 @@
     }
 
     function banError(detail) {
+      const code = detail?.code || detail;
+      if (managementErrors[code]) return managementError(code);
       const errors = {
         admin_ban_requires_role_change: 'Ändere zuerst die Adminrolle, bevor du dieses Konto sperrst.',
         invalid_ban_duration: 'Bitte wähle eine gültige Sperrdauer.',
         ban_reason_required: 'Bitte begründe die Sperre.',
       };
-      return t(errors[detail] || 'Die Sperre konnte nicht geändert werden. Bitte versuche es erneut.');
+      return t(errors[code] || 'Die Sperre konnte nicht geändert werden. Bitte versuche es erneut.');
     }
 
     async function changeBan(userId, scope, payload = null) {
@@ -163,15 +236,18 @@
     async function loadUsers() {
       const response = await fetch('/api/admin/users?limit=200', { cache: 'no-store' });
       if (!response.ok) return;
-      users = (await response.json()).users;
+      const payload = await response.json();
+      users = payload.users;
+      viewer = { ...viewer, ...payload.viewer };
+      syncViewerControls();
       usersBody.innerHTML = users.map(user => `<tr data-user-id="${user.id}">
         <td><a href="/spieler/${encodeURIComponent(user.username)}">${playerNameMarkup(user, { name: user.username, compactRank: true })}</a>${user.must_change_password ? '<span class="badge">PW-Wechsel offen</span>' : ''}</td>
-        <td><select class="role-select"><option value="user" ${user.role === 'user' ? 'selected' : ''}>Benutzer</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option></select></td>
+        <td>${roleControls(user)}</td>
         <td>${user.is_active ? 'Aktiv' : 'Deaktiviert'}</td>
         <td>${user.lobby_chat_excluded ? '<span class="badge">Ausgeschlossen</span>' : user.lobby_chat_muted ? '<span class="badge">Stumm</span>' : 'Aktiv'}</td>
         <td>${banControls(user)}</td>
-        <td><button class="small secondary reset-password">Zurücksetzen</button></td>
-        <td><button class="small ghost toggle-active">${user.is_active ? 'Deaktivieren' : 'Aktivieren'}</button><button class="small ghost toggle-chat-muted">${user.lobby_chat_muted ? 'Stummschaltung aufheben' : 'Stummschalten'}</button><button class="small ghost toggle-chat-excluded">${user.lobby_chat_excluded ? 'Chat-Ausschluss aufheben' : 'Vom Chat ausschließen'}</button></td>
+        <td><button class="small secondary reset-password"${restrictionAttributes(permissions(user).can_reset_password, protectedReason(user, 'password'))}>Zurücksetzen</button></td>
+        <td><button class="small ghost toggle-active"${restrictionAttributes(permissions(user).can_toggle_active, protectedReason(user, 'active'))}>${user.is_active ? 'Deaktivieren' : 'Aktivieren'}</button><button class="small ghost toggle-chat-muted"${restrictionAttributes(permissions(user).can_moderate_chat, protectedReason(user, 'chat'))}>${user.lobby_chat_muted ? 'Stummschaltung aufheben' : 'Stummschalten'}</button><button class="small ghost toggle-chat-excluded"${restrictionAttributes(permissions(user).can_moderate_chat, protectedReason(user, 'chat'))}>${user.lobby_chat_excluded ? 'Chat-Ausschluss aufheben' : 'Vom Chat ausschließen'}</button></td>
       </tr>`).join('');
     }
 
@@ -180,7 +256,7 @@
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(authError(data.detail));
+      if (!response.ok) throw new Error(managementError(data.detail));
       await loadUsers();
     }
 
@@ -191,17 +267,18 @@
         body: JSON.stringify({
           username: document.getElementById('newUsername').value,
           temporary_password: document.getElementById('newPassword').value,
-          role: document.getElementById('newRole').value,
+          role: document.getElementById('newRole').disabled ? 'user' : document.getElementById('newRole').value,
         }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) { message.textContent = authError(data.detail); return; }
+      if (!response.ok) { message.textContent = managementError(data.detail); return; }
       event.target.reset(); message.textContent = 'Benutzer wurde angelegt.';
       await loadUsers();
     });
 
     usersBody.addEventListener('change', async event => {
       if (!event.target.classList.contains('role-select')) return;
+      if (event.target.disabled) return;
       const row = event.target.closest('tr');
       try { await updateUser(Number(row.dataset.userId), { role: event.target.value }); }
       catch (error) { message.textContent = error.message; await loadUsers(); }
@@ -234,6 +311,27 @@
       if (!row) return;
       const userId = Number(row.dataset.userId);
       const user = users.find(item => item.id === userId);
+      const clicked = event.target.closest('button');
+      if (clicked?.disabled) return;
+      const ownership = event.target.closest('[data-ownership]');
+      if (ownership) {
+        const revoke = ownership.dataset.ownership === 'revoke';
+        const confirmed = await window.ZDWA_UI?.confirm?.({
+          title: t(revoke ? 'Owner-Rechte entziehen' : 'Owner ernennen'),
+          message: `${user.username}: ${t(revoke ? 'Das Konto bleibt Admin. Danach können Owner seine Adminrechte ändern.' : 'Owner können Spieler und Admins verwalten. Nur du als Gründer kannst diese Owner-Rechte wieder entziehen.')}`,
+          confirmLabel: t(revoke ? 'Owner-Rechte entziehen' : 'Owner ernennen'),
+        });
+        if (!confirmed) return;
+        ownership.disabled = true;
+        try {
+          const response = await apiFetch(`/api/admin/users/${userId}/ownership`, { method: revoke ? 'DELETE' : 'PUT' });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(managementError(data.detail));
+          await loadUsers();
+          message.textContent = t(revoke ? 'Owner-Rechte wurden entzogen.' : 'Owner-Rechte wurden vergeben.');
+        } catch (error) { message.textContent = error.message; ownership.disabled = false; }
+        return;
+      }
       const revoke = event.target.closest('[data-revoke-ban]');
       if (revoke) {
         if (revoke.disabled) return;
@@ -251,7 +349,7 @@
           body: JSON.stringify({ temporary_password: temporary }),
         });
         const data = await response.json().catch(() => ({}));
-        message.textContent = response.ok ? 'Passwort wurde zurückgesetzt.' : authError(data.detail);
+        message.textContent = response.ok ? 'Passwort wurde zurückgesetzt.' : managementError(data.detail);
         await loadUsers();
       }
       if (event.target.classList.contains('toggle-active')) {

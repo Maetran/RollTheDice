@@ -24,6 +24,37 @@ class Base(DeclarativeBase):
     pass
 
 
+class AccountOwnership(Base):
+    """Ownership follows an immutable account ID, independently of display names."""
+
+    __tablename__ = "account_ownerships"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), primary_key=True)
+    is_founder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    granted_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("is_founder IN (true, false)", name="ck_account_ownership_founder_boolean"),
+        Index("ix_account_ownership_single_founder", "is_founder", unique=True,
+              sqlite_where=is_founder.is_(True), postgresql_where=is_founder.is_(True)),
+    )
+
+
+class OwnershipAudit(Base):
+    """Append-only ownership history survives account renames and later revocation."""
+
+    __tablename__ = "ownership_audit"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    actor_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    action: Mapped[str] = mapped_column(String(24), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (CheckConstraint("action IN ('founder_bound', 'granted', 'revoked')", name="ck_ownership_audit_action"),)
+
+
 class UserBan(Base):
     """Account moderation history; expiry and explicit revocation remain auditable."""
 
