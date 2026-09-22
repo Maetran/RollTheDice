@@ -85,7 +85,13 @@ def can_access_zilch_preview(identity: AuthIdentity | None) -> bool:
 
 def can_access_game(identity: AuthIdentity | None, game: dict) -> bool:
     """Apply the game-specific access policy to a live state."""
-    return game_type_from_state(game) != ZILCH_GAME_TYPE or can_access_zilch_preview(identity)
+    if game_type_from_state(game) != ZILCH_GAME_TYPE or can_access_zilch_preview(identity):
+        return True
+    if identity and identity.is_admin:
+        from .admin_help import has_active_help_claim
+
+        return has_active_help_claim(identity.user_id, str(game.get("_id") or ""))
+    return False
 
 
 def public_game_access_payload(identity: AuthIdentity | None) -> dict[str, bool]:

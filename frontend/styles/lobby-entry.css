@@ -1,6 +1,8 @@
 @import "./base.css";
+@import "./admin-help.css";
 @import "./release-notes.css";
 @import "./lobby.css";
 @import "./accounts.css";
+@import "./avatar.css";
 @import "./classic.css";
 @import "./compact-actions.css";

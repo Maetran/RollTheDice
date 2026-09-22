@@ -1060,7 +1060,7 @@ class ZilchAchievementPersistenceTestCase(TestCase):
             <= mani_keys
         )
         profile = get_zilch_achievement_profile(mani.id)
-        self.assertEqual(profile["player"], {"id": mani.id, "username": "Mani"})
+        self.assertEqual(profile["player"], {"id": mani.id, "username": "Mani", "is_admin": True})
         self.assertEqual(profile["points"], zilch_achievement_points_for_keys(mani_keys))
         self.assertEqual(profile["points_possible"], ZILCH_ACHIEVEMENT_POINTS_POSSIBLE)
         self.assertEqual(profile["rank"]["points"], profile["points"])

@@ -11,7 +11,7 @@ class ResumePauseTests(GameStateTestCase):
         snap = game_snapshot.snapshot(g)
 
         self.assertTrue(snap["_paused"])
-        self.assertEqual(snap["_offline_players"], [{"id": "p2", "name": "Ben"}])
+        self.assertEqual(snap["_offline_players"], [{"id": "p2", "name": "Ben", "is_admin": False}])
         self.assertEqual(snap["_connected"], {"p1": True, "p2": False})
 
         ok, why = game_engine.can_roll_now(g, "p1")

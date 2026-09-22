@@ -4087,7 +4087,10 @@ def _profile_in_session(db, user_id: int) -> dict[str, Any]:
     unlocked.sort(key=lambda item: item["unlocked_at"], reverse=True)
     return {
         "version": ZILCH_ACHIEVEMENT_RESPONSE_VERSION,
-        "player": {"id": int(user.id), "username": str(user.username)},
+        "player": {
+            "id": int(user.id), "username": str(user.username),
+            "is_admin": bool(user.is_active and user.role == "admin"),
+        },
         "points": points,
         "points_possible": ZILCH_ACHIEVEMENT_POINTS_POSSIBLE,
         "rank": zilch_achievement_rank_for_points(points),

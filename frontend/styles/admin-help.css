@@ -1,0 +1,38 @@
+.admin-help-bar{
+  display:flex;
+  flex:0 0 auto;
+  align-items:center;
+  gap:.3rem .6rem;
+  width:100%;
+  min-width:0;
+  margin:0 0 .4rem;
+  padding:.35rem .5rem;
+  border:1px solid var(--info-border, #7ba6bf);
+  border-radius:.45rem;
+  color:var(--text, #172033);
+  background:var(--surface, #fff);
+  font-size:.78rem;
+  line-height:1.25;
+}
+.admin-help-bar__message{ flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }
+.admin-help-account-ban{ margin:.4rem 0; padding:.55rem .65rem; border:1px solid var(--warning-border, #b77b32); border-radius:.4rem; overflow-wrap:anywhere; }
+.admin-help-bar__actions{ display:flex; flex:0 0 auto; align-items:center; gap:.3rem; }
+.admin-help-bar__actions button{ min-height:36px; padding:.3rem .5rem; font-size:.75rem; white-space:normal; }
+.admin-help-bar__actions .admin-help-bar__close{ min-width:36px; padding:.2rem; font-size:1.1rem; }
+.room-page > .admin-help-bar{ width:calc(100% - 1rem); max-width:1120px; align-self:center; }
+html[data-game="zilch"] .admin-help-bar{ color:var(--zilch-ink); background:var(--zilch-paper); border-color:var(--zilch-paper-edge); }
+html[data-game="zilch"][data-theme="lcars"] .admin-help-bar{ color:var(--lcars-text); background:var(--lcars-void); border-color:var(--lcars-lilac); }
+html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button[data-admin-help-call] > [aria-hidden="true"]{ display:inline-flex; }
+@media (any-pointer:coarse),(max-width:760px){
+  .admin-help-bar__actions button{ min-height:44px; }
+  .admin-help-bar__actions .admin-help-bar__close{ min-width:44px; }
+}
+@media (max-width:560px){
+  .admin-help-bar{ flex-wrap:wrap; gap:.15rem .4rem; padding:.25rem .4rem; }
+  .admin-help-bar__message{ flex:1 1 11rem; }
+  .admin-help-bar__actions{ flex-wrap:wrap; flex:1 1 auto; justify-content:flex-end; }
+  .admin-help-bar__actions button{ flex:1 1 auto; }
+  .admin-help-bar__actions .admin-help-bar__close{ flex:0 0 44px; }
+  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools [data-admin-help-call]{ width:var(--header-control-size); padding:0; }
+  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools [data-admin-help-label]{ display:none; }
+}

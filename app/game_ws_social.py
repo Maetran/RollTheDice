@@ -17,6 +17,7 @@ from .game_state import (
 )
 from .game_types import ZILCH_GAME_TYPE, game_type_from_state
 from .game_ws_session import GameSocketSession
+from .public_roles import hydrate_admin_status
 from .zilch_state import pause_zilch_solo_timer, zilch_is_configured_solo_game
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,8 @@ async def _send_emoji(session: GameSocketSession, data: dict[str, Any]) -> None:
         await _send_error(session, "Nicht beigetreten")
         return
     sender_id, sender_player = sender
+    sender_player = dict(sender_player)
+    hydrate_admin_status([sender_player])
     sender_name = sender_player.get("name", "Gast")
     sender_rank = sender_player.get("achievement_rank")
     touch(session.game)
@@ -92,6 +95,7 @@ async def _send_emoji(session: GameSocketSession, data: dict[str, Any]) -> None:
                 "from_id": sender_id,
                 "from": sender_name,
                 "user_id": sender_player.get("user_id"),
+                "is_admin": sender_player.get("is_admin") is True,
                 "emoji": emoji,
                 "ts": datetime.now(timezone.utc).isoformat(),
                 **({"achievement_rank": sender_rank} if isinstance(sender_rank, dict) else {}),
@@ -109,6 +113,8 @@ async def _chat_message(session: GameSocketSession, data: dict[str, Any]) -> Non
         await _send_error(session, "Nicht beigetreten")
         return
     sender_id, sender_player = sender
+    sender_player = dict(sender_player)
+    hydrate_admin_status([sender_player])
     sender_name = sender_player.get("name", "Gast")
     sender_rank = sender_player.get("achievement_rank")
     touch(session.game)
@@ -121,6 +127,7 @@ async def _chat_message(session: GameSocketSession, data: dict[str, Any]) -> Non
             "ts": datetime.now(timezone.utc).isoformat(),
             "kind": "chat",
             "user_id": sender_player.get("user_id"),
+            "is_admin": sender_player.get("is_admin") is True,
             **({"achievement_rank": sender_rank} if isinstance(sender_rank, dict) else {}),
         },
     )

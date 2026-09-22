@@ -200,7 +200,7 @@ test("unchanged avatars stay decoded through hold, roll and score updates", asyn
   const initial = {
     ...state(),
     _players: [
-      { id: "p1", user_id: 701, name: "Anna" },
+      { id: "p1", user_id: 701, name: "Anna", is_admin: true },
       { id: "p2", user_id: 702, name: "Ben" },
     ],
     _turn: { player_id: "p1", roll_index: 1 },
@@ -209,6 +209,8 @@ test("unchanged avatars stay decoded through hold, roll and score updates", asyn
     _rolls_used: 1,
   };
   const server = await fixture(page, { initial });
+  await expect(page.locator("#headerTurnStatus .player-admin-badge")).toHaveCount(1);
+  await expect(page.locator(".player-card.me .pc-head .player-admin-badge")).toHaveCount(1);
   const selectors = [
     "#headerTurnStatus img.player-avatar",
     ".turn-status-text img.player-avatar",

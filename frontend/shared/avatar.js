@@ -11,15 +11,41 @@ export function avatarSource(player) {
   return userId ? `/api/avatars/${userId}` : DEFAULT_AVATAR;
 }
 
-export function avatarMarkup(player, { size = "tiny", avatarKey = "" } = {}) {
-  const safeSize = sizes.has(size) ? size : "tiny";
-  const userId = avatarUserId(player);
-  const safeKey = String(avatarKey).replace(/[&<>"']/g, character => ({
+function escapeAvatarText(value) {
+  return String(value).replace(/[&<>"']/g, character => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   }[character]));
+}
+
+function isPublicAdmin(player) {
+  return player?.is_admin === true && avatarUserId(player) !== null
+    && player?.type !== "cpu" && player?.participant_type !== "cpu";
+}
+
+function adminContactLabel() {
+  const label = "Admin · Ansprechperson bei Fragen";
+  return escapeAvatarText(window.ZDWA_I18N?.t?.(label) || label);
+}
+
+export function adminBadgeMarkup(player) {
+  if (!isPublicAdmin(player)) return "";
+  const label = adminContactLabel();
+  return `<span class="player-admin-badge" role="img" aria-label="${label}" title="${label}"><svg viewBox="0 0 16 18" aria-hidden="true" focusable="false"><path d="M8 1 14 3v5c0 4-3 7-6 9-3-2-6-5-6-9V3Z" fill="currentColor"/><path d="m5 9 2 2 4-5" fill="none" stroke="var(--admin-badge-mark, #fff)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+}
+
+export function adminProfileMarkup(player) {
+  return isPublicAdmin(player) ? `<span class="admin-contact-label">${adminContactLabel()}</span>` : "";
+}
+
+export function avatarMarkup(player, { size = "tiny", avatarKey = "", showAdminBadge = false } = {}) {
+  const safeSize = sizes.has(size) ? size : "tiny";
+  const userId = avatarUserId(player);
+  const safeKey = escapeAvatarText(avatarKey);
   // Image attributes use fixed enums/numeric IDs. The escaped key identifies
   // the occurrence; filenames and uploaded bytes are never HTML sources.
-  return `<img class="player-avatar player-avatar--${safeSize}" src="${avatarSource(player)}"${userId ? ` data-user-avatar="${userId}"` : ""}${safeKey ? ` data-avatar-key="${safeKey}"` : ""} alt="" width="${safeSize === "large" ? 80 : safeSize === "medium" ? 48 : safeSize === "small" ? 28 : 20}" height="${safeSize === "large" ? 80 : safeSize === "medium" ? 48 : safeSize === "small" ? 28 : 20}" loading="lazy" decoding="async">`;
+  const image = `<img class="player-avatar player-avatar--${safeSize}" src="${avatarSource(player)}"${userId ? ` data-user-avatar="${userId}"` : ""}${safeKey ? ` data-avatar-key="${safeKey}"` : ""} alt="" width="${safeSize === "large" ? 80 : safeSize === "medium" ? 48 : safeSize === "small" ? 28 : 20}" height="${safeSize === "large" ? 80 : safeSize === "medium" ? 48 : safeSize === "small" ? 28 : 20}" loading="lazy" decoding="async">`;
+  const badge = showAdminBadge ? adminBadgeMarkup(player) : "";
+  return badge ? `<span class="player-avatar-wrap">${image}${badge}</span>` : image;
 }
 
 function preservedAvatarIdentity(image) {

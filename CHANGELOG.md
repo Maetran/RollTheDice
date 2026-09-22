@@ -22,6 +22,36 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.40.0 — 2026-09-22
+
+**Deutsch:** Dezente Admin-Schilder erscheinen an Profilbildern in Lobby, Partie
+und Chat sowie als Rollenhinweis im Profil. Angemeldete Mitspieler können
+Adminhilfe rufen. Persistente, atomar übernehmbare Hilferufe bieten einen
+kompakten Admin-CTA und eine separat abschaltbare Push-Art. Der Hilfezugang ist
+auf die angefragte Partie als Zuschauer begrenzt; private und Solo-Partien sind
+abgedeckt. Eigene Admin-Partien pausieren mit einem Einsatzhinweis und behalten
+Sitz und Spielstand. Berechtigte oder versehentliche Rufe bleiben ohne Strafe;
+Missbrauch sperrt weitere Hilferufe. Admins verwalten getrennte Spiel- und
+Hilferufsperren für 3/5/7/14/30/60 Tage oder dauerhaft, mit Grund, automatischem
+Ablauf und protokollierter Aufhebung. Anmeldung bleibt für Kontoinformationen
+verfügbar. Beide Spiele nutzen persönliche Admin-Konten und dieselben Regeln.
+Auf sehr kurzen Handybildschirmen bleibt etwas mehr Abstand zwischen der
+letzten ZDWA-Zeile und der festen Aktionsleiste.
+
+**English:** Discreet admin shields appear on avatars in lobbies, games and chat,
+with a role description on profiles. Signed-in participants can request admin
+help. Durable requests with atomic claiming provide a compact admin action and
+an independently configurable push type. Assistance grants spectator access
+only to the requested game, including private and Solo games. The admin’s own
+game pauses with a message and preserves their seat and progress. Valid and
+accidental requests carry no penalty; misuse blocks further help requests.
+Admins manage separate playing and help-request bans for 3/5/7/14/30/60 days or
+permanently, with reasons, automatic expiry and recorded revocation. Sign-in
+stays available for account information. Both games use personal admin accounts
+and the same rules.
+Very short phone screens retain a little more space between the last ZDWA
+score row and the fixed action bar.
+
 ## 2.39.4 — Ruhige Profilbilder und zentrierte Desktop-Menüs / Stable profile pictures and centered desktop menus — 2026-09-22
 
 - **Deutsch:** Lobbys, Bestenlisten und Chats behalten bereits geladene

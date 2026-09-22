@@ -22,14 +22,14 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=958630738ef8">
+  <link rel="manifest" href="/manifest.webmanifest?v=855e6882657c">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=958630738ef8" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=958630738ef8" sizes="180x180">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=855e6882657c" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=855e6882657c" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=958630738ef8" defer></script>
-  <link rel="stylesheet" href="/static/lobby.css?v=958630738ef8">
+  <script src="/static/shell.js?v=855e6882657c" defer></script>
+  <link rel="stylesheet" href="/static/lobby.css?v=855e6882657c">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -105,7 +105,7 @@
         <div id="accountLogin" class="guest-account-panel" tabindex="-1">
           <div class="account-intro">
             <h3>Spielerkonto</h3>
-            <p class="muted small">Optional für Statistiken, Rankings und gespeicherte Einstellungen.</p>
+            <p class="muted small">Mit Konto: Statistiken, Rankings, gespeicherte Einstellungen und Adminhilfe direkt im Spiel.</p>
           </div>
           <div id="passkeyLogin" class="passkey-login" hidden>
             <button id="passkeyLoginButton" type="button" class="small primary">Mit Passkey anmelden</button>
@@ -304,6 +304,6 @@
   </div>
 
   <!-- Lobby-Controller: eigenständiges ES-Modul. -->
-  <script type="module" src="/static/lobby.js?v=958630738ef8"></script>
+  <script type="module" src="/static/lobby.js?v=855e6882657c"></script>
 </body>
 </html>

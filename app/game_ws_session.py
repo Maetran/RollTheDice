@@ -9,7 +9,8 @@ from typing import Any
 
 from fastapi import WebSocket
 
-from .auth import AuthIdentity, username_is_registered
+from .admin_help_navigation import clear_admin_away_on_rejoin
+from .auth import AuthIdentity, resolve_session, username_is_registered
 from .friend_activity import publish_friend_game_start
 from .game_realtime import broadcast, send_game_message
 from .game_registry import join_player_to_game, start_game_if_ready
@@ -23,6 +24,7 @@ from .game_state import (
     touch,
 )
 from .game_types import ZILCH_GAME_TYPE, game_type_from_state
+from .moderation import user_play_banned
 from .zilch_state import (
     pause_zilch_solo_timer,
     resume_zilch_solo_timer,
@@ -46,6 +48,7 @@ class GameSocketSession:
     player_id: str | None = None
     spectator_id: str | None = None
     is_spectator: bool = False
+    is_admin_help_spectator: bool = False
 
 
 async def close_with_error(
@@ -180,14 +183,24 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
 async def _spectate_game(session: GameSocketSession, data: dict[str, Any]) -> bool:
     g = session.game
     websocket = session.websocket
-    if game_type_from_state(g) == ZILCH_GAME_TYPE and not zilch_spectating_available(g):
+    from .admin_help import has_active_help_claim
+
+    identity = session.auth_identity
+    helping = bool(identity and has_active_help_claim(identity.user_id, g["_id"]))
+    if helping:
+        current_identity = resolve_session(websocket)
+        if not current_identity or current_identity.user_id != identity.user_id or not current_identity.is_admin:
+            await close_with_error(websocket, "Der Admin-Einsatz ist beendet.", fatal=True)
+            return True
+        session.auth_identity = identity = current_identity
+    if game_type_from_state(g) == ZILCH_GAME_TYPE and not zilch_spectating_available(g) and not helping:
         await close_with_error(
             websocket,
             "Zuschauen ist nur bei laufenden Zilch-Partien zu zweit möglich.",
             fatal=True,
         )
         return True
-    if not _passphrase_matches(g, data):
+    if not helping and not _passphrase_matches(g, data):
         await close_with_error(websocket, "Falsche Passphrase")
         return True
 
@@ -206,12 +219,14 @@ async def _spectate_game(session: GameSocketSession, data: dict[str, Any]) -> bo
         "name": identity.username if identity else requested_name,
         "user_id": identity.user_id if identity else None,
         "ws": websocket,
+        "_admin_help": helping,
     }
     if identity:
         spectator["achievement_rank"] = identity.achievement_rank
     session.player_id = None
     session.spectator_id = spectator_id
     session.is_spectator = True
+    session.is_admin_help_spectator = helping
     g.setdefault("_spectators", []).append(spectator)
 
     await websocket.send_json({"spectator_id": spectator_id, "spectator": True})
@@ -250,6 +265,11 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any], *, fina
         )
         return True
 
+    if user_play_banned(player.get("user_id")):
+        await close_with_error(websocket, "Dein Konto ist für das Spielen gesperrt. Details findest du im Konto.",
+                               fatal=True, error_code="account_play_banned")
+        return True
+
     expected_token = str(player.get("resume_token") or "")
     provided_token = str(data.get("resume_token") or "")
     identity = session.auth_identity
@@ -276,6 +296,7 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any], *, fina
     session.spectator_id = None
     session.is_spectator = False
     player["ws"] = websocket
+    clear_admin_away_on_rejoin(g, player.get("user_id"))
     if identity:
         player["achievement_rank"] = identity.achievement_rank
     if old_websocket and old_websocket is not websocket:

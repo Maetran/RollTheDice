@@ -4,6 +4,7 @@ from html.parser import HTMLParser
 from unittest.mock import patch
 
 import httpx
+from starlette.requests import Request
 
 from app import main
 from app.achievements import ACHIEVEMENT_POINTS_POSSIBLE, ACHIEVEMENT_RANKS, achievement_rank_for_points
@@ -297,7 +298,7 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch("app.main.enforce_game_creation_rate_limit"):
-            response = await main.api_games_create(request, object())
+            response = await main.api_games_create(request, Request({"type": "http", "headers": []}))
         game_id = response["game_id"]
         try:
             self.assertIn(game_id, main.games)

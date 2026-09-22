@@ -21,6 +21,7 @@ from .auth import AuthIdentity, resolve_session, websocket_origin_allowed
 from .database import session_scope
 from .game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE
 from .models import LobbyChatMessage, LobbyChatMessageRecipient
+from .public_roles import active_admin_user_ids
 from .security import utcnow
 
 LOBBY_CHAT_HISTORY_DAYS = 3
@@ -166,12 +167,13 @@ def purge_expired_lobby_chat_messages(*, now: datetime | None = None) -> int:
         return int(getattr(result, "rowcount", 0) or 0)
 
 
-def _event_payload(event: LobbyChatMessage) -> dict[str, object]:
+def _event_payload(event: LobbyChatMessage, *, admin_ids: set[int]) -> dict[str, object]:
     payload: dict[str, object] = {
         "id": event.id,
         "kind": event.kind,
         "sender": event.sender_username,
         "user_id": event.sender_user_id,
+        "is_admin": event.sender_user_id in admin_ids,
         "game_type": event.game_type,
         "sent_at": event.created_at.isoformat(),
     }
@@ -197,7 +199,8 @@ def load_lobby_chat_history(user_id: int, *, now: datetime | None = None) -> lis
             )
             .order_by(LobbyChatMessage.created_at.asc(), LobbyChatMessage.id.asc())
         ).all()
-        return [_event_payload(event) for event in events]
+        admin_ids = active_admin_user_ids((event.sender_user_id for event in events), db=db)
+        return [_event_payload(event, admin_ids=admin_ids) for event in events]
 
 
 def record_lobby_chat_event(
@@ -230,7 +233,7 @@ def record_lobby_chat_event(
             for user_id in sorted(recipients)
         )
         db.flush()
-        return _event_payload(event)
+        return _event_payload(event, admin_ids=active_admin_user_ids([sender.user_id], db=db))
 
 
 def _clean_message(value: object) -> str | None:

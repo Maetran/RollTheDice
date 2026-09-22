@@ -191,6 +191,7 @@ def _public_profile(db, user: User) -> dict:
     return {
         "id": user.id,
         "username": user.username,
+        "is_admin": bool(user.is_active and user.role == "admin"),
         "achievement_rank": achievements["rank"],
         "statistics": statistics,
         "recent_games": _recent_games_for_user(db, user.id),

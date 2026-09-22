@@ -39,13 +39,15 @@ class RouteCoverage:
 DOCUMENT_ROUTES = (
     RouteCoverage(("/",), "tests/test_http_shell.py", "test_shell_and_service_worker_are_revalidated"),
     RouteCoverage(
-        ("/regeln", "/spieler/{username}", "/rangabzeichen", "/konto", "/admin",
+        ("/regeln", "/spieler/{username}", "/rangabzeichen", "/konto",
          "/ergebnis/{game_id}", "/offline"),
         "tests/test_http_shell.py", "test_clean_page_routes_and_legacy_redirects",
     ),
     RouteCoverage(
-        ("/spiel/{game_id}", "/spiel/{game_id}/zuschauen"), "tests/browser/zdwa-device-switch.spec.js",
+        ("/spiel/{game_id}",), "tests/browser/zdwa-device-switch.spec.js",
     ),
+    RouteCoverage(("/spiel/{game_id}/zuschauen",), "tests/browser/admin-help-ui.spec.js"),
+    RouteCoverage(("/admin",), "tests/browser/admin-restrictions.spec.js"),
     RouteCoverage(("/ergebnis",), "tests/browser/navigation-destinations.spec.js"),
     RouteCoverage(
         ("/spieler", "/zilch/bestenlisten"), "tests/browser/achievement-feed.spec.js",

@@ -15,11 +15,11 @@ from alembic import command
 
 BASE = Path(__file__).resolve().parents[1]
 PRE_TYPED_RESULTS_REVISION = "20260902_0015"
-# ``head`` includes email accounts, passkeys, the Styler reset and feed indexes. The typed
+# ``head`` includes email accounts, passkeys, feed indexes, admin help and bans. The typed
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20260922_0044"
+LATEST_SCHEMA_REVISION = "20260922_0046"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -89,6 +89,7 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
             "daily_reminder_push_last_sent_on": None,
             "daily_reminder_push_sequence": 0,
             "release_push_enabled": 0,
+            "admin_help_push_enabled": 1,
             "game_invite_push_audience": "all",
             "last_played_on": None,
             "created_at": timestamp,

@@ -54,7 +54,7 @@ function renderOpenGames(games) {
       : waiting.map((name) => ({ name }));
     const badges = listedPlayers.length
       ? listedPlayers.map((player, playerIndex) => `<span class="badge">${playerNameMarkup(player, {
-        compactRank: true,
+        compactRank: true, showAdminBadge: true,
         profileLink: true,
         avatarKey: JSON.stringify(["open-game", gameId || gameIndex, playerIndex]),
       })}</span>`).join(" ")
@@ -113,7 +113,7 @@ function renderRunningGames(games) {
         const name = typeof player === "string" ? player : player.name || "Spieler";
         const connected = typeof player === "string" || Boolean(player.connected);
         const playerData = typeof player === "string" ? { name } : player;
-        return `<span class="badge ${connected ? "online" : "offline"}">${playerNameMarkup(playerData, { compactRank: true, profileLink: true, avatarKey: avatarKey("badge", playerIndex) })}${connected ? "" : " offline"}</span>`;
+        return `<span class="badge ${connected ? "online" : "offline"}">${playerNameMarkup(playerData, { compactRank: true, showAdminBadge: true, profileLink: true, avatarKey: avatarKey("badge", playerIndex) })}${connected ? "" : " offline"}</span>`;
       }).join(" ")
       : '<span class="muted small">Spieler unbekannt</span>';
     const canResume = Boolean(localPlayerIdFor(gameId) || game.my_player_id);
@@ -122,7 +122,7 @@ function renderRunningGames(games) {
         const remaining = game.pause_remaining_label || game.timeout_label || "";
         const offline = Array.isArray(game.offline) ? game.offline : [];
         const waitText = offline.length
-          ? `wartet auf ${offline.map((player, playerIndex) => playerNameMarkup(player, { compactRank: true, profileLink: true, avatarKey: avatarKey("offline", playerIndex) })).join(", ")}`
+          ? `wartet auf ${offline.map((player, playerIndex) => playerNameMarkup(player, { compactRank: true, showAdminBadge: true, profileLink: true, avatarKey: avatarKey("offline", playerIndex) })).join(", ")}`
           : "manuell pausiert";
         const timeText = remaining ? ` • Restzeit: ${escapeHtml(remaining)}` : "";
         return `<div class="sub warn-line">Pausiert: ${waitText}${timeText}</div>`;
@@ -133,7 +133,7 @@ function renderRunningGames(games) {
       const status = players.find(player => data.id
         ? player.id === data.id
         : player.name === data.name) || {};
-      return `${playerNameMarkup({ ...status, ...data }, { compactRank: true, profileLink: true, avatarKey: avatarKey("progress", ...slot) })}${status.connected === false ? " offline" : ""}`;
+      return `${playerNameMarkup({ ...status, ...data }, { compactRank: true, showAdminBadge: true, profileLink: true, avatarKey: avatarKey("progress", ...slot) })}${status.connected === false ? " offline" : ""}`;
     };
     const progressRows = (Array.isArray(game.progress) ? game.progress : []).map((progress, progressIndex) => {
       const translate = window.ZDWA_I18N?.t || ((text) => text);

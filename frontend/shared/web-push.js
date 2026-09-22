@@ -110,6 +110,12 @@ export function syncPushPreferences(form, status) {
   form.elements.gameInvites.checked = status.game_invites_enabled ?? status.enabled ?? false;
   form.elements.dailyReminder.checked = status.daily_reminder_enabled === true;
   if (form.elements.releaseNotifications) form.elements.releaseNotifications.checked = status.release_notifications_enabled === true;
+  const adminHelpSetting = form.querySelector("[data-admin-help-push-setting]");
+  if (adminHelpSetting) {
+    adminHelpSetting.hidden = status.is_admin !== true;
+    form.elements.adminHelp.checked = status.admin_help_enabled !== false;
+    form.elements.adminHelp.disabled = adminHelpSetting.hidden;
+  }
   const schedule = form.querySelector("[data-push-reminder-schedule]");
   if (schedule) schedule.textContent = translated("Nur wenn du heute weder ZDWA noch Zilch gespielt hast: höchstens einmal, zufällig zwischen {start} und {end} Uhr (Schweizer Zeit).")
     .replace("{start}", status.daily_reminder_window_start || "17:00")
@@ -133,6 +139,7 @@ export function bindPushPreferences(form, refresh) {
           game_invites_enabled: form.elements.gameInvites.checked,
           daily_reminder_enabled: form.elements.dailyReminder.checked,
           ...(form.elements.releaseNotifications ? { release_notifications_enabled: form.elements.releaseNotifications.checked } : {}),
+          ...(form.elements.adminHelp && !form.elements.adminHelp.disabled ? { admin_help_enabled: form.elements.adminHelp.checked } : {}),
         }),
       });
       const data = await response.json().catch(() => ({}));

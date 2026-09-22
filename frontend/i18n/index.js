@@ -58,6 +58,7 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
     [/Spiel pausiert\. Du kannst es innerhalb von (.+) wieder aufnehmen\./g, "Game paused. You can resume it within $1."],
     [/Spiel pausiert\. Weiter geht es, sobald wieder verbunden sind: (.+)\./g, "Game paused. Play resumes when these players reconnect: $1."],
     [/Spiel pausiert\. Weiter geht es, sobald alle Spieler wieder verbunden sind\./g, "Game paused. Play resumes when all players have reconnected."],
+    [/(.+) ist gerade im Admin-Einsatz\. Die Partie pausiert, während Hilfe geleistet wird\./g, "$1 is helping as an admin. This game is paused while help is being provided."],
     [/(.+) hat das Spiel abgebrochen\./g, "$1 aborted the game."],
     [/Spiel abgebrochen/g, "Game aborted"],
     [/Spiel beendet – Sieger:/g, "Game over — Winner:"],

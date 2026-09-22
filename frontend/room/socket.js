@@ -1,4 +1,10 @@
   import { requestGameInvitePush, webPushErrorMessage } from "../shared/web-push.js";
+  import { setAdminHelpGameContext } from "../shared/admin-help.js";
+
+  function syncAdminHelpControl() {
+    setAdminHelpGameContext({ gameId: qs.game_id, spectator: IS_SPECTATOR,
+      canRequest: Boolean(myId && sb && !sb._finished && !sb._aborted) });
+  }
 
   function syncOpenSeatPushControl(snapshot = sb) {
     const button = document.getElementById("notifyOpenSeatBtn");
@@ -110,6 +116,7 @@
         authState = msg.auth;
         if (authState?.user?.username) myName = String(authState.user.username);
         syncOpenSeatPushControl();
+        syncAdminHelpControl();
       }
 
       // Abbruch-Notice (kommt vor dem Snapshot)
@@ -146,6 +153,11 @@
 
       // Fehler
       if (msg.error) {
+        if (msg.error_code === "admin_help_completed") {
+          window._fatalWsClose = true;
+          void window.__adminHelpController?.refresh();
+          return;
+        }
         console.warn("Serverfehler:", msg.error);
         clearPendingWrite();
         if (rollRequestPending) {
@@ -200,6 +212,7 @@
         sb = msg.scoreboard;
         syncRollAnimationFromServer(previousSnapshot, sb, msg.roll_event, { hydrated: receivedScoreboard });
         syncOpenSeatPushControl(sb);
+        syncAdminHelpControl();
         const isSuperadminActive = !!sb?._superadmin_active;
         lastSuperadminSnapshotActive = isSuperadminActive;
         seedChatHistoryFromSnapshot(sb);
@@ -251,6 +264,7 @@
           ts: msg.emoji.ts,
           kind: "reaction",
           user_id: msg.emoji.user_id,
+            is_admin: msg.emoji.is_admin,
           achievement_rank: msg.emoji.achievement_rank,
         });
       }
@@ -264,6 +278,7 @@
             ts: msg.chat.ts,
             kind: msg.chat.kind,
             user_id: msg.chat.user_id,
+            is_admin: msg.chat.is_admin,
             achievement_rank: msg.chat.achievement_rank,
           });
           const ownIds = [myId, mySpectatorId ? `S-${mySpectatorId}` : null].filter(Boolean).map(String);
@@ -273,11 +288,11 @@
           }
         }
       } else if (msg.type === "chat" && msg.text) {
-        addChatMessage(msg.sender || "???", msg.text, { user_id: msg.user_id });
+        addChatMessage(msg.sender || "???", msg.text, { user_id: msg.user_id, is_admin: msg.is_admin });
       } else if (msg.message && msg.sender) {
-        addChatMessage(msg.sender, msg.message, { user_id: msg.user_id });
+        addChatMessage(msg.sender, msg.message, { user_id: msg.user_id, is_admin: msg.is_admin });
       } else if (msg.kind === "chat" && msg.payload?.text) {
-        addChatMessage(msg.payload.sender || "???", msg.payload.text, { user_id: msg.payload.user_id });
+        addChatMessage(msg.payload.sender || "???", msg.payload.text, { user_id: msg.payload.user_id, is_admin: msg.payload.is_admin });
       }
 
       // Zuschauer-Toast
@@ -291,6 +306,7 @@
             ts: m.ts,
             kind: m.kind,
             user_id: m.user_id,
+            is_admin: m.is_admin,
             achievement_rank: m.achievement_rank,
           });
         });
@@ -327,6 +343,7 @@
           ts: m.ts,
           kind: m.kind,
           user_id: m.user_id,
+            is_admin: m.is_admin,
           achievement_rank: m.achievement_rank,
         });
       });

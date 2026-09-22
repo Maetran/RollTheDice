@@ -1,3 +1,5 @@
+import { avatarMarkup } from "./avatar.js";
+
 (function(){
   const QUICK_EMOJIS = [
     '👍','👎','🤞','🙏','🖕',
@@ -239,32 +241,24 @@
     }
   }
 
-  function fallbackAvatarMarkup(userId){
-    const numericId = Number(userId);
-    const source = Number.isSafeInteger(numericId) && numericId > 0
-      ? `/api/avatars/${numericId}`
-      : '/static/default-avatar.svg';
-    return `<img class="emoji-pop-avatar" src="${source}" alt="" width="24" height="24" loading="lazy" decoding="async">`;
-  }
-
-  function playerNameMarkup(name, userId){
+  function playerNameMarkup(name, userId, isAdmin){
     if (typeof window.ZDWA_PLAYER_NAME_MARKUP === 'function') {
       return window.ZDWA_PLAYER_NAME_MARKUP(
-        { name, user_id: userId },
-        { showRank: false, fallback: 'Spieler' },
+        { name, user_id: userId, is_admin: isAdmin },
+        { showRank: false, fallback: 'Spieler', showAdminBadge: true },
       );
     }
-    return `<span class="emoji-pop-identity">${fallbackAvatarMarkup(userId)}<span class="player-name-label">${escapeHtml(name || 'Spieler')}</span></span>`;
+    return `<span class="emoji-pop-identity">${avatarMarkup({ user_id: userId, is_admin: isAdmin }, { showAdminBadge: true })}<span class="player-name-label">${escapeHtml(name || 'Spieler')}</span></span>`;
   }
 
-  function showPop({from, user_id: userId, emoji, text, kind}, {ttlMs=5000}={}){
+  function showPop({from, user_id: userId, is_admin: isAdmin, emoji, text, kind}, {ttlMs=5000}={}){
     ensureStyles();
     const mount = ensurePopMount();
     syncPopMountPosition();
     const el = document.createElement('div');
     const isChat = kind === 'chat';
     el.className = `emoji-pop${isChat ? ' chat-pop' : ''}`;
-    const senderMarkup = playerNameMarkup(from, userId);
+    const senderMarkup = playerNameMarkup(from, userId, isAdmin);
     if (isChat) {
       el.innerHTML = `<span class="who">${senderMarkup}:</span> <span class="txt">${escapeHtml(text || '')}</span>`;
       el.addEventListener('click', scrollToChat);
@@ -326,6 +320,7 @@
     showPop({
       from: payload.from || 'Spieler',
       user_id: payload.user_id,
+      is_admin: payload.is_admin,
       emoji: payload.emoji,
     });
   }
@@ -335,6 +330,7 @@
     showPop({
       from: payload.sender || payload.from || 'Spieler',
       user_id: payload.user_id,
+      is_admin: payload.is_admin,
       text: payload.text,
       kind: 'chat',
     });

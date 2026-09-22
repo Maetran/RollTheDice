@@ -262,6 +262,41 @@ Dein Profillink ändert sich und der alte Name wird frei.
 
 Administrators manage accounts and moderation.
 
+**Deutsch:** Admins tragen in Lobby, Partie und Chat ein kleines Schild am
+Profilbild; im Profil steht „Admin · Ansprechperson bei Fragen“. Angemeldete
+Mitspieler können aus ihrer Partie **Admin rufen**. Ein offener Ruf pro Konto
+verhindert doppelte Benachrichtigungen. Admins übernehmen den Ruf mit **Zum
+Hilferuf** und erhalten für diese Partie Zuschauerzugang, auch bei privaten
+oder Solo-Partien. Ihre eigene Partie pausiert mit einem Admin-Einsatz-Hinweis;
+Sitz und Spielstand bleiben erhalten. Rückkehr oder Abschluss entfernen den
+Hinweis. Einsätze laufen nach spätestens einer Stunde aus.
+
+Berechtigte und versehentliche Rufe können ohne Sperre abgeschlossen werden.
+Missbrauch sperrt nur weitere Hilferufe, bis ein Admin diese Sperre aufhebt.
+Zusätzlich können Admins getrennte Spiel- oder Hilferufsperren für **3, 5, 7,
+14, 30 oder 60 Tage oder dauerhaft** setzen und vorzeitig aufheben. Ablauf und
+Grund stehen im Konto; Anmeldung bleibt möglich. Sperren gelten für das Konto,
+nicht geräteübergreifend für unbekannte Gäste. Admin-Hilferuf-Push ist eine
+eigene, standardmäßig aktivierte Einstellung für Admins; Browserfreigabe und
+ein angemeldetes Push-Gerät sind weiterhin nötig.
+
+**English:** A small shield on the avatar identifies admins in lobbies, games
+and chat; profiles say “Admin · Contact for questions”. Signed-in participants
+can **Call an admin** from their game. One open request per account prevents
+duplicate notifications. Admins claim a request with **Go to help request**,
+which grants spectator access to that game, including private and Solo games.
+Their own game pauses with an admin-visit message, preserving their seat and
+progress. Returning or closing the request clears the message; assignments
+expire after one hour at most.
+
+Valid or accidental requests can be closed without a penalty. Misuse blocks
+further help requests until an admin lifts that restriction. Admins can also
+apply separate playing or help-request bans for **3, 5, 7, 14, 30 or 60 days,
+or permanently**, and lift them early. The account shows the reason and expiry;
+sign-in stays available. Bans apply to the account, not to unidentified guests
+across devices. Help-request push has a separate setting, enabled by default
+for admins; browser permission and a registered push device are still required.
+
 The production account release enables email registration and recovery alongside
 passkeys and public Fairplay counters. Resend sends from
 `noreply@zockdiewandan.online`; the [mail setup record](docs/MAIL_SETUP_2026-09-12.md)

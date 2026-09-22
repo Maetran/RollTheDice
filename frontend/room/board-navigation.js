@@ -244,7 +244,7 @@
       const turnPlayer = (snapshot?._players || []).find(p => String(p.id) === String(turnPid));
       const turnName = turnPlayer?.name || "—";
       const turnMarkup = typeof window.ZDWA_PLAYER_NAME_MARKUP === "function"
-        ? window.ZDWA_PLAYER_NAME_MARKUP(turnPlayer, { name: turnName, showRank: false, fallback: "—", avatarKey: "header-turn" })
+        ? window.ZDWA_PLAYER_NAME_MARKUP(turnPlayer, { name: turnName, showRank: false, showAdminBadge: true, fallback: "—", avatarKey: "header-turn" })
         : esc(turnName);
       const rolls = Number(snapshot?._rolls_used || 0);
       const max = Number(snapshot?._rolls_max || 3);

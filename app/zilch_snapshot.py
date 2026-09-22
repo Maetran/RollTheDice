@@ -15,6 +15,7 @@ from .game_state import (
     timeout_seconds,
 )
 from .game_types import ZILCH_GAME_TYPE
+from .public_roles import hydrate_admin_status
 from .zilch_achievements import hydrate_zilch_achievement_ranks
 from .zilch_engine import (
     ZILCH_DICE_COUNT,
@@ -200,6 +201,11 @@ def snapshot_zilch(game: GameDict) -> dict:
         [*transport_players, *participants],
         refresh=bool(game.get("_finished")),
     )
+    participants = [dict(participant) for participant in participants]
+    transport_players = [dict(player) for player in transport_players]
+    chat_history = [dict(entry) for entry in game.get("_chat_history", [])][-CHAT_HISTORY_LIMIT:]
+    offline_players = _offline_players(game)
+    hydrate_admin_status([*transport_players, *participants, *chat_history, *offline_players])
     transport_by_id = {
         str(player.get("id") or ""): player
         for player in transport_players
@@ -249,6 +255,7 @@ def snapshot_zilch(game: GameDict) -> dict:
                 "type": participant.get("type"),
                 "connection_player_id": participant.get("connection_player_id"),
                 "user_id": participant.get("user_id"),
+                "is_admin": participant.get("is_admin") is True,
                 "cpu_strategy": participant.get("cpu_strategy"),
                 "is_cpu": participant.get("type") == "cpu",
                 **(
@@ -307,7 +314,7 @@ def snapshot_zilch(game: GameDict) -> dict:
         "_pause_remaining_label": _format_duration_hm(pause_left),
         "_timeout_seconds": timeout_seconds(),
         "_timeout_label": _format_duration_hm(timeout_seconds()),
-        "_offline_players": _offline_players(game),
+        "_offline_players": offline_players,
         "_connected": {str(player.get("id")): _player_connected(player) for player in transport_players},
         "_participant_connected": {
             str(participant.get("id") or ""): (
@@ -361,7 +368,7 @@ def snapshot_zilch(game: GameDict) -> dict:
         "_zilch_turn_state": current_turn_state,
         "_zilch_quick_holds": [option.payload() for option in options],
         "_zilch_draft_preview": draft_preview,
-        "_chat_history": list(game.get("_chat_history", []))[-CHAT_HISTORY_LIMIT:],
+        "_chat_history": chat_history,
         "_gameplay_status": "playable",
         "_gameplay_notice": {"message_key": "zilch.playable"},
     }

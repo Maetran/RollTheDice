@@ -1,5 +1,5 @@
 import { loadAuth } from "./auth.js";
-import { avatarSource, replaceChildrenPreservingAvatars } from "./avatar.js";
+import { avatarMarkup, replaceChildrenPreservingAvatars } from "./avatar.js";
 import { playerProfileHref } from "./player-allowlist.js";
 
 const CONTEXTS = new Set(["all", "zdwa", "zilch"]);
@@ -217,17 +217,11 @@ export function mountLobbyChat(mount, { context = "zdwa", initialAuth = null } =
         sender.textContent = message.sender;
         if (hasAccount) sender.href = playerProfileHref(message.sender, context);
         if (hasAccount) {
-          // The inert template document avoids loading a replacement image
-          // before the shared renderer can reuse its already decoded node.
-          const avatar = content.ownerDocument.createElement("img");
-          avatar.className = "player-avatar";
-          avatar.src = avatarSource(message.user_id);
-          avatar.dataset.userAvatar = String(Number(message.user_id));
-          avatar.dataset.avatarKey = `lobby-message:${message.id}`;
-          avatar.alt = "";
-          avatar.width = avatar.height = 18;
-          avatar.loading = "lazy";
-          meta.append(avatar);
+          const avatar = document.createElement("template");
+          avatar.innerHTML = avatarMarkup(message, {
+            avatarKey: `lobby-message:${message.id}`, showAdminBadge: true,
+          });
+          meta.append(avatar.content);
         }
         const badge = document.createElement("span");
         badge.className = "lobby-chat__game-badge";

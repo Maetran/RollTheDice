@@ -81,11 +81,14 @@ class AuthIdentity:
 
 def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False) -> dict:
     """Serialize the account fields shared by HTTP and WebSocket auth responses."""
+    from .moderation import account_bans
+
     payload = {
         "id": identity.user_id,
         "username": identity.username,
         "role": identity.role,
         "is_admin": identity.is_admin,
+        "bans": account_bans(identity.user_id),
         # The browser receives a capability calculated by the same policy the
         # HTTP and WebSocket layers use; it never decides access from a name.
         "game_access": public_game_access_payload(identity),

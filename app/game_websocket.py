@@ -36,6 +36,7 @@ from .game_ws_session import (
     handle_session_action,
 )
 from .game_ws_social import SOCIAL_ACTIONS, handle_social_action
+from .moderation import user_play_banned
 from .zilch_gameplay import ZILCH_GAMEPLAY_ACTIONS
 
 logger = logging.getLogger(__name__)
@@ -126,6 +127,11 @@ async def serve_game_websocket(
         return
 
     identity = resolve_session(websocket)
+    if identity and user_play_banned(identity.user_id):
+        await websocket.accept()
+        await close_with_error(websocket, "Dein Konto ist für das Spielen gesperrt. Details findest du im Konto.",
+                               fatal=True, error_code="account_play_banned")
+        return
     # Reject before accepting/sending any frame.  In particular, a known Zilch
     # ID must not disclose its lock state, players, board or chat to anyone.
     if not can_access_game(identity, game):
@@ -205,6 +211,21 @@ async def _receive_messages(
         action_value = data.get("action")
         action = action_value if isinstance(action_value, str) else None
 
+        seated = next((p for p in session.game.get("_players", []) if p.get("id") == session.player_id), {})
+        user_id = seated.get("user_id") or (session.auth_identity.user_id if session.auth_identity else None)
+        if user_play_banned(user_id):
+            await close_with_error(session.websocket,
+                                   "Dein Konto ist für das Spielen gesperrt. Details findest du im Konto.",
+                                   fatal=True, error_code="account_play_banned")
+            return
+        if session.is_admin_help_spectator:
+            from .admin_help import has_active_help_claim
+
+            identity = resolve_session(session.websocket)
+            if not identity or not has_active_help_claim(identity.user_id, session.game["_id"]):
+                await close_with_error(session.websocket, "Der Admin-Einsatz ist beendet.", fatal=True)
+                return
+
         # Zilch access is checked again for every received action. A
         # deleted session, role change, or account deactivation therefore does
         # not leave an already-open socket authorized indefinitely.
@@ -278,7 +299,7 @@ async def _receive_messages(
         # frame. Opening the ordinary player route remains the explicit way
         # for a seated player to resume.
         spectator_actions = {"send_emoji", "chat_message"}
-        if game_type_from_state(session.game) != ZILCH_GAME_TYPE:
+        if game_type_from_state(session.game) != ZILCH_GAME_TYPE and not session.is_admin_help_spectator:
             spectator_actions.add("rejoin_game")
         if session.is_spectator and action not in spectator_actions:
             await session.websocket.send_json({"error": "Nur fuer Spieler"})

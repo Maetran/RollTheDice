@@ -21,11 +21,13 @@ from .abandoned_games import persist_abandoned_game
 from .achievement_feed import AchievementDifficulty, list_zilch_achievement_feed
 from .achievements import sync_achievements_for_users
 from .active_games import delete_active_game, load_active_games, save_active_game
+from .api_admin_help import router as admin_help_router
 from .api_allowlist import router as allowlist_router
 from .api_auth import router as auth_router
 from .api_avatars import router as avatars_router
 from .api_engagement import router as engagement_router
 from .api_friend_activity import router as friend_activity_router
+from .api_moderation import router as moderation_router
 from .api_passkeys import router as passkeys_router
 from .api_releases import router as releases_router
 from .api_users import abandonment_statistics_for_user
@@ -96,6 +98,7 @@ from .product_hosts import (
     zilch_origin,
     zilch_url,
 )
+from .public_roles import active_admin_user_ids, hydrate_admin_status
 from .push_reminders import run_daily_reminder_scheduler
 from .release_push import run_release_push_scheduler
 from .security import normalize_username
@@ -437,6 +440,9 @@ async def lifespan(_app: FastAPI):
     reminder_stop = asyncio.Event()
     reminder_scheduler = asyncio.create_task(run_daily_reminder_scheduler(reminder_stop), name="daily-push-reminders")
     release_scheduler = asyncio.create_task(run_release_push_scheduler(reminder_stop), name="release-push-notifications")
+    from .admin_help import run_admin_help_scheduler
+
+    admin_help_scheduler = asyncio.create_task(run_admin_help_scheduler(reminder_stop), name="admin-help")
     try:
         yield
     finally:
@@ -447,7 +453,9 @@ async def lifespan(_app: FastAPI):
         lobby_chat_purger.cancel()
         reminder_scheduler.cancel()
         release_scheduler.cancel()
-        await asyncio.gather(timeout_sweeper, lobby_chat_purger, reminder_scheduler, release_scheduler, return_exceptions=True)
+        admin_help_scheduler.cancel()
+        await asyncio.gather(timeout_sweeper, lobby_chat_purger, reminder_scheduler, release_scheduler,
+                             admin_help_scheduler, return_exceptions=True)
         await stop_cpu_runners()
         await shutdown_friend_activity()
 
@@ -463,6 +471,8 @@ app.include_router(avatars_router)
 app.include_router(engagement_router)
 app.include_router(friend_activity_router)
 app.include_router(users_router)
+app.include_router(admin_help_router)
+app.include_router(moderation_router)
 
 LEGACY_PAGE_PATHS = {
     "/static/index.html": "/",
@@ -1071,6 +1081,13 @@ def _zilch_unavailable_page(request: Request, detail: str, *, signed_in: bool) -
 @app.get("/zilch/spiel/{game_id}/zuschauen", include_in_schema=False)
 def zilch_room_page(game_id: str, request: Request):
     """Serve a Zilch room only after both policy and type checks pass."""
+    from .admin_help import has_active_help_claim
+
+    helper = resolve_session(request)
+    if (request.url.path.rstrip("/").endswith("/zuschauen") and helper
+            and game_type_from_state(games.get(game_id, {})) == ZILCH_GAME_TYPE
+            and has_active_help_claim(helper.user_id, game_id)):
+        return _page("zilch.html")
     identity, redirect = _resolve_zilch_access(request)
     if redirect:
         return redirect
@@ -1399,7 +1416,14 @@ def _zilch_lobby_final_round(game: GameDict) -> dict[str, object] | None:
     }
 
 
-def _zilch_lobby_participants(game: GameDict) -> list[dict[str, object]]:
+def _game_public_role_identities(game: GameDict) -> list[dict]:
+    return [
+        *game.get("_players", []),
+        *(zilch_participants(game) if game_type_from_state(game) == ZILCH_GAME_TYPE else []),
+    ]
+
+
+def _zilch_lobby_participants(game: GameDict, *, admin_ids: set[int]) -> list[dict[str, object]]:
     """Project durable Zilch seats without turning a CPU into a connection."""
     participants = zilch_participants(game)
     connections = {
@@ -1421,6 +1445,7 @@ def _zilch_lobby_participants(game: GameDict) -> list[dict[str, object]]:
             "participant_type": participant.get("type"),
             "cpu_strategy": participant.get("cpu_strategy"),
             "user_id": participant.get("user_id"),
+            "is_admin": participant.get("user_id") in admin_ids and not is_cpu,
             "is_cpu": is_cpu,
             "connected": None if is_cpu else bool(connection and _player_connected(connection)),
         }
@@ -1607,6 +1632,12 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
     # distinguish an inaccessible Zilch lobby from one with no games.
     if requested_game_type == ZILCH_GAME_TYPE and not can_access_zilch_preview(auth_identity):
         return {"games": [], "online_users": online_user_count()}
+    admin_ids = active_admin_user_ids(
+        player.get("user_id")
+        for game in games.values()
+        if game_type_from_state(game) == requested_game_type and can_access_game(auth_identity, game)
+        for player in _game_public_role_identities(game)
+    )
     lst = []
     for gid, g in games.items():
         try:
@@ -1632,6 +1663,7 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
             joined = len(g["_players"])
             waiting_names = [p.get("name", f"Player {i}") for i, p in enumerate(g["_players"], start=1)]
             offline = _offline_players(g)
+            hydrate_admin_status(offline, admin_ids=admin_ids)
             pause_reason = multiplayer_pause_reason(g)
             pause_left = pause_remaining_seconds(g)
             account_player = next(
@@ -1654,7 +1686,8 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
                 "waiting": waiting_names,
                 "connected": {str(p.get("id")): _player_connected(p) for p in g.get("_players", [])},
                 "player_statuses": [
-                    public_player_payload(p, connected=_player_connected(p)) for p in g.get("_players", [])
+                    public_player_payload(p, connected=_player_connected(p), admin_ids=admin_ids)
+                    for p in g.get("_players", [])
                 ],
                 "offline": offline,
                 "paused": bool(pause_reason),
@@ -1679,7 +1712,7 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
                 entry["current_player_name"] = current_player_name
                 entry["final_round"] = _zilch_lobby_final_round(g)
                 entry["play_mode"] = g.get("_play_mode", "multiplayer")
-                entry["participants"] = _zilch_lobby_participants(g)
+                entry["participants"] = _zilch_lobby_participants(g, admin_ids=admin_ids)
                 entry["participant_count"] = len(entry["participants"])
                 entry["expected_participants"] = zilch_expected_participant_count(g)
                 entry["expected_connections"] = zilch_expected_connection_count(g)
@@ -1700,8 +1733,11 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
 @app.post("/api/games/{game_id}/notify-open-seat")
 async def api_game_notify_open_seat(game_id: str, request: Request):
     """Let a signed-in seated player invite opted-in accounts to a public room."""
+    from .moderation import ensure_play_allowed
+
     identity = require_user(request)
     require_csrf(request, identity)
+    ensure_play_allowed(identity)
     if not web_push_available():
         raise HTTPException(status_code=503, detail="web_push_unavailable")
     sweep_timeouts()
@@ -1759,9 +1795,13 @@ def game_info(
     if not can_access_game(auth_identity, g):
         raise HTTPException(status_code=404, detail="game_not_found")
 
+    from .admin_help import has_active_help_claim
+
+    helping = bool(auth_identity and has_active_help_claim(auth_identity.user_id, game_id))
+
     # Preflight: falls ?check=1 angegeben ist, Passwort hart pruefen und frueh beenden
     if check == 1:
-        if g.get("_passphrase"):
+        if g.get("_passphrase") and not helping:
             # Bei gesperrtem Spiel: fehlendes ODER falsches Passwort => 403
             if not passphrase or passphrase != g["_passphrase"]:
                 raise HTTPException(status_code=403, detail="wrong_passphrase")
@@ -1769,9 +1809,10 @@ def game_info(
         return {"ok": True, "exists": True}
 
     # optional: Passphrase validieren, falls mitgegeben
-    if g.get("_passphrase") and passphrase is not None:
+    if g.get("_passphrase") and passphrase is not None and not helping:
         if passphrase != g["_passphrase"]:
             raise HTTPException(status_code=403, detail="wrong_passphrase")
+    admin_ids = active_admin_user_ids(player.get("user_id") for player in _game_public_role_identities(g))
     if game_type_from_state(g) == ZILCH_GAME_TYPE:
         hydrate_zilch_achievement_ranks(
             [
@@ -1782,6 +1823,7 @@ def game_info(
     else:
         refresh_game_achievement_ranks(g)
     offline = _offline_players(g)
+    hydrate_admin_status(offline, admin_ids=admin_ids)
     pause_reason = multiplayer_pause_reason(g)
     pause_left = pause_remaining_seconds(g)
     result = {
@@ -1797,11 +1839,12 @@ def game_info(
         "finished": g["_finished"],
         "aborted": g.get("_aborted", False),
         "abort_reason": g.get("_abort_reason") if g.get("_aborted") else None,
-        "locked": bool(g.get("_passphrase")),
+        "locked": bool(g.get("_passphrase")) and not helping,
+        "admin_help_access": helping,
         "waiting": [p.get("name", "Player") for p in g["_players"]],
         "connected": {str(p.get("id")): _player_connected(p) for p in g.get("_players", [])},
         "player_statuses": [
-            public_player_payload(p, connected=_player_connected(p))
+            public_player_payload(p, connected=_player_connected(p), admin_ids=admin_ids)
             for p in g.get("_players", [])
         ],
         "offline": offline,
@@ -1824,11 +1867,11 @@ def game_info(
         result.update(
             {
                 "play_mode": g.get("_play_mode", "multiplayer"),
-                "participants": _zilch_lobby_participants(g),
+                "participants": _zilch_lobby_participants(g, admin_ids=admin_ids),
                 "participant_count": len(zilch_participants(g)),
                 "expected_participants": zilch_expected_participant_count(g),
                 "expected_connections": zilch_expected_connection_count(g),
-                "spectator_available": zilch_spectating_available(g),
+                "spectator_available": zilch_spectating_available(g) or helping,
                 "cpu_strategy": _zilch_cpu_strategy(g),
                 "my_cpu_host": _is_zilch_cpu_host(g, auth_identity.user_id if auth_identity else None),
                 "my_solo_host": _is_zilch_solo_host(g, auth_identity.user_id if auth_identity else None),
@@ -1941,6 +1984,7 @@ def _safe_zilch_achievement_profile(user_id: int, *, public: bool = False) -> di
         # viewer select this exact account without trusting a typed name.
         profile = {**profile, "player": {
             "username": str(player["username"]), **({"id": user_id} if public else {}),
+            "is_admin": player.get("is_admin") is True,
         }}
     if public:
         for collection_name in ("unlocked", "locked", "pending"):
@@ -2080,7 +2124,10 @@ def api_zilch_rules(request: Request) -> dict[str, object]:
 @app.post("/api/games")
 async def api_games_create(req: CreateReq, request: Request):
     """API: Neues Spiel anlegen (Name, Modus, optional Passphrase)."""
-    identity = None
+    from .moderation import ensure_play_allowed
+
+    identity = resolve_session(request)
+    ensure_play_allowed(identity)
     guest_host_token: str | None = None
     if req.game_type == ZILCH_GAME_TYPE:
         identity = _require_zilch_access(request)

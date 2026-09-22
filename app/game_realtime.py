@@ -58,7 +58,7 @@ def append_chat_history(game: GameDict, entry: dict) -> dict:
     history.append(clean)
     if len(history) > CHAT_HISTORY_LIMIT:
         del history[:-CHAT_HISTORY_LIMIT]
-    return clean
+    return {**clean, "is_admin": type(user_id) is int and entry.get("is_admin") is True}
 
 
 async def broadcast(game: GameDict, message: dict[str, Any]) -> None:
@@ -74,6 +74,19 @@ async def broadcast(game: GameDict, message: dict[str, Any]) -> None:
         if websocket is None:
             continue
         try:
+            if recipient.get("_admin_help"):
+                from .admin_help import has_active_help_claim
+                from .auth import resolve_session
+                from .game_ws_session import close_with_error
+
+                identity = resolve_session(websocket)
+                if (not identity or identity.user_id != recipient.get("user_id")
+                    or not has_active_help_claim(identity.user_id, game["_id"])):
+                    recipient["ws"] = None
+                    if recipient in game.get("_spectators", []):
+                        game["_spectators"].remove(recipient)
+                    await close_with_error(websocket, "Der Admin-Einsatz ist beendet.", fatal=True, code=1000)
+                    continue
             await websocket.send_json(payload)
         except (WebSocketDisconnect, RuntimeError, OSError):
             if recipient.get("ws") is websocket:

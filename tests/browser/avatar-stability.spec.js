@@ -4,7 +4,7 @@ const path = require("node:path");
 
 test.use({ serviceWorkers: "block" });
 
-const anna = { id: "p1", user_id: 701, name: "Anna", username: "Anna", connected: true, is_active: true };
+const anna = { id: "p1", user_id: 701, name: "Anna", username: "Anna", connected: true, is_active: true, is_admin: true };
 const ben = { id: "p2", user_id: 702, name: "Ben", username: "Ben", connected: true, is_active: true };
 const avatarSelector = "#gamesList img.player-avatar, #runningList img.player-avatar, #recentTable img.player-avatar, #alltimeTable img.player-avatar";
 
@@ -92,6 +92,15 @@ for (const width of [1440, 834, 390]) {
     const { data, requests } = await mockLobby(page);
     await page.goto("/");
     await expect(page.locator(avatarSelector)).toHaveCount(7);
+    await expect(page.locator("#gamesList .player-admin-badge, #runningList .player-admin-badge")).toHaveCount(3);
+    await expect(page.locator("#recentTable .player-admin-badge, #alltimeTable .player-admin-badge")).toHaveCount(0);
+    expect(await page.locator("#gamesList .player-admin-badge, #runningList .player-admin-badge").evaluateAll(badges => badges.every(badge => {
+      const marker = badge.getBoundingClientRect();
+      const avatar = badge.parentElement.querySelector("img").getBoundingClientRect();
+      return getComputedStyle(badge).position === "absolute" && marker.width <= 12 && marker.height <= 13
+        && marker.left >= avatar.left && marker.left < avatar.right
+        && marker.top >= avatar.top && marker.top < avatar.bottom;
+    }))).toBe(true);
     await rememberAvatars(page, avatarSelector);
 
     let gamesBefore = requests.games;
@@ -149,15 +158,18 @@ for (const product of ["/", "/zilch"]) {
     await expect.poll(() => Boolean(socket)).toBe(true);
     const send = (id, userId = 701) => socket.send(JSON.stringify({ lobby_chat_history: true, lobby_chat: {
       id, kind: "message", sender: userId === 701 ? "Anna" : "Ben", user_id: userId,
+      is_admin: userId === 701,
       text: `Nachricht ${id}`, game_type: "zdwa", sent_at: `2026-09-22T10:00:0${id}Z`,
     } }));
     send(1);
     send(2);
     const selector = "[data-lobby-chat-messages] img.player-avatar";
     await expect(page.locator(selector)).toHaveCount(2);
+    await expect(page.locator("[data-lobby-chat-messages] .player-admin-badge")).toHaveCount(2);
     await rememberAvatars(page, selector);
     send(3, 702);
     await expect(page.locator(selector)).toHaveCount(3);
+    await expect(page.locator("[data-lobby-chat-messages] .player-admin-badge")).toHaveCount(2);
     await expectStableAvatars(page, { selector, allowMore: true });
     await expect(page.locator("[data-lobby-chat-messages]")).toContainText("Nachricht 3");
   });

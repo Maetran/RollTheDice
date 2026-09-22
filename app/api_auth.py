@@ -158,6 +158,8 @@ class AdminUserUpdateRequest(BaseModel):
 
 
 def _user_payload(user: User, *, achievement_rank: dict | None = None) -> dict:
+    from .moderation import account_bans
+
     payload = {
         "id": user.id,
         "username": user.username,
@@ -168,6 +170,7 @@ def _user_payload(user: User, *, achievement_rank: dict | None = None) -> dict:
         "lobby_chat_excluded": user.lobby_chat_excluded,
         "created_at": user.created_at,
         "updated_at": user.updated_at,
+        "bans": account_bans(user.id),
     }
     if achievement_rank is not None:
         payload["achievement_rank"] = achievement_rank

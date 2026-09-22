@@ -24,6 +24,25 @@ class Base(DeclarativeBase):
     pass
 
 
+class UserBan(Base):
+    """Account moderation history; expiry and explicit revocation remain auditable."""
+
+    __tablename__ = "user_bans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    scope: Mapped[str] = mapped_column(String(16), nullable=False)
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    help_request_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+    __table_args__ = (CheckConstraint("scope IN ('play', 'help')", name="ck_user_ban_scope"),)
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -61,6 +80,7 @@ class User(Base):
     push_opt_in_prompted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     daily_reminder_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     release_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    admin_help_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     game_invite_push_audience: Mapped[str] = mapped_column(String(16), nullable=False, default="all")
     daily_reminder_push_last_sent_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     daily_reminder_push_sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -339,6 +359,51 @@ class LobbyChatMessageRecipient(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
 
     __table_args__ = (Index("ix_lobby_chat_recipients_user_message", "user_id", "message_id"),)
+
+
+class AdminHelpRequest(Base):
+    """One account's help request and the admin who is currently handling it."""
+
+    __tablename__ = "admin_help_requests"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    requester_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    game_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    game_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    game_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    claimed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    origin_game_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    resolved_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    outcome: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("game_type IN ('zdwa', 'zilch')", name="ck_admin_help_game_type"),
+        CheckConstraint("outcome IS NULL OR outcome IN ('resolved', 'accidental', 'misuse')", name="ck_admin_help_outcome"),
+        CheckConstraint("(resolved_at IS NULL) = (outcome IS NULL)", name="ck_admin_help_resolution"),
+        Index("ix_admin_help_open_requester", "requester_user_id", unique=True,
+              sqlite_where=resolved_at.is_(None), postgresql_where=resolved_at.is_(None)),
+        Index("ix_admin_help_active_admin", "claimed_by_user_id", unique=True,
+              sqlite_where=(resolved_at.is_(None) & claimed_by_user_id.is_not(None)),
+              postgresql_where=(resolved_at.is_(None) & claimed_by_user_id.is_not(None))),
+        Index("ix_admin_help_queue", "resolved_at", "created_at"),
+        Index("ix_admin_help_game", "game_id", "resolved_at"),
+    )
+
+
+class AdminHelpRecipient(Base):
+    """Frozen device audience and at-most-once push claim for a help request."""
+
+    __tablename__ = "admin_help_recipients"
+
+    request_id: Mapped[str] = mapped_column(ForeignKey("admin_help_requests.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    subscription_snapshot_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    push_claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (Index("ix_admin_help_push_pending", "push_claimed_at", "request_id"),)
 
 
 class WebPushSubscription(Base):

@@ -69,8 +69,8 @@ export function addChatMessage(sender, text, opts = {}) {
   line.className = `chat-line${opts.kind === "reaction" ? " reaction" : ""}${opts.kind === "system" ? " system" : ""}`;
   const senderMarkup = typeof window.ZDWA_PLAYER_NAME_MARKUP === "function"
     ? window.ZDWA_PLAYER_NAME_MARKUP(
-      { name: sender, user_id: opts.user_id, achievement_rank: opts.achievement_rank },
-      { compactRank: true },
+      { name: sender, user_id: opts.user_id, is_admin: opts.is_admin, achievement_rank: opts.achievement_rank },
+      { compactRank: true, showAdminBadge: true },
     )
     : escapeHtml(sender);
   const body = opts.kind === "reaction"

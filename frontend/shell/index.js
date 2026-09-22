@@ -6,6 +6,7 @@ import "./pwa.js";
 import "./theme.js";
 import { initializeAvatarFallbacks } from "../shared/avatar.js";
 import { initializeFriendActivity } from "../shared/friend-activity.js";
+import { initializeAdminHelp } from "../shared/admin-help.js";
 import "../shared/engagement.js";
 
 // The public hero is useful before the application bundle arrives. Deferred
@@ -38,6 +39,7 @@ function initializeZdwaPwaBridgeNavigation() {
 initializeZdwaPwaBridgeNavigation();
 initializeAvatarFallbacks();
 initializeFriendActivity();
+initializeAdminHelp();
 
 // Zilch owns the same controller inside its protected application bundle.
 // Every ZDWA document, including the otherwise script-light public pages and

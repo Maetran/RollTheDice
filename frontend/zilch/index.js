@@ -6,8 +6,9 @@ import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
 import { mountAllowlistSettings, mountProfileAllowlist } from "../shared/player-allowlist.js";
 import { mountPlayerSearch } from "../shared/player-search.js";
 import { mountAchievementFeed } from "../shared/achievement-feed.js";
-import { avatarMarkup, replaceChildrenPreservingAvatars } from "../shared/avatar.js";
+import { adminProfileMarkup, avatarMarkup, replaceChildrenPreservingAvatars } from "../shared/avatar.js";
 import { mountAvatarUpload } from "../shared/avatar-upload.js";
+import { renderAccountBans, setAdminHelpGameContext } from "../shared/admin-help.js";
 import { mountFriendActivitySettings } from "../shared/friend-activity.js";
 import {
   bindPushPreferences,
@@ -467,9 +468,9 @@ function typeOfUserId(value) {
   return Number.isInteger(Number(value)) && Number(value) > 0;
 }
 
-function playerCollectionMarkup(value, { includeRank = true, avatarKey = "" } = {}) {
+function playerCollectionMarkup(value, { includeRank = true, avatarKey = "", showAdminBadge = false } = {}) {
   const label = playerName(value);
-  const identity = `${avatarMarkup(value, { size: gameId ? "tiny" : "small", avatarKey })}<span class="zilch-player-name">${escapeHtml(label)}</span>${includeRank ? zilchRankBadgeMarkup(value) : ""}`;
+  const identity = `${avatarMarkup(value, { size: gameId ? "tiny" : "small", avatarKey, showAdminBadge })}<span class="zilch-player-name">${escapeHtml(label)}</span>${includeRank ? zilchRankBadgeMarkup(value) : ""}`;
   const username = playerUsername(value);
   if (!username || isCpuParticipant(value)) return `<span class="zilch-player-identity">${identity}</span>`;
   // Leaderboard projections deliberately flag the signed-in person's row.
@@ -554,6 +555,7 @@ function renderNavigation() {
   const shareButton = document.getElementById("zilchShareGameBtn");
   if (!navigation) return;
   const inGame = routeKind() === "game";
+  if (!inGame) setAdminHelpGameContext({ gameId: "", spectator: false, canRequest: false });
   root?.classList.toggle("zilch-shell--game", inGame);
   if (roomContext) roomContext.hidden = !inGame;
   if (leaveGameButton) leaveGameButton.hidden = !inGame;
@@ -774,7 +776,7 @@ function lobbyPlayerRows(game) {
     const online = player?.connected !== false;
     const status = participantStatusLabel(player);
     const avatarKey = JSON.stringify(["lobby-player", game.id, gameParticipantId(player) || player.user_id || player.name]);
-    return `<span class="zilch-player-chip${cpu ? " zilch-player-chip--cpu" : online ? "" : " zilch-player-chip--offline"}">${cpu ? "" : '<span class="zilch-connection-dot" aria-hidden="true"></span>'}${playerCollectionMarkup(player, { avatarKey })}${participantMeta(player, { compact: true })}<span class="visually-hidden"> ${escapeHtml(status)}</span></span>`;
+    return `<span class="zilch-player-chip${cpu ? " zilch-player-chip--cpu" : online ? "" : " zilch-player-chip--offline"}">${cpu ? "" : '<span class="zilch-connection-dot" aria-hidden="true"></span>'}${playerCollectionMarkup(player, { avatarKey, showAdminBadge: true })}${participantMeta(player, { compact: true })}<span class="visually-hidden"> ${escapeHtml(status)}</span></span>`;
   }).join("");
 }
 
@@ -1143,6 +1145,7 @@ async function renderLobby({ authReady = null } = {}) {
       <strong>${escapeHtml(username)}</strong>
       ${zilchNavigationButton(accountEntry.href, hasAccount ? t("Mein Konto") : accountEntry.label, "small ghost zilch-inline-navigation")}
     </section></div>
+      ${hasAccount ? "" : `<p class="zilch-muted admin-help-account-benefit">${escapeHtml(t("Mit Konto: Statistiken, Rankings, gespeicherte Einstellungen und Adminhilfe direkt im Spiel."))}</p>`}
       <form id="zilchCreateForm" class="zilch-create-form">
         <input id="zilchGameName" type="hidden" value="${escapeHtml(`Zilch · ${username}`)}">
         <fieldset class="zilch-mode-choice"><legend>${escapeHtml(t("Spielart"))}</legend><div class="zilch-mode-grid" role="radiogroup" aria-label="${escapeHtml(t("Spielart"))}"><button class="zilch-mode-option zilch-mode-option--solo is-selected" type="button" role="radio" aria-checked="true" data-zilch-play-mode="solo"><strong>${escapeHtml(t("Solo"))}</strong></button><button class="zilch-mode-option" type="button" role="radio" aria-checked="false" data-zilch-play-mode="multiplayer"><strong>${escapeHtml(t("Zu zweit"))}</strong></button><button class="zilch-mode-option" type="button" role="radio" aria-checked="false" data-zilch-play-mode="cpu"><strong>${escapeHtml(t("Gegen den Würfelwirt"))}</strong></button></div></fieldset>
@@ -2211,6 +2214,7 @@ function zilchAccountSettingsMarkup(username) {
         <p class="zilch-muted" data-push-reminder-schedule></p>
         <p class="zilch-muted">${escapeHtml(t("Bei beiden angemeldeten Spielen wechseln sich ZDWA und Zilch ab. Der Klick auf eine Erinnerung öffnet die passende Lobby."))}</p>
         <label><input type="checkbox" name="releaseNotifications"> ${escapeHtml(t("Versionshinweise erhalten"))}</label>
+        <label data-admin-help-push-setting hidden><input type="checkbox" name="adminHelp"> ${escapeHtml(t("Hilferufe von Spielern erhalten (Admins)"))}</label>
         <p class="zilch-muted">${escapeHtml(t("Nach einem erfolgreichen Update: kurze Hinweise zu neuen Funktionen oder Verbesserungen an der Stabilität. Ein Klick öffnet die passende Lobby. Deine Spielaktivität und die Spielerauswahl gelten nur für die anderen Push-Arten."))}</p>
         <button class="primary" type="submit">${escapeHtml(t("Push-Auswahl speichern"))}</button>
         <p class="zilch-settings-message" data-push-preferences-message role="status"></p>
@@ -2309,6 +2313,7 @@ function bindZilchAccountTabs() {
 }
 
 function bindZilchAccountSettings() {
+  renderAccountBans(document.querySelector("[data-account-bans]"), state.auth?.user);
   mountUsernameSettings(document.querySelector("[data-username-settings]"), {
     user: state.auth.user,
     zilch: true,
@@ -2553,8 +2558,9 @@ async function renderAccount() {
   state.accountTab = state.auth?.user?.must_change_password
     ? "settings" : normalizedZilchAccountTab(window.location.hash);
   content.innerHTML = `<section class="zilch-game-head zilch-account-head">
-      <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><div class="zilch-account-head__identity">${avatarMarkup(state.auth?.user, { size: "large" })}<h1>${escapeHtml(username)}</h1><span id="zilchAccountRank" class="zilch-account-head__rank" aria-live="polite"></span></div><p>${escapeHtml(t("Hier warten deine privaten Zilch-Zahlen und Awards."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><div class="zilch-account-head__identity">${avatarMarkup(state.auth?.user, { size: "large" })}<h1>${escapeHtml(username)}</h1><span id="zilchAccountRank" class="zilch-account-head__rank" aria-live="polite"></span>${adminProfileMarkup(state.auth?.user)}</div><p>${escapeHtml(t("Hier warten deine privaten Zilch-Zahlen und Awards."))}</p></div>
     </section>
+    <div data-account-bans role="note" hidden></div>
     ${zilchAccountTabsMarkup()}
     <section id="zilchAccountPanel-statistics" class="zilch-account-panel" data-zilch-account-panel="statistics" role="tabpanel" aria-labelledby="zilchAccountTab-statistics"${state.accountTab === "statistics" ? "" : " hidden"}>${zilchAccountStatisticsLoadingMarkup()}</section>
     <section id="zilchAccountPanel-achievements" class="zilch-account-panel" data-zilch-account-panel="achievements" role="tabpanel" aria-labelledby="zilchAccountTab-achievements"${state.accountTab === "achievements" ? "" : " hidden"}>${zilchAccountAchievementsLoadingMarkup()}</section>
@@ -2611,7 +2617,7 @@ async function renderPlayerAchievements() {
     const slot = document.getElementById("zilchPlayerAchievementsBody");
     const displayName = String(state.playerAchievements.player?.username || state.playerAchievements.player?.display_name || requestedName);
     document.title = `${displayName} – ${t("Zilch-Awards")}`;
-    if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><div class="avatar-profile-heading">${avatarMarkup(state.playerAchievements.player, { size: "large" })}<h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2></div><div id="zilchProfileAllowlist"></div></section>${achievementRankSummaryMarkup(state.playerAchievements)}${abandonmentStatisticsMarkup(state.playerAchievements.abandonment_statistics)}${achievementRankLegendMarkup(state.playerAchievements, state.achievementRankLegend)}${achievementsCatalogMarkup(state.playerAchievements)}`;
+    if (slot) slot.innerHTML = `<section class="zilch-card zilch-achievement-profile" aria-labelledby="zilchAchievementProfileTitle"><p class="eyebrow">${escapeHtml(t("Zilch-Sammlung"))}</p><div class="avatar-profile-heading">${avatarMarkup(state.playerAchievements.player, { size: "large" })}<h2 id="zilchAchievementProfileTitle">${escapeHtml(displayName)}</h2>${adminProfileMarkup(state.playerAchievements.player)}</div><div id="zilchProfileAllowlist"></div></section>${achievementRankSummaryMarkup(state.playerAchievements)}${abandonmentStatisticsMarkup(state.playerAchievements.abandonment_statistics)}${achievementRankLegendMarkup(state.playerAchievements, state.achievementRankLegend)}${achievementsCatalogMarkup(state.playerAchievements)}`;
     mountProfileAllowlist(document.getElementById("zilchProfileAllowlist"), { userId: state.playerAchievements.player?.id, context: "zilch" });
   } catch (_) {
     const slot = document.getElementById("zilchPlayerAchievementsBody");
@@ -3344,6 +3350,13 @@ function renderRulesContent(facts) {
       <p class="zilch-rules-overview__note">${escapeHtml(t("Die größeren Empfehlungskacheln zeigen die passenden Würfel: gleiche Augen mit Anzahl, gemischte Kombinationen mit allen beteiligten Würfeln. Ab 1’000 Punkten hilft ein goldener Akzent beim Erkennen. Antippen wählt nur vor; erst Weiterwürfeln oder Sichern übernimmt die Auswahl."))}</p>
     </section>
     <section class="zilch-card zilch-rules-section">
+      <h2>${escapeHtml(t("Adminhilfe und Fairplay"))}</h2>
+      <p>${escapeHtml(t("Ein kleines Schild am Profilbild kennzeichnet Admins in Lobby, Partie und Chat. Angemeldete Mitspieler können in ihrer Partie Admin rufen. Pro Konto bleibt ein Ruf offen; erneutes Klicken sendet keine weitere Benachrichtigung."))}</p>
+      <p>${escapeHtml(t("Übernimmt ein Admin die Hilfe, erhält er Zuschauerzugang zu genau dieser Partie. Seine eigene Partie pausiert mit einem Hinweis zum Admin-Einsatz; Sitz und Spielstand bleiben erhalten. Rückkehr oder Abschluss entfernen den Hinweis. Ein Einsatz endet spätestens nach einer Stunde."))}</p>
+      <p>${escapeHtml(t("Berechtigte und versehentliche Rufe bleiben ohne Sperre. Missbrauch sperrt weitere Hilferufe, bis ein Admin die Sperre aufhebt. Admins können Spielzugang und Hilferufe getrennt für 3, 5, 7, 14, 30 oder 60 Tage oder dauerhaft sperren und jederzeit wieder freigeben. Grund und Ablauf siehst du im Konto."))}</p>
+      <p>${escapeHtml(t("Admins erhalten Hilferuf-Push unabhängig von anderen Push-Arten. Die eigene Einstellung ist anfangs aktiviert und lässt sich im Konto ausschalten. Browserfreigabe und ein angemeldetes Push-Gerät sind erforderlich."))}</p>
+    </section>
+    <section class="zilch-card zilch-rules-section">
       <h2>${escapeHtml(t("Lobby-Chat und Einladungen"))}</h2>
       <p>${escapeHtml(t("Auch Änderungen an E-Mail und Passwort sowie das Hinzufügen oder Entfernen von Passkeys bestätigst du bevorzugt mit einem vorhandenen Passkey. Ohne nutzbaren Passkey steht die Passwortbestätigung bereit. Beim ersten Einrichten eines Passkeys brauchst du noch dein aktuelles Passwort."))}</p>
       <p>${escapeHtml(t("Unter Konto → Einstellungen kannst du deinen Benutzernamen bevorzugt mit einem eingerichteten Passkey bestätigen. Dein aktuelles Passwort bleibt als Alternative verfügbar. Der neue Name gilt für Anmeldung, Profil und neue Partien in ZDWA und Zilch. Statistiken, Erfolge und Spielerauswahl bleiben erhalten. Auch abgeschlossene Partien zeigen deinen aktuellen Kontonamen. Gastnamen und Nachrichtentexte bleiben unverändert. Dein Profillink ändert sich; der alte Name wird wieder frei."))}</p>
@@ -3656,7 +3669,7 @@ function scoreNotebook(players, boards, {
     const boardLabel = [player?.name || t("Spieler"), marker, active ? t("Am Zug") : ""].filter(Boolean).join(", ");
     const scoreTotal = solo ? `${number(board.total_points)} / ${number(target)}` : number(board.total_points);
     return `<article class="${classes}" data-zilch-board-id="${escapeHtml(player.id)}" aria-label="${escapeHtml(boardLabel)}">
-      <header><h2>${playerCollectionMarkup(player, { includeRank: false, avatarKey: JSON.stringify(["notebook", player.id]) })} ${participantMeta(player, { compact: true })}</h2><span class="zilch-notebook-total"><span class="visually-hidden">${escapeHtml(t("Stand"))}: </span>${escapeHtml(scoreTotal)}</span></header>
+      <header><h2>${playerCollectionMarkup(player, { includeRank: false, showAdminBadge: Boolean(gameId), avatarKey: JSON.stringify(["notebook", player.id]) })} ${participantMeta(player, { compact: true })}</h2><span class="zilch-notebook-total"><span class="visually-hidden">${escapeHtml(t("Stand"))}: </span>${escapeHtml(scoreTotal)}</span></header>
       <ol data-zilch-round-log="${escapeHtml(player.id)}" style="--zilch-round-rows:${lineCount}">${Array.from({ length: lineCount }, (_unused, index) => {
         const entry = rounds[index];
         return entry ? `<li>${notebookRound(entry)}</li>` : '<li class="zilch-notebook-entry--blank" aria-hidden="true"></li>';
@@ -4451,7 +4464,7 @@ function waitingRoomPanel(snapshot) {
   const participants = snapshotParticipants(snapshot);
   const expected = Number(snapshot?._expected_participants || snapshot?._expected || 2);
   const invite = canRequestZilchGameInvite(snapshot, { inRoom: true }) ? zilchGameInviteButtonMarkup(gameId) : "";
-  const playerRows = participants.map(player => `<li><span>${playerCollectionMarkup(player, { avatarKey: JSON.stringify(["waiting-player", player.id]) })} ${participantMeta(player, { compact: true })}</span><strong>${escapeHtml(participantStatusLabel(player))}</strong></li>`).join("");
+  const playerRows = participants.map(player => `<li><span>${playerCollectionMarkup(player, { showAdminBadge: true, avatarKey: JSON.stringify(["waiting-player", player.id]) })} ${participantMeta(player, { compact: true })}</span><strong>${escapeHtml(participantStatusLabel(player))}</strong></li>`).join("");
   return `<section class="zilch-card zilch-start-roll" aria-labelledby="zilchWaitingRoomTitle">
     <p class="eyebrow">${escapeHtml(t("Wartesaal"))}</p>
     <h2 id="zilchWaitingRoomTitle">${escapeHtml(t("Bereit für den Startwurf"))}</h2>
@@ -4485,7 +4498,7 @@ function openingRollPanel(snapshot) {
     const result = rolled >= 1 && rolled <= 6
       ? `<span class="zilch-start-roll-die" data-start-roll-value="${rolled}" role="img" aria-label="${escapeHtml(`${t("Würfel")}: ${rolled}`)}">${diePips(rolled, `opening-${index}`)}</span>`
       : `<strong>${escapeHtml(t("wartet"))}</strong>`;
-    return `<li data-start-roll-player="${escapeHtml(playerId)}"><span>${playerCollectionMarkup(player, { avatarKey: JSON.stringify(["start-roll", playerId]) })} ${participantMeta(player, { compact: true })}</span>${result}</li>`;
+    return `<li data-start-roll-player="${escapeHtml(playerId)}"><span>${playerCollectionMarkup(player, { showAdminBadge: true, avatarKey: JSON.stringify(["start-roll", playerId]) })} ${participantMeta(player, { compact: true })}</span>${result}</li>`;
   }).join("");
   const priorTie = start.tied ? `<p class="zilch-event zilch-event--zilch">${escapeHtml(t("Gleichstand beim Startwurf – beide würfeln erneut."))}</p>` : "";
   const resultMessage = moment && !moment.tied
@@ -4940,6 +4953,7 @@ function rememberReactionChatEntry(reaction) {
   const entry = {
     from_id: reaction?.from_id,
     user_id: reaction?.user_id,
+    is_admin: reaction?.is_admin,
     sender: String(reaction?.from || t("Spieler")),
     text,
     ts: reaction?.ts,
@@ -4963,12 +4977,15 @@ function zilchChatRows(snapshot) {
     const sender = participantForId(snapshot, entry?.from_id || entry?.player_id || entry?.participant_id);
     // Spectators are not game participants, and may already have left. The
     // authenticated sender ID travels with both live messages and history.
-    const accountSender = sender || (typeOfUserId(entry?.user_id) ? {
+    const accountSender = sender ? {
+      ...sender, is_admin: typeof entry?.is_admin === "boolean" ? entry.is_admin : sender.is_admin,
+    } : (typeOfUserId(entry?.user_id) ? {
       name: entry?.sender || t("Spieler"),
       user_id: entry?.user_id,
+      is_admin: entry?.is_admin,
     } : null);
     const identity = accountSender
-      ? playerCollectionMarkup(accountSender, { avatarKey: JSON.stringify(["chat", entryKey, occurrence]) })
+      ? playerCollectionMarkup(accountSender, { avatarKey: JSON.stringify(["chat", entryKey, occurrence]), showAdminBadge: true })
       : `<span class="zilch-player-identity">${escapeHtml(entry?.sender || t("Spieler"))}</span>`;
     return `<li><strong>${identity}</strong><span>${escapeHtml(entry?.text || "")}</span></li>`;
   }).join("");
@@ -5026,6 +5043,8 @@ function renderGameState({ followNotebookLatest = false } = {}) {
   if (!content) return;
   root?.classList.add("zilch-shell--game");
   const snapshot = state.game;
+  setAdminHelpGameContext({ gameId, spectator: spectatorRoute,
+    canRequest: Boolean(snapshot && localParticipantId(snapshot) && !snapshot._finished && !snapshot._aborted) });
   if (!snapshot) {
     renderNotice("Zilch-Spiel wird geladen …");
     return;
@@ -5541,6 +5560,12 @@ function connectGameSocket() {
     if (payload.zilch_error) {
       renderSocketError(message(payload.zilch_error.message_key, payload.zilch_error.params || {}));
     } else if (payload.error) {
+      if (payload.error_code === "admin_help_completed") {
+        state.stopped = true;
+        window.clearTimeout(state.reconnectTimer);
+        void window.__adminHelpController?.refresh();
+        return;
+      }
       if (payload.fatal) {
         state.stopped = true;
         // Tabs on the same device share these credentials. A transferred
@@ -5570,6 +5595,7 @@ function connectGameSocket() {
 }
 
 async function resolveGamePassphrase(details) {
+  if (details?.admin_help_access === true) return "";
   if (!details?.locked || !gameId) return "";
   const stored = storedPassphrase(gameId);
   const candidate = stored || await requestPassphrase(details.name);
@@ -5636,9 +5662,22 @@ async function renderGame() {
 
 async function initialize() {
   if (!root || !content) return;
-  const appMode = initializeAppMode({ mode: "zilch" });
-  const authReady = loadAuth({ refresh: true }).then(auth => {
+  let appMode = spectatorRoute ? null : initializeAppMode({ mode: "zilch" });
+  const authReady = loadAuth({ refresh: true }).then(async auth => {
     state.auth = auth;
+    if (!appMode) {
+      let scopedZilchSpectator = null;
+      const access = auth?.game_access || auth?.user?.game_access;
+      if (gameId && auth?.authenticated && auth.user?.is_admin === true
+          && access?.zilch_preview !== true && access?.zilch_public !== true) {
+        const response = await fetch(`/api/games/${encodeURIComponent(gameId)}`, { cache: "no-store" });
+        const details = response.ok ? await response.json() : null;
+        if (details?.exists && details.game_type === "zilch" && details.admin_help_access === true) {
+          scopedZilchSpectator = { userId: auth.user.id, pathname: window.location.pathname };
+        }
+      }
+      appMode = initializeAppMode({ mode: "zilch", refreshOnInitialize: false, scopedZilchSpectator });
+    }
     return appMode.applyAuth(auth);
   }).catch(() => false);
   const publicLobby = currentZilchRoute === "/" && root.dataset.zilchPublicLobby === "true";

@@ -1,10 +1,10 @@
 {
-  "version": "2.39.4",
-  "bump": "patch",
+  "version": "2.40.0",
+  "bump": "minor",
   "date": "2026-09-22",
-  "previous_revision": "4e47264db772515c071c1f56cf8bc2c7b4d66ada",
+  "previous_revision": "6e4e1a924fe6d2fb4f2107028ba0a345793e1c73",
   "summary": {
-    "de": "Ruhige Profilbilder und zentrierte Desktop-Menüs",
-    "en": "Stable profile pictures and centered desktop menus"
+    "de": "Adminhilfe im Spiel und gezielte Kontosperren",
+    "en": "In-game admin help and scoped account bans"
   }
 }

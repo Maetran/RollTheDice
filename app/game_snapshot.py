@@ -25,6 +25,7 @@ from .game_state import (
     pause_remaining_seconds,
     timeout_seconds,
 )
+from .public_roles import hydrate_admin_status
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +66,15 @@ def refresh_game_achievement_ranks(g: GameDict) -> None:
         g["_achievement_ranks_finalized"] = True
 
 
-def public_player_payload(player: dict, *, connected: bool | None = None) -> dict:
+def public_player_payload(player: dict, *, connected: bool | None = None, admin_ids: set[int] | None = None) -> dict:
     """Serialize a player identity consistently for lobby and game clients."""
     payload = {
         "id": str(player.get("id") or ""),
         "name": player.get("name", "Player"),
         "user_id": player.get("user_id"),
+        "is_admin": type(player.get("user_id")) is int and (
+            player.get("user_id") in admin_ids if admin_ids is not None else player.get("is_admin") is True
+        ),
     }
     if connected is not None:
         payload["connected"] = bool(connected)
@@ -179,6 +183,9 @@ def snapshot_zdwa(g: GameDict) -> dict:
             _auto_single = False
 
         offline_players = _offline_players(g)
+        public_players = [dict(player) for player in g.get("_players", [])]
+        chat_history = [dict(entry) for entry in g.get("_chat_history", [])][-CHAT_HISTORY_LIMIT:]
+        hydrate_admin_status([*public_players, *offline_players, *chat_history])
         pause_reason = multiplayer_pause_reason(g)
         pause_left = pause_remaining_seconds(g)
         correction_window = bool(
@@ -197,7 +204,7 @@ def snapshot_zdwa(g: GameDict) -> dict:
             "_hardcore": bool(g.get("_hardcore", False)),
             "_players": [
                 public_player_payload(p, connected=_player_connected(p))
-                for p in g["_players"]
+                for p in public_players
             ],
             "_players_joined": len(g["_players"]),
             "_expected": g["_expected"],
@@ -270,7 +277,7 @@ def snapshot_zdwa(g: GameDict) -> dict:
                 for pid in g["_scoreboards"]
             },
             "_auto_single": _auto_single,
-            "_chat_history": list(g.get("_chat_history", []))[-CHAT_HISTORY_LIMIT:],
+            "_chat_history": chat_history,
             # Serverseitig berechnete Vorschläge für den aktiven Spieler.
             "suggestions": compute_suggestions(g),
             # Optionales Poker-Debugging

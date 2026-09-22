@@ -1,4 +1,4 @@
-import { avatarMarkup } from "./avatar.js";
+import { adminProfileMarkup, avatarMarkup } from "./avatar.js";
 import { createPasskeyCredential, requestPasskeyAssertion, passkeysSupported } from "./passkeys.js";
 
 export { passkeysSupported };
@@ -554,6 +554,7 @@ export function authError(detail) {
     username_invalid: 'Bitte prüfe deinen neuen Benutzernamen.',
     username_preview_managed: 'Dieser Name ist an einen Zilch-Testzugang gebunden. Bitte wende dich an die Administration.',
     invalid_credentials: 'Benutzername oder Passwort ist falsch.',
+    account_play_banned: 'Dein Konto ist für das Spielen gesperrt. Details findest du im Konto.',
     login_temporarily_blocked: 'Zu viele Fehlversuche. Bitte später erneut versuchen.',
     registration_temporarily_blocked: 'Zu viele Registrierungen. Bitte warte kurz und versuche es später erneut.',
     email_request_temporarily_blocked: 'Zu viele E-Mail-Anfragen. Bitte warte kurz und versuche es später erneut.',
@@ -614,12 +615,12 @@ export function playerRankBadge(player, { compact = false, owner = '' } = {}) {
   return `<span class="player-rank player-rank--${escapeHtml(key)}${compact ? ' player-rank--compact' : ''}" role="link" tabindex="0" data-rank-legend data-rank-key="${escapeHtml(key)}" data-rank-points="${points}" data-rank-points-possible="${pointsPossible}"${owner ? ` data-rank-owner="${escapeHtml(owner)}"` : ''} title="${escapeHtml(rankTitle)}" aria-label="${escapeHtml(rankTitle)}"><span class="player-rank-stars" aria-hidden="true">${starText}</span><span class="player-rank-title">${escapeHtml(label)}</span></span>`;
 }
 
-export function playerNameMarkup(player, { name, compactRank = false, fallback = 'Spieler', profileLink = false, avatarSize = 'tiny', avatarKey = '' } = {}) {
+export function playerNameMarkup(player, { name, compactRank = false, fallback = 'Spieler', profileLink = false, avatarSize = 'tiny', avatarKey = '', showAdminBadge = false, adminProfile = false } = {}) {
   const label = name ?? player?.name ?? player?.username ?? fallback;
   const username = player?.username || player?.name;
   const userId = Number(player?.user_id ?? player?.id);
   const nameMarkup = profileLink && Number.isInteger(userId) && userId > 0 && username
     ? `<a class="player-name-label" href="/api/players/by-id/${userId}/profile?game=zdwa">${escapeHtml(label)}</a>`
     : `<span class="player-name-label">${escapeHtml(label)}</span>`;
-  return `<span class="player-name-with-rank">${avatarMarkup(player, { size: avatarSize, avatarKey })}${nameMarkup}${playerRankBadge(player, { compact: compactRank, owner: label })}</span>`;
+  return `<span class="player-name-with-rank">${avatarMarkup(player, { size: avatarSize, avatarKey, showAdminBadge })}${nameMarkup}${playerRankBadge(player, { compact: compactRank, owner: label })}</span>${adminProfile ? adminProfileMarkup(player) : ''}`;
 }

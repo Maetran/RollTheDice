@@ -82,11 +82,16 @@ async function gameFixture(browser, baseURL, { game, theme, device, disableTable
     let body = (await response.text()).replace(/font-display:\s*optional/g, "font-display:block");
     if (disableTabletStyles) {
       body = body.replace(/@media\s*([^{}]+)\{/g, (rule, condition) => {
-        if (condition.includes("any-pointer") && condition.includes("768px") && condition.includes("600px")) {
-          disabledTabletRules += 1;
-          return "@media not all{";
-        }
-        return rule;
+        // A shared phone/tablet rule has comma-separated alternatives. Keep
+        // the phone branches so this fixture only removes tablet styling.
+        const branches = condition.split(",");
+        const retained = branches.filter(branch => {
+          const tablet = /any-pointer\s*:\s*coarse/.test(branch)
+            && /min-width\s*:\s*768px/.test(branch) && /min-height\s*:\s*60[01]px/.test(branch);
+          if (tablet) disabledTabletRules += 1;
+          return !tablet;
+        });
+        return retained.length === branches.length ? rule : `@media ${retained.join(",") || "not all"}{`;
       });
     }
     await route.fulfill({ response, body });
@@ -106,8 +111,16 @@ async function gameFixture(browser, baseURL, { game, theme, device, disableTable
     await route.fulfill({ status: 200, contentType: "text/html", body: await fs.readFile(filename) });
   });
   await page.routeWebSocket(new RegExp(`/ws/${gameId}$`), socket => {
-    socket.onMessage(raw => {
+    socket.onMessage(async raw => {
       if (["join_game", "rejoin_game"].includes(JSON.parse(String(raw)).action)) {
+        // Give both comparison pages the same font metrics on their first
+        // score-sheet fit, before either renders its authoritative snapshot.
+        if (game === "zdwa" && theme === "classic") {
+          await page.evaluate(() => Promise.all([
+            document.fonts.load('400 16px "ZDWA Classic Hand"'),
+            document.fonts.load('700 16px "ZDWA Classic Hand"'),
+          ]));
+        }
         socket.send(JSON.stringify({ player_id: "p1", resume_token: "boundary-fixture" }));
         socket.send(JSON.stringify({ scoreboard: game === "zilch" ? zilchSnapshot() : zdwaSnapshot() }));
       }

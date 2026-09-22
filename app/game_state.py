@@ -91,6 +91,9 @@ def check_timeout_and_abort(g, *, now: datetime | None = None) -> bool:
             return False
         if g.get("_finished"):
             return False
+        if any((_utc_timestamp(value.get("until")) or now) > now
+               for value in g.get("_admin_help_away", {}).values()):
+            return False
         last = _utc_timestamp(raw_last)
         if last is None:
             logger.warning("Could not evaluate timeout for game %s: invalid last activity", g.get("_id"))
@@ -409,6 +412,12 @@ def _offline_players(g: GameDict) -> list[dict]:
 
 def multiplayer_pause_reason(g: GameDict) -> str | None:
     """Liefert den aktiven Pausegrund fuer manuelle und Reconnect-Pausen."""
+    if not g.get("_finished") and not g.get("_aborted"):
+        now = datetime.now(timezone.utc)
+        away = [value.get("name", "Admin") for value in g.get("_admin_help_away", {}).values()
+                if (_utc_timestamp(value.get("until")) or now) > now]
+        if away:
+            return f"{', '.join(away)} ist gerade im Admin-Einsatz. Die Partie pausiert, während Hilfe geleistet wird."
     if g.get("_manual_pause"):
         by = g.get("_manual_pause_by_name")
         prefix = f"{by} hat das Spiel pausiert." if by else "Spiel pausiert."

@@ -52,6 +52,8 @@ def _is_known_zilch_path(path: str) -> bool:
         if not path.startswith(prefix):
             continue
         segment = path[len(prefix) :]
+        if prefix == "/spiel/" and segment.endswith("/zuschauen"):
+            segment = segment[:-len("/zuschauen")]
         if segment.endswith("/"):
             segment = segment[:-1]
         return _decoded_path_segment_is_safe(segment)

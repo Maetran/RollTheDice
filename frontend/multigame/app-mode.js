@@ -59,6 +59,7 @@ function navigateToMode(mode) {
 export function initializeAppMode({
   mode = document.documentElement.dataset.game || "zdwa",
   refreshOnInitialize = true,
+  scopedZilchSpectator = null,
 } = {}) {
   const currentMode = mode === "zilch" ? "zilch" : "zdwa";
   const existingController = window.ZDWA_APP_MODE;
@@ -87,14 +88,20 @@ export function initializeAppMode({
 
   const applyAuth = (auth) => {
     const nextAllowed = canUseZilch(auth);
+    // A server-confirmed help assignment can open this one spectator page
+    // without granting the wider Zilch audience capability or game switch.
+    const scopedAllowed = currentMode === "zilch" && auth?.authenticated && auth.user?.is_admin === true
+      && scopedZilchSpectator?.userId === auth.user.id
+      && scopedZilchSpectator.pathname === window.location.pathname
+      && /\/spiel\/[^/]+\/zuschauen\/?$/.test(window.location.pathname);
     const access = auth?.game_access || auth?.user?.game_access;
     publicLobby = publicLobby && access?.zilch_public === true;
-    if (!nextAllowed) {
+    if (!nextAllowed && !scopedAllowed) {
       revokeZilch();
       return false;
     }
-    allowed = true;
-    updateSwitch(true);
+    allowed = nextAllowed;
+    updateSwitch(allowed);
     return true;
   };
 

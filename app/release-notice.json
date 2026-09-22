@@ -1,26 +1,23 @@
 {
   "kind": "usability",
-  "games": [
-    "zdwa",
-    "zilch"
-  ],
-  "summary_de": "Ruhige Profilbilder in Lobby, Bestenlisten und Chat – und mittige Menüs am Desktop.",
-  "summary_en": "Steady profile pictures in lobbies, leaderboards and chat, plus centered desktop menus.",
+  "games": ["zdwa", "zilch"],
+  "summary_de": "Angemeldet kannst du im Spiel Adminhilfe rufen. Ein kleines Schild zeigt dir, wer helfen kann.",
+  "summary_en": "Signed in, you can call an admin from your game. A small shield shows who can help.",
   "player_notes": {
     "de": {
-      "title": "Ruhige Bilder und aufgeräumte Menüs",
+      "title": "Hilfe direkt in deiner Partie",
       "changes": [
-        "Profilbilder bleiben beim Aktualisieren von Lobby, Bestenlisten und Chat ruhig – auf Handy, Tablet und Desktop.",
-        "Auch während einer Zilch-Partie bleiben bereits geladene Profilbilder erhalten.",
-        "Die Menüs der ZDWA-Lobby und des Zilch-LCARS-Designs sitzen am Desktop mittig."
+        "Mit einem Spielerkonto kannst du in beiden Spielen einen Admin rufen. Wiederholte Klicks senden keine doppelten Benachrichtigungen.",
+        "Admins erkennst du dezent am kleinen Schild am Profilbild. Während eines Einsatzes pausiert ihre eigene Partie mit einem Hinweis.",
+        "Admins können Hilferufe abschließen sowie befristete oder dauerhafte Kontosperren setzen und aufheben. Gründe und Laufzeiten stehen im Konto."
       ]
     },
     "en": {
-      "title": "Steady pictures and tidy menus",
+      "title": "Help right in your game",
       "changes": [
-        "Profile pictures stay steady when lobbies, leaderboards and chat refresh on phone, tablet and desktop.",
-        "Loaded profile pictures also stay in place during Zilch games.",
-        "The ZDWA lobby and Zilch's LCARS theme keep their desktop menus centered."
+        "With a player account, you can call an admin in either game. Repeated clicks do not send duplicate notifications.",
+        "A small shield on the avatar identifies admins. During a help visit, their own game pauses with a message.",
+        "Admins can close help requests and apply or lift temporary and permanent account restrictions. Your account shows reasons and expiry dates."
       ]
     }
   }

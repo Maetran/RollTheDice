@@ -1930,5 +1930,12 @@
     "date": "2026-09-22",
     "bump": "patch",
     "summary": "Eigenes Spiel nach Gerätewechsel fortsetzen / Resume your game after switching devices"
+  },
+  {
+    "version": "2.39.4",
+    "revision": "6e4e1a924fe6d2fb4f2107028ba0a345793e1c73",
+    "date": "2026-09-22",
+    "bump": "patch",
+    "summary": "Ruhige Profilbilder und zentrierte Desktop-Menüs / Stable profile pictures and centered desktop menus"
   }
 ]

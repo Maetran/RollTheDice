@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=958630738ef8">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=958630738ef8" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=958630738ef8" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=855e6882657c">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=855e6882657c" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=855e6882657c" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=958630738ef8">
-  <script src="/static/shell.js?v=958630738ef8" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=855e6882657c">
+  <script src="/static/shell.js?v=855e6882657c" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -23,6 +23,7 @@
       <div class="app-nav-tools"><button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-label="Darstellung wechseln"><span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span></button><button class="small ghost game-switch" type="button" data-game-switch hidden disabled aria-hidden="true" aria-label="Zilch öffnen (Alt+Shift+Z)" aria-keyshortcuts="Alt+Shift+Z" title="Zilch öffnen (Alt+Shift+Z)"><svg class="game-switch-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 4 4 7l3 3M4 7h15L5 17h15m-3-3 3 3-3 3"/></svg><span class="game-switch-label">Zilch</span></button></div>
     </header>
     <section class="card account-header-card">
+      <div data-account-bans role="note" hidden></div>
       <div class="section-title-row">
         <div><p class="eyebrow">Mein Konto</p><h1 id="accountName">Benutzerkonto</h1></div>
         <div class="section-title-row-actions"><a id="publicProfileLink" class="button-link small ghost" href="#">Öffentliches Profil</a></div>
@@ -179,6 +180,7 @@
           <p class="muted small" data-push-reminder-schedule></p>
           <p class="muted small">Bei beiden angemeldeten Spielen wechseln sich ZDWA und Zilch ab. Der Klick auf eine Erinnerung öffnet die passende Lobby.</p>
           <label><input type="checkbox" name="releaseNotifications"> Versionshinweise erhalten</label>
+          <label data-admin-help-push-setting hidden><input type="checkbox" name="adminHelp"> Hilferufe von Spielern erhalten (Admins)</label>
           <p class="muted small">Nach einem erfolgreichen Update: kurze Hinweise zu neuen Funktionen oder Verbesserungen an der Stabilität. Ein Klick öffnet die passende Lobby. Deine Spielaktivität und die Spielerauswahl gelten nur für die anderen Push-Arten.</p>
           <button class="primary" type="submit">Push-Auswahl speichern</button>
           <p class="muted small" data-push-preferences-message role="status"></p>
@@ -205,12 +207,12 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=958630738ef8';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=958630738ef8';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=958630738ef8';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=958630738ef8';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=958630738ef8';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=958630738ef8';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=855e6882657c';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=855e6882657c';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=855e6882657c';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=855e6882657c';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=855e6882657c';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=855e6882657c';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
@@ -221,7 +223,7 @@
       user,
       onChanged(data) {
         Object.assign(user, data.user);
-        document.getElementById('accountName').innerHTML = playerNameMarkup(user, { name: user.username, avatarSize: 'large' });
+        document.getElementById('accountName').innerHTML = playerNameMarkup(user, { name: user.username, avatarSize: 'large', adminProfile: true });
         document.getElementById('publicProfileLink').href = (window.ZDWA_ROUTE?.path || (path => path))(`/spieler/${encodeURIComponent(user.username)}`);
       },
     });
@@ -231,7 +233,7 @@
     mountAllowlistSettings(document.querySelector('[data-allowlist-settings]'), { context: 'zdwa' });
     mountAvatarUpload(document.querySelector('[data-avatar-upload]'));
     mountFriendActivitySettings(document.querySelector('[data-friend-activity-settings]'));
-    document.getElementById('accountName').innerHTML = playerNameMarkup(user, { name: user.username, avatarSize: 'large' });
+    document.getElementById('accountName').innerHTML = playerNameMarkup(user, { name: user.username, avatarSize: 'large', adminProfile: true });
     document.getElementById('publicProfileLink').href = `/spieler/${encodeURIComponent(user.username)}`;
     const accountTabs = {
       statistics: {
@@ -294,6 +296,7 @@
     }
 
     const preferences = user.preferences || {};
+    window.__adminHelpController?.renderAccountBans(user);
     const announceMode = preferences.announce_selection_mode === 'table' ? 'table' : 'overlay';
     const autoWrite = preferences.auto_write_announced !== false;
     const mobileRowQuickEntry = preferences.mobile_row_quick_entry === true;
@@ -511,7 +514,7 @@
       const unlocked = Array.isArray(achievements.unlocked) ? achievements.unlocked : [];
       const locked = Array.isArray(achievements.locked) ? achievements.locked : [];
       const t = window.ZDWA_I18N?.t || (value => value);
-      document.getElementById('accountName').innerHTML = playerNameMarkup(player, { name: user.username, avatarSize: 'large' });
+      document.getElementById('accountName').innerHTML = playerNameMarkup(player, { name: user.username, avatarSize: 'large', adminProfile: true });
       document.getElementById('achievementSummary').textContent = `${unlocked.length} ${t('von')} ${unlocked.length + locked.length} ${t('erreicht')} · ${formatNumber(achievements.points_earned || 0, '0')} / ${formatNumber(achievements.points_possible || 0, '0')} ${t('Ehrenberg-Marken')}`;
       document.getElementById('unlockedAchievements').innerHTML = unlocked.length
         ? unlocked.map(item => achievementCard(item, true)).join('')
@@ -698,7 +701,7 @@
         if (!statsResponse.ok) return;
         const player = (await statsResponse.json()).player;
         const stats = player.statistics;
-        document.getElementById('accountName').innerHTML = playerNameMarkup(player, { name: user.username, avatarSize: 'large' });
+        document.getElementById('accountName').innerHTML = playerNameMarkup(player, { name: user.username, avatarSize: 'large', adminProfile: true });
         document.getElementById('statistics').innerHTML = bucket('Gesamt', stats.overall, { details: false })
           + bucket('Normal', stats.normal) + bucket('Hardcore', stats.hardcore);
         renderAccountAchievements(player);

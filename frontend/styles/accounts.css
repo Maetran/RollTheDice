@@ -124,6 +124,13 @@
 .player-search-results { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
 .player-result { padding: .55rem .8rem; border: 1px solid var(--border, #dce2ea); border-radius: 999px; text-decoration: none; }
 .admin-create-grid { display: grid; grid-template-columns: 1fr 1.6fr auto auto; }
+.admin-ban-controls { min-width: 15rem; max-width: 22rem; }
+.admin-ban-controls summary { cursor: pointer; padding-block: .55rem; }
+.admin-ban-list { display: grid; gap: .65rem; list-style: none; margin: 0 0 .4rem; padding: 0; }
+.admin-ban-list li { display: grid; gap: .25rem; font-size: .8rem; overflow-wrap: anywhere; }
+.admin-ban-list button { justify-self: start; }
+.admin-ban-form { padding-block: .4rem; }
+.admin-ban-form textarea { width: 100%; box-sizing: border-box; resize: vertical; }
 .assignment-list { display: grid; gap: .65rem; }
 .assignment-row { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(160px, 260px) auto; gap: .75rem; align-items: center; border: 1px solid var(--border, #dce2ea); border-radius: 12px; padding: .75rem; }
 .danger-zone { border-color: color-mix(in srgb, #dc2626 45%, var(--border)); }

@@ -100,6 +100,7 @@ class WebPushPreferencesRequest(BaseModel):
     # Older installed clients may still save only the original two switches.
     # Omitted new fields preserve the current settings, never reset them.
     release_notifications_enabled: bool | None = None
+    admin_help_enabled: bool | None = None
     game_invite_audience: Literal["all", "allowlist"] | None = None
     allowed_sender_usernames: list[str] | None = Field(default=None, max_length=100)
 
@@ -210,6 +211,7 @@ def web_push_subscription_status(user_id: int) -> dict[str, object]:
         game_invites_enabled = bool(user and user.game_invite_push_enabled and subscribed)
         daily_reminder_enabled = bool(user and user.daily_reminder_push_enabled and subscribed)
         release_enabled = bool(user and user.release_push_enabled and subscribed)
+        admin_help_enabled = bool(user and user.role == "admin" and user.is_active and user.admin_help_push_enabled)
         audience = user.game_invite_push_audience if user else "all"
         allowed_names = list(db.scalars(select(User.username).join(
             PushInviteAllowedSender, PushInviteAllowedSender.sender_user_id == User.id,
@@ -217,11 +219,13 @@ def web_push_subscription_status(user_id: int) -> dict[str, object]:
     return {
         "available": config.enabled,
         "public_key": config.public_key if config.enabled else None,
-        "enabled": game_invites_enabled or daily_reminder_enabled or release_enabled,
+        "enabled": game_invites_enabled or daily_reminder_enabled or release_enabled or (admin_help_enabled and subscribed),
         "subscribed": subscribed,
         "game_invites_enabled": game_invites_enabled,
         "daily_reminder_enabled": daily_reminder_enabled,
         "release_notifications_enabled": release_enabled,
+        "admin_help_enabled": admin_help_enabled,
+        "is_admin": bool(user and user.role == "admin" and user.is_active),
         "game_invite_audience": audience,
         "allowed_sender_usernames": allowed_names,
         "daily_reminder_window_start": f"{DAILY_REMINDER_START_HOUR:02d}:00",
@@ -284,6 +288,8 @@ def update_web_push_preferences(user_id: int, payload: WebPushPreferencesRequest
         user = db.get(User, user_id)
         if user is None:
             raise LookupError("user_not_found")
+        if payload.admin_help_enabled is not None and user.role != "admin":
+            raise ValueError("admin_required")
         enabling = (
             payload.game_invites_enabled and not user.game_invite_push_enabled
             or payload.daily_reminder_enabled and not user.daily_reminder_push_enabled
@@ -298,6 +304,8 @@ def update_web_push_preferences(user_id: int, payload: WebPushPreferencesRequest
         user.daily_reminder_push_enabled = payload.daily_reminder_enabled
         if payload.release_notifications_enabled is not None:
             user.release_push_enabled = payload.release_notifications_enabled
+        if payload.admin_help_enabled is not None:
+            user.admin_help_push_enabled = payload.admin_help_enabled
         if payload.game_invite_audience is not None:
             user.game_invite_push_audience = payload.game_invite_audience
         if payload.allowed_sender_usernames is not None:
