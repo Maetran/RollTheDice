@@ -39,11 +39,14 @@ class RouteCoverage:
 DOCUMENT_ROUTES = (
     RouteCoverage(("/",), "tests/test_http_shell.py", "test_shell_and_service_worker_are_revalidated"),
     RouteCoverage(
-        ("/regeln", "/spieler", "/spieler/{username}", "/rangabzeichen", "/konto", "/admin",
+        ("/regeln", "/spieler/{username}", "/rangabzeichen", "/konto", "/admin",
          "/spiel/{game_id}", "/spiel/{game_id}/zuschauen", "/ergebnis/{game_id}", "/offline"),
         "tests/test_http_shell.py", "test_clean_page_routes_and_legacy_redirects",
     ),
     RouteCoverage(("/ergebnis",), "tests/browser/navigation-destinations.spec.js"),
+    RouteCoverage(
+        ("/spieler", "/zilch/bestenlisten"), "tests/browser/achievement-feed.spec.js",
+    ),
     RouteCoverage(
         ("/offline-spielen", "/zilch/offline-spielen"), "tests/test_offline_routes.py",
         "test_offline_entries_are_anonymous_noindex_and_keep_the_correct_game_and_home",
@@ -64,7 +67,7 @@ DOCUMENT_ROUTES = (
         "test_login_entry_is_public_but_the_private_shell_stays_protected",
     ),
     RouteCoverage(
-        ("/zilch/historie", "/zilch/statistiken", "/zilch/bestenlisten", "/zilch/erfolge", "/zilch/konto", "/zilch/regeln"),
+        ("/zilch/historie", "/zilch/statistiken", "/zilch/erfolge", "/zilch/konto", "/zilch/regeln"),
         "tests/test_zilch_product_routes.py", "test_history_rules_shells_and_rules_api_use_the_central_preview_policy",
     ),
     RouteCoverage(("/zilch/spieler/{username}",), "tests/browser/player-search-flow.spec.js"),

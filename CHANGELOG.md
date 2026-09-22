@@ -22,6 +22,30 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.39.0 — Neue Erfolge der Community / Latest community achievements — 2026-09-22
+
+- **Deutsch:** Unter **Spieler & Ranking** bündeln ZDWA und Zilch ihre
+  Ranglisten und einen neuen Feed der zuletzt verdienten Erfolge. Jeder Eintrag
+  zeigt Spieler, Erfolg, Schwierigkeit und Zeitpunkt; die neuesten stehen
+  zuerst. Leichte, mittlere und schwere Erfolge lassen sich mit jeweils einem
+  exklusiven, erneut abwählbaren Schnellfilter anzeigen. Jede Seite enthält
+  höchstens 20 Einträge und ist über große Blättertasten erreichbar. ZDWA
+  verlinkt nur eine noch vorhandene, eindeutig belegte Ursprungspartie;
+  Konto- und Sammelerfolge bleiben ohne erfundenen Link und Zilch gibt keine
+  privaten Spielreferenzen preis. Die Liste ist für Telefone und Touch-Tablets
+  im Hoch- und Querformat sowie für alle Designs ausgelegt. Stiller Rollout
+  ohne Versions-Push oder neues Versionspopup.
+- **English:** Under **Players & Ranking**, ZDWA and Zilch now group their
+  rankings with a feed of the latest earned achievements. Each entry shows the
+  player, achievement, difficulty and time, newest first. Easy, medium and hard
+  achievements each have one exclusive quick filter that can be toggled off.
+  Pages contain at most 20 entries and use large paging controls. ZDWA links
+  only to a surviving, proven source game; account and aggregate achievements
+  remain truthfully unlinked, and Zilch exposes no private game reference. The
+  list is designed for phones and touch tablets in portrait and landscape
+  across every theme. Silent rollout without a release push or new release
+  popup.
+
 ## 2.38.4 — Ruhige Avatare bei Spielaktionen / Stable avatars during game actions — 2026-09-21
 
 - **Deutsch:** ZDWA behält bereits geladene Profilbilder im Zugstatus und in

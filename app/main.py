@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
 
 from .abandoned_games import persist_abandoned_game
+from .achievement_feed import AchievementDifficulty, list_zilch_achievement_feed
 from .achievements import sync_achievements_for_users
 from .active_games import delete_active_game, load_active_games, save_active_game
 from .api_allowlist import router as allowlist_router
@@ -1911,6 +1912,18 @@ def api_zilch_achievement_ranks(request: Request) -> dict[str, object]:
     """Return the public Zilch-only rank ladder."""
     _require_zilch_access(request)
     return zilch_achievement_rank_legend_payload()
+
+
+@app.get("/api/zilch/achievements/recent")
+def api_zilch_recent_achievement_feed(
+    request: Request,
+    page: int = Query(1, ge=1),
+    difficulty: AchievementDifficulty | None = Query(None),
+) -> dict[str, object]:
+    """Return the public Zilch achievement timeline under its audience policy."""
+
+    _require_zilch_access(request)
+    return list_zilch_achievement_feed(page=page, difficulty=difficulty)
 
 
 def _safe_zilch_achievement_profile(user_id: int, *, public: bool = False) -> dict[str, object]:

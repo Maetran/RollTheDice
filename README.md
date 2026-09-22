@@ -342,6 +342,21 @@ Profile pictures in ZDWA's turn status and score sheet headers stay steady
 through rolls, holds and score entries, changing only when the displayed
 player actually changes.
 
+Unter **Spieler & Ranking → Neueste Erfolge** zeigt jedes Spiel die jüngsten
+Freischaltungen der Community mit Spieler, Zeitpunkt und Schwierigkeit, fest
+auf 20 Einträge pro Seite begrenzt. **Leicht**, **Mittel** und **Schwer** lassen
+sich einzeln ein- und durch erneutes Antippen wieder ausschalten. In ZDWA öffnet
+ein verknüpfter Erfolg die konkrete öffentliche Partie. Konto- und
+Sammelerfolge ohne eindeutig belegte Partie bleiben ohne Spiellink; private
+Zilch-Ergebnisse werden nie aus dem Feed offengelegt.
+
+Under **Players & Ranking → Latest achievements**, each game shows the newest
+community unlocks with player, time and difficulty, limited to 20 entries per
+page. **Easy**, **medium** and **hard** can each be selected and toggled off by
+tapping again. In ZDWA, a linked achievement opens the specific public game.
+Account and aggregate achievements without one proven game remain unlinked;
+private Zilch results are never exposed by the feed.
+
 **Offline spielen** steht in beiden Lobbys bereit: ZDWA als normales Solospiel,
 Zilch solo oder gegen den Würfelwirt. Jeder Einstieg und jedes Fortsetzen nach
 einer Pause oder einem Neustart verlangt eine Bestätigung: keine Erfolge,

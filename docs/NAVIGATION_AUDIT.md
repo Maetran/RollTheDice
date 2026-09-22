@@ -50,6 +50,14 @@ Rückweg, ohne Auskunft über fremde private Ergebnisse zu geben.
 
 ## Dauerhafte Pfadprüfungen und Pflege
 
+Seit Version 2.39.0 öffnen die bestehenden Seiten `/spieler` und Zilchs
+`/bestenlisten` über `?view=achievements` auch den Community-Feed. Die
+Tabs behalten Suche und Ranglisten im selben Bereich; `#player-search`
+öffnet weiterhin die fokussierte Suche. `tests/browser/achievement-feed.spec.js`
+prüft diesen Einstieg, das Zurückschalten, Filter und Seitenwechsel sowie die
+öffentlichen ZDWA-Partielinks. Die bestehenden Produkt-Routentests prüfen
+weiterhin Gastzugang, Preview-Schutz und die kanonische Zilch-Adresse.
+
 Die bereits vorhandenen Browserprüfungen testen die vollständigen Wege durch
 Spielersuche und Spielerauswahl, E-Mail-/Passwort-Aktionen, Konto-Anmeldung mit
 Rückkehr zum gewünschten Reiter, PWA-Spielwechsel, Ergebnisse und Zuschauerlinks.

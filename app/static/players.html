@@ -2,23 +2,23 @@
 <html lang="de" data-game="zdwa">
 <head>
   <meta charset="utf-8">
-  <title>ZDWA Spieler-Ranking &amp; Statistiken</title>
+  <title>ZDWA Spieler-Ranking, Statistiken &amp; neueste Erfolge</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Entdecke das ZDWA Spieler-Ranking, suche öffentliche Profile und vergleiche Spiele, Bestwerte und Ehrenberg-Marken für Normal und Hardcore.">
+  <meta name="description" content="Entdecke das ZDWA Spieler-Ranking, suche öffentliche Profile und sieh die neuesten Community-Erfolge mit Spieler, Zeitpunkt und Schwierigkeit.">
   <link rel="canonical" href="https://zockdiewandan.online/spieler">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="ZDWA">
-  <meta property="og:title" content="ZDWA Spieler-Ranking &amp; Statistiken">
-  <meta property="og:description" content="Spieler finden und Leistungen sowie Ehrenberg-Marken in Normal- und Hardcore-Partien vergleichen.">
+  <meta property="og:title" content="ZDWA Spieler-Ranking &amp; neueste Erfolge">
+  <meta property="og:description" content="Spieler finden, Leistungen vergleichen und die neuesten ZDWA-Erfolge der Community entdecken.">
   <meta property="og:url" content="https://zockdiewandan.online/spieler">
   <meta property="og:image" content="https://zockdiewandan.online/static/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="manifest" href="/manifest.webmanifest?v=56e52423f5c6">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=56e52423f5c6" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=56e52423f5c6" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=4f3ba78f38c9">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=4f3ba78f38c9" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=4f3ba78f38c9" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=56e52423f5c6">
-  <script src="/static/shell.js?v=56e52423f5c6" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=4f3ba78f38c9">
+  <script src="/static/shell.js?v=4f3ba78f38c9" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -32,44 +32,52 @@
     <section class="page-intro" aria-labelledby="playersTitle">
       <p class="eyebrow">ZDWA Community</p>
       <h1 id="playersTitle">Spieler &amp; Ranking</h1>
-      <p>Finde öffentliche Spielerprofile und vergleiche Spiele, Durchschnitt, Trend, Bestwerte und Ehrenberg-Marken getrennt nach Normal- und Hardcore-Modus.</p>
+      <p>Finde öffentliche Spielerprofile, vergleiche Ranglisten und entdecke die neuesten Erfolge der ZDWA-Community.</p>
     </section>
-    <section id="player-search" class="card">
-      <h2>Spieler suchen</h2>
-      <form id="searchForm" class="search-row">
-        <input id="searchInput" type="search" placeholder="Benutzername" autocomplete="off">
-        <button class="primary">Suchen</button>
-      </form>
-      <div id="searchResults" class="player-search-results muted">Benutzername eingeben oder alle anzeigen.</div>
-    </section>
-    <section class="card">
-      <div class="section-title-row">
-        <h2>Spieler-Ranking</h2>
-        <div class="ranking-controls">
-          <div class="tabs" aria-label="Spielmodus">
-            <button id="rankingNormal" class="tab-btn active" type="button">Normal</button>
-            <button id="rankingHardcore" class="tab-btn" type="button">Hardcore</button>
-            <button id="rankingAchievements" class="tab-btn" type="button">Erfolge</button>
+    <div class="community-view-switch" role="tablist" aria-label="Spieler und Ranking">
+      <button id="communityRankingsTab" type="button" role="tab" data-achievement-tab="rankings" aria-controls="communityRankingsPanel" aria-selected="true">Rankings</button>
+      <button id="communityAchievementsTab" type="button" role="tab" data-achievement-tab="achievements" aria-controls="communityAchievementsPanel" aria-selected="false" tabindex="-1">Neueste Erfolge</button>
+    </div>
+    <div id="communityRankingsPanel" class="community-view-panel" data-achievement-view="rankings" role="tabpanel" aria-labelledby="communityRankingsTab">
+      <section id="player-search" class="card">
+        <h2>Spieler suchen</h2>
+        <form id="searchForm" class="search-row">
+          <input id="searchInput" type="search" placeholder="Benutzername" autocomplete="off">
+          <button class="primary">Suchen</button>
+        </form>
+        <div id="searchResults" class="player-search-results muted">Benutzername eingeben oder alle anzeigen.</div>
+      </section>
+      <section class="card">
+        <div class="section-title-row">
+          <h2>Spieler-Ranking</h2>
+          <div class="ranking-controls">
+            <div class="tabs" aria-label="Spielmodus">
+              <button id="rankingNormal" class="tab-btn active" type="button">Normal</button>
+              <button id="rankingHardcore" class="tab-btn" type="button">Hardcore</button>
+              <button id="rankingAchievements" class="tab-btn" type="button">Erfolge</button>
+            </div>
+            <select id="rankingSort" aria-label="Ranking sortieren">
+              <option value="games">Meiste Spiele</option>
+              <option value="points">Meiste Gesamtpunkte</option>
+              <option value="average">Höchster Durchschnitt</option>
+              <option value="maximum">Höchste Punktzahl</option>
+              <option value="achievements">Meiste Ehrenberg-Marken</option>
+            </select>
           </div>
-          <select id="rankingSort" aria-label="Ranking sortieren">
-            <option value="games">Meiste Spiele</option>
-            <option value="points">Meiste Gesamtpunkte</option>
-            <option value="average">Höchster Durchschnitt</option>
-            <option value="maximum">Höchste Punktzahl</option>
-            <option value="achievements">Meiste Ehrenberg-Marken</option>
-          </select>
         </div>
-      </div>
-      <div class="table-scroll">
-        <table class="ranking-table">
-          <thead><tr><th>#</th><th>Spieler</th><th>Spiele</th><th>Gesamtpunkte</th><th>Ø</th><th>Trend (3)</th><th>Max</th><th>Ehrenberg-Marken</th></tr></thead>
-          <tbody id="rankingBody"></tbody>
-        </table>
-      </div>
-    </section>
+        <div class="table-scroll">
+          <table class="ranking-table">
+            <thead><tr><th>#</th><th>Spieler</th><th>Spiele</th><th>Gesamtpunkte</th><th>Ø</th><th>Trend (3)</th><th>Max</th><th>Ehrenberg-Marken</th></tr></thead>
+            <tbody id="rankingBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+    <section id="communityAchievementsPanel" class="card community-view-panel achievement-feed-card" data-achievement-view="achievements" role="tabpanel" aria-labelledby="communityAchievementsTab" hidden></section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber, playerNameMarkup, mountPlayerSearch } from '/static/auth.js?v=56e52423f5c6';
+    import { escapeHtml, formatNumber, playerNameMarkup, mountPlayerSearch } from '/static/auth.js?v=4f3ba78f38c9';
+    import { mountAchievementFeed } from '/static/achievement-feed.js?v=4f3ba78f38c9';
     const rankingSort = document.getElementById('rankingSort');
     const rankingNormal = document.getElementById('rankingNormal');
     const rankingHardcore = document.getElementById('rankingHardcore');
@@ -77,6 +85,7 @@
     const rankingBody = document.getElementById('rankingBody');
     const profileUrl = username => `/spieler/${encodeURIComponent(username)}`;
     let rankingMode = 'normal';
+    let rankingLoaded = false;
 
     mountPlayerSearch(document.getElementById('player-search'), {
       renderPlayer: player => playerNameMarkup(player, { name: player.username, compactRank: true }),
@@ -109,6 +118,7 @@
         <td><strong>${formatNumber(player.achievement_points, '0')}</strong></td>
       </tr>`;
       }).join('') || '<tr><td colspan="8" class="muted">Noch keine registrierten Spieler.</td></tr>';
+      rankingLoaded = true;
     }
 
     rankingSort.addEventListener('change', loadRanking);
@@ -130,7 +140,56 @@
     rankingNormal.addEventListener('click', () => setRankingMode('normal'));
     rankingHardcore.addEventListener('click', () => setRankingMode('hardcore'));
     rankingAchievements.addEventListener('click', () => setRankingMode('achievements'));
-    await loadRanking();
+
+    const communityTabs = [...document.querySelectorAll('[data-achievement-tab]')];
+    const communityPanels = [...document.querySelectorAll('[data-achievement-view]')];
+    const achievementFeed = mountAchievementFeed(document.getElementById('communityAchievementsPanel'), {
+      endpoint: '/api/achievements/recent',
+      context: 'zdwa',
+      linkGames: true,
+      autoload: false,
+    });
+
+    function setCommunityView(view, { updateLocation = true, focus = false } = {}) {
+      const next = view === 'achievements' ? 'achievements' : 'rankings';
+      communityTabs.forEach(tab => {
+        const active = tab.dataset.achievementTab === next;
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+        if (active && focus) tab.focus();
+      });
+      communityPanels.forEach(panel => { panel.hidden = panel.dataset.achievementView !== next; });
+      if (next === 'achievements') void achievementFeed?.load();
+      else if (!rankingLoaded) void loadRanking();
+      if (!updateLocation) return;
+      const url = new URL(window.location.href);
+      if (next === 'achievements') {
+        url.searchParams.set('view', 'achievements');
+        if (url.hash === '#player-search') url.hash = '';
+      }
+      else url.searchParams.delete('view');
+      history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    }
+
+    communityTabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => setCommunityView(tab.dataset.achievementTab, { focus: true }));
+      tab.addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const target = event.key === 'Home' ? 0 : event.key === 'End' ? communityTabs.length - 1
+          : (index + (event.key === 'ArrowRight' ? 1 : -1) + communityTabs.length) % communityTabs.length;
+        setCommunityView(communityTabs[target].dataset.achievementTab, { focus: true });
+      });
+    });
+    const initialView = window.location.hash === '#player-search'
+      ? 'rankings'
+      : new URLSearchParams(window.location.search).get('view');
+    setCommunityView(initialView, { updateLocation: false });
+    window.addEventListener('hashchange', () => {
+      if (window.location.hash !== '#player-search') return;
+      setCommunityView('rankings');
+      document.getElementById('searchInput')?.focus({ preventScroll: true });
+    });
   </script>
 </body>
 </html>

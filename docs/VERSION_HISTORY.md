@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.38.4**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.39.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.38.4 | 2026-09-21 | patch | Ruhige Avatare bei ZDWA-Spielaktionen / Stable avatars during ZDWA game actions | [59d0c19](https://github.com/Maetran/RollTheDice/commit/59d0c19d5da85c06759b9962a1ddffbf972a52bc) |
 | 2.38.3 | 2026-09-21 | patch | Kompakte Chatleisten und vollständig sichtbarer ZDWA-Zettel / Compact chat bars and a fully visible ZDWA score sheet | [f8b4256](https://github.com/Maetran/RollTheDice/commit/f8b42569db01eb8f66bb3d1fe186a41caabf5819) |
 | 2.38.2 | 2026-09-20 | patch | Mobile Chatleisten bündig am unteren Rand / Mobile chat bars flush with the bottom edge | [ff4e70d](https://github.com/Maetran/RollTheDice/commit/ff4e70d4a183eeb7bd02f290c57c8460a5a30b4a) |
 | 2.38.1 | 2026-09-20 | patch | Saubere Chatleisten und einheitliche Zilch-Vorschläge / Clean chat bars and consistent Zilch suggestions | [4450428](https://github.com/Maetran/RollTheDice/commit/445042884ba30c3523fcdcbcbaca6fd88353660e) |

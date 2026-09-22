@@ -5,6 +5,7 @@ import { initializeReleaseNotes } from "../shared/release-notes.js";
 import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
 import { mountAllowlistSettings, mountProfileAllowlist } from "../shared/player-allowlist.js";
 import { mountPlayerSearch } from "../shared/player-search.js";
+import { mountAchievementFeed } from "../shared/achievement-feed.js";
 import { avatarMarkup } from "../shared/avatar.js";
 import { mountAvatarUpload } from "../shared/avatar-upload.js";
 import { mountFriendActivitySettings } from "../shared/friend-activity.js";
@@ -103,6 +104,7 @@ const state = {
   statisticsMode: "overview",
   statisticsCpuStrategy: "all",
   leaderboard: null,
+  leaderboardsView: "rankings",
   leaderboardCategory: "solo_sprint",
   leaderboardStrategy: "conservative",
   leaderboardRequestVersion: 0,
@@ -3239,17 +3241,72 @@ async function refreshLeaderboard({ focusSelector = "" } = {}) {
 async function renderLeaderboards() {
   if (!content) return;
   const params = new URLSearchParams(window.location.search);
+  state.leaderboardsView = window.location.hash !== "#player-search" && params.get("view") === "achievements" ? "achievements" : "rankings";
   state.leaderboardCategory = normalizedLeaderboardCategory(params.get("category"));
   const strategy = String(params.get("strategy") || state.leaderboardStrategy).toLowerCase();
   state.leaderboardStrategy = CPU_STRATEGIES.has(strategy) ? strategy : "conservative";
   content.innerHTML = `<section class="zilch-game-head zilch-leaderboards-head">
-      <div><p class="eyebrow">${escapeHtml(t("Spieler & Ranking"))}</p><h1>${escapeHtml(t("Zilch-Bestenlisten"))}</h1><p>${escapeHtml(t("Die Ranglisten vergleichen deine besten abgeschlossenen Zilch-Partien."))}</p></div>
+      <div><p class="eyebrow">${escapeHtml(t("Spieler & Ranking"))}</p><h1>${escapeHtml(t("Zilch-Bestenlisten"))}</h1><p>${escapeHtml(t("Vergleiche Ranglisten und entdecke die neuesten Erfolge der Zilch-Community."))}</p></div>
       <div class="zilch-actions">${zilchNavigationButton(zilchPath("/konto#statistics"), t("Meine Statistiken"), "small zilch-header-action")}${zilchNavigationButton(zilchPath("/konto#achievements"), t("Meine Erfolge"), "small zilch-header-action")}</div>
     </section>
-    <section id="player-search" class="zilch-card"></section>
-    <div id="zilchLeaderboardBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Bestenliste wird geladen …"))}</p></section></div>`;
+    <div class="community-view-switch" role="tablist" aria-label="${escapeHtml(t("Spieler und Ranking"))}">
+      <button id="zilchRankingsTab" type="button" role="tab" data-achievement-tab="rankings" aria-controls="zilchRankingsPanel" aria-selected="true">${escapeHtml(t("Rankings"))}</button>
+      <button id="zilchRecentAchievementsTab" type="button" role="tab" data-achievement-tab="achievements" aria-controls="zilchRecentAchievementsPanel" aria-selected="false" tabindex="-1">${escapeHtml(t("Neueste Erfolge"))}</button>
+    </div>
+    <div id="zilchRankingsPanel" class="community-view-panel" data-achievement-view="rankings" role="tabpanel" aria-labelledby="zilchRankingsTab">
+      <section id="player-search" class="zilch-card"></section>
+      <div id="zilchLeaderboardBody" aria-live="polite"><section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Bestenliste wird geladen …"))}</p></section></div>
+    </div>
+    <section id="zilchRecentAchievementsPanel" class="zilch-card community-view-panel achievement-feed-card" data-achievement-view="achievements" role="tabpanel" aria-labelledby="zilchRecentAchievementsTab" hidden></section>`;
   mountPlayerSearch(document.getElementById("player-search"), { context: "zilch" });
-  await refreshLeaderboard();
+  const feed = mountAchievementFeed(document.getElementById("zilchRecentAchievementsPanel"), {
+    endpoint: "/api/zilch/achievements/recent",
+    context: "zilch",
+    linkGames: false,
+    autoload: false,
+  });
+  let rankingLoaded = false;
+  const tabs = [...document.querySelectorAll("[data-achievement-tab]")];
+  const panels = [...document.querySelectorAll("[data-achievement-view]")];
+  const activateView = (view, { updateLocation = true, focus = false } = {}) => {
+    state.leaderboardsView = view === "achievements" ? "achievements" : "rankings";
+    tabs.forEach(tab => {
+      const active = tab.dataset.achievementTab === state.leaderboardsView;
+      tab.setAttribute("aria-selected", String(active));
+      tab.tabIndex = active ? 0 : -1;
+      if (active && focus) tab.focus();
+    });
+    panels.forEach(panel => { panel.hidden = panel.dataset.achievementView !== state.leaderboardsView; });
+    if (state.leaderboardsView === "achievements") void feed?.load();
+    else if (!rankingLoaded) {
+      rankingLoaded = true;
+      void refreshLeaderboard();
+    }
+    if (!updateLocation) return;
+    const url = new URL(window.location.href);
+    if (state.leaderboardsView === "achievements") {
+      url.searchParams.set("view", "achievements");
+      if (url.hash === "#player-search") url.hash = "";
+    }
+    else url.searchParams.delete("view");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  };
+  tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => activateView(tab.dataset.achievementTab, { focus: true }));
+    tab.addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const target = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1
+        : (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+      activateView(tabs[target].dataset.achievementTab, { focus: true });
+    });
+  });
+  activateView(state.leaderboardsView, { updateLocation: false });
+  window.addEventListener("hashchange", () => {
+    if (window.location.hash !== "#player-search" || !panels[0]?.isConnected) return;
+    activateView("rankings");
+    document.getElementById("zilchPlayerSearchInput")?.focus({ preventScroll: true });
+  });
 }
 
 function ruleNumber(value) {
@@ -3336,6 +3393,7 @@ function renderRulesContent(facts) {
     </section>
     <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p>${escapeHtml(t("Die Startwürfe erscheinen als kleine Würfel. Beide Ergebnisse bleiben kurz sichtbar, bevor das Spiel oder der nächste Startversuch beginnt."))}</p><p>${escapeHtml(t("Im LCARS-Punktebuch steht der aktive Verlauf oben. Unten bleibt der andere Spieler mit Name und Gesamtstand sichtbar; beim Zugwechsel gleitet sein Blatt nach oben. Der Würfelwirt lässt nach seinen Würfen kurz Zeit zum Lesen."))}</p><p>${escapeHtml(t("Nach jedem abgeschlossenen oder aufgegebenen Solo-Lauf sowie nach jeder abgeschlossenen Würfelwirt- oder Zwei-Personen-Partie öffnet sich dein Ergebnis automatisch. Dort startest du ein neues Solo oder eine Revanche oder kehrst zur Lobby zurück."))}</p><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>
     <section class="zilch-card zilch-rules-section zilch-rules-section--solo"><p class="eyebrow">${escapeHtml(t("Solo"))}</p><h2>${escapeHtml(t("10’000-Punkte-Sprint"))}</h2><p>${escapeHtml(t("Im Solo-Sprint erreichst du mindestens 10’000 Punkte in möglichst wenigen eigenen Zügen. Der Lauf beginnt direkt mit deinem ersten normalen Zug – ohne Startwurf, Gegner, Schlussrunde oder Gegenzug."))}</p><p>${escapeHtml(t("Bei gleicher Zielerreichung werden später zuerst weniger Züge, dann weniger Würfe, weniger Zilchs und eine kürzere aktive Dauer verglichen. Pausenzeit zählt nicht zur aktiven Dauer."))}</p><p>${escapeHtml(t("Du kannst einen Solo-Lauf nach Bestätigung aufgeben. Er bleibt mit dem Status „Aufgegeben“ in deiner Historie erhalten."))}</p></section>
+    <section class="zilch-card zilch-rules-section"><p class="eyebrow">${escapeHtml(t("Community"))}</p><h2>${escapeHtml(t("Neueste Erfolge"))}</h2><p>${escapeHtml(t("Unter Spieler & Ranking → Neueste Erfolge siehst du die jüngsten Freischaltungen mit Spieler, Zeitpunkt und Schwierigkeit, jeweils 20 pro Seite. Leicht, Mittel und Schwer lassen sich einzeln ein- und durch erneutes Antippen wieder ausschalten. Private Zilch-Partien und ihre Ergebnislinks werden in dieser öffentlichen Liste nie offengelegt."))}</p><a class="button-link small" href="${zilchPath("/bestenlisten?view=achievements")}">${escapeHtml(t("Neueste Erfolge"))}</a></section>
     <section class="zilch-card zilch-rules-examples"><p class="eyebrow">${escapeHtml(t("Beispiele"))}</p><h2>${escapeHtml(t("Gültige Auswahlen"))}</h2><ul><li><code>5–5–5–5–2–3</code> — ${escapeHtml(t("Drilling Fünfen = 500; vier Fünfen = 1’000; nur eine Fünf = 50."))}</li><li><code>1–1–1–5–5–2</code> — ${escapeHtml(t("Drei Einsen und zwei einzelne Fünfen = 1’100; danach ist ein Bestätigungswurf nötig."))}</li><li><code>1–2–3–4–5–6</code> — ${escapeHtml(t("Straße, 2’000 Punkte, freier Wurf und Bestätigungswurf."))}</li><li><code>2–2–3–4–6–6</code> — ${escapeHtml(t("500 für nichts: alle Würfel werden wieder frei, der Zug läuft weiter."))}</li></ul></section>`;
 }
 

@@ -337,3 +337,23 @@ card. Guests may read the safe
 `GET /api/zilch/leaderboards?category=achievement_points`. Public projections
 remove all award provenance and delivery state; the player endpoint therefore
 does not disclose a result or become a general account-profile API.
+
+## Public newest-achievement feeds
+
+`GET /api/achievements/recent` and
+`GET /api/zilch/achievements/recent` provide the two product-specific community
+timelines used under **Players & Ranking**. They sort by `unlocked_at DESC` and
+the durable unlock ID as a stable tie-breaker, accept `page >= 1` plus one
+optional `easy`, `medium`, or `hard` filter, and always return at most 20 rows.
+Only active accounts and keys from the current catalog are eligible. Ordinary
+1–10 point awards map to difficulty bands 1–3, 4–6, and 7–10; Zilch's zero-point
+community milestones use explicit goal-size bands. ZDWA's zero-point Fairplay
+reminders are not rewards and therefore do not enter this feed.
+
+The ZDWA projection includes `game_url` only when the stored source still points
+to a surviving typed ZDWA result and the same account still owns a participant
+seat in it. It never guesses provenance for account or aggregate awards. The
+Zilch projection deliberately omits source game, presentation game, evidence,
+and delivery identifiers for every row because those results remain private.
+Both feeds expose a stable by-ID public player-profile link and current username;
+they never accept a user ID from the client.

@@ -628,6 +628,8 @@ class UserAchievement(Base):
         UniqueConstraint("user_id", "achievement_key", name="uq_user_achievement"),
         Index("ix_user_achievements_user", "user_id"),
         Index("ix_user_achievements_source_game", "source_completed_game_id"),
+        Index("ix_user_achievements_feed_order", "unlocked_at", "id"),
+        Index("ix_user_achievements_key_feed_order", "achievement_key", "unlocked_at", "id"),
     )
 
 
@@ -820,6 +822,8 @@ class ZilchAchievementUnlock(Base):
         Index("ix_zilch_achievement_unlocks_user", "user_id"),
         Index("ix_zilch_achievement_unlocks_community_source", "source_community_recipient_id"),
         Index("ix_zilch_achievement_unlocks_presentation_game", "presentation_game_id"),
+        Index("ix_zilch_achievement_unlocks_feed_order", "unlocked_at", "id"),
+        Index("ix_zilch_achievement_unlocks_key_feed_order", "achievement_key", "unlocked_at", "id"),
     )
 
 

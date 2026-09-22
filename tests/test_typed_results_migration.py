@@ -15,11 +15,11 @@ from alembic import command
 
 BASE = Path(__file__).resolve().parents[1]
 PRE_TYPED_RESULTS_REVISION = "20260902_0015"
-# ``head`` includes email accounts, passkeys and the Styler reset. The typed
+# ``head`` includes email accounts, passkeys, the Styler reset and feed indexes. The typed
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20260920_0043"
+LATEST_SCHEMA_REVISION = "20260922_0044"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -291,6 +291,16 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
                 achievement_indexes["ix_user_achievements_source_game"],
                 ["source_completed_game_id"],
             )
+            for table in ("user_achievements", "zilch_achievement_unlocks"):
+                feed_indexes = {
+                    str(row[1]): [str(column[2]) for column in connection.execute(f"PRAGMA index_info({row[1]})")]
+                    for row in connection.execute(f"PRAGMA index_list({table})")
+                }
+                self.assertEqual(feed_indexes[f"ix_{table}_feed_order"], ["unlocked_at", "id"])
+                self.assertEqual(
+                    feed_indexes[f"ix_{table}_key_feed_order"],
+                    ["achievement_key", "unlocked_at", "id"],
+                )
 
     def test_account_migrations_preserve_legacy_identity_and_game_links_on_roundtrip(self) -> None:
         self._upgrade("20260907_0036")

@@ -1,23 +1,26 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa"
+    "zdwa",
+    "zilch"
   ],
-  "summary_de": "Avatare in ZDWA bleiben beim Würfeln, Halten und Schreiben ruhig, statt bei jedem Spielstand neu zu laden.",
-  "summary_en": "Avatars in ZDWA stay steady during rolls, holds and score entries instead of reloading with each game update.",
+  "summary_de": "Unter Spieler & Ranking siehst du jetzt die neuesten Erfolge mit Schwierigkeit, Zeitpunkt und 20 Einträgen pro Seite.",
+  "summary_en": "Players & Ranking now shows the latest achievements with difficulty, time earned, and 20 entries per page.",
   "player_notes": {
     "de": {
-      "title": "Ruhige Profilbilder im Spiel",
+      "title": "Neue Erfolge der Community",
       "changes": [
-        "Dein Profilbild blinkt bei Würfel- und Halteaktionen nicht mehr auf.",
-        "Auch beim Eintragen eines Werts bleiben Zugstatus und Spielzettel ruhig."
+        "Wechsle direkt zwischen Ranglisten und den neuesten freigeschalteten Erfolgen.",
+        "Filtere mit einem Tipp nach leichten, mittleren oder schweren Erfolgen und blättere in 20er-Seiten.",
+        "ZDWA öffnet bei eindeutig zugeordneten Erfolgen die passende Partie; private Zilch-Partien bleiben geschützt."
       ]
     },
     "en": {
-      "title": "Steady profile pictures in play",
+      "title": "Latest community achievements",
       "changes": [
-        "Your profile picture no longer flashes during rolls or hold changes.",
-        "Turn status and score sheet also stay steady when entering a score."
+        "Switch directly between rankings and the latest unlocked achievements.",
+        "Tap to filter easy, medium or hard achievements and browse them in pages of 20.",
+        "ZDWA opens the matching game when an achievement has one proven source; private Zilch games stay protected."
       ]
     }
   }

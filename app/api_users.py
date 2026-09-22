@@ -4,12 +4,13 @@ from statistics import median
 from typing import Literal
 from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import selectinload
 
+from .achievement_feed import AchievementDifficulty, list_zdwa_achievement_feed
 from .achievements import (
     achievement_rank_legend_payload,
     achievement_rank_payloads_for_user_ids,
@@ -47,6 +48,16 @@ def achievement_rank_legend(request: Request) -> dict:
     identity = resolve_session(request)
     points = identity.achievement_rank.get("points") if identity else None
     return achievement_rank_legend_payload(points)
+
+
+@router.get("/achievements/recent")
+def recent_achievement_feed(
+    page: int = Query(1, ge=1),
+    difficulty: AchievementDifficulty | None = Query(None),
+) -> dict[str, object]:
+    """Return the newest public ZDWA achievement unlocks, 20 at a time."""
+
+    return list_zdwa_achievement_feed(page=page, difficulty=difficulty)
 
 
 def _empty_bucket() -> dict:

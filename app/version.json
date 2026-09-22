@@ -1,10 +1,10 @@
 {
-  "version": "2.38.4",
-  "bump": "patch",
-  "date": "2026-09-21",
-  "previous_revision": "f8b42569db01eb8f66bb3d1fe186a41caabf5819",
+  "version": "2.39.0",
+  "bump": "minor",
+  "date": "2026-09-22",
+  "previous_revision": "59d0c19d5da85c06759b9962a1ddffbf972a52bc",
   "summary": {
-    "de": "Ruhige Avatare bei ZDWA-Spielaktionen",
-    "en": "Stable avatars during ZDWA game actions"
+    "de": "Neueste Erfolge der Community",
+    "en": "Latest community achievements"
   }
 }

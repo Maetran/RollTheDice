@@ -18,6 +18,7 @@ const targets = [
   { source: "frontend/shared/release-notes.js", output: "app/static/release-notes.js", format: "esm" },
   { source: "frontend/shared/player-allowlist.js", output: "app/static/player-allowlist.js", format: "esm" },
   { source: "frontend/shared/avatar.js", output: "app/static/avatar.js", format: "esm" },
+  { source: "frontend/shared/achievement-feed.js", output: "app/static/achievement-feed.js", format: "esm" },
   { source: "frontend/shared/avatar-upload.js", output: "app/static/avatar-upload.js", format: "esm" },
   { source: "frontend/shared/friend-activity.js", output: "app/static/friend-activity.js", format: "esm" },
   { source: "frontend/shared/emoji.js", output: "app/static/emoji.js", format: "iife" },
