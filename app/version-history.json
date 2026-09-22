@@ -1958,5 +1958,12 @@
     "date": "2026-09-22",
     "bump": "minor",
     "summary": "Zilch mit zufälligem Würfelwirt, klarer Punkte-Vorschau und besser lesbarem Spieltisch / Zilch with a random Dice Host, clear score preview and a more readable game table"
+  },
+  {
+    "version": "2.42.1",
+    "revision": "bfc265ac104e6dbf549f4aa3d9fc874f1660f0b5",
+    "date": "2026-09-22",
+    "bump": "patch",
+    "summary": "Übersichtliche Benutzerverwaltung mit Suche und klaren Aktionen / Clearer user management with search and grouped actions"
   }
 ]

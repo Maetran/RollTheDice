@@ -22,6 +22,22 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.42.2 — Spielregeln wieder sichtbar / In-game rules visible again — 2026-09-22
+
+**Deutsch:** Der ZDWA-Regeldialog zeigt die Spielregeln wieder an. Die
+Sicherheitsrichtlinie des Reverse-Proxys erlaubt nun auch eingebettete Seiten
+derselben Website; die Turnstile-Freigabe und der Schutz vor fremder Einbettung
+bleiben erhalten. Beim ZDWA-Spiel innerhalb der installierten Zilch-App lädt
+der Dialog die passende ZDWA-Anleitung. Browsertests prüfen den Inhalt mit der
+ausgelieferten Proxy-Richtlinie. Stiller Rollout ohne neue Push- oder In-App-Versionsmeldung.
+
+**English:** The ZDWA rules dialog displays the rules again. The reverse proxy's
+security policy now also allows embedded pages from the same website, while
+preserving Turnstile access and protection against embedding by other sites.
+When playing ZDWA inside the installed Zilch app, the dialog loads the matching
+ZDWA guide. Browser tests verify its content under the deployed proxy policy.
+Silent rollout without a new push or in-app release announcement.
+
 ## 2.42.1 — Klarere Benutzerverwaltung / Clearer user management — 2026-09-22
 
 **Deutsch:** Die interne Benutzerverwaltung zeigt Konten als kompakte,

@@ -1,4 +1,5 @@
 export const EN = {
+    "Über Spielmenü → Spielregeln öffnest du diese Anleitung direkt im Spiel. Du kannst darin scrollen und sie anschließend schließen, ohne deine Partie zu verlassen.": "Open Game menu → Game rules to read this guide during a game. You can scroll through it and close it again without leaving your game.",
     // Responsive user administration.
     "Profil öffnen": "Open profile",
     "Finde ein Konto und öffne die Verwaltung für Rechte, Chat oder Sperren.": "Find an account and open its controls for access, chat or restrictions.",

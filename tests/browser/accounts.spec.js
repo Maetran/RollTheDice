@@ -1,5 +1,7 @@
 const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
 const { test, expect } = require("@playwright/test");
+const { readFile } = require("node:fs/promises");
+const path = require("node:path");
 
 async function openAccountSection(page, section) {
   const details = page.locator(`details[data-account-section="${section}"]`);
@@ -130,46 +132,63 @@ test("account avatar upload accepts ordinary phone-photo limits", async ({ page 
 });
 
 
-test("rules keep native scrolling on desktop, tablet, and mobile", async ({ page }) => {
-  const viewports = [
-    { width: 1440, height: 900 },
-    { width: 768, height: 1024 },
-    { width: 390, height: 844 },
-  ];
+test.describe("rules under the deployed proxy security policy", () => {
+  test.use({ serviceWorkers: "block" });
 
-  for (const viewport of viewports) {
-    await page.setViewportSize(viewport);
-    await page.goto("/regeln");
-    await expect(page.getByRole("heading", { name: "Zock die Wand an: Spielregeln" })).toBeVisible();
-    await page.mouse.move(Math.round(viewport.width / 2), Math.min(360, viewport.height - 80));
-    await page.mouse.wheel(0, 720);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
-  }
+  test("rules keep native scrolling on desktop, tablet, and mobile", async ({ page, browserName }) => {
+    // Chromium classifies fulfilled documents as public, while this disposable
+    // game server and its real WebSocket connection use loopback addresses.
+    if (browserName === "chromium") await page.context().grantPermissions(["local-network-access"]);
+    // Local Uvicorn does not apply Nginx response headers. Exercise the shipped
+    // application policy here, so a frame-src regression cannot pass locally.
+    const nginx = await readFile(path.join(__dirname, "../../deploy/nginx/rollthedice.conf"), "utf8");
+    const policies = [...nginx.matchAll(/add_header\s+Content-Security-Policy\s+"([^"]+)"\s+always;/g)].map(match => match[1]);
+    const policy = policies.find(value => value.includes("script-src"));
+    expect(policy, "the application Nginx CSP must be present").toBeTruthy();
+    await page.route(/\/(?:spiel\/[^/?]+|regeln)(?:\?.*)?$/, async route => {
+      const response = await route.fetch();
+      await route.fulfill({ response, headers: { ...response.headers(), "content-security-policy": policy } });
+    });
+    const viewports = [
+      { width: 1440, height: 900 },
+      { width: 768, height: 1024 },
+      { width: 390, height: 844 },
+    ];
 
-  await page.setViewportSize(viewports[0]);
-  await page.goto("/");
-  await page.fill("#playerName", "RulesScroll");
-  await Promise.all([
-    page.waitForURL(/\/spiel\/[^/?]+/),
-    page.click("#createBtn"),
-  ]);
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await page.goto("/regeln");
+      await expect(page.getByRole("heading", { name: "Zock die Wand an: Spielregeln" })).toBeVisible();
+      await page.mouse.move(Math.round(viewport.width / 2), Math.min(360, viewport.height - 80));
+      await page.mouse.wheel(0, 720);
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    }
 
-  for (const viewport of viewports) {
-    await page.setViewportSize(viewport);
-    await page.locator("#roomHeaderMenuToggle").click();
-    await expect(page.locator("#roomHeaderMenuPanel")).toBeVisible();
-    await page.locator("#rulesSheetOpen").click();
-    const frame = page.frameLocator("#rulesFrame");
-    await expect(frame.getByRole("heading", { name: "Zock die Wand an: Spielregeln" })).toBeVisible();
-    const frameBox = await page.locator("#rulesFrame").boundingBox();
-    expect(frameBox).not.toBeNull();
-    const before = await frame.locator("html").evaluate(root => root.scrollTop);
-    await page.mouse.move(frameBox.x + frameBox.width / 2, frameBox.y + frameBox.height / 2);
-    await page.mouse.wheel(0, 600);
-    await expect.poll(() => frame.locator("html").evaluate(root => root.scrollTop)).toBeGreaterThan(before);
-    await page.keyboard.press("Escape");
-    await expect(page.locator("#rulesSheet")).toBeHidden();
-  }
+    await page.setViewportSize(viewports[0]);
+    await page.goto("/");
+    await page.fill("#playerName", "RulesScroll");
+    await Promise.all([
+      page.waitForURL(/\/spiel\/[^/?]+/),
+      page.click("#createBtn"),
+    ]);
+
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await page.locator("#roomHeaderMenuToggle").click();
+      await expect(page.locator("#roomHeaderMenuPanel")).toBeVisible();
+      await page.locator("#rulesSheetOpen").click();
+      const frame = page.frameLocator("#rulesFrame");
+      await expect(frame.getByRole("heading", { name: "Zock die Wand an: Spielregeln" })).toBeVisible();
+      const frameBox = await page.locator("#rulesFrame").boundingBox();
+      expect(frameBox).not.toBeNull();
+      const before = await frame.locator("html").evaluate(root => root.scrollTop);
+      await page.mouse.move(frameBox.x + frameBox.width / 2, frameBox.y + frameBox.height / 2);
+      await page.mouse.wheel(0, 600);
+      await expect.poll(() => frame.locator("html").evaluate(root => root.scrollTop)).toBeGreaterThan(before);
+      await page.keyboard.press("Escape");
+      await expect(page.locator("#rulesSheet")).toBeHidden();
+    }
+  });
 });
 
 

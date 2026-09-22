@@ -534,6 +534,12 @@ forward-only. Rank thresholds remain fixed, so this expansion cannot demote a
 player. In Zilch, interaction awards appear in the collection without opening
 a result dialog over account or game controls.
 
+**Deutsch – Regeln im Spiel:** In ZDWA kannst du die Spielregeln während einer
+Partie im Regeldialog nachlesen und danach direkt am Spieltisch weitermachen.
+
+**English – In-game rules:** In ZDWA, you can read the rules in a dialog during
+a game, then return directly to the table.
+
 Find Zilch history at **Account → Statistics → Your history**, and ZDWA history
 under **Account → Statistics**. Looking Back is earned only when your history
 is opened; loading a hidden tab does not count. Collections refresh after new

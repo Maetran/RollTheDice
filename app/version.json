@@ -1,10 +1,10 @@
 {
-  "version": "2.42.1",
+  "version": "2.42.2",
   "bump": "patch",
   "date": "2026-09-22",
-  "previous_revision": "0704c6f766ee98414a7778c11db32fb82015d733",
+  "previous_revision": "bfc265ac104e6dbf549f4aa3d9fc874f1660f0b5",
   "summary": {
-    "de": "Übersichtliche Benutzerverwaltung mit Suche und klaren Aktionen",
-    "en": "Clearer user management with search and grouped actions"
+    "de": "ZDWA-Spielregeln im Spiel wieder sichtbar",
+    "en": "ZDWA rules visible again during games"
   }
 }

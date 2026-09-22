@@ -147,6 +147,15 @@ abdeckt. Für die erste Umstellung deshalb ausschließlich den kontrollierten
 `scripts/activate_subdomains.sh`-Ablauf weiter unten verwenden. Diese
 Systemkonfiguration wird nicht bei jedem App-Deployment ungeprüft überschrieben.
 
+Die CSP muss `frame-src 'self' https://challenges.cloudflare.com` erlauben:
+`'self'` wird für den ZDWA-Regeldialog mit `/regeln?embed=1` benötigt, die
+Cloudflare-Origin weiterhin für Turnstile. `frame-ancestors 'self'` bleibt
+erhalten und beschränkt das Einbetten unserer Seiten auf die eigene Origin.
+Bei Änderungen dieser Direktiven ist zusätzlich zum App-Deployment
+`scripts/install_nginx_config.sh` erforderlich. Danach den tatsächlichen
+HTTPS-CSP-Header und den geöffneten Regeldialog prüfen; ein erfolgreicher
+Aufruf der Regelseite allein prüft ihre Einbettung noch nicht.
+
 Bei einem manuellen Aufruf werden alte Datenbackups zunächst nur aufgelistet:
 
 ```bash

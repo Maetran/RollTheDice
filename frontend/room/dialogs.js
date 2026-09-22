@@ -88,7 +88,7 @@
       if (!sheet || !backdrop) return;
       bindRulesFrameScroll(frame);
       if (frame && !frame.getAttribute("src")) {
-        frame.setAttribute("src", frame.dataset.src || "/regeln?embed=1");
+        frame.setAttribute("src", zdwaPath(frame.dataset.src || "/regeln?embed=1"));
       }
       sheet.hidden = false;
       backdrop.hidden = false;

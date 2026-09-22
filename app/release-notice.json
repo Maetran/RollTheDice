@@ -1,21 +1,19 @@
 {
   "kind": "usability",
-  "games": ["zdwa", "zilch"],
-  "summary_de": "Die Benutzerverwaltung ist übersichtlicher: Konten suchen, Details aufklappen und Aktionen direkt zuordnen.",
-  "summary_en": "Clearer user management: find accounts, open their details and see feedback beside each action.",
+  "games": ["zdwa"],
+  "summary_de": "Die ZDWA-Spielregeln werden im Regeldialog während der Partie wieder angezeigt.",
+  "summary_en": "The ZDWA rules are visible again in the rules dialog during your game.",
   "player_notes": {
     "de": {
-      "title": "Mehr Übersicht für Admins",
+      "title": "Spielregeln wieder im Blick",
       "changes": [
-        "Admins finden Konten schneller in einer kompakten Liste mit Suche und einzeln aufklappbaren Details.",
-        "Rechte, Chat, Sperren und Passwort haben eigene Bereiche. Beschriftete Felder und direkte Rückmeldungen erleichtern die Bedienung auch am Handy."
+        "Du kannst die ZDWA-Spielregeln wieder direkt während der Partie nachlesen. Der Regeldialog bleibt nicht mehr leer."
       ]
     },
     "en": {
-      "title": "Clearer account management for admins",
+      "title": "In-game rules back in view",
       "changes": [
-        "Admins find accounts faster in a compact, searchable list with details that open individually.",
-        "Permissions, chat, bans and passwords have their own sections. Labelled fields and feedback beside each action make the page easier to use on phones too."
+        "You can read the ZDWA rules during your game again. The rules dialog no longer stays empty."
       ]
     }
   }
