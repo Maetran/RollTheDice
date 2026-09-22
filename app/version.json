@@ -1,10 +1,10 @@
 {
-  "version": "2.39.3",
+  "version": "2.39.4",
   "bump": "patch",
   "date": "2026-09-22",
-  "previous_revision": "1503d104547d3b9bc268e4c8ac98580dbf6a3e79",
+  "previous_revision": "4e47264db772515c071c1f56cf8bc2c7b4d66ada",
   "summary": {
-    "de": "Eigenes Spiel nach Gerätewechsel fortsetzen",
-    "en": "Resume your game after switching devices"
+    "de": "Ruhige Profilbilder und zentrierte Desktop-Menüs",
+    "en": "Stable profile pictures and centered desktop menus"
   }
 }

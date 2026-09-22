@@ -160,6 +160,15 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-header {
   color: var(--lcars-text);
 }
 
+/* Balance the left rail on mouse desktops so navigation stays centered in
+   the whole header. Touch layouts and the compact game controls keep their
+   existing available space. */
+@media (min-width: 761px) and (hover: hover) and (pointer: fine) {
+  html[data-game="zilch"][data-theme="lcars"] .zilch-shell:not(.zilch-shell--game) .zilch-header {
+    padding-right: 1.8rem;
+  }
+}
+
 html[data-game="zilch"][data-theme="lcars"] .zilch-header::before {
   content: none;
 }

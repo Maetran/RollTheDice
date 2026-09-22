@@ -1,6 +1,7 @@
 import { dom, escapeHtml } from "./context.js";
 import { zdwaPath } from "../multigame/routes.js";
 import { playerNameMarkup } from "../shared/auth.js";
+import { replaceChildrenPreservingAvatars } from "../shared/avatar.js";
 
 let activeTab = "normal";
 
@@ -36,19 +37,20 @@ function gameViewLink(gameId) {
     : '<span class="leaderboard-view-placeholder" aria-hidden="true">—</span>';
 }
 
-function playerNames(entry) {
+function playerNames(entry, rowKey) {
   if (Array.isArray(entry.entry_players)) {
-    return entry.entry_players.map(player => playerNameMarkup(player, {
+    return entry.entry_players.map((player, playerIndex) => playerNameMarkup(player, {
       name: player.name,
       compactRank: true,
       profileLink: player.is_active,
+      avatarKey: JSON.stringify([rowKey, playerIndex]),
     })).join(", ");
   }
   const links = Array.isArray(entry.linked_players) ? entry.linked_players : [];
-  return String(entry.name ?? "—").split(", ").map((name) => {
+  return String(entry.name ?? "—").split(", ").map((name, playerIndex) => {
     const player = links.find((candidate) => String(candidate.display_name) === name);
     return player
-      ? `<a href="${zdwaPath(`/spieler/${encodeURIComponent(player.username)}`)}" class="player-profile-link">${playerNameMarkup(player, { name, compactRank: true })}</a>`
+      ? `<a href="${zdwaPath(`/spieler/${encodeURIComponent(player.username)}`)}" class="player-profile-link">${playerNameMarkup(player, { name, compactRank: true, avatarKey: JSON.stringify([rowKey, playerIndex]) })}</a>`
       : escapeHtml(name);
   }).join(", ");
 }
@@ -86,16 +88,23 @@ function renderAverage(bucket, valueElement, trendElement) {
 
 function renderRows(table, entries, { absolute = false, emptyText = "Keine Einträge" } = {}) {
   const rows = Array.isArray(entries) ? entries : [];
-  table.innerHTML = rows.map((entry) => {
+  const occurrences = new Map();
+  const markup = rows.map((entry) => {
     const finishedAt = entry.finished_at || entry.ts;
+    // A player can appear in several games and a game can have several rows.
+    const identity = JSON.stringify([entry.game_id || finishedAt || "", entry.name ?? ""]);
+    const occurrence = occurrences.get(identity) || 0;
+    occurrences.set(identity, occurrence + 1);
+    const rowKey = JSON.stringify([identity, occurrence]);
     const date = absolute ? formatDate(finishedAt) : formatRelative(finishedAt);
     return `<tr${entry.hardcore ? ' class="hc-entry"' : ""}>
       <td>${date}</td>
-      <td>${playerNames(entry)}</td>
+      <td>${playerNames(entry, rowKey)}</td>
       <td>${entry.points ?? "—"}</td>
       <td>${gameViewLink(entry.game_id)}</td>
     </tr>`;
   }).join("") || `<tr><td colspan="4" class="muted">${emptyText}</td></tr>`;
+  replaceChildrenPreservingAvatars(table, markup);
 }
 
 function renderAbandonments(list, status, entries, { failed = false } = {}) {

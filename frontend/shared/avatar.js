@@ -11,12 +11,15 @@ export function avatarSource(player) {
   return userId ? `/api/avatars/${userId}` : DEFAULT_AVATAR;
 }
 
-export function avatarMarkup(player, { size = "tiny" } = {}) {
+export function avatarMarkup(player, { size = "tiny", avatarKey = "" } = {}) {
   const safeSize = sizes.has(size) ? size : "tiny";
   const userId = avatarUserId(player);
-  // Every attribute is generated locally from fixed enums/numeric IDs. User
-  // filenames, MIME declarations and uploaded bytes are never HTML sources.
-  return `<img class="player-avatar player-avatar--${safeSize}" src="${avatarSource(player)}"${userId ? ` data-user-avatar="${userId}"` : ""} alt="" width="${safeSize === "large" ? 80 : safeSize === "medium" ? 48 : safeSize === "small" ? 28 : 20}" height="${safeSize === "large" ? 80 : safeSize === "medium" ? 48 : safeSize === "small" ? 28 : 20}" loading="lazy" decoding="async">`;
+  const safeKey = String(avatarKey).replace(/[&<>"']/g, character => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[character]));
+  // Image attributes use fixed enums/numeric IDs. The escaped key identifies
+  // the occurrence; filenames and uploaded bytes are never HTML sources.
+  return `<img class="player-avatar player-avatar--${safeSize}" src="${avatarSource(player)}"${userId ? ` data-user-avatar="${userId}"` : ""}${safeKey ? ` data-avatar-key="${safeKey}"` : ""} alt="" width="${safeSize === "large" ? 80 : safeSize === "medium" ? 48 : safeSize === "small" ? 28 : 20}" height="${safeSize === "large" ? 80 : safeSize === "medium" ? 48 : safeSize === "small" ? 28 : 20}" loading="lazy" decoding="async">`;
 }
 
 function preservedAvatarIdentity(image) {
@@ -48,7 +51,7 @@ function syncPreservedAvatarAttributes(current, replacement) {
 }
 
 /**
- * Replaces generated markup while keeping already decoded, explicitly keyed
+ * Replaces generated markup or a DOM fragment while keeping decoded, keyed
  * avatar images alive. This prevents Safari from briefly painting an empty
  * image whenever a live game snapshot refreshes otherwise unchanged content.
  */
@@ -61,11 +64,14 @@ export function replaceChildrenPreservingAvatars(container, html) {
   }
 
   const template = document.createElement("template");
-  template.innerHTML = String(html ?? "");
+  if (html instanceof DocumentFragment) template.content.append(html);
+  else template.innerHTML = String(html ?? "");
   const replacements = [];
   for (const replacement of template.content.querySelectorAll("img.player-avatar[data-avatar-key]")) {
-    const current = preserved.get(preservedAvatarKey(replacement));
+    const key = preservedAvatarKey(replacement);
+    const current = preserved.get(key);
     if (!current) continue;
+    preserved.delete(key);
     syncPreservedAvatarAttributes(current, replacement);
     // Do not let the temporary placeholder start its own request when the new
     // fragment becomes live. It is synchronously replaced by the decoded node.

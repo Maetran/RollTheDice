@@ -1,5 +1,5 @@
 import { loadAuth } from "./auth.js";
-import { avatarSource } from "./avatar.js";
+import { avatarSource, replaceChildrenPreservingAvatars } from "./avatar.js";
 import { playerProfileHref } from "./player-allowlist.js";
 
 const CONTEXTS = new Set(["all", "zdwa", "zilch"]);
@@ -199,12 +199,12 @@ export function mountLobbyChat(mount, { context = "zdwa", initialAuth = null } =
   function renderMessages() {
     const wasAtBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 24;
     const messages = chatEnabled() ? visibleMessages() : [];
-    list.replaceChildren();
+    const content = document.createElement("template").content;
     if (!messages.length) {
       const empty = document.createElement("li");
       empty.className = "lobby-chat__empty";
       empty.textContent = emptyStateText();
-      list.append(empty);
+      content.append(empty);
     } else {
       for (const message of messages) {
         const row = document.createElement("li");
@@ -217,9 +217,13 @@ export function mountLobbyChat(mount, { context = "zdwa", initialAuth = null } =
         sender.textContent = message.sender;
         if (hasAccount) sender.href = playerProfileHref(message.sender, context);
         if (hasAccount) {
-          const avatar = document.createElement("img");
+          // The inert template document avoids loading a replacement image
+          // before the shared renderer can reuse its already decoded node.
+          const avatar = content.ownerDocument.createElement("img");
           avatar.className = "player-avatar";
           avatar.src = avatarSource(message.user_id);
+          avatar.dataset.userAvatar = String(Number(message.user_id));
+          avatar.dataset.avatarKey = `lobby-message:${message.id}`;
           avatar.alt = "";
           avatar.width = avatar.height = 18;
           avatar.loading = "lazy";
@@ -233,9 +237,10 @@ export function mountLobbyChat(mount, { context = "zdwa", initialAuth = null } =
         text.className = "lobby-chat__text";
         text.textContent = eventText(message, { withSender: false });
         row.append(meta, text);
-        list.append(row);
+        content.append(row);
       }
     }
+    replaceChildrenPreservingAvatars(list, content);
     if (wasAtBottom) feed.scrollTop = feed.scrollHeight;
   }
 

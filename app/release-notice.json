@@ -4,23 +4,23 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Vom Tablet aufs Handy: Mit demselben Konto findest du auch im wartenden Spiel auf deinen Platz zurück.",
-  "summary_en": "From tablet to phone: sign in to the same account to return to your seat, even while your game is waiting for players.",
+  "summary_de": "Ruhige Profilbilder in Lobby, Bestenlisten und Chat – und mittige Menüs am Desktop.",
+  "summary_en": "Steady profile pictures in lobbies, leaderboards and chat, plus centered desktop menus.",
   "player_notes": {
     "de": {
-      "title": "Gerät wechseln und weiterspielen",
+      "title": "Ruhige Bilder und aufgeräumte Menüs",
       "changes": [
-        "Der Link einer öffentlichen ZDWA-Partie bringt dich auf einem anderen Gerät mit demselben Konto auf deinen vorhandenen Platz zurück.",
-        "Deine wartende ZDWA-Partie bietet jetzt Wieder aufnehmen; bei geschützten Spielen gibst du dort das Spielpasswort ein. Warteräume bieten auch Zuschauen.",
-        "In ZDWA und Zilch zeigt das vorherige Gerät die Übernahme an. Ein noch offener Spieltab nimmt dir den Platz nicht mehr automatisch wieder weg."
+        "Profilbilder bleiben beim Aktualisieren von Lobby, Bestenlisten und Chat ruhig – auf Handy, Tablet und Desktop.",
+        "Auch während einer Zilch-Partie bleiben bereits geladene Profilbilder erhalten.",
+        "Die Menüs der ZDWA-Lobby und des Zilch-LCARS-Designs sitzen am Desktop mittig."
       ]
     },
     "en": {
-      "title": "Switch devices and keep playing",
+      "title": "Steady pictures and tidy menus",
       "changes": [
-        "A public ZDWA game link returns you to your existing seat on another device when you are signed in to the same account.",
-        "Your waiting ZDWA game now offers Resume in the lobby; enter the game password there for protected games. Waiting rooms also offer Watch.",
-        "In ZDWA and Zilch, the previous device shows that the game continued elsewhere. A game tab still open there no longer takes your seat back automatically."
+        "Profile pictures stay steady when lobbies, leaderboards and chat refresh on phone, tablet and desktop.",
+        "Loaded profile pictures also stay in place during Zilch games.",
+        "The ZDWA lobby and Zilch's LCARS theme keep their desktop menus centered."
       ]
     }
   }

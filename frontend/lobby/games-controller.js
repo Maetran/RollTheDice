@@ -15,6 +15,7 @@ import {
   storeGamePass,
 } from "./context.js";
 import { playerNameMarkup } from "../shared/auth.js";
+import { replaceChildrenPreservingAvatars } from "../shared/avatar.js";
 import { requestGameInvitePush, webPushErrorMessage } from "../shared/web-push.js";
 
 function renderOnlineUsers(value) {
@@ -30,7 +31,7 @@ function renderOpenGames(games) {
   if (!dom.gamesList) return;
   dom.openGamesCard.hidden = games.length === 0;
 
-  dom.gamesList.innerHTML = games.map((game) => {
+  const markup = games.map((game, gameIndex) => {
     const joined = game.players ?? 0;
     const expected = game.expected ?? game.mode ?? "?";
     const gameId = game.id || "";
@@ -52,7 +53,11 @@ function renderOpenGames(games) {
       ? statuses
       : waiting.map((name) => ({ name }));
     const badges = listedPlayers.length
-      ? listedPlayers.map((player) => `<span class="badge">${playerNameMarkup(player, { compactRank: true, profileLink: true })}</span>`).join(" ")
+      ? listedPlayers.map((player, playerIndex) => `<span class="badge">${playerNameMarkup(player, {
+        compactRank: true,
+        profileLink: true,
+        avatarKey: JSON.stringify(["open-game", gameId || gameIndex, playerIndex]),
+      })}</span>`).join(" ")
       : '<span class="muted small">Noch keine Spieler</span>';
     return `<div class="game-row">
       <div class="meta">
@@ -72,6 +77,7 @@ function renderOpenGames(games) {
       </div>
     </div>`;
   }).join("");
+  replaceChildrenPreservingAvatars(dom.gamesList, markup);
 }
 
 function prioritizeResumableGames() {
@@ -91,8 +97,9 @@ function renderRunningGames(games) {
   if (!dom.runningList) return;
   dom.runningGamesCard.hidden = games.length === 0;
 
-  dom.runningList.innerHTML = games.map((game) => {
+  const markup = games.map((game, gameIndex) => {
     const gameId = game.id || "";
+    const avatarKey = (...slot) => JSON.stringify(["running-game", gameId || gameIndex, ...slot]);
     const mode = game.mode === "2v2" ? "2 vs 2" : `${game.mode || game.expected}`;
     const hardcore = game.hardcore ? '<span class="hc-badge">Hardcore</span>' : "";
     const statuses = Array.isArray(game.player_statuses) ? game.player_statuses : [];
@@ -102,11 +109,11 @@ function renderRunningGames(games) {
         ? game.waiting.map((name) => ({ name, connected: true }))
         : [];
     const playerBadges = players.length
-      ? players.map((player) => {
+      ? players.map((player, playerIndex) => {
         const name = typeof player === "string" ? player : player.name || "Spieler";
         const connected = typeof player === "string" || Boolean(player.connected);
         const playerData = typeof player === "string" ? { name } : player;
-        return `<span class="badge ${connected ? "online" : "offline"}">${playerNameMarkup(playerData, { compactRank: true, profileLink: true })}${connected ? "" : " offline"}</span>`;
+        return `<span class="badge ${connected ? "online" : "offline"}">${playerNameMarkup(playerData, { compactRank: true, profileLink: true, avatarKey: avatarKey("badge", playerIndex) })}${connected ? "" : " offline"}</span>`;
       }).join(" ")
       : '<span class="muted small">Spieler unbekannt</span>';
     const canResume = Boolean(localPlayerIdFor(gameId) || game.my_player_id);
@@ -115,24 +122,24 @@ function renderRunningGames(games) {
         const remaining = game.pause_remaining_label || game.timeout_label || "";
         const offline = Array.isArray(game.offline) ? game.offline : [];
         const waitText = offline.length
-          ? `wartet auf ${offline.map((player) => playerNameMarkup(player, { compactRank: true, profileLink: true })).join(", ")}`
+          ? `wartet auf ${offline.map((player, playerIndex) => playerNameMarkup(player, { compactRank: true, profileLink: true, avatarKey: avatarKey("offline", playerIndex) })).join(", ")}`
           : "manuell pausiert";
         const timeText = remaining ? ` • Restzeit: ${escapeHtml(remaining)}` : "";
         return `<div class="sub warn-line">Pausiert: ${waitText}${timeText}</div>`;
       })()
       : "";
-    const progressPlayer = (entry) => {
+    const progressPlayer = (entry, slot) => {
       const data = typeof entry === "string" ? { name: entry } : entry;
       const status = players.find(player => data.id
         ? player.id === data.id
         : player.name === data.name) || {};
-      return `${playerNameMarkup({ ...status, ...data }, { compactRank: true, profileLink: true })}${status.connected === false ? " offline" : ""}`;
+      return `${playerNameMarkup({ ...status, ...data }, { compactRank: true, profileLink: true, avatarKey: avatarKey("progress", ...slot) })}${status.connected === false ? " offline" : ""}`;
     };
-    const progressRows = (Array.isArray(game.progress) ? game.progress : []).map((progress) => {
+    const progressRows = (Array.isArray(game.progress) ? game.progress : []).map((progress, progressIndex) => {
       const translate = window.ZDWA_I18N?.t || ((text) => text);
       const player = progress.members?.length
-        ? `${escapeHtml(progress.name)} <span class="muted small">(${progress.members.map(progressPlayer).join(", ")})</span>`
-        : progressPlayer(progress);
+        ? `${escapeHtml(progress.name)} <span class="muted small">(${progress.members.map((member, memberIndex) => progressPlayer(member, [progressIndex, memberIndex])).join(", ")})</span>`
+        : progressPlayer(progress, [progressIndex]);
       return `<div class="muted small progress-line">
         <span class="lobby-progress-player">${player}</span><span class="lobby-progress-score">${escapeHtml(translate("Felder"))} <b>${progress.filled}/${progress.of || 48}</b> · ${escapeHtml(translate("Punkte"))} <b>${progress.points}</b></span>
       </div>`;
@@ -158,6 +165,7 @@ function renderRunningGames(games) {
       </div>
     </div>`;
   }).join("");
+  replaceChildrenPreservingAvatars(dom.runningList, markup);
   prioritizeResumableGames();
 }
 

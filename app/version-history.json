@@ -1923,5 +1923,12 @@
     "date": "2026-09-22",
     "bump": "patch",
     "summary": "Stabile Spielflächen nach dem Drehen / Stable game surfaces after rotation"
+  },
+  {
+    "version": "2.39.3",
+    "revision": "4e47264db772515c071c1f56cf8bc2c7b4d66ada",
+    "date": "2026-09-22",
+    "bump": "patch",
+    "summary": "Eigenes Spiel nach Gerätewechsel fortsetzen / Resume your game after switching devices"
   }
 ]

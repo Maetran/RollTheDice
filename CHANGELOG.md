@@ -22,6 +22,24 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.39.4 — Ruhige Profilbilder und zentrierte Desktop-Menüs / Stable profile pictures and centered desktop menus — 2026-09-22
+
+- **Deutsch:** Lobbys, Bestenlisten und Chats behalten bereits geladene
+  Profilbilder bei Aktualisierungen. Auch Zilch-Spielaktionen bauen unveränderte
+  Bilder nicht mehr neu auf. Damit bleiben die Avatare auf Desktop, Tablet und
+  Handy ruhig; Spielerwechsel und neue Profilbilder erscheinen weiterhin.
+  Die Desktop-Navigation sitzt auch in der ZDWA-Lobby und im Zilch-LCARS-Design
+  mittig. Auf der Zilch-Seite für nicht verfügbare Links stehen die
+  Header-Werkzeuge wieder rechts. Stiller Rollout ohne Versions-Push oder
+  neues Versionspopup.
+- **English:** Lobbies, leaderboards and chats retain loaded profile pictures
+  when their contents refresh. Zilch game actions also keep unchanged images
+  in place. Avatars stay steady on desktop, tablet and phone while player
+  changes and new profile pictures still appear. Desktop navigation is centered
+  in the ZDWA lobby and Zilch's LCARS theme as well. Zilch's unavailable-link
+  page keeps its header tools on the right. Silent rollout without a release
+  push or a new release popup.
+
 ## 2.39.3 — Eigenes Spiel nach Gerätewechsel fortsetzen / Resume your game after switching devices — 2026-09-22
 
 - **Deutsch:** Ein geteilter Link zu einer öffentlichen ZDWA-Partie führt

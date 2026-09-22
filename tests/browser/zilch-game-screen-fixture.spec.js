@@ -5,6 +5,44 @@ const { openChatWithKeyboardFocus, expectChatAboveKeyboard } = require("./chat-m
 const { readFile } = require("node:fs/promises");
 const path = require("node:path");
 
+async function captureLoadedAvatars(page, selector) {
+  const avatars = page.locator(selector);
+  for (let index = 0; index < await avatars.count(); index += 1) {
+    await avatars.nth(index).scrollIntoViewIfNeeded();
+    await expect(avatars.nth(index)).toHaveJSProperty("naturalWidth", 20);
+  }
+  await page.evaluate(selector => {
+    window.__stableZilchAvatars = [...document.querySelectorAll(selector)];
+    window.__stableZilchAvatarLoads = 0;
+    for (const avatar of window.__stableZilchAvatars) {
+      avatar.addEventListener("load", () => { window.__stableZilchAvatarLoads += 1; });
+    }
+  }, selector);
+}
+
+async function expectRetainedAvatars(page, selector) {
+  await expect.poll(() => page.evaluate(selector => {
+    const current = [...document.querySelectorAll(selector)];
+    return window.__stableZilchAvatars.every(image => (
+      image.isConnected && image.complete && image.naturalWidth === 20 && current.includes(image)
+    ));
+  }, selector)).toBe(true);
+  await page.waitForTimeout(80);
+  expect(await page.evaluate(() => window.__stableZilchAvatarLoads)).toBe(0);
+}
+
+async function mockAvatarAccount(page) {
+  await page.route("**/api/**", route => route.fulfill({ json: {} }));
+  await page.route("**/api/auth/me", route => route.fulfill({ json: {
+    authenticated: false, user: null, game_access: { zilch_public: true },
+  } }));
+  await page.route("**/api/avatars/*", route => route.fulfill({
+    contentType: "image/svg+xml",
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="purple"/></svg>',
+  }));
+  await page.addInitScript(() => { localStorage.setItem("zdwa_language", "de"); });
+}
+
 async function signIn(page, username, password) {
   await openPasswordLogin(page);
   await page.fill("#loginUsername", username);
@@ -824,6 +862,110 @@ async function enableStandaloneGameStyles(page) {
       }
     };
     for (const sheet of document.styleSheets) visit(sheet.cssRules);
+  });
+}
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 1366 }, { width: 390, height: 844 }]) {
+  test(`Zilch avatars stay loaded during lobby refreshes and reordered rankings at ${viewport.width}px`, async ({ browser, baseURL }) => {
+    const context = await browser.newContext({ baseURL, serviceWorkers: "block", viewport, hasTouch: viewport.width < 1200, isMobile: viewport.width < 600 });
+    const page = await context.newPage();
+    try {
+      await mockAvatarAccount(page);
+      let refreshed = false;
+      const participants = [
+        { id: "p1", user_id: 2, name: "Alice", type: "human", connected: true },
+        { id: "p2", user_id: 3, name: "Birgit", type: "human", connected: true },
+      ];
+      const games = ["first", "second"].map(id => ({
+        id, game_type: "zilch", name: `Avatar ${id}`, mode: "2", play_mode: "multiplayer",
+        started: true, finished: false, aborted: false, spectator_available: true,
+        participant_count: 2, expected_participants: 2, participants,
+      }));
+      await page.route(/\/api\/games(?:\?.*)?$/, route => route.fulfill({ json: {
+        games: (refreshed ? [...games].reverse() : games).map(game => ({ ...game, progress: [
+          { id: "p1", name: "Alice", points: refreshed ? 2500 : 1500 },
+        ] })), online_users: 2,
+      } }));
+      await page.route("**/api/zilch/leaderboards?*", route => route.fulfill({ json: {
+        entries: (refreshed ? [...participants].reverse() : participants).map((player, index) => ({
+          user_id: player.user_id, username: player.name, rank: index + 1, wins: refreshed ? 8 : 7, turns: refreshed ? 12 : 13,
+        })),
+      } }));
+      const shell = await readFile(path.join(__dirname, "../../app/static/zilch.html"), "utf8");
+      await page.route("**/zilch", route => route.fulfill({ contentType: "text/html", body: shell }));
+      await page.goto("/zilch");
+      const selector = "#zilchRunningGames .player-avatar, .zilch-lobby-leaderboards .player-avatar";
+      await expect(page.locator(selector)).toHaveCount(10);
+      await captureLoadedAvatars(page, selector);
+      refreshed = true;
+      await page.locator("#zilchRefresh").click();
+      await expect(page.locator("#zilchRunningGames")).toContainText("2'500");
+      await expect(page.locator(".zilch-lobby-leaderboard-name").first()).toContainText("Birgit");
+      await expectRetainedAvatars(page, selector);
+      expect(await page.locator("#zilchRunningGames .player-avatar").evaluateAll(images => images.map(image => image.dataset.userAvatar))).toEqual(["2", "3", "2", "3"]);
+      await expect(page.locator("#zilchRunningGames a[href$='/zuschauen']").first()).toHaveAttribute("href", "/zilch/spiel/second/zuschauen");
+
+      await page.route("**/zilch/bestenlisten*", route => route.fulfill({ contentType: "text/html", body: shell }));
+      await page.goto("/zilch/bestenlisten");
+      const rankingSelector = "#zilchLeaderboardBody .player-avatar";
+      await expect(page.locator(rankingSelector)).toHaveCount(2);
+      await captureLoadedAvatars(page, rankingSelector);
+      refreshed = false;
+      await page.locator('[data-zilch-leaderboard-category="multiplayer_wins"]').click();
+      await expect(page.locator(".zilch-leaderboard-table tbody tr").first()).toContainText("Alice");
+      await expectRetainedAvatars(page, rankingSelector);
+    } finally { await context.close(); }
+  });
+
+  test(`Zilch avatars stay loaded through game snapshots and chat updates at ${viewport.width}px`, async ({ browser, baseURL }) => {
+    const context = await browser.newContext({ baseURL, serviceWorkers: "block", viewport, hasTouch: viewport.width < 1200, isMobile: viewport.width < 600 });
+    const page = await context.newPage();
+    try {
+      await mockAvatarAccount(page);
+      const gameId = `stable-avatar-${viewport.width}`;
+      const shell = await readFile(path.join(__dirname, "../../app/static/zilch.html"), "utf8");
+      await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({ contentType: "text/html", body: shell }));
+      const snapshot = fixtureSnapshots().holdOptions;
+      snapshot._zilch_final_round = null;
+      snapshot._chat_history = [
+        { from_id: "p1", sender: "Mani", user_id: 2, text: "First message", ts: "2026-09-22T12:00:00Z" },
+        { from_id: "p1", sender: "Mani", user_id: 2, text: "Second message", ts: "2026-09-22T12:01:00Z" },
+      ];
+      await installGameScreenFixture(page, gameId, { initial: snapshot });
+      await page.goto(`/zilch/spiel/${gameId}`);
+      await expect(page.locator("[data-zilch-board-id]")).toHaveCount(2);
+      const boardSelector = ".zilch-notebook-player .player-avatar";
+      // On phones only the active notebook is displayed; test both images
+      // after loading them naturally once in the desktop presentation.
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.locator("[data-zilch-chat-toggle]").click();
+      const selector = `${boardSelector}, #zilchChatHistory .player-avatar`;
+      await expect(page.locator(selector)).toHaveCount(4);
+      await captureLoadedAvatars(page, selector);
+      await page.setViewportSize(viewport);
+      await page.locator("[data-zilch-chat-toggle]").click();
+      snapshot._zilch_boards.p1.total_points = 8500;
+      snapshot._zilch_turn_state.version += 1;
+      await page.evaluate(value => window.__zilchGameScreenFixturePush({ scoreboard: value }), snapshot);
+      await expect(page.locator('[data-zilch-board-id="p1"] [data-zilch-total]')).toHaveAttribute("data-zilch-total", "8'500");
+      await expectRetainedAvatars(page, selector);
+      await page.locator("[data-zilch-chat-toggle]").click();
+      await page.locator("#zilchChatInput").fill("Third message");
+      await page.locator("#zilchChatForm button[type=submit]").click();
+      await expect(page.locator("#zilchChatHistory")).toContainText("Third message");
+      await expect(page.locator("#zilchChatInput")).toHaveValue("");
+      await expectRetainedAvatars(page, selector);
+      // A different account in the same participant slot must receive its
+      // own image, while the first player's decoded image stays connected.
+      snapshot._participants[1].user_id = 4;
+      snapshot._players[1].user_id = 4;
+      await page.evaluate(value => window.__zilchGameScreenFixturePush({ scoreboard: value }), snapshot);
+      await expect(page.locator('[data-zilch-board-id="p2"] .player-avatar')).toHaveAttribute("data-user-avatar", "4");
+      expect(await page.evaluate(() => ({
+        firstConnected: window.__stableZilchAvatars[0].isConnected,
+        replacedConnected: window.__stableZilchAvatars[1].isConnected,
+      }))).toEqual({ firstConnected: true, replacedConnected: false });
+    } finally { await context.close(); }
   });
 }
 

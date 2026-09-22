@@ -337,10 +337,14 @@ Bei deaktiviertem E-Mail-Feature ist die bisherige Registrierung mit
 Benutzername und Passwort wieder verfügbar.
 
 On touch tablets, both products center their main navigation in a dedicated
-row below the title and tools in portrait and landscape. Phone and mouse
-desktop layouts keep their existing arrangement.
+row below the title and tools in portrait and landscape. Desktop navigation
+is centered too, including the ZDWA lobby and Zilch's LCARS theme. Zilch's
+unavailable-link page keeps its header tools at the right edge.
 Auf Touch-Tablets steht die Hauptnavigation in beiden Spielen im Hoch- und
 Querformat mittig in einer eigenen Zeile unter Titel und Werkzeugen.
+Auch am Desktop bleibt sie mittig, einschließlich ZDWA-Lobby und Zilchs
+LCARS-Design. Auf Zilchs Seite für nicht verfügbare Links stehen die
+Header-Werkzeuge am rechten Rand.
 Der mobile Zuschauerchat hält die Eingabe auch bei geöffneter Tastatur
 erreichbar und zeigt Zuschauer mit ihrem Profilbild. Tablet-Spielblöcke nutzen
 den verfügbaren Platz, ohne die Bedienelemente abzuschneiden.
@@ -352,6 +356,10 @@ Bereich ein und benötigt kein internes vertikales Scrollen. Zilch ordnet seine 
 Profilbilder im ZDWA-Zugstatus und in den Spielzettel-Überschriften bleiben bei
 Würfel-, Halte- und Schreibaktionen ruhig und werden nur bei einem tatsächlichen
 Spielerwechsel ausgetauscht.
+Bereits geladene Profilbilder bleiben auch bei Aktualisierungen der Lobbys,
+Bestenlisten und Chats sowie während Zilch-Spielaktionen erhalten. Das
+verhindert wiederholtes Neuladen derselben Bilder auf Desktop, Tablet und Handy;
+Spielerwechsel und neu hochgeladene Profilbilder werden weiterhin angezeigt.
 Nach dem Drehen zwischen Hoch- und Querformat bleiben Header, Spielzettel und
 Chat an ihren sichtbaren Tippflächen. Die Tastatur kann den Chat weiterhin
 verkleinern; ein begonnener Text bleibt beim Drehen erhalten.
@@ -367,6 +375,10 @@ above **All scoring dice**.
 Profile pictures in ZDWA's turn status and score sheet headers stay steady
 through rolls, holds and score entries, changing only when the displayed
 player actually changes.
+Loaded profile pictures also survive lobby, leaderboard and chat refreshes
+and Zilch game actions. This avoids repeatedly reloading the same pictures
+on desktop, tablet and phone; player changes and newly uploaded pictures
+still appear.
 After rotating between portrait and landscape, headers, score sheets and chat
 remain aligned with their visible touch targets. The keyboard can still resize
 the chat, and drafts survive rotation.

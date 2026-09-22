@@ -301,7 +301,7 @@ html[data-game="zilch"] .zilch-nav-list .zilch-nav-back::before {
 }
 
 .zilch-header-tools { flex-wrap: nowrap; justify-content: flex-end; }
-.zilch-header-tools { justify-self: end; }
+.zilch-header-tools { grid-column: -2 / -1; justify-self: end; }
 .zilch-account { min-width: 0; overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
 .zilch-header-tools .language-switcher { display: inline-flex; align-items: center; }
 .zilch-header-tools .language-switcher select {

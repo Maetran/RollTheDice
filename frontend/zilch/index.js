@@ -6,7 +6,7 @@ import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
 import { mountAllowlistSettings, mountProfileAllowlist } from "../shared/player-allowlist.js";
 import { mountPlayerSearch } from "../shared/player-search.js";
 import { mountAchievementFeed } from "../shared/achievement-feed.js";
-import { avatarMarkup } from "../shared/avatar.js";
+import { avatarMarkup, replaceChildrenPreservingAvatars } from "../shared/avatar.js";
 import { mountAvatarUpload } from "../shared/avatar-upload.js";
 import { mountFriendActivitySettings } from "../shared/friend-activity.js";
 import {
@@ -467,9 +467,9 @@ function typeOfUserId(value) {
   return Number.isInteger(Number(value)) && Number(value) > 0;
 }
 
-function playerCollectionMarkup(value, { includeRank = true } = {}) {
+function playerCollectionMarkup(value, { includeRank = true, avatarKey = "" } = {}) {
   const label = playerName(value);
-  const identity = `${avatarMarkup(value, { size: gameId ? "tiny" : "small" })}<span class="zilch-player-name">${escapeHtml(label)}</span>${includeRank ? zilchRankBadgeMarkup(value) : ""}`;
+  const identity = `${avatarMarkup(value, { size: gameId ? "tiny" : "small", avatarKey })}<span class="zilch-player-name">${escapeHtml(label)}</span>${includeRank ? zilchRankBadgeMarkup(value) : ""}`;
   const username = playerUsername(value);
   if (!username || isCpuParticipant(value)) return `<span class="zilch-player-identity">${identity}</span>`;
   // Leaderboard projections deliberately flag the signed-in person's row.
@@ -773,7 +773,8 @@ function lobbyPlayerRows(game) {
     const cpu = isCpuParticipant(player);
     const online = player?.connected !== false;
     const status = participantStatusLabel(player);
-    return `<span class="zilch-player-chip${cpu ? " zilch-player-chip--cpu" : online ? "" : " zilch-player-chip--offline"}">${cpu ? "" : '<span class="zilch-connection-dot" aria-hidden="true"></span>'}${playerCollectionMarkup(player)}${participantMeta(player, { compact: true })}<span class="visually-hidden"> ${escapeHtml(status)}</span></span>`;
+    const avatarKey = JSON.stringify(["lobby-player", game.id, gameParticipantId(player) || player.user_id || player.name]);
+    return `<span class="zilch-player-chip${cpu ? " zilch-player-chip--cpu" : online ? "" : " zilch-player-chip--offline"}">${cpu ? "" : '<span class="zilch-connection-dot" aria-hidden="true"></span>'}${playerCollectionMarkup(player, { avatarKey })}${participantMeta(player, { compact: true })}<span class="visually-hidden"> ${escapeHtml(status)}</span></span>`;
   }).join("");
 }
 
@@ -1114,7 +1115,7 @@ async function refreshLobbyLeaderboards() {
     const slot = box?.querySelector(".zilch-lobby-leaderboard-list");
     if (!slot) return;
     try {
-      slot.innerHTML = lobbyLeaderboardMarkup(await fetchLobbyLeaderboard(category), category);
+      replaceChildrenPreservingAvatars(slot, lobbyLeaderboardMarkup(await fetchLobbyLeaderboard(category), category));
     } catch (_) {
       slot.innerHTML = `<p class="zilch-muted">${escapeHtml(t("Zilch-Bestenliste nicht verfügbar"))}</p>`;
     }
@@ -1237,11 +1238,11 @@ async function renderLobby({ authReady = null } = {}) {
       else if (routeKind() === "lobby") clearRememberedActiveGame();
       if (runningSlot) {
         runningSlot.closest(".zilch-lobby-section").hidden = runningGames.length === 0;
-        runningSlot.innerHTML = runningGames.map(game => gameCard(game, { running: true })).join("");
+        replaceChildrenPreservingAvatars(runningSlot, runningGames.map(game => gameCard(game, { running: true })).join(""));
       }
       if (waitingSlot) {
         waitingSlot.closest(".zilch-lobby-section").hidden = waitingGames.length === 0;
-        waitingSlot.innerHTML = waitingGames.map(game => gameCard(game)).join("");
+        replaceChildrenPreservingAvatars(waitingSlot, waitingGames.map(game => gameCard(game)).join(""));
       }
       const empty = document.getElementById("zilchGamesEmpty");
       if (empty) empty.hidden = runningGames.length + waitingGames.length > 0;
@@ -3030,7 +3031,9 @@ function isOwnLeaderboardEntry(entry) {
 }
 
 function zilchPlayerAchievementLink(entry) {
-  return playerCollectionMarkup(entry);
+  return playerCollectionMarkup(entry, {
+    avatarKey: JSON.stringify(["leaderboard", entry.user_id || entry.username || entry.player_username || entry.name]),
+  });
 }
 
 function leaderboardTableMarkup(leaderboard) {
@@ -3209,12 +3212,12 @@ function renderLeaderboardBody() {
   const title = Number.isFinite(total) && total > ZILCH_LEADERBOARD_LIMIT
     ? `${t("Top 10")} · ${leaderboardCategoryLabel(state.leaderboardCategory)}`
     : leaderboardCategoryLabel(state.leaderboardCategory);
-  slot.innerHTML = `<section class="zilch-card zilch-leaderboard-card">
+  replaceChildrenPreservingAvatars(slot, `<section class="zilch-card zilch-leaderboard-card">
       <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Bestenlisten"))}</p><h2>${escapeHtml(title)}</h2></div><p class="zilch-leaderboard-sorting">${escapeHtml(leaderboardSortingDescription(state.leaderboardCategory))}</p></div>
       ${leaderboardObjectiveMarkup(leaderboard)}
       ${leaderboardControlsMarkup()}
       ${leaderboardTableMarkup(leaderboard)}
-    </section>${ownLeaderboardEntryMarkup(leaderboard)}`;
+    </section>${ownLeaderboardEntryMarkup(leaderboard)}`);
   bindLeaderboardControls();
 }
 
@@ -3653,7 +3656,7 @@ function scoreNotebook(players, boards, {
     const boardLabel = [player?.name || t("Spieler"), marker, active ? t("Am Zug") : ""].filter(Boolean).join(", ");
     const scoreTotal = solo ? `${number(board.total_points)} / ${number(target)}` : number(board.total_points);
     return `<article class="${classes}" data-zilch-board-id="${escapeHtml(player.id)}" aria-label="${escapeHtml(boardLabel)}">
-      <header><h2>${playerCollectionMarkup(player, { includeRank: false })} ${participantMeta(player, { compact: true })}</h2><span class="zilch-notebook-total"><span class="visually-hidden">${escapeHtml(t("Stand"))}: </span>${escapeHtml(scoreTotal)}</span></header>
+      <header><h2>${playerCollectionMarkup(player, { includeRank: false, avatarKey: JSON.stringify(["notebook", player.id]) })} ${participantMeta(player, { compact: true })}</h2><span class="zilch-notebook-total"><span class="visually-hidden">${escapeHtml(t("Stand"))}: </span>${escapeHtml(scoreTotal)}</span></header>
       <ol data-zilch-round-log="${escapeHtml(player.id)}" style="--zilch-round-rows:${lineCount}">${Array.from({ length: lineCount }, (_unused, index) => {
         const entry = rounds[index];
         return entry ? `<li>${notebookRound(entry)}</li>` : '<li class="zilch-notebook-entry--blank" aria-hidden="true"></li>';
@@ -4448,7 +4451,7 @@ function waitingRoomPanel(snapshot) {
   const participants = snapshotParticipants(snapshot);
   const expected = Number(snapshot?._expected_participants || snapshot?._expected || 2);
   const invite = canRequestZilchGameInvite(snapshot, { inRoom: true }) ? zilchGameInviteButtonMarkup(gameId) : "";
-  const playerRows = participants.map(player => `<li><span>${playerCollectionMarkup(player)} ${participantMeta(player, { compact: true })}</span><strong>${escapeHtml(participantStatusLabel(player))}</strong></li>`).join("");
+  const playerRows = participants.map(player => `<li><span>${playerCollectionMarkup(player, { avatarKey: JSON.stringify(["waiting-player", player.id]) })} ${participantMeta(player, { compact: true })}</span><strong>${escapeHtml(participantStatusLabel(player))}</strong></li>`).join("");
   return `<section class="zilch-card zilch-start-roll" aria-labelledby="zilchWaitingRoomTitle">
     <p class="eyebrow">${escapeHtml(t("Wartesaal"))}</p>
     <h2 id="zilchWaitingRoomTitle">${escapeHtml(t("Bereit für den Startwurf"))}</h2>
@@ -4482,7 +4485,7 @@ function openingRollPanel(snapshot) {
     const result = rolled >= 1 && rolled <= 6
       ? `<span class="zilch-start-roll-die" data-start-roll-value="${rolled}" role="img" aria-label="${escapeHtml(`${t("Würfel")}: ${rolled}`)}">${diePips(rolled, `opening-${index}`)}</span>`
       : `<strong>${escapeHtml(t("wartet"))}</strong>`;
-    return `<li data-start-roll-player="${escapeHtml(playerId)}"><span>${playerCollectionMarkup(player)} ${participantMeta(player, { compact: true })}</span>${result}</li>`;
+    return `<li data-start-roll-player="${escapeHtml(playerId)}"><span>${playerCollectionMarkup(player, { avatarKey: JSON.stringify(["start-roll", playerId]) })} ${participantMeta(player, { compact: true })}</span>${result}</li>`;
   }).join("");
   const priorTie = start.tied ? `<p class="zilch-event zilch-event--zilch">${escapeHtml(t("Gleichstand beim Startwurf – beide würfeln erneut."))}</p>` : "";
   const resultMessage = moment && !moment.tied
@@ -4952,7 +4955,11 @@ function rememberReactionChatEntry(reaction) {
 }
 
 function zilchChatRows(snapshot) {
+  const occurrences = new Map();
   return visibleChatHistory(snapshot).map(entry => {
+    const entryKey = chatEntryKey(entry);
+    const occurrence = occurrences.get(entryKey) || 0;
+    occurrences.set(entryKey, occurrence + 1);
     const sender = participantForId(snapshot, entry?.from_id || entry?.player_id || entry?.participant_id);
     // Spectators are not game participants, and may already have left. The
     // authenticated sender ID travels with both live messages and history.
@@ -4961,7 +4968,7 @@ function zilchChatRows(snapshot) {
       user_id: entry?.user_id,
     } : null);
     const identity = accountSender
-      ? playerCollectionMarkup(accountSender)
+      ? playerCollectionMarkup(accountSender, { avatarKey: JSON.stringify(["chat", entryKey, occurrence]) })
       : `<span class="zilch-player-identity">${escapeHtml(entry?.sender || t("Spieler"))}</span>`;
     return `<li><strong>${identity}</strong><span>${escapeHtml(entry?.text || "")}</span></li>`;
   }).join("");
@@ -5009,7 +5016,7 @@ function mountZilchGameChat(snapshot) {
   const firstRender = !history._zilchRows;
   const distanceToLatest = history.scrollHeight - history.clientHeight - history.scrollTop;
   const wasAtLatest = distanceToLatest <= 4;
-  history.innerHTML = rows;
+  replaceChildrenPreservingAvatars(history, rows);
   history._zilchRows = rows;
   if (firstRender || wasAtLatest) history.scrollTop = history.scrollHeight;
   return chat;
@@ -5099,7 +5106,7 @@ function renderGameState({ followNotebookLatest = false } = {}) {
     : "";
   rememberNotebookScroll();
   notebookResizeObserver?.disconnect();
-  content.innerHTML = `<h1 class="visually-hidden">${gameName}</h1>
+  replaceChildrenPreservingAvatars(content, `<h1 class="visually-hidden">${gameName}</h1>
     <p id="zilchLiveStatus" class="visually-hidden zilch-live-status--${escapeHtml(state.statusKind)}">${escapeHtml(statusText(snapshot, turnState))}</p>
     ${offline}
     ${cpuError}
@@ -5121,7 +5128,7 @@ function renderGameState({ followNotebookLatest = false } = {}) {
         ${diceRack(snapshot, turnState, quickHolds, isMyTurn, canInteract)}
         ${actionCards(snapshot, turnState, quickHolds, canInteract)}
       </section>
-    </section>`;
+    </section>`);
   wireGameInteractions(snapshot, turnState, quickHolds);
   mountZilchGameChat(snapshot);
   mountZilchEmojiToolbar(snapshot);
