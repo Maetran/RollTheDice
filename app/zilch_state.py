@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import secrets
 from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Final, Literal
@@ -343,7 +344,7 @@ def zilch_human_join_error(game: GameDict, *, user_id: object, host_token: objec
 def configure_zilch_cpu_game(
     game: GameDict,
     *,
-    cpu_strategy: object,
+    cpu_strategy: object = None,
     host_user_id: int | None = None,
     host_token: str | None = None,
     cpu_name: str = "CPU",
@@ -355,6 +356,8 @@ def configure_zilch_cpu_game(
     connection player and resume token.  This preserves the shared room
     fields (name, passphrase, chat and lifecycle) while making ``_players`` a
     strictly transport-bound collection.
+    New API-created games draw a strategy once here. An explicit strategy is
+    reserved for trusted domain fixtures; recovered games never use this path.
     """
     if game.get("_started") or game.get("_finished") or game.get("_aborted"):
         raise ValueError("zilch_cpu_configuration_not_new")
@@ -363,7 +366,9 @@ def configure_zilch_cpu_game(
     game_id = str(game.get("_id") or "").strip()
     if not game_id:
         raise ValueError("zilch_cpu_missing_game_id")
-    strategy = validate_zilch_cpu_strategy(cpu_strategy)
+    strategy = validate_zilch_cpu_strategy(cpu_strategy if cpu_strategy is not None else secrets.choice(
+        ("conservative", "normal", "aggressive")
+    ))
     _configure_zilch_host(
         game,
         user_id=host_user_id,

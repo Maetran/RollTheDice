@@ -22,6 +22,31 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.42.0 — Zilch: klarer am Tisch / Clearer at the Zilch table — 2026-09-22
+
+**Deutsch:** Jede neue Partie gegen den Würfelwirt lost seine Spielweise aus,
+online wie offline. Die Einstellung entfällt; Revanchen losen neu und laufende
+Partien behalten ihre Strategie. Alle bisherigen Erfolge bleiben mit denselben
+Punkten erreichbar. Die Tablet-Hilfe beschreibt die aktuelle Entscheidung.
+„Stand beim Sichern“ zeigt den Gesamtstand einschließlich gehaltener und
+aktuell ausgewählter Punkte. Beide Papierblöcke erhalten eigene Ringe, der
+doppelte Stand am unteren Rand entfällt. Startwürfe passen vollständig auf den
+Tablet-Bildschirm. Eigene, fremde und CPU-Würfe shaken deutlicher und länger;
+gehaltene Würfel bleiben ruhig und reduzierte Bewegung wird respektiert.
+Am Spielende bleibt der letzte Wurf nach der Animation noch etwa eine Sekunde
+sichtbar, bevor das Ergebnis öffnet. Regeln und Wertungen bleiben unverändert.
+
+**English:** Every new game against the Dice Host randomly draws its play style,
+online and offline. The setting is removed; rematches draw again and ongoing
+games retain their strategy. Existing achievements keep their points and remain
+available. Tablet guidance describes the current decision. “Total if banked”
+includes committed and currently selected points. Both paper pads have their
+own rings, and the duplicate total at the bottom is removed. Opening rolls fit
+fully on tablet screens. Your own, other players' and CPU rolls shake more
+clearly and for longer; held dice stay still and reduced motion is respected.
+The final roll stays visible for about a second after its animation before
+the result opens. Rules and scoring are unchanged.
+
 ## 2.41.0 — Call for help — 2026-09-22
 
 **Deutsch:** Erster sichtbarer Hinweis auf die zuvor still ausgelieferte

@@ -213,11 +213,14 @@ test("a blocked LCARS font cannot hide the public lobby while auth is pending", 
     expect(await page.evaluate(() => window.__zilchLoadingMetrics.firstContent)).toBeLessThan(1500);
     await attachMetrics(page, testInfo);
     await page.locator('[data-zilch-play-mode="cpu"]').click();
-    await page.locator("#zilchCpuStrategySelect").selectOption("aggressive");
+    await expect(page.locator("#zilchCpuStrategySelect")).toHaveCount(0);
+    await expect(page.locator("#zilchCpuStrategy")).toBeVisible();
+    await expect(page.locator("#zilchCpuStrategy")).toContainText(/ausgelost|random/i);
     authGate.release();
     await expect(page.locator("#zilchCreateForm button[type=submit]")).toBeEnabled();
     await expect(page.locator('[data-zilch-play-mode="cpu"]')).toHaveAttribute("aria-checked", "true");
-    await expect(page.locator("#zilchCpuStrategySelect")).toHaveValue("aggressive");
+    await expect(page.locator("#zilchCpuStrategySelect")).toHaveCount(0);
+    await expect(page.locator("#zilchCpuStrategy")).toBeVisible();
   } finally {
     authGate.release();
     await context.close();

@@ -49,7 +49,7 @@ _CPU_TASKS: dict[str, asyncio.Task[None]] = {}
 _DEFAULT_DELAY_SECONDS = 1.25
 _ROLL_READING_DELAY_SECONDS = 1.65
 _OPENING_RESULT_DELAY_SECONDS = 1.5
-_ZILCH_HANDOFF_DELAY_SECONDS = 1.9
+_ZILCH_HANDOFF_DELAY_SECONDS = 2.05
 _MAX_DELAY_SECONDS = 5.0
 
 
@@ -316,8 +316,8 @@ def _presentation_delay_seconds(game: dict[str, Any], delay_seconds: float) -> f
     """Leave each published result readable before the next CPU command.
 
     Delays are measured from publication, not added together. A regular roll
-    needs time for the 500 ms dice reveal and then to read its result; the
-    opening result stays visible for 1.2 s and ZILCH uses a 1.85 s presentation.
+    needs time for the 650 ms dice reveal and then to read its result; the
+    opening result stays visible for 1.2 s and ZILCH uses a 2 s presentation.
     Holds still get the normal pause before banking or rolling again.
     """
     last_event = game.get("_zilch_last_event")

@@ -2692,6 +2692,22 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
 .zilch-chat.is-open .zilch-chat__content { display: block; }
 .zilch-chat-history { max-height: min(38vh, 18rem); }
 
+/* Short landscape phones have room for both hold subtotals on one line.
+   Keep the bank projection readable while preserving the scorepad's
+   compact player rail. LCARS has its own compact layout. */
+@media (max-height: 500px) and (orientation: landscape) {
+  html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-play-layout {
+    --zilch-turn-score-slot-h: 4rem;
+  }
+  html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-turn-score {
+    padding-block: .2rem;
+  }
+  html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-shell--game .zilch-turn-score__breakdown {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: .35rem;
+  }
+}
+
 @media (min-width: 761px) {
   .zilch-play-layout { grid-template-columns: minmax(0, 1.18fr) minmax(19rem, .82fr); align-items: stretch; }
   .zilch-play-layout__notebook .zilch-score-notebook { min-height: 25rem; }
@@ -3274,6 +3290,16 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
 .zilch-shell--game .zilch-turn-score__breakdown > span {
   white-space: nowrap;
 }
+.zilch-shell--game .zilch-turn-score > .zilch-turn-score__bank-total {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: .35rem;
+  margin-top: .12rem;
+  padding-top: .12rem;
+  border-top: 1px solid currentColor;
+  font-variant-numeric: tabular-nums;
+}
+.zilch-shell--game .zilch-turn-score__bank-total b { white-space: nowrap; }
 .zilch-shell--game .zilch-combined-score {
   position: relative;
   display: grid;
@@ -3667,7 +3693,7 @@ html[data-game="zilch"] body {
   /* Keep the paper at its expanded in-turn footprint even while there is no
      running-total tile. That prevents the board from visibly shrinking after
      a hold is banked or while the next roll is pending. */
-  --zilch-turn-score-slot-h: 4rem;
+  --zilch-turn-score-slot-h: 6.25rem;
   --zilch-score-sheet-extension: 4rem;
   --zilch-turn-score-gap: .42rem;
   --zilch-play-layout-reserved-turn-score-h: calc(var(--zilch-turn-score-slot-h) + var(--zilch-turn-score-gap));
@@ -4095,19 +4121,21 @@ html[data-game="zilch"] body {
 /* The JS applies these rack classes only to an actual roll. Staggering keeps
    the six dice from moving as one synthetic slab. */
 .zilch-shell--game .zilch-dice.is-rolling .zilch-die:not(.zilch-die--held):not(.zilch-die--unavailable) {
-  animation: zilch-die-tumble 360ms cubic-bezier(.36, .08, .4, 1) infinite;
+  animation: zilch-die-tumble 440ms cubic-bezier(.36, .08, .4, 1) infinite;
 }
 
 .zilch-shell--game .zilch-dice.is-rolling .zilch-die:nth-child(2n) { animation-delay: -90ms; }
 .zilch-shell--game .zilch-dice.is-rolling .zilch-die:nth-child(3n) { animation-delay: -180ms; }
 .zilch-shell--game .zilch-dice.is-rolling .zilch-die:nth-child(5n) { animation-delay: -245ms; }
 
-.zilch-shell--game .zilch-dice.is-landing .zilch-die:not(.zilch-die--held):not(.zilch-die--unavailable) {
-  animation: zilch-die-land 400ms var(--zilch-ease) both;
+.zilch-shell--game .zilch-dice.is-landing .zilch-die:not(.zilch-die--held):not(.zilch-die--unavailable),
+.zilch-shell--game .zilch-start-roll-die.is-landing {
+  animation: zilch-die-land 600ms var(--zilch-ease) both;
+  animation-delay: var(--zilch-roll-elapsed, 0ms);
 }
 
-.zilch-shell--game .zilch-dice.is-landing .zilch-die:nth-child(2n) { animation-delay: 35ms; }
-.zilch-shell--game .zilch-dice.is-landing .zilch-die:nth-child(3n) { animation-delay: 65ms; }
+.zilch-shell--game .zilch-dice.is-landing .zilch-die:nth-child(2n) { animation-delay: calc(25ms + var(--zilch-roll-elapsed, 0ms)); }
+.zilch-shell--game .zilch-dice.is-landing .zilch-die:nth-child(3n) { animation-delay: calc(50ms + var(--zilch-roll-elapsed, 0ms)); }
 
 .zilch-shell--game .zilch-dice.is-zilch-reveal .zilch-die--non-scoring {
   opacity: 1;
@@ -4126,18 +4154,21 @@ html[data-game="zilch"] body {
 }
 
 @keyframes zilch-die-tumble {
-  0% { transform: translate3d(-.08rem, .12rem, 0) rotate(-7deg) scale(.96); }
-  24% { transform: translate3d(.12rem, -.28rem, 0) rotate(8deg) scale(1.025); }
-  51% { transform: translate3d(-.16rem, -.04rem, 0) rotate(-10deg) scale(.985); }
-  76% { transform: translate3d(.15rem, -.2rem, 0) rotate(6deg) scale(1.018); }
-  100% { transform: translate3d(-.08rem, .12rem, 0) rotate(-7deg) scale(.96); }
+  0% { transform: translate3d(-.16rem, .12rem, 0) rotate(-14deg) scale(1); }
+  24% { transform: translate3d(.24rem, -.42rem, 0) rotate(18deg) scale(1.055); }
+  51% { transform: translate3d(-.27rem, -.08rem, 0) rotate(-20deg) scale(1.015); }
+  76% { transform: translate3d(.25rem, -.32rem, 0) rotate(15deg) scale(1.04); }
+  100% { transform: translate3d(-.16rem, .12rem, 0) rotate(-14deg) scale(1); }
 }
 
 @keyframes zilch-die-land {
-  0% { transform: translate3d(.08rem, -.3rem, 0) rotate(5deg) scale(1.025); }
+  0% { transform: translate3d(-.18rem, -.12rem, 0) rotate(-16deg) scale(1.025); }
+  18% { transform: translate3d(.25rem, -.42rem, 0) rotate(19deg) scale(1.055); }
+  37% { transform: translate3d(-.24rem, -.06rem, 0) rotate(-17deg) scale(1.015); }
+  55% { transform: translate3d(.16rem, -.28rem, 0) rotate(12deg) scale(1.035); }
   /* Keep the animated hit target at least as large as its settled target. */
-  52% { transform: translate3d(-.03rem, .08rem, 0) rotate(-2deg) scale(1); }
-  76% { transform: translate3d(0, -.06rem, 0) rotate(.7deg) scale(1.008); }
+  73% { transform: translate3d(-.06rem, .08rem, 0) rotate(-4deg) scale(1); }
+  87% { transform: translate3d(0, -.08rem, 0) rotate(1.5deg) scale(1.012); }
   100% { transform: translate3d(0, 0, 0) rotate(0) scale(1); }
 }
 
@@ -4550,7 +4581,8 @@ html[data-game="zilch"] body {
   .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player.is-turn-entering,
   .zilch-shell--game .zilch-score-notebook--duel .zilch-notebook-player.is-turn-leaving,
   .zilch-shell--game .zilch-dice.is-rolling .zilch-die,
-  .zilch-shell--game .zilch-dice.is-landing .zilch-die {
+  .zilch-shell--game .zilch-dice.is-landing .zilch-die,
+  .zilch-shell--game .zilch-start-roll-die.is-landing {
     animation: none !important;
     transition: none !important;
   }

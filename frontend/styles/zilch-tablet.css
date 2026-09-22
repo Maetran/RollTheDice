@@ -50,7 +50,7 @@ html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-r
   html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] #zilchContent { gap: .85rem; }
 
   html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-play-layout {
-    --zilch-turn-score-slot-h: 4.75rem;
+    --zilch-turn-score-slot-h: 5.75rem;
     --zilch-turn-score-gap: .75rem;
     grid-template-columns: minmax(0, 2fr) minmax(15rem, 1fr);
     grid-template-rows: minmax(0, 1fr) var(--zilch-turn-score-slot-h);
@@ -73,6 +73,19 @@ html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-r
   }
   html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-score-notebook--solo { grid-template-columns: minmax(0, 1fr); }
   html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-score-notebook--duel::before { display: none; }
+  /* Tablets show two independent pads. The phone's shared spiral and
+     backing sheets would otherwise decorate only the left pad. */
+  html[data-game="zilch"]:not([data-theme="lcars"]) body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-score-notebook {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  html[data-game="zilch"]:not([data-theme="lcars"]) body .zilch-shell.zilch-shell--game[data-zilch-root] :is(.zilch-score-notebook, .zilch-play-layout__notebook)::after,
+  html[data-game="zilch"]:not([data-theme="lcars"]) body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-play-layout__notebook::before {
+    display: none;
+    content: none;
+  }
   html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-score-notebook .zilch-notebook-player {
     position: relative;
     inset: auto;
@@ -91,6 +104,28 @@ html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-r
   html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-score-notebook .zilch-notebook-player :is(ol, footer) {
     visibility: visible;
     animation: none;
+  }
+  html[data-game="zilch"]:not([data-theme="lcars"]) body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-score-notebook .zilch-notebook-player {
+    border: 1px solid #c8bba6;
+    border-radius: .6rem;
+    box-shadow: inset 0 1px #ffffffeb, inset 0 -2px #c8bba655;
+  }
+  html[data-game="zilch"]:not([data-theme="lcars"]) body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-notebook-player::before {
+    position: absolute;
+    top: .55rem;
+    bottom: .55rem;
+    left: -.08rem;
+    z-index: 8;
+    width: 1.08rem;
+    background-image:
+      radial-gradient(circle at 78% 50%, #392315 0 .105rem, #c49b62 .115rem .17rem, transparent .18rem),
+      radial-gradient(ellipse at 42% 50%, transparent 0 .17rem, #3c2415 .18rem .235rem, #b9864a .245rem .27rem, transparent .28rem);
+    background-position: center top;
+    background-repeat: repeat-y;
+    background-size: 100% 1.42rem;
+    filter: drop-shadow(.06rem .08rem .04rem #25110747);
+    pointer-events: none;
+    content: "";
   }
   html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-notebook-player header {
     flex-wrap: wrap;
@@ -115,6 +150,26 @@ html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-r
     overflow-y: auto;
     overscroll-behavior: contain;
   }
+  /* Opening/waiting controls need their actual height; there is no score
+     tile in this phase. Releasing that unused row keeps both results and
+     the opening-roll button visible above the dice dock. */
+  html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-play-layout:has(.zilch-start-roll-rail) {
+    --zilch-play-layout-reserved-turn-score-h: 0rem;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-start-roll-rail {
+    height: auto;
+    overflow: visible;
+  }
+  html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-start-roll-rail .zilch-start-roll {
+    flex: 0 0 auto;
+    padding: .8rem;
+  }
+  html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-start-roll h2 { margin: .15rem 0 .4rem; font-size: 1.1rem; }
+  html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-start-roll > p { margin-block: .35rem; font-size: .9rem; line-height: 1.3; }
+  html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-start-roll > .eyebrow { margin-top: 0; }
+  html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-start-rolls { margin: .6rem 0; }
+  html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-start-roll button { min-height: 44px; }
   /* The guide keeps its place while only the choices scroll. Start at the
      strongest choice next to the lower action row, just like the phone. */
   html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendations__rail {
@@ -221,6 +276,7 @@ html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-r
     }
     html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-play-layout__notebook { grid-column: 1 / -1; }
     html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] :is(.zilch-recommendations, .zilch-start-roll-rail) { grid-column: 1 / -1; grid-row: 2; }
+    html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-play-layout:has(.zilch-start-roll-rail) { grid-template-rows: minmax(0, 1fr) auto; }
     html[data-game="zilch"] body .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendations {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));

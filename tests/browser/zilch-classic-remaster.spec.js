@@ -75,7 +75,9 @@ for (const language of ['de', 'en']) {
       await cpu.click();
       await expect(cpu).toHaveAttribute('aria-checked', 'true');
       await expect(page.locator('[data-zilch-play-mode="solo"]')).toHaveAttribute('aria-checked', 'false');
-      await expect(page.locator('#zilchCpuStrategySelect')).toBeVisible();
+      await expect(page.locator('#zilchCpuStrategySelect')).toHaveCount(0);
+      await expect(page.locator('#zilchCpuStrategy')).toBeVisible();
+      await expectReadable(page.locator('#zilchCpuStrategy'));
       for (const option of await options.all()) await expectReadable(option.locator('strong'));
       await cpu.focus();
       await page.keyboard.press('Tab');

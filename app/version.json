@@ -1,10 +1,10 @@
 {
-  "version": "2.41.0",
+  "version": "2.42.0",
   "bump": "minor",
   "date": "2026-09-22",
-  "previous_revision": "d534fc9baa4e82c34495f927bb364fd34ace3f8d",
+  "previous_revision": "e3ea880f8b7572bf10fa24aabce37856642c2805",
   "summary": {
-    "de": "Geschütztes Gründerkonto, delegierte Ownerrechte und sichtbarer Start der Adminhilfe",
-    "en": "Protected founder account, delegated ownership and public admin-help announcement"
+    "de": "Zilch mit zufälligem Würfelwirt, klarer Punkte-Vorschau und besser lesbarem Spieltisch",
+    "en": "Zilch with a random Dice Host, clear score preview and a more readable game table"
   }
 }

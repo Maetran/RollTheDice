@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.41.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.42.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.41.0 | 2026-09-22 | minor | Geschütztes Gründerkonto, delegierte Ownerrechte und sichtbarer Start der Adminhilfe / Protected founder account, delegated ownership and public admin-help announcement | [e3ea880](https://github.com/Maetran/RollTheDice/commit/e3ea880f8b7572bf10fa24aabce37856642c2805) |
 | 2.40.0 | 2026-09-22 | minor | Adminhilfe im Spiel und gezielte Kontosperren / In-game admin help and scoped account bans | [d534fc9](https://github.com/Maetran/RollTheDice/commit/d534fc9baa4e82c34495f927bb364fd34ace3f8d) |
 | 2.39.4 | 2026-09-22 | patch | Ruhige Profilbilder und zentrierte Desktop-Menüs / Stable profile pictures and centered desktop menus | [6e4e1a9](https://github.com/Maetran/RollTheDice/commit/6e4e1a924fe6d2fb4f2107028ba0a345793e1c73) |
 | 2.39.3 | 2026-09-22 | patch | Eigenes Spiel nach Gerätewechsel fortsetzen / Resume your game after switching devices | [4e47264](https://github.com/Maetran/RollTheDice/commit/4e47264db772515c071c1f56cf8bc2c7b4d66ada) |

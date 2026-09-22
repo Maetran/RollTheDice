@@ -484,11 +484,14 @@ test("a permitted user can create and reload a private CPU game through the norm
 
   await page.locator("[data-zilch-play-mode='cpu']").click();
   await expect(page.locator("#zilchCpuStrategy")).toBeVisible();
-  await page.locator("#zilchCpuStrategySelect").selectOption("aggressive");
-  await Promise.all([
+  await expect(page.locator("#zilchCpuStrategy")).toContainText(/ausgelost|random/i);
+  await expect(page.locator("#zilchCpuStrategySelect")).toHaveCount(0);
+  const [createRequest] = await Promise.all([
+    page.waitForRequest(request => request.method() === "POST" && new URL(request.url()).pathname === "/api/games"),
     page.waitForURL(/\/zilch\/spiel\/[^/]+$/),
     page.locator("#zilchCreateForm button[type='submit']").click(),
   ]);
+  expect(createRequest.postDataJSON()).not.toHaveProperty("cpu_strategy");
   const gamePath = new URL(page.url()).pathname;
   const gameId = gamePath.split("/").at(-1);
 
@@ -517,8 +520,9 @@ test("a permitted user can create and reload a private CPU game through the norm
     is_cpu: true,
     connected: null,
     user_id: null,
-    cpu_strategy: "aggressive",
   });
+  expect(["conservative", "normal", "aggressive"]).toContain(cpuParticipant.cpu_strategy);
+  expect(details.body.cpu_strategy).toBe(cpuParticipant.cpu_strategy);
 
   const cpuBoard = page.locator(`[data-zilch-board-id="${cpuParticipant.id}"]`);
   await expect(cpuBoard).toContainText(/CPU/);
@@ -549,6 +553,11 @@ test("a permitted user can create and reload a private CPU game through the norm
   await expect(rejoinedCpuBoard).toContainText(/CPU/);
   await expect(rejoinedCpuBoard.locator(".zilch-connection-dot")).toHaveCount(0);
   await expect(page.locator("#zilchLiveStatus")).not.toContainText(/CPU-Spiel kann nicht fortgesetzt werden|CPU game cannot continue/i);
+  const resumed = await page.request.get(`/api/games/${encodeURIComponent(gameId)}`);
+  expect(resumed.ok()).toBeTruthy();
+  expect((await resumed.json()).participants.find(participant => participant.participant_type === "cpu")).toMatchObject({
+    id: cpuParticipant.id, cpu_strategy: cpuParticipant.cpu_strategy,
+  });
 });
 
 test("two explicitly allowed humans can create, rejoin, and play a private Zilch alpha", async ({ browser, page }) => {
@@ -827,7 +836,7 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
   }
 });
 
-test("a persisted CPU Zilch result rematches with its strategy and saved room code", async ({ browser, baseURL }) => {
+test("a persisted CPU Zilch result rematches with a new strategy draw and its saved room code", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
   const page = await context.newPage();
   try {
@@ -890,9 +899,9 @@ test("a persisted CPU Zilch result rematches with its strategy and saved room co
       game_type: "zilch",
       mode: "2",
       play_mode: "cpu",
-      cpu_strategy: "aggressive",
       pass: "cpu-private-room-code",
     });
+    expect(createPayload).not.toHaveProperty("cpu_strategy");
   } finally {
     await context.close();
   }

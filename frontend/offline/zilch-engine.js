@@ -30,12 +30,13 @@ function newTurn(playerId, turnId, count) {
 }
 
 /** RNG arguments are functions returning an integer from 1 through 6.
+ * Strategy draws use their own RNG so they never consume game dice.
  * Commands mutate and return the same JSON-serializable game object.
  */
-export function createGame({ mode = "solo", strategy = "normal", targetScore = 10000 } = {}, rng = randomDie) {
+export function createGame({ mode = "solo", targetScore = 10000 } = {}, rng = randomDie, strategyRng = randomDie) {
   if (!["solo", "cpu"].includes(mode)) reject("zilch_invalid_play_mode");
-  if (!Object.hasOwn(STRATEGIES, strategy)) reject("zilch_invalid_cpu_strategy");
   if (targetScore !== 10000) reject("zilch_invalid_target_score");
+  const strategy = mode === "cpu" ? Object.keys(STRATEGIES)[(die(strategyRng) - 1) % 3] : "normal";
   const players = [{ id:"you", type:"human", totalPoints:0, zilchStreak:0, rounds:[] }];
   const startRolls = [];
   let turnOrder = ["you"];

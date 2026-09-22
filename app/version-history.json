@@ -1944,5 +1944,12 @@
     "date": "2026-09-22",
     "bump": "minor",
     "summary": "Adminhilfe im Spiel und gezielte Kontosperren / In-game admin help and scoped account bans"
+  },
+  {
+    "version": "2.41.0",
+    "revision": "e3ea880f8b7572bf10fa24aabce37856642c2805",
+    "date": "2026-09-22",
+    "bump": "minor",
+    "summary": "Geschütztes Gründerkonto, delegierte Ownerrechte und sichtbarer Start der Adminhilfe / Protected founder account, delegated ownership and public admin-help announcement"
   }
 ]

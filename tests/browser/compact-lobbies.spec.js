@@ -117,8 +117,9 @@ for (const language of ["de", "en"]) {
         await expect(page.locator(`[data-zilch-play-mode="${mode}"]`)).toHaveAttribute("aria-checked", "true");
         if (mode === "solo") await expect(page.locator("#zilchSoloObjective")).toBeVisible();
         if (mode === "cpu") {
-          await page.locator("#zilchCpuStrategySelect").selectOption("aggressive");
-          await expect(page.locator("#zilchCpuStrategySelect")).toHaveValue("aggressive");
+          await expect(page.locator("#zilchCpuStrategySelect")).toHaveCount(0);
+          await expect(page.locator("#zilchCpuStrategy")).toBeVisible();
+          await expect(page.locator("#zilchCpuStrategy")).toContainText(language === "en" ? /random/i : /ausgelost/);
         }
         if (mode === "multiplayer") {
           await page.locator(".zilch-create-options summary").click();

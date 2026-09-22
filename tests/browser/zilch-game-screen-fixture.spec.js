@@ -1236,7 +1236,7 @@ for (const theme of ["lcars", "light"]) {
   });
 }
 
-test("the private CPU create selects send only the selected strategy", async ({ browser, baseURL }) => {
+test("CPU creation leaves the strategy to the server", async ({ browser, baseURL }) => {
   // Service workers intentionally keep authenticated Zilch documents
   // network-only, but a fresh blocked context also makes this request-payload
   // assertion independent from a prior suite's cached shell.
@@ -1258,9 +1258,8 @@ test("the private CPU create selects send only the selected strategy", async ({ 
     await cpu.click();
     await expect(cpu).toHaveAttribute("aria-checked", "true");
     await expect(strategy).toBeVisible();
-    await expect(strategySelect).toHaveValue("normal");
-    await strategySelect.selectOption("aggressive");
-    await expect(strategySelect).toHaveValue("aggressive");
+    await expect(strategySelect).toHaveCount(0);
+    await expect(strategy).toContainText("für jede Partie ausgelost");
 
     let createPayload = null;
     await page.route("**/api/games", async route => {
@@ -1288,9 +1287,8 @@ test("the private CPU create selects send only the selected strategy", async ({ 
       game_type: "zilch",
       mode: "2",
       play_mode: "cpu",
-      cpu_strategy: "aggressive",
     });
-    expect(Object.keys(createPayload).filter(key => key.includes("strategy"))).toEqual(["cpu_strategy"]);
+    expect(Object.keys(createPayload).filter(key => key.includes("strategy"))).toEqual([]);
   } finally {
     await context.close();
   }
@@ -1595,7 +1593,7 @@ test("a CPU participant is rendered from the authoritative participant snapshot 
   }
 });
 
-test("a Zilch roll remains visible for 500 ms before the overlay and turn handoff", async ({ browser, baseURL }) => {
+test("a Zilch roll remains visible for 650 ms before the overlay and turn handoff", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
   const page = await context.newPage();
   await page.clock.install({ time: new Date("2026-09-04T12:00:00Z") });
@@ -1636,7 +1634,7 @@ test("a Zilch roll remains visible for 500 ms before the overlay and turn handof
     await expect(page.locator('[data-zilch-board-id="p1"]')).toHaveClass(/is-active/);
     await expect(page.locator('[data-zilch-board-id="p2"]')).toHaveClass(/is-inactive/);
 
-    await page.clock.runFor(499);
+    await page.clock.runFor(649);
     expect(await visibleFaces()).toEqual([1, 1, 1, 2, 3, 4]);
     await expect(overlay).toBeHidden();
     await expect(page.locator('[data-zilch-board-id="p1"]')).toHaveClass(/is-active/);
@@ -2363,7 +2361,8 @@ test("equal-score recommendations stay distinct and game hotkeys respect interac
     await expect(currentRoll).toContainText("400");
     await expect(currentRoll).toContainText("Bisher gehalten: 400");
     await expect(currentRoll).toContainText("Aktuell gehalten: 0");
-    await expect(currentRoll).not.toContainText("600");
+    await expect(currentRoll.locator(":scope > strong")).toHaveText("400");
+    await expect(currentRoll.locator("[data-zilch-bank-total]")).toHaveAttribute("data-zilch-bank-total", "4600");
     await expect(combinedScore).toBeEnabled();
     await expect(combinedScore).toHaveAttribute("aria-label", /\+200/);
     await combinedScore.click();
@@ -3746,6 +3745,79 @@ for (const theme of ["light", "lcars"]) {
       await expect.poll(() => page.evaluate(() => window.__zilchGameScreenFixtureMessages)).toEqual(expect.arrayContaining([
         expect.objectContaining({ action:"chat_message", text:"Zuschauen und mitreden" }),
       ]));
+    } finally { await context.close(); }
+  });
+}
+
+for (const language of ["de", "en"]) {
+  test(`${language}: bank preview and next step follow the chosen points in a final reply`, async ({ browser, baseURL }) => {
+    const context = await browser.newContext({ baseURL, viewport: { width: 1180, height: 820 }, hasTouch: true, serviceWorkers: "block" });
+    const page = await context.newPage();
+    try {
+      await signInAsPreviewMani(page);
+      const shellHtml = await (await page.goto("/zilch")).text();
+      const snapshot = equalScoreRecommendationSnapshot();
+      snapshot._zilch_boards.p1.total_points = 9600;
+      snapshot._zilch_boards.p1.final_reply_pending = true;
+      snapshot._zilch_boards.p2.total_points = 10150;
+      // Selecting this roll can fulfill an old confirmation requirement.
+      snapshot._zilch_turn_state.confirmation_required = true;
+      const gameId = `bank-preview-${language}`;
+      await installGameScreenFixture(page, gameId, { initial: snapshot });
+      await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({ contentType: "text/html", body: shellHtml }));
+      await page.goto(`/zilch/spiel/${gameId}`);
+      await expect(page.locator("[data-zilch-bank-total]")).toHaveAttribute("data-zilch-bank-total", "10000");
+      await page.evaluate(language => window.ZDWA_I18N.setLanguage(language, { persist: false, reload: false }), language);
+      await page.evaluate(scoreboard => window.__zilchGameScreenFixturePush({ scoreboard }), snapshot);
+      const guidance = page.locator(".zilch-tablet-guide");
+      await expect(guidance).toContainText(language === "de" ? "Tippe Punktewürfel" : "Tap scoring dice");
+      await expect(guidance).not.toContainText(/Wurf ausgeführt|Roll completed/);
+      await expect(page.locator(".zilch-turn-score__bank-total")).toContainText(language === "de" ? "Stand beim Sichern" : "Total if banked");
+      await expect(page.locator(".zilch-notebook-player footer")).toHaveCount(0);
+      await expect(page.locator('[data-zilch-board-id="p1"] header [data-zilch-total]')).toHaveAttribute("data-zilch-total", /^9['’,]600$/);
+      await page.locator("[data-zilch-combined-score]").click();
+      await expect(page.locator("[data-zilch-bank-total]")).toHaveAttribute("data-zilch-bank-total", "10200");
+      await expect(guidance).toContainText(language === "de" ? "Mit Sichern liegst du vorn." : "Banking puts you in the lead.");
+      await expect(page.locator("[data-zilch-bank]")).toBeEnabled();
+      await expect(page.locator('[data-zilch-board-id="p1"] header [data-zilch-total]')).toHaveAttribute("data-zilch-total", /^9['’,]600$/);
+      const level = structuredClone(snapshot);
+      level._zilch_boards.p2.total_points = 10200;
+      await page.evaluate(scoreboard => window.__zilchGameScreenFixturePush({ scoreboard }), level);
+      await expect(page.locator("[data-zilch-bank-total]")).toHaveAttribute("data-zilch-bank-total", "10200");
+      await expect(guidance).toContainText(language === "de" ? "Mit Sichern erreichst du Gleichstand." : "Banking brings the scores level.");
+      await expect(page.locator("[data-zilch-bank]")).toBeEnabled();
+      const behind = structuredClone(level);
+      behind._zilch_boards.p2.total_points = 10250;
+      await page.evaluate(scoreboard => window.__zilchGameScreenFixturePush({ scoreboard }), behind);
+      await expect(page.locator("[data-zilch-bank-total]")).toHaveAttribute("data-zilch-bank-total", "10200");
+      await expect(guidance).toContainText(language === "de" ? "Zum Überholen brauchst du noch mehr Punkte." : "You need more points to take the lead.");
+      await expect(page.locator("[data-zilch-bank]")).toBeEnabled();
+      await page.locator("[data-zilch-combined-score]").click();
+      await expect(page.locator("[data-zilch-bank-total]")).toHaveAttribute("data-zilch-bank-total", "10000");
+      await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
+
+      const other = structuredClone(snapshot);
+      other._turn.player_id = "p2";
+      other._zilch_turn_state = { ...other._zilch_turn_state, turn_id: 28, roll_id: 23, round_points: 600, confirmation_required: false };
+      other._zilch_draft_preview = { player_id: "p2", turn_id: 28, version: 9, roll_id: 23, dice_indices: [5] };
+      other._zilch_boards.p1.active = false;
+      other._zilch_boards.p2.active = true;
+      await page.evaluate(scoreboard => window.__zilchGameScreenFixturePush({ scoreboard }), other);
+      await expect(page.locator("[data-zilch-bank-total]")).toHaveAttribute("data-zilch-bank-total", "10850");
+      await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
+      await expect(guidance).toContainText(language === "de" ? "Du siehst die Auswahl live." : "You can see the choices live.");
+
+      // A newly chosen triple creates its own confirmation requirement.
+      const confirmation = fixtureSnapshots().holdOptions;
+      confirmation._zilch_turn_state.confirmation_required = false;
+      confirmation._zilch_turn_state.confirmation_reasons = [];
+      await page.evaluate(scoreboard => window.__zilchGameScreenFixturePush({ scoreboard }), confirmation);
+      await page.locator('[data-zilch-recommendation="fixture-three-ones"]').click();
+      await expect(page.locator("[data-zilch-bank-total]")).toHaveAttribute("data-zilch-bank-total", "11400");
+      await expect(guidance).toContainText(language === "de" ? "Würfle noch einmal: Ein Punktewürfel bestätigt deinen Zug." : "Roll again: a scoring die confirms your turn.");
+      await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
+      await expect(page.locator("[data-zilch-roll]")).toBeEnabled();
+      await expect(page.locator('[data-zilch-board-id="p1"] header [data-zilch-total]')).toHaveAttribute("data-zilch-total", /^8['’,]400$/);
     } finally { await context.close(); }
   });
 }

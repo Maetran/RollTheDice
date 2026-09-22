@@ -114,10 +114,9 @@ class ZilchCpuHttpAndSocketTestCase(TestCase):
                 "mode": "2",
                 "game_type": "zilch",
                 "play_mode": "cpu",
-                "cpu_strategy": strategy,
             }
         )
-        with patch("app.main.enforce_game_creation_rate_limit"):
+        with patch("app.main.enforce_game_creation_rate_limit"), patch("app.zilch_state.secrets.choice", return_value=strategy):
             created = asyncio.run(
                 main.api_games_create(request, request_for(cookie=f"rollthedice_session={token}"))
             )
@@ -149,7 +148,7 @@ class ZilchCpuHttpAndSocketTestCase(TestCase):
         self.assertTrue(cpu_action_is_due(game))
         return game, human_id, cpu_id
 
-    def test_cpu_create_request_accepts_only_two_seat_known_strategies(self) -> None:
+    def test_cpu_create_request_needs_no_strategy_and_accepts_only_valid_legacy_values(self) -> None:
         request = main.CreateReq.model_validate(
             {
                 "name": " CPU Runde ",
@@ -163,9 +162,10 @@ class ZilchCpuHttpAndSocketTestCase(TestCase):
         self.assertEqual(request.mode, "2")
         self.assertEqual(request.play_mode, ZILCH_CPU_MODE)
         self.assertEqual(request.cpu_strategy, "aggressive")
+        without_selection = main.CreateReq.model_validate({"name": "CPU", "mode": "2", "game_type": "zilch", "play_mode": "cpu"})
+        self.assertIsNone(without_selection.cpu_strategy)
 
         invalid_payloads = (
-            {"name": "CPU", "mode": "2", "game_type": "zilch", "play_mode": "cpu"},
             {
                 "name": "CPU",
                 "mode": "2",
@@ -198,6 +198,23 @@ class ZilchCpuHttpAndSocketTestCase(TestCase):
             with self.subTest(payload=payload):
                 with self.assertRaises(ValidationError):
                     main.CreateReq.model_validate(payload)
+
+    def test_each_cpu_creation_draws_once_ignores_legacy_selection_and_preserves_strategy_after_recovery(self) -> None:
+        _mani_id, token = self._identity("Mani", role="admin")
+        request = main.CreateReq(name="Revanche", mode="2", game_type="zilch", play_mode="cpu", cpu_strategy="normal")
+        expected = ["conservative", "normal", "aggressive"]
+        with patch("app.main.enforce_game_creation_rate_limit"), patch("app.zilch_state.secrets.choice", side_effect=expected) as choose:
+            created = [asyncio.run(main.api_games_create(request, request_for(cookie=f"rollthedice_session={token}")))["game_id"]
+                       for _ in expected]
+            self.game_ids.extend(created)
+            self.assertEqual(choose.call_count, 3)
+            self.assertEqual([games[game_id]["_participants"][0]["cpu_strategy"] for game_id in created], expected)
+            self.assertEqual(set(choose.call_args.args[0]), set(expected))
+        for game_id in created:
+            games.pop(game_id)
+        with patch("app.zilch_state.secrets.choice", side_effect=AssertionError("Recovery must preserve the strategy")):
+            restored = load_active_games()
+        self.assertEqual([restored[game_id]["_participants"][0]["cpu_strategy"] for game_id in created], expected)
 
     def test_private_cpu_api_creation_persists_a_domain_cpu_not_a_transport_player(self) -> None:
         mani_id, mani_token = self._identity("Mani", role="admin")

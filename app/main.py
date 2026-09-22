@@ -1608,7 +1608,9 @@ class CreateReq(BaseModel):
                     validate_zilch_hvh_mode(self.mode)
                 except ValueError as exc:
                     raise ValueError(str(exc)) from exc
-            if self.play_mode == ZILCH_CPU_MODE:
+            if self.play_mode == ZILCH_CPU_MODE and self.cpu_strategy is not None:
+                # Older clients may still send their former selection. Validate
+                # that legacy field, but creation always draws its own strategy.
                 try:
                     self.cpu_strategy = validate_zilch_cpu_strategy(self.cpu_strategy)
                 except ZilchCpuStrategyError as exc:
@@ -2148,7 +2150,6 @@ async def api_games_create(req: CreateReq, request: Request):
             guest_host_token = secrets.token_urlsafe(32)
         configure_zilch_cpu_game(
             g,
-            cpu_strategy=req.cpu_strategy,
             **({"host_user_id": identity.user_id} if identity else {"host_token": guest_host_token}),
         )
     elif req.game_type == ZILCH_GAME_TYPE and req.play_mode == ZILCH_SOLO_MODE:

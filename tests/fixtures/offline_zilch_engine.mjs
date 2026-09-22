@@ -27,7 +27,8 @@ function trace({ mode, strategy, seed }) {
     rolled.push(value);
     return value;
   };
-  const game = engine.createGame({ mode, strategy }, rng);
+  const strategyRoll = ["conservative", "normal", "aggressive"].indexOf(strategy) + 1;
+  const game = engine.createGame({ mode }, rng, () => strategyRoll);
   const opening = structuredClone(game.startRolls);
   const steps = [];
   for (let index = 0; !game.finished; index += 1) {
@@ -48,6 +49,16 @@ function trace({ mode, strategy, seed }) {
 }
 function checks() {
   const sequence = values => () => { assert.ok(values.length); return values.shift(); };
+  for (let roll = 1; roll <= 6; roll += 1) {
+    let strategyDraws = 0;
+    const selected = engine.createGame({ mode:"cpu", strategy:"normal" }, sequence([6, 1]), () => { strategyDraws += 1; return roll; });
+    assert.equal(selected.strategy, ["conservative", "normal", "aggressive"][(roll - 1) % 3]);
+    assert.equal(strategyDraws, 1);
+    assert.deepEqual(selected.startRolls, [{ you:6, cpu:1 }]);
+    const restored = JSON.parse(JSON.stringify(selected));
+    assert.ok(engine.validateSavedGame(restored));
+    assert.equal(restored.strategy, selected.strategy);
+  }
   const hold = (game, kind) => {
     const option = engine.options(game).find(candidate => candidate.combination_type === kind);
     assert.ok(option, kind);

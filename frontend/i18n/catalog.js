@@ -1,4 +1,23 @@
 export const EN = {
+    // Zilch: clear decisions, prospective totals and a randomly chosen host.
+    "Für jede neue Partie wird seine Spielweise zufällig ausgelost: Konservativ sichert ab 500 Punkten eher früh, Normal ab 600 Punkten solide Runden, Aggressiv jagt ab 700 Punkten größere Runden. Auch eine Revanche lost neu aus; laufende Partien behalten ihre Spielweise.": "Every new game draws a random play style: Conservative banks early from 500 points, Normal secures solid turns from 600 points, and Aggressive chases bigger turns from 700 points. Rematches draw again; ongoing games keep their style.",
+    "Aktueller Wurf zeigt bisher gehaltene und aktuell ausgewählte Punkte getrennt. Stand beim Sichern rechnet diese Punkte zu deinem bereits geschriebenen Gesamtstand hinzu.": "Current roll separates points held so far from the current selection. Total if banked adds those points to your recorded score.",
+    "Am Spielende bleibt der letzte Wurf nach der Animation noch etwa eine Sekunde sichtbar. Danach öffnet sich dein Ergebnis. Dort startest du ein neues Solo oder eine Revanche oder kehrst zur Lobby zurück.": "At the end of the game, the last roll stays visible for about a second after its animation. Your result then opens, where you can start a new Solo run or a rematch, or return to the lobby.",
+    "Die Spielweise des Würfelwirts wird pro neuer Partie zufällig gewählt und bleibt bis zum Ende gleich. Auch bei einer Revanche wird neu ausgelost. Alle bisherigen Erfolge und Punkte bleiben erhalten.": "The Dice Host's play style is randomly chosen for each new game and stays the same until it ends. Rematches draw again. All existing achievements and points are preserved.",
+    "Der Würfelwirt überrascht dich: Seine Spielweise wird für jede Partie ausgelost.": "The Dice Host keeps you guessing: each game gets a random play style.",
+    "Stand beim Sichern": "Total if banked",
+    "Ein Punktewurf muss diesen Zug noch bestätigen.": "This turn still needs a scoring roll to confirm it.",
+    "Die Punktewürfel werden ausgewählt. Du siehst die Auswahl live.": "Scoring dice are being selected. You can see the choices live.",
+    "Gleich rollen die Würfel wieder.": "The next roll is coming up.",
+    "Tippe Punktewürfel oder eine Wertung an.": "Tap scoring dice or a scoring option.",
+    "Würfle noch einmal: Ein Punktewürfel bestätigt deinen Zug.": "Roll again: a scoring die confirms your turn.",
+    "Mit Sichern liegst du vorn.": "Banking puts you in the lead.",
+    "Mit Sichern erreichst du Gleichstand.": "Banking brings the scores level.",
+    "Zum Überholen brauchst du noch mehr Punkte.": "You need more points to take the lead.",
+    "Mit Sichern erreichst du das Ziel.": "Banking takes you to the target.",
+    "Sichere deine Punkte oder riskiere einen weiteren Wurf.": "Bank your points or risk another roll.",
+    "Sammle mindestens 400 Punkte in diesem Zug, bevor du sicherst.": "Collect at least 400 points this turn before banking.",
+    "Würfle los und sammle deine ersten Punkte.": "Roll the dice and collect your first points.",
     // Administration: immutable founder and delegated ownership.
     "Owner verwalten Adminrechte; nur der Gründer vergibt oder entzieht Ownerrechte. Im Spiel bleiben alle Ansprechpersonen dezent als Admin erkennbar.": "Owners manage admin permissions; only the founder can grant or revoke owner permissions. In games, all support contacts keep the same discreet admin badge.",
     "Gründer": "Founder",

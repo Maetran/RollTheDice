@@ -1230,7 +1230,7 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-event-overlay span {
   }
 
   html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-play-layout {
-    --zilch-turn-score-slot-h: 44px;
+    --zilch-turn-score-slot-h: 52px;
     height: calc(100dvh - var(--zilch-room-safe-top) - var(--zilch-room-chat-footprint) - var(--zilch-room-dock-gap) - var(--zilch-room-dock-h) - 56px - var(--zilch-play-layout-reserved-turn-score-h));
     min-height: 0;
   }
@@ -1282,7 +1282,7 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-event-overlay span {
   }
 
   html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-dice-dock .zilch-table {
-    padding-block: 4px;
+    padding-block: 2px;
     border-top-width: 6px;
     border-bottom-width: 3px;
   }
@@ -1299,6 +1299,22 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-event-overlay span {
 
   html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-turn-score {
     padding-block: 3px;
+  }
+
+  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-turn-score__breakdown {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-turn-score > .zilch-turn-score__bank-total {
+    grid-column: 2;
+    grid-row: 2;
+    grid-template-columns: minmax(0, 1fr);
+    align-self: end;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    text-align: right;
   }
 }
 

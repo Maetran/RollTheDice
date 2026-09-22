@@ -192,7 +192,7 @@ class ZilchCpuRunnerTestCase(TestCase):
             record_zilch_start_roll(game, human_id, 2)
             record_zilch_start_roll(game, cpu_id, 6)
             # The previous player's terminal roll is already published.  The
-            # CPU must leave enough time for the 500 ms dice reveal and the
+            # CPU must leave enough time for the 650 ms dice reveal and the
             # following ZILCH presentation before starting its own turn.
             game["_zilch_last_event"] = {"type": "zilch", "player_id": human_id}
             with patch.dict(os.environ, {}, clear=True), patch(
@@ -207,7 +207,7 @@ class ZilchCpuRunnerTestCase(TestCase):
                 await task
 
         asyncio.run(scenario())
-        self.assertEqual(delays, [1.9, 1.65, 1.25])
+        self.assertEqual(delays, [2.05, 1.65, 1.25])
 
     def test_cpu_rechecks_disconnect_during_the_roll_reading_pause(self) -> None:
         game, socket, human_id, cpu_id = self._cpu_game(strategy="conservative")

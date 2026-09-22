@@ -271,6 +271,7 @@ async function expectSlidingNotebook(page, activePlayerId, { scrollable = true, 
         const total = board.querySelector(".zilch-notebook-total");
         const totalBounds = total.getBoundingClientRect();
         const log = board.querySelector("ol");
+        const logBounds = log.getBoundingClientRect();
         const style = getComputedStyle(board);
         return {
           id: board.dataset.zilchBoardId, top: bounds.top, bottom: bounds.bottom,
@@ -280,7 +281,10 @@ async function expectSlidingNotebook(page, activePlayerId, { scrollable = true, 
           totalTop: totalBounds.top, totalBottom: totalBounds.bottom,
           totalLeft: totalBounds.left, totalRight: totalBounds.right,
           totalText: total.textContent, historyHeight: visibleHeight(log),
-          footerHeight: visibleHeight(board.querySelector("footer")),
+          totalInHeader: total.parentElement.tagName === "HEADER",
+          totalCount: board.querySelectorAll(".zilch-notebook-total").length,
+          footerCount: board.querySelectorAll("footer").length,
+          unusedHistorySpace: bounds.bottom - parseFloat(style.paddingBottom) - parseFloat(style.borderBottomWidth) - logBounds.bottom,
           historyScrollHeight: log.scrollHeight, pointerEvents: style.pointerEvents,
           historyAnimations: log.getAnimations().map(animation => ({
             name: animation.animationName, state: animation.playState,
@@ -298,6 +302,9 @@ async function expectSlidingNotebook(page, activePlayerId, { scrollable = true, 
   const active = geometry.boards.find(board => board.id === activePlayerId);
   const inactive = geometry.boards.find(board => board.id !== activePlayerId);
   for (const board of geometry.boards) {
+    expect(board.footerCount, `${board.id} must not repeat the total below its history`).toBe(0);
+    expect(board.totalCount, `${board.id} needs one persistent total`).toBe(1);
+    expect(board.totalInHeader, `${board.id} total belongs beside its player name`).toBe(true);
     expect(board.visibleHeight, board.id).toBeGreaterThan(0);
     expect(board.top, board.id).toBeGreaterThanOrEqual(geometry.notebook.top - 1);
     expect(board.left, board.id).toBeGreaterThanOrEqual(geometry.notebook.left - 1);
@@ -313,11 +320,11 @@ async function expectSlidingNotebook(page, activePlayerId, { scrollable = true, 
   expect(active.bottom).toBeLessThanOrEqual(inactive.headerTop + 1);
   expect(active.headerTop).toBeLessThan(inactive.headerTop);
   expect(active.historyHeight, "the maximized player needs a readable history row").toBeGreaterThanOrEqual(16);
+  expect(Math.abs(active.unusedHistorySpace), "history uses the space freed by removing the repeated total").toBeLessThanOrEqual(1);
   if (scrollable) expect(active.historyScrollHeight).toBeGreaterThan(active.historyHeight);
   expect(active.pointerEvents).toBe("auto");
   expect(inactive.visibleHeight, "the other player is only a compact bottom rail").toBeLessThanOrEqual(64);
   expect(inactive.historyHeight, JSON.stringify(inactive.historyAnimations)).toBe(0);
-  expect(inactive.footerHeight).toBe(0);
   if (activeCue) expect(active.activeColor).not.toBe(inactive.activeColor);
   for (const [index, playerId] of ["p1", "p2"].entries()) {
     const total = page.locator(`[data-zilch-board-id="${playerId}"] .zilch-notebook-total`);

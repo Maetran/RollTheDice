@@ -1,25 +1,25 @@
 {
   "kind": "usability",
-  "games": ["zdwa", "zilch"],
-  "summary_de": "Call for help: Rufe angemeldet direkt im Spiel einen Admin. Hilfe kommt zu deiner Partie – erkennbar am kleinen Schild.",
-  "summary_en": "Call for help: Sign in and call an admin straight from your game. Help joins your table – look for the small shield.",
+  "games": ["zilch"],
+  "summary_de": "Zilch: Der Würfelwirt überrascht dich, die Punkte-Vorschau hilft beim Sichern und der letzte Wurf bleibt länger sichtbar.",
+  "summary_en": "Zilch: A random Dice Host, a clearer total before banking, and more time to see the final roll.",
   "player_notes": {
     "de": {
-      "title": "Call for help – Hilfe direkt im Spiel",
+      "title": "Mehr Überblick am Zilch-Tisch",
       "changes": [
-        "Mit einem Spielerkonto kannst du in beiden Spielen einen Admin rufen. Wiederholte Klicks senden keine doppelten Benachrichtigungen.",
-        "Admins erkennst du dezent am kleinen Schild am Profilbild. Während eines Einsatzes pausiert ihre eigene Partie mit einem Hinweis.",
-        "Admins können Hilferufe abschließen sowie befristete oder dauerhafte Kontosperren setzen und aufheben. Gründe und Laufzeiten stehen im Konto.",
-        "Profilbilder bleiben bei Aktualisierungen ruhig. Auf dem Desktop sitzen die Nutzermenüs mittig."
+        "Der Würfelwirt bekommt in jeder neuen Partie eine zufällige Spielweise. Alle bisherigen Erfolge und Punkte bleiben erhalten.",
+        "Stand beim Sichern zeigt, wie viele Punkte du mit deiner Auswahl insgesamt hättest. Die Tablet-Hilfe sagt dir, was als Nächstes ansteht.",
+        "Beide Papierblöcke haben eigene Ringe; den doppelten Stand unten gibt es nicht mehr. Der Startwurf passt besser auf Tablets.",
+        "Die Würfel shaken deutlicher und etwas länger. Am Ende kannst du den letzten Wurf noch kurz ansehen, bevor dein Ergebnis erscheint."
       ]
     },
     "en": {
-      "title": "Call for help – right in your game",
+      "title": "A clearer view at the Zilch table",
       "changes": [
-        "With a player account, you can call an admin in either game. Repeated clicks do not send duplicate notifications.",
-        "A small shield on the avatar identifies admins. During a help visit, their own game pauses with a message.",
-        "Admins can close help requests and apply or lift temporary and permanent account restrictions. Your account shows reasons and expiry dates.",
-        "Profile pictures stay steady during updates. Desktop account menus are centered."
+        "The Dice Host gets a random play style for every new game. All existing achievements and points are preserved.",
+        "Total if banked shows what your overall score would be with your selection. Tablet guidance explains your next decision.",
+        "Both paper pads have their own rings, with no duplicate total at the bottom. Opening rolls fit better on tablets.",
+        "The dice shake more clearly and a little longer. The final roll stays on screen briefly before your result appears."
       ]
     }
   }

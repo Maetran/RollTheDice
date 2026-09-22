@@ -744,6 +744,32 @@ requests and public friendship profiles are not implemented.
 
 ### Zilch Classic
 
+**Deutsch – Spieltisch:** Die Spielweise des Würfelwirts wird bei jeder neuen
+Online- oder Offline-Partie gleichverteilt ausgelost. Revanchen losen neu;
+laufende und wiederaufgenommene Partien behalten ihre Spielweise. Alle drei
+Siegeserfolge bleiben erreichbar, ihre IDs und Punkte sowie bisherige
+Statistiken bleiben unverändert. Eine Legacy-Markierung ist deshalb nicht nötig.
+Die Tablet-Hilfe nennt die nächste konkrete Entscheidung. „Stand beim Sichern“
+addiert geschriebene Punkte, bereits gehaltene Rundenpunkte und die gültige
+aktuelle Auswahl; im Gegenzug hilft die Vorschau beim Vergleich. Beide
+Papierblöcke haben ihre eigene Bindung und zeigen den Stand nur noch oben.
+Der Startwurf bleibt auch auf Tablets im Querformat vollständig erreichbar.
+Würfe aller Teilnehmer sind länger und deutlicher animiert, gehaltene Würfel
+bleiben ruhig. Reduzierte Bewegung wird respektiert. Der letzte Wurf bleibt
+nach seiner Animation etwa eine Sekunde sichtbar, bevor das Ergebnis öffnet.
+
+**English – Game table:** Every new online or offline Dice Host game draws one
+of the three play styles with equal probability. Rematches draw again;
+ongoing and resumed games retain their style. All three win achievements remain
+available with unchanged IDs, points and past statistics, so no legacy label
+is needed. Tablet guidance describes the current decision. “Total if banked”
+adds the recorded score, committed turn points and valid current selection,
+making the final reply easier to judge. Each paper pad has its own binding and
+shows its total only at the top. Opening rolls remain fully reachable on
+landscape tablets. Every participant's rolls animate more clearly and for
+longer; held dice stay still and reduced motion is respected. The final roll
+remains visible for about a second after its animation before the result opens.
+
 Classic keeps the tavern table, score notebook, dice and familiar wording.
 The remaster uses restrained walnut tones, natural paper and matte brass
 accents, with clearer type, fewer bevels and quieter shadows. Mode labels fit

@@ -318,7 +318,11 @@ Die CPU verwendet genau dieselben gültigen serverseitigen Quick Holds,
 Würfelaktionen, Versionen, Scoring-Regeln und die gleiche faire RNG-Funktion
 wie ein Mensch. Sie besitzt keine eigene Zufallsquelle, kann keine künftigen
 Würfe sehen, keine Kombination erfinden und keine Punktzahl bestimmen. Ihre
-einzige Auswahl beim Erstellen ist eine fest validierte Strategie:
+Spielweise wird beim Erstellen einmal gleichverteilt aus drei Strategien
+ausgelost. Es gibt dafür keine Einstellung mehr; auch eine Revanche lost neu.
+Die Auslosung beeinflusst keine Spielwürfel. Gespeicherte Partien behalten
+beim Fortsetzen ihre Strategie. Die drei strategiebezogenen Siegeserfolge
+bleiben mit denselben IDs und Punkten erreichbar, ohne Legacy-Markierung:
 
 | Strategie | Basis zum Sichern | Verhalten |
 | --- | ---: | --- |
@@ -374,7 +378,9 @@ keine internen `user_id`-Werte. Nach jedem abgeschlossenen oder aufgegebenen
 Solo-Lauf sowie nach jeder abgeschlossenen CPU- oder Zwei-Personen-Partie
 öffnet sich die Ende-Ansicht automatisch: angemeldete Teilnehmer wechseln nach
 dem bestätigten Persistenz-Frame in ihren privaten Report, Gäste sehen dieselbe
-Zusammenfassung im aktuellen Browser-Tab. Direkt oberhalb der Zusammenfassung
+Zusammenfassung im aktuellen Browser-Tab. Beim live erlebten Abschluss bleibt
+der letzte Würfelsatz nach seiner Animation noch etwa eine Sekunde lesbar;
+die Ergebnispersistenz wartet darauf nicht. Direkt oberhalb der Zusammenfassung
 stehen **„Neues Solo“** für Solo beziehungsweise **„Revanche“** für CPU- und
 Zwei-Personen-Partien sowie **„Zur Zilch-Lobby“**. Für Gäste bleibt ein
 privater Report nicht erreichbar und es gibt keine persönliche Historie.
@@ -479,8 +485,8 @@ Betriebsrollback dokumentiert und ist nicht der Public-Beta-Standard.
   Sekunden bis zur nächsten CPU-Aktion; diese Pausen werden nicht addiert.
   Explizite Test-Overrides und der konfigurierte Wert `0` bleiben sofortig.
   Nach einem Zilch bleibt der autoritative letzte
-  Würfelsatz 0,5 Sekunden sichtbar; danach folgt das 1,35-sekündige
-  Zilch-Signal. Eine anschließende CPU-Aktion beginnt frühestens nach 1,9
+  Würfelsatz 0,65 Sekunden sichtbar; danach folgt das 1,35-sekündige
+  Zilch-Signal. Eine anschließende CPU-Aktion beginnt frühestens nach 2,05
   Sekunden und verdeckt diesen Übergang dadurch nicht.
 - Aktive Zustände samt Turn-ID, Holds, Rundenpunkten, Boards und Quick-Hold-
   Grundlage bleiben über die bestehende aktive Persistenz
