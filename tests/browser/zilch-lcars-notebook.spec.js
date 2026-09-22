@@ -486,9 +486,9 @@ test("LCARS viewport resizing follows the latest score but preserves manual read
 
     await log.evaluate(element => { element.scrollTop = 120; });
     await page.setViewportSize({ width: 667, height: 375 });
-    // The hook runs with the actual visual-viewport update. Wait for that
-    // update, then check that reading older rows was not changed to "latest".
-    await expect.poll(() => page.evaluate(() => Number.parseFloat(document.documentElement.style.getPropertyValue("--game-viewport-height"))))
+    // Wait for the game surface to fit the new orientation, then check that
+    // reading older rows was not changed to "latest".
+    await expect.poll(() => page.locator("body").evaluate(element => element.getBoundingClientRect().height))
       .toBe(375);
     await expect(log).toHaveJSProperty("scrollTop", 120);
     await log.evaluate(element => { element.scrollTop = element.scrollHeight; });

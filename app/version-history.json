@@ -1909,5 +1909,12 @@
     "date": "2026-09-22",
     "bump": "minor",
     "summary": "Neueste Erfolge der Community / Latest community achievements"
+  },
+  {
+    "version": "2.39.1",
+    "revision": "406fa8e2443cdab7ddcdb2197a2350bd7f0d516b",
+    "date": "2026-09-22",
+    "bump": "patch",
+    "summary": "Achievement-Details und lesbare Menüs / Achievement details and readable menus"
   }
 ]

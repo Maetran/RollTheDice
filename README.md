@@ -329,6 +329,9 @@ Bereich ein und benötigt kein internes vertikales Scrollen. Zilch ordnet seine 
 Profilbilder im ZDWA-Zugstatus und in den Spielzettel-Überschriften bleiben bei
 Würfel-, Halte- und Schreibaktionen ruhig und werden nur bei einem tatsächlichen
 Spielerwechsel ausgetauscht.
+Nach dem Drehen zwischen Hoch- und Querformat bleiben Header, Spielzettel und
+Chat an ihren sichtbaren Tippflächen. Die Tastatur kann den Chat weiterhin
+verkleinern; ein begonnener Text bleibt beim Drehen erhalten.
 Mobile spectator chat keeps the input reachable with the keyboard open and
 shows spectators with their profile picture. Tablet score sheets use the
 available space without clipping the controls.
@@ -341,6 +344,9 @@ above **All scoring dice**.
 Profile pictures in ZDWA's turn status and score sheet headers stay steady
 through rolls, holds and score entries, changing only when the displayed
 player actually changes.
+After rotating between portrait and landscape, headers, score sheets and chat
+remain aligned with their visible touch targets. The keyboard can still resize
+the chat, and drafts survive rotation.
 
 Unter **Spieler & Ranking → Neueste Erfolge** zeigt jedes Spiel die jüngsten
 Freischaltungen der Community mit Spieler, Zeitpunkt und Schwierigkeit, fest

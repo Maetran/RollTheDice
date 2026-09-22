@@ -1,10 +1,10 @@
 {
-  "version": "2.39.1",
+  "version": "2.39.2",
   "bump": "patch",
   "date": "2026-09-22",
-  "previous_revision": "91f3901189269f55fa9e91ec057ba4ea372b299d",
+  "previous_revision": "406fa8e2443cdab7ddcdb2197a2350bd7f0d516b",
   "summary": {
-    "de": "Achievement-Details und lesbare Menüs",
-    "en": "Achievement details and readable menus"
+    "de": "Stabile Spielflächen nach dem Drehen",
+    "en": "Stable game surfaces after rotation"
   }
 }

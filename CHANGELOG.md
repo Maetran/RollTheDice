@@ -22,6 +22,22 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.39.2 — Stabile Spielflächen nach dem Drehen / Stable game surfaces after rotation — 2026-09-22
+
+- **Deutsch:** Nach Hochformat → Querformat → Hochformat verschieben alte
+  Bildschirmmaße den Spielkopf und den Spielzettel nicht mehr. ZDWA und Zilch
+  verwenden die verkleinerte sichtbare Fläche nur für eine tatsächliche
+  Bildschirmtastatur und messen nach dem Drehen erneut. Chatleiste und
+  Tippflächen bleiben erreichbar, begonnene Nachrichten erhalten. Neue
+  Browserprüfungen decken wiederholtes Drehen, verspätete Bildschirmmaße und
+  direkte Fingertipps auf Telefonen und Tablets ab.
+- **English:** After portrait → landscape → portrait, stale viewport metrics
+  no longer displace the game header and score sheet. ZDWA and Zilch use the
+  reduced visible area only for an actual on-screen keyboard and measure again
+  after rotation. The chat bar and touch targets remain reachable, and drafts
+  are preserved. New browser regressions cover repeated rotation, delayed
+  viewport metrics and direct touch interactions on phones and tablets.
+
 ## 2.39.1 — Achievement-Details und lesbare Menüs / Achievement details and readable menus — 2026-09-22
 
 - **Deutsch:** Das neue Achievement-Board unter **Spieler & Ranking → Neueste

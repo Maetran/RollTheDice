@@ -228,4 +228,73 @@ for (const theme of ["light", "lcars"]) {
       } finally { await context.close(); }
     }
   });
+
+  for (const portrait of [{ width:440, height:956 }, { width:1024, height:1366 }]) {
+    test(`Zilch ${theme} ${portrait.width}: rotation recovery preserves painted header and chat targets`, async ({ browser, baseURL }, testInfo) => {
+      const context = await browser.newContext({ baseURL, viewport:portrait, hasTouch:true, isMobile:true, serviceWorkers:"block", reducedMotion:"reduce" });
+      const page = await context.newPage();
+      const tap = async locator => {
+        await expect(locator).toBeVisible();
+        const box = await locator.boundingBox();
+        await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      };
+      const rotate = async viewport => {
+        await page.setViewportSize(viewport);
+        await page.evaluate(() => {
+          window.dispatchEvent(new Event("orientationchange"));
+          screen.orientation?.dispatchEvent(new Event("change"));
+        });
+      };
+      try {
+        await openTabletFixture(page, { theme });
+        await page.evaluate(() => document.fonts.ready);
+        const headerTop = await page.locator(".zilch-header").evaluate(element => element.getBoundingClientRect().top);
+        const landscape = { width:portrait.height, height:portrait.width };
+        await rotate(landscape);
+        await tap(page.locator("[data-zilch-chat-toggle]"));
+        await expect(page.locator("#zilchChatInput")).toBeFocused();
+        await page.locator("#zilchChatInput").fill("Mein Entwurf übersteht das Drehen");
+        await rotate(portrait);
+        await expect(page.locator("#zilchChatInput")).toHaveValue("Mein Entwurf übersteht das Drehen");
+        await tap(page.locator("[data-zilch-chat-toggle]"));
+
+        await rotate(landscape);
+        await page.evaluate(({ width, height }) => {
+          for (const [key, value] of Object.entries({ width, height, offsetTop:120 })) {
+            Object.defineProperty(visualViewport, key, { configurable:true, value });
+          }
+        }, landscape);
+        await rotate(portrait);
+        await page.evaluate(() => {
+          setTimeout(() => {
+            for (const key of ["width", "height", "offsetTop"]) delete visualViewport[key];
+          }, 120);
+        });
+        const expectRestored = async () => {
+          await expect.poll(() => page.locator(".zilch-header").evaluate(element => element.getBoundingClientRect().top)).toBeCloseTo(headerTop, 0);
+          await expect.poll(() => page.locator(".zilch-chat").evaluate(element => Math.abs(element.getBoundingClientRect().bottom - innerHeight))).toBeLessThanOrEqual(1);
+          await expectReachable(page, "#zilchLeaveGameBtn");
+          await tap(page.locator("#zilchLeaveGameBtn"));
+          await expect(page.getByRole("dialog", { name:"Zur Lobby wechseln?" })).toBeVisible();
+          await tap(page.getByRole("button", { name:"Im Spiel bleiben", exact:true }));
+          await expect(page.getByRole("dialog", { name:"Zur Lobby wechseln?" })).toBeHidden();
+          await expectReachable(page, "[data-zilch-chat-toggle]");
+          await tap(page.locator("[data-zilch-chat-toggle]"));
+          await expect(page.locator("#zilchChatInput")).toBeFocused();
+          await expect(page.locator("#zilchChatInput")).toHaveValue("Mein Entwurf übersteht das Drehen");
+          await tap(page.locator("[data-zilch-chat-toggle]"));
+          await expect(page.locator("#zilchChatContent")).toBeHidden();
+        };
+        await expectRestored();
+        await page.evaluate(() => {
+          Object.defineProperty(visualViewport, "height", { configurable:true, value:innerHeight - 48 });
+          Object.defineProperty(visualViewport, "offsetTop", { configurable:true, value:62 });
+          visualViewport.dispatchEvent(new Event("resize"));
+          visualViewport.dispatchEvent(new Event("scroll"));
+        });
+        await expectRestored();
+        await page.screenshot({ path:testInfo.outputPath(`rotation-zilch-${theme}-${portrait.width}.png`) });
+      } finally { await context.close(); }
+    });
+  }
 }

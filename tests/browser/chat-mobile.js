@@ -150,7 +150,7 @@ async function exerciseCollapsedChatDock(page, game, testInfo) {
         // Keep layout/dvh tall while iOS's visible viewport moves and shrinks.
         // An inset subtracted twice or an ignored offset leaves a visible gap.
         await page.evaluate(() => {
-          Object.defineProperty(visualViewport, "height", { configurable:true, value:380 });
+          Object.defineProperty(visualViewport, "height", { configurable:true, value:Math.min(380, innerHeight - 160) });
           Object.defineProperty(visualViewport, "offsetTop", { configurable:true, value:24 });
           visualViewport.dispatchEvent(new Event("resize"));
           visualViewport.dispatchEvent(new Event("scroll"));
