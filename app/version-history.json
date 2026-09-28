@@ -1965,5 +1965,12 @@
     "date": "2026-09-22",
     "bump": "patch",
     "summary": "Übersichtliche Benutzerverwaltung mit Suche und klaren Aktionen / Clearer user management with search and grouped actions"
+  },
+  {
+    "version": "2.42.2",
+    "revision": "8d9186e0d110d8a81fb50ab32bfee138dc5f7ea9",
+    "date": "2026-09-22",
+    "bump": "patch",
+    "summary": "ZDWA-Spielregeln im Spiel wieder sichtbar / ZDWA rules visible again during games"
   }
 ]

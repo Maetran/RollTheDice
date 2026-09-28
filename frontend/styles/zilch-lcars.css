@@ -21,23 +21,24 @@
 
 html[data-game="zilch"][data-theme="lcars"] {
   --lcars-void: #000000;
-  --lcars-panel: #000000;
-  --lcars-panel-raised: #000000;
-  --lcars-panel-line: #363349;
-  --lcars-text: #f8efd9;
-  --lcars-text-soft: #d8cdb8;
-  --lcars-text-dim: #aca2ba;
-  --lcars-apricot: #f4b777;
-  --lcars-apricot-bright: #ffd29a;
-  --lcars-lilac: #cda8db;
-  --lcars-lilac-deep: #9c7ab7;
-  --lcars-blue: #8096e8;
-  --lcars-cyan: #8bd7eb;
-  --lcars-cream: #e7dfba;
-  --lcars-gold: #f2bb4d;
-  --lcars-alert: #e98282;
-  --lcars-success: #a6d798;
-  --lcars-focus: #fff7d1;
+  --lcars-panel: #080a10;
+  --lcars-panel-raised: #10131a;
+  --lcars-panel-line: #3b3847;
+  --lcars-text: #f2eadb;
+  --lcars-text-soft: #d5cbbb;
+  --lcars-text-dim: #b5acbf;
+  --lcars-apricot: #c49472;
+  --lcars-apricot-bright: #d7ad86;
+  --lcars-lilac: #a18baf;
+  --lcars-lilac-deep: #766884;
+  --lcars-blue: #7184ad;
+  --lcars-cyan: #78aab4;
+  --lcars-cyan-hover: #75a7b0;
+  --lcars-cream: #c9c0a6;
+  --lcars-gold: #be9551;
+  --lcars-alert: #b57b80;
+  --lcars-success: #8eae86;
+  --lcars-focus: #fff3c4;
   --lcars-display: "Zilch LCARS", "Arial Narrow", Impact, sans-serif;
   --lcars-body: "Zilch LCARS", "Arial Narrow", Arial, sans-serif;
   --lcars-pill-end: 1.65rem;
@@ -129,7 +130,7 @@ html[data-game="zilch"][data-theme="lcars"] :where(p, li, dd, dt, td, th, label,
 html[data-game="zilch"][data-theme="lcars"] .zilch-page :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 3px solid var(--lcars-focus) !important;
   outline-offset: 3px;
-  box-shadow: 0 0 0 6px rgba(139, 215, 235, .34) !important;
+  box-shadow: 0 0 0 6px rgba(120, 170, 180, .24) !important;
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-skip-link {
@@ -269,7 +270,7 @@ html[data-game="zilch"][data-theme="lcars"] :is(.zilch-header-tools, .zilch-logi
 html[data-game="zilch"][data-theme="lcars"] :is(.zilch-header-tools, .zilch-login-tools) .theme-toggle:focus-visible {
   border: 0;
   color: #15131b;
-  background: #b9ecf5;
+  background: var(--lcars-cyan-hover);
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-room-context strong {
@@ -467,7 +468,7 @@ html[data-game="zilch"][data-theme="lcars"] :where(.secondary, .ghost, .zilch-ac
 
 html[data-game="zilch"][data-theme="lcars"] :where(.secondary, .ghost, .zilch-action-card--bank, .zilch-result-actions__lobby, .lobby-chat__expand, .zilch-leaderboard-pagination button):not(:disabled):hover {
   color: #15131b;
-  background: #b9ecf5;
+  background: var(--lcars-cyan-hover);
 }
 
 html[data-game="zilch"][data-theme="lcars"] :where(.primary, .zilch-action-card--roll, .zilch-result-actions__new-round, .zilch-combined-score) {
@@ -603,14 +604,14 @@ html[data-game="zilch"][data-theme="lcars"] .lobby-chat__game-badge {
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game {
   /* Large decorative areas are quieter than text, selected dice and primary
      actions. Do not dim the shared LCARS palette or other product screens. */
-  --lcars-room-frame-lilac: #a68cb2;
-  --lcars-room-frame-cyan: #69aebd;
-  --lcars-room-frame-blue: #6277b0;
-  --lcars-room-frame-apricot: #bc956f;
-  --lcars-room-chat: #74afbd;
-  --lcars-room-chat-hover: #83bfcd;
-  --lcars-room-score: #d5a77c;
-  --lcars-room-cpu: #83b7c5;
+  --lcars-room-frame-lilac: #82748d;
+  --lcars-room-frame-cyan: #5f929c;
+  --lcars-room-frame-blue: #5b6990;
+  --lcars-room-frame-apricot: #97795e;
+  --lcars-room-chat: #6496a0;
+  --lcars-room-chat-hover: #75a7b0;
+  --lcars-room-score: #bf9670;
+  --lcars-room-cpu: #73a1ac;
   --lcars-room-die-outline: #789fbe;
 }
 
@@ -990,15 +991,15 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__face 
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__face stop:first-child {
-  stop-color: #1e4859;
+  stop-color: #285664;
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__face stop:nth-child(2) {
-  stop-color: #0b2329;
+  stop-color: #153640;
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__face stop:last-child {
-  stop-color: #050f11;
+  stop-color: #0a1c22;
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__body {
@@ -1021,6 +1022,14 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__pips 
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__dash {
   stroke: var(--lcars-lilac);
+}
+
+/* Before a roll the six dice are status indicators, but on a black LCARS
+   dock they still need a clear physical footprint. Keep their low-key face
+   treatment while restoring the inherited dimming that made them read empty. */
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die--unrolled {
+  opacity: 1;
+  filter: none;
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game :is(.zilch-die--held, .zilch-die--unavailable, .zilch-die--selected)::before {

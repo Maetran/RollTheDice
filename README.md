@@ -237,6 +237,12 @@ Inside LCARS game rooms, quieter frame and chat colours and reduced dice glow
 keep selections clear. Positive scores use a light, muted apricot, and CPU
 badges use flat LCARS colours with dark lettering. The black background,
 layout and sliding score sheets are unchanged.
+LCARS now uses a calmer, lower-saturation console palette. On phones, each
+unrolled die keeps a clear outline so the six-die dock never reads as empty.
+
+**Deutsch:** LCARS nutzt jetzt eine ruhigere, weniger gesättigte
+Konsolenpalette. Auf Handys bleibt jeder ungeworfene Würfel klar umrandet
+sichtbar, damit die Sechserleiste nicht leer wirkt.
 Under **Account → Settings → Profile & sign-in → Change username**, enter a new name and
 confirm it with an existing passkey, or choose your current password as a fallback.
 Names follow the registration rules (3–32 characters) and

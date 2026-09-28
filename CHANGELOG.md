@@ -22,6 +22,20 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.42.3 — LCARS: Würfel klar im Blick / LCARS: Dice clearly in view — 2026-09-28
+
+**Deutsch:** Die Würfel bleiben im mobilen LCARS-Dock sichtbar, auch vor dem
+ersten Wurf. Die Konsole verwendet ruhigere, weniger gesättigte Farben; Text,
+Auswahl, Aktionen und Tastaturfokus behalten ausreichend Kontrast. Spielregeln,
+Wertung und Bedienablauf bleiben unverändert. Stiller Rollout ohne Push- oder
+In-App-Versionsmeldung.
+
+**English:** Dice remain visible in the mobile LCARS dock, including before the
+first roll. The console now uses calmer, lower-saturation colors while text,
+selections, actions, and keyboard focus retain sufficient contrast. Rules,
+scoring, and gameplay flow are unchanged. Silent rollout with no push or
+in-app release announcement.
+
 ## 2.42.2 — Spielregeln wieder sichtbar / In-game rules visible again — 2026-09-22
 
 **Deutsch:** Der ZDWA-Regeldialog zeigt die Spielregeln wieder an. Die

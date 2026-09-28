@@ -1062,6 +1062,11 @@ for (const theme of ["lcars", "light"]) {
           const centerY = faceRect.top + faceRect.height / 2;
           return {
             index: die.style.getPropertyValue("--die-index"),
+            interactive: die.matches("button[data-zilch-die-index]"),
+            dieTop: dieRect.top,
+            dieBottom: dieRect.bottom,
+            dieTarget: Math.min(dieRect.width, dieRect.height),
+            viewportHeight: window.innerHeight,
             faceWidth: faceRect.width,
             faceHeight: faceRect.height,
             faceCenterOffset: Math.abs(centerY - (dieRect.top + dieRect.height / 2)),
@@ -1075,6 +1080,10 @@ for (const theme of ["lcars", "light"]) {
           };
         }));
         for (const die of geometry) {
+          expect(die.interactive, JSON.stringify(die)).toBe(true);
+          expect(die.dieTop, JSON.stringify(die)).toBeGreaterThanOrEqual(-1);
+          expect(die.dieBottom, JSON.stringify(die)).toBeLessThanOrEqual(die.viewportHeight + 1);
+          expect(die.dieTarget, JSON.stringify(die)).toBeGreaterThanOrEqual(44);
           expect(die.faceWidth, JSON.stringify(die)).toBeGreaterThan(30);
           expect(die.faceHeight, JSON.stringify(die)).toBeGreaterThan(30);
           expect(die.faceCenterOffset, JSON.stringify(die)).toBeLessThan(3);

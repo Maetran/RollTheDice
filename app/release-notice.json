@@ -1,19 +1,21 @@
 {
   "kind": "usability",
-  "games": ["zdwa"],
-  "summary_de": "Die ZDWA-Spielregeln werden im Regeldialog während der Partie wieder angezeigt.",
-  "summary_en": "The ZDWA rules are visible again in the rules dialog during your game.",
+  "games": ["zilch"],
+  "summary_de": "LCARS zeigt die Würfel auf Handys klarer und nutzt ruhigere Farben.",
+  "summary_en": "LCARS makes dice clearer on phones with a calmer color palette.",
   "player_notes": {
     "de": {
-      "title": "Spielregeln wieder im Blick",
+      "title": "Würfel klar im Blick",
       "changes": [
-        "Du kannst die ZDWA-Spielregeln wieder direkt während der Partie nachlesen. Der Regeldialog bleibt nicht mehr leer."
+        "Die sechs Würfel bleiben im mobilen LCARS-Dock klar sichtbar, auch vor dem ersten Wurf.",
+        "Ruhigere LCARS-Farben lassen Aktionen und Punktestand entspannter lesbar."
       ]
     },
     "en": {
-      "title": "In-game rules back in view",
+      "title": "Dice clearly in view",
       "changes": [
-        "You can read the ZDWA rules during your game again. The rules dialog no longer stays empty."
+        "All six dice stay clear in the mobile LCARS dock, including before the first roll.",
+        "Calmer LCARS colors make actions and scores easier on the eyes."
       ]
     }
   }
