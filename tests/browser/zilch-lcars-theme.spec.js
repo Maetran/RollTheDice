@@ -49,18 +49,23 @@ async function expectLcarsViewports(page) {
     await page.setViewportSize(viewport);
     await expectImageFreeCanvas(page);
     await expect(page.locator("[data-theme-toggle]")).toBeVisible();
+    if (await page.locator(".zilch-shell--game").count()) {
+      await expect(page.locator(".zilch-dice-dock")).toBeVisible();
+      await expect(page.locator(".zilch-notebook-player.is-active ol")).toBeVisible();
+    }
     const layout = await page.evaluate(() => {
       const toggle = document.querySelector("[data-theme-toggle]").getBoundingClientRect();
       const player = document.querySelector(".zilch-notebook-player.is-active");
       const dock = document.querySelector(".zilch-dice-dock");
+      const history = player?.querySelector("ol");
       return {
         documentWidth: document.documentElement.scrollWidth,
         viewportWidth: window.innerWidth,
         toggleLeft: toggle.left,
         toggleRight: toggle.right,
-        score: player && dock ? {
-          historyHeight: player.querySelector("ol").clientHeight,
-          footerBottom: player.querySelector("footer").getBoundingClientRect().bottom,
+        score: history && dock ? {
+          historyHeight: history.clientHeight,
+          historyBottom: history.getBoundingClientRect().bottom,
           dockTop: dock.getBoundingClientRect().top,
         } : null,
       };
@@ -70,7 +75,7 @@ async function expectLcarsViewports(page) {
     expect(layout.toggleRight).toBeLessThanOrEqual(layout.viewportWidth + 1);
     if (layout.score) {
       expect(layout.score.historyHeight).toBeGreaterThanOrEqual(16);
-      expect(layout.score.footerBottom).toBeLessThanOrEqual(layout.score.dockTop);
+      expect(layout.score.historyBottom).toBeLessThanOrEqual(layout.score.dockTop);
     }
   }
 }
@@ -161,7 +166,7 @@ test("Zilch retains its independent LCARS appearance through reloads, languages,
       "aria-label",
       "Darstellung wechseln: LCARS. Nächstes Design: Klassisch.",
     );
-    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#000000");
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#0a0c12");
     await expect.poll(() => page.evaluate(() => ({
       zilch: localStorage.getItem("zilch_theme"),
       zdwa: localStorage.getItem("wuerfler_theme"),

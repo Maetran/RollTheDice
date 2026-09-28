@@ -1,10 +1,10 @@
 {
-  "version": "2.42.3",
+  "version": "2.42.4",
   "bump": "patch",
   "date": "2026-09-28",
-  "previous_revision": "8d9186e0d110d8a81fb50ab32bfee138dc5f7ea9",
+  "previous_revision": "b2493ea1e249050442bb84ea3b00967d6f83a295",
   "summary": {
-    "de": "LCARS-Würfel auf Handys klarer und Farben ruhiger",
-    "en": "Clearer mobile LCARS dice and calmer colors"
+    "de": "LCARS-Würfel als Roll-Controls und sanfteres Schwarz",
+    "en": "LCARS dice roll controls and softer black"
   }
 }

@@ -4287,6 +4287,16 @@ function dieDescription(index, value, turnState, quickHolds, draft) {
   return `${t("Würfel")} ${index + 1}: ${valueLabel}. ${stateLabel}.`;
 }
 
+function rollActionLabel(turnState) {
+  return turnState?.phase === "awaiting_hold"
+    ? t("Weiterwürfeln")
+    : turnState?.confirmation_required
+      ? t("Bestätigen")
+      : turnState?.rolls_used
+        ? t("Weiterwürfeln")
+        : t("Würfeln");
+}
+
 function diceRack(snapshot, turnState, quickHolds, isMyTurn, canInteract) {
   const revealMoment = state.zilchMoment?.phase === "reveal" ? state.zilchMoment : null;
   const currentDice = Array.isArray(snapshot._dice) ? snapshot._dice.slice(0, 6) : [0, 0, 0, 0, 0, 0];
@@ -4324,10 +4334,13 @@ function diceRack(snapshot, turnState, quickHolds, isMyTurn, canInteract) {
     const held = Array.isArray(displayTurnState?.held_dice_indices) && displayTurnState.held_dice_indices.includes(index);
     const scoreable = displayQuickHolds.some(option => Array.isArray(option.dice_indices) && option.dice_indices.includes(index));
     const selectable = Boolean(!revealMoment && !hasRetainedZilchRack && canInteract && displayTurnState?.can_select_hold && die && !held && scoreable && !snapshot._paused && !snapshot._finished && !state.pendingAction);
+    const rollable = Boolean(!revealMoment && !hasRetainedZilchRack && canInteract && displayTurnState?.can_roll && !die && !snapshot._paused && !snapshot._finished && !state.pendingAction);
     const classes = `zilch-die ${dieState(index, die, displayTurnState, displayQuickHolds, displayDraft)}${hasRetainedZilchRack ? " zilch-die--zilch-retained" : ""}${state.pendingAction ? " zilch-die--pending" : ""}`;
     const face = diePips(die, index);
     return selectable
       ? `<button type="button" class="${classes}" style="--die-index:${index}" data-zilch-die-index="${index}" aria-keyshortcuts="${index + 1}" aria-pressed="${displayDraft.includes(index) ? "true" : "false"}" aria-label="${escapeHtml(label)}">${face}</button>`
+      : rollable
+        ? `<button type="button" class="${classes}" style="--die-index:${index}" data-zilch-roll-die-index="${index}" aria-label="${escapeHtml(`${label} ${rollActionLabel(displayTurnState)}.`)}">${face}</button>`
       : `<span class="${classes}" style="--die-index:${index}" role="img" aria-label="${escapeHtml(label)}">${face}</span>`;
   }).join("")}</div>`;
 }
@@ -4934,13 +4947,7 @@ function actionCards(snapshot, turnState, quickHolds, isMyTurn) {
   ));
   const canRoll = Boolean(rollAvailable && !state.pendingAction && !state.zilchMoment);
   const canBank = Boolean(bankAvailable && !state.pendingAction && !state.zilchMoment);
-  const rollLabel = turnState?.phase === "awaiting_hold"
-    ? t("Weiterwürfeln")
-    : turnState?.confirmation_required
-      ? t("Bestätigen")
-      : turnState?.rolls_used
-        ? t("Weiterwürfeln")
-        : t("Würfeln");
+  const rollLabel = rollActionLabel(turnState);
   return `<section class="zilch-action-cards" aria-label="${escapeHtml(t("Spielaktionen"))}">
     <button type="button" class="zilch-action-card zilch-action-card--bank" data-zilch-bank aria-keyshortcuts="b B" ${canBank ? "" : "disabled"}>
       <strong>${escapeHtml(t("Sichern"))}</strong>
@@ -5413,7 +5420,7 @@ function wireGameInteractions(snapshot, turnState, quickHolds) {
     if (!ownParticipantId || !Array.isArray(start?.pending_player_ids) || !start.pending_player_ids.some(playerId => sameId(playerId, ownParticipantId))) return;
     requestAction("zilch_start_roll", { start_roll_version: start?.version });
   });
-  document.querySelector("[data-zilch-roll]")?.addEventListener("click", () => {
+  const requestRoll = () => {
     if (state.zilchMoment || !localPlayerIs(snapshot, snapshot?._turn?.player_id)) return;
     const selectedOption = exactOptionForDraft(quickHolds, draftHoldIndices(turnState));
     if (turnState?.can_select_hold && (!selectedOption || !optionAllows(selectedOption, "zilch_roll_dice"))) return;
@@ -5422,7 +5429,9 @@ function wireGameInteractions(snapshot, turnState, quickHolds) {
       version: turnState?.version,
       ...(turnState?.can_select_hold ? optionActionPayload(selectedOption) : {}),
     }, { optionId: selectedOption?.id || null });
-  });
+  };
+  document.querySelector("[data-zilch-roll]")?.addEventListener("click", requestRoll);
+  for (const die of document.querySelectorAll("[data-zilch-roll-die-index]")) die.addEventListener("click", requestRoll);
   document.querySelector("[data-zilch-bank]")?.addEventListener("click", () => {
     if (state.zilchMoment || !localPlayerIs(snapshot, snapshot?._turn?.player_id)) return;
     const selectedOption = exactOptionForDraft(quickHolds, draftHoldIndices(turnState));

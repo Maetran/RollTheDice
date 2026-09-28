@@ -228,21 +228,22 @@ do not replay it. Reduced-motion preferences show the final ink immediately.
 The score and controls never wait for the animation, which needs no extra font
 or network request. Controls, rules and scoring
 are unchanged. Zilch remembers its separate Classic or LCARS choice locally in the
-same browser. LCARS uses a solid black canvas, flat segmented console rails,
+same browser. LCARS uses a near-black graphite canvas, flat segmented console rails,
 rounded LCARS elbows and locally hosted condensed display lettering, including
 in the installed PWA. Controls, rules, randomness and scoring stay the same.
 Free rolls appear as a bright LCARS status band inside the scoring tile, with
 the throw name and points remaining readable.
 Inside LCARS game rooms, quieter frame and chat colours and reduced dice glow
 keep selections clear. Positive scores use a light, muted apricot, and CPU
-badges use flat LCARS colours with dark lettering. The black background,
+badges use flat LCARS colours with dark lettering. The near-black graphite background,
 layout and sliding score sheets are unchanged.
 LCARS now uses a calmer, lower-saturation console palette. On phones, each
-unrolled die keeps a clear outline so the six-die dock never reads as empty.
+unrolled die is a clear roll control, so the six-die dock never reads as empty.
 
 **Deutsch:** LCARS nutzt jetzt eine ruhigere, weniger gesättigte
-Konsolenpalette. Auf Handys bleibt jeder ungeworfene Würfel klar umrandet
-sichtbar, damit die Sechserleiste nicht leer wirkt.
+Konsolenpalette auf einer fast schwarzen Graphitfläche. Auf Handys ist jeder
+ungeworfene Würfel ein klar umrandeter Roll-Button, damit die Sechserleiste
+nicht leer wirkt.
 Under **Account → Settings → Profile & sign-in → Change username**, enter a new name and
 confirm it with an existing passkey, or choose your current password as a fallback.
 Names follow the registration rules (3–32 characters) and

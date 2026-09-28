@@ -20,10 +20,10 @@
 }
 
 html[data-game="zilch"][data-theme="lcars"] {
-  --lcars-void: #000000;
-  --lcars-panel: #080a10;
-  --lcars-panel-raised: #10131a;
-  --lcars-panel-line: #3b3847;
+  --lcars-void: #0a0c12;
+  --lcars-panel: #11141b;
+  --lcars-panel-raised: #171b23;
+  --lcars-panel-line: #41404e;
   --lcars-text: #f2eadb;
   --lcars-text-soft: #d5cbbb;
   --lcars-text-dim: #b5acbf;
@@ -584,7 +584,7 @@ html[data-game="zilch"][data-theme="lcars"] .lobby-chat {
 html[data-game="zilch"][data-theme="lcars"] :is(.lobby-chat__feed, .lobby-chat__message) {
   border-color: var(--lcars-panel-line);
   color: var(--lcars-text);
-  background: #0a0a10;
+  background: var(--lcars-panel);
 }
 
 html[data-game="zilch"][data-theme="lcars"] .lobby-chat__message--presence {
@@ -1024,12 +1024,35 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die__dash 
   stroke: var(--lcars-lilac);
 }
 
-/* Before a roll the six dice are status indicators, but on a black LCARS
-   dock they still need a clear physical footprint. Keep their low-key face
-   treatment while restoring the inherited dimming that made them read empty. */
+/* Before a roll the six dice present the next game action. Keep their
+   low-key face treatment while restoring the inherited dimming that made
+   the whole rack read as empty. */
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-die--unrolled {
   opacity: 1;
   filter: none;
+}
+
+/* The unrolled rack is the immediate action at the start of a turn. Let a
+   player tap any ready die to roll, and give those six controls a muted but
+   unmistakable console surface instead of six empty-looking glyphs. */
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game button.zilch-die--unrolled {
+  cursor: pointer;
+  background: linear-gradient(145deg, #18333d, #0d2027);
+  box-shadow: inset 0 0 0 1px rgba(120, 159, 190, .78), inset 0 0 .7rem rgba(120, 170, 180, .12);
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game button.zilch-die--unrolled::before {
+  border: 1px solid rgba(120, 159, 190, .84);
+  background: rgba(120, 170, 180, .08);
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game button.zilch-die--unrolled .zilch-die__dash {
+  stroke: var(--lcars-cyan);
+  stroke-width: 9;
+}
+
+html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game button.zilch-die--unrolled:hover {
+  transform: translateY(-.08rem);
 }
 
 html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game :is(.zilch-die--held, .zilch-die--unavailable, .zilch-die--selected)::before {
@@ -1075,7 +1098,7 @@ html[data-game="zilch"][data-theme="lcars"] .zilch-shell--game .zilch-action-car
 html[data-game="zilch"][data-theme="lcars"] :is(.zilch-chat, .zilch-chat__toggle, .zilch-chat__content, .zilch-chat-history) {
   border-color: var(--lcars-panel-line);
   color: var(--lcars-text);
-  background: #0a0a10;
+  background: var(--lcars-panel);
   box-shadow: none;
 }
 

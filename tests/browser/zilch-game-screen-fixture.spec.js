@@ -3399,9 +3399,16 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
 
     const dice = page.locator(".zilch-die");
     await expect(dice).toHaveCount(6);
-    await expect(dice.first()).toHaveAttribute("role", "img");
+    await expect(dice.first()).toHaveAttribute("data-zilch-roll-die-index", "0");
     await expect(dice.first()).toHaveAttribute("aria-label", /(?:Würfel 1: Noch nicht gewürfelt|Die 1: Not rolled yet)/);
-    expect(await dice.evaluateAll(nodes => nodes.every(node => !node.hasAttribute("tabindex")))).toBe(true);
+    const rollLabel = (await page.locator("[data-zilch-roll] strong").textContent())?.trim();
+    expect(rollLabel).toBeTruthy();
+    expect(await dice.first().getAttribute("aria-label")).toContain(rollLabel);
+    expect(await dice.evaluateAll(nodes => nodes.every((node, index) => (
+      node instanceof HTMLButtonElement
+      && node.dataset.zilchRollDieIndex === String(index)
+      && !node.hasAttribute("tabindex")
+    )))).toBe(true);
     await expect(page.locator(".zilch-event")).toHaveCount(0);
     await expect(page.locator("[data-zilch-event-overlay]")).toBeHidden();
     await expect(page.locator("#zilchLiveStatus")).toContainText("Freier Wurf");

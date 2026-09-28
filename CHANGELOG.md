@@ -22,6 +22,21 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.42.4 — LCARS: Würfel zum Start antippen / LCARS: Tap dice to start — 2026-09-28
+
+**Deutsch:** Im Bereit-Zustand sind alle sechs LCARS-Würfel echte
+Roll-Buttons: Tippe einen davon an, um sofort zu würfeln. Nach dem Wurf bleiben
+nur gültige Punktewürfel auswählbar. Die Konsole verwendet ein sanftes,
+weiterhin klar schwarzes Anthrazit statt absolutem Schwarz. Spielregeln,
+Wertung und Bedienablauf bleiben unverändert. Stiller Rollout ohne Push- oder
+In-App-Versionsmeldung.
+
+**English:** When ready to roll, all six LCARS dice are real roll controls:
+tap one to roll immediately. After the roll, only valid scoring dice remain
+selectable. The console now uses a softer near-black graphite instead of
+absolute black. Rules, scoring, and gameplay flow are unchanged. Silent
+rollout with no push or in-app release announcement.
+
 ## 2.42.3 — LCARS: Würfel klar im Blick / LCARS: Dice clearly in view — 2026-09-28
 
 **Deutsch:** Die Würfel bleiben im mobilen LCARS-Dock sichtbar, auch vor dem

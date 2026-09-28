@@ -1972,5 +1972,12 @@
     "date": "2026-09-22",
     "bump": "patch",
     "summary": "ZDWA-Spielregeln im Spiel wieder sichtbar / ZDWA rules visible again during games"
+  },
+  {
+    "version": "2.42.3",
+    "revision": "b2493ea1e249050442bb84ea3b00967d6f83a295",
+    "date": "2026-09-28",
+    "bump": "patch",
+    "summary": "LCARS-Würfel auf Handys klarer und Farben ruhiger / Clearer mobile LCARS dice and calmer colors"
   }
 ]

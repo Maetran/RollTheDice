@@ -81,6 +81,7 @@ async function installFixture(page) {
   } }));
   await page.addInitScript(({ game, initial }) => {
     localStorage.setItem("zilch_theme", "lcars");
+    window.__contrastActions = [];
     class FixtureSocket {
       constructor(url) {
         this.url = url; this.readyState = 0; this.listeners = new Map();
@@ -92,7 +93,9 @@ async function installFixture(page) {
       addEventListener(type, listener) { this.listeners.set(type, [...(this.listeners.get(type) || []), listener]); }
       emit(type, event) { for (const listener of this.listeners.get(type) || []) listener(event); }
       send(raw) {
-        if (["join_game", "rejoin_game"].includes(JSON.parse(raw).action)) {
+        const message = JSON.parse(raw);
+        window.__contrastActions.push(message);
+        if (["join_game", "rejoin_game"].includes(message.action)) {
           setTimeout(() => this.emit("message", { data: JSON.stringify({ player_id: "p1", scoreboard: initial }) }), 0);
         }
       }
@@ -204,12 +207,13 @@ test("LCARS room frames and chat are subdued while score ink and flat CPU labels
   } finally { await context.close(); }
 });
 
-test("LCARS dice lose gold halos but keep selection, held checks, keyboard focus, and a clear steady roll action", async ({ browser, baseURL }, testInfo) => {
+test("LCARS dice keep scoring choices and ready-to-roll dice controls clear on mobile", async ({ browser, baseURL }, testInfo) => {
   const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
   const page = await context.newPage();
   try {
     await installFixture(page);
     const die = page.locator('[data-zilch-die-index="0"]');
+    const dockBackground = await page.locator(".zilch-dice-dock .zilch-table").evaluate(element => getComputedStyle(element).backgroundColor);
     const initialHitTarget = await die.evaluate(element => {
       const bounds = element.getBoundingClientRect();
       return {
@@ -238,7 +242,7 @@ test("LCARS dice lose gold halos but keep selection, held checks, keyboard focus
     expect.soft(selected.shadow).toBe("none");
     expect.soft(selectedOutline.shadow).toBe("none");
     expect.soft(selectedOutline.borderWidth).toBeGreaterThanOrEqual(2);
-    expect.soft(contrast(selectedOutline.borderColor, "rgb(0, 0, 0)")).toBeGreaterThanOrEqual(3);
+    expect.soft(contrast(selectedOutline.borderColor, dockBackground)).toBeGreaterThanOrEqual(3);
     expect.soft(selectedOutline.opacity).toBe(1);
     await die.click();
     await expect(die).toHaveAttribute("aria-pressed", "false");
@@ -248,7 +252,7 @@ test("LCARS dice lose gold halos but keep selection, held checks, keyboard focus
     expect(focus.focusVisible).toBe(true);
     expect(focus.outlineStyle).toBe("solid");
     expect(focus.outlineWidth).toBeGreaterThanOrEqual(2);
-    expect(contrast(focus.outlineColor, "rgb(0, 0, 0)")).toBeGreaterThanOrEqual(3);
+    expect(contrast(focus.outlineColor, dockBackground)).toBeGreaterThanOrEqual(3);
     await page.evaluate(next => window.__pushContrastSnapshot(next), gameSnapshot(true));
     const held = page.locator(".zilch-die--held").first();
     await expect(held).toBeVisible();
@@ -268,25 +272,36 @@ test("LCARS dice lose gold halos but keep selection, held checks, keyboard focus
     expect.soft(contrast(ready.color, ready.background)).toBeGreaterThanOrEqual(4.5);
     expect(ready.opacity).toBe("1");
     await page.evaluate(next => window.__pushContrastSnapshot(next), unrolledSnapshot());
-    const idleDie = page.locator(".zilch-dice .zilch-die").first();
-    await expect(idleDie).toHaveAttribute("role", "img");
+    const idleDice = page.locator("[data-zilch-roll-die-index]");
+    await expect(idleDice).toHaveCount(6);
+    const idleDie = idleDice.first();
+    await expect(idleDie).toHaveAttribute("data-zilch-roll-die-index", "0");
     const idle = await idleDie.evaluate(element => {
       const body = element.querySelector(".zilch-die__body");
+      const dash = element.querySelector(".zilch-die__dash");
       const dock = element.closest(".zilch-table");
       return {
         opacity: Number(getComputedStyle(element).opacity),
         filter: getComputedStyle(element).filter,
+        cursor: getComputedStyle(element).cursor,
+        surface: getComputedStyle(element).backgroundImage,
         stroke: getComputedStyle(body).stroke,
+        dash: getComputedStyle(dash).stroke,
         dock: getComputedStyle(dock).backgroundColor,
       };
     });
     expect(idle.opacity).toBe(1);
     expect(idle.filter).toBe("none");
+    expect(idle.cursor).toBe("pointer");
+    expect(idle.surface).toContain("gradient");
     expect(contrast(idle.stroke, idle.dock)).toBeGreaterThanOrEqual(3);
+    expect(contrast(idle.dash, idle.dock)).toBeGreaterThanOrEqual(3);
     await testInfo.attach("dice-states.json", { body: JSON.stringify({ initialHitTarget, unselected, selected, selectedOutline, focus, check, ready, idle }, null, 2), contentType: "application/json" });
     const screenshot = testInfo.outputPath("lcars-held-and-ready-mobile.png");
     await page.screenshot({ path: screenshot });
     await testInfo.attach("lcars-held-and-ready-mobile", { path: screenshot, contentType: "image/png" });
+    await idleDie.click();
+    await expect.poll(() => page.evaluate(() => window.__contrastActions.map(message => message.action))).toContain("zilch_roll_dice");
   } finally { await context.close(); }
 });
 

@@ -64,7 +64,7 @@ body.practice-page{
 html[data-game="zilch"] .practice-page{ --bg:#684025; --surface:#fff8de; --surface-soft:#fffdf5; --text:#2e1d12; --muted:#745e4c; --border:#ddc89e; --border-strong:#8d4814; --accent:#8d4814; --accent-strong:#683008; --info-soft:#fff0c8; --table-head:#f5e7b8; }
 html[data-game="zilch"] .practice-header,html[data-game="zilch"] .practice-status{ color:#fff8de; }
 html[data-game="zilch"] .practice-badge{ color:#fff0c8; }
-html[data-game="zilch"][data-theme="lcars"] .practice-page{ --bg:#000; --surface:#101019; --surface-soft:#1b1928; --text:#ffcc99; --muted:#d6b6dd; --border:#ba95cd; --border-strong:#ff9966; --accent:#ff9966; --accent-strong:#ffcc99; --info-soft:#342234; --table-head:#241c2e; --radius-card:24px 8px 8px 24px; }
+html[data-game="zilch"][data-theme="lcars"] .practice-page{ --bg:#0a0c12; --surface:#11141b; --surface-soft:#171b23; --text:#ffcc99; --muted:#d6b6dd; --border:#ba95cd; --border-strong:#ff9966; --accent:#ff9966; --accent-strong:#ffcc99; --info-soft:#342234; --table-head:#241c2e; --radius-card:24px 8px 8px 24px; }
 html[data-game="zilch"][data-theme="lcars"] .practice-page button.primary{ color:#16121a; }
 html[data-theme="classic"] .practice-page{ --bg:#31583a; }
 html[data-theme="classic"] .practice-header,html[data-theme="classic"] .practice-status,html[data-theme="classic"] .practice-badge{ color:#fff9e5; }

@@ -1,21 +1,21 @@
 {
   "kind": "usability",
   "games": ["zilch"],
-  "summary_de": "LCARS zeigt die Würfel auf Handys klarer und nutzt ruhigere Farben.",
-  "summary_en": "LCARS makes dice clearer on phones with a calmer color palette.",
+  "summary_de": "LCARS-Würfel starten den Wurf direkt; das Schwarz ist jetzt sanfter.",
+  "summary_en": "LCARS dice now start a roll directly, with a softer near-black background.",
   "player_notes": {
     "de": {
-      "title": "Würfel klar im Blick",
+      "title": "Mit den Würfeln starten",
       "changes": [
-        "Die sechs Würfel bleiben im mobilen LCARS-Dock klar sichtbar, auch vor dem ersten Wurf.",
-        "Ruhigere LCARS-Farben lassen Aktionen und Punktestand entspannter lesbar."
+        "Tippe im Bereit-Zustand einen der sechs Würfel an, um direkt zu würfeln.",
+        "Der neue fast schwarze Graphitton lässt den Spieltisch ruhiger wirken."
       ]
     },
     "en": {
-      "title": "Dice clearly in view",
+      "title": "Start with the dice",
       "changes": [
-        "All six dice stay clear in the mobile LCARS dock, including before the first roll.",
-        "Calmer LCARS colors make actions and scores easier on the eyes."
+        "When ready, tap any of the six dice to roll directly.",
+        "The new near-black graphite gives the game table a calmer feel."
       ]
     }
   }

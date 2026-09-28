@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.42.3**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.42.4**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.42.3 | 2026-09-28 | patch | LCARS-Würfel auf Handys klarer und Farben ruhiger / Clearer mobile LCARS dice and calmer colors | [b2493ea](https://github.com/Maetran/RollTheDice/commit/b2493ea1e249050442bb84ea3b00967d6f83a295) |
 | 2.42.2 | 2026-09-22 | patch | ZDWA-Spielregeln im Spiel wieder sichtbar / ZDWA rules visible again during games | [8d9186e](https://github.com/Maetran/RollTheDice/commit/8d9186e0d110d8a81fb50ab32bfee138dc5f7ea9) |
 | 2.42.1 | 2026-09-22 | patch | Übersichtliche Benutzerverwaltung mit Suche und klaren Aktionen / Clearer user management with search and grouped actions | [bfc265a](https://github.com/Maetran/RollTheDice/commit/bfc265ac104e6dbf549f4aa3d9fc874f1660f0b5) |
 | 2.42.0 | 2026-09-22 | minor | Zilch mit zufälligem Würfelwirt, klarer Punkte-Vorschau und besser lesbarem Spieltisch / Zilch with a random Dice Host, clear score preview and a more readable game table | [0704c6f](https://github.com/Maetran/RollTheDice/commit/0704c6f766ee98414a7778c11db32fb82015d733) |
