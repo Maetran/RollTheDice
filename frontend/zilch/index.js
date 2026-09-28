@@ -1649,7 +1649,7 @@ function abandonmentStatisticsMarkup(statistics) {
       <div><dt>ZDWA</dt><dd>${escapeHtml(number(zdwaGames))}</dd></div>
     </dl>
     <p class="zilch-muted">${escapeHtml(t("Abbrüche zählen nicht als abgeschlossene Spiele und verändern weder Punkte noch Rankings."))}</p>
-    <p class="zilch-muted">${escapeHtml(t("Nur selbst beendete, bereits gestartete Partien zählen. Timeouts, Verbindungsabbrüche und Abbrüche durch Mitspieler zählen nicht."))}</p>
+    <p class="zilch-muted">${escapeHtml(t("Nur selbst beendete Partien mit mindestens einem geschriebenen Wert zählen – auch 0, unabhängig davon, wer ihn eingetragen hat. Timeouts, Verbindungsabbrüche und Abbrüche durch Mitspieler zählen nicht."))}</p>
   </section>`;
 }
 
@@ -2901,14 +2901,14 @@ function personalBestMarkup(solo) {
 function renderSoloStatistics(statistics) {
   const solo = statisticsScope(statistics, "solo");
   if (!hasStatisticRecords(solo, ["runs", "saved_runs", "started_runs"])) {
-    return statisticsEmptyMarkup(t("Noch keine Solo-Läufe"), t("Starte einen Solo-Sprint, damit Fortschritt und Bestleistung hier erscheinen."));
+    return statisticsEmptyMarkup(t("Noch keine gewerteten Solo-Läufe"), t("Starte einen Solo-Sprint, damit Fortschritt und Bestleistung hier erscheinen."));
   }
   return `${statisticsSection({
     eyebrow: t("Solo"),
     title: t("Solo-Sprint"),
     description: t("Aufgegebene Läufe bleiben in deiner Historie, sind aber nicht für die Bestenliste qualifiziert."),
     entries: [
-      statisticEntry(t("Gespeicherte Läufe"), solo, ["saved_runs", "runs", "started_runs"]),
+      statisticEntry(t("Gewertete Läufe"), solo, ["saved_runs", "runs", "started_runs"]),
       statisticEntry(t("Abgeschlossen"), solo, ["completed", "completed_runs"]),
     ],
   })}${personalBestMarkup(solo)}`;
@@ -3450,7 +3450,7 @@ function renderRulesContent(facts) {
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Spielweise des Würfelwirts"))}</h2><p>${escapeHtml(t("Für jede neue Partie wird seine Spielweise zufällig ausgelost: Konservativ sichert ab 500 Punkten eher früh, Normal ab 600 Punkten solide Runden, Aggressiv jagt ab 700 Punkten größere Runden. Auch eine Revanche lost neu aus; laufende Partien behalten ihre Spielweise."))}</p><p>${escapeHtml(t("Alle drei würfeln fair nach denselben Regeln wie du. Bei wenigen freien Würfeln oder einem sicheren Sieg sichert der Würfelwirt früher."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Offline spielen"))}</h2><p>${escapeHtml(t("Offline spielst du solo oder gegen den Würfelwirt. Jeder Einstieg und der Rückweg zu Online-Spielen werden bestätigt. Spielstand und Bestwerte bleiben auf diesem Gerät; es gibt keine Erfolge, Ranglistenwertung oder Übertragung an dein Konto."))}</p><p>${escapeHtml(t("Spielstand und Bestwerte bleiben in diesem Browser. Öffne den Offline-Bereich einmal mit Internet, bis die Dateien bereit sind. Eine unterbrochene Online-Partie wird nicht automatisch zum Offline-Spiel."))}</p><a class="button-link small" href="${zilchPath("/offline-spielen")}">${escapeHtml(t("Offline spielen"))}</a></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Pause und Ablauf"))}</h2><p>${escapeHtml(t("Über Spiel verlassen pausierst du eine Partie bis zur angezeigten Frist oder beendest sie für alle ohne Ergebnis und kehrst zur Lobby zurück. Im Spiel bleiben schließt den Dialog; Zuschauer gehen direkt zur Lobby."))}</p><p>${escapeHtml(t("Bleibt am Tisch eine Stunde lang alles still – egal ob er wartet, läuft oder pausiert –, bricht der Wirt die Partie ab. Wer als Spieler oder Zuschauer noch verbunden ist, sieht den Hinweis und findet direkt zurück in die Lobby."))}</p></section>
-      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Selbst abgebrochene Partien"))}</h2><p>${escapeHtml(t("Wer eine gestartete Partie ausdrücklich abbricht, erhält dafür einen öffentlichen Abbruchzähler im Profil. Timeouts, Verbindungsabbrüche, abgesagte Warteräume und Abbrüche durch Mitspieler zählen nicht. Die Ergebniswertung bleibt unverändert."))}</p></section>
+      <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Selbst abgebrochene Partien"))}</h2><p>${escapeHtml(t("Ein selbst ausgelöster Abbruch zählt erst, wenn mindestens ein abgeschlossener Zug im Punktebuch steht. Auch ein Zilch mit 0 zählt; bloßes Würfeln oder Halten ohne Eintrag im Punktebuch genügt nicht. Nur das ausdrücklich abbrechende Konto erhält den öffentlichen Abbruchzähler im Profil. Timeouts, Verbindungsabbrüche, abgesagte Warteräume und Abbrüche durch Mitspieler zählen nicht. Die Ergebniswertung bleibt unverändert."))}</p></section>
       <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Zuschauen"))}</h2><p>${escapeHtml(t("Laufende Zwei-Personen-Partien werden in der Lobby mit beiden Spielern angezeigt. Über Zuschauen öffnest du eine Live-Ansicht; Würfeln, Halten und Sichern bleiben den beiden Teilnehmern vorbehalten."))}</p></section>
     </section>
     <section class="zilch-card zilch-rules-section"><h2>${escapeHtml(t("Start und Spielende"))}</h2><ol class="zilch-rule-steps"><li>${escapeHtml(t("Beide Teilnehmer würfeln zu Beginn einmal. Der höhere Wurf beginnt; Gleichstände werden wiederholt."))}</li><li>${escapeHtml(t("Erreicht ein Teilnehmer mindestens das Ziel, beginnt die Schlussrunde."))}</li><li>${escapeHtml(t("Der andere Teilnehmer spielt einen vollständigen normalen Gegenzug."))}</li><li>${escapeHtml(t("Danach gewinnt der höchste Gesamtstand. Bei Gleichstand gibt es keinen Stechwurf."))}</li></ol><p>${escapeHtml(t("Die Startwürfe erscheinen als kleine Würfel. Beide Ergebnisse bleiben kurz sichtbar, bevor das Spiel oder der nächste Startversuch beginnt."))}</p><p>${escapeHtml(t("Im LCARS-Punktebuch steht der aktive Verlauf oben. Unten bleibt der andere Spieler mit Name und Gesamtstand sichtbar; beim Zugwechsel gleitet sein Blatt nach oben. Der Würfelwirt lässt nach seinen Würfen kurz Zeit zum Lesen."))}</p><p>${escapeHtml(t("Am Spielende bleibt der letzte Wurf nach der Animation noch etwa eine Sekunde sichtbar. Danach öffnet sich dein Ergebnis. Dort startest du ein neues Solo oder eine Revanche oder kehrst zur Lobby zurück."))}</p><p class="zilch-muted">${escapeHtml(t("Wähle Würfel und entscheide dann: weiterwürfeln oder sichern."))}</p></section>

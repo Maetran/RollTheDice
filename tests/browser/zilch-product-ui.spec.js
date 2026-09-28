@@ -195,6 +195,9 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await expect(page.getByText(/Erreiche 10.?000 Punkte/)).toBeVisible();
   await expect(page.getByRole("heading", { name: /Spielweise des Würfelwirts|Dice keeper style/i })).toBeVisible();
   await expect(page.getByText(/Normal.*600 (?:Punkte|points).*700 (?:Punkte|points)/i)).toBeVisible();
+  const abandonmentRule = page.getByText("Ein selbst ausgelöster Abbruch zählt erst, wenn mindestens ein abgeschlossener Zug im Punktebuch steht.", { exact: false });
+  await expect(abandonmentRule).toBeVisible();
+  await expect(abandonmentRule).toContainText("Auch ein Zilch mit 0 zählt; bloßes Würfeln oder Halten ohne Eintrag im Punktebuch genügt nicht.");
   await expect(page.locator(".zilch-rule-facts")).toHaveCount(0);
   await page.setViewportSize({ width: 320, height: 844 });
   expect(await page.locator(".zilch-rule-table-wrap").evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
@@ -509,6 +512,9 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   await expect(page.getByRole("heading", { name: /zilch.*rules/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: /points/i })).toBeVisible();
   await expect(page.getByText(/Reach 10,000 points/)).toBeVisible();
+  const abandonmentRule = page.getByText("Ending a game yourself counts as an abandonment only after at least one completed turn has been recorded in the scorebook.", { exact: false });
+  await expect(abandonmentRule).toBeVisible();
+  await expect(abandonmentRule).toContainText("A zero-point Zilch also counts; rolling or holding dice without a scorebook entry is not enough.");
   await expect(page.getByRole("link", { name: /back to zilch lobby/i })).toHaveCount(0);
 
   // Restore the account preference so this file does not leak a language

@@ -22,7 +22,14 @@ from app.database import configure_database, session_scope, upgrade_database
 from app.game_ws_session import GameSocketSession
 from app.game_ws_social import _end_game
 from app.models import AbandonedGame, AbandonedGameParticipant, ActiveGame, CompletedGame, User
-from app.zilch_gameplay import apply_zilch_abandon_solo
+from app.zilch_engine import options_for_turn
+from app.zilch_gameplay import (
+    apply_zilch_abandon_solo,
+    apply_zilch_bank_points,
+    apply_zilch_roll_dice,
+    apply_zilch_select_hold,
+    apply_zilch_start_roll,
+)
 from app.zilch_results import finalize_zilch_result
 from app.zilch_state import (
     configure_zilch_solo_game,
@@ -72,11 +79,135 @@ class AbandonedGamePersistenceTestCase(TestCase):
             "_aborted": True,
             "_abort_reason": "manual",
             "_aborted_by_player_id": "account-seat",
+            "_scoreboards": {"account-seat": {"0,0": 1}},
             "_players": [
                 {"id": "account-seat", "name": "Anna", "user_id": user_id},
                 {"id": "guest-seat", "name": "Gast", "user_id": None},
             ],
         }
+
+    @staticmethod
+    def _solo_game(user_id: int, game_id: str) -> dict:
+        game = new_zilch_game(game_id, "Private Sprint", "1")
+        configure_zilch_solo_game(game, host_user_id=user_id)
+        join_zilch_player(game, {"id": "solo", "name": "Solo", "user_id": user_id, "ws": None})
+        start_zilch_game(game)
+        return game
+
+    @staticmethod
+    def _zilch_roll(game: dict, values: list[int]) -> None:
+        turn = current_zilch_turn(game)
+        dice = iter(values)
+        apply_zilch_roll_dice(
+            game, "solo", turn_id=turn.turn_id, version=turn.version,
+            randint_fn=lambda _low, _high: next(dice),
+        )
+
+    @staticmethod
+    def _zilch_hold(game: dict, points: int) -> None:
+        turn = current_zilch_turn(game)
+        option = next(option for option in options_for_turn(turn) if option.points == points)
+        apply_zilch_select_hold(
+            game, "solo", turn_id=turn.turn_id, version=turn.version,
+            roll_id=turn.roll_id, option_id=option.option_id,
+        )
+
+    def test_zdwa_first_roll_without_a_written_field_does_not_count(self) -> None:
+        user = create_user("BeforeWrite", "secure-password-123", must_change_password=False)
+        game = self._zdwa_game(user_id=user.id)
+        game.update({"_scoreboards": {"account-seat": {}}, "_dice": [1, 2, 3, 4, 5], "_rolls_used": 1})
+
+        result = persist_abandoned_game(game)
+
+        self.assertEqual((result.status, result.reason), ("skipped", "no_recorded_score"))
+        with session_scope() as db:
+            self.assertEqual(abandonment_statistics_for_user(db, user.id)["games"], 0)
+            self.assertEqual(len(list(db.scalars(select(AbandonedGame)))), 0)
+
+    def test_zdwa_zero_written_by_any_player_or_team_counts(self) -> None:
+        user = create_user("ZeroWrite", "secure-password-123", must_change_password=False)
+        for mode, boards_key, board_id in (
+            ("1", "_scoreboards", "account-seat"),
+            ("2", "_scoreboards", "guest-seat"),
+            ("2v2", "_scoreboards_by_team", "B"),
+        ):
+            with self.subTest(mode=mode):
+                game = self._zdwa_game(user_id=user.id)
+                game.update({"_id": f"zero-write-{mode}", "_mode": mode, "_scoreboards": {}})
+                game[boards_key] = {board_id: {"0,0": 0}}
+                self.assertEqual(persist_abandoned_game(game).status, "stored")
+        with session_scope() as db:
+            self.assertEqual(abandonment_statistics_for_user(db, user.id)["zdwa_games"], 3)
+
+    def test_accounted_terminal_state_cannot_recreate_a_reset_counter(self) -> None:
+        user = create_user("ResetCounter", "secure-password-123", must_change_password=False)
+        game = self._zdwa_game(user_id=user.id)
+        game["_abandonment_accounted"] = True
+
+        result = persist_abandoned_game(game)
+
+        self.assertEqual((result.status, result.reason), ("skipped", "already_accounted"))
+        with session_scope() as db:
+            self.assertEqual(len(list(db.scalars(select(AbandonedGame)))), 0)
+
+    def test_zilch_start_rolls_and_unbanked_holds_do_not_count(self) -> None:
+        user = create_user("Unbanked", "secure-password-123", must_change_password=False)
+        for stage in ("start", "roll", "hold"):
+            with self.subTest(stage=stage):
+                game = self._solo_game(user.id, f"unbanked-{stage}")
+                if stage != "start":
+                    self._zilch_roll(game, [5, 5, 5, 2, 3, 4])
+                if stage == "hold":
+                    self._zilch_hold(game, 500)
+                turn = current_zilch_turn(game)
+                apply_zilch_abandon_solo(game, "solo", turn_id=turn.turn_id, version=turn.version, confirmed=True)
+                result = persist_abandoned_game(game)
+                self.assertEqual((result.status, result.reason), ("skipped", "no_recorded_score"))
+        with session_scope() as db:
+            self.assertEqual(abandonment_statistics_for_user(db, user.id)["zilch_games"], 0)
+
+    def test_zilch_first_completed_zero_round_counts(self) -> None:
+        user = create_user("ZeroZilch", "secure-password-123", must_change_password=False)
+        game = self._solo_game(user.id, "zilch-zero-round")
+        self._zilch_roll(game, [5, 2, 3, 4, 6, 2])
+        self._zilch_hold(game, 50)
+        self._zilch_roll(game, [2, 3, 4, 6, 2])
+        self.assertEqual(game["_total_points"]["solo"], 0)
+        self.assertEqual(game["_zilch_boards"]["solo"]["rounds"][0]["event"], "zilch")
+        turn = current_zilch_turn(game)
+        apply_zilch_abandon_solo(game, "solo", turn_id=turn.turn_id, version=turn.version, confirmed=True)
+
+        self.assertEqual(persist_abandoned_game(game).status, "stored")
+        with session_scope() as db:
+            self.assertEqual(abandonment_statistics_for_user(db, user.id)["zilch_games"], 1)
+
+    def test_zilch_multiplayer_opening_rolls_do_not_count_as_written_values(self) -> None:
+        user = create_user("OpeningOnly", "secure-password-123", must_change_password=False)
+        game = new_zilch_game("zilch-opening-only", "Opening", "2")
+        join_zilch_player(game, {"id": "human", "name": "Human", "user_id": user.id, "ws": None})
+        join_zilch_player(game, {"id": "guest", "name": "Guest", "user_id": None, "ws": None})
+        start_zilch_game(game)
+        apply_zilch_start_roll(game, "human", start_roll_version=0, randint_fn=lambda _low, _high: 6)
+        apply_zilch_start_roll(game, "guest", start_roll_version=1, randint_fn=lambda _low, _high: 2)
+        game.update({"_aborted": True, "_abort_reason": "manual", "_aborted_by_player_id": "human"})
+
+        result = persist_abandoned_game(game)
+
+        self.assertEqual((result.status, result.reason), ("skipped", "no_recorded_score"))
+
+    def test_unscored_solo_abort_keeps_its_private_result_without_counting_an_abandonment(self) -> None:
+        user = create_user("EmptySolo", "secure-password-123", must_change_password=False)
+        game = self._solo_game(user.id, "unscored-solo-result")
+        turn = current_zilch_turn(game)
+        apply_zilch_abandon_solo(game, "solo", turn_id=turn.turn_id, version=turn.version, confirmed=True)
+        save_active_game(game)
+
+        self.assertTrue(finalize_zilch_result(game)["result_persisted"])
+        with session_scope() as db:
+            self.assertEqual(abandonment_statistics_for_user(db, user.id)["games"], 0)
+            self.assertEqual(len(list(db.scalars(select(AbandonedGame)))), 0)
+            self.assertEqual(len(list(db.scalars(select(CompletedGame)))), 1)
+            self.assertEqual(len(list(db.scalars(select(ActiveGame)))), 0)
 
     def test_started_game_stores_only_existing_account_participants(self) -> None:
         user = create_user("Anna", "secure-password-123", must_change_password=False)
@@ -140,14 +271,17 @@ class AbandonedGamePersistenceTestCase(TestCase):
                 {"id": "human", "type": "human", "user_id": user.id},
                 {"id": "cpu", "type": "cpu", "user_id": None},
             ],
+            "_zilch_boards": {"cpu": {"rounds": [{"event": "bank", "points": 500, "total_after": 500}]}},
         }
 
         result = persist_abandoned_game(game, aborted_by_player_id="cpu")
 
         self.assertEqual(result.status, "skipped")
+        self.assertEqual(result.reason, "no_account_initiator")
         with session_scope() as db:
             row = db.scalar(select(AbandonedGame).where(AbandonedGame.game_id == game["_id"]))
             self.assertIsNone(row)
+        self.assertEqual(persist_abandoned_game(game, aborted_by_player_id="human").status, "stored")
 
     def test_public_counts_exclude_timeouts_and_opponents(self) -> None:
         owner = create_user("Dora", "secure-password-123", must_change_password=False)
@@ -259,10 +393,11 @@ class AbandonedGamePersistenceTestCase(TestCase):
 
     def test_explicit_zilch_solo_abort_is_counted_once_without_exposing_private_result(self) -> None:
         user = create_user("Lara", "secure-password-123", must_change_password=False)
-        game = new_zilch_game("explicit-solo-abort", "Private Sprint", "1")
-        configure_zilch_solo_game(game, host_user_id=user.id)
-        join_zilch_player(game, {"id": "solo", "name": user.username, "user_id": user.id, "ws": None})
-        start_zilch_game(game)
+        game = self._solo_game(user.id, "explicit-solo-abort")
+        self._zilch_roll(game, [5, 5, 5, 2, 3, 4])
+        self._zilch_hold(game, 500)
+        turn = current_zilch_turn(game)
+        apply_zilch_bank_points(game, "solo", turn_id=turn.turn_id, version=turn.version)
         turn = current_zilch_turn(game)
         apply_zilch_abandon_solo(game, "solo", turn_id=turn.turn_id, version=turn.version, confirmed=True)
         save_active_game(game)

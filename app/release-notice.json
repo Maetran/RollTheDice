@@ -1,21 +1,23 @@
 {
   "kind": "usability",
-  "games": ["zilch"],
-  "summary_de": "Die LCARS-Buttons zum Würfeln und Sichern sind auf Handys schon beim Spielstart sichtbar.",
-  "summary_en": "LCARS Roll and Bank buttons are visible on phones from game start.",
+  "games": ["zdwa", "zilch"],
+  "summary_de": "Abbrüche zählen in beiden Spielen erst nach dem ersten Eintrag. Die bisherigen Abbruchzähler starten wieder bei null.",
+  "summary_en": "Abandonments count only after the first score entry in either game. Existing abandonment counters restart at zero.",
   "player_notes": {
     "de": {
-      "title": "Buttons sofort im Blick",
+      "title": "Abbrüche erst nach dem Anschreiben",
       "changes": [
-        "Starte den ersten Wurf direkt mit dem Würfeln-Button.",
-        "Würfeln und Sichern bleiben auch bei eingeblendeten Browserleisten sichtbar."
+        "Vor dem ersten ausgefüllten Feld oder abgeschlossenen Zug im Punktebuch erhöht ein Abbruch den Zähler nicht.",
+        "Auch ein geschriebener Wert von 0 zählt; bloßes Würfeln oder Halten reicht nicht.",
+        "Die bisherigen Abbruchzähler beider Spiele sind zurückgesetzt. Deine Spielstände und Ergebnisse bleiben erhalten."
       ]
     },
     "en": {
-      "title": "Buttons visible from the start",
+      "title": "Abandonments after the first entry",
       "changes": [
-        "Start the first roll directly with the Roll button.",
-        "Roll and Bank stay visible even with the browser bars open."
+        "Ending a game before the first filled field or completed scorebook turn does not increase the counter.",
+        "A written zero also counts; rolling or holding dice alone does not.",
+        "Existing abandonment counters for both games have been reset. Your scores and results are kept."
       ]
     }
   }

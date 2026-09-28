@@ -22,6 +22,25 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.42.6 — Abbrüche erst nach dem Anschreiben / Count abandonments after the first score entry — 2026-09-28
+
+**Deutsch:** In beiden Spielen zählt ein selbst ausgelöster Abbruch erst,
+wenn mindestens ein Teilnehmer einen Wert geschrieben hat. In ZDWA genügt
+ein ausgefülltes Feld; in Zilch zählt ein abgeschlossener Zug im Punktebuch.
+Auch ein Eintrag mit 0 oder ein Zilch ohne Punkte zählt. Bloßes Würfeln oder
+Halten ohne Eintrag reicht nicht. Alle bisherigen Abbruchzähler beider Spiele
+werden auf null zurückgesetzt. Spielstände, abgeschlossene Ergebnisse und
+private Solo-Historie bleiben erhalten. Stiller Rollout ohne Push- oder
+In-App-Versionsmeldung.
+
+**English:** In both games, an abandonment initiated by a player counts only
+after at least one participant has written a score. A filled field qualifies
+in ZDWA; in Zilch, a completed turn in the scorebook qualifies. A written zero
+or a zero-point Zilch also counts. Rolling or holding dice without a score
+entry is not enough. All existing abandonment counters for both games are
+reset to zero. Scores, completed results and private Solo history are kept.
+Silent rollout with no push or in-app release announcement.
+
 ## 2.42.5 — LCARS: Buttons sofort sichtbar / LCARS: Buttons visible from the start — 2026-09-28
 
 **Deutsch:** Auf Handys bleiben die Buttons zum Würfeln und Sichern im

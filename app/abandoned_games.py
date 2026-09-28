@@ -77,6 +77,34 @@ def _started_at(game: dict[str, Any]) -> datetime | None:
     return _timestamp(game.get("_started_at"))
 
 
+def has_recorded_score(game: dict[str, Any]) -> bool:
+    """Whether any player has written a field or completed a Zilch round.
+
+    A written zero is a score entry too. Opening rolls, ordinary rolls and
+    held Zilch points are not entries until they reach a durable score board.
+    """
+    if game_type_from_state(game) == ZILCH_GAME_TYPE:
+        boards = game.get("_zilch_boards")
+        if not isinstance(boards, dict):
+            return False
+        for board in boards.values():
+            rounds = board.get("rounds") if isinstance(board, dict) else None
+            if isinstance(rounds, list) and any(
+                isinstance(entry, dict)
+                and entry.get("event") in {"bank", "zilch"}
+                and type(entry.get("total_after")) is int
+                for entry in rounds
+            ):
+                return True
+        return False
+    board_key = "_scoreboards_by_team" if str(game.get("_mode")).lower() == "2v2" else "_scoreboards"
+    boards = game.get(board_key)
+    return isinstance(boards, dict) and any(
+        isinstance(board, dict) and any(type(value) is int for value in board.values())
+        for board in boards.values()
+    )
+
+
 def _abandoned_at(game: dict[str, Any], explicit: datetime | None) -> datetime:
     """Choose an authoritative terminal time, with a server-clock fallback."""
     if explicit is not None:
@@ -157,12 +185,13 @@ def persist_abandoned_game(
     aborted_by_player_id: object | None = None,
     abandoned_at: datetime | None = None,
 ) -> AbandonedGameWriteResult:
-    """Store one started, terminally aborted game exactly once.
+    """Store one scored, terminally aborted game exactly once.
 
     Callers pass the authoritative live state after marking it ``_aborted``.
-    A game without a start timestamp is deliberately skipped: a cancelled
-    lobby is not an abandoned played game.  Only existing account IDs become
-    participant rows; guest and CPU seats are never retained.
+    A game without a start timestamp or written score is deliberately
+    skipped: a cancelled lobby or untouched board is not an abandoned played
+    game. Only existing account IDs become participant rows; guest and CPU
+    seats are never retained.
     """
     game_id = str(game.get("_id") or "").strip()
     if not game_id or len(game_id) > 64:
@@ -171,6 +200,8 @@ def persist_abandoned_game(
         game_type = game_type_from_state(game)
     except ValueError:
         return AbandonedGameWriteResult("failed", game_id, None, reason="invalid_game_type")
+    if game.get("_abandonment_accounted") is True:
+        return AbandonedGameWriteResult("skipped", game_id, game_type, reason="already_accounted")
     # Configured Zilch Solo uses a typed private terminal result rather than
     # the generic room-abort flag. Only the explicit action writes this marker;
     # older result snapshots must never be guessed into the new public count.
@@ -193,6 +224,8 @@ def persist_abandoned_game(
     started_at = _started_at(game)
     if started_at is None:
         return AbandonedGameWriteResult("skipped", game_id, game_type, reason="game_not_started")
+    if not has_recorded_score(game):
+        return AbandonedGameWriteResult("skipped", game_id, game_type, reason="no_recorded_score")
     recorded_at = _abandoned_at(game, abandoned_at)
     if recorded_at < started_at:
         return AbandonedGameWriteResult("failed", game_id, game_type, reason="invalid_abandoned_at")

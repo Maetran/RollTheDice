@@ -1986,5 +1986,12 @@
     "date": "2026-09-28",
     "bump": "patch",
     "summary": "LCARS-Würfel als Roll-Controls und sanfteres Schwarz / LCARS dice roll controls and softer black"
+  },
+  {
+    "version": "2.42.5",
+    "revision": "a4dd86343da094b3cd52815e779173c9961f4cc3",
+    "date": "2026-09-28",
+    "bump": "patch",
+    "summary": "LCARS-Aktionsbuttons beim Spielstart sichtbar / LCARS action buttons visible at game start"
   }
 ]

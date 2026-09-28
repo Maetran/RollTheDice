@@ -602,7 +602,12 @@ Details: [account statistics and achievement lifecycle](docs/ACCOUNT_STATISTICS.
 Branch audit: [account security and Fairplay review](docs/ACCOUNT_SECURITY_REVIEW_2026-09-12.md).
 
 Public profiles show deliberately abandoned started games separately for ZDWA
-and Zilch. Only the account that explicitly ends the game receives the count.
+and Zilch. An abandonment counts only after any participant has written a
+score: a filled field in ZDWA or a completed turn in Zilch's scorebook. A
+written zero also counts, including a zero-point Zilch; rolling or holding
+dice alone does not. Only the account that explicitly ends the game receives
+the count. With v2.42.6, all existing abandonment counters for both games are
+reset to zero. Scores, completed results and private Solo history are kept.
 Timeouts, disconnections, waiting-room cancellations and opponents' aborts do
 not count. Scores and completed-game rankings remain based on finished games.
 Six ZDWA Fairplay reminders mark 1, 5 and 10 deliberate aborts, separately for
@@ -612,7 +617,7 @@ the app cannot reliably distinguish intent from a connection failure.
 
 The ZDWA lobby's **Wall of Shame**, below the score leaderboards, lists the
 three active accounts with the most self-initiated abandonments in the last
-ten days (a rolling 240 hours) and all time since tracking began. Normal and
+ten days (a rolling 240 hours) and all time since the counter reset in v2.42.6. Normal and
 Hardcore, Solo and multiplayer count together. Entries use account IDs and
 current names, so renaming an account keeps its counts and reusing an old name
 does not transfer them. Equal counts share a rank; a stable account-ID tie
@@ -620,8 +625,14 @@ break keeps each list to at most three accounts. The lists refresh with the
 existing leaderboards and show an empty state until there are eligible games.
 
 **Deutsch:** Öffentliche Profile zeigen selbst abgebrochene gestartete Partien
-getrennt für ZDWA und Zilch. Nur das ausdrücklich abbrechende Konto erhält den
-Zähler. Timeouts, Verbindungsabbrüche, abgesagte Warteräume und Abbrüche durch
+getrennt für ZDWA und Zilch. Ein Abbruch zählt erst, wenn ein Teilnehmer einen
+Wert geschrieben hat: ein ausgefülltes Feld in ZDWA oder ein abgeschlossener
+Zug in Zilchs Punktebuch. Auch eine eingetragene 0 zählt, einschließlich eines
+Zilchs ohne Punkte; bloßes Würfeln oder Halten genügt nicht. Nur das
+ausdrücklich abbrechende Konto erhält den Zähler. Mit v2.42.6 werden alle
+bisherigen Abbruchzähler beider Spiele auf null zurückgesetzt. Spielstände,
+abgeschlossene Ergebnisse und private Solo-Historie bleiben erhalten.
+Timeouts, Verbindungsabbrüche, abgesagte Warteräume und Abbrüche durch
 Mitspieler zählen nicht. Punkte und Ergebnisranglisten beruhen weiter auf
 abgeschlossenen Partien. Sechs ZDWA-Fairplay-Hinweise erinnern bei 1, 5 und 10
 Abbrüchen getrennt für Solo und Mehrspieler daran, Partien zu Ende zu spielen –
@@ -631,8 +642,8 @@ kann Absicht nicht sicher von einer Verbindungsstörung unterscheiden.
 
 Die **Wall of Shame** unter den Punkte-Bestenlisten der ZDWA-Lobby zeigt die
 drei aktiven Konten mit den meisten selbst ausgelösten Abbrüchen: in den
-letzten zehn Tagen (rollierende 240 Stunden) und insgesamt seit Beginn der
-Erfassung. Normal und Hardcore sowie Solo und Mehrspieler zählen zusammen.
+letzten zehn Tagen (rollierende 240 Stunden) und insgesamt seit dem Zurücksetzen
+der Zähler mit v2.42.6. Normal und Hardcore sowie Solo und Mehrspieler zählen zusammen.
 Die Zuordnung folgt dem Konto, angezeigt wird der aktuelle Name. Umbenennen
 erhält die eigenen Zähler; wer einen früheren Namen übernimmt, erbt sie nicht.
 Gleiche Abbruchzahlen teilen sich einen Rang. Die stabile Reihenfolge nach

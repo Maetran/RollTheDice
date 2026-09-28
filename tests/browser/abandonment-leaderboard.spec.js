@@ -124,6 +124,9 @@ const translations = {
     empty: "Noch keine selbst abgebrochenen Partien.",
     error: "Fehler beim Laden",
     lastTab: "Letzte 10 Spiele",
+    explanation: "Was zählt als Abbruch?",
+    scope: "Nur selbst ausgelöste Abbrüche von ZDWA-Partien mit mindestens einem ausgefüllten Feld zählen, auch bei 0 Punkten.",
+    reset: "Seit dem Zurücksetzen der Abbruchzähler mit Version 2.42.6.",
   },
   en: {
     subtitle: "Most games abandoned",
@@ -132,6 +135,9 @@ const translations = {
     empty: "No games abandoned by their players yet.",
     error: "Unable to load",
     lastTab: "Last 10 Games",
+    explanation: "What counts as an abandoned game?",
+    scope: "Only ZDWA games that players abandon themselves after at least one field has been filled count, including a zero-point entry.",
+    reset: "Since abandonment counters were reset with version 2.42.6.",
   },
 };
 
@@ -154,6 +160,11 @@ for (const [language, copy] of Object.entries(translations)) {
       await expect(section).not.toContainText("RecentFourth");
       await expect(section).not.toContainText("AlltimeFourth");
       await expect(section.locator("img, script, [onerror]")).toHaveCount(0);
+      const explanation = section.locator(".abandonment-explanation");
+      await explanation.locator("summary").filter({ hasText: copy.explanation }).click();
+      await expect(explanation.locator(".abandonment-scope")).toBeVisible();
+      await expect(explanation.locator(".abandonment-scope")).toContainText(copy.scope);
+      await expect(explanation.getByText(copy.reset, { exact: true })).toBeVisible();
       await expectFitsViewport(page);
       await section.screenshot({ path: `/tmp/rollthedice-abandonment-${language}-${width}.png` });
     });

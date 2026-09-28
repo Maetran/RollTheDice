@@ -5,8 +5,14 @@ const { test, expect } = require("@playwright/test");
 test.use({ serviceWorkers: "block" });
 
 for (const fixture of [
-  { language: "de", viewport: { width: 1440, height: 900 }, heading: "Zock die Wand an: Spielregeln" },
-  { language: "en", viewport: { width: 390, height: 844 }, heading: "Zock die Wand an: Game Rules" },
+  {
+    language: "de", viewport: { width: 1440, height: 900 }, heading: "Zock die Wand an: Spielregeln",
+    abandonmentRule: "Ein selbst ausgelöster Abbruch zählt erst, wenn mindestens ein Feld auf einem der Spielzettel ausgefüllt ist. Auch ein Eintrag mit 0 zählt.",
+  },
+  {
+    language: "en", viewport: { width: 390, height: 844 }, heading: "Zock die Wand an: Game Rules",
+    abandonmentRule: "Ending a game yourself counts as an abandonment only after at least one field on any player's score sheet has been filled. A written zero also counts.",
+  },
 ]) {
   test(`Zilch PWA keeps embedded ZDWA rules when opening and reopening in ${fixture.language}`, async ({ page, request, baseURL }, testInfo) => {
     const created = await request.post("/api/games", {
@@ -77,6 +83,7 @@ for (const fixture of [
         await expect(frame.getByRole("heading", { name: fixture.heading, exact: true })).toBeVisible();
         await expect(frame.locator("html")).toHaveAttribute("data-game", "zdwa");
         await expect(frame.locator("body")).toHaveClass(/embedded-rules/);
+        await expect(frame.locator("body")).toContainText(fixture.abandonmentRule);
         expect(await frame.locator("html").evaluate(() => location.href)).toBe(`${origin}/zdwa/regeln?embed=1`);
         if (opening === 0) await page.screenshot({ path: testInfo.outputPath(`zdwa-rules-bridge-${fixture.language}.png`) });
         await page.locator("#rulesSheetClose").click();

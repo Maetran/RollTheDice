@@ -15,17 +15,17 @@
   <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=ed4c74b046af">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=ed4c74b046af" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=ed4c74b046af" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=df8706812adf">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=df8706812adf" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=df8706812adf" sizes="180x180">
   <!--
     rules.html - Spielanleitung
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi sowie Desktop-/Mobilsteuerung.
   -->
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=ed4c74b046af" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=ed4c74b046af" />
+  <script src="/static/shell.js?v=df8706812adf" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=df8706812adf" />
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
     .doc { width:min(1120px, calc(100vw - 32px)); margin:1.25rem auto 2rem; }
@@ -143,8 +143,8 @@
     </ul>
 
     <h2>Selbst abgebrochene Partien</h2>
-    <p>Wer eine gestartete Partie ausdrücklich abbricht, erhält dafür einen öffentlichen Abbruchzähler im Profil. Timeouts, Verbindungsabbrüche, abgesagte Warteräume und Abbrüche durch Mitspieler zählen nicht. Die Ergebniswertung bleibt unverändert.</p>
-    <p>Die Wall of Shame in der Lobby zeigt die drei Konten mit den meisten selbst abgebrochenen ZDWA-Partien: in den letzten zehn Tagen (240 Stunden) und insgesamt seit Beginn der Erfassung. Normal und Hardcore sowie Solo und Mehrspieler zählen zusammen. Angezeigt werden aktuelle Namen aktiver Konten. Gleiche Abbruchzahlen teilen sich einen Rang; jede Liste zeigt höchstens drei Konten.</p>
+    <p>Ein selbst ausgelöster Abbruch zählt erst, wenn mindestens ein Feld auf einem der Spielzettel ausgefüllt ist. Auch ein Eintrag mit 0 zählt. Nur das ausdrücklich abbrechende Konto erhält den öffentlichen Abbruchzähler im Profil. Timeouts, Verbindungsabbrüche, abgesagte Warteräume und Abbrüche durch Mitspieler zählen nicht. Die Ergebniswertung bleibt unverändert.</p>
+    <p>Die Wall of Shame in der Lobby zeigt die drei Konten mit den meisten selbst abgebrochenen ZDWA-Partien: in den letzten zehn Tagen (240 Stunden) und insgesamt seit dem Zurücksetzen der Zähler mit Version 2.42.6. Normal und Hardcore sowie Solo und Mehrspieler zählen zusammen. Angezeigt werden aktuelle Namen aktiver Konten. Gleiche Abbruchzahlen teilen sich einen Rang; jede Liste zeigt höchstens drei Konten.</p>
     <p>Die Fairplay-Hinweise Offener Zettel und Vor dem Schluss erscheinen bei 1, 5 und 10 selbst abgebrochenen ZDWA-Partien, getrennt für Solo und Mehrspieler. Sie vergeben keine Ehrenberg-Marken: Auch ein unperfektes Spiel verdient ein Ende.</p>
 
     <h2>Erfolge &amp; Fortschritt</h2>

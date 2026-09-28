@@ -17,7 +17,7 @@ from app.auth import create_user
 from app.database import configure_database, session_scope, upgrade_database
 from app.game_history import delete_completed_game, persist_completed_game_result
 from app.game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE
-from app.models import CompletedGame, User, ZilchAchievementUnlock, ZilchCommunityParticipant
+from app.models import AbandonedGame, CompletedGame, User, ZilchAchievementUnlock, ZilchCommunityParticipant
 from app.zilch_achievements import (
     ZILCH_ACHIEVEMENT_DEFINITION_VERSION,
     ZILCH_ACHIEVEMENT_POINTS_POSSIBLE,
@@ -188,12 +188,12 @@ class ZilchStatisticsTestCase(TestCase):
         outcome: str = "completed",
     ) -> str:
         """Build a valid v2 Sprint terminal state with controlled metrics."""
-        self.assertGreaterEqual(turns, 1)
+        self.assertGreaterEqual(turns, 1 if outcome == "completed" else 0)
         self.assertGreaterEqual(rolls, turns)
         self.assertLessEqual(zilchs, turns - 1 if outcome == "completed" else turns)
         game_id = self._next_id("solo")
         participant_id = "solo-human"
-        total = 10_000 if outcome == "completed" else 500
+        total = 10_000 if outcome == "completed" else (500 if turns > zilchs else 0)
         rounds: list[dict] = []
         current_total = 0
         remaining_banks = max(1, turns - zilchs)
@@ -258,6 +258,9 @@ class ZilchStatisticsTestCase(TestCase):
             "_zilch_start_roll": None,
             "_zilch_final_round": None,
             "_zilch_outcome": {"status": outcome},
+            "_manual_solo_abandonment": outcome == "abandoned",
+            "_abort_reason": "manual" if outcome == "abandoned" else None,
+            "_aborted_by_player_id": participant_id if outcome == "abandoned" else None,
             "_zilch_solo_objective": {
                 "id": ZILCH_SOLO_SPRINT_OBJECTIVE_ID,
                 "version": ZILCH_SOLO_SPRINT_OBJECTIVE_VERSION,
@@ -330,6 +333,46 @@ class ZilchStatisticsTestCase(TestCase):
 
         self.assertEqual(statistics["overview"]["completed_records"], 2)
         self.assertEqual(statistics["multiplayer"]["games"], 2)
+
+    def test_unwritten_solo_abort_does_not_count_but_written_zero_does(self) -> None:
+        alice = self._user("FirstWrittenSolo")
+        self._persist_solo(user=alice, turns=0, rolls=0, outcome="abandoned")
+        self._persist_solo(user=alice, turns=0, rolls=1, outcome="abandoned")
+        statistics = get_zilch_personal_statistics(alice.id)
+        self.assertEqual(statistics["solo"]["abandoned"], 0)
+        self.assertEqual(statistics["solo"]["runs"], 0)
+        self.assertIsNone(statistics["solo"]["completion_rate"])
+
+        self._persist_solo(user=alice, turns=1, rolls=1, zilchs=1, outcome="abandoned")
+        statistics = get_zilch_personal_statistics(alice.id)
+        self.assertEqual(statistics["solo"]["abandoned"], 1)
+        self.assertEqual(statistics["solo"]["runs"], 1)
+        self.assertEqual(statistics["solo"]["completion_rate"], 0)
+
+    def test_abandonment_reset_preserves_solo_results_and_score_history(self) -> None:
+        alice = self._user("ResetSolo")
+        completed_id = self._persist_solo(user=alice, turns=2, rolls=3)
+        abandoned_id = self._persist_solo(user=alice, turns=1, rolls=2, outcome="abandoned")
+        before = get_zilch_personal_statistics(alice.id)
+        self.assertEqual(before["solo"]["abandoned"], 1)
+        with session_scope() as db:
+            original = dict(db.execute(select(CompletedGame.game_id, CompletedGame.snapshot_json)).all())
+            row = db.scalar(select(AbandonedGame).where(AbandonedGame.game_id == abandoned_id))
+            self.assertIsNotNone(row)
+            db.delete(row)
+        after = get_zilch_personal_statistics(alice.id)
+        self.assertEqual(after["solo"]["abandoned"], 0)
+        self.assertEqual(after["solo"]["completed"], 1)
+        self.assertEqual(after["solo"]["runs"], 1)
+        self.assertEqual(after["solo"]["completion_rate"], 1)
+        self.assertEqual(after["overview"], before["overview"])
+        self.assertEqual(after["solo"]["highest_banked_round"], before["solo"]["highest_banked_round"])
+        with session_scope() as db:
+            retained = dict(db.execute(select(CompletedGame.game_id, CompletedGame.snapshot_json)).all())
+        self.assertEqual(retained, original)
+        self.assertEqual(set(retained), {completed_id, abandoned_id})
+        self._persist_solo(user=alice, turns=1, rolls=1, outcome="abandoned")
+        self.assertEqual(get_zilch_personal_statistics(alice.id)["solo"]["abandoned"], 1)
 
     def test_personal_source_paging_does_not_skip_a_later_game_after_duplicate_account_seats(self) -> None:
         alice = self._user("DuplicateSeatAlice")

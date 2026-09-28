@@ -4,8 +4,10 @@ This module is intentionally separate from the established ZDWA statistics
 and legacy JSON leaderboard code.  Its only source of truth is a durable
 ``CompletedGame`` whose explicit ``game_type`` is ``zilch`` and whose result
 payload passes the Zilch result validator.  The achievement-points table is
-the one deliberate exception: it projects only the isolated Zilch unlock and
-registered-evidence tables, never ZDWA achievements.  This module otherwise
+one exception: it projects only the isolated Zilch unlock and registered-evidence
+tables, never ZDWA achievements. Abandoned Solo counts also require the shared
+abandonment ledger so resets and the first-written-score rule remain consistent.
+This module otherwise
 has no FastAPI, browser, live game, or scorecard dependencies.
 
 The current preview data set is deliberately calculated on read.  That keeps
@@ -28,6 +30,7 @@ from sqlalchemy.orm import selectinload
 from .database import database_schema_ready, session_scope
 from .game_types import ZILCH_GAME_TYPE
 from .models import (
+    AbandonedGame,
     CompletedGame,
     GameParticipant,
     User,
@@ -490,7 +493,22 @@ def _empty_solo_projection() -> dict[str, Any]:
     }
 
 
-def _solo_projection(records: Iterable[_PlayerResult]) -> dict[str, Any]:
+def _counted_solo_abandonments(user_id: int) -> frozenset[str]:
+    """Use the same resettable, score-qualified ledger as public counters."""
+    if not database_schema_ready():
+        return frozenset()
+    with session_scope() as db:
+        return frozenset(db.scalars(
+            select(AbandonedGame.game_id).where(
+                AbandonedGame.game_type == ZILCH_GAME_TYPE,
+                AbandonedGame.mode == "1",
+                AbandonedGame.reason == "manual",
+                AbandonedGame.aborted_by_user_id == user_id,
+            ).execution_options(yield_per=ZILCH_STATISTICS_SOURCE_PAGE_SIZE)
+        ))
+
+
+def _solo_projection(records: Iterable[_PlayerResult], counted_abandonments: frozenset[str]) -> dict[str, Any]:
     all_records: list[tuple[_PlayerResult, dict[str, int]]] = []
     for record in records:
         metrics = _solo_metrics(record)
@@ -507,8 +525,10 @@ def _solo_projection(records: Iterable[_PlayerResult]) -> dict[str, Any]:
     for record, metrics in all_records:
         if record.payload["outcome"].get("status") == "completed":
             completed.append((record, metrics))
-        else:
+        elif record.game_id in counted_abandonments:
             abandoned += 1
+        # Keep historical score/duration evidence intact when counters reset.
+        # Only the attempt counts and completion rate use the resettable ledger.
         banked_rounds.extend(_banked_round_values(record))
         hot_dice = _hot_dice_count(record)
         if hot_dice is None:
@@ -540,10 +560,10 @@ def _solo_projection(records: Iterable[_PlayerResult]) -> dict[str, Any]:
         else None
     )
     return {
-        "runs": len(all_records),
+        "runs": len(completed) + abandoned,
         "completed": len(completed),
         "abandoned": abandoned,
-        "completion_rate": _round_two(len(completed) / len(all_records)) if all_records else None,
+        "completion_rate": _round_two(len(completed) / (len(completed) + abandoned)) if completed or abandoned else None,
         "best_run": best_payload,
         "lowest_turns": min((metrics["turns"] for _record, metrics in completed), default=None),
         "lowest_rolls": min((metrics["rolls"] for _record, metrics in completed), default=None),
@@ -625,7 +645,7 @@ def get_zilch_personal_statistics(user_id: int) -> dict[str, Any]:
                 for strategy in sorted(ZILCH_CPU_STRATEGIES)
             },
         },
-        "solo": _solo_projection(records),
+        "solo": _solo_projection(records, _counted_solo_abandonments(clean_user_id)),
     }
 
 
