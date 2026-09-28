@@ -65,7 +65,7 @@ function unrolledSnapshot() {
   return snapshot;
 }
 
-async function installFixture(page) {
+async function installFixture(page, initial = gameSnapshot(), { standalone = true } = {}) {
   // Same isolated real-shell/socket seam as the notebook regression suite;
   // no production export or test hook is added to the application bundle.
   const gameId = "lcars-contrast-fixture";
@@ -103,9 +103,10 @@ async function installFixture(page) {
     }
     Object.assign(FixtureSocket, { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 });
     window.WebSocket = FixtureSocket;
-  }, { game: gameId, initial: gameSnapshot() });
+  }, { game: gameId, initial });
   await page.goto(`/zilch/spiel/${gameId}`);
-  await expect(page.locator("[data-zilch-board-id]")).toHaveCount(2);
+  await expect(page.locator("[data-zilch-board-id]")).toHaveCount(initial._participants.length);
+  if (!standalone) return;
   await page.evaluate(() => {
     const visit = rules => {
       for (const rule of rules) {
@@ -168,6 +169,69 @@ async function dieStyles(die, pseudo = null) {
       width: parseFloat(style.width), focusVisible: element.matches(":focus-visible"),
     };
   }, pseudo);
+}
+
+for (const browserName of ["chromium", "webkit"]) {
+  test.describe(`LCARS fresh start in ${browserName}`, () => {
+    for (const mode of ["solo", "cpu"]) {
+      for (const standalone of [false, true]) {
+        test(`${mode}, ${standalone ? "installed" : "browser"}: both action buttons are reachable before the first roll`, async ({ playwright, baseURL }, testInfo) => {
+          const { expectReachable } = require("./table-viewport");
+          const browser = await playwright[browserName].launch();
+          const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, serviceWorkers: "block" });
+          const page = await context.newPage();
+          try {
+            const initial = unrolledSnapshot();
+            initial._play_mode = mode;
+            if (mode === "solo") {
+              initial._participants = initial._participants.slice(0, 1);
+              initial._mode = "1";
+              initial._expected = initial._players_joined = 1;
+            }
+            for (const board of Object.values(initial._zilch_boards)) {
+              board.rounds = [];
+              board.total_points = board.round_points = 0;
+            }
+            initial._total_points = { p1: 0, p2: 0 };
+            initial._round_points = { p1: 0, p2: 0 };
+            await installFixture(page, initial, { standalone });
+            await expect(page.locator(".zilch-play-layout--no-choices")).toBeVisible();
+            await expectReachable(page, "[data-zilch-roll]");
+            await expectReachable(page, "[data-zilch-bank]");
+            // Desktop automation gives vh and dvh the same size. Mobile browser
+            // chrome can leave the large viewport 96px taller than the visible
+            // dynamic viewport. Apply that difference to shipped legacy units.
+            await page.evaluate(() => {
+              const visit = rules => {
+                for (const rule of rules) {
+                  if (rule.style) {
+                    for (const property of [...rule.style]) {
+                      const value = rule.style.getPropertyValue(property);
+                      if (/\b100vh\b/.test(value)) {
+                        rule.style.setProperty(property, value.replace(/\b100vh\b/g, "calc(100dvh + 96px)"), rule.style.getPropertyPriority(property));
+                      }
+                    }
+                  }
+                  if (rule.cssRules) visit(rule.cssRules);
+                }
+              };
+              for (const sheet of document.styleSheets) visit(sheet.cssRules);
+            });
+            for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }, { width: 844, height: 390 }]) {
+              await page.setViewportSize(viewport);
+              await expectReachable(page, "[data-zilch-roll]");
+              await expectReachable(page, "[data-zilch-bank]");
+              await page.screenshot({ path: testInfo.outputPath(`before-first-roll-${viewport.width}.png`) });
+            }
+            await expect(page.locator("[data-zilch-roll]")).toBeEnabled();
+            await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
+            await page.locator("[data-zilch-roll]").tap();
+            await expect.poll(() => page.evaluate(() => window.__contrastActions.filter(message => message.action === "zilch_roll_dice").length)).toBe(1);
+          } finally { await context.close(); await browser.close(); }
+        });
+      }
+    }
+  });
 }
 
 test("LCARS room frames and chat are subdued while score ink and flat CPU labels remain readable", async ({ browser, baseURL }, testInfo) => {

@@ -98,7 +98,8 @@ html[data-game="zilch"][data-theme="lcars"] {
 }
 
 html[data-game="zilch"][data-theme="lcars"] body {
-  min-height: 100vh;
+  /* Shared page/game rules own viewport sizing; 100vh here would override
+     the active table's dynamic height and push actions below mobile chrome. */
   color: var(--lcars-text);
   background: var(--lcars-void);
   font-family: var(--lcars-body);

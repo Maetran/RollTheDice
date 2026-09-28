@@ -22,6 +22,21 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.42.5 — LCARS: Buttons sofort sichtbar / LCARS: Buttons visible from the start — 2026-09-28
+
+**Deutsch:** Auf Handys bleiben die Buttons zum Würfeln und Sichern im
+LCARS-Design bereits beim Spielstart sichtbar, auch mit eingeblendeten
+Browserleisten. Eine zu große Mindesthöhe konnte sie zuvor unter den
+sichtbaren Bildschirmrand schieben. Der erste Wurf lässt sich wieder direkt
+über den Würfeln-Button starten. Stiller Rollout ohne Push- oder
+In-App-Versionsmeldung.
+
+**English:** On phones, the Roll and Bank buttons in LCARS are visible from
+game start, including with the browser bars open. An oversized minimum
+height could previously push them below the visible screen edge. The first
+roll can once again start directly with the Roll button. Silent rollout
+with no push or in-app release announcement.
+
 ## 2.42.4 — LCARS: Würfel zum Start antippen / LCARS: Tap dice to start — 2026-09-28
 
 **Deutsch:** Im Bereit-Zustand sind alle sechs LCARS-Würfel echte

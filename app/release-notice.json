@@ -1,21 +1,21 @@
 {
   "kind": "usability",
   "games": ["zilch"],
-  "summary_de": "LCARS-Würfel starten den Wurf direkt; das Schwarz ist jetzt sanfter.",
-  "summary_en": "LCARS dice now start a roll directly, with a softer near-black background.",
+  "summary_de": "Die LCARS-Buttons zum Würfeln und Sichern sind auf Handys schon beim Spielstart sichtbar.",
+  "summary_en": "LCARS Roll and Bank buttons are visible on phones from game start.",
   "player_notes": {
     "de": {
-      "title": "Mit den Würfeln starten",
+      "title": "Buttons sofort im Blick",
       "changes": [
-        "Tippe im Bereit-Zustand einen der sechs Würfel an, um direkt zu würfeln.",
-        "Der neue fast schwarze Graphitton lässt den Spieltisch ruhiger wirken."
+        "Starte den ersten Wurf direkt mit dem Würfeln-Button.",
+        "Würfeln und Sichern bleiben auch bei eingeblendeten Browserleisten sichtbar."
       ]
     },
     "en": {
-      "title": "Start with the dice",
+      "title": "Buttons visible from the start",
       "changes": [
-        "When ready, tap any of the six dice to roll directly.",
-        "The new near-black graphite gives the game table a calmer feel."
+        "Start the first roll directly with the Roll button.",
+        "Roll and Bank stay visible even with the browser bars open."
       ]
     }
   }

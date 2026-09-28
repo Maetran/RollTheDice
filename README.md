@@ -239,11 +239,15 @@ badges use flat LCARS colours with dark lettering. The near-black graphite backg
 layout and sliding score sheets are unchanged.
 LCARS now uses a calmer, lower-saturation console palette. On phones, each
 unrolled die is a clear roll control, so the six-die dock never reads as empty.
+The Roll and Bank buttons remain in the visible mobile viewport from game
+start, including while the browser's address and navigation bars are open.
 
 **Deutsch:** LCARS nutzt jetzt eine ruhigere, weniger gesättigte
 Konsolenpalette auf einer fast schwarzen Graphitfläche. Auf Handys ist jeder
 ungeworfene Würfel ein klar umrandeter Roll-Button, damit die Sechserleiste
-nicht leer wirkt.
+nicht leer wirkt. Die Buttons zum Würfeln und Sichern bleiben schon ab
+Spielstart im sichtbaren Handy-Bereich, auch bei eingeblendeter Adress- und
+Navigationsleiste des Browsers.
 Under **Account → Settings → Profile & sign-in → Change username**, enter a new name and
 confirm it with an existing passkey, or choose your current password as a fallback.
 Names follow the registration rules (3–32 characters) and

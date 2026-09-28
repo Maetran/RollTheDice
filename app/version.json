@@ -1,10 +1,10 @@
 {
-  "version": "2.42.4",
+  "version": "2.42.5",
   "bump": "patch",
   "date": "2026-09-28",
-  "previous_revision": "b2493ea1e249050442bb84ea3b00967d6f83a295",
+  "previous_revision": "642a1c9202c1b816217fd7678adf0f15ad0de1ba",
   "summary": {
-    "de": "LCARS-Würfel als Roll-Controls und sanfteres Schwarz",
-    "en": "LCARS dice roll controls and softer black"
+    "de": "LCARS-Aktionsbuttons beim Spielstart sichtbar",
+    "en": "LCARS action buttons visible at game start"
   }
 }
