@@ -7,6 +7,11 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
+      # Read-only host counters for the private dashboard; no Docker socket.
+      - /proc/stat:/host/proc/stat:ro
+      - /proc/meminfo:/host/proc/meminfo:ro
+      - /proc/uptime:/host/proc/uptime:ro
+      - /proc/loadavg:/host/proc/loadavg:ro
     environment:
       ROLLTHEDICE_ADMIN_USERNAME: ${ROLLTHEDICE_ADMIN_USERNAME:-}
       ROLLTHEDICE_ADMIN_PASSWORD: ${ROLLTHEDICE_ADMIN_PASSWORD:-}

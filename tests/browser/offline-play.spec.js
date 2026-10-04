@@ -216,13 +216,19 @@ for (const product of ["zdwa", "zilch"]) {
 }
 
 test("Zilch CPU turns run locally and return reachable controls to the player", async ({ browser, baseURL }) => {
-  const context = await browserContext(browser, baseURL, { product:"zilch", dice:[6, 1, 6, 6, 6, 2, 3, 4, 6, 6, 6, 2, 3, 4] });
+  // First draw selects the normal CPU strategy; the next two decide who starts.
+  // Each subsequent six-die roll scores 600, which normal strategy banks.
+  const context = await browserContext(browser, baseURL, { product:"zilch", dice:[2, 6, 1, 6, 6, 6, 2, 3, 4, 6, 6, 6, 2, 3, 4] });
   const page = await context.newPage();
   const traffic = networkAudit(page);
   try {
     await page.goto(entry("zilch"));
     await page.locator("#practiceMode").selectOption("cpu");
     await begin(page);
+    const initial = (await state(page, "zilch")).session.data;
+    expect(initial.strategy).toBe("normal");
+    expect(initial.startRolls).toEqual([{ you:6, cpu:1 }]);
+    expect(initial.turn.player_id).toBe("you");
     await context.setOffline(true);
     await page.locator('[data-action="roll"]').click();
     await page.locator('[data-action="select"]', { hasText:"600 Punkte" }).click();
@@ -263,7 +269,8 @@ test("Zilch quick-hold choices remain editable until banking commits the selecte
 });
 
 test("hidden local CPU games pause their timers and resume without contacting an account", async ({ browser, baseURL }) => {
-  const context = await browserContext(browser, baseURL, { product:"zilch", dice:[1, 6, 6, 6, 6, 2, 3, 4] });
+  // Normal strategy, CPU wins the start roll, then rolls exactly three sixes.
+  const context = await browserContext(browser, baseURL, { product:"zilch", dice:[2, 1, 6, 6, 6, 6, 2, 3, 4] });
   const page = await context.newPage();
   const traffic = networkAudit(page);
   try {
@@ -271,6 +278,10 @@ test("hidden local CPU games pause their timers and resume without contacting an
     await page.goto(entry("zilch"));
     await page.locator("#practiceMode").selectOption("cpu");
     await begin(page);
+    const initial = (await state(page, "zilch")).session.data;
+    expect(initial.strategy).toBe("normal");
+    expect(initial.startRolls).toEqual([{ you:1, cpu:6 }]);
+    expect(initial.turn.player_id).toBe("cpu");
     await context.setOffline(true);
     await page.evaluate(() => {
       Object.defineProperty(document, "hidden", { configurable:true, get:() => true });

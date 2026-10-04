@@ -91,6 +91,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="user")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Explicit founder-managed dashboard capability, independent of staff roles.
+    analytics_access: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     announce_selection_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="overlay")
     auto_write_announced: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

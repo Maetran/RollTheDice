@@ -75,6 +75,7 @@ class AuthIdentity:
     achievement_rank: dict
     is_owner: bool = False
     is_founder: bool = False
+    analytics_access: bool = False
 
     @property
     def is_admin(self) -> bool:
@@ -92,6 +93,8 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
         "is_admin": identity.is_admin,
         "is_owner": identity.is_owner,
         "is_founder": identity.is_founder,
+        "analytics_access": identity.analytics_access,
+        "can_view_analytics": identity.is_founder or identity.analytics_access,
         "bans": account_bans(identity.user_id),
         # The browser receives a capability calculated by the same policy the
         # HTTP and WebSocket layers use; it never decides access from a name.
@@ -151,6 +154,7 @@ def _identity_for_user(db, user: User, login_session: LoginSession) -> AuthIdent
         csrf_token=login_session.csrf_token,
         session_id=login_session.id,
         achievement_rank=_achievement_rank_for_user(db, user.id),
+        analytics_access=user.analytics_access,
         **ownership_flags(db, user.id),
     )
 

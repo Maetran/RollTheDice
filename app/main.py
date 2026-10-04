@@ -21,8 +21,11 @@ from .abandoned_games import persist_abandoned_game
 from .achievement_feed import AchievementDifficulty, list_zilch_achievement_feed
 from .achievements import sync_achievements_for_users
 from .active_games import delete_active_game, load_active_games, save_active_game
+from .analytics import configure_analytics_runtime, record_game_action, start_analytics, stop_analytics
 from .api_admin_help import router as admin_help_router
 from .api_allowlist import router as allowlist_router
+from .api_analytics import require_analytics
+from .api_analytics import router as analytics_router
 from .api_auth import router as auth_router
 from .api_avatars import router as avatars_router
 from .api_engagement import router as engagement_router
@@ -450,6 +453,7 @@ async def lifespan(_app: FastAPI):
     from .admin_help import run_admin_help_scheduler
 
     admin_help_scheduler = asyncio.create_task(run_admin_help_scheduler(reminder_stop), name="admin-help")
+    owns_analytics = await start_analytics()
     try:
         yield
     finally:
@@ -465,6 +469,8 @@ async def lifespan(_app: FastAPI):
                              admin_help_scheduler, return_exceptions=True)
         await stop_cpu_runners()
         await shutdown_friend_activity()
+        if owns_analytics:
+            await stop_analytics()
 
 
 app = FastAPI(lifespan=lifespan, version=current_version())
@@ -480,6 +486,7 @@ app.include_router(friend_activity_router)
 app.include_router(users_router)
 app.include_router(admin_help_router)
 app.include_router(moderation_router)
+app.include_router(analytics_router)
 
 LEGACY_PAGE_PATHS = {
     "/static/index.html": "/",
@@ -488,6 +495,7 @@ LEGACY_PAGE_PATHS = {
     "/static/ranks.html": "/rangabzeichen",
     "/static/account.html": "/konto",
     "/static/admin.html": "/admin",
+    "/static/dashboard.html": "/admin/dashboard",
     "/static/offline.html": "/offline",
 }
 
@@ -538,12 +546,18 @@ async def response_cache_policy(request: Request, call_next):
     # ``zilch.html`` is an implementation artifact used by the protected
     # routes below.  Unlike public static assets, it must never become a
     # second, unauthenticated page entry point through the static mount.
+    if request.url.path == "/static/dashboard.html":
+        return RedirectResponse(
+            "/admin/dashboard", status_code=308,
+            headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"},
+        )
     if request.url.path in {
         "/static/zilch.html",
         "/static/zilch-login.html",
         "/static/zilch-lobby.html",
         "/static/zilch-rules.html",
         "/static/offline-play.html",
+        "/static/dashboard-denied.html",
     }:
         headers = {"Cache-Control": "no-store"}
         if zilch_host:
@@ -888,6 +902,24 @@ def admin_page(request: Request):
     if is_zilch_host(request):
         return RedirectResponse(f"{site_origin()}/admin", status_code=308)
     return _page("admin.html")
+
+
+@app.get("/admin/dashboard", include_in_schema=False)
+def analytics_dashboard_page(request: Request):
+    private_headers = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
+    if is_zilch_host(request):
+        return RedirectResponse(f"{site_origin()}/admin/dashboard", status_code=308, headers=private_headers)
+    if resolve_session(request) is None:
+        return RedirectResponse(
+            "/zilch/anmelden?return_to=%2Fadmin%2Fdashboard", status_code=303, headers=private_headers,
+        )
+    try:
+        require_analytics(request)
+    except HTTPException as exc:
+        if exc.status_code != 403:
+            raise
+        return FileResponse(STATIC_DIR / "dashboard-denied.html", status_code=403, headers=private_headers)
+    return FileResponse(STATIC_DIR / "dashboard.html", headers=private_headers)
 
 
 @app.get("/spiel/{game_id}", include_in_schema=False)
@@ -1338,6 +1370,16 @@ def health() -> dict[str, str]:
 presence_connections: dict[str, int] = {}
 websocket_connections_by_address: dict[str, int] = {}
 lobby_chat_hub = LobbyChatHub()
+
+
+def _analytics_runtime() -> dict:
+    return {
+        "active_rooms": sum(1 for game in games.values() if not game.get("_finished") and not game.get("_aborted")),
+        "players_online": len(presence_connections),
+    }
+
+
+configure_analytics_runtime(_analytics_runtime)
 
 
 def _positive_int_setting(name: str, default: int) -> int:
@@ -2163,6 +2205,8 @@ async def api_games_create(req: CreateReq, request: Request):
     g["_passphrase"] = req.passphrase or None
     g["_hardcore"] = bool(req.hardcore or False)
     save_active_game(g)
+    record_game_action(req.game_type, "game_created", mode=(req.play_mode if req.game_type == ZILCH_GAME_TYPE
+                                                          else "hardcore" if g["_hardcore"] else req.mode))
     response: dict[str, str] = {"game_id": gid}
     if guest_host_token:
         response["host_token"] = guest_host_token

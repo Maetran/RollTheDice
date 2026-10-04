@@ -2604,6 +2604,7 @@ async function renderAccount() {
   state.accountTab = state.auth?.user?.must_change_password
     ? "settings" : normalizedZilchAccountTab(window.location.hash);
   content.innerHTML = `<section class="zilch-game-head zilch-account-head">
+      ${state.auth?.user?.can_view_analytics ? `<a class="button-link small ghost" href="/admin/dashboard">${escapeHtml(t("Mission Control"))}</a>` : ""}
       <div><p class="eyebrow">${escapeHtml(t("Mein Zilch-Konto"))}</p><div class="zilch-account-head__identity">${avatarMarkup(state.auth?.user, { size: "large" })}<h1>${escapeHtml(username)}</h1><span id="zilchAccountRank" class="zilch-account-head__rank" aria-live="polite"></span>${adminProfileMarkup(state.auth?.user)}</div><p>${escapeHtml(t("Hier warten deine privaten Zilch-Zahlen und Awards."))}</p></div>
     </section>
     <div data-account-bans role="note" hidden></div>

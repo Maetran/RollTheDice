@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="de" data-game="zdwa" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <title>RollTheDice – Mission Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Privates Dashboard für Besucher, Spielaktivität und Serverzustand von RollTheDice.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#080d16">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=3bc05b4de9a0" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=3bc05b4de9a0" sizes="180x180">
+  <link rel="stylesheet" href="/static/dashboard.css?v=3bc05b4de9a0">
+  <script src="/static/dashboard.js?v=3bc05b4de9a0" type="module"></script>
+</head>
+<body class="mission-control">
+  <a class="skip-link" href="#dashboardMain">Zum Dashboard springen</a>
+  <div class="dashboard-shell">
+    <header class="mission-nav">
+      <a class="mission-brand" href="/" aria-label="Zur Lobby"><svg viewBox="0 0 36 36" aria-hidden="true"><rect x="6" y="6" width="24" height="24" rx="6" transform="rotate(-10 18 18)"/><circle cx="12" cy="12" r="2"/><circle cx="24" cy="12" r="2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="24" r="2"/><circle cx="24" cy="24" r="2"/></svg><span>ROLLTHE<span class="brand-dice">DICE</span><small>MISSION CONTROL</small></span></a>
+      <nav class="mission-sections" aria-label="Dashboard-Bereiche"><a href="#traffic">Besucher</a><a href="#games">Spiele</a><a href="#server">Server</a></nav>
+      <div class="mission-tools"><label class="language-tool"><span class="sr-only">Sprache</span><select data-language-switcher aria-label="Sprache"><option value="de">DE</option><option value="en">EN</option></select></label><a class="account-link" href="/konto">Zum Konto <span aria-hidden="true">↗</span></a></div>
+    </header>
+    <main id="dashboardMain">
+      <section class="mission-hero" aria-labelledby="missionTitle">
+        <div class="hero-copy"><p class="eyebrow"><span class="signal-dot" aria-hidden="true"></span>PRIVATE TELEMETRIE <span class="eyebrow-divider">/</span> ZDWA + ZILCH</p><h1 id="missionTitle">Dein Blick hinter<br>die Würfel<span class="title-dot">.</span></h1><p class="hero-description">Was die Spieler bewegt. Was dein Server leistet.</p></div>
+        <div class="hero-status"><div class="radar" aria-hidden="true"><span class="radar-ring"></span><span class="radar-ring"></span><span class="radar-ring"></span><span class="radar-core">◈</span><i></i></div><div class="connection-status"><span class="signal-dot" id="connectionDot" aria-hidden="true"></span><span id="connectionLabel">Verbindung wird aufgebaut …</span><small id="lastUpdated">Live-Daten werden geladen</small></div></div>
+      </section>
+      <form class="telemetry-toolbar" id="dashboardFilters" aria-label="Dashboard filtern">
+        <div class="filter-group"><label for="dashboardDays">Zeitraum (UTC)</label><select id="dashboardDays"><option value="1">Heute (UTC)</option><option value="7" selected>7 Tage</option><option value="30">30 Tage</option><option value="90">90 Tage</option></select><label for="dashboardGame">Spiel filtern</label><select id="dashboardGame"><option value="all">Beide Spiele</option><option value="zdwa">ZDWA</option><option value="zilch">Zilch</option></select></div>
+        <div class="refresh-group"><span>Alle 30 Sekunden</span><button class="refresh-button" id="dashboardRefresh" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6.2 7a7 7 0 0 1 11.6-1L20 12M4 12l2.2 6A7 7 0 0 0 18 17"/></svg><span>Aktualisieren</span></button></div>
+      </form>
+      <div class="dashboard-message" id="dashboardMessage" role="status" hidden><p id="dashboardMessageText"></p><button id="dashboardRetry" type="button">Erneut versuchen</button><a id="dashboardLogin" href="/zilch/anmelden?return_to=%2Fadmin%2Fdashboard" hidden>Anmelden</a></div>
+      <div id="dashboardData" aria-busy="true">
+        <section class="metric-grid" aria-label="Kennzahlen" id="overviewMetrics"></section>
+        <section id="traffic" class="dashboard-section" aria-labelledby="trafficTitle"><div class="section-heading"><div><p class="eyebrow">01 / VERKEHR</p><h2 id="trafficTitle">Jeder Besuch erzählt etwas.</h2></div><span class="section-caption">Browser-Telemetrie</span></div>
+          <div class="traffic-grid"><article class="panel traffic-panel"><header class="panel-heading"><div><h3>Besuche &amp; Seitenaufrufe</h3><p>Der Puls deiner Seite</p></div><div class="chart-legend"><span><i class="legend-dot cyan"></i>Besuche</span><span><i class="legend-dot amber"></i>Seitenaufrufe</span></div></header><div class="daily-chart" id="dailyChart"></div><details class="chart-data"><summary>Diagrammdaten</summary><div id="dailyTable"></div></details></article><article class="panel time-panel"><header class="panel-heading"><div><h3>Wann kommen sie?</h3><p>Seitenaktivität nach UTC-Stunde</p></div><span class="panel-code" aria-hidden="true">UTC / 24H</span></header><div id="hourlyChart" class="hourly-chart"></div><p class="panel-footnote">Die Balken zeigen Seitenaufrufe, keine gestarteten Partien.</p></article></div>
+          <div class="origin-grid"><article class="panel"><header class="panel-heading"><div><h3>Woher kommen sie?</h3><p>Einstiegsquellen der Besuche</p></div><span class="panel-symbol" aria-hidden="true">↗</span></header><div id="referrerRanks"></div></article><article class="panel"><header class="panel-heading"><div><h3>Ihre Geräte</h3><p>So wird deine Seite geöffnet</p></div><span class="panel-symbol" aria-hidden="true">⌘</span></header><div id="deviceRanks"></div></article><article class="panel"><header class="panel-heading"><div><h3>Länder</h3><p>Grobe Herkunft, wenn verfügbar</p></div><span class="panel-symbol" aria-hidden="true">◎</span></header><div id="countryRanks"></div><p class="panel-footnote" id="countryNote"></p></article></div>
+          <article class="panel pages-panel"><header class="panel-heading"><div><h3>Wo bleiben sie hängen?</h3><p>Seitenaufrufe und aktiv sichtbare Zeit</p></div><span class="panel-code" aria-hidden="true">PAGE / ENGAGEMENT</span></header><div id="pageRanks"></div></article>
+        </section>
+        <section id="games" class="dashboard-section" aria-labelledby="gamesTitle"><div class="section-heading"><div><p class="eyebrow">02 / SPIELSIGNAL</p><h2 id="gamesTitle">Vom Klick zur Partie.</h2></div><span class="section-caption">ZDWA + ZILCH</span></div><div class="game-grid"><article class="panel"><header class="panel-heading"><div><h3>Abgeschlossene Partien</h3><p>Gespeicherte Ergebnisse im gewählten Zeitraum</p></div><span class="panel-symbol" aria-hidden="true">⚄</span></header><div id="gameCards" class="game-cards"></div><div id="gameModes" class="game-modes"></div><p class="panel-footnote">Spielergebnisse können älter als die Besuchsmessung sein. Teilnahmen zählen pro Partie, einschließlich Würfelwirt, nicht als eindeutige Personen.</p><p class="panel-footnote">Partiedauer berücksichtigt nur Ergebnisse mit bekannter Dauer; bei vielen Spielen die neuesten 2.000 Ergebnisse.</p></article><article class="panel"><header class="panel-heading"><div><h3>Was klicken sie?</h3><p>Bedienaktionen im gewählten Zeitraum</p></div><span class="panel-symbol" aria-hidden="true">⌁</span></header><div id="actionRanks"></div><p class="panel-footnote">Offline-Partien bleiben lokal und werden nicht gemessen.</p></article></div></section>
+        <section id="server" class="dashboard-section" aria-labelledby="serverTitle"><div class="section-heading"><div><p class="eyebrow">03 / MASCHINENRAUM</p><h2 id="serverTitle">Der Motor hinter dem Spiel.</h2></div><span class="section-caption">Live-Serverzustand</span></div><article class="panel server-panel"><div id="serverGauges" class="server-gauges"></div><div id="serverVitals" class="server-vitals"></div><p class="panel-footnote" id="serverNote"></p></article></section>
+        <footer class="telemetry-footer"><div><span class="signal-dot" aria-hidden="true"></span><span id="collectionNote">Die Besuchsmessung beginnt mit diesem Release.</span></div><p>Besuche sind anonyme Browser-Tab-Sitzungen, keine eindeutigen Personen. Verweildauer zählt nur aktiv sichtbare Zeit.</p><p>Keine IP-Adressen, Namen, Texteingaben oder vollständigen Herkunfts-URLs in der Telemetrie. Messwerte bleiben höchstens 90 Tage oder 200.000 Ereignisse erhalten.</p><p id="queueNote" hidden></p></footer>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

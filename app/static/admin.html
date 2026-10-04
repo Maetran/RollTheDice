@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Geschützter Administrationsbereich von ZDWA.">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="manifest" href="/manifest.webmanifest?v=df8706812adf">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=df8706812adf" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=df8706812adf" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=3bc05b4de9a0">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=3bc05b4de9a0" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=3bc05b4de9a0" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=df8706812adf">
-  <script src="/static/shell.js?v=df8706812adf" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=3bc05b4de9a0">
+  <script src="/static/shell.js?v=3bc05b4de9a0" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
@@ -27,6 +27,11 @@
       <h1>Adminbereich</h1>
       <p class="muted">Wähle einen Bereich aus. Es bleibt immer nur eine Kachel geöffnet.</p>
       <div class="admin-module-grid">
+        <a id="analyticsDashboardLink" class="admin-module-tile" href="/admin/dashboard" hidden>
+          <span class="admin-module-icon" aria-hidden="true">◈</span>
+          <span class="admin-module-copy"><strong>Mission Control</strong><small>Besucher, Spiele und Server im Blick</small></span>
+          <span class="admin-module-chevron" aria-hidden="true">↗</span>
+        </a>
         <button class="admin-module-tile" type="button" data-admin-panel="usersPanel" aria-controls="usersPanel" aria-expanded="false">
           <span class="admin-module-icon" aria-hidden="true">👥</span>
           <span class="admin-module-copy"><strong>Benutzerverwaltung</strong><small>Accounts, Rollen und Passwörter</small></span>
@@ -97,16 +102,17 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=df8706812adf';
+    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=3bc05b4de9a0';
     const auth = await loadAuth();
     if (!auth?.user?.is_admin) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
+    document.getElementById('analyticsDashboardLink').hidden = !auth?.user?.can_view_analytics;
     const usersBody = document.getElementById('usersBody');
     const message = document.getElementById('adminMessage');
     const assignmentList = document.getElementById('assignmentList');
     const completedGameList = document.getElementById('completedGameList');
     const deletedGameList = document.getElementById('deletedGameList');
     const adminPanels = [...document.querySelectorAll('.admin-panel')];
-    const adminTiles = [...document.querySelectorAll('.admin-module-tile')];
+    const adminTiles = [...document.querySelectorAll('[data-admin-panel]')];
     let users = [];
     const userQuery = document.getElementById('userQuery');
     const userListStatus = document.getElementById('userListStatus');
@@ -158,7 +164,12 @@
       const ownership = viewer.is_founder && !user.is_founder && (user.role === 'admin' || user.is_owner)
         ? `<button type="button" class="small ghost" data-ownership="${user.is_owner ? 'revoke' : 'grant'}"${restrictionAttributes(user.is_owner ? rights.can_revoke_owner : rights.can_grant_owner, t('Owner-Rechte sind nur für aktive Admin-Konten ohne Sperren oder Chat-Einschränkungen möglich.'))}>${escapeHtml(t(user.is_owner ? 'Owner-Rechte entziehen' : 'Owner ernennen'))}</button>`
         : '';
-      return `<div class="form-stack"><label>${escapeHtml(t('Rolle'))}<select class="role-select" data-focus-key="role"${restrictionAttributes(rights.can_change_role, protectedReason(user, 'role'))}><option value="user" ${user.role === 'user' ? 'selected' : ''}>${escapeHtml(t('Benutzer'))}</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>${escapeHtml(t('Admin'))}</option></select></label><p class="muted small">${escapeHtml(rights.can_change_role ? t('Rollenänderungen werden direkt gespeichert.') : protectedReason(user, 'role'))}</p>${ownership}</div>`;
+      const analytics = viewer.is_founder
+        ? user.is_founder
+          ? `<p class="muted small">${escapeHtml(t('Der Gründer hat dauerhaft Dashboard-Zugriff.'))}</p>`
+          : `<button type="button" class="small ghost" data-analytics-access="${user.analytics_access ? 'revoke' : 'grant'}" aria-pressed="${Boolean(user.analytics_access)}">${escapeHtml(t(user.analytics_access ? 'Dashboard-Zugriff entziehen' : 'Dashboard-Zugriff erlauben'))}</button><p class="muted small">${escapeHtml(t('Nur der Gründer vergibt diesen Zugang. Er erlaubt das Lesen von Besucher-, Spiel- und Serverstatistiken.'))}</p>`
+        : `<p class="muted small">${escapeHtml(t(user.analytics_access ? 'Dashboard-Zugriff erlaubt' : 'Kein Dashboard-Zugriff'))}</p>`;
+      return `<div class="form-stack"><label>${escapeHtml(t('Rolle'))}<select class="role-select" data-focus-key="role"${restrictionAttributes(rights.can_change_role, protectedReason(user, 'role'))}><option value="user" ${user.role === 'user' ? 'selected' : ''}>${escapeHtml(t('Benutzer'))}</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>${escapeHtml(t('Admin'))}</option></select></label><p class="muted small">${escapeHtml(rights.can_change_role ? t('Rollenänderungen werden direkt gespeichert.') : protectedReason(user, 'role'))}</p>${ownership}${analytics}</div>`;
     }
 
     function syncViewerControls() {
@@ -514,6 +525,20 @@
       const clicked = event.target.closest('button');
       if (!clicked || clicked.disabled || !user) return;
       if (clicked.matches('[data-close-user]')) { row.open = false; row.querySelector('summary').focus(); return; }
+      const analytics = clicked.closest('[data-analytics-access]');
+      if (analytics) {
+        const enabled = analytics.dataset.analyticsAccess === 'grant';
+        await runUserAction(userId, async () => {
+          const response = await apiFetch(`/api/admin/users/${userId}/analytics-access`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }),
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(managementError(data.detail));
+          await loadUsers();
+          userFeedback(t(enabled ? 'Dashboard-Zugriff wurde erlaubt.' : 'Dashboard-Zugriff wurde entzogen.'), userId);
+        }, '[data-analytics-access]');
+        return;
+      }
       const ownership = event.target.closest('[data-ownership]');
       if (ownership) {
         const revoke = ownership.dataset.ownership === 'revoke';

@@ -19,7 +19,7 @@ PRE_TYPED_RESULTS_REVISION = "20260902_0015"
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20260928_0048"
+LATEST_SCHEMA_REVISION = "20261004_0049"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -70,6 +70,7 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
             "password_hash": "not-used-by-this-migration-test",
             "role": "admin",
             "is_active": 1,
+            "analytics_access": 0,
             "must_change_password": 0,
             "announce_selection_mode": "overlay",
             "auto_write_announced": 1,

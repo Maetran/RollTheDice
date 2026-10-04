@@ -46,6 +46,8 @@ function accountTabHash(route, preferred = "") {
 function returnPath() {
   const fallback = zilchPath("/");
   const candidate = new URLSearchParams(window.location.search).get("return_to");
+  // One fixed, server-protected dashboard destination, never an arbitrary URL.
+  if (candidate === "/admin/dashboard") return candidate;
   const directZilchPath = normalizeZilchPageUrl(candidate);
   if (directZilchPath) {
     const destination = new URL(directZilchPath, window.location.origin);
@@ -126,7 +128,8 @@ function resetChallenge() {
 
 function render(auth) {
   const user = auth?.user;
-  const allowed = user?.game_access?.zilch_preview === true;
+  const dashboardDestination = returnPath() === "/admin/dashboard";
+  const allowed = dashboardDestination ? Boolean(user) : user?.game_access?.zilch_preview === true;
   const passkeyAvailable = auth?.passkeys?.enabled && passkeysSupported();
   passkeyPanel.hidden = Boolean(user) || !passkeyAvailable;
   passkeyUnavailable.hidden = Boolean(user) || passkeyAvailable;
@@ -145,8 +148,9 @@ function render(auth) {
   if (!user) return;
   accountName.textContent = user.username;
   continueButton.href = returnPath();
+  if (dashboardDestination) continueButton.textContent = t("Mission Control öffnen");
   continueButton.hidden = !allowed;
-  setMessage(allowed
+  setMessage(dashboardDestination ? "Du bist angemeldet. Öffne Mission Control." : allowed
     ? "Du bist angemeldet und kannst Zilch öffnen."
     : "Zilch ist für dieses Konto nicht verfügbar.", allowed ? "success" : "info");
 }
@@ -159,7 +163,8 @@ async function refresh({ redirect = false } = {}) {
   const accountLanguage = auth.user?.preferences?.preferred_language;
   if (accountLanguage && accountLanguage !== document.documentElement.lang) return auth;
   render(auth);
-  if (redirect && auth.user?.game_access?.zilch_preview === true) window.location.assign(returnPath());
+  if (redirect && (auth.user?.game_access?.zilch_preview === true
+    || (auth.authenticated && returnPath() === "/admin/dashboard"))) window.location.assign(returnPath());
   return auth;
 }
 

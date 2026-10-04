@@ -12,11 +12,9 @@ from pathlib import Path
 from typing import Iterator
 
 from alembic.config import Config
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
+from sqlalchemy import Boolean, DateTime, Integer, MetaData, Table, create_engine, insert
 
 from alembic import command
-from app.models import User
 
 BASE = Path(__file__).resolve().parents[1]
 PRE_RESET_REVISION = "20260922_0047"
@@ -37,16 +35,26 @@ class AbandonmentResetMigrationTest(unittest.TestCase):
         self._upgrade(PRE_RESET_REVISION)
         engine = create_engine(self.database_url)
         try:
-            with Session(engine) as db:
+            with engine.begin() as connection:
                 now = datetime(2026, 9, 28, 12, tzinfo=timezone.utc)
-                user = User(
-                    username="Reset Player", username_normalized="resetplayer", password_hash="unused",
-                    created_at=now, updated_at=now,
-                )
-                db.add(user)
-                db.flush()
-                self.user_id = user.id
-                db.commit()
+                # This fixture intentionally targets the historical schema.
+                # Current User ORM columns can include fields not introduced yet.
+                users = Table("users", MetaData(), autoload_with=connection)
+                values = {"username": "Reset Player", "username_normalized": "resetplayer", "password_hash": "unused",
+                          "role": "user", "is_active": True, "announce_selection_mode": "overlay",
+                          "preferred_language": "de", "game_invite_push_audience": "all"}
+                for column in users.columns:
+                    if column.primary_key or column.nullable or column.server_default is not None or column.name in values:
+                        continue
+                    if isinstance(column.type, DateTime):
+                        values[column.name] = now
+                    elif isinstance(column.type, Boolean):
+                        values[column.name] = False
+                    elif isinstance(column.type, Integer):
+                        values[column.name] = 0
+                    else:
+                        raise AssertionError(f"Historical user fixture needs {column.name}")
+                self.user_id = connection.execute(insert(users).values(**values)).inserted_primary_key[0]
         finally:
             engine.dispose()
 
@@ -121,7 +129,9 @@ class AbandonmentResetMigrationTest(unittest.TestCase):
                 "INSERT INTO zilch_achievement_unlocks (user_id, achievement_key, definition_version, unlocked_at) "
                 "VALUES (?, ?, ?, ?)", (self.user_id, "first_game", 1, TIMESTAMP),
             )
-            before = {table: connection.execute(f"SELECT * FROM {table} ORDER BY id").fetchall()
+            original_columns = {table: ", ".join(row[1] for row in connection.execute(f"PRAGMA table_info({table})"))
+                                for table in preserved_tables}
+            before = {table: connection.execute(f"SELECT {original_columns[table]} FROM {table} ORDER BY id").fetchall()
                       for table in preserved_tables}
             other_awards = connection.execute(
                 "SELECT * FROM user_achievements WHERE achievement_key IN ('account_created', 'career_points_1000') "
@@ -135,7 +145,7 @@ class AbandonmentResetMigrationTest(unittest.TestCase):
             self.assertEqual(connection.execute("SELECT * FROM abandoned_games").fetchall(), [])
             self.assertEqual(connection.execute("SELECT * FROM user_achievements ORDER BY id").fetchall(), other_awards)
             for table, original in before.items():
-                self.assertEqual(connection.execute(f"SELECT * FROM {table} ORDER BY id").fetchall(), original)
+                self.assertEqual(connection.execute(f"SELECT {original_columns[table]} FROM {table} ORDER BY id").fetchall(), original)
             self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
 
     def test_reset_settles_terminal_aborts_but_keeps_recovery_payloads_and_live_games(self) -> None:
@@ -196,7 +206,7 @@ class AbandonmentResetMigrationTest(unittest.TestCase):
         self._upgrade()
 
         with self._connection() as connection:
-            self.assertEqual(connection.execute("SELECT version_num FROM alembic_version").fetchone(), (RESET_REVISION,))
+            self.assertEqual(connection.execute("SELECT version_num FROM alembic_version").fetchone(), ("20261004_0049",))
             for table, original in before.items():
                 self.assertEqual(connection.execute(f"SELECT * FROM {table} ORDER BY id").fetchall(), original)
         command.downgrade(self._config(), PRE_RESET_REVISION)

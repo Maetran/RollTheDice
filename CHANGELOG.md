@@ -22,6 +22,25 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.43.0 — Mission Control — 2026-10-04
+
+**Deutsch:** Ein privates Dashboard verbindet Besucher- und Klick-Trends,
+aktive Seitenzeit, Herkunft, Geräte, Spielmodi und abgeschlossene Partien mit
+CPU, RAM, Speicherplatz und Uptime. Zeitraum und Spiel lassen sich filtern.
+Nur der Gründer vergibt oder entzieht einzelnen Konten den Dashboard-Zugang
+in der Nutzerverwaltung; Rollen allein berechtigen nicht dazu. Anonyme
+Besuchermessung startet mit diesem Release, respektiert DNT/GPC und speichert
+keine Namen, Chat-Inhalte oder IP-Adressen. Offline-Partien bleiben lokal.
+Stiller Rollout ohne Push- oder In-App-Versionsmeldung.
+
+**English:** A private dashboard combines visitor and click trends, active page
+time, sources, devices, game modes and completed games with CPU, memory, disk
+capacity and uptime. Filter by time range and game. Only the founder can grant
+or revoke individual dashboard access in user administration; roles alone do
+not grant it. Anonymous visitor measurement starts with this release, respects
+DNT/GPC and stores no names, chat content or IP addresses. Offline games remain
+local. Silent rollout with no push or in-app release announcement.
+
 ## 2.42.6 — Abbrüche erst nach dem Anschreiben / Count abandonments after the first score entry — 2026-09-28
 
 **Deutsch:** In beiden Spielen zählt ein selbst ausgelöster Abbruch erst,

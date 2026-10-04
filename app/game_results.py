@@ -26,6 +26,7 @@ from .leaderboard_storage import (
     mutate_json,
     read_json,
 )
+from .security import as_utc
 
 logger = logging.getLogger(__name__)
 
@@ -222,9 +223,22 @@ def build_leaderboard_snapshot_fields(g: GameDict) -> dict:
                     reihen.append({"index": idx, "rows": clean_rows})
                 scoreboards[str(pid)] = {"reihen": reihen}
 
+        timing = {}
+        started_at = g.get("_started_at")
+        if isinstance(started_at, str):
+            try:
+                started = as_utc(datetime.fromisoformat(started_at.replace("Z", "+00:00")))
+                duration = (datetime.fromisoformat(finished_at) - started).total_seconds()
+                if 0 <= duration <= 86400 * 30:
+                    timing = {"started_at": started.isoformat(), "duration_seconds": int(duration)}
+            except ValueError:
+                # Legacy/recovered states without reliable start time remain
+                # valid results, with an honestly unavailable duration.
+                pass
         return {
             "game_id": str(g.get("_id") or ""),
             "finished_at": finished_at,
+            **timing,
             "mode": mode,
             "hardcore": bool(g.get("_hardcore", False)),
             "players": players,

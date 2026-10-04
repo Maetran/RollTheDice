@@ -180,6 +180,8 @@ def _user_payload(user: User, *, achievement_rank: dict | None = None, viewer_id
         "must_change_password": user.must_change_password,
         "lobby_chat_muted": user.lobby_chat_muted,
         "lobby_chat_excluded": user.lobby_chat_excluded,
+        "analytics_access": user.analytics_access,
+        "can_view_analytics": user.analytics_access or ownership_flags(db, user.id)["is_founder"],
         "created_at": user.created_at,
         "updated_at": user.updated_at,
         "bans": account_bans(user.id),

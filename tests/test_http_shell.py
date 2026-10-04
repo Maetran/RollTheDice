@@ -113,6 +113,14 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
                 self.assertIn('<script type="module" src="/static/email-action.js?v=', html, html_path.name)
                 self.assertIn('<meta name="referrer" content="no-referrer">', html, html_path.name)
                 continue
+            if html_path.name == "dashboard.html":
+                # Mission Control owns its dark design and localization. Its
+                # single module never initializes player presence or tracking.
+                self.assertNotIn("/static/shell.js", html)
+                self.assertEqual(html.count("<script"), 1)
+                self.assertIn('src="/static/dashboard.js?v=', html)
+                self.assertIn('type="module"', html)
+                continue
             self.assertEqual(html.count('<script src="/static/shell.js?v='), 1, html_path.name)
             start = html.index('<script src="/static/shell.js?v=')
             end = html.index(">", start)

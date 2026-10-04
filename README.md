@@ -32,12 +32,54 @@ engine, results and rankings: its points never affect ZDWA standings.
 - [Lobby chat](#lobby-chat)
 - [Push notifications](#push-notifications)
 - [Release notes and feedback](#release-notes-and-feedback)
+- [Mission Control](#mission-control)
 - [Progressive Web Apps](#progressive-web-apps)
 - [Local development](#local-development)
 - [Architecture](#architecture)
 - [Data and deployment](#data-and-deployment)
 - [Documentation](#documentation)
 - [Product delivery gate](#product-delivery-gate)
+
+## Mission Control
+
+The private dashboard at `/admin/dashboard` brings traffic, active page time,
+fixed click actions, game modes, completed games and server capacity together.
+Open **Mission Control** from your account or administration. Only the founder
+can grant or revoke individual **Dashboard access** in user administration;
+admin and owner roles do not grant access automatically. Revocation applies to
+the next page or API request, including sessions already signed in.
+
+**Deutsch:** Mission Control zeigt Zugriffe, aktive Seitenzeit, Klick-Aktionen,
+Spielmodi, abgeschlossene Spiele und den Serverzustand. Du öffnest es im Konto
+oder in der Administration. Nur der Gründer darf einzelnen Konten in der
+Nutzerverwaltung Dashboard-Zugriff erlauben oder entziehen. Admins und Owner
+bekommen diesen Zugang nicht automatisch.
+
+Visitor measurement starts with version 2.43.0; completed game history uses
+existing server records. Sessions are anonymous tab visits, not unique people.
+Only visible, recently active time counts. Tracking respects Do Not Track and
+Global Privacy Control, uses no analytics cookies, and stores no names, emails,
+chat content, raw IP addresses or private URL parameters. Events expire after
+90 days; a 200,000-event limit can shorten history under high traffic. Filters
+use UTC calendar days. Local offline games stay local and are not measured. Referrer sources
+are hostnames only; countries come from trusted Cloudflare edge metadata, with
+unavailable locations shown as unknown. Blocking tracking can reduce counts.
+
+**Deutsch:** Besuchermessung beginnt mit Version 2.43.0. Bestehende
+Spielergebnisse bleiben als eigene Datenquelle erkennbar. Sitzungen zählen
+anonyme Tab-Besuche, keine eindeutigen Personen. Gemessen wird nur sichtbare,
+zuletzt aktive Zeit. Keine Analytics-Cookies, Namen, E-Mails, Chat-Inhalte,
+gespeicherten IP-Adressen oder privaten URL-Parameter. Do Not Track und Global
+Privacy Control werden respektiert; Ereignisse werden nach 90 Tagen entfernt.
+Offline-Partien bleiben lokal. Herkunft zeigt die verweisende Domain und,
+sofern verfügbar, das Land aus vertrauenswürdigen Cloudflare-Metadaten.
+
+The dashboard runs inside the existing application and SQLite database,
+without another service or subdomain. Compose mounts four host `/proc` counter
+files read-only for CPU, memory and uptime. Disk capacity is the filesystem containing
+the data directory. Host and application uptime are shown separately; missing
+counters are unavailable rather than simulated. See
+[the dashboard runbook](docs/ANALYTICS.md) for operation and rollback.
 
 ## Quick start
 

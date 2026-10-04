@@ -1993,5 +1993,12 @@
     "date": "2026-09-28",
     "bump": "patch",
     "summary": "LCARS-Aktionsbuttons beim Spielstart sichtbar / LCARS action buttons visible at game start"
+  },
+  {
+    "version": "2.42.6",
+    "revision": "40e53b1193d8de54212656148eafedbea7dd949e",
+    "date": "2026-09-28",
+    "bump": "patch",
+    "summary": "Abbruchzähler ab dem ersten Eintrag und einmalig zurückgesetzt / Abandonment counts start after the first entry and reset once"
   }
 ]

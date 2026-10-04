@@ -1,23 +1,26 @@
 {
   "kind": "usability",
-  "games": ["zdwa", "zilch"],
-  "summary_de": "Abbrüche zählen in beiden Spielen erst nach dem ersten Eintrag. Die bisherigen Abbruchzähler starten wieder bei null.",
-  "summary_en": "Abandonments count only after the first score entry in either game. Existing abandonment counters restart at zero.",
+  "games": [
+    "zdwa",
+    "zilch"
+  ],
+  "summary_de": "Mission Control verbindet Besucher, Spielaktivität und Serverzustand. Nur der Gründer vergibt den privaten Dashboard-Zugang.",
+  "summary_en": "Mission Control combines visitors, gameplay and server health. Only the founder grants private dashboard access.",
   "player_notes": {
     "de": {
-      "title": "Abbrüche erst nach dem Anschreiben",
+      "title": "Mission Control",
       "changes": [
-        "Vor dem ersten ausgefüllten Feld oder abgeschlossenen Zug im Punktebuch erhöht ein Abbruch den Zähler nicht.",
-        "Auch ein geschriebener Wert von 0 zählt; bloßes Würfeln oder Halten reicht nicht.",
-        "Die bisherigen Abbruchzähler beider Spiele sind zurückgesetzt. Deine Spielstände und Ergebnisse bleiben erhalten."
+        "Berechtigte Konten öffnen das private Dashboard direkt aus ihrem Konto.",
+        "Nur der Gründer darf Dashboard-Zugriff in der Nutzerverwaltung erlauben oder entziehen.",
+        "Anonyme Nutzungszahlen helfen, beide Spiele zu verbessern. Offline-Partien bleiben lokal."
       ]
     },
     "en": {
-      "title": "Abandonments after the first entry",
+      "title": "Mission Control",
       "changes": [
-        "Ending a game before the first filled field or completed scorebook turn does not increase the counter.",
-        "A written zero also counts; rolling or holding dice alone does not.",
-        "Existing abandonment counters for both games have been reset. Your scores and results are kept."
+        "Authorized accounts can open the private dashboard from their account.",
+        "Only the founder can grant or revoke dashboard access in user administration.",
+        "Anonymous usage metrics help improve both games. Offline games remain local."
       ]
     }
   }

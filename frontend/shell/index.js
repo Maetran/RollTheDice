@@ -8,6 +8,7 @@ import { initializeAvatarFallbacks } from "../shared/avatar.js";
 import { initializeFriendActivity } from "../shared/friend-activity.js";
 import { initializeAdminHelp } from "../shared/admin-help.js";
 import "../shared/engagement.js";
+import { initializeAnalytics } from "../shared/analytics.js";
 
 // The public hero is useful before the application bundle arrives. Deferred
 // shell execution already sees its markup, so translate it without waiting
@@ -40,6 +41,7 @@ initializeZdwaPwaBridgeNavigation();
 initializeAvatarFallbacks();
 initializeFriendActivity();
 initializeAdminHelp();
+initializeAnalytics();
 
 // Zilch owns the same controller inside its protected application bundle.
 // Every ZDWA document, including the otherwise script-light public pages and

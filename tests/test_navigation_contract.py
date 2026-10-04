@@ -50,6 +50,7 @@ DOCUMENT_ROUTES = (
     # Ownership adds a real signed-in browser flow; existing restriction tests
     # continue covering ordinary moderation on the same page.
     RouteCoverage(("/admin",), "tests/browser/admin-ownership.spec.js"),
+    RouteCoverage(("/admin/dashboard",), "tests/browser/analytics-dashboard.spec.js"),
     RouteCoverage(("/ergebnis",), "tests/browser/navigation-destinations.spec.js"),
     RouteCoverage(
         ("/spieler", "/zilch/bestenlisten"), "tests/browser/achievement-feed.spec.js",

@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.42.6**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.43.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.42.6 | 2026-09-28 | patch | Abbruchzähler ab dem ersten Eintrag und einmalig zurückgesetzt / Abandonment counts start after the first entry and reset once | [40e53b1](https://github.com/Maetran/RollTheDice/commit/40e53b1193d8de54212656148eafedbea7dd949e) |
 | 2.42.5 | 2026-09-28 | patch | LCARS-Aktionsbuttons beim Spielstart sichtbar / LCARS action buttons visible at game start | [a4dd863](https://github.com/Maetran/RollTheDice/commit/a4dd86343da094b3cd52815e779173c9961f4cc3) |
 | 2.42.4 | 2026-09-28 | patch | LCARS-Würfel als Roll-Controls und sanfteres Schwarz / LCARS dice roll controls and softer black | [642a1c9](https://github.com/Maetran/RollTheDice/commit/642a1c9202c1b816217fd7678adf0f15ad0de1ba) |
 | 2.42.3 | 2026-09-28 | patch | LCARS-Würfel auf Handys klarer und Farben ruhiger / Clearer mobile LCARS dice and calmer colors | [b2493ea](https://github.com/Maetran/RollTheDice/commit/b2493ea1e249050442bb84ea3b00967d6f83a295) |
