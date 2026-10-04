@@ -4,23 +4,25 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Mission Control wird visueller: Globus, Weltkarte und interaktive Analysen zeigen Herkunft, Aktivität und Seitenwege.",
-  "summary_en": "Mission Control gets more visual: a globe, world map and interactive analyses reveal sources, activity and page journeys.",
+  "summary_de": "Mission Control mit LCARS-Designwechsel und Geräteanalyse: Betriebssysteme und Gerätefamilien anonym im Blick.",
+  "summary_en": "Mission Control adds an LCARS theme switcher and anonymous analysis of operating systems and device families.",
   "player_notes": {
     "de": {
-      "title": "Mission Control Deep Dive",
+      "title": "Mission Control: LCARS und Geräte",
       "changes": [
-        "Berechtigte Konten können die Besucherherkunft auf einem Globus oder einer Weltkarte erkunden.",
-        "Aktivitätsraster und interaktive Grafiken zeigen Seitenzeit, Verlauf und beobachtete Seitenwege.",
-        "Animation lässt sich pausieren. Nur der Gründer vergibt weiterhin den privaten Dashboard-Zugang."
+        "Berechtigte Konten können ihr Dashboard als Mission Control oder im LCARS-Design öffnen.",
+        "Die Designwahl wird lokal gespeichert und verändert die Darstellung der Spiele nicht.",
+        "Neue Analysen zeigen Betriebssysteme und Gerätefamilien; ältere und nicht erkannte Besuche bleiben unbekannt.",
+        "Globus, Diagramme und die bisherigen privaten Zugriffsregeln bleiben in beiden Designs verfügbar."
       ]
     },
     "en": {
-      "title": "Mission Control Deep Dive",
+      "title": "Mission Control: LCARS and devices",
       "changes": [
-        "Authorized accounts can explore visitor sources on a globe or world map.",
-        "An activity heatmap and interactive charts show page engagement, trends and observed page journeys.",
-        "Animation can be paused. Only the founder can grant private dashboard access."
+        "Authorized accounts can open their dashboard in Mission Control or LCARS style.",
+        "The theme choice is saved locally and does not change the games' appearance preferences.",
+        "New analysis shows operating systems and device families; older and unrecognized visits remain unknown.",
+        "Both designs offer the globe and charts with the same private access rules."
       ]
     }
   }

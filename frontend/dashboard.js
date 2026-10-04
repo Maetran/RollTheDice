@@ -11,6 +11,14 @@ const locale = () => window.ZDWA_I18N?.locale() || "de-CH";
 const number = value => value == null ? "—" : new Intl.NumberFormat(locale(), { maximumFractionDigits: 0 }).format(Number(value) || 0);
 const percent = value => value == null ? "—" : new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(value);
 const count = value => Math.max(0, Number(value) || 0);
+const DESIGN_KEY = "rollthedice:dashboard:design";
+function storedDesign() {
+  try { return localStorage.getItem(DESIGN_KEY) === "lcars" ? "lcars" : "mission"; }
+  catch { return "mission"; }
+}
+// Dashboard appearance is a local preference, separate from either game's skin.
+document.body.dataset.dashboardDesign = storedDesign();
+byId("dashboardDesign").value = document.body.dataset.dashboardDesign;
 const gameName = game => game === "zilch" ? "Zilch" : game === "zdwa" ? "ZDWA" : t("Beide Spiele");
 const gameBadge = game => game === "zdwa" || game === "zilch" ? `<span class="game-badge">${gameName(game)}</span>` : "";
 const duration = seconds => {
@@ -33,6 +41,8 @@ const timestamp = value => {
 
 const REFERRER_LABELS = { direct: "Direkt / ohne Herkunft", internal: "Aus dem eigenen Spiel", search: "Suchmaschinen", social: "Social Media", other: "Andere Websites" };
 const DEVICE_LABELS = { mobile: "Smartphone", tablet: "Tablet", desktop: "Desktop", unknown: "Unbekannt" };
+const OS_LABELS = { android: "Android", ios: "iOS", ipados: "iPadOS", fireos: "Fire OS", windows: "Windows", macos: "macOS", linux: "Linux", chromeos: "ChromeOS", unknown: "Unbekannt" };
+const HARDWARE_LABELS = { ipad: "iPad", iphone: "iPhone", fire_tablet: "Fire-Tablet", android_tablet: "Android-Tablet", android_phone: "Android-Smartphone", mac: "Mac", windows_pc: "Windows-PC", linux_pc: "Linux-PC", chromebook: "Chromebook", unknown: "Unbekannt" };
 const ACTION_LABELS = {
   create_game: "Partie erstellen", join_game: "Partie beitreten", watch_game: "Partie zuschauen", roll_dice: "Würfeln",
   score: "Wertung wählen", hold_dice: "Würfel halten", bank: "Punkte sichern", game_leave: "Partie verlassen",
@@ -194,6 +204,8 @@ function render(data) {
   hourlyChart(data.hourly);
   ranks("referrerRanks", data.referrers, "source", "sessions", value => REFERRER_LABELS[value] ? t(REFERRER_LABELS[value]) : String(value || t("Andere Websites")), { share: true });
   ranks("deviceRanks", data.devices, "device", "sessions", value => t(DEVICE_LABELS[value] || "Unbekannt"), { share: true });
+  ranks("deviceSoftwareRanks", data.device_software, "os", "sessions", value => t(OS_LABELS[value] || "Unbekannt"), { share: true, limit: 10 });
+  ranks("deviceHardwareRanks", data.device_hardware, "device_family", "sessions", value => t(HARDWARE_LABELS[value] || "Unbekannt"), { share: true, limit: 10 });
   ranks("countryRanks", data.countries, "country", "sessions", countryName, { share: true });
   byId("countryNote").textContent = t(["trusted_proxy", "cloudflare_verified_peer"].includes(data.collection?.country_source) ? "Länder stammen aus einem vertrauenswürdigen Geo-Proxy; unbekannte Herkunft bleibt unbekannt." : "Ohne vertrauenswürdigen Geo-Proxy bleibt die Herkunft unbekannt. Es gibt keine IP-Geolokalisierung.");
   pageRanks(data.pages);
@@ -330,12 +342,18 @@ window.addEventListener("pageshow", event => {
 
 const analysis = createAnalysisVisuals({ t, e, number, percent, duration, gameName, pageLabel, locale });
 const globe = createGlobe(byId("geographyViz"), { t, number, locale, countryName });
+byId("dashboardDesign").addEventListener("change", event => {
+  const design = event.target.value === "lcars" ? "lcars" : "mission";
+  document.body.dataset.dashboardDesign = design;
+  try { localStorage.setItem(DESIGN_KEY, design); } catch { /* This document can still switch designs. */ }
+  globe.refreshDesign();
+});
 function clearPrivateData() {
   latest = null;
   analysis.resetSession();
   globe.clear();
   globe.suspend();
-  for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceDonut", "countryRanks", "gameCards", "gameModes", "actionRanks", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated"]) byId(id).replaceChildren();
+  for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceSoftwareRanks", "deviceHardwareRanks", "deviceDonut", "countryRanks", "gameCards", "gameModes", "actionRanks", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated"]) byId(id).replaceChildren();
 }
 function syncMotion() {
   const paused = motionPaused || motionQuery.matches;

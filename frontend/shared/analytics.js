@@ -83,7 +83,29 @@ function referrerHost() {
   }
 }
 
-function deviceClass() {
+// Only fixed, coarse categories leave this function. Never send the UA,
+// OS/browser versions, model strings or touch-point count to the server.
+// Reduced/desktop UAs can hide hardware; ambiguous Silk devices stay unknown.
+export function analyticsDeviceDetails(browserInfo = navigator) {
+  const ua = String(browserInfo.userAgent || "").slice(0, 512);
+  if (/Kindle Fire|\bKF[A-Z0-9]+\b/i.test(ua)) return { os: "fireos", device_family: "fire_tablet" };
+  if (/\bSilk\//i.test(ua)) return { os: "unknown", device_family: "unknown" };
+  if (/iPad/i.test(ua) || (/Macintosh/i.test(ua) && Number(browserInfo.maxTouchPoints) > 1)) return { os: "ipados", device_family: "ipad" };
+  if (/iPhone/i.test(ua)) return { os: "ios", device_family: "iphone" };
+  if (/iPod/i.test(ua)) return { os: "ios", device_family: "unknown" };
+  if (/Windows Phone/i.test(ua)) return { os: "windows", device_family: "unknown" };
+  if (/Android/i.test(ua)) return { os: "android", device_family: /Mobile/i.test(ua) ? "android_phone" : "android_tablet" };
+  if (/CrOS/i.test(ua)) return { os: "chromeos", device_family: "chromebook" };
+  if (/Windows NT/i.test(ua)) return { os: "windows", device_family: "windows_pc" };
+  if (/Macintosh|Mac OS X/i.test(ua)) return { os: "macos", device_family: "mac" };
+  if (/Linux/i.test(ua)) return { os: "linux", device_family: "linux_pc" };
+  return { os: "unknown", device_family: "unknown" };
+}
+
+function deviceClass(details) {
+  if (["ipad", "fire_tablet", "android_tablet"].includes(details.device_family)) return "tablet";
+  if (["iphone", "android_phone"].includes(details.device_family)) return "mobile";
+  if (["mac", "windows_pc", "linux_pc", "chromebook"].includes(details.device_family)) return "desktop";
   const width = Math.min(window.screen?.width || window.innerWidth, window.innerWidth);
   return width < 768 ? "mobile" : width < 1100 ? "tablet" : "desktop";
 }
@@ -93,6 +115,7 @@ let initialized = false;
 export function initializeAnalytics() {
   if (initialized || !permitsAnalytics()) return;
   initialized = true;
+  const deviceDetails = analyticsDeviceDetails();
   let session = null;
   let current = null;
   let currentPath = null;
@@ -139,7 +162,7 @@ export function initializeAnalytics() {
     // Keep offline/network errors invisible to the game. There is no durable
     // retry queue and no upload of a private offline game's result.
     if (navigator.onLine === false) return;
-    const body = JSON.stringify({ session_id: session.id, device: deviceClass(), referrer: referrerHost(), events });
+    const body = JSON.stringify({ session_id: session.id, device: deviceClass(deviceDetails), ...deviceDetails, referrer: referrerHost(), events });
     try {
       if (beacon && navigator.sendBeacon?.(ENDPOINT, new Blob([body], { type: "text/plain" }))) return;
       void fetch(ENDPOINT, {

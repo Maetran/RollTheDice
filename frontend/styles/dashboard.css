@@ -1,3 +1,23 @@
 @import "./dashboard-base.css";
 @import "./dashboard-globe.css";
 @import "./dashboard-analysis.css";
+@import "./dashboard-lcars.css";
+
+.design-tool{display:flex;align-items:center;gap:8px;min-width:0}
+.design-tool>span{font:10px var(--mono);color:var(--muted)}
+.design-tool select{font:11px var(--mono);padding:0 24px 0 10px;max-width:160px;min-width:0;background:transparent}
+.mission-tools{gap:12px}
+.device-breakdowns{display:grid;gap:24px;margin-top:22px;border-top:1px solid var(--line);padding-top:20px}
+.device-breakdowns h4{margin:0 0 13px;font-size:12px;font-weight:500;color:var(--text)}
+.device-breakdowns .rank-list{gap:13px}
+.device-breakdowns>div{min-width:0}
+.origin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.origin-grid>.device-panel{order:3;grid-column:1/-1}
+.origin-grid>.panel:last-child{grid-column:auto}
+.origin-grid>.panel:last-child .rank-list{display:flex}
+@media(min-width:951px){.device-panel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 32px}.device-panel>.panel-heading,.device-panel>.panel-footnote{grid-column:1/-1}.device-panel>.panel-heading{margin-bottom:0}.device-panel>.panel-footnote{margin-top:0}.device-breakdowns{display:contents}.device-visualization{align-self:start}.device-breakdowns>div{border-left:1px solid var(--line);padding-left:25px}.device-breakdowns h4{margin-bottom:20px}}
+@media(min-width:601px) and (max-width:950px){.device-breakdowns{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}.device-visualization{flex-direction:row;align-items:center}.device-visualization #deviceDonut{flex:0 0 106px;margin:0 14px 0 0}}
+@media(max-width:600px){.origin-grid{grid-template-columns:1fr}}
+@media(max-width:1150px){.mission-nav{flex-wrap:wrap;gap:12px;padding:15px 0}.mission-brand{margin-right:auto}.mission-sections{order:3;width:100%;justify-content:space-between;gap:12px}.mission-tools{margin-left:auto}}
+@media(max-width:600px){.mission-tools{width:100%;justify-content:space-between;margin:0;gap:9px}.design-tool{flex:1}.design-tool select{max-width:145px}.mission-tools .account-link{font-size:10px;gap:5px}.mission-tools .language-tool select{min-width:51px}.mission-brand{width:100%}}
+@media(max-width:359px){.design-tool>span{font-size:9px}.design-tool{gap:5px}.design-tool select{max-width:119px;padding-left:7px;font-size:10px}.mission-tools{gap:6px}}

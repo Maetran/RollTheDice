@@ -1,0 +1,476 @@
+/* Dashboard visual layer, using the existing Zilch LCARS palette and Antonio
+   display face. All layout/state behavior remains in the shared dashboard. */
+@font-face {
+  font-family: "Zilch LCARS";
+  src: url("/static/antonio-lcars-v1.ttf?v=ASSET_VERSION") format("truetype");
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: optional;
+}
+
+body[data-dashboard-design="lcars"] {
+  --lcars-void: #0a0c12;
+  --lcars-panel: #11141b;
+  --lcars-panel-raised: #171b23;
+  --lcars-panel-line: #41404e;
+  --lcars-text: #f2eadb;
+  --lcars-text-soft: #d5cbbb;
+  --lcars-text-dim: #b5acbf;
+  --lcars-apricot: #c49472;
+  --lcars-apricot-bright: #d7ad86;
+  --lcars-lilac: #a18baf;
+  --lcars-lilac-deep: #766884;
+  --lcars-blue: #7184ad;
+  --lcars-cyan: #78aab4;
+  --lcars-cream: #c9c0a6;
+  --lcars-gold: #be9551;
+  --lcars-alert: #b57b80;
+  --lcars-success: #8eae86;
+  --lcars-focus: #fff3c4;
+  --lcars-display: "Zilch LCARS", "Arial Narrow", Impact, sans-serif;
+  --lcars-pill: 0 26px 26px 0;
+  --bg: var(--lcars-void);
+  --panel: var(--lcars-panel);
+  --line: var(--lcars-panel-line);
+  --text: var(--lcars-text);
+  --muted: var(--lcars-text-dim);
+  --cyan: var(--lcars-cyan);
+  --amber: var(--lcars-apricot-bright);
+  --danger: var(--lcars-alert);
+  --heatmap-empty: var(--lcars-panel-raised);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--lcars-void);
+  color: var(--lcars-text);
+}
+body[data-dashboard-design="lcars"]::before,
+body[data-dashboard-design="lcars"]::after { content: none; }
+body[data-dashboard-design="lcars"] ::selection { color: var(--lcars-void); background: var(--lcars-cyan); }
+body[data-dashboard-design="lcars"] :is(h1, h2, h3, button, select, .mission-brand, .eyebrow) {
+  font-family: var(--lcars-display);
+  font-weight: 500;
+  letter-spacing: .025em;
+}
+body[data-dashboard-design="lcars"] :is(a, button, select, input, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--lcars-focus);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px #78aab426;
+}
+body[data-dashboard-design="lcars"] .dashboard-shell { padding: 0 42px; }
+body[data-dashboard-design="lcars"] .skip-link {
+  border: 0; border-radius: var(--lcars-pill); background: var(--lcars-cyan);
+  color: var(--lcars-void); font: 18px var(--lcars-display);
+}
+
+/* Header console: continuous lilac elbow, separated pastel control banks. */
+body[data-dashboard-design="lcars"] .mission-nav {
+  position: relative; min-height: 99px; gap: 22px; padding: 15px 0 15px 21px;
+  border-left: 26px solid var(--lcars-lilac); border-bottom: 10px solid var(--lcars-lilac);
+  border-radius: 0 0 0 45px;
+}
+body[data-dashboard-design="lcars"] .mission-nav::after {
+  content: ""; position: absolute; bottom: -10px; right: 11%; width: 24%; height: 10px;
+  background: var(--lcars-blue); box-shadow: -7px 0 var(--lcars-void), 7px 0 var(--lcars-void); pointer-events: none;
+}
+body[data-dashboard-design="lcars"] .mission-brand { font-size: 20px; gap: 10px; letter-spacing: .045em; }
+body[data-dashboard-design="lcars"] .mission-brand svg { width: 35px; height: 35px; stroke: var(--lcars-apricot-bright); }
+body[data-dashboard-design="lcars"] .mission-brand circle { fill: var(--lcars-apricot-bright); }
+body[data-dashboard-design="lcars"] .brand-dice { color: var(--lcars-apricot-bright); }
+body[data-dashboard-design="lcars"] .mission-brand small { color: var(--lcars-lilac); font: 11px var(--lcars-display); letter-spacing: .18em; }
+body[data-dashboard-design="lcars"] .mission-sections { gap: 7px; }
+body[data-dashboard-design="lcars"] .mission-sections a {
+  min-height: 44px; padding: 0 17px; border-radius: var(--lcars-pill); color: var(--lcars-void);
+  background: var(--lcars-cream); font: 16px var(--lcars-display); text-transform: uppercase; letter-spacing: .03em;
+}
+body[data-dashboard-design="lcars"] .mission-sections a:nth-child(2) { background: var(--lcars-lilac); }
+body[data-dashboard-design="lcars"] .mission-sections a:nth-child(3) { background: var(--lcars-apricot); }
+body[data-dashboard-design="lcars"] .mission-sections a:nth-child(4) { background: var(--lcars-blue); }
+body[data-dashboard-design="lcars"] .mission-sections a:hover { background: var(--lcars-apricot-bright); color: var(--lcars-void); }
+body[data-dashboard-design="lcars"] .mission-tools { gap: 11px; min-width: 0; }
+body[data-dashboard-design="lcars"] .design-tool { display: flex; align-items: center; gap: 8px; min-width: 0; }
+body[data-dashboard-design="lcars"] .design-tool>span { color: var(--lcars-lilac); font: 14px var(--lcars-display); text-transform: uppercase; }
+body[data-dashboard-design="lcars"] :is(.design-tool, .language-tool) select {
+  min-width: 0; min-height: 44px; max-width: 100%; border: 0; border-radius: var(--lcars-pill);
+  background: var(--lcars-cyan); color: var(--lcars-void); font: 15px var(--lcars-display); padding: 0 13px 0 11px;
+}
+body[data-dashboard-design="lcars"] .language-tool select { min-width: 55px; }
+body[data-dashboard-design="lcars"] .account-link {
+  padding: 0 12px; min-height: 44px; gap: 7px; border-radius: var(--lcars-pill);
+  color: var(--lcars-void); background: var(--lcars-cream); font: 15px var(--lcars-display); white-space: nowrap;
+}
+body[data-dashboard-design="lcars"] .account-link span { color: var(--lcars-void); font-size: 17px; }
+
+body[data-dashboard-design="lcars"] .mission-hero { padding: 36px 6px 30px 27px; gap: 25px; }
+body[data-dashboard-design="lcars"] .mission-hero h1 {
+  font-size: clamp(38px, 4.3vw, 65px); letter-spacing: .015em; text-transform: uppercase; line-height: 1.1; color: var(--lcars-apricot-bright);
+}
+body[data-dashboard-design="lcars"] .hero-copy .eyebrow { color: var(--lcars-lilac); font-size: 13px; letter-spacing: .11em; }
+body[data-dashboard-design="lcars"] .eyebrow-divider { color: var(--lcars-panel-line); }
+body[data-dashboard-design="lcars"] .hero-description { color: var(--lcars-text-soft); font-size: 13px; line-height: 1.65; }
+body[data-dashboard-design="lcars"] .title-dot { color: var(--lcars-lilac); }
+body[data-dashboard-design="lcars"] .hero-status { padding: 0; gap: 24px; }
+body[data-dashboard-design="lcars"] .radar {
+  border-color: var(--lcars-lilac-deep); background: linear-gradient(90deg, transparent calc(50% - .5px), #a18baf28 50%, transparent calc(50% + .5px)), linear-gradient(transparent calc(50% - .5px), #a18baf28 50%, transparent calc(50% + .5px));
+}
+body[data-dashboard-design="lcars"] .radar-ring { border-color: #a18baf55; }
+body[data-dashboard-design="lcars"] .hero-status .radar::after { border-color: #a18baf66; }
+body[data-dashboard-design="lcars"] .radar-ring:nth-child(2) { box-shadow: none; }
+body[data-dashboard-design="lcars"] .radar-core { color: var(--lcars-apricot-bright); }
+body[data-dashboard-design="lcars"] .radar i { background: var(--lcars-cyan); box-shadow: 0 0 0 4px #78aab426; }
+body[data-dashboard-design="lcars"] .connection-status { color: var(--lcars-text); font-size: 10px; }
+body[data-dashboard-design="lcars"] .connection-status small { color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .signal-dot { box-shadow: none; }
+
+/* Filter and motion controls retain their original actions and ordering. */
+body[data-dashboard-design="lcars"] .telemetry-toolbar {
+  padding: 17px 0 17px 19px; border-left: 13px solid var(--lcars-blue); border-top: 0;
+  border-bottom: 7px solid var(--lcars-blue); border-radius: 0 0 0 28px; gap: 18px;
+}
+body[data-dashboard-design="lcars"] .filter-group { gap: 10px; }
+body[data-dashboard-design="lcars"] .filter-group label { font: 15px var(--lcars-display); color: var(--lcars-lilac); }
+body[data-dashboard-design="lcars"] .filter-group select,
+body[data-dashboard-design="lcars"] .chart-select select {
+  border: 0; border-radius: var(--lcars-pill); background: var(--lcars-blue); color: var(--lcars-void);
+  font: 16px var(--lcars-display); min-height: 44px; padding-left: 13px;
+}
+body[data-dashboard-design="lcars"] .filter-group select { min-width: 110px; }
+body[data-dashboard-design="lcars"] .filter-group label:not(:first-child) { margin-left: 9px; }
+body[data-dashboard-design="lcars"] :is(.motion-button, .refresh-button, .geo-pause) {
+  border: 0; border-radius: var(--lcars-pill); background: var(--lcars-cyan); color: var(--lcars-void);
+  min-height: 44px; padding: 0 15px; font: 15px var(--lcars-display); white-space: nowrap;
+}
+body[data-dashboard-design="lcars"] :is(.motion-button span:first-child, .geo-pause::before) { color: var(--lcars-void); }
+body[data-dashboard-design="lcars"] .refresh-button { background: var(--lcars-apricot); }
+body[data-dashboard-design="lcars"] :is(.motion-button, .geo-pause)[aria-pressed="true"] { background: var(--lcars-lilac); }
+body[data-dashboard-design="lcars"] :is(button, select):hover:not(:disabled) { color: var(--lcars-void); background-color: var(--lcars-apricot-bright); }
+body[data-dashboard-design="lcars"] .dashboard-message {
+  border: 0; border-left: 14px solid var(--lcars-gold); border-top: 6px solid var(--lcars-gold);
+  border-radius: 24px 0 0 0; background: var(--lcars-void); color: var(--lcars-text);
+}
+body[data-dashboard-design="lcars"] .dashboard-message :is(button, a) {
+  border: 0; border-radius: var(--lcars-pill); background: var(--lcars-gold); color: var(--lcars-void); font: 16px var(--lcars-display);
+}
+
+/* Metrics are instrument strips rather than rounded glass cards. */
+body[data-dashboard-design="lcars"] .metric-grid { gap: 13px; margin-top: 24px; }
+body[data-dashboard-design="lcars"] .metric-card {
+  --metric-rail: var(--lcars-apricot); background: var(--lcars-void); border: 0;
+  border-left: 9px solid var(--metric-rail); border-bottom: 5px solid var(--metric-rail);
+  border-radius: 0 0 0 22px; padding: 13px 12px 12px 15px;
+}
+body[data-dashboard-design="lcars"] .metric-card:nth-child(2n) { --metric-rail: var(--lcars-lilac); }
+body[data-dashboard-design="lcars"] .metric-card:nth-child(3n) { --metric-rail: var(--lcars-cyan); }
+body[data-dashboard-design="lcars"] .metric-card::after { content: none; }
+body[data-dashboard-design="lcars"] .metric-label { color: var(--metric-rail); font: 16px var(--lcars-display); min-height: 23px; }
+body[data-dashboard-design="lcars"] .metric-value {
+  color: var(--lcars-text); font: 500 clamp(33px, 3vw, 43px) var(--lcars-display); letter-spacing: .015em;
+}
+body[data-dashboard-design="lcars"] .metric-card:first-child .metric-value { color: var(--lcars-apricot-bright); }
+body[data-dashboard-design="lcars"] .metric-hint { color: var(--lcars-text-dim); font-size: 10px; }
+body[data-dashboard-design="lcars"] .metric-spark { color: var(--metric-rail); }
+body[data-dashboard-design="lcars"] .metric-delta small { color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .metric-delta.neutral { color: var(--lcars-text-dim); }
+
+/* Large elbows identify sections; smaller rails frame the readable charts. */
+body[data-dashboard-design="lcars"] .dashboard-section { --section-rail: var(--lcars-lilac); margin-top: 40px; }
+body[data-dashboard-design="lcars"] #traffic { --section-rail: var(--lcars-blue); }
+body[data-dashboard-design="lcars"] #games { --section-rail: var(--lcars-apricot); }
+body[data-dashboard-design="lcars"] #server { --section-rail: var(--lcars-cyan); }
+body[data-dashboard-design="lcars"] .section-heading {
+  position: relative; min-height: 99px; padding: 17px 7px 11px 22px; gap: 18px;
+  border-left: 26px solid var(--section-rail); border-top: 9px solid var(--section-rail); border-radius: 42px 0 0 0;
+  margin-bottom: 16px; align-items: center;
+}
+body[data-dashboard-design="lcars"] .section-heading::after {
+  content: ""; position: absolute; top: -9px; right: 9%; width: 23%; height: 9px;
+  background: var(--lcars-cream); box-shadow: -7px 0 var(--lcars-void), 7px 0 var(--lcars-void); pointer-events: none;
+}
+body[data-dashboard-design="lcars"] .section-heading .eyebrow { color: var(--section-rail); font: 12px var(--lcars-display); letter-spacing: .1em; }
+body[data-dashboard-design="lcars"] .section-heading h2 { color: var(--lcars-text); font-size: 29px; margin-top: 7px; letter-spacing: .015em; }
+body[data-dashboard-design="lcars"] .section-caption { color: var(--lcars-lilac); font: 12px var(--lcars-display); text-transform: uppercase; }
+body[data-dashboard-design="lcars"] .panel {
+  --panel-rail: var(--section-rail, var(--lcars-lilac)); border: 0; border-left: 10px solid var(--panel-rail);
+  border-top: 5px solid var(--panel-rail); border-bottom: 2px solid var(--panel-rail);
+  border-radius: 26px 0 0 0; background: var(--lcars-void); padding: 22px 20px; box-shadow: none;
+}
+body[data-dashboard-design="lcars"] .traffic-grid>.panel:nth-child(2),
+body[data-dashboard-design="lcars"] .origin-grid>.panel:nth-child(2),
+body[data-dashboard-design="lcars"] .analysis-grid>.panel:nth-child(2),
+body[data-dashboard-design="lcars"] .game-grid>.panel:nth-child(2) { --panel-rail: var(--lcars-lilac); }
+body[data-dashboard-design="lcars"] .heatmap-panel { --panel-rail: var(--lcars-cyan); }
+body[data-dashboard-design="lcars"] .panel:hover { border-color: var(--panel-rail); box-shadow: none; }
+body[data-dashboard-design="lcars"] .panel-heading h3 { font-size: 22px; color: var(--lcars-apricot-bright); line-height: 1.3; }
+body[data-dashboard-design="lcars"] .panel-heading p { color: var(--lcars-text-dim); font-size: 10px; }
+body[data-dashboard-design="lcars"] .panel-code { color: var(--lcars-lilac); font: 12px var(--lcars-display); }
+body[data-dashboard-design="lcars"] .panel-symbol { color: var(--lcars-lilac); }
+body[data-dashboard-design="lcars"] .panel-footnote { color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .geography-panel { padding: 18px 18px 16px; --panel-rail: var(--lcars-cyan); }
+body[data-dashboard-design="lcars"] .geography-panel::before,
+body[data-dashboard-design="lcars"] .geography-panel::after { content: none; }
+
+/* LCARS chart palette. Preserve the source values, opacity and hit areas. */
+body[data-dashboard-design="lcars"] [stroke="#6ee7de"] { stroke: var(--lcars-cyan); }
+body[data-dashboard-design="lcars"] [stroke="#f4c77b"] { stroke: var(--lcars-apricot-bright); }
+body[data-dashboard-design="lcars"] [stroke="#9dbcd4"] { stroke: var(--lcars-blue); }
+body[data-dashboard-design="lcars"] [stroke="#101925"] { stroke: var(--lcars-void); }
+body[data-dashboard-design="lcars"] [fill="#6ee7de"] { fill: var(--lcars-cyan); }
+body[data-dashboard-design="lcars"] [fill="#f4c77b"] { fill: var(--lcars-apricot-bright); }
+body[data-dashboard-design="lcars"] [fill="#9dbcd4"] { fill: var(--lcars-blue); }
+body[data-dashboard-design="lcars"] [fill="#1d2a3a"] { fill: var(--lcars-panel-raised); }
+body[data-dashboard-design="lcars"] [stop-color="#6ee7de"] { stop-color: var(--lcars-cyan); }
+body[data-dashboard-design="lcars"] .steel { background: var(--lcars-blue); }
+body[data-dashboard-design="lcars"] .chart-axis { fill: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .chart-gridline { stroke: var(--lcars-panel-line); }
+body[data-dashboard-design="lcars"] .chart-line { filter: none; }
+body[data-dashboard-design="lcars"] .chart-cursor { stroke: var(--lcars-cream); }
+body[data-dashboard-design="lcars"] .interactive-legend button {
+  border: 0; border-radius: var(--lcars-pill); color: var(--lcars-void); background: var(--lcars-lilac);
+  font: 15px var(--lcars-display); padding: 0 13px; min-height: 44px;
+}
+body[data-dashboard-design="lcars"] .interactive-legend button[aria-pressed="false"] {
+  opacity: 1; color: var(--lcars-lilac); background: var(--lcars-void); border: 1px solid var(--lcars-lilac);
+}
+body[data-dashboard-design="lcars"] .chart-readout {
+  border-color: var(--lcars-panel-line); color: var(--lcars-text-soft); font-size: 10px;
+}
+body[data-dashboard-design="lcars"] .chart-readout :is(strong, b) { color: var(--lcars-text); }
+body[data-dashboard-design="lcars"] .chart-select>span { color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .heatmap-key i { background: #78aab422; border-radius: 0; }
+body[data-dashboard-design="lcars"] .heatmap-key i:nth-of-type(2) { background: #78aab455; }
+body[data-dashboard-design="lcars"] .heatmap-key i:nth-of-type(3) { background: #78aab499; }
+body[data-dashboard-design="lcars"] .heatmap-key i:nth-of-type(4) { background: var(--lcars-cyan); }
+body[data-dashboard-design="lcars"] :is(.activity-heatmap rect:hover, .activity-heatmap rect.is-selected) {
+  stroke: var(--lcars-focus); filter: none;
+}
+body[data-dashboard-design="lcars"] .hour-bar-track { background: var(--lcars-panel-raised); border-radius: 0 7px 0 0; }
+body[data-dashboard-design="lcars"] .hour-total { color: var(--lcars-text-soft); }
+body[data-dashboard-design="lcars"] .donut-count { fill: var(--lcars-text); }
+body[data-dashboard-design="lcars"] .donut-caption { fill: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .device-breakdowns { border-color: var(--lcars-panel-line); }
+body[data-dashboard-design="lcars"] .device-breakdowns>div { min-width: 0; }
+body[data-dashboard-design="lcars"] .device-breakdowns h4 {
+  border-left: 6px solid var(--lcars-lilac); padding-left: 10px;
+  color: var(--lcars-apricot-bright); font: 20px var(--lcars-display); letter-spacing: .025em;
+}
+body[data-dashboard-design="lcars"] .device-breakdowns .rank-label { overflow-wrap: anywhere; }
+body[data-dashboard-design="lcars"] .bubble-core { stroke: var(--lcars-cyan); }
+body[data-dashboard-design="lcars"] .bubble-label { fill: var(--lcars-text-soft); }
+body[data-dashboard-design="lcars"] :is(.page-point.is-selected, .page-point:focus-visible, .page-point:hover) .bubble-core {
+  stroke: var(--lcars-focus); filter: none;
+}
+body[data-dashboard-design="lcars"] :is(.page-point.is-selected, .page-point:focus-visible) .bubble-halo { stroke: var(--lcars-cyan); }
+body[data-dashboard-design="lcars"] .flow-node-name { fill: var(--lcars-text); }
+body[data-dashboard-design="lcars"] .flow-node-game { fill: var(--lcars-lilac); }
+body[data-dashboard-design="lcars"] :is(.journey-link.is-selected, .journey-link:focus-visible, .journey-link:hover) .flow-strand { filter: none; }
+body[data-dashboard-design="lcars"] .chart-detail {
+  border: 0; border-left: 7px solid var(--lcars-blue); border-bottom: 3px solid var(--lcars-blue);
+  border-radius: 0 0 0 16px; background: var(--lcars-panel);
+}
+body[data-dashboard-design="lcars"] .detail-title { color: var(--lcars-text); }
+body[data-dashboard-design="lcars"] .detail-metrics b { color: var(--lcars-text); }
+body[data-dashboard-design="lcars"] :is(th, td, .page-row) { border-color: var(--lcars-panel-line); }
+body[data-dashboard-design="lcars"] .chart-data summary { font: 16px var(--lcars-display); color: var(--lcars-lilac); }
+body[data-dashboard-design="lcars"] .rank-label { color: var(--lcars-text-soft); }
+body[data-dashboard-design="lcars"] .rank-track { height: 5px; border-radius: 0 5px 5px 0; background: var(--lcars-panel-line); }
+body[data-dashboard-design="lcars"] .rank-fill { border-radius: 0 5px 5px 0; }
+body[data-dashboard-design="lcars"] .rank-list li:nth-child(even) .rank-fill { background: var(--lcars-blue); }
+body[data-dashboard-design="lcars"] .empty-state strong { color: var(--lcars-text-soft); }
+body[data-dashboard-design="lcars"] .empty-icon { color: var(--lcars-lilac); }
+body[data-dashboard-design="lcars"] .game-badge { border-color: var(--lcars-panel-line); border-radius: var(--lcars-pill); color: var(--lcars-lilac); }
+
+/* Country controls remain independent of the canvas projection and gestures. */
+body[data-dashboard-design="lcars"] .geo-mission {
+  --geo-cyan: var(--lcars-cyan); --geo-amber: var(--lcars-apricot-bright);
+  --geo-line: var(--lcars-panel-line); --geo-muted: var(--lcars-text-dim);
+}
+body[data-dashboard-design="lcars"] .geo-toolbar { gap: 14px; }
+body[data-dashboard-design="lcars"] .geo-view-switch { background: none; border: 0; border-radius: 0; padding: 0; gap: 6px; }
+body[data-dashboard-design="lcars"] .geo-button { border: 0; border-radius: var(--lcars-pill); font: 15px var(--lcars-display); padding: 0 17px; }
+body[data-dashboard-design="lcars"] .geo-view-switch .geo-button { background: var(--lcars-blue); color: var(--lcars-void); }
+body[data-dashboard-design="lcars"] .geo-view-switch .geo-button[aria-pressed="true"] { background: var(--lcars-apricot-bright); color: var(--lcars-void); box-shadow: none; }
+body[data-dashboard-design="lcars"] .geo-legend { color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .geo-legend-dot { background: var(--lcars-cyan); box-shadow: none; }
+body[data-dashboard-design="lcars"] .geo-stage { border-color: var(--lcars-panel-line); border-radius: 0; background: var(--lcars-void); box-shadow: none; }
+body[data-dashboard-design="lcars"] .geo-stage::after { background: none; }
+body[data-dashboard-design="lcars"] .geo-overlay { color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .geo-overlay-label { color: var(--lcars-cyan); }
+body[data-dashboard-design="lcars"] .geo-status { color: var(--lcars-text-soft); }
+body[data-dashboard-design="lcars"] .geo-coordinates { color: var(--lcars-lilac); }
+body[data-dashboard-design="lcars"] .geo-stage-hint { color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .geo-empty { background: var(--lcars-void); border-color: var(--lcars-lilac); border-radius: 0; color: var(--lcars-text); box-shadow: none; }
+body[data-dashboard-design="lcars"] .geo-summary strong { color: var(--lcars-cyan); font: 32px var(--lcars-display); letter-spacing: .015em; }
+body[data-dashboard-design="lcars"] .geo-summary>div:last-child strong { color: var(--lcars-apricot-bright); }
+body[data-dashboard-design="lcars"] .geo-summary span { color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .geo-detail {
+  border: 0; border-left: 9px solid var(--lcars-apricot); border-top: 5px solid var(--lcars-apricot);
+  border-bottom: 2px solid var(--lcars-apricot); border-radius: 24px 0 0 0; background: var(--lcars-void);
+}
+body[data-dashboard-design="lcars"] .geo-detail::after { content: none; }
+body[data-dashboard-design="lcars"] .geo-country-code { background: var(--lcars-apricot-bright); color: var(--lcars-void); border: 0; border-radius: var(--lcars-pill); font: 17px var(--lcars-display); }
+body[data-dashboard-design="lcars"] .geo-country-title { font: 23px var(--lcars-display); color: var(--lcars-apricot-bright); }
+body[data-dashboard-design="lcars"] .geo-detail-tag { color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .geo-detail-tag[data-known="false"] { color: var(--lcars-apricot-bright); }
+body[data-dashboard-design="lcars"] .geo-detail-metrics dt { color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .geo-detail-metrics dd { color: var(--lcars-text); font: 27px var(--lcars-display); }
+body[data-dashboard-design="lcars"] .geo-detail-metrics>div:first-child dd { color: var(--lcars-cyan); font-size: 30px; }
+body[data-dashboard-design="lcars"] .geo-game-values { border-color: var(--lcars-panel-line); }
+body[data-dashboard-design="lcars"] .geo-game-values span { color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .geo-game-values strong { color: var(--lcars-text); }
+body[data-dashboard-design="lcars"] .geo-game-note { color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .geo-list-heading h3 { font: 18px var(--lcars-display); color: var(--lcars-lilac); }
+body[data-dashboard-design="lcars"] .geo-list-heading>span { border-color: var(--lcars-panel-line); border-radius: 0; color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .geo-country-list { scrollbar-color: var(--lcars-lilac) var(--lcars-void); }
+body[data-dashboard-design="lcars"] .geo-country-row { border-color: var(--lcars-panel-line); border-radius: var(--lcars-pill); color: var(--lcars-text-soft); background: var(--lcars-void); font-family: inherit; font-size: 11px; }
+body[data-dashboard-design="lcars"] .geo-country-row:hover { border-color: var(--lcars-apricot-bright); color: var(--lcars-void); }
+body[data-dashboard-design="lcars"] .geo-country-row[aria-pressed="true"] { border-color: var(--lcars-apricot-bright); background: var(--lcars-apricot-bright); color: var(--lcars-void); }
+body[data-dashboard-design="lcars"] .geo-list-code { color: var(--lcars-cyan); }
+body[data-dashboard-design="lcars"] .geo-list-copy small { color: var(--lcars-text-dim); }
+body[data-dashboard-design="lcars"] .geo-list-amount { color: var(--lcars-text); }
+body[data-dashboard-design="lcars"] :is(.geo-country-row[aria-pressed="true"], .geo-country-row:hover) :is(.geo-list-code, .geo-list-copy small, .geo-list-amount) { color: var(--lcars-void); }
+body[data-dashboard-design="lcars"] .geo-list-bar { background: var(--lcars-cyan); opacity: .4; }
+body[data-dashboard-design="lcars"] .geo-country-row[aria-pressed="true"] .geo-list-bar { background: var(--lcars-void); opacity: .45; }
+body[data-dashboard-design="lcars"] .geo-list-empty { border-color: var(--lcars-panel-line); border-radius: 0; }
+
+body[data-dashboard-design="lcars"] .game-card {
+  border: 0; border-left: 7px solid var(--lcars-cyan); border-bottom: 3px solid var(--lcars-cyan);
+  border-radius: 0 0 0 18px; background: var(--lcars-panel);
+}
+body[data-dashboard-design="lcars"] .game-card:nth-child(2) { background: var(--lcars-panel); border-color: var(--lcars-apricot); }
+body[data-dashboard-design="lcars"] .game-card-header { font: 20px var(--lcars-display); }
+body[data-dashboard-design="lcars"] .game-card-number { font: 40px var(--lcars-display); color: var(--lcars-text); }
+body[data-dashboard-design="lcars"] .game-card-details { border-color: var(--lcars-panel-line); }
+body[data-dashboard-design="lcars"] :is(.game-card-details strong, .mode-chip strong) { color: var(--lcars-text); }
+body[data-dashboard-design="lcars"] .mode-chip { border-color: var(--lcars-panel-line); border-radius: var(--lcars-pill); padding: 6px 12px; }
+body[data-dashboard-design="lcars"] .gauge-track { stroke: var(--lcars-panel-line); }
+body[data-dashboard-design="lcars"] .gauge-copy h3 { font: 21px var(--lcars-display); color: var(--lcars-cyan); overflow-wrap: anywhere; }
+body[data-dashboard-design="lcars"] .gauge-copy .capacity { color: var(--lcars-text-soft); }
+body[data-dashboard-design="lcars"] .server-vital { border-left: 6px solid var(--lcars-lilac); padding-left: 12px; }
+body[data-dashboard-design="lcars"] .server-vital:nth-child(2n) { border-left-color: var(--lcars-apricot); }
+body[data-dashboard-design="lcars"] .server-vital strong { color: var(--lcars-text); font: 25px var(--lcars-display); }
+body[data-dashboard-design="lcars"] .server-trend-heading h3 { color: var(--lcars-apricot-bright); font: 20px var(--lcars-display); }
+body[data-dashboard-design="lcars"] .telemetry-footer { border-top: 8px solid var(--lcars-lilac); border-left: 19px solid var(--lcars-lilac); border-radius: 30px 0 0 0; padding: 21px 18px 28px; margin-top: 36px; max-width: none; }
+body[data-dashboard-design="lcars"] .telemetry-footer>div { color: var(--lcars-text-soft); }
+
+@media (max-width: 1200px) {
+  body[data-dashboard-design="lcars"] .dashboard-shell { padding: 0 28px; }
+  body[data-dashboard-design="lcars"] .mission-nav { flex-wrap: wrap; gap: 13px 22px; }
+  body[data-dashboard-design="lcars"] .mission-sections { order: 3; width: 100%; gap: 8px; }
+  body[data-dashboard-design="lcars"] .mission-sections a { flex: 1; justify-content: center; }
+  body[data-dashboard-design="lcars"] .mission-tools { margin-left: auto; }
+  body[data-dashboard-design="lcars"] .metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body[data-dashboard-design="lcars"] .metric-value { font-size: 39px; }
+  body[data-dashboard-design="lcars"] .telemetry-toolbar { flex-wrap: wrap; }
+  body[data-dashboard-design="lcars"] .refresh-group { margin-left: auto; }
+}
+@media (max-width: 950px) {
+  body[data-dashboard-design="lcars"] .dashboard-shell { padding: 0 21px; }
+  body[data-dashboard-design="lcars"] .mission-hero { padding: 30px 2px 28px 18px; }
+  body[data-dashboard-design="lcars"] .mission-hero h1 { font-size: 45px; }
+  body[data-dashboard-design="lcars"] .hero-status { gap: 16px; }
+  body[data-dashboard-design="lcars"] .panel { padding: 22px 17px; }
+  body[data-dashboard-design="lcars"] .geography-panel { padding: 18px 14px 15px; }
+  body[data-dashboard-design="lcars"] .panel-heading h3 { font-size: 21px; }
+  body[data-dashboard-design="lcars"] .section-heading h2 { font-size: 28px; }
+  body[data-dashboard-design="lcars"] .section-caption { font-size: 11px; }
+}
+@media (max-width: 700px) {
+  body[data-dashboard-design="lcars"] .dashboard-shell { padding: 0 15px; }
+  body[data-dashboard-design="lcars"] .mission-nav { border-left-width: 15px; border-bottom-width: 8px; border-radius: 0 0 0 31px; padding: 14px 0 14px 13px; }
+  body[data-dashboard-design="lcars"] .mission-nav::after { bottom: -8px; height: 8px; }
+  body[data-dashboard-design="lcars"] .mission-brand { font-size: 20px; }
+  body[data-dashboard-design="lcars"] .mission-brand small { font-size: 10px; }
+  body[data-dashboard-design="lcars"] .mission-brand svg { width: 30px; height: 30px; }
+  body[data-dashboard-design="lcars"] .mission-tools { gap: 8px; }
+  body[data-dashboard-design="lcars"] .mission-sections { border-top: 0; padding: 0; margin-top: 2px; gap: 5px; }
+  body[data-dashboard-design="lcars"] .mission-sections a { font-size: 15px; padding: 0 9px; }
+  body[data-dashboard-design="lcars"] .account-link { font-size: 14px; padding: 0 10px; }
+  body[data-dashboard-design="lcars"] .mission-hero { padding: 27px 1px 24px 8px; gap: 17px; }
+  body[data-dashboard-design="lcars"] .mission-hero h1 { font-size: 39px; }
+  body[data-dashboard-design="lcars"] .hero-copy .eyebrow { font-size: 11px; letter-spacing: .07em; }
+  body[data-dashboard-design="lcars"] .hero-description { font-size: 12px; }
+  body[data-dashboard-design="lcars"] .connection-status { font-size: 9px; }
+  body[data-dashboard-design="lcars"] .telemetry-toolbar { padding: 15px 0 15px 13px; border-left-width: 9px; border-bottom-width: 5px; border-radius: 0 0 0 22px; }
+  body[data-dashboard-design="lcars"] .filter-group { gap: 9px; }
+  body[data-dashboard-design="lcars"] .filter-group label { font-size: 15px; }
+  body[data-dashboard-design="lcars"] .filter-group label:not(:first-child) { margin-left: 0; }
+  body[data-dashboard-design="lcars"] .filter-group select { min-width: 0; font-size: 16px; }
+  body[data-dashboard-design="lcars"] .refresh-group { margin-left: 0; gap: 8px; }
+  body[data-dashboard-design="lcars"] :is(.motion-button, .refresh-button) { font-size: 15px; padding: 0 13px; max-width: none; }
+  body[data-dashboard-design="lcars"] .metric-grid { gap: 13px 10px; }
+  body[data-dashboard-design="lcars"] .metric-card { padding: 12px 8px 12px 11px; border-left-width: 7px; border-bottom-width: 4px; }
+  body[data-dashboard-design="lcars"] .metric-label { font-size: 16px; min-height: 28px; }
+  body[data-dashboard-design="lcars"] .metric-value { font-size: 37px; }
+  body[data-dashboard-design="lcars"] .metric-hint { font-size: 9px; }
+  body[data-dashboard-design="lcars"] .dashboard-section { margin-top: 30px; }
+  body[data-dashboard-design="lcars"] .section-heading { border-left-width: 18px; border-top-width: 7px; border-radius: 30px 0 0 0; padding: 16px 0 11px 14px; min-height: 89px; gap: 12px; }
+  body[data-dashboard-design="lcars"] .section-heading::after { top: -7px; height: 7px; }
+  body[data-dashboard-design="lcars"] .section-heading h2 { font-size: 27px; line-height: 1.3; }
+  body[data-dashboard-design="lcars"] .section-heading .eyebrow { font-size: 11px; }
+  body[data-dashboard-design="lcars"] .section-caption { font-size: 10px; max-width: 85px; }
+  body[data-dashboard-design="lcars"] .panel { border-left-width: 8px; border-top-width: 4px; border-radius: 23px 0 0 0; padding: 21px 15px; }
+  body[data-dashboard-design="lcars"] .panel-heading h3 { font-size: 22px; }
+  body[data-dashboard-design="lcars"] .heatmap-panel .panel-heading h3 { font-size: 21px; }
+  body[data-dashboard-design="lcars"] .heatmap-panel .panel-heading select { font: 14px var(--lcars-display); }
+  body[data-dashboard-design="lcars"] .interactive-legend { gap: 6px; }
+  body[data-dashboard-design="lcars"] .interactive-legend button { font-size: 15px; }
+  body[data-dashboard-design="lcars"] .chart-select select,
+  body[data-dashboard-design="lcars"] :is(#pageFocus, #journeyFocus) { font: 16px var(--lcars-display); }
+  body[data-dashboard-design="lcars"] .geography-panel { padding: 15px 11px 14px; }
+  body[data-dashboard-design="lcars"] .geo-button { font-size: 15px; padding: 0 13px; }
+  body[data-dashboard-design="lcars"] .geo-summary strong { font-size: 31px; }
+  body[data-dashboard-design="lcars"] .geo-country-title { font-size: 24px; }
+  body[data-dashboard-design="lcars"] .geo-detail { padding: 18px 14px; }
+  body[data-dashboard-design="lcars"] .server-vital { padding-left: 9px; border-left-width: 5px; }
+  body[data-dashboard-design="lcars"] .server-vital strong { font-size: 25px; overflow-wrap: anywhere; }
+  body[data-dashboard-design="lcars"] .gauge-copy h3 { font-size: 18px; }
+  body[data-dashboard-design="lcars"] .telemetry-footer { padding: 20px 12px 27px; border-left-width: 13px; border-top-width: 6px; border-radius: 24px 0 0 0; }
+}
+@media (max-width: 550px) {
+  body[data-dashboard-design="lcars"] .mission-brand { width: 100%; }
+  body[data-dashboard-design="lcars"] .mission-tools { width: 100%; justify-content: space-between; flex-wrap: wrap; margin-left: 0; }
+  body[data-dashboard-design="lcars"] .design-tool { gap: 6px; }
+  body[data-dashboard-design="lcars"] .design-tool>span { font-size: 14px; }
+  body[data-dashboard-design="lcars"] .design-tool select { font-size: 14px; padding-right: 6px; padding-left: 8px; }
+  body[data-dashboard-design="lcars"] .language-tool select { min-width: 49px; font-size: 14px; padding: 0 6px; }
+  body[data-dashboard-design="lcars"] .account-link { font-size: 14px; padding: 0 9px; gap: 4px; }
+  body[data-dashboard-design="lcars"] .mission-hero { display: block; padding-left: 8px; }
+  body[data-dashboard-design="lcars"] .mission-hero h1 { font-size: 43px; }
+  body[data-dashboard-design="lcars"] .hero-description { max-width: none; }
+  body[data-dashboard-design="lcars"] .hero-status { margin-top: 20px; display: flex; flex-direction: row; justify-content: flex-start; max-width: none; gap: 18px; }
+  body[data-dashboard-design="lcars"] .hero-status .radar { width: 66px; height: 66px; }
+  body[data-dashboard-design="lcars"] .connection-status { text-align: left; font-size: 10px; max-width: none; }
+  body[data-dashboard-design="lcars"] .connection-status small { margin-left: 14px; max-width: none; font-size: 9px; }
+  body[data-dashboard-design="lcars"] .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body[data-dashboard-design="lcars"] .metric-label { min-height: 23px; }
+  body[data-dashboard-design="lcars"] .geo-toolbar { gap: 10px; }
+  body[data-dashboard-design="lcars"] .geo-legend { font-size: 8px; }
+  body[data-dashboard-design="lcars"] .geo-pause { font-size: 14px; padding: 0 11px; }
+  body[data-dashboard-design="lcars"] .section-heading { display: block; }
+  body[data-dashboard-design="lcars"] .section-caption { display: block; max-width: none; text-align: left; margin-top: 10px; }
+  body[data-dashboard-design="lcars"] .server-gauges { gap: 12px; }
+  body[data-dashboard-design="lcars"] .gauge-visual { width: 67px; height: 67px; }
+  body[data-dashboard-design="lcars"] .gauge-number { font-size: 16px; }
+  body[data-dashboard-design="lcars"] .gauge-number small { font-size: 9px; }
+  body[data-dashboard-design="lcars"] .gauge-copy h3 { font-size: 18px; }
+}
+@media (max-width: 370px) {
+  body[data-dashboard-design="lcars"] .dashboard-shell { padding: 0 11px; }
+  body[data-dashboard-design="lcars"] .mission-nav { padding-left: 11px; border-left-width: 12px; }
+  body[data-dashboard-design="lcars"] .mission-tools { gap: 7px; justify-content: flex-start; }
+  body[data-dashboard-design="lcars"] .design-tool { flex: 1 0 100%; }
+  body[data-dashboard-design="lcars"] .design-tool select { min-width: 122px; }
+  body[data-dashboard-design="lcars"] .mission-sections { gap: 4px; }
+  body[data-dashboard-design="lcars"] .mission-sections a { padding: 0 6px; font-size: 14px; }
+  body[data-dashboard-design="lcars"] .mission-hero h1 { font-size: 40px; }
+  body[data-dashboard-design="lcars"] .filter-group { grid-template-columns: auto minmax(0, 1fr); gap: 8px 11px; }
+  body[data-dashboard-design="lcars"] :is(.motion-button, .refresh-button) { font-size: 14px; padding: 0 10px; }
+  body[data-dashboard-design="lcars"] .refresh-button { gap: 5px; }
+  body[data-dashboard-design="lcars"] .metric-value { font-size: 35px; }
+  body[data-dashboard-design="lcars"] .panel { padding: 20px 11px; border-left-width: 7px; }
+  body[data-dashboard-design="lcars"] .geography-panel { padding: 14px 8px; }
+  body[data-dashboard-design="lcars"] .geo-toolbar { gap: 8px; }
+  body[data-dashboard-design="lcars"] .geo-button { padding: 0 10px; }
+  body[data-dashboard-design="lcars"] .geo-pause { font-size: 13px; padding: 0 9px; max-width: none; }
+  body[data-dashboard-design="lcars"] .gauge-visual { width: 61px; height: 61px; }
+  body[data-dashboard-design="lcars"] .gauge-copy h3 { font-size: 17px; }
+}

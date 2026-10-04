@@ -1,4 +1,13 @@
 export const EN = {
+    "Dashboard-Design": "Dashboard design",
+    "Betriebssystem": "Operating system",
+    "Gerätefamilie": "Device family",
+    "Fire-Tablet": "Fire tablet",
+    "Android-Tablet": "Android tablet",
+    "Android-Smartphone": "Android phone",
+    "Windows-PC": "Windows PC",
+    "Linux-PC": "Linux PC",
+    "Software und Gerätefamilie werden seit Version 2.45.0 erfasst. Ältere Besuche bleiben unbekannt. Browser können diese Angaben verbergen oder verändern.": "Software and device families are measured from version 2.45.0. Older visits remain unknown. Browsers may hide or change this information.",
     // Mission Control interactive deep analysis.
     "Animation pausieren": "Pause animation",
     "Animation fortsetzen": "Resume animation",

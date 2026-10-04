@@ -12,6 +12,8 @@ function sampleAnalytics(game = 'all', days = 7) {
     pages: [{ page: '/spiel', game: 'zdwa', views: 135, sessions: 44, active_seconds: 9140, avg_active_seconds: 208 }, { page: '/zilch/spiel', game: 'zilch', views: 97, sessions: 31, active_seconds: 7430, avg_active_seconds: 240 }, { page: '/', game: 'zdwa', views: 82, sessions: 63, active_seconds: 2300, avg_active_seconds: 37 }, { page: '/zilch', game: 'zilch', views: 40, sessions: 28, active_seconds: 740, avg_active_seconds: 26 }],
     referrers: [{ source: 'direct', sessions: 70 }, { source: 'google.ch', sessions: 38 }, { source: 'internal', sessions: 18 }, { source: 'duckduckgo.com', sessions: 9 }],
     devices: [{ device: 'mobile', sessions: 76 }, { device: 'desktop', sessions: 42 }, { device: 'tablet', sessions: 17 }], countries: [{ country: 'CH', sessions: 82 }, { country: 'DE', sessions: 28 }, { country: 'ZZ', sessions: 9 }, { country: 'US', sessions: 8 }, { country: 'GB', sessions: 5 }, { country: 'FR', sessions: 3 }],
+    device_software: [{ os: 'android', sessions: 61 }, { os: 'windows', sessions: 26 }, { os: 'macos', sessions: 16 }, { os: 'ios', sessions: 15 }, { os: 'ipados', sessions: 12 }, { os: 'unknown', sessions: 5 }],
+    device_hardware: [{ device_family: 'android_phone', sessions: 58 }, { device_family: 'windows_pc', sessions: 26 }, { device_family: 'mac', sessions: 16 }, { device_family: 'iphone', sessions: 15 }, { device_family: 'ipad', sessions: 12 }, { device_family: 'unknown', sessions: 5 }, { device_family: 'android_tablet', sessions: 3 }],
     geography: [{ country: 'CH', sessions: 82, page_views: 210, active_seconds: 8000, games: { zdwa: 57, zilch: 35 }, share_percent: 60.7 }, { country: 'DE', sessions: 28, page_views: 73, active_seconds: 2800, games: { zdwa: 18, zilch: 13 }, share_percent: 20.7 }, { country: 'US', sessions: 8, page_views: 25, active_seconds: 1000, games: { zdwa: 6, zilch: 3 }, share_percent: 5.9 }, { country: 'GB', sessions: 5, page_views: 17, active_seconds: 650, games: { zdwa: 2, zilch: 4 }, share_percent: 3.7 }, { country: 'FR', sessions: 3, page_views: 10, active_seconds: 320, games: { zdwa: 2, zilch: 1 }, share_percent: 2.2 }, { country: 'ZZ', sessions: 9, page_views: 19, active_seconds: 600, games: { zdwa: 6, zilch: 4 }, share_percent: 6.7 }],
     geography_summary: { sessions: 135, known_sessions: 126, unknown_sessions: 9, known_countries: 5 },
     heatmap: Array.from({ length: 168 }, (_, index) => { const weekday = Math.floor(index / 24); const hour = index % 24; const active = Math.max(0, Math.round((Math.sin((hour - 9) * .32) + 1) * (weekday > 4 ? 3 : 2))); return { weekday, hour, page_views: active, sessions: Math.floor(active * .6), active_seconds: active * 53 }; }),
@@ -52,7 +54,7 @@ async function mockedDashboard(page, language) {
     }
     if (state.empty) {
       Object.assign(data.overview, { sessions: 0, page_views: 0, active_seconds: 0, avg_active_seconds: 0, live_sessions: 0 });
-      for (const key of ['daily', 'pages', 'referrers', 'devices', 'countries', 'actions', 'hourly', 'geography', 'heatmap']) data[key] = [];
+      for (const key of ['daily', 'pages', 'referrers', 'devices', 'device_software', 'device_hardware', 'countries', 'actions', 'hourly', 'geography', 'heatmap']) data[key] = [];
       data.journeys.links = [];
       data.journeys.sample = { page_views: 0, total_page_views: 0, truncated: false };
       data.collection.first_seen_at = null;
@@ -67,6 +69,16 @@ async function mockedDashboard(page, language) {
   return state;
 }
 
+async function expectDashboardFits(page, width) {
+  const geometry = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth, controls: [...document.querySelectorAll('a,button,select,summary')].filter(item => item.checkVisibility()).map(item => { const box = item.getBoundingClientRect(); return { text: item.textContent, left: box.left, right: box.right, height: box.height }; }) }));
+  expect(geometry.width).toBeLessThanOrEqual(geometry.viewport);
+  for (const item of geometry.controls) {
+    expect(item.left, JSON.stringify(item)).toBeGreaterThanOrEqual(-1);
+    expect(item.right, JSON.stringify(item)).toBeLessThanOrEqual(width + 1);
+    expect(item.height, JSON.stringify(item)).toBeGreaterThanOrEqual(40);
+  }
+}
+
 for (const language of ['de', 'en']) {
   test(`${language}: mocked analytics charts are readable on mobile, tablet and desktop`, async ({ page }, testInfo) => {
     const state = await mockedDashboard(page, language);
@@ -78,15 +90,18 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#countryRanks')).toContainText(language === 'en' ? 'Unknown' : 'Unbekannt');
     await expect(page.locator('#actionRanks')).toContainText(language === 'en' ? 'Roll' : 'Würfeln');
     await expect(page.locator('#gameCards')).toContainText('23');
+    await expect(page.locator('#deviceSoftwareRanks')).toContainText('Android');
+    await expect(page.locator('#deviceSoftwareRanks')).toContainText('iPadOS');
+    await expect(page.locator('#deviceSoftwareRanks')).toContainText(language === 'en' ? 'Unknown' : 'Unbekannt');
+    await expect(page.locator('#deviceHardwareRanks')).toContainText('iPad');
+    await expect(page.locator('#deviceHardwareRanks')).toContainText('iPhone');
+    await expect(page.locator('#deviceHardwareRanks')).toContainText(language === 'en' ? 'Android phone' : 'Android-Smartphone');
+    await expect(page.locator('#deviceDetailNote')).toBeVisible();
+    await expect(page.locator('#deviceDetailNote')).toContainText(language === 'en' ? 'Older visits remain unknown' : 'Ältere Besuche bleiben unbekannt');
     for (const width of [320, 390, 768, 1440]) {
       await page.setViewportSize({ width, height: width === 1440 ? 1080 : 1000 });
-      const geometry = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth, controls: [...document.querySelectorAll('a,button,select,summary')].filter(item => item.checkVisibility()).map(item => { const box = item.getBoundingClientRect(); return { text: item.textContent, left: box.left, right: box.right, height: box.height }; }) }));
-      expect(geometry.width).toBeLessThanOrEqual(geometry.viewport);
-      for (const item of geometry.controls) {
-        expect(item.left, JSON.stringify(item)).toBeGreaterThanOrEqual(-1);
-        expect(item.right, JSON.stringify(item)).toBeLessThanOrEqual(width + 1);
-        expect(item.height, JSON.stringify(item)).toBeGreaterThanOrEqual(40);
-      }
+      await expectDashboardFits(page, width);
+      await page.locator('#missionTitle').click();
       await page.screenshot({ path: `/tmp/rtd-dashboard-${language}-${width}.png`, fullPage: true });
       await testInfo.attach(`mocked-telemetry-${language}-${width}`, { path: `/tmp/rtd-dashboard-${language}-${width}.png`, contentType: 'image/png' });
     }
@@ -346,8 +361,180 @@ test('unknown origins stay without map points; revoked and cached documents rele
   await expect(page.locator('#dashboardData')).toBeHidden();
   await expect(page.locator('.geo-country-row')).toHaveCount(0);
   await expect(page.locator('#dailyChart svg, #pageBubbles svg, #journeyFlow svg, #serverTrend svg')).toHaveCount(0);
+  await expect(page.locator('#deviceSoftwareRanks')).toBeEmpty();
+  await expect(page.locator('#deviceHardwareRanks')).toBeEmpty();
   state.permitted = false;
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
   await expect(page.locator('#dashboardMessage')).toContainText('Ask the founder for access');
   await expect(page.locator('#dashboardData')).toBeHidden();
+});
+
+async function canvasSignature(page) {
+  return page.locator('.geo-canvas').evaluate(canvas => {
+    const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    let signature = 2166136261;
+    for (let offset = 0; offset < pixels.length; offset += 212) {
+      signature = Math.imul(signature ^ pixels[offset], 16777619);
+      signature = Math.imul(signature ^ pixels[offset + 1], 16777619);
+      signature = Math.imul(signature ^ pixels[offset + 2], 16777619);
+    }
+    return signature >>> 0;
+  });
+}
+
+for (const language of ['de', 'en']) {
+  test(`${language}: LCARS preserves analysis selections, fits every viewport and persists without extra telemetry requests`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 1080 });
+    const state = await mockedDashboard(page, language);
+    await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'mission');
+    await expect(page.getByRole('combobox', { name: language === 'en' ? 'Dashboard design' : 'Dashboard-Design', exact: true })).toHaveValue('mission');
+    await page.locator('#dashboardMotion').click();
+    await page.locator('#dashboardRefresh').click();
+    await expect(page.locator('#serverTrend svg')).toBeVisible();
+    await page.locator('#dailyCursor').focus();
+    await page.keyboard.press('Home');
+    await page.locator('#heatmapDay').selectOption('5');
+    await page.locator('#heatmapHour').selectOption('18');
+    await page.locator('#heatmapMetric').selectOption('active_seconds');
+    await page.locator('#pageFocus').selectOption('1');
+    await page.locator('#journeyFocus').selectOption('2');
+    await page.locator('.geo-view-switch').getByRole('button', { name: language === 'en' ? 'World map' : 'Weltkarte', exact: true }).click();
+    await page.locator('[data-country="US"]').click();
+    await expectPaintedMap(page);
+    const missionMap = await canvasSignature(page);
+    const trend = await page.locator('#serverTrend').innerHTML();
+    const queries = state.calls.length;
+    await page.locator('#dashboardDesign').selectOption('lcars');
+    await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'lcars');
+    await expect.poll(() => canvasSignature(page)).not.toBe(missionMap);
+    await expect(page.locator('#geographyViz')).toHaveAttribute('data-view', 'map');
+    await expect(page.locator('.geo-country-title')).toHaveText(language === 'en' ? 'United States' : 'Vereinigte Staaten');
+    await expect(page.locator('.geo-detail-metrics dd').first()).toHaveText('8');
+    await expect(page.locator('#dailySelection')).toContainText('21');
+    await expect(page.locator('#heatmapDay')).toHaveValue('5');
+    await expect(page.locator('#heatmapHour')).toHaveValue('18');
+    await expect(page.locator('#heatmapMetric')).toHaveValue('active_seconds');
+    await expect(page.locator('#pageFocus')).toHaveValue('1');
+    await expect(page.locator('#journeyFocus')).toHaveValue('2');
+    await expect(page.locator('#pageDetail')).toContainText('97');
+    await expect(page.locator('#journeyDetail')).toContainText('16');
+    await expect(page.locator('#deviceSoftwareRanks')).toContainText('iPadOS');
+    await expect(page.locator('#deviceHardwareRanks')).toContainText(language === 'en' ? 'Android phone' : 'Android-Smartphone');
+    expect(await page.locator('#serverTrend').innerHTML()).toBe(trend);
+    expect(state.calls).toHaveLength(queries);
+    expect(await page.evaluate(() => localStorage.getItem('rollthedice:dashboard:design'))).toBe('lcars');
+    await page.locator('.geo-view-switch').getByRole('button', { name: language === 'en' ? 'Globe' : 'Globus', exact: true }).click();
+    for (const width of [320, 390, 768, 1440]) {
+      await page.setViewportSize({ width, height: width === 1440 ? 1080 : 1000 });
+      await page.locator('#geography').scrollIntoViewIfNeeded();
+      await expectDashboardFits(page, width);
+      await expectPaintedMap(page);
+      await page.locator('#missionTitle').click();
+      await expect(page.locator('.skip-link')).not.toBeFocused();
+      const path = `/tmp/rtd-dashboard-lcars-${language}-${width}.png`;
+      await page.screenshot({ path, fullPage: true });
+      await testInfo.attach(`mocked-lcars-${language}-${width}`, { path, contentType: 'image/png' });
+    }
+    expect(state.calls).toHaveLength(queries);
+    await page.reload();
+    await expect(page.locator('#connectionLabel')).toHaveText(language === 'en' ? 'Telemetry connected' : 'Telemetrie verbunden');
+    await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'lcars');
+    await expect(page.locator('#dashboardDesign')).toHaveValue('lcars');
+    await expect(page.locator('#dashboardMotion')).toHaveAttribute('aria-pressed', 'true');
+    expect(state.calls).toHaveLength(queries + 1);
+    await page.locator('#dashboardDesign').selectOption('mission');
+    await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'mission');
+    expect(await page.evaluate(() => localStorage.getItem('rollthedice:dashboard:design'))).toBe('mission');
+    expect(state.calls).toHaveLength(queries + 1);
+  });
+
+  test(`${language}: both designs keep globe, map and charts interactive under pause and reduced motion`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 1000 });
+    const state = await mockedDashboard(page, language);
+    for (const design of ['mission', 'lcars']) {
+      await page.locator('#dashboardDesign').selectOption(design);
+      await page.locator('#dashboardMotion').click();
+      await expect(page.locator('html')).toHaveAttribute('data-motion', 'paused');
+      await expect(page.locator('.geo-pause')).toHaveAttribute('aria-pressed', 'true');
+      await page.locator('.geo-view-switch').getByRole('button', { name: language === 'en' ? 'World map' : 'Weltkarte', exact: true }).click();
+      await page.locator('[data-country="DE"]').click();
+      await expect(page.locator('.geo-country-title')).toHaveText(language === 'en' ? 'Germany' : 'Deutschland');
+      await expectPaintedMap(page);
+      await page.locator('.geo-pause').click();
+      await expect(page.locator('#dashboardMotion')).toHaveAttribute('aria-pressed', 'false');
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await expect(page.locator('#dashboardMotion')).toBeDisabled();
+      await expect(page.locator('#dashboardMotion')).toContainText(language === 'en' ? 'Reduced motion enabled' : 'Reduzierte Bewegung aktiv');
+      await expect(page.locator('.geo-pause')).toBeDisabled();
+      await page.locator('.geo-view-switch').getByRole('button', { name: language === 'en' ? 'Globe' : 'Globus', exact: true }).click();
+      await page.locator('[data-country="FR"]').click();
+      await expect(page.locator('.geo-country-title')).toHaveText(language === 'en' ? 'France' : 'Frankreich');
+      await expectPaintedMap(page);
+      await page.locator('#heatmapDay').selectOption('6');
+      await page.locator('#heatmapHour').selectOption('20');
+      await expect(page.locator('#heatmapSelection')).toContainText(language === 'en' ? 'Sunday' : 'Sonntag');
+      await expect(page.locator('#heatmapSelection')).toContainText('20:00 UTC');
+      await page.locator('[data-series="sessions"]').click();
+      await expect(page.locator('#dailyChart .chart-line')).toHaveCount(1);
+      await page.locator('[data-series="sessions"]').click();
+      await expect(page.locator('#dailyChart .chart-line')).toHaveCount(2);
+      await page.locator('#geography').scrollIntoViewIfNeeded();
+      await expectDashboardFits(page, 390);
+      await page.locator('#missionTitle').click();
+      await page.screenshot({ path: `/tmp/rtd-dashboard-${design}-${language}-reduced.png`, fullPage: true });
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      await expect(page.locator('#dashboardMotion')).toBeEnabled();
+      // Removing the OS preference makes the control available; it preserves
+      // the safe paused state until the viewer explicitly resumes motion.
+      if (await page.locator('#dashboardMotion').getAttribute('aria-pressed') === 'true') await page.locator('#dashboardMotion').click();
+      await expect(page.locator('#dashboardMotion')).toHaveAttribute('aria-pressed', 'false');
+      await expect(page.locator('.geo-pause')).toHaveAttribute('aria-pressed', 'false');
+      await expect(page.locator('html')).toHaveAttribute('data-motion', 'running');
+    }
+    expect(state.calls).toHaveLength(1);
+  });
+}
+
+test('design remains usable when browser storage rejects preference reads and writes', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.addInitScript(() => {
+    const getItem = Storage.prototype.getItem;
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.getItem = function (key) {
+      if (key === 'rollthedice:dashboard:design') throw new DOMException('Blocked for browser test', 'SecurityError');
+      return getItem.call(this, key);
+    };
+    Storage.prototype.setItem = function (key, value) {
+      if (key === 'rollthedice:dashboard:design') throw new DOMException('Blocked for browser test', 'SecurityError');
+      return setItem.call(this, key, value);
+    };
+  });
+  const state = await mockedDashboard(page, 'en');
+  await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'mission');
+  await page.locator('#dashboardDesign').selectOption('lcars');
+  await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'lcars');
+  await page.locator('[data-country="US"]').click();
+  await expect(page.locator('.geo-detail-metrics dd').first()).toHaveText('8');
+  expect(state.calls).toHaveLength(1);
+  await page.reload();
+  await expect(page.locator('#connectionLabel')).toHaveText('Telemetry connected');
+  await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'mission');
+  await expect(page.locator('#dashboardDesign')).toHaveValue('mission');
+  expect(state.calls).toHaveLength(2);
+  expect(errors).toEqual([]);
+});
+
+test('unknown stored design falls back to Mission Control and can be replaced by LCARS', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('rollthedice:dashboard:design')) localStorage.setItem('rollthedice:dashboard:design', 'unsupported');
+  });
+  await mockedDashboard(page, 'en');
+  await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'mission');
+  await expect(page.locator('#dashboardDesign')).toHaveValue('mission');
+  await page.locator('#dashboardDesign').selectOption('lcars');
+  await page.reload();
+  await expect(page.locator('#connectionLabel')).toHaveText('Telemetry connected');
+  await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'lcars');
+  await expect(page.locator('#dashboardDesign')).toHaveValue('lcars');
 });

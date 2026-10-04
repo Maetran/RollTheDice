@@ -56,6 +56,11 @@ PAGES = frozenset({
     "/historie", "/statistiken", "/erfolge", "/offline-spielen", "/offline", "/konto",
 })
 MODES = frozenset({"online", "offline", "solo", "duo", "trio", "team", "tournament", "cpu", "multiplayer", "normal", "hardcore", "unknown"})
+OPERATING_SYSTEMS = frozenset({"android", "ios", "ipados", "fireos", "windows", "macos", "linux", "chromeos", "unknown"})
+DEVICE_FAMILIES = frozenset({
+    "ipad", "iphone", "fire_tablet", "android_tablet", "android_phone", "mac", "windows_pc", "linux_pc",
+    "chromebook", "unknown",
+})
 
 
 class AnalyticsSession(Base):
@@ -64,6 +69,8 @@ class AnalyticsSession(Base):
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     device: Mapped[str] = mapped_column(String(16), nullable=False)
+    os: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown", server_default="unknown")
+    device_family: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown", server_default="unknown")
     referrer: Mapped[str] = mapped_column(String(200), nullable=False)
     country: Mapped[str] = mapped_column(String(2), nullable=False)
     __table_args__ = (Index("ix_analytics_sessions_last_seen", "last_seen_at"),)
@@ -202,9 +209,13 @@ def normalize_batch(payload: object, *, country: str = "ZZ", now: datetime | Non
                            "event_type": kind, "page": page, "game": game, "action": action,
                            "active_ms": int(duration), "mode": mode, "source": "client"})
     device = payload.get("device")
+    operating_system = payload.get("os")
+    device_family = payload.get("device_family")
     country = country.upper() if isinstance(country, str) and re.fullmatch(r"[A-Za-z]{2}", country) else "ZZ"
     return {"session": {"id": session_hash, "first_seen_at": received, "last_seen_at": received,
-                        "device": device if device in {"desktop", "tablet", "mobile"} else "unknown",
+                        "device": device if isinstance(device, str) and device in {"desktop", "tablet", "mobile"} else "unknown",
+                        "os": operating_system if isinstance(operating_system, str) and operating_system in OPERATING_SYSTEMS else "unknown",
+                        "device_family": device_family if isinstance(device_family, str) and device_family in DEVICE_FAMILIES else "unknown",
                         "referrer": normalize_referrer(payload.get("referrer")), "country": country},
             "events": normalized}
 
@@ -280,6 +291,8 @@ def persist_batches(batches: list[dict], *, now: datetime | None = None, sweep: 
                         db.flush()
                     else:
                         existing.last_seen_at = max(as_utc(existing.last_seen_at), as_utc(session["last_seen_at"]))
+                        # First-seen classifications stay immutable. Upgrading an
+                        # old/unknown tab would misclassify its historical events.
                 keys = [event["dedupe_key"] for event in batch["events"]]
                 seen = set(db.scalars(select(AnalyticsEvent.dedupe_key).where(AnalyticsEvent.dedupe_key.in_(keys))))
                 rows = []
@@ -641,12 +654,15 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                  for page, product, pv, sc, ms in page_rows]
         dimensions = {}
         for key, field in (("referrers", AnalyticsSession.referrer), ("devices", AnalyticsSession.device),
-                           ("countries", AnalyticsSession.country)):
+                           ("countries", AnalyticsSession.country), ("device_software", AnalyticsSession.os),
+                           ("device_hardware", AnalyticsSession.device_family)):
+            dimension_filters = [*filters, AnalyticsEvent.source == "client"] if key.startswith("device_") else filters
             rows = db.execute(select(field, func.count(func.distinct(AnalyticsEvent.session_id)))
                               .join(AnalyticsSession, AnalyticsEvent.session_id == AnalyticsSession.id)
-                              .where(*filters).group_by(field)
+                              .where(*dimension_filters).group_by(field)
                               .order_by(func.count(func.distinct(AnalyticsEvent.session_id)).desc())).all()
-            label = {"referrers": "source", "devices": "device", "countries": "country"}[key]
+            label = {"referrers": "source", "devices": "device", "countries": "country",
+                     "device_software": "os", "device_hardware": "device_family"}[key]
             dimensions[key] = [{label: value, "sessions": total} for value, total in rows]
         geography, geography_summary = _geography_stats(db, filters, views, active)
         heatmap = _heatmap_stats(db, filters, views, active)

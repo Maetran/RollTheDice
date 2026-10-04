@@ -19,7 +19,7 @@ PRE_TYPED_RESULTS_REVISION = "20260902_0015"
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20261004_0049"
+LATEST_SCHEMA_REVISION = "20261005_0050"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -242,6 +242,59 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
             )
             self._insert_deleted_game(connection, game_id="legacy-deleted", user_id=user_id)
         return "legacy-completed", "legacy-deleted", completed_id
+
+    def test_device_categories_keep_old_sessions_unknown_and_roundtrip_preserves_data(self) -> None:
+        self._upgrade("20261004_0049")
+        timestamp = "2026-10-04T12:00:00+00:00"
+        with self._connection() as connection:
+            user_id = self._insert_user(connection)
+            connection.execute("UPDATE users SET analytics_access=1 WHERE id=?", (user_id,))
+            self._insert_completed_game(connection, game_id="device-migration-result", game_type="zdwa")
+            connection.execute(
+                "INSERT INTO analytics_sessions VALUES (?, ?, ?, ?, ?, ?)",
+                ("a" * 64, timestamp, timestamp, "tablet", "direct", "CH"),
+            )
+            connection.execute(
+                """INSERT INTO analytics_events
+                   (dedupe_key, session_id, received_at, event_type, page, game, action)
+                   VALUES (?, ?, ?, 'page_view', '/', 'zdwa', '')""",
+                ("b" * 64, "a" * 64, timestamp),
+            )
+            preserved_users = connection.execute("SELECT * FROM users").fetchall()
+            preserved_results = connection.execute("SELECT * FROM completed_games").fetchall()
+            preserved_events = connection.execute("SELECT * FROM analytics_events").fetchall()
+        self._upgrade()
+        with self._connection() as connection:
+            info = {row[1]: (row[2], row[3], row[4]) for row in connection.execute("PRAGMA table_info(analytics_sessions)")}
+            for field in ("os", "device_family"):
+                self.assertEqual(info[field], ("VARCHAR(16)", 1, "'unknown'"))
+            self.assertEqual(connection.execute("SELECT os, device_family FROM analytics_sessions").fetchall(),
+                             [("unknown", "unknown")])
+            # An old bundle can still insert its original six fields.
+            connection.execute(
+                """INSERT INTO analytics_sessions (id, first_seen_at, last_seen_at, device, referrer, country)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                ("c" * 64, timestamp, timestamp, "mobile", "direct", "ZZ"),
+            )
+            self.assertEqual(connection.execute("SELECT os, device_family FROM analytics_sessions WHERE id=?",
+                                                ("c" * 64,)).fetchone(), ("unknown", "unknown"))
+            connection.execute("UPDATE analytics_sessions SET os='ipados', device_family='ipad' WHERE id=?", ("c" * 64,))
+        self._downgrade("20261004_0049")
+        with self._connection() as connection:
+            self.assertNotIn("os", self._columns(connection, "analytics_sessions"))
+            self.assertNotIn("device_family", self._columns(connection, "analytics_sessions"))
+            self.assertEqual(connection.execute("SELECT * FROM users").fetchall(), preserved_users)
+            self.assertEqual(connection.execute("SELECT * FROM completed_games").fetchall(), preserved_results)
+            self.assertEqual(connection.execute("SELECT * FROM analytics_events").fetchall(), preserved_events)
+            self.assertEqual(connection.execute("SELECT count(*) FROM analytics_sessions").fetchone(), (2,))
+            self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+        self._upgrade()
+        with self._connection() as connection:
+            self.assertEqual(connection.execute("SELECT os, device_family FROM analytics_sessions").fetchall(),
+                             [("unknown", "unknown"), ("unknown", "unknown")])
+            indexes = {row[1] for row in connection.execute("PRAGMA index_list(analytics_events)")}
+            self.assertIn("ix_analytics_events_session_received", indexes)
+            self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
 
     def test_empty_upgrade_creates_typed_schema_and_is_idempotent(self) -> None:
         self._upgrade()

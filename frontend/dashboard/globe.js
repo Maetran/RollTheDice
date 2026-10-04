@@ -1,5 +1,62 @@
 import world from "./world-map.json";
 
+const PALETTES = {
+  "mission": {
+    "land": "rgba(54,137,139,.32)",
+    "coast": "rgba(113,229,215,.43)",
+    "grid": "rgba(97,162,182,.2)",
+    "backgroundStart": "#08131f",
+    "backgroundEnd": "#07111c",
+    "texture": "rgba(125,176,196,.18)",
+    "bracket": "rgba(106,219,212,.17)",
+    "markerOutline": "#0c1b27",
+    "selectedLabel": "#f5d29a",
+    "atmosphereCore": "rgba(89,231,220,.15)",
+    "atmosphereMiddle": "rgba(66,166,180,.09)",
+    "atmosphereEdge": "rgba(66,166,180,0)",
+    "orbitalRing": "rgba(99,196,207,.16)",
+    "oceanStart": "#14334a",
+    "oceanMiddle": "#0b2537",
+    "oceanEnd": "#071824",
+    "horizon": "rgba(119,231,225,.37)",
+    "mapOcean": "#0b2131",
+    "mapLand": "rgba(54,137,139,.36)",
+    "mapCoast": "rgba(113,229,215,.4)",
+    "mapGrid": "rgba(97,162,182,.21)",
+    "mapBorder": "rgba(105,212,207,.3)",
+    "mapLabels": "#7b9eaf",
+    "marker": "110,231,222",
+    "selected": "244,199,123"
+  },
+  "lcars": {
+    "land": "rgba(120,170,180,.26)",
+    "coast": "rgba(161,139,175,.7)",
+    "grid": "rgba(113,132,173,.28)",
+    "backgroundStart": "#0a0c12",
+    "backgroundEnd": "#0a0c12",
+    "texture": "rgba(201,192,166,.13)",
+    "bracket": "rgba(161,139,175,.5)",
+    "markerOutline": "#0a0c12",
+    "selectedLabel": "#d7ad86",
+    "atmosphereCore": "rgba(161,139,175,.1)",
+    "atmosphereMiddle": "rgba(113,132,173,.05)",
+    "atmosphereEdge": "rgba(113,132,173,0)",
+    "orbitalRing": "rgba(161,139,175,.35)",
+    "oceanStart": "#202330",
+    "oceanMiddle": "#151923",
+    "oceanEnd": "#0a0c12",
+    "horizon": "rgba(161,139,175,.7)",
+    "mapOcean": "#11141b",
+    "mapLand": "rgba(120,170,180,.3)",
+    "mapCoast": "rgba(161,139,175,.65)",
+    "mapGrid": "rgba(113,132,173,.28)",
+    "mapBorder": "rgba(161,139,175,.65)",
+    "mapLabels": "#b5acbf",
+    "marker": "120,170,180",
+    "selected": "215,173,134"
+  }
+};
+
 const TAU = Math.PI * 2;
 const RAD = Math.PI / 180;
 const FRAME_MS = 1000 / 24;
@@ -45,6 +102,7 @@ function normalizeCountries(input) {
 export function createGlobe(element, helpers = {}) {
   const doc = element.ownerDocument;
   const win = doc.defaultView;
+  let palette = PALETTES[doc.body.dataset.dashboardDesign] || PALETTES.mission;
   const t = helpers.t || (value => value);
   const number = helpers.number || (value => new Intl.NumberFormat(helpers.locale || "de").format(value));
   const locale = typeof helpers.locale === "function" ? helpers.locale() : helpers.locale || "de";
@@ -401,8 +459,8 @@ export function createGlobe(element, helpers = {}) {
   }
 
   function globeLand(cx, cy, scale) {
-    context.fillStyle = "rgba(54,137,139,.32)";
-    context.strokeStyle = "rgba(113,229,215,.43)";
+    context.fillStyle = palette.land;
+    context.strokeStyle = palette.coast;
     context.lineWidth = 0.7;
     for (const ring of landVectors) {
       const points = ring.map(viewPoint);
@@ -425,7 +483,7 @@ export function createGlobe(element, helpers = {}) {
   }
 
   function globeGrid(cx, cy, scale) {
-    context.strokeStyle = "rgba(97,162,182,.2)";
+    context.strokeStyle = palette.grid;
     context.lineWidth = 0.65;
     for (const vectors of gridVectors) {
       const points = vectors.map(viewPoint);
@@ -450,18 +508,18 @@ export function createGlobe(element, helpers = {}) {
 
   function background() {
     const gradient = context.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, "#08131f");
-    gradient.addColorStop(1, "#07111c");
+    gradient.addColorStop(0, palette.backgroundStart);
+    gradient.addColorStop(1, palette.backgroundEnd);
     context.fillStyle = gradient;
     context.fillRect(0, 0, width, height);
     // Fixed instrument texture; these dots never represent people or events.
-    context.fillStyle = "rgba(125,176,196,.18)";
+    context.fillStyle = palette.texture;
     for (let index = 0; index < 34; index++) {
       const x = ((index * 1597 + 73) % 1000) / 1000 * width;
       const y = ((index * 233 + 173) % 997) / 997 * height;
       context.fillRect(x, y, index % 5 ? 1 : 1.5, index % 5 ? 1 : 1.5);
     }
-    context.strokeStyle = "rgba(106,219,212,.17)";
+    context.strokeStyle = palette.bracket;
     context.lineWidth = 1;
     for (const [x, y, dx, dy] of [[17, 17, 1, 1], [width - 17, 17, -1, 1], [17, height - 17, 1, -1], [width - 17, height - 17, -1, -1]]) {
       context.beginPath();
@@ -476,7 +534,7 @@ export function createGlobe(element, helpers = {}) {
     if (!row.sessions) return;
     const size = 3 + Math.sqrt(row.sessions / maximumSessions) * 7;
     const isSelected = row.country === selected?.country;
-    const color = isSelected ? "244,199,123" : "110,231,222";
+    const color = isSelected ? palette.selected : palette.marker;
     const phase = (clock * 0.25 + hash(row.country) % 100 / 100) % 1;
     context.globalAlpha = clamp(visibility, 0.22, 1);
     const glow = context.createRadialGradient(x, y, 1, x, y, size * 3.8);
@@ -492,7 +550,7 @@ export function createGlobe(element, helpers = {}) {
     context.arc(x, y, size + 4 + phase * 14, 0, TAU);
     context.stroke();
     context.fillStyle = `rgba(${color},.9)`;
-    context.strokeStyle = "#0c1b27";
+    context.strokeStyle = palette.markerOutline;
     context.lineWidth = 1.7;
     context.beginPath();
     context.arc(x, y, size, 0, TAU);
@@ -510,7 +568,7 @@ export function createGlobe(element, helpers = {}) {
       context.stroke();
       context.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
       context.textAlign = "center";
-      context.fillStyle = "#f5d29a";
+      context.fillStyle = palette.selectedLabel;
       context.fillText(row.country, x, y - size - 12);
     }
     context.globalAlpha = 1;
@@ -522,19 +580,19 @@ export function createGlobe(element, helpers = {}) {
     const cy = height / 2 + 3;
     const scale = radius;
     const atmosphere = context.createRadialGradient(cx, cy, scale * 0.94, cx, cy, scale * 1.2);
-    atmosphere.addColorStop(0, "rgba(89,231,220,.15)");
-    atmosphere.addColorStop(0.35, "rgba(66,166,180,.09)");
-    atmosphere.addColorStop(1, "rgba(66,166,180,0)");
+    atmosphere.addColorStop(0, palette.atmosphereCore);
+    atmosphere.addColorStop(0.35, palette.atmosphereMiddle);
+    atmosphere.addColorStop(1, palette.atmosphereEdge);
     context.fillStyle = atmosphere;
     context.beginPath(); context.arc(cx, cy, scale * 1.2, 0, TAU); context.fill();
-    context.strokeStyle = "rgba(99,196,207,.16)";
+    context.strokeStyle = palette.orbitalRing;
     context.setLineDash([2, 9]);
     context.beginPath(); context.arc(cx, cy, scale * 1.12, 0, TAU); context.stroke();
     context.setLineDash([]);
     const ocean = context.createRadialGradient(cx - scale * 0.35, cy - scale * 0.4, 0, cx, cy, scale);
-    ocean.addColorStop(0, "#14334a");
-    ocean.addColorStop(0.6, "#0b2537");
-    ocean.addColorStop(1, "#071824");
+    ocean.addColorStop(0, palette.oceanStart);
+    ocean.addColorStop(0.6, palette.oceanMiddle);
+    ocean.addColorStop(1, palette.oceanEnd);
     context.fillStyle = ocean;
     context.beginPath(); context.arc(cx, cy, scale, 0, TAU); context.fill();
     context.save();
@@ -542,7 +600,7 @@ export function createGlobe(element, helpers = {}) {
     globeLand(cx, cy, scale);
     globeGrid(cx, cy, scale);
     context.restore();
-    context.strokeStyle = "rgba(119,231,225,.37)";
+    context.strokeStyle = palette.horizon;
     context.lineWidth = 1;
     context.beginPath(); context.arc(cx, cy, scale, 0, TAU); context.stroke();
     const visible = rows.filter(row => row.center).map(row => ({ row, point: viewPoint(vector(row.center)) })).filter(item => item.point[2] > 0.03).sort((a, b) => a.point[2] - b.point[2]);
@@ -556,12 +614,12 @@ export function createGlobe(element, helpers = {}) {
     const left = (width - mapWidth) / 2;
     const top = (height - mapHeight) / 2;
     const project = ([lon, lat]) => [left + (lon + 180) / 360 * mapWidth, top + (90 - lat) / 180 * mapHeight];
-    context.fillStyle = "#0b2131";
+    context.fillStyle = palette.mapOcean;
     context.fillRect(left, top, mapWidth, mapHeight);
     context.save();
     context.beginPath(); context.rect(left, top, mapWidth, mapHeight); context.clip();
-    context.fillStyle = "rgba(54,137,139,.36)";
-    context.strokeStyle = "rgba(113,229,215,.4)";
+    context.fillStyle = palette.mapLand;
+    context.strokeStyle = palette.mapCoast;
     context.lineWidth = 0.7;
     for (const ring of world.land) {
       const unwrapped = [];
@@ -584,7 +642,7 @@ export function createGlobe(element, helpers = {}) {
         context.closePath(); context.fill(); context.stroke();
       }
     }
-    context.strokeStyle = "rgba(97,162,182,.21)";
+    context.strokeStyle = palette.mapGrid;
     context.lineWidth = 0.7;
     for (let longitude = -180; longitude <= 180; longitude += 30) {
       const [x] = project([longitude, 0]);
@@ -599,10 +657,10 @@ export function createGlobe(element, helpers = {}) {
       marker(row, x, y);
     }
     context.restore();
-    context.strokeStyle = "rgba(105,212,207,.3)";
+    context.strokeStyle = palette.mapBorder;
     context.strokeRect(left, top, mapWidth, mapHeight);
     context.font = "9px ui-monospace, SFMono-Regular, Menlo, monospace";
-    context.fillStyle = "#7b9eaf";
+    context.fillStyle = palette.mapLabels;
     context.textAlign = "center";
     for (const longitude of [-180, -90, 0, 90, 180]) {
       const [x] = project([longitude, 0]);
@@ -701,6 +759,7 @@ export function createGlobe(element, helpers = {}) {
   refreshMotion();
   return {
     update,
+    refreshDesign() { if (!destroyed) { palette = PALETTES[doc.body.dataset.dashboardDesign] || PALETTES.mission; draw(); } },
     clear() { update([]); },
     setPaused(value) { if (!destroyed) { paused = !!value; refreshMotion(); } },
     suspend() { suspended = true; stop(); },

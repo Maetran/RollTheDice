@@ -8,13 +8,15 @@ const tracker = buildSync({
   bundle: true, write: false, format: "iife", globalName: "ProductAnalytics",
 }).outputFiles[0].text;
 
-async function trackingFixture(page, { route = "/", game = "zdwa", dnt = false, gpc = false, beacon = false, referrer = "" } = {}) {
+async function trackingFixture(page, { route = "/", game = "zdwa", dnt = false, gpc = false, beacon = false, referrer = "", userAgent = null, touchPoints = 0 } = {}) {
   const batches = [];
   await page.clock.install({ time: new Date("2026-10-04T00:00:00Z") });
   await page.clock.pauseAt(new Date("2026-10-04T00:00:01Z"));
-  await page.addInitScript(({ dnt: enabledDnt, gpc: enabledGpc, beacon: enabledBeacon, referrer: initialReferrer }) => {
+  await page.addInitScript(({ dnt: enabledDnt, gpc: enabledGpc, beacon: enabledBeacon, referrer: initialReferrer, userAgent: ua, touchPoints: points }) => {
     Object.defineProperty(navigator, "doNotTrack", { configurable: true, value: enabledDnt ? "1" : null });
     Object.defineProperty(navigator, "globalPrivacyControl", { configurable: true, value: enabledGpc });
+    if (ua != null) Object.defineProperty(navigator, "userAgent", { configurable: true, value: ua });
+    Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, value: points });
     if (!enabledBeacon) Object.defineProperty(navigator, "sendBeacon", { configurable: true, value: undefined });
     window.fixtureVisibility = "visible";
     Object.defineProperty(document, "visibilityState", { configurable: true, get: () => window.fixtureVisibility });
@@ -23,7 +25,7 @@ async function trackingFixture(page, { route = "/", game = "zdwa", dnt = false, 
     const nativeInterval = window.setInterval;
     window.fixtureIntervals = 0;
     window.setInterval = (...args) => { window.fixtureIntervals += 1; return nativeInterval(...args); };
-  }, { dnt, gpc, beacon, referrer });
+  }, { dnt, gpc, beacon, referrer, userAgent, touchPoints });
   await page.route("**/api/analytics/events", async request => {
     batches.push(JSON.parse(request.request().postData()));
     await request.fulfill({ status: 202, contentType: "application/json", body: '{"accepted":true}' });
@@ -68,6 +70,42 @@ for (const preference of ["dnt", "gpc"]) {
     expect(fixture.batches).toEqual([]);
     expect(await page.evaluate(() => window.fixtureIntervals)).toBe(0);
     expect(await page.evaluate(() => sessionStorage.getItem("rollthedice:analytics:tab:v1"))).toBeNull();
+  });
+}
+
+test("device details classify coarse families and preserve hidden hardware as unknown", async ({ page }) => {
+  await trackingFixture(page);
+  const examples = [
+    ["Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1", 5, "ipados", "ipad"],
+    ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15", 5, "ipados", "ipad"],
+    ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15", 0, "macos", "mac"],
+    ["Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148", 5, "ios", "iphone"],
+    ["Mozilla/5.0 (Linux; Android 11; KFTRWI Build/RS) AppleWebKit/537.36 Silk/120.0 like Chrome/120.0 Safari/537.36", 5, "fireos", "fire_tablet"],
+    ["Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Silk/44.1.54 like Chrome/44.0 Safari/537.36", 0, "unknown", "unknown"],
+    ["Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 Chrome/145.0.0.0 Mobile Safari/537.36", 5, "android", "android_phone"],
+    ["Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 Chrome/145.0.0.0 Safari/537.36", 5, "android", "android_tablet"],
+    ["Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 Chrome/145.0.0.0 Safari/537.36", 0, "chromeos", "chromebook"],
+    ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/145.0.0.0 Safari/537.36", 0, "windows", "windows_pc"],
+    ["Mozilla/5.0 (X11; Linux x86_64) Gecko/20100101 Firefox/145.0", 0, "linux", "linux_pc"],
+    ["Mozilla/5.0 (X11; FreeBSD amd64) Gecko/20100101 Firefox/145.0", 0, "unknown", "unknown"],
+    ["Hidden browser", 0, "unknown", "unknown"],
+  ];
+  const actual = await page.evaluate(rows => rows.map(([userAgent, maxTouchPoints]) => ProductAnalytics.analyticsDeviceDetails({userAgent, maxTouchPoints})), examples);
+  expect(actual).toEqual(examples.map(([, , os, device_family]) => ({os, device_family})));
+  expect(JSON.stringify(actual)).not.toMatch(/Mozilla|18_6|KFTRWI|145\.0|touchPoints/);
+});
+
+for (const device of [
+  { name: "iPad desktop mode", userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15", touchPoints: 5, os: "ipados", family: "ipad", broad: "tablet" },
+  { name: "Fire tablet", userAgent: "Mozilla/5.0 (Linux; Android 11; KFTRWI Build/RS) AppleWebKit/537.36 Silk/120.0 like Chrome/120.0 Safari/537.36", touchPoints: 5, os: "fireos", family: "fire_tablet", broad: "tablet" },
+  { name: "narrow laptop viewport", userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/145.0.0.0 Safari/537.36", touchPoints: 0, os: "windows", family: "windows_pc", broad: "desktop" },
+]) {
+  test(`analytics sends only categories for ${device.name}`, async ({ page }) => {
+    await page.setViewportSize({width:390,height:844});
+    const fixture = await trackingFixture(page, device);
+    await expect.poll(() => fixture.batches.length).toBe(1);
+    expect(fixture.batches[0]).toMatchObject({device:device.broad,os:device.os,device_family:device.family});
+    expect(JSON.stringify(fixture.batches)).not.toMatch(/Mozilla|KFTRWI|Build\/|maxTouchPoints|userAgent|Mac OS X|Windows NT/);
   });
 }
 
@@ -233,6 +271,11 @@ test("real browser visits reach the founder dashboard with normalized categories
   expect((await viewAccepted).status()).toBe(202);
   await expect.poll(() => batches.flatMap(batch => batch.events)
     .filter(event => event.type === "page_view").map(event => event.page)).toEqual(["/spieler"]);
+  const device = batches[0];
+  expect(typeof device.os).toBe("string");
+  expect(typeof device.device_family).toBe("string");
+  const initialSoftware = initial.device_software.find(row => row.os === device.os)?.sessions || 0;
+  const initialHardware = initial.device_hardware.find(row => row.device_family === device.device_family)?.sessions || 0;
   const engagementAccepted = page.waitForResponse(response => (
     new URL(response.url()).pathname === "/api/analytics/events"
     && response.request().postDataJSON()?.session_id === sessionId
@@ -249,7 +292,9 @@ test("real browser visits reach the founder dashboard with normalized categories
     const players = stats.pages.find(row => row.page === "/spieler" && row.game === "zdwa");
     return Boolean(players && players.views >= (initialPlayers?.views || 0) + 1
       && players.active_seconds > (initialPlayers?.active_seconds || 0)
-      && stats.overview.sessions >= initial.overview.sessions + 1);
+      && stats.overview.sessions >= initial.overview.sessions + 1
+      && stats.device_software.some(row => row.os === device.os && row.sessions >= initialSoftware + 1)
+      && stats.device_hardware.some(row => row.device_family === device.device_family && row.sessions >= initialHardware + 1));
   }, { timeout: 10000 }).toBe(true);
   const dashboard = await page.goto("/admin/dashboard");
   expect(dashboard.status()).toBe(200);

@@ -1,10 +1,10 @@
 {
-  "version": "2.44.0",
+  "version": "2.45.0",
   "bump": "minor",
   "date": "2026-10-05",
-  "previous_revision": "3e921162f06a44b16b7c29a8ccc184974214425b",
+  "previous_revision": "657763f6b425af53e0c00fa906639b5bb6ce91db",
   "summary": {
-    "de": "Mission Control: Weltansicht und interaktive Analysen für Herkunft, Aktivität und Seitenwege",
-    "en": "Mission Control: world view and interactive analysis of sources, activity and page journeys"
+    "de": "Mission Control ergänzt LCARS mit lokalem Designwechsel und anonymer Betriebssystem- und Geräteanalyse",
+    "en": "Mission Control adds LCARS with a local theme choice and anonymous operating-system and device analysis"
   }
 }

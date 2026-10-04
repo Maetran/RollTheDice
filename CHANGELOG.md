@@ -22,6 +22,30 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.45.0 — Mission Control: LCARS & Geräte / devices — 2026-10-05
+
+**Deutsch:** Berechtigte Konten können Mission Control im bisherigen Design
+oder als LCARS-Konsole verwenden. Der Designwechsel wird lokal für das
+Dashboard gespeichert. Globus, Weltkarte, Diagramme und Analysen bleiben in
+beiden Ansichten nutzbar; Daten und Zugriffsrechte folgen denselben Regeln.
+Die Darstellung der Spiele wird dadurch nicht verändert. Stiller Rollout
+ohne neue Push- oder Release-Einträge.
+Geräteanalyse ergänzt feste Betriebssystem- und Geräteklassen wie iPad,
+iPhone, Android-Tablet, Fire-Tablet, Mac und Windows-PC. Die Erkennung ist
+näherungsweise; ältere und nicht erkannte Besuche bleiben unbekannt. Die
+Analytics-Nutzdaten enthalten keine Browser-Rohdaten, Versionsnummern,
+genauen Modelle oder Gerätekennungen.
+
+**English:** Authorized accounts can use Mission Control in its existing
+design or as an LCARS console. The theme choice is saved locally for the
+dashboard. Globe, world map, charts and analysis remain available in both
+views, with the same data and access rules. Game appearance preferences are
+unaffected. Silent rollout with no new push or release entries.
+Device analysis adds fixed operating-system and device categories such as
+iPad, iPhone, Android tablet, Fire tablet, Mac and Windows PC. Recognition is
+approximate; older and unrecognized visits remain unknown. Analytics payloads
+contain no raw browser data, version numbers, exact models or device identifiers.
+
 ## 2.44.0 — Mission Control Deep Dive — 2026-10-05
 
 **Deutsch:** Die private Analyse-Konsole erhält einen animierten Globus und

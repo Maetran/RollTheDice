@@ -79,7 +79,7 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
       const row = byCell.get(`${weekday}:${hour}`) || {};
       const value = count(row[heatmapMetric]);
       const opacity = value ? .15 + Math.sqrt(value / maximum) * .85 : 0;
-      return `<rect data-weekday="${weekday}" data-hour="${hour}" x="${54 + hour * 26}" y="${29 + weekday * 23}" width="22" height="18" rx="3" fill="${value ? `rgba(110,231,222,${opacity})` : "#1d2a3a"}"><title>${e(t(days[weekday]))} ${String(hour).padStart(2, "0")}:00 UTC · ${heatmapMetric === "active_seconds" ? e(duration(value)) : number(value)} ${e(t(fields[heatmapMetric]))}</title></rect>`;
+      return `<rect data-weekday="${weekday}" data-hour="${hour}" x="${54 + hour * 26}" y="${29 + weekday * 23}" width="22" height="18" rx="3" fill="${value ? "var(--cyan)" : "var(--heatmap-empty, #1d2a3a)"}" fill-opacity="${value ? opacity : 1}"><title>${e(t(days[weekday]))} ${String(hour).padStart(2, "0")}:00 UTC · ${heatmapMetric === "active_seconds" ? e(duration(value)) : number(value)} ${e(t(fields[heatmapMetric]))}</title></rect>`;
     }).join("");
     const rowLabels = days.map((day, index) => `<text class="chart-axis" x="41" y="${42 + index * 23}" text-anchor="end">${e(t(day).slice(0, 2))}</text>`).join("");
     const hourLabels = [0, 3, 6, 9, 12, 15, 18, 21, 23].map(hour => `<text class="chart-axis" x="${65 + hour * 26}" y="16" text-anchor="middle">${String(hour).padStart(2, "0")}</text>`).join("");

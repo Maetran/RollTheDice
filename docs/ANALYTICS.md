@@ -19,6 +19,19 @@ needing to sign out. All dashboard documents are `noindex` and `no-store`.
 - Page views, visible and recently active seconds, fixed click action names,
   broad device classes, source hostnames, and optional country codes are
   recorded in bounded batches. DNT/GPC disables browser analytics.
+- Since 2.45.0, the browser sends only fixed operating-system and device-family
+  categories derived from available browser hints. Analytics payloads contain
+  no raw user-agent strings, OS versions, exact models or hardware identifiers;
+  none of these are saved in analytics storage.
+  Recognition is approximate. Each category is fixed at the first accepted
+  batch of an anonymous tab session; older and unrecognized sessions remain
+  `unknown` rather than having their history inferred from later batches.
+  **Deutsch:** Seit 2.45.0 überträgt der Browser nur feste Betriebssystem- und
+  Geräteklassen aus verfügbaren Browserhinweisen. Analytics-Nutzdaten und
+  -Speicher enthalten keine Rohdaten, Versionsnummern, genauen Modelle oder
+  Gerätekennungen.
+  Die Erkennung ist näherungsweise. Die erste Angabe einer anonymen Tab-Sitzung
+  bleibt fest; ältere und nicht erkannte Sitzungen bleiben `unknown`.
 - Countries are accepted only from a trusted Cloudflare peer. Sources:
   [IPv4](https://www.cloudflare.com/ips-v4),
   [IPv6](https://www.cloudflare.com/ips-v6). Direct/untrusted requests have
@@ -36,6 +49,25 @@ needing to sign out. All dashboard documents are `noindex` and `no-store`.
 
 ## Visual analysis
 
+- The dashboard's own theme switcher selects Mission Control or LCARS. Its
+  preference is stored locally in the browser, independently of ZDWA/Zilch
+  appearance preferences. Both themes present the same statistics and charts;
+  privacy, access and animation controls remain identical.
+  **Deutsch:** Der eigene Designwechsel wählt Mission Control oder LCARS.
+  Die Wahl wird lokal im Browser gespeichert und verändert die Darstellung
+  der Spiele nicht. Messwerte, Diagramme, Datenschutz, Zugriff und
+  Animationssteuerung folgen in beiden Designs denselben Regeln.
+- Software and hardware panels count distinct anonymous tab sessions with a
+  browser event in the selected UTC period and game. They complement the
+  existing mobile/tablet/desktop groups; the same tab is counted once within
+  each category. Operating systems use `android`, `ios`, `ipados`, `fireos`,
+  `windows`, `macos`, `linux`, `chromeos` or `unknown`. Device families use
+  `ipad`, `iphone`, `fire_tablet`, `android_tablet`, `android_phone`, `mac`,
+  `windows_pc`, `linux_pc`, `chromebook` or `unknown`.
+  **Deutsch:** Software- und Hardware-Auswertung zählen verschiedene anonyme
+  Tab-Sitzungen mit Browser-Ereignissen im gewählten UTC-Zeitraum und Spiel.
+  Sie ergänzen Handy, Tablet und Desktop; derselbe Tab zählt je Kategorie
+  einmal. Unbekannt umfasst auch ältere Sitzungen ohne diese Messung.
 - Globe and world map use locally bundled public-domain Natural Earth geometry.
   Source hashes and preparation instructions are in
   [the geography asset notes](../frontend/dashboard/GEOGRAPHY.md).
@@ -80,13 +112,28 @@ losing permission; this release does not store a historical server time series.
 
 ## Release and rollback
 
-Version 2.44.0 is rolled out with `SILENT_RELEASE=1`; no player push or in-app
+Version 2.45.0 is rolled out with `SILENT_RELEASE=1`; no player push or in-app
 release entry is created. The existing deploy script backs up app data before
-the update. The Deep Dive baseline is version 2.43.0, commit `3e92116`; both
-versions use the same analytics schema. The pre-analytics baseline remains
+the update. The LCARS baseline is version 2.44.0, commit `657763f`; the Deep
+Dive baseline is version 2.43.0, commit `3e92116`. Migration `20261005_0050`
+adds two bounded category columns to anonymous sessions, defaulting old rows
+to `unknown`, without changing accounts, access grants or game tables.
+The pre-analytics baseline remains
 version 2.42.6, commit `40e53b1`.
 
-For code rollback, stop the service, select version 2.43.0 and rebuild.
+**Deutsch:** Version 2.45.0 wird still mit `SILENT_RELEASE=1` ausgeliefert,
+ohne neue Push- oder In-App-Versionsmeldung. Für den LCARS-Designwechsel ist
+Version 2.44.0 (`657763f`) die Rückfallversion. Migration `20261005_0050`
+ergänzt zwei begrenzte Geräteklassen-Spalten; ältere Sitzungen erhalten
+`unknown`. Konten, Zugriffsrechte und Spieldaten bleiben erhalten. Die
+Datensicherung läuft über das bestehende Deploy-Skript.
+
+For code rollback of the LCARS theme, stop the service, select version 2.44.0
+and rebuild. Select version 2.43.0 to return to the first dashboard.
+The two additive device columns may remain when rolling back to these
+versions; old code ignores them. An optional downgrade to `20261004_0049`
+removes only these classifications, preserving anonymous sessions, events,
+access grants and player results. Back up and stop the service first.
 To return to the pre-analytics implementation, select version 2.42.6 instead.
 The additive analytics tables and dashboard permission column may remain in
 SQLite; old code ignores them. Do not restore an older full database over new

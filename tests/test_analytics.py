@@ -101,6 +101,75 @@ class AnalyticsTests(unittest.TestCase):
         self.assertEqual(stats["pages"][0]["avg_active_seconds"], 15)
         self.assertEqual(stats["referrers"], [{"source": "google.ch", "sessions": 1}])
 
+    def test_device_dimensions_accept_only_coarse_allowlisted_values(self):
+        fields = {"os": analytics.OPERATING_SYSTEMS, "device_family": analytics.DEVICE_FAMILIES}
+        for field, allowed in fields.items():
+            for value in allowed:
+                with self.subTest(field=field, value=value):
+                    self.assertEqual(normalize_batch({**batch(), field: value})["session"][field], value)
+            for invalid in (None, True, 42, [], {}, ["ios"], "iOS", "iPhone 16 Pro PRIVATE", "x" * 1000):
+                with self.subTest(field=field, invalid=invalid):
+                    self.assertEqual(normalize_batch({**batch(), field: invalid})["session"][field], "unknown")
+        sanitized = normalize_batch({**batch(), "os": "android", "device_family": "android_tablet",
+                                     "user_agent": "PRIVATE_RAW_UA", "model": "PRIVATE_MODEL",
+                                     "os_version": "PRIVATE_VERSION", "device_id": "PRIVATE_ID"})
+        persist_batches([sanitized])
+        with session_scope() as db:
+            stored = db.get(AnalyticsSession, sanitized["session"]["id"])
+            self.assertEqual((stored.os, stored.device_family), ("android", "android_tablet"))
+            self.assertFalse(any(key in stored.__dict__ for key in ("user_agent", "model", "os_version", "device_id")))
+        response = json.dumps(dashboard_stats(7))
+        for value in ("PRIVATE_RAW_UA", "PRIVATE_MODEL", "PRIVATE_VERSION", "PRIVATE_ID", batch()["session_id"],
+                      sanitized["session"]["id"]):
+            self.assertNotIn(value, response)
+
+    def test_first_seen_device_categories_never_reclassify_old_or_known_sessions(self):
+        old = normalize_batch(batch(), now=self.now - timedelta(days=1))
+        fresh = normalize_batch({**batch(), "os": "ipados", "device_family": "ipad"}, now=self.now)
+        persist_batches([old, fresh])
+        changed = normalize_batch({**batch(sid="f" * 32), "os": "android", "device_family": "android_phone"}, now=self.now)
+        spoofed = normalize_batch({**batch(sid="f" * 32), "os": "windows", "device_family": "windows_pc"},
+                                  now=self.now + timedelta(seconds=1))
+        persist_batches([changed, spoofed])
+        with session_scope() as db:
+            legacy = db.get(AnalyticsSession, old["session"]["id"])
+            known = db.get(AnalyticsSession, changed["session"]["id"])
+            self.assertEqual((legacy.os, legacy.device_family), ("unknown", "unknown"))
+            self.assertEqual(analytics.as_utc(legacy.first_seen_at), self.now - timedelta(days=1))
+            self.assertEqual(analytics.as_utc(legacy.last_seen_at), self.now)
+            self.assertEqual((known.os, known.device_family), ("android", "android_phone"))
+
+    def test_device_dimensions_count_distinct_client_sessions_in_selected_period_and_game(self):
+        now = datetime(2026, 10, 5, 12, tzinfo=timezone.utc)
+
+        def track(sid, page_id, when, os="unknown", family="unknown", game="zdwa", source="client"):
+            raw = {**batch(sid=f"{sid:032x}", page_id=f"{page_id:032x}", game=game),
+                   "os": os, "device_family": family}
+            normalized = normalize_batch(raw, now=when)
+            for item in normalized["events"]:
+                item["source"] = source
+            persist_batches([normalized])
+
+        track(1, 1, now - timedelta(minutes=5), "android", "android_phone")
+        track(1, 2, now - timedelta(minutes=4), "android", "android_phone")
+        track(1, 3, now - timedelta(minutes=3), "android", "android_phone", game="zilch")
+        track(2, 1, now - timedelta(minutes=2), "ipados", "ipad")
+        track(3, 1, now - timedelta(minutes=1))
+        track(4, 1, now - timedelta(days=1), "macos", "mac")
+        track(5, 1, now + timedelta(seconds=1), "windows", "windows_pc")
+        track(6, 1, now - timedelta(seconds=30), "linux", "linux_pc", source="server")
+        stats = dashboard_stats(1, now=now)
+        self.assertEqual({row["os"]: row["sessions"] for row in stats["device_software"]},
+                         {"android": 1, "ipados": 1, "unknown": 1})
+        self.assertEqual({row["device_family"]: row["sessions"] for row in stats["device_hardware"]},
+                         {"android_phone": 1, "ipad": 1, "unknown": 1})
+        filtered = dashboard_stats(1, "zilch", now=now)
+        self.assertEqual(filtered["device_software"], [{"os": "android", "sessions": 1}])
+        self.assertEqual(filtered["device_hardware"], [{"device_family": "android_phone", "sessions": 1}])
+        empty = dashboard_stats(1, "zilch", now=now.replace(hour=0))
+        self.assertEqual(empty["device_software"], [])
+        self.assertEqual(empty["device_hardware"], [])
+
     def test_game_filter_daily_buckets_and_live_window(self):
         persist_batches([normalize_batch(batch(), now=self.now - timedelta(minutes=3)),
                          normalize_batch(batch(sid="1" * 32, game="zilch", page="/zilch/spiel"), now=self.now)])

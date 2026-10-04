@@ -49,6 +49,15 @@ country details, interactive traffic charts, a UTC activity heatmap, page
 engagement and observed page journeys. Animation can be paused and respects
 reduced motion. Country markers represent country-level aggregates, not
 individual visitors or exact locations.
+Choose **Mission Control** or **LCARS** with the dashboard's own theme
+switcher. The choice is saved locally in this browser, independently of game
+appearance preferences. Both designs offer the same charts, analysis and
+access controls.
+Device analysis groups anonymous tab visits by broad device class, operating
+system and device family, such as iPad, iPhone, Android or Fire tablet, Mac
+and Windows PC. Recognition is approximate. Older and unrecognized visits
+remain unknown. Analytics payloads contain no raw user agents, OS versions,
+exact models or device identifiers.
 Open **Mission Control** from your account or administration. Only the founder
 can grant or revoke individual **Dashboard access** in user administration;
 admin and owner roles do not grant access automatically. Revocation applies to
@@ -65,6 +74,15 @@ Verlaufsgrafiken, UTC-Aktivitätsraster, Seitenzeit und beobachtete Seitenwege
 helfen beim Vertiefen. Länderpunkte zeigen zusammengefasste Messwerte, keine
 einzelnen Personen oder genauen Aufenthaltsorte. Animation lässt sich
 pausieren und berücksichtigt reduzierte Bewegung.
+Der eigene Designwechsel bietet **Mission Control** und **LCARS**. Die Wahl
+wird lokal in diesem Browser gespeichert und verändert die Darstellung der
+Spiele nicht. Beide Designs bieten dieselben Diagramme, Analysen und
+Zugriffsregeln.
+Die Geräteanalyse ordnet anonyme Tab-Besuche nach Geräteklasse,
+Betriebssystem und Gerätefamilie ein, etwa iPad, iPhone, Android- oder
+Fire-Tablet, Mac und Windows-PC. Die Erkennung ist näherungsweise. Ältere und
+nicht erkannte Besuche bleiben unbekannt. Die Analytics-Nutzdaten enthalten
+keine Browser-Rohdaten, Versionsnummern, genauen Modelle oder Gerätekennungen.
 
 Visitor measurement starts with version 2.43.0; completed game history uses
 existing server records. Sessions are anonymous tab visits, not unique people.
