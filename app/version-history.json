@@ -2000,5 +2000,12 @@
     "date": "2026-09-28",
     "bump": "patch",
     "summary": "Abbruchzähler ab dem ersten Eintrag und einmalig zurückgesetzt / Abandonment counts start after the first entry and reset once"
+  },
+  {
+    "version": "2.43.0",
+    "revision": "3e921162f06a44b16b7c29a8ccc184974214425b",
+    "date": "2026-10-04",
+    "bump": "minor",
+    "summary": "Mission Control: privates Dashboard für Besucher, Spielaktivität und Serverzustand / Mission Control: private dashboard for visitors, gameplay activity and server health"
   }
 ]

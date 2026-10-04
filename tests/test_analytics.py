@@ -5,7 +5,7 @@ import os
 import queue
 import tempfile
 import unittest
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -111,6 +111,156 @@ class AnalyticsTests(unittest.TestCase):
         self.assertEqual(sum(day["page_views"] for day in result["daily"]), 1)
         self.assertEqual(result["pages"][0]["game"], "zilch")
         self.assertEqual(dashboard_stats(7, "zdwa", now=self.now)["overview"]["live_sessions"], 0)
+
+    def _track_page(self, sid: int, page_number: int, page: str, when: datetime, *, game="zdwa", country="ZZ", active_ms=15000):
+        events = [{"id": f"{page_number * 2:032x}", "page_id": f"{page_number:032x}", "type": "page_view",
+                   "page": page, "game": game}]
+        if active_ms:
+            events.append({**events[0], "id": f"{page_number * 2 + 1:032x}", "type": "engagement", "active_ms": active_ms})
+        persist_batches([normalize_batch(batch(sid=f"{sid:032x}", events=events), now=when, country=country)])
+
+    def test_geography_counts_distinct_tab_visits_and_unknown_without_invented_location(self):
+        now = datetime(2026, 10, 5, 12, tzinfo=timezone.utc)
+        self._track_page(1, 1, "/", now - timedelta(minutes=5), country="CH")
+        self._track_page(1, 2, "/zilch", now - timedelta(minutes=4), game="zilch", country="CH", active_ms=30000)
+        self._track_page(2, 1, "/regeln", now - timedelta(minutes=3), country="CH")
+        self._track_page(3, 1, "/", now - timedelta(minutes=2), country="ZZ")
+        self._track_page(4, 1, "/", now + timedelta(minutes=1), country="DE")
+        self._track_page(5, 1, "/", now - timedelta(days=1), country="DE")
+        stats = dashboard_stats(1, now=now)
+        geography = {row["country"]: row for row in stats["geography"]}
+        self.assertEqual(set(geography), {"CH", "ZZ"})
+        self.assertEqual(geography["CH"]["sessions"], 2)
+        self.assertEqual(geography["CH"]["page_views"], 3)
+        self.assertEqual(geography["CH"]["active_seconds"], 60)
+        self.assertEqual(geography["CH"]["games"], {"zdwa": 2, "zilch": 1})
+        self.assertEqual(geography["CH"]["share_percent"], 66.7)
+        self.assertEqual(stats["geography_summary"]["known_sessions"], 2)
+        self.assertEqual(stats["geography_summary"]["unknown_sessions"], 1)
+        self.assertEqual(stats["geography_summary"]["known_countries"], 1)
+        self.assertTrue(stats["geography_summary"]["game_visits_can_overlap"])
+        filtered = dashboard_stats(1, "zilch", now=now)["geography"]
+        self.assertEqual(filtered, [{"country": "CH", "sessions": 1, "page_views": 1, "active_seconds": 30,
+                                    "games": {"zdwa": 0, "zilch": 1}, "share_percent": 100.0}])
+
+    def test_heatmap_is_monday_first_utc_distinct_per_slot_and_zero_filled(self):
+        now = datetime(2026, 10, 5, 12, tzinfo=timezone.utc)
+        self._track_page(1, 1, "/", now.replace(hour=0, minute=1))
+        self._track_page(1, 2, "/regeln", now.replace(hour=0, minute=2))
+        self._track_page(1, 3, "/spieler", now.replace(hour=1, minute=1))
+        self._track_page(2, 1, "/zilch", now - timedelta(hours=12, minutes=1), game="zilch")
+        stats = dashboard_stats(7, now=now.astimezone(timezone(timedelta(hours=2))))
+        cells = {(cell["weekday"], cell["hour"]): cell for cell in stats["heatmap"]}
+        self.assertEqual(len(cells), 7 * 24)
+        self.assertEqual(cells[0, 0], {"weekday": 0, "hour": 0, "sessions": 1, "page_views": 2, "active_seconds": 30})
+        self.assertEqual(cells[0, 1]["sessions"], 1)
+        self.assertEqual(cells[6, 23]["page_views"], 1)
+        self.assertEqual(cells[3, 15]["active_seconds"], 0)
+        self.assertEqual(sum(cell["page_views"] for cell in cells.values()), stats["overview"]["page_views"])
+        filtered = {(cell["weekday"], cell["hour"]): cell for cell in dashboard_stats(7, "zilch", now=now)["heatmap"]}
+        self.assertEqual(filtered[6, 23]["page_views"], 1)
+        self.assertEqual(filtered[0, 0]["page_views"], 0)
+
+    def test_journeys_keep_real_tab_order_gap_boundaries_and_cross_game_sequence(self):
+        now = datetime(2026, 10, 5, 12, tzinfo=timezone.utc)
+        for number, page, minute in ((1, "/", 0), (2, "/", 1), (3, "/regeln", 2),
+                                     (4, "/spieler", 33), (5, "/rangabzeichen", 63)):
+            self._track_page(1, number, page, now.replace(hour=10) + timedelta(minutes=minute), active_ms=0)
+        for number, page, product in ((1, "/zilch", "zilch"), (2, "/", "zdwa"),
+                                      (3, "/zilch/regeln", "zilch"), (4, "/zilch/spieler", "zilch")):
+            self._track_page(2, number, page, now.replace(hour=10) + timedelta(minutes=number), game=product, active_ms=0)
+        self._track_page(3, 1, "/spieler", now.replace(hour=10, minute=3), active_ms=0)
+        self._track_page(4, 1, "/ergebnis", now + timedelta(minutes=1), active_ms=0)
+        self._track_page(1, 6, "/ergebnis", now.replace(hour=0) - timedelta(seconds=1), active_ms=0)
+        journeys = dashboard_stats(1, now=now)["journeys"]
+        links = {(row["from"], row["to"]): row["count"] for row in journeys["links"]}
+        self.assertEqual(links[("/", "/regeln")], 1)
+        self.assertEqual(links[("/spieler", "/rangabzeichen")], 1)
+        self.assertNotIn(("/regeln", "/spieler"), links)
+        self.assertNotIn(("/", "/"), links)
+        self.assertNotIn(("/ergebnis", "/"), links)
+        self.assertEqual(journeys["sample"]["page_views"], 10)
+        self.assertFalse(journeys["sample"]["truncated"])
+        filtered = dashboard_stats(1, "zilch", now=now)["journeys"]
+        self.assertEqual(filtered["links"], [{"from": "/zilch/regeln", "to": "/zilch/spieler", "from_game": "zilch",
+                                               "to_game": "zilch", "count": 1}])
+        self.assertEqual(filtered["sample"]["matching_page_views"], 3)
+        self.assertEqual(filtered["sample"]["game_filter_applied"], "both_endpoints")
+        self.assertNotIn(f"{1:032x}", json.dumps(journeys))
+
+    def test_journeys_sample_latest_ten_thousand_views_and_report_limits(self):
+        now = datetime(2026, 10, 5, 12, tzinfo=timezone.utc)
+        start = now - timedelta(seconds=10002)
+        normalized = normalize_batch(batch(), now=start)
+        with session_scope() as db:
+            db.add(AnalyticsSession(**normalized["session"]))
+            db.flush()
+            db.execute(analytics.insert(AnalyticsEvent), [
+                {"dedupe_key": f"{index:064x}", "session_id": normalized["session"]["id"],
+                 "received_at": start + timedelta(seconds=index), "event_type": "page_view",
+                 "page": "/regeln" if index % 2 else "/", "game": "zdwa", "action": "", "active_ms": 0,
+                 "mode": "unknown", "source": "client"}
+                for index in range(10002)
+            ])
+        stats = dashboard_stats(1, now=now)
+        sample = stats["journeys"]["sample"]
+        self.assertEqual(sample["page_views"], 10000)
+        self.assertEqual(sample["limit"], 10000)
+        self.assertEqual(sample["total_page_views"], 10002)
+        self.assertTrue(sample["truncated"])
+        self.assertEqual(sample["from"], (start + timedelta(seconds=2)).isoformat())
+        self.assertEqual(sum(row["count"] for row in stats["journeys"]["links"]), 9999)
+        self.assertEqual(stats["overview"]["page_views"], 10002)
+
+    def test_comparison_has_complete_previous_days_partial_today_and_retained_coverage(self):
+        now = datetime(2026, 10, 5, 12, tzinfo=timezone.utc)
+        start = now.replace(hour=0)
+        self._track_page(1, 1, "/", start - timedelta(days=1), active_ms=30000)
+        self._track_page(2, 1, "/", start, active_ms=15000)
+        self._track_page(3, 1, "/zilch", start + timedelta(hours=1), game="zilch", active_ms=15000)
+        self._track_page(4, 1, "/", start - timedelta(days=1, seconds=1), active_ms=15000)
+        self._track_page(5, 1, "/", now + timedelta(seconds=1), active_ms=15000)
+        with session_scope() as db:
+            for game_id, timestamp in (("previous-result", start - timedelta(seconds=1)), ("current-result", start)):
+                db.add(CompletedGame(game_id=game_id, game_type="zdwa", game_name="Private", finished_at=timestamp,
+                                     mode="1", hardcore=False, snapshot_json="{}", imported_from_legacy=False,
+                                     created_at=timestamp))
+        comparison = dashboard_stats(1, now=now)["comparison"]
+        self.assertEqual(comparison["overview"]["sessions"], {"current": 2, "previous": 1, "delta": 1, "change_percent": 100})
+        self.assertEqual(comparison["overview"]["active_seconds"], {"current": 30, "previous": 30, "delta": 0, "change_percent": 0})
+        self.assertEqual(comparison["overview"]["completed_games"]["previous"], 1)
+        self.assertTrue(comparison["current_partial_day"])
+        self.assertFalse(comparison["previous_partial_day"])
+        self.assertEqual(comparison["current_elapsed_seconds"], 43200)
+        self.assertEqual(comparison["previous_elapsed_seconds"], 86400)
+        self.assertTrue(comparison["previous_period"]["end_exclusive"])
+        self.assertEqual(comparison["previous_data_coverage"], "complete")
+        self.assertEqual(dashboard_stats(7, now=now)["comparison"]["previous_data_coverage"], "none")
+        filtered = dashboard_stats(1, "zilch", now=now)["comparison"]
+        self.assertEqual(filtered["overview"]["sessions"]["current"], 1)
+        self.assertEqual(filtered["overview"]["sessions"]["previous"], 0)
+        self.assertIsNone(filtered["overview"]["sessions"]["change_percent"])
+        self._track_page(6, 1, "/", start - timedelta(minutes=30), active_ms=0)
+        with session_scope() as db:
+            db.execute(analytics.delete(AnalyticsEvent).where(AnalyticsEvent.received_at < start - timedelta(hours=1)))
+        self.assertEqual(dashboard_stats(1, now=now)["comparison"]["previous_data_coverage"], "partial")
+        with session_scope() as db:
+            db.execute(analytics.delete(AnalyticsEvent).where(AnalyticsEvent.received_at < start))
+        self.assertEqual(dashboard_stats(1, now=now)["comparison"]["previous_data_coverage"], "none")
+
+    def test_comparison_client_coverage_cannot_be_manufactured_by_older_server_actions(self):
+        now = datetime(2026, 10, 5, 12, tzinfo=timezone.utc)
+        older = now - timedelta(days=30)
+        server = normalize_batch(batch(), now=older)
+        server["session"] = None
+        server["events"] = [{**server["events"][2], "session_id": None, "source": "server", "action": "game_created"}]
+        persist_batches([server])
+        self.assertEqual(dashboard_stats(7, now=now)["comparison"]["previous_data_coverage"], "none")
+        self._track_page(1, 1, "/", now - timedelta(minutes=5), active_ms=0)
+        stats = dashboard_stats(7, now=now)
+        self.assertEqual(stats["collection"]["first_seen_at"], older.isoformat())
+        self.assertEqual(stats["comparison"]["traffic_retained_from"], (now - timedelta(minutes=5)).isoformat())
+        self.assertEqual(stats["comparison"]["previous_data_coverage"], "none")
 
     def test_retention_and_hard_event_cap_remove_old_sessions(self):
         persist_batches([normalize_batch(batch(), now=self.now - timedelta(days=91)),

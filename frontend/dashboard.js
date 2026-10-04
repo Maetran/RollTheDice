@@ -1,5 +1,7 @@
 import "./i18n/index.js";
 import { escapeHtml, loadAuth } from "./shared/auth.js";
+import { createAnalysisVisuals } from "./dashboard/analysis.js";
+import { createGlobe } from "./dashboard/globe.js";
 
 const REFRESH_MS = 30000;
 const byId = id => document.getElementById(id);
@@ -52,6 +54,8 @@ let generation = 0;
 let lastFetched = 0;
 let disposed = false;
 let refreshTimer = null;
+const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+let motionPaused = motionQuery.matches || localStorage.getItem("rollthedice:dashboard:motion") === "paused";
 
 function empty(title = "Noch keine Messwerte", description = "Die Besuchsmessung beginnt mit diesem Release.") {
   return `<div class="empty-state"><span class="empty-icon" aria-hidden="true">⌁</span><strong>${e(t(title))}</strong><p>${e(t(description))}</p></div>`;
@@ -69,13 +73,22 @@ function overview(data) {
   const days = data.daily || [];
   const metrics = [
     { label: "Aktive Besuche", value: totals.live_sessions, hint: "Letzte 2 Minuten", live: true },
-    { label: "Besuche", value: totals.sessions, hint: "Anonyme Tab-Sitzungen", series: "sessions" },
-    { label: "Seitenaufrufe", value: totals.page_views, hint: "Im gewählten Zeitraum", series: "page_views" },
-    { label: "Aktive Zeit", value: duration(totals.active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds" },
-    { label: "Ø Zeit je Besuch", value: duration(totals.avg_active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds" },
-    { label: "Partien beendet", value: totals.completed_games, hint: "Gespeicherte Ergebnisse", series: "completed_games" },
+    { label: "Besuche", value: totals.sessions, hint: "Anonyme Tab-Sitzungen", series: "sessions", comparison: "sessions" },
+    { label: "Seitenaufrufe", value: totals.page_views, hint: "Im gewählten Zeitraum", series: "page_views", comparison: "page_views" },
+    { label: "Aktive Zeit", value: duration(totals.active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds", comparison: "active_seconds" },
+    { label: "Ø Zeit je Besuch", value: duration(totals.avg_active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds", comparison: "avg_active_seconds" },
+    { label: "Partien beendet", value: totals.completed_games, hint: "Gespeicherte Ergebnisse", series: "completed_games", comparison: "completed_games" },
   ];
-  byId("overviewMetrics").innerHTML = metrics.map(metric => `<article class="metric-card"><p class="metric-label">${e(t(metric.label))}${metric.live ? '<span class="signal-dot" aria-hidden="true" style="margin-left:8px"></span>' : ""}</p><div class="metric-value">${metric.series === "active_seconds" ? e(metric.value) : number(metric.value)}</div><p class="metric-hint">${e(t(metric.hint))}</p>${sparkline(metric.series ? days.map(day => count(day[metric.series])) : [])}</article>`).join("");
+  const comparison = metric => {
+    const previous = data.comparison?.overview?.[metric.comparison];
+    if (!previous) return "";
+    if (metric.comparison !== "completed_games" && data.comparison?.previous_data_coverage !== "complete") return `<span class="metric-delta neutral">${e(t(data.comparison?.previous_data_coverage === "partial" ? "Vorperiode unvollständig" : "Keine Vergleichsbasis"))}</span>`;
+    if (previous.change_percent == null) return `<span class="metric-delta neutral">${e(t("Vorperiode"))}: ${number(previous.previous)}</span>`;
+    const change = Number(previous.change_percent) || 0;
+    return `<span class="metric-delta ${change >= 0 ? "positive" : "negative"}"><span aria-hidden="true">${change >= 0 ? "↗" : "↘"}</span> ${change > 0 ? "+" : ""}${percent(change)}% <small>${e(t("zur Vorperiode"))}</small></span>`;
+  };
+  byId("overviewMetrics").innerHTML = metrics.map(metric => `<article class="metric-card"><p class="metric-label">${e(t(metric.label))}${metric.live ? '<span class="signal-dot" aria-hidden="true" style="margin-left:8px"></span>' : ""}</p><div class="metric-value">${metric.series === "active_seconds" ? e(metric.value) : number(metric.value)}</div><p class="metric-hint">${e(t(metric.hint))}</p>${comparison(metric)}${sparkline(metric.series ? days.map(day => count(day[metric.series])) : [])}</article>`).join("");
+  byId("comparisonNote").textContent = data.comparison ? t("Heute (UTC) ist noch unvollständig. Verglichen wird mit den vorangehenden Kalendertagen; fehlende ältere Messwerte ergeben keinen Wachstumstrend.") : "";
 }
 
 function dailyChart(data) {
@@ -187,6 +200,9 @@ function render(data) {
   ranks("actionRanks", data.actions, "action", "count", value => t(ACTION_LABELS[value] || "Andere Bedienaktion"), { game: true, limit: 10 });
   gameCards(data);
   serverMetrics(data.server);
+  analysis.update(data);
+  globe.update(data.geography || data.countries || []);
+  syncMotion();
   const firstSeen = data.collection?.first_seen_at;
   byId("collectionNote").textContent = firstSeen ? `${t("Messwerte verfügbar seit")} ${timestamp(firstSeen)}` : t("Die Besuchsmessung beginnt mit diesem Release.");
   const dropped = count(data.collection?.dropped);
@@ -208,6 +224,7 @@ function message(text, { retry = true, login = false } = {}) {
 
 function denied(status) {
   authReady = false;
+  clearPrivateData();
   byId("dashboardData").hidden = true;
   byId("dashboardFilters").hidden = true;
   byId("dashboardLogin").href = "/zilch/anmelden?return_to=%2Fadmin%2Fdashboard";
@@ -282,6 +299,7 @@ byId("dashboardGame").addEventListener("change", refresh);
 byId("dashboardRefresh").addEventListener("click", refresh);
 byId("dashboardRetry").addEventListener("click", () => authReady ? refresh() : initialize());
 document.addEventListener("visibilitychange", () => {
+  syncMotion();
   if (!document.hidden && Date.now() - lastFetched >= REFRESH_MS) refresh();
 });
 function startRefreshTimer() {
@@ -298,6 +316,7 @@ window.addEventListener("pagehide", () => {
   refreshTimer = null;
   latest = null;
   lastFetched = 0;
+  clearPrivateData();
   // A restored document must verify its current permission before displaying
   // a cached snapshot, including when access was revoked on another page.
   byId("dashboardData").hidden = true;
@@ -309,6 +328,33 @@ window.addEventListener("pageshow", event => {
   initialize();
 });
 
+const analysis = createAnalysisVisuals({ t, e, number, percent, duration, gameName, pageLabel, locale });
+const globe = createGlobe(byId("geographyViz"), { t, number, locale, countryName });
+function clearPrivateData() {
+  latest = null;
+  analysis.resetSession();
+  globe.clear();
+  globe.suspend();
+  for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceDonut", "countryRanks", "gameCards", "gameModes", "actionRanks", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated"]) byId(id).replaceChildren();
+}
+function syncMotion() {
+  const paused = motionPaused || motionQuery.matches;
+  document.documentElement.dataset.motion = paused || document.hidden || !authReady || disposed ? "paused" : "running";
+  byId("dashboardMotion").setAttribute("aria-pressed", paused);
+  byId("dashboardMotion").disabled = motionQuery.matches;
+  byId("dashboardMotion").innerHTML = `<span aria-hidden="true">${paused ? "▷" : "Ⅱ"}</span><span>${e(t(motionQuery.matches ? "Reduzierte Bewegung aktiv" : paused ? "Animation fortsetzen" : "Animation pausieren"))}</span>`;
+  globe.setPaused(paused);
+  if (document.hidden || !authReady || disposed) globe.suspend(); else globe.resume();
+}
+function setMotion(paused, persist = true) {
+  motionPaused = Boolean(paused);
+  if (persist) localStorage.setItem("rollthedice:dashboard:motion", motionPaused ? "paused" : "running");
+  syncMotion();
+}
+byId("dashboardMotion").addEventListener("click", () => setMotion(!motionPaused));
+window.addEventListener("mission:motion", event => setMotion(Boolean(event.detail?.paused)));
+motionQuery.addEventListener("change", () => { if (motionQuery.matches) setMotion(true, false); else syncMotion(); });
+syncMotion();
 overview({});
 startRefreshTimer();
 initialize();

@@ -22,6 +22,22 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.44.0 — Mission Control Deep Dive — 2026-10-05
+
+**Deutsch:** Die private Analyse-Konsole erhält einen animierten Globus und
+eine Weltkarte mit Länder-Details. Interaktive Verlaufsgrafiken, ein
+UTC-Aktivitätsraster, grafische Seitenanalyse und beobachtete Seitenwege
+machen Besuchsmuster sichtbar. Animation lässt sich pausieren und respektiert
+reduzierte Bewegung. Herkunft bleibt auf Länderebene; Rechte vergibt weiterhin
+allein der Gründer. Stiller Rollout ohne neue Push- oder Release-Einträge.
+
+**English:** The private analysis console adds an animated globe and world map
+with country details. Interactive time-series charts, a UTC activity heatmap,
+visual page engagement and observed page journeys reveal visit patterns.
+Animation can be paused and respects reduced motion. Origin remains country
+level; only the founder can grant access. Silent rollout with no new push or
+release entries.
+
 ## 2.43.0 — Mission Control — 2026-10-04
 
 **Deutsch:** Ein privates Dashboard verbindet Besucher- und Klick-Trends,

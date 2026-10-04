@@ -39,6 +39,8 @@ MAX_BATCH_EVENTS = 20
 MAX_STORED_EVENTS = 200_000
 MAX_QUEUE_BATCHES = 300
 LIVE_WINDOW_SECONDS = 120
+JOURNEY_SAMPLE_LIMIT = 10_000
+JOURNEY_GAP_SECONDS = 30 * 60
 SESSION_RE = re.compile(r"^[a-f0-9]{32,64}$")
 ID_RE = re.compile(r"^[a-f0-9]{16,64}$")
 ACTIONS = frozenset({
@@ -494,10 +496,126 @@ def _result_duration(raw: str) -> int | None:
     return None
 
 
+def _geography_stats(db: Session, filters: list, views, active) -> tuple[list[dict], dict]:
+    country = AnalyticsSession.country
+    rows = db.execute(select(country, func.count(func.distinct(AnalyticsEvent.session_id)), views, active)
+                      .join(AnalyticsSession, AnalyticsEvent.session_id == AnalyticsSession.id)
+                      .where(*filters).group_by(country)
+                      .order_by(func.count(func.distinct(AnalyticsEvent.session_id)).desc(), country)).all()
+    game_visits = {(code, product): visits for code, product, visits in db.execute(select(
+        country, AnalyticsEvent.game, func.count(func.distinct(AnalyticsEvent.session_id)))
+        .join(AnalyticsSession, AnalyticsEvent.session_id == AnalyticsSession.id)
+        .where(*filters).group_by(country, AnalyticsEvent.game)).all()}
+    total = sum(visits for _country, visits, _views, _active in rows)
+    geography = [{"country": code, "sessions": visits, "page_views": int(page_views or 0),
+                  "active_seconds": round((active_ms or 0) / 1000, 1),
+                  "games": {product: game_visits.get((code, product), 0) for product in ("zdwa", "zilch")},
+                  "share_percent": round(100 * visits / total, 1) if total else 0}
+                 for code, visits, page_views, active_ms in rows]
+    unknown = next((row["sessions"] for row in geography if row["country"] == "ZZ"), 0)
+    return geography, {"sessions": total, "known_sessions": total - unknown, "unknown_sessions": unknown,
+                       "known_countries": sum(row["country"] != "ZZ" for row in geography),
+                       "game_visits_can_overlap": True}
+
+
+def _heatmap_stats(db: Session, filters: list, views, active) -> list[dict]:
+    # SQL dow is Sunday-first on both supported databases; the product is Monday-first.
+    weekday = func.extract("dow", AnalyticsEvent.received_at)
+    hour = func.extract("hour", AnalyticsEvent.received_at)
+    rows = {((int(day) + 6) % 7, int(slot)): (sessions, page_views or 0, active_ms or 0)
+            for day, slot, sessions, page_views, active_ms in db.execute(select(
+                weekday, hour, func.count(func.distinct(AnalyticsEvent.session_id)), views, active)
+            .where(*filters).group_by(weekday, hour)).all()}
+    cells = []
+    for day in range(7):
+        for slot in range(24):
+            sessions, page_views, active_ms = rows.get((day, slot), (0, 0, 0))
+            cells.append({"weekday": day, "hour": slot, "sessions": sessions, "page_views": int(page_views),
+                          "active_seconds": round(active_ms / 1000, 1)})
+    return cells
+
+
+def _journey_stats(db: Session, start: datetime, now: datetime, game: str) -> dict:
+    # Read across games first. Filtering the sequence prematurely would fabricate
+    # a Zilch-to-Zilch link when the tab actually visited ZDWA in between.
+    filters = [AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
+               AnalyticsEvent.event_type == "page_view", AnalyticsEvent.source == "client",
+               AnalyticsEvent.session_id.is_not(None)]
+    total = db.scalar(select(func.count()).select_from(AnalyticsEvent).where(*filters)) or 0
+    rows = db.execute(select(AnalyticsEvent.session_id, AnalyticsEvent.page, AnalyticsEvent.game,
+                             AnalyticsEvent.received_at, AnalyticsEvent.id)
+                      .where(*filters).order_by(AnalyticsEvent.received_at.desc(), AnalyticsEvent.id.desc())
+                      .limit(JOURNEY_SAMPLE_LIMIT)).all()
+    previous = {}
+    links = {}
+    matching_views = 0
+    for session_id, page, product, timestamp, _event_id in reversed(rows):
+        timestamp = as_utc(timestamp)
+        matching_views += game == "all" or product == game
+        prior = previous.get(session_id)
+        previous[session_id] = (page, product, timestamp)
+        if prior is None:
+            continue
+        prior_page, prior_game, prior_timestamp = prior
+        if (page, product) == (prior_page, prior_game) or (timestamp - prior_timestamp).total_seconds() > JOURNEY_GAP_SECONDS:
+            continue
+        if game != "all" and (product != game or prior_game != game):
+            continue
+        key = prior_page, page, prior_game, product
+        links[key] = links.get(key, 0) + 1
+    return {"links": [{"from": source, "to": target, "from_game": source_game, "to_game": target_game, "count": count}
+                      for (source, target, source_game, target_game), count in
+                      sorted(links.items(), key=lambda item: (-item[1], item[0]))],
+            "sample": {"limit": JOURNEY_SAMPLE_LIMIT, "page_views": len(rows), "matching_page_views": matching_views,
+                       "total_page_views": total, "truncated": total > len(rows), "method": "latest_page_views",
+                       "from": as_utc(rows[-1][3]).isoformat() if rows else None,
+                       "to": as_utc(rows[0][3]).isoformat() if rows else None,
+                       "gap_limit_seconds": JOURNEY_GAP_SECONDS, "game_filter_applied": "both_endpoints"}}
+
+
+def _previous_overview(db: Session, start: datetime, days: int, game: str) -> dict:
+    previous_start = start - timedelta(days=days)
+    filters = [AnalyticsEvent.received_at >= previous_start, AnalyticsEvent.received_at < start]
+    results = [CompletedGame.finished_at >= previous_start, CompletedGame.finished_at < start]
+    if game != "all":
+        filters.append(AnalyticsEvent.game == game)
+        results.append(CompletedGame.game_type == game)
+    sessions, page_views, active_ms, clicks = db.execute(select(
+        func.count(func.distinct(AnalyticsEvent.session_id)),
+        func.sum(cast(AnalyticsEvent.event_type == "page_view", Integer)),
+        func.sum(AnalyticsEvent.active_ms),
+        func.sum(cast((AnalyticsEvent.event_type == "action") & AnalyticsEvent.game.in_(("zdwa", "zilch")), Integer))
+    ).where(*filters)).one()
+    completed = db.scalar(select(func.count()).select_from(CompletedGame).where(*results)) or 0
+    return {"sessions": sessions, "page_views": int(page_views or 0), "active_seconds": round((active_ms or 0) / 1000, 1),
+            "avg_active_seconds": round((active_ms or 0) / 1000 / max(sessions, 1), 1),
+            "completed_games": completed, "game_clicks": int(clicks or 0)}
+
+
+def _comparison_stats(current: dict, previous: dict, start: datetime, now: datetime, days: int, first: datetime | None) -> dict:
+    previous_start = start - timedelta(days=days)
+    first = as_utc(first) if first is not None else None
+    coverage = "none" if first is None or first >= start else "partial" if first > previous_start else "complete"
+    metrics = {}
+    for name, value in previous.items():
+        current_value = current[name]
+        difference = current_value - value
+        metrics[name] = {"current": current_value, "previous": value,
+                         "delta": round(difference, 1) if isinstance(difference, float) else difference,
+                         "change_percent": round(100 * difference / value, 1) if value else None}
+    return {"previous_period": {"from": previous_start.isoformat(), "to": start.isoformat(), "days": days,
+                                "timezone": "UTC", "end_exclusive": True},
+            "current_partial_day": True, "previous_partial_day": False,
+            "current_elapsed_seconds": int((now - start).total_seconds()), "previous_elapsed_seconds": days * 86400,
+            "basis": "calendar_days_including_partial_today", "previous_data_coverage": coverage,
+            "coverage_basis": "earliest_retained_event", "traffic_retained_from": first.isoformat() if first else None,
+            "completed_games_source": "server_results", "overview": metrics}
+
+
 def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = None) -> dict:
     if days not in {1, 7, 30, 90} or game not in {"all", "zdwa", "zilch"}:
         raise ValueError("analytics_invalid_filter")
-    now = now or utcnow()
+    now = as_utc(now or utcnow())
     # UTC calendar days make daily bars and overview describe the same window.
     start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days - 1)
     filters = [AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now]
@@ -530,6 +648,10 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                               .order_by(func.count(func.distinct(AnalyticsEvent.session_id)).desc())).all()
             label = {"referrers": "source", "devices": "device", "countries": "country"}[key]
             dimensions[key] = [{label: value, "sessions": total} for value, total in rows]
+        geography, geography_summary = _geography_stats(db, filters, views, active)
+        heatmap = _heatmap_stats(db, filters, views, active)
+        journeys = _journey_stats(db, start, now, game)
+        previous_overview = _previous_overview(db, start, days, game)
         action_rows = db.execute(select(AnalyticsEvent.action, AnalyticsEvent.game, AnalyticsEvent.source, func.count())
                                  .where(*filters, AnalyticsEvent.event_type == "action")
                                  .group_by(AnalyticsEvent.action, AnalyticsEvent.game, AnalyticsEvent.source)
@@ -586,11 +708,17 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                           if valid_durations else None, "duration_sample_count": len(valid_durations),
                           "duration_sample_limit": 2000})
         first = db.scalar(select(func.min(AnalyticsEvent.received_at)))
+        first_client = db.scalar(select(func.min(AnalyticsEvent.received_at)).where(AnalyticsEvent.source == "client"))
         stored_events = db.scalar(select(func.count()).select_from(AnalyticsEvent)) or 0
         active_rooms = db.scalar(select(func.count()).select_from(ActiveGame)) or 0
     server = server_snapshot()
     if server["active_rooms"] is None:
         server["active_rooms"] = active_rooms
+    overview = {"sessions": count, "page_views": int(page_views or 0),
+                "active_seconds": round((active_ms or 0) / 1000, 1),
+                "avg_active_seconds": round((active_ms or 0) / 1000 / max(count, 1), 1),
+                "live_sessions": live, "completed_games": completed,
+                "game_clicks": sum(row["count"] for row in actions if row["game"] in {"zdwa", "zilch"})}
     return {"generated_at": now.isoformat(), "period": {"days": days, "game": game, "from": start.isoformat(),
              "to": now.isoformat(), "timezone": "UTC"},
             "collection": {"first_seen_at": as_utc(first).isoformat() if first else None,
@@ -601,10 +729,8 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                            "event_cap": MAX_STORED_EVENTS, "stored_events": stored_events,
                            "cap_reached": stored_events >= MAX_STORED_EVENTS,
                            "results_source": "server_results"},
-            "overview": {"sessions": count, "page_views": int(page_views or 0),
-                         "active_seconds": round((active_ms or 0) / 1000, 1),
-                         "avg_active_seconds": round((active_ms or 0) / 1000 / max(count, 1), 1),
-                         "live_sessions": live, "completed_games": completed,
-                         "game_clicks": sum(row["count"] for row in actions if row["game"] in {"zdwa", "zilch"})},
+            "overview": overview, "geography": geography, "geography_summary": geography_summary,
+            "heatmap": heatmap, "journeys": journeys,
+            "comparison": _comparison_stats(overview, previous_overview, start, now, days, first_client),
             "daily": daily, "pages": pages, **dimensions, "actions": actions, "games": games,
             "modes": modes, "hourly": hourly, "server": server}

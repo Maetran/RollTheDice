@@ -34,6 +34,37 @@ needing to sign out. All dashboard documents are `noindex` and `no-store`.
 - Filters use UTC calendar days: today (UTC), or today and the preceding
   6, 29 or 89 days. They are not rolling 24-hour windows.
 
+## Visual analysis
+
+- Globe and world map use locally bundled public-domain Natural Earth geometry.
+  Source hashes and preparation instructions are in
+  [the geography asset notes](../frontend/dashboard/GEOGRAPHY.md).
+  The map does not request any external map service. Country markers aggregate
+  measured tab visits at a representative country coordinate; they are not
+  live people, cities, GPS positions or per-visitor locations. Unknown origin
+  remains in the totals and country list, without an invented map location.
+- Country details show visits, page views, active seconds and the games used
+  by those anonymous tab visits. A tab can visit both games, so per-game
+  visit counts may overlap.
+- The activity heatmap groups events by UTC weekday and hour in the selected
+  period. It describes aggregated activity, not a single week's chronology.
+  Visits are distinct within each cell and can appear in several cells; adding
+  all cell visits does not produce the total number of visits.
+- Page journeys count consecutive, distinct page categories in the same
+  anonymous tab, with gaps over 30 minutes breaking the sequence. They use
+  at most the latest 10,000 page-view events and disclose sampling. They are
+  observed navigation paths, not conversion or completion rates.
+- Comparisons use the preceding equally sized UTC calendar period. The
+  current UTC day is still incomplete; new measurements and retention limits
+  can mean that the previous period has no comparable data.
+  Coverage describes the earliest retained client event, not a guarantee that
+  browser measurement was continuous or captured every visitor.
+- Page engagement combines views, tab visits and active visible time.
+  Browser blocking and excluded private/authentication pages may leave gaps.
+- Decorative motion is separate from counts. Pause controls and the browser's
+  reduced-motion preference stop continuous animation. Globe rendering pauses
+  when hidden or offscreen.
+
 ## Server counters
 
 Compose mounts only `/proc/stat`, `/proc/meminfo`, `/proc/loadavg` and
@@ -43,14 +74,20 @@ These four counters supply host CPU, RAM, load and uptime.
 Disk figures describe the filesystem backing `/app/data`; application uptime
 is independent of host uptime. Missing counters remain visibly unavailable.
 The dashboard refreshes every 30 seconds and pauses while hidden.
+Server trend lines contain up to 120 measurements collected while the dashboard
+is open. They live only in that browser document and reset on leaving it or
+losing permission; this release does not store a historical server time series.
 
 ## Release and rollback
 
-Version 2.43.0 is rolled out with `SILENT_RELEASE=1`; no player push or in-app
+Version 2.44.0 is rolled out with `SILENT_RELEASE=1`; no player push or in-app
 release entry is created. The existing deploy script backs up app data before
-the migration. The baseline is version 2.42.6, commit `40e53b1`.
+the update. The Deep Dive baseline is version 2.43.0, commit `3e92116`; both
+versions use the same analytics schema. The pre-analytics baseline remains
+version 2.42.6, commit `40e53b1`.
 
-For code rollback, stop the service, select the baseline code and rebuild.
+For code rollback, stop the service, select version 2.43.0 and rebuild.
+To return to the pre-analytics implementation, select version 2.42.6 instead.
 The additive analytics tables and dashboard permission column may remain in
 SQLite; old code ignores them. Do not restore an older full database over new
 player results. To remove analytics storage, use the migration downgrade only

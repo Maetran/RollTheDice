@@ -1,10 +1,10 @@
 {
-  "version": "2.43.0",
+  "version": "2.44.0",
   "bump": "minor",
-  "date": "2026-10-04",
-  "previous_revision": "40e53b1193d8de54212656148eafedbea7dd949e",
+  "date": "2026-10-05",
+  "previous_revision": "3e921162f06a44b16b7c29a8ccc184974214425b",
   "summary": {
-    "de": "Mission Control: privates Dashboard für Besucher, Spielaktivität und Serverzustand",
-    "en": "Mission Control: private dashboard for visitors, gameplay activity and server health"
+    "de": "Mission Control: Weltansicht und interaktive Analysen für Herkunft, Aktivität und Seitenwege",
+    "en": "Mission Control: world view and interactive analysis of sources, activity and page journeys"
   }
 }

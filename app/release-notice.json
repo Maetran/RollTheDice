@@ -4,23 +4,23 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Mission Control verbindet Besucher, Spielaktivität und Serverzustand. Nur der Gründer vergibt den privaten Dashboard-Zugang.",
-  "summary_en": "Mission Control combines visitors, gameplay and server health. Only the founder grants private dashboard access.",
+  "summary_de": "Mission Control wird visueller: Globus, Weltkarte und interaktive Analysen zeigen Herkunft, Aktivität und Seitenwege.",
+  "summary_en": "Mission Control gets more visual: a globe, world map and interactive analyses reveal sources, activity and page journeys.",
   "player_notes": {
     "de": {
-      "title": "Mission Control",
+      "title": "Mission Control Deep Dive",
       "changes": [
-        "Berechtigte Konten öffnen das private Dashboard direkt aus ihrem Konto.",
-        "Nur der Gründer darf Dashboard-Zugriff in der Nutzerverwaltung erlauben oder entziehen.",
-        "Anonyme Nutzungszahlen helfen, beide Spiele zu verbessern. Offline-Partien bleiben lokal."
+        "Berechtigte Konten können die Besucherherkunft auf einem Globus oder einer Weltkarte erkunden.",
+        "Aktivitätsraster und interaktive Grafiken zeigen Seitenzeit, Verlauf und beobachtete Seitenwege.",
+        "Animation lässt sich pausieren. Nur der Gründer vergibt weiterhin den privaten Dashboard-Zugang."
       ]
     },
     "en": {
-      "title": "Mission Control",
+      "title": "Mission Control Deep Dive",
       "changes": [
-        "Authorized accounts can open the private dashboard from their account.",
-        "Only the founder can grant or revoke dashboard access in user administration.",
-        "Anonymous usage metrics help improve both games. Offline games remain local."
+        "Authorized accounts can explore visitor sources on a globe or world map.",
+        "An activity heatmap and interactive charts show page engagement, trends and observed page journeys.",
+        "Animation can be paused. Only the founder can grant private dashboard access."
       ]
     }
   }

@@ -44,6 +44,11 @@ engine, results and rankings: its points never affect ZDWA standings.
 
 The private dashboard at `/admin/dashboard` brings traffic, active page time,
 fixed click actions, game modes, completed games and server capacity together.
+The visual analysis console includes a rotating globe and world map with
+country details, interactive traffic charts, a UTC activity heatmap, page
+engagement and observed page journeys. Animation can be paused and respects
+reduced motion. Country markers represent country-level aggregates, not
+individual visitors or exact locations.
 Open **Mission Control** from your account or administration. Only the founder
 can grant or revoke individual **Dashboard access** in user administration;
 admin and owner roles do not grant access automatically. Revocation applies to
@@ -54,6 +59,12 @@ Spielmodi, abgeschlossene Spiele und den Serverzustand. Du öffnest es im Konto
 oder in der Administration. Nur der Gründer darf einzelnen Konten in der
 Nutzerverwaltung Dashboard-Zugriff erlauben oder entziehen. Admins und Owner
 bekommen diesen Zugang nicht automatisch.
+
+**Deutsch:** Globus und Weltkarte machen die Herkunft sichtbar. Interaktive
+Verlaufsgrafiken, UTC-Aktivitätsraster, Seitenzeit und beobachtete Seitenwege
+helfen beim Vertiefen. Länderpunkte zeigen zusammengefasste Messwerte, keine
+einzelnen Personen oder genauen Aufenthaltsorte. Animation lässt sich
+pausieren und berücksichtigt reduzierte Bewegung.
 
 Visitor measurement starts with version 2.43.0; completed game history uses
 existing server records. Sessions are anonymous tab visits, not unique people.
