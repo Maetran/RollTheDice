@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import timedelta
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -23,7 +23,13 @@ from .auth import (
     validate_request_origin,
 )
 from .auth_proofs import CONFIRMATION_FAILURES, AccountAction, AccountConfirmation
-from .auth_protection import clear_login_failures, enforce_login_rate_limit, record_login_failure
+from .auth_protection import (
+    clear_login_failures,
+    enforce_login_rate_limit,
+    enforce_registration_rate_limit,
+    record_login_failure,
+    verify_registration_challenge,
+)
 from .database import session_scope
 from .models import AuthRateEvent, User
 from .passkeys import (
@@ -33,9 +39,11 @@ from .passkeys import (
     begin_authentication_ceremony,
     begin_reauthentication_ceremony,
     begin_registration_ceremony,
+    begin_signup_ceremony,
     ceremony_cookie_settings,
     complete_authentication_ceremony,
     complete_registration_ceremony,
+    complete_signup_ceremony,
     list_passkey_credentials,
     passkey_config,
     remove_passkey_credential,
@@ -59,6 +67,12 @@ class CredentialRequest(BaseModel):
 
 class RegistrationCredentialRequest(CredentialRequest):
     label: str = Field(default="", max_length=64)
+
+
+class SignupOptionsRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    preferred_language: Literal["de", "en"] = "de"
+    turnstile_token: str | None = Field(default=None, max_length=4096)
 
 
 def _origin(request: Request) -> str:
@@ -190,6 +204,49 @@ def authentication_verify(payload: CredentialRequest, request: Request, response
     return {"authenticated": True, "user": auth_identity_payload(identity, include_csrf=True)}
 
 
+@router.post("/signup/options")
+def signup_options(payload: SignupOptionsRequest, request: Request, response: Response):
+    origin = _prepare(request, response)
+    # Match password/email account creation's anti-abuse policy before asking
+    # the authenticator to create a credential. Verification does not charge
+    # the same account-creation budget a second time.
+    enforce_registration_rate_limit(request)
+    verify_registration_challenge(request, payload.turnstile_token)
+    try:
+        with session_scope() as db:
+            start = begin_signup_ceremony(
+                db, username=payload.username, preferred_language=payload.preferred_language,
+                request_origin=origin,
+            )
+    except PasskeyError as exc:
+        raise _error(exc) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    _set_ceremony_cookie(response, start)
+    return {"options": start.options}
+
+
+@router.post("/signup/verify", status_code=201)
+def signup_verify(payload: RegistrationCredentialRequest, request: Request, response: Response):
+    origin = _prepare(request, response)
+    try:
+        with session_scope() as db:
+            result = complete_signup_ceremony(
+                db, raw_state=request.cookies.get(CEREMONY_COOKIE_NAME, ""),
+                credential=payload.credential, label=payload.label, request_origin=origin,
+            )
+            identity, token = issue_session_for_user(db, result.user)
+    except PasskeyError as exc:
+        raise _error(exc) from exc
+    except IntegrityError as exc:
+        raise HTTPException(status_code=400, detail="Benutzername oder Passkey ist bereits vergeben") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    _clear_ceremony_cookie(response)
+    set_session_cookie(response, token)
+    return {"authenticated": True, "user": auth_identity_payload(identity, include_csrf=True)}
+
+
 @router.get("")
 def credentials_list(request: Request, response: Response):
     identity = require_user(request)
@@ -270,6 +327,8 @@ def credentials_delete(credential_id: int, payload: AccountConfirmation, request
         if exc.detail in CONFIRMATION_FAILURES:
             record_login_failure(key)
         raise
+    except PasskeyError as exc:
+        raise _error(exc) from exc
     clear_login_failures(key)
     if not removed:
         raise HTTPException(status_code=404, detail="passkey_not_found")

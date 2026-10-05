@@ -42,6 +42,7 @@ async function serveTurnstile(route) {
 }
 
 async function fillRegistration(page) {
+  await page.selectOption('#registrationMethod', 'password');
   await page.fill('#registrationUsername', 'LocalOnly');
   await page.fill('#registrationEmail', 'local@example.test');
 }
@@ -60,7 +61,9 @@ test("anonymous lobby, guest controls and ordinary login focus do not request CA
   page.on("request", request => {
     if (new URL(request.url()).hostname === "challenges.cloudflare.com") challengeRequests.push(request.url());
   });
-  await page.goto("/", { waitUntil: "networkidle" });
+  // Presence keeps a WebSocket open; assert the relevant UI/request contract
+  // after document readiness instead of waiting for all network activity.
+  await page.goto("/", { waitUntil: "domcontentloaded" });
   await expectPasswordLoginClosed(page);
   await expect(page.locator("#registrationChallenge")).toBeHidden();
   await page.fill("#playerName", "GuestPerformance");
@@ -236,7 +239,7 @@ test("login cancels a pending registration script without rendering a hidden wid
     await expect(page.locator("script[data-rollthedice-turnstile]")).toHaveCount(0);
     scriptGate.release();
     await expect.poll(() => scriptSettled).toBe(true);
-    await page.waitForLoadState("networkidle");
+    await expect(page.locator("script[data-rollthedice-turnstile]")).toHaveCount(0);
     expect(await page.evaluate(() => window.__turnstileFixture?.renders || 0)).toBe(0);
     await expect(page.locator("#loginError")).toBeEmpty();
     expect(registrationRequests).toBe(0);

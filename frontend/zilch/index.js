@@ -1,5 +1,6 @@
 import { apiFetch, authError, escapeHtml, loadAuth, logout, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings } from "../shared/auth.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
+import { mountRegistrationForm, registrationFormMarkup } from "../shared/registration.js";
 import { initializeGameViewport } from "../shared/game-viewport.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
 import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
@@ -1167,6 +1168,10 @@ async function renderLobby({ authReady = null } = {}) {
       <p id="zilchCreateError" class="zilch-error" role="status"></p>
       <a class="button-link small ghost" href="${zilchPath("/offline-spielen")}">${escapeHtml(t("Offline spielen"))}</a>
     </section>
+    ${hasAccount ? '' : `<section class="zilch-card zilch-signup-card" data-registration-panel hidden aria-label="${escapeHtml(t('Spielerkonto'))}">
+      ${registrationFormMarkup('zilchLandingRegistration')}
+      <p class="zilch-login-message" data-registration-message role="status"></p>
+    </section>`}
     <section id="zilchGamesHub" class="zilch-card zilch-games-hub" aria-labelledby="zilchGamesHubTitle">
       <div class="zilch-section-heading"><h2 id="zilchGamesHubTitle">${escapeHtml(t("Spiele"))}</h2><button id="zilchRefresh" class="small ghost" type="button">${escapeHtml(t("Aktualisieren"))}</button></div>
       <div class="zilch-lobby-grid" aria-label="${escapeHtml(t("Zilch-Lobby"))}">
@@ -1208,6 +1213,22 @@ async function renderLobby({ authReady = null } = {}) {
   const submitButton = createForm?.querySelector("button[type='submit']");
   const identity = content.querySelector(".zilch-lobby-identity");
   const accountButton = identity?.querySelector("[data-zilch-navigate]");
+  const registrationPanel = content.querySelector('[data-registration-panel]');
+  mountRegistrationForm(registrationPanel?.querySelector('[data-registration-form]'), {
+    auth: identityReady ? state.auth : null,
+    onAuthenticated: async () => {
+      state.auth = await loadAuth({ refresh: true });
+      renderShell();
+      await renderLobby();
+    },
+    onMessage: (value, kind) => {
+      const slot = registrationPanel?.querySelector('[data-registration-message]');
+      if (slot) {
+        slot.textContent = value;
+        slot.dataset.kind = kind;
+      }
+    },
+  });
   if (submitButton) submitButton.disabled = !identityReady;
   if (accountButton) accountButton.disabled = !identityReady;
   if (!identityReady) createForm?.setAttribute("aria-busy", "true");

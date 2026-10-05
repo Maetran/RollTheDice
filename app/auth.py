@@ -28,7 +28,9 @@ from .game_access import (
 from .models import AccountEmailToken, AuthRateEvent, PasskeyCredential, User, UserAchievement, WebAuthnCeremony
 from .models import Session as LoginSession
 from .security import (
+    PASSWORDLESS_HASH,
     as_utc,
+    has_password,
     hash_password,
     hash_session_token,
     new_csrf_token,
@@ -76,6 +78,7 @@ class AuthIdentity:
     is_owner: bool = False
     is_founder: bool = False
     analytics_access: bool = False
+    has_password: bool = True
 
     @property
     def is_admin(self) -> bool:
@@ -100,6 +103,7 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
         # HTTP and WebSocket layers use; it never decides access from a name.
         "game_access": public_game_access_payload(identity),
         "must_change_password": identity.must_change_password,
+        "has_password": identity.has_password,
         "achievement_rank": identity.achievement_rank,
         "preferences": {
             "announce_selection_mode": identity.announce_selection_mode,
@@ -155,6 +159,7 @@ def _identity_for_user(db, user: User, login_session: LoginSession) -> AuthIdent
         session_id=login_session.id,
         achievement_rank=_achievement_rank_for_user(db, user.id),
         analytics_access=user.analytics_access,
+        has_password=has_password(user.password_hash),
         **ownership_flags(db, user.id),
     )
 
@@ -401,7 +406,11 @@ def login(request: Request, username: str, password: str) -> tuple[AuthIdentity,
         if normalized_email:
             predicates.append((User.email_normalized == normalized_email) & User.email_confirmed_at.is_not(None))
         user = db.scalar(select(User).where(or_(*predicates)))
-        password_valid = verify_password(password, user.password_hash if user else _UNKNOWN_USER_PASSWORD_HASH)
+        # Passkey-only accounts spend the same password-verification work as an
+        # unknown account, while the explicit marker can never grant access.
+        password_available = bool(user and has_password(user.password_hash))
+        password_valid = verify_password(password, user.password_hash if password_available else _UNKNOWN_USER_PASSWORD_HASH)
+        password_valid = password_valid and password_available
         if not user or not user.is_active or not password_valid or not lock_verified_password(db, user):
             db.rollback()
             record_login_failure(key)
@@ -530,7 +539,7 @@ def change_username(
 def create_user_in_session(
     db,
     username: str,
-    password: str,
+    password: str | None,
     *,
     role: str = "user",
     must_change_password: bool = True,
@@ -561,7 +570,7 @@ def create_user_in_session(
         email=clean_email,
         email_normalized=clean_email,
         email_confirmed_at=now if clean_email and email_confirmed else None,
-        password_hash=hash_password(password),
+        password_hash=hash_password(password) if password is not None else PASSWORDLESS_HASH,
         role=role,
         is_active=True,
         must_change_password=must_change_password,

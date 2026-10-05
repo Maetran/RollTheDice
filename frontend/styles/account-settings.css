@@ -1,5 +1,5 @@
 /* One account structure, with each product's existing colours. */
-.passkey-setup-prompt { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: 1rem; margin-block: 1rem; border: 2px solid var(--accent); border-radius: 14px; background: var(--card); color: var(--text); }
+.passkey-setup-prompt { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; padding: 1rem; margin-block: 1rem; border: 1px solid var(--border, var(--accent)); border-radius: 14px; background: var(--card); color: var(--text); }
 .passkey-setup-prompt[hidden] { display: none; }
 .passkey-setup-prompt > div { flex: 1 1 240px; min-width: 0; }
 .passkey-setup-prompt h2 { margin: 0 0 .4rem; font-size: 1.1rem; }

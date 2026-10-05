@@ -22,14 +22,14 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=acbcf0178a17">
+  <link rel="manifest" href="/manifest.webmanifest?v=3cee59dc63f8">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=acbcf0178a17" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=acbcf0178a17" sizes="180x180">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=3cee59dc63f8" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=3cee59dc63f8" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=acbcf0178a17" defer></script>
-  <link rel="stylesheet" href="/static/lobby.css?v=acbcf0178a17">
+  <script src="/static/shell.js?v=3cee59dc63f8" defer></script>
+  <link rel="stylesheet" href="/static/lobby.css?v=3cee59dc63f8">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -131,19 +131,28 @@
           </form>
           </details>
           <form id="registrationForm" class="login-inline registration-inline">
+            <p class="registration-intro">Neues Konto erstellen</p>
             <label class="form-field compact" for="registrationUsername">
-              <span>Neuer Benutzername</span>
+              <span>Name für dein Konto</span>
               <input id="registrationUsername" autocomplete="username" placeholder="Benutzername" minlength="3" maxlength="32" required>
             </label>
-            <label class="form-field compact" for="registrationEmail">
+            <label class="form-field compact" for="registrationMethod">
+              <span>Anmeldemethode</span>
+              <select id="registrationMethod" aria-describedby="registrationHint">
+                <option value="passkey">Passkey (empfohlen)</option>
+                <option value="password">E-Mail und Passwort (Backup)</option>
+              </select>
+            </label>
+            <p id="registrationHint" class="muted small registration-hint">Mit Passkey erstellst du dein Konto sofort – ohne E-Mail oder Passwort. Ein Backup-Passwort kannst du später im Konto einrichten.</p>
+            <label class="form-field compact" for="registrationEmail" hidden>
               <span>E-Mail-Adresse</span>
-              <input id="registrationEmail" type="email" autocomplete="email" placeholder="name@beispiel.ch" maxlength="254" required>
+              <input id="registrationEmail" type="email" autocomplete="email" placeholder="name@beispiel.ch" maxlength="254">
             </label>
             <label class="form-field compact" for="registrationPassword" hidden>
               <span>Passwort</span>
               <input id="registrationPassword" type="password" autocomplete="new-password" minlength="8" maxlength="256">
             </label>
-            <div class="account-form-actions"><button id="registerBtn" type="submit" class="small ghost">Konto per E-Mail erstellen</button></div>
+            <div class="account-form-actions"><button id="registerBtn" type="submit" class="small primary">Konto mit Passkey erstellen</button></div>
             <div id="registrationChallenge" class="registration-challenge" hidden></div>
           </form>
         </div>
@@ -304,6 +313,6 @@
   </div>
 
   <!-- Lobby-Controller: eigenständiges ES-Modul. -->
-  <script type="module" src="/static/lobby.js?v=acbcf0178a17"></script>
+  <script type="module" src="/static/lobby.js?v=3cee59dc63f8"></script>
 </body>
 </html>

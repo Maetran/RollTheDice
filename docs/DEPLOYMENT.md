@@ -888,6 +888,21 @@ ROLLTHEDICE_WEBAUTHN_RP_ID=zockdiewandan.online
 ROLLTHEDICE_WEBAUTHN_RP_NAME=Zock die Wand an
 ```
 
+Ab Version 2.47.0 können beide Landingpages passkey-only Konten ohne Passwort
+erstellen. Den Passkey-Schalter nach deren Erstellung eingeschaltet lassen;
+ein Abschalten verhindert die Anmeldung dieser Konten, solange sie kein
+Backup-Passwort eingerichtet haben. Das optionale Backup lässt sich in den
+Kontoeinstellungen mit einem vorhandenen Passkey bestätigen. Die additive
+Migration `20261005_0053` speichert kurzlebige Registrierungs-Challenges und den
+kontoweiten Siebentage-Rhythmus der Einrichtungshinweise.
+
+**English:** From 2.47.0, both landing pages can create passkey-only accounts.
+Keep passkeys enabled once these accounts exist: disabling them prevents
+sign-in unless a backup password has been set. Players can set that optional
+backup in account settings by confirming with a passkey. Additive migration
+`20261005_0053` stores short-lived signup challenges and the account-wide
+seven-day reminder cadence.
+
 `ROLLTHEDICE_RESEND_API_KEY` ist bereits sicher in der serverseitigen `.env`
 hinterlegt und wird hier nicht abgebildet. Der Schlüssel hat nur Versandrechte
 für die verifizierte Domain `zockdiewandan.online`. SPF, DKIM und DMARC wurden

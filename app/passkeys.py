@@ -16,10 +16,18 @@ from fastapi import Request
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session as DatabaseSession
 
-from .models import PasskeyCredential, User, WebAuthnCeremony
+from .models import PasskeyCredential, PasskeySignupCeremony, User, WebAuthnCeremony
 from .models import Session as LoginSession
 from .product_hosts import site_origin, zilch_origin
-from .security import as_utc, hash_session_token, new_session_token, utcnow
+from .security import (
+    as_utc,
+    has_password,
+    hash_session_token,
+    new_session_token,
+    normalize_username,
+    utcnow,
+    validate_username,
+)
 
 PASSKEYS_ENABLED_ENV = "ROLLTHEDICE_PASSKEYS_ENABLED"
 PASSKEY_RP_ID_ENV = "ROLLTHEDICE_WEBAUTHN_RP_ID"
@@ -256,7 +264,10 @@ def purge_expired_ceremonies(db: DatabaseSession, *, now=None) -> int:
     result = db.execute(
         delete(WebAuthnCeremony).where(WebAuthnCeremony.expires_at <= current).execution_options(synchronize_session=False)
     )
-    return int(result.rowcount or 0)
+    signup_result = db.execute(
+        delete(PasskeySignupCeremony).where(PasskeySignupCeremony.expires_at <= current).execution_options(synchronize_session=False)
+    )
+    return int(result.rowcount or 0) + int(signup_result.rowcount or 0)
 
 
 def _start_ceremony(
@@ -416,6 +427,80 @@ def begin_authentication_ceremony(db: DatabaseSession) -> CeremonyStart:
     return CeremonyStart(raw_state, _options_payload(library["options_to_json"], options), ceremony.expires_at)
 
 
+def begin_signup_ceremony(
+    db: DatabaseSession, *, username: str, preferred_language: str, request_origin: str,
+) -> CeremonyStart:
+    """Prepare a name-only signup without reserving a name or creating a user."""
+    config = _require_enabled()
+    _expected_origin(config, request_origin)
+    clean_username = validate_username(username)
+    normalized = normalize_username(clean_username)
+    if preferred_language not in {"de", "en"}:
+        raise ValueError("Unbekannte Sprache")
+    if db.scalar(select(User.id).where(User.username_normalized == normalized)) is not None:
+        raise ValueError("Benutzername ist bereits vergeben")
+    library = _webauthn()
+    now = utcnow()
+    purge_expired_ceremonies(db, now=now)
+    challenge = secrets.token_bytes(CHALLENGE_BYTES)
+    handle = _fresh_user_handle(db)
+    raw_state = new_session_token()
+    selection = library["AuthenticatorSelectionCriteria"](
+        resident_key=library["ResidentKeyRequirement"].REQUIRED,
+        user_verification=library["UserVerificationRequirement"].REQUIRED,
+    )
+    options = library["generate_registration_options"](
+        rp_id=config.rp_id, rp_name=config.rp_name,
+        user_id=handle, user_name=clean_username, user_display_name=clean_username,
+        challenge=challenge, timeout=CEREMONY_TIMEOUT_MS,
+        attestation=library["AttestationConveyancePreference"].NONE,
+        authenticator_selection=selection,
+    )
+    ceremony = PasskeySignupCeremony(
+        state_token_hash=hash_session_token(raw_state), challenge=challenge,
+        username=clean_username, username_normalized=normalized, user_handle=handle,
+        preferred_language=preferred_language, request_origin=request_origin,
+        created_at=now, expires_at=now + CEREMONY_TTL,
+    )
+    db.add(ceremony)
+    db.flush()
+    return CeremonyStart(raw_state, _options_payload(library["options_to_json"], options), ceremony.expires_at)
+
+
+def complete_signup_ceremony(
+    db: DatabaseSession, *, raw_state: str, credential: Mapping[str, Any],
+    request_origin: str, label: object = "",
+) -> AuthenticationResult:
+    """Verify first, then create the account and its first passkey atomically."""
+    from .auth import create_user_in_session
+
+    config = _require_enabled()
+    _expected_origin(config, request_origin)
+    if not isinstance(raw_state, str) or not raw_state or len(raw_state) > 512:
+        raise PasskeyError("passkey_ceremony_invalid")
+    ceremony = db.scalar(select(PasskeySignupCeremony).where(
+        PasskeySignupCeremony.state_token_hash == hash_session_token(raw_state),
+    ))
+    if (
+        ceremony is None or ceremony.consumed_at is not None
+        or as_utc(ceremony.expires_at) <= utcnow() or ceremony.request_origin != request_origin
+    ):
+        raise PasskeyError("passkey_ceremony_invalid")
+    library = _webauthn()
+    verified = _verify_registration(library, config, ceremony, credential, request_origin)
+    _claim_ceremony(db, ceremony)
+    credential_id = bytes(verified.credential_id)
+    if db.scalar(select(PasskeyCredential.id).where(PasskeyCredential.credential_id == credential_id)) is not None:
+        raise PasskeyError("passkey_already_registered")
+    user = create_user_in_session(
+        db, ceremony.username, None, must_change_password=False,
+        preferred_language=ceremony.preferred_language,
+    )
+    user.webauthn_user_handle = bytes(ceremony.user_handle)
+    record = _persist_registration(db, user=user, verified=verified, label=label)
+    return AuthenticationResult(user=user, credential=record)
+
+
 def _action_target_hash(action: str, target: str) -> str:
     if action not in ACCOUNT_ACTIONS or not isinstance(target, str) or len(target) > 254:
         raise PasskeyError("passkey_ceremony_invalid")
@@ -499,17 +584,18 @@ def _valid_ceremony(
     return ceremony
 
 
-def _claim_ceremony(db: DatabaseSession, ceremony: WebAuthnCeremony) -> None:
+def _claim_ceremony(db: DatabaseSession, ceremony: WebAuthnCeremony | PasskeySignupCeremony) -> None:
     now = utcnow()
+    model = type(ceremony)
     result = db.execute(
-        update(WebAuthnCeremony)
+        update(model)
         .where(
-            WebAuthnCeremony.id == ceremony.id,
+            model.id == ceremony.id,
             # SQLite may reuse integer IDs after recovery deletes old rows.
             # Bind the claim to the original unpredictable ceremony as well.
-            WebAuthnCeremony.state_token_hash == ceremony.state_token_hash,
-            WebAuthnCeremony.consumed_at.is_(None),
-            WebAuthnCeremony.expires_at > now,
+            model.state_token_hash == ceremony.state_token_hash,
+            model.consumed_at.is_(None),
+            model.expires_at > now,
         )
         .values(consumed_at=now)
         .execution_options(synchronize_session=False)
@@ -532,6 +618,37 @@ def _verification_error(exc: Exception) -> PasskeyError:
     # WebAuthn failures must stay intentionally non-specific; exception text
     # can contain malformed client payloads and is not suitable for a client or log.
     return PasskeyError("passkey_verification_failed")
+
+
+def _verify_registration(library, config, ceremony, credential, request_origin):
+    payload = _credential_payload(credential)
+    try:
+        return library["verify_registration_response"](
+            credential=payload,
+            expected_challenge=ceremony.challenge,
+            expected_rp_id=config.rp_id,
+            expected_origin=_expected_origin(config, request_origin),
+            require_user_presence=True,
+            require_user_verification=True,
+        )
+    except Exception as exc:
+        raise _verification_error(exc) from exc
+
+
+def _persist_registration(db: DatabaseSession, *, user: User, verified, label: object) -> PasskeyCredential:
+    record = PasskeyCredential(
+        user_id=user.id,
+        credential_id=bytes(verified.credential_id),
+        credential_public_key=bytes(verified.credential_public_key),
+        sign_count=int(verified.sign_count),
+        device_type=str(getattr(verified.credential_device_type, "value", verified.credential_device_type)),
+        backed_up=bool(verified.credential_backed_up),
+        label=_label(label),
+        created_at=utcnow(),
+    )
+    db.add(record)
+    db.flush()
+    return record
 
 
 def complete_registration_ceremony(
@@ -557,18 +674,7 @@ def complete_registration_ceremony(
         user_id=user.id,
         session_id=session_id,
     )
-    payload = _credential_payload(credential)
-    try:
-        verified = library["verify_registration_response"](
-            credential=payload,
-            expected_challenge=ceremony.challenge,
-            expected_rp_id=config.rp_id,
-            expected_origin=_expected_origin(config, request_origin),
-            require_user_presence=True,
-            require_user_verification=True,
-        )
-    except Exception as exc:  # The dependency owns detailed parsing/crypto errors.
-        raise _verification_error(exc) from exc
+    verified = _verify_registration(library, config, ceremony, credential, request_origin)
     credential_id = bytes(verified.credential_id)
     # The claim obtains the write lock before counting, so simultaneous
     # enrollments cannot each claim the final available credential slot.
@@ -580,20 +686,7 @@ def complete_registration_ceremony(
     )
     if credential_count >= MAX_PASSKEYS_PER_USER:
         raise PasskeyError("passkey_limit_reached")
-    now = utcnow()
-    record = PasskeyCredential(
-        user_id=user.id,
-        credential_id=credential_id,
-        credential_public_key=bytes(verified.credential_public_key),
-        sign_count=int(verified.sign_count),
-        device_type=str(getattr(verified.credential_device_type, "value", verified.credential_device_type)),
-        backed_up=bool(verified.credential_backed_up),
-        label=_label(label),
-        created_at=now,
-    )
-    db.add(record)
-    db.flush()
-    return record
+    return _persist_registration(db, user=user, verified=verified, label=label)
 
 
 def _credential_id_from_response(library: Mapping[str, Any], credential: Mapping[str, Any]) -> bytes:
@@ -711,6 +804,17 @@ def list_passkey_credentials(db: DatabaseSession, *, user_id: int) -> list[Passk
 
 def remove_passkey_credential(db: DatabaseSession, *, user_id: int, credential_id: int) -> bool:
     """Delete one owned credential; caller performs password/passkey reauthentication."""
+    owned = db.scalar(select(PasskeyCredential.id).where(
+        PasskeyCredential.id == credential_id, PasskeyCredential.user_id == user_id,
+    ))
+    if owned is None:
+        return False
+    user = db.get(User, user_id)
+    count = int(db.scalar(select(func.count()).select_from(PasskeyCredential).where(
+        PasskeyCredential.user_id == user_id,
+    )) or 0)
+    if user is not None and not has_password(user.password_hash) and count <= 1:
+        raise PasskeyError("passkey_last_credential_required")
     result = db.execute(
         delete(PasskeyCredential).where(
             PasskeyCredential.id == credential_id,

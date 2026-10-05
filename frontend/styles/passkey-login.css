@@ -16,3 +16,16 @@
 }
 .password-login-disclosure[open] { padding-bottom: .8rem; }
 .password-login-disclosure > form { margin-top: .2rem; }
+
+.registration-intro {
+  margin: .4rem 0 0;
+  font-size: .95rem;
+  font-weight: 750;
+}
+.registration-hint { margin: 0; line-height: 1.5; }
+.registration-inline > :is(.registration-intro, .registration-hint, .registration-challenge) {
+  grid-column: 1 / -1;
+}
+.registration-inline select,
+.zilch-login-form select { width: 100%; min-width: 0; }
+.registration-inline .account-form-actions { grid-template-columns: 1fr; }

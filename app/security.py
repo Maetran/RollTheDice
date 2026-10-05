@@ -11,7 +11,14 @@ PASSWORD_MIN_LENGTH = 8
 USERNAME_MIN_LENGTH = 3
 USERNAME_MAX_LENGTH = 32
 EMAIL_MAX_LENGTH = 254
+# Explicitly disabled password login for accounts created with a passkey.
+# It is never a password hash and no password can match this marker.
+PASSWORDLESS_HASH = "!passkey-only"
 _password_hash = PasswordHash.recommended()
+
+
+def has_password(password_hash: str) -> bool:
+    return password_hash != PASSWORDLESS_HASH
 
 
 def utcnow() -> datetime:

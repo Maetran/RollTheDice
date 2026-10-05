@@ -5,6 +5,7 @@ const temporaryPassword = "temporary-account-password";
 const password = "passkey-browser-password-123";
 
 async function createAccount(page, username, language) {
+  await page.addInitScript(lang => localStorage.setItem('zdwa_language', lang), language);
   const admin = await page.request.post("/api/auth/login", {
     data: { username: "Admin", password: "temporary-password-123" },
   });
@@ -28,6 +29,48 @@ async function createAccount(page, username, language) {
   expect(changed.ok()).toBeTruthy();
   return identity.id;
 }
+
+test('Zilch subdomain landing creates a native passkey account without an apex handoff', async ({ page, context, baseURL }) => {
+  await context.setExtraHTTPHeaders({ 'X-Forwarded-For': '192.0.2.5' });
+  const zilchOrigin = new URL(baseURL);
+  zilchOrigin.hostname = `zilch.${zilchOrigin.hostname}`;
+  const client = await context.newCDPSession(page);
+  await client.send('WebAuthn.enable');
+  const { authenticatorId } = await client.send('WebAuthn.addVirtualAuthenticator', { options: {
+    protocol: 'ctap2', ctap2Version: 'ctap2_1', transport: 'internal',
+    hasResidentKey: true, hasUserVerification: true, isUserVerified: true,
+    automaticPresenceSimulation: true,
+  } });
+  try {
+    await page.goto(zilchOrigin.href);
+    await page.locator('#zilchLandingRegistrationUsername').fill('SubdomainSignup');
+    const verification = page.waitForResponse(response => response.url().endsWith('/api/auth/passkeys/signup/verify'));
+    const [options] = await Promise.all([
+      page.waitForResponse(response => response.url().endsWith('/api/auth/passkeys/signup/options')),
+      page.locator('[data-registration-form] button[type="submit"]').click(),
+    ]);
+    expect(options.status()).toBe(200);
+    expect((await verification).status()).toBe(201);
+    await expect(page.locator('.zilch-lobby-identity strong')).toHaveText('SubdomainSignup');
+    expect(new URL(page.url()).origin).toBe(zilchOrigin.origin);
+    expect(new URL(page.url()).pathname).toBe('/');
+    const identity = await (await page.request.get(new URL('/api/auth/me', zilchOrigin).href)).json();
+    expect(identity.authenticated).toBe(true);
+    expect(identity.user.has_password).toBe(false);
+    expect(identity.passkeys.has_credentials).toBe(true);
+    const credentials = (await client.send('WebAuthn.getCredentials', { authenticatorId })).credentials;
+    expect(credentials).toHaveLength(1);
+    expect(credentials[0].rpId).toBe('rollthedice.localhost');
+    const accountDocument = await page.request.get(new URL('/konto', zilchOrigin).href);
+    expect(accountDocument.status()).toBe(200);
+    expect(await accountDocument.text()).toContain('name="robots" content="noindex');
+    const inventory = await (await page.request.get(new URL('/api/auth/passkeys', zilchOrigin).href)).json();
+    expect(inventory.credentials).toHaveLength(1);
+  } finally {
+    await client.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId }).catch(() => {});
+    await client.detach().catch(() => {});
+  }
+});
 
 async function logout(page) {
   const auth = await (await page.request.get("/api/auth/me")).json();
@@ -137,15 +180,93 @@ for (const product of ["zdwa", "zilch"]) {
         await settings.locator("[data-remove-passkey]").click();
         await expect(settings.locator("[data-passkey-list] li")).toHaveCount(0);
         await expect(settings.locator("[data-passkey-message]")).toContainText(language === "en" ? "Passkey removed" : "Passkey entfernt");
-        await expect(prompt).toBeVisible();
+        await expect(prompt).toBeHidden();
         expect((await (await page.request.get("/api/auth/passkeys")).json()).credentials).toEqual([]);
         await logout(page);
         await passwordLogin(page, product, username);
-        await expect(prompt).toBeVisible();
+        await expect(prompt).toBeHidden();
         expect((await (await page.request.get("/api/auth/me")).json()).user.id).toBe(userId);
       } finally {
         await client.send("WebAuthn.removeVirtualAuthenticator", { authenticatorId });
         await client.detach();
+      }
+    });
+  }
+}
+
+for (const product of ['zdwa', 'zilch']) {
+  for (const language of ['de', 'en']) {
+    test(`${product}: landing creates a native passkey account and adds a password backup (${language})`, async ({ page, context }) => {
+      const username = `Signup_${product}_${language}`;
+      // The local Uvicorn trusts its loopback proxy. Give these independent
+      // players independent reserved addresses without loosening rate limits.
+      const clientAddress = 1 + (product === 'zilch' ? 2 : 0) + (language === 'en' ? 1 : 0);
+      await context.setExtraHTTPHeaders({ 'X-Forwarded-For': `192.0.2.${clientAddress}` });
+      await page.addInitScript(lang => localStorage.setItem('zdwa_language', lang), language);
+      const client = await context.newCDPSession(page);
+      await client.send('WebAuthn.enable');
+      const { authenticatorId } = await client.send('WebAuthn.addVirtualAuthenticator', { options: {
+        protocol: 'ctap2', ctap2Version: 'ctap2_1', transport: 'internal',
+        hasResidentKey: true, hasUserVerification: true, isUserVerified: true,
+        automaticPresenceSimulation: true,
+      } });
+      try {
+        const landing = product === 'zilch' ? '/zilch' : '/';
+        await page.goto(landing);
+        const form = page.locator(product === 'zilch' ? '[data-registration-form]' : '#registrationForm');
+        await expect(form).toBeVisible();
+        await form.locator(product === 'zilch' ? '[data-registration-username]' : '#registrationUsername').fill(username);
+        await expect(form.locator(product === 'zilch' ? '[data-registration-method]' : '#registrationMethod')).toHaveValue('passkey');
+        await expect(form.locator(product === 'zilch' ? '[data-registration-email]' : '#registrationEmail')).toBeHidden();
+        await expect(form.locator(product === 'zilch' ? '[data-registration-password]' : '#registrationPassword')).toBeHidden();
+        const verification = page.waitForResponse(response => response.url().endsWith('/api/auth/passkeys/signup/verify'));
+        const [options] = await Promise.all([
+          page.waitForResponse(response => response.url().endsWith('/api/auth/passkeys/signup/options')),
+          form.locator('button[type="submit"]').click(),
+        ]);
+        expect(options.status()).toBe(200);
+        expect((await verification).status()).toBe(201);
+        await expect(page.locator(product === 'zilch' ? '.zilch-lobby-identity strong' : '#authBadge')).toContainText(username);
+        expect(new URL(page.url()).pathname).toBe(landing);
+        const identity = await (await page.request.get('/api/auth/me')).json();
+        expect(identity.authenticated).toBe(true);
+        expect(identity.user.has_password).toBe(false);
+        expect(identity.passkeys.has_credentials).toBe(true);
+        const credentials = (await client.send('WebAuthn.getCredentials', { authenticatorId })).credentials;
+        expect(credentials).toHaveLength(1);
+        expect(credentials[0].isResidentCredential).toBe(true);
+
+        // A passkey-only player cannot remove their only working sign-in.
+        await page.goto(product === 'zilch' ? '/zilch/konto?passkey=1#settings' : '/konto?passkey=1#settings');
+        const settings = page.locator('details[data-account-section=access] [data-passkey-settings]');
+        await expect(settings.locator('[data-passkey-list] li')).toHaveCount(1);
+        page.once('dialog', dialog => dialog.accept());
+        await settings.locator('[data-remove-passkey]').click();
+        await expect(settings.locator('[data-passkey-list] li')).toHaveCount(1);
+        await expect(settings.locator('[data-passkey-message]')).toContainText(language === 'en' ? 'backup password' : 'Backup-Passwort');
+
+        // The backup can be added with the existing passkey, with no invented
+        // current password, and afterwards works as an independent login.
+        const passwordDisclosure = page.locator('details[data-account-action=password]');
+        await passwordDisclosure.locator(':scope > summary').click();
+        const passwordForm = page.locator(product === 'zilch' ? '#zilchPasswordForm' : '#passwordForm');
+        await expect(passwordForm.locator('[name="current_password"]')).toBeHidden();
+        await expect(passwordForm.locator('[data-account-verification]')).toHaveAttribute('data-verification-method', 'passkey');
+        await passwordForm.locator(product === 'zilch' ? '#zilchNewPassword' : '#newPassword').fill(password);
+        await passwordForm.locator(product === 'zilch' ? '#zilchConfirmPassword' : '#confirmPassword').fill(password);
+        await Promise.all([
+          page.waitForResponse(response => response.url().endsWith('/api/auth/change-password') && response.status() === 200),
+          passwordForm.locator('button[type="submit"]').click(),
+        ]);
+        await page.waitForURL(url => !url.pathname.endsWith('/konto'));
+        await passwordLogin(page, product, username);
+        const backedUp = await (await page.request.get('/api/auth/me')).json();
+        expect(backedUp.user.id).toBe(identity.user.id);
+        expect(backedUp.user.has_password).toBe(true);
+        expect(backedUp.passkeys.has_credentials).toBe(true);
+      } finally {
+        await client.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId }).catch(() => {});
+        await client.detach().catch(() => {});
       }
     });
   }

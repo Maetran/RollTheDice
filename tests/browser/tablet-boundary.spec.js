@@ -128,7 +128,9 @@ async function gameFixture(browser, baseURL, { game, theme, device, disableTable
   });
   await page.goto(url, { waitUntil: "domcontentloaded" });
   await expect(page.locator(game === "zilch" ? ".zilch-die" : "#diceBar .die")).toHaveCount(game === "zilch" ? 6 : 5);
-  await page.waitForLoadState("networkidle");
+  // The live game/presence sockets remain open. Wait for the fixture's
+  // authoritative player and settled fonts before comparing geometry.
+  await expect(page.getByText("Anna", { exact: true }).first()).toBeVisible();
   await page.evaluate(async () => {
     await document.fonts.ready;
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));

@@ -44,6 +44,8 @@ export const dom = {
   loginPassword: document.getElementById("loginPassword"),
   registrationForm: document.getElementById("registrationForm"),
   registrationUsername: document.getElementById("registrationUsername"),
+  registrationMethod: document.getElementById("registrationMethod"),
+  registrationHint: document.getElementById("registrationHint"),
   registrationEmail: document.getElementById("registrationEmail"),
   registrationPassword: document.getElementById("registrationPassword"),
   registerButton: document.getElementById("registerBtn"),

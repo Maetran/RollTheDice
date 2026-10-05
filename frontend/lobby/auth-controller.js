@@ -1,4 +1,4 @@
-import { loadAuth, login, loginWithPasskey, logout, mountPasskeyPrompt, passkeysSupported, playerNameMarkup, register } from "../shared/auth.js";
+import { loadAuth, login, loginWithPasskey, logout, mountPasskeyPrompt, passkeysSupported, playerNameMarkup, register, registerWithPasskey } from "../shared/auth.js";
 import { zdwaPath } from "../multigame/routes.js";
 import { dom, storageKeys } from "./context.js";
 
@@ -13,6 +13,32 @@ const turnstileState = {
   authenticated: false,
   epoch: 0,
 };
+
+let registrationConfig = null;
+
+function renderRegistrationMethod() {
+  const passkeyAvailable = registrationConfig?.passkeys?.enabled && passkeysSupported();
+  const emailEnabled = registrationConfig?.registration?.email_enabled !== false;
+  const passkeyOption = dom.registrationMethod.querySelector('[value="passkey"]');
+  passkeyOption.disabled = !passkeyAvailable;
+  if (!passkeyAvailable) dom.registrationMethod.value = 'password';
+  const usePasskey = dom.registrationMethod.value === 'passkey';
+  dom.registrationMethod.querySelector('[value="password"]').textContent = emailEnabled
+    ? 'E-Mail und Passwort (Backup)' : 'Passwort (Backup)';
+  dom.registrationEmail.closest('label').hidden = usePasskey || !emailEnabled;
+  dom.registrationEmail.required = !usePasskey && emailEnabled;
+  dom.registrationEmail.disabled = usePasskey || !emailEnabled;
+  dom.registrationPassword.closest('label').hidden = usePasskey || emailEnabled;
+  dom.registrationPassword.required = !usePasskey && !emailEnabled;
+  dom.registrationPassword.disabled = usePasskey || emailEnabled;
+  dom.registrationHint.textContent = usePasskey
+    ? 'Mit Passkey erstellst du dein Konto sofort – ohne E-Mail oder Passwort. Ein Backup-Passwort kannst du später im Konto einrichten.'
+    : emailEnabled ? 'Neues Konto per E-Mail bestätigen' : 'Passwort (Backup)';
+  dom.registerButton.textContent = usePasskey ? 'Konto mit Passkey erstellen'
+    : emailEnabled ? 'Konto per E-Mail erstellen' : 'Konto erstellen';
+  dom.registerButton.classList.toggle('primary', usePasskey);
+  dom.registerButton.classList.toggle('ghost', !usePasskey);
+}
 
 function loadTurnstileScript() {
   if (typeof window.turnstile?.render === "function") return Promise.resolve();
@@ -128,12 +154,8 @@ async function refreshAuthUi(refresh = false) {
     if (user) dom.passwordLogin.open = false;
     dom.loginForm.hidden = Boolean(user);
     dom.registrationForm.hidden = Boolean(user);
-    const emailEnabled = auth?.registration?.email_enabled !== false;
-    dom.registrationEmail.closest('label').hidden = !emailEnabled;
-    dom.registrationEmail.required = emailEnabled;
-    dom.registrationPassword.closest('label').hidden = emailEnabled;
-    dom.registrationPassword.required = !emailEnabled;
-    dom.registerButton.textContent = emailEnabled ? 'Konto per E-Mail erstellen' : 'Konto erstellen';
+    registrationConfig = auth;
+    renderRegistrationMethod();
     dom.authActions.hidden = !user;
     dom.authBadge.hidden = !user;
     dom.adminLink.hidden = !user?.is_admin;
@@ -158,6 +180,7 @@ async function refreshAuthUi(refresh = false) {
 }
 
 export function initializeAuthentication() {
+  dom.registrationMethod.addEventListener('change', renderRegistrationMethod);
   dom.passwordLogin.addEventListener('toggle', () => {
     if (dom.passwordLogin.open) dom.passwordLoginFallback.hidden = true;
   });
@@ -207,6 +230,7 @@ export function initializeAuthentication() {
     if (turnstileState.registering) return;
     turnstileState.registering = true;
     dom.registerButton.disabled = true;
+    dom.registrationMethod.disabled = true;
     dom.loginError.textContent = "";
     try {
       try {
@@ -222,16 +246,19 @@ export function initializeAuthentication() {
         return;
       }
       try {
-        const result = await register(
-          dom.registrationUsername.value,
-          dom.registrationEmail.value,
-          turnstileState.token,
-          dom.registrationPassword.required ? dom.registrationPassword.value : null,
-        );
+        const result = dom.registrationMethod.value === 'passkey'
+          ? await registerWithPasskey(dom.registrationUsername.value, turnstileState.token)
+          : await register(
+            dom.registrationUsername.value,
+            dom.registrationEmail.value,
+            turnstileState.token,
+            dom.registrationPassword.required ? dom.registrationPassword.value : null,
+          );
         dom.registrationForm.reset();
         if (result.authenticated) {
           await refreshAuthUi(true);
         } else {
+          renderRegistrationMethod();
           dom.loginError.textContent = 'Wenn diese Adresse noch kein Konto hat, erhältst du einen Bestätigungslink. Öffne ihn, um dein Passwort festzulegen.';
         }
       } finally {
@@ -244,6 +271,7 @@ export function initializeAuthentication() {
     } finally {
       turnstileState.registering = false;
       dom.registerButton.disabled = false;
+      dom.registrationMethod.disabled = false;
     }
   });
 

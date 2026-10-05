@@ -104,6 +104,32 @@ export async function loginWithPasskey() {
   }
 }
 
+export async function registerWithPasskey(username, turnstileToken = null) {
+  try {
+    const { options } = await publicAuthPost('/api/auth/passkeys/signup/options', {
+      username,
+      turnstile_token: turnstileToken,
+      preferred_language: window.ZDWA_I18N?.getLanguage?.() || 'de',
+    });
+    const credential = await createPasskeyCredential(options);
+    const data = await publicAuthPost('/api/auth/passkeys/signup/verify', { credential });
+    authState.epoch += 1;
+    authState.request = null;
+    authState.cache = data;
+    syncLanguage(data);
+    notifyAuthState(data);
+    return data;
+  } catch (error) {
+    if (error.code === 'passkey_cancelled') {
+      throw new Error('Die Kontoerstellung wurde abgebrochen. Es wurde kein Konto erstellt. Du kannst es erneut versuchen.');
+    }
+    if (error.code === 'passkey_browser_failed') {
+      throw new Error('Die Kontoerstellung mit Passkey konnte nicht abgeschlossen werden. Bitte versuche es erneut.');
+    }
+    throw new Error(authError(error.code || error.message));
+  }
+}
+
 async function passkeyRequest(path = '', body, method = 'POST') {
   const response = await apiFetch(`/api/auth/passkeys${path}`, body === undefined
     ? {} : { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -126,22 +152,25 @@ export function mountAccountVerification(container, { passwordId = '', firstPass
   const toggle = container.querySelector('button');
   let available = false;
   let usePassword = false;
+  let hasPassword = true;
   const render = auth => {
     available = Boolean(auth?.passkeys?.enabled && auth.passkeys.has_credentials && passkeysSupported());
-    const passkey = available && !usePassword;
+    hasPassword = auth?.user?.has_password !== false;
+    const passkey = available && (!usePassword || !hasPassword);
     container.dataset.verificationMethod = passkey ? 'passkey' : 'password';
-    label.hidden = passkey;
-    password.disabled = passkey;
-    password.required = !passkey;
-    if (passkey) password.value = '';
+    label.hidden = passkey || !hasPassword;
+    password.disabled = passkey || !hasPassword;
+    password.required = !passkey && hasPassword;
+    if (passkey || !hasPassword) password.value = '';
     hint.textContent = translate(passkey
       ? 'Bestätige diese Aktion mit deinem Passkey. Beim Speichern öffnet sich die Gerätebestätigung.'
-      : available || !auth?.passkeys?.enabled ? 'Bestätige diese Aktion mit deinem aktuellen Passwort.'
+      : !hasPassword ? 'Für diese Aktion brauchst du deinen Passkey. Nutze einen unterstützten Browser und ein Gerät mit deinem Passkey.'
+        : available || !auth?.passkeys?.enabled ? 'Bestätige diese Aktion mit deinem aktuellen Passwort.'
         : auth?.passkeys?.has_credentials && !passkeysSupported()
           ? 'Dieser Browser unterstützt keine Passkeys. Nutze einen aktuellen Browser auf einem unterstützten Gerät.'
           : firstPasskey ? 'Bestätige deinen ersten Passkey einmalig mit deinem aktuellen Passwort.'
             : 'Für die Bestätigung mit Passkey richte zuerst einen Passkey in deinen Kontoeinstellungen ein.');
-    toggle.hidden = !available;
+    toggle.hidden = !available || !hasPassword;
     toggle.textContent = translate(passkey ? 'Stattdessen Passwort verwenden' : 'Passkey verwenden (empfohlen)');
   };
   toggle.addEventListener('click', () => {
@@ -168,7 +197,10 @@ export function mountAccountVerification(container, { passwordId = '', firstPass
     clear() { password.value = ''; },
     async proof(action, target) {
       await ready;
-      if (!available || usePassword) {
+      if (!available && !hasPassword) {
+        throw new Error(translate('Für diese Aktion brauchst du deinen Passkey. Nutze einen unterstützten Browser und ein Gerät mit deinem Passkey.'));
+      }
+      if (!available || (usePassword && hasPassword)) {
         if (!password.reportValidity()) throw new Error(translate('Bitte gib dein aktuelles Passwort ein.'));
         return { current_password: password.value };
       }
@@ -177,6 +209,9 @@ export function mountAccountVerification(container, { passwordId = '', firstPass
         const credential = await requestPasskeyAssertion(options);
         return { passkey: { token, credential } };
       } catch (error) {
+        if (error.code === 'passkey_cancelled' && !hasPassword) {
+          throw new Error(translate('Die Passkey-Bestätigung wurde abgebrochen oder ist abgelaufen. Es wurde nichts geändert. Versuche es erneut.'));
+        }
         throw new Error(translate(authError(error.code === 'passkey_cancelled' ? 'passkey_confirmation_cancelled' : error.code || error.message)));
       }
     },
@@ -207,17 +242,50 @@ export function mountPasskeyPrompt(container, { auth, accountUrl } = {}) {
       }
       currentAuth = data;
       destination = url;
-      const visible = Boolean(data?.user && !data.user.must_change_password
+      const eligible = Boolean(data?.user && !data.user.must_change_password
+        && (!data.user.preferences?.preferred_language
+          || data.user.preferences.preferred_language === document.documentElement.lang)
         && data.passkeys?.enabled && data.passkeys.has_credentials === false && passkeysSupported());
+      if (!authState.passkeyPrompt || authState.passkeyPrompt.userId !== data?.user?.id) {
+        authState.passkeyPrompt = { userId: data?.user?.id, claimed: false, visible: false };
+      }
+      const prompt = authState.passkeyPrompt;
+      if (data?.passkeys?.has_credentials) prompt.visible = false;
+      if (prompt.claimed && !prompt.visible && prompt.nextPromptAt <= Date.now()) prompt.claimed = false;
+      if (eligible && !prompt.claimed) {
+        prompt.claimed = true;
+        prompt.nextPromptAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+        void apiFetch('/api/auth/passkeys/prompt', { method: 'POST' }).then(async response => {
+          const result = response.ok ? await response.json() : {};
+          if (authState.passkeyPrompt === prompt) {
+            prompt.visible = Boolean(result.show_prompt && currentAuth?.user?.id === prompt.userId
+              && currentAuth?.passkeys?.has_credentials === false);
+            const nextPromptAt = Date.parse(result.next_prompt_at);
+            if (Number.isFinite(nextPromptAt)) prompt.nextPromptAt = Math.max(nextPromptAt, Date.now() + 60_000);
+            window.dispatchEvent(new Event('zdwa:passkey-prompt-state'));
+          }
+        }).catch(() => {});
+      }
+      const visible = eligible && prompt.visible;
       container.hidden = !visible;
       if (!visible) {
         container.replaceChildren();
         return;
       }
       container.className = 'passkey-setup-prompt';
-      container.innerHTML = `<div><h2>${escapeHtml(translate('Richte jetzt deinen Passkey ein'))}</h2><p>${escapeHtml(translate('Dein Konto hat noch keinen Passkey. Melde dich künftig mit Fingerabdruck, Gesichtserkennung oder Geräte-PIN an.'))}</p></div><a class="button-link primary" data-passkey-prompt-link href="${escapeHtml(destination)}">${escapeHtml(translate('Passkey einrichten'))}</a>`;
+      container.innerHTML = `<div><h2>${escapeHtml(translate('Passkey als Standard nutzen'))}</h2><p>${escapeHtml(translate('Melde dich einfacher und phishing-resistent mit Fingerabdruck, Gesichtserkennung oder Geräte-PIN an. Dein Passwort bleibt als Backup.'))}</p></div><a class="button-link primary" data-passkey-prompt-link href="${escapeHtml(destination)}">${escapeHtml(translate('Passkey einrichten'))}</a><button type="button" class="small ghost" data-passkey-prompt-dismiss>${escapeHtml(translate('In 7 Tagen erinnern'))}</button>`;
+      container.querySelector('[data-passkey-prompt-dismiss]').addEventListener('click', () => {
+        prompt.visible = false;
+        prompt.nextPromptAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+        void apiFetch('/api/auth/passkeys/prompt/dismiss', { method: 'POST' }).catch(() => {});
+        window.dispatchEvent(new Event('zdwa:passkey-prompt-state'));
+      });
     };
     window.addEventListener('zdwa:auth-state', event => render(event.detail));
+    window.addEventListener('zdwa:passkey-prompt-state', () => render(currentAuth));
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && container.isConnected) render(currentAuth);
+    });
     window.addEventListener('pageshow', event => {
       if (event.persisted && container.isConnected) {
         container.hidden = true;
@@ -250,7 +318,9 @@ export async function mountPasskeySettings(container, { zilch = false } = {}) {
         notifyAuthState(authState.cache);
       }
       container.innerHTML = `
-        <p>${escapeHtml(translate('Mit einem Passkey meldest du dich per Fingerabdruck, Gesichtserkennung oder Geräte-PIN an. Dein Passwort bleibt als Alternative verfügbar.'))}</p>
+        <p>${escapeHtml(translate(authState.cache?.user?.has_password === false
+          ? 'Dein Passkey ist dein Standardzugang. Ein optionales Backup-Passwort kannst du unter „Passwort ändern“ festlegen.'
+          : 'Mit einem Passkey meldest du dich per Fingerabdruck, Gesichtserkennung oder Geräte-PIN an. Dein Passwort bleibt als Alternative verfügbar.'))}</p>
         <ul data-passkey-list>${(status.credentials || []).map(key => `<li><span>${escapeHtml(key.label || translate('Passkey'))}</span> <button class="small ghost" type="button" data-remove-passkey="${Number(key.id)}">${escapeHtml(translate('Entfernen'))}</button></li>`).join('')}</ul>
         ${status.credentials?.length ? '' : `<p>${escapeHtml(translate('Noch kein Passkey eingerichtet.'))}</p>`}
         <form class="${zilch ? 'zilch-settings-form' : 'form-stack'}" data-passkey-form>
@@ -539,6 +609,7 @@ export function authError(detail) {
     passkey_reauthentication_invalid: 'Die Bestätigung ist abgelaufen oder passt nicht zu dieser Aktion. Bitte bestätige erneut.',
     passkey_required: 'Für dieses Konto ist noch kein Passkey eingerichtet. Verwende dein Passwort und richte danach einen Passkey ein.',
     passkey_not_found: 'Dieser Passkey wurde bereits entfernt.',
+    passkey_last_credential_required: 'Richte zuerst einen weiteren Passkey oder ein Backup-Passwort ein, bevor du deinen letzten Passkey entfernst.',
     password_change_required: 'Bitte ändere zuerst dein temporäres Passwort.',
     passkey_not_supported: 'Dieser Browser unterstützt keine Passkeys. Nutze einen aktuellen Browser auf einem unterstützten Gerät.',
     passkey_cancelled: 'Die Passkey-Anmeldung wurde abgebrochen oder ist abgelaufen. Versuche es erneut oder nutze dein Passwort.',

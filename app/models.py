@@ -111,6 +111,8 @@ class User(Base):
     # notification and only limits how often the lobby may invite a player to
     # make an informed choice.
     push_opt_in_prompted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Account-wide cadence for the optional switch to passkey login.
+    passkey_prompted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     daily_reminder_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     release_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     admin_help_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -298,6 +300,31 @@ class WebAuthnCeremony(Base):
         ),
         CheckConstraint("length(challenge) BETWEEN 32 AND 64", name="ck_webauthn_ceremonies_challenge_size"),
         Index("ix_webauthn_ceremonies_expires", "expires_at"),
+    )
+
+
+class PasskeySignupCeremony(Base):
+    """A browser-bound pending name, never an account before verification."""
+
+    __tablename__ = "passkey_signup_ceremonies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    state_token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    challenge: Mapped[bytes] = mapped_column(LargeBinary(64), nullable=False)
+    username: Mapped[str] = mapped_column(String(32), nullable=False)
+    username_normalized: Mapped[str] = mapped_column(String(32), nullable=False)
+    user_handle: Mapped[bytes] = mapped_column(LargeBinary(32), nullable=False, unique=True)
+    preferred_language: Mapped[str] = mapped_column(String(2), nullable=False)
+    request_origin: Mapped[str] = mapped_column(String(256), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("length(challenge) BETWEEN 32 AND 64", name="ck_passkey_signup_challenge_size"),
+        CheckConstraint("length(user_handle) = 32", name="ck_passkey_signup_handle_size"),
+        CheckConstraint("preferred_language IN ('de', 'en')", name="ck_passkey_signup_language"),
+        Index("ix_passkey_signup_expires", "expires_at"),
     )
 
 

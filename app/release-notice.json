@@ -4,27 +4,25 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Mission Control zeigt PWA-/Browser-Besuche, Browsersprachen und die Länder der HTTP-Requests.",
-  "summary_en": "Mission Control shows PWA/browser visits, browser languages and the countries of HTTP requests.",
+  "summary_de": "Erstelle dein Konto direkt mit Passkey. Ein Passwort bleibt optional als Backup; bestehende Konten erhalten einen Wochenhinweis.",
+  "summary_en": "Create your account directly with a passkey. Passwords remain an optional backup; existing accounts get a weekly reminder.",
   "player_notes": {
     "de": {
-      "title": "Mission Control: PWA, Browser und Sprachen",
+      "title": "Dein Konto beginnt mit einem Passkey",
       "changes": [
-        "Berechtigte Konten sehen, wie viele Besuche im PWA-Appfenster oder im Browser beginnen.",
-        "Browserfamilien und die erste bevorzugte Browsersprache helfen bei der Weiterentwicklung beider Spiele.",
-        "Eine eigene Länder-Auswertung zeigt HTTP-Requests und gemeldete Bot- und API-Clientkennungen.",
-        "Die Besuchsmessung zählt anonyme Tab-Besuche; ältere und nicht erkannte Angaben bleiben unbekannt.",
-        "Beide Dashboard-Designs bieten die neuen Karten mit denselben privaten Zugriffsregeln."
+        "Gib auf der Landingpage deinen Namen ein und bestätige einen Passkey: Dein Konto ist sofort bereit.",
+        "E-Mail und Passwort sind dabei optional. Ein Backup-Passwort kannst du später in den Einstellungen festlegen.",
+        "Ohne Passkey erinnert dich ein dezenter Hinweis höchstens alle sieben Tage. Du kannst ihn für sieben Tage wegklicken.",
+        "Dein letzter Passkey bleibt geschützt, bis du einen weiteren Passkey oder ein Backup-Passwort eingerichtet hast."
       ]
     },
     "en": {
-      "title": "Mission Control: PWA, browsers and languages",
+      "title": "Start your account with a passkey",
       "changes": [
-        "Authorized accounts can see how many visits begin in a PWA app window or in a browser.",
-        "Browser families and the first preferred browser language help guide development of both games.",
-        "A separate country breakdown shows HTTP requests and declared bot and API client families.",
-        "Visitor measurement counts anonymous tab visits; older and unrecognized values remain unknown.",
-        "Both dashboard themes offer the new cards with the same private access rules."
+        "Enter your name on the landing page and confirm a passkey: your account is ready immediately.",
+        "Email and a password are optional. You can set a backup password later in settings.",
+        "Without a passkey, a gentle reminder appears at most every seven days. You can dismiss it for seven days.",
+        "Your last passkey stays protected until you have another passkey or a backup password."
       ]
     }
   }

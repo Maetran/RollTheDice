@@ -1,10 +1,10 @@
 {
-  "version": "2.46.0",
+  "version": "2.47.0",
   "bump": "minor",
   "date": "2026-10-05",
-  "previous_revision": "03e0eb62cfd8b8db5cba2612fbd5e18629208fe9",
+  "previous_revision": "457162d1eaa41cf19934de8bc1370897a38e97c4",
   "summary": {
-    "de": "Mission Control: PWA, Browser, Sprachen und Request-Herkunft",
-    "en": "Mission Control: PWA, browsers, languages and request origins"
+    "de": "Konto direkt mit Passkey erstellen",
+    "en": "Create accounts directly with passkeys"
   }
 }

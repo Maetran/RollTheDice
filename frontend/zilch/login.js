@@ -1,4 +1,5 @@
-import { authError, loadAuth, login, loginWithPasskey, logout, passkeysSupported, register } from "../shared/auth.js";
+import { authError, loadAuth, login, loginWithPasskey, logout, passkeysSupported } from "../shared/auth.js";
+import { mountRegistrationForm } from '../shared/registration.js';
 import {
   applyZilchRouteLinks,
   isProductionZilchLocation,
@@ -19,19 +20,14 @@ const passwordFallback = document.getElementById("zilchPasswordLoginFallback");
 const username = document.getElementById("zilchLoginUsername");
 const password = document.getElementById("zilchLoginPassword");
 const registrationForm = document.getElementById("zilchRegistrationForm");
-const registrationUsername = document.getElementById("zilchRegistrationUsername");
-const registrationEmail = document.getElementById("zilchRegistrationEmail");
-const registrationPassword = document.getElementById("zilchRegistrationPassword");
-const registerButton = document.getElementById("zilchRegisterButton");
 const forgotPassword = document.getElementById("zilchForgotPassword");
 const message = document.getElementById("zilchLoginMessage");
-const challenge = document.getElementById("zilchRegistrationChallenge");
 const signedIn = document.getElementById("zilchSignedIn");
 const accountName = document.getElementById("zilchLoginAccountName");
 const continueButton = document.getElementById("zilchContinueButton");
 const logoutButton = document.getElementById("zilchLoginLogout");
 
-const turnstile = { enabled: false, token: null, widgetId: null };
+let registrationController;
 
 function t(value) {
   return window.ZDWA_I18N?.t?.(value) || String(value || "");
@@ -88,44 +84,6 @@ function setMessage(value, kind = "") {
   message.dataset.kind = kind;
 }
 
-function loadTurnstileScript() {
-  if (window.turnstile) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-    script.async = true;
-    script.defer = true;
-    script.addEventListener("load", resolve, { once: true });
-    script.addEventListener("error", reject, { once: true });
-    document.head.appendChild(script);
-  });
-}
-
-async function initializeRegistrationProtection(auth) {
-  const config = auth?.registration || {};
-  if (!config.turnstile_enabled) return;
-  turnstile.enabled = true;
-  challenge.hidden = false;
-  try {
-    await loadTurnstileScript();
-    turnstile.widgetId = window.turnstile.render(challenge, {
-      sitekey: config.turnstile_site_key,
-      action: "register",
-      callback: token => { turnstile.token = token; },
-      "expired-callback": () => { turnstile.token = null; },
-      "error-callback": () => { turnstile.token = null; },
-    });
-  } catch {
-    registerButton.disabled = true;
-    setMessage("Registrierung ist momentan nicht verfügbar. Die Anmeldung funktioniert weiterhin.", "error");
-  }
-}
-
-function resetChallenge() {
-  turnstile.token = null;
-  if (turnstile.widgetId !== null && window.turnstile) window.turnstile.reset(turnstile.widgetId);
-}
-
 function render(auth) {
   const user = auth?.user;
   const dashboardDestination = returnPath() === "/admin/dashboard";
@@ -138,12 +96,7 @@ function render(auth) {
   if (user) passwordLogin.open = false;
   form.hidden = Boolean(user);
   registrationForm.hidden = Boolean(user);
-  const emailEnabled = auth?.registration?.email_enabled !== false;
-  registrationEmail.closest('label').hidden = !emailEnabled;
-  registrationEmail.required = emailEnabled;
-  registrationPassword.closest('label').hidden = emailEnabled;
-  registrationPassword.required = !emailEnabled;
-  registrationForm.querySelector('p').textContent = t(emailEnabled ? 'Neues Konto per E-Mail bestätigen' : 'Konto erstellen');
+  registrationController?.render(auth);
   signedIn.hidden = !user;
   if (!user) return;
   accountName.textContent = user.username;
@@ -207,32 +160,9 @@ passkeyButton.addEventListener('click', async () => {
   }
 });
 
-registrationForm.addEventListener("submit", async event => {
-  event.preventDefault();
-  setMessage("");
-  if (!turnstile.enabled && turnstile.widgetId === null) {
-    try {
-      await initializeRegistrationProtection(await loadAuth());
-    } catch {
-      setMessage("Registrierung ist momentan nicht verfügbar. Die Anmeldung funktioniert weiterhin.", "error");
-      return;
-    }
-  }
-  if (turnstile.enabled && !turnstile.token) {
-    setMessage("Bitte bestätige zuerst, dass du kein Bot bist.", "error");
-    return;
-  }
-  try {
-    const result = await register(registrationUsername.value, registrationEmail.value, turnstile.token,
-      registrationPassword.required ? registrationPassword.value : null);
-    registrationForm.reset();
-    if (result.authenticated) await refresh({ redirect: true });
-    else setMessage('Wenn diese Adresse noch kein Konto hat, erhältst du einen Bestätigungslink. Öffne ihn, um dein Passwort festzulegen.', 'success');
-  } catch (error) {
-    setMessage(error.message || authError(), "error");
-  } finally {
-    resetChallenge();
-  }
+registrationController = mountRegistrationForm(registrationForm, {
+  onAuthenticated: () => refresh({ redirect: true }),
+  onMessage: setMessage,
 });
 
 logoutButton.addEventListener("click", async () => {

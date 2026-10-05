@@ -18,6 +18,7 @@ for (const language of ['de', 'en']) {
       await route.fulfill({ status: 202, json: { accepted: true } });
     });
     await page.goto('/');
+    await page.selectOption('#registrationMethod', 'password');
     await page.fill('#registrationUsername', 'MailPlayer');
     await page.fill('#registrationEmail', 'mail@example.test');
     await expect(page.locator('#registrationPassword')).toBeHidden();

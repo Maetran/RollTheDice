@@ -21,7 +21,7 @@ async function account(page, username, language = 'de') {
   const signedIn = await page.request.post('/api/auth/login', { data: { username, password } });
   expect(signedIn.ok()).toBeTruthy();
   const user = (await signedIn.json()).user;
-  const state = { enabled: true, has_credentials: false, forced: false };
+  const state = { enabled: true, has_credentials: false, forced: false, claimed: false, claims: 0 };
   await page.route('**/api/auth/me', async route => {
     const response = await route.fetch();
     const auth = await response.json();
@@ -31,6 +31,13 @@ async function account(page, username, language = 'de') {
   await page.route('**/api/auth/passkeys', route => route.fulfill({ json: {
     enabled: state.enabled, credentials: state.has_credentials ? [{ id: 1, label: 'Existing passkey' }] : [],
   } }));
+  await page.route('**/api/auth/passkeys/prompt', route => {
+    const show_prompt = !state.claimed;
+    state.claimed = true;
+    state.claims += 1;
+    return route.fulfill({ json: { show_prompt, interval_days: 7 } });
+  });
+  await page.route('**/api/auth/passkeys/prompt/dismiss', route => route.fulfill({ json: { ok: true } }));
   await page.route('**/api/releases**', route => route.fulfill({ json: {
     viewer_id: user.id,
     can_prompt: new URL(route.request().headers().referer || 'https://example.test').pathname.endsWith('/konto'),
@@ -50,24 +57,39 @@ for (const game of ['zdwa', 'zilch']) {
       await page.goto(lobby);
       const prompt = page.locator('[data-passkey-prompt]');
       await expect(prompt).toBeVisible();
-      await expect(prompt.getByRole('heading')).toHaveText(language === 'en' ? 'Set up your passkey now' : 'Richte jetzt deinen Passkey ein');
+      await expect(prompt.getByRole('heading')).toHaveText(language === 'en' ? 'Make passkeys your default' : 'Passkey als Standard nutzen');
+      await page.setViewportSize({ width: 375, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+      await testInfo.attach(`${game}-passkey-prompt-${language}`, {
+        body: await prompt.screenshot({ path: `/tmp/rollthedice-passkey-prompt-${game}-${language}.png` }), contentType: 'image/png',
+      });
       await page.locator('[data-passkey-prompt-link]').click();
       await expect(page).toHaveURL(new RegExp(`${accountPath}\\?passkey=1#settings$`));
       const password = page.locator('[data-passkey-settings] [name=current_password]');
       await expect(password).toBeVisible();
       await expect(password).toBeFocused();
       await expect(page.locator('.release-notes-dialog[open]')).toHaveCount(0);
-      await page.setViewportSize({ width: 375, height: 844 });
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-      await testInfo.attach(`${game}-passkey-prompt-${language}`, {
-        body: await prompt.screenshot({ path: `/tmp/rollthedice-passkey-prompt-${game}-${language}.png` }), contentType: 'image/png',
-      });
+      await expect(prompt).toBeHidden();
       state.has_credentials = true;
       await page.reload();
       await expect(prompt).toBeHidden();
       await expect(page.locator('[data-passkey-list]')).toContainText('Existing passkey');
     });
   }
+
+  test(`${game}: reminder can be dismissed and stays hidden across navigation and reload`, async ({ page }) => {
+    const state = await account(page, `PasskeyDismiss_${game}`);
+    await page.goto(lobby);
+    const prompt = page.locator('[data-passkey-prompt]');
+    await expect(prompt).toBeVisible();
+    await page.locator('[data-passkey-prompt-dismiss]').click();
+    await expect(prompt).toBeHidden();
+    await page.reload();
+    await expect(prompt).toBeHidden();
+    await page.goto(accountPath);
+    await expect(prompt).toBeHidden();
+    expect(state.claims).toBeGreaterThanOrEqual(2);
+  });
 
   test(`${game}: reminder respects capability, required password and logout`, async ({ page }) => {
     const state = await account(page, `PasskeyGuard_${game}`);

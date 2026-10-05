@@ -22,6 +22,27 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.47.0 — Konto direkt mit Passkey / Direct passkey signup — 2026-10-05
+
+**Deutsch:** Auf beiden Landingpages genügt ein Kontoname und die Bestätigung
+eines neuen Passkeys. Das Konto entsteht erst nach erfolgreicher Bestätigung
+und ist sofort angemeldet. E-Mail und Passwort sind für diesen Weg optional;
+ein Backup-Passwort lässt sich später mit dem Passkey in den Einstellungen
+festlegen. Die bisherige E-Mail-/Passwort-Registrierung bleibt als Alternative.
+Konten ohne Passkey erhalten einen wegklickbaren Hinweis höchstens alle sieben
+Tage, gemeinsam über beide Spiele und Geräte. Temporäre Passwortwechsel haben
+Vorrang. Der letzte Passkey kann nur mit einem weiteren Passkey oder einem
+Backup-Passwort entfernt werden.
+
+**English:** Both landing pages let you create an account with an account name
+and a new passkey. The account is created only after successful verification
+and signs in immediately. Email and a password are optional for this flow;
+you can later set a backup password in settings by confirming with your passkey.
+Email/password registration remains an alternative. Accounts without passkeys
+receive a dismissible reminder at most every seven days, shared across games
+and devices. Required temporary-password changes take priority. Removing the
+last passkey requires another passkey or a backup password.
+
 ## 2.46.0 — Mission Control: PWA, Browser & Sprachen / languages — 2026-10-05
 
 **Deutsch:** Drei neue Analyse-Karten zeigen PWA-Starts gegenüber

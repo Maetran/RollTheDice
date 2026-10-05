@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.46.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.47.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.46.0 | 2026-10-05 | minor | Mission Control: PWA, Browser, Sprachen und Request-Herkunft / Mission Control: PWA, browsers, languages and request origins | [457162d](https://github.com/Maetran/RollTheDice/commit/457162d1eaa41cf19934de8bc1370897a38e97c4) |
 | 2.45.0 | 2026-10-05 | minor | Mission Control ergänzt LCARS mit lokalem Designwechsel und anonymer Betriebssystem- und Geräteanalyse / Mission Control adds LCARS with a local theme choice and anonymous operating-system and device analysis | [03e0eb6](https://github.com/Maetran/RollTheDice/commit/03e0eb62cfd8b8db5cba2612fbd5e18629208fe9) |
 | 2.44.0 | 2026-10-05 | minor | Mission Control: Weltansicht und interaktive Analysen für Herkunft, Aktivität und Seitenwege / Mission Control: world view and interactive analysis of sources, activity and page journeys | [657763f](https://github.com/Maetran/RollTheDice/commit/657763f6b425af53e0c00fa906639b5bb6ce91db) |
 | 2.43.0 | 2026-10-04 | minor | Mission Control: privates Dashboard für Besucher, Spielaktivität und Serverzustand / Mission Control: private dashboard for visitors, gameplay activity and server health | [3e92116](https://github.com/Maetran/RollTheDice/commit/3e921162f06a44b16b7c29a8ccc184974214425b) |

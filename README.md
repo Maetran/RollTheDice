@@ -470,15 +470,24 @@ passkeys and public Fairplay counters. Resend sends from
 `noreply@zockdiewandan.online`; the [mail setup record](docs/MAIL_SETUP_2026-09-12.md)
 describes DNS, delivery checks and operating limits. Only account/address
 confirmations, requested password resets and reset confirmations are sent.
-There is no inbox, operator copy or newsletter. New accounts become usable
-only after following the confirmation link and choosing a password; existing
+There is no inbox, operator copy or newsletter. Email/password sign-up becomes usable
+after following the confirmation link and choosing a password; existing
 accounts can add a confirmed address under **Profile & sign-in**.
+
+Both landing pages offer account creation directly with a passkey: enter an
+account name, keep **Passkey (recommended)** selected and confirm on your device.
+No email or password is required; the account is created only after successful
+verification and signs in immediately. Set an optional backup password under
+**Account → Settings → Profile & sign-in → Change password**, confirming with
+your passkey. Until then, password verification is not offered, and the last
+passkey cannot be removed without another passkey or a backup password.
 
 Passkeys lead the sign-in screen. Password fields open only after choosing
 **Sign in with password**, including on devices where passkeys are unavailable.
-Accounts without a passkey see a setup reminder in the lobby and account page;
-its link opens and focuses the setup form. The reminder disappears after a
-passkey is saved and returns if the last one is removed. Required password
+Accounts without a passkey see a dismissible setup reminder at most once every
+seven days, shared across both games and all devices. Its link opens and focuses
+the setup form; **Remind me in 7 days** snoozes it for seven days from dismissal.
+The reminder disappears after a passkey is saved. Required password
 changes take priority, and active games are not interrupted.
 
 Passkeys are the preferred sign-in choice on supported devices. They use the
@@ -491,8 +500,8 @@ Account changes also prefer passkeys: username, email, password, adding another
 passkey and removing a passkey. Each confirmation belongs to the current account,
 session and requested action, expires after five minutes and can be used once.
 Cancelling leaves the account unchanged; password confirmation is an explicit
-fallback. The first passkey still needs the existing password because there is
-no registered credential yet. Choosing a new password during initial email
+fallback when a password has been set. Existing password accounts confirm their
+first passkey once with their current password. Choosing a new password during initial email
 registration or recovery and administrator-issued temporary passwords remain
 bootstrap/recovery flows; room passwords are game access codes, not account
 reauthentication. See the [password-flow audit](docs/PASSKEY_FLOW_AUDIT.md).
@@ -508,15 +517,26 @@ zusätzlich zu Passkeys und öffentlichen Fairplay-Zählern. Resend versendet vo
 im [Versandprotokoll](docs/MAIL_SETUP_2026-09-12.md). Die Anwendung verschickt nur
 Konto-/Adressbestätigungen, angeforderte Passwort-Resets und die Bestätigung
 nach einem Reset. Es gibt kein Postfach, keine Kopie an die Administration und
-keinen Newsletter. Neue Konten entstehen erst nach Bestätigungslink und eigener
+keinen Newsletter. E-Mail-/Passwort-Konten entstehen nach Bestätigungslink und eigener
 Passwortwahl. Bestehende Konten können unter **Profil & Zugang** eine bestätigte
 Adresse ergänzen.
 
+Auf beiden Landingpages lässt sich direkt ein Konto mit Passkey erstellen:
+Kontonamen eingeben, **Passkey (empfohlen)** ausgewählt lassen und am Gerät
+bestätigen. E-Mail und Passwort sind optional. Erst nach erfolgreicher Prüfung
+wird das Konto erstellt und sofort angemeldet. Ein Backup-Passwort lässt sich
+unter **Konto → Einstellungen → Profil & Zugang → Passwort ändern** setzen,
+bestätigt mit dem Passkey. Bis dahin erscheint keine Passwortbestätigung.
+Der letzte Passkey kann erst entfernt werden, wenn ein weiterer Passkey oder
+ein Backup-Passwort vorhanden ist.
+
 Passkeys stehen beim Anmelden vorne. Die Passwortfelder erscheinen erst nach
 **Mit Passwort anmelden**, auch wenn das Gerät keine Passkeys unterstützt.
-Konten ohne Passkey erhalten in Lobby und Konto einen Einrichtungshinweis,
-der direkt zum passenden Formular führt. Nach dem Speichern verschwindet er;
-nach dem Entfernen des letzten Passkeys erscheint er wieder. Erforderliche
+Konten ohne Passkey erhalten in Lobby und Konto höchstens alle sieben Tage
+einen wegklickbaren Einrichtungshinweis, gemeinsam über beide Spiele und Geräte.
+Er führt direkt zum passenden Formular. **In 7 Tagen erinnern** verschiebt den
+nächsten Hinweis um sieben Tage ab dem Wegklicken. Nach dem Speichern eines
+Passkeys verschwindet er. Erforderliche
 Passwortwechsel haben Vorrang, laufende Spiele bleiben ungestört.
 
 Passkeys sind die bevorzugte Anmeldung auf unterstützten Geräten und gelten
@@ -529,8 +549,9 @@ Auch Benutzername, E-Mail, Passwort und das Hinzufügen oder Entfernen von Passk
 lassen sich bevorzugt mit einem vorhandenen Passkey bestätigen. Jede Bestätigung
 gilt einmalig für das aktuelle Konto, die Sitzung und die gewählte Aktion und
 läuft nach fünf Minuten ab. Abbrechen ändert nichts; das Passwort ist eine
-bewusst wählbare Alternative. Beim ersten Passkey wird noch das vorhandene
-Passwort gebraucht. Die erste Passwortwahl, Wiederherstellung und temporäre
+bewusst wählbare Alternative, wenn eines hinterlegt ist. Bestehende Passwortkonten
+bestätigen ihren ersten Passkey einmalig mit ihrem aktuellen Passwort.
+Die erste Passwortwahl, Wiederherstellung und temporäre
 Admin-Passwörter bleiben Einrichtungs-/Wiederherstellungswege; Spielraum-Passwörter
 sind Zugangscodes. Details stehen im [Passwort-Flow-Audit](docs/PASSKEY_FLOW_AUDIT.md).
 Gleichzeitige Profil- und Statistikaufrufe behalten einen gemeinsamen

@@ -15,11 +15,11 @@ from alembic import command
 
 BASE = Path(__file__).resolve().parents[1]
 PRE_TYPED_RESULTS_REVISION = "20260902_0015"
-# ``head`` includes email accounts, passkeys, feed indexes, admin help and bans. The typed
+# ``head`` includes email accounts, passkey signup/reminders, feed indexes, admin help and bans. The typed
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20261005_0052"
+LATEST_SCHEMA_REVISION = "20261005_0053"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -86,6 +86,7 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
             "friend_activity_enabled": 1,
             "game_invite_push_enabled": 0,
             "game_invite_push_last_sent_at": None,
+            "passkey_prompted_at": None,
             "daily_reminder_push_enabled": 0,
             "daily_reminder_push_last_sent_on": None,
             "daily_reminder_push_sequence": 0,
@@ -315,11 +316,16 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
                    VALUES (?, ?, ?, 'page_view', '/', 'zdwa', '')""",
                 ("b" * 64, "a" * 64, timestamp),
             )
-            preserved = {table: connection.execute(f"SELECT * FROM {table}").fetchall()
-                         for table in ("users", "completed_games", "analytics_events")}
+            tables = ("users", "completed_games", "analytics_events")
+            original_columns = {table: ", ".join(self._columns(connection, table)) for table in tables}
+            preserved = {table: connection.execute(f"SELECT {original_columns[table]} FROM {table}").fetchall()
+                         for table in tables}
             original_session = connection.execute("SELECT * FROM analytics_sessions").fetchall()
         self._upgrade()
         with self._connection() as connection:
+            for table, rows in preserved.items():
+                self.assertEqual(connection.execute(f"SELECT {original_columns[table]} FROM {table}").fetchall(), rows)
+            self.assertEqual(connection.execute("SELECT passkey_prompted_at FROM users").fetchall(), [(None,)])
             info = {row[1]: (row[2], row[3], row[4]) for row in connection.execute("PRAGMA table_info(analytics_sessions)")}
             for field, length in (("app_mode", 16), ("browser", 24), ("browser_language", 8)):
                 self.assertEqual(info[field], (f"VARCHAR({length})", 1, "'unknown'"))
@@ -354,7 +360,8 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
             self.assertEqual(connection.execute("SELECT app_mode, browser, browser_language FROM analytics_sessions").fetchall(),
                              [("unknown", "unknown", "unknown"), ("unknown", "unknown", "unknown")])
             for table, rows in preserved.items():
-                self.assertEqual(connection.execute(f"SELECT * FROM {table}").fetchall(), rows)
+                self.assertEqual(connection.execute(f"SELECT {original_columns[table]} FROM {table}").fetchall(), rows)
+            self.assertEqual(connection.execute("SELECT passkey_prompted_at FROM users").fetchall(), [(None,)])
             self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
 
     def test_request_counter_migration_is_separate_and_preserves_visits_results_and_access(self) -> None:
@@ -377,9 +384,14 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
                 ("b" * 64, "a" * 64, timestamp),
             )
             tables = ("users", "completed_games", "analytics_sessions", "analytics_events")
-            preserved = {table: connection.execute(f"SELECT * FROM {table}").fetchall() for table in tables}
+            original_columns = {table: ", ".join(self._columns(connection, table)) for table in tables}
+            preserved = {table: connection.execute(f"SELECT {original_columns[table]} FROM {table}").fetchall()
+                         for table in tables}
         self._upgrade()
         with self._connection() as connection:
+            for table, rows in preserved.items():
+                self.assertEqual(connection.execute(f"SELECT {original_columns[table]} FROM {table}").fetchall(), rows)
+            self.assertEqual(connection.execute("SELECT passkey_prompted_at FROM users").fetchall(), [(None,)])
             self.assertEqual(self._columns(connection, "analytics_request_buckets"),
                              ["day", "country", "status_class", "agent_family", "channel", "requests"])
             self.assertEqual(connection.execute("SELECT count(*) FROM analytics_request_buckets").fetchone(), (0,))
@@ -394,7 +406,8 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
         with self._connection() as connection:
             self.assertEqual(connection.execute("SELECT count(*) FROM analytics_request_buckets").fetchone(), (0,))
             for table, rows in preserved.items():
-                self.assertEqual(connection.execute(f"SELECT * FROM {table}").fetchall(), rows)
+                self.assertEqual(connection.execute(f"SELECT {original_columns[table]} FROM {table}").fetchall(), rows)
+            self.assertEqual(connection.execute("SELECT passkey_prompted_at FROM users").fetchall(), [(None,)])
             self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
 
     def test_empty_upgrade_creates_typed_schema_and_is_idempotent(self) -> None:
@@ -437,8 +450,13 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
                 user_columns["achievement_cross_game_started_at"],
                 {"notnull": 0, "default": None},
             )
-            for column in ("email", "email_normalized", "email_confirmed_at", "webauthn_user_handle"):
+            for column in ("email", "email_normalized", "email_confirmed_at", "webauthn_user_handle", "passkey_prompted_at"):
                 self.assertEqual(user_columns[column], {"notnull": 0, "default": None})
+            self.assertEqual(self._columns(connection, "passkey_signup_ceremonies"), [
+                "id", "state_token_hash", "challenge", "username", "username_normalized", "user_handle",
+                "preferred_language", "request_origin", "created_at", "expires_at", "consumed_at",
+            ])
+            self.assertEqual(connection.execute("SELECT count(*) FROM passkey_signup_ceremonies").fetchone(), (0,))
             achievement_indexes = {
                 str(row[1]): [str(column[2]) for column in connection.execute(f"PRAGMA index_info({row[1]})")]
                 for row in connection.execute("PRAGMA index_list(user_achievements)")

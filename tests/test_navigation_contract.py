@@ -32,12 +32,14 @@ class RouteCoverage:
     paths: tuple[str, ...]
     test_file: str
     test_name: str | None = None
+    browser_tests: tuple[str, ...] = ()
 
 
 # Include aliases, personal/token pages and parameterized paths: leaving them
 # out because they are noindex would miss the navigation bugs this guards.
 DOCUMENT_ROUTES = (
-    RouteCoverage(("/",), "tests/test_http_shell.py", "test_shell_and_service_worker_are_revalidated"),
+    RouteCoverage(("/",), "tests/test_http_shell.py", "test_shell_and_service_worker_are_revalidated",
+                  ("tests/browser/passkey-signup.spec.js",)),
     RouteCoverage(
         ("/regeln", "/spieler/{username}", "/rangabzeichen", "/konto",
          "/ergebnis/{game_id}", "/offline"),
@@ -69,10 +71,12 @@ DOCUMENT_ROUTES = (
     ),
     RouteCoverage(
         ("/zilch",), "tests/test_zilch_product_routes.py", "test_only_public_lobby_documents_can_render_before_auth",
+        ("tests/browser/passkey-signup.spec.js",),
     ),
     RouteCoverage(
         ("/zilch/anmelden",), "tests/test_zilch_product_routes.py",
         "test_login_entry_is_public_but_the_private_shell_stays_protected",
+        ("tests/browser/passkey-signup.spec.js",),
     ),
     RouteCoverage(
         ("/zilch/historie", "/zilch/statistiken", "/zilch/erfolge", "/zilch/konto", "/zilch/regeln"),
@@ -94,6 +98,7 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/anmelden",), "tests/test_zilch_product_routes.py",
         "test_public_guest_explicit_login_reaches_apex_form_with_safe_continuation",
+        ("tests/browser/passkey-signup.spec.js",),
     ),
     RouteCoverage(
         ("/historie", "/statistiken", "/bestenlisten", "/erfolge"), "tests/test_zilch_product_routes.py",
@@ -160,6 +165,9 @@ class NavigationInventoryTests(TestCase):
                 else:
                     self.assertTrue(group.test_file.startswith("tests/browser/"))
                     self.assertIn("test(", source, "Browser coverage must contain executable tests")
+                for browser_test in group.browser_tests:
+                    self.assertTrue(browser_test.startswith("tests/browser/"))
+                    self.assertIn("test(", (ROOT / browser_test).read_text(encoding="utf-8"))
 
 
 class _NavigationDocument(HTMLParser):

@@ -27,10 +27,10 @@ from app.api_auth import router as auth_router
 from app.api_passkeys import router
 from app.auth import create_user, issue_session_for_user, reset_password
 from app.database import configure_database, get_engine, session_scope
-from app.models import AccountEmailToken, Base, PasskeyCredential, User, WebAuthnCeremony
+from app.models import AccountEmailToken, Base, PasskeyCredential, PasskeySignupCeremony, User, WebAuthnCeremony
 from app.models import Session as LoginSession
 from app.passkeys import CEREMONY_COOKIE_NAME, passkey_config
-from app.security import hash_password, hash_session_token, utcnow, verify_password
+from app.security import PASSWORDLESS_HASH, hash_password, hash_session_token, utcnow, verify_password
 
 ORIGIN = "https://example.test"
 RP_ID = "example.test"
@@ -131,6 +131,246 @@ class PasskeyTestCase(TestCase):
         response = self.client.post("/api/auth/passkeys/authentication/options")
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()["options"]
+
+    def _signup_options(self, username="Passkey_New", **fields):
+        response = self.client.post("/api/auth/passkeys/signup/options", json={"username": username, **fields})
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()["options"]
+
+    def _signup(self):
+        self.client.cookies.clear()
+        options = self._signup_options(preferred_language="en")
+        response = self.client.post("/api/auth/passkeys/signup/verify", json={
+            "credential": self.authenticator.registration(options), "label": "My phone",
+        })
+        self.assertEqual(response.status_code, 201, response.text)
+        self.csrf = {"X-CSRF-Token": response.json()["user"]["csrf_token"]}
+        return response.json()["user"]
+
+    def test_signup_verifies_before_creating_a_passwordless_account_and_session(self):
+        self.client.cookies.clear()
+        with patch.dict(os.environ, {"ROLLTHEDICE_EMAIL_ENABLED": "1"}):
+            options = self._signup_options(username="  Passkey_New  ", preferred_language="en")
+            with session_scope() as db:
+                self.assertEqual(list(db.scalars(select(User.username))), [self.user.username])
+                pending = db.scalar(select(PasskeySignupCeremony))
+                self.assertEqual(pending.username, "Passkey_New")
+                self.assertEqual(pending.request_origin, ORIGIN)
+                self.assertNotEqual(pending.state_token_hash, self.client.cookies.get(CEREMONY_COOKIE_NAME))
+            self.assertEqual(options["user"]["name"], "Passkey_New")
+            self.assertEqual(options["authenticatorSelection"]["residentKey"], "required")
+            self.assertEqual(options["authenticatorSelection"]["userVerification"], "required")
+            cookie = self.client.cookies.get(CEREMONY_COOKIE_NAME)
+            credential = self.authenticator.registration(options)
+            response = self.client.post("/api/auth/passkeys/signup/verify", json={"credential": credential})
+        self.assertEqual(response.status_code, 201, response.text)
+        user = response.json()["user"]
+        self.assertTrue(response.json()["authenticated"])
+        self.assertFalse(user["has_password"])
+        self.assertFalse(user["must_change_password"])
+        self.assertEqual(user["preferences"]["preferred_language"], "en")
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        self.assertEqual(self.client.get("/api/auth/me").json()["user"]["id"], user["id"])
+        with session_scope() as db:
+            account = db.get(User, user["id"])
+            self.assertEqual(account.password_hash, PASSWORDLESS_HASH)
+            self.assertIsNone(account.email)
+            self.assertEqual(b64(account.webauthn_user_handle), options["user"]["id"])
+            self.assertEqual(len(list(db.scalars(select(PasskeyCredential)))), 1)
+        replay = self.client.post("/api/auth/passkeys/signup/verify", json={"credential": credential}, headers={
+            "Cookie": f"{CEREMONY_COOKIE_NAME}={cookie}",
+        })
+        self.assertEqual(replay.status_code, 400, replay.text)
+        self.client.cookies.clear()
+        options = self._authentication_options()
+        response = self.client.post("/api/auth/passkeys/authentication/verify", json={
+            "credential": self.authenticator.authentication(options),
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["user"]["id"], user["id"])
+        with patch("app.auth.verify_password", wraps=verify_password) as verify:
+            response = self.client.post("/api/auth/login", json={"username": "Passkey_New", "password": PASSWORD})
+        self.assertEqual(response.status_code, 401, response.text)
+        self.assertNotEqual(verify.call_args.args[1], PASSWORDLESS_HASH)
+
+    @patch("app.auth_protection.REGISTER_BURST_MAX", 20)
+    @patch("app.auth_protection.REGISTER_IP_MAX", 20)
+    def test_signup_rejects_origin_uv_challenge_embedded_and_missing_cookie_without_account(self):
+        self.client.cookies.clear()
+        options = self._signup_options()
+        cookie = self.client.cookies.get(CEREMONY_COOKIE_NAME)
+        url = "/api/auth/passkeys/signup/verify"
+        for fields in ({"flags": 0x41}, {"origin": "https://evil.example.test"}, {"origin": "https://zilch.example.test"}):
+            credential = self.authenticator.registration(options, **fields)
+            response = self.client.post(url, json={"credential": credential})
+            self.assertEqual(response.status_code, 400, response.text)
+        credential = self.authenticator.registration(options)
+        client_data = json.loads(base64.urlsafe_b64decode(credential["response"]["clientDataJSON"] + "=="))
+        client_data["crossOrigin"] = True
+        credential["response"]["clientDataJSON"] = b64(json.dumps(client_data).encode())
+        self.assertEqual(self.client.post(url, json={"credential": credential}).status_code, 400)
+        credential = self.authenticator.registration(options)
+        response = self.client.post(url, json={"credential": credential}, headers={"Cookie": ""})
+        self.assertEqual(response.status_code, 400)
+        response = self.client.post(f"https://zilch.example.test{url}", json={"credential": credential}, headers={
+            "Cookie": f"{CEREMONY_COOKIE_NAME}={cookie}", "Origin": "https://zilch.example.test",
+        })
+        self.assertEqual(response.json()["detail"], "passkey_ceremony_invalid")
+        self._signup_options()
+        self.assertEqual(self.client.post(url, json={"credential": credential}).status_code, 400)
+        with session_scope() as db:
+            self.assertEqual(list(db.scalars(select(User.username))), [self.user.username])
+            self.assertEqual(list(db.scalars(select(PasskeyCredential))), [])
+
+    def test_signup_expiry_and_username_taken_after_options_leave_no_partial_account(self):
+        self.client.cookies.clear()
+        options = self._signup_options()
+        credential = self.authenticator.registration(options)
+        with session_scope() as db:
+            db.scalar(select(PasskeySignupCeremony)).expires_at = utcnow() - timedelta(seconds=1)
+        response = self.client.post("/api/auth/passkeys/signup/verify", json={"credential": credential})
+        self.assertEqual(response.status_code, 400)
+        with session_scope() as db:
+            db.scalar(select(PasskeySignupCeremony)).expires_at = utcnow() + timedelta(minutes=1)
+        taken = create_user("PASSKEY_NEW", PASSWORD, must_change_password=False)
+        response = self.client.post("/api/auth/passkeys/signup/verify", json={"credential": credential})
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertIn("bereits vergeben", response.json()["detail"])
+        with session_scope() as db:
+            self.assertEqual(db.get(User, taken.id).password_hash != PASSWORDLESS_HASH, True)
+            self.assertEqual(list(db.scalars(select(PasskeyCredential))), [])
+            self.assertIsNone(db.scalar(select(PasskeySignupCeremony)).consumed_at)
+
+    def test_signup_uses_registration_budget_captcha_and_feature_origin_guards(self):
+        self.client.cookies.clear()
+        url = "/api/auth/passkeys/signup/options"
+        with patch("app.api_passkeys.verify_registration_challenge") as captcha:
+            response = self.client.post(url, json={"username": "Passkey_New", "turnstile_token": "captcha-proof"})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(captcha.call_args.args[1], "captcha-proof")
+        self.assertEqual(self.client.post(url, json={"username": "Second_User"}).status_code, 429)
+        self.assertEqual(self.client.post(url, json={"username": "Third_User"}, headers={"Origin": ""}).status_code, 403)
+        with patch.dict(os.environ, {"ROLLTHEDICE_PASSKEYS_ENABLED": "0"}):
+            self.assertEqual(self.client.post(url, json={"username": "Third_User"}).status_code, 503)
+
+    def test_signup_does_not_create_state_after_captcha_rejection(self):
+        from fastapi import HTTPException
+
+        self.client.cookies.clear()
+        with patch("app.api_passkeys.verify_registration_challenge", side_effect=HTTPException(400, "challenge_failed")):
+            response = self.client.post("/api/auth/passkeys/signup/options", json={"username": "Passkey_New"})
+        self.assertEqual(response.status_code, 400)
+        with session_scope() as db:
+            self.assertEqual(list(db.scalars(select(PasskeySignupCeremony))), [])
+            self.assertEqual(list(db.scalars(select(User.username))), [self.user.username])
+
+    def test_passwordless_account_keeps_last_passkey_until_backup_is_set(self):
+        user = self._signup()
+        credential_id = self.client.get("/api/auth/passkeys").json()["credentials"][0]["id"]
+        proof = self._reauthentication("delete_passkey", str(credential_id))
+        response = self.client.request("DELETE", f"/api/auth/passkeys/{credential_id}", json={"passkey": proof}, headers=self.csrf)
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertEqual(response.json()["detail"], "passkey_last_credential_required")
+        with session_scope() as db:
+            self.assertIsNotNone(db.get(PasskeyCredential, credential_id))
+        proof = self._reauthentication("change_password", "", count=2)
+        response = self.client.post("/api/auth/change-password", json={"new_password": PASSWORD, "passkey": proof}, headers=self.csrf)
+        self.assertEqual(response.status_code, 200, response.text)
+        response = self.client.post("/api/auth/login", json={"username": user["username"], "password": PASSWORD})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json()["user"]["has_password"])
+        self.csrf = {"X-CSRF-Token": response.json()["user"]["csrf_token"]}
+        response = self.client.request("DELETE", f"/api/auth/passkeys/{credential_id}", json={"current_password": PASSWORD}, headers=self.csrf)
+        self.assertEqual(response.status_code, 200, response.text)
+
+    def _parallel_signup_attempts(self, attempts):
+        library = passkey_service._webauthn()
+        verify = library["verify_registration_response"]
+        verified_together = Barrier(2)
+
+        def verify_together(**kwargs):
+            result = verify(**kwargs)
+            verified_together.wait(timeout=10)
+            return result
+
+        def submit(attempt):
+            cookie, credential = attempt
+            with TestClient(self.client.app, base_url=ORIGIN, headers={"Origin": ORIGIN}) as client:
+                return client.post("/api/auth/passkeys/signup/verify", json={"credential": credential}, headers={
+                    "Cookie": f"{CEREMONY_COOKIE_NAME}={cookie}",
+                })
+
+        with patch("app.passkeys._webauthn", return_value={**library, "verify_registration_response": verify_together}):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                return list(pool.map(submit, attempts))
+
+    def test_concurrent_signup_cannot_replay_one_state_into_multiple_users_or_sessions(self):
+        self.client.cookies.clear()
+        options = self._signup_options()
+        attempt = (self.client.cookies.get(CEREMONY_COOKIE_NAME), self.authenticator.registration(options))
+        responses = self._parallel_signup_attempts([attempt, attempt])
+        self.assertEqual(sorted(response.status_code for response in responses), [201, 400])
+        with session_scope() as db:
+            users = list(db.scalars(select(User).where(User.username_normalized == "passkey_new")))
+            self.assertEqual(len(users), 1)
+            self.assertEqual(len(list(db.scalars(select(PasskeyCredential).where(PasskeyCredential.user_id == users[0].id)))), 1)
+            self.assertEqual(len(list(db.scalars(select(LoginSession).where(LoginSession.user_id == users[0].id)))), 1)
+
+    @patch("app.auth_protection.REGISTER_BURST_MAX", 20)
+    def test_concurrent_signup_rechecks_case_insensitive_username_uniqueness(self):
+        self.client.cookies.clear()
+        attempts = []
+        for name in ("Passkey_New", "PASSKEY_NEW"):
+            options = self._signup_options(name)
+            authenticator = SoftwareAuthenticator()
+            attempts.append((self.client.cookies.get(CEREMONY_COOKIE_NAME), authenticator.registration(options)))
+        responses = self._parallel_signup_attempts(attempts)
+        self.assertEqual(sorted(response.status_code for response in responses), [201, 400])
+        with session_scope() as db:
+            self.assertEqual(len(list(db.scalars(select(User).where(User.username_normalized == "passkey_new")))), 1)
+            self.assertEqual(len(list(db.scalars(select(PasskeyCredential)))), 1)
+
+    def test_concurrent_removal_cannot_delete_both_passwordless_credentials(self):
+        user = self._signup()
+        first_authenticator = self.authenticator
+        proof = self._reauthentication("add_passkey", "")
+        response = self.client.post("/api/auth/passkeys/registration/options", json={"passkey": proof}, headers=self.csrf)
+        second_authenticator = SoftwareAuthenticator()
+        response = self.client.post("/api/auth/passkeys/registration/verify", json={
+            "credential": second_authenticator.registration(response.json()["options"]),
+        }, headers=self.csrf)
+        self.assertEqual(response.status_code, 200, response.text)
+        records = self.client.get("/api/auth/passkeys").json()["credentials"]
+        first_id = next(item["id"] for item in records if item["id"] != response.json()["credential"]["id"])
+        second_id = response.json()["credential"]["id"]
+        self.authenticator = first_authenticator
+        first_proof = self._reauthentication("delete_passkey", str(first_id), count=2)
+        self.authenticator = second_authenticator
+        second_proof = self._reauthentication("delete_passkey", str(second_id), count=1)
+        library = passkey_service._webauthn()
+        verify = library["verify_authentication_response"]
+        verified_together = Barrier(2)
+
+        def verify_together(**kwargs):
+            result = verify(**kwargs)
+            verified_together.wait(timeout=10)
+            return result
+
+        cookie = self.client.cookies.get("rollthedice_session")
+
+        def remove(attempt):
+            credential_id, passkey = attempt
+            with TestClient(self.client.app, base_url=ORIGIN, headers={"Origin": ORIGIN}) as client:
+                return client.request("DELETE", f"/api/auth/passkeys/{credential_id}", json={"passkey": passkey}, headers={
+                    **self.csrf, "Cookie": f"rollthedice_session={cookie}",
+                })
+
+        with patch("app.passkeys._webauthn", return_value={**library, "verify_authentication_response": verify_together}):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                responses = list(pool.map(remove, [(first_id, first_proof), (second_id, second_proof)]))
+        self.assertEqual(sorted(response.status_code for response in responses), [200, 400])
+        with session_scope() as db:
+            self.assertEqual(len(list(db.scalars(select(PasskeyCredential).where(PasskeyCredential.user_id == user["id"])))), 1)
 
     def test_full_registration_login_and_owned_deletion(self):
         self.assertEqual(self.client.get("/api/auth/me").json()["passkeys"], {

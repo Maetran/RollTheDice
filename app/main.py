@@ -100,6 +100,7 @@ from .lobby_chat import (
     serve_lobby_chat_websocket,
 )
 from .models import User
+from .passkey_reminders import router as passkey_reminders_router
 from .passkeys import validate_passkey_config
 from .product_hosts import (
     is_site_host,
@@ -487,6 +488,7 @@ app = FastAPI(lifespan=lifespan, version=current_version())
 
 app.include_router(auth_router)
 app.include_router(passkeys_router)
+app.include_router(passkey_reminders_router)
 app.include_router(releases_router)
 app.include_router(allowlist_router)
 app.include_router(avatars_router)
