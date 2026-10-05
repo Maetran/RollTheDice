@@ -4,25 +4,27 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Mission Control mit LCARS-Designwechsel und Geräteanalyse: Betriebssysteme und Gerätefamilien anonym im Blick.",
-  "summary_en": "Mission Control adds an LCARS theme switcher and anonymous analysis of operating systems and device families.",
+  "summary_de": "Mission Control zeigt PWA-/Browser-Besuche, Browsersprachen und die Länder der HTTP-Requests.",
+  "summary_en": "Mission Control shows PWA/browser visits, browser languages and the countries of HTTP requests.",
   "player_notes": {
     "de": {
-      "title": "Mission Control: LCARS und Geräte",
+      "title": "Mission Control: PWA, Browser und Sprachen",
       "changes": [
-        "Berechtigte Konten können ihr Dashboard als Mission Control oder im LCARS-Design öffnen.",
-        "Die Designwahl wird lokal gespeichert und verändert die Darstellung der Spiele nicht.",
-        "Neue Analysen zeigen Betriebssysteme und Gerätefamilien; ältere und nicht erkannte Besuche bleiben unbekannt.",
-        "Globus, Diagramme und die bisherigen privaten Zugriffsregeln bleiben in beiden Designs verfügbar."
+        "Berechtigte Konten sehen, wie viele Besuche im PWA-Appfenster oder im Browser beginnen.",
+        "Browserfamilien und die erste bevorzugte Browsersprache helfen bei der Weiterentwicklung beider Spiele.",
+        "Eine eigene Länder-Auswertung zeigt HTTP-Requests und gemeldete Bot- und API-Clientkennungen.",
+        "Die Besuchsmessung zählt anonyme Tab-Besuche; ältere und nicht erkannte Angaben bleiben unbekannt.",
+        "Beide Dashboard-Designs bieten die neuen Karten mit denselben privaten Zugriffsregeln."
       ]
     },
     "en": {
-      "title": "Mission Control: LCARS and devices",
+      "title": "Mission Control: PWA, browsers and languages",
       "changes": [
-        "Authorized accounts can open their dashboard in Mission Control or LCARS style.",
-        "The theme choice is saved locally and does not change the games' appearance preferences.",
-        "New analysis shows operating systems and device families; older and unrecognized visits remain unknown.",
-        "Both designs offer the globe and charts with the same private access rules."
+        "Authorized accounts can see how many visits begin in a PWA app window or in a browser.",
+        "Browser families and the first preferred browser language help guide development of both games.",
+        "A separate country breakdown shows HTTP requests and declared bot and API client families.",
+        "Visitor measurement counts anonymous tab visits; older and unrecognized values remain unknown.",
+        "Both dashboard themes offer the new cards with the same private access rules."
       ]
     }
   }

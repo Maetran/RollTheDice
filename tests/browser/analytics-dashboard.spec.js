@@ -14,6 +14,16 @@ function sampleAnalytics(game = 'all', days = 7) {
     devices: [{ device: 'mobile', sessions: 76 }, { device: 'desktop', sessions: 42 }, { device: 'tablet', sessions: 17 }], countries: [{ country: 'CH', sessions: 82 }, { country: 'DE', sessions: 28 }, { country: 'ZZ', sessions: 9 }, { country: 'US', sessions: 8 }, { country: 'GB', sessions: 5 }, { country: 'FR', sessions: 3 }],
     device_software: [{ os: 'android', sessions: 61 }, { os: 'windows', sessions: 26 }, { os: 'macos', sessions: 16 }, { os: 'ios', sessions: 15 }, { os: 'ipados', sessions: 12 }, { os: 'unknown', sessions: 5 }],
     device_hardware: [{ device_family: 'android_phone', sessions: 58 }, { device_family: 'windows_pc', sessions: 26 }, { device_family: 'mac', sessions: 16 }, { device_family: 'iphone', sessions: 15 }, { device_family: 'ipad', sessions: 12 }, { device_family: 'unknown', sessions: 5 }, { device_family: 'android_tablet', sessions: 3 }],
+    app_modes: [{ app_mode: 'browser', sessions: 90 }, { app_mode: 'pwa', sessions: 35 }, { app_mode: 'unknown', sessions: 10 }],
+    browsers: [{ browser: 'chrome', sessions: 65 }, { browser: 'safari', sessions: 40 }, { browser: 'edge', sessions: 10 }, { browser: 'firefox', sessions: 7 }, { browser: 'unknown', sessions: 5 }, { browser: 'samsung_internet', sessions: 4 }, { browser: 'opera', sessions: 2 }, { browser: 'silk', sessions: 1 }, { browser: 'other', sessions: 1 }],
+    browser_languages: [{ browser_language: 'de', sessions: 78 }, { browser_language: 'en', sessions: 25 }, { browser_language: 'fr', sessions: 15 }, { browser_language: 'unknown', sessions: 10 }, { browser_language: 'it', sessions: 7 }],
+    request_traffic: {
+      total: 1200, first_recorded_at: '2026-10-07T00:00:00Z', dropped: 0,
+      countries: [{ country: 'CH', requests: 700 }, { country: 'DE', requests: 300 }, { country: 'ZZ', requests: 150 }, { country: 'US', requests: 50 }],
+      statuses: [{ status_class: '2xx', requests: 1000 }, { status_class: '3xx', requests: 100 }, { status_class: '4xx', requests: 85 }, { status_class: '5xx', requests: 10 }, { status_class: 'other', requests: 5 }],
+      agents: [{ agent_family: 'browser', requests: 760 }, { agent_family: 'googlebot', requests: 120 }, { agent_family: 'openai_bot', requests: 75 }, { agent_family: 'python_client', requests: 65 }, { agent_family: 'curl', requests: 40 }, { agent_family: 'bingbot', requests: 35 }, { agent_family: 'meta_bot', requests: 25 }, { agent_family: 'uptime_bot', requests: 20 }, { agent_family: 'unknown', requests: 15 }, { agent_family: 'node_client', requests: 10 }, { agent_family: 'go_client', requests: 8 }, { agent_family: 'other_bot', requests: 7 }, { agent_family: 'anthropic_bot', requests: 7 }, { agent_family: 'applebot', requests: 5 }, { agent_family: 'duckduckbot', requests: 4 }, { agent_family: 'google_other', requests: 2 }, { agent_family: 'yandexbot', requests: 1 }, { agent_family: 'baiduspider', requests: 1 }],
+      channels: [{ channel: 'page', requests: 520 }, { channel: 'asset', requests: 420 }, { channel: 'api', requests: 250 }, { channel: 'other', requests: 10 }],
+    },
     geography: [{ country: 'CH', sessions: 82, page_views: 210, active_seconds: 8000, games: { zdwa: 57, zilch: 35 }, share_percent: 60.7 }, { country: 'DE', sessions: 28, page_views: 73, active_seconds: 2800, games: { zdwa: 18, zilch: 13 }, share_percent: 20.7 }, { country: 'US', sessions: 8, page_views: 25, active_seconds: 1000, games: { zdwa: 6, zilch: 3 }, share_percent: 5.9 }, { country: 'GB', sessions: 5, page_views: 17, active_seconds: 650, games: { zdwa: 2, zilch: 4 }, share_percent: 3.7 }, { country: 'FR', sessions: 3, page_views: 10, active_seconds: 320, games: { zdwa: 2, zilch: 1 }, share_percent: 2.2 }, { country: 'ZZ', sessions: 9, page_views: 19, active_seconds: 600, games: { zdwa: 6, zilch: 4 }, share_percent: 6.7 }],
     geography_summary: { sessions: 135, known_sessions: 126, unknown_sessions: 9, known_countries: 5 },
     heatmap: Array.from({ length: 168 }, (_, index) => { const weekday = Math.floor(index / 24); const hour = index % 24; const active = Math.max(0, Math.round((Math.sin((hour - 9) * .32) + 1) * (weekday > 4 ? 3 : 2))); return { weekday, hour, page_views: active, sessions: Math.floor(active * .6), active_seconds: active * 53 }; }),
@@ -28,7 +38,7 @@ function sampleAnalytics(game = 'all', days = 7) {
 
 async function mockedDashboard(page, language) {
   await page.addInitScript(language => localStorage.setItem('zdwa_language', language), language);
-  const state = { calls: [], fail: false, empty: false, permitted: true, authCalls: 0, coverage: 'complete', unknownOnly: false, cpuUnavailable: false };
+  const state = { calls: [], fail: false, empty: false, permitted: true, authCalls: 0, coverage: 'complete', unknownOnly: false, cpuUnavailable: false, contextUnknown: false, requestsUnmeasured: false, requestOriginsUnknown: false, requestDropped: 0 };
   // This fixture supplies representative telemetry for visual/interaction QA.
   // Authorization is separately tested below against the real backend.
   await page.route('**/admin/dashboard', async route => route.fulfill({ contentType: 'text/html', body: await readFile('app/static/dashboard.html', 'utf8') }));
@@ -46,7 +56,15 @@ async function mockedDashboard(page, language) {
     data.generated_at = new Date(Date.parse(data.generated_at) + (state.calls.length - 1) * 30000).toISOString();
     data.server.measurement_at = data.generated_at;
     data.comparison.previous_data_coverage = state.coverage;
+    data.request_traffic.dropped = state.requestDropped;
+    if (state.requestsUnmeasured) data.request_traffic = { total: 0, countries: [], statuses: [], agents: [], channels: [], first_recorded_at: null, dropped: 0 };
+    if (state.requestOriginsUnknown && !state.requestsUnmeasured) data.request_traffic.countries = [{ country: 'ZZ', requests: 1200 }];
     if (state.cpuUnavailable) data.server.cpu.percent = null;
+    if (state.contextUnknown) {
+      data.app_modes = [{ app_mode: 'unknown', sessions: 135 }];
+      data.browsers = [{ browser: 'unknown', sessions: 135 }];
+      data.browser_languages = [{ browser_language: 'unknown', sessions: 135 }];
+    }
     if (state.unknownOnly) {
       data.countries = [{ country: 'ZZ', sessions: 135 }];
       data.geography = [{ country: 'ZZ', sessions: 135, page_views: 354, active_seconds: 13370, games: { zdwa: 90, zilch: 55 }, share_percent: 100 }];
@@ -54,7 +72,7 @@ async function mockedDashboard(page, language) {
     }
     if (state.empty) {
       Object.assign(data.overview, { sessions: 0, page_views: 0, active_seconds: 0, avg_active_seconds: 0, live_sessions: 0 });
-      for (const key of ['daily', 'pages', 'referrers', 'devices', 'device_software', 'device_hardware', 'countries', 'actions', 'hourly', 'geography', 'heatmap']) data[key] = [];
+      for (const key of ['daily', 'pages', 'referrers', 'devices', 'device_software', 'device_hardware', 'app_modes', 'browsers', 'browser_languages', 'countries', 'actions', 'hourly', 'geography', 'heatmap']) data[key] = [];
       data.journeys.links = [];
       data.journeys.sample = { page_views: 0, total_page_views: 0, truncated: false };
       data.collection.first_seen_at = null;
@@ -98,6 +116,9 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#deviceHardwareRanks')).toContainText(language === 'en' ? 'Android phone' : 'Android-Smartphone');
     await expect(page.locator('#deviceDetailNote')).toBeVisible();
     await expect(page.locator('#deviceDetailNote')).toContainText(language === 'en' ? 'Older visits remain unknown' : 'Ältere Besuche bleiben unbekannt');
+    await expect(page.locator('#appModeRanks')).toContainText(language === 'en' ? 'PWA / app window' : 'PWA / Appfenster');
+    await expect(page.locator('#browserRanks')).toContainText('Chrome / Chromium');
+    await expect(page.locator('#browserLanguageRanks')).toContainText(language === 'en' ? 'German' : 'Deutsch');
     for (const width of [320, 390, 768, 1440]) {
       await page.setViewportSize({ width, height: width === 1440 ? 1080 : 1000 });
       await expectDashboardFits(page, width);
@@ -135,6 +156,7 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#gameCards')).toContainText('23');
     await expect(page.locator('#countryNote')).toContainText(language === 'en' ? 'no IP geolocation' : 'keine IP-Geolokalisierung');
     await expect(page.locator('#serverGauges .gauge-number').first()).toHaveText('—');
+    await expect(page.locator('#appModeChart, #browserRanks, #browserLanguageRanks').first()).toContainText(language === 'en' ? 'No measurements yet' : 'Noch keine Messwerte');
     await page.screenshot({ path: `/tmp/rtd-dashboard-empty-${language}.png`, fullPage: true });
   });
 }
@@ -204,6 +226,7 @@ test('real founder grants a regular account access through user management; owne
     await viewer.locator('#dashboardRefresh').click();
     await expect(viewer.locator('#dashboardData')).toBeHidden();
     await expect(viewer.locator('#dashboardMessage')).toContainText(/Gründer um Zugriff|founder for access/);
+    for (const id of ['appModeChart', 'appModeRanks', 'browserRanks', 'browserLanguageRanks', 'requestTrafficSummary', 'requestCountryRanks', 'requestStatusRanks', 'requestAgentRanks', 'requestChannelRanks', 'requestRecordedAt', 'requestDroppedNote']) await expect(viewer.locator(`#${id}`)).toBeEmpty();
   } finally {
     if (viewerId && csrf) await founder.request.put(`/api/admin/users/${viewerId}/analytics-access`, { headers: { 'X-CSRF-Token': csrf }, data: { enabled: false } });
     if (csrf) await founder.request.put('/api/auth/preferences/language', { headers: { 'X-CSRF-Token': csrf }, data: { preferred_language: originalLanguage } });
@@ -363,6 +386,7 @@ test('unknown origins stay without map points; revoked and cached documents rele
   await expect(page.locator('#dailyChart svg, #pageBubbles svg, #journeyFlow svg, #serverTrend svg')).toHaveCount(0);
   await expect(page.locator('#deviceSoftwareRanks')).toBeEmpty();
   await expect(page.locator('#deviceHardwareRanks')).toBeEmpty();
+  for (const id of ['appModeChart', 'appModeRanks', 'browserRanks', 'browserLanguageRanks', 'requestTrafficSummary', 'requestCountryRanks', 'requestStatusRanks', 'requestAgentRanks', 'requestChannelRanks', 'requestRecordedAt', 'requestDroppedNote']) await expect(page.locator(`#${id}`)).toBeEmpty();
   state.permitted = false;
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
   await expect(page.locator('#dashboardMessage')).toContainText('Ask the founder for access');
@@ -420,6 +444,10 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#journeyDetail')).toContainText('16');
     await expect(page.locator('#deviceSoftwareRanks')).toContainText('iPadOS');
     await expect(page.locator('#deviceHardwareRanks')).toContainText(language === 'en' ? 'Android phone' : 'Android-Smartphone');
+    await expect(page.locator('#appModeRanks')).toContainText('35');
+    await expect(page.locator('#browserRanks')).toContainText('Chrome / Chromium');
+    await expect(page.locator('#browserRanks')).toContainText('Safari / WebKit');
+    await expect(page.locator('#browserLanguageRanks')).toContainText(language === 'en' ? 'German' : 'Deutsch');
     expect(await page.locator('#serverTrend').innerHTML()).toBe(trend);
     expect(state.calls).toHaveLength(queries);
     expect(await page.evaluate(() => localStorage.getItem('rollthedice:dashboard:design'))).toBe('lcars');
@@ -538,3 +566,116 @@ test('unknown stored design falls back to Mission Control and can be replaced by
   await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'lcars');
   await expect(page.locator('#dashboardDesign')).toHaveValue('lcars');
 });
+
+for (const language of ['de', 'en']) {
+  test(`${language}: PWA launch, browser and browser-language shares stay separate from game UI language in both designs`, async ({ page }, testInfo) => {
+    const state = await mockedDashboard(page, language);
+    await expect(page.locator('html')).toHaveAttribute('lang', language);
+    await expect(page.locator('#appModeChart .launch-orbit>span')).toContainText('25.9');
+    await expect(page.locator('#appModeRanks li').filter({ hasText: language === 'en' ? 'PWA / app window' : 'PWA / Appfenster' })).toContainText('35');
+    await expect(page.locator('#appModeRanks li').filter({ hasText: language === 'en' ? 'Browser tab' : 'Browser-Tab' })).toContainText('90');
+    await expect(page.locator('#appModeRanks li').filter({ hasText: language === 'en' ? 'Unknown' : 'Unbekannt' })).toContainText('10');
+    await expect(page.locator('#browserRanks')).toContainText('Chrome / Chromium');
+    await expect(page.locator('#browserRanks')).toContainText('Samsung Internet');
+    await expect(page.locator('#browserRanks')).toContainText('Amazon Silk');
+    await expect(page.locator('#browserLanguageRanks li').first()).toContainText(language === 'en' ? 'German' : 'Deutsch');
+    await expect(page.locator('#browserLanguageRanks li').first()).toContainText('78');
+    await expect(page.locator('.language-panel .panel-footnote')).toHaveText(language === 'en' ? 'Browser language is independent of the language selected in the game.' : 'Die Browsersprache ist unabhängig von der gewählten Sprache im Spiel.');
+    await expect(page.locator('.launch-panel .panel-footnote')).toContainText(language === 'en' ? 'not the number of installed apps' : 'nicht Anzahl installierter Apps');
+    await expect(page.locator('.context-measurement-note')).toContainText(language === 'en' ? 'including unknown information' : 'einschließlich unbekannter Angaben');
+    await page.locator('#dashboardMotion').click();
+    const counts = await page.locator('#appModeRanks, #browserRanks, #browserLanguageRanks').allTextContents();
+    for (const design of ['mission', 'lcars']) {
+      await page.locator('#dashboardDesign').selectOption(design);
+      expect(await page.locator('#appModeRanks, #browserRanks, #browserLanguageRanks').allTextContents()).toEqual(counts);
+      for (const width of [320, 390, 768, 1440]) {
+        await page.setViewportSize({ width, height: 1000 });
+        await expectDashboardFits(page, width);
+        await page.locator('#browserLanguageTitle').click();
+        await expect(page.locator('.skip-link')).not.toBeFocused();
+        const path = `/tmp/rtd-dashboard-context-${design}-${language}-${width}.png`;
+        await page.locator('.client-context-grid').screenshot({ path, style: '.skip-link:not(:focus){visibility:hidden}' });
+        await testInfo.attach(`mocked-context-${design}-${language}-${width}`, { path, contentType: 'image/png' });
+      }
+    }
+    expect(state.calls).toHaveLength(1);
+    state.contextUnknown = true;
+    await page.locator('#dashboardRefresh').click();
+    await expect(page.locator('#appModeChart .launch-orbit>span')).toHaveText('—');
+    await expect(page.locator('#appModeChart')).toContainText(language === 'en' ? 'Launch context unknown' : 'Startkontext unbekannt');
+    for (const id of ['appModeRanks', 'browserRanks', 'browserLanguageRanks']) {
+      await expect(page.locator(`#${id} li`)).toHaveCount(1);
+      await expect(page.locator(`#${id}`)).toContainText(language === 'en' ? 'Unknown' : 'Unbekannt');
+      await expect(page.locator(`#${id}`)).toContainText('135');
+    }
+  });
+}
+
+test('browser language labels have a safe fallback without Intl.DisplayNames', async ({ page }) => {
+  const state = await mockedDashboard(page, 'en');
+  await page.evaluate(() => { Intl.DisplayNames = undefined; });
+  await page.locator('#dashboardRefresh').click();
+  await expect(page.locator('#browserLanguageRanks li').first()).toContainText('DE');
+  await expect(page.locator('#browserLanguageRanks')).toContainText('Unknown');
+  expect(state.calls).toHaveLength(2);
+  await expect(page.locator('#connectionLabel')).toHaveText('Telemetry connected');
+});
+
+for (const language of ['de', 'en']) {
+  test(`${language}: server request origins and declared clients stay independent of visits and game filters in both designs`, async ({ page }, testInfo) => {
+    const state = await mockedDashboard(page, language);
+    await expect(page.locator('#requestTrafficSummary .request-metric strong').first()).toHaveText(/1\D?200/);
+    await expect(page.locator('#requestTrafficSummary .request-metric strong').nth(1)).toHaveText('85');
+    await expect(page.locator('#requestTrafficSummary .request-metric strong').nth(2)).toHaveText('10');
+    const firstStoredDay = await page.evaluate(() => new Intl.DateTimeFormat(window.ZDWA_I18N.locale(), { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(new Date('2026-10-07T00:00:00Z')));
+    await expect(page.locator('#requestRecordedAt')).toHaveText(`${language === 'en' ? 'Earliest stored UTC day' : 'Frühester gespeicherter UTC-Tag'}: ${firstStoredDay}`);
+    await expect(page.locator('#requestRecordedAt')).not.toContainText(/\d{2}:\d{2}/);
+    const requestOrigin = page.locator('#requestCountryRanks li').first();
+    await expect(requestOrigin).toContainText(language === 'en' ? 'Switzerland' : 'Schweiz');
+    await expect(requestOrigin).toContainText('700');
+    await expect(requestOrigin.locator('.country-flag')).toHaveText('🇨🇭');
+    await expect(page.locator('.geo-detail-metrics dd').first()).toHaveText('82');
+    await expect(page.locator('#requestAgentRanks li').filter({ hasText: 'Googlebot' })).toContainText('120');
+    await expect(page.locator('#requestAgentRanks li')).toHaveCount(18);
+    await expect(page.locator('#requestAgentRanks')).toContainText('Baiduspider');
+    await expect(page.locator('#requestAgentRanks')).toContainText(language === 'en' ? 'Other Google identifiers' : 'Weitere Google-Kennungen');
+    await expect(page.locator('#requestAgentRanks')).toContainText(language === 'en' ? 'Browser identifier' : 'Browserkennung');
+    await expect(page.locator('.request-client-hint')).toHaveText(language === 'en' ? 'Self-declared · not verified' : 'Selbstangabe · nicht verifiziert');
+    await expect(page.locator('.request-client-note')).toHaveText(language === 'en' ? 'Automated requests can pretend to be browsers.' : 'Automatisierte Aufrufe können Browser vortäuschen.');
+    await expect(page.locator('#requestChannelRanks')).toContainText('API');
+    await expect(page.locator('#requestChannelRanks')).toContainText('250');
+    await expect(page.locator('.request-traffic-panel .panel-heading')).toContainText(language === 'en' ? 'independent of the game filter' : 'unabhängig vom Spielfilter');
+    await page.locator('#dashboardGame').selectOption('zilch');
+    await expect.poll(() => state.calls.at(-1)?.game).toBe('zilch');
+    await expect(page.locator('#requestTrafficSummary .request-metric strong').first()).toHaveText(/1\D?200/);
+    await expect(requestOrigin).toContainText('700');
+    await page.locator('#dashboardMotion').click();
+    for (const design of ['mission', 'lcars']) {
+      await page.locator('#dashboardDesign').selectOption(design);
+      for (const width of [320, 390, 768, 1440]) {
+        await page.setViewportSize({ width, height: 1000 });
+        await expectDashboardFits(page, width);
+        await page.locator('#requestTrafficTitle').click();
+        await expect(page.locator('.skip-link')).not.toBeFocused();
+        const path = `/tmp/rtd-dashboard-requests-${design}-${language}-${width}.png`;
+        await page.locator('.request-traffic-panel').screenshot({ path, style: '.skip-link:not(:focus){visibility:hidden}' });
+        await testInfo.attach(`mocked-requests-${design}-${language}-${width}`, { path, contentType: 'image/png' });
+      }
+    }
+    expect(state.calls).toHaveLength(2);
+    state.requestOriginsUnknown = true;
+    state.requestDropped = 11;
+    await page.locator('#dashboardRefresh').click();
+    await expect(page.locator('#requestCountryRanks li')).toHaveCount(1);
+    await expect(page.locator('#requestCountryRanks')).toContainText(language === 'en' ? 'Unknown' : 'Unbekannt');
+    await expect(page.locator('#requestCountryRanks .country-flag')).toHaveText('◇');
+    await expect(page.locator('#requestDroppedNote')).toContainText('11');
+    await expect(page.locator('#requestDroppedNote')).toBeVisible();
+    state.requestsUnmeasured = true;
+    await page.locator('#dashboardRefresh').click();
+    await expect(page.locator('#requestTrafficSummary')).toContainText(language === 'en' ? 'No request measurements yet' : 'Noch keine Anfrage-Messwerte');
+    await expect(page.locator('#requestTrafficSummary .request-metric')).toHaveCount(0);
+    await expect(page.locator('#requestBreakdown')).toBeHidden();
+    await expect(page.locator('#requestCountryRanks')).toBeEmpty();
+  });
+}

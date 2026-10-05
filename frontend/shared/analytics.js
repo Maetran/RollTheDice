@@ -110,12 +110,62 @@ function deviceClass(details) {
   return width < 768 ? "mobile" : width < 1100 ? "tablet" : "desktop";
 }
 
+// A primary language is enough to guide translations. Regions, scripts and
+// the rest of the ordered preference list never leave the browser.
+const BROWSER_LANGUAGES = new Set((
+  "aa ab ae af ak am an ar as av ay az ba be bg bh bi bm bn bo br bs ca ce ch co cr cs cu cv cy "
+  + "da de dv dz ee el en eo es et eu fa ff fi fj fo fr fy ga gd gl gn gu gv ha he hi ho hr ht hu hy hz "
+  + "ia id ie ig ii ik io is it iu ja jv ka kg ki kj kk kl km kn ko kr ks ku kv kw ky la lb lg li ln lo lt lu lv "
+  + "mg mh mi mk ml mn mr ms mt my na nb nd ne ng nl nn no nr nv ny oc oj om or os pa pi pl ps pt qu "
+  + "rm rn ro ru rw sa sc sd se sg si sk sl sm sn so sq sr ss st su sv sw ta te tg th ti tk tl tn to tr ts tt tw ty "
+  + "ug uk ur uz ve vi vo wa wo xh yi yo za zh zu fil gsw yue cmn nan hak kok ceb"
+).split(" "));
+
+function preferredBrowserLanguage(browserInfo) {
+  const preferred = browserInfo.languages?.[0] || browserInfo.language;
+  if (typeof preferred !== "string" || preferred.length > 64) return "unknown";
+  const tag = preferred.trim().toLowerCase();
+  if (!/^[a-z]{2,3}(?:-[a-z0-9]{1,8})*$/.test(tag)) return "unknown";
+  const primary = tag.split("-")[0];
+  const language = ({ iw: "he", in: "id", ji: "yi" })[primary] || primary;
+  return BROWSER_LANGUAGES.has(language) ? language : "unknown";
+}
+
+function launchContext(browserInfo, surface) {
+  if (browserInfo.standalone === true) return "pwa";
+  try {
+    // Fullscreen also describes ordinary browser F11/fullscreen pages; it is
+    // deliberately not evidence of a PWA. Our manifests use standalone.
+    if (surface.matchMedia?.("(display-mode: standalone)").matches) return "pwa";
+    if (surface.matchMedia?.("(display-mode: browser)").matches || browserInfo.standalone === false) return "browser";
+  } catch (_) { /* Missing display APIs remain unknown rather than inferred. */ }
+  return "unknown";
+}
+
+export function analyticsClientDetails(browserInfo = navigator, surface = window) {
+  const ua = String(browserInfo.userAgent || "").slice(0, 512);
+  const app_mode = launchContext(browserInfo, surface);
+  let browser = ua ? "other" : "unknown";
+  // Check specific Chromium/iOS wrappers before their shared Chrome/Safari
+  // tokens. Brave and indistinguishable forks remain Chrome / Chromium.
+  if (/\b(?:Edg|EdgA|EdgiOS|Edge)\//i.test(ua)) browser = "edge";
+  else if (/\b(?:OPR|OPiOS|Opera)\//i.test(ua)) browser = "opera";
+  else if (/\bSamsungBrowser\//i.test(ua)) browser = "samsung_internet";
+  else if (/\bSilk\//i.test(ua)) browser = "silk";
+  else if (/\b(?:Firefox|FxiOS)\//i.test(ua)) browser = "firefox";
+  else if (/\b(?:Chrome|Chromium|CriOS)\//i.test(ua)) browser = "chrome";
+  else if (/\bSafari\//i.test(ua)
+    || (browserInfo.standalone === true && /iPhone|iPad|iPod/.test(ua) && /AppleWebKit\//.test(ua))) browser = "safari";
+  return { app_mode, browser, browser_language: preferredBrowserLanguage(browserInfo) };
+}
+
 let initialized = false;
 
 export function initializeAnalytics() {
   if (initialized || !permitsAnalytics()) return;
   initialized = true;
   const deviceDetails = analyticsDeviceDetails();
+  const clientDetails = analyticsClientDetails();
   let session = null;
   let current = null;
   let currentPath = null;
@@ -162,7 +212,7 @@ export function initializeAnalytics() {
     // Keep offline/network errors invisible to the game. There is no durable
     // retry queue and no upload of a private offline game's result.
     if (navigator.onLine === false) return;
-    const body = JSON.stringify({ session_id: session.id, device: deviceClass(deviceDetails), ...deviceDetails, referrer: referrerHost(), events });
+    const body = JSON.stringify({ session_id: session.id, device: deviceClass(deviceDetails), ...deviceDetails, ...clientDetails, referrer: referrerHost(), events });
     try {
       if (beacon && navigator.sendBeacon?.(ENDPOINT, new Blob([body], { type: "text/plain" }))) return;
       void fetch(ENDPOINT, {

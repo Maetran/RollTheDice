@@ -38,11 +38,19 @@ const timestamp = value => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "—" : new Intl.DateTimeFormat(locale(), { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
 };
+const utcDay = value => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : new Intl.DateTimeFormat(locale(), { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }).format(date);
+};
 
 const REFERRER_LABELS = { direct: "Direkt / ohne Herkunft", internal: "Aus dem eigenen Spiel", search: "Suchmaschinen", social: "Social Media", other: "Andere Websites" };
 const DEVICE_LABELS = { mobile: "Smartphone", tablet: "Tablet", desktop: "Desktop", unknown: "Unbekannt" };
 const OS_LABELS = { android: "Android", ios: "iOS", ipados: "iPadOS", fireos: "Fire OS", windows: "Windows", macos: "macOS", linux: "Linux", chromeos: "ChromeOS", unknown: "Unbekannt" };
 const HARDWARE_LABELS = { ipad: "iPad", iphone: "iPhone", fire_tablet: "Fire-Tablet", android_tablet: "Android-Tablet", android_phone: "Android-Smartphone", mac: "Mac", windows_pc: "Windows-PC", linux_pc: "Linux-PC", chromebook: "Chromebook", unknown: "Unbekannt" };
+const APP_MODE_LABELS = { pwa: "PWA / Appfenster", browser: "Browser-Tab", unknown: "Unbekannt" };
+const BROWSER_LABELS = { chrome: "Chrome / Chromium", safari: "Safari / WebKit", edge: "Edge", firefox: "Firefox", samsung_internet: "Samsung Internet", opera: "Opera", silk: "Amazon Silk", other: "Andere Browser", unknown: "Unbekannt" };
+const REQUEST_AGENT_LABELS = { googlebot: "Googlebot", google_other: "Weitere Google-Kennungen", bingbot: "Bingbot", applebot: "Applebot", duckduckbot: "DuckDuckBot", yandexbot: "YandexBot", baiduspider: "Baiduspider", meta_bot: "Meta-Bots", openai_bot: "OpenAI-Bots", anthropic_bot: "Anthropic-Bots", uptime_bot: "Monitoring-Kennungen", curl: "curl", python_client: "Python-Clients", node_client: "Node.js-Clients", go_client: "Go-Clients", other_bot: "Andere Bot-Kennungen", browser: "Browserkennung", unknown: "Unbekannt" };
+const REQUEST_CHANNEL_LABELS = { api: "API", asset: "Dateien", page: "Seiten", other: "Sonstiges" };
 const ACTION_LABELS = {
   create_game: "Partie erstellen", join_game: "Partie beitreten", watch_game: "Partie zuschauen", roll_dice: "Würfeln",
   score: "Wertung wählen", hold_dice: "Würfel halten", bank: "Punkte sichern", game_leave: "Partie verlassen",
@@ -147,10 +155,65 @@ function hourlyChart(rows = []) {
 }
 
 function ranks(id, rows, key, valueKey, label, options = {}) {
-  if (!rows?.length) { byId(id).innerHTML = empty(); return; }
+  if (!rows?.length) { byId(id).innerHTML = empty(options.emptyTitle, options.emptyDescription); return; }
   const total = rows.reduce((sum, row) => sum + count(row[valueKey]), 0);
   const maximum = Math.max(1, ...rows.map(row => count(row[valueKey])));
-  byId(id).innerHTML = `<ol class="rank-list">${rows.slice(0, options.limit || 6).map(row => `<li><div class="rank-copy"><span class="rank-label">${e(label(row[key]))}${options.game ? gameBadge(row.game) : ""}${options.game && row.source === "server" ? `<span class="game-badge" title="${e(t("Vom Server bestätigt"))}">${e(t("Bestätigt"))}</span>` : ""}</span><span class="rank-amount">${number(row[valueKey])}${options.share ? `<small>${percent(total ? count(row[valueKey]) / total * 100 : 0)}%</small>` : ""}</span></div><div class="rank-track" aria-hidden="true"><div class="rank-fill" style="width:${count(row[valueKey]) / maximum * 100}%"></div></div></li>`).join("")}</ol>`;
+  byId(id).innerHTML = `<ol class="rank-list">${rows.slice(0, options.limit || 6).map(row => `<li><div class="rank-copy"><span class="rank-label">${options.flags ? `<span class="country-flag" aria-hidden="true">${countryFlag(row[key])}</span>` : ""}${e(label(row[key]))}${options.game ? gameBadge(row.game) : ""}${options.game && row.source === "server" ? `<span class="game-badge" title="${e(t("Vom Server bestätigt"))}">${e(t("Bestätigt"))}</span>` : ""}</span><span class="rank-amount">${number(row[valueKey])}${options.share ? `<small>${percent(total ? count(row[valueKey]) / total * 100 : 0)}%</small>` : ""}</span></div><div class="rank-track" aria-hidden="true"><div class="rank-fill" style="width:${count(row[valueKey]) / maximum * 100}%"></div></div></li>`).join("")}</ol>`;
+}
+
+function countryFlag(value) {
+  const code = String(value || "").toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code) || code === "ZZ") return "◇";
+  return String.fromCodePoint(...[...code].map(char => 127397 + char.charCodeAt(0)));
+}
+
+function requestTraffic(data) {
+  const traffic = data.request_traffic || {};
+  const measured = Boolean(traffic.first_recorded_at);
+  byId("requestBreakdown").hidden = !measured;
+  byId("requestRecordedAt").textContent = measured ? `${t("Frühester gespeicherter UTC-Tag")}: ${utcDay(traffic.first_recorded_at)}` : t("Noch keine Anfrage-Messwerte");
+  byId("requestDroppedNote").hidden = !count(traffic.dropped);
+  byId("requestDroppedNote").textContent = count(traffic.dropped) ? `${t("Bei Überlastung nicht erfasst")}: ${number(traffic.dropped)} ${t("Anfragen")}. ${t("Diese Messung kann unvollständig sein.")}` : "";
+  if (!measured) {
+    byId("requestTrafficSummary").innerHTML = empty("Noch keine Anfrage-Messwerte", "Die HTTP-Messung beginnt mit diesem Release.");
+    byId("requestCountryRanks").replaceChildren();
+    byId("requestStatusRanks").replaceChildren();
+    byId("requestAgentRanks").replaceChildren();
+    byId("requestChannelRanks").replaceChildren();
+    return;
+  }
+  const total = count(traffic.total);
+  const statuses = traffic.statuses || [];
+  const statusCount = code => statuses.filter(row => row.status_class === code).reduce((sum, row) => sum + count(row.requests), 0);
+  const metrics = [["Anfragen gesamt", total, ""], ["4xx-Antworten", statusCount("4xx"), "warning"], ["5xx-Antworten", statusCount("5xx"), "error"]];
+  byId("requestTrafficSummary").innerHTML = metrics.map(([label, value, tone]) => `<div class="request-metric ${tone}"><span>${e(t(label))}</span><strong>${number(value)}</strong><small>${label === "Anfragen gesamt" ? e(t("Alle Spiele · Website gesamt")) : `${percent(total ? value / total * 100 : 0)}% ${e(t("aller Anfragen"))}`}</small></div>`).join("");
+  const options = { share: true, emptyTitle: "Keine Anfragen im gewählten Zeitraum", emptyDescription: "HTTP-Anfragen werden direkt an der App gezählt." };
+  ranks("requestCountryRanks", traffic.countries, "country", "requests", countryName, { ...options, flags: true, limit: 10 });
+  ranks("requestStatusRanks", statuses, "status_class", "requests", value => ["2xx", "3xx", "4xx", "5xx"].includes(value) ? value : t("Andere Antworten"), { ...options, limit: 5 });
+  ranks("requestAgentRanks", traffic.agents, "agent_family", "requests", value => t(REQUEST_AGENT_LABELS[value] || "Unbekannt"), { ...options, limit: 18 });
+  ranks("requestChannelRanks", traffic.channels, "channel", "requests", value => t(REQUEST_CHANNEL_LABELS[value] || "Sonstiges"), { ...options, limit: 4 });
+}
+
+function browserLanguageName(value) {
+  if (!value || value === "unknown" || !/^[a-z]{2,3}$/.test(String(value))) return t("Unbekannt");
+  try { const label = new Intl.DisplayNames([locale()], { type: "language" }).of(value); return label && label !== value ? label : String(value).toUpperCase(); }
+  catch { return String(value).toUpperCase(); }
+}
+
+function clientContext(data) {
+  const modes = (data.app_modes || []).filter(row => count(row.sessions));
+  const total = modes.reduce((sum, row) => sum + count(row.sessions), 0);
+  if (!total) byId("appModeChart").innerHTML = empty();
+  else {
+    const pwa = modes.filter(row => row.app_mode === "pwa").reduce((sum, row) => sum + count(row.sessions), 0);
+    const known = modes.some(row => row.app_mode === "pwa" || row.app_mode === "browser");
+    const share = pwa / total * 100;
+    const circumference = 2 * Math.PI * 44;
+    byId("appModeChart").innerHTML = `<div class="launch-summary"><div class="launch-orbit" aria-hidden="true"><svg viewBox="0 0 110 110"><circle class="launch-orbit-track" cx="55" cy="55" r="44"/>${pwa ? `<circle class="launch-orbit-meter" cx="55" cy="55" r="44" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference * (1 - share / 100)}"/>` : ""}</svg><span>${known ? `${percent(share)}<small>%</small>` : "—"}</span></div><div class="launch-copy"><strong>${e(t(known ? "Als PWA geöffnet" : "Startkontext unbekannt"))}</strong><p>${known ? `${number(pwa)} ${e(t("Besuche"))} · ${e(t("Anteil aller Besuche"))}` : e(t("Ältere Angaben bleiben unbekannt."))}</p></div></div><div class="launch-stack" aria-hidden="true">${modes.map(row => `<span class="launch-segment launch-${["pwa", "browser"].includes(row.app_mode) ? row.app_mode : "unknown"} rank-fill" style="width:${count(row.sessions) / total * 100}%"></span>`).join("")}</div>`;
+  }
+  ranks("appModeRanks", modes, "app_mode", "sessions", value => t(APP_MODE_LABELS[value] || "Unbekannt"), { share: true, limit: 3 });
+  ranks("browserRanks", data.browsers, "browser", "sessions", value => t(BROWSER_LABELS[value] || "Unbekannt"), { share: true, limit: 9 });
+  ranks("browserLanguageRanks", data.browser_languages, "browser_language", "sessions", browserLanguageName, { share: true, limit: 8 });
 }
 
 function countryName(value) {
@@ -206,6 +269,7 @@ function render(data) {
   ranks("deviceRanks", data.devices, "device", "sessions", value => t(DEVICE_LABELS[value] || "Unbekannt"), { share: true });
   ranks("deviceSoftwareRanks", data.device_software, "os", "sessions", value => t(OS_LABELS[value] || "Unbekannt"), { share: true, limit: 10 });
   ranks("deviceHardwareRanks", data.device_hardware, "device_family", "sessions", value => t(HARDWARE_LABELS[value] || "Unbekannt"), { share: true, limit: 10 });
+  clientContext(data);
   ranks("countryRanks", data.countries, "country", "sessions", countryName, { share: true });
   byId("countryNote").textContent = t(["trusted_proxy", "cloudflare_verified_peer"].includes(data.collection?.country_source) ? "Länder stammen aus einem vertrauenswürdigen Geo-Proxy; unbekannte Herkunft bleibt unbekannt." : "Ohne vertrauenswürdigen Geo-Proxy bleibt die Herkunft unbekannt. Es gibt keine IP-Geolokalisierung.");
   pageRanks(data.pages);
@@ -214,6 +278,7 @@ function render(data) {
   serverMetrics(data.server);
   analysis.update(data);
   globe.update(data.geography || data.countries || []);
+  requestTraffic(data);
   syncMotion();
   const firstSeen = data.collection?.first_seen_at;
   byId("collectionNote").textContent = firstSeen ? `${t("Messwerte verfügbar seit")} ${timestamp(firstSeen)}` : t("Die Besuchsmessung beginnt mit diesem Release.");
@@ -353,7 +418,7 @@ function clearPrivateData() {
   analysis.resetSession();
   globe.clear();
   globe.suspend();
-  for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceSoftwareRanks", "deviceHardwareRanks", "deviceDonut", "countryRanks", "gameCards", "gameModes", "actionRanks", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated"]) byId(id).replaceChildren();
+  for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceSoftwareRanks", "deviceHardwareRanks", "deviceDonut", "appModeChart", "appModeRanks", "browserRanks", "browserLanguageRanks", "requestTrafficSummary", "requestCountryRanks", "requestStatusRanks", "requestAgentRanks", "requestChannelRanks", "requestRecordedAt", "requestDroppedNote", "countryRanks", "gameCards", "gameModes", "actionRanks", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated"]) byId(id).replaceChildren();
 }
 function syncMotion() {
   const paused = motionPaused || motionQuery.matches;

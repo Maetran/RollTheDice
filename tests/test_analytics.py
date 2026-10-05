@@ -181,6 +181,92 @@ class AnalyticsTests(unittest.TestCase):
         self.assertEqual(result["pages"][0]["game"], "zilch")
         self.assertEqual(dashboard_stats(7, "zdwa", now=self.now)["overview"]["live_sessions"], 0)
 
+    def test_browser_context_accepts_only_bounded_coarse_categories(self):
+        for field, allowed in {"app_mode": analytics.APP_MODES, "browser": analytics.BROWSERS}.items():
+            for value in allowed:
+                with self.subTest(field=field, value=value):
+                    self.assertEqual(normalize_batch({**batch(), field: value})["session"][field], value)
+            for value in (None, True, 42, [], {}, "Safari", "Chrome 131 PRIVATE", "x" * 1000):
+                with self.subTest(field=field, invalid=value):
+                    self.assertEqual(normalize_batch({**batch(), field: value})["session"][field], "unknown")
+        sanitized = normalize_batch({**batch(), "app_mode": "pwa", "browser": "safari", "browser_language": "fr-CH",
+                                     "user_agent": "PRIVATE_UA", "browser_version": "PRIVATE_VERSION",
+                                     "browser_languages": ["fr-CH", "de-CH", "PRIVATE_PREFERENCE"],
+                                     "client_hints": "PRIVATE_HINTS", "installed_pwas": "PRIVATE_APPS"}, now=self.now)
+        persist_batches([sanitized])
+        with session_scope() as db:
+            stored = db.get(AnalyticsSession, sanitized["session"]["id"])
+            self.assertEqual((stored.app_mode, stored.browser, stored.browser_language), ("pwa", "safari", "fr"))
+            self.assertFalse(any(key in stored.__dict__ for key in (
+                "user_agent", "browser_version", "browser_languages", "client_hints", "installed_pwas")))
+        response = json.dumps(dashboard_stats(7, now=self.now + timedelta(seconds=1)))
+        for value in ("PRIVATE_UA", "PRIVATE_VERSION", "PRIVATE_PREFERENCE", "PRIVATE_HINTS", "PRIVATE_APPS", "fr-CH"):
+            self.assertNotIn(value, response)
+
+    def test_browser_language_normalization_keeps_only_recognized_primary_language(self):
+        for primary in analytics.BROWSER_LANGUAGES:
+            with self.subTest(primary=primary):
+                self.assertEqual(analytics.normalize_browser_language(primary), primary)
+        examples = {"de-CH": "de", "EN-us": "en", "zh-Hant-TW": "zh", "gsw-CH": "gsw", " fil-PH ": "fil",
+                    "fr": "fr", "iw-IL": "he", "in-ID": "id", "ji": "yi", "pt-BR": "pt"}
+        for tag, primary in examples.items():
+            with self.subTest(tag=tag):
+                self.assertEqual(analytics.normalize_browser_language(tag), primary)
+        for invalid in (None, True, 123, [], {}, ["de", "en"], "", "unknown", "zz-ZZ", "private", "de_CH",
+                        "en-US,fr-CH", "../../de", "de-", "de-abcdefghi", "de\nprivate", "de-" + "a-" * 40):
+            with self.subTest(invalid=invalid):
+                self.assertEqual(analytics.normalize_browser_language(invalid), "unknown")
+
+    def test_first_seen_browser_context_does_not_reclassify_legacy_or_known_sessions(self):
+        old = normalize_batch(batch(), now=self.now - timedelta(days=1))
+        fresh = normalize_batch({**batch(), "app_mode": "pwa", "browser": "safari", "browser_language": "fr"}, now=self.now)
+        known = normalize_batch({**batch(sid="f" * 32), "app_mode": "browser", "browser": "firefox",
+                                 "browser_language": "de-CH"}, now=self.now)
+        changed = normalize_batch({**batch(sid="f" * 32), "app_mode": "pwa", "browser": "chrome",
+                                   "browser_language": "en-US"}, now=self.now + timedelta(seconds=1))
+        persist_batches([old, fresh, known, changed])
+        with session_scope() as db:
+            legacy = db.get(AnalyticsSession, old["session"]["id"])
+            retained = db.get(AnalyticsSession, known["session"]["id"])
+            self.assertEqual((legacy.app_mode, legacy.browser, legacy.browser_language), ("unknown", "unknown", "unknown"))
+            self.assertEqual(analytics.as_utc(legacy.last_seen_at), self.now)
+            self.assertEqual((retained.app_mode, retained.browser, retained.browser_language), ("browser", "firefox", "de"))
+            self.assertEqual(analytics.as_utc(retained.last_seen_at), self.now + timedelta(seconds=1))
+
+    def test_browser_context_counts_client_visits_with_period_and_game_filters(self):
+        now = datetime(2026, 10, 5, 12, tzinfo=timezone.utc)
+
+        def track(sid, page_id, when, mode="unknown", browser="unknown", language="unknown", game="zdwa", source="client"):
+            raw = {**batch(sid=f"{sid:032x}", page_id=f"{page_id:032x}", game=game),
+                   "app_mode": mode, "browser": browser, "browser_language": language}
+            normalized = normalize_batch(raw, now=when)
+            for item in normalized["events"]:
+                item["source"] = source
+            persist_batches([normalized])
+
+        track(1, 1, now - timedelta(minutes=5), "pwa", "safari", "fr-CH")
+        track(1, 2, now - timedelta(minutes=4), "pwa", "safari", "fr-CH")
+        track(1, 3, now - timedelta(minutes=3), "pwa", "safari", "fr-CH", game="zilch")
+        track(2, 1, now - timedelta(minutes=2), "browser", "chrome", "de-DE")
+        track(3, 1, now - timedelta(minutes=1))
+        track(4, 1, now - timedelta(days=1), "browser", "firefox", "en")
+        track(5, 1, now + timedelta(seconds=1), "browser", "edge", "en")
+        track(6, 1, now - timedelta(seconds=30), "browser", "opera", "it", source="server")
+        stats = dashboard_stats(1, now=now)
+        self.assertEqual({row["app_mode"]: row["sessions"] for row in stats["app_modes"]},
+                         {"pwa": 1, "browser": 1, "unknown": 1})
+        self.assertEqual({row["browser"]: row["sessions"] for row in stats["browsers"]},
+                         {"safari": 1, "chrome": 1, "unknown": 1})
+        self.assertEqual({row["browser_language"]: row["sessions"] for row in stats["browser_languages"]},
+                         {"fr": 1, "de": 1, "unknown": 1})
+        filtered = dashboard_stats(1, "zilch", now=now)
+        self.assertEqual(filtered["app_modes"], [{"app_mode": "pwa", "sessions": 1}])
+        self.assertEqual(filtered["browsers"], [{"browser": "safari", "sessions": 1}])
+        self.assertEqual(filtered["browser_languages"], [{"browser_language": "fr", "sessions": 1}])
+        empty = dashboard_stats(1, "zilch", now=now.replace(hour=0))
+        for key in ("app_modes", "browsers", "browser_languages"):
+            self.assertEqual(empty[key], [])
+
     def _track_page(self, sid: int, page_number: int, page: str, when: datetime, *, game="zdwa", country="ZZ", active_ms=15000):
         events = [{"id": f"{page_number * 2:032x}", "page_id": f"{page_number:032x}", "type": "page_view",
                    "page": page, "game": game}]

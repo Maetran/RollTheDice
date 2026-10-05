@@ -1,0 +1,12 @@
+{
+  "description": "RollTheDice: Auth API Burstschutz",
+  "expression": "(http.request.uri.path in {\"/api/auth/login\" \"/api/auth/register\" \"/api/auth/password-reset\" \"/api/auth/email\" \"/api/auth/passkeys/authentication/options\" \"/api/auth/passkeys/authentication/verify\"} and not cf.client.bot)",
+  "action": "block",
+  "enabled": true,
+  "ratelimit": {
+    "characteristics": ["cf.colo.id", "ip.src"],
+    "period": 10,
+    "requests_per_period": 50,
+    "mitigation_timeout": 10
+  }
+}

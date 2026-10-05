@@ -2014,5 +2014,12 @@
     "date": "2026-10-05",
     "bump": "minor",
     "summary": "Mission Control: Weltansicht und interaktive Analysen für Herkunft, Aktivität und Seitenwege / Mission Control: world view and interactive analysis of sources, activity and page journeys"
+  },
+  {
+    "version": "2.45.0",
+    "revision": "03e0eb62cfd8b8db5cba2612fbd5e18629208fe9",
+    "date": "2026-10-05",
+    "bump": "minor",
+    "summary": "Mission Control ergänzt LCARS mit lokalem Designwechsel und anonymer Betriebssystem- und Geräteanalyse / Mission Control adds LCARS with a local theme choice and anonymous operating-system and device analysis"
   }
 ]

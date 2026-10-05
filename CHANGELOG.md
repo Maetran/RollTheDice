@@ -22,6 +22,43 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.46.0 — Mission Control: PWA, Browser & Sprachen / languages — 2026-10-05
+
+**Deutsch:** Drei neue Analyse-Karten zeigen PWA-Starts gegenüber
+Browser-Besuchen, Browserfamilien und die erste bevorzugte Browsersprache.
+Gezählt werden anonyme Tab-Besuche, keine Personen oder Installationen.
+Sprachen werden auf den Hauptsprachcode reduziert und unabhängig von der
+im Spiel gewählten Sprache gemessen. Chrome und nicht unterscheidbare
+Chromium-Browser teilen eine Gruppe; die Erkennung ist näherungsweise.
+Ältere Besuche bleiben unbekannt. Beide Dashboard-Designs bieten die Karten
+auf Handy, Tablet und Laptop. Zugriffsrechte bleiben unverändert; nur der
+Gründer darf sie vergeben. Stiller Rollout ohne neue Push- oder Release-Einträge.
+Eine separate Länder-Auswertung zählt anonyme HTTP-Requests und Statusklassen
+der gesamten Anwendung, auch Bots, Dateien und API-Aufrufe. Healthchecks und
+Dashboard-Statistikabrufe sind ausgeschlossen. Requests aus dem Cloudflare-Cache
+oder dort blockierte Anfragen erreichen die App nicht und zählen daher nicht.
+Clientkennungen zeigen gemeldete Bots wie Googlebot sowie typische API-Clients,
+ohne Verifizierung zu behaupten. Ein gezielter Cloudflare-Burstschutz für
+Anmelde- und E-Mail-APIs begrenzt mehr als 50 Anfragen je IP in 10 Sekunden
+mit einer 10-Sekunden-Sperre; verifizierte Bots sind ausgenommen.
+
+**English:** Three new analysis cards show PWA launches versus browser visits,
+browser families and the first preferred browser language. Counts represent
+anonymous tab visits, not people or installations. Languages retain only their
+primary code, independently of the language selected in the game. Chrome and
+indistinguishable Chromium browsers share a group; recognition is approximate.
+Older visits remain unknown. Both dashboard themes offer the cards on phones,
+tablets and laptops. Access rights are unchanged; only the founder can grant
+them. Silent rollout with no new push or release entries.
+A separate country breakdown counts anonymous HTTP requests and status classes
+across the application, including bots, assets and APIs. Health checks and
+dashboard statistics polling are excluded. Requests served from Cloudflare
+cache or blocked there never reach the app and are outside this count.
+Agent families show declared bots such as Googlebot and typical API clients
+without claiming verification. A targeted Cloudflare authentication/email API
+burst rule blocks over 50 requests per IP in 10 seconds for 10 seconds,
+excluding verified bots.
+
 ## 2.45.0 — Mission Control: LCARS & Geräte / devices — 2026-10-05
 
 **Deutsch:** Berechtigte Konten können Mission Control im bisherigen Design

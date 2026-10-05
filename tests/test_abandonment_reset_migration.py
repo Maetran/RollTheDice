@@ -206,7 +206,7 @@ class AbandonmentResetMigrationTest(unittest.TestCase):
         self._upgrade()
 
         with self._connection() as connection:
-            self.assertEqual(connection.execute("SELECT version_num FROM alembic_version").fetchone(), ("20261005_0050",))
+            self.assertEqual(connection.execute("SELECT version_num FROM alembic_version").fetchone(), ("20261005_0052",))
             for table, original in before.items():
                 self.assertEqual(connection.execute(f"SELECT * FROM {table} ORDER BY id").fetchall(), original)
         command.downgrade(self._config(), PRE_RESET_REVISION)

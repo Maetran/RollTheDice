@@ -19,7 +19,7 @@ PRE_TYPED_RESULTS_REVISION = "20260902_0015"
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20261005_0050"
+LATEST_SCHEMA_REVISION = "20261005_0052"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -294,6 +294,107 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
                              [("unknown", "unknown"), ("unknown", "unknown")])
             indexes = {row[1] for row in connection.execute("PRAGMA index_list(analytics_events)")}
             self.assertIn("ix_analytics_events_session_received", indexes)
+            self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+
+    def test_browser_context_defaults_unknown_and_roundtrip_preserves_existing_data(self) -> None:
+        self._upgrade("20261005_0050")
+        timestamp = "2026-10-05T12:00:00+00:00"
+        with self._connection() as connection:
+            user_id = self._insert_user(connection)
+            connection.execute("UPDATE users SET analytics_access=1 WHERE id=?", (user_id,))
+            self._insert_completed_game(connection, game_id="browser-migration-result", game_type="zdwa")
+            connection.execute(
+                """INSERT INTO analytics_sessions
+                   (id, first_seen_at, last_seen_at, device, referrer, country, os, device_family)
+                   VALUES (?, ?, ?, 'tablet', 'direct', 'CH', 'ipados', 'ipad')""",
+                ("a" * 64, timestamp, timestamp),
+            )
+            connection.execute(
+                """INSERT INTO analytics_events
+                   (dedupe_key, session_id, received_at, event_type, page, game, action)
+                   VALUES (?, ?, ?, 'page_view', '/', 'zdwa', '')""",
+                ("b" * 64, "a" * 64, timestamp),
+            )
+            preserved = {table: connection.execute(f"SELECT * FROM {table}").fetchall()
+                         for table in ("users", "completed_games", "analytics_events")}
+            original_session = connection.execute("SELECT * FROM analytics_sessions").fetchall()
+        self._upgrade()
+        with self._connection() as connection:
+            info = {row[1]: (row[2], row[3], row[4]) for row in connection.execute("PRAGMA table_info(analytics_sessions)")}
+            for field, length in (("app_mode", 16), ("browser", 24), ("browser_language", 8)):
+                self.assertEqual(info[field], (f"VARCHAR({length})", 1, "'unknown'"))
+            self.assertEqual(connection.execute("SELECT app_mode, browser, browser_language FROM analytics_sessions").fetchall(),
+                             [("unknown", "unknown", "unknown")])
+            # The previous deployed bundle's columns remain valid with defaults.
+            connection.execute(
+                """INSERT INTO analytics_sessions
+                   (id, first_seen_at, last_seen_at, device, referrer, country, os, device_family)
+                   VALUES (?, ?, ?, 'mobile', 'direct', 'ZZ', 'android', 'android_phone')""",
+                ("c" * 64, timestamp, timestamp),
+            )
+            self.assertEqual(connection.execute(
+                "SELECT app_mode, browser, browser_language FROM analytics_sessions WHERE id=?", ("c" * 64,)
+            ).fetchone(), ("unknown", "unknown", "unknown"))
+            connection.execute(
+                "UPDATE analytics_sessions SET app_mode='pwa', browser='chrome', browser_language='de' WHERE id=?", ("c" * 64,)
+            )
+        self._downgrade("20261005_0050")
+        with self._connection() as connection:
+            for field in ("app_mode", "browser", "browser_language"):
+                self.assertNotIn(field, self._columns(connection, "analytics_sessions"))
+            for table, rows in preserved.items():
+                self.assertEqual(connection.execute(f"SELECT * FROM {table}").fetchall(), rows)
+            self.assertEqual(connection.execute("SELECT * FROM analytics_sessions WHERE id=?", ("a" * 64,)).fetchall(),
+                             original_session)
+            self.assertEqual(connection.execute("SELECT os, device_family FROM analytics_sessions WHERE id=?", ("c" * 64,)).fetchone(),
+                             ("android", "android_phone"))
+            self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+        self._upgrade()
+        with self._connection() as connection:
+            self.assertEqual(connection.execute("SELECT app_mode, browser, browser_language FROM analytics_sessions").fetchall(),
+                             [("unknown", "unknown", "unknown"), ("unknown", "unknown", "unknown")])
+            for table, rows in preserved.items():
+                self.assertEqual(connection.execute(f"SELECT * FROM {table}").fetchall(), rows)
+            self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
+
+    def test_request_counter_migration_is_separate_and_preserves_visits_results_and_access(self) -> None:
+        self._upgrade("20261005_0051")
+        timestamp = "2026-10-05T12:00:00+00:00"
+        with self._connection() as connection:
+            user_id = self._insert_user(connection)
+            connection.execute("UPDATE users SET analytics_access=1 WHERE id=?", (user_id,))
+            self._insert_completed_game(connection, game_id="request-migration-result", game_type="zdwa")
+            connection.execute(
+                """INSERT INTO analytics_sessions
+                   (id, first_seen_at, last_seen_at, device, referrer, country, os, device_family, app_mode, browser, browser_language)
+                   VALUES (?, ?, ?, 'tablet', 'direct', 'CH', 'ipados', 'ipad', 'pwa', 'safari', 'de')""",
+                ("a" * 64, timestamp, timestamp),
+            )
+            connection.execute(
+                """INSERT INTO analytics_events
+                   (dedupe_key, session_id, received_at, event_type, page, game, action)
+                   VALUES (?, ?, ?, 'page_view', '/', 'zdwa', '')""",
+                ("b" * 64, "a" * 64, timestamp),
+            )
+            tables = ("users", "completed_games", "analytics_sessions", "analytics_events")
+            preserved = {table: connection.execute(f"SELECT * FROM {table}").fetchall() for table in tables}
+        self._upgrade()
+        with self._connection() as connection:
+            self.assertEqual(self._columns(connection, "analytics_request_buckets"),
+                             ["day", "country", "status_class", "agent_family", "channel", "requests"])
+            self.assertEqual(connection.execute("SELECT count(*) FROM analytics_request_buckets").fetchone(), (0,))
+            self.assertEqual(connection.execute("PRAGMA foreign_key_list(analytics_request_buckets)").fetchall(), [])
+            connection.execute("INSERT INTO analytics_request_buckets VALUES ('2026-10-05', 'CH', '2xx', 'browser', 'api', 7)")
+        self._downgrade("20261005_0051")
+        with self._connection() as connection:
+            self.assertIsNone(connection.execute("SELECT name FROM sqlite_master WHERE name='analytics_request_buckets'").fetchone())
+            for table, rows in preserved.items():
+                self.assertEqual(connection.execute(f"SELECT * FROM {table}").fetchall(), rows)
+        self._upgrade()
+        with self._connection() as connection:
+            self.assertEqual(connection.execute("SELECT count(*) FROM analytics_request_buckets").fetchone(), (0,))
+            for table, rows in preserved.items():
+                self.assertEqual(connection.execute(f"SELECT * FROM {table}").fetchall(), rows)
             self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
 
     def test_empty_upgrade_creates_typed_schema_and_is_idempotent(self) -> None:

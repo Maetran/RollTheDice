@@ -21,10 +21,19 @@ from .abandoned_games import persist_abandoned_game
 from .achievement_feed import AchievementDifficulty, list_zilch_achievement_feed
 from .achievements import sync_achievements_for_users
 from .active_games import delete_active_game, load_active_games, save_active_game
-from .analytics import configure_analytics_runtime, record_game_action, start_analytics, stop_analytics
+from .analytics import (
+    configure_analytics_runtime,
+    record_game_action,
+    record_http_request,
+    request_agent_family,
+    request_channel,
+    request_traffic_excluded,
+    start_analytics,
+    stop_analytics,
+)
 from .api_admin_help import router as admin_help_router
 from .api_allowlist import router as allowlist_router
-from .api_analytics import require_analytics
+from .api_analytics import require_analytics, trusted_country
 from .api_analytics import router as analytics_router
 from .api_auth import router as auth_router
 from .api_avatars import router as avatars_router
@@ -598,6 +607,32 @@ async def response_cache_policy(request: Request, call_next):
         # canonical also keeps the SPA shell honest when a crawler reaches the
         # clean subdomain route directly rather than through its HTML head.
         response.headers["Link"] = f'<{zilch_url(request.url.path)}>; rel="canonical"'
+    return response
+
+
+def _record_request_traffic(request: Request, status_code: int) -> None:
+    """Only bounded aggregate categories reach the nonblocking counter."""
+    try:
+        if not request_traffic_excluded(request.url.path):
+            record_http_request(
+                trusted_country(request), status_code,
+                agent_family=request_agent_family(request.headers.get("user-agent", "")),
+                channel=request_channel(request.url.path),
+            )
+    except Exception:
+        # Telemetry cannot break a response, even during startup or shutdown.
+        pass
+
+
+@app.middleware("http")
+async def response_request_traffic(request: Request, call_next):
+    """Wrap cache/redirect handling so all application HTTP responses count."""
+    try:
+        response = await call_next(request)
+    except Exception:
+        _record_request_traffic(request, 500)
+        raise
+    _record_request_traffic(request, response.status_code)
     return response
 
 

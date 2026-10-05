@@ -1,10 +1,10 @@
 {
-  "version": "2.45.0",
+  "version": "2.46.0",
   "bump": "minor",
   "date": "2026-10-05",
-  "previous_revision": "657763f6b425af53e0c00fa906639b5bb6ce91db",
+  "previous_revision": "03e0eb62cfd8b8db5cba2612fbd5e18629208fe9",
   "summary": {
-    "de": "Mission Control ergänzt LCARS mit lokalem Designwechsel und anonymer Betriebssystem- und Geräteanalyse",
-    "en": "Mission Control adds LCARS with a local theme choice and anonymous operating-system and device analysis"
+    "de": "Mission Control: PWA, Browser, Sprachen und Request-Herkunft",
+    "en": "Mission Control: PWA, browsers, languages and request origins"
   }
 }

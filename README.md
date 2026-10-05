@@ -58,6 +58,20 @@ system and device family, such as iPad, iPhone, Android or Fire tablet, Mac
 and Windows PC. Recognition is approximate. Older and unrecognized visits
 remain unknown. Analytics payloads contain no raw user agents, OS versions,
 exact models or device identifiers.
+Three further panels compare PWA launches with browser visits, browser families
+and the first preferred browser language. They count anonymous tab visits,
+not people or installations. Languages such as `de-CH` are grouped as German,
+independently of the language selected in the game. Chrome and indistinguishable
+Chromium browsers share a group; recognition is approximate. Measurement starts
+with 2.46.0 and older visits remain unknown.
+A separate country breakdown counts HTTP requests reaching the application,
+including bots, assets and APIs. It aggregates country and response status
+without network or account identifiers. This is sitewide traffic, independent
+of the game filter; Cloudflare cache hits and edge-blocked requests are outside
+the count. Health checks and dashboard statistics polling are excluded.
+Declared bot families and recognizable API clients are shown as unverified
+self-declarations; automation can mimic a browser. The targeted Cloudflare
+authentication burst rule is documented in [Cloudflare protection](docs/CLOUDFLARE_PROTECTION.md).
 Open **Mission Control** from your account or administration. Only the founder
 can grant or revoke individual **Dashboard access** in user administration;
 admin and owner roles do not grant access automatically. Revocation applies to
@@ -83,6 +97,21 @@ Betriebssystem und Gerätefamilie ein, etwa iPad, iPhone, Android- oder
 Fire-Tablet, Mac und Windows-PC. Die Erkennung ist näherungsweise. Ältere und
 nicht erkannte Besuche bleiben unbekannt. Die Analytics-Nutzdaten enthalten
 keine Browser-Rohdaten, Versionsnummern, genauen Modelle oder Gerätekennungen.
+Drei weitere Karten zeigen PWA-Starts gegenüber Browser-Besuchen,
+Browserfamilien und die erste bevorzugte Browsersprache. Gezählt werden anonyme
+Tab-Besuche, keine Personen oder Installationen. `de-CH` zählt beispielsweise
+als Deutsch, unabhängig von der im Spiel gewählten Sprache. Chrome und nicht
+unterscheidbare Chromium-Browser teilen eine Gruppe; die Erkennung ist
+näherungsweise. Die Messung beginnt mit 2.46.0, ältere Besuche bleiben unbekannt.
+Eine eigene Länder-Auswertung zählt HTTP-Requests, die die Anwendung erreichen,
+einschließlich Bots, Dateien und API-Aufrufen. Zusammengefasst werden Land und
+Antwortstatus ohne Netzwerk- oder Kontokennungen. Gezählt wird unabhängig vom
+Spielfilter die ganze Anwendung; Cloudflare-Cachetreffer und bereits am Edge
+blockierte Requests sind nicht enthalten. Healthchecks und Dashboard-
+Statistikabrufe werden ausgeschlossen.
+Gemeldete Botfamilien und erkennbare API-Clients erscheinen als unbestätigte
+Selbstangabe; Automatisierung kann Browser vortäuschen. Der gezielte Cloudflare-
+Burstschutz für Anmelde-APIs steht im [Schutz-Runbook](docs/CLOUDFLARE_PROTECTION.md).
 
 Visitor measurement starts with version 2.43.0; completed game history uses
 existing server records. Sessions are anonymous tab visits, not unique people.

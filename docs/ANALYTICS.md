@@ -32,6 +32,37 @@ needing to sign out. All dashboard documents are `noindex` and `no-store`.
   Gerätekennungen.
   Die Erkennung ist näherungsweise. Die erste Angabe einer anonymen Tab-Sitzung
   bleibt fest; ältere und nicht erkannte Sitzungen bleiben `unknown`.
+- Since 2.46.0, launch context, coarse browser family and first preferred
+  browser language are also fixed at the first accepted tab-session batch.
+  `app_mode` is `pwa` when `display-mode: standalone` or Apple's
+  `navigator.standalone` is true, `browser` when the browser display mode or
+  explicit iOS non-standalone state is available, otherwise `unknown`.
+  Fullscreen alone is not PWA evidence. These counts measure visits launched
+  in an app window, not installed apps or unique users.
+  Browser families are `chrome`, `safari`, `edge`, `firefox`,
+  `samsung_internet`, `opera`, `silk`, `other`, `unknown`. The Chrome / Chromium
+  label includes browsers whose hints are indistinguishable, such as Brave;
+  recognition is approximate and never changes gameplay compatibility. Safari /
+  WebKit also covers the identifiable iOS standalone runtime, without claiming
+  which browser originally installed that app.
+  `browser_language` uses `navigator.languages[0]`, falling back to
+  `navigator.language` if missing. Only an allowlisted primary language code
+  remains: `de-CH` becomes `de`, `zh-Hant-TW` becomes `zh`. Regions, scripts and
+  full preference lists are discarded. This browser preference is independent
+  of the selected game UI language and does not prove that a visitor needs a
+  translation. Older sessions remain `unknown`, including existing tabs whose
+  session began before this release. Definitions:
+  [PWA display mode](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/How_to/Create_a_standalone_app),
+  [Apple standalone](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html),
+  [preferred languages](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/languages).
+  **Deutsch:** Seit 2.46.0 ergänzen PWA-/Browser-Startkontext, Browserfamilie und
+  erste bevorzugte Browsersprache die anonymen Tab-Besuche. Die erste Angabe
+  bleibt fest. PWA bezeichnet den Start im App-Fenster, keine Installation;
+  Vollbild allein genügt nicht. Browserfamilien sind näherungsweise erkannt,
+  Chrome und nicht unterscheidbare Chromium-Browser teilen eine Gruppe.
+  Nur der Hauptsprachcode bleibt gespeichert, etwa `de` statt `de-CH`.
+  Die Spracheinstellung im Spiel beeinflusst diese Messung nicht. Ältere und
+  nicht erkennbare Angaben bleiben unbekannt.
 - Countries are accepted only from a trusted Cloudflare peer. Sources:
   [IPv4](https://www.cloudflare.com/ips-v4),
   [IPv6](https://www.cloudflare.com/ips-v6). Direct/untrusted requests have
@@ -68,6 +99,46 @@ needing to sign out. All dashboard documents are `noindex` and `no-store`.
   Tab-Sitzungen mit Browser-Ereignissen im gewählten UTC-Zeitraum und Spiel.
   Sie ergänzen Handy, Tablet und Desktop; derselbe Tab zählt je Kategorie
   einmal. Unbekannt umfasst auch ältere Sitzungen ohne diese Messung.
+- PWA/browser, browser-family and preferred-language cards also count distinct
+  anonymous tab sessions with client events in the selected period and game.
+  Each session has one fixed category per dimension. Percentages use all
+  categories, including unknown values, as their denominator. A tab visiting
+  both games is counted once with the combined filter. Unknown data is kept
+  separate and never relabeled from later requests.
+  **Deutsch:** PWA-/Browser-, Browserfamilien- und Sprachkarten zählen anonyme
+  Tab-Besuche im gewählten Zeitraum und Spiel. Jeder Tab hat je Dimension eine
+  feste Kategorie. Prozentanteile berücksichtigen unbekannte Angaben. Beim
+  gemeinsamen Spielfilter zählt derselbe Tab einmal.
+- HTTP request origin is a separate operational measurement, independent of
+  browser tracking or login. It aggregates responses by UTC day, trusted
+  Cloudflare country, status class, fixed request channel and agent family,
+  without storing IPs, raw user agents, paths,
+  queries, accounts or session IDs. Bots, asset and API requests count too.
+  Health checks, the dashboard document and its statistics polling are excluded.
+  All games/hosts are included even when a single-game filter is selected;
+  only the selected period applies. Requests served from Cloudflare cache or
+  blocked before reaching the app, and WebSocket frames, are outside this count.
+  Recording starts with 2.46.0; historical traffic is not reconstructed.
+  Bounded buffering and database failures can cause loss; the dashboard exposes
+  the dropped request count since the application process started. This is
+  anonymous server-load aggregation, not a count of people or visits.
+  Agent families name declared crawlers such as Googlebot and Bingbot, plus
+  recognizable API clients such as curl and Python. These are **unverified
+  self-declarations**; a browser-like agent does not establish a human user.
+  Channels use fixed `api`, `asset`, `page`, `other` categories. Limits and
+  Cloudflare rule preparation are documented in
+  [Cloudflare protection](CLOUDFLARE_PROTECTION.md).
+  **Deutsch:** Die Request-Herkunft ist eine eigene Betriebskennzahl. Auch Bots,
+  Dateien und API-Aufrufe zählen, unabhängig von Anmeldung und Browsermessung.
+  Zusammengefasst werden UTC-Tag, Land, Statusklasse und feste Kanal-/Clientfamilien, ohne IP-Adressen,
+  Browser-Rohdaten, Pfade, Parameter, Konten oder Sitzungskennung. Healthchecks
+  und das Dashboard samt Statistikabrufen sind ausgeschlossen. Der Zeitraum
+  gilt, der Spielfilter nicht: gezählt wird die gesamte Anwendung. Cloudflare-
+  Cachetreffer, dort blockierte Anfragen und WebSocket-Nachrichten sind nicht
+  enthalten. Messung ab 2.46.0; keine rekonstruierte Historie. Verlorene Requests
+  werden seit Prozessstart ausgewiesen.
+  Googlebot, Bingbot und typische API-Clients wie curl/Python werden als
+  unbestätigte Selbstangabe erkannt; eine Browserkennung beweist keinen Menschen.
 - Globe and world map use locally bundled public-domain Natural Earth geometry.
   Source hashes and preparation instructions are in
   [the geography asset notes](../frontend/dashboard/GEOGRAPHY.md).
@@ -112,22 +183,32 @@ losing permission; this release does not store a historical server time series.
 
 ## Release and rollback
 
-Version 2.45.0 is rolled out with `SILENT_RELEASE=1`; no player push or in-app
+Version 2.46.0 is rolled out with `SILENT_RELEASE=1`; no player push or in-app
 release entry is created. The existing deploy script backs up app data before
-the update. The LCARS baseline is version 2.44.0, commit `657763f`; the Deep
-Dive baseline is version 2.43.0, commit `3e92116`. Migration `20261005_0050`
-adds two bounded category columns to anonymous sessions, defaulting old rows
+the update. The browser/PWA/language baseline is version 2.45.0, commit
+`03e0eb6`; the LCARS baseline is version 2.44.0, commit `657763f`; the Deep
+Dive baseline is version 2.43.0, commit `3e92116`. Migration `20261005_0051`
+adds three bounded category columns to anonymous sessions, defaulting old rows
 to `unknown`, without changing accounts, access grants or game tables.
+Migration `20261005_0052` adds anonymous daily HTTP country/status counters;
+it has no account, game or browser-session relation.
 The pre-analytics baseline remains
 version 2.42.6, commit `40e53b1`.
 
-**Deutsch:** Version 2.45.0 wird still mit `SILENT_RELEASE=1` ausgeliefert,
-ohne neue Push- oder In-App-Versionsmeldung. Für den LCARS-Designwechsel ist
-Version 2.44.0 (`657763f`) die Rückfallversion. Migration `20261005_0050`
-ergänzt zwei begrenzte Geräteklassen-Spalten; ältere Sitzungen erhalten
+**Deutsch:** Version 2.46.0 wird still mit `SILENT_RELEASE=1` ausgeliefert,
+ohne neue Push- oder In-App-Versionsmeldung. Für die PWA-/Browser-/Sprachmessung
+ist Version 2.45.0 (`03e0eb6`) die Rückfallversion. Migration `20261005_0051`
+ergänzt drei begrenzte Kategorie-Spalten; ältere Sitzungen erhalten
 `unknown`. Konten, Zugriffsrechte und Spieldaten bleiben erhalten. Die
 Datensicherung läuft über das bestehende Deploy-Skript.
+Migration `20261005_0052` ergänzt anonyme tägliche HTTP-Länder-/Statuszähler.
 
+For code rollback of browser/PWA/language analysis, stop the service, select
+version 2.45.0 and rebuild. The additive columns and request counters may remain;
+old code ignores them. An optional downgrade to `20261005_0050` removes only these
+classifications, preserving device analysis, anonymous events, accounts,
+access grants and results; it also removes the separate daily request counters.
+Back up and stop the service first.
 For code rollback of the LCARS theme, stop the service, select version 2.44.0
 and rebuild. Select version 2.43.0 to return to the first dashboard.
 The two additive device columns may remain when rolling back to these

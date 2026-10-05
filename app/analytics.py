@@ -17,6 +17,7 @@ import re
 import resource
 import shutil
 import sys
+import threading
 import time
 from collections import OrderedDict
 from datetime import datetime, timedelta
@@ -24,7 +25,25 @@ from pathlib import Path
 from typing import Callable
 from urllib.parse import urlsplit
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, case, cast, delete, func, insert, select
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    case,
+    cast,
+    delete,
+    func,
+    insert,
+    select,
+    tuple_,
+    update,
+)
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -38,6 +57,8 @@ MAX_BODY_BYTES = 32768
 MAX_BATCH_EVENTS = 20
 MAX_STORED_EVENTS = 200_000
 MAX_QUEUE_BATCHES = 300
+MAX_PENDING_REQUEST_BUCKETS = 4096
+MAX_STORED_REQUEST_BUCKETS = 50_000
 LIVE_WINDOW_SECONDS = 120
 JOURNEY_SAMPLE_LIMIT = 10_000
 JOURNEY_GAP_SECONDS = 30 * 60
@@ -61,6 +82,53 @@ DEVICE_FAMILIES = frozenset({
     "ipad", "iphone", "fire_tablet", "android_tablet", "android_phone", "mac", "windows_pc", "linux_pc",
     "chromebook", "unknown",
 })
+APP_MODES = frozenset({"pwa", "browser", "unknown"})
+BROWSERS = frozenset({"chrome", "safari", "edge", "firefox", "samsung_internet", "opera", "silk", "other", "unknown"})
+# Retain one coarse language, never a regional tag or preference list. ISO 639-1
+# plus established browser language tags keep the possible values bounded.
+BROWSER_LANGUAGES = frozenset("""
+aa ab ae af ak am an ar as av ay az ba be bg bh bi bm bn bo br bs ca ce ch co cr cs cu cv cy da de dv dz
+ee el en eo es et eu fa ff fi fj fo fr fy ga gd gl gn gu gv ha he hi ho hr ht hu hy hz ia id ie ig ii ik
+io is it iu ja jv ka kg ki kj kk kl km kn ko kr ks ku kv kw ky la lb lg li ln lo lt lu lv mg mh mi mk
+ml mn mr ms mt my na nb nd ne ng nl nn no nr nv ny oc oj om or os pa pi pl ps pt qu rm rn ro ru rw sa
+sc sd se sg si sk sl sm sn so sq sr ss st su sv sw ta te tg th ti tk tl tn to tr ts tt tw ty ug uk ur
+uz ve vi vo wa wo xh yi yo za zh zu fil gsw yue cmn nan hak kok ceb
+""".split())
+LANGUAGE_ALIASES = {"iw": "he", "in": "id", "ji": "yi"}
+LANGUAGE_TAG_RE = re.compile(r"^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{1,8})*$")
+REQUEST_STATUS_CLASSES = frozenset({"2xx", "3xx", "4xx", "5xx", "other"})
+REQUEST_CHANNELS = frozenset({"api", "asset", "page", "other"})
+# These are self-declared UA families, never verified crawler identities.
+REQUEST_AGENT_PATTERNS = tuple((family, re.compile(pattern, re.IGNORECASE)) for family, pattern in (
+    ("googlebot", r"googlebot|google-inspectiontool"),
+    ("google_other", r"googleother|google-extended|adsbot-google|mediapartners-google|feedfetcher-google|storebot-google|apis-google"),
+    ("bingbot", r"bingbot|bingpreview|adidxbot"),
+    ("applebot", r"applebot"),
+    ("duckduckbot", r"duckduckbot"),
+    ("yandexbot", r"yandex(?:bot|images|accessibilitybot|mobilebot|news|video)"),
+    ("baiduspider", r"baiduspider"),
+    ("meta_bot", r"facebookexternalhit|facebot|meta-externalagent|meta-externalfetcher"),
+    ("openai_bot", r"gptbot|oai-searchbot|chatgpt-user"),
+    ("anthropic_bot", r"claudebot|claude-searchbot|claude-user|anthropic-ai"),
+    ("uptime_bot", r"uptimerobot|pingdom|statuscake|better ?uptime|betterstack|kube-probe|healthcheck"),
+    ("curl", r"\bcurl/"),
+    ("python_client", r"python-requests|python-urllib|httpx|aiohttp|python/"),
+    ("node_client", r"node-fetch|undici|axios|\bnode\b"),
+    ("go_client", r"go-http-client"),
+    ("other_bot", r"bot\b|spider|crawler|headlesschrome|phantomjs|selenium|playwright"),
+    ("browser", r"\b(?:Chrome|Chromium|CriOS|Safari|Firefox|FxiOS|Edg|EdgA|EdgiOS|Edge|OPR|OPiOS|SamsungBrowser|Silk)/"),
+))
+REQUEST_AGENT_FAMILIES = frozenset({*(family for family, _ in REQUEST_AGENT_PATTERNS), "unknown"})
+REQUEST_EXCLUDED_PATHS = frozenset({"/health", "/api/health", "/admin/dashboard", "/api/admin/analytics", "/static/dashboard.html"})
+REQUEST_ASSET_PATHS = frozenset({
+    "/sw.js", "/zilch-sw.js", "/manifest.webmanifest", "/manifest-en.webmanifest",
+    "/zilch-manifest.webmanifest", "/zilch-manifest-en.webmanifest", "/favicon.ico",
+})
+REQUEST_PAGE_PATHS = frozenset({
+    "/", "/regeln", "/spieler", "/rangabzeichen", "/konto", "/anmelden", "/admin", "/spiel", "/ergebnis",
+    "/historie", "/statistiken", "/bestenlisten", "/erfolge", "/offline", "/offline-spielen",
+    "/registrierung/bestaetigen", "/passwort-vergessen", "/passwort-zuruecksetzen", "/email-bestaetigen", "/auth/continue",
+})
 
 
 class AnalyticsSession(Base):
@@ -71,6 +139,9 @@ class AnalyticsSession(Base):
     device: Mapped[str] = mapped_column(String(16), nullable=False)
     os: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown", server_default="unknown")
     device_family: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown", server_default="unknown")
+    app_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown", server_default="unknown")
+    browser: Mapped[str] = mapped_column(String(24), nullable=False, default="unknown", server_default="unknown")
+    browser_language: Mapped[str] = mapped_column(String(8), nullable=False, default="unknown", server_default="unknown")
     referrer: Mapped[str] = mapped_column(String(200), nullable=False)
     country: Mapped[str] = mapped_column(String(2), nullable=False)
     __table_args__ = (Index("ix_analytics_sessions_last_seen", "last_seen_at"),)
@@ -98,10 +169,24 @@ class AnalyticsEvent(Base):
     )
 
 
+class AnalyticsRequestBucket(Base):
+    """Sitewide daily totals, with no relationship to a visit or account."""
+    __tablename__ = "analytics_request_buckets"
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)
+    country: Mapped[str] = mapped_column(String(2), primary_key=True)
+    status_class: Mapped[str] = mapped_column(String(8), primary_key=True)
+    agent_family: Mapped[str] = mapped_column(String(24), primary_key=True)
+    channel: Mapped[str] = mapped_column(String(8), primary_key=True)
+    requests: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+
+
 _queue: queue.Queue | None = None
 _worker: asyncio.Task | None = None
 _stop: asyncio.Event | None = None
 _dropped = 0
+_request_buckets: dict[tuple[str, str, str, str, str], int] | None = None
+_request_lock = threading.Lock()
+_request_dropped = 0
 _rate: OrderedDict[str, tuple[float, int]] = OrderedDict()
 _global_rate = (0.0, 0)
 _started = time.monotonic()
@@ -162,6 +247,18 @@ def normalize_referrer(value: object) -> str:
     return host
 
 
+def normalize_browser_language(value: object) -> str:
+    """Reduce a bounded browser language tag to an allowlisted primary code."""
+    if not isinstance(value, str) or len(value) > 64:
+        return "unknown"
+    tag = value.strip()
+    if not LANGUAGE_TAG_RE.fullmatch(tag):
+        return "unknown"
+    primary = tag.split("-", 1)[0].lower()
+    primary = LANGUAGE_ALIASES.get(primary, primary)
+    return primary if primary in BROWSER_LANGUAGES else "unknown"
+
+
 def normalize_batch(payload: object, *, country: str = "ZZ", now: datetime | None = None) -> dict:
     if not isinstance(payload, dict):
         raise ValueError("analytics_invalid_payload")
@@ -211,11 +308,16 @@ def normalize_batch(payload: object, *, country: str = "ZZ", now: datetime | Non
     device = payload.get("device")
     operating_system = payload.get("os")
     device_family = payload.get("device_family")
+    app_mode = payload.get("app_mode")
+    browser = payload.get("browser")
     country = country.upper() if isinstance(country, str) and re.fullmatch(r"[A-Za-z]{2}", country) else "ZZ"
     return {"session": {"id": session_hash, "first_seen_at": received, "last_seen_at": received,
                         "device": device if isinstance(device, str) and device in {"desktop", "tablet", "mobile"} else "unknown",
                         "os": operating_system if isinstance(operating_system, str) and operating_system in OPERATING_SYSTEMS else "unknown",
                         "device_family": device_family if isinstance(device_family, str) and device_family in DEVICE_FAMILIES else "unknown",
+                        "app_mode": app_mode if isinstance(app_mode, str) and app_mode in APP_MODES else "unknown",
+                        "browser": browser if isinstance(browser, str) and browser in BROWSERS else "unknown",
+                        "browser_language": normalize_browser_language(payload.get("browser_language")),
                         "referrer": normalize_referrer(payload.get("referrer")), "country": country},
             "events": normalized}
 
@@ -270,9 +372,111 @@ def record_game_action(game_type: str, action: str, mode: str | None = None) -> 
         return False
 
 
-def persist_batches(batches: list[dict], *, now: datetime | None = None, sweep: bool = False) -> int:
+def request_agent_family(user_agent: object) -> str:
+    """Inspect a bounded UA in memory; emit only an unverified coarse family."""
+    if not isinstance(user_agent, str):
+        return "unknown"
+    hint = user_agent[:512]
+    return next((family for family, pattern in REQUEST_AGENT_PATTERNS if pattern.search(hint)), "unknown")
+
+
+def request_channel(path: str) -> str:
+    """Discard the path after reducing it to a fixed request channel."""
+    if path == "/api" or path.startswith("/api/"):
+        return "api"
+    if path == "/static" or path.startswith("/static/") or path in REQUEST_ASSET_PATHS:
+        return "asset"
+    candidate = path.rstrip("/") or "/"
+    if candidate == "/zilch" or candidate == "/zdwa":
+        candidate = "/"
+    elif candidate.startswith(("/zilch/", "/zdwa/")):
+        candidate = candidate.split("/", 2)[-1]
+        candidate = "/" + candidate
+    if candidate in REQUEST_PAGE_PATHS or candidate.startswith(("/spiel/", "/spieler/", "/ergebnis/")):
+        return "page"
+    return "other"
+
+
+def request_traffic_excluded(path: str) -> bool:
+    return (path.rstrip("/") or "/") in REQUEST_EXCLUDED_PATHS
+
+
+def record_http_request(country: str, status_code: int, *, agent_family: str = "unknown", channel: str = "other",
+                        now: datetime | None = None) -> bool:
+    """Coalesce one response without I/O, waiting, identity or a user rate cap."""
+    global _request_dropped
+    if _request_buckets is None or not _request_lock.acquire(blocking=False):
+        _request_dropped += 1
+        return False
+    try:
+        country = country.upper() if isinstance(country, str) and re.fullmatch(r"[A-Za-z]{2}", country) else "ZZ"
+        status_class = f"{status_code // 100}xx" if isinstance(status_code, int) and 200 <= status_code < 600 else "other"
+        if status_class not in REQUEST_STATUS_CLASSES:
+            status_class = "other"
+        agent_family = agent_family if agent_family in REQUEST_AGENT_FAMILIES else "unknown"
+        channel = channel if channel in REQUEST_CHANNELS else "other"
+        key = (as_utc(now or utcnow()).date().isoformat(), country, status_class, agent_family, channel)
+        if key not in _request_buckets and len(_request_buckets) >= MAX_PENDING_REQUEST_BUCKETS:
+            _request_dropped += 1
+            return False
+        _request_buckets[key] = _request_buckets.get(key, 0) + 1
+        return True
+    finally:
+        _request_lock.release()
+
+
+def _drain_request_buckets() -> dict:
+    if _request_buckets is None or not _request_lock.acquire(blocking=False):
+        return {}
+    try:
+        snapshot = _request_buckets.copy()
+        _request_buckets.clear()
+        return snapshot
+    finally:
+        _request_lock.release()
+
+
+def _persist_request_counts(db: Session, counts: dict) -> int:
+    """Atomic increments keep totals safe across independently running workers."""
+    if not counts:
+        return 0
+    bucket = AnalyticsRequestBucket
+    keys = list(counts)
+    columns = (bucket.day, bucket.country, bucket.status_class, bucket.agent_family, bucket.channel)
+    existing = set()
+    for offset in range(0, len(keys), 150):
+        existing.update(tuple(row) for row in db.execute(select(*columns).where(tuple_(*columns).in_(keys[offset:offset + 150]))))
+    slots = max(0, MAX_STORED_REQUEST_BUCKETS - (db.scalar(select(func.count()).select_from(bucket)) or 0))
+    rows, dropped = [], 0
+    for key, total in counts.items():
+        if key not in existing:
+            if not slots:
+                dropped += total
+                continue
+            slots -= 1
+        rows.append(dict(zip(("day", "country", "status_class", "agent_family", "channel"), key), requests=total))
+    dialect = db.get_bind().dialect.name
+    for offset in range(0, len(rows), 150):
+        if dialect in {"sqlite", "postgresql"}:
+            statement = (sqlite_insert if dialect == "sqlite" else postgres_insert)(bucket).values(rows[offset:offset + 150])
+            db.execute(statement.on_conflict_do_update(
+                index_elements=[column.name for column in columns],
+                set_={"requests": bucket.requests + statement.excluded.requests},
+            ))
+        else:
+            for row in rows[offset:offset + 150]:
+                changed = db.execute(update(bucket).where(*(column == row[column.name] for column in columns))
+                                     .values(requests=bucket.requests + row["requests"]))
+                if not changed.rowcount:
+                    db.execute(insert(bucket).values(**row))
+    return dropped
+
+
+def persist_batches(batches: list[dict], *, now: datetime | None = None, sweep: bool = False,
+                    request_counts: dict | None = None) -> int:
     """One serialized background writer, with a short busy timeout, no game locks."""
-    now = now or utcnow()
+    global _request_dropped
+    now = as_utc(now or utcnow())
     stored = 0
     engine = get_engine()
     # Keep this exact connection checked out until the timeout is restored.
@@ -282,6 +486,10 @@ def persist_batches(batches: list[dict], *, now: datetime | None = None, sweep: 
             connection.exec_driver_sql("PRAGMA busy_timeout=250")
             connection.commit()
         try:
+            if sweep:
+                first_day = (now - timedelta(days=RETENTION_DAYS - 1)).date().isoformat()
+                db.execute(delete(AnalyticsRequestBucket).where(AnalyticsRequestBucket.day < first_day))
+            request_rejected = _persist_request_counts(db, request_counts or {})
             for batch in batches:
                 session = batch["session"]
                 if session:
@@ -316,6 +524,7 @@ def persist_batches(batches: list[dict], *, now: datetime | None = None, sweep: 
                     ~select(AnalyticsEvent.id).where(AnalyticsEvent.session_id == AnalyticsSession.id).exists()
                 ))
             db.commit()
+            _request_dropped += request_rejected
         finally:
             # Connections return to the shared pool with the game's normal timeout.
             db.rollback()
@@ -327,9 +536,9 @@ def persist_batches(batches: list[dict], *, now: datetime | None = None, sweep: 
 
 
 async def _run_worker() -> None:
-    global _dropped
+    global _dropped, _request_dropped
     last_sweep = 0.0
-    while _stop is not None and (not _stop.is_set() or (_queue is not None and not _queue.empty())):
+    while _stop is not None and (not _stop.is_set() or (_queue is not None and not _queue.empty()) or _request_buckets):
         batches = []
         try:
             batch = _queue.get_nowait()
@@ -338,12 +547,14 @@ async def _run_worker() -> None:
                 batches.append(_queue.get_nowait())
         except queue.Empty:
             pass
+        request_counts = _drain_request_buckets()
         sweep = time.monotonic() - last_sweep > 60
-        if batches or sweep:
+        if batches or request_counts or sweep:
             try:
-                await asyncio.to_thread(persist_batches, batches, sweep=sweep)
+                await asyncio.to_thread(persist_batches, batches, sweep=sweep, request_counts=request_counts)
             except (SQLAlchemyError, RuntimeError):
                 _dropped += sum(len(batch["events"]) for batch in batches)
+                _request_dropped += sum(request_counts.values())
                 logger.warning("Anonymous analytics batch unavailable; gameplay continues", exc_info=False)
             if sweep:
                 last_sweep = time.monotonic()
@@ -353,7 +564,7 @@ async def _run_worker() -> None:
 
 
 async def start_analytics() -> bool:
-    global _queue, _worker, _stop, _started, _dropped, _global_rate
+    global _queue, _worker, _stop, _started, _dropped, _global_rate, _request_buckets, _request_dropped
     if _worker is not None and not _worker.done():
         return False
     # Nested app lifespans can run in separate TestClient event-loop threads.
@@ -362,6 +573,8 @@ async def start_analytics() -> bool:
     _stop = asyncio.Event()
     _started = time.monotonic()
     _dropped = 0
+    _request_buckets = {}
+    _request_dropped = 0
     _rate.clear()
     _global_rate = (0.0, 0)
     _worker = asyncio.create_task(_run_worker(), name="anonymous-analytics")
@@ -369,7 +582,7 @@ async def start_analytics() -> bool:
 
 
 async def stop_analytics() -> None:
-    global _queue, _worker, _stop
+    global _queue, _worker, _stop, _request_buckets
     if _stop:
         _stop.set()
     if _worker:
@@ -379,6 +592,7 @@ async def stop_analytics() -> None:
             _worker.cancel()
             await asyncio.gather(_worker, return_exceptions=True)
     _queue, _worker, _stop = None, None, None
+    _request_buckets = None
 
 
 def configure_analytics_runtime(provider: Callable[[], dict]) -> None:
@@ -625,6 +839,20 @@ def _comparison_stats(current: dict, previous: dict, start: datetime, now: datet
             "completed_games_source": "server_results", "overview": metrics}
 
 
+def _request_traffic_stats(db: Session, start: datetime, now: datetime) -> dict:
+    bucket = AnalyticsRequestBucket
+    filters = [bucket.day >= start.date().isoformat(), bucket.day <= now.date().isoformat()]
+    total = func.sum(bucket.requests)
+    result = {"total": int(db.scalar(select(total).where(*filters)) or 0), "dropped": _request_dropped}
+    for key, column in (("countries", bucket.country), ("statuses", bucket.status_class),
+                        ("agents", bucket.agent_family), ("channels", bucket.channel)):
+        rows = db.execute(select(column, total).where(*filters).group_by(column).order_by(total.desc(), column)).all()
+        result[key] = [{column.name: value, "requests": int(count)} for value, count in rows]
+    first_day = db.scalar(select(func.min(bucket.day)))
+    result["first_recorded_at"] = f"{first_day}T00:00:00+00:00" if first_day else None
+    return result
+
+
 def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = None) -> dict:
     if days not in {1, 7, 30, 90} or game not in {"all", "zdwa", "zilch"}:
         raise ValueError("analytics_invalid_filter")
@@ -642,6 +870,8 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
         count, page_views, active_ms = db.execute(select(
             func.count(func.distinct(AnalyticsEvent.session_id)), views, active
         ).where(*filters)).one()
+        # Network demand is sitewide, even when gameplay is filtered to one game.
+        request_traffic = _request_traffic_stats(db, start, now)
         live = db.scalar(select(func.count(func.distinct(AnalyticsEvent.session_id))).where(
             *filters, AnalyticsEvent.received_at >= now - timedelta(seconds=LIVE_WINDOW_SECONDS))) or 0
         page_rows = db.execute(select(AnalyticsEvent.page, AnalyticsEvent.game, views,
@@ -655,14 +885,17 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
         dimensions = {}
         for key, field in (("referrers", AnalyticsSession.referrer), ("devices", AnalyticsSession.device),
                            ("countries", AnalyticsSession.country), ("device_software", AnalyticsSession.os),
-                           ("device_hardware", AnalyticsSession.device_family)):
-            dimension_filters = [*filters, AnalyticsEvent.source == "client"] if key.startswith("device_") else filters
+                           ("device_hardware", AnalyticsSession.device_family), ("app_modes", AnalyticsSession.app_mode),
+                           ("browsers", AnalyticsSession.browser), ("browser_languages", AnalyticsSession.browser_language)):
+            client_dimension = key.startswith("device_") or key in {"app_modes", "browsers", "browser_languages"}
+            dimension_filters = [*filters, AnalyticsEvent.source == "client"] if client_dimension else filters
             rows = db.execute(select(field, func.count(func.distinct(AnalyticsEvent.session_id)))
                               .join(AnalyticsSession, AnalyticsEvent.session_id == AnalyticsSession.id)
                               .where(*dimension_filters).group_by(field)
                               .order_by(func.count(func.distinct(AnalyticsEvent.session_id)).desc())).all()
             label = {"referrers": "source", "devices": "device", "countries": "country",
-                     "device_software": "os", "device_hardware": "device_family"}[key]
+                     "device_software": "os", "device_hardware": "device_family", "app_modes": "app_mode",
+                     "browsers": "browser", "browser_languages": "browser_language"}[key]
             dimensions[key] = [{label: value, "sessions": total} for value, total in rows]
         geography, geography_summary = _geography_stats(db, filters, views, active)
         heatmap = _heatmap_stats(db, filters, views, active)
@@ -745,7 +978,7 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                            "event_cap": MAX_STORED_EVENTS, "stored_events": stored_events,
                            "cap_reached": stored_events >= MAX_STORED_EVENTS,
                            "results_source": "server_results"},
-            "overview": overview, "geography": geography, "geography_summary": geography_summary,
+            "overview": overview, "request_traffic": request_traffic, "geography": geography, "geography_summary": geography_summary,
             "heatmap": heatmap, "journeys": journeys,
             "comparison": _comparison_stats(overview, previous_overview, start, now, days, first_client),
             "daily": daily, "pages": pages, **dimensions, "actions": actions, "games": games,
