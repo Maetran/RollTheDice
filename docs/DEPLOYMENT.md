@@ -123,6 +123,8 @@ Bandit und den Abhängigkeits-Audit. Der GitHub-Workflow nutzt denselben Befehl.
 Seine Browserjobs verteilen die Hauptsuite auf vier isolierte Runner; die
 Benutzernamen- und Passkey-Konfigurationen laufen separat. Branches und Pull
 Requests werden geprüft, Release-Tags erzeugen keinen doppelten Lauf.
+Die Runner installieren Chromium und WebKit, da bestehende Safari-Prüfungen
+WebKit ausdrücklich starten.
 
 ## Reverse-Proxy-Härtung
 

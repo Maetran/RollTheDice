@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from typing import Any, Final, Iterable, Mapping
 
 from sqlalchemy import and_, or_, select, update
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from .cross_game_activity import CrossGameActivity, cross_game_activity_for_user
@@ -3583,14 +3584,17 @@ def sync_zilch_engagement_achievements_for_users(
                 key = definition.key.removeprefix("zilch.")
                 if counts.get(key, 0) < int(definition.target or 0) or definition.key in existing:
                     continue
-                unlock = ZilchAchievementUnlock(
+                unlock_id = db.scalar(insert(ZilchAchievementUnlock).values(
                     user_id=user_id, achievement_key=definition.key,
                     definition_version=definition.definition_version,
                     source_evidence_id=None, source_game_id=None,
                     presentation_game_id=None, unlocked_at=utcnow(),
-                )
-                db.add(unlock)
-                db.flush()
+                ).on_conflict_do_nothing(
+                    index_elements=["user_id", "achievement_key"],
+                ).returning(ZilchAchievementUnlock.id))
+                if unlock_id is None:
+                    continue
+                unlock = db.get(ZilchAchievementUnlock, unlock_id)
                 unlocked.append(_unlock_payload(
                     unlock, definition, progress={"current": 1, "target": 1},
                 ))

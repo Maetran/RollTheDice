@@ -1,8 +1,12 @@
 const { test, expect } = require("@playwright/test");
+const { randomUUID } = require("node:crypto");
 
 test.use({ serviceWorkers: "block" });
 
-async function newAccount(page, username) {
+async function newAccount(page, prefix) {
+  // A retry/repeat still uses this server's database; always give it a fresh
+  // account so a prior attempt cannot supply awards or collide on creation.
+  const username = `${prefix}_${randomUUID().slice(0, 8)}`;
   const adminResponse = await page.request.post("/api/auth/login", {
     data: { username: "Admin", password: "temporary-password-123" },
   });

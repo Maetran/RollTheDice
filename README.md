@@ -1146,12 +1146,14 @@ from the private-preview scenarios. `npm run check:quality` includes lint,
 dependency consistency, Bandit and the dependency vulnerability audit, matching
 the backend checks in [the quality workflow](.github/workflows/quality.yml).
 CI runs the main browser suite in four isolated shards and the username and
-passkey configurations in separate jobs. Every test still runs with one worker;
+passkey configurations in separate jobs. Runners install Chromium and WebKit
+for all browser engines used by the suite. Every test still runs with one worker;
 branch pushes and pull requests are checked, without a duplicate run for release tags.
 
 **Deutsch – Qualitätsprüfung:** `npm run check:quality` führt dieselben Lint-,
 Sicherheits- und Abhängigkeitsprüfungen wie GitHub aus. Die Browser-Suite läuft
 in vier getrennten Teilen; Benutzername und Passkeys haben eigene Prüfjobs.
+Chromium und WebKit werden für alle verwendeten Browser-Engines installiert.
 Alle Tests bleiben erhalten. Release-Tags lösen keinen zweiten identischen
 Prüflauf aus.
 

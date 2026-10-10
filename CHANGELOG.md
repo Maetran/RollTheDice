@@ -27,9 +27,12 @@ not asserted deployment dates. See the [complete version history](docs/VERSION_H
 **Deutsch:** Der lokale Qualitätscheck umfasst jetzt dieselben Sicherheits- und
 Abhängigkeitsprüfungen wie GitHub. Die vollständige Browsersuite läuft in vier
 Hauptteilen sowie eigenen Jobs für Benutzername und Passkeys, damit sie innerhalb
-des Zeitlimits abschließt. Veraltete Admin-Erwartungen und voneinander abhängige
+des Zeitlimits abschließt. Die Runner installieren auch WebKit für die
+bestehenden Safari-Prüfungen. Veraltete Admin-Erwartungen und voneinander abhängige
 Anmeldetests sind korrigiert. Fehler beim anonymen Verkehrszähler werden
 protokolliert, ohne erfolgreiche oder fehlerhafte Antworten zu verändern.
+Gleichzeitige Kontozugriffe vergeben dieselbe Zilch-Auszeichnung nur einmal,
+ohne eine bereits gespeicherte Aktion als fehlgeschlagen zu melden.
 Auf kurzen Handybildschirmen bleibt die Classic-Schrift lesbar und der ganze
 Spielzettel erreichbar. In der Zilch-Lobby verschiebt die nachgeladene
 Kontoerstellung weder Spiele, Chat noch Ranglisten. Stiller Release ohne
@@ -38,9 +41,12 @@ Versions-Push oder neuen In-App-Hinweis.
 **English:** The local quality check now includes the same security and
 dependency checks as GitHub. The complete browser suite runs in four main
 shards plus separate username and passkey jobs to finish within its time limit.
+Runners also install WebKit for the existing Safari checks.
 Outdated admin expectations and dependent sign-in fixtures have been corrected.
 Anonymous traffic-counter failures are logged without changing successful or
-error responses. On short phone screens, Classic keeps readable lettering and
+error responses. Concurrent account requests unlock each Zilch award only once
+without reporting an already recorded action as failed.
+On short phone screens, Classic keeps readable lettering and
 the whole score sheet within reach. Late account signup in the Zilch lobby no
 longer moves games, chat or rankings. Silent release without a version push or
 new in-app notice.

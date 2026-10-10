@@ -74,7 +74,8 @@ jobs:
           cache: npm
       - run: pip install -r requirements-dev.txt
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      # The main suite also launches WebKit explicitly for Safari regressions.
+      - run: npx playwright install --with-deps chromium webkit
       # Each runner has its own disposable database/server. Keep the existing
       # one-worker setting within a shard so account fixtures remain serial.
       - run: npx playwright test --config=${{ matrix.config }} --shard=${{ matrix.shard }}/${{ matrix.shards }}

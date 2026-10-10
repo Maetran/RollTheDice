@@ -17,8 +17,9 @@ from app.achievements import sync_engagement_achievements_for_users
 from app.api_users import public_player_profile
 from app.auth import create_user
 from app.database import configure_database, get_engine, session_scope, upgrade_database
-from app.models import UserAchievement, UserEngagementEvent
+from app.models import UserAchievement, UserEngagementEvent, ZilchAchievementDelivery, ZilchAchievementUnlock
 from app.security import utcnow
+from app.zilch_achievements import sync_zilch_engagement_achievements_for_users
 
 
 class AchievementSyncConcurrencyTest(TestCase):
@@ -81,3 +82,41 @@ class AchievementSyncConcurrencyTest(TestCase):
             ))
             self.assertEqual(award.unlocked_at, original_unlocked_at)
             self.assertIsNone(award.source_completed_game_id)
+
+    def test_parallel_zilch_engagement_sync_returns_only_the_newly_inserted_award(self):
+        inserts_ready = Barrier(2)
+
+        def synchronize_award_inserts(_connection, _cursor, statement, parameters, _context, _many):
+            if statement.startswith("INSERT INTO zilch_achievement_unlocks") and "zilch.statistics_viewed" in parameters:
+                inserts_ready.wait(timeout=5)
+
+        engine = get_engine()
+        event.listen(engine, "before_cursor_execute", synchronize_award_inserts)
+        try:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futures = [pool.submit(sync_zilch_engagement_achievements_for_users, {self.user.id}) for _ in range(2)]
+                results = [future.result(timeout=10) for future in futures]
+        finally:
+            event.remove(engine, "before_cursor_execute", synchronize_award_inserts)
+
+        awards = [award for result in results for award in result.get(self.user.id, [])]
+        self.assertEqual([award["key"] for award in awards], ["zilch.statistics_viewed"])
+        with session_scope() as db:
+            rows = list(db.scalars(select(ZilchAchievementUnlock).where(
+                ZilchAchievementUnlock.user_id == self.user.id,
+                ZilchAchievementUnlock.achievement_key == "zilch.statistics_viewed",
+            )))
+            self.assertEqual(len(rows), 1)
+            original_unlocked_at = rows[0].unlocked_at
+            self.assertIsNone(rows[0].source_evidence_id)
+            self.assertIsNone(rows[0].presentation_game_id)
+            self.assertEqual(list(db.scalars(select(ZilchAchievementDelivery).where(
+                ZilchAchievementDelivery.unlock_id == rows[0].id,
+            ))), [])
+        self.assertEqual(sync_zilch_engagement_achievements_for_users({self.user.id}), {})
+        with session_scope() as db:
+            award = db.scalar(select(ZilchAchievementUnlock).where(
+                ZilchAchievementUnlock.user_id == self.user.id,
+                ZilchAchievementUnlock.achievement_key == "zilch.statistics_viewed",
+            ))
+            self.assertEqual(award.unlocked_at, original_unlocked_at)
