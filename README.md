@@ -374,6 +374,14 @@ unrolled die is a clear roll control, so the six-die dock never reads as empty.
 The Roll and Bank buttons remain in the visible mobile viewport from game
 start, including while the browser's address and navigation bars are open.
 
+On short phone screens, Classic keeps a readable font size while fitting every
+score row above the dice and actions. Its compact player avatar leaves the
+extra room needed for score suggestions.
+
+**Deutsch:** Auf kurzen Handybildschirmen bleibt die Classic-Schrift lesbar,
+während alle Spielzettelzeilen über Würfeln und Aktionen Platz finden. Das
+kompakte Profilbild lässt dabei Raum für Wertungsvorschläge.
+
 **Deutsch:** LCARS nutzt jetzt eine ruhigere, weniger gesättigte
 Konsolenpalette auf einer fast schwarzen Graphitfläche. Auf Handys ist jeder
 ungeworfene Würfel ein klar umrandeter Roll-Button, damit die Sechserleiste
@@ -683,6 +691,14 @@ immutable-cached font only when selected; a slow font keeps the fallback for
 that page instead of moving the layout later. Private preview routes retain
 their access checks. See the [loading-performance audit](docs/ZILCH_LOADING_AUDIT_2026-09-08.md)
 for measured frontend improvements and the separate production transport issue.
+
+Guest account creation appears below the chat and rankings so a delayed account
+check cannot move those lobby sections. The account entry beside the game
+controls remains available.
+
+**Deutsch:** Die Kontoerstellung für Gäste steht unter Chat und Ranglisten,
+damit eine verzögerte Kontoprüfung diese Lobbybereiche nicht verschiebt. Der
+Kontozugang neben den Spielaktionen bleibt erreichbar.
 
 **ZDWA** offers public profiles and rankings, Normal/Hardcore statistics, score
 charts and completed-game replays. Achievement milestones award
@@ -1117,7 +1133,7 @@ Generated files under `app/static/` must be committed alongside their sources.
 ### Quality checks
 
 ```bash
-npm run lint
+npm run check:quality
 npm run test:backend
 npm run test:browser
 git diff --check
@@ -1126,8 +1142,18 @@ git diff --check
 Browser tests start a separate server on port 8010 with a disposable SQLite
 database. `npm run test:browser` also runs the username-change suite against a
 fresh server in public Zilch mode (`playwright.username.config.js`), separately
-from the private-preview scenarios. CI also runs security and dependency checks; see
-[the quality workflow](.github/workflows/quality.yml).
+from the private-preview scenarios. `npm run check:quality` includes lint,
+dependency consistency, Bandit and the dependency vulnerability audit, matching
+the backend checks in [the quality workflow](.github/workflows/quality.yml).
+CI runs the main browser suite in four isolated shards and the username and
+passkey configurations in separate jobs. Every test still runs with one worker;
+branch pushes and pull requests are checked, without a duplicate run for release tags.
+
+**Deutsch – Qualitätsprüfung:** `npm run check:quality` führt dieselben Lint-,
+Sicherheits- und Abhängigkeitsprüfungen wie GitHub aus. Die Browser-Suite läuft
+in vier getrennten Teilen; Benutzername und Passkeys haben eigene Prüfjobs.
+Alle Tests bleiben erhalten. Release-Tags lösen keinen zweiten identischen
+Prüflauf aus.
 
 Backend tests use `pytest-xdist`: pytest automatically selects up to four workers,
 keeping tests from the same file together. This applies to Codex, the terminal,

@@ -63,7 +63,7 @@ function zilchSnapshot() {
   };
 }
 
-async function gameFixture(browser, baseURL, { game, theme, device, disableTabletStyles = false }) {
+async function gameFixture(browser, baseURL, { game, theme, device }) {
   const context = await browser.newContext({
     baseURL, viewport: { width: device.width, height: device.height },
     hasTouch: device.touch, isMobile: device.touch, serviceWorkers: "block", reducedMotion: "reduce",
@@ -73,27 +73,12 @@ async function gameFixture(browser, baseURL, { game, theme, device, disableTable
     localStorage.setItem("zdwa_language", "de");
   }, { gameName: game, themeName: theme });
   const page = await context.newPage();
-  let disabledTabletRules = 0;
   await page.route(/\/static\/[^?]+\.css(?:\?.*)?$/, async route => {
     const response = await route.fetch();
     // Optional fonts may permanently choose fallback on the first paint.
     // Both comparison contexts use the exact bundled font after loading;
     // source typography and layout declarations remain unchanged.
-    let body = (await response.text()).replace(/font-display:\s*optional/g, "font-display:block");
-    if (disableTabletStyles) {
-      body = body.replace(/@media\s*([^{}]+)\{/g, (rule, condition) => {
-        // A shared phone/tablet rule has comma-separated alternatives. Keep
-        // the phone branches so this fixture only removes tablet styling.
-        const branches = condition.split(",");
-        const retained = branches.filter(branch => {
-          const tablet = /any-pointer\s*:\s*coarse/.test(branch)
-            && /min-width\s*:\s*768px/.test(branch) && /min-height\s*:\s*60[01]px/.test(branch);
-          if (tablet) disabledTabletRules += 1;
-          return !tablet;
-        });
-        return retained.length === branches.length ? rule : `@media ${retained.join(",") || "not all"}{`;
-      });
-    }
+    const body = (await response.text()).replace(/font-display:\s*optional/g, "font-display:block");
     await route.fulfill({ response, body });
   });
   await page.route("**/api/auth/me", route => route.fulfill({ json: {
@@ -135,7 +120,7 @@ async function gameFixture(browser, baseURL, { game, theme, device, disableTable
     await document.fonts.ready;
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   });
-  return { context, page, disabledTabletRules };
+  return { context, page };
 }
 
 async function geometry(page, game) {
@@ -145,28 +130,59 @@ async function geometry(page, game) {
       ? ".zilch-header, .zilch-play-layout, .zilch-notebook-player, .zilch-recommendations, .zilch-dice-dock, .zilch-chat"
       : ".room-header, #scoreOut, .players-grid, .player-card, .table-wrap, .topbar, .suggestions-area, .chat-panel";
     const controls = "button, input, select, .player-card td, .player-card th, .zilch-notebook-player li, .zilch-header a";
-    const elements = [...new Set(document.querySelectorAll(`${roots}, ${controls}`))].filter(element => {
-      const style = getComputedStyle(element);
-      const box = element.getBoundingClientRect();
-      // The closed chat retains offscreen DOM for reopening and may lazily
-      // load fonts there. Only rendered on-screen geometry is a boundary.
-      return style.display !== "none" && style.visibility !== "hidden"
-        && box.width > 0 && box.height > 0 && box.bottom > 0 && box.top < innerHeight
-        && box.right > 0 && box.left < innerWidth;
-    });
-    return {
-      tablet: matchMedia(query).matches,
-      document: { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight, scrollY },
-      elements: elements.map(element => {
-        const box = element.getBoundingClientRect();
+    const measure = () => {
+      const elements = [...new Set(document.querySelectorAll(`${roots}, ${controls}`))].filter(element => {
         const style = getComputedStyle(element);
-        return {
-          tag: element.tagName, id: element.id, text: element.innerText?.trim().replace(/\s+/g, " ") || "",
-          rect: [box.x, box.y, box.width, box.height].map(round),
-          style: Object.fromEntries(["display", "position", "gridTemplateColumns", "flexDirection", "gap", "padding", "fontSize", "lineHeight", "borderRadius", "backgroundColor", "color"].map(key => [key, style[key]])),
-        };
-      }),
+        const box = element.getBoundingClientRect();
+        // The closed chat retains offscreen DOM for reopening and may lazily
+        // load fonts there. Only rendered on-screen geometry is a boundary.
+        return style.display !== "none" && style.visibility !== "hidden"
+          && box.width > 0 && box.height > 0 && box.bottom > 0 && box.top < innerHeight
+          && box.right > 0 && box.left < innerWidth;
+      });
+      return {
+        tablet: matchMedia(query).matches,
+        document: { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight, scrollY },
+        elements: elements.map(element => {
+          const box = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return {
+            tag: element.tagName, id: element.id, text: element.innerText?.trim().replace(/\s+/g, " ") || "",
+            rect: [box.x, box.y, box.width, box.height].map(round),
+            style: Object.fromEntries(["display", "position", "gridTemplateColumns", "flexDirection", "gap", "padding", "fontSize", "lineHeight", "borderRadius", "backgroundColor", "color"].map(key => [key, style[key]])),
+          };
+        }),
+      };
     };
+    const before = measure();
+    const restore = [];
+    let disabledTabletRules = 0;
+    const disableTabletBranches = rules => {
+      for (const rule of rules) {
+        if (rule.type === CSSRule.MEDIA_RULE) {
+          const branches = rule.media.mediaText.split(",");
+          const retained = branches.filter(branch => {
+            const tablet = /any-pointer\s*:\s*coarse/.test(branch)
+              && /min-width\s*:\s*768px/.test(branch) && /min-height\s*:\s*60[01]px/.test(branch);
+            if (tablet) disabledTabletRules += 1;
+            return !tablet;
+          });
+          if (retained.length !== branches.length) {
+            restore.push([rule.media, rule.media.mediaText]);
+            rule.media.mediaText = retained.join(",") || "not all";
+          }
+        }
+        if (rule.cssRules) disableTabletBranches(rule.cssRules);
+      }
+    };
+    let withoutTabletStyles;
+    try {
+      for (const sheet of document.styleSheets) disableTabletBranches(sheet.cssRules);
+      withoutTabletStyles = measure();
+    } finally {
+      for (const [media, original] of restore) media.mediaText = original;
+    }
+    return { before, withoutTabletStyles, restored:measure(), disabledTabletRules };
   }, { gameName: game, query: tabletQuery });
 }
 
@@ -175,23 +191,23 @@ for (const [game, themes] of [["zdwa", ["light", "dark", "classic"]], ["zilch", 
     test(`${game} ${theme}: tablet styles and affordances stay outside phones and mouse desktop`, async ({ browser, baseURL }, testInfo) => {
       test.setTimeout(120000);
       for (const device of devices) {
-        const withoutTabletStyles = await gameFixture(browser, baseURL, { game, theme, device, disableTabletStyles: true });
         const current = await gameFixture(browser, baseURL, { game, theme, device });
         try {
-          const before = await geometry(withoutTabletStyles.page, game);
-          expect(before.tablet, device.name).toBe(false);
           await expect(current.page.locator(".tablet-column-guide:visible, .tablet-board-navigation:visible, .zilch-tablet-guide:visible, .zilch-recommendations--tablet-only:visible")).toHaveCount(0);
-          expect(withoutTabletStyles.disabledTabletRules, "the tablet stylesheet was actually loaded").toBeGreaterThan(0);
-          // A restored optional font can complete its grid measurement after
-          // fonts.ready. Compare the settled layout, retaining exact equality.
-          await expect(async () => {
-            const settledBefore = await geometry(withoutTabletStyles.page, game);
-            const after = await geometry(current.page, game);
-            expect(after, `${game} ${theme} ${device.name}: tablet CSS cannot alter the layout`).toEqual(settledBefore);
-          }).toPass({ timeout: 5000, intervals: [100, 250, 500] });
+          if (game === "zdwa" && theme === "classic") {
+            expect(await current.page.evaluate(() => [400, 700].every(weight =>
+              document.fonts.check(`${weight} 16px "ZDWA Classic Hand"`),
+            )), "Classic uses loaded font metrics").toBe(true);
+          }
+          // Measure the same document synchronously so an unrelated font or
+          // ResizeObserver fit cannot put two contexts in different phases.
+          const comparison = await geometry(current.page, game);
+          expect(comparison.before.tablet, device.name).toBe(false);
+          expect(comparison.disabledTabletRules, "the tablet stylesheet was actually loaded").toBeGreaterThan(0);
+          expect(comparison.withoutTabletStyles, `${game} ${theme} ${device.name}: tablet CSS cannot alter the layout`).toEqual(comparison.before);
+          expect(comparison.restored, "restoring tablet rules preserves the exact layout").toEqual(comparison.before);
           await current.page.screenshot({ path: testInfo.outputPath(`${device.name}-current.png`), animations: "disabled" });
         } finally {
-          await withoutTabletStyles.context.close();
           await current.context.close();
         }
       }

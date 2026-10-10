@@ -2,7 +2,10 @@ name: Quality
 
 on:
   push:
+    # Release tags point to revisions already checked on their branch.
+    branches: ["**"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,16 +25,43 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - run: pip check
-      - run: npm run lint
-      - run: bandit -q -r app scripts -c pyproject.toml
-      - run: pip-audit -r requirements-dev.txt --progress-spinner off
+      - run: npm run check:quality
       - run: pytest --cov --cov-report=term-missing
       - run: git diff --check
 
   browser:
+    name: Browser (${{ matrix.suite }}, ${{ matrix.shard }}/${{ matrix.shards }})
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    strategy:
+      # Finish every suite even when a sibling finds a regression.
+      fail-fast: false
+      matrix:
+        include:
+          - suite: main
+            config: playwright.config.js
+            shard: 1
+            shards: 4
+          - suite: main
+            config: playwright.config.js
+            shard: 2
+            shards: 4
+          - suite: main
+            config: playwright.config.js
+            shard: 3
+            shards: 4
+          - suite: main
+            config: playwright.config.js
+            shard: 4
+            shards: 4
+          - suite: username
+            config: playwright.username.config.js
+            shard: 1
+            shards: 1
+          - suite: passkeys
+            config: playwright.passkeys.config.js
+            shard: 1
+            shards: 1
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -45,12 +75,14 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:browser
-      - name: Upload Playwright failure report
-        if: failure()
+      # Each runner has its own disposable database/server. Keep the existing
+      # one-worker setting within a shard so account fixtures remain serial.
+      - run: npx playwright test --config=${{ matrix.config }} --shard=${{ matrix.shard }}/${{ matrix.shards }}
+      - name: Upload Playwright report
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-${{ matrix.suite }}-${{ matrix.shard }}-of-${{ matrix.shards }}
           path: |
             playwright-report/
             test-results/

@@ -623,7 +623,7 @@ def _record_request_traffic(request: Request, status_code: int) -> None:
             )
     except Exception:
         # Telemetry cannot break a response, even during startup or shutdown.
-        pass
+        logger.debug("Could not record aggregate request traffic", exc_info=True)
 
 
 @app.middleware("http")

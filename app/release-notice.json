@@ -4,23 +4,21 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Passende Würfel werden nach der Animation grün. Mobile Dialogbuttons haben mehr Platz; Spielabschlüsse kommen ohne Prüfdialog.",
-  "summary_en": "Matching dice turn green after animation. Mobile dialog buttons have more room; game completion skips the checking dialog.",
+  "summary_de": "Classic bleibt auf kurzen Handybildschirmen lesbar. In der Zilch-Lobby verschiebt die Kontoerstellung keine Spielbereiche mehr.",
+  "summary_en": "Classic stays readable on short phone screens. Account signup no longer shifts game areas in the Zilch lobby.",
   "player_notes": {
     "de": {
-      "title": "Mehr Ruhe beim Würfeln und am Spielende",
+      "title": "Lesbare Spielzettel und eine stabile Lobby",
       "changes": [
-        "Bei Zahlenansagen zeigt die grüne Haltemarkierung erst nach der Wurfanimation die passenden Würfel. Du kannst sie anschließend weiterhin abwählen.",
-        "Auf dem Handy haben die Buttons in Streich- und Ergebnisdialogen mehr Abstand zum unteren Bildschirmrand.",
-        "Erfolge werden am Spielende im Hintergrund geprüft. Neue Erfolge und Rangaufstiege erscheinen weiterhin, ohne kurz aufblinkenden Prüfdialog."
+        "Auf kurzen Handybildschirmen bleibt die Classic-Schrift lesbar und der gesamte Spielzettel über Würfeln und Aktionen erreichbar.",
+        "In der Zilch-Lobby stehen Spiele, Chat und Ranglisten ruhig, auch wenn die Kontoprüfung etwas länger dauert. Die Kontoerstellung für Gäste findest du darunter."
       ]
     },
     "en": {
-      "title": "Calmer rolls and game completion",
+      "title": "Readable score sheets and a stable lobby",
       "changes": [
-        "For number announcements, matching dice show their green hold marker after the roll animation. You can still deselect them afterward.",
-        "On phones, strike and result dialog buttons have more space above the bottom screen edge.",
-        "Achievements are checked in the background at game completion. New achievements and rank-ups still appear without a briefly flashing progress dialog."
+        "On short phone screens, Classic keeps readable lettering and the whole score sheet within reach above the dice and actions.",
+        "Games, chat and rankings stay still in the Zilch lobby, even when the account check takes longer. Guest account signup is available below them."
       ]
     }
   }

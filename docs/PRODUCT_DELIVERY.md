@@ -24,7 +24,8 @@ geteilten Vorschauen auftauchen.
    kurzlebige oder geschützte Seiten bleiben mit `noindex` aus dem Index.
    `/robots.txt` verweist immer auf die Sitemap und sperrt nur technische
    Endpunkte, nicht die Seiten, die ihr `noindex` selbst ausliefern müssen.
-4. **Qualitätssicherung:** Vor Commit und Deploy mindestens `npm run lint`,
+4. **Qualitätssicherung:** Vor Commit und Deploy mindestens `npm run check:quality`
+   (einschließlich `npm run lint`, Bandit und Abhängigkeitsprüfungen),
    die Backend-Tests und bei sichtbaren Änderungen die Browser-Tests ausführen.
    Neue/geänderte Seitenpfade erhalten in `tests/test_navigation_contract.py`
    eine konkrete Prüfzuordnung. Zielseite, Anmeldung/Rückweg und bei sichtbarer

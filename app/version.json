@@ -1,10 +1,10 @@
 {
-  "version": "2.48.1",
+  "version": "2.48.2",
   "bump": "patch",
   "date": "2026-10-11",
-  "previous_revision": "4d51580f89fe3a94bc7c8cf628e98ff19106d4f9",
+  "previous_revision": "5f204d3024e75498eb43d6b93d53e02ed74343ba",
   "summary": {
-    "de": "Ruhigere Wurfanzeige und Spielabschlüsse, mehr Platz für mobile Dialogbuttons",
-    "en": "Calmer dice reveals and game completion, more room for mobile dialog buttons"
+    "de": "Stabile Qualitätsprüfungen und lesbare, ruhige Spielansichten",
+    "en": "Reliable quality checks and readable, stable game screens"
   }
 }

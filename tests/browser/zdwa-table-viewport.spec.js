@@ -85,3 +85,53 @@ for (const theme of ["light", "dark", "classic"]) {
     } finally { await context.close(); }
   });
 }
+
+test("Classic short phones keep every score readable when suggestions appear after rolling", async ({ browser, baseURL, request }, testInfo) => {
+  const context = await browser.newContext({ baseURL, hasTouch:true, isMobile:true, viewport:{ width:320, height:480 }, serviceWorkers:"block" });
+  await context.addInitScript(() => localStorage.setItem("wuerfler_theme", "classic"));
+  const page = await context.newPage();
+  let snapshots = 0;
+  page.on("websocket", socket => socket.on("framereceived", frame => {
+    if (JSON.parse(frame.payload).scoreboard) snapshots += 1;
+  }));
+  try {
+    const response = await request.post("/api/games", { data:{ name:"Classic compact suggestions", mode:1 } });
+    expect(response.ok()).toBeTruthy();
+    await page.goto(`/spiel/${(await response.json()).game_id}?name=Anna&__test=1`);
+    await expect(page.locator(".player-card.me table.grid")).toBeVisible();
+    await page.evaluate(async () => {
+      await Promise.all([400, 700].map(weight => document.fonts.load(`${weight} 16px "ZDWA Classic Hand"`)));
+      await document.fonts.ready;
+    });
+    const beforeRoll = snapshots;
+    await page.locator("#rollBtnInline").click();
+    await expect.poll(() => snapshots).toBeGreaterThan(beforeRoll);
+    await expect.poll(() => page.locator("#diceBar .die svg circle").count()).toBeGreaterThan(0);
+    await expect(page.locator("#diceBar .die.shaking")).toHaveCount(0);
+    const states = [
+      [],
+      [{ type:"KENTER", points:35, eligible:true }],
+      [{ type:"MAX", points:25, eligible:true }, { type:"MIN", points:7, eligible:true }],
+      [],
+    ];
+    for (const [index, suggestions] of states.entries()) {
+      await page.evaluate(values => {
+        window.__rtDebugRenderSuggestionsForSnapshot({ suggestions:values });
+        window.dispatchEvent(new Event("resize"));
+      }, suggestions);
+      await expect(page.locator("#suggestions .suggestion-btn")).toHaveCount(suggestions.length);
+      await expectCompleteScoreSheet(page, ".player-card.me .table-wrap", {
+        minWritableRowHeight:10.5, minFixedRowHeight:10, minFontSize:9.8,
+      });
+      await expect.poll(() => page.locator(".player-card.me table.grid tbody tr:last-child").evaluate(row => {
+        const box = row.getBoundingClientRect();
+        const sheet = row.closest(".table-wrap").getBoundingClientRect();
+        return Math.min(box.bottom, sheet.bottom) - Math.max(box.top, sheet.top);
+      }), { message:"the complete bottom total remains readable when suggestions change" }).toBeGreaterThan(10);
+      await expectReachable(page, "#rollBtnInline");
+      await expectReachable(page, "#announceBtnInline");
+      await expectReachable(page, "#chatToggle");
+      await page.screenshot({ path:testInfo.outputPath(`classic-short-suggestions-${index}.png`) });
+    }
+  } finally { await context.close(); }
+});

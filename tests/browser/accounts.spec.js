@@ -8,6 +8,25 @@ async function openAccountSection(page, section) {
   if (await details.getAttribute("open") === null) await details.locator(":scope > summary").click();
 }
 
+async function ensureRegisteredSmoke(request) {
+  // Keep the account flows runnable on their own and after a failed admin UI
+  // assertion. This request context is separate from the browser's login.
+  const administrator = await request.post("/api/auth/login", {
+    data: { username: "Admin", password: "temporary-password-123" },
+  });
+  expect(administrator.ok()).toBeTruthy();
+  const admin = (await administrator.json()).user;
+  const search = await request.get("/api/admin/users", { params: { query: "RegisteredSmoke" } });
+  expect(search.ok()).toBeTruthy();
+  if (!(await search.json()).users.some(user => user.username === "RegisteredSmoke")) {
+    const created = await request.post("/api/admin/users", {
+      headers: { "X-CSRF-Token": admin.csrf_token },
+      data: { username: "RegisteredSmoke", temporary_password: "registered-password-123", role: "user" },
+    });
+    expect(created.status()).toBe(201);
+  }
+}
+
 
 
 async function expectNoGermanUi(page) {
@@ -860,7 +879,22 @@ test("admin can log in, create a user and open the public profile", async ({ pag
     page.click("#adminLink"),
   ]);
   await expect(page.getByRole("heading", { name: "Adminbereich" })).toBeVisible();
-  await expect(page.locator(".admin-module-tile")).toHaveCount(3);
+  await expect(page.locator(".admin-module-tile")).toHaveCount(4);
+  const dashboard = page.locator("#analyticsDashboardLink");
+  await expect(dashboard).toBeVisible();
+  await expect(dashboard).toContainText("Mission Control");
+  await expect(dashboard).toHaveAttribute("href", "/admin/dashboard");
+  for (const [panel, label] of [
+    ["usersPanel", "Benutzerverwaltung"],
+    ["assignmentsPanel", "Spielzuordnung"],
+    ["completedGamesPanel", "Spiele löschen"],
+  ]) {
+    const tile = page.locator(`[data-admin-panel="${panel}"]`);
+    await expect(tile).toBeVisible();
+    await expect(tile).toContainText(label);
+    await expect(tile).toHaveAttribute("aria-controls", panel);
+    await expect(tile).toHaveAttribute("aria-expanded", "false");
+  }
   await expect(page.locator("#usersPanel")).toBeHidden();
   await expect(page.locator("#completedGamesPanel")).toBeHidden();
 
@@ -999,7 +1033,8 @@ test("superadmin can make a neutral extra roll and a scored 60 triggers the cele
 });
 
 
-test("logged-in user sees the personal landing page", async ({ page }) => {
+test("logged-in user sees the personal landing page", async ({ page, request }) => {
+  await ensureRegisteredSmoke(request);
   await page.goto("/");
   await openPasswordLogin(page);
   await page.fill("#loginUsername", "RegisteredSmoke");
@@ -1029,7 +1064,8 @@ test("logged-in user sees the personal landing page", async ({ page }) => {
 });
 
 
-test("account history keeps Normal and Hardcore in separate chart datasets", async ({ page }) => {
+test("account history keeps Normal and Hardcore in separate chart datasets", async ({ page, request }) => {
+  await ensureRegisteredSmoke(request);
   await page.goto("/");
   await openPasswordLogin(page);
   await page.fill("#loginUsername", "RegisteredSmoke");
@@ -1098,7 +1134,8 @@ test("account history keeps Normal and Hardcore in separate chart datasets", asy
 });
 
 
-test("account gameplay preferences persist and control announce behavior", async ({ page }) => {
+test("account gameplay preferences persist and control announce behavior", async ({ page, request }) => {
+  await ensureRegisteredSmoke(request);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await openPasswordLogin(page);
@@ -1204,7 +1241,8 @@ test("account gameplay preferences persist and control announce behavior", async
 });
 
 
-test("logged-in player can resume on another browser without a local token", async ({ page, browser }) => {
+test("logged-in player can resume on another browser without a local token", async ({ page, browser, request }) => {
+  await ensureRegisteredSmoke(request);
   await page.goto("/");
   await openPasswordLogin(page);
   await page.fill("#loginUsername", "RegisteredSmoke");

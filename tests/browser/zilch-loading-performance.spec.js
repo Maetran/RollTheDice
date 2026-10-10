@@ -22,7 +22,15 @@ async function installPaintObserver(page, theme = "lcars") {
     window.__zilchLoadingMetrics = metrics;
     new PerformanceObserver(list => {
       for (const entry of list.getEntries()) {
-        if (!entry.hadRecentInput) metrics.shifts.push({ time: entry.startTime, value: entry.value });
+        if (!entry.hadRecentInput) metrics.shifts.push({
+          time: entry.startTime,
+          value: entry.value,
+          sources: entry.sources.map(source => ({
+            node: source.node ? `${source.node.tagName}#${source.node.id}.${String(source.node.className)}` : null,
+            previous: source.previousRect.toJSON(),
+            current: source.currentRect.toJSON(),
+          })),
+        });
       }
     }).observe({ type: "layout-shift", buffered: true });
     new PerformanceObserver(list => {
@@ -136,13 +144,21 @@ test("public LCARS lobby paints while auth and the font are stalled, without a l
 
     authGate.release();
     await expect(page.locator("#zilchCreateForm button[type=submit]")).toBeEnabled();
+    await expect(page.locator(".zilch-signup-card [data-registration-form]")).toBeVisible();
+    expect(await page.locator(".zilch-signup-card").evaluate(panel => {
+      const ranking = document.querySelector(".zilch-lobby-ranking");
+      const chat = document.querySelector("#zilchLobbyChatMount");
+      return Boolean(ranking && chat
+        && (ranking.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING)
+        && (chat.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING));
+    }), "guest registration stays available without displacing the lobby").toBe(true);
     await settlePaint(page);
     expect(await heading.evaluate(element => element.isConnected)).toBe(true);
     expect(await box(page)).toEqual(afterFont);
     const lateCls = await page.evaluate(since => window.__zilchLoadingMetrics.shifts
       .filter(entry => entry.time >= since).reduce((sum, entry) => sum + entry.value, 0), beforeRelease);
-    expect(lateCls).toBeLessThan(0.02);
     await attachMetrics(page, testInfo);
+    expect(lateCls).toBeLessThan(0.02);
   } finally {
     authGate.release();
     fontGate.release();
@@ -183,9 +199,9 @@ test("the public Zilch heading paints even when both application scripts are sta
     await expect(page.locator("#zilchCreateForm button[type=submit]")).toBeEnabled();
     expect(await heading.evaluate(element => element.isConnected)).toBe(true);
     await settlePaint(page);
+    await attachMetrics(page, testInfo);
     expect(await page.evaluate(() => window.__zilchLoadingMetrics.shifts
       .reduce((sum, entry) => sum + entry.value, 0))).toBeLessThan(0.1);
-    await attachMetrics(page, testInfo);
   } finally {
     scriptGate.release();
     authGate.release();
@@ -284,6 +300,31 @@ test("the optional LCARS font loads only when LCARS is selected", async ({ brows
     await expect.poll(() => fontRequests.length).toBeGreaterThan(0);
   } finally {
     await context.close();
+  }
+});
+
+test("public lobby account creation stays reachable from its upper account action in both languages", async ({ browser, baseURL }) => {
+  for (const language of ["de", "en"]) {
+    const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+    const page = await context.newPage();
+    try {
+      await page.addInitScript(value => localStorage.setItem("zdwa_language", value), language);
+      await installPaintObserver(page);
+      await installPublicLobbyFixture(page);
+      await page.route("**/api/auth/me", route => route.fulfill({ json: PUBLIC_AUTH }));
+      await page.goto("/zilch");
+      const accountAction = page.locator(".zilch-lobby-identity [data-zilch-navigate]");
+      await expect(accountAction).toBeEnabled();
+      await expect(accountAction).toBeInViewport();
+      await expect(accountAction).toHaveAttribute("data-zilch-navigate", "/zilch/anmelden");
+      await accountAction.click();
+      await expect(page).toHaveURL(/\/zilch\/anmelden$/);
+      await expect(page.locator("#zilchRegistrationForm")).toBeVisible();
+      await expect(page.locator("[data-registration-username]")).toBeVisible();
+      await expect(page.locator("html")).toHaveAttribute("lang", language);
+    } finally {
+      await context.close();
+    }
   }
 });
 

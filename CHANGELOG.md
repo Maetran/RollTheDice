@@ -22,6 +22,29 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.48.2 — Verlässliche Prüfungen und stabile Ansichten / Reliable checks and stable screens — 2026-10-11
+
+**Deutsch:** Der lokale Qualitätscheck umfasst jetzt dieselben Sicherheits- und
+Abhängigkeitsprüfungen wie GitHub. Die vollständige Browsersuite läuft in vier
+Hauptteilen sowie eigenen Jobs für Benutzername und Passkeys, damit sie innerhalb
+des Zeitlimits abschließt. Veraltete Admin-Erwartungen und voneinander abhängige
+Anmeldetests sind korrigiert. Fehler beim anonymen Verkehrszähler werden
+protokolliert, ohne erfolgreiche oder fehlerhafte Antworten zu verändern.
+Auf kurzen Handybildschirmen bleibt die Classic-Schrift lesbar und der ganze
+Spielzettel erreichbar. In der Zilch-Lobby verschiebt die nachgeladene
+Kontoerstellung weder Spiele, Chat noch Ranglisten. Stiller Release ohne
+Versions-Push oder neuen In-App-Hinweis.
+
+**English:** The local quality check now includes the same security and
+dependency checks as GitHub. The complete browser suite runs in four main
+shards plus separate username and passkey jobs to finish within its time limit.
+Outdated admin expectations and dependent sign-in fixtures have been corrected.
+Anonymous traffic-counter failures are logged without changing successful or
+error responses. On short phone screens, Classic keeps readable lettering and
+the whole score sheet within reach. Late account signup in the Zilch lobby no
+longer moves games, chat or rankings. Silent release without a version push or
+new in-app notice.
+
 ## 2.48.1 — Ruhigere Anzeige und mobile Dialoge / Calmer reveals and mobile dialogs — 2026-10-11
 
 **Deutsch:** Automatisch gehaltene Würfel bei Zahlenansagen werden erst grün,

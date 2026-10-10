@@ -77,6 +77,7 @@
       const fixedPadding = Math.max(0, Math.min(1.4, (fixedHeight - fixedFont * (tablet ? 1.08 : 1.05) - 1) / 2));
       const setPixels = (property, value) => card.style.setProperty(property, `${Math.floor(value * 100) / 100}px`);
       const suggestionInset = Number.parseFloat(getComputedStyle(card).getPropertyValue("--responsive-score-suggestion-inset")) || 0;
+      const minimumFont = tablet ? 12 : (window.matchMedia?.("(max-height: 480px)").matches ? 9.8 : 10);
       let fitted = { writeHeight, fixedHeight, writeFont, fixedFont, writePadding, fixedPadding };
       const applyFit = () => {
         setPixels("--responsive-score-row", fitted.writeHeight + suggestionInset);
@@ -97,8 +98,8 @@
         fitted = {
           writeHeight:fitted.writeHeight * scale,
           fixedHeight:fitted.fixedHeight * scale,
-          writeFont:Math.max(tablet ? 12 : 7.5, fitted.writeFont * scale),
-          fixedFont:Math.max(tablet ? 12 : 7.5, fitted.fixedFont * scale),
+          writeFont:Math.max(minimumFont, fitted.writeFont * scale),
+          fixedFont:Math.max(minimumFont, fitted.fixedFont * scale),
           writePadding:fitted.writePadding * scale,
           fixedPadding:fitted.fixedPadding * scale,
         };

@@ -1168,10 +1168,6 @@ async function renderLobby({ authReady = null } = {}) {
       <p id="zilchCreateError" class="zilch-error" role="status"></p>
       <a class="button-link small ghost" href="${zilchPath("/offline-spielen")}">${escapeHtml(t("Offline spielen"))}</a>
     </section>
-    ${hasAccount ? '' : `<section class="zilch-card zilch-signup-card" data-registration-panel hidden aria-label="${escapeHtml(t('Spielerkonto'))}">
-      ${registrationFormMarkup('zilchLandingRegistration')}
-      <p class="zilch-login-message" data-registration-message role="status"></p>
-    </section>`}
     <section id="zilchGamesHub" class="zilch-card zilch-games-hub" aria-labelledby="zilchGamesHubTitle">
       <div class="zilch-section-heading"><h2 id="zilchGamesHubTitle">${escapeHtml(t("Spiele"))}</h2><button id="zilchRefresh" class="small ghost" type="button">${escapeHtml(t("Aktualisieren"))}</button></div>
       <div class="zilch-lobby-grid" aria-label="${escapeHtml(t("Zilch-Lobby"))}">
@@ -1194,7 +1190,11 @@ async function renderLobby({ authReady = null } = {}) {
         ${lobbyLeaderboardShell("multiplayer_wins")}
         ${lobbyLeaderboardShell("cpu_wins")}
       </div>
-    </section>`;
+    </section>
+    ${hasAccount ? '' : `<section class="zilch-card zilch-signup-card" data-registration-panel hidden aria-label="${escapeHtml(t('Spielerkonto'))}">
+      ${registrationFormMarkup('zilchLandingRegistration')}
+      <p class="zilch-login-message" data-registration-message role="status"></p>
+    </section>`}`;
 
   if (existingIntro) {
     // Keep the server-painted hero connected even while a delayed JS bundle

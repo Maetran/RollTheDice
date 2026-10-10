@@ -602,3 +602,24 @@ class AnalyticsTests(unittest.TestCase):
                 self.assertEqual(server["memory"]["scope"], "host")
                 self.assertEqual(server["host_uptime_seconds"], 3600)
                 self.assertEqual(server["disk"]["scope"], "data_filesystem")
+
+    def test_traffic_counter_failure_preserves_success_and_error_responses(self):
+        app = FastAPI()
+        app.middleware("http")(main.response_request_traffic)
+
+        @app.get("/counter-health")
+        def health():
+            return {"status": "ok"}
+
+        @app.get("/counter-error")
+        def rejected():
+            raise HTTPException(status_code=503, detail="Temporarily unavailable")
+
+        with patch.object(main, "record_http_request", side_effect=RuntimeError("Counter unavailable")):
+            with TestClient(app) as client:
+                successful = client.get("/counter-health")
+                self.assertEqual(successful.status_code, 200)
+                self.assertEqual(successful.json(), {"status": "ok"})
+                rejected_response = client.get("/counter-error")
+                self.assertEqual(rejected_response.status_code, 503)
+                self.assertEqual(rejected_response.json(), {"detail": "Temporarily unavailable"})

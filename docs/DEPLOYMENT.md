@@ -108,19 +108,21 @@ Vor einem regulären Rollout müssen folgende Bedingungen erfüllt sein:
   bestätigten `data.backup-*`-Stand außerhalb des laufenden `data/` bewahren.
 - Statische Assets sind mit `scripts/sync_static_versions.py --check` synchronisiert.
 
-Empfohlene lokale Prüfung:
+Lokale Prüfung mit demselben Sicherheitsumfang wie GitHub:
 
 ```bash
-pytest --cov --cov-report=term-missing
-ruff check .
-bandit -q -r app scripts -c pyproject.toml
-vulture app scripts tests --min-confidence 80
-pip-audit -r requirements-dev.txt --progress-spinner off
+npm run check:quality
+npm run test:backend
 npm run test:browser
-python3 scripts/sync_static_versions.py --check
 git diff --check
 git status --short
 ```
+
+`check:quality` enthält Lint, Produkt-/Versions-/Assetprüfungen, `pip check`,
+Bandit und den Abhängigkeits-Audit. Der GitHub-Workflow nutzt denselben Befehl.
+Seine Browserjobs verteilen die Hauptsuite auf vier isolierte Runner; die
+Benutzernamen- und Passkey-Konfigurationen laufen separat. Branches und Pull
+Requests werden geprüft, Release-Tags erzeugen keinen doppelten Lauf.
 
 ## Reverse-Proxy-Härtung
 
