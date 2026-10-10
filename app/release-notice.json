@@ -1,28 +1,27 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch"
+    "zdwa"
   ],
-  "summary_de": "Erstelle dein Konto direkt mit Passkey. Ein Passwort bleibt optional als Backup; bestehende Konten erhalten einen Wochenhinweis.",
-  "summary_en": "Create your account directly with a passkey. Passwords remain an optional backup; existing accounts get a weekly reminder.",
+  "summary_de": "ZDWA wird bequemer: weniger Streich-Rückfragen, passende Würfel automatisch halten und Ansagen direkt schreiben. Alles einzeln einstellbar.",
+  "summary_en": "Smoother ZDWA: fewer strike prompts, automatic holds for number announcements and a Write button. Each feature has its own setting.",
   "player_notes": {
     "de": {
-      "title": "Dein Konto beginnt mit einem Passkey",
+      "title": "Drei kleine Helfer für deinen Spielzug",
       "changes": [
-        "Gib auf der Landingpage deinen Namen ein und bestätige einen Passkey: Dein Konto ist sofort bereit.",
-        "E-Mail und Passwort sind dabei optional. Ein Backup-Passwort kannst du später in den Einstellungen festlegen.",
-        "Ohne Passkey erinnert dich ein dezenter Hinweis höchstens alle sieben Tage. Du kannst ihn für sieben Tage wegklicken.",
-        "Dein letzter Passkey bleibt geschützt, bis du einen weiteren Passkey oder ein Backup-Passwort eingerichtet hast."
+        "Wenn nur ein erlaubtes Feld bleibt, streichst du es ohne zusätzliche Rückfrage. Bei mehreren Auswahlmöglichkeiten bleibt die Bestätigung.",
+        "Bei einer Zahlenansage von 1 bis 6 werden passende Würfel sofort und nach weiteren Würfen gehalten. Du kannst sie weiter abwählen; beim Aufheben der Ansage lösen sich die automatischen Haltepunkte.",
+        "Ab dem zweiten Wurf wird der Ansage-Button zu Schreiben. Du entscheidest, ob du einträgst oder weiterwürfelst.",
+        "Alle drei Funktionen sind von Anfang an aktiv und unter Konto → Einstellungen einzeln abschaltbar. Offline findest du die Schalter vor dem Spielstart."
       ]
     },
     "en": {
-      "title": "Start your account with a passkey",
+      "title": "Three little helpers for your turn",
       "changes": [
-        "Enter your name on the landing page and confirm a passkey: your account is ready immediately.",
-        "Email and a password are optional. You can set a backup password later in settings.",
-        "Without a passkey, a gentle reminder appears at most every seven days. You can dismiss it for seven days.",
-        "Your last passkey stays protected until you have another passkey or a backup password."
+        "When only one legal field remains, strike it without an extra prompt. Confirmation stays when you have several choices.",
+        "For number announcements from 1 to 6, matching dice are held immediately and after later rolls. You can still deselect them; cancelling the announcement releases automatic holds.",
+        "From the second roll, the announcement button becomes Write. You choose whether to enter the result or keep rolling.",
+        "All three features start enabled and can each be disabled under Account → Settings. Offline, the switches are available before starting."
       ]
     }
   }

@@ -290,18 +290,58 @@ def can_roll_now(g: GameDict, pid: str | None) -> tuple[bool, str]:
     return True, ""
 
 
-def apply_roll(g: GameDict, *, randint_fn=None) -> list[int]:
+def apply_announcement(g: GameDict, field: str | None, *, auto_hold_announced_numbers: bool = True) -> None:
+    """Wechselt die Ansage und haelt passende Zahlen, ohne manuelle Holds zu loesen."""
+    _clear_announcement(g)
+    g["_announced_row4"] = field
+    if (
+        not auto_hold_announced_numbers
+        or int(g.get("_rolls_used", 0) or 0) != 1
+        or g.get("_hardcore")
+        or field not in ("1", "2", "3", "4", "5", "6")
+    ):
+        return
+    holds = g.get("_holds") or [False] * 5
+    automatic = []
+    for index, face in enumerate(g.get("_dice") or []):
+        if index < len(holds) and not holds[index] and face == int(field):
+            holds[index] = True
+            automatic.append(index)
+    g["_holds"] = holds
+    g["_auto_held_announced_indices"] = automatic
+
+
+def apply_roll(g: GameDict, *, randint_fn=None, auto_hold_announced_numbers: bool = True) -> list[int]:
     """Wendet einen Wurf auf den Spielzustand an und pflegt die Roll-Metadaten."""
     rng = randint_fn or random.randint
     dice = g["_dice"][:] if g.get("_dice") else [0] * 5
     holds = list(g.get("_holds", [False] * 5))[:5]
     if len(holds) < 5:
         holds += [False] * (5 - len(holds))
+    automatic = {
+        index for index in g.get("_auto_held_announced_indices", [])
+        if type(index) is int and 0 <= index < 5 and holds[index]
+    }
+
+    announced = g.get("_announced_row4")
+    auto_hold_face = (
+        int(announced)
+        if auto_hold_announced_numbers
+        and int(g.get("_rolls_used", 0) or 0) >= 1
+        and not g.get("_hardcore")
+        and announced in ("1", "2", "3", "4", "5", "6")
+        else None
+    )
 
     for i in range(5):
         if not holds[i]:
             dice[i] = rng(1, 6)
+            if dice[i] == auto_hold_face:
+                holds[i] = True
+                automatic.add(i)
     g["_dice"] = dice
+    g["_holds"] = holds
+    g["_auto_held_announced_indices"] = sorted(automatic)
     g["_rolls_used"] = int(g.get("_rolls_used", 0) or 0) + 1
 
     try:

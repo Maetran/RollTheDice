@@ -33,7 +33,8 @@
       });
     }
 
-    // Ein Button setzt eine neue Ansage oder hebt die aktive Ansage wieder auf.
+    // Ab Wurf 2 schreibt derselbe Button die aktive Ansage über den normalen
+    // Zell-Klick, einschließlich Streich-Bestätigung und Schreibsperren.
     const announceBtn = $("#announceBtnInline", mount);
     if (announceBtn && !announceBtn._bound){
       announceBtn._bound = true;
@@ -44,7 +45,12 @@
           syncActionButtons(sb);
           return;
         }
-        const state = announceBtn.dataset.state || "announce";
+        const state = availability.mode || "announce";
+
+        if (state === "write") {
+          availability.cell?.click();
+          return;
+        }
 
         if (state === "unannounce" && sb?._announced_row4){
           safeSend(ws, { action: "unannounce_row4" });

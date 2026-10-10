@@ -24,6 +24,26 @@ community features.
 Both games use server-authoritative dice and scoring. Zilch has its own rules
 engine, results and rankings: its points never affect ZDWA standings.
 
+ZDWA offers three independent convenience settings, enabled by default for new
+and existing accounts under **Account → Settings**: skip the zero-point prompt
+when only one legal field is available, automatically hold dice matching a number
+announcement (1–6) immediately and after later rolls, and turn the announcement
+button into **Write** from the second roll. Automatically held dice remain deselectable;
+cancel or change the announcement to release them, keeping prior manual holds.
+correction mode retains zero-point confirmation. Guests use the enabled defaults.
+Offline play offers the same three switches before starting, saved only in that browser.
+
+**Deutsch:** Drei unabhängige Komforteinstellungen sind für neue und bestehende
+Konten unter **Konto → Einstellungen** standardmässig aktiv: ohne Rückfrage
+streichen, wenn nur ein regelkonform auswählbares Feld bleibt, passende Würfel
+bei Zahlenansagen von 1 bis 6 sofort und nach weiteren Würfen automatisch halten und den
+Ansage-Button ab Wurf 2 zu **Schreiben** ändern. Gehaltene Würfel bleiben
+abwählbar; beim Aufheben oder Ändern der Ansage werden automatische Haltepunkte
+gelöst und vorherige manuelle Haltepunkte bleiben erhalten. Bei Korrekturen
+wird Streichen weiterhin bestätigt. Gäste nutzen
+die aktiven Vorgaben. Offline sind die drei Schalter vor dem Start verfügbar
+und werden nur in diesem Browser gespeichert.
+
 ## Contents
 
 - [Quick start](#quick-start)

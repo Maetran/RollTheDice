@@ -27,6 +27,7 @@ export function createGame() {
   return {
     schema: 1, game: "zdwa", mode: "solo", board: {},
     dice: [0, 0, 0, 0, 0], holds: [false, false, false, false, false],
+    autoHeldAnnouncedIndices: [],
     rollsUsed: 0, rollsMax: 3, announced: null, firstFourRoll: null,
     turn: 1, finished: false, lastWrite: null,
   };
@@ -87,7 +88,7 @@ function randomDie() {
   return 1 + data[0] % 6;
 }
 
-export function roll(game, rng = randomDie) {
+export function roll(game, rng = randomDie, { autoHoldAnnouncedNumbers = true } = {}) {
   assertActive(game);
   if (game.rollsUsed >= game.rollsMax) fail("no_rolls", "Keine Würfe mehr");
   if (game.rollsUsed >= 1 && !game.announced && announcementRequired(game)) {
@@ -96,6 +97,20 @@ export function roll(game, rng = randomDie) {
   const dice = game.dice.map((face, index) => game.holds[index] ? face : rng());
   if (!dice.every(face => Number.isInteger(face) && face >= 1 && face <= 6)) {
     fail("invalid_dice", "Ungültige Würfelauswahl");
+  }
+  // Apply only to the accepted later roll. Holds can still be toggled freely
+  // after announcing, rendering, reloading or changing a preference.
+  if (autoHoldAnnouncedNumbers && game.rollsUsed >= 1 && /^[1-6]$/.test(game.announced)) {
+    const face = Number(game.announced);
+    const automatic = new Set(game.autoHeldAnnouncedIndices || []);
+    game.holds = game.holds.map((held, index) => {
+      if (!held && dice[index] === face) {
+        automatic.add(index);
+        return true;
+      }
+      return held;
+    });
+    game.autoHeldAnnouncedIndices = [...automatic].sort((a, b) => a - b);
   }
   game.dice = dice;
   game.rollsUsed += 1;
@@ -110,10 +125,11 @@ export function toggleHold(game, index) {
   if (game.rollsUsed < 1) fail("roll_first", "Erst würfeln");
   if (!Number.isInteger(index) || index < 0 || index >= 5) fail("invalid_dice", "Ungültige Würfelauswahl");
   game.holds[index] = !game.holds[index];
+  game.autoHeldAnnouncedIndices = (game.autoHeldAnnouncedIndices || []).filter(automatic => automatic !== index);
   return game;
 }
 
-export function announce(game, field) {
+export function announce(game, field, { autoHoldAnnouncedNumbers = true } = {}) {
   assertActive(game);
   if (game.rollsUsed !== 1) fail("announcement_timing", "Ansage (oder Änderung) nur direkt nach Wurf 1");
   if (field === null) {
@@ -122,7 +138,18 @@ export function announce(game, field) {
     if (!FIELDS.includes(field)) fail("invalid_announcement", "Ungültiges Ansage-Feld");
     if (owns(game.board, `${ROW_BY_FIELD[field]},ang`)) fail("cell_filled", "Dieses Feld ist bereits befüllt");
   }
+  for (const index of game.autoHeldAnnouncedIndices || []) game.holds[index] = false;
+  game.autoHeldAnnouncedIndices = [];
   game.announced = field;
+  if (autoHoldAnnouncedNumbers && /^[1-6]$/.test(field)) {
+    const face = Number(field);
+    game.holds.forEach((held, index) => {
+      if (!held && game.dice[index] === face) {
+        game.holds[index] = true;
+        game.autoHeldAnnouncedIndices.push(index);
+      }
+    });
+  }
   return game;
 }
 
@@ -165,6 +192,7 @@ export function write(game, row, col, { strike = false } = {}) {
     game.turn += 1;
     game.dice = [0, 0, 0, 0, 0];
     game.holds = [false, false, false, false, false];
+    game.autoHeldAnnouncedIndices = [];
     game.rollsUsed = 0;
     game.rollsMax = remainingCount(game) === 1 ? 5 : 3;
     game.announced = null;
@@ -238,6 +266,12 @@ export function validateSavedGame(game) {
     || !game.dice.every(face => Number.isInteger(face) && (game.rollsUsed ? face >= 1 && face <= 6 : face === 0))) return false;
   if (!Array.isArray(game.holds) || game.holds.length !== 5
     || !game.holds.every(held => typeof held === "boolean" && (game.rollsUsed > 0 || !held))) return false;
+  if (owns(game, "autoHeldAnnouncedIndices")) {
+    const automatic = game.autoHeldAnnouncedIndices;
+    if (!Array.isArray(automatic) || new Set(automatic).size !== automatic.length
+      || !automatic.every(index => Number.isInteger(index) && index >= 0 && index < 5
+        && game.holds[index] && /^[1-6]$/.test(game.announced) && game.dice[index] === Number(game.announced))) return false;
+  }
   if (game.firstFourRoll !== null && (!Number.isInteger(game.firstFourRoll)
     || game.firstFourRoll < 1 || game.firstFourRoll > game.rollsUsed)) return false;
   if (game.firstFourRoll === null && [...counts(game.dice).values()].some(count => count >= 4)) return false;

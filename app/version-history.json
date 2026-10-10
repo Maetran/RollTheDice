@@ -2028,5 +2028,12 @@
     "date": "2026-10-05",
     "bump": "minor",
     "summary": "Mission Control: PWA, Browser, Sprachen und Request-Herkunft / Mission Control: PWA, browsers, languages and request origins"
+  },
+  {
+    "version": "2.47.0",
+    "revision": "14f55f538de8d2ebcb91d885c2ec9654f716ab21",
+    "date": "2026-10-05",
+    "bump": "minor",
+    "summary": "Konto direkt mit Passkey erstellen / Create accounts directly with passkeys"
   }
 ]

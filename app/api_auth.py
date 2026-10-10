@@ -130,6 +130,9 @@ class UsernameChangeRequest(AccountConfirmation):
 class UserPreferencesRequest(BaseModel):
     announce_selection_mode: Literal["table", "overlay"]
     auto_write_announced: bool
+    skip_forced_strike_confirmation: bool = True
+    auto_hold_announced_numbers: bool = True
+    announce_button_writes: bool = True
     mobile_row_quick_entry: bool
     haptic_feedback: bool = False
     keep_screen_awake: bool = False
@@ -436,6 +439,10 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
         chat_settings_saved = payload.lobby_chat_popups is not None or payload.lobby_chat_enabled is not None
         user.announce_selection_mode = payload.announce_selection_mode
         user.auto_write_announced = payload.auto_write_announced
+        # Old tabs omit these fields; preserve a player's explicit opt-out.
+        for name in ("skip_forced_strike_confirmation", "auto_hold_announced_numbers", "announce_button_writes"):
+            if name in payload.model_fields_set:
+                setattr(user, name, getattr(payload, name))
         user.mobile_row_quick_entry = payload.mobile_row_quick_entry
         user.haptic_feedback = payload.haptic_feedback
         user.keep_screen_awake = payload.keep_screen_awake
@@ -451,6 +458,9 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
             "preferences": {
                 "announce_selection_mode": user.announce_selection_mode,
                 "auto_write_announced": user.auto_write_announced,
+                "skip_forced_strike_confirmation": user.skip_forced_strike_confirmation,
+                "auto_hold_announced_numbers": user.auto_hold_announced_numbers,
+                "announce_button_writes": user.announce_button_writes,
                 "mobile_row_quick_entry": user.mobile_row_quick_entry,
                 "haptic_feedback": user.haptic_feedback,
                 "keep_screen_awake": user.keep_screen_awake,

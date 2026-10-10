@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=3cee59dc63f8">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=3cee59dc63f8" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=3cee59dc63f8" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=0c2e44fa389a">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=0c2e44fa389a" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=0c2e44fa389a" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=3cee59dc63f8">
-  <script src="/static/shell.js?v=3cee59dc63f8" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=0c2e44fa389a">
+  <script src="/static/shell.js?v=0c2e44fa389a" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -135,6 +135,14 @@
             <label><input type="radio" name="autoWriteAnnounced" value="false"> Manuell: Das angesagte ❗-Feld nach dem Würfeln immer selbst anklicken</label>
           </fieldset>
           <fieldset>
+            <legend>ZDWA-Spielkomfort</legend>
+            <label><input type="checkbox" name="skipForcedStrikeConfirmation"> Ohne Rückfrage streichen, wenn nur ein erlaubtes Feld übrig ist</label>
+            <label><input type="checkbox" name="autoHoldAnnouncedNumbers"> Bei Ansagen von 1 bis 6 passende Würfel automatisch halten</label>
+            <p class="muted small">Automatisch gehaltene Würfel kannst du jederzeit wieder abwählen. Beim Aufheben der Ansage werden sie gelöst.</p>
+            <label><input type="checkbox" name="announceButtonWrites"> Bei einer Ansage ab dem zweiten Wurf „Schreiben“ statt „Ansagen“ anzeigen</label>
+            <p class="muted small">Mit „Schreiben“ trägst du das angesagte Feld direkt ein; weiteres Würfeln bleibt möglich.</p>
+          </fieldset>
+          <fieldset>
             <legend>Mobile Schnelleingabe</legend>
             <label><input type="checkbox" name="mobileRowQuickEntry"> Schnellbuttons für die Aufwärts- und Abwärtsreihe auf Mobilgeräten anzeigen</label>
           </fieldset>
@@ -207,12 +215,12 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=3cee59dc63f8';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=3cee59dc63f8';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=3cee59dc63f8';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=3cee59dc63f8';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=3cee59dc63f8';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=3cee59dc63f8';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=0c2e44fa389a';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=0c2e44fa389a';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=0c2e44fa389a';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=0c2e44fa389a';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=0c2e44fa389a';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=0c2e44fa389a';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
@@ -300,6 +308,9 @@
     window.__adminHelpController?.renderAccountBans(user);
     const announceMode = preferences.announce_selection_mode === 'table' ? 'table' : 'overlay';
     const autoWrite = preferences.auto_write_announced !== false;
+    const skipForcedStrikeConfirmation = preferences.skip_forced_strike_confirmation !== false;
+    const autoHoldAnnouncedNumbers = preferences.auto_hold_announced_numbers !== false;
+    const announceButtonWrites = preferences.announce_button_writes !== false;
     const mobileRowQuickEntry = preferences.mobile_row_quick_entry === true;
     const hapticFeedback = preferences.haptic_feedback === true;
     const keepScreenAwake = preferences.keep_screen_awake === true;
@@ -309,6 +320,9 @@
     document.querySelector(`input[name="preferredLanguage"][value="${preferredLanguage}"]`).checked = true;
     document.querySelector(`input[name="announceSelectionMode"][value="${announceMode}"]`).checked = true;
     document.querySelector(`input[name="autoWriteAnnounced"][value="${autoWrite}"]`).checked = true;
+    document.querySelector('input[name="skipForcedStrikeConfirmation"]').checked = skipForcedStrikeConfirmation;
+    document.querySelector('input[name="autoHoldAnnouncedNumbers"]').checked = autoHoldAnnouncedNumbers;
+    document.querySelector('input[name="announceButtonWrites"]').checked = announceButtonWrites;
     document.querySelector('input[name="mobileRowQuickEntry"]').checked = mobileRowQuickEntry;
     document.querySelector('input[name="hapticFeedback"]').checked = hapticFeedback;
     document.querySelector('input[name="keepScreenAwake"]').checked = keepScreenAwake;
@@ -437,6 +451,9 @@
       const message = document.getElementById('preferencesMessage');
       const selectedMode = document.querySelector('input[name="announceSelectionMode"]:checked')?.value;
       const selectedAutoWrite = document.querySelector('input[name="autoWriteAnnounced"]:checked')?.value;
+      const selectedSkipForcedStrikeConfirmation = document.querySelector('input[name="skipForcedStrikeConfirmation"]').checked;
+      const selectedAutoHoldAnnouncedNumbers = document.querySelector('input[name="autoHoldAnnouncedNumbers"]').checked;
+      const selectedAnnounceButtonWrites = document.querySelector('input[name="announceButtonWrites"]').checked;
       const selectedMobileRowQuickEntry = document.querySelector('input[name="mobileRowQuickEntry"]').checked;
       const selectedHapticFeedback = document.querySelector('input[name="hapticFeedback"]').checked;
       const selectedKeepScreenAwake = document.querySelector('input[name="keepScreenAwake"]').checked;
@@ -445,6 +462,9 @@
         body: JSON.stringify({
           announce_selection_mode: selectedMode,
           auto_write_announced: selectedAutoWrite === 'true',
+          skip_forced_strike_confirmation: selectedSkipForcedStrikeConfirmation,
+          auto_hold_announced_numbers: selectedAutoHoldAnnouncedNumbers,
+          announce_button_writes: selectedAnnounceButtonWrites,
           mobile_row_quick_entry: selectedMobileRowQuickEntry,
           haptic_feedback: selectedHapticFeedback,
           keep_screen_awake: selectedKeepScreenAwake,

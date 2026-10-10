@@ -74,6 +74,108 @@ def python_projection(game):
 
 
 class OfflineZDWARulesTestCase(GameStateTestCase):
+    def test_number_announcement_holds_later_matches_and_allows_releasing_them(self):
+        actual = run_javascript("""
+const game = engine.createGame();
+let faces = [2, 1, 3, 4, 5];
+engine.roll(game, () => faces.shift());
+engine.announce(game, '2');
+const afterAnnounce = [...game.holds];
+faces = [2, 2, 4, 5];
+engine.roll(game, () => faces.shift());
+const afterSecond = { dice: [...game.dice], holds: [...game.holds] };
+engine.toggleHold(game, 1);
+const afterRelease = [...game.holds];
+const restored = JSON.parse(JSON.stringify(game));
+const valid = engine.validateSavedGame(restored);
+faces = [6, 2, 5];
+engine.roll(restored, () => faces.shift());
+console.log(JSON.stringify({ afterAnnounce, afterSecond, afterRelease, valid,
+  afterThird: { dice: restored.dice, holds: restored.holds } }));
+""")
+        self.assertEqual(actual, {
+            "afterAnnounce": [True, False, False, False, False],
+            "afterSecond": {"dice": [2, 2, 2, 4, 5], "holds": [True, True, True, False, False]},
+            "afterRelease": [True, False, True, False, False],
+            "valid": True,
+            "afterThird": {"dice": [2, 6, 2, 2, 5], "holds": [True, False, True, True, False]},
+        })
+
+    def test_number_auto_hold_preference_can_be_disabled_and_reenabled_between_rolls(self):
+        actual = run_javascript("""
+const game = engine.createGame();
+engine.roll(game, () => 1);
+engine.announce(game, '6');
+engine.toggleHold(game, 0);
+engine.roll(game, () => 6, { autoHoldAnnouncedNumbers: false });
+const disabled = [...game.holds];
+engine.roll(game, () => 6, { autoHoldAnnouncedNumbers: true });
+console.log(JSON.stringify({ disabled, enabled: game.holds }));
+""")
+        self.assertEqual(actual, {"disabled": [True, False, False, False, False], "enabled": [True] * 5})
+
+    def test_non_number_announcements_do_not_change_the_players_holds(self):
+        actual = run_javascript("""
+console.log(JSON.stringify([null, 'max', 'min', 'kenter', 'full', 'poker', '60'].map(field => {
+  const game = engine.createGame();
+  engine.roll(game, () => 6);
+  if (field) engine.announce(game, field);
+  engine.toggleHold(game, 0);
+  engine.roll(game, () => 6);
+  return game.holds;
+})));
+""")
+        self.assertEqual(actual, [[True, False, False, False, False]] * 7)
+
+    def test_announcement_change_cancel_and_manual_rehold_keep_manual_dice(self):
+        actual = run_javascript("""
+const game = engine.createGame();
+let faces = [2, 2, 3, 3, 4];
+engine.roll(game, () => faces.shift());
+engine.toggleHold(game, 0);
+engine.toggleHold(game, 2);
+engine.announce(game, '2');
+const first = { holds: [...game.holds], automatic: [...game.autoHeldAnnouncedIndices] };
+engine.announce(game, '3');
+const changed = { holds: [...game.holds], automatic: [...game.autoHeldAnnouncedIndices] };
+engine.toggleHold(game, 3);
+engine.toggleHold(game, 3);
+const restored = JSON.parse(JSON.stringify(game));
+const valid = engine.validateSavedGame(restored);
+engine.announce(restored, null);
+console.log(JSON.stringify({ first, changed, valid, canceled: restored.holds,
+  automatic: restored.autoHeldAnnouncedIndices }));
+""")
+        self.assertEqual(actual, {
+            "first": {"holds": [True, True, True, False, False], "automatic": [1]},
+            "changed": {"holds": [True, False, True, True, False], "automatic": [3]},
+            "valid": True,
+            "canceled": [True, False, True, True, False], "automatic": [],
+        })
+
+    def test_legacy_saved_games_keep_manual_holds_and_reject_invalid_auto_hold_provenance(self):
+        actual = run_javascript("""
+const game = engine.createGame();
+engine.roll(game, () => 2);
+engine.toggleHold(game, 0);
+engine.announce(game, '2', { autoHoldAnnouncedNumbers: false });
+const legacy = structuredClone(game);
+delete legacy.autoHeldAnnouncedIndices;
+const legacyValid = engine.validateSavedGame(legacy);
+engine.announce(legacy, null);
+engine.announce(game, '2');
+const mutations = [null, {}, [1, 1], [-1], [5], [1.5], ['1'], [true]];
+const invalid = mutations.map(value => engine.validateSavedGame({ ...game, autoHeldAnnouncedIndices:value }));
+const noAnnouncement = { ...game, announced:null };
+console.log(JSON.stringify({ legacyValid, manualHolds:legacy.holds, valid:engine.validateSavedGame(game),
+  invalid, noAnnouncement:engine.validateSavedGame(noAnnouncement) }));
+""")
+        self.assertTrue(actual["legacyValid"])
+        self.assertEqual(actual["manualHolds"], [True, False, False, False, False])
+        self.assertTrue(actual["valid"])
+        self.assertTrue(all(value is False for value in actual["invalid"]))
+        self.assertFalse(actual["noAnnouncement"])
+
     def test_all_five_dice_results_match_all_twelve_server_categories(self):
         rolls = list(itertools.product(range(1, 7), repeat=5))
         fields = list(WRITABLE_MAP.values())
@@ -116,10 +218,10 @@ console.log(JSON.stringify(input.rolls.map(dice => input.fields.map(field => eng
                             if f"{row},ang" not in game["_scoreboards"]["p1"]
                         ]
                         if options:
-                            game["_announced_row4"] = rng.choice(options)
+                            game_engine.apply_announcement(game, rng.choice(options))
                             record({"type": "announce", "field": game["_announced_row4"]})
                             if not game_engine._must_announce_after_first(game, "p1") and rng.random() < 0.5:
-                                game["_announced_row4"] = None
+                                game_engine.apply_announcement(game, None)
                                 record({"type": "announce", "field": None})
                     if roll_index + 1 < rolls:
                         for index in rng.sample(range(5), rng.randint(0, 4)):

@@ -21,6 +21,10 @@ body.practice-page{
 .practice-start-actions{ display:flex; gap:.7rem; flex-wrap:wrap; margin:1rem 0; }
 .practice-start-actions button{ flex:1 1 12rem; }
 .practice-welcome label{ display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+.practice-convenience{ border:1px solid var(--border); border-radius:var(--radius-sm); padding:.7rem; }
+.practice-convenience label{ flex-wrap:nowrap; align-items:flex-start; gap:.6rem; margin:.7rem 0; line-height:1.4; }
+.practice-convenience input{ flex:none; width:20px; height:20px; accent-color:var(--accent); }
+.practice-convenience p{ font-size:.85rem; margin:.5rem 0 0; }
 .practice-records{ border-top:1px solid var(--border); margin-top:1.3rem; padding-top:.8rem; }
 .practice-records h2{ font-size:1.05rem; }
 .practice-records ol{ padding-left:1.5rem; font-variant-numeric:tabular-nums; }

@@ -349,6 +349,9 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertEqual(public_payload["achievement_rank"]["title"], "Newbie")
         self.assertEqual(public_payload["achievement_rank"]["points"], 1)
         self.assertEqual(public_payload["preferences"]["announce_selection_mode"], "overlay")
+        self.assertTrue(public_payload["preferences"]["skip_forced_strike_confirmation"])
+        self.assertTrue(public_payload["preferences"]["auto_hold_announced_numbers"])
+        self.assertTrue(public_payload["preferences"]["announce_button_writes"])
         self.assertFalse(public_payload["preferences"]["mobile_row_quick_entry"])
         self.assertFalse(public_payload["preferences"]["haptic_feedback"])
         self.assertFalse(public_payload["preferences"]["keep_screen_awake"])
@@ -524,6 +527,9 @@ class AccountDatabaseTestCase(GameStateTestCase):
             UserPreferencesRequest(
                 announce_selection_mode="table",
                 auto_write_announced=False,
+                skip_forced_strike_confirmation=False,
+                auto_hold_announced_numbers=False,
+                announce_button_writes=False,
                 mobile_row_quick_entry=True,
                 haptic_feedback=True,
                 keep_screen_awake=True,
@@ -537,6 +543,9 @@ class AccountDatabaseTestCase(GameStateTestCase):
             {
                 "announce_selection_mode": "table",
                 "auto_write_announced": False,
+                "skip_forced_strike_confirmation": False,
+                "auto_hold_announced_numbers": False,
+                "announce_button_writes": False,
                 "mobile_row_quick_entry": True,
                 "haptic_feedback": True,
                 "keep_screen_awake": True,
@@ -560,6 +569,9 @@ class AccountDatabaseTestCase(GameStateTestCase):
             user = db.scalar(select(User).where(User.username == "PrefsUser"))
             self.assertEqual(user.announce_selection_mode, "table")
             self.assertFalse(user.auto_write_announced)
+            self.assertFalse(user.skip_forced_strike_confirmation)
+            self.assertFalse(user.auto_hold_announced_numbers)
+            self.assertFalse(user.announce_button_writes)
             self.assertTrue(user.mobile_row_quick_entry)
             self.assertTrue(user.haptic_feedback)
             self.assertTrue(user.keep_screen_awake)
@@ -569,6 +581,56 @@ class AccountDatabaseTestCase(GameStateTestCase):
             self.assertFalse(user.lobby_chat_excluded)
             self.assertFalse(user.game_invite_push_enabled)
             self.assertEqual(user.preferred_language, "en")
+
+    def test_zdwa_conveniences_can_be_saved_independently_and_old_clients_preserve_opt_out(self):
+        create_user("ConveniencePrefs", "a-secure-password-123", must_change_password=False)
+        identity, raw_token = login(request_for(), "ConveniencePrefs", "a-secure-password-123")
+        authenticated_request = request_for(cookie=f"rollthedice_session={raw_token}", csrf=identity.csrf_token)
+        names = ("skip_forced_strike_confirmation", "auto_hold_announced_numbers", "announce_button_writes")
+        for enabled_name in names:
+            values = {name: name == enabled_name for name in names}
+            with self.subTest(enabled=enabled_name):
+                updated = auth_update_preferences(
+                    UserPreferencesRequest(
+                        announce_selection_mode="overlay", auto_write_announced=True, mobile_row_quick_entry=False,
+                        **values,
+                    ),
+                    authenticated_request,
+                )
+                account = auth_me(request_for(cookie=f"rollthedice_session={raw_token}"), Response())
+                self.assertEqual({name: updated["preferences"][name] for name in names}, values)
+                self.assertEqual({name: account["user"]["preferences"][name] for name in names}, values)
+                # Saving from an older static bundle must not turn opt-outs back on.
+                unchanged = auth_update_preferences(
+                    UserPreferencesRequest(
+                        announce_selection_mode="table", auto_write_announced=False, mobile_row_quick_entry=True,
+                    ),
+                    authenticated_request,
+                )
+                self.assertEqual({name: unchanged["preferences"][name] for name in names}, values)
+
+    def test_zdwa_convenience_save_requires_session_csrf_and_same_origin(self):
+        create_user("ProtectedPrefs", "a-secure-password-123", must_change_password=False)
+        identity, raw_token = login(request_for(), "ProtectedPrefs", "a-secure-password-123")
+        payload = UserPreferencesRequest(
+            announce_selection_mode="overlay", auto_write_announced=True, mobile_row_quick_entry=False,
+            skip_forced_strike_confirmation=False, auto_hold_announced_numbers=False, announce_button_writes=False,
+        )
+        cookie = f"rollthedice_session={raw_token}"
+        for request, expected in (
+            (request_for(), 401),
+            (request_for(cookie=cookie), 403),
+            (request_for(cookie=cookie, csrf="wrong"), 403),
+            (request_for(cookie=cookie, csrf=identity.csrf_token, origin="https://evil.example"), 403),
+        ):
+            with self.subTest(expected=expected), self.assertRaises(main.HTTPException) as rejected:
+                auth_update_preferences(payload, request)
+            self.assertEqual(rejected.exception.status_code, expected)
+        with session_scope() as db:
+            user = db.get(User, identity.user_id)
+            self.assertTrue(user.skip_forced_strike_confirmation)
+            self.assertTrue(user.auto_hold_announced_numbers)
+            self.assertTrue(user.announce_button_writes)
 
     def test_gameplay_save_preserves_separately_saved_language_and_chat(self):
         create_user("SeparatePrefs", "a-secure-password-123", must_change_password=False)

@@ -9,6 +9,9 @@ const storageKey = product => `rollthedice:offline:v1:${product}`;
 const confirm = page => page.locator('[data-dialog-action="confirm"]').click();
 const cancel = page => page.locator('[data-dialog-action="cancel"]').click();
 const state = (page, product) => page.evaluate(key => JSON.parse(localStorage.getItem(key)), storageKey(product));
+const convenienceKey = "rollthedice:zdwa-convenience:v1";
+const convenienceSettings = ["skipForcedStrikeConfirmation", "autoHoldAnnouncedNumbers", "announceButtonWrites"];
+const convenienceSetting = (page, name) => page.locator(`[data-convenience-setting="${name}"]`);
 
 async function browserContext(browser, baseURL, { product = "zdwa", theme = "light", lang = "de", saved, dice = [] } = {}) {
   const context = await browser.newContext({ baseURL, serviceWorkers:"block", hasTouch:true, isMobile:true, viewport:{ width:440, height:956 } });
@@ -158,6 +161,146 @@ test("ZDWA local controls hold dice, bind announcements and confirm zeroes befor
   } finally { await context.close(); }
 });
 
+for (const lang of ["de", "en"]) {
+  test(`ZDWA ${lang}: convenience defaults hold matching dice, allow releasing them and write an announcement`, async ({ browser, baseURL }) => {
+    const context = await browserContext(browser, baseURL, { lang, dice:[2, 1, 3, 4, 5, 2, 2, 4, 5, 6, 2, 5] });
+    const page = await context.newPage();
+    const traffic = networkAudit(page);
+    try {
+      await page.goto(entry("zdwa"));
+      for (const name of convenienceSettings) await expect(convenienceSetting(page, name)).toBeChecked();
+      await begin(page);
+      await expect(page.locator('[data-action="announce"]')).toHaveText(lang === "en" ? "Announce" : "Ansagen");
+      await page.locator('[data-action="announce"]').click();
+      await page.locator('[data-dialog-action="field-1"]').click();
+      expect((await state(page, "zdwa")).session.data.holds).toEqual([true, false, false, false, false]);
+      await page.locator('[data-action="roll"]').click();
+      const second = (await state(page, "zdwa")).session.data;
+      expect(second.dice).toEqual([2, 2, 2, 4, 5]);
+      expect(second.holds).toEqual([true, true, true, false, false]);
+      await expect(page.locator('[data-action="write-announced"]')).toHaveText(lang === "en" ? "Write" : "Schreiben");
+      await expect(page.locator('[data-action="write-announced"]')).toBeEnabled();
+      await page.locator('[data-action="hold"][data-index="1"]').click();
+      await expect(page.locator('[data-action="hold"][data-index="1"]')).toHaveAttribute("aria-pressed", "false");
+      await page.locator('[data-action="pause"]').click();
+      await begin(page, "resume");
+      expect((await state(page, "zdwa")).session.data.holds).toEqual([true, false, true, false, false]);
+      await page.locator('[data-action="roll"]').click();
+      const third = (await state(page, "zdwa")).session.data;
+      expect(third.dice).toEqual([2, 6, 2, 2, 5]);
+      expect(third.holds).toEqual([true, false, true, true, false]);
+      await page.locator('[data-action="write-announced"]').click();
+      expect((await state(page, "zdwa")).session.data.board).toEqual({ "1,ang":6 });
+      await expect(page.locator("#appDialog")).toBeHidden();
+      expect(traffic).toEqual([]);
+    } finally { await context.close(); }
+  });
+}
+
+test("ZDWA offline: changing or canceling a number announcement releases automatic holds and preserves manual ones", async ({ browser, baseURL }) => {
+  const context = await browserContext(browser, baseURL, { dice:[2, 2, 3, 3, 4] });
+  const page = await context.newPage();
+  const traffic = networkAudit(page);
+  try {
+    await page.goto(entry("zdwa"));
+    await begin(page);
+    await page.locator('[data-action="hold"][data-index="0"]').click();
+    await page.locator('[data-action="hold"][data-index="2"]').click();
+    await page.locator('[data-action="announce"]').click();
+    await page.locator('[data-dialog-action="field-1"]').click();
+    expect((await state(page, "zdwa")).session.data.holds).toEqual([true, true, true, false, false]);
+    await page.locator('[data-action="announce"]').click();
+    await page.locator('[data-dialog-action="field-2"]').click();
+    expect((await state(page, "zdwa")).session.data.holds).toEqual([true, false, true, true, false]);
+    await page.locator('[data-action="hold"][data-index="3"]').click();
+    await page.locator('[data-action="hold"][data-index="3"]').click();
+    await page.locator('[data-action="pause"]').click();
+    await page.reload();
+    await begin(page, "resume");
+    await page.locator('[data-action="announce"]').click();
+    await page.locator('[data-dialog-action="clear"]').click();
+    const canceled = (await state(page, "zdwa")).session.data;
+    expect(canceled.announced).toBeNull();
+    expect(canceled.holds).toEqual([true, false, true, true, false]);
+    expect(canceled.autoHeldAnnouncedIndices).toEqual([]);
+    expect(traffic).toEqual([]);
+  } finally { await context.close(); }
+});
+
+for (const setting of convenienceSettings) {
+  test(`ZDWA offline: ${setting} can be disabled independently and persists after reload`, async ({ browser, baseURL }) => {
+    const rules = await engine("zdwa");
+    const game = rules.createGame();
+    let dice = setting === "skipForcedStrikeConfirmation" ? [1, 1, 3, 4, 5]
+      : setting === "autoHoldAnnouncedNumbers" ? [2, 2, 3, 4, 5] : [2, 1, 3, 4, 5];
+    rules.roll(game, () => dice.shift());
+    if (setting !== "skipForcedStrikeConfirmation") rules.toggleHold(game, 0);
+    rules.announce(game, "2");
+    if (setting === "skipForcedStrikeConfirmation") {
+      dice = [1, 1, 3, 4, 5];
+      rules.roll(game, () => dice.shift());
+    }
+    expect(rules.validateSavedGame(game)).toBe(true);
+    const context = await browserContext(browser, baseURL, {
+      saved:savedSession("zdwa", game), dice:[2, 2, 4, 5],
+    });
+    const page = await context.newPage();
+    const traffic = networkAudit(page);
+    try {
+      await page.goto(entry("zdwa"));
+      await convenienceSetting(page, setting).uncheck();
+      for (const name of convenienceSettings) {
+        await expect(convenienceSetting(page, name)).toBeChecked({ checked:name !== setting });
+      }
+      const savedPreferences = await page.evaluate(key => JSON.parse(localStorage.getItem(key)), convenienceKey);
+      expect(savedPreferences).toMatchObject({ [setting]:false });
+      await page.reload();
+      for (const name of convenienceSettings) {
+        await expect(convenienceSetting(page, name)).toBeChecked({ checked:name !== setting });
+      }
+      await begin(page, "resume");
+      if (setting === "skipForcedStrikeConfirmation") {
+        await expect(page.locator('[data-action="write"]:enabled')).toHaveCount(1);
+        await page.locator('[data-action="write-announced"]').click();
+        await expect(page.locator("#appDialogTitle")).toHaveText("Null Punkte eintragen?");
+        await cancel(page);
+        expect((await state(page, "zdwa")).session.data.board).toEqual({});
+        await page.locator('[data-action="pause"]').click();
+        await convenienceSetting(page, setting).check();
+        await begin(page, "resume");
+        await page.locator('[data-action="write-announced"]').click();
+        expect((await state(page, "zdwa")).session.data.board).toEqual({ "1,ang":0 });
+        await expect(page.locator("#appDialog")).toBeHidden();
+      } else {
+        if (setting === "autoHoldAnnouncedNumbers") {
+          await page.locator('[data-action="announce"]').click();
+          await page.locator('[data-dialog-action="clear"]').click();
+          expect((await state(page, "zdwa")).session.data.holds).toEqual([true, false, false, false, false]);
+          await page.locator('[data-action="announce"]').click();
+          await page.locator('[data-dialog-action="field-1"]').click();
+          expect((await state(page, "zdwa")).session.data.holds).toEqual([true, false, false, false, false]);
+        }
+        await page.locator('[data-action="roll"]').click();
+        const afterRoll = (await state(page, "zdwa")).session.data;
+        expect(afterRoll.dice).toEqual([2, 2, 2, 4, 5]);
+        if (setting === "autoHoldAnnouncedNumbers") {
+          expect(afterRoll.holds).toEqual([true, false, false, false, false]);
+          await expect(page.locator('[data-action="write-announced"]')).toBeEnabled();
+          await page.locator('[data-action="write-announced"]').click();
+        } else {
+          expect(afterRoll.holds).toEqual([true, true, true, false, false]);
+          await expect(page.locator('[data-action="write-announced"]')).toHaveCount(0);
+          await expect(page.locator('[data-action="announce"]')).toHaveText("Ansagen");
+          await expect(page.locator('[data-action="announce"]')).toBeDisabled();
+          await page.locator('[data-action="write"][data-row="1"][data-col="ang"]').click();
+        }
+        expect((await state(page, "zdwa")).session.data.board).toEqual({ "1,ang":6 });
+      }
+      expect(traffic).toEqual([]);
+    } finally { await context.close(); }
+  });
+}
+
 for (const product of ["zdwa", "zilch"]) {
   test(`${product}: completed results stay private and survive reload without any server calls`, async ({ browser, baseURL }) => {
     const rules = await engine(product);
@@ -186,8 +329,7 @@ for (const product of ["zdwa", "zilch"]) {
       await context.setOffline(true);
       if (product === "zdwa") {
         await page.locator('[data-action="write"]:enabled').click();
-        await expect(page.locator("#appDialogTitle")).toHaveText("Null Punkte eintragen?");
-        await confirm(page);
+        await expect(page.locator("#appDialog")).toBeHidden();
       } else {
         await page.locator('[data-action="roll"]').click();
         await page.locator('[data-action="select"]', { hasText:"600 Punkte" }).click();

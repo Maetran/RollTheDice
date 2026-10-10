@@ -1,10 +1,10 @@
 {
-  "version": "2.47.0",
+  "version": "2.48.0",
   "bump": "minor",
-  "date": "2026-10-05",
-  "previous_revision": "457162d1eaa41cf19934de8bc1370897a38e97c4",
+  "date": "2026-10-10",
+  "previous_revision": "14f55f538de8d2ebcb91d885c2ec9654f716ab21",
   "summary": {
-    "de": "Konto direkt mit Passkey erstellen",
-    "en": "Create accounts directly with passkeys"
+    "de": "Drei einstellbare Komfortfunktionen für ZDWA",
+    "en": "Three configurable ZDWA play conveniences"
   }
 }

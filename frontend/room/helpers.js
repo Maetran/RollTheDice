@@ -91,7 +91,7 @@ initializeGameViewport();
     clearPendingWrite();
     window.__rt_writeRequestPending = true;
     window.__rt_writePendingAction = action || null;
-    if (typeof syncActionFeedback === "function") syncActionFeedback(sb);
+    if (typeof syncActionButtons === "function") syncActionButtons(sb);
     // A dropped connection or an unexpected server response must never leave a
     // player unable to continue. The next snapshot/error normally clears this
     // immediately; this is only a last-resort client-side escape hatch.
@@ -102,6 +102,9 @@ initializeGameViewport();
   }
 
   function safeSend(ws, obj) {
+    if (["roll_dice", "announce_row4"].includes(obj?.action) && !userGameplayPreferences().autoHoldAnnouncedNumbers) {
+      obj = { ...obj, auto_hold_announced_numbers:false };
+    }
     /*
       Roll-Event Throttle (600 ms)
       ----------------------------

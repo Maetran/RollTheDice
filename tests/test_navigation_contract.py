@@ -44,9 +44,11 @@ DOCUMENT_ROUTES = (
         ("/regeln", "/spieler/{username}", "/rangabzeichen", "/konto",
          "/ergebnis/{game_id}", "/offline"),
         "tests/test_http_shell.py", "test_clean_page_routes_and_legacy_redirects",
+        ("tests/browser/account-settings-layout.spec.js",),
     ),
     RouteCoverage(
         ("/spiel/{game_id}",), "tests/browser/zdwa-device-switch.spec.js",
+        browser_tests=("tests/browser/zdwa-forced-scratch.spec.js", "tests/browser/zdwa-convenience.spec.js"),
     ),
     RouteCoverage(("/spiel/{game_id}/zuschauen",), "tests/browser/admin-help-ui.spec.js"),
     # Ownership adds a real signed-in browser flow; existing restriction tests
@@ -60,6 +62,7 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/offline-spielen", "/zilch/offline-spielen"), "tests/test_offline_routes.py",
         "test_offline_entries_are_anonymous_noindex_and_keep_the_correct_game_and_home",
+        ("tests/browser/offline-play.spec.js",),
     ),
     RouteCoverage(
         ("/registrierung/bestaetigen", "/passwort-vergessen", "/passwort-zuruecksetzen", "/email-bestaetigen"),

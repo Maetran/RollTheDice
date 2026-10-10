@@ -18,6 +18,22 @@ const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&am
 const label = value => esc(t(value));
 const pips = ["·", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 const fields = { "1":"1", "2":"2", "3":"3", "4":"4", "5":"5", "6":"6", max:"Max", min:"Min", kenter:"Kenter", full:"Full", poker:"Poker", "60":"60" };
+const convenienceKey = "rollthedice:zdwa-convenience:v1";
+const convenienceLabels = {
+  skipForcedStrikeConfirmation:"Ohne Rückfrage streichen, wenn nur ein erlaubtes Feld übrig ist",
+  autoHoldAnnouncedNumbers:"Bei Ansagen von 1 bis 6 passende Würfel automatisch halten",
+  announceButtonWrites:"Bei einer Ansage ab dem zweiten Wurf „Schreiben“ statt „Ansagen“ anzeigen",
+};
+let convenience = {};
+try {
+  const stored = JSON.parse(localStorage.getItem(convenienceKey));
+  if (stored && typeof stored === "object" && !Array.isArray(stored)) convenience = stored;
+} catch {}
+const convenienceEnabled = key => convenience[key] !== false;
+
+function convenienceMarkup() {
+  return `<fieldset class="practice-convenience"><legend>${label("ZDWA-Spielkomfort")}</legend>${Object.entries(convenienceLabels).map(([key, text]) => `<label><input type="checkbox" data-convenience-setting="${key}" ${convenienceEnabled(key) ? "checked" : ""}>${label(text)}</label>`).join("")}<p>${label("Diese Offline-Einstellungen gelten nur in diesem Browser.")}</p></fieldset>`;
+}
 let active = false;
 let session = null;
 let records = [];
@@ -64,7 +80,7 @@ function privateRecords() {
 function renderWelcome() {
   clearTimeout(cpuTimer);
   active = false;
-  main.innerHTML = `<section class="practice-welcome"><h1>${label("Einfach für dich würfeln")}</h1><p>${label("Spiele ohne Verbindung. Deine Ergebnisse bleiben auf diesem Gerät und zählen nicht für Erfolge oder Ranglisten.")}</p>${product === "zilch" ? `<label>${label("Spielart")}<select id="practiceMode"><option value="solo">${label("Solo")}</option><option value="cpu">${label("Gegen den Würfelwirt")}</option></select></label>` : `<p>${label("ZDWA · Solo · Normal")}</p>`}<div class="practice-start-actions">${session && !session.data.finished ? `<button type="button" class="primary" data-action="resume">${label("Offline-Spiel fortsetzen")}</button>` : ""}<button type="button" class="${session && !session.data.finished ? "secondary" : "primary"}" data-action="start">${label("Offline-Spiel starten")}</button></div><p id="practiceCacheState">${label(cached ? "Für den nächsten Start ohne Internet bereit." : "Offline-Dateien werden vorbereitet. Lass diese Seite einmal mit Internet geöffnet.")}</p>${privateRecords()}</section>`;
+  main.innerHTML = `<section class="practice-welcome"><h1>${label("Einfach für dich würfeln")}</h1><p>${label("Spiele ohne Verbindung. Deine Ergebnisse bleiben auf diesem Gerät und zählen nicht für Erfolge oder Ranglisten.")}</p>${product === "zilch" ? `<label>${label("Spielart")}<select id="practiceMode"><option value="solo">${label("Solo")}</option><option value="cpu">${label("Gegen den Würfelwirt")}</option></select></label>` : `<p>${label("ZDWA · Solo · Normal")}</p>${convenienceMarkup()}`}<div class="practice-start-actions">${session && !session.data.finished ? `<button type="button" class="primary" data-action="resume">${label("Offline-Spiel fortsetzen")}</button>` : ""}<button type="button" class="${session && !session.data.finished ? "secondary" : "primary"}" data-action="start">${label("Offline-Spiel starten")}</button></div><p id="practiceCacheState">${label(cached ? "Für den nächsten Start ohne Internet bereit." : "Offline-Dateien werden vorbereitet. Lass diese Seite einmal mit Internet geöffnet.")}</p>${privateRecords()}</section>`;
 }
 
 async function enter(resume) {
@@ -123,9 +139,10 @@ function zdwaSheet(game) {
 
 function renderZdwa(game) {
   const totals = zdwa.totals(game);
+  const writeAnnouncement = convenienceEnabled("announceButtonWrites") && !!game.announced && game.rollsUsed >= 2;
   const announceEnabled = game.rollsUsed === 1 && !game.finished && totals.remaining > 1;
   const announcement = game.announced ? `${t("Ansage")}: ${fields[game.announced]}` : t(zdwa.announcementRequired(game) ? "Bitte zuerst ein ❗-Feld ansagen, bevor weiter gewürfelt wird" : "Keine Ansage aktiv");
-  return `<div class="practice-workspace"><section class="practice-board"><h1>${label("Dein Spielzettel")} · ${totals.overall} ${label("Punkte")} · ${totals.filled}/48</h1>${zdwaSheet(game)}</section><aside class="practice-info"><h2>${label("Deine vier Spalten")}</h2><p>↓ ${label("Von 1 bis 60")}</p><p>／ ${label("Freie Reihenfolge")}</p><p>↑ ${label("Von 60 bis 1")}</p><p>❗ ${label("Nach dem ersten Wurf wählen")}</p><p>${label("Die hellen Felder zeigen, wo du jetzt schreiben kannst. Null Punkte bestätigst du vor dem Eintragen.")}</p><p>${label("Offline · Nur auf diesem Gerät")}</p></aside><section class="practice-controls">${diceMarkup(game.dice, game.holds, game.rollsUsed > 0 && game.rollsUsed < game.rollsMax)}<div class="practice-action-row"><button type="button" class="secondary" data-action="announce" ${announceEnabled ? "" : "disabled"}>${label("Ansagen")}</button><span>${label("Würfe:")} ${game.rollsUsed}/${game.rollsMax}</span><button type="button" class="primary" data-action="roll" ${zdwa.canRoll(game) ? "" : "disabled"}>${label("Würfeln")}</button></div><div class="practice-action-row"><span>${esc(announcement)}</span><button type="button" class="ghost" data-action="pause">${label("Pause")}</button></div></section></div>`;
+  return `<div class="practice-workspace"><section class="practice-board"><h1>${label("Dein Spielzettel")} · ${totals.overall} ${label("Punkte")} · ${totals.filled}/48</h1>${zdwaSheet(game)}</section><aside class="practice-info"><h2>${label("Deine vier Spalten")}</h2><p>↓ ${label("Von 1 bis 60")}</p><p>／ ${label("Freie Reihenfolge")}</p><p>↑ ${label("Von 60 bis 1")}</p><p>❗ ${label("Nach dem ersten Wurf wählen")}</p><p>${label("Die hellen Felder zeigen, wo du jetzt schreiben kannst. Bei mehreren erlaubten Feldern bestätigst du Null Punkte vor dem Eintragen.")}</p><p>${label("Offline · Nur auf diesem Gerät")}</p></aside><section class="practice-controls">${diceMarkup(game.dice, game.holds, game.rollsUsed > 0 && game.rollsUsed < game.rollsMax)}<div class="practice-action-row"><button type="button" class="secondary" data-action="${writeAnnouncement ? "write-announced" : "announce"}" ${writeAnnouncement || announceEnabled ? "" : "disabled"}>${label(writeAnnouncement ? "Schreiben" : "Ansagen")}</button><span>${label("Würfe:")} ${game.rollsUsed}/${game.rollsMax}</span><button type="button" class="primary" data-action="roll" ${zdwa.canRoll(game) ? "" : "disabled"}>${label("Würfeln")}</button></div><div class="practice-action-row"><span>${esc(announcement)}</span><button type="button" class="ghost" data-action="pause">${label("Pause")}</button></div></section></div>`;
 }
 
 function zilchEvent(game) {
@@ -193,7 +210,7 @@ async function chooseAnnouncement() {
   if (game.announced) actions.unshift({ id:"clear", label:"Ansage aufheben", value:"clear", className:"ghost" });
   actions.push({ id:"cancel", label:"Abbrechen", value:null, className:"ghost" });
   const field = await window.ZDWA_UI.dialog({ title:"Feld ansagen", message:"Nach dem ersten Wurf wählen", actions });
-  if (field !== null) zdwa.announce(game, field === "clear" ? null : field);
+  if (field !== null) zdwa.announce(game, field === "clear" ? null : field, { autoHoldAnnouncedNumbers:convenienceEnabled("autoHoldAnnouncedNumbers") });
 }
 
 async function handleAction(button) {
@@ -214,14 +231,20 @@ async function handleAction(button) {
       zilch.selectHold(game, session.selection);
       session.selection = null;
     }
-    if (action === "roll") engine.roll(game);
+    if (action === "roll") {
+      if (product === "zdwa") zdwa.roll(game, undefined, { autoHoldAnnouncedNumbers:convenienceEnabled("autoHoldAnnouncedNumbers") });
+      else zilch.roll(game);
+    }
     if (action === "hold" && product === "zdwa") zdwa.toggleHold(game, Number(button.dataset.index));
     if (action === "announce" && product === "zdwa") await chooseAnnouncement();
-    if (action === "write" && product === "zdwa") {
-      const row = Number(button.dataset.row), col = button.dataset.col;
-      const cell = zdwa.allowedCells(game).find(item => item.row === row && item.col === col);
+    if (["write", "write-announced"].includes(action) && product === "zdwa") {
+      const row = action === "write-announced" ? zdwa.ROWS.find(item => zdwa.FIELD_BY_ROW[item] === game.announced) : Number(button.dataset.row);
+      const col = action === "write-announced" ? "ang" : button.dataset.col;
+      const allowed = zdwa.allowedCells(game);
+      const cell = allowed.find(item => item.row === row && item.col === col);
       if (!cell) return;
-      if (cell.points === 0 && !await window.ZDWA_UI.confirm({ title:"Null Punkte eintragen?", message:"Dieses Feld wird mit 0 Punkten abgeschlossen.", confirmLabel:"0 Punkte eintragen" })) return;
+      const skipConfirmation = allowed.length === 1 && convenienceEnabled("skipForcedStrikeConfirmation");
+      if (cell.points === 0 && !skipConfirmation && !await window.ZDWA_UI.confirm({ title:"Null Punkte eintragen?", message:"Dieses Feld wird mit 0 Punkten abgeschlossen.", confirmLabel:"0 Punkte eintragen" })) return;
       zdwa.write(game, row, col);
       if (!game.finished) zdwa.roll(game);
     }
@@ -263,6 +286,13 @@ document.title = `${product === "zilch" ? "Zilch" : "ZDWA"} · ${t("Offline spie
 main.addEventListener("click", event => {
   const button = event.target.closest("button[data-action]");
   if (button && !button.disabled) handleAction(button);
+});
+main.addEventListener("change", event => {
+  const key = event.target.dataset.convenienceSetting;
+  if (!Object.hasOwn(convenienceLabels, key)) return;
+  convenience[key] = event.target.checked;
+  try { localStorage.setItem(convenienceKey, JSON.stringify(convenience)); }
+  catch { statusLine.textContent = t("Der Browser kann nicht speichern. Dieses Spiel bleibt nur bis zum Schließen geöffnet."); }
 });
 document.querySelector("#practiceOnline").addEventListener("click", returnOnline);
 const language = document.querySelector("#practiceLanguage");

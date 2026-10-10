@@ -1,3 +1,34 @@
+  // Count legal entry targets, not merely highlighted cells. The renderer also
+  // marks later down/up cells and some Poker cells as clickable; the server's
+  // column order and announcement rules still apply to those cells.
+  function onlyWritableCell(snapshot) {
+    if (!snapshot?._started || snapshot._finished || snapshot._aborted ||
+        snapshot._paused || snapshot._superadmin_active || snapshot._correction?.active ||
+        IS_SPECTATOR || String(snapshot._turn?.player_id) !== String(myId)) return null;
+
+    const board = getMyBoard(snapshot);
+    const rows = Object.keys(WRITABLE_MAP).map(Number);
+    const cols = ["down", "free", "up", "ang"];
+    const isOpen = (row, field) => !Object.prototype.hasOwnProperty.call(board, `${row},${field}`);
+    const openCells = rows.flatMap(row => cols.filter(field => isOpen(row, field)).map(field => ({ row, field })));
+    // The final field is explicitly writable even without a roll or an
+    // announcement, allowing an otherwise stalled game to finish.
+    if (openCells.length === 1) return openCells[0];
+    if (Number(snapshot._rolls_used || 0) < 1) return null;
+
+    const announced = !snapshot._hardcore && snapshot._announced_row4;
+    const nextDown = rows.find(row => isOpen(row, "down"));
+    const nextUp = rows.slice().reverse().find(row => isOpen(row, "up"));
+    const legalCells = openCells.filter(({ row, field }) => {
+      if (announced) return field === "ang" && WRITABLE_MAP[row] === announced;
+      if (field === "down") return row === nextDown;
+      if (field === "up") return row === nextUp;
+      if (field === "ang") return !!snapshot._hardcore || Number(snapshot._rolls_used || 0) === 1;
+      return field === "free";
+    });
+    return legalCells.length === 1 ? legalCells[0] : null;
+  }
+
   function wireGridClicks() {
     if (mount._gridBound) return;
     mount._gridBound = true;
@@ -34,6 +65,10 @@
 
       const correctionActive = !!(sb?._correction?.active);
       const iAmCorrector = correctionActive && String(sb._correction.player_id) === String(myId);
+      const onlyCell = userGameplayPreferences().skipForcedStrikeConfirmation && !correctionActive
+        ? onlyWritableCell(sb)
+        : null;
+      const skipStrikeConfirmation = !!onlyCell && onlyCell.row === row && onlyCell.field === field;
 
       // 0-Confirm (Clientseitig)
       const fieldKey    = WRITABLE_MAP[row];
@@ -92,7 +127,7 @@
             }
           } else {
             // Nicht legal → Confirm zum Streichen
-            const ok = await askForWriteConfirmation({
+            const ok = skipStrikeConfirmation || await askForWriteConfirmation({
               title: "Poker streichen?",
               message: 'Nach „zocken“ darf ein Poker nicht mehr geschrieben werden. Willst du das Feld wirklich mit 0 Punkten eintragen?',
               confirmLabel: "Streichen",
@@ -140,7 +175,7 @@
 
         // Nur wenn der berechnete Wert wirklich 0 ist, nachfragen (Strike).
         // Hinweis: Bei ⬇︎/⬆︎ wurde oben bereits auf „dran“ geprüft und ggf. abgebrochen.
-        if (points === 0) {
+        if (points === 0 && !skipStrikeConfirmation) {
           const ok = await askForWriteConfirmation({
             title: "Feld streichen?",
             message: "Dieses Ergebnis gibt 0 Punkte. Möchtest du das Feld wirklich streichen?",

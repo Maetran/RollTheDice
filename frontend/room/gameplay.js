@@ -318,13 +318,22 @@
     if (snapshot?._superadmin_active) return { usable:false, reason:"Während Superadmin-Edit gesperrt", mode:"announce" };
     if (snapshot?._hardcore) return { usable:false, reason:"Ansage ist im Hardcore-Modus deaktiviert", mode:"announce" };
     const announced = snapshot?._announced_row4 || null;
-    const mode = announced ? "unannounce" : "announce";
+    const rolls = Number(snapshot?._rolls_used || 0);
+    const mode = announced && rolls >= 2 && userGameplayPreferences().announceButtonWrites
+      ? "write" : announced ? "unannounce" : "announce";
     const turn = snapshot?._turn || null;
     const iAmTurn = turn && String(turn.player_id) === String(myId);
     if (!iAmTurn) return { usable:false, reason:"Nicht an der Reihe", mode };
     if (snapshot?._correction?.active) return { usable:false, reason:"Während Korrektur nicht erlaubt", mode };
-    const rolls = Number(snapshot?._rolls_used || 0);
     if (rolls < 1) return { usable:false, reason:"Ansage erst nach dem ersten Wurf möglich", mode };
+    if (mode === "write") {
+      const target = onlyWritableCell(snapshot);
+      const cell = target?.field === "ang"
+        ? $(`.player-card.me td.cell.clickable[data-row="${target.row}"][data-field="ang"]`, mount)
+        : null;
+      const pending = rollRequestPending || window.__rt_writeRequestPending || writeConfirmationPending;
+      return { usable:!!cell && !pending, reason:pending ? "Aktion läuft" : "Angesagtes Feld schreiben", mode, cell };
+    }
     if (rolls !== 1) return { usable:false, reason:"Ansage nur direkt nach Wurf 1 möglich", mode };
     if (announced) return { usable:true, reason:"Ansage aufheben", mode };
     if (!hasOpenAnnounceField(snapshot)) return { usable:false, reason:"Keine freien ❗-Felder für eine Ansage", mode };
@@ -377,7 +386,10 @@
         ab.title = ann.reason || "Ansagen";
         ab.dataset.state = ann.mode || "announce";
         ab.setAttribute("aria-disabled", ann.usable ? "false" : "true");
-        if (ann.mode === "unannounce" || announced){
+        if (ann.mode === "write") {
+          ab.textContent = "Schreiben";
+          announcePickMode = false;
+        } else if (ann.mode === "unannounce" || announced){
           ab.textContent = "Ansage aufheben";
           announcePickMode = false;
         } else {

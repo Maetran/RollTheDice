@@ -10,16 +10,16 @@ from pathlib import Path
 from typing import Iterator
 
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 from alembic import command
 
 BASE = Path(__file__).resolve().parents[1]
 PRE_TYPED_RESULTS_REVISION = "20260902_0015"
-# ``head`` includes email accounts, passkey signup/reminders, feed indexes, admin help and bans. The typed
+# ``head`` includes account preferences, passkeys, feed indexes, admin help and bans. The typed
 # game-result assertions below remain deliberately exercised through the full
 # upgrade chain so later revisions cannot leave the legacy type migration in a
 # partially upgraded state.
-LATEST_SCHEMA_REVISION = "20261005_0053"
 
 
 class TypedCompletedResultsMigrationTest(unittest.TestCase):
@@ -74,6 +74,9 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
             "must_change_password": 0,
             "announce_selection_mode": "overlay",
             "auto_write_announced": 1,
+            "skip_forced_strike_confirmation": 1,
+            "auto_hold_announced_numbers": 1,
+            "announce_button_writes": 1,
             "mobile_row_quick_entry": 0,
             "haptic_feedback": 0,
             "keep_screen_awake": 0,
@@ -416,7 +419,7 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
 
         with self._connection() as connection:
             version = connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-            self.assertEqual(version, LATEST_SCHEMA_REVISION)
+            self.assertEqual(version, ScriptDirectory.from_config(self._config()).get_current_head())
             completed_info = {
                 str(row[1]): {"notnull": int(row[3]), "default": row[4]}
                 for row in connection.execute("PRAGMA table_info(completed_games)")

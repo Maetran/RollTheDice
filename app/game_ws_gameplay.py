@@ -16,6 +16,7 @@ from .game_engine import (
     _is_last_turn_for,
     _next_required_row,
     _parse_write_target,
+    apply_announcement,
     apply_roll,
     can_roll_now,
     can_write_now,
@@ -137,11 +138,16 @@ async def _set_hold(session: GameSocketSession, data: dict[str, Any]) -> None:
     if not isinstance(holds, list) or len(holds) != 5 or any(type(value) is not bool for value in holds):
         await _send_error(session, "Ungültige Würfelauswahl")
         return
+    previous_holds = g.get("_holds") or [False] * 5
+    g["_auto_held_announced_indices"] = [
+        index for index in g.get("_auto_held_announced_indices", [])
+        if holds[index] and holds[index] == previous_holds[index]
+    ]
     g["_holds"] = holds[:]
     await _publish_scoreboard(session)
 
 
-async def _roll_dice(session: GameSocketSession, _data: dict[str, Any]) -> None:
+async def _roll_dice(session: GameSocketSession, data: dict[str, Any]) -> None:
     g = session.game
     ok, reason = can_roll_now(g, session.player_id)
     if not ok:
@@ -151,7 +157,7 @@ async def _roll_dice(session: GameSocketSession, _data: dict[str, Any]) -> None:
         return
     holds = g.get("_holds") or []
     rolled_indices = [index for index in range(5) if index >= len(holds) or not holds[index]]
-    apply_roll(g)
+    apply_roll(g, auto_hold_announced_numbers=data.get("auto_hold_announced_numbers") is not False)
     # A later player's first accepted roll closes every older correction
     # window permanently, even after that player writes and resets rolls to 0.
     for previous_player_id in g.get("_last_write", {}):
@@ -192,7 +198,7 @@ async def _announce_row4(session: GameSocketSession, data: dict[str, Any]) -> No
         await _send_error(session, f"Ansage nicht möglich: Feld {field} in ❗ bereits befüllt")
         return
 
-    g["_announced_row4"] = field
+    apply_announcement(g, field, auto_hold_announced_numbers=data.get("auto_hold_announced_numbers") is not False)
     g["_announced_by"] = player_id
     g["_announced_board"] = board_key_for_actor(g, player_id) if is_team_mode(g) else player_id
     await _publish_scoreboard(session)
@@ -217,9 +223,7 @@ async def _unannounce_row4(session: GameSocketSession, _data: dict[str, Any]) ->
         await _send_error(session, "Keine Ansage aktiv")
         return
 
-    g["_announced_row4"] = None
-    g["_announced_by"] = None
-    g["_announced_board"] = None
+    apply_announcement(g, None)
     await _publish_scoreboard(session)
 
 

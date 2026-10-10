@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Iterator
 
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import Boolean, DateTime, Integer, MetaData, Table, create_engine, insert
 
 from alembic import command
@@ -206,7 +207,8 @@ class AbandonmentResetMigrationTest(unittest.TestCase):
         self._upgrade()
 
         with self._connection() as connection:
-            self.assertEqual(connection.execute("SELECT version_num FROM alembic_version").fetchone(), ("20261005_0053",))
+            self.assertEqual(connection.execute("SELECT version_num FROM alembic_version").fetchone(),
+                             (ScriptDirectory.from_config(self._config()).get_current_head(),))
             for table, original in before.items():
                 self.assertEqual(connection.execute(f"SELECT * FROM {table} ORDER BY id").fetchall(), original)
         command.downgrade(self._config(), PRE_RESET_REVISION)

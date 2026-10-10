@@ -22,6 +22,31 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.48.0 — Einstellbarer ZDWA-Spielkomfort / Configurable ZDWA conveniences — 2026-10-10
+
+**Deutsch:** Drei unabhängige Komforteinstellungen sind für neue und bestehende
+Konten standardmässig aktiv. Ist nur ein Feld regelkonform auswählbar, entfällt
+beim Streichen die Rückfrage; bei mehreren erlaubten Feldern und bei Korrekturen
+bleibt sie erhalten. Zahlenansagen von 1 bis 6 halten passende Würfel sofort und
+nach weiteren Würfen automatisch. Jeder Würfel bleibt abwählbar. Beim Aufheben
+oder Ändern der Ansage werden automatische Haltepunkte gelöst, zuvor manuell
+gehaltene Würfel bleiben gehalten. Ab dem zweiten Wurf wird der Ansage-Button
+zu „Schreiben“ und trägt das angesagte Feld über den normalen Schreibablauf ein.
+Weiterwürfeln bleibt möglich. Unter Konto → Einstellungen lässt sich jede
+Funktion einzeln ausschalten. Gäste nutzen die aktiven Vorgaben; Offline-Spiele
+bieten dieselben Schalter als lokale Browser-Einstellungen.
+
+**English:** Three independent conveniences are enabled by default for new and
+existing accounts. Strike confirmation is skipped when only one legal field is
+available; it remains for multiple legal fields and corrections. Announcements
+from 1 to 6 automatically hold matching dice immediately and after later rolls.
+Every die remains deselectable. Cancelling or changing the announcement releases
+automatic holds while keeping earlier manual holds. From the second roll, the
+announcement button becomes “Write” and enters the announced field through the
+normal write flow. You can still roll again. Each feature can be disabled under
+Account → Settings. Guests use the enabled defaults; offline play provides the
+same switches as local browser settings.
+
 ## 2.47.0 — Konto direkt mit Passkey / Direct passkey signup — 2026-10-05
 
 **Deutsch:** Auf beiden Landingpages genügt ein Kontoname und die Bestätigung

@@ -61,6 +61,9 @@ class AuthIdentity:
     must_change_password: bool
     announce_selection_mode: str
     auto_write_announced: bool
+    skip_forced_strike_confirmation: bool
+    auto_hold_announced_numbers: bool
+    announce_button_writes: bool
     mobile_row_quick_entry: bool
     haptic_feedback: bool
     keep_screen_awake: bool
@@ -108,6 +111,9 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
         "preferences": {
             "announce_selection_mode": identity.announce_selection_mode,
             "auto_write_announced": identity.auto_write_announced,
+            "skip_forced_strike_confirmation": identity.skip_forced_strike_confirmation,
+            "auto_hold_announced_numbers": identity.auto_hold_announced_numbers,
+            "announce_button_writes": identity.announce_button_writes,
             "mobile_row_quick_entry": identity.mobile_row_quick_entry,
             "haptic_feedback": identity.haptic_feedback,
             "keep_screen_awake": identity.keep_screen_awake,
@@ -144,6 +150,9 @@ def _identity_for_user(db, user: User, login_session: LoginSession) -> AuthIdent
         must_change_password=user.must_change_password,
         announce_selection_mode=user.announce_selection_mode,
         auto_write_announced=user.auto_write_announced,
+        skip_forced_strike_confirmation=user.skip_forced_strike_confirmation,
+        auto_hold_announced_numbers=user.auto_hold_announced_numbers,
+        announce_button_writes=user.announce_button_writes,
         mobile_row_quick_entry=user.mobile_row_quick_entry,
         haptic_feedback=user.haptic_feedback,
         keep_screen_awake=user.keep_screen_awake,

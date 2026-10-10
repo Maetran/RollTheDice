@@ -37,6 +37,97 @@ class RollApplicationTestCase(GameStateTestCase):
         self.assertEqual(g["_turn"]["roll_index"], 3)
         self.assertEqual(g["_turn"]["first4oak_roll"], 2)
 
+    def test_announced_numbers_auto_hold_new_matches_on_later_rolls_in_all_modes(self):
+        for mode in (1, 2, 3, "2v2"):
+            for face in range(1, 7):
+                with self.subTest(mode=mode, face=face):
+                    g = self.make_game(mode=mode)
+                    other = face % 6 + 1
+                    game_engine.apply_roll(g, randint_fn=sequence_rng([face, other, other, other, other]))
+                    game_engine.apply_announcement(g, str(face))
+                    self.assertEqual(g["_holds"], [True, False, False, False, False])
+                    self.assertEqual(g["_auto_held_announced_indices"], [0])
+
+                    game_engine.apply_roll(g, randint_fn=sequence_rng([face, face, other, other]))
+
+                    self.assertEqual(g["_dice"], [face, face, face, other, other])
+                    self.assertEqual(g["_holds"], [True, True, True, False, False])
+                    self.assertEqual(g["_rolls_used"], 2)
+                    # A later third roll retains those matches and adds a new one.
+                    game_engine.apply_roll(g, randint_fn=sequence_rng([face, other]))
+                    self.assertEqual(g["_holds"], [True, True, True, True, False])
+
+    def test_first_roll_announcement_change_and_cancel_release_only_automatic_holds(self):
+        g = self.make_game(mode=1)
+        game_engine.apply_roll(g, randint_fn=sequence_rng([2, 2, 3, 3, 4]))
+        g["_holds"] = [True, False, True, False, False]
+
+        game_engine.apply_announcement(g, "2")
+        self.assertEqual(g["_holds"], [True, True, True, False, False])
+        self.assertEqual(g["_auto_held_announced_indices"], [1])
+
+        game_engine.apply_announcement(g, "3")
+        self.assertEqual(g["_holds"], [True, False, True, True, False])
+        self.assertEqual(g["_auto_held_announced_indices"], [3])
+
+        game_engine.apply_announcement(g, None)
+        self.assertEqual(g["_holds"], [True, False, True, False, False])
+        self.assertEqual(g["_auto_held_announced_indices"], [])
+
+    def test_first_roll_number_auto_hold_can_be_disabled(self):
+        g = self.make_game(mode=1)
+        game_engine.apply_roll(g, randint_fn=sequence_rng([2, 2, 3, 3, 4]))
+        g["_holds"][0] = True
+
+        game_engine.apply_announcement(g, "2", auto_hold_announced_numbers=False)
+
+        self.assertEqual(g["_holds"], [True, False, False, False, False])
+        self.assertEqual(g["_auto_held_announced_indices"], [])
+
+    def test_auto_holds_remain_manually_releasable_until_a_new_roll(self):
+        g = self.make_game(mode=1)
+        game_engine.apply_roll(g, randint_fn=sequence_rng([2, 1, 1, 1, 1]))
+        g["_announced_row4"] = "2"
+        g["_holds"][0] = True
+        game_engine.apply_roll(g, randint_fn=sequence_rng([2, 2, 3, 4]))
+        g["_holds"][1] = False
+
+        # A released die is rerolled rather than locked to the announced face.
+        game_engine.apply_roll(g, randint_fn=sequence_rng([5, 2, 6]))
+
+        self.assertEqual(g["_dice"], [2, 5, 2, 2, 6])
+        self.assertEqual(g["_holds"], [True, False, True, True, False])
+
+    def test_auto_hold_opt_out_preserves_the_players_original_selection(self):
+        g = self.make_game(mode=1)
+        g["_rolls_used"] = 1
+        g["_dice"] = [2, 1, 1, 1, 1]
+        g["_holds"] = [True, False, False, False, False]
+        g["_announced_row4"] = "2"
+
+        game_engine.apply_roll(
+            g, randint_fn=sequence_rng([2, 2, 3, 4]), auto_hold_announced_numbers=False,
+        )
+
+        self.assertEqual(g["_holds"], [True, False, False, False, False])
+
+    def test_other_announcements_and_first_roll_do_not_auto_hold(self):
+        for announced in (None, "max", "min", "kenter", "full", "poker", "60"):
+            with self.subTest(announced=announced):
+                g = self.make_game(mode=1)
+                g["_rolls_used"] = 1
+                g["_announced_row4"] = announced
+                game_engine.apply_roll(g, randint_fn=sequence_rng([2, 2, 2, 2, 2]))
+                self.assertEqual(g["_holds"], [False] * 5)
+
+        for hardcore, rolls_used in ((False, 0), (True, 1)):
+            with self.subTest(hardcore=hardcore, rolls_used=rolls_used):
+                g = self.make_game(mode=1, hardcore=hardcore)
+                g["_rolls_used"] = rolls_used
+                g["_announced_row4"] = "2"
+                game_engine.apply_roll(g, randint_fn=sequence_rng([2, 2, 2, 2, 2]))
+                self.assertEqual(g["_holds"], [False] * 5)
+
     def test_begin_next_turn_resets_roll_state_and_advances_player(self):
         g = self.make_game(players=[("p1", "A"), ("p2", "B")])
         g["_dice"] = [6, 6, 6, 6, 6]
@@ -54,6 +145,7 @@ class RollApplicationTestCase(GameStateTestCase):
         self.assertIsNone(g["_announced_row4"])
         self.assertIsNone(g["_announced_by"])
         self.assertIsNone(g["_announced_board"])
+        self.assertEqual(g["_auto_held_announced_indices"], [])
         self.assertEqual(g["_turn"], {"player_id": "p2", "roll_index": 0, "first4oak_roll": None})
 
     def test_roll_cap_is_three_five_on_last_cell_and_one_in_hardcore(self):

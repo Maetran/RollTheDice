@@ -52,6 +52,72 @@ class OpponentRollEventTestCase(GameStateTestCase):
             self.assertEqual(socket.messages[-1]["roll_event"], {"player_id": "p1", "dice_indices": [1, 3]})
             self.assertEqual(socket.messages[-1]["scoreboard"]["_rolls_used"], 2)
 
+    def test_announced_number_auto_hold_broadcasts_holds_and_preserves_roll_animation_indices(self):
+        game, sockets, session = self.room()
+        with patch("app.game_engine.random.randint", side_effect=[2, 1, 3, 4, 5, 2, 2, 4, 5]):
+            with patch("app.game_ws_gameplay.roll_cooldown_ok", return_value=True):
+                self.action(session, "roll_dice")
+                self.action(session, "announce_row4", {"field": "2"})
+                self.assertEqual(game["_holds"], [True, False, False, False, False])
+                self.action(session, "set_hold", {"holds": [True, False, False, False, False]})
+                self.action(session, "roll_dice")
+        for socket in sockets:
+            self.assertEqual(socket.messages[-1]["roll_event"], {"player_id": "p1", "dice_indices": [1, 2, 3, 4]})
+            self.assertEqual(socket.messages[-1]["scoreboard"]["_holds"], [True, True, True, False, False])
+        self.action(session, "set_hold", {"holds": [True, False, True, False, False]})
+        self.assertEqual(game["_holds"], [True, False, True, False, False])
+        self.assertEqual(snapshot(game)["_holds"], [True, False, True, False, False])
+
+    def test_first_roll_unannounce_releases_automatic_dice_and_preserves_manual_reholds(self):
+        game, sockets, session = self.room()
+        with patch("app.game_engine.random.randint", side_effect=[2, 2, 2, 3, 4]):
+            self.action(session, "roll_dice")
+        self.action(session, "set_hold", {"holds": [True, False, False, False, False]})
+        self.action(session, "announce_row4", {"field": "2"})
+        self.assertEqual(game["_holds"], [True, True, True, False, False])
+        self.assertEqual(game["_auto_held_announced_indices"], [1, 2])
+        self.assertEqual(serializable_game_state(game)["_auto_held_announced_indices"], [1, 2])
+        self.action(session, "set_hold", {"holds": [True, False, True, False, False]})
+        self.action(session, "set_hold", {"holds": [True, True, True, False, False]})
+        self.action(session, "unannounce_row4")
+        self.assertEqual(game["_holds"], [True, True, False, False, False])
+        self.assertEqual(game["_auto_held_announced_indices"], [])
+        for socket in sockets:
+            self.assertEqual(socket.messages[-1]["scoreboard"]["_holds"], [True, True, False, False, False])
+            self.assertIsNone(socket.messages[-1]["scoreboard"]["_announced_row4"])
+
+    def test_announce_protocol_disables_first_roll_auto_hold_only_for_explicit_false(self):
+        for preference in ("missing", True, False, None, "false", 0):
+            with self.subTest(preference=preference):
+                game, sockets, session = self.room()
+                game["_rolls_used"] = 1
+                game["_turn"]["roll_index"] = 1
+                game["_dice"] = [2, 2, 2, 3, 4]
+                game["_holds"] = [True, False, False, False, False]
+                payload = {"field": "2"}
+                if preference != "missing":
+                    payload["auto_hold_announced_numbers"] = preference
+                self.action(session, "announce_row4", payload)
+                expected = [True, False, False, False, False] if preference is False else [True, True, True, False, False]
+                self.assertEqual(game["_holds"], expected)
+                self.assertEqual(sockets[0].messages[-1]["scoreboard"]["_holds"], expected)
+
+    def test_roll_protocol_disables_number_auto_hold_only_for_explicit_false(self):
+        for preference in ("missing", True, False, None, "false", 0):
+            with self.subTest(preference=preference):
+                game, sockets, session = self.room()
+                game["_rolls_used"] = 1
+                game["_turn"]["roll_index"] = 1
+                game["_dice"] = [2, 1, 1, 1, 1]
+                game["_holds"] = [True, False, False, False, False]
+                game["_announced_row4"] = "2"
+                payload = {} if preference == "missing" else {"auto_hold_announced_numbers": preference}
+                with patch("app.game_engine.random.randint", return_value=2):
+                    self.action(session, "roll_dice", payload)
+                expected = [True, False, False, False, False] if preference is False else [True] * 5
+                self.assertEqual(game["_holds"], expected)
+                self.assertEqual(sockets[0].messages[-1]["scoreboard"]["_holds"], expected)
+
     def test_rejected_rolls_and_cooldown_do_not_emit_animation_events(self):
         for reason in ("wrong_turn", "paused", "correction", "limit", "cooldown"):
             with self.subTest(reason=reason):

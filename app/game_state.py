@@ -347,6 +347,11 @@ def _col_label_for_admin(col: str) -> str:
 
 def _clear_announcement(g: GameDict) -> None:
     """Setzt alle Ansage-Metadaten zurueck."""
+    holds = g.get("_holds") or []
+    for index in g.get("_auto_held_announced_indices", []):
+        if type(index) is int and 0 <= index < len(holds):
+            holds[index] = False
+    g["_auto_held_announced_indices"] = []
     g["_announced_row4"] = None
     g["_announced_by"] = None
     g["_announced_board"] = None
@@ -356,6 +361,7 @@ def _reset_turn_roll_state(g: GameDict) -> None:
     """Setzt Wuerfel, Holds und Wurfzaehler fuer den naechsten Zug zurueck."""
     g["_dice"] = [0, 0, 0, 0, 0]
     g["_holds"] = [False] * 5
+    g["_auto_held_announced_indices"] = []
     g["_rolls_used"] = 0
 
 
@@ -464,6 +470,7 @@ def new_game(gid: str, name: str, mode) -> GameDict:
         "_turn": None,  # {"player_id": ...}
         "_dice": [0, 0, 0, 0, 0],
         "_holds": [False] * 5,
+        "_auto_held_announced_indices": [],
         "_rolls_used": 0,
         "_rolls_max": 3,
         "_scoreboards": {},  # pid -> {"row,col": score} (Einzel/3P)

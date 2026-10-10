@@ -176,3 +176,52 @@ test("separate language, chat and ZDWA gameplay saves preserve each other's choi
   await expect(page.locator('input[name="lobbyChatEnabled"]')).not.toBeChecked();
   await expect(page.locator('input[name="lobbyChatPopups"]')).not.toBeChecked();
 });
+
+for (const language of ["de", "en"]) {
+  test(`ZDWA convenience settings default on and save independently in ${language}`, async ({ page }, testInfo) => {
+    await createAccount(page, `ConvenienceSettings_${language}`, language);
+    await page.goto("/konto#settings");
+    await openSection(page, "play");
+    const controls = [
+      ["skipForcedStrikeConfirmation", "skip_forced_strike_confirmation"],
+      ["autoHoldAnnouncedNumbers", "auto_hold_announced_numbers"],
+      ["announceButtonWrites", "announce_button_writes"],
+    ];
+    const comfort = page.locator("#preferencesForm fieldset").filter({
+      has: page.locator('input[name="skipForcedStrikeConfirmation"]'),
+    });
+    await expect(comfort.locator("legend")).toHaveText(language === "de" ? "ZDWA-Spielkomfort" : "ZDWA play conveniences");
+    await expect(comfort).toContainText(language === "de"
+      ? "Automatisch gehaltene Würfel kannst du jederzeit wieder abwählen. Beim Aufheben der Ansage werden sie gelöst."
+      : "You can deselect automatically held dice at any time. Cancelling the announcement releases them.");
+    const initial = (await (await page.request.get("/api/auth/me")).json()).user.preferences;
+    for (const [name, key] of controls) {
+      await expect(page.locator(`input[name="${name}"]`)).toBeChecked();
+      expect(initial[key]).toBe(true);
+    }
+
+    for (const [disabledName] of controls) {
+      for (const [name] of controls) await page.locator(`input[name="${name}"]`).setChecked(name !== disabledName);
+      const save = page.waitForResponse(response => new URL(response.url()).pathname === "/api/auth/preferences"
+        && response.request().method() === "PUT");
+      await page.locator("#preferencesForm").getByRole("button").click();
+      const response = await save;
+      expect(response.ok()).toBeTruthy();
+      const saved = (await response.json()).preferences;
+      for (const [name, key] of controls) expect(saved[key]).toBe(name !== disabledName);
+      await page.reload();
+      await openSection(page, "play");
+      for (const [name] of controls) await expect(page.locator(`input[name="${name}"]`)).toBeChecked({ checked: name !== disabledName });
+    }
+
+    for (const width of [390, 768, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await comfort.scrollIntoViewIfNeeded();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+      for (const [name] of controls) await expect(page.locator(`input[name="${name}"]`)).toBeVisible();
+      await testInfo.attach(`zdwa-convenience-settings-${language}-${width}`, {
+        body: await page.screenshot({ fullPage: true }), contentType: "image/png",
+      });
+    }
+  });
+}

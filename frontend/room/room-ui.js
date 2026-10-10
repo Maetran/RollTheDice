@@ -333,6 +333,9 @@
     return {
       announceSelectionMode: preferences.announce_selection_mode === "table" ? "table" : "overlay",
       autoWriteAnnounced: preferences.auto_write_announced !== false,
+      skipForcedStrikeConfirmation: preferences.skip_forced_strike_confirmation !== false,
+      autoHoldAnnouncedNumbers: preferences.auto_hold_announced_numbers !== false,
+      announceButtonWrites: preferences.announce_button_writes !== false,
       mobileRowQuickEntry: preferences.mobile_row_quick_entry === true,
       hapticFeedback: preferences.haptic_feedback === true,
       keepScreenAwake: preferences.keep_screen_awake === true,
