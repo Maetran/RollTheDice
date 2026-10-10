@@ -1,10 +1,10 @@
 {
-  "version": "2.48.0",
-  "bump": "minor",
-  "date": "2026-10-10",
-  "previous_revision": "14f55f538de8d2ebcb91d885c2ec9654f716ab21",
+  "version": "2.48.1",
+  "bump": "patch",
+  "date": "2026-10-11",
+  "previous_revision": "4d51580f89fe3a94bc7c8cf628e98ff19106d4f9",
   "summary": {
-    "de": "Drei einstellbare Komfortfunktionen für ZDWA",
-    "en": "Three configurable ZDWA play conveniences"
+    "de": "Ruhigere Wurfanzeige und Spielabschlüsse, mehr Platz für mobile Dialogbuttons",
+    "en": "Calmer dice reveals and game completion, more room for mobile dialog buttons"
   }
 }

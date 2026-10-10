@@ -63,6 +63,7 @@ function renderFromSnapshot(snapshot, { animateWrites = false, resetWrites = fal
       announcedRow4: announced,
       animateWrites,
       resetWrites,
+      displayedDiceHolds: displayedDiceHolds(snapshot),
       canRequestCorrection: canRequestCorrection(snapshot)
     });
     syncBoardCountClasses();

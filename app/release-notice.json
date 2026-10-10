@@ -1,27 +1,26 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa"
+    "zdwa",
+    "zilch"
   ],
-  "summary_de": "ZDWA wird bequemer: weniger Streich-Rückfragen, passende Würfel automatisch halten und Ansagen direkt schreiben. Alles einzeln einstellbar.",
-  "summary_en": "Smoother ZDWA: fewer strike prompts, automatic holds for number announcements and a Write button. Each feature has its own setting.",
+  "summary_de": "Passende Würfel werden nach der Animation grün. Mobile Dialogbuttons haben mehr Platz; Spielabschlüsse kommen ohne Prüfdialog.",
+  "summary_en": "Matching dice turn green after animation. Mobile dialog buttons have more room; game completion skips the checking dialog.",
   "player_notes": {
     "de": {
-      "title": "Drei kleine Helfer für deinen Spielzug",
+      "title": "Mehr Ruhe beim Würfeln und am Spielende",
       "changes": [
-        "Wenn nur ein erlaubtes Feld bleibt, streichst du es ohne zusätzliche Rückfrage. Bei mehreren Auswahlmöglichkeiten bleibt die Bestätigung.",
-        "Bei einer Zahlenansage von 1 bis 6 werden passende Würfel sofort und nach weiteren Würfen gehalten. Du kannst sie weiter abwählen; beim Aufheben der Ansage lösen sich die automatischen Haltepunkte.",
-        "Ab dem zweiten Wurf wird der Ansage-Button zu Schreiben. Du entscheidest, ob du einträgst oder weiterwürfelst.",
-        "Alle drei Funktionen sind von Anfang an aktiv und unter Konto → Einstellungen einzeln abschaltbar. Offline findest du die Schalter vor dem Spielstart."
+        "Bei Zahlenansagen zeigt die grüne Haltemarkierung erst nach der Wurfanimation die passenden Würfel. Du kannst sie anschließend weiterhin abwählen.",
+        "Auf dem Handy haben die Buttons in Streich- und Ergebnisdialogen mehr Abstand zum unteren Bildschirmrand.",
+        "Erfolge werden am Spielende im Hintergrund geprüft. Neue Erfolge und Rangaufstiege erscheinen weiterhin, ohne kurz aufblinkenden Prüfdialog."
       ]
     },
     "en": {
-      "title": "Three little helpers for your turn",
+      "title": "Calmer rolls and game completion",
       "changes": [
-        "When only one legal field remains, strike it without an extra prompt. Confirmation stays when you have several choices.",
-        "For number announcements from 1 to 6, matching dice are held immediately and after later rolls. You can still deselect them; cancelling the announcement releases automatic holds.",
-        "From the second roll, the announcement button becomes Write. You choose whether to enter the result or keep rolling.",
-        "All three features start enabled and can each be disabled under Account → Settings. Offline, the switches are available before starting."
+        "For number announcements, matching dice show their green hold marker after the roll animation. You can still deselect them afterward.",
+        "On phones, strike and result dialog buttons have more space above the bottom screen edge.",
+        "Achievements are checked in the background at game completion. New achievements and rank-ups still appear without a briefly flashing progress dialog."
       ]
     }
   }

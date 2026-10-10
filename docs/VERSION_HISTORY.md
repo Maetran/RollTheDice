@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.48.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.48.1**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.48.0 | 2026-10-10 | minor | Drei einstellbare Komfortfunktionen für ZDWA / Three configurable ZDWA play conveniences | [4d51580](https://github.com/Maetran/RollTheDice/commit/4d51580f89fe3a94bc7c8cf628e98ff19106d4f9) |
 | 2.47.0 | 2026-10-05 | minor | Konto direkt mit Passkey erstellen / Create accounts directly with passkeys | [14f55f5](https://github.com/Maetran/RollTheDice/commit/14f55f538de8d2ebcb91d885c2ec9654f716ab21) |
 | 2.46.0 | 2026-10-05 | minor | Mission Control: PWA, Browser, Sprachen und Request-Herkunft / Mission Control: PWA, browsers, languages and request origins | [457162d](https://github.com/Maetran/RollTheDice/commit/457162d1eaa41cf19934de8bc1370897a38e97c4) |
 | 2.45.0 | 2026-10-05 | minor | Mission Control ergänzt LCARS mit lokalem Designwechsel und anonymer Betriebssystem- und Geräteanalyse / Mission Control adds LCARS with a local theme choice and anonymous operating-system and device analysis | [03e0eb6](https://github.com/Maetran/RollTheDice/commit/03e0eb62cfd8b8db5cba2612fbd5e18629208fe9) |

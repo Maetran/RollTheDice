@@ -1,4 +1,5 @@
 const { test, expect } = require("@playwright/test");
+const { expectReachable } = require("./table-viewport");
 
 const ROWS = [0, 1, 2, 3, 4, 5, 9, 10, 12, 13, 14, 15];
 const COLS = ["down", "free", "up", "ang"];
@@ -182,3 +183,50 @@ test("correction mode still confirms a zero-point replacement", async ({ page })
   await page.locator('[data-dialog-action="confirm"]').click();
   await expect.poll(() => writes(actions)).toEqual([{ action:"write_field_correction", row:13, field:"free" }]);
 });
+
+for (const [language, theme, viewport] of [
+  ["de", "light", { width:390, height:844 }],
+  ["en", "dark", { width:430, height:932 }],
+  ["de", "classic", { width:360, height:640 }],
+]) {
+  test(`mobile strike dialogs keep actions clear of rounded screen corners (${language}, ${theme})`, async ({ browser, baseURL }, testInfo) => {
+    const context = await browser.newContext({ baseURL, viewport, isMobile:true, hasTouch:true, serviceWorkers:"block" });
+    await context.addInitScript(design => localStorage.setItem("wuerfler_theme", design), theme);
+    const page = await context.newPage();
+    try {
+      const actions = await fixture(page, snapshot(boardWithOpenCells([13, "free"], [14, "free"]), {
+        _dice:[2, 2, 2, 2, 6], _turn:{ player_id:"p1", roll_index:2, first4oak_roll:1 },
+      }), { language });
+      for (const safeBottom of [0, 34]) {
+        await page.evaluate(inset => document.body.style.setProperty("--room-safe-bottom", `${inset}px`), safeBottom);
+        for (const row of [13, 14]) {
+          await cell(page, row, "free").tap();
+          await expect(page.locator("#appDialogTitle")).toHaveText(row === 14
+            ? language === "en" ? "Strike poker?" : "Poker streichen?"
+            : language === "en" ? "Strike field?" : "Feld streichen?");
+          for (const action of ["cancel", "confirm"]) await expectReachable(page, `[data-dialog-action="${action}"]`);
+          const spacing = await page.locator("#appDialog").evaluate(dialog => {
+            const box = dialog.getBoundingClientRect();
+            const buttons = Array.from(dialog.querySelectorAll(".app-dialog-actions > button"), button => button.getBoundingClientRect());
+            const bottom = Math.max(...buttons.map(button => button.bottom));
+            return {
+              innerBottom:box.bottom - bottom,
+              screenBottom:innerHeight - bottom,
+              contentOverflow:dialog.scrollHeight - dialog.clientHeight,
+            };
+          });
+          expect(spacing.innerBottom, "space inside the dialog below its action buttons").toBeGreaterThanOrEqual(32 + safeBottom);
+          expect(spacing.screenBottom, "buttons clear the rounded screen edge and home indicator").toBeGreaterThanOrEqual(40 + safeBottom);
+          expect(spacing.contentOverflow, "the complete strike message and buttons fit on the phone").toBeLessThanOrEqual(1);
+          await page.screenshot({ path:testInfo.outputPath(`strike-${row}-${viewport.width}px-inset-${safeBottom}.png`) });
+          await page.locator('[data-dialog-action="cancel"]').tap();
+          await expect(page.locator("#appDialog")).toBeHidden();
+          expect(writes(actions)).toEqual([]);
+        }
+      }
+      await cell(page, 14, "free").tap();
+      await page.locator('[data-dialog-action="confirm"]').tap();
+      await expect.poll(() => writes(actions)).toEqual([{ action:"write_field", row:14, field:"free", strike:true }]);
+    } finally { await context.close(); }
+  });
+}

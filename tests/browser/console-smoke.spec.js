@@ -1074,7 +1074,7 @@ test("new achievements are acknowledged individually before the final standings"
   await expect(page.getByRole("button", { name: "Neue Runde" })).toBeVisible();
 });
 
-test("the last struck field stays visible while finalization waits for achievements", async ({ page }) => {
+test("the last struck field stays visible without a checking dialog while finalization waits for achievements", async ({ page }) => {
   const rows = [0, 1, 2, 3, 4, 5, 9, 10, 12, 13, 14, 15];
   const columns = ["down", "free", "up", "ang"];
   const board = Object.fromEntries(
@@ -1121,6 +1121,7 @@ test("the last struck field stays visible while finalization waits for achieveme
     _finalization_pending: pending,
   });
   const writes = [];
+  let completeFinalization;
 
   await page.routeWebSocket(/\/ws\/finalization-flow$/, socket => {
     socket.onMessage(raw => {
@@ -1136,7 +1137,7 @@ test("the last struck field stays visible while finalization waits for achieveme
         scoreboard: snapshot({ finished: true, pending: true }),
         finalization_pending: true,
       }));
-      setTimeout(() => {
+      completeFinalization = () => {
         socket.send(JSON.stringify({
           scoreboard: snapshot({ finished: true, pending: false }),
           finalization_pending: false,
@@ -1156,7 +1157,7 @@ test("the last struck field stays visible while finalization waits for achieveme
             },
           },
         }));
-      }, 550);
+      };
     });
   });
 
@@ -1164,15 +1165,18 @@ test("the last struck field stays visible while finalization waits for achieveme
   const lastCell = page.locator('.player-card.me td.cell[data-row="15"][data-field="ang"]');
   await expect(lastCell).toHaveText("");
   await lastCell.click();
-  await page.getByRole("button", { name: "Streichen" }).click();
   await expect.poll(() => writes.length).toBe(1);
 
   const dialog = page.locator("#appDialog");
   await expect(lastCell).toHaveText("0");
-  await expect(dialog).toContainText("1. Finalizer – 0 Punkte");
-  await expect(dialog).toContainText("Erfolge werden geprüft …");
-  await expect(dialog.locator('[data-dialog-action="pending-finalization"]')).toBeDisabled();
+  await expect(page.locator("#appDialogBackdrop")).toBeHidden();
+  await expect(dialog.locator('[data-dialog-action="pending-finalization"]')).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Neue Runde" })).toHaveCount(0);
+  // A delayed finalizer stays non-blocking and exposes a quiet status after
+  // normal, fast checks have already had time to finish without a banner.
+  await expect(page.locator("#connectionStatus")).toHaveAttribute("data-state", "finalizing");
+  await expect(page.locator("#appDialogBackdrop")).toBeHidden();
+  completeFinalization();
 
   await expect(dialog).toHaveAttribute("data-kind", "achievement");
   await expect(dialog).toContainText("Letzter Zug");
@@ -1230,6 +1234,39 @@ test("a fast completion cannot leave a queued finalization dialog behind", async
   await expect(dialog).toHaveAttribute("data-kind", "success");
   await expect(dialog).toContainText("1. Fast – 555 Punkte");
   await expect(page.getByRole("button", { name: "Neue Runde" })).toBeVisible();
+  await expect(dialog.locator('[data-dialog-action="pending-finalization"]')).toHaveCount(0);
+  await expect(page.locator("#connectionStatus")).not.toHaveAttribute("data-state", "finalizing");
+});
+
+test.describe("quiet finalization", () => {
+  test.use({ serviceWorkers: "block" });
+  test("a completed finalizer without awards opens result actions directly and keeps rematch recovery", async ({ page, request }) => {
+    const created = await request.post("/api/games", { data: { name: "Quiet completion", mode: 1 } });
+    const { game_id: gameId } = await created.json();
+    await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Quiet&__test=1`);
+    await page.waitForSelector("#diceBar");
+    await page.evaluate(() => {
+      const snapshot = { _name: "Quiet completion", _mode: "1", _results: [{ name: "Quiet", total: 321 }] };
+      void window.__rtDebugShowGameResults(snapshot, [], { finalizationPending: true });
+    });
+    await expect(page.locator("#appDialogBackdrop")).toBeHidden();
+    await expect(page.locator("#connectionStatus")).not.toHaveAttribute("data-state", "finalizing");
+    await page.evaluate(() => {
+      void window.__rtDebugShowGameResults({ _name: "Quiet completion", _mode: "1", _results: [{ name: "Quiet", total: 321 }] });
+    });
+    const dialog = page.locator("#appDialog");
+    await expect(dialog).toHaveAttribute("data-kind", "success");
+    await expect(dialog).toContainText("1. Quiet – 321 Punkte");
+    await expect(dialog.locator('[data-dialog-action="pending-finalization"]')).toHaveCount(0);
+    await page.route("**/api/games", route => route.fulfill({ status: 503, json: { detail: "unavailable" } }));
+    await page.getByRole("button", { name: "Neue Runde", exact: true }).click();
+    await expect(dialog).toHaveAttribute("data-kind", "error");
+    await expect(dialog).toContainText("Neue Runde konnte nicht erstellt werden");
+    await dialog.getByRole("button", { name: "OK", exact: true }).click();
+    await expect(dialog).toHaveAttribute("data-kind", "success");
+    await expect(dialog).toContainText("1. Quiet – 321 Punkte");
+    await expect(page.getByRole("button", { name: "Neue Runde", exact: true })).toBeVisible();
+  });
 });
 
 test("protected game passphrases use an in-app dialog and stay out of the room URL", async ({ page, request }) => {

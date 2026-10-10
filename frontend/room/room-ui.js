@@ -210,43 +210,15 @@
     // run. The server follows with a second terminal frame when that work is
     // complete; only then may the final actions be offered.
     window._fatalWsClose = false;
-    setConnectionStatus("finalizing", "Spiel wird ausgewertet …");
-
-    const { results, lines } = gameResultPresentation(snapshot);
-    const state = { snapshot, pending: true, dialogPromise: null };
+    const state = { snapshot, pending: true, statusTimer: null };
     pendingGameFinalization = state;
-    if (window.ZDWA_UI?.dialog) {
-      state.dialogPromise = window.ZDWA_UI.dialog({
-        id: "game-finalization-pending",
-        title: results.length > 1 ? "Endstand" : "Spiel beendet",
-        message: `${lines.join("\n")}\n\n${window.ZDWA_I18N?.t?.("Erfolge werden geprüft …") || "Erfolge werden geprüft …"}`,
-        kind: "success",
-        dismissible: false,
-        actions: [{
-          id: "pending-finalization",
-          label: "Erfolge werden geprüft …",
-          className: "primary",
-          disabled: true,
-        }],
-      }).catch(error => {
-        console.warn("Endstand konnte während der Auswertung nicht geöffnet werden:", error);
-      });
-    }
-  }
-
-  async function completePendingGameFinalization(snapshot, unlockedAchievements, achievementRankUp) {
-    const state = pendingGameFinalization;
-    if (!state?.pending) return false;
-    state.pending = false;
-    pendingGameFinalization = null;
-    window.ZDWA_UI?.dismiss?.("game-finalization-pending", "finalized");
-    if (state.dialogPromise) {
-      try { await state.dialogPromise; }
-      catch (error) { console.warn("Auswertungsdialog konnte nicht geschlossen werden:", error); }
-    }
-    window._resultsShown = false;
-    await showGameResults(snapshot, unlockedAchievements, { achievementRankUp });
-    return true;
+    // Ordinary finalization needs no intermediate dialog or flashing banner.
+    // If storage/evaluation takes longer, keep a quiet, non-blocking status.
+    state.statusTimer = setTimeout(() => {
+      if (pendingGameFinalization === state && state.pending && ws?.readyState === WebSocket.OPEN) {
+        setConnectionStatus("finalizing", "Spiel wird ausgewertet …");
+      }
+    }, 1000);
   }
 
   async function showGameResults(
@@ -258,7 +230,12 @@
       beginPendingGameFinalization(snapshot);
       return;
     }
-    if (await completePendingGameFinalization(snapshot, unlockedAchievements, achievementRankUp)) return;
+    if (pendingGameFinalization?.pending) {
+      pendingGameFinalization.pending = false;
+      clearTimeout(pendingGameFinalization.statusTimer);
+      pendingGameFinalization = null;
+      window._resultsShown = false;
+    }
     if (window._resultsShown) return;
     window._resultsShown = true;
     window._fatalWsClose = true;

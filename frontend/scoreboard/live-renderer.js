@@ -1,6 +1,6 @@
 function renderScoreboard(mount, sb, {
   myPlayerId, iAmTurn, rollsUsed, rollsMax, announcedRow4, canRequestCorrection = false, readOnly = false,
-  animateWrites = false, resetWrites = false
+  animateWrites = false, resetWrites = false, displayedDiceHolds = null
 } = {}) {
   if (!sb) { if (mount) mount.innerHTML = ""; return; }
 
@@ -11,7 +11,8 @@ function renderScoreboard(mount, sb, {
   const writing = prepareClassicWriting(contentEl, sb, { animateWrites, resetWrites, readOnly });
 
   const dice  = sb._dice  || [];
-  const holds = sb._holds || [false,false,false,false,false];
+  const logicalHolds = sb._holds || [false,false,false,false,false];
+  const holds = displayedDiceHolds || logicalHolds;
   const turnPid  = sb?._turn?.player_id || null;
   const turnPlayer = (sb?._players || []).find(p => String(p.id) === String(turnPid));
   const turnName = turnPlayer?.name || "—";
@@ -60,7 +61,7 @@ function renderScoreboard(mount, sb, {
         <div class="dice-main">
           <div class="dice-row">
             ${dice.map((d,i)=>
-              `<button type="button" class="die ${holds[i] ? "held" : ""}" data-i="${i}" aria-label="Würfel ${i + 1} halten oder lösen" aria-pressed="${holds[i] ? "true" : "false"}" title="halten/lösen">${dieSVG(d || 0)}</button>`
+              `<button type="button" class="die ${holds[i] ? "held" : ""}" data-i="${i}" data-logical-held="${logicalHolds[i] ? "true" : "false"}" aria-label="Würfel ${i + 1} halten oder lösen" aria-pressed="${holds[i] ? "true" : "false"}" title="halten/lösen">${dieSVG(d || 0)}</button>`
             ).join("")}
           </div>
           <div class="dice-actions">

@@ -22,6 +22,26 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.48.1 — Ruhigere Anzeige und mobile Dialoge / Calmer reveals and mobile dialogs — 2026-10-11
+
+**Deutsch:** Automatisch gehaltene Würfel bei Zahlenansagen werden erst grün,
+wenn die Wurfanimation die endgültigen Augen zeigt. Das gilt auch für Mitspieler
+und Zuschauer; zuvor gehaltene Würfel bleiben ruhig und bedienbar. Mobile
+Streich- und Ergebnisdialoge haben mehr Innenabstand unter den Buttons und
+berücksichtigen die Geräte-Sicherheitszone. Am Spielende laufen Erfolgsprüfungen
+ohne kurz aufblinkenden Prüfdialog. Freigeschaltete Erfolge, Rangaufstiege und
+Ergebnisse erscheinen weiterhin im gewohnten Ablauf. Stiller Release ohne
+Versions-Push oder neuen In-App-Hinweis.
+
+**English:** Matching dice held automatically for number announcements turn
+green only after the roll animation reveals their final faces. This also applies
+to opponents and spectators; previously held dice stay still and editable.
+Mobile strike and result dialogs have more padding below their buttons and
+respect the device's safe area. Game completion checks achievements without a
+briefly flashing progress dialog. Unlocked achievements, rank-ups and results
+still follow their usual flow. Silent release without a version push or new
+in-app notice.
+
 ## 2.48.0 — Einstellbarer ZDWA-Spielkomfort / Configurable ZDWA conveniences — 2026-10-10
 
 **Deutsch:** Drei unabhängige Komforteinstellungen sind für neue und bestehende

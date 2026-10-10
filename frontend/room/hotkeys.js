@@ -53,12 +53,10 @@
         const idx = parseInt(key, 10) - 1;
         const iAmTurn = sb?._turn && String(sb._turn.player_id) === String(myId);
         const inCorr = !!(sb?._correction?.active);
-        if (!iAmTurn || inCorr) return;
+        if (!iAmTurn || inCorr || sb?._superadmin_active || superadminState.active) return;
 
-        const holdsEls = $$("#diceBar .die", mount);
-        const next = holdsEls.map(b => b.classList.contains("held"));
-        next[idx] = !next[idx];
-        safeSend(ws, { action: "set_hold", holds: next });
+        const die = $(`#diceBar .die[data-i="${idx}"]`, mount);
+        if (die && !die.disabled) die.click();
         e.preventDefault();
         return;
       }

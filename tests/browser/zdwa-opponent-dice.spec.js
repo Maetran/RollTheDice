@@ -11,6 +11,8 @@ async function recordDice(page) {
       window.__diceFrames.push({
         time: performance.now(),
         shaking: [...document.querySelectorAll("#diceBar .die.shaking")].map(die => Number(die.dataset.i)),
+        held: [...document.querySelectorAll("#diceBar .die.held")].map(die => Number(die.dataset.i)),
+        pressed: [...document.querySelectorAll("#diceBar .die")].map(die => die.getAttribute("aria-pressed")),
         faces: [...document.querySelectorAll("#diceBar .die")].map(die => die.querySelectorAll("circle").length),
       });
       requestAnimationFrame(frame);
@@ -42,7 +44,7 @@ function state() {
   };
 }
 
-async function fixture(page, { theme = "classic", initial = state() } = {}) {
+async function fixture(page, { theme = "classic", initial = state(), spectator = false } = {}) {
   await page.addInitScript(value => localStorage.setItem("wuerfler_theme", value), theme);
   let current = structuredClone(initial);
   let socket;
@@ -54,24 +56,202 @@ async function fixture(page, { theme = "classic", initial = state() } = {}) {
     connected.onMessage(raw => {
       const message = JSON.parse(String(raw));
       actions.push(message);
-      if (["join_game", "rejoin_game"].includes(message.action)) {
-        connected.send(JSON.stringify({ player_id: "p1", resume_token: "dice-regression" }));
+      if (["join_game", "rejoin_game", "spectate_game"].includes(message.action)) {
+        connected.send(JSON.stringify(spectator
+          ? { spectator_id: "observer" }
+          : { player_id: "p1", resume_token: "dice-regression" }));
         connected.send(JSON.stringify({ scoreboard: current }));
       }
     });
   });
-  await page.goto("/spiel/opponent-dice-fixture?name=Anna", { waitUntil: "domcontentloaded" });
+  await page.goto(`/spiel/opponent-dice-fixture${spectator ? "/zuschauen" : ""}?name=Anna`, { waitUntil: "domcontentloaded" });
   await expect(page.locator("#diceBar .die")).toHaveCount(5);
   return {
     actions,
     get connections() { return connections; },
-    push(next, event) {
+    push(next, event, extra = {}) {
       current = structuredClone(next);
-      socket.send(JSON.stringify({ scoreboard: current, ...(event ? { roll_event: event } : {}) }));
+      socket.send(JSON.stringify({ scoreboard: current, ...(event ? { roll_event: event } : {}), ...extra }));
     },
     reconnect() { return socket.close({ code: 1012, reason: "Regression reconnect" }); },
   };
 }
+
+const heldIndices = page => page.locator("#diceBar .die.held").evaluateAll(dice => dice.map(die => Number(die.dataset.i)));
+const die = (page, index) => page.locator(`#diceBar .die[data-i="${index}"]`);
+
+async function pauseDiceClock(page) {
+  const start = new Date("2026-10-11T12:00:00Z");
+  await page.clock.install({ time: start });
+  await page.clock.pauseAt(start);
+}
+
+function announcedState(playerId = "p2") {
+  return {
+    ...state(), _turn: { player_id: playerId, roll_index: 1 },
+    _dice: [2, 1, 3, 4, 5], _holds: [true, false, false, false, false],
+    _announced_row4: "2", _announced_by: playerId, _announced_board: playerId,
+  };
+}
+
+function announcedRoll(initial) {
+  return {
+    ...initial, _turn: { ...initial._turn, roll_index: 2 }, _rolls_used: 2,
+    _dice: [2, 2, 2, 4, 5], _holds: [true, true, true, false, false],
+  };
+}
+
+async function expectNoEarlyAutomaticHolds(page, indices = [1, 2]) {
+  const samples = await frames(page);
+  expect(samples.some(frame => indices.some(index => frame.shaking.includes(index)))).toBe(true);
+  expect(samples.every(frame => indices.every(index => !frame.shaking.includes(index)
+    || (!frame.held.includes(index) && frame.pressed[index] === "false")))).toBe(true);
+}
+
+test("own announced roll reveals automatic holds only after final faces and preserves manual hold payloads", async ({ page }) => {
+  await pauseDiceClock(page);
+  const initial = announcedState("p1");
+  const server = await fixture(page, { initial });
+  const event = { player_id: "p1", dice_indices: [1, 2, 3, 4] };
+  await recordDice(page);
+  await page.locator("#rollBtnInline").click();
+  await page.clock.runFor(150);
+  await expect.poll(() => server.actions.some(action => action.action === "roll_dice")).toBe(true);
+  const rolled = announcedRoll(initial);
+  server.push(rolled, event);
+  await expect(page.locator("#diceBar .die.shaking")).toHaveCount(4);
+  expect(await heldIndices(page)).toEqual([0]);
+  await expect(die(page, 0)).toBeEnabled();
+  await expect(die(page, 1)).toBeDisabled();
+  await expect(die(page, 1)).toHaveAttribute("aria-pressed", "false");
+  await expect(die(page, 1)).toHaveAttribute("data-logical-held", "true");
+  await page.clock.runFor(90);
+  const beforeManualRelease = await frames(page);
+  expect(beforeManualRelease.every(frame => frame.held.includes(0) && !frame.shaking.includes(0))).toBe(true);
+
+  // A visible manual hold stays editable while other dice animate. Its full
+  // outgoing selection retains the automatic holds that are still hidden.
+  await die(page, 0).click();
+  await expect.poll(() => server.actions.filter(action => action.action === "set_hold").length).toBe(1);
+  expect(server.actions.find(action => action.action === "set_hold").holds).toEqual([false, true, true, false, false]);
+  await page.keyboard.press("2"); // The moving die cannot be held by hotkey.
+  await die(page, 1).evaluate(button => button.click());
+  expect(server.actions.filter(action => action.action === "set_hold")).toHaveLength(1);
+
+  await page.clock.runFor(361); // Past 600 ms, before the animation cleanup.
+  const manualRelease = { ...rolled, _holds: [false, true, true, false, false] };
+  server.push(manualRelease, event); // A repeated frame must keep the mask.
+  await expect(page.locator("#diceBar .die.shaking")).toHaveCount(4);
+  expect(await heldIndices(page)).toEqual([]);
+  await expect(die(page, 2)).toHaveAttribute("aria-pressed", "false");
+  await page.clock.runFor(50);
+  await expect(page.locator("#diceBar .die.shaking")).toHaveCount(0);
+  expect(await faces(page)).toEqual([2, 2, 2, 4, 5]);
+  expect(await heldIndices(page)).toEqual([1, 2]);
+  await expect(die(page, 0)).toHaveAttribute("aria-pressed", "false");
+  await expect(die(page, 1)).toHaveAttribute("aria-pressed", "true");
+  await expect(die(page, 1)).toBeEnabled();
+  await expectNoEarlyAutomaticHolds(page);
+
+  await die(page, 1).click();
+  await expect.poll(() => server.actions.filter(action => action.action === "set_hold").length).toBe(2);
+  expect(server.actions.filter(action => action.action === "set_hold").at(-1).holds).toEqual([false, false, true, false, false]);
+  await page.keyboard.press("3");
+  await expect.poll(() => server.actions.filter(action => action.action === "set_hold").length).toBe(3);
+  expect(server.actions.filter(action => action.action === "set_hold").at(-1).holds).toEqual([false, false, false, false, false]);
+});
+
+for (const spectator of [false, true]) {
+  test(`${spectator ? "spectator" : "opponent"}: new automatic holds stay hidden until the observed roll animation finishes`, async ({ page }) => {
+    await pauseDiceClock(page);
+    const initial = announcedState();
+    const server = await fixture(page, { initial, spectator });
+    const rolled = announcedRoll(initial);
+    const event = { player_id: "p2", dice_indices: [1, 2, 3, 4] };
+    await recordDice(page);
+    server.push(rolled, event);
+    await expect(page.locator("#diceBar .die.shaking")).toHaveCount(4);
+    expect(await heldIndices(page)).toEqual([0]);
+    await page.clock.runFor(601);
+    server.push(rolled, event);
+    await expect(page.locator("#diceBar .die.shaking")).toHaveCount(4);
+    expect(await heldIndices(page)).toEqual([0]);
+    await expect(die(page, 1)).toHaveAttribute("aria-pressed", "false");
+    await page.clock.runFor(50);
+    await expect(page.locator("#diceBar .die.shaking")).toHaveCount(0);
+    expect(await faces(page)).toEqual([2, 2, 2, 4, 5]);
+    expect(await heldIndices(page)).toEqual([0, 1, 2]);
+    await expect(die(page, 1)).toHaveAttribute("aria-pressed", "true");
+    await expectNoEarlyAutomaticHolds(page);
+  });
+}
+
+test("a first-roll number announcement received during animation waits to reveal its automatic holds", async ({ page }) => {
+  await pauseDiceClock(page);
+  const initial = { ...announcedState("p1"), _rolls_used: 0, _turn: { player_id: "p1", roll_index: 0 },
+    _dice: [0, 0, 0, 0, 0], _holds: [false, false, false, false, false], _announced_row4: null };
+  const server = await fixture(page, { initial });
+  await recordDice(page);
+  await page.locator("#rollBtnInline").click();
+  await page.clock.runFor(150);
+  await expect.poll(() => server.actions.some(action => action.action === "roll_dice")).toBe(true);
+  const announced = { ...initial, _rolls_used: 1, _turn: { player_id: "p1", roll_index: 1 },
+    _dice: [2, 1, 2, 4, 5], _holds: [true, false, true, false, false], _announced_row4: "2" };
+  server.push(announced);
+  await expect(page.locator("#diceBar .die.shaking")).toHaveCount(5);
+  expect(await heldIndices(page)).toEqual([]);
+  await page.clock.runFor(501);
+  await expect(page.locator("#diceBar .die.shaking")).toHaveCount(0);
+  expect(await faces(page)).toEqual([2, 1, 2, 4, 5]);
+  expect(await heldIndices(page)).toEqual([0, 2]);
+  await expectNoEarlyAutomaticHolds(page, [0, 2]);
+});
+
+test("hydration and reduced motion reveal announced holds immediately without a deferred marker", async ({ page }) => {
+  await pauseDiceClock(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const initial = announcedState();
+  const server = await fixture(page, { initial });
+  const rolled = announcedRoll(initial);
+  await recordDice(page);
+  server.push(rolled, { player_id: "p2", dice_indices: [1, 2, 3, 4] });
+  await expect(page.locator("#diceBar .die.shaking")).toHaveCount(0);
+  expect(await faces(page)).toEqual([2, 2, 2, 4, 5]);
+  expect(await heldIndices(page)).toEqual([0, 1, 2]);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.locator("#diceBar .die")).toHaveCount(5);
+  await recordDice(page);
+  await expect(page.locator("#diceBar .die.shaking")).toHaveCount(0);
+  expect(await heldIndices(page)).toEqual([0, 1, 2]);
+  await page.clock.runFor(700);
+  expect((await frames(page)).every(frame => frame.shaking.length === 0)).toBe(true);
+  expect(await heldIndices(page)).toEqual([0, 1, 2]);
+});
+
+test("hold hotkeys stay inactive during Superadmin editing without opening a die-value prompt", async ({ page }) => {
+  const initial = announcedState("p1");
+  const server = await fixture(page, { initial });
+  const dialogs = [];
+  page.on("dialog", async dialog => {
+    dialogs.push(dialog.message());
+    await dialog.dismiss();
+  });
+  server.push({ ...initial, _superadmin_active: true }, null, {
+    superadmin: { active: true, board_id: "p1" },
+  });
+  await expect(page.locator("body")).toHaveClass(/superadmin-active/);
+  await expect(die(page, 0)).toHaveClass(/superadmin-die-editable/);
+  await expect(die(page, 0)).toBeEnabled();
+  await page.keyboard.press("1");
+  await page.keyboard.press("2");
+  expect(dialogs).toEqual([]);
+  expect(server.actions.filter(action => ["set_hold", "superadmin_set_die"].includes(action.action))).toEqual([]);
+  // Explicit mouse/touch editing still opens the established admin prompt.
+  await die(page, 0).click();
+  await expect.poll(() => dialogs.length).toBe(1);
+  expect(dialogs[0]).toContain("neue Augenzahl");
+});
 
 test("two players and a spectator see real rolls while held dice stay still", async ({ browser, request, baseURL }, testInfo) => {
   const contexts = await Promise.all([0, 1, 2].map(() => browser.newContext({

@@ -110,6 +110,7 @@
       if (btn._holdBound) return;
       btn._holdBound = true;
       btn.addEventListener("click", () => {
+        if (isDieAnimating(Number(btn.dataset.i))) return;
         btn.classList.remove("shaking");
 
         if (superadminState.active) {
@@ -142,16 +143,18 @@
 
         // Den Hold sofort darstellen. Zuvor wurde die Markierung erst mit dem
         // Server-Snapshot sichtbar, was sich besonders mobil verzögert anfühlte.
-        const nextHeld = !btn.classList.contains("held");
+        const nextHeld = btn.dataset.logicalHeld !== "true";
+        btn.dataset.logicalHeld = String(nextHeld);
         btn.classList.toggle("held", nextHeld);
         btn.setAttribute("aria-pressed", String(nextHeld));
 
-        const holds = $$("#diceBar .die", mount).map(b => b.classList.contains("held"));
+        const holds = $$("#diceBar .die", mount).map(b => b.dataset.logicalHeld === "true");
         if (!safeSend(ws, { action: "set_hold", holds })) {
           // Ohne offene Verbindung bleibt kein Zustand stehen, den der Server
           // nie erhalten hat.
           btn.classList.toggle("held", !nextHeld);
           btn.setAttribute("aria-pressed", String(!nextHeld));
+          btn.dataset.logicalHeld = String(!nextHeld);
         }
       });
     });

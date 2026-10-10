@@ -1464,7 +1464,7 @@ test("the Zilch lobby lists a live human duel with both players and a watch link
   }
 });
 
-test("a private solo result keeps the objective compact and the score sheet in focus", async ({ browser, baseURL }) => {
+test("a private solo result keeps its actions usable when background awards are unavailable", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
   const page = await context.newPage();
   try {
@@ -1529,8 +1529,15 @@ test("a private solo result keeps the objective compact and the score sheet in f
       contentType: "text/html; charset=utf-8",
       body: shellHtml,
     }));
+    await page.route("**/api/zilch/achievements/pending", route => route.fulfill({
+      status: 503,
+      json: { detail: "temporary award outage" },
+    }));
 
     await page.goto(`/zilch/ergebnis/${resultId}`);
+    await expect(page.locator("#zilchLiveAnnouncements")).toContainText(/Zilch-Award konnte nicht bestätigt werden|Zilch award could not be acknowledged/);
+    await expect(page.locator("#appDialogBackdrop")).toBeHidden();
+    await expect(page.locator(".zilch-result-moments--pending")).toHaveCount(0);
     await expect(page.locator(".zilch-result-board")).toHaveCount(1);
     await expect(page.locator(".zilch-result-summary")).toContainText(/Solo-Ergebnis|Solo result/);
     await expect(page.locator(".zilch-result-summary")).toContainText(/Solo-Ziel|Solo objective/);
@@ -2017,6 +2024,7 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
         outcome: "abandoned",
       },
       outcome: { status: "abandoned", tied: false, winner_ids: [] },
+      moments: { status: "pending", participants: [] },
       metrics: {
         turns: 2,
         rolls: 4,
@@ -2098,10 +2106,18 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
     };
     const acknowledgements = [];
     let pendingAwards = [olderAward, unrelatedCommunityAward, currentAward, currentCommunityAward];
+    let releaseAwardCheck;
+    let delayAwardCheck = true;
+    let awardCheckStarted = false;
+    const awardCheck = new Promise(resolve => { releaseAwardCheck = resolve; });
     await page.route("**/api/zilch/achievements**", async route => {
       const request = route.request();
       const url = new URL(request.url());
       if (url.pathname === "/api/zilch/achievements/pending") {
+        if (delayAwardCheck) {
+          awardCheckStarted = true;
+          await awardCheck;
+        }
         await route.fulfill({
           contentType: "application/json",
           body: JSON.stringify({ version: 1, awards: pendingAwards }),
@@ -2144,6 +2160,17 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
       window.__zilchGameScreenFixturePush({ scoreboard });
     }, terminalPersisted);
 
+    await expect.poll(() => awardCheckStarted).toBe(true);
+    await expect(page.locator(".zilch-result-head")).toContainText(/Solo-Lauf aufgegeben|Solo run abandoned/);
+    await expect(page.locator("#appDialogBackdrop")).toBeHidden();
+    await expect(page.locator(".zilch-result-moments--pending")).toHaveCount(0);
+    // Keep result navigation/rematch behind the mandatory award queue, but
+    // do not show a transient checking dialog or replace the score summary.
+    await expect(page.locator(".zilch-result-actions, [data-zilch-new-round]")).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`/zilch/spiel/${gameId}$`));
+    delayAwardCheck = false;
+    releaseAwardCheck();
+
     await expect(page.locator("#appDialog")).toContainText(/Erster Wurf|First Roll/);
     await page.getByRole("button", { name: /Weiter|Continue/ }).click();
     await expect(page.locator("#appDialog")).toContainText(/Die ersten Hundert|The First Hundred/);
@@ -2158,6 +2185,7 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
     expect(acknowledgements).not.toContain("zilch.banked_round_500");
     expect(acknowledgements).not.toContain("zilch.community_games_500");
     await expect(page.locator("#appDialogBackdrop")).toBeHidden();
+    await expect(page.locator(".zilch-result-moments--pending")).toHaveCount(0);
     await expect(page.locator(".zilch-result-head")).toContainText(/Solo-Lauf aufgegeben|Solo run abandoned/);
     const resultActions = page.locator(".zilch-result-actions");
     await expect(resultActions.getByRole("button", { name: /Neues Solo|New solo/ })).toBeVisible();
@@ -2166,6 +2194,13 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
       const summary = document.querySelector(".zilch-result-summary");
       return Boolean(summary && (actions.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING));
     })).toBe(true);
+
+    // A durable ready projection still displays the game's actual honors.
+    resultReport.moments = { status: "ready", participants: [{ participant_id: "p1", awards: [currentAward], rank_ups: [] }] };
+    await page.reload();
+    await expect(page.locator(".zilch-result-moments")).toContainText(/Erster Wurf|First Roll/);
+    await expect(page.locator("#appDialogBackdrop")).toBeHidden();
+    await expect(resultActions.getByRole("button", { name: /Neues Solo|New solo/ })).toBeVisible();
 
     // A recipient who did not play the milestone's trigger game gets no
     // presentation game id. The award remains private and appears only in

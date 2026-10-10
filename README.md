@@ -30,7 +30,8 @@ when only one legal field is available, automatically hold dice matching a numbe
 announcement (1–6) immediately and after later rolls, and turn the announcement
 button into **Write** from the second roll. Automatically held dice remain deselectable;
 cancel or change the announcement to release them, keeping prior manual holds.
-correction mode retains zero-point confirmation. Guests use the enabled defaults.
+After a roll, the green hold marker appears only once the dice animation finishes.
+Correction mode retains zero-point confirmation. Guests use the enabled defaults.
 Offline play offers the same three switches before starting, saved only in that browser.
 
 **Deutsch:** Drei unabhängige Komforteinstellungen sind für neue und bestehende
@@ -40,9 +41,20 @@ bei Zahlenansagen von 1 bis 6 sofort und nach weiteren Würfen automatisch halte
 Ansage-Button ab Wurf 2 zu **Schreiben** ändern. Gehaltene Würfel bleiben
 abwählbar; beim Aufheben oder Ändern der Ansage werden automatische Haltepunkte
 gelöst und vorherige manuelle Haltepunkte bleiben erhalten. Bei Korrekturen
-wird Streichen weiterhin bestätigt. Gäste nutzen
+erscheint die Streich-Bestätigung weiterhin. Nach einem Wurf erscheint die grüne
+Haltemarkierung erst, wenn die Würfelanimation beendet ist. Gäste nutzen
 die aktiven Vorgaben. Offline sind die drei Schalter vor dem Start verfügbar
 und werden nur in diesem Browser gespeichert.
+
+**Deutsch – Dialoge und Spielende:** Auf Mobilgeräten haben die Dialogbuttons
+zusätzlichen Abstand zur unteren Geräte-Sicherheitszone. In ZDWA und Zilch werden
+am Spielende Erfolge im Hintergrund geprüft. Neue Erfolge, Rangaufstiege und das
+Ergebnis erscheinen ohne kurz aufblinkenden Prüfdialog.
+
+**English – Dialogs and game completion:** On mobile, dialog buttons have extra
+space above the device's bottom safe area. In ZDWA and Zilch, achievements are
+checked in the background at game completion. New achievements, rank-ups and the
+result appear without a briefly flashing progress dialog.
 
 ## Contents
 

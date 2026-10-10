@@ -2035,5 +2035,12 @@
     "date": "2026-10-05",
     "bump": "minor",
     "summary": "Konto direkt mit Passkey erstellen / Create accounts directly with passkeys"
+  },
+  {
+    "version": "2.48.0",
+    "revision": "4d51580f89fe3a94bc7c8cf628e98ff19106d4f9",
+    "date": "2026-10-10",
+    "bump": "minor",
+    "summary": "Drei einstellbare Komfortfunktionen für ZDWA / Three configurable ZDWA play conveniences"
   }
 ]

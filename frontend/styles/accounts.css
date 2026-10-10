@@ -354,7 +354,12 @@ body.app-dialog-open{ overflow:hidden; }
 
 @media (max-width:560px){
   .app-dialog-backdrop{ align-items:end; padding:.5rem; }
-  .app-dialog{ width:100%; border-radius:var(--radius) var(--radius) .45rem .45rem; }
+  .app-dialog{
+    width:100%;
+    border-radius:var(--radius) var(--radius) .45rem .45rem;
+    /* Keep the action row above rounded screen corners and the home indicator. */
+    padding-bottom:calc(2rem + var(--room-safe-bottom, env(safe-area-inset-bottom, 0px)));
+  }
   .app-dialog-actions{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); }
   .app-dialog-actions > :only-child{ grid-column:1 / -1; }
   .app-toast-region{

@@ -2905,7 +2905,11 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
   .zilch-score-notebook { margin-inline: calc(var(--zilch-safe-left) * -1) calc(var(--zilch-safe-right) * -1); border-right: 0; border-left: 0; border-radius: 0; }
   .zilch-round-history { max-height: 9rem; }
   html[data-game="zilch"] .app-dialog-backdrop { align-items: end; padding: .5rem; }
-  html[data-game="zilch"] .app-dialog { width: 100%; border-radius: var(--zilch-radius) var(--zilch-radius) .48rem .48rem; }
+  html[data-game="zilch"] .app-dialog {
+    width: 100%;
+    border-radius: var(--zilch-radius) var(--zilch-radius) .48rem .48rem;
+    padding-bottom: calc(2rem + var(--zilch-room-safe-bottom, env(safe-area-inset-bottom, 0px)));
+  }
   html[data-game="zilch"] .app-dialog-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   html[data-game="zilch"] .app-dialog-actions > :only-child { grid-column: 1 / -1; }
 }

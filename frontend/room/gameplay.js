@@ -176,6 +176,8 @@
     stopRollFaceTimer();
     stopDiceShake();
     restoreDiceFacesFromSnapshot(sb);
+    syncDiceHoldPresentation();
+    wireDiceBar();
     const suggestionSnapshot = deferredSuggestionSnapshot || sb;
     deferredSuggestionSnapshot = null;
     renderSuggestionsForSnapshot(suggestionSnapshot);
@@ -185,7 +187,34 @@
   }
 
   function isRollAnimationActive(){
-    return rollAnimationUntil > Date.now() && rollAnimationIndices.length > 0;
+    // The final timer/interval restores the real faces before clearing this
+    // state. A server frame at the time limit must not reveal holds early.
+    return rollAnimationUntil > 0 && rollAnimationIndices.length > 0;
+  }
+
+  function isDieAnimating(index){
+    return isRollAnimationActive() && rollAnimationIndices.includes(Number(index));
+  }
+
+  function displayedDiceHolds(snapshot){
+    const holds = snapshot?._holds || [false,false,false,false,false];
+    return holds.map((held, index) => Boolean(held) && !isDieAnimating(index));
+  }
+
+  function syncDiceHoldPresentation(){
+    $$("#diceBar .die", mount).forEach(el => {
+      const animating = isDieAnimating(Number(el.dataset.i));
+      const held = el.dataset.logicalHeld === "true" && !animating;
+      el.classList.toggle("held", held);
+      el.setAttribute("aria-pressed", String(held));
+      if (animating) {
+        if (!Object.hasOwn(el.dataset, "rollDisabled")) el.dataset.rollDisabled = String(el.disabled);
+        el.disabled = true;
+      } else if (Object.hasOwn(el.dataset, "rollDisabled")) {
+        el.disabled = el.dataset.rollDisabled === "true";
+        delete el.dataset.rollDisabled;
+      }
+    });
   }
 
   function activeRollDiceIndices(snapshot){
@@ -198,6 +227,7 @@
       const active = isRollAnimationActive();
       const diceEls = $$("#diceBar .die", mount);
       diceEls.forEach(el => el.classList.remove("shaking"));
+      syncDiceHoldPresentation();
       if (!active) return;
       const animated = new Set(rollAnimationIndices.map(Number));
       diceEls.forEach(el => {
@@ -216,7 +246,10 @@
     rollAnimationIndices = Array.isArray(explicitIndices)
       ? explicitIndices.map(Number).filter(i => i >= 0 && i < 5)
       : activeRollDiceIndices(snapshot);
-    if (!rollAnimationIndices.length) return;
+    if (!rollAnimationIndices.length) {
+      clearRollAnimation();
+      return;
+    }
     rollAnimationUntil = Date.now() + ROLL_ANIMATION_MS;
     applyRollAnimation();
     if (rollAnimationTimer) {
@@ -240,7 +273,7 @@
     const invalidated = !next?._started || next._finished || next._aborted || next._paused
       || next._correction?.active || previousTurn !== nextTurn
       || Number(next._rolls_used || 0) < Number(previous?._rolls_used || 0);
-    if (invalidated) {
+    if (!hydrated || invalidated) {
       clearRollAnimation();
       return;
     }
