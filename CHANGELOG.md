@@ -22,6 +22,26 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.49.0 — PWA-Zähler in Mission Control / PWA counters in Mission Control — 2026-10-11
+
+**Deutsch:** Mission Control zeigt im gewählten UTC-Zeitraum getrennte Zähler
+für vom Browser bestätigte PWA-Installationen und erstmals erkannte Starts im
+Appfenster. Safari und iOS liefern keine Installationsbestätigung; die
+Startschätzung enthält auch bestehende Apps beim ersten Start seit Messbeginn
+und zählt nach gelöschtem Speicher erneut. Die Werte werden nicht addiert.
+Die Zuordnung folgt der installierten App auch beim Spielwechsel. Do Not Track,
+Global Privacy Control und die begrenzte Telemetrie-Aufbewahrung gelten weiter.
+Stiller Release ohne Versions-Push oder neuen In-App-Hinweis.
+
+**English:** Mission Control shows separate counters for browser-confirmed PWA
+installations and first detected app-window launches during the selected UTC
+period. Safari and iOS do not confirm installations; the launch estimate also
+includes existing apps on their first launch since measurement began and
+counts again after storage is cleared. The values are not added together.
+Attribution follows the installed app when switching games. Do Not Track,
+Global Privacy Control and bounded telemetry retention remain in effect.
+Silent release without a version push or new in-app notice.
+
 ## 2.48.2 — Verlässliche Prüfungen und stabile Ansichten / Reliable checks and stable screens — 2026-10-11
 
 **Deutsch:** Der lokale Qualitätscheck umfasst jetzt dieselben Sicherheits- und

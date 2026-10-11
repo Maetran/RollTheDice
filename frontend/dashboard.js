@@ -212,6 +212,8 @@ function clientContext(data) {
     byId("appModeChart").innerHTML = `<div class="launch-summary"><div class="launch-orbit" aria-hidden="true"><svg viewBox="0 0 110 110"><circle class="launch-orbit-track" cx="55" cy="55" r="44"/>${pwa ? `<circle class="launch-orbit-meter" cx="55" cy="55" r="44" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference * (1 - share / 100)}"/>` : ""}</svg><span>${known ? `${percent(share)}<small>%</small>` : "—"}</span></div><div class="launch-copy"><strong>${e(t(known ? "Als PWA geöffnet" : "Startkontext unbekannt"))}</strong><p>${known ? `${number(pwa)} ${e(t("Besuche"))} · ${e(t("Anteil aller Besuche"))}` : e(t("Ältere Angaben bleiben unbekannt."))}</p></div></div><div class="launch-stack" aria-hidden="true">${modes.map(row => `<span class="launch-segment launch-${["pwa", "browser"].includes(row.app_mode) ? row.app_mode : "unknown"} rank-fill" style="width:${count(row.sessions) / total * 100}%"></span>`).join("")}</div>`;
   }
   ranks("appModeRanks", modes, "app_mode", "sessions", value => t(APP_MODE_LABELS[value] || "Unbekannt"), { share: true, limit: 3 });
+  byId("pwaInstalledCount").textContent = number(count(data.pwa?.confirmed_installations));
+  byId("pwaFirstOpenCount").textContent = number(count(data.pwa?.first_detected_starts));
   ranks("browserRanks", data.browsers, "browser", "sessions", value => t(BROWSER_LABELS[value] || "Unbekannt"), { share: true, limit: 9 });
   ranks("browserLanguageRanks", data.browser_languages, "browser_language", "sessions", browserLanguageName, { share: true, limit: 8 });
 }
@@ -418,7 +420,7 @@ function clearPrivateData() {
   analysis.resetSession();
   globe.clear();
   globe.suspend();
-  for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceSoftwareRanks", "deviceHardwareRanks", "deviceDonut", "appModeChart", "appModeRanks", "browserRanks", "browserLanguageRanks", "requestTrafficSummary", "requestCountryRanks", "requestStatusRanks", "requestAgentRanks", "requestChannelRanks", "requestRecordedAt", "requestDroppedNote", "countryRanks", "gameCards", "gameModes", "actionRanks", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated"]) byId(id).replaceChildren();
+  for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceSoftwareRanks", "deviceHardwareRanks", "deviceDonut", "appModeChart", "appModeRanks", "pwaInstalledCount", "pwaFirstOpenCount", "browserRanks", "browserLanguageRanks", "requestTrafficSummary", "requestCountryRanks", "requestStatusRanks", "requestAgentRanks", "requestChannelRanks", "requestRecordedAt", "requestDroppedNote", "countryRanks", "gameCards", "gameModes", "actionRanks", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated"]) byId(id).replaceChildren();
 }
 function syncMotion() {
   const paused = motionPaused || motionQuery.matches;

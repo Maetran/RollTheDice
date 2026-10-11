@@ -1,10 +1,10 @@
 {
-  "version": "2.48.2",
-  "bump": "patch",
+  "version": "2.49.0",
+  "bump": "minor",
   "date": "2026-10-11",
-  "previous_revision": "5f204d3024e75498eb43d6b93d53e02ed74343ba",
+  "previous_revision": "c331bdc311a24a5e50c6423b8e649550bb1cafd6",
   "summary": {
-    "de": "Stabile Qualitätsprüfungen und lesbare, ruhige Spielansichten",
-    "en": "Reliable quality checks and readable, stable game screens"
+    "de": "Getrennte PWA-Installations- und Erststart-Zähler in Mission Control",
+    "en": "Separate PWA installation and first-launch counters in Mission Control"
   }
 }

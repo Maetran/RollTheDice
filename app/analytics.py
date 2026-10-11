@@ -71,7 +71,13 @@ ACTIONS = frozenset({
     "game_leave", "login", "register", "logout", "settings_save", "theme_change", "language_change",
     "mode_solo", "mode_duo", "mode_trio", "mode_team", "mode_normal", "mode_hardcore", "mode_computer",
     "mode_multiplayer", "mode_offline", "game_created", "open_settings",
+    "pwa_installed_zdwa", "pwa_installed_zilch", "pwa_first_open_zdwa", "pwa_first_open_zilch",
 })
+PWA_ACTIONS = {
+    f"{action}_{product}": (product, metric)
+    for product in ("zdwa", "zilch")
+    for action, metric in (("pwa_installed", "confirmed_installations"), ("pwa_first_open", "first_detected_starts"))
+}
 PAGES = frozenset({
     "/", "/spiel", "/zuschauen", "/ergebnis", "/regeln", "/spieler", "/rangabzeichen", "/bestenlisten",
     "/historie", "/statistiken", "/erfolge", "/offline-spielen", "/offline", "/konto",
@@ -811,7 +817,8 @@ def _previous_overview(db: Session, start: datetime, days: int, game: str) -> di
         func.count(func.distinct(AnalyticsEvent.session_id)),
         func.sum(cast(AnalyticsEvent.event_type == "page_view", Integer)),
         func.sum(AnalyticsEvent.active_ms),
-        func.sum(cast((AnalyticsEvent.event_type == "action") & AnalyticsEvent.game.in_(("zdwa", "zilch")), Integer))
+        func.sum(cast((AnalyticsEvent.event_type == "action") & AnalyticsEvent.game.in_(("zdwa", "zilch"))
+                      & AnalyticsEvent.action.not_in(PWA_ACTIONS), Integer))
     ).where(*filters)).one()
     completed = db.scalar(select(func.count()).select_from(CompletedGame).where(*results)) or 0
     return {"sessions": sessions, "page_views": int(page_views or 0), "active_seconds": round((active_ms or 0) / 1000, 1),
@@ -906,7 +913,19 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                                  .group_by(AnalyticsEvent.action, AnalyticsEvent.game, AnalyticsEvent.source)
                                  .order_by(func.count().desc())).all()
         actions = [{"action": action, "game": product, "source": source, "count": total}
-                   for action, product, source, total in action_rows]
+                   for action, product, source, total in action_rows if action not in PWA_ACTIONS]
+        # The action names carry the installed manifest's identity independently
+        # of the page being viewed inside either game's PWA bridge.
+        pwa = {"confirmed_installations": 0, "first_detected_starts": 0}
+        pwa_rows = db.execute(select(AnalyticsEvent.action, func.count()).where(
+            AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
+            AnalyticsEvent.source == "client", AnalyticsEvent.event_type == "action",
+            AnalyticsEvent.action.in_(PWA_ACTIONS),
+        ).group_by(AnalyticsEvent.action)).all()
+        for action, total in pwa_rows:
+            product, metric = PWA_ACTIONS[action]
+            if game in {"all", product}:
+                pwa[metric] += total
         date_expr = func.date(AnalyticsEvent.received_at)
         activity_daily = {str(day): (sc, pv or 0, ms or 0) for day, sc, pv, ms in db.execute(
             select(date_expr, func.count(func.distinct(AnalyticsEvent.session_id)), views, active)
@@ -981,5 +1000,5 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
             "overview": overview, "request_traffic": request_traffic, "geography": geography, "geography_summary": geography_summary,
             "heatmap": heatmap, "journeys": journeys,
             "comparison": _comparison_stats(overview, previous_overview, start, now, days, first_client),
-            "daily": daily, "pages": pages, **dimensions, "actions": actions, "games": games,
+            "daily": daily, "pages": pages, **dimensions, "actions": actions, "pwa": pwa, "games": games,
             "modes": modes, "hourly": hourly, "server": server}

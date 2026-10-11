@@ -267,6 +267,44 @@ class AnalyticsTests(unittest.TestCase):
         for key in ("app_modes", "browsers", "browser_languages"):
             self.assertEqual(empty[key], [])
 
+    def test_pwa_counts_are_deduplicated_period_filtered_and_follow_manifest_product(self):
+        now = datetime(2026, 10, 11, 12, tzinfo=timezone.utc)
+
+        def track(number, action, when, *, game="zdwa", source="client"):
+            raw = batch(sid=f"{number:032x}", events=[{
+                "id": f"{number:032x}", "page_id": "b" * 32, "type": "action",
+                "page": "/zilch" if game == "zilch" else "/", "game": game, "action": action,
+            }])
+            normalized = normalize_batch(raw, now=when)
+            for item in normalized["events"]:
+                item["source"] = source
+            persist_batches([normalized, normalized])
+
+        # A ZDWA PWA showing Zilch, and a Zilch PWA showing the ZDWA bridge.
+        track(1, "pwa_installed_zdwa", now - timedelta(minutes=1), game="zilch")
+        track(2, "pwa_first_open_zdwa", now - timedelta(minutes=1), game="zilch")
+        track(3, "pwa_installed_zilch", now - timedelta(minutes=1))
+        track(4, "pwa_first_open_zilch", now - timedelta(minutes=1))
+        track(5, "pwa_installed_zilch", now - timedelta(days=1))
+        track(6, "pwa_installed_zdwa", now + timedelta(seconds=1))
+        track(7, "pwa_installed_zdwa", now - timedelta(minutes=1), source="server")
+        track(8, "roll_dice", now - timedelta(minutes=1))
+        track(9, "roll_dice", now - timedelta(days=1))
+        track(10, "pwa_first_open_zdwa", now - timedelta(days=1))
+        all_stats = dashboard_stats(1, now=now)
+        self.assertEqual(all_stats["pwa"], {"confirmed_installations": 2, "first_detected_starts": 2})
+        self.assertEqual(all_stats["actions"], [{"action": "roll_dice", "game": "zdwa", "source": "client", "count": 1}])
+        self.assertEqual(all_stats["overview"]["game_clicks"], 1)
+        self.assertEqual(all_stats["comparison"]["overview"]["game_clicks"],
+                         {"current": 1, "previous": 1, "delta": 0, "change_percent": 0})
+        for product in ("zdwa", "zilch"):
+            self.assertEqual(dashboard_stats(1, product, now=now)["pwa"],
+                             {"confirmed_installations": 1, "first_detected_starts": 1})
+        self.assertEqual(dashboard_stats(7, "zilch", now=now)["pwa"],
+                         {"confirmed_installations": 2, "first_detected_starts": 1})
+        self.assertEqual(dashboard_stats(1, now=now.replace(hour=0))["pwa"],
+                         {"confirmed_installations": 0, "first_detected_starts": 0})
+
     def _track_page(self, sid: int, page_number: int, page: str, when: datetime, *, game="zdwa", country="ZZ", active_ms=15000):
         events = [{"id": f"{page_number * 2:032x}", "page_id": f"{page_number:032x}", "type": "page_view",
                    "page": page, "game": game}]

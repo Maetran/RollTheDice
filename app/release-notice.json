@@ -4,21 +4,21 @@
     "zdwa",
     "zilch"
   ],
-  "summary_de": "Classic bleibt auf kurzen Handybildschirmen lesbar. In der Zilch-Lobby verschiebt die Kontoerstellung keine Spielbereiche mehr.",
-  "summary_en": "Classic stays readable on short phone screens. Account signup no longer shifts game areas in the Zilch lobby.",
+  "summary_de": "Mission Control zeigt bestätigte PWA-Installationen und erste App-Starts getrennt.",
+  "summary_en": "Mission Control shows confirmed PWA installations and first app launches separately.",
   "player_notes": {
     "de": {
-      "title": "Lesbare Spielzettel und eine stabile Lobby",
+      "title": "Neue PWA-Zähler in Mission Control",
       "changes": [
-        "Auf kurzen Handybildschirmen bleibt die Classic-Schrift lesbar und der gesamte Spielzettel über Würfeln und Aktionen erreichbar.",
-        "In der Zilch-Lobby stehen Spiele, Chat und Ranglisten ruhig, auch wenn die Kontoprüfung etwas länger dauert. Die Kontoerstellung für Gäste findest du darunter."
+        "Mit Dashboard-Zugriff siehst du im gewählten Zeitraum, wie oft der Browser eine App-Installation bestätigt hat.",
+        "Ein eigener Zähler zeigt erstmals erkannte App-Starts, auch auf iPhone und iPad. Er kann bestehende Apps enthalten und wird nicht zu den Installationen addiert."
       ]
     },
     "en": {
-      "title": "Readable score sheets and a stable lobby",
+      "title": "New PWA counters in Mission Control",
       "changes": [
-        "On short phone screens, Classic keeps readable lettering and the whole score sheet within reach above the dice and actions.",
-        "Games, chat and rankings stay still in the Zilch lobby, even when the account check takes longer. Guest account signup is available below them."
+        "With dashboard access, you can see how often the browser confirmed an app installation during the selected period.",
+        "A separate counter shows first detected app launches, including iPhone and iPad. It can include existing apps and is not added to installation counts."
       ]
     }
   }

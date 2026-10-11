@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.48.2**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.49.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.48.2 | 2026-10-11 | patch | Stabile Qualitätsprüfungen und lesbare, ruhige Spielansichten / Reliable quality checks and readable, stable game screens | [c331bdc](https://github.com/Maetran/RollTheDice/commit/c331bdc311a24a5e50c6423b8e649550bb1cafd6) |
 | 2.48.1 | 2026-10-11 | patch | Ruhigere Wurfanzeige und Spielabschlüsse, mehr Platz für mobile Dialogbuttons / Calmer dice reveals and game completion, more room for mobile dialog buttons | [5f204d3](https://github.com/Maetran/RollTheDice/commit/5f204d3024e75498eb43d6b93d53e02ed74343ba) |
 | 2.48.0 | 2026-10-10 | minor | Drei einstellbare Komfortfunktionen für ZDWA / Three configurable ZDWA play conveniences | [4d51580](https://github.com/Maetran/RollTheDice/commit/4d51580f89fe3a94bc7c8cf628e98ff19106d4f9) |
 | 2.47.0 | 2026-10-05 | minor | Konto direkt mit Passkey erstellen / Create accounts directly with passkeys | [14f55f5](https://github.com/Maetran/RollTheDice/commit/14f55f538de8d2ebcb91d885c2ec9654f716ab21) |

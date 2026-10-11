@@ -2049,5 +2049,12 @@
     "date": "2026-10-11",
     "bump": "patch",
     "summary": "Ruhigere Wurfanzeige und Spielabschlüsse, mehr Platz für mobile Dialogbuttons / Calmer dice reveals and game completion, more room for mobile dialog buttons"
+  },
+  {
+    "version": "2.48.2",
+    "revision": "c331bdc311a24a5e50c6423b8e649550bb1cafd6",
+    "date": "2026-10-11",
+    "bump": "patch",
+    "summary": "Stabile Qualitätsprüfungen und lesbare, ruhige Spielansichten / Reliable quality checks and readable, stable game screens"
   }
 ]

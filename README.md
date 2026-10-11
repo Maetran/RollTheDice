@@ -96,6 +96,15 @@ not people or installations. Languages such as `de-CH` are grouped as German,
 independently of the language selected in the game. Chrome and indistinguishable
 Chromium browsers share a group; recognition is approximate. Measurement starts
 with 2.46.0 and older visits remain unknown.
+Two separate PWA counters cover the selected UTC period: browser-confirmed
+installations (`appinstalled`, unavailable in Safari/iOS) and first detected
+standalone launches, including iOS. The launch estimate uses a local flag,
+includes existing apps on their first launch after measurement starts, and
+counts again if storage is cleared; unavailable storage skips this estimate.
+The counters must not be added together and are not a complete installation
+total. Attribution follows each PWA's manifest, even when it displays the other
+game. Collection respects Do Not Track/Global Privacy Control and remains best
+effort with the existing 90-day/200,000-event retention; no device ID is added.
 A separate country breakdown counts HTTP requests reaching the application,
 including bots, assets and APIs. It aggregates country and response status
 without network or account identifiers. This is sitewide traffic, independent
@@ -135,6 +144,15 @@ Tab-Besuche, keine Personen oder Installationen. `de-CH` zählt beispielsweise
 als Deutsch, unabhängig von der im Spiel gewählten Sprache. Chrome und nicht
 unterscheidbare Chromium-Browser teilen eine Gruppe; die Erkennung ist
 näherungsweise. Die Messung beginnt mit 2.46.0, ältere Besuche bleiben unbekannt.
+Zwei getrennte PWA-Zähler gelten für den gewählten UTC-Zeitraum: vom Browser
+bestätigte Installationen (`appinstalled`, nicht in Safari/iOS verfügbar) und
+erstmals erkannte Starts im Appfenster, auch auf iOS. Die Startschätzung nutzt
+eine lokale Markierung, enthält bestehende Apps beim ersten Start nach
+Messbeginn und zählt nach gelöschtem Speicher erneut; ohne verfügbaren Speicher
+entfällt sie. Beide Werte werden nicht addiert und sind keine vollständige
+Installationszahl. Die Zuordnung folgt dem PWA-Manifest auch beim Spielwechsel.
+Do Not Track/Global Privacy Control und die bestehende Aufbewahrung von maximal
+90 Tagen/200.000 Ereignissen gelten weiterhin; es entsteht keine Geräte-ID.
 Eine eigene Länder-Auswertung zählt HTTP-Requests, die die Anwendung erreichen,
 einschließlich Bots, Dateien und API-Aufrufen. Zusammengefasst werden Land und
 Antwortstatus ohne Netzwerk- oder Kontokennungen. Gezählt wird unabhängig vom

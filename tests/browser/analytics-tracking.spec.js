@@ -9,12 +9,27 @@ const tracker = buildSync({
 }).outputFiles[0].text;
 
 async function trackingFixture(page, { route = "/", game = "zdwa", dnt = false, gpc = false, beacon = false, referrer = "", userAgent = null, touchPoints = 0,
-  languages = ["de-CH", "en-US"], language = "de-CH", displayMode = "browser", standalone = null } = {}) {
+  languages = ["de-CH", "en-US"], language = "de-CH", displayMode = "browser", standalone = null,
+  manifest = "/manifest.webmanifest", blockedPwaStorage = false, offline = false } = {}) {
   const batches = [];
   await page.clock.install({ time: new Date("2026-10-04T00:00:00Z") });
   await page.clock.pauseAt(new Date("2026-10-04T00:00:01Z"));
   await page.addInitScript(({ dnt: enabledDnt, gpc: enabledGpc, beacon: enabledBeacon, referrer: initialReferrer, userAgent: ua, touchPoints: points,
-    languages: preferred, language: fallback, displayMode: display, standalone: iosStandalone }) => {
+    languages: preferred, language: fallback, displayMode: display, standalone: iosStandalone,
+    blockedPwaStorage: blockedStorage, offline: startsOffline }) => {
+    window.fixturePwaStorageAccesses = 0;
+    for (const method of ["getItem", "setItem"]) {
+      const original = Storage.prototype[method];
+      Storage.prototype[method] = function (key, ...args) {
+        if (String(key).startsWith("rollthedice:analytics:pwa-")) {
+          window.fixturePwaStorageAccesses += 1;
+          if (blockedStorage) throw new Error("PWA storage unavailable");
+        }
+        return Reflect.apply(original, this, [key, ...args]);
+      };
+    }
+    window.fixtureOnline = !startsOffline;
+    Object.defineProperty(navigator, "onLine", { configurable: true, get: () => window.fixtureOnline });
     Object.defineProperty(navigator, "doNotTrack", { configurable: true, value: enabledDnt ? "1" : null });
     Object.defineProperty(navigator, "globalPrivacyControl", { configurable: true, value: enabledGpc });
     if (ua != null) Object.defineProperty(navigator, "userAgent", { configurable: true, value: ua });
@@ -25,8 +40,11 @@ async function trackingFixture(page, { route = "/", game = "zdwa", dnt = false, 
     if (display === null) window.matchMedia = undefined;
     else {
       const nativeMatchMedia = window.matchMedia.bind(window);
+      window.fixtureDisplayMode = display;
+      window.fixtureDisplayChange = new EventTarget();
       window.matchMedia = query => query.startsWith("(display-mode:")
-        ? { matches: query === `(display-mode: ${display})` } : nativeMatchMedia(query);
+        ? { get matches() { return query === `(display-mode: ${window.fixtureDisplayMode})`; },
+          addEventListener: (...args) => window.fixtureDisplayChange.addEventListener(...args) } : nativeMatchMedia(query);
     }
     if (enabledDnt || enabledGpc) {
       for (const property of ["userAgent", "languages", "language", "standalone"]) {
@@ -41,7 +59,7 @@ async function trackingFixture(page, { route = "/", game = "zdwa", dnt = false, 
     const nativeInterval = window.setInterval;
     window.fixtureIntervals = 0;
     window.setInterval = (...args) => { window.fixtureIntervals += 1; return nativeInterval(...args); };
-  }, { dnt, gpc, beacon, referrer, userAgent, touchPoints, languages, language, displayMode, standalone });
+  }, { dnt, gpc, beacon, referrer, userAgent, touchPoints, languages, language, displayMode, standalone, blockedPwaStorage, offline });
   await page.route("**/api/analytics/events", async request => {
     batches.push(JSON.parse(request.request().postData()));
     await request.fulfill({ status: 202, contentType: "application/json", body: '{"accepted":true}' });
@@ -51,7 +69,7 @@ async function trackingFixture(page, { route = "/", game = "zdwa", dnt = false, 
       await request.fallback();
       return;
     }
-    await request.fulfill({ contentType: "text/html", body: `<!doctype html><html data-game="${game}"><body>
+    await request.fulfill({ contentType: "text/html", body: `<!doctype html><html data-game="${game}"><head><link rel="manifest" href="${manifest}"></head><body>
       <input id="privateInput" value="SecretUserAndPassword">
       <button id="createBtn" data-id="private-room-id">Room secret and user name</button>
       <button data-game-mode="2">2 players</button>
@@ -80,12 +98,102 @@ async function tick(page, milliseconds) {
 
 for (const preference of ["dnt", "gpc"]) {
   test(`analytics respects ${preference} without storage, timers, or requests`, async ({ page }) => {
-    const fixture = await trackingFixture(page, { [preference]: true });
+    const fixture = await trackingFixture(page, { [preference]: true, displayMode: "standalone", blockedPwaStorage: true });
+    await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
     await page.locator("#createBtn").click();
     await tick(page, 45000);
     expect(fixture.batches).toEqual([]);
     expect(await page.evaluate(() => window.fixtureIntervals)).toBe(0);
+    expect(await page.evaluate(() => window.fixturePwaStorageAccesses)).toBe(0);
     expect(await page.evaluate(() => sessionStorage.getItem("rollthedice:analytics:tab:v1"))).toBeNull();
+  });
+}
+
+test("PWA installations count confirmed events separately and allow later reinstalls", async ({ page }) => {
+  const fixture = await trackingFixture(page);
+  await page.evaluate(() => {
+    localStorage.setItem("rollthedice:analytics:pwa-first-open:v1:zdwa", "1");
+    window.dispatchEvent(new Event("beforeinstallprompt"));
+  });
+  expect(fixture.events().filter(event => event.action?.startsWith("pwa_"))).toEqual([]);
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("appinstalled"));
+    window.dispatchEvent(new Event("appinstalled"));
+  });
+  await expect.poll(() => fixture.events().filter(event => event.action === "pwa_installed_zdwa").length).toBe(1);
+  expect(fixture.events().some(event => event.action === "pwa_first_open_zdwa")).toBe(false);
+  expect(fixture.batches.every(batch => batch.app_mode === "browser")).toBe(true);
+  await tick(page, 11000);
+  await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
+  await expect.poll(() => fixture.events().filter(event => event.action === "pwa_installed_zdwa").length).toBe(2);
+  expect(JSON.stringify(fixture.batches)).not.toMatch(/installed-at|first-open|Secret|manifest/);
+});
+
+for (const context of [{ displayMode: "standalone" }, { displayMode: null, standalone: true }]) {
+  test(`first PWA launch persists a flag across reloads (${context.displayMode || "iOS"})`, async ({ page }) => {
+    const fixture = await trackingFixture(page, context);
+    await expect.poll(() => fixture.events().filter(event => event.action === "pwa_first_open_zdwa").length).toBe(1);
+    expect(fixture.events().some(event => event.action === "pwa_installed_zdwa")).toBe(false);
+    await page.reload();
+    await page.addScriptTag({ content: `${tracker}\nProductAnalytics.initializeAnalytics();` });
+    await expect.poll(() => fixture.events().filter(event => event.type === "page_view").length).toBe(2);
+    expect(fixture.events().filter(event => event.action === "pwa_first_open_zdwa")).toHaveLength(1);
+    await page.evaluate(() => {
+      // The fixture's hasFocus() is deliberately constant. Hide the old app
+      // before clearing storage so reload blur cannot simulate another launch.
+      window.fixtureVisibility = "hidden";
+      document.dispatchEvent(new Event("visibilitychange"));
+      localStorage.removeItem("rollthedice:analytics:pwa-first-open:v1:zdwa");
+    });
+    await page.reload();
+    await page.addScriptTag({ content: `${tracker}\nProductAnalytics.initializeAnalytics();` });
+    await expect.poll(() => fixture.events().filter(event => event.action === "pwa_first_open_zdwa").length).toBe(2);
+  });
+}
+
+test("blocked PWA storage skips first launches but confirmed installations still work", async ({ page }) => {
+  const fixture = await trackingFixture(page, { displayMode: "standalone", blockedPwaStorage: true });
+  await page.reload();
+  await page.addScriptTag({ content: `${tracker}\nProductAnalytics.initializeAnalytics();` });
+  await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
+  await expect.poll(() => fixture.events().filter(event => event.action === "pwa_installed_zdwa").length).toBe(1);
+  expect(fixture.events().some(event => event.action === "pwa_first_open_zdwa")).toBe(false);
+});
+
+test("moving a browser tab into an app window records first launch without reclassifying its visit", async ({ page }) => {
+  const fixture = await trackingFixture(page);
+  await page.evaluate(() => {
+    window.fixtureDisplayMode = "standalone";
+    window.fixtureDisplayChange.dispatchEvent(new Event("change"));
+  });
+  await expect.poll(() => fixture.events().filter(event => event.action === "pwa_first_open_zdwa").length).toBe(1);
+  expect(fixture.batches.every(batch => batch.app_mode === "browser")).toBe(true);
+  await page.evaluate(() => window.fixtureDisplayChange.dispatchEvent(new Event("change")));
+  expect(fixture.events().filter(event => event.action === "pwa_first_open_zdwa")).toHaveLength(1);
+});
+
+test("offline PWA launch waits for connectivity before writing its first-launch flag", async ({ page }) => {
+  const fixture = await trackingFixture(page, { displayMode: "standalone", offline: true });
+  expect(fixture.batches).toEqual([]);
+  expect(await page.evaluate(() => window.fixturePwaStorageAccesses)).toBe(0);
+  await page.evaluate(() => { window.fixtureOnline = true; window.dispatchEvent(new Event("online")); });
+  await expect.poll(() => fixture.events().filter(event => event.action === "pwa_first_open_zdwa").length).toBe(1);
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  expect(fixture.events().filter(event => event.action === "pwa_first_open_zdwa")).toHaveLength(1);
+});
+
+for (const identity of [
+  { route: "https://zockdiewandan.online/zilch", game: "zilch", manifest: "/manifest-en.webmanifest?v=release", product: "zdwa" },
+  { route: "https://zilch.zockdiewandan.online/zdwa", game: "zdwa", manifest: "/zilch-manifest.webmanifest?v=release", product: "zilch" },
+  { route: "/zilch", game: "zilch", manifest: "/zilch-manifest-en.webmanifest?v=release", product: "zilch" },
+]) {
+  test(`PWA counters follow manifest identity for ${identity.route}`, async ({ page }) => {
+    const fixture = await trackingFixture(page, { ...identity, displayMode: "standalone" });
+    await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
+    await expect.poll(() => fixture.events().filter(event => event.action?.startsWith("pwa_")).map(event => event.action)).toEqual([
+      `pwa_first_open_${identity.product}`, `pwa_installed_${identity.product}`,
+    ]);
+    expect(fixture.events().filter(event => event.action?.startsWith("pwa_")).every(event => event.game === identity.game)).toBe(true);
   });
 }
 
@@ -145,7 +253,7 @@ for (const context of [
 ]) {
   test(`analytics records ${context.name} and primary browser preference separately from UI language`, async ({ page }) => {
     const fixture = await trackingFixture(page, {...context, languages:["fr-CH", "en-US"],language:"de-CH"});
-    await expect.poll(() => fixture.batches.length).toBe(1);
+    await expect.poll(() => fixture.events().filter(event => event.type === "page_view").length).toBe(1);
     expect(fixture.batches[0]).toMatchObject({app_mode:context.app_mode,browser_language:"fr"});
     await page.evaluate(() => { document.documentElement.lang="en"; localStorage.setItem("rollthedice:language","en"); });
     await page.locator("#createBtn").click();

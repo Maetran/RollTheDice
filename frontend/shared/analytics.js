@@ -7,6 +7,9 @@ const ACTIVE_IDLE_MS = 60 * 1000;
 const HEARTBEAT_MS = 15 * 1000;
 const MAX_BATCH = 20;
 const MAX_ACTIONS_PER_MINUTE = 60;
+const PWA_FIRST_OPEN_KEY = "rollthedice:analytics:pwa-first-open:v1:";
+const PWA_INSTALLED_KEY = "rollthedice:analytics:pwa-installed-at:v1:";
+const INSTALL_DUPLICATE_MS = 10000;
 const ROUTE_NAMES = new Set([
   "/", "/regeln", "/spieler", "/rangabzeichen", "/bestenlisten",
   "/historie", "/statistiken", "/erfolge", "/offline", "/konto",
@@ -159,6 +162,19 @@ export function analyticsClientDetails(browserInfo = navigator, surface = window
   return { app_mode, browser, browser_language: preferredBrowserLanguage(browserInfo) };
 }
 
+// The installed product follows its manifest, not the game currently shown:
+// a Zilch PWA can display the ZDWA bridge, and the apex PWA can display Zilch.
+export function analyticsPwaProduct(locationLike = window.location, documentLike = document) {
+  if (locationLike.hostname === "zilch.zockdiewandan.online") return "zilch";
+  try {
+    const manifest = documentLike.querySelector('link[rel="manifest"]');
+    if (manifest?.dataset.pwaProduct === "zilch") return "zilch";
+    const path = new URL(manifest?.href || "", locationLike.href).pathname;
+    if (/^\/zilch-manifest(?:-en)?\.webmanifest$/.test(path)) return "zilch";
+  } catch (_) { /* Missing manifest hints retain the root PWA identity. */ }
+  return "zdwa";
+}
+
 let initialized = false;
 
 export function initializeAnalytics() {
@@ -179,6 +195,40 @@ export function initializeAnalytics() {
   let mode = "unknown";
   let actionTimes = [];
   const actionDebounce = new Map();
+  let lastInstallation = -Infinity;
+
+  function pwaAction(action) {
+    if (!current || !pageId || !session?.id || !permitsAnalytics() || navigator.onLine === false) return;
+    enqueue("action", { action: `${action}_${analyticsPwaProduct()}` });
+    flush();
+  }
+
+  function firstPwaOpen() {
+    if (!current || !pageId || !session?.id || !permitsAnalytics()
+      || navigator.onLine === false || launchContext(navigator, window) !== "pwa") return;
+    // A local flag avoids counting every launch. It is not a device ID and is
+    // never uploaded. Without storage, skip this estimate rather than inflate it.
+    try {
+      const key = PWA_FIRST_OPEN_KEY + analyticsPwaProduct();
+      if (localStorage.getItem(key) === "1") return;
+      localStorage.setItem(key, "1");
+    } catch (_) { return; }
+    pwaAction("pwa_first_open");
+  }
+
+  function pwaInstalled() {
+    if (!current || !pageId || !session?.id || !permitsAnalytics() || navigator.onLine === false) return;
+    const now = Date.now();
+    if (now - lastInstallation < INSTALL_DUPLICATE_MS) return;
+    try {
+      const key = PWA_INSTALLED_KEY + analyticsPwaProduct();
+      const previous = Number(localStorage.getItem(key));
+      if (previous > 0 && now >= previous && now - previous < INSTALL_DUPLICATE_MS) return;
+      localStorage.setItem(key, String(now));
+    } catch (_) { /* Confirmed events still work when local storage is blocked. */ }
+    lastInstallation = now;
+    pwaAction("pwa_installed");
+  }
 
   function rememberSession() {
     try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (_) { /* Private browsing still works in memory. */ }
@@ -280,6 +330,7 @@ export function initializeAnalytics() {
     enqueue("page_view");
     flush();
     startHeartbeat();
+    firstPwaOpen();
   }
 
   function activity() {
@@ -371,6 +422,7 @@ export function initializeAnalytics() {
     } else {
       activity();
       startHeartbeat();
+      firstPwaOpen();
     }
   }
 
@@ -400,6 +452,11 @@ export function initializeAnalytics() {
     stopHeartbeat();
   });
   window.addEventListener("pageshow", event => { if (event.persisted) visibility(); });
+  window.addEventListener("appinstalled", pwaInstalled);
+  window.addEventListener("online", firstPwaOpen);
+  try {
+    window.matchMedia?.("(display-mode: standalone)")?.addEventListener?.("change", firstPwaOpen);
+  } catch (_) { /* Standalone detection also runs on page entry and focus. */ }
   window.addEventListener("popstate", changePage);
   for (const method of ["pushState", "replaceState"]) {
     const original = history[method];

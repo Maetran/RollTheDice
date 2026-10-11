@@ -15,6 +15,7 @@ function sampleAnalytics(game = 'all', days = 7) {
     device_software: [{ os: 'android', sessions: 61 }, { os: 'windows', sessions: 26 }, { os: 'macos', sessions: 16 }, { os: 'ios', sessions: 15 }, { os: 'ipados', sessions: 12 }, { os: 'unknown', sessions: 5 }],
     device_hardware: [{ device_family: 'android_phone', sessions: 58 }, { device_family: 'windows_pc', sessions: 26 }, { device_family: 'mac', sessions: 16 }, { device_family: 'iphone', sessions: 15 }, { device_family: 'ipad', sessions: 12 }, { device_family: 'unknown', sessions: 5 }, { device_family: 'android_tablet', sessions: 3 }],
     app_modes: [{ app_mode: 'browser', sessions: 90 }, { app_mode: 'pwa', sessions: 35 }, { app_mode: 'unknown', sessions: 10 }],
+    pwa: { confirmed_installations: game === 'zilch' ? 2 : 7, first_detected_starts: game === 'zilch' ? 4 : 19 },
     browsers: [{ browser: 'chrome', sessions: 65 }, { browser: 'safari', sessions: 40 }, { browser: 'edge', sessions: 10 }, { browser: 'firefox', sessions: 7 }, { browser: 'unknown', sessions: 5 }, { browser: 'samsung_internet', sessions: 4 }, { browser: 'opera', sessions: 2 }, { browser: 'silk', sessions: 1 }, { browser: 'other', sessions: 1 }],
     browser_languages: [{ browser_language: 'de', sessions: 78 }, { browser_language: 'en', sessions: 25 }, { browser_language: 'fr', sessions: 15 }, { browser_language: 'unknown', sessions: 10 }, { browser_language: 'it', sessions: 7 }],
     request_traffic: {
@@ -71,6 +72,7 @@ async function mockedDashboard(page, language) {
       data.geography_summary = { sessions: 135, known_sessions: 0, unknown_sessions: 135, known_countries: 0 };
     }
     if (state.empty) {
+      data.pwa = { confirmed_installations: 0, first_detected_starts: 0 };
       Object.assign(data.overview, { sessions: 0, page_views: 0, active_seconds: 0, avg_active_seconds: 0, live_sessions: 0 });
       for (const key of ['daily', 'pages', 'referrers', 'devices', 'device_software', 'device_hardware', 'app_modes', 'browsers', 'browser_languages', 'countries', 'actions', 'hourly', 'geography', 'heatmap']) data[key] = [];
       data.journeys.links = [];
@@ -117,6 +119,11 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#deviceDetailNote')).toBeVisible();
     await expect(page.locator('#deviceDetailNote')).toContainText(language === 'en' ? 'Older visits remain unknown' : 'Ältere Besuche bleiben unbekannt');
     await expect(page.locator('#appModeRanks')).toContainText(language === 'en' ? 'PWA / app window' : 'PWA / Appfenster');
+    await expect(page.locator('#pwaInstalledCount')).toHaveText('7');
+    await expect(page.locator('#pwaFirstOpenCount')).toHaveText('19');
+    await expect(page.locator('.pwa-growth-panel')).toContainText(language === 'en' ? 'Confirmed PWA installations' : 'Bestätigte PWA-Installationen');
+    await expect(page.locator('.pwa-growth-panel')).toContainText(language === 'en' ? 'First detected PWA launches' : 'Erstmals erkannte PWA-Starts');
+    await expect(page.locator('.pwa-growth-panel')).toContainText(language === 'en' ? 'not added together' : 'nicht addiert');
     await expect(page.locator('#browserRanks')).toContainText('Chrome / Chromium');
     await expect(page.locator('#browserLanguageRanks')).toContainText(language === 'en' ? 'German' : 'Deutsch');
     for (const width of [320, 390, 768, 1440]) {
@@ -130,6 +137,8 @@ for (const language of ['de', 'en']) {
     await page.locator('#dashboardGame').selectOption('zilch');
     await expect.poll(() => state.calls.at(-1)).toEqual({ game: 'zilch', days: 30 });
     await expect(page.locator('#gameCards .game-card')).toHaveCount(1);
+    await expect(page.locator('#pwaInstalledCount')).toHaveText('2');
+    await expect(page.locator('#pwaFirstOpenCount')).toHaveText('4');
     await expect(page.locator('#gameCards')).toContainText('Zilch');
     await page.locator('#dailyTable').locator('..').locator('summary').click();
     await expect(page.locator('#dailyTable table')).toBeVisible();
@@ -147,6 +156,7 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#dashboardMessage')).toBeVisible();
     await expect(page.locator('#dashboardMessage')).toContainText(language === 'en' ? 'last measurements remain visible' : 'letzten Messwerte bleiben sichtbar');
     await expect(page.locator('#overviewMetrics')).toContainText('135');
+    await expect(page.locator('#pwaInstalledCount')).toHaveText('7');
     state.fail = false;
     await page.locator('#dashboardRetry').click();
     await expect(page.locator('#dashboardMessage')).toBeHidden();
@@ -156,6 +166,8 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#gameCards')).toContainText('23');
     await expect(page.locator('#countryNote')).toContainText(language === 'en' ? 'no IP geolocation' : 'keine IP-Geolokalisierung');
     await expect(page.locator('#serverGauges .gauge-number').first()).toHaveText('—');
+    await expect(page.locator('#pwaInstalledCount')).toHaveText('0');
+    await expect(page.locator('#pwaFirstOpenCount')).toHaveText('0');
     await expect(page.locator('#appModeChart, #browserRanks, #browserLanguageRanks').first()).toContainText(language === 'en' ? 'No measurements yet' : 'Noch keine Messwerte');
     await page.screenshot({ path: `/tmp/rtd-dashboard-empty-${language}.png`, fullPage: true });
   });
@@ -386,7 +398,7 @@ test('unknown origins stay without map points; revoked and cached documents rele
   await expect(page.locator('#dailyChart svg, #pageBubbles svg, #journeyFlow svg, #serverTrend svg')).toHaveCount(0);
   await expect(page.locator('#deviceSoftwareRanks')).toBeEmpty();
   await expect(page.locator('#deviceHardwareRanks')).toBeEmpty();
-  for (const id of ['appModeChart', 'appModeRanks', 'browserRanks', 'browserLanguageRanks', 'requestTrafficSummary', 'requestCountryRanks', 'requestStatusRanks', 'requestAgentRanks', 'requestChannelRanks', 'requestRecordedAt', 'requestDroppedNote']) await expect(page.locator(`#${id}`)).toBeEmpty();
+  for (const id of ['appModeChart', 'appModeRanks', 'pwaInstalledCount', 'pwaFirstOpenCount', 'browserRanks', 'browserLanguageRanks', 'requestTrafficSummary', 'requestCountryRanks', 'requestStatusRanks', 'requestAgentRanks', 'requestChannelRanks', 'requestRecordedAt', 'requestDroppedNote']) await expect(page.locator(`#${id}`)).toBeEmpty();
   state.permitted = false;
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
   await expect(page.locator('#dashboardMessage')).toContainText('Ask the founder for access');
@@ -596,6 +608,9 @@ for (const language of ['de', 'en']) {
         const path = `/tmp/rtd-dashboard-context-${design}-${language}-${width}.png`;
         await page.locator('.client-context-grid').screenshot({ path, style: '.skip-link:not(:focus){visibility:hidden}' });
         await testInfo.attach(`mocked-context-${design}-${language}-${width}`, { path, contentType: 'image/png' });
+        const pwaPath = `/tmp/rtd-dashboard-pwa-${design}-${language}-${width}.png`;
+        await page.locator('.pwa-growth-panel').screenshot({ path: pwaPath, style: '.skip-link:not(:focus){visibility:hidden}' });
+        await testInfo.attach(`mocked-pwa-${design}-${language}-${width}`, { path: pwaPath, contentType: 'image/png' });
       }
     }
     expect(state.calls).toHaveLength(1);
