@@ -22,6 +22,21 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.49.1 — Cloudflare-Schutz und Besucher-IP / Cloudflare protection and visitor IP — 2026-10-11
+
+**Deutsch:** Bekannte Scanpfade werden direkt bei Cloudflare blockiert. Der
+Webzugang zum Server ist auf Cloudflare-Netze begrenzt. HTTP- und WebSocket-
+Limits verwenden die verlässlich ermittelte Besucher-IP, während Länderangaben
+weiter nur aus der geprüften Proxy-Kette übernommen werden. Profilseiten,
+Anmeldung, Spielverbindungen und PWA-Updates bleiben erreichbar. Stiller
+Release ohne Versions-Push oder neuen In-App-Hinweis.
+
+**English:** Known scan paths are blocked at Cloudflare. The server's web
+ingress is restricted to Cloudflare networks. HTTP and WebSocket limits use
+the verified visitor IP, while country hints are accepted only through the
+trusted proxy chain. Profiles, sign-in, game connections and PWA updates remain
+accessible. Silent release without a version push or new in-app notice.
+
 ## 2.49.0 — PWA-Zähler in Mission Control / PWA counters in Mission Control — 2026-10-11
 
 **Deutsch:** Mission Control zeigt im gewählten UTC-Zeitraum getrennte Zähler

@@ -113,6 +113,11 @@ the count. Health checks and dashboard statistics polling are excluded.
 Declared bot families and recognizable API clients are shown as unverified
 self-declarations; automation can mimic a browser. The targeted Cloudflare
 authentication burst rule is documented in [Cloudflare protection](docs/CLOUDFLARE_PROTECTION.md).
+The same runbook records the active, host-scoped scan block rule and its
+profile-name exceptions. The origin firewall now accepts web traffic only
+from official Cloudflare networks; SSH remains unchanged. The trusted proxy
+contract for 2.49.1 and the Real-IP activation checks are documented
+separately there.
 Open **Mission Control** from your account or administration. Only the founder
 can grant or revoke individual **Dashboard access** in user administration;
 admin and owner roles do not grant access automatically. Revocation applies to
@@ -162,6 +167,11 @@ Statistikabrufe werden ausgeschlossen.
 Gemeldete Botfamilien und erkennbare API-Clients erscheinen als unbestätigte
 Selbstangabe; Automatisierung kann Browser vortäuschen. Der gezielte Cloudflare-
 Burstschutz für Anmelde-APIs steht im [Schutz-Runbook](docs/CLOUDFLARE_PROTECTION.md).
+Das Runbook dokumentiert auch die aktive Scanpfad-Sperre auf den Produkt-Hosts
+mit Profilnamen-Ausnahmen. Die Origin-Firewall lässt Webzugriffe jetzt nur aus
+offiziellen Cloudflare-Netzen zu; SSH bleibt unverändert. Der Proxy-Vertrag ab
+2.49.1 und die Real-IP-Aktivierungsprüfungen stehen dort
+getrennt.
 
 Visitor measurement starts with version 2.43.0; completed game history uses
 existing server records. Sessions are anonymous tab visits, not unique people.
@@ -1127,7 +1137,8 @@ Start the application:
 
 ```bash
 ROLLTHEDICE_ZILCH_ACCESS_MODE=public \
-  uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+  uvicorn app.asgi:create_application --factory --no-proxy-headers \
+  --host 127.0.0.1 --port 8000 --reload
 ```
 
 Environment variables are read by the application; Compose loads `.env`

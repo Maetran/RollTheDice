@@ -30,7 +30,7 @@ module.exports = defineConfig({
     // exceptions are added, so native secure-context checks stay meaningful.
   },
   webServer: {
-    command: `${shellQuote(pythonExecutable)} -m uvicorn app.main:app --host 127.0.0.1 --port ${port} --ws-max-size 65536`,
+    command: `${shellQuote(pythonExecutable)} -m uvicorn app.asgi:create_application --factory --no-proxy-headers --host 127.0.0.1 --port ${port} --ws-max-size 65536`,
     env: {
       ROLLTHEDICE_DATABASE_URL: `sqlite:///${path.join(testDirectory, "accounts.sqlite3")}`,
       ROLLTHEDICE_SITE_ORIGIN: baseURL,

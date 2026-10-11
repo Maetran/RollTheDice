@@ -3,6 +3,23 @@
 Dieses Dokument beschreibt den produktiven Betrieb von **ZDWA – Zock die Wand
 an**. Das Repository heisst intern weiterhin `RollTheDice`.
 
+Stand 11.10.2026: Die vier Produkt-Hosts laufen mit Cloudflare-Proxy. Die
+historische DNS-only-Startphase weiter unten darf nicht mit der inzwischen
+eingeführten Origin-Firewall kombiniert werden. Die aktuelle Absicherung,
+vertrauenswürdige Besucher-IP-Kette und Rücknahme stehen in
+[Cloudflare-Schutz](CLOUDFLARE_PROTECTION.md). Der produktive Container startet
+über `app.asgi:create_application --factory --no-proxy-headers`; die äußere
+ASGI-Schicht prüft den tatsächlichen Nginx-Peer vor der Besucher-IP-Auflösung.
+`FORWARDED_ALLOW_IPS` bleibt auf das aktuelle Docker-Gateway begrenzt.
+
+As of 2026-10-11, all four product hosts use Cloudflare's proxy. Do not combine
+the historical DNS-only setup below with the current origin firewall. See
+[Cloudflare protection](CLOUDFLARE_PROTECTION.md) for the active ingress policy,
+visitor-IP trust chain and rollback. Production starts through
+`app.asgi:create_application --factory --no-proxy-headers`; the outer ASGI layer
+checks the physical Nginx peer before resolving the visitor IP.
+`FORWARDED_ALLOW_IPS` remains restricted to the current Docker gateway.
+
 ## Produktionsumgebung
 
 | Bereich | Wert |

@@ -2056,5 +2056,12 @@
     "date": "2026-10-11",
     "bump": "patch",
     "summary": "Stabile Qualitätsprüfungen und lesbare, ruhige Spielansichten / Reliable quality checks and readable, stable game screens"
+  },
+  {
+    "version": "2.49.0",
+    "revision": "7023e1b159358781608106001036c3f1fa1281a4",
+    "date": "2026-10-11",
+    "bump": "minor",
+    "summary": "Getrennte PWA-Installations- und Erststart-Zähler in Mission Control / Separate PWA installation and first-launch counters in Mission Control"
   }
 ]

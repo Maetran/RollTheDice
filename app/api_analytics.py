@@ -1,7 +1,6 @@
 """Authenticated dashboard and bounded anonymous first-party event collection."""
 from __future__ import annotations
 
-import ipaddress
 import json
 from typing import Literal
 
@@ -14,19 +13,11 @@ from .auth import require_admin, require_csrf, require_user
 from .database import session_scope
 from .models import User
 from .ownership import ownership_flags, require_owner
+from .proxy_headers import trusted_cloudflare_peer
 from .security import utcnow
 
 router = APIRouter(prefix="/api")
 
-# Published ingress ranges, verified against cloudflare.com/ips-v4 and ips-v6.
-# Country hints are trusted only from the actual proxy-resolved network peer.
-_CLOUDFLARE_NETWORKS = tuple(ipaddress.ip_network(value) for value in (
-    "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18",
-    "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17",
-    "162.158.0.0/15", "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22",
-    "2400:cb00::/32", "2606:4700::/32", "2803:f800::/32", "2405:b500::/32", "2405:8100::/32",
-    "2a06:98c0::/29", "2c0f:f248::/32",
-))
 _COUNTRY_CODES = frozenset("""
 AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ
 CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO
@@ -39,14 +30,10 @@ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT
 
 
 def trusted_country(request: Request) -> str:
-    try:
-        peer = ipaddress.ip_address(request.client.host) if request.client else None
-        if peer is not None and any(peer in network for network in _CLOUDFLARE_NETWORKS):
-            value = request.headers.get("cf-ipcountry", "ZZ").upper()
-            if value in _COUNTRY_CODES:
-                return value
-    except ValueError:
-        pass
+    if trusted_cloudflare_peer(request.scope) is not None:
+        value = request.headers.get("cf-ipcountry", "ZZ").upper()
+        if value in _COUNTRY_CODES:
+            return value
     return "ZZ"
 
 
