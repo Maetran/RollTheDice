@@ -264,6 +264,8 @@ IP address to telemetry.
 2. Die aktive Nginx-Site geschützt sichern. Die ursprüngliche Sicherung dieses
    Umbaus liegt unter
    `/root/rollthedice-security-20261011-proxy/rollthedice.conf.before`.
+   Vor Real-IP zusätzlich die bereits geprüfte Header-Vorstufe als
+   `/root/rollthedice-security-20261011-proxy/rollthedice.conf.headers` sichern.
    Die neue Include aus dem freigegebenen Checkout installieren:
 
    ```bash
@@ -281,9 +283,12 @@ IP address to telemetry.
    Die Real-IP-Aktivierung erst mit diesen produktiven Nachweisen als geprüft
    markieren. Lokale Regressionstests beweisen keine produktive Firewall.
 4. Für den Proxy-Rollback ausschließlich die neu installierte
-   `/etc/nginx/conf.d/cloudflare-real-ip.conf` entfernen, die gesicherte Site
-   aus dem genannten `.before`-Pfad zurückspielen und erst nach erfolgreichem
-   `nginx -t` graceful reloaden. Keine anderen Includes entfernen. Dieser
+   `/etc/nginx/conf.d/cloudflare-real-ip.conf` entfernen und die geprüfte
+   Header-Vorstufe beibehalten; bei Bedarf die Site aus `.headers` zurückspielen.
+   Erst nach erfolgreichem `nginx -t` graceful reloaden. Die alte `.before`-Site
+   benötigt auch das alte Backend: ohne den neuen Edge-Header würde die
+   ASGI-Schicht von 2.49.1 Länder als unbekannt behandeln. Keine anderen Includes
+   entfernen. Dieser
    Rollback lässt die Cloudflare-Regeln und die Origin-Firewall unverändert;
    deren separate Rücknahme ist oben beschrieben.
 
@@ -297,10 +302,13 @@ spoofed proxy/country headers. Mark Real-IP as verified only after those live
 checks; local tests do not prove the firewall.
 
 For proxy rollback, remove only the newly installed
-`/etc/nginx/conf.d/cloudflare-real-ip.conf`, restore the site from
-`/root/rollthedice-security-20261011-proxy/rollthedice.conf.before`, validate and
-gracefully reload. Preserve unrelated includes, the Cloudflare rules and the
-origin firewall; firewall recovery is separate.
+`/etc/nginx/conf.d/cloudflare-real-ip.conf` and retain the verified forwarding
+headers. Before activation, save this header stage as
+`/root/rollthedice-security-20261011-proxy/rollthedice.conf.headers`; restore that
+site if necessary, validate and gracefully reload. Restoring the original
+`.before` site also requires the old backend, since 2.49.1 needs the overwritten
+edge header to retain country attribution. Preserve unrelated includes, the
+Cloudflare rules and the origin firewall; firewall recovery is separate.
 
 ## Bots / Request agents
 
