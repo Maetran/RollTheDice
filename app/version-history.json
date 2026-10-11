@@ -2063,5 +2063,12 @@
     "date": "2026-10-11",
     "bump": "minor",
     "summary": "Getrennte PWA-Installations- und Erststart-Zähler in Mission Control / Separate PWA installation and first-launch counters in Mission Control"
+  },
+  {
+    "version": "2.49.1",
+    "revision": "df7a0ed21e06a5f29bf721445f69ae13d90cc601",
+    "date": "2026-10-11",
+    "bump": "patch",
+    "summary": "Verlässliche Besucher-IP und geschützter Zugang über Cloudflare / Reliable visitor IP handling and protected Cloudflare ingress"
   }
 ]

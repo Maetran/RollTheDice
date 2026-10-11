@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.49.1**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.49.2**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.49.1 | 2026-10-11 | patch | Verlässliche Besucher-IP und geschützter Zugang über Cloudflare / Reliable visitor IP handling and protected Cloudflare ingress | [df7a0ed](https://github.com/Maetran/RollTheDice/commit/df7a0ed21e06a5f29bf721445f69ae13d90cc601) |
 | 2.49.0 | 2026-10-11 | minor | Getrennte PWA-Installations- und Erststart-Zähler in Mission Control / Separate PWA installation and first-launch counters in Mission Control | [7023e1b](https://github.com/Maetran/RollTheDice/commit/7023e1b159358781608106001036c3f1fa1281a4) |
 | 2.48.2 | 2026-10-11 | patch | Stabile Qualitätsprüfungen und lesbare, ruhige Spielansichten / Reliable quality checks and readable, stable game screens | [c331bdc](https://github.com/Maetran/RollTheDice/commit/c331bdc311a24a5e50c6423b8e649550bb1cafd6) |
 | 2.48.1 | 2026-10-11 | patch | Ruhigere Wurfanzeige und Spielabschlüsse, mehr Platz für mobile Dialogbuttons / Calmer dice reveals and game completion, more room for mobile dialog buttons | [5f204d3](https://github.com/Maetran/RollTheDice/commit/5f204d3024e75498eb43d6b93d53e02ed74343ba) |

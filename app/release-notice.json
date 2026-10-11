@@ -1,24 +1,23 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch"
+    "zdwa"
   ],
-  "summary_de": "Mission Control zeigt bestätigte PWA-Installationen und erste App-Starts getrennt.",
-  "summary_en": "Mission Control shows confirmed PWA installations and first app launches separately.",
+  "summary_de": "ZDWA behält deinen gewählten Spielzettel bis zum Zugwechsel und folgt dann wieder dem aktiven Spieler.",
+  "summary_en": "ZDWA keeps your chosen score sheet until the turn changes, then follows the active player again.",
   "player_notes": {
     "de": {
-      "title": "Neue PWA-Zähler in Mission Control",
+      "title": "Spielzettel im Blick behalten",
       "changes": [
-        "Mit Dashboard-Zugriff siehst du im gewählten Zeitraum, wie oft der Browser eine App-Installation bestätigt hat.",
-        "Ein eigener Zähler zeigt erstmals erkannte App-Starts, auch auf iPhone und iPad. Er kann bestehende Apps enthalten und wird nicht zu den Installationen addiert."
+        "Wischst du in einer Mehrspielerpartie zu einem anderen Spielzettel oder wählst ihn aus, bleibt er während des laufenden Zuges im Blick – auch beim Würfeln, Halten und Ansagen.",
+        "Beim nächsten Spieler folgt die Ansicht wieder automatisch dem aktiven Spielzettel. Nach einem Eintrag bleibt die kurze Lesezeit erhalten."
       ]
     },
     "en": {
-      "title": "New PWA counters in Mission Control",
+      "title": "Keep your chosen score sheet in view",
       "changes": [
-        "With dashboard access, you can see how often the browser confirmed an app installation during the selected period.",
-        "A separate counter shows first detected app launches, including iPhone and iPad. It can include existing apps and is not added to installation counts."
+        "If you swipe to or select another score sheet in a multiplayer game, it stays in view for the current turn, including rolls, dice selections and announcements.",
+        "When the next player's turn begins, the view follows the active score sheet again. The brief pause to read a newly entered score remains."
       ]
     }
   }

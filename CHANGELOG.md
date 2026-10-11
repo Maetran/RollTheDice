@@ -22,6 +22,23 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.49.2 — Verlässlicher Spielzettel-Fokus / Reliable score sheet focus — 2026-10-11
+
+**Deutsch:** ZDWA-Mehrspielerpartien folgen wieder verlässlich dem aktiven
+Spielzettel. Ein durch Wischen oder Auswahl geöffneter anderer Zettel bleibt
+für den laufenden Zug im Blick, auch bei eigenen und fremden Würfen, beim
+Halten und bei Ansagen. Beim nächsten Spieler wird die automatische
+Ansicht wiederhergestellt. Nach einem Eintrag bleibt die kurze Lesezeit vor
+dem Wechsel erhalten. Stiller Release ohne Versions-Push oder neues
+In-App-Popup.
+
+**English:** ZDWA multiplayer games reliably follow the active score sheet
+again. A different sheet opened by swiping or selecting it stays in view for
+the current turn, including your own and other players' rolls, dice selections
+and announcements. Automatic following resumes when the next player's turn
+begins. The brief reading pause after a score is entered remains before the
+view moves on. Silent release without a version push or new in-app popup.
+
 ## 2.49.1 — Cloudflare-Schutz und Besucher-IP / Cloudflare protection and visitor IP — 2026-10-11
 
 **Deutsch:** Bekannte Scanpfade werden direkt bei Cloudflare blockiert. Der

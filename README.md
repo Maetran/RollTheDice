@@ -299,6 +299,19 @@ erreichbar. Auf kleineren Geräten lassen sich lange Spielzettel, Verläufe und
 Dialoge in ihrem eigenen Bereich bewegen, ohne den ganzen Tisch zu
 verschieben. Der Browser-Zoom bleibt verfügbar.
 
+In ZDWA multiplayer games, the view follows the active player's score sheet.
+If you swipe to or select another sheet, that view stays in place for the rest
+of the current turn, including rolls, dice selections and announcements.
+When the next player's turn begins, automatic following resumes. After a score
+is entered, the brief reading pause remains before the view moves on.
+
+**Deutsch:** In ZDWA-Mehrspielerpartien folgt die Ansicht dem Spielzettel des
+aktiven Spielers. Wischst du zu einem anderen Zettel oder wählst ihn aus,
+bleibt diese Ansicht für den laufenden Zug bestehen, auch beim Würfeln, Halten
+und Ansagen. Sobald der nächste Spieler am Zug ist, folgt die Ansicht wieder
+automatisch. Nach einem Eintrag bleibt die kurze Lesezeit erhalten, bevor
+die Ansicht weiterwechselt.
+
 Touch tablets have their own portrait and landscape table layouts, including
 the 12.9-inch iPad. Readable score sheets and histories use the extra room,
 while moderately sized dice and the main actions sit within reach near the

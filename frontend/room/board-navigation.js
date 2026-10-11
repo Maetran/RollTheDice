@@ -271,60 +271,76 @@
       if (!grid || grid._swipeBound) return;
       grid._swipeBound = true;
 
-      const setOverride = () => { _userScrollOverride = true; };
-      // Nutzerinteraktion, die eine manuelle Auswahl signalisiert
-      grid.addEventListener("touchstart", setOverride, { passive: true });
-      grid.addEventListener("pointerdown", setOverride, { passive: true });
-      grid.addEventListener("wheel", setOverride, { passive: true });
+      let gestureStart = null;
+      const startGesture = point => {
+        gestureStart = point ? { x:point.clientX, y:point.clientY } : null;
+      };
+      const moveGesture = point => {
+        if (!gestureStart || !point) return;
+        if (point.buttons === 0) return;
+        const horizontal = Math.abs(point.clientX - gestureStart.x);
+        const vertical = Math.abs(point.clientY - gestureStart.y);
+        if (horizontal > 8 && horizontal > vertical) _userScrollOverride = true;
+      };
+      // Nur horizontales Navigieren waehlt einen Zettel manuell. Ein blosses
+      // Antippen oder vertikales Scrollen darf Auto-Follow nicht abschalten.
+      grid.addEventListener("touchstart", event => startGesture(event.touches[0]), { passive:true });
+      grid.addEventListener("touchmove", event => moveGesture(event.touches[0]), { passive:true });
+      grid.addEventListener("touchend", () => { gestureStart = null; }, { passive:true });
+      grid.addEventListener("touchcancel", () => { gestureStart = null; }, { passive:true });
+      grid.addEventListener("pointerdown", startGesture, { passive:true });
+      grid.addEventListener("pointermove", moveGesture, { passive:true });
+      grid.addEventListener("pointerup", () => { gestureStart = null; }, { passive:true });
+      grid.addEventListener("pointercancel", event => {
+        if (event.pointerType !== "touch") gestureStart = null;
+      }, { passive:true });
+      grid.addEventListener("wheel", event => {
+        if (Math.abs(event.deltaX) > Math.abs(event.deltaY) || (event.shiftKey && event.deltaY)) {
+          _userScrollOverride = true;
+        }
+      }, { passive:true });
     } catch {}
   }
 
   function autoFollowTurn(snapshot){
     try {
-      if (!window.matchMedia?.("(max-width: 560px), (min-width: 561px) and (max-height: 600px), (any-pointer: coarse) and (min-width: 768px) and (min-height: 600px) and (max-width: 1600px)").matches) return;
-
       const turnPid = snapshot?._turn?.player_id || null;
       const filledNow = countFilledWritableCells(snapshot);
+      const firstSnapshot = _lastFilledCount === null;
+      const turnChanged = !firstSnapshot && String(_lastTurnPid) !== String(turnPid);
+      const wroteHappened = !firstSnapshot && filledNow > _lastFilledCount;
 
-      // Initiales Setup beim ersten Snapshot: baseline setzen und einmal zur aktuellen Karte scrollen
-      if (_lastTurnPid === null || _lastFilledCount === null) {
-        _lastTurnPid = turnPid;
-        _lastFilledCount = filledNow;
-
-        const grid0 = document.querySelector("#scoreOut .players-grid");
-        const target0 = grid0 ? grid0.querySelector(".player-card.turn") : null;
-        scrollGridToCard(grid0, target0, "smooth");
-        return;
+      // Eine manuelle Auswahl gilt nur fuer den aktuellen Spielerzug. Auch
+      // Zugwechsel ohne neues Feld (z.B. Korrekturen) stellen Auto-Follow her.
+      if (firstSnapshot || turnChanged) {
+        _userScrollOverride = false;
+        if (_pendingFollowTimer) clearTimeout(_pendingFollowTimer);
+        _pendingFollowTimer = null;
       }
-
-      const turnChanged = String(_lastTurnPid) !== String(turnPid);
-      const wroteHappened = (filledNow > _lastFilledCount);
-
-      // Gewünscht: Beim Schreibereignis + Zugwechsel NICHT sofort springen,
-      // sondern ~1s warten, damit Spieler/Gegner den Eintrag sehen können.
-      if (turnChanged && wroteHappened) {
-        _userScrollOverride = false; // manueller Fokus endet beim Zugwechsel
-        // Bereits laufenden Timer zurücksetzen
-        if (_pendingFollowTimer) { try { clearTimeout(_pendingFollowTimer); } catch {} }
-        const targetTurnPid = turnPid; // Ziel-Zug nach der Wartezeit
-        _pendingFollowTimer = setTimeout(() => {
-          // Nur auto-follow, wenn Nutzer nicht manuell gescrollt hat und
-          // der Zug immer noch derselbe ist wie vor 1 Sekunde.
-          if (_userScrollOverride) { _pendingFollowTimer = null; return; }
-          const curTurn = (sb && sb._turn) ? sb._turn.player_id : (snapshot?._turn?.player_id || null);
-          if (String(curTurn) !== String(targetTurnPid)) { _pendingFollowTimer = null; return; }
-
-          const grid = document.querySelector("#scoreOut .players-grid");
-          const target = grid ? grid.querySelector(".player-card.turn") : null;
-          scrollGridToCard(grid, target, "smooth");
-          _pendingFollowTimer = null;
-        }, 1000);
-      }
-
-      // Baselines aktualisieren (immer)
       _lastTurnPid = turnPid;
       _lastFilledCount = filledNow;
 
+      if (!window.matchMedia?.(RESPONSIVE_SCORE_SHEET_QUERY).matches) return;
+      const followCurrentBoard = behavior => {
+        const grid = document.querySelector("#scoreOut .players-grid");
+        scrollGridToCard(grid, grid?.querySelector(".player-card.turn"), behavior);
+      };
+
+      // Den neuen Eintrag weiterhin eine Sekunde lesbar lassen. Weitere
+      // Snapshots desselben Zugs duerfen diese Wartezeit nicht neu starten.
+      if (turnChanged && wroteHappened) {
+        const targetTurnPid = turnPid;
+        _pendingFollowTimer = setTimeout(() => {
+          _pendingFollowTimer = null;
+          if (_userScrollOverride || String(sb?._turn?.player_id || null) !== String(targetTurnPid)) return;
+          followCurrentBoard("smooth");
+        }, 1000);
+      } else if (!_userScrollOverride && !_pendingFollowTimer) {
+        // Ein Snapshot ersetzt das Grid und kann laufendes Smooth-Scrolling
+        // abbrechen. Ohne manuelle Auswahl den aktiven Zettel sofort ausrichten,
+        // statt eine unterbrochene Zwischenposition dauerhaft zu uebernehmen.
+        followCurrentBoard(turnChanged ? "smooth" : "auto");
+      }
     } catch {}
   }
 

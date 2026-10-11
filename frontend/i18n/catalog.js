@@ -595,6 +595,7 @@ export const EN = {
     "Nächste Spielzettel": "Next score sheets",
     "Weitere Felder durch Wischen": "Swipe to see more fields",
     "Auf Tablets stehen größere Tippflächen und die Hauptaktionen unten bereit. Im Solospiel zeigt eine Spaltenhilfe die Reihenfolge und offene Felder; weitere Spielzettel erreichst du durch Wischen oder Antippen der Pfeile.": "On tablets, larger touch targets and the main actions sit at the bottom. In solo play, a column guide shows the order and open fields; swipe or use the arrow buttons to reach more score sheets.",
+    "In Mehrspielerpartien folgt die Ansicht dem aktiven Spielzettel. Wischst du zu einem anderen Zettel oder wählst ihn aus, bleibt die Ansicht dort bis zum Ende des laufenden Zuges, auch beim Würfeln, Halten und Ansagen. Beim nächsten Spieler folgt sie wieder automatisch. Nach einem Eintrag bleibt kurz Zeit zum Lesen.": "In multiplayer games, the view follows the active score sheet. If you swipe to or select another sheet, the view stays there until the current turn ends, including rolls, dice selections and announcements. When the next player's turn begins, it follows automatically again. After a score is entered, you still have a moment to read it.",
     "beendete Partien": "completed games",
     "⌀ Normal": "⌀ Normal",
     "⌀ Hardcore": "⌀ Hardcore",

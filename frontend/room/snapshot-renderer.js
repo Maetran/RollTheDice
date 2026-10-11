@@ -146,15 +146,9 @@ function renderFromSnapshot(snapshot, { animateWrites = false, resetWrites = fal
 	    syncSideChatAnchor();
     syncTabletTableExtras(snapshot);
 
-	    // --- Scrollposition nach Re-Render bewahren, ausser bei gewolltem Fokuswechsel (Write+TurnChange)
-    const filledNow = countFilledWritableCells(snapshot);
-    const turnChanged = String(_lastTurnPid) !== String(turnPid);
-    const wroteHappened = (_lastFilledCount !== null) ? (filledNow > _lastFilledCount) : false;
-
     const _newGrid = document.querySelector("#scoreOut .players-grid");
-    // Immer die vorherige Scrollposition wiederherstellen, solange der Nutzer
-    // nicht manuell uebersteuert hat. So bleibt der zuletzt sichtbare Board-Fokus
-    // fuer ~1s bestehen, bevor der Auto-Follow greift – fuer alle Nutzer.
+    // Manuelle Auswahl und den kurzen Lesemoment nach einem Eintrag bewahren.
+    // Auto-Follow richtet danach den aktiven Zettel aus, falls noetig.
     if (_newGrid) {
       _newGrid.scrollLeft = _oldScrollLeft;
       _newGrid.querySelectorAll(".player-card").forEach(card => {
