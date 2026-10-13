@@ -2070,5 +2070,12 @@
     "date": "2026-10-11",
     "bump": "patch",
     "summary": "Verlässliche Besucher-IP und geschützter Zugang über Cloudflare / Reliable visitor IP handling and protected Cloudflare ingress"
+  },
+  {
+    "version": "2.49.2",
+    "revision": "2866941ba5fd839f01301159aa378aa0047d9efd",
+    "date": "2026-10-11",
+    "bump": "patch",
+    "summary": "Verlässlicher Spielzettel-Fokus bei Mehrspieler-Zügen / Reliable score sheet focus during multiplayer turns"
   }
 ]

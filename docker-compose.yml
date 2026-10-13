@@ -36,6 +36,8 @@ services:
       ROLLTHEDICE_GAME_CREATE_GLOBAL_MAX: ${ROLLTHEDICE_GAME_CREATE_GLOBAL_MAX:-300}
       ROLLTHEDICE_MAX_WEBSOCKETS_PER_ADDRESS: ${ROLLTHEDICE_MAX_WEBSOCKETS_PER_ADDRESS:-30}
       ROLLTHEDICE_MAX_WEBSOCKETS_GLOBAL: ${ROLLTHEDICE_MAX_WEBSOCKETS_GLOBAL:-500}
+      # Owner-only ZDWA design preview; set to off as a rollback without a deploy.
+      ROLLTHEDICE_ZDWA_DESIGN_PREVIEW: ${ROLLTHEDICE_ZDWA_DESIGN_PREVIEW:-owner}
       # Public Zilch admits guests and signed-in accounts. The allowlist is
       # retained only for an explicit fail-closed rollback to preview mode.
       ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES: ${ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES:-}

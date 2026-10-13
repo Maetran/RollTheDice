@@ -117,6 +117,8 @@
         if (authState?.user?.username) myName = String(authState.user.username);
         syncOpenSeatPushControl();
         syncAdminHelpControl();
+        // Room-only account signal for presentation features such as the design preview.
+        window.dispatchEvent(new CustomEvent("zdwa:room-auth", { detail: authState }));
       }
 
       // Abbruch-Notice (kommt vor dem Snapshot)

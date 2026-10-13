@@ -22,6 +22,29 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.50.0 — ZDWA-Design 2026 als Owner-Vorschau / ZDWA design 2026 as owner preview — 2026-10-13
+
+**Deutsch:** Ein neues Erscheinungsbild für ZDWA-Lobby und Spieltisch ist
+eingebaut, aber vorerst nur für den Owner-Account sichtbar. Die Lobby stellt
+das Eröffnen eines Tisches in den Vordergrund. Am Tisch liegt der Spielzettel
+wie Papier mit handschriftlichen Einträgen, der Würfelbereich ist ein grüner
+Filz, und nach dem ersten Wurf zeigt der eigene Zettel in jedem erlaubten Feld
+die Punkte, die dort eingetragen würden; das beste Feld ist hervorgehoben.
+Regeln, Wertung und Daten bleiben für alle gleich. Rückweg ohne Deploy:
+`ROLLTHEDICE_ZDWA_DESIGN_PREVIEW=off` und Neustart; pro Browser mit
+`?design=classic` ab- und mit `?design=2026` wieder einschalten. Stiller
+Release ohne Versions-Push oder neues In-App-Popup.
+
+**English:** A new look for the ZDWA lobby and game table is built in, but for
+now only the owner account sees it. The lobby puts opening a table first. At
+the table the score sheet looks like paper with handwritten entries, the dice
+sit on green felt, and after the first roll your own sheet shows the points
+each allowed field would score, with the best field highlighted. Rules,
+scoring and data stay the same for everyone. Rollback without a deploy:
+`ROLLTHEDICE_ZDWA_DESIGN_PREVIEW=off` and a restart; per browser turn it off
+with `?design=classic` and back on with `?design=2026`. Silent release without
+a version push or new in-app popup.
+
 ## 2.49.2 — Verlässlicher Spielzettel-Fokus / Reliable score sheet focus — 2026-10-11
 
 **Deutsch:** ZDWA-Mehrspielerpartien folgen wieder verlässlich dem aktiven

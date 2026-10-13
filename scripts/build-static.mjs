@@ -63,6 +63,7 @@ const targets = [
   { source: "frontend/styles/zilch.css", output: "app/static/zilch.css" },
   { source: "frontend/styles/zilch-lcars.css", output: "app/static/zilch-lcars.css" },
   { source: "frontend/styles/index.css", output: "app/static/style.css" },
+  { source: "frontend/styles/zdwa-design-2026.css", output: "app/static/zdwa-design-2026.css" },
 ];
 
 const stale = [];

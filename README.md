@@ -1111,6 +1111,28 @@ alongside the short push summaries. The deploy archives those exact texts after
 the application is healthy; restarting the server does not publish a release.
 See the [release authoring guide](docs/DEPLOYMENT.md#spielerfreundliche-release-notes).
 
+### ZDWA design preview
+
+A redesigned ZDWA lobby and game table is in development behind an owner-only
+flag. Only accounts marked as owner receive `design_preview.zdwa_2026` from
+`/api/auth/me` and the room WebSocket; everyone else gets the unchanged pages.
+The design is a scoped stylesheet (`frontend/styles/zdwa-design-2026.css`) that
+applies only with `data-design="2026"` and never in the Classic theme. While it
+is active, your own score sheet shows the points each allowed field would score
+after the first roll, computed by the server with the normal rules.
+
+- Server kill switch: `ROLLTHEDICE_ZDWA_DESIGN_PREVIEW=off` and a container restart.
+- Per browser: `?design=classic` turns it off, `?design=2026` turns it back on.
+- No database migration, so an ordinary code rollback is safe.
+
+**Deutsch:** Ein neues Design für ZDWA-Lobby und Spieltisch entsteht hinter
+einem Flag, das nur Owner-Konten sehen. Alle anderen erhalten die bisherigen
+Seiten. Während es aktiv ist, zeigt der eigene Spielzettel nach dem ersten Wurf
+die Punkte jedes erlaubten Feldes, vom Server nach den normalen Regeln
+berechnet. Abschalten mit `ROLLTHEDICE_ZDWA_DESIGN_PREVIEW=off` und Neustart,
+pro Browser mit `?design=classic` (wieder an mit `?design=2026`). Keine
+Datenbankmigration, ein normaler Code-Rollback ist daher sicher.
+
 ## Progressive Web Apps
 
 Each game has its own installable PWA, manifest and versioned assets.

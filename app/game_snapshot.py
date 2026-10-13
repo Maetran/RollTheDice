@@ -9,6 +9,7 @@ from .achievements import public_achievement_ranks
 from .game_admin import superadmin_edit_active
 from .game_engine import (
     _compute_final_totals,
+    compute_field_previews,
     compute_suggestions,
 )
 from .game_scoring import has_n_of_a_kind
@@ -280,6 +281,8 @@ def snapshot_zdwa(g: GameDict) -> dict:
             "_chat_history": chat_history,
             # Serverseitig berechnete Vorschläge für den aktiven Spieler.
             "suggestions": compute_suggestions(g),
+            # Writable fields with points for the active player (design preview).
+            "field_previews": compute_field_previews(g),
             # Optionales Poker-Debugging
             "_dbg_poker": _dbg_poker(),
         }

@@ -1,10 +1,10 @@
 {
-  "version": "2.49.2",
-  "bump": "patch",
-  "date": "2026-10-11",
-  "previous_revision": "df7a0ed21e06a5f29bf721445f69ae13d90cc601",
+  "version": "2.50.0",
+  "bump": "minor",
+  "date": "2026-10-13",
+  "previous_revision": "2866941ba5fd839f01301159aa378aa0047d9efd",
   "summary": {
-    "de": "Verlässlicher Spielzettel-Fokus bei Mehrspieler-Zügen",
-    "en": "Reliable score sheet focus during multiplayer turns"
+    "de": "ZDWA-Design 2026 als Vorschau nur für den Owner, mit Punktevorschau im Spielzettel.",
+    "en": "ZDWA design 2026 as an owner-only preview, with score previews on the score sheet."
   }
 }

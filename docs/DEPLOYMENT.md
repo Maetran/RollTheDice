@@ -405,6 +405,14 @@ Zilch-Handoff, HTTP-API, WebSocket-Reconnect und die bereits installierte
 Apex-PWA testen. Die Turnstile-Registrierung nur mit einem bewusst vorgesehenen
 Testkonto prüfen.
 
+### ZDWA-Designvorschau
+
+`ROLLTHEDICE_ZDWA_DESIGN_PREVIEW` steuert das neue ZDWA-Design. Standard ist
+`owner`: nur Owner-Konten sehen es. Jeder andere Wert, insbesondere `off`,
+schaltet es für alle ab. Nach dem Ändern in `.env` den Container neu starten
+(`docker compose up -d`); ein Code-Deploy ist nicht nötig. Die Vorschau hat
+keine Migration, ein normaler Code-Rollback bleibt daher ohne Datenfolgen.
+
 ### Infrastruktur-Rollback
 
 Ein erfolgreicher Lauf gibt den exakten Pfad seiner Nginx-Sicherung und einen

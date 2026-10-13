@@ -26,6 +26,50 @@ from .rules import compute_overall
 logger = logging.getLogger(__name__)
 
 
+def compute_field_previews(g: GameDict) -> list[dict]:
+    """Points the active player would score in every field writable right now.
+
+    Presentation data for the owner-only design preview: the browser shows these
+    numbers inside the legal cells. Uses the same ``can_write_now`` and Poker
+    rule as writing itself, so a preview never offers a field the server would
+    reject. Empty before the first roll and outside an active turn.
+    """
+    try:
+        turn = g.get("_turn") or {}
+        pid = turn.get("player_id")
+        rolls_used = int(g.get("_rolls_used", 0) or 0)
+        if not pid or rolls_used <= 0:
+            return []
+        dice = g.get("_dice") or [0, 0, 0, 0, 0]
+        if is_team_mode(g):
+            board = g.get("_scoreboards_by_team", {}).get(board_key_for_actor(g, pid), {}) or {}
+        else:
+            board = g.get("_scoreboards", {}).get(pid, {}) or {}
+        announced = g.get("_announced_row4")
+        previews = []
+        for key, row in KEY_TO_ROW.items():
+            points = int(score_field_value(key, dice))
+            for col in ("down", "free", "up", "ang"):
+                if f"{row},{col}" in board:
+                    continue
+                ok, _why = can_write_now(g, pid, row, col, during_turn_announce=announced)
+                if not ok:
+                    continue
+                value = points
+                if key == "poker" and points > 0 and not poker_points_allowed(
+                    dice,
+                    col,
+                    roll_index=int(turn.get("roll_index", 0) or 0),
+                    first4oak_roll=turn.get("first4oak_roll"),
+                    announced_poker=(announced == "poker"),
+                ):
+                    value = 0
+                previews.append({"row": row, "col": col, "points": value})
+        return previews
+    except Exception:
+        return []
+
+
 def compute_suggestions(g: GameDict) -> list[dict]:
     """
     Liefert Vorschlags-Buttons (serverseitig berechnet) für den AKTUELLEN Zug.

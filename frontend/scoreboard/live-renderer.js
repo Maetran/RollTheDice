@@ -181,6 +181,21 @@ function renderRows(sc, sb, ctx){
   const lastWrites = (!isTeamModeSnapshot(sb) && sb._last_write_public) ? sb._last_write_public : null;
   const lastForThisBoard = (lastWrites && lastWrites[ctx.pid]) ? lastWrites[ctx.pid] : null; // [row, colKey]
 
+  // Server-computed points for writable fields (design preview). Only the
+  // active player's own board carries them; the attributes are inert unless a
+  // stylesheet renders them.
+  const previewPoints = new Map();
+  let bestPreviewKey = null;
+  if (ctx.isMyBoard && ctx.iAmTurn && !ctx.correctionActive && Array.isArray(sb?.field_previews)) {
+    let bestPoints = 0;
+    for (const preview of sb.field_previews) {
+      const key = `${preview.row},${preview.col}`;
+      const points = Number(preview.points) || 0;
+      previewPoints.set(key, points);
+      if (points > bestPoints) { bestPoints = points; bestPreviewKey = key; }
+    }
+  }
+
   const cols = ["down","free","up","ang"];
   const live = {};
   const isHC = !!(sb && sb._hardcore);
@@ -298,7 +313,11 @@ function renderRows(sc, sb, ctx){
         titleText = `${titleText ? titleText + " • " : ""}Superadmin-Änderung${byName}: ${oldVal} → ${newVal}`;
       }
 
-      const dataAttr  = rowFieldKey ? ` data-row="${ri}" data-field="${colKey}"` : "";
+      const previewKey = `${ri},${colKey}`;
+      const previewAttr = (mayClickNormal && previewPoints.has(previewKey))
+        ? ` data-preview-points="${previewPoints.get(previewKey)}"${previewKey === bestPreviewKey ? " data-preview-best" : ""}`
+        : "";
+      const dataAttr  = rowFieldKey ? ` data-row="${ri}" data-field="${colKey}"${previewAttr}` : "";
       const titleAttr = titleText ? ` title="${esc(titleText)}"` : "";
       const valueMarkup = has
         ? (rowFieldKey ? classicWrittenScore(val, ctx.pid, ri, colKey, ctx.writing) : esc(String(val)))
