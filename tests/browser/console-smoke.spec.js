@@ -547,8 +547,10 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
       die: rect("#diceBar .die"),
       heldDie: (() => {
         const die = document.querySelector("#diceBar .die");
-        // The held ring animates; read its settled value.
+        // The held ring animates and the opening roll may still shake; read
+        // the settled value.
         die.style.transition = "none";
+        die.style.animation = "none";
         die.classList.add("held");
         const style = window.getComputedStyle(die);
         const result = {
@@ -558,6 +560,7 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
           transform: style.transform,
         };
         die.style.transition = "";
+        die.style.animation = "";
         return result;
       })(),
       card: rect(".player-card"),
