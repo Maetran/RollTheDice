@@ -1,5 +1,5 @@
 /* ZDWA PWA: cache only the explicit local-play package. */
-const CACHE_VERSION = 'assets-496e72fc6177';
+const CACHE_VERSION = 'assets-af1128ad3e80';
 const PRECACHE = `offline-zdwa-${CACHE_VERSION}`;
 const OFFLINE_PAGES = new Set([
   "/offline-spielen",
@@ -9,12 +9,15 @@ const OFFLINE_ASSETS = new Set([
   "/static/style.css",
   "/static/offline-play.css",
   "/static/offline-play.js",
+  "/static/zdwa-design-2026.css",
   "/static/favicon.png",
   "/static/icons/apple-touch-icon-180.png",
   "/static/icons/icon-192.png",
   "/static/icons/icon-512.png",
   "/static/kalam-classic-latin-regular-v1.woff2",
   "/static/kalam-classic-latin-bold-v1.woff2",
+  "/static/bricolage-grotesque-latin-600-v1.woff2",
+  "/static/bricolage-grotesque-latin-800-v1.woff2",
 ]);
 const PRECACHE_URLS = [...OFFLINE_PAGES, ...OFFLINE_ASSETS];
 

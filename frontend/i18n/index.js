@@ -92,9 +92,20 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
     [/Keine Spieler/g, "No players"]
   ];
 
+  // Blocked site data makes every storage access throw; the page then stays German.
   function getLanguage() {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    let saved = null;
+    try { saved = localStorage.getItem(STORAGE_KEY); } catch (_) {}
     return SUPPORTED.has(saved) ? saved : "de";
+  }
+
+  function storeLanguage(language) {
+    try {
+      localStorage.setItem(STORAGE_KEY, language);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   function locale() {
@@ -178,7 +189,7 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
 
   async function setLanguage(language, { persist = true, reload = true } = {}) {
     if (!SUPPORTED.has(language)) return;
-    localStorage.setItem(STORAGE_KEY, language);
+    storeLanguage(language);
     document.documentElement.lang = language;
     if (persist) await persistAccountLanguage(language);
     if (reload) location.reload();
@@ -186,7 +197,8 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
 
   function syncAccountLanguage(language) {
     if (!SUPPORTED.has(language) || language === getLanguage()) return false;
-    localStorage.setItem(STORAGE_KEY, language);
+    // Without storage a reload would ask again and loop.
+    if (!storeLanguage(language)) return false;
     location.reload();
     return true;
   }

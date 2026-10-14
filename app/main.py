@@ -127,6 +127,8 @@ from .web_push import (
     validate_web_push_config,
     web_push_available,
 )
+from .zdwa_design import MODE_OWNER as ZDWA_DESIGN_MODE_OWNER
+from .zdwa_design import configured_zdwa_design_mode, zdwa_design_available
 from .zilch_achievements import (
     ZilchAchievementError,
     ZilchAchievementSyncError,
@@ -733,12 +735,23 @@ def _page(filename: str) -> FileResponse:
     )
 
 
-def _private_account_action_page(request: Request, filename: str) -> FileResponse:
-    """Serve a short-lived account-action page only from the fixed apex."""
+def _private_account_action_page(request: Request, filename: str) -> Response:
+    """Serve a short-lived account-action page only from the fixed apex.
+
+    These pages load no shell and never ask ``/api/auth/me``, so the document
+    itself says whether the ZDWA 2026 design may be shown. Their inline head
+    script combines that with the choice remembered in this browser before the
+    first paint. Only ``owner`` mode needs the session to decide.
+    """
     if not is_site_host(request):
         raise HTTPException(status_code=404, detail="not_found")
-    return FileResponse(
-        str(STATIC_DIR / filename),
+    identity = resolve_session(request) if configured_zdwa_design_mode() == ZDWA_DESIGN_MODE_OWNER else None
+    available = "true" if zdwa_design_available(identity) else "false"
+    content = (STATIC_DIR / filename).read_text(encoding="utf-8")
+    content = content.replace("<html ", f'<html data-design-available="{available}" ', 1)
+    return Response(
+        content,
+        media_type="text/html",
         headers={
             "Cache-Control": "no-store",
             "X-Robots-Tag": "noindex, nofollow",

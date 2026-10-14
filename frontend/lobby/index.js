@@ -5,6 +5,7 @@ import { initializeGameSetup } from "./setup.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
 import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
+import { initializeDesignPrompt } from "../shared/design-prompt.js";
 
 initializeGameSetup();
 initializeAuthentication();
@@ -12,4 +13,5 @@ initializeGames();
 initializeLeaderboard();
 mountLobbyChat(document.getElementById("lobbyChatMount"), { context: "zdwa" });
 initializeReleaseNotes({ context: "zdwa" });
+initializeDesignPrompt();
 initializePushOptInPrompt({ context: "zdwa" });

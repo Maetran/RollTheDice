@@ -10,7 +10,7 @@ const tracker = buildSync({
 
 async function trackingFixture(page, { route = "/", game = "zdwa", dnt = false, gpc = false, beacon = false, referrer = "", userAgent = null, touchPoints = 0,
   languages = ["de-CH", "en-US"], language = "de-CH", displayMode = "browser", standalone = null,
-  manifest = "/manifest.webmanifest", blockedPwaStorage = false, offline = false } = {}) {
+  manifest = "/manifest.webmanifest", blockedPwaStorage = false, offline = false, theme = null, design = null } = {}) {
   const batches = [];
   await page.clock.install({ time: new Date("2026-10-04T00:00:00Z") });
   await page.clock.pauseAt(new Date("2026-10-04T00:00:01Z"));
@@ -69,7 +69,7 @@ async function trackingFixture(page, { route = "/", game = "zdwa", dnt = false, 
       await request.fallback();
       return;
     }
-    await request.fulfill({ contentType: "text/html", body: `<!doctype html><html data-game="${game}"><head><link rel="manifest" href="${manifest}"></head><body>
+    await request.fulfill({ contentType: "text/html", body: `<!doctype html><html data-game="${game}"${theme ? ` data-theme="${theme}"` : ""}${design ? ` data-design="${design}"` : ""}><head><link rel="manifest" href="${manifest}"></head><body>
       <input id="privateInput" value="SecretUserAndPassword">
       <button id="createBtn" data-id="private-room-id">Room secret and user name</button>
       <button data-game-mode="2">2 players</button>
@@ -339,6 +339,90 @@ test("analytics counts active visible time and excludes hidden and idle time", a
   await tick(page, 15000);
   await expect.poll(activeTime).toBe(105000);
   expect(fixture.events().filter(event => event.type === "page_view")).toHaveLength(1);
+});
+
+test("engagement time names the ZDWA look on screen and a switch closes the interval under the old look", async ({ page }) => {
+  const fixture = await trackingFixture(page, { route: "/spiel/PRIVATE-ROOM", theme: "dark", design: "2026" });
+  expect(await page.evaluate(() => [
+    ProductAnalytics.analyticsLook(),
+    ProductAnalytics.analyticsLook({ dataset: { game: "zdwa", theme: "classic" } }),
+    ProductAnalytics.analyticsLook({ dataset: { game: "zdwa", theme: "light", design: "2026" } }),
+    ProductAnalytics.analyticsLook({ dataset: { game: "zdwa" } }),
+    ProductAnalytics.analyticsLook({ dataset: { game: "zdwa", theme: "neon", design: "2026" } }),
+  ])).toEqual(["zdwa:new:dark", "zdwa:old:classic", "zdwa:new:light", null, null]);
+  const engagement = () => fixture.events().filter(event => event.type === "engagement").map(event => [event.look, event.active_ms]);
+  await tick(page, 15000);
+  await expect.poll(engagement).toEqual([["zdwa:new:dark", 15000]]);
+  await tick(page, 5000);
+  // The theme button switches to Retro mid-interval: the first five seconds
+  // still belong to the dark look, the rest to Retro.
+  await page.evaluate(() => { document.documentElement.dataset.theme = "classic"; });
+  await tick(page, 10000);
+  await expect.poll(engagement).toEqual([["zdwa:new:dark", 15000], ["zdwa:new:dark", 5000], ["zdwa:new:classic", 10000]]);
+  // Going back to the previous design keeps the colour scheme.
+  await page.evaluate(() => { delete document.documentElement.dataset.design; });
+  await tick(page, 15000);
+  await expect.poll(engagement).toEqual([["zdwa:new:dark", 15000], ["zdwa:new:dark", 5000], ["zdwa:new:classic", 10000], ["zdwa:old:classic", 15000]]);
+  const total = fixture.events().reduce((sum, event) => sum + (event.active_ms || 0), 0);
+  expect(total).toBe(45000);
+  expect(fixture.events().filter(event => event.type !== "engagement").every(event => !("look" in event))).toBe(true);
+  expect(fixture.events().every(event => event.page === "/spiel")).toBe(true);
+});
+
+test("Zilch engagement names the tavern table or LCARS look", async ({ page }) => {
+  const fixture = await trackingFixture(page, { route: "/zilch", game: "zilch", theme: "light" });
+  const engagement = () => fixture.events().filter(event => event.type === "engagement").map(event => [event.look, event.active_ms]);
+  await tick(page, 15000);
+  await page.evaluate(() => { document.documentElement.dataset.theme = "lcars"; });
+  await tick(page, 15000);
+  await expect.poll(engagement).toEqual([["zilch:tavern", 15000], ["zilch:lcars", 15000]]);
+  expect(fixture.events().every(event => event.game === "zilch")).toBe(true);
+});
+
+test("a ZDWA page without a known theme sends engagement without a look", async ({ page }) => {
+  const plain = await trackingFixture(page, { route: "/regeln" });
+  await tick(page, 15000);
+  await expect.poll(() => plain.events().filter(event => event.type === "engagement" && event.page === "/regeln").length).toBe(1);
+  expect(plain.events().some(event => "look" in event)).toBe(false);
+});
+
+test("design looks reach the dashboard as anonymous seconds per look and area", async ({ page }) => {
+  const login = await page.request.post("/api/auth/login", { data: { username: "Admin", password: "temporary-password-123" } });
+  expect(login.ok()).toBe(true);
+  const usage = async () => {
+    const response = await page.request.get("/api/admin/analytics?days=1&game=zdwa");
+    expect(response.ok()).toBe(true);
+    const stats = await response.json();
+    return stats.design_usage;
+  };
+  const initial = await usage();
+  const before = initial.looks.find(row => row.look === "zdwa:new:classic") || { seconds: 0, table_seconds: 0 };
+  const id = () => randomBytes(16).toString("hex");
+  const pageId = id();
+  const event = (look, page, activeMs) => ({ id: id(), page_id: pageId, type: "engagement", page, game: "zdwa", mode: "unknown", active_ms: activeMs, look });
+  const batch = { session_id: id(), device: "desktop", events: [
+    event("zdwa:new:classic", "/spiel/PRIVATE-ROOM", 12000),
+    event("zdwa:new:classic", "/regeln", 4000),
+    // Unknown looks and a look from the other game are dropped.
+    event("zdwa:neon:classic", "/spiel/PRIVATE-ROOM", 30000),
+    event("zilch:lcars", "/spiel/PRIVATE-ROOM", 30000),
+  ] };
+  const accepted = await page.request.post("/api/analytics/events", { data: batch });
+  expect(accepted.status()).toBe(202);
+  // A resent beacon must not count twice.
+  expect((await page.request.post("/api/analytics/events", { data: batch })).status()).toBe(202);
+  await expect.poll(async () => {
+    const row = (await usage()).looks.find(item => item.look === "zdwa:new:classic");
+    return row ? [row.seconds - before.seconds, row.table_seconds - before.table_seconds] : null;
+  }, { timeout: 10000 }).toEqual([16, 12]);
+  await page.waitForTimeout(1500);
+  const after = await usage();
+  expect(after.looks.find(item => item.look === "zdwa:new:classic").seconds - before.seconds).toBe(16);
+  expect(after.looks.some(item => item.look === "zdwa:neon:classic" || item.game !== "zdwa")).toBe(false);
+  expect(after.first_day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  expect(after.retention_days).toBe(400);
+  expect(after.zdwa_account_choices.new + after.zdwa_account_choices.old).toBeGreaterThanOrEqual(1);
+  expect(JSON.stringify(after)).not.toContain("PRIVATE-ROOM");
 });
 
 test("analytics follows Zilch history navigation with no room IDs or duplicate hash views", async ({ page }) => {

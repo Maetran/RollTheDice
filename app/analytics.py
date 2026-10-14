@@ -48,8 +48,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from .database import get_engine, session_scope
-from .models import ActiveGame, Base, CompletedGame, GameParticipant
+from .models import ActiveGame, Base, CompletedGame, GameParticipant, User
 from .security import as_utc, utcnow
+from .zdwa_design import configured_zdwa_design_mode
 
 logger = logging.getLogger(__name__)
 RETENTION_DAYS = 90
@@ -102,6 +103,17 @@ uz ve vi vo wa wo xh yi yo za zh zu fil gsw yue cmn nan hak kok ceb
 """.split())
 LANGUAGE_ALIASES = {"iw": "he", "in": "id", "ji": "yi"}
 LANGUAGE_TAG_RE = re.compile(r"^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{1,8})*$")
+# Presentation looks for the design comparison. Each value names one game,
+# design and colour theme; nothing else about the visitor is attached.
+LOOKS = frozenset({
+    *(f"zdwa:{design}:{theme}" for design in ("new", "old") for theme in ("light", "dark", "classic")),
+    "zilch:tavern", "zilch:lcars",
+})
+DESIGN_AREAS = frozenset({"table", "site"})
+DESIGN_RETENTION_DAYS = 400
+# New accounts get their design-question timestamp while registering; a later
+# timestamp means a pre-release account saw the question or chose itself.
+DESIGN_PROMPT_REGISTRATION_GRACE = timedelta(minutes=5)
 REQUEST_STATUS_CLASSES = frozenset({"2xx", "3xx", "4xx", "5xx", "other"})
 REQUEST_CHANNELS = frozenset({"api", "asset", "page", "other"})
 # These are self-declared UA families, never verified crawler identities.
@@ -184,6 +196,15 @@ class AnalyticsRequestBucket(Base):
     agent_family: Mapped[str] = mapped_column(String(24), primary_key=True)
     channel: Mapped[str] = mapped_column(String(8), primary_key=True)
     requests: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+
+
+class AnalyticsDesignBucket(Base):
+    """Daily visible milliseconds per look, with no visit or account relation."""
+    __tablename__ = "analytics_design_buckets"
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)
+    look: Mapped[str] = mapped_column(String(24), primary_key=True)
+    area: Mapped[str] = mapped_column(String(8), primary_key=True)
+    active_ms: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
 
 
 _queue: queue.Queue | None = None
@@ -308,9 +329,13 @@ def normalize_batch(payload: object, *, country: str = "ZZ", now: datetime | Non
         if not isinstance(mode, str) or mode not in MODES:
             mode = "unknown"
         identity = f"{sid}:{page_id}:{page}:view" if kind == "page_view" else f"{sid}:{event_id}"
-        normalized.append({"dedupe_key": _digest(identity), "session_id": session_hash, "received_at": received,
-                           "event_type": kind, "page": page, "game": game, "action": action,
-                           "active_ms": int(duration), "mode": mode, "source": "client"})
+        row = {"dedupe_key": _digest(identity), "session_id": session_hash, "received_at": received,
+               "event_type": kind, "page": page, "game": game, "action": action,
+               "active_ms": int(duration), "mode": mode, "source": "client"}
+        look = event.get("look") if kind == "engagement" else None
+        if isinstance(look, str) and look in LOOKS and look.split(":", 1)[0] == game:
+            row["look"] = look
+        normalized.append(row)
     device = payload.get("device")
     operating_system = payload.get("os")
     device_family = payload.get("device_family")
@@ -478,6 +503,25 @@ def _persist_request_counts(db: Session, counts: dict) -> int:
     return dropped
 
 
+def _persist_design_counts(db: Session, counts: dict) -> None:
+    """Add visible time to bounded daily rows (at most 8 looks x 2 areas per day)."""
+    bucket = AnalyticsDesignBucket
+    dialect = db.get_bind().dialect.name
+    for (day, look, area), total in counts.items():
+        row = {"day": day, "look": look, "area": area, "active_ms": int(total)}
+        if dialect in {"sqlite", "postgresql"}:
+            statement = (sqlite_insert if dialect == "sqlite" else postgres_insert)(bucket).values(row)
+            db.execute(statement.on_conflict_do_update(
+                index_elements=["day", "look", "area"],
+                set_={"active_ms": bucket.active_ms + statement.excluded.active_ms},
+            ))
+        else:
+            changed = db.execute(update(bucket).where(bucket.day == day, bucket.look == look, bucket.area == area)
+                                 .values(active_ms=bucket.active_ms + row["active_ms"]))
+            if not changed.rowcount:
+                db.execute(insert(bucket).values(**row))
+
+
 def persist_batches(batches: list[dict], *, now: datetime | None = None, sweep: bool = False,
                     request_counts: dict | None = None) -> int:
     """One serialized background writer, with a short busy timeout, no game locks."""
@@ -496,6 +540,7 @@ def persist_batches(batches: list[dict], *, now: datetime | None = None, sweep: 
                 first_day = (now - timedelta(days=RETENTION_DAYS - 1)).date().isoformat()
                 db.execute(delete(AnalyticsRequestBucket).where(AnalyticsRequestBucket.day < first_day))
             request_rejected = _persist_request_counts(db, request_counts or {})
+            design_counts: dict = {}
             for batch in batches:
                 session = batch["session"]
                 if session:
@@ -512,12 +557,23 @@ def persist_batches(batches: list[dict], *, now: datetime | None = None, sweep: 
                 rows = []
                 for event in batch["events"]:
                     if event["dedupe_key"] not in seen:
+                        event = dict(event)
+                        look = event.pop("look", None)
+                        if look:
+                            # Only first deliveries count, so a resent beacon
+                            # cannot inflate a design's visible time.
+                            area = "table" if event["page"] in {"/spiel", "/zilch/spiel"} else "site"
+                            key = (as_utc(event["received_at"]).date().isoformat(), look, area)
+                            design_counts[key] = design_counts.get(key, 0) + event["active_ms"]
                         rows.append(event)
                         seen.add(event["dedupe_key"])
                 if rows:
                     db.execute(insert(AnalyticsEvent), rows)
                     stored += len(rows)
+            _persist_design_counts(db, design_counts)
             if sweep:
+                first_design_day = (now - timedelta(days=DESIGN_RETENTION_DAYS - 1)).date().isoformat()
+                db.execute(delete(AnalyticsDesignBucket).where(AnalyticsDesignBucket.day < first_design_day))
                 cutoff = now - timedelta(days=RETENTION_DAYS)
                 db.execute(delete(AnalyticsEvent).where(AnalyticsEvent.received_at < cutoff))
                 db.execute(delete(AnalyticsSession).where(AnalyticsSession.last_seen_at < cutoff))
@@ -860,6 +916,64 @@ def _request_traffic_stats(db: Session, start: datetime, now: datetime) -> dict:
     return result
 
 
+def _design_usage_stats(db: Session, start: datetime, now: datetime, game: str) -> dict:
+    """Visible seconds per look and the stored ZDWA choice of active accounts."""
+    bucket = AnalyticsDesignBucket
+    products = ("zdwa", "zilch") if game == "all" else (game,)
+    known = (bucket.look.in_([look for look in LOOKS if look.split(":", 1)[0] in products]),
+             bucket.area.in_(DESIGN_AREAS))
+    rows = db.execute(select(bucket.look, bucket.area, func.sum(bucket.active_ms))
+                      .where(*known, bucket.day >= start.date().isoformat(), bucket.day <= now.date().isoformat())
+                      .group_by(bucket.look, bucket.area)).all()
+    # Sum milliseconds first and convert once, so the total equals table plus
+    # elsewhere and short visits in both areas are not rounded away twice.
+    milliseconds: dict[str, dict[str, int]] = {}
+    for look, area, total in rows:
+        milliseconds.setdefault(look, {"table": 0, "site": 0})[area] += int(total or 0)
+    looks = [{"look": look, "game": look.split(":", 1)[0],
+              "seconds": (parts["table"] + parts["site"]) // 1000, "table_seconds": parts["table"] // 1000}
+             for look, parts in milliseconds.items()]
+    return {"looks": sorted(looks, key=lambda row: (-row["seconds"], row["look"])),
+            "zdwa_account_choices": _zdwa_account_choices(db) if "zdwa" in products else None,
+            # The stored choice only takes effect while the rollout switch
+            # offers the 2026 design to everyone (app/zdwa_design.py).
+            "zdwa_design_mode": configured_zdwa_design_mode(),
+            "first_day": db.scalar(select(func.min(bucket.day)).where(*known)),
+            "retention_days": DESIGN_RETENTION_DAYS}
+
+
+def _zdwa_account_choices(db: Session) -> dict:
+    """Stored ZDWA design of active accounts, separating answers from defaults.
+
+    Every account starts with the new design, so the raw split mostly counts
+    untouched defaults.  ``answered`` holds accounts from before the release
+    that saw the one-time question or chose in their settings: their
+    ``zdwa_design_prompted_at`` was set after the account had existed for a
+    while.  Accounts created later get that timestamp at registration and
+    are never asked; pre-release accounts that have not signed in since keep
+    NULL (``awaiting_prompt``).  ``never_asked_new`` counts accounts on the new
+    design that never saw the question, i.e. the default share.
+    """
+    choices = {"new": 0, "old": 0, "answered": {"new": 0, "old": 0}, "never_asked_new": 0, "awaiting_prompt": 0}
+    rows = db.execute(select(User.zdwa_design, User.created_at, User.zdwa_design_prompted_at)
+                      .where(User.is_active.is_(True))).all()
+    for design, created_at, prompted_at in rows:
+        # Stored values outside the allowlist are shown as the new design,
+        # exactly as the game itself treats them.
+        choice = "old" if design == "old" else "new"
+        choices[choice] += 1
+        answered = (prompted_at is not None and created_at is not None
+                    and as_utc(prompted_at) - as_utc(created_at) > DESIGN_PROMPT_REGISTRATION_GRACE)
+        if answered:
+            choices["answered"][choice] += 1
+            continue
+        if prompted_at is None:
+            choices["awaiting_prompt"] += 1
+        if choice == "new":
+            choices["never_asked_new"] += 1
+    return choices
+
+
 def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = None) -> dict:
     if days not in {1, 7, 30, 90} or game not in {"all", "zdwa", "zilch"}:
         raise ValueError("analytics_invalid_filter")
@@ -975,6 +1089,7 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                           "avg_duration_seconds": round(sum(valid_durations) / len(valid_durations), 1)
                           if valid_durations else None, "duration_sample_count": len(valid_durations),
                           "duration_sample_limit": 2000})
+        design_usage = _design_usage_stats(db, start, now, game)
         first = db.scalar(select(func.min(AnalyticsEvent.received_at)))
         first_client = db.scalar(select(func.min(AnalyticsEvent.received_at)).where(AnalyticsEvent.source == "client"))
         stored_events = db.scalar(select(func.count()).select_from(AnalyticsEvent)) or 0
@@ -1001,4 +1116,4 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
             "heatmap": heatmap, "journeys": journeys,
             "comparison": _comparison_stats(overview, previous_overview, start, now, days, first_client),
             "daily": daily, "pages": pages, **dimensions, "actions": actions, "pwa": pwa, "games": games,
-            "modes": modes, "hourly": hourly, "server": server}
+            "modes": modes, "hourly": hourly, "design_usage": design_usage, "server": server}

@@ -1,0 +1,301 @@
+/* === ZDWA Design 2026: Retro (Classic theme) ===
+   The 2026 layout and features (lobby order, paper score sheet, point previews
+   with brass highlight and best-field ring, felt dice dock, held-dice ring,
+   announce buttons) in the material of the Classic theme: warm coffee-table
+   paper, Kalam handwriting, blue ballpoint ink, fibrous green felt and old
+   ivory dice. classic.css keeps the base tokens (--bg, --surface, ...) and the
+   hand-drawn score grid; this file maps the --d26-* tokens to that palette and
+   settles every place where core.css and classic.css disagree.
+
+   Every selector starts with the full Retro prefix
+   :root[data-game="zdwa"][data-design="2026"][data-theme="classic"], which is
+   one attribute more specific than both core.css and classic.css (the one
+   exception, the card frame, says why). Room sizing is untouched: no rule here
+   changes a measured box. */
+
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] {
+  --d26-paper: #e6d9b9;
+  --d26-band: #d9c9a4;
+  --d26-rule: #c9b48b;
+  --d26-rule-strong: #a98c61;
+  --d26-felt: #31583a;
+  --d26-felt-2: #3b6845;
+  --d26-felt-ink: #f4e9cb;
+  --d26-felt-surface: var(--classic-felt-surface);
+  --d26-brass: #9c6a15;
+  --d26-brass-soft: #f1d790;
+  --d26-brass-ink: #5f3e06;
+  --d26-call: #a3342a;
+  --d26-call-soft: #f2cdb8;
+  --d26-pen: var(--classic-score-ink);
+  --d26-die: #e9d8af;
+  --d26-pip: #393126;
+  --d26-display: var(--classic-handwriting);
+  --d26-hand: var(--classic-score-handwriting);
+  /* Brass that reads on felt (held dice, keyboard focus, 4.1:1 on #285b49);
+     --d26-brass is tuned for paper and drops to 1.7:1 there. */
+  --retro-brass-felt: #e3b552;
+  /* Point previews are pencilled lighter than the brass ink, so the written
+     blue scores stay the strongest marks on the sheet (5.7:1 on brass-soft). */
+  --retro-pencil: #6b4a10;
+  /* A fresh sheet: the chosen lobby tile and the field written last. */
+  --retro-fresh: #f2ead2;
+  --retro-ink: #382717;
+  --retro-ivory: #f1e5c6;
+  --retro-ivory-hover: #f7edd3;
+}
+
+/* ---------- Grundlagen ---------- */
+/* Kalam has no negative tracking to spare; Classic headings breathe a little. */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] :is(h1, h2, .leaderboard-heading h2, .pc-name) {
+  letter-spacing: .02em;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] :is(h1, h2) { font-weight: 700; }
+
+/* Paper cards keep Classic's ruled sheet, but lose the drawn frame: like the
+   2026 cards they stand out by their shadow only. classic.css draws the frame
+   at (0,4,1) because its :is() list holds `.account-preferences-form
+   fieldset`, so core's (0,4,0) .card rule cannot remove it. This rule matches
+   that weight exactly (body, and :where() for the theme) and wins by loading
+   later, so any more specific card border in core.css, pages.css or
+   choice.css, such as the lobby identity card, still applies. */
+:root[data-game="zdwa"][data-design="2026"]:where([data-theme="classic"]) body :is(.card, .leaderboard-box) {
+  border-color: transparent;
+}
+
+/* ---------- Lobby ---------- */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .lobby-page .lobby-intro h1 {
+  font-size: clamp(2.05rem, 4.6vw, 3.15rem);
+  line-height: 1.06;
+  letter-spacing: .01em;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .lobby-page .create-game-card h2 {
+  font-size: 1.55rem;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .lobby-page .choice-button {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: .02em;
+}
+/* Open tiles are Classic's darker paper slips with a light pencil edge; the
+   chosen one is a fresh sheet under the dark felt ring (edge contrast 3.3:1,
+   as between open and chosen tiles in Light). Hardcore keeps its own fill
+   from core.css. */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .lobby-page .choice-button:not([aria-checked="true"]) {
+  border-color: var(--border);
+  background: var(--surface-soft);
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .lobby-page .choice-button:not(.hardcore-choice)[aria-checked="true"] {
+  background: var(--retro-fresh);
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .lobby-page .create-game-card #createBtn {
+  font-size: 1.15rem;
+  letter-spacing: .02em;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .lobby-page .leaderboard-box :is(th, thead th) {
+  letter-spacing: .06em;
+}
+/* The setup card and the closing lobby text lie on the bare page, not on
+   paper. Classic's muted brown is tuned for paper (3.6:1 on the page), so
+   they write in a darker ink (6.3:1) and the guest switch in the dark felt. */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .lobby-page :is(.player-setup-card, .about-game) {
+  --muted: #4b351f;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .lobby-page .design-guest-line button {
+  color: var(--accent-strong);
+}
+
+/* ---------- Spieltisch: Spielzettel ---------- */
+/* The score pad itself is the card: warm paper with a faint ink wash, no felt
+   mat underneath and no inner frame (Classic nests paper in felt). */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page :is(.player-card, .player-card.me) {
+  color: var(--classic-score-ink);
+  border-color: transparent;
+  border-radius: 4px 7px 5px 6px;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 1.58rem, var(--classic-score-ink-wash) 1.58rem 1.635rem),
+    var(--d26-paper);
+  box-shadow: var(--shadow-md);
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page .player-card.turn {
+  box-shadow: 0 0 0 2px var(--d26-brass), var(--shadow-md);
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page .player-card .pc-head {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  text-shadow: none;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page .player-card .pc-total {
+  color: var(--retro-ink);
+  font-weight: 700;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page .player-card .table-wrap {
+  border-color: transparent;
+  background: var(--d26-paper);
+  box-shadow: none;
+}
+
+/* Preview points are pencilled in brass: regular weight, lighter ink, upright
+   and without the pen's alternating slant, so the written blue scores stay
+   the strongest marks and a preview never reads as a written score. */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page table.grid td.cell[data-preview-points]::after {
+  font-family: var(--d26-display);
+  font-size: .95em;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--retro-pencil);
+}
+
+/* Classic paints announced and last written fields ochre with a brown ring,
+   which would read as the brass best-field ring. Retro uses the 2026 marks. */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page .player-card table.grid td.cell.announced {
+  background-color: var(--d26-call-soft) !important;
+  color: var(--d26-call);
+  box-shadow: inset 0 0 0 2px var(--d26-call);
+}
+/* The last written field is a fresh, lighter patch of paper: a blue wash on
+   the warm sheet turns grey and would look disabled. */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page .player-card table.grid td.cell.last-write:not(.admin-edited) {
+  background-color: var(--retro-fresh) !important;
+  color: var(--d26-pen);
+  box-shadow: none;
+}
+
+/* ---------- Spieltisch: Würfelteller ---------- */
+/* Old ivory dice from Classic (patina, uneven faces) on the 2026 felt dock. */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page button.die {
+  background: linear-gradient(135deg, #eaddba, #c3aa7e);
+  box-shadow:
+    inset .08rem .1rem .13rem rgba(248, 236, 205, .48),
+    inset -.1rem -.12rem .18rem rgba(114, 85, 45, .2),
+    0 4px 8px rgba(0, 20, 10, .32);
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page button.die svg rect {
+  fill: var(--classic-die-face);
+  stroke: rgba(96, 68, 35, .24);
+  stroke-width: 2;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page button.die.held {
+  background: linear-gradient(135deg, #eaddba, #c3aa7e);
+  box-shadow:
+    inset .08rem .1rem .13rem rgba(248, 236, 205, .48),
+    inset -.1rem -.12rem .18rem rgba(114, 85, 45, .2),
+    0 9px 14px rgba(0, 20, 10, .38),
+    0 0 0 3px var(--retro-brass-felt);
+}
+
+/* Roll is the one ivory label on the felt; announce stays an outline. */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page #rollBtnInline {
+  border: 0;
+  border-radius: 6px 9px 7px 8px;
+  background:
+    linear-gradient(106deg, rgba(255, 252, 238, .4), transparent 46%),
+    var(--retro-ivory);
+  color: var(--retro-ink);
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-shadow: none;
+  box-shadow: 0 2px 0 rgba(0, 28, 17, .38);
+  transform: none;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page #rollBtnInline:disabled {
+  border: 0;
+  background: var(--retro-ivory);
+  color: var(--retro-ink);
+  box-shadow: none;
+  opacity: .5;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page :is(#announceBtnInline, #requestCorrectionBtn) {
+  border-color: rgba(244, 233, 203, .4);
+  border-radius: 5px 8px 4px 7px;
+  letter-spacing: .02em;
+  text-shadow: none;
+  transform: none;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page :is(#announceBtnInline, #requestCorrectionBtn):disabled {
+  border-color: rgba(244, 233, 203, .4);
+  background: transparent;
+  color: var(--d26-felt-ink);
+  box-shadow: none;
+  opacity: .5;
+}
+/* The suggestion is a decorative hint (a div, aria-hidden), not a control:
+   no tilt, lift or press feedback. */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page .suggestion-btn {
+  border-radius: 5px 8px 4px 7px;
+  box-shadow: none;
+  transform: none;
+}
+
+/* The resets above also beat the shared press scale, so restore it here. */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page :is(#rollBtnInline, #announceBtnInline, #requestCorrectionBtn):active:not(:disabled) {
+  transform: scale(.97);
+}
+
+/* Keyboard focus on the felt: core's paper brass would reach only 1.7:1
+   against the felt, the felt brass of the held dice reaches 4.1:1. The row
+   picker below sits on paper and keeps Classic's blue ink outline. */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page #diceBar button:focus-visible {
+  outline-color: var(--retro-brass-felt);
+}
+
+/* Announcing is the red ❗ column: the row picker uses the call ink instead
+   of Classic's yellow, which would read like the brass point previews. */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page .mobile-announce-picker {
+  border-color: var(--d26-rule);
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 1.58rem, var(--classic-paper-line) 1.58rem 1.64rem),
+    var(--surface);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: none;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page .mobile-announce-option {
+  border-color: color-mix(in oklab, var(--d26-call) 45%, transparent);
+  border-radius: 4px 7px 5px 6px;
+  background: var(--d26-paper);
+  color: var(--d26-call);
+  font-weight: 700;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page .mobile-announce-option:disabled {
+  border-color: var(--d26-rule);
+  background: transparent;
+  color: var(--muted);
+}
+
+/* Classic lifts these on any hover, also the sticky hover of touch screens;
+   the 2026 design keeps hover feedback to fine pointers. */
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page :is(#announceBtnInline, #requestCorrectionBtn, .suggestion-btn):not(:disabled):hover {
+  translate: none;
+  box-shadow: none;
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page #rollBtnInline:not(:disabled):hover {
+  translate: none;
+  box-shadow: 0 2px 0 rgba(0, 28, 17, .38);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page #rollBtnInline:not(:disabled):hover {
+    background:
+      linear-gradient(106deg, rgba(255, 252, 238, .4), transparent 46%),
+      var(--retro-ivory-hover);
+  }
+  :root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page .mobile-announce-option:not(:disabled):hover {
+    background: var(--d26-call-soft);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page :is(#rollBtnInline, #announceBtnInline, #requestCorrectionBtn):active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Phone and tablet: Classic's continuous felt mat (canvas, header, dock), the
+   paper sheet resting on it. The header carries felt text, so it stays felt. */
+@media (max-width: 1024px), (hover: none) and (pointer: coarse) {
+  :root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .room-page :is(.room-header, .chat-toggle, .chat-reactions-host) {
+    border-color: #0c4033;
+    background: var(--classic-felt-surface);
+  }
+}

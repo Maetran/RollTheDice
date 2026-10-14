@@ -102,6 +102,7 @@ import { zdwaPath } from "../multigame/routes.js";
   function pumpDialogQueue() {
     if (active || !queue.length) return;
     active = queue.shift();
+    const entry = active;
     const options = active.options;
     const backdrop = ensureDialog();
     const dialog = backdrop.querySelector("#appDialog");
@@ -167,8 +168,10 @@ import { zdwaPath } from "../multigame/routes.js";
           }
           if (action && typeof action.then === "function") {
             button.disabled = true;
+            // Closed meanwhile (× or Escape): the late result must not close
+            // the next queued dialog.
             Promise.resolve(action).then(
-              () => finish(value),
+              () => { if (active === entry) finish(value); },
               () => { button.disabled = false; },
             );
             return;

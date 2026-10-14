@@ -156,7 +156,7 @@ test("Zilch retains its independent LCARS appearance through reloads, languages,
     await expect(appearance).toHaveAttribute("data-theme-current", "light");
     await expect(appearance).toHaveAttribute(
       "aria-label",
-      "Darstellung wechseln: Klassisch. Nächstes Design: LCARS.",
+      "Darstellung wechseln: Klassisch. Nächste Darstellung: LCARS.",
     );
 
     await appearance.click();
@@ -164,7 +164,7 @@ test("Zilch retains its independent LCARS appearance through reloads, languages,
     await expect(appearance).toHaveAttribute("data-theme-current", "lcars");
     await expect(appearance).toHaveAttribute(
       "aria-label",
-      "Darstellung wechseln: LCARS. Nächstes Design: Klassisch.",
+      "Darstellung wechseln: LCARS. Nächste Darstellung: Klassisch.",
     );
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#0a0c12");
     await expect.poll(() => page.evaluate(() => ({
@@ -196,13 +196,13 @@ test("Zilch retains its independent LCARS appearance through reloads, languages,
     await expect(html).toHaveAttribute("data-theme", "light");
     await expect(appearance).toHaveAttribute(
       "aria-label",
-      "Change appearance: Classic. Next design: LCARS.",
+      "Change appearance: Classic. Next appearance: LCARS.",
     );
     await appearance.click();
     await expect(html).toHaveAttribute("data-theme", "lcars");
     await expect(appearance).toHaveAttribute(
       "aria-label",
-      "Change appearance: LCARS. Next design: Classic.",
+      "Change appearance: LCARS. Next appearance: Classic.",
     );
 
     await expectLcarsViewports(page);

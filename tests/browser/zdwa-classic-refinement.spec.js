@@ -169,6 +169,9 @@ test("Classic remains visible with a blocked font and does not jump when it fina
 test("Classic felt covers coarse-pointer landscape and tablets while the pad stays on top", async ({ browser, baseURL, request }, testInfo) => {
   const context = await browser.newContext({ baseURL, hasTouch: true, isMobile: true, viewport: { width: 844, height: 390 }, serviceWorkers: "block" });
   await setClassic(context);
+  // The previous design lays the pad on felt; 2026 Retro keeps a paper sheet
+  // above a felt dock (zdwa-design-retro.spec.js).
+  await context.addInitScript(() => localStorage.setItem("zdwa_design_override", "old"));
   const page = await context.newPage();
   try {
     await enterRoom(page, await createGame(request));

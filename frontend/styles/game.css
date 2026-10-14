@@ -277,6 +277,9 @@ td.cell.announce-pickable{
     padding:.45rem .25rem;
     white-space:normal;
   }
+  /* A fifth link ("Rangabzeichen") takes its own row instead of a cell
+     narrower than the word. */
+  .app-nav-links > .app-nav-link:nth-child(5):last-child{ grid-column:1 / -1; }
   .app-nav-tools .theme-toggle{
     min-width:44px;
     min-height:44px;

@@ -75,6 +75,44 @@ needing to sign out. All dashboard documents are `noindex` and `no-store`.
   tab names. Measurement starts with this rollout and may undercount when
   browser tracking is blocked. Events expire after 90 days; a 200,000-event cap
   can shorten the available history during sustained high traffic.
+- Design usage answers which look players spend their time with. Every
+  engagement event already carries visible, recently active milliseconds
+  (at most 60 seconds per event). It now also names the look that was on
+  screen while that time was counted, from a fixed list of eight values:
+  `zdwa:new:light|dark|classic` (2026 design: light, dark, Classic),
+  `zdwa:old:light|dark|classic` (previous design) and
+  `zilch:tavern|lcars` (Zilch tavern table or LCARS). Switching theme or
+  design closes the running interval, so time before the switch stays with
+  the previous look. Page views and actions carry no look. The server keeps
+  only daily totals in `analytics_design_buckets`: UTC day, look, area
+  (`table` for game rooms `/spiel`, `site` for every other page, including
+  spectating) and summed milliseconds — at most 16 rows per day, with no
+  visit, session, account, device or country relation. Unknown looks, looks
+  that do not match the event's game and resent events are ignored. These
+  totals are kept for 400 days (independent of the 90-day/200,000-event
+  limit for individual events). Guests and accounts are counted alike;
+  DNT/GPC visitors send nothing. The dashboard additionally shows the stored
+  ZDWA design choice of active accounts (`users.zdwa_design`) as a current
+  count, not as history.
+  **Deutsch:** Die Design-Nutzung zeigt, mit welchem Erscheinungsbild gespielt
+  wird. Jedes Engagement-Ereignis enthält schon die sichtbare, zuletzt aktive
+  Zeit (höchstens 60 Sekunden je Ereignis). Neu nennt es zusätzlich das
+  Design, das dabei zu sehen war – aus acht festen Werten:
+  `zdwa:new:light|dark|classic` (Design 2026: Hell, Dunkel, Classic),
+  `zdwa:old:light|dark|classic` (bisheriges Design) und `zilch:tavern|lcars`
+  (Zilch-Wirtshaustisch oder LCARS). Ein Wechsel von Farbschema oder Design
+  schliesst das laufende Intervall ab; die Zeit davor bleibt beim vorherigen
+  Design. Seitenaufrufe und Aktionen tragen kein Design. Gespeichert werden
+  nur Tagessummen in `analytics_design_buckets`: UTC-Tag, Design, Bereich
+  (`table` für Spielräume `/spiel`, `site` für alle übrigen Seiten inklusive
+  Zuschauen) und summierte Millisekunden – höchstens 16 Zeilen pro Tag, ohne
+  Bezug zu Besuch, Sitzung, Konto, Gerät oder Land. Unbekannte oder nicht zum
+  Spiel passende Werte und erneut gesendete Ereignisse werden verworfen. Die
+  Tagessummen bleiben 400 Tage erhalten, unabhängig von der Grenze von 90
+  Tagen/200.000 Ereignissen für Einzelereignisse. Gäste und Konten zählen
+  gleich; mit DNT/GPC wird nichts gesendet. Zusätzlich zeigt das Dashboard
+  die gespeicherte ZDWA-Designwahl aktiver Konten (`users.zdwa_design`) als
+  aktuellen Stand, nicht als Verlauf.
 - Filters use UTC calendar days: today (UTC), or today and the preceding
   6, 29 or 89 days. They are not rolling 24-hour windows.
 
@@ -139,6 +177,43 @@ needing to sign out. All dashboard documents are `noindex` and `no-store`.
   werden seit Prozessstart ausgewiesen.
   Googlebot, Bingbot und typische API-Clients wie curl/Python werden als
   unbestätigte Selbstangabe erkannt; eine Browserkennung beweist keinen Menschen.
+- **Design usage** (section 03) follows the selected period and game filter.
+  A head-to-head bar compares ZDWA new against previous and Zilch tavern table
+  against LCARS as shares of visible time. The breakdown lists every look
+  (ZDWA new: light, dark, Classic; ZDWA previous: light, dark, Classic; Zilch:
+  tavern table, LCARS) with readable time, its share within the game, and
+  time at the game table versus other pages; exact seconds appear on hover
+  and in the table. Account choices are a current snapshot, independent of
+  the period; guests keep their choice only in the browser and are not
+  included. Because every account starts with the new design, the panel
+  marks the default share ("of these, never asked": accounts registered after
+  the update plus pre-release accounts that have not signed in since) and
+  shows the **answers after the update** on their own: pre-release accounts
+  whose `zdwa_design_prompted_at` was set more than five minutes after the
+  account was created, i.e. they saw the one-time question or chose in their
+  settings. Closing the question without a change counts as keeping the new
+  design. While `ROLLTHEDICE_ZDWA_DESIGN` is `owner` or `off`
+  (`design_usage.zdwa_design_mode`), a note explains that the stored choice
+  does not apply yet. Shares describe visible time, not people: one long
+  session can outweigh many short ones.
+  **Deutsch:** Die **Design-Nutzung** (Bereich 03) folgt Zeitraum und
+  Spielfilter. Ein direkter Vergleich zeigt ZDWA neu gegen bisher und Zilch
+  Wirtshaustisch gegen LCARS als Anteil der sichtbaren Zeit. Die Aufschlüsselung
+  nennt jedes Design (ZDWA Neu: Hell, Dunkel, Classic; ZDWA Bisher: Hell, Dunkel,
+  Classic; Zilch: Wirtshaustisch, LCARS) mit lesbarer Zeit, Anteil im Spiel und
+  Zeit am Spieltisch gegenüber übrigen Seiten; exakte Sekunden erscheinen beim
+  Überfahren und in der Tabelle. Die Kontowahl ist ein aktueller Stand,
+  unabhängig vom Zeitraum; Gäste speichern ihre Wahl nur im Browser und fehlen
+  dort. Weil jedes Konto mit dem neuen Design startet, weist das Panel den
+  Standardanteil aus („davon nie gefragt“: nach dem Update registrierte Konten
+  und ältere Konten ohne Anmeldung seither) und zeigt die **Antwort nach dem
+  Update** getrennt: ältere Konten, deren `zdwa_design_prompted_at` mehr als
+  fünf Minuten nach der Kontoerstellung gesetzt wurde, die also die einmalige
+  Frage gesehen oder im Konto gewählt haben. Wer die Frage ohne Änderung
+  schließt, zählt als „Neu behalten“. Steht `ROLLTHEDICE_ZDWA_DESIGN` auf
+  `owner` oder `off` (`design_usage.zdwa_design_mode`), erklärt ein Hinweis,
+  dass die gespeicherte Wahl noch nicht greift. Anteile beschreiben sichtbare
+  Zeit, keine Personen: Eine lange Sitzung kann viele kurze aufwiegen.
 - Globe and world map use locally bundled public-domain Natural Earth geometry.
   Source hashes and preparation instructions are in
   [the geography asset notes](../frontend/dashboard/GEOGRAPHY.md).
@@ -202,6 +277,25 @@ ergänzt drei begrenzte Kategorie-Spalten; ältere Sitzungen erhalten
 `unknown`. Konten, Zugriffsrechte und Spieldaten bleiben erhalten. Die
 Datensicherung läuft über das bestehende Deploy-Skript.
 Migration `20261005_0052` ergänzt anonyme tägliche HTTP-Länder-/Statuszähler.
+
+Migration `20261013_0055` adds the account columns `zdwa_design` and
+`zdwa_design_prompted_at` and the separate daily table
+`analytics_design_buckets`; it has no relation to visits, events or game
+tables. Version 2.50.0 and older cannot start on this schema: their migration
+step does not know revision `20261013_0055`. The rollback without data loss is
+`ROLLTHEDICE_ZDWA_DESIGN=off` and a restart. A code rollback to 2.50.0 first
+needs `alembic downgrade 20261010_0054`, which drops the design totals and the
+stored account choices only (or restoring the deploy's data backup); back up
+and stop the service first.
+**Deutsch:** Migration `20261013_0055` ergänzt die Kontospalten `zdwa_design`
+und `zdwa_design_prompted_at` sowie die eigene Tagestabelle
+`analytics_design_buckets` ohne Bezug zu Besuchen, Ereignissen oder Spieldaten.
+Version 2.50.0 und ältere starten mit diesem Schema nicht, weil ihr
+Migrationsschritt die Revision `20261013_0055` nicht kennt. Der Rückweg ohne
+Datenverlust ist `ROLLTHEDICE_ZDWA_DESIGN=off` mit Neustart. Ein Code-Rollback
+auf 2.50.0 braucht vorher `alembic downgrade 20261010_0054`, das nur die
+Design-Tagessummen und die gespeicherte Kontowahl entfernt (oder die
+Datensicherung des Deploys); vorher sichern und den Dienst stoppen.
 
 For code rollback of browser/PWA/language analysis, stop the service, select
 version 2.45.0 and rebuild. The additive columns and request counters may remain;

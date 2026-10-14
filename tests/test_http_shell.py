@@ -11,6 +11,28 @@ from app.achievements import ACHIEVEMENT_POINTS_POSSIBLE, ACHIEVEMENT_RANKS, ach
 from app.site_seo import PUBLIC_SEO_PAGES, SITE_ORIGIN, ZILCH_ORIGIN
 from scripts.sync_static_versions import content_version, desired_text
 
+# Account action pages may carry exactly this inline script (see
+# main._private_account_action_page, which renders data-design-available). It
+# paints the theme and the ZDWA design before the first paint.
+ACCOUNT_ACTION_DESIGN_SCRIPT = (
+    '<script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},'
+    't=g("wuerfler_theme"),d=t==="dark"||t==="light"||t==="classic"?t:'
+    '(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"),'
+    'a=r.dataset.designAvailable;r.dataset.theme=d;r.style.colorScheme=d==="dark"?"dark":"light";'
+    'if((a?a==="true":g("zdwa_design_off")!=="1")&&g("zdwa_design")!=="old"'
+    '&&g("zdwa_design_override")!=="old")r.dataset.design="2026"}</script>'
+)
+# Offline play may carry exactly this inline script: for ZDWA it paints the
+# theme and the design remembered in this browser before the module runs.
+OFFLINE_PLAY_HEAD_SCRIPT = (
+    '<script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}};'
+    'if(r.dataset.game==="zdwa"){const t=g("wuerfler_theme"),d=t==="dark"||t==="light"||t==="classic"?t:'
+    '(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");'
+    'r.dataset.theme=d;r.style.colorScheme=d==="dark"?"dark":"light";'
+    'if(g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&g("zdwa_design_override")!=="old")'
+    'r.dataset.design="2026"}}</script>'
+)
+
 
 class _SeoParser(HTMLParser):
     def __init__(self):
@@ -102,15 +124,21 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
                 # online results; its single module is deferred by definition.
                 self.assertNotIn("/static/shell.js", html)
                 self.assertNotIn("/static/auth.js", html)
-                self.assertEqual(html.count("<script"), 1)
+                self.assertEqual(html.count("<script"), 2)
                 self.assertIn('<script type="module" src="/static/offline-play.js?v=', html)
+                self.assertEqual(html.count("<script>"), 1)
+                self.assertIn(OFFLINE_PLAY_HEAD_SCRIPT, html)
                 continue
             if html_path.name in account_actions:
                 # Secret-bearing actions use one deferred module and never
                 # boot the general shell/PWA, prefetchers or third-party scripts.
+                # The only inline script picks the ZDWA design before the first
+                # paint: it reads local storage and the server's flag, nothing else.
                 self.assertNotIn("/static/shell.js", html, html_path.name)
-                self.assertEqual(html.count("<script"), 1, html_path.name)
+                self.assertEqual(html.count("<script"), 2, html_path.name)
                 self.assertIn('<script type="module" src="/static/email-action.js?v=', html, html_path.name)
+                self.assertEqual(html.count("<script>"), 1, html_path.name)
+                self.assertIn(ACCOUNT_ACTION_DESIGN_SCRIPT, html, html_path.name)
                 self.assertIn('<meta name="referrer" content="no-referrer">', html, html_path.name)
                 continue
             if html_path.name == "dashboard.html":

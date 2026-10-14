@@ -1,0 +1,146 @@
+/* === Design choice: one-time dialog switch and the guest switch in the lobby ===
+   Both controls must work in the old and in the 2026 design (they are how a
+   player moves between them), so these rules are scoped to the game only, not
+   to [data-design]. Colours come from the theme tokens, which the light, dark
+   and classic themes define in both designs. Touch targets stay >= 44px. */
+
+:root[data-game="zdwa"] .design-choice-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: .55rem 0;
+  border-block: 1px solid var(--border);
+  font-weight: 700;
+  line-height: 1.3;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:root[data-game="zdwa"] .design-choice-switch input[role="switch"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 3rem;
+  height: 1.75rem;
+  margin: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--muted);
+  cursor: pointer;
+  transition: background-color 160ms var(--d26-ease-out, ease-out), box-shadow 160ms ease;
+}
+
+:root[data-game="zdwa"] .design-choice-switch input[role="switch"]::before {
+  content: "";
+  position: absolute;
+  top: .1875rem;
+  left: .1875rem;
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .28);
+  transition: transform 180ms var(--d26-ease-out, ease-out);
+}
+
+:root[data-game="zdwa"] .design-choice-switch input[role="switch"]:checked {
+  background: var(--accent);
+}
+
+:root[data-game="zdwa"] .design-choice-switch input[role="switch"]:checked::before {
+  transform: translateX(1.25rem);
+}
+
+:root[data-game="zdwa"] .design-choice-switch input[role="switch"]:focus-visible {
+  outline: 2px solid var(--d26-brass, var(--accent));
+  outline-offset: 2px;
+}
+
+:root[data-game="zdwa"] .design-choice-hint {
+  margin: .6rem 0 1rem;
+  color: var(--muted);
+  font-size: .9rem;
+  line-height: 1.45;
+}
+
+:root[data-game="zdwa"] .design-choice-hint.is-error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* Guest line at the end of the lobby: a sentence with a text button. */
+:root[data-game="zdwa"] .design-guest-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: .6rem;
+  margin: 1rem 0 0;
+  padding-top: .35rem;
+  border-top: 1px solid var(--border);
+}
+
+:root[data-game="zdwa"] .design-guest-line button {
+  min-height: 2.75rem;
+  margin: 0 -.35rem;
+  padding: 0 .35rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  box-shadow: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  text-align: start;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: .2em;
+}
+
+:root[data-game="zdwa"] .design-guest-line button:focus-visible {
+  outline: 2px solid var(--d26-brass, var(--accent));
+  outline-offset: 1px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :root[data-game="zdwa"] .design-choice-switch:hover input[role="switch"] {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+  :root[data-game="zdwa"] .design-guest-line button:hover {
+    color: var(--accent-strong, var(--accent));
+    text-decoration-thickness: 2px;
+  }
+}
+
+/* Phone landscape: the question, its switch and "Speichern" fit without
+   scrolling inside the dialog. */
+@media (max-height: 480px) {
+  :root[data-game="zdwa"] .app-dialog-backdrop:has(.design-choice-switch) { padding-block: .5rem; }
+  :root[data-game="zdwa"] .app-dialog:has(.design-choice-switch) { max-height: 100%; }
+  :root[data-game="zdwa"] .design-choice-hint { margin: .35rem 0 .6rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-game="zdwa"] .design-choice-switch input[role="switch"],
+  :root[data-game="zdwa"] .design-choice-switch input[role="switch"]::before {
+    transition: none;
+  }
+}
+
+/* Windows high contrast replaces the track colours; keep the state visible. */
+@media (forced-colors: active) {
+  :root[data-game="zdwa"] .design-choice-switch input[role="switch"] {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+  :root[data-game="zdwa"] .design-choice-switch input[role="switch"]::before {
+    background: CanvasText;
+    box-shadow: none;
+  }
+  :root[data-game="zdwa"] .design-choice-switch input[role="switch"]:checked {
+    background: Highlight;
+  }
+}

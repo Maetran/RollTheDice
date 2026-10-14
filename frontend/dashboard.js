@@ -64,6 +64,18 @@ const ACTION_LABELS = {
 };
 const PAGE_LABELS = { "/": "Lobby", "/spiel": "Am Spieltisch", "/zuschauen": "Zuschauen", "/regeln": "Spielregeln", "/spieler": "Spieler & Ranking", "/rangabzeichen": "Rangabzeichen", "/bestenlisten": "Bestenlisten", "/historie": "Historie", "/statistiken": "Statistiken", "/erfolge": "Erfolge", "/offline": "Offline-Seite", "/ergebnis": "Spielergebnis", "/konto": "Konto" };
 const MODE_LABELS = { "1": "Solo", "2": "Zu zweit", "3": "Zu dritt", "2v2": "Teamspiel", solo: "Solo", duo: "Zu zweit", trio: "Zu dritt", team: "Teamspiel", multiplayer: "Zu zweit", cpu: "Gegen den Würfelwirt", normal: "Normal", hardcore: "Hardcore" };
+// Design comparison: each look names one game, design and colour scheme.
+// Side "a" is the new ZDWA design or the Zilch tavern table, side "b" the
+// previous ZDWA design or LCARS; colours follow the side everywhere.
+const DESIGN_GROUPS = [
+  { title: "ZDWA Neu", game: "zdwa", looks: [["zdwa:new:light", "Hell"], ["zdwa:new:dark", "Dunkel"], ["zdwa:new:classic", "Classic"]] },
+  { title: "ZDWA Bisher", game: "zdwa", looks: [["zdwa:old:light", "Hell"], ["zdwa:old:dark", "Dunkel"], ["zdwa:old:classic", "Classic"]] },
+  { title: "Zilch", game: "zilch", looks: [["zilch:tavern", "Wirtshaustisch"], ["zilch:lcars", "LCARS"]] },
+];
+const DESIGN_SIDES = {
+  zdwa: [{ label: "Neu", looks: DESIGN_GROUPS[0].looks.map(([look]) => look) }, { label: "Bisher", looks: DESIGN_GROUPS[1].looks.map(([look]) => look) }],
+  zilch: [{ label: "Wirtshaustisch", looks: ["zilch:tavern"] }, { label: "LCARS", looks: ["zilch:lcars"] }],
+};
 
 let latest = null;
 let authReady = false;
@@ -244,6 +256,97 @@ function gameCards(data) {
   byId("gameModes").innerHTML = (data.modes || []).slice(0, 8).map(row => `<span class="mode-chip">${gameName(row.game)} · ${e(t(MODE_LABELS[row.mode] || "Anderer Modus"))}${row.hardcore ? " · Hardcore" : ""}<strong>${number(row.completed_games)}</strong></span>`).join("");
 }
 
+// The stored account choice only applies while the 2026 design is released
+// for everyone (ROLLTHEDICE_ZDWA_DESIGN=all, app/zdwa_design.py).
+const DESIGN_MODE_NOTES = {
+  owner: "Design 2026 ist derzeit nur für Owner freigegeben (ROLLTHEDICE_ZDWA_DESIGN=owner). Alle anderen Konten sehen das bisherige Design; ihre gespeicherte Wahl greift erst nach der Freigabe.",
+  off: "Design 2026 ist derzeit abgeschaltet (ROLLTHEDICE_ZDWA_DESIGN=off). Alle Konten sehen das bisherige Design; die gespeicherte Wahl greift erst nach der Freigabe.",
+};
+
+// Every account starts with the new design, so the stored split is mostly
+// defaults. The answers of accounts from before the update are the signal.
+function designAccounts(choices, mode, share) {
+  const pair = (entries, label) => {
+    const sum = entries.reduce((total, [, value]) => total + value, 0);
+    const bar = `<div class="design-split design-account-split" role="img" aria-label="${e(`${t(label)}: ${entries.map(([name, value]) => `${t(name)} ${number(value)}`).join(", ")}`)}">${entries.map(([, value], index) => `<span class="${index ? "is-b" : "is-a"}" style="width:${share(value, sum)}%"></span>`).join("")}</div>`;
+    return { sum, bar, shareOf: value => sum ? `${percent(share(value, sum))}%` : "—" };
+  };
+  const stored = [["Konten mit neuem Design", count(choices.new)], ["Konten mit bisherigem Design", count(choices.old)]];
+  const answered = [["Neu behalten", count(choices.answered?.new)], ["Zurück zum bisherigen", count(choices.answered?.old)]];
+  const storedPair = pair(stored, "Gespeicherte Wahl der Konten");
+  const answerPair = pair(answered, "Antwort nach dem Update");
+  const neverAsked = Math.min(count(choices.never_asked_new), stored[0][1]);
+  const modeNote = DESIGN_MODE_NOTES[mode] ? `<p class="design-mode-note" role="note"><span class="signal-dot warning" aria-hidden="true"></span><span>${e(t(DESIGN_MODE_NOTES[mode]))}</span></p>` : "";
+  const storedRows = stored.map(([label, value], index) => `<div class="design-account ${index ? "is-b" : "is-a"}"><dt><i class="legend-dot" aria-hidden="true"></i><span>${e(t(label))}${index ? "" : `<small class="design-account-detail">${e(t("davon nie gefragt"))}: ${number(neverAsked)}</small>`}</span></dt><dd><strong>${number(value)}</strong><small>${storedPair.shareOf(value)}</small></dd></div>`).join("");
+  const answerRows = answered.map(([label, value], index) => `<div class="design-answer ${index ? "is-b" : "is-a"}"><dt><i class="legend-dot" aria-hidden="true"></i>${e(t(label))}</dt><dd><strong>${number(value)}</strong><small>${answerPair.shareOf(value)}</small></dd></div>`).join("");
+  const answers = answerPair.sum ? `${answerPair.bar}<dl class="design-answer-list">${answerRows}</dl>` : `<p class="design-answers-empty">${e(t("Noch keine Antworten"))}</p>`;
+  return `${modeNote}${storedPair.bar}<dl class="design-account-list">${storedRows}</dl><section class="design-answers" aria-labelledby="designAnswersTitle"><h4 id="designAnswersTitle">${e(t("Antwort nach dem Update"))}</h4>${answers}<p class="design-answers-note">${e(t("Konten von vor dem Update, denen die Frage gezeigt wurde oder die im Konto gewählt haben. Wer die Frage schließt, behält das neue Design."))} ${e(t("Noch nicht gefragt"))}: ${number(count(choices.awaiting_prompt))}.</p></section>`;
+}
+
+function designUsage(data) {
+  const usage = data.design_usage || {};
+  const filter = data.period?.game || "all";
+  const games = filter === "zdwa" || filter === "zilch" ? [filter] : ["zdwa", "zilch"];
+  const times = new Map();
+  const known = new Set(DESIGN_GROUPS.flatMap(group => group.looks.map(([look]) => look)));
+  for (const row of usage.looks || []) {
+    if (!known.has(row?.look)) continue;
+    const seconds = count(row.seconds);
+    times.set(row.look, { seconds, table: Math.min(seconds, count(row.table_seconds)) });
+  }
+  const time = look => times.get(look) || { seconds: 0, table: 0 };
+  const total = looks => looks.reduce((sum, look) => ({ seconds: sum.seconds + time(look).seconds, table: sum.table + time(look).table }), { seconds: 0, table: 0 });
+  const gameSeconds = Object.fromEntries(games.map(game => [game, total(DESIGN_SIDES[game].flatMap(entry => entry.looks)).seconds]));
+  const tone = look => DESIGN_SIDES[look.startsWith("zilch:") ? "zilch" : "zdwa"][0].looks.includes(look) ? "is-a" : "is-b";
+  const share = (value, of) => of ? value / of * 100 : 0;
+  // Totals stay in hours (no day unit) so designs compare at a glance; the
+  // exact seconds are one hover away and listed in the table.
+  const span = seconds => {
+    const value = Math.round(count(seconds));
+    if (value < 60) return `${number(value)} s`;
+    if (value < 3600) return `${number(Math.floor(value / 60))} min${value % 60 ? ` ${number(value % 60)} s` : ""}`;
+    const minutes = Math.floor(value % 3600 / 60);
+    return `${number(Math.floor(value / 3600))} h${minutes ? ` ${number(minutes)} min` : ""}`;
+  };
+  const clock = seconds => `<span class="design-time" title="${e(`${number(seconds)} s`)}">${e(span(seconds))}</span>`;
+  const firstDay = /^\d{4}-\d{2}-\d{2}$/.test(String(usage.first_day || "")) ? usage.first_day : null;
+  const measured = games.some(game => gameSeconds[game] > 0);
+  byId("designComparison").innerHTML = measured ? games.map(game => {
+    const [a, b] = DESIGN_SIDES[game].map(entry => ({ ...entry, ...total(entry.looks) }));
+    const sum = a.seconds + b.seconds;
+    const name = gameName(game);
+    if (!sum) return `<div class="design-duel is-empty" data-game="${game}"><div class="design-duel-head"><h4>${e(name)}</h4></div><p class="design-duel-empty">${e(t("Keine sichtbare Zeit im gewählten Zeitraum"))}</p></div>`;
+    const label = `${name}: ${[a, b].map(entry => `${t(entry.label)} ${percent(share(entry.seconds, sum))}%`).join(", ")}`;
+    const values = [a, b].map((entry, index) => `<div class="design-side ${index ? "is-b" : "is-a"}"><dt><i class="legend-dot" aria-hidden="true"></i>${e(t(entry.label))}</dt><dd><strong class="design-share">${percent(share(entry.seconds, sum))}<small>%</small></strong>${clock(entry.seconds)}<small class="design-side-table">${e(t("Am Spieltisch"))}: ${e(span(entry.table))}</small></dd></div>`).join("");
+    return `<div class="design-duel" data-game="${game}"><div class="design-duel-head"><h4>${e(name)}</h4><span>${e(t("Gesamt"))} ${clock(sum)}</span></div><div class="design-split" role="img" aria-label="${e(label)}"><span class="is-a" style="width:${share(a.seconds, sum)}%"></span><span class="is-b" style="width:${share(b.seconds, sum)}%"></span></div><dl class="design-sides">${values}</dl></div>`;
+  }).join("") : empty(firstDay ? "Keine Design-Messwerte im Zeitraum" : "Noch keine Design-Messwerte", firstDay ? "Im gewählten Zeitraum wurde keine sichtbare Zeit gemessen." : "Sobald jemand die Spiele nutzt, erscheint hier die sichtbare Zeit je Design.");
+  const choices = usage.zdwa_account_choices && games.includes("zdwa") ? usage.zdwa_account_choices : null;
+  byId("designAccountsPanel").hidden = !choices;
+  byId("designGrid").classList.toggle("is-single", !choices);
+  byId("designAccounts").innerHTML = choices ? designAccounts(choices, usage.zdwa_design_mode, share) : "";
+  const groups = DESIGN_GROUPS.filter(group => games.includes(group.game));
+  byId("designLooksPanel").hidden = !measured;
+  byId("designLooks").style.setProperty("--design-groups", String(groups.length));
+  byId("designLooks").dataset.groups = String(groups.length);
+  byId("designLooks").innerHTML = measured ? groups.map(group => {
+    const sum = total(group.looks.map(([look]) => look));
+    const of = gameSeconds[group.game];
+    const rows = group.looks.map(([look, label]) => {
+      const value = time(look);
+      const tableWidth = share(value.table, of);
+      const siteWidth = share(value.seconds - value.table, of);
+      return `<li class="design-look ${tone(look)}" data-look="${look}"><div class="design-look-copy"><span class="design-look-name">${e(t(label))}</span><span class="design-look-values">${clock(value.seconds)}<small>${percent(share(value.seconds, of))}%</small></span></div><div class="design-look-track" aria-hidden="true"><span class="design-look-table" style="width:${tableWidth}%"></span><span class="design-look-site" style="width:${siteWidth}%"></span></div><p class="design-look-split"><span class="design-look-part is-table"><i aria-hidden="true"></i>${e(t("Am Spieltisch"))} ${e(span(value.table))}</span><span class="design-look-part is-site"><i aria-hidden="true"></i>${e(t("Übrige Seiten"))} ${e(span(value.seconds - value.table))}</span></p></li>`;
+    }).join("");
+    const groupShare = group.game === "zdwa" ? `<small>${percent(share(sum.seconds, of))}%</small>` : "";
+    return `<div class="design-group"><h4><span>${e(t(group.title))}</span><span class="design-group-total">${clock(sum.seconds)}${groupShare}</span></h4><ol class="design-look-list">${rows}</ol></div>`;
+  }).join("") : "";
+  byId("designTable").innerHTML = measured ? `<div class="data-scroll"><table><caption class="sr-only">${e(t("Sichtbare Sekunden je Design"))}</caption><thead><tr>${["Design", "Sekunden", "Am Spieltisch", "Übrige Seiten", "Anteil im Spiel"].map(label => `<th scope="col">${e(t(label))}</th>`).join("")}</tr></thead><tbody>${groups.flatMap(group => group.looks.map(([look, label]) => {
+    const value = time(look);
+    return `<tr><th scope="row">${e(t(group.title))} · ${e(t(label))}</th><td>${number(value.seconds)}</td><td>${number(value.table)}</td><td>${number(value.seconds - value.table)}</td><td>${percent(share(value.seconds, gameSeconds[group.game]))}%</td></tr>`;
+  })).join("")}</tbody></table></div>` : "";
+  byId("designCollectionNote").textContent = firstDay ? `${t("Design-Nutzung erfasst seit")} ${utcDay(`${firstDay}T00:00:00Z`)} (UTC). ${t("Aufbewahrung")}: ${number(count(usage.retention_days))} ${t("Tage")}.` : t("Die Messung der Design-Nutzung beginnt mit diesem Release.");
+}
+
 function serverMetrics(server = {}) {
   const gauges = [
     { title: "CPU-Auslastung", metric: server.cpu, capacity: `${number(server.cpu?.cores)} ${t("Kerne")}`, detail: `${t("Last")}: ${percent(server.cpu?.load1)} / ${percent(server.cpu?.load5)} / ${percent(server.cpu?.load15)}` },
@@ -277,6 +380,7 @@ function render(data) {
   pageRanks(data.pages);
   ranks("actionRanks", data.actions, "action", "count", value => t(ACTION_LABELS[value] || "Andere Bedienaktion"), { game: true, limit: 10 });
   gameCards(data);
+  designUsage(data);
   serverMetrics(data.server);
   analysis.update(data);
   globe.update(data.geography || data.countries || []);
@@ -420,7 +524,7 @@ function clearPrivateData() {
   analysis.resetSession();
   globe.clear();
   globe.suspend();
-  for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceSoftwareRanks", "deviceHardwareRanks", "deviceDonut", "appModeChart", "appModeRanks", "pwaInstalledCount", "pwaFirstOpenCount", "browserRanks", "browserLanguageRanks", "requestTrafficSummary", "requestCountryRanks", "requestStatusRanks", "requestAgentRanks", "requestChannelRanks", "requestRecordedAt", "requestDroppedNote", "countryRanks", "gameCards", "gameModes", "actionRanks", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated"]) byId(id).replaceChildren();
+  for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceSoftwareRanks", "deviceHardwareRanks", "deviceDonut", "appModeChart", "appModeRanks", "pwaInstalledCount", "pwaFirstOpenCount", "browserRanks", "browserLanguageRanks", "requestTrafficSummary", "requestCountryRanks", "requestStatusRanks", "requestAgentRanks", "requestChannelRanks", "requestRecordedAt", "requestDroppedNote", "countryRanks", "gameCards", "gameModes", "actionRanks", "designComparison", "designAccounts", "designLooks", "designTable", "designCollectionNote", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated"]) byId(id).replaceChildren();
 }
 function syncMotion() {
   const paused = motionPaused || motionQuery.matches;

@@ -4,10 +4,13 @@ import "../shell/ui.js";
 import * as zdwa from "./zdwa-engine.js";
 import * as zilch from "./zilch-engine.js";
 import { prepareOfflinePackage } from "./cache.js";
+import { initializeZdwaDesign } from "../shell/design.js";
 
 // This entry intentionally imports no account, engagement, socket or result
 // client. A local result has no transport to the online game servers.
 const product = document.documentElement.dataset.game === "zilch" ? "zilch" : "zdwa";
+// ZDWA follows the design chosen online (2026 or the previous one); no-op for Zilch.
+initializeZdwaDesign();
 const engine = product === "zilch" ? zilch : zdwa;
 const storageKey = `rollthedice:offline:v1:${product}`;
 const main = document.querySelector("#practiceMain");

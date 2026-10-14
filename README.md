@@ -118,6 +118,18 @@ profile-name exceptions. The origin firewall now accepts web traffic only
 from official Cloudflare networks; SSH remains unchanged. The trusted proxy
 contract for 2.49.1 and the Real-IP activation checks are documented
 separately there.
+The **Design usage** section shows which look players spend their time with:
+visible, active seconds for ZDWA in the 2026 design (light, dark, Classic) and
+the previous design (light, dark, Classic), and for Zilch with the tavern table
+or LCARS. It compares new against previous as shares, splits time at the game
+table from other pages and follows the period and game filters; exact seconds
+appear on hover and in the table. It also counts active accounts that keep the
+new or the previous ZDWA design, marks how many of them never saw the
+question (the default), and shows separately how accounts from before the
+update answered the one-time question. While `ROLLTHEDICE_ZDWA_DESIGN` is
+`owner` or `off`, a note says that the stored choice does not apply yet. Only
+daily totals per look and area are stored, without visit, account or device
+relation, for 400 days.
 Open **Mission Control** from your account or administration. Only the founder
 can grant or revoke individual **Dashboard access** in user administration;
 admin and owner roles do not grant access automatically. Revocation applies to
@@ -128,6 +140,19 @@ Spielmodi, abgeschlossene Spiele und den Serverzustand. Du öffnest es im Konto
 oder in der Administration. Nur der Gründer darf einzelnen Konten in der
 Nutzerverwaltung Dashboard-Zugriff erlauben oder entziehen. Admins und Owner
 bekommen diesen Zugang nicht automatisch.
+
+**Deutsch:** Der Bereich **Design-Nutzung** zeigt, mit welchem Erscheinungsbild
+gespielt wird: sichtbare, aktive Sekunden für ZDWA im Design 2026 (Hell,
+Dunkel, Classic) und im bisherigen Design (Hell, Dunkel, Classic) sowie für Zilch
+mit Wirtshaustisch oder LCARS. Er vergleicht neu und bisher als Anteile, trennt
+die Zeit am Spieltisch von übrigen Seiten und folgt Zeitraum und Spielfilter;
+exakte Sekunden erscheinen beim Überfahren und in der Tabelle. Dazu kommt die
+Zahl aktiver Konten mit neuem oder bisherigem ZDWA-Design, davon wie viele die
+Frage nie gesehen haben (Standard), und getrennt, wie Konten von vor dem Update
+auf die einmalige Frage geantwortet haben. Steht `ROLLTHEDICE_ZDWA_DESIGN` auf
+`owner` oder `off`, weist ein Hinweis darauf hin, dass die gespeicherte Wahl
+noch nicht greift. Gespeichert werden nur Tagessummen je Design und Bereich,
+ohne Bezug zu Besuch, Konto oder Gerät, für 400 Tage.
 
 **Deutsch:** Globus und Weltkarte machen die Herkunft sichtbar. Interaktive
 Verlaufsgrafiken, UTC-Aktivitätsraster, Seitenzeit und beobachtete Seitenwege
@@ -178,7 +203,9 @@ existing server records. Sessions are anonymous tab visits, not unique people.
 Only visible, recently active time counts. Tracking respects Do Not Track and
 Global Privacy Control, uses no analytics cookies, and stores no names, emails,
 chat content, raw IP addresses or private URL parameters. Events expire after
-90 days; a 200,000-event limit can shorten history under high traffic. Filters
+90 days; a 200,000-event limit can shorten history under high traffic.
+Anonymous daily design usage totals (seconds per look and area) stay for 400
+days. Filters
 use UTC calendar days. Local offline games stay local and are not measured. Referrer sources
 are hostnames only; countries come from trusted Cloudflare edge metadata, with
 unavailable locations shown as unknown. Blocking tracking can reduce counts.
@@ -188,7 +215,9 @@ Spielergebnisse bleiben als eigene Datenquelle erkennbar. Sitzungen zählen
 anonyme Tab-Besuche, keine eindeutigen Personen. Gemessen wird nur sichtbare,
 zuletzt aktive Zeit. Keine Analytics-Cookies, Namen, E-Mails, Chat-Inhalte,
 gespeicherten IP-Adressen oder privaten URL-Parameter. Do Not Track und Global
-Privacy Control werden respektiert; Ereignisse werden nach 90 Tagen entfernt.
+Privacy Control werden respektiert; Ereignisse werden nach 90 Tagen entfernt,
+anonyme Tagessummen der Design-Nutzung (Sekunden je Design und Bereich) nach
+400 Tagen.
 Offline-Partien bleiben lokal. Herkunft zeigt die verweisende Domain und,
 sofern verfügbar, das Land aus vertrauenswürdigen Cloudflare-Metadaten.
 
@@ -1111,27 +1140,38 @@ alongside the short push summaries. The deploy archives those exact texts after
 the application is healthy; restarting the server does not publish a release.
 See the [release authoring guide](docs/DEPLOYMENT.md#spielerfreundliche-release-notes).
 
-### ZDWA design preview
+### ZDWA design
 
-A redesigned ZDWA lobby and game table is in development behind an owner-only
-flag. Only accounts marked as owner receive `design_preview.zdwa_2026` from
-`/api/auth/me` and the room WebSocket; everyone else gets the unchanged pages.
-The design is a scoped stylesheet (`frontend/styles/zdwa-design-2026.css`) that
-applies only with `data-design="2026"` and never in the Classic theme. While it
-is active, your own score sheet shows the points each allowed field would score
-after the first roll, computed by the server with the normal rules.
+ZDWA has two designs: the 2026 design (default) and the previous one. Both come
+in Light, Dark and Classic. The 2026 design is a scoped stylesheet
+(`frontend/styles/zdwa-design-2026.css` with its parts in
+`frontend/styles/design-2026/`) that applies only with `data-design="2026"`.
+After the first roll, your own score sheet shows the points each allowed field
+would score, computed by the server with the normal rules.
 
-- Server kill switch: `ROLLTHEDICE_ZDWA_DESIGN_PREVIEW=off` and a container restart.
-- Per browser: `?design=classic` turns it off, `?design=2026` turns it back on.
-- No database migration, so an ordinary code rollback is safe.
+- Accounts choose under **Account → Settings → Language & play →
+  Appearance**; the choice is stored on the account (`users.zdwa_design`) and
+  applies on every device.
+- Accounts that existed before version 2.51.0 are asked once after the update,
+  with a switch that previews the design live; however the question is closed,
+  the design the switch shows is kept. New accounts are not asked; a guest who
+  switched back keeps the previous design when creating an account.
+- Guests use the switch at the bottom of the lobby; the choice stays in that
+  browser.
+- `?design=classic` forces the previous design in one browser, `?design=2026`
+  lifts that again.
+- Server switch: `ROLLTHEDICE_ZDWA_DESIGN=all` (default), `owner` or `off`,
+  followed by a container restart. Rules, scoring and stored games are
+  identical in both designs.
 
-**Deutsch:** Ein neues Design für ZDWA-Lobby und Spieltisch entsteht hinter
-einem Flag, das nur Owner-Konten sehen. Alle anderen erhalten die bisherigen
-Seiten. Während es aktiv ist, zeigt der eigene Spielzettel nach dem ersten Wurf
-die Punkte jedes erlaubten Feldes, vom Server nach den normalen Regeln
-berechnet. Abschalten mit `ROLLTHEDICE_ZDWA_DESIGN_PREVIEW=off` und Neustart,
-pro Browser mit `?design=classic` (wieder an mit `?design=2026`). Keine
-Datenbankmigration, ein normaler Code-Rollback ist daher sicher.
+**Deutsch:** ZDWA hat zwei Designs, das neue Design 2026 (Standard) und das
+bisherige, beide in Hell, Dunkel und Classic. Konten wählen unter **Konto →
+Einstellungen → Sprache & Spiel → Aussehen**; die Wahl gilt auf allen Geräten. Konten, die es vor
+Version 2.51.0 gab, werden nach dem Update einmal gefragt, neue Konten nicht.
+Gäste nutzen den Schalter unten in der Lobby. `?design=classic` erzwingt in
+einem Browser das bisherige Design, `?design=2026` hebt das wieder auf. Auf dem
+Server schaltet `ROLLTHEDICE_ZDWA_DESIGN=all|owner|off` mit Neustart; Regeln,
+Wertung und gespeicherte Partien sind in beiden Designs gleich.
 
 ## Progressive Web Apps
 

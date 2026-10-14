@@ -32,6 +32,19 @@ function sampleAnalytics(game = 'all', days = 7) {
     comparison: { previous_period: { days, from: '2026-09-24T00:00:00Z', to: '2026-10-01T00:00:00Z' }, current_partial_day: true, previous_partial_day: false, previous_data_coverage: 'complete', coverage_basis: 'earliest_retained_event', overview: Object.fromEntries([['sessions', 135, 110], ['page_views', 354, 290], ['active_seconds', 13370, 10800], ['avg_active_seconds', 99, 98], ['completed_games', 35, 27]].map(([key, current, previous]) => [key, { current, previous, delta: current - previous, change_percent: (current - previous) / previous * 100 }])) },
     actions: [{ action: 'roll_dice', game: 'zdwa', count: 725 }, { action: 'roll_dice', game: 'zilch', count: 300 }, { action: 'score', game: 'zdwa', count: 169 }, { action: 'bank', game: 'zilch', count: 48 }, { action: 'create_game', game: 'zdwa', count: 19 }, { action: 'game_created', game: 'zdwa', count: 15, source: 'server' }, { action: 'open_rules', game: 'zdwa', count: 9 }],
     games: [{ game: 'zdwa', completed_games: 23, participants: 41, avg_duration_seconds: 732 }, { game: 'zilch', completed_games: 12, participants: 20, avg_duration_seconds: 490 }], modes: [{ game: 'zdwa', mode: '1', completed_games: 12 }, { game: 'zdwa', mode: '2', completed_games: 11 }, { game: 'zilch', mode: 'cpu', completed_games: 12 }],
+    design_usage: {
+      looks: [
+        { look: 'zdwa:new:dark', game: 'zdwa', seconds: 11520, table_seconds: 8400 },
+        { look: 'zdwa:new:light', game: 'zdwa', seconds: 7200, table_seconds: 5000 },
+        { look: 'zilch:tavern', game: 'zilch', seconds: 6000, table_seconds: 4500 },
+        { look: 'zdwa:old:classic', game: 'zdwa', seconds: 5400, table_seconds: 4800 },
+        { look: 'zilch:lcars', game: 'zilch', seconds: 4000, table_seconds: 3000 },
+        { look: 'zdwa:old:light', game: 'zdwa', seconds: 1800, table_seconds: 600 },
+        { look: 'zdwa:new:classic', game: 'zdwa', seconds: 45, table_seconds: 45 },
+      ].filter(row => game === 'all' || row.game === game),
+      zdwa_account_choices: game === 'zilch' ? null : { new: 41, old: 9, answered: { new: 12, old: 7 }, never_asked_new: 29, awaiting_prompt: 15 },
+      zdwa_design_mode: 'all', first_day: '2026-10-13', retention_days: 400,
+    },
     hourly: Array.from({ length: 24 }, (_, hour) => ({ hour, page_views: Math.max(0, Math.round(18 + Math.sin(hour * .34 - 3) * 18)), active_seconds: hour * 80 })),
     server: { cpu: { percent: 14.3, cores: 4, load1: .42, load5: .36, load15: .27, scope: 'host' }, memory: { used_bytes: 1740000000, total_bytes: 4294967296, percent: 40.5, scope: 'host' }, disk: { used_bytes: 13100000000, total_bytes: 42000000000, free_bytes: 28900000000, percent: 31.2, scope: 'data_filesystem' }, host_uptime_seconds: 1219985, app_uptime_seconds: 75694, process_memory_bytes: 115000000, active_rooms: 2, players_online: 5, measurement_at: '2026-10-07T14:35:00Z' },
   };
@@ -39,7 +52,7 @@ function sampleAnalytics(game = 'all', days = 7) {
 
 async function mockedDashboard(page, language) {
   await page.addInitScript(language => localStorage.setItem('zdwa_language', language), language);
-  const state = { calls: [], fail: false, empty: false, permitted: true, authCalls: 0, coverage: 'complete', unknownOnly: false, cpuUnavailable: false, contextUnknown: false, requestsUnmeasured: false, requestOriginsUnknown: false, requestDropped: 0 };
+  const state = { calls: [], fail: false, empty: false, permitted: true, authCalls: 0, coverage: 'complete', unknownOnly: false, cpuUnavailable: false, contextUnknown: false, requestsUnmeasured: false, requestOriginsUnknown: false, requestDropped: 0, design: 'measured', designMode: 'all' };
   // This fixture supplies representative telemetry for visual/interaction QA.
   // Authorization is separately tested below against the real backend.
   await page.route('**/admin/dashboard', async route => route.fulfill({ contentType: 'text/html', body: await readFile('app/static/dashboard.html', 'utf8') }));
@@ -71,6 +84,11 @@ async function mockedDashboard(page, language) {
       data.geography = [{ country: 'ZZ', sessions: 135, page_views: 354, active_seconds: 13370, games: { zdwa: 90, zilch: 55 }, share_percent: 100 }];
       data.geography_summary = { sessions: 135, known_sessions: 0, unknown_sessions: 135, known_countries: 0 };
     }
+    if (state.design === 'unmeasured') data.design_usage = { ...data.design_usage, looks: [], first_day: null };
+    if (state.design === 'quiet') data.design_usage = { ...data.design_usage, looks: [] };
+    if (state.design === 'zdwa-only') data.design_usage.looks = data.design_usage.looks.filter(row => row.game === 'zdwa');
+    if (state.design === 'unanswered' && data.design_usage.zdwa_account_choices) data.design_usage.zdwa_account_choices = { new: 50, old: 0, answered: { new: 0, old: 0 }, never_asked_new: 50, awaiting_prompt: 31 };
+    data.design_usage.zdwa_design_mode = state.designMode;
     if (state.empty) {
       data.pwa = { confirmed_installations: 0, first_detected_starts: 0 };
       Object.assign(data.overview, { sessions: 0, page_views: 0, active_seconds: 0, avg_active_seconds: 0, live_sessions: 0 });
@@ -692,5 +710,130 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#requestTrafficSummary .request-metric')).toHaveCount(0);
     await expect(page.locator('#requestBreakdown')).toBeHidden();
     await expect(page.locator('#requestCountryRanks')).toBeEmpty();
+  });
+}
+
+for (const language of ['de', 'en']) {
+  test(`${language}: design usage compares visible time per design and look in both dashboard designs`, async ({ page }, testInfo) => {
+    const en = language === 'en';
+    const state = await mockedDashboard(page, language);
+    const section = page.locator('#designs');
+    await expect(section.locator('h2')).toHaveText(en ? 'Which design wins players over?' : 'Welches Design kommt an?');
+    await expect(page.locator('.mission-sections a[href="#designs"]')).toHaveText('Designs');
+    const zdwa = page.locator('.design-duel[data-game="zdwa"]');
+    const zilch = page.locator('.design-duel[data-game="zilch"]');
+    // ZDWA new: 11,520 + 7,200 + 45 s; previous: 5,400 + 1,800 s.
+    await expect(zdwa.locator('.design-side.is-a')).toContainText(en ? 'New' : 'Neu');
+    await expect(zdwa.locator('.design-side.is-a .design-share')).toHaveText('72.3%');
+    await expect(zdwa.locator('.design-side.is-a .design-time')).toHaveText('5 h 12 min');
+    await expect(zdwa.locator('.design-side.is-b .design-time')).toHaveText('2 h');
+    await expect(zdwa.locator('.design-side.is-b')).toContainText(en ? 'Previous' : 'Bisher');
+    await expect(zdwa.locator('.design-side.is-b .design-share')).toHaveText('27.7%');
+    await expect(zdwa.locator('.design-side.is-b')).toContainText(`${en ? 'At the game table' : 'Am Spieltisch'}: 1 h 30 min`);
+    await expect(zdwa.locator('.design-split')).toHaveAttribute('aria-label', en ? 'ZDWA: New 72.3%, Previous 27.7%' : 'ZDWA: Neu 72.3%, Bisher 27.7%');
+    await expect(zilch.locator('.design-side.is-a')).toContainText(en ? 'Tavern table' : 'Wirtshaustisch');
+    await expect(zilch.locator('.design-side.is-a .design-share')).toHaveText('60%');
+    await expect(zilch.locator('.design-side.is-b')).toContainText('LCARS');
+    const dark = page.locator('[data-look="zdwa:new:dark"]');
+    await expect(dark).toContainText(en ? 'Dark' : 'Dunkel');
+    await expect(dark.locator('.design-look-values .design-time')).toHaveText('3 h 12 min');
+    await expect(dark.locator('.design-look-values .design-time')).toHaveAttribute('title', /^11\D?520 s$/);
+    await expect(dark.locator('.design-look-values small')).toHaveText('44.4%');
+    // Two labelled lines, no separator that could dangle at a line end.
+    await expect(dark.locator('.design-look-split > .design-look-part')).toHaveText(en ? ['At the game table 2 h 20 min', 'Other pages 52 min'] : ['Am Spieltisch 2 h 20 min', 'Übrige Seiten 52 min']);
+    await expect(dark.locator('.design-look-split')).not.toContainText('·');
+    await expect(page.locator('[data-look="zdwa:old:classic"]')).toContainText('Classic');
+    await expect(page.locator('[data-look="zdwa:old:dark"] .design-look-values')).toContainText('0 s');
+    await expect(page.locator('[data-look="zdwa:new:classic"] .design-look-values .design-time')).toHaveText('45 s');
+    await expect(page.locator('#designLooks .design-group h4 > span:first-child')).toHaveText(en ? ['ZDWA new', 'ZDWA previous', 'Zilch'] : ['ZDWA Neu', 'ZDWA Bisher', 'Zilch']);
+    await expect(page.locator('#designAccounts')).toContainText(en ? 'Accounts with the new design' : 'Konten mit neuem Design');
+    await expect(page.locator('#designAccounts .design-account.is-a strong')).toHaveText('41');
+    await expect(page.locator('#designAccounts .design-account.is-b strong')).toHaveText('9');
+    await expect(page.locator('#designAccounts .design-account.is-b dd small')).toHaveText('18%');
+    // Every account starts with the new design: the default share is labelled
+    // and the answers of pre-release accounts are shown on their own.
+    await expect(page.locator('#designAccounts .design-account.is-a .design-account-detail')).toHaveText(en ? 'of these, never asked: 29' : 'davon nie gefragt: 29');
+    const answers = page.locator('#designAccounts .design-answers');
+    await expect(answers.locator('h4')).toHaveText(en ? 'Answers after the update' : 'Antwort nach dem Update');
+    await expect(answers.locator('.design-answer.is-a')).toContainText(en ? 'Kept new' : 'Neu behalten');
+    await expect(answers.locator('.design-answer.is-a strong')).toHaveText('12');
+    await expect(answers.locator('.design-answer.is-b')).toContainText(en ? 'Back to previous' : 'Zurück zum bisherigen');
+    await expect(answers.locator('.design-answer.is-b strong')).toHaveText('7');
+    await expect(answers.locator('.design-answer.is-b small')).toHaveText('36.8%');
+    await expect(answers.locator('.design-answers-note')).toContainText(en ? 'Not asked yet: 15.' : 'Noch nicht gefragt: 15.');
+    await expect(page.locator('#designAccounts .design-mode-note')).toHaveCount(0);
+    await expect(page.locator('#designAccountsPanel')).toContainText(en ? 'independent of the period' : 'unabhängig vom Zeitraum');
+    await expect(page.locator('#designCollectionNote')).toHaveText(en ? 'Design usage recorded since 13/10/2026 (UTC). Retention: 400 days.' : 'Design-Nutzung erfasst seit 13.10.2026 (UTC). Aufbewahrung: 400 Tage.');
+    await expect(section.locator('.design-notes')).toContainText(en ? 'without account, session or device' : 'ohne Konto, Sitzung oder Gerät');
+    await expect(section.locator('.design-notes')).toContainText('Do Not Track');
+    await expect(page.locator('.telemetry-footer')).toContainText(en ? 'anonymous daily design usage totals for 400 days' : 'anonyme Tagessummen der Design-Nutzung 400 Tage');
+    await page.locator('#designTable').locator('..').locator('summary').click();
+    await expect(page.locator('#designTable tbody tr')).toHaveCount(8);
+    await expect(page.locator('#designTable tbody tr').first().locator('th, td')).toHaveText([en ? 'ZDWA new · Light' : 'ZDWA Neu · Hell', /^7\D?200$/, /^5\D?000$/, /^2\D?200$/, '27.7%']);
+    await page.locator('#dashboardMotion').click();
+    for (const design of ['mission', 'lcars']) {
+      await page.locator('#dashboardDesign').selectOption(design);
+      for (const width of [320, 390, 768, 960, 1440]) {
+        await page.setViewportSize({ width, height: 1000 });
+        await expectDashboardFits(page, width);
+        const layout = await page.evaluate(() => ({
+          notes: Math.min(...[...document.querySelectorAll('.design-notes p')].map(note => parseFloat(getComputedStyle(note).fontSize))),
+          headings: [...document.querySelectorAll('#designLooks .design-group h4')].map(heading => Math.round(heading.getBoundingClientRect().height)),
+          rows: [...document.querySelectorAll('#designLooks .design-look')].map(row => Math.round(row.getBoundingClientRect().height)),
+        }));
+        // Privacy notes stay readable on phones; group headings and look rows
+        // keep one height so columns line up.
+        expect(layout.notes).toBeGreaterThanOrEqual(9);
+        expect(new Set(layout.headings).size).toBe(1);
+        expect(new Set(layout.rows).size).toBe(1);
+        const path = `/tmp/rtd-dashboard-designs-${design}-${language}-${width}.png`;
+        await section.screenshot({ path, style: '.skip-link{visibility:hidden}' });
+        await testInfo.attach(`mocked-designs-${design}-${language}-${width}`, { path, contentType: 'image/png' });
+      }
+    }
+    await page.locator('#dashboardGame').selectOption('zilch');
+    await expect.poll(() => state.calls.at(-1)?.game).toBe('zilch');
+    await expect(page.locator('.design-duel')).toHaveCount(1);
+    await expect(zilch).toBeVisible();
+    await expect(page.locator('#designAccountsPanel')).toBeHidden();
+    await expect(page.locator('#designLooks .design-group')).toHaveCount(1);
+    await expect(page.locator('#designTable tbody tr')).toHaveCount(2);
+    await page.locator('#dashboardGame').selectOption('zdwa');
+    await expect.poll(() => state.calls.at(-1)?.game).toBe('zdwa');
+    await expect(page.locator('#designLooks .design-group')).toHaveCount(2);
+    await expect(page.locator('#designAccountsPanel')).toBeVisible();
+    await page.locator('#dashboardGame').selectOption('all');
+    state.design = 'zdwa-only';
+    await page.locator('#dashboardRefresh').click();
+    await expect(zilch).toContainText(en ? 'No visible time in the selected period' : 'Keine sichtbare Zeit im gewählten Zeitraum');
+    await expect(zdwa.locator('.design-side.is-a .design-share')).toHaveText('72.3%');
+    state.design = 'quiet';
+    await page.locator('#dashboardRefresh').click();
+    await expect(page.locator('#designComparison')).toContainText(en ? 'No design measurements in this period' : 'Keine Design-Messwerte im Zeitraum');
+    await expect(page.locator('#designLooksPanel')).toBeHidden();
+    await expect(page.locator('#designAccountsPanel')).toBeVisible();
+    state.design = 'unmeasured';
+    await page.locator('#dashboardRefresh').click();
+    await expect(page.locator('#designComparison')).toContainText(en ? 'No design measurements yet' : 'Noch keine Design-Messwerte');
+    await expect(page.locator('#designComparison')).toContainText(en ? 'Once people use the games, the visible time per design appears here.' : 'Sobald jemand die Spiele nutzt, erscheint hier die sichtbare Zeit je Design.');
+    await expect(page.locator('#designCollectionNote')).toHaveText(en ? 'Design usage tracking starts with this release.' : 'Die Messung der Design-Nutzung beginnt mit diesem Release.');
+    // The start sentence appears once, not in the empty state and the note.
+    expect((await section.innerText()).split(en ? 'Design usage tracking starts with this release.' : 'Die Messung der Design-Nutzung beginnt mit diesem Release.').length).toBe(2);
+    state.design = 'unanswered';
+    await page.locator('#dashboardRefresh').click();
+    await expect(page.locator('#designAccounts .design-answers')).toContainText(en ? 'No answers yet' : 'Noch keine Antworten');
+    await expect(page.locator('#designAccounts .design-answer')).toHaveCount(0);
+    await expect(page.locator('#designAccounts .design-answers-note')).toContainText(en ? 'Not asked yet: 31.' : 'Noch nicht gefragt: 31.');
+    // The stored choice only applies while the 2026 design is released for everyone.
+    for (const [mode, text] of [['owner', en ? 'Design 2026 is currently released to owners only (ROLLTHEDICE_ZDWA_DESIGN=owner).' : 'Design 2026 ist derzeit nur für Owner freigegeben (ROLLTHEDICE_ZDWA_DESIGN=owner).'], ['off', en ? 'Design 2026 is currently switched off (ROLLTHEDICE_ZDWA_DESIGN=off).' : 'Design 2026 ist derzeit abgeschaltet (ROLLTHEDICE_ZDWA_DESIGN=off).']]) {
+      state.designMode = mode;
+      await page.locator('#dashboardRefresh').click();
+      await expect(page.locator('#designAccounts .design-mode-note')).toContainText(text);
+    }
+    state.designMode = 'all';
+    await page.locator('#dashboardRefresh').click();
+    await expect(page.locator('#designAccounts .design-mode-note')).toHaveCount(0);
+    await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
+    for (const id of ['designComparison', 'designAccounts', 'designLooks', 'designTable', 'designCollectionNote']) await expect(page.locator(`#${id}`)).toBeEmpty();
   });
 }

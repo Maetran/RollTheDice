@@ -20,6 +20,18 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship,
 from .game_types import DEFAULT_GAME_TYPE, normalize_game_type
 
 
+def _new_account_design_prompted_at() -> datetime | None:
+    """Mark a new account as asked, unless it only knows the old ZDWA design.
+
+    While ``ROLLTHEDICE_ZDWA_DESIGN`` withholds the 2026 design (``owner`` or
+    ``off``), a new account sees the old design only. It keeps NULL and is
+    asked once, like older accounts, when the design is released.
+    """
+    from .zdwa_design import zdwa_design_available
+
+    return datetime.now(timezone.utc) if zdwa_design_available(None) else None
+
+
 class Base(DeclarativeBase):
     pass
 
@@ -116,6 +128,14 @@ class User(Base):
     push_opt_in_prompted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Account-wide cadence for the optional switch to passkey login.
     passkey_prompted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # ZDWA presentation choice ("new" 2026 design or "old"); rules are identical.
+    zdwa_design: Mapped[str] = mapped_column(String(8), nullable=False, default="new", server_default="new")
+    # Set once the post-release design question has been shown. Accounts that
+    # existed before the 2026 design keep NULL from the migration and are asked
+    # once; accounts created later never knew the old design and are not asked.
+    zdwa_design_prompted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=_new_account_design_prompted_at
+    )
     daily_reminder_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     release_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     admin_help_push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

@@ -1,0 +1,808 @@
+/* === ZDWA Design 2026: every page beyond lobby and game table ===
+   Players & ranking, public profile, rank badges, rules, account (statistics,
+   achievements, settings), admin, completed results, offline and the e-mail
+   and password pages. Same language as core.css: calm paper surfaces, ruled
+   lines instead of boxes inside boxes, felt green for the one main action,
+   brass for what is earned or current. Colours and the score-sheet faces
+   (--d26-paper, --d26-band, --d26-pen, --d26-display, --d26-hand) come from
+   tokens only, which retro.css remaps for Retro, so this file must ship
+   together with retro.css. The body text face and the flattened settings
+   fieldsets skip Retro, which keeps its own handwriting and lined paper.
+   Hover effects only on fine pointers. */
+
+:root[data-game="zdwa"][data-design="2026"] {
+  --p26-tint: color-mix(in oklab, var(--text) 5%, transparent);
+  --p26-selected: color-mix(in oklab, var(--d26-felt) 9%, var(--surface));
+  --p26-selected-edge: var(--d26-felt);
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="dark"] {
+  --p26-selected: color-mix(in oklab, var(--accent) 14%, var(--surface));
+  --p26-selected-edge: var(--accent);
+}
+/* The median is a reference line, drawn in the pen ink of the score sheet. */
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="classic"]) {
+  --median: var(--d26-pen);
+  --p26-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ---------- Page frame ---------- */
+:root[data-game="zdwa"][data-design="2026"] .page-intro { margin-bottom: 1rem; }
+:root[data-game="zdwa"][data-design="2026"] .page-intro h1 {
+  font-size: clamp(1.85rem, 3.8vw, 2.6rem);
+  line-height: 1.04;
+  letter-spacing: -.028em;
+}
+:root[data-game="zdwa"][data-design="2026"] .page-intro p:last-child { max-width: 60ch; }
+
+:root[data-game="zdwa"][data-design="2026"] :is(.profile-shell, .admin-shell) .card {
+  padding: 1.25rem 1.35rem;
+}
+:root[data-game="zdwa"][data-design="2026"] :is(.profile-shell, .admin-shell, .community-view-panel) > .card + .card {
+  margin-top: 1rem;
+}
+:root[data-game="zdwa"][data-design="2026"] :is(.profile-shell, .admin-shell, .container) .card h2 { font-size: 1.22rem; }
+:root[data-game="zdwa"][data-design="2026"] :is(.account-header-card, .admin-overview, .password-card, .offline-card, .wrap > .card:only-child) h1 {
+  font-size: clamp(1.65rem, 3vw, 2.15rem);
+  line-height: 1.06;
+  letter-spacing: -.022em;
+}
+:root[data-game="zdwa"][data-design="2026"] .result-title { font-size: clamp(1.35rem, 2.6vw, 1.75rem); }
+
+/* Names, badges and descriptions inside display headings stay in the text face. */
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="classic"]) :is(
+  .account-settings-group__description,
+  .admin-contact-label,
+  h1 .player-rank,
+  h2 .player-rank,
+  .lobby-page .pc-name .player-rank
+) {
+  font-family: var(--p26-body);
+  letter-spacing: 0;
+}
+
+/* Section dividers inside a card are hairlines, never a second frame. */
+:root[data-game="zdwa"][data-design="2026"] :is(.history-chart-section, .achievements-section) {
+  border-top-color: var(--d26-rule);
+}
+
+/* Focus pages (password, confirmation, dashboard denied): one card, centred. */
+:root[data-game="zdwa"][data-design="2026"] body.lobby-page > main.wrap > .card:only-child {
+  max-width: 36rem;
+  margin: clamp(1rem, 7vh, 4rem) auto 0;
+  padding: 1.5rem 1.5rem 1.35rem;
+}
+:root[data-game="zdwa"][data-design="2026"] .password-card h1 { margin: 0 0 .75rem; }
+:root[data-game="zdwa"][data-design="2026"] .password-card p { line-height: 1.5; }
+:root[data-game="zdwa"][data-design="2026"] .password-card [data-passkey-recovery] {
+  margin-bottom: 1rem;
+  padding: .2rem 0 .9rem;
+  border-bottom: 1px solid var(--d26-rule);
+}
+:root[data-game="zdwa"][data-design="2026"] .offline-card { padding: 1.75rem 1.5rem 1.5rem; }
+
+/* ---------- Buttons and links ---------- */
+:root[data-game="zdwa"][data-design="2026"] .button-link.primary {
+  border-color: var(--d26-felt);
+  background: var(--d26-felt);
+  color: var(--d26-felt-ink);
+  font-weight: 700;
+}
+:root[data-game="zdwa"][data-design="2026"] :is(.button-link, .player-result) {
+  transition: background-color 150ms ease, border-color 150ms ease, transform 140ms var(--d26-ease-out);
+}
+:root[data-game="zdwa"][data-design="2026"] :is(.button-link, .player-result):active { transform: scale(.97); }
+:root[data-game="zdwa"][data-design="2026"] :is(.profile-shell, .admin-shell, .doc, .container) summary:focus-visible {
+  outline: 2px solid var(--d26-brass);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---------- Forms ---------- */
+:root[data-game="zdwa"][data-design="2026"] :is(.profile-shell, .admin-shell, .doc) :is(input:not([type]), input[type="text"], input[type="password"], input[type="email"], input[type="search"], select, textarea):focus {
+  border-color: var(--border-strong);
+  box-shadow: none;
+}
+:root[data-game="zdwa"][data-design="2026"] :is(.profile-shell, .admin-shell) :is(input:not([type]), input[type="text"], input[type="password"], input[type="email"], input[type="search"], textarea)::placeholder {
+  color: color-mix(in oklab, var(--muted) 72%, transparent);
+}
+:root[data-game="zdwa"][data-design="2026"] :is(.profile-shell, .admin-shell) :is(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--p26-selected-edge);
+}
+/* Every label that names a field reads semibold; choice rows (checkbox,
+   radio) keep the regular text weight. */
+:root[data-game="zdwa"][data-design="2026"] .profile-shell label:has(:is(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea)) {
+  font-weight: 600;
+}
+:root[data-game="zdwa"][data-design="2026"] .profile-shell input[type="file"]::file-selector-button {
+  margin-right: .7rem;
+  padding: .5rem .8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Settings choices: the fieldset frame goes, each option is one calm row and
+   the chosen one carries the felt edge like the lobby's mode buttons. */
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="classic"]) .account-preferences-form fieldset {
+  gap: .45rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="classic"]) .account-preferences-form legend {
+  margin-bottom: .5rem;
+  padding: 0;
+  font-weight: 700;
+}
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="classic"]) .account-preferences-form fieldset label,
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="classic"]) .account-preferences-form fieldset label:hover {
+  border-color: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: none;
+}
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="classic"]) .account-preferences-form fieldset label:has(input:checked) {
+  border-color: var(--p26-selected-edge);
+  background: var(--p26-selected);
+  box-shadow: inset 0 0 0 1px var(--p26-selected-edge);
+}
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="classic"]) .account-preferences-form fieldset > p { margin: 0 0 .3rem .1rem; }
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="classic"]) .account-preferences-form fieldset + fieldset { margin-top: .6rem; }
+
+/* ---------- Tabs and segmented choices ---------- */
+/* On the page background the chosen tab rises like the current nav link;
+   inside a card it sits on the band like the lobby's ranking tabs. */
+:root[data-game="zdwa"][data-design="2026"] .account-tabs {
+  padding: .3rem 0;
+  border-color: transparent;
+  background: color-mix(in oklab, var(--bg) 86%, transparent);
+  box-shadow: none;
+}
+:root[data-game="zdwa"][data-design="2026"] .community-view-switch {
+  margin-bottom: 1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+:root[data-game="zdwa"][data-design="2026"] :is(.account-tab, .community-view-switch button),
+:root[data-game="zdwa"][data-design="2026"] :is(.account-tab, .community-view-switch button):hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  font-weight: 650;
+}
+:root[data-game="zdwa"][data-design="2026"] :is(.account-tab.active, .community-view-switch button[aria-selected="true"]),
+:root[data-game="zdwa"][data-design="2026"] :is(.account-tab.active, .community-view-switch button[aria-selected="true"]):hover {
+  border-color: transparent;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+  font-weight: 700;
+}
+
+:root[data-game="zdwa"][data-design="2026"] .history-range {
+  gap: .2rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+:root[data-game="zdwa"][data-design="2026"] :is(.history-range button, .achievement-feed-filters button, .achievement-feed-page-buttons button),
+:root[data-game="zdwa"][data-design="2026"] :is(.history-range button, .achievement-feed-filters button, .achievement-feed-page-buttons button):hover {
+  border-color: transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  font-weight: 600;
+}
+:root[data-game="zdwa"][data-design="2026"] :is(.history-range button.active, .achievement-feed-filters button.is-active, .achievement-feed-page-buttons button[aria-current="page"]),
+:root[data-game="zdwa"][data-design="2026"] :is(.history-range button.active, .achievement-feed-filters button.is-active, .achievement-feed-page-buttons button[aria-current="page"]):hover {
+  border-color: transparent;
+  background: var(--d26-band);
+  color: var(--text);
+  font-weight: 700;
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-game="zdwa"][data-design="2026"] :is(.account-tab, .community-view-switch button, .history-range button, .achievement-feed-filters button, .achievement-feed-page-buttons button):not(.active, .is-active, [aria-selected="true"], [aria-current="page"]):hover {
+    background: var(--p26-tint);
+    color: var(--text);
+  }
+}
+
+/* ---------- Tables ---------- */
+:root[data-game="zdwa"][data-design="2026"] :is(.ranking-table, .admin-table) :is(th, td) { border-bottom-color: var(--d26-rule); }
+:root[data-game="zdwa"][data-design="2026"] :is(.ranking-table, .admin-table) thead th {
+  border-bottom: 2px solid var(--d26-rule-strong);
+  background: transparent;
+  color: var(--muted);
+  font-size: .76rem;
+  font-weight: 650;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:root[data-game="zdwa"][data-design="2026"] .ranking-table td { font-variant-numeric: tabular-nums; }
+:root[data-game="zdwa"][data-design="2026"] .ranking-table td:first-child { color: var(--muted); }
+:root[data-game="zdwa"][data-design="2026"] .ranking-table tbody tr:last-child td { border-bottom: 0; }
+@media (hover: hover) and (pointer: fine) {
+  :root[data-game="zdwa"][data-design="2026"] :is(.ranking-table, .admin-table) tbody tr:hover td { background: var(--p26-tint); }
+}
+
+/* ---------- Statistics ---------- */
+/* Three ledger columns under a strong rule instead of three boxes in a box. */
+:root[data-game="zdwa"][data-design="2026"] .statistics-grid { gap: 1.4rem 2rem; }
+:root[data-game="zdwa"][data-design="2026"] .stat-bucket {
+  padding: .7rem 0 0;
+  border: 0;
+  border-top: 2px solid var(--d26-rule-strong);
+  border-radius: 0;
+  background: transparent;
+}
+:root[data-game="zdwa"][data-design="2026"] .stat-bucket h2 { margin: 0 0 .25rem; font-size: 1.08rem; }
+:root[data-game="zdwa"][data-design="2026"] .stat-bucket dl div { border-bottom-color: var(--d26-rule); }
+:root[data-game="zdwa"][data-design="2026"] .stat-bucket dd { font-variant-numeric: tabular-nums; }
+:root[data-game="zdwa"][data-design="2026"] .stat-bucket p { color: var(--muted); line-height: 1.45; }
+
+:root[data-game="zdwa"][data-design="2026"] .history-summary { gap: 0; margin: 1rem 0 .8rem; }
+:root[data-game="zdwa"][data-design="2026"] .history-summary span {
+  padding: .1rem 1rem;
+  border-left: 1px solid var(--d26-rule);
+  border-radius: 0;
+  background: transparent;
+}
+:root[data-game="zdwa"][data-design="2026"] .history-summary span:first-child { padding-left: 0; border-left: 0; }
+:root[data-game="zdwa"][data-design="2026"] :is(.history-summary small, .rank-legend-stat small) {
+  color: var(--muted);
+  font-size: .74rem;
+  font-weight: 650;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+:root[data-game="zdwa"][data-design="2026"] .history-summary strong { font-size: 1.45rem; font-weight: 800; }
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="classic"]) :is(.history-summary strong, .rank-legend-stat strong) {
+  font-family: var(--d26-display);
+  letter-spacing: -.01em;
+}
+:root[data-game="zdwa"][data-design="2026"] .history-chart {
+  border-color: var(--d26-rule);
+  border-radius: 12px;
+  background: transparent;
+}
+:root[data-game="zdwa"][data-design="2026"] .history-grid line { stroke: var(--d26-rule); }
+:root[data-game="zdwa"][data-design="2026"] .history-dots circle { stroke: var(--surface); }
+
+:root[data-game="zdwa"][data-design="2026"] .history-mode-badge {
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 13%, var(--surface));
+  letter-spacing: .05em;
+}
+:root[data-game="zdwa"][data-design="2026"] .history-mode-badge.hardcore {
+  color: var(--hardcore);
+  background: var(--hardcore-soft);
+}
+
+/* Recent games read as ruled lines; the badge stays inline with its meta. */
+:root[data-game="zdwa"][data-design="2026"] .recent-games-list { gap: 0; border-top: 1px solid var(--d26-rule); }
+:root[data-game="zdwa"][data-design="2026"] .recent-game-row,
+:root[data-game="zdwa"][data-design="2026"] .recent-game-row:hover {
+  min-height: 3.25rem;
+  padding: .6rem .4rem;
+  border: 0;
+  border-bottom: 1px solid var(--d26-rule);
+  border-radius: 0;
+  background: transparent;
+  transition: background-color 150ms ease;
+}
+:root[data-game="zdwa"][data-design="2026"] .recent-game-row small { display: block; }
+:root[data-game="zdwa"][data-design="2026"] .recent-game-row .history-mode-badge {
+  display: inline-flex;
+  margin-right: .15rem;
+  vertical-align: 1px;
+}
+:root[data-game="zdwa"][data-design="2026"] .recent-game-row > strong { font-variant-numeric: tabular-nums; }
+@media (hover: hover) and (pointer: fine) {
+  :root[data-game="zdwa"][data-design="2026"] .recent-game-row:hover { background: var(--p26-tint); }
+}
+
+/* ---------- Achievements ---------- */
+/* Earned marks are felt with a brass value; open ones stay quiet. */
+:root[data-game="zdwa"][data-design="2026"] .achievement-grid { gap: .5rem; }
+:root[data-game="zdwa"][data-design="2026"] .achievement-card,
+:root[data-game="zdwa"][data-design="2026"] .achievement-card.unlocked {
+  border-color: var(--d26-rule);
+  border-radius: 12px;
+  background: var(--surface);
+}
+:root[data-game="zdwa"][data-design="2026"] .achievement-card.locked {
+  background: transparent;
+  opacity: 1;
+}
+:root[data-game="zdwa"][data-design="2026"] .achievement-icon {
+  border: 0;
+  border-radius: 10px;
+  background: var(--d26-band);
+  color: var(--muted);
+}
+:root[data-game="zdwa"][data-design="2026"] .achievement-card.unlocked .achievement-icon {
+  background: var(--d26-felt);
+  color: var(--d26-felt-ink);
+}
+:root[data-game="zdwa"][data-design="2026"] .achievement-points {
+  background: var(--d26-band);
+  color: var(--muted);
+}
+:root[data-game="zdwa"][data-design="2026"] .achievement-card.unlocked .achievement-points {
+  background: var(--d26-brass-soft);
+  color: var(--d26-brass-ink);
+}
+:root[data-game="zdwa"][data-design="2026"] .achievement-progress,
+:root[data-game="zdwa"][data-design="2026"] .achievement-card.unlocked .achievement-progress {
+  padding-inline: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+/* Community feed of recent achievements. */
+:root[data-game="zdwa"][data-design="2026"] .achievement-feed-item {
+  border-color: var(--d26-rule);
+  border-radius: 12px;
+  background: var(--surface);
+}
+:root[data-game="zdwa"][data-design="2026"] .achievement-feed button.achievement-feed-award,
+:root[data-game="zdwa"][data-design="2026"] .achievement-feed button.achievement-feed-award:hover {
+  border-top-color: var(--d26-rule);
+  background: transparent;
+  transition: background-color 150ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-game="zdwa"][data-design="2026"] .achievement-feed button.achievement-feed-award:hover { background: var(--p26-tint); }
+}
+:root[data-game="zdwa"][data-design="2026"] .achievement-feed button.achievement-feed-award:active { transform: none; }
+:root[data-game="zdwa"][data-design="2026"] .achievement-feed-icon {
+  border-radius: 10px;
+  background: var(--d26-felt);
+  color: var(--d26-felt-ink);
+}
+:root[data-game="zdwa"][data-design="2026"] .achievement-feed-difficulty { background: var(--d26-band); }
+:root[data-game="zdwa"][data-design="2026"] .achievement-feed-difficulty--easy { background: color-mix(in oklab, var(--success) 14%, var(--surface)); }
+:root[data-game="zdwa"][data-design="2026"] .achievement-feed-difficulty--hard { background: var(--d26-call-soft); }
+:root[data-game="zdwa"][data-design="2026"] .achievement-feed-open { color: var(--muted); }
+:root[data-game="zdwa"][data-design="2026"] .achievement-feed-empty { border-color: var(--d26-rule-strong); }
+
+/* ---------- Rank badges ---------- */
+:root[data-game="zdwa"][data-design="2026"] .rank-legend-summary { gap: 1rem 1.75rem; margin: .5rem 0 1.25rem; }
+:root[data-game="zdwa"][data-design="2026"] .rank-legend-stat {
+  padding: .65rem 0 0;
+  border: 0;
+  border-top: 2px solid var(--d26-rule-strong);
+  border-radius: 0;
+  background: transparent;
+}
+:root[data-game="zdwa"][data-design="2026"] .rank-legend-stat strong { font-size: 1.4rem; font-weight: 800; }
+:root[data-game="zdwa"][data-design="2026"] .rank-legend-current {
+  padding: .85rem 1rem;
+  border: 0;
+  border-radius: 12px;
+  background: var(--d26-band);
+  color: var(--text);
+}
+:root[data-game="zdwa"][data-design="2026"] .rank-legend-list { gap: 0; border-top: 1px solid var(--d26-rule); }
+:root[data-game="zdwa"][data-design="2026"] .rank-legend-row {
+  grid-template-columns: 6.75rem minmax(0, 1fr) auto;
+  padding: .7rem .6rem;
+  border: 0;
+  border-bottom: 1px solid var(--d26-rule);
+  border-radius: 0;
+  background: transparent;
+}
+/* The player's own rank gets the brass edge of a playable field. */
+:root[data-game="zdwa"][data-design="2026"] .rank-legend-row.is-current {
+  border-radius: 10px;
+  background: var(--d26-brass-soft);
+  box-shadow: inset 0 0 0 2px var(--d26-brass);
+}
+:root[data-game="zdwa"][data-design="2026"] .rank-legend-row.is-current :is(.rank-legend-title small, .rank-legend-minimum) { color: var(--d26-brass-ink); }
+:root[data-game="zdwa"][data-design="2026"] .rank-legend-minimum { font-weight: 650; }
+:root[data-game="zdwa"][data-design="2026"] .rank-legend-row .rank-legend-insignia { justify-self: start; }
+
+/* Rank hues are fixed colours from base.css. These two blocks give them
+   readable ink in light and dark (4.5:1 on their tint). They live here
+   because pages.css owns the badge pages, but they apply wherever a badge
+   is shown, lobby and room included. Retro keeps its own badge style. */
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="dark"], [data-theme="classic"]) :is(.player-rank, .rank-legend-insignia) {
+  color: color-mix(in oklab, var(--rank-color) 70%, var(--text));
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="dark"] :is(.player-rank, .rank-legend-insignia) {
+  border-color: color-mix(in oklab, var(--rank-color) 55%, var(--border));
+  background: color-mix(in oklab, var(--rank-color) 20%, var(--surface));
+  color: color-mix(in oklab, var(--rank-color) 45%, var(--text));
+}
+/* The dark tint above outranks base.css's link hover, so restate it. */
+@media (hover: hover) and (pointer: fine) {
+  :root[data-game="zdwa"][data-design="2026"][data-theme="dark"] .player-rank[role="link"]:hover {
+    border-color: color-mix(in oklab, var(--rank-color) 80%, var(--border));
+    background: color-mix(in oklab, var(--rank-color) 30%, var(--surface));
+  }
+}
+
+/* ---------- Account ---------- */
+:root[data-game="zdwa"][data-design="2026"] .account-header-card .section-title-row { align-items: flex-start; }
+:root[data-game="zdwa"][data-design="2026"] .account-tabs { margin: .9rem 0 1rem; }
+
+:root[data-game="zdwa"][data-design="2026"] .account-settings-group {
+  border-color: transparent;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+:root[data-game="zdwa"][data-design="2026"] .account-settings-group > summary { padding: 1.05rem 3rem 1.05rem 1.2rem; }
+:root[data-game="zdwa"][data-design="2026"] .account-settings-group > summary::after {
+  top: 1.1rem;
+  right: 1.2rem;
+  color: var(--muted);
+}
+:root[data-game="zdwa"][data-design="2026"] .account-settings-group__title { font-size: 1.15rem; }
+:root[data-game="zdwa"][data-design="2026"] .account-settings-group__description { font-weight: 400; }
+:root[data-game="zdwa"][data-design="2026"] .account-settings-group__body { padding: 0 1.2rem 1.2rem; }
+:root[data-game="zdwa"][data-design="2026"] :is(.account-settings-block, .account-settings-action) { border-top-color: var(--d26-rule); }
+:root[data-game="zdwa"][data-design="2026"] .account-settings-action > summary {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  list-style: none;
+}
+:root[data-game="zdwa"][data-design="2026"] .account-settings-action > summary::-webkit-details-marker { display: none; }
+:root[data-game="zdwa"][data-design="2026"] .account-settings-action > summary::before {
+  content: "›";
+  display: inline-grid;
+  place-items: center;
+  width: 1.1rem;
+  color: var(--muted);
+  font-size: 1.35rem;
+  line-height: 1;
+  transition: transform 160ms var(--d26-ease-out);
+}
+:root[data-game="zdwa"][data-design="2026"] .account-settings-action[open] > summary::before { transform: rotate(90deg); }
+:root[data-game="zdwa"][data-design="2026"] .account-settings-block h3 { font-size: 1.02rem; }
+
+/* ---------- Admin ---------- */
+/* Module tiles are outlined like the lobby's identity panel; the open one
+   carries the felt edge, the danger tile a quiet red edge. */
+:root[data-game="zdwa"][data-design="2026"] .admin-module-tile,
+:root[data-game="zdwa"][data-design="2026"] .admin-module-tile:hover {
+  border: 1px solid var(--d26-rule-strong);
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+  text-decoration: none;
+  transform: none;
+}
+:root[data-game="zdwa"][data-design="2026"] .admin-module-tile:active { transform: scale(.98); }
+:root[data-game="zdwa"][data-design="2026"] .admin-module-tile.active,
+:root[data-game="zdwa"][data-design="2026"] .admin-module-tile.active:hover {
+  border-color: var(--p26-selected-edge);
+  background: var(--p26-selected);
+  box-shadow: inset 0 0 0 1px var(--p26-selected-edge);
+}
+:root[data-game="zdwa"][data-design="2026"] .admin-module-icon {
+  border: 0;
+  border-radius: 10px;
+  background: var(--d26-band);
+}
+:root[data-game="zdwa"][data-design="2026"] :is(.admin-module-chevron, .admin-module-copy small) { color: var(--muted); }
+:root[data-game="zdwa"][data-design="2026"] .admin-module-tile-danger,
+:root[data-game="zdwa"][data-design="2026"] .admin-module-tile-danger:hover {
+  border-color: color-mix(in oklab, var(--d26-call) 42%, var(--d26-rule));
+}
+:root[data-game="zdwa"][data-design="2026"] .admin-module-tile-danger .admin-module-icon { background: var(--d26-call-soft); }
+:root[data-game="zdwa"][data-design="2026"] .admin-module-tile-danger.active,
+:root[data-game="zdwa"][data-design="2026"] .admin-module-tile-danger.active:hover {
+  border-color: var(--d26-call);
+  background: var(--d26-call-soft);
+  box-shadow: inset 0 0 0 1px var(--d26-call);
+}
+/* No base hover tint on touch; fine pointers get the calm tint below. */
+:root[data-game="zdwa"][data-design="2026"] .admin-user-summary:hover { background: transparent; }
+@media (hover: hover) and (pointer: fine) {
+  :root[data-game="zdwa"][data-design="2026"] .admin-module-tile:not(.active):hover {
+    border-color: var(--border-strong);
+    background: var(--p26-tint);
+  }
+  :root[data-game="zdwa"][data-design="2026"] .admin-user-summary:hover { background: var(--p26-tint); }
+}
+:root[data-game="zdwa"][data-design="2026"] .admin-shell .danger-zone { box-shadow: inset 0 3px 0 var(--d26-call), var(--shadow-md); }
+:root[data-game="zdwa"][data-design="2026"] .admin-user-card {
+  border-color: var(--d26-rule);
+  box-shadow: none;
+}
+:root[data-game="zdwa"][data-design="2026"] .admin-user-card[open] { border-color: var(--p26-selected-edge); }
+:root[data-game="zdwa"][data-design="2026"] .admin-users-panel :is(.admin-create-user, .admin-permissions) {
+  border-color: var(--d26-rule);
+  background: transparent;
+}
+:root[data-game="zdwa"][data-design="2026"] :is(.assignment-row, .completed-game-row) { border-color: var(--d26-rule); }
+
+/* ---------- Player search ---------- */
+:root[data-game="zdwa"][data-design="2026"] .player-result {
+  border-color: var(--d26-rule-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-game="zdwa"][data-design="2026"] .player-result:hover {
+    border-color: var(--border-strong);
+    background: var(--p26-tint);
+  }
+}
+
+/* ---------- Completed result: the same paper score sheet as the table ---------- */
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .players-grid .player-card {
+  border-color: transparent;
+  border-radius: 14px;
+  background: var(--d26-paper);
+  box-shadow: var(--shadow-md);
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .players-grid .pc-total {
+  font-family: var(--d26-display);
+  font-weight: 800;
+  color: var(--text);
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .players-grid .table-wrap {
+  border-color: transparent;
+  background: var(--d26-paper);
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .players-grid table.grid :is(th, td) { border-color: var(--d26-rule); }
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .players-grid table.grid thead th {
+  border-bottom: 2px solid var(--d26-rule-strong);
+  background: var(--d26-paper);
+  color: var(--text);
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .players-grid table.grid thead th:last-child { color: var(--d26-call); }
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .players-grid table.grid :is(th.sticky, td.desc.sticky) {
+  background: var(--d26-paper);
+  color: var(--text);
+  font-weight: 700;
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .players-grid table.grid :is(td.cell.compute, td.desc.compute) {
+  background: var(--d26-band);
+  color: var(--muted);
+  font-family: inherit;
+  font-weight: 700;
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .players-grid table.grid tr.is-compute:last-child :is(td.cell.compute, td.desc.compute) {
+  color: var(--text);
+  font-weight: 800;
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .players-grid table.grid tr.grp-end td { border-bottom-color: var(--d26-rule-strong); }
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .players-grid table.grid td.cell:not(.compute) {
+  background: var(--d26-paper);
+  color: var(--d26-pen);
+  font-family: var(--d26-hand);
+  font-size: 1.08em;
+  font-weight: 400;
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .players-grid td.cell.announced {
+  background: var(--d26-call-soft) !important;
+  color: var(--d26-call);
+  box-shadow: inset 0 0 0 2px var(--d26-call);
+}
+
+:root[data-game="zdwa"][data-design="2026"] .readonly-achievements {
+  padding: 1.2rem 1.35rem;
+  border-color: transparent;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+:root[data-game="zdwa"][data-design="2026"] .readonly-achievement-player + .readonly-achievement-player { border-top-color: var(--d26-rule); }
+:root[data-game="zdwa"][data-design="2026"] .readonly-achievement-list { gap: 0; }
+:root[data-game="zdwa"][data-design="2026"] .readonly-achievement-card {
+  padding: .6rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--d26-rule);
+  border-radius: 0;
+  background: transparent;
+}
+:root[data-game="zdwa"][data-design="2026"] .readonly-achievement-card:last-child { border-bottom: 0; }
+:root[data-game="zdwa"][data-design="2026"] .readonly-achievement-icon {
+  border: 0;
+  border-radius: 10px;
+  background: var(--d26-felt);
+  color: var(--d26-felt-ink);
+}
+:root[data-game="zdwa"][data-design="2026"] .readonly-achievement-points {
+  background: var(--d26-brass-soft);
+  color: var(--d26-brass-ink);
+}
+
+/* Chat history: one calm card like the achievements, the messages as ruled
+   lines. A plain chat message carries the class "chat", which would also
+   pick up the live chat panel's frame and fixed height from chat.css. */
+:root[data-game="zdwa"][data-design="2026"] .readonly-chat {
+  padding: 1.2rem 1.35rem;
+  border-color: transparent;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+:root[data-game="zdwa"][data-design="2026"] .readonly-chat h2 { margin-bottom: .4rem; }
+:root[data-game="zdwa"][data-design="2026"] .readonly-chat-box { gap: 0; font-size: .92rem; }
+:root[data-game="zdwa"][data-design="2026"] .readonly-chat-line {
+  display: block;
+  height: auto;
+  margin: 0;
+  padding: .5rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--d26-rule);
+  border-radius: 0;
+  background: transparent;
+  line-height: 1.45;
+}
+:root[data-game="zdwa"][data-design="2026"] .readonly-chat-line:last-child { border-bottom: 0; }
+:root[data-game="zdwa"][data-design="2026"] .readonly-chat-line .ts {
+  color: var(--muted);
+  font-size: .82em;
+  font-variant-numeric: tabular-nums;
+}
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="classic"]) .readonly-chat-line.system { color: var(--accent); }
+
+/* ---------- Rules ---------- */
+:root[data-game="zdwa"][data-design="2026"] .doc h1 {
+  margin: .75rem 0 .9rem;
+  font-size: clamp(1.75rem, 3.6vw, 2.4rem);
+  line-height: 1.06;
+  letter-spacing: -.025em;
+}
+:root[data-game="zdwa"][data-design="2026"] .doc h2 { margin-top: 2rem; font-size: 1.28rem; }
+:root[data-game="zdwa"][data-design="2026"] .doc :is(p, li) { line-height: 1.55; }
+:root[data-game="zdwa"][data-design="2026"] .doc li + li { margin-top: .2rem; }
+:root[data-game="zdwa"][data-design="2026"] .doc :is(.pill, .kbd) {
+  border-color: var(--d26-rule-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+:root[data-game="zdwa"][data-design="2026"] .doc .note {
+  padding: .7rem .9rem;
+  border: 0;
+  border-left: 3px solid var(--d26-brass);
+  border-radius: 0 10px 10px 0;
+  background: var(--d26-brass-soft);
+  color: var(--text);
+}
+:root[data-game="zdwa"][data-design="2026"] .doc details {
+  padding: .55rem 1rem;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+:root[data-game="zdwa"][data-design="2026"] .doc details + details { margin-top: .75rem; }
+:root[data-game="zdwa"][data-design="2026"] .doc summary { padding-block: .45rem; }
+/* The scoring table is printed like a score sheet: header rule, hairlines. */
+:root[data-game="zdwa"][data-design="2026"] .doc .grid-fields {
+  overflow: hidden;
+  margin: .75rem 0;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+:root[data-game="zdwa"][data-design="2026"] .doc .grid-fields :is(th, td) {
+  padding: .55rem .7rem;
+  border: 0;
+  border-bottom: 1px solid var(--d26-rule);
+}
+:root[data-game="zdwa"][data-design="2026"] .doc .grid-fields thead th {
+  border-bottom: 2px solid var(--d26-rule-strong);
+  background: transparent;
+  color: var(--muted);
+  font-size: .76rem;
+  font-weight: 650;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+:root[data-game="zdwa"][data-design="2026"] .doc .grid-fields tbody tr:last-child td { border-bottom: 0; }
+:root[data-game="zdwa"][data-design="2026"] .doc .grid-fields tbody td:first-child { font-weight: 800; white-space: nowrap; }
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="classic"]) .doc .grid-fields tbody td:first-child { font-family: var(--d26-display); }
+
+/* ---------- Offline play ---------- */
+/* The local score sheet looks like the one at the game table: paper, a header
+   rule, hand-written scores, brass for the fields this roll can fill and ivory
+   dice. No rule changes a measured box (borders keep their width). */
+:root[data-game="zdwa"][data-design="2026"] :is(.practice-welcome, .practice-board, .practice-info, .practice-controls) {
+  border-color: transparent;
+  background: var(--d26-paper);
+  box-shadow: var(--shadow-md);
+}
+:root[data-game="zdwa"][data-design="2026"] .practice-sheet :is(th, td) { border-color: var(--d26-rule); }
+:root[data-game="zdwa"][data-design="2026"] .practice-sheet thead th {
+  border-bottom-color: var(--d26-rule-strong);
+  background: var(--d26-paper);
+  box-shadow: inset 0 -1px 0 var(--d26-rule-strong);
+}
+:root[data-game="zdwa"][data-design="2026"] .practice-sheet thead th:last-child { color: var(--d26-call); }
+:root[data-game="zdwa"][data-design="2026"] .practice-sheet td button[data-open="false"]:disabled {
+  font-family: var(--d26-hand);
+  font-weight: 400;
+  color: var(--d26-pen);
+  opacity: 1;
+}
+:root[data-game="zdwa"][data-design="2026"] .practice-sheet td button:not(:disabled) {
+  background: var(--d26-brass-soft);
+  color: var(--d26-brass-ink);
+}
+:root[data-game="zdwa"][data-design="2026"] .practice-sheet .practice-compute :is(td, th) { background: var(--d26-band); }
+:root[data-game="zdwa"][data-design="2026"] .practice-die {
+  border-color: transparent;
+  background: var(--d26-die);
+  color: var(--d26-pip);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .12), 0 2px 6px rgba(0, 0, 0, .2);
+}
+:root[data-game="zdwa"][data-design="2026"] .practice-die[aria-pressed="true"] {
+  border-color: var(--d26-brass);
+  background: var(--d26-die);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .12), 0 0 0 1px var(--d26-brass);
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 760px) {
+  :root[data-game="zdwa"][data-design="2026"] :is(.profile-shell, .admin-shell) .section-title-row { flex-wrap: wrap; align-items: flex-start; }
+  :root[data-game="zdwa"][data-design="2026"] .profile-shell .ranking-controls { flex: 1 1 100%; }
+  :root[data-game="zdwa"][data-design="2026"] .statistics-grid { gap: 1.25rem; }
+}
+@media (max-width: 560px) {
+  :root[data-game="zdwa"][data-design="2026"] :is(.profile-shell, .admin-shell) .card { padding: 1rem; }
+  /* Three narrow columns: the labels drop the caps and tracking so
+     "Durchschnitt" fits down to 360px, and may break below that. */
+  :root[data-game="zdwa"][data-design="2026"] .history-summary span { padding-inline: .6rem; }
+  :root[data-game="zdwa"][data-design="2026"] .history-summary small {
+    font-size: .78rem;
+    letter-spacing: 0;
+    text-transform: none;
+    overflow-wrap: anywhere;
+  }
+  :root[data-game="zdwa"][data-design="2026"] .history-summary strong { font-size: 1.2rem; }
+  :root[data-game="zdwa"][data-design="2026"] .account-settings-group > summary { padding: .95rem 2.75rem .95rem .95rem; }
+  :root[data-game="zdwa"][data-design="2026"] .account-settings-group > summary::after { right: .95rem; }
+  :root[data-game="zdwa"][data-design="2026"] .account-settings-group__body { padding: 0 .95rem .95rem; }
+  :root[data-game="zdwa"][data-design="2026"] :is(.readonly-achievements, .readonly-chat) { padding: 1rem; }
+  :root[data-game="zdwa"][data-design="2026"] body.lobby-page > main.wrap > .card:only-child { padding: 1.2rem 1.1rem; }
+  /* Achievement status moves under the text so names are not cut off. */
+  :root[data-game="zdwa"][data-design="2026"] .achievement-card { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+  :root[data-game="zdwa"][data-design="2026"] .achievement-copy strong { white-space: normal; }
+  :root[data-game="zdwa"][data-design="2026"] .achievement-status {
+    display: flex;
+    flex-wrap: wrap;
+    grid-column: 2;
+    align-items: center;
+    gap: .25rem .6rem;
+  }
+  :root[data-game="zdwa"][data-design="2026"] .ranking-table td { white-space: nowrap; }
+  :root[data-game="zdwa"][data-design="2026"] .ranking-table .player-name-with-rank { flex-wrap: nowrap; }
+  /* One shared insignia column so every rank title lines up; it still grows
+     for a wider badge instead of overflowing. */
+  :root[data-game="zdwa"][data-design="2026"] .rank-legend-row { grid-template-columns: minmax(6.4rem, max-content) minmax(0, 1fr); }
+  :root[data-game="zdwa"][data-design="2026"] .doc .grid-fields :is(th, td) { padding: .5rem .45rem; }
+}
+/* Touch: every page button, field and disclosure gets a full finger target. */
+@media (max-width: 560px), (pointer: coarse) {
+  :root[data-game="zdwa"][data-design="2026"] :is(.profile-shell, .admin-shell) :is(.card, .account-panel) :is(.button-link.small, button.small),
+  :root[data-game="zdwa"][data-design="2026"] :is(.history-range button, .profile-shell .tab-btn, .player-result),
+  :root[data-game="zdwa"][data-design="2026"] :is(.doc .button-link, .password-card :is(.button-link, button), .offline-card :is(.button-link, button)),
+  :root[data-game="zdwa"][data-design="2026"] .profile-shell :is(.card, .account-panel) :is(button.primary, button.secondary),
+  :root[data-game="zdwa"][data-design="2026"] :is(.profile-shell, .password-card) :is(input:not([type]), input[type="text"], input[type="password"], input[type="email"], input[type="search"], select) {
+    min-height: 44px;
+  }
+  :root[data-game="zdwa"][data-design="2026"] .doc summary { padding-block: .78rem; }
+  :root[data-game="zdwa"][data-design="2026"] .profile-shell .release-notes-support > summary { padding-block: .75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-game="zdwa"][data-design="2026"] :is(.button-link, .player-result, .admin-module-tile):active { transform: none; }
+  :root[data-game="zdwa"][data-design="2026"] .account-settings-action > summary::before { transition: none; }
+}

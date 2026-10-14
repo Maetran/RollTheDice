@@ -177,6 +177,14 @@ export function analyticsPwaProduct(locationLike = window.location, documentLike
 
 let initialized = false;
 
+/** Bounded presentation label for the design comparison, e.g. "zdwa:new:dark". */
+export function analyticsLook(root = document.documentElement) {
+  const theme = root?.dataset?.theme;
+  if (root?.dataset?.game === "zilch") return theme === "lcars" ? "zilch:lcars" : "zilch:tavern";
+  if (root?.dataset?.game !== "zdwa" || !["light", "dark", "classic"].includes(theme)) return null;
+  return `zdwa:${root.dataset.design === "2026" ? "new" : "old"}:${theme}`;
+}
+
 export function initializeAnalytics() {
   if (initialized || !permitsAnalytics()) return;
   initialized = true;
@@ -285,12 +293,23 @@ export function initializeAnalytics() {
     checkpoint = now;
   }
 
+  // Time is attributed to the look that was on screen while it was counted.
+  let look = analyticsLook();
+
   function enqueueEngagement() {
     const delta = Math.min(60000, Math.floor(activeMs));
     if (delta > 0) {
-      enqueue("engagement", { active_ms: delta });
+      enqueue("engagement", look ? { active_ms: delta, look } : { active_ms: delta });
       activeMs -= delta;
     }
+  }
+
+  function lookChanged() {
+    const next = analyticsLook();
+    if (next === look) return;
+    collectActive();
+    enqueueEngagement();
+    look = next;
   }
 
   function startHeartbeat() {
@@ -443,6 +462,10 @@ export function initializeAnalytics() {
     document.addEventListener(event, activity, { capture: true, passive: true });
   }
   document.addEventListener("visibilitychange", visibility);
+  // Theme and design switches close the running interval under the old look.
+  new MutationObserver(lookChanged).observe(document.documentElement, {
+    attributes: true, attributeFilter: ["data-theme", "data-design"],
+  });
   window.addEventListener("focus", visibility);
   window.addEventListener("blur", visibility);
   window.addEventListener("pagehide", () => {

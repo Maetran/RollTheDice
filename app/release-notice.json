@@ -3,21 +3,25 @@
   "games": [
     "zdwa"
   ],
-  "summary_de": "ZDWA behält deinen gewählten Spielzettel bis zum Zugwechsel und folgt dann wieder dem aktiven Spieler.",
-  "summary_en": "ZDWA keeps your chosen score sheet until the turn changes, then follows the active player again.",
+  "summary_de": "ZDWA hat ein neues Design. Gefällt dir das alte besser, wechselst du im Konto zurück.",
+  "summary_en": "ZDWA has a new design. Prefer the old one? Switch back in your account.",
   "player_notes": {
     "de": {
-      "title": "Spielzettel im Blick behalten",
+      "title": "Neues Design für ZDWA",
       "changes": [
-        "Wischst du in einer Mehrspielerpartie zu einem anderen Spielzettel oder wählst ihn aus, bleibt er während des laufenden Zuges im Blick – auch beim Würfeln, Halten und Ansagen.",
-        "Beim nächsten Spieler folgt die Ansicht wieder automatisch dem aktiven Spielzettel. Nach einem Eintrag bleibt die kurze Lesezeit erhalten."
+        "Lobby, Spieltisch und alle übrigen Seiten haben ein frisches Aussehen: eine klarere Lobby, ein Spielzettel wie aus Papier und ein grüner Würfelteller.",
+        "Nach dem ersten Wurf zeigt dein Spielzettel in jedem erlaubten Feld die Punkte, die du dort bekommen würdest. Das beste Feld ist hervorgehoben.",
+        "Hell, Dunkel und Classic gibt es auch im neuen Design.",
+        "Lieber das bisherige Design? Du kannst jederzeit im Konto unter Einstellungen → Sprache & Spiel → Aussehen zurückwechseln. Ohne Konto findest du den Schalter unten in der Lobby."
       ]
     },
     "en": {
-      "title": "Keep your chosen score sheet in view",
+      "title": "A new design for ZDWA",
       "changes": [
-        "If you swipe to or select another score sheet in a multiplayer game, it stays in view for the current turn, including rolls, dice selections and announcements.",
-        "When the next player's turn begins, the view follows the active score sheet again. The brief pause to read a newly entered score remains."
+        "The lobby, the game table and all other pages have a fresh look: a clearer lobby, a score sheet like paper and a green dice tray.",
+        "After your first roll, your score sheet shows the points each allowed field would score. The best field is highlighted.",
+        "Light, Dark and Classic are available in the new design too.",
+        "Prefer the previous design? Switch back any time under Account → Settings → Language & play → Appearance. Without an account, the switch is at the bottom of the lobby."
       ]
     }
   }

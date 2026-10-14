@@ -82,6 +82,8 @@ class AuthIdentity:
     is_founder: bool = False
     analytics_access: bool = False
     has_password: bool = True
+    zdwa_design: str = "new"
+    zdwa_design_prompt_pending: bool = False
 
     @property
     def is_admin(self) -> bool:
@@ -90,8 +92,8 @@ class AuthIdentity:
 
 def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False) -> dict:
     """Serialize the account fields shared by HTTP and WebSocket auth responses."""
-    from .design_preview import design_preview_payload
     from .moderation import account_bans
+    from .zdwa_design import design_payload
 
     payload = {
         "id": identity.user_id,
@@ -106,8 +108,8 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
         # The browser receives a capability calculated by the same policy the
         # HTTP and WebSocket layers use; it never decides access from a name.
         "game_access": public_game_access_payload(identity),
-        # Presentation-only previews; see app/design_preview.py for the kill switch.
-        "design_preview": design_preview_payload(identity),
+        # Presentation only; see app/zdwa_design.py for the server switch.
+        "design": design_payload(identity),
         "must_change_password": identity.must_change_password,
         "has_password": identity.has_password,
         "achievement_rank": identity.achievement_rank,
@@ -172,6 +174,8 @@ def _identity_for_user(db, user: User, login_session: LoginSession) -> AuthIdent
         achievement_rank=_achievement_rank_for_user(db, user.id),
         analytics_access=user.analytics_access,
         has_password=has_password(user.password_hash),
+        zdwa_design=user.zdwa_design or "new",
+        zdwa_design_prompt_pending=user.zdwa_design_prompted_at is None,
         **ownership_flags(db, user.id),
     )
 

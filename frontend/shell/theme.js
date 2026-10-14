@@ -9,6 +9,8 @@
   const CLASSIC_COLOR = "#31583a";
   const ZILCH_COLOR = "#2d261f";
   const LCARS_COLOR = "#0a0c12";
+  // The ZDWA 2026 design has its own page colours; Classic keeps its felt bar.
+  const DESIGN_2026_COLORS = { light: "#eef1ec", dark: "#11161a" };
   const media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   const themeUi = isZilch
     ? {
@@ -50,20 +52,21 @@
       meta.name = "theme-color";
       document.head.appendChild(meta);
     }
+    const design2026 = !isZilch && document.documentElement.dataset.design === "2026";
     meta.content = isZilch
       ? theme === "lcars" ? LCARS_COLOR : ZILCH_COLOR
-      : theme === "dark"
+      : (design2026 && DESIGN_2026_COLORS[theme]) || (theme === "dark"
         ? DARK_COLOR
         : theme === "classic"
           ? CLASSIC_COLOR
-          : LIGHT_COLOR;
+          : LIGHT_COLOR);
   }
 
   function updateToggles(theme) {
     const currentIndex = THEMES.indexOf(theme);
     const current = themeUi[theme] || themeUi.light;
     const next = themeUi[THEMES[(currentIndex + 1) % THEMES.length]] || themeUi.light;
-    const label = `${translate("Darstellung wechseln")}: ${translate(current.label)}. ${translate("Nächstes Design")}: ${translate(next.label)}.`;
+    const label = `${translate("Darstellung wechseln")}: ${translate(current.label)}. ${translate("Nächste Darstellung")}: ${translate(next.label)}.`;
     document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
       button.dataset.themeCurrent = theme;
       button.removeAttribute("aria-pressed");
@@ -112,5 +115,9 @@
 
   window.addEventListener("storage", function (event) {
     if (event.key === STORAGE_KEY) applyTheme(preferredTheme());
+  });
+
+  window.addEventListener("zdwa:design-change", function () {
+    updateThemeColor(document.documentElement.dataset.theme || preferredTheme());
   });
 })();

@@ -22,6 +22,36 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.51.0 — Neues ZDWA-Design für alle / New ZDWA design for everyone — 2026-10-14
+
+**Deutsch:** Das neue Design ist jetzt für alle ZDWA-Seiten der Standard:
+Lobby, Spieltisch, Spieler und Ranking, Regeln, Konto und die übrigen Seiten.
+Nach dem ersten Wurf zeigt der eigene Spielzettel die möglichen Punkte jedes
+erlaubten Feldes; das beste Feld ist hervorgehoben. Hell, Dunkel und Classic gibt
+es in beiden Designs. Wer das bisherige Design bevorzugt, wechselt im Konto
+unter Einstellungen → Sprache & Spiel → Aussehen zurück; Konten, die das alte
+Design kannten, werden nach dem Update einmal gefragt. Gäste finden den
+Schalter unten in der Lobby. Auch das Offline-Spiel zeigt das gewählte Design.
+Neu erfasst das anonyme Dashboard die sichtbare Nutzungszeit in
+Sekunden pro Design und Farbschema (ZDWA neu/bisher in Hell, Dunkel, Classic;
+Zilch Wirtshaustisch oder LCARS) als Tagessummen ohne Personenbezug. Auf dem
+Handy stehen „Neues Spiel“ und „Du spielst als“ wieder untereinander. Rückweg
+ohne Deploy: `ROLLTHEDICE_ZDWA_DESIGN=off` und Neustart.
+
+**English:** The new design is now the default on every ZDWA page: lobby, game
+table, players and ranking, rules, account and the remaining pages. After the
+first roll your own score sheet shows the points each allowed field would
+score, with the best field highlighted. Light, Dark and Classic exist in both
+designs. Players who prefer the previous design switch back under Account →
+Settings → Language & play → Appearance; accounts that knew the old design are
+asked once after the update. Guests find the switch at the bottom of the lobby.
+Offline play shows the chosen design too. The anonymous
+dashboard now records visible usage time in seconds per design and colour theme
+(ZDWA new/previous in Light, Dark, Classic; Zilch tavern table or LCARS) as daily
+totals without any personal reference. On phones, "New game" and "You are
+playing as" are stacked again. Rollback without a deploy:
+`ROLLTHEDICE_ZDWA_DESIGN=off` and a restart.
+
 ## 2.50.0 — ZDWA-Design 2026 als Owner-Vorschau / ZDWA design 2026 as owner preview — 2026-10-13
 
 **Deutsch:** Ein neues Erscheinungsbild für ZDWA-Lobby und Spieltisch ist

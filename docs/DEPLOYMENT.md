@@ -405,13 +405,19 @@ Zilch-Handoff, HTTP-API, WebSocket-Reconnect und die bereits installierte
 Apex-PWA testen. Die Turnstile-Registrierung nur mit einem bewusst vorgesehenen
 Testkonto prüfen.
 
-### ZDWA-Designvorschau
+### ZDWA-Design
 
-`ROLLTHEDICE_ZDWA_DESIGN_PREVIEW` steuert das neue ZDWA-Design. Standard ist
-`owner`: nur Owner-Konten sehen es. Jeder andere Wert, insbesondere `off`,
-schaltet es für alle ab. Nach dem Ändern in `.env` den Container neu starten
-(`docker compose up -d`); ein Code-Deploy ist nicht nötig. Die Vorschau hat
-keine Migration, ein normaler Code-Rollback bleibt daher ohne Datenfolgen.
+`ROLLTHEDICE_ZDWA_DESIGN` steuert das neue ZDWA-Design 2026. Standard ist
+`all`: alle sehen es und können im Konto oder als Gast in der Lobby zum
+bisherigen Design wechseln. `owner` zeigt es nur Owner-Konten, jeder andere
+Wert, insbesondere `off`, schaltet es für alle ab. Nach dem Ändern in `.env`
+den Container neu starten (`docker compose up -d`); ein Code-Deploy ist nicht
+nötig. Die gespeicherte Wahl der Konten (`users.zdwa_design`) bleibt dabei
+erhalten und gilt wieder, sobald das Design erneut freigegeben ist. Konten, die
+entstehen, während das Design nicht für alle freigegeben ist, kennen nur das
+bisherige Design und werden nach der Freigabe einmal gefragt. Ein
+Code-Rollback auf 2.50.0 startet erst nach `alembic downgrade 20261010_0054`
+(siehe `docs/ANALYTICS.md`); der Schalter ist der Rückweg ohne Datenverlust.
 
 ### Infrastruktur-Rollback
 

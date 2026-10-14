@@ -96,6 +96,7 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
             "release_push_enabled": 0,
             "admin_help_push_enabled": 1,
             "game_invite_push_audience": "all",
+            "zdwa_design": "new",
             "last_played_on": None,
             "created_at": timestamp,
             "updated_at": timestamp,

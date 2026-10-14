@@ -19,6 +19,25 @@ function syncLanguage(data) {
   if (language && window.ZDWA_I18N) window.ZDWA_I18N.syncAccountLanguage(language);
 }
 
+// New accounts start with the ZDWA 2026 design and are never asked about it.
+// A guest who switched back to the previous design in this browser keeps that
+// choice on the account created here.
+async function keepGuestDesignChoice(data) {
+  const design = data?.user?.design;
+  if (document.documentElement.dataset.game !== "zdwa" || !design || design.zdwa === "old") return;
+  let choice = null;
+  try { choice = localStorage.getItem("zdwa_design"); } catch (_) { return; }
+  if (choice !== "old") return;
+  try {
+    const response = await apiFetch("/api/auth/preferences/design", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ zdwa_design: "old" }),
+    });
+    if (response.ok) data.user.design = { ...design, zdwa: "old" };
+  } catch (_) { /* The account settings can still switch the design. */ }
+}
+
 export function loadAuth({ refresh = false } = {}) {
   if (authState.cache && !refresh) return Promise.resolve(authState.cache);
   // One identity request is enough even when multiple UI components mount together.
@@ -117,6 +136,7 @@ export async function registerWithPasskey(username, turnstileToken = null) {
     authState.request = null;
     authState.cache = data;
     syncLanguage(data);
+    await keepGuestDesignChoice(data);
     notifyAuthState(data);
     return data;
   } catch (error) {
@@ -402,6 +422,7 @@ export async function register(username, email, turnstileToken = null, password 
     authState.request = null;
     authState.cache = data;
     syncLanguage(data);
+    await keepGuestDesignChoice(data);
     notifyAuthState(data);
   }
   return data;
@@ -419,6 +440,7 @@ export async function completeRegistration(token, password) {
   authState.request = null;
   authState.cache = data;
   syncLanguage(data);
+  await keepGuestDesignChoice(data);
   notifyAuthState(data);
   return data;
 }

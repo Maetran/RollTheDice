@@ -3,6 +3,9 @@ const { test, expect } = require("@playwright/test");
 test("ZDWA cycles and retains Light, Dark, and Classic without changing game UI semantics", async ({ page, request }) => {
   await page.addInitScript(() => {
     if (!localStorage.getItem("wuerfler_theme")) localStorage.setItem("wuerfler_theme", "light");
+    // This covers the previous design's Classic table (felt mat under the
+    // pad); the 2026 Retro variant is covered in zdwa-design-retro.spec.js.
+    localStorage.setItem("zdwa_design_override", "old");
   });
 
   await page.goto("/");
@@ -13,7 +16,7 @@ test("ZDWA cycles and retains Light, Dark, and Classic without changing game UI 
   await expect(appearance).toHaveAttribute("data-theme-current", "light");
   await expect(appearance).toHaveAttribute(
     "aria-label",
-    "Darstellung wechseln: Hell. Nächstes Design: Dunkel.",
+    "Darstellung wechseln: Hell. Nächste Darstellung: Dunkel.",
   );
 
   await appearance.click();
@@ -25,7 +28,7 @@ test("ZDWA cycles and retains Light, Dark, and Classic without changing game UI 
   await expect(appearance).toHaveAttribute("data-theme-current", "classic");
   await expect(appearance).toHaveAttribute(
     "aria-label",
-    "Darstellung wechseln: Classic. Nächstes Design: Hell.",
+    "Darstellung wechseln: Classic. Nächste Darstellung: Hell.",
   );
   await expect.poll(() => page.evaluate(() => localStorage.getItem("wuerfler_theme"))).toBe("classic");
 
@@ -48,7 +51,7 @@ test("ZDWA cycles and retains Light, Dark, and Classic without changing game UI 
   await expect(html).toHaveAttribute("data-theme", "light");
   await expect(appearance).toHaveAttribute(
     "aria-label",
-    "Change appearance: Light. Next design: Dark.",
+    "Change appearance: Light. Next appearance: Dark.",
   );
 
   await page.evaluate(() => localStorage.setItem("wuerfler_theme", "classic"));

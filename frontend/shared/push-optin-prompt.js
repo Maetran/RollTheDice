@@ -90,7 +90,9 @@ export function initializePushOptInPrompt({ context = "zdwa" } = {}) {
       if (!userId || state.promptedUserId === userId || Notification.permission === "denied") return;
       const status = await getGameInvitePushStatus();
       if (!status.available || !status.browser_supported || status.enabled === true || status.permission === "denied") return;
-      if (visibleModalIsOpen()) {
+      // The one-time design question goes first; claiming now could spend the
+      // invitation on a dialog that then has to wait behind it.
+      if (visibleModalIsOpen() || window.ZDWA_DESIGN_PROMPT?.busy?.()) {
         schedule(DIALOG_RETRY_MS);
         return;
       }

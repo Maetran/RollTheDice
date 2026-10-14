@@ -1,0 +1,525 @@
+/* === ZDWA Design 2026 (lobby and game table) ===
+   Spielzettel aus Papier, Würfelteller aus Filz, Messing für spielbare Felder.
+   Every rule is scoped to :root[data-design="2026"], which
+   frontend/shell/design.js sets from the player's design choice (see
+   app/zdwa_design.py). Without the attribute this file has no effect. Motion follows short ease-out curves,
+   presses scale to .97, hover effects only on fine pointers, and reduced motion
+   keeps colour changes only. Room sizing is untouched: the responsive score
+   sheet fitting in room/gameplay.js keeps measuring the same boxes. */
+
+/* Bricolage Grotesque, SIL Open Font License 1.1.
+   License: /static/licenses/bricolage-grotesque-OFL.txt
+   Source: @fontsource/bricolage-grotesque 5.3.0, Latin subset, unmodified.
+   Faces are fetched only when a preview element uses them. */
+@font-face {
+  font-family: "ZDWA Design Display";
+  src: url("/static/bricolage-grotesque-latin-600-v1.woff2?v=ASSET_VERSION") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "ZDWA Design Display";
+  src: url("/static/bricolage-grotesque-latin-800-v1.woff2?v=ASSET_VERSION") format("woff2");
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Kalam reuses the Classic file (see classic-font.css for its licence). */
+@font-face {
+  font-family: "ZDWA Design Pen";
+  src: url("/static/kalam-classic-latin-regular-v1.woff2?v=ASSET_VERSION") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Neutral 2026 tokens; Retro (Classic) maps them to its own palette in retro.css. */
+:root[data-game="zdwa"][data-design="2026"] {
+  --d26-paper: #fbfcf9;
+  --d26-band: #e6ebe3;
+  --d26-rule: #d7ddd4;
+  --d26-rule-strong: #b7c0b4;
+  --d26-felt: #1e4a37;
+  --d26-felt-2: #275c46;
+  --d26-felt-ink: #e9f2ec;
+  --d26-felt-surface: radial-gradient(120% 90% at 50% 0%, #275c46, #1e4a37 70%);
+  --d26-brass: #d99a1c;
+  --d26-brass-soft: #fbefd2;
+  --d26-brass-ink: #6f4c05;
+  --d26-call: #c0352c;
+  --d26-call-soft: #fbe3e0;
+  --d26-pen: #1d3f8f;
+  --d26-die: #f7f4ec;
+  --d26-pip: #1b2026;
+  --d26-display: "ZDWA Design Display", "Avenir Next", system-ui, sans-serif;
+  --d26-hand: "ZDWA Design Pen", "Bradley Hand", "Segoe Print", cursive;
+  --d26-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Light page tokens; Dark and Retro keep their own base palettes below. */
+:root[data-game="zdwa"][data-design="2026"]:not([data-theme="classic"]) {
+  --bg: #eef1ec;
+  --surface: #fbfcf9;
+  --surface-soft: #f2f5ef;
+  --card: #fbfcf9;
+  --text: #18222c;
+  --border: #d7ddd4;
+  --border-strong: #8a958b;
+  --muted: #56616c;
+  --accent: #1e4a37;
+  --accent-strong: #163a2b;
+  --success: #2f7d4f;
+  --success-soft: #e3f1e8;
+  --info-soft: #e6efe9;
+  --info-border: #b8cdbf;
+  --table-head: #e6ebe3;
+  --header-bg: rgba(238, 241, 236, .92);
+  --header-border: rgba(215, 221, 212, .9);
+  --shadow-sm: 0 1px 2px rgba(24, 34, 44, .06);
+  --shadow-md: 0 1px 2px rgba(24, 34, 44, .06), 0 10px 26px -14px rgba(24, 34, 44, .22);
+  --radius: 10px;
+  --radius-sm: 9px;
+  --radius-card: 16px;
+}
+
+:root[data-game="zdwa"][data-design="2026"][data-theme="dark"] {
+  --bg: #11161a;
+  --surface: #192026;
+  --surface-soft: #1f272e;
+  --card: #192026;
+  --text: #e8ece6;
+  --border: #2a333b;
+  --border-strong: #56616c;
+  --muted: #a3adb5;
+  --accent: #7fcf9f;
+  --accent-strong: #9adcb4;
+  --success: #6cc28f;
+  --success-soft: #16301f;
+  --info-soft: #1b2a22;
+  --info-border: #2f4a3b;
+  --table-head: #1f272e;
+  --header-bg: rgba(17, 22, 26, .92);
+  --header-border: rgba(42, 51, 59, .92);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
+  --shadow-md: 0 1px 2px rgba(0, 0, 0, .3), 0 12px 28px -14px rgba(0, 0, 0, .6);
+  --d26-paper: #192026;
+  --d26-band: #1f272e;
+  --d26-rule: #2a333b;
+  --d26-rule-strong: #3b4650;
+  --d26-felt: #163a2b;
+  --d26-felt-2: #1d4a37;
+  --d26-felt-ink: #e3efe7;
+  --d26-felt-surface: radial-gradient(120% 90% at 50% 0%, #1d4a37, #163a2b 70%);
+  --d26-brass: #f0b43c;
+  --d26-brass-soft: #3a2f17;
+  --d26-brass-ink: #f6d58e;
+  --d26-call: #f0675c;
+  --d26-call-soft: #3d1f1d;
+  --d26-pen: #9db8ff;
+}
+
+/* ---------- Grundlagen ---------- */
+:root[data-game="zdwa"][data-design="2026"] :is(h1, h2, .leaderboard-heading h2, .pc-name) {
+  font-family: var(--d26-display);
+  letter-spacing: -.012em;
+}
+:root[data-game="zdwa"][data-design="2026"] :is(h1, h2) { font-weight: 800; }
+
+:root[data-game="zdwa"][data-design="2026"] button {
+  border-radius: var(--radius-sm);
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 140ms var(--d26-ease-out);
+}
+:root[data-game="zdwa"][data-design="2026"] button:active:not(:disabled) { transform: scale(.97); }
+:root[data-game="zdwa"][data-design="2026"] button:hover { border-color: var(--border-strong); }
+
+:root[data-game="zdwa"][data-design="2026"] :is(button.primary, button.joinBtn, button.resumeBtn, #createBtn) {
+  border-color: var(--d26-felt);
+  background: var(--d26-felt);
+  color: var(--d26-felt-ink);
+  font-weight: 700;
+}
+:root[data-game="zdwa"][data-design="2026"] :is(button.primary, button.joinBtn, button.resumeBtn, #createBtn):hover {
+  border-color: var(--d26-felt-2);
+  background: var(--d26-felt-2);
+}
+:root[data-game="zdwa"][data-design="2026"] :is(button.secondary, button.spectateBtn, #refreshBtn, #refreshRunningBtn) {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+:root[data-game="zdwa"][data-design="2026"] :is(input, select, textarea):focus-visible,
+:root[data-game="zdwa"][data-design="2026"] :is(button, a):focus-visible {
+  outline: 2px solid var(--d26-brass);
+  outline-offset: 2px;
+}
+
+:root[data-game="zdwa"][data-design="2026"] .card,
+:root[data-game="zdwa"][data-design="2026"] .leaderboard-box {
+  border-color: transparent;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+:root[data-game="zdwa"][data-design="2026"] :is(.button-link.secondary, .auth-actions .button-link) {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+:root[data-game="zdwa"][data-design="2026"] .logo {
+  background: var(--d26-felt);
+  color: var(--d26-felt-ink);
+}
+
+:root[data-game="zdwa"][data-design="2026"] .app-nav-link[aria-current="page"] {
+  border-color: transparent;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+}
+
+/* ---------- Lobby ---------- */
+/* One dominant task first: start a table. Account and identity follow. */
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .lobby-intro h1 {
+  font-size: clamp(1.9rem, 4.2vw, 2.9rem);
+  line-height: 1.03;
+  letter-spacing: -.03em;
+  max-width: 22ch;
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .lobby-intro p:not(.eyebrow) {
+  max-width: 52ch;
+  color: var(--muted);
+}
+
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .setup-grid {
+  gap: 1.1rem;
+  align-items: start;
+}
+/* Side by side only where the account card keeps a readable width. */
+@media (min-width: 900px) {
+  :root[data-game="zdwa"][data-design="2026"] .lobby-page .setup-grid {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, .7fr);
+  }
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page #createGameCard { order: -1; }
+
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .create-game-card {
+  padding: 1.35rem 1.4rem 1.2rem;
+  border: 0;
+  box-shadow: var(--shadow-md);
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .create-game-card h2 {
+  font-size: 1.45rem;
+  margin-bottom: .9rem;
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .create-game-card legend,
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .create-game-card .passphrase-field > span {
+  font-weight: 650;
+  color: var(--text);
+}
+
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .choice-button {
+  min-height: 3rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-family: var(--d26-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  box-shadow: none;
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .choice-button .choice-check { display: none !important; }
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .choice-button[aria-checked="true"] {
+  border-color: var(--d26-felt);
+  background: color-mix(in oklab, var(--d26-felt) 10%, var(--surface));
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--d26-felt);
+}
+:root[data-game="zdwa"][data-design="2026"][data-theme="dark"] .lobby-page .choice-button[aria-checked="true"] {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface));
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .choice-button.hardcore-choice[aria-checked="true"] {
+  border-color: var(--hardcore);
+  background: var(--hardcore-soft);
+  box-shadow: inset 0 0 0 1px var(--hardcore);
+}
+
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .create-game-card #createBtn {
+  min-height: 3rem;
+  font-size: 1.05rem;
+  border-radius: var(--radius);
+}
+
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .player-setup-card {
+  border: 1px solid var(--d26-rule-strong);
+  background: transparent;
+  box-shadow: none;
+}
+
+:root[data-game="zdwa"][data-design="2026"] .lobby-page :is(.games-hub, .abandonment-leaderboard, .about-game) {
+  border: 0;
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .about-game {
+  background: transparent;
+  box-shadow: none;
+  padding-inline: .25rem;
+}
+
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .tab-btn {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  font-weight: 600;
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .tab-btn.active {
+  background: var(--d26-band);
+  color: var(--text);
+}
+
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .leaderboard-box :is(th, thead th) {
+  background: transparent;
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 650;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .leaderboard-box td { font-variant-numeric: tabular-nums; }
+/* The tracked capitals of "Punkte" need a little more than the old 4.35rem. */
+:root[data-game="zdwa"][data-design="2026"] .lobby-page .leaderboard-points-column { width: 4.75rem; }
+
+/* The identity pill follows the theme like the rest of the lobby. */
+:root[data-game="zdwa"][data-design="2026"] .lobby-page #authBadge {
+  border-color: var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+}
+:root[data-game="zdwa"][data-design="2026"] .lobby-page #authBadge .badge {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+:root[data-game="zdwa"][data-design="2026"] .online-dot { animation: none !important; }
+
+/* ---------- Spieltisch: Spielzettel ---------- */
+:root[data-game="zdwa"][data-design="2026"] .room-page .player-card {
+  border-color: transparent;
+  border-radius: 14px;
+  background: var(--d26-paper);
+  box-shadow: var(--shadow-md);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page .player-card.turn {
+  box-shadow: 0 0 0 2px var(--d26-brass), var(--shadow-md);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page .player-card .pc-total {
+  font-family: var(--d26-display);
+  font-weight: 800;
+  color: var(--text);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page .player-card .table-wrap {
+  border-color: transparent;
+  background: var(--d26-paper);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid :is(th, td) {
+  border-color: var(--d26-rule);
+}
+/* The second pixel of the header rule is an inset shadow: a 2px border would
+   make the header row taller than the responsive fit assumes, which shrinks
+   tablet rows below their readable minimum and makes the fit loop on phones. */
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid thead th {
+  background: var(--d26-paper);
+  color: var(--text);
+  border-bottom: 1px solid var(--d26-rule-strong);
+  box-shadow: inset 0 -1px 0 var(--d26-rule-strong);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid thead th:last-child { color: var(--d26-call); }
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid :is(th.sticky, td.desc.sticky) {
+  background: var(--d26-paper);
+  color: var(--text);
+  font-weight: 700;
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid :is(td.cell.compute, td.desc.compute) {
+  background: var(--d26-band);
+  color: var(--muted);
+  font-family: inherit;
+  font-weight: 700;
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid tr.is-compute:last-child :is(td.cell.compute, td.desc.compute) {
+  color: var(--text);
+  font-weight: 800;
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid tr.grp-end td { border-bottom-color: var(--d26-rule-strong); }
+
+/* Written scores look hand-entered; sums stay printed. */
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid td.cell:not(.compute) {
+  font-family: var(--d26-hand);
+  color: var(--d26-pen);
+  font-weight: 400;
+  background: var(--d26-paper);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid td.cell.clickable { background: var(--d26-paper); }
+
+/* Writable fields carry the points this roll would score (server preview). */
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid td.cell[data-preview-points] {
+  position: relative;
+  background: var(--d26-brass-soft);
+  color: var(--d26-brass-ink);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid td.cell[data-preview-points]::after {
+  content: attr(data-preview-points);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: .86em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--d26-brass-ink);
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid td.cell[data-preview-points="0"]::after { opacity: .5; }
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid td.cell[data-preview-best] {
+  box-shadow: inset 0 0 0 2px var(--d26-brass);
+}
+/* No spoilers while the dice are still tumbling. */
+:root[data-game="zdwa"][data-design="2026"] .room-page #scoreOut:has(#diceBar .die.shaking) td.cell[data-preview-points] { background: var(--d26-paper); box-shadow: none; }
+:root[data-game="zdwa"][data-design="2026"] .room-page #scoreOut:has(#diceBar .die.shaking) td.cell[data-preview-points]::after { opacity: 0; }
+
+@media (hover: hover) and (pointer: fine) {
+  :root[data-game="zdwa"][data-design="2026"] .room-page table.grid td.cell[data-preview-points]:hover {
+    background: color-mix(in oklab, var(--d26-brass) 32%, var(--d26-paper));
+  }
+  :root[data-game="zdwa"][data-design="2026"] .room-page table.grid td.cell.clickable:not([data-preview-points]):hover {
+    background: var(--surface-soft);
+  }
+}
+
+:root[data-game="zdwa"][data-design="2026"] .room-page td.cell.announce-pickable {
+  background: var(--d26-call-soft) !important;
+  color: var(--d26-call);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page td.cell.announced {
+  background: var(--d26-call-soft) !important;
+  color: var(--d26-call);
+  box-shadow: inset 0 0 0 2px var(--d26-call);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page td.cell.last-write:not(.admin-edited) {
+  background: color-mix(in oklab, var(--d26-pen) 9%, var(--d26-paper)) !important;
+  color: var(--d26-pen);
+}
+
+/* ---------- Spieltisch: Würfelteller ---------- */
+/* The whole action dock is the felt tray; the dice bar inside stays bare. */
+:root[data-game="zdwa"][data-design="2026"] .room-page .topbar {
+  border-color: transparent;
+  background: var(--d26-felt-surface);
+  color: var(--d26-felt-ink);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, .25), var(--shadow-md);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page .topbar .action-feedback {
+  color: color-mix(in oklab, var(--d26-felt-ink) 85%, transparent);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page #diceBar {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page :is(.chat-toggle, .chat-reactions-host) {
+  background: var(--d26-felt);
+  color: var(--d26-felt-ink);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page .room-header {
+  border-color: transparent;
+  background: var(--header-bg);
+}
+
+:root[data-game="zdwa"][data-design="2026"] .room-page button.die {
+  border: 0;
+  border-radius: 22%;
+  background: var(--d26-die);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .12), 0 4px 8px rgba(0, 0, 0, .28);
+  transition: transform 160ms var(--d26-ease-out), box-shadow 160ms var(--d26-ease-out);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page button.die svg rect { fill: var(--d26-die); stroke: none; }
+:root[data-game="zdwa"][data-design="2026"] .room-page button.die svg g { fill: var(--d26-pip); }
+:root[data-game="zdwa"][data-design="2026"] .room-page button.die.held {
+  border: 0;
+  background: var(--d26-die);
+  transform: translateY(-5px);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .12), 0 9px 14px rgba(0, 0, 0, .34), 0 0 0 3px var(--d26-brass);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page button.die.held:active:not(:disabled) { transform: translateY(-5px) scale(.97); }
+
+:root[data-game="zdwa"][data-design="2026"] .room-page :is(#announceBtnInline, #requestCorrectionBtn) {
+  border: 1px solid rgba(255, 255, 255, .32);
+  background: transparent;
+  color: var(--d26-felt-ink);
+  box-shadow: none;
+  font-weight: 700;
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page #announceBtnInline::before { color: #ff8a80; }
+:root[data-game="zdwa"][data-design="2026"] .room-page #diceBar.announce-mode #announceBtnInline,
+:root[data-game="zdwa"][data-design="2026"] .room-page #announceBtnInline[data-state="cancel"],
+:root[data-game="zdwa"][data-design="2026"] .room-page #announceBtnInline[data-state="write"] {
+  border-color: var(--d26-call);
+  background: var(--d26-call);
+  color: #fff;
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page #announceBtnInline[data-state="write"]::before,
+:root[data-game="zdwa"][data-design="2026"] .room-page #announceBtnInline[data-state="cancel"]::before { color: #fff; }
+:root[data-game="zdwa"][data-design="2026"] .room-page #rollBtnInline {
+  border: 0;
+  background: var(--d26-die);
+  color: #17201b;
+  font-weight: 800;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .18);
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page :is(#announceBtnInline, #rollBtnInline, #requestCorrectionBtn):disabled {
+  opacity: .5;
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-game="zdwa"][data-design="2026"] .room-page #rollBtnInline:not(:disabled):hover { background: #fff; }
+  :root[data-game="zdwa"][data-design="2026"] .room-page #announceBtnInline:not(:disabled):hover { border-color: rgba(255, 255, 255, .6); background: rgba(255, 255, 255, .06); }
+}
+:root[data-game="zdwa"][data-design="2026"] .room-page #diceBar button:focus-visible { outline-color: var(--d26-brass); }
+
+:root[data-game="zdwa"][data-design="2026"] .room-page .suggestion-btn {
+  border-color: var(--d26-brass);
+  background: var(--d26-brass-soft);
+  color: var(--d26-brass-ink);
+}
+
+/* Phone and tablet: the dock spans the screen edge, so it loses its corners. */
+@media (max-width: 1024px), (hover: none) and (pointer: coarse) {
+  :root[data-game="zdwa"][data-design="2026"] .room-page .topbar {
+    box-shadow: 0 -8px 24px -12px rgba(0, 0, 0, .35);
+  }
+  /* The docked bar has no spare height above the dice: held dice keep their
+     place and show the brass edge only. */
+  :root[data-game="zdwa"][data-design="2026"] .room-page button.die.held,
+  :root[data-game="zdwa"][data-design="2026"] .room-page button.die.held:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-game="zdwa"][data-design="2026"] button,
+  :root[data-game="zdwa"][data-design="2026"] .room-page button.die {
+    transition: background-color 150ms ease, border-color 150ms ease, opacity 150ms ease;
+  }
+  :root[data-game="zdwa"][data-design="2026"] button:active:not(:disabled),
+  :root[data-game="zdwa"][data-design="2026"] .room-page button.die.held,
+  :root[data-game="zdwa"][data-design="2026"] .room-page button.die.held:active:not(:disabled) {
+    transform: none;
+  }
+}

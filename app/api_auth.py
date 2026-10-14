@@ -79,6 +79,7 @@ from .web_push import (
     update_web_push_preferences,
     web_push_subscription_status,
 )
+from .zdwa_design import claim_design_prompt, design_payload
 
 router = APIRouter(prefix="/api", tags=["authentication"])
 
@@ -141,6 +142,10 @@ class UserPreferencesRequest(BaseModel):
     lobby_chat_popups: bool | None = None
     lobby_chat_enabled: bool | None = None
     preferred_language: Literal["de", "en"] | None = None
+
+
+class DesignPreferenceRequest(BaseModel):
+    zdwa_design: Literal["new", "old"]
 
 
 class LanguagePreferenceRequest(BaseModel):
@@ -217,6 +222,9 @@ def auth_me(request: Request, response: Response):
         # Guests need the same server-derived product availability as signed-in
         # visitors so the app switcher can open a public Zilch table directly.
         "game_access": public_game_access_payload(identity),
+        # Guests choose the ZDWA design in their browser; this only says
+        # whether the 2026 design may be offered on this server.
+        "design": design_payload(identity),
         "registration": {**registration_public_config(), "email_enabled": account_email_available()},
         "passkeys": passkeys,
     }
@@ -520,6 +528,38 @@ def auth_update_language(payload: LanguagePreferenceRequest, request: Request):
         record_engagement_safely(identity.user_id, "settings_saved")
         record_engagement_safely(identity.user_id, "language_changed")
     return result
+
+
+@router.put("/auth/preferences/design")
+def auth_update_design(payload: DesignPreferenceRequest, request: Request):
+    identity = require_user(request)
+    require_csrf(request, identity)
+    with session_scope() as db:
+        user = db.get(User, identity.user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
+        changed = user.zdwa_design != payload.zdwa_design
+        user.zdwa_design = payload.zdwa_design
+        # An explicit choice also answers the one-time question.
+        if user.zdwa_design_prompted_at is None:
+            user.zdwa_design_prompted_at = utcnow()
+        user.updated_at = utcnow()
+        db.flush()
+        result = {"zdwa_design": user.zdwa_design}
+    if changed:
+        record_engagement_safely(identity.user_id, "settings_saved")
+    return result
+
+
+@router.post("/auth/design-prompt")
+def auth_claim_design_prompt(request: Request):
+    """Return ``show: true`` exactly once per account after the design release."""
+    identity = require_user(request)
+    require_csrf(request, identity)
+    if not design_payload(identity)["zdwa_2026_available"]:
+        return {"show": False}
+    with session_scope() as db:
+        return {"show": claim_design_prompt(db, identity.user_id)}
 
 
 @router.put("/auth/preferences/lobby-chat")

@@ -545,10 +545,20 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
       chatToggle: rect("#chatToggle"),
       chatReactions: rect("#chatReactionsBar"),
       die: rect("#diceBar .die"),
-      heldDieBorderWidth: (() => {
+      heldDie: (() => {
         const die = document.querySelector("#diceBar .die");
+        // The held ring animates; read its settled value.
+        die.style.transition = "none";
         die.classList.add("held");
-        return window.getComputedStyle(die).borderTopWidth;
+        const style = window.getComputedStyle(die);
+        const result = {
+          design: document.documentElement.dataset.design || "",
+          border: style.borderTopWidth,
+          shadow: style.boxShadow,
+          transform: style.transform,
+        };
+        die.style.transition = "";
+        return result;
       })(),
       card: rect(".player-card"),
       lastRow: {
@@ -581,7 +591,12 @@ test("mobile game layout keeps totals above the dice bar and has no browser erro
   expect(layout.die.width).toBeGreaterThanOrEqual(65);
   expect(layout.die.width).toBeLessThanOrEqual(75);
   expect(layout.die.height).toBe(layout.die.width);
-  expect(layout.heldDieBorderWidth).toBe("2px");
+  // The 2026 design (default) marks held dice with a 3px brass ring instead of
+  // the old 2px border, and docked phone dice keep their place.
+  expect(layout.heldDie.design).toBe("2026");
+  expect(layout.heldDie.border).toBe("0px");
+  expect(layout.heldDie.shadow).toMatch(/rgb\(\d+, \d+, \d+\) 0px 0px 0px 3px$/);
+  expect(layout.heldDie.transform).toBe("none");
   expect(layout.tableContentHeight).toBeLessThanOrEqual(layout.tableWrap.height + 1);
   expect(layout.scrollHeight).toBeLessThanOrEqual(layout.viewportHeight);
 

@@ -241,7 +241,8 @@ export function initializeReleaseNotes({ context }) {
   document.addEventListener("visibilitychange", () => { if (!document.hidden) void refresh(); });
   new MutationObserver(maybeAnnounce).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["hidden", "open"] });
   window.setInterval(refresh, 60000);
-  window.ZDWA_RELEASE_NOTES = { refresh };
+  // `busy` lets later lobby prompts wait until a pending announcement is open.
+  window.ZDWA_RELEASE_NOTES = { refresh, busy: () => inFlight };
   void refresh();
   return window.ZDWA_RELEASE_NOTES;
 }
