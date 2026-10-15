@@ -22,6 +22,34 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+## 2.52.0 — NEXUS für Mission Control / NEXUS for Mission Control — 2026-10-15
+
+**Deutsch:** Berechtigte Dashboard-Nutzer können im Designwechsel zusätzlich
+**NEXUS** wählen: eine dunkle Kommandozentrale mit prominenten Kennzahlen,
+verständlichem Messkontext und für Handy, Tablet und Desktop angepassten
+Anordnungen. **Mission Control** bleibt der Standard; das bisherige Design
+und **LCARS** sind jederzeit auswählbar. Die Dashboard-Wahl wird unabhängig
+vom Spieldesign in diesem Browser gespeichert.
+Ein Stern verschiebt Kennzahlen und Analysebereiche in den reservierten
+Favoritenbereich oben. Beim Entfernen kehren sie an ihren ursprünglichen
+Platz zurück. Die tatsächlichen Bereiche behalten ihre Aktualisierung,
+Filter und Diagramminteraktion. Gespeichert werden nur stabile
+Favoritenkennungen je Dashboard-Nutzer in diesem Browser, keine Messwerte.
+Zugriffsrechte, Messdefinitionen und Spielregeln bleiben erhalten.
+
+**English:** Authorized dashboard viewers can now also select **NEXUS** in
+the design switcher: a dark command console with prominent KPIs, clear
+measurement context and layouts tailored to phones, tablets and desktops.
+**Mission Control** remains the default; the original design and **LCARS**
+can be selected at any time. The dashboard choice is saved in this browser,
+independently of game appearance.
+A star moves metrics and analysis panels into the reserved Favorites area at
+the top. Removing it returns them to their original position. The actual
+panels retain their refreshes, filters and chart interaction. Only stable
+favorite identifiers are saved for each dashboard viewer in this browser,
+without metric values. Access rights, measurement definitions and game rules
+are preserved.
+
 ## 2.51.0 — Neues ZDWA-Design für alle / New ZDWA design for everyone — 2026-10-14
 
 **Deutsch:** Das neue Design ist jetzt für alle ZDWA-Seiten der Standard:

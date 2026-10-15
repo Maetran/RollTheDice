@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.51.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.52.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.51.0 | 2026-10-14 | minor | Neues ZDWA-Design für alle, mit Wahl zwischen neuem und bisherigem Design. / New ZDWA design for everyone, with a choice between the new and the previous design. | [0a442df](https://github.com/Maetran/RollTheDice/commit/0a442dfad8964405ebc0bfdfefdbd8fd50e0cbb7) |
 | 2.50.0 | 2026-10-13 | minor | ZDWA-Design 2026 als Vorschau nur für den Owner, mit Punktevorschau im Spielzettel. / ZDWA design 2026 as an owner-only preview, with score previews on the score sheet. | [edb2bfd](https://github.com/Maetran/RollTheDice/commit/edb2bfde9550477afea93bbdb58efb82db6a55bc) |
 | 2.49.2 | 2026-10-11 | patch | Verlässlicher Spielzettel-Fokus bei Mehrspieler-Zügen / Reliable score sheet focus during multiplayer turns | [2866941](https://github.com/Maetran/RollTheDice/commit/2866941ba5fd839f01301159aa378aa0047d9efd) |
 | 2.49.1 | 2026-10-11 | patch | Verlässliche Besucher-IP und geschützter Zugang über Cloudflare / Reliable visitor IP handling and protected Cloudflare ingress | [df7a0ed](https://github.com/Maetran/RollTheDice/commit/df7a0ed21e06a5f29bf721445f69ae13d90cc601) |

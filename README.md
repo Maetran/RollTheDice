@@ -81,10 +81,18 @@ country details, interactive traffic charts, a UTC activity heatmap, page
 engagement and observed page journeys. Animation can be paused and respects
 reduced motion. Country markers represent country-level aggregates, not
 individual visitors or exact locations.
-Choose **Mission Control** or **LCARS** with the dashboard's own theme
-switcher. The choice is saved locally in this browser, independently of game
-appearance preferences. Both designs offer the same charts, analysis and
-access controls.
+Choose **Mission Control**, **LCARS** or the new **NEXUS** with the dashboard's
+own design switcher. Mission Control remains the default, and you can switch
+back at any time. The choice is saved locally in this browser, independently
+of game appearance preferences. All three designs offer the same charts,
+analysis and access controls.
+NEXUS presents prominent KPIs with their measurement context in a dark command
+console, with layouts tailored to phones, tablets and desktops. Star metrics
+or analysis panels to move them into the reserved **Favorites** area at the
+top; removing the star returns them to their original section. These are the
+live panels, so filters, refreshes and chart interactions still work. Favorites
+are saved separately for each dashboard viewer in this browser, using only
+stable panel identifiers rather than copies of metric values.
 Device analysis groups anonymous tab visits by broad device class, operating
 system and device family, such as iPad, iPhone, Android or Fire tablet, Mac
 and Windows PC. Recognition is approximate. Older and unrecognized visits
@@ -159,10 +167,19 @@ Verlaufsgrafiken, UTC-Aktivitätsraster, Seitenzeit und beobachtete Seitenwege
 helfen beim Vertiefen. Länderpunkte zeigen zusammengefasste Messwerte, keine
 einzelnen Personen oder genauen Aufenthaltsorte. Animation lässt sich
 pausieren und berücksichtigt reduzierte Bewegung.
-Der eigene Designwechsel bietet **Mission Control** und **LCARS**. Die Wahl
-wird lokal in diesem Browser gespeichert und verändert die Darstellung der
-Spiele nicht. Beide Designs bieten dieselben Diagramme, Analysen und
-Zugriffsregeln.
+Der eigene Designwechsel bietet **Mission Control**, **LCARS** und das neue
+**NEXUS**. Mission Control bleibt der Standard; ein Rückwechsel ist jederzeit
+möglich. Die Wahl wird lokal in diesem Browser gespeichert und verändert die
+Darstellung der Spiele nicht. Alle drei Designs bieten dieselben Diagramme,
+Analysen und Zugriffsregeln.
+NEXUS stellt wichtige Kennzahlen samt Messkontext in einer dunklen
+Kommandozentrale in den Vordergrund, mit eigenen Anordnungen für Handy, Tablet
+und Desktop. Kennzahlen und Analysebereiche lassen sich mit einem Stern in den
+reservierten **Favoritenbereich** oben verschieben; ohne Stern kehren sie an
+ihren bisherigen Platz zurück. Es bleiben die aktuellen Bereiche mit
+funktionierenden Filtern, Aktualisierungen und interaktiven Diagrammen.
+Favoriten werden je Dashboard-Nutzer in diesem Browser gespeichert, nur als
+stabile Bereichskennungen und ohne Kopien der Messwerte.
 Die Geräteanalyse ordnet anonyme Tab-Besuche nach Geräteklasse,
 Betriebssystem und Gerätefamilie ein, etwa iPad, iPhone, Android- oder
 Fire-Tablet, Mac und Windows-PC. Die Erkennung ist näherungsweise. Ältere und

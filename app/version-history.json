@@ -2084,5 +2084,12 @@
     "date": "2026-10-13",
     "bump": "minor",
     "summary": "ZDWA-Design 2026 als Vorschau nur für den Owner, mit Punktevorschau im Spielzettel. / ZDWA design 2026 as an owner-only preview, with score previews on the score sheet."
+  },
+  {
+    "version": "2.51.0",
+    "revision": "0a442dfad8964405ebc0bfdfefdbd8fd50e0cbb7",
+    "date": "2026-10-14",
+    "bump": "minor",
+    "summary": "Neues ZDWA-Design für alle, mit Wahl zwischen neuem und bisherigem Design. / New ZDWA design for everyone, with a choice between the new and the previous design."
   }
 ]

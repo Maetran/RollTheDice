@@ -1,10 +1,10 @@
 {
-  "version": "2.51.0",
+  "version": "2.52.0",
   "bump": "minor",
-  "date": "2026-10-14",
-  "previous_revision": "edb2bfde9550477afea93bbdb58efb82db6a55bc",
+  "date": "2026-10-15",
+  "previous_revision": "0a442dfad8964405ebc0bfdfefdbd8fd50e0cbb7",
   "summary": {
-    "de": "Neues ZDWA-Design für alle, mit Wahl zwischen neuem und bisherigem Design.",
-    "en": "New ZDWA design for everyone, with a choice between the new and the previous design."
+    "de": "NEXUS als zusätzliches Dashboard-Design mit KPI-Fokus und persönlichen Favoriten.",
+    "en": "NEXUS as an additional dashboard design with prominent KPIs and personal favorites."
   }
 }

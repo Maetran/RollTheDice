@@ -14,6 +14,21 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
   let heatmapMetric = "page_views";
   const visibleSeries = new Set(["sessions", "page_views"]);
   let serverSamples = [];
+  const fixedTrafficGeometry = { width: 720, height: 230, left: 43, right: 697, top: 16, bottom: 195, axisX: 32, labelY: 222 };
+  let trafficGeometry = fixedTrafficGeometry;
+  let layoutFrame = 0;
+  const isNexus = () => document.body.dataset.dashboardDesign === "nexus";
+  const plotX = (geometry, index, length) => geometry.left + index * (geometry.right - geometry.left) / Math.max(1, length - 1);
+  const plotY = (geometry, value, maximum) => geometry.bottom - count(value) / maximum * (geometry.bottom - geometry.top);
+
+  function dailyGeometry(maximum) {
+    if (!isNexus()) return fixedTrafficGeometry;
+    const width = $("dailyChart").clientWidth || 720;
+    const height = $("dailyChart").clientHeight || 255;
+    const widestLabel = Math.max(...Array.from({ length: 5 }, (_, index) => number(maximum * index / 4).length));
+    const left = Math.min(width * .4, Math.max(36, Math.ceil(widestLabel * 7.5) + 14));
+    return { width, height, left, right: width - 12, top: 16, bottom: height - 35, axisX: left - 10, labelY: height - 8 };
+  }
 
   const blank = (title = "Noch keine Messwerte", description = "Die Besuchsmessung beginnt mit diesem Release.") => `<div class="empty-state"><span class="empty-icon" aria-hidden="true">⌁</span><strong>${e(t(title))}</strong><p>${e(t(description))}</p></div>`;
   const key = row => `${row.game || "zdwa"}:${row.page}`;
@@ -31,8 +46,8 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
     const svg = $("dailyChart").querySelector("svg");
     if (!svg) return;
     const max = Number(svg.dataset.maximum);
-    const x = 43 + dateIndex * 654 / Math.max(1, rows.length - 1);
-    const y = value => 16 + 179 - count(value) / max * 179;
+    const x = plotX(trafficGeometry, dateIndex, rows.length);
+    const y = value => plotY(trafficGeometry, value, max);
     $("dailyCursorLine").setAttribute("x1", x);
     $("dailyCursorLine").setAttribute("x2", x);
     for (const metric of ["sessions", "page_views"]) {
@@ -48,13 +63,17 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
     const maxValue = Math.max(1, ...rows.flatMap(row => [...visibleSeries].map(metric => count(row[metric]))));
     const scale = 10 ** Math.floor(Math.log10(maxValue));
     const maximum = Math.max(4, Math.ceil(maxValue / scale) * scale);
-    const x = index => 43 + index * 654 / Math.max(1, rows.length - 1);
-    const y = value => 195 - count(value) / maximum * 179;
+    const geometry = dailyGeometry(maximum);
+    trafficGeometry = geometry;
+    const x = index => plotX(geometry, index, rows.length);
+    const y = value => plotY(geometry, value, maximum);
     const points = metric => rows.map((row, index) => `${x(index).toFixed(2)},${y(row[metric]).toFixed(2)}`).join(" ");
-    const axes = Array.from({ length: 5 }, (_, index) => `<line class="chart-gridline" x1="43" x2="697" y1="${y(maximum * index / 4)}" y2="${y(maximum * index / 4)}"/><text class="chart-axis" x="32" y="${y(maximum * index / 4) + 3}" text-anchor="end">${number(maximum * index / 4)}</text>`).join("");
-    const labels = [...new Set([0, Math.floor((rows.length - 1) / 3), Math.floor((rows.length - 1) * 2 / 3), rows.length - 1])].map(index => `<text class="chart-axis" x="${x(index)}" y="222" text-anchor="${index === 0 ? "start" : index === rows.length - 1 ? "end" : "middle"}">${e(dayDate(rows[index].date).replace(/[^0-9]*\d{4}$/, ""))}</text>`).join("");
+    const axes = Array.from({ length: 5 }, (_, index) => `<line class="chart-gridline" x1="${geometry.left}" x2="${geometry.right}" y1="${y(maximum * index / 4)}" y2="${y(maximum * index / 4)}"/><text class="chart-axis" x="${geometry.axisX}" y="${y(maximum * index / 4) + 3}" text-anchor="end">${number(maximum * index / 4)}</text>`).join("");
+    const ticks = isNexus() ? Math.min(4, Math.max(2, Math.floor((geometry.right - geometry.left) / 90) + 1)) : 4;
+    const labelIndexes = [...new Set(Array.from({ length: ticks }, (_, index) => Math.floor((rows.length - 1) * index / (ticks - 1))))];
+    const labels = labelIndexes.map(index => `<text class="chart-axis" x="${x(index)}" y="${geometry.labelY}" text-anchor="${index === 0 ? "start" : index === rows.length - 1 ? "end" : "middle"}">${e(dayDate(rows[index].date).replace(/[^0-9]*\d{4}$/, ""))}</text>`).join("");
     const lines = [...visibleSeries].map(metric => `<polyline class="chart-line chart-line-draw" stroke="${metric === "sessions" ? "#6ee7de" : "#f4c77b"}" points="${points(metric)}"/><circle data-marker="${metric}" r="4" fill="${metric === "sessions" ? "#6ee7de" : "#f4c77b"}" stroke="#101925" stroke-width="2"/>`).join("");
-    $("dailyChart").innerHTML = `<svg viewBox="0 0 720 230" data-maximum="${maximum}" role="img" aria-label="${e(t("Besuche und Seitenaufrufe je UTC-Tag"))}"><defs><linearGradient id="trafficFade" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#6ee7de" stop-opacity=".25"/><stop offset="1" stop-color="#6ee7de" stop-opacity="0"/></linearGradient></defs>${axes}${visibleSeries.has("sessions") ? `<polygon points="43,195 ${points("sessions")} ${x(rows.length - 1)},195" fill="url(#trafficFade)"/>` : ""}${labels}<line id="dailyCursorLine" class="chart-cursor" y1="16" y2="195"/>${lines}</svg>`;
+    $("dailyChart").innerHTML = `<svg viewBox="0 0 ${geometry.width} ${geometry.height}" data-maximum="${maximum}" data-plot-left="${geometry.left}" data-plot-right="${geometry.right}" data-plot-top="${geometry.top}" data-plot-bottom="${geometry.bottom}" role="img" aria-label="${e(t("Besuche und Seitenaufrufe je UTC-Tag"))}"><defs><linearGradient id="trafficFade" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#6ee7de" stop-opacity=".25"/><stop offset="1" stop-color="#6ee7de" stop-opacity="0"/></linearGradient></defs>${axes}${visibleSeries.has("sessions") ? `<polygon points="${geometry.left},${geometry.bottom} ${points("sessions")} ${x(rows.length - 1)},${geometry.bottom}" fill="url(#trafficFade)"/>` : ""}${labels}<line id="dailyCursorLine" class="chart-cursor" y1="${geometry.top}" y2="${geometry.bottom}"/>${lines}</svg>`;
     $("dailyCursor").max = rows.length - 1;
     const previousIndex = rows.findIndex(row => row.date === selectedDate);
     trafficSelection(previousIndex < 0 ? rows.length - 1 : previousIndex);
@@ -171,10 +190,10 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
     $("deviceDonut").innerHTML = `<svg viewBox="0 0 110 110" role="img" aria-label="${e(t("Geräteverteilung nach Besuchen"))}"><g transform="rotate(-90 55 55)">${segments}</g><text x="55" y="54" text-anchor="middle" class="donut-count">${number(total)}</text><text x="55" y="70" text-anchor="middle" class="donut-caption">${e(t("Besuche"))}</text></svg>`;
   }
 
-  function serverTrend() {
+  function serverTrend(recordSample = true) {
     const snapshot = data.server || {};
     const measurement = snapshot.measurement_at || data.generated_at;
-    if (serverSamples.at(-1)?.time !== measurement) serverSamples.push({ time: measurement, cpu: snapshot.cpu?.percent, memory: snapshot.memory?.percent, disk: snapshot.disk?.percent });
+    if (recordSample && serverSamples.at(-1)?.time !== measurement) serverSamples.push({ time: measurement, cpu: snapshot.cpu?.percent, memory: snapshot.memory?.percent, disk: snapshot.disk?.percent });
     serverSamples = serverSamples.slice(-120);
     $("serverTrendNote").textContent = `${t("Nur Messpunkte seit dem Öffnen dieses Dashboards. Kein gespeicherter Serververlauf.")} ${serverSamples.length ? `${t("Beginn")}: ${new Intl.DateTimeFormat(locale(), { hour: "2-digit", minute: "2-digit" }).format(new Date(serverSamples[0].time))}` : ""}`;
     if (serverSamples.length < 2) { $("serverTrend").innerHTML = blank("Verlauf beginnt jetzt", "Nach zwei Aktualisierungen erscheinen die ersten Verbindungslinien."); return; }
@@ -182,8 +201,14 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
     if (!series.length) { $("serverTrend").innerHTML = blank("Noch keine Messwerte", "Striche bedeuten: Messwert nicht verfügbar."); return; }
     const first = new Date(serverSamples[0].time).getTime();
     const last = new Date(serverSamples.at(-1).time).getTime();
-    const x = row => 40 + (new Date(row.time).getTime() - first) / Math.max(1, last - first) * 650;
-    const y = value => 110 - count(value) / 100 * 88;
+    const nexus = isNexus();
+    const width = nexus ? $("serverTrend").clientWidth || 720 : 720;
+    const height = nexus ? $("serverTrend").clientHeight || 255 : 137;
+    const geometry = nexus
+      ? { left: 48, right: width - 12, top: 18, bottom: height - 28 }
+      : { left: 40, right: 690, top: 22, bottom: 110 };
+    const x = row => geometry.left + (new Date(row.time).getTime() - first) / Math.max(1, last - first) * (geometry.right - geometry.left);
+    const y = value => plotY(geometry, value, 100);
     const colors = { cpu: "#6ee7de", memory: "#9dbcd4", disk: "#f4c77b" };
     const lines = series.map(metric => {
       const paths = [];
@@ -195,17 +220,43 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
       }
       return `<path d="${paths.join(" ")}" fill="none" stroke="${colors[metric]}" stroke-width="2"/>`;
     }).join("");
-    const axis = [0, 50, 100].map(value => `<line class="chart-gridline" x1="40" x2="690" y1="${y(value)}" y2="${y(value)}"/><text class="chart-axis" x="30" y="${y(value) + 3}" text-anchor="end">${value}%</text>`).join("");
-    $("serverTrend").innerHTML = `<svg viewBox="0 0 720 137" role="img" aria-label="${e(t("Serverauslastung seit dem Öffnen"))}">${axis}${lines}</svg>`;
+    const axis = [0, 50, 100].map(value => `<line class="chart-gridline" x1="${geometry.left}" x2="${geometry.right}" y1="${y(value)}" y2="${y(value)}"/><text class="chart-axis" x="${geometry.left - 10}" y="${y(value) + 3}" text-anchor="end">${value}%</text>`).join("");
+    $("serverTrend").innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${e(t("Serverauslastung seit dem Öffnen"))}">${axis}${lines}</svg>`;
   }
+
+  function refreshLayout() {
+    if (!data || layoutFrame) return;
+    layoutFrame = window.requestAnimationFrame(() => {
+      layoutFrame = 0;
+      if (!data) return;
+      traffic();
+      serverTrend(false);
+    });
+  }
+
+  if (window.ResizeObserver) {
+    const dimensions = new WeakMap();
+    const observer = new window.ResizeObserver(entries => {
+      let changed = false;
+      for (const entry of entries) {
+        const size = { width: entry.contentRect.width, height: entry.contentRect.height };
+        const previous = dimensions.get(entry.target);
+        if (!previous || Math.abs(previous.width - size.width) > .5 || Math.abs(previous.height - size.height) > .5) changed = true;
+        dimensions.set(entry.target, size);
+      }
+      if (changed && isNexus()) refreshLayout();
+    });
+    observer.observe($("dailyChart"));
+    observer.observe($("serverTrend"));
+  } else window.addEventListener("resize", () => { if (isNexus()) refreshLayout(); });
 
   $("dailyCursor").addEventListener("input", event => trafficSelection(Number(event.target.value)));
   $("dailyChart").addEventListener("pointermove", event => {
     const svg = $("dailyChart").querySelector("svg");
     if (!svg || !data?.daily?.length) return;
     const box = svg.getBoundingClientRect();
-    const position = (event.clientX - box.left) / box.width * 720;
-    trafficSelection(Math.round((position - 43) / 654 * (data.daily.length - 1)));
+    const position = (event.clientX - box.left) / box.width * trafficGeometry.width;
+    trafficSelection(Math.round((position - trafficGeometry.left) / (trafficGeometry.right - trafficGeometry.left) * (data.daily.length - 1)));
   });
   $("trafficSeries").addEventListener("click", event => {
     const button = event.target.closest("[data-series]");
@@ -231,6 +282,14 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
 
   return {
     update(next) { data = next; traffic(); heatmap(); bubbles(); journeys(); devices(); serverTrend(); },
-    resetSession() { data = null; serverSamples = []; $("serverTrend").innerHTML = ""; $("serverTrendNote").textContent = ""; },
+    refreshLayout,
+    resetSession() {
+      data = null;
+      serverSamples = [];
+      if (layoutFrame) window.cancelAnimationFrame(layoutFrame);
+      layoutFrame = 0;
+      $("serverTrend").innerHTML = "";
+      $("serverTrendNote").textContent = "";
+    },
   };
 }

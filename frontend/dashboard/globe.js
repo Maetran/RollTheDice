@@ -1,6 +1,33 @@
 import world from "./world-map.json";
 
 const PALETTES = {
+  "nexus": {
+    "land": "rgba(111,156,74,.34)",
+    "coast": "rgba(196,242,121,.58)",
+    "grid": "rgba(145,180,123,.19)",
+    "backgroundStart": "#0b140e",
+    "backgroundEnd": "#0b140e",
+    "texture": "rgba(166,194,135,.14)",
+    "bracket": "rgba(196,242,121,.25)",
+    "markerOutline": "#101a0e",
+    "selectedLabel": "#efbd78",
+    "atmosphereCore": "rgba(155,196,99,.1)",
+    "atmosphereMiddle": "rgba(126,158,92,.04)",
+    "atmosphereEdge": "rgba(126,158,92,0)",
+    "orbitalRing": "rgba(169,197,133,.23)",
+    "oceanStart": "#273b22",
+    "oceanMiddle": "#172a19",
+    "oceanEnd": "#0d1c12",
+    "horizon": "rgba(196,242,121,.42)",
+    "mapOcean": "#101e14",
+    "mapLand": "rgba(111,156,74,.38)",
+    "mapCoast": "rgba(196,242,121,.54)",
+    "mapGrid": "rgba(145,180,123,.22)",
+    "mapBorder": "rgba(196,242,121,.35)",
+    "mapLabels": "#abc49b",
+    "marker": "196,242,121",
+    "selected": "239,189,120"
+  },
   "mission": {
     "land": "rgba(54,137,139,.32)",
     "coast": "rgba(113,229,215,.43)",

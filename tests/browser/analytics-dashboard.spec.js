@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { readFile } = require('node:fs/promises');
+const { mkdir, readFile } = require('node:fs/promises');
 
 test.use({ serviceWorkers: 'block' });
 
@@ -50,23 +50,25 @@ function sampleAnalytics(game = 'all', days = 7) {
   };
 }
 
-async function mockedDashboard(page, language) {
+async function mockedDashboard(page, language, options = {}) {
   await page.addInitScript(language => localStorage.setItem('zdwa_language', language), language);
-  const state = { calls: [], fail: false, empty: false, permitted: true, authCalls: 0, coverage: 'complete', unknownOnly: false, cpuUnavailable: false, contextUnknown: false, requestsUnmeasured: false, requestOriginsUnknown: false, requestDropped: 0, design: 'measured', designMode: 'all' };
+  const state = { calls: [], fail: false, empty: false, permitted: true, userId: 7, liveSessions: 4, authCalls: 0, coverage: 'complete', unknownOnly: false, cpuUnavailable: false, contextUnknown: false, requestsUnmeasured: false, requestOriginsUnknown: false, requestDropped: 0, design: 'measured', designMode: 'all', ...options };
   // This fixture supplies representative telemetry for visual/interaction QA.
   // Authorization is separately tested below against the real backend.
   await page.route('**/admin/dashboard', async route => route.fulfill({ contentType: 'text/html', body: await readFile('app/static/dashboard.html', 'utf8') }));
   await page.route('**/api/auth/me', route => {
     state.authCalls += 1;
-    return route.fulfill({ json: { authenticated: true, user: { id: 7, username: 'GrantedViewer', is_founder: false, is_admin: false, can_view_analytics: state.permitted, analytics_access: state.permitted, preferences: { preferred_language: language } } } });
+    return route.fulfill({ json: { authenticated: true, user: { id: state.userId, username: 'GrantedViewer', is_founder: false, is_admin: false, can_view_analytics: state.permitted, analytics_access: state.permitted, preferences: { preferred_language: language } } } });
   });
   await page.route('**/api/admin/analytics?*', async route => {
     const query = new URL(route.request().url()).searchParams;
     const game = query.get('game');
     const days = Number(query.get('days'));
     state.calls.push({ game, days });
+    if (!state.permitted) return route.fulfill({ status: 403, json: { detail: 'Forbidden' } });
     if (state.fail) return route.fulfill({ status: 503, json: { detail: 'unavailable' } });
     const data = sampleAnalytics(game, days);
+    data.overview.live_sessions = state.liveSessions;
     data.generated_at = new Date(Date.parse(data.generated_at) + (state.calls.length - 1) * 30000).toISOString();
     data.server.measurement_at = data.generated_at;
     data.comparison.previous_data_coverage = state.coverage;
@@ -103,7 +105,7 @@ async function mockedDashboard(page, language) {
     await route.fulfill({ json: data });
   });
   await page.goto('/admin/dashboard');
-  await expect(page.locator('#connectionLabel')).toHaveText(language === 'en' ? 'Telemetry connected' : 'Telemetrie verbunden');
+  if (state.permitted) await expect(page.locator('#connectionLabel')).toHaveText(language === 'en' ? 'Telemetry connected' : 'Telemetrie verbunden');
   return state;
 }
 
@@ -115,6 +117,62 @@ async function expectDashboardFits(page, width) {
     expect(item.right, JSON.stringify(item)).toBeLessThanOrEqual(width + 1);
     expect(item.height, JSON.stringify(item)).toBeGreaterThanOrEqual(40);
   }
+}
+
+async function expectReadableResponsivePlot(page, id) {
+  const readGeometry = () => page.locator(`#${id}`).evaluate(element => {
+    const svg = element.querySelector('svg');
+    const box = svg.getBoundingClientRect();
+    const fonts = [...svg.querySelectorAll('.chart-axis')].map(label => {
+      const matrix = label.getScreenCTM();
+      return parseFloat(getComputedStyle(label).fontSize) * Math.hypot(matrix.c, matrix.d);
+    });
+    return { width: element.clientWidth, height: element.clientHeight, svgWidth: box.width, svgHeight: box.height, viewWidth: svg.viewBox.baseVal.width, viewHeight: svg.viewBox.baseVal.height, fonts };
+  });
+  await expect.poll(async () => {
+    const geometry = await readGeometry();
+    return Math.max(Math.abs(geometry.viewWidth - geometry.width), Math.abs(geometry.viewHeight - geometry.height), Math.abs(geometry.svgWidth - geometry.viewWidth), Math.abs(geometry.svgHeight - geometry.viewHeight));
+  }, { message: `${id} redraws at its available size after resize` }).toBeLessThanOrEqual(2);
+  const geometry = await readGeometry();
+  expect(Math.abs(geometry.viewWidth - geometry.width), `${id} viewBox fills available width`).toBeLessThanOrEqual(2);
+  expect(Math.abs(geometry.viewHeight - geometry.height), `${id} viewBox fills available height`).toBeLessThanOrEqual(2);
+  expect(Math.abs(geometry.svgWidth - geometry.viewWidth), `${id} labels keep their intended horizontal scale`).toBeLessThanOrEqual(2);
+  expect(Math.abs(geometry.svgHeight - geometry.viewHeight), `${id} has no vertical letterboxing`).toBeLessThanOrEqual(2);
+  expect(geometry.fonts.length).toBeGreaterThan(0);
+  for (const font of geometry.fonts) expect(font, `${id} effective axis font size`).toBeGreaterThanOrEqual(11);
+}
+
+async function expectPannableReadableChart(page, id, minimumWidth) {
+  const geometry = await page.locator(`#${id}`).evaluate(element => {
+    const svg = element.querySelector('svg');
+    const fonts = [...svg.querySelectorAll('text')].map(label => {
+      const matrix = label.getScreenCTM();
+      return parseFloat(getComputedStyle(label).fontSize) * Math.hypot(matrix.c, matrix.d);
+    });
+    element.scrollLeft = element.scrollWidth;
+    const panned = element.scrollLeft;
+    element.scrollLeft = 0;
+    return { overflow: getComputedStyle(element).overflowX, width: element.clientWidth, scrollWidth: element.scrollWidth, svgWidth: svg.getBoundingClientRect().width, panned, fonts };
+  });
+  expect(geometry.overflow, `${id} provides its own horizontal pan`).toBe('auto');
+  expect(geometry.svgWidth).toBeGreaterThanOrEqual(minimumWidth);
+  expect(geometry.scrollWidth).toBeGreaterThan(geometry.width);
+  expect(geometry.panned).toBeGreaterThan(0);
+  expect(geometry.fonts.length).toBeGreaterThan(0);
+  for (const font of geometry.fonts) expect(font, `${id} effective label font size`).toBeGreaterThanOrEqual(11);
+}
+
+async function serverPathPointCounts(page) {
+  return page.locator('#serverTrend svg path[stroke]').evaluateAll(paths => paths.map(path => ({ stroke: path.getAttribute('stroke'), points: (path.getAttribute('d').match(/[ML]/g) || []).length })));
+}
+
+async function expectReadableNexusLabels(page) {
+  const labels = await page.locator('.mission-brand small, .nexus-wordmark, .hour-label, .hour-total, .geo-stage-hint, .geo-pause, .page-row').evaluateAll(elements => elements.map(element => ({
+    text: element.textContent.trim().slice(0, 80),
+    size: parseFloat(getComputedStyle(element).fontSize),
+  })));
+  expect(labels.length).toBeGreaterThan(40);
+  for (const label of labels) expect(label.size, JSON.stringify(label)).toBeGreaterThanOrEqual(11);
 }
 
 for (const language of ['de', 'en']) {
@@ -506,10 +564,10 @@ for (const language of ['de', 'en']) {
     expect(state.calls).toHaveLength(queries + 1);
   });
 
-  test(`${language}: both designs keep globe, map and charts interactive under pause and reduced motion`, async ({ page }) => {
+  test(`${language}: all designs keep globe, map and charts interactive under pause and reduced motion`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 1000 });
     const state = await mockedDashboard(page, language);
-    for (const design of ['mission', 'lcars']) {
+    for (const design of ['mission', 'lcars', 'nexus']) {
       await page.locator('#dashboardDesign').selectOption(design);
       await page.locator('#dashboardMotion').click();
       await expect(page.locator('html')).toHaveAttribute('data-motion', 'paused');
@@ -595,6 +653,283 @@ test('unknown stored design falls back to Mission Control and can be replaced by
   await expect(page.locator('#connectionLabel')).toHaveText('Telemetry connected');
   await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'lcars');
   await expect(page.locator('#dashboardDesign')).toHaveValue('lcars');
+});
+
+for (const language of ['de', 'en']) {
+  test(`${language}: NEXUS favorites move live KPI and chart controls, persist, and preserve the existing designs`, async ({ page }) => {
+    const state = await mockedDashboard(page, language);
+    const favoriteKey = 'rollthedice:dashboard:favorites:7';
+    const liveId = 'metric-live-sessions';
+    const chartId = 'panel-traffic';
+    const live = page.locator(`[data-favorite-id="${liveId}"]`);
+    const chart = page.locator(`[data-favorite-id="${chartId}"]`);
+    const star = id => page.locator(`[data-favorite-toggle="${id}"]`);
+    await expect(page.locator('#dashboardFavorites')).toBeHidden();
+    await expect(page.locator('#overviewMetrics .metric-card')).toHaveCount(6);
+    await page.locator('#dashboardDesign').selectOption('nexus');
+    await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'nexus');
+    await expect(page.locator('#dashboardFavorites')).toBeVisible();
+    await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(0);
+    const favoriteItems = await page.locator('[data-favorite-id]').count();
+    expect(favoriteItems).toBe(await page.locator('article.panel, .metric-card').count());
+    await expect(page.locator('[data-favorite-toggle]')).toHaveCount(favoriteItems);
+    await expect(star(liveId)).toHaveAccessibleName(language === 'en' ? /favorite.*active visits/i : /Favorit.*Aktive Besuche/);
+    await chart.evaluate(element => { window.dashboardPinnedChart = element; });
+    await star(liveId).click();
+    await star(chartId).click();
+    await expect(page.locator(`#dashboardFavoritesGrid > [data-favorite-id="${liveId}"]`)).toBeVisible();
+    await expect(page.locator(`#dashboardFavoritesGrid > [data-favorite-id="${chartId}"]`)).toBeVisible();
+    await expect(star(liveId)).toHaveAttribute('aria-pressed', 'true');
+    await expect(star(chartId)).toHaveAttribute('aria-pressed', 'true');
+    await expect(star(chartId)).toHaveAccessibleName(language === 'en' ? /remove.*favorite/i : /Aus Favoriten entfernen/);
+    await page.locator('#dailyCursor').focus();
+    await page.keyboard.press('Home');
+    await expect(page.locator('#dailySelection')).toContainText('21');
+    await page.locator('[data-series="sessions"]').click();
+    await expect(page.locator('#dailyChart .chart-line')).toHaveCount(1);
+    await page.locator('#dailyTable').locator('..').locator('summary').click();
+    await expect(page.locator('#dailyTable table tbody tr')).toHaveCount(7);
+    state.liveSessions = 13;
+    await page.locator('#dashboardRefresh').click();
+    await expect(live.locator('.metric-value')).toHaveText('13');
+    await expect(page.locator('#dailyChart .chart-line')).toHaveCount(1);
+    await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(2);
+    expect(await chart.evaluate(element => element === window.dashboardPinnedChart)).toBeTruthy();
+    const identity = await page.evaluate(() => {
+      const ids = [...document.querySelectorAll('[id]')].map(element => element.id);
+      const favoriteIds = [...document.querySelectorAll('[data-favorite-id]')].map(element => element.dataset.favoriteId);
+      return { idsUnique: ids.length === new Set(ids).size, favoriteIdsUnique: favoriteIds.length === new Set(favoriteIds).size };
+    });
+    expect(identity).toEqual({ idsUnique: true, favoriteIdsUnique: true });
+    expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), favoriteKey)).toEqual([liveId, chartId]);
+    const calls = state.calls.length;
+    for (const design of ['mission', 'lcars']) {
+      await page.locator('#dashboardDesign').selectOption(design);
+      await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', design);
+      await expect(page.locator('#dashboardFavorites')).toBeHidden();
+      await expect(page.locator('#overviewMetrics > [data-favorite-id]').first()).toHaveAttribute('data-favorite-id', liveId);
+      await expect(page.locator('.traffic-grid > .traffic-panel')).toBeVisible();
+      await expect(star(chartId)).toBeHidden();
+      expect(await chart.evaluate(element => element === window.dashboardPinnedChart)).toBeTruthy();
+      await expect(page.locator('#dailyChart .chart-line')).toHaveCount(1);
+    }
+    expect(state.calls).toHaveLength(calls);
+    await page.locator('#dashboardDesign').selectOption('nexus');
+    await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(2);
+    await page.reload();
+    await expect(page.locator('#connectionLabel')).toHaveText(language === 'en' ? 'Telemetry connected' : 'Telemetrie verbunden');
+    await expect(page.locator('#dashboardDesign')).toHaveValue('nexus');
+    await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(2);
+    await expect(live.locator('.metric-value')).toHaveText('13');
+    await star(chartId).click();
+    await expect(page.locator('.traffic-grid > .traffic-panel')).toBeVisible();
+    await expect(star(chartId)).toHaveAttribute('aria-pressed', 'false');
+    await star(liveId).click();
+    await expect(page.locator('#overviewMetrics > [data-favorite-id]').first()).toHaveAttribute('data-favorite-id', liveId);
+    await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(0);
+    expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), favoriteKey)).toEqual([]);
+  });
+
+  test(`${language}: NEXUS favorites and controls fit phones, tablet orientations and desktop`, async ({ page }, testInfo) => {
+    test.setTimeout(60000);
+    await mockedDashboard(page, language);
+    await page.locator('#dashboardDesign').selectOption('nexus');
+    await page.locator('#dashboardMotion').click();
+    if (language === 'de') {
+      await mkdir('.impeccable/review', { recursive: true });
+      await page.setViewportSize({ width: 1440, height: 1080 });
+      await page.locator('#missionTitle').click();
+      await page.screenshot({ path: '.impeccable/review/desktop-empty.png', fullPage: true });
+      await page.screenshot({ path: '.impeccable/review/desktop-empty-viewport.png' });
+    }
+    await page.locator('[data-favorite-toggle="metric-live-sessions"]').click();
+    await page.locator('[data-favorite-toggle="panel-traffic"]').click();
+    await page.locator('#dashboardRefresh').click();
+    await expect(page.locator('#serverTrend svg')).toBeVisible();
+    const serverPoints = await serverPathPointCounts(page);
+    await page.locator('#dailyCursor').focus();
+    await page.keyboard.press('Home');
+    await expect(page.locator('html')).toHaveAttribute('lang', language);
+    await expect(page.locator('#dashboardFavoritesTitle')).toHaveText(language === 'en' ? 'Your focus' : 'Dein Fokus');
+    await expect(page.locator('#dashboardFavoritesGrid .metric-label')).toContainText(language === 'en' ? 'Active visits' : 'Aktive Besuche');
+    await expect(page.locator('#dashboardFavoritesGrid .traffic-panel h3')).toHaveText(language === 'en' ? 'Visits & page views' : 'Besuche & Seitenaufrufe');
+    for (const width of [320, 390, 768, 1024, 1440]) {
+      await page.setViewportSize({ width, height: width >= 1024 ? 1080 : 1000 });
+      await page.locator('#missionTitle').click();
+      await expectDashboardFits(page, width);
+      await expect(page.locator('#dashboardFavoritesGrid .metric-card')).toBeVisible();
+      await expect(page.locator('#dashboardFavoritesGrid .traffic-panel')).toBeVisible();
+      await expectReadableNexusLabels(page);
+      await expect(page.locator('#dailySelection')).toContainText('21');
+      expect(await serverPathPointCounts(page)).toEqual(serverPoints);
+      if (width <= 390) {
+        await expectReadableResponsivePlot(page, 'dailyChart');
+        await expectReadableResponsivePlot(page, 'serverTrend');
+        await expectPannableReadableChart(page, 'activityHeatmap', 700);
+        await expectPannableReadableChart(page, 'pageBubbles', 680);
+        await expectPannableReadableChart(page, 'journeyFlow', 720);
+      }
+      const path = `/tmp/rtd-dashboard-nexus-${language}-${width}.png`;
+      await page.screenshot({ path, fullPage: true });
+      await testInfo.attach(`mocked-nexus-${language}-${width}`, { path, contentType: 'image/png' });
+      if (language === 'de') {
+        const name = { 320: 'narrow', 390: 'mobile', 768: 'tablet', 1024: 'tablet-landscape', 1440: 'desktop' }[width];
+        await page.screenshot({ path: `.impeccable/review/${name}.png`, fullPage: true });
+        await page.screenshot({ path: `.impeccable/review/${name}-viewport.png` });
+      }
+    }
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(page.locator('#dashboardMotion')).toBeDisabled();
+    await expect(page.locator('html')).toHaveAttribute('data-motion', 'paused');
+    await page.locator('#dailyCursor').focus();
+    await page.keyboard.press('Home');
+    await expect(page.locator('#dailySelection')).toContainText('21');
+    await page.locator('#dashboardDesign').selectOption('mission');
+    await expect(page.locator('#dailyChart svg')).toHaveAttribute('viewBox', '0 0 720 230');
+    await expect(page.locator('#serverTrend svg')).toHaveAttribute('viewBox', '0 0 720 137');
+    expect(await serverPathPointCounts(page)).toEqual(serverPoints);
+  });
+}
+
+test('NEXUS keyboard stars reveal the moved control on pin and unpin while refresh preserves reading position', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 1000 });
+  await mockedDashboard(page, 'en');
+  await page.locator('#dashboardDesign').selectOption('nexus');
+  const action = page.locator('[data-favorite-id="panel-actions"]');
+  const star = page.locator('[data-favorite-toggle="panel-actions"]');
+  await action.evaluate(element => { window.dashboardActionParent = element.parentElement; });
+  for (const reducedMotion of ['no-preference', 'reduce']) {
+    await page.emulateMedia({ reducedMotion });
+    await star.scrollIntoViewIfNeeded();
+    await star.focus();
+    await expect(star).toBeInViewport();
+    expect(await page.evaluate(() => scrollY)).toBeGreaterThan(1000);
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id="panel-actions"]')).toBeVisible();
+    await expect(star).toBeFocused();
+    await expect(star).toBeInViewport();
+    await page.keyboard.press('Enter');
+    await expect(star).toHaveAttribute('aria-pressed', 'false');
+    await expect(star).toBeFocused();
+    await expect(star).toBeInViewport();
+    expect(await action.evaluate(element => element.parentElement === window.dashboardActionParent)).toBeTruthy();
+    // The explicit toggle may scroll smoothly. Measure refresh only once that
+    // user-triggered movement has settled, rather than sampling mid-animation.
+    await page.evaluate(() => { window.dashboardScrollProbe = { top: scrollY, steadyFrames: 0 }; });
+    await page.waitForFunction(() => {
+      const probe = window.dashboardScrollProbe;
+      probe.steadyFrames = Math.abs(scrollY - probe.top) < .5 ? probe.steadyFrames + 1 : 0;
+      probe.top = scrollY;
+      return probe.steadyFrames >= 3;
+    });
+    const beforeRefresh = await page.evaluate(() => scrollY);
+    await page.evaluate(() => document.getElementById('dashboardRefresh').click());
+    await expect(page.locator('#dashboardData')).toHaveAttribute('aria-busy', 'false');
+    expect(Math.abs(await page.evaluate(() => scrollY) - beforeRefresh)).toBeLessThanOrEqual(2);
+    await expect(star).toBeFocused();
+  }
+});
+
+test('NEXUS favorites are scoped to the viewer and private values clear on pagehide and access revocation', async ({ page }) => {
+  const state = await mockedDashboard(page, 'en');
+  await page.locator('#dashboardDesign').selectOption('nexus');
+  await page.locator('[data-favorite-toggle="metric-live-sessions"]').click();
+  await page.locator('[data-favorite-toggle="panel-traffic"]').click();
+  const firstViewer = await page.evaluate(() => localStorage.getItem('rollthedice:dashboard:favorites:7'));
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
+  await expect(page.locator('#dashboardData')).toBeHidden();
+  await expect(page.locator('#dashboardFavoritesGrid .metric-value, #dashboardFavoritesGrid svg')).toHaveCount(0);
+  state.userId = 8;
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+  await expect.poll(() => state.authCalls).toBe(2);
+  await expect(page.locator('#dashboardData')).toBeVisible();
+  await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(0);
+  await page.locator('[data-favorite-toggle="panel-traffic"]').click();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('rollthedice:dashboard:favorites:8')))).toEqual(['panel-traffic']);
+  expect(await page.evaluate(() => localStorage.getItem('rollthedice:dashboard:favorites:7'))).toBe(firstViewer);
+  await page.reload();
+  await expect(page.locator('#connectionLabel')).toHaveText('Telemetry connected');
+  await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(1);
+  await expect(page.locator('#dashboardFavoritesGrid > .traffic-panel')).toBeVisible();
+  state.permitted = false;
+  await page.locator('#dashboardRefresh').click();
+  await expect(page.locator('#dashboardMessage')).toContainText('Ask the founder for access');
+  await expect(page.locator('#dashboardData')).toBeHidden();
+  await expect(page.locator('#dashboardFavoritesGrid .metric-value, #dashboardFavoritesGrid svg')).toHaveCount(0);
+  await expect(page.locator('#dailyChart')).toBeEmpty();
+  await expect(page.locator('#overviewMetrics')).toBeEmpty();
+});
+
+test('denied NEXUS entry never loads private favorites or telemetry', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('rollthedice:dashboard:design', 'nexus');
+    localStorage.setItem('rollthedice:dashboard:favorites:7', JSON.stringify(['metric-live-sessions', 'panel-traffic']));
+  });
+  const state = await mockedDashboard(page, 'en', { permitted: false });
+  await expect(page.locator('#dashboardMessage')).toContainText('Ask the founder for access');
+  await expect(page.locator('#dashboardData')).toBeHidden();
+  await expect(page.locator('#dashboardFavoritesGrid .metric-value, #dashboardFavoritesGrid svg')).toHaveCount(0);
+  await expect(page.locator('#dailyChart')).toBeEmpty();
+  await expect(page.locator('#overviewMetrics')).toBeEmpty();
+  expect(state.calls).toHaveLength(0);
+});
+
+test('NEXUS section navigation and restored fragments reach the real pinned server panel', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1080 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await mockedDashboard(page, 'en');
+  await page.locator('#dashboardDesign').selectOption('nexus');
+  await page.locator('[data-favorite-toggle="panel-server"]').click();
+  const server = page.locator('#dashboardFavoritesGrid > .server-panel');
+  await expect(server).toBeVisible();
+  await page.locator('.mission-sections a[href="#server"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#server$/);
+  await expect(server).toBeInViewport();
+  expect(await server.evaluate(element => element.contains(document.activeElement))).toBeTruthy();
+  expect(await server.evaluate(element => element.getBoundingClientRect().top)).toBeLessThan(220);
+  await page.reload();
+  await expect(page.locator('#connectionLabel')).toHaveText('Telemetry connected');
+  await expect(page).toHaveURL(/#server$/);
+  await expect(server).toBeInViewport();
+  expect(await server.evaluate(element => element.getBoundingClientRect().top)).toBeLessThan(220);
+  await page.locator('#dashboardDesign').selectOption('mission');
+  await expect(page.locator('#server > .server-panel')).toBeVisible();
+  await page.locator('.mission-sections a[href="#server"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#serverTitle')).toBeInViewport();
+});
+
+test('NEXUS design and favorites work in memory when preference storage is blocked', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.addInitScript(() => {
+    for (const method of ['getItem', 'setItem']) {
+      const original = Storage.prototype[method];
+      Storage.prototype[method] = function (key, ...args) {
+        if (key === 'rollthedice:dashboard:design' || key.startsWith('rollthedice:dashboard:favorites:')) throw new DOMException('Blocked for browser test', 'SecurityError');
+        return original.call(this, key, ...args);
+      };
+    }
+  });
+  const state = await mockedDashboard(page, 'en');
+  await page.locator('#dashboardDesign').selectOption('nexus');
+  await page.locator('[data-favorite-toggle="metric-live-sessions"]').click();
+  await page.locator('[data-favorite-toggle="panel-traffic"]').click();
+  await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(2);
+  state.liveSessions = 19;
+  await page.locator('#dashboardRefresh').click();
+  await expect(page.locator('#dashboardFavoritesGrid .metric-value')).toHaveText('19');
+  await page.locator('#dashboardDesign').selectOption('mission');
+  await expect(page.locator('#overviewMetrics .metric-card')).toHaveCount(6);
+  await page.locator('#dashboardDesign').selectOption('nexus');
+  await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(2);
+  await page.reload();
+  await expect(page.locator('#connectionLabel')).toHaveText('Telemetry connected');
+  await expect(page.locator('#dashboardDesign')).toHaveValue('mission');
+  await page.locator('#dashboardDesign').selectOption('nexus');
+  await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(0);
+  expect(errors).toEqual([]);
 });
 
 for (const language of ['de', 'en']) {

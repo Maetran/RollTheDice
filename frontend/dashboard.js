@@ -2,6 +2,7 @@ import "./i18n/index.js";
 import { escapeHtml, loadAuth } from "./shared/auth.js";
 import { createAnalysisVisuals } from "./dashboard/analysis.js";
 import { createGlobe } from "./dashboard/globe.js";
+import { createFavorites } from "./dashboard/favorites.js";
 
 const REFRESH_MS = 30000;
 const byId = id => document.getElementById(id);
@@ -12,8 +13,9 @@ const number = value => value == null ? "—" : new Intl.NumberFormat(locale(), 
 const percent = value => value == null ? "—" : new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(value);
 const count = value => Math.max(0, Number(value) || 0);
 const DESIGN_KEY = "rollthedice:dashboard:design";
+const DESIGNS = new Set(["mission", "lcars", "nexus"]);
 function storedDesign() {
-  try { return localStorage.getItem(DESIGN_KEY) === "lcars" ? "lcars" : "mission"; }
+  try { const value = localStorage.getItem(DESIGN_KEY); return DESIGNS.has(value) ? value : "mission"; }
   catch { return "mission"; }
 }
 // Dashboard appearance is a local preference, separate from either game's skin.
@@ -85,7 +87,9 @@ let lastFetched = 0;
 let disposed = false;
 let refreshTimer = null;
 const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-let motionPaused = motionQuery.matches || localStorage.getItem("rollthedice:dashboard:motion") === "paused";
+let motionPaused = motionQuery.matches;
+try { motionPaused ||= localStorage.getItem("rollthedice:dashboard:motion") === "paused"; } catch { /* Motion controls remain available without browser storage. */ }
+const favorites = createFavorites({ t, number });
 
 function empty(title = "Noch keine Messwerte", description = "Die Besuchsmessung beginnt mit diesem Release.") {
   return `<div class="empty-state"><span class="empty-icon" aria-hidden="true">⌁</span><strong>${e(t(title))}</strong><p>${e(t(description))}</p></div>`;
@@ -99,15 +103,16 @@ function sparkline(values) {
 }
 
 function overview(data) {
+  favorites.beforeMetricsRender();
   const totals = data.overview || {};
   const days = data.daily || [];
   const metrics = [
-    { label: "Aktive Besuche", value: totals.live_sessions, hint: "Letzte 2 Minuten", live: true },
-    { label: "Besuche", value: totals.sessions, hint: "Anonyme Tab-Sitzungen", series: "sessions", comparison: "sessions" },
-    { label: "Seitenaufrufe", value: totals.page_views, hint: "Im gewählten Zeitraum", series: "page_views", comparison: "page_views" },
-    { label: "Aktive Zeit", value: duration(totals.active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds", comparison: "active_seconds" },
-    { label: "Ø Zeit je Besuch", value: duration(totals.avg_active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds", comparison: "avg_active_seconds" },
-    { label: "Partien beendet", value: totals.completed_games, hint: "Gespeicherte Ergebnisse", series: "completed_games", comparison: "completed_games" },
+    { id: "live-sessions", label: "Aktive Besuche", value: totals.live_sessions, hint: "Letzte 2 Minuten", live: true },
+    { id: "sessions", label: "Besuche", value: totals.sessions, hint: "Anonyme Tab-Sitzungen", series: "sessions", comparison: "sessions" },
+    { id: "page-views", label: "Seitenaufrufe", value: totals.page_views, hint: "Im gewählten Zeitraum", series: "page_views", comparison: "page_views" },
+    { id: "active-seconds", label: "Aktive Zeit", value: duration(totals.active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds", comparison: "active_seconds" },
+    { id: "avg-active-seconds", label: "Ø Zeit je Besuch", value: duration(totals.avg_active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds", comparison: "avg_active_seconds" },
+    { id: "completed-games", label: "Partien beendet", value: totals.completed_games, hint: "Gespeicherte Ergebnisse", series: "completed_games", comparison: "completed_games" },
   ];
   const comparison = metric => {
     const previous = data.comparison?.overview?.[metric.comparison];
@@ -117,7 +122,7 @@ function overview(data) {
     const change = Number(previous.change_percent) || 0;
     return `<span class="metric-delta ${change >= 0 ? "positive" : "negative"}"><span aria-hidden="true">${change >= 0 ? "↗" : "↘"}</span> ${change > 0 ? "+" : ""}${percent(change)}% <small>${e(t("zur Vorperiode"))}</small></span>`;
   };
-  byId("overviewMetrics").innerHTML = metrics.map(metric => `<article class="metric-card"><p class="metric-label">${e(t(metric.label))}${metric.live ? '<span class="signal-dot" aria-hidden="true" style="margin-left:8px"></span>' : ""}</p><div class="metric-value">${metric.series === "active_seconds" ? e(metric.value) : number(metric.value)}</div><p class="metric-hint">${e(t(metric.hint))}</p>${comparison(metric)}${sparkline(metric.series ? days.map(day => count(day[metric.series])) : [])}</article>`).join("");
+  byId("overviewMetrics").innerHTML = metrics.map(metric => `<article class="metric-card" data-favorite-id="metric-${metric.id}" data-favorite-kind="metric"><p class="metric-label">${e(t(metric.label))}${metric.live ? '<span class="signal-dot" aria-hidden="true" style="margin-left:8px"></span>' : ""}</p><div class="metric-value">${metric.series === "active_seconds" ? e(metric.value) : number(metric.value)}</div><p class="metric-hint">${e(t(metric.hint))}</p>${comparison(metric)}${sparkline(metric.series ? days.map(day => count(day[metric.series])) : [])}</article>`).join("");
   byId("comparisonNote").textContent = data.comparison ? t("Heute (UTC) ist noch unvollständig. Verglichen wird mit den vorangehenden Kalendertagen; fehlende ältere Messwerte ergeben keinen Wachstumstrend.") : "";
 }
 
@@ -385,6 +390,11 @@ function render(data) {
   analysis.update(data);
   globe.update(data.geography || data.countries || []);
   requestTraffic(data);
+  byId("nexusRooms").textContent = number(data.server?.active_rooms);
+  byId("nexusPlayers").textContent = number(data.server?.players_online);
+  const days = data.period?.days;
+  byId("nexusWindow").textContent = days === 1 ? t("Heute (UTC)") : `${number(days)} ${t("Tage")} · UTC`;
+  favorites.refresh();
   syncMotion();
   const firstSeen = data.collection?.first_seen_at;
   byId("collectionNote").textContent = firstSeen ? `${t("Messwerte verfügbar seit")} ${timestamp(firstSeen)}` : t("Die Besuchsmessung beginnt mit diesem Release.");
@@ -464,7 +474,9 @@ async function initialize() {
     if (disposed || identityGeneration !== generation) return;
     if (!auth?.authenticated) { denied(401); return; }
     if (!(auth.user?.is_founder || auth.user?.can_view_analytics || auth.user?.analytics_access)) { denied(403); return; }
+    favorites.setUser(auth.user.id);
     authReady = true;
+    favorites.setEnabled(document.body.dataset.dashboardDesign === "nexus");
     byId("dashboardFilters").hidden = false;
     await refresh();
   } catch {
@@ -514,17 +526,20 @@ window.addEventListener("pageshow", event => {
 const analysis = createAnalysisVisuals({ t, e, number, percent, duration, gameName, pageLabel, locale });
 const globe = createGlobe(byId("geographyViz"), { t, number, locale, countryName });
 byId("dashboardDesign").addEventListener("change", event => {
-  const design = event.target.value === "lcars" ? "lcars" : "mission";
+  const design = DESIGNS.has(event.target.value) ? event.target.value : "mission";
   document.body.dataset.dashboardDesign = design;
   try { localStorage.setItem(DESIGN_KEY, design); } catch { /* This document can still switch designs. */ }
+  favorites.setEnabled(design === "nexus" && authReady && !disposed);
+  analysis.refreshLayout();
   globe.refreshDesign();
 });
 function clearPrivateData() {
   latest = null;
+  favorites.clear();
   analysis.resetSession();
   globe.clear();
   globe.suspend();
-  for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceSoftwareRanks", "deviceHardwareRanks", "deviceDonut", "appModeChart", "appModeRanks", "pwaInstalledCount", "pwaFirstOpenCount", "browserRanks", "browserLanguageRanks", "requestTrafficSummary", "requestCountryRanks", "requestStatusRanks", "requestAgentRanks", "requestChannelRanks", "requestRecordedAt", "requestDroppedNote", "countryRanks", "gameCards", "gameModes", "actionRanks", "designComparison", "designAccounts", "designLooks", "designTable", "designCollectionNote", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated"]) byId(id).replaceChildren();
+  for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceSoftwareRanks", "deviceHardwareRanks", "deviceDonut", "appModeChart", "appModeRanks", "pwaInstalledCount", "pwaFirstOpenCount", "browserRanks", "browserLanguageRanks", "requestTrafficSummary", "requestCountryRanks", "requestStatusRanks", "requestAgentRanks", "requestChannelRanks", "requestRecordedAt", "requestDroppedNote", "countryRanks", "gameCards", "gameModes", "actionRanks", "designComparison", "designAccounts", "designLooks", "designTable", "designCollectionNote", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated", "nexusRooms", "nexusPlayers", "nexusWindow"]) byId(id).replaceChildren();
 }
 function syncMotion() {
   const paused = motionPaused || motionQuery.matches;
@@ -537,7 +552,10 @@ function syncMotion() {
 }
 function setMotion(paused, persist = true) {
   motionPaused = Boolean(paused);
-  if (persist) localStorage.setItem("rollthedice:dashboard:motion", motionPaused ? "paused" : "running");
+  if (persist) {
+    try { localStorage.setItem("rollthedice:dashboard:motion", motionPaused ? "paused" : "running"); }
+    catch { /* The pause choice still applies to this document. */ }
+  }
   syncMotion();
 }
 byId("dashboardMotion").addEventListener("click", () => setMotion(!motionPaused));

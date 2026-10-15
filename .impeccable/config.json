@@ -1,0 +1,324 @@
+{
+  "buildPath": "code",
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:41:39.252Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.670Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.691Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(106, 128, 152)",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.712Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(128, 150, 174)",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.733Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(157, 188, 212)",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.753Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(177, 197, 219)",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.772Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(192, 212, 231)",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.791Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(43, 61, 80)",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.810Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(44, 59, 77)",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.830Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(48, 75, 96)",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.852Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(49, 85, 103)",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.872Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(53, 72, 93)",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.891Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(63, 80, 101)",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.910Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-font",
+        "value": "inter",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.929Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "11px",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.949Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "9px",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.967Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "kicker-above-heading",
+        "value": "*",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:13.986Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "numbered-section-labels",
+        "value": "*",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:14.005Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "radial-halo",
+        "value": "*",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:14.044Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "repeating-stripes-gradient",
+        "value": "*",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:14.063Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "tiny-text",
+        "value": "*",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:14.083Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "undersized-ui-text",
+        "value": "*",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:14.104Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "wide-tracking",
+        "value": "*",
+        "files": [
+          "app/static/dashboard.html"
+        ],
+        "createdAt": "2026-10-15T12:42:14.125Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#3f5065",
+        "files": [
+          "frontend/styles/dashboard.css"
+        ],
+        "createdAt": "2026-10-15T12:42:14.143Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "10px",
+        "files": [
+          "frontend/styles/dashboard.css"
+        ],
+        "createdAt": "2026-10-15T12:42:14.163Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "11px",
+        "files": [
+          "frontend/styles/dashboard.css"
+        ],
+        "createdAt": "2026-10-15T12:42:14.183Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "20px",
+        "files": [
+          "frontend/styles/dashboard.css"
+        ],
+        "createdAt": "2026-10-15T12:42:14.202Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "22px",
+        "files": [
+          "frontend/styles/dashboard.css"
+        ],
+        "createdAt": "2026-10-15T12:42:14.221Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "25px",
+        "files": [
+          "frontend/styles/dashboard.css"
+        ],
+        "createdAt": "2026-10-15T12:42:14.240Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "30px",
+        "files": [
+          "frontend/styles/dashboard.css"
+        ],
+        "createdAt": "2026-10-15T12:42:14.258Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "7px",
+        "files": [
+          "frontend/styles/dashboard.css"
+        ],
+        "createdAt": "2026-10-15T12:42:14.277Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "8px",
+        "files": [
+          "frontend/styles/dashboard.css"
+        ],
+        "createdAt": "2026-10-15T12:42:14.298Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "9px",
+        "files": [
+          "frontend/styles/dashboard.css"
+        ],
+        "createdAt": "2026-10-15T12:42:14.317Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "frontend/styles/dashboard.css"
+        ],
+        "createdAt": "2026-10-15T12:42:14.337Z",
+        "reason": "User confirmed: keep the original Mission Control and LCARS designs and add NEXUS. This file reports unchanged legacy theme styles/default Mission rendering; NEXUS has separately scoped CSS and bilingual device/11px legibility browser checks. Exception is restricted to this rule/value and file, not the NEXUS stylesheet or the project."
+      }
+    ]
+  }
+}

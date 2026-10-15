@@ -1,27 +1,28 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa"
+    "zdwa",
+    "zilch"
   ],
-  "summary_de": "ZDWA hat ein neues Design. Gefällt dir das alte besser, wechselst du im Konto zurück.",
-  "summary_en": "ZDWA has a new design. Prefer the old one? Switch back in your account.",
+  "summary_de": "Mit Dashboard-Zugang: NEXUS als neues Design wählen und Kennzahlen per Stern oben als Favoriten sammeln.",
+  "summary_en": "With dashboard access: choose the new NEXUS design and star metrics to keep your favorites at the top.",
   "player_notes": {
     "de": {
-      "title": "Neues Design für ZDWA",
+      "title": "NEXUS für Dashboard-Nutzer",
       "changes": [
-        "Lobby, Spieltisch und alle übrigen Seiten haben ein frisches Aussehen: eine klarere Lobby, ein Spielzettel wie aus Papier und ein grüner Würfelteller.",
-        "Nach dem ersten Wurf zeigt dein Spielzettel in jedem erlaubten Feld die Punkte, die du dort bekommen würdest. Das beste Feld ist hervorgehoben.",
-        "Hell, Dunkel und Classic gibt es auch im neuen Design.",
-        "Lieber das bisherige Design? Du kannst jederzeit im Konto unter Einstellungen → Sprache & Spiel → Aussehen zurückwechseln. Ohne Konto findest du den Schalter unten in der Lobby."
+        "Nur mit freigeschaltetem Dashboard-Zugang: Im Designwechsel kannst du jetzt NEXUS mit grossen Kennzahlen und für Handy, Tablet und Desktop angepassten Ansichten wählen.",
+        "Ein Stern bringt deine wichtigsten Kennzahlen und Analysen in den Favoritenbereich oben. Ohne Stern kehren sie an ihren bisherigen Platz zurück.",
+        "Deine Favoriten bleiben für dein Konto in diesem Browser gespeichert und zeigen weiterhin aktuelle Werte und interaktive Diagramme.",
+        "Mission Control bleibt der Standard. Das bisherige Design und LCARS kannst du jederzeit wieder auswählen. Die Wahl ist unabhängig vom Aussehen deiner Spiele."
       ]
     },
     "en": {
-      "title": "A new design for ZDWA",
+      "title": "NEXUS for dashboard viewers",
       "changes": [
-        "The lobby, the game table and all other pages have a fresh look: a clearer lobby, a score sheet like paper and a green dice tray.",
-        "After your first roll, your score sheet shows the points each allowed field would score. The best field is highlighted.",
-        "Light, Dark and Classic are available in the new design too.",
-        "Prefer the previous design? Switch back any time under Account → Settings → Language & play → Appearance. Without an account, the switch is at the bottom of the lobby."
+        "For authorized dashboard viewers only: the design switcher now offers NEXUS, with prominent metrics and views tailored to phones, tablets and desktops.",
+        "Star your most useful metrics and analyses to move them into the Favorites area at the top. Removing the star returns them to their original position.",
+        "Your favorites are saved for your account in this browser and keep showing current values and interactive charts.",
+        "Mission Control remains the default. You can return to the original design or LCARS any time. This choice is independent of your games' appearance."
       ]
     }
   }

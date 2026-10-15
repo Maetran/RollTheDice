@@ -118,14 +118,36 @@ needing to sign out. All dashboard documents are `noindex` and `no-store`.
 
 ## Visual analysis
 
-- The dashboard's own theme switcher selects Mission Control or LCARS. Its
-  preference is stored locally in the browser, independently of ZDWA/Zilch
-  appearance preferences. Both themes present the same statistics and charts;
-  privacy, access and animation controls remain identical.
-  **Deutsch:** Der eigene Designwechsel wählt Mission Control oder LCARS.
-  Die Wahl wird lokal im Browser gespeichert und verändert die Darstellung
-  der Spiele nicht. Messwerte, Diagramme, Datenschutz, Zugriff und
-  Animationssteuerung folgen in beiden Designs denselben Regeln.
+- The dashboard's own design switcher selects Mission Control, LCARS or
+  NEXUS. Mission Control remains the default; switching back is possible at
+  any time. Its preference is stored locally in the browser, independently
+  of ZDWA/Zilch appearance preferences. All three designs present the same
+  statistics and charts; privacy, access and animation controls follow the
+  same rules.
+  **Deutsch:** Der eigene Designwechsel wählt Mission Control, LCARS oder
+  NEXUS. Mission Control bleibt der Standard; ein Rückwechsel ist jederzeit
+  möglich. Die Wahl wird lokal im Browser gespeichert und verändert die
+  Darstellung der Spiele nicht. Messwerte, Diagramme, Datenschutz, Zugriff
+  und Animationssteuerung folgen in allen drei Designs denselben Regeln.
+- NEXUS adds a dark command-console layout with prominent KPIs and their
+  measurement context, arranged separately for phone, tablet and desktop
+  screens. Star controls move the actual metric or analysis panel into a
+  reserved Favorites area at the top; removing a favorite restores its
+  original position. Period/game filters, automatic refresh and chart
+  interaction continue to apply to favorited panels. Local storage keeps only
+  stable favorite identifiers, scoped to the signed-in dashboard viewer;
+  metric snapshots are not saved. Favorites stay in this browser and do not
+  synchronize across devices or accounts.
+  **Deutsch:** NEXUS ergänzt eine dunkle Kommandozentrale mit prominenten
+  Kennzahlen samt Messkontext und eigenen Anordnungen für Handy, Tablet und
+  Desktop. Sternschalter verschieben die tatsächliche Kennzahl oder den
+  Analysebereich in einen reservierten Favoritenbereich oben; das Entfernen
+  stellt den bisherigen Platz wieder her. Zeitraum-/Spielfilter, automatische
+  Aktualisierung und interaktive Diagramme gelten auch für Favoriten. Lokal
+  werden nur stabile Favoritenkennungen getrennt nach angemeldetem
+  Dashboard-Nutzer gespeichert, keine Momentaufnahmen der Messwerte. Favoriten
+  bleiben in diesem Browser und werden nicht zwischen Geräten oder Konten
+  synchronisiert.
 - Software and hardware panels count distinct anonymous tab sessions with a
   browser event in the selected UTC period and game. They complement the
   existing mobile/tablet/desktop groups; the same tab is counted once within

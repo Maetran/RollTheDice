@@ -1,0 +1,706 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-15T12:37:48+00:00",
+  "title": "Design System: RollTheDice dashboard themes",
+  "extensions": {
+    "colorMeta": {
+      "nexus-lime": {
+        "role": "primary",
+        "displayName": "Nexus Lime",
+        "tonalRamp": [
+          "oklch(15% 0.1574 126.54)",
+          "oklch(26% 0.1574 126.54)",
+          "oklch(38% 0.1574 126.54)",
+          "oklch(49% 0.1574 126.54)",
+          "oklch(61% 0.1574 126.54)",
+          "oklch(72% 0.1574 126.54)",
+          "oklch(84% 0.1574 126.54)",
+          "oklch(95% 0.1574 126.54)"
+        ]
+      },
+      "nexus-blue": {
+        "role": "secondary",
+        "displayName": "Nexus Blue",
+        "tonalRamp": [
+          "oklch(15% 0.0567 232.80)",
+          "oklch(26% 0.0567 232.80)",
+          "oklch(38% 0.0567 232.80)",
+          "oklch(49% 0.0567 232.80)",
+          "oklch(61% 0.0567 232.80)",
+          "oklch(72% 0.0567 232.80)",
+          "oklch(84% 0.0567 232.80)",
+          "oklch(95% 0.0567 232.80)"
+        ]
+      },
+      "nexus-amber": {
+        "role": "tertiary",
+        "displayName": "Nexus Amber",
+        "tonalRamp": [
+          "oklch(15% 0.1040 74.46)",
+          "oklch(26% 0.1040 74.46)",
+          "oklch(38% 0.1040 74.46)",
+          "oklch(49% 0.1040 74.46)",
+          "oklch(61% 0.1040 74.46)",
+          "oklch(72% 0.1040 74.46)",
+          "oklch(84% 0.1040 74.46)",
+          "oklch(95% 0.1040 74.46)"
+        ]
+      },
+      "nexus-danger": {
+        "role": "tertiary",
+        "displayName": "Nexus Danger",
+        "tonalRamp": [
+          "oklch(15% 0.1094 29.30)",
+          "oklch(26% 0.1094 29.30)",
+          "oklch(38% 0.1094 29.30)",
+          "oklch(49% 0.1094 29.30)",
+          "oklch(61% 0.1094 29.30)",
+          "oklch(72% 0.1094 29.30)",
+          "oklch(84% 0.1094 29.30)",
+          "oklch(95% 0.1094 29.30)"
+        ]
+      },
+      "nexus-ink": {
+        "role": "neutral",
+        "displayName": "Nexus Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0082 181.79)",
+          "oklch(26% 0.0082 181.79)",
+          "oklch(38% 0.0082 181.79)",
+          "oklch(49% 0.0082 181.79)",
+          "oklch(61% 0.0082 181.79)",
+          "oklch(72% 0.0082 181.79)",
+          "oklch(84% 0.0082 181.79)",
+          "oklch(95% 0.0082 181.79)"
+        ]
+      },
+      "nexus-panel": {
+        "role": "neutral",
+        "displayName": "Nexus Panel",
+        "tonalRamp": [
+          "oklch(15% 0.0119 167.33)",
+          "oklch(26% 0.0119 167.33)",
+          "oklch(38% 0.0119 167.33)",
+          "oklch(49% 0.0119 167.33)",
+          "oklch(61% 0.0119 167.33)",
+          "oklch(72% 0.0119 167.33)",
+          "oklch(84% 0.0119 167.33)",
+          "oklch(95% 0.0119 167.33)"
+        ]
+      },
+      "nexus-surface": {
+        "role": "neutral",
+        "displayName": "Nexus Surface",
+        "tonalRamp": [
+          "oklch(15% 0.0182 158.39)",
+          "oklch(26% 0.0182 158.39)",
+          "oklch(38% 0.0182 158.39)",
+          "oklch(49% 0.0182 158.39)",
+          "oklch(61% 0.0182 158.39)",
+          "oklch(72% 0.0182 158.39)",
+          "oklch(84% 0.0182 158.39)",
+          "oklch(95% 0.0182 158.39)"
+        ]
+      },
+      "nexus-line": {
+        "role": "neutral",
+        "displayName": "Nexus Line",
+        "tonalRamp": [
+          "oklch(15% 0.0218 158.10)",
+          "oklch(26% 0.0218 158.10)",
+          "oklch(38% 0.0218 158.10)",
+          "oklch(49% 0.0218 158.10)",
+          "oklch(61% 0.0218 158.10)",
+          "oklch(72% 0.0218 158.10)",
+          "oklch(84% 0.0218 158.10)",
+          "oklch(95% 0.0218 158.10)"
+        ]
+      },
+      "nexus-text": {
+        "role": "neutral",
+        "displayName": "Nexus Text",
+        "tonalRamp": [
+          "oklch(15% 0.0130 130.78)",
+          "oklch(26% 0.0130 130.78)",
+          "oklch(38% 0.0130 130.78)",
+          "oklch(49% 0.0130 130.78)",
+          "oklch(61% 0.0130 130.78)",
+          "oklch(72% 0.0130 130.78)",
+          "oklch(84% 0.0130 130.78)",
+          "oklch(95% 0.0130 130.78)"
+        ]
+      },
+      "nexus-muted": {
+        "role": "neutral",
+        "displayName": "Nexus Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0236 155.77)",
+          "oklch(26% 0.0236 155.77)",
+          "oklch(38% 0.0236 155.77)",
+          "oklch(49% 0.0236 155.77)",
+          "oklch(61% 0.0236 155.77)",
+          "oklch(72% 0.0236 155.77)",
+          "oklch(84% 0.0236 155.77)",
+          "oklch(95% 0.0236 155.77)"
+        ]
+      },
+      "nexus-control": {
+        "role": "neutral",
+        "displayName": "Nexus Control",
+        "tonalRamp": [
+          "oklch(15% 0.0186 151.50)",
+          "oklch(26% 0.0186 151.50)",
+          "oklch(38% 0.0186 151.50)",
+          "oklch(49% 0.0186 151.50)",
+          "oklch(61% 0.0186 151.50)",
+          "oklch(72% 0.0186 151.50)",
+          "oklch(84% 0.0186 151.50)",
+          "oklch(95% 0.0186 151.50)"
+        ]
+      },
+      "nexus-control-hover": {
+        "role": "neutral",
+        "displayName": "Nexus Control Hover",
+        "tonalRamp": [
+          "oklch(15% 0.0381 137.65)",
+          "oklch(26% 0.0381 137.65)",
+          "oklch(38% 0.0381 137.65)",
+          "oklch(49% 0.0381 137.65)",
+          "oklch(61% 0.0381 137.65)",
+          "oklch(72% 0.0381 137.65)",
+          "oklch(84% 0.0381 137.65)",
+          "oklch(95% 0.0381 137.65)"
+        ]
+      },
+      "nexus-control-line": {
+        "role": "neutral",
+        "displayName": "Nexus Control Line",
+        "tonalRamp": [
+          "oklch(15% 0.0377 140.90)",
+          "oklch(26% 0.0377 140.90)",
+          "oklch(38% 0.0377 140.90)",
+          "oklch(49% 0.0377 140.90)",
+          "oklch(61% 0.0377 140.90)",
+          "oklch(72% 0.0377 140.90)",
+          "oklch(84% 0.0377 140.90)",
+          "oklch(95% 0.0377 140.90)"
+        ]
+      },
+      "nexus-lime-ink": {
+        "role": "neutral",
+        "displayName": "Nexus Lime Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0228 139.44)",
+          "oklch(26% 0.0228 139.44)",
+          "oklch(38% 0.0228 139.44)",
+          "oklch(49% 0.0228 139.44)",
+          "oklch(61% 0.0228 139.44)",
+          "oklch(72% 0.0228 139.44)",
+          "oklch(84% 0.0228 139.44)",
+          "oklch(95% 0.0228 139.44)"
+        ]
+      },
+      "nexus-lime-hover": {
+        "role": "neutral",
+        "displayName": "Nexus Lime Hover",
+        "tonalRamp": [
+          "oklch(15% 0.1406 126.94)",
+          "oklch(26% 0.1406 126.94)",
+          "oklch(38% 0.1406 126.94)",
+          "oklch(49% 0.1406 126.94)",
+          "oklch(61% 0.1406 126.94)",
+          "oklch(72% 0.1406 126.94)",
+          "oklch(84% 0.1406 126.94)",
+          "oklch(95% 0.1406 126.94)"
+        ]
+      },
+      "nexus-selected": {
+        "role": "neutral",
+        "displayName": "Nexus Selected",
+        "tonalRamp": [
+          "oklch(15% 0.0447 133.04)",
+          "oklch(26% 0.0447 133.04)",
+          "oklch(38% 0.0447 133.04)",
+          "oklch(49% 0.0447 133.04)",
+          "oklch(61% 0.0447 133.04)",
+          "oklch(72% 0.0447 133.04)",
+          "oklch(84% 0.0447 133.04)",
+          "oklch(95% 0.0447 133.04)"
+        ]
+      },
+      "mission-ink": {
+        "role": "neutral",
+        "displayName": "Mission Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0210 261.35)",
+          "oklch(26% 0.0210 261.35)",
+          "oklch(38% 0.0210 261.35)",
+          "oklch(49% 0.0210 261.35)",
+          "oklch(61% 0.0210 261.35)",
+          "oklch(72% 0.0210 261.35)",
+          "oklch(84% 0.0210 261.35)",
+          "oklch(95% 0.0210 261.35)"
+        ]
+      },
+      "mission-panel": {
+        "role": "neutral",
+        "displayName": "Mission Panel",
+        "tonalRamp": [
+          "oklch(15% 0.0274 255.83)",
+          "oklch(26% 0.0274 255.83)",
+          "oklch(38% 0.0274 255.83)",
+          "oklch(49% 0.0274 255.83)",
+          "oklch(61% 0.0274 255.83)",
+          "oklch(72% 0.0274 255.83)",
+          "oklch(84% 0.0274 255.83)",
+          "oklch(95% 0.0274 255.83)"
+        ]
+      },
+      "mission-line": {
+        "role": "neutral",
+        "displayName": "Mission Line",
+        "tonalRamp": [
+          "oklch(15% 0.0340 253.97)",
+          "oklch(26% 0.0340 253.97)",
+          "oklch(38% 0.0340 253.97)",
+          "oklch(49% 0.0340 253.97)",
+          "oklch(61% 0.0340 253.97)",
+          "oklch(72% 0.0340 253.97)",
+          "oklch(84% 0.0340 253.97)",
+          "oklch(95% 0.0340 253.97)"
+        ]
+      },
+      "mission-text": {
+        "role": "neutral",
+        "displayName": "Mission Text",
+        "tonalRamp": [
+          "oklch(15% 0.0114 252.09)",
+          "oklch(26% 0.0114 252.09)",
+          "oklch(38% 0.0114 252.09)",
+          "oklch(49% 0.0114 252.09)",
+          "oklch(61% 0.0114 252.09)",
+          "oklch(72% 0.0114 252.09)",
+          "oklch(84% 0.0114 252.09)",
+          "oklch(95% 0.0114 252.09)"
+        ]
+      },
+      "mission-muted": {
+        "role": "neutral",
+        "displayName": "Mission Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0374 250.97)",
+          "oklch(26% 0.0374 250.97)",
+          "oklch(38% 0.0374 250.97)",
+          "oklch(49% 0.0374 250.97)",
+          "oklch(61% 0.0374 250.97)",
+          "oklch(72% 0.0374 250.97)",
+          "oklch(84% 0.0374 250.97)",
+          "oklch(95% 0.0374 250.97)"
+        ]
+      },
+      "mission-cyan": {
+        "role": "primary",
+        "displayName": "Mission Cyan",
+        "tonalRamp": [
+          "oklch(15% 0.1098 188.79)",
+          "oklch(26% 0.1098 188.79)",
+          "oklch(38% 0.1098 188.79)",
+          "oklch(49% 0.1098 188.79)",
+          "oklch(61% 0.1098 188.79)",
+          "oklch(72% 0.1098 188.79)",
+          "oklch(84% 0.1098 188.79)",
+          "oklch(95% 0.1098 188.79)"
+        ]
+      },
+      "mission-amber": {
+        "role": "tertiary",
+        "displayName": "Mission Amber",
+        "tonalRamp": [
+          "oklch(15% 0.1073 79.67)",
+          "oklch(26% 0.1073 79.67)",
+          "oklch(38% 0.1073 79.67)",
+          "oklch(49% 0.1073 79.67)",
+          "oklch(61% 0.1073 79.67)",
+          "oklch(72% 0.1073 79.67)",
+          "oklch(84% 0.1073 79.67)",
+          "oklch(95% 0.1073 79.67)"
+        ]
+      },
+      "mission-danger": {
+        "role": "tertiary",
+        "displayName": "Mission Danger",
+        "tonalRamp": [
+          "oklch(15% 0.1187 20.05)",
+          "oklch(26% 0.1187 20.05)",
+          "oklch(38% 0.1187 20.05)",
+          "oklch(49% 0.1187 20.05)",
+          "oklch(61% 0.1187 20.05)",
+          "oklch(72% 0.1187 20.05)",
+          "oklch(84% 0.1187 20.05)",
+          "oklch(95% 0.1187 20.05)"
+        ]
+      },
+      "lcars-void": {
+        "role": "neutral",
+        "displayName": "Lcars Void",
+        "tonalRamp": [
+          "oklch(15% 0.0133 270.44)",
+          "oklch(26% 0.0133 270.44)",
+          "oklch(38% 0.0133 270.44)",
+          "oklch(49% 0.0133 270.44)",
+          "oklch(61% 0.0133 270.44)",
+          "oklch(72% 0.0133 270.44)",
+          "oklch(84% 0.0133 270.44)",
+          "oklch(95% 0.0133 270.44)"
+        ]
+      },
+      "lcars-panel": {
+        "role": "neutral",
+        "displayName": "Lcars Panel",
+        "tonalRamp": [
+          "oklch(15% 0.0150 266.79)",
+          "oklch(26% 0.0150 266.79)",
+          "oklch(38% 0.0150 266.79)",
+          "oklch(49% 0.0150 266.79)",
+          "oklch(61% 0.0150 266.79)",
+          "oklch(72% 0.0150 266.79)",
+          "oklch(84% 0.0150 266.79)",
+          "oklch(95% 0.0150 266.79)"
+        ]
+      },
+      "lcars-line": {
+        "role": "neutral",
+        "displayName": "Lcars Line",
+        "tonalRamp": [
+          "oklch(15% 0.0237 288.48)",
+          "oklch(26% 0.0237 288.48)",
+          "oklch(38% 0.0237 288.48)",
+          "oklch(49% 0.0237 288.48)",
+          "oklch(61% 0.0237 288.48)",
+          "oklch(72% 0.0237 288.48)",
+          "oklch(84% 0.0237 288.48)",
+          "oklch(95% 0.0237 288.48)"
+        ]
+      },
+      "lcars-text": {
+        "role": "neutral",
+        "displayName": "Lcars Text",
+        "tonalRamp": [
+          "oklch(15% 0.0217 83.26)",
+          "oklch(26% 0.0217 83.26)",
+          "oklch(38% 0.0217 83.26)",
+          "oklch(49% 0.0217 83.26)",
+          "oklch(61% 0.0217 83.26)",
+          "oklch(72% 0.0217 83.26)",
+          "oklch(84% 0.0217 83.26)",
+          "oklch(95% 0.0217 83.26)"
+        ]
+      },
+      "lcars-muted": {
+        "role": "neutral",
+        "displayName": "Lcars Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0286 306.95)",
+          "oklch(26% 0.0286 306.95)",
+          "oklch(38% 0.0286 306.95)",
+          "oklch(49% 0.0286 306.95)",
+          "oklch(61% 0.0286 306.95)",
+          "oklch(72% 0.0286 306.95)",
+          "oklch(84% 0.0286 306.95)",
+          "oklch(95% 0.0286 306.95)"
+        ]
+      },
+      "lcars-apricot": {
+        "role": "primary",
+        "displayName": "Lcars Apricot",
+        "tonalRamp": [
+          "oklch(15% 0.0747 56.48)",
+          "oklch(26% 0.0747 56.48)",
+          "oklch(38% 0.0747 56.48)",
+          "oklch(49% 0.0747 56.48)",
+          "oklch(61% 0.0747 56.48)",
+          "oklch(72% 0.0747 56.48)",
+          "oklch(84% 0.0747 56.48)",
+          "oklch(95% 0.0747 56.48)"
+        ]
+      },
+      "lcars-apricot-bright": {
+        "role": "primary",
+        "displayName": "Lcars Apricot Bright",
+        "tonalRamp": [
+          "oklch(15% 0.0719 64.33)",
+          "oklch(26% 0.0719 64.33)",
+          "oklch(38% 0.0719 64.33)",
+          "oklch(49% 0.0719 64.33)",
+          "oklch(61% 0.0719 64.33)",
+          "oklch(72% 0.0719 64.33)",
+          "oklch(84% 0.0719 64.33)",
+          "oklch(95% 0.0719 64.33)"
+        ]
+      },
+      "lcars-lilac": {
+        "role": "secondary",
+        "displayName": "Lcars Lilac",
+        "tonalRamp": [
+          "oklch(15% 0.0578 312.17)",
+          "oklch(26% 0.0578 312.17)",
+          "oklch(38% 0.0578 312.17)",
+          "oklch(49% 0.0578 312.17)",
+          "oklch(61% 0.0578 312.17)",
+          "oklch(72% 0.0578 312.17)",
+          "oklch(84% 0.0578 312.17)",
+          "oklch(95% 0.0578 312.17)"
+        ]
+      },
+      "lcars-blue": {
+        "role": "secondary",
+        "displayName": "Lcars Blue",
+        "tonalRamp": [
+          "oklch(15% 0.0664 265.21)",
+          "oklch(26% 0.0664 265.21)",
+          "oklch(38% 0.0664 265.21)",
+          "oklch(49% 0.0664 265.21)",
+          "oklch(61% 0.0664 265.21)",
+          "oklch(72% 0.0664 265.21)",
+          "oklch(84% 0.0664 265.21)",
+          "oklch(95% 0.0664 265.21)"
+        ]
+      },
+      "lcars-cyan": {
+        "role": "primary",
+        "displayName": "Lcars Cyan",
+        "tonalRamp": [
+          "oklch(15% 0.0549 211.39)",
+          "oklch(26% 0.0549 211.39)",
+          "oklch(38% 0.0549 211.39)",
+          "oklch(49% 0.0549 211.39)",
+          "oklch(61% 0.0549 211.39)",
+          "oklch(72% 0.0549 211.39)",
+          "oklch(84% 0.0549 211.39)",
+          "oklch(95% 0.0549 211.39)"
+        ]
+      },
+      "lcars-focus": {
+        "role": "tertiary",
+        "displayName": "Lcars Focus",
+        "tonalRamp": [
+          "oklch(15% 0.0619 95.40)",
+          "oklch(26% 0.0619 95.40)",
+          "oklch(38% 0.0619 95.40)",
+          "oklch(49% 0.0619 95.40)",
+          "oklch(61% 0.0619 95.40)",
+          "oklch(72% 0.0619 95.40)",
+          "oklch(84% 0.0619 95.40)",
+          "oklch(95% 0.0619 95.40)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "nexus-display": {
+        "displayName": "Nexus Display",
+        "purpose": "NEXUS workspace heading only."
+      },
+      "nexus-section": {
+        "displayName": "Nexus Section",
+        "purpose": "NEXUS major section headings."
+      },
+      "nexus-title": {
+        "displayName": "Nexus Title",
+        "purpose": "NEXUS instrument headings."
+      },
+      "nexus-body": {
+        "displayName": "Nexus Body",
+        "purpose": "NEXUS explanatory prose."
+      },
+      "nexus-label": {
+        "displayName": "Nexus Label",
+        "purpose": "NEXUS controls and supporting labels."
+      },
+      "nexus-data": {
+        "displayName": "Nexus Data",
+        "purpose": "NEXUS KPI values; tabular numerals."
+      }
+    },
+    "shadows": [
+      {
+        "name": "nexus-flat-panel",
+        "value": "none",
+        "purpose": "NEXUS panel and geography-stage shadows are explicitly removed; incumbent effects retain their owners."
+      }
+    ],
+    "motion": [
+      {
+        "name": "nexus-star-state",
+        "value": "color .18s ease-out, background .18s ease-out, border-color .18s ease-out",
+        "purpose": "Brief acknowledgement of favorite selection; disabled by reduced motion and paused state."
+      },
+      {
+        "name": "shared-panel-state",
+        "value": "border-color .25s, box-shadow .25s",
+        "purpose": "Existing panel transition retained by NEXUS; no panel shadow is added."
+      },
+      {
+        "name": "nexus-reduced-motion",
+        "value": "none",
+        "purpose": "System reduced motion removes transitions and smooth scrolling; explicit moved-star scrolling uses instant when paused/reduced."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "nexus-narrow-max",
+        "value": "359px"
+      },
+      {
+        "name": "nexus-phone-max",
+        "value": "700px"
+      },
+      {
+        "name": "nexus-tablet-min",
+        "value": "701px"
+      },
+      {
+        "name": "nexus-geography-stack-max",
+        "value": "850px"
+      },
+      {
+        "name": "nexus-traffic-stack-max",
+        "value": "1100px"
+      },
+      {
+        "name": "nexus-desktop-rail-min",
+        "value": "1280px"
+      },
+      {
+        "name": "nexus-six-kpi-min",
+        "value": "1700px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "NEXUS refresh button",
+      "kind": "button",
+      "refersTo": "nexus-button-primary",
+      "description": "Primary refresh action; label is localized by the dashboard.",
+      "html": "<button class=\"ds-refresh\" type=\"button\">Aktualisieren</button>",
+      "css": ".ds-refresh{font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:13px;font-weight:650;min-height:44px;padding:0 15px;border:1px solid var(--cyan,#c4f279);border-radius:6px;background:var(--cyan,#c4f279);color:#11190f;cursor:pointer;}.ds-refresh:hover:not(:disabled){background:#d4ff95;}.ds-refresh:focus-visible{outline:2px solid var(--cyan,#c4f279);outline-offset:4px;}.ds-refresh:disabled{opacity:.65;cursor:default;}"
+    },
+    {
+      "name": "NEXUS secondary control",
+      "kind": "button",
+      "refersTo": "nexus-button-secondary",
+      "description": "Plain secondary action on the mineral control surface.",
+      "html": "<button class=\"ds-secondary\" type=\"button\">Animation pausieren</button>",
+      "css": ".ds-secondary{font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:12px;min-height:44px;padding:0 13px;border:1px solid #52634f;border-radius:6px;background:#18211a;color:var(--text,#edf2e9);cursor:pointer;}.ds-secondary:hover:not(:disabled){background:#253320;border-color:#a8ce78;color:var(--cyan,#c4f279);}.ds-secondary:focus-visible{outline:2px solid var(--cyan,#c4f279);outline-offset:4px;}.ds-secondary:disabled{opacity:.65;cursor:default;}"
+    },
+    {
+      "name": "NEXUS filter select",
+      "kind": "input",
+      "refersTo": "nexus-select",
+      "description": "A labeled native filter, preserving platform interaction.",
+      "html": "<label class=\"ds-field\"><span>Zeitraum</span><select><option>7 Tage</option><option>30 Tage</option></select></label>",
+      "css": ".ds-field{font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;display:inline-flex;align-items:center;gap:12px;color:var(--muted,#a6b6ab);font-size:12px;}.ds-field select{font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:13px;min-height:44px;min-width:126px;padding:0 12px;border:1px solid #52634f;border-radius:6px;background:#18211a;color:var(--text,#edf2e9);}.ds-field select:hover{background:#253320;border-color:#a8ce78;color:var(--cyan,#c4f279);}.ds-field select:focus-visible{outline:2px solid var(--cyan,#c4f279);outline-offset:4px;}"
+    },
+    {
+      "name": "NEXUS navigation link",
+      "kind": "nav",
+      "refersTo": "nexus-navigation",
+      "description": "Text and inline instrument icon, stacked in the desktop rail.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Dashboard-Bereiche\"><a href=\"#dashboardFavorites\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m12 3 2.78 5.64L21 9.55l-4.5 4.39 1.06 6.2L12 17.21l-5.56 2.93 1.06-6.2L3 9.55l6.22-.91Z\"/></svg><span>Favoriten</span></a><a href=\"#overviewMetrics\">Kennzahlen</a></nav>",
+      "css": ".ds-nav{font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--muted,#a6b6ab);}.ds-nav a{display:flex;align-items:center;gap:10px;min-height:47px;padding:0 16px;border-radius:6px;color:inherit;text-decoration:none;}.ds-nav a:first-child{background:#26341d;color:var(--cyan,#c4f279);}.ds-nav a:hover{background:#263320;color:var(--cyan,#c4f279);}.ds-nav a:focus-visible{outline:2px solid var(--cyan,#c4f279);outline-offset:4px;}.ds-nav svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.5;}"
+    },
+    {
+      "name": "NEXUS country-code tag",
+      "kind": "chip",
+      "refersTo": "nexus-country-tag",
+      "description": "Compact code inside the selected-country instrument.",
+      "html": "<span class=\"ds-country\">CH</span>",
+      "css": ".ds-country{display:grid;place-items:center;width:35px;height:35px;border:1px solid #617c40;border-radius:4px;background:#23301e;color:var(--cyan,#c4f279);font:12px var(--mono,ui-monospace,monospace);}"
+    },
+    {
+      "name": "NEXUS KPI cell",
+      "kind": "card",
+      "refersTo": "nexus-metric",
+      "description": "A measured value with its scope hint; the enclosing deck owns the rounded edge.",
+      "html": "<article class=\"ds-metric\"><span class=\"ds-metric-label\">Besuche</span><strong class=\"ds-metric-value\">—</strong><p class=\"ds-metric-hint\">Anonyme Browser-Tab-Sitzungen</p></article>",
+      "css": ".ds-metric{font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;padding:22px 24px 20px;min-height:166px;background:var(--panel,#141b18);color:var(--text,#edf2e9);outline:1px solid var(--line,#344139);}.ds-metric-label{display:block;color:var(--muted,#a6b6ab);font-size:13px;line-height:1.5;}.ds-metric-value{display:block;margin-top:13px;font:500 clamp(28px,3.2vw,46px)/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;letter-spacing:-.035em;font-variant-numeric:tabular-nums;}.ds-metric-hint{margin:8px 0 0;font-size:12px;color:var(--muted,#a6b6ab);line-height:1.6;}"
+    },
+    {
+      "name": "NEXUS analysis panel",
+      "kind": "card",
+      "refersTo": "nexus-panel",
+      "description": "Flat ruled bay with the existing heading and explanatory copy rhythm.",
+      "html": "<article class=\"ds-panel\"><h3>Besuche im Verlauf</h3><p>Besuche und Seitenaufrufe je UTC-Tag</p></article>",
+      "css": ".ds-panel{font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;padding:24px;border:1px solid var(--line,#344139);border-radius:12px;background:var(--panel,#141b18);color:var(--text,#edf2e9);box-shadow:none;transition:border-color .25s,box-shadow .25s;}.ds-panel:hover{border-color:#36536a;}.ds-panel h3{margin:0;font-size:16px;font-weight:650;line-height:1.4;letter-spacing:-.015em;}.ds-panel p{margin:6px 0 0;font-size:12px;line-height:1.6;color:var(--muted,#a6b6ab);}@media(prefers-reduced-motion:reduce){.ds-panel{transition:none;}}"
+    },
+    {
+      "name": "NEXUS favorite star",
+      "kind": "button",
+      "refersTo": "nexus-favorite",
+      "description": "The real instrument control; aria-pressed exposes selection. The preview demonstrates both actual visual states.",
+      "html": "<div class=\"ds-star-preview\"><button class=\"ds-star\" type=\"button\" aria-label=\"Als Favorit merken: Besuche\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m12 3 2.78 5.64L21 9.55l-4.5 4.39 1.06 6.2L12 17.21l-5.56 2.93 1.06-6.2L3 9.55l6.22-.91Z\"/></svg></button><button class=\"ds-star\" type=\"button\" aria-label=\"Aus Favoriten entfernen: Besuche\" aria-pressed=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m12 3 2.78 5.64L21 9.55l-4.5 4.39 1.06 6.2L12 17.21l-5.56 2.93 1.06-6.2L3 9.55l6.22-.91Z\"/></svg></button></div>",
+      "css": ".ds-star-preview{display:flex;gap:12px;padding:12px;background:var(--panel,#141b18);}.ds-star{display:grid;place-items:center;width:40px;min-height:40px;height:40px;padding:0;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--muted,#a6b6ab);cursor:pointer;transition:color .18s ease-out,background .18s ease-out,border-color .18s ease-out;}.ds-star svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}.ds-star[aria-pressed=\"true\"]{background:#29371f;border-color:#617c40;color:var(--cyan,#c4f279);}.ds-star[aria-pressed=\"true\"] svg{fill:currentColor;}.ds-star:hover{background:#253320;border-color:#a8ce78;color:var(--cyan,#c4f279);}.ds-star:focus-visible{outline:2px solid var(--cyan,#c4f279);outline-offset:4px;}@media(prefers-reduced-motion:reduce){.ds-star{transition:none;}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Field Engineering Console",
+    "overview": "NEXUS treats private telemetry as a set of instruments: an ink field, mineral-green bays, decisive display lettering and tabular measurements. Its restrained lime, blue and amber accents distinguish selection, comparison and caution. Real charts and the globe supply the visual media; no raster artwork is required.\n\nThis record describes the built dashboard at `/admin/dashboard`, not a replacement identity for RollTheDice or either game. All `nexus-*` tokens and component examples apply only when the dashboard selects `nexus`. Mission Control remains the default, and LCARS remains a separate selectable design. Their namespaced palette samples preserve existing ownership; their full source styles remain authoritative. The surface-specific composition and direction contract live in `.impeccable/surfaces/app-static-dashboard-html.md`.",
+    "keyCharacteristics": [
+      "A distinct additional dashboard theme with explicit ownership boundaries.",
+      "Heavy authored headings, plain interface labels and tabular measured values.",
+      "Flat, ruled instrument surfaces with restrained selection and state color.",
+      "Responsive instruments and real-node favorites that retain their controls."
+    ],
+    "rules": [
+      {
+        "name": "The Theme Boundary Rule",
+        "body": "Apply NEXUS tokens only to the dashboard’s explicit nexus state; preserve Mission Control, LCARS and both game appearances.",
+        "section": "overview"
+      },
+      {
+        "name": "The Signal Role Rule",
+        "body": "Use lime for action and selected instruments, blue for comparison, amber for caution and danger color for adverse or error state; retain text explanations alongside color.",
+        "section": "colors"
+      },
+      {
+        "name": "The Measurement Rule",
+        "body": "Keep numbers tabular, units and scope nearby, and missing or incomplete values explicit; visits never become claims about unique people.",
+        "section": "typography"
+      },
+      {
+        "name": "The Readable Geometry Rule",
+        "body": "Simple NEXUS plots use measured container geometry; dense phone diagrams keep readable internal dimensions and pan within their own viewport.",
+        "section": "layout"
+      },
+      {
+        "name": "The Ruled Bay Rule",
+        "body": "Separate NEXUS instruments with tonal surfaces and fine borders; panel and geography-stage shadows are explicitly removed.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Real Instrument Rule",
+        "body": "Favoriting moves the original live instrument and its IDs into the top bay; it never creates a second chart or a static summary.",
+        "section": "components"
+      },
+      {
+        "name": "The Visible Focus Rule",
+        "body": "An explicit pin or unpin keeps focus on the moved star and reveals it; background refresh restores focus without moving the viewer’s scroll position.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do scope every NEXUS override to the dashboard theme and preserve the two incumbent theme owners.",
+      "Do use inline SVG for the reusable instrument and star icons.",
+      "Do retain German and English labels, native selects, visible keyboard focus and chart table alternatives.",
+      "Do keep favorites local to the verified viewer and show the browser-storage limitation.",
+      "Do preserve independent chart selection, measurement definitions, loading, empty, stale and access-loss states."
+    ],
+    "donts": [
+      "Don't promote this dashboard’s palette, rail or component composition into a global game design system.",
+      "Don't replace or renumber live instrument IDs when moving favorites.",
+      "Don't shrink a dense fixed-width SVG until its labels become unreadable on a phone.",
+      "Don't invent zeroes, unique-player totals, conversion claims or source coverage from missing telemetry.",
+      "Don't make motion necessary for understanding a selected state or reaching a focused control."
+    ]
+  }
+}
