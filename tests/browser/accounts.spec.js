@@ -296,7 +296,8 @@ test("guest sees login and registration while a new account sees only logout", a
   await expect(page.locator("#playerSetupCard")).toHaveClass(/authenticated/);
   await expect(page.locator("#logoutBtn")).toBeVisible();
   await expect(page.locator("#headerAccountLink")).toHaveAttribute("href", "/konto");
-  expect(await page.locator("#playerSetupCard").evaluate(element => element.getBoundingClientRect().height)).toBeLessThan(120);
+  // Responsive lobby geometry is covered by compact-lobbies.spec.js; this
+  // authentication contract applies to both available lobby designs.
 });
 
 
@@ -990,10 +991,25 @@ test("superadmin can make a neutral extra roll and a scored 60 triggers the cele
   await page.evaluate(() => {
     window.__sixtyTiming = { shakeStart: null, shakeEnd: null, rollStart: null };
     const timing = window.__sixtyTiming;
+    const classes = document.body.classList;
+    const add = classes.add;
+    const remove = classes.remove;
+    // Snapshot rendering runs synchronously after the celebration starts.
+    // Timestamp the class transitions themselves: an observer callback runs
+    // only after that rendering and would undercount the actual lifetime.
+    classes.add = function (...tokens) {
+      const wasShaking = this.contains("sixty-score-celebration");
+      const result = add.apply(this, tokens);
+      if (!wasShaking && this.contains("sixty-score-celebration") && timing.shakeStart === null) timing.shakeStart = performance.now();
+      return result;
+    };
+    classes.remove = function (...tokens) {
+      const wasShaking = this.contains("sixty-score-celebration");
+      const result = remove.apply(this, tokens);
+      if (wasShaking && !this.contains("sixty-score-celebration") && timing.shakeStart !== null && timing.shakeEnd === null) timing.shakeEnd = performance.now();
+      return result;
+    };
     new MutationObserver(() => {
-      const shaking = document.body.classList.contains("sixty-score-celebration");
-      if (shaking && timing.shakeStart === null) timing.shakeStart = performance.now();
-      if (!shaking && timing.shakeStart !== null && timing.shakeEnd === null) timing.shakeEnd = performance.now();
       if (timing.shakeStart !== null && timing.rollStart === null && document.querySelector("#diceBar .die.shaking")) {
         timing.rollStart = performance.now();
       }

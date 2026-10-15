@@ -2,6 +2,12 @@ const { test, expect } = require("@playwright/test");
 
 test.use({ serviceWorkers:"block", viewport:{ width:440, height:956 }, hasTouch:true, isMobile:true });
 
+test.afterEach(async ({ page }) => {
+  // Returning to the lobby can start an auth request after the final visible
+  // assertion. Let its real response projection finish before context teardown.
+  await page.unrouteAll({ behavior:"wait" });
+});
+
 async function signInPreviewFriend(page, language) {
   const admin = await page.request.post("/api/auth/login", { data:{ username:"Admin", password:"temporary-password-123" } });
   expect(admin.ok()).toBe(true);
