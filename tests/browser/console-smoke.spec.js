@@ -508,6 +508,13 @@ test("back to lobby can pause a game and resume it later", async ({ page, reques
 });
 
 test("mobile game layout keeps totals above the dice bar and has no browser errors", async ({ page, request }) => {
+  // Table geometry and chat hit tests must not be covered by the tour offer.
+  await page.addInitScript(() => localStorage.setItem("rollthedice.tours.v1.guest", JSON.stringify({
+    enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  })));
+  await page.route("**/api/auth/tours/offer", route => route.fulfill({ json: {
+    show: false, enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  } }));
   await page.setViewportSize({ width: 367, height: 703 });
   const health = watchPageHealth(page);
   const created = await request.post("/api/games", {

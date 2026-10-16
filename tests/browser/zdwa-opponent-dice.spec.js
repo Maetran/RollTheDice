@@ -46,6 +46,13 @@ function state() {
 
 async function fixture(page, { theme = "classic", initial = state(), spectator = false } = {}) {
   await page.addInitScript(value => localStorage.setItem("wuerfler_theme", value), theme);
+  // Keep dice/identity updates measurable without the independent tour offer.
+  await page.addInitScript(() => localStorage.setItem("rollthedice.tours.v1.guest", JSON.stringify({
+    enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  })));
+  await page.route("**/api/auth/tours/offer", route => route.fulfill({ json: {
+    show: false, enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  } }));
   let current = structuredClone(initial);
   let socket;
   let connections = 0;

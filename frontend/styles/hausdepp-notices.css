@@ -1,0 +1,22 @@
+/* The suite dialog keeps its existing queue and keyboard handling. */
+html[data-game="hausdepp"].app-dialog-open,
+html[data-game="hausdepp"] body.app-dialog-open { overflow: hidden; }
+html[data-game="hausdepp"] .app-dialog-backdrop { position: fixed; z-index: 1200; inset: 0; display: grid; place-items: center; padding: 16px; background: #081c18bb; }
+html[data-game="hausdepp"] .app-dialog-backdrop[hidden] { display: none; }
+html[data-game="hausdepp"] .app-dialog { width: min(560px, 100%); max-height: calc(var(--game-viewport-height, 100dvh) - 32px); padding: 24px; overflow: auto; overscroll-behavior: contain; color: var(--hd-ink); background: var(--hd-paper); border: 2px solid var(--hd-green); border-radius: 6px; box-shadow: 6px 6px 0 #081c1880; }
+html[data-game="hausdepp"] .app-dialog-head { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+html[data-game="hausdepp"] .app-dialog-head h2 { margin: 6px 0 16px; font: 700 clamp(24px, 5vw, 30px)/1.2 Georgia, serif; }
+html[data-game="hausdepp"] .app-dialog-close { flex: 0 0 44px; width: 44px; min-height: 44px; padding: 4px; font-size: 28px; }
+html[data-game="hausdepp"] .app-dialog-message { margin: 0 0 20px; font-size: 14px; line-height: 1.6; white-space: normal; }
+html[data-game="hausdepp"] .app-dialog-message h3 { margin: 12px 0 8px; font-size: 20px; line-height: 1.3; overflow-wrap: anywhere; }
+html[data-game="hausdepp"] .app-dialog-message p { margin: 8px 0; }
+html[data-game="hausdepp"] .app-dialog-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+html[data-game="hausdepp"] .app-dialog-actions button { min-width: 0; min-height: 44px; padding: 10px; overflow-wrap: anywhere; }
+html[data-game="hausdepp"] .app-dialog-actions button:only-child { grid-column: 1 / -1; }
+html[data-game="hausdepp"] .app-dialog-actions .primary { background: var(--hd-green); color: var(--hd-paper); }
+html[data-game="hausdepp"] .app-dialog :focus-visible { outline: 3px solid var(--hd-red); outline-offset: 2px; }
+html[data-game="hausdepp"] .hd-notice-reward { color: var(--hd-red); font-size: 22px; font-weight: 750; }
+html[data-game="hausdepp"] .hd-notice-quote { padding-left: 14px; border-left: 3px solid var(--hd-green); font: italic 18px/1.5 Georgia, serif; }
+@media (max-width: 400px) {
+  html[data-game="hausdepp"] .app-dialog { padding: 16px; }
+}

@@ -219,3 +219,63 @@ sheet. Explicit Apple icons, PNG decoding and both GET/HEAD discovery paths are
 automatically tested. Acceptance of that iOS system sheet still requires the
 physical iPhone after rollout; Chrome manifest and WebKit tests do not prove
 an iOS installation.
+
+## Abschliessender 3.2.0-Releasecheck / final release checks
+
+Nach der Integration wurden weitere ausdrücklich gewünschte Verbesserungen
+aufgenommen. Der Nutzer hat den gemeinsamen Rollout nach Abschluss der Touren
+und dieser Verbesserungen freigegeben. Die frühere Integrationsphase oben ist
+kein Nachweis eines bereits erfolgten Deployments. /
+Additional requested improvements were added after integration. The owner has
+authorized the combined rollout once tours and these improvements are ready.
+The earlier integration phase above is not a record of a completed deployment.
+
+- Gesamte Backend-Suite / complete backend suite: **1’208 bestanden / passed**,
+  Coverage **84,59 %**. Neue Notice-Quittungen sind reine Präsentationsdaten;
+  sie ändern keine verdienten EP. Migrationen `0060 → 0061 → 0062` haben genau
+  einen Kopf / notice receipts are presentation data, not XP grants; migrations
+  have a single head.
+- **111** betroffene Browser-Regressionen bestanden / affected browser
+  regressions passed. Alte Spiel-Fixtures unterdrücken nur das neue freiwillige
+  Tourangebot; die positiven Tourtests bleiben unverändert und bestehen. /
+  Existing game fixtures suppress only the new optional tour offer; positive
+  tour tests remain unchanged and pass.
+- **9** Dekorationsfälle bestanden / prop cases passed: echte Tische mit sechs
+  Sitzen, objektabhängige Bewegungen, reduzierte Bewegung und feste Koordinaten
+  bei wachsender Hand. Überdeckende Karten erhalten weiterhin den Tipp. /
+  Real six-seat tables, object-specific motion, reduced motion and stable
+  coordinates while hands grow; covering cards still receive taps.
+- **8 Chromium +21 WebKit** bestanden / passed: Paketansicht, echter langer
+  Maus-/Touchdruck ohne versehentliche Aufnahme, Tastatur, Live-Karten,
+  Ablagestapel und sechs Sitze in beiden Ausrichtungen. Zusätzlich präzisierte
+  Inspector-Spec **6/6 je Browser** / inspection, long press without accidental
+  pickup, keyboard, live public cards, cleared stack and six seats in both
+  orientations; refined inspector checks also passed in both browsers.
+- Erfolgsmeldungen erklären Bedingung, eigene belegte Ursache und EP, einschliesslich
+  früherer Erfolge und Rangaufstiege. Abbruch bestätigt nichts. Auch der
+  Abschluss einer einzelnen Turnierrunde zeigt Meldungen; die nächste Runde
+  gibt den Tisch sofort frei. / Progress notices explain the condition, recorded
+  reason and XP, including older awards and rank-ups. Dismissal acknowledges
+  nothing. Each finished tournament round can show notices; the next round
+  immediately releases the table.
+- Öffentliche Spielregeln erklären Paketinspektion und den ausgeschiedenen
+  Kartenstapel vollständig DE/EN. Keine neue öffentliche Route, keine Änderung
+  der eigentlichen Spielregeln / public rules explain pile inspection and
+  cleared cards in both languages, without new public routes or rule changes.
+
+Logs und Bilder dieser Phase werden im bestehenden externen Evidenzordner
+`outputs/hausdepp-next` gesichert. Keine Prüfung versendet echte Pushmeldungen
+oder spielt mit Produktionskonten. Der reale iPhone-Systemdialog bleibt als
+Geräteabnahme offen. / Logs and screenshots are retained in the existing external
+evidence folder. Tests neither send real push alerts nor play on production
+accounts. The physical iPhone installation sheet still needs device acceptance.
+
+Finaler Assetstand / final asset fingerprint: **`4e0800075052`**. Gegenüber
+`4c2c64a9d39a` sind nur die DE/EN-Bedienhinweise sowie der eng begrenzte Schutz
+gegen einen nachträglich geöffneten nativen Dialog hinzugekommen. Der neue
+umgekehrte Dialog-Fokusfall und alle acht bisherigen Notice-Fälle bestehen:
+**9/9**. Die beiden Regeln-/Navigationsflows bestehen ebenfalls erneut.
+`npm run check:quality` ist auf dem finalen Stand vollständig grün. /
+The final bundle adds only bilingual instructions and the narrow safeguard for
+a native dialog opening after a progress popup. All nine notice checks and
+both rules/navigation checks pass; full quality/security checks are green.

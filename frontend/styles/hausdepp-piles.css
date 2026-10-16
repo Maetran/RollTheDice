@@ -1,0 +1,38 @@
+/* The live packet remains a tap target. Inspection never covers its artwork. */
+html[data-game="hausdepp"] #hausdeppPile { touch-action: manipulation; -webkit-touch-callout: none; user-select: none; }
+html[data-game="hausdepp"] .hd-game-help .hd-inspect-pile { min-height: 44px; margin-top: 4px; }
+.hd-inspect-hint { color: var(--hd-muted); font-size: 12px; line-height: 1.5; margin: 6px 0 16px; }
+.hd-pile-inspector {
+  width: min(780px, calc(100vw - 24px)); max-width: calc(100vw - 24px);
+  max-height: calc(var(--game-viewport-height, 100dvh) - 24px); margin: auto; padding: 20px;
+  color: var(--hd-ink); background: var(--hd-paper); border: 2px solid var(--hd-green); border-radius: 6px;
+  box-shadow: 6px 6px 0 #081c1880; overflow: auto; overscroll-behavior: contain;
+}
+.hd-pile-inspector::backdrop { background: #081c18bb; }
+.hd-pile-inspector > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; position: sticky; top: -20px; z-index: 2; padding-block: 8px; background: var(--hd-paper); }
+.hd-pile-inspector h2 { margin: 0; font: 700 clamp(22px, 4vw, 30px)/1.2 Georgia, serif; }
+.hd-pile-inspector button { flex: 0 0 auto; min-height: 44px; padding: 8px 14px; }
+.hd-pile-inspector p { font-size: 14px; line-height: 1.5; margin: 8px 0; }
+.hd-pile-inspector [data-pile-inspector-status] { color: var(--hd-muted); font-size: 12px; }
+.hd-pile-inspector ol { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 18px 12px; padding: 12px 0 4px; margin: 0; list-style: none; }
+.hd-pile-inspector li { min-width: 0; display: flex; justify-content: center; }
+.hd-pile-inspector .hausdepp-card { width: min(100%, 106px); }
+/* These are deliberately backs only: discarded cards have no inspection action. */
+html[data-game="hausdepp"] .hd-table .hd-centre .hd-burned { display: grid; grid-template-columns: auto 1fr; align-items: center; justify-items: center; gap: 4px; width: 72px; flex: 0 0 72px; }
+html[data-game="hausdepp"] .hd-table .hd-centre .hd-burned > span { font-size: 11px; line-height: 13px; }
+html[data-game="hausdepp"] .hd-table .hd-centre #hausdeppBurnedCount { font-weight: 750; font-variant-numeric: tabular-nums; }
+html[data-game="hausdepp"] .hd-table .hd-centre .hd-burned > span:last-child { text-align: left; }
+.hd-burned-stack { position: relative; grid-column: 1 / -1; width: 48px; aspect-ratio: 36 / 57; margin: 8px; }
+.hd-burned-stack.is-empty { border: 1px dashed #d5b78280; border-radius: 4px; }
+.hd-burned-card { position: absolute; inset: 0; border: 2px solid #f3eadd; border-radius: 4px; background: url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center/90px; box-shadow: 0 2px 4px #180d0870; transform: translate(var(--burn-x), var(--burn-y)) rotate(var(--burn-angle)); }
+@media (max-width: 1099px) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned { position: absolute; left: 4px; right: auto; top: auto; bottom: 4px; transform: none; width: 52px; max-width: 52px; gap: 1px 3px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned > span { font-size: 9px; line-height: 10px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-burned-stack { width: 28px; margin: 5px 4px; }
+  .hd-pile-inspector { padding: 12px; }
+  .hd-pile-inspector > header { top: -12px; }
+}
+@media (max-width: 1099px) and (orientation: landscape) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned { left: auto; right: 0; bottom: 0; top: auto; }
+  html[data-game="hausdepp"] body.hd-playing .hd-burned-stack { width: 24px; }
+}

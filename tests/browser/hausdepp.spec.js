@@ -1212,6 +1212,22 @@ test('reduced motion leaves the lobby demonstration hand still', async ({ page }
   await expect(demo).not.toHaveAttribute('data-demo-step');
 });
 
+test('rotated lobby cards keep their actual outer corners inside compact windows', async ({ page }) => {
+  await ownerSession(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/hausdepp');
+  for (const [width, height] of [[320, 568], [390, 844], [568, 320], [740, 360], [844, 390]]) {
+    await page.setViewportSize({ width, height });
+    await expect(page.locator('.hd-lobby-cards [data-card-id]')).toHaveCount(3);
+    await expect.poll(() => page.locator('.hd-lobby-cards [data-card-id]').evaluateAll(cards => {
+      const rects = cards.map(card => card.getBoundingClientRect());
+      return Math.max(...rects.map(rect => rect.right)) <= innerWidth - 7
+        && Math.min(...rects.map(rect => rect.left)) >= 7;
+    }), { message: `${width}×${height}: rotated artwork keeps an eight-pixel window edge` }).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  }
+});
+
 test('seeded local demo refills only below three and throws matching pairs from one physical deck', async ({ page }) => {
   await ownerSession(page);
   await page.addInitScript(() => {

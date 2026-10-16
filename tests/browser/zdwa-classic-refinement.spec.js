@@ -16,6 +16,14 @@ async function createGame(request, mode = 1) {
 
 async function setClassic(context) {
   await context.addInitScript(() => localStorage.setItem("wuerfler_theme", "classic"));
+  // Typography and table hit tests are independent of the beginner offer;
+  // its visible interaction remains covered by game-tours.spec.js.
+  await context.addInitScript(() => localStorage.setItem("rollthedice.tours.v1.guest", JSON.stringify({
+    enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  })));
+  await context.route("**/api/auth/tours/offer", route => route.fulfill({ json: {
+    show: false, enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  } }));
 }
 
 async function enterRoom(page, gameId, name = "Anna") {
@@ -210,6 +218,12 @@ test("real multiplayer correction and final score remain reachable on short Clas
   const firstContext = await browser.newContext({ baseURL, hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
   const secondContext = await browser.newContext({ baseURL, serviceWorkers: "block" });
   await setClassic(firstContext);
+  await secondContext.addInitScript(() => localStorage.setItem("rollthedice.tours.v1.guest", JSON.stringify({
+    enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  })));
+  await secondContext.route("**/api/auth/tours/offer", route => route.fulfill({ json: {
+    show: false, enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  } }));
   const first = await firstContext.newPage();
   const second = await secondContext.newPage();
   try {

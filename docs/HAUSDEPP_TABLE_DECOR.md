@@ -21,12 +21,19 @@ Es gibt weder einen zusätzlichen Serverzustand noch eine Regelwirkung.
 
 Vor jeder Platzierung werden die sichtbaren Gegner, Karten, Stapel, Texte und
 Aktionen gemessen. Requisiten erscheinen ausschliesslich in freien Bereichen,
-nehmen keine Eingaben entgegen und sind für assistive Technik ausgeblendet.
-Bei Platzmangel werden sie verkleinert oder weggelassen. Resize und geänderte
-Handgrössen können eine freie Position neu bestimmen; Auswahl und Drehung
-bleiben stabil. Teedampf, Bierschaum und Kerzenlicht bewegen sich nur sehr gering.
-Alle Bewegungen einschliesslich des ersten Einblendens werden bei reduzierter
-Bewegung abgeschaltet; Spielbestätigungen starten keine Animation erneut.
+bieten optionales Antippen und Tastaturbedienung über beschriftete Flächen
+von mindestens 44 Pixeln. Bei Platzmangel werden sie verkleinert oder weggelassen.
+Innerhalb einer Runde bleiben Auswahl und Position fest. Nur ein geändertes
+Fensterformat berechnet die Platzierung neu. Eine wachsende Hand darf über
+Gegenständen liegen; die Karten liegen darüber und erhalten den Tipp. Teedampf, Bierschaum und Kerzenlicht bewegen sich nur sehr gering.
+Ein Anstupsen kippt die Dose bei ausreichend freiem Platz um ihren Fuss; sie
+bleibt liegen, bis sie erneut angeklickt wird. Würfel rollen in eine neue
+Ruhelage, schwere Bretter rutschen nur kurz, Tassen federn am Standfuss zurück.
+Gelegentlich erfolgt ein einzelner Anstoss in Abständen von 30–65 Sekunden während des Spiels;
+in Hintergrundtabs und offenen Dialogen bleibt er aus. Diese Gesten verschieben
+keine Platzierungskoordinaten, senden keine Spielbefehle und vermeiden belegte
+Spielbereiche. Bei reduzierter Bewegung bleiben alle Requisiten unbewegt und
+ihre optionalen Knöpfe deaktiviert.
 
 Die gezielten Tests stehen in `tests/browser/hausdepp-table-decor.spec.js`.
 Die eigentliche Karten- und Transferprovenienz bleibt separat in
@@ -43,11 +50,18 @@ logos or references. The selected PNG is copied unchanged into the project.
 Table and round determine a stable mix across reloads. Tablets show up to two
 props; desktops up to four; portrait phones at most one small prop, landscape
 phones up to two when space permits. Visible players,
-cards, piles, copy and actions are measured before placing anything. Props are
-pointer-inert, hidden from assistive technology, and resized or omitted when
-space is insufficient. They affect no rules or server state. Initial fading
+cards, piles, copy and actions are measured before placing anything. Props offer optional taps and labelled keyboard controls with at least 44-pixel
+targets, and are resized or omitted when space is insufficient. Positions stay
+fixed for the round unless the viewport format changes. Growing hands can cover
+objects; cards remain above them and receive the tap. They affect no rules or
+server state. A can tips around its foot when space allows and stays down until
+clicked again; dice roll to a new resting angle, heavy boards slide briefly,
+and cups settle around their base. A rare automatic nudge occurs at 30–65-second
+intervals during play, skipping hidden tabs and open dialogs. Gestures keep
+placement coordinates fixed and leave occupied controls clear. Initial fading
 and subtle steam, foam and candle flicker respect reduced motion. Ordinary
-acknowledgements do not restart effects.
+acknowledgements do not restart effects; reduced motion also disables optional
+prop buttons.
 Visual owner acceptance remains pending.
 
 ## Original generation prompt

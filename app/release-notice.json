@@ -11,27 +11,27 @@
     "de": {
       "title": "Der Hausdepp wird schlauer. Du auch?",
       "changes": [
-        "Hausdepp ist da: Spielt mit Menschen und Computern, in einzelnen Runden oder im HAUSDEPP-Turnier.",
-        "Auf dem Handy bleibt der Tisch in einem Fenster. Grössere Stapel und sofort vorbereitete Kartenbilder helfen beim schnellen Nachwerfen.",
-        "Computer planen bessere Schlusszüge und reagieren mal schneller, mal mit einer Denkpause.",
-        "Anmelden mit Passkey zuerst: Profil, Passkeys und weitere Einstellungen verwaltest du direkt bei Hausdepp.",
-        "Du kannst wartende Tische wieder verlassen. In der Rangliste siehst du die aktuellen Hausdepp-Ränge.",
-        "Der gemeinsame Lobby-Chat hat jetzt auch einen Hausdepp-Filter und das passende Spiel-Tag.",
-        "Die kurzen freiwilligen Einsteigertouren helfen in allen drei Spielen; du kannst sie jederzeit beenden oder in den Einstellungen neu starten.",
-        "Das Herz-Zehner-Icon ist für die Installation auf dem iPhone besser auffindbar."
+        "Hausdepp ist da: Einzelrunden oder HAUSDEPP-Turnier, mit clevereren Computern und wechselnden Denkpausen.",
+        "Der mobile Tisch bleibt in einem Fenster: grosse Stapel und vorbereitete Kartenbilder helfen beim schnellen Nachwerfen.",
+        "Passkey zuerst und eigene Kontoeinstellungen. Wartende Tische kannst du wieder verlassen.",
+        "Erfolge und Rangaufstiege erklären jetzt, was du erreicht hast und warum. Bisherige Meldungen werden beim nächsten Einstieg nachgeholt.",
+        "Langer Druck auf das offene Paket zeigt alle Karten vor dem Nehmen. Ausgeschiedene Karten haben einen eigenen Stapel.",
+        "Die Rangliste zeigt Hausdepp-Titel; im gemeinsamen Chat gibt es Hausdepp-Tag und Schnellfilter.",
+        "Freiwillige Einsteigertouren helfen in allen drei Spielen. Du kannst sie jederzeit beenden und später neu starten.",
+        "Bier und Snacks behalten ihren Platz und reagieren passend auf einen Anstupser. Das Herz-Zehner-Icon ist für iPhone leichter auffindbar."
       ]
     },
     "en": {
       "title": "Hausdepp gets smarter. Do you?",
       "changes": [
-        "Hausdepp is here: play with people and computers, in individual rounds or a HAUSDEPP tournament.",
-        "On phones, the table stays in one window. Larger piles and ready-to-show card images help with quick follow-up plays.",
-        "Computers plan better finishes and vary between quick responses and thinking pauses.",
-        "Passkeys come first: manage your profile, passkeys and other settings directly in Hausdepp.",
-        "Leave waiting tables again, and see current Hausdepp titles in the standings.",
-        "The shared lobby chat now includes a Hausdepp quick filter and game tag.",
-        "Short optional beginner tours help in all three games; end them anytime or restart them from settings.",
-        "The heart-ten icon is easier for iPhone to find when installing the app."
+        "Hausdepp is here: individual rounds or a HAUSDEPP tournament, with smarter computers and varied thinking pauses.",
+        "The mobile table stays in one window: large piles and ready-to-show card images help with quick follow-up plays.",
+        "Passkeys first and dedicated account settings. You can leave waiting tables again.",
+        "Achievements and rank-ups explain what you earned and why. Earlier notices catch up on your next entry.",
+        "Long-press the open pile to see all its cards before pickup. Cleared cards have their own stack.",
+        "Standings show Hausdepp titles; the shared chat has a Hausdepp tag and quick filter.",
+        "Optional beginner tours help in all three games. End them anytime and restart them later.",
+        "Drinks and snacks stay put and respond with fitting nudges. The heart-ten icon is easier for iPhone to find."
       ]
     }
   }

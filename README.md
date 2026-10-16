@@ -96,7 +96,12 @@ einem Augenzwinkern bis **Hausdepp** bei 5’000 EP. Jeder Rang hat einen eigene
 Aufstiegsspruch, etwa Newtons „Ab jetzt geht’s bergab. Ganz nach den
 Naturgesetzen.“ Der dauerhafte Rang ist vom Hausdepp einer Runde getrennt.
 Rundenpunkte und freigeschaltete Erfolge werden genau einmal gespeichert;
-Aufstiegsmeldungen bleiben bis zur Bestätigung erhalten. Bestehende Ergebnisse
+Neue Erfolge und Rangaufstiege erscheinen nach Rundenende als einzeln
+bestätigbare Meldungen mit Name, EP, Bedingung und eigenem Rundennachweis.
+Beim nächsten Hausdepp-Einstieg werden auch früher erreichte Erfolge und
+Aufstiege einmalig nachgezeigt; bestätigte Meldungen bleiben kontoweit erledigt.
+Schliessen oder „Später ansehen“ vergibt keine Bestätigung und keine neuen EP.
+Aktive Partien und Einsteigertouren haben Vorrang. Bestehende Ergebnisse
 belegen Teilnahme- und Ergebniserfolge; besondere Kartenaktionen benötigen die
 neu erfassten Spielereignisse. Der [vollständige Katalog](docs/HAUSDEPP_ACHIEVEMENTS.md)
 enthält alle Bedingungen, Punkte und Rangschwellen. Der öffentliche Start wird
@@ -166,8 +171,12 @@ Round and win counts and the number of existing unlocks are retained.
 The ironic ladder runs from **Einstein** at 0 XP to **Hausdepp**
 at 5,000 XP. Each rank has its own saying, including Newton's gravity-inspired
 downhill greeting. The lasting title stays separate from a round's Hausdepp.
-Round points and unlocks are stored once; rank-up notices remain pending until
-acknowledged. Existing outcomes can prove participation and outcome achievements;
+Round points and unlocks are stored once. After a round, individual achievement
+and rank popups show the name, XP, condition and your own saved round evidence.
+Your next Hausdepp entry also presents previously earned achievements and ranks
+once; confirmed items stay confirmed across the account. Closing or choosing
+“View later” keeps the item pending without granting XP again. Active games and
+beginner tours take priority. Existing outcomes can prove participation and outcome achievements;
 detailed card feats require newly recorded gameplay evidence. The
 [complete catalogue](docs/HAUSDEPP_ACHIEVEMENTS.md) records conditions, points and
 thresholds. The public launch uses the shared major version **V3.0.0** without
@@ -238,6 +247,23 @@ browser URLs. Private hands, game state and account content are never stored
 for offline use. The PWA uses fresh heart-ten icon URLs, explicit 180-pixel
 Apple icons and standard public Apple fallback paths. Browser and manifest
 checks cannot replace acceptance of the iPhone Home Screen dialog.
+
+**Deutsch:** Das offene Paket lässt sich vor dem Nehmen mit langem Druck,
+Rechtsklick oder Umschalt+Enter auffächern; eine beschriftete Aktion steht auch
+in der Spielhilfe. Ein normaler Tipp nimmt weiterhin sofort. Ausgeschiedene
+Karten landen auf einem eigenen, mit „Aus dem Spiel“ beschrifteten Stapel.
+Tischgegenstände behalten ihren Platz, auch wenn die eigene Hand darüberwächst.
+Auf Wunsch lassen sich Dose, Würfel, Tasse oder Snacks passend zum Gegenstand
+anstupsen. Seltene automatische Gesten und alle Klickeffekte respektieren
+reduzierte Bewegung und beeinflussen keinen Spielzug.
+
+**English:** Inspect the open pile before picking it up with a long press,
+right-click or Shift+Enter; a labelled action is also available in table help.
+A normal tap still picks it up immediately. Cleared cards land on a separate
+pile labelled “Out of play”. Table props keep their positions as your hand grows
+over them. Nudge the can, dice, cup or snacks for object-specific movement.
+Rare automatic gestures and all tap effects respect reduced motion and never
+perform a game action.
 
 ## The games
 

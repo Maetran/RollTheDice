@@ -661,6 +661,15 @@ class HausdeppPresentationReceipt(Base):
     )
 
 
+class HausdeppNoticeReceipt(Base):
+    """Per-item presentation only; never grants an achievement or any XP."""
+
+    __tablename__ = "hausdepp_notice_receipts"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    notice_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class AbandonedGame(Base):
     """Minimal, account-safe record for a started game that was abandoned.
 

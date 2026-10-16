@@ -154,7 +154,16 @@ async function labelledTable(page, { count = 6, language = 'de', viewport = { wi
 }
 
 async function expectNoHorizontalOverflow(page, context) {
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), context).toBeLessThanOrEqual(1);
+  const overflow = await page.evaluate(() => {
+    const extra = document.documentElement.scrollWidth - innerWidth;
+    const nodes = extra > 1 ? [...document.querySelectorAll('body *')].flatMap(node => {
+      const rect = node.getBoundingClientRect();
+      return rect.width && rect.right > innerWidth + 1 ? [{ tag: node.tagName, id: node.id,
+        class: String(node.className).slice(0, 90), left: rect.left, right: rect.right, width: rect.width }] : [];
+    }).slice(-12) : [];
+    return { extra, nodes };
+  });
+  expect(overflow.extra, `${context}: ${JSON.stringify(overflow.nodes)}`).toBeLessThanOrEqual(1);
 }
 
 async function expectFixedGameWindow(page, context) {

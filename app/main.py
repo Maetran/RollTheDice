@@ -2329,6 +2329,26 @@ def api_acknowledge_hausdepp_presentation(payload: HausdeppPresentationAckReq, r
         raise HTTPException(status_code=400, detail="hausdepp_invalid_acknowledgement") from exc
 
 
+@app.get("/api/hausdepp/progress-notices")
+def api_hausdepp_progress_notices(request: Request):
+    from .hausdepp_notices import pending_hausdepp_notices
+
+    identity = _require_hausdepp_access(request)
+    return pending_hausdepp_notices(identity.user_id)
+
+
+@app.post("/api/hausdepp/progress-notices/{notice_key}/acknowledge")
+def api_acknowledge_hausdepp_notice(notice_key: str, request: Request):
+    from .hausdepp_notices import acknowledge_hausdepp_notice
+
+    identity = _require_hausdepp_access(request)
+    require_csrf(request, identity)
+    try:
+        return acknowledge_hausdepp_notice(identity.user_id, notice_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="hausdepp_invalid_notice") from exc
+
+
 @app.get("/api/zilch/results")
 def api_zilch_results(request: Request):
     """Return only the authenticated preview user's own private history."""

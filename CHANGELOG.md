@@ -59,6 +59,16 @@ versioned URLs; private content remains no-store. Fresh heart-ten filenames,
 explicit Apple icon sizes and public fallback paths improve icon discovery
 during installation.
 
+Ergänzung / addition: Erfolge und Rangaufstiege erscheinen mit Bedingung und
+belegbarer Begründung nach Rundenende; bisherige Meldungen werden beim nächsten
+sicheren Hausdepp-Einstieg einmalig nachgezeigt. Offene Pakete sind vor dem
+Nehmen auffächerbar, ausgeschiedene Karten haben einen eigenen Ablagestapel.
+Requisiten bleiben bei Handänderungen an ihrem Platz und erhalten passende,
+seltene Bewegungen. / Achievements and rank-ups explain their conditions and
+recorded reason after rounds; earlier notices appear once on the next safe
+Hausdepp entry. Inspect open piles before pickup; cleared cards have their own
+stack. Props stay put as hands change and gain occasional object-specific motion.
+
 ## 3.1.0 — Einsteigertouren / beginner tours — 2026-10-16
 
 **Deutsch:** ZDWA, Zilch und Hausdepp bieten beim ersten eigenen Spiel eine

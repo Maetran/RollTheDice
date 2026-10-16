@@ -17,36 +17,43 @@ function artwork(url) {
 
 test.beforeAll(({ baseURL }) => expect(new URL(baseURL).port).not.toBe('8000'));
 
-test('all card artwork is decoded before the first private table connects', async ({ page }) => {
-  const headers = await signIn(page);
-  const created = await page.request.post('/api/games', {
-    headers, data: { name: 'Renderer-Test · Karten vorladen', mode: '2', game_type: 'hausdepp', play_mode: 'cpu', cpu_count: 1 },
+test.describe('cold card loading uses controllable page requests', () => {
+  // A newly activated network-only worker can claim the page before preloading
+  // and route its image fetches outside page.route. Test the cold-image barrier
+  // without that independent race; the install case below keeps real workers.
+  test.use({ serviceWorkers: 'block' });
+
+  test('all card artwork is decoded before the first private table connects', async ({ page }) => {
+    const headers = await signIn(page);
+    const created = await page.request.post('/api/games', {
+      headers, data: { name: 'Renderer-Test · Karten vorladen', mode: '2', game_type: 'hausdepp', play_mode: 'cpu', cpu_count: 1 },
+    });
+    const room = `/hausdepp/spiel/${(await created.json()).game_id}`;
+    let releaseImages;
+    const barrier = new Promise(resolve => { releaseImages = resolve; });
+    let blocked = 0;
+    const gameSockets = [];
+    page.on('websocket', socket => { if (socket.url().includes('/ws/' + room.split('/').pop())) gameSockets.push(socket); });
+    await page.route('**/static/hausdepp/**', async route => {
+      if (!artwork(route.request().url())) return route.continue();
+      blocked += 1;
+      await barrier;
+      await route.continue();
+    });
+    try {
+      await page.goto(room, { waitUntil: 'domcontentloaded' });
+      await expect.poll(() => blocked).toBeGreaterThanOrEqual(3);
+      expect(gameSockets).toHaveLength(0);
+      await expect(page.locator('#hausdeppHand')).toHaveCount(0);
+      releaseImages();
+      await expect.poll(() => gameSockets.length).toBe(1);
+      await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', /peeking|playing/);
+      const decoded = await page.evaluate(async () => Promise.all([
+        ...new Set([...document.querySelectorAll('svg image')].map(image => image.getAttribute('href'))),
+      ].map(async src => { const image = new Image(); image.src = src; await image.decode(); return image.naturalWidth > 0; })));
+      expect(decoded.every(Boolean)).toBe(true);
+    } finally { releaseImages(); }
   });
-  const room = `/hausdepp/spiel/${(await created.json()).game_id}`;
-  let releaseImages;
-  const barrier = new Promise(resolve => { releaseImages = resolve; });
-  let blocked = 0;
-  const gameSockets = [];
-  page.on('websocket', socket => { if (socket.url().includes('/ws/' + room.split('/').pop())) gameSockets.push(socket); });
-  await page.route('**/static/hausdepp/**', async route => {
-    if (!artwork(route.request().url())) return route.continue();
-    blocked += 1;
-    await barrier;
-    await route.continue();
-  });
-  try {
-    await page.goto(room, { waitUntil: 'domcontentloaded' });
-    await expect.poll(() => blocked).toBeGreaterThanOrEqual(3);
-    expect(gameSockets).toHaveLength(0);
-    await expect(page.locator('#hausdeppHand')).toHaveCount(0);
-    releaseImages();
-    await expect.poll(() => gameSockets.length).toBe(1);
-    await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', /peeking|playing/);
-    const decoded = await page.evaluate(async () => Promise.all([
-      ...new Set([...document.querySelectorAll('svg image')].map(image => image.getAttribute('href'))),
-    ].map(async src => { const image = new Image(); image.src = src; await image.decode(); return image.naturalWidth > 0; })));
-    expect(decoded.every(Boolean)).toBe(true);
-  } finally { releaseImages(); }
 });
 
 test('newly drawn card faces reuse warm images without requests or a loading wait', async ({ page, context }) => {

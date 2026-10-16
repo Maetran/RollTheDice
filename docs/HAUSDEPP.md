@@ -232,6 +232,14 @@ Ein Tipp auf das **offene Paket** bedeutet dagegen dessen bewusstes vollständig
 Aufnehmen auf die Hand. Aufnehmen beendet den Zug. Bei leerem Tisch ist keine
 Aufnahme möglich.
 
+Vor einer freiwilligen Aufnahme lässt sich das öffentliche Paket auffächern:
+lange auf das Paket drücken, rechtsklicken oder Umschalt + Enter verwenden.
+In der Tischhilfe gibt es zusätzlich **Paket ansehen**. Der Dialog zeigt nur die
+bereits offen gespielten Karten; Anschauen führt keinen Spielzug aus. Ein kurzer
+Tipp bleibt die unmittelbare Aufnahme. Abgeräumte Karten landen auf einem
+separaten, chaotisch gestapelten Rückseitenstapel **Aus dem Spiel** mit genauer
+Kartenanzahl. Er ist kein Nachziehstapel und lässt sich nicht aufnehmen.
+
 Zum gerade gespielten Rang darf der Spieler weitere gleichrangige Karten
 **nachwerfen**. Das dürfen gerade nachgezogene Karten oder zunächst
 zurückbehaltene Handkarten sein. Nachwerfen ist freiwillig. Nach einem Nachwurf
@@ -473,9 +481,19 @@ Warteschlange von Erfolgen. Jeder Rang hat einen eigenen ursprünglichen DE-/EN-
 als historisch ausgegebenen Zitate. Der allgemeine Aufstiegstext lautet
 **„Gratuliere! Dem Hausdepp wieder einen Schritt näher.“** Newton ergänzt
 **„Ab jetzt geht’s bergab. Ganz nach den Naturgesetzen.“**, der Schlussrang
-**„Geschafft. Mehr Hausdepp geht nicht.“** Mehrere übersprungene Stufen und neue
-Erfolge werden zusammengefasst. Eine Bestätigung gilt kontoweit nur für den
-angezeigten Stand; neue Punkte werden durch eine alte Bestätigung nicht verdeckt.
+**„Geschafft. Mehr Hausdepp geht nicht.“** Neue Erfolge und jeder erreichte
+Aufstieg ab Stufe 2 werden nach Rundenende einzeln gezeigt: Name, volle einmalige
+Erfolgs-EP, Bedingung und belegbare eigene Qualifikationszahl mit Rundendatum und
+Tischgrösse. Aufstiege zeigen die erreichte EP-Schwelle und geben keine Bonus-EP.
+Beim nächsten Hausdepp-Einstieg erscheinen auch bereits früher verdiente Erfolge
+und Ränge einmalig, unabhängig von früher bestätigten Sammelmeldungen. Nur
+„Weiter“ bestätigt genau diese Meldung dauerhaft für das eigene Konto;
+Schliessen, Escape oder „Später ansehen“ lassen sie offen. Punkte und Erfolge
+werden dabei niemals erneut vergeben. Bestehende, vor einer Zielverschärfung
+freigeschaltete Erfolge werden ehrlich als damaliger Freischaltstand erklärt.
+Während aktiver Partien und Einsteigertouren warten die Meldungen; sie ändern
+keine Spielaktion und kein Nachwurfrecht. Eine alte Bestätigung verdeckt keine
+später hinzugekommenen Erfolge oder Aufstiege.
 
 ### Entwicklung und Lieferung
 
@@ -910,9 +928,17 @@ rounds, at most once per round and goal; rare feats remain immediately attainabl
 There is no artificial unlock cap or deferred award queue. Every rank has
 original German/English flavour copy, with no fabricated historical
 attribution. The general greeting celebrates another step closer to Hausdepp;
-Newton adds the approved downhill/natural-laws joke. Skipped ranks and new
-awards are consolidated. Acknowledgement applies account-wide only through the
-displayed revision, so an old tab cannot hide newer progress.
+Newton adds the approved downhill/natural-laws joke. New achievements and each
+reached rank from level 2 are presented individually after a round, with name,
+full one-time achievement XP, condition and your own verified qualifying count,
+round date and table size. Rank popups show their XP threshold and grant no
+bonus XP. Your next Hausdepp entry also presents previously earned achievements
+and ranks once, independently of older summary acknowledgements. Only Continue
+confirms that specific item across your account; closing, Escape and View later
+leave it pending. This never grants XP or achievements again. Retained unlocks
+from before a harder goal are honestly explained as earned under the earlier
+condition. Active games and beginner tours take priority, without changing any
+game action or follow-up window. An old confirmation cannot hide newer items.
 
 ### Development and delivery
 
@@ -943,3 +969,12 @@ actively leave an unstarted table. Their seat becomes free; host rights transfer
 to a remaining person if needed. The last person closes the unstarted table
 without a result, XP, tournament loss or abandonment score. This waiting action
 is unavailable once play starts; a start/leave race must never change a live round.
+
+
+### Inspecting and cleared cards
+
+Hold the open pile, right-click it or use Shift + Enter to inspect its public
+cards before pickup. **Inspect pile** in table help opens the same dialog.
+Inspection does not play a turn; a short tap still picks up the pile immediately.
+Cleared cards fly to a separate, untidy face-down **Out of play** stack with an
+exact count. That stack is neither stock nor available for pickup.
