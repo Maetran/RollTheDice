@@ -14,27 +14,64 @@ CERTIFICATE="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
 activation_backup=""
 staging_created=0
 probe_path=""
+probe_response_file=""
+probe_status_file=""
+probe_sequence=0
 
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 sudo_run() { sudo -n "$@"; }
 
-wait_for_origin_https() {
+wait_for_readiness() {
+  local label="$1"
+  local check="$2"
   local attempt
   # systemctl reload acknowledges the HUP signal before every new worker is
-  # accepting connections. An immediate SNI probe can still hit the old
-  # rejecting default vhost. Retry verified requests for at most 39 seconds;
-  # persistent certificate, routing or health failures still roll back.
+  # accepting connections. Both staged HTTP-01 and final TLS can briefly reach
+  # the previous vhost. Each gate allows ten requests of at most three seconds
+  # plus nine one-second pauses, then rolls back.
   for attempt in {1..10}; do
-    if curl --noproxy '*' --connect-timeout 2 --max-time 3 --fail --silent --show-error \
-      --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/api/health" >/dev/null; then
+    if "$check"; then
       return 0
     fi
     if [[ "$attempt" -lt 10 ]]; then
-      printf 'Waiting for verified Hausdepp HTTPS after Nginx reload (%s/10).\n' "$attempt" >&2
+      printf 'Waiting for %s after Nginx reload (%s/10).\n' "$label" "$attempt" >&2
       sleep 1
     fi
   done
-  fail "Verified Hausdepp HTTPS did not become ready after the bounded Nginx reload wait"
+  fail "$label did not become ready after the bounded Nginx reload wait"
+}
+
+probe_public_http01() {
+  local random
+  # This uses public DNS and Cloudflare, with no local --resolve shortcut and
+  # no redirect following. HTTP success alone never authorises certificate
+  # issuance: compare the exact response bytes, including any trailing newline.
+  # Every attempt has a fresh path as well as a fresh token: an old worker's
+  # cached 404 must never pin later attempts to that negative edge response.
+  if [[ -n "$probe_path" ]]; then sudo_run rm -f -- "$probe_path" || return 1; fi
+  probe_sequence=$((probe_sequence + 1))
+  random="$(openssl rand -hex 16)" || return 1
+  [[ "$random" =~ ^[0-9a-f]{32}$ ]] || return 1
+  probe="hausdepp-$random-$probe_sequence"
+  probe_path="$WEBROOT/.well-known/acme-challenge/$probe"
+  printf '%s' "$probe" | sudo_run tee "$probe_path" >/dev/null || return 1
+  if curl --noproxy '*' --connect-timeout 2 --max-time 3 --fail --silent --show-error \
+    --header 'Cache-Control: no-cache' --output "$probe_response_file" --write-out '%{http_code}' \
+    "http://$DOMAIN/.well-known/acme-challenge/$probe" >"$probe_status_file"; then
+    [[ "$(< "$probe_status_file")" == "200" ]] || return 1
+    printf '%s' "$probe" | cmp -s - "$probe_response_file"
+  else
+    return 1
+  fi
+}
+
+probe_origin_https() {
+  curl --noproxy '*' --connect-timeout 2 --max-time 3 --fail --silent --show-error \
+    --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/api/health" >/dev/null
+}
+
+wait_for_origin_https() {
+  wait_for_readiness 'Verified Hausdepp HTTPS' probe_origin_https
 }
 
 [[ "$APPLY" == "0" || "$APPLY" == "1" ]] || fail "APPLY must be exactly 0 or 1"
@@ -45,7 +82,7 @@ wait_for_origin_https() {
 [[ -f "$SOURCE" ]] || fail "Missing versioned Nginx configuration: $SOURCE"
 grep -Fq "server_name $DOMAIN;" "$SOURCE" || fail "Nginx source lacks the Hausdepp host"
 grep -Fq "$CERTIFICATE" "$SOURCE" || fail "Nginx source lacks the separate Hausdepp certificate"
-for command_name in sudo nginx certbot openssl curl dig systemctl; do
+for command_name in sudo nginx certbot openssl curl dig systemctl cmp mktemp sleep; do
   command -v "$command_name" >/dev/null || fail "Missing command: $command_name"
 done
 sudo_run true
@@ -67,6 +104,8 @@ cleanup() {
   local status=$?
   trap - EXIT
   if [[ -n "$probe_path" ]]; then sudo_run rm -f -- "$probe_path"; fi
+  if [[ -n "$probe_response_file" ]]; then rm -f -- "$probe_response_file"; fi
+  if [[ -n "$probe_status_file" ]]; then rm -f -- "$probe_status_file"; fi
   if [[ "$status" != "0" && -n "$activation_backup" ]]; then
     sudo_run cp -a -- "$activation_backup" "$TARGET"
     printf 'Activation failed; restored %s. The separately issued certificate may remain.\n' "$activation_backup" >&2
@@ -109,14 +148,9 @@ fi
 
 # Public proof exercises Cloudflare, DNS and origin routing. Never bypass TLS
 # validation or disable the proxy/firewall to get a certificate issued.
-probe="hausdepp-$(openssl rand -hex 16)"
-probe_path="$WEBROOT/.well-known/acme-challenge/$probe"
-printf '%s' "$probe" | sudo_run tee "$probe_path" >/dev/null
-probe_response="$(curl --noproxy '*' --connect-timeout 10 --max-time 30 --fail --silent --show-error \
-  "http://$DOMAIN/.well-known/acme-challenge/$probe")"
-[[ "$probe_response" == "$probe" ]] || fail "Public HTTP-01 proof did not return the exact challenge token"
-sudo_run rm -f -- "$probe_path"
-probe_path=""
+probe_response_file="$(mktemp)"
+probe_status_file="$(mktemp)"
+wait_for_readiness 'Public HTTP-01 exact-token proof' probe_public_http01
 
 sudo_run certbot certonly --webroot --webroot-path "$WEBROOT" --non-interactive \
   --cert-name "$DOMAIN" --keep-until-expiring -d "$DOMAIN"
@@ -142,6 +176,9 @@ fi
 SOURCE="$SOURCE" TARGET="$TARGET" bash scripts/install_nginx_config.sh
 
 wait_for_origin_https
+# Re-prove the permanent HTTP challenge route after removing the staging
+# vhost. Only then may Certbot exercise its automatic renewal configuration.
+wait_for_readiness 'Permanent HTTP-01 exact-token proof' probe_public_http01
 sudo_run certbot renew --dry-run --cert-name "$DOMAIN"
 printf 'Hausdepp TLS activated; backup: %s\n' "$activation_backup"
 printf 'Next: deploy the tested public app. Public smoke must pass before release notifications.\n'

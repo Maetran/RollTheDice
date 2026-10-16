@@ -41,10 +41,34 @@ systemctl() { return 0; }
 dig() { echo 104.21.75.229; }
 openssl() { echo 0123456789abcdef0123456789abcdef; }
 tls_attempts=0
+proof_attempts=0
 sleep() { echo WAIT >&2; }
 curl() {
   case "$*" in
-    *"http://hausdepp."*) echo PROOF >&2; echo "$PROOF_RESPONSE" ;;
+    *"http://hausdepp."*)
+      echo PROOF >&2
+      proof_attempts=$((proof_attempts + 1))
+      if [[ "$proof_attempts" -le "$HTTP_FAILURES" ]]; then return 22; fi
+      if [[ "$HTTP_FAIL_FROM" -gt 0 && "$proof_attempts" -ge "$HTTP_FAIL_FROM" ]]; then return 22; fi
+      output=""
+      previous=""
+      url=""
+      for argument in "$@"; do
+        if [[ "$previous" == "--output" ]]; then output="$argument"; fi
+        if [[ "$argument" == http://* ]]; then url="$argument"; fi
+        previous="$argument"
+      done
+      echo "PROBE_PATH:$url" >&2
+      body="$PROOF_RESPONSE"
+      if [[ "$body" == "__exact__" || "$body" == "__exact_newline__" || "$body" == "__exact_extra__" ]]; then
+        body="${url##*/}"
+        if [[ "$PROOF_RESPONSE" == "__exact_newline__" ]]; then body+=$'\n'; fi
+        if [[ "$PROOF_RESPONSE" == "__exact_extra__" ]]; then body+="extra"; fi
+      fi
+      if [[ "$proof_attempts" -le "$HTTP_WRONG_BODIES" ]]; then body="wrong-token"; fi
+      printf '%s' "$body" > "$output"
+      printf '%s' "$HTTP_STATUS"
+      ;;
     *)
       echo ORIGIN_TLS >&2
       tls_attempts=$((tls_attempts + 1))
@@ -58,7 +82,8 @@ bash() { echo INSTALL >&2; return "$INSTALL_FAIL"; }
             "APPLY": "1", "EXISTING_STAGING": "1", "FINAL_HOST_PRESENT": "1",
             "CERT_FAIL": "0", "RENEW_FAIL": "0", "INSTALL_FAIL": "0",
             "TLS_FAILURES": "0", "TLS_EXIT_CODE": "35",
-            "PROOF_RESPONSE": "hausdepp-0123456789abcdef0123456789abcdef",
+            "HTTP_FAILURES": "0", "HTTP_WRONG_BODIES": "0",
+            "HTTP_FAIL_FROM": "0", "HTTP_STATUS": "200", "PROOF_RESPONSE": "__exact__",
         }
         return subprocess.run(
             ["bash", "-s"], input=doubles + (BASE / "scripts/activate_hausdepp.sh").read_text(),
@@ -106,7 +131,7 @@ bash() { echo INSTALL >&2; return "$INSTALL_FAIL"; }
     def test_repeat_activation_uses_permanent_challenge_without_duplicate_vhost(self):
         result = self.execute(FINAL_HOST_PRESENT="0")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stderr.count("TEE"), 2)  # token + renewal hook only
+        self.assertEqual(result.stderr.count("TEE"), 3)  # both HTTP gates + renewal hook only
         self.assertNotIn("/etc/nginx/conf.d/hausdepp-acme-staging.conf", result.stderr)
 
     def test_transient_old_worker_sni_rejection_waits_then_accepts_verified_https(self):
@@ -117,6 +142,55 @@ bash() { echo INSTALL >&2; return "$INSTALL_FAIL"; }
         self.assertEqual(result.stderr.count("BACKUP_OR_RESTORE"), 1)
         self.assertIn("RENEW", result.stderr)
         self.assertNotIn("Activation failed", result.stderr)
+
+    def test_staging_http_404_or_wrong_body_retries_until_exact_token_before_certbot(self):
+        for flags in ({"HTTP_FAILURES": "2"}, {"HTTP_WRONG_BODIES": "2"}):
+            with self.subTest(flags=flags):
+                result = self.execute(**flags)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stderr.count("PROOF"), 4)  # three staging attempts + permanent proof
+                self.assertEqual(result.stderr.count("WAIT"), 2)
+                issue = result.stderr.index("ISSUE")
+                self.assertEqual(result.stderr[:issue].count("PROOF"), 3)
+                self.assertLess(result.stderr.rindex("PROOF"), result.stderr.index("RENEW"))
+                self.assertEqual(result.stderr.count("BACKUP_OR_RESTORE"), 1)
+
+    def test_persistent_http_404_wrong_token_or_trailing_bytes_never_issues_certificate(self):
+        for flags in ({"HTTP_FAILURES": "99"}, {"PROOF_RESPONSE": "wrong-token"},
+                      {"PROOF_RESPONSE": "__exact_newline__"}, {"PROOF_RESPONSE": "__exact_extra__"},
+                      {"HTTP_STATUS": "302"}):
+            with self.subTest(flags=flags):
+                result = self.execute(**flags)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stderr.count("PROOF"), 10)
+                self.assertEqual(result.stderr.count("WAIT"), 9)
+                self.assertEqual(result.stderr.count("BACKUP_OR_RESTORE"), 2)
+                self.assertIn("Public HTTP-01 exact-token proof did not become ready", result.stderr)
+                for forbidden in ("ISSUE", "INSTALL", "ORIGIN_TLS", "RENEW"):
+                    self.assertNotIn(forbidden, result.stderr)
+
+    def test_permanent_http_proof_is_required_after_final_reload_before_renewal(self):
+        result = self.execute(HTTP_FAIL_FROM="2")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("ISSUE", result.stderr)  # initial public proof passed
+        self.assertIn("INSTALL", result.stderr)
+        self.assertIn("ORIGIN_TLS", result.stderr)
+        self.assertNotIn("RENEW", result.stderr)
+        self.assertEqual(result.stderr.count("PROOF"), 11)
+        self.assertEqual(result.stderr.count("WAIT"), 9)
+        self.assertEqual(result.stderr.count("BACKUP_OR_RESTORE"), 2)
+        self.assertIn("Permanent HTTP-01 exact-token proof did not become ready", result.stderr)
+
+    def test_each_public_retry_uses_a_fresh_path_and_previous_token_is_removed(self):
+        result = self.execute(HTTP_WRONG_BODIES="2")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        paths = [line.removeprefix("PROBE_PATH:") for line in result.stderr.splitlines()
+                 if line.startswith("PROBE_PATH:")]
+        self.assertEqual(len(paths), 4)
+        self.assertEqual(len(set(paths)), 4)
+        for path in paths:
+            token = path.rsplit("/", 1)[1]
+            self.assertIn(f"REMOVE:rm -f -- /var/lib/letsencrypt/.well-known/acme-challenge/{token}", result.stderr)
 
     def test_persistent_tls_or_certificate_failure_remains_bounded_and_rolls_back(self):
         for error in ("35", "60"):
@@ -131,12 +205,25 @@ bash() { echo INSTALL >&2; return "$INSTALL_FAIL"; }
 
     def test_reload_wait_preserves_tls_hostname_chain_and_http_health_verification(self):
         source = (BASE / "scripts/activate_hausdepp.sh").read_text()
-        wait = source.split("wait_for_origin_https() {", 1)[1].split("\n}\n", 1)[0]
+        wait = source.split("probe_origin_https() {", 1)[1].split("\n}\n", 1)[0]
         self.assertIn("--resolve", wait)
         self.assertIn("--fail", wait)
         self.assertIn("--max-time 3", wait)
         self.assertNotIn("--insecure", wait)
         self.assertNotIn(" -k", wait)
+
+    def test_staging_probe_uses_public_cloudflare_path_and_exact_body_with_common_bounded_wait(self):
+        source = (BASE / "scripts/activate_hausdepp.sh").read_text()
+        probe = source.split("probe_public_http01() {", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn('"http://$DOMAIN/.well-known/acme-challenge/$probe"', probe)
+        self.assertIn('cmp -s - "$probe_response_file"', probe)
+        self.assertIn("--fail", probe)
+        self.assertIn("--max-time 3", probe)
+        self.assertNotIn("--resolve", probe.split("if curl", 1)[1])
+        self.assertNotIn("--location", probe)
+        wait = source.split("wait_for_readiness() {", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn("{1..10}", wait)
+        self.assertIn("sleep 1", wait)
 
     def test_house_proxy_and_security_directives_match_existing_products(self):
         source = (BASE / "deploy/nginx/rollthedice.conf").read_text()
