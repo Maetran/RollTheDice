@@ -12,6 +12,30 @@ Guests can play ZDWA and Zilch. Hausdepp has a public lobby and rules; playing
 requires an active account. One account provides history, statistics, achievements
 and community features across the suite.
 
+## Einsteigertouren / beginner tours
+
+**Deutsch:** ZDWA, Zilch und Hausdepp bieten beim ersten eigenen Spiel je eine
+kurze, freiwillige Tour an. Sie zeigt direkt am passenden Bedienelement, was du
+wann tun kannst und warum; jede Spielaktion führst du selbst aus. **Tour
+beenden**, × oder Escape schliessen sie sofort, während die Partie weiterläuft.
+Unter **Konto → Einstellungen → Hilfe & Neuigkeiten → Einsteigertouren** kannst
+du sie erneut starten, mit Beispielen anschauen oder automatische Angebote
+ausschalten. Als Gast erreichst du dieselben Tourfunktionen in den
+**Einstellungen** der ZDWA- oder Zilch-Lobby. Konten speichern ihre Auswahl je
+Spiel auf allen Geräten, Gäste in ihrem Browser. Die
+[Produktspezifikation](docs/GAME_GUIDES_PLAN.md) beschreibt Ablauf und Abnahme.
+
+**English:** ZDWA, Zilch and Hausdepp each offer a short, optional tour on your
+first game as a player. It points to the relevant control and explains what to
+do, when and why; you make every game move yourself. **End tour**, × or Escape
+close it immediately while the game continues. Under **Account → Settings →
+Help & updates → Beginner tours**, you can restart a tour, view examples or switch
+off automatic offers. Guests find the same tour controls in **Settings** in
+the ZDWA or Zilch lobby. Account choices are saved per game across devices;
+guest choices stay in that browser. The
+[product specification](docs/GAME_GUIDES_PLAN.md) defines the flow and acceptance
+criteria.
+
 
 ## Hausdepp — öffentlicher V3-Start / public V3 launch
 
@@ -1652,7 +1676,7 @@ preflight and production verification procedure.
 ## Product delivery gate
 
 Both apps share a `Major.Minor.Patch` product version in `app/version.json`.
-The current version appears under **Account → Settings → Help & news → News &
+The current version appears under **Account → Settings → Help & updates → News &
 versions**, including silent releases. Published history entries show their
 assigned version while retaining their existing acknowledgement state.
 See the [complete version history](docs/VERSION_HISTORY.md) for all retrospective

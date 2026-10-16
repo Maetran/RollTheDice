@@ -53,5 +53,16 @@
   // UI-State für die Ansage-Auswahl per Button oder Hotkey.
   let announcePickMode = false;
   let authState = { authenticated: false, user: null };
+  const beginnerTour = createGameTour("zdwa");
+  function syncBeginnerTour(snapshot = sb) {
+    const eligible = !!snapshot?._started && !IS_SPECTATOR && !!myId && !snapshot._finished && !snapshot._aborted;
+    beginnerTour.update({ eligible,
+      canAct: eligible && String(snapshot?._turn?.player_id) === String(myId) && !snapshot._paused && !snapshot._superadmin_active && !snapshot._correction?.active && ws?.readyState === WebSocket.OPEN,
+      busy: rollRequestPending || !!window.__rt_writeRequestPending || writeConfirmationPending || Date.now() < rollAnimationUntil,
+      hardcore: !!snapshot?._hardcore, solo: !!snapshot?._auto_single || snapshot?._mode === "1",
+      team: String(snapshot?._mode || "").includes("v"), rolls: snapshot?._rolls_used || 0,
+      canAnnounce: !!getAnnounceAvailability(snapshot)?.usable, announcePossible: !!hasOpenAnnounceField(snapshot),
+    });
+  }
   let superadminState = { active: false, boardId: null, draft: {} };
   let superadminTapState = { boardId: null, count: 0, lastTs: 0 };

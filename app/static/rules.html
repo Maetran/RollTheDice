@@ -15,18 +15,18 @@
   <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=db3a57c9d7ca">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=db3a57c9d7ca" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=db3a57c9d7ca" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=2852d84b3b44">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=2852d84b3b44" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=2852d84b3b44" sizes="180x180">
   <!--
     rules.html - Spielanleitung
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi sowie Desktop-/Mobilsteuerung.
   -->
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=db3a57c9d7ca" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=db3a57c9d7ca" />
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=db3a57c9d7ca">
+  <script src="/static/shell.js?v=2852d84b3b44" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=2852d84b3b44" />
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=2852d84b3b44">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
@@ -85,6 +85,12 @@
     <details>
       <summary>Spielauswahl</summary>
       <p>Die Spielauswahl im Kopfbereich zeigt freigeschaltete Spiele mit Symbol und Namen. Das aktuelle Spiel ist markiert. Alt+Shift+Z öffnet die Auswahl ausserhalb von Eingabefeldern. Wähle ein Spiel, um seine Lobby zu öffnen.</p>
+    </details>
+
+    <details>
+      <summary>Einsteigertouren</summary>
+      <p>Beim ersten eigenen Spiel wird dir eine freiwillige kurze Tour angeboten. Sie erklärt passende Aktionen direkt am Spieltisch und lässt sich jederzeit mit Tour beenden, × oder Escape schliessen. Deine Partie läuft weiter.</p>
+      <p>Unter Konto → Einstellungen → Hilfe &amp; Neuigkeiten → Einsteigertouren kannst du die Tour erneut starten, als Beispiel anschauen oder automatische Angebote ausschalten. Als Gast findest du Einsteigertouren unter Einstellungen in der Lobby; deine Wahl bleibt in diesem Browser.</p>
     </details>
 
     <!-- Rundenablauf -->

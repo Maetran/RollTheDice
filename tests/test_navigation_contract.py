@@ -39,16 +39,23 @@ class RouteCoverage:
 # out because they are noindex would miss the navigation bugs this guards.
 DOCUMENT_ROUTES = (
     RouteCoverage(("/",), "tests/test_http_shell.py", "test_shell_and_service_worker_are_revalidated",
-                  ("tests/browser/passkey-signup.spec.js", "tests/browser/game-picker.spec.js")),
+                  ("tests/browser/passkey-signup.spec.js", "tests/browser/game-picker.spec.js",
+                   "tests/browser/game-tours.spec.js")),
     RouteCoverage(
-        ("/regeln", "/spieler/{username}", "/rangabzeichen", "/konto",
+        ("/regeln", "/spieler/{username}", "/rangabzeichen",
          "/ergebnis/{game_id}", "/offline"),
         "tests/test_http_shell.py", "test_clean_page_routes_and_legacy_redirects",
         ("tests/browser/account-settings-layout.spec.js", "tests/browser/game-picker.spec.js"),
     ),
     RouteCoverage(
+        ("/konto",), "tests/test_http_shell.py", "test_clean_page_routes_and_legacy_redirects",
+        ("tests/browser/account-settings-layout.spec.js", "tests/browser/game-picker.spec.js",
+         "tests/browser/game-tours.spec.js"),
+    ),
+    RouteCoverage(
         ("/spiel/{game_id}",), "tests/browser/zdwa-device-switch.spec.js",
-        browser_tests=("tests/browser/zdwa-forced-scratch.spec.js", "tests/browser/zdwa-convenience.spec.js"),
+        browser_tests=("tests/browser/zdwa-forced-scratch.spec.js", "tests/browser/zdwa-convenience.spec.js",
+                       "tests/browser/game-tours.spec.js"),
     ),
     RouteCoverage(("/spiel/{game_id}/zuschauen",), "tests/browser/admin-help-ui.spec.js"),
     # Ownership adds a real signed-in browser flow; existing restriction tests
@@ -82,9 +89,14 @@ DOCUMENT_ROUTES = (
         ("tests/browser/passkey-signup.spec.js",),
     ),
     RouteCoverage(
-        ("/zilch/historie", "/zilch/statistiken", "/zilch/erfolge", "/zilch/konto", "/zilch/regeln"),
+        ("/zilch/historie", "/zilch/statistiken", "/zilch/erfolge", "/zilch/regeln"),
         "tests/test_zilch_product_routes.py", "test_history_rules_shells_and_rules_api_use_the_central_preview_policy",
         ("tests/browser/zdwa-game-switcher.spec.js",),
+    ),
+    RouteCoverage(
+        ("/zilch/konto",), "tests/test_zilch_product_routes.py",
+        "test_history_rules_shells_and_rules_api_use_the_central_preview_policy",
+        ("tests/browser/zdwa-game-switcher.spec.js", "tests/browser/account-settings-layout.spec.js"),
     ),
     RouteCoverage(("/zilch/spieler/{username}",), "tests/browser/player-search-flow.spec.js"),
     RouteCoverage(
@@ -92,18 +104,29 @@ DOCUMENT_ROUTES = (
         "test_player_directory_aliases_reach_search_in_the_same_product",
     ),
     RouteCoverage(
-        ("/zilch/spiel/{game_id}", "/zilch/ergebnis/{game_id}"),
+        ("/zilch/spiel/{game_id}",),
+        "tests/test_zilch_unavailable.py", "test_html_links_have_recovery_and_keep_the_404_status",
+        ("tests/browser/game-tours.spec.js",),
+    ),
+    RouteCoverage(
+        ("/zilch/ergebnis/{game_id}",),
         "tests/test_zilch_unavailable.py", "test_html_links_have_recovery_and_keep_the_404_status",
     ),
     RouteCoverage(
         ("/zilch/spiel/{game_id}/zuschauen",), "tests/test_zilch_product_routes.py",
         "test_zilch_spectator_route_is_noindex_and_legacy_bridge_keeps_the_suffix",
+        ("tests/browser/game-tours.spec.js",),
     ),
     RouteCoverage(
-        ("/hausdepp", "/hausdepp/spiel/{game_id}", "/hausdepp/spiel/{game_id}/zuschauen",
-         "/hausdepp/regeln"),
+        ("/hausdepp", "/hausdepp/regeln"),
         "tests/test_hausdepp_integration.py", "test_founder_product_pages_and_game_type_routes",
         ("tests/browser/hausdepp.spec.js", "tests/browser/hausdepp-public.spec.js"),
+    ),
+    RouteCoverage(
+        ("/hausdepp/spiel/{game_id}", "/hausdepp/spiel/{game_id}/zuschauen"),
+        "tests/test_hausdepp_integration.py", "test_founder_product_pages_and_game_type_routes",
+        ("tests/browser/hausdepp.spec.js", "tests/browser/hausdepp-public.spec.js",
+         "tests/browser/game-tours.spec.js"),
     ),
     RouteCoverage(
         ("/hausdepp/konto",), "tests/test_hausdepp_integration.py",

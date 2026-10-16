@@ -1,10 +1,10 @@
 {
-  "version": "3.0.1",
-  "bump": "patch",
+  "version": "3.1.0",
+  "bump": "minor",
   "date": "2026-10-16",
-  "previous_revision": "c597abd12daa539a4ce207ca265711e3932d6675",
+  "previous_revision": "62856e197317e386001672001190a411ea8d9446",
   "summary": {
-    "de": "Grössere Kartenstapel und mehr Platz für die Tischmitte auf Mobilgeräten.",
-    "en": "Larger card piles and more room for the centre of the table on mobile."
+    "de": "Kurze freiwillige Einsteigertouren für ZDWA, Zilch und Hausdepp mit Wiederstart in den Einstellungen.",
+    "en": "Short optional beginner tours for ZDWA, Zilch and Hausdepp, restartable from settings."
   }
 }

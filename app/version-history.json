@@ -2154,5 +2154,12 @@
     "date": "2026-10-16",
     "bump": "major",
     "summary": "Hausdepp ist da: öffentlicher Kartenstammtisch für 2–6 Spieler mit Turnieren, 100 Erfolgen und 24 Rängen. / Hausdepp is here: a public card table for 2–6 players with tournaments, 100 achievements and 24 ranks."
+  },
+  {
+    "version": "3.0.1",
+    "revision": "62856e197317e386001672001190a411ea8d9446",
+    "date": "2026-10-16",
+    "bump": "patch",
+    "summary": "Grössere Kartenstapel und mehr Platz für die Tischmitte auf Mobilgeräten. / Larger card piles and more room for the centre of the table on mobile."
   }
 ]

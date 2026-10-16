@@ -106,6 +106,14 @@ for (const product of products) {
       await expect(play).not.toHaveAttribute("open", "");
 
       for (const section of ["play", "social", "help"]) await openSection(page, section);
+      const tours = page.locator('[data-account-section="help"] [data-game-tour-settings]');
+      await expect(tours).toBeVisible();
+      await expect(tours).toContainText(language === "de" ? "Einsteigertouren" : "Beginner tours");
+      await expect(tours.locator("[data-tour-enabled]")).toBeVisible();
+      for (const game of ["zdwa", "zilch", "hausdepp"]) {
+        await expect(tours.locator(`[data-tour-action="start"][data-tour-game="${game}"]`)).toBeVisible();
+        await expect(tours.locator(`[data-tour-action="view"][data-tour-game="${game}"]`)).toBeVisible();
+      }
       for (const width of [320, 375]) {
         await page.setViewportSize({ width, height: 844 });
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);

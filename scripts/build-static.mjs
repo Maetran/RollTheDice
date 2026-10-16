@@ -13,6 +13,7 @@ const fontVersion = /((?:\/static\/|\.\/)[A-Za-z0-9_./-]+\.(?:ttf|woff2?)\?v=)[A
 const normalizedBundle = bytes => Buffer.from(bytes).toString("utf8").replace(fontVersion, "$1ASSET_VERSION");
 const targets = [
   { source: "frontend/shared/auth.js", output: "app/static/auth.js", format: "esm" },
+  { source: "frontend/shared/game-tours.js", output: "app/static/game-tours.js", format: "esm" },
   { source: "frontend/email-action.js", output: "app/static/email-action.js", format: "esm" },
   { source: "frontend/dashboard.js", output: "app/static/dashboard.js", format: "esm" },
   { source: "frontend/styles/dashboard.css", output: "app/static/dashboard.css" },

@@ -162,6 +162,8 @@ async function refreshAuthUi(refresh = false) {
     dom.playerSetupCard.classList.toggle("authenticated", Boolean(user));
     dom.playerSectionTitle.hidden = Boolean(user);
     dom.playerNameRow.hidden = Boolean(user);
+    const guestTourSettings = document.querySelector("[data-guest-tour-settings]");
+    if (guestTourSettings) guestTourSettings.hidden = Boolean(user);
     if (user) {
       dom.headerAccountLink.href = zdwaPath("/konto");
       dom.authBadge.innerHTML = `${playerNameMarkup(user, { compactRank: true })}${user.is_admin ? ' <span class="badge">Admin</span>' : ''}`;

@@ -11,6 +11,7 @@ import { adminProfileMarkup, avatarMarkup, replaceChildrenPreservingAvatars } fr
 import { mountAvatarUpload } from "../shared/avatar-upload.js";
 import { renderAccountBans, setAdminHelpGameContext } from "../shared/admin-help.js";
 import { mountFriendActivitySettings } from "../shared/friend-activity.js";
+import { createGameTour, mountTourSettings } from "../shared/game-tours.js";
 import {
   bindPushPreferences,
   disableGameInvitePush,
@@ -30,6 +31,7 @@ import {
 } from "../multigame/routes.js";
 
 const root = document.querySelector("[data-zilch-root]");
+const zilchBeginnerTour = createGameTour("zilch");
 initializeGameViewport();
 const content = document.getElementById("zilchContent");
 const liveAnnouncements = document.getElementById("zilchLiveAnnouncements");
@@ -1183,6 +1185,10 @@ async function renderLobby({ authReady = null } = {}) {
       <p id="zilchGamesEmpty" class="zilch-muted" hidden>${escapeHtml(t("Keine offenen oder laufenden Spiele. Starte eine neue Partie."))}</p>
     </section>
     <div id="zilchLobbyChatMount"></div>
+    <details class="zilch-card account-settings-group" data-guest-tour-settings${hasAccount || !identityReady ? " hidden" : ""}>
+      <summary>${escapeHtml(t("Einstellungen"))}</summary>
+      <div class="account-settings-group__body" data-game-tour-settings></div>
+    </details>
     <section class="zilch-lobby-ranking" aria-labelledby="zilchLobbyRankingTitle">
       <div class="zilch-section-heading"><div><p class="eyebrow">${escapeHtml(t("Bestenlisten"))}</p><h2 id="zilchLobbyRankingTitle">${escapeHtml(t("Zilch-Ranglisten"))}</h2></div>${zilchNavigationButton(zilchPath("/bestenlisten"), t("Alle Bestenlisten"), "small zilch-lobby-ranking-action")}</div>
       <div class="zilch-lobby-leaderboards" aria-live="polite">
@@ -1206,6 +1212,7 @@ async function renderLobby({ authReady = null } = {}) {
   } else {
     content.innerHTML = lobbyMarkup;
   }
+  void mountTourSettings(content.querySelector("[data-game-tour-settings]"));
 
   const runningSlot = document.getElementById("zilchRunningGames");
   const waitingSlot = document.getElementById("zilchWaitingGames");
@@ -1380,6 +1387,8 @@ async function renderLobby({ authReady = null } = {}) {
     // would reset the hero's LCP and discard choices made during a slow /me.
     identityReady = true;
     const authenticated = authenticatedZilchPlayer();
+    const guestTourSettings = content.querySelector("[data-guest-tour-settings]");
+    if (guestTourSettings) guestTourSettings.hidden = authenticated;
     const resolvedUsername = state.auth?.user?.username || t("Gast");
     const resolvedAccount = zilchAccountEntry();
     identity?.setAttribute("aria-label", `${t("Du spielst als")} ${resolvedUsername}`);
@@ -2288,7 +2297,7 @@ function zilchAccountSettingsMarkup(username) {
         <p class="zilch-settings-message" data-push-preferences-message role="status"></p>
       </form>
     </section></div></details>
-    <details class="account-settings-group" data-account-section="help"><summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">${escapeHtml(t("Hilfe & Neuigkeiten"))}</span><span class="account-settings-group__description">${escapeHtml(t("Versionshistorie und Unterstützung"))}</span></h2></summary><div class="account-settings-group__body"><section class="account-settings-block" aria-labelledby="releaseHistoryTitle">
+    <details class="account-settings-group" data-account-section="help"><summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">${escapeHtml(t("Hilfe & Neuigkeiten"))}</span><span class="account-settings-group__description">${escapeHtml(t("Versionshistorie und Unterstützung"))}</span></h2></summary><div class="account-settings-group__body"><section class="account-settings-block" data-game-tour-settings></section><section class="account-settings-block" aria-labelledby="releaseHistoryTitle">
       <h3 id="releaseHistoryTitle">${escapeHtml(t("Neuigkeiten & Versionen"))}</h3>
       <p class="zilch-muted">${escapeHtml(t("Die letzten zehn Releases kannst du jederzeit im Konto nachlesen."))}</p>
       <div data-release-history><p class="zilch-muted">${escapeHtml(t("Neuigkeiten werden geladen …"))}</p></div>
@@ -2382,6 +2391,7 @@ function bindZilchAccountTabs() {
 
 function bindZilchAccountSettings() {
   renderAccountBans(document.querySelector("[data-account-bans]"), state.auth?.user);
+  void mountTourSettings(document.querySelector("[data-game-tour-settings]"));
   mountUsernameSettings(document.querySelector("[data-username-settings]"), {
     user: state.auth.user,
     zilch: true,
@@ -3408,6 +3418,11 @@ function renderRulesContent(facts) {
   const objective = interpolated("Erreiche {target} Punkte. Danach spielt die andere Person noch einen vollständigen Zug; anschliessend gewinnt der höchste Punktestand.", { target });
   return `<section class="zilch-game-head zilch-rules-head">
       <div><p class="eyebrow">${escapeHtml(t("Spielhilfe"))}</p><h1>${escapeHtml(t("Zilch-Regeln"))}</h1><p>${escapeHtml(t("Alles Wichtige für deine nächste Partie auf einen Blick."))}</p></div>
+    </section>
+    <section class="zilch-card zilch-rules-section">
+      <h2>${escapeHtml(t("Einsteigertouren"))}</h2>
+      <p>${escapeHtml(t("Beim ersten eigenen Spiel wird dir eine freiwillige kurze Tour angeboten. Sie erklärt passende Aktionen direkt am Spieltisch und lässt sich jederzeit mit Tour beenden, × oder Escape schliessen. Deine Partie läuft weiter."))}</p>
+      <p>${escapeHtml(t("Unter Konto → Einstellungen → Hilfe & Neuigkeiten → Einsteigertouren kannst du die Tour erneut starten, als Beispiel anschauen oder automatische Angebote ausschalten. Als Gast findest du Einsteigertouren unter Einstellungen in der Lobby; deine Wahl bleibt in diesem Browser."))}</p>
     </section>
     <section class="zilch-card zilch-rules-overview">
       <h2>${escapeHtml(t("Ziel der Partie"))}</h2>
@@ -5170,6 +5185,7 @@ function renderGameState({ followNotebookLatest = false } = {}) {
   if (!content) return;
   root?.classList.add("zilch-shell--game");
   const snapshot = state.game;
+  if (!snapshot || snapshot._finished || snapshot._aborted) zilchBeginnerTour.update({ eligible: false });
   setAdminHelpGameContext({ gameId, spectator: spectatorRoute,
     canRequest: Boolean(snapshot && localParticipantId(snapshot) && !snapshot._finished && !snapshot._aborted) });
   if (!snapshot) {
@@ -5283,6 +5299,17 @@ function renderGameState({ followNotebookLatest = false } = {}) {
   state.notebookTransition = null;
   state.notebookProgressKey = notebookProgressKey;
   restoreNotebookScroll({ followLatest: followNotebookLatest || notebookAdvanced });
+  syncZilchBeginnerTour(snapshot);
+}
+
+function syncZilchBeginnerTour(snapshot) {
+  const eligible = !!snapshot?._started && !spectatorRoute && !!localParticipantId(snapshot) && !snapshot._finished && !snapshot._aborted;
+  zilchBeginnerTour.update({ eligible,
+    canAct: eligible && localPlayerIs(snapshot, snapshot?._turn?.player_id) && !snapshot._paused && state.socket?.readyState === WebSocket.OPEN,
+    busy: !!state.pendingAction || !!activeDiceMotion() || !!state.startRollMoment || !!state.zilchMoment,
+    canSelect: !!snapshot?._zilch_turn_state?.can_select_hold,
+  });
+  if (activeDiceMotion()) setTimeout(() => { if (state.game === snapshot) syncZilchBeginnerTour(snapshot); }, ZILCH_ROLL_REVEAL_DURATION_MS + 20);
 }
 
 function syncSoloAbandonControl(snapshot, turnState, isMyTurn) {

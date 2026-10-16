@@ -166,5 +166,7 @@ function renderFromSnapshot(snapshot, { animateWrites = false, resetWrites = fal
 
     // --- Auto-Follow auf Mobile (Option D) ---
     autoFollowTurn(snapshot);
+    syncBeginnerTour(snapshot);
+    if (rollAnimationUntil > Date.now()) setTimeout(() => syncBeginnerTour(sb), rollAnimationUntil - Date.now() + 20);
   }
     // --- Auto-Follow & Swipe-Override Helpers ---

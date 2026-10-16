@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.0.1**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.1.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.0.1 | 2026-10-16 | patch | Grössere Kartenstapel und mehr Platz für die Tischmitte auf Mobilgeräten. / Larger card piles and more room for the centre of the table on mobile. | [62856e1](https://github.com/Maetran/RollTheDice/commit/62856e197317e386001672001190a411ea8d9446) |
 | 3.0.0 | 2026-10-16 | major | Hausdepp ist da: öffentlicher Kartenstammtisch für 2–6 Spieler mit Turnieren, 100 Erfolgen und 24 Rängen. / Hausdepp is here: a public card table for 2–6 players with tournaments, 100 achievements and 24 ranks. | [c597abd](https://github.com/Maetran/RollTheDice/commit/c597abd12daa539a4ce207ca265711e3932d6675) |
 | 2.59.0 | 2026-10-16 | minor | Hausdepp: eigener Kartentisch, bewusstere Erfolge, Reaktionen, PWA und privates Monitoring; Live-Spielerzahlen im Spielwähler. / Hausdepp gains its own table, paced achievements, reactions, PWA and private monitoring; live player counts in the game picker. | [92e25e1](https://github.com/Maetran/RollTheDice/commit/92e25e1dc1b71c270a917e200c93f506ca9cd926) |
 | 2.58.0 | 2026-10-16 | minor | Hausdepp: 100 Erfolge, 24 Ränge, Rundensiege und HAUSDEPP-Turniere mit abgesicherter Suchmaschinensteuerung. / Hausdepp: 100 achievements, 24 ranks, round wins and HAUSDEPP tournaments with verified search-discovery controls. | [6a7e35e](https://github.com/Maetran/RollTheDice/commit/6a7e35e45b6120d1958fee960055b1ce6a102144) |

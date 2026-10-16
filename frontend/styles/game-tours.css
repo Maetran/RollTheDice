@@ -1,0 +1,30 @@
+.game-tour, .game-tour-entry {
+  position: fixed; z-index: 2000; box-sizing: border-box; color: #172c28;
+  background: #fffdf4; border: 2px solid #397664; border-radius: 14px;
+  box-shadow: 0 8px 32px #102b2833; padding: 18px;
+  width: min(350px, calc(100vw - 24px)); max-height: calc(100dvh - 96px);
+  overflow: auto; font: 400 15px/1.45 system-ui, sans-serif;
+}
+.game-tour-entry { right: 12px; top: 76px; }
+.game-tour h2 { font: 700 18px/1.3 system-ui, sans-serif; margin: 0 26px 9px 0; color: #172c28; }
+.game-tour p, .game-tour-entry p { margin: 0 0 12px; color: #172c28; }
+.game-tour .game-tour-progress { font-size: 12px; margin-right: 24px; color: #49625b; }
+.game-tour-actions, .game-tour-settings-games > div > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.game-tour button, .game-tour-entry button, .game-tour-settings-games button {
+  box-sizing: border-box; min-height: 44px; width: auto; border: 1px solid #397664;
+  border-radius: 8px; padding: 9px 11px; background: #eff5ef; color: #173e34;
+  font: 600 14px/1.2 system-ui, sans-serif; cursor: pointer;
+}
+.game-tour button:disabled { opacity: .5; cursor: default; }
+.game-tour button:focus-visible, .game-tour-settings-games button:focus-visible { outline: 3px solid #dd9b27; outline-offset: 2px; }
+.game-tour .game-tour-close { position: absolute; top: 3px; right: 3px; border: 0; background: transparent; font-size: 24px; padding: 4px; width: 40px; min-height: 40px; }
+.game-tour-target { outline: 3px solid #db9221 !important; outline-offset: 4px; }
+.game-tour-example { padding: 12px; margin-bottom: 12px; border: 1px dashed #718f80; border-radius: 8px; }
+.game-tour-example span, .game-tour-example strong { display: block; }
+.game-tour-example strong { font-size: 26px; letter-spacing: 5px; margin-top: 5px; }
+.game-tour-toggle { display: flex; align-items: center; gap: 8px; margin: 14px 0; }
+.game-tour-toggle input { width: 20px; height: 20px; }
+.game-tour-settings-games { display: grid; gap: 14px; }
+.game-tour-settings-games > div { display: grid; gap: 6px; }
+@media (max-height: 500px) { .game-tour { max-height: calc(100dvh - 24px); padding: 12px; } }
+@media (prefers-reduced-motion: reduce) { .game-tour, .game-tour-target { scroll-behavior: auto; transition: none; } }

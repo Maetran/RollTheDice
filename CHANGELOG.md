@@ -23,6 +23,35 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.1.0 — Einsteigertouren / beginner tours — 2026-10-16
+
+**Deutsch:** ZDWA, Zilch und Hausdepp bieten beim ersten eigenen Spiel eine
+freiwillige kurze Tour direkt am Tisch an. Hinweise erklären die passende Aktion
+und ihren Zweck; fremde Züge, Pause und Wiederverbindung berücksichtigen den
+aktuellen Spielzustand. ZDWA erklärt Solo, Teams und Hardcore passend zum Modus.
+Jeder Schritt lässt sich über Tour beenden, × oder Escape schliessen. Eine
+beendete oder abgelehnte Tour erscheint beim nächsten Spiel nicht ungefragt
+wieder. Die Wahl wird getrennt je Konto und Spiel gespeichert, für Gäste im
+Browser. Einmalige Angebote werden kontoweit atomar beansprucht.
+
+Unter Einstellungen → Hilfe & Neuigkeiten lassen sich verfügbare Touren erneut
+starten oder mit gekennzeichneten Beispielen anschauen und automatische Angebote
+ausschalten. Gäste finden den Einstieg in den Lobbyeinstellungen. Tourknöpfe
+führen keine Spielaktion aus; die Beispielansicht erzeugt keine Partie, Punkte
+oder Erfolge. Alle Tourtexte sind auf Deutsch und Englisch verfügbar.
+
+**English:** ZDWA, Zilch and Hausdepp offer an optional short tour at the table on
+first play. Hints explain a suitable action and its purpose, respecting opponent
+turns, pauses and reconnection. ZDWA adapts to solo, teams and Hardcore. Every
+step can be closed with End tour, × or Escape. Ended or declined tours do not
+reappear unsolicited. Choices are saved per account and game, or in the browser
+for guests; first offers are claimed atomically across an account's devices.
+
+Settings → Help & updates lets players restart tours, view labelled examples
+and disable automatic offers. Guests find tours in lobby settings. Tour buttons
+perform no gameplay action; viewing examples creates no game, score or achievement.
+All tour text is available in German and English.
+
 ## 3.0.1 — Mehr Platz für die Karten / more room for the cards — 2026-10-16
 
 **Deutsch:** Das offene Paket und der verdeckte Stapel nehmen auf dem Handy

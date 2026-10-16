@@ -1,25 +1,29 @@
 {
   "kind": "usability",
   "games": [
+    "zdwa",
+    "zilch",
     "hausdepp"
   ],
-  "summary_de": "Mehr Platz für die Karten: Offenes Paket und verdeckter Stapel sind auf dem Handy deutlich grösser und leichter antippbar.",
-  "summary_en": "More room for the cards: the face-up pile and face-down stock are much larger and easier to tap on phones.",
+  "summary_de": "Neu am Tisch? Kurze Touren helfen dir in allen drei Spielen. Jederzeit beenden oder in den Einstellungen erneut starten.",
+  "summary_en": "New at the table? Quick tours help you in all three games. End them anytime or restart them from settings.",
   "player_notes": {
     "de": {
-      "title": "Die Karten gehören in die Mitte.",
+      "title": "Deine ersten Schritte am Spieltisch",
       "changes": [
-        "Offenes Paket und verdeckter Stapel sind auf dem Handy deutlich grösser, im Hoch- und Querformat.",
-        "Auch mit sechs Spielern bleiben Karten, Mitspieler und Hinweise frei sichtbar.",
-        "Auf sehr schmalen Geräten passt die Reaktionsleiste wieder vollständig auf den Bildschirm."
+        "Beim ersten Spiel kannst du dir kurz zeigen lassen, was du wo machst und warum – für ZDWA, Zilch und Hausdepp.",
+        "Du entscheidest: Tour starten oder ohne Tour spielen. Jeder Schritt lässt sich sofort beenden.",
+        "Unter Einstellungen → Hilfe & Neuigkeiten findest du die Touren zum erneuten Starten oder Anschauen.",
+        "Deine Wahl wird je Spiel gemerkt; Gäste finden Touren in den Einstellungen der Lobby."
       ]
     },
     "en": {
-      "title": "The cards take centre stage.",
+      "title": "Your first steps at the table",
       "changes": [
-        "The face-up pile and face-down stock are much larger on phones, in portrait and landscape.",
-        "Cards, opponents and captions stay clear of each other, even with six players.",
-        "The reaction toolbar fits fully on very narrow screens again."
+        "On your first game, a quick tour shows you what to do, where and why — for ZDWA, Zilch and Hausdepp.",
+        "You choose: start the tour or play without it. End the tour immediately at any step.",
+        "Find tours in Settings → Help & updates to restart them or view examples.",
+        "Your choice is remembered for each game; guests find tours in the lobby settings."
       ]
     }
   }

@@ -316,6 +316,7 @@
     });
 
     ws.addEventListener("close", () => {
+      syncBeginnerTour(sb);
       clearPendingWrite();
       clearPendingRoll();
       clearAutoRollRetry();

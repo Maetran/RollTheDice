@@ -6,14 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=db3a57c9d7ca">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=db3a57c9d7ca" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=db3a57c9d7ca" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=2852d84b3b44">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=2852d84b3b44" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=2852d84b3b44" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=db3a57c9d7ca">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=db3a57c9d7ca">
+  <link rel="stylesheet" href="/static/style.css?v=2852d84b3b44">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=2852d84b3b44">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
-  <script src="/static/shell.js?v=db3a57c9d7ca" defer></script>
+  <script src="/static/shell.js?v=2852d84b3b44" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -215,6 +215,7 @@
       <details class="account-settings-group" data-account-section="help">
         <summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">Hilfe &amp; Neuigkeiten</span><span class="account-settings-group__description">Versionshistorie und Unterstützung</span></h2></summary>
         <div class="account-settings-group__body">
+<section class="account-settings-block" data-game-tour-settings></section>
 <section class="account-settings-block" aria-labelledby="releaseHistoryTitle">
         <h3 id="releaseHistoryTitle">Neuigkeiten &amp; Versionen</h3>
         <p class="muted small">Die letzten zehn Releases kannst du jederzeit im Konto nachlesen.</p>
@@ -231,12 +232,13 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=db3a57c9d7ca';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=db3a57c9d7ca';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=db3a57c9d7ca';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=db3a57c9d7ca';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=db3a57c9d7ca';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=db3a57c9d7ca';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=2852d84b3b44';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=2852d84b3b44';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=2852d84b3b44';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=2852d84b3b44';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=2852d84b3b44';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=2852d84b3b44';
+    import { mountTourSettings } from '/static/game-tours.js?v=2852d84b3b44';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
@@ -258,6 +260,7 @@
     mountAllowlistSettings(document.querySelector('[data-allowlist-settings]'), { context: 'zdwa' });
     mountAvatarUpload(document.querySelector('[data-avatar-upload]'));
     mountFriendActivitySettings(document.querySelector('[data-friend-activity-settings]'));
+    void mountTourSettings(document.querySelector('[data-game-tour-settings]'));
     document.getElementById('accountName').innerHTML = playerNameMarkup(user, { name: user.username, avatarSize: 'large', adminProfile: true });
     document.getElementById('publicProfileLink').href = `/spieler/${encodeURIComponent(user.username)}`;
     const accountTabs = {

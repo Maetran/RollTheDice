@@ -57,6 +57,13 @@ from .email_delivery import (
 )
 from .engagement import record_engagement_safely
 from .game_access import public_game_access_payload
+from .game_tours import (
+    TourOfferRequest,
+    TourPreferencesRequest,
+    claim_tour_offer,
+    tour_preferences,
+    update_tour_preferences,
+)
 from .models import PasskeyCredential, User
 from .models import Session as LoginSession
 from .ownership import (
@@ -433,6 +440,32 @@ def auth_email_confirm(payload: TokenInspectionRequest, request: Request, respon
 def _require_account_email() -> None:
     if not account_email_available():
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="email_delivery_unavailable")
+
+
+@router.get("/auth/tours")
+def auth_tours(request: Request, response: Response):
+    identity = require_user(request)
+    response.headers["Cache-Control"] = "no-store"
+    with session_scope() as db:
+        return tour_preferences(db, identity.user_id)
+
+
+@router.put("/auth/tours")
+def auth_update_tours(payload: TourPreferencesRequest, request: Request, response: Response):
+    identity = require_user(request)
+    require_csrf(request, identity)
+    response.headers["Cache-Control"] = "no-store"
+    with session_scope() as db:
+        return update_tour_preferences(db, identity.user_id, payload)
+
+
+@router.post("/auth/tours/offer")
+def auth_claim_tour_offer(payload: TourOfferRequest, request: Request, response: Response):
+    identity = require_user(request)
+    require_csrf(request, identity)
+    response.headers["Cache-Control"] = "no-store"
+    with session_scope() as db:
+        return claim_tour_offer(db, identity.user_id, payload.game_type)
 
 
 @router.put("/auth/preferences")
