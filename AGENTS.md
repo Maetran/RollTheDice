@@ -1,5 +1,6 @@
 # Zusammenarbeit und Branches
 
+- Verbindlicher Lieferweg: `develop → master → prod`.
 - `develop` ist der gemeinsame Integrationszweig. Neue Arbeit in einem eigenen
   Worktree auf einem `codex/*`-Branch vom aktuellen `origin/develop` beginnen;
   Feature-PRs richten sich gegen `develop`.
@@ -14,10 +15,26 @@
   Zielstand inzwischen geändert, erneut abgleichen und prüfen. Gemeinsame
   Branches nicht mit Force-Push überschreiben. Versionsnummern, Migrationen und
   Releasehinweise beim Integrieren abstimmen; bestehende Zuordnungen erhalten.
+- Unmittelbar vor **jedem Push** erneut `git fetch origin` ausführen und den
+  aktuellen `origin/develop`-Stand mit dem zuletzt integrierten und geprüften
+  Stand vergleichen. Hat er sich geändert, zuerst integrieren, Konflikte lösen,
+  nötigenfalls Assets neu bauen und relevante Prüfungen wiederholen. Danach vor
+  dem nächsten Push erneut abrufen und vergleichen. Einen wegen neuer Remote-
+  Commits abgelehnten Push durch erneuten Abgleich lösen, niemals per Force-Push.
 - `develop` nach `master` per Fast-forward oder normalem Merge übernehmen,
   ohne Squash/Rebase der referenzierten Historie. Einen Release-Merge oder
   Hotfix auf `master` vor der nächsten Versionserhöhung nach `develop`
   zurückführen. Details stehen in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#entwicklung-und-releasebranches).
+- Nach abgeschlossener Arbeit alte, nicht mehr benötigte eigene Worktrees
+  aufräumen, wenn sinnvoll. Vorher frisch abrufen und nachweisen, dass die Arbeit
+  vollständig committet und in `origin/develop` enthalten ist. Uncommittete,
+  unversionierte oder nur in einem detached HEAD/Stash vorhandene Arbeit sowie
+  wichtige ignorierte Dateien zuerst ausserhalb des Worktrees sichern.
+  Unmittelbar vor dem Aufräumen Eigentümer und aktive Nutzung nochmals prüfen;
+  Hauptcheckout, fremde, aktive, gepinnte oder geteilte Worktrees erhalten.
+  Eigene verwaltete Codex-Worktrees wiederherstellbar archivieren; wichtige
+  ignorierte Dateien sind nicht im Archiv enthalten. Nicht mit Gewalt entfernen
+  und Branches nicht pauschal löschen.
 
 # Produkt-Lieferpflicht
 

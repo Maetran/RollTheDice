@@ -22,6 +22,8 @@ checks the physical Nginx peer before resolving the visitor IP.
 
 ## Entwicklung und Releasebranches
 
+Verbindlicher Lieferweg / Required delivery path: `develop → master → prod`.
+
 `develop` ist der gemeinsame Integrationszweig für die nächste Produktversion.
 `master` enthält geprüfte Release-Stände und bleibt die Quelle für produktive
 Builds und Deployments. Ein Push auf `develop` startet die bestehende CI;
@@ -54,6 +56,25 @@ dürfen nicht unabhängig dieselbe neue Version oder Migrationsrevision vergeben
 Feature-Commits dürfen nur umgeschrieben werden, solange ihre SHAs weder in der
 Versionshistorie noch durch Release-Tags gebunden sind.
 
+**Vor jedem Push:** Unmittelbar vorher erneut `git fetch origin` ausführen und
+`origin/develop` mit dem zuletzt integrierten und geprüften Stand vergleichen.
+Bei Änderungen zuerst zusammenführen, Konflikte lösen, gegebenenfalls Assets
+neu bauen und relevante Tests wiederholen; danach erneut prüfen. Normale Pushes
+beibehalten: Falls ein anderer Agent den Zielbranch zwischen Prüfung und Push
+weiterbewegt, verweigert Git einen nicht mehr möglichen Fast-forward. Dann erneut
+abgleichen und prüfen, statt die fremden Commits zu überschreiben.
+
+**Worktrees nach Abschluss:** Nicht mehr benötigte eigene Worktrees aufräumen,
+wenn die Arbeit abgeschlossen, vollständig committet und nach frischem Fetch
+nachweislich in `origin/develop` enthalten ist. Vorher Änderungen einschliesslich
+unversionierter Dateien, detached HEADs und Stashes prüfen; ungesicherte Arbeit
+und wichtige ignorierte Dateien ausserhalb des Worktrees sichern. Unmittelbar
+vor dem Aufräumen Eigentümer und aktive Chat-/Agentennutzung erneut prüfen.
+Hauptcheckout, fremde, aktive, gepinnte und geteilte Worktrees erhalten. Eigene
+verwaltete Codex-Worktrees über die wiederherstellbare Archivierung aufräumen;
+deren Snapshot enthält keine ignorierten Dateien. Kein erzwungenes Entfernen
+und keine pauschale Löschung lokaler oder entfernter Branches.
+
 **English:** Develop features in separate `codex/*` worktrees from current
 `origin/develop`, and target feature PRs at `develop`. Before handoff, fetch and
 integrate current develop into the feature branch, resolve source conflicts,
@@ -68,6 +89,19 @@ actual master revision, then tag the successful rollout. Bring release merges
 and master hotfixes back into develop before the next version bump, so version
 history references the actual deployed revision. An integration alone is not a
 release; existing version mappings remain unchanged.
+Immediately before every push, fetch again and compare current `origin/develop`
+with the integrated, tested revision. If it changed, integrate, resolve conflicts,
+rebuild when needed and rerun relevant checks, then check again before pushing.
+Keep normal push protection: if the destination advances in the meantime, handle
+a rejected push by fetching and integrating again, never by force-pushing.
+Once work is complete, committed and confirmed in freshly fetched
+`origin/develop`, clean up unused worktrees you own when appropriate. Check
+uncommitted and untracked files, detached HEADs and stashes, and save unprotected
+work and important ignored files outside the worktree first. Recheck ownership
+and active chat/agent usage immediately before cleanup. Preserve the main
+checkout and worktrees that are active, pinned, shared or owned by others.
+Archive managed Codex worktrees for recovery; ignored files are not included in
+their snapshots. Never force removal or delete branches as a blanket cleanup.
 
 ## Produktionsumgebung
 

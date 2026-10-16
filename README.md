@@ -1539,6 +1539,8 @@ Never use production push subscriptions for tests.
 
 ### Branch workflow
 
+**Lieferweg / Delivery path:** `develop → master → prod`.
+
 **Deutsch:** `develop` sammelt die nächste Version; `master` enthält geprüfte
 Release-Stände. Neue Funktionen entstehen in eigenen Worktrees auf `codex/*`
 vom aktuellen `origin/develop`. Vor der Übergabe den aktuellen Develop-Stand im
@@ -1549,6 +1551,13 @@ wird weiterhin ausdrücklich von `master` gebaut und ausgerollt. Gemeinsame
 Versionsnummern, Releasehinweise und generierte Assets werden bei der Integration
 abgestimmt. Der [Releaseablauf](docs/DEPLOYMENT.md#entwicklung-und-releasebranches)
 beschreibt Historie und Hotfix-Rückfluss.
+Unmittelbar vor jedem Push wird `origin/develop` erneut abgerufen und mit dem
+zuletzt integrierten und geprüften Stand verglichen; neue Änderungen werden
+zuerst integriert und geprüft. Gemeinsame Branches werden nicht per Force-Push
+überschrieben.
+Nach Abschluss und verifizierter Sicherung auf `origin/develop` nicht mehr
+benötigte eigene Worktrees aufräumen; aktive oder fremde Worktrees erhalten und
+ungesicherte Dateien vorher sichern. Verwaltete Codex-Worktrees archivieren.
 
 **English:** `develop` integrates the next version; `master` holds verified
 release revisions. Start features in separate worktrees on `codex/*` branches
@@ -1560,6 +1569,12 @@ is still explicitly built and deployed from `master`. Coordinate shared versions
 release notes and generated assets during integration. The
 [release workflow](docs/DEPLOYMENT.md#entwicklung-und-releasebranches) explains
 history preservation and hotfix integration.
+Immediately before every push, fetch `origin/develop` again and compare it with
+the integrated, tested revision. Integrate and verify new changes first; never
+force-push shared branches.
+Once work is complete and verified on `origin/develop`, clean up unused worktrees
+you own. Preserve active or other agents' worktrees, save unprotected files first,
+and archive managed Codex worktrees.
 
 ### Frontend workflow
 
