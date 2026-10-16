@@ -286,11 +286,38 @@ function frameTransform(corners) {
 const CARD_TRANSFORMS = Object.fromEntries(Object.entries(CARD_CORNERS)
   .map(([card, corners]) => [card, frameTransform(corners)]));
 
+// Public card artwork contains no deal, hand or account data. Retain decoded
+// image objects for this document so incoming cards never start a cold decode.
+export const CARD_ASSET_URLS = Object.freeze([
+  "/static/hausdepp/cards-source.jpg?v=ASSET_VERSION",
+  "/static/hausdepp/tell-leaves-reference-v1.jpg?v=ASSET_VERSION",
+  "/static/hausdepp/card-back.png?v=ASSET_VERSION",
+]);
+const preparedImages = new Map();
+let preparation;
+
+export function prepareCardAssets() {
+  if (preparation) return preparation;
+  preparation = Promise.all(CARD_ASSET_URLS.map(url => {
+    const image = new Image();
+    image.decoding = "sync";
+    image.fetchPriority = "high";
+    preparedImages.set(url, image);
+    image.src = url;
+    return image.decode();
+  })).catch(error => {
+    preparation = null;
+    preparedImages.clear();
+    throw error;
+  });
+  return preparation;
+}
+
 // The first photograph has glare across this one card. Use the same leaf/tree
 // motif from a second, unmodified licensed photograph rather than repair or
 // invent its illustration. See docs/HAUSDEPP_ASSETS.md for both source credits.
 const LEAVES_TEN_SOURCE = {
-  href: "/static/hausdepp/tell-leaves-reference-v1.jpg",
+  href: CARD_ASSET_URLS[1],
   width: 3840,
   height: 2887,
   transform: frameTransform([[1913.2, 1478.9], [2390.0, 1464.3], [2397.4, 2170.4], [1945.1, 2176.9]]),
@@ -351,9 +378,9 @@ export function cardArt(card) {
   const transform = CARD_TRANSFORMS[card];
   if (!transform) return "";
   const source = card === "leaves-10" ? LEAVES_TEN_SOURCE : {
-    href: "/static/hausdepp/cards-source.jpg", width: 3996, height: 2526, transform,
+    href: CARD_ASSET_URLS[0], width: 3996, height: 2526, transform,
   };
   const clip = `hd-card-paper-${++artSequence}`;
   const balance = `${clip}-balance`;
-  return `<svg class="hd-card-art" viewBox="0 0 360 570" aria-hidden="true" focusable="false"><defs><clipPath id="${clip}"><rect x="3" y="3" width="354" height="564" rx="22"/></clipPath><filter id="${balance}" x="0" y="0" width="360" height="570" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="${CARD_PAPER_MATRICES[card]}"/></filter></defs><rect width="360" height="570" rx="24" fill="#f7f4eb"/><g filter="url(#${balance})"><g clip-path="url(#${clip})"><image href="${source.href}" width="${source.width}" height="${source.height}" transform="matrix(${source.transform})"/></g></g><rect x="1" y="1" width="358" height="568" rx="23" fill="none" stroke="#e6dfd1" stroke-width="2"/></svg>`;
+  return `<svg class="hd-card-art" viewBox="0 0 360 570" aria-hidden="true" focusable="false"><defs><clipPath id="${clip}"><rect x="3" y="3" width="354" height="564" rx="22"/></clipPath><filter id="${balance}" x="0" y="0" width="360" height="570" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="${CARD_PAPER_MATRICES[card]}"/></filter></defs><rect width="360" height="570" rx="24" fill="#f7f4eb"/><g filter="url(#${balance})"><g clip-path="url(#${clip})"><image decoding="sync" href="${source.href}" width="${source.width}" height="${source.height}" transform="matrix(${source.transform})"/></g></g><rect x="1" y="1" width="358" height="568" rx="23" fill="none" stroke="#e6dfd1" stroke-width="2"/></svg>`;
 }

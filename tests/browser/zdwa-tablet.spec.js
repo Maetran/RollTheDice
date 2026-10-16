@@ -24,6 +24,13 @@ function snapshot(count = 2, mode = String(count)) {
 }
 
 async function fixture(page, initial) {
+  // These scenarios measure the table, not the beginner offer overlay.
+  await page.addInitScript(() => localStorage.setItem("rollthedice.tours.v1.guest", JSON.stringify({
+    enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  })));
+  await page.route("**/api/auth/tours/offer", route => route.fulfill({ json: {
+    show: false, enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  } }));
   const actions = [];
   let socket;
   await page.routeWebSocket(/\/ws\/tablet-fixture$/, connected => {

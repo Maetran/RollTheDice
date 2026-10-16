@@ -7,7 +7,7 @@ from copy import deepcopy
 from random import Random
 from unittest import TestCase
 
-from app.hausdepp_cpu_strategy import choose_cpu_action
+from app.hausdepp_cpu_strategy import CpuMemory, choose_cpu_action
 from app.hausdepp_engine import (
     HAUSDEPP_RANKS,
     HausdeppRuleError,
@@ -598,7 +598,7 @@ class HausdeppPrivacyAndCpuTests(TestCase):
 
     def test_cpu_gambles_or_collects_when_no_legal_hand_card(self):
         state = scenario([["hearts-6", "hearts-7", "hearts-8"], ["acorns-6"]],
-                         discard=["leaves-A"], deck=["bells-U"])
+                         discard=["leaves-A"], deck=["bells-U", "bells-6", "bells-7", "bells-8"])
         self.assertEqual(choose_cpu_action(project_state(state, "p0"))["action"], "gamble")
         state["deck"] = []
         self.assertEqual(choose_cpu_action(project_state(state, "p0"))["action"], "pickup")
@@ -608,18 +608,22 @@ class HausdeppPrivacyAndCpuTests(TestCase):
         for count in (2, 3, 5, 6):
             with self.subTest(players=count):
                 state = new_round([f"p{i}" for i in range(count)], rng=Random(37 + count))
+                memories = {player["id"]: CpuMemory() for player in state["players"]}
                 for _ in range(4000):
                     if state["phase"] == "finished":
                         break
                     following = state["afterthrow"]
                     actor = following["player_id"] if following else state["current_player_id"]
-                    move = choose_cpu_action(project_state(state, actor))
+                    view = project_state(state, actor)
+                    move = choose_cpu_action(view, memory=memories[actor])
                     if move is None:
                         actor = state["current_player_id"]
-                        move = choose_cpu_action(project_state(state, actor))
+                        view = project_state(state, actor)
+                        move = choose_cpu_action(view, memory=memories[actor])
                     self.assertIsNotNone(move)
                     previous = deepcopy(state)
                     state = apply_action(state, actor, **move)
+                    memories[actor].remember(view, move)
                     self.assertEqual(previous["version"] + 1, state["version"])
                     cards = state["deck"] + state["discard"] + state["burned"]
                     cards += [card for player in state["players"] for card in player["hand"]]

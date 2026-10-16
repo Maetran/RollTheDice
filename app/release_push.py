@@ -72,7 +72,7 @@ def publish_release_notice(notice: ReleaseNotice, *, now: datetime | None = None
 
 def release_notification_payload(release: PushRelease, context: str, language: str) -> dict:
     game = {"hausdepp": "Hausdepp", "zilch": "Zilch"}.get(context, "ZDWA")
-    icon = {"hausdepp": "/static/icons/hausdepp-icon-192.png", "zilch": "/static/icons/zilch-icon-192.png"}.get(
+    icon = {"hausdepp": "/static/icons/hausdepp-icon-192-v2.png", "zilch": "/static/icons/zilch-icon-192.png"}.get(
         context, "/static/icons/icon-192.png")
     title = f"{game}: {'Update available' if language == 'en' else 'Neue Version verfügbar'}"
     try:

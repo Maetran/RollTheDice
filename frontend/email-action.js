@@ -8,9 +8,12 @@ import {
   requestPasswordReset,
 } from "./shared/auth.js";
 
+import { hausdeppAccountReturnPath } from "./multigame/routes.js";
+
 import { EN } from "./i18n/catalog.js";
 
 const actionParameters = new URLSearchParams(window.location.search);
+const hausdeppContext = document.documentElement.dataset.game === "hausdepp";
 const zilchContext = actionParameters.get("app") === "zilch";
 const language = (() => {
   const requested = actionParameters.get('lang');
@@ -51,7 +54,11 @@ function tokenFromFragment() {
 
 function actionHref(path, hash = "") {
   const parameters = new URLSearchParams({ lang: language });
-  if (zilchContext) {
+  if (hausdeppContext) {
+    parameters.set("app", "hausdepp");
+    const destination = hausdeppAccountReturnPath(actionParameters.get("return_to"));
+    if (destination) parameters.set("return_to", destination);
+  } else if (zilchContext) {
     parameters.set("app", "zilch");
     // This is only carried back to the fixed login page. Its existing
     // returnPath validator decides the eventual authenticated destination.
@@ -62,10 +69,12 @@ function actionHref(path, hash = "") {
 }
 
 function loginHref() {
+  if (hausdeppContext) return actionHref("/hausdepp/anmelden");
   return zilchContext ? actionHref("/zilch/anmelden") : actionHref("/", "#accountLogin");
 }
 
 function accountHref() {
+  if (hausdeppContext) return hausdeppAccountReturnPath(actionParameters.get("return_to")) || "/hausdepp/konto/einstellungen";
   return actionHref(zilchContext ? "/zilch/konto" : "/konto");
 }
 

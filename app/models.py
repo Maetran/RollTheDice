@@ -446,7 +446,7 @@ class LobbyChatMessage(Base):
 
     __table_args__ = (
         CheckConstraint("kind IN ('message', 'presence')", name="ck_lobby_chat_messages_kind"),
-        CheckConstraint("game_type IN ('zdwa', 'zilch')", name="ck_lobby_chat_messages_game_type"),
+        CheckConstraint("game_type IN ('zdwa', 'zilch', 'hausdepp')", name="ck_lobby_chat_messages_game_type"),
         Index("ix_lobby_chat_messages_created_at", "created_at"),
     )
 
@@ -659,6 +659,15 @@ class HausdeppPresentationReceipt(Base):
         CheckConstraint("acknowledged_score_points IS NULL OR acknowledged_score_points >= 0",
                         name="ck_hausdepp_receipt_score_points"),
     )
+
+
+class HausdeppNoticeReceipt(Base):
+    """Per-item presentation only; never grants an achievement or any XP."""
+
+    __tablename__ = "hausdepp_notice_receipts"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    notice_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class AbandonedGame(Base):

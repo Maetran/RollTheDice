@@ -1,10 +1,10 @@
 {
-  "version": "3.1.0",
+  "version": "3.2.0",
   "bump": "minor",
   "date": "2026-10-16",
-  "previous_revision": "62856e197317e386001672001190a411ea8d9446",
+  "previous_revision": "1218657476632bcacb4e3306db0dde877ae6746a",
   "summary": {
-    "de": "Kurze freiwillige Einsteigertouren für ZDWA, Zilch und Hausdepp mit Wiederstart in den Einstellungen.",
-    "en": "Short optional beginner tours for ZDWA, Zilch and Hausdepp, restartable from settings."
+    "de": "Hausdepp mit stärkerer CPU, festem mobilen Spielfenster und eigener Passkey-Anmeldung samt Kontoeinstellungen.",
+    "en": "Hausdepp gains a stronger CPU, a fixed mobile game window and its own passkey sign-in and account settings."
   }
 }

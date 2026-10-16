@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { mkdir } = require('node:fs/promises');
+const { mkdir, readFile } = require('node:fs/promises');
 
 test.use({ serviceWorkers: 'block' });
 
@@ -27,7 +27,18 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
     const visibleProps = page.locator('.hd-table-prop:visible');
     if (viewport.width < 768) await expect.poll(() => visibleProps.count()).toBeLessThanOrEqual(1);
     else if (viewport.height < 600) await expect.poll(() => visibleProps.count()).toBeLessThanOrEqual(2);
-    else await expect.poll(() => visibleProps.count()).toBeGreaterThan(0);
+    else {
+      try { await expect.poll(() => visibleProps.count()).toBeGreaterThan(0); }
+      catch (error) {
+        console.log('Decor placement diagnostic', JSON.stringify(await page.evaluate(() => {
+          const rect = element => { const r = element.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; };
+          return { table: rect(document.getElementById('hausdeppTable')), candidates: [...document.querySelectorAll('.hd-table-prop')].length,
+            controls: [...document.querySelectorAll('.hd-seat, .hd-room-heading, .hd-stock-group, .hd-pile-group, .hd-burned, .hd-hand-heading, #hausdeppHand button, #hausdeppStatus, #hausdeppEvent, .hd-action-guide, #hausdeppPeek:not([hidden]), #hausdeppResult:not([hidden])')]
+              .filter(element => element.getClientRects().length).map(element => [element.className || element.id, rect(element)]) };
+        })));
+        throw error;
+      }
+    }
     const geometry = await page.evaluate(() => {
       const rect = element => { const r = element.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
       return {
@@ -37,7 +48,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
       };
     });
     for (const prop of geometry.props) {
-      expect(prop.pointerEvents).toBe('none');
+      expect(prop.pointerEvents).toBe('auto');
       for (const control of geometry.controls) {
         expect(prop.left < control.right && prop.right > control.left && prop.top < control.bottom && prop.bottom > control.top).toBe(false);
       }
@@ -53,8 +64,10 @@ test('table props retain their nodes across updates and respect reduced motion',
   await expect.poll(() => props.count()).toBeGreaterThan(0);
   const before = await props.evaluateAll(elements => {
     window.hausdeppDecorQaNodes = elements;
-    return elements.map(element => ({ className: element.className, animations: [null, '::before', '::after']
-      .map(pseudo => getComputedStyle(element, pseudo).animationName) }));
+    return elements.map(element => ({ className: element.className, animations: [
+      getComputedStyle(element).animationName, getComputedStyle(element.firstElementChild).animationName,
+      getComputedStyle(element.firstElementChild, '::after').animationName,
+    ] }));
   });
   expect(before.every(prop => prop.animations.every(animation => animation === 'none'))).toBe(true);
   // A reaction causes real server traffic without changing the round or cards.
@@ -66,4 +79,103 @@ test('table props retain their nodes across updates and respect reduced motion',
     await mkdir('.impeccable/review', { recursive: true });
     await page.screenshot({ path: '.impeccable/review/hausdepp-table-decor-desktop.png', fullPage: true });
   }
+});
+
+// Isolated renderer fixture for deterministic object types. It creates no
+// account, table, result or score; the real six-seat integration above checks
+// the same delivered renderer against occupied game controls.
+async function motionFixture(page, prop, reduced = false) {
+  await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' });
+  await page.setViewportSize({ width: 1600, height: 1100 });
+  await page.goto('/hausdepp/regeln');
+  await expect(page.locator('#hausdeppHeader .hd-header-tools')).toBeVisible();
+  const [source, css] = await Promise.all([
+    readFile('frontend/hausdepp/decor.js', 'utf8'), readFile('frontend/styles/hausdepp-decor.css', 'utf8'),
+  ]);
+  await page.route('**/__test__/decor.mjs', route => route.fulfill({ body: source, contentType: 'text/javascript' }));
+  await page.setContent(`<style>${css}html,body{margin:0}#fixture{position:relative;width:1400px;height:900px;background:#492c1d}</style><section id="fixture" class="hd-table" aria-label="Labelled prop renderer"></section>`);
+  await page.evaluate(async ({ moduleUrl, prop }) => {
+    const module = await import(moduleUrl);
+    const table = document.getElementById('fixture');
+    window.__decorFixture = { module, table };
+    for (let i = 0; i < 100; i++) {
+      module.renderTableDecor(table, { gameId: `labelled-props-${i}`, roundNumber: 1, phase: 'playing' });
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const sprite = table.querySelector(`[data-prop="${prop}"]:not([hidden])`);
+      if (sprite) {
+        window.__decorFixture.gameId = `labelled-props-${i}`;
+        // Guarantee open space around this specific object; no production
+        // placement is overridden by this component-only motion fixture.
+        for (const other of table.querySelectorAll('.hd-table-prop')) if (other !== sprite) other.hidden = true;
+        Object.assign(sprite.style, { left: '600px', top: '330px', width: '140px', height: '140px' });
+        return;
+      }
+    }
+    throw new Error(`Fixture could not select ${prop}`);
+  }, { moduleUrl: new URL('/__test__/decor.mjs', page.url()).href, prop });
+  return page.locator(`[data-prop="${prop}"]:visible`);
+}
+
+test('a can falls around its foot, stays down across updates, and can be stood up with the keyboard', async ({ page }) => {
+  const can = await motionFixture(page, 'can');
+  await can.click();
+  await expect(can).toHaveAttribute('data-last-motion', 'can-fall');
+  await expect(can).toHaveAttribute('aria-pressed', 'true');
+  await expect(can).toHaveAttribute('data-moving', 'false');
+  expect(await can.locator('.hd-prop-art').evaluate(element => Math.abs(Number(element.dataset.fallAngle)))).toBe(76);
+  await page.evaluate(() => {
+    const { module, table, gameId } = window.__decorFixture;
+    module.renderTableDecor(table, { gameId, roundNumber: 1, phase: 'playing' });
+  });
+  await expect(can).toHaveAttribute('aria-pressed', 'true');
+  await expect(can).toHaveAttribute('data-fallen', 'true');
+  await can.focus();
+  await page.keyboard.press('Enter');
+  await expect(can).toHaveAttribute('data-last-motion', 'can-stand');
+  await expect(can).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('dice roll into a new resting angle while a heavy board slides without shaking', async ({ page }) => {
+  const dice = await motionFixture(page, 'dice');
+  await dice.click();
+  await expect(dice).toHaveAttribute('data-last-motion', 'dice-roll');
+  await expect(dice).toHaveAttribute('data-moving', 'false');
+  expect(await dice.locator('.hd-prop-art').evaluate(element => Math.abs(Number(element.dataset.turn)))).toBe(90);
+  const board = await motionFixture(page, 'marend');
+  await board.click();
+  await expect(board).toHaveAttribute('data-last-motion', 'board-slide');
+  await expect(board).toHaveAttribute('data-moving', 'false');
+  expect(await board.locator('.hd-prop-art').evaluate(element => Math.abs(Number(element.dataset.restX)))).toBe(2);
+});
+
+test('reduced motion keeps interactive props still and disabled', async ({ page }) => {
+  const can = await motionFixture(page, 'can', true);
+  await expect(can).toBeDisabled();
+  await page.clock.install();
+  await page.clock.fastForward(70000);
+  await expect(can).not.toHaveAttribute('data-fallen', 'true');
+  expect(await can.locator('.hd-prop-art').evaluate(element => element.getAnimations().length)).toBe(0);
+});
+
+test('a growing hand covers a prop without relocating it or passing a card tap through', async ({ page }) => {
+  const prop = await motionFixture(page, 'nuts');
+  const before = await prop.boundingBox();
+  await page.evaluate(() => {
+    const { module, table, gameId } = window.__decorFixture;
+    const sprite = table.querySelector('[data-prop="nuts"]');
+    const region = document.createElement('div'); region.className = 'hd-hand-region';
+    Object.assign(region.style, { position: 'absolute', left: sprite.style.left, top: sprite.style.top, width: '200px', height: '200px' });
+    const hand = document.createElement('div'); hand.id = 'hausdeppHand'; hand.className = 'hd-hand-fan';
+    hand.style.position = 'relative';
+    const card = document.createElement('button'); card.textContent = 'Labelled covering card';
+    Object.assign(card.style, { width: '170px', height: '180px', background: '#fff' });
+    card.addEventListener('click', () => { window.__coveringCardTaps = (window.__coveringCardTaps || 0) + 1; });
+    hand.append(card); region.append(hand); table.append(region);
+    module.renderTableDecor(table, { gameId, roundNumber: 1, phase: 'playing' });
+  });
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await prop.boundingBox()).toEqual(before);
+  await page.mouse.click(before.x + before.width / 2, before.y + before.height / 2);
+  expect(await page.evaluate(() => window.__coveringCardTaps)).toBe(1);
+  await expect(prop).not.toHaveAttribute('data-moving', 'true');
 });

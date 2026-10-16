@@ -27,9 +27,9 @@ const labelledLeaderboard = {
     en: 'Every completed round in which you finish all your cards counts as a win.',
   },
   entries: [
-    { place: 1, display_name: 'Admin', wins: 12, rounds_played: 20, win_rate: 60, is_self: true },
-    { place: 1, display_name: '<Stammtischfreundin mit einem langen Namen>', wins: 12, rounds_played: 24, win_rate: 50, is_self: false },
-    { place: 3, display_name: 'Labelled renderer player', wins: 7, rounds_played: 13, win_rate: 53.8, is_self: false },
+    { place: 1, display_name: 'Admin', wins: 12, rounds_played: 20, win_rate: 60, is_self: true, rank: { id: 'rank_02', name: { de: 'Bohr', en: 'Bohr' }, level: 2 } },
+    { place: 1, display_name: '<Stammtischfreundin mit einem langen Namen>', wins: 12, rounds_played: 24, win_rate: 50, is_self: false, rank: { id: 'rank_03', name: { de: 'Newton', en: 'Newton' }, level: 3 } },
+    { place: 3, display_name: 'Labelled renderer player', wins: 7, rounds_played: 13, win_rate: 53.8, is_self: false, rank: { id: 'rank_01', name: { de: 'Einstein', en: 'Einstein' }, level: 1 } },
   ],
 };
 
@@ -66,7 +66,8 @@ for (const language of ['de', 'en']) {
     await page.goto('/hausdepp/rangliste');
     await expect(page.locator('.hd-leaderboard-table tbody tr')).toHaveCount(3);
     await expect(page.locator('.hd-leaderboard-place')).toHaveText(['1.', '1.', '3.']);
-    await expect(page.locator('.hd-leaderboard-name').nth(1)).toHaveText('<Stammtischfreundin mit einem langen Namen>');
+    await expect(page.locator('.hd-leaderboard-name').nth(1)).toContainText('<Stammtischfreundin mit einem langen Namen>');
+    await expect(page.locator('[data-player-rank]')).toHaveText(['Bohr', 'Newton', 'Einstein'].map(name => `${language === 'de' ? 'Aktueller Rang' : 'Current rank'}: ${name}`));
     await expect(page.locator('.hd-leaderboard-table script, .hd-leaderboard-table Stammtischfreundin')).toHaveCount(0);
     await expect(page.locator('.is-self .hd-self-tag')).toHaveText(language === 'de' ? 'Du' : 'You');
     await expect(page.locator('#hausdeppLeaderboardScoring')).toContainText(language === 'de' ? 'Karten loswirst' : 'finish all your cards');
@@ -76,6 +77,11 @@ for (const language of ['de', 'en']) {
     await page.locator('#hausdeppLeaderboardSize').selectOption('6');
     await expect(page.locator('.hd-leaderboard-table tbody tr')).toHaveCount(3);
     expect(requests.at(-1)).toBe('6');
+    for (const width of [320, 390, 1024]) {
+      await page.setViewportSize({ width, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+      await expect(page.locator('[data-player-rank=rank_03]')).toBeVisible();
+    }
   });
 }
 

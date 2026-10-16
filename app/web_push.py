@@ -518,7 +518,7 @@ def game_invite_notification_payload(
         waits = "wartet" if len(waiting_names) == 1 else "warten"
         body = f"{names} {waits} in {product_name} auf einen {ordinal} Mitspieler. Sei dabei!"
         title = f"{product_name} sucht Mitspieler"
-    icon = ("/static/icons/hausdepp-icon-192.png" if game_type == HAUSDEPP_GAME_TYPE else
+    icon = ("/static/icons/hausdepp-icon-192-v2.png" if game_type == HAUSDEPP_GAME_TYPE else
             "/static/icons/zilch-icon-192.png" if product_context == ZILCH_GAME_TYPE else "/static/icons/icon-192.png")
     return {
         "title": title,

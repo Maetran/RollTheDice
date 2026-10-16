@@ -28,6 +28,11 @@ async function owner(page, language = 'de') {
     }).observe(document, { childList: true, subtree: true });
   }, language);
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+  // These scenarios verify gameplay/layout independently of the beginner offer.
+  // Full offer, dismissal and tour hit tests remain in game-tours.spec.js.
+  await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: {
+    show: false, enabled: true, games: { zdwa: 'unseen', zilch: 'unseen', hausdepp: 'dismissed' },
+  } }));
   return headers;
 }
 

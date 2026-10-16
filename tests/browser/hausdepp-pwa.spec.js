@@ -91,8 +91,8 @@ for (const language of ['de', 'en']) {
     }, { title, body, tag, url: '/hausdepp/spiel/invitation-browser-proof' });
     expect(notifications).toEqual([{
       title, body, tag,
-      icon: '/static/icons/hausdepp-icon-192.png',
-      badge: '/static/icons/hausdepp-icon-192.png',
+      icon: '/static/icons/hausdepp-icon-192-v2.png',
+      badge: '/static/icons/hausdepp-icon-192-v2.png',
       renotify: false, data: { url: `${baseURL}/hausdepp/spiel/invitation-browser-proof` },
     }]);
   });
@@ -111,7 +111,7 @@ for (const language of ['de', 'en']) {
     expect(manifest.lang).toBe(language);
     expect(manifest.start_url).toBe('/hausdepp?pwa=hausdepp');
     for (const icon of manifest.icons) expect((await page.request.get(icon.src)).ok()).toBe(true);
-    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', /hausdepp-apple-touch-icon-180\.png/);
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', /hausdepp-apple-touch-icon-180-v2\.png/);
 
     await page.evaluate(() => {
       const event = new Event('beforeinstallprompt', { cancelable: true });

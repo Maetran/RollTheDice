@@ -155,3 +155,127 @@ The Cloudflare hostname reservation does not imply a deployed Hausdepp release.
   Worker-/Kontoantworten 200 mit passendem Cache-/Indexschutz; das finale
   versionierte JS wird korrekt unveränderlich ausgeliefert. Spielstände und
   gespeicherte Runden blieben erhalten.
+
+
+## Nachtrag 3.2.0 / integration addendum
+
+Dieser Nachtrag betrifft die Integration nach dem öffentlichen V3-Start. Die
+oben protokollierte ursprüngliche Testphase und deren damalige Deploymentgrenzen
+bleiben als historische Angaben erhalten. Der neue Zielzweig ist `develop`;
+diese Integration ist kein Produktionsdeploy.
+
+This addendum covers integration after the public V3 launch. The earlier test
+phase and its deployment limitations above remain historical records. This
+batch targets `develop` and does not deploy production.
+
+- Ausgangspunkt / base: `1218657476632bcacb4e3306db0dde877ae6746a`, einschliesslich
+  der Einsteigertouren / including beginner tours. Migration `0060` bleibt
+  unverändert, Hausdepps Chat-Erweiterung folgt als `0061` / migration `0060` is
+  retained, with the chat extension following as `0061`.
+- Gesamte Backend-Suite / complete backend suite: 1’199 Tests bestanden / passed,
+  Coverage 84,56 %. Der begrenzte Legacy-Rückweg und bösartige Ziele sind
+  eingeschlossen / the narrow legacy return path and malicious targets are included.
+- `npm run check:quality` bestanden / passed: Lint, generierte Assets,
+  Übersetzung, SEO, Versionsvertrag, Bandit und Abhängigkeitsprüfung / lint,
+  generated assets, localization, SEO, version contract, Bandit and dependency audit.
+- Fester Spieltisch / fixed game window: **53 Chromium +15 WebKit** bestanden /
+  passed. Zehn Fenstergrössen mit sechs Sitzen, grosse Hand, DE/EN-Texte,
+  Chat/Hilfe, Tastatur, Drehung, Animationen und Wartetisch-Austritt / ten window
+  sizes with six seats, large hands, DE/EN copy, chat/help, keyboard, rotation,
+  animations and waiting-table departure.
+- Community, Rangliste, öffentlicher Zugang und alle Touren / community,
+  standings, public discovery and all tours: **49** bestanden / passed. Ein
+  optionaler Bildaufnahmefall wurde nicht ausgeführt / one optional screenshot
+  capture was not executed. Der englische Chatwechsel wurde nach Korrektur
+  seines bei jedem Reload Deutsch erzwingenden Testsetups erneut bestanden /
+  the English chat switch passed after correcting a test setup that forcibly
+  restored German on every reload.
+- **10** native WebAuthn-, Konto- und Recovery-Flows sowie **8** echte
+  PWA-/Kartenbildtests bestanden / passed. Sie prüfen eigene Hausdepp-Seiten, gemeinsame Konten, Token-Fragmente, sichere
+  Rückwege, genau eine Logout-Navigation, Manifest und dekodierte PNGs. Die
+  Kartenprüfung drosselt die Verbindung auf zwei Sekunden Latenz und bestätigt,
+  dass neue Gesichter keine weiteren Bildanfragen benötigen. / Native WebAuthn,
+  account and recovery flows plus real PWA/card-image tests cover dedicated
+  Hausdepp pages, shared accounts, fragment tokens, safe returns, one logout
+  navigation, manifest and decoded PNGs. The card test adds two seconds of
+  network latency and verifies that new faces make no additional artwork requests.
+- Der CPU-Vergleich ist reproduzierbar dokumentiert unter
+  [HAUSDEPP_CPUS.md](HAUSDEPP_CPUS.md), einschliesslich einer getrennten
+  Holdout-Stichprobe / the reproducible CPU benchmark includes a separate holdout.
+- Bilder und Logs sind ausserhalb des Worktrees gesichert. Die lokale Vorschau
+  unter Port 8001 verwendet eine getrennte SQLite-Sicherung; Port 8000 und das
+  dortige Testkonto wurden durch diese Prüfungen nicht bespielt. / Screenshots
+  and logs are retained outside the worktree. Preview port 8001 uses a separate
+  SQLite backup; tests did not play on port 8000 or its account.
+
+**Gerätegrenze / device limit:** Das iPhone-Foto zeigt den generischen H-Platzhalter
+bereits im Hinzufügen-Dialog. Explizite Apple-Icons, PNG-Dekodierung und beide
+GET/HEAD-Discoverypfade sind automatisiert geprüft. Eine tatsächliche Abnahme
+dieses iOS-Systemdialogs benötigt nach einem Rollout das physische iPhone.
+Der finale Assetstand ist `8520b6b69416`. Chrome-Manifest- und WebKit-Tests
+belegen keine erfolgte iOS-Installation. /
+The iPhone photo shows the generic H placeholder in the Add to Home Screen
+sheet. Explicit Apple icons, PNG decoding and both GET/HEAD discovery paths are
+automatically tested. Acceptance of that iOS system sheet still requires the
+physical iPhone after rollout; Chrome manifest and WebKit tests do not prove
+an iOS installation.
+
+## Abschliessender 3.2.0-Releasecheck / final release checks
+
+Nach der Integration wurden weitere ausdrücklich gewünschte Verbesserungen
+aufgenommen. Der Nutzer hat den gemeinsamen Rollout nach Abschluss der Touren
+und dieser Verbesserungen freigegeben. Die frühere Integrationsphase oben ist
+kein Nachweis eines bereits erfolgten Deployments. /
+Additional requested improvements were added after integration. The owner has
+authorized the combined rollout once tours and these improvements are ready.
+The earlier integration phase above is not a record of a completed deployment.
+
+- Gesamte Backend-Suite / complete backend suite: **1’208 bestanden / passed**,
+  Coverage **84,59 %**. Neue Notice-Quittungen sind reine Präsentationsdaten;
+  sie ändern keine verdienten EP. Migrationen `0060 → 0061 → 0062` haben genau
+  einen Kopf / notice receipts are presentation data, not XP grants; migrations
+  have a single head.
+- **111** betroffene Browser-Regressionen bestanden / affected browser
+  regressions passed. Alte Spiel-Fixtures unterdrücken nur das neue freiwillige
+  Tourangebot; die positiven Tourtests bleiben unverändert und bestehen. /
+  Existing game fixtures suppress only the new optional tour offer; positive
+  tour tests remain unchanged and pass.
+- **9** Dekorationsfälle bestanden / prop cases passed: echte Tische mit sechs
+  Sitzen, objektabhängige Bewegungen, reduzierte Bewegung und feste Koordinaten
+  bei wachsender Hand. Überdeckende Karten erhalten weiterhin den Tipp. /
+  Real six-seat tables, object-specific motion, reduced motion and stable
+  coordinates while hands grow; covering cards still receive taps.
+- **8 Chromium +21 WebKit** bestanden / passed: Paketansicht, echter langer
+  Maus-/Touchdruck ohne versehentliche Aufnahme, Tastatur, Live-Karten,
+  Ablagestapel und sechs Sitze in beiden Ausrichtungen. Zusätzlich präzisierte
+  Inspector-Spec **6/6 je Browser** / inspection, long press without accidental
+  pickup, keyboard, live public cards, cleared stack and six seats in both
+  orientations; refined inspector checks also passed in both browsers.
+- Erfolgsmeldungen erklären Bedingung, eigene belegte Ursache und EP, einschliesslich
+  früherer Erfolge und Rangaufstiege. Abbruch bestätigt nichts. Auch der
+  Abschluss einer einzelnen Turnierrunde zeigt Meldungen; die nächste Runde
+  gibt den Tisch sofort frei. / Progress notices explain the condition, recorded
+  reason and XP, including older awards and rank-ups. Dismissal acknowledges
+  nothing. Each finished tournament round can show notices; the next round
+  immediately releases the table.
+- Öffentliche Spielregeln erklären Paketinspektion und den ausgeschiedenen
+  Kartenstapel vollständig DE/EN. Keine neue öffentliche Route, keine Änderung
+  der eigentlichen Spielregeln / public rules explain pile inspection and
+  cleared cards in both languages, without new public routes or rule changes.
+
+Logs und Bilder dieser Phase werden im bestehenden externen Evidenzordner
+`outputs/hausdepp-next` gesichert. Keine Prüfung versendet echte Pushmeldungen
+oder spielt mit Produktionskonten. Der reale iPhone-Systemdialog bleibt als
+Geräteabnahme offen. / Logs and screenshots are retained in the existing external
+evidence folder. Tests neither send real push alerts nor play on production
+accounts. The physical iPhone installation sheet still needs device acceptance.
+
+Finaler Assetstand / final asset fingerprint: **`4e0800075052`**. Gegenüber
+`4c2c64a9d39a` sind nur die DE/EN-Bedienhinweise sowie der eng begrenzte Schutz
+gegen einen nachträglich geöffneten nativen Dialog hinzugekommen. Der neue
+umgekehrte Dialog-Fokusfall und alle acht bisherigen Notice-Fälle bestehen:
+**9/9**. Die beiden Regeln-/Navigationsflows bestehen ebenfalls erneut.
+`npm run check:quality` ist auf dem finalen Stand vollständig grün. /
+The final bundle adds only bilingual instructions and the narrow safeguard for
+a native dialog opening after a progress popup. All nine notice checks and
+both rules/navigation checks pass; full quality/security checks are green.

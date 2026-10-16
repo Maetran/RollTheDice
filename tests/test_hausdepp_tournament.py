@@ -23,7 +23,7 @@ from app.game_state import check_timeout_and_abort, games, multiplayer_pause_rea
 from app.game_ws_session import GameSocketSession, handle_session_action
 from app.game_ws_social import handle_social_action
 from app.hausdepp_account import build_hausdepp_account_for_user
-from app.hausdepp_cpu_strategy import choose_cpu_action
+from app.hausdepp_cpu_strategy import CpuMemory, choose_cpu_action
 from app.hausdepp_engine import HausdeppRuleError, make_deck, new_round, project_state
 from app.hausdepp_gameplay import apply_hausdepp_command, handle_hausdepp_gameplay_action, publish_hausdepp_transition
 from app.hausdepp_results import finalize_hausdepp_result, validate_hausdepp_result
@@ -402,6 +402,7 @@ def test_seeded_full_tournament_for_each_table_size_rotates_restores_and_credits
         game = table(database, count=count)
         while not game["_hausdepp_tournament"]["completed"]:
             dealer_id = game["_hausdepp"]["dealer_id"]
+            memories = {player["id"]: CpuMemory() for player in game["_participants"]}
             for _ in range(1000):
                 state = game["_hausdepp"]
                 if state["phase"] == "finished":
@@ -409,13 +410,16 @@ def test_seeded_full_tournament_for_each_table_size_rotates_restores_and_credits
                 debt = next(iter(state["pending_refills"]), None)
                 follower = (state.get("afterthrow") or {}).get("player_id")
                 actor = debt or follower or state["current_player_id"]
-                decision = choose_cpu_action(project_state(state, actor))
+                view = project_state(state, actor)
+                decision = choose_cpu_action(view, memory=memories[actor])
                 if decision is None:
                     actor = state["current_player_id"]
-                    decision = choose_cpu_action(project_state(state, actor))
+                    view = project_state(state, actor)
+                    decision = choose_cpu_action(view, memory=memories[actor])
                 assert decision is not None
                 player = next(player for player in game["_participants"] if player["id"] == actor)
                 apply_hausdepp_command(game, actor, decision, trusted_cpu=bool(player["is_cpu"]))
+                memories[actor].remember(view, decision)
                 state = game["_hausdepp"]
                 physical = state["deck"] + state["discard"] + state["burned"]
                 physical += [card for seat in state["players"] for card in seat["hand"]]

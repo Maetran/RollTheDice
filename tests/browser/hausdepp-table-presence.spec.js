@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 test.use({ serviceWorkers: 'block' });
 
 const VIEWPORTS = [
-  ['narrow-phone', 320, 568], ['compact-phone', 360, 740], ['phone', 390, 844],
+  ['narrow-phone', 320, 568], ['compact-phone', 360, 740], ['phone', 390, 844], ['large-phone', 430, 932],
   ['compact-landscape', 568, 320], ['medium-landscape', 740, 360], ['phone-landscape', 844, 390],
   ['tablet-portrait', 768, 1024], ['tablet-landscape', 1024, 768], ['desktop', 1440, 900],
 ];
@@ -23,6 +23,11 @@ async function owner(page, language = 'de') {
   await page.request.put('/api/auth/preferences/language', { headers, data: { preferred_language: language } });
   await page.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+  // These scenarios verify gameplay/layout independently of the beginner offer.
+  // Full offer, dismissal and tour hit tests remain in game-tours.spec.js.
+  await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: {
+    show: false, enabled: true, games: { zdwa: 'unseen', zilch: 'unseen', hausdepp: 'dismissed' },
+  } }));
   return { user, headers };
 }
 
@@ -149,8 +154,104 @@ async function labelledTable(page, { count = 6, language = 'de', viewport = { wi
 }
 
 async function expectNoHorizontalOverflow(page, context) {
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), context).toBeLessThanOrEqual(1);
+  const overflow = await page.evaluate(() => {
+    const extra = document.documentElement.scrollWidth - innerWidth;
+    const nodes = extra > 1 ? [...document.querySelectorAll('body *')].flatMap(node => {
+      const rect = node.getBoundingClientRect();
+      return rect.width && rect.right > innerWidth + 1 ? [{ tag: node.tagName, id: node.id,
+        class: String(node.className).slice(0, 90), left: rect.left, right: rect.right, width: rect.width }] : [];
+    }).slice(-12) : [];
+    return { extra, nodes };
+  });
+  expect(overflow.extra, `${context}: ${JSON.stringify(overflow.nodes)}`).toBeLessThanOrEqual(1);
 }
+
+async function expectFixedGameWindow(page, context) {
+  const viewport = page.viewportSize();
+  if (viewport.width > 1099) return;
+  const layout = await page.evaluate(() => {
+    const rect = element => { const r = element.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
+    const selectors = ['#hausdeppStock', '#hausdeppPile', '#hausdeppStatus', '.hd-hand-region', '#chatToggle', '#hausdeppTools > summary', '.hd-reactions'];
+    return { pageHeight: document.documentElement.scrollHeight, pageWidth: document.documentElement.scrollWidth,
+      scrollX, scrollY, controls: selectors.map(selector => ({ selector, ...rect(document.querySelector(selector)) })) };
+  });
+  expect(layout.pageHeight, `${context}: the document does not scroll vertically`).toBeLessThanOrEqual(viewport.height + 1);
+  expect(layout.pageWidth, `${context}: the document does not scroll horizontally`).toBeLessThanOrEqual(viewport.width + 1);
+  expect(layout.scrollX).toBe(0);
+  expect(layout.scrollY).toBe(0);
+  for (const control of layout.controls) {
+    expect(control.left, `${context}: ${control.selector} left`).toBeGreaterThanOrEqual(-1);
+    expect(control.right, `${context}: ${control.selector} right`).toBeLessThanOrEqual(viewport.width + 1);
+    expect(control.top, `${context}: ${control.selector} top`).toBeGreaterThanOrEqual(-1);
+    expect(control.bottom, `${context}: ${control.selector} bottom`).toBeLessThanOrEqual(viewport.height + 1);
+  }
+}
+
+for (const language of ['de', 'en']) {
+  test(`${language}: the fixed table keeps a large hand internal and opens reachable help and chat sheets`, async ({ page }) => {
+    test.setTimeout(60000);
+    const fixture = await labelledTable(page, { language });
+    const hand = ['hearts', 'bells', 'leaves', 'acorns'].flatMap(suit => ['6', '7', '8', '9', 'U', 'O', 'K', 'A', '10'].map(rank => `${suit}-${rank}`)).filter(card => card !== 'acorns-10');
+    const board = structuredClone(fixture.board);
+    Object.assign(board._hausdepp, { version: board._hausdepp.version + 1, hand, deck_count: 0,
+      discard: [], playable_cards: hand, available_actions: ['play'], finished_order: board._hausdepp.players.filter(player => ![fixture.self, fixture.remote].includes(player.id)).map(player => player.id) });
+    board._hausdepp.players = board._hausdepp.players.map(player => ({ ...player,
+      hand_count: player.id === fixture.self ? 35 : player.id === fixture.remote ? 1 : 0,
+      finished: ![fixture.self, fixture.remote].includes(player.id) }));
+    fixture.send({ scoreboard: board });
+    await expect(page.locator('#hausdeppHand [data-card-id]')).toHaveCount(35);
+    for (const [name, width, height] of VIEWPORTS.filter(([, width]) => width <= 1099)) {
+      await page.setViewportSize({ width, height });
+      const fan = page.locator('#hausdeppHand');
+      expect(await fan.evaluate(element => element.scrollWidth > element.clientWidth), `${name}: the large fan scrolls internally`).toBe(true);
+      await fan.evaluate(element => { element.scrollLeft = 0; });
+      await page.locator('#hausdeppHand button').first().click({ trial: true, position: { x: 16, y: 32 }, timeout: 5000 });
+      await fan.evaluate(element => { element.scrollLeft = element.scrollWidth; });
+      await page.locator('#hausdeppHand button').last().click({ trial: true, timeout: 5000 });
+      await expectFixedGameWindow(page, `${language} ${name} large hand`);
+      await page.locator('#hausdeppTools > summary').click();
+      await expect(page.locator('.hd-game-help')).toBeVisible();
+      await expect(page.locator('.hd-game-help a[href="/hausdepp/regeln"]')).toBeVisible();
+      await page.locator('.hd-tools-close').click();
+      await expect(page.locator('#hausdeppTools')).not.toHaveAttribute('open', '');
+      await page.locator('#chatToggle').click();
+      await expect(page.locator('#chatInput')).toBeVisible();
+      expect(await page.locator('#chatInput').evaluate(element => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(16);
+      await page.locator('#chatClose').click();
+      await expect(page.locator('#chatInput')).toBeHidden();
+      await expectFixedGameWindow(page, `${language} ${name} closed sheets`);
+    }
+    expect(fixture.commands).toEqual([]);
+  });
+}
+
+test('the fixed table keeps chat above the keyboard and recovers its full window after rotation', async ({ page }) => {
+  await labelledTable(page);
+  await page.locator('#chatToggle').click();
+  await page.locator('#chatInput').focus();
+  await page.evaluate(() => {
+    Object.defineProperty(visualViewport, 'height', { configurable: true, value: 380 });
+    Object.defineProperty(visualViewport, 'offsetTop', { configurable: true, value: 24 });
+    visualViewport.dispatchEvent(new Event('resize'));
+    visualViewport.dispatchEvent(new Event('scroll'));
+  });
+  await expect.poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--game-viewport-height'))).toBe('380px');
+  const input = await page.locator('#chatInput').boundingBox();
+  expect(input.y).toBeGreaterThanOrEqual(24);
+  expect(input.y + input.height).toBeLessThanOrEqual(405);
+  await page.evaluate(() => {
+    delete visualViewport.height;
+    delete visualViewport.offsetTop;
+    visualViewport.dispatchEvent(new Event('resize'));
+    visualViewport.dispatchEvent(new Event('scroll'));
+  });
+  await page.locator('#chatClose').click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--game-viewport-height'))).toBe('');
+  for (const viewport of [{ width: 844, height: 390 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await expectFixedGameWindow(page, `${viewport.width}×${viewport.height} after keyboard/rotation`);
+  }
+});
 
 for (const language of ['de', 'en']) {
   test(`${language}: navigation buttons keep real destinations and opaque touch surfaces`, async ({ page }) => {
@@ -343,6 +444,7 @@ for (const count of [3, 5, 6]) {
       expect(Math.min(...geometry.seats.map(seat => seat.cx)), 'The table has a player on its left').toBeLessThan(pileCentre);
       expect(Math.max(...geometry.seats.map(seat => seat.cx)), 'The table has a player on its right').toBeGreaterThan(pileCentre);
       await expectNoHorizontalOverflow(page, `${count} seats ${name}`);
+      await expectFixedGameWindow(page, `${count} seats ${name}`);
       await expect(page.locator('#hausdeppHand button:enabled')).toHaveCount(3);
       await expect(page.locator('.hd-seat [data-card-count="3"]')).toHaveCount(count - 1);
       for (const selector of ['#hausdeppStock', '#hausdeppPile']) {

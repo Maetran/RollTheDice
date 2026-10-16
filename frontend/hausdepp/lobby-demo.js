@@ -22,12 +22,18 @@ export function mountLobbyDemo(container, renderCard) {
     const firstCard = nodes.get(hand[0]);
     const width = firstCard ? parseFloat(getComputedStyle(firstCard).width) : 112;
     const spacing = Math.min(width * .6, Math.max(0, container.clientWidth - width - 20) / Math.max(1, hand.length - 1));
+    // Rotation around the bottom edge pushes the outer top corners farther
+    // than the unrotated spacing. Keep that real edge inside the window.
+    const angleLimit = 13 * Math.PI / 180;
+    const extent = (hand.length - 1) / 2 * spacing + width / 2 * Math.cos(angleLimit) + width * 57 / 36 * Math.sin(angleLimit);
+    const centre = container.getBoundingClientRect().left + container.clientWidth / 2;
+    const correction = Math.max(8 + extent - centre, Math.min(0, innerWidth - 8 - extent - centre));
     for (const [index, card] of hand.entries()) {
       const node = nodes.get(card);
       if (!node) continue;
       const offset = index - (hand.length - 1) / 2;
       const angle = offset / Math.max(1, (hand.length - 1) / 2) * 13;
-      node.style.setProperty("--demo-shift", `${offset * spacing}px`);
+      node.style.setProperty("--demo-shift", `${offset * spacing + correction}px`);
       node.style.setProperty("--demo-angle", `${angle}deg`);
       node.style.setProperty("--demo-drop", `${Math.pow(Math.abs(angle) / 13, 2) * 14}px`);
       node.style.zIndex = String(index + 1);

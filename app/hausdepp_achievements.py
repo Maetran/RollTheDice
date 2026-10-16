@@ -341,6 +341,30 @@ def _progress(aggregate: dict, achievement_id: str) -> tuple[int, int]:
     return min(current, target), target
 
 
+def public_hausdepp_ranks(db, user_ids: list[int]) -> dict[int, dict]:
+    """Expose titles from the same weighted ledger as the private account.
+
+    No synchronization, receipts or unlock presentation is written while another
+    player reads standings. Private source rounds and XP totals stay internal.
+    """
+    ids = {value for value in user_ids if type(value) is int and value > 0}
+    if len(ids) > 100:
+        raise ValueError("hausdepp_invalid_limit")
+    if not ids:
+        return {}
+    credits = {value: [] for value in ids}
+    unlocks = {value: [] for value in ids}
+    for credit in db.scalars(select(HausdeppRoundCredit).where(HausdeppRoundCredit.user_id.in_(ids))):
+        credits[credit.user_id].append(credit)
+    for unlock in db.scalars(select(HausdeppAchievementUnlock).where(HausdeppAchievementUnlock.user_id.in_(ids))):
+        unlocks[unlock.user_id].append(unlock)
+    result = {}
+    for user_id in ids:
+        rank = _rank(_score_points(credits[user_id], unlocks[user_id]))
+        result[user_id] = {key: rank[key] for key in ("id", "name", "level")}
+    return result
+
+
 def synchronize_hausdepp_progress(user_id: int) -> dict:
     """Recover missing credits/awards and project only the requesting account."""
     if type(user_id) is not int or user_id < 1:

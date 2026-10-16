@@ -139,7 +139,7 @@ class HausdeppInvitationTests(unittest.TestCase):
                 with self.subTest(context=context, language=language):
                     payload = game_invite_notification_payload(game=self.game, destination=destination,
                                                                language=language, product_context=context)
-                    self.assertEqual(payload["icon"], "/static/icons/hausdepp-icon-192.png")
+                    self.assertEqual(payload["icon"], "/static/icons/hausdepp-icon-192-v2.png")
                     self.assertEqual(payload["badge"], payload["icon"])
                     self.assertEqual(payload["url"], destination)
                     self.assertEqual(payload["tag"], "game-invite-hausdepp-haus-push")

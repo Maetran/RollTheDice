@@ -226,6 +226,13 @@ for (const theme of ["light", "dark", "classic"]) {
   test(`ZDWA ${theme} keeps its table fixed and every score reachable across device sizes`, async ({ browser, baseURL, request }, testInfo) => {
     const context = await browser.newContext({ baseURL, hasTouch: true, isMobile: true, viewport: { width: 440, height: 956 }, serviceWorkers: "block" });
     await context.addInitScript(value => localStorage.setItem("wuerfler_theme", value), theme);
+    // The independently tested offer must not cover these table hit targets.
+    await context.addInitScript(() => localStorage.setItem("rollthedice.tours.v1.guest", JSON.stringify({
+      enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+    })));
+    await context.route("**/api/auth/tours/offer", route => route.fulfill({ json: {
+      show: false, enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+    } }));
     const page = await context.newPage();
     let snapshots = 0;
     page.on("websocket", socket => socket.on("framereceived", frame => {

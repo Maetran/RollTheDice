@@ -138,9 +138,10 @@ for (const preferred of ['de', 'en']) {
     await expect(page.locator('.hd-account-identity')).toContainText(account.username);
     await expect(page.locator('#hausdeppAchievementCount')).toContainText('100');
     await page.locator('.hd-account-settings a').click();
-    await expect(page.locator('#settingsPanel')).toBeVisible();
-    await page.locator('[data-game-switch]').click();
-    await page.locator('#suiteGameMenu [data-game-entry="hausdepp"]').click();
+    await expect(page.locator('.hd-settings')).toBeVisible();
+    await expect(page).toHaveURL(/\/hausdepp\/konto\/einstellungen$/);
+    await expect(page.locator('html')).toHaveAttribute('data-game', 'hausdepp');
+    await page.locator('.hd-settings-footer a[href="/hausdepp"]').click();
     await expect(page.locator('#hausdeppCreateForm')).toBeVisible();
     await page.locator('.hd-nav a[href="/hausdepp/rangliste"]').click();
     await expect(page.locator('#hausdeppLeaderboardSize')).toBeVisible();

@@ -27,7 +27,7 @@ from app.hausdepp_achievements import (
     acknowledge_hausdepp_presentation,
     synchronize_hausdepp_progress,
 )
-from app.hausdepp_cpu_strategy import choose_cpu_action
+from app.hausdepp_cpu_strategy import CpuMemory, choose_cpu_action
 from app.hausdepp_engine import new_round, project_state
 from app.hausdepp_gameplay import apply_hausdepp_command
 from app.hausdepp_leaderboard import build_hausdepp_leaderboard
@@ -422,14 +422,17 @@ class HausdeppAchievementTests(unittest.TestCase):
             game["_hausdepp"] = new_round(game["_participants"], dealer_index=2, rng=random.Random(2701))
             observed_losers = []
             while not game["_hausdepp_tournament"]["completed"]:
+                memories = {player["id"]: CpuMemory() for player in game["_participants"]}
                 for _ in range(5000):
                     if game["_finished"]:
                         break
                     for participant in game["_participants"]:
-                        command = choose_cpu_action(project_state(game["_hausdepp"], participant["id"]))
+                        view = project_state(game["_hausdepp"], participant["id"])
+                        command = choose_cpu_action(view, memory=memories[participant["id"]])
                         if command:
                             apply_hausdepp_command(game, participant["id"], command,
                                                    trusted_cpu=participant["is_cpu"])
+                            memories[participant["id"]].remember(view, command)
                             break
                     else:
                         self.fail("No legal action in a running seeded tournament round")

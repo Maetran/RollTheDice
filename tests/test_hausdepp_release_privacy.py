@@ -168,7 +168,7 @@ class HausdeppReleasePrivacyTests(unittest.TestCase):
                 accounts.add(subscription.user_id)
                 self.assertEqual(subscription.product_context, "hausdepp")
                 self.assertEqual(payload["url"], "/hausdepp")
-                self.assertEqual(payload["icon"], "/static/icons/hausdepp-icon-192.png")
+                self.assertEqual(payload["icon"], "/static/icons/hausdepp-icon-192-v2.png")
                 self.assertEqual(payload["title"], notes[subscription.preferred_language]["title"])
             self.assertEqual(accounts, {self.founder.id, self.owner.id, self.admin.id, self.player.id})
 

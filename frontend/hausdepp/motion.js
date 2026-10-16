@@ -118,7 +118,7 @@ function captureGeometry(playerId) {
   return {
     stock: { element: document.getElementById("hausdeppStock"), rect: rectOf(document.getElementById("hausdeppStock")) },
     pile: { element: document.getElementById("hausdeppPile"), rect: rectOf(document.getElementById("hausdeppPile")) },
-    burned: { element: document.querySelector(".hd-burned"), rect: rectOf(document.querySelector(".hd-burned")) },
+    burned: { element: document.getElementById("hausdeppBurnedStack"), rect: rectOf(document.getElementById("hausdeppBurnedStack")) },
     hands,
   };
 }

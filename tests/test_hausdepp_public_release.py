@@ -120,7 +120,7 @@ class HausdeppPublicReleaseTests(unittest.TestCase):
             response = self.client.get(f"{HAUSDEPP_ORIGIN}/zilch/anmelden?{urlencode({'return_to': path})}", follow_redirects=False)
             self.assertEqual(response.status_code, 200)
             self.assertIn('data-hausdepp-login="true"', response.text)
-            self.assertIn('data-game="zilch"', response.text)
+            self.assertIn('data-game="hausdepp"', response.text)
             self.assertIn('data-pwa-product="hausdepp"', response.text)
             self.assertIn('/hausdepp-manifest.webmanifest', response.text)
             self.assertIn('/static/icons/hausdepp-icon-32.png', response.text)
@@ -143,7 +143,7 @@ class HausdeppPublicReleaseTests(unittest.TestCase):
 
     def test_private_house_destination_keeps_in_origin_login_and_disabled_accounts_do_not_pass(self):
         response = self.client.get(f"{HAUSDEPP_ORIGIN}/hausdepp/konto", follow_redirects=False)
-        self.assertEqual(urlsplit(response.headers["location"]).path, "/zilch/anmelden")
+        self.assertEqual(urlsplit(response.headers["location"]).path, "/hausdepp/anmelden")
         self.assertEqual(parse_qs(urlsplit(response.headers["location"]).query), {"return_to": ["/hausdepp/konto"]})
         client = self.signed_in()
         with session_scope() as db:

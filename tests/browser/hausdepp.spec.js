@@ -57,6 +57,11 @@ async function ownerSession(page, language = 'de') {
     }).observe(document, { childList: true, subtree: true });
   });
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+  // These scenarios verify gameplay/layout independently of the beginner offer.
+  // Full offer, dismissal and tour hit tests remain in game-tours.spec.js.
+  await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: {
+    show: false, enabled: true, games: { zdwa: 'unseen', zilch: 'unseen', hausdepp: 'dismissed' },
+  } }));
   return user;
 }
 
@@ -1005,7 +1010,10 @@ test('labelled UI fixture: failed gamble travels stock to table before pickup, r
   expect(ghosts.some(card => card.motionType === 'pickup' && card.source === 'pile' && card.target === `hand:${fixture._hausdepp.viewer_id}`)).toBe(true);
   for (const ghost of ghosts) expect(Number(ghost.delay) + Number(ghost.duration)).toBeLessThanOrEqual(900);
   await expect(page.locator('.hd-deal-card')).toHaveCount(0, { timeout: 1250 });
+  const connectionsBeforeReload = mocked.connections;
   await page.reload();
+  await expect.poll(() => mocked.connections).toBeGreaterThan(connectionsBeforeReload);
+  await expect(page.locator('#hausdeppHand [data-card-id]')).toHaveCount(fixture._hausdepp.hand.length);
   expect(await page.evaluate(() => window.hausdeppMotionProbe)).toEqual([]);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const next = JSON.parse(JSON.stringify(fixture));
@@ -1202,6 +1210,22 @@ test('reduced motion leaves the lobby demonstration hand still', async ({ page }
   await page.clock.fastForward(20000);
   expect(await demo.innerHTML()).toBe(initial);
   await expect(demo).not.toHaveAttribute('data-demo-step');
+});
+
+test('rotated lobby cards keep their actual outer corners inside compact windows', async ({ page }) => {
+  await ownerSession(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/hausdepp');
+  for (const [width, height] of [[320, 568], [390, 844], [568, 320], [740, 360], [844, 390]]) {
+    await page.setViewportSize({ width, height });
+    await expect(page.locator('.hd-lobby-cards [data-card-id]')).toHaveCount(3);
+    await expect.poll(() => page.locator('.hd-lobby-cards [data-card-id]').evaluateAll(cards => {
+      const rects = cards.map(card => card.getBoundingClientRect());
+      return Math.max(...rects.map(rect => rect.right)) <= innerWidth - 7
+        && Math.min(...rects.map(rect => rect.left)) >= 7;
+    }), { message: `${width}×${height}: rotated artwork keeps an eight-pixel window edge` }).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  }
 });
 
 test('seeded local demo refills only below three and throws matching pairs from one physical deck', async ({ page }) => {

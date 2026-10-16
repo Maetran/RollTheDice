@@ -17,6 +17,12 @@ from app.site_seo import (
 )
 from scripts.sync_static_versions import content_version, desired_text
 
+# The short-lived email-action template has contextual routes, so it is not a
+# separate SEO document. It still owns exactly the same Hausdepp artwork.
+HAUSDEPP_SHELL_ARTIFACTS = {
+    *PRIVATE_HAUSDEPP_DOCUMENTS.values(), *PUBLIC_HAUSDEPP_DOCUMENTS.values(), "hausdepp-email-action.html",
+}
+
 # Account action pages may carry exactly this inline script (see
 # main._private_account_action_page, which renders data-design-available). It
 # paints the theme and the ZDWA design before the first paint.
@@ -103,8 +109,8 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         for filename in ("hausdepp-manifest.webmanifest", "hausdepp-manifest-en.webmanifest"):
             hausdepp_manifest = json.loads((main.BASE / filename).read_text())
             self.assertEqual([icon["src"] for icon in hausdepp_manifest["icons"]], [
-                f"/static/icons/hausdepp-icon-192.png?v={version}",
-                f"/static/icons/hausdepp-icon-512.png?v={version}",
+                f"/static/icons/hausdepp-icon-192-v2.png?v={version}",
+                f"/static/icons/hausdepp-icon-512-v2.png?v={version}",
             ])
         zilch_shells = {"zilch.html", "zilch-lobby.html", "zilch-rules.html", "zilch-login.html", "zilch-unavailable.html"}
         for html_path in main.STATIC_DIR.glob("*.html"):
@@ -117,9 +123,9 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
                     html_path.name,
                 )
                 continue
-            if html_path.name in {*PRIVATE_HAUSDEPP_DOCUMENTS.values(), *PUBLIC_HAUSDEPP_DOCUMENTS.values()}:
+            if html_path.name in HAUSDEPP_SHELL_ARTIFACTS:
                 self.assertIn(f"/static/icons/hausdepp-icon-32.png?v={version}", html, html_path.name)
-                self.assertIn(f"/static/icons/hausdepp-apple-touch-icon-180.png?v={version}", html, html_path.name)
+                self.assertIn(f"/static/icons/hausdepp-apple-touch-icon-180-v2.png?v={version}", html, html_path.name)
                 continue
             self.assertIn(f"/static/favicon.png?v={version}", html, html_path.name)
             self.assertIn(f"/static/icons/apple-touch-icon-180.png?v={version}", html, html_path.name)
@@ -157,6 +163,16 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
                 self.assertIn(ACCOUNT_ACTION_DESIGN_SCRIPT, html, html_path.name)
                 self.assertIn('<meta name="referrer" content="no-referrer">', html, html_path.name)
                 continue
+            if html_path.name == "hausdepp-email-action.html":
+                # The Hausdepp action shares the token-safe deferred controller
+                # and its own styling, without shell/presence/PWA bootstrap.
+                self.assertNotIn("/static/shell.js", html, html_path.name)
+                self.assertEqual(html.count("<script"), 1, html_path.name)
+                self.assertIn('<script type="module" src="/static/email-action.js?v=', html)
+                self.assertNotIn("<script>", html, html_path.name)
+                self.assertIn('data-game="hausdepp"', html)
+                self.assertIn('href="/static/hausdepp.css?v=', html)
+                continue
             if html_path.name == "dashboard.html":
                 # Mission Control owns its dark design and localization. Its
                 # single module never initializes player presence or tracking.
@@ -171,13 +187,16 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertIn("defer", html[start:end], f"{html_path.name}: shell.js")
             for legacy_asset in ("i18n.js", "ui.js", "pwa.js", "theme.js"):
                 self.assertNotIn(f"/static/{legacy_asset}", html, html_path.name)
-            if html_path.name in {*PRIVATE_HAUSDEPP_DOCUMENTS.values(), *PUBLIC_HAUSDEPP_DOCUMENTS.values()}:
+            if html_path.name in HAUSDEPP_SHELL_ARTIFACTS:
                 # Hausdepp owns its approved tavern-table design. The shared
                 # shell still defers, but legacy dice-theme selection must
                 # not repaint the private card-game surface.
                 self.assertIn('data-game="hausdepp"', html, html_path.name)
                 self.assertIn('href="/static/hausdepp.css?v=', html, html_path.name)
-                self.assertIn('type="module" src="/static/hausdepp.js?v=', html, html_path.name)
+                # Login reuses the proven shared account controller; the
+                # remaining Hausdepp documents use their game bundle.
+                bundle = "zilch-login.js" if html_path.name == "hausdepp-login.html" else "hausdepp.js"
+                self.assertIn(f'type="module" src="/static/{bundle}?v=', html, html_path.name)
                 continue
             if html_path.name != "offline.html":
                 self.assertIn("document.documentElement.dataset.theme", html, html_path.name)

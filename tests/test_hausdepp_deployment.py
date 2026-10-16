@@ -267,7 +267,7 @@ class PublicReleaseSmokeTestCase(unittest.TestCase):
         if url.endswith("/api/auth/me"):
             return json.dumps({"authenticated": False, "user": None, "passkeys": {"enabled": True},
                                "game_access": {"hausdepp_public": True}}), {"cache-control": "no-store"}
-        if "/zilch/anmelden?" in url or url.endswith("/hausdepp/konto"):
+        if "/hausdepp/anmelden?" in url or url.endswith("/hausdepp/konto"):
             return ('<html data-hausdepp-login="true"><head>'
                     '<link rel="manifest" href="/hausdepp-manifest.webmanifest?v=current"></head></html>'), {
                         "cache-control": "no-store", "x-robots-tag": "noindex, nofollow",
@@ -335,7 +335,7 @@ class PublicReleaseSmokeTestCase(unittest.TestCase):
         for failure in ("manifest", "indexing", "cache"):
             def broken(url, *, final_url=None):
                 body, headers = self.response(url, final_url=final_url)
-                if "/zilch/anmelden?" in url:
+                if "/hausdepp/anmelden?" in url:
                     if failure == "manifest":
                         body = body.replace("hausdepp-manifest", "zilch-manifest")
                     elif failure == "indexing":
@@ -350,7 +350,7 @@ class PublicReleaseSmokeTestCase(unittest.TestCase):
     def test_private_page_redirect_must_stay_on_house_origin_before_any_followup_request(self):
         house = public_smoke.HAUSDEPP
         request = public_smoke.urllib.request.Request(house + "/hausdepp/konto")
-        handler = public_smoke.KnownProductRedirect(house + "/zilch/anmelden?return_to=%2Fhausdepp%2Fkonto")
+        handler = public_smoke.KnownProductRedirect(house + "/hausdepp/anmelden?return_to=%2Fhausdepp%2Fkonto")
         for external in (public_smoke.APEX + "/zilch/anmelden", "https://untrusted.invalid/", "http://hausdepp.zockdiewandan.online/"):
             with self.subTest(external=external), self.assertRaises(ValueError):
                 handler.redirect_request(request, None, 303, "See other", {}, external)

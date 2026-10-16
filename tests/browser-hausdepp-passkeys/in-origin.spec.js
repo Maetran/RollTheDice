@@ -52,12 +52,13 @@ for (const language of ['de', 'en']) for (const installed of [false, true]) {
       await page.goto(`${HOUSE_ORIGIN}/hausdepp${installed ? '?pwa=hausdepp' : ''}`);
       expect(await page.evaluate(() => isSecureContext)).toBe(true);
       await page.locator('#hausdeppRegister').click();
-      await expect(page).toHaveURL(`${HOUSE_ORIGIN}/zilch/anmelden?return_to=%2Fhausdepp#zilchRegistrationForm`);
+      await expect(page).toHaveURL(`${HOUSE_ORIGIN}/hausdepp/anmelden?return_to=%2Fhausdepp#zilchRegistrationForm`);
       await expect(page.locator('#zilchLoginTitle')).toHaveText(language === 'de' ? 'Bei Hausdepp anmelden' : 'Sign in to Hausdepp');
       await expect(page.locator('html')).toHaveAttribute('data-hausdepp-login', 'true');
-      await expect(page.locator('html')).toHaveAttribute('data-game', 'zilch');
+      await expect(page.locator('html')).toHaveAttribute('data-game', 'hausdepp');
       expect(await page.locator('.zilch-login-card').evaluate(node => getComputedStyle(node).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
       expect((await page.locator('#zilchPasskeyLoginButton').boundingBox()).height).toBeGreaterThanOrEqual(44);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('data-pwa-product', 'hausdepp');
       await page.screenshot({ path: testInfo.outputPath('house-sign-in.png'), fullPage: true });
       const username = `HouseNative_${language}_${installed ? 'PWA' : 'Web'}`;
@@ -115,7 +116,7 @@ for (const language of ['de', 'en']) for (const installed of [false, true]) {
       expect(navigations.every(url => new URL(url).origin === HOUSE_ORIGIN)).toBe(true);
       expect(relay.unexpected).toEqual([]);
     } finally {
-      await context.unrouteAll({ behavior: 'wait' });
+      await context.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {});
       await client.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId }).catch(() => {});
       await client.detach().catch(() => {});
       await relay.dispose();

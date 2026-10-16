@@ -29,6 +29,10 @@ for (const targetGame of ["zdwa", "zilch"]) test(`${targetGame.toUpperCase()}: r
     const pages = await Promise.all(contexts.map(context => context.newPage()));
     const accounts = [];
     for (const [index, page] of pages.entries()) {
+      // This real-account help flow is independent of the beginner offer.
+      await page.route("**/api/auth/tours/offer", route => route.fulfill({ json: {
+        show: false, enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+      } }));
       const seed = await page.request.post("/api/auth/login", { data: { username: "Admin", password: "temporary-password-123" } });
       expect(seed.ok()).toBeTruthy();
       const root = (await seed.json()).user;
@@ -123,6 +127,12 @@ for (const targetGame of ["zdwa", "zilch"]) test(`${targetGame.toUpperCase()}: r
 });
 
 async function fixture(page, { game = "zdwa", language = "de", admin = false, guest = false, bans = [], viewport = { width: 390, height: 844 } } = {}) {
+  if (guest) await page.addInitScript(() => localStorage.setItem("rollthedice.tours.v1.guest", JSON.stringify({
+    enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  })));
+  await page.route("**/api/auth/tours/offer", route => route.fulfill({ json: {
+    show: false, enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  } }));
   await page.setViewportSize(viewport);
   const gameId = `help-ui-${game}`;
   const prefix = game === "zilch" ? "/zilch" : "";

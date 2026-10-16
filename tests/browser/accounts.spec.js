@@ -155,6 +155,13 @@ test.describe("rules under the deployed proxy security policy", () => {
   test.use({ serviceWorkers: "block" });
 
   test("rules keep native scrolling on desktop, tablet, and mobile", async ({ page, browserName }) => {
+    // Native rule-sheet scrolling is exercised without the separate tour offer.
+    await page.addInitScript(() => localStorage.setItem("rollthedice.tours.v1.guest", JSON.stringify({
+      enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+    })));
+    await page.route("**/api/auth/tours/offer", route => route.fulfill({ json: {
+      show: false, enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+    } }));
     // Chromium classifies fulfilled documents as public, while this disposable
     // game server and its real WebSocket connection use loopback addresses.
     if (browserName === "chromium") await page.context().grantPermissions(["local-network-access"]);

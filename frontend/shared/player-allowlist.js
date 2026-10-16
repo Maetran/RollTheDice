@@ -16,6 +16,7 @@ export function playerProfileHref(username, context = "zdwa") {
 }
 
 function accountHref(context) {
+  if (context === "hausdepp") return "/hausdepp/konto/einstellungen?allowlist=1#mitspieler";
   return (context === "zilch" ? zilchPath : zdwaPath)("/konto?allowlist=1#settings");
 }
 

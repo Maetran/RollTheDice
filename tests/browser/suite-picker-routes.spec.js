@@ -64,14 +64,14 @@ test("Hausdepp sign-in stays relative and preserves only allowlisted page paths 
   for (const origin of ['https://hausdepp.zockdiewandan.online', 'https://zockdiewandan.online', 'http://localhost:8050']) {
     const login = new URL(hausdeppSignInUrl(destination), origin);
     expect(login.origin).toBe(origin);
-    expect(login.pathname).toBe('/zilch/anmelden');
+    expect(login.pathname).toBe('/hausdepp/anmelden');
     expect(login.searchParams.get('return_to')).toBe(destination);
     expect(new URL(hausdeppSignInUrl(destination, { register: true }), origin).hash).toBe('#zilchRegistrationForm');
   }
   for (const invalid of ['https://evil.example/hausdepp', '//evil.example/hausdepp', '/api/auth/me', '/hausdepp/../konto', '/hausdepp/spiel/a/b', '/hausdepp#fake', '/hausdepp?code=ABC\n', `/hausdepp?${'a'.repeat(2048)}`]) {
     expect(normalizeHausdeppPageUrl(invalid), invalid).toBeNull();
   }
-  expect(hausdeppSignInUrl('https://evil.example/')).toBe('/zilch/anmelden?return_to=%2Fhausdepp');
+  expect(hausdeppSignInUrl('https://evil.example/')).toBe('/hausdepp/anmelden?return_to=%2Fhausdepp');
 });
 
 test("the Zilch PWA bridge preserves picker destinations while adapting ordinary ZDWA links", async ({ page }) => {

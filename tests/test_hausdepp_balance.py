@@ -4,11 +4,13 @@ from collections import Counter
 from random import Random
 
 from app.hausdepp_achievements import ACHIEVEMENTS, _accumulate, _new_aggregate, _progress
-from app.hausdepp_cpu_strategy import choose_cpu_action
 from app.hausdepp_engine import apply_action, new_round, project_state
+from tests.hausdepp_cpu_reference import choose_reference_action
 
 
 def seeded_round_facts(count, seed):
+    # Keep the catalogue's original calibration workload stable. Tactical CPU
+    # policy has separate first-game and long-run probes in its own tests.
     random = Random(seed)
     state = new_round([{"id": f"p{index}", "name": f"P{index}", "is_cpu": index > 0}
                        for index in range(count)], dealer_index=count - 1, rng=random)
@@ -17,10 +19,10 @@ def seeded_round_facts(count, seed):
             break
         actor = (next(iter(state["pending_refills"]), None)
                  or (state.get("afterthrow") or {}).get("player_id") or state["current_player_id"])
-        decision = choose_cpu_action(project_state(state, actor))
+        decision = choose_reference_action(project_state(state, actor))
         if decision is None:
             actor = state["current_player_id"]
-            decision = choose_cpu_action(project_state(state, actor))
+            decision = choose_reference_action(project_state(state, actor))
         assert decision
         state = apply_action(state, actor, **decision, rng=random)
     assert state["phase"] == "finished"

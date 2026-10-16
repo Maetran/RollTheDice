@@ -10,7 +10,7 @@ import secrets
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.parse import quote, urlencode
+from urllib.parse import parse_qs, quote, urlencode, urlsplit
 
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse, Response
@@ -405,6 +405,7 @@ if not STATIC_DIR:
     raise RuntimeError("Kein 'static' Ordner gefunden. Erwartete Orte: " + ", ".join(str(p) for p in STATIC_CANDIDATES))
 
 STATIC_ASSET_VERSION = read_static_asset_version(STATIC_DIR)
+APPLE_TOUCH_ICON_PATHS = frozenset({"/apple-touch-icon.png", "/apple-touch-icon-precomposed.png"})
 
 # Kandidaten für 'data' (Leaderboard/Stats)
 DATA_CANDIDATES = [
@@ -608,6 +609,9 @@ async def response_cache_policy(request: Request, call_next):
         "/static/hausdepp-lobby.html",
         "/static/hausdepp-rules.html",
         "/static/hausdepp-account.html",
+        "/static/hausdepp-login.html",
+        "/static/hausdepp-settings.html",
+        "/static/hausdepp-email-action.html",
         "/static/hausdepp-leaderboard.html",
         "/static/zilch.html",
         "/static/zilch-login.html",
@@ -627,7 +631,9 @@ async def response_cache_policy(request: Request, call_next):
         response = await call_next(request)
     apply_cache_policy(request, response, asset_version=STATIC_ASSET_VERSION)
     if (request.url.path == "/hausdepp" or request.url.path.startswith("/hausdepp/")
-            or request.url.path.startswith("/api/hausdepp/") or is_hausdepp_host(request)
+            or request.url.path.startswith("/api/hausdepp/")
+            or (is_hausdepp_host(request) and not request.url.path.startswith("/static/")
+                and request.url.path not in APPLE_TOUCH_ICON_PATHS)
             or request.url.path in {"/hausdepp-manifest.webmanifest", "/hausdepp-manifest-en.webmanifest", "/hausdepp-sw.js"}):
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
@@ -793,6 +799,17 @@ def favicon(request: Request):
     return FileResponse(str(icon), media_type="image/png")
 
 
+@app.api_route("/apple-touch-icon.png", methods=["GET", "HEAD"], include_in_schema=False)
+@app.api_route("/apple-touch-icon-precomposed.png", methods=["GET", "HEAD"], include_in_schema=False)
+def apple_touch_icon(request: Request):
+    """Serve Apple's anonymous root discovery aliases with fixed product art."""
+    filename = ("hausdepp-apple-touch-icon-180-v2.png" if is_hausdepp_host(request)
+                else "zilch-apple-touch-icon-180.png" if is_zilch_host(request)
+                else "apple-touch-icon-180.png")
+    return FileResponse(str(STATIC_DIR / "icons" / filename), media_type="image/png",
+                        headers={"Cache-Control": "no-cache, must-revalidate", "X-Robots-Tag": "noindex, nofollow"})
+
+
 @app.get("/robots.txt", include_in_schema=False, response_class=PlainTextResponse)
 def robots_txt(request: Request) -> str:
     """Expose crawler rules and the canonical sitemap location."""
@@ -835,6 +852,13 @@ def _private_account_action_page(request: Request, filename: str) -> Response:
     script combines that with the choice remembered in this browser before the
     first paint. Only ``owner`` mode needs the session to decide.
     """
+    if is_hausdepp_host(request) or ((is_site_host(request) or is_zilch_host(request)) and request.query_params.get("app") == "hausdepp"):
+        action = {"registration-confirm.html": "registration", "password-forgot.html": "forgot",
+                  "password-reset.html": "reset", "email-confirm.html": "confirm-email"}[filename]
+        content = (STATIC_DIR / "hausdepp-email-action.html").read_text(encoding="utf-8").replace("{action}", action)
+        return Response(content, media_type="text/html", headers={
+            "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "no-referrer",
+        })
     if not is_site_host(request):
         raise HTTPException(status_code=404, detail="not_found")
     identity = resolve_session(request) if configured_zdwa_design_mode() == ZDWA_DESIGN_MODE_OWNER else None
@@ -899,6 +923,14 @@ def _embedded_zdwa_pwa_page(filename: str, *, product: str = "zilch") -> Respons
         '<html data-zdwa-pwa-bridge="true" ',
         1,
     )
+    if product == "hausdepp":
+        # Apple uses this explicit link before manifest icons, including when
+        # an installed Hausdepp app visits its same-origin suite bridge.
+        content = content.replace("/static/icons/apple-touch-icon-180.png",
+                                  "/static/icons/hausdepp-apple-touch-icon-180-v2.png")
+        content = content.replace('rel="apple-touch-icon"', 'rel="apple-touch-icon" type="image/png"', 1)
+        content = content.replace("</head>", '<link rel="preload" as="image" type="image/png" '
+                                  f'href="/static/icons/hausdepp-apple-touch-icon-180-v2.png?v={STATIC_ASSET_VERSION}">\n</head>', 1)
     credentials = 'crossorigin="use-credentials" ' if product == "hausdepp" else ""
     content = content.replace(
         '<link rel="manifest" href="/manifest.webmanifest',
@@ -1020,6 +1052,9 @@ def achievement_rank_legend_page(request: Request):
 
 @app.get("/konto", include_in_schema=False)
 def account_page(request: Request):
+    if is_hausdepp_host(request):
+        return RedirectResponse("/hausdepp/konto/einstellungen", status_code=308,
+                                headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
     if is_zilch_host(request):
         return _serve_zilch_account_shell(request)
     return _page("account.html")
@@ -1100,7 +1135,7 @@ def _require_hausdepp_access(request: Request):
 def _serve_hausdepp_page(request: Request, filename: str, *, public: bool = False):
     if not public and resolve_session(request) is None:
         destination = request.url.path + (f"?{request.url.query}" if request.url.query else "")
-        login_base = f"{site_origin()}/zilch/anmelden" if is_zilch_host(request) else "/zilch/anmelden"
+        login_base = "/hausdepp/anmelden"
         return RedirectResponse(f"{login_base}?{urlencode({'return_to': destination})}", status_code=303,
                                 headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
     if not public:
@@ -1291,24 +1326,38 @@ def zilch_preview_page(request: Request):
     return _serve_zilch_shell(request)
 
 
+def _hausdepp_login_page(request: Request) -> Response:
+    requested = request.query_params.get("return_to")
+    if requested is not None and safe_hausdepp_path(requested) != requested:
+        return RedirectResponse(f"/hausdepp/anmelden?{urlencode({'return_to': '/hausdepp'})}", status_code=303,
+                                headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+    return Response((STATIC_DIR / "hausdepp-login.html").read_text(encoding="utf-8"), media_type="text/html",
+                    headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+
+
+@app.get("/hausdepp/anmelden", include_in_schema=False)
+def hausdepp_login_page(request: Request):
+    return _hausdepp_login_page(request)
+
+
+@app.get("/hausdepp/konto/einstellungen", include_in_schema=False)
+def hausdepp_settings_page(request: Request):
+    return _serve_hausdepp_page(request, "hausdepp-settings.html")
+
+
 @app.get("/zilch/anmelden", include_in_schema=False)
 def zilch_login_page(request: Request):
-    """Provide a direct, noindex account entry for stats and achievements."""
-    if is_hausdepp_host(request):
-        requested = request.query_params.get("return_to")
-        if requested is not None and safe_hausdepp_path(requested) != requested:
-            return RedirectResponse(f"/zilch/anmelden?{urlencode({'return_to': '/hausdepp'})}", status_code=303,
-                                    headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
-        # Keep passkey authentication and the installed app on their original
-        # trusted product origin. Other products retain the shared static page.
-        html = (STATIC_DIR / "zilch-login.html").read_text(encoding="utf-8")
-        html = html.replace('data-game="zilch"', 'data-game="zilch" data-hausdepp-login="true"', 1)
-        html = html.replace("/static/icons/zilch-icon-32.png", "/static/icons/hausdepp-icon-32.png")
-        html = html.replace("/static/icons/zilch-apple-touch-icon-180.png", "/static/icons/hausdepp-apple-touch-icon-180.png")
-        html = html.replace("</head>", '<link rel="manifest" data-pwa-product="hausdepp" '
-                            f'href="/hausdepp-manifest.webmanifest?v={STATIC_ASSET_VERSION}" crossorigin="use-credentials">'
-                            '<meta name="apple-mobile-web-app-title" content="Hausdepp">\n</head>', 1)
-        return Response(html, media_type="text/html", headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+    """Retain old sign-in URLs without changing their shared account identity."""
+    if is_hausdepp_host(request) or request.query_params.get("return_to", "").startswith("/hausdepp"):
+        return _hausdepp_login_page(request)
+    # Existing apex handoff links keep their validated continuation while also
+    # receiving the Hausdepp document. New navigation uses its direct entry.
+    candidate = request.query_params.get("return_to", "")
+    if is_site_host(request) and len(candidate) <= 2048 and candidate.startswith("/auth/continue?"):
+        continuation = urlsplit(candidate)
+        if not continuation.scheme and not continuation.netloc and parse_qs(continuation.query).get("app") == ["hausdepp"]:
+            return Response((STATIC_DIR / "hausdepp-login.html").read_text(encoding="utf-8"), media_type="text/html",
+                            headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
     return _page("zilch-login.html")
 
 
@@ -2280,6 +2329,26 @@ def api_acknowledge_hausdepp_presentation(payload: HausdeppPresentationAckReq, r
         raise HTTPException(status_code=400, detail="hausdepp_invalid_acknowledgement") from exc
 
 
+@app.get("/api/hausdepp/progress-notices")
+def api_hausdepp_progress_notices(request: Request):
+    from .hausdepp_notices import pending_hausdepp_notices
+
+    identity = _require_hausdepp_access(request)
+    return pending_hausdepp_notices(identity.user_id)
+
+
+@app.post("/api/hausdepp/progress-notices/{notice_key}/acknowledge")
+def api_acknowledge_hausdepp_notice(notice_key: str, request: Request):
+    from .hausdepp_notices import acknowledge_hausdepp_notice
+
+    identity = _require_hausdepp_access(request)
+    require_csrf(request, identity)
+    try:
+        return acknowledge_hausdepp_notice(identity.user_id, notice_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="hausdepp_invalid_notice") from exc
+
+
 @app.get("/api/zilch/results")
 def api_zilch_results(request: Request):
     """Return only the authenticated preview user's own private history."""
@@ -2674,10 +2743,10 @@ def _recover_terminal_completed_games() -> None:
 # -----------------------------
 @app.websocket("/ws/lobby-chat")
 async def ws_lobby_chat(websocket: WebSocket) -> None:
-    host_context = ZILCH_GAME_TYPE if is_zilch_host(websocket) else DEFAULT_GAME_TYPE
-    # The canonical Zilch host supplies the same context automatically.  The
-    # explicit value keeps the legacy same-origin /zilch compatibility lobby
-    # correctly labelled without turning a game room route into a special case.
+    host_context = (HAUSDEPP_GAME_TYPE if is_hausdepp_host(websocket)
+                    else ZILCH_GAME_TYPE if is_zilch_host(websocket) else DEFAULT_GAME_TYPE)
+    # Product hosts supply their own label. Explicit contexts keep same-origin
+    # compatibility lobbies correctly tagged without changing chat audiences.
     context = lobby_chat_context(websocket.query_params.get("context"), fallback=host_context)
     await serve_lobby_chat_websocket(
         websocket,

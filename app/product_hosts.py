@@ -165,7 +165,7 @@ def safe_hausdepp_path(value: str | None) -> str:
         return "/hausdepp"
     if parsed.scheme or parsed.netloc or parsed.fragment or not parsed.path.startswith("/"):
         return "/hausdepp"
-    known = parsed.path in {"/hausdepp", "/hausdepp/regeln", "/hausdepp/konto", "/hausdepp/rangliste"}
+    known = parsed.path in {"/hausdepp", "/hausdepp/regeln", "/hausdepp/konto", "/hausdepp/konto/einstellungen", "/hausdepp/rangliste"}
     if parsed.path.startswith("/hausdepp/spiel/"):
         segment = parsed.path.removeprefix("/hausdepp/spiel/")
         if segment.endswith("/zuschauen"):

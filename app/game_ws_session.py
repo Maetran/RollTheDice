@@ -36,7 +36,7 @@ from .zilch_state import (
 
 logger = logging.getLogger(__name__)
 
-SESSION_ACTIONS = frozenset({"join_game", "spectate_game", "rejoin_game"})
+SESSION_ACTIONS = frozenset({"join_game", "spectate_game", "rejoin_game", "leave_waiting_game"})
 
 
 @dataclass
@@ -81,6 +81,10 @@ async def handle_session_action(
     finalize_game=None,
 ) -> bool:
     """Handle join/rejoin actions; return true when the socket should close."""
+    if action == "leave_waiting_game":
+        from .hausdepp_waiting import leave_waiting_session
+
+        return await leave_waiting_session(session)
     if session.player_id or (session.spectator_id and action != "rejoin_game"):
         await session.websocket.send_json({"error": "Bereits beigetreten"})
         return False

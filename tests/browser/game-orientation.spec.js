@@ -8,6 +8,13 @@ const devices = [
 ];
 
 async function openGame(page) {
+  // Rotation, keyboard and painted-center checks exclude the separate offer.
+  await page.addInitScript(() => localStorage.setItem("rollthedice.tours.v1.guest", JSON.stringify({
+    enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  })));
+  await page.route("**/api/auth/tours/offer", route => route.fulfill({ json: {
+    show: false, enabled: true, games: { zdwa: "dismissed", zilch: "dismissed", hausdepp: "dismissed" },
+  } }));
   const actions = [];
   const players = ["Anna", "Ben", "Clara", "David"].map((name, index) => ({ id:`p${index + 1}`, name }));
   await page.routeWebSocket(/\/ws\/orientation-fixture$/, socket => {

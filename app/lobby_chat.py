@@ -19,7 +19,7 @@ from sqlalchemy import delete, select
 
 from .auth import AuthIdentity, resolve_session, websocket_origin_allowed
 from .database import session_scope
-from .game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE
+from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE
 from .models import LobbyChatMessage, LobbyChatMessageRecipient
 from .public_roles import active_admin_user_ids
 from .security import utcnow
@@ -147,11 +147,10 @@ class LobbyChatRateLimiter:
 
 def lobby_chat_context(value: object, *, fallback: str = DEFAULT_GAME_TYPE) -> str:
     """Normalize the product context shown beside the sender's name."""
-    if value == ZILCH_GAME_TYPE:
-        return ZILCH_GAME_TYPE
-    if value == DEFAULT_GAME_TYPE:
-        return DEFAULT_GAME_TYPE
-    return ZILCH_GAME_TYPE if fallback == ZILCH_GAME_TYPE else DEFAULT_GAME_TYPE
+    contexts = {DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, HAUSDEPP_GAME_TYPE}
+    if isinstance(value, str) and value in contexts:
+        return value
+    return fallback if fallback in contexts else DEFAULT_GAME_TYPE
 
 
 def lobby_chat_history_cutoff(*, now: datetime | None = None) -> datetime:
