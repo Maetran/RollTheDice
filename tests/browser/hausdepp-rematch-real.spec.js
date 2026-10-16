@@ -36,24 +36,35 @@ test('real retired source recreates a CPU tournament and only explicit invitatio
   let hostUser, originalLanguage;
   try {
     const host = await hostContext.newPage(), guest = await guestContext.newPage();
-    const guestName = `rematch_real_optin_${test.info().retry}`;
+    const guestName = 'rematch_real_optin';
     const loggedIn = await host.request.post('/api/auth/login', { data: { username: 'Admin', password: 'temporary-password-123' } });
     expect(loggedIn.ok()).toBeTruthy();
     hostUser = (await loggedIn.json()).user;
     originalLanguage = hostUser.preferences.preferred_language || 'de';
     const headers = { 'X-CSRF-Token': hostUser.csrf_token };
     await host.request.put('/api/auth/preferences/language', { headers, data: { preferred_language: 'de' } });
-    const registration = await guest.request.post('/api/auth/register', {
-      data: { username: guestName, password: 'rematch-real-password-123', preferred_language: 'en' },
+    const guestLogin = await guest.request.post('/api/auth/login', {
+      data: { username: guestName, password: 'rematch-real-password-123' },
     });
-    if (registration.status() !== 201) {
-      const retried = await guest.request.post('/api/auth/login', {
-        data: { username: guestName, password: 'rematch-real-password-123' },
+    if (!guestLogin.ok()) {
+      expect(guestLogin.status()).toBe(401);
+      const registration = await guest.request.post('/api/auth/register', {
+        data: { username: guestName, password: 'rematch-real-password-123', preferred_language: 'en' },
       });
-      expect(retried.ok()).toBeTruthy();
+      expect(registration.status()).toBe(201);
     }
     const guestUser = (await (await guest.request.get('/api/auth/me')).json()).user;
     expect(guestUser.id).not.toBe(hostUser.id);
+    // A failed earlier attempt may have already created an invitation. Reuse
+    // this isolated account and explicitly decline only its still-open ones;
+    // retries must not evade the real one-registration-per-minute limit.
+    const previousInvitations = (await (await guest.request.get('/api/hausdepp/invitations')).json()).invitations;
+    for (const invitation of previousInvitations) {
+      const declined = await guest.request.post(`/api/hausdepp/invitations/${encodeURIComponent(invitation.id)}/decline`, {
+        headers: { 'X-CSRF-Token': guestUser.csrf_token },
+      });
+      expect(declined.ok()).toBeTruthy();
+    }
     await prepare(host, 'de'); await prepare(guest, 'en');
     const created = await host.request.post('/api/games', { headers, data: {
       name: 'Real rematch · opt-in', game_type: 'hausdepp', mode: '3', play_mode: 'cpu', cpu_count: 1, tournament: true,
@@ -85,7 +96,11 @@ test('real retired source recreates a CPU tournament and only explicit invitatio
     await host.locator('#hausdeppRecreate').click();
     const rematchResponse = await response;
     expect(rematchResponse.ok()).toBeTruthy();
-    const target = (await rematchResponse.json()).game_id;
+    // Navigation can release the browser's CDP response body before the test
+    // reads it. The app has consumed it: verify its actual same-origin target.
+    await expect(host).toHaveURL(url => url.origin === new URL(baseURL).origin
+      && /^\/hausdepp\/spiel\/[a-f0-9]{8}$/.test(url.pathname) && url.pathname !== `/hausdepp/spiel/${source}`);
+    const target = new URL(host.url()).pathname.split('/').at(-1);
     expect(target).not.toBe(source);
     await expect(host).toHaveURL(new RegExp(`/hausdepp/spiel/${target}$`));
     await expect(host.locator('#hausdeppWaiting')).toBeVisible();

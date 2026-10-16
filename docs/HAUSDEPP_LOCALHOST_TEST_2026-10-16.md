@@ -343,3 +343,26 @@ Kartenfälle in WebKit. / Full quality checks, 10 native authentication/account
 flows, all 40 shared tour cases and the original race reproduction pass.
 The final bundle also passes the 26 combined Chromium cases and three WebKit
 artwork cases. No test uses production accounts or sends release notifications.
+
+### Letzte CI-Befunde vor Integration / final CI findings before integration
+
+Asset **`39e824cb5f17`**: Beim Turnierabbruch bleiben der bestehende Hinweis
+zu gewerteten Runden, die Buchstabenliste und der Kontolink erhalten;
+„Neu erstellen“ ergänzt diese Ansicht. Zwei zusätzliche DE/EN-Fälle sichern
+Inhalt und Bildschirmgrenzen ab. Der echte Rematch-Browsertest liest das
+bestätigte Navigationsziel statt eines nach Navigation freigegebenen CDP-Bodys;
+Wiederholungen nutzen dasselbe Testkonto und lehnen dessen alte offene
+Einladungen ausdrücklich ab. Registrierungslimits bleiben unverändert.
+Die kompakten Formularprüfungen warten vor der Geometriemessung auf dekodierte
+Karten. / Tournament cancellation preserves completed-round information,
+letters and the account link. Real rematch retries reuse one isolated account
+without weakening registration limits; geometry checks await decoded artwork.
+
+Mit diesem Bundle: Qualitäts-/Sicherheitsprüfung grün; **20 Chromium-Fälle**
+für Kartenreload und Rematches sowie **9 bestehende Formular-/Turnierfälle**
+bestanden, ein ausdrücklicher Capture-Skip. Drei zusätzliche unmittelbare echte
+Rematch-Wiederholungen bestehen ebenfalls. / Quality/security checks, 20 artwork
+and rematch browser cases, nine form/tournament cases and three immediate real
+rematch repetitions pass; the optional capture case remains skipped.
+Auch alle **16 Rematch-Oberflächenfälle in WebKit** bestehen mit diesem letzten
+Bundle. / All 16 rematch UI cases also pass in WebKit with this final bundle.

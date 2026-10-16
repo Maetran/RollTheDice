@@ -842,7 +842,7 @@ function renderState() {
     }
     $("hausdeppResult").dataset.roundId = roundKey;
     const title = snapshot._aborted ? t("tournamentStopped") : tournament?.completed ? t("tournamentLoser", { name: finalLoser?.name || "…" }) : t("loser", { name: loser?.name || "…" });
-    $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p>${t(snapshot._aborted ? "tournamentStoppedHint" : tournament ? tournament.completed ? "tournamentCompleteHint" : "tournamentRoundHint" : "resultHint")}</p>${tournament ? `<ul class="hd-tournament-score">${s.players.map(player => `<li class="${player.id === tournament.tages_hausdepp_id ? "is-hausdepp" : ""}"><span>${esc(player.name)}</span><strong aria-label="${esc(t("tournamentLetters", { letters: tournament.letters?.[player.id] || "", losses: tournament.losses?.[player.id] || 0 }))}">${esc(tournament.letters?.[player.id] || "—")}</strong><small>${nonnegative(tournament.losses?.[player.id])} / 8</small></li>`).join("")}</ul>` : ""}<div class="hd-result-links">${tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : `<a class="hd-primary" href="/hausdepp">${t(tournament ? "newTournament" : "nextRound")} ${icon("arrow")}</a>`}<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")}</a></div><div id="hausdeppRoundProgress" hidden></div>`;
+    $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p>${t(snapshot._aborted ? "tournamentStoppedHint" : tournament ? tournament.completed ? "tournamentCompleteHint" : "tournamentRoundHint" : "resultHint")}</p>${tournamentScoreboard(tournament, s.players)}<div class="hd-result-links">${tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : `<a class="hd-primary" href="/hausdepp">${t(tournament ? "newTournament" : "nextRound")} ${icon("arrow")}</a>`}<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")}</a></div><div id="hausdeppRoundProgress" hidden></div>`;
     if (snapshot._finished && (!tournament || tournament.completed) && hasPreviousSeat()) appendRematchAction();
     $("hausdeppNextRound")?.addEventListener("click", () => command("next_round"));
     $("hausdeppEndTournament")?.addEventListener("click", () => {
@@ -863,6 +863,11 @@ function hasPreviousSeat() {
   return !spectating && snapshot?._participants?.some(player => !player.is_cpu && (player.id === playerId || player.user_id === auth?.user?.id));
 }
 
+function tournamentScoreboard(tournament, players) {
+  if (!tournament) return "";
+  return `<ul class="hd-tournament-score">${players.map(player => `<li class="${player.id === tournament.tages_hausdepp_id ? "is-hausdepp" : ""}"><span>${esc(player.name)}</span><strong aria-label="${esc(t("tournamentLetters", { letters: tournament.letters?.[player.id] || "", losses: tournament.losses?.[player.id] || 0 }))}">${esc(tournament.letters?.[player.id] || "—")}</strong><small>${nonnegative(tournament.losses?.[player.id])} / 8</small></li>`).join("")}</ul>`;
+}
+
 function renderAbortedTable() {
   hausdeppBeginnerTour.update({ eligible: false });
   pileInspector?.close();
@@ -872,14 +877,15 @@ function renderAbortedTable() {
   $("hausdeppTable").classList.add("is-aborted");
   $("hausdeppTable").dataset.phase = "finished";
   $("hausdeppRoomName").textContent = snapshot._name || "Hausdepp";
-  renderTableDecor($("hausdeppTable"), { gameId, roundNumber: 1, phase: "finished" });
+  const tournament = snapshot._hausdepp_tournament;
+  renderTableDecor($("hausdeppTable"), { gameId, roundNumber: tournament?.round_number || 1, phase: "finished" });
   const result = $("hausdeppResult");
   result.hidden = false;
-  const abortKey = `${gameId}:aborted:${snapshot._abort_reason || ""}:${Boolean(snapshot._started)}`;
+  const abortKey = `${gameId}:aborted:${snapshot._abort_reason || ""}:${Boolean(snapshot._started)}:${tournament?.round_number || 0}`;
   if (result.dataset.roundId === abortKey) return;
   result.dataset.roundId = abortKey;
   const reason = snapshot._abort_reason === "inactivity_timeout" && !snapshot._started ? "waitingExpired" : "abortedNoScore";
-  result.innerHTML = `<h2>${t("abortedTable")}</h2><p>${t(reason)}</p><div class="hd-result-links"><a class="hd-primary" href="/hausdepp">${t("lobby")}</a></div>`;
+  result.innerHTML = `<h2>${t(tournament ? "tournamentStopped" : "abortedTable")}</h2><p>${t(tournament ? "tournamentStoppedHint" : reason)}</p>${tournamentScoreboard(tournament, snapshot._hausdepp?.players || snapshot._participants || [])}<div class="hd-result-links"><a class="hd-primary" href="/hausdepp">${t("lobby")}</a>${tournament ? `<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")}</a>` : ""}</div>`;
   if (hasPreviousSeat()) appendRematchAction();
 }
 

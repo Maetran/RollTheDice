@@ -252,6 +252,36 @@ test('a tournament interval keeps Next round and never replaces it with Create a
 });
 
 for (const language of ['de', 'en']) {
+  test(`${language}: stopping a tournament retains the earned letters and explains that completed rounds stay scored`, async ({ page }) => {
+    const fixture = await setup(page, language);
+    const source = await finishedRenderer(page, fixture);
+    const board = structuredClone(source.snapshot);
+    const [first, second] = board._hausdepp.players;
+    Object.assign(board, { _aborted: true, _started: true });
+    board._hausdepp_tournament = { round_number: 3, completed: false, can_start_next_round: false,
+      letters: { [first.id]: 'HA', [second.id]: 'H' }, losses: { [first.id]: 2, [second.id]: 1 }, tages_hausdepp_id: null };
+    source.send(board);
+    const result = page.locator('#hausdeppResult');
+    await expect(result.locator('h2')).toHaveText(language === 'de' ? 'Turnier beendet.' : 'Tournament ended.');
+    await expect(result).toContainText(language === 'de' ? 'ohne Tages-Hausdepp' : 'without a daily Hausdepp');
+    await expect(result.locator('.hd-tournament-score li')).toHaveCount(2);
+    await expect(result.locator('.hd-tournament-score li').first()).toContainText(first.name);
+    await expect(result.locator('.hd-tournament-score li strong')).toHaveText(['HA', 'H']);
+    await expect(result.locator('.hd-tournament-score .is-hausdepp')).toHaveCount(0);
+    await expect(result.locator('a[href="/hausdepp/konto#erfolge"]')).toBeVisible();
+    await expect(page.locator('#hausdeppRecreate')).toBeVisible();
+    await expect(page.locator('#hausdeppNextRound, #hausdeppEndTournament')).toHaveCount(0);
+    for (const [width, height] of [[320, 568], [844, 390]]) {
+      await page.setViewportSize({ width, height });
+      const bounds = await result.boundingBox();
+      expect(bounds.x).toBeGreaterThanOrEqual(0); expect(bounds.y).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width + 1);
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(height + 1);
+      expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1)).toBe(true);
+    }
+    expect(source.sent).toEqual([]);
+  });
+
   test(`${language}: timeout and aborted play release the table with a visible unscored ending and recreate action`, async ({ page }) => {
     const fixture = await setup(page, language);
     const source = await finishedRenderer(page, fixture);

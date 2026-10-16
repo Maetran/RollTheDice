@@ -1306,6 +1306,7 @@ for (const language of ['de', 'en']) {
       await page.setViewportSize(viewport);
       await page.goto('/hausdepp');
       await expect(page.locator('#hausdeppCreate')).toBeVisible();
+      await expect(page.locator('.hd-lobby-cards')).toHaveAttribute('data-card-assets', 'ready');
       const layout = await page.evaluate(() => {
         const panel = document.querySelector('.hd-create');
         const hand = document.querySelector('.hd-lobby-cards');
