@@ -18,6 +18,25 @@ probe_path=""
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 sudo_run() { sudo -n "$@"; }
 
+wait_for_origin_https() {
+  local attempt
+  # systemctl reload acknowledges the HUP signal before every new worker is
+  # accepting connections. An immediate SNI probe can still hit the old
+  # rejecting default vhost. Retry verified requests for at most 39 seconds;
+  # persistent certificate, routing or health failures still roll back.
+  for attempt in {1..10}; do
+    if curl --noproxy '*' --connect-timeout 2 --max-time 3 --fail --silent --show-error \
+      --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/api/health" >/dev/null; then
+      return 0
+    fi
+    if [[ "$attempt" -lt 10 ]]; then
+      printf 'Waiting for verified Hausdepp HTTPS after Nginx reload (%s/10).\n' "$attempt" >&2
+      sleep 1
+    fi
+  done
+  fail "Verified Hausdepp HTTPS did not become ready after the bounded Nginx reload wait"
+}
+
 [[ "$APPLY" == "0" || "$APPLY" == "1" ]] || fail "APPLY must be exactly 0 or 1"
 [[ "$TARGET" == /etc/nginx/sites-available/?* ]] || fail "Unsafe Nginx target"
 [[ "$STAGING" == /etc/nginx/conf.d/hausdepp-acme-staging.conf ]] || fail "Unsafe staging path"
@@ -122,8 +141,7 @@ if [[ "$staging_created" == "1" ]]; then
 fi
 SOURCE="$SOURCE" TARGET="$TARGET" bash scripts/install_nginx_config.sh
 
-curl --noproxy '*' --connect-timeout 10 --max-time 30 --fail --silent --show-error \
-  --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/api/health" >/dev/null
+wait_for_origin_https
 sudo_run certbot renew --dry-run --cert-name "$DOMAIN"
 printf 'Hausdepp TLS activated; backup: %s\n' "$activation_backup"
 printf 'Next: deploy the tested public app. Public smoke must pass before release notifications.\n'

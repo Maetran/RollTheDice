@@ -40,10 +40,16 @@ certbot() { return 0; }
 systemctl() { return 0; }
 dig() { echo 104.21.75.229; }
 openssl() { echo 0123456789abcdef0123456789abcdef; }
+tls_attempts=0
+sleep() { echo WAIT >&2; }
 curl() {
   case "$*" in
     *"http://hausdepp."*) echo PROOF >&2; echo "$PROOF_RESPONSE" ;;
-    *) echo ORIGIN_TLS >&2 ;;
+    *)
+      echo ORIGIN_TLS >&2
+      tls_attempts=$((tls_attempts + 1))
+      if [[ "$tls_attempts" -le "$TLS_FAILURES" ]]; then return "$TLS_EXIT_CODE"; fi
+      ;;
   esac
 }
 bash() { echo INSTALL >&2; return "$INSTALL_FAIL"; }
@@ -51,6 +57,7 @@ bash() { echo INSTALL >&2; return "$INSTALL_FAIL"; }
         defaults = {
             "APPLY": "1", "EXISTING_STAGING": "1", "FINAL_HOST_PRESENT": "1",
             "CERT_FAIL": "0", "RENEW_FAIL": "0", "INSTALL_FAIL": "0",
+            "TLS_FAILURES": "0", "TLS_EXIT_CODE": "35",
             "PROOF_RESPONSE": "hausdepp-0123456789abcdef0123456789abcdef",
         }
         return subprocess.run(
@@ -101,6 +108,35 @@ bash() { echo INSTALL >&2; return "$INSTALL_FAIL"; }
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stderr.count("TEE"), 2)  # token + renewal hook only
         self.assertNotIn("/etc/nginx/conf.d/hausdepp-acme-staging.conf", result.stderr)
+
+    def test_transient_old_worker_sni_rejection_waits_then_accepts_verified_https(self):
+        result = self.execute(TLS_FAILURES="2")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr.count("ORIGIN_TLS"), 3)
+        self.assertEqual(result.stderr.count("WAIT"), 2)
+        self.assertEqual(result.stderr.count("BACKUP_OR_RESTORE"), 1)
+        self.assertIn("RENEW", result.stderr)
+        self.assertNotIn("Activation failed", result.stderr)
+
+    def test_persistent_tls_or_certificate_failure_remains_bounded_and_rolls_back(self):
+        for error in ("35", "60"):
+            with self.subTest(curl_error=error):
+                result = self.execute(TLS_FAILURES="99", TLS_EXIT_CODE=error)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stderr.count("ORIGIN_TLS"), 10)
+                self.assertEqual(result.stderr.count("WAIT"), 9)
+                self.assertEqual(result.stderr.count("BACKUP_OR_RESTORE"), 2)
+                self.assertNotIn("RENEW", result.stderr)
+                self.assertIn("Verified Hausdepp HTTPS did not become ready", result.stderr)
+
+    def test_reload_wait_preserves_tls_hostname_chain_and_http_health_verification(self):
+        source = (BASE / "scripts/activate_hausdepp.sh").read_text()
+        wait = source.split("wait_for_origin_https() {", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn("--resolve", wait)
+        self.assertIn("--fail", wait)
+        self.assertIn("--max-time 3", wait)
+        self.assertNotIn("--insecure", wait)
+        self.assertNotIn(" -k", wait)
 
     def test_house_proxy_and_security_directives_match_existing_products(self):
         source = (BASE / "deploy/nginx/rollthedice.conf").read_text()
