@@ -31,6 +31,14 @@ nicht ohne ausdrückliche Entscheidung übernommen werden.
   Einladungs-, Chat-, Reaktions- und Wiederaufnahmeabläufe verwenden. Ihre
   konkrete Einbindung ist Teil der Umsetzung und muss geprüft werden.
 
+Der gewählte eigene Hostname ist **`hausdepp.zockdiewandan.online`**. Am
+**16.10.2026** wurde dafür in Cloudflare ein A-Eintrag auf `217.154.16.72`
+reserviert, mit aktiviertem Proxy und TTL **Auto**. Das ist noch kein
+Spiel-Rollout: Die dedizierte Host-Zuordnung in der Anwendung, die Nginx-Freigabe
+und die Aufnahme des Hostnamens in das Origin-Zertifikat stehen aus. Das
+produktive Origin-Zertifikat deckt derzeit nur die vier bestehenden Hosts ab.
+Der erste Zugang bleibt auch auf der eigenen Subdomain Owner-/Founder-gebunden.
+
 ### Gestaltung und Plattformen
 
 Die Gestaltung wird mit Impeccable entwickelt. Hausdepp bekommt ein eigenes
@@ -301,6 +309,14 @@ explicit decision.
 - Suite integration should reuse existing accounts and the shared lobby,
   invitation, chat, reaction and reconnection flows. Their actual integration
   is implementation work and must be verified.
+
+The chosen dedicated hostname is **`hausdepp.zockdiewandan.online`**. On
+**2026-10-16**, an A record pointing to `217.154.16.72` was reserved in
+Cloudflare with the proxy enabled and TTL **Auto**. This does not deploy the
+game: dedicated application host routing, the Nginx host allowlist and adding
+the hostname to the origin certificate remain pending. The production origin
+certificate currently covers only the four existing hosts. Initial access on
+the dedicated subdomain will also remain bound to the owner/founder account.
 
 ### Design and platforms
 

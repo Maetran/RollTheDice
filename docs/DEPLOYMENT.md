@@ -188,6 +188,30 @@ Nach Kontrolle der Liste kann dieselbe Auswahl mit `APPLY=1` gelöscht werden.
 
 ## Subdomains kontrolliert aktivieren
 
+### Hausdepp: DNS reserviert, Aktivierung ausstehend / DNS reserved, activation pending
+
+**Stand 16.10.2026:** Der eigene Hostname `hausdepp.zockdiewandan.online` ist in
+Cloudflare als **A → `217.154.16.72`, Proxied, TTL Auto** reserviert und wurde nach
+dem Speichern im Dashboard geprüft. Damit ist Hausdepp noch nicht produktiv
+erreichbar: Die dedizierte Host-Zuordnung in der Anwendung und die
+Nginx-Hostfreigabe stehen aus. Das am selben Tag geprüfte Origin-Zertifikat
+enthält nur `zockdiewandan.online`, `www.zockdiewandan.online`,
+`zdwa.zockdiewandan.online` und `zilch.zockdiewandan.online`; der Hausdepp-SAN
+muss vor der Aktivierung ergänzt werden. Es wurde kein Spiel-Rollout
+durchgeführt. Die spätere Freigabe bleibt Owner-/Founder-gebunden.
+
+**As of 2026-10-16:** The dedicated hostname `hausdepp.zockdiewandan.online` is
+reserved in Cloudflare as **A → `217.154.16.72`, Proxied, TTL Auto** and was
+verified in the dashboard after saving. This does not make Hausdepp available
+in production: dedicated application host routing and the Nginx host allowlist
+remain pending. The origin certificate checked that day covers only
+`zockdiewandan.online`, `www.zockdiewandan.online`, `zdwa.zockdiewandan.online`
+and `zilch.zockdiewandan.online`; its Hausdepp SAN must be added before
+activation. No game deployment was performed. Initial access will remain
+bound to the owner/founder account.
+
+### Bestehende Hosts und ursprüngliche Aktivierung
+
 Die beiden zusätzlichen Produktnamen zeigen auf dieselbe laufende Anwendung und
 dieselbe persistente Datenbank:
 
