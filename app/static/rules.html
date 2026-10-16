@@ -15,18 +15,18 @@
   <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=39e824cb5f17">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=39e824cb5f17" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=39e824cb5f17" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=3968bf79b0ec">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=3968bf79b0ec" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=3968bf79b0ec" sizes="180x180">
   <!--
     rules.html - Spielanleitung
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi sowie Desktop-/Mobilsteuerung.
   -->
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=39e824cb5f17" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=39e824cb5f17" />
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=39e824cb5f17">
+  <script src="/static/shell.js?v=3968bf79b0ec" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=3968bf79b0ec" />
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=3968bf79b0ec">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
@@ -231,6 +231,8 @@
       <li>Der Spieltisch bleibt im sichtbaren Bildschirm. Auf kleinen Geräten bewegst du längere Spielzettel und Dialoge innerhalb ihres Bereichs; Würfel und Aktionen bleiben erreichbar.</li>
       <li>Auf Tablets stehen größere Tippflächen und die Hauptaktionen unten bereit. Im Solospiel zeigt eine Spaltenhilfe die Reihenfolge und offene Felder; weitere Spielzettel erreichst du durch Wischen oder Antippen der Pfeile.</li>
       <li>In Mehrspielerpartien folgt die Ansicht dem aktiven Spielzettel. Wischst du zu einem anderen Zettel oder wählst ihn aus, bleibt die Ansicht dort bis zum Ende des laufenden Zuges, auch beim Würfeln, Halten und Ansagen. Beim nächsten Spieler folgt sie wieder automatisch. Nach einem Eintrag bleibt kurz Zeit zum Lesen.</li>
+      <li>Im neuen Design zeigt dein Spielzettel nach dem Wurf, wie viele Punkte jedes erlaubte Feld bringen würde. Ein hervorgehobenes Feld ist der Vorschlag: Er misst jedes Feld an dem, was es üblicherweise bringt, und hält flexible Felder eher frei. Vor dem letzten Wurf erscheint er nur, wenn Schreiben besser ist als Weiterwürfeln. Du entscheidest immer selbst.</li>
+      <li>Im neuen Design zeigt oben eine Kachel pro Spieler (im 2-gegen-2 pro Team) Profilbild, Namen und Punktestand; ein Messingrand markiert, wer am Zug ist. Tippe auf eine Kachel, um diesen Spielzettel anzusehen; die Kachel des aktiven Zettels folgt wieder dem Spiel. Die Würfe des laufenden Zuges stehen auf dem Würfeln-Knopf.</li>
       <li>Mit dem Darstellungs-Schalter wählst du Hell, Dunkel oder Classic. Classic ändert nur die Darstellung, nie Regeln oder Wertung.</li>
       <li>Auf kurzen Handybildschirmen bleibt die Classic-Schrift lesbar; alle Spielzettelzeilen haben über Würfeln und Aktionen Platz.</li>
     </ul>

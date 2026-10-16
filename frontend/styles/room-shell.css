@@ -124,6 +124,13 @@
 .chat-reactions-host{
   display:none;
 }
+/* Design 2026 only (design-2026/table-top.css): player tiles in the header,
+   the roll count on the roll button and the Hardcore note in the tray. */
+.room-player-tiles,
+#rollBtnInline .roll-count,
+.tray-mode-note{
+  display:none;
+}
 .rules-link{
   display:inline-flex;
   align-items:center;

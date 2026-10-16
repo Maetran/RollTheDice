@@ -328,7 +328,11 @@ test("achievement titles follow an account player through lobby, stats, and the 
     page.click("#createBtn"),
   ]);
   await expect(page.locator(".player-card .player-rank")).toHaveText(/☆\s*Newbie/);
-  await expect(page.locator("#headerTurnStatus .player-avatar")).toBeVisible();
+  // Design 2026 shows the player on a header tile; the turn text stays for
+  // screen readers. Both carry the avatar without the rank badge.
+  await expect(page.locator("#roomPlayerTiles .room-player-tile img.player-avatar")).toBeVisible();
+  await expect(page.locator("#roomPlayerTiles .player-rank")).toHaveCount(0);
+  await expect(page.locator("#headerTurnStatus .player-avatar")).toHaveCount(1);
   await expect(page.locator("#headerTurnStatus .player-rank")).toHaveCount(0);
 });
 
@@ -670,8 +674,9 @@ test("completed game view shows achievements attributed to that game for every p
 });
 
 
-test("narrow desktop room header keeps the current turn beside compact actions", async ({ page, request }) => {
+for (const design of ["2026", "old"]) test(`narrow desktop room header keeps the current turn beside compact actions (${design} design)`, async ({ page, request }) => {
   await page.setViewportSize({ width: 561, height: 900 });
+  if (design === "old") await page.addInitScript(() => localStorage.setItem("zdwa_design_override", "old"));
   const created = await request.post("/api/games", {
     data: { name: "Header Layout", mode: 1 },
   });
@@ -681,21 +686,24 @@ test("narrow desktop room header keeps the current turn beside compact actions",
   await page.goto(`/spiel/${encodeURIComponent(gameId)}?name=Header`);
   await page.waitForSelector("#diceBar");
   await expect(page.locator("#headerTurnStatus .line").first()).toContainText("Am Zug:");
+  // Design 2026 shows the turn as player tiles; the turn text remains for
+  // screen readers. The previous design shows the text itself.
+  if (design === "2026") await expect(page.locator("#roomPlayerTiles .room-player-tile")).toHaveCount(1);
 
-  const layout = await page.evaluate(() => {
+  const layout = await page.evaluate(visibleTurn => {
     const rect = selector => {
       const box = document.querySelector(selector).getBoundingClientRect();
       return { left: box.left, right: box.right, width: box.width, height: box.height };
     };
     return {
-      status: rect("#headerTurnStatus"),
+      status: rect(visibleTurn),
       menu: rect("#roomHeaderMenuToggle"),
       leave: rect("#backToLobbyBtn"),
       menuText: document.querySelector("#roomHeaderMenuToggle").textContent.trim(),
       menuLabel: document.querySelector("#roomHeaderMenuToggle").getAttribute("aria-label"),
       secondLine: document.querySelector("#headerTurnStatus .line.secondary")?.textContent.trim() || "",
     };
-  });
+  }, design === "2026" ? "#roomPlayerTiles" : "#headerTurnStatus");
 
   expect(layout.status.width).toBeGreaterThanOrEqual(48);
   expect(layout.status.right).toBeLessThanOrEqual(layout.menu.left + 1);
@@ -964,7 +972,8 @@ test("superadmin can make a neutral extra roll and a scored 60 triggers the cele
   const heldFace = await dice.nth(0).locator("svg").getAttribute("aria-label");
   const rollsBefore = await page.locator(".turn-status-text").textContent();
 
-  for (let i = 0; i < 10; i += 1) await page.locator(".pc-total").click();
+  // Design 2026: ten taps on the player's header tile (it carries the total).
+  for (let i = 0; i < 10; i += 1) await page.locator("#roomPlayerTiles .room-player-tile").click();
   await expect(page.locator("#superadminBar")).toBeVisible();
   await page.locator("#superadminRoll").click();
   await expect(dice.nth(0).locator("svg")).toHaveAttribute("aria-label", heldFace);

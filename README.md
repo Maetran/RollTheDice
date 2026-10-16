@@ -1571,7 +1571,13 @@ in Light, Dark and Classic. The 2026 design is a scoped stylesheet
 (`frontend/styles/zdwa-design-2026.css` with its parts in
 `frontend/styles/design-2026/`) that applies only with `data-design="2026"`.
 After the first roll, your own score sheet shows the points each allowed field
-would score, computed by the server with the normal rules.
+would score, computed by the server with the normal rules. One field is marked
+as the suggestion when writing now is worth it: the server (`app/zdwa_advice.py`)
+compares each field with what that field usually scores, keeps flexible fields
+in reserve, and before the last roll suggests only when writing beats rolling
+on. Tiles at the top show each player (in 2v2 each team) with avatar, name and
+score; tapping one opens that score sheet, and the roll count sits on the roll
+button.
 
 - Accounts choose under **Account → Settings → Language & play →
   Appearance**; the choice is stored on the account (`users.zdwa_design`) and
@@ -1595,7 +1601,13 @@ Version 2.51.0 gab, werden nach dem Update einmal gefragt, neue Konten nicht.
 Gäste nutzen den Schalter unten in der Lobby. `?design=classic` erzwingt in
 einem Browser das bisherige Design, `?design=2026` hebt das wieder auf. Auf dem
 Server schaltet `ROLLTHEDICE_ZDWA_DESIGN=all|owner|off` mit Neustart; Regeln,
-Wertung und gespeicherte Partien sind in beiden Designs gleich.
+Wertung und gespeicherte Partien sind in beiden Designs gleich. Ein
+markiertes Feld schlägt den Eintrag vor, wenn sich Schreiben lohnt: Der Server
+vergleicht jedes Feld mit seinem üblichen Ertrag, hält flexible Felder zurück
+und schlägt vor dem letzten Wurf nur vor, wenn Schreiben besser ist als
+Weiterwürfeln. Oben zeigt je Spieler (im 2-gegen-2 je Team) eine Kachel
+Profilbild, Namen und Punkte; ein Tipp öffnet diesen Zettel. Die Würfe des
+laufenden Zuges stehen auf dem Würfeln-Knopf.
 
 ## Progressive Web Apps
 

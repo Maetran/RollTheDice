@@ -23,6 +23,33 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.3.1 — Kacheln und ein klügerer Vorschlag / tiles and a smarter suggestion — 2026-10-17
+
+**Deutsch:** Im neuen ZDWA-Design zeigt oben je Spieler (im 2-gegen-2 je Team)
+eine Kachel Profilbild, Namen und Punkte; ein Messingrand markiert den Zug, ein
+Tipp öffnet diesen Zettel. Die Würfe des Zuges stehen auf dem Würfeln-Knopf, und
+der Spielzettel hat Abstand zum Kopfbereich, sodass dessen Rand sichtbar bleibt.
+Der Vorschlag wählt nicht mehr fast immer das Maximum (+) in der freien Reihe:
+Er vergleicht jedes Feld mit seinem üblichen Ertrag, hält flexible Felder zurück
+und erscheint vor dem letzten Wurf nur, wenn Schreiben besser ist als
+Weiterwürfeln. In 1000 simulierten Partien stieg der Schnitt beim Befolgen von
+593 auf 861 Punkte. Die Einsteigertour für ZDWA beschreibt Zug und
+Wurfzähler passend, zeigt beim Blick auf einen fremden Zettel nicht mehr auf ein
+unsichtbares Feld und bleibt bei einem Verbindungsabbruch über dem Hinweis lesbar.
+Das bisherige Design bleibt unverändert.
+
+**English:** In the new ZDWA design, tiles at the top show each player (each
+team in 2v2) with avatar, name and score; a brass edge marks the turn and a tap
+opens that score sheet. The roll count sits on the roll button, and the score
+sheet keeps clear of the header so its rule stays visible. The suggestion no
+longer picks the maximum (+) in the free column almost every time: it compares
+each field with what it usually scores, keeps flexible fields in reserve and,
+before the last roll, appears only when writing beats rolling on. Across 1000
+simulated games, following it raised the average from 593 to 861 points. The
+ZDWA beginner tour now describes the turn and roll counter accurately, no longer
+points at a hidden cell while another sheet is shown, and stays readable above
+the reconnect notice. The previous design is unchanged.
+
 ## 3.3.0 — Gemeinsam an den nächsten Tisch / Together at the next table — 2026-10-17
 
 **Deutsch:** Nach einer beendeten oder abgebrochenen Hausdepp-Partie erstellt

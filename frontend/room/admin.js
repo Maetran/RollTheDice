@@ -1,8 +1,13 @@
   function handleSuperadminTap(totalEl){
+    const card = totalEl.closest(".player-card");
+    return countSuperadminTap(card ? String(card.dataset.boardId || "") : "");
+  }
+
+  // Ten quick taps on a sheet's total (design 2026: on its player tile) open
+  // Superadmin editing for that sheet.
+  function countSuperadminTap(boardId){
     try {
       if (!authState?.user?.is_admin) return false;
-      const card = totalEl.closest(".player-card");
-      const boardId = card ? String(card.dataset.boardId || "") : "";
       if (!boardId) return false;
 
       const now = Date.now();

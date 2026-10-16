@@ -398,16 +398,22 @@ test("unchanged avatars stay decoded through hold, roll and score updates", asyn
   const server = await fixture(page, { initial });
   await expect(page.locator("#headerTurnStatus .player-admin-badge")).toHaveCount(1);
   await expect(page.locator(".player-card.me .pc-head .player-admin-badge")).toHaveCount(1);
+  // Design 2026 shows the avatars on the header tiles; on a phone with two
+  // players the turn text is for screen readers and the sheet heading is
+  // hidden, so only the visible tile avatars must be decoded. Every node must
+  // stay the same through the updates.
   const selectors = [
-    "#headerTurnStatus img.player-avatar",
+    '#roomPlayerTiles .room-player-tile[data-board-id="p1"] img.player-avatar',
     ".turn-status-text img.player-avatar",
     ".player-card.me .pc-head img.player-avatar",
+    '#roomPlayerTiles .room-player-tile[data-board-id="p2"] img.player-avatar',
   ];
-  await expect.poll(() => page.evaluate(items => items.every((selector, index) => {
+  const decoded = [true, false, false, true];
+  await expect.poll(() => page.evaluate(([items, mustDecode]) => items.every((selector, index) => {
     const image = document.querySelector(selector);
     return image instanceof HTMLImageElement
-      && (index === 1 || (image.complete && image.naturalWidth > 0));
-  }), selectors)).toBe(true);
+      && (!mustDecode[index] || (image.complete && image.naturalWidth > 0));
+  }), [selectors, decoded])).toBe(true);
   await page.evaluate(items => {
     window.__stableAvatarNodes = items.map(selector => document.querySelector(selector));
     window.__stableAvatarSources = window.__stableAvatarNodes.map(image => image.currentSrc);
@@ -418,13 +424,13 @@ test("unchanged avatars stay decoded through hold, roll and score updates", asyn
   expect(initialRequests).toBeGreaterThan(0);
 
   const expectStableAvatars = async () => {
-    await expect.poll(() => page.evaluate(items => {
+    await expect.poll(() => page.evaluate(([items, mustDecode]) => {
       const current = items.map(selector => document.querySelector(selector));
       return current.every((image, index) => image === window.__stableAvatarNodes[index]
         && image.isConnected
-        && (index === 1 || (image.complete && image.naturalWidth > 0))
+        && (!mustDecode[index] || (image.complete && image.naturalWidth > 0))
         && image.currentSrc === window.__stableAvatarSources[index]);
-    }, selectors)).toBe(true);
+    }, [selectors, decoded])).toBe(true);
     expect(await page.evaluate(() => window.__trackedAvatarLoads)).toBe(initialLoads);
     expect(ownAvatarRequests).toBe(initialRequests);
   };

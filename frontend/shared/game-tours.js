@@ -214,12 +214,19 @@ function exampleFor(game) {
   return game === "hausdepp" ? "7 · 9 · K · A · 10" : game === "zilch" ? "⚀ ⚀ ⚄ ⚂ ⚃ ⚅" : "⚂ ⚂ ⚄ ⚀ ⚅";
 }
 
+function onScreen(node) {
+  // A sheet scrolled sideways out of the grid (a swipe or a player tile) keeps
+  // its client rects, so check the box against the viewport as well.
+  const rect = node.getBoundingClientRect();
+  return node.getClientRects().length && rect.right > 0 && rect.left < innerWidth
+    && getComputedStyle(node).visibility !== "hidden";
+}
+
 function findTarget(selectors) {
   // These are ordered fallbacks, not one CSS selector list: querySelector on
   // the joined list would select an ancestor before the intended score cell.
   for (const selector of selectors.split(",")) {
-    const target = [...document.querySelectorAll(selector.trim())]
-      .find(node => node.getClientRects().length && getComputedStyle(node).visibility !== "hidden");
+    const target = [...document.querySelectorAll(selector.trim())].find(onScreen);
     if (target) return target;
   }
   return null;
@@ -371,7 +378,13 @@ export function createGameTour(game) {
     }
   }, true);
   window.addEventListener("resize", () => { if (mode) render(); });
-  window.addEventListener("scroll", () => { if (mode) position(highlighted); }, { passive: true });
+  // Capture also catches the score grid's sideways scroll, so a target that
+  // left the screen pauses the step instead of keeping an invisible highlight.
+  let scrollFrame = 0;
+  document.addEventListener("scroll", () => {
+    if (!mode || scrollFrame) return;
+    scrollFrame = requestAnimationFrame(() => { scrollFrame = 0; if (mode) render(); });
+  }, { passive: true, capture: true });
   return controller;
 }
 
