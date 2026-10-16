@@ -163,9 +163,12 @@ scripts/install_nginx_config.sh
 Das Skript legt zuerst eine zeitgestempelte Sicherung der bisherigen
 Konfiguration an, führt `nginx -t` aus und stellt sie bei einem Fehler wieder
 her. Sobald die versionierte Datei die Produkt-Subdomains enthält, verweigert
-dieses allgemeine Installationsskript den Lauf, bis das Zertifikat beide Namen
-abdeckt. Für die erste Umstellung deshalb ausschließlich den kontrollierten
-`scripts/activate_subdomains.sh`-Ablauf weiter unten verwenden. Diese
+dieses allgemeine Installationsskript den Lauf, bis jeder Host von seinem
+vorgesehenen Zertifikat abgedeckt ist. Hausdepp verwendet eine eigene
+Zertifikatslinie; für die erste Aktivierung gilt der kontrollierte
+`scripts/activate_hausdepp.sh`-Ablauf weiter unten. Der alte
+`scripts/activate_subdomains.sh`-Ablauf beschreibt ausschließlich die historische
+DNS-only-Umstellung von ZDWA/Zilch. Diese
 Systemkonfiguration wird nicht bei jedem App-Deployment ungeprüft überschrieben.
 
 Die CSP muss `frame-src 'self' https://challenges.cloudflare.com` erlauben:
@@ -188,29 +191,125 @@ Nach Kontrolle der Liste kann dieselbe Auswahl mit `APPLY=1` gelöscht werden.
 
 ## Subdomains kontrolliert aktivieren
 
-### Hausdepp: DNS reserviert, Aktivierung ausstehend / DNS reserved, activation pending
+### Hausdepp öffentlich aktivieren / Activate public Hausdepp
 
-**Stand 16.10.2026:** Der eigene Hostname `hausdepp.zockdiewandan.online` ist in
-Cloudflare als **A → `217.154.16.72`, Proxied, TTL Auto** reserviert und wurde nach
-dem Speichern im Dashboard geprüft. Damit ist Hausdepp noch nicht produktiv
-erreichbar: Die dedizierte Host-Zuordnung in der Anwendung und die
-Nginx-Hostfreigabe stehen aus. Das am selben Tag geprüfte Origin-Zertifikat
-enthält nur `zockdiewandan.online`, `www.zockdiewandan.online`,
-`zdwa.zockdiewandan.online` und `zilch.zockdiewandan.online`; der Hausdepp-SAN
-muss vor der Aktivierung ergänzt werden. Es wurde kein Spiel-Rollout
-durchgeführt. Die spätere Freigabe bleibt Owner-/Founder-gebunden.
+**Vorprüfung 16.10.2026:** `hausdepp.zockdiewandan.online` löst bereits über
+Cloudflare auf. Das Edge-Zertifikat deckt den Namen ab; vor der Aktivierung
+liefert HTTPS jedoch 525, weil Nginx den Hausdepp-SNI noch nicht kennt. Das
+bestehende Origin-Zertifikat enthält nur Apex, `www`, `zdwa` und `zilch`.
+Öffentliches HTTP erreicht den Origin; ein unbekannter ACME-Pfad liefert 404,
+ohne Weiterleitung auf HTTPS. Die folgenden Befehle sind der kontrollierte
+Aktivierungsablauf, kein Nachweis eines bereits erfolgten Rollouts.
 
-**As of 2026-10-16:** The dedicated hostname `hausdepp.zockdiewandan.online` is
-reserved in Cloudflare as **A → `217.154.16.72`, Proxied, TTL Auto** and was
-verified in the dashboard after saving. This does not make Hausdepp available
-in production: dedicated application host routing and the Nginx host allowlist
-remain pending. The origin certificate checked that day covers only
-`zockdiewandan.online`, `www.zockdiewandan.online`, `zdwa.zockdiewandan.online`
-and `zilch.zockdiewandan.online`; its Hausdepp SAN must be added before
-activation. No game deployment was performed. Initial access will remain
-bound to the owner/founder account.
+Hausdepp erhält eine **separate** Let's-Encrypt-Zertifikatslinie unter
+`/etc/letsencrypt/live/hausdepp.zockdiewandan.online/`. Das vorhandene
+Vier-Host-Zertifikat, Cloudflare-Proxy, Firewall, Cookie-Domain und Datenbestand
+bleiben bestehen. Der öffentliche Einstieg ist `/hausdepp`; `/` leitet mit 308
+dorthin. Lobby und `/hausdepp/regeln` sind ohne Anmeldung lesbar. Spielen,
+Konto, Rangliste und Mitspielerrufe verwenden die gemeinsame Anmeldung.
 
-### Bestehende Hosts und ursprüngliche Aktivierung
+Vor dem einmaligen normalen Release müssen Commit, CI, zweisprachige
+V3-Release-Inhalte und unveränderte persistente Daten geprüft sein. Danach:
+
+```bash
+# Lokal aus dem geprüften Checkout: normaler Release mit vorgelagerter TLS-Aktivierung.
+ACTIVATE_HAUSDEPP=1 scripts/deploy_zdwa.sh
+```
+
+Der normale Deploy erstellt zuerst das konsistente vollständige Datenbackup,
+aktualisiert den sauberen produktiven Checkout und validiert Version und
+Release-Text. Die explizite Aktivierungsoption führt danach den folgenden
+Infrastrukturablauf aus, bevor das neue Anwendungsimage startet:
+
+1. `scripts/activate_hausdepp.sh` prüft Nginx, öffentlichen DNS und den aktiven
+   `certbot.timer`. Ohne `APPLY=1` bleibt es ein reiner Trockenlauf.
+2. Eine gesicherte, temporäre HTTP-Vhost-Datei erlaubt ausschließlich
+   `/.well-known/acme-challenge/` aus `/var/lib/letsencrypt`; andere Pfade
+   antworten 404. Vorhandene unbekannte Staging-Dateien werden nicht überschrieben.
+3. Ein zufälliger Token muss **durch die öffentliche Cloudflare-HTTP-Strecke**
+   exakt lesbar sein. Eine HTTPS-Weiterleitung, Challenge-Sperre oder falsche
+   Origin-Zuordnung bricht vor dem Zertifikatsantrag ab. Proxy und Firewall
+   werden dafür niemals abgeschaltet.
+4. Certbot stellt mit `certonly --webroot` ausschließlich das eigene
+   Hausdepp-Zertifikat aus. Die bestehenden vier SANs werden nicht ersetzt.
+   Der Installationsguard prüft Hostabdeckung; danach werden die permanente
+   HTTPS-Konfiguration und der enge HTTP-ACME-Pfad installiert. Die temporäre
+   Datei wird vor dem endgültigen Reload entfernt; es gibt keinen doppelten
+   Hausdepp-Vhost.
+5. Die automatische Erneuerung verwendet denselben dauerhaften Webroot. Der
+   Deploy-Hook
+   `/etc/letsencrypt/renewal-hooks/deploy/rollthedice-nginx-reload.sh` führt
+   zuerst `nginx -t` und anschließend einen Reload aus. Ein eigener
+   `certbot renew --dry-run --cert-name hausdepp.zockdiewandan.online` prüft die
+   Erneuerung vor Abschluss der Aktivierung.
+6. Bei Fehlern werden temporäre Challenge-Dateien entfernt und die bisherige
+   Nginx-Datei aus `rollthedice.backup-hausdepp-*` wiederhergestellt und geprüft.
+   Ein bereits ausgestelltes separates Zertifikat darf erhalten bleiben;
+   Container und Datenbank werden durch den Aktivierungshelfer nicht verändert.
+
+Das neue Image startet anschließend mit den regulären Migrationen. Nach der
+lokalen Datenbankbereitschaft führt `scripts/verify_public_release.py` echte,
+verifizierte HTTPS-GETs durch: alle drei Produkt-Hosts und der ZDWA-Alias,
+öffentliche Lobbys, Hausdepp-Regeln, Canonicals, die exakt zwei öffentlichen
+Hausdepp-Sitemap-Einträge, `robots.txt` und isolierte PWA-Metadaten. Dabei müssen
+die öffentliche Produktversion und die JS-/CSS-Revisionsparameter der
+Hausdepp-Lobby exakt zum ausgecheckten Release passen; ein alter App-Prozess
+oder veraltetes Einstieg-HTML darf keine Mitteilung auslösen. **Erst wenn
+alle öffentlichen Prüfungen bestehen, gelangt die echte Release-Mitteilung in
+die dauerhafte Outbox.** Ein fehlgeschlagener öffentlicher Smoke-Test lässt
+Deploy-Marker und Benachrichtigung unangetastet; ein erneuter normaler Lauf
+verwendet dieselbe letzte erfolgreiche Vergleichsbasis. Es ist kein stiller
+Zwischenrelease erforderlich. Spätere normale Deploys benötigen das
+Aktivierungsflag nicht mehr; der öffentliche Gate bleibt aktiv.
+
+Der Helfer kann separat auf dem Origin geprüft werden:
+
+```bash
+cd /home/manuel/RollTheDice
+scripts/activate_hausdepp.sh               # prüft, verändert nichts
+APPLY=1 scripts/activate_hausdepp.sh       # nur für die freigegebene Erstaktivierung
+python3 scripts/verify_public_release.py  # nur lesende öffentliche Prüfung nach App-Deploy
+```
+
+**English.** Preflight on 2026-10-16 found Hausdepp already proxied through
+Cloudflare with a valid edge certificate, but origin TLS returned 525 because
+Nginx and its existing four-host certificate did not include Hausdepp. Public
+HTTP reaches the origin without an HTTPS redirect for the challenge path.
+These instructions describe the controlled activation, not a completed rollout.
+
+Use `ACTIVATE_HAUSDEPP=1 scripts/deploy_zdwa.sh` for the approved first normal
+release after CI. The deploy preserves the complete production data backup,
+updates the clean checkout, validates version/release notes and activates TLS
+before building the new application. The activation helper defaults to a dry
+run. With `APPLY=1`, it backs up Nginx, stages a narrow HTTP-only ACME vhost,
+proves a random token through public Cloudflare HTTP and obtains a **separate**
+webroot certificate for Hausdepp. It never disables the proxy or firewall and
+never replaces the existing apex/www/ZDWA/Zilch certificate. Unknown staging
+files cause a safe abort. Temporary routing is removed before the permanent
+Hausdepp TLS and ACME locations are installed. Failure restores the previous
+Nginx configuration and cleans temporary tokens; application data stays intact.
+
+The permanent `/var/lib/letsencrypt` challenge location supports automatic
+renewal. The validated Nginx reload hook and a certificate-specific Certbot
+renewal dry run are part of activation. After the application becomes healthy,
+the public release gate verifies real TLS, all product hosts, anonymous lobby
+and rules, canonical search metadata, the exact two-page Hausdepp sitemap and
+its isolated PWA. The public product version and the lobby’s JS/CSS asset
+revision parameters must exactly match the checked-out release, rejecting an old
+application process or stale entry HTML. **Only then** is the real announcement queued. A failed gate
+keeps the deployment marker and announcement unchanged; retry the ordinary
+release after fixing the cause. Later deploys omit the activation flag but keep
+the public gate. The public Hausdepp root redirects to `/hausdepp`; lobby and
+rules are anonymous, while playing and personal features require sign-in.
+
+### Bestehende Hosts und ursprüngliche Aktivierung (historisch, DNS-only)
+
+Die folgenden DNS-only-Schritte dokumentieren die ursprüngliche Umstellung.
+Sie gelten nicht für die heute aktive Cloudflare-Proxy-/Firewall-Konfiguration
+und dürfen für Hausdepp nicht verwendet werden.
+
+The DNS-only steps below describe the original migration. They do not apply to
+the current Cloudflare proxy/firewall setup and must not be used for Hausdepp.
 
 Die beiden zusätzlichen Produktnamen zeigen auf dieselbe laufende Anwendung und
 dieselbe persistente Datenbank:
@@ -991,7 +1090,21 @@ Adressänderungen. Vorhandene Passkeys können danach neu eingerichtet werden.
 
 Passkeys dürfen erst mit den festen HTTPS-Origins aktiviert werden. Die RP-ID
 muss genau dem Hostnamen von `ROLLTHEDICE_SITE_ORIGIN` entsprechen; Zilch darf
-nur als kontrollierte Subdomain desselben Hosts erscheinen. Vor der Freigabe auf
+nur als kontrollierte Subdomain desselben Hosts erscheinen. V3 ergänzt den
+festen Ursprung `https://hausdepp.zockdiewandan.online` ausschliesslich, wenn
+dieser Host zur konfigurierten RP-ID gehört. Lokale Zwei-Origin-Konfigurationen
+bleiben unverändert; es gibt keine frei konfigurierbare zusätzliche Originliste.
+Die gemeinsame Anmeldung unter `/zilch/anmelden?return_to=/hausdepp...` bleibt
+auf dem Hausdepp-Ursprung, damit auch installierte PWAs ihre sichere
+WebAuthn-Anmeldung ohne fremdes Browserfenster verwenden.
+
+**English:** The RP ID must remain the configured site hostname. V3 adds only
+the fixed `https://hausdepp.zockdiewandan.online` origin when that hostname is
+a child of the configured RP. Local two-origin setups remain unchanged; no
+arbitrary extra-origin list is accepted. Hausdepp serves shared sign-in on its
+own origin, preserving native passkey login inside its installed PWA.
+
+Vor der Freigabe auf
 einem vorgesehenen Testkonto Registrierung, Anmeldung, Entfernen und Passwort-
 Fallback testen. Keine Versions-Pushes, Testmails oder Versuche gegen echte
 Spielerkonten auslösen.

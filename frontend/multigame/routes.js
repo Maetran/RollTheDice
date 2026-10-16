@@ -183,7 +183,8 @@ export function applyZdwaBridgeLinks(scope = document, locationLike = window.loc
  */
 export function zilchAppEntryUrl(route = "/", locationLike = window.location, environmentLike = globalThis) {
   const destination = normalizedRoute(route);
-  if (!isProductionZdwaLocation(locationLike) || isStandalonePwa(environmentLike)) {
+  const publicSuiteHost = isProductionZdwaLocation(locationLike) || locationLike.hostname === HAUSDEPP_PRODUCTION_HOST;
+  if (!publicSuiteHost || isStandalonePwa(environmentLike)) {
     return zilchPath(destination, locationLike);
   }
   return `https://${ZILCH_PRODUCTION_HOST}${destination}`;
@@ -200,10 +201,23 @@ export function zdwaAppEntryUrl(locationLike = window.location, environmentLike 
 }
 
 /**
- * Hausdepp remains a protected suite preview on the current host. The
- * reserved future subdomain is not an active destination, and an installed
- * app must keep the handoff inside its own origin.
+ * Public browser navigation uses Hausdepp's canonical host. Installed apps
+ * keep the established same-origin /hausdepp route and shared session.
  */
-export function hausdeppAppEntryUrl() {
-  return "/hausdepp";
+export function hausdeppAppEntryUrl(locationLike = window.location, environmentLike = globalThis) {
+  const suiteHost = isProductionZdwaLocation(locationLike) || isProductionZilchLocation(locationLike)
+    || locationLike.hostname === HAUSDEPP_PRODUCTION_HOST;
+  return suiteHost && !isStandalonePwa(environmentLike)
+    ? `https://${HAUSDEPP_PRODUCTION_HOST}/hausdepp` : "/hausdepp";
+}
+
+/** The shared sign-in stays on the active origin, including an installed PWA. */
+export function normalizeHausdeppPageUrl(value) {
+  if (typeof value !== "string" || value.length > 2048 || /[\\\u0000-\u001f\u007f]/.test(value)) return null;
+  return /^\/hausdepp(?:\/(?:regeln|konto|rangliste|spiel\/[A-Za-z0-9_-]+(?:\/zuschauen)?))?\/?(?:\?[^#]*)?$/.test(value) ? value : null;
+}
+
+export function hausdeppSignInUrl(returnTo = "/hausdepp", { register = false } = {}) {
+  const destination = normalizeHausdeppPageUrl(String(returnTo).split("#", 1)[0]) || "/hausdepp";
+  return `/zilch/anmelden?return_to=${encodeURIComponent(destination)}${register ? "#zilchRegistrationForm" : ""}`;
 }

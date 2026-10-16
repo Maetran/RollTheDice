@@ -188,7 +188,7 @@ export function mountAvatarUpload(mount) {
       input.value = "";
       objectUrl = URL.createObjectURL(selected);
       preview.src = objectUrl;
-      message.textContent = t("Vorschau bereit. Mit Speichern übernimmst du das Bild für beide Spiele.");
+      message.textContent = t("Vorschau bereit. Mit Speichern übernimmst du das Bild für alle drei Spiele.");
       controls();
     } catch (error) {
       if (expectedEpoch !== epoch) return;

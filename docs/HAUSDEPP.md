@@ -1,12 +1,10 @@
 # Hausdepp – Produkt- und Regelgrundlage / Product and rules specification
 
-**Status / Status:** bestätigte Hausregeln und Umsetzungsstand der privaten
-Entwicklungsfassung auf `codex/hausdepp-dev`. **UI und UX sind noch nicht vom
-Owner abgenommen.** Die Weiterentwicklung ist freigegeben; das ist keine
-Produktionsfreigabe. / Confirmed house rules and implementation status of the
-private development build on `codex/hausdepp-dev`. **The owner has not accepted
-the UI or UX yet.** Continued development is authorized; production release is
-not implied.
+**Status / Status:** bestätigte Hausregeln und öffentlicher V3-Produktstand.
+Der Owner hat die sichtbare Veröffentlichung von **V3.0.0** freigegeben.
+Die Gestaltung wird anhand weiterer Spieltests verfeinert. / Confirmed house
+rules and public V3 product scope. The owner approved the visible **V3.0.0**
+release. Further playtests will continue to refine the appearance.
 
 ## Deutsch
 
@@ -28,10 +26,10 @@ Auffüllpflicht **Auffüllen**. Das offene Paket anzutippen bedeutet **alles
 aufnehmen**. Beim Zocken muss die aufgedeckte Karte gespielt werden; ist sie
 zu niedrig, nimmst du das ganze Paket samt dieser Karte.
 
-### Produkt und erste Etappe
+### Produkt und öffentliche Freigabe
 
 Das Spiel heisst **Hausdepp**, so wie es in der Spielrunde des Owners genannt
-wird. Es wird eine eigenständige Erweiterung der bestehenden ZDWA-/Zilch-Suite
+wird. Es ist eine eigenständige Erweiterung der bestehenden ZDWA-/Zilch-Suite
 und über deren Spielauswahl erreichbar. Die folgenden Regeln beschreiben diese
 Hausvariante. Regeln eines anderen, ebenfalls „Hausdepp“ genannten Spiels dürfen
 nicht ohne ausdrückliche Entscheidung übernommen werden.
@@ -41,24 +39,29 @@ nicht ohne ausdrückliche Entscheidung übernommen werden.
   für die erste spielbare Etappe erforderlich und führt seine Züge selbst aus.
 - Die erste Etappe umfasst eine echte Mehrspieler-Lobby und einen vollständig
   spielbaren Tisch nach diesen Regeln, keine reine Designvorschau.
-- Anfangs ist der Zugang ausschliesslich an das bestehende Owner-/Founder-Konto
-  gebunden. Die Freigabe gilt für das Konto, nicht nur für einen ausgeblendeten
-  Link. Andere echte Konten erhalten dadurch keine Freigabe. Mehrspielertests
-  mit mehreren menschlichen Sitzen verwenden lokale Testkonten.
+- Ab V3 sind Lobby und Regeln ohne Anmeldung öffentlich. Jedes aktive
+  angemeldete Konto kann Tische eröffnen, mitspielen und zuschauen. Die frühere
+  Founder-/Owner-Bindung gilt nicht mehr für das Spiel. Konto, Rangliste,
+  Spielseiten und persönliche APIs erfordern weiterhin eine Anmeldung;
+  fremde Handkarten und persönliche Ergebnisse bleiben geschützt.
 - Ein Konto belegt einen Sitz; ein weiteres Gerät desselben Kontos übernimmt
   denselben Sitz und erzeugt keinen zusätzlichen Spieler.
 - Die Suite-Integration verwendet bestehende Konten, Spielauswahl, Chat,
-  Reaktionen und Wiederaufnahme. Der private Tisch kann über seinen Link mit
-  zugelassenen lokalen Testkonten geteilt werden; der Link erteilt selbst
-  keine Zugangsberechtigung.
+  Reaktionen und Wiederaufnahme. Ein Tischlink kann geteilt werden; wer noch
+  nicht angemeldet ist, verwendet zuerst die bestehende Anmeldung und kehrt
+  danach zum Tisch zurück. Der Link erteilt keine zusätzlichen Berechtigungen.
 
-Der gewählte eigene Hostname ist **`hausdepp.zockdiewandan.online`**. Am
-**16.10.2026** wurde dafür in Cloudflare ein A-Eintrag auf `217.154.16.72`
-reserviert, mit aktiviertem Proxy und TTL **Auto**. Das ist noch kein
-Spiel-Rollout: Die dedizierte Host-Zuordnung in der Anwendung, die Nginx-Freigabe
-und die Aufnahme des Hostnamens in das Origin-Zertifikat stehen aus. Das
-produktive Origin-Zertifikat deckt derzeit nur die vier bestehenden Hosts ab.
-Der erste Zugang bleibt auch auf der eigenen Subdomain Owner-/Founder-gebunden.
+Der kanonische Einstieg ist
+**`https://hausdepp.zockdiewandan.online/hausdepp`**, die öffentliche Anleitung
+liegt unter **`/hausdepp/regeln`**. Der Host-Einstieg `/` leitet zur Lobby weiter.
+Nur diese beiden Dokumente sind indexierbar und im eigenen Sitemap enthalten.
+Die bisherigen `/hausdepp`-Wege auf den anderen Suite-Ursprüngen bleiben für
+installierte Apps erhalten. Ein normaler Browser verwendet beim Spielwechsel
+den eigenen Host; installierte Apps behalten ihren Ursprung und Worker.
+Die gemeinsame Anmeldung führt über den bestehenden sicheren Suite-Login zum
+freigegebenen Hausdepp-Ziel zurück; es entstehen keine zweiten Spielerkonten.
+Der Mission-Control-Bereich und seine Hausdepp-Details bleiben wie bisher
+separat an die Founder-/Dashboard-Berechtigungen gebunden.
 
 ### Gestaltung und Plattformen
 
@@ -73,9 +76,9 @@ Smartphones, Tablets und Desktop-Geräten funktionieren.
 Die Kartenreferenzen des Owners zeigen doppeldeutsche Karten im traditionellen
 Tell-/Jahreszeitenbild und die rot-schwarz-weisse Blitz-Rückseite des gezeigten
 Piatnik-Kartensatzes. Sie bestimmen die gewünschte Designsprache. Die
-Entwicklungsfassung stellt diese Karten über einzeln ausgerichtete und abgerundete Bildausschnitte dar. Quellen, Lizenzen und
+Anwendung stellt diese Karten über einzeln ausgerichtete und abgerundete Bildausschnitte dar. Quellen, Lizenzen und
 Bearbeitung stehen in [HAUSDEPP_ASSETS.md](HAUSDEPP_ASSETS.md). Die gestalterische
-Richtung ist gewählt; die konkrete UI-/UX-Ausführung bleibt zur Abnahme offen.
+Richtung ist gewählt; die konkrete UI-/UX-Ausführung wird nach Spieltests weiter verfeinert.
 
 ### Karten und Begriffe
 
@@ -307,8 +310,8 @@ Die gemeinsame Spielauswahl zeigt die freigeschalteten Spiele mit Symbolen und
 Namen; das aktuelle Spiel ist markiert. Der Einstieg nennt Hausdepp, solange
 Hausdepp geöffnet ist. Ein Tipp oder `Alt+Shift+Z` öffnet die Auswahl; erst die
 Wahl eines Spiels führt zu dessen Lobby. Auf dem Handy erscheint ein
-Auswahlfenster am unteren Rand. Hausdepp bleibt Owner-gebunden; installierte
-Apps behalten beim Wechsel ihren bestehenden Ursprung und Service Worker.
+Auswahlfenster am unteren Rand. Hausdepp ist für alle auffindbar; Mitspielen
+erfordert eine Anmeldung. Installierte Apps behalten Ursprung und Service Worker.
 
 Die Lobby zeigt eigene offene Tische mit Spielstatus und belegten Plätzen.
 Neue Tische erhalten beim Erstellen automatisch einen zufälligen Wirtshausnamen
@@ -317,7 +320,7 @@ zusätzliches Namensfeld; im Turnier bleibt der einmal gewählte Tischname beste
 Beim Erstellen zählen Menschen und Computer gemeinsam zur gewählten Tischgrösse;
 das eigene Konto belegt genau einen menschlichen Platz. Ein Wartetisch zeigt,
 wie viele Menschen noch fehlen. Der Tischlink kann kopiert werden; die
-Owner-Freigabe wird beim Öffnen weiterhin serverseitig geprüft. Wiederaufnahme
+gültige Anmeldung wird beim Öffnen weiterhin serverseitig geprüft. Wiederaufnahme
 führt an denselben Sitz zurück.
 
 An einem ungeschützten Wartetisch kann ein sitzender Spieler ausdrücklich per
@@ -330,7 +333,9 @@ sind ausgeschlossen. Der Ruf zeigt auf einem Push-fähigen Gerät eine
 Systembenachrichtigung mit Hausdepp-Icon, die direkt zum Tisch führt.
 
 Die gemeinsamen Einstellungen unter `/konto#settings` übernehmen die
-Geräteanmeldung und getrennten Push-Kategorien. Eine tägliche Hausdepp-Erinnerung
+Geräteanmeldung und getrennten Push-Kategorien. Hausdepp-Installationen werden
+mit dem Produktkontext `hausdepp` gespeichert, ohne das Gerät als ZDWA oder Zilch
+auszugeben. Eine tägliche Hausdepp-Erinnerung
 ist damit nicht zugesagt. Ein Konto kann höchstens einmal pro Minute rufen,
 auch spielübergreifend. Nach einem Versandversuch gilt zusätzlich die
 zehnminütige Raumsperre. Ohne erreichbare freigegebene Empfänger bleibt die
@@ -392,20 +397,20 @@ gemischter Tisch zählt als Runde mit Computer. Abschliessende Turniererfolge
 behalten ihre volle einmalige EP-Belohnung. Die neuen Comeback-, Karten- und
 Turniererfolge ergänzen die ursprünglichen 64 zum Gesamtkatalog von 100.
 
-### Noch offene Entscheidungen
+### Weitere Verfeinerungen
 
-Die technische Umsetzung ist kein Ersatz für die ausstehende UI-/UX-Abnahme.
-Die Bereiche sind wie folgt abgegrenzt:
+Der öffentliche V3-Start ist freigegeben. Weitere Spieltests können Gestaltung
+und Verständlichkeit verfeinern; das führt keine erneute Zugangssperre ein.
 
-| Bereich | Stand der Entwicklungsfassung | Noch offen |
+| Bereich | Stand ab V3 | Noch offen |
 | --- | --- | --- |
-| Lobby und Tisch | Echte Mehrspielerpartien, Computer-Mitspieler, Owner-Freigabe, Tischstatus, direkte Aktionen | UI-/UX-Abnahme und weitere Verfeinerungen nach Spieltests |
+| Lobby und Tisch | Echte Mehrspielerpartien, Computer-Mitspieler, Zugang für aktive Konten, Tischstatus, direkte Aktionen | Weitere Verfeinerungen nach Spieltests |
 | Regeln | Vollständige DE-/EN-Hausregeln mit Schnellstart, Beispielen und Sprungmarken | Verständlichkeitsprüfung durch den Owner |
 | Punkte | Je abgeschlossener Runde 10 EP nur mit Menschen oder 2 EP mit mindestens einem Computer (75 % Reduktion, abgerundet); Erfolge einmalig volle 10/25/50/100 EP | Weiteres Balancing nach Spieltests |
-| Achievements | Bestätigter Katalog mit 100 Erfolgen, 24 Rängen und eigenen Aufstiegssprüchen | UI-/UX-Abnahme und weitere Spieltests |
-| Konto | Private Statistik und Historie, EP, Rangfortschritt, Rangleiter und filterbare Erfolgssammlung | UI-/UX-Abnahme |
+| Achievements | Bestätigter Katalog mit 100 Erfolgen, 24 Rängen und eigenen Aufstiegssprüchen | Weitere Gestaltungs- und Spieltests |
+| Konto | Private Statistik und Historie, EP, Rangfortschritt, Rangleiter und filterbare Erfolgssammlung | Weitere Gestaltungsverfeinerungen |
 | Chat und Reaktionen | Gemeinsame Suite-Funktionen am Tisch und Lobbychat | Weitere Verfeinerungen nach Spieltests |
-| Weitere Runden | Einzelrunden über die Lobby; Turnierserie am selben Tisch mit Geberrotation und Buchstabenstand | UI-/UX-Abnahme und weitere Spieltests |
+| Weitere Runden | Einzelrunden über die Lobby; Turnierserie am selben Tisch mit Geberrotation und Buchstabenstand | Weitere Gestaltungs- und Spieltests |
 | Vorbereitung | Aktives Anschauen und kurze, nicht sperrende Austeilbewegungen | Weitere Verfeinerungen nach Spieltests |
 
 ### Bestätigte Punkte, Erfolge und Ränge
@@ -467,15 +472,15 @@ angezeigten Stand; neue Punkte werden durch eine alte Bestätigung nicht verdeck
 
 ### Entwicklung und Lieferung
 
-Hausdepp wird lokal auf einem Entwicklungsbranch weiterentwickelt. Die
-UI-/UX-Abnahme steht ausdrücklich aus. Die Produktversion
-bleibt während dieser Entwicklung innerhalb von **2.x**; **V3** ist dem späteren
-grossen Release vorbehalten. Daraus folgt weder ein sofortiger Deploy noch ein
-erzwungener Versionssprung für die reine Vorbereitung. Bei tatsächlichen
-Releases gelten weiterhin die gemeinsamen Versions- und Lieferregeln aus
-[PRODUCT_DELIVERY.md](PRODUCT_DELIVERY.md), einschliesslich vollständiger
-DE-/EN-Texte, Dokumentation, geeigneter Prüfungen und unveränderter historischer
-Versionszuordnungen. Owner-geschützte Seiten bleiben `noindex`.
+Hausdepp wird als öffentlicher **V3.0.0**-Major-Release der gemeinsamen Suite
+geführt. Die Veröffentlichung ist ausdrücklich freigegeben; technische
+Prüfungen, Deploy und anschliessende Produktionskontrolle bleiben getrennte
+Nachweise. Es gelten die Versions- und Lieferregeln aus
+[PRODUCT_DELIVERY.md](PRODUCT_DELIVERY.md): DE-/EN-Texte, Dokumentation,
+geeignete Prüfungen und unveränderte historische Versionszuordnungen.
+Persönliche Konto-, Ranglisten- und Spielseiten bleiben `noindex`; nur Lobby
+und Regeln sind öffentliche Suchziele. Historische QA-Berichte behalten ihren
+damaligen privaten Prüfstand und werden nicht nachträglich umgeschrieben.
 
 ## English
 
@@ -495,10 +500,10 @@ refill is pending, it means **refill**. Tapping the open pile means **pick it al
 up**. Taking a chance commits the revealed card to play. If it is too low, you
 must pick up the entire pile, including that card.
 
-### Product and first milestone
+### Product and public access
 
 The game is called **Hausdepp**, the name used by the owner's own gaming group.
-It becomes a distinct addition to the existing ZDWA/Zilch suite and is reached
+It is a distinct addition to the existing ZDWA/Zilch suite and is reached
 through its game switcher. The rules below describe this house variant. Rules
 from another game also called “Hausdepp” must not be imported without an
 explicit decision.
@@ -508,23 +513,27 @@ explicit decision.
   a computer opponent that takes its own turns.
 - That milestone includes a real multiplayer lobby and a table at which these
   rules can be played in full, rather than a design preview alone.
-- Access is initially bound exclusively to the existing owner/founder account.
-  This is account authorization, not merely a hidden link. Other real accounts
-  do not gain access through this decision. Multiplayer tests with several
-  human seats use local test accounts.
+- From V3, the lobby and rules are public without sign-in. Every active
+  signed-in account can create, join and watch tables. The former owner/founder
+  restriction no longer applies to playing. Account, standings, game pages and
+  personal APIs still require sign-in; opposing hands and personal results stay
+  protected.
 - One account occupies one seat. Another device using that account resumes the
   same seat instead of creating another player.
 - Suite integration uses existing accounts, game selection, chat, reactions
-  and reconnection. A private table can be shared by link with approved local
-  test accounts; the link itself grants no access.
+  and reconnection. A shared table link first takes signed-out visitors through
+  the existing login and then back to the table. It grants no extra permission.
 
-The chosen dedicated hostname is **`hausdepp.zockdiewandan.online`**. On
-**2026-10-16**, an A record pointing to `217.154.16.72` was reserved in
-Cloudflare with the proxy enabled and TTL **Auto**. This does not deploy the
-game: dedicated application host routing, the Nginx host allowlist and adding
-the hostname to the origin certificate remain pending. The production origin
-certificate currently covers only the four existing hosts. Initial access on
-the dedicated subdomain will also remain bound to the owner/founder account.
+The canonical entry is
+**`https://hausdepp.zockdiewandan.online/hausdepp`**, with public rules at
+**`/hausdepp/regeln`**. The host's `/` redirects to the lobby. Only those two
+documents are indexable and included in its sitemap. Existing `/hausdepp`
+paths on other suite origins remain available for installed apps. Ordinary
+browsers use the dedicated host when switching; installed apps retain their
+origin and worker. Shared sign-in returns through the existing safe suite
+login to the allowlisted Hausdepp destination, using the same account.
+Mission Control and its Hausdepp details retain their separate
+founder/dashboard authorization.
 
 ### Design and platforms
 
@@ -540,7 +549,7 @@ in the Tell/seasons pattern and the red, black and white Blitz back of the
 pictured Piatnik deck. They establish the desired visual language. The
 development build renders these cards using individually aligned, rounded image crops. Sources, licences and adaptations
 are recorded in [HAUSDEPP_ASSETS.md](HAUSDEPP_ASSETS.md). The design direction is
-chosen; the actual UI and UX still await acceptance.
+chosen; further playtests will refine the actual UI and UX.
 
 ### Cards and terminology
 
@@ -751,8 +760,8 @@ arrival without spatial travel.
 The shared picker shows available games with icons and names, marking the
 current game. Its trigger names Hausdepp while Hausdepp is open. Tap or press
 `Alt+Shift+Z` to open the picker, then choose a game's lobby. Phones use a
-bottom sheet. Hausdepp remains owner-bound; installed apps retain their
-existing origin and service worker when switching.
+bottom sheet. Everyone can discover Hausdepp; playing requires sign-in.
+Installed apps retain their origin and service worker when switching.
 
 The lobby shows your open tables with game status and occupied seats. New
 tables automatically receive a random tavern-style name from 50 variants built
@@ -760,7 +769,7 @@ around the current account name, such as “Mani’s nightcap”. No separate na
 field is needed; the chosen table name remains throughout a tournament. Humans
 and computers together fill the selected table size; your account occupies one
 human seat. A waiting table shows how many humans are still needed. Its link
-can be copied; opening it still requires server-side owner access. Resuming
+can be copied; opening it still requires valid sign-in. Resuming
 returns to the same seat.
 
 At an unprotected waiting table, a seated player can explicitly **call for
@@ -772,7 +781,9 @@ self-notifications are excluded. On a push-capable device, the call displays
 a system notification with Hausdepp's icon and a direct link to the table.
 
 Shared settings at `/konto#settings` handle device registration and separate
-push categories. This does not promise a daily Hausdepp reminder. An account
+push categories. Hausdepp installations are saved with product context
+`hausdepp`, without registering the device as ZDWA or Zilch. This does not
+promise a daily Hausdepp reminder. An account
 can call at most once a minute across games. A delivery attempt additionally
 starts the table's ten-minute cooldown. With no reachable authorized recipients,
 the account's minute cooldown remains; no names or subscriber counts are shown.
@@ -827,20 +838,20 @@ of the base reward, rounded down separately for each round. Final tournament
 achievements retain their full one-time XP reward. The added comeback, card and tournament feats
 extend the original 64 achievements to a catalogue of 100.
 
-### Remaining decisions
+### Further refinements
 
-Technical implementation does not replace the outstanding UI and UX acceptance.
-The areas have the following boundaries:
+The public V3 launch is approved. Further playtests may refine the appearance
+and clarity without reinstating the former access restriction.
 
-| Area | Development build status | Still open |
+| Area | V3 status | Still open |
 | --- | --- | --- |
-| Lobby and table | Real multiplayer rounds, computer opponents, owner access, table status, direct actions | UI and UX acceptance and further playtest refinements |
+| Lobby and table | Real multiplayer rounds, computer opponents, active-account access, table status, direct actions | Further playtest refinements |
 | Rules | Complete German/English house rules with quick start, examples and anchors | Owner review for clarity |
 | Points | Per completed round: 10 XP for all-human tables or 2 XP with any computer (75% reduction, rounded down); full one-time achievement rewards of 10/25/50/100 XP | Further balancing after playtests |
-| Achievements | Approved catalogue of 100 achievements, 24 ranks and individual sayings | UI and UX acceptance and further playtests |
-| Account | Private facts/history, XP, rank progress, complete ladder and filterable achievement collection | UI and UX acceptance |
+| Achievements | Approved catalogue of 100 achievements, 24 ranks and individual sayings | Further design and playtests |
+| Account | Private facts/history, XP, rank progress, complete ladder and filterable achievement collection | Further design refinements |
 | Chat and reactions | Shared suite features at the table and lobby chat | Further playtest refinements |
-| Further rounds | Single rounds through the lobby; same-table tournaments with dealer rotation and letter scores | UI and UX acceptance and further playtests |
+| Further rounds | Single rounds through the lobby; same-table tournaments with dealer rotation and letter scores | Further design and playtests |
 | Preparation | Active inspection and short, nonblocking dealing movements | Further playtest refinements |
 
 ### Approved points, achievements and ranks
@@ -877,7 +888,7 @@ and unlocks prevent duplicate points on reconnect or repeated finalization.
 Valid existing outcomes can prove participation, social and outcome achievements;
 detailed card feats require newly captured gameplay evidence. Old or already
 running rounds without complete evidence receive no invented tactical feats.
-Private bottom-inspection facts and their awards remain in the owner's account.
+Private bottom-inspection facts and their awards remain in the relevant player's own account.
 
 The account itemizes round and achievement XP, next-rank progress, the complete
 ladder and a searchable collection with conditions, status and progress. Earned
@@ -892,11 +903,11 @@ displayed revision, so an old tab cannot hide newer progress.
 
 ### Development and delivery
 
-Hausdepp continues locally on a development branch. UI and UX acceptance
-explicitly remains outstanding. The product version stays within
-**2.x** during this development; **V3** is reserved for the later major launch.
-This does not require an immediate deployment or force a version bump for
-preparatory work alone. Actual releases continue to follow the shared version
-and delivery rules in [PRODUCT_DELIVERY.md](PRODUCT_DELIVERY.md), including
-complete German/English text, documentation, appropriate checks and unchanged
-historical version mappings. Owner-protected pages remain `noindex`.
+Hausdepp uses **V3.0.0**, a public major release of the shared suite. The visible
+release is explicitly authorized; technical checks, deployment and subsequent
+production verification remain separate evidence. Releases follow
+[PRODUCT_DELIVERY.md](PRODUCT_DELIVERY.md), including complete German/English
+text, documentation, appropriate checks and unchanged historical version
+mappings. Personal account, standings and game pages remain noindex; only the
+lobby and rules are public search destinations. Historical QA reports retain
+the private development scope they originally verified.

@@ -103,7 +103,8 @@ for (const product of [
     await expect(page.getByRole("heading", { name: "Your player selection", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Remove ListFriend from player selection", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Save invitation selection", exact: true })).toBeVisible();
-    await expect(page.locator(".player-allowlist-hint")).toContainText("This does not enable push.");
+    await expect(page.locator(".player-allowlist-hint")).toContainText("Your private selection applies to all three games");
+    await expect(page.locator(".player-allowlist-hint")).toContainText("This does not enable push notifications.");
   });
 }
 

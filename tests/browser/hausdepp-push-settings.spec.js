@@ -36,7 +36,12 @@ async function installedHousePushFixture(page, { missing = false } = {}) {
   await page.route("**/api/web-push/subscription", route => {
     const method = route.request().method();
     calls.push(method);
-    if (method === "PUT") subscribed = true;
+    if (method === "PUT") {
+      // Shared account pages must retain the installed Hausdepp device context
+      // so a release cannot turn into an unrelated ZDWA reminder later.
+      expect(route.request().postDataJSON().product_context).toBe("hausdepp");
+      subscribed = true;
+    }
     if (method === "DELETE") { subscribed = false; enabled = false; }
     return route.fulfill({ json: {
       available: true, subscribed, enabled, game_invites_enabled: enabled,

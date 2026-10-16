@@ -10,9 +10,11 @@ HAUSDEPP_ORIGIN = "https://hausdepp.zockdiewandan.online"
 
 # Deliberately separate from indexable pages: a new private route must never
 # enter a sitemap just because it has a useful title or complete rule text.
-PRIVATE_HAUSDEPP_DOCUMENTS = {
+PUBLIC_HAUSDEPP_DOCUMENTS = {
     "/hausdepp": "hausdepp-lobby.html",
     "/hausdepp/regeln": "hausdepp-rules.html",
+}
+PRIVATE_HAUSDEPP_DOCUMENTS = {
     "/hausdepp/konto": "hausdepp-account.html",
     "/hausdepp/rangliste": "hausdepp-leaderboard.html",
     "/hausdepp/spiel/{game_id}": "hausdepp.html",
@@ -27,6 +29,13 @@ PUBLIC_ZILCH_IMAGE_PATHS = frozenset({
     "/static/icons/zilch-icon-192.png",
     "/static/icons/zilch-icon-512.png",
     "/static/icons/zilch-apple-touch-icon-180.png",
+})
+PUBLIC_HAUSDEPP_IMAGE_PATHS = frozenset({
+    "/favicon.ico",
+    "/static/icons/hausdepp-icon-32.png",
+    "/static/icons/hausdepp-icon-192.png",
+    "/static/icons/hausdepp-icon-512.png",
+    "/static/icons/hausdepp-apple-touch-icon-180.png",
 })
 
 
@@ -58,6 +67,8 @@ PUBLIC_SEO_PAGES: tuple[PublicSeoPage, ...] = (
     # results and individual player profiles remain intentionally noindex.
     PublicSeoPage("/", "zilch-lobby.html", "weekly", 0.8, origin=ZILCH_ORIGIN),
     PublicSeoPage("/regeln", "zilch-rules.html", "monthly", 0.8, origin=ZILCH_ORIGIN),
+    PublicSeoPage("/hausdepp", "hausdepp-lobby.html", "weekly", 0.8, origin=HAUSDEPP_ORIGIN),
+    PublicSeoPage("/hausdepp/regeln", "hausdepp-rules.html", "monthly", 0.8, origin=HAUSDEPP_ORIGIN),
 )
 
 
@@ -98,3 +109,8 @@ def sitemap_document(*, origin: str = SITE_ORIGIN) -> str:
 def zilch_page_is_indexable(path: str) -> bool:
     """Keep private room/account URLs out of crawlers despite one SPA shell."""
     return any(page.origin == ZILCH_ORIGIN and page.path == path for page in PUBLIC_SEO_PAGES)
+
+
+def hausdepp_page_is_indexable(path: str) -> bool:
+    """Only the lobby and evergreen rule guide are public discovery documents."""
+    return path in PUBLIC_HAUSDEPP_DOCUMENTS

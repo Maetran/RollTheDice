@@ -101,7 +101,10 @@ export async function enableGameInvitePush() {
   const response = await apiFetch("/api/web-push/subscription", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(subscription.toJSON()),
+    body: JSON.stringify({
+      ...subscription.toJSON(),
+      ...(usesHausdeppRegistration() ? { product_context: "hausdepp" } : {}),
+    }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw apiError(data);

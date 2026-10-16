@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import tempfile
 import unittest
@@ -95,28 +94,28 @@ class GameActivityTests(unittest.TestCase):
         main.games["legacy"].pop("_game_type")
         self.room("unknown", [seat("unknown")], product="unsupported")
         self.room("paused-connected", [seat("paused")], _manual_pause=True)
-        self.assertEqual(self.request().json(), {"games": {"zdwa": {"players": 2}}})
+        self.assertEqual(self.request().json(), {"games": {"zdwa": {"players": 2}, "hausdepp": {"players": 0}}})
         main.games["legacy"]["_players"][0]["ws"] = None
         self.assertEqual(self.request().json()["games"]["zdwa"]["players"], 1)
 
-    def test_audience_never_exposes_hidden_keys_totals_or_dashboard_staff_privileges(self):
+    def test_public_house_counts_do_not_require_an_account_or_dashboard_privileges(self):
         self.room("private", [seat("private", 71)], product="hausdepp")
         self.room("zilch", [seat("zilch", 71)], product="zilch")
         for user in (None, self.staff):
             response = self.request(user)
-            self.assertEqual(response.json(), {"games": {"zdwa": {"players": 0}}})
-            self.assertNotIn("hausdepp", response.text)
+            self.assertEqual(response.json(), {"games": {"zdwa": {"players": 0}, "hausdepp": {"players": 1}}})
+            self.assertNotIn("private", response.text)
             self.assertNotIn("zilch", response.text)
         with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "public"}):
             self.assertEqual(self.request().json(), {"games": {
-                "zdwa": {"players": 0}, "zilch": {"players": 1},
+                "zdwa": {"players": 0}, "zilch": {"players": 1}, "hausdepp": {"players": 1},
             }})
         with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "authenticated"}):
             self.assertNotIn("zilch", self.request().json()["games"])
             self.assertEqual(self.request(self.staff).json()["games"]["zilch"], {"players": 1})
         with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES": self.staff.username}):
             self.assertEqual(self.request(self.staff).json()["games"]["zilch"], {"players": 1})
-            self.assertNotIn("hausdepp", self.request(self.staff).json()["games"])
+            self.assertEqual(self.request(self.staff).json()["games"]["hausdepp"], {"players": 1})
 
     def test_sessions_and_audience_are_resolved_again_after_an_earlier_success(self):
         self.assertIn("hausdepp", self.request(self.founder).json()["games"])
@@ -126,12 +125,12 @@ class GameActivityTests(unittest.TestCase):
         with session_scope() as db:
             db.execute(delete(Session).where(Session.user_id == self.founder.id))
         response = self.request(self.founder)
-        self.assertEqual(response.json(), {"games": {"zdwa": {"players": 0}}})
-        self.assertNotIn("hausdepp", json.dumps(response.json()))
+        self.assertEqual(response.json(), {"games": {"zdwa": {"players": 0}, "hausdepp": {"players": 0}}})
+        self.assertEqual(response.json()["games"]["hausdepp"], {"players": 0})
 
     def test_route_is_registered_without_accepting_a_client_selected_private_product(self):
         client = TestClient(main.app)
         self.addCleanup(client.close)
-        self.assertEqual(client.get("/api/game-activity").json(), {"games": {"zdwa": {"players": 0}}})
+        self.assertEqual(client.get("/api/game-activity").json(), {"games": {"zdwa": {"players": 0}, "hausdepp": {"players": 0}}})
         self.assertEqual(self.client.get("/api/game-activity?game=hausdepp").json(),
-                         {"games": {"zdwa": {"players": 0}}})
+                         {"games": {"zdwa": {"players": 0}, "hausdepp": {"players": 0}}})

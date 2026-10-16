@@ -39,17 +39,20 @@ python3() {
   if [[ "$1" == "scripts/prepare_release_notice.py" ]]; then
     echo "BASE:$3" >&2
     printf '%s\n' '{"skip":true}'
+  elif [[ "$1" == "scripts/verify_public_release.py" ]]; then
+    echo PUBLIC_SMOKE
+    return "$PUBLIC_FAIL"
   fi
 }
 curl() { echo HEALTH >&2; return "$HEALTH_FAIL"; }
 '''
         old, new = "a" * 40, "b" * 40
-        for failure in ("BUILD_FAIL", "HEALTH_FAIL", "QUEUE_FAIL", None):
+        for failure in ("BUILD_FAIL", "HEALTH_FAIL", "PUBLIC_FAIL", "QUEUE_FAIL", None):
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
                 marker = Path(directory) / ".deployment-marker"
                 # Simulate a checkout already advanced by a failed first try.
                 marker.write_text(old + "\n", encoding="utf-8")
-                flags = {"BUILD_FAIL": "0", "HEALTH_FAIL": "0", "QUEUE_FAIL": "0"}
+                flags = {"BUILD_FAIL": "0", "HEALTH_FAIL": "0", "PUBLIC_FAIL": "0", "QUEUE_FAIL": "0"}
                 if failure:
                     flags[failure] = "1"
                 result = subprocess.run(["bash", "-s"], input=doubles + remote, capture_output=True, text=True,
@@ -58,13 +61,15 @@ curl() { echo HEALTH >&2; return "$HEALTH_FAIL"; }
                 self.assertIn("env ROLLTHEDICE_FOUNDER_USER_ID=2 docker compose up", result.stdout)
                 self.assertEqual(result.returncode == 0, failure is None)
                 self.assertEqual(marker.read_text(encoding="utf-8").strip(), new if failure is None else old)
-                if failure in ("BUILD_FAIL", "HEALTH_FAIL"):
+                if failure in ("BUILD_FAIL", "HEALTH_FAIL", "PUBLIC_FAIL"):
                     self.assertNotIn("PUBLISH", result.stdout)
                 if failure:
                     self.assertNotIn("RETENTION", result.stdout)
                 else:
                     self.assertLess(result.stdout.index("BUILD"), result.stdout.index("PUBLISH"))
                     self.assertIn("HEALTH", result.stderr)
+                    self.assertLess(result.stdout.index("BUILD"), result.stdout.index("PUBLIC_SMOKE"))
+                    self.assertLess(result.stdout.index("PUBLIC_SMOKE"), result.stdout.index("PUBLISH"))
                     self.assertLess(result.stdout.index("PUBLISH"), result.stdout.index("RETENTION"))
 
     def test_founder_binding_rejects_names_and_shell_input_before_ssh(self):

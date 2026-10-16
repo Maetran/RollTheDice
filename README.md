@@ -1,28 +1,31 @@
 # RollTheDice
 
-Two dice games. One account. A table for your next game night.
+Three games. One account. A table for your next game night. / Drei Spiele, ein Konto, dein nächster Spieleabend.
 
 - [Play ZDWA — Zock die Wand an](https://zockdiewandan.online/)
 - [Play Zilch — Zilch die Wand an](https://zilch.zockdiewandan.online/)
+- [Play Hausdepp](https://hausdepp.zockdiewandan.online/hausdepp)
 
 RollTheDice is a self-hostable, real-time game platform with German and English
-interfaces. Play in your browser or install either game as a Progressive Web App.
-Guests can play; accounts add personal history, statistics, achievements and
-community features.
+interfaces. Play in your browser or install a game as a Progressive Web App.
+Guests can play ZDWA and Zilch. Hausdepp has a public lobby and rules; playing
+requires an active account. One account provides history, statistics, achievements
+and community features across the suite.
 
 
-## Hausdepp — private Entwicklungsfassung / private development build
+## Hausdepp — öffentlicher V3-Start / public V3 launch
 
-**Deutsch:** Auf `codex/hausdepp-dev` ergänzt Hausdepp die Suite als drittes Spiel.
-Die erste spielbare Etappe umfasst `/hausdepp`, den eigenen Stammtisch unter
-`/hausdepp/spiel/{id}`, die vollständigen Hausregeln unter `/hausdepp/regeln`
-und den eigenen Kontobereich unter `/hausdepp/konto`. **UI und UX sind noch
-nicht vom Owner abgenommen; die Weiterentwicklung bleibt lokal.**
-Die Spielauswahl zeigt Hausdepp ausschliesslich für das dauerhaft gebundene
-Founder-/Owner-Konto. Andere Admins, delegierte Owner und Gäste erhalten keinen
-Zugang. Das vorhandene Konto wird weiterverwendet. Die Lobby zeigt Tischstatus
-und belegte Plätze; ein Wartetisch erklärt fehlende Mitspieler und bietet einen
-Tischlink für zugelassene lokale Testkonten.
+**Deutsch:** Mit V3 ergänzt Hausdepp die Suite als öffentliches drittes Spiel.
+Die Lobby unter `/hausdepp` und die vollständigen Hausregeln unter
+`/hausdepp/regeln` sind ohne Anmeldung erreichbar. Zum Eröffnen, Mitspielen und
+Zuschauen genügt jedes aktive angemeldete Suite-Konto; die frühere
+Founder-Freigabe entfällt. Spieltische unter `/hausdepp/spiel/{id}`, Konto,
+Rangliste und persönliche APIs bleiben an eine gültige Anmeldung gebunden.
+Die sichtbare Veröffentlichung von V3 ist vom Owner freigegeben; die Gestaltung
+wird nach weiteren Spieltests verfeinert. Die gemeinsame Anmeldung kehrt zum
+gewählten Hausdepp-Ziel zurück und verwendet das bestehende Konto.
+Die angemeldete Lobby zeigt Tischstatus und belegte Plätze; ein Wartetisch
+zeigt fehlende Mitspieler und bietet einen teilbaren Tischlink.
 Ein neuer Tisch erhält automatisch einen von 50 Wirtshausnamen mit deinem
 aktuellen Kontonamen, etwa „Manis Gsuff“. Ein Namensfeld ist dafür nicht nötig.
 
@@ -71,13 +74,14 @@ Rundenpunkte und freigeschaltete Erfolge werden genau einmal gespeichert;
 Aufstiegsmeldungen bleiben bis zur Bestätigung erhalten. Bestehende Ergebnisse
 belegen Teilnahme- und Ergebniserfolge; besondere Kartenaktionen benötigen die
 neu erfassten Spielereignisse. Der [vollständige Katalog](docs/HAUSDEPP_ACHIEVEMENTS.md)
-enthält alle Bedingungen, Punkte und Rangschwellen. Die Entwicklung bleibt in 2.x; V3 ist
-für den späteren grossen Release reserviert. Dieser Branch ist kein Deployment.
+enthält alle Bedingungen, Punkte und Rangschwellen. Der öffentliche Start wird
+als gemeinsamer Major-Release **V3.0.0** geführt; die historische Versionsfolge
+bleibt unverändert. Ein Build allein belegt noch keinen erfolgreichen Deploy.
 Der [lokale Prüfbericht vom 16.10.2026](docs/HAUSDEPP_LOCALHOST_TEST_2026-10-16.md)
 hält Regeln, Punkte, Browsernachweise und verbleibende Gerätetests fest.
 Mehrere menschliche Sitze prüft `tests/test_hausdepp_local_multiplayer.py` mit
-zwei echten Konten in einer temporären lokalen Datenbank. Nur dieser isolierte
-Test erweitert die Freigabe; die normal gestartete App bleibt Owner-exklusiv.
+zwei echten Konten in einer temporären lokalen Datenbank. Die aktuelle
+öffentliche Freigabe gilt unabhängig von diesem Test für aktive Konten.
 
 Die private Rangliste unter `/hausdepp/rangliste` zählt Rundensiege: Alle ausser
 dem Hausdepp einer abgeschlossenen Runde erhalten einen Sieg. Gleiche
@@ -89,16 +93,16 @@ damit endet das Turnier sofort. Der Host teilt die nächste Runde aus, der Geber
 wechselt im Uhrzeigersinn. Ein Abbruch lässt bereits abgeschlossene Runden und
 EP bestehen, vergibt aber keine abschliessenden Turniererfolge.
 
-**English:** On `codex/hausdepp-dev`, Hausdepp joins the suite as a third game.
-The first playable milestone includes `/hausdepp`, its own regular table at
-`/hausdepp/spiel/{id}`, the complete house rules at `/hausdepp/regeln` and a
-dedicated account area at `/hausdepp/konto`. **The owner has not accepted the UI
-or UX yet; continued development remains local.**
-The game switcher exposes Hausdepp only to the permanently bound founder/owner
-account. Other administrators, delegated owners and guests cannot access it.
-The existing account is reused. The lobby shows table status and occupied
-seats; a waiting table explains missing players and offers a table link for
-approved local test accounts.
+**English:** V3 adds Hausdepp as the suite's public third game. The lobby at
+`/hausdepp` and full house rules at `/hausdepp/regeln` are available without
+sign-in. Any active signed-in suite account can create, join or watch a table;
+the previous founder-only restriction is removed. Game rooms at
+`/hausdepp/spiel/{id}`, the account, standings and personal APIs still require
+sign-in. The owner approved the visible V3 release; the appearance will
+continue to improve through playtests. Existing shared sign-in returns to the
+chosen Hausdepp destination using the same account. The signed-in lobby shows
+table status and occupied seats; waiting tables explain missing players and
+provide a shareable table link.
 A new table automatically receives one of 50 tavern-style names built around
 your current account name, such as “Mani’s nightcap”; no name field is needed.
 
@@ -141,8 +145,8 @@ Round points and unlocks are stored once; rank-up notices remain pending until
 acknowledged. Existing outcomes can prove participation and outcome achievements;
 detailed card feats require newly recorded gameplay evidence. The
 [complete catalogue](docs/HAUSDEPP_ACHIEVEMENTS.md) records conditions, points and
-thresholds. Development stays within 2.x, with V3 reserved for the
-later major launch. This branch is not a deployment.
+thresholds. The public launch uses the shared major version **V3.0.0** without
+renumbering historical releases. A build alone does not prove deployment.
 The [local verification report dated 2026-10-16](docs/HAUSDEPP_LOCALHOST_TEST_2026-10-16.md)
 records rules, accounting, browser evidence and remaining device checks.
 
@@ -155,8 +159,8 @@ day's Hausdepp and immediately ends the tournament. The host deals the next
 round; the dealer rotates clockwise. Ending a tournament preserves completed
 rounds and XP but grants no final tournament achievements.
 `tests/test_hausdepp_local_multiplayer.py` verifies multiple human seats using
-two real accounts in a temporary local database. Only that isolated test
-extends access; the normally started app remains exclusive to the owner.
+two real accounts in a temporary local database. Public access for active
+accounts is independent of that test.
 
 
 ## The games
@@ -495,25 +499,40 @@ eigenem Symbol und Namen. Der Einstieg nennt das aktuelle Spiel; die Auswahl
 markiert es zusätzlich. Ein Tipp oder `Alt+Shift+Z` öffnet die Auswahl, ein
 weiterer Tipp auf ein Spiel dessen Lobby. Escape schliesst sie. Auf dem Handy
 öffnet sie sich als gut erreichbares Auswahlfenster am unteren Rand.
-Hausdepp bleibt auf den privaten Founder-Zugang beschränkt. Installierte Apps
-behalten beim Wechsel ihren bestehenden Ursprung und Service Worker.
-UI-/UX-Abnahme und ein öffentlicher Rollout stehen weiter aus.
+Hausdepp ist als drittes Spiel für alle sichtbar; Mitspielen erfordert eine
+Anmeldung. Normale Browser öffnen den eigenen Hausdepp-Host, installierte Apps
+behalten beim Wechsel ihren Ursprung und Service Worker.
 
 **English:** The shared game picker shows available games with their own icon
 and name. Its trigger names the current game, which is also marked inside the
 picker. Tap or press `Alt+Shift+Z` to open it, then choose a game's lobby.
 Escape closes the picker. On phones it opens as a reachable bottom sheet.
-Hausdepp remains private to its founder access. Installed apps retain their
-existing origin and service worker when switching. Owner UI/UX acceptance and
-a public rollout remain pending.
+Hausdepp is visible as the third game to everyone; playing requires sign-in.
+Regular browsers use its dedicated host, while installed apps retain their
+origin and service worker when switching.
 
 The [integration matrix](docs/GAME_SWITCHER.md) documents browser and installed
 app destinations, account settings and access boundaries.
 
-The [SEO/GEO verification](docs/SEO_GEO_2026-10-16.md) records canonical public
-pages, structured data, crawler rules and the private Hausdepp boundary. Hausdepp
-account, standings and game URLs remain `noindex, nofollow` and outside sitemaps;
-the reserved hostname is prepared as a private preview, not publicly launched.
+Der öffentliche kanonische Einstieg ist
+**https://hausdepp.zockdiewandan.online/hausdepp**; `/` auf diesem Host leitet
+dorthin weiter. Nur Lobby und Regeln stehen im Hausdepp-Sitemap. Konto,
+Rangliste, Spieltische und APIs bleiben `noindex` beziehungsweise geschützt.
+Strukturierte Daten beschreiben das kostenlose Kartenspiel mit 36 Karten und
+zwei bis sechs Teilnehmern ohne Solomodus und verbinden die drei Spiele als
+Suite. Die zweisprachigen Seiten teilen jeweils eine kanonische URL; es werden
+keine zusätzlichen Sprachseiten oder Bewertungen vorgetäuscht.
+Die unveränderte historische [SEO/GEO-Prüfung](docs/SEO_GEO_2026-10-16.md)
+beschreibt den damaligen privaten Entwicklungsstand.
+
+The canonical public entry is
+**https://hausdepp.zockdiewandan.online/hausdepp**; that host's `/` redirects
+there. Its sitemap includes only the lobby and rules. Account, standings,
+game rooms and APIs remain noindex or protected. The unchanged historical
+[SEO/GEO report](docs/SEO_GEO_2026-10-16.md) describes the preceding private stage.
+Structured data describes the free 36-card game for two to six participants,
+without solo play, and connects the three games as a suite. Each bilingual page
+has one canonical URL, without invented language pages or ratings.
 
 ## Playing together
 
@@ -859,7 +878,11 @@ changes take priority, and active games are not interrupted.
 
 Passkeys are the preferred sign-in choice on supported devices. They use the
 fixed ZDWA origin as the WebAuthn relying party and work across ZDWA and the
-controlled Zilch subdomain. The server stores public credential material only;
+controlled Zilch and Hausdepp production subdomains. Hausdepp keeps shared
+sign-in on its own origin, including in its installed PWA. Only the fixed
+Hausdepp origin is added when it belongs to the configured RP; local development
+retains its existing two trusted origins. Arbitrary origins are never accepted.
+The server stores public credential material only;
 passwords remain a fallback. Add, name or remove passkeys in account settings.
 A password reset signs out every device and removes existing passkeys; enroll
 them again after signing in. An ordinary password change keeps passkeys.
@@ -907,7 +930,12 @@ Passkeys verschwindet er. Erforderliche
 Passwortwechsel haben Vorrang, laufende Spiele bleiben ungestört.
 
 Passkeys sind die bevorzugte Anmeldung auf unterstützten Geräten und gelten
-für ZDWA sowie die kontrollierte Zilch-Subdomain. Der Server speichert nur
+für ZDWA sowie die kontrollierten Zilch- und Hausdepp-Produktionssubdomains.
+Die gemeinsame Hausdepp-Anmeldung bleibt auf ihrem eigenen Ursprung, auch in
+der installierten PWA. Nur der feste Hausdepp-Ursprung wird ergänzt, wenn er
+zur konfigurierten RP-ID gehört; lokale Konfigurationen behalten ihre bisherigen
+zwei vertrauenswürdigen Ursprünge. Beliebige Ursprünge werden nicht zugelassen.
+Der Server speichert nur
 öffentliche Credential-Daten; Passwörter bleiben eine Alternative. Passkeys
 lassen sich in den Kontoeinstellungen hinzufügen, benennen und entfernen.
 Ein Passwort-Reset meldet alle Geräte ab und entfernt bisherige Passkeys;
@@ -1518,13 +1546,18 @@ Chromium und WebKit werden für alle verwendeten Browser-Engines installiert.
 Alle Tests bleiben erhalten. Release-Tags lösen keinen zweiten identischen
 Prüflauf aus.
 
-Backend tests use `pytest-xdist`: pytest automatically selects up to four workers,
+Backend tests use `pytest-xdist`: pytest automatically selects up to six workers,
 keeping tests from the same file together. This applies to Codex, the terminal,
 CI and PyCharm pytest runs through `pyproject.toml`. Install the updated development
 dependencies with `.venv/bin/python -m pip install -r requirements-dev.txt`.
 Use `npm run test:backend -- -n 2` for two workers, or
 `npm run test:backend -- -n 0` for a serial run. For a quick check without coverage,
 run `.venv/bin/python -m pytest tests/test_scoring_logic.py -n 0`.
+
+**Deutsch – Backend-Tests:** pytest verwendet automatisch bis zu sechs Worker
+und führt Tests derselben Datei zusammen aus. Das gilt über `pyproject.toml`
+auch für PyCharm, Terminal und CI. Mit `-n 2` sind es zwei Worker; `-n 0`
+deaktiviert die parallele Ausführung, etwa für einzelne Tests oder Debugging.
 
 In PyCharm, select the project's `.venv/bin/python` interpreter and pytest as the
 default test runner under Python Integrated Tools. You can then right-click

@@ -64,6 +64,9 @@ a { color: inherit; text-underline-offset: 4px; }
 #hausdeppCreateForm > .hd-form-row:first-child { margin-top: 0; }
 .hd-fine { font-size: 13px; line-height: 1.6; color: var(--hd-muted); margin: 12px 0 24px; }
 .hd-create .hd-primary { width: 100%; }
+.hd-onboarding-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.hd-onboarding-actions > a { min-width: 0; min-height: 46px; text-align: center; }
+.hd-profile-button > .hd-icon { color: var(--hd-green); }
 .hd-error, .hd-action-error { color: #7d2224; line-height: 1.5; font-size: 14px; }
 .hd-action-error { color: #ffd1cb; }
 .hd-error:empty, .hd-action-error:empty { display: none; }

@@ -1,4 +1,4 @@
-"""Public discovery stays useful while the card-game preview stays private."""
+"""Public suite discovery exposes evergreen pages and protects personal data."""
 
 from __future__ import annotations
 
@@ -17,10 +17,46 @@ from tests.test_zilch_seo import _PublicDocument
 
 
 class SuiteSearchDiscoveryTests(IsolatedAsyncioTestCase):
+    async def test_hausdepp_schema_states_real_card_rules_and_links_the_three_game_suite(self):
+        lobby_url = f"{HAUSDEPP_ORIGIN}/hausdepp"
+        rules_url = f"{lobby_url}/regeln"
+        expected_games = {f"{SITE_ORIGIN}/", f"{ZILCH_ORIGIN}/", lobby_url}
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=main.app)) as client:
+            for url in expected_games:
+                with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "public"}):
+                    response = await client.get(url)
+                document = _PublicDocument(response.text)
+                nodes = [node for payload in document.structured_data for node in payload.get("@graph", [payload])]
+                game = next(node for node in nodes if node.get("@type") == "VideoGame")
+                suite = game["isPartOf"]
+                self.assertEqual(suite["@type"], "CreativeWorkSeries")
+                self.assertEqual(suite["@id"], f"{SITE_ORIGIN}/#game-suite")
+                self.assertEqual({part["url"] for part in suite["hasPart"]}, expected_games)
+                self.assertEqual({part["@id"] for part in suite["hasPart"]}, {item + "#game" for item in expected_games})
+                self.assertNotIn("aggregateRating", game)
+                self.assertNotIn("review", game)
+                if url == lobby_url:
+                    self.assertEqual(game["numberOfPlayers"], {"@type": "QuantitativeValue", "minValue": 2, "maxValue": 6})
+                    self.assertEqual(game["playMode"], ["https://schema.org/MultiPlayer"])
+                    self.assertTrue(game["isAccessibleForFree"])
+                    self.assertEqual(game["inLanguage"], ["de", "en"])
+                    self.assertEqual(game["gameItem"], {"@type": "Thing", "name": "36 doppeldeutsche Spielkarten",
+                                                       "alternateName": "36 double-headed German playing cards"})
+                    self.assertEqual(document.canonical, lobby_url)
+                    self.assertNotIn("hreflang=", response.text)
+            response = await client.get(rules_url)
+            rules = _PublicDocument(response.text)
+            page = next(node for node in rules.structured_data if node.get("@type") == "WebPage")
+            self.assertEqual(page["url"], rules_url)
+            self.assertEqual(page["about"], {"@id": lobby_url + "#game"})
+            self.assertEqual(page["isPartOf"], {"@id": lobby_url + "#website"})
+            self.assertEqual(page["inLanguage"], ["de", "en"])
+            self.assertNotIn("hreflang=", response.text)
+
     async def test_public_documents_and_ai_search_crawlers_share_the_same_clean_discovery(self):
         with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "public",
                                      "ROLLTHEDICE_SITE_ORIGIN": SITE_ORIGIN}):
-            for origin in (SITE_ORIGIN, ZILCH_ORIGIN):
+            for origin in (SITE_ORIGIN, ZILCH_ORIGIN, HAUSDEPP_ORIGIN):
                 async with httpx.AsyncClient(transport=httpx.ASGITransport(app=main.app), base_url=origin) as client:
                     robots = RobotFileParser()
                     robots.parse((await client.get("/robots.txt")).text.splitlines())
@@ -34,13 +70,13 @@ class SuiteSearchDiscoveryTests(IsolatedAsyncioTestCase):
                         for agent in ("Googlebot", "bingbot", "OAI-SearchBot", "GPTBot"):
                             self.assertTrue(robots.can_fetch(agent, page.canonical_url))
                             self.assertFalse(robots.can_fetch(agent, f"{origin}/api/hausdepp/account"))
-                        self.assertNotIn("Hausdepp", document.meta.get("description", ""))
+                        self.assertEqual("Hausdepp" in document.meta.get("description", ""), origin == HAUSDEPP_ORIGIN)
                         for link in document.links:
                             self.assertNotIn("nofollow", link.get("rel", "").split())
                     sitemap = ElementTree.fromstring((await client.get("/sitemap.xml")).text)
                     locations = [node.text for node in sitemap.findall(".//{*}loc")]
                     self.assertEqual(set(locations), {page.canonical_url for page in PUBLIC_SEO_PAGES if page.origin == origin})
-                    self.assertTrue(all("hausdepp" not in value for value in locations))
+                    self.assertTrue(all(value.startswith(origin) for value in locations))
 
     async def test_homepages_and_rules_have_truthful_structured_data_without_fabricated_ratings(self):
         with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": "public"}):
@@ -59,7 +95,7 @@ class SuiteSearchDiscoveryTests(IsolatedAsyncioTestCase):
                     self.assertTrue(any(node.get("@type") == "WebPage" and node["url"] == f"{origin}/regeln"
                                         for node in rules.structured_data))
 
-    async def test_reserved_hausdepp_host_has_no_indexable_alias_and_an_empty_linked_sitemap(self):
+    async def test_public_hausdepp_host_exposes_only_its_two_canonical_documents(self):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=main.app), base_url=HAUSDEPP_ORIGIN) as client:
             robots_response = await client.get("/robots.txt")
             self.assertIn(f"Sitemap: {HAUSDEPP_ORIGIN}/sitemap.xml", robots_response.text)
@@ -68,12 +104,12 @@ class SuiteSearchDiscoveryTests(IsolatedAsyncioTestCase):
             self.assertTrue(robots.can_fetch("Googlebot", f"{HAUSDEPP_ORIGIN}/hausdepp"))
             self.assertFalse(robots.can_fetch("OAI-SearchBot", f"{HAUSDEPP_ORIGIN}/api/hausdepp/account"))
             sitemap = ElementTree.fromstring((await client.get("/sitemap.xml")).text)
-            self.assertEqual(sitemap.findall(".//{*}loc"), [])
+            self.assertEqual({node.text for node in sitemap.findall(".//{*}loc")}, {f"{HAUSDEPP_ORIGIN}/hausdepp", f"{HAUSDEPP_ORIGIN}/hausdepp/regeln"})
             root = await client.get("/")
             self.assertEqual(root.status_code, 308)
             self.assertEqual(root.headers["location"], "/hausdepp")
             self.assertEqual(root.headers["x-robots-tag"], "noindex, nofollow")
-            for path in ("/hausdepp", "/hausdepp/regeln", "/hausdepp/konto", "/hausdepp/rangliste",
+            for path in ("/hausdepp/konto", "/hausdepp/rangliste",
                          "/hausdepp/spiel/private-table", "/api/hausdepp/leaderboard"):
                 response = await client.get(path)
                 self.assertEqual(response.headers["x-robots-tag"], "noindex, nofollow")

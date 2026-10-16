@@ -10,7 +10,6 @@ from sqlalchemy import update
 from .analytics import MAX_BODY_BYTES, dashboard_stats, enqueue_batch, normalize_batch
 from .auth import require_admin, require_csrf, require_user
 from .database import session_scope
-from .game_access import can_access_hausdepp
 from .models import User
 from .ownership import ownership_flags, require_owner
 from .proxy_headers import trusted_cloudflare_peer
@@ -81,7 +80,8 @@ async def analytics_events(request: Request):
 def analytics_dashboard(request: Request, response: Response, days: int = Query(default=7),
                         game: str = Query(default="all", max_length=16)):
     identity = require_analytics(request)
-    include_hausdepp = can_access_hausdepp(identity)
+    # Public game access never grants the private Mission Control dataset.
+    include_hausdepp = bool(identity.is_founder)
     if game not in {"all", "zdwa", "zilch", "hausdepp"}:
         raise HTTPException(status_code=422, detail="analytics_invalid_filter")
     if game == "hausdepp" and not include_hausdepp:

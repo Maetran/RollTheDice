@@ -1,4 +1,4 @@
-"""Private preview release metadata never widens the existing product audience.
+"""Public release metadata keeps account acknowledgements and push consent private.
 
 Every account, release row and subscription below lives in a temporary SQLite
 fixture. External push sending is mocked and no real account is used.
@@ -72,37 +72,29 @@ class HausdeppReleasePrivacyTests(unittest.TestCase):
     def history(self, request, game="hausdepp", language="de"):
         return release_history(request, Response(), game_type=game, language=language)
 
-    def test_manifest_accepts_isolated_hausdepp_and_rejects_mixed_preview_audiences(self):
+    def test_manifest_accepts_hausdepp_and_shared_public_suite_announcements(self):
         self.assertEqual(self.notice.games, ("hausdepp",))
         self.assertEqual(self.notice.payload()["games"], ["hausdepp"])
         for games in (["hausdepp", "zdwa"], ["zilch", "hausdepp"], ["hausdepp", "zdwa", "zilch"]):
-            with self.assertRaisesRegex(ValueError, "Private Hausdepp"):
-                ReleaseNotice.from_payload({**NOTES, "games": games})
+            self.assertEqual(set(ReleaseNotice.from_payload({**NOTES, "games": games}).games), set(games))
 
-    def test_only_bound_founder_can_read_and_acknowledge_private_release(self):
+    def test_public_release_history_is_readable_but_acknowledgement_is_account_owned(self):
         self.assertEqual(publish_release_notice(self.notice, now=self.now), 0)
-        founder_request = self.requests[self.founder.id]
-        response = Response()
-        history = release_history(founder_request, response, game_type="hausdepp", language="en")
-        self.assertEqual(response.headers["Cache-Control"], "no-store")
-        self.assertEqual(history["releases"][0]["title"], NOTES["player_notes"]["en"]["title"])
-        self.assertEqual(acknowledge_release(
-            self.notice.revision, AcknowledgeReleaseRequest(viewer_id=self.founder.id), founder_request, Response(),
-            game_type="hausdepp",
-        )["ok"], True)
-        self.assertTrue(self.history(founder_request)["releases"][0]["acknowledged"])
-        for user in (self.owner, self.admin, self.player):
+        for user in (self.founder, self.owner, self.admin, self.player):
             request = self.requests[user.id]
-            with self.assertRaises(HTTPException) as denied:
-                self.history(request)
-            self.assertEqual(denied.exception.status_code, 403)
-            with self.assertRaises(HTTPException) as denied:
-                acknowledge_release(self.notice.revision, AcknowledgeReleaseRequest(viewer_id=user.id),
-                                    request, Response(), game_type="hausdepp")
-            self.assertEqual(denied.exception.status_code, 403)
+            history = self.history(request, language="en")
+            self.assertEqual(history["viewer_id"], user.id)
+            self.assertEqual(history["releases"][0]["title"], NOTES["player_notes"]["en"]["title"])
+            self.assertTrue(acknowledge_release(self.notice.revision, AcknowledgeReleaseRequest(viewer_id=user.id),
+                                               request, Response(), game_type="hausdepp")["ok"])
+            self.assertTrue(self.history(request)["releases"][0]["acknowledged"])
+        anonymous = self.history(request_for())
+        self.assertIsNone(anonymous["viewer_id"])
+        self.assertFalse(anonymous["releases"][0]["acknowledged"])
         with self.assertRaises(HTTPException) as denied:
-            self.history(request_for())
-        self.assertEqual(denied.exception.status_code, 403)
+            acknowledge_release(self.notice.revision, AcknowledgeReleaseRequest(viewer_id=self.player.id),
+                                request_for(), Response(), game_type="hausdepp")
+        self.assertEqual(denied.exception.status_code, 401)
 
     def test_private_notice_is_absent_from_both_existing_game_histories_and_ack_paths(self):
         publish_release_notice(self.notice, now=self.now)
@@ -116,7 +108,7 @@ class HausdeppReleasePrivacyTests(unittest.TestCase):
                                         self.requests[user.id], Response(), game_type=game)
                 self.assertEqual(denied.exception.status_code, 404)
 
-    def test_legacy_mixed_row_cannot_bypass_founder_access_through_existing_game(self):
+    def test_public_mixed_notice_is_available_in_each_target_product_without_private_account_receipts(self):
         # Defend readers even if an older/manual writer bypassed the manifest.
         with session_scope() as db:
             db.add(PushRelease(
@@ -126,14 +118,12 @@ class HausdeppReleasePrivacyTests(unittest.TestCase):
             ))
         for request in (request_for(), *(self.requests[user.id] for user in (self.owner, self.admin, self.player))):
             for game in ("zdwa", "zilch"):
-                self.assertEqual(self.history(request, game=game)["releases"], [])
+                self.assertEqual(len(self.history(request, game=game)["releases"]), 1)
         for game in ("zdwa", "zilch"):
-            with self.assertRaises(HTTPException) as denied:
-                acknowledge_release("b" * 40, AcknowledgeReleaseRequest(viewer_id=self.player.id),
-                                    self.requests[self.player.id], Response(), game_type=game)
-            self.assertEqual(denied.exception.status_code, 404)
+            self.assertTrue(acknowledge_release("b" * 40, AcknowledgeReleaseRequest(viewer_id=self.player.id),
+                                               self.requests[self.player.id], Response(), game_type=game)["ok"])
 
-    def test_existing_opted_in_zdwa_and_zilch_devices_receive_no_private_preview_release(self):
+    def test_house_only_notice_does_not_target_devices_registered_only_for_other_products(self):
         with session_scope() as db:
             for user in (self.founder, self.owner, self.admin, self.player):
                 db.get(User, user.id).release_push_enabled = True
@@ -152,6 +142,43 @@ class HausdeppReleasePrivacyTests(unittest.TestCase):
         with session_scope() as db:
             self.assertEqual(list(db.scalars(select(PushReleaseRecipient))), [])
             self.assertIsNotNone(db.get(PushRelease, self.notice.revision))
+
+    def test_shared_v3_fanfare_reaches_each_opted_in_account_once_with_its_house_device(self):
+        notes = {"de": {"title": "Töröö! Der Hausdepp ist da.", "changes": ["Hausdepp ist für alle Konten da."]},
+                 "en": {"title": "Ta-da! Hausdepp has arrived.", "changes": ["Hausdepp is open to every account."]}}
+        notice = ReleaseNotice.from_payload({**NOTES, "games": ["zdwa", "zilch", "hausdepp"], "player_notes": notes})
+        with session_scope() as db:
+            for user in (self.founder, self.owner, self.admin, self.player):
+                db.get(User, user.id).release_push_enabled = True
+                db.get(User, user.id).preferred_language = "en" if user.id == self.player.id else "de"
+                for context in ("zdwa", "zilch", "hausdepp"):
+                    db.add(WebPushSubscription(user_id=user.id, endpoint=f"https://fixture.invalid/{user.id}/{context}",
+                                              p256dh="fixture-key", auth="fixture-auth", product_context=context,
+                                              created_at=self.now, updated_at=self.now))
+        with patch.object(release_push, "_send_web_push", return_value=(True, False)) as send, patch.object(
+                release_push, "web_push_available", return_value=True):
+            self.assertEqual(publish_release_notice(notice, now=self.now), 4)
+            self.assertEqual(publish_release_notice(notice, now=self.now), 0)
+            self.assertEqual(asyncio.run(dispatch_release_notifications(now=self.now)), 4)
+            self.assertEqual(asyncio.run(dispatch_release_notifications(now=self.now)), 0)
+            self.assertEqual(send.call_count, 4)
+            accounts = set()
+            for call in send.call_args_list:
+                subscription, payload = call.args
+                accounts.add(subscription.user_id)
+                self.assertEqual(subscription.product_context, "hausdepp")
+                self.assertEqual(payload["url"], "/hausdepp")
+                self.assertEqual(payload["icon"], "/static/icons/hausdepp-icon-192.png")
+                self.assertEqual(payload["title"], notes[subscription.preferred_language]["title"])
+            self.assertEqual(accounts, {self.founder.id, self.owner.id, self.admin.id, self.player.id})
+
+    def test_legacy_notification_title_falls_back_without_inventing_player_notes(self):
+        release = PushRelease(revision="f" * 40, summary_de="Stabiler", summary_en="More stable")
+        for invalid in (None, "broken-json", "[]", '{"en":{"title":false}}', '{"en":{"title":"bad\\ntext"}}'):
+            release.player_notes_json = invalid
+            payload = release_push.release_notification_payload(release, "hausdepp", "en")
+            self.assertEqual(payload["title"], "Hausdepp: Update available")
+            self.assertEqual(payload["body"], "More stable")
 
 
 if __name__ == "__main__":

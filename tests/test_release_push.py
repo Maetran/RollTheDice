@@ -147,7 +147,7 @@ class ReleasePushTestCase(unittest.TestCase):
             send.assert_called_once()
             payload = send.call_args.args[1]
             self.assertEqual(payload["body"], NOTES["summary_en"])
-            self.assertEqual(payload["title"], "ZDWA: Update available")
+            self.assertEqual(payload["title"], "Play together")
             self.assertTrue(payload["url"].endswith("/"))
             self.assertNotIn("/spiel/", payload["url"])
             self.assertEqual(payload["tag"], f"app-release-{REVISION}")

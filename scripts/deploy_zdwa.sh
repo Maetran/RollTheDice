@@ -7,9 +7,14 @@ REPO_MATCH="${REPO_MATCH:-Maetran/RollTheDice}"
 BRANCH="${BRANCH:-master}"
 SILENT_RELEASE="${SILENT_RELEASE:-0}"
 FOUNDER_USER_ID="${FOUNDER_USER_ID:-}"
+ACTIVATE_HAUSDEPP="${ACTIVATE_HAUSDEPP:-0}"
 
 if [[ "$SILENT_RELEASE" != "0" && "$SILENT_RELEASE" != "1" ]]; then
   echo "SILENT_RELEASE must be 0 or 1" >&2
+  exit 2
+fi
+if [[ "$ACTIVATE_HAUSDEPP" != "0" && "$ACTIVATE_HAUSDEPP" != "1" ]]; then
+  echo "ACTIVATE_HAUSDEPP must be 0 or 1" >&2
   exit 2
 fi
 
@@ -48,13 +53,14 @@ fi
 
 printf 'Deploy target: %s:%s\n' "$REMOTE" "$REMOTE_DIR"
 
-remote_env="REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") BRANCH=$(printf '%q' "$BRANCH") SILENT_RELEASE=$(printf '%q' "$SILENT_RELEASE") FOUNDER_USER_ID=$(printf '%q' "$FOUNDER_USER_ID")"
+remote_env="REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") BRANCH=$(printf '%q' "$BRANCH") SILENT_RELEASE=$(printf '%q' "$SILENT_RELEASE") FOUNDER_USER_ID=$(printf '%q' "$FOUNDER_USER_ID") ACTIVATE_HAUSDEPP=$(printf '%q' "$ACTIVATE_HAUSDEPP")"
 ssh "$REMOTE" "$remote_env bash -s" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
 cd "$REMOTE_DIR"
 SILENT_RELEASE="${SILENT_RELEASE:-0}"
 FOUNDER_USER_ID="${FOUNDER_USER_ID:-}"
+ACTIVATE_HAUSDEPP="${ACTIVATE_HAUSDEPP:-0}"
 
 compose() {
   if [[ -n "$FOUNDER_USER_ID" ]]; then
@@ -136,6 +142,10 @@ else
 fi
 
 echo "== Docker deploy =="
+if [[ "$ACTIVATE_HAUSDEPP" == "1" ]]; then
+  echo "== Explicit first Hausdepp TLS activation =="
+  APPLY=1 bash scripts/activate_hausdepp.sh
+fi
 compose up -d --build
 compose ps
 
@@ -145,6 +155,12 @@ if command -v curl >/dev/null 2>&1; then
     -fsS http://127.0.0.1:8000/api/health >/dev/null
   echo "local app and database ready"
 fi
+
+echo "== Public product readiness =="
+# Real DNS, Cloudflare and certificate validation must succeed for every
+# product before a new release reaches the outbox. Local health alone cannot
+# detect an unknown SNI host, stale frontend, private lobby or broken sitemap.
+python3 scripts/verify_public_release.py
 
 echo "== Release notification =="
 # No public trigger and no startup broadcast: only a healthy deployment

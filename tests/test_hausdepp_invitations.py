@@ -12,6 +12,7 @@ from app import main, web_push
 from app.auth import create_user, login
 from app.database import session_scope
 from app.hausdepp_state import configure_hausdepp_game, join_hausdepp_player, new_hausdepp_game
+from app.models import User
 from app.ownership import bind_founder
 from app.web_push import (
     WebPushPreferencesRequest,
@@ -61,10 +62,12 @@ class HausdeppInvitationTests(unittest.TestCase):
         # exactly the two fixture accounts. It creates no runtime allowlist.
         return patch.object(web_push, "_hausdepp_push_account_ids", return_value={self.founder.id, self.friend.id})
 
-    def test_real_founder_only_policy_has_no_eligible_other_account_and_denies_sender_before_subscription_lookup(self):
-        self.assertEqual(game_invite_push_recipients(self.game, sender_user_id=self.founder.id), [])
+    def test_public_active_accounts_are_eligible_and_disabled_sender_is_rejected_before_subscription_lookup(self):
+        self.assertEqual({row.user_id for row in game_invite_push_recipients(self.game, sender_user_id=self.founder.id)}, {self.friend.id, self.stranger.id})
         self.game["_players"].append({"id": "other", "name": "Other", "user_id": self.stranger.id})
         self.game["_expected_connections"] = 3
+        with session_scope() as db:
+            db.get(User, self.stranger.id).is_active = False
         with patch.object(web_push, "invitation_sender_allowed", side_effect=AssertionError("subscription query must not run")):
             self.assertEqual(game_invite_push_recipients(self.game, sender_user_id=self.stranger.id), [])
         self.assertEqual(game_invite_push_recipients(self.game), [])
@@ -76,11 +79,15 @@ class HausdeppInvitationTests(unittest.TestCase):
             self.assertEqual([row.user_id for row in recipients], [self.friend.id])
             result = asyncio.run(dispatch_game_invite_push(self.game, recipients, sender_user_id=self.founder.id))
             self.assertEqual((result.attempted, result.accepted), (1, 1))
-        # Revocation after the snapshot cannot leak a private invitation.
+        # Fresh durable deactivation after the recipient snapshot blocks dispatch.
+        with session_scope() as db:
+            db.get(User, self.friend.id).is_active = False
         result = asyncio.run(dispatch_game_invite_push(self.game, recipients, sender_user_id=self.founder.id))
         self.assertEqual(result.attempted, 0)
         self.send.assert_called_once()
         self.send.reset_mock()
+        with session_scope() as db:
+            db.get(User, self.friend.id).is_active = True
         with patch.object(web_push, "_hausdepp_push_account_ids", return_value={self.friend.id}):
             result = asyncio.run(dispatch_game_invite_push(self.game, recipients, sender_user_id=self.founder.id))
             self.assertEqual(result.attempted, 0)
@@ -142,7 +149,9 @@ class HausdeppInvitationTests(unittest.TestCase):
                     self.assertNotIn("ZDWA", payload["body"])
                     self.assertNotIn("Zilch", payload["body"])
 
-    def test_empty_private_attempt_consumes_account_barrier_and_exposes_no_recipient_data(self):
+    def test_empty_attempt_consumes_account_barrier_and_exposes_no_recipient_data(self):
+        for user in (self.friend, self.stranger):
+            update_web_push_preferences(user.id, WebPushPreferencesRequest(game_invites_enabled=False, daily_reminder_enabled=False))
         result = asyncio.run(main.api_game_notify_open_seat(self.game["_id"], self.request))
         self.assertEqual(result, {"ok": True, "notified": False, "retry_after_seconds": 60})
         self.send.assert_not_called()
@@ -166,7 +175,7 @@ class HausdeppInvitationTests(unittest.TestCase):
         with patch.object(main, "claim_game_invite_push", side_effect=AssertionError("no claim before product access")):
             with self.assertRaises(HTTPException) as denied:
                 asyncio.run(main.api_game_notify_open_seat(self.game["_id"], request_for(token=token, csrf=outsider.csrf_token)))
-        self.assertEqual(denied.exception.status_code, 404)
+        self.assertEqual(denied.exception.status_code, 403)
         self.send.assert_called_once()
 
     def test_csrf_and_reassigned_device_do_not_bypass_private_scope(self):

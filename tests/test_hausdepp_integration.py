@@ -92,29 +92,24 @@ class HausdeppIntegrationTests(unittest.TestCase):
                 game["_hausdepp"] = apply_action(state, state["current_player_id"], "peek", version=state["version"])
         return game
 
-    def test_only_bound_founder_can_create_discover_and_read(self):
+    def test_signed_in_accounts_can_create_discover_and_read_public_game_metadata(self):
         self.assertTrue(can_access_hausdepp(self.identity))
         req = main.CreateReq(name="Hausdepp", mode="2", game_type="hausdepp")
         created = asyncio.run(main.api_games_create(req, self.request))
         game_id = created["game_id"]
         self.assertEqual(games[game_id]["_expected_connections"], 1)
         self.assertEqual(games[game_id]["_participants"][0]["type"], "cpu")
-        self.assertEqual(len(asyncio.run(main.api_games(self.request, "hausdepp"))["games"]), 1)
         for account in (self.owner, self.admin, self.player):
             identity, token = login(request_for(), account.username, "secure-password-123")
             request = request_for(cookie=f"rollthedice_session={token}", csrf=identity.csrf_token)
-            self.assertFalse(can_access_hausdepp(identity))
-            self.assertEqual(asyncio.run(main.api_games(request, "hausdepp"))["games"], [])
-            with self.assertRaises(HTTPException) as denied:
-                asyncio.run(main.api_games_create(req, request))
-            self.assertEqual(denied.exception.status_code, 403)
-            with self.assertRaises(HTTPException) as hidden:
-                main.game_info(game_id, request)
-            self.assertEqual(hidden.exception.status_code, 404)
+            self.assertTrue(can_access_hausdepp(identity))
+            self.assertTrue(asyncio.run(main.api_games(request, "hausdepp"))["games"])
+            own = asyncio.run(main.api_games_create(req, request))
+            self.assertEqual(games[own["game_id"]]["_hausdepp_host_user_id"], account.id)
+            metadata = main.game_info(game_id, request)
+            self.assertTrue(metadata["exists"])
+            self.assertNotIn("_hausdepp", metadata)
         self.assertFalse(can_access_hausdepp(None))
-        self.assertEqual(asyncio.run(main.api_games(request_for(), "hausdepp"))["games"], [])
-        with self.assertRaises(HTTPException):
-            asyncio.run(main.api_games_create(req, request_for()))
 
     def test_player_counts_and_game_action_isolation(self):
         for count in range(2, 7):
@@ -379,7 +374,7 @@ class HausdeppIntegrationTests(unittest.TestCase):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 200, path)
                 self.assertEqual(response.headers["cache-control"], "no-store")
-                self.assertIn("noindex", response.headers["x-robots-tag"])
+                self.assertEqual("noindex" in response.headers.get("x-robots-tag", ""), path not in {"/hausdepp", "/hausdepp/regeln"})
             account = client.get("/hausdepp/konto", follow_redirects=False)
             self.assertEqual(account.status_code, 200)
             self.assertIn('data-page="account"', account.text)
@@ -457,13 +452,14 @@ class HausdeppIntegrationTests(unittest.TestCase):
                 await stop_cpu_runners()
         asyncio.run(scenario())
 
-    def test_guest_and_other_accounts_cannot_open_house_pages_or_socket(self):
+    def test_guest_is_limited_to_public_documents_and_signed_in_spectators_keep_cards_private(self):
         game = self.game()
+        save_active_game(game)
         with TestClient(main.app) as client:
             guest_page = client.get("/hausdepp", follow_redirects=False)
-            self.assertEqual(guest_page.status_code, 303)
+            self.assertEqual(guest_page.status_code, 200)
             self.assertEqual(guest_page.headers["cache-control"], "no-store")
-            self.assertIn("noindex", guest_page.headers["x-robots-tag"])
+            self.assertNotIn("noindex", guest_page.headers.get("x-robots-tag", ""))
             guest_account = client.get("/hausdepp/konto", follow_redirects=False)
             self.assertEqual(guest_account.status_code, 303)
             self.assertIn("return_to=%2Fhausdepp%2Fkonto", guest_account.headers["location"])
@@ -476,13 +472,18 @@ class HausdeppIntegrationTests(unittest.TestCase):
                 _identity, token = login(request_for(), account.username, "secure-password-123")
                 client.cookies.set("rollthedice_session", token)
                 for path in ("/hausdepp", "/hausdepp/regeln", "/hausdepp/konto", f"/hausdepp/spiel/{game['_id']}"):
-                    self.assertEqual(client.get(path).status_code, 403)
-                self.assertEqual(client.get("/api/hausdepp/results").status_code, 403)
-                self.assertEqual(client.get("/api/hausdepp/account").status_code, 403)
-                with self.assertRaises(WebSocketDisconnect) as denied:
-                    with client.websocket_connect(f"/ws/{game['_id']}"):
-                        self.fail("Other accounts must not receive a frame")
-                self.assertEqual(denied.exception.code, 1008)
+                    self.assertEqual(client.get(path).status_code, 200)
+                self.assertEqual(client.get("/api/hausdepp/results").json(), {"results": []})
+                self.assertEqual(client.get("/api/hausdepp/account").status_code, 200)
+                with client.websocket_connect(f"/ws/{game['_id']}") as socket:
+                    socket.send_json({"action": "spectate_game", "name": account.username})
+                    message = socket.receive_json()
+                    while "scoreboard" not in message:
+                        message = socket.receive_json()
+                    projected = message["scoreboard"]["_hausdepp"]
+                    self.assertEqual(projected["hand"], [])
+                    self.assertEqual(projected["private_peek"], [])
+                    self.assertNotIn("deck", projected)
             for path in ("/static/hausdepp.html", "/static/hausdepp-lobby.html", "/static/hausdepp-rules.html",
                          "/static/hausdepp-account.html"):
                 self.assertEqual(client.get(path).status_code, 404)

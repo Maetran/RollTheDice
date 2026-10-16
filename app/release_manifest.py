@@ -54,8 +54,6 @@ class ReleaseNotice:
         games = payload.get("games")
         if not isinstance(games, list) or not games or any(game not in ("zdwa", "zilch", "hausdepp") for game in games):
             raise ValueError("Release games must contain zdwa, zilch and/or hausdepp")
-        if "hausdepp" in games and any(game != "hausdepp" for game in games):
-            raise ValueError("Private Hausdepp preview releases must not target other games")
         summaries = (STABILITY_DE, STABILITY_EN) if kind == "backend" else (
             payload.get("summary_de"), payload.get("summary_en"),
         )

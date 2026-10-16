@@ -95,7 +95,7 @@ for (const language of ['de', 'en']) {
     const targets = await page.locator('main a[href^="#"]').evaluateAll(links => links.map(link => link.hash.slice(1)));
     expect(targets.length).toBeGreaterThan(3);
     for (const id of targets) await expect(page.locator(`[id="${id}"]`)).toHaveCount(1);
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /^index, follow$/);
   });
 }
 
@@ -112,7 +112,7 @@ test('account load failure recovers through its visible retry action', async ({ 
   await expect(page.locator('#hausdeppHistoryMore')).toBeHidden();
 });
 
-test('suite switch reaches ZDWA and returns to the private Hausdepp lobby', async ({ page }) => {
+test('suite switch reaches ZDWA and returns to the public Hausdepp lobby', async ({ page }) => {
   await owner(page);
   await page.goto('/hausdepp/konto');
   await page.locator('[data-game-switch]').click();

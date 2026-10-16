@@ -83,14 +83,19 @@ def can_access_zilch_preview(identity: AuthIdentity | None) -> bool:
     return can_account_access_zilch(username=identity.username, role=identity.role)
 
 
-def can_account_access_hausdepp(*, is_admin: bool, is_founder: bool) -> bool:
-    """Apply the same fixed owner policy to fresh account facts without a session."""
-    return bool(is_admin and is_founder)
+def can_account_access_hausdepp(*, is_admin: bool = False, is_founder: bool = False) -> bool:
+    """Every active account may play; callers validate durable account activity.
+
+    The keyword arguments remain compatible with existing account-based push
+    callers, but a staff or ownership role no longer changes the audience.
+    """
+    del is_admin, is_founder
+    return True
 
 
 def can_access_hausdepp(identity: AuthIdentity | None) -> bool:
-    """Only the account-ID-bound permanent founder can use this preview."""
-    return bool(identity and can_account_access_hausdepp(is_admin=identity.is_admin, is_founder=identity.is_founder))
+    """Playing and personal data require a freshly resolved signed-in account."""
+    return identity is not None
 
 
 def can_access_game(identity: AuthIdentity | None, game: dict) -> bool:
@@ -115,6 +120,7 @@ def public_game_access_payload(identity: AuthIdentity | None) -> dict[str, bool]
     """
     return {
         "hausdepp_preview": can_access_hausdepp(identity),
+        "hausdepp_public": True,
         "zilch_preview": can_access_zilch_preview(identity),
         "zilch_public": configured_zilch_access_mode() == ZILCH_ACCESS_MODE_PUBLIC,
     }

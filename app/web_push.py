@@ -25,10 +25,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, delete, or_, select, update
 
 from .database import session_scope
-from .game_access import can_account_access_hausdepp, can_account_access_zilch
+from .game_access import can_account_access_zilch
 from .game_activity import PLAY_DAY_TIMEZONE
 from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
-from .models import AccountOwnership, PushInviteAllowedSender, User, WebPushSubscription
+from .models import PushInviteAllowedSender, User, WebPushSubscription
 from .product_hosts import site_origin, zilch_url
 from .security import as_utc, normalize_username, utcnow
 
@@ -92,6 +92,9 @@ class WebPushSubscriptionKeys(BaseModel):
 class WebPushSubscriptionRequest(BaseModel):
     endpoint: str = Field(min_length=1, max_length=_MAX_ENDPOINT_LENGTH)
     keys: WebPushSubscriptionKeys
+    # Installed apps can register from shared settings on another product's
+    # path. This is device presentation metadata, never an access capability.
+    product_context: Literal["zdwa", "zilch", "hausdepp"] | None = None
 
 
 class WebPushPreferencesRequest(BaseModel):
@@ -243,7 +246,7 @@ def save_web_push_subscription(
     if not web_push_available():
         raise RuntimeError("web_push_unavailable")
     endpoint, p256dh, auth = _validated_subscription(payload)
-    context = ZILCH_GAME_TYPE if product_context == ZILCH_GAME_TYPE else DEFAULT_GAME_TYPE
+    context = product_context if product_context in {ZILCH_GAME_TYPE, HAUSDEPP_GAME_TYPE} else DEFAULT_GAME_TYPE
     now = utcnow()
     with session_scope() as db:
         user = db.get(User, user_id)
@@ -551,12 +554,8 @@ def invitation_sender_allowed(sender_user_id: int | None):
 
 
 def _hausdepp_push_account_ids(db) -> set[int]:
-    """Read the preview cohort before looking up any subscription capabilities."""
-    rows = db.execute(select(User.id, User.role, AccountOwnership.is_founder).join(
-        AccountOwnership, AccountOwnership.user_id == User.id,
-    ).where(User.is_active.is_(True), AccountOwnership.is_founder.is_(True)))
-    return {user_id for user_id, role, founder in rows
-            if can_account_access_hausdepp(is_admin=role == "admin", is_founder=founder)}
+    """Validate active accounts before reading subscription capabilities."""
+    return set(db.scalars(select(User.id).where(User.is_active.is_(True))))
 
 
 def game_invite_push_recipients(game: dict, *, sender_user_id: int | None = None) -> list[StoredSubscription]:

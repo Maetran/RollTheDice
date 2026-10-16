@@ -76,7 +76,7 @@ def claim_daily_reminder(user_id: int, now: datetime) -> DailyReminder | None:
         subscriptions = db.scalars(
             select(WebPushSubscription).where(WebPushSubscription.user_id == user_id).order_by(WebPushSubscription.id)
         ).all()
-        subscriptions = [subscription for subscription in subscriptions if (
+        subscriptions = [subscription for subscription in subscriptions if subscription.product_context in REMINDER_COPY and (
             subscription.product_context != ZILCH_GAME_TYPE
             or can_account_access_zilch(username=user.username, role=user.role)
         )]

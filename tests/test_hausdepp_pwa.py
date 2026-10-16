@@ -1,4 +1,4 @@
-"""Founder-bound installation with an isolated, network-only worker."""
+"""Public installation with an isolated, network-only worker."""
 
 from __future__ import annotations
 
@@ -44,11 +44,11 @@ class HausdeppPwaTests(unittest.IsolatedAsyncioTestCase):
         configure_database(main.DATA_DIR)
         self.temp.cleanup()
 
-    async def test_only_founder_can_fetch_installation_resources_on_each_supported_host(self):
+    async def test_public_installation_resources_work_on_each_supported_host(self):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=main.app)) as client:
             for host in ("http://localhost", "https://zockdiewandan.online", "https://zilch.zockdiewandan.online", "https://hausdepp.zockdiewandan.online"):
                 for path in ("/hausdepp-manifest.webmanifest", "/hausdepp-manifest-en.webmanifest", "/hausdepp-sw.js"):
-                    for label, status in ((None, 401), ("owner", 403), ("admin", 403), ("player", 403), ("founder", 200)):
+                    for label, status in ((None, 200), ("owner", 200), ("admin", 200), ("player", 200), ("founder", 200)):
                         with self.subTest(host=host, path=path, identity=label):
                             headers = {"Cookie": f"rollthedice_session={self.tokens[label]}"} if label else {}
                             response = await client.get(host + path, headers=headers)
@@ -75,10 +75,10 @@ class HausdeppPwaTests(unittest.IsolatedAsyncioTestCase):
                 for icon in manifest["icons"]:
                     self.assertIn("/static/icons/hausdepp-icon-", icon["src"])
 
-    async def test_future_dedicated_host_bridge_keeps_founder_guard_and_housedepp_manifest(self):
+    async def test_dedicated_host_bridge_keeps_noindex_and_hausdepp_manifest(self):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=main.app)) as client:
             for path in ("/zdwa", "/zdwa/regeln", "/zdwa/konto"):
-                for label, expected in ((None, 401), ("admin", 403), ("founder", 200)):
+                for label, expected in ((None, 200), ("admin", 200), ("founder", 200)):
                     headers = {"Cookie": f"rollthedice_session={self.tokens[label]}"} if label else {}
                     response = await client.get(f"https://hausdepp.zockdiewandan.online{path}", headers=headers)
                     self.assertEqual(response.status_code, expected)
@@ -100,7 +100,7 @@ class HausdeppPwaTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn('/static/icons/hausdepp-icon-32.png?', html)
             self.assertIn('/static/icons/hausdepp-apple-touch-icon-180.png?', html)
             self.assertIn('name="apple-mobile-web-app-title" content="Hausdepp"', html)
-            self.assertIn('name="robots" content="noindex', html)
+            self.assertEqual('name="robots" content="noindex' in html, filename not in {"hausdepp-lobby.html", "hausdepp-rules.html"})
 
     async def test_dedicated_host_favicon_uses_the_heart_ten_without_changing_suite_icons(self):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=main.app)) as client:

@@ -2209,7 +2209,7 @@ function zilchAccountSettingsMarkup(username) {
     ? `<p id="zilchPasswordHint" class="zilch-muted">${escapeHtml(t("Das temporäre Passwort muss jetzt geändert werden."))}</p>`
     : "";
   return `<div class="zilch-account-settings-grid">
-    <p class="account-settings-intro">${escapeHtml(t("Ein Konto für ZDWA und Zilch. Profil, Anmeldung und Hinweise gelten für beide Spiele."))}</p>
+    <p class="account-settings-intro">${escapeHtml(t("Ein Konto für ZDWA, Zilch und Hausdepp. Profil, Anmeldung und Hinweise gelten für alle drei Spiele."))}</p>
     <details class="account-settings-group" data-account-section="access" open><summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">${escapeHtml(t("Profil & Zugang"))}</span><span class="account-settings-group__description">${escapeHtml(t("Passkeys, Profil und Passwort"))}</span></h2></summary><div class="account-settings-group__body"><section class="account-settings-block" aria-labelledby="passkeySettingsTitle" data-passkey-section hidden>
       <h3 id="passkeySettingsTitle">${escapeHtml(t("Passkeys"))}</h3><p class="account-settings-recommendation">${escapeHtml(t("Empfohlen für deine Anmeldung"))}</p>
       <div data-passkey-settings></div>
@@ -2238,7 +2238,7 @@ function zilchAccountSettingsMarkup(username) {
     </section></div></details></div></details>
     <details class="account-settings-group" data-account-section="play"><summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">${escapeHtml(t("Sprache & Spiel"))}</span><span class="account-settings-group__description">${escapeHtml(t("Sprache und persönliche Spielbedienung"))}</span></h2></summary><div class="account-settings-group__body"><section class="account-settings-block">
       <h3>${escapeHtml(t("Sprache"))}</h3>
-      <p class="zilch-account-settings-card__description">${escapeHtml(t("Die Sprache gilt für ZDWA und Zilch auf allen Geräten."))}</p>
+      <p class="zilch-account-settings-card__description">${escapeHtml(t("Die Sprache gilt für ZDWA, Zilch und Hausdepp auf allen Geräten."))}</p>
       <form id="zilchLanguagePreferencesForm" class="zilch-settings-form">
         <fieldset>
           <legend>${escapeHtml(t("Bevorzugte Sprache"))}</legend>
@@ -2251,7 +2251,7 @@ function zilchAccountSettingsMarkup(username) {
     </section></div></details>
     <details class="account-settings-group" data-account-section="social"><summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">${escapeHtml(t("Mitspieler & Hinweise"))}</span><span class="account-settings-group__description">${escapeHtml(t("Chat, Spielerauswahl und Benachrichtigungen"))}</span></h2></summary><div class="account-settings-group__body"><section class="account-settings-block">
       <h3>${escapeHtml(t("Lobby-Chat"))}</h3>
-      <p class="zilch-account-settings-card__description">${escapeHtml(t("Diese Einstellung gilt für ZDWA und Zilch auf allen Geräten."))}</p>
+      <p class="zilch-account-settings-card__description">${escapeHtml(t("Diese Einstellung gilt für ZDWA, Zilch und Hausdepp auf allen Geräten."))}</p>
       <form id="zilchLobbyChatPreferencesForm" class="zilch-settings-form">
         <label><input type="checkbox" name="zilchLobbyChatEnabled"${lobbyChatEnabled ? " checked" : ""}> ${escapeHtml(t("Lobby-Chat aktivieren"))}</label>
         <label><input type="checkbox" name="zilchLobbyChatPopups"${lobbyChatPopups ? " checked" : ""}${lobbyChatEnabled ? "" : " disabled"}> ${escapeHtml(t("Neue Nachrichten im Lobby-Chat oben einblenden"))}</label>
@@ -2269,7 +2269,7 @@ function zilchAccountSettingsMarkup(username) {
     </section>
 <section id="zilchPushSettingsCard" class="account-settings-block" tabindex="-1">
       <h3>${escapeHtml(t("Push-Benachrichtigungen"))}</h3>
-      <p class="zilch-account-settings-card__description">${escapeHtml(t("Verpass keinen freien Platz: Mitspieler-Rufe bringen dich direkt in öffentliche ZDWA- oder Zilch-Runden. Erlaube zuerst Push auf diesem Gerät und wähle danach selbst, welche Hinweise zu dir passen."))}</p>
+      <p class="zilch-account-settings-card__description">${escapeHtml(t("Verpass keinen freien Platz: Mitspieler-Rufe bringen dich direkt in öffentliche ZDWA-, Zilch- oder Hausdepp-Runden. Erlaube zuerst Push auf diesem Gerät und wähle danach selbst, welche Hinweise zu dir passen."))}</p>
       <p class="zilch-muted">${escapeHtml(t("Mit „Push auf diesem Gerät zulassen“ fragt dein Gerät als Nächstes nach der Erlaubnis. Danach entscheidest du unten getrennt über Mitspieler-Rufe, tägliche Spielideen und Versionshinweise."))}</p>
       <div class="zilch-settings-form">
         <button id="zilchEnableGameInvitePush" class="primary" type="button">${escapeHtml(t("Push auf diesem Gerät zulassen"))}</button>

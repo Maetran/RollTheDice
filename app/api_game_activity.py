@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request, Response
 
 from .auth import AuthIdentity, resolve_session
-from .game_access import can_access_hausdepp, can_access_zilch_preview
+from .game_access import can_access_zilch_preview
 from .game_state import games
 from .game_types import game_type_from_state
 
@@ -19,11 +19,9 @@ def game_activity(identity: AuthIdentity | None) -> dict:
     only their durable room/seat identity; spectator sockets and CPU-only
     participants never enter this projection. Reading does not mutate rooms.
     """
-    allowed = ["zdwa"]
+    allowed = ["zdwa", "hausdepp"]
     if can_access_zilch_preview(identity):
         allowed.append("zilch")
-    if can_access_hausdepp(identity):
-        allowed.append("hausdepp")
     playing: dict[str, set[tuple]] = {product: set() for product in allowed}
     for room_id, room in list(games.items()):
         if not room.get("_started") or room.get("_finished") or room.get("_aborted"):

@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session as DatabaseSession
 
 from .models import PasskeyCredential, PasskeySignupCeremony, User, WebAuthnCeremony
 from .models import Session as LoginSession
-from .product_hosts import site_origin, zilch_origin
+from .product_hosts import HAUSDEPP_ORIGIN, site_origin, zilch_origin
 from .security import (
     as_utc,
     has_password,
@@ -132,7 +132,7 @@ def _secure_cookie_enabled() -> bool:
 
 
 def passkey_config() -> PasskeyConfig:
-    """Return the fixed two-product RP policy without accepting arbitrary origins."""
+    """Return fixed trusted product origins without accepting arbitrary hosts."""
     enabled = _enabled_from_environment()
     configured_site = site_origin()
     configured_zilch = zilch_origin()
@@ -145,7 +145,7 @@ def passkey_config() -> PasskeyConfig:
     if not _valid_dns_hostname(rp_id):
         raise RuntimeError(f"{PASSKEY_RP_ID_ENV} must be a valid hostname")
     # The apex product host is the only supported RP ID. This permits the one
-    # controlled Zilch subdomain while making a broader parent-domain setup an
+    # controlled product subdomains while making a broader parent-domain setup an
     # explicit code change rather than an accidental environment setting.
     if rp_id != site_host:
         raise RuntimeError(f"{PASSKEY_RP_ID_ENV} must equal the hostname of ROLLTHEDICE_SITE_ORIGIN")
@@ -153,6 +153,10 @@ def passkey_config() -> PasskeyConfig:
         raise RuntimeError(f"{PASSKEY_RP_NAME_ENV} must contain 1 to 128 printable characters")
 
     origins = tuple(dict.fromkeys((configured_site, configured_zilch)))
+    # Hausdepp is a fixed production origin. Do not add it to unrelated custom
+    # test/local RPs or derive a new WebAuthn audience from request headers.
+    if _hostname(HAUSDEPP_ORIGIN) == f"hausdepp.{rp_id}":
+        origins = tuple(dict.fromkeys((*origins, HAUSDEPP_ORIGIN)))
     for origin in origins:
         _validate_secure_origin(origin)
         host = _hostname(origin)

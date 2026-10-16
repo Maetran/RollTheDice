@@ -526,13 +526,14 @@ test('active bottom peek stays private, requires a designated player tap, and de
   }
 });
 
-test('private Hausdepp pages keep guests and unrelated accounts outside the owner development build', async ({ page, browser, baseURL }) => {
+test('public discovery admits guests while signed-in accounts keep private play and progress', async ({ page, browser, baseURL }) => {
   const guest = await browser.newContext({ baseURL, serviceWorkers: 'block' });
   const unrelated = await browser.newContext({ baseURL, serviceWorkers: 'block' });
   try {
     const guestPage = await guest.newPage();
     await guestPage.goto('/hausdepp');
-    await expect(guestPage).toHaveURL(/\/anmelden\?/);
+    await expect(guestPage).toHaveURL(/\/hausdepp$/);
+    await expect(guestPage.locator('#hausdeppSignIn')).toBeVisible();
     await expect(guestPage.locator('#hausdeppCreateForm')).toHaveCount(0);
     const owner = await ownerSession(page);
     const traffic = watchGame(page);
@@ -567,10 +568,20 @@ test('private Hausdepp pages keep guests and unrelated accounts outside the owne
       data: { username, password: `${password}-final` },
     })).ok()).toBeTruthy();
     const other = await unrelated.newPage();
-    for (const path of ['/hausdepp', '/hausdepp/regeln', '/hausdepp/konto', '/hausdepp/spiel/not-public', '/hausdepp/spiel/not-public/zuschauen']) {
-      const denied = await other.goto(path);
-      expect(denied.status()).toBe(403);
-      await expect(other.locator('#hausdeppCreateForm, #hausdeppHand')).toHaveCount(0);
+    for (const path of ['/hausdepp', '/hausdepp/regeln', '/hausdepp/konto', '/hausdepp/rangliste']) {
+      const response = await other.goto(path);
+      expect(response.status()).toBe(200);
+      await expect(other.locator('#hausdeppApp')).toBeVisible();
+    }
+    await other.goto('/hausdepp');
+    await expect(other.locator('#hausdeppCreateForm')).toBeVisible();
+    await other.locator('#hausdeppCreate').click();
+    await expect(other).toHaveURL(/\/hausdepp\/spiel\/[^/]+$/);
+    await expect(other.locator('#hausdeppStock')).toBeEnabled();
+    for (const path of ['/hausdepp/spiel/not-public', '/hausdepp/spiel/not-public/zuschauen']) {
+      const missing = await other.goto(path);
+      expect(missing.status()).toBe(404);
+      await expect(other.locator('#hausdeppHand')).toHaveCount(0);
     }
   } finally {
     await guest.close();

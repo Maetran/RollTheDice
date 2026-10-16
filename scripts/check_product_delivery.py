@@ -133,7 +133,9 @@ def main() -> int:
             continue
         _check(len(parser.description) >= 80, f"{html_path.name}: public description is too short.", errors)
         _check(parser.canonical == page.canonical_url, f"{html_path.name}: canonical does not match SEO registry.", errors)
-        _check(not parser.robots, f"{html_path.name}: public page must not be noindex.", errors)
+        directives = set(parser.robots.lower().replace(" ", "").split(","))
+        _check(not directives.intersection({"noindex", "nofollow", "none"}),
+               f"{html_path.name}: public page must allow indexing and following links.", errors)
         _check(bool(parser.og_title), f"{html_path.name}: public page lacks og:title.", errors)
         _check(bool(parser.og_description), f"{html_path.name}: public page lacks og:description.", errors)
         _check(parser.og_url == page.canonical_url, f"{html_path.name}: og:url does not match SEO registry.", errors)

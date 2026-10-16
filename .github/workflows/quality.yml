@@ -62,6 +62,10 @@ jobs:
             config: playwright.passkeys.config.js
             shard: 1
             shards: 1
+          - suite: hausdepp-passkeys
+            config: playwright.hausdepp-passkeys.config.js
+            shard: 1
+            shards: 1
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7

@@ -68,7 +68,7 @@ from .ownership import (
     revoke_ownership,
 )
 from .passkeys import passkey_public_config
-from .product_hosts import is_zilch_host
+from .product_hosts import is_hausdepp_host, is_zilch_host
 from .security import normalize_email_address, utcnow
 from .web_push import (
     WebPushPreferencesRequest,
@@ -600,7 +600,9 @@ def web_push_subscription_put(payload: WebPushSubscriptionRequest, request: Requ
         result = save_web_push_subscription(
             user_id=identity.user_id,
             payload=payload,
-            product_context="zilch" if is_zilch_host(request) else "zdwa",
+            product_context=payload.product_context or (
+                "hausdepp" if is_hausdepp_host(request) else "zilch" if is_zilch_host(request) else "zdwa"
+            ),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

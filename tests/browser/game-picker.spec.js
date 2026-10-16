@@ -17,7 +17,7 @@ async function publicAccessFixture(page, language) {
   await languageFixture(page, language);
   await page.route("**/api/auth/me", route => route.fulfill({ json: {
     authenticated: false, user: null,
-    game_access: { zilch_public: true, zilch_preview: false, hausdepp_preview: false },
+    game_access: { zilch_public: true, zilch_preview: false, hausdepp_public: true, hausdepp_preview: false },
   } }));
 }
 
@@ -117,7 +117,7 @@ async function expectHeaderGeometry(page) {
 
 for (const language of ["de", "en"]) {
   for (const game of ["zdwa", "zilch"]) {
-    test(`${language}: public ${game} chooser names both available games and never exposes Hausdepp`, async ({ page }) => {
+    test(`${language}: public ${game} chooser names all three public games`, async ({ page }) => {
       await publicAccessFixture(page, language);
       if (game === "zilch") await publicZilchDocumentFixture(page);
       await page.goto(game === "zilch" ? "/zilch" : "/regeln");
@@ -127,11 +127,10 @@ for (const language of ["de", "en"]) {
       await expect(trigger).toHaveAccessibleName(chooserLabel(language));
       await expect(menu).toHaveAccessibleName(chooserLabel(language));
       expect(page.url()).toBe(url);
-      await expect(menu.getByRole("link")).toHaveCount(2);
+      await expect(menu.getByRole("link")).toHaveCount(3);
       await expect(menu.getByRole("link", { name: "ZDWA", exact: true })).toHaveAttribute("href", "/");
       await expect(menu.getByRole("link", { name: "Zilch", exact: true })).toHaveAttribute("href", "/zilch");
-      await expect(menu.getByRole("link", { name: "Hausdepp", exact: true })).toHaveCount(0);
-      await expect(menu.locator('[href*="hausdepp"]')).toHaveCount(0);
+      await expect(menu.getByRole("link", { name: "Hausdepp", exact: true })).toHaveAttribute("href", "/hausdepp");
       await expectCurrentGame(page, game === "zilch" ? "Zilch" : "ZDWA");
       await page.keyboard.press("Escape");
       await expect(menu).toHaveCount(0);

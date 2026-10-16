@@ -4,21 +4,27 @@ set -euo pipefail
 SOURCE="${SOURCE:-deploy/nginx/rollthedice.conf}"
 TARGET="${TARGET:-/etc/nginx/sites-available/rollthedice}"
 CERTIFICATE="${CERTIFICATE:-/etc/letsencrypt/live/zockdiewandan.online/fullchain.pem}"
+HAUSDEPP_CERTIFICATE="${HAUSDEPP_CERTIFICATE:-/etc/letsencrypt/live/hausdepp.zockdiewandan.online/fullchain.pem}"
 
 if [[ ! -f "$SOURCE" ]]; then
   echo "Missing Nginx source config: $SOURCE" >&2
   exit 1
 fi
 
-# Once the versioned site references the product subdomains, a normal config
-# install must never expose them with the old two-name certificate. The
-# activation helper performs DNS gates and expands the lineage inside its
-# guarded rollback sequence.
-for product_host in zdwa.zockdiewandan.online zilch.zockdiewandan.online; do
+# A normal config install must never expose a product host with a certificate
+# that does not cover it. Hausdepp has a separate webroot lineage; the older
+# DNS-only helper only applies to the historical ZDWA/Zilch migration.
+for product_host in zdwa.zockdiewandan.online zilch.zockdiewandan.online hausdepp.zockdiewandan.online; do
+  product_certificate="$CERTIFICATE"
+  activation_helper="scripts/activate_subdomains.sh"
+  if [[ "$product_host" == "hausdepp.zockdiewandan.online" ]]; then
+    product_certificate="$HAUSDEPP_CERTIFICATE"
+    activation_helper="scripts/activate_hausdepp.sh"
+  fi
   if grep -Fq "$product_host" "$SOURCE"; then
-    if ! sudo test -r "$CERTIFICATE" \
-      || ! sudo openssl x509 -in "$CERTIFICATE" -noout -checkhost "$product_host" >/dev/null; then
-      echo "Certificate does not cover $product_host; use scripts/activate_subdomains.sh first." >&2
+    if ! sudo test -r "$product_certificate" \
+      || ! sudo openssl x509 -in "$product_certificate" -noout -checkhost "$product_host" >/dev/null; then
+      echo "Certificate does not cover $product_host; use $activation_helper first." >&2
       exit 1
     fi
   fi

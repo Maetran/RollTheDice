@@ -2,6 +2,13 @@ const { test, expect } = require('@playwright/test');
 
 test.use({ serviceWorkers: 'block' });
 
+// Account navigation can finish its visible assertions while a labelled auth
+// response is still being projected. Drain those handlers before disposing the
+// isolated request context, as in the offline-navigation fixtures.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: 'wait' });
+});
+
 async function account(page, username, language = 'de') {
   const password = 'passkey-prompt-browser-password';
   const adminLogin = await page.request.post('/api/auth/login', { data: { username: 'Admin', password: 'temporary-password-123' } });

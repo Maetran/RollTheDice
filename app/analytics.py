@@ -1120,11 +1120,12 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
         pwa_rows = db.execute(select(AnalyticsEvent.action, func.count()).where(
             AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
             AnalyticsEvent.source == "client", AnalyticsEvent.event_type == "action",
+            AnalyticsEvent.game.in_((*products, "site")),
             AnalyticsEvent.action.in_(PWA_ACTIONS),
         ).group_by(AnalyticsEvent.action)).all()
         for action, total in pwa_rows:
             product, metric = PWA_ACTIONS[action]
-            if game in {"all", product}:
+            if product in products and game in {"all", product}:
                 pwa[metric] += total
         date_expr = func.date(AnalyticsEvent.received_at)
         activity_daily = {str(day): (sc, pv or 0, ms or 0) for day, sc, pv, ms in db.execute(

@@ -255,14 +255,28 @@ function expectUniformHeaderControls(heights, size = 44) {
   expect(heights, `Header control heights: ${heights.join(", ")}`).toEqual(heights.map(() => size));
 }
 
-test("the permission-gated game switch is available across ZDWA pages but absent in its active room", async ({ page }) => {
+test("the public Hausdepp switch respects Zilch permissions across ZDWA pages and stays absent in its active room", async ({ page }) => {
   await page.goto("/regeln");
   const anonymousSwitch = page.locator("[data-game-switch]");
-  await expect(anonymousSwitch).toBeHidden();
-  await expect(anonymousSwitch).toBeDisabled();
-  await expect(anonymousSwitch).toHaveAttribute("aria-hidden", "true");
+  await expect(anonymousSwitch).toBeVisible();
+  await expect(anonymousSwitch).toBeEnabled();
+  await expect(anonymousSwitch).toHaveAttribute("aria-hidden", "false");
+  await anonymousSwitch.click();
+  const anonymousMenu = page.locator("#suiteGameMenu");
+  await expect(anonymousMenu.locator('[data-game-entry="zdwa"]')).toBeVisible();
+  await expect(anonymousMenu.locator('[data-game-entry="hausdepp"]')).toHaveAttribute("href", "/hausdepp");
+  // This isolated fixture keeps Zilch in preview mode: Hausdepp's public
+  // discovery must neither inherit nor grant the separate Zilch capability.
+  await expect(anonymousMenu.locator('[data-game-entry="zilch"]')).toHaveCount(0);
+  await expect(anonymousMenu.locator("[data-game-entry]")).toHaveCount(2);
+  await page.keyboard.press("Escape");
 
   await signInAsPreviewMani(page);
+  await page.locator("[data-game-switch]").click();
+  await expect(page.locator('#suiteGameMenu [data-game-entry="zilch"]')).toBeVisible();
+  await expect(page.locator('#suiteGameMenu [data-game-entry="hausdepp"]')).toBeVisible();
+  await expect(page.locator("#suiteGameMenu [data-game-entry]")).toHaveCount(3);
+  await page.keyboard.press("Escape");
 
   await page.setViewportSize({ width: 1024, height: 800 });
   const zdwaSwitch = page.locator("[data-game-switch]");

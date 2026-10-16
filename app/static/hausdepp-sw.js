@@ -1,6 +1,6 @@
 /* Hausdepp is an online multiplayer game. Nothing enters Cache Storage:
    cards, tables, account pages, results and chat always require the server. */
-const CACHE_VERSION = 'assets-0f737870befb';
+const CACHE_VERSION = 'assets-07d1ac4ea85c';
 
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();

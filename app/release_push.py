@@ -71,12 +71,23 @@ def publish_release_notice(notice: ReleaseNotice, *, now: datetime | None = None
 
 
 def release_notification_payload(release: PushRelease, context: str, language: str) -> dict:
-    game = "Zilch" if context == "zilch" else "ZDWA"
-    icon = "/static/icons/zilch-icon-192.png" if context == "zilch" else "/static/icons/icon-192.png"
+    game = {"hausdepp": "Hausdepp", "zilch": "Zilch"}.get(context, "ZDWA")
+    icon = {"hausdepp": "/static/icons/hausdepp-icon-192.png", "zilch": "/static/icons/zilch-icon-192.png"}.get(
+        context, "/static/icons/icon-192.png")
+    title = f"{game}: {'Update available' if language == 'en' else 'Neue Version verfügbar'}"
+    try:
+        candidate = json.loads(release.player_notes_json or "{}").get(language, {}).get("title")
+        if (isinstance(candidate, str) and 1 <= len(candidate.strip()) <= 100
+                and not any(ord(character) < 32 for character in candidate)):
+            title = candidate.strip()
+    except (ValueError, TypeError, AttributeError):
+        # Old push-only releases may have no player notes or an invalid legacy
+        # value. Their already stored summary and generic title remain usable.
+        pass
     return {
-        "title": f"{game}: {'Update available' if language == 'en' else 'Neue Version verfügbar'}",
+        "title": title,
         "body": release.summary_en if language == "en" else release.summary_de,
-        "url": zilch_url("/") if context == "zilch" else f"{site_origin()}/",
+        "url": "/hausdepp" if context == "hausdepp" else zilch_url("/") if context == "zilch" else f"{site_origin()}/",
         "tag": f"app-release-{release.revision}", "icon": icon, "badge": icon,
     }
 

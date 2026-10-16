@@ -71,6 +71,9 @@ async function signInAsPreviewMani(page) {
   await page.click("#logoutBtn");
   await expectPasswordLoginClosed(page);
   await signIn(page, "Mani", "mani-preview-password-123");
+  // Hausdepp now makes the chooser public before login. Wait for the actual
+  // account identity so a following navigation cannot abort the login request.
+  await expect(page.locator("#authBadge")).toContainText("Mani");
   await expect(page.locator("[data-game-switch]")).toBeVisible();
 }
 

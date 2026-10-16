@@ -19,6 +19,11 @@ function canUseZilch(auth) {
   return Boolean(access?.zilch_public === true || (auth?.authenticated && access?.zilch_preview === true));
 }
 
+function canDiscoverHausdepp(auth) {
+  const access = auth?.game_access || auth?.user?.game_access;
+  return Boolean(access?.hausdepp_public === true || (auth?.authenticated && access?.hausdepp_preview === true));
+}
+
 function updateSwitch(allowed) {
   for (const switchButton of document.querySelectorAll("[data-game-switch]")) {
     switchButton.hidden = !allowed;
@@ -70,12 +75,15 @@ export function initializeAppMode({
 
   // Only the server's public lobby document may paint ahead of /auth/me.
   // This hint grants no account identity or permission to any API action.
-  let publicLobby = currentMode === "zilch"
+  const publicZilchDocument = currentMode === "zilch"
     && document.querySelector('[data-zilch-root][data-zilch-public-lobby="true"]') !== null;
+  const publicHausdeppDocument = currentMode === "hausdepp"
+    && document.querySelector('[data-hausdepp-public="true"]') !== null;
+  let publicLobby = publicZilchDocument || publicHausdeppDocument;
   let allowed = publicLobby;
   let stopped = false;
-  let hausdeppAllowed = false;
-  let zilchAllowed = publicLobby;
+  let hausdeppAllowed = publicHausdeppDocument;
+  let zilchAllowed = publicZilchDocument;
   const pickers = new Map();
   const availableGames = () => [
     { id: "zdwa", name: "ZDWA", href: zdwaAppEntryUrl() },
@@ -116,7 +124,7 @@ export function initializeAppMode({
       && scopedZilchSpectator.pathname === window.location.pathname
       && /\/spiel\/[^/]+\/zuschauen\/?$/.test(window.location.pathname);
     const access = auth?.game_access || auth?.user?.game_access;
-    hausdeppAllowed = Boolean(auth?.authenticated && access?.hausdepp_preview === true);
+    hausdeppAllowed = canDiscoverHausdepp(auth);
     zilchAllowed = nextAllowed;
     if (currentMode === "hausdepp" && !hausdeppAllowed) {
       for (const picker of pickers.values()) picker.close();
@@ -125,7 +133,8 @@ export function initializeAppMode({
       window.location.replace(zdwaAppEntryUrl());
       return false;
     }
-    publicLobby = publicLobby && access?.zilch_public === true;
+    publicLobby = (publicZilchDocument && access?.zilch_public === true)
+      || (publicHausdeppDocument && access?.hausdepp_public === true);
     if (!nextAllowed && !scopedAllowed && (currentMode === "zilch" || !hausdeppAllowed)) {
       revokeZilch();
       return false;

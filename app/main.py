@@ -112,9 +112,11 @@ from .models import User
 from .passkey_reminders import router as passkey_reminders_router
 from .passkeys import validate_passkey_config
 from .product_hosts import (
+    hausdepp_url,
     is_hausdepp_host,
     is_site_host,
     is_zilch_host,
+    safe_hausdepp_path,
     safe_zilch_path,
     site_origin,
     validate_product_host_config,
@@ -127,9 +129,11 @@ from .release_push import run_release_push_scheduler
 from .security import normalize_username
 from .site_seo import (
     HAUSDEPP_ORIGIN,
+    PUBLIC_HAUSDEPP_IMAGE_PATHS,
     PUBLIC_SEO_PAGES,
     PUBLIC_ZILCH_IMAGE_PATHS,
     SITE_ORIGIN,
+    hausdepp_page_is_indexable,
     robots_document,
     sitemap_document,
     zilch_page_is_indexable,
@@ -661,6 +665,20 @@ async def response_cache_policy(request: Request, call_next):
                             if page.origin == SITE_ORIGIN and page.path == request.url.path), None)
         if public_page is not None:
             response.headers["Link"] = f'<{public_page.canonical_url}>; rel="canonical"'
+    public_hausdepp_document = bool(
+        hausdepp_page_is_indexable(request.url.path) and response.status_code == 200
+        and response.headers.get("content-type", "").startswith("text/html")
+    )
+    public_hausdepp_image = bool(
+        is_hausdepp_host(request) and request.url.path in PUBLIC_HAUSDEPP_IMAGE_PATHS
+        and (response.status_code == 304 or (response.status_code in {200, 206}
+             and response.headers.get("content-type", "").startswith("image/")))
+    )
+    if public_hausdepp_document or public_hausdepp_image:
+        if "X-Robots-Tag" in response.headers:
+            del response.headers["X-Robots-Tag"]
+        if public_hausdepp_document:
+            response.headers["Link"] = f'<{HAUSDEPP_ORIGIN}{request.url.path}>; rel="canonical"'
     return response
 
 
@@ -727,8 +745,7 @@ def zilch_manifest_en(request: Request):
 @app.get("/hausdepp-manifest.webmanifest", include_in_schema=False)
 @app.get("/hausdepp-manifest-en.webmanifest", include_in_schema=False)
 def hausdepp_manifest(request: Request):
-    """Installation follows the same founder-bound preview as the game."""
-    _require_hausdepp_access(request)
+    """Public installation metadata contains no account or game information."""
     filename = "hausdepp-manifest-en.webmanifest" if request.url.path.endswith("-en.webmanifest") else "hausdepp-manifest.webmanifest"
     return FileResponse(str(BASE / filename), media_type="application/manifest+json",
                         headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
@@ -737,7 +754,6 @@ def hausdepp_manifest(request: Request):
 @app.get("/hausdepp-sw.js", include_in_schema=False)
 def hausdepp_service_worker(request: Request):
     """The worker may control Hausdepp paths, never another game's root."""
-    _require_hausdepp_access(request)
     return FileResponse(str(STATIC_DIR / "hausdepp-sw.js"), media_type="text/javascript",
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate",
                                  "Service-Worker-Allowed": "/hausdepp", "X-Robots-Tag": "noindex, nofollow"})
@@ -781,8 +797,6 @@ def favicon(request: Request):
 def robots_txt(request: Request) -> str:
     """Expose crawler rules and the canonical sitemap location."""
     if is_hausdepp_host(request):
-        # Crawlers must be able to observe noindex on redirects and documents.
-        # Authentication protects the preview; the linked sitemap stays empty.
         return robots_document(origin=HAUSDEPP_ORIGIN)
     if is_zilch_host(request):
         # A preview rollback must not accidentally advertise a sitemap that
@@ -918,8 +932,6 @@ def _serve_zilch_pwa_zdwa_bridge(request: Request, path: str = "") -> Response:
     hausdepp_host = is_hausdepp_host(request)
     if not is_zilch_host(request) and not hausdepp_host:
         raise HTTPException(status_code=404, detail="not_found")
-    if hausdepp_host:
-        _require_hausdepp_access(request)
 
     def bridge_page(filename: str) -> Response:
         return _embedded_zdwa_pwa_page(filename, product="hausdepp" if hausdepp_host else "zilch")
@@ -1082,25 +1094,24 @@ def room_page(game_id: str, request: Request):
 
 def _require_hausdepp_access(request: Request):
     identity = require_user(request)
-    if not can_access_hausdepp(identity):
-        raise HTTPException(status_code=403, detail="hausdepp_preview_required")
     return identity
 
 
-def _serve_hausdepp_page(request: Request, filename: str):
-    if resolve_session(request) is None:
-        destination = request.url.path
+def _serve_hausdepp_page(request: Request, filename: str, *, public: bool = False):
+    if not public and resolve_session(request) is None:
+        destination = request.url.path + (f"?{request.url.query}" if request.url.query else "")
         login_base = f"{site_origin()}/zilch/anmelden" if is_zilch_host(request) else "/zilch/anmelden"
         return RedirectResponse(f"{login_base}?{urlencode({'return_to': destination})}", status_code=303,
                                 headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
-    _require_hausdepp_access(request)
+    if not public:
+        _require_hausdepp_access(request)
     return FileResponse(str(STATIC_DIR / filename), media_type="text/html",
-                        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+                        headers={"Cache-Control": "no-store", **({} if public else {"X-Robots-Tag": "noindex, nofollow"})})
 
 
 @app.get("/hausdepp", include_in_schema=False)
 def hausdepp_lobby_page(request: Request):
-    return _serve_hausdepp_page(request, "hausdepp-lobby.html")
+    return _serve_hausdepp_page(request, "hausdepp-lobby.html", public=True)
 
 
 @app.get("/hausdepp/spiel/{game_id}", include_in_schema=False)
@@ -1117,7 +1128,7 @@ def hausdepp_room_page(game_id: str, request: Request):
 
 @app.get("/hausdepp/regeln", include_in_schema=False)
 def hausdepp_rules_page(request: Request):
-    return _serve_hausdepp_page(request, "hausdepp-rules.html")
+    return _serve_hausdepp_page(request, "hausdepp-rules.html", public=True)
 
 
 @app.get("/hausdepp/konto", include_in_schema=False)
@@ -1281,8 +1292,23 @@ def zilch_preview_page(request: Request):
 
 
 @app.get("/zilch/anmelden", include_in_schema=False)
-def zilch_login_page():
+def zilch_login_page(request: Request):
     """Provide a direct, noindex account entry for stats and achievements."""
+    if is_hausdepp_host(request):
+        requested = request.query_params.get("return_to")
+        if requested is not None and safe_hausdepp_path(requested) != requested:
+            return RedirectResponse(f"/zilch/anmelden?{urlencode({'return_to': '/hausdepp'})}", status_code=303,
+                                    headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+        # Keep passkey authentication and the installed app on their original
+        # trusted product origin. Other products retain the shared static page.
+        html = (STATIC_DIR / "zilch-login.html").read_text(encoding="utf-8")
+        html = html.replace('data-game="zilch"', 'data-game="zilch" data-hausdepp-login="true"', 1)
+        html = html.replace("/static/icons/zilch-icon-32.png", "/static/icons/hausdepp-icon-32.png")
+        html = html.replace("/static/icons/zilch-apple-touch-icon-180.png", "/static/icons/hausdepp-apple-touch-icon-180.png")
+        html = html.replace("</head>", '<link rel="manifest" data-pwa-product="hausdepp" '
+                            f'href="/hausdepp-manifest.webmanifest?v={STATIC_ASSET_VERSION}" crossorigin="use-credentials">'
+                            '<meta name="apple-mobile-web-app-title" content="Hausdepp">\n</head>', 1)
+        return Response(html, media_type="text/html", headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
     return _page("zilch-login.html")
 
 
@@ -1453,12 +1479,22 @@ def zilch_subdomain_achievements_page(request: Request):
 @app.get("/auth/continue", include_in_schema=False)
 def continue_to_product(request: Request, app_name: str = Query(alias="app"), path: str = Query(default="/")):
     """Promote an apex login and continue only to a fixed, allowlisted product URL."""
-    if not is_site_host(request) or app_name != "zilch":
+    if not is_site_host(request) or app_name not in {"zilch", "hausdepp"}:
         raise HTTPException(status_code=404, detail="product_not_found")
     private_headers = {
         "Cache-Control": "no-store",
         "X-Robots-Tag": "noindex, nofollow",
     }
+    if app_name == "hausdepp":
+        destination = safe_hausdepp_path(path)
+        identity = resolve_session(request)
+        if identity is None:
+            continuation = f"/auth/continue?{urlencode({'app': 'hausdepp', 'path': destination})}"
+            return RedirectResponse(f"{site_origin()}/zilch/anmelden?{urlencode({'return_to': continuation})}",
+                                    status_code=303, headers=private_headers)
+        response = RedirectResponse(hausdepp_url(destination), status_code=303, headers=private_headers)
+        promote_legacy_session_cookie(response, request)
+        return response
     destination_path = safe_zilch_path(path)
     identity = resolve_session(request)
     account_path = destination_path.split("?", 1)[0] in {

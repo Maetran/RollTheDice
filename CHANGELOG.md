@@ -23,6 +23,40 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.0.0 — Töröö! Der Hausdepp ist da / trumpets out, Hausdepp is here — 2026-10-16
+
+**Deutsch:** Hausdepp öffnet als drittes Spiel der Suite für alle angemeldeten
+Spieler. Zwei bis sechs Personen spielen am eigenen Kartentisch, mit Menschen,
+Computern oder beidem. Das HAUSDEPP-Turnier, 100 Erfolge, 24 ironische Ränge,
+eigene Kontoseiten und die Rundensieg-Rangliste gehören zum Start. Eine Runde
+mit mindestens einem Computer gibt nach 75% Abzug und Abrunden 2 EP, eine reine
+Menschenrunde 10 EP; Erfolgsbelohnungen bleiben vollständig.
+
+Die Lobby und Hausregeln sind auf `hausdepp.zockdiewandan.online` öffentlich
+auffindbar, mit eigenen Canonicals, Metadaten, robots.txt und Sitemap. Spielen,
+private Ergebnisse und Kontodaten benötigen weiterhin eine Anmeldung. Der
+Spielwähler verbindet alle drei Spiele; bestehende Anmeldungen und installierte
+Apps behalten ihren Zusammenhang. Hausdepp hat ein eigenes Herz-Zehner-Icon,
+ein Installationsmanifest und Mitspieler-Rufe mit den vorhandenen Opt-ins.
+Owner-Monitoring bleibt gesondert geschützt. DNS, Zertifikat und Proxy werden
+vor der regulären, sichtbaren Release-Mitteilung geprüft. Kein stiller Release.
+
+**English:** Hausdepp opens as the suite’s third game for every signed-in
+player. Two to six people share its own card table, with people, computers or
+both. The HAUSDEPP tournament, 100 achievements, 24 ironic ranks, dedicated
+account pages and round-win standings are included. A round with any computer
+grants 2 XP after a 75% reduction and per-round floor; an all-human round grants
+10 XP. Achievement rewards remain complete.
+
+The lobby and house rules are publicly discoverable on the dedicated host,
+with their own canonicals, metadata, robots.txt and sitemap. Playing, private
+results and personal accounts still require sign-in. The shared picker links
+all three games while preserving accounts and installed-app navigation.
+Hausdepp has a heart-ten app icon, installation manifest and player calls using
+existing opt-ins. Owner monitoring remains separately protected. DNS,
+certificates and proxy are checked before the regular visible announcement.
+This is not a silent release.
+
 ## 2.59.0 — Eine eigene Kartenrunde / a card table of its own — 2026-10-16
 
 **Deutsch:** Hausdepp erhält eine eigene Gestaltung aus Tannengrün, hellem

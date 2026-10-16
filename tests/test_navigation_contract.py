@@ -22,7 +22,7 @@ import httpx
 from fastapi.routing import iter_route_contexts
 
 from app import main
-from app.site_seo import PUBLIC_SEO_PAGES, SITE_ORIGIN, ZILCH_ORIGIN
+from app.site_seo import HAUSDEPP_ORIGIN, PUBLIC_SEO_PAGES, SITE_ORIGIN, ZILCH_ORIGIN
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -103,7 +103,7 @@ DOCUMENT_ROUTES = (
         ("/hausdepp", "/hausdepp/spiel/{game_id}", "/hausdepp/spiel/{game_id}/zuschauen",
          "/hausdepp/regeln"),
         "tests/test_hausdepp_integration.py", "test_founder_product_pages_and_game_type_routes",
-        ("tests/browser/hausdepp.spec.js",),
+        ("tests/browser/hausdepp.spec.js", "tests/browser/hausdepp-public.spec.js"),
     ),
     RouteCoverage(
         ("/hausdepp/konto",), "tests/test_hausdepp_integration.py",
@@ -145,8 +145,8 @@ TECHNICAL_ROUTES = {
     "/manifest-en.webmanifest": "English ZDWA PWA metadata; test_zilch_product_routes.",
     "/zilch-manifest.webmanifest": "Zilch PWA metadata; test_zilch_product_routes.",
     "/zilch-manifest-en.webmanifest": "English Zilch PWA metadata; test_zilch_product_routes.",
-    "/hausdepp-manifest.webmanifest": "Founder-bound Hausdepp installation; test_hausdepp_pwa and browser/hausdepp-pwa.spec.js.",
-    "/hausdepp-manifest-en.webmanifest": "English founder-bound Hausdepp installation; test_hausdepp_pwa.",
+    "/hausdepp-manifest.webmanifest": "Public Hausdepp installation; test_hausdepp_pwa and browser/hausdepp-pwa.spec.js.",
+    "/hausdepp-manifest-en.webmanifest": "English public Hausdepp installation; test_hausdepp_pwa.",
     "/sw.js": "ZDWA service worker; test_http_shell.",
     "/zilch-sw.js": "Zilch service worker; test_zilch_product_routes.",
     "/hausdepp-sw.js": "Narrow, network-only Hausdepp service worker; test_hausdepp_pwa and browser/hausdepp-pwa.spec.js.",
@@ -216,7 +216,7 @@ class PublicNavigationLinkTests(IsolatedAsyncioTestCase):
     async def test_public_page_links_and_fragments_reach_documents_and_no_page_is_orphaned(self):
         # No external requests, accounts, token actions or writes. The public
         # registry makes this grow automatically when a new SEO page is added.
-        origins = {SITE_ORIGIN, ZILCH_ORIGIN}
+        origins = {SITE_ORIGIN, ZILCH_ORIGIN, HAUSDEPP_ORIGIN}
         pages = {page.canonical_url for page in PUBLIC_SEO_PAGES}
         inbound: dict[str, set[str]] = {page: set() for page in pages}
         documents: dict[str, _NavigationDocument] = {}

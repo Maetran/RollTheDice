@@ -1,35 +1,37 @@
 {
   "kind": "usability",
   "games": [
+    "zdwa",
+    "zilch",
     "hausdepp"
   ],
-  "summary_de": "Hausdepp wird zur eigenen Kartenrunde: neue Optik, bewusstere Erfolgsziele und sichtbare Reaktionen.",
-  "summary_en": "Hausdepp becomes a card table of its own: a new look, paced achievements and visible reactions.",
+  "summary_de": "V3.0: Hausdepp ist da! Karten mischen, Mitspieler holen und am Stammtisch um den Titel spielen.",
+  "summary_en": "V3.0: Hausdepp is here! Shuffle up, gather your friends and play for the title at our card table.",
   "player_notes": {
     "de": {
-      "title": "Platz an der Kartenrunde!",
+      "title": "Töröö! Der Hausdepp ist da.",
       "changes": [
-        "Erreichte Erfolge stehen in jeder Gruppe oben; häufige Ziele wachsen über mehrere Runden.",
-        "Entdecke den eigenen Hausdepp-Look, griffige Buttons, Gegner im Halbkreis und ein kurzes Mischen vor dem Abheben.",
-        "Sieh Profilbilder und eigene wie fremde Reaktionen direkt am Tisch.",
-        "Computer erhalten Namen aus 50 urigen Männer- und Frauennamen, ohne doppelte Namen am Tisch.",
-        "Auf Tablet und Desktop stehen wechselnde Getränke und Snacks am freien Tischrand.",
-        "Installiere Hausdepp mit eigenem Herz-Zehner-Icon und sieh im Spielwähler, wie viele Menschen gerade spielen.",
-        "Menschenrunden geben 10 EP, Runden mit Computer abgerundet 2 EP; Erfolge behalten ihre vollen EP.",
-        "Dein Tisch erhält einen von 50 persönlichen Namen. Teile die Einladung oder rufe freigegebene Mitspieler."
+        "Neu in der Spielesuite: Hausdepp für zwei bis sechs Spieler – mit Menschen, Computern oder beidem.",
+        "Zehn drauf. Tisch frei. Spiele direkt aus der Hand, zocke vom Stapel und wirf im richtigen Moment nach.",
+        "Spielt ein Stammtischturnier: Jede Niederlage gibt einen Buchstaben. Wer HAUSDEPP voll hat, trägt den Tagestitel.",
+        "Sammle 100 Erfolge und steige durch 24 Ränge von Einstein bis Hausdepp – mit einem Augenzwinkern.",
+        "Entdecke deinen eigenen Kartentisch, eine kompakte mobile Lobby und Hausdepp als installierbare App mit Herz-Zehner-Icon.",
+        "Menschenrunden geben 10 EP, Runden mit Computer abgerundet 2 EP. Erfolge behalten immer ihre vollen Punkte.",
+        "Teile deine Spieleinladung oder rufe Mitspieler per Push. Deine bestehenden Benachrichtigungseinstellungen gelten weiter.",
+        "Wechsle zwischen ZDWA, Zilch und Hausdepp und sieh direkt, wie viele Menschen gerade spielen."
       ]
     },
     "en": {
-      "title": "Pull up a chair!",
+      "title": "Trumpets out! Hausdepp is here.",
       "changes": [
-        "Earned achievements lead each group; common goals grow across several rounds.",
-        "Discover the distinct Hausdepp look, clear buttons, opponents around the table and a brief shuffle before cutting.",
-        "See account avatars and reactions from every sender at the table.",
-        "Computers receive unique names from 50 characterful male and female names.",
-        "Tablets and desktops gain a varying selection of drinks and snacks in free table space.",
-        "Install Hausdepp with its own heart-ten icon and see how many people are playing in the game picker.",
-        "Human-only rounds grant 10 XP, rounds with computers a rounded-down 2 XP; achievements keep their full XP.",
-        "Your table gets one of 50 personalised names. Share its invitation or call permitted players."
+        "New to the game suite: Hausdepp for two to six players, with people, computers or both.",
+        "Ten down. Table clear. Play directly from your hand, gamble from the stock and follow up at the right moment.",
+        "Play a table tournament: each loss adds a letter. Complete HAUSDEPP and the day’s title is yours.",
+        "Collect 100 achievements and climb 24 ranks from Einstein to Hausdepp, with a knowing wink.",
+        "Discover your own card table, a compact mobile lobby and an installable Hausdepp app with a heart-ten icon.",
+        "Human-only rounds grant 10 XP; rounds with computers grant a rounded-down 2 XP. Achievements always keep their full points.",
+        "Share your invitation or call players by push. Your existing notification preferences still apply.",
+        "Switch between ZDWA, Zilch and Hausdepp and see how many people are playing right now."
       ]
     }
   }

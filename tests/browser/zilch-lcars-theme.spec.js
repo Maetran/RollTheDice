@@ -85,6 +85,8 @@ async function signIn(page, username, password) {
   await page.fill("#loginUsername", username);
   await page.fill("#loginPassword", password);
   await page.click("#loginForm button[type=submit]");
+  // The public game chooser is no longer a completed-login signal.
+  await expect(page.locator("#authBadge")).toContainText(username);
 }
 
 async function createUser(page, username, password, role = "user") {

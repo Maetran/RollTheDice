@@ -8,6 +8,7 @@ from urllib.parse import unquote, urlsplit
 DEFAULT_SITE_ORIGIN = "https://zockdiewandan.online"
 DEFAULT_ZILCH_ORIGIN = "https://zilch.zockdiewandan.online"
 HAUSDEPP_PREVIEW_HOST = "hausdepp.zockdiewandan.online"
+HAUSDEPP_ORIGIN = f"https://{HAUSDEPP_PREVIEW_HOST}"
 
 _ZILCH_EXACT_PATHS = frozenset(
     {
@@ -123,7 +124,7 @@ def is_zilch_host(connection) -> bool:
 
 
 def is_hausdepp_host(connection) -> bool:
-    """The reserved card-game host is still an authenticated private preview."""
+    """Recognize the fixed Hausdepp product host without trusting URL input."""
     return request_hostname(connection) == HAUSDEPP_PREVIEW_HOST
 
 
@@ -151,3 +152,29 @@ def safe_zilch_path(value: str | None) -> str:
 
 def zilch_url(path: str | None = "/") -> str:
     return f"{zilch_origin()}{safe_zilch_path(path)}"
+
+
+def safe_hausdepp_path(value: str | None) -> str:
+    """Allow only existing prefixed Hausdepp destinations for login handoff."""
+    candidate = str(value or "/hausdepp").strip()
+    if len(candidate) > 2048 or any(ord(character) < 32 for character in candidate):
+        return "/hausdepp"
+    try:
+        parsed = urlsplit(candidate)
+    except ValueError:
+        return "/hausdepp"
+    if parsed.scheme or parsed.netloc or parsed.fragment or not parsed.path.startswith("/"):
+        return "/hausdepp"
+    known = parsed.path in {"/hausdepp", "/hausdepp/regeln", "/hausdepp/konto", "/hausdepp/rangliste"}
+    if parsed.path.startswith("/hausdepp/spiel/"):
+        segment = parsed.path.removeprefix("/hausdepp/spiel/")
+        if segment.endswith("/zuschauen"):
+            segment = segment.removesuffix("/zuschauen")
+        known = _decoded_path_segment_is_safe(segment)
+    if not known:
+        return "/hausdepp"
+    return parsed.path + (f"?{parsed.query}" if parsed.query else "")
+
+
+def hausdepp_url(path: str | None = "/hausdepp") -> str:
+    return f"{HAUSDEPP_ORIGIN}{safe_hausdepp_path(path)}"

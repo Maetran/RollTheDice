@@ -1,7 +1,10 @@
 import { authError, loadAuth, login, loginWithPasskey, logout, passkeysSupported } from "../shared/auth.js";
 import { mountRegistrationForm } from '../shared/registration.js';
+import { HAUSDEPP_MESSAGES } from '../i18n/catalog.js';
 import {
   applyZilchRouteLinks,
+  hausdeppAppEntryUrl,
+  normalizeHausdeppPageUrl,
   isProductionZilchLocation,
   normalizeZilchPageUrl,
   ZDWA_PRODUCTION_ORIGIN,
@@ -40,11 +43,12 @@ function accountTabHash(route, preferred = "") {
 }
 
 function returnPath() {
-  const fallback = zilchPath("/");
+  const fallback = document.documentElement.dataset.hausdeppLogin === 'true' ? '/hausdepp' : zilchPath("/");
   const candidate = new URLSearchParams(window.location.search).get("return_to");
   // One fixed, server-protected dashboard destination, never an arbitrary URL.
   if (candidate === "/admin/dashboard") return candidate;
-  if (typeof candidate === "string" && /^\/hausdepp(?:\/(?:regeln|konto|spiel\/[A-Za-z0-9_-]+(?:\/zuschauen)?))?\/?$/.test(candidate)) return candidate;
+  const directHausdeppPath = normalizeHausdeppPageUrl(candidate);
+  if (directHausdeppPath) return directHausdeppPath;
   const directZilchPath = normalizeZilchPageUrl(candidate);
   if (directZilchPath) {
     const destination = new URL(directZilchPath, window.location.origin);
@@ -59,9 +63,13 @@ function returnPath() {
   if (typeof candidate !== "string" || !candidate.startsWith("/") || candidate.startsWith("//")) return fallback;
   try {
     const continuation = new URL(candidate, window.location.origin);
-    if (continuation.origin !== window.location.origin
-      || continuation.pathname !== "/auth/continue"
-      || continuation.searchParams.get("app") !== "zilch") return fallback;
+    if (continuation.origin !== window.location.origin || continuation.pathname !== "/auth/continue") return fallback;
+    if (continuation.searchParams.get("app") === "hausdepp") {
+      const path = normalizeHausdeppPageUrl(continuation.searchParams.get("path") || "/hausdepp");
+      if (!path) return fallback;
+      return `/auth/continue?app=hausdepp&path=${encodeURIComponent(path)}`;
+    }
+    if (continuation.searchParams.get("app") !== "zilch") return fallback;
     const requestedPath = continuation.searchParams.get("path") || "/";
     const legacyCandidate = requestedPath === "/" ? "/zilch" : `/zilch${requestedPath}`;
     const validatedLegacyPath = normalizeZilchPageUrl(legacyCandidate);
@@ -80,6 +88,12 @@ function returnPath() {
   }
 }
 
+function isHausdeppDestination(destination = returnPath()) {
+  if (destination.startsWith("/hausdepp")) return true;
+  const target = new URL(destination, window.location.origin);
+  return target.pathname === "/auth/continue" && target.searchParams.get("app") === "hausdepp";
+}
+
 function setMessage(value, kind = "") {
   message.textContent = value ? t(value) : "";
   message.dataset.kind = kind;
@@ -88,9 +102,22 @@ function setMessage(value, kind = "") {
 function render(auth) {
   const user = auth?.user;
   const dashboardDestination = returnPath() === "/admin/dashboard";
-  const hausdeppDestination = returnPath().startsWith("/hausdepp");
+  const hausdeppDestination = isHausdeppDestination();
+  if (hausdeppDestination) {
+    const messages = HAUSDEPP_MESSAGES[window.ZDWA_I18N?.getLanguage?.() === 'en' ? 'en' : 'de'];
+    document.title = messages.signInTitle;
+    document.getElementById('zilchLoginTitle').textContent = messages.signInTitle;
+    document.querySelector('.zilch-login-intro').textContent = messages.sharedAccountHint;
+    const brand = document.querySelector('.zilch-login-brand');
+    brand.href = hausdeppAppEntryUrl();
+    brand.removeAttribute('data-zilch-path');
+    brand.setAttribute('aria-label', 'Hausdepp');
+    brand.querySelector('span:last-child').textContent = 'Hausdepp';
+    brand.querySelector('.zilch-brand-mark').innerHTML = '<img src="/static/icons/hausdepp-icon-32.png" width="24" height="32" alt="">';
+  }
+  const access = auth?.game_access || user?.game_access;
   const allowed = dashboardDestination ? Boolean(user) : hausdeppDestination
-    ? user?.game_access?.hausdepp_preview === true : user?.game_access?.zilch_preview === true;
+    ? Boolean(user && (access?.hausdepp_public === true || access?.hausdepp_preview === true)) : user?.game_access?.zilch_preview === true;
   const passkeyAvailable = auth?.passkeys?.enabled && passkeysSupported();
   passkeyPanel.hidden = Boolean(user) || !passkeyAvailable;
   passkeyUnavailable.hidden = Boolean(user) || passkeyAvailable;
@@ -121,8 +148,9 @@ async function refresh({ redirect = false } = {}) {
   if (accountLanguage && accountLanguage !== document.documentElement.lang) return auth;
   render(auth);
   const destination = returnPath();
-  const destinationAllowed = destination.startsWith("/hausdepp")
-    ? auth.user?.game_access?.hausdepp_preview === true
+  const access = auth?.game_access || auth.user?.game_access;
+  const destinationAllowed = isHausdeppDestination(destination)
+    ? Boolean(auth.authenticated && (access?.hausdepp_public === true || access?.hausdepp_preview === true))
     : auth.user?.game_access?.zilch_preview === true || (auth.authenticated && destination === "/admin/dashboard");
   if (redirect && destinationAllowed) window.location.assign(destination);
   return auth;

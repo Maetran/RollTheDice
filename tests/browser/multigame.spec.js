@@ -6,6 +6,8 @@ async function signIn(page, username, password) {
   await page.fill("#loginUsername", username);
   await page.fill("#loginPassword", password);
   await page.click("#loginForm button[type=submit]");
+  // The public Hausdepp chooser can appear before the login request settles.
+  await expect(page.locator("#authBadge")).toContainText(username);
 }
 
 async function createUser(page, username, password, role = "user") {
@@ -382,9 +384,9 @@ async function mockPrivateZilchResultEndpoints(page, result) {
   }, { gameId: result.game_id, historyPayload: history, resultPayload: result });
 }
 
-async function expectFounderSwitchWithoutZilch(page) {
-  // The bootstrap account is the permanent founder of this isolated DB. It
-  // can select Hausdepp without gaining the separately gated Zilch audience.
+async function expectPublicHouseSwitchWithoutZilch(page) {
+  // Anonymous and signed-in visitors can discover Hausdepp without gaining
+  // the separately gated Zilch preview capability.
   await expect(page.locator("[data-game-switch]")).toBeVisible();
   await page.locator("[data-game-switch]").click();
   const menu = page.locator("#suiteGameMenu");
@@ -401,14 +403,14 @@ async function chooseGame(page, name) {
 
 test("Zilch stays permission-gated and the game chooser hotkey respects inputs", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("[data-game-switch]")).toBeHidden();
+  await expectPublicHouseSwitchWithoutZilch(page);
   await expect(page.locator("html")).toHaveAttribute("data-game", "zdwa");
   await expect(page.locator("#createGameCard")).toBeVisible();
 
-  // The founder has Hausdepp, but is not the allowed Zilch preview identity.
+  // This account is not the allowed Zilch preview identity.
   await signIn(page, "Admin", "temporary-password-123");
   await expect(page.locator("#authBadge")).toContainText("Admin");
-  await expectFounderSwitchWithoutZilch(page);
+  await expectPublicHouseSwitchWithoutZilch(page);
   await ensurePreviewAccounts(page);
 
   await page.click("#logoutBtn");
@@ -487,7 +489,7 @@ test("Zilch stays permission-gated and the game chooser hotkey respects inputs",
   await expect(page.locator("#zilchAccountLogout")).toBeVisible();
   await page.click("#zilchAccountLogout");
   await page.waitForURL(/\/$/);
-  await expect(page.locator("[data-game-switch]")).toBeHidden();
+  await expectPublicHouseSwitchWithoutZilch(page);
 });
 
 test("a permitted user can create and reload a private CPU game through the normal server path", async ({ page }) => {
@@ -692,7 +694,7 @@ test("two explicitly allowed humans can create, rejoin, and play a private Zilch
     await blocked.goto("/");
     await signIn(blocked, "Admin", "temporary-password-123");
     await expect(blocked.locator("#authBadge")).toContainText("Admin");
-    await expectFounderSwitchWithoutZilch(blocked);
+    await expectPublicHouseSwitchWithoutZilch(blocked);
     const invisible = await blocked.evaluate(async () => (await fetch("/api/games?game_type=zilch")).json());
     expect(invisible.games).toEqual([]);
     const forbidden = await blocked.goto(gamePath);

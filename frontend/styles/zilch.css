@@ -304,6 +304,16 @@ html[data-game="zilch"] .zilch-nav-list .zilch-nav-back::before {
 
 .zilch-header-tools { flex-wrap: nowrap; justify-content: flex-end; }
 .zilch-header-tools { grid-column: -2 / -1; justify-self: end; }
+html[data-hausdepp-login="true"] .zilch-login-card :is(button, input, select, summary, .button-link) { min-height: 44px; }
+/* The server-owned public hint reserves the final header before auth/scripts,
+   including the same-origin lobby inside an installed suite app. */
+.zilch-shell[data-zilch-public-lobby="true"] .zilch-header-tools { --header-control-size: 44px; }
+@media (max-width: 1099px) {
+  html[data-game="zilch"] .zilch-shell[data-zilch-public-lobby="true"] > .zilch-header {
+    grid-template-rows: minmax(44px, auto) minmax(44px, auto);
+  }
+  html[data-game="zilch"] body .zilch-shell[data-zilch-public-lobby="true"] .zilch-nav-list a { min-height: 44px; }
+}
 .zilch-account { min-width: 0; overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
 .zilch-header-tools .language-switcher { display: inline-flex; align-items: center; }
 .zilch-header-tools .language-switcher select {

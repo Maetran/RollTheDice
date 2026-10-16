@@ -83,7 +83,7 @@ class HausdeppLocalMultiplayerTransportTests(unittest.TestCase):
     def test_two_account_join_private_play_manual_refill_disconnect_and_account_rejoin(self):
         # Local accounts have no special production capability by location.
         self.assertTrue(can_access_hausdepp(self.founder_identity))
-        self.assertFalse(can_access_hausdepp(self.second_identity))
+        self.assertTrue(can_access_hausdepp(self.second_identity))
         self.assertFalse(can_access_hausdepp(None))
         prefix = ["hearts-6", "hearts-K", "bells-6", "bells-K", "hearts-10", "leaves-A",
                   "acorns-6", "hearts-7", "hearts-8"]
@@ -91,20 +91,15 @@ class HausdeppLocalMultiplayerTransportTests(unittest.TestCase):
         deck = prefix + [card for card in make_deck() if card not in {*prefix, bottom}] + [bottom]
         fixture_ids = {self.founder.id, self.second.id}
 
-        def local_fixture_capability(identity):
-            return bool(identity and identity.user_id in fixture_ids)
-
         def arranged_round(participants, dealer_index=0):
             return new_round(participants, dealer_index=dealer_index, deck=deck)
 
         founder_headers = self.headers(self.founder_token)
         second_headers = self.headers(self.second_token)
         with TestClient(main.app) as client:
-            # Demonstrate denial before the isolated test override begins.
-            self.assertEqual(client.get("/hausdepp", headers=second_headers).status_code, 403)
-            with patch("app.game_access.can_access_hausdepp", side_effect=local_fixture_capability), patch(
-                "app.main.can_access_hausdepp", side_effect=local_fixture_capability,
-            ), patch("app.hausdepp_engine.new_round", side_effect=arranged_round) as deal:
+            # Both accounts use the public production policy; only the deal is deterministic.
+            self.assertEqual(client.get("/hausdepp", headers=second_headers).status_code, 200)
+            with patch("app.hausdepp_engine.new_round", side_effect=arranged_round) as deal:
                 created = client.post("/api/games", json={
                     "name": "Local two-account transport fixture", "mode": "2", "game_type": "hausdepp",
                     "play_mode": "multiplayer", "cpu_count": 0,
@@ -244,15 +239,13 @@ class HausdeppLocalMultiplayerTransportTests(unittest.TestCase):
                     lobby = client.get("/api/games?game_type=hausdepp", headers=headers).json()
                     self.assertNotIn("_hausdepp", metadata)
                     self.assertNotIn("hearts-10", json.dumps([metadata, lobby]))
-            # The override's lifetime ended. A normal local account is denied
-            # again by the actual page, lobby and WebSocket policy.
-            self.assertFalse(can_access_hausdepp(self.second_identity))
-            self.assertEqual(client.get("/hausdepp", headers=second_headers).status_code, 403)
-            self.assertEqual(client.get("/api/games?game_type=hausdepp", headers=second_headers).json()["games"], [])
-            with self.assertRaises(WebSocketDisconnect) as denied:
-                with client.websocket_connect(f"/ws/{game_id}", headers=second_headers):
-                    self.fail("The isolated fixture must not leave access enabled")
-            self.assertEqual(denied.exception.code, 1008)
+            # Ending the deterministic deal fixture never changes the normal
+            # account's production page, lobby or WebSocket access.
+            self.assertTrue(can_access_hausdepp(self.second_identity))
+            self.assertEqual(client.get("/hausdepp", headers=second_headers).status_code, 200)
+            self.assertTrue(client.get("/api/games?game_type=hausdepp", headers=second_headers).json()["games"])
+            with client.websocket_connect(f"/ws/{game_id}", headers=second_headers) as verified:
+                self.message(verified, "auth")
 
 
 if __name__ == "__main__":

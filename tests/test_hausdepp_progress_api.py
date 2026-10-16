@@ -71,16 +71,16 @@ class HausdeppProgressApiTests(unittest.TestCase):
         client.cookies.set("rollthedice_session", self.token)
         return client
 
-    def test_progress_and_receipts_require_the_bound_founder_account(self):
+    def test_progress_and_receipts_require_a_current_account_and_csrf(self):
         with TestClient(main.app) as client:
             self.assertEqual(client.get("/api/hausdepp/account").status_code, 401)
             self.assertEqual(client.post("/api/hausdepp/account/acknowledge", json={"revision": 0}).status_code, 401)
             other_identity, other_token = login(request_for(), self.other.username, "secure-password-123")
             client.cookies.set("rollthedice_session", other_token)
-            self.assertEqual(client.get("/api/hausdepp/account").status_code, 403)
+            self.assertEqual(client.get("/api/hausdepp/account").status_code, 200)
             denied = client.post("/api/hausdepp/account/acknowledge", json={"revision": 0},
                                  headers={"X-CSRF-Token": other_identity.csrf_token})
-            self.assertEqual(denied.status_code, 403)
+            self.assertEqual(denied.status_code, 200)
             self.assertEqual(denied.headers["cache-control"], "no-store")
 
     def test_existing_outcomes_credit_only_provable_progress_and_newton_greeting(self):
@@ -190,8 +190,8 @@ class HausdeppProgressApiTests(unittest.TestCase):
             self.assertEqual(anonymous.get("/api/hausdepp/leaderboard").status_code, 401)
             _, token = login(request_for(), self.other.username, "secure-password-123")
             anonymous.cookies.set("rollthedice_session", token)
-            self.assertEqual(anonymous.get("/hausdepp/rangliste").status_code, 403)
-            self.assertEqual(anonymous.get("/api/hausdepp/leaderboard").status_code, 403)
+            self.assertEqual(anonymous.get("/hausdepp/rangliste").status_code, 200)
+            self.assertEqual(anonymous.get("/api/hausdepp/leaderboard").status_code, 200)
 
 
 if __name__ == "__main__":

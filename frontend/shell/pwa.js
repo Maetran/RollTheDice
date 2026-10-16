@@ -5,6 +5,7 @@
   const PRESENCE_KEY = "zdwa_presence_id";
   const INSTALL_DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
   const ZILCH_HOSTNAME = "zilch.zockdiewandan.online";
+  const HAUSDEPP_HOSTNAME = "hausdepp.zockdiewandan.online";
   const INSTALLED_ENTRY_KEY = "rollthedice:pwa-entry:v1";
   const APP_VERSION = (() => {
     try {
@@ -195,11 +196,11 @@
     try {
       const saved = sessionStorage.getItem(INSTALLED_ENTRY_KEY);
       const entry = launchedHausdepp ? "hausdepp" : ["zdwa", "zilch", "hausdepp"].includes(saved) ? saved
-        : controlledHausdepp ? "hausdepp" : isZilchOrigin() ? "zilch" : "zdwa";
+        : controlledHausdepp || location.hostname.toLowerCase() === HAUSDEPP_HOSTNAME ? "hausdepp" : isZilchOrigin() ? "zilch" : "zdwa";
       sessionStorage.setItem(INSTALLED_ENTRY_KEY, entry);
       return entry;
     } catch {
-      if (launchedHausdepp || controlledHausdepp) return "hausdepp";
+      if (launchedHausdepp || controlledHausdepp || location.hostname.toLowerCase() === HAUSDEPP_HOSTNAME) return "hausdepp";
       return isZilchOrigin() ? "zilch" : "zdwa";
     }
   }
@@ -256,7 +257,8 @@
   // preview deliberately keep that worker too: registering the Apex worker
   // there would fail and can surface an external browser sheet on iOS.
   const isZilchDocument = document.documentElement.dataset.game === "zilch";
-  const isHausdeppDocument = document.documentElement.dataset.game === "hausdepp";
+  const isHausdeppDocument = document.documentElement.dataset.game === "hausdepp"
+    || document.documentElement.dataset.hausdeppLogin === "true";
   const entry = installedEntry();
   if (entry === "hausdepp" || (isHausdeppDocument && !entry)) {
     ensureManifest("hausdepp");
