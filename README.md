@@ -199,6 +199,37 @@ accounts is independent of that test.
 
 ## Hausdepp — Spielfenster, Computer und Konto / game window, computers and account
 
+**Deutsch:** Mit **Mehrere Karten auswählen** kannst du gleiche Handkarten markieren
+und gemeinsam in einem Zug spielen; ein normaler Tipp legt weiterhin sofort.
+Computer lassen sich im variablen Normaltempo rund 12,5 % mehr Zeit. Nach einer
+beendeten oder abgebrochenen Partie erstellt **Neu erstellen** einen gemeinsamen
+Folgetisch mit derselben Platzanzahl, Computerzahl, Spielart und Schutzoption.
+Die bisherigen Menschen erhalten eine persönliche Einladung und wechseln erst
+nach ausdrücklichem Annehmen in den Wartebereich. Plätze bleiben 15 Minuten
+reserviert. Ein wartender Hausdepp-Tisch schliesst nach einer Stunde ohne neuen
+menschlichen Sitz; Zuschauen, Wiederverbinden und Chat verlängern diese Frist
+nicht. Abgeschlossene Turnierrunden behalten ihre Wertung. Die Lobby wartet vor
+dem Zeichnen der Karten auf dekodierte Motive und wiederholt vorübergehend
+fehlgeschlagene Bildabrufe. Öffentliche Kartenbilder verwenden beim PWA-Neuladen
+den normalen Browsercache; private Spiel- und Kontodaten bleiben online.
+In allen drei Spielen reagieren die Tourknöpfe in den Kontoeinstellungen auch
+auf einen unmittelbaren Klick, während die gespeicherten Einstellungen noch laden.
+
+**English:** **Select multiple cards** lets you mark matching hand cards and play
+them together as one move; a normal tap still plays immediately. Computers take
+about 12.5% longer within their varied normal timing. After a completed or
+aborted game, **Create again** makes one shared follow-up table with the same
+seat count, computer count, format and protection option. Previous human players
+receive personal invitations and enter the waiting room only after explicitly
+accepting. Seats are reserved for 15 minutes. A waiting Hausdepp table closes
+after one hour without a new human seat; spectators, reconnections and chat do
+not extend this deadline. Completed tournament rounds keep their scores. The
+lobby waits for decoded artwork before drawing cards and retries temporary
+image failures. Public card images use the ordinary browser cache on PWA
+reload; private game and account data remain online-only. In all three games,
+the tour buttons in account settings respond even to an immediate click while
+saved preferences are still loading.
+
 **Deutsch:** Der mobile Hausdepp-Tisch bleibt im Hoch- und Querformat in einem
 festen Spielfenster. Gegner, grössere Kartenstapel, Zugstatus, eigene Hand und
 Reaktionen bleiben erreichbar; grosse Hände scrollen nur innerhalb des Fächers.

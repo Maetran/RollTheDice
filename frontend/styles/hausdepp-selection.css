@@ -1,0 +1,18 @@
+/* Selection uses the existing hand and reaction dock, never another table row. */
+.hd-playing .hd-hand-region { display: grid; grid-template-columns: minmax(0, 1fr) 44px; column-gap: 4px; }
+.hd-playing .hd-hand-heading { grid-column: 1 / -1; }
+.hd-playing .hd-hand { grid-column: 1; min-width: 0; }
+.hd-playing .hd-multi-toggle { grid-column: 2; grid-row: 2; align-self: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 9px; border: 1px solid var(--hd-edge); }
+.hd-playing .hd-multi-toggle[aria-pressed="true"] { color: var(--hd-paper); background: var(--hd-red); border-color: var(--hd-paper); box-shadow: 0 0 0 2px var(--hd-red); }
+.hd-playing .hd-multi-toggle:disabled { opacity: .55; cursor: default; }
+.hd-playing .hd-hand-fan .hausdepp-card.is-selected { outline: 3px solid #f2d781; outline-offset: -4px; filter: brightness(1.06); box-shadow: 0 0 0 2px var(--hd-red); }
+.hd-playing .hd-multi-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; min-width: 0; flex: 1 1 auto; }
+.hd-playing .hd-multi-actions[hidden], .hd-playing .hd-reactions[hidden], .hd-playing .hd-multi-notice[hidden] { display: none; }
+.hd-playing .hd-multi-actions > button { min-width: 44px; min-height: 44px; padding: 8px; font-size: 13px; line-height: 18px; white-space: nowrap; }
+.hd-playing .hd-multi-actions > button:disabled { opacity: .55; cursor: default; }
+.hd-playing .hd-multi-notice { position: fixed; z-index: 38; left: 8px; right: 8px; bottom: 54px; width: fit-content; max-width: calc(100% - 16px); margin: 0 auto; padding: 8px 10px; color: var(--hd-ink); background: var(--hd-paper); border: 1px solid var(--hd-red); border-radius: 4px; font-size: 12px; line-height: 17px; pointer-events: none; }
+@media (max-width: 1099px) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-hand-region { grid-template-columns: minmax(0, 1fr) 44px; column-gap: 4px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand { grid-column: 1; grid-row: 2; }
+  html[data-game="hausdepp"] body.hd-playing .hd-multi-actions > button { height: 44px; }
+}

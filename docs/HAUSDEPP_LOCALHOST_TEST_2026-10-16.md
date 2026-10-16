@@ -279,3 +279,90 @@ umgekehrte Dialog-Fokusfall und alle acht bisherigen Notice-Fälle bestehen:
 The final bundle adds only bilingual instructions and the narrow safeguard for
 a native dialog opening after a progress popup. All nine notice checks and
 both rules/navigation checks pass; full quality/security checks are green.
+
+## 17.10.2026: Folgetisch, Mehrfachauswahl und PWA-Reload / follow-up table, multiple selection and PWA reload
+
+Prüfstand vor der anschliessenden Rollout-Freigabe: **3.3.0**, Asset
+**`7d79fb567fac`**. Diese lokale Prüfphase erfolgte ohne Deployment oder
+Versand an echte Konten. / The following checks were recorded before rollout
+approval, without deployment or notifications to real accounts.
+
+- Vollständiger Backendlauf: **1’251 bestanden**, Coverage **84,81 %**.
+  `npm run check:quality` inklusive Abhängigkeitsprüfung vollständig grün. /
+  Full backend suite: 1,251 passed, 84.81% coverage; quality/security checks pass.
+- Neu-erstellen-Oberfläche: **14 Chromium + 14 WebKit**. Deutsch/Englisch,
+  ausdrückliche Annahme, sichere lokale Ziele, Wiederholung nach Fehlern,
+  Dialoggrenzen, versteckte Tabs und Freigabe ihrer Sperren, Abbruchzustände,
+  Turnierpausen und Beenden ausstehender Requests beim Seitenwechsel. /
+  Invitation and recreation UI covers consent, safe local navigation, retries,
+  modal bounds, hidden tabs/locks, terminal states and page-lifetime cancellation.
+- Ein zusätzlicher echter Zwei-Konten-Browserflow prüft Registry-Retirement
+  nach Abbruch, Neu-erstellen-POST, wartenden Folgetisch mit CPU, persönlichen
+  Prompt ohne Sitznahme und anschliessenden normalen WS-Join nach Annehmen.
+  Die EP bleiben unverändert. **114 fokussierte Backendtests + 75 Untertests**
+  und ein unabhängiger 25er-Lauf sowie abschliessend 26 Rematchtests sichern Reservierung, private Codes,
+  Doppelklickschutz, Neustart und Datenbankfehler-Wiederherstellung ab. /
+  A real two-account flow verifies retirement through explicit acceptance and
+  normal WebSocket admission; focused backend tests cover storage and recovery.
+- Mehrfachauswahl: **55 bestandene Ausführungen** in Chromium und WebKit,
+  einschliesslich bestehender Hand-/Animations-/Sechser-Tischregressionen.
+  Atomare 2er-/4er-Züge und Nachwürfe, verfallene Auswahl, neun Geräteformate,
+  35 Karten und mindestens 44-Pixel-Steuerungen. /
+  Multiple selection retains immediate single taps and submits matching cards
+  atomically, with stale-selection and fixed-window regressions checked.
+- Karten/PWA: Motivpixel statt bloss vorhandener SVG-Rahmen geprüft. Echte
+  Worker kontrollieren drei warme Reloads; kaltes Laden und einmaliger 503-Fehler
+  sind abgedeckt. Die drei Fälle bestehen auch im finalen Bundle jeweils in
+  Chromium, WebKit und iPhone-13-WebKit-Emulation. Kein Cache Storage für Hände
+  oder Kontodaten. **Eine echte installierte iPhone-PWA wurde nicht geprüft.** /
+  Actual motif pixels, worker-controlled reloads, cold loading and transient
+  image failure pass in all three browser configurations; physical iPhone PWA
+  acceptance remains distinct from emulation.
+
+Die lokale Vorschau auf Port 8001 verwendet eine separat gesicherte Testdatenbank
+mit Migration 0063. Browserfälle laufen ausschliesslich auf wegwerfbaren Servern;
+sie verändern den Vorschau-Fortschritt nicht. / The preview uses a separately
+backed-up local test database; disposable browser servers never alter its progress.
+
+### Abschliessende Tour-Korrektur / final tour correction
+
+Der anschliessende CI-Lauf machte eine echte Initialisierungsrace sichtbar:
+Start/Ansehen in den Kontoeinstellungen waren bereits sichtbar, bevor ihre
+Klick-Handler nach dem ersten Einstellungsabruf gebunden wurden. Die Handler
+werden jetzt sofort gebunden; der Präferenzschalter bleibt bis zum Laden
+deaktiviert. / CI exposed visible tour actions whose handlers were only wired
+after the initial account read. Actions now work immediately while the
+preference toggle retains its loading guard.
+
+Finaler Assetstand **`541be166282a`**: Qualitätsprüfung grün; **10/10** native
+Hausdepp-Anmelde-/Kontofälle und **40/40** gemeinsame Tourfälle grün, darunter
+sechs deterministisch verzögerte Einstellungsabrufe. Die zuvor rote
+Einzelreproduktion besteht ebenfalls. Mit diesem Bundle bestehen erneut
+**26** Chromium-Fälle für Kartenreload, Auswahl und Einladungen sowie die drei
+Kartenfälle in WebKit. / Full quality checks, 10 native authentication/account
+flows, all 40 shared tour cases and the original race reproduction pass.
+The final bundle also passes the 26 combined Chromium cases and three WebKit
+artwork cases. No test uses production accounts or sends release notifications.
+
+### Letzte CI-Befunde vor Integration / final CI findings before integration
+
+Asset **`39e824cb5f17`**: Beim Turnierabbruch bleiben der bestehende Hinweis
+zu gewerteten Runden, die Buchstabenliste und der Kontolink erhalten;
+„Neu erstellen“ ergänzt diese Ansicht. Zwei zusätzliche DE/EN-Fälle sichern
+Inhalt und Bildschirmgrenzen ab. Der echte Rematch-Browsertest liest das
+bestätigte Navigationsziel statt eines nach Navigation freigegebenen CDP-Bodys;
+Wiederholungen nutzen dasselbe Testkonto und lehnen dessen alte offene
+Einladungen ausdrücklich ab. Registrierungslimits bleiben unverändert.
+Die kompakten Formularprüfungen warten vor der Geometriemessung auf dekodierte
+Karten. / Tournament cancellation preserves completed-round information,
+letters and the account link. Real rematch retries reuse one isolated account
+without weakening registration limits; geometry checks await decoded artwork.
+
+Mit diesem Bundle: Qualitäts-/Sicherheitsprüfung grün; **20 Chromium-Fälle**
+für Kartenreload und Rematches sowie **9 bestehende Formular-/Turnierfälle**
+bestanden, ein ausdrücklicher Capture-Skip. Drei zusätzliche unmittelbare echte
+Rematch-Wiederholungen bestehen ebenfalls. / Quality/security checks, 20 artwork
+and rematch browser cases, nine form/tournament cases and three immediate real
+rematch repetitions pass; the optional capture case remains skipped.
+Auch alle **16 Rematch-Oberflächenfälle in WebKit** bestehen mit diesem letzten
+Bundle. / All 16 rematch UI cases also pass in WebKit with this final bundle.

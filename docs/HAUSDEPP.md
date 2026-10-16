@@ -228,6 +228,14 @@ ganz rechts. **Ein Tipp auf eine Handkarte legt sie unmittelbar.** Es gibt keine
 zusätzliche Bestätigung. Weitere gleiche Karten können schnell nacheinander
 angetippt werden, solange das Nachwurfrecht noch besteht.
 
+Mit **Mehrere Karten auswählen** lassen sich stattdessen mehrere Karten desselben
+Rangs markieren und gemeinsam ausspielen. Die Auswahl führt keinen Zug aus;
+erst **Karten legen** sendet alle ausgewählten Karten als einen atomaren Zug.
+Das funktioniert auch bei gültigem Nachwerfen. Schliesst eine andere Aktion
+das Nachwurffenster, verfällt eine noch nicht gespielte Auswahl sichtbar.
+Computer reagieren im variablen Normaltempo rund 12,5 % langsamer als zuvor;
+das schafft kein garantiertes Nachwurffenster.
+
 Ein Tipp auf das **offene Paket** bedeutet dagegen dessen bewusstes vollständiges
 Aufnehmen auf die Hand. Aufnehmen beendet den Zug. Bei leerem Tisch ist keine
 Aufnahme möglich.
@@ -411,6 +419,25 @@ je Runde auf ganze EP abgerundet). Auch ein
 gemischter Tisch zählt als Runde mit Computer. Abschliessende Turniererfolge
 behalten ihre volle einmalige EP-Belohnung. Die neuen Comeback-, Karten- und
 Turniererfolge ergänzen die ursprünglichen 64 zum Gesamtkatalog von 100.
+
+### Gemeinsam neu erstellen und Wartefrist
+
+Nach einer beendeten oder abgebrochenen Partie eröffnet **Neu erstellen** einen
+Folgetisch mit derselben Platzanzahl, Computerzahl, Einzelrunde oder Turnier
+und Schutzoption. Mehrere Klicks verschiedener bisheriger Teilnehmer führen
+zum selben Folgetisch. Die Computer bekommen erneut zufällige Namen. Frühere
+menschliche Teilnehmer erhalten eine kontogebundene Einladung; erst Annehmen
+bringt sie in den gemeinsamen Wartebereich. Schliessen des Hinweises gilt nicht
+als Annahme oder Ablehnung. Die reservierten Plätze gelten 15 Minuten, danach
+können sie wieder anderweitig belegt werden. Ein angenommenes Angebot kann bis
+zum Schliessen des Wartebereichs wieder aufgenommen werden. Das neue Spiel
+startet nach den üblichen Regeln; ein laufendes Turnier behält zwischen Runden
+stattdessen seine Aktion **Nächste Runde**.
+
+Wartende Hausdepp-Tische schliessen nach einer Stunde seit Erstellung oder dem
+letzten neu besetzten menschlichen Sitz. Zuschauer, Wiederverbindung, Ping und
+Chat setzen die Frist nicht zurück. Der Abbruch erzeugt keine zusätzlichen
+Siege, EP oder Erfolge; schon abgeschlossene Turnierrunden bleiben gewertet.
 
 ### Weitere Verfeinerungen
 
@@ -711,6 +738,13 @@ right. **Tapping a hand card plays it immediately**, without another confirmatio
 Further matching cards can be tapped in quick succession while the additional-
 card right remains open.
 
+Alternatively, **Select multiple cards** marks cards of the same rank for one
+combined play. Selection itself sends no game action; **Play cards** submits
+the complete selection atomically. This also works for a valid additional-card
+play. When another accepted action closes that window, an unplayed selection
+is visibly cleared. Computers take about 12.5% longer within their varied
+normal timing; this never guarantees an additional-card window.
+
 Tapping the **open pile** instead deliberately picks up the entire pile into
 the player's hand. Picking up ends the turn. An empty table cannot be picked up.
 
@@ -868,6 +902,23 @@ no repeatable XP bonus: each completed all-human round grants 10 XP, or exactly
 of the base reward, rounded down separately for each round. Final tournament
 achievements retain their full one-time XP reward. The added comeback, card and tournament feats
 extend the original 64 achievements to a catalogue of 100.
+
+### Creating again together and the waiting deadline
+
+After a completed or aborted game, **Create again** opens one follow-up table
+with the same seat count, computer count, single-round or tournament format and
+protection option. Multiple previous participants clicking it reach the same
+table. Computers receive fresh random names. Previous human participants get
+account-bound invitations; only Accept takes them into the shared waiting room.
+Closing the prompt neither accepts nor declines. Seats are reserved for 15
+minutes, then become available to others. An accepted invitation can be resumed
+until the waiting room closes. The new game starts under the usual rules; an
+ongoing tournament instead keeps its **Next round** action between rounds.
+
+Waiting Hausdepp tables close one hour after creation or the last newly occupied
+human seat. Spectators, reconnections, pings and chat do not reset the deadline.
+An abort grants no extra wins, XP or achievements; already completed tournament
+rounds keep their scores.
 
 ### Further refinements
 

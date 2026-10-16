@@ -27,21 +27,23 @@ def validate_hausdepp_mode(mode: object) -> str:
     return value
 
 
-def new_hausdepp_game(game_id: str, name: str, mode: object) -> GameDict:
+def new_hausdepp_game(game_id: str, name: str, mode: object, *, register: bool = True) -> GameDict:
     count = int(validate_hausdepp_mode(mode))
     now = datetime.now(timezone.utc)
     game: GameDict = {
         "_id": game_id, "_name": name, "_mode": str(count), "_game_type": HAUSDEPP_GAME_TYPE,
         "_expected": count, "_expected_connections": count, "_hardcore": False,
         "_started": False, "_finished": False, "_started_at": None, "_updated_at": now.isoformat(),
-        "_last_activity": now, "_players": [], "_participants": [], "_spectators": [],
+        "_last_activity": now, "_hausdepp_waiting_last_join_at": now.isoformat(),
+        "_players": [], "_participants": [], "_spectators": [],
         "_hausdepp": None, "_hausdepp_cpu_count": 0, "_play_mode": "multiplayer", "_turn": None,
         "_results": None, "_aborted": False, "_passphrase": None, "_chat_history": [],
         "_superadmins": {}, "_correction": {"active": False}, "_resume_required": False,
         "_manual_pause": False, "_manual_pause_by": None, "_manual_pause_by_name": None, "_manual_pause_at": None,
     }
-    games[game_id] = game
-    save_active_game(game)
+    if register:
+        games[game_id] = game
+        save_active_game(game)
     return game
 
 
@@ -66,12 +68,20 @@ def configure_hausdepp_game(game: GameDict, *, host_user_id: int, cpu_count: int
 
 
 def join_hausdepp_player(game: GameDict, player: dict) -> None:
+    from .hausdepp_rematch import rematch_join_guard
+
+    with rematch_join_guard(game, player.get("user_id")):
+        _join_hausdepp_player(game, player)
+
+
+def _join_hausdepp_player(game: GameDict, player: dict) -> None:
     if game.get("_started") or game.get("_finished"):
         raise ValueError("hausdepp_game_already_started")
     if len(game.get("_players", [])) >= game.get("_expected_connections", game["_expected"]):
         raise ValueError("hausdepp_game_full")
     # The first human must be the creating account. No guest token can claim it.
-    if not game.get("_players") and player.get("user_id") != game.get("_hausdepp_host_user_id"):
+    if (not game.get("_players") and player.get("user_id") != game.get("_hausdepp_host_user_id")
+            and not game.get("_hausdepp_rematch_id")):
         raise ValueError("hausdepp_host_required")
     if player.get("user_id") is None:
         raise ValueError("hausdepp_account_required")
@@ -87,6 +97,11 @@ def join_hausdepp_player(game: GameDict, player: dict) -> None:
                    "user_id": player["user_id"], "connection_player_id": player["id"]}
     # Humans occupy clockwise seats before the domain-only CPU seats.
     game.setdefault("_participants", []).insert(len(game["_players"]) - 1, participant)
+    if game.get("_hausdepp_rematch_id"):
+        joined = game.setdefault("_hausdepp_rematch_joined_ids", [])
+        if player["user_id"] not in joined:
+            joined.append(player["user_id"])
+    game["_hausdepp_waiting_last_join_at"] = datetime.now(timezone.utc).isoformat()
 
 
 def start_hausdepp_game(game: GameDict) -> None:

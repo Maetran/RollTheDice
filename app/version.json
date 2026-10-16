@@ -1,10 +1,10 @@
 {
-  "version": "3.2.0",
+  "version": "3.3.0",
   "bump": "minor",
-  "date": "2026-10-16",
-  "previous_revision": "1218657476632bcacb4e3306db0dde877ae6746a",
+  "date": "2026-10-17",
+  "previous_revision": "50142f17bec488a98b83fedc9753d61ee8180cd6",
   "summary": {
-    "de": "Hausdepp mit stärkerer CPU, festem mobilen Spielfenster und eigener Passkey-Anmeldung samt Kontoeinstellungen.",
-    "en": "Hausdepp gains a stronger CPU, a fixed mobile game window and its own passkey sign-in and account settings."
+    "de": "Hausdepp: gemeinsam neu starten, gleiche Karten zusammen spielen und zuverlässigere Kartenbilder beim PWA-Neuladen.",
+    "en": "Hausdepp: restart together, play matching cards as one move and load artwork reliably after a PWA reload."
   }
 }

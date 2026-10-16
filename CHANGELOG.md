@@ -23,6 +23,40 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.3.0 — Gemeinsam an den nächsten Tisch / Together at the next table — 2026-10-17
+
+**Deutsch:** Nach einer beendeten oder abgebrochenen Hausdepp-Partie erstellt
+„Neu erstellen“ einen gemeinsamen Folgetisch mit denselben Einstellungen und
+derselben Computerzahl. Frühere Mitspieler erhalten eine persönliche Einladung
+mit ausdrücklicher Annahme; reservierte Plätze, Wiederaufnahme und mehrfaches
+Klicken bleiben abgesichert. Laufende Turniere behalten „Nächste Runde“.
+Wartende Hausdepp-Tische schliessen nach einer Stunde ohne neuen menschlichen
+Sitz. Der Abbruch vergibt keine zusätzlichen Punkte oder Siege.
+
+Eine Mehrfachauswahl spielt gleiche Karten als einen atomaren Zug; normales
+Antippen bleibt unmittelbar. Computer handeln im variablen Normaltempo 12,5 %
+langsamer. Die Lobby zeichnet Karten erst nach dem Dekodieren ihrer Motive,
+wiederholt vorübergehende Bildfehler und lässt öffentliche Kartenbilder beim
+PWA-Neuladen den nativen Browsercache verwenden. Private Daten bleiben online.
+In allen drei Spielen reagieren Tour starten und Ansehen in den
+Kontoeinstellungen bereits während des ersten Ladens; schnelle Klicks gehen
+nicht mehr vor dem Binden der Bedienung verloren.
+
+**English:** After a completed or aborted Hausdepp game, “Create again” opens
+one shared follow-up table with the same settings and computer count. Previous
+players receive personal invitations requiring explicit acceptance, with
+reserved seats, resume support and repeat-click protection. Ongoing tournaments
+keep “Next round”. Waiting Hausdepp tables close after one hour without a new
+human seat. An abort grants no extra points or wins.
+
+Multiple selection plays matching cards atomically; normal taps still play
+immediately. Computers take 12.5% longer within their varied normal timing.
+The lobby draws cards only after decoding their artwork, retries temporary
+image failures and lets public card images use the native browser cache on
+PWA reload. Private data remain online-only. In all three games, Start tour
+and View in account settings work during initial loading, so an immediate
+click is no longer lost before controls are wired.
+
 ## 3.2.0 — Der Hausdepp wird schlauer / Hausdepp gets smarter — 2026-10-16
 
 **Deutsch:** Hausdepp ist da und wächst weiter: Das mobile Spielfenster bleibt

@@ -232,7 +232,14 @@ def finalize_hausdepp_result(game: dict) -> dict:
         if tournament_is_pending(game):
             save_active_game(game)
         else:
-            delete_active_game(game["_id"])
+            from .hausdepp_rematch import retain_rematch_source
+
+            if retain_rematch_source({**game, "_game_type": HAUSDEPP_GAME_TYPE}):
+                game.pop("_hausdepp_rematch_source_pending", None)
+                delete_active_game(game["_id"])
+            else:
+                game["_hausdepp_rematch_source_pending"] = True
+                save_active_game(game)
     else:
         save_active_game(game)
     return completion

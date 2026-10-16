@@ -60,18 +60,20 @@ inspection information to predict the face-down stock.
 
 ## Tempo / Timing
 
-Neue Züge mischen schnelle Reaktionen von etwa 0,16–0,37 Sekunden, normale
-Pausen von 0,45–1,2 Sekunden und gelegentliche Denkpausen bis 2,4 Sekunden.
-Nach dem eigenen Abräumen liegen weitere Aktionen meist bei 0,12–0,65 Sekunden,
+Das variable Normaltempo ist um 12,5 % verlangsamt. Neue Züge mischen schnelle
+Reaktionen von etwa 0,18–0,42 Sekunden, normale Pausen von 0,51–1,35 Sekunden
+und gelegentliche Denkpausen bis 2,7 Sekunden.
+Nach dem eigenen Abräumen liegen weitere Aktionen meist bei 0,135–0,731 Sekunden,
 mit gelegentlichen längeren Pausen. Pflichtziehen und Nachwerfen haben eigene
 kurze Bereiche. Mehrere CPUs erhalten unabhängige Fristen; die kürzeste handelt
 zuerst. Eine fremde Auffüllung startet eine bereits laufende Denkzeit nicht neu.
 Nach der Pause wird die Entscheidung unter der Spielsperre anhand des aktuellen
 Zustands neu berechnet. Kein Nachwurf wird künstlich garantiert oder blockiert.
 
-First actions mix fast responses around 0.16–0.37 seconds, ordinary pauses of
-0.45–1.2 seconds and occasional thinking pauses up to 2.4 seconds. Follow-up actions
-after a clearance usually take 0.12–0.65 seconds, with occasional longer pauses.
+Variable normal timing is 12.5% slower. First actions mix fast responses around
+0.18–0.42 seconds, ordinary pauses of 0.51–1.35 seconds and occasional thinking
+pauses up to 2.7 seconds. Follow-up actions after a clearance usually take
+0.135–0.731 seconds, with occasional longer pauses.
 Refills and additional cards have their own short ranges. Multiple CPUs receive
 independent deadlines; the earliest acts first. Another player's refill does not
 restart an existing wait. After waiting, the decision is recalculated under the

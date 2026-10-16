@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
 from .active_games import save_active_game
-from .game_types import DEFAULT_GAME_TYPE
+from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,11 @@ def touch(g):
     g["_updated_at"] = g["_last_activity"].isoformat()
 
 
+def _waiting_hausdepp_room(g) -> bool:
+    return bool(g.get("_game_type") == HAUSDEPP_GAME_TYPE and not g.get("_started")
+                and not g.get("_finished") and not g.get("_aborted") and g.get("_hausdepp") is None)
+
+
 def timeout_seconds() -> int:
     """Liefert den Auto-Timeout in Sekunden."""
     return int(GAME_TIMEOUT.total_seconds())
@@ -63,7 +68,8 @@ def _format_duration_hm(seconds: int | float | None) -> str:
 def pause_remaining_seconds(g) -> int:
     """Restzeit bis zum Auto-Timeout auf Basis der letzten Aktivitaet."""
     try:
-        last = _utc_timestamp(g.get("_last_activity"))
+        last = (_utc_timestamp(g.get("_hausdepp_waiting_last_join_at")) if _waiting_hausdepp_room(g) else None)
+        last = last or _utc_timestamp(g.get("_last_activity"))
         if not last:
             return timeout_seconds()
         now = datetime.now(timezone.utc)
@@ -85,6 +91,17 @@ def check_timeout_and_abort(g, *, now: datetime | None = None) -> bool:
         # a microsecond race around ``datetime.now``.
         now = now or datetime.now(timezone.utc)
         raw_last = g.get("_last_activity")
+        waiting_hausdepp = _waiting_hausdepp_room(g)
+        if waiting_hausdepp:
+            last_join = _utc_timestamp(g.get("_hausdepp_waiting_last_join_at"))
+            if last_join is None:
+                # Legacy rooms cannot reconstruct earlier joins. Pin their
+                # last recorded activity once, then persist it so viewers,
+                # reconnects and restarts cannot renew the waiting lifetime.
+                last_join = _utc_timestamp(raw_last) or now
+                g["_hausdepp_waiting_last_join_at"] = last_join.isoformat()
+                save_active_game(g)
+            raw_last = last_join
         if not raw_last:
             g["_last_activity"] = now
             g["_updated_at"] = now.isoformat()
@@ -97,7 +114,7 @@ def check_timeout_and_abort(g, *, now: datetime | None = None) -> bool:
             # durable, but the unfinished session keeps the one-hour lifetime.
             if not tournament_is_pending(g):
                 return False
-        if any((_utc_timestamp(value.get("until")) or now) > now
+        if not waiting_hausdepp and any((_utc_timestamp(value.get("until")) or now) > now
                for value in g.get("_admin_help_away", {}).values()):
             return False
         last = _utc_timestamp(raw_last)
@@ -460,6 +477,12 @@ def _passphrase_from_payload(data: dict) -> str:
 def _passphrase_matches(g: GameDict, data: dict) -> bool:
     """True, wenn keine Passphrase gesetzt ist oder die Payload passt."""
     expected_pass = g.get("_passphrase") or ""
+    if isinstance(expected_pass, dict):
+        from .security import verify_password
+
+        return (g.get("_game_type") == HAUSDEPP_GAME_TYPE and set(expected_pass) == {"hausdepp_hash"}
+                and isinstance(expected_pass["hausdepp_hash"], str)
+                and verify_password(_passphrase_from_payload(data), expected_pass["hausdepp_hash"]))
     return (not expected_pass) or _passphrase_from_payload(data) == expected_pass
 
 
