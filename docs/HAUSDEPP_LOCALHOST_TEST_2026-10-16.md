@@ -282,9 +282,10 @@ both rules/navigation checks pass; full quality/security checks are green.
 
 ## 17.10.2026: Folgetisch, Mehrfachauswahl und PWA-Reload / follow-up table, multiple selection and PWA reload
 
-Vorbereiteter Stand **3.3.0**, Asset **`7d79fb567fac`**, nur für `develop`;
-kein Deployment und kein Versand an echte Konten. / Prepared 3.3.0 increment
-for `develop` only, without deployment or notifications to real accounts.
+Prüfstand vor der anschliessenden Rollout-Freigabe: **3.3.0**, Asset
+**`7d79fb567fac`**. Diese lokale Prüfphase erfolgte ohne Deployment oder
+Versand an echte Konten. / The following checks were recorded before rollout
+approval, without deployment or notifications to real accounts.
 
 - Vollständiger Backendlauf: **1’251 bestanden**, Coverage **84,81 %**.
   `npm run check:quality` inklusive Abhängigkeitsprüfung vollständig grün. /
@@ -322,3 +323,23 @@ Die lokale Vorschau auf Port 8001 verwendet eine separat gesicherte Testdatenban
 mit Migration 0063. Browserfälle laufen ausschliesslich auf wegwerfbaren Servern;
 sie verändern den Vorschau-Fortschritt nicht. / The preview uses a separately
 backed-up local test database; disposable browser servers never alter its progress.
+
+### Abschliessende Tour-Korrektur / final tour correction
+
+Der anschliessende CI-Lauf machte eine echte Initialisierungsrace sichtbar:
+Start/Ansehen in den Kontoeinstellungen waren bereits sichtbar, bevor ihre
+Klick-Handler nach dem ersten Einstellungsabruf gebunden wurden. Die Handler
+werden jetzt sofort gebunden; der Präferenzschalter bleibt bis zum Laden
+deaktiviert. / CI exposed visible tour actions whose handlers were only wired
+after the initial account read. Actions now work immediately while the
+preference toggle retains its loading guard.
+
+Finaler Assetstand **`541be166282a`**: Qualitätsprüfung grün; **10/10** native
+Hausdepp-Anmelde-/Kontofälle und **40/40** gemeinsame Tourfälle grün, darunter
+sechs deterministisch verzögerte Einstellungsabrufe. Die zuvor rote
+Einzelreproduktion besteht ebenfalls. Mit diesem Bundle bestehen erneut
+**26** Chromium-Fälle für Kartenreload, Auswahl und Einladungen sowie die drei
+Kartenfälle in WebKit. / Full quality checks, 10 native authentication/account
+flows, all 40 shared tour cases and the original race reproduction pass.
+The final bundle also passes the 26 combined Chromium cases and three WebKit
+artwork cases. No test uses production accounts or sends release notifications.

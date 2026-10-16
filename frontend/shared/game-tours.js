@@ -381,8 +381,10 @@ export async function mountTourSettings(container) {
   settings.add(container);
   container.innerHTML = `<h3>${esc(t("title"))}</h3><p>${esc(t("settingsBody"))}</p><p data-tour-settings-status role="status"></p><label class="game-tour-toggle"><input type="checkbox" data-tour-enabled checked> ${esc(t("auto"))}</label><div class="game-tour-settings-games">${availableGames.map(game => `<div><strong>${esc(games[game])}</strong><div><button type="button" data-tour-action="start" data-tour-game="${game}">${esc(t("start"))}</button><button type="button" data-tour-action="view" data-tour-game="${game}">${esc(t("view"))}</button></div></div>`).join("")}</div>`;
   const toggle = container.querySelector("[data-tour-enabled]");
-  await refreshTourSettings(container);
+  // Visible guide actions must already work while the initial account read is
+  // pending. Only the preference toggle depends on that read and stays disabled.
   toggle.onchange = async () => {
+    if (toggle.disabled) return;
     const epoch = viewerEpoch, enabled = toggle.checked;
     if (!enabled) currentTour?.end();
     const saved = await savePreferences({ enabled });
@@ -399,6 +401,7 @@ export async function mountTourSettings(container) {
     }
     else location.assign(destination(game));
   });
+  await refreshTourSettings(container);
 }
 
 captureEntry();

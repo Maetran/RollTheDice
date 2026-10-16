@@ -410,6 +410,82 @@ test("settings can disable automatic offers, view examples and request a tour wi
   expect(mutations).toEqual([]);
 });
 
+async function delayedTourSettings(page, game, language = "de") {
+  const room = await harness(page, { language, enabled: false });
+  let release, pending = false, released = false;
+  const barrier = new Promise(resolve => { release = () => { released = true; resolve(); }; });
+  await page.route("**/api/auth/tours", async route => {
+    if (route.request().method() !== "GET") return route.fallback();
+    pending = true;
+    await barrier;
+    await route.fulfill({ json: room.server.data });
+  });
+  if (game === "hausdepp") {
+    // A labelled account renderer: no session, account or tour data is written.
+    await page.route("**/hausdepp/konto/einstellungen", async route => route.fulfill({
+      contentType: "text/html", body: await readFile("app/static/hausdepp-settings.html"),
+    }));
+  }
+  return {
+    room, release, get released() { return released; },
+    async open() {
+      if (game === "hausdepp") {
+        await page.goto("/hausdepp/konto/einstellungen");
+        await expect(page.locator(SETTING)).toBeVisible();
+      } else await openSettings(page);
+      await expect.poll(() => pending).toBe(true);
+    },
+  };
+}
+
+for (const game of ["hausdepp", "zdwa"]) for (const language of ["de", "en"]) {
+  test(`${game} ${language}: visible tour previews and start work before the initial preferences response`, async ({ page }) => {
+    const delayed = await delayedTourSettings(page, game, language);
+    try {
+      await delayed.open();
+      const settings = page.locator(SETTING);
+      await expect(settings.locator("[data-tour-enabled]")).toBeDisabled();
+      for (const preview of ["hausdepp", "zilch", "zdwa"]) {
+        await settings.locator(`[data-tour-action=view][data-tour-game=${preview}]`).click();
+        await expect(page.locator(TOUR)).toHaveAttribute("data-game-tour", preview);
+        await expect(page.locator(TOUR)).toHaveAttribute("data-tour-mode", "view");
+        await page.locator("[data-tour-close]").click();
+      }
+      expect(delayed.room.server.writes).toEqual([]);
+      await settings.locator(`[data-tour-action=start][data-tour-game=${game}]`).click();
+      await expect(page.locator(".game-tour-entry")).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe(game === "hausdepp" ? "/hausdepp" : "/");
+      expect(delayed.released, "Navigation works while the account read is still blocked").toBe(false);
+      expect(delayed.room.server.writes).toEqual([]);
+      expect(delayed.room.actions).toEqual([]);
+    } finally {
+      delayed.release();
+      await page.unrouteAll({ behavior: "ignoreErrors" });
+    }
+  });
+}
+
+for (const game of ["hausdepp", "zdwa"]) {
+  test(`${game}: delayed tour preferences keep the toggle disabled, then bind the first real change`, async ({ page }) => {
+    const delayed = await delayedTourSettings(page, game);
+    try {
+      await delayed.open();
+      const toggle = page.locator(`${SETTING} [data-tour-enabled]`);
+      await expect(toggle).toBeDisabled();
+      expect(delayed.room.server.writes).toEqual([]);
+      delayed.release();
+      await expect(toggle).toBeEnabled();
+      await expect(toggle).not.toBeChecked();
+      await toggle.check();
+      await expect.poll(() => delayed.room.server.writes).toEqual([{ enabled: true }]);
+      expect(delayed.room.actions).toEqual([]);
+    } finally {
+      delayed.release();
+      await page.unrouteAll({ behavior: "ignoreErrors" });
+    }
+  });
+}
+
 test("disabling offers keeps the first own game quiet", async ({ page }) => {
   const room = await harness(page, { enabled: false });
   await room.open();

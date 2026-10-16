@@ -38,6 +38,9 @@ Antippen bleibt unmittelbar. Computer handeln im variablen Normaltempo 12,5 %
 langsamer. Die Lobby zeichnet Karten erst nach dem Dekodieren ihrer Motive,
 wiederholt vorübergehende Bildfehler und lässt öffentliche Kartenbilder beim
 PWA-Neuladen den nativen Browsercache verwenden. Private Daten bleiben online.
+In allen drei Spielen reagieren Tour starten und Ansehen in den
+Kontoeinstellungen bereits während des ersten Ladens; schnelle Klicks gehen
+nicht mehr vor dem Binden der Bedienung verloren.
 
 **English:** After a completed or aborted Hausdepp game, “Create again” opens
 one shared follow-up table with the same settings and computer count. Previous
@@ -50,7 +53,9 @@ Multiple selection plays matching cards atomically; normal taps still play
 immediately. Computers take 12.5% longer within their varied normal timing.
 The lobby draws cards only after decoding their artwork, retries temporary
 image failures and lets public card images use the native browser cache on
-PWA reload. Private data remain online-only.
+PWA reload. Private data remain online-only. In all three games, Start tour
+and View in account settings work during initial loading, so an immediate
+click is no longer lost before controls are wired.
 
 ## 3.2.0 — Der Hausdepp wird schlauer / Hausdepp gets smarter — 2026-10-16
 

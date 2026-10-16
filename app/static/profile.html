@@ -6,14 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Öffentliches ZDWA Spielerprofil mit Statistiken und letzten Spielen.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=7d79fb567fac">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=7d79fb567fac" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=7d79fb567fac" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=541be166282a">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=541be166282a" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=541be166282a" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=7d79fb567fac">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=7d79fb567fac">
+  <link rel="stylesheet" href="/static/style.css?v=541be166282a">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=541be166282a">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
-  <script src="/static/shell.js?v=7d79fb567fac" defer></script>
+  <script src="/static/shell.js?v=541be166282a" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -48,8 +48,8 @@
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=7d79fb567fac';
-    import { mountProfileAllowlist } from '/static/player-allowlist.js?v=7d79fb567fac';
+    import { escapeHtml, formatNumber, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=541be166282a';
+    import { mountProfileAllowlist } from '/static/player-allowlist.js?v=541be166282a';
     const profilePath = location.pathname.match(/^(?:\/zdwa)?\/spieler\/([^/]+)\/?$/);
     let username = new URLSearchParams(location.search).get('user') || '';
     try { if (profilePath) username = decodeURIComponent(profilePath[1]); }

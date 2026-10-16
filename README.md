@@ -212,6 +212,8 @@ nicht. Abgeschlossene Turnierrunden behalten ihre Wertung. Die Lobby wartet vor
 dem Zeichnen der Karten auf dekodierte Motive und wiederholt vorübergehend
 fehlgeschlagene Bildabrufe. Öffentliche Kartenbilder verwenden beim PWA-Neuladen
 den normalen Browsercache; private Spiel- und Kontodaten bleiben online.
+In allen drei Spielen reagieren die Tourknöpfe in den Kontoeinstellungen auch
+auf einen unmittelbaren Klick, während die gespeicherten Einstellungen noch laden.
 
 **English:** **Select multiple cards** lets you mark matching hand cards and play
 them together as one move; a normal tap still plays immediately. Computers take
@@ -224,7 +226,9 @@ after one hour without a new human seat; spectators, reconnections and chat do
 not extend this deadline. Completed tournament rounds keep their scores. The
 lobby waits for decoded artwork before drawing cards and retries temporary
 image failures. Public card images use the ordinary browser cache on PWA
-reload; private game and account data remain online-only.
+reload; private game and account data remain online-only. In all three games,
+the tour buttons in account settings respond even to an immediate click while
+saved preferences are still loading.
 
 **Deutsch:** Der mobile Hausdepp-Tisch bleibt im Hoch- und Querformat in einem
 festen Spielfenster. Gegner, grössere Kartenstapel, Zugstatus, eigene Hand und

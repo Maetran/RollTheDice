@@ -1,29 +1,33 @@
 {
   "kind": "usability",
   "games": [
+    "zdwa",
+    "zilch",
     "hausdepp"
   ],
   "summary_de": "Hausdepp: gemeinsam neu erstellen, gleiche Karten zusammen spielen und Kartenbilder beim PWA-Neuladen zuverlässiger laden.",
   "summary_en": "Hausdepp: create again together, play matching cards in one move and load artwork more reliably after a PWA reload.",
   "player_notes": {
     "de": {
-      "title": "Noch eine Runde am Stammtisch?",
+      "title": "Hausdepp: Noch eine Runde am Stammtisch?",
       "changes": [
-        "Neu erstellen übernimmt eure Einstellungen und lädt die bisherigen Menschen persönlich ein. Erst Annehmen bringt sie an den neuen Tisch.",
+        "Bei Hausdepp übernimmt Neu erstellen eure Einstellungen und lädt die bisherigen Menschen persönlich ein. Erst Annehmen bringt sie an den neuen Tisch.",
         "Gleiche Karten auswählen und zusammen legen: Die Computer können sich nicht zwischen die Karten dieses Zugs schieben.",
         "Computer lassen sich im wechselnden Normaltempo rund 12,5 % mehr Zeit.",
         "Die Lobby wartet auf fertige Kartenbilder und wiederholt vorübergehende Bildfehler – auch nach einem PWA-Neuladen.",
-        "Wartende Tische schliessen nach einer Stunde ohne neuen menschlichen Sitz, ohne zusätzliche Punkte oder Siege."
+        "Wartende Tische schliessen nach einer Stunde ohne neuen menschlichen Sitz, ohne zusätzliche Punkte oder Siege.",
+        "Einsteigertouren in den Kontoeinstellungen reagieren in allen drei Spielen auch auf einen sofortigen Tipp auf Start oder Ansehen."
       ]
     },
     "en": {
-      "title": "Another round at the table?",
+      "title": "Hausdepp: another round at the table?",
       "changes": [
-        "Create again keeps your settings and personally invites the previous human players. Accepting takes them to the new table.",
+        "In Hausdepp, Create again keeps your settings and personally invites the previous human players. Accepting takes them to the new table.",
         "Select matching cards and play them together: computers cannot act between cards within this move.",
         "Computers take about 12.5% longer within their varied normal timing.",
         "The lobby waits for ready-to-show artwork and retries temporary image failures, including after a PWA reload.",
-        "Waiting tables close after one hour without a new human seat, granting no extra points or wins."
+        "Waiting tables close after one hour without a new human seat, granting no extra points or wins.",
+        "Beginner tours in account settings now respond in all three games even when you tap Start or View immediately."
       ]
     }
   }
