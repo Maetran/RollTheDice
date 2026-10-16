@@ -3,7 +3,8 @@ const { test, expect } = require('@playwright/test');
 test.use({ serviceWorkers: 'block' });
 
 const VIEWPORTS = [
-  ['narrow-phone', 320, 568], ['phone', 390, 844], ['phone-landscape', 844, 390],
+  ['narrow-phone', 320, 568], ['compact-phone', 360, 740], ['phone', 390, 844],
+  ['compact-landscape', 568, 320], ['medium-landscape', 740, 360], ['phone-landscape', 844, 390],
   ['tablet-portrait', 768, 1024], ['tablet-landscape', 1024, 768], ['desktop', 1440, 900],
 ];
 
@@ -23,6 +24,56 @@ async function owner(page, language = 'de') {
   await page.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
   return { user, headers };
+}
+
+for (const language of ['de', 'en']) {
+  test(`${language}: enlarged mobile piles leave refill and waiting captions clear`, async ({ page }) => {
+    const fixture = await labelledTable(page, { language });
+    let version = fixture.board._hausdepp.version;
+    for (const [name, width, height] of VIEWPORTS.filter(([, width]) => width <= 844)) {
+      await page.setViewportSize({ width, height });
+      for (const mode of ['normal', 'refill', 'waiting']) {
+        const board = structuredClone(fixture.board);
+        const state = board._hausdepp;
+        state.version = ++version;
+        if (mode === 'refill') Object.assign(state, {
+          hand: ['hearts-6', 'bells-U'], draw_required: true, draw_urgent: true,
+          available_actions: ['draw'], playable_cards: [],
+          pending_refill: { player_id: fixture.self, remaining: 1, rank: '10', continuation: 'replay' },
+        });
+        if (mode === 'waiting') {
+          state.players.find(player => player.id === fixture.remote).name = 'Franziska-Maria';
+          Object.assign(state, { stock_blocked_by: fixture.remote, available_actions: ['play', 'pickup'] });
+        }
+        fixture.send({ scoreboard: board });
+        await expect(page.locator('#hausdeppStockAction')).toHaveText(mode === 'waiting'
+          ? `${language === 'de' ? 'Warte auf' : 'Waiting for'} Franziska-Maria`
+          : mode === 'refill' ? language === 'de' ? 'Auf drei auffüllen' : 'Refill to three'
+            : language === 'de' ? 'Zocken' : 'Take a chance');
+        const collisions = await page.evaluate(() => {
+          const intersects = (a, b) => a.left < b.right - 1 && a.right > b.left + 1
+            && a.top < b.bottom - 1 && a.bottom > b.top + 1;
+          const pileRects = [...document.querySelectorAll('#hausdeppStock, #hausdeppPile, #hausdeppPile .hausdepp-card')]
+            .map(node => node.getBoundingClientRect());
+          const seatRects = [...document.querySelectorAll('.hd-seat, .hd-seat .hd-opponent-card')]
+            .map(node => node.getBoundingClientRect());
+          const textRects = selector => [...document.querySelectorAll(selector)].flatMap(node => {
+            if (!node.getClientRects().length) return [];
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            return [...range.getClientRects()];
+          });
+          const burned = textRects('.hd-burned > span');
+          const captions = textRects('#hausdeppStockAction, #hausdeppStockCount, #hausdeppPileCount, #hausdeppDrawAlert, #hausdeppStatus, #hausdeppEvent');
+          return { cards: seatRects.some(seat => pileRects.some(pile => intersects(seat, pile))),
+            captions: burned.some(counter => captions.some(caption => intersects(counter, caption))) };
+        });
+        expect(collisions, `${language} ${name} ${mode}: cards and captions remain separate`).toEqual({ cards: false, captions: false });
+        await expectNoHorizontalOverflow(page, `${language} ${name} ${mode}`);
+      }
+    }
+    expect(fixture.commands).toEqual([]);
+  });
 }
 
 test.afterEach(async ({ page }) => {
@@ -251,12 +302,28 @@ for (const count of [3, 5, 6]) {
       await labelledTable(page, { count, viewport: { width, height } });
       const geometry = await page.evaluate(() => {
         const rect = element => { const r = element.getBoundingClientRect(); return { left: r.left, right: r.right,
-          top: r.top, bottom: r.bottom, cx: r.left + r.width / 2, cy: r.top + r.height / 2 }; };
+          top: r.top, bottom: r.bottom, width: r.width, height: r.height,
+          cx: r.left + r.width / 2, cy: r.top + r.height / 2 }; };
         return { seats: [...document.querySelectorAll('.hd-seat')].map(rect),
+          seatCards: [...document.querySelectorAll('.hd-seat .hd-opponent-card')].map(rect),
+          pileArt: [...document.querySelectorAll('.hd-pile .hausdepp-card')].map(rect),
           hand: [...document.querySelectorAll('#hausdeppHand [data-card-id]')].map(rect),
           controls: [document.getElementById('hausdeppStock'), document.getElementById('hausdeppPile')].map(rect) };
       });
       const intersects = (a, b) => a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1;
+      const minimumWidth = width <= 359 ? 84 : width <= 380 && height > width ? 94 : width <= 700 && height < width ? 76
+        : width <= 1099 && height < width && height <= 600 ? 96 : 100;
+      for (const control of geometry.controls) {
+        expect(control.width, `${name}: central card piles have prominent touch surfaces`).toBeGreaterThanOrEqual(minimumWidth);
+        expect(control.height / control.width, `${name}: card proportions remain natural`).toBeCloseTo(57 / 36, 1);
+        for (const card of geometry.hand) expect(intersects(control, card), 'Central piles leave the own hand free').toBe(false);
+      }
+      expect(geometry.controls[0].width).toBeCloseTo(geometry.controls[1].width, 1);
+      for (const card of geometry.seatCards) {
+        for (const pile of [...geometry.controls, ...geometry.pileArt]) {
+          expect(intersects(card, pile), 'Opponent card backs leave the central cards clear').toBe(false);
+        }
+      }
       for (let index = 0; index < geometry.seats.length; index += 1) {
         const seat = geometry.seats[index];
         expect(seat.left).toBeGreaterThanOrEqual(-1);
@@ -289,6 +356,10 @@ for (const count of [3, 5, 6]) {
       }
       for (const card of await page.locator('#hausdeppHand button:enabled').all()) {
         await card.click({ trial: true });
+      }
+      if (count === 6 && process.env.HAUSDEPP_CENTRE_SCREENSHOTS === '1') {
+        await page.locator('.hd-centre').scrollIntoViewIfNeeded();
+        await page.screenshot({ path: test.info().outputPath(`centre-${name}.png`), fullPage: true });
       }
     });
   }

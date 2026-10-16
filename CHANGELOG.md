@@ -23,6 +23,21 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.0.1 — Mehr Platz für die Karten / more room for the cards — 2026-10-16
+
+**Deutsch:** Das offene Paket und der verdeckte Stapel nehmen auf dem Handy
+mehr Raum ein und sind leichter anzutippen. Im üblichen Hochformat wachsen
+sie von 64 auf 104 Pixel Breite, mit angepassten Grössen für schmale Handys und
+Querformat. Der Spielerbogen und die Hinweise erhalten genügend Abstand,
+auch mit sechs Spielern. Eine kleine Überbreite der Reaktionsleiste auf sehr
+schmalen Geräten ist ebenfalls behoben.
+
+**English:** The face-up pile and face-down stock are larger and easier to tap
+on phones. In typical portrait layouts their width grows from 64 to 104 pixels,
+with sizes adapted for narrow phones and landscape. The player arc and captions
+keep clear of the piles, including at six-player tables. A small reaction-toolbar
+overflow on very narrow screens is also fixed.
+
 ## 3.0.0 — Töröö! Der Hausdepp ist da / trumpets out, Hausdepp is here — 2026-10-16
 
 **Deutsch:** Hausdepp öffnet als drittes Spiel der Suite für alle angemeldeten

@@ -175,6 +175,9 @@ Bildschirme erhalten wechselnde, rein dekorative Tischgegenstände aus zwölf
 Varianten; auf dem Handy erscheinen sie dezenter. Dampf, Schaum und Kerzenlicht
 bewegen sich geringfügig und berücksichtigen reduzierte Bewegung. Die kompakte
 Lobby-Hand rechts neben dem Titel zeigt ruhige lokale Kartenwechsel.
+Auf Mobilgeräten bilden grössere offene und verdeckte Stapel die Tischmitte.
+Ihre Breite passt sich Hoch- und Querformat an; auch mit sechs Spielern bleiben
+Karten, Sitze und Hinweise getrennt und beide Stapel direkt antippbar.
 
 **Hausdepp – appearance:** Walnut and the original Tell cards remain central.
 Forest green, card red, strong serif headings and button-shaped navigation give
@@ -183,6 +186,9 @@ identify their players. Computers draw unique names from a pool of 50 male and
 female names, stable during tournaments. Twelve varying props use free table
 space, more subtly on phones, with minimal steam, foam and candle motion and
 reduced-motion support. A compact right-of-title lobby hand changes cards calmly.
+Larger face-up and face-down piles give the centre of the table more room on
+mobile. Their width adapts to portrait and landscape; even with six players,
+cards, seats and captions remain separate and both piles can be tapped directly.
 
 Hausdepp lässt sich mit eigenem Icon direkt als PWA installieren. Spielwechsel
 behalten die Identität der installierten App. Private Karten, Ergebnisse und

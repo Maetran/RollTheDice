@@ -1,37 +1,25 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch",
     "hausdepp"
   ],
-  "summary_de": "V3.0: Hausdepp ist da! Karten mischen, Mitspieler holen und am Stammtisch um den Titel spielen.",
-  "summary_en": "V3.0: Hausdepp is here! Shuffle up, gather your friends and play for the title at our card table.",
+  "summary_de": "Mehr Platz für die Karten: Offenes Paket und verdeckter Stapel sind auf dem Handy deutlich grösser und leichter antippbar.",
+  "summary_en": "More room for the cards: the face-up pile and face-down stock are much larger and easier to tap on phones.",
   "player_notes": {
     "de": {
-      "title": "Töröö! Der Hausdepp ist da.",
+      "title": "Die Karten gehören in die Mitte.",
       "changes": [
-        "Neu in der Spielesuite: Hausdepp für zwei bis sechs Spieler – mit Menschen, Computern oder beidem.",
-        "Zehn drauf. Tisch frei. Spiele direkt aus der Hand, zocke vom Stapel und wirf im richtigen Moment nach.",
-        "Spielt ein Stammtischturnier: Jede Niederlage gibt einen Buchstaben. Wer HAUSDEPP voll hat, trägt den Tagestitel.",
-        "Sammle 100 Erfolge und steige durch 24 Ränge von Einstein bis Hausdepp – mit einem Augenzwinkern.",
-        "Entdecke deinen eigenen Kartentisch, eine kompakte mobile Lobby und Hausdepp als installierbare App mit Herz-Zehner-Icon.",
-        "Menschenrunden geben 10 EP, Runden mit Computer abgerundet 2 EP. Erfolge behalten immer ihre vollen Punkte.",
-        "Teile deine Spieleinladung oder rufe Mitspieler per Push. Deine bestehenden Benachrichtigungseinstellungen gelten weiter.",
-        "Wechsle zwischen ZDWA, Zilch und Hausdepp und sieh direkt, wie viele Menschen gerade spielen."
+        "Offenes Paket und verdeckter Stapel sind auf dem Handy deutlich grösser, im Hoch- und Querformat.",
+        "Auch mit sechs Spielern bleiben Karten, Mitspieler und Hinweise frei sichtbar.",
+        "Auf sehr schmalen Geräten passt die Reaktionsleiste wieder vollständig auf den Bildschirm."
       ]
     },
     "en": {
-      "title": "Trumpets out! Hausdepp is here.",
+      "title": "The cards take centre stage.",
       "changes": [
-        "New to the game suite: Hausdepp for two to six players, with people, computers or both.",
-        "Ten down. Table clear. Play directly from your hand, gamble from the stock and follow up at the right moment.",
-        "Play a table tournament: each loss adds a letter. Complete HAUSDEPP and the day’s title is yours.",
-        "Collect 100 achievements and climb 24 ranks from Einstein to Hausdepp, with a knowing wink.",
-        "Discover your own card table, a compact mobile lobby and an installable Hausdepp app with a heart-ten icon.",
-        "Human-only rounds grant 10 XP; rounds with computers grant a rounded-down 2 XP. Achievements always keep their full points.",
-        "Share your invitation or call players by push. Your existing notification preferences still apply.",
-        "Switch between ZDWA, Zilch and Hausdepp and see how many people are playing right now."
+        "The face-up pile and face-down stock are much larger on phones, in portrait and landscape.",
+        "Cards, opponents and captions stay clear of each other, even with six players.",
+        "The reaction toolbar fits fully on very narrow screens again."
       ]
     }
   }

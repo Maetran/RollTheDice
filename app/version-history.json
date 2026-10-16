@@ -2147,5 +2147,12 @@
     "date": "2026-10-16",
     "bump": "minor",
     "summary": "Hausdepp: eigener Kartentisch, bewusstere Erfolge, Reaktionen, PWA und privates Monitoring; Live-Spielerzahlen im Spielwähler. / Hausdepp gains its own table, paced achievements, reactions, PWA and private monitoring; live player counts in the game picker."
+  },
+  {
+    "version": "3.0.0",
+    "revision": "c597abd12daa539a4ce207ca265711e3932d6675",
+    "date": "2026-10-16",
+    "bump": "major",
+    "summary": "Hausdepp ist da: öffentlicher Kartenstammtisch für 2–6 Spieler mit Turnieren, 100 Erfolgen und 24 Rängen. / Hausdepp is here: a public card table for 2–6 players with tournaments, 100 achievements and 24 ranks."
   }
 ]

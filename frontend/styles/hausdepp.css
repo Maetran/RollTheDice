@@ -572,7 +572,7 @@ button.hd-pile:hover { background: #f3eadd18; }
   .hd-centre .hausdepp-card, .hd-pile, .hd-card-back { width: 85px; }
   .hd-hand { --hd-hand-card: 100px; --hd-hand-step: 48px; padding-inline: 30px; }
   .hd-social-tools { gap: 4px; padding: 0; }
-  .hd-social-tools > button { font-size: 12px; }
+  .hd-social-tools > button { font-size: 12px; padding-inline: 8px; }
   .hd-reactions button { min-width: 32px; }
   .hd-form-row { gap: 10px; }
 }
