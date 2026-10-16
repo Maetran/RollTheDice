@@ -1236,6 +1236,7 @@ test('seeded local demo refills only below three and throws matching pairs from 
   });
   await page.clock.install();
   await page.goto('/hausdepp');
+  await expect(page.locator('.hd-lobby-cards')).toHaveAttribute('data-card-assets', 'ready');
   const observed = { pair: 0, pickup: 0, bulkPickup: 0, largeNoRefill: 0, refill: 0 };
   for (let turn = 0; turn < 60; turn += 1) {
     await page.clock.fastForward(4100);

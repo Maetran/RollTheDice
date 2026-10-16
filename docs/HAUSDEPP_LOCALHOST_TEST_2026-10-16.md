@@ -279,3 +279,46 @@ umgekehrte Dialog-Fokusfall und alle acht bisherigen Notice-Fälle bestehen:
 The final bundle adds only bilingual instructions and the narrow safeguard for
 a native dialog opening after a progress popup. All nine notice checks and
 both rules/navigation checks pass; full quality/security checks are green.
+
+## 17.10.2026: Folgetisch, Mehrfachauswahl und PWA-Reload / follow-up table, multiple selection and PWA reload
+
+Vorbereiteter Stand **3.3.0**, Asset **`7d79fb567fac`**, nur für `develop`;
+kein Deployment und kein Versand an echte Konten. / Prepared 3.3.0 increment
+for `develop` only, without deployment or notifications to real accounts.
+
+- Vollständiger Backendlauf: **1’250 bestanden**, Coverage **84,80 %**.
+  `npm run check:quality` inklusive Abhängigkeitsprüfung vollständig grün. /
+  Full backend suite: 1,250 passed, 84.80% coverage; quality/security checks pass.
+- Neu-erstellen-Oberfläche: **14 Chromium + 14 WebKit**. Deutsch/Englisch,
+  ausdrückliche Annahme, sichere lokale Ziele, Wiederholung nach Fehlern,
+  Dialoggrenzen, versteckte Tabs und Freigabe ihrer Sperren, Abbruchzustände,
+  Turnierpausen und Beenden ausstehender Requests beim Seitenwechsel. /
+  Invitation and recreation UI covers consent, safe local navigation, retries,
+  modal bounds, hidden tabs/locks, terminal states and page-lifetime cancellation.
+- Ein zusätzlicher echter Zwei-Konten-Browserflow prüft Registry-Retirement
+  nach Abbruch, Neu-erstellen-POST, wartenden Folgetisch mit CPU, persönlichen
+  Prompt ohne Sitznahme und anschliessenden normalen WS-Join nach Annehmen.
+  Die EP bleiben unverändert. **114 fokussierte Backendtests + 75 Untertests**
+  und ein unabhängiger 25er-Lauf sichern Reservierung, private Codes,
+  Doppelklickschutz, Neustart und Datenbankfehler-Wiederherstellung ab. /
+  A real two-account flow verifies retirement through explicit acceptance and
+  normal WebSocket admission; focused backend tests cover storage and recovery.
+- Mehrfachauswahl: **55 bestandene Ausführungen** in Chromium und WebKit,
+  einschliesslich bestehender Hand-/Animations-/Sechser-Tischregressionen.
+  Atomare 2er-/4er-Züge und Nachwürfe, verfallene Auswahl, neun Geräteformate,
+  35 Karten und mindestens 44-Pixel-Steuerungen. /
+  Multiple selection retains immediate single taps and submits matching cards
+  atomically, with stale-selection and fixed-window regressions checked.
+- Karten/PWA: Motivpixel statt bloss vorhandener SVG-Rahmen geprüft. Echte
+  Worker kontrollieren drei warme Reloads; kaltes Laden und einmaliger 503-Fehler
+  sind abgedeckt. Die drei Fälle bestehen auch im finalen Bundle jeweils in
+  Chromium, WebKit und iPhone-13-WebKit-Emulation. Kein Cache Storage für Hände
+  oder Kontodaten. **Eine echte installierte iPhone-PWA wurde nicht geprüft.** /
+  Actual motif pixels, worker-controlled reloads, cold loading and transient
+  image failure pass in all three browser configurations; physical iPhone PWA
+  acceptance remains distinct from emulation.
+
+Die lokale Vorschau auf Port 8001 verwendet eine separat gesicherte Testdatenbank
+mit Migration 0063. Browserfälle laufen ausschliesslich auf wegwerfbaren Servern;
+sie verändern den Vorschau-Fortschritt nicht. / The preview uses a separately
+backed-up local test database; disposable browser servers never alter its progress.

@@ -71,11 +71,20 @@ def save_active_game(game: dict) -> None:
     # Resolve/validate the marker before serializing an active state.  Missing
     # historical markers still default to ZDWA through the shared contract.
     game_type_from_state(game)
+    if game_type_from_state(game) == "hausdepp" and (game.get("_finished") or game.get("_aborted")):
+        from .hausdepp_rematch import retain_rematch_source
+
+        # Capture before an accounted abort/completion removes its only live
+        # state. The recipe deliberately has no cards or plaintext room code.
+        if retain_rematch_source(game):
+            game.pop("_hausdepp_rematch_source_pending", None)
+        else:
+            game["_hausdepp_rematch_source_pending"] = True
     from .hausdepp_tournament import tournament_is_pending
 
-    if game.get("_completion_persisted") and not tournament_is_pending(game) or (
+    if not game.get("_hausdepp_rematch_source_pending") and (game.get("_completion_persisted") and not tournament_is_pending(game) or (
         game.get("_aborted") and game.get("_abandonment_accounted")
-    ):
+    )):
         delete_active_game(game_id)
         return
     now = utcnow()
@@ -151,6 +160,14 @@ def load_active_games() -> dict[str, dict]:
                     game["_hausdepp_tournament"], {player["id"] for player in participants},
                     finished_round=bool(game.get("_finished")),
                 )
+            if game_type_from_state(game) == "hausdepp" and (game.get("_finished") or game.get("_aborted")):
+                from .hausdepp_rematch import retain_rematch_source
+
+                if not retain_rematch_source(game):
+                    # Retain an unroutable terminal recovery row while its
+                    # minimal recipe is unavailable; never revive the table.
+                    continue
+                game.pop("_hausdepp_rematch_source_pending", None)
             if game.get("_completion_persisted") and not tournament_is_pending(game) or (
                 game.get("_aborted") and game.get("_abandonment_accounted")
             ):

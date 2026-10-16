@@ -79,21 +79,27 @@ def _delay(projection: dict, command: dict, *, following: bool = False, rng=None
         except ValueError:
             pass
     timing_rng = rng if rng is not None else _RANDOM
+
+    def reaction(lower: float, upper: float) -> float:
+        # Keep the familiar variation and relative action speeds, uniformly
+        # slowed by 12.5%. Explicit integration-test overrides stay unscaled.
+        return timing_rng.uniform(lower, upper) * 1.125
+
     action = command["action"]
     if action == "peek":
-        return timing_rng.uniform(0.45, 1.3)
+        return reaction(0.45, 1.3)
     if action == "draw":
-        return timing_rng.uniform(0.15, 0.65)
+        return reaction(0.15, 0.65)
     if action == "afterthrow":
-        return timing_rng.uniform(0.1, 0.85)
+        return reaction(0.1, 0.85)
     roll = timing_rng.random()
     if following:
-        return timing_rng.uniform(0.12, 0.65) if roll < 0.85 else timing_rng.uniform(0.8, 1.35)
+        return reaction(0.12, 0.65) if roll < 0.85 else reaction(0.8, 1.35)
     if roll < 0.18:
-        return timing_rng.uniform(0.16, 0.37)
+        return reaction(0.16, 0.37)
     if roll < 0.85:
-        return timing_rng.uniform(0.45, 1.2)
-    return timing_rng.uniform(1.3, 2.4)
+        return reaction(0.45, 1.2)
+    return reaction(1.3, 2.4)
 
 
 def _decision_window(projection: dict, command: dict) -> tuple:

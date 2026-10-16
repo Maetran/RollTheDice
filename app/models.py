@@ -670,6 +670,44 @@ class HausdeppNoticeReceipt(Base):
     acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class HausdeppRematchSource(Base):
+    """Minimal terminal table recipe; never a card snapshot or plaintext code."""
+
+    __tablename__ = "hausdepp_rematch_sources"
+    game_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    original_user_ids_json: Mapped[str] = mapped_column(Text, nullable=False)
+    settings_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class HausdeppRematch(Base):
+    """One durable replacement table per source; settings never leave the server."""
+
+    __tablename__ = "hausdepp_rematches"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    source_game_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    game_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    original_user_ids_json: Mapped[str] = mapped_column(Text, nullable=False)
+    settings_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class HausdeppRematchInvitation(Base):
+    __tablename__ = "hausdepp_rematch_invitations"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    rematch_id: Mapped[str] = mapped_column(ForeignKey("hausdepp_rematches.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    __table_args__ = (
+        UniqueConstraint("rematch_id", "user_id", name="uq_hausdepp_rematch_recipient"),
+        CheckConstraint("status IN ('pending', 'accepted', 'declined')", name="ck_hausdepp_rematch_invitation_status"),
+        Index("ix_hausdepp_rematch_invitation_recipient", "user_id", "status"),
+    )
+
+
 class AbandonedGame(Base):
     """Minimal, account-safe record for a started game that was abandoned.
 

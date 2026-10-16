@@ -77,6 +77,7 @@ from .game_state import (
     GameDict,
     _format_duration_hm,
     _offline_players,
+    _passphrase_matches,
     _player_connected,
     games,
     multiplayer_pause_reason,
@@ -292,7 +293,7 @@ async def _retire_manual_abort(game: GameDict) -> None:
         await _stop_retired_cpu_runner(game_id)
     finally:
         await _close_terminal_connections(game)
-        if accounted:
+        if accounted and not game.get("_hausdepp_rematch_source_pending"):
             delete_active_game(game_id)
         if game_id and games.get(game_id) is game:
             games.pop(game_id, None)
@@ -323,7 +324,8 @@ async def _publish_timeout_abort(game: GameDict) -> None:
         logger.exception("Could not publish inactivity timeout for game %s", game_id)
     finally:
         await _close_terminal_connections(game)
-        delete_active_game(game_id)
+        if not game.get("_hausdepp_rematch_source_pending"):
+            delete_active_game(game_id)
         # Existing sockets retain their object long enough to render the final
         # frame, then their normal disconnect cleanup releases transport
         # state. New joins must not revive a room whose one-hour lifetime has
@@ -2182,14 +2184,14 @@ def game_info(
     if check == 1:
         if g.get("_passphrase") and not helping:
             # Bei gesperrtem Spiel: fehlendes ODER falsches Passwort => 403
-            if not passphrase or passphrase != g["_passphrase"]:
+            if not passphrase or not _passphrase_matches(g, {"pass": passphrase}):
                 raise HTTPException(status_code=403, detail="wrong_passphrase")
         # OK -> kurzer Erfolg, Client prueft nur .ok
         return {"ok": True, "exists": True}
 
     # optional: Passphrase validieren, falls mitgegeben
     if g.get("_passphrase") and passphrase is not None and not helping:
-        if passphrase != g["_passphrase"]:
+        if not _passphrase_matches(g, {"pass": passphrase}):
             raise HTTPException(status_code=403, detail="wrong_passphrase")
     admin_ids = active_admin_user_ids(player.get("user_id") for player in _game_public_role_identities(g))
     if game_type_from_state(g) == ZILCH_GAME_TYPE:
@@ -2294,6 +2296,52 @@ def api_hausdepp_results(request: Request):
 
     identity = _require_hausdepp_access(request)
     return {"results": list_hausdepp_results_for_user(identity.user_id)}
+
+
+@app.post("/api/hausdepp/games/{source_id}/rematch")
+async def api_hausdepp_rematch(source_id: str, request: Request):
+    from .hausdepp_rematch import RematchError, create_rematch, deliver_rematch_invitations
+    from .moderation import ensure_play_allowed
+
+    identity = _require_hausdepp_access(request)
+    require_csrf(request, identity)
+    ensure_play_allowed(identity)
+    sweep_timeouts()
+    try:
+        result = create_rematch(source_id, identity.user_id,
+                                before_create=lambda: enforce_game_creation_rate_limit(request))
+    except RematchError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
+    if result["created"]:
+        record_game_action(HAUSDEPP_GAME_TYPE, "game_created", mode=games[result["game_id"]]["_mode"])
+        await deliver_rematch_invitations(source_id)
+    return result
+
+
+@app.get("/api/hausdepp/invitations")
+def api_hausdepp_invitations(request: Request):
+    from .hausdepp_rematch import pending_invitations
+
+    identity = _require_hausdepp_access(request)
+    sweep_timeouts()
+    return pending_invitations(identity.user_id)
+
+
+@app.post("/api/hausdepp/invitations/{invitation_id}/{action}")
+def api_hausdepp_invitation_response(invitation_id: str, action: str, request: Request):
+    from .hausdepp_rematch import RematchError, respond_to_invitation
+    from .moderation import ensure_play_allowed
+
+    identity = _require_hausdepp_access(request)
+    require_csrf(request, identity)
+    ensure_play_allowed(identity)
+    if action not in {"accept", "decline"}:
+        raise HTTPException(status_code=404, detail="hausdepp_invitation_not_found")
+    sweep_timeouts()
+    try:
+        return respond_to_invitation(invitation_id, identity.user_id, accept=action == "accept")
+    except RematchError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
 
 
 @app.get("/api/hausdepp/account")

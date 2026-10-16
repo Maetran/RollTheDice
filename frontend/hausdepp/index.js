@@ -2,6 +2,7 @@ import { loadAuth, apiFetch, escapeHtml as esc } from "../shared/auth.js";
 import { avatarMarkup, initializeAvatarFallbacks, replaceChildrenPreservingAvatars } from "../shared/avatar.js";
 import { renderAccountSettings } from "./settings.js";
 import { mountProgressNotices } from "./progress-notices.js";
+import { createRematch, mountRematchInvitations, rematchError } from "./rematch.js";
 import { renderTableDecor } from "./decor.js";
 import { mountLobbyDemo } from "./lobby-demo.js";
 import { invitationMarkup, mountInvitations } from "./invitations.js";
@@ -16,6 +17,7 @@ import { cardArt, prepareCardAssets } from "./cards.js";
 import { prepareCardMotion, animateCardMotion, resetCardMotion, presentShuffle, cancelShuffle } from "./motion.js";
 import { createGameTour } from "../shared/game-tours.js";
 import { mountPileInspector } from "./pile-inspector.js";
+import { mountHandSelection } from "./hand-selection.js";
 
 const root = document.getElementById("hausdeppApp");
 const page = root?.dataset.page || "lobby";
@@ -28,6 +30,9 @@ let playerId = null, pending = false, stopped = false, tournamentEnding = false;
 let waitingLeaving = false;
 let progressNotices, popupProgressPending = false;
 let pileInspector;
+let rematchInvitations, rematchCreating = false;
+const rematchLifetime = new AbortController();
+let handSelection;
 let commandInFlight = null, commandSequence = 0, peekSignature = "", peekTimer;
 let tablesLoading = false, tablesSignature = "", accountLoading = false, accountCursor = null, stopLobbyDemo, invitations;
 const accountRoundIds = new Set();
@@ -56,12 +61,12 @@ function cardName(card) {
   return `${t(suit)} ${t(`rank${rank}`)}`;
 }
 
-function cardMarkup(card, { interactive = false, playable = false, committed = false, index = 0, count = 1 } = {}) {
+function cardMarkup(card, { interactive = false, playable = false, committed = false, selecting = false, selected = false, index = 0, count = 1 } = {}) {
   const art = cardArt(card);
   const offset = index - (count - 1) / 2;
   const angle = count > 1 ? offset / Math.max((count - 1) / 2, 1) * Math.min(14, count * 3.5) : 0;
   const drop = Math.pow(Math.abs(angle) / 14, 2) * 17;
-  const attrs = `class="hausdepp-card ${playable ? "is-playable" : ""} ${committed ? "is-committed" : ""}" data-card-id="${esc(card)}" aria-label="${esc(cardName(card))}"`;
+  const attrs = `class="hausdepp-card ${playable ? "is-playable" : ""} ${committed ? "is-committed" : ""} ${selected ? "is-selected" : ""}" data-card-id="${esc(card)}" aria-label="${esc(cardName(card))}"${selecting ? ` aria-pressed="${selected}" aria-describedby="hausdeppMultiHint"` : ""}`;
   return interactive
     ? `<button type="button" ${attrs} style="--card-index:${index};--fan-offset:${offset};--fan-angle:${angle}deg;--fan-drop:${drop}px" ${!playable || committed ? "disabled" : ""}>${art}</button>`
     : `<span ${attrs} role="img">${art}</span>`;
@@ -506,10 +511,24 @@ function renderTableShell() {
   });
   $("hausdeppPeekContinue").addEventListener("click", () => command("peek"));
   pileInspector = mountPileInspector({ pile: $("hausdeppPile"), inspectButton: $("hausdeppInspectPile"), table: $("hausdeppTable"), t, cardMarkup });
+  handSelection = mountHandSelection({
+    handRegion: document.querySelector(".hd-hand-region"), tools: document.querySelector(".hd-social-tools"), reactions: document.querySelector(".hd-reactions"), t,
+    onChange: () => renderState(),
+    onPlay: () => {
+      // Refresh the version-bound selection immediately before submitting it.
+      renderState();
+      const selection = handSelection.selection.take();
+      if (selection) command(selection.action, selection.cards);
+    },
+  });
   $("hausdeppPile").addEventListener("click", () => command("pickup"));
   $("hausdeppHand").addEventListener("click", event => {
     const card = event.target.closest("button[data-card-id]")?.dataset.cardId;
     const s = snapshot?._hausdepp;
+    if (handSelection.selection.enabled) {
+      if (card && handSelection.selection.select(card)) renderState();
+      return;
+    }
     if (!card || !s?.playable_cards?.includes(card) || queuedCards.includes(card) || commandInFlight?.cards?.includes(card)) return;
     if (pending) {
       if (!commandInFlight?.cards?.length || commandInFlight.cards[0].split("-")[1] !== card.split("-")[1]) return;
@@ -593,6 +612,7 @@ function receiveReaction(reaction) {
 function command(action, cards) {
   const allowed = action === "next_round" ? snapshot?._hausdepp_tournament?.can_start_next_round : snapshot?._hausdepp?.available_actions?.includes(action);
   if (pending || tournamentEnding || !allowed) return;
+  handSelection?.selection.clear();
   cancelShuffle(gameId);
   pending = true;
   const commandId = `hd-${Date.now().toString(36)}-${++commandSequence}`;
@@ -650,6 +670,7 @@ function connect() {
       return;
     }
     if (payload.player_id) playerId = payload.player_id;
+    if (payload.hausdepp_invitation) rematchInvitations?.refresh(payload.hausdepp_invitation);
     if (payload.scoreboard) {
       snapshot = payload.scoreboard;
       if (!playerId && snapshot._hausdepp?.viewer_id) playerId = snapshot._hausdepp.viewer_id;
@@ -690,15 +711,16 @@ function connect() {
     if ($("hausdeppConnection")) $("hausdeppConnection").textContent = t("connectionLost");
     renderState();
     resetCardMotion(gameId);
-    if (!stopped && event.code !== 1008 && event.code !== 4001) reconnectTimer = setTimeout(connect, 1500);
-    else if ($("hausdeppActionError")) $("hausdeppActionError").textContent = t("reconnectHint");
+    if (!stopped && !snapshot?._aborted && event.code !== 1008 && event.code !== 4001) reconnectTimer = setTimeout(connect, 1500);
+    else if (!snapshot?._aborted && $("hausdeppActionError")) $("hausdeppActionError").textContent = t("reconnectHint");
   });
 }
 
 function renderState() {
   if (snapshot?._hausdepp?.phase !== "finished" || snapshot?._aborted) progressNotices?.pause();
+  if (snapshot?._aborted) { renderAbortedTable(); return; }
   const s = snapshot?._hausdepp;
-  if (!s) { hausdeppBeginnerTour.update({ eligible: false }); if (snapshot) renderWaiting(); return; }
+  if (!s) { handSelection?.selection.cancel(); hausdeppBeginnerTour.update({ eligible: false }); if (snapshot) renderWaiting(); return; }
   document.body.classList.remove("hd-waiting-room");
   $("hausdeppWaiting").hidden = true;
   const tournament = snapshot._hausdepp_tournament;
@@ -724,10 +746,19 @@ function renderState() {
   const actions = connected && !snapshot._paused ? s.available_actions || [] : [];
   const playable = new Set(s.playable_cards || []);
   const hand = [...s.hand].sort((a,b) => ranks.indexOf(a.split("-")[1]) - ranks.indexOf(b.split("-")[1]) || a.localeCompare(b));
+  const selectionAction = actions.includes("afterthrow") ? "afterthrow" : actions.includes("play") ? "play" : null;
+  const roundKey = `${gameId}:${tournament?.round_number || 1}`;
+  handSelection.update({
+    key: `${roundKey}:${s.version}`, roundKey, version: s.version, phase: s.phase, action: selectionAction,
+    hand, playable: [...playable], pending, viewer: playerId, event: s.last_event,
+    identity: JSON.stringify([s.phase, s.current_player_id, s.afterthrow, hand, [...actions].sort(), [...playable].sort(), s.discard]),
+  });
+  const selecting = handSelection.selection.enabled;
+  const selected = new Set(handSelection.selection.cards);
   const oldFocus = document.activeElement?.dataset.cardId;
   const committed = new Set([...(commandInFlight?.cards || []), ...queuedCards]);
   const pendingRank = commandInFlight?.cards?.[0]?.split("-")[1];
-  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card) && (!pending || card.split("-")[1] === pendingRank), committed: committed.has(card), index, count: hand.length })).join("")}</div>`);
+  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: selecting ? handSelection.selection.canSelect(card) : (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card) && (!pending || card.split("-")[1] === pendingRank), committed: committed.has(card), selecting, selected: selected.has(card), index, count: hand.length })).join("")}</div>`);
   if (oldFocus) $("hausdeppHand").querySelector(`[data-card-id="${CSS.escape(oldFocus)}"]`)?.focus({ preventScroll: true });
   $("hausdeppSelection").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", hand.length);
   const mine = s.players.find(p => p.id === playerId);
@@ -801,6 +832,8 @@ function renderState() {
     const roundKey = `${gameId}:${tournament?.round_number || 1}:${Boolean(tournament?.completed)}:${Boolean(tournament?.can_start_next_round)}:${Boolean(snapshot._aborted)}`;
     $("hausdeppResult").hidden = false;
     if ($("hausdeppResult").dataset.roundId === roundKey) {
+      const recreate = $("hausdeppRecreate");
+      if (recreate) recreate.disabled = rematchCreating;
       const next = $("hausdeppNextRound");
       if (next) next.disabled = pending || tournamentEnding || !connected || snapshot._paused;
       const end = $("hausdeppEndTournament");
@@ -810,6 +843,7 @@ function renderState() {
     $("hausdeppResult").dataset.roundId = roundKey;
     const title = snapshot._aborted ? t("tournamentStopped") : tournament?.completed ? t("tournamentLoser", { name: finalLoser?.name || "…" }) : t("loser", { name: loser?.name || "…" });
     $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p>${t(snapshot._aborted ? "tournamentStoppedHint" : tournament ? tournament.completed ? "tournamentCompleteHint" : "tournamentRoundHint" : "resultHint")}</p>${tournament ? `<ul class="hd-tournament-score">${s.players.map(player => `<li class="${player.id === tournament.tages_hausdepp_id ? "is-hausdepp" : ""}"><span>${esc(player.name)}</span><strong aria-label="${esc(t("tournamentLetters", { letters: tournament.letters?.[player.id] || "", losses: tournament.losses?.[player.id] || 0 }))}">${esc(tournament.letters?.[player.id] || "—")}</strong><small>${nonnegative(tournament.losses?.[player.id])} / 8</small></li>`).join("")}</ul>` : ""}<div class="hd-result-links">${tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : `<a class="hd-primary" href="/hausdepp">${t(tournament ? "newTournament" : "nextRound")} ${icon("arrow")}</a>`}<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")}</a></div><div id="hausdeppRoundProgress" hidden></div>`;
+    if (snapshot._finished && (!tournament || tournament.completed) && hasPreviousSeat()) appendRematchAction();
     $("hausdeppNextRound")?.addEventListener("click", () => command("next_round"));
     $("hausdeppEndTournament")?.addEventListener("click", () => {
       if (!window.confirm(t("endTournamentConfirm"))) return;
@@ -824,6 +858,70 @@ function renderState() {
   }
 }
 
+
+function hasPreviousSeat() {
+  return !spectating && snapshot?._participants?.some(player => !player.is_cpu && (player.id === playerId || player.user_id === auth?.user?.id));
+}
+
+function renderAbortedTable() {
+  hausdeppBeginnerTour.update({ eligible: false });
+  pileInspector?.close();
+  handSelection?.update({ phase: "finished", action: null, hand: [], playable: [], pending: false });
+  document.body.classList.remove("hd-waiting-room");
+  $("hausdeppWaiting").hidden = true;
+  $("hausdeppTable").classList.add("is-aborted");
+  $("hausdeppTable").dataset.phase = "finished";
+  $("hausdeppRoomName").textContent = snapshot._name || "Hausdepp";
+  renderTableDecor($("hausdeppTable"), { gameId, roundNumber: 1, phase: "finished" });
+  const result = $("hausdeppResult");
+  result.hidden = false;
+  const abortKey = `${gameId}:aborted:${snapshot._abort_reason || ""}:${Boolean(snapshot._started)}`;
+  if (result.dataset.roundId === abortKey) return;
+  result.dataset.roundId = abortKey;
+  const reason = snapshot._abort_reason === "inactivity_timeout" && !snapshot._started ? "waitingExpired" : "abortedNoScore";
+  result.innerHTML = `<h2>${t("abortedTable")}</h2><p>${t(reason)}</p><div class="hd-result-links"><a class="hd-primary" href="/hausdepp">${t("lobby")}</a></div>`;
+  if (hasPreviousSeat()) appendRematchAction();
+}
+
+function appendRematchAction() {
+  const previous = $("hausdeppResult").querySelector(".hd-result-links > .hd-primary");
+  if (!previous) return;
+  const button = document.createElement("button");
+  button.id = "hausdeppRecreate";
+  button.className = "hd-primary";
+  button.type = "button";
+  button.textContent = t("rematchCreate");
+  button.disabled = rematchCreating;
+  previous.replaceWith(button);
+  const lobby = document.createElement("a");
+  lobby.className = "hd-secondary";
+  lobby.href = "/hausdepp";
+  lobby.textContent = t("lobby");
+  button.after(lobby);
+  const hint = document.createElement("p");
+  hint.className = "hd-fine";
+  hint.textContent = t("rematchCreateHint");
+  const output = document.createElement("p");
+  output.id = "hausdeppRematchError";
+  output.className = "hd-error";
+  output.setAttribute("role", "alert");
+  $("hausdeppResult").append(hint, output);
+  button.addEventListener("click", async () => {
+    if (rematchCreating || stopped) return;
+    rematchCreating = true;
+    button.disabled = true;
+    output.textContent = "";
+    try {
+      const target = await createRematch(gameId, { signal: rematchLifetime.signal });
+      if (!stopped) location.assign(target);
+    } catch (error) {
+      if (!stopped) output.textContent = rematchError(error, t);
+    } finally {
+      rematchCreating = false;
+      if (button.isConnected) button.disabled = false;
+    }
+  });
+}
 
 async function loadRoundProgress(roundKey) {
   try {
@@ -863,7 +961,7 @@ function renderWaiting() {
 
 function renderRules() {
   document.title = t("rulesTitle");
-  const sections = [{ id: "ziel", key: "goal" }, { id: "kartenwerte", key: "deck" }, { id: "abheben", key: "peek", example: true }, { id: "austeilen", key: "deal" }, { id: "dein-zug", key: "moves", example: true }, { id: "abraeumen", key: "burn", example: true }, { id: "auffuellen", key: "refill", example: true }, { id: "nachwerfen", key: "after", example: true }, { id: "endspiel", key: "end", example: true }, { id: "taktik", key: "tips" }, { id: "bedienung", key: "interface" }, { id: "punkte-erfolge", key: "scoring" }, { id: "turnier", key: "tournament" }];
+  const sections = [{ id: "ziel", key: "goal" }, { id: "kartenwerte", key: "deck" }, { id: "abheben", key: "peek", example: true }, { id: "austeilen", key: "deal" }, { id: "dein-zug", key: "moves", example: true }, { id: "abraeumen", key: "burn", example: true }, { id: "auffuellen", key: "refill", example: true }, { id: "nachwerfen", key: "after", example: true }, { id: "endspiel", key: "end", example: true }, { id: "taktik", key: "tips" }, { id: "bedienung", key: "interface" }, { id: "punkte-erfolge", key: "scoring" }, { id: "turnier", key: "tournament" }, { id: "neu-erstellen", key: "rematch" }];
   const rankLine = `<div class="hd-rank-line" aria-label="${t("rankOrder")}">${ranks.map(rank => `<span>${esc(t(`rank${rank}`))}</span>`).join("<b aria-hidden='true'>‹</b>")}</div>`;
   root.innerHTML = `<article class="hd-rulebook"><div class="hd-rulebook-heading"><h1>${t("rulesTitle")}</h1><p>${t("rulesIntro")}</p></div><section id="einsteigertouren" class="hd-rule-section"><h2>${t("tourHeading")}</h2><p>${t("tourBody")}</p></section><section id="schnellstart" class="hd-rules-quickstart" aria-labelledby="hausdeppQuickstartTitle"><h2 id="hausdeppQuickstartTitle">${t("quickstartHeading")}</h2><ol>${["quickstartOne", "quickstartTwo", "quickstartThree"].map(key => `<li>${t(key)}</li>`).join("")}</ol></section><nav class="hd-rules-toc" aria-label="${t("rulesContents")}"><p>${t("rulesContents")}</p><ol>${sections.map(({ id, key }) => `<li><a href="#${id}">${t(`${key}Nav`)}</a></li>`).join("")}</ol></nav>${sections.map(({ id, key, example }) => `<section id="${id}" class="hd-rule-section" aria-labelledby="rule-${id}"><h2 id="rule-${id}">${t(`${key}Heading`)}</h2><p>${t(`${key}Body`)}</p>${key === "deck" ? rankLine : ""}${key === "scoring" ? `<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")} ${icon("arrow")}</a>` : ""}${example ? `<aside class="hd-rule-example"><strong>${t("exampleLabel")}</strong><p>${t(`${key}Example`)}</p></aside>` : ""}</section>`).join("")}<section id="begriffe"><h2>${t("glossaryHeading")}</h2><ul class="hd-rules-glossary">${["glossaryStock", "glossaryPile", "glossaryClear", "glossaryFinish"].map(key => `<li>${t(key)}</li>`).join("")}</ul></section><section id="karten" class="hd-rule-credits"><h2>${t("cardCredits")}</h2><p>${t("creditsBody")} <a href="https://commons.wikimedia.org/wiki/File:Doppeldeutsche_Preference.JPG" target="_blank" rel="noopener noreferrer">FUZxxl / Karl432</a> · <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">CC BY 3.0</a> · <a href="https://commons.wikimedia.org/wiki/File:Original-Hungarian-Tell-set.jpg" target="_blank" rel="noopener noreferrer">SZERVÁC Attila</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p></section><a class="hd-primary" href="/hausdepp">${t("takeSeat")} ${icon("arrow")}</a></article>${footer()}`;
 }
@@ -901,6 +999,10 @@ async function start() {
       });
       if (page !== "table") void progressNotices.refresh();
     }
+    if (auth.authenticated) rematchInvitations = mountRematchInvitations({
+      userId: auth.user.id, t,
+      canPresent: () => !stopped && (page !== "table" || spectating || Boolean(snapshot && (!snapshot._started || snapshot._finished))),
+    });
   } catch (error) { root.innerHTML = `<section class="hd-unavailable"><h1>Hausdepp</h1><p role="alert">${esc(error.message || t("requestFailed"))}</p><a href="${zdwaAppEntryUrl()}">${t("backSuite")}</a></section>`; document.body.classList.remove("hd-loading"); }
 }
 
@@ -913,10 +1015,12 @@ window.addEventListener("zdwa:auth-state", event => {
   clearInterval(lobbyTimer);
   root.replaceChildren();
   progressNotices?.destroy();
+  rematchInvitations?.destroy();
+  rematchLifetime.abort();
   socket?.close();
   if (page === "settings" && !event.detail?.user) location.replace("/hausdepp");
   else location.reload();
 });
-window.addEventListener("pagehide", () => { progressNotices?.destroy(); pileInspector?.destroy(); stopLobbyDemo?.(); invitations?.destroy(); resetCardMotion(gameId); reactionObserver?.disconnect(); for (const entry of visibleReactions.values()) clearTimeout(entry.timer); visibleReactions.clear(); stopped = true; clearInterval(lobbyTimer); clearTimeout(reconnectTimer); clearTimeout(pendingTimer); clearTimeout(peekTimer); socket?.close(); });
+window.addEventListener("pagehide", () => { progressNotices?.destroy(); rematchInvitations?.destroy(); rematchLifetime.abort(); pileInspector?.destroy(); stopLobbyDemo?.(); invitations?.destroy(); resetCardMotion(gameId); reactionObserver?.disconnect(); for (const entry of visibleReactions.values()) clearTimeout(entry.timer); visibleReactions.clear(); stopped = true; clearInterval(lobbyTimer); clearTimeout(reconnectTimer); clearTimeout(pendingTimer); clearTimeout(peekTimer); socket?.close(); });
 window.addEventListener("pageshow", event => { if (event.persisted) location.reload(); });
 void start();

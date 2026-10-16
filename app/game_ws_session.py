@@ -73,6 +73,15 @@ async def close_with_error(
     await websocket.close(code=code)
 
 
+def _player_passphrase_matches(session: GameSocketSession, data: dict) -> bool:
+    if game_type_from_state(session.game) == HAUSDEPP_GAME_TYPE and session.auth_identity:
+        from .hausdepp_rematch import rematch_private_consent
+
+        if rematch_private_consent(session.game, session.auth_identity.user_id):
+            return True
+    return _passphrase_matches(session.game, data)
+
+
 async def handle_session_action(
     session: GameSocketSession,
     action: str,
@@ -100,7 +109,7 @@ async def handle_session_action(
 async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finalize_game=None) -> bool:
     g = session.game
     websocket = session.websocket
-    if not _passphrase_matches(g, data):
+    if not _player_passphrase_matches(session, data):
         await close_with_error(websocket, "Falsche Passphrase")
         return True
 
@@ -254,7 +263,7 @@ async def _spectate_game(session: GameSocketSession, data: dict[str, Any]) -> bo
 async def _rejoin_game(session: GameSocketSession, data: dict[str, Any], *, finalize_game=None) -> bool:
     g = session.game
     websocket = session.websocket
-    if not _passphrase_matches(g, data):
+    if not _player_passphrase_matches(session, data):
         await close_with_error(websocket, "Falsche Passphrase")
         return True
     if g.get("_aborted"):

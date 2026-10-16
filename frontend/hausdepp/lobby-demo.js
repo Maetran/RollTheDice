@@ -1,3 +1,5 @@
+import { prepareCardAssets } from "./cards.js";
+
 // A decorative, local hand: it never sends a game action or touches a room.
 export function mountLobbyDemo(container, renderCard) {
   if (!container) return () => {};
@@ -6,7 +8,9 @@ export function mountLobbyDemo(container, renderCard) {
   const ranks = ["6", "7", "8", "9", "U", "O", "K", "A", "10"];
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   let hand = ["hearts-U", "acorns-A", "hearts-10"], timer, stopped = false, step = 0;
+  let assetsReady = false, preparing = false, assetTimer, assetAttempts = 0;
   container.replaceChildren();
+  container.dataset.cardAssets = "loading";
   const nodes = new Map();
   const random = count => Math.floor(Math.random() * count);
   const shuffle = values => {
@@ -60,7 +64,7 @@ export function mountLobbyDemo(container, renderCard) {
 
   function schedule() {
     clearTimeout(timer);
-    if (!stopped && !document.hidden && !reduced.matches) timer = setTimeout(advance, 3000 + random(1001));
+    if (!stopped && assetsReady && !document.hidden && !reduced.matches) timer = setTimeout(advance, 3000 + random(1001));
   }
 
   const rankOf = card => ranks.indexOf(card?.split("-")[1]);
@@ -168,7 +172,32 @@ export function mountLobbyDemo(container, renderCard) {
 
   const observer = new ResizeObserver(arrange);
   observer.observe(container);
+  const loadAssets = async () => {
+    if (stopped || assetsReady || preparing) return;
+    preparing = true;
+    clearTimeout(assetTimer);
+    try {
+      await prepareCardAssets();
+      if (stopped || !container.isConnected) return;
+      assetsReady = true;
+      container.dataset.cardAssets = "ready";
+      // The first SVG filter evaluation must already have decoded pixels,
+      // including a warm reload, rather than first painting empty paper.
+      render();
+      schedule();
+    } catch {
+      if (stopped) return;
+      container.dataset.cardAssets = "unavailable";
+      if (!document.hidden && assetAttempts < 3) {
+        assetTimer = setTimeout(() => { void loadAssets(); }, 1000 * 2 ** assetAttempts++);
+      }
+    } finally { preparing = false; }
+  };
   const visibility = () => {
+    if (!assetsReady) {
+      if (!document.hidden) { assetAttempts = 0; void loadAssets(); }
+      return;
+    }
     if (document.hidden) {
       for (const animation of container.getAnimations({ subtree: true })) animation.pause();
     } else {
@@ -179,12 +208,13 @@ export function mountLobbyDemo(container, renderCard) {
     schedule();
   };
   document.addEventListener("visibilitychange", visibility);
+  window.addEventListener("focus", visibility);
   reduced.addEventListener("change", visibility);
-  render();
-  schedule();
+  void loadAssets();
   return () => {
-    stopped = true; clearTimeout(timer); observer.disconnect();
+    stopped = true; clearTimeout(timer); clearTimeout(assetTimer); observer.disconnect();
     document.removeEventListener("visibilitychange", visibility);
+    window.removeEventListener("focus", visibility);
     reduced.removeEventListener("change", visibility);
     for (const animation of container.getAnimations({ subtree: true })) animation.cancel();
   };

@@ -1,6 +1,6 @@
-/* Hausdepp is an online multiplayer game. Nothing enters Cache Storage:
-   cards, tables, account pages, results and chat always require the server. */
-const CACHE_VERSION = 'assets-4e0800075052';
+/* Hausdepp is an online multiplayer game. Nothing enters Cache Storage.
+   Public artwork uses the browser's HTTP image cache; private content stays online-only. */
+const CACHE_VERSION = 'assets-7d79fb567fac';
 
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
@@ -31,6 +31,13 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  // These public, versioned pictures contain no dealt cards or account state.
+  // Native image loading keeps a warm Safari SVG image out of the worker's
+  // second fetch/cache boundary. It also reuses the ordinary HTTP image cache.
+  if (request.method === 'GET' && [
+    '/static/hausdepp/cards-source.jpg', '/static/hausdepp/tell-leaves-reference-v1.jpg',
+    '/static/hausdepp/card-back.png',
+  ].includes(url.pathname)) return;
   // A worker registered for /hausdepp must never supply another game's
   // navigation, even if the registration is inspected outside its scope.
   const hausdeppPage = url.pathname === '/hausdepp' || url.pathname.startsWith('/hausdepp/');

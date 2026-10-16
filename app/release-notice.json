@@ -1,37 +1,29 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch",
     "hausdepp"
   ],
-  "summary_de": "Hausdepp ist da: cleverere Computer, mobiles Spielfenster und eigene Passkey-Anmeldung mit Kontoeinstellungen.",
-  "summary_en": "Hausdepp is here: smarter computers, a mobile game window and dedicated passkey sign-in with account settings.",
+  "summary_de": "Hausdepp: gemeinsam neu erstellen, gleiche Karten zusammen spielen und Kartenbilder beim PWA-Neuladen zuverlässiger laden.",
+  "summary_en": "Hausdepp: create again together, play matching cards in one move and load artwork more reliably after a PWA reload.",
   "player_notes": {
     "de": {
-      "title": "Der Hausdepp wird schlauer. Du auch?",
+      "title": "Noch eine Runde am Stammtisch?",
       "changes": [
-        "Hausdepp ist da: Einzelrunden oder HAUSDEPP-Turnier, mit clevereren Computern und wechselnden Denkpausen.",
-        "Der mobile Tisch bleibt in einem Fenster: grosse Stapel und vorbereitete Kartenbilder helfen beim schnellen Nachwerfen.",
-        "Passkey zuerst und eigene Kontoeinstellungen. Wartende Tische kannst du wieder verlassen.",
-        "Erfolge und Rangaufstiege erklären jetzt, was du erreicht hast und warum. Bisherige Meldungen werden beim nächsten Einstieg nachgeholt.",
-        "Langer Druck auf das offene Paket zeigt alle Karten vor dem Nehmen. Ausgeschiedene Karten haben einen eigenen Stapel.",
-        "Die Rangliste zeigt Hausdepp-Titel; im gemeinsamen Chat gibt es Hausdepp-Tag und Schnellfilter.",
-        "Freiwillige Einsteigertouren helfen in allen drei Spielen. Du kannst sie jederzeit beenden und später neu starten.",
-        "Bier und Snacks behalten ihren Platz und reagieren passend auf einen Anstupser. Das Herz-Zehner-Icon ist für iPhone leichter auffindbar."
+        "Neu erstellen übernimmt eure Einstellungen und lädt die bisherigen Menschen persönlich ein. Erst Annehmen bringt sie an den neuen Tisch.",
+        "Gleiche Karten auswählen und zusammen legen: Die Computer können sich nicht zwischen die Karten dieses Zugs schieben.",
+        "Computer lassen sich im wechselnden Normaltempo rund 12,5 % mehr Zeit.",
+        "Die Lobby wartet auf fertige Kartenbilder und wiederholt vorübergehende Bildfehler – auch nach einem PWA-Neuladen.",
+        "Wartende Tische schliessen nach einer Stunde ohne neuen menschlichen Sitz, ohne zusätzliche Punkte oder Siege."
       ]
     },
     "en": {
-      "title": "Hausdepp gets smarter. Do you?",
+      "title": "Another round at the table?",
       "changes": [
-        "Hausdepp is here: individual rounds or a HAUSDEPP tournament, with smarter computers and varied thinking pauses.",
-        "The mobile table stays in one window: large piles and ready-to-show card images help with quick follow-up plays.",
-        "Passkeys first and dedicated account settings. You can leave waiting tables again.",
-        "Achievements and rank-ups explain what you earned and why. Earlier notices catch up on your next entry.",
-        "Long-press the open pile to see all its cards before pickup. Cleared cards have their own stack.",
-        "Standings show Hausdepp titles; the shared chat has a Hausdepp tag and quick filter.",
-        "Optional beginner tours help in all three games. End them anytime and restart them later.",
-        "Drinks and snacks stay put and respond with fitting nudges. The heart-ten icon is easier for iPhone to find."
+        "Create again keeps your settings and personally invites the previous human players. Accepting takes them to the new table.",
+        "Select matching cards and play them together: computers cannot act between cards within this move.",
+        "Computers take about 12.5% longer within their varied normal timing.",
+        "The lobby waits for ready-to-show artwork and retries temporary image failures, including after a PWA reload.",
+        "Waiting tables close after one hour without a new human seat, granting no extra points or wins."
       ]
     }
   }

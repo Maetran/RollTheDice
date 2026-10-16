@@ -4,7 +4,7 @@ import asyncio
 import os
 from random import Random
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -21,24 +21,50 @@ def test_default_timing_has_fast_regular_and_thoughtful_reactions():
         draws = [runner._delay({}, {"action": "draw"}, rng=random) for _ in range(100)]
         additional = [runner._delay({}, {"action": "afterthrow"}, rng=random) for _ in range(100)]
     assert len(set(delays)) == 600
-    assert all(0.16 <= delay <= 2.4 for delay in delays)
-    assert sum(delay < 0.4 for delay in delays) > 50
-    assert sum(delay > 1.3 for delay in delays) > 50
+    assert all(0.18 <= delay <= 2.7 for delay in delays)
+    assert sum(delay < 0.45 for delay in delays) > 50
+    assert sum(delay > 1.4625 for delay in delays) > 50
     assert sum(following) / len(following) < sum(delays) / len(delays)
-    assert all(0.15 <= delay <= 0.65 for delay in draws)
-    assert all(0.1 <= delay <= 0.85 for delay in additional)
+    assert all(0.16875 <= delay <= 0.73125 for delay in draws)
+    assert all(0.1125 <= delay <= 0.95625 for delay in additional)
+
+
+@pytest.mark.parametrize(("action", "following", "roll", "bounds"), [
+    ("peek", False, 0.0, (0.45, 1.3)),
+    ("draw", False, 0.0, (0.15, 0.65)),
+    ("afterthrow", False, 0.0, (0.1, 0.85)),
+    ("play", False, 0.1, (0.16, 0.37)),
+    ("play", False, 0.5, (0.45, 1.2)),
+    ("play", False, 0.9, (1.3, 2.4)),
+    ("play", True, 0.5, (0.12, 0.65)),
+    ("play", True, 0.9, (0.8, 1.35)),
+    ("gamble", False, 0.5, (0.45, 1.2)),
+    ("pickup", True, 0.9, (0.8, 1.35)),
+])
+def test_each_normal_reaction_is_exactly_twelve_and_a_half_percent_slower(action, following, roll, bounds):
+    timing_rng = Mock()
+    timing_rng.random.return_value = roll
+    sampled = bounds[0] + (bounds[1] - bounds[0]) * 0.37
+    timing_rng.uniform.return_value = sampled
+    with patch.dict(os.environ, clear=True):
+        assert runner._delay({}, {"action": action}, following=following, rng=timing_rng) == sampled * 1.125
+    timing_rng.uniform.assert_called_once_with(*bounds)
 
 
 @pytest.mark.parametrize(("value", "expected"), [("0", 0.0), ("0.06", 0.06), ("-8", 0.0), ("50", 5.0)])
 def test_explicit_timing_override_remains_bounded_and_deterministic(value, expected):
     with patch.dict(os.environ, {"ROLLTHEDICE_HAUSDEPP_CPU_DELAY_SECONDS": value}):
-        assert runner._delay({}, {"action": "play"}) == expected
+        for action in ("peek", "draw", "afterthrow", "play", "gamble", "pickup"):
+            timing_rng = Mock()
+            assert runner._delay({}, {"action": action}, following=True, rng=timing_rng) == expected
+            timing_rng.uniform.assert_not_called()
+            timing_rng.random.assert_not_called()
 
 
 @pytest.mark.parametrize("value", ["invalid", "NaN", "inf", "-inf"])
 def test_bad_timing_configuration_falls_back_to_a_finite_reaction(value):
     with patch.dict(os.environ, {"ROLLTHEDICE_HAUSDEPP_CPU_DELAY_SECONDS": value}):
-        assert 0.16 <= runner._delay({}, {"action": "play"}, rng=Random(31)) <= 2.4
+        assert 0.18 <= runner._delay({}, {"action": "play"}, rng=Random(31)) <= 2.7
 
 
 def game_for(state, *, cpu_ids):
