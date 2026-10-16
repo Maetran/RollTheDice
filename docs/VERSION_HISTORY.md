@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.53.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.54.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.53.0 | 2026-10-16 | minor | Hausdepp als privates drittes Spiel mit Stammtisch, Computer-Mitspielern und direkter Kartenbedienung. / Hausdepp as a private third game with a shared card table, computer players and direct pile controls. | [7e1c65f](https://github.com/Maetran/RollTheDice/commit/7e1c65ff4cad8b0a776a6402491a3202cc7fa615) |
 | 2.52.0 | 2026-10-15 | minor | NEXUS als zusätzliches Dashboard-Design mit KPI-Fokus und persönlichen Favoriten. / NEXUS as an additional dashboard design with prominent KPIs and personal favorites. | [ec81ae2](https://github.com/Maetran/RollTheDice/commit/ec81ae2f7ebe80fd2c1891b5a2ba173299767b16) |
 | 2.51.0 | 2026-10-14 | minor | Neues ZDWA-Design für alle, mit Wahl zwischen neuem und bisherigem Design. / New ZDWA design for everyone, with a choice between the new and the previous design. | [0a442df](https://github.com/Maetran/RollTheDice/commit/0a442dfad8964405ebc0bfdfefdbd8fd50e0cbb7) |
 | 2.50.0 | 2026-10-13 | minor | ZDWA-Design 2026 als Vorschau nur für den Owner, mit Punktevorschau im Spielzettel. / ZDWA design 2026 as an owner-only preview, with score previews on the score sheet. | [edb2bfd](https://github.com/Maetran/RollTheDice/commit/edb2bfde9550477afea93bbdb58efb82db6a55bc) |

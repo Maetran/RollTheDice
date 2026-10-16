@@ -81,6 +81,9 @@ Der Geber mischt. Gespielt wird im Uhrzeigersinn. Der Spieler unmittelbar vor
 dem Geber in dieser Reihenfolge schaut die unterste Karte des verdeckten
 Stapels an. Das Anschauen, Weiterschauen nach einem Ass und Behalten bei Erfolg
 sind verpflichtend; es gibt kein Auslassen, Ablehnen oder vorzeitiges Aufhören.
+Der bestimmte Spieler hebt aktiv ab: Ein Tipp auf den verdeckten Stapel prüft
+eine Karte. Nach jedem Ass löst er das Weiterschauen mit einem weiteren Tipp
+aus. Ein Computer führt seine eigenen Abhebeaktionen aus.
 
 1. Ist die unterste Karte eine **10**, erhält der Spieler diese eine Karte.
 2. Ist sie ein **Ass**, schaut der Spieler die nächste Karte darüber im
@@ -115,7 +118,9 @@ in den verdeckten Stapel geschoben und erneut dessen oberste Karte aufgedeckt.
 Das wird bei jeder weiteren 10 wiederholt, bis eine andere Karte liegt. Jede
 andere Karte ist als Startkarte erlaubt.
 
-Der Spieler unmittelbar nach dem Geber im Uhrzeigersinn beginnt.
+Das Austeilen wird durch kurze Kartenbewegungen vom Stapel zu den Sitzen
+gezeigt. Die Animation sperrt keine Spielaktion und wiederholt sich beim
+Neuladen nicht. Der Spieler unmittelbar nach dem Geber im Uhrzeigersinn beginnt.
 
 ### Standardzüge
 
@@ -136,9 +141,9 @@ Der aktive Spieler hat die folgenden Möglichkeiten:
 4. **Mit einer 10 abräumen:** Eine 10 spielen. Das gesamte offene Paket samt
    dieser 10 fliegt aus der Runde, unabhängig davon, was zuvor oben lag.
 
-Gelingt ein normaler Lege- oder Zockzug ohne Abräumen, ist nach einem
-gegebenenfalls erforderlichen Pflichtauffüllen der nächste noch beteiligte
-Spieler dran. Das nachfolgend beschriebene Nachwerfen bleibt bis zur ersten
+Gelingt ein normaler Lege- oder Zockzug ohne Abräumen, ist sofort der nächste
+noch beteiligte Spieler dran. Er darf bereits aus seiner Hand legen, auch wenn
+der Vorgänger noch auffüllen muss. Das nachfolgend beschriebene Nachwerfen bleibt bis zur ersten
 angenommenen Aktion dieses Spielers möglich.
 
 ### Vier Gleiche und erneutes Ausspielen
@@ -154,9 +159,10 @@ gleich hohen Rang gespielt werden. Bereits oben liegende Karten desselben
 Rangs dürfen durch die fehlenden Karten ergänzt werden.
 
 Wer durch eine 10 oder vier Gleiche abräumt, darf **selbst erneut ausspielen**.
-Zuerst wird eine nötige Auffüllung abgeschlossen. Hat der Spieler danach noch
-Handkarten, beginnt er auf dem leeren Tisch. Ist er stattdessen bereits fertig,
-wird er übersprungen und der nächste noch beteiligte Spieler beginnt dort.
+Das erneute Zugrecht gilt sofort; vorhandene Handkarten darf er bereits
+spielen, auch wenn eine Auffüllpflicht offen ist. Die Auffüllpflicht bleibt
+bestehen. Ist er bei leerem Nachziehstapel fertig, wird er übersprungen und der
+nächste noch beteiligte Spieler beginnt dort.
 
 ### Pflichtauffüllen per Stapeltipp und Nachwerfen
 
@@ -164,22 +170,35 @@ Nach einem vollständigen Ablegen muss eine Hand unter drei Karten von oben
 aufgefüllt werden, solange Nachziehkarten vorhanden sind. **Das Auffüllen
 geschieht nicht automatisch:** Ein Tipp auf den verdeckten Stapel nimmt
 sämtliche fehlenden Karten bis zur Handgrösse drei auf einmal, oder alle noch
-verfügbaren Karten, falls weniger übrig sind. Der nächste Spieler wartet, bis
-dieses Pflichtauffüllen abgeschlossen ist. Bei drei oder mehr Handkarten ist
+verfügbaren Karten, falls weniger übrig sind. Bei drei oder mehr Handkarten ist
 kein Auffüllen erforderlich.
 
-Vor dem Ausspielen aus der Hand bedeutet ein Tipp auf den verdeckten Stapel
-**Zocken**, nicht Auffüllen. Ein Auffüllen vor dem Ablegen ist nicht erlaubt.
-Steht nach einem Ablegen dagegen das Pflichtauffüllen aus, bedeutet derselbe
-Tipp ausschliesslich Auffüllen; währenddessen kann nicht gezockt werden.
+**Langsames Ziehen hält Handzüge nicht auf.** Der nächste Spieler darf sofort
+legen. Der verdeckte Stapel ist aber für die älteste noch offene Auffüllpflicht
+bestimmt: Solange diese nicht erledigt ist, können spätere Spieler weder ziehen
+noch zocken. Weitere Auffüllpflichten kommen hinten in diese Reihenfolge. Der
+Spieler, der jetzt ziehen muss, sieht **„Du musst ziehen“** mit einem sanft rot
+pulsierenden Rahmen. Bei reduzierter Bewegung bleibt der Rahmen statisch.
+Andere Spieler sehen, auf wen der Stapel wartet.
 
-Nach dem Pflichtauffüllen entscheidet das Ergebnis des vorherigen Ablegens:
-Hat es das Paket abgeräumt, erhält derselbe Spieler einen **neuen vollständigen
-Zug auf dem leeren Tisch**. Er darf ausspielen oder erneut zocken, sofern der
-Nachziehstapel nicht leer ist. Beispiel: Nach einer abräumenden 10 hält er durch
-das Auffüllen drei Asse und darf trotzdem zocken. Ohne Abräumen geht das Zugrecht
-an den nächsten Spieler; das Nachwurffenster des bisherigen Spielers bleibt bis
-zur nächsten angenommenen Aktion offen.
+Vor dem Ausspielen aus der Hand bedeutet ein Tipp auf den verdeckten Stapel
+**Zocken**, nicht Auffüllen, sofern keine ältere Auffüllpflicht den Stapel
+blockiert. Ein Auffüllen vor dem Ablegen ist nicht erlaubt. Steht nach einem
+Ablegen die eigene Auffüllung aus, bedeutet derselbe Tipp ausschliesslich
+Auffüllen, sobald diese Pflicht an der Reihe ist; Zocken ist dann gesperrt.
+
+Hat ein Zug das Paket abgeräumt, behält derselbe Spieler einen **neuen
+vollständigen Zug auf dem leeren Tisch**. Handkarten darf er sofort spielen;
+zocken darf er erst, wenn keine Auffüllpflicht mehr offen ist und der Stapel
+noch Karten enthält. Beispiel: Nach einer abräumenden 10 hält er durch das
+Auffüllen drei Asse und darf trotzdem zocken. Ohne Abräumen geht das Zugrecht
+sofort weiter. Spätes Auffüllen verändert weder das aktuelle Zugrecht noch ein
+bereits geschlossenes Nachwurffenster.
+
+Die eigene Hand ist von links nach rechts aufsteigend sortiert, mit den 10ern
+ganz rechts. **Ein Tipp auf eine Handkarte legt sie unmittelbar.** Es gibt keine
+zusätzliche Bestätigung. Weitere gleiche Karten können schnell nacheinander
+angetippt werden, solange das Nachwurfrecht noch besteht.
 
 Ein Tipp auf das **offene Paket** bedeutet dagegen dessen bewusstes vollständiges
 Aufnehmen auf die Hand. Aufnehmen beendet den Zug. Bei leerem Tisch ist keine
@@ -197,15 +216,16 @@ Das Nachwurfrecht endet mit der **ersten angenommenen Aktion des nächsten
 Spielers**. Dazu
 zählen dessen Ablegen, Aufnehmen des Pakets oder Aufdecken zum Zocken. Bereits
 angenommene Aktionen dürfen nicht nachträglich durch einen Nachwurf umgeordnet
-werden. Die konkrete technische Gestaltung dieses Zeitfensters, einschliesslich
-einer angemessenen Reaktionszeit beim Computer-Mitspieler, ist noch umzusetzen;
-eine feste Sekundenzahl ist keine bestätigte Spielregel.
+werden. Befehlsbestätigungen ordnen schnelle Kartenaktionen; eine feste
+Sekundenzahl oder künstliche Sperre ist keine Spielregel. Computer reagieren
+kurz verzögert, damit ein menschlicher Nachwurf möglich bleibt.
 
 ### Endspiel und Rundenende
 
 Reichen die Nachziehkarten nicht mehr für drei Handkarten, zieht der Spieler
 nur die noch vorhandenen Karten. Sobald der Nachziehstapel leer ist, entfällt
-die Mindesthand und es kann nicht mehr gezockt werden.
+die Mindesthand und es kann nicht mehr gezockt werden. Offene Auffüllpflichten
+enden damit; alle inzwischen leeren Hände werden gemeinsam als fertig geprüft.
 
 **Erst auffüllen, dann prüfen, ob jemand fertig ist.** Eine zwischenzeitlich
 leere Hand ist kein Ausscheiden, solange noch nachgezogen werden muss. Das
@@ -258,7 +278,7 @@ bereits funktioniert:
 | Konto | Bestehendes Suite-Konto weiterverwenden | Hausdepp-spezifische Anzeige und Daten im Kontobereich |
 | Chat und Reaktionen | Gemeinsame Suite-Funktionen analog zu den anderen Spielen | Einbindung und Prüfung am Hausdepp-Tisch |
 | Vorbereitung weiterer Runden | Mehrere Runden sind als Spielkontext vorgesehen | Rotation des Gebers und genaue Bedienung des Rundenwechsels |
-| Feindetails der Vorbereitung | Obligatorisches Anschauen und Auffüllen stehen fest | Konkrete Animationen und Reihenfolge des Austeilens an die Sitze |
+| Vorbereitung | Aktives Anschauen und kurze Austeilanimation sind umgesetzt | Weitere Verfeinerungen nach Spieltests |
 
 ### Bestätigte Achievement-Richtung: vom klugen Kopf zum Hausdepp
 
@@ -357,7 +377,9 @@ different concepts; scoring values have not been decided.
 The dealer shuffles. Play proceeds clockwise. The player immediately before
 the dealer in that order looks privately at the bottom card of the face-down
 deck. Looking, continuing after an ace and keeping cards on success are
-mandatory. There is no opting out, declining or stopping early.
+mandatory. There is no opting out, declining or stopping early. The designated
+player actively taps the face-down pile to inspect one card. After each ace,
+another tap continues the inspection. A computer performs its own peek actions.
 
 1. If the bottom card is a **10**, the player receives that single card.
 2. If it is an **ace**, the player looks at the next card above it in the
@@ -387,7 +409,9 @@ If it is a **10**, it is reinserted at a random position in the face-down draw
 pile and the top card is revealed again. Repeat for every further 10 until a
 different rank appears. Any other card is allowed as the opening card.
 
-The player immediately after the dealer clockwise takes the first turn.
+Short card movements from the stock to the seats show the deal. They do not
+block gameplay and do not repeat after reloading. The player immediately after
+the dealer clockwise takes the first turn.
 
 ### Standard turns
 
@@ -408,9 +432,9 @@ The active player has the following options:
    removed from the round regardless of the previous top card.
 
 After a successful ordinary play or gamble that does not clear the pile, play
-passes to the next remaining player once any required refill is complete. The
-additional-card right described below remains available until that player's
-first accepted action.
+passes immediately to the next remaining player. They may play from hand
+before the previous player refills. The additional-card right described below
+remains available until that player's first accepted action.
 
 ### Four equal ranks and playing again
 
@@ -425,29 +449,40 @@ Cards already at the top with the same rank may be completed with the missing
 cards.
 
 A player who clears the pile with a 10 or four equal ranks may **play again**.
-They first complete any required refill. If cards remain in their hand, they
-lead on the empty table. If they have instead finished, they are skipped and
-the next remaining player leads there.
+This right applies immediately: they may play existing hand cards even while
+a refill is pending. Refilling remains mandatory. If they have finished with
+an empty draw pile, they are skipped and the next remaining player leads there.
 
 ### Mandatory refill by tapping the pile and adding matching cards
 
 After a complete play, a hand below three cards must be refilled from the top
 while draw cards remain. **Refilling is not automatic:** One tap on the face-down
 pile takes all missing cards up to a hand of three at once, or all remaining
-cards if fewer are available. The next player waits until this mandatory refill
-is complete. A hand of three or more cards does not need a refill.
+cards if fewer are available. A hand of three or more cards needs no refill.
 
-Before playing from hand, tapping the face-down pile means **gambling**, not
-refilling. Refilling before playing is not allowed. When a mandatory refill is
-pending after a play, the same tap only refills the hand; gambling is unavailable
-during that step.
+**Slow drawing does not hold up hand plays.** The next player may play
+immediately. Access to the face-down pile follows the oldest pending refill:
+until it is complete, later players can neither draw nor gamble. Further refill
+obligations join the end of that queue. The player who must draw now sees
+**“You must draw”** inside a gently pulsing red frame. With reduced motion the
+frame stays static. Other players see whose refill is holding the stock.
 
-After the mandatory refill, the preceding play determines what happens next.
-If it cleared the pile, the same player receives a **new full turn on the empty
-table**. They may play from hand or gamble again if the draw pile is not empty.
-For example, after clearing with a 10 and refilling to three aces, they may still
-gamble. Without a clearance, the turn passes to the next player while the previous
-player's additional-card window remains open until the next accepted action.
+Before playing from hand, tapping the face-down pile means **gambling**, provided
+no earlier refill blocks the stock. Refilling before playing is not allowed.
+When the player's own refill is pending after a play, that tap only refills their
+hand once their obligation reaches the front; gambling is unavailable.
+
+If a play cleared the pile, the same player keeps a **new full turn on the empty
+table**. They may play hand cards immediately, or gamble once no refill remains
+pending and the stock still has cards. For example, after clearing with a 10 and
+refilling to three aces, they may still gamble. Without a clearance, the turn
+passes immediately. A delayed refill changes neither the current turn nor an
+already closed additional-card window.
+
+The hand is sorted in ascending order from left to right, with tens at the far
+right. **Tapping a hand card plays it immediately**, without another confirmation.
+Further matching cards can be tapped in quick succession while the additional-
+card right remains open.
 
 Tapping the **open pile** instead deliberately picks up the entire pile into
 the player's hand. Picking up ends the turn. An empty table cannot be picked up.
@@ -460,16 +495,16 @@ equal ranks and therefore grant another lead.
 
 This right ends with the **next player's first accepted action**, including playing a
 card, picking up the pile or revealing a gamble card. Accepted actions must
-not subsequently be reordered by an additional card. The actual technical
-handling of this window, including reasonable reaction time against a computer
-opponent, remains implementation work. No fixed number of seconds is a
-confirmed game rule.
+not subsequently be reordered by an additional card. Command acknowledgements
+order quick card actions; no fixed timer or artificial lock is a game rule.
+Computers react after a brief delay, leaving room for a human additional card.
 
 ### Endgame and end of the round
 
 If the remaining draw cards cannot refill a hand to three, the player draws
 only the cards still available. Once the draw pile is empty, the minimum hand
-size no longer applies and gambling is unavailable.
+size no longer applies and gambling is unavailable. Pending refill obligations
+then end; all hands that have become empty are checked together for finishing.
 
 **Refill first, then check whether the player has finished.** A temporarily
 empty hand does not finish the round for a player who must still draw. This
@@ -519,7 +554,7 @@ structure. Planning an extension does not mean that it already works:
 | Account | Reuse the existing suite account | Hausdepp-specific account presentation and data |
 | Chat and reactions | Shared suite features analogous to the other games | Integration and verification at the Hausdepp table |
 | Further rounds | The game context anticipates multiple rounds | Dealer rotation and exact round-transition interaction |
-| Preparation details | Mandatory inspection and refilling are settled | Actual animations and the order of dealing to seats |
+| Preparation | Active inspection and short dealing animations are implemented | Further refinements after playtesting |
 
 ### Confirmed achievement direction: from clever mind to Hausdepp
 

@@ -38,9 +38,9 @@ def _cpu_decision(game: dict) -> tuple[str, dict] | None:
 
 def _delay() -> float:
     try:
-        return max(0.0, min(5.0, float(os.getenv("ROLLTHEDICE_HAUSDEPP_CPU_DELAY_SECONDS", "1.8"))))
+        return max(0.0, min(5.0, float(os.getenv("ROLLTHEDICE_HAUSDEPP_CPU_DELAY_SECONDS", "0.8"))))
     except ValueError:
-        return 1.8
+        return 0.8
 
 
 async def _run(game: dict, *, finalize_game=None) -> None:
@@ -51,16 +51,12 @@ async def _run(game: dict, *, finalize_game=None) -> None:
     try:
         while cpu_action_is_due(game) and games.get(game_id) is game:
             game["_hausdepp_cpu_thinking"] = True
-            planned_version = game["_hausdepp"]["version"]
             await asyncio.sleep(_delay())
             async with game_lock(game):
                 if not cpu_action_is_due(game) or games.get(game_id) is not game:
                     break
-                if game["_hausdepp"]["version"] != planned_version:
-                    # A successful afterthrow earns a fresh reaction interval.
-                    continue
                 # Compute after the presentation delay: a human afterthrow may
-                # have changed both the table and the state version meanwhile.
+                # have changed the table. Unrelated draws never restart a wait.
                 decision = _cpu_decision(game)
                 if decision is None:
                     break

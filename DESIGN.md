@@ -46,6 +46,8 @@ colors:
   hausdepp-edge: '#cdbb9c'
   hausdepp-wood: '#35271f'
   hausdepp-white: '#fffdf7'
+  hausdepp-draw-frame: '#ed8379'
+  hausdepp-draw-text: '#ffd4c7'
 typography:
   nexus-display:
     fontFamily: '"Nexus Display", sans-serif'
@@ -102,11 +104,6 @@ typography:
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
     fontSize: 13px
     lineHeight: 1.6
-  hausdepp-card-index:
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-    fontSize: 12px
-    fontWeight: 800
-    lineHeight: 1.2
 rounded:
   nexus-tag: 4px
   nexus-small: 5px
@@ -128,7 +125,7 @@ spacing:
   nexus-panel: 24px
   nexus-section: 46px
   hausdepp-small: 8px
-  hausdepp-hand-gap: 10px
+  hausdepp-hand-step: 66px
   hausdepp-control: 12px
   hausdepp-form-gap: 16px
   hausdepp-inset: 20px
@@ -247,14 +244,14 @@ All `hausdepp-*` records apply only to the Hausdepp pages that load `frontend/st
 
 **Key Characteristics:**
 
-- Hausdepp: one shared walnut table, real card imagery and a readable foreground hand.
+- Hausdepp: one shared walnut table, original card imagery and a compact sorted hand fan.
 - Hausdepp: Kalam display lettering paired with plain platform interface type.
 - Hausdepp: oxblood actions, ivory paper surfaces and brass state cues.
-- Hausdepp: real pile controls whose labels and availability follow the current game state.
+- Hausdepp: direct card taps and real pile controls whose labels and availability follow the current game state.
 
 **The Hausdepp Scope Rule.** Apply the Stammtisch tokens only to Hausdepp; retain each existing game and dashboard theme with its current owner.
 
-Evidence: `frontend/styles/hausdepp.css`, `frontend/hausdepp/index.js`, `frontend/hausdepp/cards.js` and the Hausdepp captures under `.impeccable/review/hausdepp-*.png`.
+Evidence: `frontend/styles/hausdepp.css`, `frontend/hausdepp/index.js`, `frontend/hausdepp/motion.js`, `frontend/hausdepp/cards.js` and `HAUSDEPP_MESSAGES` in `frontend/i18n/catalog.js`. Current local verification is recorded in `.impeccable/review/hausdepp-live-validation.md` with the `hausdepp-live-*.png` capture set. The original captures referenced by `hausdepp-finish-review.md` and `hausdepp-verdict.md` record an earlier milestone and do not verify the current direct-play, peek and refill interactions.
 
 ## Colors
 
@@ -285,7 +282,7 @@ The NEXUS palette is dark mineral green with a bright operational accent. Namesp
 
 ### Hausdepp palette
 
-The `hausdepp-*` values reproduce the nine `--hd-*` color properties in `hausdepp.css`. **Primary:** oxblood red identifies the main action and darkens on hover. **Secondary:** brass gold marks the active seat, actionable stock caption, selected cards and focus against walnut. **Neutral:** walnut grounds the table; ivory paper and warm white support cards, form and chat surfaces; dark ink, muted brown and the paper-edge color carry content and boundaries. Paper inputs and links use oxblood focus so the outline remains visible on ivory. State meaning is also present in labels, card selection and the turn sentence. These colors are a Hausdepp palette, not replacement dashboard aliases.
+The `hausdepp-*` palette records the nine `--hd-*` color properties in `hausdepp.css` plus the source-owned urgent-draw frame and text colors. **Primary:** oxblood red identifies the main action and darkens on hover. **Secondary:** brass gold marks the active seat, actionable stock caption, peeking stock and focus against walnut. **Urgent state:** the soft red frame marks the first outstanding refill, paired with pale-red “Du musst ziehen” / “You must draw” text for that viewer. **Neutral:** walnut grounds the table; ivory paper and warm white support cards, form and chat surfaces; dark ink, muted brown and the paper-edge color carry content and boundaries. Paper inputs and links use oxblood focus so the outline remains visible on ivory. Labels, availability and the turn sentence carry state meaning alongside color. These colors remain scoped to Hausdepp.
 
 ## Typography
 
@@ -312,11 +309,11 @@ Incumbent typography stays with its source owner: Mission Control uses its exist
 
 **Display Font:** self-hosted Kalam bold, exposed as `"Hausdepp Sign", cursive` (700) with `font-display: swap`. It names the brand, welcome, table and paper-panel headings, the rulebook title, plus the empty-pile inscription. The lobby display uses the frontmatter ramp and becomes (64px) on phones; the brand uses (30px), then (27px) on phones and (25px) on narrow phones and low landscape tables.
 
-**Body and Interface Font:** `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`. The rulebook uses the recorded body role, with (15px) phone prose; the introduction uses (17px/1.65), then (15px) on phones. Controls, navigation, player names, turn copy and card indexes stay in the UI face. Counts use tabular numerals where set in the source.
+**Body and Interface Font:** `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`. The rulebook uses the recorded body role, with (15px) phone prose; the introduction uses (17px/1.65), then (15px) on phones. Controls, navigation, player names, turn copy and accessible card names stay in the UI face. Card faces show only the original artwork; no added rank labels or badges overlay it. Counts use tabular numerals where set in the source.
 
 The create-panel heading uses the recorded heading role, then (30px) on phones; the table heading uses (25px), (22px) on phones and (19px) in low landscape. Supporting text varies with its actual purpose: (13px) form notes, (12px) connection and hand metadata, and (11px) landscape stack captions. The compact, non-action computer designation reaches (10px) on phones and hides in low landscape. These are observed component treatments, not a global small-text default.
 
-**The Hausdepp Display Rule.** Use Hausdepp Sign for branding, display headings and the empty-pile inscription; keep actions, rules prose, names, counts and card indexes in the platform UI stack.
+**The Hausdepp Display Rule.** Use Hausdepp Sign for branding, display headings and the empty-pile inscription; keep actions, rules prose, names and counts in the platform UI stack.
 
 ## Layout
 
@@ -340,9 +337,9 @@ The final evidence set is `.impeccable/review/desktop.png`, `mobile.png`, `table
 
 The Hausdepp shell is centered within (1380px), with normal insets of (42px 28px 18px). The lobby pairs the welcome/card arrangement with an ivory create form, then lists tables and the shared chat. At (700px) and below it becomes one column, uses (16px) side padding, and wraps the header navigation below the brand and suite tools. During phone play the extra header navigation hides; rules remain reachable beside the social controls.
 
-The live table places opponents above and, for four or five opponents on desktop, around the central stock and face-up pile. The player’s own hand stays in a broad lower region with a count, horizontal overflow, proximity snapping and reachable actions. Cards retain the source viewport ratio (36:57). Base hand cards are (106px) wide, phone cards (90px), and narrow-phone cards (82px); overflow preserves readable card size rather than compressing a large hand into thumbnails.
+The live table places opponents above and, for four or five opponents on desktop, around the central stock and face-up pile. The player’s hand sits in a compact, overlapping natural fan below its count. Its sort runs from low ranks on the left to 10 on the right; the fan follows a shallow arc rather than making a row of separate tiles. Cards retain the source viewport ratio (36:57). The fan aligns cards to its start edge (`align-items: flex-start`); its extra (24px) minimum-height clearance accommodates rotation and never stretches the card height. Base hand cards are (126px) wide with a (66px) step; phone cards use (112px/55px), and narrow-phone cards (100px/48px). Horizontal overflow keeps a large hand reachable. Keyboard focus reveals the rotated card inside the hand viewport with an (8px) inset, subject to the browser’s scroll bounds. This correction starts only for `:focus-visible`, runs on the next animation frame after native focus scrolling, and adjusts horizontal scroll only if the same card still holds focus. The original card artwork stays unobscured by invented rank badges.
 
-At (1100px) and above, a (270px) social rail sits beside the table with a (32px) gap and an in-flow chat. Below that threshold, chat opens as a bottom sheet above a backdrop and respects the bottom safe area. At (359px) and below, card sizes and social spacing compact further. Low landscape, up to (600px) viewport height, uses two table columns: opponents and turn copy on the left, stock/pile and event copy on the right, with the hand and actions along the lower edge. The stock/pile row reserves (136px), hand cards use (62px), and central cards use (58px), leaving room for the complete action caption and count. Tablet landscape at (701–1099px) wide and (601–850px) high keeps a stacked table with compact (136px/177px) opponent/centre rows, (85px) central cards with (10px) stack gaps, and (94px) hand cards. Keep these source-owned orientation overrides together.
+At (1100px) and above, a (270px) social rail sits beside the table with a (32px) gap and an in-flow chat. Below that threshold, chat opens as a bottom sheet above a backdrop and respects the bottom safe area. At (359px) and below, card sizes and social spacing compact further. Low landscape, up to (600px) viewport height, uses two table columns: opponents and turn copy on the left, stock/pile and event copy on the right, with the hand and actions along the lower edge. The first three grid rows are (27px/86px/26px). Opponents occupy the second row; the stock/pile spans rows two and three with a (136px) region. Event copy sits in the fourth right-hand row with (35px) top spacing; action guidance sits in the fifth right-hand row with (8px 0 48px) padding, leaving room for social controls. Hand cards use (79px) with a (44px) step, and central cards use (58px). Tablet landscape at (701–1099px) wide and (601–850px) high keeps a stacked table with compact (136px/177px) opponent/centre rows, (85px) central cards with (10px) stack gaps, and (112px) hand cards with the inherited (66px) step and (18px 10px) vertical padding. Keep these source-owned orientation overrides together.
 
 ## Elevation & Depth
 
@@ -355,9 +352,9 @@ State motion is brief: the star changes color, background and border over (180ms
 
 ### Hausdepp material and motion
 
-Walnut is the shipped Zilch table raster under a dark veil, not a procedural substitute. Paper forms and chat surfaces lift above it; actual cards carry short physical shadows, while turns and legal choices use brass outlines. The create form uses (`0 14px 40px #120b0766`); a card uses (`0 5px 12px #180d0870`); the mobile chat sheet uses (`0 -10px 30px #150d0870`). The face-down stock adds offset paper edges to suggest a finite stack. Asset origin, license and generation prompt remain in `docs/HAUSDEPP_ASSETS.md`; the back is generated from the owner’s reference and is not represented as an original scan.
+Walnut is the shipped Zilch table raster under a dark veil, not a procedural substitute. Paper forms and chat surfaces lift above it; actual cards carry short physical shadows, while turn and keyboard-focus cues use brass outlines. The create form uses (`0 14px 40px #120b0766`); a card uses (`0 5px 12px #180d0870`); the mobile chat sheet uses (`0 -10px 30px #150d0870`). The face-down stock adds offset paper edges to suggest a finite stack. Asset origin, license and generation prompt remain in `docs/HAUSDEPP_ASSETS.md`; the back is generated from the owner’s reference and is not represented as an original scan.
 
-Card selection lifts by (12px) over (160ms) with `cubic-bezier(.16,1,.3,1)`. A newly cleared pile receives one (320ms) lift/fade acknowledgement through the Web Animations API; the reduced-motion preference makes that animation instantaneous and removes CSS transitions. Motion does not carry legal-action or turn information by itself.
+The fan settles over (130ms) with `cubic-bezier(.16,1,.3,1)`. Hover or keyboard focus raises a playable card by (12px); a card already sent or queued rises (18px) and fades while awaiting acceptance. These are action acknowledgements, with no selection stage. A newly cleared pile receives one (320ms) lift/fade acknowledgement through the Web Animations API. Dealing sends pointer-inert, screen-reader-hidden card-back ghosts from the stock to hands and seats, with (300ms) flights and a stagger bounded to (600ms), completing within (900ms) without blocking play. It runs once per game/deal version; session storage and an in-memory guard suppress replay on reload or reconnect. The first refill obligation receives a soft red (1.6s) border pulse; other debtors retain a static red avatar outline. Reduced motion skips deal ghosts, makes pile clearing instantaneous, removes transitions and keeps draw frames static. Labels and legal-action state remain understandable without animation.
 
 ## Shapes
 
@@ -399,17 +396,23 @@ The actual data-driven globe/map, country list, selected-country readout and vie
 
 ### Hausdepp controls and state
 
-The oxblood primary action has warm-white text, (13px 20px) padding and a (46px) minimum height. Neutral paper controls use dark ink. Visible keyboard focus is a (3px) brass outline with a (4px) offset against walnut; fields and links on ivory use oxblood, while a focused hand card uses warm white with a (5px) offset. Disabled general controls reduce opacity; unavailable hand cards retain their shape and instead darken through brightness.
+The oxblood primary action has warm-white text, (13px 20px) padding and a (46px) minimum height. Neutral paper controls use dark ink. Visible keyboard focus, including on hand cards, is a (3px) brass outline with a (4px) offset against walnut. Fields and links on ivory use oxblood. Disabled general controls reduce opacity; unavailable hand cards retain their shape and instead darken through brightness.
 
 Navigation remains plain labelled links with a brass underlined current page. Native language and player-count selects retain platform interaction. The account and game switcher remain part of the shared suite. Inputs are light paper with a paper-edge border and a visible caret/focus state. The create form bounds computers to fewer than the selected total seats.
 
 **The Hausdepp Card Truth Rule.** Use the supplied 36-card Tell-pattern artwork and its individual viewports; preserve the order 6, 7, 8, 9, Unter, Ober, König, Ass, 10, with 10 highest.
 
-Each hand card is a labelled button with `aria-pressed` for selection. Selecting a different rank clears the previous rank group. Legal cards receive a fine outline; selected cards lift and receive the heavier brass outline. The hand sort follows the displayed rank order. Public piles expose only their visible cards; private peek information starts collapsed in the viewer’s own disclosure. A successful peek opens briefly and collapses after six seconds. The illustrated Schellen six remains an ordinary six despite its printed WELI markings.
+Each hand card is a button with its translated suit and rank as an accessible name; the artwork itself stays purely visual. Availability follows the server projection, with unavailable cards darkened and disabled. There is no selected-card state, `aria-pressed`, added rank badge or confirmation button. The illustrated Schellen six remains an ordinary six despite its printed WELI markings.
 
-**The Hausdepp Pile Action Rule.** The face-down stock changes from taking a chance to mandatory refilling after a play when the hand is below three and stock remains; one tap draws every missing card up to three or the remaining stock. The face-up pile is the pickup control.
+**The Hausdepp Direct Play Rule.** A tap or keyboard activation immediately sends one legal hand card as play or afterthrow. Quick taps on further cards of the same rank join a queue; each is sent only after the previous command is acknowledged and its accepted snapshot is present, then checked against the current legal actions.
 
-A visible stock caption and turn sentence explain whether its current tap means taking a chance or refilling. Mandatory refilling blocks every other game action until completed; an exhausted stock cannot draw. A face-up pile can be taken only when pickup is legal and never acts as an empty-pile pass. The primary play action becomes the labelled afterthrow action while the server offers that opportunity; merely selecting a card does not consume it. A pending command, pause or lost connection disables gameplay controls, with status and error text retaining the reason. The completed table names the last player and offers a new round; this first increment does not display an invented points system.
+Before dealing, the player immediately before the dealer must inspect the bottom card by tapping the face-down stock. Each tap inspects exactly one card. A 10 succeeds immediately and must be taken. An ace requires another tap and extends the private chain; a following 10 ends the peek, transfers all inspected aces plus that 10 and briefly exposes them to everyone. Any other rank ends inspection without taking cards or exposing the private chain. The viewer’s disclosure opens when new known cards arrive, stays available for the next mandatory tap during peeking, and collapses after (4.5s) outside that phase. Public piles show only their visible cards.
+
+**The Hausdepp Pile Action Rule.** After a play leaves a hand below three while stock remains, refilling becomes a FIFO stock obligation. Only the first debtor may tap the face-down stock to draw all missing cards up to three or the remaining stock. Outstanding debts lock only stock access: others cannot draw or take a chance, but legal hand play and pickup can continue. The face-up pile is the pickup control.
+
+The next player may play from their hand before the previous player refills. A player who clears the pile may lead again from their remaining hand before their own refill. A delayed refill never rewinds the current turn or restores an expired afterthrow opportunity. The next player’s first accepted play, pickup or chance closes that opportunity; taking a chance is offered only when the refill queue is empty. Refilling remains an explicit player tap, and an exhausted stock cannot draw.
+
+The first debtor sees a soft red stock frame with “Du musst ziehen” / “You must draw”; other viewers see “Warte auf {name}” / “Waiting for {name}” while stock is reserved. Opponent avatar outlines distinguish outstanding debts, with the first debtor pulsing softly. The frame is static under reduced motion. Stock captions and the turn sentence explain the available action. A face-up pile can be taken only when pickup is legal and never acts as an empty-pile pass. Commands are serialized; while one card command is pending, further same-rank taps may queue and other gameplay controls wait. Pause or lost connection disables gameplay controls, with status and error text retaining the reason. The completed table names the last player and offers a new round; this first increment does not display an invented points system.
 
 The shared chat and labelled emoji reactions keep their established behavior. Desktop chat uses the rail; smaller screens use the closeable sheet. Rulebook and result surfaces reuse the same paper, headings and primary action.
 
@@ -435,13 +438,15 @@ Not canonized: inherited glyph-based decoration and incumbent eyebrow/scan treat
 
 - Do keep the Hausdepp walnut, ivory, oxblood and brass world scoped to its own pages.
 - Do preserve German and English copy, labelled controls, visible focus and the real card names.
-- Do keep the player’s hand readable and horizontally reachable when many cards are held.
-- Do use the server-projected legal actions for card, stock and face-up-pile availability.
+- Do keep the compact hand fan sorted from low left to 10 right, readable and horizontally reachable when many cards are held.
+- Do use the server-projected legal actions and acknowledged command queue for card, stock and face-up-pile availability.
 - Do retain the raster provenance and attribution recorded in docs/HAUSDEPP_ASSETS.md.
 
 ### Hausdepp Don't:
 
 - Don't replace the Tell-pattern artwork with invented suit icons or a generic 32-card deck.
 - Don't use Hausdepp Sign for paragraphs, action labels, player names or card counts.
-- Don't refill automatically, draw just one card per tap, or offer taking a chance during mandatory refilling.
+- Don't refill automatically, draw only one refill card per tap, or let a later debtor bypass the FIFO stock reservation.
+- Don't add a hand-selection or confirmation step, overlay rank badges, or offer taking a chance while any refill debt remains.
+- Don't block legal hand play with another player’s refill debt or let a delayed refill rewind the turn or afterthrow window.
 - Don't invent points, achievements, rankings or future account visuals from the first playable table.

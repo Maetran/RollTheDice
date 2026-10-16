@@ -1,10 +1,10 @@
 {
-  "version": "2.53.0",
+  "version": "2.54.0",
   "bump": "minor",
   "date": "2026-10-16",
-  "previous_revision": "ec81ae2f7ebe80fd2c1891b5a2ba173299767b16",
+  "previous_revision": "7e1c65ff4cad8b0a776a6402491a3202cc7fa615",
   "summary": {
-    "de": "Hausdepp als privates drittes Spiel mit Stammtisch, Computer-Mitspielern und direkter Kartenbedienung.",
-    "en": "Hausdepp as a private third game with a shared card table, computer players and direct pile controls."
+    "de": "Hausdepp: aktives Abheben, Karten direkt legen und Pflichtziehen ohne Wartezug.",
+    "en": "Hausdepp: active bottom inspection, direct card play and nonblocking mandatory refills."
   }
 }

@@ -1,25 +1,27 @@
 {
   "kind": "usability",
-  "games": ["hausdepp"],
-  "summary_de": "Privater Hausdepp-Stammtisch: Karten legen, am Stapel zocken oder auffüllen und gegen Computer spielen.",
-  "summary_en": "Private Hausdepp table: play cards, tap the pile to take a chance or refill, and play against computers.",
+  "games": [
+    "hausdepp"
+  ],
+  "summary_de": "Hausdepp: selbst abheben, Karten direkt legen und weiterlegen, während der Vorgänger noch ziehen muss.",
+  "summary_en": "Hausdepp: inspect the deck yourself, tap cards to play, and keep playing while the previous player refills.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp am Stammtisch",
+      "title": "Hausdepp spielt sich direkter",
       "changes": [
-        "Nur für das freigeschaltete Owner-Konto: Hausdepp ist über die Spielauswahl erreichbar, mit eigener Lobby und eigenem Kartentisch.",
-        "Tippe den verdeckten Stapel zum Zocken oder zum Pflichtauffüllen auf drei an. Ein Tipp auf das offene Paket nimmt es auf die Hand.",
-        "Computer spielen als Mitspieler mit. Tischgespräch, Reaktionen und Wiederaufnahme laufen über die gemeinsame Spielesuite.",
-        "Unsere vollständigen Hausregeln sind auf Deutsch und Englisch im Spiel nachlesbar."
+        "Hebe selbst ab und schaue nach jedem Ass aktiv weiter. Das Austeilen wird kurz über den Tisch animiert.",
+        "Tippe eine Handkarte zum sofortigen Legen an. Die Hand liegt sortiert im Fächer, die Zehner ganz rechts.",
+        "Du darfst bereits legen, wenn dein Vorgänger noch nicht gezogen hat. Nur Ziehen und Zocken warten auf ältere Auffüllpflichten.",
+        "Ein sanft roter Rahmen mit „Du musst ziehen“ erinnert den Spieler, der jetzt auffüllen muss."
       ]
     },
     "en": {
-      "title": "Hausdepp at the regular table",
+      "title": "More direct Hausdepp play",
       "changes": [
-        "For the authorized owner account only: Hausdepp is available through the game switcher, with its own lobby and card table.",
-        "Tap the face-down pile to take a chance or refill to three. Tap the face-up pile to take it into your hand.",
-        "Computers participate as players. Table talk, reactions and reconnection use the shared game suite.",
-        "Our full house rules are available in German and English inside the game."
+        "Inspect the bottom card yourself and tap again after each ace. A brief animation deals cards across the table.",
+        "Tap a hand card to play immediately. Your hand forms a sorted fan with tens on the right.",
+        "You may already play while the previous player still needs to draw. Only drawing and gambling wait for earlier refills.",
+        "A gentle red frame with “You must draw” reminds the player who must refill now."
       ]
     }
   }

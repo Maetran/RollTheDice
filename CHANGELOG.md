@@ -23,6 +23,31 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 2.54.0 — Hausdepp direkt am Tisch / direct table actions — 2026-10-16
+
+**Deutsch:** Der bestimmte Spieler hebt selbst aktiv ab; nach jedem Ass schaut
+er per weiterem Tipp weiter. Eine kurze Kartenanimation zeigt das Austeilen.
+Handkarten liegen als aufsteigend sortierter Fächer, Zehner ganz rechts; ein
+Tipp legt die Karte sofort, ohne zusätzliche Rangaufdrucke oder Bestätigung.
+Der nächste Spieler darf bereits legen, während vorherige Spieler noch
+auffüllen müssen. Nur der verdeckte Stapel folgt der Reihenfolge offener
+Auffüllpflichten: spätere Spieler können bis dahin weder ziehen noch zocken.
+„Du musst ziehen“ mit sanft rotem Rahmen erinnert den zuständigen Spieler;
+reduzierte Bewegung zeigt einen statischen Rahmen. Verspätetes Nachziehen
+verändert kein Zugrecht und öffnet kein abgelaufenes Nachwurffenster.
+Private Entwicklungsfassung, ausschliesslich lokal geprüft; kein Deployment.
+
+**English:** The designated player actively inspects the bottom card, tapping
+again after each ace. A short card animation shows the deal. Hand cards form
+an ascending fan with tens on the right; tapping plays immediately, without
+added rank labels or confirmation. The next player may already play while
+previous players still need to refill. Only the face-down stock follows pending
+refill order: later players can neither draw nor gamble until earlier refills
+are complete. “You must draw” in a gently pulsing red frame reminds the player
+responsible; reduced motion keeps the frame static. Late draws change neither
+turn rights nor an already closed additional-card window. Private development
+build, verified locally only; no deployment.
+
 ## 2.53.0 — Hausdepp, private Entwicklungsfassung / private development build — 2026-10-16
 
 **Deutsch:** Hausdepp erhält eine eigene Lobby, einen Stammtisch mit

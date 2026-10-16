@@ -28,7 +28,7 @@ from app.game_state import games, multiplayer_pause_reason
 from app.game_ws_session import GameSocketSession, disconnect_session, handle_session_action
 from app.hausdepp_cpu_runner import cpu_action_is_due, maybe_schedule_cpu_turn, stop_cpu_runners
 from app.hausdepp_cpu_strategy import choose_cpu_action
-from app.hausdepp_engine import HausdeppRuleError, make_deck, new_round, project_state
+from app.hausdepp_engine import HausdeppRuleError, apply_action, make_deck, new_round, project_state
 from app.hausdepp_gameplay import apply_hausdepp_command, game_lock, handle_hausdepp_gameplay_action
 from app.hausdepp_results import finalize_hausdepp_result, list_hausdepp_results_for_user
 from app.hausdepp_state import configure_hausdepp_game, join_hausdepp_player, start_hausdepp_game
@@ -78,7 +78,7 @@ class HausdeppIntegrationTests(unittest.TestCase):
         configure_database(main.DATA_DIR)
         self.temp.cleanup()
 
-    def game(self, *, cpu_count=1, count=2):
+    def game(self, *, cpu_count=1, count=2, start_play=True):
         game = create_game_state("haus-test", "Kartentisch", str(count), "hausdepp")
         configure_hausdepp_game(game, host_user_id=self.founder.id, cpu_count=cpu_count)
         for index in range(count - cpu_count):
@@ -86,6 +86,10 @@ class HausdeppIntegrationTests(unittest.TestCase):
             join_hausdepp_player(game, {"id": f"human-{index}", "name": account.username,
                                       "user_id": account.id, "ws": RecordingSocket(), "resume_token": f"resume{index}"})
         start_hausdepp_game(game)
+        if start_play:
+            while game["_hausdepp"]["phase"] == "peeking":
+                state = game["_hausdepp"]
+                game["_hausdepp"] = apply_action(state, state["current_player_id"], "peek", version=state["version"])
         return game
 
     def test_only_bound_founder_can_create_discover_and_read(self):
@@ -130,6 +134,8 @@ class HausdeppIntegrationTests(unittest.TestCase):
         deck.remove("acorns-6")
         deck.append("acorns-6")
         game["_hausdepp"] = new_round(game["_participants"], dealer_index=1, deck=deck)
+        state = game["_hausdepp"]
+        game["_hausdepp"] = apply_action(state, "human-0", "peek", version=state["version"])
         spectator = RecordingSocket()
         game["_spectators"] = [{"id": "watcher", "name": "Viewer", "ws": spectator}]
         asyncio.run(broadcast(game, {"scoreboard": snapshot(game, "human-0")}))
@@ -238,7 +244,7 @@ class HausdeppIntegrationTests(unittest.TestCase):
             self.assertFalse(cpu_action_is_due(game))
         asyncio.run(scenario())
 
-    def test_manual_refill_is_one_private_versioned_socket_command_before_cpu_turn(self):
+    def test_manual_refill_is_one_private_socket_command_without_blocking_cpu_turn(self):
         async def scenario():
             game = self.game()
             state = game["_hausdepp"]
@@ -263,7 +269,7 @@ class HausdeppIntegrationTests(unittest.TestCase):
                 self.assertEqual(pending["deck_count"], before_count)
                 self.assertEqual(pending["available_actions"], ["draw"])
                 self.assertEqual(pending["pending_refill"]["player_id"], "human-0")
-                self.assertFalse(cpu_action_is_due(game))
+                self.assertTrue(cpu_action_is_due(game))
                 await handle_hausdepp_gameplay_action(session, "hausdepp_draw", {
                     "version": pending["version"], "actor_id": "cpu-1",
                 })
@@ -278,6 +284,91 @@ class HausdeppIntegrationTests(unittest.TestCase):
                 await handle_hausdepp_gameplay_action(session, "hausdepp_draw", {"version": pending["version"]})
                 self.assertEqual(game["_hausdepp"]["version"], version)
         asyncio.run(scenario())
+
+    def test_active_human_peek_acknowledges_each_tap_and_rejection_restores_private_projection(self):
+        async def scenario():
+            game = self.game(start_play=False)
+            deck = make_deck()
+            for card in ("hearts-A", "bells-10"):
+                deck.remove(card)
+            deck.extend(["bells-10", "hearts-A"])
+            game["_hausdepp"] = new_round(game["_participants"], dealer_index=1, deck=deck)
+            socket = game["_players"][0]["ws"]
+            session = GameSocketSession(socket, game, self.identity, player_id="human-0")
+            with patch("app.hausdepp_cpu_runner.maybe_schedule_cpu_turn"):
+                initial = game["_hausdepp"]["version"]
+                await handle_hausdepp_gameplay_action(session, "hausdepp_gamble", {
+                    "version": initial, "command_id": "too-soon",
+                })
+                rejected = socket.messages[-1]
+                self.assertEqual(rejected["error_code"], "hausdepp_peek_required")
+                self.assertFalse(rejected["hausdepp_command"]["accepted"])
+                self.assertEqual(rejected["scoreboard"]["_hausdepp"]["available_actions"], ["peek"])
+                await handle_hausdepp_gameplay_action(session, "hausdepp_peek", {
+                    "version": initial, "command_id": "peek-one",
+                })
+                self.assertEqual(socket.messages[-1]["hausdepp_command"], {
+                    "command_id": "peek-one", "accepted": True, "version": initial + 1,
+                })
+                own = socket.messages[-2]["scoreboard"]["_hausdepp"]
+                self.assertEqual(own["private_peek"], ["hearts-A"])
+                self.assertEqual(own["phase"], "peeking")
+                self.assertEqual(snapshot(game)["_hausdepp"]["private_peek"], [])
+                await handle_hausdepp_gameplay_action(session, "hausdepp_peek", {
+                    "version": initial + 1, "command_id": "peek-two",
+                })
+                self.assertTrue(socket.messages[-1]["hausdepp_command"]["accepted"])
+                dealt = socket.messages[-2]["scoreboard"]["_hausdepp"]
+                self.assertEqual(dealt["phase"], "playing")
+                self.assertEqual(dealt["peek"]["cards"], ["hearts-A", "bells-10"])
+                self.assertTrue(dealt["deal"]["sequence"])
+                self.assertNotIn("deck", dealt)
+        asyncio.run(scenario())
+
+    def test_cpu_peeker_taps_its_own_setup_before_cards_are_dealt(self):
+        async def scenario():
+            game = self.game(cpu_count=5, count=6, start_play=False)
+            self.assertEqual(game["_hausdepp"]["peek_information"]["player_id"], "cpu-4")
+            self.assertTrue(cpu_action_is_due(game))
+            maybe_schedule_cpu_turn(game)
+            for _ in range(30):
+                await asyncio.sleep(0)
+                if game["_hausdepp"]["phase"] == "playing":
+                    break
+            await stop_cpu_runners()
+            self.assertEqual(game["_hausdepp"]["phase"], "playing")
+            self.assertTrue(game["_hausdepp"]["peek_information"]["complete"])
+            self.assertTrue(all(len(player["hand"]) >= 3 for player in game["_hausdepp"]["players"]))
+        asyncio.run(scenario())
+
+    def test_fifo_refill_debts_survive_persistence_and_remain_private_after_restart(self):
+        game = self.game()
+        state = game["_hausdepp"]
+        state["current_player_id"] = "human-0"
+        state["afterthrow"] = None
+        state["discard"] = ["acorns-6"]
+        state["players"][0]["hand"] = ["hearts-6", "bells-6", "hearts-10"]
+        state["players"][1]["hand"] = ["hearts-7", "bells-7", "leaves-A"]
+        used = set(state["discard"] + state["players"][0]["hand"] + state["players"][1]["hand"])
+        state["deck"] = [card for card in make_deck() if card not in used]
+        state["burned"] = []
+        apply_hausdepp_command(game, "human-0", {"action": "play", "cards": ["hearts-6"], "version": state["version"]})
+        apply_hausdepp_command(game, "cpu-1", {"action": "play", "cards": ["hearts-7"],
+                                               "version": game["_hausdepp"]["version"]}, trusted_cpu=True)
+        save_active_game(game)
+        restored = load_active_games()[game["_id"]]
+        self.assertEqual(list(restored["_hausdepp"]["pending_refills"]), ["human-0", "cpu-1"])
+        cpu = project_state(restored["_hausdepp"], "cpu-1")
+        self.assertEqual(cpu["stock_blocked_by"], "human-0")
+        self.assertTrue(cpu["draw_required"])
+        self.assertFalse(cpu["draw_urgent"])
+        self.assertNotIn("draw", cpu["available_actions"])
+        self.assertNotIn("deck", cpu)
+        state = apply_action(restored["_hausdepp"], "human-0", "draw", version=restored["_hausdepp"]["version"])
+        self.assertEqual(state["current_player_id"], "human-0")
+        self.assertEqual(list(state["pending_refills"]), ["cpu-1"])
+        self.assertTrue(project_state(state, "cpu-1")["draw_urgent"])
+        self.assertIn("draw", project_state(state, "cpu-1")["available_actions"])
 
     def test_founder_product_pages_and_game_type_routes(self):
         game = self.game()

@@ -16,9 +16,11 @@ from .hausdepp_engine import HAUSDEPP_RANKS, card_rank
 
 def choose_cpu_action(projection: Mapping[str, Any]) -> dict[str, Any] | None:
     """Return one command for the normal authoritative action validator."""
-    if projection.get("phase") != "playing":
+    if projection.get("phase") not in {"playing", "peeking"}:
         return None
     actions = projection.get("available_actions", [])
+    if "peek" in actions:
+        return {"action": "peek", "version": projection["version"]}
     if "draw" in actions:
         return {"action": "draw", "version": projection["version"]}
     groups: dict[str, list[str]] = defaultdict(list)

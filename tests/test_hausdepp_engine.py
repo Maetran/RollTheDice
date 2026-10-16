@@ -14,9 +14,18 @@ from app.hausdepp_engine import (
     apply_action,
     card_rank,
     make_deck,
-    new_round,
     project_state,
 )
+from app.hausdepp_engine import (
+    new_round as begin_round,
+)
+
+
+def new_round(*args, **kwargs):
+    state = begin_round(*args, **kwargs)
+    while state["phase"] == "peeking":
+        state = apply_action(state, state["current_player_id"], "peek", version=state["version"], rng=kwargs.get("rng"))
+    return state
 
 
 def ordered_deck(*, top=(), bottom=()):
@@ -46,9 +55,58 @@ def scenario(hands, *, discard=(), deck=(), current="p0", afterthrow=None):
 def command(state, actor, action, cards=None, *, complete_refill=True):
     """Finish a move's required stock tap unless the phase itself is tested."""
     result = apply_action(state, actor, action, cards=cards, version=state["version"])
-    if complete_refill and result.get("pending_refill"):
+    if complete_refill and actor in result.get("pending_refills", {}):
         result = apply_action(result, actor, "draw", version=result["version"])
     return result
+
+
+class HausdeppActiveSetupTests(TestCase):
+    def test_mandatory_peek_is_private_one_active_tap_per_card_before_dealing(self):
+        chain = ["hearts-A", "bells-A", "leaves-10"]
+        state = begin_round(["p0", "p1", "p2"], deck=ordered_deck(bottom=["acorns-K", *reversed(chain)]))
+        self.assertEqual(state["phase"], "peeking")
+        self.assertEqual(state["current_player_id"], "p2")
+        self.assertEqual(len(state["deck"]), 36)
+        self.assertTrue(all(not player["hand"] for player in state["players"]))
+        self.assertEqual(project_state(state, "p2")["available_actions"], ["peek"])
+        self.assertEqual(project_state(state, "p0")["available_actions"], [])
+        for actor, action, error in (("p0", "peek", "hausdepp_not_your_turn"),
+                                     ("p2", "gamble", "hausdepp_peek_required")):
+            with self.assertRaisesRegex(HausdeppRuleError, error):
+                apply_action(state, actor, action, version=state["version"])
+        for index, card in enumerate(chain):
+            old_version = state["version"]
+            state = apply_action(state, "p2", "peek", version=old_version)
+            self.assertEqual(project_state(state, "p2")["private_peek"], chain[:index + 1])
+            if card.endswith("-A"):
+                self.assertEqual(state["phase"], "peeking")
+                self.assertIsNone(state["peek_information"]["success"])
+                self.assertNotIn("cards", project_state(state, "p0")["peek"])
+                self.assertNotIn(card, json.dumps(project_state(state, "p0")))
+                self.assertEqual(len(state["deck"]), 36)
+            with self.assertRaisesRegex(HausdeppRuleError, "hausdepp_stale_version"):
+                apply_action(state, "p2", "peek", version=old_version)
+        self.assertEqual(state["phase"], "playing")
+        self.assertEqual(state["players"][2]["hand"], chain)
+        self.assertEqual(state["deck"][-1], "acorns-K")
+        self.assertEqual(project_state(state, "p0")["peek"]["cards"], chain)
+        self.assertEqual([entry["player_id"] for entry in state["deal"]["sequence"]], ["p1", "p0"] * 3)
+        self.assertTrue(all(set(entry) == {"player_id", "hand_index"} for entry in state["deal"]["sequence"]))
+        self.assertEqual(state["deal"]["starter"], state["discard"][0])
+        with self.assertRaisesRegex(HausdeppRuleError, "hausdepp_peek_complete"):
+            apply_action(state, "p2", "peek", version=state["version"])
+
+    def test_failed_chain_remains_private_and_in_original_order_after_active_peek(self):
+        bottom = ["acorns-K", "hearts-A"]
+        state = begin_round(["p0", "p1"], deck=ordered_deck(bottom=bottom))
+        state = apply_action(state, "p1", "peek", version=state["version"])
+        state = apply_action(state, "p1", "peek", version=state["version"])
+        self.assertEqual(state["deck"][-2:], bottom)
+        self.assertFalse(state["peek_information"]["success"])
+        self.assertEqual(project_state(state, "p1")["private_peek"], list(reversed(bottom)))
+        self.assertEqual(project_state(state, "p0")["private_peek"], [])
+        self.assertNotIn("acorns-K", json.dumps(project_state(state, "p0")))
+        self.assertEqual(choose_cpu_action(project_state(begin_round(["p0", "p1"]), "p1"))["action"], "peek")
 
 
 class HausdeppSetupTests(TestCase):
@@ -75,7 +133,7 @@ class HausdeppSetupTests(TestCase):
         cards = ordered_deck(bottom=["acorns-K", "leaves-10", "bells-A", "hearts-A"])
         state = new_round(["p0", "p1", "p2"], dealer_index=0, deck=cards, rng=Random(1))
         self.assertEqual(state["peek_information"], {
-            "player_id": "p2", "cards": ["hearts-A", "bells-A", "leaves-10"], "success": True,
+            "player_id": "p2", "cards": ["hearts-A", "bells-A", "leaves-10"], "success": True, "complete": True,
         })
         self.assertEqual(state["players"][2]["hand"], ["hearts-A", "bells-A", "leaves-10"])
         self.assertEqual(state["deck"][-1], "acorns-K")
@@ -244,7 +302,7 @@ class HausdeppMoveTests(TestCase):
         with self.assertRaisesRegex(HausdeppRuleError, "hausdepp_rank_too_low"):
             command(state, "p1", "play", ["hearts-7"])
         with self.assertRaisesRegex(HausdeppRuleError, "hausdepp_stale_version"):
-            apply_action(state, "p1", "pickup", version=state["version"] - 1)
+            apply_action(state, "p1", "pickup", version=state["table_version"] - 1)
         self.assertEqual(state, snapshot)
         result = command(state, "p0", "afterthrow", ["bells-U"])
         self.assertEqual(result["discard"][-1], "bells-U")
@@ -316,7 +374,7 @@ class HausdeppEndgameTests(TestCase):
 
 
 class HausdeppManualRefillTests(TestCase):
-    def test_one_stock_tap_refills_all_missing_cards_and_gates_every_other_action(self):
+    def test_one_stock_tap_refills_all_missing_cards_without_blocking_next_player(self):
         state = scenario([["hearts-U", "bells-U", "hearts-A"], ["acorns-6", "acorns-7", "acorns-8"]],
                          discard=["leaves-9"], deck=["hearts-6", "bells-7", "acorns-O"])
         with self.assertRaisesRegex(HausdeppRuleError, "hausdepp_no_refill_pending"):
@@ -324,17 +382,17 @@ class HausdeppManualRefillTests(TestCase):
         result = command(state, "p0", "play", ["hearts-U", "bells-U"], complete_refill=False)
         self.assertEqual(result["players"][0]["hand"], ["hearts-A"])
         self.assertEqual(result["deck"], state["deck"])
-        self.assertEqual(result["current_player_id"], "p0")
-        self.assertEqual(result["pending_refill"], {
-            "player_id": "p0", "remaining": 2, "continuation": "advance", "rank": "U",
-        })
+        self.assertEqual(result["current_player_id"], "p1")
+        self.assertEqual(result["pending_refills"]["p0"]["remaining"], 2)
         self.assertEqual(project_state(result, "p0")["available_actions"], ["draw"])
-        self.assertEqual(project_state(result, "p1")["available_actions"], [])
+        self.assertIn("pickup", project_state(result, "p1")["available_actions"])
+        self.assertIsNone(project_state(result, "p1")["pending_refill"])
         snapshot = deepcopy(result)
-        for actor, action, cards in (("p0", "gamble", None), ("p0", "pickup", None),
-                                     ("p0", "play", ["hearts-A"]), ("p1", "pickup", None)):
-            with self.assertRaisesRegex(HausdeppRuleError, "hausdepp_refill_required"):
-                command(result, actor, action, cards)
+        for action, cards, error in (("gamble", None, "hausdepp_stock_refill_wait"),
+                                      ("pickup", None, "hausdepp_not_your_turn"),
+                                      ("play", ["hearts-A"], "hausdepp_not_your_turn")):
+            with self.assertRaisesRegex(HausdeppRuleError, error):
+                command(result, "p0", action, cards)
         self.assertEqual(result, snapshot)
         drawn = command(result, "p0", "draw")
         self.assertEqual(drawn["version"], result["version"] + 1)
@@ -358,18 +416,15 @@ class HausdeppManualRefillTests(TestCase):
         self.assertEqual(result["deck"], [])
         self.assertFalse(result["players"][0]["finished"])
 
-    def test_afterthrow_window_begins_only_after_stock_tap_and_can_require_another_tap(self):
+    def test_held_matching_cards_can_be_afterthrown_before_refilling(self):
         state = scenario([["hearts-U", "bells-U", "hearts-A"], ["acorns-6"]],
                          discard=["leaves-9"], deck=["leaves-U", "acorns-U", "hearts-6"])
         result = command(state, "p0", "play", ["hearts-U"], complete_refill=False)
-        self.assertIsNone(result["afterthrow"])
-        with self.assertRaisesRegex(HausdeppRuleError, "hausdepp_refill_required"):
-            command(result, "p0", "afterthrow", ["bells-U"])
-        result = command(result, "p0", "draw")
-        self.assertIn("afterthrow", project_state(result, "p0")["available_actions"])
+        self.assertEqual(result["afterthrow"], {"player_id": "p0", "rank": "U"})
+        self.assertEqual(project_state(result, "p0")["available_actions"], ["draw", "afterthrow"])
         result = command(result, "p0", "afterthrow", ["bells-U"], complete_refill=False)
-        self.assertEqual(result["current_player_id"], "p0")
-        self.assertEqual(project_state(result, "p0")["available_actions"], ["draw"])
+        self.assertEqual(result["current_player_id"], "p1")
+        self.assertEqual(result["pending_refills"]["p0"]["remaining"], 2)
         result = command(result, "p0", "draw")
         self.assertIn("afterthrow", project_state(result, "p0")["available_actions"])
 
@@ -379,7 +434,7 @@ class HausdeppManualRefillTests(TestCase):
         burned = command(state, "p0", "play", ["hearts-10"], complete_refill=False)
         self.assertEqual(burned["discard"], [])
         self.assertEqual(burned["pending_refill"]["continuation"], "replay")
-        self.assertEqual(project_state(burned, "p0")["available_actions"], ["draw"])
+        self.assertEqual(project_state(burned, "p0")["available_actions"], ["draw", "play"])
         result = command(burned, "p0", "draw")
         self.assertEqual(result["players"][0]["hand"], ["hearts-A", "bells-A", "leaves-A"])
         self.assertEqual(result["current_player_id"], "p0")
@@ -402,6 +457,109 @@ class HausdeppManualRefillTests(TestCase):
         result = command(result, "p0", "draw")
         self.assertEqual(result["players"][0]["hand"], ["hearts-A", "bells-A", "leaves-A"])
         self.assertEqual(result["current_player_id"], "p0")
+
+
+class HausdeppConcurrentRefillTests(TestCase):
+    def initial(self, deck=None):
+        return scenario([["hearts-6", "bells-6", "hearts-A"],
+                         ["hearts-7", "bells-7", "bells-A"], ["hearts-8", "bells-8", "leaves-A"]],
+                        discard=["acorns-6"], deck=deck or ["leaves-6", "leaves-7", "leaves-8", "leaves-9", "acorns-9"])
+
+    def test_next_player_plays_before_refill_and_late_draw_never_reopens_window_or_changes_turn(self):
+        state = self.initial()
+        state = command(state, "p0", "play", ["hearts-6"], complete_refill=False)
+        first_version = state["version"]
+        state = command(state, "p1", "play", ["hearts-7"], complete_refill=False)
+        self.assertEqual(set(state["pending_refills"]), {"p0", "p1"})
+        self.assertEqual(state["current_player_id"], "p2")
+        following = deepcopy(state["afterthrow"])
+        state = apply_action(state, "p0", "draw", version=first_version)
+        self.assertEqual(state["current_player_id"], "p2")
+        self.assertEqual(state["afterthrow"], following)
+        self.assertEqual(set(state["pending_refills"]), {"p1"})
+        self.assertNotIn("afterthrow", project_state(state, "p0")["available_actions"])
+        with self.assertRaisesRegex(HausdeppRuleError, "hausdepp_afterthrow_expired"):
+            command(state, "p0", "afterthrow", ["bells-6"])
+        with self.assertRaisesRegex(HausdeppRuleError, "hausdepp_stale_version"):
+            apply_action(state, "p0", "draw", version=first_version)
+
+    def test_other_players_refill_does_not_make_a_valid_table_command_stale(self):
+        state = command(self.initial(), "p0", "play", ["hearts-6"], complete_refill=False)
+        version_seen_by_next = state["version"]
+        state = command(state, "p0", "draw")
+        state = apply_action(state, "p1", "play", cards=["hearts-7"], version=version_seen_by_next)
+        self.assertEqual(state["discard"][-1], "hearts-7")
+        with self.assertRaisesRegex(HausdeppRuleError, "hausdepp_stale_version"):
+            apply_action(state, "p1", "play", cards=["bells-7"], version=version_seen_by_next)
+
+    def test_stock_follows_refill_queue_and_last_card_settles_all_empty_hands(self):
+        state = scenario([["hearts-6"], ["hearts-7"], ["hearts-8"]],
+                         discard=["acorns-6"], deck=["leaves-9"])
+        state = command(state, "p0", "play", ["hearts-6"], complete_refill=False)
+        state = command(state, "p1", "play", ["hearts-7"], complete_refill=False)
+        with self.assertRaisesRegex(HausdeppRuleError, "hausdepp_stock_refill_wait"):
+            command(state, "p1", "draw")
+        state = command(state, "p0", "draw")
+        self.assertEqual(state["players"][0]["hand"], ["leaves-9"])
+        self.assertTrue(state["players"][1]["finished"])
+        self.assertEqual(state["finished_order"], ["p1"])
+        self.assertEqual(state["pending_refills"], {})
+        self.assertEqual(state["current_player_id"], "p2")
+        state = command(state, "p2", "play", ["hearts-8"])
+        self.assertEqual(state["loser_id"], "p0")
+
+    def test_gambling_waits_for_all_earlier_refills_and_cannot_steal_the_last_card(self):
+        state = scenario([["hearts-6"], ["hearts-7", "bells-7", "hearts-A"]],
+                         discard=["acorns-6"], deck=["leaves-9"])
+        state = command(state, "p0", "play", ["hearts-6"], complete_refill=False)
+        before = deepcopy(state)
+        self.assertEqual(project_state(state, "p1")["stock_blocked_by"], "p0")
+        self.assertTrue(project_state(state, "p0")["draw_required"])
+        self.assertTrue(project_state(state, "p0")["draw_urgent"])
+        self.assertNotIn("gamble", project_state(state, "p1")["available_actions"])
+        with self.assertRaisesRegex(HausdeppRuleError, "hausdepp_stock_refill_wait"):
+            command(state, "p1", "gamble")
+        self.assertEqual(state, before)
+        state = command(state, "p1", "play", ["hearts-7"], complete_refill=False)
+        self.assertEqual([entry["player_id"] for entry in project_state(state, "p1")["pending_refills"]], ["p0", "p1"])
+        self.assertFalse(project_state(state, "p1")["draw_urgent"])
+        state = command(state, "p0", "draw")
+        self.assertEqual(state["players"][0]["hand"], ["leaves-9"])
+        self.assertEqual(state["pending_refills"], {})
+
+    def test_burn_replay_can_use_hand_while_own_refill_waits_behind_an_earlier_player(self):
+        state = scenario([["hearts-6", "bells-6", "hearts-A"],
+                          ["hearts-10", "bells-A", "leaves-A"], ["acorns-7"]],
+                         discard=["acorns-6"], deck=["leaves-6", "leaves-7", "leaves-8"])
+        state = command(state, "p0", "play", ["hearts-6"], complete_refill=False)
+        state = command(state, "p1", "play", ["hearts-10"], complete_refill=False)
+        self.assertEqual(state["current_player_id"], "p1")
+        own = project_state(state, "p1")
+        self.assertEqual(own["available_actions"], ["play"])
+        self.assertEqual(own["stock_blocked_by"], "p0")
+        self.assertTrue(own["draw_required"])
+        with self.assertRaisesRegex(HausdeppRuleError, "hausdepp_stock_refill_wait"):
+            command(state, "p1", "draw")
+        state = command(state, "p1", "play", ["bells-A"], complete_refill=False)
+        self.assertEqual(list(state["pending_refills"]), ["p0", "p1"])
+        self.assertEqual(state["pending_refills"]["p1"]["remaining"], 2)
+        self.assertEqual(state["current_player_id"], "p2")
+
+    def test_persisted_old_single_debt_releases_next_turn_without_dealing_or_wiping(self):
+        state = self.initial()
+        state["players"][0]["hand"].remove("hearts-6")
+        state["discard"].append("hearts-6")
+        state.pop("pending_refills")
+        state["pending_refill"] = {"player_id": "p0", "remaining": 1, "continuation": "advance", "rank": "6"}
+        before = deepcopy(state)
+        projection = project_state(state, "p1")
+        self.assertEqual(projection["current_player_id"], "p1")
+        self.assertIn("play", projection["available_actions"])
+        self.assertIsNone(projection["pending_refill"])
+        self.assertEqual(state, before)
+        state = command(state, "p1", "play", ["hearts-7"], complete_refill=False)
+        self.assertEqual(set(state["pending_refills"]), {"p0", "p1"})
+        self.assertEqual(len(state["deck"]), len(before["deck"]))
 
 
 class HausdeppPrivacyAndCpuTests(TestCase):
@@ -467,9 +625,9 @@ class HausdeppPrivacyAndCpuTests(TestCase):
                     cards += [card for player in state["players"] for card in player["hand"]]
                     self.assertEqual(sorted(cards), sorted(make_deck()))
                     if state["deck"]:
-                        refill_owner = (state.get("pending_refill") or {}).get("player_id")
+                        refill_owners = set(state.get("pending_refills", {}))
                         self.assertTrue(all(len(p["hand"]) >= 3 for p in state["players"]
-                                            if not p["finished"] and p["id"] != refill_owner))
+                                            if not p["finished"] and p["id"] not in refill_owners))
                 self.assertEqual(state["phase"], "finished")
                 self.assertEqual(len(state["finished_order"]), count - 1)
                 self.assertTrue(next(p for p in state["players"] if p["id"] == state["loser_id"])["hand"])

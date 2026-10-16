@@ -78,7 +78,7 @@ def new_round(
     deck: Sequence[str] | None = None,
     rng: Any = None,
 ) -> dict[str, Any]:
-    """Shuffle, perform the mandatory bottom peek, deal, and reveal a starter.
+    """Shuffle and wait for the designated player's active bottom peek.
 
     ``deck`` is an optional complete preordered deck for deterministic tests;
     supplied decks are not shuffled.  ``rng`` may be a ``random.Random``-like
@@ -98,53 +98,52 @@ def new_round(
         random_source.shuffle(cards)
 
     peeker = players[(dealer_index - 1) % len(players)]
-    inspected: list[str] = []
-    success = False
-    for card in reversed(cards):
-        inspected.append(card)
-        rank = card_rank(card)
-        if rank == "10":
-            success = True
-            break
-        if rank != "A":
-            break
-    if success:
-        peeker["hand"].extend(inspected)
-        del cards[-len(inspected):]
+    return {
+        "ruleset_version": HAUSDEPP_RULESET_VERSION,
+        "phase": "peeking",
+        "version": 1,
+        "table_version": 1,
+        "player_versions": {},
+        "players": players,
+        "dealer_id": players[dealer_index]["id"],
+        "current_player_id": peeker["id"],
+        "deck": cards,
+        "discard": [],
+        "burned": [],
+        "afterthrow": None,
+        "pending_refill": None,
+        "pending_refills": {},
+        "finished_order": [],
+        "loser_id": None,
+        "peek_information": {"player_id": peeker["id"], "cards": [], "success": None, "complete": False},
+        "deal": None,
+        "last_event": {"type": "peek_required", "player_id": peeker["id"]},
+    }
 
-    # Deal clockwise in passes, starting immediately after the dealer.  A
-    # successful peeker is skipped once their hand has at least three cards.
+
+def _deal_after_peek(state: dict[str, Any], rng: Any = None) -> None:
+    players = state["players"]
+    dealer_index = next(i for i, player in enumerate(players) if player["id"] == state["dealer_id"])
+    sequence = []
     for _ in range(3):
         for offset in range(1, len(players) + 1):
             player = players[(dealer_index + offset) % len(players)]
             if len(player["hand"]) < 3:
-                player["hand"].append(cards.pop(0))
-
+                sequence.append({"player_id": player["id"], "hand_index": len(player["hand"])})
+                player["hand"].append(state["deck"].pop(0))
+    random_source = rng if rng is not None else SystemRandom()
     initial_tens = 0
     while True:
-        starter = cards.pop(0)
+        starter = state["deck"].pop(0)
         if card_rank(starter) != "10":
             break
         initial_tens += 1
-        cards.insert(random_source.randrange(len(cards) + 1), starter)
-
-    return {
-        "ruleset_version": HAUSDEPP_RULESET_VERSION,
-        "phase": "playing",
-        "version": 1,
-        "players": players,
-        "dealer_id": players[dealer_index]["id"],
-        "current_player_id": players[(dealer_index + 1) % len(players)]["id"],
-        "deck": cards,
-        "discard": [starter],
-        "burned": [],
-        "afterthrow": None,
-        "pending_refill": None,
-        "finished_order": [],
-        "loser_id": None,
-        "peek_information": {"player_id": peeker["id"], "cards": inspected, "success": success},
-        "last_event": {"type": "round_started", "initial_tens_reinserted": initial_tens},
-    }
+        state["deck"].insert(random_source.randrange(len(state["deck"]) + 1), starter)
+    state["discard"] = [starter]
+    state["phase"] = "playing"
+    state["current_player_id"] = players[(dealer_index + 1) % len(players)]["id"]
+    state["deal"] = {"version": state["version"], "sequence": sequence, "starter": starter}
+    state["last_event"] = {"type": "round_started", "initial_tens_reinserted": initial_tens}
 
 
 def _find_player(state: Mapping[str, Any], player_id: str) -> dict[str, Any] | None:
@@ -169,11 +168,45 @@ def _refill(state: dict[str, Any], player: dict[str, Any]) -> int:
     return drawn
 
 
-def _settle_finish(state: dict[str, Any], player: dict[str, Any]) -> None:
-    # An empty hand can only qualify after mandatory drawing has finished.
-    if not state["deck"] and not player["hand"] and not player["finished"]:
-        player["finished"] = True
-        state["finished_order"].append(player["id"])
+def _refill_debts(state: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    if "pending_refills" in state:
+        return state["pending_refills"]
+    legacy = state.get("pending_refill")
+    return {legacy["player_id"]: legacy} if legacy else {}
+
+
+def _sync_refill_alias(state: dict[str, Any]) -> None:
+    state["pending_refill"] = next(iter(state["pending_refills"].values()), None)
+
+
+def _normalize_state(state: Mapping[str, Any]) -> dict[str, Any]:
+    result = deepcopy(dict(state))
+    if "pending_refills" not in result:
+        result["pending_refills"] = _refill_debts(result)
+        # A persisted v1 ordinary placement waited for its actor to draw.
+        # Restore its next turn without taking or reserving any stock cards.
+        debt = result.get("pending_refill")
+        if debt and debt["continuation"] == "advance" and result["phase"] == "playing":
+            result["current_player_id"] = _next_player(result, debt["player_id"])
+            if debt.get("rank") is not None:
+                result["afterthrow"] = {"player_id": debt["player_id"], "rank": debt["rank"]}
+    result.setdefault("table_version", result["version"])
+    result.setdefault("player_versions", {})
+    result.setdefault("deal", None)
+    _sync_refill_alias(result)
+    return result
+
+
+def _settle_finishes(state: dict[str, Any]) -> None:
+    # The last stock card settles every slow player's empty hand, not just
+    # the person whose draw or gamble exhausted the stock.
+    if not state["deck"]:
+        state["pending_refills"] = {}
+        _sync_refill_alias(state)
+        for player in state["players"]:
+            if not player["hand"] and not player["finished"]:
+                player["finished"] = True
+                state["finished_order"].append(player["id"])
     active = [p for p in state["players"] if not p["finished"]]
     if len(active) == 1:
         state["phase"] = "finished"
@@ -181,12 +214,20 @@ def _settle_finish(state: dict[str, Any], player: dict[str, Any]) -> None:
         state["current_player_id"] = None
         state["afterthrow"] = None
         state["pending_refill"] = None
+        state["pending_refills"] = {}
+        return
+    following = state.get("afterthrow")
+    if following and _find_player(state, following["player_id"])["finished"]:
+        state["afterthrow"] = None
+    current = _find_player(state, state.get("current_player_id"))
+    if current and current["finished"]:
+        state["current_player_id"] = _next_player(state, current["id"])
 
 
 def _complete_placement(
     state: dict[str, Any], player: dict[str, Any], *, rank: str | None, replay: bool,
 ) -> None:
-    _settle_finish(state, player)
+    _settle_finishes(state)
     if state["phase"] != "playing":
         return
     if replay and not player["finished"]:
@@ -200,15 +241,16 @@ def _complete_placement(
 def _finish_or_request_refill(
     state: dict[str, Any], player: dict[str, Any], *, rank: str | None, replay: bool,
 ) -> None:
-    """The player must tap the stock before the turn can continue or end."""
+    """Record this hand's debt, while immediately releasing the next turn."""
     remaining = max(0, 3 - len(player["hand"]))
     if remaining and state["deck"]:
-        state["current_player_id"] = player["id"]
-        state["pending_refill"] = {
+        state["pending_refills"][player["id"]] = {
             "player_id": player["id"], "remaining": min(remaining, len(state["deck"])),
             "continuation": "replay" if replay else "advance", "rank": rank,
         }
-        return
+    else:
+        state["pending_refills"].pop(player["id"], None)
+    _sync_refill_alias(state)
     _complete_placement(state, player, rank=rank, replay=replay)
 
 
@@ -233,6 +275,7 @@ def apply_action(
     action: str,
     cards: Sequence[str] | None = None,
     version: int | None = None,
+    rng: Any = None,
 ) -> dict[str, Any]:
     """Apply play, pickup, gamble, afterthrow, or mandatory stock drawing.
 
@@ -240,31 +283,41 @@ def apply_action(
     commands.  Rejected or stale commands never close an existing afterthrow
     opportunity; the next player's first *accepted* action closes it.
     """
-    if version is not None and (type(version) is not int or version != state["version"]):
-        raise HausdeppRuleError("hausdepp_stale_version")
-    if state["phase"] != "playing":
+    state = _normalize_state(state)
+    if version is not None:
+        required_version = state["player_versions"].get(actor_id, 1)
+        if action != "draw":
+            required_version = max(required_version, state["table_version"])
+        if type(version) is not int or not required_version <= version <= state["version"]:
+            raise HausdeppRuleError("hausdepp_stale_version")
+    if state["phase"] == "finished":
         raise HausdeppRuleError("hausdepp_round_finished")
     actor = _find_player(state, actor_id)
     if actor is None or actor["finished"]:
         raise HausdeppRuleError("hausdepp_invalid_player")
     if action == "follow":
         action = "afterthrow"
-    if action not in {"play", "pickup", "gamble", "afterthrow", "draw"}:
+    if action not in {"play", "pickup", "gamble", "afterthrow", "draw", "peek"}:
         raise HausdeppRuleError("hausdepp_invalid_action")
-    pending_refill = state.get("pending_refill")
-    if pending_refill:
-        if pending_refill["player_id"] != actor_id:
-            raise HausdeppRuleError("hausdepp_refill_required")
-        if action != "draw":
-            raise HausdeppRuleError("hausdepp_refill_required")
-    elif action == "draw":
+    if state["phase"] == "peeking":
+        if action != "peek":
+            raise HausdeppRuleError("hausdepp_peek_required")
+        if actor_id != state["peek_information"]["player_id"]:
+            raise HausdeppRuleError("hausdepp_not_your_turn")
+    elif action == "peek":
+        raise HausdeppRuleError("hausdepp_peek_complete")
+    pending_refill = state["pending_refills"].get(actor_id)
+    if action == "draw" and not pending_refill:
         raise HausdeppRuleError("hausdepp_no_refill_pending")
+    first_refill = next(iter(state["pending_refills"]), None)
+    if first_refill and (action == "gamble" or action == "draw" and first_refill != actor_id):
+        raise HausdeppRuleError("hausdepp_stock_refill_wait")
     afterthrow = state.get("afterthrow")
     is_afterthrow = action == "afterthrow"
     if is_afterthrow:
         if not afterthrow or afterthrow["player_id"] != actor_id:
             raise HausdeppRuleError("hausdepp_afterthrow_expired")
-    elif state["current_player_id"] != actor_id:
+    elif action != "draw" and state["current_player_id"] != actor_id:
         raise HausdeppRuleError("hausdepp_not_your_turn")
 
     if cards is not None and (isinstance(cards, (str, bytes)) or not isinstance(cards, Sequence)):
@@ -292,15 +345,38 @@ def apply_action(
 
     result = deepcopy(dict(state))
     player = _find_player(result, actor_id)
-    result["afterthrow"] = None
+    if action != "draw":
+        result["afterthrow"] = None
     result["version"] += 1
+    result["player_versions"][actor_id] = result["version"]
+    if action != "draw":
+        result["table_version"] = result["version"]
     event: dict[str, Any] = {"type": action, "player_id": actor_id}
 
+    if action == "peek":
+        peek = result["peek_information"]
+        card = result["deck"][-1 - len(peek["cards"])]
+        peek["cards"].append(card)
+        rank = card_rank(card)
+        if rank == "A":
+            # No card IDs in the public event: even the stopper stays private.
+            result["last_event"] = event
+            return result
+        peek["complete"] = True
+        peek["success"] = rank == "10"
+        if peek["success"]:
+            player["hand"].extend(peek["cards"])
+            del result["deck"][-len(peek["cards"]):]
+        _deal_after_peek(result, rng=rng)
+        return result
+
     if action == "draw":
-        refill = result["pending_refill"]
         event["drawn_count"] = _refill(result, player)
-        result["pending_refill"] = None
-        _complete_placement(result, player, rank=refill["rank"], replay=refill["continuation"] == "replay")
+        result["pending_refills"].pop(actor_id, None)
+        _sync_refill_alias(result)
+        # Drawing never changes turn ownership or revives an afterthrow that
+        # expired while this player hesitated over their stock tap.
+        _settle_finishes(result)
         result["last_event"] = event
         return result
 
@@ -353,12 +429,13 @@ def project_state(state: Mapping[str, Any], viewer_id: str | None) -> dict[str, 
     the round ends.  A successful peek is shown publicly.  Unknown viewers
     receive public information and no action permissions.
     """
+    state = _normalize_state(state)
     viewer = _find_player(state, viewer_id)
     projection = {
         key: deepcopy(state[key])
         for key in (
             "ruleset_version", "phase", "version", "dealer_id", "current_player_id",
-            "discard", "afterthrow", "pending_refill", "finished_order", "loser_id", "last_event",
+            "discard", "afterthrow", "finished_order", "loser_id", "last_event", "deal",
         )
     }
     projection["viewer_id"] = viewer_id if viewer else None
@@ -372,8 +449,15 @@ def project_state(state: Mapping[str, Any], viewer_id: str | None) -> dict[str, 
     ]
     projection["deck_count"] = len(state["deck"])
     projection["burned_count"] = len(state["burned"])
+    projection["pending_refills"] = deepcopy(list(state["pending_refills"].values()))
+    projection["pending_refill"] = deepcopy(state["pending_refills"].get(viewer_id)) if viewer else None
+    first_refill = next(iter(state["pending_refills"]), None)
+    projection["draw_required"] = bool(viewer and viewer_id in state["pending_refills"])
+    projection["draw_urgent"] = bool(viewer and first_refill == viewer_id)
+    projection["stock_blocked_by"] = first_refill if first_refill != viewer_id else None
     peek = state["peek_information"]
-    projection["peek"] = {"player_id": peek["player_id"], "success": peek["success"]}
+    projection["peek"] = {"player_id": peek["player_id"], "success": peek["success"],
+                          "complete": peek.get("complete", True)}
     if peek["success"]:
         projection["peek"]["cards"] = list(peek["cards"])
     private_peek = list(peek["cards"]) if viewer and viewer_id == peek["player_id"] else []
@@ -384,20 +468,24 @@ def project_state(state: Mapping[str, Any], viewer_id: str | None) -> dict[str, 
     }
     projection["available_actions"] = []
     projection["playable_cards"] = []
-    if not viewer or viewer["finished"] or state["phase"] != "playing":
+    if not viewer or viewer["finished"]:
         return projection
-    refill = state.get("pending_refill")
-    if refill:
-        if refill["player_id"] == viewer_id:
-            projection["available_actions"] = ["draw"]
+    if state["phase"] == "peeking":
+        if peek["player_id"] == viewer_id:
+            projection["available_actions"] = ["peek"]
         return projection
+    if state["phase"] != "playing":
+        return projection
+    refill = state["pending_refills"].get(viewer_id)
+    if refill and first_refill == viewer_id:
+        projection["available_actions"].append("draw")
     if state["current_player_id"] == viewer_id:
         projection["playable_cards"] = [card for card in viewer["hand"] if _legal_rank(state, card_rank(card))]
         if projection["playable_cards"]:
             projection["available_actions"].append("play")
         if state["discard"]:
             projection["available_actions"].append("pickup")
-        if state["deck"]:
+        if state["deck"] and not first_refill:
             projection["available_actions"].append("gamble")
     afterthrow = state.get("afterthrow")
     if afterthrow and afterthrow["player_id"] == viewer_id:

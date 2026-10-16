@@ -24,8 +24,12 @@ Zwei bis fünf, höchstens sechs Teilnehmer spielen mit 36 doppeldeutschen Karte
 Computer sind echte Mitspieler mit eigenen verdeckten Händen. Die Serverregeln
 schützen fremde Karten und den Nachziehstapel. Ein Tipp auf den verdeckten Stapel
 zockt vor dem Ablegen oder füllt danach verpflichtend alle fehlenden Karten bis
-auf drei auf. Der nächste Spieler wartet auf diese Auffüllung. Ein Tipp auf das
-offene Paket nimmt es auf. Chat, schnelle Reaktionen und Wiederaufnahme verwenden
+auf drei auf. Der nächste Spieler darf schon Handkarten legen; ziehen oder
+zocken kann er erst, wenn ältere Auffüllpflichten erledigt sind. „Du musst
+ziehen“ mit sanft rotem Rahmen erinnert den zuständigen Spieler. Ein Tipp auf
+eine Handkarte legt sie sofort, ein Tipp auf das offene Paket nimmt es auf.
+Abheben ist eine aktive Aktion, das Austeilen wird kurz animiert. Die Hand liegt
+als sortierter Fächer mit den 10ern ganz rechts. Chat, schnelle Reaktionen und Wiederaufnahme verwenden
 die gemeinsame Infrastruktur. Hoch- und Querformat auf Smartphone, Tablet und
 Desktop werden unterstützt, mit Mobilgeräten als Ausgangspunkt.
 
@@ -51,8 +55,11 @@ Two to five participants, six at most, play with 36 double-headed German cards.
 Computers are real participants with their own private hands. Server rules
 protect opposing cards and the draw pile. Tapping the face-down pile takes a
 chance before playing, or afterwards draws all missing cards up to three as a
-mandatory refill. The next player waits for that refill. Tapping the face-up
-pile takes it. Chat, quick reactions and reconnection use the shared suite.
+mandatory refill. The next player may already play hand cards; drawing or
+gambling waits for earlier refill obligations. “You must draw” with a gentle
+red frame reminds the player responsible. Tapping a hand card plays it
+immediately; tapping the face-up pile takes it. Bottom inspection is active,
+dealing is briefly animated, and hands form a sorted fan with tens on the right. Chat, quick reactions and reconnection use the shared suite.
 Phone, tablet and desktop work in portrait and landscape, designed mobile first.
 
 The [rules and product specification](docs/HAUSDEPP.md) records confirmed

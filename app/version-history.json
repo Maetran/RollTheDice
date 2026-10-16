@@ -2098,5 +2098,12 @@
     "date": "2026-10-15",
     "bump": "minor",
     "summary": "NEXUS als zusätzliches Dashboard-Design mit KPI-Fokus und persönlichen Favoriten. / NEXUS as an additional dashboard design with prominent KPIs and personal favorites."
+  },
+  {
+    "version": "2.53.0",
+    "revision": "7e1c65ff4cad8b0a776a6402491a3202cc7fa615",
+    "date": "2026-10-16",
+    "bump": "minor",
+    "summary": "Hausdepp als privates drittes Spiel mit Stammtisch, Computer-Mitspielern und direkter Kartenbedienung. / Hausdepp as a private third game with a shared card table, computer players and direct pile controls."
   }
 ]

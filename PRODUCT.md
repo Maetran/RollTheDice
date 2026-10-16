@@ -49,7 +49,12 @@ Its first playable increment covers the lobby, table and complete house rules.
   there is no solo mode. Share account, chat, reactions and reconnection.
 - Put Hausdepp's full house rules in `docs/HAUSDEPP.md`. The stock is a direct
   action: gamble before hand play, or refill all missing cards to three after
-  playing. The open pile is the direct pickup action.
+  playing. The oldest pending refill controls stock access; later players may
+  already play hand cards but cannot draw or gamble until earlier debts settle.
+  Show the responsible player a gently pulsing red draw reminder, static with
+  reduced motion. Active bottom inspection belongs to its designated player;
+  show a short nonblocking deal. Tapping a sorted, fanned hand card plays it
+  immediately. The open pile is the direct pickup action.
 - Plan Hausdepp points and achievements without inventing award conditions.
   The confirmed ironic achievement progression goes from clever names to
   the highest lasting title, Hausdepp; its exact list and thresholds remain open.

@@ -11,7 +11,7 @@ from .active_games import save_active_game
 from .game_realtime import broadcast
 from .game_state import multiplayer_pause_reason, touch
 
-HAUSDEPP_GAMEPLAY_ACTIONS = frozenset({"hausdepp_play", "hausdepp_pickup", "hausdepp_gamble", "hausdepp_afterthrow", "hausdepp_draw"})
+HAUSDEPP_GAMEPLAY_ACTIONS = frozenset({"hausdepp_play", "hausdepp_pickup", "hausdepp_gamble", "hausdepp_afterthrow", "hausdepp_draw", "hausdepp_peek"})
 _LOCKS: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
 
 
@@ -59,9 +59,17 @@ async def publish_hausdepp_transition(game: dict, *, finalize_game=None) -> None
 
 
 async def handle_hausdepp_gameplay_action(session, action: str, data: dict, *, finalize_game=None, **_kwargs) -> None:
+    from .game_snapshot import snapshot
     from .hausdepp_engine import HausdeppRuleError
 
     game = session.game
+    command_id = data.get("command_id")
+    command_id = command_id if isinstance(command_id, str) and 0 < len(command_id) <= 100 else None
+
+    def acknowledgement(accepted: bool, version: int | None = None) -> dict:
+        return ({"hausdepp_command": {"command_id": command_id, "accepted": accepted,
+                                      "version": game["_hausdepp"]["version"] if version is None else version}} if command_id else {})
+
     async with game_lock(game):
         # Check after acquiring the lock: a reconnect may replace this socket
         # while a previously received command waits behind another action.
@@ -69,7 +77,8 @@ async def handle_hausdepp_gameplay_action(session, action: str, data: dict, *, f
             player.get("id") == session.player_id and player.get("ws") is session.websocket
             for player in game.get("_players", [])
         ):
-            await session.websocket.send_json({"error_code": "hausdepp_invalid_actor", "error": "hausdepp_invalid_actor"})
+            await session.websocket.send_json({"error_code": "hausdepp_invalid_actor", "error": "hausdepp_invalid_actor",
+                                               **acknowledgement(False)})
             return
         try:
             apply_hausdepp_command(game, session.player_id,
@@ -77,9 +86,13 @@ async def handle_hausdepp_gameplay_action(session, action: str, data: dict, *, f
                                     "version": data.get("version")})
         except (HausdeppRuleError, TypeError, KeyError) as exc:
             code = getattr(exc, "code", "hausdepp_invalid_command")
-            await session.websocket.send_json({"error_code": code, "error": code})
+            await session.websocket.send_json({"error_code": code, "error": code,
+                                               **acknowledgement(False), "scoreboard": snapshot(game, session.player_id)})
             return
         from .game_activity import record_gameplay
 
+        accepted_version = game["_hausdepp"]["version"]
         record_gameplay(session)
         await publish_hausdepp_transition(game, finalize_game=finalize_game)
+        if command_id:
+            await session.websocket.send_json(acknowledgement(True, accepted_version))

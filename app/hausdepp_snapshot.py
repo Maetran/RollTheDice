@@ -44,7 +44,9 @@ def snapshot_hausdepp(game: GameDict, viewer_id: str | None = None) -> dict:
         "_pause_remaining_seconds": pause_remaining_seconds(game),
         "_pause_remaining_label": _format_duration_hm(pause_remaining_seconds(game)),
         "_timeout_seconds": timeout_seconds(), "_timeout_label": _format_duration_hm(timeout_seconds()),
-        "_offline_players": _offline_players(game), "_turn": game.get("_turn"),
+        "_offline_players": _offline_players(game),
+        "_turn": ({"player_id": projection["current_player_id"]}
+                  if projection and projection.get("current_player_id") else None),
         "_connected": {str(player["id"]): _player_connected(player) for player in game.get("_players", [])},
         "_chat_history": [dict(entry) for entry in game.get("_chat_history", [])][-CHAT_HISTORY_LIMIT:],
         "_spectators": [public_player_payload(player) for player in game.get("_spectators", [])],

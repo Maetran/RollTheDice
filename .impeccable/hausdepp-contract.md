@@ -15,3 +15,18 @@ FIRST VIEWPORT: Compact suite header; opponents around a centred face-up pile an
 FORM: Stammtisch-Runde, grounded candidate 1, user-selected pick from direction seed 66f985a7. Seven grounded candidates: Stammtisch-Runde, Bierdeckel, Kartenmacher-Druckbogen, Wirtshaustafel, Vereinsabzeichen, Speisekarte, Kegelbahn-Spielzettel. Card selection lifts once; pile clearing is the one authored motion and honours reduced motion.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+
+
+## Confirmed interaction refinement — 2026-10-16
+
+The original direction remains. The user replaced card selection/confirmation
+with immediate play on hand-card taps. Own cards form a compact natural fan,
+sorted low left to tens right, using original art without added rank labels.
+The designated peeker actively taps through bottom inspection; a brief,
+nonblocking deal animates card backs across the walnut table. The next player
+may play while earlier refills remain due. Only stock access follows FIFO debt
+order: later players cannot draw or gamble until the earlier player refills.
+The responsible player sees a gentle red frame and “Du musst ziehen” /
+“You must draw”; reduced motion keeps that warning static. Delayed draws never
+rewind the turn or an expired additional-card window. Own-burn hand replay may
+proceed before refilling, while stock access remains ordered.

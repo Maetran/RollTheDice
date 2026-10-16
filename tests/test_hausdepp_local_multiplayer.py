@@ -140,6 +140,13 @@ class HausdeppLocalMultiplayerTransportTests(unittest.TestCase):
                         self.assertEqual(first_started["_players_joined"], 2)
                         self.assertEqual({player["user_id"] for player in first_started["_players"]}, fixture_ids)
                         self.assertTrue(all(not player["is_cpu"] for player in first_started["_participants"]))
+                        self.assertEqual(first_started["_hausdepp"]["phase"], "peeking")
+                        self.assertEqual(first_started["_hausdepp"]["hand"], [])
+                        self.assertEqual(first_started["_hausdepp"]["available_actions"], ["peek"])
+                        self.assertEqual(second_started["_hausdepp"]["available_actions"], [])
+                        first.send_json({"action": "hausdepp_peek", "version": first_started["_hausdepp"]["version"]})
+                        first_started = self.board(first)
+                        second_started = self.board(second)
                         first_state = self.assert_private(first_started, own_id=first_id,
                                                           hand=["hearts-6", "bells-6", "hearts-10"], peek=[bottom])
                         self.assert_private(second_started, own_id=second_id,
@@ -161,36 +168,46 @@ class HausdeppLocalMultiplayerTransportTests(unittest.TestCase):
                         second_pending = self.assert_private(self.board(second), own_id=second_id,
                                                              hand=["hearts-K", "bells-K", "leaves-A"], peek=[])
                         self.assertEqual(first_pending["available_actions"], ["draw"])
-                        self.assertEqual(second_pending["available_actions"], [])
+                        self.assertEqual(second_pending["available_actions"], ["play", "pickup"])
                         self.assertEqual(first_pending["pending_refill"]["remaining"], 2)
                         self.assertEqual(first_pending["deck_count"], first_state["deck_count"])
                         second.send_json({"action": "hausdepp_draw", "version": second_pending["version"],
                                           "actor_id": first_id})
-                        self.assertEqual(second.receive_json()["error_code"], "hausdepp_refill_required")
+                        self.assertEqual(second.receive_json()["error_code"], "hausdepp_no_refill_pending")
+                        # The next human places before its predecessor draws.
+                        # Both hands owe a refill, but the stock queue is FIFO.
+                        second.send_json({"action": "hausdepp_play", "cards": ["hearts-K", "bells-K"],
+                                          "version": second_pending["version"]})
+                        second_before_fill = self.assert_private(self.board(second), own_id=second_id,
+                                                                hand=["leaves-A"], peek=[])
+                        self.assert_private(self.board(first), own_id=first_id, hand=["hearts-10"], peek=[bottom])
+                        self.assertTrue(second_before_fill["draw_required"])
+                        self.assertFalse(second_before_fill["draw_urgent"])
+                        self.assertEqual(second_before_fill["stock_blocked_by"], first_id)
+                        self.assertNotIn("draw", second_before_fill["available_actions"])
+                        second.send_json({"action": "hausdepp_draw", "version": second_before_fill["version"]})
+                        self.assertEqual(second.receive_json()["error_code"], "hausdepp_stock_refill_wait")
                         first.send_json({"action": "hausdepp_draw", "version": first_pending["version"]})
                         first_filled = self.assert_private(self.board(first), own_id=first_id,
                                                            hand=["hearts-10", "hearts-7", "hearts-8"], peek=[bottom])
                         second_frame = self.board(second)
                         second_turn = self.assert_private(second_frame, own_id=second_id,
-                                                          hand=["hearts-K", "bells-K", "leaves-A"], peek=[])
+                                                          hand=["leaves-A"], peek=[])
                         self.assertEqual(first_filled["deck_count"], first_state["deck_count"] - 2)
                         self.assertIsNone(first_filled["pending_refill"])
-                        self.assertEqual(first_filled["current_player_id"], second_id)
+                        self.assertEqual(first_filled["current_player_id"], first_id)
                         self.assertNotIn("hearts-7", json.dumps(second_frame))
                         self.assertNotIn("hearts-8", json.dumps(second_frame))
-                        second.send_json({"action": "hausdepp_play", "cards": ["hearts-K", "bells-K"],
-                                          "version": second_turn["version"]})
-                        second_needs_draw = self.assert_private(self.board(second), own_id=second_id,
-                                                               hand=["leaves-A"], peek=[])
-                        self.assert_private(self.board(first), own_id=first_id,
-                                            hand=["hearts-10", "hearts-7", "hearts-8"], peek=[bottom])
+                        second_needs_draw = second_turn
                         self.assertEqual(second_needs_draw["available_actions"], ["draw"])
+                        self.assertTrue(second_needs_draw["draw_urgent"])
+                        self.assertEqual(second_needs_draw["pending_refill"]["player_id"], second_id)
                     # Real socket closure pauses the room without completing
                     # the absent account's mandatory refill on its behalf.
                     paused = self.board(first)
                     self.assertTrue(paused["_paused"])
                     self.assertEqual(paused["_hausdepp"]["version"], second_needs_draw["version"])
-                    self.assertEqual(paused["_hausdepp"]["pending_refill"]["player_id"], second_id)
+                    self.assertEqual(paused["_hausdepp"]["pending_refills"][0]["player_id"], second_id)
                     first.send_json({"action": "hausdepp_gamble", "version": second_needs_draw["version"]})
                     self.assertIn("error", first.receive_json())
                     # A fresh socket needs only the real account session; no
