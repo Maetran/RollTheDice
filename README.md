@@ -1537,6 +1537,30 @@ you need. Leave Turnstile, transactional email, passkeys and VAPID settings
 disabled for ordinary local work.
 Never use production push subscriptions for tests.
 
+### Branch workflow
+
+**Deutsch:** `develop` sammelt die nächste Version; `master` enthält geprüfte
+Release-Stände. Neue Funktionen entstehen in eigenen Worktrees auf `codex/*`
+vom aktuellen `origin/develop`. Vor der Übergabe den aktuellen Develop-Stand im
+eigenen Branch integrieren, Konflikte lösen, Assets bauen und testen; Pull Requests
+gegen `develop` werden nacheinander integriert. Nach grüner
+CI und Releasefreigabe wird `develop` nach `master` übernommen; Produktion
+wird weiterhin ausdrücklich von `master` gebaut und ausgerollt. Gemeinsame
+Versionsnummern, Releasehinweise und generierte Assets werden bei der Integration
+abgestimmt. Der [Releaseablauf](docs/DEPLOYMENT.md#entwicklung-und-releasebranches)
+beschreibt Historie und Hotfix-Rückfluss.
+
+**English:** `develop` integrates the next version; `master` holds verified
+release revisions. Start features in separate worktrees on `codex/*` branches
+from current `origin/develop`. Before handoff, integrate current develop into
+the feature branch, resolve conflicts, rebuild assets and test; integrate PRs
+targeting develop sequentially. After CI
+passes and the release is approved, promote `develop` into `master`; production
+is still explicitly built and deployed from `master`. Coordinate shared versions,
+release notes and generated assets during integration. The
+[release workflow](docs/DEPLOYMENT.md#entwicklung-und-releasebranches) explains
+history preservation and hotfix integration.
+
 ### Frontend workflow
 
 Edit JavaScript and CSS in `frontend/`, then rebuild the committed assets:

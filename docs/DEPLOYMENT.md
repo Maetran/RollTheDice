@@ -20,6 +20,55 @@ visitor-IP trust chain and rollback. Production starts through
 checks the physical Nginx peer before resolving the visitor IP.
 `FORWARDED_ALLOW_IPS` remains restricted to the current Docker gateway.
 
+## Entwicklung und Releasebranches
+
+`develop` ist der gemeinsame Integrationszweig für die nächste Produktversion.
+`master` enthält geprüfte Release-Stände und bleibt die Quelle für produktive
+Builds und Deployments. Ein Push auf `develop` startet die bestehende CI;
+er veröffentlicht die Anwendung nicht.
+
+1. Neue Arbeit in einem eigenen Worktree auf einem `codex/*`-Branch vom aktuellen
+   `origin/develop` beginnen. Feature-PRs haben `develop` als Ziel.
+2. Vor der Übergabe `git fetch origin` ausführen und `origin/develop` im eigenen
+   Featurebranch integrieren. Fachliche Konflikte lösen, die statischen Assets
+   neu bauen und passende Tests ausführen. PRs nacheinander integrieren; bei
+   zwischenzeitlich geändertem Zielstand erneut abgleichen und prüfen. Gemeinsame
+   Branches nicht per Force-Push überschreiben. Gemeinsame Version,
+   Releasehinweise und Alembic-Revisionen abstimmen. Bestehende Zuordnungen in
+   `app/version-history.json` niemals umnummerieren oder überschreiben.
+3. Den vollständigen CI-Lauf für den gemeinsamen Stand bestehen lassen. Erst
+   mit bewusster Releasefreigabe `develop` nach `master` übernehmen, möglichst
+   per Fast-forward, sonst per normalem Merge. An dieser Grenze weder squashen
+   noch rebasen: referenzierte Commit-SHAs und Release-Tags müssen erhalten bleiben.
+4. Den tatsächlich übernommenen `master`-Stand prüfen und über den bestehenden
+   Deployablauf ausrollen. Nach erfolgreichem Rollout den ausgelieferten Commit
+   als `v<Major.Minor.Patch>` taggen.
+5. Einen neuen Release-Merge auf `master` vor der nächsten Versionserhöhung
+   zurück nach `develop` führen. Damit archiviert die nächste Version den
+   tatsächlichen Deploy-Commit. Ein dringender Hotfix beginnt auf `master`,
+   erhält einen Patch-Release und fliesst danach ebenfalls nach `develop` zurück.
+
+Eine Feature-Integration ist noch kein Release. Versionsmetadaten und der
+gemeinsame Hinweis müssen zum geplanten Release passen; parallele Agenten
+dürfen nicht unabhängig dieselbe neue Version oder Migrationsrevision vergeben.
+Feature-Commits dürfen nur umgeschrieben werden, solange ihre SHAs weder in der
+Versionshistorie noch durch Release-Tags gebunden sind.
+
+**English:** Develop features in separate `codex/*` worktrees from current
+`origin/develop`, and target feature PRs at `develop`. Before handoff, fetch and
+integrate current develop into the feature branch, resolve source conflicts,
+rebuild assets and run the relevant tests. Integrate PRs sequentially, repeat
+the check when the target changes, and never force-push shared branches.
+Coordinate versions,
+release notes, migration IDs and generated assets when integrating. A develop
+push runs CI without publishing the app. After the combined revision passes CI
+and the release is approved, promote it to `master` by fast-forward or a normal
+merge, preserving referenced commits and release tags. Verify and deploy the
+actual master revision, then tag the successful rollout. Bring release merges
+and master hotfixes back into develop before the next version bump, so version
+history references the actual deployed revision. An integration alone is not a
+release; existing version mappings remain unchanged.
+
 ## Produktionsumgebung
 
 | Bereich | Wert |

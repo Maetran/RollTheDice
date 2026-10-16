@@ -1,3 +1,24 @@
+# Zusammenarbeit und Branches
+
+- `develop` ist der gemeinsame Integrationszweig. Neue Arbeit in einem eigenen
+  Worktree auf einem `codex/*`-Branch vom aktuellen `origin/develop` beginnen;
+  Feature-PRs richten sich gegen `develop`.
+- `master` enthält geprüfte Release-Stände. Änderungen von `develop` erst nach
+  bestandener CI und bewusster Releasefreigabe nach `master` übernehmen;
+  Produktionsdeploys erfolgen weiterhin explizit von `master`.
+- Bei paralleler Arbeit nur im eigenen Worktree schreiben. Vor der Integration
+  `git fetch origin` ausführen und `origin/develop` in den eigenen Featurebranch
+  integrieren, Konflikte in den Quellen lösen, generierte Assets neu bauen und
+  passende Tests ausführen. Änderungen committen und per PR gegen `develop`
+  übergeben; Integrationen nach `develop` nacheinander durchführen. Hat sich der
+  Zielstand inzwischen geändert, erneut abgleichen und prüfen. Gemeinsame
+  Branches nicht mit Force-Push überschreiben. Versionsnummern, Migrationen und
+  Releasehinweise beim Integrieren abstimmen; bestehende Zuordnungen erhalten.
+- `develop` nach `master` per Fast-forward oder normalem Merge übernehmen,
+  ohne Squash/Rebase der referenzierten Historie. Einen Release-Merge oder
+  Hotfix auf `master` vor der nächsten Versionserhöhung nach `develop`
+  zurückführen. Details stehen in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#entwicklung-und-releasebranches).
+
 # Produkt-Lieferpflicht
 
 Bei jeder sichtbaren Seite oder Funktion gilt zusätzlich zur technischen
