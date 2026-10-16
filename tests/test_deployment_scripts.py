@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ast
 import os
+import shlex
 import subprocess
 import tempfile
 import unittest
@@ -12,6 +14,45 @@ NGINX_CONFIG = BASE_DIR / "deploy" / "nginx" / "rollthedice.conf"
 
 
 class ReleaseDeploymentTestCase(unittest.TestCase):
+    def test_all_root_file_response_assets_and_manifest_routes_are_copied_into_image(self):
+        # Inspect the actual route definitions without importing the application
+        # or opening its database. Checkout HTTP tests cannot detect files that
+        # exist locally but are omitted from the production image.
+        application = ast.parse((BASE_DIR / "app" / "main.py").read_text(encoding="utf-8"))
+        manifests = set()
+        root_files = set()
+        for node in ast.walk(application):
+            if not isinstance(node, ast.Call):
+                continue
+            if (isinstance(node.func, ast.Attribute) and node.func.attr == "get"
+                    and isinstance(node.func.value, ast.Name) and node.func.value.id == "app"
+                    and node.args and isinstance(node.args[0], ast.Constant)
+                    and isinstance(node.args[0].value, str) and node.args[0].value.endswith(".webmanifest")):
+                manifests.add(node.args[0].value.removeprefix("/"))
+            if isinstance(node.func, ast.Name) and node.func.id == "FileResponse":
+                for path in ast.walk(node):
+                    if (isinstance(path, ast.BinOp) and isinstance(path.op, ast.Div)
+                            and isinstance(path.left, ast.Name) and path.left.id == "BASE"
+                            and isinstance(path.right, ast.Constant) and isinstance(path.right.value, str)):
+                        root_files.add(path.right.value)
+        self.assertEqual(manifests, {
+            "manifest.webmanifest", "manifest-en.webmanifest",
+            "zilch-manifest.webmanifest", "zilch-manifest-en.webmanifest",
+            "hausdepp-manifest.webmanifest", "hausdepp-manifest-en.webmanifest",
+        })
+        copies = {
+            tuple(shlex.split(line)[1:])
+            for line in (BASE_DIR / "Dockerfile").read_text(encoding="utf-8").splitlines()
+            if line.startswith("COPY ")
+        }
+        for filename in sorted(root_files | manifests):
+            with self.subTest(filename=filename):
+                self.assertTrue((BASE_DIR / filename).is_file())
+                self.assertIn((filename, f"/app/{filename}"), copies,
+                              f"Root FileResponse asset is missing from the production image: {filename}")
+        # All other page, worker, icon and version files live under app/.
+        self.assertIn(("app", "/app/app"), copies)
+
     def test_release_is_published_only_after_build_and_health_and_marker_survives_retries(self):
         source = (BASE_DIR / "scripts" / "deploy_zdwa.sh").read_text(encoding="utf-8")
         remote = source.split("<<'REMOTE_SCRIPT'\n", 1)[1].rsplit("\nREMOTE_SCRIPT", 1)[0]

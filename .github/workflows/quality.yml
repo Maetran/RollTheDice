@@ -11,6 +11,16 @@ permissions:
   contents: read
 
 jobs:
+  production-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build --tag rollthedice-ci .
+      # Check the shipped filesystem and actual HTTP routes, rather than the
+      # source checkout. No network, credentials or persistent data are mounted.
+      - run: docker run --rm --interactive --network none --tmpfs /app/data --entrypoint python rollthedice-ci - < tests/container_smoke.py
+
   backend:
     runs-on: ubuntu-latest
     steps:

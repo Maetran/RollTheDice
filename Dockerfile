@@ -14,6 +14,8 @@ COPY manifest.webmanifest /app/manifest.webmanifest
 COPY manifest-en.webmanifest /app/manifest-en.webmanifest
 COPY zilch-manifest.webmanifest /app/zilch-manifest.webmanifest
 COPY zilch-manifest-en.webmanifest /app/zilch-manifest-en.webmanifest
+COPY hausdepp-manifest.webmanifest /app/hausdepp-manifest.webmanifest
+COPY hausdepp-manifest-en.webmanifest /app/hausdepp-manifest-en.webmanifest
 
 # **Hier korrekt kopieren: kompletter Ordner app/**
 COPY app /app/app
