@@ -171,7 +171,7 @@ def _creation_response(db, rematch, user_id: int, created: bool) -> dict:
     invitation = db.scalar(select(HausdeppRematchInvitation).where(
         HausdeppRematchInvitation.rematch_id == rematch.id, HausdeppRematchInvitation.user_id == user_id))
     return {"game_id": rematch.game_id, "url": f"/hausdepp/spiel/{rematch.game_id}", "created": created,
-            "requires_acceptance": bool(invitation and invitation.status != "accepted"),
+            "requires_acceptance": bool(invitation and invitation.status != "accepted" and user_id not in _seated_ids(game)),
             "invitation_id": invitation.id if invitation else None}
 
 

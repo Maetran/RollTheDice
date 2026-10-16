@@ -36,6 +36,7 @@ test('real retired source recreates a CPU tournament and only explicit invitatio
   let hostUser, originalLanguage;
   try {
     const host = await hostContext.newPage(), guest = await guestContext.newPage();
+    const guestName = `rematch_real_optin_${test.info().retry}`;
     const loggedIn = await host.request.post('/api/auth/login', { data: { username: 'Admin', password: 'temporary-password-123' } });
     expect(loggedIn.ok()).toBeTruthy();
     hostUser = (await loggedIn.json()).user;
@@ -43,11 +44,11 @@ test('real retired source recreates a CPU tournament and only explicit invitatio
     const headers = { 'X-CSRF-Token': hostUser.csrf_token };
     await host.request.put('/api/auth/preferences/language', { headers, data: { preferred_language: 'de' } });
     const registration = await guest.request.post('/api/auth/register', {
-      data: { username: 'rematch_real_optin', password: 'rematch-real-password-123', preferred_language: 'en' },
+      data: { username: guestName, password: 'rematch-real-password-123', preferred_language: 'en' },
     });
     if (registration.status() !== 201) {
       const retried = await guest.request.post('/api/auth/login', {
-        data: { username: 'rematch_real_optin', password: 'rematch-real-password-123' },
+        data: { username: guestName, password: 'rematch-real-password-123' },
       });
       expect(retried.ok()).toBeTruthy();
     }

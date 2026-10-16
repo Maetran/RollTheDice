@@ -241,6 +241,21 @@ class HausdeppRematchTests(unittest.TestCase):
         join_hausdepp_player(game, self.player(0))
         self.assertEqual(len(game["_players"]), 2)
 
+    def test_declined_invitation_then_deliberate_normal_join_does_not_require_acceptance_again(self):
+        response, game = self.create(private=False)
+        invitation = self.invite()
+        respond_to_invitation(invitation["id"], self.accounts[1].id, accept=False)
+        join_hausdepp_player(game, self.player(1))
+        repeated = create_rematch("rematch-source", self.accounts[1].id)
+        self.assertEqual(repeated["game_id"], response["game_id"])
+        self.assertFalse(repeated["created"])
+        self.assertFalse(repeated["requires_acceptance"])
+        self.assertEqual(repeated["invitation_id"], invitation["id"])
+        join_hausdepp_player(game, self.player(0))
+        start_hausdepp_game(game)
+        self.assertTrue(game["_started"])
+        self.assertFalse(create_rematch("rematch-source", self.accounts[1].id)["requires_acceptance"])
+
     def test_invitation_expiry_does_not_revoke_an_accepted_unjoined_reservation(self):
         _, game = self.create(private=False)
         invitation = self.invite()

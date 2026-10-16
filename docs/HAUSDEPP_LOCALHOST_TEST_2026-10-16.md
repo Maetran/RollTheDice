@@ -286,9 +286,9 @@ Vorbereiteter Stand **3.3.0**, Asset **`7d79fb567fac`**, nur für `develop`;
 kein Deployment und kein Versand an echte Konten. / Prepared 3.3.0 increment
 for `develop` only, without deployment or notifications to real accounts.
 
-- Vollständiger Backendlauf: **1’250 bestanden**, Coverage **84,80 %**.
+- Vollständiger Backendlauf: **1’251 bestanden**, Coverage **84,81 %**.
   `npm run check:quality` inklusive Abhängigkeitsprüfung vollständig grün. /
-  Full backend suite: 1,250 passed, 84.80% coverage; quality/security checks pass.
+  Full backend suite: 1,251 passed, 84.81% coverage; quality/security checks pass.
 - Neu-erstellen-Oberfläche: **14 Chromium + 14 WebKit**. Deutsch/Englisch,
   ausdrückliche Annahme, sichere lokale Ziele, Wiederholung nach Fehlern,
   Dialoggrenzen, versteckte Tabs und Freigabe ihrer Sperren, Abbruchzustände,
@@ -299,7 +299,7 @@ for `develop` only, without deployment or notifications to real accounts.
   nach Abbruch, Neu-erstellen-POST, wartenden Folgetisch mit CPU, persönlichen
   Prompt ohne Sitznahme und anschliessenden normalen WS-Join nach Annehmen.
   Die EP bleiben unverändert. **114 fokussierte Backendtests + 75 Untertests**
-  und ein unabhängiger 25er-Lauf sichern Reservierung, private Codes,
+  und ein unabhängiger 25er-Lauf sowie abschliessend 26 Rematchtests sichern Reservierung, private Codes,
   Doppelklickschutz, Neustart und Datenbankfehler-Wiederherstellung ab. /
   A real two-account flow verifies retirement through explicit acceptance and
   normal WebSocket admission; focused backend tests cover storage and recovery.
