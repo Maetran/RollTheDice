@@ -7,7 +7,14 @@ from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable
 
 from .game_state import GameDict
-from .game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, GameType, game_type_from_state, normalize_game_type
+from .game_types import (
+    DEFAULT_GAME_TYPE,
+    HAUSDEPP_GAME_TYPE,
+    ZILCH_GAME_TYPE,
+    GameType,
+    game_type_from_state,
+    normalize_game_type,
+)
 
 CreateState = Callable[[str, str, object], GameDict]
 JoinPlayer = Callable[[GameDict, dict], None]
@@ -152,10 +159,26 @@ def _zilch_adapter() -> GameAdapter:
     )
 
 
+def _hausdepp_adapter() -> GameAdapter:
+    from .hausdepp_gameplay import HAUSDEPP_GAMEPLAY_ACTIONS, handle_hausdepp_gameplay_action
+    from .hausdepp_results import finalize_hausdepp_result
+    from .hausdepp_snapshot import snapshot_hausdepp
+    from .hausdepp_state import hausdepp_progress, join_hausdepp_player, new_hausdepp_game, start_hausdepp_game
+
+    return GameAdapter(
+        game_type=HAUSDEPP_GAME_TYPE, create_state=new_hausdepp_game, join_player=join_hausdepp_player,
+        start_game=start_hausdepp_game, project_snapshot=snapshot_hausdepp, project_progress=hausdepp_progress,
+        gameplay_actions=HAUSDEPP_GAMEPLAY_ACTIONS, handle_gameplay=handle_hausdepp_gameplay_action,
+        finalize_completed_game=lambda game, _files: finalize_hausdepp_result(game),
+    )
+
+
 def adapter_for_game_type(value: object | None) -> GameAdapter:
     game_type = normalize_game_type(value)
     if game_type == ZILCH_GAME_TYPE:
         return _zilch_adapter()
+    if game_type == HAUSDEPP_GAME_TYPE:
+        return _hausdepp_adapter()
     return _zdwa_adapter()
 
 
@@ -194,7 +217,11 @@ async def dispatch_gameplay_action(
     await adapter_for_game(session.game).handle_gameplay(session, action, data, **kwargs)
 
 
-def project_game_snapshot(game: GameDict) -> dict:
+def project_game_snapshot(game: GameDict, viewer_id: str | None = None) -> dict:
+    if game_type_from_state(game) == HAUSDEPP_GAME_TYPE:
+        from .hausdepp_snapshot import snapshot_hausdepp
+
+        return snapshot_hausdepp(game, viewer_id)
     return adapter_for_game(game).project_snapshot(game)
 
 

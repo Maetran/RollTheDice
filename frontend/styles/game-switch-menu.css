@@ -1,0 +1,5 @@
+.suite-game-menu { position: fixed; top: 70px; right: 16px; z-index: 100; display: grid; min-width: 200px; background: #f5efdf; color: #30271f; border-radius: 10px; padding: 8px; box-shadow: 0 8px 26px #110a0860; font: 15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+.suite-game-menu a { display: flex; align-items: center; padding: 14px 15px; min-height: 46px; text-decoration: none; border-radius: 6px; color: #30271f; }
+.suite-game-menu a:hover { background: #e8dbc3; }
+.suite-game-menu a[aria-current] { font-weight: 750; color: #8e2426; }
+.suite-game-menu a:focus-visible { outline: 3px solid #9c292b; outline-offset: -3px; }

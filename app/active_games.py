@@ -40,6 +40,7 @@ def serializable_game_state(game: dict) -> dict:
     # watching the room. It is never a persisted scoring hold and must not
     # reappear after a process restart.
     state.pop("_zilch_draft_preview", None)
+    state.pop("_hausdepp_cpu_thinking", None)
     # Persist an explicit marker even when the source was restored from an old
     # snapshot.  ``game_type_from_state`` supplies the documented ZDWA default.
     state["_game_type"] = game_type_from_state(game)

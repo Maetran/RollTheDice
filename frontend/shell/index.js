@@ -50,7 +50,7 @@ initializeZdwaDesign();
 // the game room, is initialized here so the capability-gated switch behaves
 // consistently across the product. Pages that already load account state
 // publish it via `zdwa:auth-state`, avoiding a second identity request.
-if (document.documentElement.dataset.game !== "zilch" && document.querySelector("[data-game-switch]")) {
+if (!["zilch", "hausdepp"].includes(document.documentElement.dataset.game) && document.querySelector("[data-game-switch]")) {
   const pageOwnsAuthRequest = Boolean(document.querySelector("#loginForm, #accountName, .admin-shell"));
   initializeAppMode({ mode: "zdwa", refreshOnInitialize: !pageOwnsAuthRequest });
 }

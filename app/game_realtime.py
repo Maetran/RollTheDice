@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import WebSocketDisconnect
+from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.encoders import jsonable_encoder
 
 from .active_games import save_active_game
@@ -74,6 +74,16 @@ async def broadcast(game: GameDict, message: dict[str, Any]) -> None:
         if websocket is None:
             continue
         try:
+            if game.get("_game_type") == "hausdepp" and isinstance(websocket, WebSocket):
+                from .auth import resolve_session
+                from .game_access import can_access_hausdepp
+                from .game_ws_session import close_with_error
+
+                identity = resolve_session(websocket)
+                if (not can_access_hausdepp(identity) or identity.user_id != recipient.get("user_id")):
+                    recipient["ws"] = None
+                    await close_with_error(websocket, "hausdepp_preview_required", fatal=True)
+                    continue
             if recipient.get("_admin_help"):
                 from .admin_help import has_active_help_claim
                 from .auth import resolve_session
@@ -87,7 +97,14 @@ async def broadcast(game: GameDict, message: dict[str, Any]) -> None:
                         game["_spectators"].remove(recipient)
                     await close_with_error(websocket, "Der Admin-Einsatz ist beendet.", fatal=True, code=1000)
                     continue
-            await websocket.send_json(payload)
+            recipient_payload = payload
+            if game.get("_game_type") == "hausdepp" and "scoreboard" in message:
+                from .game_snapshot import snapshot
+
+                # Never trust a caller-supplied private snapshot for fan-out.
+                viewer_id = recipient.get("id") if recipient in game.get("_players", []) else None
+                recipient_payload = jsonable_encoder({**message, "scoreboard": snapshot(game, viewer_id)})
+            await websocket.send_json(recipient_payload)
         except (WebSocketDisconnect, RuntimeError, OSError):
             if recipient.get("ws") is websocket:
                 recipient["ws"] = None

@@ -10,6 +10,63 @@ interfaces. Play in your browser or install either game as a Progressive Web App
 Guests can play; accounts add personal history, statistics, achievements and
 community features.
 
+
+## Hausdepp — private Entwicklungsfassung / private development build
+
+**Deutsch:** Auf `codex/hausdepp-dev` ergänzt Hausdepp die Suite als drittes Spiel.
+Die erste spielbare Etappe umfasst `/hausdepp`, den eigenen Stammtisch unter
+`/hausdepp/spiel/{id}` und die vollständigen Hausregeln unter `/hausdepp/regeln`.
+Die Spielauswahl zeigt Hausdepp ausschliesslich für das dauerhaft gebundene
+Founder-/Owner-Konto. Andere Admins, delegierte Owner und Gäste erhalten keinen
+Zugang. Das vorhandene Konto wird weiterverwendet.
+
+Zwei bis fünf, höchstens sechs Teilnehmer spielen mit 36 doppeldeutschen Karten;
+Computer sind echte Mitspieler mit eigenen verdeckten Händen. Die Serverregeln
+schützen fremde Karten und den Nachziehstapel. Ein Tipp auf den verdeckten Stapel
+zockt vor dem Ablegen oder füllt danach verpflichtend alle fehlenden Karten bis
+auf drei auf. Der nächste Spieler wartet auf diese Auffüllung. Ein Tipp auf das
+offene Paket nimmt es auf. Chat, schnelle Reaktionen und Wiederaufnahme verwenden
+die gemeinsame Infrastruktur. Hoch- und Querformat auf Smartphone, Tablet und
+Desktop werden unterstützt, mit Mobilgeräten als Ausgangspunkt.
+
+Die [Regel- und Produktspezifikation](docs/HAUSDEPP.md) hält die bestätigten
+Details fest; [Karten und Quellen](docs/HAUSDEPP_ASSETS.md) dokumentiert das
+Tellbild und die Blitz-Rückseite. Rundenausgänge werden getrennt gespeichert.
+Punkte und Achievements folgen später; die bestätigte ironische Achievement-
+Richtung führt von cleveren Köpfen bis zum höchsten Titel **Hausdepp**. Konkrete
+Ränge und Bedingungen sind noch offen. Die Entwicklung bleibt in 2.x; V3 ist
+für den späteren grossen Release reserviert. Dieser Branch ist kein Deployment.
+Mehrere menschliche Sitze prüft `tests/test_hausdepp_local_multiplayer.py` mit
+zwei echten Konten in einer temporären lokalen Datenbank. Nur dieser isolierte
+Test erweitert die Freigabe; die normal gestartete App bleibt Owner-exklusiv.
+
+**English:** On `codex/hausdepp-dev`, Hausdepp joins the suite as a third game.
+The first playable milestone includes `/hausdepp`, its own regular table at
+`/hausdepp/spiel/{id}` and the complete house rules at `/hausdepp/regeln`.
+The game switcher exposes Hausdepp only to the permanently bound founder/owner
+account. Other administrators, delegated owners and guests cannot access it.
+The existing account is reused.
+
+Two to five participants, six at most, play with 36 double-headed German cards.
+Computers are real participants with their own private hands. Server rules
+protect opposing cards and the draw pile. Tapping the face-down pile takes a
+chance before playing, or afterwards draws all missing cards up to three as a
+mandatory refill. The next player waits for that refill. Tapping the face-up
+pile takes it. Chat, quick reactions and reconnection use the shared suite.
+Phone, tablet and desktop work in portrait and landscape, designed mobile first.
+
+The [rules and product specification](docs/HAUSDEPP.md) records confirmed
+requirements; [card assets and credits](docs/HAUSDEPP_ASSETS.md) documents the
+Tell pattern and lightning back. Round outcomes are stored separately. Points
+and achievements follow later; the confirmed ironic achievement progression
+runs from clever minds to the highest title, **Hausdepp**. Exact ranks and
+conditions remain open. Development stays within 2.x, with V3 reserved for the
+later major launch. This branch is not a deployment.
+`tests/test_hausdepp_local_multiplayer.py` verifies multiple human seats using
+two real accounts in a temporary local database. Only that isolated test
+extends access; the normally started app remains exclusive to the owner.
+
+
 ## The games
 
 | | ZDWA | Zilch |

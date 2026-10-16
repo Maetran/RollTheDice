@@ -572,7 +572,7 @@ class ZilchProductRoutesTestCase(TestCase):
             auth = self._get("/api/auth/me")
             self.assertEqual(auth.status_code, 200)
             self.assertFalse(auth.json()["authenticated"])
-            self.assertEqual(auth.json()["game_access"], {"zilch_preview": True, "zilch_public": True})
+            self.assertEqual(auth.json()["game_access"], {"hausdepp_preview": False, "zilch_preview": True, "zilch_public": True})
 
             for path in ("/", "/regeln"):
                 with self.subTest(path=path):

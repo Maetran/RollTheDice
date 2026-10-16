@@ -44,6 +44,7 @@ function returnPath() {
   const candidate = new URLSearchParams(window.location.search).get("return_to");
   // One fixed, server-protected dashboard destination, never an arbitrary URL.
   if (candidate === "/admin/dashboard") return candidate;
+  if (typeof candidate === "string" && /^\/hausdepp(?:\/(?:regeln|konto|spiel\/[A-Za-z0-9_-]+(?:\/zuschauen)?))?\/?$/.test(candidate)) return candidate;
   const directZilchPath = normalizeZilchPageUrl(candidate);
   if (directZilchPath) {
     const destination = new URL(directZilchPath, window.location.origin);
@@ -87,7 +88,9 @@ function setMessage(value, kind = "") {
 function render(auth) {
   const user = auth?.user;
   const dashboardDestination = returnPath() === "/admin/dashboard";
-  const allowed = dashboardDestination ? Boolean(user) : user?.game_access?.zilch_preview === true;
+  const hausdeppDestination = returnPath().startsWith("/hausdepp");
+  const allowed = dashboardDestination ? Boolean(user) : hausdeppDestination
+    ? user?.game_access?.hausdepp_preview === true : user?.game_access?.zilch_preview === true;
   const passkeyAvailable = auth?.passkeys?.enabled && passkeysSupported();
   passkeyPanel.hidden = Boolean(user) || !passkeyAvailable;
   passkeyUnavailable.hidden = Boolean(user) || passkeyAvailable;
@@ -102,8 +105,9 @@ function render(auth) {
   accountName.textContent = user.username;
   continueButton.href = returnPath();
   if (dashboardDestination) continueButton.textContent = t("Mission Control öffnen");
+  if (hausdeppDestination) continueButton.textContent = t("Hausdepp öffnen");
   continueButton.hidden = !allowed;
-  setMessage(dashboardDestination ? "Du bist angemeldet. Öffne Mission Control." : allowed
+  setMessage(hausdeppDestination ? allowed ? "Du bist angemeldet und kannst Hausdepp öffnen." : "Hausdepp ist für dieses Konto nicht verfügbar." : dashboardDestination ? "Du bist angemeldet. Öffne Mission Control." : allowed
     ? "Du bist angemeldet und kannst Zilch öffnen."
     : "Zilch ist für dieses Konto nicht verfügbar.", allowed ? "success" : "info");
 }
@@ -116,8 +120,11 @@ async function refresh({ redirect = false } = {}) {
   const accountLanguage = auth.user?.preferences?.preferred_language;
   if (accountLanguage && accountLanguage !== document.documentElement.lang) return auth;
   render(auth);
-  if (redirect && (auth.user?.game_access?.zilch_preview === true
-    || (auth.authenticated && returnPath() === "/admin/dashboard"))) window.location.assign(returnPath());
+  const destination = returnPath();
+  const destinationAllowed = destination.startsWith("/hausdepp")
+    ? auth.user?.game_access?.hausdepp_preview === true
+    : auth.user?.game_access?.zilch_preview === true || (auth.authenticated && destination === "/admin/dashboard");
+  if (redirect && destinationAllowed) window.location.assign(destination);
   return auth;
 }
 

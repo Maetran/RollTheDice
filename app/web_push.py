@@ -27,7 +27,7 @@ from sqlalchemy import and_, delete, or_, select, update
 from .database import session_scope
 from .game_access import can_account_access_zilch
 from .game_activity import PLAY_DAY_TIMEZONE
-from .game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
+from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
 from .models import PushInviteAllowedSender, User, WebPushSubscription
 from .product_hosts import site_origin, zilch_url
 from .security import as_utc, normalize_username, utcnow
@@ -428,7 +428,7 @@ def mark_game_invite_push_sent(game: dict) -> None:
 
 def open_seat_invitation_error(game: dict, *, user_id: int) -> str | None:
     """Return the stable API error for an unsafe or non-waiting room."""
-    if game.get("_passphrase"):
+    if game_type_from_state(game) == HAUSDEPP_GAME_TYPE or game.get("_passphrase"):
         return "game_invite_private_room"
     if game.get("_started") or game.get("_finished") or game.get("_aborted") or game.get("_completion_persisted"):
         return "game_invite_not_waiting"
@@ -525,6 +525,8 @@ def invitation_sender_allowed(sender_user_id: int | None):
 def game_invite_push_recipients(game: dict, *, sender_user_id: int | None = None) -> list[StoredSubscription]:
     """Load only opted-in accounts allowed to see this product and not seated."""
     game_type = game_type_from_state(game)
+    if game_type == HAUSDEPP_GAME_TYPE:
+        return []
     seated_ids = {
         int(player["user_id"])
         for player in game.get("_players", [])

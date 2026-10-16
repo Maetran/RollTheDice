@@ -404,6 +404,15 @@ def _offline_players(g: GameDict) -> list[dict]:
         return []
     if not g.get("_resume_required") and not any(_player_connected(p) for p in g.get("_players", [])):
         return []
+    relevant_players = g.get("_players", [])
+    if g.get("_game_type") == "hausdepp":
+        active_ids = {player.get("id") for player in (g.get("_hausdepp") or {}).get("players", [])
+                      if not player.get("finished")}
+        active_humans = [player for player in relevant_players if player.get("id") in active_ids]
+        # Finished people may leave while active human seats continue. When
+        # only CPUs remain, retain the human observer as the pause anchor.
+        if active_humans:
+            relevant_players = active_humans
     return [
         {
             "id": str(p.get("id")),
@@ -411,7 +420,7 @@ def _offline_players(g: GameDict) -> list[dict]:
             **({"user_id": p["user_id"]} if p.get("user_id") is not None else {}),
             **({"achievement_rank": p["achievement_rank"]} if isinstance(p.get("achievement_rank"), dict) else {}),
         }
-        for p in g.get("_players", [])
+        for p in relevant_players
         if not _player_connected(p)
     ]
 

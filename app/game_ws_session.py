@@ -21,9 +21,10 @@ from .game_state import (
     _join_block_reason,
     _offline_players,
     _passphrase_matches,
+    multiplayer_pause_reason,
     touch,
 )
-from .game_types import ZILCH_GAME_TYPE, game_type_from_state
+from .game_types import HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
 from .moderation import user_play_banned
 from .zilch_state import (
     pause_zilch_solo_timer,
@@ -175,6 +176,10 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
         await publish_friend_game_start(g)
     if game_type_from_state(g) == ZILCH_GAME_TYPE:
         from .zilch_cpu_runner import maybe_schedule_cpu_turn
+
+        maybe_schedule_cpu_turn(g, finalize_game=finalize_game)
+    if game_type_from_state(g) == HAUSDEPP_GAME_TYPE:
+        from .hausdepp_cpu_runner import maybe_schedule_cpu_turn
 
         maybe_schedule_cpu_turn(g, finalize_game=finalize_game)
     return False
@@ -343,7 +348,7 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any], *, fina
         await send_game_message(
             websocket,
             {
-                "scoreboard": snapshot(g),
+                "scoreboard": snapshot(g, requested_id),
                 "achievement_unlocks": (
                     completion.get("achievement_unlocks", {}) if isinstance(completion, dict) else {}
                 ),
@@ -358,6 +363,10 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any], *, fina
     await broadcast(g, {"scoreboard": snapshot(g)})
     if game_type_from_state(g) == ZILCH_GAME_TYPE:
         from .zilch_cpu_runner import maybe_schedule_cpu_turn
+
+        maybe_schedule_cpu_turn(g, finalize_game=finalize_game)
+    if game_type_from_state(g) == HAUSDEPP_GAME_TYPE:
+        from .hausdepp_cpu_runner import maybe_schedule_cpu_turn
 
         maybe_schedule_cpu_turn(g, finalize_game=finalize_game)
     return False
@@ -425,6 +434,10 @@ async def disconnect_session(session: GameSocketSession) -> None:
         if game_type_from_state(g) == ZILCH_GAME_TYPE and zilch_is_configured_solo_game(g):
             pause_zilch_solo_timer(g)
         g["_resume_required"] = True
+        if game_type_from_state(g) == HAUSDEPP_GAME_TYPE and multiplayer_pause_reason(g):
+            from .hausdepp_cpu_runner import stop_cpu_runner
+
+            await stop_cpu_runner(str(g["_id"]))
         touch(g)
     if correction_cancelled or superadmin_cancelled or (player_id and owns_player_socket):
         try:

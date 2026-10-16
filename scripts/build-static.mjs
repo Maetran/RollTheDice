@@ -36,6 +36,8 @@ const targets = [
   },
   { source: "frontend/lobby/index.js", output: "app/static/lobby.js", format: "esm" },
   { source: "frontend/zilch/index.js", output: "app/static/zilch.js", format: "esm" },
+  { source: "frontend/hausdepp/index.js", output: "app/static/hausdepp.js", format: "esm" },
+  { source: "frontend/styles/hausdepp.css", output: "app/static/hausdepp.css" },
   { source: "frontend/offline/index.js", output: "app/static/offline-play.js", format: "esm" },
   { source: "frontend/styles/offline-play.css", output: "app/static/offline-play.css" },
   { source: "frontend/zilch/login.js", output: "app/static/zilch-login.js", format: "esm" },

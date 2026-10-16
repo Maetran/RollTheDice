@@ -25,7 +25,7 @@ from .game_state import (
     games,
     multiplayer_pause_reason,
 )
-from .game_types import ZILCH_GAME_TYPE, game_type_from_state
+from .game_types import HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
 from .game_ws_admin import SUPERADMIN_ACTIONS, handle_superadmin_action, release_revoked_superadmin_locks
 from .game_ws_gameplay import GAMEPLAY_ACTIONS
 from .game_ws_session import (
@@ -36,6 +36,7 @@ from .game_ws_session import (
     handle_session_action,
 )
 from .game_ws_social import SOCIAL_ACTIONS, handle_social_action
+from .hausdepp_gameplay import HAUSDEPP_GAMEPLAY_ACTIONS
 from .moderation import user_play_banned
 from .zilch_gameplay import ZILCH_GAMEPLAY_ACTIONS
 
@@ -43,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 # Kept as the complete public action vocabulary for compatibility with tests
 # and diagnostics. Runtime validation below deliberately narrows it per game.
-KNOWN_ACTIONS = SESSION_ACTIONS | GAMEPLAY_ACTIONS | ZILCH_GAMEPLAY_ACTIONS | SUPERADMIN_ACTIONS | SOCIAL_ACTIONS
+KNOWN_ACTIONS = SESSION_ACTIONS | GAMEPLAY_ACTIONS | ZILCH_GAMEPLAY_ACTIONS | HAUSDEPP_GAMEPLAY_ACTIONS | SUPERADMIN_ACTIONS | SOCIAL_ACTIONS
 
 ReserveConnection = Callable[[WebSocket], str | None]
 ReleaseConnection = Callable[[str | None], None]
@@ -135,7 +136,7 @@ async def serve_game_websocket(
     # Reject before accepting/sending any frame.  In particular, a known Zilch
     # ID must not disclose its lock state, players, board or chat to anyone.
     if not can_access_game(identity, game):
-        await websocket.close(code=1008, reason="Zilch preview access required")
+        await websocket.close(code=1008, reason="Game access required")
         return
 
     # A lifecycle sweep can mark a room terminal while it is still delivering
@@ -229,12 +230,13 @@ async def _receive_messages(
         # Zilch access is checked again for every received action. A
         # deleted session, role change, or account deactivation therefore does
         # not leave an already-open socket authorized indefinitely.
-        if session.game.get("_game_type", "zdwa") == "zilch":
+        if game_type_from_state(session.game) in {ZILCH_GAME_TYPE, HAUSDEPP_GAME_TYPE}:
             session.auth_identity = resolve_session(session.websocket)
             if not can_access_game(session.auth_identity, session.game):
                 await close_with_error(
                     session.websocket,
-                    "Zilch-Zugang nicht mehr verfügbar",
+                    ("hausdepp_preview_required" if game_type_from_state(session.game) == HAUSDEPP_GAME_TYPE
+                     else "Zilch-Zugang nicht mehr verfügbar"),
                     fatal=True,
                     code=1008,
                 )
@@ -299,7 +301,7 @@ async def _receive_messages(
         # frame. Opening the ordinary player route remains the explicit way
         # for a seated player to resume.
         spectator_actions = {"send_emoji", "chat_message"}
-        if game_type_from_state(session.game) != ZILCH_GAME_TYPE and not session.is_admin_help_spectator:
+        if game_type_from_state(session.game) not in {ZILCH_GAME_TYPE, HAUSDEPP_GAME_TYPE} and not session.is_admin_help_spectator:
             spectator_actions.add("rejoin_game")
         if session.is_spectator and action not in spectator_actions:
             await session.websocket.send_json({"error": "Nur fuer Spieler"})

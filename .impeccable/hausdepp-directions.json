@@ -1,0 +1,70 @@
+{
+  "title": "Hausdepp – Tisch und Lobby",
+  "question": "Holztisch und doppeldeutsche Karten bleiben in allen Entwürfen gesetzt. Welche Oberfläche soll Hausdepp bekommen? Die Skizzen zeigen den Aufbau auf dem Smartphone, noch keine fertige Grafik.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Die Wirtshaustafel",
+      "kicker": "ENTWURF",
+      "lineage": "Kreidetafeln und Spielzettel aus dem Wirtshaus",
+      "thesis": "Der Holztisch trägt die Karten; eine dunkle Spielleiste führt ruhig durch den Zug.",
+      "palette": ["#20352d", "#d8b56b", "#f3ecdc", "#a93632"],
+      "materials": ["bestehendes Walnussholz", "dunkle grüne Tafel", "doppeldeutsche Karten"],
+      "viewport": "Oben die Mitspieler, in der Mitte Paket und Nachziehstapel, unten die grosse eigene Hand mit drei klaren Aktionen.",
+      "risk": "Die Tafel muss eine präzise Bedienfläche bleiben; verspielte Kreideschrift wäre auf kleinen Displays zu anstrengend.",
+      "raised": [
+        {"from": "Bitmap-Probe", "raise": "Rang, Zugrecht und Kartenanzahl erhalten eine klar abgestufte, auch auf kleinen Displays lesbare Typografie."},
+        {"from": "Katalogwand", "raise": "Eine gewählte Karte hebt sich deutlich; die übrige Hand bleibt vollständig erreichbar."},
+        {"from": "Referenzsatz", "raise": "Regeln und Zughinweise bekommen feste, kurze Lesestrecken statt schwebender Hinweise."},
+        {"from": "Ticketheft", "raise": "Nachziehstapel, abgeräumte Karten und fertige Spieler bleiben als klar benannte Zustände sichtbar."},
+        {"from": "Bewegungsnotation", "raise": "Ein einziges eindeutiges Signal erklärt Zug und Nachwurfrecht, in beiden Geräteausrichtungen."},
+        {"from": "Datenfeld", "raise": "Der aktive Zustand hat starken Kontrast; Animationen sind kurz und bei reduzierter Bewegung vollständig entbehrlich."}
+      ],
+      "wireframe": {"cols": 6, "rows": 12, "regions": [
+        {"label": "Hausdepp · Spielauswahl", "x": 0, "y": 0, "w": 6, "h": 1},
+        {"label": "Mitspieler im Uhrzeigersinn", "x": 0, "y": 1, "w": 6, "h": 2},
+        {"label": "Nachziehen", "x": 0, "y": 3, "w": 2, "h": 3},
+        {"label": "Offenes Paket", "x": 2, "y": 3, "w": 4, "h": 3, "accent": true},
+        {"label": "Du bist dran / Nachwerfen", "x": 0, "y": 6, "w": 6, "h": 1, "accent": true},
+        {"label": "Deine Hand · grosse Karten", "x": 0, "y": 7, "w": 6, "h": 3},
+        {"label": "Legen · Zocken · Nehmen", "x": 0, "y": 10, "w": 6, "h": 1, "accent": true},
+        {"label": "Chat · Reaktionen · Regeln", "x": 0, "y": 11, "w": 6, "h": 1}
+      ]},
+      "comp": ".impeccable/mocks/decision/hausdepp-tafel.png"
+    },
+    {
+      "id": "model-pick",
+      "label": "Die Stammtisch-Runde",
+      "kicker": "MEIN FAVORIT",
+      "lineage": "Die echte Kartenrunde am Wirtshaustisch",
+      "thesis": "Die Spieler sitzen sichtbar um ein gemeinsames Paket; deine Hand ist der ruhige Vordergrund.",
+      "palette": ["#432d20", "#f4eee1", "#b93632", "#d9bc78"],
+      "materials": ["bestehendes Walnussholz", "Karton und Spielkarten", "kleine Messingmarkierungen"],
+      "viewport": "Ein zusammenhängender Tisch mit bis zu fünf Gegenübern, Kartenpaket in der Mitte und einer breiten Handzone am unteren Rand.",
+      "risk": "Die vertrauteste Lösung; ihre Eigenständigkeit entsteht durch Kartenführung und Typografie statt durch ein ungewöhnliches Grundlayout.",
+      "wireframe": {"cols": 6, "rows": 12, "regions": [
+        {"label": "Hausdepp · Suite", "x": 0, "y": 0, "w": 6, "h": 1},
+        {"label": "Gegenüber", "x": 1, "y": 1, "w": 4, "h": 2},
+        {"label": "Mitspieler", "x": 0, "y": 3, "w": 1, "h": 3},
+        {"label": "Paket · Nachziehstapel", "x": 1, "y": 3, "w": 4, "h": 3, "accent": true},
+        {"label": "Mitspieler", "x": 5, "y": 3, "w": 1, "h": 3},
+        {"label": "Zughinweis", "x": 0, "y": 6, "w": 6, "h": 1},
+        {"label": "Deine Karten", "x": 0, "y": 7, "w": 6, "h": 3, "accent": true},
+        {"label": "Legen · Zocken · Nehmen", "x": 0, "y": 10, "w": 6, "h": 1},
+        {"label": "Chat · Reaktionen · Regeln", "x": 0, "y": 11, "w": 6, "h": 1}
+      ]},
+      "comp": ".impeccable/mocks/decision/hausdepp-stammtisch.png"
+    },
+    {"id": "challenger-emigre-bitmap-specimen", "label": "Bitmap-Probe", "verdict": "declined", "lineage": "Bitmap-Schriftmuster", "thesis": "Grosse Rasterzeichen würden Rang und Aktionen bestimmen.", "palette": ["#ffffff", "#111111", "#c73c35"], "materials": ["Rastertypografie", "Holztisch und Karten bleiben"], "viewport": "Grosser Kartenrang über einer dicht gesetzten Spielfläche.", "case": "Die Schriftprobe hilft weder der Wirtshausnähe noch der Lesbarkeit des Kartentischs.", "kept": "Konsequente Grössenhierarchie.", "risk": "Zu viel Schrift wird zum Hindernis beim Spielen.", "hero": "https://impeccable.style/worlds/cards/emigre-bitmap-specimen-hero.webp"},
+    {"id": "challenger-pop-culture-shelf-streaming-title-card-wall", "label": "Katalogwand", "verdict": "declined", "lineage": "Streaming-Kataloge", "thesis": "Karten und Tische stehen in horizontalen Auswahlreihen.", "palette": ["#171717", "#faf7ef", "#bc3834"], "materials": ["Bildreihen", "Holztisch und Karten bleiben"], "viewport": "Mehrere horizontale Reihen, Auswahl wächst in den Vordergrund.", "case": "Ein Kartenspiel braucht einen gemeinsamen Tisch und klare Zugrechte, keine Auswahlwand.", "kept": "Deutliche Auswahl ohne verlorene Nachbarkarten.", "risk": "Die Gleichzeitigkeit der Runde geht in den Reihen verloren.", "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-streaming-title-card-wall-hero.webp"},
+    {"id": "challenger-rw-centre-rail-reference-setting", "label": "Referenzsatz", "verdict": "declined", "lineage": "Kommentierte Referenzbücher", "thesis": "Eine zentrale Leiste ordnet Karten und Hinweise in zwei Spalten.", "palette": ["#eee5d0", "#191919", "#c33a2e"], "materials": ["Drucklinien", "Holztisch und Karten bleiben"], "viewport": "Zwei Spalten flankieren eine schmale Aktionsleiste.", "case": "Die Lesearchitektur trägt die Regeln, aber keine schnelle Runde mit bis zu sechs Spielern.", "kept": "Kurze Lesestrecken mit festem Ort.", "risk": "Auf dem Smartphone konkurrieren Spalten mit den Karten.", "hero": "https://impeccable.style/worlds/cards/rw-centre-rail-reference-setting-hero.webp"},
+    {"id": "challenger-vernacular-ephemera-jet-age-ticket-wallet", "label": "Ticketheft", "verdict": "declined", "lineage": "Reisecoupons und Kontrollstempel", "thesis": "Jeder Zug wird als verbrauchter Coupon sichtbar.", "palette": ["#1c304c", "#c63832", "#ffffff", "#69466e"], "materials": ["Couponpapier", "Holztisch und Karten bleiben"], "viewport": "Gestapelte Zugabschnitte zeigen, was noch übrig ist.", "case": "Das Reiseritual erklärt weder das Nachwerfen noch die soziale Kartenrunde so unmittelbar wie der Tisch.", "kept": "Verbrauchte und aktive Zustände bleiben verständlich.", "risk": "Eine künstliche Ticketfolge überlagert den echten Ablauf.", "hero": "https://impeccable.style/worlds/cards/vernacular-ephemera-jet-age-ticket-wallet-hero.webp"},
+    {"id": "challenger-notation-diagram-systems-labanotation", "label": "Bewegungsnotation", "verdict": "declined", "lineage": "Notierte Bewegungsabläufe", "thesis": "Eine vertikale Bahn beschreibt Zug und Nachwurf.", "palette": ["#fafafa", "#151515", "#dadada"], "materials": ["Notationslinien", "Holztisch und Karten bleiben"], "viewport": "Eine mittige Bahn mit den Aktionen zu beiden Seiten.", "case": "Die abstrakten Zeichen brauchen zusätzliche Erklärung und schwächen die vertraute Kartensprache.", "kept": "Ein einziger eindeutiger Zugindikator.", "risk": "Die Notation würde eine zweite Lernaufgabe schaffen.", "hero": "https://impeccable.style/worlds/cards/notation-diagram-systems-labanotation-hero.webp"},
+    {"id": "challenger-ikeda-datamatics", "label": "Datenfeld", "verdict": "declined", "lineage": "Schwarzweisse Datenkunst", "thesis": "Starke Kontraste und Rasterfelder zeigen aktive Zustände.", "palette": ["#000000", "#ffffff"], "materials": ["Linienraster", "Holztisch und Karten bleiben"], "viewport": "Zahlenspalten und ein kontrastierender aktiver Ausschnitt.", "case": "Das Datenfeld verliert die Wirtshausnähe und macht Rang und Spielfarbe unnötig abstrakt.", "kept": "Aktivität wird auch ohne Animation sofort erkennbar.", "risk": "Die Datenästhetik könnte die echten Karten überstimmen.", "hero": "https://impeccable.style/worlds/cards/ikeda-datamatics-hero.webp"}
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "buildPath": {"value": "code", "toggle": true},
+  "canon": true,
+  "canonCard": {"label": "Klassischer Kartenspiel-Aufbau", "thesis": "Eine vertraute Karten-App auf dem gesetzten Holztisch.", "palette": ["#453022", "#f4efe3", "#a62d2d"], "materials": ["Holztisch", "klassische Bedienfelder"], "viewport": "Kopfzeile, Spielerreihe, Tisch und feste untere Aktionsleiste.", "risk": "Sehr vertraut und entsprechend wenig eigenständig.", "wireframe": {"cols": 6, "rows": 8, "regions": [{"label": "Navigation", "x": 0, "y": 0, "w": 6, "h": 1}, {"label": "Spieler", "x": 0, "y": 1, "w": 6, "h": 1}, {"label": "Tisch", "x": 0, "y": 2, "w": 6, "h": 3, "accent": true}, {"label": "Hand und Aktionen", "x": 0, "y": 5, "w": 6, "h": 3}]}, "comp": ".impeccable/mocks/decision/hausdepp-klassisch.png"},
+  "steer": true
+}

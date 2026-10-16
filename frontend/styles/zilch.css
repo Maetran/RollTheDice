@@ -5081,3 +5081,4 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
     width: min(1120px, calc(100vw - max(1rem, env(safe-area-inset-left, 0px)) - max(1rem, env(safe-area-inset-right, 0px))));
   }
 }
+@import "./game-switch-menu.css";

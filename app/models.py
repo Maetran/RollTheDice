@@ -588,7 +588,7 @@ class CompletedGame(Base):
     )
 
     __table_args__ = (
-        CheckConstraint("game_type IN ('zdwa', 'zilch')", name="ck_completed_games_game_type"),
+        CheckConstraint("game_type IN ('zdwa', 'zilch', 'hausdepp')", name="ck_completed_games_game_type"),
         Index("ix_completed_games_finished_at", "finished_at"),
         # Both the public ZDWA readers and the private Zilch history filter by
         # type and show the newest finished rows first.
@@ -706,7 +706,7 @@ class DeletedGame(Base):
     reason: Mapped[str] = mapped_column(Text, nullable=False)
 
     __table_args__ = (
-        CheckConstraint("game_type IN ('zdwa', 'zilch')", name="ck_deleted_games_game_type"),
+        CheckConstraint("game_type IN ('zdwa', 'zilch', 'hausdepp')", name="ck_deleted_games_game_type"),
         Index("ix_deleted_games_deleted_at", "deleted_at"),
     )
 

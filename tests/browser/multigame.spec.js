@@ -382,16 +382,28 @@ async function mockPrivateZilchResultEndpoints(page, result) {
   }, { gameId: result.game_id, historyPayload: history, resultPayload: result });
 }
 
+async function expectFounderSwitchWithoutZilch(page) {
+  // The bootstrap account is the permanent founder of this isolated DB. It
+  // can select Hausdepp without gaining the separately gated Zilch audience.
+  await expect(page.locator("[data-game-switch]")).toBeVisible();
+  await page.locator("[data-game-switch]").click();
+  const menu = page.locator("#suiteGameMenu");
+  await expect(menu.getByRole("link", { name: "Hausdepp", exact: true })).toBeVisible();
+  await expect(menu.getByRole("link", { name: "Zilch", exact: true })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+}
+
 test("Zilch is a separate permission-gated app mode and its hotkey respects inputs", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("[data-game-switch]")).toBeHidden();
   await expect(page.locator("html")).toHaveAttribute("data-game", "zdwa");
   await expect(page.locator("#createGameCard")).toBeVisible();
 
-  // The bootstrap admin is deliberately not the allowed preview identity.
+  // The founder has Hausdepp, but is not the allowed Zilch preview identity.
   await signIn(page, "Admin", "temporary-password-123");
   await expect(page.locator("#authBadge")).toContainText("Admin");
-  await expect(page.locator("[data-game-switch]")).toBeHidden();
+  await expectFounderSwitchWithoutZilch(page);
   await ensurePreviewAccounts(page);
 
   await page.click("#logoutBtn");
@@ -671,7 +683,7 @@ test("two explicitly allowed humans can create, rejoin, and play a private Zilch
     await blocked.goto("/");
     await signIn(blocked, "Admin", "temporary-password-123");
     await expect(blocked.locator("#authBadge")).toContainText("Admin");
-    await expect(blocked.locator("[data-game-switch]")).toBeHidden();
+    await expectFounderSwitchWithoutZilch(blocked);
     const invisible = await blocked.evaluate(async () => (await fetch("/api/games?game_type=zilch")).json());
     expect(invisible.games).toEqual([]);
     const forbidden = await blocked.goto(gamePath);

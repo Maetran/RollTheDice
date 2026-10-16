@@ -42,13 +42,51 @@ function clearRememberedZilchMode() {
 
 function navigateToMode(mode) {
   rememberMode(mode);
-  const destination = mode === "zilch" ? zilchAppEntryUrl("/") : zdwaAppEntryUrl();
+  const destination = mode === "hausdepp" ? hausdeppEntryUrl() : mode === "zilch" ? zilchAppEntryUrl("/") : zdwaAppEntryUrl();
   const url = new URL(destination, window.location.href);
   url.searchParams.set(
     "game_switch_from",
-    document.documentElement.dataset.game === "zilch" ? "zilch" : "zdwa",
+    document.documentElement.dataset.game || "zdwa",
   );
   window.location.assign(url.toString());
+}
+
+function hausdeppEntryUrl() {
+  // Keep installed Zilch PWAs on their current origin; Hausdepp is a protected
+  // prefixed route on both suite hosts, never a new external destination.
+  return "/hausdepp";
+}
+
+function showSuiteMenu(button, currentMode, zilchAllowed) {
+  const previous = document.getElementById("suiteGameMenu");
+  if (previous) { previous.remove(); button.setAttribute("aria-expanded", "false"); return; }
+  const menu = document.createElement("nav");
+  menu.id = "suiteGameMenu";
+  menu.className = "suite-game-menu";
+  menu.setAttribute("aria-label", window.ZDWA_I18N?.t?.("Spiele") || "Spiele");
+  for (const game of ["zdwa", ...(zilchAllowed ? ["zilch"] : []), "hausdepp"]) {
+    const link = document.createElement("a");
+    link.textContent = { zdwa: "ZDWA", zilch: "Zilch", hausdepp: "Hausdepp" }[game];
+    link.href = game === "hausdepp" ? hausdeppEntryUrl() : game === "zilch" ? zilchAppEntryUrl("/") : zdwaAppEntryUrl();
+    if (game === currentMode) link.setAttribute("aria-current", "page");
+    link.addEventListener("click", () => rememberMode(game));
+    menu.append(link);
+  }
+  button.setAttribute("aria-controls", menu.id);
+  button.setAttribute("aria-expanded", "true");
+  document.body.append(menu);
+  menu.querySelector("a")?.focus();
+  const dismiss = event => {
+    if (event.type === "keydown" && event.key !== "Escape") return;
+    if (event.type === "click" && (menu.contains(event.target) || button.contains(event.target))) return;
+    menu.remove();
+    button.setAttribute("aria-expanded", "false");
+    document.removeEventListener("click", dismiss);
+    document.removeEventListener("keydown", dismiss);
+    if (event.type === "keydown") button.focus();
+  };
+  document.addEventListener("click", dismiss);
+  document.addEventListener("keydown", dismiss);
 }
 
 /**
@@ -61,7 +99,7 @@ export function initializeAppMode({
   refreshOnInitialize = true,
   scopedZilchSpectator = null,
 } = {}) {
-  const currentMode = mode === "zilch" ? "zilch" : "zdwa";
+  const currentMode = ["zilch", "hausdepp"].includes(mode) ? mode : "zdwa";
   const existingController = window.ZDWA_APP_MODE;
   if (existingController?.initialized === true) return existingController;
 
@@ -73,6 +111,8 @@ export function initializeAppMode({
     && document.querySelector('[data-zilch-root][data-zilch-public-lobby="true"]') !== null;
   let allowed = publicLobby;
   let stopped = false;
+  let hausdeppAllowed = false;
+  let zilchAllowed = publicLobby;
   if (publicLobby) updateSwitch(true);
 
   const revokeZilch = () => {
@@ -95,13 +135,26 @@ export function initializeAppMode({
       && scopedZilchSpectator.pathname === window.location.pathname
       && /\/spiel\/[^/]+\/zuschauen\/?$/.test(window.location.pathname);
     const access = auth?.game_access || auth?.user?.game_access;
+    hausdeppAllowed = Boolean(auth?.authenticated && access?.hausdepp_preview === true);
+    zilchAllowed = nextAllowed;
+    if (currentMode === "hausdepp" && !hausdeppAllowed) {
+      document.getElementById("suiteGameMenu")?.remove();
+      document.getElementById("hausdeppApp")?.replaceChildren();
+      window.location.replace(zdwaAppEntryUrl());
+      return false;
+    }
     publicLobby = publicLobby && access?.zilch_public === true;
-    if (!nextAllowed && !scopedAllowed) {
+    if (!nextAllowed && !scopedAllowed && (currentMode === "zilch" || !hausdeppAllowed)) {
       revokeZilch();
       return false;
     }
-    allowed = nextAllowed;
+    allowed = nextAllowed || hausdeppAllowed;
     updateSwitch(allowed);
+    if (!hausdeppAllowed) document.getElementById("suiteGameMenu")?.remove();
+    if (hausdeppAllowed) for (const button of document.querySelectorAll("[data-game-switch]")) {
+      button.setAttribute("aria-label", window.ZDWA_I18N?.t?.("Spiel wechseln") || "Spiel wechseln");
+      button.setAttribute("title", window.ZDWA_I18N?.t?.("Spiel wechseln") || "Spiel wechseln");
+    }
     return true;
   };
 
@@ -120,7 +173,8 @@ export function initializeAppMode({
 
   for (const switchButton of document.querySelectorAll("[data-game-switch]")) {
     switchButton.addEventListener("click", () => {
-      if (allowed) navigateToMode(currentMode === "zilch" ? "zdwa" : "zilch");
+      if (allowed && hausdeppAllowed) showSuiteMenu(switchButton, currentMode, zilchAllowed);
+      else if (allowed) navigateToMode(currentMode === "zilch" ? "zdwa" : "zilch");
     });
   }
 
@@ -139,7 +193,8 @@ export function initializeAppMode({
     if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey || event.key.toLowerCase() !== "z") return;
     if (!allowed) return;
     event.preventDefault();
-    navigateToMode(currentMode === "zilch" ? "zdwa" : "zilch");
+    if (hausdeppAllowed) showSuiteMenu(document.querySelector("[data-game-switch]"), currentMode, zilchAllowed);
+    else navigateToMode(currentMode === "zilch" ? "zdwa" : "zilch");
   });
 
   window.addEventListener("zdwa:auth-state", (event) => applyAuth(event.detail));

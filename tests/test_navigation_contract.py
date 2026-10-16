@@ -99,6 +99,12 @@ DOCUMENT_ROUTES = (
         "test_zilch_spectator_route_is_noindex_and_legacy_bridge_keeps_the_suffix",
     ),
     RouteCoverage(
+        ("/hausdepp", "/hausdepp/spiel/{game_id}", "/hausdepp/spiel/{game_id}/zuschauen",
+         "/hausdepp/regeln", "/hausdepp/konto"),
+        "tests/test_hausdepp_integration.py", "test_founder_product_pages_and_game_type_routes",
+        ("tests/browser/hausdepp.spec.js",),
+    ),
+    RouteCoverage(
         ("/anmelden",), "tests/test_zilch_product_routes.py",
         "test_public_guest_explicit_login_reaches_apex_form_with_safe_continuation",
         ("tests/browser/passkey-signup.spec.js",),

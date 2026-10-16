@@ -22,6 +22,34 @@ Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+
+## 2.53.0 — Hausdepp, private Entwicklungsfassung / private development build — 2026-10-16
+
+**Deutsch:** Hausdepp erhält eine eigene Lobby, einen Stammtisch mit
+36 doppeldeutschen Karten und selbstständig spielende Computer-Mitspieler für
+2–6 Teilnehmer. Das dauerhaft gebundene Founder-Konto erreicht den privaten
+Bereich über die Spielauswahl; Seiten, APIs, WebSockets und Ergebnisse prüfen
+diese Freigabe serverseitig. Handkarten und erfolgloses Abheben sind pro Spieler
+privat. Die vollständigen Hausregeln umfassen Zehner, vier Gleiche, Nachwerfen,
+verpflichtendes Auffüllen per Stapeltipp und das Endspiel. Tischgespräch,
+Reaktionen und Wiederaufnahme nutzen die Suite. Die Oberfläche unterstützt
+Deutsch/Englisch und beide Ausrichtungen auf Mobilgerät, Tablet und Desktop.
+Punkte und Achievements werden vorbereitet; Bedingungen und Titel sind noch
+nicht umgesetzt. Die ironische Rangrichtung endet später beim Titel Hausdepp.
+Nur Entwicklungsbranch, kein behauptetes Deployment; V3 folgt zum grossen Release.
+
+**English:** Hausdepp adds its own lobby, a shared table with 36 double-headed
+German cards and autonomous computer players for 2–6 participants. Only the
+permanently bound founder account can open the private game through the switcher;
+pages, APIs, WebSockets and outcomes enforce access on the server. Hand cards
+and unsuccessful bottom peeks remain private per player. Complete house rules
+cover tens, four of a kind, additional throws, mandatory tap-to-refill and the
+endgame. Table talk, reactions and reconnection reuse the suite. The interface
+supports German/English and both orientations on phones, tablets and desktops.
+Points and achievements are planned; award conditions and titles are not yet
+implemented. The ironic rank progression will eventually end at Hausdepp.
+Development branch only, no claimed deployment; V3 is reserved for the major launch.
+
 ## 2.52.0 — NEXUS für Mission Control / NEXUS for Mission Control — 2026-10-15
 
 **Deutsch:** Berechtigte Dashboard-Nutzer können im Designwechsel zusätzlich

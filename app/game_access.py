@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from .game_types import ZILCH_GAME_TYPE, game_type_from_state
+from .game_types import HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
 from .security import normalize_username
 
 if TYPE_CHECKING:
@@ -83,8 +83,15 @@ def can_access_zilch_preview(identity: AuthIdentity | None) -> bool:
     return can_account_access_zilch(username=identity.username, role=identity.role)
 
 
+def can_access_hausdepp(identity: AuthIdentity | None) -> bool:
+    """Only the account-ID-bound permanent founder can use this preview."""
+    return bool(identity and identity.is_admin and identity.is_founder)
+
+
 def can_access_game(identity: AuthIdentity | None, game: dict) -> bool:
     """Apply the game-specific access policy to a live state."""
+    if game_type_from_state(game) == HAUSDEPP_GAME_TYPE:
+        return can_access_hausdepp(identity)
     if game_type_from_state(game) != ZILCH_GAME_TYPE or can_access_zilch_preview(identity):
         return True
     if identity and identity.is_admin:
@@ -102,6 +109,7 @@ def public_game_access_payload(identity: AuthIdentity | None) -> dict[str, bool]
     guest has an account capability.
     """
     return {
+        "hausdepp_preview": can_access_hausdepp(identity),
         "zilch_preview": can_access_zilch_preview(identity),
         "zilch_public": configured_zilch_access_mode() == ZILCH_ACCESS_MODE_PUBLIC,
     }

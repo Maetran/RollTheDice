@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-15T12:37:48+00:00",
-  "title": "Design System: RollTheDice dashboard themes",
+  "generatedAt": "2026-10-16T13:22:52.534263+00:00",
+  "title": "Design System: RollTheDice dashboard themes and Hausdepp",
   "extensions": {
     "colorMeta": {
       "nexus-lime": {
@@ -493,6 +493,132 @@
           "oklch(84% 0.0619 95.40)",
           "oklch(95% 0.0619 95.40)"
         ]
+      },
+      "hausdepp-paper": {
+        "role": "neutral",
+        "displayName": "Hausdepp Ivory Paper",
+        "tonalRamp": [
+          "oklch(15% 0.0221 89.79)",
+          "oklch(26% 0.0221 89.79)",
+          "oklch(38% 0.0221 89.79)",
+          "oklch(49% 0.0221 89.79)",
+          "oklch(61% 0.0221 89.79)",
+          "oklch(72% 0.0221 89.79)",
+          "oklch(84% 0.0221 89.79)",
+          "oklch(95% 0.0221 89.79)"
+        ]
+      },
+      "hausdepp-ink": {
+        "role": "neutral",
+        "displayName": "Hausdepp Brown Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0196 63.53)",
+          "oklch(26% 0.0196 63.53)",
+          "oklch(38% 0.0196 63.53)",
+          "oklch(49% 0.0196 63.53)",
+          "oklch(61% 0.0196 63.53)",
+          "oklch(72% 0.0196 63.53)",
+          "oklch(84% 0.0196 63.53)",
+          "oklch(95% 0.0196 63.53)"
+        ]
+      },
+      "hausdepp-muted": {
+        "role": "neutral",
+        "displayName": "Hausdepp Muted Brown",
+        "tonalRamp": [
+          "oklch(15% 0.0342 63.50)",
+          "oklch(26% 0.0342 63.50)",
+          "oklch(38% 0.0342 63.50)",
+          "oklch(49% 0.0342 63.50)",
+          "oklch(61% 0.0342 63.50)",
+          "oklch(72% 0.0342 63.50)",
+          "oklch(84% 0.0342 63.50)",
+          "oklch(95% 0.0342 63.50)"
+        ]
+      },
+      "hausdepp-red": {
+        "role": "primary",
+        "displayName": "Hausdepp Oxblood",
+        "tonalRamp": [
+          "oklch(15% 0.1511 24.47)",
+          "oklch(26% 0.1511 24.47)",
+          "oklch(38% 0.1511 24.47)",
+          "oklch(49% 0.1511 24.47)",
+          "oklch(61% 0.1511 24.47)",
+          "oklch(72% 0.1511 24.47)",
+          "oklch(84% 0.1511 24.47)",
+          "oklch(95% 0.1511 24.47)"
+        ]
+      },
+      "hausdepp-red-hover": {
+        "role": "primary",
+        "displayName": "Hausdepp Oxblood Hover",
+        "tonalRamp": [
+          "oklch(15% 0.1285 24.16)",
+          "oklch(26% 0.1285 24.16)",
+          "oklch(38% 0.1285 24.16)",
+          "oklch(49% 0.1285 24.16)",
+          "oklch(61% 0.1285 24.16)",
+          "oklch(72% 0.1285 24.16)",
+          "oklch(84% 0.1285 24.16)",
+          "oklch(95% 0.1285 24.16)"
+        ]
+      },
+      "hausdepp-gold": {
+        "role": "secondary",
+        "displayName": "Hausdepp Brass",
+        "tonalRamp": [
+          "oklch(15% 0.0871 85.87)",
+          "oklch(26% 0.0871 85.87)",
+          "oklch(38% 0.0871 85.87)",
+          "oklch(49% 0.0871 85.87)",
+          "oklch(61% 0.0871 85.87)",
+          "oklch(72% 0.0871 85.87)",
+          "oklch(84% 0.0871 85.87)",
+          "oklch(95% 0.0871 85.87)"
+        ]
+      },
+      "hausdepp-edge": {
+        "role": "neutral",
+        "displayName": "Hausdepp Paper Edge",
+        "tonalRamp": [
+          "oklch(15% 0.0467 81.26)",
+          "oklch(26% 0.0467 81.26)",
+          "oklch(38% 0.0467 81.26)",
+          "oklch(49% 0.0467 81.26)",
+          "oklch(61% 0.0467 81.26)",
+          "oklch(72% 0.0467 81.26)",
+          "oklch(84% 0.0467 81.26)",
+          "oklch(95% 0.0467 81.26)"
+        ]
+      },
+      "hausdepp-wood": {
+        "role": "neutral",
+        "displayName": "Hausdepp Walnut Ground",
+        "tonalRamp": [
+          "oklch(15% 0.0255 51.11)",
+          "oklch(26% 0.0255 51.11)",
+          "oklch(38% 0.0255 51.11)",
+          "oklch(49% 0.0255 51.11)",
+          "oklch(61% 0.0255 51.11)",
+          "oklch(72% 0.0255 51.11)",
+          "oklch(84% 0.0255 51.11)",
+          "oklch(95% 0.0255 51.11)"
+        ]
+      },
+      "hausdepp-white": {
+        "role": "neutral",
+        "displayName": "Hausdepp Warm White",
+        "tonalRamp": [
+          "oklch(15% 0.0082 91.48)",
+          "oklch(26% 0.0082 91.48)",
+          "oklch(38% 0.0082 91.48)",
+          "oklch(49% 0.0082 91.48)",
+          "oklch(61% 0.0082 91.48)",
+          "oklch(72% 0.0082 91.48)",
+          "oklch(84% 0.0082 91.48)",
+          "oklch(95% 0.0082 91.48)"
+        ]
       }
     },
     "typographyMeta": {
@@ -519,6 +645,30 @@
       "nexus-data": {
         "displayName": "Nexus Data",
         "purpose": "NEXUS KPI values; tabular numerals."
+      },
+      "hausdepp-display": {
+        "displayName": "Hausdepp Display",
+        "purpose": "Self-hosted Kalam bold, exposed as Hausdepp Sign; welcome display only."
+      },
+      "hausdepp-heading": {
+        "displayName": "Hausdepp Heading",
+        "purpose": "Kalam bold for paper-panel headings; local heading sizes follow the documented component."
+      },
+      "hausdepp-body": {
+        "displayName": "Hausdepp Body",
+        "purpose": "Plain platform UI face for rulebook prose; phone overrides remain component-owned."
+      },
+      "hausdepp-interface": {
+        "displayName": "Hausdepp Interface",
+        "purpose": "Plain navigation and controls; never Kalam."
+      },
+      "hausdepp-support": {
+        "displayName": "Hausdepp Support",
+        "purpose": "Form notes and explanatory text on paper."
+      },
+      "hausdepp-card-index": {
+        "displayName": "Hausdepp Card Index",
+        "purpose": "Plain, bold rank label on selectable cards."
       }
     },
     "shadows": [
@@ -526,6 +676,21 @@
         "name": "nexus-flat-panel",
         "value": "none",
         "purpose": "NEXUS panel and geography-stage shadows are explicitly removed; incumbent effects retain their owners."
+      },
+      {
+        "name": "hausdepp-create",
+        "value": "0 14px 40px #120b0766",
+        "purpose": "Ivory create form lifted above walnut."
+      },
+      {
+        "name": "hausdepp-card",
+        "value": "0 5px 12px #180d0870",
+        "purpose": "Physical short shadow under the actual Tell-pattern card artwork."
+      },
+      {
+        "name": "hausdepp-chat-sheet",
+        "value": "0 -10px 30px #150d0870",
+        "purpose": "Bottom chat sheet above the smaller-screen table."
       }
     ],
     "motion": [
@@ -543,6 +708,16 @@
         "name": "nexus-reduced-motion",
         "value": "none",
         "purpose": "System reduced motion removes transitions and smooth scrolling; explicit moved-star scrolling uses instant when paused/reduced."
+      },
+      {
+        "name": "hausdepp-card-selection",
+        "value": "transform 160ms cubic-bezier(.16,1,.3,1)",
+        "purpose": "One 12px lift for selected hand cards; removed by reduced motion."
+      },
+      {
+        "name": "hausdepp-pile-clear",
+        "value": "320ms cubic-bezier(.16,1,.3,1)",
+        "purpose": "One live-pile lift and fade after a newly observed clear; zero duration for reduced motion."
       }
     ],
     "breakpoints": [
@@ -573,6 +748,26 @@
       {
         "name": "nexus-six-kpi-min",
         "value": "1700px"
+      },
+      {
+        "name": "hausdepp-narrow-max",
+        "value": "359px"
+      },
+      {
+        "name": "hausdepp-phone-max",
+        "value": "700px"
+      },
+      {
+        "name": "hausdepp-social-rail-min",
+        "value": "1100px"
+      },
+      {
+        "name": "hausdepp-low-landscape-max-height",
+        "value": "600px"
+      },
+      {
+        "name": "hausdepp-tablet-landscape",
+        "value": "(orientation:landscape) and (min-width:701px) and (max-width:1099px) and (min-height:601px) and (max-height:850px)"
       }
     ]
   },
@@ -640,16 +835,68 @@
       "description": "The real instrument control; aria-pressed exposes selection. The preview demonstrates both actual visual states.",
       "html": "<div class=\"ds-star-preview\"><button class=\"ds-star\" type=\"button\" aria-label=\"Als Favorit merken: Besuche\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m12 3 2.78 5.64L21 9.55l-4.5 4.39 1.06 6.2L12 17.21l-5.56 2.93 1.06-6.2L3 9.55l6.22-.91Z\"/></svg></button><button class=\"ds-star\" type=\"button\" aria-label=\"Aus Favoriten entfernen: Besuche\" aria-pressed=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m12 3 2.78 5.64L21 9.55l-4.5 4.39 1.06 6.2L12 17.21l-5.56 2.93 1.06-6.2L3 9.55l6.22-.91Z\"/></svg></button></div>",
       "css": ".ds-star-preview{display:flex;gap:12px;padding:12px;background:var(--panel,#141b18);}.ds-star{display:grid;place-items:center;width:40px;min-height:40px;height:40px;padding:0;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--muted,#a6b6ab);cursor:pointer;transition:color .18s ease-out,background .18s ease-out,border-color .18s ease-out;}.ds-star svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}.ds-star[aria-pressed=\"true\"]{background:#29371f;border-color:#617c40;color:var(--cyan,#c4f279);}.ds-star[aria-pressed=\"true\"] svg{fill:currentColor;}.ds-star:hover{background:#253320;border-color:#a8ce78;color:var(--cyan,#c4f279);}.ds-star:focus-visible{outline:2px solid var(--cyan,#c4f279);outline-offset:4px;}@media(prefers-reduced-motion:reduce){.ds-star{transition:none;}}"
+    },
+    {
+      "name": "Hausdepp primary action",
+      "kind": "button",
+      "refersTo": "hausdepp-button-primary",
+      "description": "Oxblood action for taking a seat or playing selected cards; the live table localizes its current play/afterthrow label.",
+      "html": "<button class=\"ds-hd-primary\" type=\"button\">Legen</button>",
+      "css": ".ds-hd-primary{font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:16px;min-height:46px;border:0;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:12px;padding:13px 20px;background:var(--hd-red,#9c292b);color:var(--hd-white,#fffdf7);font-weight:700;}.ds-hd-primary:hover{background:var(--hd-red-hover,#7e2022);}.ds-hd-primary:focus-visible{outline:3px solid var(--hd-gold,#e6c98a);outline-offset:4px;}.ds-hd-primary:disabled{opacity:.45;cursor:default;}"
+    },
+    {
+      "name": "Hausdepp paper control",
+      "kind": "button",
+      "refersTo": "hausdepp-button-paper",
+      "description": "Plain platform UI label on an ivory secondary control.",
+      "html": "<button class=\"ds-hd-paper-button\" type=\"button\">Schliessen</button>",
+      "css": ".ds-hd-paper-button{font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:16px;min-height:46px;border:0;border-radius:8px;cursor:pointer;padding:11px 17px;background:var(--hd-paper,#f5efdf);color:var(--hd-ink,#30271f);font-weight:650;}.ds-hd-paper-button:hover{background:var(--hd-white,#fffdf7);}.ds-hd-paper-button:focus-visible{outline:3px solid var(--hd-gold,#e6c98a);outline-offset:4px;}.ds-hd-paper-button:disabled{opacity:.45;cursor:default;}"
+    },
+    {
+      "name": "Hausdepp table-name field",
+      "kind": "input",
+      "refersTo": "hausdepp-field",
+      "description": "Visible label and native input on the ivory create form.",
+      "html": "<label class=\"ds-hd-field\">Name des Tisches<input value=\"Stammtisch\" maxlength=\"64\" required></label>",
+      "css": ".ds-hd-field{display:grid;gap:8px;color:var(--hd-ink,#30271f);font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:14px;font-weight:650;}.ds-hd-field input{min-width:0;min-height:48px;padding:11px 12px;border:1px solid var(--hd-edge,#cdbb9c);border-radius:6px;background:var(--hd-white,#fffdf7);color:var(--hd-ink,#30271f);font:inherit;caret-color:var(--hd-red,#9c292b);}.ds-hd-field input:hover{border-color:var(--hd-muted,#6b5949);}.ds-hd-field input:focus-visible{outline:3px solid var(--hd-red,#9c292b);outline-offset:4px;}"
+    },
+    {
+      "name": "Hausdepp navigation",
+      "kind": "nav",
+      "refersTo": "hausdepp-navigation",
+      "description": "Suite links on walnut; current page has a brass underline and does not depend on color alone.",
+      "html": "<nav class=\"ds-hd-nav\" aria-label=\"Hausdepp-Navigation\"><a href=\"/hausdepp\" aria-current=\"page\">Lobby</a><a href=\"/hausdepp/regeln\">Regeln</a><a href=\"/hausdepp/konto\">Konto</a></nav>",
+      "css": ".ds-hd-nav{display:flex;align-items:center;gap:22px;padding:10px 18px;background:var(--hd-wood,#35271f);color:var(--hd-paper,#f5efdf);font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:14px;}.ds-hd-nav a{padding:12px 0;color:inherit;text-decoration:none;text-underline-offset:4px;}.ds-hd-nav a[aria-current]{color:var(--hd-gold,#e6c98a);text-decoration:underline;text-decoration-thickness:2px;}.ds-hd-nav a:hover{color:var(--hd-gold,#e6c98a);}.ds-hd-nav a:focus-visible{outline:3px solid var(--hd-gold,#e6c98a);outline-offset:4px;}"
+    },
+    {
+      "name": "Hausdepp paper section",
+      "kind": "card",
+      "refersTo": "hausdepp-paper",
+      "description": "Ivory surface used for the lobby chat and related paper sections; display lettering stays in its heading.",
+      "html": "<section class=\"ds-hd-paper\"><h2>Tischgespräch</h2></section>",
+      "css": ".ds-hd-paper{padding:24px;border-radius:12px;background:var(--hd-paper,#f5efdf);color:var(--hd-ink,#30271f);font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;}.ds-hd-paper h2{margin:0;font-family:\"Hausdepp Sign\",cursive;font-size:28px;font-weight:700;}.ds-hd-paper p{margin:12px 0 0;color:var(--hd-muted,#6b5949);font-size:13px;line-height:1.5;}"
+    },
+    {
+      "name": "Hausdepp active seat",
+      "kind": "chip",
+      "refersTo": "hausdepp-active-seat",
+      "description": "The actual opponent seat combines the brass active-turn avatar with its visible player name and count.",
+      "html": "<div class=\"ds-hd-seat\"><span class=\"ds-hd-avatar\">C</span><strong>CPU 1</strong><span>3 Karten</span></div>",
+      "css": ".ds-hd-seat{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:140px;padding:8px;text-align:center;color:var(--hd-paper,#f5efdf);background:var(--hd-wood,#35271f);font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;}.ds-hd-avatar{display:grid;place-items:center;width:44px;height:44px;margin-bottom:4px;border-radius:50%;background:var(--hd-gold,#e6c98a);color:#59412e;font-weight:750;outline:2px solid var(--hd-gold,#e6c98a);outline-offset:4px;box-shadow:0 4px 10px #160d0966;}.ds-hd-seat strong{font-size:14px;}.ds-hd-seat>span:last-child{font-size:13px;color:#e4d1b6;}"
     }
   ],
   "narrative": {
     "northStar": "The Field Engineering Console",
-    "overview": "NEXUS treats private telemetry as a set of instruments: an ink field, mineral-green bays, decisive display lettering and tabular measurements. Its restrained lime, blue and amber accents distinguish selection, comparison and caution. Real charts and the globe supply the visual media; no raster artwork is required.\n\nThis record describes the built dashboard at `/admin/dashboard`, not a replacement identity for RollTheDice or either game. All `nexus-*` tokens and component examples apply only when the dashboard selects `nexus`. Mission Control remains the default, and LCARS remains a separate selectable design. Their namespaced palette samples preserve existing ownership; their full source styles remain authoritative. The surface-specific composition and direction contract live in `.impeccable/surfaces/app-static-dashboard-html.md`.",
+    "overview": "NEXUS treats private telemetry as a set of instruments: an ink field, mineral-green bays, decisive display lettering and tabular measurements. Its restrained lime, blue and amber accents distinguish selection, comparison and caution. Real charts and the globe supply the visual media; no raster artwork is required.\n\nThis record describes the built dashboard at `/admin/dashboard`, not a replacement identity for RollTheDice or either game. All `nexus-*` tokens and component examples apply only when the dashboard selects `nexus`. Mission Control remains the default, and LCARS remains a separate selectable design. Their namespaced palette samples preserve existing ownership; their full source styles remain authoritative. The surface-specific composition and direction contract live in `.impeccable/surfaces/app-static-dashboard-html.md`.\n\nHausdepp adds its own Stammtisch world: walnut, ivory playing cards, oxblood actions and brass turn cues. The actual double-German Tell-pattern deck supplies the illustration; handwritten display lettering gives the table a familiar voice while ordinary interface text stays plain and readable.\n\nAll `hausdepp-*` records apply only to the Hausdepp pages that load `frontend/styles/hausdepp.css`. They record its existing `--hd-*` properties and component styles; they do not replace dashboard tokens or the appearances of ZDWA and Zilch. The surface composition and approved direction remain in `.impeccable/surfaces/app-static-hausdepp-html.md` and `.impeccable/hausdepp-contract.md`.",
     "keyCharacteristics": [
       "A distinct additional dashboard theme with explicit ownership boundaries.",
       "Heavy authored headings, plain interface labels and tabular measured values.",
       "Flat, ruled instrument surfaces with restrained selection and state color.",
-      "Responsive instruments and real-node favorites that retain their controls."
+      "Responsive instruments and real-node favorites that retain their controls.",
+      "Hausdepp: one shared walnut table, real card imagery and a readable foreground hand.",
+      "Hausdepp: Kalam display lettering paired with plain platform interface type.",
+      "Hausdepp: oxblood actions, ivory paper surfaces and brass state cues.",
+      "Hausdepp: real pile controls whose labels and availability follow the current game state."
     ],
     "rules": [
       {
@@ -686,6 +933,26 @@
         "name": "The Visible Focus Rule",
         "body": "An explicit pin or unpin keeps focus on the moved star and reveals it; background refresh restores focus without moving the viewer’s scroll position.",
         "section": "components"
+      },
+      {
+        "name": "The Hausdepp Scope Rule",
+        "body": "Apply the Stammtisch tokens only to Hausdepp; retain each existing game and dashboard theme with its current owner.",
+        "section": "overview"
+      },
+      {
+        "name": "The Hausdepp Display Rule",
+        "body": "Use Hausdepp Sign for branding, display headings and the empty-pile inscription; keep actions, rules prose, names, counts and card indexes in the platform UI stack.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hausdepp Card Truth Rule",
+        "body": "Use the supplied 36-card Tell-pattern artwork and its individual viewports; preserve the order 6, 7, 8, 9, Unter, Ober, König, Ass, 10, with 10 highest.",
+        "section": "components"
+      },
+      {
+        "name": "The Hausdepp Pile Action Rule",
+        "body": "The face-down stock changes from taking a chance to mandatory refilling after a play when the hand is below three and stock remains; one tap draws every missing card up to three or the remaining stock. The face-up pile is the pickup control.",
+        "section": "components"
       }
     ],
     "dos": [
@@ -693,14 +960,23 @@
       "Do use inline SVG for the reusable instrument and star icons.",
       "Do retain German and English labels, native selects, visible keyboard focus and chart table alternatives.",
       "Do keep favorites local to the verified viewer and show the browser-storage limitation.",
-      "Do preserve independent chart selection, measurement definitions, loading, empty, stale and access-loss states."
+      "Do preserve independent chart selection, measurement definitions, loading, empty, stale and access-loss states.",
+      "Do keep the Hausdepp walnut, ivory, oxblood and brass world scoped to its own pages.",
+      "Do preserve German and English copy, labelled controls, visible focus and the real card names.",
+      "Do keep the player’s hand readable and horizontally reachable when many cards are held.",
+      "Do use the server-projected legal actions for card, stock and face-up-pile availability.",
+      "Do retain the raster provenance and attribution recorded in docs/HAUSDEPP_ASSETS.md."
     ],
     "donts": [
       "Don't promote this dashboard’s palette, rail or component composition into a global game design system.",
       "Don't replace or renumber live instrument IDs when moving favorites.",
       "Don't shrink a dense fixed-width SVG until its labels become unreadable on a phone.",
       "Don't invent zeroes, unique-player totals, conversion claims or source coverage from missing telemetry.",
-      "Don't make motion necessary for understanding a selected state or reaching a focused control."
+      "Don't make motion necessary for understanding a selected state or reaching a focused control.",
+      "Don't replace the Tell-pattern artwork with invented suit icons or a generic 32-card deck.",
+      "Don't use Hausdepp Sign for paragraphs, action labels, player names or card counts.",
+      "Don't refill automatically, draw just one card per tap, or offer taking a chance during mandatory refilling.",
+      "Don't invent points, achievements, rankings or future account visuals from the first playable table."
     ]
   }
 }

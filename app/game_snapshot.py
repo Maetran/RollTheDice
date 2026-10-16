@@ -291,13 +291,13 @@ def snapshot_zdwa(g: GameDict) -> dict:
         return {}
 
 
-def snapshot(g: GameDict) -> dict:
+def snapshot(g: GameDict, viewer_id: str | None = None) -> dict:
     """Project the current game through its registered snapshot adapter."""
     # This local import avoids forcing existing ZDWA code into a new import
     # graph while making all coordinator call sites game-neutral.
     from .game_registry import project_game_snapshot
 
-    return project_game_snapshot(g)
+    return project_game_snapshot(g, viewer_id)
 
 
 def _compute_results_for_snapshot(g: GameDict):

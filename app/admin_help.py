@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 
 from .database import database_schema_ready, session_scope
 from .game_state import games
-from .game_types import game_type_from_state
+from .game_types import HAUSDEPP_GAME_TYPE, game_type_from_state
 from .models import AdminHelpRecipient, AdminHelpRequest, User, WebPushSubscription
 from .product_hosts import site_origin, zilch_origin
 from .security import as_utc, utcnow
@@ -33,7 +33,7 @@ def _error(code: str, status: int = 409) -> HTTPException:
 
 
 def game_is_active(game: dict | None) -> bool:
-    return bool(game and not game.get("_finished") and not game.get("_aborted") and not game.get("_completion_persisted"))
+    return bool(game and game_type_from_state(game) != HAUSDEPP_GAME_TYPE and not game.get("_finished") and not game.get("_aborted") and not game.get("_completion_persisted"))
 
 
 def is_game_player(game: dict | None, user_id: int) -> bool:

@@ -1,28 +1,25 @@
 {
   "kind": "usability",
-  "games": [
-    "zdwa",
-    "zilch"
-  ],
-  "summary_de": "Mit Dashboard-Zugang: NEXUS als neues Design wählen und Kennzahlen per Stern oben als Favoriten sammeln.",
-  "summary_en": "With dashboard access: choose the new NEXUS design and star metrics to keep your favorites at the top.",
+  "games": ["hausdepp"],
+  "summary_de": "Privater Hausdepp-Stammtisch: Karten legen, am Stapel zocken oder auffüllen und gegen Computer spielen.",
+  "summary_en": "Private Hausdepp table: play cards, tap the pile to take a chance or refill, and play against computers.",
   "player_notes": {
     "de": {
-      "title": "NEXUS für Dashboard-Nutzer",
+      "title": "Hausdepp am Stammtisch",
       "changes": [
-        "Nur mit freigeschaltetem Dashboard-Zugang: Im Designwechsel kannst du jetzt NEXUS mit grossen Kennzahlen und für Handy, Tablet und Desktop angepassten Ansichten wählen.",
-        "Ein Stern bringt deine wichtigsten Kennzahlen und Analysen in den Favoritenbereich oben. Ohne Stern kehren sie an ihren bisherigen Platz zurück.",
-        "Deine Favoriten bleiben für dein Konto in diesem Browser gespeichert und zeigen weiterhin aktuelle Werte und interaktive Diagramme.",
-        "Mission Control bleibt der Standard. Das bisherige Design und LCARS kannst du jederzeit wieder auswählen. Die Wahl ist unabhängig vom Aussehen deiner Spiele."
+        "Nur für das freigeschaltete Owner-Konto: Hausdepp ist über die Spielauswahl erreichbar, mit eigener Lobby und eigenem Kartentisch.",
+        "Tippe den verdeckten Stapel zum Zocken oder zum Pflichtauffüllen auf drei an. Ein Tipp auf das offene Paket nimmt es auf die Hand.",
+        "Computer spielen als Mitspieler mit. Tischgespräch, Reaktionen und Wiederaufnahme laufen über die gemeinsame Spielesuite.",
+        "Unsere vollständigen Hausregeln sind auf Deutsch und Englisch im Spiel nachlesbar."
       ]
     },
     "en": {
-      "title": "NEXUS for dashboard viewers",
+      "title": "Hausdepp at the regular table",
       "changes": [
-        "For authorized dashboard viewers only: the design switcher now offers NEXUS, with prominent metrics and views tailored to phones, tablets and desktops.",
-        "Star your most useful metrics and analyses to move them into the Favorites area at the top. Removing the star returns them to their original position.",
-        "Your favorites are saved for your account in this browser and keep showing current values and interactive charts.",
-        "Mission Control remains the default. You can return to the original design or LCARS any time. This choice is independent of your games' appearance."
+        "For the authorized owner account only: Hausdepp is available through the game switcher, with its own lobby and card table.",
+        "Tap the face-down pile to take a chance or refill to three. Tap the face-up pile to take it into your hand.",
+        "Computers participate as players. Table talk, reactions and reconnection use the shared game suite.",
+        "Our full house rules are available in German and English inside the game."
       ]
     }
   }

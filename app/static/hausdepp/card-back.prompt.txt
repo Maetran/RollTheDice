@@ -1,0 +1,6 @@
+Use case: stylized-concept
+Asset type: seamless playing-card-back texture tile for the Hausdepp card game.
+Input images: Image 1 is a visual style reference only. Study the dense red, black and ivory Blitz pattern on the back of the card at the right of the reference.
+Primary request: Generate only a flat, crisp, seamless repeating texture tile inspired closely by that traditional card-back pattern: many small angular lightning-like hooked shapes, tightly interlocking in a rhythmic diagonal arrangement. Preserve the characteristic busy vermilion red, deep black and warm ivory palette and the small scale of the motif.
+Composition: a square, front-facing, uniformly sharp planar texture filling the entire image edge to edge. The left/right and top/bottom edges must tile seamlessly. High-resolution print-like linework with even scale throughout.
+Constraints: opaque image; no individual card shape, no rounded card border, no surrounding scene, no table, no package, no perspective, no shadows, no text, no logo, no trademark, no watermark. This is an asset texture, not a product mockup.

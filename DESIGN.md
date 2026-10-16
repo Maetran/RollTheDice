@@ -1,6 +1,6 @@
 ---
-name: RollTheDice — dashboard themes
-description: Recorded dashboard themes with the additional, explicitly scoped NEXUS field engineering console.
+name: RollTheDice — dashboard themes and Hausdepp
+description: Recorded dashboard themes and the separately scoped Hausdepp Stammtisch world.
 colors:
   nexus-lime: '#c4f279'
   nexus-blue: '#9ec9e1'
@@ -37,6 +37,15 @@ colors:
   lcars-blue: '#7184ad'
   lcars-cyan: '#78aab4'
   lcars-focus: '#fff3c4'
+  hausdepp-paper: '#f5efdf'
+  hausdepp-ink: '#30271f'
+  hausdepp-muted: '#6b5949'
+  hausdepp-red: '#9c292b'
+  hausdepp-red-hover: '#7e2022'
+  hausdepp-gold: '#e6c98a'
+  hausdepp-edge: '#cdbb9c'
+  hausdepp-wood: '#35271f'
+  hausdepp-white: '#fffdf7'
 typography:
   nexus-display:
     fontFamily: '"Nexus Display", sans-serif'
@@ -72,12 +81,44 @@ typography:
     fontWeight: 500
     lineHeight: 1.2
     letterSpacing: -.035em
+  hausdepp-display:
+    fontFamily: '"Hausdepp Sign", cursive'
+    fontSize: clamp(58px,7vw,96px)
+    fontWeight: 700
+    lineHeight: 1.1
+  hausdepp-heading:
+    fontFamily: '"Hausdepp Sign", cursive'
+    fontSize: 34px
+    fontWeight: 700
+    lineHeight: 1.15
+  hausdepp-body:
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    fontSize: 16px
+    lineHeight: 1.75
+  hausdepp-interface:
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    fontSize: 14px
+  hausdepp-support:
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    fontSize: 13px
+    lineHeight: 1.6
+  hausdepp-card-index:
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    fontSize: 12px
+    fontWeight: 800
+    lineHeight: 1.2
 rounded:
   nexus-tag: 4px
   nexus-small: 5px
   nexus-control: 6px
   nexus-stage: 8px
   nexus-panel: 12px
+  hausdepp-field: 6px
+  hausdepp-card: 7px
+  hausdepp-control: 8px
+  hausdepp-paper: 12px
+  hausdepp-create: 14px
+  hausdepp-sheet: 16px
 spacing:
   nexus-tight: 4px
   nexus-small: 8px
@@ -86,6 +127,13 @@ spacing:
   nexus-compact-panel: 20px
   nexus-panel: 24px
   nexus-section: 46px
+  hausdepp-small: 8px
+  hausdepp-hand-gap: 10px
+  hausdepp-control: 12px
+  hausdepp-form-gap: 16px
+  hausdepp-inset: 20px
+  hausdepp-paper: 24px
+  hausdepp-create: 32px
 components:
   nexus-button-primary:
     backgroundColor: '{colors.nexus-lime}'
@@ -135,9 +183,40 @@ components:
   nexus-favorite-selected:
     backgroundColor: '{colors.nexus-selected}'
     textColor: '{colors.nexus-lime}'
+  hausdepp-button-primary:
+    backgroundColor: '{colors.hausdepp-red}'
+    textColor: '{colors.hausdepp-white}'
+    rounded: '{rounded.hausdepp-control}'
+    padding: 13px 20px
+  hausdepp-button-primary-hover:
+    backgroundColor: '{colors.hausdepp-red-hover}'
+    textColor: '{colors.hausdepp-white}'
+  hausdepp-button-paper:
+    backgroundColor: '{colors.hausdepp-paper}'
+    textColor: '{colors.hausdepp-ink}'
+    rounded: '{rounded.hausdepp-control}'
+    padding: 11px 17px
+  hausdepp-field:
+    backgroundColor: '{colors.hausdepp-white}'
+    textColor: '{colors.hausdepp-ink}'
+    rounded: '{rounded.hausdepp-field}'
+    padding: 11px 12px
+  hausdepp-navigation:
+    textColor: '{colors.hausdepp-paper}'
+    padding: 12px 0
+  hausdepp-paper:
+    backgroundColor: '{colors.hausdepp-paper}'
+    textColor: '{colors.hausdepp-ink}'
+    rounded: '{rounded.hausdepp-paper}'
+    padding: '{spacing.hausdepp-paper}'
+  hausdepp-active-seat:
+    backgroundColor: '{colors.hausdepp-gold}'
+    textColor: '#59412e'
+    rounded: 50%
+    size: 44px
 ---
 
-# Design System: RollTheDice dashboard themes
+# Design System: RollTheDice dashboard themes and Hausdepp
 
 ## Overview
 
@@ -156,6 +235,26 @@ This record describes the built dashboard at `/admin/dashboard`, not a replaceme
 **The Theme Boundary Rule.** Apply NEXUS tokens only to the dashboard’s explicit nexus state; preserve Mission Control, LCARS and both game appearances.
 
 Evidence: `app/static/dashboard.html`; `frontend/styles/dashboard-nexus.css`; retained `dashboard-base.css`, `dashboard-analysis.css`, `dashboard-design.css`, `dashboard-globe.css` and `dashboard-lcars.css`; `frontend/dashboard.js`; `frontend/dashboard/analysis.js`; `frontend/dashboard/favorites.js`; `frontend/dashboard/globe.js`. The static dashboard bundle is generated from these frontend sources.
+
+
+### Hausdepp: Stammtisch-Runde
+
+**Creative North Star: "Stammtisch-Runde"**
+
+Hausdepp adds its own Stammtisch world: walnut, ivory playing cards, oxblood actions and brass turn cues. The actual double-German Tell-pattern deck supplies the illustration; handwritten display lettering gives the table a familiar voice while ordinary interface text stays plain and readable.
+
+All `hausdepp-*` records apply only to the Hausdepp pages that load `frontend/styles/hausdepp.css`. They record its existing `--hd-*` properties and component styles; they do not replace dashboard tokens or the appearances of ZDWA and Zilch. The surface composition and approved direction remain in `.impeccable/surfaces/app-static-hausdepp-html.md` and `.impeccable/hausdepp-contract.md`.
+
+**Key Characteristics:**
+
+- Hausdepp: one shared walnut table, real card imagery and a readable foreground hand.
+- Hausdepp: Kalam display lettering paired with plain platform interface type.
+- Hausdepp: oxblood actions, ivory paper surfaces and brass state cues.
+- Hausdepp: real pile controls whose labels and availability follow the current game state.
+
+**The Hausdepp Scope Rule.** Apply the Stammtisch tokens only to Hausdepp; retain each existing game and dashboard theme with its current owner.
+
+Evidence: `frontend/styles/hausdepp.css`, `frontend/hausdepp/index.js`, `frontend/hausdepp/cards.js` and the Hausdepp captures under `.impeccable/review/hausdepp-*.png`.
 
 ## Colors
 
@@ -183,6 +282,11 @@ The NEXUS palette is dark mineral green with a bright operational accent. Namesp
 
 **The Signal Role Rule.** Use lime for action and selected instruments, blue for comparison, amber for caution and danger color for adverse or error state; retain text explanations alongside color.
 
+
+### Hausdepp palette
+
+The `hausdepp-*` values reproduce the nine `--hd-*` color properties in `hausdepp.css`. **Primary:** oxblood red identifies the main action and darkens on hover. **Secondary:** brass gold marks the active seat, actionable stock caption, selected cards and focus against walnut. **Neutral:** walnut grounds the table; ivory paper and warm white support cards, form and chat surfaces; dark ink, muted brown and the paper-edge color carry content and boundaries. Paper inputs and links use oxblood focus so the outline remains visible on ivory. State meaning is also present in labels, card selection and the turn sentence. These colors are a Hausdepp palette, not replacement dashboard aliases.
+
 ## Typography
 
 **Display Font:** Bricolage Grotesque, self-hosted under the CSS family `Nexus Display`, with sans-serif fallback (800). The font uses `font-display: swap`.
@@ -203,6 +307,17 @@ also uses at least (11px). The legacy themes retain their existing type scales.
 
 Incumbent typography stays with its source owner: Mission Control uses its existing UI/Inter and monospace rules; LCARS uses self-hosted Antonio through `Zilch LCARS`. Neither is replaced by NEXUS Display.
 
+
+### Hausdepp type
+
+**Display Font:** self-hosted Kalam bold, exposed as `"Hausdepp Sign", cursive` (700) with `font-display: swap`. It names the brand, welcome, table and paper-panel headings, the rulebook title, plus the empty-pile inscription. The lobby display uses the frontmatter ramp and becomes (64px) on phones; the brand uses (30px), then (27px) on phones and (25px) on narrow phones and low landscape tables.
+
+**Body and Interface Font:** `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`. The rulebook uses the recorded body role, with (15px) phone prose; the introduction uses (17px/1.65), then (15px) on phones. Controls, navigation, player names, turn copy and card indexes stay in the UI face. Counts use tabular numerals where set in the source.
+
+The create-panel heading uses the recorded heading role, then (30px) on phones; the table heading uses (25px), (22px) on phones and (19px) in low landscape. Supporting text varies with its actual purpose: (13px) form notes, (12px) connection and hand metadata, and (11px) landscape stack captions. The compact, non-action computer designation reaches (10px) on phones and hides in low landscape. These are observed component treatments, not a global small-text default.
+
+**The Hausdepp Display Rule.** Use Hausdepp Sign for branding, display headings and the empty-pile inscription; keep actions, rules prose, names, counts and card indexes in the platform UI stack.
+
 ## Layout
 
 NEXUS uses an instrument workspace within a centered shell with a maximum width of (1820px). Shared panel gaps are (16px), normal bay padding is (24px), sections are separated by (46px), and ordinary controls retain a minimum height of (44px). The star is a deliberately compact (40px) square control.
@@ -220,6 +335,15 @@ Daily traffic and server-trend plots use the actual NEXUS container width and he
 
 The final evidence set is `.impeccable/review/desktop.png`, `mobile.png`, `tablet.png`, `tablet-landscape.png`, `narrow.png`, the corresponding `-viewport.png` files and `desktop-empty*.png`. The initial finish review and its scored correction verdict remain separate records.
 
+
+### Hausdepp layout
+
+The Hausdepp shell is centered within (1380px), with normal insets of (42px 28px 18px). The lobby pairs the welcome/card arrangement with an ivory create form, then lists tables and the shared chat. At (700px) and below it becomes one column, uses (16px) side padding, and wraps the header navigation below the brand and suite tools. During phone play the extra header navigation hides; rules remain reachable beside the social controls.
+
+The live table places opponents above and, for four or five opponents on desktop, around the central stock and face-up pile. The player’s own hand stays in a broad lower region with a count, horizontal overflow, proximity snapping and reachable actions. Cards retain the source viewport ratio (36:57). Base hand cards are (106px) wide, phone cards (90px), and narrow-phone cards (82px); overflow preserves readable card size rather than compressing a large hand into thumbnails.
+
+At (1100px) and above, a (270px) social rail sits beside the table with a (32px) gap and an in-flow chat. Below that threshold, chat opens as a bottom sheet above a backdrop and respects the bottom safe area. At (359px) and below, card sizes and social spacing compact further. Low landscape, up to (600px) viewport height, uses two table columns: opponents and turn copy on the left, stock/pile and event copy on the right, with the hand and actions along the lower edge. The stock/pile row reserves (136px), hand cards use (62px), and central cards use (58px), leaving room for the complete action caption and count. Tablet landscape at (701–1099px) wide and (601–850px) high keeps a stacked table with compact (136px/177px) opponent/centre rows, (85px) central cards with (10px) stack gaps, and (94px) hand cards. Keep these source-owned orientation overrides together.
+
 ## Elevation & Depth
 
 NEXUS is flat and layered by tone and rules. Panels and the globe stage explicitly remove box shadows. The theme hides the incumbent scan/grid pseudo-elements, radar, decorative panel symbols and metric sparks rather than turning them into a new visual motif. Chart filters that add glows are removed for the selected NEXUS instruments. This does not prohibit or rewrite effects owned by Mission Control or LCARS.
@@ -228,9 +352,21 @@ NEXUS is flat and layered by tone and rules. Panels and the globe stage explicit
 
 State motion is brief: the star changes color, background and border over (180ms ease-out); panels retain the shared border transition (250ms). The explicit animation pause and system reduced-motion preference preserve stable information. Reduced motion removes NEXUS transitions and smooth scrolling; the shared dashboard also suppresses chart/metric entrance animation and gauge transitions.
 
+
+### Hausdepp material and motion
+
+Walnut is the shipped Zilch table raster under a dark veil, not a procedural substitute. Paper forms and chat surfaces lift above it; actual cards carry short physical shadows, while turns and legal choices use brass outlines. The create form uses (`0 14px 40px #120b0766`); a card uses (`0 5px 12px #180d0870`); the mobile chat sheet uses (`0 -10px 30px #150d0870`). The face-down stock adds offset paper edges to suggest a finite stack. Asset origin, license and generation prompt remain in `docs/HAUSDEPP_ASSETS.md`; the back is generated from the owner’s reference and is not represented as an original scan.
+
+Card selection lifts by (12px) over (160ms) with `cubic-bezier(.16,1,.3,1)`. A newly cleared pile receives one (320ms) lift/fade acknowledgement through the Web Animations API; the reduced-motion preference makes that animation instantaneous and removes CSS transitions. Motion does not carry legal-action or turn information by itself.
+
 ## Shapes
 
 Fine one-pixel rules and restrained corners define the instrument bays. Native controls and stars use (6px) corners, instrument panels and the enclosing KPI deck (12px), the globe stage (8px), and compact country tags (4px). Individual KPI cells have square corners inside their enclosing deck; favored metrics receive their own rounded outline. A country-code tag and selected geographic row are existing dashboard patterns, not a new all-purpose badge system. LCARS retains its distinct pill and elbow geometry in its own theme.
+
+
+### Hausdepp forms and cards
+
+Hausdepp uses lightly rounded paper, not the dashboard’s instrument geometry: fields have (6px) corners, playing cards and piles (7px), ordinary controls (8px), paper sections (12px), the create form (14px), and the mobile sheet (16px) top corners. Player initials sit in circular avatars. Fine brown paper-edge borders distinguish editable fields; an empty pile or exhausted stock uses a dashed boundary. Keep the real Tell artwork visible inside its viewport, without drawing new card faces over it.
 
 ## Components
 
@@ -260,6 +396,23 @@ The saved list uses the browser key `rollthedice:dashboard:favorites:<verified n
 
 The actual data-driven globe/map, country list, selected-country readout and view controls remain one instrument. Lime identifies the selected state, blue distinguishes a comparative value, and approximation notes explain the precision of measured origins. The stage and summary reflow according to the observed layout thresholds rather than becoming a separate mobile product.
 
+
+### Hausdepp controls and state
+
+The oxblood primary action has warm-white text, (13px 20px) padding and a (46px) minimum height. Neutral paper controls use dark ink. Visible keyboard focus is a (3px) brass outline with a (4px) offset against walnut; fields and links on ivory use oxblood, while a focused hand card uses warm white with a (5px) offset. Disabled general controls reduce opacity; unavailable hand cards retain their shape and instead darken through brightness.
+
+Navigation remains plain labelled links with a brass underlined current page. Native language and player-count selects retain platform interaction. The account and game switcher remain part of the shared suite. Inputs are light paper with a paper-edge border and a visible caret/focus state. The create form bounds computers to fewer than the selected total seats.
+
+**The Hausdepp Card Truth Rule.** Use the supplied 36-card Tell-pattern artwork and its individual viewports; preserve the order 6, 7, 8, 9, Unter, Ober, König, Ass, 10, with 10 highest.
+
+Each hand card is a labelled button with `aria-pressed` for selection. Selecting a different rank clears the previous rank group. Legal cards receive a fine outline; selected cards lift and receive the heavier brass outline. The hand sort follows the displayed rank order. Public piles expose only their visible cards; private peek information starts collapsed in the viewer’s own disclosure. A successful peek opens briefly and collapses after six seconds. The illustrated Schellen six remains an ordinary six despite its printed WELI markings.
+
+**The Hausdepp Pile Action Rule.** The face-down stock changes from taking a chance to mandatory refilling after a play when the hand is below three and stock remains; one tap draws every missing card up to three or the remaining stock. The face-up pile is the pickup control.
+
+A visible stock caption and turn sentence explain whether its current tap means taking a chance or refilling. Mandatory refilling blocks every other game action until completed; an exhausted stock cannot draw. A face-up pile can be taken only when pickup is legal and never acts as an empty-pile pass. The primary play action becomes the labelled afterthrow action while the server offers that opportunity; merely selecting a card does not consume it. A pending command, pause or lost connection disables gameplay controls, with status and error text retaining the reason. The completed table names the last player and offers a new round; this first increment does not display an invented points system.
+
+The shared chat and labelled emoji reactions keep their established behavior. Desktop chat uses the rail; smaller screens use the closeable sheet. Rulebook and result surfaces reuse the same paper, headings and primary action.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -277,3 +430,18 @@ The actual data-driven globe/map, country list, selected-country readout and vie
 - Don't make motion necessary for understanding a selected state or reaching a focused control.
 
 Not canonized: inherited glyph-based decoration and incumbent eyebrow/scan treatments are not reusable NEXUS patterns. Existing theme ownership is preserved; no unrelated legacy cleanup or drift repair is implied by this record.
+
+### Hausdepp Do:
+
+- Do keep the Hausdepp walnut, ivory, oxblood and brass world scoped to its own pages.
+- Do preserve German and English copy, labelled controls, visible focus and the real card names.
+- Do keep the player’s hand readable and horizontally reachable when many cards are held.
+- Do use the server-projected legal actions for card, stock and face-up-pile availability.
+- Do retain the raster provenance and attribution recorded in docs/HAUSDEPP_ASSETS.md.
+
+### Hausdepp Don't:
+
+- Don't replace the Tell-pattern artwork with invented suit icons or a generic 32-card deck.
+- Don't use Hausdepp Sign for paragraphs, action labels, player names or card counts.
+- Don't refill automatically, draw just one card per tap, or offer taking a chance during mandatory refilling.
+- Don't invent points, achievements, rankings or future account visuals from the first playable table.

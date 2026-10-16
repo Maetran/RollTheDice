@@ -10,10 +10,13 @@ web
 
 Players use ZDWA and Zilch on phones, tablets and desktop browsers. Mission
 Control serves the founder and explicitly authorized analytics viewers.
+The founder also tests Hausdepp privately, initially against server-controlled
+computer players; additional human seats use local test accounts only.
 
 ## Product Purpose
 
-RollTheDice offers two dice games. Its private Mission Control dashboard helps
+RollTheDice offers ZDWA and Zilch, with Hausdepp being developed as a third game
+under the suite's shared account and game selection. Its private Mission Control dashboard helps
 authorized viewers understand measured visits, gameplay activity and server
 resources, with prominent KPIs and detailed interactive analysis.
 
@@ -22,6 +25,8 @@ resources, with prominent KPIs and detailed interactive analysis.
 Mission Control lives at `/admin/dashboard`. Viewers choose a UTC calendar
 window and game filter; visible dashboards refresh every 30 seconds. Dashboard
 appearance is independent of the two games' appearance.
+Hausdepp uses protected `/hausdepp` routes and a separate card-table design.
+Its first playable increment covers the lobby, table and complete house rules.
 
 ## Capabilities and Constraints
 
@@ -37,11 +42,28 @@ appearance is independent of the two games' appearance.
 - Keep authentication, explicit analytics access, noindex and no-store.
 - Follow `docs/PRODUCT_DELIVERY.md` for documentation, translations, versioning
   and verification. No game rules change in the dashboard work.
+- Keep Hausdepp bound to the permanent founder account on the server. Ordinary
+  administrators and delegated owners do not gain access. Keep its pages and
+  outcomes private and out of public activity, ranking and release audiences.
+- Support 2–5 Hausdepp participants, at most 6, including computer opponents;
+  there is no solo mode. Share account, chat, reactions and reconnection.
+- Put Hausdepp's full house rules in `docs/HAUSDEPP.md`. The stock is a direct
+  action: gamble before hand play, or refill all missing cards to three after
+  playing. The open pile is the direct pickup action.
+- Plan Hausdepp points and achievements without inventing award conditions.
+  The confirmed ironic achievement progression goes from clever names to
+  the highest lasting title, Hausdepp; its exact list and thresholds remain open.
+- Keep development releases in version 2.x. Version 3 is reserved for the
+  later major suite launch; a development version is not a claimed deployment.
 
 ## Brand Commitments
 
 Preserve RollTheDice, ZDWA, Zilch and Mission Control naming. The requested new
 dashboard design should feel distinctly nerdy and ambitious, with strong UX.
+Hausdepp keeps its familiar house-game name. Its selected Stammtisch direction
+uses the established walnut table, double-headed German Tell-pattern cards and
+a red, black and ivory patterned back. It has its own visual identity, large
+readable hand cards, and mobile-first portrait and landscape layouts.
 
 ## Evidence on Hand
 
@@ -49,6 +71,8 @@ dashboard design should feel distinctly nerdy and ambitious, with strong UX.
 `tests/browser/analytics-dashboard.spec.js` contains labeled synthetic telemetry
 for interaction and viewport testing, separate from real authorization tests.
 Do not invent performance, popularity, conversion or user-count claims.
+`docs/HAUSDEPP.md` records the owner-confirmed card rules and future scope;
+`docs/HAUSDEPP_ASSETS.md` records the card references, licensing and provenance.
 
 ## Product Principles
 

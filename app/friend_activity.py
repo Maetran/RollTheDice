@@ -22,7 +22,7 @@ from .auth import AuthIdentity, resolve_session, websocket_origin_allowed
 from .database import session_scope
 from .game_access import can_access_game
 from .game_state import GameDict
-from .game_types import ZILCH_GAME_TYPE, game_type_from_state
+from .game_types import HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
 from .models import PushInviteAllowedSender, User
 from .security import as_utc, utcnow
 from .zilch_state import zilch_spectating_available
@@ -33,6 +33,8 @@ SEND_TIMEOUT_SECONDS = 3
 
 
 def _watchable(game: GameDict) -> bool:
+    if game_type_from_state(game) == HAUSDEPP_GAME_TYPE:
+        return False
     if not game.get("_started") or game.get("_finished") or game.get("_aborted") or game.get("_passphrase"):
         return False
     return game_type_from_state(game) != ZILCH_GAME_TYPE or zilch_spectating_available(game)

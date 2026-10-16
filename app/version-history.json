@@ -2091,5 +2091,12 @@
     "date": "2026-10-14",
     "bump": "minor",
     "summary": "Neues ZDWA-Design für alle, mit Wahl zwischen neuem und bisherigem Design. / New ZDWA design for everyone, with a choice between the new and the previous design."
+  },
+  {
+    "version": "2.52.0",
+    "revision": "ec81ae2f7ebe80fd2c1891b5a2ba173299767b16",
+    "date": "2026-10-15",
+    "bump": "minor",
+    "summary": "NEXUS als zusätzliches Dashboard-Design mit KPI-Fokus und persönlichen Favoriten. / NEXUS as an additional dashboard design with prominent KPIs and personal favorites."
   }
 ]
