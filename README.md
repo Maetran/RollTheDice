@@ -15,10 +15,14 @@ community features.
 
 **Deutsch:** Auf `codex/hausdepp-dev` ergänzt Hausdepp die Suite als drittes Spiel.
 Die erste spielbare Etappe umfasst `/hausdepp`, den eigenen Stammtisch unter
-`/hausdepp/spiel/{id}` und die vollständigen Hausregeln unter `/hausdepp/regeln`.
+`/hausdepp/spiel/{id}`, die vollständigen Hausregeln unter `/hausdepp/regeln`
+und den eigenen Kontobereich unter `/hausdepp/konto`. **UI und UX sind noch
+nicht vom Owner abgenommen; die Weiterentwicklung bleibt lokal.**
 Die Spielauswahl zeigt Hausdepp ausschliesslich für das dauerhaft gebundene
 Founder-/Owner-Konto. Andere Admins, delegierte Owner und Gäste erhalten keinen
-Zugang. Das vorhandene Konto wird weiterverwendet.
+Zugang. Das vorhandene Konto wird weiterverwendet. Die Lobby zeigt Tischstatus
+und belegte Plätze; ein Wartetisch erklärt fehlende Mitspieler und bietet einen
+Tischlink für zugelassene lokale Testkonten.
 
 Zwei bis fünf, höchstens sechs Teilnehmer spielen mit 36 doppeldeutschen Karten;
 Computer sind echte Mitspieler mit eigenen verdeckten Händen. Die Serverregeln
@@ -39,7 +43,11 @@ Desktop werden unterstützt, mit Mobilgeräten als Ausgangspunkt.
 
 Die [Regel- und Produktspezifikation](docs/HAUSDEPP.md) hält die bestätigten
 Details fest; [Karten und Quellen](docs/HAUSDEPP_ASSETS.md) dokumentiert das
-Tellbild und die Blitz-Rückseite. Rundenausgänge werden getrennt gespeichert.
+Tellbild und die Blitz-Rückseite. Die Regelseite ergänzt Schnellstart,
+Sprungmarken, Beispiele und Begriffe. Rundenausgänge werden getrennt gespeichert.
+Der private Kontobereich zeigt eigene abgeschlossene Runden, Runden als Hausdepp
+und Runden mit leerer Hand sowie einen nachladbaren Verlauf tatsächlicher
+Ergebnisse; allgemeine Einstellungen bleiben im gemeinsamen Konto.
 Punkte und Achievements folgen später; die bestätigte ironische Achievement-
 Richtung führt von cleveren Köpfen bis zum höchsten Titel **Hausdepp**. Konkrete
 Ränge und Bedingungen sind noch offen. Die Entwicklung bleibt in 2.x; V3 ist
@@ -50,10 +58,14 @@ Test erweitert die Freigabe; die normal gestartete App bleibt Owner-exklusiv.
 
 **English:** On `codex/hausdepp-dev`, Hausdepp joins the suite as a third game.
 The first playable milestone includes `/hausdepp`, its own regular table at
-`/hausdepp/spiel/{id}` and the complete house rules at `/hausdepp/regeln`.
+`/hausdepp/spiel/{id}`, the complete house rules at `/hausdepp/regeln` and a
+dedicated account area at `/hausdepp/konto`. **The owner has not accepted the UI
+or UX yet; continued development remains local.**
 The game switcher exposes Hausdepp only to the permanently bound founder/owner
 account. Other administrators, delegated owners and guests cannot access it.
-The existing account is reused.
+The existing account is reused. The lobby shows table status and occupied
+seats; a waiting table explains missing players and offers a table link for
+approved local test accounts.
 
 Two to five participants, six at most, play with 36 double-headed German cards.
 Computers are real participants with their own private hands. Server rules
@@ -72,9 +84,12 @@ Phone, tablet and desktop work in portrait and landscape, designed mobile first.
 
 The [rules and product specification](docs/HAUSDEPP.md) records confirmed
 requirements; [card assets and credits](docs/HAUSDEPP_ASSETS.md) documents the
-Tell pattern and lightning back. Round outcomes are stored separately. Points
-and achievements follow later; the confirmed ironic achievement progression
-runs from clever minds to the highest title, **Hausdepp**. Exact ranks and
+Tell pattern and lightning back. The rules page adds a quick start, anchors,
+examples and terminology. Round outcomes are stored separately. The private
+account area shows your completed rounds, rounds as the Hausdepp and rounds
+finished with an empty hand, plus a loadable history of actual results; general
+settings remain in the shared account. Points and achievements follow later;
+the confirmed ironic achievement progression runs from clever minds to the highest title, **Hausdepp**. Exact ranks and
 conditions remain open. Development stays within 2.x, with V3 reserved for the
 later major launch. This branch is not a deployment.
 `tests/test_hausdepp_local_multiplayer.py` verifies multiple human seats using

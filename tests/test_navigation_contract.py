@@ -100,9 +100,14 @@ DOCUMENT_ROUTES = (
     ),
     RouteCoverage(
         ("/hausdepp", "/hausdepp/spiel/{game_id}", "/hausdepp/spiel/{game_id}/zuschauen",
-         "/hausdepp/regeln", "/hausdepp/konto"),
+         "/hausdepp/regeln"),
         "tests/test_hausdepp_integration.py", "test_founder_product_pages_and_game_type_routes",
         ("tests/browser/hausdepp.spec.js",),
+    ),
+    RouteCoverage(
+        ("/hausdepp/konto",), "tests/test_hausdepp_integration.py",
+        "test_founder_product_pages_and_game_type_routes",
+        ("tests/browser/hausdepp-product.spec.js",),
     ),
     RouteCoverage(
         ("/anmelden",), "tests/test_zilch_product_routes.py",

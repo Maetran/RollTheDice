@@ -374,21 +374,38 @@ class HausdeppIntegrationTests(unittest.TestCase):
         game = self.game()
         with TestClient(main.app) as client:
             client.cookies.set("rollthedice_session", self.token)
-            for path in ("/hausdepp", "/hausdepp/regeln", f"/hausdepp/spiel/{game['_id']}",
+            for path in ("/hausdepp", "/hausdepp/regeln", "/hausdepp/konto", f"/hausdepp/spiel/{game['_id']}",
                          f"/hausdepp/spiel/{game['_id']}/zuschauen"):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 200, path)
                 self.assertEqual(response.headers["cache-control"], "no-store")
                 self.assertIn("noindex", response.headers["x-robots-tag"])
             account = client.get("/hausdepp/konto", follow_redirects=False)
-            self.assertEqual(account.status_code, 303)
-            self.assertEqual(account.headers["location"], "/konto")
+            self.assertEqual(account.status_code, 200)
+            self.assertIn('data-page="account"', account.text)
             legacy = client.get(f"/spiel/{game['_id']}", follow_redirects=False)
             self.assertEqual(legacy.headers["location"], f"/hausdepp/spiel/{game['_id']}")
             self.assertEqual(client.get(f"/zdwa/spiel/{game['_id']}",
                                         headers={"host": "zilch.zockdiewandan.online"}).status_code, 404)
             foreign = create_game_state("ordinary-zdwa", "Wuerfeltisch", "2", "zdwa")
             self.assertEqual(client.get(f"/hausdepp/spiel/{foreign['_id']}").status_code, 404)
+
+    def test_founder_account_api_is_personal_bounded_and_uncached(self):
+        with TestClient(main.app) as client:
+            client.cookies.set("rollthedice_session", self.token)
+            response = client.get("/api/hausdepp/account")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.headers["cache-control"], "no-store")
+            data = response.json()
+            self.assertEqual(data["statistics"]["rounds_played"], 0)
+            self.assertEqual(data["history"]["rounds"], [])
+            self.assertFalse(data["scoring"]["available"])
+            self.assertFalse(data["achievements"]["available"])
+            for query in ("limit=0", "limit=31", "limit=abc"):
+                self.assertEqual(client.get(f"/api/hausdepp/account?{query}").status_code, 422)
+            invalid = client.get("/api/hausdepp/account?before=invalid-cursor")
+            self.assertEqual(invalid.status_code, 400)
+            self.assertEqual(invalid.json()["detail"], "hausdepp_invalid_cursor")
 
     def test_preview_emits_no_friend_activity_push_invites_or_admin_help(self):
         from app.admin_help import create_help_request, help_status
@@ -444,6 +461,10 @@ class HausdeppIntegrationTests(unittest.TestCase):
             self.assertEqual(guest_page.status_code, 303)
             self.assertEqual(guest_page.headers["cache-control"], "no-store")
             self.assertIn("noindex", guest_page.headers["x-robots-tag"])
+            guest_account = client.get("/hausdepp/konto", follow_redirects=False)
+            self.assertEqual(guest_account.status_code, 303)
+            self.assertIn("return_to=%2Fhausdepp%2Fkonto", guest_account.headers["location"])
+            self.assertEqual(client.get("/api/hausdepp/account").status_code, 401)
             with self.assertRaises(WebSocketDisconnect) as denied:
                 with client.websocket_connect(f"/ws/{game['_id']}"):
                     self.fail("Guest must not receive a frame")
@@ -454,11 +475,13 @@ class HausdeppIntegrationTests(unittest.TestCase):
                 for path in ("/hausdepp", "/hausdepp/regeln", "/hausdepp/konto", f"/hausdepp/spiel/{game['_id']}"):
                     self.assertEqual(client.get(path).status_code, 403)
                 self.assertEqual(client.get("/api/hausdepp/results").status_code, 403)
+                self.assertEqual(client.get("/api/hausdepp/account").status_code, 403)
                 with self.assertRaises(WebSocketDisconnect) as denied:
                     with client.websocket_connect(f"/ws/{game['_id']}"):
                         self.fail("Other accounts must not receive a frame")
                 self.assertEqual(denied.exception.code, 1008)
-            for path in ("/static/hausdepp.html", "/static/hausdepp-lobby.html", "/static/hausdepp-rules.html"):
+            for path in ("/static/hausdepp.html", "/static/hausdepp-lobby.html", "/static/hausdepp-rules.html",
+                         "/static/hausdepp-account.html"):
                 self.assertEqual(client.get(path).status_code, 404)
 
     def test_private_static_document_aliases_are_blocked_for_guest_and_admin(self):
@@ -468,7 +491,7 @@ class HausdeppIntegrationTests(unittest.TestCase):
                 if account:
                     _identity, token = login(request_for(), account.username, "secure-password-123")
                     client.cookies.set("rollthedice_session", token)
-                for filename in ("hausdepp.html", "hausdepp-lobby.html", "hausdepp-rules.html"):
+                for filename in ("hausdepp.html", "hausdepp-lobby.html", "hausdepp-rules.html", "hausdepp-account.html"):
                     for path in (
                         f"/static/{filename}",
                         f"/static//{filename}",

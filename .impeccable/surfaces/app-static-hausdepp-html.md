@@ -2,12 +2,12 @@
 version: 1
 slug: "app-static-hausdepp-html"
 primary_target: "app/static/hausdepp.html"
-related_targets: ["frontend/hausdepp/index.js","frontend/hausdepp/motion.js","frontend/hausdepp/cards.js","frontend/styles/hausdepp.css","frontend/i18n/catalog.js","app/static/hausdepp-lobby.html","app/static/hausdepp-rules.html"]
+related_targets: ["frontend/hausdepp/index.js","frontend/hausdepp/motion.js","frontend/hausdepp/cards.js","frontend/styles/hausdepp.css","frontend/i18n/catalog.js","app/static/hausdepp-lobby.html","app/static/hausdepp-rules.html","app/static/hausdepp-account.html"]
 ---
 
-# Hausdepp lobby and table
+# Hausdepp lobby, table, rules and account
 
-Mode: Operate. Owner-only first playable increment for 2–6 participants, including server-controlled computers. Mobile first; portrait and landscape on phone, tablet and desktop. User selected Stammtisch-Runde explicitly on 2026-10-16. Keep the established walnut table and the supplied double-German Tell-pattern cards. Shared suite account, chat, reactions and game selection remain available. Rules and future scoring/achievements/account surfaces belong to the same product; do not invent a scoring system.
+Mode: Operate. Owner-only development for 2–6 participants, including server-controlled computers. Mobile first; portrait and landscape on phone, tablet and desktop. User selected Stammtisch-Runde explicitly on 2026-10-16. Keep the established walnut table and the supplied double-German Tell-pattern cards. Shared suite account, chat, reactions and game selection remain available. The dedicated account shows real private outcomes and links shared settings; rules include a quick start and timing examples. Points and achievement conditions remain undecided. The owner explicitly has NOT accepted the UI/UX; technical QA does not change that status.
 
 ## Direction contract
 
@@ -37,9 +37,18 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
 ## Current source and verification evidence
 
+The current product increment adds real lobby seat/status/action summaries, mixed
+human/computer seat previews, a waiting-room copy-link fallback, read-only
+spectating, the dedicated personal account and a linked bilingual rulebook.
+Personal history paginates without linking to expired live rooms; round counts
+are descriptive facts, never a points system. Prepared achievement copy explains
+the ironic clever-to-Hausdepp direction without granting titles or awards.
+Current technical verification belongs in
+`.impeccable/review/hausdepp-product-validation.md`; owner acceptance remains open.
+
 The low-landscape source retains (27px/86px/26px) opening grid rows, a (136px) stock/pile region spanning rows two and three, event copy in the fourth right-hand row with (35px) top spacing, and action guidance in the fifth with (8px 0 48px) padding. The own hand stays (79px/44px) in low landscape. Tablet landscape keeps (112px/66px) cards/step and (18px 10px) vertical hand padding. The own fan uses `align-items: flex-start` to retain each card’s (36:57) ratio; its extra (24px) minimum-height allowance provides rotation clearance without stretching card faces. Opponent fans compress their overlap for phones and low landscape. A single opponent uses a larger fan, arranged beside name/count in low landscape. Computer labels hide on phones, tablet landscape and low landscape, preserving the public name/count.
 
-The current opponent-hand, card-art and transfer increment uses `.impeccable/review/hausdepp-hands-validation.md` as its local validation and build-identity record, with the `hausdepp-hands-*` evidence set. This source record does not itself assert that checks or visual review passed. Asset provenance and credits are owned by `docs/HAUSDEPP_ASSETS.md`.
+The preceding opponent-hand, card-art and transfer increment uses `.impeccable/review/hausdepp-hands-validation.md` as its local validation and build-identity record, with the `hausdepp-hands-*` evidence set. This source record does not itself assert that checks or visual review passed. Asset provenance and credits are owned by `docs/HAUSDEPP_ASSETS.md`.
 
 ## Prior interaction milestone
 

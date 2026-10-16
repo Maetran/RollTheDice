@@ -26,7 +26,9 @@ Mission Control lives at `/admin/dashboard`. Viewers choose a UTC calendar
 window and game filter; visible dashboards refresh every 30 seconds. Dashboard
 appearance is independent of the two games' appearance.
 Hausdepp uses protected `/hausdepp` routes and a separate card-table design.
-Its first playable increment covers the lobby, table and complete house rules.
+Its development build covers the lobby, table, complete house rules and a
+dedicated private account area. UI and UX have not been accepted by the owner;
+continued local development is authorized.
 
 ## Capabilities and Constraints
 
@@ -58,6 +60,14 @@ Its first playable increment covers the lobby, table and complete house rules.
   exactly their number of card backs, keeping all faces private. Clean card
   edges through individually measured render geometry. Make receiving cards
   visible from source pile to destination hand, without delaying gameplay.
+- Give the Hausdepp lobby clear table status, occupied seats and waiting-state
+  guidance. Shared table links preserve access checks and resume the same seat.
+  Keep its rules page useful through a quick start, anchors, concise examples
+  and a glossary in German and English.
+- Keep `/hausdepp/konto` within the shared account: show only the current
+  account's completed-round statistics and paginated private history. Use actual
+  stored results; distinguish empty history and failed loading. General account
+  settings remain shared. Round counts are descriptive statistics, not points.
 - Plan Hausdepp points and achievements without inventing award conditions.
   The confirmed ironic achievement progression goes from clever names to
   the highest lasting title, Hausdepp; its exact list and thresholds remain open.
@@ -71,7 +81,9 @@ dashboard design should feel distinctly nerdy and ambitious, with strong UX.
 Hausdepp keeps its familiar house-game name. Its selected Stammtisch direction
 uses the established walnut table, double-headed German Tell-pattern cards and
 a red, black and ivory patterned back. It has its own visual identity, large
-readable hand cards, and mobile-first portrait and landscape layouts.
+readable hand cards, and mobile-first portrait and landscape layouts. The
+Stammtisch direction is chosen; implementation is still subject to UI and UX
+acceptance, including card quality.
 
 ## Evidence on Hand
 

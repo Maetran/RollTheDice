@@ -465,8 +465,9 @@ for (const language of ['de', 'en']) {
     await expect(menu.getByRole('link', { name: 'Zilch', exact: true })).toHaveCount(hasZilch ? 1 : 0);
     if (hasZilch) await expect(menu.getByRole('link', { name: 'Zilch', exact: true })).toBeVisible();
     await page.goto('/hausdepp/konto');
-    await expect(page).toHaveURL(/\/konto$/);
-    await expect(page.locator('[data-account-section]')).not.toHaveCount(0);
+    await expect(page).toHaveURL(/\/hausdepp\/konto$/);
+    await expect(page.locator('#hausdeppAccountStats')).toBeVisible();
+    await expect(page.locator('#hausdeppHistory')).toBeVisible();
   });
 }
 

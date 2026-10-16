@@ -155,7 +155,7 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertIn("defer", html[start:end], f"{html_path.name}: shell.js")
             for legacy_asset in ("i18n.js", "ui.js", "pwa.js", "theme.js"):
                 self.assertNotIn(f"/static/{legacy_asset}", html, html_path.name)
-            if html_path.name in {"hausdepp.html", "hausdepp-lobby.html", "hausdepp-rules.html"}:
+            if html_path.name in {"hausdepp.html", "hausdepp-lobby.html", "hausdepp-rules.html", "hausdepp-account.html"}:
                 # Hausdepp owns its approved tavern-table design. The shared
                 # shell still defers, but legacy dice-theme selection must
                 # not repaint the private card-game surface.

@@ -587,6 +587,7 @@ async def response_cache_policy(request: Request, call_next):
         "/static/hausdepp.html",
         "/static/hausdepp-lobby.html",
         "/static/hausdepp-rules.html",
+        "/static/hausdepp-account.html",
         "/static/zilch.html",
         "/static/zilch-login.html",
         "/static/zilch-lobby.html",
@@ -1062,9 +1063,7 @@ def hausdepp_rules_page(request: Request):
 
 @app.get("/hausdepp/konto", include_in_schema=False)
 def hausdepp_account_page(request: Request):
-    _require_hausdepp_access(request)
-    return RedirectResponse("/konto", status_code=303,
-                            headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+    return _serve_hausdepp_page(request, "hausdepp-account.html")
 
 
 def _require_zilch_preview(request: Request):
@@ -2121,6 +2120,18 @@ def api_hausdepp_results(request: Request):
 
     identity = _require_hausdepp_access(request)
     return {"results": list_hausdepp_results_for_user(identity.user_id)}
+
+
+@app.get("/api/hausdepp/account")
+def api_hausdepp_account(request: Request, limit: int = Query(default=12, ge=1, le=30),
+                         before: str | None = Query(default=None, max_length=512)):
+    from .hausdepp_account import build_hausdepp_account_for_user
+
+    identity = _require_hausdepp_access(request)
+    try:
+        return build_hausdepp_account_for_user(identity.user_id, before=before, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="hausdepp_invalid_cursor") from exc
 
 
 @app.get("/api/zilch/results")

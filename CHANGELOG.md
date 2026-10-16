@@ -23,6 +23,30 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 2.56.0 — Hausdepp rund um den Tisch / beyond the table — 2026-10-16
+
+**Deutsch:** Hausdepp bekommt ein eigenes privates Konto mit echten
+Allzeitstatistiken, persönlichen Rundenergebnissen und nachladbarer Historie.
+Gemeinsame Profil- und Anmeldeeinstellungen bleiben direkt erreichbar. Die
+Lobby zeigt Tischstatus, beteiligte Menschen und Computer, freie Plätze und
+die passende Aktion zum Beitreten, Weiterspielen oder Zuschauen. Wartende
+Tische zeigen ihre tatsächlichen Plätze. Die Spielanleitung erläutert den
+vollständigen Ablauf mit Schnellstart, verlinkten Abschnitten und Beispielen
+zu Pflichtziehen und Nachwerfen. Punkte und die ironische Erfolgsleiter sind
+als künftige Erweiterung vorgesehen; es werden keine unbestätigten Werte oder
+Auszeichnungen vergeben. Weiterhin privater Entwicklungsstand in Version 2.x;
+UI/UX ist noch nicht vom Owner abgenommen. Kein Deployment.
+
+**English:** Hausdepp has a dedicated private account with real all-time facts,
+personal round outcomes and paginated history. Shared profile and sign-in
+settings remain directly reachable. The lobby shows table state, human and
+computer seats, vacancies and the correct join, resume or watch action. Waiting
+tables display their actual seats. The complete rulebook adds a quick start,
+linked sections and examples of mandatory refills and additional throws.
+Points and the ironic achievement ladder remain planned extensions; no
+unconfirmed scores or awards are granted. This remains a private version 2.x
+development build; owner UI/UX acceptance is still pending. No deployment.
+
 ## 2.55.0 — Hausdepp mit sichtbaren Kartenwegen / visible card transfers — 2026-10-16
 
 **Deutsch:** Gegnerische Hände zeigen für jede Karte eine verdeckte Rückseite

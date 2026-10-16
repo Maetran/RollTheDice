@@ -1,10 +1,10 @@
 {
-  "version": "2.55.0",
+  "version": "2.56.0",
   "bump": "minor",
   "date": "2026-10-16",
-  "previous_revision": "6e1f61942c658a22c26e3674feb2600ece6ecb72",
+  "previous_revision": "6402ec288e499ddc7eee5b8417a1e2b66d8634e1",
   "summary": {
-    "de": "Hausdepp: verdeckte Gegnerhände, saubere Kartenränder und sichtbare Kartenwege.",
-    "en": "Hausdepp: face-down opponent hands, clean card edges and visible card transfers."
+    "de": "Hausdepp: eigene Kontoübersicht, hilfreiche Lobby und vollständige Hausregeln.",
+    "en": "Hausdepp: dedicated account, useful lobby and complete house rules."
   }
 }

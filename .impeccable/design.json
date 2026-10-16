@@ -1040,7 +1040,7 @@
       "Don't refill automatically, draw only one refill card per tap, or let a later debtor bypass the FIFO stock reservation.",
       "Don't add a hand-selection or confirmation step, overlay rank badges, or offer taking a chance while any refill debt remains.",
       "Don't block legal hand play with another player’s refill debt or let a delayed refill rewind the turn or afterthrow window.",
-      "Don't invent points, achievements, rankings or future account visuals from the first playable table.",
+      "Don't invent points, achievement conditions or rankings; the dedicated Hausdepp account shows only actual private round outcomes. Owner UI/UX acceptance is still pending.",
       "Don't expose opponent card faces or identifiers, replace their count with a fixed decorative fan, or animate missed history after reconnecting.",
       "Don't ship crude rectangular photographic cuts, stretch card proportions or alter the source rasters to manufacture artwork."
     ]

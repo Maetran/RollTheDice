@@ -3,25 +3,25 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp zeigt verdeckte Gegnerhände, saubere Kartenränder und klare Bewegungen vom Stapel zur Hand.",
-  "summary_en": "Hausdepp shows face-down opponent hands, clean card edges and clear movements from pile to hand.",
+  "summary_de": "Hausdepp: klarere Lobby, eigenes Konto mit Rundenhistorie und eine vollständige Anleitung mit Beispielen.",
+  "summary_en": "Hausdepp: a clearer lobby, your own account with round history, and complete rules with examples.",
   "player_notes": {
     "de": {
-      "title": "Die Karten liegen sichtbar am Tisch",
+      "title": "Dein Hausdepp-Stammtisch wächst",
       "changes": [
-        "Bei deinen Mitspielern siehst du für jede Handkarte eine Rückseite und die genaue Kartenanzahl.",
-        "Alle Karten sind sauber ausgerichtet und mit gleichmässigen, abgerundeten Papierkanten beschnitten.",
-        "Geben, Ziehen und Aufnehmen zeigen klar, von welchem Stapel die Karten zu welcher Hand wandern.",
-        "Die Kartenwege halten keinen Zug auf; bei reduzierter Bewegung erscheint die Empfangsbestätigung direkt am Ziel."
+        "Erkenne Tischstatus, Mitspieler und freie Plätze direkt in der Lobby.",
+        "Sieh deine gespeicherten Runden und persönlichen Ergebnisse im eigenen Hausdepp-Konto.",
+        "Finde Schnellstart, vollständige Hausregeln und Beispiele zum richtigen Zeitpunkt fürs Ziehen und Nachwerfen.",
+        "Profil und Anmeldung nutzen weiterhin dein gemeinsames Konto. Punkte und Erfolge folgen nach Festlegung der Bedingungen."
       ]
     },
     "en": {
-      "title": "Cards are visible around the table",
+      "title": "Your Hausdepp table grows",
       "changes": [
-        "Each opponent shows one back for every card in their hand and their exact hand size.",
-        "All cards are neatly aligned and clipped with consistent rounded paper edges.",
-        "Dealing, drawing and picking up clearly show which pile sends cards to which hand.",
-        "Card movements never hold up a turn; reduced motion confirms receipt directly at the destination."
+        "See table status, participants and open seats directly in the lobby.",
+        "Find saved rounds and personal outcomes in your dedicated Hausdepp account.",
+        "Use the quick start, complete house rules and examples of when to refill or throw another card.",
+        "Profile and sign-in still use your shared account. Points and achievements follow once their conditions are defined."
       ]
     }
   }

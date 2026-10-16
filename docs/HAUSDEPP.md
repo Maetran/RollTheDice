@@ -1,12 +1,32 @@
 # Hausdepp – Produkt- und Regelgrundlage / Product and rules specification
 
-**Status / Status:** bestätigte Produktentscheidungen und Hausregeln für den
-Entwicklungsbranch `codex/hausdepp-dev`; keine Behauptung über bereits
-ausgelieferte Funktionen. / Confirmed product decisions and house rules for the
-`codex/hausdepp-dev` development branch; this document does not claim that these
-features have already shipped.
+**Status / Status:** bestätigte Hausregeln und Umsetzungsstand der privaten
+Entwicklungsfassung auf `codex/hausdepp-dev`. **UI und UX sind noch nicht vom
+Owner abgenommen.** Die Weiterentwicklung ist freigegeben; das ist keine
+Produktionsfreigabe. / Confirmed house rules and implementation status of the
+private development build on `codex/hausdepp-dev`. **The owner has not accepted
+the UI or UX yet.** Continued development is authorized; production release is
+not implied.
 
 ## Deutsch
+
+### Schnellstart für Spieler
+
+1. **Mindestens gleich hoch legen.** Tippe eine erlaubte Handkarte an. Gleiche
+   Ränge dürfen gemeinsam oder schnell nacheinander gespielt werden. Eine 10
+   oder vier unmittelbar aufeinanderliegende Gleiche räumen das Paket ab; du
+   darfst selbst erneut ausspielen.
+2. **Auf drei auffüllen.** Hast du nach dem Legen weniger als drei Karten,
+   tippe den verdeckten Stapel an. Ein Tipp nimmt alle fehlenden Karten. Der
+   nächste darf bereits Handkarten legen; der Stapel wartet auf die älteste
+   offene Auffüllpflicht.
+3. **Erst bei leerem Nachziehstapel fertig werden.** Ohne Handkarten bist du
+   erst dann fertig. Der letzte Spieler mit Karten ist der Hausdepp der Runde.
+
+Der verdeckte Stapel bedeutet vor dem Ablegen **Zocken**, danach bei offener
+Auffüllpflicht **Auffüllen**. Das offene Paket anzutippen bedeutet **alles
+aufnehmen**. Beim Zocken muss die aufgedeckte Karte gespielt werden; ist sie
+zu niedrig, nimmst du das ganze Paket samt dieser Karte.
 
 ### Produkt und erste Etappe
 
@@ -27,9 +47,10 @@ nicht ohne ausdrückliche Entscheidung übernommen werden.
   mit mehreren menschlichen Sitzen verwenden lokale Testkonten.
 - Ein Konto belegt einen Sitz; ein weiteres Gerät desselben Kontos übernimmt
   denselben Sitz und erzeugt keinen zusätzlichen Spieler.
-- Die Suite-Integration soll bestehende Konten sowie die gemeinsamen Lobby-,
-  Einladungs-, Chat-, Reaktions- und Wiederaufnahmeabläufe verwenden. Ihre
-  konkrete Einbindung ist Teil der Umsetzung und muss geprüft werden.
+- Die Suite-Integration verwendet bestehende Konten, Spielauswahl, Chat,
+  Reaktionen und Wiederaufnahme. Der private Tisch kann über seinen Link mit
+  zugelassenen lokalen Testkonten geteilt werden; der Link erteilt selbst
+  keine Zugangsberechtigung.
 
 Der gewählte eigene Hostname ist **`hausdepp.zockdiewandan.online`**. Am
 **16.10.2026** wurde dafür in Cloudflare ein A-Eintrag auf `217.154.16.72`
@@ -49,10 +70,10 @@ Smartphones, Tablets und Desktop-Geräten funktionieren.
 
 Die Kartenreferenzen des Owners zeigen doppeldeutsche Karten im traditionellen
 Tell-/Jahreszeitenbild und die rot-schwarz-weisse Blitz-Rückseite des gezeigten
-Piatnik-Kartensatzes. Sie bestimmen die gewünschte Designsprache. Die technische
-Erstellung der Kartenbilder und die konkrete Einbindung der Bilddateien sind
-Umsetzungsarbeit; diese Spezifikation behauptet keine bereits vorhandenen
-Kartenassets.
+Piatnik-Kartensatzes. Sie bestimmen die gewünschte Designsprache. Die
+Entwicklungsfassung stellt diese Karten über einzeln ausgerichtete und abgerundete Bildausschnitte dar. Quellen, Lizenzen und
+Bearbeitung stehen in [HAUSDEPP_ASSETS.md](HAUSDEPP_ASSETS.md). Die gestalterische
+Richtung ist gewählt; die konkrete UI-/UX-Ausführung bleibt zur Abnahme offen.
 
 ### Karten und Begriffe
 
@@ -63,8 +84,9 @@ Die Rangfolge von niedrig nach hoch lautet:
 
 **6 < 7 < 8 < 9 < Unter < Ober < König < Ass < 10**
 
-„Gleich“ bezeichnet denselben Rang, nicht dieselbe Farbe. Rang und Punktewert
-sind unterschiedliche Begriffe; Punktewerte sind noch nicht festgelegt.
+„Gleich“ bezeichnet denselben Rang, nicht dieselbe Farbe. Die Schellen 6
+(Weli) ist hier eine gewöhnliche 6; es gibt keine Sonderfunktion. Rang und
+Punktewert sind unterschiedliche Begriffe; Punktewerte sind noch nicht festgelegt.
 
 - **Nachziehstapel:** die verdeckten, noch verfügbaren Karten. Nachgezogen wird
   immer von oben.
@@ -143,8 +165,8 @@ Der aktive Spieler hat die folgenden Möglichkeiten:
 
 Gelingt ein normaler Lege- oder Zockzug ohne Abräumen, ist sofort der nächste
 noch beteiligte Spieler dran. Er darf bereits aus seiner Hand legen, auch wenn
-der Vorgänger noch auffüllen muss. Das nachfolgend beschriebene Nachwerfen bleibt bis zur ersten
-angenommenen Aktion dieses Spielers möglich.
+der Vorgänger noch auffüllen muss. Das nachfolgend beschriebene Nachwerfen
+bleibt bis zur ersten angenommenen Aktion dieses Spielers möglich.
 
 ### Vier Gleiche und erneutes Ausspielen
 
@@ -213,10 +235,9 @@ Gleichen vervollständigen und damit das erneute
 Ausspielrecht auslösen.
 
 Das Nachwurfrecht endet mit der **ersten angenommenen Aktion des nächsten
-Spielers**. Dazu
-zählen dessen Ablegen, Aufnehmen des Pakets oder Aufdecken zum Zocken. Bereits
-angenommene Aktionen dürfen nicht nachträglich durch einen Nachwurf umgeordnet
-werden. Befehlsbestätigungen ordnen schnelle Kartenaktionen; eine feste
+Spielers**. Dazu zählen dessen Ablegen, Aufnehmen des Pakets oder Aufdecken zum
+Zocken. Bereits angenommene Aktionen dürfen nicht nachträglich durch einen
+Nachwurf umgeordnet werden. Befehlsbestätigungen ordnen schnelle Kartenaktionen; eine feste
 Sekundenzahl oder künstliche Sperre ist keine Spielregel. Computer reagieren
 kurz verzögert, damit ein menschlicher Nachwurf möglich bleibt.
 
@@ -277,22 +298,45 @@ nicht. Reduzierte Bewegung bestätigt die Ankunft ohne räumlichen Flug.
 - Wiederverbinden und weitere Geräte desselben Kontos müssen denselben
   autoritativen Spielzustand und denselben Sitz wiederherstellen.
 
-### Geplante weitere Bereiche und noch offene Entscheidungen
+### Lobby, Konto und Suite-Integration
 
-Die erste Etappe soll spätere Bereiche bereits gestalterisch und technisch
-berücksichtigen. Das Vorsehen einer Erweiterung ist keine Zusage, dass sie
-bereits funktioniert:
+Die Lobby zeigt eigene offene Tische mit Spielstatus und belegten Plätzen.
+Beim Erstellen zählen Menschen und Computer gemeinsam zur gewählten Tischgrösse;
+das eigene Konto belegt genau einen menschlichen Platz. Ein Wartetisch zeigt,
+wie viele Menschen noch fehlen. Der Tischlink kann kopiert werden; die
+Owner-Freigabe wird beim Öffnen weiterhin serverseitig geprüft. Wiederaufnahme
+führt an denselben Sitz zurück.
 
-| Bereich | Bestätigte Richtung | Noch festzulegen oder umzusetzen |
+Unter **`/hausdepp/konto`** verwendet Hausdepp das bestehende Suite-Konto und
+zeigt ausschliesslich dessen eigene gespeicherte Ergebnisse. Die Übersicht
+zählt abgeschlossene Runden, Runden als Hausdepp und Runden mit leerer eigener
+Hand. Die private Historie zeigt Tischname, Zeitpunkt, eigenes Ergebnis und
+Mitspieler einschliesslich Computer; ältere Runden können nachgeladen werden.
+Laufende oder abgebrochene Partien sind keine abgeschlossenen Ergebnisse.
+Fehlende Ergebnisse werden als leerer Verlauf erklärt, nicht durch Beispieldaten
+ersetzt. Allgemeine Kontoeinstellungen bleiben unter **`/konto#settings`**.
+
+Diese Zähler sind beschreibende Statistiken, keine Punktewertung. Hausdepp-
+Ergebnisse bleiben von öffentlichen Ranglisten und Aktivitäten getrennt. Die
+Regelseite unter **`/hausdepp/regeln`** bietet einen Schnellstart, direkt
+anspringbare Regeln, Beispiele und Begriffe auf Deutsch und Englisch. Die
+Detaillierung ändert keine der hier bestätigten Regeln.
+
+### Noch offene Entscheidungen
+
+Die technische Umsetzung ist kein Ersatz für die ausstehende UI-/UX-Abnahme.
+Die Bereiche sind wie folgt abgegrenzt:
+
+| Bereich | Stand der Entwicklungsfassung | Noch offen |
 | --- | --- | --- |
-| Lobby und Tisch | Echte Mehrspielerpartien, Computer-Mitspieler, Owner-Freigabe, mobile Bedienung | Konkrete Oberflächen und geprüfte Suite-Integration |
-| Regeln | Diese Hausvariante vollständig auf Deutsch und Englisch erklären | In-App-Regelseite und passende Hilfen am Tisch |
-| Punkte | Eigener Bereich im Gesamtpaket | Sämtliche Punktewerte, Statistiken und Wertungsverfahren; nichts erfinden |
-| Achievements | Ironische Rangentwicklung von clever bis zum höchsten Titel Hausdepp | Endgültige Rangliste, Bedingungen, Belohnungen und faire Erreichbarkeit |
-| Konto | Bestehendes Suite-Konto weiterverwenden | Hausdepp-spezifische Anzeige und Daten im Kontobereich |
-| Chat und Reaktionen | Gemeinsame Suite-Funktionen analog zu den anderen Spielen | Einbindung und Prüfung am Hausdepp-Tisch |
-| Vorbereitung weiterer Runden | Mehrere Runden sind als Spielkontext vorgesehen | Rotation des Gebers und genaue Bedienung des Rundenwechsels |
-| Vorbereitung | Aktives Anschauen und kurze Austeilanimation sind umgesetzt | Weitere Verfeinerungen nach Spieltests |
+| Lobby und Tisch | Echte Mehrspielerpartien, Computer-Mitspieler, Owner-Freigabe, Tischstatus, direkte Aktionen | UI-/UX-Abnahme und weitere Verfeinerungen nach Spieltests |
+| Regeln | Vollständige DE-/EN-Hausregeln mit Schnellstart, Beispielen und Sprungmarken | Verständlichkeitsprüfung durch den Owner |
+| Punkte | Als späterer Bereich vorgesehen; keine erfundene Wertung | Alle Punktewerte und Wertungsverfahren |
+| Achievements | Ironische Richtung erklärt, noch keine Vergabe | Endgültige Rangliste, Bedingungen, Schwellen und Belohnungen |
+| Konto | Eigenständige private Hausdepp-Übersicht mit tatsächlichen Statistiken und Historie | UI-/UX-Abnahme; Punkte und Erfolge erst nach Regelentscheidung |
+| Chat und Reaktionen | Gemeinsame Suite-Funktionen am Tisch und Lobbychat | Weitere Verfeinerungen nach Spieltests |
+| Weitere Runden | Neue Runde über die Lobby | Rotation des Gebers und genauer Ablauf einer fortlaufenden Tischserie |
+| Vorbereitung | Aktives Anschauen und kurze, nicht sperrende Austeilbewegungen | Weitere Verfeinerungen nach Spieltests |
 
 ### Bestätigte Achievement-Richtung: vom klugen Kopf zum Hausdepp
 
@@ -310,7 +354,8 @@ offen; der ironische Titelverlauf allein legt sie nicht fest.
 
 ### Entwicklung und Lieferung
 
-Hausdepp entsteht zunächst auf einem Entwicklungsbranch. Die Produktversion
+Hausdepp wird lokal auf einem Entwicklungsbranch weiterentwickelt. Die
+UI-/UX-Abnahme steht ausdrücklich aus. Die Produktversion
 bleibt während dieser Entwicklung innerhalb von **2.x**; **V3** ist dem späteren
 grossen Release vorbehalten. Daraus folgt weder ein sofortiger Deploy noch ein
 erzwungener Versionssprung für die reine Vorbereitung. Bei tatsächlichen
@@ -320,6 +365,22 @@ DE-/EN-Texte, Dokumentation, geeigneter Prüfungen und unveränderter historisch
 Versionszuordnungen. Owner-geschützte Seiten bleiben `noindex`.
 
 ## English
+
+### Quick start for players
+
+1. **Match or beat the top card.** Tap a permitted hand card. Matching ranks may
+   be played together or in quick succession. A 10 or four consecutive cards of
+   one rank clears the pile and lets you play again.
+2. **Refill to three.** If fewer than three cards remain after playing, tap the
+   face-down pile. One tap takes every missing card. The next player may already
+   play from hand; the stock waits for the oldest pending refill.
+3. **Finish only when the draw pile is empty.** Only then does an empty hand
+   finish you. The last player still holding cards is the Hausdepp of the round.
+
+Before playing, the face-down pile means **take a chance**; afterwards, while a
+refill is pending, it means **refill**. Tapping the open pile means **pick it all
+up**. Taking a chance commits the revealed card to play. If it is too low, you
+must pick up the entire pile, including that card.
 
 ### Product and first milestone
 
@@ -340,9 +401,9 @@ explicit decision.
   human seats use local test accounts.
 - One account occupies one seat. Another device using that account resumes the
   same seat instead of creating another player.
-- Suite integration should reuse existing accounts and the shared lobby,
-  invitation, chat, reaction and reconnection flows. Their actual integration
-  is implementation work and must be verified.
+- Suite integration uses existing accounts, game selection, chat, reactions
+  and reconnection. A private table can be shared by link with approved local
+  test accounts; the link itself grants no access.
 
 The chosen dedicated hostname is **`hausdepp.zockdiewandan.online`**. On
 **2026-10-16**, an A record pointing to `217.154.16.72` was reserved in
@@ -361,9 +422,10 @@ landscape on phones, tablets and desktop devices.
 
 The owner's card references show traditional double-headed German-suited cards
 in the Tell/seasons pattern and the red, black and white Blitz back of the
-pictured Piatnik deck. They establish the desired visual language. Creating the
-card images and integrating the actual files remains implementation work; this
-specification does not claim that those assets already exist.
+pictured Piatnik deck. They establish the desired visual language. The
+development build renders these cards using individually aligned, rounded image crops. Sources, licences and adaptations
+are recorded in [HAUSDEPP_ASSETS.md](HAUSDEPP_ASSETS.md). The design direction is
+chosen; the actual UI and UX still await acceptance.
 
 ### Cards and terminology
 
@@ -374,7 +436,8 @@ The rank order, from lowest to highest, is:
 
 **6 < 7 < 8 < 9 < Unter < Ober < King < Ace < 10**
 
-“Equal” means the same rank, regardless of suit. Rank and scoring value are
+“Equal” means the same rank, regardless of suit. The 6 of bells (Weli) is an
+ordinary 6 here and has no special function. Rank and scoring value are
 different concepts; scoring values have not been decided.
 
 - **Draw pile:** the face-down cards still available. Cards are always drawn
@@ -507,9 +570,9 @@ optional. Any required refill after an additional play is again completed by
 tapping the pile; this sequence may repeat. An added card can complete four
 equal ranks and therefore grant another lead.
 
-This right ends with the **next player's first accepted action**, including playing a
-card, picking up the pile or revealing a gamble card. Accepted actions must
-not subsequently be reordered by an additional card. Command acknowledgements
+This right ends with the **next player's first accepted action**, including
+playing a card, picking up the pile or revealing a gamble card. Accepted
+actions must not subsequently be reordered by an additional card. Command acknowledgements
 order quick card actions; no fixed timer or artificial lock is a game rule.
 Computers react after a brief delay, leaving room for a human additional card.
 
@@ -567,21 +630,42 @@ arrival without spatial travel.
 - Reconnection and additional devices using the same account must recover the
   same authoritative state and the same seat.
 
-### Planned areas and remaining decisions
+### Lobby, account and suite integration
 
-The first milestone should anticipate later areas in both design and technical
-structure. Planning an extension does not mean that it already works:
+The lobby shows your open tables with game status and occupied seats. Humans
+and computers together fill the selected table size; your account occupies one
+human seat. A waiting table shows how many humans are still needed. Its link
+can be copied; opening it still requires server-side owner access. Resuming
+returns to the same seat.
 
-| Area | Confirmed direction | Still to decide or implement |
+At **`/hausdepp/konto`**, Hausdepp reuses the existing suite account and shows
+only that account's own saved results. The overview counts completed rounds,
+rounds as the Hausdepp and rounds finished with an empty hand. Private history
+shows the table name, time, own outcome and participants including computers;
+older rounds can be loaded. Running or aborted games are not completed results.
+An empty history is explained without sample data. General account settings
+remain at **`/konto#settings`**.
+
+These counters are descriptive statistics, not a points score. Hausdepp results
+remain separate from public rankings and activity. The rules page at
+**`/hausdepp/regeln`** provides a quick start, linked sections, examples and
+terminology in German and English. Explaining the rules adds no new gameplay.
+
+### Remaining decisions
+
+Technical implementation does not replace the outstanding UI and UX acceptance.
+The areas have the following boundaries:
+
+| Area | Development build status | Still open |
 | --- | --- | --- |
-| Lobby and table | Real multiplayer rounds, computer opponent, owner access, mobile interaction | Actual interfaces and verified suite integration |
-| Rules | Explain this entire house variant in German and English | In-app rules page and appropriate table help |
-| Points | A dedicated part of the complete package | All point values, statistics and scoring methods; do not invent them |
-| Achievements | Ironic progression from clever to the highest title, Hausdepp | Final rank list, conditions, rewards and fair attainability |
-| Account | Reuse the existing suite account | Hausdepp-specific account presentation and data |
-| Chat and reactions | Shared suite features analogous to the other games | Integration and verification at the Hausdepp table |
-| Further rounds | The game context anticipates multiple rounds | Dealer rotation and exact round-transition interaction |
-| Preparation | Active inspection and short dealing animations are implemented | Further refinements after playtesting |
+| Lobby and table | Real multiplayer rounds, computer opponents, owner access, table status, direct actions | UI and UX acceptance and further playtest refinements |
+| Rules | Complete German/English house rules with quick start, examples and anchors | Owner review for clarity |
+| Points | Planned as a later area; no invented scoring | All point values and scoring methods |
+| Achievements | Ironic direction explained; no awards yet | Final rank list, conditions, thresholds and rewards |
+| Account | Dedicated private Hausdepp overview with actual statistics and history | UI and UX acceptance; points and awards only after their rules are decided |
+| Chat and reactions | Shared suite features at the table and lobby chat | Further playtest refinements |
+| Further rounds | A new round through the lobby | Dealer rotation and the exact flow of a continuous table series |
+| Preparation | Active inspection and short, nonblocking dealing movements | Further playtest refinements |
 
 ### Confirmed achievement direction: from clever mind to Hausdepp
 
@@ -600,7 +684,8 @@ determine them.
 
 ### Development and delivery
 
-Hausdepp starts on a development branch. The product version stays within
+Hausdepp continues locally on a development branch. UI and UX acceptance
+explicitly remains outstanding. The product version stays within
 **2.x** during this development; **V3** is reserved for the later major launch.
 This does not require an immediate deployment or force a version bump for
 preparatory work alone. Actual releases continue to follow the shared version

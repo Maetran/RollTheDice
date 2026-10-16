@@ -335,6 +335,18 @@ The final evidence set is `.impeccable/review/desktop.png`, `mobile.png`, `table
 
 ### Hausdepp layout
 
+Owner UI/UX acceptance is explicitly pending. These records describe the current
+development implementation and technical checks, not an approved final design.
+Lobby cards expose actual human/computer seats, state and the relevant join,
+resume, watch or history action. The waiting room names occupied and open seats
+and offers a copyable account-protected link. `/hausdepp/konto` is a dedicated
+private overview with factual round counts, paginated personal outcomes and a
+link to common profile/sign-in settings. Its achievement area explains the
+agreed ironic progression while conditions and scores remain undecided. The
+rulebook uses a quick start, section links and six concrete timing/play examples.
+Evidence for this increment lives in
+`.impeccable/review/hausdepp-product-validation.md`.
+
 The Hausdepp shell is centered within (1380px), with normal insets of (42px 28px 18px). The lobby pairs the welcome/card arrangement with an ivory create form, then lists tables and the shared chat. At (700px) and below it becomes one column, uses (16px) side padding, and wraps the header navigation below the brand and suite tools. During phone play the extra header navigation hides; rules remain reachable beside the social controls.
 
 The live table places opponents above and, for four or five opponents on desktop, around the central stock and face-up pile. The player’s hand sits in a compact, overlapping natural fan below its count. Its sort runs from low ranks on the left to 10 on the right; the fan follows a shallow arc rather than making a row of separate tiles. Cards retain the source viewport ratio (36:57). The fan aligns cards to its start edge (`align-items: flex-start`); its extra (24px) minimum-height clearance accommodates rotation and never stretches the card height. Base hand cards are (126px) wide with a (66px) step; phone cards use (112px/55px), and narrow-phone cards (100px/48px). Horizontal overflow keeps a large hand reachable. Keyboard focus reveals the rotated card inside the hand viewport with an (8px) inset, subject to the browser’s scroll bounds. This correction starts only for `:focus-visible`, runs on the next animation frame after native focus scrolling, and adjusts horizontal scroll only if the same card still holds focus. The original card artwork stays unobscured by invented rank badges.
