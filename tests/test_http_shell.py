@@ -8,7 +8,7 @@ from starlette.requests import Request
 
 from app import main
 from app.achievements import ACHIEVEMENT_POINTS_POSSIBLE, ACHIEVEMENT_RANKS, achievement_rank_for_points
-from app.site_seo import PUBLIC_SEO_PAGES, SITE_ORIGIN, ZILCH_ORIGIN
+from app.site_seo import PRIVATE_HAUSDEPP_DOCUMENTS, PUBLIC_SEO_PAGES, SITE_ORIGIN, ZILCH_ORIGIN
 from scripts.sync_static_versions import content_version, desired_text
 
 # Account action pages may carry exactly this inline script (see
@@ -155,7 +155,7 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertIn("defer", html[start:end], f"{html_path.name}: shell.js")
             for legacy_asset in ("i18n.js", "ui.js", "pwa.js", "theme.js"):
                 self.assertNotIn(f"/static/{legacy_asset}", html, html_path.name)
-            if html_path.name in {"hausdepp.html", "hausdepp-lobby.html", "hausdepp-rules.html", "hausdepp-account.html"}:
+            if html_path.name in PRIVATE_HAUSDEPP_DOCUMENTS.values():
                 # Hausdepp owns its approved tavern-table design. The shared
                 # shell still defers, but legacy dice-theme selection must
                 # not repaint the private card-game surface.

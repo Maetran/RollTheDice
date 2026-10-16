@@ -90,7 +90,13 @@ def check_timeout_and_abort(g, *, now: datetime | None = None) -> bool:
             g["_updated_at"] = now.isoformat()
             return False
         if g.get("_finished"):
-            return False
+            from .hausdepp_tournament import tournament_is_pending
+
+            # A completed round is still an open table while the host decides
+            # to deal the next tournament round. Its existing round credit is
+            # durable, but the unfinished session keeps the one-hour lifetime.
+            if not tournament_is_pending(g):
+                return False
         if any((_utc_timestamp(value.get("until")) or now) > now
                for value in g.get("_admin_help_away", {}).values()):
             return False

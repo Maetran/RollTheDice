@@ -2126,5 +2126,12 @@
     "date": "2026-10-16",
     "bump": "minor",
     "summary": "Hausdepp: eigene Kontoübersicht, hilfreiche Lobby und vollständige Hausregeln. / Hausdepp: dedicated account, useful lobby and complete house rules."
+  },
+  {
+    "version": "2.57.0",
+    "revision": "cfba2ac10b835b5d805a7f0931a7ad2085287abe",
+    "date": "2026-10-16",
+    "bump": "minor",
+    "summary": "Gemeinsame Spielauswahl mit Symbolen, Namen und korrekten Wegen innerhalb installierter Apps. / Shared game picker with icons, names and correct navigation inside installed apps."
   }
 ]

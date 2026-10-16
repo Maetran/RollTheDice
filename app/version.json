@@ -1,10 +1,10 @@
 {
-  "version": "2.57.0",
+  "version": "2.58.0",
   "bump": "minor",
   "date": "2026-10-16",
-  "previous_revision": "d5a90ab57353ed48c96539859c64cf011f57b45d",
+  "previous_revision": "cfba2ac10b835b5d805a7f0931a7ad2085287abe",
   "summary": {
-    "de": "Gemeinsame Spielauswahl mit Symbolen, Namen und korrekten Wegen innerhalb installierter Apps.",
-    "en": "Shared game picker with icons, names and correct navigation inside installed apps."
+    "de": "Hausdepp: 100 Erfolge, 24 Ränge, Rundensiege und HAUSDEPP-Turniere mit abgesicherter Suchmaschinensteuerung.",
+    "en": "Hausdepp: 100 achievements, 24 ranks, round wins and HAUSDEPP tournaments with verified search-discovery controls."
   }
 }

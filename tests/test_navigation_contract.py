@@ -108,7 +108,13 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/hausdepp/konto",), "tests/test_hausdepp_integration.py",
         "test_founder_product_pages_and_game_type_routes",
-        ("tests/browser/hausdepp-product.spec.js", "tests/browser/game-picker.spec.js"),
+        ("tests/browser/hausdepp-product.spec.js", "tests/browser/game-picker.spec.js",
+         "tests/browser/hausdepp-achievements.spec.js"),
+    ),
+    RouteCoverage(
+        ("/hausdepp/rangliste",), "tests/test_hausdepp_progress_api.py",
+        "test_private_leaderboard_page_and_api_keep_founder_and_search_boundaries",
+        ("tests/browser/hausdepp-leaderboard.spec.js",),
     ),
     RouteCoverage(
         ("/anmelden",), "tests/test_zilch_product_routes.py",

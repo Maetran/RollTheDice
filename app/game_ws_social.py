@@ -166,7 +166,9 @@ async def _end_game(session: GameSocketSession, _data: dict[str, Any]) -> None:
     ):
         await _send_error(session, "Nur Spieler koennen das Spiel beenden")
         return
-    if session.game.get("_finished") or session.game.get("_aborted"):
+    from .hausdepp_tournament import tournament_is_pending
+
+    if (session.game.get("_finished") and not tournament_is_pending(session.game)) or session.game.get("_aborted"):
         await _send_error(session, "Spiel ist bereits beendet")
         return
     by_name = _player_name(session.game, session.player_id)

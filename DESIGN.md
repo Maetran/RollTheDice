@@ -489,4 +489,18 @@ Not canonized: inherited glyph-based decoration and incumbent eyebrow/scan treat
 - Don't refill automatically, draw only one refill card per tap, or let a later debtor bypass the FIFO stock reservation.
 - Don't add a hand-selection or confirmation step, overlay rank badges, or offer taking a chance while any refill debt remains.
 - Don't block legal hand play with another player’s refill debt or let a delayed refill rewind the turn or afterthrow window.
-- Don't invent points, achievements, rankings or future account visuals from the first playable table.
+- Don't invent points or achievement conditions beyond the approved 100-entry
+  catalogue and 24-rank ladder. Keep experience separate from the round outcome.
+
+### Hausdepp account progress increment
+
+The approved achievement catalogue lives in `docs/HAUSDEPP_ACHIEVEMENTS.md`.
+The private account combines a readable current-rank and experience summary,
+the next threshold, a collapsible full ladder, and a searchable, filterable
+collection. Locked entries explain their real conditions and recorded progress.
+Rank notices combine new awards and skipped levels, preserve acknowledgement
+across reloads and use original bilingual jokes rather than attributed quotes.
+Keep the existing walnut, ivory, oxblood and brass palette, keyboard access,
+44px controls and reduced motion. Technical evidence is recorded in
+`.impeccable/review/hausdepp-achievements-validation.md`; owner UI/UX acceptance
+remains open. No new raster assets or typography worlds are introduced.

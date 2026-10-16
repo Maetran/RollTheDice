@@ -7,6 +7,7 @@ from urllib.parse import unquote, urlsplit
 
 DEFAULT_SITE_ORIGIN = "https://zockdiewandan.online"
 DEFAULT_ZILCH_ORIGIN = "https://zilch.zockdiewandan.online"
+HAUSDEPP_PREVIEW_HOST = "hausdepp.zockdiewandan.online"
 
 _ZILCH_EXACT_PATHS = frozenset(
     {
@@ -119,6 +120,11 @@ def request_hostname(connection) -> str:
 
 def is_zilch_host(connection) -> bool:
     return request_hostname(connection) == _origin_hostname(zilch_origin())
+
+
+def is_hausdepp_host(connection) -> bool:
+    """The reserved card-game host is still an authenticated private preview."""
+    return request_hostname(connection) == HAUSDEPP_PREVIEW_HOST
 
 
 def is_site_host(connection) -> bool:

@@ -399,8 +399,11 @@ class HausdeppIntegrationTests(unittest.TestCase):
             data = response.json()
             self.assertEqual(data["statistics"]["rounds_played"], 0)
             self.assertEqual(data["history"]["rounds"], [])
-            self.assertFalse(data["scoring"]["available"])
-            self.assertFalse(data["achievements"]["available"])
+            self.assertTrue(data["scoring"]["available"])
+            self.assertEqual(data["scoring"]["points"], 0)
+            self.assertTrue(data["achievements"]["available"])
+            self.assertEqual(len(data["achievements"]["items"]), 100)
+            self.assertEqual(len(data["ranks"]), 24)
             for query in ("limit=0", "limit=31", "limit=abc"):
                 self.assertEqual(client.get(f"/api/hausdepp/account?{query}").status_code, 422)
             invalid = client.get("/api/hausdepp/account?before=invalid-cursor")

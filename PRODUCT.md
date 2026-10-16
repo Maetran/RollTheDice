@@ -72,10 +72,26 @@ continued local development is authorized.
 - Keep `/hausdepp/konto` within the shared account: show only the current
   account's completed-round statistics and paginated private history. Use actual
   stored results; distinguish empty history and failed loading. General account
-  settings remain shared. Round counts are descriptive statistics, not points.
-- Plan Hausdepp points and achievements without inventing award conditions.
-  The confirmed ironic achievement progression goes from clever names to
-  the highest lasting title, Hausdepp; its exact list and thresholds remain open.
+  settings remain shared. Preserve descriptive round counts alongside the
+  separately credited experience totals.
+- Deliver the owner-approved 100 Hausdepp achievements and 24 fixed rank
+  thresholds: 10 experience points per completed round, one-time achievement
+  rewards of 10/25/50/100, Einstein at zero and Hausdepp at 5,000. Each rank has
+  an original bilingual saying, including Newton's downhill/natural-laws line.
+  Keep lasting rank separate from the round loser, and consolidate skipped
+  ranks in a durable account-only notice. No detailed historical feat can be
+  invented from a result lacking evidence; private peek evidence stays private.
+- Count every non-Hausdepp seat in a completed round as a round win. Keep the
+  standings private, filterable by 2–6 participants, and show tied win totals at
+  the same place. Computers do not have ranked accounts.
+- Support an optional HAUSDEPP tournament at the same table: each round loss
+  appends one letter and the first eighth loss immediately ends the session.
+  Preserve seats, rotate dealers clockwise, require a host action for the next
+  deal, and persist every round once with a distinct result ID. Ending a session
+  preserves completed-round credit; unfinished tournaments grant no final feats.
+- Keep public ZDWA/Zilch discovery canonical and consistent with visible text.
+  Hausdepp remains authenticated, noindex/nofollow and outside sitemaps; a
+  reserved hostname or structured metadata does not grant public access.
 - Keep development releases in version 2.x. Version 3 is reserved for the
   later major suite launch; a development version is not a claimed deployment.
 

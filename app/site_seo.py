@@ -6,6 +6,18 @@ from dataclasses import dataclass
 
 SITE_ORIGIN = "https://zockdiewandan.online"
 ZILCH_ORIGIN = "https://zilch.zockdiewandan.online"
+HAUSDEPP_ORIGIN = "https://hausdepp.zockdiewandan.online"
+
+# Deliberately separate from indexable pages: a new private route must never
+# enter a sitemap just because it has a useful title or complete rule text.
+PRIVATE_HAUSDEPP_DOCUMENTS = {
+    "/hausdepp": "hausdepp-lobby.html",
+    "/hausdepp/regeln": "hausdepp-rules.html",
+    "/hausdepp/konto": "hausdepp-account.html",
+    "/hausdepp/rangliste": "hausdepp-leaderboard.html",
+    "/hausdepp/spiel/{game_id}": "hausdepp.html",
+    "/hausdepp/spiel/{game_id}/zuschauen": "hausdepp.html",
+}
 
 # Public product artwork can appear in search/site-name previews. Keep this
 # explicit: user uploads, app shells and API responses retain their noindex.
@@ -54,10 +66,10 @@ def robots_document(*, origin: str = SITE_ORIGIN) -> str:
     return "\n".join(
         (
             "User-agent: *",
-            "Allow: /",
             "Disallow: /api/",
             "Disallow: /docs",
             "Disallow: /openapi.json",
+            "Allow: /",
             f"Sitemap: {origin}/sitemap.xml",
             "",
         )

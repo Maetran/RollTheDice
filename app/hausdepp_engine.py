@@ -12,6 +12,8 @@ from copy import deepcopy
 from secrets import SystemRandom
 from typing import Any, Final, Mapping, Sequence
 
+from .hausdepp_achievement_evidence import new_evidence, record_transition
+
 HAUSDEPP_RULESET_VERSION: Final = "hausdepp-house-v1"
 HAUSDEPP_RANKS: Final = ("6", "7", "8", "9", "U", "O", "K", "A", "10")
 HAUSDEPP_SUITS: Final = ("hearts", "bells", "leaves", "acorns")
@@ -105,6 +107,7 @@ def new_round(
         "table_version": 1,
         "player_versions": {},
         "players": players,
+        "achievement_evidence": new_evidence(players),
         "dealer_id": players[dealer_index]["id"],
         "current_player_id": peeker["id"],
         "deck": cards,
@@ -361,14 +364,14 @@ def apply_action(
         if rank == "A":
             # No card IDs in the public event: even the stopper stays private.
             result["last_event"] = event
-            return result
+            return record_transition(state, result, actor_id, action, event)
         peek["complete"] = True
         peek["success"] = rank == "10"
         if peek["success"]:
             player["hand"].extend(peek["cards"])
             del result["deck"][-len(peek["cards"]):]
         _deal_after_peek(result, rng=rng)
-        return result
+        return record_transition(state, result, actor_id, action, event)
 
     if action == "draw":
         event["drawn_count"] = _refill(result, player)
@@ -378,7 +381,7 @@ def apply_action(
         # expired while this player hesitated over their stock tap.
         _settle_finishes(result)
         result["last_event"] = event
-        return result
+        return record_transition(state, result, actor_id, action, event)
 
     if action == "pickup":
         event["picked_up_count"] = len(result["discard"])
@@ -387,7 +390,7 @@ def apply_action(
         event["drawn_count"] = 0
         _finish_or_request_refill(result, player, rank=None, replay=False)
         result["last_event"] = event
-        return result
+        return record_transition(state, result, actor_id, action, event)
 
     if action == "gamble":
         selection = [result["deck"].pop(0)]
@@ -403,7 +406,7 @@ def apply_action(
             event["drawn_count"] = 0
             _finish_or_request_refill(result, player, rank=None, replay=False)
             result["last_event"] = event
-            return result
+            return record_transition(state, result, actor_id, action, event)
     else:
         for card in selection:
             player["hand"].remove(card)
@@ -419,7 +422,7 @@ def apply_action(
     event["drawn_count"] = 0
     _finish_or_request_refill(result, player, rank=rank, replay=bool(burn_reason))
     result["last_event"] = event
-    return result
+    return record_transition(state, result, actor_id, action, event)
 
 
 def project_state(state: Mapping[str, Any], viewer_id: str | None) -> dict[str, Any]:

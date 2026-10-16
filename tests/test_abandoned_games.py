@@ -44,6 +44,11 @@ class AbandonedGamePersistenceTestCase(TestCase):
     """Interrupted games must be independent from completed-result storage."""
 
     def setUp(self) -> None:
+        # Zilch constructors register their rooms globally. Keep every fixture
+        # inside this test and restore pre-existing rooms even after failures.
+        games_patch = patch.dict(main.games, clear=True)
+        games_patch.start()
+        self.addCleanup(games_patch.stop)
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.database_path = Path(self.temporary_directory.name) / "abandoned-games.sqlite3"
         self.environment = patch.dict(

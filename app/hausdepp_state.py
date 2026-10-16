@@ -34,15 +34,18 @@ def new_hausdepp_game(game_id: str, name: str, mode: object) -> GameDict:
     return game
 
 
-def configure_hausdepp_game(game: GameDict, *, host_user_id: int, cpu_count: int = 1) -> None:
+def configure_hausdepp_game(game: GameDict, *, host_user_id: int, cpu_count: int = 1, tournament: bool = False) -> None:
     if game.get("_players") or game.get("_started"):
         raise ValueError("hausdepp_game_already_configured")
     if type(host_user_id) is not int or host_user_id < 1:
         raise ValueError("hausdepp_account_required")
     if type(cpu_count) is not int or not 0 <= cpu_count < game["_expected"]:
         raise ValueError("hausdepp_invalid_cpu_count")
+    if type(tournament) is not bool:
+        raise ValueError("hausdepp_invalid_tournament")
     game["_hausdepp_host_user_id"] = host_user_id
     game["_hausdepp_cpu_count"] = cpu_count
+    game["_hausdepp_tournament_enabled"] = tournament
     game["_expected_connections"] = game["_expected"] - cpu_count
     game["_play_mode"] = "cpu" if cpu_count else "multiplayer"
     game["_participants"] = [{"id": f"cpu-{index + 1}", "name": f"CPU {index + 1}", "type": "cpu",
@@ -74,6 +77,10 @@ def start_hausdepp_game(game: GameDict) -> None:
 
     participants = game["_participants"]
     game["_hausdepp"] = new_round(participants, dealer_index=len(participants) - 1)
+    if game.get("_hausdepp_tournament_enabled"):
+        from .hausdepp_tournament import new_tournament
+
+        game["_hausdepp_tournament"] = new_tournament(game["_id"], participants)
     game["_started"] = True
     game["_started_at"] = datetime.now(timezone.utc).isoformat()
     game["_turn"] = {"player_id": game["_hausdepp"]["current_player_id"]}

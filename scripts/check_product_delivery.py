@@ -99,6 +99,17 @@ def main() -> int:
     _check((ROOT / "CHANGELOG.md").is_file(), "Detailed release history is missing.", errors)
 
     registered = {page.static_filename: page for page in public_seo_pages}
+    from app.site_seo import PRIVATE_HAUSDEPP_DOCUMENTS
+
+    for filename in set(PRIVATE_HAUSDEPP_DOCUMENTS.values()):
+        private = static_dir / filename
+        _check(private.is_file(), f"Private Hausdepp page is missing: {filename}", errors)
+        if private.is_file():
+            private_head = HeadParser()
+            private_head.feed(private.read_text(encoding="utf-8"))
+            _check({"noindex", "nofollow"}.issubset(set(private_head.robots.lower().replace(" ", "").split(","))),
+                   f"{filename}: private preview needs noindex and nofollow.", errors)
+        _check(filename not in registered, f"{filename}: private preview must not be publicly indexable.", errors)
     _check(len(registered) == len(public_seo_pages), "SEO registry has duplicate static filenames.", errors)
     for page in public_seo_pages:
         _check((static_dir / page.static_filename).is_file(), f"SEO page is missing: {page.static_filename}", errors)

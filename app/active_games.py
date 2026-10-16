@@ -71,7 +71,9 @@ def save_active_game(game: dict) -> None:
     # Resolve/validate the marker before serializing an active state.  Missing
     # historical markers still default to ZDWA through the shared contract.
     game_type_from_state(game)
-    if game.get("_completion_persisted") or (
+    from .hausdepp_tournament import tournament_is_pending
+
+    if game.get("_completion_persisted") and not tournament_is_pending(game) or (
         game.get("_aborted") and game.get("_abandonment_accounted")
     ):
         delete_active_game(game_id)
@@ -136,7 +138,20 @@ def load_active_games() -> dict[str, dict]:
                 continue
             game["_id"] = game_id
             game["_game_type"] = game_type_from_state(game)
-            if game.get("_completion_persisted") or (
+            from .hausdepp_tournament import tournament_is_pending, validate_tournament
+
+            if game.get("_hausdepp_tournament") is not None:
+                participants = game.get("_participants")
+                if (not isinstance(participants, list) or not 2 <= len(participants) <= 6
+                        or any(not isinstance(player, dict) or not isinstance(player.get("id"), str)
+                               or not 1 <= len(player["id"]) <= 64 for player in participants)
+                        or len({player["id"] for player in participants}) != len(participants)):
+                    raise ValueError("hausdepp_invalid_tournament_participants")
+                game["_hausdepp_tournament"] = validate_tournament(
+                    game["_hausdepp_tournament"], {player["id"] for player in participants},
+                    finished_round=bool(game.get("_finished")),
+                )
+            if game.get("_completion_persisted") and not tournament_is_pending(game) or (
                 game.get("_aborted") and game.get("_abandonment_accounted")
             ):
                 delete_active_game(game_id)

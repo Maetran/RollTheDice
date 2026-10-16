@@ -1,8 +1,8 @@
-"""Private Hausdepp account facts from validated durable round outcomes.
+"""Private Hausdepp account facts and XP from validated durable round outcomes.
 
 Read all-time facts in bounded source pages. Only keep the requested history
 page in memory, and require relational account membership before decoding JSON.
-No public ranking, points, achievement thresholds or cross-game totals exist.
+Hausdepp XP and achievements remain separate from other games and public feeds.
 """
 
 from __future__ import annotations
@@ -17,7 +17,8 @@ from sqlalchemy.orm import selectinload
 
 from .database import database_schema_ready, session_scope
 from .game_types import HAUSDEPP_GAME_TYPE
-from .hausdepp_results import stored_hausdepp_result
+from .hausdepp_achievements import synchronize_hausdepp_progress
+from .hausdepp_results import validated_hausdepp_membership
 from .models import CompletedGame, GameParticipant
 from .security import as_utc
 
@@ -54,30 +55,8 @@ def _decode_cursor(value: str | None) -> tuple[datetime, int] | None:
 
 
 def _private_round(row: CompletedGame, user_id: int) -> dict | None:
-    payload = stored_hausdepp_result(row)
-    if payload is None:
-        return None
-    # Snapshot player keys cannot replace durable account membership. Refuse
-    # ambiguous historic ownership instead of attributing two seats to a user.
-    own_seats = [seat for seat in row.participants if seat.user_id == user_id]
-    if len(own_seats) != 1:
-        return None
-    stored_seats = {seat.player_key: seat for seat in row.participants}
-    if set(stored_seats) != {player["id"] for player in payload["participants"]}:
-        return None
-    participants = []
-    finish_positions = {key: index + 1 for index, key in enumerate(payload["finished_order"])}
-    for player in payload["participants"]:
-        seat = stored_seats[player["id"]]
-        if player["name"] != seat.display_name or (player["is_cpu"] and seat.user_id is not None):
-            return None
-        participants.append({**player, "outcome": "hausdepp" if player["id"] == payload["loser_id"] else "finished",
-                             "finished_position": finish_positions.get(player["id"])})
-    own = next(player for player in participants if player["id"] == own_seats[0].player_key)
-    return {"game_id": payload["game_id"], "name": payload["name"], "finished_at": payload["finished_at"],
-            "player_id": own["id"], "outcome": own["outcome"], "finished_position": own["finished_position"],
-            "participant_count": len(participants), "cpu_count": sum(player["is_cpu"] for player in participants),
-            "participants": participants}
+    validated = validated_hausdepp_membership(row, user_id)
+    return validated[0] if validated else None
 
 
 def build_hausdepp_account_for_user(
@@ -97,9 +76,9 @@ def build_hausdepp_account_for_user(
     history: list[dict] = []
     next_cursor = None
     page_end = None
-    response = {"schema_version": 1, "game_type": HAUSDEPP_GAME_TYPE, "statistics": statistics,
-                "history": {"rounds": history, "next_cursor": None}, "scoring": {"available": False},
-                "achievements": {"available": False, "direction": "clever_to_hausdepp"}}
+    response = {"schema_version": 2, "game_type": HAUSDEPP_GAME_TYPE, "statistics": statistics,
+                "history": {"rounds": history, "next_cursor": None},
+                **synchronize_hausdepp_progress(user_id)}
     if not database_schema_ready():
         return response
     with session_scope() as db:

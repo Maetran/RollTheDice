@@ -56,13 +56,13 @@ for (const language of ['de', 'en']) {
     const account = await page.request.get('/api/hausdepp/account');
     expect(account.status()).toBe(200);
     expect(account.headers()['cache-control']).toBe('no-store');
-    expect((await account.json()).achievements.available).toBe(false);
+    expect((await account.json()).achievements.available).toBe(true);
     await page.locator('a[href="/konto#settings"]').click();
     await expect(page.locator('#settingsPanel')).toBeVisible();
     expect(errors).toEqual([]);
   });
 
-  test(`${language}: labelled personal history paginates without inventing points or links`, async ({ page }) => {
+  test(`${language}: labelled legacy history paginates without inventing points or links`, async ({ page }) => {
     await owner(page, language);
     const fixture = accountFixture(language);
     await page.route('**/api/hausdepp/account?**', async route => {

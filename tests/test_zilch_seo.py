@@ -107,10 +107,17 @@ class ZilchSeoTestCase(unittest.IsolatedAsyncioTestCase):
                     self.assertIn("Zilch", document.meta["description"])
                     self.assertNotIn("werden geladen", response.text)
                     if path == "/":
-                        self.assertEqual(document.structured_data, [{
+                        self.assertEqual(document.structured_data[0], {
                             "@context": "https://schema.org", "@type": "WebSite",
                             "name": "Zilch die Wand an", "url": f"{ZILCH_ORIGIN}/",
-                        }])
+                        })
+                        game = document.structured_data[1]
+                        self.assertEqual(game["@type"], "VideoGame")
+                        self.assertEqual(game["url"], f"{ZILCH_ORIGIN}/")
+                        self.assertEqual(game["numberOfPlayers"], {
+                            "@type": "QuantitativeValue", "minValue": 1, "maxValue": 2,
+                        })
+                        self.assertNotIn("aggregateRating", game)
                         self.assertIn("Direkt im Browser, auch als Gast ohne Anmeldung.", response.text)
                     else:
                         self.assertIn("data-zilch-rules-summary", response.text)
@@ -204,8 +211,8 @@ class ZilchSeoTestCase(unittest.IsolatedAsyncioTestCase):
             robots = await client.get("/robots.txt")
             sitemap = await client.get("/sitemap.xml")
             missing = await client.get("/seo-test-missing-page")
-        # Google selects the longest matching rule, so Disallow: /api/ wins
-        # over Allow: /. urllib.robotparser instead picks the first match.
+        # Specific exclusions precede Allow: /, so both longest-match search
+        # crawlers and first-match readers protect APIs and allow public pages.
         lines = robots.text.splitlines()
         self.assertIn("User-agent: *", lines)
         self.assertIn("Allow: /", lines)

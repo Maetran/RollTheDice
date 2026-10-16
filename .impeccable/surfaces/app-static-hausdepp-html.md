@@ -78,3 +78,16 @@ appear. Same-origin PWA entry links and worker ownership preserve installed
 apps. See `docs/GAME_SWITCHER.md` and
 `.impeccable/review/suite-picker-validation.md`. This is local development and
 does not constitute owner UI/UX acceptance.
+
+## Approved achievements and rank progression
+
+The account now integrates the owner-approved 100 achievements and 24-rank
+ladder with separately itemized round and achievement experience. A rank
+summary leads into a collapsible ladder and the searchable/filterable collection;
+the existing private history and shared settings remain reachable. Each rank
+has original German/English flavour copy. A nonblocking, acknowledged account
+notice combines new awards and skipped levels. Keep all evidence and unlocks
+account-scoped, including failed bottom peeks. See
+`docs/HAUSDEPP_ACHIEVEMENTS.md` and
+`.impeccable/review/hausdepp-achievements-validation.md`. This increment is
+local development and does not constitute owner UI/UX acceptance.

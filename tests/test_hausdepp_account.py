@@ -1,4 +1,4 @@
-"""Private, all-time Hausdepp facts without invented scores or awards."""
+"""Private all-time Hausdepp facts and evidence-backed progress."""
 
 from __future__ import annotations
 
@@ -77,10 +77,11 @@ class HausdeppAccountTests(unittest.TestCase):
         self.assertEqual(len(account["history"]["rounds"]), 12)
         self.assertIsNotNone(account["history"]["next_cursor"])
         self.assertEqual(account["history"]["rounds"][0]["game_id"], "round-262")
-        self.assertEqual(account["scoring"], {"available": False})
-        self.assertEqual(account["achievements"], {"available": False, "direction": "clever_to_hausdepp"})
-        self.assertNotIn("points", json.dumps(account))
-        self.assertNotIn("rank", json.dumps(account))
+        self.assertTrue(account["scoring"]["available"])
+        self.assertEqual(account["scoring"]["round_points"], 2630)
+        self.assertTrue(account["achievements"]["available"])
+        self.assertEqual(len(account["achievements"]["items"]), 100)
+        self.assertEqual(len(account["ranks"]), 24)
 
     def test_timestamp_boundaries_reject_invalid_cursors_and_skip_corrupt_results(self):
         for at in ("0001-01-01T00:00:00+01:00", "9999-12-31T23:59:59-01:00"):

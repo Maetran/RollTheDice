@@ -86,7 +86,8 @@ Die Rangfolge von niedrig nach hoch lautet:
 
 „Gleich“ bezeichnet denselben Rang, nicht dieselbe Farbe. Die Schellen 6
 (Weli) ist hier eine gewöhnliche 6; es gibt keine Sonderfunktion. Rang und
-Punktewert sind unterschiedliche Begriffe; Punktewerte sind noch nicht festgelegt.
+Erfahrungspunkte sind unterschiedliche Begriffe. Karten haben keine eigenen
+Strafpunkte; Erfahrung wird für abgeschlossene Runden und Erfolge vergeben.
 
 - **Nachziehstapel:** die verdeckten, noch verfügbaren Karten. Nachgezogen wird
   immer von oben.
@@ -261,7 +262,7 @@ Sobald nur noch **ein Spieler Handkarten** besitzt, endet die Runde sofort.
 Dieser Spieler ist der **Hausdepp dieser Runde**. Ein noch offenes Paket in der
 Mitte ändert daran nichts. Die übrigen Spieler müssen keine weiteren Aktionen
 ausführen. Die Regeln bestimmen den letzten Spieler, nicht einen einzigen
-Sieger und noch keine Punkteverteilung.
+Sieger. Erfahrungspunkte für Runden und Erfolge werden davon getrennt vergeben.
 
 Hohe gleichrangige Karten und aufbewahrte 10er können im Endspiel helfen: Eine
 10 räumt ab und gibt bei verbleibenden Handkarten einen weiteren Zug. Das ist
@@ -323,11 +324,47 @@ Laufende oder abgebrochene Partien sind keine abgeschlossenen Ergebnisse.
 Fehlende Ergebnisse werden als leerer Verlauf erklärt, nicht durch Beispieldaten
 ersetzt. Allgemeine Kontoeinstellungen bleiben unter **`/konto#settings`**.
 
-Diese Zähler sind beschreibende Statistiken, keine Punktewertung. Hausdepp-
+Diese Zähler bleiben beschreibende Statistiken neben den Erfahrungspunkten. Hausdepp-
 Ergebnisse bleiben von öffentlichen Ranglisten und Aktivitäten getrennt. Die
 Regelseite unter **`/hausdepp/regeln`** bietet einen Schnellstart, direkt
 anspringbare Regeln, Beispiele und Begriffe auf Deutsch und Englisch. Die
 Detaillierung ändert keine der hier bestätigten Regeln.
+
+### Rundensiege, Rangliste und Turniere
+
+Alle Spieler ausser dem Hausdepp einer abgeschlossenen Runde erhalten einen
+**Rundensieg**. Das bestimmt keinen alleinigen Sieger und keine Reihenfolge
+gleichzeitig fertig gewordener Hände. Die private Rangliste unter
+`/hausdepp/rangliste` zählt diese Siege pro menschlichem Konto. Gleiche
+Siegzahlen teilen sich einen Rang; aktuelle Kontonamen, Rundenzahl und
+Siegquote werden angezeigt. Tischgrössen von zwei bis sechs sind filterbar.
+Computer und deaktivierte Konten erscheinen nicht in der Rangliste.
+
+Beim Erstellen kann der Host statt einer Einzelrunde ein **HAUSDEPP-Turnier**
+wählen. Alle zwei bis sechs Teilnehmer behalten ihre Plätze am selben Tisch.
+Nach jeder verlorenen Runde wächst nur beim betreffenden Spieler das Wort:
+**H → HA → HAU → HAUS → HAUSD → HAUSDE → HAUSDEP → HAUSDEPP**.
+Der erste Spieler mit acht Niederlagen ist der **Tages-Hausdepp**; das gesamte
+Turnier endet sofort. „Tages-“ bezeichnet dieses Turnier, keine automatische
+Gruppierung nach Kalendertagen. Es gibt keine feste Rundenzahl. Bei sechs
+Teilnehmern sind höchstens 43 Runden möglich, bevor jemand acht Niederlagen hat.
+
+Zwischen den Runden zeigt der Tisch Buchstaben und Niederlagen aller
+Teilnehmer. Der Host startet die nächste Runde aktiv; der Geber wechselt im
+Uhrzeigersinn. Es wird neu gemischt und nach den unveränderten Hausregeln
+abgehoben und ausgeteilt. Tischadresse, Kontozuordnung und Wiederaufnahme bleiben
+stabil; jede abgeschlossene Runde erhält einen eindeutigen Ergebnisbeleg.
+Veraltete oder doppelte Befehle dürfen keine zweite Runde starten, Buchstaben
+verdoppeln oder Punkte erneut vergeben. Ein Server-Neustart zwischen zwei
+Runden stellt genau diesen Zwischenstand wieder her.
+
+Der Host kann das Turnier zwischen Runden ausdrücklich beenden. Die bereits
+abgeschlossenen Runden, Siege und EP bleiben bestehen; es entstehen kein
+Tages-Hausdepp und keine abschliessenden Turniererfolge. Auch für die Wartezeit
+zwischen Runden gilt die einstündige Inaktivitätsfrist. Ein Turnier gibt keine
+zusätzlichen wiederholbaren EP: Es zählen weiterhin 10 EP je abgeschlossener
+Runde und die jeweils einmaligen Erfolge. Die neuen Comeback-, Karten- und
+Turniererfolge ergänzen die ursprünglichen 64 zum Gesamtkatalog von 100.
 
 ### Noch offene Entscheidungen
 
@@ -338,26 +375,51 @@ Die Bereiche sind wie folgt abgegrenzt:
 | --- | --- | --- |
 | Lobby und Tisch | Echte Mehrspielerpartien, Computer-Mitspieler, Owner-Freigabe, Tischstatus, direkte Aktionen | UI-/UX-Abnahme und weitere Verfeinerungen nach Spieltests |
 | Regeln | Vollständige DE-/EN-Hausregeln mit Schnellstart, Beispielen und Sprungmarken | Verständlichkeitsprüfung durch den Owner |
-| Punkte | Als späterer Bereich vorgesehen; keine erfundene Wertung | Alle Punktewerte und Wertungsverfahren |
-| Achievements | Ironische Richtung erklärt, noch keine Vergabe | Endgültige Rangliste, Bedingungen, Schwellen und Belohnungen |
-| Konto | Eigenständige private Hausdepp-Übersicht mit tatsächlichen Statistiken und Historie | UI-/UX-Abnahme; Punkte und Erfolge erst nach Regelentscheidung |
+| Punkte | 10 EP je abgeschlossener Runde und einmalige Erfolgsbelohnungen von 10/25/50/100 EP | Weiteres Balancing nach Spieltests |
+| Achievements | Bestätigter Katalog mit 100 Erfolgen, 24 Rängen und eigenen Aufstiegssprüchen | UI-/UX-Abnahme und weitere Spieltests |
+| Konto | Private Statistik und Historie, EP, Rangfortschritt, Rangleiter und filterbare Erfolgssammlung | UI-/UX-Abnahme |
 | Chat und Reaktionen | Gemeinsame Suite-Funktionen am Tisch und Lobbychat | Weitere Verfeinerungen nach Spieltests |
-| Weitere Runden | Neue Runde über die Lobby | Rotation des Gebers und genauer Ablauf einer fortlaufenden Tischserie |
+| Weitere Runden | Einzelrunden über die Lobby; Turnierserie am selben Tisch mit Geberrotation und Buchstabenstand | UI-/UX-Abnahme und weitere Spieltests |
 | Vorbereitung | Aktives Anschauen und kurze, nicht sperrende Austeilbewegungen | Weitere Verfeinerungen nach Spieltests |
 
-### Bestätigte Achievement-Richtung: vom klugen Kopf zum Hausdepp
+### Bestätigte Punkte, Erfolge und Ränge
 
-Das Ziel der Erfolge ist ausdrücklich, den höchsten dauerhaften Erfolgsrang
-**Hausdepp** zu erreichen. Mit mehr gesammelten Erfolgen schreitet der Spieler
-voran, während die Rangtitel ironisch von clever zu immer weniger schmeichelhaft
-führen. Beispiele des Owners sind **Einstein → Bohr → Newton → … → Ochse →
-Hirni → Hausdepp**. Diese Namen und ihre Reihenfolge sind Vorschläge, noch keine
-vollständige oder freigegebene Rangliste. Es sollen viele Zwischenstufen geben.
+Der Owner hat den [Katalog mit 100 Erfolgen und 24 Rängen](HAUSDEPP_ACHIEVEMENTS.md)
+freigegeben. Jede regulär abgeschlossene Runde gibt dem beteiligten Konto
+**10 Erfahrungspunkte (EP)**, unabhängig davon, ob es fertig oder Hausdepp der
+Runde geworden ist. Jeder Erfolg gibt einmalig **10, 25, 50 oder 100 EP**.
+Mehrere Erfolge können in derselben Runde freigeschaltet werden. Es gibt keine
+Minuspunkte und keinen wiederholbaren Zusatzbonus fürs Verlieren. Runden mit
+Computer-Mitspielern zählen; Computer selbst haben kein Punktekonto.
 
-Der dauerhafte Achievement-Titel ist getrennt vom **Hausdepp einer einzelnen
-Runde** zu modellieren. Die Rundenspielregeln ändern sich dadurch nicht.
-Freischaltbedingungen, Schwellen, Punkte und konkrete Vergaberegeln sind noch
-offen; der ironische Titelverlauf allein legt sie nicht fest.
+Die dauerhafte Leiter beginnt bei **Einstein mit 0 EP** und endet bei
+**Hausdepp mit 5’000 EP**. Der dauerhafte Titel bleibt getrennt vom **Hausdepp
+einer einzelnen Runde**. „Fertig werden“ zählt erst bei leerem Nachziehstapel;
+eine zwischenzeitlich leere Hand mit offenem Pflichtziehen reicht nicht.
+Aufgenommene oder abgeräumte Paketgrössen zählen die dabei gespielte Karte mit.
+Vierer-Erfolge betreffen die Ränge 6 bis Ass; Zehner räumen nach ihrer eigenen
+Regel ab. Nachwürfe zählen nur innerhalb des tatsächlich offenen Nachwurfrechts.
+Eine ununterbrochene Abräumfolge darf Pflichtziehen enthalten; ein fremder
+Lege-, Zock- oder Aufnahmezug beendet sie.
+
+Die Vergabe erfolgt erst nach Abschluss und Speicherung der Runde. Eindeutige
+Runden- und Erfolgsbelege verhindern doppelte Punkte bei Wiederaufnahme oder
+erneuter Finalisierung. Teilnahme-, Gesellschafts- und Ergebniserfolge können
+aus vorhandenen gültigen Ergebnissen entstehen; besondere Kartenaktionen
+werden ausschliesslich aus neu erfassten Spielereignissen abgeleitet. Alte
+Runden oder bereits laufende Runden ohne vollständigen Beleg erhalten keine
+erfundenen taktischen Erfolge. Verdeckte Abhebeinformationen und daraus
+entstandene Erfolge bleiben im eigenen Konto.
+
+Das Konto zeigt Runden- und Erfolgs-EP getrennt, den nächsten Rang, die ganze
+Rangleiter sowie eine durchsuchbare Sammlung mit Status, Bedingungen und
+Fortschritt. Jeder Rang hat einen eigenen ursprünglichen DE-/EN-Spruch, keine
+als historisch ausgegebenen Zitate. Der allgemeine Aufstiegstext lautet
+**„Gratuliere! Dem Hausdepp wieder einen Schritt näher.“** Newton ergänzt
+**„Ab jetzt geht’s bergab. Ganz nach den Naturgesetzen.“**, der Schlussrang
+**„Geschafft. Mehr Hausdepp geht nicht.“** Mehrere übersprungene Stufen und neue
+Erfolge werden zusammengefasst. Eine Bestätigung gilt kontoweit nur für den
+angezeigten Stand; neue Punkte werden durch eine alte Bestätigung nicht verdeckt.
 
 ### Entwicklung und Lieferung
 
@@ -444,8 +506,9 @@ The rank order, from lowest to highest, is:
 **6 < 7 < 8 < 9 < Unter < Ober < King < Ace < 10**
 
 “Equal” means the same rank, regardless of suit. The 6 of bells (Weli) is an
-ordinary 6 here and has no special function. Rank and scoring value are
-different concepts; scoring values have not been decided.
+ordinary 6 here and has no special function. Card rank and experience points
+are different concepts. Cards carry no penalty values; experience comes from
+completed rounds and achievements.
 
 - **Draw pile:** the face-down cards still available. Cards are always drawn
   from its top.
@@ -602,8 +665,8 @@ remaining player leads on the empty table.
 As soon as only **one player still has hand cards**, the round ends immediately.
 That player is the **Hausdepp of this round**. A remaining open pile does not
 change this result. The other players need not take any further actions. These
-rules identify the last player; they do not define a single winner or any
-scoring distribution yet.
+rules identify the last player rather than one sole winner. Round and
+achievement experience is awarded separately from that outcome.
 
 High matching cards and saved 10s can help in the endgame: a 10 clears the pile
 and grants another turn if the player still has hand cards. This is tactical
@@ -659,10 +722,43 @@ older rounds can be loaded. Running or aborted games are not completed results.
 An empty history is explained without sample data. General account settings
 remain at **`/konto#settings`**.
 
-These counters are descriptive statistics, not a points score. Hausdepp results
+These counters remain descriptive statistics alongside experience points. Hausdepp results
 remain separate from public rankings and activity. The rules page at
 **`/hausdepp/regeln`** provides a quick start, linked sections, examples and
 terminology in German and English. Explaining the rules adds no new gameplay.
+
+### Round wins, standings and tournaments
+
+Every player except a completed round's Hausdepp earns a **round win**. This
+does not create a sole winner or rank hands that finished simultaneously.
+Private standings at `/hausdepp/rangliste` count wins per human account. Equal
+win totals share a place; current account names, round counts and win rates are
+shown. Table sizes two through six can be filtered. Computers and inactive
+accounts are excluded.
+
+When creating a table, the host can choose a **HAUSDEPP tournament** instead of
+one round. The same two to six participants retain their seats. Every round
+loss extends only that player's word:
+**H → HA → HAU → HAUS → HAUSD → HAUSDE → HAUSDEP → HAUSDEPP**.
+The first player with eight losses becomes the **day's Hausdepp**, immediately
+ending the whole tournament. “Day's” names this tournament's outcome; it does
+not group sessions by calendar day. There is no fixed round count. With six
+participants, at most 43 rounds can occur before someone reaches eight losses.
+
+Between rounds the table shows everyone's letters and losses. The host actively
+starts the next deal, and the dealer rotates clockwise. Each round reshuffles,
+inspects and deals under the unchanged house rules. The table URL, account
+membership and resume flow remain stable; every completed round has a distinct
+result record. Stale or duplicate commands cannot start another round, double
+letters or duplicate XP. Restarting the server between rounds restores that
+exact session state.
+
+The host can explicitly end the tournament between rounds. Completed rounds,
+wins and XP remain, but there is no day's Hausdepp or final tournament award.
+The one-hour inactivity deadline also applies between rounds. Tournaments add
+no repeatable XP bonus: each completed round still grants 10 XP, with one-time
+achievement rewards separately. The added comeback, card and tournament feats
+extend the original 64 achievements to a catalogue of 100.
 
 ### Remaining decisions
 
@@ -673,27 +769,45 @@ The areas have the following boundaries:
 | --- | --- | --- |
 | Lobby and table | Real multiplayer rounds, computer opponents, owner access, table status, direct actions | UI and UX acceptance and further playtest refinements |
 | Rules | Complete German/English house rules with quick start, examples and anchors | Owner review for clarity |
-| Points | Planned as a later area; no invented scoring | All point values and scoring methods |
-| Achievements | Ironic direction explained; no awards yet | Final rank list, conditions, thresholds and rewards |
-| Account | Dedicated private Hausdepp overview with actual statistics and history | UI and UX acceptance; points and awards only after their rules are decided |
+| Points | 10 XP per completed round and one-time achievement rewards of 10/25/50/100 XP | Further balancing after playtests |
+| Achievements | Approved catalogue of 100 achievements, 24 ranks and individual sayings | UI and UX acceptance and further playtests |
+| Account | Private facts/history, XP, rank progress, complete ladder and filterable achievement collection | UI and UX acceptance |
 | Chat and reactions | Shared suite features at the table and lobby chat | Further playtest refinements |
-| Further rounds | A new round through the lobby | Dealer rotation and the exact flow of a continuous table series |
+| Further rounds | Single rounds through the lobby; same-table tournaments with dealer rotation and letter scores | UI and UX acceptance and further playtests |
 | Preparation | Active inspection and short, nonblocking dealing movements | Further playtest refinements |
 
-### Confirmed achievement direction: from clever mind to Hausdepp
+### Approved points, achievements and ranks
 
-The explicit goal of achievements is to reach the highest lasting achievement
-rank, **Hausdepp**. Collecting more achievements advances the player while the
-rank titles ironically move from clever to increasingly unflattering. The
-owner's examples are **Einstein → Bohr → Newton → … → Ox → Hirni → Hausdepp**.
-These names and their ordering are suggestions, not a complete approved rank
-list. There should be many intermediate ranks; final English rank wording also
-remains to be decided.
+The owner approved the [100-achievement and 24-rank catalogue](HAUSDEPP_ACHIEVEMENTS.md).
+Every regular completed round gives each participating human account **10
+experience points (XP)**, regardless of the round outcome. Each achievement
+grants **10, 25, 50 or 100 XP once**; multiple achievements may unlock together.
+There are no negative points or repeatable losing bonus. Computer opponents
+count as participants; computers have no XP account.
 
-Model the lasting achievement title separately from the **Hausdepp of one
-round**. The round rules do not change. Unlock conditions, thresholds, points
-and actual award rules remain open; the ironic title progression does not
-determine them.
+The lasting ladder runs from **Einstein at 0 XP** to **Hausdepp at 5,000 XP**.
+The lasting title remains separate from the **Hausdepp of an individual round**.
+Finishing requires an empty stock; an empty hand with a pending refill is not
+enough. Pile sizes include the card being played or unsuccessfully gambled.
+Four-of-a-kind achievements use ranks 6 through ace; tens follow their own clear
+rule. Additional throws count only within a still-open window. Consecutive
+clears may include mandatory refills; another player's play, gamble or pickup
+ends that sequence.
+
+Awards are granted after a round is completed and saved. Unique round credits
+and unlocks prevent duplicate points on reconnect or repeated finalization.
+Valid existing outcomes can prove participation, social and outcome achievements;
+detailed card feats require newly captured gameplay evidence. Old or already
+running rounds without complete evidence receive no invented tactical feats.
+Private bottom-inspection facts and their awards remain in the owner's account.
+
+The account itemizes round and achievement XP, next-rank progress, the complete
+ladder and a searchable collection with conditions, status and progress. Every
+rank has original German/English flavour copy, with no fabricated historical
+attribution. The general greeting celebrates another step closer to Hausdepp;
+Newton adds the approved downhill/natural-laws joke. Skipped ranks and new
+awards are consolidated. Acknowledgement applies account-wide only through the
+displayed revision, so an old tab cannot hide newer progress.
 
 ### Development and delivery
 

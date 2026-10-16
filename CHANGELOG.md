@@ -23,6 +23,51 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 2.58.0 — Vom Genie zum Hausdepp / from genius to Hausdepp — 2026-10-16
+
+**Deutsch:** Das private Hausdepp-Konto enthält 100 Erfolge und
+24 Rangstufen von Einstein bis Hausdepp. Abgeschlossene Runden geben 10 EP;
+einmalige Erfolge weitere 10, 25, 50 oder 100 EP. Runden- und Erfolgs-EP,
+Fortschritt, die ganze Rangleiter, Bedingungen und die durchsuchbare, filterbare
+Sammlung sind direkt sichtbar. Jeder Rang hat einen eigenen zweisprachigen
+Aufstiegsspruch; Newton fällt nach den Naturgesetzen bergab. Übersprungene
+Stufen werden zusammengefasst und Bestätigungen kontoweit gespeichert.
+Serverseitige Belege erfassen Zocken, Nachwerfen, Abräumen und Endspiel, ohne
+fremde Hände oder private Abhebeinformationen preiszugeben. Vergabe und
+Rundenpunkte sind wiederholungsfest. Alte Ergebnisse können nur nachweisbare
+Teilnahme-, Gesellschafts- und Ergebniserfolge liefern. Der Rundenausgang
+bleibt vom dauerhaften Rang getrennt. Die private Siegrangliste zählt alle
+fertigen Teilnehmer einer Runde, zeigt geteilte Plätze und filtert Tischgrössen.
+HAUSDEPP-Turniere behalten Tisch und Plätze über mehrere Runden: Jede Niederlage
+ergänzt einen Buchstaben; die erste achte Niederlage beendet das Turnier als
+Tages-Hausdepp. Geberrotation, Wiederaufnahme und eindeutige Rundenergebnisse
+sind abgesichert. Die 36 zusätzlichen Erfolge betonen Comebacks und Turniere;
+zusammen bleiben 3’425 einmalige Erfolgs-EP und 5’000 EP für den Schlussrang.
+Öffentliche Würfelseiten erhalten überprüfte strukturierte Metadaten und
+kanonische HTTP-Verweise; Robots-Regeln und Indexschutz halten Hausdepp privat.
+Lokaler Dev-Branch; UI-/UX-Abnahme und
+öffentlicher Rollout stehen aus.
+
+**English:** The private Hausdepp account includes 100 achievements
+and 24 ranks from Einstein to Hausdepp. Completed rounds earn 10 XP; one-time
+achievements add 10, 25, 50 or 100 XP. The account shows separate XP totals,
+rank progress, the complete ladder, conditions and a searchable, filterable
+collection. Each rank has individual bilingual flavour copy, including Newton's
+downhill natural-laws greeting. Skipped ranks are consolidated and receipts
+persist account-wide. Server evidence captures gambling, additional throws,
+clears and endgame feats without exposing opposing hands or private inspections.
+Round credit and unlocks are idempotent. Old outcomes prove only participation,
+social and outcome achievements. Round outcomes stay separate from lasting rank.
+Private win standings count every finisher, share tied places and filter table
+sizes. HAUSDEPP tournaments keep the same table and seats across rounds: each
+loss adds a letter; the first eighth loss immediately ends the tournament with
+the day's Hausdepp. Dealer rotation, reconnects and distinct round credits are
+protected. The added 36 feats focus on comebacks and tournaments, totalling
+3,425 one-time achievement XP with the final rank still at 5,000 XP. Public
+dice pages gain validated structured data and canonical HTTP links; crawler
+rules and indexing controls keep Hausdepp private.
+Local development only; owner UI/UX acceptance and public rollout remain pending.
+
 ## 2.57.0 — Eine gemeinsame Spielauswahl / one shared game picker — 2026-10-16
 
 **Deutsch:** Der gemeinsame Einstieg zeigt das aktuelle Spiel mit einem eigenen

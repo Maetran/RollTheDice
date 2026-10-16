@@ -110,6 +110,7 @@ from .models import User
 from .passkey_reminders import router as passkey_reminders_router
 from .passkeys import validate_passkey_config
 from .product_hosts import (
+    is_hausdepp_host,
     is_site_host,
     is_zilch_host,
     safe_zilch_path,
@@ -122,7 +123,15 @@ from .public_roles import active_admin_user_ids, hydrate_admin_status
 from .push_reminders import run_daily_reminder_scheduler
 from .release_push import run_release_push_scheduler
 from .security import normalize_username
-from .site_seo import PUBLIC_ZILCH_IMAGE_PATHS, robots_document, sitemap_document, zilch_page_is_indexable
+from .site_seo import (
+    HAUSDEPP_ORIGIN,
+    PUBLIC_SEO_PAGES,
+    PUBLIC_ZILCH_IMAGE_PATHS,
+    SITE_ORIGIN,
+    robots_document,
+    sitemap_document,
+    zilch_page_is_indexable,
+)
 from .versioning import current_version
 from .web_push import (
     claim_game_invite_push,
@@ -588,6 +597,7 @@ async def response_cache_policy(request: Request, call_next):
         "/static/hausdepp-lobby.html",
         "/static/hausdepp-rules.html",
         "/static/hausdepp-account.html",
+        "/static/hausdepp-leaderboard.html",
         "/static/zilch.html",
         "/static/zilch-login.html",
         "/static/zilch-lobby.html",
@@ -605,7 +615,8 @@ async def response_cache_policy(request: Request, call_next):
     else:
         response = await call_next(request)
     apply_cache_policy(request, response, asset_version=STATIC_ASSET_VERSION)
-    if request.url.path == "/hausdepp" or request.url.path.startswith("/hausdepp/"):
+    if (request.url.path == "/hausdepp" or request.url.path.startswith("/hausdepp/")
+            or request.url.path.startswith("/api/hausdepp/") or is_hausdepp_host(request)):
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
     public_zilch_document = bool(
@@ -637,6 +648,11 @@ async def response_cache_policy(request: Request, call_next):
         # canonical also keeps the SPA shell honest when a crawler reaches the
         # clean subdomain route directly rather than through its HTML head.
         response.headers["Link"] = f'<{zilch_url(request.url.path)}>; rel="canonical"'
+    elif not zilch_host and not is_hausdepp_host(request) and response.status_code == 200:
+        public_page = next((page for page in PUBLIC_SEO_PAGES
+                            if page.origin == SITE_ORIGIN and page.path == request.url.path), None)
+        if public_page is not None:
+            response.headers["Link"] = f'<{public_page.canonical_url}>; rel="canonical"'
     return response
 
 
@@ -734,6 +750,10 @@ def favicon(request: Request):
 @app.get("/robots.txt", include_in_schema=False, response_class=PlainTextResponse)
 def robots_txt(request: Request) -> str:
     """Expose crawler rules and the canonical sitemap location."""
+    if is_hausdepp_host(request):
+        # Crawlers must be able to observe noindex on redirects and documents.
+        # Authentication protects the preview; the linked sitemap stays empty.
+        return robots_document(origin=HAUSDEPP_ORIGIN)
     if is_zilch_host(request):
         # A preview rollback must not accidentally advertise a sitemap that
         # contains the future public Zilch documents. Once public access is
@@ -747,6 +767,8 @@ def robots_txt(request: Request) -> str:
 @app.get("/sitemap.xml", include_in_schema=False)
 def sitemap_xml(request: Request) -> Response:
     """List the stable public pages that are useful in search results."""
+    if is_hausdepp_host(request):
+        return Response(content=sitemap_document(origin=HAUSDEPP_ORIGIN), media_type="application/xml")
     if is_zilch_host(request):
         if not can_access_zilch_preview(None):
             return Response(status_code=404, headers={"Cache-Control": "no-store"})
@@ -1064,6 +1086,11 @@ def hausdepp_rules_page(request: Request):
 @app.get("/hausdepp/konto", include_in_schema=False)
 def hausdepp_account_page(request: Request):
     return _serve_hausdepp_page(request, "hausdepp-account.html")
+
+
+@app.get("/hausdepp/rangliste", include_in_schema=False)
+def hausdepp_leaderboard_page(request: Request):
+    return _serve_hausdepp_page(request, "hausdepp-leaderboard.html")
 
 
 def _require_zilch_preview(request: Request):
@@ -1698,6 +1725,9 @@ async def presence(websocket: WebSocket) -> None:
 @app.get("/")
 def root(request: Request):
     """Liefer Startseite (Lobby) aus dem Static-Verzeichnis aus."""
+    if is_hausdepp_host(request):
+        return RedirectResponse("/hausdepp", status_code=308,
+                                headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
     if is_zilch_host(request):
         redirect = _consume_game_switch_marker(request, target="zilch")
         if redirect:
@@ -1721,6 +1751,7 @@ class CreateReq(BaseModel):
     play_mode: str | None = Field(default=None, max_length=16)
     cpu_strategy: str | None = Field(default=None, max_length=32)
     cpu_count: int | None = Field(default=None, ge=0, le=5)
+    tournament: bool = Field(default=False, strict=True)
 
     @field_validator("name")
     @classmethod
@@ -1777,7 +1808,7 @@ class CreateReq(BaseModel):
             if self.play_mode == "cpu" and self.cpu_count == 0:
                 raise ValueError("hausdepp_invalid_cpu_count")
             return self
-        if self.mode not in {"1", "2", "3", "2v2"} or self.cpu_count is not None:
+        if self.mode not in {"1", "2", "3", "2v2"} or self.cpu_count is not None or self.tournament:
             raise ValueError("invalid_game_mode")
         if self.game_type == ZILCH_GAME_TYPE:
             if self.hardcore:
@@ -1814,6 +1845,13 @@ class DeleteCompletedGameReq(BaseModel):
     confirmation_game_id: str = Field(min_length=1, max_length=64)
 
 
+class HausdeppPresentationAckReq(BaseModel):
+    """A presentation receipt cannot grant points or acknowledge future awards."""
+
+    model_config = {"extra": "forbid"}
+    revision: int = Field(strict=True, ge=0)
+
+
 # --- Games API (mit wartenden Spielern) ---
 @app.get("/api/games")
 async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAME_TYPE)):
@@ -1842,7 +1880,9 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
             # A final live object can remain in memory just long enough to
             # finish its connected socket broadcast. Its durable result now
             # belongs to private history, not the active-game lobby.
-            if g.get("_completion_persisted"):
+            tournament = g.get("_hausdepp_tournament")
+            ongoing_tournament = isinstance(tournament, dict) and not tournament.get("completed")
+            if g.get("_completion_persisted") and not ongoing_tournament:
                 continue
             current_game_type = game_type_from_state(g)
             if current_game_type != requested_game_type:
@@ -1906,13 +1946,15 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
             }
             if requested_game_type == HAUSDEPP_GAME_TYPE:
                 from .hausdepp_state import hausdepp_progress
+                from .hausdepp_tournament import project_hausdepp_tournament
 
                 entry.update({"play_mode": g.get("_play_mode"), "participants": hausdepp_progress(g),
                               "participant_count": len(g.get("_participants", [])),
                               "expected_participants": g["_expected"],
                               "expected_connections": g.get("_expected_connections"),
                               "current_player_id": (g.get("_turn") or {}).get("player_id"),
-                              "spectator_available": bool(g.get("_started"))})
+                              "spectator_available": bool(g.get("_started")),
+                              "tournament": project_hausdepp_tournament(g)})
             if requested_game_type == ZILCH_GAME_TYPE:
                 current_player_id, current_player_name = _lobby_current_player(g)
                 entry["current_player_id"] = current_player_id
@@ -2070,6 +2112,7 @@ def game_info(
     }
     if game_type_from_state(g) == HAUSDEPP_GAME_TYPE:
         from .hausdepp_state import hausdepp_progress
+        from .hausdepp_tournament import project_hausdepp_tournament
 
         account_player = next((player for player in g.get("_players", [])
                                if auth_identity and player.get("user_id") == auth_identity.user_id), None)
@@ -2079,7 +2122,8 @@ def game_info(
                        "expected_connections": g.get("_expected_connections"),
                        "current_player_id": (g.get("_turn") or {}).get("player_id"),
                        "my_player_id": account_player["id"] if account_player else None,
-                       "spectator_available": bool(g.get("_started"))})
+                       "spectator_available": bool(g.get("_started")),
+                       "tournament": project_hausdepp_tournament(g)})
     if game_type_from_state(g) == ZILCH_GAME_TYPE:
         current_player_id, current_player_name = _lobby_current_player(g)
         solo_projection = zilch_solo_objective_projection(g)
@@ -2132,6 +2176,27 @@ def api_hausdepp_account(request: Request, limit: int = Query(default=12, ge=1, 
         return build_hausdepp_account_for_user(identity.user_id, before=before, limit=limit)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="hausdepp_invalid_cursor") from exc
+
+
+@app.get("/api/hausdepp/leaderboard")
+def api_hausdepp_leaderboard(request: Request, players: int | None = Query(default=None, ge=2, le=6),
+                            limit: int = Query(default=50, ge=1, le=50)):
+    from .hausdepp_leaderboard import build_hausdepp_leaderboard
+
+    identity = _require_hausdepp_access(request)
+    return build_hausdepp_leaderboard(identity.user_id, players=players, limit=limit)
+
+
+@app.post("/api/hausdepp/account/acknowledge")
+def api_acknowledge_hausdepp_presentation(payload: HausdeppPresentationAckReq, request: Request):
+    from .hausdepp_achievements import acknowledge_hausdepp_presentation
+
+    identity = _require_hausdepp_access(request)
+    require_csrf(request, identity)
+    try:
+        return {"ok": True, **acknowledge_hausdepp_presentation(identity.user_id, payload.revision)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="hausdepp_invalid_acknowledgement") from exc
 
 
 @app.get("/api/zilch/results")
@@ -2379,7 +2444,8 @@ async def api_games_create(req: CreateReq, request: Request):
     if req.game_type == HAUSDEPP_GAME_TYPE:
         from .hausdepp_state import configure_hausdepp_game
 
-        configure_hausdepp_game(g, host_user_id=identity.user_id, cpu_count=req.cpu_count or 0)
+        configure_hausdepp_game(g, host_user_id=identity.user_id, cpu_count=req.cpu_count or 0,
+                                tournament=req.tournament)
     if req.game_type == ZILCH_GAME_TYPE and req.play_mode == ZILCH_CPU_MODE:
         # The creator is the only human seat.  The CPU is a durable domain
         # participant and receives neither account data nor a socket record.
@@ -2516,7 +2582,10 @@ def _recover_terminal_completed_games() -> None:
             and not completion.get("achievement_sync_pending")
         ):
             game["_final_completion"] = completion
-            games.pop(game_id, None)
+            from .hausdepp_tournament import tournament_is_pending
+
+            if not tournament_is_pending(game):
+                games.pop(game_id, None)
 
 
 # -----------------------------

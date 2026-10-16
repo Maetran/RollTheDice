@@ -1,8 +1,9 @@
-"""Typed round outcomes only: Hausdepp has no defined points or achievements yet."""
+"""Typed Hausdepp outcomes with strictly private server-derived achievement evidence."""
 
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -14,6 +15,31 @@ from .game_types import HAUSDEPP_GAME_TYPE
 from .models import CompletedGame, GameParticipant
 from .security import as_utc
 
+logger = logging.getLogger(__name__)
+_EVENT_ACHIEVEMENTS = {f"hausdepp_{number:02}" for number in (
+    *range(17, 29), *range(30, 56), *range(58, 86), *range(88, 101),
+)}
+
+
+def validate_hausdepp_evidence(raw: object, participant_ids: set[str]) -> dict:
+    """Retain only bounded event awards, never hands, peeked cards or tracking state."""
+    if (not isinstance(raw, dict) or type(raw.get("schema_version")) is not int
+            or raw["schema_version"] != 1 or type(raw.get("complete")) is not bool
+            or not isinstance(raw.get("players"), dict) or set(raw["players"]) != participant_ids):
+        raise ValueError("hausdepp_result_invalid_evidence")
+    players = {}
+    for key, evidence in raw["players"].items():
+        if (not isinstance(evidence, dict) or not isinstance(evidence.get("flags"), list)
+                or len(evidence["flags"]) > len(_EVENT_ACHIEVEMENTS)
+                or any(not isinstance(flag, str) or flag not in _EVENT_ACHIEVEMENTS for flag in evidence["flags"])
+                or len(set(evidence["flags"])) != len(evidence["flags"])
+                or type(evidence.get("ten_clears")) is not int or not 0 <= evidence["ten_clears"] <= 4
+                or (not raw["complete"] and {"hausdepp_62", "hausdepp_74", "hausdepp_75", "hausdepp_84"}
+                    .intersection(evidence["flags"]))):
+            raise ValueError("hausdepp_result_invalid_evidence")
+        players[key] = {"flags": sorted(evidence["flags"]), "ten_clears": evidence["ten_clears"]}
+    return {"schema_version": 1, "complete": raw["complete"], "players": players}
+
 
 def validate_hausdepp_result(payload: object) -> dict:
     """Project the known result schema, never private live-game fields.
@@ -22,7 +48,7 @@ def validate_hausdepp_result(payload: object) -> dict:
     which deliberately does not imply a points score or a winner award.
     """
     if (not isinstance(payload, dict) or type(payload.get("schema_version")) is not int
-            or payload.get("schema_version") != 1 or payload.get("payload_kind") != "hausdepp_result"
+            or payload.get("schema_version") not in (1, 2, 3) or payload.get("payload_kind") != "hausdepp_result"
             or payload.get("game_type") != HAUSDEPP_GAME_TYPE):
         raise ValueError("hausdepp_result_invalid_schema")
     game_id, name = payload.get("game_id"), payload.get("name")
@@ -50,9 +76,68 @@ def validate_hausdepp_result(payload: object) -> dict:
             or loser not in participant_ids or len(order) != len(participants) - 1
             or set(order) != participant_ids - {loser}):
         raise ValueError("hausdepp_result_invalid_outcome")
-    return {"schema_version": 1, "payload_kind": "hausdepp_result", "game_type": HAUSDEPP_GAME_TYPE,
+    result = {"schema_version": payload["schema_version"], "payload_kind": "hausdepp_result", "game_type": HAUSDEPP_GAME_TYPE,
             "game_id": game_id, "name": name, "finished_at": finished_at,
             "participants": participants, "loser_id": loser, "finished_order": list(order)}
+    if payload["schema_version"] >= 2:
+        result["achievement_evidence"] = validate_hausdepp_evidence(payload.get("achievement_evidence"), participant_ids)
+    if payload["schema_version"] == 3:
+        from .hausdepp_tournament import round_result_id, validate_tournament
+
+        tournament = validate_tournament(payload.get("tournament"), participant_ids, finished_round=True)
+        if (round_result_id(tournament["id"], tournament["round_number"]) != game_id
+                or tournament["round_losers"][-1] != loser):
+            raise ValueError("hausdepp_result_invalid_tournament")
+        result["tournament"] = tournament
+    elif any(int(flag.rsplit("_", 1)[1]) >= 85 for facts in result.get("achievement_evidence", {}).get("players", {}).values()
+             for flag in facts["flags"]):
+        raise ValueError("hausdepp_result_invalid_tournament")
+    if "tournament" in result and not result["tournament"]["completed"] and any(
+        int(flag.rsplit("_", 1)[1]) >= 85 for facts in result["achievement_evidence"]["players"].values() for flag in facts["flags"]
+    ):
+        raise ValueError("hausdepp_result_invalid_tournament")
+    return result
+
+
+def validated_hausdepp_membership(row: CompletedGame, user_id: int) -> tuple[dict, dict] | None:
+    """Verify every relational seat before returning this account's private facts."""
+    payload = stored_hausdepp_result(row)
+    if payload is None:
+        return None
+    own_seats = [seat for seat in row.participants if seat.user_id == user_id]
+    seats = {seat.player_key: seat for seat in row.participants}
+    if len(own_seats) != 1 or len(seats) != len(row.participants) or set(seats) != {
+        player["id"] for player in payload["participants"]
+    }:
+        return None
+    human_accounts = [seat.user_id for seat in row.participants if seat.user_id is not None]
+    if len(human_accounts) != len(set(human_accounts)):
+        return None
+    participants = []
+    positions = {key: index + 1 for index, key in enumerate(payload["finished_order"])}
+    for player in payload["participants"]:
+        seat = seats[player["id"]]
+        if player["name"] != seat.display_name or (player["is_cpu"] and seat.user_id is not None):
+            return None
+        participants.append({**player, "outcome": "hausdepp" if player["id"] == payload["loser_id"] else "finished",
+                             "finished_position": positions.get(player["id"])})
+    own = next(player for player in participants if player["id"] == own_seats[0].player_key)
+    if own["is_cpu"]:
+        return None
+    record = {"game_id": payload["game_id"], "name": payload["name"], "finished_at": payload["finished_at"],
+              "player_id": own["id"], "outcome": own["outcome"], "finished_position": own["finished_position"],
+              "participant_count": len(participants), "cpu_count": sum(player["is_cpu"] for player in participants),
+              "participants": participants}
+    if "tournament" in payload:
+        record["tournament"] = payload["tournament"]
+    evidence = payload.get("achievement_evidence", {}).get("players", {}).get(own["id"], {})
+    facts = {"participant_count": len(participants), "cpu_count": record["cpu_count"],
+             "human_count": len(participants) - record["cpu_count"], "outcome": own["outcome"],
+             "opponents": sorted(account for account in human_accounts if account != user_id),
+             "flags": evidence.get("flags", []), "ten_clears": evidence.get("ten_clears", 0)}
+    tournament = payload.get("tournament")
+    facts["completed_tournament_id"] = tournament["id"] if tournament and tournament["completed"] else None
+    return record, facts
 
 
 def stored_hausdepp_result(row: CompletedGame) -> dict | None:
@@ -73,18 +158,32 @@ def finalize_hausdepp_result(game: dict) -> dict:
     if game.get("_aborted") or not game.get("_finished") or state.get("phase") != "finished":
         return {"result_persisted": False, "persistence_error": "hausdepp_result_not_finished"}
     try:
-        payload = validate_hausdepp_result({
-            "schema_version": 1, "payload_kind": "hausdepp_result", "game_type": HAUSDEPP_GAME_TYPE,
-            "game_id": game["_id"], "name": game["_name"], "finished_at": game["_finished_at"],
+        from .hausdepp_tournament import record_finished_round, round_result_id, validate_tournament
+
+        record_finished_round(game)
+        tournament = game.get("_hausdepp_tournament")
+        if tournament is not None:
+            tournament = validate_tournament(tournament, {player["id"] for player in game["_participants"]},
+                                             finished_round=True)
+        result_id = round_result_id(game["_id"], tournament["round_number"]) if tournament else game["_id"]
+        raw = {
+            "schema_version": 3 if tournament else 2 if state.get("achievement_evidence") is not None else 1,
+            "payload_kind": "hausdepp_result", "game_type": HAUSDEPP_GAME_TYPE,
+            "game_id": result_id, "name": game["_name"], "finished_at": game["_finished_at"],
             "participants": [{"id": player["id"], "name": player["name"], "is_cpu": bool(player.get("is_cpu"))}
                              for player in game["_participants"]],
             "loser_id": state.get("loser_id"), "finished_order": state.get("finished_order"),
-        })
+        }
+        if raw["schema_version"] >= 2:
+            raw["achievement_evidence"] = state["achievement_evidence"]
+        if tournament:
+            raw["tournament"] = tournament
+        payload = validate_hausdepp_result(raw)
     except (KeyError, TypeError, ValueError):
         return {"result_persisted": False, "persistence_error": "hausdepp_result_invalid_outcome"}
     finished_at = datetime.fromisoformat(payload["finished_at"])
     result = persist_completed_game_result(
-        game_id=game["_id"], game_name=game["_name"], game_type=HAUSDEPP_GAME_TYPE, mode=game["_mode"],
+        game_id=result_id, game_name=game["_name"], game_type=HAUSDEPP_GAME_TYPE, mode=game["_mode"],
         hardcore=False, finished_at=finished_at.astimezone(timezone.utc), snapshot=payload,
         participants=[{"player_key": player["id"], "display_name": player["name"], "user_id": player.get("user_id")}
                       for player in game["_participants"]],
@@ -93,7 +192,21 @@ def finalize_hausdepp_result(game: dict) -> dict:
     game["_final_completion"] = completion
     if result.succeeded:
         game["_completion_persisted"] = True
-        delete_active_game(game["_id"])
+        # Reconcile from durable outcomes, never from a possibly changed retry.
+        # Account reads perform the same recovery if this best-effort pass fails.
+        from .hausdepp_achievements import synchronize_hausdepp_progress
+        for user_id in {player.get("user_id") for player in game["_participants"]
+                        if type(player.get("user_id")) is int and not player.get("is_cpu")}:
+            try:
+                synchronize_hausdepp_progress(user_id)
+            except Exception:
+                logger.exception("Hausdepp award reconciliation failed for completed round %s", game["_id"])
+        from .hausdepp_tournament import tournament_is_pending
+
+        if tournament_is_pending(game):
+            save_active_game(game)
+        else:
+            delete_active_game(game["_id"])
     else:
         save_active_game(game)
     return completion
@@ -107,4 +220,13 @@ def list_hausdepp_results_for_user(user_id: int) -> list[dict]:
             CompletedGame.game_type == HAUSDEPP_GAME_TYPE,
             CompletedGame.participants.any(GameParticipant.user_id == user_id),
         ).order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc()).limit(30)).all()
-        return [payload for row in rows if (payload := stored_hausdepp_result(row)) is not None]
+        results = []
+        for row in rows:
+            if validated_hausdepp_membership(row, user_id) is None:
+                continue
+            payload = stored_hausdepp_result(row)
+            payload.pop("achievement_evidence", None)
+            payload.pop("tournament", None)
+            payload["schema_version"] = 1
+            results.append(payload)
+        return results

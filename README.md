@@ -48,13 +48,31 @@ Sprungmarken, Beispiele und Begriffe. Rundenausgänge werden getrennt gespeicher
 Der private Kontobereich zeigt eigene abgeschlossene Runden, Runden als Hausdepp
 und Runden mit leerer Hand sowie einen nachladbaren Verlauf tatsächlicher
 Ergebnisse; allgemeine Einstellungen bleiben im gemeinsamen Konto.
-Punkte und Achievements folgen später; die bestätigte ironische Achievement-
-Richtung führt von cleveren Köpfen bis zum höchsten Titel **Hausdepp**. Konkrete
-Ränge und Bedingungen sind noch offen. Die Entwicklung bleibt in 2.x; V3 ist
+Das Konto enthält **100 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
+Rangleiter. Jede abgeschlossene Runde gibt 10 Erfahrungspunkte; jeder Erfolg
+einmalig weitere 10, 25, 50 oder 100 EP. Von **Einstein** bei 0 EP geht es mit
+einem Augenzwinkern bis **Hausdepp** bei 5’000 EP. Jeder Rang hat einen eigenen
+Aufstiegsspruch, etwa Newtons „Ab jetzt geht’s bergab. Ganz nach den
+Naturgesetzen.“ Der dauerhafte Rang ist vom Hausdepp einer Runde getrennt.
+Rundenpunkte und freigeschaltete Erfolge werden genau einmal gespeichert;
+Aufstiegsmeldungen bleiben bis zur Bestätigung erhalten. Bestehende Ergebnisse
+belegen Teilnahme- und Ergebniserfolge; besondere Kartenaktionen benötigen die
+neu erfassten Spielereignisse. Der [vollständige Katalog](docs/HAUSDEPP_ACHIEVEMENTS.md)
+enthält alle Bedingungen, Punkte und Rangschwellen. Die Entwicklung bleibt in 2.x; V3 ist
 für den späteren grossen Release reserviert. Dieser Branch ist kein Deployment.
 Mehrere menschliche Sitze prüft `tests/test_hausdepp_local_multiplayer.py` mit
 zwei echten Konten in einer temporären lokalen Datenbank. Nur dieser isolierte
 Test erweitert die Freigabe; die normal gestartete App bleibt Owner-exklusiv.
+
+Die private Rangliste unter `/hausdepp/rangliste` zählt Rundensiege: Alle ausser
+dem Hausdepp einer abgeschlossenen Runde erhalten einen Sieg. Gleiche
+Siegzahlen teilen sich einen Rang; Tischgrössen von zwei bis sechs lassen sich
+filtern. Computer erscheinen nicht als Konten. Im **HAUSDEPP-Turnier** bleiben
+Tisch und Plätze über mehrere Runden erhalten. Jede Niederlage ergänzt einen
+Buchstaben. Wer zuerst **HAUSDEPP** vollständig hat, ist der Tages-Hausdepp;
+damit endet das Turnier sofort. Der Host teilt die nächste Runde aus, der Geber
+wechselt im Uhrzeigersinn. Ein Abbruch lässt bereits abgeschlossene Runden und
+EP bestehen, vergibt aber keine abschliessenden Turniererfolge.
 
 **English:** On `codex/hausdepp-dev`, Hausdepp joins the suite as a third game.
 The first playable milestone includes `/hausdepp`, its own regular table at
@@ -88,10 +106,27 @@ Tell pattern and lightning back. The rules page adds a quick start, anchors,
 examples and terminology. Round outcomes are stored separately. The private
 account area shows your completed rounds, rounds as the Hausdepp and rounds
 finished with an empty hand, plus a loadable history of actual results; general
-settings remain in the shared account. Points and achievements follow later;
-the confirmed ironic achievement progression runs from clever minds to the highest title, **Hausdepp**. Exact ranks and
-conditions remain open. Development stays within 2.x, with V3 reserved for the
+settings remain in the shared account. The account includes **100 achievements
+and 24 ranks**, with search, filters and the complete rank ladder. Every completed
+round earns 10 experience points; achievements grant a further 10, 25, 50 or
+100 XP once each. The ironic ladder runs from **Einstein** at 0 XP to **Hausdepp**
+at 5,000 XP. Each rank has its own saying, including Newton's gravity-inspired
+downhill greeting. The lasting title stays separate from a round's Hausdepp.
+Round points and unlocks are stored once; rank-up notices remain pending until
+acknowledged. Existing outcomes can prove participation and outcome achievements;
+detailed card feats require newly recorded gameplay evidence. The
+[complete catalogue](docs/HAUSDEPP_ACHIEVEMENTS.md) records conditions, points and
+thresholds. Development stays within 2.x, with V3 reserved for the
 later major launch. This branch is not a deployment.
+
+The private standings at `/hausdepp/rangliste` count round wins: everyone except
+a completed round's Hausdepp earns a win. Equal totals share a place, and table
+sizes two through six can be filtered. Computers have no ranked accounts.
+**HAUSDEPP tournaments** keep the same table and seats over multiple rounds.
+Each loss adds a letter. The first player to complete **HAUSDEPP** becomes the
+day's Hausdepp and immediately ends the tournament. The host deals the next
+round; the dealer rotates clockwise. Ending a tournament preserves completed
+rounds and XP but grants no final tournament achievements.
 `tests/test_hausdepp_local_multiplayer.py` verifies multiple human seats using
 two real accounts in a temporary local database. Only that isolated test
 extends access; the normally started app remains exclusive to the owner.
@@ -383,6 +418,11 @@ a public rollout remain pending.
 
 The [integration matrix](docs/GAME_SWITCHER.md) documents browser and installed
 app destinations, account settings and access boundaries.
+
+The [SEO/GEO verification](docs/SEO_GEO_2026-10-16.md) records canonical public
+pages, structured data, crawler rules and the private Hausdepp boundary. Hausdepp
+account, standings and game URLs remain `noindex, nofollow` and outside sitemaps;
+the reserved hostname is prepared as a private preview, not publicly launched.
 
 ## Playing together
 

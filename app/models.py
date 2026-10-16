@@ -604,6 +604,37 @@ class CompletedGame(Base):
             raise ValueError("invalid_game_type") from exc
 
 
+class HausdeppRoundCredit(Base):
+    """One private, validated credit per account and completed Hausdepp round."""
+
+    __tablename__ = "hausdepp_round_credits"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    game_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    facts_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class HausdeppAchievementUnlock(Base):
+    """Hausdepp awards are isolated from the public cross-game achievement feed."""
+
+    __tablename__ = "hausdepp_achievement_unlocks"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    achievement_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source_game_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    awarded_points: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class HausdeppPresentationReceipt(Base):
+    """Monotonic acknowledged XP generation; an old tab cannot dismiss new awards."""
+
+    __tablename__ = "hausdepp_presentation_receipts"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    acknowledged_points: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (CheckConstraint("acknowledged_points >= 0", name="ck_hausdepp_receipt_points"),)
+
+
 class AbandonedGame(Base):
     """Minimal, account-safe record for a started game that was abandoned.
 
