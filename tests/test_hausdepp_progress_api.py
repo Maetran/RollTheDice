@@ -178,7 +178,12 @@ class HausdeppProgressApiTests(unittest.TestCase):
             self.assertEqual(response.json()["entries"], [{
                 "place": 1, "display_name": "Founder", "wins": 1, "rounds_played": 1,
                 "win_rate": 100.0, "is_self": True,
+                "rank": {"id": "rank_01", "name": {"de": "Einstein", "en": "Einstein"}, "level": 1},
             }])
+            private_fields = ("user_id", "account_id", "game_id", "achievement_evidence", "achievement_ids",
+                              "scoring", "points", "private_peek", "presentation", "unlocks")
+            for private in private_fields:
+                self.assertNotIn(f'"{private}"', json.dumps(response.json()))
             self.assertEqual(client.get("/api/hausdepp/leaderboard?players=3").json()["entries"], [])
             for query in ("players=1", "players=7", "limit=0", "limit=51"):
                 self.assertEqual(client.get(f"/api/hausdepp/leaderboard?{query}").status_code, 422)
@@ -191,7 +196,12 @@ class HausdeppProgressApiTests(unittest.TestCase):
             _, token = login(request_for(), self.other.username, "secure-password-123")
             anonymous.cookies.set("rollthedice_session", token)
             self.assertEqual(anonymous.get("/hausdepp/rangliste").status_code, 200)
-            self.assertEqual(anonymous.get("/api/hausdepp/leaderboard").status_code, 200)
+            foreign = anonymous.get("/api/hausdepp/leaderboard")
+            self.assertEqual(foreign.status_code, 200)
+            public_entry = {**response.json()["entries"][0], "is_self": False}
+            self.assertEqual(foreign.json()["entries"], [public_entry])
+            for private in private_fields:
+                self.assertNotIn(f'"{private}"', json.dumps(foreign.json()))
 
 
 if __name__ == "__main__":

@@ -5,12 +5,12 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 from typing import Callable
-from urllib.parse import quote
 
 from fastapi import HTTPException, Request
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 
+from .account_context import account_action_url
 from .auth import (
     AuthIdentity,
     create_user_in_session,
@@ -28,7 +28,6 @@ from .email_delivery import (
 )
 from .models import AccountEmailToken, PendingEmailRegistration, User
 from .models import Session as LoginSession
-from .product_hosts import site_origin
 from .security import (
     as_utc,
     hash_password,
@@ -47,11 +46,6 @@ logger = logging.getLogger(__name__)
 REGISTRATION_TTL = timedelta(hours=24)
 EMAIL_VERIFICATION_TTL = timedelta(hours=24)
 PASSWORD_RESET_TTL = timedelta(minutes=30)
-
-
-def _action_url(path: str, raw_token: str, language: str) -> str:
-    # A fragment never travels in HTTP requests, reverse-proxy logs or caches.
-    return f"{site_origin()}{path}?lang={'en' if language == 'en' else 'de'}#token={quote(raw_token, safe='')}"
 
 
 def _active_token(token, *, now) -> bool:
@@ -93,7 +87,7 @@ def _ensure_delivery_available() -> None:
 
 def begin_registration(
     *, username: str, email: str, preferred_language: str,
-    delivery: Callable[..., None] | None = None,
+    delivery: Callable[..., None] | None = None, account_app: str = "zdwa", return_to: str | None = None,
 ) -> dict:
     """Store a non-loginable registration request and mail its confirmation."""
     _ensure_delivery_available()
@@ -137,7 +131,7 @@ def begin_registration(
             recipient=clean_email,
             kind="registration",
             language=preferred_language,
-            action_url=_action_url("/registrierung/bestaetigen", raw_token, preferred_language),
+            action_url=account_action_url("/registrierung/bestaetigen", raw_token, preferred_language, app=account_app, return_to=return_to),
             idempotency_key=f"registration-{token_hash}",
         )
     except EmailDeliveryFailed:
@@ -224,7 +218,7 @@ def account_email_status(user_id: int) -> dict:
 
 
 def begin_email_verification(
-    *, identity: AuthIdentity, email: str, current_password: str | None,
+    *, identity: AuthIdentity, email: str, current_password: str | None, account_app: str = "zdwa",
     passkey: PasskeyProof | None = None, request: Request | None = None,
 ) -> dict:
     _ensure_delivery_available()
@@ -275,7 +269,7 @@ def begin_email_verification(
             recipient=clean_email,
             kind="email_verify",
             language=language,
-            action_url=_action_url("/email-bestaetigen", raw_token, language),
+            action_url=account_action_url("/email-bestaetigen", raw_token, language, app=account_app, return_to="/hausdepp/konto/einstellungen"),
             idempotency_key=f"email-verify-{token_hash}",
         )
     except (EmailDeliveryFailed, EmailDeliveryUnavailable):
@@ -332,7 +326,7 @@ def confirm_email(*, raw_token: str) -> None:
         raise ValueError("email_taken") from exc
 
 
-def begin_password_reset(*, email: str, preferred_language: str) -> dict:
+def begin_password_reset(*, email: str, preferred_language: str, account_app: str = "zdwa", return_to: str | None = None) -> dict:
     """Request recovery without revealing whether a mailbox owns an account."""
     _ensure_delivery_available()
     try:
@@ -373,7 +367,7 @@ def begin_password_reset(*, email: str, preferred_language: str) -> dict:
             recipient=clean_email,
             kind="password_reset",
             language=language,
-            action_url=_action_url("/passwort-zuruecksetzen", raw_token, language),
+            action_url=account_action_url("/passwort-zuruecksetzen", raw_token, language, app=account_app, return_to=return_to),
             idempotency_key=f"password-reset-{token_hash}",
         )
     except (EmailDeliveryFailed, EmailDeliveryUnavailable):

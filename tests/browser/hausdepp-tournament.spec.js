@@ -12,6 +12,11 @@ async function owner(page, language = 'de') {
   await page.request.put('/api/auth/preferences/language', { headers, data: { preferred_language: language } });
   await page.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+  // These scenarios verify gameplay/layout independently of the beginner offer.
+  // Full offer, dismissal and tour hit tests remain in game-tours.spec.js.
+  await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: {
+    show: false, enabled: true, games: { zdwa: 'unseen', zilch: 'unseen', hausdepp: 'dismissed' },
+  } }));
   return headers;
 }
 

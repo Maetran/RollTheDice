@@ -23,6 +23,42 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.2.0 — Der Hausdepp wird schlauer / Hausdepp gets smarter — 2026-10-16
+
+**Deutsch:** Hausdepp ist da und wächst weiter: Das mobile Spielfenster bleibt
+ohne Seitenscroll bedienbar, mit grossen Stapeln, internem Kartenfächer und
+zugänglicher Spielhilfe. Computer setzen sichere Schlussketten ein und spielen
+mit wechselnden Reaktionszeiten. Ihre Entscheidungen verwenden nur eigene
+Karten und öffentliche Informationen; Regeln und Nachwurfrecht bleiben gleich.
+Anmeldung und Kontoverwaltung haben eine eigene Hausdepp-Oberfläche mit Passkey
+zuerst, gemeinsamen Konten und sicheren E-Mail-/Passwort-Rückwegen. Die Touren
+von develop bleiben erhalten und sind auch in den neuen Einstellungen steuerbar.
+
+Wartende Spieler können ihren Platz freigeben, ohne die übrige Runde zu beenden;
+das Hostrecht wird weitergegeben. Ranglisten zeigen aktuelle Hausdepp-Titel.
+Der gemeinsame Community-Chat erhält Hausdepp-Tag und Schnellfilter, bestehende
+Nachrichten und Empfängergrenzen bleiben erhalten. Öffentliche Kartenbilder
+werden vorgeladen, dekodiert und versioniert gecacht; private Inhalte bleiben
+no-store. Eindeutige Herz-Zehner-Dateinamen, explizite Apple-Icon-Grössen und
+öffentliche Apple-Fallbackpfade verbessern die Icon-Erkennung bei der Installation.
+
+**English:** Hausdepp is here and keeps improving: the mobile table fits a single
+window without page scrolling, with larger piles, an internally scrolling hand
+and accessible help. Computers use safe finishing chains and varied response
+times. They use only their own cards and public information; the rules and
+follow-up rights remain unchanged. Dedicated Hausdepp sign-in and account
+settings put passkeys first while preserving shared accounts and safe email
+and password return paths. Develop's beginner tours are retained and can also
+be controlled from the new settings.
+
+Waiting players can release a seat without ending everyone else's table; host
+rights transfer. Standings show current Hausdepp titles. The shared community
+chat gains a Hausdepp tag and quick filter without changing stored messages or
+recipient boundaries. Public card images are preloaded, decoded and cached at
+versioned URLs; private content remains no-store. Fresh heart-ten filenames,
+explicit Apple icon sizes and public fallback paths improve icon discovery
+during installation.
+
 ## 3.1.0 — Einsteigertouren / beginner tours — 2026-10-16
 
 **Deutsch:** ZDWA, Zilch und Hausdepp bieten beim ersten eigenen Spiel eine

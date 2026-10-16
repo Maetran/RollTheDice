@@ -1,0 +1,142 @@
+/* A game is one surface. Only its card fan and secondary sheets scroll. */
+.hd-actions > summary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 12px; color: var(--hd-green); background: var(--hd-paper); border: 1px solid var(--hd-border); border-radius: 4px; cursor: pointer; list-style: none; }
+.hd-actions > summary::-webkit-details-marker { display: none; }
+.hd-game-help { padding: 18px; color: var(--hd-ink); background: var(--hd-paper); border: 1px solid var(--hd-border); border-radius: 5px; }
+.hd-game-help h2 { margin: 0 0 12px; font: 700 22px/1.2 Georgia, serif; }
+.hd-game-help .hd-action-guide { padding: 0; color: var(--hd-ink); margin-bottom: 16px; text-align: left; }
+.hd-game-help .hd-tools-close { display: block; margin: 16px 0 0 auto; min-height: 44px; color: var(--hd-paper); background: var(--hd-green); }
+.hd-game-help .hd-event { color: var(--hd-muted); font-size: 12px; line-height: 1.5; margin: 0 0 12px; text-align: left; }
+.hd-game-help .hd-peek { color: var(--hd-ink); margin: 12px 0 0; }
+.hd-waiting-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.hd-waiting-heading > button { min-height: 44px; }
+@media (max-width: 1099px) {
+  html[data-game="hausdepp"]:has(body.hd-playing) { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  html[data-game="hausdepp"] body.hd-playing {
+    position: fixed; inset: 0; top: var(--game-viewport-top, 0px); display: flex; flex-direction: column;
+    height: 100vh; height: var(--game-viewport-height, 100dvh); min-height: 0; overflow: hidden;
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    overscroll-behavior: none;
+    --hd-hand-card: clamp(76px, calc((100dvh - 568px) * .14 + 76px), 112px);
+    --hd-hand-height: calc(var(--hd-hand-card) * 57 / 36 + 34px);
+  }
+  html[data-game="hausdepp"] body.hd-playing > .hd-header {
+    flex: 0 0 48px; height: 48px; min-height: 48px; padding: 0 8px; gap: 8px; flex-wrap: nowrap; border-bottom-width: 1px;
+  }
+  html[data-game="hausdepp"] body.hd-playing .hd-header .hd-nav { display: none; }
+  html[data-game="hausdepp"] body.hd-playing .hd-brand { gap: 6px; font-size: 22px; min-width: 0; }
+  html[data-game="hausdepp"] body.hd-playing .hd-brand img { width: 30px; height: 30px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-header-tools { min-width: 0; gap: 5px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-switch { min-height: 44px; padding: 6px; gap: 5px; font-size: 12px; }
+  html[data-game="hausdepp"] body.hd-playing > .hd-main { flex: 1 1 0; min-height: 0; width: 100%; padding: 2px 8px; display: flex; }
+  html[data-game="hausdepp"] body.hd-playing .hd-room-layout { flex: 1 1 0; min-width: 0; min-height: 0; width: 100%; position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 44px; gap: 2px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) {
+    min-height: 0; height: 100%; width: 100%; grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 24px minmax(0, 1fr) 24px 0 var(--hd-hand-height); gap: 0;
+    --hd-arc-depth: clamp(64px, 10dvh, 110px); --hd-prefix-space: 0px;
+  }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-room-heading { grid-column: 1; grid-row: 1; min-height: 0; gap: 8px; padding: 0 2px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-room-heading > div { min-width: 0; display: flex; align-items: baseline; gap: 7px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-room-heading h1 { font-size: 14px; line-height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  html[data-game="hausdepp"] body.hd-playing #hausdeppConnection { flex: 0 0 auto; font-size: 10px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-tournament-banner { flex: 0 0 auto; margin: 0; font-size: 10px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-seats { grid-column: 1; grid-row: 2; height: 100%; min-height: 0; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seats > .hd-seat { width: clamp(34px, 10.6vw, 48px); max-width: clamp(34px, 10.6vw, 48px); gap: 2px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-seat .hd-tournament-prefix { position: absolute; top: 0; left: 50%; transform: translateX(-50%); padding: 0 2px; border: 1px solid var(--hd-border); border-radius: 3px; background: var(--hd-paper); color: var(--hd-red); font-size: 9px; line-height: 12px; white-space: nowrap; z-index: 1; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-opponent-hand { --opponent-card: 24px; --opponent-spread: 28px; --opponent-step: 7px; height: 43px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seat > strong { font-size: 10px; line-height: 12px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seat > span:not(.hd-seat-avatar) { font-size: 10px; line-height: 12px; white-space: nowrap; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { grid-column: 1; grid-row: 2; height: auto; min-height: 0; align-self: end; align-items: flex-start; padding: 0 0 17px; margin: 0; gap: 20px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) { gap: 4px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-stock-group > span,
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-pile-group > span { font-size: 11px; line-height: 12px; min-height: 0; max-width: 120px; text-align: center; }
+  html[data-game="hausdepp"] body.hd-playing .hd-draw-alert { font-size: 11px; line-height: 12px; }
+  html[data-game="hausdepp"] body.hd-playing #hausdeppStockAction { width: 112px; min-height: 24px; max-height: 24px; overflow: auto; }
+  html[data-game="hausdepp"] body.hd-playing #hausdeppStockCount { width: 112px; min-height: 12px; white-space: nowrap; }
+  html[data-game="hausdepp"] body.hd-playing .hd-draw-alert { min-height: 24px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-burned { position: absolute; top: auto; bottom: 4px; left: 50%; right: auto; transform: translateX(-50%); flex-direction: row; align-items: baseline; gap: 4px; width: max-content; font-size: 10px; line-height: 12px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-burned > span { font-size: 10px; line-height: 12px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-turn-status { grid-column: 1; grid-row: 3; min-height: 0; margin: 0; padding: 0 2px; align-self: center; font-size: 12px; line-height: 12px; max-height: 24px; overflow: auto; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-event { grid-column: 1; grid-row: 4; min-height: 0; margin: 0; padding: 0 2px; font-size: 10px; line-height: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-hand-region { grid-column: 1; grid-row: 5; align-self: stretch; min-height: 0; padding: 0; display: grid; grid-template-rows: 20px minmax(0, 1fr); }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-heading { padding: 0 4px; min-height: 0; gap: 6px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-heading h2,
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-heading > span { font-size: 11px; line-height: 14px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-own-identity { gap: 5px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-own-identity > .player-avatar { width: 18px; height: 18px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-own-name { display: none; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand { --hd-hand-card: inherit; --hd-hand-step: max(44px, calc(var(--hd-hand-card) * .6)); min-height: 0; height: 100%; padding: 2px 22px; overflow-x: auto; overflow-y: hidden; overscroll-behavior: contain; touch-action: pan-x; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-fan { min-height: calc(var(--hd-hand-card) * 57 / 36 + 12px); }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-fan .hausdepp-card { transform: translateY(calc(var(--fan-drop, 0px) * .25)) rotate(calc(var(--fan-angle, 0deg) * .4)); }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-fan .hausdepp-card:is(:focus-visible, :hover):not(:disabled) { transform: translateY(calc(var(--fan-drop, 0px) * .25)) rotate(calc(var(--fan-angle, 0deg) * .4)); outline-offset: -3px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-room-layout > .hd-social { grid-column: 1; grid-row: 2; position: static; width: 100%; margin: 0; padding: 0 50px 0 0; min-height: 0; }
+  html[data-game="hausdepp"] body.hd-playing .hd-social-tools { height: 44px; width: 100%; padding: 0; justify-content: space-between; gap: 4px; flex-direction: row; }
+  html[data-game="hausdepp"] body.hd-playing #chatToggle { flex: 0 0 44px; width: 44px; min-height: 44px; height: 44px; padding: 8px; justify-content: center; }
+  html[data-game="hausdepp"] body.hd-playing .hd-chat-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  html[data-game="hausdepp"] body.hd-playing .hd-reactions { gap: 2px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-reactions button { flex: 0 0 44px; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 4px; font-size: 22px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-social-rules { display: none; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-actions { position: absolute; inset: auto 0 -46px auto; display: block; padding: 0; z-index: 35; }
+  html[data-game="hausdepp"] body.hd-playing .hd-actions > summary { width: 44px; height: 44px; padding: 8px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-tools-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  html[data-game="hausdepp"] body.hd-playing .hd-game-help { position: fixed; z-index: 45; inset: auto 8px 54px; max-height: calc(var(--game-viewport-height, 100dvh) - 112px); overflow: auto; overscroll-behavior: contain; box-shadow: 0 0 0 100vmax #0c191a99; }
+  html[data-game="hausdepp"] body.hd-playing .hd-game-help .hd-action-guide { font-size: 13px; line-height: 1.5; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-peek { position: fixed; z-index: 36; inset: auto 8px 54px; max-height: min(45dvh, 340px); overflow: auto; overscroll-behavior: contain; margin: 0; padding: 8px 12px; color: var(--hd-ink); background: var(--hd-paper); border: 1px solid var(--hd-border); border-radius: 5px; box-shadow: 0 4px 14px #0c191a88; }
+  html[data-game="hausdepp"] body.hd-playing .hd-peek summary { min-height: 44px; display: flex; align-items: center; font-size: 12px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-peek p { margin: 4px 0 8px; font-size: 12px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-peek-cards .hausdepp-card { width: 48px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-action-error:not(:empty) { position: fixed; z-index: 38; left: 8px; right: 8px; bottom: 52px; margin: 0; padding: 8px 10px; font-size: 12px; background: #4b201d; border: 1px solid #db9c86; border-radius: 4px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-action-error:empty { display: none; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-result { position: fixed; z-index: 40; inset: 58px 8px 54px; overflow: auto; overscroll-behavior: contain; margin: 0; padding: 18px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-chat-panel.open { z-index: 60; max-height: calc(var(--game-viewport-height, 100dvh) - 52px); bottom: var(--game-viewport-bottom, 0px); padding: 12px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-chat-panel.open .chat-content { display: flex; flex-direction: column; max-height: calc(var(--game-viewport-height, 100dvh) - 78px); }
+  html[data-game="hausdepp"] body.hd-playing .hd-chat-messages { flex: 1 1 auto; min-height: 0; height: 220px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-chat-heading,
+  html[data-game="hausdepp"] body.hd-playing .hd-chat-compose { flex: 0 0 auto; }
+  html[data-game="hausdepp"] body.hd-playing .hd-chat-compose input { font-size: 16px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-chat-backdrop { z-index: 55; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table[data-phase="waiting"] { min-height: 0; overflow: auto; overscroll-behavior: contain; }
+  html[data-game="hausdepp"] body.hd-playing .hd-waiting { padding: 14px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-waiting-heading { position: sticky; top: 0; z-index: 2; padding-block: 8px; background: var(--hd-paper); }
+  html[data-game="hausdepp"] body.hd-playing .hd-waiting-heading h2 { margin: 0; font-size: 24px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table[data-phase="waiting"] > .hd-actions { display: block; }
+  html[data-game="hausdepp"] body.hd-playing.hd-waiting-room .hd-room-layout > .hd-social { grid-row: 2; }
+}
+@media (max-width: 359px) and (orientation: portrait) {
+  html[data-game="hausdepp"] body.hd-playing { --hd-hand-card: 64px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-brand > span { display: none; }
+  html[data-game="hausdepp"] body.hd-playing .hd-header-tools { margin-left: auto; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { gap: 12px; }
+}
+@media (max-width: 1099px) and (orientation: landscape) {
+  html[data-game="hausdepp"] body.hd-playing { --hd-hand-card: clamp(68px, calc((100dvh - 300px) * .25 + 68px), 102px); }
+  html[data-game="hausdepp"] body.hd-playing .hd-brand > span { display: none; }
+  html[data-game="hausdepp"] body.hd-playing .hd-room-layout { grid-template-rows: minmax(0, 1fr); }
+  html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); grid-template-rows: 24px minmax(0, 1fr) 44px 0; column-gap: 12px; --hd-arc-depth: clamp(30px, 15dvh, 80px); }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-room-heading { grid-column: 1 / -1; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-seats,
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { grid-column: 2; grid-row: 2; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seats > .hd-seat { width: clamp(30px, 5.6vw, 48px); max-width: clamp(30px, 5.6vw, 48px); }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { padding: 0; gap: 24px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-stock-group > span,
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-pile-group > span { position: absolute; top: calc(100% + 3px); left: 50%; width: max-content; max-width: 130px; transform: translateX(-50%); font-size: 10px; line-height: 11px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre #hausdeppStockCount { top: calc(100% + 28px); }
+  html[data-game="hausdepp"] body.hd-playing .hd-draw-alert { position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); font-size: 10px; line-height: 11px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-burned { left: auto; right: 0; top: calc(100% + 3px); bottom: auto; transform: none; max-width: 55px; flex-wrap: wrap; justify-content: flex-end; gap: 0 3px; font-size: 9px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-burned > span { font-size: 9px; line-height: 11px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-hand-region { grid-column: 1; grid-row: 2 / -1; align-self: stretch; height: auto; padding: 4px 0 70px; grid-template-rows: 20px minmax(0, 1fr); }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand { max-height: var(--hd-hand-height); align-self: center; padding-inline: 12px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-turn-status { position: absolute; left: 0; bottom: 48px; width: calc((100% - 12px) * .45); max-height: 24px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-event { grid-column: 2; grid-row: 4; }
+  html[data-game="hausdepp"] body.hd-playing .hd-room-layout > .hd-social { position: absolute; left: 0; right: auto; bottom: 0; width: calc((100% - 12px) * .45); padding: 0; margin: 0; }
+  html[data-game="hausdepp"] body.hd-playing .hd-social-tools { justify-content: center; }
+  html[data-game="hausdepp"] body.hd-playing #chatToggle { position: fixed; z-index: 12; top: calc(env(safe-area-inset-top, 0px) + 2px); left: calc(env(safe-area-inset-left, 0px) + 50px); }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-actions { position: fixed; z-index: 35; top: calc(env(safe-area-inset-top, 0px) + 2px); left: calc(env(safe-area-inset-left, 0px) + 100px); right: auto; bottom: auto; }
+  html[data-game="hausdepp"] body.hd-playing .hd-game-help { bottom: 8px; max-height: calc(var(--game-viewport-height, 100dvh) - 68px); }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-peek { left: 8px; right: auto; bottom: 48px; width: calc(45% - 14px); max-height: calc(var(--game-viewport-height, 100dvh) - 108px); }
+}
+@media (max-width: 760px) and (orientation: landscape) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-opponent-hand { --opponent-card: 20px; --opponent-spread: 24px; --opponent-step: 6px; height: 36px; }
+}
+@media (max-width: 600px) and (orientation: landscape) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-opponent-hand { --opponent-card: 18px; --opponent-spread: 20px; --opponent-step: 5px; height: 32px; }
+}

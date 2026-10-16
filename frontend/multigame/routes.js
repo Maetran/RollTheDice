@@ -214,10 +214,26 @@ export function hausdeppAppEntryUrl(locationLike = window.location, environmentL
 /** The shared sign-in stays on the active origin, including an installed PWA. */
 export function normalizeHausdeppPageUrl(value) {
   if (typeof value !== "string" || value.length > 2048 || /[\\\u0000-\u001f\u007f]/.test(value)) return null;
-  return /^\/hausdepp(?:\/(?:regeln|konto|rangliste|spiel\/[A-Za-z0-9_-]+(?:\/zuschauen)?))?\/?(?:\?[^#]*)?$/.test(value) ? value : null;
+  return /^\/hausdepp(?:\/(?:regeln|konto(?:\/einstellungen)?|rangliste|spiel\/[A-Za-z0-9_-]+(?:\/zuschauen)?))?\/?(?:\?[^#]*)?$/.test(value) ? value : null;
+}
+
+/** Mail/recovery keeps the known inner House path, never a handoff URL. */
+export function hausdeppAccountReturnPath(value) {
+  const direct = normalizeHausdeppPageUrl(value);
+  if (direct) return direct;
+  if (typeof value !== "string" || value.length > 2048 || /[\\\u0000-\u001f\u007f#]/.test(value)
+    || !value.startsWith("/auth/continue?")) return null;
+  try {
+    const outer = new URL(value, "https://house-account-return.invalid");
+    const keys = [...outer.searchParams.keys()];
+    if (outer.origin !== "https://house-account-return.invalid" || outer.pathname !== "/auth/continue"
+      || outer.hash || keys.length !== 2 || !keys.includes("app") || !keys.includes("path")
+      || outer.searchParams.get("app") !== "hausdepp") return null;
+    return normalizeHausdeppPageUrl(outer.searchParams.get("path"));
+  } catch { return null; }
 }
 
 export function hausdeppSignInUrl(returnTo = "/hausdepp", { register = false } = {}) {
   const destination = normalizeHausdeppPageUrl(String(returnTo).split("#", 1)[0]) || "/hausdepp";
-  return `/zilch/anmelden?return_to=${encodeURIComponent(destination)}${register ? "#zilchRegistrationForm" : ""}`;
+  return `/hausdepp/anmelden?return_to=${encodeURIComponent(destination)}${register ? "#zilchRegistrationForm" : ""}`;
 }

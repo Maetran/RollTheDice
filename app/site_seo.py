@@ -15,6 +15,8 @@ PUBLIC_HAUSDEPP_DOCUMENTS = {
     "/hausdepp/regeln": "hausdepp-rules.html",
 }
 PRIVATE_HAUSDEPP_DOCUMENTS = {
+    "/hausdepp/anmelden": "hausdepp-login.html",
+    "/hausdepp/konto/einstellungen": "hausdepp-settings.html",
     "/hausdepp/konto": "hausdepp-account.html",
     "/hausdepp/rangliste": "hausdepp-leaderboard.html",
     "/hausdepp/spiel/{game_id}": "hausdepp.html",
@@ -33,6 +35,9 @@ PUBLIC_ZILCH_IMAGE_PATHS = frozenset({
 PUBLIC_HAUSDEPP_IMAGE_PATHS = frozenset({
     "/favicon.ico",
     "/static/icons/hausdepp-icon-32.png",
+    "/static/icons/hausdepp-icon-192-v2.png",
+    "/static/icons/hausdepp-icon-512-v2.png",
+    "/static/icons/hausdepp-apple-touch-icon-180-v2.png",
     "/static/icons/hausdepp-icon-192.png",
     "/static/icons/hausdepp-icon-512.png",
     "/static/icons/hausdepp-apple-touch-icon-180.png",

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="de" data-game="hausdepp" data-hausdepp-login="true">
+<head>
+  <meta charset="utf-8">
+  <title>Hausdepp – Anmelden</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Melde dich bei Hausdepp an oder erstelle dein Spielerkonto.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#2d261f">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/png" href="/static/icons/hausdepp-icon-32.png?v=8520b6b69416" sizes="32x32">
+  <link rel="apple-touch-icon" type="image/png" sizes="180x180" href="/static/icons/hausdepp-apple-touch-icon-180-v2.png?v=8520b6b69416">
+  <link rel="preload" as="image" type="image/png" href="/static/icons/hausdepp-apple-touch-icon-180-v2.png?v=8520b6b69416">
+  <link rel="manifest" data-pwa-product="hausdepp" href="/hausdepp-manifest.webmanifest?v=8520b6b69416" crossorigin="use-credentials">
+  <meta name="apple-mobile-web-app-title" content="Hausdepp">
+  <script src="/static/shell.js?v=8520b6b69416" defer></script>
+  <link rel="stylesheet" href="/static/hausdepp.css?v=8520b6b69416">
+</head>
+<body class="hd-page hd-auth">
+  <main class="zilch-login-shell">
+    <div class="zilch-login-tools" hidden>
+      <button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-label="Darstellung wechseln"><span class="theme-toggle-icon" data-theme-icon aria-hidden="true">◒</span></button>
+    </div>
+    <a class="zilch-brand zilch-login-brand" href="/hausdepp" aria-label="Hausdepp anmelden"><span class="zilch-brand-mark" aria-hidden="true"><img src="/static/icons/hausdepp-icon-192-v2.png?v=8520b6b69416" width="42" height="42" alt=""></span><span>Hausdepp</span></a>
+    <section class="zilch-card zilch-login-card" aria-labelledby="zilchLoginTitle">
+      <p class="zilch-eyebrow">Dein Spielerkonto</p>
+      <h1 id="zilchLoginTitle">Bei Hausdepp anmelden</h1>
+      <p class="zilch-login-intro">Ein Konto für ZDWA, Zilch und Hausdepp. Dein bestehender Passkey funktioniert hier ebenfalls.</p>
+      <div id="zilchPasskeyLogin" class="zilch-passkey-login" hidden>
+        <button id="zilchPasskeyLoginButton" class="primary" type="button">Mit Passkey anmelden</button>
+        <p class="zilch-muted">Schnell und ohne Passwort auf diesem Gerät anmelden.</p>
+      </div>
+      <p id="zilchPasskeyUnavailable" class="zilch-muted" hidden>Passkeys sind hier gerade nicht verfügbar. Öffne „Mit Passwort anmelden“, um dich anzumelden.</p>
+      <button id="zilchPasswordLoginFallback" type="button" class="ghost" hidden>Mit Passwort anmelden</button>
+      <details id="zilchPasswordLogin" class="password-login-disclosure">
+        <summary>Mit Passwort anmelden</summary>
+      <form id="zilchLoginForm" class="zilch-login-form">
+        <label for="zilchLoginUsername">Benutzername oder E-Mail-Adresse<input id="zilchLoginUsername" autocomplete="username" required></label>
+        <label for="zilchLoginPassword">Passwort<input id="zilchLoginPassword" type="password" autocomplete="current-password" minlength="8" required></label>
+        <div class="zilch-login-actions"><button class="secondary" type="submit">Anmelden</button><a id="zilchForgotPassword" class="button-link ghost" href="/passwort-vergessen?app=hausdepp">Passwort vergessen?</a></div>
+      </form>
+      </details>
+      <form id="zilchRegistrationForm" class="zilch-login-form">
+        <p class="registration-intro">Neues Konto erstellen</p>
+        <label for="zilchRegistrationUsername">Name für dein Konto<input id="zilchRegistrationUsername" data-registration-username autocomplete="username" minlength="3" maxlength="32" required></label>
+        <label for="zilchRegistrationMethod">Anmeldemethode<select id="zilchRegistrationMethod" data-registration-method aria-describedby="zilchRegistrationHint"><option value="passkey">Passkey (empfohlen)</option><option value="password">E-Mail und Passwort (Backup)</option></select></label>
+        <p id="zilchRegistrationHint" class="zilch-muted registration-hint" data-registration-hint>Mit Passkey erstellst du dein Konto sofort – ohne E-Mail oder Passwort. Ein Backup-Passwort kannst du später im Konto einrichten.</p>
+        <label for="zilchRegistrationEmail" hidden>E-Mail-Adresse<input id="zilchRegistrationEmail" data-registration-email type="email" autocomplete="email" maxlength="254"></label>
+        <label for="zilchRegistrationPassword" hidden>Passwort<input id="zilchRegistrationPassword" data-registration-password type="password" autocomplete="new-password" minlength="8" maxlength="256"></label>
+        <div class="zilch-login-actions"><button id="zilchRegisterButton" class="primary" type="submit">Konto mit Passkey erstellen</button></div>
+        <div id="zilchRegistrationChallenge" data-registration-challenge hidden></div>
+      </form>
+      <section id="zilchSignedIn" class="zilch-signed-in" hidden aria-labelledby="zilchLoginAccountName">
+        <p>Angemeldet als <strong id="zilchLoginAccountName"></strong></p>
+        <div class="zilch-login-actions"><a id="zilchContinueButton" class="button-link primary" href="/hausdepp">Hausdepp öffnen</a><button id="zilchLoginLogout" class="ghost" type="button">Abmelden</button></div>
+      </section>
+      <p id="zilchLoginMessage" class="zilch-login-message" role="status"></p>
+    </section>
+  <p class="hd-auth-back"><a href="/hausdepp">Hausdepp öffnen</a></p>
+  </main>
+  <script type="module" src="/static/zilch-login.js?v=8520b6b69416"></script>
+</body>
+</html>

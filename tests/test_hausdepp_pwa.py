@@ -2,19 +2,37 @@
 
 from __future__ import annotations
 
+import io
 import os
 import tempfile
 import unittest
+from html.parser import HTMLParser
 from pathlib import Path
 from unittest.mock import patch
 
 import httpx
+from PIL import Image
 
 from app import main
 from app.auth import create_user, login
 from app.database import configure_database, session_scope, upgrade_database
 from app.ownership import bind_founder, grant_ownership
 from tests.test_user_accounts import request_for
+
+
+class _AppleIconHead(HTMLParser):
+    def __init__(self, html):
+        super().__init__()
+        self.icons = []
+        self.preloads = []
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag == "link" and attributes.get("rel") == "apple-touch-icon":
+            self.icons.append(attributes)
+        if tag == "link" and attributes.get("rel") == "preload" and attributes.get("as") == "image":
+            self.preloads.append(attributes)
 
 
 class HausdeppPwaTests(unittest.IsolatedAsyncioTestCase):
@@ -98,7 +116,7 @@ class HausdeppPwaTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn('crossorigin="use-credentials"', html)
             self.assertIn('name="theme-color" content="#173e34"', html)
             self.assertIn('/static/icons/hausdepp-icon-32.png?', html)
-            self.assertIn('/static/icons/hausdepp-apple-touch-icon-180.png?', html)
+            self.assertIn('/static/icons/hausdepp-apple-touch-icon-180-v2.png?', html)
             self.assertIn('name="apple-mobile-web-app-title" content="Hausdepp"', html)
             self.assertEqual('name="robots" content="noindex' in html, filename not in {"hausdepp-lobby.html", "hausdepp-rules.html"})
 
@@ -112,6 +130,68 @@ class HausdeppPwaTests(unittest.IsolatedAsyncioTestCase):
                 response = await client.get(host + "/favicon.ico")
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.content, (main.STATIC_DIR / filename).read_bytes())
+
+    async def test_apple_discovery_aliases_are_public_host_specific_png_for_get_and_head(self):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=main.app)) as client:
+            for host, filename in (
+                ("https://hausdepp.zockdiewandan.online", "hausdepp-apple-touch-icon-180-v2.png"),
+                ("https://zilch.zockdiewandan.online", "zilch-apple-touch-icon-180.png"),
+                ("https://zockdiewandan.online", "apple-touch-icon-180.png"),
+                ("http://localhost", "apple-touch-icon-180.png"),
+            ):
+                expected = (main.STATIC_DIR / "icons" / filename).read_bytes()
+                for path in ("/apple-touch-icon.png", "/apple-touch-icon-precomposed.png"):
+                    for method in ("GET", "HEAD"):
+                        for token in (None, self.tokens["player"]):
+                            with self.subTest(host=host, path=path, method=method, authenticated=bool(token)):
+                                headers = {"Cookie": f"rollthedice_session={token}"} if token else {}
+                                response = await client.request(method, host + path, headers=headers)
+                                self.assertEqual(response.status_code, 200)
+                                self.assertEqual(response.headers["content-type"], "image/png")
+                                self.assertEqual(response.headers["cache-control"], "no-cache, must-revalidate")
+                                self.assertEqual(int(response.headers["content-length"]), len(expected))
+                                self.assertNotIn("location", response.headers)
+                                self.assertNotIn("set-cookie", response.headers)
+                                self.assertEqual(response.content, expected if method == "GET" else b"")
+                    # A caller cannot turn an unversioned public alias into an
+                    # immutable response by supplying the current bundle token.
+                    response = await client.get(host + path + f"?v={main.STATIC_ASSET_VERSION}")
+                    self.assertEqual(response.headers["cache-control"], "no-cache, must-revalidate")
+                with Image.open(io.BytesIO(expected)) as icon:
+                    self.assertEqual(icon.format, "PNG")
+                    self.assertEqual(icon.size, (180, 180))
+                    if "hausdepp" in filename:
+                        self.assertEqual(icon.mode, "RGB")
+            for path in ("/hausdepp/konto/einstellungen", "/api/auth/me", "/hausdepp/anmelden"):
+                response = await client.get("https://hausdepp.zockdiewandan.online" + path)
+                self.assertEqual(response.headers["cache-control"], "no-store")
+
+    def test_house_heads_declare_one_precise_preloaded_apple_icon(self):
+        for path in main.STATIC_DIR.glob("hausdepp*.html"):
+            with self.subTest(path=path.name):
+                head = _AppleIconHead(path.read_text())
+                self.assertEqual(len(head.icons), 1)
+                icon = head.icons[0]
+                self.assertEqual(icon["sizes"], "180x180")
+                self.assertEqual(icon["type"], "image/png")
+                self.assertTrue(icon["href"].startswith("/static/icons/hausdepp-apple-touch-icon-180-v2.png?"))
+                matching = [item for item in head.preloads if item.get("href") == icon["href"]]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0]["type"], "image/png")
+
+    async def test_house_bridge_apple_link_keeps_installed_house_identity(self):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=main.app)) as client:
+            for path in ("/zdwa", "/zdwa/konto", "/zdwa/regeln"):
+                response = await client.get("https://hausdepp.zockdiewandan.online" + path)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.headers["cache-control"], "no-store")
+                head = _AppleIconHead(response.text)
+                self.assertEqual(len(head.icons), 1)
+                icon = head.icons[0]
+                self.assertEqual(icon["sizes"], "180x180")
+                self.assertEqual(icon["type"], "image/png")
+                self.assertTrue(icon["href"].startswith("/static/icons/hausdepp-apple-touch-icon-180-v2.png?"))
+                self.assertEqual([item["href"] for item in head.preloads if item.get("href") == icon["href"]], [icon["href"]])
 
     def test_worker_has_no_offline_cache_or_private_data_storage(self):
         worker = (main.STATIC_DIR / "hausdepp-sw.js").read_text()

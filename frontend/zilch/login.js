@@ -4,6 +4,7 @@ import { HAUSDEPP_MESSAGES } from '../i18n/catalog.js';
 import {
   applyZilchRouteLinks,
   hausdeppAppEntryUrl,
+  hausdeppAccountReturnPath,
   normalizeHausdeppPageUrl,
   isProductionZilchLocation,
   normalizeZilchPageUrl,
@@ -113,7 +114,7 @@ function render(auth) {
     brand.removeAttribute('data-zilch-path');
     brand.setAttribute('aria-label', 'Hausdepp');
     brand.querySelector('span:last-child').textContent = 'Hausdepp';
-    brand.querySelector('.zilch-brand-mark').innerHTML = '<img src="/static/icons/hausdepp-icon-32.png" width="24" height="32" alt="">';
+    brand.querySelector('.zilch-brand-mark').innerHTML = '<img src="/static/icons/hausdepp-icon-192-v2.png?v=ASSET_VERSION" width="42" height="42" alt="">';
   }
   const access = auth?.game_access || user?.game_access;
   const allowed = dashboardDestination ? Boolean(user) : hausdeppDestination
@@ -213,12 +214,13 @@ logoutButton.addEventListener("click", async () => {
 void (async () => {
   try {
     await refresh({ redirect: true });
-    const accountOrigin = isProductionZilchLocation() ? ZDWA_PRODUCTION_ORIGIN : window.location.origin;
+    const accountOrigin = isHausdeppDestination() ? window.location.origin : isProductionZilchLocation() ? ZDWA_PRODUCTION_ORIGIN : window.location.origin;
     const resetLink = new URL("/passwort-vergessen", accountOrigin);
-    resetLink.searchParams.set("app", "zilch");
+    resetLink.searchParams.set("app", isHausdeppDestination() ? "hausdepp" : "zilch");
     resetLink.searchParams.set("lang", window.ZDWA_I18N?.getLanguage?.() || "de");
     if (new URLSearchParams(window.location.search).has("return_to")) {
-      resetLink.searchParams.set("return_to", returnPath());
+      resetLink.searchParams.set("return_to", isHausdeppDestination()
+        ? hausdeppAccountReturnPath(returnPath()) || "/hausdepp" : returnPath());
     }
     forgotPassword.href = resetLink.href;
   } catch {

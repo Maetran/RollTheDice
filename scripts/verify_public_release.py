@@ -132,7 +132,7 @@ def verify_release() -> None:
             raise ValueError("Hausdepp must advertise public discovery before release")
     if capabilities[HAUSDEPP] != capabilities[APEX]:
         raise ValueError("Hausdepp passkey availability must match the trusted apex origin")
-    house_login = f"{HAUSDEPP}/zilch/anmelden?return_to=%2Fhausdepp%2Fkonto"
+    house_login = f"{HAUSDEPP}/hausdepp/anmelden?return_to=%2Fhausdepp%2Fkonto"
     for destination in (house_login, f"{HAUSDEPP}/hausdepp/konto"):
         body, headers = fetch(destination, final_url=house_login)
         login = ReleaseDocument()

@@ -245,7 +245,9 @@ Spielers**. Dazu zählen dessen Ablegen, Aufnehmen des Pakets oder Aufdecken zum
 Zocken. Bereits angenommene Aktionen dürfen nicht nachträglich durch einen
 Nachwurf umgeordnet werden. Befehlsbestätigungen ordnen schnelle Kartenaktionen; eine feste
 Sekundenzahl oder künstliche Sperre ist keine Spielregel. Computer reagieren
-kurz verzögert, damit ein menschlicher Nachwurf möglich bleibt.
+unterschiedlich schnell; auf eine zügige Reaktion können längere Denkpausen
+folgen. Nach dem eigenen Abräumen spielen sie häufig schneller weiter.
+Ein menschlicher Nachwurf hat deshalb kein garantiertes Zeitfenster.
 
 ### Endspiel und Rundenende
 
@@ -301,6 +303,11 @@ nicht. Reduzierte Bewegung bestätigt die Ankunft ohne räumlichen Flug.
   regelgemässen Informationen wie ein menschlicher Spieler, einschliesslich
   gegebenenfalls selbst angeschauter Karten. Verdeckte Fremdkarten dürfen seine
   Entscheidungen nicht beeinflussen.
+  Er berücksichtigt sichere eigene Schlusszüge, Viererpakete und einzelne
+  10er als Reserve. Mit einer starken kleinen Hand kann er bei genügend
+  Nachziehkarten zocken; kurz vor dem leeren Stapel wägt er Aufnehmen gegen
+  das zusätzliche Risiko ab. Strategie und Tests stehen in
+  [HAUSDEPP_CPUS.md](HAUSDEPP_CPUS.md).
 - Wiederverbinden und weitere Geräte desselben Kontos müssen denselben
   autoritativen Spielzustand und denselben Sitz wiederherstellen.
 
@@ -332,7 +339,7 @@ dem Versand weiterhin für Hausdepp freigegeben sein; Selbstbenachrichtigungen
 sind ausgeschlossen. Der Ruf zeigt auf einem Push-fähigen Gerät eine
 Systembenachrichtigung mit Hausdepp-Icon, die direkt zum Tisch führt.
 
-Die gemeinsamen Einstellungen unter `/konto#settings` übernehmen die
+Die gemeinsamen Einstellungen unter `/hausdepp/konto/einstellungen` übernehmen die
 Geräteanmeldung und getrennten Push-Kategorien. Hausdepp-Installationen werden
 mit dem Produktkontext `hausdepp` gespeichert, ohne das Gerät als ZDWA oder Zilch
 auszugeben. Eine tägliche Hausdepp-Erinnerung
@@ -350,7 +357,7 @@ Hand. Die private Historie zeigt Tischname, Zeitpunkt, eigenes Ergebnis und
 Mitspieler einschliesslich Computer; ältere Runden können nachgeladen werden.
 Laufende oder abgebrochene Partien sind keine abgeschlossenen Ergebnisse.
 Fehlende Ergebnisse werden als leerer Verlauf erklärt, nicht durch Beispieldaten
-ersetzt. Allgemeine Kontoeinstellungen bleiben unter **`/konto#settings`**.
+ersetzt. Allgemeine Kontoeinstellungen bleiben unter **`/hausdepp/konto/einstellungen`**.
 
 Diese Zähler bleiben beschreibende Statistiken neben den Erfahrungspunkten. Hausdepp-
 Ergebnisse bleiben von öffentlichen Ranglisten und Aktivitäten getrennt. Die
@@ -699,7 +706,9 @@ This right ends with the **next player's first accepted action**, including
 playing a card, picking up the pile or revealing a gamble card. Accepted
 actions must not subsequently be reordered by an additional card. Command acknowledgements
 order quick card actions; no fixed timer or artificial lock is a game rule.
-Computers react after a brief delay, leaving room for a human additional card.
+Computers vary their reaction time, mixing quick responses with longer pauses.
+Following their own clearance, they often play again more quickly. A human
+additional card therefore has no guaranteed time window.
 
 ### Endgame and end of the round
 
@@ -752,6 +761,10 @@ arrival without spatial travel.
 - The computer opponent takes real turns using the same permissible information
   as a human player, including cards it inspected itself where applicable.
   Hidden opposing cards must not influence its decisions.
+  It considers guaranteed finishes from its own cards, quartets and individual
+  tens held in reserve. A strong small hand may gamble while enough stock
+  remains; near depletion it weighs a pickup against the added risk.
+  See [HAUSDEPP_CPUS.md](HAUSDEPP_CPUS.md) for the policy and tests.
 - Reconnection and additional devices using the same account must recover the
   same authoritative state and the same seat.
 
@@ -780,7 +793,7 @@ recipient must retain Hausdepp access when requested and before dispatch;
 self-notifications are excluded. On a push-capable device, the call displays
 a system notification with Hausdepp's icon and a direct link to the table.
 
-Shared settings at `/konto#settings` handle device registration and separate
+Shared settings at `/hausdepp/konto/einstellungen` handle device registration and separate
 push categories. Hausdepp installations are saved with product context
 `hausdepp`, without registering the device as ZDWA or Zilch. This does not
 promise a daily Hausdepp reminder. An account
@@ -796,7 +809,7 @@ rounds as the Hausdepp and rounds finished with an empty hand. Private history
 shows the table name, time, own outcome and participants including computers;
 older rounds can be loaded. Running or aborted games are not completed results.
 An empty history is explained without sample data. General account settings
-remain at **`/konto#settings`**.
+remain at **`/hausdepp/konto/einstellungen`**.
 
 These counters remain descriptive statistics alongside experience points. Hausdepp results
 remain separate from public rankings and activity. The rules page at
@@ -911,3 +924,22 @@ text, documentation, appropriate checks and unchanged historical version
 mappings. Personal account, standings and game pages remain noindex; only the
 lobby and rules are public search destinations. Historical QA reports retain
 the private development scope they originally verified.
+
+## Ergänzte Bedienung / additional interaction contract
+
+**Deutsch:** Der mobile Spieltisch ist ein festes Fenster ohne Seitenscroll.
+Grosse eigene Hände dürfen im Fächer horizontal verschoben werden. Hilfen,
+Einladungen, Chat und Ergebnisse nutzen interne Ablagen, ohne Hauptaktionen
+zu verdecken. Ein beigetretener Mensch darf einen noch nicht gestarteten Tisch
+aktiv verlassen. Sein Platz wird frei; das Hostrecht geht bei Bedarf an einen
+verbleibenden Menschen. Der letzte Mensch schliesst den ungestarteten Tisch ohne
+Ergebnis, EP, Turnierniederlage oder Abbruchwertung. Nach Spielbeginn gilt diese
+Warteaktion nicht mehr. Ein Start-/Verlassen-Rennen darf keine laufende Runde verändern.
+
+**English:** The mobile table is a fixed window without page scrolling. Large
+hands may move horizontally inside their fan. Help, invitations, chat and results
+use internal panels while the main actions stay reachable. A seated person may
+actively leave an unstarted table. Their seat becomes free; host rights transfer
+to a remaining person if needed. The last person closes the unstarted table
+without a result, XP, tournament loss or abandonment score. This waiting action
+is unavailable once play starts; a start/leave race must never change a live round.

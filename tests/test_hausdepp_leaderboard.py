@@ -117,3 +117,24 @@ class HausdeppLeaderboardTests(unittest.TestCase):
         with patch("app.hausdepp_leaderboard.database_schema_ready", return_value=False):
             empty = build_hausdepp_leaderboard(first.id)
         self.assertEqual((empty["total_players"], empty["entries"]), (0, []))
+
+    def test_titles_match_private_weighted_progress_and_reading_does_not_acknowledge_it(self):
+        from app.hausdepp_achievements import synchronize_hausdepp_progress
+        from app.models import HausdeppPresentationReceipt
+
+        first, second, _ = self.users
+        for index in range(6):
+            self.store(f"rank-human-{index}", [first, second], loser=index % 2)
+        for index in range(4):
+            self.store(f"rank-computer-{index}", [second, None], loser=1)
+        expected = {user.id: synchronize_hausdepp_progress(user.id)["rank"] for user in (first, second)}
+        with session_scope() as db:
+            before = db.execute(select(HausdeppPresentationReceipt.__table__)).all()
+        for players in (None, 2):
+            result = build_hausdepp_leaderboard(first.id, players=players)
+            for entry in result["entries"]:
+                user = first if entry["display_name"] == first.username else second
+                self.assertEqual(entry["rank"], {key: expected[user.id][key] for key in ("id", "name", "level")})
+                self.assertEqual(set(entry["rank"]), {"id", "name", "level"})
+        with session_scope() as db:
+            self.assertEqual(db.execute(select(HausdeppPresentationReceipt.__table__)).all(), before)

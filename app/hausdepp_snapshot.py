@@ -20,6 +20,7 @@ from .hausdepp_state import hausdepp_progress
 def snapshot_hausdepp(game: GameDict, viewer_id: str | None = None) -> dict:
     from .hausdepp_engine import project_state
     from .hausdepp_tournament import project_hausdepp_tournament
+    from .hausdepp_waiting import waiting_permissions
 
     check_timeout_and_abort(game)
     state = game.get("_hausdepp")
@@ -54,4 +55,5 @@ def snapshot_hausdepp(game: GameDict, viewer_id: str | None = None) -> dict:
         "locked": bool(game.get("_passphrase")), "_hausdepp": projection,
         "_results": game.get("_results"), "_cpu_thinking": bool(game.get("_hausdepp_cpu_thinking")),
         "_hausdepp_tournament": project_hausdepp_tournament(game, valid_viewer),
+        "_waiting_permissions": waiting_permissions(game, valid_viewer),
     }

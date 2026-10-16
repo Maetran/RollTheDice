@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
+from .account_context import account_app_context
 from .achievements import achievement_rank_payloads_for_user_ids, public_achievement_ranks
 from .auth import (
     auth_identity_payload,
@@ -102,6 +103,8 @@ class RegisterRequest(BaseModel):
     password: str | None = Field(default=None, min_length=1, max_length=256)
     turnstile_token: str | None = Field(default=None, max_length=4096)
     preferred_language: Literal["de", "en"] = "de"
+    account_app: Literal["zdwa", "hausdepp"] = "zdwa"
+    return_to: str | None = Field(default=None, max_length=2048)
 
 
 class RegistrationCompletionRequest(BaseModel):
@@ -116,6 +119,8 @@ class TokenInspectionRequest(BaseModel):
 class PasswordResetRequest(BaseModel):
     email: str = Field(min_length=1, max_length=254)
     preferred_language: Literal["de", "en"] = "de"
+    account_app: Literal["zdwa", "hausdepp"] = "zdwa"
+    return_to: str | None = Field(default=None, max_length=2048)
 
 
 class PasswordResetCompletionRequest(BaseModel):
@@ -124,6 +129,7 @@ class PasswordResetCompletionRequest(BaseModel):
 
 
 class AccountEmailRequest(AccountConfirmation):
+    account_app: Literal["zdwa", "hausdepp"] = "zdwa"
     email: str = Field(min_length=3, max_length=254)
 
 
@@ -277,6 +283,7 @@ def auth_register(payload: RegisterRequest, request: Request, response: Response
             username=payload.username,
             email=payload.email,
             preferred_language=payload.preferred_language,
+            account_app=account_app_context(request, payload.account_app), return_to=payload.return_to,
             delivery=lambda **message: background_tasks.add_task(send_account_email_safely, **message),
         )
     except (EmailDeliveryUnavailable, EmailDeliveryFailed) as exc:
@@ -320,7 +327,8 @@ def auth_password_reset_request(payload: PasswordResetRequest, request: Request,
     enforce_email_request_rate_limit(request, "password_reset", normalized_email)
     # Lookup and provider latency happen only after the response has been sent,
     # for known and unknown addresses alike. No mailbox-presence timing oracle.
-    background_tasks.add_task(begin_password_reset, email=payload.email, preferred_language=payload.preferred_language)
+    background_tasks.add_task(begin_password_reset, email=payload.email, preferred_language=payload.preferred_language,
+                              account_app=account_app_context(request, payload.account_app), return_to=payload.return_to)
     response.headers["Cache-Control"] = "no-store"
     return {"accepted": True}
 
@@ -397,6 +405,7 @@ def auth_email_request(payload: AccountEmailRequest, request: Request, response:
     try:
         result = begin_email_verification(
             identity=identity,
+            account_app=account_app_context(request, payload.account_app),
             email=payload.email,
             current_password=payload.current_password,
             passkey=payload.passkey,

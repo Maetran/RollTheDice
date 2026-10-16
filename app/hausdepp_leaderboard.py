@@ -1,4 +1,4 @@
-"""Owner-gated Hausdepp standings from validated completed human round seats."""
+"""Authenticated Hausdepp standings from validated completed human round seats."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from .database import database_schema_ready, session_scope
 from .game_types import HAUSDEPP_GAME_TYPE
+from .hausdepp_achievements import public_hausdepp_ranks
 from .hausdepp_results import validated_hausdepp_membership
 from .models import CompletedGame, User
 
@@ -16,9 +17,9 @@ from .models import CompletedGame, User
 def build_hausdepp_leaderboard(user_id: int, *, players: int | None = None, limit: int = 50) -> dict:
     """Rank accounts by finished rounds; ties share a place, CPUs never rank.
 
-    The HTTP boundary owns the founder guard. Only outcome counts and current
-    account display names leave this service: no cards, achievements, XP, source
-    game IDs, foreign account IDs or tournament evidence are included.
+    The HTTP boundary owns authentication. Only outcome counts, current account
+    names and their current Hausdepp title leave this service: no cards, unlocks,
+    XP totals, source game IDs, foreign account IDs or tournament evidence.
     """
     if type(user_id) is not int or user_id < 1:
         raise ValueError("hausdepp_invalid_user")
@@ -65,6 +66,8 @@ def build_hausdepp_leaderboard(user_id: int, *, players: int | None = None, limi
                      key=lambda key: (-totals[key]["wins"], names[key].casefold(), key))
     result["total_players"] = len(ordered)
     previous_wins, place = None, 0
+    with session_scope() as db:
+        ranks = public_hausdepp_ranks(db, ordered[:limit])
     for index, account_id in enumerate(ordered[:limit], 1):
         counts = totals[account_id]
         if counts["wins"] != previous_wins:
@@ -72,5 +75,5 @@ def build_hausdepp_leaderboard(user_id: int, *, players: int | None = None, limi
             previous_wins = counts["wins"]
         result["entries"].append({"place": place, "display_name": names[account_id], **counts,
                                   "win_rate": round(counts["wins"] / counts["rounds_played"] * 100, 1),
-                                  "is_self": account_id == user_id})
+                                  "is_self": account_id == user_id, "rank": ranks[account_id]})
     return result

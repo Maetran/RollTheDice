@@ -20,7 +20,7 @@ MANIFESTS = (
 )
 TEXT_SUFFIXES = {".css", ".html", ".js", ".webmanifest"}
 VERSION_RE = re.compile(
-    r"((?:(?:/static/|\./)[A-Za-z0-9_./-]+\.(?:css|js|png|webp|svg|ico|ttf|woff2?)|"
+    r"((?:(?:/static/|\./)[A-Za-z0-9_./-]+\.(?:css|js|png|jpe?g|webp|svg|ico|ttf|woff2?)|"
     r"/(?:(?:zilch|hausdepp)-)?manifest(?:-en)?\.webmanifest)\?v=)[A-Za-z0-9._-]+"
 )
 CACHE_RE = re.compile(r"const CACHE_VERSION = '[^']+';")

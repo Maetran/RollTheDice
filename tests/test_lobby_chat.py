@@ -275,3 +275,29 @@ class LobbyChatTestCase(unittest.TestCase):
         self.assertEqual([hub.allow_message(42) for _ in range(5)], [True] * 5)
         self.assertFalse(hub.allow_message(42))
         self.assertTrue(hub.allow_message(43))
+
+    def test_hausdepp_messages_keep_their_tag_across_all_three_lobbies_and_history(self) -> None:
+        tokens = []
+        for name in ("ChatZed", "ChatZilla", "ChatHouse"):
+            create_user(name, "a-secure-password-123", must_change_password=False)
+            identity, token = login(request_for(), name, "a-secure-password-123")
+            tokens.append((identity, token))
+        with TestClient(main.app) as zed, TestClient(main.app) as zilla, TestClient(main.app) as house:
+            for client, (_, token) in zip((zed, zilla, house), tokens, strict=True):
+                client.cookies.set("rollthedice_session", token)
+            with (
+                zed.websocket_connect("/ws/lobby-chat?context=zdwa") as zdwa_socket,
+                zilla.websocket_connect("/ws/lobby-chat?context=zilch") as zilch_socket,
+                house.websocket_connect("wss://hausdepp.zockdiewandan.online/ws/lobby-chat") as house_socket,
+            ):
+                house_socket.send_json({"action": "lobby_chat_message", "text": "Zehn drauf!", "game_type": "zdwa"})
+                frames = [socket.receive_json()["lobby_chat"] for socket in (zdwa_socket, zilch_socket, house_socket)]
+                self.assertEqual(frames[0], frames[1])
+                self.assertEqual(frames[1], frames[2])
+                self.assertEqual(frames[0]["game_type"], "hausdepp")
+                self.assertEqual(frames[0]["text"], "Zehn drauf!")
+                self.assertEqual(frames[0]["sender"], "ChatHouse")
+            for identity, _ in tokens:
+                history = load_lobby_chat_history(identity.user_id)
+                self.assertEqual([(frame["lobby_chat"]["game_type"], frame["lobby_chat"]["text"]) for frame in history],
+                                 [("hausdepp", "Zehn drauf!")])

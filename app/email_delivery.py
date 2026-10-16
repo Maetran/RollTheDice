@@ -13,7 +13,7 @@ import logging
 import os
 from dataclasses import dataclass
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
@@ -100,6 +100,8 @@ def _copy(kind: str, language: str, action_url: str | None) -> tuple[str, str, s
     else:
         raise ValueError("unknown_account_email_kind")
 
+    if action_url and parse_qs(urlsplit(action_url).query).get("app") == ["hausdepp"]:
+        subject = subject.replace("Zock die Wand an", "Hausdepp")
     if action_url:
         escaped_url = html.escape(action_url, quote=True)
         button = f'<p><a href="{escaped_url}">{html.escape(label)}</a></p>'

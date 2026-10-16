@@ -127,7 +127,6 @@ html[data-game="hausdepp"] .hd-table:has(.hd-seat .hd-tournament-prefix) { --hd-
   html[data-game="hausdepp"] .hd-table > .hd-result { grid-column: 1 / -1; grid-row: 6; }
   html[data-game="hausdepp"] .hd-table > .hd-action-error { grid-column: 1 / -1; grid-row: 7; }
   html[data-game="hausdepp"] .hd-room-layout > .hd-social { position: static; width: auto; }
-  html[data-game="hausdepp"] .hd-room-layout:has(.hd-table:not([data-phase="waiting"]):not([data-phase="finished"])) > .hd-social { position: static; width: auto; margin-top: 8px; padding: 0; }
 }
 @media (orientation: landscape) and (max-width: 1099px) and (max-height: 600px) {
   html[data-game="hausdepp"] .hd-playing .hd-header .hd-nav { display: none; }

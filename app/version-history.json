@@ -2161,5 +2161,12 @@
     "date": "2026-10-16",
     "bump": "patch",
     "summary": "Grössere Kartenstapel und mehr Platz für die Tischmitte auf Mobilgeräten. / Larger card piles and more room for the centre of the table on mobile."
+  },
+  {
+    "version": "3.1.0",
+    "revision": "1218657476632bcacb4e3306db0dde877ae6746a",
+    "date": "2026-10-16",
+    "bump": "minor",
+    "summary": "Kurze freiwillige Einsteigertouren für ZDWA, Zilch und Hausdepp mit Wiederstart in den Einstellungen. / Short optional beginner tours for ZDWA, Zilch and Hausdepp, restartable from settings."
   }
 ]

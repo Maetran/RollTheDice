@@ -1,3 +1,4 @@
+import { hausdeppAccountReturnPath } from "../multigame/routes.js";
 import { adminProfileMarkup, avatarMarkup } from "./avatar.js";
 import { createPasskeyCredential, requestPasskeyAssertion, passkeysSupported } from "./passkeys.js";
 
@@ -402,6 +403,13 @@ export async function mountPasskeySettings(container, { zilch = false } = {}) {
   }
 }
 
+function accountPresentationContext() {
+  const house = document.documentElement.dataset.game === 'hausdepp' || document.documentElement.dataset.hausdeppLogin === 'true';
+  if (!house) return {};
+  const candidate = hausdeppAccountReturnPath(new URLSearchParams(location.search).get('return_to'));
+  return { account_app: 'hausdepp', ...(candidate ? { return_to: candidate } : {}) };
+}
+
 export async function register(username, email, turnstileToken = null, password = null) {
   const response = await fetch('/api/auth/register', {
     method: 'POST',
@@ -412,6 +420,7 @@ export async function register(username, email, turnstileToken = null, password 
       password: password || null,
       turnstile_token: turnstileToken,
       preferred_language: window.ZDWA_I18N?.getLanguage?.() || 'de',
+      ...accountPresentationContext(),
     }),
     cache: 'no-store',
   });
@@ -449,6 +458,7 @@ export function requestPasswordReset(email) {
   return publicAuthPost('/api/auth/password-reset', {
     email,
     preferred_language: window.ZDWA_I18N?.getLanguage?.() || 'de',
+    ...accountPresentationContext(),
   });
 }
 
@@ -479,7 +489,7 @@ export async function requestAccountEmail(email, verification) {
   const response = await apiFetch('/api/auth/email', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, ...(typeof verification === 'string' ? { current_password: verification } : verification) }),
+    body: JSON.stringify({ email, ...accountPresentationContext(), ...(typeof verification === 'string' ? { current_password: verification } : verification) }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(authError(data.detail));

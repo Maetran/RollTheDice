@@ -2,7 +2,7 @@ import { loadAuth } from "./auth.js";
 import { avatarMarkup, replaceChildrenPreservingAvatars } from "./avatar.js";
 import { playerProfileHref } from "./player-allowlist.js";
 
-const CONTEXTS = new Set(["all", "zdwa", "zilch"]);
+const CONTEXTS = new Set(["all", "zdwa", "zilch", "hausdepp"]);
 
 function translate(value) {
   return window.ZDWA_I18N?.t?.(value) || value;
@@ -22,7 +22,7 @@ function chatErrorMessage(code) {
 }
 
 function gameLabel(gameType) {
-  return gameType === "zilch" ? "zilch" : "zdwa";
+  return ["zdwa", "zilch", "hausdepp"].includes(gameType) ? gameType : "zdwa";
 }
 
 function eventText(message, { withSender = true } = {}) {
@@ -35,7 +35,7 @@ function eventText(message, { withSender = true } = {}) {
 function socketUrl(context) {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const url = new URL(`${protocol}//${window.location.host}/ws/lobby-chat`);
-  url.searchParams.set("context", context === "zilch" ? "zilch" : "zdwa");
+  url.searchParams.set("context", ["zilch", "hausdepp"].includes(context) ? context : "zdwa");
   return url.toString();
 }
 
@@ -98,6 +98,7 @@ export function mountLobbyChat(mount, { context = "zdwa", initialAuth = null } =
           <button type="button" class="small ghost is-active" data-lobby-chat-filter="all" aria-pressed="true">${translate("Alle")}</button>
           <button type="button" class="small ghost" data-lobby-chat-filter="zilch" aria-pressed="false">${translate("Nur Zilch")}</button>
           <button type="button" class="small ghost" data-lobby-chat-filter="zdwa" aria-pressed="false">${translate("Nur ZDWA")}</button>
+          <button type="button" class="small ghost" data-lobby-chat-filter="hausdepp" aria-pressed="false">${translate("Nur Hausdepp")}</button>
         </div>
       </div>
       <p class="lobby-chat__hint">${translate("Dein persönlicher Verlauf bleibt drei Tage sichtbar, wenn dein Lobby-Chat aktiv war.")}</p>
@@ -260,7 +261,7 @@ export function mountLobbyChat(mount, { context = "zdwa", initialAuth = null } =
       !["message", "presence"].includes(kind)
       || typeof message.id !== "number"
       || typeof message.sender !== "string"
-      || !["zdwa", "zilch"].includes(message.game_type)
+      || !["zdwa", "zilch", "hausdepp"].includes(message.game_type)
       || (kind === "message" && typeof message.text !== "string")
     ) return false;
     if (state.seenMessageIds.has(message.id)) return true;

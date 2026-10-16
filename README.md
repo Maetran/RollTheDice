@@ -79,7 +79,8 @@ Tellbild und die Blitz-Rückseite. Die Regelseite ergänzt Schnellstart,
 Sprungmarken, Beispiele und Begriffe. Rundenausgänge werden getrennt gespeichert.
 Der private Kontobereich zeigt eigene abgeschlossene Runden, Runden als Hausdepp
 und Runden mit leerer Hand sowie einen nachladbaren Verlauf tatsächlicher
-Ergebnisse; allgemeine Einstellungen bleiben im gemeinsamen Konto.
+Ergebnisse; allgemeine Einstellungen sind direkt unter
+`/hausdepp/konto/einstellungen` erreichbar und gelten für das gemeinsame Konto.
 Das Konto enthält **100 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
 Rangleiter. Innerhalb jeder Gruppe stehen erreichte Erfolge vor den noch offenen.
 Häufige Kartenaktionen benötigen mehrere passende abgeschlossene Runden;
@@ -152,8 +153,8 @@ requirements; [card assets and credits](docs/HAUSDEPP_ASSETS.md) documents the
 Tell pattern and lightning back. The rules page adds a quick start, anchors,
 examples and terminology. Round outcomes are stored separately. The private
 account area shows your completed rounds, rounds as the Hausdepp and rounds
-finished with an empty hand, plus a loadable history of actual results; general
-settings remain in the shared account. The account includes **100 achievements
+finished with an empty hand, plus a loadable history of actual results. General
+settings at `/hausdepp/konto/einstellungen` manage the shared account. The account includes **100 achievements
 and 24 ranks**, with search, filters and the complete rank ladder. Each group
 shows earned achievements before locked ones. Common card actions require
 several qualifying completed rounds, with each round counting at most once per
@@ -186,6 +187,57 @@ rounds and XP but grants no final tournament achievements.
 two real accounts in a temporary local database. Public access for active
 accounts is independent of that test.
 
+
+## Hausdepp — Spielfenster, Computer und Konto / game window, computers and account
+
+**Deutsch:** Der mobile Hausdepp-Tisch bleibt im Hoch- und Querformat in einem
+festen Spielfenster. Gegner, grössere Kartenstapel, Zugstatus, eigene Hand und
+Reaktionen bleiben erreichbar; grosse Hände scrollen nur innerhalb des Fächers.
+Spielhilfe, Einladungen und Chat öffnen sich als begrenzte Ablagen. Ein wartender
+Sitz lässt sich aktiv verlassen: Der Tisch bleibt für andere Menschen erhalten,
+das Hostrecht wandert weiter. Ohne Menschen wird er ohne Ergebnis oder EP geschlossen.
+Die Rangliste zeigt neben Siegen den aktuellen, aus denselben gewichteten Punkten
+wie im Konto abgeleiteten Hausdepp-Rang. Fremde Erfolgsdetails bleiben privat.
+
+Computer nutzen sichere Abräum- und Schlussketten, sparen weitere 10er und wägen
+Zocken gegen Aufnehmen ab. Ihr Tempo schwankt; nach einer Denkpause prüfen sie
+den aktuellen Zustand erneut. Sie kennen keine fremden Hände oder verdeckte
+Stapelreihenfolge. Der [reproduzierbare CPU-Vergleich](docs/HAUSDEPP_CPUS.md)
+dokumentiert Stärken, Grenzen und Prüfungen. Hausdepp hat eigene Anmelde- und
+Kontoeinstellungsseiten unter `/hausdepp/anmelden` und
+`/hausdepp/konto/einstellungen`: Passkey zuerst, gemeinsame Konten und
+Sicherheitsprüfungen, sichere Rückwege auch für E-Mail-Aktionen. Die vorhandenen
+Einsteigertouren lassen sich auch dort verwalten. Im gemeinsamen Lobby-Chat stehen
+Hausdepp-Tag und Schnellfilter in allen drei Spielen bereit.
+
+Öffentliche Kartenbilder werden vor dem Tisch dekodiert und unter versionierten
+URLs im Browser zwischengespeichert. Private Hände, Spielstände und Kontoinhalte
+bleiben ungespeichert. Die PWA nutzt eindeutige Herz-Zehner-Icon-URLs, explizite
+180-Pixel-Apple-Icons und die üblichen öffentlichen Apple-Fallbackpfade. Ein
+Browser- oder Manifesttest ersetzt keine Abnahme des iPhone-Startbildschirmdialogs.
+
+**English:** Hausdepp stays within a fixed mobile game window in portrait and
+landscape. Opponents, larger piles, turn status, your hand and reactions remain
+reachable; large hands scroll only inside their fan. Help, invitations and chat
+open as bounded panels. Release a waiting seat with Leave table: other people
+keep the table, with host rights transferred. The last person closes it without
+scoring a result or XP. Standings include each player's current Hausdepp title,
+derived from the same weighted ledger as the account without revealing unlock details.
+
+Computers use safe clearances and finishing chains, retain extra tens and weigh
+gambling against pickup. Timing varies; decisions are checked against current
+state after each pause. They never know opposing hands or stock order. The
+[reproducible CPU comparison](docs/HAUSDEPP_CPUS.md) records strengths, limits
+and checks. Dedicated sign-in and settings at `/hausdepp/anmelden` and
+`/hausdepp/konto/einstellungen` use passkeys first, shared accounts and security,
+and safe return paths for email actions. Existing beginner tours can also be
+managed there. All three lobbies offer a Hausdepp chat tag and quick filter.
+
+Public card artwork is decoded before the table opens and cached at versioned
+browser URLs. Private hands, game state and account content are never stored
+for offline use. The PWA uses fresh heart-ten icon URLs, explicit 180-pixel
+Apple icons and standard public Apple fallback paths. Browser and manifest
+checks cannot replace acceptance of the iPhone Home Screen dialog.
 
 ## The games
 
@@ -227,7 +279,7 @@ Gerätefreigabe und die Kategorie „Mitspieler-Rufe“ müssen aktiv sein; die
 private Absenderauswahl gilt weiterhin. Nur aktuell für Hausdepp freigegebene
 Konten können senden oder empfangen. Eine Systembenachrichtigung trägt das
 Hausdepp-Icon und öffnet den Tisch auf demselben Ursprung. Die Geräteanmeldung
-bleibt in den gemeinsamen Kontoeinstellungen; eine eigene tägliche
+ist direkt in den Hausdepp-Kontoeinstellungen erreichbar; eine eigene tägliche
 Hausdepp-Erinnerung wird dadurch nicht aktiviert. Teilen und Kopieren des
 Tischlinks sind getrennte, ausdrücklich ausgelöste Aktionen.
 
@@ -236,7 +288,7 @@ seat use the same push settings as ZDWA and Zilch. Device permission and the
 player-call category must both be enabled; the private sender allowlist still
 applies. Sending and receiving require current Hausdepp access. The system
 notification uses Hausdepp's icon and opens the table on the same origin.
-Devices are registered in shared account settings; this does not enable a
+Devices are registered in Hausdepp’s settings for the shared account; this does not enable a
 separate daily Hausdepp reminder. Sharing and copying a table link remain
 separate, explicitly triggered actions.
 

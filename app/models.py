@@ -446,7 +446,7 @@ class LobbyChatMessage(Base):
 
     __table_args__ = (
         CheckConstraint("kind IN ('message', 'presence')", name="ck_lobby_chat_messages_kind"),
-        CheckConstraint("game_type IN ('zdwa', 'zilch')", name="ck_lobby_chat_messages_game_type"),
+        CheckConstraint("game_type IN ('zdwa', 'zilch', 'hausdepp')", name="ck_lobby_chat_messages_game_type"),
         Index("ix_lobby_chat_messages_created_at", "created_at"),
     )
 

@@ -129,6 +129,11 @@ DOCUMENT_ROUTES = (
          "tests/browser/game-tours.spec.js"),
     ),
     RouteCoverage(
+        ("/hausdepp/anmelden", "/hausdepp/konto/einstellungen"), "tests/test_hausdepp_auth_flow.py",
+        "test_house_auth_pages_keep_product_identity_and_protected_settings",
+        ("tests/browser-hausdepp-passkeys/in-origin.spec.js", "tests/browser-hausdepp-passkeys/account-flow.spec.js"),
+    ),
+    RouteCoverage(
         ("/hausdepp/konto",), "tests/test_hausdepp_integration.py",
         "test_founder_product_pages_and_game_type_routes",
         ("tests/browser/hausdepp-product.spec.js", "tests/browser/game-picker.spec.js",
@@ -174,6 +179,8 @@ TECHNICAL_ROUTES = {
     "/zilch-sw.js": "Zilch service worker; test_zilch_product_routes.",
     "/hausdepp-sw.js": "Narrow, network-only Hausdepp service worker; test_hausdepp_pwa and browser/hausdepp-pwa.spec.js.",
     "/favicon.ico": "Product artwork; test_http_shell.",
+    "/apple-touch-icon.png": "Anonymous GET/HEAD Apple icon discovery; host-specific public 180px PNG, test_hausdepp_pwa.",
+    "/apple-touch-icon-precomposed.png": "Legacy Apple GET/HEAD icon discovery; same public product artwork, test_hausdepp_pwa.",
     "/robots.txt": "Crawler policy; test_http_shell and test_zilch_seo.",
     "/sitemap.xml": "Crawler discovery; test_http_shell and test_zilch_seo.",
     "/.well-known/appspecific/com.chrome.devtools": "Browser developer-tools probe.",
@@ -213,7 +220,7 @@ class NavigationInventoryTests(TestCase):
                     self.assertTrue(group.test_file.startswith("tests/browser/"))
                     self.assertIn("test(", source, "Browser coverage must contain executable tests")
                 for browser_test in group.browser_tests:
-                    self.assertTrue(browser_test.startswith("tests/browser/"))
+                    self.assertTrue(browser_test.startswith(("tests/browser/", "tests/browser-hausdepp-passkeys/")))
                     self.assertIn("test(", (ROOT / browser_test).read_text(encoding="utf-8"))
 
 

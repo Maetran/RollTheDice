@@ -112,6 +112,7 @@ def request_for(
             "scheme": scheme,
             "path": "/",
             "headers": headers,
+            "query_string": b"",
             "client": ("127.0.0.1", 1234),
             "server": ("testserver", 80),
         }

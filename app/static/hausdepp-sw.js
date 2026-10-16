@@ -1,6 +1,6 @@
 /* Hausdepp is an online multiplayer game. Nothing enters Cache Storage:
    cards, tables, account pages, results and chat always require the server. */
-const CACHE_VERSION = 'assets-2852d84b3b44';
+const CACHE_VERSION = 'assets-8520b6b69416';
 
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
@@ -55,7 +55,7 @@ self.addEventListener('push', event => {
   event.waitUntil(self.registration.showNotification(
     typeof payload.title === 'string' && payload.title ? payload.title : 'Hausdepp', {
       body: typeof payload.body === 'string' ? payload.body : '',
-      icon: '/static/icons/hausdepp-icon-192.png', badge: '/static/icons/hausdepp-icon-192.png',
+      icon: '/static/icons/hausdepp-icon-192-v2.png', badge: '/static/icons/hausdepp-icon-192-v2.png',
       tag: typeof payload.tag === 'string' ? payload.tag : 'game-update', renotify: false,
       data: { url: notificationTarget(payload.url) },
     },

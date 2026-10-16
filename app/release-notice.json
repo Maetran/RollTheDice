@@ -5,25 +5,33 @@
     "zilch",
     "hausdepp"
   ],
-  "summary_de": "Neu am Tisch? Kurze Touren helfen dir in allen drei Spielen. Jederzeit beenden oder in den Einstellungen erneut starten.",
-  "summary_en": "New at the table? Quick tours help you in all three games. End them anytime or restart them from settings.",
+  "summary_de": "Hausdepp ist da: cleverere Computer, mobiles Spielfenster und eigene Passkey-Anmeldung mit Kontoeinstellungen.",
+  "summary_en": "Hausdepp is here: smarter computers, a mobile game window and dedicated passkey sign-in with account settings.",
   "player_notes": {
     "de": {
-      "title": "Deine ersten Schritte am Spieltisch",
+      "title": "Der Hausdepp wird schlauer. Du auch?",
       "changes": [
-        "Beim ersten Spiel kannst du dir kurz zeigen lassen, was du wo machst und warum – für ZDWA, Zilch und Hausdepp.",
-        "Du entscheidest: Tour starten oder ohne Tour spielen. Jeder Schritt lässt sich sofort beenden.",
-        "Unter Einstellungen → Hilfe & Neuigkeiten findest du die Touren zum erneuten Starten oder Anschauen.",
-        "Deine Wahl wird je Spiel gemerkt; Gäste finden Touren in den Einstellungen der Lobby."
+        "Hausdepp ist da: Spielt mit Menschen und Computern, in einzelnen Runden oder im HAUSDEPP-Turnier.",
+        "Auf dem Handy bleibt der Tisch in einem Fenster. Grössere Stapel und sofort vorbereitete Kartenbilder helfen beim schnellen Nachwerfen.",
+        "Computer planen bessere Schlusszüge und reagieren mal schneller, mal mit einer Denkpause.",
+        "Anmelden mit Passkey zuerst: Profil, Passkeys und weitere Einstellungen verwaltest du direkt bei Hausdepp.",
+        "Du kannst wartende Tische wieder verlassen. In der Rangliste siehst du die aktuellen Hausdepp-Ränge.",
+        "Der gemeinsame Lobby-Chat hat jetzt auch einen Hausdepp-Filter und das passende Spiel-Tag.",
+        "Die kurzen freiwilligen Einsteigertouren helfen in allen drei Spielen; du kannst sie jederzeit beenden oder in den Einstellungen neu starten.",
+        "Das Herz-Zehner-Icon ist für die Installation auf dem iPhone besser auffindbar."
       ]
     },
     "en": {
-      "title": "Your first steps at the table",
+      "title": "Hausdepp gets smarter. Do you?",
       "changes": [
-        "On your first game, a quick tour shows you what to do, where and why — for ZDWA, Zilch and Hausdepp.",
-        "You choose: start the tour or play without it. End the tour immediately at any step.",
-        "Find tours in Settings → Help & updates to restart them or view examples.",
-        "Your choice is remembered for each game; guests find tours in the lobby settings."
+        "Hausdepp is here: play with people and computers, in individual rounds or a HAUSDEPP tournament.",
+        "On phones, the table stays in one window. Larger piles and ready-to-show card images help with quick follow-up plays.",
+        "Computers plan better finishes and vary between quick responses and thinking pauses.",
+        "Passkeys come first: manage your profile, passkeys and other settings directly in Hausdepp.",
+        "Leave waiting tables again, and see current Hausdepp titles in the standings.",
+        "The shared lobby chat now includes a Hausdepp quick filter and game tag.",
+        "Short optional beginner tours help in all three games; end them anytime or restart them from settings.",
+        "The heart-ten icon is easier for iPhone to find when installing the app."
       ]
     }
   }
