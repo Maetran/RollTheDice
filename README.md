@@ -362,6 +362,28 @@ For an internet-facing server, follow the
 HTTPS, secure cookies, the reverse proxy, trusted forwarding and registration
 protection.
 
+## Spiele auswählen / Choosing a game
+
+**Deutsch:** Die gemeinsame Spielauswahl zeigt die freigeschalteten Spiele mit
+eigenem Symbol und Namen. Der Einstieg nennt das aktuelle Spiel; die Auswahl
+markiert es zusätzlich. Ein Tipp oder `Alt+Shift+Z` öffnet die Auswahl, ein
+weiterer Tipp auf ein Spiel dessen Lobby. Escape schliesst sie. Auf dem Handy
+öffnet sie sich als gut erreichbares Auswahlfenster am unteren Rand.
+Hausdepp bleibt auf den privaten Founder-Zugang beschränkt. Installierte Apps
+behalten beim Wechsel ihren bestehenden Ursprung und Service Worker.
+UI-/UX-Abnahme und ein öffentlicher Rollout stehen weiter aus.
+
+**English:** The shared game picker shows available games with their own icon
+and name. Its trigger names the current game, which is also marked inside the
+picker. Tap or press `Alt+Shift+Z` to open it, then choose a game's lobby.
+Escape closes the picker. On phones it opens as a reachable bottom sheet.
+Hausdepp remains private to its founder access. Installed apps retain their
+existing origin and service worker when switching. Owner UI/UX acceptance and
+a public rollout remain pending.
+
+The [integration matrix](docs/GAME_SWITCHER.md) documents browser and installed
+app destinations, account settings and access boundaries.
+
 ## Playing together
 
 - Create a table quickly, or add an optional room code.
@@ -381,8 +403,8 @@ protection.
   actively ends it. Timeouts and disconnects do not count. ZDWA Fairplay
   reminders award zero rank points; scores and completed-game totals remain
   unchanged.
-- Switch between games from lobbies and app pages. Live game rooms deliberately
-  have no game switcher.
+- Choose games from lobbies and app pages. Existing dice-game live tables retain
+  their own leave flow before returning to the lobby's game picker.
 
 Waiting, running and paused rooms expire after one hour without a
 server-accepted room action. They are then aborted without a completed result.

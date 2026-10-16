@@ -15,18 +15,18 @@
   <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=41e5b21f3400">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=41e5b21f3400" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=41e5b21f3400" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=102992558e01">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=102992558e01" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=102992558e01" sizes="180x180">
   <!--
     rules.html - Spielanleitung
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi sowie Desktop-/Mobilsteuerung.
   -->
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=41e5b21f3400" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=41e5b21f3400" />
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=41e5b21f3400">
+  <script src="/static/shell.js?v=102992558e01" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=102992558e01" />
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=102992558e01">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
@@ -78,6 +78,11 @@
       Normalerweise hast du pro Zug bis zu drei Würfe; im letzten freien Feld sind es fünf.
       Im Hardcore-Modus gibt es pro Zug genau einen automatischen Wurf.
     </p>
+
+    <details>
+      <summary>Spielauswahl</summary>
+      <p>Die Spielauswahl im Kopfbereich zeigt freigeschaltete Spiele mit Symbol und Namen. Das aktuelle Spiel ist markiert. Alt+Shift+Z öffnet die Auswahl ausserhalb von Eingabefeldern. Wähle ein Spiel, um seine Lobby zu öffnen.</p>
+    </details>
 
     <!-- Rundenablauf -->
     <h2>Rundenablauf</h2>

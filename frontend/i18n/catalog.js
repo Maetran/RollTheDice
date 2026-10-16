@@ -1,3 +1,26 @@
+export const GAME_PICKER_MESSAGES = {
+  de: {
+    title: "Spiel auswählen",
+    trigger: "Spiel auswählen: {game}",
+    intro: "Ein Konto für alle Spiele.",
+    close: "Spieleauswahl schliessen",
+    current: "Aktuell",
+    zdwaDescription: "Würfeln und Punkte eintragen.",
+    zilchDescription: "Weiterwürfeln oder Punkte sichern.",
+    hausdeppDescription: "Karten loswerden. Nicht als Letzter bleiben.",
+  },
+  en: {
+    title: "Choose a game",
+    trigger: "Choose a game: {game}",
+    intro: "One account for every game.",
+    close: "Close game picker",
+    current: "Current",
+    zdwaDescription: "Roll dice and fill your scorecard.",
+    zilchDescription: "Roll again or bank your points.",
+    hausdeppDescription: "Shed your cards. Avoid being last.",
+  },
+};
+
 export const HAUSDEPP_MESSAGES = {
   "de": {
     "unknownDate": "Datum unbekannt",
@@ -462,6 +485,9 @@ export const HAUSDEPP_MESSAGES = {
 };
 
 export const EN = {
+  "Spielauswahl": "Game picker",
+  "Die Spielauswahl im Kopfbereich zeigt freigeschaltete Spiele mit Symbol und Namen. Das aktuelle Spiel ist markiert. Alt+Shift+Z öffnet die Auswahl ausserhalb von Eingabefeldern. Wähle ein Spiel, um seine Lobby zu öffnen.": "The game picker in the header shows available games with an icon and name. Your current game is marked. Alt+Shift+Z opens the picker outside input fields. Choose a game to open its lobby.",
+  "Am Zilch-Spieltisch nutzt du zuerst Spiel verlassen. In der Lobby kannst du anschliessend ein anderes Spiel auswählen.": "At a Zilch table, use Leave game first. You can then choose another game from the lobby.",
     "Spiele": "Games",
     "Hausdepp öffnen": "Open Hausdepp",
     "Du bist angemeldet und kannst Hausdepp öffnen.": "You are signed in and can open Hausdepp.",

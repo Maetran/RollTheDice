@@ -42,6 +42,11 @@ continued local development is authorized.
   time, saved game results and sitewide HTTP counts are separate measurements.
 - Unknown, missing, stale and incomplete measurements must remain explicit.
 - Keep authentication, explicit analytics access, noindex and no-store.
+- Use one shared game picker with named game icons and an explicit active-game
+  state instead of a direct two-game toggle. Resolve entries through the shared
+  browser/PWA route helpers and preserve server-confirmed access. Installed
+  apps retain their origin and worker; the private Hausdepp destination is not
+  made public by the picker. Preserve existing dice-table leave flows.
 - Follow `docs/PRODUCT_DELIVERY.md` for documentation, translations, versioning
   and verification. No game rules change in the dashboard work.
 - Keep Hausdepp bound to the permanent founder account on the server. Ordinary

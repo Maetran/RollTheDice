@@ -23,6 +23,29 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 2.57.0 — Eine gemeinsame Spielauswahl / one shared game picker — 2026-10-16
+
+**Deutsch:** Der gemeinsame Einstieg zeigt das aktuelle Spiel mit einem eigenen
+Symbol und Namen. Er öffnet eine Auswahl aller freigeschalteten Spiele mit
+aktiver Markierung statt direkt ins andere Spiel zu wechseln. Auf dem Handy
+erscheint ein erreichbares Auswahlfenster, am Desktop ein Menü beim Einstieg.
+Escape, Tastaturnavigation und Alt+Shift+Z werden unterstützt. Der private
+Hausdepp-Zugang bleibt serverseitig beschränkt. Installierte Zilch-Apps
+behalten auch bei Hausdepp ihren eigenen Service Worker und ihr Manifest; die
+ZDWA-Brücke überschreibt keine Spielziele mehr. Bestehende Verlassen-Abläufe
+an Würfeltischen bleiben erhalten. Lokaler Dev-Branch, keine UI-/UX-Abnahme
+oder Veröffentlichung.
+
+**English:** The shared trigger shows the current game's own icon and name.
+It opens all available games with an active marker instead of immediately
+switching to the other game. Phones use a reachable bottom sheet; desktop uses
+a panel beside the trigger. Escape, keyboard navigation and Alt+Shift+Z are
+supported. Private Hausdepp access remains server-restricted. Installed Zilch
+apps retain their service worker and manifest when visiting Hausdepp, and the
+ZDWA bridge no longer overwrites game destinations. Existing dice-table leave
+flows remain in place. Local development branch; no owner UI/UX acceptance or
+public release.
+
 ## 2.56.0 — Hausdepp rund um den Tisch / beyond the table — 2026-10-16
 
 **Deutsch:** Hausdepp bekommt ein eigenes privates Konto mit echten

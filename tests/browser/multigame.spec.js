@@ -394,7 +394,12 @@ async function expectFounderSwitchWithoutZilch(page) {
   await expect(menu).toHaveCount(0);
 }
 
-test("Zilch is a separate permission-gated app mode and its hotkey respects inputs", async ({ page }) => {
+async function chooseGame(page, name) {
+  await page.locator("[data-game-switch]").click();
+  await page.locator("#suiteGameMenu").getByRole("link", { name, exact: true }).click();
+}
+
+test("Zilch stays permission-gated and the game chooser hotkey respects inputs", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("[data-game-switch]")).toBeHidden();
   await expect(page.locator("html")).toHaveAttribute("data-game", "zdwa");
@@ -416,7 +421,7 @@ test("Zilch is a separate permission-gated app mode and its hotkey respects inpu
 
   await Promise.all([
     page.waitForURL(/\/zilch$/),
-    switchButton.click(),
+    chooseGame(page, "Zilch"),
   ]);
   await expect(page.locator("html")).toHaveAttribute("data-game", "zilch");
   await expect(page.locator("[data-zilch-root]")).toBeVisible();
@@ -459,17 +464,21 @@ test("Zilch is a separate permission-gated app mode and its hotkey respects inpu
   await expect(page.locator("#zilchGamePassphrase")).toBeFocused();
   await page.keyboard.press("Alt+Shift+Z");
   await expect.poll(() => page.url()).toBe(lobbyUrl);
+  await expect(page.locator("#suiteGameMenu")).toHaveCount(0);
 
   await page.locator("#zilchGamePassphrase").evaluate(element => element.blur());
+  await page.keyboard.press("Alt+Shift+Z");
+  await expect(page.locator("#suiteGameMenu")).toBeVisible();
+  expect(page.url()).toBe(lobbyUrl);
   await Promise.all([
     page.waitForURL(/\/$/),
-    page.keyboard.press("Alt+Shift+Z"),
+    page.locator("#suiteGameMenu").getByRole("link", { name: "ZDWA", exact: true }).click(),
   ]);
   await expect(page.locator("html")).toHaveAttribute("data-game", "zdwa");
   await expect(page.locator("[data-zilch-root]")).toHaveCount(0);
   await expect(page.locator("#createGameCard")).toBeVisible();
 
-  await page.locator("[data-game-switch]").click();
+  await chooseGame(page, "Zilch");
   await page.waitForURL(/\/zilch$/);
   await Promise.all([
     page.waitForURL(/\/zilch\/konto$/),
@@ -491,7 +500,7 @@ test("a permitted user can create and reload a private CPU game through the norm
   await expectPasswordLoginClosed(page);
   await signIn(page, "Mani", "mani-preview-password-123");
   await expect(page.locator("[data-game-switch]")).toBeVisible();
-  await page.locator("[data-game-switch]").click();
+  await chooseGame(page, "Zilch");
   await page.waitForURL(/\/zilch$/);
 
   await page.locator("[data-zilch-play-mode='cpu']").click();
@@ -589,7 +598,7 @@ test("two explicitly allowed humans can create, rejoin, and play a private Zilch
     await mani.goto("/");
     await signIn(mani, "Mani", "mani-preview-password-123");
     await expect(mani.locator("#authBadge")).toContainText("Mani");
-    await mani.locator("[data-game-switch]").click();
+    await chooseGame(mani, "Zilch");
     await mani.waitForURL(/\/zilch$/);
     await mani.locator('[data-zilch-play-mode="multiplayer"]').click();
     await Promise.all([
@@ -609,7 +618,7 @@ test("two explicitly allowed humans can create, rejoin, and play a private Zilch
     ]);
     await expect(preview.locator("html")).toHaveAttribute("lang", "en");
     await expect(preview.locator("[data-game-switch]")).toBeVisible();
-    await preview.locator("[data-game-switch]").click();
+    await chooseGame(preview, "Zilch");
     await preview.waitForURL(/\/zilch$/);
     await expect(preview.getByRole("heading", { name: "Zilch die Wand an – Play the dice game online" })).toBeVisible();
     await Promise.all([

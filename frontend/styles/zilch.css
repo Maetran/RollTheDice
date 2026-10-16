@@ -11,6 +11,7 @@
 @import "./zilch-classic.css";
 @import "./zilch-tablet.css";
 @import "./compact-actions.css";
+@import "./game-switch-menu.css";
 
 html[data-game="zilch"],
 html[data-theme="dark"][data-game="zilch"] {
@@ -2798,7 +2799,7 @@ html[data-game="zilch"] body:has(.zilch-play-layout) { padding-bottom: 15.2rem; 
   .zilch-header-tools .zilch-account { display: none; }
   .zilch-header-tools :where(button, select) { min-height: var(--header-control-size); font-size: .82rem; }
   .zilch-header-tools .language-switcher select { min-height: var(--header-control-size); padding: .25rem 1.35rem .25rem .42rem; }
-  .zilch-header-tools :where(.game-switch, #zilchNavToggle) { width: var(--header-control-size); min-width: var(--header-control-size); padding: .25rem; }
+  .zilch-header-tools :where(.game-switch:not([data-game-picker]), #zilchNavToggle) { width: var(--header-control-size); min-width: var(--header-control-size); padding: .25rem; }
   .zilch-header-tools .game-switch .game-switch-label,
   .zilch-header-tools #zilchNavToggle span:last-child { display: none; }
 
@@ -4727,7 +4728,9 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
   color: #ffe1d4;
 }
 
-@media (max-width: 760px) {
+/* A separate navigation row also keeps tablet and landscape phone headers
+   clear of the account, language and full-name game picker controls. */
+@media (max-width: 1099px) {
   .zilch-shell:not(.zilch-shell--game) .zilch-header {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
@@ -4762,7 +4765,7 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
     min-height: var(--header-control-size);
   }
 
-  .zilch-shell:not(.zilch-shell--game) .zilch-header-tools .game-switch {
+  .zilch-shell:not(.zilch-shell--game) .zilch-header-tools .game-switch:not([data-game-picker]) {
     flex: 0 0 var(--header-control-size);
     width: var(--header-control-size);
     min-width: var(--header-control-size);
@@ -4846,7 +4849,7 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
     font-size: .68rem;
   }
 
-  .zilch-shell--game .zilch-header-tools :where(button, a) > [aria-hidden="true"] { display: none; }
+  .zilch-shell--game .zilch-header-tools :where(button:not([data-game-picker]), a) > [aria-hidden="true"] { display: none; }
   .zilch-shell--game .zilch-header-tools .theme-toggle > .theme-toggle-icon { display: inline-flex; }
 
   .zilch-shell--game .zilch-room-abandon { padding: 0; }
@@ -4861,9 +4864,9 @@ html[data-game="zilch"] .zilch-nav-toggle { display: none !important; }
   }
 }
 
-/* Match the cross-game control with the shared header-control system. Phones
-   use its square, icon-only form; wider headers expose the destination label. */
-html[data-game="zilch"] .zilch-header-tools .game-switch {
+/* Retain the legacy toggle geometry until the shared game picker mounts.
+   The picker owns its full-name width and 44px touch target in every game. */
+html[data-game="zilch"] .zilch-header-tools .game-switch:not([data-game-picker]) {
   box-sizing: border-box;
   width: 5rem;
   min-width: 5rem;
@@ -4876,8 +4879,7 @@ html[data-game="zilch"] .zilch-header-tools .game-switch {
   line-height: 1;
 }
 
-/* The shared transfer mark keeps the action recognisable; the label names the
-   destination in both games. */
+/* Both controls inherit Zilch's warm header treatment. */
 html[data-game="zilch"] .zilch-header-tools .game-switch {
   border-color: #fff0b7;
   color: #48200c;
@@ -4891,8 +4893,8 @@ html[data-game="zilch"] .zilch-header-tools .game-switch:focus-visible {
   background: linear-gradient(145deg, #fffbe5, #efc363);
 }
 @media (max-width: 560px) {
-  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch,
-  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch {
+  html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header-tools button.game-switch:not([data-game-picker]),
+  html[data-game="zilch"] .zilch-shell--game .zilch-header-tools button.game-switch:not([data-game-picker]) {
     width: var(--header-control-size);
     min-width: var(--header-control-size);
     height: var(--header-control-size);
@@ -5081,4 +5083,3 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
     width: min(1120px, calc(100vw - max(1rem, env(safe-area-inset-left, 0px)) - max(1rem, env(safe-area-inset-right, 0px))));
   }
 }
-@import "./game-switch-menu.css";

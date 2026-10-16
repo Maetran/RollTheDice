@@ -8,6 +8,11 @@ async function signIn(page, username, password) {
   await page.click("#loginForm button[type=submit]");
 }
 
+async function chooseGame(page, name) {
+  await page.locator("[data-game-switch]").click();
+  await page.locator("#suiteGameMenu").getByRole("link", { name, exact: true }).click();
+}
+
 async function createUser(page, username, password, role = "user") {
   return page.evaluate(async ({ name, secret, userRole }) => {
     const me = await fetch("/api/auth/me", { cache: "no-store" }).then(response => response.json());
@@ -146,10 +151,10 @@ function expectCompactSwitchContent(layout) {
   expect(layout).not.toBeNull();
   expect(layout.iconWidth).toBeGreaterThan(0);
   expect(layout.iconHeight).toBeGreaterThan(0);
-  expect(
-    layout.labelDisplay === "none"
-      || (layout.labelWidth <= 1 && layout.labelHeight <= 1 && layout.labelPosition === "absolute"),
-  ).toBeTruthy();
+  expect(layout.labelDisplay).not.toBe("none");
+  expect(layout.labelWidth).toBeGreaterThan(1);
+  expect(layout.labelHeight).toBeGreaterThan(1);
+  expect(layout.labelPosition).not.toBe("absolute");
 }
 
 test.describe("installed PWA account navigation", () => {
@@ -194,8 +199,8 @@ test.describe("installed PWA account navigation", () => {
       });
       await page.goto(`${origin}/`);
       await expect(page.locator("[data-game-switch]")).toBeEnabled();
-      await page.locator("[data-game-switch]").click();
       const destination = source === "zilch" ? "zdwa" : "zilch";
+      await chooseGame(page, destination === "zilch" ? "Zilch" : "ZDWA");
       await expect(page).toHaveURL(`${origin}/${destination}`);
       await expect(page.locator("html")).toHaveAttribute("data-game", destination);
       const accountLink = source === "zilch"
@@ -245,7 +250,7 @@ async function controlHeights(locator) {
     .map(element => element.getBoundingClientRect().height));
 }
 
-function expectUniformHeaderControls(heights, size = 36) {
+function expectUniformHeaderControls(heights, size = 44) {
   expect(heights.length).toBeGreaterThan(1);
   expect(heights, `Header control heights: ${heights.join(", ")}`).toEqual(heights.map(() => size));
 }
@@ -262,24 +267,25 @@ test("the permission-gated game switch is available across ZDWA pages but absent
   await page.setViewportSize({ width: 1024, height: 800 });
   const zdwaSwitch = page.locator("[data-game-switch]");
   await expect(zdwaSwitch.locator("svg.game-switch-icon")).toBeVisible();
-  await expect(zdwaSwitch).toContainText("Zilch");
-  expectDesktopSwitchContent(await switchContentGeometry(zdwaSwitch, "Zilch"));
+  await expect(zdwaSwitch).toContainText("ZDWA");
+  expectDesktopSwitchContent(await switchContentGeometry(zdwaSwitch, "ZDWA"));
   expectUniformHeaderControls(await controlHeights(page.locator(".app-nav-tools :is([data-language-switcher], [data-theme-toggle], [data-game-switch])")));
   const zdwaDesktopSwitch = await switchControlGeometry(zdwaSwitch);
   await Promise.all([
     page.waitForURL(/\/zilch$/),
-    page.locator("[data-game-switch]").click(),
+    chooseGame(page, "Zilch"),
   ]);
   const zilchSwitch = page.locator(".zilch-header [data-game-switch]");
   await expect(zilchSwitch.locator("svg.game-switch-icon")).toBeVisible();
-  await expect(zilchSwitch).toContainText("ZDWA");
-  expectDesktopSwitchContent(await switchContentGeometry(zilchSwitch, "ZDWA"));
+  await expect(zilchSwitch).toContainText("Zilch");
+  expectDesktopSwitchContent(await switchContentGeometry(zilchSwitch, "Zilch"));
   const zilchDesktopSwitch = await switchControlGeometry(zilchSwitch);
-  expect(zilchDesktopSwitch).toEqual(zdwaDesktopSwitch);
+  expect(zilchDesktopSwitch.height).toEqual(zdwaDesktopSwitch.height);
+  expect(zilchDesktopSwitch.fontSize).toEqual(zdwaDesktopSwitch.fontSize);
   expectUniformHeaderControls(await controlHeights(page.locator(".zilch-header-tools :is([data-language-switcher], [data-game-switch])")));
   await Promise.all([
     page.waitForURL(url => url.pathname === "/"),
-    page.locator(".zilch-header [data-game-switch]").click(),
+    chooseGame(page, "ZDWA"),
   ]);
 
   const destinations = [
@@ -299,16 +305,16 @@ test("the permission-gated game switch is available across ZDWA pages but absent
     await expect(switchButton).toBeVisible();
     await expect(switchButton).toBeEnabled();
     await expect(switchButton).toHaveAttribute("aria-hidden", "false");
-    await expect(switchButton).toHaveAttribute("aria-label", /^(?:Zilch öffnen|Open Zilch) \(Alt\+Shift\+Z\)$/);
+    await expect(switchButton).toHaveAttribute("aria-label", /^(?:Spiel (?:aus)?wählen|Choose (?:a )?game): ZDWA$/);
     await expect(switchButton.locator("svg.game-switch-icon")).toBeVisible();
-    await expect(switchButton).toContainText("Zilch");
+    await expect(switchButton).toContainText("ZDWA");
   }
 
   await page.goto("/");
   await persistLanguageForFixture(page, "en");
   await gotoAfterLanguageSync(page, "/regeln");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await expect(page.locator("[data-game-switch]")).toHaveAttribute("aria-label", "Open Zilch (Alt+Shift+Z)");
+  await expect(page.locator("[data-game-switch]")).toHaveAttribute("aria-label", /^(?:Choose (?:a )?game): ZDWA$/);
   await persistLanguageForFixture(page, "de");
   await gotoAfterLanguageSync(page, "/");
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
@@ -316,10 +322,10 @@ test("the permission-gated game switch is available across ZDWA pages but absent
   await page.setViewportSize({ width: 390, height: 844 });
   const compactZdwaSwitch = page.locator("[data-game-switch]");
   await expect(compactZdwaSwitch.locator("svg.game-switch-icon")).toBeVisible();
-  expectCompactSwitchContent(await switchContentGeometry(compactZdwaSwitch, "Zilch"));
+  expectCompactSwitchContent(await switchContentGeometry(compactZdwaSwitch, "ZDWA"));
   await page.setViewportSize({ width: 720, height: 844 });
   await expect(compactZdwaSwitch.locator("svg.game-switch-icon")).toBeVisible();
-  expectCompactSwitchContent(await switchContentGeometry(compactZdwaSwitch, "Zilch"));
+  expectCompactSwitchContent(await switchContentGeometry(compactZdwaSwitch, "ZDWA"));
   await page.setViewportSize({ width: 1024, height: 800 });
   await Promise.all([
     page.waitForURL(/\/spiel\/[^/?]+$/),

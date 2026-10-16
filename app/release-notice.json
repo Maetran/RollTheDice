@@ -1,27 +1,28 @@
 {
   "kind": "usability",
   "games": [
-    "hausdepp"
+    "zdwa",
+    "zilch"
   ],
-  "summary_de": "Hausdepp: klarere Lobby, eigenes Konto mit Rundenhistorie und eine vollständige Anleitung mit Beispielen.",
-  "summary_en": "Hausdepp: a clearer lobby, your own account with round history, and complete rules with examples.",
+  "summary_de": "Die neue Spielauswahl zeigt Symbole, Namen und dein aktives Spiel. Wähle direkt die passende Lobby.",
+  "summary_en": "The new game picker shows icons, names and your active game. Choose the lobby you want.",
   "player_notes": {
     "de": {
-      "title": "Dein Hausdepp-Stammtisch wächst",
+      "title": "Deine Spiele auf einen Blick",
       "changes": [
-        "Erkenne Tischstatus, Mitspieler und freie Plätze direkt in der Lobby.",
-        "Sieh deine gespeicherten Runden und persönlichen Ergebnisse im eigenen Hausdepp-Konto.",
-        "Finde Schnellstart, vollständige Hausregeln und Beispiele zum richtigen Zeitpunkt fürs Ziehen und Nachwerfen.",
-        "Profil und Anmeldung nutzen weiterhin dein gemeinsames Konto. Punkte und Erfolge folgen nach Festlegung der Bedingungen."
+        "Öffne die Spielauswahl über das Symbol mit dem aktuellen Spielnamen im Kopfbereich.",
+        "Wähle ein freigeschaltetes Spiel anhand von Symbol und Namen. Dein aktuelles Spiel ist markiert.",
+        "Auf dem Handy öffnet sich ein Auswahlfenster am unteren Rand. Auch Escape und Alt+Shift+Z funktionieren.",
+        "Installierte Apps behalten beim Spielwechsel ihr Appfenster und ihre Anmeldung."
       ]
     },
     "en": {
-      "title": "Your Hausdepp table grows",
+      "title": "Your games at a glance",
       "changes": [
-        "See table status, participants and open seats directly in the lobby.",
-        "Find saved rounds and personal outcomes in your dedicated Hausdepp account.",
-        "Use the quick start, complete house rules and examples of when to refill or throw another card.",
-        "Profile and sign-in still use your shared account. Points and achievements follow once their conditions are defined."
+        "Open the picker from the icon and current game name in the header.",
+        "Choose an available game by its icon and name. Your current game is marked.",
+        "Phones show a bottom sheet. Escape and Alt+Shift+Z work too.",
+        "Installed apps keep their app window and sign-in when switching games."
       ]
     }
   }

@@ -68,3 +68,13 @@ hand and play control fit 844×390 and 1024×768 landscape; the six-seat tablet 
 9.22px clearance between player metadata and central piles. `DESIGN.md` and the
 schema-2 sidecar record the separate Hausdepp world and preserve dashboard
 styles. Both shipped card rasters carry provenance. No deployment was made.
+
+## Shared suite picker increment
+
+The current-game icon, full name and chevron open the same accessible game
+chooser used by ZDWA and Zilch. Native game links retain named icons and the
+active-game marker; phones use a bottom sheet. Only server-permitted choices
+appear. Same-origin PWA entry links and worker ownership preserve installed
+apps. See `docs/GAME_SWITCHER.md` and
+`.impeccable/review/suite-picker-validation.md`. This is local development and
+does not constitute owner UI/UX acceptance.

@@ -1,0 +1,227 @@
+import { GAME_PICKER_MESSAGES } from "../i18n/catalog.js";
+
+const MENU_ID = "suiteGameMenu";
+const mobileQuery = "(max-width: 600px)";
+let closeActivePicker = null;
+const language = () => window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de";
+const message = (key, values = {}) => String(GAME_PICKER_MESSAGES[language()][key] || key)
+  .replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
+const escapeMarkup = value => String(value ?? "").replace(/[&<>"']/g, character => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+}[character]));
+
+/** Small authored marks remain legible beside each game's full name. */
+export function gameIcon(id) {
+  const shapes = {
+    zdwa: '<rect x="4" y="3" width="16" height="19" rx="2"/><path d="M4 9h16M10 9v13M10 15h10"/><circle cx="8" cy="6" r=".8" fill="currentColor" stroke="none"/><circle cx="12" cy="6" r=".8" fill="currentColor" stroke="none"/><circle cx="16" cy="6" r=".8" fill="currentColor" stroke="none"/>',
+    zilch: '<rect x="3" y="3" width="14" height="14" rx="3"/><path d="M17 8h1a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-7a3 3 0 0 1-3-3v-1"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="7" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="17.5" cy="17.5" r="1" fill="currentColor" stroke="none"/>',
+    hausdepp: '<path d="m6 17-3-1.1a1.5 1.5 0 0 1-.9-1.9l3.4-10a1.5 1.5 0 0 1 1.9-.9L12 4.7"/><rect x="8" y="4" width="12" height="17" rx="2"/><path d="M14 16s-3.5-2.2-3.5-4.3a1.9 1.9 0 0 1 3.5-.8 1.9 1.9 0 0 1 3.5.8C17.5 13.8 14 16 14 16Z" fill="currentColor" stroke="none"/>',
+  };
+  return `<svg class="suite-game-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${shapes[id] || shapes.zdwa}</svg>`;
+}
+
+export function gamePickerButtonMarkup(game) {
+  const icon = gameIcon(game.id).replace('class="suite-game-icon"', 'class="suite-game-icon game-switch-icon"');
+  return `${icon}<span class="suite-game-trigger__name" translate="no">${escapeMarkup(game.name)}</span><svg class="suite-game-trigger__chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" focusable="false"><path d="m3 4.5 3 3 3-3"/></svg>`;
+}
+
+/**
+ * A disclosure of native game links. Access and route ownership stay with the
+ * caller; this component never grants a game or intercepts native navigation.
+ * onSelect receives (id, game, event), including modified link clicks.
+ */
+export function createGamePicker({ button, currentMode, games = [], onSelect } = {}) {
+  if (!(button instanceof HTMLElement)) throw new TypeError("A game picker needs a trigger button");
+  let current = currentMode;
+  let available = games;
+  let panel = null;
+  let backdrop = null;
+  let modal = false;
+  let inertElements = [];
+  let previousOverflow = "";
+  let destroyed = false;
+
+  function updateTrigger() {
+    const active = available.find(game => game.id === current) || available[0];
+    if (!active) return;
+    button.dataset.gamePicker = active.id;
+    button.innerHTML = gamePickerButtonMarkup(active);
+    button.setAttribute("aria-label", message("trigger", { game: active.name }));
+    button.setAttribute("title", `${message("title")} (Alt+Shift+Z)`);
+    button.setAttribute("aria-haspopup", "dialog");
+    button.setAttribute("aria-controls", MENU_ID);
+    button.setAttribute("aria-expanded", String(Boolean(panel)));
+  }
+
+  function setModal(nextModal) {
+    if (nextModal === modal) return;
+    modal = nextModal;
+    if (modal) {
+      panel?.setAttribute("aria-modal", "true");
+      backdrop.hidden = false;
+      // Preserve any existing modal's ownership when the picker is dismissed.
+      inertElements = [...document.body.children]
+        .filter(element => element !== panel && element !== backdrop)
+        .map(element => ({ element, inert: element.inert }));
+      for (const { element } of inertElements) element.inert = true;
+      previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    } else {
+      panel?.removeAttribute("aria-modal");
+      if (backdrop) backdrop.hidden = true;
+      for (const { element, inert } of inertElements) element.inert = inert;
+      inertElements = [];
+      document.body.style.overflow = previousOverflow;
+    }
+  }
+
+  function positionPanel() {
+    if (!panel) return;
+    const compact = window.matchMedia(mobileQuery).matches;
+    setModal(compact);
+    if (compact) {
+      panel.style.removeProperty("top");
+      panel.style.removeProperty("left");
+      return;
+    }
+    const trigger = button.getBoundingClientRect();
+    const bounds = panel.getBoundingClientRect();
+    const gutter = 12;
+    const left = Math.max(gutter, Math.min(trigger.right - bounds.width, window.innerWidth - bounds.width - gutter));
+    const below = trigger.bottom + 10;
+    const above = trigger.top - bounds.height - 10;
+    const top = below + bounds.height <= window.innerHeight - gutter
+      ? below : Math.max(gutter, above >= gutter ? above : window.innerHeight - bounds.height - gutter);
+    panel.style.left = `${Math.round(left)}px`;
+    panel.style.top = `${Math.round(top)}px`;
+  }
+
+  function close({ restoreFocus = false } = {}) {
+    if (!panel) return;
+    setModal(false);
+    panel.remove();
+    backdrop?.remove();
+    panel = null;
+    backdrop = null;
+    if (closeActivePicker === close) closeActivePicker = null;
+    button.setAttribute("aria-expanded", "false");
+    document.removeEventListener("pointerdown", outsidePointer);
+    document.removeEventListener("keydown", keydown);
+    document.removeEventListener("focusin", focusChanged);
+    window.removeEventListener("resize", positionPanel);
+    window.removeEventListener("scroll", positionPanel, true);
+    if (restoreFocus && button.isConnected && !button.hidden && !button.disabled) button.focus();
+  }
+
+  function outsidePointer(event) {
+    if (panel && !panel.contains(event.target) && !button.contains(event.target)) close({ restoreFocus: modal });
+  }
+
+  function focusChanged(event) {
+    if (!panel || panel.contains(event.target) || button.contains(event.target)) return;
+    if (modal) (panel.querySelector('a[aria-current="page"]') || panel.querySelector("a, button"))?.focus();
+    else close();
+  }
+
+  function keydown(event) {
+    if (!panel) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      close({ restoreFocus: true });
+      return;
+    }
+    const links = [...panel.querySelectorAll("a[data-game-entry]")];
+    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      const index = links.indexOf(document.activeElement);
+      const target = event.key === "Home" ? 0 : event.key === "End" ? links.length - 1
+        : event.key === "ArrowDown" ? (index + 1) % links.length : (index - 1 + links.length) % links.length;
+      event.preventDefault();
+      links[target]?.focus();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const controls = [...panel.querySelectorAll("button, a[href]")];
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (modal && ((event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last))) {
+      event.preventDefault();
+      (event.shiftKey ? last : first)?.focus();
+    } else if (!modal && ((event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last))) {
+      // Returning to the trigger preserves a useful tab sequence, even though
+      // the temporary panel is mounted after the page's regular content.
+      event.preventDefault();
+      close({ restoreFocus: true });
+    }
+  }
+
+  function open() {
+    if (destroyed || panel || button.disabled || button.hidden || !available.length) return;
+    closeActivePicker?.();
+    closeActivePicker = close;
+    backdrop = document.createElement("div");
+    backdrop.className = "suite-game-backdrop";
+    backdrop.dataset.gamePickerBackdrop = "";
+    backdrop.setAttribute("aria-hidden", "true");
+    backdrop.hidden = true;
+    panel = document.createElement("nav");
+    panel.id = MENU_ID;
+    panel.className = "suite-game-menu";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", message("title"));
+    panel.innerHTML = `<div class="suite-game-menu__header"><div><h2 class="suite-game-menu__title">${escapeMarkup(message("title"))}</h2><p class="suite-game-menu__intro">${escapeMarkup(message("intro"))}</p></div><button type="button" class="suite-game-menu__close" data-game-picker-close aria-label="${escapeMarkup(message("close"))}"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div><div class="suite-game-menu__games"></div>`;
+    panel.querySelector("[data-game-picker-close]").addEventListener("click", () => close({ restoreFocus: true }));
+    const list = panel.querySelector(".suite-game-menu__games");
+    for (const game of available) {
+      const link = document.createElement("a");
+      const descriptionId = `${MENU_ID}-${game.id}-description`;
+      link.className = "suite-game-option";
+      link.href = game.href;
+      link.dataset.gameEntry = game.id;
+      link.setAttribute("aria-label", game.name);
+      link.setAttribute("aria-describedby", descriptionId);
+      if (game.id === current) link.setAttribute("aria-current", "page");
+      const status = game.id === current
+        ? `<span class="suite-game-option__current">${escapeMarkup(message("current"))}</span>`
+        : '<svg class="suite-game-option__arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg>';
+      link.innerHTML = `<span class="suite-game-option__icon" data-game-icon="${escapeMarkup(game.id)}">${gameIcon(game.id)}</span><span class="suite-game-option__copy"><span class="suite-game-option__name" translate="no">${escapeMarkup(game.name)}</span><span class="suite-game-option__description" id="${escapeMarkup(descriptionId)}">${escapeMarkup(game.description || message(`${game.id}Description`))}</span></span>${status}`;
+      link.addEventListener("click", event => {
+        onSelect?.(game.id, game, event);
+        close();
+      });
+      list.append(link);
+    }
+    document.body.append(backdrop, panel);
+    button.setAttribute("aria-expanded", "true");
+    positionPanel();
+    document.addEventListener("pointerdown", outsidePointer);
+    document.addEventListener("keydown", keydown);
+    document.addEventListener("focusin", focusChanged);
+    window.addEventListener("resize", positionPanel);
+    window.addEventListener("scroll", positionPanel, true);
+    (panel.querySelector('a[aria-current="page"]') || panel.querySelector("a"))?.focus();
+  }
+
+  function update({ currentMode: nextMode = current, games: nextGames = available } = {}) {
+    // Auth refreshes are frequent. Preserve the focused option unless the
+    // actual audience, destination or current game has changed.
+    const changed = nextMode !== current || JSON.stringify(nextGames) !== JSON.stringify(available);
+    if (changed) close({ restoreFocus: Boolean(panel?.contains(document.activeElement)) });
+    current = nextMode;
+    available = nextGames;
+    updateTrigger();
+  }
+
+  updateTrigger();
+  return {
+    toggle() { if (panel) close({ restoreFocus: true }); else open(); },
+    close,
+    update,
+    destroy() {
+      close();
+      destroyed = true;
+      delete button.dataset.gamePicker;
+      for (const attribute of ["aria-controls", "aria-expanded", "aria-haspopup"]) button.removeAttribute(attribute);
+    },
+  };
+}

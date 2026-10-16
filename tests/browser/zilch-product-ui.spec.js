@@ -15,6 +15,11 @@ async function signIn(page, username, password) {
   await page.click("#loginForm button[type=submit]");
 }
 
+async function chooseGame(page, name) {
+  await page.locator("[data-game-switch]").click();
+  await page.locator("#suiteGameMenu").getByRole("link", { name, exact: true }).click();
+}
+
 async function createUser(page, username, password, role = "user") {
   return page.evaluate(async ({ username: name, password: secret, role: userRole }) => {
     const me = await fetch("/api/auth/me", { cache: "no-store" }).then(response => response.json());
@@ -351,13 +356,13 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   await expect(page.locator("#createGameCard")).toBeVisible();
   await Promise.all([
     page.waitForURL(/\/zilch$/),
-    page.locator("[data-game-switch]").click(),
+    chooseGame(page, "Zilch"),
   ]);
   await expect(page.locator("html")).toHaveAttribute("data-game", "zilch");
   await expect(page.locator("#createGameCard")).toHaveCount(0);
   const zilchGameSwitch = page.locator(".zilch-header [data-game-switch]");
   await expect(zilchGameSwitch).toBeVisible();
-  await expect(zilchGameSwitch).toHaveAttribute("aria-label", /^(?:ZDWA öffnen|Open ZDWA) \(Alt\+Shift\+Z\)$/);
+  await expect(zilchGameSwitch).toHaveAttribute("aria-label", /^(?:Spiel (?:aus)?wählen|Choose (?:a )?game): Zilch$/);
   await expect(zilchGameSwitch.locator("svg.game-switch-icon")).toBeVisible();
   expect(await zilchGameSwitch.evaluate(button => {
     const luminance = color => color.match(/[\d.]+/g).slice(0, 3).map(channel => {
@@ -369,10 +374,10 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
     const background = luminance(style.backgroundColor);
     return (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
   }), "game switch text remains readable on its surface").toBeGreaterThanOrEqual(4.5);
-  await expect(zilchGameSwitch).toContainText("ZDWA");
+  await expect(zilchGameSwitch).toContainText("Zilch");
   const zilchSwitchLayout = await zilchGameSwitch.evaluate(button => {
     const icon = button.querySelector("svg.game-switch-icon");
-    const label = [...button.querySelectorAll("span")].find(element => element.textContent.trim() === "ZDWA");
+    const label = [...button.querySelectorAll("span")].find(element => element.textContent.trim() === "Zilch");
     if (!icon || !label) return null;
     const iconBox = icon.getBoundingClientRect();
     const labelBox = label.getBoundingClientRect();
@@ -414,7 +419,7 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   await expect(zilchGameSwitch.locator(".game-switch-icon")).toBeVisible();
   const compactZilchSwitch = await zilchGameSwitch.evaluate(button => {
     const icon = button.querySelector("svg.game-switch-icon");
-    const label = [...button.querySelectorAll("span")].find(element => element.textContent.trim() === "ZDWA");
+    const label = [...button.querySelectorAll("span")].find(element => element.textContent.trim() === "Zilch");
     if (!icon || !label) return null;
     const iconBox = icon.getBoundingClientRect();
     const labelBox = label.getBoundingClientRect();
@@ -430,10 +435,10 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   expect(compactZilchSwitch).not.toBeNull();
   expect(compactZilchSwitch.iconWidth).toBeGreaterThan(0);
   expect(compactZilchSwitch.iconHeight).toBeGreaterThan(0);
-  expect(
-    compactZilchSwitch.labelDisplay === "none"
-      || (compactZilchSwitch.labelWidth <= 1 && compactZilchSwitch.labelHeight <= 1 && compactZilchSwitch.labelPosition === "absolute"),
-  ).toBeTruthy();
+  expect(compactZilchSwitch.labelDisplay).not.toBe("none");
+  expect(compactZilchSwitch.labelWidth).toBeGreaterThan(1);
+  expect(compactZilchSwitch.labelHeight).toBeGreaterThan(1);
+  expect(compactZilchSwitch.labelPosition).not.toBe("absolute");
   const lobbyAlignment = await page.evaluate(() => {
     const modes = [...document.querySelectorAll(".zilch-mode-option")].map(option => {
       const style = getComputedStyle(option);
@@ -527,7 +532,7 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
 
   await Promise.all([
     page.waitForURL(/\/$/),
-    page.locator("[data-game-switch]").click(),
+    chooseGame(page, "ZDWA"),
   ]);
   await expect(page.locator("html")).toHaveAttribute("data-game", "zdwa");
   await expect(page.locator("#createGameCard")).toBeVisible();

@@ -39,12 +39,12 @@ class RouteCoverage:
 # out because they are noindex would miss the navigation bugs this guards.
 DOCUMENT_ROUTES = (
     RouteCoverage(("/",), "tests/test_http_shell.py", "test_shell_and_service_worker_are_revalidated",
-                  ("tests/browser/passkey-signup.spec.js",)),
+                  ("tests/browser/passkey-signup.spec.js", "tests/browser/game-picker.spec.js")),
     RouteCoverage(
         ("/regeln", "/spieler/{username}", "/rangabzeichen", "/konto",
          "/ergebnis/{game_id}", "/offline"),
         "tests/test_http_shell.py", "test_clean_page_routes_and_legacy_redirects",
-        ("tests/browser/account-settings-layout.spec.js",),
+        ("tests/browser/account-settings-layout.spec.js", "tests/browser/game-picker.spec.js"),
     ),
     RouteCoverage(
         ("/spiel/{game_id}",), "tests/browser/zdwa-device-switch.spec.js",
@@ -84,6 +84,7 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/zilch/historie", "/zilch/statistiken", "/zilch/erfolge", "/zilch/konto", "/zilch/regeln"),
         "tests/test_zilch_product_routes.py", "test_history_rules_shells_and_rules_api_use_the_central_preview_policy",
+        ("tests/browser/zdwa-game-switcher.spec.js",),
     ),
     RouteCoverage(("/zilch/spieler/{username}",), "tests/browser/player-search-flow.spec.js"),
     RouteCoverage(
@@ -107,7 +108,7 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/hausdepp/konto",), "tests/test_hausdepp_integration.py",
         "test_founder_product_pages_and_game_type_routes",
-        ("tests/browser/hausdepp-product.spec.js",),
+        ("tests/browser/hausdepp-product.spec.js", "tests/browser/game-picker.spec.js"),
     ),
     RouteCoverage(
         ("/anmelden",), "tests/test_zilch_product_routes.py",

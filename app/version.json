@@ -1,10 +1,10 @@
 {
-  "version": "2.56.0",
+  "version": "2.57.0",
   "bump": "minor",
   "date": "2026-10-16",
-  "previous_revision": "6402ec288e499ddc7eee5b8417a1e2b66d8634e1",
+  "previous_revision": "d5a90ab57353ed48c96539859c64cf011f57b45d",
   "summary": {
-    "de": "Hausdepp: eigene Kontoübersicht, hilfreiche Lobby und vollständige Hausregeln.",
-    "en": "Hausdepp: dedicated account, useful lobby and complete house rules."
+    "de": "Gemeinsame Spielauswahl mit Symbolen, Namen und korrekten Wegen innerhalb installierter Apps.",
+    "en": "Shared game picker with icons, names and correct navigation inside installed apps."
   }
 }

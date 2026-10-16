@@ -148,6 +148,9 @@ export function applyZdwaBridgeLinks(scope = document, locationLike = window.loc
   const links = [...scope.querySelectorAll("a[href]")];
   if (scope.matches?.("a[href]")) links.unshift(scope);
   for (const link of links) {
+    // A game picker already resolved the destination for its game and PWA
+    // origin. In particular, `/` means Zilch here, not the ZDWA bridge root.
+    if (["zdwa", "zilch", "hausdepp"].includes(link.getAttribute("data-game-entry"))) continue;
     const href = link.getAttribute("href");
     if (!href || href.startsWith("#")) continue;
     let target;
@@ -192,4 +195,13 @@ export function zdwaAppEntryUrl(locationLike = window.location, environmentLike 
   return isProductionZilchLocation(locationLike) || isProductionZdwaLocation(locationLike)
     ? `${ZDWA_PRODUCTION_ORIGIN}/`
     : "/";
+}
+
+/**
+ * Hausdepp remains a protected suite preview on the current host. The
+ * reserved future subdomain is not an active destination, and an installed
+ * app must keep the handoff inside its own origin.
+ */
+export function hausdeppAppEntryUrl() {
+  return "/hausdepp";
 }

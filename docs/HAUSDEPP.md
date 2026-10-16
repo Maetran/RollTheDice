@@ -300,6 +300,13 @@ nicht. Reduzierte Bewegung bestätigt die Ankunft ohne räumlichen Flug.
 
 ### Lobby, Konto und Suite-Integration
 
+Die gemeinsame Spielauswahl zeigt die freigeschalteten Spiele mit Symbolen und
+Namen; das aktuelle Spiel ist markiert. Der Einstieg nennt Hausdepp, solange
+Hausdepp geöffnet ist. Ein Tipp oder `Alt+Shift+Z` öffnet die Auswahl; erst die
+Wahl eines Spiels führt zu dessen Lobby. Auf dem Handy erscheint ein
+Auswahlfenster am unteren Rand. Hausdepp bleibt Owner-gebunden; installierte
+Apps behalten beim Wechsel ihren bestehenden Ursprung und Service Worker.
+
 Die Lobby zeigt eigene offene Tische mit Spielstatus und belegten Plätzen.
 Beim Erstellen zählen Menschen und Computer gemeinsam zur gewählten Tischgrösse;
 das eigene Konto belegt genau einen menschlichen Platz. Ein Wartetisch zeigt,
@@ -631,6 +638,12 @@ arrival without spatial travel.
   same authoritative state and the same seat.
 
 ### Lobby, account and suite integration
+
+The shared picker shows available games with icons and names, marking the
+current game. Its trigger names Hausdepp while Hausdepp is open. Tap or press
+`Alt+Shift+Z` to open the picker, then choose a game's lobby. Phones use a
+bottom sheet. Hausdepp remains owner-bound; installed apps retain their
+existing origin and service worker when switching.
 
 The lobby shows your open tables with game status and occupied seats. Humans
 and computers together fill the selected table size; your account occupies one

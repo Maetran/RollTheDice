@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **2.56.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **2.57.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 2.56.0 | 2026-10-16 | minor | Hausdepp: eigene Kontoübersicht, hilfreiche Lobby und vollständige Hausregeln. / Hausdepp: dedicated account, useful lobby and complete house rules. | [d5a90ab](https://github.com/Maetran/RollTheDice/commit/d5a90ab57353ed48c96539859c64cf011f57b45d) |
 | 2.55.0 | 2026-10-16 | minor | Hausdepp: verdeckte Gegnerhände, saubere Kartenränder und sichtbare Kartenwege. / Hausdepp: face-down opponent hands, clean card edges and visible card transfers. | [6402ec2](https://github.com/Maetran/RollTheDice/commit/6402ec288e499ddc7eee5b8417a1e2b66d8634e1) |
 | 2.54.0 | 2026-10-16 | minor | Hausdepp: aktives Abheben, Karten direkt legen und Pflichtziehen ohne Wartezug. / Hausdepp: active bottom inspection, direct card play and nonblocking mandatory refills. | [6e1f619](https://github.com/Maetran/RollTheDice/commit/6e1f61942c658a22c26e3674feb2600ece6ecb72) |
 | 2.53.0 | 2026-10-16 | minor | Hausdepp als privates drittes Spiel mit Stammtisch, Computer-Mitspielern und direkter Kartenbedienung. / Hausdepp as a private third game with a shared card table, computer players and direct pile controls. | [7e1c65f](https://github.com/Maetran/RollTheDice/commit/7e1c65ff4cad8b0a776a6402491a3202cc7fa615) |

@@ -261,8 +261,7 @@ button.ghost{
 
 button.small{ min-height:2rem; font-size:.85rem; padding:.35rem .58rem; }
 
-/* One neutral mark for moving between the two games.  The connected arrows
-   form a compact Z, while the adjacent word names the destination. */
+/* Legacy fallback before the shared game picker replaces the hidden trigger. */
 .game-switch{
   display:inline-flex;
   align-items:center;
@@ -277,7 +276,7 @@ button.small{ min-height:2rem; font-size:.85rem; padding:.35rem .58rem; }
   height:1.15rem;
   overflow:visible;
 }
-.game-switch-icon path{
+.game-switch-icon:not(.suite-game-icon) path{
   fill:none;
   stroke:currentColor;
   stroke-width:2.1;

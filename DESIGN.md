@@ -420,6 +420,17 @@ The oxblood primary action has warm-white text, (13px 20px) padding and a (46px)
 
 Navigation remains plain labelled links with a brass underlined current page. Native language and player-count selects retain platform interaction. The account and game switcher remain part of the shared suite. Inputs are light paper with a paper-edge border and a visible caret/focus state. The create form bounds computers to fewer than the selected total seats.
 
+The suite picker now owns the shared `[data-game-switch]` disclosure. Its trigger
+shows the current game's authored SVG icon, full name and chevron, including on
+phones. All permitted games appear as named native links with descriptions and
+an explicit current marker; two-game audiences use the same chooser as the
+founder's three-game audience. Desktop uses a 360px anchored panel and phones
+up to 600px use a bottom sheet with inert background and contained focus. Close,
+Escape, outside dismissal and arrow/Home/End navigation are supported. Existing
+dice-table leave flows remain in place. PWA destinations and worker ownership
+follow `docs/GAME_SWITCHER.md`. Technical checks live in
+`.impeccable/review/suite-picker-validation.md`; owner UI/UX acceptance is pending.
+
 **The Hausdepp Card Truth Rule.** Use the licensed 36-card Tell-pattern artwork with its measured paper frames, shared ivory grading and original motifs; preserve the order 6, 7, 8, 9, Unter, Ober, König, Ass, 10, with 10 highest. Source ownership and the leaf-10 exception remain recorded in `docs/HAUSDEPP_ASSETS.md`.
 
 Each hand card is a button with its translated suit and rank as an accessible name; the artwork itself stays purely visual. Availability follows the server projection, with unavailable cards darkened and disabled. There is no selected-card state, `aria-pressed`, added rank badge or confirmation button. The illustrated Schellen six remains an ordinary six despite its printed WELI markings.

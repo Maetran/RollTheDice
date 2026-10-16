@@ -224,16 +224,17 @@
 
   // Presence belongs to both games and is connected above. The isolated Zilch
   // production origin has its own network-only worker and manifest. A ZDWA
-  // view inside the same-origin `/zdwa` bridge deliberately keeps that worker
-  // too: registering the Apex worker there would fail and can surface an
-  // external browser sheet on iOS.
+  // view inside the same-origin `/zdwa` bridge and the protected Hausdepp
+  // preview deliberately keep that worker too: registering the Apex worker
+  // there would fail and can surface an external browser sheet on iOS.
   const isZilchDocument = document.documentElement.dataset.game === "zilch";
+  const isHausdeppDocument = document.documentElement.dataset.game === "hausdepp";
   // The Apex `/zilch` handoff stays entirely under its already-installed ZDWA
   // worker. Only Zilch's own host (including the narrow ZDWA bridge) owns the
   // isolated Zilch worker.
   if (isZilchDocument && !isZilchOrigin()) return;
   const usesZilchPwaLifecycle = isZilchOrigin() && (
-    isZilchDocument || document.documentElement.dataset.zdwaPwaBridge === "true"
+    isZilchDocument || isHausdeppDocument || document.documentElement.dataset.zdwaPwaBridge === "true"
   );
   if (usesZilchPwaLifecycle) {
     ensureZilchManifest();

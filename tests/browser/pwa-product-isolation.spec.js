@@ -180,6 +180,35 @@ test("the ZDWA bridge keeps the installed Zilch worker and manifest", async ({ p
   );
 });
 
+test("Hausdepp on the Zilch host keeps that app's worker and manifest", async ({ page }) => {
+  await openPwaHarness(page, {
+    origin: "https://zilch.zockdiewandan.online",
+    game: "hausdepp",
+  });
+
+  await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.registerCalls)).toEqual(["/zilch-sw.js"]);
+  const state = await page.evaluate(() => globalThis.__pwaHarness);
+  expect(state.unregisterCalls).toBe(1);
+  expect(state.cacheDeletes.sort()).toEqual(["precache-assets-old", "runtime-assets-old"]);
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    "href",
+    "https://zilch.zockdiewandan.online/zilch-manifest.webmanifest",
+  );
+});
+
+test("Hausdepp on the ZDWA host keeps the established ZDWA worker", async ({ page }) => {
+  await openPwaHarness(page, {
+    origin: "https://zockdiewandan.online",
+    game: "hausdepp",
+  });
+
+  await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.registerCalls)).toEqual(["/sw.js"]);
+  const state = await page.evaluate(() => globalThis.__pwaHarness);
+  expect(state.unregisterCalls).toBe(0);
+  expect(state.cacheDeletes).toEqual([]);
+  await expect(page.locator('link[rel="manifest"]')).toHaveCount(0);
+});
+
 test("ZDWA still registers its established root-scoped worker", async ({ page }) => {
   await openPwaHarness(page, {
     origin: "https://zockdiewandan.online",
