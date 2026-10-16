@@ -140,7 +140,10 @@ test('waiting table retains real seats and the lobby resumes the same account se
     const game = await (await page.request.get(`/api/games/${id}`)).json();
     return game.participants?.filter(player => !player.is_cpu).length;
   }).toBe(1);
-  await expect(page.locator('main')).toContainText('CPU 1');
+  const participants = (await (await page.request.get(`/api/games/${id}`)).json()).participants;
+  const computer = participants.find(player => player.is_cpu);
+  expect(computer.name).not.toMatch(/^CPU \d+$/);
+  await expect(page.locator('main')).toContainText(computer.name);
   await page.goto('/hausdepp');
   const row = page.locator(`article[data-table-id="${id}"]`);
   await expect(row).toBeVisible();

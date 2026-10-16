@@ -85,13 +85,18 @@ class HausdeppProgressApiTests(unittest.TestCase):
 
     def test_existing_outcomes_credit_only_provable_progress_and_newton_greeting(self):
         self.store_round()
+        self.store_round("round-two")
+        self.store_round("round-three")
+        self.store_round("round-four")
+        self.store_round("round-five")
         with self.client() as client:
             response = client.get("/api/hausdepp/account")
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers["cache-control"], "no-store")
             data = response.json()
             self.assertEqual(data["scoring"], {"available": True, "points": 50, "round_points": 10,
-                                                "achievement_points": 40, "round_reward": 10})
+                                                "achievement_points": 40, "round_reward": 10,
+                                                "cpu_round_reward": 2, "cpu_reduction_percent": 75})
             self.assertEqual(data["rank"]["name"]["de"], "Newton")
             self.assertEqual(data["rank"]["quote"]["de"], "Ab jetzt geht’s bergab. Ganz nach den Naturgesetzen.")
             self.assertEqual(len(data["ranks"]), 24)
@@ -107,12 +112,18 @@ class HausdeppProgressApiTests(unittest.TestCase):
         with self.client() as client:
             data = client.get("/api/hausdepp/account").json()
             items = {item["id"]: item for item in data["achievements"]["items"]}
+            self.assertFalse(items["hausdepp_23"]["unlocked"])
+            self.assertEqual(items["hausdepp_23"]["progress"], {"current": 1, "target": 5})
+            for index in range(2, 6):
+                self.store_round(f"own-qualified-{index}", flags=["hausdepp_23"], cpu_flags=["hausdepp_20"])
+            data = client.get("/api/hausdepp/account").json()
+            items = {item["id"]: item for item in data["achievements"]["items"]}
             self.assertTrue(items["hausdepp_23"]["unlocked"])
             self.assertFalse(items["hausdepp_20"]["unlocked"])
             self.assertFalse(items["hausdepp_19"]["unlocked"])
-            self.assertEqual(data["statistics"]["rounds_played"], 1)
+            self.assertEqual(data["statistics"]["rounds_played"], 5)
             results = client.get("/api/hausdepp/results").json()
-            self.assertEqual(len(results["results"]), 1)
+            self.assertEqual(len(results["results"]), 5)
             for private in ("achievement_evidence", "ten_clears", "cpu_flags", "foreign-round"):
                 self.assertNotIn(private, json.dumps(results))
                 self.assertNotIn(private, json.dumps(data))
@@ -140,16 +151,18 @@ class HausdeppProgressApiTests(unittest.TestCase):
     def test_old_tab_receipt_cannot_hide_new_round_progress(self):
         self.store_round()
         with self.client() as client:
-            old_revision = client.get("/api/hausdepp/account").json()["scoring"]["points"]
+            before = client.get("/api/hausdepp/account").json()
+            old_revision = before["presentation"]["revision"]
             self.store_round("round-two")
-            latest = client.get("/api/hausdepp/account").json()["scoring"]["points"]
-            self.assertEqual(latest, old_revision + 10)
+            latest = client.get("/api/hausdepp/account").json()
+            self.assertEqual(latest["scoring"]["points"], before["scoring"]["points"] + 2)
+            self.assertEqual(latest["presentation"]["revision"], old_revision + 10)
             response = client.post("/api/hausdepp/account/acknowledge", json={"revision": old_revision},
                                    headers={"X-CSRF-Token": self.identity.csrf_token})
             self.assertEqual(response.status_code, 200)
             pending = client.get("/api/hausdepp/account").json()["presentation"]["pending"]
-            self.assertEqual(pending["revision"], latest)
-            self.assertEqual(pending["points_earned"], 10)
+            self.assertEqual(pending["revision"], latest["presentation"]["revision"])
+            self.assertEqual(pending["points_earned"], 2)
 
     def test_private_leaderboard_page_and_api_keep_founder_and_search_boundaries(self):
         self.store_round()

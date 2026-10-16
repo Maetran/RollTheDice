@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from collections import Counter
 
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import selectinload
@@ -28,6 +28,40 @@ from .models import (
 from .security import as_utc
 
 ROUND_POINTS = 10
+CPU_ROUND_POINTS = 2
+PRESENTATION_SNAPSHOT_LIMIT = 64
+
+
+def _round_points(credits: list) -> int:
+    total = 0
+    for credit in credits:
+        facts = json.loads(credit.facts_json)
+        count = facts.get("cpu_count")
+        if type(count) is not int or not 0 <= count <= 5:
+            raise ValueError("hausdepp_invalid_credit_cpu_count")
+        total += CPU_ROUND_POINTS if count else ROUND_POINTS
+    return total
+
+
+def _score_points(credits: list, unlocks: list) -> int:
+    return _round_points(credits) + sum(_ACHIEVEMENTS_BY_ID[unlock.achievement_id]["points"]
+                                         for unlock in unlocks if unlock.achievement_id in _ACHIEVEMENTS_BY_ID)
+
+
+def _presentation_scores(receipt) -> dict[str, int]:
+    try:
+        raw = receipt.presentation_scores_json or "{}"
+        if not isinstance(raw, str) or len(raw) > 8192:
+            return {}
+        scores = json.loads(raw)
+        if (not isinstance(scores, dict) or len(scores) > PRESENTATION_SNAPSHOT_LIMIT
+                or any(not key.isascii() or not key.isdecimal() or len(key) > 20
+                       or int(key) > 2**63 - 1 or type(value) is not int or not 0 <= value <= 2**63 - 1
+                       for key, value in scores.items())):
+            return {}
+        return scores
+    except (TypeError, ValueError):
+        return {}
 
 # Original flavour lines, not attributed quotations. Every rank is delivered in
 # both languages; scientist names describe a playful ladder, not an IQ ranking.
@@ -166,6 +200,71 @@ _ACHIEVEMENT_DATA = (
 )
 _CATEGORIES = ("participation", "community", "cut_gamble", "tens", "four", "tempo", "mishaps", "endgame")
 
+# A qualifying event advances once per completed round, however often it
+# occurred. Ordinary play therefore builds distinct goals over many evenings;
+# genuinely unusual single-round feats retain their immediate one-time award.
+_ROUND_TARGETS = {
+    3: 3, 4: 3, 5: 3, 6: 3, 7: 3, 9: 5, 10: 3, 11: 3,
+    20: 3, 21: 5, 22: 3, 23: 5, 25: 5, 26: 3, 27: 5, 28: 3,
+    30: 3, 31: 3, 33: 3, 34: 3, 35: 3, 37: 3, 38: 3, 39: 3,
+    41: 5, 42: 3, 43: 3, 45: 10, 46: 5, 47: 5, 48: 3,
+    49: 3, 50: 5, 51: 3, 52: 5, 53: 5, 54: 3, 55: 5,
+    56: 3, 57: 3, 58: 3, 59: 5, 60: 3, 61: 5, 62: 3, 63: 10, 64: 5,
+    65: 5, 66: 3, 67: 5, 68: 3, 69: 3, 70: 3, 71: 3, 72: 3, 73: 5,
+    76: 5, 77: 3, 78: 3, 80: 3, 81: 3, 82: 5, 83: 3, 84: 3,
+}
+_TOURNAMENT_TARGETS = {91: 3, 93: 3, 94: 3, 96: 3, 97: 3, 98: 5, 99: 3, 100: 3}
+_TARGETS = {f"hausdepp_{number:02}": target for number, target in {
+    **_ROUND_TARGETS, **_TOURNAMENT_TARGETS,
+    2: 25, 8: 5, 12: 5, 13: 10, 14: 10, 15: 100, 16: 250, 29: 25, 86: 3, 87: 10,
+}.items()}
+
+_REPEATED_DESCRIPTIONS = {
+    3: ("Drei Runden zu zweit abschliessen.", "Complete three two-player rounds."),
+    4: ("Drei Runden zu dritt abschliessen.", "Complete three three-player rounds."),
+    5: ("Drei Runden zu viert abschliessen.", "Complete three four-player rounds."),
+    6: ("Drei Runden zu fünft abschliessen.", "Complete three five-player rounds."),
+    7: ("Drei Runden zu sechst abschliessen.", "Complete three six-player rounds."),
+    8: ("Mit jeder Tischgrösse von zwei bis sechs jeweils mindestens drei Runden abschliessen.",
+        "Complete at least three rounds at every table size from two to six."),
+    9: ("Fünf Runden mit einem Computer-Mitspieler abschliessen.", "Complete five rounds with a computer player."),
+    10: ("Drei Runden mit mindestens drei Menschen und ohne Computer abschliessen.",
+         "Complete three rounds with at least three humans and no computers."),
+    11: ("Drei Runden mit sechs Menschen abschliessen.", "Complete three rounds with six humans."),
+    56: ("In drei abgeschlossenen Runden Hausdepp werden.", "Become Hausdepp in three completed rounds."),
+    57: ("In drei abgeschlossenen Runden bei leerem Nachziehstapel alle Karten loswerden.",
+         "Finish all your cards with an empty stock in three completed rounds."),
+    91: ("Drei vollständige Turniere mit jeweils genau einer eigenen Hausdepp-Runde abschliessen.",
+         "Complete three full tournaments with exactly one round as Hausdepp in each."),
+    93: ("In drei vollständigen Turnieren nach mindestens einer eigenen Hausdepp-Runde die letzten beiden Runden mit leeren Händen beenden.",
+         "In three completed tournaments, finish your cards in the last two rounds after being Hausdepp earlier."),
+    94: ("In drei vollständigen Turnieren die erste Runde als Hausdepp und die letzte mit leeren Händen beenden.",
+         "In three completed tournaments, be Hausdepp in the first round and finish your cards in the last."),
+    96: ("In drei vollständigen Turnieren die letzten drei Runden mit leeren Händen beenden.",
+         "Finish your cards in the final three rounds of three completed tournaments."),
+    97: ("Drei vollständige Turniere mit jeweils mindestens drei eigenen Hausdepp-Runden abschliessen.",
+         "Complete three full tournaments with at least three rounds as Hausdepp in each."),
+    98: ("In fünf vollständigen Turnieren direkt nach einer eigenen Hausdepp-Runde die nächste Runde mit leeren Händen beenden.",
+         "In five completed tournaments, finish your cards in the round immediately after being Hausdepp."),
+    99: ("Drei vollständige Turniere abschliessen, in denen jeder Mitspieler mindestens einmal Hausdepp war.",
+         "Complete three full tournaments in which every player has been the round’s Hausdepp at least once."),
+    100: ("In drei vollständigen Turnieren die letzten beiden Runden als Hausdepp und das Turnier als Tages-Hausdepp beenden.",
+          "In three completed tournaments, be Hausdepp in the final two rounds and finish as Tages-Hausdepp."),
+}
+
+
+def _description(number: int, de: str, en: str) -> dict[str, str]:
+    if number in _REPEATED_DESCRIPTIONS:
+        de, en = _REPEATED_DESCRIPTIONS[number]
+    elif number in _ROUND_TARGETS:
+        target = _ROUND_TARGETS[number]
+        for prefix in ("Zum ersten Mal ", "In derselben Runde ", "In einer Runde "):
+            de = de.removeprefix(prefix)
+        en = en.replace(" for the first time", "").replace("your first legal", "a legal")
+        de = f"In {target} abgeschlossenen Runden jeweils {de[0].lower()}{de[1:]}"
+        en = f"In {target} different completed rounds, {en[0].lower()}{en[1:]}"
+    return {"de": de, "en": en}
+
 
 def _category(number: int) -> str:
     if number <= 64:
@@ -174,13 +273,10 @@ def _category(number: int) -> str:
 
 
 ACHIEVEMENTS = tuple({"id": f"hausdepp_{number:02}", "name": {"de": de, "en": en},
-                      "description": {"de": description_de, "en": description_en},
+                      "description": _description(number, description_de, description_en),
                       "category": _category(number), "points": points}
                      for number, de, en, description_de, description_en, points in _ACHIEVEMENT_DATA)
 _ACHIEVEMENTS_BY_ID = {item["id"]: item for item in ACHIEVEMENTS}
-_TARGETS = {"hausdepp_02": 25, "hausdepp_08": 5, "hausdepp_12": 5, "hausdepp_13": 10,
-            "hausdepp_14": 10, "hausdepp_15": 100, "hausdepp_16": 250, "hausdepp_29": 25,
-            "hausdepp_86": 3, "hausdepp_87": 10}
 
 
 def _insert_once(db, model, values: dict) -> bool:
@@ -193,34 +289,37 @@ def _rank(points: int) -> dict:
 
 
 def _new_aggregate() -> dict:
-    return {"rounds": 0, "sizes": set(), "opponents": Counter(), "flags": set(), "ten_clears": 0,
-            "with_cpu": False, "humans_three": False, "humans_six": False,
-            "hausdepp": False, "finished": False, "tournaments": set()}
+    return {"rounds": 0, "sizes": Counter(), "opponents": Counter(), "flags": Counter(), "ten_clears": 0,
+            "with_cpu": 0, "humans_three": 0, "humans_six": 0,
+            "hausdepp": 0, "finished": 0, "tournaments": set()}
 
 
 def _accumulate(aggregate: dict, facts: dict) -> None:
     aggregate["rounds"] += 1
-    aggregate["sizes"].add(facts["participant_count"])
+    aggregate["sizes"][facts["participant_count"]] += 1
     aggregate["opponents"].update(facts["opponents"])
-    aggregate["flags"].update(facts["flags"])
+    tournament_id = facts.get("completed_tournament_id")
+    first_tournament_credit = bool(tournament_id and tournament_id not in aggregate["tournaments"])
+    aggregate["flags"].update(flag for flag in set(facts["flags"])
+                              if int(flag.rsplit("_", 1)[1]) < 85 or first_tournament_credit)
     aggregate["ten_clears"] += facts["ten_clears"]
-    aggregate["with_cpu"] |= facts["cpu_count"] > 0
-    aggregate["humans_three"] |= facts["cpu_count"] == 0 and facts["human_count"] >= 3
-    aggregate["humans_six"] |= facts["human_count"] == 6
-    aggregate[facts["outcome"]] = True
-    if facts.get("completed_tournament_id"):
-        aggregate["tournaments"].add(facts["completed_tournament_id"])
+    aggregate["with_cpu"] += facts["cpu_count"] > 0
+    aggregate["humans_three"] += facts["cpu_count"] == 0 and facts["human_count"] >= 3
+    aggregate["humans_six"] += facts["human_count"] == 6
+    aggregate[facts["outcome"]] += 1
+    if tournament_id:
+        aggregate["tournaments"].add(tournament_id)
 
 
 def _progress(aggregate: dict, achievement_id: str) -> tuple[int, int]:
     number = int(achievement_id.rsplit("_", 1)[1])
-    current, target = int(achievement_id in aggregate["flags"]), _TARGETS.get(achievement_id, 1)
+    current, target = aggregate["flags"][achievement_id], _TARGETS.get(achievement_id, 1)
     if number in (1, 2, 15, 16):
         current = aggregate["rounds"]
     elif 3 <= number <= 7:
-        current = int(number - 1 in aggregate["sizes"])
+        current = aggregate["sizes"][number - 1]
     elif number == 8:
-        current = len(aggregate["sizes"])
+        current = sum(aggregate["sizes"][count] >= 3 for count in range(2, 7))
     elif number == 9:
         current = int(aggregate["with_cpu"])
     elif number == 10:
@@ -258,10 +357,15 @@ def synchronize_hausdepp_progress(user_id: int) -> dict:
         ).values(acknowledged_points=HausdeppPresentationReceipt.acknowledged_points))
         unlocks = db.scalars(select(HausdeppAchievementUnlock)
                              .where(HausdeppAchievementUnlock.user_id == user_id)).all()
-        awarded_points = (db.scalar(select(func.count()).select_from(HausdeppRoundCredit).where(
-            HausdeppRoundCredit.user_id == user_id,
-        )) * ROUND_POINTS + sum(_ACHIEVEMENTS_BY_ID[unlock.achievement_id]["points"] for unlock in unlocks
-                                if unlock.achievement_id in _ACHIEVEMENTS_BY_ID))
+        existing_credits = db.scalars(select(HausdeppRoundCredit).where(HausdeppRoundCredit.user_id == user_id)).all()
+        awarded_points = len(existing_credits) * ROUND_POINTS + sum(
+            _ACHIEVEMENTS_BY_ID[unlock.achievement_id]["points"] for unlock in unlocks
+            if unlock.achievement_id in _ACHIEVEMENTS_BY_ID)
+        receipt = db.get(HausdeppPresentationReceipt, user_id)
+        if receipt.acknowledged_score_points is None and receipt.acknowledged_points == awarded_points:
+            # All already-credited progress was seen before this read. Derive
+            # its weighted snapshot before recovering any newly finished rows.
+            receipt.acknowledged_score_points = _score_points(existing_credits, unlocks)
         # A relational NOT EXISTS avoids repeatedly decoding old histories. Only
         # human membership grants a source query; cursors carry no authority.
         statement = select(CompletedGame).options(selectinload(CompletedGame.participants)).where(
@@ -309,15 +413,28 @@ def synchronize_hausdepp_progress(user_id: int) -> dict:
                     unlocked_ids.add(item["id"])
         unlocks = db.scalars(select(HausdeppAchievementUnlock)
                              .where(HausdeppAchievementUnlock.user_id == user_id)).all()
-        receipt = db.get(HausdeppPresentationReceipt, user_id)
-        return _projection(credits, unlocks, aggregate, receipt.acknowledged_points if receipt else 0)
+        result = _projection(credits, unlocks, aggregate, receipt.acknowledged_points,
+                             receipt.acknowledged_score_points)
+        scores = _presentation_scores(receipt)
+        revision = result["presentation"]["revision"]
+        scores.setdefault(str(revision), _score_points(credits, unlocks))
+        scores = dict(sorted(((key, value) for key, value in scores.items()
+                              if int(key) >= receipt.acknowledged_points), key=lambda item: int(item[0]))
+                      [-PRESENTATION_SNAPSHOT_LIMIT:])
+        receipt.presentation_scores_json = json.dumps(scores, separators=(",", ":"))
+        return result
 
 
-def _projection(credits: list, unlocks: list, aggregate: dict, acknowledged: int) -> dict:
+def _projection(credits: list, unlocks: list, aggregate: dict, acknowledged: int,
+                acknowledged_score_points: int | None = None) -> dict:
+    if type(acknowledged_score_points) is not int or not 0 <= acknowledged_score_points <= 2**63 - 1:
+        acknowledged_score_points = None
     known_unlocks = {unlock.achievement_id: unlock for unlock in unlocks if unlock.achievement_id in _ACHIEVEMENTS_BY_ID}
-    round_points = len(credits) * ROUND_POINTS
+    round_points = _round_points(credits)
     achievement_points = sum(_ACHIEVEMENTS_BY_ID[key]["points"] for key in known_unlocks)
     points = round_points + achievement_points
+    # Revisions represent grant order, independently of the weighted score.
+    revision = len(credits) * ROUND_POINTS + achievement_points
     rank = _rank(points)
     next_rank = next((dict(item) for item in RANKS if item["threshold"] > points), None)
     gap = next_rank["threshold"] - rank["threshold"] if next_rank else 0
@@ -332,38 +449,45 @@ def _projection(credits: list, unlocks: list, aggregate: dict, acknowledged: int
                       "unlocked_at": as_utc(unlock.unlocked_at).isoformat() if unlock else None,
                       "progress": {"current": target if unlock else progress, "target": target}})
     pending = None
-    if points > acknowledged:
+    if revision > acknowledged:
         # Grant generations are stable even if an older finished round is only
         # recovered later. Source timestamps must never reorder seen badges.
-        previous_rank = _rank(acknowledged)
+        if acknowledged == 0:
+            acknowledged_score_points = 0
+        previous_rank = _rank(acknowledged_score_points) if acknowledged_score_points is not None else None
         newly_unlocked = [unlock.achievement_id for unlock in sorted(
             known_unlocks.values(), key=lambda item: (item.awarded_points, item.achievement_id),
         ) if unlock.awarded_points > acknowledged]
         target_rank = _rank(points)
-        pending = {"revision": points, "through_points": points, "points_earned": points - acknowledged,
+        earned = _score_points(credits, unlocks) - acknowledged_score_points if acknowledged_score_points is not None else None
+        pending = {"revision": revision, "through_points": points,
+                   "points_earned": earned if earned is not None and earned >= 0 else None,
                    "from_rank": previous_rank, "to_rank": target_rank, "achievement_ids": newly_unlocked,
-                   "rank_up": target_rank["level"] > previous_rank["level"],
+                   "rank_up": target_rank["level"] > previous_rank["level"] if previous_rank else None,
                    "message": {"de": "Gratuliere! Dem Hausdepp wieder einen Schritt näher.",
                                "en": "Congratulations! One step closer to Hausdepp."},
                    "quote": target_rank["quote"]}
     return {"scoring": {"available": True, "points": points, "round_points": round_points,
-                        "achievement_points": achievement_points, "round_reward": ROUND_POINTS},
+                        "achievement_points": achievement_points, "round_reward": ROUND_POINTS,
+                        "cpu_round_reward": CPU_ROUND_POINTS, "cpu_reduction_percent": 75},
             "achievements": {"available": True, "direction": "clever_to_hausdepp", "total": len(ACHIEVEMENTS),
                              "unlocked_count": len(known_unlocks), "items": items},
-            "rank": rank, "ranks": list(RANKS), "presentation": {"pending": pending}}
+            "rank": rank, "ranks": list(RANKS), "presentation": {"pending": pending, "revision": revision}}
 
 
 def acknowledge_hausdepp_presentation(user_id: int, revision: int) -> dict:
     if type(revision) is not int or revision < 0:
         raise ValueError("hausdepp_invalid_revision")
-    current = synchronize_hausdepp_progress(user_id)["scoring"]["points"]
-    if revision > current or not database_schema_ready():
+    current = synchronize_hausdepp_progress(user_id)
+    if revision > current["presentation"]["revision"] or not database_schema_ready():
         raise ValueError("hausdepp_invalid_revision")
     with session_scope() as db:
         _insert_once(db, HausdeppPresentationReceipt, {"user_id": user_id, "acknowledged_points": 0})
+        receipt = db.get(HausdeppPresentationReceipt, user_id)
+        score = _presentation_scores(receipt).get(str(revision))
         db.execute(update(HausdeppPresentationReceipt).where(
             HausdeppPresentationReceipt.user_id == user_id,
             HausdeppPresentationReceipt.acknowledged_points < revision,
-        ).values(acknowledged_points=revision))
-        receipt = db.get(HausdeppPresentationReceipt, user_id)
+        ).values(acknowledged_points=revision, acknowledged_score_points=score))
+        db.expire(receipt)
         return {"acknowledged": True, "revision": receipt.acknowledged_points}

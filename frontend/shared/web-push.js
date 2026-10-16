@@ -43,6 +43,37 @@ export async function getGameInvitePushStatus() {
   return lastPushStatus;
 }
 
+function usesHausdeppRegistration() {
+  const manifest = document.querySelector('link[rel="manifest"]');
+  if (window.HAUSDEPP_PWA || manifest?.dataset.pwaProduct === "hausdepp") return true;
+  try {
+    return /^\/hausdepp-manifest(?:-en)?\.webmanifest$/.test(new URL(manifest?.href || "", location.href).pathname);
+  } catch (_) { return false; }
+}
+
+async function pushRegistration({ wait = false } = {}) {
+  if (!usesHausdeppRegistration()) {
+    return wait ? navigator.serviceWorker.ready : navigator.serviceWorker.getRegistration();
+  }
+  // Shared account settings sit outside /hausdepp. A fresh installed Hausdepp
+  // app has no worker controlling that document, so its `ready` never resolves.
+  // Reuse the narrowly scoped registration without widening private caching.
+  const deadline = Date.now() + 15_000;
+  do {
+    const registration = await navigator.serviceWorker.getRegistration("/hausdepp");
+    const worker = registration?.active;
+    const candidates = [worker, registration?.waiting, registration?.installing];
+    const belongsToHausdepp = candidates.some(candidate => {
+      try { return new URL(candidate?.scriptURL || "", location.href).pathname === "/hausdepp-sw.js"; }
+      catch (_) { return false; }
+    });
+    if (belongsToHausdepp && (!wait || worker?.state === "activated")) return registration;
+    if (!wait) return null;
+    await new Promise(resolve => window.setTimeout(resolve, 100));
+  } while (Date.now() < deadline);
+  throw apiError({ detail: "web_push_unavailable" });
+}
+
 export async function enableGameInvitePush() {
   // Settings preload the server configuration. Do not put a network await
   // before the permission prompt: Safari requires this user-click gesture.
@@ -55,7 +86,7 @@ export async function enableGameInvitePush() {
   if (permission !== "granted") throw apiError({ detail: "web_push_permission_denied" });
   let readyTimeout;
   const registration = await Promise.race([
-    navigator.serviceWorker.ready,
+    pushRegistration({ wait: true }),
     new Promise((_, reject) => {
       readyTimeout = window.setTimeout(() => reject(apiError({ detail: "web_push_unavailable" })), 15000);
     }),
@@ -85,7 +116,7 @@ export async function disableGameInvitePush() {
   if (!response.ok) throw apiError(data);
   try {
     if (canUseWebPush()) {
-      const registration = await navigator.serviceWorker.getRegistration();
+      const registration = await pushRegistration();
       const subscription = await registration?.pushManager.getSubscription();
       if (subscription) await subscription.unsubscribe();
     }

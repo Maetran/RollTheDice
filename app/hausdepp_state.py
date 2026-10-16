@@ -3,10 +3,21 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from secrets import SystemRandom
 
 from .active_games import save_active_game
 from .game_state import GameDict, games
 from .game_types import HAUSDEPP_GAME_TYPE
+
+HAUSDEPP_CPU_NAMES = (
+    "Peppi", "Seppl", "Schorsch", "Loisl", "Alois", "Wastl", "Hiasl", "Franzi", "Sepp", "Xaver",
+    "Toni", "Vitus", "Bertl", "Ferdl", "Gustl", "Korbinian", "Engelbert", "Rupert", "Anderl", "Florian",
+    "Lenz", "Balthasar", "Kajetan", "Quirin", "Vinzenz",
+    "Resi", "Vroni", "Traudl", "Mizzi", "Liesl", "Zenzi", "Annerl", "Fanni", "Burgl", "Kathi",
+    "Hanni", "Rosi", "Mitzi", "Walburga", "Hilde", "Ottilie", "Rosl", "Berta", "Theres", "Irmi",
+    "Wally", "Vefi", "Maridl", "Leni", "Zilli",
+)
+_CPU_RANDOM = SystemRandom()
 
 
 def validate_hausdepp_mode(mode: object) -> str:
@@ -48,7 +59,8 @@ def configure_hausdepp_game(game: GameDict, *, host_user_id: int, cpu_count: int
     game["_hausdepp_tournament_enabled"] = tournament
     game["_expected_connections"] = game["_expected"] - cpu_count
     game["_play_mode"] = "cpu" if cpu_count else "multiplayer"
-    game["_participants"] = [{"id": f"cpu-{index + 1}", "name": f"CPU {index + 1}", "type": "cpu",
+    names = _CPU_RANDOM.sample(HAUSDEPP_CPU_NAMES, cpu_count)
+    game["_participants"] = [{"id": f"cpu-{index + 1}", "name": names[index], "type": "cpu",
                               "is_cpu": True, "user_id": None, "connection_player_id": None}
                              for index in range(cpu_count)]
 
@@ -63,6 +75,13 @@ def join_hausdepp_player(game: GameDict, player: dict) -> None:
         raise ValueError("hausdepp_host_required")
     if player.get("user_id") is None:
         raise ValueError("hausdepp_account_required")
+    # A human may have a name from the pool too. Resolve that collision before
+    # play starts; established tournament seats never change their names.
+    reserved = {str(person["name"]).casefold() for person in [*game.get("_participants", []), player]}
+    for participant in game.get("_participants", []):
+        if participant.get("is_cpu") and participant["name"].casefold() == player["name"].casefold():
+            participant["name"] = _CPU_RANDOM.choice([name for name in HAUSDEPP_CPU_NAMES if name.casefold() not in reserved])
+            reserved.add(participant["name"].casefold())
     game["_players"].append(player)
     participant = {"id": player["id"], "name": player["name"], "type": "human", "is_cpu": False,
                    "user_id": player["user_id"], "connection_player_id": player["id"]}
@@ -94,6 +113,8 @@ def hausdepp_progress(game: GameDict) -> list[dict]:
     state_players = {player["id"]: player for player in (game.get("_hausdepp") or {}).get("players", [])}
     connections = {player["id"]: player for player in game.get("_players", [])}
     return [{"id": player["id"], "name": player["name"], "is_cpu": bool(player.get("is_cpu")),
+             "user_id": (player.get("user_id") if not player.get("is_cpu")
+                         and type(player.get("user_id")) is int and player["user_id"] > 0 else None),
              "participant_type": player["type"], "connected": (None if player.get("is_cpu") else
                  connections.get(player["id"], {}).get("ws") is not None),
              "hand_count": len(state_players.get(player["id"], {}).get("hand", [])),

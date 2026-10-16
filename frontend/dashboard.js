@@ -21,8 +21,8 @@ function storedDesign() {
 // Dashboard appearance is a local preference, separate from either game's skin.
 document.body.dataset.dashboardDesign = storedDesign();
 byId("dashboardDesign").value = document.body.dataset.dashboardDesign;
-const gameName = game => game === "zilch" ? "Zilch" : game === "zdwa" ? "ZDWA" : t("Beide Spiele");
-const gameBadge = game => game === "zdwa" || game === "zilch" ? `<span class="game-badge">${gameName(game)}</span>` : "";
+const gameName = game => ({ zdwa: "ZDWA", zilch: "Zilch", hausdepp: "Hausdepp" })[game] || t("Beide Spiele");
+const gameBadge = game => ["zdwa", "zilch", "hausdepp"].includes(game) ? `<span class="game-badge">${gameName(game)}</span>` : "";
 const duration = seconds => {
   if (seconds == null) return "—";
   const value = Math.round(count(seconds));
@@ -63,9 +63,10 @@ const ACTION_LABELS = {
   mode_computer: "Würfelwirt wählen", mode_multiplayer: "Mehrspieler wählen", mode_offline: "Offline-Spiel wählen",
   open_account: "Konto öffnen", open_settings: "Einstellungen öffnen", theme_change: "Darstellung wechseln",
   language_change: "Sprache wechseln", game_restart: "Neue Partie starten", game_created: "Spielraum angelegt",
+  game_aborted: "Partie abgebrochen",
 };
 const PAGE_LABELS = { "/": "Lobby", "/spiel": "Am Spieltisch", "/zuschauen": "Zuschauen", "/regeln": "Spielregeln", "/spieler": "Spieler & Ranking", "/rangabzeichen": "Rangabzeichen", "/bestenlisten": "Bestenlisten", "/historie": "Historie", "/statistiken": "Statistiken", "/erfolge": "Erfolge", "/offline": "Offline-Seite", "/ergebnis": "Spielergebnis", "/konto": "Konto" };
-const MODE_LABELS = { "1": "Solo", "2": "Zu zweit", "3": "Zu dritt", "2v2": "Teamspiel", solo: "Solo", duo: "Zu zweit", trio: "Zu dritt", team: "Teamspiel", multiplayer: "Zu zweit", cpu: "Gegen den Würfelwirt", normal: "Normal", hardcore: "Hardcore" };
+const MODE_LABELS = { "1": "Solo", "2": "Zu zweit", "3": "Zu dritt", "2v2": "Teamspiel", solo: "Solo", duo: "Zu zweit", trio: "Zu dritt", four: "Zu viert", five: "Zu fünft", six: "Zu sechst", team: "Teamspiel", multiplayer: "Zu zweit", cpu: "Gegen den Würfelwirt", normal: "Normal", hardcore: "Hardcore" };
 // Design comparison: each look names one game, design and colour scheme.
 // Side "a" is the new ZDWA design or the Zilch tavern table, side "b" the
 // previous ZDWA design or LCARS; colours follow the side everywhere.
@@ -115,6 +116,7 @@ function overview(data) {
     { id: "completed-games", label: "Partien beendet", value: totals.completed_games, hint: "Gespeicherte Ergebnisse", series: "completed_games", comparison: "completed_games" },
   ];
   const comparison = metric => {
+    if (data.period?.game === "hausdepp" && metric.comparison !== "completed_games") return "";
     const previous = data.comparison?.overview?.[metric.comparison];
     if (!previous) return "";
     if (metric.comparison !== "completed_games" && data.comparison?.previous_data_coverage !== "complete") return `<span class="metric-delta neutral">${e(t(data.comparison?.previous_data_coverage === "partial" ? "Vorperiode unvollständig" : "Keine Vergleichsbasis"))}</span>`;
@@ -122,7 +124,12 @@ function overview(data) {
     const change = Number(previous.change_percent) || 0;
     return `<span class="metric-delta ${change >= 0 ? "positive" : "negative"}"><span aria-hidden="true">${change >= 0 ? "↗" : "↘"}</span> ${change > 0 ? "+" : ""}${percent(change)}% <small>${e(t("zur Vorperiode"))}</small></span>`;
   };
-  byId("overviewMetrics").innerHTML = metrics.map(metric => `<article class="metric-card" data-favorite-id="metric-${metric.id}" data-favorite-kind="metric"><p class="metric-label">${e(t(metric.label))}${metric.live ? '<span class="signal-dot" aria-hidden="true" style="margin-left:8px"></span>' : ""}</p><div class="metric-value">${metric.series === "active_seconds" ? e(metric.value) : number(metric.value)}</div><p class="metric-hint">${e(t(metric.hint))}</p>${comparison(metric)}${sparkline(metric.series ? days.map(day => count(day[metric.series])) : [])}</article>`).join("");
+  const noBrowserMeasurement = data.period?.game === "hausdepp";
+  byId("overviewMetrics").innerHTML = metrics.map(metric => {
+    const unknown = noBrowserMeasurement && metric.id !== "completed-games";
+    const label = noBrowserMeasurement && metric.id === "completed-games" ? "Runden beendet" : metric.label;
+    return `<article class="metric-card" data-favorite-id="metric-${metric.id}" data-favorite-kind="metric"><p class="metric-label">${e(t(label))}${metric.live ? '<span class="signal-dot" aria-hidden="true" style="margin-left:8px"></span>' : ""}</p><div class="metric-value">${unknown ? "—" : metric.series === "active_seconds" ? e(metric.value) : number(metric.value)}</div><p class="metric-hint">${e(t(unknown ? "Browserbesuche bisher nicht erfasst" : metric.hint))}</p>${comparison(metric)}${sparkline(!unknown && metric.series ? days.map(day => count(day[metric.series])) : [])}</article>`;
+  }).join("");
   byId("comparisonNote").textContent = data.comparison ? t("Heute (UTC) ist noch unvollständig. Verglichen wird mit den vorangehenden Kalendertagen; fehlende ältere Messwerte ergeben keinen Wachstumstrend.") : "";
 }
 
@@ -242,7 +249,7 @@ function countryName(value) {
 
 function pageLabel(value) {
   const path = String(value || "/");
-  const normalized = path === "/zilch" ? "/" : path.replace(/^\/zilch\//, "/");
+  const normalized = ["/zilch", "/hausdepp"].includes(path) ? "/" : path.replace(/^\/(zilch|hausdepp)\//, "/");
   return t(PAGE_LABELS[normalized] || "Andere Seite");
 }
 
@@ -253,11 +260,21 @@ function pageRanks(rows = []) {
 
 function gameCards(data) {
   const gameFilter = data.period?.game || "all";
-  const games = gameFilter === "all" ? ["zdwa", "zilch"] : [gameFilter];
+  const games = gameFilter === "all" ? data.available_games || ["zdwa", "zilch"] : [gameFilter];
   byId("gameCards").innerHTML = games.map(game => {
     const row = data.games?.find(item => item.game === game) || {};
-    return `<div class="game-card"><div class="game-card-header"><strong>${gameName(game)}</strong><span aria-hidden="true">${game === "zdwa" ? "⚄" : "⚅"}</span></div><div class="game-card-number">${number(row.completed_games || 0)}</div><p class="game-card-caption">${e(t("Partien beendet"))}</p><div class="game-card-details"><span>${e(t("Teilnahmen"))}<strong>${number(row.participants || 0)}</strong></span><span>${e(t("Ø Partiedauer"))}<strong>${e(duration(row.avg_duration_seconds))}</strong></span></div></div>`;
+    const details = [["Teilnahmen", number(row.participants || 0)], [game === "hausdepp" ? "Ø Rundendauer" : "Ø Partiedauer", duration(row.avg_duration_seconds)]];
+    if (game === "hausdepp") details.push(
+      ["Tische live", number(row.live?.active_tables)], ["Menschen verbunden", number(row.live?.connected_humans)],
+      ["Computerplätze", number(row.live?.cpu_seats)], ["Aktive Turniere", number(row.live?.active_tournaments)],
+      ["Rundenpausen", number(row.live?.interround_tables)], ["Turniere beendet", number(row.completed_tournaments)],
+      ["Erfasste Abbrüche", number(row.abandoned_games)],
+    );
+    return `<div class="game-card" data-game="${e(game)}"><div class="game-card-header"><strong>${gameName(game)}</strong><span aria-hidden="true">${game === "hausdepp" ? "♠" : game === "zdwa" ? "⚄" : "⚅"}</span></div><div class="game-card-number">${number(row.completed_games || 0)}</div><p class="game-card-caption">${e(t(game === "hausdepp" ? "Runden beendet" : "Partien beendet"))}</p><div class="game-card-details">${details.map(([label, value]) => `<span>${e(t(label))}<strong>${e(value)}</strong></span>`).join("")}</div></div>`;
   }).join("");
+  const hausdepp = games.includes("hausdepp");
+  byId("hausdeppMonitoringNote").hidden = !hausdepp;
+  byId("hausdeppMonitoringNote").textContent = hausdepp ? t("Hausdepp: Ergebnisse und Live-Tische werden serverseitig gezählt. Browserbesuche wurden bisher nicht erfasst. Dauer bleibt bei älteren Ergebnissen unbekannt. Abbrüche werden ab dieser Version erfasst; ältere Abbrüche werden nicht nachgetragen.") : "";
   byId("gameModes").innerHTML = (data.modes || []).slice(0, 8).map(row => `<span class="mode-chip">${gameName(row.game)} · ${e(t(MODE_LABELS[row.mode] || "Anderer Modus"))}${row.hardcore ? " · Hardcore" : ""}<strong>${number(row.completed_games)}</strong></span>`).join("");
 }
 
@@ -291,7 +308,7 @@ function designAccounts(choices, mode, share) {
 function designUsage(data) {
   const usage = data.design_usage || {};
   const filter = data.period?.game || "all";
-  const games = filter === "zdwa" || filter === "zilch" ? [filter] : ["zdwa", "zilch"];
+  const games = filter === "hausdepp" ? [] : filter === "zdwa" || filter === "zilch" ? [filter] : ["zdwa", "zilch"];
   const times = new Map();
   const known = new Set(DESIGN_GROUPS.flatMap(group => group.looks.map(([look]) => look)));
   for (const row of usage.looks || []) {
@@ -372,6 +389,7 @@ function serverMetrics(server = {}) {
 }
 
 function render(data) {
+  syncGameOptions(data.available_games || ["zdwa", "zilch"]);
   overview(data);
   dailyChart(data);
   hourlyChart(data.hourly);
@@ -401,6 +419,17 @@ function render(data) {
   const dropped = count(data.collection?.dropped);
   byId("queueNote").hidden = !dropped && !data.collection?.cap_reached;
   byId("queueNote").textContent = data.collection?.cap_reached ? t("Die Ereignisgrenze ist erreicht. Ältere Messwerte werden entfernt; der Zeitraum kann unvollständig sein.") : `${t("Verworfene Ereignisse bei Überlastung")}: ${number(dropped)}. ${t("Diese Messung kann unvollständig sein.")}`;
+}
+
+function syncGameOptions(games) {
+  const allowed = ["zdwa", "zilch", "hausdepp"].filter(game => games.includes(game));
+  const selector = byId("dashboardGame");
+  const selected = selector.value;
+  selector.innerHTML = `<option value="all">${e(t(allowed.includes("hausdepp") ? "Alle drei Spiele" : "Beide Spiele"))}</option>${allowed.map(game => `<option value="${game}">${gameName(game)}</option>`).join("")}`;
+  selector.value = allowed.includes(selected) ? selected : "all";
+  for (const scope of document.querySelectorAll("[data-dashboard-game-scope]")) scope.textContent = allowed.map(gameName).join(" + ");
+  byId("dashboardSuiteDescription").textContent = t(allowed.includes("hausdepp")
+    ? "Dein Kontrollzentrum für ZDWA, Zilch & Hausdepp." : "Dein Kontrollzentrum für ZDWA & Zilch.");
 }
 
 function connection(label, tone = "") {
@@ -539,6 +568,9 @@ function clearPrivateData() {
   analysis.resetSession();
   globe.clear();
   globe.suspend();
+  syncGameOptions(["zdwa", "zilch"]);
+  byId("hausdeppMonitoringNote").hidden = true;
+  byId("hausdeppMonitoringNote").textContent = "";
   for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceSoftwareRanks", "deviceHardwareRanks", "deviceDonut", "appModeChart", "appModeRanks", "pwaInstalledCount", "pwaFirstOpenCount", "browserRanks", "browserLanguageRanks", "requestTrafficSummary", "requestCountryRanks", "requestStatusRanks", "requestAgentRanks", "requestChannelRanks", "requestRecordedAt", "requestDroppedNote", "countryRanks", "gameCards", "gameModes", "actionRanks", "designComparison", "designAccounts", "designLooks", "designTable", "designCollectionNote", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated", "nexusRooms", "nexusPlayers", "nexusWindow"]) byId(id).replaceChildren();
 }
 function syncMotion() {

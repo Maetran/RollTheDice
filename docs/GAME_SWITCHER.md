@@ -24,8 +24,12 @@ eigenen Ursprung, damit der Wechsel innerhalb der App erfolgt.
 Alle relativen Ziele verwenden den aktuellen Ursprung. Die vorgesehenen
 Produktionsaliase von ZDWA verwenden dieselbe Umschaltlogik. Die reservierte
 Hausdepp-Subdomain ist noch kein aktives Ziel der Spieleauswahl.
-Hausdepp verwendet auf dem Zilch-Host dessen Service Worker und Manifest;
-auf dem ZDWA-Host behält es den bestehenden ZDWA-Service-Worker.
+Hausdepp kann mit eigenem Symbol und DE/EN-Manifest installiert werden. Sein
+Worker steuert nur `/hausdepp`, speichert keine Karten oder privaten Inhalte
+und zeigt offline einen Verbindungshinweis. Bereits installierte ZDWA- und
+Zilch-Apps behalten beim Wechsel ihre eigene App-Identität. Eine installierte
+Hausdepp-App behält umgekehrt ihr Manifest beim Wechsel zu anderen Spielen;
+auf der Hausdepp-Subdomain nutzt ZDWA dafür die geschützte `/zdwa`-Brücke.
 
 ### Grenzen und gemeinsame Kontoeinstellungen
 
@@ -49,6 +53,28 @@ auf dem ZDWA-Host behält es den bestehenden ZDWA-Service-Worker.
   `no-store` und `noindex`. Die Spieleauswahl erweitert keine öffentliche
   Suchmaschinenfläche und aktiviert keine neue Domain.
 
+### Wer spielt gerade?
+
+Jede Spielzeile zeigt die Zahl der gerade verbundenen menschlichen Spieler in
+gestarteten, noch nicht beendeten oder abgebrochenen Partien. Ein Konto zählt
+pro Spiel einmal, auch mit mehreren offenen Geräten oder Tischen. Gäste zählen
+pro Tisch und Sitz; Computer, Zuschauer, wartende Tische und Turnierpausen
+zählen nicht mit. Eine manuell pausierte Partie zählt weiterhin, solange die
+Spieler verbunden sind.
+
+`GET /api/game-activity` liefert ausschliesslich diese Summen für die aktuell
+freigegebenen Spiele, ohne Namen, Konto-, Sitz- oder Raumkennungen und ohne
+spielübergreifende Gesamtsumme. Die Freigabe wird bei jeder Anfrage frisch
+geprüft; Dashboard-Zugriff öffnet keine privaten Spielzahlen. Hausdepp bleibt
+an das Gründerkonto mit Administratorrolle gebunden. Zilch verwendet dieselbe
+öffentliche oder kontobasierte Freigabe wie die Spieleauswahl.
+
+Beim Öffnen werden die Zahlen neu geladen, danach alle 15 Sekunden während
+die Auswahl sichtbar ist. Schliessen oder ein ausgeblendeter Browser-Tab stoppt
+die Abfragen. Laden und fehlende Verbindung haben eigene Hinweise; eine
+fehlgeschlagene Aktualisierung zeigt keine alte Zahl oder erfundene Null.
+Antworten werden mit `no-store` ausgeliefert.
+
 ### Prüfnachweis
 
 `tests/browser/suite-picker-routes.spec.js` prüft die Zielmatrix und die
@@ -56,6 +82,9 @@ Zusammenarbeit zwischen Spieleauswahl und ZDWA-Brücke. Bestehende PWA-Prüfunge
 stehen in `tests/browser/pwa-product-isolation.spec.js`; Zugriffs- und
 Seitenprüfungen in `tests/test_hausdepp_integration.py`,
 `tests/test_zilch_product_routes.py` und `tests/test_navigation_contract.py`.
+`tests/test_game_activity.py` prüft die Summen, aktuelle Berechtigungen und
+Privatgrenzen; `tests/browser/game-picker-activity.spec.js` prüft die Zähler
+in allen drei Spielen einschliesslich Laden, Fehlern und veralteten Antworten.
 
 ## English
 
@@ -80,8 +109,12 @@ the handoff remains inside the app.
 All relative destinations use the current origin. The established ZDWA
 production aliases use the same switching rules. The reserved Hausdepp
 subdomain is not yet an active game picker destination.
-Hausdepp uses the Zilch service worker and manifest on the Zilch host; on
-the ZDWA host it keeps the existing ZDWA service worker.
+Hausdepp can be installed with its own icon and DE/EN manifest. Its worker
+controls only `/hausdepp`, stores no cards or private content, and shows a
+connection notice offline. Existing installed ZDWA and Zilch apps retain
+their app identity when switching games. An installed Hausdepp app likewise
+keeps its manifest across game switches; on its dedicated host, ZDWA uses
+the protected `/zdwa` bridge.
 
 ### Boundaries and shared account settings
 
@@ -104,6 +137,26 @@ the ZDWA host it keeps the existing ZDWA service worker.
   `no-store` and `noindex`. The picker neither expands the public search
   surface nor activates a new domain.
 
+### Who is playing now?
+
+Each game row shows connected human players at started tables that have not
+finished or been abandoned. An account counts once per game, even across
+several devices or tables. Guests count by table and seat. Computers,
+spectators, waiting tables and tournament breaks are excluded. A manually
+paused game still counts while its players remain connected.
+
+`GET /api/game-activity` returns only these totals for games currently available
+to the viewer, without names, account, seat or room identifiers and without a
+cross-game total. Every request checks current access. A dashboard grant never
+opens private game counts. Hausdepp still requires the founder account with an
+administrator role; Zilch uses the same public or account-based audience policy
+as the picker.
+
+Counts reload when the picker opens, then every 15 seconds while it is visible.
+Closing the picker or hiding the browser tab stops requests. Loading and a
+failed connection have distinct messages; a failed refresh never displays an
+old count or an invented zero. Responses use `no-store`.
+
 ### Verification
 
 `tests/browser/suite-picker-routes.spec.js` covers the destination matrix and
@@ -111,3 +164,6 @@ the interaction between the picker and the ZDWA bridge. Existing PWA checks
 live in `tests/browser/pwa-product-isolation.spec.js`; access and page checks
 in `tests/test_hausdepp_integration.py`, `tests/test_zilch_product_routes.py`
 and `tests/test_navigation_contract.py`.
+`tests/test_game_activity.py` covers totals, fresh permissions and privacy;
+`tests/browser/game-picker-activity.spec.js` covers counts across all three
+games, including loading, errors and stale responses.

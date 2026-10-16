@@ -2,6 +2,8 @@ import { GAME_PICKER_MESSAGES } from "../i18n/catalog.js";
 
 const MENU_ID = "suiteGameMenu";
 const mobileQuery = "(max-width: 600px)";
+const ACTIVITY_REFRESH_MS = 15_000;
+const ACTIVITY_TIMEOUT_MS = 8_000;
 let closeActivePicker = null;
 const language = () => window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de";
 const message = (key, values = {}) => String(GAME_PICKER_MESSAGES[language()][key] || key)
@@ -40,6 +42,65 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
   let inertElements = [];
   let previousOverflow = "";
   let destroyed = false;
+  let activityTimer = null;
+  let activityRequest = null;
+  let activityRevision = 0;
+
+  function setActivity(state, counts = {}) {
+    if (!panel) return;
+    for (const entry of panel.querySelectorAll("[data-game-entry]")) {
+      const count = counts[entry.dataset.gameEntry]?.players;
+      const valid = state === "ready" && Number.isSafeInteger(count) && count >= 0;
+      const label = entry.querySelector("[data-game-activity]");
+      label.dataset.state = valid ? "ready" : state === "loading" ? "loading" : "unavailable";
+      label.textContent = valid ? message(count === 1 ? "activityOne" : "activityMany", { count })
+        : message(state === "loading" ? "activityLoading" : "activityUnavailable");
+    }
+    positionPanel();
+  }
+
+  function stopActivity() {
+    activityRevision += 1;
+    window.clearTimeout(activityTimer);
+    activityTimer = null;
+    activityRequest?.abort();
+    activityRequest = null;
+  }
+
+  async function refreshActivity() {
+    if (!panel || document.visibilityState === "hidden") return;
+    stopActivity();
+    const revision = activityRevision;
+    const controller = new AbortController();
+    activityRequest = controller;
+    const timeout = window.setTimeout(() => controller.abort(), ACTIVITY_TIMEOUT_MS);
+    try {
+      const response = await fetch("/api/game-activity", {
+        credentials: "same-origin", cache: "no-store", signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("Activity unavailable");
+      const payload = await response.json();
+      if (!payload?.games || typeof payload.games !== "object" || Array.isArray(payload.games)) {
+        throw new Error("Invalid activity projection");
+      }
+      if (panel && revision === activityRevision) setActivity("ready", payload.games);
+    } catch (_) {
+      if (panel && revision === activityRevision) setActivity("unavailable");
+    } finally {
+      window.clearTimeout(timeout);
+      if (panel && revision === activityRevision) {
+        activityRequest = null;
+        activityTimer = window.setTimeout(() => { void refreshActivity(); }, ACTIVITY_REFRESH_MS);
+      }
+    }
+  }
+
+  function visibilityChanged() {
+    if (document.visibilityState === "hidden") {
+      stopActivity();
+      setActivity("loading");
+    } else void refreshActivity();
+  }
 
   function updateTrigger() {
     const active = available.find(game => game.id === current) || available[0];
@@ -98,6 +159,7 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
 
   function close({ restoreFocus = false } = {}) {
     if (!panel) return;
+    stopActivity();
     setModal(false);
     panel.remove();
     backdrop?.remove();
@@ -108,6 +170,7 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
     document.removeEventListener("pointerdown", outsidePointer);
     document.removeEventListener("keydown", keydown);
     document.removeEventListener("focusin", focusChanged);
+    document.removeEventListener("visibilitychange", visibilityChanged);
     window.removeEventListener("resize", positionPanel);
     window.removeEventListener("scroll", positionPanel, true);
     if (restoreFocus && button.isConnected && !button.hidden && !button.disabled) button.focus();
@@ -175,16 +238,17 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
     for (const game of available) {
       const link = document.createElement("a");
       const descriptionId = `${MENU_ID}-${game.id}-description`;
+      const activityId = `${MENU_ID}-${game.id}-activity`;
       link.className = "suite-game-option";
       link.href = game.href;
       link.dataset.gameEntry = game.id;
       link.setAttribute("aria-label", game.name);
-      link.setAttribute("aria-describedby", descriptionId);
+      link.setAttribute("aria-describedby", `${descriptionId} ${activityId}`);
       if (game.id === current) link.setAttribute("aria-current", "page");
       const status = game.id === current
         ? `<span class="suite-game-option__current">${escapeMarkup(message("current"))}</span>`
         : '<svg class="suite-game-option__arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg>';
-      link.innerHTML = `<span class="suite-game-option__icon" data-game-icon="${escapeMarkup(game.id)}">${gameIcon(game.id)}</span><span class="suite-game-option__copy"><span class="suite-game-option__name" translate="no">${escapeMarkup(game.name)}</span><span class="suite-game-option__description" id="${escapeMarkup(descriptionId)}">${escapeMarkup(game.description || message(`${game.id}Description`))}</span></span>${status}`;
+      link.innerHTML = `<span class="suite-game-option__icon" data-game-icon="${escapeMarkup(game.id)}">${gameIcon(game.id)}</span><span class="suite-game-option__copy"><span class="suite-game-option__name" translate="no">${escapeMarkup(game.name)}</span><span class="suite-game-option__description" id="${escapeMarkup(descriptionId)}">${escapeMarkup(game.description || message(`${game.id}Description`))}</span><span class="suite-game-option__activity" id="${escapeMarkup(activityId)}" data-game-activity data-state="loading">${escapeMarkup(message("activityLoading"))}</span></span>${status}`;
       link.addEventListener("click", event => {
         onSelect?.(game.id, game, event);
         close();
@@ -197,9 +261,11 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
     document.addEventListener("pointerdown", outsidePointer);
     document.addEventListener("keydown", keydown);
     document.addEventListener("focusin", focusChanged);
+    document.addEventListener("visibilitychange", visibilityChanged);
     window.addEventListener("resize", positionPanel);
     window.addEventListener("scroll", positionPanel, true);
     (panel.querySelector('a[aria-current="page"]') || panel.querySelector("a"))?.focus();
+    void refreshActivity();
   }
 
   function update({ currentMode: nextMode = current, games: nextGames = available } = {}) {

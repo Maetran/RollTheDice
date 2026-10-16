@@ -197,6 +197,16 @@ for (const identity of [
   });
 }
 
+test("a founder-only Hausdepp installation never becomes a public ZDWA PWA counter", async ({ page }) => {
+  const fixture = await trackingFixture(page, {
+    route: "/", game: "zdwa", manifest: "/hausdepp-manifest-en.webmanifest?v=release", displayMode: "standalone",
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
+  await tick(page, 1500);
+  expect(fixture.events().filter(event => event.action?.startsWith("pwa_"))).toEqual([]);
+  expect(await page.evaluate(() => window.fixturePwaStorageAccesses)).toBe(0);
+});
+
 test("device details classify coarse families and preserve hidden hardware as unknown", async ({ page }) => {
   await trackingFixture(page);
   const examples = [

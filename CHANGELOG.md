@@ -23,6 +23,83 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 2.59.0 — Eine eigene Kartenrunde / a card table of its own — 2026-10-16
+
+**Deutsch:** Hausdepp erhält eine eigene Gestaltung aus Tannengrün, hellem
+Kartenpapier, Kartenrot und kräftiger Serifenschrift. Navigation und wichtige
+Wege sind als Buttons erkennbar. Die Gegner sitzen im Halbkreis; Profilbilder
+und sichtbare eigene und fremde Reaktionen gehören zur Runde. Computer erhalten
+zufällige, innerhalb eines Tisches eindeutige Namen aus einem Pool von 50 Namen.
+Zwölf wechselnde Requisiten vom Bier über Tee bis zu Chips und Marend füllen
+freien Tischraum, auf Mobilgeräten dezenter. Dampf, Schaum und Kerzenlicht bewegen
+sich sehr zurückhaltend und berücksichtigen reduzierte Bewegung. Die Lobby zeigt
+eine grössere Vorschau-Hand rechts neben dem Titel mit ruhigen Kartenwechseln;
+der mobile Tischstart benötigt weniger Platz.
+Die Vorschau ergänzt nur unter drei Karten und spielt mehrere Karten nur mit
+gleichem Rang. Eine kurze einmalige Mischanimation geht dem Abheben voraus, ohne eine Aktion
+zu sperren; Neuladen, Wiederverbinden und reduzierte Bewegung wiederholen sie
+nicht. Die Menüfolge entspricht der Suite: Lobby, Rangliste, Regeln, Konto. Neue Tische erhalten automatisch einen von 50 Wirtshausnamen mit deinem
+Kontonamen; das Namensfeld entfällt.
+
+Hausdepp hat ein stilisiertes Herz-Zehner-Icon, deutsche und englische Installationsmanifeste
+und einen eng begrenzten Service Worker. Die installierte App startet bei
+Hausdepp; Spielwechsel erhalten die App-Identität. Private Inhalte werden nicht
+offline gespeichert. Der Versionshinweis erscheint oben rechts. Der gemeinsame
+Spielwähler zeigt in allen Spielen aktuell verbundene Menschen an laufenden
+Tischen, ohne Computer und Zuschauer, mit eindeutiger Kontenzählung und frischer
+Prüfung der Spielfreigaben. Teilen, Kopieren und Mitspieler-Rufe folgen den
+Suite-Abläufen mit separatem Push-Opt-in, Absenderauswahl und Sperrfristen.
+Auch eine frisch installierte Hausdepp-PWA kann ihr Push-Gerät in den gemeinsamen
+Einstellungen aktivieren; Einladungen bleiben auf freigegebene Konten begrenzt.
+
+Erreichte Erfolge stehen innerhalb ihrer Gruppe vor den offenen. Häufige Ziele
+benötigen mehrere unterschiedliche abgeschlossene Runden, statt schon nach
+einem Spiel massenweise freizuschalten. Seltene Kunststücke bleiben direkt
+erreichbar; 100 Erfolge und 24 Ränge bleiben erhalten. Reine Menschenrunden
+geben 10 EP. Sobald mindestens ein Computer mitspielt, gibt jede abgeschlossene
+Runde 2 EP (75 % weniger, pro Runde abgerundet), auch an gemischten Tischen und im Turnier.
+Einmalige Erfolgsbelohnungen bleiben immer vollständig. Regeln und Konto
+erklären die Gewichtung; bestehende Computer-Runden werden neu gewichtet.
+Mission Control ergänzt für den Owner echte Hausdepp-Runden, Tische, Teilnehmer,
+Turniere und neue Abbrüche. Andere Dashboard-Berechtigte erhalten diese Daten
+auch unter „Alle“ nicht. Fehlende historische Messwerte bleiben unbekannt.
+Die Spielregeln, Turniergrenzen, Punkte und Darstellung sind durch weitere
+gezielte lokale Tests abgesichert. Die gestalterische Abnahme bleibt offen.
+
+**English:** Hausdepp gains a distinct forest-green, card-paper and card-red
+identity with strong serif headings, button-shaped navigation, opponents around
+the table, account avatars and visible reactions from every sender. Computers
+receive unique random names from a pool of 50. Twelve varying props fill free
+table space, more subtly on phones, with minimal steam, foam and candle motion
+and reduced-motion support. A compact lobby preview hand sits beside the title
+and changes cards calmly; the mobile table-creation form uses less space.
+The preview refills only below three cards and plays matching cards together.
+A brief one-time card-back shuffle precedes cutting without blocking actions;
+reload, reconnect and reduced motion do not replay it. Navigation follows the
+shared suite order. Tables automatically receive one of
+50 pub-style names personalised with the account name; no name field is needed.
+
+A stylised heart-ten icon, bilingual installation manifests and a narrowly scoped worker prepare
+Hausdepp installation. Suite switching retains the installed app identity;
+private content is never cached offline. Update notices sit at the top right.
+All game pickers show current connected human players at running tables,
+excluding computers and spectators, with account deduplication and fresh access
+checks. Sharing, copying and player calls follow the suite flows with a
+separate push opt-in, sender selection and cooldowns. A fresh Hausdepp PWA can
+register its push device in shared settings; invitations stay limited to
+accounts already permitted to access the game.
+
+Earned achievements lead each group. Common goals now require several distinct
+completed rounds; rare feats remain immediately attainable. The 100 achievements,
+24 ranks and full achievement rewards remain. Human-only rounds grant 10 XP.
+Every completed round with any computer grants 2 XP (75% less, rounded down per round),
+including mixed tables and tournament rounds. Existing computer rounds are
+reweighted; rules and account explain the distinction. Owner-only Mission Control
+adds real Hausdepp round, seat, tournament and new-abort metrics. Delegates cannot
+see them even under All; missing historical measurements remain unknown.
+Additional local rule, tournament, accounting and responsive tests cover the
+increment. Visual owner acceptance remains pending.
+
 ## 2.58.0 — Vom Genie zum Hausdepp / from genius to Hausdepp — 2026-10-16
 
 **Deutsch:** Das private Hausdepp-Konto enthält 100 Erfolge und

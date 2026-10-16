@@ -124,6 +124,101 @@ for (const language of ['de', 'en']) {
   });
 }
 
+for (const language of ['de', 'en']) {
+  test(`${language}: each theme shows unlocked achievements first with stable card order and combined filters`, async ({ page }) => {
+    const data = structuredClone(await owner(page, language));
+    const unlocked = new Set(['hausdepp_02', 'hausdepp_05', 'hausdepp_10', 'hausdepp_16', 'hausdepp_100']);
+    // Renderer-only scenario. Keep all approved IDs, categories, point values
+    // and translations, but deliberately reverse the incoming catalogue.
+    data.achievements.items.reverse();
+    for (const item of data.achievements.items) {
+      item.unlocked = unlocked.has(item.id);
+      item.unlocked_at = item.unlocked ? '2026-10-16T12:00:00+00:00' : null;
+      item.progress.current = item.unlocked ? item.progress.target : 0;
+    }
+    data.achievements.unlocked_count = unlocked.size;
+    data.presentation.pending = null;
+    await page.route('**/api/hausdepp/account?**', route => route.fulfill({ json: data }));
+    await page.goto('/hausdepp/konto');
+    const group = category => page.locator(`.hd-achievement-group[data-category="${category}"]`);
+    const order = category => group(category).locator('.hd-achievement-card').evaluateAll(cards => cards.map(card => card.dataset.achievementId));
+    const ids = numbers => numbers.map(number => `hausdepp_${String(number).padStart(2, '0')}`);
+    await expect(page.locator('.hd-achievement-group')).toHaveCount(11);
+    await expect(page.locator('.hd-achievement-controls select')).toHaveCount(2);
+    await expect.poll(() => order('participation')).toEqual(ids([2, 5, 1, 3, 4, 6, 7, 8]));
+    await expect.poll(() => order('community')).toEqual(ids([10, 16, 9, 11, 12, 13, 14, 15]));
+    await expect.poll(() => order('tournament')).toEqual(ids([100, ...Array.from({ length: 15 }, (_, index) => index + 85)]));
+    await expect(group('participation').locator('.hd-achievement-group-count')).toHaveText('2 / 8');
+    await expect(group('community').locator('.hd-achievement-group-count')).toHaveText('2 / 8');
+    await page.locator('#hausdeppAchievementCategory').selectOption('participation');
+    await expect(group('participation').locator('h3').first()).toHaveText(language === 'de' ? 'Stammtisch gefunden' : 'Found your table');
+    await page.locator('#hausdeppAchievementStatus').selectOption('unlocked');
+    await expect.poll(() => order('participation')).toEqual(ids([2, 5]));
+    await page.locator('#hausdeppAchievementStatus').selectOption('locked');
+    await expect.poll(() => order('participation')).toEqual(ids([1, 3, 4, 6, 7, 8]));
+    const fourth = data.achievements.items.find(item => item.id === 'hausdepp_04');
+    await page.locator('#hausdeppAchievementSearch').fill(local(fourth.name, language));
+    await expect.poll(() => order('participation')).toEqual(ids([4]));
+    await page.locator('#hausdeppAchievementStatus').selectOption('unlocked');
+    await page.locator('#hausdeppAchievementReset').click();
+    await expect(page.locator('#hausdeppAchievementCategory')).toHaveValue('all');
+    await expect(page.locator('#hausdeppAchievementStatus')).toHaveValue('all');
+    await expect(page.locator('#hausdeppAchievementSearch')).toHaveValue('');
+    await expect(page.locator('.hd-achievement-card')).toHaveCount(100);
+    await expect(page.locator('.hd-achievement-group')).toHaveCount(11);
+    await expect.poll(() => order('participation')).toEqual(ids([2, 5, 1, 3, 4, 6, 7, 8]));
+    await expect.poll(() => order('community')).toEqual(ids([10, 16, 9, 11, 12, 13, 14, 15]));
+  });
+}
+
+for (const language of ['de', 'en']) {
+  test(`${language}: CPU rounds keep whole points while rank receipts use opaque integer revisions`, async ({ page }) => {
+    const data = structuredClone(await owner(page, language));
+    const awards = [25, 50].map(points => data.achievements.items.find(item => item.points === points));
+    for (const item of data.achievements.items) {
+      item.unlocked = awards.includes(item);
+      item.unlocked_at = item.unlocked ? '2026-10-16T12:00:00+00:00' : null;
+      item.progress.current = item.unlocked ? item.progress.target : 0;
+    }
+    data.achievements.unlocked_count = 2;
+    data.scoring = { available: true, points: 77, round_points: 2, achievement_points: 75,
+      round_reward: 10, cpu_round_reward: 2, cpu_reduction_percent: 75 };
+    const index = data.ranks.findLastIndex(rank => rank.threshold <= 77);
+    data.rank = { ...data.ranks[index], next: data.ranks[index + 1], progress: {
+      current: 77 - data.ranks[index].threshold,
+      target: data.ranks[index + 1].threshold - data.ranks[index].threshold,
+      percent: (77 - data.ranks[index].threshold) / (data.ranks[index + 1].threshold - data.ranks[index].threshold) * 100,
+    } };
+    data.presentation = { revision: 9001, pending: { revision: 9001, through_points: 77,
+      points_earned: 2, from_rank: data.rank, to_rank: data.rank, rank_up: false, achievement_ids: [] } };
+    const receipts = [];
+    await page.route('**/api/hausdepp/account?**', route => route.fulfill({ json: data }));
+    await page.route('**/api/hausdepp/account/acknowledge', route => {
+      receipts.push(route.request().postDataJSON());
+      return route.fulfill({ json: { ok: true } });
+    });
+    await page.goto('/hausdepp/konto');
+    const suffix = language === 'de' ? 'EP' : 'XP';
+    await expect(page.locator('.hd-xp-total strong')).toHaveText('77');
+    await expect(page.locator('.hd-xp-breakdown dd').first()).toHaveText(`2 ${suffix}`);
+    await expect(page.locator('.hd-xp-breakdown dd').last()).toHaveText(`75 ${suffix}`);
+    await expect(page.locator('.hd-rank-progress-label strong')).toContainText(`${data.rank.next.threshold - 77}`);
+    await expect(page.locator('.hd-notice-reward')).toHaveText(`+2 ${suffix}`);
+    await expect(page.locator('.hd-xp-guide')).toContainText('75%');
+    await expect(page.locator('.hd-xp-guide')).toContainText(language === 'de' ? 'vollen Punkten' : 'full one-time rewards');
+    await page.locator('[data-progress-ack]').click();
+    expect(receipts).toEqual([{ revision: 9001 }]);
+    data.presentation = { revision: 9002, pending: { revision: 9002, through_points: 77,
+      points_earned: null, from_rank: null, to_rank: data.rank, rank_up: null, achievement_ids: [] } };
+    await page.reload();
+    await expect(page.locator('#hausdeppProgressNotice h3')).toHaveText(language === 'de' ? 'Dein Fortschritt ist gespeichert.' : 'Your progress is saved.');
+    await expect(page.locator('#hausdeppProgressNotice .hd-notice-reward')).toHaveCount(0);
+    await expect(page.locator('#hausdeppProgressNotice')).not.toContainText('+0');
+    await page.locator('[data-progress-ack]').click();
+    expect(receipts).toEqual([{ revision: 9001 }, { revision: 9002 }]);
+  });
+}
+
 test('labelled acknowledgement failure keeps the summary and offers the same action again', async ({ page }) => {
   const data = labelledNewtonScenario(await owner(page));
   await page.route('**/api/hausdepp/account?**', route => route.fulfill({ json: data }));

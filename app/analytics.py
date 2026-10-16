@@ -48,7 +48,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from .database import get_engine, session_scope
-from .models import ActiveGame, Base, CompletedGame, GameParticipant, User
+from .models import AbandonedGame, Base, CompletedGame, GameParticipant, User
 from .security import as_utc, utcnow
 from .zdwa_design import configured_zdwa_design_mode
 
@@ -388,13 +388,47 @@ def enqueue_batch(batch: dict) -> bool:
 def record_game_action(game_type: str, action: str, mode: str | None = None) -> bool:
     """Trusted gameplay hooks call this only after an accepted server action."""
     global _dropped
-    if game_type not in {"zdwa", "zilch"} or action not in ACTIONS or _queue is None:
+    if game_type not in {"zdwa", "zilch", "hausdepp"} or action not in ACTIONS or _queue is None:
         return False
     mode = {"1": "solo", "2": "duo", "3": "trio", "2v2": "team"}.get(str(mode), mode)
     event = {"dedupe_key": hashlib.sha256(os.urandom(32)).hexdigest(), "session_id": None,
-             "received_at": utcnow(), "event_type": "action", "page": normalize_page("/spiel", game_type),
+             "received_at": utcnow(), "event_type": "action",
+             "page": "/hausdepp/spiel" if game_type == "hausdepp" else normalize_page("/spiel", game_type),
              "game": game_type, "action": action, "active_ms": 0,
              "mode": mode if mode in MODES else "unknown", "source": "server"}
+    try:
+        _queue.put_nowait({"session": None, "events": [event]})
+        return True
+    except queue.Full:
+        _dropped += 1
+        return False
+
+
+def record_hausdepp_abort(game: dict) -> bool:
+    """Count real new aborts without storing a room, account or card identity.
+
+    This fixed server event deliberately cannot be submitted by browser beacons.
+    Repeated retirement/recovery uses the same dedupe key. It remains best-effort
+    telemetry, separate from Fairplay records and completed-round accounting.
+    """
+    global _dropped
+    if (_queue is None or game.get("_game_type") != "hausdepp" or not game.get("_aborted")
+            or game.get("_abort_reason") not in {"manual", "inactivity_timeout"}
+            or not isinstance(game.get("_id"), str) or not game["_id"]):
+        return False
+    try:
+        start = as_utc(datetime.fromisoformat(game["_started_at"]))
+        end = as_utc(datetime.fromisoformat(game["_finished_at"]))
+        if end < start:
+            return False
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return False
+    mode = "tournament" if game.get("_hausdepp_tournament") else game.get("_play_mode", "unknown")
+    event = {"dedupe_key": hashlib.sha256(f"hausdepp:abort:{game['_id']}".encode()).hexdigest(),
+             "session_id": None, "received_at": end, "event_type": "action", "page": "/hausdepp/spiel",
+             "game": "hausdepp", "action": "game_aborted", "active_ms": 0,
+             "mode": mode if mode in MODES else "unknown",
+             "source": "server"}
     try:
         _queue.put_nowait({"session": None, "events": [event]})
         return True
@@ -780,12 +814,12 @@ def _result_duration(raw: str) -> int | None:
                         as_utc(datetime.fromisoformat(start.replace("Z", "+00:00")))).total_seconds()
             if 0 <= duration <= 86400 * 30:
                 return int(duration)
-    except (ValueError, TypeError, AttributeError):
+    except (ValueError, TypeError, AttributeError, OverflowError):
         pass
     return None
 
 
-def _geography_stats(db: Session, filters: list, views, active) -> tuple[list[dict], dict]:
+def _geography_stats(db: Session, filters: list, views, active, products=("zdwa", "zilch")) -> tuple[list[dict], dict]:
     country = AnalyticsSession.country
     rows = db.execute(select(country, func.count(func.distinct(AnalyticsEvent.session_id)), views, active)
                       .join(AnalyticsSession, AnalyticsEvent.session_id == AnalyticsSession.id)
@@ -798,7 +832,7 @@ def _geography_stats(db: Session, filters: list, views, active) -> tuple[list[di
     total = sum(visits for _country, visits, _views, _active in rows)
     geography = [{"country": code, "sessions": visits, "page_views": int(page_views or 0),
                   "active_seconds": round((active_ms or 0) / 1000, 1),
-                  "games": {product: game_visits.get((code, product), 0) for product in ("zdwa", "zilch")},
+                  "games": {product: game_visits.get((code, product), 0) for product in products},
                   "share_percent": round(100 * visits / total, 1) if total else 0}
                  for code, visits, page_views, active_ms in rows]
     unknown = next((row["sessions"] for row in geography if row["country"] == "ZZ"), 0)
@@ -824,13 +858,15 @@ def _heatmap_stats(db: Session, filters: list, views, active) -> list[dict]:
     return cells
 
 
-def _journey_stats(db: Session, start: datetime, now: datetime, game: str) -> dict:
+def _journey_stats(db: Session, start: datetime, now: datetime, game: str, products=("zdwa", "zilch")) -> dict:
     # Read across games first. Filtering the sequence prematurely would fabricate
     # a Zilch-to-Zilch link when the tab actually visited ZDWA in between.
     filters = [AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
                AnalyticsEvent.event_type == "page_view", AnalyticsEvent.source == "client",
                AnalyticsEvent.session_id.is_not(None)]
-    total = db.scalar(select(func.count()).select_from(AnalyticsEvent).where(*filters)) or 0
+    visible = (*products, "site")
+    total = db.scalar(select(func.count()).select_from(AnalyticsEvent).where(
+        *filters, AnalyticsEvent.game.in_(visible))) or 0
     rows = db.execute(select(AnalyticsEvent.session_id, AnalyticsEvent.page, AnalyticsEvent.game,
                              AnalyticsEvent.received_at, AnalyticsEvent.id)
                       .where(*filters).order_by(AnalyticsEvent.received_at.desc(), AnalyticsEvent.id.desc())
@@ -840,32 +876,37 @@ def _journey_stats(db: Session, start: datetime, now: datetime, game: str) -> di
     matching_views = 0
     for session_id, page, product, timestamp, _event_id in reversed(rows):
         timestamp = as_utc(timestamp)
-        matching_views += game == "all" or product == game
+        matching_views += product in visible and (game == "all" or product == game)
         prior = previous.get(session_id)
         previous[session_id] = (page, product, timestamp)
         if prior is None:
             continue
         prior_page, prior_game, prior_timestamp = prior
+        if product not in visible or prior_game not in visible:
+            continue
         if (page, product) == (prior_page, prior_game) or (timestamp - prior_timestamp).total_seconds() > JOURNEY_GAP_SECONDS:
             continue
         if game != "all" and (product != game or prior_game != game):
             continue
         key = prior_page, page, prior_game, product
         links[key] = links.get(key, 0) + 1
+    visible_rows = [row for row in rows if row[2] in visible]
     return {"links": [{"from": source, "to": target, "from_game": source_game, "to_game": target_game, "count": count}
                       for (source, target, source_game, target_game), count in
                       sorted(links.items(), key=lambda item: (-item[1], item[0]))],
-            "sample": {"limit": JOURNEY_SAMPLE_LIMIT, "page_views": len(rows), "matching_page_views": matching_views,
-                       "total_page_views": total, "truncated": total > len(rows), "method": "latest_page_views",
-                       "from": as_utc(rows[-1][3]).isoformat() if rows else None,
-                       "to": as_utc(rows[0][3]).isoformat() if rows else None,
+            "sample": {"limit": JOURNEY_SAMPLE_LIMIT, "page_views": len(visible_rows), "matching_page_views": matching_views,
+                       "total_page_views": total, "truncated": total > len(visible_rows), "method": "latest_page_views",
+                       "from": as_utc(visible_rows[-1][3]).isoformat() if visible_rows else None,
+                       "to": as_utc(visible_rows[0][3]).isoformat() if visible_rows else None,
                        "gap_limit_seconds": JOURNEY_GAP_SECONDS, "game_filter_applied": "both_endpoints"}}
 
 
-def _previous_overview(db: Session, start: datetime, days: int, game: str) -> dict:
+def _previous_overview(db: Session, start: datetime, days: int, game: str, products=("zdwa", "zilch")) -> dict:
     previous_start = start - timedelta(days=days)
-    filters = [AnalyticsEvent.received_at >= previous_start, AnalyticsEvent.received_at < start]
-    results = [CompletedGame.finished_at >= previous_start, CompletedGame.finished_at < start]
+    filters = [AnalyticsEvent.received_at >= previous_start, AnalyticsEvent.received_at < start,
+               AnalyticsEvent.game.in_((*products, "site"))]
+    results = [CompletedGame.finished_at >= previous_start, CompletedGame.finished_at < start,
+               CompletedGame.game_type.in_(products)]
     if game != "all":
         filters.append(AnalyticsEvent.game == game)
         results.append(CompletedGame.game_type == game)
@@ -873,7 +914,7 @@ def _previous_overview(db: Session, start: datetime, days: int, game: str) -> di
         func.count(func.distinct(AnalyticsEvent.session_id)),
         func.sum(cast(AnalyticsEvent.event_type == "page_view", Integer)),
         func.sum(AnalyticsEvent.active_ms),
-        func.sum(cast((AnalyticsEvent.event_type == "action") & AnalyticsEvent.game.in_(("zdwa", "zilch"))
+        func.sum(cast((AnalyticsEvent.event_type == "action") & AnalyticsEvent.game.in_(products)
                       & AnalyticsEvent.action.not_in(PWA_ACTIONS), Integer))
     ).where(*filters)).one()
     completed = db.scalar(select(func.count()).select_from(CompletedGame).where(*results)) or 0
@@ -974,14 +1015,59 @@ def _zdwa_account_choices(db: Session) -> dict:
     return choices
 
 
-def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = None) -> dict:
-    if days not in {1, 7, 30, 90} or game not in {"all", "zdwa", "zilch"}:
+def _live_game_stats(products: tuple[str, ...]) -> dict[str, dict]:
+    """Read aggregate runtime facts only; never copy private engine state."""
+    from .game_state import games as runtime_games
+
+    metrics = {product: {"active_tables": 0, "playing_tables": 0, "waiting_tables": 0,
+                         "connected_humans": 0, "cpu_seats": 0, "active_tournaments": 0,
+                         "interround_tables": 0} for product in products}
+    for room in list(runtime_games.values()):
+        product = room.get("_game_type", "zdwa")
+        if product not in metrics or room.get("_aborted"):
+            continue
+        tournament = room.get("_hausdepp_tournament") if product == "hausdepp" else None
+        pending = isinstance(tournament, dict) and not tournament.get("completed")
+        if room.get("_finished") and not pending:
+            continue
+        row = metrics[product]
+        row["active_tables"] += 1
+        row["connected_humans"] += sum(player.get("ws") is not None for player in room.get("_players", []))
+        row["cpu_seats"] += sum(bool(player.get("is_cpu") or player.get("type") == "cpu")
+                                for player in room.get("_participants", []))
+        if pending:
+            row["active_tournaments"] += 1
+        if room.get("_finished"):
+            row["interround_tables"] += 1
+        elif room.get("_started"):
+            row["playing_tables"] += 1
+        else:
+            row["waiting_tables"] += 1
+    return metrics
+
+
+def _result_json_field(path: str):
+    if get_engine().dialect.name == "sqlite":
+        return case((func.json_valid(CompletedGame.snapshot_json),
+                     func.json_extract(CompletedGame.snapshot_json, f"$.{path}")), else_=None)
+    value = cast(CompletedGame.snapshot_json, JSON)
+    for field in path.split("."):
+        value = value[field]
+    return value.as_string()
+
+
+def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = None,
+                    include_hausdepp: bool = False) -> dict:
+    products = ("zdwa", "zilch", "hausdepp") if include_hausdepp else ("zdwa", "zilch")
+    if days not in {1, 7, 30, 90} or game not in {"all", *products}:
         raise ValueError("analytics_invalid_filter")
     now = as_utc(now or utcnow())
     # UTC calendar days make daily bars and overview describe the same window.
     start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days - 1)
-    filters = [AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now]
-    result_filters = [CompletedGame.finished_at >= start, CompletedGame.finished_at <= now]
+    filters = [AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
+               AnalyticsEvent.game.in_((*products, "site"))]
+    result_filters = [CompletedGame.finished_at >= start, CompletedGame.finished_at <= now,
+                      CompletedGame.game_type.in_(products)]
     if game != "all":
         filters.append(AnalyticsEvent.game == game)
         result_filters.append(CompletedGame.game_type == game)
@@ -1018,10 +1104,10 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                      "device_software": "os", "device_hardware": "device_family", "app_modes": "app_mode",
                      "browsers": "browser", "browser_languages": "browser_language"}[key]
             dimensions[key] = [{label: value, "sessions": total} for value, total in rows]
-        geography, geography_summary = _geography_stats(db, filters, views, active)
+        geography, geography_summary = _geography_stats(db, filters, views, active, products)
         heatmap = _heatmap_stats(db, filters, views, active)
-        journeys = _journey_stats(db, start, now, game)
-        previous_overview = _previous_overview(db, start, days, game)
+        journeys = _journey_stats(db, start, now, game, products)
+        previous_overview = _previous_overview(db, start, days, game, products)
         action_rows = db.execute(select(AnalyticsEvent.action, AnalyticsEvent.game, AnalyticsEvent.source, func.count())
                                  .where(*filters, AnalyticsEvent.event_type == "action")
                                  .group_by(AnalyticsEvent.action, AnalyticsEvent.game, AnalyticsEvent.source)
@@ -1060,19 +1146,18 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
         hourly = [{"hour": hour, "page_views": hour_rows.get(hour, (0, 0))[0],
                    "active_seconds": round(hour_rows.get(hour, (0, 0))[1] / 1000, 1)} for hour in range(24)]
         completed = db.scalar(select(func.count()).select_from(CompletedGame).where(*result_filters)) or 0
-        play_mode = (func.json_extract(CompletedGame.snapshot_json, "$.play_mode")
-                     if get_engine().dialect.name == "sqlite" else
-                     cast(CompletedGame.snapshot_json, JSON)["play_mode"].as_string())
+        play_mode = _result_json_field("play_mode")
         result_mode = case((CompletedGame.game_type == "zilch", func.coalesce(play_mode, CompletedGame.mode)),
                            else_=CompletedGame.mode)
-        mode_names = {"1": "solo", "2": "duo", "3": "trio", "2v2": "team"}
+        mode_names = {"1": "solo", "2": "duo", "3": "trio", "4": "four", "5": "five", "6": "six", "2v2": "team"}
         modes = [{"game": product, "mode": mode_names.get(mode, mode), "hardcore": bool(hardcore),
                   "completed_games": total}
                  for product, mode, hardcore, total in db.execute(select(
                      CompletedGame.game_type, result_mode, CompletedGame.hardcore, func.count())
                  .where(*result_filters).group_by(CompletedGame.game_type, result_mode, CompletedGame.hardcore)).all()]
         games = []
-        for product in ("zdwa", "zilch"):
+        runtime_metrics = _live_game_stats(products)
+        for product in products:
             if game not in {"all", product}:
                 continue
             product_filters = [*result_filters, CompletedGame.game_type == product]
@@ -1085,24 +1170,42 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
             durations = [_result_duration(raw) for raw in db.scalars(select(CompletedGame.snapshot_json)
                          .where(*product_filters).order_by(CompletedGame.finished_at.desc()).limit(2000))]
             valid_durations = [duration for duration in durations if duration is not None]
+            abort_filters = [AbandonedGame.game_type == product, AbandonedGame.abandoned_at >= start,
+                             AbandonedGame.abandoned_at <= now]
+            abandoned = db.scalar(select(func.count()).select_from(AbandonedGame).where(*abort_filters)) or 0
+            completed_tournaments = None
+            if product == "hausdepp":
+                abandoned = db.scalar(select(func.count()).select_from(AnalyticsEvent).where(
+                    AnalyticsEvent.game == product, AnalyticsEvent.source == "server",
+                    AnalyticsEvent.action == "game_aborted", AnalyticsEvent.received_at >= start,
+                    AnalyticsEvent.received_at <= now)) or 0
+                completed_flag = _result_json_field("tournament.completed")
+                completed_value = True if get_engine().dialect.name == "sqlite" else "true"
+                completed_tournaments = db.scalar(select(func.count(func.distinct(_result_json_field("tournament.id"))))
+                    .where(*product_filters, completed_flag == completed_value)) or 0
             games.append({"game": product, "completed_games": total, "participants": participants,
                           "avg_duration_seconds": round(sum(valid_durations) / len(valid_durations), 1)
                           if valid_durations else None, "duration_sample_count": len(valid_durations),
-                          "duration_sample_limit": 2000})
+                          "duration_sample_limit": 2000, "abandoned_games": abandoned,
+                          "abandonments_source": "server_events" if product == "hausdepp" else "server_abandonments",
+                          "completed_tournaments": completed_tournaments, "live": runtime_metrics[product]})
         design_usage = _design_usage_stats(db, start, now, game)
-        first = db.scalar(select(func.min(AnalyticsEvent.received_at)))
-        first_client = db.scalar(select(func.min(AnalyticsEvent.received_at)).where(AnalyticsEvent.source == "client"))
-        stored_events = db.scalar(select(func.count()).select_from(AnalyticsEvent)) or 0
-        active_rooms = db.scalar(select(func.count()).select_from(ActiveGame)) or 0
-    server = server_snapshot()
-    if server["active_rooms"] is None:
-        server["active_rooms"] = active_rooms
+        allowed_events = AnalyticsEvent.game.in_((*products, "site"))
+        first = db.scalar(select(func.min(AnalyticsEvent.received_at)).where(allowed_events))
+        first_client = db.scalar(select(func.min(AnalyticsEvent.received_at)).where(
+            allowed_events, AnalyticsEvent.source == "client"))
+        stored_events = db.scalar(select(func.count()).select_from(AnalyticsEvent).where(allowed_events)) or 0
+    server = dict(server_snapshot())
+    visible_runtime = [row for product, row in runtime_metrics.items() if game in {"all", product}]
+    server["active_rooms"] = sum(row["active_tables"] for row in visible_runtime)
+    server["players_online"] = sum(row["connected_humans"] for row in visible_runtime)
     overview = {"sessions": count, "page_views": int(page_views or 0),
                 "active_seconds": round((active_ms or 0) / 1000, 1),
                 "avg_active_seconds": round((active_ms or 0) / 1000 / max(count, 1), 1),
                 "live_sessions": live, "completed_games": completed,
-                "game_clicks": sum(row["count"] for row in actions if row["game"] in {"zdwa", "zilch"})}
-    return {"generated_at": now.isoformat(), "period": {"days": days, "game": game, "from": start.isoformat(),
+                "game_clicks": sum(row["count"] for row in actions if row["game"] in products)}
+    return {"generated_at": now.isoformat(), "available_games": list(products),
+            "period": {"days": days, "game": game, "from": start.isoformat(),
              "to": now.isoformat(), "timezone": "UTC"},
             "collection": {"first_seen_at": as_utc(first).isoformat() if first else None,
                            "retention_days": RETENTION_DAYS, "session_scope": "anonymous_tab",

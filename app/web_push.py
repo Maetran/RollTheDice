@@ -25,10 +25,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, delete, or_, select, update
 
 from .database import session_scope
-from .game_access import can_account_access_zilch
+from .game_access import can_account_access_hausdepp, can_account_access_zilch
 from .game_activity import PLAY_DAY_TIMEZONE
 from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
-from .models import PushInviteAllowedSender, User, WebPushSubscription
+from .models import AccountOwnership, PushInviteAllowedSender, User, WebPushSubscription
 from .product_hosts import site_origin, zilch_url
 from .security import as_utc, normalize_username, utcnow
 
@@ -422,13 +422,22 @@ def claim_game_invite_push(user_id: int) -> int:
         return max(1, math.ceil(GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS - (now - as_utc(sent_at)).total_seconds()))
 
 
+def game_invite_account_cooldown_remaining(user_id: int) -> int:
+    """Read the existing cross-game barrier without claiming another send."""
+    with session_scope() as db:
+        sent_at = db.scalar(select(User.game_invite_push_last_sent_at).where(User.id == user_id))
+    if sent_at is None:
+        return 0
+    return max(0, math.ceil(GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS - (utcnow() - as_utc(sent_at)).total_seconds()))
+
+
 def mark_game_invite_push_sent(game: dict) -> None:
     game[GAME_INVITE_PUSH_SENT_AT_KEY] = utcnow().isoformat()
 
 
 def open_seat_invitation_error(game: dict, *, user_id: int) -> str | None:
     """Return the stable API error for an unsafe or non-waiting room."""
-    if game_type_from_state(game) == HAUSDEPP_GAME_TYPE or game.get("_passphrase"):
+    if game.get("_passphrase"):
         return "game_invite_private_room"
     if game.get("_started") or game.get("_finished") or game.get("_aborted") or game.get("_completion_persisted"):
         return "game_invite_not_waiting"
@@ -437,12 +446,14 @@ def open_seat_invitation_error(game: dict, *, user_id: int) -> str | None:
         return "game_invite_not_player"
     try:
         game_type = game_type_from_state(game)
-        expected = int(game.get("_expected", 0))
+        expected = int(game.get("_expected_connections", 0) if game_type == HAUSDEPP_GAME_TYPE
+                       else game.get("_expected", 0))
     except (TypeError, ValueError):
         return "game_invite_not_waiting"
     if game_type == ZILCH_GAME_TYPE and game.get("_play_mode", "multiplayer") != "multiplayer":
         return "game_invite_not_waiting"
-    if expected < 2 or len(players) >= expected:
+    minimum = 1 if game_type == HAUSDEPP_GAME_TYPE else 2
+    if expected < minimum or len(players) >= expected:
         return "game_invite_no_open_seat"
     return None
 
@@ -480,8 +491,19 @@ def game_invite_notification_payload(
     waiting_names = _waiting_player_names(game)
     next_player = len(waiting_names) + 1
     names = _joined_names(waiting_names, language=language)
-    product_name = "Zilch" if game_type == ZILCH_GAME_TYPE else "ZDWA"
-    if language == "en":
+    product_name = {HAUSDEPP_GAME_TYPE: "Hausdepp", ZILCH_GAME_TYPE: "Zilch"}.get(game_type, "ZDWA")
+    if game_type == HAUSDEPP_GAME_TYPE:
+        # Computers occupy real table seats but cannot receive an invitation.
+        # Avoid suggesting a wrong ordinal based on human connections alone.
+        if language == "en":
+            waits = "is" if len(waiting_names) == 1 else "are"
+            body = f"{names} {waits} waiting for players in Hausdepp. Join in!"
+            title = "Hausdepp is looking for players"
+        else:
+            waits = "wartet" if len(waiting_names) == 1 else "warten"
+            body = f"{names} {waits} in Hausdepp auf Mitspieler. Sei dabei!"
+            title = "Hausdepp sucht Mitspieler"
+    elif language == "en":
         ordinal = {2: "second", 3: "third", 4: "fourth"}.get(next_player, "next")
         if len(waiting_names) == 1:
             body = f"{names} is waiting in {product_name} for a {ordinal} player. Join in!"
@@ -493,7 +515,8 @@ def game_invite_notification_payload(
         waits = "wartet" if len(waiting_names) == 1 else "warten"
         body = f"{names} {waits} in {product_name} auf einen {ordinal} Mitspieler. Sei dabei!"
         title = f"{product_name} sucht Mitspieler"
-    icon = "/static/icons/zilch-icon-192.png" if product_context == ZILCH_GAME_TYPE else "/static/icons/icon-192.png"
+    icon = ("/static/icons/hausdepp-icon-192.png" if game_type == HAUSDEPP_GAME_TYPE else
+            "/static/icons/zilch-icon-192.png" if product_context == ZILCH_GAME_TYPE else "/static/icons/icon-192.png")
     return {
         "title": title,
         "body": body,
@@ -509,7 +532,12 @@ def game_invite_destinations(game: dict, subscriptions: list[StoredSubscription]
     game_id = quote(str(game.get("_id") or ""), safe="")
     if not game_id:
         return []
-    destination = zilch_url(f"/spiel/{game_id}") if game_type == ZILCH_GAME_TYPE else f"{site_origin()}/spiel/{game_id}"
+    if game_type == HAUSDEPP_GAME_TYPE:
+        # Each suite worker resolves this against the subscription's own host.
+        # The private Hausdepp worker intentionally rejects cross-origin URLs.
+        destination = f"/hausdepp/spiel/{game_id}"
+    else:
+        destination = zilch_url(f"/spiel/{game_id}") if game_type == ZILCH_GAME_TYPE else f"{site_origin()}/spiel/{game_id}"
     return [(subscription, destination) for subscription in subscriptions]
 
 
@@ -522,22 +550,40 @@ def invitation_sender_allowed(sender_user_id: int | None):
     return or_(User.game_invite_push_audience == "all", and_(User.game_invite_push_audience == "allowlist", listed))
 
 
+def _hausdepp_push_account_ids(db) -> set[int]:
+    """Read the preview cohort before looking up any subscription capabilities."""
+    rows = db.execute(select(User.id, User.role, AccountOwnership.is_founder).join(
+        AccountOwnership, AccountOwnership.user_id == User.id,
+    ).where(User.is_active.is_(True), AccountOwnership.is_founder.is_(True)))
+    return {user_id for user_id, role, founder in rows
+            if can_account_access_hausdepp(is_admin=role == "admin", is_founder=founder)}
+
+
 def game_invite_push_recipients(game: dict, *, sender_user_id: int | None = None) -> list[StoredSubscription]:
     """Load only opted-in accounts allowed to see this product and not seated."""
     game_type = game_type_from_state(game)
-    if game_type == HAUSDEPP_GAME_TYPE:
+    if game_type == HAUSDEPP_GAME_TYPE and (type(sender_user_id) is not int or
+            open_seat_invitation_error(game, user_id=sender_user_id)):
         return []
     seated_ids = {
         int(player["user_id"])
         for player in game.get("_players", [])
         if isinstance(player, dict) and type(player.get("user_id")) is int
     }
+    if sender_user_id is not None:
+        seated_ids.add(sender_user_id)
     with session_scope() as db:
-        rows = db.execute(
-            select(WebPushSubscription, User)
+        allowed_ids = None
+        if game_type == HAUSDEPP_GAME_TYPE:
+            allowed_ids = _hausdepp_push_account_ids(db)
+            if sender_user_id not in allowed_ids:
+                return []
+        query = (select(WebPushSubscription, User)
             .join(User, WebPushSubscription.user_id == User.id)
-            .where(User.is_active.is_(True), User.game_invite_push_enabled.is_(True), invitation_sender_allowed(sender_user_id))
-        ).all()
+            .where(User.is_active.is_(True), User.game_invite_push_enabled.is_(True), invitation_sender_allowed(sender_user_id)))
+        if allowed_ids is not None:
+            query = query.where(User.id.in_(allowed_ids))
+        rows = db.execute(query).all()
     recipients: list[StoredSubscription] = []
     for subscription, user in rows:
         if user.id in seated_ids:

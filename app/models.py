@@ -631,8 +631,14 @@ class HausdeppPresentationReceipt(Base):
     __tablename__ = "hausdepp_presentation_receipts"
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     acknowledged_points: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    acknowledged_score_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    presentation_scores_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    __table_args__ = (CheckConstraint("acknowledged_points >= 0", name="ck_hausdepp_receipt_points"),)
+    __table_args__ = (
+        CheckConstraint("acknowledged_points >= 0", name="ck_hausdepp_receipt_points"),
+        CheckConstraint("acknowledged_score_points IS NULL OR acknowledged_score_points >= 0",
+                        name="ck_hausdepp_receipt_score_points"),
+    )
 
 
 class AbandonedGame(Base):

@@ -1,5 +1,29 @@
 # Hausdepp lobby and table
 
+## Owner revision — 2026-10-16
+
+The owner now explicitly asks for Hausdepp's own identity: forest green,
+card-paper white, card red and strong Georgia serif headings replace the
+handwritten Zilch resemblance. Walnut, genuine Tell faces, the direct-play fan
+and source-to-destination card transfers remain. Navigation follows Lobby,
+standings, rules, account; functional anchors retain their destinations but
+look like clear buttons. Groups align evenly (2×2 account shortcuts on narrow
+screens). The lobby's compact animated demo hand sits beside the title/motto,
+keeping the create-table form higher on phones. Its calm 3–4s changes are only
+presentation and pause for hidden pages/reduced motion.
+
+Opponents form a semicircle around the real piles. Public account avatars and
+3s reaction bubbles identify the sender, including one's own echoed reaction.
+Fifty random male/female CPU names are unique at a table and stable through a
+tournament. Twelve photographic prop variants occupy measured free table
+areas, fewer/smaller on mobile, with minimal steam, foam and candle motion.
+Decorative dice do not affect rules. All effects respect reduced motion.
+
+Points now pace common goals across distinct completed rounds and keep earned
+entries first within each group. Shared suite navigation, install identity,
+owner access and monitoring remain separate concerns. Technical local QA and
+capture evidence do not grant owner appearance/UX acceptance.
+
 Mode: Operate. Owner-only first playable increment for 2–6 participants, including server-controlled computers. Mobile first; portrait and landscape on phone, tablet and desktop. User selected Stammtisch-Runde explicitly on 2026-10-16. Keep the established walnut table and the supplied double-German Tell-pattern cards. Shared suite account, chat, reactions and game selection remain available. Rules and future scoring/achievements/account surfaces belong to the same product; do not invent a scoring system.
 
 ## Direction contract
@@ -63,3 +87,15 @@ The current validation and build identity belong in
 `.impeccable/review/hausdepp-hands-validation.md`. Prior finish and
 `hausdepp-live-*` records retain their historical review scope; they do not
 approve this refinement.
+
+
+Final local QA for this revision: bundle `0f737870befb`, 22 manifest-listed
+captures, no remaining visible blocker in independent review. The corrected
+compact out-of-play caption reserves a separate inline row. One 850ms anonymous
+card-back shuffle appears before cutting, without input locks; command/phase/
+socket cleanup, reduced motion and once-per-round session suppression are
+tested. Table names now come from 50 paired DE/EN owner-name templates; the
+manual name field is removed. CPU rounds grant 2 whole EP after 75% reduction
+and per-round flooring, human-only rounds 10, achievements full. Native
+installation and actual OS Push delivery remain outside headless proof.
+See `docs/HAUSDEPP_LOCALHOST_TEST_2026-10-16.md`. Owner acceptance remains open.

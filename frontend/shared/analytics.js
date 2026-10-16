@@ -165,13 +165,17 @@ export function analyticsClientDetails(browserInfo = navigator, surface = window
 // The installed product follows its manifest, not the game currently shown:
 // a Zilch PWA can display the ZDWA bridge, and the apex PWA can display Zilch.
 export function analyticsPwaProduct(locationLike = window.location, documentLike = document) {
-  if (locationLike.hostname === "zilch.zockdiewandan.online") return "zilch";
   try {
     const manifest = documentLike.querySelector('link[rel="manifest"]');
+    // The founder-only Hausdepp app has no anonymous installation counters.
+    // Keep its installed identity when it displays a public suite game.
+    if (manifest?.dataset.pwaProduct === "hausdepp") return null;
     if (manifest?.dataset.pwaProduct === "zilch") return "zilch";
     const path = new URL(manifest?.href || "", locationLike.href).pathname;
+    if (/^\/hausdepp-manifest(?:-en)?\.webmanifest$/.test(path)) return null;
     if (/^\/zilch-manifest(?:-en)?\.webmanifest$/.test(path)) return "zilch";
   } catch (_) { /* Missing manifest hints retain the root PWA identity. */ }
+  if (locationLike.hostname === "zilch.zockdiewandan.online") return "zilch";
   return "zdwa";
 }
 
@@ -207,13 +211,15 @@ export function initializeAnalytics() {
 
   function pwaAction(action) {
     if (!current || !pageId || !session?.id || !permitsAnalytics() || navigator.onLine === false) return;
-    enqueue("action", { action: `${action}_${analyticsPwaProduct()}` });
+    const product = analyticsPwaProduct();
+    if (!product) return;
+    enqueue("action", { action: `${action}_${product}` });
     flush();
   }
 
   function firstPwaOpen() {
     if (!current || !pageId || !session?.id || !permitsAnalytics()
-      || navigator.onLine === false || launchContext(navigator, window) !== "pwa") return;
+      || navigator.onLine === false || launchContext(navigator, window) !== "pwa" || !analyticsPwaProduct()) return;
     // A local flag avoids counting every launch. It is not a device ID and is
     // never uploaded. Without storage, skip this estimate rather than inflate it.
     try {
@@ -225,7 +231,7 @@ export function initializeAnalytics() {
   }
 
   function pwaInstalled() {
-    if (!current || !pageId || !session?.id || !permitsAnalytics() || navigator.onLine === false) return;
+    if (!current || !pageId || !session?.id || !permitsAnalytics() || navigator.onLine === false || !analyticsPwaProduct()) return;
     const now = Date.now();
     if (now - lastInstallation < INSTALL_DUPLICATE_MS) return;
     try {

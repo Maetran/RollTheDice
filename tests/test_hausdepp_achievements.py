@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import random
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -15,6 +16,7 @@ from unittest.mock import patch
 from sqlalchemy import func, select
 
 from app import main
+from app.active_games import load_active_games
 from app.auth import create_user
 from app.database import configure_database, session_scope, upgrade_database
 from app.game_history import persist_completed_game_result
@@ -25,7 +27,12 @@ from app.hausdepp_achievements import (
     acknowledge_hausdepp_presentation,
     synchronize_hausdepp_progress,
 )
+from app.hausdepp_cpu_strategy import choose_cpu_action
+from app.hausdepp_engine import new_round, project_state
+from app.hausdepp_gameplay import apply_hausdepp_command
+from app.hausdepp_leaderboard import build_hausdepp_leaderboard
 from app.hausdepp_results import finalize_hausdepp_result, list_hausdepp_results_for_user, validate_hausdepp_result
+from app.hausdepp_state import configure_hausdepp_game, join_hausdepp_player, new_hausdepp_game, start_hausdepp_game
 from app.models import CompletedGame, GameParticipant, HausdeppAchievementUnlock, HausdeppRoundCredit
 
 
@@ -110,7 +117,8 @@ class HausdeppAchievementTests(unittest.TestCase):
         account = build_hausdepp_account_for_user(self.user.id)
         self.assertEqual(account["schema_version"], 2)
         self.assertEqual(account["scoring"], {"available": True, "points": 0, "round_points": 0,
-                                             "achievement_points": 0, "round_reward": 10})
+                                             "achievement_points": 0, "round_reward": 10,
+                                             "cpu_round_reward": 2, "cpu_reduction_percent": 75})
         self.assertEqual(account["rank"]["name"]["de"], "Einstein")
         self.assertEqual(account["rank"]["progress"], {"current": 0, "target": 25, "percent": 0})
         self.assertEqual((len(account["ranks"]), len(account["achievements"]["items"])), (24, 100))
@@ -123,11 +131,12 @@ class HausdeppAchievementTests(unittest.TestCase):
         first = build_hausdepp_account_for_user(self.user.id)
         second = build_hausdepp_account_for_user(self.user.id)
         self.assertEqual(first, second)
-        self.assertEqual(first["scoring"], {"available": True, "points": 135, "round_points": 10,
-                                           "achievement_points": 125, "round_reward": 10})
+        self.assertEqual(first["scoring"], {"available": True, "points": 87, "round_points": 2,
+                                           "achievement_points": 85, "round_reward": 10,
+                                           "cpu_round_reward": 2, "cpu_reduction_percent": 75})
         pending = first["presentation"]["pending"]
         self.assertTrue(pending["rank_up"])
-        self.assertEqual((pending["from_rank"]["level"], pending["to_rank"]["level"]), (1, 4))
+        self.assertEqual((pending["from_rank"]["level"], pending["to_rank"]["level"]), (1, 3))
         unlocked = {item["id"] for item in first["achievements"]["items"] if item["unlocked"]}
         self.assertIn("hausdepp_17", unlocked)
         self.assertNotIn("hausdepp_20", unlocked)
@@ -135,7 +144,7 @@ class HausdeppAchievementTests(unittest.TestCase):
         self.assertNotIn("achievement_evidence", json.dumps(first))
         with session_scope() as db:
             self.assertEqual(db.scalar(select(func.count()).select_from(HausdeppRoundCredit)), 1)
-            self.assertEqual(db.scalar(select(func.count()).select_from(HausdeppAchievementUnlock)), 7)
+            self.assertEqual(db.scalar(select(func.count()).select_from(HausdeppAchievementUnlock)), 3)
 
     def test_legacy_results_only_grant_verifiable_membership_and_outcome_achievements(self):
         payload = self.payload(schema=1, cpu=False, loser="self")
@@ -143,17 +152,19 @@ class HausdeppAchievementTests(unittest.TestCase):
         self.store(payload)
         result = synchronize_hausdepp_progress(self.user.id)
         unlocked = {item["id"] for item in result["achievements"]["items"] if item["unlocked"]}
-        self.assertEqual(unlocked, {"hausdepp_01", "hausdepp_03", "hausdepp_56"})
-        self.assertEqual(result["scoring"]["points"], 40)
+        self.assertEqual(unlocked, {"hausdepp_01"})
+        self.assertEqual(result["scoring"]["points"], 20)
+        items = {item["id"]: item for item in result["achievements"]["items"]}
+        self.assertEqual(items["hausdepp_56"]["progress"], {"current": 1, "target": 3})
 
     def test_table_sizes_cpu_and_cumulative_ten_clears_progress(self):
-        for index in range(7):
+        for index in range(15):
             self.store(self.payload(f"size-{index}", count=2 + index % 5, ten_clears=4,
                                     at=self.at + timedelta(minutes=index)))
         result = synchronize_hausdepp_progress(self.user.id)
         by_id = {item["id"]: item for item in result["achievements"]["items"]}
         self.assertTrue(all(by_id[f"hausdepp_{n:02}"]["unlocked"] for n in (*range(3, 10), 29)))
-        self.assertEqual(by_id["hausdepp_02"]["progress"], {"current": 7, "target": 25})
+        self.assertEqual(by_id["hausdepp_02"]["progress"], {"current": 15, "target": 25})
         self.assertEqual(by_id["hausdepp_29"]["progress"], {"current": 25, "target": 25})
 
     def test_social_progress_uses_distinct_account_ids_not_names_cpu_or_own_account(self):
@@ -215,18 +226,19 @@ class HausdeppAchievementTests(unittest.TestCase):
     def test_acknowledgements_are_durable_monotonic_and_do_not_swallow_new_generation(self):
         self.store(self.payload())
         first = synchronize_hausdepp_progress(self.user.id)["presentation"]["pending"]
-        self.assertEqual(first["revision"], 50)
+        self.assertEqual(first["revision"], 20)
         acknowledge_hausdepp_presentation(self.user.id, first["revision"])
         self.assertIsNone(synchronize_hausdepp_progress(self.user.id)["presentation"]["pending"])
         self.store(self.payload("round-2", at=self.at + timedelta(minutes=1)))
         acknowledge_hausdepp_presentation(self.user.id, first["revision"])
         pending = synchronize_hausdepp_progress(self.user.id)["presentation"]["pending"]
-        self.assertEqual((pending["revision"], pending["points_earned"]), (60, 10))
+        self.assertEqual((pending["revision"], pending["points_earned"]), (30, 2))
         self.assertEqual(pending["achievement_ids"], [])
         self.assertFalse(pending["rank_up"])
-        self.assertEqual(acknowledge_hausdepp_presentation(self.user.id, 60), {"acknowledged": True, "revision": 60})
-        self.assertEqual(acknowledge_hausdepp_presentation(self.user.id, 50), {"acknowledged": True, "revision": 60})
-        for invalid in (True, -1, "60", 61):
+        self.assertEqual(pending["from_rank"]["level"], pending["to_rank"]["level"])
+        self.assertEqual(acknowledge_hausdepp_presentation(self.user.id, 30), {"acknowledged": True, "revision": 30})
+        self.assertEqual(acknowledge_hausdepp_presentation(self.user.id, 20), {"acknowledged": True, "revision": 30})
+        for invalid in (True, -1, "30", 31):
             with self.subTest(invalid=invalid), self.assertRaisesRegex(ValueError, "invalid_revision"):
                 acknowledge_hausdepp_presentation(self.user.id, invalid)
 
@@ -234,32 +246,35 @@ class HausdeppAchievementTests(unittest.TestCase):
         self.store(self.payload(flags=("hausdepp_25",)))
         with ThreadPoolExecutor(max_workers=5) as executor:
             results = list(executor.map(lambda _: synchronize_hausdepp_progress(self.user.id), range(5)))
-        self.assertTrue(all(result["scoring"]["points"] == 60 for result in results))
+        self.assertTrue(all(result["scoring"]["points"] == 12 for result in results))
+        badge = next(item for item in results[0]["achievements"]["items"] if item["id"] == "hausdepp_25")
+        self.assertEqual(badge["progress"], {"current": 1, "target": 5})
         with session_scope() as db:
             self.assertEqual(db.scalar(select(func.count()).select_from(HausdeppRoundCredit)), 1)
-            self.assertEqual(db.scalar(select(func.count()).select_from(HausdeppAchievementUnlock)), 5)
+            self.assertEqual(db.scalar(select(func.count()).select_from(HausdeppAchievementUnlock)), 1)
 
     def test_late_older_completion_does_not_reannounce_seen_badges_or_hide_new_ones(self):
         self.store(self.payload("newer-first", cpu=False, at=self.at + timedelta(hours=1)))
         first = synchronize_hausdepp_progress(self.user.id)
-        self.assertEqual(first["scoring"]["points"], 40)
-        acknowledge_hausdepp_presentation(self.user.id, 40)
+        self.assertEqual(first["scoring"]["points"], 20)
+        acknowledge_hausdepp_presentation(self.user.id, 20)
         self.store(self.payload("older-recovered", flags=("hausdepp_17",), at=self.at))
         pending = synchronize_hausdepp_progress(self.user.id)["presentation"]["pending"]
-        self.assertEqual((pending["revision"], pending["points_earned"]), (85, 45))
-        self.assertEqual(set(pending["achievement_ids"]), {"hausdepp_09", "hausdepp_17"})
+        self.assertEqual((pending["revision"], pending["points_earned"]), (55, 27))
+        self.assertEqual(set(pending["achievement_ids"]), {"hausdepp_17"})
         with session_scope() as db:
             grants = db.scalars(select(HausdeppAchievementUnlock).where(
                 HausdeppAchievementUnlock.user_id == self.user.id,
             )).all()
-            self.assertTrue(all(grant.awarded_points > 40 for grant in grants
+            self.assertTrue(all(grant.awarded_points > 20 for grant in grants
                                 if grant.achievement_id in pending["achievement_ids"]))
 
     def test_human_tables_and_distinct_social_thresholds_are_derived_from_account_membership(self):
         friends = [create_user(f"GastXP{index}", "test-password-123", must_change_password=False)
                    for index in range(10)]
-        for index in range(2):
-            accounts = [self.user, *friends[index * 5:index * 5 + 5]]
+        for index in range(3):
+            group = index % 2
+            accounts = [self.user, *friends[group * 5:group * 5 + 5]]
             players = [{"id": f"seat-{number}", "name": account.username, "is_cpu": False}
                        for number, account in enumerate(accounts)]
             payload = {"schema_version": 1, "payload_kind": "hausdepp_result", "game_type": "hausdepp",
@@ -290,16 +305,16 @@ class HausdeppAchievementTests(unittest.TestCase):
                                "achievement_evidence": payload["achievement_evidence"]}}
         with patch("app.hausdepp_achievements.synchronize_hausdepp_progress", side_effect=RuntimeError("retry me")):
             self.assertTrue(finalize_hausdepp_result(game)["result_persisted"])
-        self.assertEqual(build_hausdepp_account_for_user(self.user.id)["scoring"]["points"], 75)
+        self.assertEqual(build_hausdepp_account_for_user(self.user.id)["scoring"]["points"], 37)
         game["_hausdepp"]["achievement_evidence"]["players"]["self"]["flags"] = ["hausdepp_19"]
         self.assertTrue(finalize_hausdepp_result(game)["result_persisted"])
-        self.assertEqual(build_hausdepp_account_for_user(self.user.id)["scoring"]["points"], 75)
+        self.assertEqual(build_hausdepp_account_for_user(self.user.id)["scoring"]["points"], 37)
 
     def test_all_aggregate_milestones_and_final_rank_remain_reachable_without_rare_events(self):
         # One bulk durable history fixture; no tactical evidence or invented XP.
         with session_scope() as db:
             for index in range(500):
-                payload = self.payload(f"steady-{index:03}", schema=1, at=self.at + timedelta(minutes=index))
+                payload = self.payload(f"steady-{index:03}", schema=1, cpu=False, at=self.at + timedelta(minutes=index))
                 row = CompletedGame(game_id=payload["game_id"], game_type="hausdepp", game_name=payload["name"],
                                     mode="2", hardcore=False, finished_at=datetime.fromisoformat(payload["finished_at"]),
                                     snapshot_json=json.dumps(payload), created_at=self.at)
@@ -319,21 +334,28 @@ class HausdeppAchievementTests(unittest.TestCase):
     def test_new_comeback_style_and_three_digit_id_are_individual_one_time_awards(self):
         flags = [f"hausdepp_{number:02}" for number in range(65, 85)]
         self.store(self.payload(flags=flags))
+        first = synchronize_hausdepp_progress(self.user.id)
+        first_unlocked = {item["id"] for item in first["achievements"]["items"] if item["unlocked"]}
+        self.assertEqual(first_unlocked, {"hausdepp_01", "hausdepp_74", "hausdepp_75", "hausdepp_79"})
+        for index in range(1, 5):
+            self.store(self.payload(f"recovery-{index}", flags=flags, at=self.at + timedelta(minutes=index)))
         result = synchronize_hausdepp_progress(self.user.id)
         unlocked = {item["id"] for item in result["achievements"]["items"] if item["unlocked"]}
         self.assertTrue(set(flags).issubset(unlocked))
         self.assertNotIn("hausdepp_85", unlocked)
         self.assertNotIn("hausdepp_100", unlocked)
         self.assertEqual(result, synchronize_hausdepp_progress(self.user.id))
-        payload = self.payload("eight-losses-r08", schema=3, flags=("hausdepp_100",), loser="self")
-        payload["tournament"] = {"schema_version": 1, "id": "eight-losses", "round_number": 8,
-                                 "losses": {"self": 8, "other": 0}, "round_losers": ["self"] * 8,
-                                 "completed": True, "tages_hausdepp_id": "self"}
-        self.store(payload)
+        for index in range(3):
+            tournament_id = f"eight-losses-{index}"
+            payload = self.payload(f"{tournament_id}-r08", schema=3, flags=("hausdepp_100",), loser="self")
+            payload["tournament"] = {"schema_version": 1, "id": tournament_id, "round_number": 8,
+                                     "losses": {"self": 8, "other": 0}, "round_losers": ["self"] * 8,
+                                     "completed": True, "tages_hausdepp_id": "self"}
+            self.store(payload)
         final = synchronize_hausdepp_progress(self.user.id)
         hundred = next(item for item in final["achievements"]["items"] if item["id"] == "hausdepp_100")
         self.assertTrue(hundred["unlocked"])
-        self.assertEqual(hundred["progress"], {"current": 1, "target": 1})
+        self.assertEqual(hundred["progress"], {"current": 3, "target": 3})
         self.assertEqual(hundred["points"], 25)
 
     def test_completed_tournament_lifetime_counts_are_distinct_and_survive_reload(self):
@@ -365,3 +387,154 @@ class HausdeppAchievementTests(unittest.TestCase):
         after = synchronize_hausdepp_progress(self.user.id)
         after_items = {item["id"]: item for item in after["achievements"]["items"]}
         self.assertEqual(after_items["hausdepp_87"]["progress"], {"current": 10, "target": 10})
+
+    def test_concurrent_old_and_new_receipts_never_regress_or_hide_unseen_round_points(self):
+        self.store(self.payload())
+        self.assertEqual(synchronize_hausdepp_progress(self.user.id)["scoring"]["points"], 12)
+        self.store(self.payload("second-generation", flags=("hausdepp_17",),
+                                at=self.at + timedelta(minutes=1)))
+        revisions = [20, 55] * 4
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            receipts = list(executor.map(
+                lambda revision: acknowledge_hausdepp_presentation(self.user.id, revision), revisions,
+            ))
+        self.assertTrue(all(revision <= receipt["revision"] <= 55
+                            for revision, receipt in zip(revisions, receipts)))
+        self.assertIsNone(synchronize_hausdepp_progress(self.user.id)["presentation"]["pending"])
+        self.store(self.payload("third-generation", at=self.at + timedelta(minutes=2)))
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            list(executor.map(lambda revision: acknowledge_hausdepp_presentation(self.user.id, revision),
+                              [20, 55, 20, 55]))
+        pending = synchronize_hausdepp_progress(self.user.id)["presentation"]["pending"]
+        self.assertEqual((pending["revision"], pending["points_earned"]), (85, 22))
+        self.assertEqual(set(pending["achievement_ids"]), {"hausdepp_03", "hausdepp_57"})
+
+    def test_real_seeded_tournament_credits_every_human_once_and_counts_all_nonlosers(self):
+        # A whole tournament uses real peeking, dealing and all legal action
+        # transitions. Only randomness is seeded; no hands/results are arranged.
+        with patch.dict(main.games, clear=True):
+            game = new_hausdepp_game("earned-tournament", "Durchgespielt", "3")
+            configure_hausdepp_game(game, host_user_id=self.user.id, cpu_count=1, tournament=True)
+            for player_id, account in (("self", self.user), ("other", self.other)):
+                join_hausdepp_player(game, {"id": player_id, "name": account.username, "user_id": account.id,
+                                            "ws": object(), "resume_token": f"test-{player_id}"})
+            start_hausdepp_game(game)
+            game["_hausdepp"] = new_round(game["_participants"], dealer_index=2, rng=random.Random(2701))
+            observed_losers = []
+            while not game["_hausdepp_tournament"]["completed"]:
+                for _ in range(5000):
+                    if game["_finished"]:
+                        break
+                    for participant in game["_participants"]:
+                        command = choose_cpu_action(project_state(game["_hausdepp"], participant["id"]))
+                        if command:
+                            apply_hausdepp_command(game, participant["id"], command,
+                                                   trusted_cpu=participant["is_cpu"])
+                            break
+                    else:
+                        self.fail("No legal action in a running seeded tournament round")
+                self.assertTrue(game["_finished"], "Seeded legal policy did not finish the round")
+                observed_losers.append(game["_hausdepp"]["loser_id"])
+                self.assertTrue(finalize_hausdepp_result(game)["result_persisted"])
+                self.assertTrue(finalize_hausdepp_result(game)["result_persisted"])
+                for account in (self.user, self.other):
+                    progress = build_hausdepp_account_for_user(account.id)
+                    self.assertEqual(progress["scoring"]["round_points"], len(observed_losers) * 2)
+                    self.assertEqual(progress["statistics"]["rounds_played"], len(observed_losers))
+                    awards = {item["id"] for item in progress["achievements"]["items"] if item["unlocked"]}
+                    if not game["_hausdepp_tournament"]["completed"]:
+                        self.assertFalse(awards.intersection(f"hausdepp_{number:02}" for number in range(85, 101)))
+                if not game["_hausdepp_tournament"]["completed"]:
+                    self.assertIn(game["_id"], load_active_games())
+                    round_number = len(observed_losers) + 1
+                    with patch("app.hausdepp_tournament.new_round", side_effect=lambda players, dealer_index: new_round(
+                        players, dealer_index=dealer_index, rng=random.Random(2700 + round_number),
+                    )):
+                        apply_hausdepp_command(game, "self", {"action": "next_round",
+                                                             "version": game["_hausdepp"]["version"]})
+            round_count = len(observed_losers)
+            self.assertEqual(max(observed_losers.count(key) for key in set(observed_losers)), 8)
+            self.assertEqual(game["_hausdepp_tournament"]["round_losers"], observed_losers)
+            self.assertNotIn(game["_id"], load_active_games())
+            standings = build_hausdepp_leaderboard(self.user.id, players=3)
+            by_name = {entry["display_name"]: entry for entry in standings["entries"]}
+            self.assertEqual(set(by_name), {self.user.username, self.other.username})
+            for key, account in (("self", self.user), ("other", self.other)):
+                self.assertEqual(by_name[account.username]["wins"], round_count - observed_losers.count(key))
+                self.assertEqual(by_name[account.username]["rounds_played"], round_count)
+                progress = synchronize_hausdepp_progress(account.id)
+                self.assertEqual(progress["scoring"]["round_points"], round_count * 2)
+                items = {item["id"]: item for item in progress["achievements"]["items"]}
+                self.assertTrue(items["hausdepp_85"]["unlocked"])
+                self.assertEqual(items["hausdepp_89"]["unlocked"], key == observed_losers[-1])
+                self.assertEqual(progress["scoring"]["achievement_points"],
+                                 sum(item["points"] for item in items.values() if item["unlocked"]))
+            with session_scope() as db:
+                self.assertEqual(db.scalar(select(func.count()).select_from(HausdeppRoundCredit)), round_count * 2)
+                self.assertEqual(db.scalar(select(func.count()).select_from(CompletedGame)), round_count)
+            saved_progress = {account.id: synchronize_hausdepp_progress(account.id)
+                              for account in (self.user, self.other)}
+            main.games.clear()
+            configure_database(Path(self.temp.name))
+            upgrade_database(main.BASE)
+            for account in (self.user, self.other):
+                self.assertEqual(synchronize_hausdepp_progress(account.id), saved_progress[account.id])
+
+    def test_common_achievements_progress_once_per_distinct_round_and_unlock_in_stages(self):
+        previous = set()
+        milestones = {1: {"hausdepp_01"}, 3: {"hausdepp_03", "hausdepp_49", "hausdepp_57"},
+                      5: {"hausdepp_09", "hausdepp_25"}, 10: {"hausdepp_45"}}
+        for number in range(1, 11):
+            self.store(self.payload(f"balanced-{number}", flags=("hausdepp_25", "hausdepp_45", "hausdepp_49"),
+                                    at=self.at + timedelta(minutes=number)))
+            result = synchronize_hausdepp_progress(self.user.id)
+            self.assertEqual(result, synchronize_hausdepp_progress(self.user.id))
+            items = {item["id"]: item for item in result["achievements"]["items"]}
+            unlocked = {key for key, item in items.items() if item["unlocked"]}
+            self.assertEqual(unlocked - previous, milestones.get(number, set()))
+            self.assertEqual(items["hausdepp_25"]["progress"], {"current": min(number, 5), "target": 5})
+            self.assertEqual(items["hausdepp_45"]["progress"], {"current": number, "target": 10})
+            self.assertEqual(result["scoring"]["round_points"], number * 2)
+            previous = unlocked
+
+    def test_previously_earned_awards_are_not_revoked_by_higher_future_goals(self):
+        self.store(self.payload(flags=("hausdepp_25",)))
+        synchronize_hausdepp_progress(self.user.id)
+        # Represents a badge already earned under the former one-round rule.
+        with session_scope() as db:
+            db.add(HausdeppAchievementUnlock(user_id=self.user.id, achievement_id="hausdepp_25",
+                                             source_game_id="round-1", unlocked_at=self.at, awarded_points=30))
+        result = synchronize_hausdepp_progress(self.user.id)
+        badge = next(item for item in result["achievements"]["items"] if item["id"] == "hausdepp_25")
+        self.assertTrue(badge["unlocked"])
+        self.assertEqual(result["scoring"]["points"], 22)
+        self.assertEqual(result, synchronize_hausdepp_progress(self.user.id))
+
+    def test_repeated_conditions_are_honest_in_both_languages(self):
+        items = {item["id"]: item for item in ACHIEVEMENTS}
+        for number in (25, 33, 41, 49, 56, 57):
+            description = items[f"hausdepp_{number:02}"]["description"]
+            self.assertNotIn("ersten Mal", description["de"])
+            self.assertNotIn("first", description["en"])
+        self.assertIn("5", items["hausdepp_25"]["description"]["de"])
+        self.assertIn("5", items["hausdepp_25"]["description"]["en"])
+        self.assertIn("drei", items["hausdepp_100"]["description"]["de"])
+        self.assertIn("three", items["hausdepp_100"]["description"]["en"])
+
+    def test_optional_round_duration_requires_a_real_consistent_start_and_never_invents_history(self):
+        payload = self.payload()
+        self.assertNotIn("duration_seconds", validate_hausdepp_result(payload))
+        valid = {**payload, "started_at": (self.at - timedelta(seconds=42)).isoformat(), "duration_seconds": 42}
+        result = validate_hausdepp_result(valid)
+        self.assertEqual(result["duration_seconds"], 42)
+        self.assertEqual(result["started_at"], valid["started_at"])
+        for changes in ({"started_at": "not-a-date"}, {"started_at": "2026-10-16T10:29:18"},
+                        {"started_at": (self.at + timedelta(seconds=1)).isoformat()},
+                        {"started_at": (self.at - timedelta(days=31)).isoformat()},
+                        {"duration_seconds": True}, {"duration_seconds": float("nan")},
+                        {"duration_seconds": float("inf")}, {"duration_seconds": 10 ** 1000},
+                        {"duration_seconds": 41}):
+            with self.subTest(changes=changes):
+                projected = validate_hausdepp_result({**valid, **changes})
+                self.assertNotIn("started_at", projected)
+                self.assertNotIn("duration_seconds", projected)

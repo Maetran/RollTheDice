@@ -37,15 +37,18 @@ colors:
   lcars-blue: '#7184ad'
   lcars-cyan: '#78aab4'
   lcars-focus: '#fff3c4'
-  hausdepp-paper: '#f5efdf'
-  hausdepp-ink: '#30271f'
-  hausdepp-muted: '#6b5949'
-  hausdepp-red: '#9c292b'
-  hausdepp-red-hover: '#7e2022'
-  hausdepp-gold: '#e6c98a'
-  hausdepp-edge: '#cdbb9c'
+  hausdepp-paper: '#f6f2e6'
+  hausdepp-ink: '#20372e'
+  hausdepp-muted: '#526157'
+  hausdepp-red: '#a63335'
+  hausdepp-red-hover: '#842628'
+  hausdepp-gold: '#dfc895'
+  hausdepp-edge: '#b8c2b4'
+  hausdepp-green: '#173e34'
+  hausdepp-green-hover: '#0d3027'
+  hausdepp-border: '#2d4a40'
   hausdepp-wood: '#35271f'
-  hausdepp-white: '#fffdf7'
+  hausdepp-white: '#fffdf5'
   hausdepp-draw-frame: '#ed8379'
   hausdepp-draw-text: '#ffd4c7'
 typography:
@@ -84,12 +87,12 @@ typography:
     lineHeight: 1.2
     letterSpacing: -.035em
   hausdepp-display:
-    fontFamily: '"Hausdepp Sign", cursive'
-    fontSize: clamp(58px,7vw,96px)
+    fontFamily: 'Georgia, "Times New Roman", serif'
+    fontSize: clamp(40px,4.6vw,72px)
     fontWeight: 700
     lineHeight: 1.1
   hausdepp-heading:
-    fontFamily: '"Hausdepp Sign", cursive'
+    fontFamily: 'Georgia, "Times New Roman", serif'
     fontSize: 34px
     fontWeight: 700
     lineHeight: 1.15
@@ -112,9 +115,9 @@ rounded:
   nexus-panel: 12px
   hausdepp-field: 6px
   hausdepp-card: 6.7% / 4.2%
-  hausdepp-control: 8px
-  hausdepp-paper: 12px
-  hausdepp-create: 14px
+  hausdepp-control: 5px
+  hausdepp-paper: 6px
+  hausdepp-create: 6px
   hausdepp-sheet: 16px
 spacing:
   nexus-tight: 4px
@@ -181,12 +184,12 @@ components:
     backgroundColor: '{colors.nexus-selected}'
     textColor: '{colors.nexus-lime}'
   hausdepp-button-primary:
-    backgroundColor: '{colors.hausdepp-red}'
+    backgroundColor: '{colors.hausdepp-green}'
     textColor: '{colors.hausdepp-white}'
     rounded: '{rounded.hausdepp-control}'
     padding: 13px 20px
   hausdepp-button-primary-hover:
-    backgroundColor: '{colors.hausdepp-red-hover}'
+    backgroundColor: '{colors.hausdepp-green-hover}'
     textColor: '{colors.hausdepp-white}'
   hausdepp-button-paper:
     backgroundColor: '{colors.hausdepp-paper}'
@@ -199,8 +202,10 @@ components:
     rounded: '{rounded.hausdepp-field}'
     padding: 11px 12px
   hausdepp-navigation:
-    textColor: '{colors.hausdepp-paper}'
-    padding: 12px 0
+    backgroundColor: '#e5eadf'
+    textColor: '{colors.hausdepp-green}'
+    rounded: 4px
+    padding: 9px 12px
   hausdepp-paper:
     backgroundColor: '{colors.hausdepp-paper}'
     textColor: '{colors.hausdepp-ink}'
@@ -238,15 +243,15 @@ Evidence: `app/static/dashboard.html`; `frontend/styles/dashboard-nexus.css`; re
 
 **Creative North Star: "Stammtisch-Runde"**
 
-Hausdepp adds its own Stammtisch world: walnut, ivory playing cards, oxblood actions and brass turn cues. The actual double-German Tell-pattern deck supplies the illustration; handwritten display lettering gives the table a familiar voice while ordinary interface text stays plain and readable.
+Hausdepp adds its own Stammtisch world: walnut, ivory playing cards, forest-green controls and card-red accents. The actual double-German Tell-pattern deck supplies the illustration; bold Georgia headings give this game a voice distinct from Zilch while interface text stays plain and readable.
 
 All `hausdepp-*` records apply only to the Hausdepp pages that load `frontend/styles/hausdepp.css`. They record its existing `--hd-*` properties and component styles; they do not replace dashboard tokens or the appearances of ZDWA and Zilch. The surface composition and approved direction remain in `.impeccable/surfaces/app-static-hausdepp-html.md` and `.impeccable/hausdepp-contract.md`.
 
 **Key Characteristics:**
 
 - Hausdepp: one shared walnut table, carefully framed Tell-pattern card imagery and compact natural hand fans.
-- Hausdepp: Kalam display lettering paired with plain platform interface type.
-- Hausdepp: oxblood actions, ivory paper surfaces and brass state cues.
+- Hausdepp: bold Georgia display lettering paired with plain platform interface type.
+- Hausdepp: forest-green actions and header, ivory paper surfaces, card-red selection and brass state cues.
 - Hausdepp: direct card taps and real pile controls whose labels and availability follow the current game state.
 
 **The Hausdepp Scope Rule.** Apply the Stammtisch tokens only to Hausdepp; retain each existing game and dashboard theme with its current owner.
@@ -282,7 +287,7 @@ The NEXUS palette is dark mineral green with a bright operational accent. Namesp
 
 ### Hausdepp palette
 
-The `hausdepp-*` palette records the nine `--hd-*` color properties in `hausdepp.css` plus the source-owned urgent-draw frame and text colors. **Primary:** oxblood red identifies the main action and darkens on hover. **Secondary:** brass gold marks the active seat, actionable stock caption, peeking stock and focus against walnut. **Urgent state:** the soft red frame marks the first outstanding refill, paired with pale-red “Du musst ziehen” / “You must draw” text for that viewer. **Neutral:** walnut grounds the table; ivory paper and warm white support cards, form and chat surfaces; dark ink, muted brown and the paper-edge color carry content and boundaries. Paper inputs and links use oxblood focus so the outline remains visible on ivory. Labels, availability and the turn sentence carry state meaning alongside color. These colors remain scoped to Hausdepp.
+The `hausdepp-*` palette records the source-owned `--hd-*` color properties in `hausdepp.css` plus the source-owned urgent-draw frame and text colors. **Primary:** forest green identifies the main action and darkens on hover. **Secondary:** brass gold marks the active seat, actionable stock caption, peeking stock and focus against walnut. **Urgent state:** the soft red frame marks the first outstanding refill, paired with pale-red “Du musst ziehen” / “You must draw” text for that viewer. **Neutral:** walnut grounds the table; ivory paper and warm white support cards, form and chat surfaces; dark green ink, muted green and the paper-edge color carry content and boundaries. Paper inputs and links use oxblood focus so the outline remains visible on ivory. Labels, availability and the turn sentence carry state meaning alongside color. These colors remain scoped to Hausdepp.
 
 ## Typography
 
@@ -307,13 +312,13 @@ Incumbent typography stays with its source owner: Mission Control uses its exist
 
 ### Hausdepp type
 
-**Display Font:** self-hosted Kalam bold, exposed as `"Hausdepp Sign", cursive` (700) with `font-display: swap`. It names the brand, welcome, table and paper-panel headings, the rulebook title, plus the empty-pile inscription. The lobby display uses the frontmatter ramp and becomes (64px) on phones; the brand uses (30px), then (27px) on phones and (25px) on narrow phones and low landscape tables.
+**Display Font:** `Georgia, "Times New Roman", serif` (700), provided by the platform. It names the brand, welcome, table and paper-panel headings, the rulebook title, plus the empty-pile inscription. The lobby display uses the frontmatter ramp and compacts beside the animated hand on phones; the brand uses (30px), then (27px) on phones and (25px) on narrow phones and low landscape tables.
 
 **Body and Interface Font:** `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`. The rulebook uses the recorded body role, with (15px) phone prose; the introduction uses (17px/1.65), then (15px) on phones. Controls, navigation, player names, turn copy and accessible card names stay in the UI face. Card faces show only the original artwork; no added rank labels or badges overlay it. Counts use tabular numerals where set in the source.
 
 The create-panel heading uses the recorded heading role, then (30px) on phones; the table heading uses (25px), (22px) on phones and (19px) in low landscape. Supporting text varies with its actual purpose: (13px) form notes, (12px) connection and hand metadata, and (11px) landscape stack captions. The non-action computer designation uses (11px) on desktop and hides on phones, tablet landscape and low landscape. Player names and card counts remain visible. These are observed component treatments, not a global small-text default.
 
-**The Hausdepp Display Rule.** Use Hausdepp Sign for branding, display headings and the empty-pile inscription; keep actions, rules prose, names and counts in the platform UI stack.
+**The Hausdepp Display Rule.** Use Georgia for branding, display headings and the empty-pile inscription; keep actions, rules prose, names and counts in the platform UI stack.
 
 ## Layout
 
@@ -341,13 +346,12 @@ Lobby cards expose actual human/computer seats, state and the relevant join,
 resume, watch or history action. The waiting room names occupied and open seats
 and offers a copyable account-protected link. `/hausdepp/konto` is a dedicated
 private overview with factual round counts, paginated personal outcomes and a
-link to common profile/sign-in settings. Its achievement area explains the
-agreed ironic progression while conditions and scores remain undecided. The
+link to common profile/sign-in settings. Its achievement area integrates the approved 100 achievements and 24-rank ironic ladder, with earned items leading each thematic group. The
 rulebook uses a quick start, section links and six concrete timing/play examples.
 Evidence for this increment lives in
 `.impeccable/review/hausdepp-product-validation.md`.
 
-The Hausdepp shell is centered within (1380px), with normal insets of (42px 28px 18px). The lobby pairs the welcome/card arrangement with an ivory create form, then lists tables and the shared chat. At (700px) and below it becomes one column, uses (16px) side padding, and wraps the header navigation below the brand and suite tools. During phone play the extra header navigation hides; rules remain reachable beside the social controls.
+The Hausdepp shell is centered within (1760px), with normal insets of (42px 28px 18px). The lobby pairs the welcome/card arrangement with an ivory create form, then lists tables and the shared chat. At (700px) and below it becomes one column, uses (16px) side padding, and wraps the header navigation below the brand and suite tools. During phone play the extra header navigation hides; rules remain reachable beside the social controls.
 
 The live table places opponents above and, for four or five opponents on desktop, around the central stock and face-up pile. The player’s hand sits in a compact, overlapping natural fan below its count. Its sort runs from low ranks on the left to 10 on the right; the fan follows a shallow arc rather than making a row of separate tiles. Cards retain the source viewport ratio (36:57). The fan aligns cards to its start edge (`align-items: flex-start`); its extra (24px) minimum-height clearance accommodates rotation and never stretches the card height. Base hand cards are (126px) wide with a (66px) step; phone cards use (112px/55px), and narrow-phone cards (100px/48px). Horizontal overflow keeps a large hand reachable. Keyboard focus reveals the rotated card inside the hand viewport with an (8px) inset, subject to the browser’s scroll bounds. This correction starts only for `:focus-visible`, runs on the next animation frame after native focus scrolling, and adjusts horizontal scroll only if the same card still holds focus. The original card artwork stays unobscured by invented rank badges.
 
@@ -504,3 +508,42 @@ Keep the existing walnut, ivory, oxblood and brass palette, keyboard access,
 44px controls and reduced motion. Technical evidence is recorded in
 `.impeccable/review/hausdepp-achievements-validation.md`; owner UI/UX acceptance
 remains open. No new raster assets or typography worlds are introduced.
+
+
+### Hausdepp revision, 2026-10-16
+
+The owner requested an identity visibly distinct from Zilch, preserving walnut and
+Tell cards. Forest-green header/actions, light card-paper buttons, card-red
+selection and bold Georgia now define the current source. Navigation follows
+Lobby → Rangliste → Regeln → Konto. Account navigation uses balanced grids.
+The lobby hand animates calmly beside its title; the phone create form compacts
+without shrinking accessible touch targets. Opponents follow a measured
+semicircle for two through six seats, including long tournament prefixes.
+
+Account avatars and sender-local reaction bubbles use the shared identity.
+Computers draw unique names from a 50-name pool. Twelve generated drinks and
+snacks occupy measured free table space, with subtle steam, foam and candle
+light; selection stays stable per table and round. Portrait phones allow one
+small prop, landscape phones two, tablet two and desktop up to four. Motion
+respects reduced-motion settings. See `docs/HAUSDEPP_TABLE_DECOR.md`.
+
+The owner rejected the first geometric X icon. A generated, centred heart-ten
+interpretation now supplies the 32, 180, 192 and 512 pixel PNG icons; provenance
+and the exact Imagegen prompt are in `docs/HAUSDEPP_ASSETS.md`. Its private
+PWA never caches private game/account material and offers an honest connection
+message offline. The shared game picker shows freshly authorised live human
+seat counts. Private Hausdepp telemetry appears only for the founder in all
+Mission Control themes. Current evidence belongs to the roundtable review and
+localhost test report; earlier captures above describe their historical scope.
+UI/UX acceptance remains with the owner. The photographic card source is still
+softer than proper original print artwork, especially the acorn ace; no CSS
+change is claimed to restore absent image detail.
+
+
+A separate850ms pre-cut shuffle may appear once per game and tournament round
+on a peeking baseline. It uses only anonymous backs, never postpones actions,
+and cancels on user commands, playing phase, socket close or page hide. A bounded
+session marker suppresses reload/reconnect replay; reduced motion stays quiet.
+This deliberate round-start cue is separate from the quiet initial baseline
+for source-to-destination transfers. Compact table captions reserve an inline
+out-of-play row clear of stock captions and turn/event text.

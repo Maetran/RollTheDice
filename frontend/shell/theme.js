@@ -2,6 +2,7 @@
   "use strict";
 
   const isZilch = document.documentElement.dataset.game === "zilch";
+  const isHausdepp = document.documentElement.dataset.game === "hausdepp";
   const STORAGE_KEY = isZilch ? "zilch_theme" : "wuerfler_theme";
   const THEMES = isZilch ? ["light", "lcars"] : ["light", "dark", "classic"];
   const DARK_COLOR = "#0b1120";
@@ -53,7 +54,7 @@
       document.head.appendChild(meta);
     }
     const design2026 = !isZilch && document.documentElement.dataset.design === "2026";
-    meta.content = isZilch
+    meta.content = isHausdepp ? "#173e34" : isZilch
       ? theme === "lcars" ? LCARS_COLOR : ZILCH_COLOR
       : (design2026 && DESIGN_2026_COLORS[theme]) || (theme === "dark"
         ? DARK_COLOR

@@ -5,6 +5,7 @@
   const PRESENCE_KEY = "zdwa_presence_id";
   const INSTALL_DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
   const ZILCH_HOSTNAME = "zilch.zockdiewandan.online";
+  const INSTALLED_ENTRY_KEY = "rollthedice:pwa-entry:v1";
   const APP_VERSION = (() => {
     try {
       return new URL(document.currentScript?.src || "", location.href).searchParams.get("v") || "unversioned";
@@ -64,7 +65,7 @@
 
   const toast = (message, options) => window.ZDWA_UI?.toast?.(message, options);
 
-  function setupPwaLifecycle({ installDismissKey, workerUrl, globalName, beforeRegister = null }) {
+  function setupPwaLifecycle({ installDismissKey, workerUrl, globalName, scope = null, beforeRegister = null }) {
     if (!("serviceWorker" in navigator)) return;
     let installPrompt = null;
     let refreshRequested = false;
@@ -159,7 +160,9 @@
     window.addEventListener("load", async () => {
       try {
         await beforeRegister?.();
-        const registration = await navigator.serviceWorker.register(workerUrl, { updateViaCache: "none" });
+        const registration = await navigator.serviceWorker.register(workerUrl, {
+          updateViaCache: "none", ...(scope ? { scope } : {}),
+        });
         observeRegistration(registration);
         setTimeout(() => registration.update().catch(() => {}), 1500);
       } catch (error) {
@@ -179,19 +182,44 @@
     return location.hostname.toLowerCase() === ZILCH_HOSTNAME;
   }
 
-  function ensureZilchManifest() {
-    const language = window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de";
-    const manifestPath = language === "en"
-      ? "/zilch-manifest-en.webmanifest"
-      : "/zilch-manifest.webmanifest";
-    const manifestUrl = new URL(manifestPath, location.origin);
-    if (APP_VERSION !== "unversioned") manifestUrl.searchParams.set("v", APP_VERSION);
+  function isStandalone() {
+    return navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+  }
 
+  function installedEntry() {
+    if (!isStandalone()) return null;
+    // A distinct launch URL identifies the installed Hausdepp app even when
+    // an older, broader suite worker controls its first launch.
+    const launchedHausdepp = new URL(location.href).searchParams.get("pwa") === "hausdepp";
+    const controlledHausdepp = navigator.serviceWorker?.controller?.scriptURL?.includes("/hausdepp-sw.js");
+    try {
+      const saved = sessionStorage.getItem(INSTALLED_ENTRY_KEY);
+      const entry = launchedHausdepp ? "hausdepp" : ["zdwa", "zilch", "hausdepp"].includes(saved) ? saved
+        : controlledHausdepp ? "hausdepp" : isZilchOrigin() ? "zilch" : "zdwa";
+      sessionStorage.setItem(INSTALLED_ENTRY_KEY, entry);
+      return entry;
+    } catch {
+      if (launchedHausdepp || controlledHausdepp) return "hausdepp";
+      return isZilchOrigin() ? "zilch" : "zdwa";
+    }
+  }
+
+  function ensureManifest(product) {
+    const language = window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de";
+    const prefix = product === "zdwa" ? "" : `${product}-`;
+    const manifestUrl = new URL(`/${prefix}manifest${language === "en" ? "-en" : ""}.webmanifest`, location.origin);
+    if (APP_VERSION !== "unversioned") manifestUrl.searchParams.set("v", APP_VERSION);
     const link = document.querySelector('link[rel="manifest"]') || document.createElement("link");
     link.rel = "manifest";
     link.href = manifestUrl.href;
-    link.dataset.pwaProduct = "zilch";
+    link.dataset.pwaProduct = product;
+    if (product === "hausdepp") link.crossOrigin = "use-credentials";
+    else link.removeAttribute("crossorigin");
     if (!link.isConnected) document.head.append(link);
+  }
+
+  function ensureZilchManifest() {
+    ensureManifest("zilch");
   }
 
   function registeredWorkerPath(registration) {
@@ -229,6 +257,18 @@
   // there would fail and can surface an external browser sheet on iOS.
   const isZilchDocument = document.documentElement.dataset.game === "zilch";
   const isHausdeppDocument = document.documentElement.dataset.game === "hausdepp";
+  const entry = installedEntry();
+  if (entry === "hausdepp" || (isHausdeppDocument && !entry)) {
+    ensureManifest("hausdepp");
+    setupPwaLifecycle({
+      installDismissKey: "hausdepp_install_prompt_dismissed",
+      workerUrl: "/hausdepp-sw.js",
+      globalName: "HAUSDEPP_PWA",
+      scope: "/hausdepp",
+    });
+    return;
+  }
+  if (isHausdeppDocument && entry === "zdwa") ensureManifest("zdwa");
   // The Apex `/zilch` handoff stays entirely under its already-installed ZDWA
   // worker. Only Zilch's own host (including the narrow ZDWA bridge) owns the
   // isolated Zilch worker.

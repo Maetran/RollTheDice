@@ -3,25 +3,33 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: 100 Erfolge, 24 Ränge, eine Siegrangliste und Turniere bis zum Tages-Hausdepp.",
-  "summary_en": "Hausdepp: 100 achievements, 24 ranks, win standings and tournaments to find the day’s Hausdepp.",
+  "summary_de": "Hausdepp wird zur eigenen Kartenrunde: neue Optik, bewusstere Erfolgsziele und sichtbare Reaktionen.",
+  "summary_en": "Hausdepp becomes a card table of its own: a new look, paced achievements and visible reactions.",
   "player_notes": {
     "de": {
-      "title": "Dem Hausdepp einen Schritt näher",
+      "title": "Platz an der Kartenrunde!",
       "changes": [
-        "Sammle 10 EP je abgeschlossener Runde und einmalige Belohnungen für 100 Erfolge.",
-        "Entdecke die 24 Ränge samt Aufstiegssprüchen, suche deine Erfolge und sieh den nächsten Schritt.",
-        "Vergleiche Rundensiege in der Rangliste. Alle ausser dem Hausdepp einer Runde erhalten einen Sieg.",
-        "Spiele ein Turnier: Jede Niederlage ergänzt HAUSDEPP um einen Buchstaben. Wer das Wort zuerst voll hat, ist der Tages-Hausdepp."
+        "Erreichte Erfolge stehen in jeder Gruppe oben; häufige Ziele wachsen über mehrere Runden.",
+        "Entdecke den eigenen Hausdepp-Look, griffige Buttons, Gegner im Halbkreis und ein kurzes Mischen vor dem Abheben.",
+        "Sieh Profilbilder und eigene wie fremde Reaktionen direkt am Tisch.",
+        "Computer erhalten Namen aus 50 urigen Männer- und Frauennamen, ohne doppelte Namen am Tisch.",
+        "Auf Tablet und Desktop stehen wechselnde Getränke und Snacks am freien Tischrand.",
+        "Installiere Hausdepp mit eigenem Herz-Zehner-Icon und sieh im Spielwähler, wie viele Menschen gerade spielen.",
+        "Menschenrunden geben 10 EP, Runden mit Computer abgerundet 2 EP; Erfolge behalten ihre vollen EP.",
+        "Dein Tisch erhält einen von 50 persönlichen Namen. Teile die Einladung oder rufe freigegebene Mitspieler."
       ]
     },
     "en": {
-      "title": "One step closer to Hausdepp",
+      "title": "Pull up a chair!",
       "changes": [
-        "Earn 10 XP per completed round and one-time rewards from 100 achievements.",
-        "Explore 24 ranks and their sayings, search your collection and see your next step.",
-        "Compare round wins in the standings. Everyone except a round’s Hausdepp earns a win.",
-        "Play a tournament: every loss adds a letter to HAUSDEPP. The first player to complete the word is the day’s Hausdepp."
+        "Earned achievements lead each group; common goals grow across several rounds.",
+        "Discover the distinct Hausdepp look, clear buttons, opponents around the table and a brief shuffle before cutting.",
+        "See account avatars and reactions from every sender at the table.",
+        "Computers receive unique names from 50 characterful male and female names.",
+        "Tablets and desktops gain a varying selection of drinks and snacks in free table space.",
+        "Install Hausdepp with its own heart-ten icon and see how many people are playing in the game picker.",
+        "Human-only rounds grant 10 XP, rounds with computers a rounded-down 2 XP; achievements keep their full XP.",
+        "Your table gets one of 50 personalised names. Share its invitation or call permitted players."
       ]
     }
   }

@@ -1,10 +1,10 @@
 {
-  "version": "2.58.0",
+  "version": "2.59.0",
   "bump": "minor",
   "date": "2026-10-16",
-  "previous_revision": "cfba2ac10b835b5d805a7f0931a7ad2085287abe",
+  "previous_revision": "6a7e35e45b6120d1958fee960055b1ce6a102144",
   "summary": {
-    "de": "Hausdepp: 100 Erfolge, 24 Ränge, Rundensiege und HAUSDEPP-Turniere mit abgesicherter Suchmaschinensteuerung.",
-    "en": "Hausdepp: 100 achievements, 24 ranks, round wins and HAUSDEPP tournaments with verified search-discovery controls."
+    "de": "Hausdepp: eigener Kartentisch, bewusstere Erfolge, Reaktionen, PWA und privates Monitoring; Live-Spielerzahlen im Spielwähler.",
+    "en": "Hausdepp gains its own table, paced achievements, reactions, PWA and private monitoring; live player counts in the game picker."
   }
 }

@@ -78,7 +78,7 @@ class HausdeppAccountTests(unittest.TestCase):
         self.assertIsNotNone(account["history"]["next_cursor"])
         self.assertEqual(account["history"]["rounds"][0]["game_id"], "round-262")
         self.assertTrue(account["scoring"]["available"])
-        self.assertEqual(account["scoring"]["round_points"], 2630)
+        self.assertEqual(account["scoring"]["round_points"], 526)
         self.assertTrue(account["achievements"]["available"])
         self.assertEqual(len(account["achievements"]["items"]), 100)
         self.assertEqual(len(account["ranks"]), 24)

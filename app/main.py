@@ -25,6 +25,7 @@ from .active_games import delete_active_game, load_active_games, save_active_gam
 from .analytics import (
     configure_analytics_runtime,
     record_game_action,
+    record_hausdepp_abort,
     record_http_request,
     request_agent_family,
     request_channel,
@@ -40,6 +41,7 @@ from .api_auth import router as auth_router
 from .api_avatars import router as avatars_router
 from .api_engagement import router as engagement_router
 from .api_friend_activity import router as friend_activity_router
+from .api_game_activity import router as game_activity_router
 from .api_moderation import router as moderation_router
 from .api_passkeys import router as passkeys_router
 from .api_releases import router as releases_router
@@ -134,8 +136,10 @@ from .site_seo import (
 )
 from .versioning import current_version
 from .web_push import (
+    GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS,
     claim_game_invite_push,
     dispatch_game_invite_push,
+    game_invite_account_cooldown_remaining,
     game_invite_cooldown_remaining,
     game_invite_push_recipients,
     mark_game_invite_push_sent,
@@ -277,6 +281,7 @@ def _persist_abandonment(game: GameDict) -> bool:
 
 async def _retire_manual_abort(game: GameDict) -> None:
     """Close and remove any manually abandoned room after its terminal frame."""
+    record_hausdepp_abort(game)
     game_id = str(game.get("_id") or "")
     accounted = _persist_abandonment(game)
     try:
@@ -296,6 +301,7 @@ async def _retire_manual_zilch_abort(game: GameDict) -> None:
 
 async def _publish_timeout_abort(game: GameDict) -> None:
     """Deliver one terminal timeout frame, then retire the transient room."""
+    record_hausdepp_abort(game)
     game_id = str(game.get("_id") or "")
     # Claim publication before the first await. A synchronous HTTP sweep or a
     # direct snapshot may already have changed the state, but must not leave it
@@ -520,6 +526,7 @@ app.include_router(allowlist_router)
 app.include_router(avatars_router)
 app.include_router(engagement_router)
 app.include_router(friend_activity_router)
+app.include_router(game_activity_router)
 app.include_router(users_router)
 app.include_router(admin_help_router)
 app.include_router(moderation_router)
@@ -616,7 +623,8 @@ async def response_cache_policy(request: Request, call_next):
         response = await call_next(request)
     apply_cache_policy(request, response, asset_version=STATIC_ASSET_VERSION)
     if (request.url.path == "/hausdepp" or request.url.path.startswith("/hausdepp/")
-            or request.url.path.startswith("/api/hausdepp/") or is_hausdepp_host(request)):
+            or request.url.path.startswith("/api/hausdepp/") or is_hausdepp_host(request)
+            or request.url.path in {"/hausdepp-manifest.webmanifest", "/hausdepp-manifest-en.webmanifest", "/hausdepp-sw.js"}):
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
     public_zilch_document = bool(
@@ -716,6 +724,25 @@ def zilch_manifest_en(request: Request):
     return FileResponse(str(BASE / "zilch-manifest-en.webmanifest"), media_type="application/manifest+json")
 
 
+@app.get("/hausdepp-manifest.webmanifest", include_in_schema=False)
+@app.get("/hausdepp-manifest-en.webmanifest", include_in_schema=False)
+def hausdepp_manifest(request: Request):
+    """Installation follows the same founder-bound preview as the game."""
+    _require_hausdepp_access(request)
+    filename = "hausdepp-manifest-en.webmanifest" if request.url.path.endswith("-en.webmanifest") else "hausdepp-manifest.webmanifest"
+    return FileResponse(str(BASE / filename), media_type="application/manifest+json",
+                        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+
+
+@app.get("/hausdepp-sw.js", include_in_schema=False)
+def hausdepp_service_worker(request: Request):
+    """The worker may control Hausdepp paths, never another game's root."""
+    _require_hausdepp_access(request)
+    return FileResponse(str(STATIC_DIR / "hausdepp-sw.js"), media_type="text/javascript",
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate",
+                                 "Service-Worker-Allowed": "/hausdepp", "X-Robots-Tag": "noindex, nofollow"})
+
+
 # Service Worker (Root-Scope) ausliefern
 @app.get("/sw.js", include_in_schema=False)
 def service_worker(request: Request):
@@ -743,7 +770,10 @@ def zilch_service_worker(request: Request):
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon(request: Request):
     """Use the product-specific favicon on each canonical origin."""
-    icon = STATIC_DIR / "icons" / "zilch-icon-32.png" if is_zilch_host(request) else STATIC_DIR / "favicon.png"
+    if is_hausdepp_host(request):
+        icon = STATIC_DIR / "icons" / "hausdepp-icon-32.png"
+    else:
+        icon = STATIC_DIR / "icons" / "zilch-icon-32.png" if is_zilch_host(request) else STATIC_DIR / "favicon.png"
     return FileResponse(str(icon), media_type="image/png")
 
 
@@ -839,7 +869,7 @@ def _consume_game_switch_marker(request: Request, *, target: str) -> RedirectRes
     )
 
 
-def _embedded_zdwa_pwa_page(filename: str) -> Response:
+def _embedded_zdwa_pwa_page(filename: str, *, product: str = "zilch") -> Response:
     """Serve a ZDWA document inside the installed Zilch PWA's origin.
 
     iOS turns a cross-subdomain navigation from an installed PWA into a
@@ -855,9 +885,10 @@ def _embedded_zdwa_pwa_page(filename: str) -> Response:
         '<html data-zdwa-pwa-bridge="true" ',
         1,
     )
+    credentials = 'crossorigin="use-credentials" ' if product == "hausdepp" else ""
     content = content.replace(
         '<link rel="manifest" href="/manifest.webmanifest',
-        '<link rel="manifest" data-pwa-product="zilch" href="/zilch-manifest.webmanifest',
+        f'<link rel="manifest" data-pwa-product="{product}" {credentials}href="/{product}-manifest.webmanifest',
         1,
     )
     content = content.replace(
@@ -884,28 +915,34 @@ def _bridge_path_segment(path: str, prefix: str, *, suffix: str = "") -> str | N
 
 def _serve_zilch_pwa_zdwa_bridge(request: Request, path: str = "") -> Response:
     """Map the finite ZDWA document surface onto Zilch's PWA origin."""
-    if not is_zilch_host(request):
+    hausdepp_host = is_hausdepp_host(request)
+    if not is_zilch_host(request) and not hausdepp_host:
         raise HTTPException(status_code=404, detail="not_found")
+    if hausdepp_host:
+        _require_hausdepp_access(request)
+
+    def bridge_page(filename: str) -> Response:
+        return _embedded_zdwa_pwa_page(filename, product="hausdepp" if hausdepp_host else "zilch")
 
     route = f"/{path}".rstrip("/") or "/"
     if route == "/":
-        return _embedded_zdwa_pwa_page("index.html")
+        return bridge_page("index.html")
     if route == "/regeln":
         record_request_engagement(request, "rules_viewed")
-        return _embedded_zdwa_pwa_page("rules.html")
+        return bridge_page("rules.html")
     if route == "/spieler":
         record_request_engagement(request, "leaderboard_viewed")
-        return _embedded_zdwa_pwa_page("players.html")
+        return bridge_page("players.html")
     if _bridge_path_segment(route, "/spieler/") is not None:
-        return _embedded_zdwa_pwa_page("profile.html")
+        return bridge_page("profile.html")
     if route == "/rangabzeichen":
-        return _embedded_zdwa_pwa_page("ranks.html")
+        return bridge_page("ranks.html")
     if route == "/konto":
-        return _embedded_zdwa_pwa_page("account.html")
+        return bridge_page("account.html")
     if route == "/admin":
-        return _embedded_zdwa_pwa_page("admin.html")
+        return bridge_page("admin.html")
     if route == "/offline":
-        return _embedded_zdwa_pwa_page("offline.html")
+        return bridge_page("offline.html")
     if route == "/offline-spielen":
         return _offline_play_page("zdwa", home="/zdwa", zilch_manifest=True)
 
@@ -914,16 +951,16 @@ def _serve_zilch_pwa_zdwa_bridge(request: Request, path: str = "") -> Response:
         game = games.get(game_id)
         if game and game_type_from_state(game) != DEFAULT_GAME_TYPE:
             raise HTTPException(status_code=404, detail="game_not_found")
-        return _embedded_zdwa_pwa_page("room.html")
+        return bridge_page("room.html")
 
     if route == "/ergebnis":
-        return _embedded_zdwa_pwa_page("game_view.html")
+        return bridge_page("game_view.html")
     result_id = _bridge_path_segment(route, "/ergebnis/")
     if result_id is not None:
         stored_type = completed_game_type_for_id(result_id)
         if stored_type is not None and stored_type != DEFAULT_GAME_TYPE:
             raise HTTPException(status_code=404, detail="result_not_found")
-        return _embedded_zdwa_pwa_page("game_view.html")
+        return bridge_page("game_view.html")
 
     raise HTTPException(status_code=404, detail="not_found")
 
@@ -1868,6 +1905,8 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
         return {"games": [], "online_users": online_user_count()}
     if requested_game_type == ZILCH_GAME_TYPE and not can_access_zilch_preview(auth_identity):
         return {"games": [], "online_users": online_user_count()}
+    account_invite_retry = (game_invite_account_cooldown_remaining(auth_identity.user_id)
+                            if requested_game_type == HAUSDEPP_GAME_TYPE else 0)
     admin_ids = active_admin_user_ids(
         player.get("user_id")
         for game in games.values()
@@ -1955,6 +1994,9 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
                               "current_player_id": (g.get("_turn") or {}).get("player_id"),
                               "spectator_available": bool(g.get("_started")),
                               "tournament": project_hausdepp_tournament(g)})
+                entry["can_notify_open_seat"] = bool(account_player and not
+                    open_seat_invitation_error(g, user_id=auth_identity.user_id))
+                entry["invite_retry_after_seconds"] = max(game_invite_cooldown_remaining(g), account_invite_retry)
             if requested_game_type == ZILCH_GAME_TYPE:
                 current_player_id, current_player_name = _lobby_current_player(g)
                 entry["current_player_id"] = current_player_id
@@ -1981,7 +2023,7 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
 
 @app.post("/api/games/{game_id}/notify-open-seat")
 async def api_game_notify_open_seat(game_id: str, request: Request):
-    """Let a signed-in seated player invite opted-in accounts to a public room."""
+    """Let a seated player invite opted-in accounts within the product audience."""
     from .moderation import ensure_play_allowed
 
     identity = require_user(request)
@@ -2016,7 +2058,8 @@ async def api_game_notify_open_seat(game_id: str, request: Request):
         # Do not reveal whether particular players use Push. The actor merely
         # learns that no delivery was attempted. The account cooldown still
         # applies, even when no opted-in player is currently reachable.
-        return {"ok": True, "notified": False}
+        return {"ok": True, "notified": False, **({"retry_after_seconds": GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS}
+                if game_type_from_state(game) == HAUSDEPP_GAME_TYPE else {})}
     # Persist the room-level flood barrier before issuing external network
     # requests, so a double click or concurrent tab cannot dispatch duplicates.
     mark_game_invite_push_sent(game)
@@ -2025,6 +2068,8 @@ async def api_game_notify_open_seat(game_id: str, request: Request):
     return {
         "ok": True,
         "notified": bool(dispatch.accepted),
+        **({"retry_after_seconds": game_invite_cooldown_remaining(game)}
+           if game_type_from_state(game) == HAUSDEPP_GAME_TYPE else {}),
     }
 
 

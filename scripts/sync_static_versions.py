@@ -15,11 +15,13 @@ MANIFESTS = (
     ROOT / "manifest-en.webmanifest",
     ROOT / "zilch-manifest.webmanifest",
     ROOT / "zilch-manifest-en.webmanifest",
+    ROOT / "hausdepp-manifest.webmanifest",
+    ROOT / "hausdepp-manifest-en.webmanifest",
 )
 TEXT_SUFFIXES = {".css", ".html", ".js", ".webmanifest"}
 VERSION_RE = re.compile(
     r"((?:(?:/static/|\./)[A-Za-z0-9_./-]+\.(?:css|js|png|webp|svg|ico|ttf|woff2?)|"
-    r"/(?:zilch-)?manifest(?:-en)?\.webmanifest)\?v=)[A-Za-z0-9._-]+"
+    r"/(?:(?:zilch|hausdepp)-)?manifest(?:-en)?\.webmanifest)\?v=)[A-Za-z0-9._-]+"
 )
 CACHE_RE = re.compile(r"const CACHE_VERSION = '[^']+';")
 
@@ -55,7 +57,7 @@ def content_version() -> str:
 def desired_text(path: Path, version: str) -> str:
     text = path.read_text(encoding="utf-8")
     text = VERSION_RE.sub(lambda match: f"{match.group(1)}{version}", text)
-    if path in {STATIC_DIR / "sw.js", STATIC_DIR / "zilch-sw.js"}:
+    if path in {STATIC_DIR / "sw.js", STATIC_DIR / "zilch-sw.js", STATIC_DIR / "hausdepp-sw.js"}:
         text = CACHE_RE.sub(f"const CACHE_VERSION = 'assets-{version}';", text)
     return text
 

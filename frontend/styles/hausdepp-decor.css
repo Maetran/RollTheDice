@@ -1,0 +1,22 @@
+.hd-table { isolation: isolate; }
+.hd-table-decor { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; user-select: none; }
+.hd-table-prop { position: absolute; display: block; background-image: url("/static/hausdepp-table-props-v1.png"); background-size: 200% 200%; background-repeat: no-repeat; transform: rotate(var(--prop-angle)); filter: drop-shadow(2px 6px 4px #0c100d44); animation: hd-prop-arrive 420ms ease-out var(--prop-delay) both; }
+.hd-table-prop--beer { background-position: left top; }
+.hd-table-prop--can { background-position: right top; }
+.hd-table-prop--nuts { background-position: left bottom; }
+.hd-table-prop--marend { background-position: right bottom; }
+.hd-table-prop:is(.hd-table-prop--dice, .hd-table-prop--tea, .hd-table-prop--chips, .hd-table-prop--flips) { background-image: url("/static/hausdepp-table-props-snacks-v1.png"); }
+.hd-table-prop:is(.hd-table-prop--pretzel, .hd-table-prop--sweets, .hd-table-prop--lantern, .hd-table-prop--lemonade) { background-image: url("/static/hausdepp-table-props-evening-v1.png"); }
+.hd-table-prop--dice, .hd-table-prop--pretzel { background-position: left top; }
+.hd-table-prop--tea, .hd-table-prop--sweets { background-position: right top; }
+.hd-table-prop--chips, .hd-table-prop--lantern { background-position: left bottom; }
+.hd-table-prop--flips, .hd-table-prop--lemonade { background-position: right bottom; }
+.hd-table-prop--tea::after { content: ""; position: absolute; left: 46%; top: 3%; width: 13%; height: 25%; border-left: 2px solid #fff9; border-right: 1px solid #fff6; border-radius: 48%; filter: blur(1px); opacity: .2; animation: hd-tea-steam 6s ease-in-out infinite; }
+.hd-table-prop--beer::after { content: ""; position: absolute; left: 22%; top: 13%; width: 43%; height: 28%; border-radius: 50%; background: radial-gradient(ellipse, #fff9, #fff0 70%); opacity: .16; animation: hd-beer-foam 7s ease-in-out infinite; }
+.hd-table-prop--lantern::after { content: ""; position: absolute; left: 42%; top: 38%; width: 15%; height: 19%; border-radius: 50%; background: #ffd66f; filter: blur(5px); mix-blend-mode: screen; opacity: .22; animation: hd-candle-glow 4.7s ease-in-out infinite; }
+@keyframes hd-prop-arrive { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hd-tea-steam { 0%, 100% { opacity: .09; transform: translate(0, 0) scale(.9); } 50% { opacity: .27; transform: translate(1px, -4px) scale(1.03); } }
+@keyframes hd-beer-foam { 0%, 100% { transform: translateX(0); opacity: .12; } 50% { transform: translateX(1px); opacity: .19; } }
+@keyframes hd-candle-glow { 0%, 100% { opacity: .16; transform: scale(.96); } 37% { opacity: .27; transform: scale(1.03); } 72% { opacity: .2; transform: scale(.99); } }
+@media (max-width: 767px) { .hd-table-decor { opacity: .8; } }
+@media (prefers-reduced-motion: reduce) { .hd-table-prop, .hd-table-prop::after { animation: none !important; } }

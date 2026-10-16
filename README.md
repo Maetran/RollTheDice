@@ -23,6 +23,8 @@ Founder-/Owner-Konto. Andere Admins, delegierte Owner und Gäste erhalten keinen
 Zugang. Das vorhandene Konto wird weiterverwendet. Die Lobby zeigt Tischstatus
 und belegte Plätze; ein Wartetisch erklärt fehlende Mitspieler und bietet einen
 Tischlink für zugelassene lokale Testkonten.
+Ein neuer Tisch erhält automatisch einen von 50 Wirtshausnamen mit deinem
+aktuellen Kontonamen, etwa „Manis Gsuff“. Ein Namensfeld ist dafür nicht nötig.
 
 Zwei bis fünf, höchstens sechs Teilnehmer spielen mit 36 doppeldeutschen Karten;
 Computer sind echte Mitspieler mit eigenen verdeckten Händen. Die Serverregeln
@@ -32,7 +34,10 @@ auf drei auf. Der nächste Spieler darf schon Handkarten legen; ziehen oder
 zocken kann er erst, wenn ältere Auffüllpflichten erledigt sind. „Du musst
 ziehen“ mit sanft rotem Rahmen erinnert den zuständigen Spieler. Ein Tipp auf
 eine Handkarte legt sie sofort, ein Tipp auf das offene Paket nimmt es auf.
-Abheben ist eine aktive Aktion, das Austeilen wird kurz animiert. Die Hand liegt
+Vor dem aktiven Abheben zeigt eine kurze einmalige Mischanimation die
+Kartenrückseiten. Neuladen und Wiederverbinden wiederholen sie nicht; sie
+sperrt keine Aktion und entfällt bei reduzierter Bewegung. Das Austeilen wird
+ebenfalls kurz animiert. Die Hand liegt
 als sortierter Fächer mit den 10ern ganz rechts. Gegnerische Hände zeigen genau
 ihre Kartenanzahl als verdeckte Rückseiten. Einzeln ausgerichtete Ausschnitte
 geben den Karten saubere Ränder. Ziehen, Geben und Aufnehmen bewegen Karten
@@ -49,8 +54,16 @@ Der private Kontobereich zeigt eigene abgeschlossene Runden, Runden als Hausdepp
 und Runden mit leerer Hand sowie einen nachladbaren Verlauf tatsächlicher
 Ergebnisse; allgemeine Einstellungen bleiben im gemeinsamen Konto.
 Das Konto enthält **100 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
-Rangleiter. Jede abgeschlossene Runde gibt 10 Erfahrungspunkte; jeder Erfolg
-einmalig weitere 10, 25, 50 oder 100 EP. Von **Einstein** bei 0 EP geht es mit
+Rangleiter. Innerhalb jeder Gruppe stehen erreichte Erfolge vor den noch offenen.
+Häufige Kartenaktionen benötigen mehrere passende abgeschlossene Runden;
+jede Runde zählt je Ziel höchstens einmal. Seltene Kunststücke bleiben direkt
+erreichbar. Eine abgeschlossene Runde nur mit Menschen gibt 10 Erfahrungspunkte.
+Sobald mindestens ein Computer mitspielt, wird die Basis um 75 % reduziert
+und je Runde auf ganze EP abgerundet: **2 EP**,
+auch an gemischten Tischen und für jede einzelne Turnierrunde. Jeder Erfolg
+gibt weiterhin einmalig seine vollen 10, 25, 50 oder 100 EP. Runden, Siege und
+die Anzahl bereits freigeschalteter Erfolge bleiben dabei erhalten.
+Von **Einstein** bei 0 EP geht es mit
 einem Augenzwinkern bis **Hausdepp** bei 5’000 EP. Jeder Rang hat einen eigenen
 Aufstiegsspruch, etwa Newtons „Ab jetzt geht’s bergab. Ganz nach den
 Naturgesetzen.“ Der dauerhafte Rang ist vom Hausdepp einer Runde getrennt.
@@ -60,6 +73,8 @@ belegen Teilnahme- und Ergebniserfolge; besondere Kartenaktionen benötigen die
 neu erfassten Spielereignisse. Der [vollständige Katalog](docs/HAUSDEPP_ACHIEVEMENTS.md)
 enthält alle Bedingungen, Punkte und Rangschwellen. Die Entwicklung bleibt in 2.x; V3 ist
 für den späteren grossen Release reserviert. Dieser Branch ist kein Deployment.
+Der [lokale Prüfbericht vom 16.10.2026](docs/HAUSDEPP_LOCALHOST_TEST_2026-10-16.md)
+hält Regeln, Punkte, Browsernachweise und verbleibende Gerätetests fest.
 Mehrere menschliche Sitze prüft `tests/test_hausdepp_local_multiplayer.py` mit
 zwei echten Konten in einer temporären lokalen Datenbank. Nur dieser isolierte
 Test erweitert die Freigabe; die normal gestartete App bleibt Owner-exklusiv.
@@ -84,6 +99,8 @@ account. Other administrators, delegated owners and guests cannot access it.
 The existing account is reused. The lobby shows table status and occupied
 seats; a waiting table explains missing players and offers a table link for
 approved local test accounts.
+A new table automatically receives one of 50 tavern-style names built around
+your current account name, such as “Mani’s nightcap”; no name field is needed.
 
 Two to five participants, six at most, play with 36 double-headed German cards.
 Computers are real participants with their own private hands. Server rules
@@ -92,8 +109,10 @@ chance before playing, or afterwards draws all missing cards up to three as a
 mandatory refill. The next player may already play hand cards; drawing or
 gambling waits for earlier refill obligations. “You must draw” with a gentle
 red frame reminds the player responsible. Tapping a hand card plays it
-immediately; tapping the face-up pile takes it. Bottom inspection is active,
-dealing is briefly animated, and hands form a sorted fan with tens on the right.
+immediately; tapping the face-up pile takes it. Before active bottom inspection,
+a brief one-time shuffle shows only card backs, without blocking actions; reload,
+reconnection and reduced-motion mode do not replay it. Dealing is briefly
+animated, and hands form a sorted fan with tens on the right.
 Opponents show exactly their hand size as face-down backs. Individually aligned
 crops give cards clean edges. Drawing, dealing and picking up visibly move cards
 from their source pile to the hand; reduced motion marks arrival without travel.
@@ -107,9 +126,15 @@ examples and terminology. Round outcomes are stored separately. The private
 account area shows your completed rounds, rounds as the Hausdepp and rounds
 finished with an empty hand, plus a loadable history of actual results; general
 settings remain in the shared account. The account includes **100 achievements
-and 24 ranks**, with search, filters and the complete rank ladder. Every completed
-round earns 10 experience points; achievements grant a further 10, 25, 50 or
-100 XP once each. The ironic ladder runs from **Einstein** at 0 XP to **Hausdepp**
+and 24 ranks**, with search, filters and the complete rank ladder. Each group
+shows earned achievements before locked ones. Common card actions require
+several qualifying completed rounds, with each round counting at most once per
+goal; rare feats can still unlock immediately. A completed all-human round earns
+10 experience points. Any computer seat reduces the base round reward by 75%,
+rounded down per round to **2 XP**, including mixed tables and each individual
+tournament round. Achievements still grant their full 10, 25, 50 or 100 XP once each.
+Round and win counts and the number of existing unlocks are retained.
+The ironic ladder runs from **Einstein** at 0 XP to **Hausdepp**
 at 5,000 XP. Each rank has its own saying, including Newton's gravity-inspired
 downhill greeting. The lasting title stays separate from a round's Hausdepp.
 Round points and unlocks are stored once; rank-up notices remain pending until
@@ -118,6 +143,8 @@ detailed card feats require newly recorded gameplay evidence. The
 [complete catalogue](docs/HAUSDEPP_ACHIEVEMENTS.md) records conditions, points and
 thresholds. Development stays within 2.x, with V3 reserved for the
 later major launch. This branch is not a deployment.
+The [local verification report dated 2026-10-16](docs/HAUSDEPP_LOCALHOST_TEST_2026-10-16.md)
+records rules, accounting, browser evidence and remaining device checks.
 
 The private standings at `/hausdepp/rangliste` count round wins: everyone except
 a completed round's Hausdepp earns a win. Equal totals share a place, and table
@@ -133,6 +160,58 @@ extends access; the normally started app remains exclusive to the owner.
 
 
 ## The games
+
+**Hausdepp – Gestaltung:** Holz und die originalen Tellkarten bleiben der
+Mittelpunkt. Tannengrün, Kartenrot und kräftige Serifentitel geben dem Spiel eine
+eigene Gestaltung; Navigation und wichtige Wege erscheinen als Buttons. Gegner
+sitzen im Halbkreis, Profilbilder und Reaktionen bleiben am jeweiligen Spieler
+erkennbar. 50 urige Männer- und Frauennamen werden Computern ohne doppelte Namen
+im Tisch zugeteilt; im laufenden Turnier bleiben die Namen stabil. Grössere
+Bildschirme erhalten wechselnde, rein dekorative Tischgegenstände aus zwölf
+Varianten; auf dem Handy erscheinen sie dezenter. Dampf, Schaum und Kerzenlicht
+bewegen sich geringfügig und berücksichtigen reduzierte Bewegung. Die kompakte
+Lobby-Hand rechts neben dem Titel zeigt ruhige lokale Kartenwechsel.
+
+**Hausdepp – appearance:** Walnut and the original Tell cards remain central.
+Forest green, card red, strong serif headings and button-shaped navigation give
+the game its own identity. Opponents form a semicircle; avatars and reactions
+identify their players. Computers draw unique names from a pool of 50 male and
+female names, stable during tournaments. Twelve varying props use free table
+space, more subtly on phones, with minimal steam, foam and candle motion and
+reduced-motion support. A compact right-of-title lobby hand changes cards calmly.
+
+Hausdepp lässt sich mit eigenem Icon direkt als PWA installieren. Spielwechsel
+behalten die Identität der installierten App. Private Karten, Ergebnisse und
+Kontoinhalte werden nicht offline gespeichert; offline ist eine Verbindung
+erforderlich. / Hausdepp installs as its own PWA with dedicated icons. Suite
+switching preserves the installed app identity. Private cards, outcomes and
+account data are never cached offline; play requires a connection.
+
+**Hausdepp – Mitspieler-Ruf:** Wartende, ungeschützte Tische mit einem freien
+menschlichen Platz verwenden dieselben Push-Einstellungen wie ZDWA und Zilch.
+Gerätefreigabe und die Kategorie „Mitspieler-Rufe“ müssen aktiv sein; die
+private Absenderauswahl gilt weiterhin. Nur aktuell für Hausdepp freigegebene
+Konten können senden oder empfangen. Eine Systembenachrichtigung trägt das
+Hausdepp-Icon und öffnet den Tisch auf demselben Ursprung. Die Geräteanmeldung
+bleibt in den gemeinsamen Kontoeinstellungen; eine eigene tägliche
+Hausdepp-Erinnerung wird dadurch nicht aktiviert. Teilen und Kopieren des
+Tischlinks sind getrennte, ausdrücklich ausgelöste Aktionen.
+
+**Hausdepp – player calls:** Waiting, unprotected tables with an open human
+seat use the same push settings as ZDWA and Zilch. Device permission and the
+player-call category must both be enabled; the private sender allowlist still
+applies. Sending and receiving require current Hausdepp access. The system
+notification uses Hausdepp's icon and opens the table on the same origin.
+Devices are registered in shared account settings; this does not enable a
+separate daily Hausdepp reminder. Sharing and copying a table link remain
+separate, explicitly triggered actions.
+
+Die gemeinsame Spieleauswahl zeigt in DE/EN, wie viele verbundene Menschen an
+laufenden Tischen spielen. Computer und Zuschauer zählen nicht; Konten zählen
+pro Spiel einmal. Berechtigungen werden frisch geprüft, private Spiele bleiben
+verborgen. / The shared picker shows current connected humans in running games,
+excluding computers and spectators, deduplicated per account and game. Fresh
+access checks keep private games hidden.
 
 | | ZDWA | Zilch |
 | --- | --- | --- |
@@ -195,6 +274,18 @@ result appear without a briefly flashing progress dialog.
 - [Product delivery gate](#product-delivery-gate)
 
 ## Mission Control
+
+**Hausdepp:** Der gebundene Owner erhält einen eigenen Filter und eine Übersicht
+über echte Runden, bekannte Spieldauer, aktive Tische, Menschen, Computer und
+Turnierstände. Abbrüche werden ab dieser Messung erfasst. Historische fehlende
+Dauer- und Browserdaten werden nicht erfunden. Andere Dashboard-Berechtigte
+erhalten weder den Filter noch Hausdepp-Zahlen, auch nicht in „Alle“.
+
+**Hausdepp:** The bound owner gets a dedicated filter and real round, known
+duration, table, human/computer-seat and tournament metrics. Abort measurement
+starts with this increment; missing historical duration/browser data stays
+unknown. Other dashboard viewers receive neither the filter nor Hausdepp
+figures, including in All.
 
 The private dashboard at `/admin/dashboard` brings traffic, active page time,
 fixed click actions, game modes, completed games and server capacity together.

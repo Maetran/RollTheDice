@@ -220,3 +220,33 @@ checked during integration. This is not a scan of the original Piatnik back.
 **3 Rasterdateien, 0 ohne Provenienz**. / After saving the assets,
 `impeccable embed-prompt --scan app/static/hausdepp` reported
 **3 raster files, 0 missing provenance**.
+
+
+## Hausdepp PWA: stilisierter Herz-Zehner / stylised heart ten
+
+**DE:** Der Owner hat den ursprünglichen geometrischen X-Entwurf verworfen und
+eine stilisierte tatsächliche Spielkarte gewünscht. Das integrierte Imagegen
+erzeugte am 16.10.2026 einen eigenen, aufrecht zentrierten Herz-Zehner vor
+Tannengrün. Als Motivreferenz diente das oben dokumentierte Commons-Foto
+`cards-source.jpg`, insbesondere Herz 10 mit gespiegeltem Schloss; dessen
+Herkunfts-/Lizenzhinweise bleiben ausdrücklich Bestandteil dieser Referenz.
+Die Illustration ist keine hochauflösende Originalkarte für das Spieldeck.
+
+**EN:** The owner rejected the original geometric X mark and requested a
+stylised real playing-card motif. Built-in Imagegen generated an upright,
+centred heart ten on forest green on 2026-10-16, using the documented Commons
+photograph `cards-source.jpg` as a motif reference. Its source and attribution
+remain part of this reference. This illustration does not replace original
+playing-card artwork in the game.
+
+- Original output: `/Users/manuel/.codex/generated_images/01a1448c-ee65-7321-bd98-9501a7566c50/exec-b800f117-da2f-4c2b-ad7c-0b375eff7511.png`.
+- Unmodified project source: `app/static/icons/hausdepp-heart-ten-source-v1.png`
+  (1’254×1’254, opaque PNG).
+- Exact prompt: [hausdepp-heart-ten-v1.prompt.txt](../app/static/icons/hausdepp-heart-ten-v1.prompt.txt).
+- Proportional size exports only, with bundled Sharp: `hausdepp-icon-32.png`,
+  `hausdepp-icon-192.png`, `hausdepp-icon-512.png`,
+  `hausdepp-apple-touch-icon-180.png`, all in `app/static/icons/`.
+- Consumed by all five Hausdepp document heads, both private installation
+  manifests, the table header and the push-notification icon.
+- The rejected SVG is removed. UI/UX and final icon acceptance remain with the
+  owner; generated artwork is not represented as original Piatnik print art.

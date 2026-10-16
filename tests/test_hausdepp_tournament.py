@@ -7,6 +7,7 @@ import json
 import os
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+from random import Random
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -22,7 +23,8 @@ from app.game_state import check_timeout_and_abort, games, multiplayer_pause_rea
 from app.game_ws_session import GameSocketSession, handle_session_action
 from app.game_ws_social import handle_social_action
 from app.hausdepp_account import build_hausdepp_account_for_user
-from app.hausdepp_engine import HausdeppRuleError, make_deck, new_round
+from app.hausdepp_cpu_strategy import choose_cpu_action
+from app.hausdepp_engine import HausdeppRuleError, make_deck, new_round, project_state
 from app.hausdepp_gameplay import apply_hausdepp_command, handle_hausdepp_gameplay_action, publish_hausdepp_transition
 from app.hausdepp_results import finalize_hausdepp_result, validate_hausdepp_result
 from app.hausdepp_state import configure_hausdepp_game, join_hausdepp_player, start_hausdepp_game
@@ -390,3 +392,83 @@ def test_restore_rejects_malformed_tournament_participant_instead_of_crashing_st
     del game["_participants"][0]["id"]
     save_active_game(game)
     assert "stable-table" not in load_active_games()
+
+
+@pytest.mark.parametrize("count", range(2, 7))
+def test_seeded_full_tournament_for_each_table_size_rotates_restores_and_credits_once(database, count):
+    random = Random(47000 + count)
+    completed_rounds = 0
+    with patch("app.hausdepp_engine.SystemRandom", return_value=random):
+        game = table(database, count=count)
+        while not game["_hausdepp_tournament"]["completed"]:
+            dealer_id = game["_hausdepp"]["dealer_id"]
+            for _ in range(1000):
+                state = game["_hausdepp"]
+                if state["phase"] == "finished":
+                    break
+                debt = next(iter(state["pending_refills"]), None)
+                follower = (state.get("afterthrow") or {}).get("player_id")
+                actor = debt or follower or state["current_player_id"]
+                decision = choose_cpu_action(project_state(state, actor))
+                if decision is None:
+                    actor = state["current_player_id"]
+                    decision = choose_cpu_action(project_state(state, actor))
+                assert decision is not None
+                player = next(player for player in game["_participants"] if player["id"] == actor)
+                apply_hausdepp_command(game, actor, decision, trusted_cpu=bool(player["is_cpu"]))
+                state = game["_hausdepp"]
+                physical = state["deck"] + state["discard"] + state["burned"]
+                physical += [card for seat in state["players"] for card in seat["hand"]]
+                assert sorted(physical) == sorted(make_deck())
+            else:
+                pytest.fail(f"Tournament round stalled: {count} seats, round {completed_rounds + 1}")
+            completed_rounds += 1
+            assert completed_rounds <= 7 * count + 1
+            assert sum(game["_hausdepp_tournament"]["losses"].values()) == completed_rounds
+            before_letters = deepcopy(game["_hausdepp_tournament"]["losses"])
+            for _ in range(2):
+                assert finalize_hausdepp_result(game)["result_persisted"]
+            assert game["_hausdepp_tournament"]["losses"] == before_letters
+            if game["_hausdepp_tournament"]["completed"]:
+                break
+            assert max(before_letters.values()) < 8
+            # A real persisted interround reload must retain the host and all
+            # CPU seats; reconnecting humans supply their fresh socket objects.
+            game = load_active_games()["stable-table"]
+            for player in game["_players"]:
+                player["ws"] = Socket()
+            version = game["_hausdepp"]["version"]
+            start_next_round(game, "p0", version)
+            ids = [player["id"] for player in game["_participants"]]
+            assert game["_hausdepp"]["dealer_id"] == ids[(ids.index(dealer_id) + 1) % count]
+            assert game["_hausdepp"]["version"] > version
+            assert game["_hausdepp"]["phase"] == "peeking"
+            assert not game["_resume_required"]
+        assert max(game["_hausdepp_tournament"]["losses"].values()) == 8
+        with session_scope() as db:
+            rows = list(db.scalars(select(CompletedGame).where(CompletedGame.game_type == "hausdepp")))
+            assert len(rows) == completed_rounds
+            assert len({row.game_id for row in rows}) == completed_rounds
+        for account in database:
+            account_state = build_hausdepp_account_for_user(account.id)
+            assert account_state["scoring"]["round_points"] == completed_rounds * (10 if count == 2 else 2)
+            assert account_state["statistics"]["rounds_played"] == completed_rounds
+
+
+def test_round_duration_uses_each_round_start_instead_of_whole_tournament_age(database):
+    game = table(database)
+    start = datetime(2026, 10, 16, 12, tzinfo=timezone.utc)
+    game["_started_at"] = start.isoformat()
+    finish_round(game)
+    game["_finished_at"] = (start + timedelta(seconds=60)).isoformat()
+    assert finalize_hausdepp_result(game)["result_persisted"]
+    start_next_round(game, "p0", game["_hausdepp"]["version"])
+    game["_hausdepp_round_started_at"] = (start + timedelta(minutes=3)).isoformat()
+    finish_round(game)
+    game["_finished_at"] = (start + timedelta(minutes=3, seconds=45)).isoformat()
+    assert finalize_hausdepp_result(game)["result_persisted"]
+    with session_scope() as db:
+        rows = list(db.scalars(select(CompletedGame).order_by(CompletedGame.id)))
+        payloads = [json.loads(row.snapshot_json) for row in rows]
+    assert [payload["duration_seconds"] for payload in payloads] == [60, 45]
+    assert payloads[1]["started_at"] == (start + timedelta(minutes=3)).isoformat()

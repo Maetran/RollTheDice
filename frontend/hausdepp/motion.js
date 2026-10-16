@@ -4,6 +4,79 @@ const rounds = new Map();
 const flights = new Map();
 const EASING = "cubic-bezier(.16,1,.3,1)";
 const CARD_RATIO = 36 / 57;
+const SHUFFLE_STORAGE_KEY = "hausdepp:shuffle-seen:v1";
+const shuffles = new Map();
+let seenShuffles;
+
+function rememberShuffle(key) {
+  if (!seenShuffles) {
+    let saved;
+    try { saved = JSON.parse(sessionStorage.getItem(SHUFFLE_STORAGE_KEY) || "[]"); } catch { saved = []; }
+    seenShuffles = new Set(Array.isArray(saved) ? saved.filter(item => typeof item === "string").slice(-79) : []);
+  }
+  if (seenShuffles.has(key)) return false;
+  seenShuffles.add(key);
+  if (seenShuffles.size > 80) seenShuffles.delete(seenShuffles.values().next().value);
+  try { sessionStorage.setItem(SHUFFLE_STORAGE_KEY, JSON.stringify([...seenShuffles])); } catch { /* Private storage may be unavailable; this page still remembers. */ }
+  return true;
+}
+
+/** Only the backs move. The real stock stays available throughout the shuffle. */
+export function cancelShuffle(gameId) {
+  const shuffle = shuffles.get(gameId);
+  if (!shuffle) return;
+  shuffles.delete(gameId);
+  clearTimeout(shuffle.timer);
+  for (const animation of shuffle.animations) animation.cancel();
+  shuffle.layer.remove();
+  window.removeEventListener("resize", shuffle.cancel);
+  document.removeEventListener("visibilitychange", shuffle.onVisibility);
+  shuffle.motion.removeEventListener("change", shuffle.cancel);
+}
+
+/** Present each newly shuffled round once, including a fresh CPU table. */
+export function presentShuffle(state, { gameId, roundNumber = 1 }) {
+  if (!state) { cancelShuffle(gameId); return; }
+  const key = `${gameId}:${roundNumber}`;
+  if (state.phase !== "peeking") {
+    cancelShuffle(gameId);
+    // A late join must never rewind a round that is already being played.
+    if (["playing", "finished"].includes(state.phase)) rememberShuffle(key);
+    return;
+  }
+  if (!rememberShuffle(key)) return;
+  cancelShuffle(gameId);
+  const motion = matchMedia("(prefers-reduced-motion: reduce)");
+  const stock = document.getElementById("hausdeppStock");
+  const rect = stock?.getBoundingClientRect();
+  if (motion.matches || document.hidden || !rect?.width || !rect.height || !stock.animate) return;
+  const layer = document.createElement("div");
+  layer.className = "hd-shuffle-layer";
+  layer.dataset.shuffleKey = key;
+  layer.setAttribute("aria-hidden", "true");
+  Object.assign(layer.style, { left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` });
+  layer.innerHTML = Array.from({ length: 2 }, () => `<div class="hd-shuffle-half">${'<i class="hd-card-back"></i>'.repeat(3)}</div>`).join("");
+  document.body.append(layer);
+  const animations = [...layer.children].map((half, index) => {
+    const sign = index ? 1 : -1;
+    const apart = sign * rect.width * .48;
+    return half.animate([
+      { transform: "translate(0,0) rotate(0deg)", opacity: 0 },
+      { transform: `translate(${apart}px,-7px) rotate(${sign * 9}deg)`, opacity: 1, offset: .27 },
+      { transform: `translate(${sign * rect.width * .16}px,${index ? 3 : -3}px) rotate(${sign * 3}deg)`, opacity: 1, offset: .55 },
+      { transform: `translate(${sign * 3}px,0) rotate(0deg)`, opacity: 1, offset: .74 },
+      { transform: "translate(0,0) rotate(0deg)", opacity: 1, offset: .87 },
+      { transform: "translate(0,0) rotate(0deg)", opacity: 0 },
+    ], { duration: 850, easing: "ease-in-out", fill: "both" });
+  });
+  const cancel = () => cancelShuffle(gameId);
+  const onVisibility = () => { if (document.hidden) cancel(); };
+  const timer = setTimeout(cancel, 850);
+  shuffles.set(gameId, { layer, animations, timer, cancel, onVisibility, motion });
+  window.addEventListener("resize", cancel);
+  document.addEventListener("visibilitychange", onVisibility);
+  motion.addEventListener("change", cancel);
+}
 
 function rectOf(element) {
   const rect = element?.getBoundingClientRect();
@@ -69,6 +142,7 @@ export function prepareCardMotion(state, { gameId, playerId }) {
 
 /** A reconnect starts with a quiet baseline rather than replaying missed actions. */
 export function resetCardMotion(gameId) {
+  cancelShuffle(gameId);
   rounds.delete(gameId);
   for (const flight of flights.get(gameId) || []) {
     flight.animation.cancel();

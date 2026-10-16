@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from fastapi import FastAPI, HTTPException
@@ -575,7 +576,7 @@ class AnalyticsTests(unittest.TestCase):
                 self.assertEqual(client.post("/api/analytics/events", content="x",
                                              headers={"content-type": "image/jpeg"}).status_code, 415)
             self.assertEqual(client.get("/api/admin/analytics?days=7").status_code, 401)
-            with patch("app.api_analytics.require_analytics", return_value=True):
+            with patch("app.api_analytics.require_analytics", return_value=SimpleNamespace(is_admin=False, is_founder=False)):
                 response = client.get("/api/admin/analytics?days=7")
                 self.assertEqual(response.status_code, 200, response.text)
                 self.assertEqual(response.headers["cache-control"], "no-store")

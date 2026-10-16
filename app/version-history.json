@@ -2133,5 +2133,12 @@
     "date": "2026-10-16",
     "bump": "minor",
     "summary": "Gemeinsame Spielauswahl mit Symbolen, Namen und korrekten Wegen innerhalb installierter Apps. / Shared game picker with icons, names and correct navigation inside installed apps."
+  },
+  {
+    "version": "2.58.0",
+    "revision": "6a7e35e45b6120d1958fee960055b1ce6a102144",
+    "date": "2026-10-16",
+    "bump": "minor",
+    "summary": "Hausdepp: 100 Erfolge, 24 Ränge, Rundensiege und HAUSDEPP-Turniere mit abgesicherter Suchmaschinensteuerung. / Hausdepp: 100 achievements, 24 ranks, round wins and HAUSDEPP tournaments with verified search-discovery controls."
   }
 ]

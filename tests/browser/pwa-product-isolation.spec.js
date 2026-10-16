@@ -21,10 +21,14 @@ async function openPwaHarness(page, {
   version = "unversioned",
   language = "de",
   bridge = false,
+  standalone = false,
+  pathname = "/",
+  controllerScript = null,
 }) {
-  await page.addInitScript(({ language: initialLanguage }) => {
+  await page.addInitScript(({ language: initialLanguage, standalone: installed, controllerScript: initialController }) => {
     const state = {
       registerCalls: [],
+      registerOptions: [],
       unregisterCalls: 0,
       cacheDeletes: [],
       toasts: [],
@@ -41,6 +45,7 @@ async function openPwaHarness(page, {
     if (initialLanguage === "en") {
       globalThis.ZDWA_I18N = { getLanguage: () => "en" };
     }
+    if (installed) Object.defineProperty(Navigator.prototype, "standalone", { configurable: true, get: () => true });
 
     Object.defineProperty(Navigator.prototype, "onLine", {
       configurable: true,
@@ -49,7 +54,7 @@ async function openPwaHarness(page, {
     Object.defineProperty(Navigator.prototype, "serviceWorker", {
       configurable: true,
       get: () => ({
-        controller: null,
+        controller: initialController ? { scriptURL: new URL(initialController, location.href).href } : null,
         addEventListener: () => {},
         getRegistrations: async () => [{
           active: { scriptURL: new URL("/sw.js", location.href).href },
@@ -58,8 +63,9 @@ async function openPwaHarness(page, {
             return true;
           },
         }],
-        register: async url => {
+        register: async (url, options) => {
           state.registerCalls.push(url);
+          state.registerOptions.push(options);
           return {
             waiting: null,
             addEventListener: () => {},
@@ -78,7 +84,7 @@ async function openPwaHarness(page, {
         },
       },
     });
-  }, { language });
+  }, { language, standalone, controllerScript });
 
   await page.route(`${origin}/**`, async route => {
     const url = new URL(route.request().url());
@@ -92,11 +98,11 @@ async function openPwaHarness(page, {
       : `?v=${encodeURIComponent(pageVersion)}`;
     await route.fulfill({
       contentType: "text/html",
-      body: `<!doctype html><html data-game="${game}"${bridge ? ' data-zdwa-pwa-bridge="true"' : ""}><head><script src="/static/pwa.js${versionQuery}"></script></head><body></body></html>`,
+      body: `<!doctype html><html data-game="${url.searchParams.get("game") || game}"${bridge ? ' data-zdwa-pwa-bridge="true"' : ""}><head><script src="/static/pwa.js${versionQuery}"></script></head><body></body></html>`,
     });
   });
 
-  await page.goto(`${origin}/`);
+  await page.goto(`${origin}${pathname}`);
   await page.waitForLoadState("load");
 }
 
@@ -162,6 +168,13 @@ test("installed PWAs keep both game handoffs inside their current origin", async
   expect(zdwaRoutePath("/zdwa/offline-spielen", zilchBridgeLocation)).toBe("/offline-spielen");
   expect(normalizeZilchPageUrl("/offline-spielen", zilchLocation)).toBe("/offline-spielen");
   expect(normalizeZilchPageUrl("/zilch/offline-spielen", zdwaLocation)).toBe("/zilch/offline-spielen");
+  const hausdeppLocation = { hostname: "hausdepp.zockdiewandan.online", pathname: "/hausdepp" };
+  const hausdeppBridge = { ...hausdeppLocation, pathname: "/zdwa" };
+  expect(zdwaAppEntryUrl(hausdeppLocation, standalone)).toBe("/zdwa");
+  expect(zdwaAppEntryUrl(hausdeppLocation, browser)).toBe("https://zockdiewandan.online/");
+  expect(zdwaPath("/konto", hausdeppBridge)).toBe("/zdwa/konto");
+  expect(zdwaRoutePath("/zdwa/konto", hausdeppBridge)).toBe("/konto");
+  expect(zilchAppEntryUrl("/", hausdeppLocation, standalone)).toBe("/zilch");
 });
 
 test("the ZDWA bridge keeps the installed Zilch worker and manifest", async ({ page }) => {
@@ -184,6 +197,7 @@ test("Hausdepp on the Zilch host keeps that app's worker and manifest", async ({
   await openPwaHarness(page, {
     origin: "https://zilch.zockdiewandan.online",
     game: "hausdepp",
+    standalone: true,
   });
 
   await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.registerCalls)).toEqual(["/zilch-sw.js"]);
@@ -200,13 +214,48 @@ test("Hausdepp on the ZDWA host keeps the established ZDWA worker", async ({ pag
   await openPwaHarness(page, {
     origin: "https://zockdiewandan.online",
     game: "hausdepp",
+    standalone: true,
   });
 
   await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.registerCalls)).toEqual(["/sw.js"]);
   const state = await page.evaluate(() => globalThis.__pwaHarness);
   expect(state.unregisterCalls).toBe(0);
   expect(state.cacheDeletes).toEqual([]);
-  await expect(page.locator('link[rel="manifest"]')).toHaveCount(0);
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "https://zockdiewandan.online/manifest.webmanifest");
+});
+
+for (const language of ["de", "en"]) {
+  test(`Hausdepp browser entry owns a narrow worker and its ${language} manifest`, async ({ page }) => {
+    await openPwaHarness(page, { origin: "https://zockdiewandan.online", game: "hausdepp", language, pathname: "/hausdepp" });
+    await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.registerCalls)).toEqual(["/hausdepp-sw.js"]);
+    expect(await page.evaluate(() => globalThis.__pwaHarness.registerOptions)).toEqual([{ updateViaCache: "none", scope: "/hausdepp" }]);
+    expect(await page.evaluate(() => globalThis.__pwaHarness.unregisterCalls)).toBe(0);
+    expect(await page.evaluate(() => globalThis.__pwaHarness.cacheDeletes)).toEqual([]);
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", `https://zockdiewandan.online/hausdepp-manifest${language === "en" ? "-en" : ""}.webmanifest`);
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("crossorigin", "use-credentials");
+  });
+}
+
+for (const origin of ["https://zockdiewandan.online", "https://hausdepp.zockdiewandan.online", "https://zilch.zockdiewandan.online"]) {
+  test(`installed Hausdepp retains its entry through suite handoffs on ${origin}`, async ({ page }) => {
+    await openPwaHarness(page, { origin, game: "hausdepp", standalone: true, pathname: "/hausdepp?pwa=hausdepp" });
+    await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.registerCalls)).toEqual(["/hausdepp-sw.js"]);
+    for (const game of ["zdwa", "zilch", "hausdepp"]) {
+      await page.goto(`${origin}/?game=${game}`);
+      await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.registerCalls)).toEqual(["/hausdepp-sw.js"]);
+      await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("data-pwa-product", "hausdepp");
+      expect(await page.evaluate(() => globalThis.__pwaHarness.unregisterCalls)).toBe(0);
+    }
+  });
+}
+
+test("a fresh notification-opened Hausdepp app inherits its controlling worker identity", async ({ page }) => {
+  await openPwaHarness(page, {
+    origin: "https://zockdiewandan.online", game: "hausdepp", standalone: true,
+    pathname: "/hausdepp/spiel/notification-room", controllerScript: "/hausdepp-sw.js",
+  });
+  await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.registerCalls)).toEqual(["/hausdepp-sw.js"]);
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("data-pwa-product", "hausdepp");
 });
 
 test("ZDWA still registers its established root-scoped worker", async ({ page }) => {

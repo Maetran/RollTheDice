@@ -83,9 +83,14 @@ def can_access_zilch_preview(identity: AuthIdentity | None) -> bool:
     return can_account_access_zilch(username=identity.username, role=identity.role)
 
 
+def can_account_access_hausdepp(*, is_admin: bool, is_founder: bool) -> bool:
+    """Apply the same fixed owner policy to fresh account facts without a session."""
+    return bool(is_admin and is_founder)
+
+
 def can_access_hausdepp(identity: AuthIdentity | None) -> bool:
     """Only the account-ID-bound permanent founder can use this preview."""
-    return bool(identity and identity.is_admin and identity.is_founder)
+    return bool(identity and can_account_access_hausdepp(is_admin=identity.is_admin, is_founder=identity.is_founder))
 
 
 def can_access_game(identity: AuthIdentity | None, game: dict) -> bool:

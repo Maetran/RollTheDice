@@ -7,13 +7,13 @@ related_targets: ["frontend/hausdepp/index.js","frontend/hausdepp/motion.js","fr
 
 # Hausdepp lobby, table, rules and account
 
-Mode: Operate. Owner-only development for 2–6 participants, including server-controlled computers. Mobile first; portrait and landscape on phone, tablet and desktop. User selected Stammtisch-Runde explicitly on 2026-10-16. Keep the established walnut table and the supplied double-German Tell-pattern cards. Shared suite account, chat, reactions and game selection remain available. The dedicated account shows real private outcomes and links shared settings; rules include a quick start and timing examples. Points and achievement conditions remain undecided. The owner explicitly has NOT accepted the UI/UX; technical QA does not change that status.
+Mode: Operate. Owner-only development for 2–6 participants, including server-controlled computers. Mobile first; portrait and landscape on phone, tablet and desktop. User selected Stammtisch-Runde explicitly on 2026-10-16. Keep the established walnut table and the supplied double-German Tell-pattern cards. Shared suite account, chat, reactions and game selection remain available. The dedicated account shows real private outcomes and links shared settings; rules include a quick start and timing examples. The approved 100 achievements and 24-rank ladder are integrated; common achievement goals span several rounds. The owner explicitly has NOT accepted the UI/UX; technical QA does not change that status.
 
 ## Direction contract
 
 THESIS: One communal card table, with people arranged around the live pile and the player's readable hand in the foreground.
 
-OWN-WORLD: Existing walnut raster, natural ivory card faces, oxblood action accents and restrained brass turn markers; a self-hosted characterful display face with plain system UI controls. Real Tell-pattern card art carries the scene.
+OWN-WORLD: Existing walnut raster, natural ivory card faces, forest-green actions and header, card-red accents and restrained brass turn markers; bold Georgia display headings with plain system UI controls. Real Tell-pattern card art carries the scene.
 
 STORY: Choose a table or start with a computer, complete the mandatory private bottom peek one tap per card, then play by tapping a legal hand card immediately. Further same-rank taps queue behind acknowledged commands. Understand whose turn it is, when afterthrow remains possible, and who has the next refill obligation; take a chance or pick up through the physical piles.
 
@@ -91,3 +91,34 @@ account-scoped, including failed bottom peeks. See
 `docs/HAUSDEPP_ACHIEVEMENTS.md` and
 `.impeccable/review/hausdepp-achievements-validation.md`. This increment is
 local development and does not constitute owner UI/UX acceptance.
+
+
+## Current roundtable revision, 2026-10-16
+
+The owner requested a distinct Hausdepp identity and button-based navigation.
+Forest green, card paper, card red and Georgia now own the surface. Navigation
+order matches the suite: Lobby, Rangliste, Regeln, Konto. Earned achievements
+lead their existing groups. Avatars, own/remote reactions and unique names from
+a 50-name rustic CPU pool share the measured semicircle. The compact animated
+lobby hand sits beside the title; the mobile create form saves vertical space.
+Twelve generated drinks/snacks decorate free table edges with restrained motion,
+including at most one phone portrait prop or two in landscape.
+
+Current tests include actual dealt three-, five- and six-seat tables, long
+tournament prefixes, private card backs, large hands, account grouping, mobile
+button grids, PWA product isolation and founder-only monitoring. The final
+roundtable captures and localhost report identify the tested build. Historical
+review records above retain their original scope. Neither automated tests nor
+a delegated visual review constitutes owner UI/UX acceptance. The current photo
+source remains visibly softer than print-quality originals; see the native card
+quality audit and `docs/HAUSDEPP_ASSETS.md` for provenance and limitations.
+
+
+The final local roundtable evidence uses bundle `0f737870befb` and exactly 22
+manifest-listed images. A compact counter/stock-caption collision found by
+independent review was corrected and rechecked in both normal and urgent-draw
+states. A separate 850ms anonymous-back shuffle runs once before cutting and
+never locks play; reduced motion, reload and reconnect remain quiet. Detailed
+commands, test scopes and limitations are recorded in
+`docs/HAUSDEPP_LOCALHOST_TEST_2026-10-16.md`. The independent review records no
+remaining visible blocker; this is not owner UI/UX acceptance.

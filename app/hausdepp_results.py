@@ -21,6 +21,23 @@ _EVENT_ACHIEVEMENTS = {f"hausdepp_{number:02}" for number in (
 )}
 
 
+def _round_timing(started_at: object, finished_at: str) -> dict:
+    """Unknown historical starts stay unknown; never infer them from turn order."""
+    try:
+        if not isinstance(started_at, str):
+            return {}
+        start = datetime.fromisoformat(started_at)
+        if start.tzinfo is None:
+            return {}
+        start = as_utc(start)
+        elapsed = (datetime.fromisoformat(finished_at) - start).total_seconds()
+        if not 0 <= elapsed <= 30 * 24 * 60 * 60:
+            return {}
+        return {"started_at": start.isoformat(), "duration_seconds": round(elapsed, 3)}
+    except (TypeError, ValueError, OverflowError):
+        return {}
+
+
 def validate_hausdepp_evidence(raw: object, participant_ids: set[str]) -> dict:
     """Retain only bounded event awards, never hands, peeked cards or tracking state."""
     if (not isinstance(raw, dict) or type(raw.get("schema_version")) is not int
@@ -79,6 +96,11 @@ def validate_hausdepp_result(payload: object) -> dict:
     result = {"schema_version": payload["schema_version"], "payload_kind": "hausdepp_result", "game_type": HAUSDEPP_GAME_TYPE,
             "game_id": game_id, "name": name, "finished_at": finished_at,
             "participants": participants, "loser_id": loser, "finished_order": list(order)}
+    timing = _round_timing(payload.get("started_at"), finished_at)
+    duration = payload.get("duration_seconds")
+    if (timing and type(duration) in {int, float} and 0 <= duration <= 30 * 24 * 60 * 60
+            and abs(duration - timing["duration_seconds"]) <= .001):
+        result.update(timing)
     if payload["schema_version"] >= 2:
         result["achievement_evidence"] = validate_hausdepp_evidence(payload.get("achievement_evidence"), participant_ids)
     if payload["schema_version"] == 3:
@@ -130,6 +152,7 @@ def validated_hausdepp_membership(row: CompletedGame, user_id: int) -> tuple[dic
               "participants": participants}
     if "tournament" in payload:
         record["tournament"] = payload["tournament"]
+    record.update({key: payload[key] for key in ("started_at", "duration_seconds") if key in payload})
     evidence = payload.get("achievement_evidence", {}).get("players", {}).get(own["id"], {})
     facts = {"participant_count": len(participants), "cpu_count": record["cpu_count"],
              "human_count": len(participants) - record["cpu_count"], "outcome": own["outcome"],
@@ -178,6 +201,9 @@ def finalize_hausdepp_result(game: dict) -> dict:
             raw["achievement_evidence"] = state["achievement_evidence"]
         if tournament:
             raw["tournament"] = tournament
+        start = (game.get("_hausdepp_round_started_at") if tournament and tournament["round_number"] > 1
+                 else game.get("_started_at"))
+        raw.update(_round_timing(start, raw["finished_at"]))
         payload = validate_hausdepp_result(raw)
     except (KeyError, TypeError, ValueError):
         return {"result_persisted": False, "persistence_error": "hausdepp_result_invalid_outcome"}

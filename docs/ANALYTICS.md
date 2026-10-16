@@ -116,6 +116,55 @@ needing to sign out. All dashboard documents are `noindex` and `no-store`.
 - Filters use UTC calendar days: today (UTC), or today and the preceding
   6, 29 or 89 days. They are not rolling 24-hour windows.
 
+## Hausdepp preview monitoring / Hausdepp-Vorschau
+
+**Deutsch:** Hausdepp erscheint ausschliesslich beim accountgebundenen Gründer
+mit Hausdepp-Zugang. Eine Dashboard-Freigabe erweitert diesen Zugang nicht.
+Jede Statistikabfrage prüft die Berechtigung erneut. Für andere Dashboard-Konten
+umfasst auch «Beide Spiele» nur ZDWA und Zilch: Ergebnisse, Vergleichszeitraum,
+Tageswerte, Aktionen, Seiten, Länder, Besuchswechsel und aktuelle Raumzahlen
+enthalten keine Hausdepp-Werte. Verborgene Zwischenstationen erzeugen keine
+erfundenen Wechsel zwischen öffentlichen Spielseiten.
+
+Die Hausdepp-Karte zeigt gespeicherte abgeschlossene Runden, Teilnahmen,
+abgeschlossene Turniere und bekannte Rundendauern. Aktuelle Tische,
+verbundene menschliche Spieler, Computerplätze, laufende Turniere und
+Rundenpausen stammen aus dem momentanen Spielbetrieb. Server-Raum- und
+Spielerzahlen folgen dem gewählten Spielfilter; CPU, RAM und HTTP-Anfragen
+bleiben ausdrücklich gemeinsame Infrastrukturwerte.
+
+Browserbesuche von Hausdepp werden bisher nicht erfasst und deshalb als
+unbekannt angezeigt. Ältere Runden ohne Startzeit erhalten nachträglich keine
+Dauer. Die optionale Durchschnittsdauer berücksichtigt nur bekannte Angaben
+innerhalb der höchstens 2’000 neuesten Ergebnisse. Neue manuelle Abbrüche und
+Inaktivitätsabbrüche werden über ein festes Serverereignis erfasst; mehrfache
+Zustellversuche zählen durch einen Hash zur Deduplizierung nur einmal. Das
+Ereignis enthält weder Namen noch Karten, Einblicke oder Erfolgsdaten.
+Die normale Ereignisaufbewahrung und deren Kapazitätsgrenzen gelten auch hier.
+Frühere Abbrüche werden nicht nachgetragen; verlorene Telemetrie wird nicht
+aus Spielergebnissen erfunden.
+
+**English:** Hausdepp is available only to the account-bound founder with
+Hausdepp access. A dashboard grant does not grant this preview. Each statistics
+request checks the current capability. Other dashboard readers receive only
+ZDWA/Zilch data, including combined totals, comparisons, daily counts, actions,
+pages, countries, journeys and live rooms. Hidden intermediate pages do not
+create invented transitions between public game pages.
+
+The Hausdepp card shows persisted completed rounds, participations, completed
+tournaments and known round durations. Live tables, connected human players,
+computer seats, active tournaments and round breaks come from current runtime
+state. Server room/player totals follow the game filter; CPU, memory and HTTP
+request figures remain explicitly shared infrastructure totals.
+
+Hausdepp browser visits have not been measured and are shown as unavailable.
+Older rounds without timing evidence are not assigned a duration. Optional
+duration averages inspect at most the newest 2,000 results. New manual and
+inactivity aborts use a fixed server event with a hashed deduplication key;
+retries count once. No names, cards, peeks or achievement data are exposed.
+Normal event retention and capacity limits apply. Earlier aborts are not
+backfilled, and missing telemetry is never fabricated from completed results.
+
 ## Visual analysis
 
 - The dashboard's own design switcher selects Mission Control, LCARS or

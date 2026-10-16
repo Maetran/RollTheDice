@@ -94,6 +94,12 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
                 f"/static/icons/zilch-icon-512.png?v={version}",
             ],
         )
+        for filename in ("hausdepp-manifest.webmanifest", "hausdepp-manifest-en.webmanifest"):
+            hausdepp_manifest = json.loads((main.BASE / filename).read_text())
+            self.assertEqual([icon["src"] for icon in hausdepp_manifest["icons"]], [
+                f"/static/icons/hausdepp-icon-192.png?v={version}",
+                f"/static/icons/hausdepp-icon-512.png?v={version}",
+            ])
         zilch_shells = {"zilch.html", "zilch-lobby.html", "zilch-rules.html", "zilch-login.html", "zilch-unavailable.html"}
         for html_path in main.STATIC_DIR.glob("*.html"):
             html = html_path.read_text()
@@ -104,6 +110,10 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
                     html,
                     html_path.name,
                 )
+                continue
+            if html_path.name in PRIVATE_HAUSDEPP_DOCUMENTS.values():
+                self.assertIn(f"/static/icons/hausdepp-icon-32.png?v={version}", html, html_path.name)
+                self.assertIn(f"/static/icons/hausdepp-apple-touch-icon-180.png?v={version}", html, html_path.name)
                 continue
             self.assertIn(f"/static/favicon.png?v={version}", html, html_path.name)
             self.assertIn(f"/static/icons/apple-touch-icon-180.png?v={version}", html, html_path.name)

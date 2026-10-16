@@ -62,7 +62,9 @@ Der erste Zugang bleibt auch auf der eigenen Subdomain Owner-/Founder-gebunden.
 
 ### Gestaltung und Plattformen
 
-Die Gestaltung wird mit Impeccable entwickelt. Hausdepp bekommt ein eigenes
+Die Gestaltung ist ursprünglich mit Impeccable geplant. Das Plugin ist in der
+aktuellen Sitzung nicht verfügbar; die jetzige Ausführung wird direkt im Browser
+geprüft und im Designvertrag dokumentiert. Hausdepp bekommt ein eigenes
 visuelles Erscheinungsbild; die Wirtshaustisch-Atmosphäre von Zilch und die
 angegebenen Karten bilden die gestalterischen Bezugspunkte. Die Bedienung wird
 zuerst für Mobilgeräte entworfen und muss im Hoch- und Querformat auf
@@ -309,11 +311,32 @@ Auswahlfenster am unteren Rand. Hausdepp bleibt Owner-gebunden; installierte
 Apps behalten beim Wechsel ihren bestehenden Ursprung und Service Worker.
 
 Die Lobby zeigt eigene offene Tische mit Spielstatus und belegten Plätzen.
+Neue Tische erhalten beim Erstellen automatisch einen zufälligen Wirtshausnamen
+aus 50 Varianten mit dem aktuellen Kontonamen, etwa „Manis Gsuff“. Es gibt kein
+zusätzliches Namensfeld; im Turnier bleibt der einmal gewählte Tischname bestehen.
 Beim Erstellen zählen Menschen und Computer gemeinsam zur gewählten Tischgrösse;
 das eigene Konto belegt genau einen menschlichen Platz. Ein Wartetisch zeigt,
 wie viele Menschen noch fehlen. Der Tischlink kann kopiert werden; die
 Owner-Freigabe wird beim Öffnen weiterhin serverseitig geprüft. Wiederaufnahme
 führt an denselben Sitz zurück.
+
+An einem ungeschützten Wartetisch kann ein sitzender Spieler ausdrücklich per
+**Mitspieler-Ruf** nach weiteren Menschen suchen. Freie Computerplätze zählen
+dabei nicht als einladbare Plätze. Es gelten dieselben Kontoeinstellungen wie
+in ZDWA und Zilch: Browser-/Gerätefreigabe, aktivierte Mitspieler-Rufe und die
+private Absenderauswahl. Sender und Empfänger müssen bei der Anfrage und vor
+dem Versand weiterhin für Hausdepp freigegeben sein; Selbstbenachrichtigungen
+sind ausgeschlossen. Der Ruf zeigt auf einem Push-fähigen Gerät eine
+Systembenachrichtigung mit Hausdepp-Icon, die direkt zum Tisch führt.
+
+Die gemeinsamen Einstellungen unter `/konto#settings` übernehmen die
+Geräteanmeldung und getrennten Push-Kategorien. Eine tägliche Hausdepp-Erinnerung
+ist damit nicht zugesagt. Ein Konto kann höchstens einmal pro Minute rufen,
+auch spielübergreifend. Nach einem Versandversuch gilt zusätzlich die
+zehnminütige Raumsperre. Ohne erreichbare freigegebene Empfänger bleibt die
+Minutensperre bestehen; es werden keine Namen oder Abonnentenzahlen angezeigt.
+Teilen oder Kopieren des Tischlinks ist ein eigener aktiver Vorgang und löst
+keinen automatischen Push aus. Der Link hebt die Zugangsbeschränkung nicht auf.
 
 Unter **`/hausdepp/konto`** verwendet Hausdepp das bestehende Suite-Konto und
 zeigt ausschliesslich dessen eigene gespeicherte Ergebnisse. Die Übersicht
@@ -362,8 +385,11 @@ Der Host kann das Turnier zwischen Runden ausdrücklich beenden. Die bereits
 abgeschlossenen Runden, Siege und EP bleiben bestehen; es entstehen kein
 Tages-Hausdepp und keine abschliessenden Turniererfolge. Auch für die Wartezeit
 zwischen Runden gilt die einstündige Inaktivitätsfrist. Ein Turnier gibt keine
-zusätzlichen wiederholbaren EP: Es zählen weiterhin 10 EP je abgeschlossener
-Runde und die jeweils einmaligen Erfolge. Die neuen Comeback-, Karten- und
+zusätzlichen wiederholbaren EP: Jede abgeschlossene Runde gibt 10 EP nur mit
+Menschen oder 2 EP, sobald mindestens ein Computer mitspielt (75 % Reduktion,
+je Runde auf ganze EP abgerundet). Auch ein
+gemischter Tisch zählt als Runde mit Computer. Abschliessende Turniererfolge
+behalten ihre volle einmalige EP-Belohnung. Die neuen Comeback-, Karten- und
 Turniererfolge ergänzen die ursprünglichen 64 zum Gesamtkatalog von 100.
 
 ### Noch offene Entscheidungen
@@ -375,7 +401,7 @@ Die Bereiche sind wie folgt abgegrenzt:
 | --- | --- | --- |
 | Lobby und Tisch | Echte Mehrspielerpartien, Computer-Mitspieler, Owner-Freigabe, Tischstatus, direkte Aktionen | UI-/UX-Abnahme und weitere Verfeinerungen nach Spieltests |
 | Regeln | Vollständige DE-/EN-Hausregeln mit Schnellstart, Beispielen und Sprungmarken | Verständlichkeitsprüfung durch den Owner |
-| Punkte | 10 EP je abgeschlossener Runde und einmalige Erfolgsbelohnungen von 10/25/50/100 EP | Weiteres Balancing nach Spieltests |
+| Punkte | Je abgeschlossener Runde 10 EP nur mit Menschen oder 2 EP mit mindestens einem Computer (75 % Reduktion, abgerundet); Erfolge einmalig volle 10/25/50/100 EP | Weiteres Balancing nach Spieltests |
 | Achievements | Bestätigter Katalog mit 100 Erfolgen, 24 Rängen und eigenen Aufstiegssprüchen | UI-/UX-Abnahme und weitere Spieltests |
 | Konto | Private Statistik und Historie, EP, Rangfortschritt, Rangleiter und filterbare Erfolgssammlung | UI-/UX-Abnahme |
 | Chat und Reaktionen | Gemeinsame Suite-Funktionen am Tisch und Lobbychat | Weitere Verfeinerungen nach Spieltests |
@@ -385,12 +411,26 @@ Die Bereiche sind wie folgt abgegrenzt:
 ### Bestätigte Punkte, Erfolge und Ränge
 
 Der Owner hat den [Katalog mit 100 Erfolgen und 24 Rängen](HAUSDEPP_ACHIEVEMENTS.md)
-freigegeben. Jede regulär abgeschlossene Runde gibt dem beteiligten Konto
-**10 Erfahrungspunkte (EP)**, unabhängig davon, ob es fertig oder Hausdepp der
-Runde geworden ist. Jeder Erfolg gibt einmalig **10, 25, 50 oder 100 EP**.
-Mehrere Erfolge können in derselben Runde freigeschaltet werden. Es gibt keine
-Minuspunkte und keinen wiederholbaren Zusatzbonus fürs Verlieren. Runden mit
-Computer-Mitspielern zählen; Computer selbst haben kein Punktekonto.
+freigegeben. Jede regulär abgeschlossene Runde nur mit Menschen gibt dem
+beteiligten Konto **10 Erfahrungspunkte (EP)**. Sobald mindestens ein Computer
+am Tisch mitspielt, wird die Basis um 75 % reduziert und **je Runde auf ganze
+EP abgerundet: 2 EP**.
+Das gilt auch für gemischte Tische und für jede einzelne abgeschlossene
+Turnierrunde, unabhängig davon, ob das Konto fertig oder Hausdepp der Runde
+geworden ist. Es gibt keine Bruchteile: Drei Runden mit Computer ergeben
+zusammen 6 Runden-EP.
+
+Jeder Erfolg gibt weiterhin einmalig seine vollen **10, 25, 50 oder 100 EP**,
+auch mit Computer und bei Turniererfolgen. Mehrere Erfolge können in derselben
+Runde freigeschaltet werden. Es gibt keine Minuspunkte und keinen wiederholbaren
+Zusatzbonus fürs Verlieren. Abgeschlossene Runden und Siege zählen weiterhin
+voll in der Statistik; bestehende Freischaltungen werden nicht erneut vergeben
+oder durch die geänderte Rundenbelohnung entfernt. Computer selbst haben kein
+Punktekonto.
+
+Die neue Gewichtung gilt auch für belegte bereits abgeschlossene Runden mit
+Computer. Deren Runden-EP werden neu berechnet; Rundenhistorie, Siege,
+Erfolgsbelohnungen und erreichte Erfolgsanzahl bleiben erhalten.
 
 Die dauerhafte Leiter beginnt bei **Einstein mit 0 EP** und endet bei
 **Hausdepp mit 5’000 EP**. Der dauerhafte Titel bleibt getrennt vom **Hausdepp
@@ -413,7 +453,11 @@ entstandene Erfolge bleiben im eigenen Konto.
 
 Das Konto zeigt Runden- und Erfolgs-EP getrennt, den nächsten Rang, die ganze
 Rangleiter sowie eine durchsuchbare Sammlung mit Status, Bedingungen und
-Fortschritt. Jeder Rang hat einen eigenen ursprünglichen DE-/EN-Spruch, keine
+Fortschritt. Innerhalb jeder Gruppe stehen erreichte Erfolge oben, offene
+darunter. Häufige Ziele zählen passende unterschiedliche abgeschlossene Runden,
+höchstens einmal je Runde und Ziel. Seltene Einzelkunststücke bleiben unmittelbar
+erreichbar; es gibt kein pauschales Freischaltungslimit und keine spätere
+Warteschlange von Erfolgen. Jeder Rang hat einen eigenen ursprünglichen DE-/EN-Spruch, keine
 als historisch ausgegebenen Zitate. Der allgemeine Aufstiegstext lautet
 **„Gratuliere! Dem Hausdepp wieder einen Schritt näher.“** Newton ergänzt
 **„Ab jetzt geht’s bergab. Ganz nach den Naturgesetzen.“**, der Schlussrang
@@ -484,7 +528,9 @@ the dedicated subdomain will also remain bound to the owner/founder account.
 
 ### Design and platforms
 
-The design is developed with Impeccable. Hausdepp receives its own visual
+The design was originally planned with Impeccable. The plugin is unavailable in
+this session; the current implementation is checked directly in the browser
+and documented in the design contract. Hausdepp receives its own visual
 identity, drawing on Zilch's tavern-table atmosphere and the specified playing
 cards. Interaction is designed mobile first and must work in portrait and
 landscape on phones, tablets and desktop devices.
@@ -708,11 +754,30 @@ current game. Its trigger names Hausdepp while Hausdepp is open. Tap or press
 bottom sheet. Hausdepp remains owner-bound; installed apps retain their
 existing origin and service worker when switching.
 
-The lobby shows your open tables with game status and occupied seats. Humans
+The lobby shows your open tables with game status and occupied seats. New
+tables automatically receive a random tavern-style name from 50 variants built
+around the current account name, such as “Mani’s nightcap”. No separate name
+field is needed; the chosen table name remains throughout a tournament. Humans
 and computers together fill the selected table size; your account occupies one
 human seat. A waiting table shows how many humans are still needed. Its link
 can be copied; opening it still requires server-side owner access. Resuming
 returns to the same seat.
+
+At an unprotected waiting table, a seated player can explicitly **call for
+players** when human seats remain open. Computer seats are not invitable.
+The same settings apply as in ZDWA and Zilch: browser/device permission,
+enabled player calls and the private sender allowlist. Both sender and
+recipient must retain Hausdepp access when requested and before dispatch;
+self-notifications are excluded. On a push-capable device, the call displays
+a system notification with Hausdepp's icon and a direct link to the table.
+
+Shared settings at `/konto#settings` handle device registration and separate
+push categories. This does not promise a daily Hausdepp reminder. An account
+can call at most once a minute across games. A delivery attempt additionally
+starts the table's ten-minute cooldown. With no reachable authorized recipients,
+the account's minute cooldown remains; no names or subscriber counts are shown.
+Sharing or copying a table link is a separate explicit action and never sends
+an automatic push. The link does not bypass access restrictions.
 
 At **`/hausdepp/konto`**, Hausdepp reuses the existing suite account and shows
 only that account's own saved results. The overview counts completed rounds,
@@ -756,8 +821,10 @@ exact session state.
 The host can explicitly end the tournament between rounds. Completed rounds,
 wins and XP remain, but there is no day's Hausdepp or final tournament award.
 The one-hour inactivity deadline also applies between rounds. Tournaments add
-no repeatable XP bonus: each completed round still grants 10 XP, with one-time
-achievement rewards separately. The added comeback, card and tournament feats
+no repeatable XP bonus: each completed all-human round grants 10 XP, or exactly
+2 XP if any computer is at the table, including mixed tables: a 75% reduction
+of the base reward, rounded down separately for each round. Final tournament
+achievements retain their full one-time XP reward. The added comeback, card and tournament feats
 extend the original 64 achievements to a catalogue of 100.
 
 ### Remaining decisions
@@ -769,7 +836,7 @@ The areas have the following boundaries:
 | --- | --- | --- |
 | Lobby and table | Real multiplayer rounds, computer opponents, owner access, table status, direct actions | UI and UX acceptance and further playtest refinements |
 | Rules | Complete German/English house rules with quick start, examples and anchors | Owner review for clarity |
-| Points | 10 XP per completed round and one-time achievement rewards of 10/25/50/100 XP | Further balancing after playtests |
+| Points | Per completed round: 10 XP for all-human tables or 2 XP with any computer (75% reduction, rounded down); full one-time achievement rewards of 10/25/50/100 XP | Further balancing after playtests |
 | Achievements | Approved catalogue of 100 achievements, 24 ranks and individual sayings | UI and UX acceptance and further playtests |
 | Account | Private facts/history, XP, rank progress, complete ladder and filterable achievement collection | UI and UX acceptance |
 | Chat and reactions | Shared suite features at the table and lobby chat | Further playtest refinements |
@@ -779,11 +846,22 @@ The areas have the following boundaries:
 ### Approved points, achievements and ranks
 
 The owner approved the [100-achievement and 24-rank catalogue](HAUSDEPP_ACHIEVEMENTS.md).
-Every regular completed round gives each participating human account **10
-experience points (XP)**, regardless of the round outcome. Each achievement
-grants **10, 25, 50 or 100 XP once**; multiple achievements may unlock together.
-There are no negative points or repeatable losing bonus. Computer opponents
-count as participants; computers have no XP account.
+Each regular completed all-human round gives every participating account **10
+experience points (XP)**. Any computer seat reduces the base round reward by
+75%, then rounds it down **per round to 2 XP**. This includes mixed tables and
+every individual completed tournament round, regardless of the account's
+outcome. No fractions are awarded: three rounds with a computer give 6 round XP.
+
+Each achievement still grants its full **10, 25, 50 or 100 XP once**, including
+computer and tournament achievements. Multiple achievements may unlock
+together. There are no negative points or repeatable losing bonus. Completed
+rounds and wins still count fully in statistics. Existing unlocks are neither
+granted again nor removed by the changed round reward. Computers have no XP
+account.
+
+The new weighting also applies to proven previously completed rounds with
+computers. Their round XP is recalculated; round history, wins, achievement
+rewards and the number of unlocked achievements are retained.
 
 The lasting ladder runs from **Einstein at 0 XP** to **Hausdepp at 5,000 XP**.
 The lasting title remains separate from the **Hausdepp of an individual round**.
@@ -802,8 +880,11 @@ running rounds without complete evidence receive no invented tactical feats.
 Private bottom-inspection facts and their awards remain in the owner's account.
 
 The account itemizes round and achievement XP, next-rank progress, the complete
-ladder and a searchable collection with conditions, status and progress. Every
-rank has original German/English flavour copy, with no fabricated historical
+ladder and a searchable collection with conditions, status and progress. Earned
+achievements lead each group. Common goals count distinct qualifying completed
+rounds, at most once per round and goal; rare feats remain immediately attainable.
+There is no artificial unlock cap or deferred award queue. Every rank has
+original German/English flavour copy, with no fabricated historical
 attribution. The general greeting celebrates another step closer to Hausdepp;
 Newton adds the approved downhill/natural-laws joke. Skipped ranks and new
 awards are consolidated. Acknowledgement applies account-wide only through the

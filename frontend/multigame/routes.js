@@ -1,5 +1,6 @@
 export const ZDWA_PRODUCTION_ORIGIN = "https://zockdiewandan.online";
 export const ZILCH_PRODUCTION_HOST = "zilch.zockdiewandan.online";
+export const HAUSDEPP_PRODUCTION_HOST = "hausdepp.zockdiewandan.online";
 
 const ZDWA_PRODUCTION_HOSTS = new Set([
   "zockdiewandan.online",
@@ -47,7 +48,7 @@ export function isProductionZdwaLocation(locationLike = window.location) {
 export function isZilchHostedZdwaLocation(locationLike = window.location) {
   const location = activeLocation(locationLike);
   const pathname = String(location.pathname || "/");
-  return isProductionZilchLocation(location)
+  return (isProductionZilchLocation(location) || location.hostname === HAUSDEPP_PRODUCTION_HOST)
     && (pathname === ZDWA_PWA_BRIDGE_PREFIX || pathname.startsWith(`${ZDWA_PWA_BRIDGE_PREFIX}/`));
 }
 
@@ -131,7 +132,7 @@ export function zdwaPath(route = "/", locationLike = window.location) {
  */
 export function zdwaRoutePath(pathname = window.location.pathname, locationLike = window.location) {
   const raw = String(pathname || "/");
-  if (!isProductionZilchLocation(locationLike)) return normalizedZdwaRoute(raw);
+  if (!isProductionZilchLocation(locationLike) && locationLike.hostname !== HAUSDEPP_PRODUCTION_HOST) return normalizedZdwaRoute(raw);
   if (raw === ZDWA_PWA_BRIDGE_PREFIX || raw === `${ZDWA_PWA_BRIDGE_PREFIX}/`) return "/";
   if (!raw.startsWith(`${ZDWA_PWA_BRIDGE_PREFIX}/`)) return null;
   return normalizedZdwaRoute(raw);
@@ -189,10 +190,11 @@ export function zilchAppEntryUrl(route = "/", locationLike = window.location, en
 }
 
 export function zdwaAppEntryUrl(locationLike = window.location, environmentLike = globalThis) {
-  if (isProductionZilchLocation(locationLike) && isStandalonePwa(environmentLike)) {
+  const suiteHost = isProductionZilchLocation(locationLike) || locationLike.hostname === HAUSDEPP_PRODUCTION_HOST;
+  if (suiteHost && isStandalonePwa(environmentLike)) {
     return ZDWA_PWA_BRIDGE_PREFIX;
   }
-  return isProductionZilchLocation(locationLike) || isProductionZdwaLocation(locationLike)
+  return suiteHost || isProductionZdwaLocation(locationLike)
     ? `${ZDWA_PRODUCTION_ORIGIN}/`
     : "/";
 }

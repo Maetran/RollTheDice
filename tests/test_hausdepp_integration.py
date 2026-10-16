@@ -410,7 +410,7 @@ class HausdeppIntegrationTests(unittest.TestCase):
             self.assertEqual(invalid.status_code, 400)
             self.assertEqual(invalid.json()["detail"], "hausdepp_invalid_cursor")
 
-    def test_preview_emits_no_friend_activity_push_invites_or_admin_help(self):
+    def test_started_preview_emits_no_friend_activity_push_invites_or_admin_help(self):
         from app.admin_help import create_help_request, help_status
         from app.friend_activity import _recipient_payload
         from app.security import utcnow
@@ -419,7 +419,7 @@ class HausdeppIntegrationTests(unittest.TestCase):
         game = self.game()
         self.assertIsNone(_recipient_payload(game, self.identity, now=utcnow()))
         self.assertEqual(game_invite_push_recipients(game, sender_user_id=self.founder.id), [])
-        self.assertEqual(open_seat_invitation_error(game, user_id=self.founder.id), "game_invite_private_room")
+        self.assertEqual(open_seat_invitation_error(game, user_id=self.founder.id), "game_invite_not_waiting")
         self.assertFalse(help_status(self.founder.id, game["_id"])["can_request"])
         with self.assertRaises(HTTPException) as denied:
             create_help_request(game["_id"], self.founder.id)

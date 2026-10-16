@@ -92,7 +92,7 @@ function watchGame(page) {
 async function createCpuTable(page, traffic, { players = 2, cpu = 1, resolvePeek = true } = {}) {
   await page.goto('/hausdepp');
   await expect(page.locator('#hausdeppCreateForm')).toBeVisible();
-  await page.locator('#hausdeppCreateForm [name="name"]').fill('Browser-Stammtisch');
+  await expect(page.locator('#hausdeppCreateForm [name="name"]')).toHaveCount(0);
   await page.locator('#hausdeppCreateForm [name="players"]').selectOption(String(players));
   await page.locator('#hausdeppCreateForm [name="cpu_count"]').selectOption(String(cpu));
   const commandsBefore = traffic.commands.length;
@@ -186,7 +186,9 @@ async function expectOpponentHands(page, state, name = 'table') {
     const count = Number(opponent.hand_count || 0);
     await expect(hand, `${name}: ${opponent.name} hand`).toHaveAttribute('data-card-count', String(count));
     await expect(hand.locator('.hd-opponent-card'), `${name}: one back for each real card`).toHaveCount(count);
-    await expect(hand.locator('[data-card-id], svg, img')).toHaveCount(0);
+    // Account avatars and the computer's neutral card icon belong to the
+    // identity badge. Every other descendant must remain a private card back.
+    await expect(hand.locator('[data-card-id], svg:not(.hd-seat-avatar svg), img:not(.hd-seat-avatar img)')).toHaveCount(0);
     await expect(hand).toHaveAttribute('aria-hidden', 'true');
     const label = await seat.getAttribute('aria-label');
     expect(label).toContain(opponent.name);
@@ -392,7 +394,7 @@ for (const language of ['de', 'en']) {
     const playerId = traffic.state.viewer_id;
     await expect(page.locator('html')).toHaveAttribute('lang', language);
     await expect(page.locator('#hausdeppStatus')).toHaveAttribute('role', 'status');
-    await expect(page.locator('#hausdeppPlayers')).toContainText(/CPU/);
+    await expect(page.locator('#hausdeppPlayers')).toContainText(traffic.state.players.find(player => player.is_cpu).name);
     await expectNaturalSortedHand(page);
     await expectOpponentHands(page, traffic.state, language);
 
@@ -646,20 +648,49 @@ test('a six-seat table keeps all five opponents inside mobile and tablet widths'
     }
     if (name === 'tablet-landscape') {
       const geometry = await page.evaluate(() => {
-        const seatBottom = Math.max(...[...document.querySelectorAll('#hausdeppPlayers .hd-seat')]
-          .map(seat => seat.getBoundingClientRect().bottom));
-        const stockTop = document.querySelector('#hausdeppStock').getBoundingClientRect().top;
-        const pileTop = document.querySelector('#hausdeppPile').getBoundingClientRect().top;
+        const seats = [...document.querySelectorAll('#hausdeppPlayers .hd-seat')]
+          .map(seat => seat.getBoundingClientRect());
+        const controls = ['#hausdeppStock', '#hausdeppPile']
+          .map(selector => document.querySelector(selector).getBoundingClientRect());
         return {
-          seatBottom, stockTop, pileTop, gap: Math.min(stockTop, pileTop) - seatBottom,
+          overlap: seats.some(seat => controls.some(card => seat.left < card.right - 1
+            && seat.right > card.left + 1 && seat.top < card.bottom - 1 && seat.bottom > card.top + 1)),
           handBottom: document.querySelector('#hausdeppHand').getBoundingClientRect().bottom,
           viewportHeight: innerHeight,
         };
       });
       console.log('Hausdepp six-seat tablet landscape geometry:', JSON.stringify(geometry));
-      expect(geometry.gap, 'tablet landscape: cards clear every opponent label by at least four pixels').toBeGreaterThanOrEqual(4);
+      expect(geometry.overlap, 'tablet landscape: semicircle seats leave both piles clear').toBe(false);
       expect(geometry.handBottom, 'tablet landscape: six-seat hand remains visible').toBeLessThanOrEqual(viewport.height + 1);
     }
+  }
+});
+
+test('labelled six-seat tournament keeps long prefixes clear of both piles', async ({ page }) => {
+  test.setTimeout(60000);
+  await ownerSession(page);
+  const traffic = watchGame(page);
+  const room = await createCpuTable(page, traffic, { players: 6, cpu: 5 });
+  const fixture = structuredClone(traffic.scoreboard);
+  fixture._name = 'UI-Test · Turnier mit sieben Buchstaben';
+  fixture._hausdepp_tournament = {
+    id: 'labelled-prefix-layout', round_number: 43, target_word: 'HAUSDEPP', completed: false,
+    letters: Object.fromEntries(fixture._hausdepp.players.map(player => [player.id, 'HAUSDEP'])),
+    losses: Object.fromEntries(fixture._hausdepp.players.map(player => [player.id, 7])),
+    round_complete: false, can_start_next_round: false, tages_hausdepp_id: null,
+  };
+  await installUiFixture(page, room, fixture);
+  for (const [name, viewport] of [VIEWPORTS[6], VIEWPORTS[0], VIEWPORTS[1], VIEWPORTS[3]]) {
+    await page.setViewportSize(viewport);
+    await page.goto(room);
+    await expect(page.locator('.hd-seat .hd-tournament-prefix')).toHaveCount(5);
+    const overlapping = await page.evaluate(() => {
+      const seats = [...document.querySelectorAll('.hd-seat')].map(node => node.getBoundingClientRect());
+      const piles = ['hausdeppStock', 'hausdeppPile'].map(id => document.getElementById(id).getBoundingClientRect());
+      return seats.some(seat => piles.some(pile => seat.left < pile.right - 1 && seat.right > pile.left + 1
+        && seat.top < pile.bottom - 1 && seat.bottom > pile.top + 1));
+    });
+    expect(overlapping, `${name}: long tournament prefixes leave both card piles clear`).toBe(false);
   }
 });
 
@@ -1111,6 +1142,212 @@ async function captureCardContactSheet(page) {
     await mkdir('.impeccable/review', { recursive: true });
     await page.screenshot({ path: '.impeccable/review/hausdepp-hands-all-36-card-art-contact-sheet.png', fullPage: true });
 }
+
+test('lobby demo is a compact local hand and keeps bounded card changes away from real games', async ({ page }) => {
+  await ownerSession(page);
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.clock.install();
+  const gameWrites = [];
+  page.on('request', request => {
+    if (request.method() !== 'GET' && /\/api\/games(?:\?|$|\/)/.test(request.url())) gameWrites.push(request.url());
+  });
+  await page.goto('/hausdepp');
+  const demo = page.locator('.hd-lobby-cards');
+  await expect(demo).toHaveAttribute('aria-hidden', 'true');
+  await expect(demo.locator('.hausdepp-card')).toHaveCount(3);
+  await expect(demo.locator('button, a')).toHaveCount(0);
+  const initial = await demo.locator('[data-card-id]').evaluateAll(nodes => nodes.map(node => node.dataset.cardId));
+  const geometry = await page.evaluate(() => {
+    const heading = document.querySelector('.hd-welcome h1').getBoundingClientRect();
+    const cards = document.querySelector('.hd-lobby-cards').getBoundingClientRect();
+    return { titleRight: heading.right, cardsLeft: cards.left, cardsTop: cards.top,
+      titleTop: heading.top, formTop: document.querySelector('.hd-create').getBoundingClientRect().top,
+      overflow: document.documentElement.scrollWidth - innerWidth };
+  });
+  expect(geometry.cardsLeft).toBeGreaterThanOrEqual(geometry.titleRight);
+  expect(Math.abs(geometry.cardsTop - geometry.titleTop)).toBeLessThan(85);
+  expect(geometry.formTop, 'A phone can reach the start form in its first screen').toBeLessThan(500);
+  expect(geometry.overflow).toBeLessThanOrEqual(1);
+  await page.clock.fastForward(4500);
+  await expect(demo).toHaveAttribute('data-demo-step', '1');
+  expect(await demo.locator('[data-card-id]').evaluateAll(nodes => nodes.map(node => node.dataset.cardId))).not.toEqual(initial);
+  for (let turn = 0; turn < 12; turn += 1) {
+    await page.clock.fastForward(4100);
+    const count = Number(await demo.getAttribute('data-demo-count'));
+    expect(count).toBeGreaterThanOrEqual(3);
+    expect(count).toBeLessThanOrEqual(8);
+  }
+  expect(gameWrites).toEqual([]);
+});
+
+test('reduced motion leaves the lobby demonstration hand still', async ({ page }) => {
+  await ownerSession(page, 'en');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.clock.install();
+  await page.goto('/hausdepp');
+  const demo = page.locator('.hd-lobby-cards');
+  await expect(demo.locator('.hausdepp-card')).toHaveCount(3);
+  const initial = await demo.innerHTML();
+  await page.clock.fastForward(20000);
+  expect(await demo.innerHTML()).toBe(initial);
+  await expect(demo).not.toHaveAttribute('data-demo-step');
+});
+
+test('seeded local demo refills only below three and throws matching pairs from one physical deck', async ({ page }) => {
+  await ownerSession(page);
+  await page.addInitScript(() => {
+    let seed = 123456789;
+    Math.random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+  });
+  await page.clock.install();
+  await page.goto('/hausdepp');
+  const observed = { pair: 0, pickup: 0, bulkPickup: 0, largeNoRefill: 0, refill: 0 };
+  for (let turn = 0; turn < 60; turn += 1) {
+    await page.clock.fastForward(4100);
+    const state = await page.locator('.hd-lobby-cards').evaluate(node => ({
+      action: node.dataset.demoAction, before: Number(node.dataset.demoBefore), count: Number(node.dataset.demoCount),
+      topBefore: node.dataset.demoTopBefore,
+      out: JSON.parse(node.dataset.demoOut), incoming: JSON.parse(node.dataset.demoIn),
+      unique: Number(node.dataset.demoLedger), total: Number(node.dataset.demoLedgerSize),
+      shown: [...node.querySelectorAll('[data-card-id]')].map(card => card.dataset.cardId),
+    }));
+    expect(state.unique).toBe(36);
+    expect(state.total).toBe(36);
+    expect(typeof state.topBefore).toBe('string');
+    expect(new Set(state.shown).size).toBe(state.shown.length);
+    expect(state.count).toBeGreaterThanOrEqual(3);
+    expect(state.count).toBeLessThanOrEqual(8);
+    if (state.action === 'new-round') continue;
+    expect(state.count).toBe(state.before - state.out.length + state.incoming.length);
+    if (state.action === 'pickup') {
+      observed.pickup += 1;
+      expect(state.out).toEqual([]);
+      expect(state.incoming.length).toBeGreaterThanOrEqual(1);
+      expect(state.incoming.length).toBeLessThanOrEqual(5);
+      if (state.incoming.length >= 3) observed.bulkPickup += 1;
+    } else {
+      expect([1, 2]).toContain(state.out.length);
+      const ranks = ['6', '7', '8', '9', 'U', 'O', 'K', 'A', '10'];
+      for (const card of state.out) {
+        const rank = card.split('-')[1];
+        expect(!state.topBefore || rank === '10' || ranks.indexOf(rank) >= ranks.indexOf(state.topBefore.split('-')[1]),
+          `${card} must legally beat or match ${state.topBefore || 'the empty table'}`).toBe(true);
+      }
+      if (state.out.length === 2) {
+        observed.pair += 1;
+        expect(state.out[0].split('-')[1]).toBe(state.out[1].split('-')[1]);
+      }
+      const refill = Math.max(0, 3 - (state.before - state.out.length));
+      expect(state.incoming).toHaveLength(refill);
+      if (state.before > 3 && state.out.length === 1) observed.largeNoRefill += 1;
+      if (refill) observed.refill += 1;
+    }
+  }
+  for (const [kind, count] of Object.entries(observed)) expect(count, `${kind} was exercised by the seeded demo`).toBeGreaterThan(0);
+});
+
+for (const language of ['de', 'en']) {
+  test(`${language}: creating a table chooses a personal name without another form field`, async ({ page }) => {
+    const user = await ownerSession(page, language);
+    await page.goto('/hausdepp');
+    await expect(page.locator('#hausdeppCreateForm [name="name"]')).toHaveCount(0);
+    await page.locator('#hausdeppCreateForm [name="cpu_count"]').selectOption('0');
+    const creation = page.waitForRequest(request => request.method() === 'POST' && new URL(request.url()).pathname === '/api/games');
+    await page.locator('#hausdeppCreate').click();
+    const payload = (await creation).postDataJSON();
+    expect(payload.name).toContain(user.username);
+    expect(payload.name).not.toBe(user.username);
+    expect([...payload.name].length).toBeLessThanOrEqual(80);
+    await expect(page).toHaveURL(/\/hausdepp\/spiel\/[^/]+$/);
+    await expect(page.locator('#hausdeppRoomName')).toHaveText(payload.name);
+    await expect(page.locator('#hausdeppWaiting')).toBeVisible();
+  });
+
+  test(`${language}: compact phone creation form keeps a larger hand beside the title`, async ({ page }) => {
+    await ownerSession(page, language);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
+      await page.setViewportSize(viewport);
+      await page.goto('/hausdepp');
+      await expect(page.locator('#hausdeppCreate')).toBeVisible();
+      const layout = await page.evaluate(() => {
+        const panel = document.querySelector('.hd-create');
+        const hand = document.querySelector('.hd-lobby-cards');
+        const card = hand.querySelector('.hausdepp-card');
+        const rect = node => { const r = node.getBoundingClientRect(); return { top: r.top, left: r.left, right: r.right, width: r.width, height: r.height }; };
+        return { panel: rect(panel), title: rect(document.querySelector('.hd-welcome h1')), hand: rect(hand),
+          cardWidth: card.offsetWidth, padding: parseFloat(getComputedStyle(panel).paddingTop),
+          targets: [...panel.querySelectorAll('select, input:not([type="radio"]), button, .hd-game-format label')]
+            .map(node => node.getBoundingClientRect().height),
+          overflow: document.documentElement.scrollWidth - innerWidth };
+      });
+      expect(layout.padding).toBeLessThanOrEqual(16);
+      expect(layout.panel.height, `${viewport.width}: complete compact form`).toBeLessThan(750);
+      expect(layout.panel.top, `${viewport.width}: start form remains close to the top`).toBeLessThan(viewport.width > viewport.height ? 250 : 530);
+      expect(layout.cardWidth).toBeGreaterThanOrEqual(viewport.width > viewport.height ? 90 : 72);
+      expect(layout.cardWidth / layout.hand.width, 'The hand uses its reserved upper-right space').toBeGreaterThan(.6);
+      expect(layout.hand.left).toBeGreaterThanOrEqual(layout.title.right);
+      expect(layout.overflow).toBeLessThanOrEqual(1);
+      for (const height of layout.targets) expect(height).toBeGreaterThanOrEqual(44);
+    }
+  });
+}
+
+test('capture actual playing round tables and compact product pages', async ({ page }) => {
+  test.skip(process.env.HAUSDEPP_ROUNDTABLE_CAPTURE !== '1', 'One final evidence batch after interaction checks.');
+  test.setTimeout(180000);
+  expect(new URL(test.info().project.use.baseURL).port).not.toBe('8000');
+  await ownerSession(page);
+  const traffic = watchGame(page);
+  const evidence = [];
+  await mkdir('.impeccable/review', { recursive: true });
+  const capture = async (name, fullPage = true) => {
+    if (await page.locator('#chatClose').isVisible()) await page.locator('#chatClose').click();
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      const sources = new Set([...document.querySelectorAll('svg image')].map(node => node.getAttribute('href')));
+      for (const node of document.querySelectorAll('.hd-table-prop, .hd-table-prop-art, .hd-card-back')) {
+        for (const match of getComputedStyle(node).backgroundImage.matchAll(/url\(["']?([^"')]+)["']?\)/g)) sources.add(match[1]);
+      }
+      await Promise.all([...sources].filter(Boolean).map(async source => { const image = new Image(); image.src = source; await image.decode(); }));
+      document.getElementById('hausdeppStock')?.focus({ preventScroll: true });
+      document.activeElement?.blur();
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    });
+    const path = `.impeccable/review/hausdepp-roundtable-${name}.png`;
+    await page.screenshot({ path, fullPage });
+    const state = await page.locator('#hausdeppTable').count() ? traffic.state : null;
+    evidence.push({ path, viewport: page.viewportSize(), phase: state?.phase,
+      seats: state?.players.length, own_cards: state?.hand.length,
+      scripts: await page.locator('script[src*="hausdepp.js"]').evaluateAll(nodes => nodes.map(node => node.src)) });
+  };
+  const sizes = [...VIEWPORTS.slice(0, 5), ['wide-desktop', { width: 1600, height: 1000 }]];
+  for (const count of [3, 5, 6]) {
+    const room = await createCpuTable(page, traffic, { players: count, cpu: count - 1 });
+    await expect.poll(() => traffic.state?.phase).toBe('playing');
+    await expect(page.locator('.hd-deal-card')).toHaveCount(0, { timeout: 3000 });
+    for (const [name, viewport] of count === 6 ? [...sizes, VIEWPORTS[6]] : [sizes[0], sizes[1], sizes[4]]) {
+      await page.setViewportSize(viewport);
+      await page.goto(room);
+      await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
+      await expect(page.locator('#hausdeppHand [data-card-id]').first()).toBeVisible();
+      expect(traffic.state.hand.length).toBeGreaterThanOrEqual(3);
+      await capture(`real-${count}-${name}`);
+    }
+  }
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const [name, viewport] of [sizes[0], sizes[2], sizes[4]]) {
+    await page.setViewportSize(viewport);
+    for (const [section, path] of [['lobby', '/hausdepp'], ['account', '/hausdepp/konto'], ['rules', '/hausdepp/regeln']]) {
+      await page.goto(path);
+      await expect(page.locator('body')).not.toHaveClass(/hd-loading/);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+      await capture(`${section}-${name}`, section !== 'rules');
+    }
+  }
+  await writeFile('.impeccable/review/hausdepp-roundtable-evidence.json', JSON.stringify(evidence, null, 2));
+});
 
 test('capture approved Hausdepp responsive review screens', async ({ page }) => {
   test.skip(process.env.HAUSDEPP_SCREENSHOTS !== '1', 'Explicit final review batch; interaction checks run first.');
