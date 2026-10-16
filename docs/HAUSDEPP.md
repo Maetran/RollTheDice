@@ -246,6 +246,20 @@ Hohe gleichrangige Karten und aufbewahrte 10er können im Endspiel helfen: Eine
 10 räumt ab und gibt bei verbleibenden Handkarten einen weiteren Zug. Das ist
 ein taktischer Hinweis, keine zusätzliche Sonderregel.
 
+### Sichtbare Hände und Kartenbewegungen
+
+Die eigene Hand bleibt offen und sortiert. Bei anderen Spielern ist für jede
+Handkarte eine Rückseite sichtbar; die genaue Anzahl steht zusätzlich beim
+Namen. Kartenwerte und Farben gegnerischer Hände bleiben privat. Sehr grosse
+Hände werden dichter gefächert, ohne Karten wegzulassen.
+
+Geben und Pflichtziehen zeigen den Weg vom verdeckten Stapel zur Hand. Beim
+Aufnehmen wandert das offene Paket zur Hand. Misslingt Zocken, geht zuerst die
+gezockte Karte vom verdeckten zum offenen Stapel und danach das ganze Paket zur
+Hand. Handkarten bewegen sich beim Legen zur Mitte. Diese Darstellung sperrt
+keinen Zug, ändert kein Nachwurfrecht und wiederholt sich beim Wiederverbinden
+nicht. Reduzierte Bewegung bestätigt die Ankunft ohne räumlichen Flug.
+
 ### Technische Leitplanken
 
 - Der Server prüft Kartenbesitz, Zugrecht, Rangvergleich, Nachziehen,
@@ -524,6 +538,19 @@ scoring distribution yet.
 High matching cards and saved 10s can help in the endgame: a 10 clears the pile
 and grants another turn if the player still has hand cards. This is tactical
 advice, not an additional special rule.
+
+### Visible hands and card movement
+
+Your own hand stays face up and sorted. Other players show one card back for
+every hand card, with the exact count also beside their name. Opposing ranks and
+suits remain private. Large hands use a denser fan without omitting any cards.
+
+Dealing and mandatory refills travel from the face-down stock to the hand.
+Picking up moves the open pile into the hand. A failed gamble first moves the
+new card from stock to pile, then the complete pile into the hand. Hand plays
+travel to the middle. Presentation never blocks turns, changes additional-card
+rights or repeats missed actions after reconnecting. Reduced motion acknowledges
+arrival without spatial travel.
 
 ### Technical boundaries
 

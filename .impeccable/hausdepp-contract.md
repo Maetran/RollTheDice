@@ -30,3 +30,36 @@ The responsible player sees a gentle red frame and “Du musst ziehen” /
 “You must draw”; reduced motion keeps that warning static. Delayed draws never
 rewind the turn or an expired additional-card window. Own-burn hand replay may
 proceed before refilling, while stock access remains ordered.
+
+## Confirmed card and transfer refinement — 2026-10-16
+
+The Stammtisch direction and the player's existing sorted natural hand remain.
+The user requires the cards themselves to feel valuable: preserve the real Tell
+motifs, native 36:57 proportions and clean rounded paper edges. Each face uses
+measured photographic corners with an affine frame and inner paper clip;
+thirty-five retain the supplied photograph, while leaf 10 uses a licensed
+higher-resolution nonglare leaf/tree photograph. Source raster pixels stay
+unchanged. Measured, bounded gain-only sRGB white-point grading balances the
+photographed paper toward shared ivory. Credits and the precise source
+exception remain in `docs/HAUSDEPP_ASSETS.md`.
+
+Every opponent displays exactly one back per public hand card (0–36), with a
+small turn/debt avatar above the fan and readable name/count. Compress overlap
+for small screens; keep the own hand unchanged. No hidden opponent faces or
+identifiers enter the fan or private card-flight markup.
+
+New accepted card transfers must explain the actual source and receiving
+destination: stock to hands for deal/refill/peek receipt, pile to hand for
+pickup, hand to pile for play/afterthrow, stock to pile for chance and pile to
+the burned area for clearing. A failed chance has both stock → pile and
+pile → hand stages. Capture removed sources before rendering and receiving
+destinations after rendering; use the stock's current visible position. Keep
+flights pointer-inert, screen-reader-hidden, bounded to 900ms and free of
+gameplay locks. Reduced motion marks the destination without travel. Only the
+next consecutive accepted version animates, so loading, reconnecting, duplicate
+or UI-only renders and skipped history remain quiet.
+
+The current validation and build identity belong in
+`.impeccable/review/hausdepp-hands-validation.md`. Prior finish and
+`hausdepp-live-*` records retain their historical review scope; they do not
+approve this refinement.

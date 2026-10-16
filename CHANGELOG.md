@@ -23,6 +23,31 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 2.55.0 — Hausdepp mit sichtbaren Kartenwegen / visible card transfers — 2026-10-16
+
+**Deutsch:** Gegnerische Hände zeigen für jede Karte eine verdeckte Rückseite
+und weiterhin die genaue Anzahl. Alle 36 Karten erhalten einzeln vermessene,
+ausgerichtete Ausschnitte mit sauberen runden Papierkanten und einheitlicher
+Papierfarbe. Die Laub-Zehn ersetzt den Blendfleck durch ein höher aufgelöstes,
+lizenziertes Foto desselben Motivs; Originalpixel bleiben unverändert. Karten bewegen sich beim Geben, Ziehen und Aufnehmen klar
+von der Quelle zur Hand. Bei misslungenem Zocken fliegt die neue Karte zuerst
+zur Mitte und anschliessend das ganze Paket zur Hand. Legen und Abräumen zeigen
+passende Kartenwege. Animationen blockieren keine Spielaktion, verraten keine
+fremden Karten und spielen alte Züge nach Wiederaufnahme nicht nochmals ab.
+Reduzierte Bewegung bestätigt den Empfang direkt am Ziel. Private lokale
+Entwicklungsfassung, kein Deployment.
+
+**English:** Opponents show one face-down back for each hand card, alongside
+the exact count. All 36 cards use individually measured, aligned crops with
+clean rounded paper edges and consistent paper colour. The ten of leaves
+replaces glare with a higher-resolution licensed photo of the same motif;
+source pixels remain unchanged. Dealing,
+drawing and picking up clearly move cards from source to hand. A failed gamble
+first sends the new card to the middle, then the whole pile into the hand.
+Playing and clearing use the corresponding card paths. Animations never block
+play, reveal opposing hands or replay old actions on reconnect. Reduced motion
+confirms receipt at the destination. Private local development build, no deploy.
+
 ## 2.54.0 — Hausdepp direkt am Tisch / direct table actions — 2026-10-16
 
 **Deutsch:** Der bestimmte Spieler hebt selbst aktiv ab; nach jedem Ass schaut

@@ -1,10 +1,10 @@
 {
-  "version": "2.54.0",
+  "version": "2.55.0",
   "bump": "minor",
   "date": "2026-10-16",
-  "previous_revision": "7e1c65ff4cad8b0a776a6402491a3202cc7fa615",
+  "previous_revision": "6e1f61942c658a22c26e3674feb2600ece6ecb72",
   "summary": {
-    "de": "Hausdepp: aktives Abheben, Karten direkt legen und Pflichtziehen ohne Wartezug.",
-    "en": "Hausdepp: active bottom inspection, direct card play and nonblocking mandatory refills."
+    "de": "Hausdepp: verdeckte Gegnerhände, saubere Kartenränder und sichtbare Kartenwege.",
+    "en": "Hausdepp: face-down opponent hands, clean card edges and visible card transfers."
   }
 }

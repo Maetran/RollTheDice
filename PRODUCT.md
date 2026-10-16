@@ -54,7 +54,10 @@ Its first playable increment covers the lobby, table and complete house rules.
   Show the responsible player a gently pulsing red draw reminder, static with
   reduced motion. Active bottom inspection belongs to its designated player;
   show a short nonblocking deal. Tapping a sorted, fanned hand card plays it
-  immediately. The open pile is the direct pickup action.
+  immediately. The open pile is the direct pickup action. Show opponents as
+  exactly their number of card backs, keeping all faces private. Clean card
+  edges through individually measured render geometry. Make receiving cards
+  visible from source pile to destination hand, without delaying gameplay.
 - Plan Hausdepp points and achievements without inventing award conditions.
   The confirmed ironic achievement progression goes from clever names to
   the highest lasting title, Hausdepp; its exact list and thresholds remain open.

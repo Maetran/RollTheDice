@@ -3,15 +3,15 @@ import { initializeAppMode } from "../multigame/app-mode.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initChat, addChatMessage } from "../room/chat.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
-import { CARD_BOXES } from "./cards.js";
-import { animateDeal } from "./motion.js";
+import { cardArt } from "./cards.js";
+import { prepareCardMotion, animateCardMotion, resetCardMotion } from "./motion.js";
 
 const root = document.getElementById("hausdeppApp");
 const page = root?.dataset.page || "lobby";
 const gameId = decodeURIComponent(location.pathname.match(/\/hausdepp\/spiel\/([^/]+)/)?.[1] || "");
 const ranks = ["6", "7", "8", "9", "U", "O", "K", "A", "10"];
 let auth, socket, snapshot, reconnectTimer, lobbyTimer, pendingTimer;
-let playerId = null, pending = false, stopped = false, lastBurnVersion = 0;
+let playerId = null, pending = false, stopped = false;
 let commandInFlight = null, commandSequence = 0, peekSignature = "", peekTimer;
 const queuedCards = [];
 const seenChat = new Set();
@@ -35,8 +35,7 @@ function cardName(card) {
 }
 
 function cardMarkup(card, { interactive = false, playable = false, committed = false, index = 0, count = 1 } = {}) {
-  const box = CARD_BOXES[card];
-  const art = box ? `<svg class="hd-card-art" viewBox="${box.join(" ")}" aria-hidden="true" focusable="false"><image href="/static/hausdepp/cards-source.jpg" width="3996" height="2526"/></svg>` : "";
+  const art = cardArt(card);
   const offset = index - (count - 1) / 2;
   const angle = count > 1 ? offset / Math.max((count - 1) / 2, 1) * Math.min(14, count * 3.5) : 0;
   const drop = Math.pow(Math.abs(angle) / 14, 2) * 17;
@@ -44,6 +43,76 @@ function cardMarkup(card, { interactive = false, playable = false, committed = f
   return interactive
     ? `<button type="button" ${attrs} style="--card-index:${index};--fan-offset:${offset};--fan-angle:${angle}deg;--fan-drop:${drop}px" ${!playable || committed ? "disabled" : ""}>${art}</button>`
     : `<span ${attrs} role="img">${art}</span>`;
+}
+
+function opponentHand(player) {
+  const count = Math.max(0, Math.min(36, Number(player.hand_count) || 0));
+  const backs = Array.from({ length: count }, (_, index) => {
+    const position = count > 1 ? index / (count - 1) : .5;
+    const angle = count > 1 ? (position - .5) * Math.min(24, count * 7) : 0;
+    return `<span class="hd-opponent-card" style="--back-position:${position};--back-angle:${angle}deg;--back-index:${index}"></span>`;
+  }).join("");
+  return `<div class="hd-opponent-hand" data-player-hand="${esc(player.id)}" data-card-count="${count}" style="--opponent-gaps:${Math.max(0, count - 1)}" aria-hidden="true">${backs}<span class="hd-seat-avatar">${esc(player.name.slice(0,1).toUpperCase())}</span></div>`;
+}
+
+function syncAttributes(element, next) {
+  for (const attribute of [...element.attributes]) {
+    if (!next.hasAttribute(attribute.name)) element.removeAttribute(attribute.name);
+  }
+  for (const attribute of next.attributes) {
+    if (element.getAttribute(attribute.name) !== attribute.value) element.setAttribute(attribute.name, attribute.value);
+  }
+}
+
+// Keep receiving card nodes alive across ACKs, chat updates and immediate plays.
+function renderHand(markup) {
+  const template = document.createElement("template");
+  template.innerHTML = markup;
+  const next = template.content.firstElementChild;
+  const container = $("hausdeppHand");
+  let fan = container.firstElementChild;
+  if (!fan) { container.append(next); return; }
+  syncAttributes(fan, next);
+  const existing = new Map([...fan.children].map(card => [card.dataset.cardId, card]));
+  const nextCards = [...next.children];
+  const retained = new Set(nextCards.map(card => card.dataset.cardId));
+  for (const card of [...fan.children]) if (!retained.has(card.dataset.cardId)) card.remove();
+  nextCards.forEach((nextCard, index) => {
+    const card = existing.get(nextCard.dataset.cardId) || nextCard;
+    syncAttributes(card, nextCard);
+    if (fan.children[index] !== card) fan.insertBefore(card, fan.children[index] || null);
+  });
+}
+
+function renderOpponents(markup) {
+  const template = document.createElement("template");
+  template.innerHTML = markup;
+  const container = $("hausdeppPlayers");
+  const existing = new Map([...container.children].map(seat => [seat.dataset.playerId, seat]));
+  const nextSeats = [...template.content.children];
+  const retained = new Set(nextSeats.map(seat => seat.dataset.playerId));
+  for (const seat of [...container.children]) if (!retained.has(seat.dataset.playerId)) seat.remove();
+  nextSeats.forEach((nextSeat, index) => {
+    const seat = existing.get(nextSeat.dataset.playerId) || nextSeat;
+    if (seat !== nextSeat) {
+      syncAttributes(seat, nextSeat);
+      const hand = seat.firstElementChild;
+      const nextHand = nextSeat.firstElementChild;
+      syncAttributes(hand, nextHand);
+      const backs = [...hand.querySelectorAll(".hd-opponent-card")];
+      const nextBacks = [...nextHand.querySelectorAll(".hd-opponent-card")];
+      backs.slice(nextBacks.length).forEach(card => card.remove());
+      nextBacks.forEach((nextBack, backIndex) => {
+        if (backs[backIndex]) syncAttributes(backs[backIndex], nextBack);
+        else hand.insertBefore(nextBack, hand.lastElementChild);
+      });
+      hand.lastElementChild.textContent = nextHand.lastElementChild.textContent;
+      // Only the public name/count labels change; the receiving fan stays mounted.
+      for (const label of [...seat.children].slice(1)) label.remove();
+      seat.append(...[...nextSeat.children].slice(1));
+    }
+    if (container.children[index] !== seat) container.insertBefore(seat, container.children[index] || null);
+  });
 }
 
 function header() {
@@ -241,6 +310,7 @@ function connect() {
     resetCommand();
     if ($("hausdeppConnection")) $("hausdeppConnection").textContent = t("connectionLost");
     renderState();
+    resetCardMotion(gameId);
     if (!stopped && event.code !== 1008 && event.code !== 4001) reconnectTimer = setTimeout(connect, 1500);
     else if ($("hausdeppActionError")) $("hausdeppActionError").textContent = t("reconnectHint");
   });
@@ -249,6 +319,7 @@ function connect() {
 function renderState() {
   const s = snapshot?._hausdepp;
   if (!s) { if (snapshot && $("hausdeppStatus")) $("hausdeppStatus").textContent = t("waitingPlayers"); return; }
+  const motion = prepareCardMotion(s, { gameId, playerId });
   $("hausdeppTable").dataset.phase = s.phase;
   $("hausdeppRoomName").textContent = snapshot._name || t("defaultTable");
   document.title = `${snapshot._name || "Hausdepp"} · Hausdepp`;
@@ -259,7 +330,7 @@ function renderState() {
   const oldFocus = document.activeElement?.dataset.cardId;
   const committed = new Set([...(commandInFlight?.cards || []), ...queuedCards]);
   const pendingRank = commandInFlight?.cards?.[0]?.split("-")[1];
-  $("hausdeppHand").innerHTML = `<div class="hd-hand-fan" data-count="${hand.length}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card) && (!pending || card.split("-")[1] === pendingRank), committed: committed.has(card), index, count: hand.length })).join("")}</div>`;
+  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card) && (!pending || card.split("-")[1] === pendingRank), committed: committed.has(card), index, count: hand.length })).join("")}</div>`);
   if (oldFocus) $("hausdeppHand").querySelector(`[data-card-id="${CSS.escape(oldFocus)}"]`)?.focus({ preventScroll: true });
   $("hausdeppSelection").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", hand.length);
   const mine = s.players.find(p => p.id === playerId);
@@ -268,7 +339,7 @@ function renderState() {
   const stockBlocker = s.players.find(p => p.id === s.stock_blocked_by);
   const urgentDraw = Boolean(s.draw_urgent);
   $("hausdeppPlayers").dataset.count = String(opponents.length);
-  $("hausdeppPlayers").innerHTML = opponents.map((p, i) => `<div class="hd-seat ${p.id === s.current_player_id ? "is-active" : ""} ${p.finished ? "is-finished" : ""} ${refillPlayers.has(p.id) ? "needs-draw" : ""} ${p.id === s.stock_blocked_by ? "is-draw-blocker" : ""}" data-player-id="${esc(p.id)}" style="--seat:${i}" aria-label="${esc(`${p.name}: ${p.finished ? t("finished") : counted("cardsInHand", p.hand_count)}`)}"><span class="hd-seat-avatar">${esc(p.name.slice(0,1).toUpperCase())}</span><strong>${esc(p.name)}</strong><span>${p.finished ? `${icon("check")} ${t("finished")}` : counted("cardsInHand", p.hand_count)}</span>${p.is_cpu ? `<small>${t("computer")}</small>` : ""}</div>`).join("");
+  renderOpponents(opponents.map((p, i) => `<div class="hd-seat ${p.id === s.current_player_id ? "is-active" : ""} ${p.finished ? "is-finished" : ""} ${refillPlayers.has(p.id) ? "needs-draw" : ""} ${p.id === s.stock_blocked_by ? "is-draw-blocker" : ""}" data-player-id="${esc(p.id)}" style="--seat:${i}" aria-label="${esc(`${p.name}: ${p.finished ? t("finished") : counted("cardsInHand", p.hand_count)}`)}">${opponentHand(p)}<strong>${esc(p.name)}</strong><span>${p.finished ? `${icon("check")} ${t("finished")}` : counted("cardsInHand", p.hand_count)}</span>${p.is_cpu ? `<small>${t("computer")}</small>` : ""}</div>`).join(""));
   $("hausdeppStockCount").textContent = t(s.phase === "peeking" ? "undealtCount" : "stockCount", { count: s.deck_count });
   $("hausdeppStock").classList.toggle("is-empty", !s.deck_count);
   $("hausdeppStock").classList.toggle("is-peeking", s.phase === "peeking");
@@ -296,7 +367,6 @@ function renderState() {
   const actor = s.players.find(p => p.id === e.player_id);
   const eventKey = s.phase === "peeking" ? "eventPeeking" : e.type === "draw" ? "eventDraw" : e.burn_reason ? actor?.finished ? "eventBurnFinished" : "eventBurn" : e.type === "pickup" || (e.type === "gamble" && !e.success) ? "eventPickup" : ["play", "afterthrow", "gamble"].includes(e.type) ? "eventPlay" : "eventStart";
   $("hausdeppEvent").textContent = counted(eventKey, e.drawn_count || e.picked_up_count || e.cards?.length || 0, { name: actor?.name || peeker?.name || "" });
-  if (e.burn_reason && s.version !== lastBurnVersion) { lastBurnVersion = s.version; $("hausdeppPile").animate?.([{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(-12px)", opacity: .35 }, { transform: "translateY(0)", opacity: 1 }], { duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 320, easing: "cubic-bezier(.16,1,.3,1)" }); }
   const known = s.peek?.success ? s.peek.cards : s.private_peek;
   const nextSignature = `${s.phase}:${JSON.stringify(known || [])}:${s.peek?.success}`;
   if (known?.length && nextSignature !== peekSignature) {
@@ -308,7 +378,7 @@ function renderState() {
     $("hausdeppPeek").open = true;
     if (s.phase !== "peeking") peekTimer = setTimeout(() => { if ($("hausdeppPeek")) $("hausdeppPeek").open = false; }, 4500);
   }
-  animateDeal(s, { gameId, playerId });
+  animateCardMotion(s, { gameId, playerId }, motion);
   if (s.phase === "finished") {
     const loser = s.players.find(p => p.id === s.loser_id);
     $("hausdeppResult").hidden = false;
@@ -319,7 +389,7 @@ function renderState() {
 function renderRules() {
   document.title = t("rulesTitle");
   const sections = ["goal", "deck", "peek", "deal", "moves", "burn", "after", "end", "tips"];
-  root.innerHTML = `<article class="hd-rulebook"><div class="hd-rulebook-heading"><h1>${t("rulesTitle")}</h1><p>${t("rulesIntro")}</p></div><div class="hd-rank-line" aria-label="${t("rankOrder")}">${ranks.map(rank => `<span>${esc(t(`rank${rank}`))}</span>`).join("<b aria-hidden='true'>‹</b>")}</div>${sections.map(key => `<section><h2>${t(`${key}Heading`)}</h2><p>${t(`${key}Body`)}</p></section>`).join("")}<section id="karten"><h2>${t("cardCredits")}</h2><p>${t("creditsBody")} <a href="https://commons.wikimedia.org/wiki/File:Doppeldeutsche_Preference.JPG" target="_blank" rel="noopener noreferrer">FUZxxl / Karl432</a> · <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">CC BY 3.0</a></p></section><a class="hd-primary" href="/hausdepp">${t("takeSeat")} ${icon("arrow")}</a></article>${footer()}`;
+  root.innerHTML = `<article class="hd-rulebook"><div class="hd-rulebook-heading"><h1>${t("rulesTitle")}</h1><p>${t("rulesIntro")}</p></div><div class="hd-rank-line" aria-label="${t("rankOrder")}">${ranks.map(rank => `<span>${esc(t(`rank${rank}`))}</span>`).join("<b aria-hidden='true'>‹</b>")}</div>${sections.map(key => `<section><h2>${t(`${key}Heading`)}</h2><p>${t(`${key}Body`)}</p></section>`).join("")}<section id="karten"><h2>${t("cardCredits")}</h2><p>${t("creditsBody")} <a href="https://commons.wikimedia.org/wiki/File:Doppeldeutsche_Preference.JPG" target="_blank" rel="noopener noreferrer">FUZxxl / Karl432</a> · <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">CC BY 3.0</a> · <a href="https://commons.wikimedia.org/wiki/File:Original-Hungarian-Tell-set.jpg" target="_blank" rel="noopener noreferrer">SZERVÁC Attila</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p></section><a class="hd-primary" href="/hausdepp">${t("takeSeat")} ${icon("arrow")}</a></article>${footer()}`;
 }
 
 async function start() {

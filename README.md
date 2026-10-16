@@ -29,7 +29,11 @@ zocken kann er erst, wenn ältere Auffüllpflichten erledigt sind. „Du musst
 ziehen“ mit sanft rotem Rahmen erinnert den zuständigen Spieler. Ein Tipp auf
 eine Handkarte legt sie sofort, ein Tipp auf das offene Paket nimmt es auf.
 Abheben ist eine aktive Aktion, das Austeilen wird kurz animiert. Die Hand liegt
-als sortierter Fächer mit den 10ern ganz rechts. Chat, schnelle Reaktionen und Wiederaufnahme verwenden
+als sortierter Fächer mit den 10ern ganz rechts. Gegnerische Hände zeigen genau
+ihre Kartenanzahl als verdeckte Rückseiten. Einzeln ausgerichtete Ausschnitte
+geben den Karten saubere Ränder. Ziehen, Geben und Aufnehmen bewegen Karten
+sichtbar vom jeweiligen Stapel zur Hand; reduzierte Bewegung zeigt die Ankunft
+am Ziel ohne Flug. Chat, schnelle Reaktionen und Wiederaufnahme verwenden
 die gemeinsame Infrastruktur. Hoch- und Querformat auf Smartphone, Tablet und
 Desktop werden unterstützt, mit Mobilgeräten als Ausgangspunkt.
 
@@ -59,7 +63,11 @@ mandatory refill. The next player may already play hand cards; drawing or
 gambling waits for earlier refill obligations. “You must draw” with a gentle
 red frame reminds the player responsible. Tapping a hand card plays it
 immediately; tapping the face-up pile takes it. Bottom inspection is active,
-dealing is briefly animated, and hands form a sorted fan with tens on the right. Chat, quick reactions and reconnection use the shared suite.
+dealing is briefly animated, and hands form a sorted fan with tens on the right.
+Opponents show exactly their hand size as face-down backs. Individually aligned
+crops give cards clean edges. Drawing, dealing and picking up visibly move cards
+from their source pile to the hand; reduced motion marks arrival without travel.
+Chat, quick reactions and reconnection use the shared suite.
 Phone, tablet and desktop work in portrait and landscape, designed mobile first.
 
 The [rules and product specification](docs/HAUSDEPP.md) records confirmed

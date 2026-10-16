@@ -119,11 +119,11 @@ export const HAUSDEPP_MESSAGES = {
     "goalHeading": "Wer zuletzt Karten hat, ist der Hausdepp.",
     "goalBody": "Ihr spielt im Uhrzeigersinn. Wer bei leerem Nachziehstapel keine Handkarten mehr hat, ist fertig und wird übersprungen. Sobald nur noch einer Handkarten besitzt, ist die Runde vorbei. Dieser Spieler ist der Hausdepp.",
     "deckHeading": "36 Karten. Die Zehn steht ganz oben.",
-    "deckBody": "Herz, Schellen, Laub und Eichel: je 6, 7, 8, 9, Unter, Ober, König, Ass und 10. Farben haben keinen Einfluss auf die Rangfolge. Die Schellen 6, auch Weli genannt, ist hier eine gewöhnliche 6.",
+    "deckBody": "Herz, Schellen, Laub und Eichel: je 6, 7, 8, 9, Unter, Ober, König, Ass und 10. Farben haben keinen Einfluss auf die Rangfolge. Die Schellen 6, auch Weli genannt, ist hier eine gewöhnliche 6. Bei deinen Mitspielern siehst du für jede Handkarte eine Rückseite und zusätzlich die genaue Anzahl. Ihre Kartenwerte bleiben verdeckt.",
     "peekHeading": "Mischen und verpflichtend abheben.",
     "peekBody": "Der Spieler unmittelbar vor dem Geber tippt den verdeckten Stapel an und sieht die unterste Karte privat an. Eine 10 muss er nehmen. Bei einem Ass muss er die nächste Karte anschauen; weitere Asse verlängern die Folge. Folgt eine 10, nimmt er alle angeschauten Asse und diese eine 10. Diese Karten werden kurz allen gezeigt. Darunter wird nicht weitergeschaut. Erscheint stattdessen eine andere Karte, endet das Anschauen ohne Entnahme. Alles bleibt unverändert unten im Stapel; nur der anschauende Spieler kennt die Karten.",
     "dealHeading": "Erst auf drei auffüllen, dann beginnen.",
-    "dealBody": "Die Karten vom Abheben zählen zur Anfangshand. Jeder erhält von oben so viele Karten, dass er mindestens drei besitzt; ab drei gibt es keine weiteren. Die oberste Restkarte kommt offen in die Mitte. Eine 10 wird an zufälliger Position zurückgeschoben und die nächste Karte aufgedeckt – so oft, bis keine 10 erscheint. Der Spieler im Uhrzeigersinn nach dem Geber beginnt.",
+    "dealBody": "Die Karten vom Abheben zählen zur Anfangshand. Jeder erhält von oben so viele Karten, dass er mindestens drei besitzt; ab drei gibt es keine weiteren. Die oberste Restkarte kommt offen in die Mitte. Eine 10 wird an zufälliger Position zurückgeschoben und die nächste Karte aufgedeckt – so oft, bis keine 10 erscheint. Der Spieler im Uhrzeigersinn nach dem Geber beginnt. Karten bewegen sich beim Geben, Ziehen und Aufnehmen sichtbar vom jeweiligen Stapel zur Hand; die Animation hält keinen Spieler auf.",
     "movesHeading": "Legen, nehmen oder zocken.",
     "movesBody": "Tippe eine Karte auf deiner Hand an, um sie sofort zu legen, mindestens so hoch wie die oberste offene Karte. Weitere Karten desselben Rangs kannst du direkt antippen und nachwerfen. Auf einen leeren Tisch darf jeder Rang; auch Zocken ist dort erlaubt, etwa um hohe Handkarten zu behalten. Tippe das offene Paket an, um es aktiv aufzunehmen. Stattdessen darfst du das ganze offene Paket nehmen; dann ist der nächste dran. Beim Zocken wird die oberste verdeckte Karte zwingend ausgespielt. Gleich oder höher gelingt. Tiefer bedeutet: Du nimmst das ganze Paket samt gezockter Karte. Ein leeres Paket nehmen und dadurch passen geht nicht.",
     "burnHeading": "Zehn oder vier Gleiche: alles fliegt raus.",
@@ -134,7 +134,7 @@ export const HAUSDEPP_MESSAGES = {
     "endBody": "Reichen die restlichen verdeckten Karten nicht mehr für drei, ziehst du nur die vorhandenen. Danach entfällt die Mindesthand; Zocken ist nicht mehr möglich. Eine zwischenzeitlich leere Hand ist kein Erfolg, solange du auffüllen musst. Erst wenn Nachziehstapel und eigene Hand leer sind, bist du fertig – auch mit einer letzten 10, beim Nachwerfen oder durch vier Gleiche.",
     "tipsHeading": "Heb dir etwas für den Schluss auf.",
     "tipsBody": "Zurückbehaltene Zehner können dir das erneute Ausspielen sichern. Hohe Karten und gleiche Ränge helfen, die anderen zum Nehmen zu bringen. Beispiel: Bei leerem Stapel kannst du mit 10, König, König erst abräumen und dann beide Könige loswerden.",
-    "creditsBody": "Kartenfoto: FUZxxl; Kontrastbearbeitung: Karl432. Doppeldeutsche Preference, Wikimedia Commons. Ausschnitte erfolgen bei der Darstellung. Rückseite: nach unserer Bildreferenz generiertes Blitzmuster."
+    "creditsBody": "Kartenfoto: FUZxxl; Kontrastbearbeitung: Karl432. Doppeldeutsche Preference, Wikimedia Commons. Ausschnitte, Ausrichtung und Weissabgleich erfolgen bei der Darstellung. Laub-Zehn: SZERVÁC Attila, CC BY-SA 4.0; Quelle und Bearbeitung sind verlinkt. Rückseite: nach unserer Bildreferenz generiertes Blitzmuster."
   },
   "en": {
     "metaDescription": "Hausdepp with our house rules: double-headed German cards, a shared table and real multiplayer rounds.",
@@ -256,11 +256,11 @@ export const HAUSDEPP_MESSAGES = {
     "goalHeading": "The last player holding cards is the Hausdepp.",
     "goalBody": "Play clockwise. When the draw pile is empty, players with no hand cards are finished and skipped. The round ends as soon as only one player holds cards. That player is the Hausdepp.",
     "deckHeading": "36 cards. Ten is the highest.",
-    "deckBody": "Hearts, bells, leaves and acorns each have 6, 7, 8, 9, Unter, Ober, king, ace and 10. Suits do not affect rank. The 6 of bells, also called Weli, is an ordinary 6 here.",
+    "deckBody": "Hearts, bells, leaves and acorns each have 6, 7, 8, 9, Unter, Ober, king, ace and 10. Suits do not affect rank. The 6 of bells, also called Weli, is an ordinary 6 here. Each opponent shows one back per hand card and their exact hand size. Their card values stay hidden.",
     "peekHeading": "Shuffle, then the mandatory bottom peek.",
     "peekBody": "The player immediately before the dealer taps the face-down deck to privately inspect its bottom card. A 10 must be taken. An ace requires looking at the next card; further aces extend the sequence. If a 10 follows, the player takes every inspected ace and that one 10. Those cards are briefly shown to everyone. No card beyond the 10 is inspected. Any other rank ends the peek without taking anything. The cards remain unchanged at the bottom; only the peeker knows them.",
     "dealHeading": "Fill to three, then begin.",
-    "dealBody": "Cards taken during the peek count towards the initial hand. Deal from the top until each player has at least three; players already holding three or more receive none. Turn the next card face up in the middle. A 10 is reinserted at a random position and the next card revealed, repeating until it is not a 10. The player clockwise after the dealer starts.",
+    "dealBody": "Cards taken during the peek count towards the initial hand. Deal from the top until each player has at least three; players already holding three or more receive none. Turn the next card face up in the middle. A 10 is reinserted at a random position and the next card revealed, repeating until it is not a 10. The player clockwise after the dealer starts. Dealing, drawing and picking up visibly move cards from the relevant pile to the hand without holding up play.",
     "movesHeading": "Play, pick up or take a chance.",
     "movesBody": "Tap a card in your hand to play it immediately, at least as high as the top face-up card. Tap more cards of the same rank to throw them straight after it. Any rank may lead an empty table; you may also take a chance there, for example to keep high hand cards. Tap the face-up pile to take it. Instead, you may take the entire face-up pile; the next player then acts. Taking a chance means the top draw card must be played. Equal or higher succeeds. Lower means taking the entire pile including that card. Taking an empty pile to pass is not allowed.",
     "burnHeading": "A ten or four of a kind clears everything.",
@@ -271,7 +271,7 @@ export const HAUSDEPP_MESSAGES = {
     "endBody": "If too few draw cards remain to refill to three, take only those available. The minimum hand then ends and taking a chance is unavailable. A temporarily empty hand does not finish you while refilling is required. You finish only when both the draw pile and your hand are empty, including with a last 10, an additional throw or four of a kind.",
     "tipsHeading": "Keep something for the finish.",
     "tipsBody": "Saving tens can earn another lead. High cards and matching ranks help force others to pick up. For example, with an empty draw pile and 10, king, king, you can clear the pile and then play both kings.",
-    "creditsBody": "Card photograph: FUZxxl; contrast adjustment: Karl432. Doppeldeutsche Preference, Wikimedia Commons. Cropped in presentation. Back: a lightning pattern generated from our image reference."
+    "creditsBody": "Card photograph: FUZxxl; contrast adjustment: Karl432. Doppeldeutsche Preference, Wikimedia Commons. Cropping, alignment and white balance are applied during rendering. Ten of leaves: SZERVÁC Attila, CC BY-SA 4.0; source and adaptation are linked. Back: a lightning pattern generated from our image reference."
   }
 };
 

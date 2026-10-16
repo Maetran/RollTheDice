@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-16T13:22:52.534263+00:00",
+  "generatedAt": "2026-10-16T14:47:12.814797+00:00",
   "title": "Design System: RollTheDice dashboard themes and Hausdepp",
   "extensions": {
     "colorMeta": {
@@ -712,6 +712,11 @@
         "purpose": "Physical short shadow under the actual Tell-pattern card artwork."
       },
       {
+        "name": "hausdepp-opponent-card",
+        "value": "0 3px 5px #180d0870",
+        "purpose": "Short paper shadow under each public-count opponent card back."
+      },
+      {
         "name": "hausdepp-chat-sheet",
         "value": "0 -10px 30px #150d0870",
         "purpose": "Bottom chat sheet above the smaller-screen table."
@@ -739,14 +744,19 @@
         "purpose": "Natural fan hover/focus raises a card 12px; sent or queued cards rise 18px and fade while awaiting acceptance. No selection stage; reduced motion removes the transition."
       },
       {
-        "name": "hausdepp-pile-clear",
-        "value": "320ms cubic-bezier(.16,1,.3,1)",
-        "purpose": "One live-pile lift and fade after a newly observed clear; zero duration for reduced motion."
+        "name": "hausdepp-card-transfer",
+        "value": "300–400ms cubic-bezier(.16,1,.3,1), bounded group stagger",
+        "purpose": "Measured old hand/pile sources and newly rendered receiving destinations explain refill, pickup, peek, play, afterthrow, chance and burn. Failed chance travels stock → pile → hand, at most 900ms. Pointer-inert aria-hidden ghosts add no gameplay lock; private receipts use backs."
       },
       {
         "name": "hausdepp-deal",
-        "value": "300ms cubic-bezier(.16,1,.3,1), stagger up to 600ms total",
-        "purpose": "Pointer-inert, aria-hidden card-back ghosts finish within 900ms without blocking play, once per game/deal version; session storage and memory suppress reload/reconnect replay. Reduced motion skips the ghosts."
+        "value": "350ms flights; at most 350ms deal stagger; starter 340ms with 120ms separation",
+        "purpose": "The accepted deal sequence travels stock → exact recipient hand, followed by stock → starter pile. Successful peek receipt is separate. The complete sequence stays within 900ms. Only consecutive accepted versions animate; initial/reload, reconnect, duplicate/UI-only, skipped and hidden-document renders stay quiet. Socket close cancels flights and resets the baseline."
+      },
+      {
+        "name": "hausdepp-reduced-motion-receipt",
+        "value": "240ms stationary outline cubic-bezier(.16,1,.3,1)",
+        "purpose": "Acknowledges the receiving destination without travel. Draw urgency retains a static outline and text."
       },
       {
         "name": "hausdepp-refill-urgency",
@@ -914,9 +924,9 @@
       "name": "Hausdepp active seat",
       "kind": "chip",
       "refersTo": "hausdepp-active-seat",
-      "description": "The actual opponent seat combines the brass current-turn avatar with its visible player name and count. Refill debt adds a red outline; the first debtor pulses softly, with a static reduced-motion fallback.",
-      "html": "<div class=\"ds-hd-seat\"><span class=\"ds-hd-avatar\">C</span><strong>CPU 1</strong><span>3 Karten</span></div>",
-      "css": ".ds-hd-seat{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:140px;padding:8px;text-align:center;color:var(--hd-paper,#f5efdf);background:var(--hd-wood,#35271f);font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;}.ds-hd-avatar{display:grid;place-items:center;width:44px;height:44px;margin-bottom:4px;border-radius:50%;background:var(--hd-gold,#e6c98a);color:#59412e;font-weight:750;outline:2px solid var(--hd-gold,#e6c98a);outline-offset:4px;box-shadow:0 4px 10px #160d0966;}.ds-hd-seat strong{font-size:14px;}.ds-hd-seat>span:last-child{font-size:13px;color:#e4d1b6;}.ds-hd-seat.ds-needs-draw .ds-hd-avatar{outline-color:var(--hd-draw-frame,#ed8379);}.ds-hd-seat.ds-is-draw-blocker .ds-hd-avatar{animation:ds-hd-draw-seat-pulse 1.6s ease-in-out infinite;}@keyframes ds-hd-draw-seat-pulse{0%,100%{outline-color:var(--hd-draw-frame,#ed8379);}50%{outline-color:var(--hd-red,#9c292b);}}@media(prefers-reduced-motion:reduce){.ds-hd-seat.ds-is-draw-blocker .ds-hd-avatar{animation:none;}}"
+      "description": "Each opponent has exactly one back per projected public hand count (0–36), with a 22px turn/debt avatar above the fan and visible name/count below. Only backs and public metadata enter the fan. This three-card example uses the shipped back raster. Refill debt outlines the avatar; the first debtor pulses softly, with a static reduced-motion fallback.",
+      "html": "<div class=\"ds-hd-seat\" aria-label=\"CPU 1: 3 Karten\"><div class=\"ds-hd-hand\" aria-hidden=\"true\"><span class=\"ds-hd-back\" style=\"left:0;transform:rotate(-10.5deg)\"></span><span class=\"ds-hd-back\" style=\"left:12px;transform:rotate(0deg)\"></span><span class=\"ds-hd-back\" style=\"left:24px;transform:rotate(10.5deg)\"></span><span class=\"ds-hd-avatar\">C</span></div><strong>CPU 1</strong><span>3 Karten</span></div>",
+      "css": ".ds-hd-seat{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:140px;padding:8px;text-align:center;color:var(--hd-paper,#f5efdf);background:var(--hd-wood,#35271f);font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;}.ds-hd-hand{position:relative;width:58px;height:66px;margin:2px 8px 0;}.ds-hd-back{position:absolute;top:4px;width:34px;aspect-ratio:36/57;border:2px solid #f3eadd;border-radius:6.7%/4.2%;background:var(--hd-red,#9c292b) url(\"/static/hausdepp/card-back.png\") center/100px;box-shadow:0 3px 5px #180d0870;transform-origin:center bottom;}.ds-hd-avatar{position:absolute;top:-5px;left:-10px;z-index:40;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:11px;background:var(--hd-gold,#e6c98a);color:#59412e;font-weight:750;outline:2px solid var(--hd-gold,#e6c98a);outline-offset:4px;box-shadow:0 4px 10px #160d0966;}.ds-hd-seat strong{font-size:14px;}.ds-hd-seat>span:last-child{font-size:13px;color:#e4d1b6;}.ds-hd-seat.ds-needs-draw .ds-hd-avatar{outline-color:var(--hd-draw-frame,#ed8379);}.ds-hd-seat.ds-is-draw-blocker .ds-hd-avatar{animation:ds-hd-draw-seat-pulse 1.6s ease-in-out infinite;}@keyframes ds-hd-draw-seat-pulse{0%,100%{outline-color:var(--hd-draw-frame,#ed8379);}50%{outline-color:var(--hd-red,#9c292b);}}@media(prefers-reduced-motion:reduce){.ds-hd-seat.ds-is-draw-blocker .ds-hd-avatar{animation:none;}}"
     }
   ],
   "narrative": {
@@ -927,7 +937,7 @@
       "Heavy authored headings, plain interface labels and tabular measured values.",
       "Flat, ruled instrument surfaces with restrained selection and state color.",
       "Responsive instruments and real-node favorites that retain their controls.",
-      "Hausdepp: one shared walnut table, original card imagery and a compact sorted hand fan.",
+      "Hausdepp: one shared walnut table, carefully framed Tell-pattern card imagery and compact natural hand fans.",
       "Hausdepp: Kalam display lettering paired with plain platform interface type.",
       "Hausdepp: oxblood actions, ivory paper surfaces and brass state cues.",
       "Hausdepp: direct card taps and real pile controls whose labels and availability follow the current game state."
@@ -980,7 +990,17 @@
       },
       {
         "name": "The Hausdepp Card Truth Rule",
-        "body": "Use the supplied 36-card Tell-pattern artwork and its individual viewports; preserve the order 6, 7, 8, 9, Unter, Ober, König, Ass, 10, with 10 highest.",
+        "body": "Use the licensed 36-card Tell-pattern artwork with measured affine paper frames, rounded clips and original motifs. Thirty-five faces retain the supplied photograph; leaf 10 uses the licensed nonglare source recorded in docs/HAUSDEPP_ASSETS.md. Gain-only sRGB paper white-point grading (0.90–1.34) leaves source raster pixels unchanged. Preserve the order 6, 7, 8, 9, Unter, Ober, König, Ass, 10, with 10 highest.",
+        "section": "components"
+      },
+      {
+        "name": "The Hausdepp Public Hand Rule",
+        "body": "Render exactly the opponent’s projected public count as backs, from zero to 36. The visual fan is aria-hidden; translated seat labels, visible names and counts carry public information. The turn/debt avatar overlays the fan. Hidden opponent faces or identifiers never enter this markup or private transfer ghosts.",
+        "section": "components"
+      },
+      {
+        "name": "The Hausdepp Transfer Rule",
+        "body": "Every new accepted transfer explains where cards leave and where they arrive, using the measured source before removal and receiving destination after rendering. Use the stock’s newly rendered visible position. Keep transfers nonblocking, bounded and private; reduced motion acknowledges the receiving destination without travel.",
         "section": "components"
       },
       {
@@ -1004,7 +1024,10 @@
       "Do preserve German and English copy, labelled controls, visible focus and the real card names.",
       "Do keep the compact hand fan sorted from low left to 10 right, readable and horizontally reachable when many cards are held.",
       "Do use the server-projected legal actions and acknowledged command queue for card, stock and face-up-pile availability.",
-      "Do retain the raster provenance and attribution recorded in docs/HAUSDEPP_ASSETS.md."
+      "Do retain the raster provenance and attribution recorded in docs/HAUSDEPP_ASSETS.md.",
+      "Do show one back per public opponent card, including zero, without changing the own hand’s fan.",
+      "Do preserve the measured rounded paper frame, original Tell motifs and explicit source credits when adjusting card rendering.",
+      "Do show the actual source and receiving destination for every accepted card transfer, with a stationary reduced-motion receipt."
     ],
     "donts": [
       "Don't promote this dashboard’s palette, rail or component composition into a global game design system.",
@@ -1017,7 +1040,9 @@
       "Don't refill automatically, draw only one refill card per tap, or let a later debtor bypass the FIFO stock reservation.",
       "Don't add a hand-selection or confirmation step, overlay rank badges, or offer taking a chance while any refill debt remains.",
       "Don't block legal hand play with another player’s refill debt or let a delayed refill rewind the turn or afterthrow window.",
-      "Don't invent points, achievements, rankings or future account visuals from the first playable table."
+      "Don't invent points, achievements, rankings or future account visuals from the first playable table.",
+      "Don't expose opponent card faces or identifiers, replace their count with a fixed decorative fan, or animate missed history after reconnecting.",
+      "Don't ship crude rectangular photographic cuts, stretch card proportions or alter the source rasters to manufacture artwork."
     ]
   }
 }

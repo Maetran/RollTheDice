@@ -3,25 +3,25 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: selbst abheben, Karten direkt legen und weiterlegen, während der Vorgänger noch ziehen muss.",
-  "summary_en": "Hausdepp: inspect the deck yourself, tap cards to play, and keep playing while the previous player refills.",
+  "summary_de": "Hausdepp zeigt verdeckte Gegnerhände, saubere Kartenränder und klare Bewegungen vom Stapel zur Hand.",
+  "summary_en": "Hausdepp shows face-down opponent hands, clean card edges and clear movements from pile to hand.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp spielt sich direkter",
+      "title": "Die Karten liegen sichtbar am Tisch",
       "changes": [
-        "Hebe selbst ab und schaue nach jedem Ass aktiv weiter. Das Austeilen wird kurz über den Tisch animiert.",
-        "Tippe eine Handkarte zum sofortigen Legen an. Die Hand liegt sortiert im Fächer, die Zehner ganz rechts.",
-        "Du darfst bereits legen, wenn dein Vorgänger noch nicht gezogen hat. Nur Ziehen und Zocken warten auf ältere Auffüllpflichten.",
-        "Ein sanft roter Rahmen mit „Du musst ziehen“ erinnert den Spieler, der jetzt auffüllen muss."
+        "Bei deinen Mitspielern siehst du für jede Handkarte eine Rückseite und die genaue Kartenanzahl.",
+        "Alle Karten sind sauber ausgerichtet und mit gleichmässigen, abgerundeten Papierkanten beschnitten.",
+        "Geben, Ziehen und Aufnehmen zeigen klar, von welchem Stapel die Karten zu welcher Hand wandern.",
+        "Die Kartenwege halten keinen Zug auf; bei reduzierter Bewegung erscheint die Empfangsbestätigung direkt am Ziel."
       ]
     },
     "en": {
-      "title": "More direct Hausdepp play",
+      "title": "Cards are visible around the table",
       "changes": [
-        "Inspect the bottom card yourself and tap again after each ace. A brief animation deals cards across the table.",
-        "Tap a hand card to play immediately. Your hand forms a sorted fan with tens on the right.",
-        "You may already play while the previous player still needs to draw. Only drawing and gambling wait for earlier refills.",
-        "A gentle red frame with “You must draw” reminds the player who must refill now."
+        "Each opponent shows one back for every card in their hand and their exact hand size.",
+        "All cards are neatly aligned and clipped with consistent rounded paper edges.",
+        "Dealing, drawing and picking up clearly show which pile sends cards to which hand.",
+        "Card movements never hold up a turn; reduced motion confirms receipt directly at the destination."
       ]
     }
   }

@@ -107,12 +107,16 @@ a { color: inherit; text-underline-offset: 4px; }
 .hd-seat small { color: #d8c4aa; font-size: 11px; }
 .hd-seat.is-finished { opacity: .65; }
 .hd-seat.is-finished .hd-icon { width: 14px; height: 14px; }
+.hd-opponent-hand { --opponent-card: 34px; --opponent-spread: 60px; --opponent-step: 12px; position: relative; flex: 0 0 auto; width: calc(var(--opponent-card) + min(calc(var(--opponent-gaps) * var(--opponent-step)),var(--opponent-spread))); height: calc(var(--opponent-card)*57/36 + 12px); margin: 2px 8px 0; }
+.hd-opponent-card { position: absolute; top: 4px; left: calc((100% - var(--opponent-card))*var(--back-position)); width: var(--opponent-card); aspect-ratio: 36 / 57; border: 2px solid #f3eadd; border-radius: 6.7% / 4.2%; background: url("/static/hausdepp/card-back.png") center/100px; box-shadow: 0 3px 5px #180d0870; transform: rotate(var(--back-angle)); transform-origin: center bottom; z-index: var(--back-index); }
+.hd-opponent-hand .hd-seat-avatar { position: absolute; top: -5px; left: -10px; width: 22px; height: 22px; margin: 0; font-size: 11px; z-index: 40; }
+.hd-opponent-hand[data-card-count="0"] .hd-seat-avatar { left: calc(50% - 11px); top: 18px; }
 .hd-centre { display: flex; justify-content: center; align-items: center; gap: clamp(26px,5vw,60px); padding: 0 20px; }
 .hd-stock-group, .hd-pile-group { display: flex; align-items: center; flex-direction: column; gap: 15px; position: relative; }
 .hd-stock-group > span, .hd-pile-group > span { font-size: 13px; color: #ead8bd; font-variant-numeric: tabular-nums; }
 .hd-stack-action { display: block; font-size: 13px; font-weight: 650; color: var(--hd-gold); min-height: 18px; text-align: center; }
 .hd-stack-action:empty { display: none; }
-.hausdepp-card { position: relative; display: block; padding: 0; flex: 0 0 auto; width: 106px; aspect-ratio: 36 / 57; background: #f7f4eb; border-radius: 7px; overflow: hidden; box-shadow: 0 5px 12px #180d0870; color: #1c1916; }
+.hausdepp-card { position: relative; display: block; padding: 0; border: 0; flex: 0 0 auto; width: 106px; aspect-ratio: 36 / 57; background: #f7f4eb; border-radius: 6.7% / 4.2%; overflow: hidden; box-shadow: 0 5px 12px #180d0870; color: #1c1916; }
 .hd-card-art { width: 100%; height: 100%; display: block; }
 .hd-card-back { display: block; width: 106px; aspect-ratio: 36 / 57; border: 5px solid #f3eadd; border-radius: 7px; background: url("/static/hausdepp/card-back.png") center/190px; box-shadow: 2px 2px #f3eadd, 4px 4px #745443, 6px 6px #e9dcc6, 0 7px 13px #180d0870; padding: 0; }
 button.hd-card-back:hover { background: url("/static/hausdepp/card-back.png") center/190px; transform: translateY(-3px); }
@@ -144,6 +148,7 @@ button.hd-pile:hover { background: #f3eadd18; }
 .hd-actions { display: flex; justify-content: center; align-items: center; padding: 0 20px; }
 .hd-action-guide { color: #e4cfb1; font-size: 12px; line-height: 1.5; margin: 0 auto; padding: 0 12px; max-width: 55ch; text-align: center; }
 .hd-deal-card { position: fixed; z-index: 65; pointer-events: none; border: 3px solid var(--hd-paper); border-radius: 7px; background: url("/static/hausdepp/card-back.png") center/150px; box-shadow: 0 6px 15px #180d0870; transform-origin: center; }
+.hd-deal-card.has-face { border: 0; background: var(--hd-paper); overflow: hidden; }
 .hd-table[data-phase="peeking"] .hd-hand { padding-block: 8px; }
 .hd-table[data-phase="peeking"] .hd-peek { margin-top: 12px; }
 .hd-peek-cards { flex-wrap: wrap; }
@@ -257,7 +262,10 @@ button.hd-pile:hover { background: #f3eadd18; }
   .hd-seat-avatar { width: 36px; height: 36px; font-size: 14px; }
   .hd-seat strong { font-size: 12px; }
   .hd-seat > span:not(.hd-seat-avatar) { font-size: 11px; }
-  .hd-seat small { font-size: 10px; }
+  .hd-seat small { display: none; }
+  .hd-opponent-hand { --opponent-card: 24px; --opponent-spread: 30px; --opponent-step: 8px; height: calc(var(--opponent-card)*57/36 + 10px); }
+  .hd-seats[data-count="1"] .hd-seat { max-width: 160px; }
+  .hd-seats[data-count="1"] .hd-opponent-hand { --opponent-card: 34px; --opponent-spread: 70px; --opponent-step: 12px; }
   .hd-centre { gap: 28px; padding: 0 10px; }
   .hd-centre .hausdepp-card, .hd-pile, .hd-card-back { width: 94px; }
   .hd-stock-group > span, .hd-pile-group > span { font-size: 12px; }
@@ -294,6 +302,7 @@ button.hd-pile:hover { background: #f3eadd18; }
 }
 @media(orientation:landscape) and (min-width:701px) and (max-width:1099px) and (min-height:601px) and (max-height:850px) {
   .hd-table { grid-template-rows: auto 136px 177px auto auto auto auto auto; }
+  .hd-seat small { display: none; }
   .hd-centre .hausdepp-card, .hd-pile, .hd-card-back { width: 85px; }
   .hd-stock-group, .hd-pile-group { gap: 10px; }
   .hd-hand { --hd-hand-card: 112px; padding-block: 18px 10px; }
@@ -313,6 +322,12 @@ button.hd-pile:hover { background: #f3eadd18; }
   .hd-seat-avatar { width: 32px; height: 32px; margin-bottom: 2px; }
   .hd-seat strong { font-size: 12px; }
   .hd-seat small { display: none; }
+  .hd-seat { gap: 2px; }
+  .hd-opponent-hand { --opponent-card: 22px; --opponent-spread: 28px; --opponent-step: 7px; height: calc(var(--opponent-card)*57/36 + 8px); margin-top: 0; }
+  .hd-seats[data-count="1"] .hd-seat { display: grid; grid-template-columns: auto auto; column-gap: 12px; max-width: 170px; }
+  .hd-seats[data-count="1"] .hd-opponent-hand { --opponent-card: 36px; --opponent-spread: 70px; --opponent-step: 12px; grid-column: 1; grid-row: 1 / 4; }
+  .hd-seats[data-count="1"] .hd-seat > strong { grid-column: 2; grid-row: 1; align-self: end; }
+  .hd-seats[data-count="1"] .hd-seat > span { grid-column: 2; grid-row: 2; align-self: start; }
   .hd-centre { grid-column: 2; grid-row: 2 / 4; align-self: start; height: 136px; gap: 27px; padding: 3px 10px 0; }
   .hd-centre .hausdepp-card, .hd-pile, .hd-card-back { width: 58px; }
   .hd-stock-group, .hd-pile-group { gap: 7px; }

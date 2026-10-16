@@ -60,7 +60,64 @@ additional suit symbols. In this game it remains an ordinary 6 of bells,
 without imported Weli rules. The desired Blitz back is not part of this
 face-card photograph.
 
-## Raster und Ausschnitte / Grid and viewports
+## Aktuelle Darstellung / Current rendering
+
+**DE:** `frontend/hausdepp/cards.js` verwendet einzeln vermessene Papierkanten
+(`CARD_CORNERS`) und eine affine SVG-Abbildung. Dadurch werden leichte Drehung
+und Scherung jeder fotografierten Karte begradigt. Ein Sicherheitsbeschnitt
+bleibt innerhalb des echten Papiers; ein gemeinsamer abgerundeter Papierumriss
+ersetzt die fotografierten Schnittkanten. Keine Kartensymbole, Figuren oder
+Rangbeschriftungen werden neu gezeichnet. Ein gemessener Weissabgleich pro Karte
+vereinheitlicht beim Rendern die Papierfarbe auf Elfenbein. Die SVG-Farbkorrektur
+verändert ausschliesslich die Darstellung; die JPEG-Pixel bleiben unverändert.
+
+**EN:** `frontend/hausdepp/cards.js` uses individually measured paper corners
+(`CARD_CORNERS`) and an affine SVG mapping to straighten photographed tilt and
+shear. A safe inset stays inside the real paper; a common rounded paper outline
+replaces the photographed cut edge. Symbols, figures and rank labels are not
+redrawn. Measured per-card white balance makes paper consistently ivory during
+rendering. SVG colour grading affects presentation only; JPEG pixels remain
+unchanged.
+
+### Blendfreie Laub-Zehn / Glare-free ten of leaves
+
+- Datei / File: `app/static/hausdepp/tell-leaves-reference-v1.jpg`.
+- Quelle / Source: [Original-Hungarian-Tell-set.jpg](https://commons.wikimedia.org/wiki/File:Original-Hungarian-Tell-set.jpg).
+- Fotograf / Photographer: **SZERVÁC Attila**, 07.04.2024.
+- Lizenz / Licence: **[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)**.
+- Verwendete Vorschau / Imported thumbnail: **3840 × 2887 Pixel**.
+- [Offizielle Vorschaudatei / Official thumbnail](https://thumb.wikimedia.org/wikipedia/commons/thumb/0/03/Original-Hungarian-Tell-set.jpg/3840px-Original-Hungarian-Tell-set.jpg).
+- SHA-256 vor Provenienzkommentar / before provenance comment: `d5f8b7cfb8c7504be5b8abde2d73db7c16e7cd2699644ae7b806baddbf5ba633`.
+
+**DE:** Nur die Laub-Zehn wird aus diesem Foto gewählt. Sie zeigt denselben
+schlichten Baum mit zehn Laubzeichen und beseitigt den Lichtreflex der bisherigen
+Vorlage. Der übrige, teilweise anders gestaltete 32er-Satz ersetzt unsere
+anderen Karten nicht. Die Anpassung der Laub-Zehn durch Ausschnitt, Ausrichtung
+und Weissabgleich wird ebenfalls unter **CC BY-SA 4.0** bereitgestellt. Die
+Quellen- und Lizenzangaben sind im Spiel verlinkt und im JPEG eingebettet.
+
+**EN:** Only the ten of leaves is selected from this photograph. Its matching
+plain tree and ten leaf symbols replace the glare in the earlier source. The
+remaining 32-card deck has some different artwork and does not replace our other
+cards. The ten-of-leaves adaptation, including cropping, alignment and white
+balance, is also provided under **CC BY-SA 4.0**. Source and licence links appear
+in the game and are embedded in the JPEG.
+
+### Online geprüfte Qualitätsreferenzen / Online quality references
+
+- [Piatnik: Doppeldeutsche Blitz, 36 Blatt](https://www.piatnik.com/spiele/spielkarten/regionale-karten/doppeldeutsche-blitz-36-blatt).
+- [Piatnik-Werbedruckpartner: Doppeldeutsche Nr. 1885](https://promo-spielkarten.at/p/doppeldeutsche/) und [vollständige 36er-Übersicht](https://promo-spielkarten.at/wp-content/uploads/2020/11/1885-spielkarten-ueberblick.jpg).
+- [Atlas of Playing Cards: Tell](https://atlasofplayingcards.org/pattern/tell.html).
+
+Diese Seiten dienen dem Motiv- und Qualitätsvergleich. Ihre Produktbilder
+wurden nicht in die App übernommen. Unvollständige 32er-Sätze und nicht
+freigegebene PNG-Sammlungen wurden nicht als vollständiger Ersatz eingesetzt.
+
+These pages guide motif and quality comparison. Their product images were not
+imported into the app. Incomplete 32-card decks and PNG collections without a
+reuse licence were not used as full-deck replacements.
+
+## Frühere Viewports als Referenz / Earlier viewports for reference
 
 **DE:** Vier Zeilen mit neun Karten. Von oben nach unten: **Eichel, Laub, Herz,
 Schellen**. Von links nach rechts: **Ass, König, Ober, Unter, 10, 9, 8, 7, 6**.
@@ -68,8 +125,8 @@ Ein allgemeines gleichmässiges CSS-Raster trifft die leicht versetzten Karten
 nicht genau. Die folgenden einzeln zentrierten Viewports sind ein visuell
 ermittelter Ausgangspunkt in **Originalpixeln**, jeweils `x y Breite Höhe`.
 Sie schneiden bewusst einen kleinen Teil des äusseren Papierrands ab, damit
-möglichst kein fotografierter Tisch in die Karte gerät. Die Einbindung muss
-alle 36 Darstellungen in der Browserprüfung kontrollieren.
+möglichst kein fotografierter Tisch in die Karte gerät. Die aktive Darstellung verwendet inzwischen die oben beschriebene
+Papierkantengeometrie; die Tabelle bleibt zur Nachvollziehbarkeit erhalten.
 
 **EN:** Four rows of nine cards. Top to bottom: **acorns, leaves, hearts,
 bells**. Left to right: **ace, king, ober, unter, 10, 9, 8, 7, 6**.
@@ -77,8 +134,8 @@ An evenly spaced CSS grid does not precisely follow the slightly displaced
 cards. The individually centred viewports below are a visually derived
 starting point in **original pixels**, written as `x y width height`.
 They deliberately trim a little of the outer paper margin to keep the
-photographed table out of the card. Integration must check all 36 rendered
-cards in browser verification.
+photographed table out of the card. The active rendering now uses the paper-corner geometry above; this table
+remains for traceability.
 
 | Suit / Farbe | Rank / Rang | x | y | Width / Breite | Height / Höhe |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -160,6 +217,6 @@ checked during integration. This is not a scan of the original Piatnik back.
 ## Provenienzprüfung / Provenance check
 
 `impeccable embed-prompt --scan app/static/hausdepp` meldete nach der Ablage
-**2 Rasterdateien, 0 ohne Provenienz**. / After saving the assets,
+**3 Rasterdateien, 0 ohne Provenienz**. / After saving the assets,
 `impeccable embed-prompt --scan app/static/hausdepp` reported
-**2 raster files, 0 missing provenance**.
+**3 raster files, 0 missing provenance**.
