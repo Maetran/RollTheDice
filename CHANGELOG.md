@@ -23,6 +23,24 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.5.0 — Hausdepp: neueste Erfolge / latest achievements — 2026-10-17
+
+**Deutsch:** Die Hausdepp-Rangliste hat einen neuen Bereich „Neueste erreichte
+Erfolge“. Er zeigt die jüngsten Freischaltungen aller aktiven Konten, die
+neuesten zuerst, mit Erfolgsname, Beschreibung, EP und Zeitpunkt. Leicht
+(10 EP), Mittel (25 EP) und Schwer (50/100 EP) lassen sich filtern; geblättert
+wird in Schritten von 20 Einträgen. Sichtbar sind nur der Kontoname und der
+Erfolg – keine Runden, Karten, Mitspieler oder Konto-IDs. Computer erscheinen
+nicht. Der Bereich ist nur angemeldet erreichbar.
+
+**English:** The Hausdepp leaderboard gains a “Latest achievements earned”
+section. It lists the newest unlocks from every active account, newest first,
+with the achievement name, description, XP and time. Easy (10 XP), medium
+(25 XP) and hard (50/100 XP) can be filtered, and the list pages 20 entries at
+a time. Only the account name and achievement are shown – no rounds, cards,
+co-players or account IDs. Computers never appear. The section is available to
+signed-in players only.
+
 ## 3.4.3 — Hausdepp: stabile Kartengrösse / stable card sizes — 2026-10-17
 
 **Deutsch:** Das offene Paket wird beim Ablegen nicht mehr vorübergehend kleiner.

@@ -28,8 +28,10 @@ module.exports = defineConfig({
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },
+  // One shard creates close to 200 real tables within the hourly window (plus
+  // CI retries); the test-only creation limits leave headroom above that.
   webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
-    command: `ROLLTHEDICE_SITE_ORIGIN=http://127.0.0.1:${port} ROLLTHEDICE_EMAIL_ENABLED=0 ROLLTHEDICE_PASSKEYS_ENABLED=0 ROLLTHEDICE_DATABASE_URL=sqlite:///${testDatabase} ROLLTHEDICE_ADMIN_USERNAME=Admin ROLLTHEDICE_FOUNDER_USER_ID=1 ROLLTHEDICE_ADMIN_PASSWORD=temporary-password-123 ROLLTHEDICE_COOKIE_SECURE=0 ROLLTHEDICE_GAME_CREATE_BURST_MAX=100 ROLLTHEDICE_GAME_CREATE_IP_MAX=200 ROLLTHEDICE_GAME_CREATE_GLOBAL_MAX=500 ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES=${previewAccounts} ${pythonExecutable} -m uvicorn app.asgi:create_application --factory --no-proxy-headers --host 127.0.0.1 --port ${port} --ws-max-size 65536`,
+    command: `ROLLTHEDICE_SITE_ORIGIN=http://127.0.0.1:${port} ROLLTHEDICE_EMAIL_ENABLED=0 ROLLTHEDICE_PASSKEYS_ENABLED=0 ROLLTHEDICE_DATABASE_URL=sqlite:///${testDatabase} ROLLTHEDICE_ADMIN_USERNAME=Admin ROLLTHEDICE_FOUNDER_USER_ID=1 ROLLTHEDICE_ADMIN_PASSWORD=temporary-password-123 ROLLTHEDICE_COOKIE_SECURE=0 ROLLTHEDICE_GAME_CREATE_BURST_MAX=100 ROLLTHEDICE_GAME_CREATE_IP_MAX=600 ROLLTHEDICE_GAME_CREATE_GLOBAL_MAX=1000 ROLLTHEDICE_ZILCH_PREVIEW_USERNAMES=${previewAccounts} ${pythonExecutable} -m uvicorn app.asgi:create_application --factory --no-proxy-headers --host 127.0.0.1 --port ${port} --ws-max-size 65536`,
     url: baseURL,
     reuseExistingServer: false,
     timeout: 15000,

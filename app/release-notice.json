@@ -3,21 +3,23 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: Karten auf dem offenen Paket behalten beim Ablegen ihre Grösse – auch auf Tablets.",
-  "summary_en": "Hausdepp: open-pile cards keep their size when a card is played, including on tablets.",
+  "summary_de": "Hausdepp: Auf der Rangliste siehst du jetzt, wer zuletzt welchen Erfolg verdient hat.",
+  "summary_en": "Hausdepp: the leaderboard now shows who most recently earned which achievement.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp: stabile Kartengrösse",
+      "title": "Hausdepp: neueste Erfolge",
       "changes": [
-        "Die Karten auf dem offenen Paket werden beim Ablegen nicht mehr kurz kleiner.",
-        "Kartenanimation und Stapel passen auf Handy, Tablet und Desktop zusammen."
+        "Neuer Bereich „Neueste erreichte Erfolge“ auf der Rangliste.",
+        "Nach Leicht, Mittel und Schwer filtern und durch ältere Erfolge blättern.",
+        "Sichtbar sind nur Kontoname und Erfolg – Runden und Karten bleiben privat."
       ]
     },
     "en": {
-      "title": "Hausdepp: stable card sizes",
+      "title": "Hausdepp: latest achievements",
       "changes": [
-        "Open-pile cards no longer briefly shrink when a card is played.",
-        "Card animations and the pile match on phones, tablets and desktops."
+        "New “Latest achievements earned” section on the leaderboard.",
+        "Filter by easy, medium and hard, and page through older unlocks.",
+        "Only the account name and achievement are shown – rounds and cards stay private."
       ]
     }
   }
