@@ -3,23 +3,21 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: Klügere Computer, ein sanfterer Einstieg für neue Spieler und Tipps am Tisch.",
-  "summary_en": "Hausdepp: smarter computers, a gentler start for new players and tips at the table.",
+  "summary_de": "Hausdepp: Beim Abheben siehst du jetzt klar, wer die Karten bekommt.",
+  "summary_en": "Hausdepp: after a successful cut you now clearly see who receives the cards.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp: klügere Computer",
+      "title": "Hausdepp: Abheben sichtbar",
       "changes": [
-        "Computer kaufen ein einzelnes Ass oder kleine wertvolle Pakete, statt ihre 10 zu verbrennen.",
-        "Sie spielen mal besser, mal schlechter – in deinen ersten 50 Runden spürbar gnädiger.",
-        "Neu dabei? Kurze Tipps in deiner Zugzeile zeigen gute Käufe, etwa „Ass aufnehmen, 10 behalten“."
+        "Gewonnene Abhebekarten fliegen offen in die Tischmitte – mit Namen, wer sie bekommt.",
+        "Danach fliegen sie sichtbar zur richtigen Hand, erst dann wird ausgeteilt."
       ]
     },
     "en": {
-      "title": "Hausdepp: smarter computers",
+      "title": "Hausdepp: visible cut",
       "changes": [
-        "Computers buy a single ace or small valuable piles instead of burning their ten.",
-        "They play sometimes better, sometimes worse – noticeably gentler during your first 50 rounds.",
-        "New here? Short tips in your turn line point out good buys, such as “take the ace, keep your ten”."
+        "Won cut cards fly face up to the table centre, with a caption naming who receives them.",
+        "They then fly visibly into the right hand before the deal starts."
       ]
     }
   }

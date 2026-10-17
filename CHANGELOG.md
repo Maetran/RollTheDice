@@ -23,6 +23,24 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.7.1 — Hausdepp: Abheben sichtbar machen / show who wins the cut — 2026-10-17
+
+**Deutsch:** Hebt jemand nach dem Mischen erfolgreich ab (eine 10 oder Asse mit
+einer 10), fliegen die gewonnenen Karten für alle offen vom verdeckten Stapel in
+die Tischmitte. Dort steht gut eine Sekunde lang, wer sie bekommt, zum Beispiel
+„Liesl bekommt Ass · 10“, danach fliegen sie sichtbar zu dieser Hand. Erst dann
+wird ausgeteilt, und ein Computer wartet mit seinem ersten Zug. Bei reduzierter
+Bewegung bleibt die Beschriftung ohne Flug. Browser-Tests mit echten Computern
+sind robuster gegen deren neue Kaufentscheidungen. Stilles Release.
+
+**English:** When someone cuts successfully after the shuffle (a ten, or aces with
+a ten), the won cards rise face up from the stock to the table centre for
+everyone. A caption names the receiver for about a second, for example "Liesl
+receives Ace · 10", then the cards fly visibly into that hand. Only then is the
+deal shown, and computers wait before their first move. With reduced motion the
+caption appears without a flight. Browser tests with real computers are more
+robust to their new buying decisions. Silent release.
+
 ## 3.7.0 — Hausdepp: klügere, gnädigere Computer und Tipps / smarter, kinder computers and tips — 2026-10-17
 
 **Deutsch:** Computer bewerten Karten jetzt nach ihrem Spielwert: 10 und Ass sind
