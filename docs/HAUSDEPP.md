@@ -306,6 +306,13 @@ ein taktischer Hinweis, keine zusätzliche Sonderregel.
 
 ### Sichtbare Hände und Kartenbewegungen
 
+Liegen oben auf dem offenen Paket zwei oder drei Karten desselben Rangs, fächern
+sie sich leicht nach links oben auf. So sieht man auf einen Blick, wie viele
+Gleiche schon liegen (bei vier räumt das Paket ab). Am Rundenende zeigt das
+Ergebnisfenster alle Platzierungen in der Reihenfolge, in der die Spieler fertig
+wurden, den Hausdepp zuletzt, und für jedes Konto die in dieser Runde verdienten
+EP und neu erreichten Erfolge.
+
 Die eigene Hand bleibt offen und sortiert. Bei anderen Spielern ist für jede
 Handkarte eine Rückseite sichtbar; die genaue Anzahl steht zusätzlich beim
 Namen. Kartenwerte und Farben gegnerischer Hände bleiben privat. Sehr grosse

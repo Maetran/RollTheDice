@@ -3,21 +3,29 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: Beim Abheben siehst du jetzt klar, wer die Karten bekommt.",
-  "summary_en": "Hausdepp: after a successful cut you now clearly see who receives the cards.",
+  "summary_de": "Hausdepp: Rundenabschluss mit Platzierungen und EP, Tisch-Extras zum Ausprobieren und 15 neue Erfolge.",
+  "summary_en": "Hausdepp: a round summary with places and XP, table extras to play with and 15 new achievements.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp: Abheben sichtbar",
+      "title": "Hausdepp 3.8: Mehr los am Stammtisch",
       "changes": [
-        "Gewonnene Abhebekarten fliegen offen in die Tischmitte – mit Namen, wer sie bekommt.",
-        "Danach fliegen sie sichtbar zur richtigen Hand, erst dann wird ausgeteilt."
+        "Das Rundenende zeigt alle Platzierungen, die EP der Runde und neu erreichte Erfolge.",
+        "Münze werfen, würfeln, vom Bier trinken (nicht zu wild!) oder die Nüsse verputzen – der Tisch spielt mit.",
+        "Mehrere gleiche Karten oben auf dem Paket sind aufgefächert, so siehst du sofort, wie viele liegen.",
+        "15 neue Erfolge für Spielzeit und Treue, von „Bürozeit“ bis „Wochenläufer“; die oberen Ränge brauchen jetzt mehr EP.",
+        "Schnellerer Start der App, ohne fehlende Kartenbilder; dein Profilbild oben führt direkt zur Profilbild-Einstellung.",
+        "Tägliche Spielerinnerungen und Startmeldungen deiner Spielerauswahl gibt es jetzt auch für Hausdepp."
       ]
     },
     "en": {
-      "title": "Hausdepp: visible cut",
+      "title": "Hausdepp 3.8: More going on at the table",
       "changes": [
-        "Won cut cards fly face up to the table centre, with a caption naming who receives them.",
-        "They then fly visibly into the right hand before the deal starts."
+        "The round end shows every place, the round's XP and newly reached achievements.",
+        "Toss the coin, roll the dice, drink your beer (not too wildly!) or finish the nuts – the table plays along.",
+        "Several equal cards on top of the pile fan out, so you see at once how many are there.",
+        "15 new achievements for play time and loyalty, from “Office hours” to “Week streak”; the top ranks now need more XP.",
+        "A faster app start without missing card pictures; your avatar at the top opens your profile picture setting.",
+        "Daily play reminders and start notices from your player selection now include Hausdepp."
       ]
     }
   }
