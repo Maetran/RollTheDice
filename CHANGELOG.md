@@ -36,8 +36,7 @@ pro Konto, umschaltbar in der Tischhilfe und in den Kontoeinstellungen,
 standardmässig aus. Die Mehrfachauswahl wählt mit einem Tipp alle gleichen
 Karten, ein weiterer Tipp nimmt einzelne heraus; ausgewählte Karten heben sich
 mit Haken an. Auf Touchgeräten blieb die zuletzt angetippte Karte angehoben und
-verdeckte ihre Nachbarn, und ausgegraute Karten schluckten Tipps – beides ist
-behoben. Die Kontoeinstellungen sind in fünf Gruppen geordnet und eingeklappt;
+verdeckte ihre Nachbarn – das ist behoben. Die Kontoeinstellungen sind in fünf Gruppen geordnet und eingeklappt;
 ein Tipp öffnet einen Punkt. In der mobilen Lobby steht „Neuer Stammtisch“ direkt
 unter dem Titel, „So wird gespielt“ folgt darunter.
 
@@ -51,8 +50,8 @@ they vanished into the table help after a few seconds. New: **Refill to three
 automatically** per account, switchable in the table help and account settings,
 off by default. Multi-select picks every matching card with one tap, and another
 tap takes single cards out; selected cards lift with a check mark. On touch
-screens the last tapped card stayed raised and covered its neighbours, and
-greyed-out cards swallowed taps; both are fixed. Account settings are grouped
+screens the last tapped card stayed raised and covered its neighbours; that is
+fixed. Account settings are grouped
 into five sections of collapsed rows that open with a tap. In the mobile lobby
 “A new regular table” now sits right below the title, with “How to play” after it.
 

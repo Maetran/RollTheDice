@@ -37,6 +37,12 @@ async function expectAppleIcon(page) {
   expect(decoded).toEqual([180, 180]);
 }
 
+// Account settings are collapsed rows; open the row that holds a control first.
+async function openSettingsRow(page, selector) {
+  const row = page.locator('details.hd-settings-item').filter({ has: page.locator(selector) });
+  if (!(await row.evaluate(element => element.open))) await row.locator('> summary').click();
+}
+
 for (const language of ['de', 'en']) {
   test(`${language}: Hausdepp native passkey settings, username and backup password share the same account`, async ({ page, context }, testInfo) => {
     const relay = await localTransport(context, language === 'de' ? 51 : 52);
@@ -58,6 +64,7 @@ for (const language of ['de', 'en']) {
         await page.setViewportSize({ width, height: 844 });
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       }
+      await openSettingsRow(page, '[data-game-tour-settings]');
       const tours = page.locator('[data-game-tour-settings]');
       await expect(tours.getByRole('heading')).toHaveText(language === 'de' ? 'Einsteigertouren' : 'Beginner tours');
       await expect(tours.locator('[data-tour-action=start]')).toHaveCount(3);
@@ -72,6 +79,7 @@ for (const language of ['de', 'en']) {
       await expect(page).toHaveURL(`${HOUSE}/hausdepp/konto/einstellungen`);
       await page.locator('[data-tour-close]').click();
       const account = await page.evaluate(() => fetch('/api/auth/me').then(r => r.json()));
+      await openSettingsRow(page, '[data-passkey-form]');
       await page.locator('[data-passkey-form] input[name=label]').fill('House device backup');
       // Model switching to a second device after the existing credential has
       // authenticated this account. The server correctly excludes the first
@@ -86,6 +94,7 @@ for (const language of ['de', 'en']) {
       await page.locator('[data-passkey-form] button[type=submit]').click();
       expect((await added).status()).toBe(200);
       await expect(page.locator('[data-passkey-list] li')).toHaveCount(2);
+      await openSettingsRow(page, '[data-username-form]');
       const usernameForm = page.locator('[data-username-form]');
       await usernameForm.locator('input[name=username]').fill(`HouseRenamed_${language}`);
       const renamed = page.waitForResponse(r => r.url() === `${HOUSE}/api/auth/change-username`);
@@ -95,16 +104,19 @@ for (const language of ['de', 'en']) {
       const changed = await page.evaluate(() => fetch('/api/auth/me').then(r => r.json()));
       expect(changed.user.id).toBe(account.user.id);
       expect(changed.user.username).toBe(`HouseRenamed_${language}`);
+      await openSettingsRow(page, '#hausdeppLanguageForm');
       const languageForm = page.locator('#hausdeppLanguageForm');
       await languageForm.locator('select').selectOption(language);
       const savedLanguage = page.waitForResponse(r => r.url() === `${HOUSE}/api/auth/preferences/language`);
       await languageForm.locator('button').click();
       expect((await savedLanguage).status()).toBe(200);
+      await openSettingsRow(page, '#hausdeppChatForm');
       const chatForm = page.locator('#hausdeppChatForm');
       await chatForm.locator('input[name=enabled]').uncheck();
       const savedChat = page.waitForResponse(r => r.url() === `${HOUSE}/api/auth/preferences/lobby-chat`);
       await chatForm.locator('button').click();
       expect((await savedChat).status()).toBe(200);
+      await openSettingsRow(page, '#hausdeppPasswordForm');
       const passwordForm = page.locator('#hausdeppPasswordForm');
       await passwordForm.locator('input[name=password]').fill('house-backup-password-123');
       await passwordForm.locator('input[name=confirmation]').fill('house-backup-password-123');
@@ -122,6 +134,7 @@ for (const language of ['de', 'en']) {
       const restored = await page.evaluate(() => fetch('/api/auth/me').then(r => r.json()));
       expect(restored.user.id).toBe(account.user.id);
       expect(restored.user.has_password).toBe(true);
+      await openSettingsRow(page, '[data-game-tour-settings]');
       await page.locator('[data-tour-action=start][data-tour-game=hausdepp]').click();
       await expect(page).toHaveURL(`${HOUSE}/hausdepp`);
       await expect(page.locator('.game-tour-entry')).toBeVisible();
