@@ -11,7 +11,10 @@ export function mountPileInspector({ pile, inspectButton, table, t, cardMarkup }
   const status = dialog.querySelector("[data-pile-inspector-status]");
   let discard = [], signature = "", opener, pointer, timer, suppressClick = false;
 
-  const stopHold = () => { clearTimeout(timer); timer = null; pointer = null; };
+  // While a finger rests on the pile, its tooltip explains the long press.
+  const group = pile.parentElement;
+  let hintTimer;
+  const stopHold = () => { clearTimeout(timer); clearTimeout(hintTimer); timer = null; pointer = null; group?.classList.remove("is-holding"); };
   const render = () => {
     dialog.querySelector("h2").textContent = t("inspectPile");
     closeButton.textContent = t("close");
@@ -34,6 +37,7 @@ export function mountPileInspector({ pile, inspectButton, table, t, cardMarkup }
     if (!event.isPrimary || event.button !== 0 || !discard.length) return;
     suppressClick = false;
     pointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    hintTimer = setTimeout(() => { if (pointer) group?.classList.add("is-holding"); }, 160);
     timer = setTimeout(() => {
       if (!pointer) return;
       suppressClick = true;
@@ -90,7 +94,6 @@ export function mountPileInspector({ pile, inspectButton, table, t, cardMarkup }
     update(publicDiscard) {
       discard = [...(publicDiscard || [])];
       inspectButton.disabled = !discard.length;
-      pile.title = t("inspectPileGesture");
       if (dialog.open) render();
     },
     close() { stopHold(); if (dialog.open) close(); },

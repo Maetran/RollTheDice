@@ -39,6 +39,36 @@ Die gezielten Tests stehen in `tests/browser/hausdepp-table-decor.spec.js`.
 Die eigentliche Karten- und Transferprovenienz bleibt separat in
 `docs/HAUSDEPP_ASSETS.md` dokumentiert. Die gestalterische Abnahme bleibt offen.
 
+### Streuteile, Bewegung und Schieben (3.4.1)
+
+Zu den zwölf grossen Gegenständen kommen zehn kleine Streuteile im Atlas
+`app/static/hausdepp-table-props-scatter-v1.webp` (4×3 Zellen, 1’024×768):
+Kronkorken, Flaschenöffner, goldene und rote Praline, einzelner Würfel,
+lose Nüsse, Chips, Flips, Bierdeckel mit Strichliste und Bleistift. Die ersten
+acht sind freigestellte Ausschnitte aus den drei generierten Atlanten
+(Alphamaske je Objekt, ohne neue Bildquelle). Bierdeckel und Bleistift sind
+eigene Vektorgrafiken (`docs/hausdepp-decor/coaster.svg`, `pencil.svg`).
+Für die Auslieferung gibt es von den drei grossen Atlanten verkleinerte
+WebP-Fassungen (768×768, zusammen rund 0,4 statt 5,5 MB); die PNG-Originale
+bleiben als Quelle im Projekt.
+
+Desktop zeigt pro Runde vier bis sechs grosse Gegenstände und vier bis sechs
+Streuteile, Tablet bis zu drei grosse und drei bis fünf kleine, Handy-Hochformat
+einen grossen und bis zu drei kleine, Handy-Querformat je zwei. Die Positionen
+liegen meist am Tischrand und werden weiterhin gegen alle gemessenen
+Spielbereiche und Bedienelemente geprüft. Zusätzlich bleibt das Band frei,
+das eine Hand mit fünf bis sieben Karten braucht, damit später aufgenommene
+Karten nichts verdecken.
+
+Jeder Gegenstand reagiert beim Antippen eigen: Kronkorken drehen sich wie eine
+Münze, Öffner und Bleistift kreiseln, Pralinen und Würfel rollen, lose Snacks
+hüpfen und verlieren Krümel, Getränke kräuseln ihre Oberfläche, das Windlicht
+flackert auf. Ist zu wenig Platz, gibt der Gegenstand nur kurz nach.
+Mit Maus oder Finger lassen sich Gegenstände ein Stück über den Tisch schieben;
+auf Karten, Stapeln, Namen oder Knöpfen bleiben sie nie liegen, sondern gleiten
+zurück. Im Ruhezustand steigen Bläschen im Bier, das Windlicht schimmert und
+Folie und Dose glänzen gelegentlich. Reduzierte Bewegung schaltet all das ab.
+
 ## English
 
 The owner requested richer tablet/desktop table space with varying drinks,
@@ -63,6 +93,25 @@ and subtle steam, foam and candle flicker respect reduced motion. Ordinary
 acknowledgements do not restart effects; reduced motion also disables optional
 prop buttons.
 Visual owner acceptance remains pending.
+
+### Scatter pieces, motion and pushing (3.4.1)
+
+Ten small scatter pieces join the twelve large props in
+`app/static/hausdepp-table-props-scatter-v1.webp` (4×3 cells): bottle cap,
+opener, gold and red chocolates, a single die, loose nuts, crisps, peanut
+puffs, a beer mat with tally marks and a pencil. Eight are alpha-masked cut-outs
+of the three generated atlases; the beer mat and pencil are vector drawings in
+`docs/hausdepp-decor/`. The large atlases ship as downscaled WebP files
+(about 0.4 MB instead of 5.5 MB); the PNG originals stay as sources.
+
+Desktop shows four to six large props and four to six scatter pieces per round,
+tablets up to three large and three to five small, portrait phones one large and
+up to three small, landscape phones two of each. Placement keeps the band a
+five- to seven-card hand needs. Every object has its own tap reaction (coin
+spin, spin, roll, hop with crumbs, liquid ripple, candle flare) or a short
+squish when space is tight, and can be pushed with mouse or finger; it glides
+back instead of resting on cards, piles, names or controls. Idle bubbles,
+candle halo and foil glints stay subtle. Reduced motion turns all of it off.
 
 ## Original generation prompt
 

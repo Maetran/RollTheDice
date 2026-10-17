@@ -159,7 +159,7 @@ for (const language of ['de', 'en']) {
     ]);
     await expect(play).toBeDisabled();
     await expect(card(page, HAND[2])).toBeDisabled();
-    await page.locator('#hausdeppMultiCancel').click();
+    await page.locator('#hausdeppMultiToggle').click();
     await expect(page.locator('#hausdeppMultiToggle')).toHaveAttribute('aria-pressed', 'false');
     expect(state.commands).toHaveLength(1);
     await page.reload();
@@ -230,7 +230,7 @@ for (const language of ['de', 'en']) {
     await page.locator('#hausdeppMultiToggle').click();
     for (const [width, height] of VIEWPORTS) {
       await page.setViewportSize({ width, height });
-      for (const id of ['#hausdeppMultiToggle', '#hausdeppMultiPlay', '#hausdeppMultiCancel']) {
+      for (const id of ['#hausdeppMultiToggle', '#hausdeppMultiPlay']) {
         const box = await page.locator(id).boundingBox();
         expect(box.width, `${language} ${width}×${height} ${id}`).toBeGreaterThanOrEqual(44);
         expect(box.height).toBeGreaterThanOrEqual(44);
@@ -252,7 +252,7 @@ for (const language of ['de', 'en']) {
       expect(metrics.width).toBeLessThanOrEqual(width + 1);
       if (width <= 1099) expect(metrics.height).toBeLessThanOrEqual(height + 1);
     }
-    await page.locator('#hausdeppMultiCancel').click();
+    await page.locator('#hausdeppMultiToggle').click();
     await expect(page.locator('.hd-reactions')).toBeVisible();
     expect(state.commands).toEqual([]);
   });
