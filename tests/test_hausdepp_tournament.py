@@ -59,14 +59,15 @@ def database(tmp_path):
     configure_database(main.DATA_DIR)
 
 
-def table(database, *, count=2):
+def table(database, *, count=2, dealer=None):
     owner, other = database
     game = create_game_state("stable-table", "Acht Buchstaben", str(count), "hausdepp")
     configure_hausdepp_game(game, host_user_id=owner.id, cpu_count=count - 2, tournament=True)
     for key, account in (("p0", owner), ("p1", other)):
         join_hausdepp_player(game, {"id": key, "name": account.username, "user_id": account.id,
                                    "ws": Socket(), "resume_token": f"resume-{key}"})
-    start_hausdepp_game(game)
+    with patch("app.hausdepp_state._DEALER_RANDOM.randrange", return_value=count - 1 if dealer is None else dealer):
+        start_hausdepp_game(game)
     return game
 
 
@@ -113,6 +114,27 @@ def test_configure_rotating_dealer_and_active_peek_without_replacing_seats(datab
     assert game["_chat_history"] == [{"text": "Unser Tisch bleibt."}]
     assert not game["_finished"]
     assert not game.get("_completion_persisted")
+
+
+def test_first_dealer_is_random_and_the_deal_then_passes_clockwise(database):
+    seen = set()
+    for dealer in range(3):
+        game = table(database, count=3, dealer=dealer)
+        participants = [player["id"] for player in game["_participants"]]
+        state = game["_hausdepp"]
+        assert state["dealer_id"] == participants[dealer]
+        # The player before the dealer looks at the bottom card.
+        assert state["peek_information"]["player_id"] == participants[(dealer - 1) % 3]
+        seen.add(state["peek_information"]["player_id"])
+        games.pop(game["_id"], None)
+    assert seen == {"p0", "p1", "cpu-1"}
+    game = table(database, count=3, dealer=0)
+    finish_round(game)
+    version = game["_hausdepp"]["version"]
+    assert finalize_hausdepp_result(game)["result_persisted"]
+    start_next_round(game, "p0", version)
+    assert game["_hausdepp"]["dealer_id"] == "p1"
+    assert game["_hausdepp"]["peek_information"]["player_id"] == "p0"
 
 
 def test_next_round_requires_host_finished_persisted_round_and_fresh_version(database):

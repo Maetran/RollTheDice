@@ -85,7 +85,9 @@ class HausdeppIntegrationTests(unittest.TestCase):
             account = self.founder if index == 0 else self.player
             join_hausdepp_player(game, {"id": f"human-{index}", "name": account.username,
                                       "user_id": account.id, "ws": RecordingSocket(), "resume_token": f"resume{index}"})
-        start_hausdepp_game(game)
+        # The live first dealer is random; tests pin the last seat.
+        with patch("app.hausdepp_state._DEALER_RANDOM.randrange", return_value=count - 1):
+            start_hausdepp_game(game)
         if start_play:
             while game["_hausdepp"]["phase"] == "peeking":
                 state = game["_hausdepp"]
@@ -384,6 +386,20 @@ class HausdeppIntegrationTests(unittest.TestCase):
                                         headers={"host": "zilch.zockdiewandan.online"}).status_code, 404)
             foreign = create_game_state("ordinary-zdwa", "Wuerfeltisch", "2", "zdwa")
             self.assertEqual(client.get(f"/hausdepp/spiel/{foreign['_id']}").status_code, 404)
+
+    def test_auto_refill_preference_is_per_account_and_off_by_default(self):
+        with TestClient(main.app) as client:
+            client.cookies.set("rollthedice_session", self.token)
+            self.assertFalse(client.get("/api/auth/me").json()["user"]["preferences"]["hausdepp_auto_refill"])
+            path = "/api/auth/preferences/hausdepp"
+            self.assertEqual(client.put(path, json={"hausdepp_auto_refill": True}).status_code, 403)
+            headers = {"X-CSRF-Token": self.identity.csrf_token}
+            response = client.put(path, json={"hausdepp_auto_refill": True}, headers=headers)
+            self.assertEqual(response.json(), {"hausdepp_auto_refill": True})
+            self.assertTrue(client.get("/api/auth/me").json()["user"]["preferences"]["hausdepp_auto_refill"])
+            self.assertEqual(client.put(path, json={"hausdepp_auto_refill": "maybe"}, headers=headers).status_code, 422)
+        with TestClient(main.app) as anonymous:
+            self.assertEqual(anonymous.put(path, json={"hausdepp_auto_refill": True}).status_code, 401)
 
     def test_founder_account_api_is_personal_bounded_and_uncached(self):
         with TestClient(main.app) as client:

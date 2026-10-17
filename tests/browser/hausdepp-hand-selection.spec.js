@@ -19,8 +19,12 @@ test('selection state keeps only equal ranks and consumes an atomic selection on
   const { createHandSelection } = await import(selectionModule);
   const selection = createHandSelection();
   selection.sync(context()); selection.toggle();
+  // One tap picks every playable card of that rank; another tap takes one out.
   expect(selection.select(HAND[0])).toBe(true);
+  expect(selection.cards).toEqual(HAND.slice(0, 2));
   expect(selection.select(HAND[2])).toBe(false);
+  expect(selection.select(HAND[1])).toBe(true);
+  expect(selection.cards).toEqual([HAND[0]]);
   expect(selection.select(HAND[1])).toBe(true);
   expect(selection.take()).toEqual({ action: 'play', cards: HAND.slice(0, 2) });
   expect(selection.take()).toBeNull();
@@ -45,7 +49,7 @@ test('selection state retains duplicate snapshots and only a proved foreign refi
     const selection = createHandSelection();
     selection.sync(context()); selection.toggle(); selection.select(HAND[0]);
     selection.sync(context({ key: `table:1:${version}`, version, identity, event }));
-    expect(selection.cards, JSON.stringify({ event, version, identity })).toEqual(retained ? [HAND[0]] : []);
+    expect(selection.cards, JSON.stringify({ event, version, identity })).toEqual(retained ? HAND.slice(0, 2) : []);
   }
 });
 
@@ -137,9 +141,14 @@ for (const language of ['de', 'en']) {
     await card(page, HAND[0]).click();
     expect(state.commands).toEqual([]);
     await expect(card(page, HAND[0])).toHaveAttribute('aria-pressed', 'true');
+    await expect(card(page, HAND[1])).toHaveAttribute('aria-pressed', 'true');
     await expect(card(page, HAND[2])).toBeDisabled();
-    await card(page, HAND[1]).click();
     const play = page.locator('#hausdeppMultiPlay');
+    await expect(play).toHaveText(language === 'de' ? '2 Karten legen' : 'Play 2 cards');
+    await card(page, HAND[1]).click();
+    await expect(card(page, HAND[1])).toHaveAttribute('aria-pressed', 'false');
+    await expect(play).toHaveText(language === 'de' ? '1 Karte legen' : 'Play 1 card');
+    await card(page, HAND[1]).click();
     await expect(play).toHaveText(language === 'de' ? '2 Karten legen' : 'Play 2 cards');
     if (process.env.HAUSDEPP_SELECTION_SCREENSHOTS === '1') {
       await page.screenshot({ path: test.info().outputPath(`selection-two-${language}-390x844.png`) });
@@ -163,11 +172,11 @@ for (const language of ['de', 'en']) {
     state.send(four);
     await expect(page.locator('#hausdeppHand [data-card-id]')).toHaveCount(5);
     await page.locator('#hausdeppMultiToggle').click();
-    for (const id of four._hausdepp.hand.slice(0, 4)) await card(page, id).click();
+    await card(page, four._hausdepp.hand[0]).click();
     await expect(play).toHaveText(language === 'de' ? '4 Karten legen' : 'Play 4 cards');
     await play.click();
-    expect(state.commands.map(({ action, cards }) => ({ action, cards }))).toEqual([
-      { action: 'hausdepp_play', cards: four._hausdepp.hand.slice(0, 4) },
+    expect(state.commands.map(({ action, cards }) => ({ action, cards: [...cards].sort() }))).toEqual([
+      { action: 'hausdepp_play', cards: four._hausdepp.hand.slice(0, 4).sort() },
     ]);
   });
 
@@ -180,7 +189,7 @@ for (const language of ['de', 'en']) {
     s.version += 1; state.send(next);
     await expect(page.locator('#hausdeppRoomName')).toHaveText(next._name);
     await page.locator('#hausdeppMultiToggle').click();
-    await card(page, HAND[0]).click(); await card(page, HAND[1]).click();
+    await card(page, HAND[0]).click();
     next._name = 'Renderer-Test · Fremder Pflichtnachzug';
     s.version += 1; s.last_event = { type: 'draw', player_id: state.remote, drawn_count: 1 }; state.send(next);
     await expect(page.locator('#hausdeppRoomName')).toHaveText(next._name);
@@ -246,5 +255,45 @@ for (const language of ['de', 'en']) {
     await page.locator('#hausdeppMultiCancel').click();
     await expect(page.locator('.hd-reactions')).toBeVisible();
     expect(state.commands).toEqual([]);
+  });
+}
+
+for (const language of ['de', 'en']) {
+  test(`${language}: the peeker keeps seeing known bottom cards and auto-refill taps the stock once`, async ({ page }) => {
+    const state = await fixture(page, language);
+    const next = structuredClone(state.board), s = next._hausdepp;
+    Object.assign(s, { private_peek: ['hearts-A', 'bells-K'], private_peek_in_stock: ['hearts-A', 'bells-K'] });
+    s.version += 1; state.send(next);
+    await expect(page.locator('#hausdeppKnownBottom')).toHaveText(language === 'de' ? 'Unten: Ass · König' : 'Bottom: Ace · King');
+    await expect(page.locator('#hausdeppStock')).toHaveAttribute('aria-label', language === 'de' ? /unten im Stapel/ : /bottom of the stock/);
+    s.private_peek_in_stock = ['hearts-A']; s.version += 1; state.send(next);
+    await expect(page.locator('#hausdeppKnownBottom')).toHaveText(language === 'de' ? 'Unten: Ass' : 'Bottom: Ace');
+    s.private_peek_in_stock = []; s.version += 1; state.send(next);
+    await expect(page.locator('#hausdeppKnownBottom')).toBeHidden();
+
+    // Off by default: a due refill waits for the player's tap.
+    Object.assign(s, { current_player_id: state.remote, available_actions: ['draw'], playable_cards: [],
+      draw_required: true, draw_urgent: true, last_event: { type: 'play', player_id: state.self, cards: ['hearts-U'] } });
+    s.version += 1; state.send(next);
+    await expect(page.locator('#hausdeppDrawAlert')).toBeVisible();
+    await page.waitForTimeout(150);
+    expect(state.commands.filter(command => command.action === 'hausdepp_draw')).toEqual([]);
+
+    await page.locator('#hausdeppTools > summary').click();
+    const toggle = page.locator('#hausdeppAutoRefill');
+    await expect(toggle).not.toBeChecked();
+    const saved = page.waitForResponse(response => response.url().endsWith('/api/auth/preferences/hausdepp') && response.ok());
+    await toggle.check();
+    await saved;
+    await expect.poll(() => state.commands.filter(command => command.action === 'hausdepp_draw').length).toBe(1);
+    expect(state.commands.at(-1).version).toBe(s.version);
+    const me = await (await page.request.get('/api/auth/me')).json();
+    expect(me.user.preferences.hausdepp_auto_refill).toBe(true);
+    await page.reload();
+    await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
+    await page.locator('#hausdeppTools > summary').click();
+    await expect(page.locator('#hausdeppAutoRefill')).toBeChecked();
+    await page.locator('#hausdeppAutoRefill').uncheck();
+    await expect.poll(async () => (await (await page.request.get('/api/auth/me')).json()).user.preferences.hausdepp_auto_refill).toBe(false);
   });
 }

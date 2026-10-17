@@ -6,6 +6,12 @@
 .hd-playing .hd-multi-toggle[aria-pressed="true"] { color: var(--hd-paper); background: var(--hd-red); border-color: var(--hd-paper); box-shadow: 0 0 0 2px var(--hd-red); }
 .hd-playing .hd-multi-toggle:disabled { opacity: .55; cursor: default; }
 .hd-playing .hd-hand-fan .hausdepp-card.is-selected { outline: 3px solid #f2d781; outline-offset: -4px; filter: brightness(1.06); box-shadow: 0 0 0 2px var(--hd-red); }
+/* `translate` composes with each fan's own transform, so selected cards lift on every layout. */
+html[data-game="hausdepp"] body.hd-playing .hd-hand-fan .hausdepp-card { transition: transform 130ms cubic-bezier(.16,1,.3,1), translate 140ms cubic-bezier(.16,1,.3,1); }
+html[data-game="hausdepp"] body.hd-playing .hd-hand-fan .hausdepp-card.is-selected { position: relative; translate: 0 -14px; }
+html[data-game="hausdepp"] body.hd-playing .hd-hand-fan .hausdepp-card.is-selected::after { content: "✓"; position: absolute; top: 4px; left: 4px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: var(--hd-paper); background: var(--hd-red); border: 1px solid var(--hd-paper); font: 700 12px/1 system-ui, sans-serif; pointer-events: none; }
+html[data-game="hausdepp"] body.hd-playing .is-multi-selecting .hd-hand-fan .hausdepp-card:not(.is-selected):disabled { filter: brightness(.7) saturate(.6); }
+@media (prefers-reduced-motion: reduce) { html[data-game="hausdepp"] body.hd-playing .hd-hand-fan .hausdepp-card { transition: none; } }
 .hd-playing .hd-multi-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; min-width: 0; flex: 1 1 auto; }
 .hd-playing .hd-multi-actions[hidden], .hd-playing .hd-reactions[hidden], .hd-playing .hd-multi-notice[hidden] { display: none; }
 .hd-playing .hd-multi-actions > button { min-width: 44px; min-height: 44px; padding: 8px; font-size: 13px; line-height: 18px; white-space: nowrap; }
@@ -15,4 +21,7 @@
   html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-hand-region { grid-template-columns: minmax(0, 1fr) 44px; column-gap: 4px; }
   html[data-game="hausdepp"] body.hd-playing .hd-hand { grid-column: 1; grid-row: 2; }
   html[data-game="hausdepp"] body.hd-playing .hd-multi-actions > button { height: 44px; }
+  /* The fixed phone window clips the fan's top edge; lift less and keep the mark inside. */
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-fan .hausdepp-card.is-selected { translate: 0 -5px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-fan .hausdepp-card.is-selected::after { top: 10px; left: 6px; }
 }

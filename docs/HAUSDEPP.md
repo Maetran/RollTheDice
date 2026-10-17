@@ -105,7 +105,10 @@ Strafpunkte; Erfahrung wird für abgeschlossene Runden und Erfolge vergeben.
 
 ### Vorbereitung: verpflichtendes Anschauen von unten
 
-Der Geber mischt. Gespielt wird im Uhrzeigersinn. Der Spieler unmittelbar vor
+Der Geber mischt. Der erste Geber eines Tisches wird zufällig bestimmt, gegen
+Computer ebenso wie gegen Menschen; die Sitzreihenfolge spielt dafür keine
+Rolle. Im Turnier gibt nach jeder Runde der nächste Spieler im Uhrzeigersinn.
+Gespielt wird im Uhrzeigersinn. Der Spieler unmittelbar vor
 dem Geber in dieser Reihenfolge schaut die unterste Karte des verdeckten
 Stapels an. Das Anschauen, Weiterschauen nach einem Ass und Behalten bei Erfolg
 sind verpflichtend; es gibt kein Auslassen, Ablehnen oder vorzeitiges Aufhören.
@@ -126,7 +129,9 @@ aus. Ein Computer führt seine eigenen Abhebeaktionen aus.
    Versuch erfolglos. Der Spieler erhält **keine** Karte. Alle angeschauten
    Karten bleiben in ihrer ursprünglichen Reihenfolge unten im Stapel. Sie
    werden den anderen Spielern nicht gezeigt. Der anschauende Spieler kennt
-   diese Karten weiterhin.
+   diese Karten weiterhin: Solange sie im Stapel liegen, sieht nur er sie als
+   kurzes Etikett („Unten: Ass · König“) direkt auf dem verdeckten Stapel; die
+   Karten selbst bleiben zusätzlich in der Tischhilfe einsehbar.
 
 Beispiele: `10` ergibt eine 10; `Ass → Ass → 10` ergibt drei Handkarten;
 `Ass → Ass → König` ergibt keine Handkarte. Die Pfeile bezeichnen die
@@ -199,7 +204,12 @@ aufgefüllt werden, solange Nachziehkarten vorhanden sind. **Das Auffüllen
 geschieht nicht automatisch:** Ein Tipp auf den verdeckten Stapel nimmt
 sämtliche fehlenden Karten bis zur Handgrösse drei auf einmal, oder alle noch
 verfügbaren Karten, falls weniger übrig sind. Bei drei oder mehr Handkarten ist
-kein Auffüllen erforderlich.
+kein Auffüllen erforderlich. Als freiwillige Komfortfunktion kann jedes Konto
+**Automatisch auf drei auffüllen** einschalten (Tischhilfe oder
+Kontoeinstellungen, standardmässig aus). Dann tippt das Spiel den Stapel
+einmal an, sobald die eigene Auffüllpflicht an der Reihe ist. Regeln,
+Reihenfolge und Nachwurfrecht ändern sich dadurch nicht; ein Nachwurf darf
+hinter diesem Tipp angetippt werden.
 
 **Langsames Ziehen hält Handzüge nicht auf.** Der nächste Spieler darf sofort
 legen. Der verdeckte Stapel ist aber für die älteste noch offene Auffüllpflicht
@@ -229,7 +239,9 @@ zusätzliche Bestätigung. Weitere gleiche Karten können schnell nacheinander
 angetippt werden, solange das Nachwurfrecht noch besteht.
 
 Mit **Mehrere Karten auswählen** lassen sich stattdessen mehrere Karten desselben
-Rangs markieren und gemeinsam ausspielen. Die Auswahl führt keinen Zug aus;
+Rangs markieren und gemeinsam ausspielen. Der erste Tipp wählt alle spielbaren
+Karten dieses Rangs, jeder weitere Tipp nimmt eine einzelne Karte heraus oder
+wieder hinzu. Ausgewählte Karten heben sich an und tragen einen Haken. Die Auswahl führt keinen Zug aus;
 erst **Karten legen** sendet alle ausgewählten Karten als einen atomaren Zug.
 Das funktioniert auch bei gültigem Nachwerfen. Schliesst eine andere Aktion
 das Nachwurffenster, verfällt eine noch nicht gespielte Auswahl sichtbar.
@@ -628,7 +640,10 @@ completed rounds and achievements.
 
 ### Preparation: mandatory inspection from the bottom
 
-The dealer shuffles. Play proceeds clockwise. The player immediately before
+The dealer shuffles. The first dealer at a table is drawn at random, against
+computers and people alike; seat order plays no part. In a tournament the deal
+passes clockwise to the next player after each round. Play proceeds clockwise.
+The player immediately before
 the dealer in that order looks privately at the bottom card of the face-down
 deck. Looking, continuing after an ace and keeping cards on success are
 mandatory. There is no opting out, declining or stopping early. The designated
@@ -645,7 +660,9 @@ another tap continues the inspection. A computer performs its own peek actions.
 5. If a card other than an ace or 10 appears before a 10, the attempt fails.
    The player receives **no** cards. All inspected cards stay at the bottom of
    the deck in their original order and are not shown to other players. The
-   inspecting player retains knowledge of those cards.
+   inspecting player retains knowledge of those cards: while they remain in
+   the stock, only that player sees a short label (“Bottom: Ace · King”) on the
+   face-down pile, and the cards stay viewable in the table help.
 
 Examples: `10` gives one 10; `Ace → Ace → 10` gives three hand cards;
 `Ace → Ace → King` gives no hand cards. The arrows show inspection order,
@@ -713,6 +730,11 @@ After a complete play, a hand below three cards must be refilled from the top
 while draw cards remain. **Refilling is not automatic:** One tap on the face-down
 pile takes all missing cards up to a hand of three at once, or all remaining
 cards if fewer are available. A hand of three or more cards needs no refill.
+As an optional convenience, each account may turn on **Refill to three
+automatically** (table help or account settings, off by default). The game
+then taps the pile once as soon as the player's own refill is due. Rules, order
+and the additional-card window do not change; an additional card may be tapped
+behind that refill.
 
 **Slow drawing does not hold up hand plays.** The next player may play
 immediately. Access to the face-down pile follows the oldest pending refill:
@@ -739,7 +761,9 @@ Further matching cards can be tapped in quick succession while the additional-
 card right remains open.
 
 Alternatively, **Select multiple cards** marks cards of the same rank for one
-combined play. Selection itself sends no game action; **Play cards** submits
+combined play. The first tap selects every playable card of that rank; each
+further tap removes or re-adds a single card. Selected cards lift and carry a
+check mark. Selection itself sends no game action; **Play cards** submits
 the complete selection atomically. This also works for a valid additional-card
 play. When another accepted action closes that window, an unplayed selection
 is visibly cleared. Computers take about 12.5% longer within their varied

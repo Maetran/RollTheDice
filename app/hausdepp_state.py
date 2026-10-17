@@ -18,6 +18,7 @@ HAUSDEPP_CPU_NAMES = (
     "Wally", "Vefi", "Maridl", "Leni", "Zilli",
 )
 _CPU_RANDOM = SystemRandom()
+_DEALER_RANDOM = SystemRandom()
 
 
 def validate_hausdepp_mode(mode: object) -> str:
@@ -110,7 +111,9 @@ def start_hausdepp_game(game: GameDict) -> None:
     from .hausdepp_engine import new_round
 
     participants = game["_participants"]
-    game["_hausdepp"] = new_round(participants, dealer_index=len(participants) - 1)
+    # The first dealer is drawn for every new table, humans and CPUs alike;
+    # tournaments then pass the deal clockwise after each round.
+    game["_hausdepp"] = new_round(participants, dealer_index=_DEALER_RANDOM.randrange(len(participants)))
     if game.get("_hausdepp_tournament_enabled"):
         from .hausdepp_tournament import new_tournament
 

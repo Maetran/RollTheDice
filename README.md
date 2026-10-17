@@ -59,8 +59,15 @@ schützen fremde Karten und den Nachziehstapel. Ein Tipp auf den verdeckten Stap
 zockt vor dem Ablegen oder füllt danach verpflichtend alle fehlenden Karten bis
 auf drei auf. Der nächste Spieler darf schon Handkarten legen; ziehen oder
 zocken kann er erst, wenn ältere Auffüllpflichten erledigt sind. „Du musst
-ziehen“ mit sanft rotem Rahmen erinnert den zuständigen Spieler. Ein Tipp auf
+ziehen“ mit sanft rotem Rahmen erinnert den zuständigen Spieler. Wer möchte,
+schaltet pro Konto „Automatisch auf drei auffüllen“ ein, am Tisch in der
+Tischhilfe oder in den Kontoeinstellungen. Ein Tipp auf
 eine Handkarte legt sie sofort, ein Tipp auf das offene Paket nimmt es auf.
+Mit der Mehrfachauswahl wählt ein Tipp alle gleichrangigen Karten, ein weiterer
+Tipp nimmt einzelne wieder heraus. Der erste Geber jedes Tisches wird ausgelost,
+gegen Computer wie gegen Menschen; im Turnier gibt danach reihum der nächste
+Spieler im Uhrzeigersinn. Erfolglos angeschaute Karten bleiben für den
+Abhebenden direkt am Stapel sichtbar, solange sie noch darin liegen.
 Vor dem aktiven Abheben zeigt eine kurze einmalige Mischanimation die
 Kartenrückseiten. Neuladen und Wiederverbinden wiederholen sie nicht; sie
 sperrt keine Aktion und entfällt bei reduzierter Bewegung. Das Austeilen wird
@@ -142,8 +149,14 @@ protect opposing cards and the draw pile. Tapping the face-down pile takes a
 chance before playing, or afterwards draws all missing cards up to three as a
 mandatory refill. The next player may already play hand cards; drawing or
 gambling waits for earlier refill obligations. “You must draw” with a gentle
-red frame reminds the player responsible. Tapping a hand card plays it
-immediately; tapping the face-up pile takes it. Before active bottom inspection,
+red frame reminds the player responsible. Each account may turn on “Refill to
+three automatically”, at the table in the table help or in account settings.
+Tapping a hand card plays it immediately; tapping the face-up pile takes it.
+In multi-select, one tap selects every card of that rank and another tap takes
+single cards out. The first dealer of every table is drawn at random, against
+computers and people alike; in tournaments the deal then passes clockwise. Cards
+seen in a failed bottom inspection stay visible to that player at the stock
+while they remain in it. Before active bottom inspection,
 a brief one-time shuffle shows only card backs, without blocking actions; reload,
 reconnection and reduced-motion mode do not replay it. Dealing is briefly
 animated, and hands form a sorted fan with tens on the right.

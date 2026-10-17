@@ -41,7 +41,10 @@ export function createHandSelection() {
     },
     select(card) {
       if (!this.canSelect(card)) return false;
-      if (cards.has(card)) cards.delete(card); else cards.add(card);
+      // The first tap picks every playable card of that rank; further taps
+      // deselect or reselect single cards.
+      if (!cards.size) { cards.add(card); for (const other of context.hand) if (this.canSelect(other) && rankOf(other) === rankOf(card)) cards.add(other); }
+      else if (cards.has(card)) cards.delete(card); else cards.add(card);
       notice = "";
       return true;
     },

@@ -158,6 +158,13 @@ class HausdeppSetupTests(TestCase):
         self.assertEqual(state["deck"][-3:], bottom)
         self.assertEqual(project_state(state, "p2")["private_peek"], list(reversed(bottom)))
         self.assertEqual(project_state(state, "p0")["private_peek"], [])
+        # Only the peeker sees which known cards still wait in the stock.
+        self.assertEqual(project_state(state, "p2")["private_peek_in_stock"], list(reversed(bottom)))
+        self.assertEqual(project_state(state, "p0")["private_peek_in_stock"], [])
+        state["deck"] = state["deck"][-2:]
+        self.assertEqual(project_state(state, "p2")["private_peek_in_stock"], ["hearts-A", "bells-A"])
+        state["phase"] = "finished"
+        self.assertEqual(project_state(state, "p2")["private_peek_in_stock"], [])
         self.assertNotIn("cards", project_state(state, None)["peek"])
         self.assertEqual(project_state(state, "p0")["peek_information"]["cards"], [])
 
