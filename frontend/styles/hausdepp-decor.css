@@ -3,6 +3,7 @@
 .hd-table :is(.hd-stock-group, .hd-pile-group, .hd-burned, .hd-seat, .hd-room-heading, .hd-turn-status) { z-index: 6; }
 .hd-table .hd-hand-heading { position: relative; z-index: 6; }
 .hd-table-decor { position: absolute; inset: 0; z-index: 5; overflow: hidden; pointer-events: none; user-select: none; }
+.hd-table-prop[hidden] { display: none; }
 .hd-table-prop { position: absolute; display: block; min-height: 44px; min-width: 44px; padding: 0; border: 0; border-radius: 6px; background: transparent; box-shadow: none; pointer-events: auto; cursor: grab; touch-action: none; transform: rotate(var(--prop-angle)); animation: hd-prop-arrive 420ms ease-out var(--prop-delay) both; -webkit-tap-highlight-color: transparent; }
 .hd-table-prop:focus-visible { outline: 2px solid #f1d184; outline-offset: 2px; }
 .hd-table-prop:disabled { cursor: default; opacity: 1; touch-action: auto; }
@@ -45,3 +46,17 @@
 @keyframes hd-glint { 0%, 78% { background-position: 120% 0; } 92%, 100% { background-position: -40% 0; } }
 @media (max-width: 767px) { .hd-table-decor { opacity: .85; } }
 @media (prefers-reduced-motion: reduce) { .hd-table-prop, .hd-prop-art, .hd-prop-art::after, .hd-prop-art::before { animation: none !important; transition: none !important; } }
+
+/* Playing with the table: results, spills, emptied glasses, a coin. */
+.hd-prop-caption { position: absolute; z-index: 3; left: 50%; bottom: 100%; padding: 2px 8px; color: var(--hd-ink, #1c1916); background: #f7f4eb; border: 1px solid var(--hd-gold, #b8913a); border-radius: 999px; font: 700 13px/18px system-ui, sans-serif; white-space: nowrap; pointer-events: none; box-shadow: 0 3px 8px #0c100d55; }
+.hd-prop-puddle { position: absolute; z-index: 0; border-radius: 50%; filter: blur(1.5px); opacity: 0; pointer-events: none; mix-blend-mode: multiply; }
+.hd-prop-leftover { z-index: 0; }
+.hd-prop-art[data-sheet="svg"] { background: none; }
+.hd-prop-art[data-sheet="svg"] svg { display: block; width: 100%; height: 100%; }
+.hd-table-prop[data-face="heads"] .hd-coin-tails, .hd-table-prop[data-face="tails"] .hd-coin-heads { display: none; }
+/* A flat beer: a clear amber surface covers the former head of foam. */
+.hd-prop-foam { position: absolute; left: 22%; top: 10%; width: 56%; height: 50%; border-radius: 50%; background: radial-gradient(ellipse at 45% 40%, #f0b648 0%, #d8952a 55%, #b8741c 100%); box-shadow: inset 0 0 0 2px #f7dc9a99; opacity: 0; transition: opacity 6s ease; pointer-events: none; }
+.hd-table-prop--beer[data-foam="flat"] .hd-prop-foam { opacity: .92; }
+/* Emptied glasses look drained until someone pours again. */
+.hd-table-prop[data-level="0"] .hd-prop-art { filter: drop-shadow(2px 6px 4px #0c100d44) saturate(.25) brightness(1.15); }
+@media (prefers-reduced-motion: reduce) { .hd-prop-foam { transition: none; } }

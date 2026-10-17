@@ -161,17 +161,68 @@ test('a can falls around its foot, stays down across updates, and can be stood u
   await expect(can).toHaveAttribute('aria-pressed', 'false');
 });
 
-test('dice roll into a new resting angle while a heavy board slides without shaking', async ({ page }) => {
+test('dice are thrown to a random result and food is eaten bite by bite', async ({ page }) => {
   const dice = await motionFixture(page, 'dice');
   await dice.click();
-  await expect(dice).toHaveAttribute('data-last-motion', 'dice-roll');
+  await expect(dice).toHaveAttribute('data-last-motion', 'dice-throw');
   await expect(dice).toHaveAttribute('data-moving', 'false');
-  expect(await dice.locator('.hd-prop-art').evaluate(element => Math.abs(Number(element.dataset.turn)))).toBe(90);
+  expect(await dice.locator('.hd-prop-art').evaluate(element => Math.abs(Number(element.dataset.turn)))).toBe(180);
+  await expect(dice).toHaveAttribute('aria-label', /– [1-6]$/);
   const board = await motionFixture(page, 'marend');
   await board.click();
-  await expect(board).toHaveAttribute('data-last-motion', 'board-slide');
-  await expect(board).toHaveAttribute('data-moving', 'false');
-  expect(await board.locator('.hd-prop-art').evaluate(element => Math.abs(Number(element.dataset.restX)))).toBe(2);
+  await expect(board).toHaveAttribute('data-last-motion', 'bite');
+  await expect(board).toHaveAttribute('data-bites', '3');
+  for (let bite = 0; bite < 3; bite += 1) {
+    await expect(board).toHaveAttribute('data-moving', 'false');
+    await board.click();
+  }
+  const eaten = page.locator('[data-prop="marend"]');
+  await expect(eaten).toHaveAttribute('data-last-motion', 'eaten');
+  await expect(eaten).toBeHidden();
+  expect(await page.locator('.hd-prop-leftover').count()).toBeGreaterThan(0);
+});
+
+test('a coin lands on heads or tails and says which', async ({ page }) => {
+  const coin = await motionFixture(page, 'coin');
+  const faces = new Set();
+  for (let toss = 0; toss < 12 && faces.size < 2; toss += 1) {
+    await expect(coin).not.toHaveAttribute('data-moving', 'true');
+    await coin.click();
+    await expect(coin).toHaveAttribute('data-last-motion', 'coin-toss');
+    const face = await coin.getAttribute('data-face');
+    faces.add(face);
+    await expect(coin).toHaveAttribute('aria-label', face === 'heads' ? /Kopf$/ : /Zahl$/);
+    await expect(coin.locator(face === 'heads' ? '.hd-coin-heads' : '.hd-coin-tails')).toBeVisible();
+  }
+  expect(faces).toEqual(new Set(['heads', 'tails']));
+});
+
+test('a beer is drunk, spilled when tapped wildly, and falls over when tapped wilder', async ({ page }) => {
+  const beer = await motionFixture(page, 'beer');
+  await expect(beer).toHaveAttribute('data-foam', 'fresh');
+  await beer.click();
+  await expect(beer).toHaveAttribute('data-last-motion', 'glass-sip');
+  await expect(beer).toHaveAttribute('data-level', '3');
+  await expect(beer).toHaveAttribute('data-foam', 'flat');
+  await page.waitForTimeout(2700);
+  for (let tap = 0; tap < 3; tap += 1) { await beer.dispatchEvent('click'); await page.waitForTimeout(120); }
+  await expect(beer).toHaveAttribute('data-last-motion', 'glass-spill');
+  expect(await page.locator('.hd-prop-puddle').count()).toBeGreaterThan(0);
+  for (let tap = 0; tap < 4; tap += 1) { await beer.dispatchEvent('click'); await page.waitForTimeout(100); }
+  await expect(beer).toHaveAttribute('data-fallen', 'true');
+  await expect(beer).toHaveAttribute('aria-label', 'Glas wieder aufstellen');
+  await expect(beer).toHaveAttribute('data-moving', 'false');
+  await page.waitForTimeout(1300);
+  await beer.click();
+  await expect(beer).toHaveAttribute('data-fallen', 'false');
+});
+
+test('an untouched beer loses its head of foam', async ({ page }) => {
+  await page.clock.install();
+  const beer = await motionFixture(page, 'beer');
+  await expect(beer).toHaveAttribute('data-foam', 'fresh');
+  await page.clock.fastForward(200000);
+  await expect(beer).toHaveAttribute('data-foam', 'flat');
 });
 
 test('reduced motion keeps interactive props still and disabled', async ({ page }) => {
@@ -216,9 +267,13 @@ test('small scatter pieces react with their own motion and leave crumbs that cle
   await expect(pencil).toHaveAttribute('data-last-motion', 'pencil-spin');
   const chips = await motionFixture(page, 'loose-chips');
   await chips.click();
-  await expect(chips).toHaveAttribute('data-last-motion', 'hop');
-  expect(await chips.locator('.hd-prop-crumb').count()).toBeGreaterThan(0);
-  await expect(chips.locator('.hd-prop-crumb')).toHaveCount(0, { timeout: 2000 });
+  // Loose chips are eaten at once: flying crumbs clean up, a few stay behind.
+  const eaten = page.locator('[data-prop="loose-chips"]');
+  await expect(eaten).toHaveAttribute('data-last-motion', 'eaten');
+  expect(await eaten.locator('.hd-prop-crumb').count()).toBeGreaterThan(0);
+  await expect(eaten.locator('.hd-prop-crumb')).toHaveCount(0, { timeout: 2000 });
+  await expect(eaten).toBeHidden();
+  expect(await page.locator('.hd-prop-leftover').count()).toBeGreaterThan(0);
 });
 
 test('an object can be pushed across free wood but glides back from a control', async ({ page }) => {
