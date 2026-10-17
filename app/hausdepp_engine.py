@@ -465,6 +465,11 @@ def project_state(state: Mapping[str, Any], viewer_id: str | None) -> dict[str, 
         projection["peek"]["cards"] = list(peek["cards"])
     private_peek = list(peek["cards"]) if viewer and viewer_id == peek["player_id"] else []
     projection["private_peek"] = private_peek
+    # Failed peek cards stay at the bottom; the peeker may keep seeing which
+    # of them are still waiting in the stock.
+    stock = set(state["deck"])
+    projection["private_peek_in_stock"] = ([] if peek["success"] or state["phase"] == "finished"
+                                           else [card for card in private_peek if card in stock])
     projection["peek_information"] = {
         **projection["peek"],
         "cards": list(peek["cards"]) if peek["success"] else private_peek,

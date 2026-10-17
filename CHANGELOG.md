@@ -23,6 +23,39 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.4.0 — Hausdepp: Geber, Abheben und Auffüllen / dealer, peeking and refills — 2026-10-17
+
+**Deutsch:** Bei Hausdepp wird der erste Geber jedes Tisches jetzt ausgelost,
+gegen Computer wie gegen Menschen. Bisher gab immer der letzte Sitz, und weil
+Computer hinter den Menschen sitzen, hob ab drei Spielern nie ein Mensch ab. Im
+Turnier gibt weiterhin nach jeder Runde der Nächste im Uhrzeigersinn. Wer beim
+Abheben erfolglos Karten angeschaut hat, sieht sie als Etikett „Unten: …“ auf
+dem verdeckten Stapel, solange sie darin liegen; bisher verschwanden sie nach
+wenigen Sekunden in der Tischhilfe. Neu ist **Automatisch auf drei auffüllen**
+pro Konto, umschaltbar in der Tischhilfe und in den Kontoeinstellungen,
+standardmässig aus. Die Mehrfachauswahl wählt mit einem Tipp alle gleichen
+Karten, ein weiterer Tipp nimmt einzelne heraus; ausgewählte Karten heben sich
+mit Haken an. Auf Touchgeräten blieb die zuletzt angetippte Karte angehoben und
+verdeckte ihre Nachbarn, und ausgegraute Karten schluckten Tipps – beides ist
+behoben. Die Kontoeinstellungen sind in fünf Gruppen geordnet und eingeklappt;
+ein Tipp öffnet einen Punkt. In der mobilen Lobby steht „Neuer Stammtisch“ direkt
+unter dem Titel, „So wird gespielt“ folgt darunter.
+
+**English:** In Hausdepp the first dealer at every table is now drawn at
+random, against computers and people alike. Previously the last seat always
+dealt, and as computers sit after people, no person ever inspected the bottom
+card at tables of three or more. Tournaments still pass the deal clockwise after
+each round. Cards seen in a failed bottom inspection now show as a “Bottom: …”
+label on the face-down pile for that player while they remain in it; before,
+they vanished into the table help after a few seconds. New: **Refill to three
+automatically** per account, switchable in the table help and account settings,
+off by default. Multi-select picks every matching card with one tap, and another
+tap takes single cards out; selected cards lift with a check mark. On touch
+screens the last tapped card stayed raised and covered its neighbours, and
+greyed-out cards swallowed taps; both are fixed. Account settings are grouped
+into five sections of collapsed rows that open with a tap. In the mobile lobby
+“A new regular table” now sits right below the title, with “How to play” after it.
+
 ## 3.3.1 — Kacheln und ein klügerer Vorschlag / tiles and a smarter suggestion — 2026-10-17
 
 **Deutsch:** Im neuen ZDWA-Design zeigt oben je Spieler (im 2-gegen-2 je Team)

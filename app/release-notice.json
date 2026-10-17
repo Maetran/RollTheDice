@@ -1,33 +1,31 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch",
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: gemeinsam neu erstellen, gleiche Karten zusammen spielen und Kartenbilder beim PWA-Neuladen zuverlässiger laden.",
-  "summary_en": "Hausdepp: create again together, play matching cards in one move and load artwork more reliably after a PWA reload.",
+  "summary_de": "Hausdepp: ausgeloster Geber, sichtbare Karten vom Abheben, automatisches Auffüllen und eine leichtere Mehrfachauswahl.",
+  "summary_en": "Hausdepp: a random dealer, visible peeked cards, automatic refills and easier multi-select.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp: Noch eine Runde am Stammtisch?",
+      "title": "Hausdepp: Jeder darf mal abheben",
       "changes": [
-        "Bei Hausdepp übernimmt Neu erstellen eure Einstellungen und lädt die bisherigen Menschen persönlich ein. Erst Annehmen bringt sie an den neuen Tisch.",
-        "Gleiche Karten auswählen und zusammen legen: Die Computer können sich nicht zwischen die Karten dieses Zugs schieben.",
-        "Computer lassen sich im wechselnden Normaltempo rund 12,5 % mehr Zeit.",
-        "Die Lobby wartet auf fertige Kartenbilder und wiederholt vorübergehende Bildfehler – auch nach einem PWA-Neuladen.",
-        "Wartende Tische schliessen nach einer Stunde ohne neuen menschlichen Sitz, ohne zusätzliche Punkte oder Siege.",
-        "Einsteigertouren in den Kontoeinstellungen reagieren in allen drei Spielen auch auf einen sofortigen Tipp auf Start oder Ansehen."
+        "Der erste Geber wird ausgelost, auch gegen Computer. Im Turnier gibt danach reihum der Nächste.",
+        "Erfolglos angeschaute Karten stehen als „Unten: …“ auf dem Stapel, solange sie noch drin liegen.",
+        "Neu: Automatisch auf drei auffüllen – in der Tischhilfe oder den Kontoeinstellungen einschalten.",
+        "Mehrfachauswahl: Ein Tipp wählt alle gleichen Karten, ein weiterer nimmt einzelne heraus. Tipps treffen jetzt zuverlässig die richtige Karte.",
+        "Kontoeinstellungen sind übersichtlich gruppiert und eingeklappt.",
+        "In der mobilen Lobby steht „Neuer Stammtisch“ jetzt ganz oben."
       ]
     },
     "en": {
-      "title": "Hausdepp: another round at the table?",
+      "title": "Hausdepp: everyone gets to lift the deck",
       "changes": [
-        "In Hausdepp, Create again keeps your settings and personally invites the previous human players. Accepting takes them to the new table.",
-        "Select matching cards and play them together: computers cannot act between cards within this move.",
-        "Computers take about 12.5% longer within their varied normal timing.",
-        "The lobby waits for ready-to-show artwork and retries temporary image failures, including after a PWA reload.",
-        "Waiting tables close after one hour without a new human seat, granting no extra points or wins.",
-        "Beginner tours in account settings now respond in all three games even when you tap Start or View immediately."
+        "The first dealer is drawn at random, also against computers. In tournaments the deal then passes clockwise.",
+        "Cards seen in a failed bottom inspection show as “Bottom: …” on the stock while they remain in it.",
+        "New: refill to three automatically – switch it on in the table help or account settings.",
+        "Multi-select: one tap picks every matching card, another takes single cards out. Taps now reliably hit the right card.",
+        "Account settings are neatly grouped and collapsed.",
+        "In the mobile lobby, “A new regular table” now sits at the top."
       ]
     }
   }

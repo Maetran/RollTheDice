@@ -45,12 +45,6 @@ test.afterEach(async ({ page }) => {
 
 async function realCpuTable(page, language = 'de') {
   const headers = await owner(page, language);
-  const created = await page.request.post('/api/games', {
-    headers, data: { name: 'Shuffle-Test · Echte Ausgangsprojektion', mode: '2',
-      game_type: 'hausdepp', play_mode: 'cpu', cpu_count: 1 },
-  });
-  expect(created.ok()).toBeTruthy();
-  const room = `/hausdepp/spiel/${(await created.json()).game_id}`;
   let board;
   page.on('websocket', socket => socket.on('framereceived', ({ payload }) => {
     try {
@@ -58,9 +52,21 @@ async function realCpuTable(page, language = 'de') {
       if (message.scoreboard?._hausdepp) board = message.scoreboard;
     } catch { /* Ignore non-JSON protocol frames. */ }
   }));
-  await page.goto(room);
-  await expect.poll(() => board?._hausdepp?.phase).toBe('peeking');
-  return { room, board: structuredClone(board) };
+  // The first dealer is random; open tables until the viewer is the one who peeks.
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const created = await page.request.post('/api/games', {
+      headers, data: { name: 'Shuffle-Test · Echte Ausgangsprojektion', mode: '2',
+        game_type: 'hausdepp', play_mode: 'cpu', cpu_count: 1 },
+    });
+    expect(created.ok()).toBeTruthy();
+    const room = `/hausdepp/spiel/${(await created.json()).game_id}`;
+    board = null;
+    await page.goto(room);
+    await expect.poll(() => board?._hausdepp?.viewer_id).toBeTruthy();
+    const state = board._hausdepp;
+    if (state.phase === 'peeking' && state.peek?.player_id === state.viewer_id) return { room, board: structuredClone(board) };
+  }
+  throw new Error('No table with the viewer as peeker after 12 random deals');
 }
 
 function phaseBoard(real, phase, { round = null, version = 20 } = {}) {

@@ -15,6 +15,7 @@ from .auth import (
     clear_session_cookie,
     create_user,
     create_user_in_session,
+    hausdepp_auto_refill,
     login,
     logout,
     promote_legacy_session_cookie,
@@ -65,7 +66,7 @@ from .game_tours import (
     tour_preferences,
     update_tour_preferences,
 )
-from .models import PasskeyCredential, User
+from .models import HausdeppPreferences, PasskeyCredential, User
 from .models import Session as LoginSession
 from .ownership import (
     administration_capabilities,
@@ -163,6 +164,10 @@ class DesignPreferenceRequest(BaseModel):
 
 class LanguagePreferenceRequest(BaseModel):
     preferred_language: Literal["de", "en"]
+
+
+class HausdeppPreferenceRequest(BaseModel):
+    hausdepp_auto_refill: bool
 
 
 class LobbyChatPreferenceRequest(BaseModel):
@@ -522,6 +527,7 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
                 "game_invite_push_enabled": user.game_invite_push_enabled,
                 "daily_reminder_push_enabled": user.daily_reminder_push_enabled,
                 "preferred_language": user.preferred_language,
+                "hausdepp_auto_refill": hausdepp_auto_refill(db, user.id),
             }
         }
     record_engagement_safely(identity.user_id, "settings_saved")
@@ -602,6 +608,25 @@ def auth_claim_design_prompt(request: Request):
         return {"show": False}
     with session_scope() as db:
         return {"show": claim_design_prompt(db, identity.user_id)}
+
+
+@router.put("/auth/preferences/hausdepp")
+def auth_update_hausdepp_preference(payload: HausdeppPreferenceRequest, request: Request):
+    identity = require_user(request)
+    require_csrf(request, identity)
+    with session_scope() as db:
+        user = db.get(User, identity.user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
+        stored = db.get(HausdeppPreferences, user.id)
+        if stored is None:
+            stored = HausdeppPreferences(user_id=user.id)
+            db.add(stored)
+        stored.auto_refill = payload.hausdepp_auto_refill
+        db.flush()
+        result = {"hausdepp_auto_refill": stored.auto_refill}
+    record_engagement_safely(identity.user_id, "settings_saved")
+    return result
 
 
 @router.put("/auth/preferences/lobby-chat")

@@ -25,7 +25,15 @@ from .game_access import (
     configured_zilch_preview_usernames,
     public_game_access_payload,
 )
-from .models import AccountEmailToken, AuthRateEvent, PasskeyCredential, User, UserAchievement, WebAuthnCeremony
+from .models import (
+    AccountEmailToken,
+    AuthRateEvent,
+    HausdeppPreferences,
+    PasskeyCredential,
+    User,
+    UserAchievement,
+    WebAuthnCeremony,
+)
 from .models import Session as LoginSession
 from .security import (
     PASSWORDLESS_HASH,
@@ -84,6 +92,7 @@ class AuthIdentity:
     has_password: bool = True
     zdwa_design: str = "new"
     zdwa_design_prompt_pending: bool = False
+    hausdepp_auto_refill: bool = False
 
     @property
     def is_admin(self) -> bool:
@@ -130,6 +139,7 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
             "game_invite_push_enabled": identity.game_invite_push_enabled,
             "daily_reminder_push_enabled": identity.daily_reminder_push_enabled,
             "preferred_language": identity.preferred_language,
+            "hausdepp_auto_refill": identity.hausdepp_auto_refill,
         },
     }
     if include_csrf:
@@ -142,6 +152,11 @@ def _achievement_rank_for_user(db, user_id: int) -> dict:
         select(UserAchievement.achievement_key).where(UserAchievement.user_id == user_id)
     )
     return achievement_rank_for_keys(keys)
+
+
+def hausdepp_auto_refill(db, user_id: int) -> bool:
+    stored = db.get(HausdeppPreferences, user_id)
+    return bool(stored and stored.auto_refill)
 
 
 def _identity_for_user(db, user: User, login_session: LoginSession) -> AuthIdentity:
@@ -161,6 +176,7 @@ def _identity_for_user(db, user: User, login_session: LoginSession) -> AuthIdent
         mobile_row_quick_entry=user.mobile_row_quick_entry,
         haptic_feedback=user.haptic_feedback,
         keep_screen_awake=user.keep_screen_awake,
+        hausdepp_auto_refill=hausdepp_auto_refill(db, user.id),
         lobby_chat_popups=user.lobby_chat_popups,
         lobby_chat_enabled=user.lobby_chat_enabled,
         lobby_chat_muted=user.lobby_chat_muted,

@@ -430,7 +430,7 @@ async function delayedTourSettings(page, game, language = "de") {
     room, release, get released() { return released; },
     async open() {
       if (game === "hausdepp") {
-        await page.goto("/hausdepp/konto/einstellungen");
+        await page.goto("/hausdepp/konto/einstellungen#hilfe");
         await expect(page.locator(SETTING)).toBeVisible();
       } else await openSettings(page);
       await expect.poll(() => pending).toBe(true);

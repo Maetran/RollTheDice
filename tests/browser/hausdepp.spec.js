@@ -107,7 +107,10 @@ async function createCpuTable(page, traffic, { players = 2, cpu = 1, resolvePeek
   await expect(page).toHaveURL(/\/hausdepp\/spiel\/[^/?]+/);
   await expect(page.locator('#hausdeppTable')).toBeVisible();
   await expect.poll(() => Boolean(traffic.state?.viewer_id && traffic.scoreboard?._started)).toBe(true);
-  if (players === 2) {
+  // The first dealer is random; with two seats either the viewer or the CPU peeks.
+  if (players === 2 && traffic.state.peek.player_id !== traffic.state.viewer_id) {
+    expect(traffic.state.players.find(player => player.id === traffic.state.peek.player_id)?.is_cpu).toBe(true);
+  } else if (players === 2) {
     expect(traffic.state.phase).toBe('peeking');
     expect(traffic.state.peek.player_id).toBe(traffic.state.viewer_id);
     expect(traffic.state.hand).toEqual([]);

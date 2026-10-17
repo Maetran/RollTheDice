@@ -2182,5 +2182,12 @@
     "date": "2026-10-17",
     "bump": "minor",
     "summary": "Hausdepp: gemeinsam neu starten, gleiche Karten zusammen spielen und zuverlässigere Kartenbilder beim PWA-Neuladen. / Hausdepp: restart together, play matching cards as one move and load artwork reliably after a PWA reload."
+  },
+  {
+    "version": "3.3.1",
+    "revision": "56518b1f9fbc35ca45b151dbc1efc4de23c58416",
+    "date": "2026-10-17",
+    "bump": "patch",
+    "summary": "ZDWA im Design 2026: Spielerkacheln mit Punkten oben am Tisch und ein Feldvorschlag, der nach Wert statt nach Rohpunkten wählt. / ZDWA in the 2026 design: player tiles with scores at the top of the table and a field suggestion that picks by value, not raw points."
   }
 ]

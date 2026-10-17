@@ -190,6 +190,16 @@ class User(Base):
     )
 
 
+class HausdeppPreferences(Base):
+    """Account-wide Hausdepp conveniences, kept apart from the shared users row."""
+
+    __tablename__ = "hausdepp_preferences"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    # Tap the stock automatically when the own refill is due.
+    auto_refill: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+
+
 class GameTourPreferences(Base):
     """Account-wide tour choices, isolated from older gameplay settings forms."""
 
