@@ -3,6 +3,7 @@ import { cardArt } from "./cards.js";
 const rounds = new Map();
 const flights = new Map();
 const presentations = new Map();
+const launches = new Map();
 const EASING = "cubic-bezier(.16,1,.3,1)";
 const MAX_PRESENTATION_WAIT = 2200;
 const PLAY_TRAVEL = 520;
@@ -173,6 +174,92 @@ export function prepareCardMotion(state, { gameId, playerId }) {
   return { previous: rounds.get(gameId), before: captureGeometry(playerId), version: state.version };
 }
 
+/**
+ * Send the player's own card toward the pile at the tap. Waiting for the
+ * server first left a faded copy in the hand and then flew a second one.
+ * The accepted state adopts this very element; a rejection removes it.
+ */
+export function launchOwnPlay(gameId, playerId, cards) {
+  if (!cards?.length || document.hidden || !document.body.animate
+    || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const geometry = captureGeometry(playerId);
+  const hand = geometry.hands.get(playerId);
+  const topCard = geometry.pile.cards.at(-1)?.pose;
+  const pile = topCard || (geometry.pile.rect && { ...geometry.pile.rect, angle: 0 });
+  if (!hand || !pile) return;
+  const own = launches.get(gameId) || new Map();
+  cards.forEach((card, index) => {
+    const pose = hand.cards.find(item => item.card === card)?.pose;
+    if (!pose || own.has(card)) return;
+    const width = pose.width, height = pose.height || width / CARD_RATIO;
+    const left = pose.x - width / 2, top = pose.y - height / 2;
+    const spread = cards.length > 1 ? (index - (cards.length - 1) / 2) * Math.min(18, pile.width / 5) : 0;
+    const element = document.createElement("div");
+    element.className = "hd-deal-card has-face";
+    element.setAttribute("aria-hidden", "true");
+    element.dataset.motionType = "launch";
+    element.innerHTML = cardArt(card);
+    Object.assign(element.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
+    document.body.append(element);
+    const end = `translate(${pile.x + spread - pose.x}px,${pile.y - pose.y}px) rotate(${pile.angle || 0}deg) scale(${pile.width / width},${pile.height / height})`;
+    const start = `translate(0,0) rotate(${pose.angle || 0}deg)`;
+    const animation = element.animate([{ transform: start }, { transform: end }],
+      { duration: PLAY_TRAVEL, easing: "cubic-bezier(.22,.61,.36,1)", fill: "forwards" });
+    own.set(card, { element, animation, start, left, top, width, height, startedAt: performance.now() });
+  });
+  if (own.size) launches.set(gameId, own);
+}
+
+/** Cards whose picture is already travelling; their hand slot stays empty. */
+export function launchedCards(gameId) {
+  return new Set(launches.get(gameId)?.keys() || []);
+}
+
+/**
+ * A rejected or interrupted own play returns the card to the hand. With
+ * `returnToHand`, a late afterthrow visibly flies back to its slot (which
+ * stays empty meanwhile); `onReturned` then lets the hand show it again.
+ */
+export function cancelOwnPlay(gameId, cards = null, { returnToHand = false, onReturned } = {}) {
+  const own = launches.get(gameId);
+  if (!own) return;
+  const finish = (card, launch) => {
+    launch.animation.cancel();
+    launch.back?.cancel();
+    launch.element.remove();
+    if (own.get(card) === launch) own.delete(card);
+    if (!own.size && launches.get(gameId) === own) launches.delete(gameId);
+  };
+  let returning = 0;
+  for (const [card, launch] of [...own]) {
+    if (cards && !cards.includes(card)) continue;
+    if (!returnToHand || launch.back || document.hidden || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      if (!launch.back) finish(card, launch);
+      continue;
+    }
+    const from = getComputedStyle(launch.element).transform;
+    launch.back = launch.element.animate([{ transform: from }, { transform: launch.start }],
+      { duration: 260, easing: EASING, fill: "forwards" });
+    returning += 1;
+    launch.back.finished.then(() => {
+      finish(card, launch);
+      if (--returning === 0) onReturned?.();
+    }, () => {});
+  }
+}
+
+function adoptLaunches(gameId, cards) {
+  const own = launches.get(gameId);
+  const adopted = new Map();
+  for (const card of cards || []) {
+    if (!own?.has(card) || own.get(card).back) continue;
+    adopted.set(card, own.get(card));
+    own.delete(card);
+  }
+  if (own && !own.size) launches.delete(gameId);
+  return adopted;
+}
+
 /** A reconnect starts with a quiet baseline rather than replaying missed actions. */
 export function resetCardMotion(gameId) {
   cancelShuffle(gameId);
@@ -196,6 +283,7 @@ function stopPresentation(gameId) {
     flight.element.remove();
   }
   flights.delete(gameId);
+  cancelOwnPlay(gameId);
 }
 
 function presentationFor(gameId) {
@@ -247,7 +335,8 @@ function presentGroups(groups, options, previous) {
     }
     presentation.until = activeUntil;
   }
-  const wait = Math.max(0, presentation.until - now);
+  // The player's own card already left the hand at the tap; it never queues.
+  const wait = groups.some(group => group.adopt?.size) ? 0 : Math.max(0, presentation.until - now);
   const duration = Math.max(...groups.map(groupSpan));
   const scheduled = { ...options, wait, now };
   const publicPlay = groups.some(group => ["play", "afterthrow", "gamble"].includes(group.type));
@@ -331,22 +420,28 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, wait
     if (!group.stationary && inHand && targetPose && !fitsHand(targetCard?.rect, target.rect)) {
       destination = { ...targetPose, x: target.rect.x, y: target.rect.y };
     }
-    const width = origin.width;
-    const height = origin.height || width / CARD_RATIO;
+    // Build each picture at the larger end size and scale it down where it is
+    // smaller: an up-scaled layer would blur and inflate its corners.
+    const originHeight = origin.height || origin.width / CARD_RATIO;
+    const destinationHeight = destination.height || destination.width / CARD_RATIO;
+    const larger = destination.width > origin.width;
+    const width = group.adopt?.get(cardId)?.width || (larger ? destination.width : origin.width);
+    const height = group.adopt?.get(cardId)?.height || (larger ? destinationHeight : originHeight);
     const spread = Math.min(8, Math.max(2, target.rect.width / 12));
     const spreadOffset = group.stationary || destinationCard ? 0 : group.showcase
       ? (index - (group.count - 1) / 2) * Math.min(18, target.rect.width / 5)
       : (index % 3 - 1) * spread;
-    const fromX = origin.x - width / 2;
-    const fromY = origin.y - height / 2;
+    const adopted = cardId ? group.adopt?.get(cardId) : null;
+    const fromX = adopted ? adopted.left : origin.x - width / 2;
+    const fromY = adopted ? adopted.top : origin.y - height / 2;
     const toX = destination.x - width / 2 + spreadOffset;
     const toY = destination.y - height / 2;
     const face = group.face && group.cards?.[index] ? cardArt(group.cards[index]) : "";
     const cardDuration = duration + (group.keepTogether ? (group.count - index - 1) * stagger : 0);
-    const ghost = document.createElement("div");
+    const ghost = adopted?.element || document.createElement("div");
     ghost.className = `hd-deal-card${face ? " has-face" : ""}`;
     ghost.setAttribute("aria-hidden", "true");
-    ghost.innerHTML = face;
+    if (!adopted) ghost.innerHTML = face;
     Object.assign(ghost.dataset, {
       motionType: group.type, source: group.source, target: group.target,
       count: String(group.count), index: String(index),
@@ -354,33 +449,46 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, wait
       targetX: String(destination.x + spreadOffset), targetY: String(destination.y),
       delay: String(delay + index * stagger), duration: String(cardDuration),
     });
-    Object.assign(ghost.style, {
-      left: `${fromX}px`, top: `${fromY}px`, width: `${width}px`, height: `${height}px`,
-    });
-    document.body.append(ghost);
-    const start = `translate(0,0) rotate(${origin.angle || 0}deg)`;
+    if (!adopted) {
+      Object.assign(ghost.style, {
+        left: `${fromX}px`, top: `${fromY}px`, width: `${width}px`, height: `${height}px`,
+      });
+      // The resting picture of the old pile always lies beneath every moving
+      // card, including one that was launched before this picture existed.
+      if (group.stationary) ghost.style.zIndex = "64";
+      document.body.append(ghost);
+    }
+    // An adopted launch continues from wherever it is right now.
+    const start = adopted ? getComputedStyle(ghost).transform
+      : `translate(0,0) rotate(${origin.angle || 0}deg) scale(${origin.width / width},${originHeight / height})`;
     // Native endpoint sizes may differ greatly (tablet packet → small cleared
     // stack). Scaling limits would reintroduce a visible snap at either end.
-    const end = `translate(${toX - fromX}px,${toY - fromY}px) rotate(${destination.angle || 0}deg) scale(${destination.width / width},${destination.height / height})`;
+    const end = `translate(${toX - fromX}px,${toY - fromY}px) rotate(${destination.angle || 0}deg) scale(${destination.width / width},${destinationHeight / height})`;
     const arrival = Math.min(.9, (group.travel || duration * .9) / cardDuration);
     const fade = Math.max(arrival, 1 - (group.fade || PLAY_FADE) / cardDuration);
+    // A pile picture hands over to the identical real card in the same frame.
+    // Fading it out first would flash an empty pile beneath the mask.
+    const last = group.target === "pile" ? 1 : 0;
+    const queued = Boolean(delay + index * stagger);
     const frames = group.stationary ? [
-      { transform: end, opacity: 0, offset: 0 },
+      { transform: end, opacity: queued ? 0 : 1, offset: 0 },
       { transform: end, opacity: 1, offset: .01 },
-      { transform: end, opacity: 1, offset: Math.max(.01, fade) },
-      { transform: end, opacity: 0, offset: 1 },
+      { transform: end, opacity: last, offset: 1 },
     ] : [
       // Queued ghosts must not paint at their old source while waiting.
-      { transform: start, opacity: delay + index * stagger ? 0 : 1, offset: 0 },
+      { transform: start, opacity: queued && !adopted ? 0 : 1, offset: 0 },
       { transform: start, opacity: 1, offset: .01, easing: "cubic-bezier(.22,.61,.36,1)" },
       { transform: end, opacity: 1, offset: arrival },
       { transform: end, opacity: 1, offset: fade },
-      { transform: end, opacity: 0, offset: 1 },
+      { transform: end, opacity: last, offset: 1 },
     ];
     const animation = ghost.animate(frames,
       { duration: cardDuration, delay: delay + index * stagger, fill: "both", easing: "linear" });
+    // The launch keeps painting until this flight has taken over its pose.
+    if (adopted) adopted.animation.cancel();
     // The real card is already interactive; the visual arrival alone follows the flight.
-    const reveal = targetCard?.element.animate?.([
+    const revealed = targetCard || (group.target === "pile" && !group.stationary ? pileCard : null);
+    const reveal = revealed?.element.animate?.(last ? [{ opacity: 0 }, { opacity: 0 }] : [
       { opacity: 0, offset: 0 }, { opacity: 0, offset: .88 }, { opacity: 1, offset: 1 },
     ], { duration: delay + index * stagger + cardDuration, fill: "none", easing: EASING });
     const flight = { animation, reveal, cue, element: ghost,
@@ -408,7 +516,15 @@ function receivingGroup(type, source, actorId, count, state, previous, extra = {
 }
 
 /** Explain each new accepted card transfer after rendering its destination. */
-export function animateCardMotion(state, { gameId, playerId }, prepared) {
+export function animateCardMotion(state, context, prepared) {
+  explainAcceptedState(state, context, prepared);
+  // A launched card that left the hand without being adopted (skipped or
+  // quiet versions) has nothing more to explain; it stays on the pile.
+  const own = launches.get(context.gameId);
+  if (own) cancelOwnPlay(context.gameId, [...own.keys()].filter(card => !state.hand?.includes(card)));
+}
+
+function explainAcceptedState(state, { gameId, playerId }, prepared) {
   const previous = prepared?.previous;
   if (previous && state.version < previous.version) return;
   const current = copyState(state);
@@ -468,17 +584,24 @@ export function animateCardMotion(state, { gameId, playerId }, prepared) {
     if (!event.success) {
       groups.push(receivingGroup("pickup", "pile", actorId, event.picked_up_count || 0, receivedState, previous,
         { cards: [...previous.discard, ...(event.cards || [])], face: actorId === playerId,
-          delay: playDuration + 100, duration: 360, stagger: 16, staggerBudget: 160 }));
+          // Leave the pile the moment the gambled card has been read: a gap
+          // would show the old packet without it.
+          delay: groupSpan(groups[0]), duration: 360, stagger: 16, staggerBudget: 160 }));
     }
   } else if (event.type === "play" || event.type === "afterthrow") {
+    const adopt = actorId === playerId && !reducedMotion ? adoptLaunches(gameId, event.cards) : new Map();
+    // An adopted card is already under way: only its remaining travel is left.
+    const elapsed = adopt.size ? performance.now() - Math.min(...[...adopt.values()].map(launch => launch.startedAt)) : 0;
+    const travel = adopt.size ? Math.max(160, PLAY_TRAVEL - elapsed) : PLAY_TRAVEL;
     groups.push({ type: event.type, source: `hand:${actorId}`, target: "pile", count: event.cards?.length || 0,
-      cards: event.cards, ...publicCard });
+      cards: event.cards, ...publicCard,
+      ...(adopt.size ? { adopt, travel, duration: travel + PLAY_REST + PLAY_FADE, stagger: 0 } : {}) });
   }
   if (event.burn_reason) {
     const play = groups.find(group => ["play", "afterthrow", "gamble"].includes(group.type));
     groups.push({ type: "burn", source: "pile", target: "burned", count: event.burned_count || 0,
       cards: [...previous.discard, ...(event.cards || [])], face: true, duration: 480,
-      delay: (play ? groupSpan(play) : 0) + 80, stagger: 8, staggerBudget: 100 });
+      delay: play ? groupSpan(play) : 0, stagger: 8, staggerBudget: 100 });
   }
   presentGroups(groups, options, previous);
 }

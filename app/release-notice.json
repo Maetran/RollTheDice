@@ -3,23 +3,29 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: Auf der Rangliste siehst du jetzt, wer zuletzt welchen Erfolg verdient hat.",
-  "summary_en": "Hausdepp: the leaderboard now shows who most recently earned which achievement.",
+  "summary_de": "Hausdepp: Karten fliegen beim Tippen sofort und flüssig auf den Stapel, Nachwerfen klappt zuverlässig.",
+  "summary_en": "Hausdepp: cards fly to the pile smoothly the moment you tap, and adding matching cards works reliably.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp: neueste Erfolge",
+      "title": "Hausdepp: flüssiger und schärfer",
       "changes": [
-        "Neuer Bereich „Neueste erreichte Erfolge“ auf der Rangliste.",
-        "Nach Leicht, Mittel und Schwer filtern und durch ältere Erfolge blättern.",
-        "Sichtbar sind nur Kontoname und Erfolg – Runden und Karten bleiben privat."
+        "Deine Karte fliegt beim Tippen sofort und als eine einzige Karte auf das offene Paket.",
+        "Computer warten, bis deine Karte gelandet ist – so kannst du in Ruhe nachwerfen.",
+        "Karte lange halten wählt alle Karten dieses Rangs für einen Wurf.",
+        "Auffüllen auf drei geschieht jetzt für alle automatisch.",
+        "Schärfere, gleichmässigere Kartenbilder und gut sichtbare unterste Karten nach dem Abheben.",
+        "Neu auf der Rangliste: die zuletzt erreichten Erfolge aller Spieler."
       ]
     },
     "en": {
-      "title": "Hausdepp: latest achievements",
+      "title": "Hausdepp: smoother and sharper",
       "changes": [
-        "New “Latest achievements earned” section on the leaderboard.",
-        "Filter by easy, medium and hard, and page through older unlocks.",
-        "Only the account name and achievement are shown – rounds and cards stay private."
+        "Your card flies to the open pile the moment you tap, as one single card.",
+        "Computers wait until your card has landed, so you can add matching cards calmly.",
+        "Hold a card to select every card of that rank for one throw.",
+        "Refilling to three now happens automatically for everyone.",
+        "Sharper, more even card pictures and clearly visible bottom cards after cutting.",
+        "New on the leaderboard: everyone's most recently earned achievements."
       ]
     }
   }

@@ -56,15 +56,15 @@ aktuellen Kontonamen, etwa „Manis Gsuff“. Ein Namensfeld ist dafür nicht n�
 Zwei bis fünf, höchstens sechs Teilnehmer spielen mit 36 doppeldeutschen Karten;
 Computer sind echte Mitspieler mit eigenen verdeckten Händen. Die Serverregeln
 schützen fremde Karten und den Nachziehstapel. Ein Tipp auf den verdeckten Stapel
-zockt vor dem Ablegen oder füllt danach verpflichtend alle fehlenden Karten bis
-auf drei auf. Der nächste Spieler darf schon Handkarten legen; ziehen oder
-zocken kann er erst, wenn ältere Auffüllpflichten erledigt sind. „Du musst
-ziehen“ mit sanft rotem Rahmen erinnert den zuständigen Spieler. Wer möchte,
-schaltet pro Konto „Automatisch auf drei auffüllen“ ein, am Tisch in der
-Tischhilfe oder in den Kontoeinstellungen. Ein Tipp auf
+zockt vor dem Ablegen. Danach füllt das Spiel für alle automatisch alle
+fehlenden Karten bis auf drei auf, sobald die eigene Auffüllung an der Reihe
+ist; eine Einstellung dafür gibt es nicht mehr. Der nächste Spieler darf schon
+Handkarten legen; ziehen oder zocken kann er erst, wenn ältere
+Auffüllpflichten erledigt sind. „Du musst ziehen“ mit sanft rotem Rahmen zeigt,
+wessen Auffüllung an der Reihe ist. Ein Tipp auf
 eine Handkarte legt sie sofort, ein Tipp auf das offene Paket nimmt es auf.
-Mit der Mehrfachauswahl wählt ein Tipp alle gleichrangigen Karten, ein weiterer
-Tipp nimmt einzelne wieder heraus. Der erste Geber jedes Tisches wird ausgelost,
+Langes Halten einer Handkarte (oder der Schalter Mehrfachauswahl) wählt alle
+gleichrangigen Karten für genau einen Wurf, ein Tipp nimmt einzelne wieder heraus. Der erste Geber jedes Tisches wird ausgelost,
 gegen Computer wie gegen Menschen; im Turnier gibt danach reihum der nächste
 Spieler im Uhrzeigersinn. Erfolglos angeschaute Karten bleiben für den
 Abhebenden direkt am Stapel sichtbar, solange sie noch darin liegen.
@@ -239,8 +239,9 @@ accounts is independent of that test.
 
 ## Hausdepp — Spielfenster, Computer und Konto / game window, computers and account
 
-**Deutsch:** Mit **Mehrere Karten auswählen** kannst du gleiche Handkarten markieren
-und gemeinsam in einem Zug spielen; ein normaler Tipp legt weiterhin sofort.
+**Deutsch:** Langes Halten einer Handkarte oder **Mehrere Karten auswählen**
+markiert gleiche Handkarten, die du gemeinsam in einem Zug spielst; die Auswahl
+gilt für einen Wurf, ein normaler Tipp legt weiterhin sofort.
 Computer lassen sich im variablen Normaltempo rund 12,5 % mehr Zeit. Nach einer
 beendeten oder abgebrochenen Partie erstellt **Neu erstellen** einen gemeinsamen
 Folgetisch mit derselben Platzanzahl, Computerzahl, Spielart und Schutzoption.

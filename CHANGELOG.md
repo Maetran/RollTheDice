@@ -23,6 +23,46 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.6.0 — Hausdepp: flüssige Würfe, sicheres Nachwerfen / smooth throws, reliable follow-ups — 2026-10-17
+
+**Deutsch:** Eine getippte Handkarte fliegt sofort auf das offene Paket. Es gibt
+dabei nur noch eine einzige Karte: Die Serverbestätigung übernimmt genau dieses
+fliegende Bild, statt eine halbtransparente Handkarte stehen zu lassen und eine
+zweite Kopie loszuschicken. Das alte Paketbild liegt immer unter der fliegenden
+Karte, die Übergabe an die echte Karte geschieht ohne Aufblitzen im selben Frame,
+und die übrigen Handkarten gleiten zusammen. Flugkarten anderer Spieler werden in
+voller Grösse mit denselben proportionalen Ecken wie liegende Karten gezeichnet.
+Computer warten nun auch nach einer menschlichen Karte deren Landung ab, selbst
+wenn sie gerade auf ein Auffüllen warteten; jedes Nachwerfen verlängert diese
+Zeit. Kommt die Karte des Nachfolgers zuerst an, fliegt ein zu später Nachwurf
+sichtbar auf die Hand zurück, mit der Meldung „Zu spät“. Rasch vorgemerkte
+Karten werden nie später als andere Aktion ausgeführt. Langes Halten einer
+Handkarte wählt alle Karten dieses Rangs für genau einen Wurf. Das Auffüllen auf
+drei geschieht für alle automatisch; die bisherige Einstellung entfällt. Nach dem
+Abheben schauen die gesehenen untersten Karten als kleiner Fächer unter dem
+verdeckten Stapel hervor, nur für den Abhebenden. Die Kartenbilder stammen aus
+einer vorberechneten Tafel mit exakter Perspektive, Farbabgleich und
+randabhängiger Schärfung, sodass alle Karten gleich scharf wirken. Ein seit dem
+zufälligen ersten Geber wackliger Backend-Test ist stabilisiert. Stilles Release.
+
+**English:** A tapped hand card flies to the open pile immediately, as one single
+card: the server confirmation adopts that very picture instead of leaving a
+faded hand card behind and launching a second copy. The old pile picture always
+lies beneath the moving card, the handover to the real card happens in the same
+frame without a flash, and the remaining hand cards glide together. Other
+players' flying cards are drawn at full size with the same proportional corners
+as cards on the table. Computers now wait for a human card to land even while
+they were waiting on a refill; each follow-up extends that time. If the next
+player's card arrives first, a late follow-up visibly flies back to the hand with
+a "Too late" message. Quickly queued taps never run later as a different action.
+Holding a hand card selects every card of that rank for exactly one throw.
+Refilling to three is automatic for everyone; the former setting is gone. After
+cutting, the seen bottom cards peek out from under the stock as a small fan, for
+the cutting player only. Card faces come from a pre-rendered atlas with exact
+perspective, paper balance and edge-aware sharpening, so every card looks equally
+crisp. A backend test made flaky by the random first dealer is stabilised.
+Silent release.
+
 ## 3.5.0 — Hausdepp: neueste Erfolge / latest achievements — 2026-10-17
 
 **Deutsch:** Die Hausdepp-Rangliste hat einen neuen Bereich „Neueste erreichte

@@ -1,10 +1,10 @@
 {
-  "version": "3.5.0",
+  "version": "3.6.0",
   "bump": "minor",
   "date": "2026-10-17",
-  "previous_revision": "96529b47949fb9f78eaf0957c888d2e4e23c6d03",
+  "previous_revision": "149ab51dfa11c8cb036b7f556381986b3789c583",
   "summary": {
-    "de": "Hausdepp: Die Rangliste zeigt die neuesten erreichten Erfolge aller Konten.",
-    "en": "Hausdepp: the leaderboard shows the latest achievements earned by every account."
+    "de": "Hausdepp: Karten fliegen beim Tippen sofort und flüssig auf den Stapel, Nachwerfen klappt zuverlässig, Auffüllen ist automatisch.",
+    "en": "Hausdepp: cards fly to the pile smoothly the moment you tap, follow-ups work reliably, and refilling is automatic."
   }
 }

@@ -2217,5 +2217,12 @@
     "date": "2026-10-17",
     "bump": "patch",
     "summary": "Hausdepp: konstante Kartengrösse auf dem offenen Paket während der Spielanimationen. / Hausdepp: consistent card size on the open pile throughout play animations."
+  },
+  {
+    "version": "3.5.0",
+    "revision": "149ab51dfa11c8cb036b7f556381986b3789c583",
+    "date": "2026-10-17",
+    "bump": "minor",
+    "summary": "Hausdepp: Die Rangliste zeigt die neuesten erreichten Erfolge aller Konten. / Hausdepp: the leaderboard shows the latest achievements earned by every account."
   }
 ]
