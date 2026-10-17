@@ -1527,6 +1527,15 @@ Generated files under `app/static/` must be committed alongside their sources.
 
 ### Quality checks
 
+Agent test procedure and shared-machine resource rules are mandatory in
+[AGENTS.md](AGENTS.md#test-prozedere-und-gemeinsame-rechner-ressourcen).
+Automatic worker sizing does not coordinate capacity with other running projects.
+
+**Deutsch – Agenten:** Das verbindliche Test-Prozedere steht in
+[AGENTS.md](AGENTS.md#test-prozedere-und-gemeinsame-rechner-ressourcen).
+Vor grossen Läufen die Last anderer Projekte berücksichtigen; die automatische
+Workerwahl reserviert keine gemeinsame Kapazität zwischen Projekten.
+
 ```bash
 npm run check:quality
 npm run test:backend
