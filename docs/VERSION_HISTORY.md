@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.4.3**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.5.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.4.3 | 2026-10-17 | patch | Hausdepp: konstante Kartengrösse auf dem offenen Paket während der Spielanimationen. / Hausdepp: consistent card size on the open pile throughout play animations. | [96529b4](https://github.com/Maetran/RollTheDice/commit/96529b47949fb9f78eaf0957c888d2e4e23c6d03) |
 | 3.4.2 | 2026-10-17 | patch | Lesbarere Kartenzüge, plastische Stapel und kompaktere grosse Hände bei Hausdepp. / More readable card plays, clearer pile depth and compact large Hausdepp hands. | [9f59852](https://github.com/Maetran/RollTheDice/commit/9f59852db9b1d6d1d5a4380f9497051fa705829a) |
 | 3.4.1 | 2026-10-17 | patch | Hausdepp-Tisch: mehr Gegenstände und Streuteile, die auf Antippen reagieren und sich verschieben lassen; ruhigere Beschriftungen. / Hausdepp table: more props and scatter pieces that react to taps and can be pushed around; calmer labels. | [5fead8d](https://github.com/Maetran/RollTheDice/commit/5fead8d83485f9ce608e7b8cb117cc33588fba02) |
 | 3.4.0 | 2026-10-17 | minor | Hausdepp: zufälliger Geber, sichtbare Karten vom Abheben, automatisches Auffüllen, leichtere Mehrfachauswahl und aufgeräumte Kontoeinstellungen. / Hausdepp: random dealer, visible peeked cards, automatic refill, easier multi-select and tidier account settings. | [d45fd8a](https://github.com/Maetran/RollTheDice/commit/d45fd8a48fad3bee7af3ca4031e1e6c3f13e4025) |

@@ -402,6 +402,11 @@ gleichzeitig fertig gewordener Hände. Die private Rangliste unter
 Siegzahlen teilen sich einen Rang; aktuelle Kontonamen, Rundenzahl und
 Siegquote werden angezeigt. Tischgrössen von zwei bis sechs sind filterbar.
 Computer und deaktivierte Konten erscheinen nicht in der Rangliste.
+Der Bereich **Neueste erreichte Erfolge** (`/api/hausdepp/achievements/recent`,
+nur angemeldet) listet die jüngsten Freischaltungen aktiver Konten mit
+Kontoname, Erfolg, EP, Schwierigkeit (10 EP leicht, 25 EP mittel, 50/100 EP
+schwer) und Zeitpunkt. Konto-IDs, Avatare, Quellrunden und Karten verlassen den
+Server nicht.
 
 Beim Erstellen kann der Host statt einer Einzelrunde ein **HAUSDEPP-Turnier**
 wählen. Alle zwei bis sechs Teilnehmer behalten ihre Plätze am selben Tisch.
@@ -900,6 +905,10 @@ Private standings at `/hausdepp/rangliste` count wins per human account. Equal
 win totals share a place; current account names, round counts and win rates are
 shown. Table sizes two through six can be filtered. Computers and inactive
 accounts are excluded.
+The **Latest achievements earned** section (`/api/hausdepp/achievements/recent`,
+signed in only) lists active accounts' newest unlocks with account name,
+achievement, XP, difficulty (10 XP easy, 25 XP medium, 50/100 XP hard) and time.
+Account IDs, avatars, source rounds and cards never leave the server.
 
 When creating a table, the host can choose a **HAUSDEPP tournament** instead of
 one round. The same two to six participants retain their seats. Every round
