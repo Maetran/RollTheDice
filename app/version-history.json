@@ -2227,7 +2227,7 @@
   },
   {
     "version": "3.6.0",
-    "revision": "f601950200e2a82090038e6a80a855701f13fb77",
+    "revision": "4d1fe4c038eafe94535326cd833ba53bdc3f9eac",
     "date": "2026-10-17",
     "bump": "minor",
     "summary": "Hausdepp: Karten fliegen beim Tippen sofort und flüssig auf den Stapel, Nachwerfen klappt zuverlässig, Auffüllen ist automatisch. / Hausdepp: cards fly to the pile smoothly the moment you tap, follow-ups work reliably, and refilling is automatic."
