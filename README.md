@@ -111,7 +111,7 @@ Der private Kontobereich zeigt eigene abgeschlossene Runden, Runden als Hausdepp
 und Runden mit leerer Hand sowie einen nachladbaren Verlauf tatsächlicher
 Ergebnisse; allgemeine Einstellungen sind direkt unter
 `/hausdepp/konto/einstellungen` erreichbar und gelten für das gemeinsame Konto.
-Das Konto enthält **100 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
+Das Konto enthält **115 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
 Rangleiter. Innerhalb jeder Gruppe stehen erreichte Erfolge vor den noch offenen.
 Häufige Kartenaktionen benötigen mehrere passende abgeschlossene Runden;
 jede Runde zählt je Ziel höchstens einmal. Seltene Kunststücke bleiben direkt
@@ -122,7 +122,7 @@ auch an gemischten Tischen und für jede einzelne Turnierrunde. Jeder Erfolg
 gibt weiterhin einmalig seine vollen 10, 25, 50 oder 100 EP. Runden, Siege und
 die Anzahl bereits freigeschalteter Erfolge bleiben dabei erhalten.
 Von **Einstein** bei 0 EP geht es mit
-einem Augenzwinkern bis **Hausdepp** bei 5’000 EP. Jeder Rang hat einen eigenen
+einem Augenzwinkern bis **Hausdepp** bei 9’000 EP. Jeder Rang hat einen eigenen
 Aufstiegsspruch, etwa Newtons „Ab jetzt geht’s bergab. Ganz nach den
 Naturgesetzen.“ Der dauerhafte Rang ist vom Hausdepp einer Runde getrennt.
 Rundenpunkte und freigeschaltete Erfolge werden genau einmal gespeichert;
@@ -199,7 +199,7 @@ Tell pattern and lightning back. The rules page adds a quick start, anchors,
 examples and terminology. Round outcomes are stored separately. The private
 account area shows your completed rounds, rounds as the Hausdepp and rounds
 finished with an empty hand, plus a loadable history of actual results. General
-settings at `/hausdepp/konto/einstellungen` manage the shared account. The account includes **100 achievements
+settings at `/hausdepp/konto/einstellungen` manage the shared account. The account includes **115 achievements
 and 24 ranks**, with search, filters and the complete rank ladder. Each group
 shows earned achievements before locked ones. Common card actions require
 several qualifying completed rounds, with each round counting at most once per
@@ -209,7 +209,7 @@ rounded down per round to **2 XP**, including mixed tables and each individual
 tournament round. Achievements still grant their full 10, 25, 50 or 100 XP once each.
 Round and win counts and the number of existing unlocks are retained.
 The ironic ladder runs from **Einstein** at 0 XP to **Hausdepp**
-at 5,000 XP. Each rank has its own saying, including Newton's gravity-inspired
+at 9,000 XP. Each rank has its own saying, including Newton's gravity-inspired
 downhill greeting. The lasting title stays separate from a round's Hausdepp.
 Round points and unlocks are stored once. After a round, individual achievement
 and rank popups show the name, XP, condition and your own saved round evidence.

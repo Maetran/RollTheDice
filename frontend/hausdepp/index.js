@@ -341,7 +341,7 @@ function renderAccount() {
   void loadAccount();
 }
 
-const achievementCategories = ["participation", "community", "cut_gamble", "tens", "four", "tempo", "mishaps", "endgame", "comebacks", "style", "tournament"];
+const achievementCategories = ["participation", "community", "cut_gamble", "tens", "four", "tempo", "mishaps", "endgame", "comebacks", "style", "tournament", "habits"];
 const localized = value => typeof value === "object" && value ? value[lang()] || value.de || value.en || "" : String(value ?? "");
 const nonnegative = value => Math.max(0, Number(value) || 0);
 const pointNumber = value => new Intl.NumberFormat(lang() === "en" ? "en-GB" : "de-CH").format(Math.floor(nonnegative(value)));

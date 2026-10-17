@@ -472,7 +472,7 @@ und Verständlichkeit verfeinern; das führt keine erneute Zugangssperre ein.
 | Lobby und Tisch | Echte Mehrspielerpartien, Computer-Mitspieler, Zugang für aktive Konten, Tischstatus, direkte Aktionen | Weitere Verfeinerungen nach Spieltests |
 | Regeln | Vollständige DE-/EN-Hausregeln mit Schnellstart, Beispielen und Sprungmarken | Verständlichkeitsprüfung durch den Owner |
 | Punkte | Je abgeschlossener Runde 10 EP nur mit Menschen oder 2 EP mit mindestens einem Computer (75 % Reduktion, abgerundet); Erfolge einmalig volle 10/25/50/100 EP | Weiteres Balancing nach Spieltests |
-| Achievements | Bestätigter Katalog mit 100 Erfolgen, 24 Rängen und eigenen Aufstiegssprüchen | Weitere Gestaltungs- und Spieltests |
+| Achievements | Bestätigter Katalog mit 115 Erfolgen, 24 Rängen und eigenen Aufstiegssprüchen | Weitere Gestaltungs- und Spieltests |
 | Konto | Private Statistik und Historie, EP, Rangfortschritt, Rangleiter und filterbare Erfolgssammlung | Weitere Gestaltungsverfeinerungen |
 | Chat und Reaktionen | Gemeinsame Suite-Funktionen am Tisch und Lobbychat | Weitere Verfeinerungen nach Spieltests |
 | Weitere Runden | Einzelrunden über die Lobby; Turnierserie am selben Tisch mit Geberrotation und Buchstabenstand | Weitere Gestaltungs- und Spieltests |
@@ -480,7 +480,7 @@ und Verständlichkeit verfeinern; das führt keine erneute Zugangssperre ein.
 
 ### Bestätigte Punkte, Erfolge und Ränge
 
-Der Owner hat den [Katalog mit 100 Erfolgen und 24 Rängen](HAUSDEPP_ACHIEVEMENTS.md)
+Der Owner hat den [Katalog mit 115 Erfolgen und 24 Rängen](HAUSDEPP_ACHIEVEMENTS.md)
 freigegeben. Jede regulär abgeschlossene Runde nur mit Menschen gibt dem
 beteiligten Konto **10 Erfahrungspunkte (EP)**. Sobald mindestens ein Computer
 am Tisch mitspielt, wird die Basis um 75 % reduziert und **je Runde auf ganze
@@ -503,7 +503,7 @@ Computer. Deren Runden-EP werden neu berechnet; Rundenhistorie, Siege,
 Erfolgsbelohnungen und erreichte Erfolgsanzahl bleiben erhalten.
 
 Die dauerhafte Leiter beginnt bei **Einstein mit 0 EP** und endet bei
-**Hausdepp mit 5’000 EP**. Der dauerhafte Titel bleibt getrennt vom **Hausdepp
+**Hausdepp mit 9’000 EP**. Der dauerhafte Titel bleibt getrennt vom **Hausdepp
 einer einzelnen Runde**. „Fertig werden“ zählt erst bei leerem Nachziehstapel;
 eine zwischenzeitlich leere Hand mit offenem Pflichtziehen reicht nicht.
 Aufgenommene oder abgeräumte Paketgrössen zählen die dabei gespielte Karte mit.
@@ -969,7 +969,7 @@ and clarity without reinstating the former access restriction.
 | Lobby and table | Real multiplayer rounds, computer opponents, active-account access, table status, direct actions | Further playtest refinements |
 | Rules | Complete German/English house rules with quick start, examples and anchors | Owner review for clarity |
 | Points | Per completed round: 10 XP for all-human tables or 2 XP with any computer (75% reduction, rounded down); full one-time achievement rewards of 10/25/50/100 XP | Further balancing after playtests |
-| Achievements | Approved catalogue of 100 achievements, 24 ranks and individual sayings | Further design and playtests |
+| Achievements | Approved catalogue of 115 achievements, 24 ranks and individual sayings | Further design and playtests |
 | Account | Private facts/history, XP, rank progress, complete ladder and filterable achievement collection | Further design refinements |
 | Chat and reactions | Shared suite features at the table and lobby chat | Further playtest refinements |
 | Further rounds | Single rounds through the lobby; same-table tournaments with dealer rotation and letter scores | Further design and playtests |
@@ -995,7 +995,7 @@ The new weighting also applies to proven previously completed rounds with
 computers. Their round XP is recalculated; round history, wins, achievement
 rewards and the number of unlocked achievements are retained.
 
-The lasting ladder runs from **Einstein at 0 XP** to **Hausdepp at 5,000 XP**.
+The lasting ladder runs from **Einstein at 0 XP** to **Hausdepp at 9,000 XP**.
 The lasting title remains separate from the **Hausdepp of an individual round**.
 Finishing requires an empty stock; an empty hand with a pending refill is not
 enough. Pile sizes include the card being played or unsuccessfully gambled.

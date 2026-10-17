@@ -47,7 +47,7 @@ class HausdeppProgressApiTests(unittest.TestCase):
         payload = {
             "schema_version": 2 if flags is not None else 1,
             "payload_kind": "hausdepp_result", "game_type": "hausdepp", "game_id": game_id,
-            "name": "Privater Testtisch", "finished_at": "2026-10-16T12:00:00+00:00",
+            "name": "Privater Testtisch", "finished_at": "2026-10-16T18:30:00+00:00",
             "participants": [{"id": "human", "name": "Founder", "is_cpu": False},
                              {"id": "cpu-1", "name": "Kartensepp", "is_cpu": True}],
             "loser_id": "cpu-1", "finished_order": ["human"],
@@ -59,7 +59,7 @@ class HausdeppProgressApiTests(unittest.TestCase):
             }}
         saved = persist_completed_game_result(
             game_id=game_id, game_name=payload["name"], game_type="hausdepp", mode="2", hardcore=False,
-            finished_at=datetime(2026, 10, 16, 12, tzinfo=timezone.utc), snapshot=payload,
+            finished_at=datetime(2026, 10, 16, 18, 30, tzinfo=timezone.utc), snapshot=payload,
             participants=[{"player_key": "human", "display_name": "Founder",
                            "user_id": self.founder.id if user_id is None else user_id},
                           {"player_key": "cpu-1", "display_name": "Kartensepp", "user_id": None}],
@@ -94,15 +94,16 @@ class HausdeppProgressApiTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers["cache-control"], "no-store")
             data = response.json()
-            self.assertEqual(data["scoring"], {"available": True, "points": 50, "round_points": 10,
-                                                "achievement_points": 40, "round_reward": 10,
+            # Five rounds on one evening also earn "Spielabend" (hausdepp_110, 10 XP).
+            self.assertEqual(data["scoring"], {"available": True, "points": 60, "round_points": 10,
+                                                "achievement_points": 50, "round_reward": 10,
                                                 "cpu_round_reward": 2, "cpu_reduction_percent": 75})
             self.assertEqual(data["rank"]["name"]["de"], "Newton")
             self.assertEqual(data["rank"]["quote"]["de"], "Ab jetzt geht’s bergab. Ganz nach den Naturgesetzen.")
             self.assertEqual(len(data["ranks"]), 24)
-            self.assertEqual(len(data["achievements"]["items"]), 100)
+            self.assertEqual(len(data["achievements"]["items"]), 115)
             self.assertEqual({item["id"] for item in data["achievements"]["items"] if item["unlocked"]},
-                             {"hausdepp_01", "hausdepp_03", "hausdepp_09", "hausdepp_57"})
+                             {"hausdepp_01", "hausdepp_03", "hausdepp_09", "hausdepp_57", "hausdepp_110"})
             self.assertEqual(data["presentation"]["pending"]["to_rank"]["name"]["de"], "Newton")
             self.assertEqual(client.get("/api/hausdepp/account").json()["scoring"], data["scoring"])
 

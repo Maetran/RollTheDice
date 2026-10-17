@@ -68,7 +68,7 @@ def pending_hausdepp_notices(user_id: int) -> dict:
         # Reconstruct source-time counts from narrow validated own facts. Never
         # return opponent IDs, private card flags, raw source IDs or hands.
         for credit in credits:
-            _accumulate(aggregate, json.loads(credit.facts_json))
+            _accumulate(aggregate, json.loads(credit.facts_json), credit.finished_at)
             if credit.game_id in wanted_sources:
                 by_source[credit.game_id] = (credit, {key: _progress(aggregate, key) for key in catalog})
         for unlock in unlocks:
