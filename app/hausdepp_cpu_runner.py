@@ -138,6 +138,9 @@ def _presentation_delay(state: dict) -> float:
         except ValueError:
             pass
     event = state.get("last_event") or {}
+    if event.get("type") == "round_started" and (state.get("peek_information") or {}).get("success"):
+        # Everyone first watches the won cut cards reach their new owner.
+        return 3.0
     if event.get("burn_reason"):
         return 1.95
     if event.get("type") in {"play", "afterthrow", "gamble"}:

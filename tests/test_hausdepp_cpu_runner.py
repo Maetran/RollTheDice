@@ -229,3 +229,11 @@ class CpuRunnerRaceTests(IsolatedAsyncioTestCase):
         assert [(event["type"], event["player_id"]) for event in events][0] == ("draw", "p0")
         assert events[1]["player_id"] == "p2" and events[1]["type"] in {"play", "pickup"}
         assert now[0] - played_at[0] == pytest.approx(1.3)
+
+
+def test_a_successful_cut_is_shown_before_the_first_computer_move():
+    with patch.dict(os.environ, clear=True):
+        shown = {"last_event": {"type": "round_started"}, "peek_information": {"success": True}}
+        quiet = {"last_event": {"type": "round_started"}, "peek_information": {"success": False}}
+        assert runner._presentation_delay(shown) == 3.0
+        assert runner._presentation_delay(quiet) == 0.0
