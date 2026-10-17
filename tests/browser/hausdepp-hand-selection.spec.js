@@ -523,3 +523,15 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 }
+
+test('the header avatar opens the own profile picture setting, not the account overview', async ({ page }) => {
+  await fixture(page, 'de');
+  const avatar = page.locator('.hd-profile-button');
+  await expect(avatar).toHaveAttribute('href', '/hausdepp/konto/einstellungen#profilbild');
+  await expect(avatar).toHaveAccessibleName(/Profil bearbeiten/);
+  await avatar.click();
+  await expect(page).toHaveURL(/\/hausdepp\/konto\/einstellungen#profilbild$/);
+  const row = page.locator('details#profilbild');
+  await expect(row).toHaveJSProperty('open', true);
+  await expect(row.locator('[data-avatar-upload]')).toBeInViewport();
+});
