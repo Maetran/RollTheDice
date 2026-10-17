@@ -108,6 +108,23 @@ def _decision_window(projection: dict, command: dict) -> tuple:
             (projection.get("afterthrow") or {}).get("rank") if action == "afterthrow" else None)
 
 
+def _presentation_delay(state: dict) -> float:
+    """Let a public card land and a cleared packet leave before the next CPU move."""
+    override = os.getenv("ROLLTHEDICE_HAUSDEPP_CPU_DELAY_SECONDS")
+    if override is not None:
+        try:
+            if math.isfinite(float(override)):
+                return 0.0
+        except ValueError:
+            pass
+    event = state.get("last_event") or {}
+    if event.get("burn_reason"):
+        return 1.95
+    if event.get("type") in {"play", "afterthrow", "gamble"}:
+        return 1.65 if event.get("type") == "gamble" and not event.get("success") else 1.3
+    return 0.0
+
+
 async def _run(game: dict, *, finalize_game=None) -> None:
     from .hausdepp_engine import HausdeppRuleError
     from .hausdepp_gameplay import apply_hausdepp_command, game_lock, publish_hausdepp_transition
@@ -117,6 +134,7 @@ async def _run(game: dict, *, finalize_game=None) -> None:
     pending: dict[str, tuple[tuple, float]] = {}
     previous_actor = None
     clock = asyncio.get_running_loop().time
+    presentation_until = clock() + _presentation_delay(game.get("_hausdepp") or {})
     try:
         while cpu_action_is_due(game) and games.get(game_id) is game:
             choices = _cpu_choices(game, memories)
@@ -131,7 +149,9 @@ async def _run(game: dict, *, finalize_game=None) -> None:
             actor_id = min(pending, key=lambda actor: pending[actor][1])
             window, deadline = pending[actor_id]
             game["_hausdepp_cpu_thinking"] = True
-            await asyncio.sleep(max(0.0, deadline - clock()))
+            # Keep the independently sampled CPU deadlines and their ordering.
+            # Only computer presentation waits; human commands remain available.
+            await asyncio.sleep(max(0.0, max(deadline, presentation_until) - clock()))
             async with game_lock(game):
                 if not cpu_action_is_due(game) or games.get(game_id) is not game:
                     break
@@ -146,6 +166,7 @@ async def _run(game: dict, *, finalize_game=None) -> None:
                     pending.pop(actor_id, None)
                     continue
                 apply_hausdepp_command(game, actor_id, command, trusted_cpu=True)
+                presentation_until = clock() + _presentation_delay(game["_hausdepp"])
                 memories[actor_id].remember(projection, command)
                 pending.pop(actor_id, None)
                 previous_actor = actor_id

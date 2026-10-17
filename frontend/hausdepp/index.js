@@ -61,15 +61,33 @@ function cardName(card) {
   return `${t(suit)} ${t(`rank${rank}`)}`;
 }
 
-function cardMarkup(card, { interactive = false, playable = false, committed = false, selecting = false, selected = false, index = 0, count = 1 } = {}) {
+function cardMarkup(card, { interactive = false, playable = false, committed = false, selecting = false, selected = false, sameRank = false, index = 0, count = 1 } = {}) {
   const art = cardArt(card);
   const offset = index - (count - 1) / 2;
   const angle = count > 1 ? offset / Math.max((count - 1) / 2, 1) * Math.min(14, count * 3.5) : 0;
   const drop = Math.pow(Math.abs(angle) / 14, 2) * 17;
   const attrs = `class="hausdepp-card ${playable ? "is-playable" : ""} ${committed ? "is-committed" : ""} ${selected ? "is-selected" : ""}" data-card-id="${esc(card)}" aria-label="${esc(cardName(card))}"${selecting ? ` aria-pressed="${selected}" aria-describedby="hausdeppMultiHint"` : ""}`;
   return interactive
-    ? `<button type="button" ${attrs} style="--card-index:${index};--fan-offset:${offset};--fan-angle:${angle}deg;--fan-drop:${drop}px" ${!playable || committed ? "disabled" : ""}>${art}</button>`
+    ? `<button type="button" ${attrs} data-same-rank="${sameRank}" style="--card-index:${index};--fan-offset:${offset};--fan-angle:${angle}deg;--fan-drop:${drop}px" ${!playable || committed ? "disabled" : ""}>${art}</button>`
     : `<span ${attrs} role="img">${art}</span>`;
+}
+
+// A real paper edge per remaining card makes the height change with the count.
+// Stock layers carry backs only; the packet adds only its already-public faces.
+function renderStacks(state) {
+  const stock = $("hausdeppStock"), pile = $("hausdeppPile");
+  const count = Math.max(0, Math.min(36, Number(state.deck_count) || 0));
+  if (stock.dataset.cardCount !== String(count)) {
+    stock.dataset.cardCount = String(count);
+    stock.innerHTML = Array.from({ length: count }, (_, index) =>
+      `<span class="hd-stock-card" aria-hidden="true" style="--stack-layer:${count - index - 1}"></span>`).join("");
+  }
+  pile.dataset.cardCount = String(state.discard.length);
+  const edges = Math.max(0, state.discard.length - 3);
+  pile.innerHTML = state.discard.length
+    ? Array.from({ length: edges }, (_, index) => `<span class="hd-pile-edge" aria-hidden="true" style="--stack-layer:${state.discard.length - index - 1}"></span>`).join("") +
+      state.discard.slice(-3).map((card, index, cards) => `<span class="hd-pile-face" style="--stack-layer:${cards.length - index - 1}">${cardMarkup(card)}</span>`).join("")
+    : `<span class="hd-empty-pile">${t(state.phase === "peeking" ? "notDealt" : "tableClear")}</span>`;
 }
 
 function seatIdentity(player, selfId = playerId) {
@@ -797,7 +815,7 @@ function renderState() {
   const oldFocus = document.activeElement?.dataset.cardId;
   const committed = new Set([...(commandInFlight?.cards || []), ...queuedCards]);
   const pendingRank = commandInFlight?.cards?.[0]?.split("-")[1];
-  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: selecting ? handSelection.selection.canSelect(card) : (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card) && (!pending || card.split("-")[1] === pendingRank || (commandInFlight?.action === "draw" && actions.includes("afterthrow"))), committed: committed.has(card), selecting, selected: selected.has(card), index, count: hand.length })).join("")}</div>`);
+  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" data-compact="${hand.length >= 8}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: selecting ? handSelection.selection.canSelect(card) : (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card) && (!pending || card.split("-")[1] === pendingRank || (commandInFlight?.action === "draw" && actions.includes("afterthrow"))), committed: committed.has(card), selecting, selected: selected.has(card), sameRank: index > 0 && hand[index - 1].split("-")[1] === card.split("-")[1], index, count: hand.length })).join("")}</div>`);
   if (oldFocus) $("hausdeppHand").querySelector(`[data-card-id="${CSS.escape(oldFocus)}"]`)?.focus({ preventScroll: true });
   $("hausdeppSelection").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", hand.length);
   const mine = s.players.find(p => p.id === playerId);
@@ -814,7 +832,7 @@ function renderState() {
   $("hausdeppStock").closest(".hd-stock-group").classList.toggle("needs-draw", Boolean(s.draw_required));
   $("hausdeppStock").closest(".hd-stock-group").classList.toggle("is-draw-blocker", urgentDraw);
   $("hausdeppDrawAlert").hidden = !urgentDraw;
-  $("hausdeppPile").innerHTML = s.discard.length ? s.discard.slice(-3).map(card => cardMarkup(card)).join("") : `<span class="hd-empty-pile">${t(s.phase === "peeking" ? "notDealt" : "tableClear")}</span>`;
+  renderStacks(s);
   $("hausdeppPileCount").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", s.discard.length);
   $("hausdeppPileAction").textContent = s.phase === "peeking" ? "" : t(!pending && actions.includes("pickup") && s.discard.length ? "pickup" : "pileTitle");
   $("hausdeppPile").setAttribute("aria-label", s.discard.length ? t(!pending && actions.includes("pickup") ? "pileLabel" : "pileInspectLabel", { card: cardName(s.discard.at(-1)), count: s.discard.length }) : t("tableClear"));

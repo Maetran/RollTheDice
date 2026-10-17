@@ -80,6 +80,23 @@ am Ziel ohne Flug. Chat, schnelle Reaktionen und Wiederaufnahme verwenden
 die gemeinsame Infrastruktur. Hoch- und Querformat auf Smartphone, Tablet und
 Desktop werden unterstützt, mit Mobilgeräten als Ausgangspunkt.
 
+**Deutsch – Karten besser verfolgen:** Gespielte Karten kommen sichtbar an und
+bleiben kurz liegen, bevor eine 10 oder vier Gleiche das Paket abräumen.
+Computer lassen zwischen diesen sichtbaren Aktionen Zeit zum Mitverfolgen;
+menschliche Aktionen bleiben unmittelbar möglich. Kartenlagen machen die
+tatsächliche Grösse des Nachziehstapels und offenen Pakets erkennbar. Tablet und
+Desktop nutzen grössere Karten, auf dem Handy rücken grosse Hände und besonders
+gleiche Werte enger zusammen. Der Fächer bleibt horizontal verschiebbar; mit der
+Tastatur fokussierte Karten liegen zum Lesen und Auswählen vorne.
+
+**English – follow the cards:** Played cards visibly arrive and rest briefly
+before a ten or four matching ranks clear the pile. Computers leave time to
+follow these visible actions; human actions remain immediately available.
+Layered cards convey the actual stock and open-pile sizes. Tablets and desktops
+use larger cards, while large phone hands pack more tightly, especially matching
+ranks. The fan still scrolls horizontally; keyboard-focused cards move to the
+front for reading and selection.
+
 Die [Regel- und Produktspezifikation](docs/HAUSDEPP.md) hält die bestätigten
 Details fest; [Karten und Quellen](docs/HAUSDEPP_ASSETS.md) dokumentiert das
 Tellbild und die Blitz-Rückseite. Die Regelseite ergänzt Schnellstart,

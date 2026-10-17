@@ -1,10 +1,10 @@
 {
-  "version": "3.4.1",
+  "version": "3.4.2",
   "bump": "patch",
   "date": "2026-10-17",
-  "previous_revision": "d45fd8a48fad3bee7af3ca4031e1e6c3f13e4025",
+  "previous_revision": "5fead8d83485f9ce608e7b8cb117cc33588fba02",
   "summary": {
-    "de": "Hausdepp-Tisch: mehr Gegenstände und Streuteile, die auf Antippen reagieren und sich verschieben lassen; ruhigere Beschriftungen.",
-    "en": "Hausdepp table: more props and scatter pieces that react to taps and can be pushed around; calmer labels."
+    "de": "Lesbarere Kartenzüge, plastische Stapel und kompaktere grosse Hände bei Hausdepp.",
+    "en": "More readable card plays, clearer pile depth and compact large Hausdepp hands."
   }
 }

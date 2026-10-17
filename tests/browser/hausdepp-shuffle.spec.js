@@ -301,3 +301,151 @@ test('compact discard counters remain separate from stock captions and turn mess
   }
   expect(fixture.commands).toEqual([]);
 });
+
+async function watchPublicMotion(page) {
+  await page.evaluate(() => {
+    window.__publicMotions = [];
+    window.addEventListener('hausdepp:motion', event => window.__publicMotions.push(event.detail));
+  });
+}
+
+async function pausePublicPictures(page) {
+  await page.evaluate(() => {
+    for (const element of document.querySelectorAll('.hd-deal-card, #hausdeppPile')) {
+      for (const animation of element.getAnimations()) animation.pause();
+    }
+  });
+}
+
+for (const reason of ['ten', 'four_of_a_kind']) {
+  test(`a ${reason} burn leaves the public cause readable before the packet moves, while stock input stays live`, async ({ page }) => {
+    const fixture = await rendererFixture(page, { initial: 'playing' });
+    const initial = phaseBoard(fixture.real, 'playing', { version: 30 });
+    const self = initial._hausdepp.viewer_id;
+    initial._hausdepp.discard = reason === 'ten' ? ['leaves-6'] : ['acorns-6', 'leaves-6', 'bells-6'];
+    fixture.send(initial);
+    await expect(page.locator('#hausdeppPileCount')).toContainText(String(initial._hausdepp.discard.length));
+    await watchPublicMotion(page);
+    const next = structuredClone(initial);
+    const played = reason === 'ten' ? 'acorns-10' : 'hearts-6';
+    Object.assign(next._hausdepp, {
+      version: 31, hand: initial._hausdepp.hand.filter(card => card !== played), discard: [],
+      burned_count: initial._hausdepp.discard.length + 1, available_actions: ['draw'], playable_cards: [],
+      last_event: { type: reason === 'ten' ? 'play' : 'afterthrow', player_id: self,
+        cards: [played], burn_reason: reason, burned_count: initial._hausdepp.discard.length + 1 },
+    });
+    fixture.send(next);
+    await expect(page.locator('.hd-deal-card[data-motion-type="burn"]')).toHaveCount(next._hausdepp.burned_count);
+    await pausePublicPictures(page);
+    const motions = await page.evaluate(() => window.__publicMotions);
+    const play = motions.find(event => event.type === next._hausdepp.last_event.type);
+    const burn = motions.find(event => event.type === 'burn');
+    expect(play.rest).toBeGreaterThanOrEqual(300);
+    expect(burn.delay).toBeGreaterThanOrEqual(play.delay + play.duration + 80);
+    expect(burn.duration).toBeGreaterThanOrEqual(400);
+    await expect(page.locator('#hausdeppBurnedCount')).toHaveText(String(next._hausdepp.burned_count));
+    await expect(page.locator('#hausdeppStock')).toBeEnabled();
+    const visibleCause = await page.evaluate(type => {
+      const opacity = element => Number(getComputedStyle(element).opacity);
+      for (const ghost of document.querySelectorAll('.hd-deal-card')) {
+        for (const animation of ghost.getAnimations()) animation.currentTime = ghost.dataset.motionType === 'burn' ? 0 : 700;
+      }
+      return {
+        livePile: opacity(document.getElementById('hausdeppPile')),
+        burn: [...document.querySelectorAll('[data-motion-type="burn"]')].map(opacity),
+        faceUp: [...document.querySelectorAll(`.hd-deal-card[data-motion-type="pile-rest"], .hd-deal-card[data-motion-type="${type}"]`)]
+          .filter(element => opacity(element) > .9 && element.querySelector('svg')).length,
+      };
+    }, next._hausdepp.last_event.type);
+    expect(visibleCause.livePile).toBe(0);
+    expect(visibleCause.burn.every(opacity => opacity === 0)).toBe(true);
+    expect(visibleCause.faceUp).toBe(reason === 'ten' ? 2 : 4);
+    // A presentation never gates the next authorised action or captures taps.
+    await page.locator('#hausdeppStock').click();
+    await expect.poll(() => fixture.commands.filter(command => command.action === 'hausdepp_draw').length).toBe(1);
+  });
+}
+
+test('rapid accepted public plays wait their turn, same-version renders retain them, and disconnect clears the queue', async ({ page }) => {
+  const fixture = await rendererFixture(page, { initial: 'playing' });
+  await watchPublicMotion(page);
+  const first = phaseBoard(fixture.real, 'playing', { version: 21 });
+  const self = first._hausdepp.viewer_id;
+  Object.assign(first._hausdepp, {
+    hand: ['bells-U', 'acorns-10'], discard: ['leaves-6', 'hearts-6'],
+    last_event: { type: 'play', player_id: self, cards: ['hearts-6'] },
+  });
+  fixture.send(first);
+  await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(1);
+  await pausePublicPictures(page);
+  const second = structuredClone(first);
+  second._hausdepp.version += 1;
+  second._hausdepp.discard.push('bells-6');
+  second._hausdepp.last_event = { type: 'afterthrow', player_id: second._hausdepp.players.find(player => player.id !== self).id,
+    cards: ['bells-6'] };
+  fixture.send(second);
+  await expect(page.locator('.hd-deal-card[data-motion-type="afterthrow"]')).toHaveCount(1);
+  await pausePublicPictures(page);
+  const evidence = await page.evaluate(() => {
+    window.__queuedPublicCard = document.querySelector('[data-motion-type="afterthrow"]');
+    return { motions: window.__publicMotions, queuedOpacity: Number(getComputedStyle(window.__queuedPublicCard).opacity),
+      livePile: Number(getComputedStyle(document.getElementById('hausdeppPile')).opacity) };
+  });
+  const [play, afterthrow] = evidence.motions;
+  expect(afterthrow.delay).toBeGreaterThan(0);
+  expect(afterthrow.delay).toBeGreaterThan(play.duration - 300);
+  expect(evidence.queuedOpacity).toBe(0);
+  expect(evidence.livePile).toBe(0);
+  fixture.send({ ...second, _name: 'Renderer-Test · Gleicher angenommener Stand' });
+  await expect(page.locator('#hausdeppRoomName')).toHaveText('Renderer-Test · Gleicher angenommener Stand');
+  expect(await page.evaluate(() => document.querySelector('[data-motion-type="afterthrow"]') === window.__queuedPublicCard)).toBe(true);
+  expect(await page.evaluate(() => window.__publicMotions.length)).toBe(2);
+  fixture.close({ code: 1008, reason: 'Labelled motion queue disconnect' });
+  await expect(page.locator('.hd-deal-card')).toHaveCount(0);
+  await expect(page.locator('#hausdeppPile')).toHaveCSS('opacity', '1');
+});
+
+test('four cards played together all remain face up after the last arrival and leave together before burning', async ({ page }) => {
+  const fixture = await rendererFixture(page, { initial: 'playing' });
+  const initial = phaseBoard(fixture.real, 'playing', { version: 30 });
+  const self = initial._hausdepp.viewer_id;
+  const cards = ['acorns-A', 'leaves-A', 'hearts-A', 'bells-A'];
+  initial._hausdepp.hand = cards;
+  initial._hausdepp.discard = ['leaves-K'];
+  initial._hausdepp.playable_cards = cards;
+  fixture.send(initial);
+  await expect(page.locator('#hausdeppHand [data-card-id]')).toHaveCount(4);
+  const next = structuredClone(initial);
+  Object.assign(next._hausdepp, { version: 31, hand: [], discard: [], burned_count: 5, playable_cards: [],
+    last_event: { type: 'play', player_id: self, cards, burn_reason: 'four_of_a_kind', burned_count: 5 } });
+  fixture.send(next);
+  await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(4);
+  await pausePublicPictures(page);
+  const arrivals = await page.locator('[data-motion-type="play"]').evaluateAll(elements => elements.map(element => {
+    const animation = element.getAnimations()[0];
+    animation.currentTime = 1000;
+    return { opacity: Number(getComputedStyle(element).opacity),
+      end: Number(element.dataset.delay) + Number(element.dataset.duration), hasFace: Boolean(element.querySelector('svg')) };
+  }));
+  expect(arrivals.every(card => card.opacity === 1 && card.hasFace)).toBe(true);
+  expect(new Set(arrivals.map(card => card.end)).size, 'No card vanishes while the other matching cards are still arriving').toBe(1);
+});
+
+test('enabling reduced motion cancels an active public sequence and reveals the current authoritative pile', async ({ page }) => {
+  const fixture = await rendererFixture(page, { initial: 'playing' });
+  const next = phaseBoard(fixture.real, 'playing', { version: 21 });
+  Object.assign(next._hausdepp, { discard: [], burned_count: 2,
+    last_event: { type: 'play', player_id: next._hausdepp.viewer_id, cards: ['acorns-10'], burn_reason: 'ten', burned_count: 2 } });
+  fixture.send(next);
+  await expect(page.locator('.hd-deal-card[data-motion-type="burn"]')).toHaveCount(2);
+  await pausePublicPictures(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.locator('.hd-deal-card')).toHaveCount(0);
+  // This accepted burn leaves an empty, disabled pile. Restore its ordinary
+  // disabled paint (.45), rather than mistaking it for an enabled pile (1).
+  await expect(page.locator('#hausdeppPile')).toBeDisabled();
+  await expect(page.locator('#hausdeppPile')).toHaveCSS('opacity', '0.45');
+  expect(await page.locator('#hausdeppPile').evaluate(element => element.getAnimations().length)).toBe(0);
+  await expect(page.locator('#hausdeppBurnedCount')).toHaveText('2');
+  expect(fixture.commands).toEqual([]);
+});

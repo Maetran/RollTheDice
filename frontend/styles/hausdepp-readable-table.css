@@ -1,0 +1,90 @@
+/* Keep the Stammtisch table, but let cards use the wood their device affords.
+   Depth comes from the public counts, never from invented or private faces. */
+html[data-game="hausdepp"] body.hd-playing #hausdeppStock {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+html[data-game="hausdepp"] body.hd-playing #hausdeppStock.is-empty { border: 1px dashed #d5b78280; }
+.hd-stock-card, .hd-pile-edge, .hd-pile-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 6.7% / 4.2%;
+  pointer-events: none;
+  transform: translate(calc(var(--stack-layer) * .42px), calc(var(--stack-layer) * .6px));
+}
+.hd-stock-card {
+  border: 1px solid #b6a38b;
+  background: #f3eadd url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center / 100% 100%;
+  box-shadow: 0 1px 1px #180d0866;
+}
+.hd-stock-card:last-child { border: 4px solid #f3eadd; box-shadow: 0 3px 7px #180d0870; }
+.hd-pile-edge { border: 1px solid #b6a38b; background: #f3eadd; box-shadow: 0 1px 1px #180d0855; }
+html[data-game="hausdepp"] .hd-table .hd-centre .hd-pile-face > .hausdepp-card { width: 100%; height: 100%; transform: none; }
+.hd-pile-face:nth-last-child(3) { rotate: -3deg; }
+.hd-pile-face:nth-last-child(2) { rotate: 2deg; }
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) > :is(.hd-card-back, .hd-pile) { margin-bottom: 24px; }
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(#hausdeppStockCount, #hausdeppPileCount) { color: #f0ddbd; font-weight: 650; }
+
+/* Ordinary hands keep generous distinct targets. Big hands gather equal ranks
+   into tighter groups, leaving a clear wider step between different ranks. */
+html[data-game="hausdepp"] body.hd-playing .hd-hand { --hd-hand-step: max(44px, calc(var(--hd-hand-card) * .64)); scrollbar-color: #c9af81 #231b16; }
+html[data-game="hausdepp"] body.hd-playing .hd-hand-fan[data-compact="true"] { --hd-hand-step: max(44px, calc(var(--hd-hand-card) * .46)); }
+html[data-game="hausdepp"] body.hd-playing .hd-hand-fan[data-compact="true"] > .hausdepp-card[data-same-rank="true"] { margin-left: calc(clamp(24px, calc(var(--hd-hand-card) * .24), 34px) - var(--hd-hand-card)); }
+html[data-game="hausdepp"] body.hd-playing .hd-hand-fan > .hausdepp-card:focus-visible { z-index: 60; outline: 3px solid var(--hd-gold); outline-offset: -3px; }
+@media (hover: hover) and (pointer: fine) {
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-fan > .hausdepp-card:hover:not(:disabled) { z-index: 60; }
+}
+
+@media (min-width: 1100px) {
+  html[data-game="hausdepp"] body.hd-playing > .hd-main { padding-top: 5px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) {
+    --hd-pile-size: clamp(128px, 9.45vw, 144px);
+    --hd-stack-height: calc(var(--hd-pile-size) * 57 / 36 + 64px);
+    --hd-arc-height: 410px;
+    --hd-arc-depth: 120px;
+    --hd-centre-gap: clamp(44px, 5vw, 76px);
+  }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand { --hd-hand-card: 136px; padding-block: 12px 8px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-heading h2 { line-height: 20px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-own-name { margin-top: 0; line-height: 12px; }
+  /* Centre the two live piles on the same axis as the players. The smaller
+     cleared stack sits beside them, without pushing both live piles left. */
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { gap: var(--hd-centre-gap); }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned { position: absolute; left: calc(50% + var(--hd-pile-size) + var(--hd-centre-gap) + 16px); top: 0; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned-stack { margin-bottom: calc((var(--hd-pile-size) - 60px) * 57 / 72 + 24px); }
+}
+@media (max-width: 1099px) and (orientation: portrait) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) { --hd-pile-size: clamp(88px, calc(88px + (100dvh - 568px) * .11), 126px); }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { gap: clamp(30px, 8vw, 48px); padding-bottom: 12px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand { padding-inline: 14px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-cards { z-index: 2; width: calc(var(--hd-pile-size) * .32); right: calc(100% + 3px); }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom { align-self: flex-start; max-width: 68px; font-size: 9px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned { left: 0; width: 40px; max-width: 40px; }
+}
+@media (min-width: 600px) and (max-width: 1099px) and (orientation: portrait) {
+  html[data-game="hausdepp"] body.hd-playing { --hd-hand-card: clamp(124px, 16vw, 152px); }
+  html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) { --hd-pile-size: clamp(144px, 20vw, 176px); --hd-arc-depth: 130px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { gap: 64px; padding-bottom: 22px; }
+}
+@media (max-width: 1099px) and (orientation: landscape) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) { --hd-pile-size: clamp(96px, min(12vw, calc((100dvh - 150px) * .45)), 132px); }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { gap: clamp(24px, 4vw, 44px); padding-bottom: 0; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) > :is(.hd-card-back, .hd-pile) { margin-bottom: 8px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-cards { width: calc(var(--hd-pile-size) * .3); right: calc(100% + 2px); }
+}
+/* Short tables have room for a shallow seating arc above the two live piles.
+   Keep the count's own lower line; move the piles down instead of covering a
+   player's cards or shrinking a prominent touch surface. */
+@media (max-width: 1099px) and (orientation: landscape) and (max-height: 600px) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) { --hd-arc-depth: 12px; }
+}
+@media (max-width: 700px) and (orientation: landscape) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) { --hd-pile-size: 76px; }
+}
+@media (max-width: 359px) and (orientation: portrait) and (max-height: 620px) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) { --hd-pile-size: 84px; --hd-arc-depth: 12px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { padding-bottom: 8px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) > :is(.hd-card-back, .hd-pile) { margin-bottom: 12px; }
+}

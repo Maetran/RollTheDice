@@ -75,6 +75,10 @@ for (const language of ['de', 'en']) {
   test(`${language}: public packet inspection has an explicit and keyboard action, live cards, and bounded sheets`, async ({ page }) => {
     const fixture = await tableFixture(page, language);
     const dialog = page.locator('#hausdeppPileInspector');
+    await expect(page.locator('#hausdeppStock .hd-stock-card')).toHaveCount(11);
+    await expect(page.locator('#hausdeppStock [data-card-id], #hausdeppStock svg')).toHaveCount(0);
+    await expect(page.locator('#hausdeppPile .hd-pile-edge')).toHaveCount(4);
+    expect(await page.locator('#hausdeppPile [data-card-id]').evaluateAll(cards => cards.map(card => card.dataset.cardId))).toEqual(PUBLIC_CARDS.slice(-3));
     for (const [width, height] of VIEWPORTS) {
       await page.setViewportSize({ width, height });
       await page.locator('#hausdeppTools > summary').click();
@@ -120,13 +124,19 @@ for (const language of ['de', 'en']) {
     await expect(dialog).toBeVisible();
     next._hausdepp.version += 1;
     next._hausdepp.discard.push('acorns-K');
+    next._hausdepp.deck_count = 1;
     fixture.send(next);
     await expect(dialog.locator('[data-card-id]')).toHaveCount(8);
+    await expect(page.locator('#hausdeppStock .hd-stock-card')).toHaveCount(1);
+    await expect(page.locator('#hausdeppPile .hd-pile-edge')).toHaveCount(5);
     expect(await dialog.locator('[data-card-id]').last().getAttribute('data-card-id')).toBe('acorns-K');
     next._hausdepp.version += 1;
     next._hausdepp.discard = [];
+    next._hausdepp.deck_count = 0;
     fixture.send(next);
     await expect(dialog.locator('[data-card-id]')).toHaveCount(0);
+    await expect(page.locator('#hausdeppStock .hd-stock-card')).toHaveCount(0);
+    await expect(page.locator('#hausdeppPile .hd-pile-edge, #hausdeppPile [data-card-id]')).toHaveCount(0);
     await expect(dialog.locator('[data-pile-inspector-status]')).toHaveText(language === 'de' ? 'Tisch frei' : 'Table clear');
     await page.keyboard.press('Escape');
     await expect(page.locator('#hausdeppTools > summary')).toBeFocused();
