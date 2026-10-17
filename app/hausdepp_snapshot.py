@@ -60,6 +60,7 @@ def snapshot_hausdepp(game: GameDict, viewer_id: str | None = None) -> dict:
         "_spectators": [public_player_payload(player) for player in game.get("_spectators", [])],
         "locked": bool(game.get("_passphrase")), "_hausdepp": projection,
         "_results": game.get("_results"), "_cpu_thinking": bool(game.get("_hausdepp_cpu_thinking")),
+        "_hausdepp_round_summary": game.get("_hausdepp_round_summary") if game.get("_finished") else None,
         "_hausdepp_tournament": project_hausdepp_tournament(game, valid_viewer),
         "_waiting_permissions": waiting_permissions(game, valid_viewer),
     }

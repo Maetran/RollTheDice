@@ -227,6 +227,10 @@ def finalize_hausdepp_result(game: dict) -> dict:
                 synchronize_hausdepp_progress(user_id)
             except Exception:
                 logger.exception("Hausdepp award reconciliation failed for completed round %s", game["_id"])
+        # Everyone at the table sees what each person earned in this round.
+        from .hausdepp_round_summary import build_round_summary
+
+        game["_hausdepp_round_summary"] = build_round_summary(result_id, game["_participants"])
         from .hausdepp_tournament import tournament_is_pending
 
         if tournament_is_pending(game):

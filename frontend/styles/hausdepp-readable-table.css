@@ -94,3 +94,9 @@ html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom
 html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-fan .hausdepp-card:nth-child(2) { transform: translate(-6%, 19%) rotate(-4deg); }
 html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-fan .hausdepp-card:nth-child(3) { transform: translate(-12%, 38%) rotate(-8deg); }
 html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; padding: 0; border: 0; }
+
+/* Wide tables show the round result as a centred card over the table instead
+   of below the fold; the side column with chat and help stays usable. */
+@media (min-width: 1100px) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-result:not([hidden]) { position: fixed; z-index: 40; top: 92px; left: calc((100vw - 330px) / 2); transform: translateX(-50%); width: min(720px, calc(100vw - 400px)); max-height: calc(100vh - 116px); margin: 0; overflow: auto; overscroll-behavior: contain; box-shadow: 0 24px 60px #0c100d99; }
+}

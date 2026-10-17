@@ -23,6 +23,17 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.8.0 — Hausdepp: ausführlicher Rundenabschluss und mehr / richer round summary and more — 2026-10-17
+
+**Deutsch:** Das Rundenende zeigt alle Platzierungen in der Reihenfolge, in der
+die Spieler fertig wurden, den Hausdepp zuletzt, und für jedes Konto die in dieser
+Runde verdienten EP sowie die neu erreichten Erfolge. Auf grossen Bildschirmen
+erscheint es als mittiges Fenster über dem Tisch.
+
+**English:** The round end lists every place in the order players finished, the
+Hausdepp last, with each account's XP earned in this round and its newly reached
+achievements. On large screens it appears as a centred card over the table.
+
 ## 3.7.1 — Hausdepp: Abheben sichtbar machen / show who wins the cut — 2026-10-17
 
 **Deutsch:** Hebt jemand nach dem Mischen erfolgreich ab (eine 10 oder Asse mit
