@@ -36,35 +36,40 @@ test('real retired source recreates a CPU tournament and only explicit invitatio
   let hostUser, originalLanguage;
   try {
     const host = await hostContext.newPage(), guest = await guestContext.newPage();
-    const guestName = 'rematch_real_optin';
+    const guestName = `RematchReal${Date.now()}`;
     const loggedIn = await host.request.post('/api/auth/login', { data: { username: 'Admin', password: 'temporary-password-123' } });
     expect(loggedIn.ok()).toBeTruthy();
     hostUser = (await loggedIn.json()).user;
     originalLanguage = hostUser.preferences.preferred_language || 'de';
     const headers = { 'X-CSRF-Token': hostUser.csrf_token };
     await host.request.put('/api/auth/preferences/language', { headers, data: { preferred_language: 'de' } });
-    const guestLogin = await guest.request.post('/api/auth/login', {
-      data: { username: guestName, password: 'rematch-real-password-123' },
+    // Provision this test's player without consuming the shared server's
+    // public signup allowance; authentication and password setup stay real.
+    const temporary = 'rematch-real-temporary-123';
+    const password = 'rematch-real-password-123';
+    const createdGuest = await host.request.post('/api/admin/users', {
+      headers, data: { username: guestName, temporary_password: temporary, role: 'user' },
     });
-    if (!guestLogin.ok()) {
-      expect(guestLogin.status()).toBe(401);
-      const registration = await guest.request.post('/api/auth/register', {
-        data: { username: guestName, password: 'rematch-real-password-123', preferred_language: 'en' },
-      });
-      expect(registration.status()).toBe(201);
-    }
+    expect(createdGuest.status()).toBe(201);
+    const guestLogin = await guest.request.post('/api/auth/login', {
+      data: { username: guestName, password: temporary },
+    });
+    expect(guestLogin.ok()).toBeTruthy();
+    const initialGuest = (await guestLogin.json()).user;
+    const changedPassword = await guest.request.post('/api/auth/change-password', {
+      headers: { 'X-CSRF-Token': initialGuest.csrf_token },
+      data: { current_password: temporary, new_password: password },
+    });
+    expect(changedPassword.ok()).toBeTruthy();
+    const finalLogin = await guest.request.post('/api/auth/login', { data: { username: guestName, password } });
+    expect(finalLogin.ok()).toBeTruthy();
+    const finalGuest = (await finalLogin.json()).user;
+    const savedLanguage = await guest.request.put('/api/auth/preferences/language', {
+      headers: { 'X-CSRF-Token': finalGuest.csrf_token }, data: { preferred_language: 'en' },
+    });
+    expect(savedLanguage.ok()).toBeTruthy();
     const guestUser = (await (await guest.request.get('/api/auth/me')).json()).user;
     expect(guestUser.id).not.toBe(hostUser.id);
-    // A failed earlier attempt may have already created an invitation. Reuse
-    // this isolated account and explicitly decline only its still-open ones;
-    // retries must not evade the real one-registration-per-minute limit.
-    const previousInvitations = (await (await guest.request.get('/api/hausdepp/invitations')).json()).invitations;
-    for (const invitation of previousInvitations) {
-      const declined = await guest.request.post(`/api/hausdepp/invitations/${encodeURIComponent(invitation.id)}/decline`, {
-        headers: { 'X-CSRF-Token': guestUser.csrf_token },
-      });
-      expect(declined.ok()).toBeTruthy();
-    }
     await prepare(host, 'de'); await prepare(guest, 'en');
     const created = await host.request.post('/api/games', { headers, data: {
       name: 'Real rematch · opt-in', game_type: 'hausdepp', mode: '3', play_mode: 'cpu', cpu_count: 1, tournament: true,
