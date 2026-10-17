@@ -9,6 +9,7 @@
 @import "./hausdepp-auth.css";
 @import "./hausdepp-selection.css";
 @import "./hausdepp-rematch.css";
+@import "./hausdepp-table-polish.css";
 :root {
   --hd-paper: #f6f2e6; --hd-ink: #20372e; --hd-muted: #526157;
   --hd-red: #a63335; --hd-red-hover: #842628; --hd-gold: #dfc895;

@@ -1,0 +1,12 @@
+/* Small visual alignments on the Hausdepp table. Layout and controls stay
+   where they are; only labels and spacing read more calmly. */
+html[data-game="hausdepp"] .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) > span { text-align: center; text-wrap: balance; }
+@media (min-width: 900px) {
+  html[data-game="hausdepp"] .hd-table .hd-centre .hd-burned { width: auto; flex: 0 0 auto; }
+  html[data-game="hausdepp"] .hd-table .hd-centre .hd-burned > span:last-child { white-space: nowrap; }
+  /* The docked chat column is narrow: give the message field the full row
+     so its hint stays readable, with the send button underneath. */
+  html[data-game="hausdepp"] body.chat-open .hd-room-layout .hd-chat-compose { flex-wrap: wrap; }
+  html[data-game="hausdepp"] body.chat-open .hd-room-layout .hd-chat-compose input { flex: 1 1 100%; }
+  html[data-game="hausdepp"] body.chat-open .hd-room-layout .hd-chat-compose button { flex: 1 1 100%; }
+}

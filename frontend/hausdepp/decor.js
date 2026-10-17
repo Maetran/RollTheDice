@@ -30,6 +30,9 @@ const sheets = { base: [2, 2], snacks: [2, 2], evening: [2, 2], scatter: [4, 3] 
 const large = Object.keys(catalog).filter(prop => !catalog[prop].size);
 const scatter = Object.keys(catalog).filter(prop => catalog[prop].size);
 const upright = ["beer", "tea", "lemonade", "can", "lantern"];
+// Some large props already carry these pieces in their own picture.
+const duplicates = { lemonade: ["opener", "cap"], dice: ["die"], sweets: ["praline-gold", "praline-red"],
+  chips: ["loose-chips"], flips: ["loose-flips"], nuts: ["loose-nuts"] };
 const layouts = new WeakMap();
 const gap = 12;
 const protectedAreas = ".hd-seat, .hd-room-heading, .hd-stock-group, .hd-pile-group, .hd-burned, .hd-hand-heading, "
@@ -345,7 +348,9 @@ function positionDecor(table, state) {
   const wide = innerWidth >= 1200;
   const limits = phone ? landscape ? [2, 2] : [1, 3] : wide ? [state.count, state.scatterCount] : [3, state.scatterCount - 1];
   const side = Math.min(phone ? landscape ? 82 : 68 : wide ? 168 : 128, bounds.width * .16);
-  const wanted = [...state.props.slice(0, limits[0]), ...state.scatter.slice(0, limits[1])];
+  const chosen = state.props.slice(0, limits[0]);
+  const shown = new Set(chosen.flatMap(prop => duplicates[prop] || []));
+  const wanted = [...chosen, ...state.scatter.filter(prop => !shown.has(prop)).slice(0, limits[1])];
   const used = [];
   let index = 0;
   for (const prop of wanted) {
