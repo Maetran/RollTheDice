@@ -29,6 +29,35 @@ async function waitForHausdeppWorker(page) {
   expect(registrations).toEqual([{ scope: '/hausdepp', worker: '/hausdepp-sw.js' }]);
 }
 
+test('anonymous Hausdepp pages expose a decodable iPhone installation icon after reload', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const path of ['/hausdepp', '/hausdepp/regeln', '/hausdepp/anmelden']) {
+    await page.goto(path);
+    for (const reload of [false, true]) {
+      if (reload) await page.reload();
+      const icon = await page.evaluate(async () => {
+        const link = document.querySelector('link[rel="apple-touch-icon"]');
+        const response = await fetch(link.href, { credentials: 'omit' });
+        const image = new Image();
+        image.src = link.href;
+        await image.decode();
+        return {
+          url: new URL(link.href).pathname,
+          status: response.status,
+          redirected: response.redirected,
+          type: response.headers.get('content-type'),
+          width: image.naturalWidth,
+          height: image.naturalHeight,
+        };
+      });
+      expect(icon).toEqual({
+        url: '/static/icons/hausdepp-apple-touch-icon-180-v2.png',
+        status: 200, redirected: false, type: 'image/png', width: 180, height: 180,
+      });
+    }
+  }
+});
+
 test('real Hausdepp worker stays narrow and never caches private content or cards', async ({ page, context }) => {
   await owner(page);
   await page.goto('/hausdepp');

@@ -23,6 +23,31 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.4.2 — Hausdepp: Karten besser verfolgen / follow the cards — 2026-10-17
+
+**Deutsch:** Kartenwürfe laufen nacheinander und mit einer kurzen Liegephase.
+Eine 10 oder vier Gleiche bleiben dadurch erkennbar, bevor das gesamte Paket
+langsamer auf „Aus dem Spiel“ wandert. Computer lassen ausreichend Zeit für
+diese Darstellung; menschliche Aktionen und die Spielregeln bleiben unmittelbar
+verfügbar. Nachziehstapel und offenes Paket zeigen ihre tatsächliche Grösse mit
+sichtbaren Kartenlagen. Auf Tablet und Desktop nutzen Karten und Stapel mehr
+Platz. Grosse Hände rücken enger zusammen, besonders Karten gleichen Werts;
+Scrollen und Tastaturfokus halten jede Karte erreichbar. Die iPhone-Icon-Pfade
+und Cache-Versionen wurden anhand der live ausgelieferten PNGs geprüft und um
+einen Browsertest für anonymes Laden und Dekodieren ergänzt. Stilles Release
+ohne neue Push-Nachricht oder Versionspopup.
+
+**English:** Card plays run in sequence with a short resting beat. A ten or four
+matching ranks remain recognizable before the complete pile moves more slowly
+to “Out of play”. Computers allow time for this presentation; human actions and
+game rules remain immediately available. Stock and open piles show their actual
+size through visible card layers. Tablets and desktops use more space for cards
+and piles. Large hands pack more tightly, especially matching ranks; scrolling
+and keyboard focus keep every card reachable. iPhone icon paths and cache
+versions were checked against the live PNGs, with an added browser regression
+for anonymous loading and decoding. Silent release without a new push or
+version popup.
+
 ## 3.4.1 — Hausdepp: ein belebter Tisch / a livelier table — 2026-10-17
 
 **Deutsch:** Auf dem Hausdepp-Tisch liegt mehr: Zu den zwölf grossen

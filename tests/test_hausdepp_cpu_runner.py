@@ -163,8 +163,42 @@ class CpuRunnerRaceTests(IsolatedAsyncioTestCase):
 
     async def test_clearance_and_following_move_receive_distinct_followup_reactions(self):
         state = scenario([["hearts-K", "bells-K", "hearts-10"], ["acorns-6"]], discard=["leaves-A"])
-        events, clock = await self.run_cpu(game_for(state, cpu_ids={"p0"}), stop_after=2)
+        waits = []
+
+        async def observe_wait(seconds):
+            waits.append(seconds)
+
+        with patch.dict(os.environ, clear=True):
+            events, clock = await self.run_cpu(game_for(state, cpu_ids={"p0"}), sleep=observe_wait, stop_after=2)
         assert [event["type"] for event in events] == ["play", "play"]
         assert [call.kwargs["following"] for call in clock.call_args_list] == [False, True]
         assert events[0]["burn_reason"] == "ten"
         assert events[1]["cards"] == ["bells-K", "hearts-K"]
+        assert waits[0] == 0
+        assert 1.9 < waits[1] <= 1.95
+
+    async def test_explicit_fast_clock_keeps_integration_games_fast_after_a_clearance(self):
+        state = scenario([["hearts-K", "bells-K", "hearts-10"], ["acorns-6"]], discard=["leaves-A"])
+        waits = []
+
+        async def observe_wait(seconds):
+            waits.append(seconds)
+
+        with patch.dict(os.environ, {"ROLLTHEDICE_HAUSDEPP_CPU_DELAY_SECONDS": "0"}):
+            events, _ = await self.run_cpu(game_for(state, cpu_ids={"p0"}), sleep=observe_wait, stop_after=2)
+        assert [event["type"] for event in events] == ["play", "play"]
+        assert waits == [0, 0]
+
+    async def test_next_cpu_waits_for_public_card_arrival_without_restarting_its_reaction(self):
+        state = scenario([["hearts-6"], ["hearts-K", "hearts-A", "hearts-10"]], discard=["bells-U"], current="p1")
+        state["last_event"] = {"type": "play", "player_id": "p0", "cards": ["bells-U"]}
+        waits = []
+
+        async def observe_wait(seconds):
+            waits.append(seconds)
+
+        with patch.dict(os.environ, clear=True):
+            events, clock = await self.run_cpu(game_for(state, cpu_ids={"p1"}), sleep=observe_wait)
+        assert events[0]["player_id"] == "p1"
+        assert clock.call_count == 1
+        assert 1.25 < waits[0] <= 1.3

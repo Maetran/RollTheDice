@@ -31,6 +31,20 @@ async function ownerSession(page, language = 'de') {
     window.hausdeppDealProbe = { created: 0, firstAt: null, lastAt: null };
     window.hausdeppMotionProbe = [];
     window.hausdeppGhostProbe = [];
+    // Keep the real projection in this browser task too. Node's frame callback
+    // can race another accepted CPU state between sequential DOM assertions.
+    const NativeWebSocket = window.WebSocket;
+    window.WebSocket = class extends NativeWebSocket {
+      constructor(...args) {
+        super(...args);
+        this.addEventListener('message', event => {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.scoreboard?._hausdepp) window.hausdeppObservedState = message.scoreboard._hausdepp;
+          } catch { /* Protocol-level frames have no JSON. */ }
+        });
+      }
+    };
     window.addEventListener('hausdepp:motion', event => {
       const source = event.detail.source === 'stock' ? document.getElementById('hausdeppStock')
         : event.detail.source === 'pile' ? document.getElementById('hausdeppPile') : null;
@@ -154,7 +168,9 @@ async function completeActivePeek(page, traffic, { expectMotion } = {}) {
   expect(traffic.state.peek.complete).toBe(true);
   if (expectMotion) {
     await expect.poll(() => page.evaluate(() => window.hausdeppDealProbe.created)).toBeGreaterThan(0);
-    await expect(page.locator('.hd-deal-card')).toHaveCount(0, { timeout: 1700 });
+    // Later CPU plays can already be resting on the table. This helper checks
+    // the initial deal; public play/burn cleanup has its own motion contracts.
+    await expect(page.locator('.hd-deal-card[data-motion-type="deal"]')).toHaveCount(0, { timeout: 1700 });
   }
 }
 
@@ -186,36 +202,56 @@ async function expectNaturalSortedHand(page) {
 }
 
 async function expectOpponentHands(page, state, name = 'table') {
-  const viewerId = state.viewer_id;
-  const opponents = state.players.filter(player => player.id !== viewerId);
-  for (const opponent of opponents) {
-    const seat = page.locator(`.hd-seat[data-player-id="${opponent.id}"]`);
-    const hand = seat.locator(`.hd-opponent-hand[data-player-hand="${opponent.id}"]`);
+  // WebSocket delivery and the app's renderState run synchronously in one task.
+  // Read that projection and all corresponding DOM evidence together, so a
+  // later refill cannot turn an exact count assertion into a stale-state wait.
+  const evidence = await page.evaluate(expected => {
+    const projection = expected || window.hausdeppObservedState;
+    if (!projection) throw new Error('No observed Hausdepp projection for opponent hand checks');
+    return {
+      version: projection.version, viewportWidth: innerWidth,
+      seatCount: document.querySelectorAll('#hausdeppPlayers .hd-seat').length,
+      opponents: projection.players.filter(player => player.id !== projection.viewer_id).map(opponent => {
+        const seat = document.querySelector(`.hd-seat[data-player-id="${CSS.escape(opponent.id)}"]`);
+        const hand = seat?.querySelector(`.hd-opponent-hand[data-player-hand="${CSS.escape(opponent.id)}"]`);
+        const bounds = hand?.getBoundingClientRect();
+        return {
+          opponent, exists: Boolean(hand), count: hand?.getAttribute('data-card-count'),
+          backCount: hand?.querySelectorAll('.hd-opponent-card').length,
+          privateFaceCount: hand?.querySelectorAll('[data-card-id], svg:not(.hd-seat-avatar svg), img:not(.hd-seat-avatar img)').length,
+          hidden: hand?.getAttribute('aria-hidden'), label: seat?.getAttribute('aria-label'),
+          geometry: [...(hand?.querySelectorAll('.hd-opponent-card') || [])].map(card => ({
+            width: card.offsetWidth, height: card.offsetHeight,
+            background: getComputedStyle(card).backgroundImage, text: card.textContent.trim(),
+          })),
+          bounds: bounds && { x: bounds.x, width: bounds.width, height: bounds.height },
+        };
+      }),
+    };
+  }, state);
+  expect(evidence.seatCount, `${name}: one seat for every projected opponent`).toBe(evidence.opponents.length);
+  for (const item of evidence.opponents) {
+    const { opponent } = item;
     const count = Number(opponent.hand_count || 0);
-    await expect(hand, `${name}: ${opponent.name} hand`).toHaveAttribute('data-card-count', String(count));
-    await expect(hand.locator('.hd-opponent-card'), `${name}: one back for each real card`).toHaveCount(count);
+    expect(item.exists, `${name}: ${opponent.name} hand exists`).toBe(true);
+    expect(item.count, `${name}: ${opponent.name} hand at version ${evidence.version}`).toBe(String(count));
+    expect(item.backCount, `${name}: one back for each real card`).toBe(count);
     // Account avatars and the computer's neutral card icon belong to the
     // identity badge. Every other descendant must remain a private card back.
-    await expect(hand.locator('[data-card-id], svg:not(.hd-seat-avatar svg), img:not(.hd-seat-avatar img)')).toHaveCount(0);
-    await expect(hand).toHaveAttribute('aria-hidden', 'true');
-    const label = await seat.getAttribute('aria-label');
-    expect(label).toContain(opponent.name);
-    if (!opponent.finished) expect(label).toContain(String(count));
+    expect(item.privateFaceCount).toBe(0);
+    expect(item.hidden).toBe('true');
+    expect(item.label).toContain(opponent.name);
+    if (!opponent.finished) expect(item.label).toContain(String(count));
     if (count) {
-      const geometry = await hand.locator('.hd-opponent-card').evaluateAll(elements => elements.map(card => ({
-        width: card.offsetWidth, height: card.offsetHeight,
-        background: getComputedStyle(card).backgroundImage,
-        text: card.textContent.trim(),
-      })));
-      for (const card of geometry) {
+      for (const card of item.geometry) {
         expect(Math.abs(card.height / card.width - 57 / 36), `${name}: opponent native card proportions`).toBeLessThan(.04);
         expect(card.background).toContain('card-back');
         expect(card.text).toBe('');
       }
-      const bounds = await hand.boundingBox();
-      const viewport = page.viewportSize();
-      expect(bounds.x, `${name}: opponent fan starts in viewport`).toBeGreaterThanOrEqual(-1);
-      expect(bounds.x + bounds.width, `${name}: opponent fan ends in viewport`).toBeLessThanOrEqual(viewport.width + 1);
+      expect(item.bounds.width, `${name}: opponent fan remains visible`).toBeGreaterThan(0);
+      expect(item.bounds.height, `${name}: opponent fan remains visible`).toBeGreaterThan(0);
+      expect(item.bounds.x, `${name}: opponent fan starts in viewport`).toBeGreaterThanOrEqual(-1);
+      expect(item.bounds.x + item.bounds.width, `${name}: opponent fan ends in viewport`).toBeLessThanOrEqual(evidence.viewportWidth + 1);
     }
   }
 }
@@ -404,7 +440,7 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#hausdeppStatus')).toHaveAttribute('role', 'status');
     await expect(page.locator('#hausdeppPlayers')).toContainText(traffic.state.players.find(player => player.is_cpu).name);
     await expectNaturalSortedHand(page);
-    await expectOpponentHands(page, traffic.state, language);
+    await expectOpponentHands(page, null, language);
 
     await playLegalHandCard(page, traffic);
     // A ten can grant another human play; advance normally until the CPU has
@@ -619,7 +655,7 @@ test('lobby and table keep mobile, tablet and desktop portrait/landscape control
     await page.evaluate(() => document.fonts.ready);
     await expectDescribedPile(page, traffic.state);
     await expectNaturalSortedHand(page);
-    await expectOpponentHands(page, traffic.state, name);
+    await expectOpponentHands(page, null, name);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${name}: table width`).toBe(true);
     for (const selector of ['#hausdeppStock', '#hausdeppPile', '#chatToggle']) {
       await expect(page.locator(selector)).toBeVisible();
@@ -657,7 +693,7 @@ test('a six-seat table keeps all five opponents inside mobile and tablet widths'
     await page.setViewportSize(viewport);
     await page.evaluate(() => document.fonts.ready);
     await expect(page.locator('#hausdeppPlayers .hd-seat')).toHaveCount(5);
-    await expectOpponentHands(page, traffic.state, `six-seat ${name}`);
+    await expectOpponentHands(page, null, `six-seat ${name}`);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), name).toBe(true);
     for (const seat of await page.locator('#hausdeppPlayers .hd-seat').all()) {
       await expect(seat).toBeVisible();
@@ -792,19 +828,52 @@ test('labelled UI fixture: rapid matching taps send single cards in order withou
 });
 
 test('labelled UI fixture: every card of a sorted 35-card fan remains reachable by horizontal hand scrolling', async ({ page }) => {
+  test.setTimeout(90000);
   await ownerSession(page);
   const traffic = watchGame(page);
   const room = await createCpuTable(page, traffic);
   const allCards = ['hearts', 'bells', 'leaves', 'acorns'].flatMap(suit =>
     ['6', '7', '8', '9', 'U', 'O', 'K', 'A', '10'].map(rank => `${suit}-${rank}`));
   const hand = allCards.filter(card => card !== 'acorns-10');
-  await installUiFixture(page, room, labelledUiFixture(traffic.scoreboard, '35 Karten im Fächer', hand));
+  const largeHand = labelledUiFixture(traffic.scoreboard, '35 Karten im Fächer', hand);
+  const ordinaryHand = labelledUiFixture(traffic.scoreboard, 'Drei Karten und zwei volle Stapel', ['hearts-U', 'bells-U', 'leaves-A']);
+  Object.assign(ordinaryHand._hausdepp, { deck_count: 20, burned_count: 5,
+    discard: ['hearts-6', 'bells-7', 'leaves-8', 'acorns-9', 'hearts-O', 'bells-K', 'acorns-A'] });
+  const mocked = await installUiFixture(page, room, largeHand);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  for (const [name, viewport] of VIEWPORTS.slice(0, 2)) {
+  for (const [name, viewport] of [...VIEWPORTS, ['short-landscape', { width: 568, height: 320 }]]) {
     await page.setViewportSize(viewport);
+    if (process.env.HAUSDEPP_READABLE_SCREENSHOTS === '1') {
+      mocked.setSnapshot(ordinaryHand);
+      await page.goto(room);
+      await expect(page.locator('#hausdeppHand .hausdepp-card')).toHaveCount(3);
+      await expect(page.locator('#hausdeppStock .hd-stock-card')).toHaveCount(20);
+      await expect(page.locator('#hausdeppPile .hd-pile-edge')).toHaveCount(4);
+      await page.screenshot({ path: test.info().outputPath(`readable-three-cards-${name}.png`) });
+      mocked.setSnapshot(largeHand);
+    }
     await page.goto(room);
     await expect(page.locator('#hausdeppHand .hausdepp-card')).toHaveCount(35);
     await expectNaturalSortedHand(page);
+    const grouping = await page.locator('#hausdeppHand .hd-hand-fan').evaluate(fan => {
+      const cards = [...fan.children];
+      return {
+        width: fan.offsetWidth,
+        cardWidth: cards[0].offsetWidth,
+        steps: cards.slice(1).map((card, index) => ({
+          sameRank: card.dataset.cardId.split('-')[1] === cards[index].dataset.cardId.split('-')[1],
+          width: card.offsetLeft - cards[index].offsetLeft,
+        })),
+      };
+    });
+    const separateRanksStep = Math.max(...grouping.steps.filter(step => !step.sameRank).map(step => step.width));
+    expect(grouping.width, `${name}: equal-rank groups compact the fan`).toBeLessThan(grouping.cardWidth + (hand.length - 1) * separateRanksStep);
+    for (const step of grouping.steps) {
+      if (step.sameRank) {
+        expect(step.width, `${name}: matching cards group together`).toBeLessThan(44);
+        expect(step.width, `${name}: every matching card retains a visible edge`).toBeGreaterThanOrEqual(24);
+      } else expect(step.width, `${name}: distinct ranks keep a clear step`).toBeGreaterThanOrEqual(44);
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), name).toBe(true);
     const width = await page.locator('#hausdeppHand').evaluate(element => ({
       visible: element.clientWidth, scroll: element.scrollWidth,
@@ -860,7 +929,16 @@ test('labelled UI fixture: every card of a sorted 35-card fan remains reachable 
     await page.evaluate(async () => { await document.fonts.ready; await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); });
     const afterFonts = await measure();
     await page.locator('#hausdeppHand .hausdepp-card').first().focus();
-    for (let index = 1; index < hand.length; index += 1) await page.keyboard.press('Tab');
+    for (let index = 1; index < hand.length; index += 1) {
+      await page.keyboard.press('Tab');
+      const focused = page.locator('#hausdeppHand .hausdepp-card').nth(index);
+      await expect(focused).toBeFocused();
+      await expect(focused).toBeInViewport({ ratio: .9 });
+      expect(await focused.evaluate(card => {
+        const bounds = card.getBoundingClientRect();
+        return card.contains(document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2));
+      }), `${name}: keyboard focus exposes the individual face`).toBe(true);
+    }
     await expect(last).toBeFocused();
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const afterFocus = await measure();
@@ -874,6 +952,11 @@ test('labelled UI fixture: every card of a sorted 35-card fan remains reachable 
     await expect(last).toBeFocused();
     expect(afterFocus.last.right, `${name}: keyboard-focused last ten stays fully visible`).toBeLessThanOrEqual(afterFocus.container.right + 1);
     expect(afterFocus.last.bottom, `${name}: keyboard-focused ten fits vertically`).toBeLessThanOrEqual(Math.min(afterFocus.container.bottom, viewport.height) + 1);
+    if (process.env.HAUSDEPP_READABLE_SCREENSHOTS === '1') {
+      await page.locator('#hausdeppHand').evaluate(element => { element.scrollLeft = 0; });
+      await page.locator('#hausdeppHand .hausdepp-card').first().focus();
+      await page.screenshot({ path: test.info().outputPath(`readable-large-hand-${name}.png`) });
+    }
   }
 });
 
@@ -1011,8 +1094,11 @@ test('labelled UI fixture: failed gamble travels stock to table before pickup, r
   const ghosts = await page.evaluate(() => window.hausdeppGhostProbe);
   expect(ghosts.some(card => card.motionType === 'gamble' && card.source === 'stock' && card.target === 'pile')).toBe(true);
   expect(ghosts.some(card => card.motionType === 'pickup' && card.source === 'pile' && card.target === `hand:${fixture._hausdepp.viewer_id}`)).toBe(true);
-  for (const ghost of ghosts) expect(Number(ghost.delay) + Number(ghost.duration)).toBeLessThanOrEqual(900);
-  await expect(page.locator('.hd-deal-card')).toHaveCount(0, { timeout: 1250 });
+  // The failed card must first land and remain readable before pickup starts.
+  expect(gamble.travel).toBeGreaterThanOrEqual(500);
+  expect(gamble.rest).toBeGreaterThanOrEqual(350);
+  for (const ghost of ghosts) expect(Number(ghost.delay) + Number(ghost.duration)).toBeLessThanOrEqual(1600);
+  await expect(page.locator('.hd-deal-card')).toHaveCount(0, { timeout: 2000 });
   const connectionsBeforeReload = mocked.connections;
   await page.reload();
   await expect.poll(() => mocked.connections).toBeGreaterThan(connectionsBeforeReload);
