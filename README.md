@@ -143,7 +143,11 @@ zwei echten Konten in einer temporären lokalen Datenbank. Die aktuelle
 Die private Rangliste unter `/hausdepp/rangliste` zählt Rundensiege: Alle ausser
 dem Hausdepp einer abgeschlossenen Runde erhalten einen Sieg. Gleiche
 Siegzahlen teilen sich einen Rang; Tischgrössen von zwei bis sechs lassen sich
-filtern. Computer erscheinen nicht als Konten. Im **HAUSDEPP-Turnier** bleiben
+filtern. Computer erscheinen nicht als Konten. Darunter zeigt „Neueste erreichte
+Erfolge“ die jüngsten Freischaltungen aktiver Konten, neueste zuerst, nach
+Leicht/Mittel/Schwer filterbar und zu je 20 Einträgen geblättert. Sichtbar sind
+nur Kontoname, Erfolg, EP und Zeitpunkt; keine Konto-IDs, Runden oder Karten.
+Im **HAUSDEPP-Turnier** bleiben
 Tisch und Plätze über mehrere Runden erhalten. Jede Niederlage ergänzt einen
 Buchstaben. Wer zuerst **HAUSDEPP** vollständig hat, ist der Tages-Hausdepp;
 damit endet das Turnier sofort. Der Host teilt die nächste Runde aus, der Geber
@@ -220,6 +224,9 @@ records rules, accounting, browser evidence and remaining device checks.
 The private standings at `/hausdepp/rangliste` count round wins: everyone except
 a completed round's Hausdepp earns a win. Equal totals share a place, and table
 sizes two through six can be filtered. Computers have no ranked accounts.
+Below, “Latest achievements earned” lists active accounts' newest unlocks,
+newest first, filterable by easy/medium/hard and paged 20 at a time. Only the
+account name, achievement, XP and time are shown; no account IDs, rounds or cards.
 **HAUSDEPP tournaments** keep the same table and seats over multiple rounds.
 Each loss adds a letter. The first player to complete **HAUSDEPP** becomes the
 day's Hausdepp and immediately ends the tournament. The host deals the next
@@ -271,7 +278,8 @@ Spielhilfe, Einladungen und Chat öffnen sich als begrenzte Ablagen. Ein wartend
 Sitz lässt sich aktiv verlassen: Der Tisch bleibt für andere Menschen erhalten,
 das Hostrecht wandert weiter. Ohne Menschen wird er ohne Ergebnis oder EP geschlossen.
 Die Rangliste zeigt neben Siegen den aktuellen, aus denselben gewichteten Punkten
-wie im Konto abgeleiteten Hausdepp-Rang. Fremde Erfolgsdetails bleiben privat.
+wie im Konto abgeleiteten Hausdepp-Rang. Der Erfolgsfeed nennt nur Kontoname,
+Erfolg und Zeitpunkt; Runden, Karten und Fortschritt anderer bleiben privat.
 
 Computer nutzen sichere Abräum- und Schlussketten, sparen weitere 10er und wägen
 Zocken gegen Aufnehmen ab. Ihr Tempo schwankt; nach einer Denkpause prüfen sie

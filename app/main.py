@@ -2365,6 +2365,19 @@ def api_hausdepp_leaderboard(request: Request, players: int | None = Query(defau
     return build_hausdepp_leaderboard(identity.user_id, players=players, limit=limit)
 
 
+@app.get("/api/hausdepp/achievements/recent")
+def api_hausdepp_recent_achievement_feed(
+    request: Request,
+    page: int = Query(1, ge=1),
+    difficulty: AchievementDifficulty | None = Query(None),
+) -> dict[str, object]:
+    """Return the newest Hausdepp unlocks for the signed-in standings page."""
+    from .hausdepp_achievement_feed import list_hausdepp_achievement_feed
+
+    identity = _require_hausdepp_access(request)
+    return list_hausdepp_achievement_feed(identity.user_id, page=page, difficulty=difficulty)
+
+
 @app.post("/api/hausdepp/account/acknowledge")
 def api_acknowledge_hausdepp_presentation(payload: HausdeppPresentationAckReq, request: Request):
     from .hausdepp_achievements import acknowledge_hausdepp_presentation

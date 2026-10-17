@@ -13,7 +13,8 @@
         "Computer warten, bis deine Karte gelandet ist – so kannst du in Ruhe nachwerfen.",
         "Karte lange halten wählt alle Karten dieses Rangs für einen Wurf.",
         "Auffüllen auf drei geschieht jetzt für alle automatisch.",
-        "Schärfere, gleichmässigere Kartenbilder und gut sichtbare unterste Karten nach dem Abheben."
+        "Schärfere, gleichmässigere Kartenbilder und gut sichtbare unterste Karten nach dem Abheben.",
+        "Neu auf der Rangliste: die zuletzt erreichten Erfolge aller Spieler."
       ]
     },
     "en": {
@@ -23,7 +24,8 @@
         "Computers wait until your card has landed, so you can add matching cards calmly.",
         "Hold a card to select every card of that rank for one throw.",
         "Refilling to three now happens automatically for everyone.",
-        "Sharper, more even card pictures and clearly visible bottom cards after cutting."
+        "Sharper, more even card pictures and clearly visible bottom cards after cutting.",
+        "New on the leaderboard: everyone's most recently earned achievements."
       ]
     }
   }

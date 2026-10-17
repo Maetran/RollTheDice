@@ -422,9 +422,74 @@ let leaderboardRequest = 0;
 
 function renderLeaderboard() {
   document.title = `${t("leaderboard")} · Hausdepp`;
-  root.innerHTML = `<div class="hd-leaderboard"><header class="hd-account-heading"><p class="hd-account-identity">${t("leaderboardKicker")}</p><h1>${t("leaderboardTitle")}</h1><p>${t("leaderboardIntro")}</p></header><section class="hd-leaderboard-paper" aria-labelledby="hausdeppLeaderboardTitle"><div class="hd-section-heading"><h2 id="hausdeppLeaderboardTitle">${t("leaderboardWins")}</h2><label class="hd-leaderboard-filter">${t("leaderboardTableSize")}<select id="hausdeppLeaderboardSize"><option value="all">${t("allTableSizes")}</option>${[2,3,4,5,6].map(count => `<option value="${count}">${t("roundPeople", { count })}</option>`).join("")}</select></label></div><p id="hausdeppLeaderboardScoring" class="hd-account-muted">${t("leaderboardScoring")}</p><p class="hd-fine">${t("leaderboardPrivacy")}</p><p id="hausdeppLeaderboardStatus" class="hd-fine" role="status"></p><div id="hausdeppLeaderboardRows"><p>${t("leaderboardLoading")}</p></div><p id="hausdeppLeaderboardError" class="hd-error" role="alert" hidden></p></section><div class="hd-leaderboard-links"><a class="hd-primary" href="/hausdepp">${t("takeSeat")} ${icon("arrow")}</a><a href="/hausdepp/konto">${t("accountBackProfile")} ${icon("arrow")}</a></div></div>${footer()}`;
+  root.innerHTML = `<div class="hd-leaderboard"><header class="hd-account-heading"><p class="hd-account-identity">${t("leaderboardKicker")}</p><h1>${t("leaderboardTitle")}</h1><p>${t("leaderboardIntro")}</p></header><section class="hd-leaderboard-paper" aria-labelledby="hausdeppLeaderboardTitle"><div class="hd-section-heading"><h2 id="hausdeppLeaderboardTitle">${t("leaderboardWins")}</h2><label class="hd-leaderboard-filter">${t("leaderboardTableSize")}<select id="hausdeppLeaderboardSize"><option value="all">${t("allTableSizes")}</option>${[2,3,4,5,6].map(count => `<option value="${count}">${t("roundPeople", { count })}</option>`).join("")}</select></label></div><p id="hausdeppLeaderboardScoring" class="hd-account-muted">${t("leaderboardScoring")}</p><p class="hd-fine">${t("leaderboardPrivacy")}</p><p id="hausdeppLeaderboardStatus" class="hd-fine" role="status"></p><div id="hausdeppLeaderboardRows"><p>${t("leaderboardLoading")}</p></div><p id="hausdeppLeaderboardError" class="hd-error" role="alert" hidden></p></section><section id="hausdeppAchievementFeed" class="hd-leaderboard-paper hd-feed" aria-labelledby="hausdeppFeedTitle"><div class="hd-section-heading"><div><p class="hd-account-kicker">${t("feedKicker")}</p><h2 id="hausdeppFeedTitle" tabindex="-1">${t("feedTitle")}</h2></div><div class="hd-feed-filters" role="group" aria-label="${t("feedFilter")}">${feedDifficulties.map(level => `<button type="button" class="hd-feed-filter" data-feed-difficulty="${level}" aria-pressed="false">${t(`difficulty_${level}`)}</button>`).join("")}</div></div><p class="hd-account-muted">${t("feedIntro")}</p><p class="hd-fine">${t("feedPrivacy")}</p><p id="hausdeppFeedStatus" class="hd-fine" role="status"></p><div id="hausdeppFeedList"><p>${t("feedLoading")}</p></div><p id="hausdeppFeedError" class="hd-error" role="alert" hidden></p><nav id="hausdeppFeedPagination" class="hd-feed-pagination" aria-label="${t("feedPagination")}" hidden><button id="hausdeppFeedPrevious" class="hd-text-button" type="button">${t("feedPrevious")}</button><span id="hausdeppFeedPage"></span><button id="hausdeppFeedNext" class="hd-text-button" type="button">${t("feedNext")}</button></nav></section><div class="hd-leaderboard-links"><a class="hd-primary" href="/hausdepp">${t("takeSeat")} ${icon("arrow")}</a><a href="/hausdepp/konto">${t("accountBackProfile")} ${icon("arrow")}</a></div></div>${footer()}`;
   $("hausdeppLeaderboardSize").addEventListener("change", loadLeaderboard);
   void loadLeaderboard();
+  feedState.page = 1; feedState.difficulty = null;
+  $("hausdeppAchievementFeed").addEventListener("click", event => {
+    const filter = event.target instanceof Element ? event.target.closest("[data-feed-difficulty]") : null;
+    if (!filter) return;
+    const level = filter.dataset.feedDifficulty;
+    feedState.difficulty = feedState.difficulty === level ? null : level;
+    feedState.page = 1;
+    void loadAchievementFeed();
+  });
+  $("hausdeppFeedPrevious").addEventListener("click", () => { feedState.page -= 1; void loadAchievementFeed({ focus: true }); });
+  $("hausdeppFeedNext").addEventListener("click", () => { feedState.page += 1; void loadAchievementFeed({ focus: true }); });
+  void loadAchievementFeed();
+}
+
+// Newest unlocks of every account. The API returns names only, never account
+// IDs, rounds or cards, so the entries are plain text without profile links.
+const feedDifficulties = ["easy", "medium", "hard"];
+const feedState = { page: 1, pages: 1, difficulty: null, request: 0 };
+
+function feedItemMarkup(item) {
+  const achievement = item && typeof item.achievement === "object" && item.achievement ? item.achievement : {};
+  const player = item && typeof item.player === "object" && item.player ? item.player : {};
+  const level = feedDifficulties.includes(achievement.difficulty) ? achievement.difficulty : "medium";
+  return `<li class="hd-feed-item${player.is_self ? " is-self" : ""}" data-feed-item data-feed-item-difficulty="${level}"><span class="hd-achievement-symbol" aria-hidden="true">${icon("check")}</span><div class="hd-feed-copy"><p class="hd-feed-earned"><strong class="hd-feed-player" translate="no">${esc(player.display_name || t("leaderboardUnknownPlayer"))}</strong>${player.is_self ? `<span class="hd-self-tag">${t("yourSeat")}</span>` : ""}<time datetime="${esc(item.unlocked_at || "")}">${esc(formatRoundDate(item.unlocked_at))}</time></p><h3>${esc(localized(achievement.name))}</h3><p>${esc(localized(achievement.description))}</p><p class="hd-feed-meta"><span class="hd-feed-difficulty hd-feed-difficulty--${level}">${t(`difficulty_${level}`)}</span><span class="hd-achievement-points">${esc(xp(achievement.points))}</span></p></div></li>`;
+}
+
+async function loadAchievementFeed({ focus = false } = {}) {
+  const request = ++feedState.request;
+  const list = $("hausdeppFeedList"), status = $("hausdeppFeedStatus"), error = $("hausdeppFeedError");
+  const pagination = $("hausdeppFeedPagination");
+  document.querySelectorAll("[data-feed-difficulty]").forEach(button => {
+    const active = button.dataset.feedDifficulty === feedState.difficulty;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  list.setAttribute("aria-busy", "true");
+  status.textContent = t("feedLoading");
+  error.hidden = true;
+  try {
+    const params = new URLSearchParams({ page: String(feedState.page) });
+    if (feedState.difficulty) params.set("difficulty", feedState.difficulty);
+    const data = await json(`/api/hausdepp/achievements/recent?${params}`);
+    if (stopped || request !== feedState.request) return;
+    const items = Array.isArray(data.items) ? data.items : [];
+    feedState.page = Math.max(1, Math.floor(nonnegative(data.page)) || 1);
+    feedState.pages = Math.max(1, Math.floor(nonnegative(data.pages)) || 1);
+    const total = Math.floor(nonnegative(data.total));
+    status.textContent = total ? counted("feedCount", total) : "";
+    list.innerHTML = items.length ? `<ol class="hd-feed-list">${items.map(feedItemMarkup).join("")}</ol>` : `<div class="hd-account-empty"><p>${t("feedEmpty")}</p><span>${t("feedEmptyHint")}</span></div>`;
+    pagination.hidden = feedState.pages <= 1;
+    $("hausdeppFeedPage").textContent = t("feedPage", { page: pointNumber(feedState.page), pages: pointNumber(feedState.pages) });
+    $("hausdeppFeedPrevious").disabled = feedState.page <= 1;
+    $("hausdeppFeedNext").disabled = feedState.page >= feedState.pages;
+    if (focus) $("hausdeppFeedTitle")?.focus();
+  } catch {
+    if (stopped || request !== feedState.request) return;
+    status.textContent = "";
+    list.innerHTML = "";
+    pagination.hidden = true;
+    error.hidden = false;
+    error.innerHTML = `${t("feedError")} <button id="hausdeppFeedRetry" class="hd-text-button" type="button">${t("retry")}</button>`;
+    $("hausdeppFeedRetry").addEventListener("click", () => void loadAchievementFeed());
+  } finally {
+    if (request === feedState.request) list.removeAttribute("aria-busy");
+  }
 }
 
 async function loadLeaderboard() {
