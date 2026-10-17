@@ -166,6 +166,10 @@ function renderFromSnapshot(snapshot, { animateWrites = false, resetWrites = fal
 
     // --- Auto-Follow auf Mobile (Option D) ---
     autoFollowTurn(snapshot);
+
+    // Design 2026: Spielerkacheln im Header zeigen den sichtbaren Zettel.
+    // Vor der Tour, damit sie die endgültige Lage des Zettels misst.
+    syncPlayerTiles();
     syncBeginnerTour(snapshot);
     if (rollAnimationUntil > Date.now()) setTimeout(() => syncBeginnerTour(sb), rollAnimationUntil - Date.now() + 20);
   }

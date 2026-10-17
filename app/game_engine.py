@@ -6,6 +6,7 @@ import logging
 import random
 from typing import Dict
 
+from . import zdwa_advice
 from .game_scoring import has_n_of_a_kind, poker_points_allowed, score_field_value
 from .game_state import (
     KEY_TO_ROW,
@@ -29,10 +30,11 @@ logger = logging.getLogger(__name__)
 def compute_field_previews(g: GameDict) -> list[dict]:
     """Points the active player would score in every field writable right now.
 
-    Presentation data for the owner-only design preview: the browser shows these
-    numbers inside the legal cells. Uses the same ``can_write_now`` and Poker
-    rule as writing itself, so a preview never offers a field the server would
-    reject. Empty before the first roll and outside an active turn.
+    Presentation data for the 2026 score sheet: the browser shows these numbers
+    inside the legal cells. Uses the same ``can_write_now`` and Poker rule as
+    writing itself, so a preview never offers a field the server would reject.
+    At most one preview carries ``best: True``, the field worth writing now
+    (see ``zdwa_advice``). Empty before the first roll and outside an active turn.
     """
     try:
         turn = g.get("_turn") or {}
@@ -65,9 +67,36 @@ def compute_field_previews(g: GameDict) -> list[dict]:
                 ):
                     value = 0
                 previews.append({"row": row, "col": col, "points": value})
+        _mark_recommended_preview(g, previews, board, dice)
         return previews
     except Exception:
         return []
+
+
+def _mark_recommended_preview(g: GameDict, previews: list[dict], board: dict, dice: list) -> None:
+    """Flag the preview worth writing now; none during a correction or while rolling on is worth more."""
+    if not previews or (g.get("_correction") or {}).get("active"):
+        return
+    turn = g.get("_turn") or {}
+    hardcore = bool(g.get("_hardcore"))
+    rolls_used = int(g.get("_rolls_used", 0) or 0)
+    rolls_left = 0 if hardcore else max(0, int(g.get("_rolls_max", 3) or 0) - rolls_used)
+    try:
+        best = zdwa_advice.recommend(
+            previews,
+            zdwa_advice.columns_from_board(board),
+            dice=dice,
+            rolls_left=rolls_left,
+            first_roll=rolls_used == 1,
+            four_seen=turn.get("first4oak_roll") is not None,
+            announced=g.get("_announced_row4"),
+            hardcore=hardcore,
+        )
+    except Exception:
+        logger.exception("Could not recommend a field for game %s", g.get("_id"))
+        return
+    if best is not None:
+        previews[best]["best"] = True
 
 
 def compute_suggestions(g: GameDict) -> list[dict]:

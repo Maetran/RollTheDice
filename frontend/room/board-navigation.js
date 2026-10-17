@@ -344,6 +344,144 @@
     } catch {}
   }
 
+  // --- Design 2026: player tiles in the header ---
+  // live-renderer.js renders one tile per sheet (#roomPlayerTiles). A tap
+  // shows that sheet like a swipe does; the tile of the active sheet resumes
+  // auto-follow. Tiles of sheets in view are pressed.
+  function sheetsInView(grid){
+    const view = grid.getBoundingClientRect();
+    return new Set(Array.from(grid.querySelectorAll(":scope > .player-card"))
+      .filter(card => {
+        const box = card.getBoundingClientRect();
+        if (!box.width) return false;
+        const visible = Math.min(box.right, view.right) - Math.max(box.left, view.left);
+        return visible >= box.width * .6;
+      })
+      .map(card => String(card.dataset.boardId || "")));
+  }
+
+  function syncPlayerTilesPressed(){
+    const tiles = document.getElementById("roomPlayerTiles");
+    const grid = document.querySelector("#scoreOut .players-grid");
+    if (!tiles || !grid) return;
+    const shown = sheetsInView(grid);
+    const buttons = Array.from(tiles.querySelectorAll(":scope > [data-board-id]"));
+    buttons.forEach(tile => {
+      const pressed = shown.has(String(tile.dataset.boardId));
+      if (tile.getAttribute("aria-pressed") !== String(pressed)) tile.setAttribute("aria-pressed", String(pressed));
+    });
+    // Side by side every sheet is in view; the pressed mark then says nothing.
+    tiles.classList.toggle("is-all-visible", buttons.length > 0 && buttons.every(tile => shown.has(String(tile.dataset.boardId))));
+    // Four tiles can overflow a very small phone: keep the shown one in reach.
+    const focus = buttons.find(tile => tile.getAttribute("aria-pressed") === "true");
+    if (focus && tiles.scrollWidth > tiles.clientWidth + 1) {
+      const bar = tiles.getBoundingClientRect();
+      const box = focus.getBoundingClientRect();
+      if (box.left < bar.left) tiles.scrollLeft -= bar.left - box.left + 4;
+      else if (box.right > bar.right) tiles.scrollLeft += box.right - bar.right + 4;
+    }
+    syncPlayerTilesOverflow(tiles);
+    // The connection pill sits below the header while tiles fill it.
+    syncRoomHeaderBottom();
+  }
+
+  // A tile row wider than the header fades out on the side that hides tiles
+  // (table-top.css), so a cut tile reads as "scroll for more".
+  function syncPlayerTilesOverflow(tiles){
+    const hidden = tiles.scrollWidth - tiles.clientWidth;
+    const start = hidden > 1 && tiles.scrollLeft > 1;
+    const end = hidden > 1 && tiles.scrollLeft < hidden - 1;
+    const value = start && end ? "both" : start ? "start" : end ? "end" : "";
+    if ((tiles.dataset.overflow || "") === value) return;
+    if (value) tiles.dataset.overflow = value;
+    else delete tiles.dataset.overflow;
+  }
+
+  // Snapshots read the sheets in view in the next frame, before it paints:
+  // reading layout inside the snapshot render would force an extra layout
+  // pass while the table is still being rebuilt.
+  let playerTilesPressedFrame = 0;
+  function schedulePlayerTilesPressed(){
+    if (playerTilesPressedFrame) return;
+    playerTilesPressedFrame = requestAnimationFrame(() => {
+      playerTilesPressedFrame = 0;
+      syncPlayerTilesPressed();
+    });
+  }
+
+  function sheetCard(grid, boardId){
+    return Array.from(grid?.querySelectorAll(":scope > .player-card") || [])
+      .find(element => String(element.dataset.boardId) === String(boardId)) || null;
+  }
+
+  function sheetFullyInView(grid, card){
+    const view = grid.getBoundingClientRect();
+    const box = card.getBoundingClientRect();
+    return box.left >= view.left - 2 && box.right <= view.right + 2;
+  }
+
+  // The sheet a tile tap is still scrolling to. A snapshot rebuilds the grid
+  // and would otherwise keep the half-way position of the smooth scroll.
+  let playerTileTarget = null;
+
+  function showSheetFromTile(boardId){
+    const grid = document.querySelector("#scoreOut .players-grid");
+    const card = sheetCard(grid, boardId);
+    if (!grid || !card) return;
+    const active = card.classList.contains("turn");
+    _userScrollOverride = !active;
+    if (active && _pendingFollowTimer) {
+      clearTimeout(_pendingFollowTimer);
+      _pendingFollowTimer = null;
+    }
+    playerTileTarget = sheetFullyInView(grid, card) ? null : String(boardId);
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    scrollGridToCard(grid, card, reduced ? "auto" : "smooth");
+    schedulePlayerTilesPressed();
+  }
+
+  function syncPlayerTiles(){
+    const tiles = document.getElementById("roomPlayerTiles");
+    if (!tiles) return;
+    if (!tiles._tileTapBound) {
+      tiles._tileTapBound = true;
+      tiles.addEventListener("click", event => {
+        const tile = event.target.closest("[data-board-id]");
+        if (!tile || !tiles.contains(tile)) return;
+        if (!IS_SPECTATOR) countSuperadminTap(String(tile.dataset.boardId || ""));
+        showSheetFromTile(tile.dataset.boardId);
+      });
+      let overflowFrame = 0;
+      tiles.addEventListener("scroll", () => {
+        if (overflowFrame) return;
+        overflowFrame = requestAnimationFrame(() => {
+          overflowFrame = 0;
+          syncPlayerTilesOverflow(tiles);
+        });
+      }, { passive:true });
+    }
+    const grid = document.querySelector("#scoreOut .players-grid");
+    if (!grid) return;
+    if (!grid._tileScrollBound) {
+      grid._tileScrollBound = true;
+      let frame = 0;
+      grid.addEventListener("scroll", () => {
+        if (frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          const target = playerTileTarget && sheetCard(grid, playerTileTarget);
+          if (target && sheetFullyInView(grid, target)) playerTileTarget = null;
+          syncPlayerTilesPressed();
+        });
+      }, { passive:true });
+    }
+    if (!_userScrollOverride) playerTileTarget = null;
+    const target = playerTileTarget && sheetCard(grid, playerTileTarget);
+    if (target) scrollGridToCard(grid, target, "auto");
+    else playerTileTarget = null;
+    schedulePlayerTilesPressed();
+  }
+
   function scrollGridToCard(grid, card, behavior = "smooth"){
     try {
       if (!grid || !card) return;
@@ -453,6 +591,7 @@
 	    syncChatWidth();
 	    syncSideChatAnchor();
 	    syncReactionsMount();
+	    syncPlayerTilesPressed();
 	  });
 
   // --- Suggestions (nur Anzeige) ---

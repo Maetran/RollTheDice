@@ -391,6 +391,8 @@
 :root[data-game="zdwa"][data-design="2026"] .room-page table.grid td.cell[data-preview-best] {
   box-shadow: inset 0 0 0 2px var(--d26-brass);
 }
+/* A recommended scratch keeps its 0 at full strength inside the ring. */
+:root[data-game="zdwa"][data-design="2026"] .room-page table.grid td.cell[data-preview-best][data-preview-points="0"]::after { opacity: 1; }
 /* No spoilers while the dice are still tumbling. */
 :root[data-game="zdwa"][data-design="2026"] .room-page #scoreOut:has(#diceBar .die.shaking) td.cell[data-preview-points] { background: var(--d26-paper); box-shadow: none; }
 :root[data-game="zdwa"][data-design="2026"] .room-page #scoreOut:has(#diceBar .die.shaking) td.cell[data-preview-points]::after { opacity: 0; }

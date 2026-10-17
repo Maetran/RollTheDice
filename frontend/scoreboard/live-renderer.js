@@ -66,7 +66,7 @@ function renderScoreboard(mount, sb, {
           </div>
           <div class="dice-actions">
             ${requestBtnHTML || (isHC ? '' : `<button id="announceBtnInline" class="small" ${announceDisabledAttr} ${rollsNum < 1 ? 'hidden' : ''}>Ansagen</button>`)}
-            ${isHC ? '' : `<button id="rollBtnInline" data-action="roll" ${rollDisabledAttr}>🎲 Würfeln</button>`}
+            ${isHC ? '<span class="tray-mode-note">Hardcore: 1 Wurf, kein Halten</span>' : `<button id="rollBtnInline" data-action="roll" ${rollDisabledAttr}>🎲 Würfeln${rollCountMarkup(rollsNum, rollsCap)}</button>`}
           </div>
         </div>
       </div>
@@ -79,6 +79,7 @@ function renderScoreboard(mount, sb, {
   `;
 
   let grid = `<div class="players-grid">`;
+  const tiles = [];
   for (const ent of entities) {
     const id = ent.id;
     const sc = isTeamMode
@@ -100,6 +101,13 @@ function renderScoreboard(mount, sb, {
         .map(pid => sb._players.find(p => String(p.id) === String(pid)) || { id: pid, name: pid })
         .filter(Boolean);
       membersHTML = members.map(player => `<span class="badge">${playerNameMarkup(player, { compactRank: true, showAdminBadge: true, profileLink: true, avatarKey: `board:${id}:member:${player.id}` })}</span>`).join(" ");
+    }
+    if (!readOnly) {
+      tiles.push(playerTile(sb, ent, {
+        id, overall, isTeamMode, isMyBoard,
+        isTurn: isTurn && !sb._finished && entities.length > 1,
+        turnPid,
+      }));
     }
 
     grid += `
@@ -148,6 +156,101 @@ function renderScoreboard(mount, sb, {
     (readOnly ? "" : `<div class="suggestions-area"><div id="suggestions" class="suggestions"></div></div>`) +
     `<div id="overlayMount"></div>` +
     grid);
+  if (!readOnly) renderPlayerTiles(document.getElementById("roomPlayerTiles"), tiles);
+}
+
+/**
+ * Design 2026 player tiles in the room header: one per player (per team in
+ * 2v2) in sheet order, with avatar, name, live total and the turn mark. The
+ * previous design hides the mount. Room code (board-navigation.js) wires taps
+ * and the pressed state of the sheets in view.
+ */
+function playerTile(sb, ent, { id, overall, isTeamMode, isMyBoard, isTurn, turnPid }){
+  const players = sb?._players || [];
+  const members = isTeamMode
+    ? (ent.members || []).map(pid => players.find(p => String(p.id) === String(pid)) || { id: pid, name: pid })
+    : [ent];
+  const name = isTeamMode
+    ? (members.map(player => player?.name).filter(Boolean).join(" & ") || ent.name || "—")
+    : (ent?.name || "—");
+  const avatars = members.map(player => {
+    const active = isTurn && isTeamMode && String(player?.id) === String(turnPid);
+    // The tiles replace the header turn text, which showed the admin badge.
+    const image = playerAvatarMarkup(player, { avatarKey: `tile:${id}:${player?.id ?? ""}`, showAdminBadge: true });
+    return active ? `<span class="room-player-tile-active">${image}</span>` : image;
+  }).join("");
+  const classes = ["room-player-tile"];
+  if (isTurn) classes.push("is-turn");
+  if (isMyBoard) classes.push("is-me");
+  if (isTeamMode) classes.push("is-team");
+  const title = isTeamMode ? `${ent.name || "Team"}: ${name}` : name;
+  // Longer names (team names above all) may widen the tile where the header
+  // has room (table-top.css); the tile's own size containment hides its text.
+  const nameLength = Array.from(name).length;
+  return {
+    id: String(id),
+    className: classes.join(" "),
+    nameSize: nameLength > 22 ? "xl" : nameLength > 16 ? "l" : nameLength > 10 ? "m" : "s",
+    title,
+    // The body lays out the tile, so container queries on the tile can switch
+    // between one line (wide) and name over total (narrow).
+    html: `<span class="room-player-tile-body">`
+      + `<span class="room-player-tile-avatars" aria-hidden="true">${avatars}</span>`
+      + `<span class="room-player-tile-name" translate="no">${esc(name)}</span>`
+      + `<span class="room-player-tile-score"><span class="room-player-tile-total">${esc(String(overall))}</span><span class="visually-hidden"> Punkte</span></span>`
+      + (isTurn ? `<span class="room-player-tile-turn">am Zug</span>` : "")
+      + `</span>`,
+  };
+}
+
+/**
+ * Design 2026 shows the rolls of the current turn in the dice tray, on the
+ * roll button (the previous design hides it and keeps "Würfe: n/m" in the
+ * header). Screen readers hear the count from the header turn status.
+ */
+function rollCountMarkup(used, max){
+  const cap = Math.max(0, Math.min(6, Math.trunc(Number(max) || 0)));
+  const count = Math.max(0, Math.min(cap, Math.trunc(Number(used) || 0)));
+  if (!cap) return "";
+  const pips = Array.from({ length: cap }, (_, index) => `<i${index < count ? ' class="is-used"' : ""}></i>`).join("");
+  return `<span class="roll-count" aria-hidden="true" data-rolls="${count}/${cap}"><span class="roll-count-pips">${pips}</span><span class="roll-count-text">${count}/${cap}</span></span>`;
+}
+
+/**
+ * Updates the tiles in place while the same sheets are shown, so a focused
+ * tile keeps its focus and decoded avatars stay painted across snapshots.
+ */
+function renderPlayerTiles(mount, tiles){
+  if (!mount) return;
+  const current = Array.from(mount.children);
+  const sameTiles = current.length === tiles.length
+    && current.every((tile, index) => tile.dataset.boardId === tiles[index].id);
+  if (!sameTiles) {
+    replaceChildrenPreservingAvatars(mount, tiles.map(tile =>
+      `<button type="button" class="${tile.className}" data-board-id="${esc(tile.id)}" data-name-size="${tile.nameSize}" aria-pressed="false" title="${esc(tile.title)}">${tile.html}</button>`
+    ).join(""));
+    Array.from(mount.children).forEach((element, index) => {
+      element._tileHtml = tiles[index].html;
+      element._tileTitle = tiles[index].title;
+    });
+    mount.dataset.count = String(tiles.length);
+    return;
+  }
+  current.forEach((element, index) => {
+    const tile = tiles[index];
+    // aria-pressed (the sheet in view) stays with room code. Title and content
+    // compare with what was rendered, not the DOM, which i18n may translate.
+    element.className = tile.className;
+    if (element.dataset.nameSize !== tile.nameSize) element.dataset.nameSize = tile.nameSize;
+    if (element._tileTitle !== tile.title) {
+      element.setAttribute("title", tile.title);
+      element._tileTitle = tile.title;
+    }
+    if (element._tileHtml !== tile.html) {
+      replaceChildrenPreservingAvatars(element, tile.html);
+      element._tileHtml = tile.html;
+    }
+  });
 }
 
 /**
@@ -183,16 +286,15 @@ function renderRows(sc, sb, ctx){
 
   // Server-computed points for writable fields (design preview). Only the
   // active player's own board carries them; the attributes are inert unless a
-  // stylesheet renders them.
+  // stylesheet renders them. The server flags at most one field as worth
+  // writing now (`best`); without it the player is better off rolling on.
   const previewPoints = new Map();
   let bestPreviewKey = null;
   if (ctx.isMyBoard && ctx.iAmTurn && !ctx.correctionActive && Array.isArray(sb?.field_previews)) {
-    let bestPoints = 0;
     for (const preview of sb.field_previews) {
       const key = `${preview.row},${preview.col}`;
-      const points = Number(preview.points) || 0;
-      previewPoints.set(key, points);
-      if (points > bestPoints) { bestPoints = points; bestPreviewKey = key; }
+      previewPoints.set(key, Number(preview.points) || 0);
+      if (preview.best === true && bestPreviewKey === null) bestPreviewKey = key;
     }
   }
 

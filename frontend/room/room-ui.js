@@ -7,9 +7,28 @@
     }
     element.dataset.state = state;
     element.textContent = window.ZDWA_I18N?.t?.(message) || message;
+    syncRoomHeaderBottom();
     element.hidden = false;
     if (hideAfter > 0) {
       connectionHideTimer = setTimeout(() => { element.hidden = true; }, hideAfter);
+    }
+  }
+
+  // Design 2026 fills the room header with player tiles, so the connection
+  // pill drops below the header's end, over the sheet heading's free end
+  // (design-2026/table-top.css), instead of covering a tile. The previous
+  // design keeps its pill in the header.
+  function syncRoomHeaderBottom() {
+    const root = document.documentElement;
+    const header = document.querySelector(".room-page .room-header");
+    if (!header || root.dataset.design !== "2026") return;
+    const box = (header.lastElementChild || header).getBoundingClientRect();
+    const values = {
+      "--room-header-bottom": `${Math.max(0, Math.round(header.getBoundingClientRect().bottom))}px`,
+      "--room-header-end": `${Math.max(0, Math.round(root.clientWidth - box.right))}px`,
+    };
+    for (const [name, value] of Object.entries(values)) {
+      if (root.style.getPropertyValue(name) !== value) root.style.setProperty(name, value);
     }
   }
 
