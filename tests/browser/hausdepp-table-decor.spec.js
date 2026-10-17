@@ -10,15 +10,30 @@ async function table(page, viewport) {
   });
   expect(signedIn.ok()).toBeTruthy();
   const user = (await signedIn.json()).user;
-  const created = await page.request.post('/api/games', {
-    headers: { 'X-CSRF-Token': user.csrf_token },
-    data: { name: 'Dekoration · sechs Plätze', mode: '6', game_type: 'hausdepp', play_mode: 'cpu', cpu_count: 5 },
-  });
-  expect(created.ok()).toBeTruthy();
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
-  await page.goto(`/hausdepp/spiel/${(await created.json()).game_id}`);
-  await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'peeking');
-  await expect(page.locator('.hd-seat')).toHaveCount(5);
+  let latest = null;
+  page.on('websocket', socket => socket.on('framereceived', event => {
+    try { latest = JSON.parse(String(event.payload)).scoreboard?._hausdepp || latest; } catch { /* Protocol frames carry no JSON. */ }
+  }));
+  // The first dealer is random. The decor is checked on the opening table the
+  // viewer sees when sitting right after the dealer (cards in hand, a computer
+  // peeking), so open tables until the deal lands there (one in six).
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const created = await page.request.post('/api/games', {
+      headers: { 'X-CSRF-Token': user.csrf_token },
+      data: { name: 'Dekoration · sechs Plätze', mode: '6', game_type: 'hausdepp', play_mode: 'cpu', cpu_count: 5 },
+    });
+    expect(created.ok()).toBeTruthy();
+    latest = null;
+    await page.goto(`/hausdepp/spiel/${(await created.json()).game_id}`);
+    await expect.poll(() => latest?.viewer_id).toBeTruthy();
+    const ids = latest.players.map(player => player.id);
+    if (ids[(ids.indexOf(latest.dealer_id) + 1) % ids.length] !== latest.viewer_id) continue;
+    await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'peeking');
+    await expect(page.locator('.hd-seat')).toHaveCount(5);
+    return;
+  }
+  throw new Error('No six-seat table with the viewer right after the dealer in 30 random deals');
 }
 
 for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1024, height: 768 }, { width: 1600, height: 1000 }]) {
