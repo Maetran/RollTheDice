@@ -37,6 +37,51 @@ guest choices stay in that browser. The
 criteria.
 
 
+## Als Nächstes: Watten / Next game: Watten
+
+**Deutsch:** Watten ist als nächstes Spiel vorgemerkt: üblicherweise 4er
+ladinisch bis 11 Punkte («8+3 isch zmittag»), mit blindem Einschauen durch den
+Geber und den im Uhrzeigersinn nachfolgenden Spieler. Die identischen
+Hausdepp-Kartendesigns werden wiederverwendet. Die
+[Recherche](docs/WATTEN_RESEARCH.md) dokumentiert Quellen, Regelvarianten und
+offene Hausregeln. Zusätzlich sind Varianten für zwei und drei Spieler,
+taktisch spielende CPUs mit typischen Tiroler Namen und freie Teamwahl vor
+Spielbeginn ohne Zufallszuweisung gewünscht. Ansagen gehören zum Spiel;
+gestrichen darf man nichts mehr sagen. Die genaue Auslegung ist vorgemerkt.
+Die Entwicklung hat noch nicht begonnen.
+
+Der [vertiefte Regelabgleich](docs/WATTEN_RULES_AUDIT.md) trennt Ladinisch,
+Blind-/Offen-Ansage, Varianten mit Kritischen, Trumpfzwang und Einsatzbieten.
+Die endgültigen Modi müssen jeden Regelfall eindeutig festlegen; die
+veröffentlichten Quellen enthalten unterschiedliche Profile und noch nicht
+alle Kombinationen lückenlos. watten.org dient als Regelquelle; seine
+Kartendesigns werden nicht übernommen.
+
+Die [Gestaltungsreferenzen](docs/WATTEN_DESIGN_REFERENCES.md) sichern die vom
+Owner gelieferten UltraWatten-Bilder und Beobachtungen der Live-Oberfläche.
+Sie dienen als Ideen für die Bedienung, ohne 1:1-Kopie; die eigenen
+Hausdepp-Kartendesigns bleiben gesetzt.
+
+**English:** Watten is the next planned game: usually four-player Ladinisch
+to 11 points, with private bottom-card inspection by the dealer and the next
+clockwise player. It will reuse the same card designs as Hausdepp. The
+[research notes](docs/WATTEN_RESEARCH.md) record sources, variants and unresolved
+house rules. Two- and three-player variants, tactical CPUs with Tyrolean names
+and manual team selection before play without random assignment are also
+wanted. Calls are part of the game; once “gestrichen”, no further calls are
+allowed. The exact scope remains to be defined. Development has not started.
+
+The [detailed rules audit](docs/WATTEN_RULES_AUDIT.md) separates Ladinisch,
+blind/open announcements, critical-card variants, trump obligations and bidding.
+Each final mode must define every rule case unambiguously; published sources
+describe different profiles and do not fully cover every combination. watten.org
+is a rules reference; its card designs are not adopted.
+
+The [design references](docs/WATTEN_DESIGN_REFERENCES.md) preserve the owner's
+UltraWatten screenshots and observations of the live interface. They provide
+interaction ideas for an independent design; the existing Hausdepp card artwork
+remains required.
+
 ## Hausdepp — öffentlicher V3-Start / public V3 launch
 
 **Deutsch:** Mit V3 ergänzt Hausdepp die Suite als öffentliches drittes Spiel.
