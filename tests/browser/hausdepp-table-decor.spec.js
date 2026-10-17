@@ -40,8 +40,10 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
   test(`six-seat table decoration respects play areas at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await table(page, viewport);
     const visibleProps = page.locator('.hd-table-prop:visible');
-    if (viewport.width < 768) await expect.poll(() => visibleProps.count()).toBeLessThanOrEqual(1);
-    else if (viewport.height < 600) await expect.poll(() => visibleProps.count()).toBeLessThanOrEqual(2);
+    // Phones carry one large object (two in landscape) plus a few small
+    // scatter pieces; every one of them must still find free wood.
+    if (viewport.width < 768) await expect.poll(() => visibleProps.count()).toBeLessThanOrEqual(4);
+    else if (viewport.height < 600) await expect.poll(() => visibleProps.count()).toBeLessThanOrEqual(4);
     else {
       try { await expect.poll(() => visibleProps.count()).toBeGreaterThan(0); }
       catch (error) {
@@ -193,4 +195,50 @@ test('a growing hand covers a prop without relocating it or passing a card tap t
   await page.mouse.click(before.x + before.width / 2, before.y + before.height / 2);
   expect(await page.evaluate(() => window.__coveringCardTaps)).toBe(1);
   await expect(prop).not.toHaveAttribute('data-moving', 'true');
+});
+
+test('small scatter pieces react with their own motion and leave crumbs that clean up', async ({ page }) => {
+  const cap = await motionFixture(page, 'cap');
+  await cap.click();
+  await expect(cap).toHaveAttribute('data-last-motion', 'cap-spin');
+  await expect(cap).toHaveAttribute('data-moving', 'false');
+  const pencil = await motionFixture(page, 'pencil');
+  await pencil.click();
+  await expect(pencil).toHaveAttribute('data-last-motion', 'pencil-spin');
+  const chips = await motionFixture(page, 'loose-chips');
+  await chips.click();
+  await expect(chips).toHaveAttribute('data-last-motion', 'hop');
+  expect(await chips.locator('.hd-prop-crumb').count()).toBeGreaterThan(0);
+  await expect(chips.locator('.hd-prop-crumb')).toHaveCount(0, { timeout: 2000 });
+});
+
+test('an object can be pushed across free wood but glides back from a control', async ({ page }) => {
+  const beer = await motionFixture(page, 'beer');
+  await page.evaluate(() => {
+    const control = document.createElement('button');
+    control.className = 'hd-seat'; control.textContent = 'Labelled seat';
+    Object.assign(control.style, { position: 'absolute', left: '900px', top: '330px', width: '120px', height: '120px' });
+    window.__decorFixture.table.append(control);
+  });
+  const start = await beer.boundingBox();
+  const drag = async (dx, dy) => {
+    const box = await beer.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + dx / 2, box.y + box.height / 2 + dy / 2, { steps: 4 });
+    await page.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2 + dy, { steps: 4 });
+    await page.mouse.up();
+  };
+  await drag(-80, 40);
+  await expect(beer).toHaveAttribute('data-last-motion', 'drag-drop');
+  const moved = await beer.boundingBox();
+  expect(Math.round(moved.x - start.x)).toBe(-80);
+  expect(Math.round(moved.y - start.y)).toBe(40);
+  // A push never ends on a seat, card or control, and the release is no tap.
+  await drag(340, -40);
+  await expect(beer).toHaveAttribute('data-last-motion', 'drag-return');
+  await page.waitForTimeout(450);
+  const back = await beer.boundingBox();
+  expect(Math.round(back.x)).toBe(Math.round(moved.x));
+  expect(Math.round(back.y)).toBe(Math.round(moved.y));
 });
