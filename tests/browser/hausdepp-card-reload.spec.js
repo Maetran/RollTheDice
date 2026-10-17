@@ -4,7 +4,7 @@ const fs = require('node:fs');
 
 test.use({ serviceWorkers: 'allow', viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
 
-const artwork = url => /\/static\/hausdepp\/(?:cards-source\.jpg|tell-leaves-reference-v1\.jpg|card-back\.png)(?:\?|$)/.test(url);
+const artwork = url => /\/static\/hausdepp\/(?:cards-atlas\.webp|card-back\.png)(?:\?|$)/.test(url);
 
 test.beforeAll(({ baseURL }) => {
   expect(['8000', '8001', '8051'], 'Only a disposable test server may run this regression').not.toContain(new URL(baseURL).port);
@@ -59,15 +59,15 @@ test('real worker-controlled warm reloads keep lobby card motives painted', asyn
     expect(responses.every(response => response.ok() && !response.fromServiceWorker()),
       'Public pictures use native image/HTTP caching instead of a worker fetch wrapper').toBe(true);
     const warmImages = await page.evaluate(() => performance.getEntriesByType('resource')
-      .filter(entry => /\/static\/hausdepp\/(?:cards-source\.jpg|tell-leaves-reference-v1\.jpg|card-back\.png)\?v=/.test(entry.name))
+      .filter(entry => /\/static\/hausdepp\/(?:cards-atlas\.webp|card-back\.png)\?v=/.test(entry.name))
       .map(entry => ({ url: entry.name, transfer: entry.transferSize })));
-    expect(new Set(warmImages.map(image => image.url)).size).toBe(3);
+    expect(new Set(warmImages.map(image => image.url)).size).toBe(2);
     if (browserName === 'chromium') {
       expect(warmImages.every(image => image.transfer === 0), 'Chromium reload reuses immutable image bytes from HTTP cache').toBe(true);
     }
     // Playwright WebKit may re-fetch an immutable picture on explicit reload.
     // Prove native warm image reuse in both engines independently of that
-    // navigation policy: decoding all three identical sources sends no request.
+    // navigation policy: decoding both identical sources sends no request.
     const decodeRequests = [];
     const recordDecodeRequest = request => { if (artwork(request.url())) decodeRequests.push(request.url()); };
     page.on('request', recordDecodeRequest);
@@ -75,7 +75,7 @@ test('real worker-controlled warm reloads keep lobby card motives painted', asyn
       const decoded = await page.evaluate(async urls => Promise.all(urls.map(async src => {
         const image = new Image(); image.src = src; await image.decode(); return image.naturalWidth > 0;
       })), [...new Set(warmImages.map(image => image.url))]);
-      expect(decoded).toEqual([true, true, true]);
+      expect(decoded).toEqual([true, true]);
       expect(decodeRequests, 'Already decoded public sources stay in the native image cache').toEqual([]);
     } finally { page.off('request', recordDecodeRequest); }
     expect(await page.evaluate(() => caches.keys())).toEqual([]);
@@ -92,7 +92,7 @@ test.describe('cold image loading and retry', () => {
     let release;
     const barrier = new Promise(resolve => { release = resolve; });
     let blocked = false;
-    await page.route('**/static/hausdepp/cards-source.jpg?*', async route => {
+    await page.route('**/static/hausdepp/cards-atlas.webp?*', async route => {
       blocked = true; await barrier; await route.continue();
     });
     try {
@@ -110,7 +110,7 @@ test.describe('cold image loading and retry', () => {
 
   test('a transient card-image failure retries without leaving cream cards behind', async ({ page }) => {
     let attempts = 0;
-    await page.route('**/static/hausdepp/cards-source.jpg?*', async route => {
+    await page.route('**/static/hausdepp/cards-atlas.webp?*', async route => {
       attempts += 1;
       if (attempts === 1) return route.fulfill({ status: 503, body: 'Temporary image failure' });
       return route.continue();

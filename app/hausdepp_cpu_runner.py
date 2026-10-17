@@ -7,6 +7,7 @@ import hashlib
 import logging
 import math
 import os
+import time
 from collections import OrderedDict
 from random import Random
 from secrets import SystemRandom
@@ -18,6 +19,10 @@ logger = logging.getLogger(__name__)
 _TASKS: dict[str, asyncio.Task] = {}
 _RANDOM = SystemRandom()
 _MEMORIES: OrderedDict[str, tuple[int, int, dict]] = OrderedDict()
+
+
+def _now() -> float:
+    return time.monotonic()
 
 
 def _memories_for(game: dict) -> dict:
@@ -140,6 +145,19 @@ def _presentation_delay(state: dict) -> float:
     return 0.0
 
 
+def note_human_presentation(game: dict) -> None:
+    """Give a human public card the same landing time as a computer card.
+
+    A runner that is already waiting (for example on a computer refill) must
+    not let the next computer act while the human card is still in flight;
+    that would close the human afterthrow before it can be read.
+    """
+    delay = _presentation_delay(game.get("_hausdepp") or {})
+    if delay:
+        until = _now() + delay
+        game["_hausdepp_presentation_until"] = max(until, game.get("_hausdepp_presentation_until") or 0.0)
+
+
 async def _run(game: dict, *, finalize_game=None) -> None:
     from .hausdepp_engine import HausdeppRuleError
     from .hausdepp_gameplay import apply_hausdepp_command, game_lock, publish_hausdepp_transition
@@ -148,8 +166,12 @@ async def _run(game: dict, *, finalize_game=None) -> None:
     memories = _memories_for(game)
     pending: dict[str, tuple[tuple, float]] = {}
     previous_actor = None
-    clock = asyncio.get_running_loop().time
+    clock = _now
     presentation_until = clock() + _presentation_delay(game.get("_hausdepp") or {})
+
+    def human_landing() -> float:
+        return game.get("_hausdepp_presentation_until") or 0.0
+
     try:
         while cpu_action_is_due(game) and games.get(game_id) is game:
             choices = _cpu_choices(game, memories)
@@ -165,11 +187,16 @@ async def _run(game: dict, *, finalize_game=None) -> None:
             window, deadline = pending[actor_id]
             game["_hausdepp_cpu_thinking"] = True
             # Keep the independently sampled CPU deadlines and their ordering.
-            # Only computer presentation waits; human commands remain available.
-            await asyncio.sleep(max(0.0, max(deadline, presentation_until) - clock()))
+            # Public cards land before the next computer move; a computer refill
+            # closes no afterthrow and need not wait. Human commands stay open.
+            landing = 0.0 if window[1] == "draw" else human_landing()
+            await asyncio.sleep(max(0.0, max(deadline, presentation_until, landing) - clock()))
             async with game_lock(game):
                 if not cpu_action_is_due(game) or games.get(game_id) is not game:
                     break
+                if window[1] != "draw" and human_landing() > clock():
+                    # A human card was played during this wait; let it land first.
+                    continue
                 # Compute after the presentation delay: a human afterthrow may
                 # have changed the table. Unrelated draws never restart a wait.
                 decision = next((choice for choice in _cpu_choices(game, memories) if choice[0] == actor_id), None)

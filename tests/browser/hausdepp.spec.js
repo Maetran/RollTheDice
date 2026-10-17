@@ -332,7 +332,7 @@ async function completeRequiredDraw(page, traffic) {
   const commandCount = traffic.commands.length;
   expect(before.pending_refill?.player_id).toBe(before.viewer_id);
   expect(before.available_actions).not.toContain('gamble');
-  await page.locator('#hausdeppStock').click();
+  // The due refill is tapped automatically; a manual tap is never needed.
   await expect.poll(() => traffic.state?.version || 0).toBeGreaterThan(before.version);
   expect(traffic.commands.slice(commandCount).filter(command => command.action === 'hausdepp_draw')).toHaveLength(1);
   await expect.poll(() => traffic.messages.some(message => {
@@ -792,7 +792,8 @@ test('labelled UI fixture: FIFO stock lock leaves the next hand tappable and war
   await page.goto(room);
   await expect(page.locator('#hausdeppDrawAlert')).toBeVisible();
   await expect(page.locator('#hausdeppDrawAlert')).toHaveText('Du musst ziehen');
-  await expect(page.locator('#hausdeppStock')).toBeEnabled();
+  // Refilling is mandatory: the due stock tap is sent automatically, once.
+  await expect.poll(() => mocked.commands.filter(command => command.action === 'hausdepp_draw').length).toBe(1);
   await expect(page.locator('#hausdeppHand button').first()).toBeDisabled();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   expect(await page.locator('#hausdeppDrawAlert').evaluate(element => getComputedStyle(element).animationName)).toBe('none');
@@ -807,6 +808,17 @@ test('labelled UI fixture: rapid matching taps send single cards in order withou
   const mocked = await installUiFixture(page, room, fixture, ({ message, socket, fixture: current }) => {
     const state = current._hausdepp;
     state.version += 1;
+    if (message.action === 'hausdepp_draw') {
+      // The automatic refill keeps the open afterthrow window.
+      state.hand.push('acorns-6');
+      state.pending_refill = null;
+      state.pending_refills = [];
+      state.available_actions = ['afterthrow'];
+      state.last_event = { type: 'draw', player_id: state.viewer_id, drawn_count: 1 };
+      socket.send(JSON.stringify({ scoreboard: current, hausdepp_command: {
+        command_id: message.command_id, accepted: true, version: state.version } }));
+      return;
+    }
     state.hand = state.hand.filter(card => !message.cards.includes(card));
     state.discard.push(...message.cards);
     state.current_player_id = state.players.find(player => player.is_cpu).id;
@@ -826,12 +838,13 @@ test('labelled UI fixture: rapid matching taps send single cards in order withou
   await expect(page.locator('#hausdeppPlay')).toHaveCount(0);
   await page.locator('#hausdeppHand [data-card-id="hearts-U"]').click();
   await page.locator('#hausdeppHand [data-card-id="bells-U"]').click();
-  await expect.poll(() => mocked.commands.length).toBe(2);
-  expect(mocked.commands.map(command => ({ action: command.action, cards: command.cards }))).toEqual([
+  const cardCommands = () => mocked.commands.filter(command => command.action !== 'hausdepp_draw');
+  await expect.poll(() => cardCommands().length).toBe(2);
+  expect(cardCommands().map(command => ({ action: command.action, cards: command.cards }))).toEqual([
     { action: 'hausdepp_play', cards: ['hearts-U'] },
     { action: 'hausdepp_afterthrow', cards: ['bells-U'] },
   ]);
-  await expect(page.locator('#hausdeppHand .hausdepp-card')).toHaveCount(1);
+  await expect(page.locator('#hausdeppHand [data-card-id$="-U"]')).toHaveCount(0);
   await expect(page.locator('#hausdeppActionError')).toBeEmpty();
 });
 
@@ -895,7 +908,7 @@ test('labelled UI fixture: every card of a sorted 35-card fan remains reachable 
     }));
     await page.evaluate(async () => {
       await document.fonts.ready;
-      for (const url of new Set(['/static/hausdepp/cards-source.jpg', '/static/hausdepp/card-back.png', ...[...document.querySelectorAll('svg image')].map(image => image.getAttribute('href'))])) {
+      for (const url of new Set(['/static/hausdepp/cards-atlas.webp', '/static/hausdepp/card-back.png', ...[...document.querySelectorAll('svg image')].map(image => image.getAttribute('href'))])) {
         const image = new Image(); image.src = url; await image.decode();
       }
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -998,6 +1011,8 @@ test('real pickup and labelled refill move native-proportion cards between the a
   const traffic = watchGame(page);
   const room = await createCpuTable(page, traffic);
   const viewer = traffic.state.viewer_id;
+  // Measure the pickup itself, not a wait behind a computer card still landing.
+  await expect(page.locator('.hd-deal-card')).toHaveCount(0, { timeout: 5000 });
   await page.evaluate(() => { window.hausdeppMotionProbe = []; window.hausdeppGhostProbe = []; });
   const pickupCount = traffic.state.discard.length;
   const beforePickup = traffic.state.version;
@@ -1036,8 +1051,7 @@ test('real pickup and labelled refill move native-proportion cards between the a
   await page.goto(room);
   await expect(page.locator('#hausdeppRoomName')).toHaveText('UI-Test · Auffüllen zum Kartenfächer');
   await page.evaluate(async () => { await document.fonts.ready; await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); });
-  await page.locator('#hausdeppStock').scrollIntoViewIfNeeded();
-  await page.locator('#hausdeppStock').click();
+  // The mandatory refill is tapped automatically for everyone.
   const draw = await expectMotionTransfer(page, { type: 'draw', source: 'stock', target: `hand:${viewer}`, count: 1 });
   // Captions can recenter the stock when the debt clears. The flight must
   // start at the source visibly present when that animation begins.
@@ -1155,9 +1169,8 @@ test('labelled UI fixture: ACK and same-version renders preserve the receiving c
     socket.send(JSON.stringify({ hausdepp_command: { command_id: message.command_id, accepted: true, version: state.version } }));
     acknowledgementSent = true;
   });
-  await page.goto(room);
-  await expect(page.locator('#hausdeppRoomName')).toHaveText('UI-Test · Ankunft bleibt erhalten');
-  await page.evaluate(own => {
+  // The refill is tapped automatically on load: observe from the first frame.
+  await page.addInitScript(own => {
     window.arrivalIdentity = {};
     window.addEventListener('hausdepp:motion', event => {
       if (event.detail.type !== 'draw' || event.detail.target !== `hand:${own}`) return;
@@ -1175,7 +1188,8 @@ test('labelled UI fixture: ACK and same-version renders preserve the receiving c
       });
     });
   }, own);
-  await page.locator('#hausdeppStock').click();
+  await page.goto(room);
+  await expect(page.locator('#hausdeppRoomName')).toHaveText('UI-Test · Ankunft bleibt erhalten');
   await expect.poll(() => acknowledgementSent).toBe(true);
   await expect.poll(() => page.evaluate(() => Boolean(window.arrivalIdentity.animation))).toBe(true);
   await expect(page.locator('#hausdeppHand [data-card-id="leaves-K"]')).toBeEnabled();
@@ -1511,7 +1525,7 @@ test('capture approved Hausdepp responsive review screens', async ({ page }) => 
   const capture = async (name, { atFanEnd = false } = {}) => {
     await page.evaluate(async () => {
       await document.fonts.ready;
-      for (const url of new Set(['/static/hausdepp/cards-source.jpg', '/static/hausdepp/card-back.png', ...[...document.querySelectorAll('svg image')].map(image => image.getAttribute('href'))])) {
+      for (const url of new Set(['/static/hausdepp/cards-atlas.webp', '/static/hausdepp/card-back.png', ...[...document.querySelectorAll('svg image')].map(image => image.getAttribute('href'))])) {
         const image = new Image();
         image.src = url;
         await image.decode();

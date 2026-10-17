@@ -54,6 +54,10 @@ def apply_hausdepp_command(game: dict, player_id: str, command: dict, *, trusted
     game["_hausdepp"] = apply_action(game["_hausdepp"], player_id, command["action"],
                                       cards=command.get("cards"), version=version)
     state = game["_hausdepp"]
+    if not trusted_cpu:
+        from .hausdepp_cpu_runner import note_human_presentation
+
+        note_human_presentation(game)
     game["_turn"] = {"player_id": state["current_player_id"]} if state.get("current_player_id") else None
     if state["phase"] == "finished":
         game["_finished"] = True

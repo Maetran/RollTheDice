@@ -1,10 +1,10 @@
 {
-  "version": "3.4.3",
-  "bump": "patch",
+  "version": "3.6.0",
+  "bump": "minor",
   "date": "2026-10-17",
-  "previous_revision": "9f59852db9b1d6d1d5a4380f9497051fa705829a",
+  "previous_revision": "149ab51dfa11c8cb036b7f556381986b3789c583",
   "summary": {
-    "de": "Hausdepp: konstante Kartengrösse auf dem offenen Paket während der Spielanimationen.",
-    "en": "Hausdepp: consistent card size on the open pile throughout play animations."
+    "de": "Hausdepp: Karten fliegen beim Tippen sofort und flüssig auf den Stapel, Nachwerfen klappt zuverlässig, Auffüllen ist automatisch.",
+    "en": "Hausdepp: cards fly to the pile smoothly the moment you tap, follow-ups work reliably, and refilling is automatic."
   }
 }

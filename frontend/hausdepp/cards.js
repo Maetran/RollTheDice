@@ -261,36 +261,10 @@ export const CARD_CORNERS = {
   "bells-6": [[3588.1, 1888.1], [3973.5, 1903.4], [3954.1, 2507.3], [3568.4, 2488.3]],
 };
 
-// The original paper is almost planar. An averaged affine frame removes each
-// card's tilt and shear without splitting the illustration into triangles.
-// Its eight-source-pixel inset leaves the photographic cut/shadow outside the
-// displayed paper, including the few pixels of perspective left by this fit.
-function frameTransform(corners) {
-  const [tl, tr, br, bl] = corners;
-  const ux = ((tr[0] - tl[0]) + (br[0] - bl[0])) / 2;
-  const uy = ((tr[1] - tl[1]) + (br[1] - bl[1])) / 2;
-  const vx = ((bl[0] - tl[0]) + (br[0] - tr[0])) / 2;
-  const vy = ((bl[1] - tl[1]) + (br[1] - tr[1])) / 2;
-  const widthScale = 1 - 16 / Math.hypot(ux, uy);
-  const heightScale = 1 - 16 / Math.hypot(vx, vy);
-  const a = ux * widthScale / 360, b = uy * widthScale / 360;
-  const c = vx * heightScale / 570, d = vy * heightScale / 570;
-  const cx = (tl[0] + tr[0] + br[0] + bl[0]) / 4;
-  const cy = (tl[1] + tr[1] + br[1] + bl[1]) / 4;
-  const x = cx - a * 180 - c * 285, y = cy - b * 180 - d * 285;
-  const determinant = a * d - b * c;
-  return [d, -b, -c, a, c * y - d * x, b * x - a * y]
-    .map(value => (value / determinant).toFixed(6)).join(" ");
-}
-
-const CARD_TRANSFORMS = Object.fromEntries(Object.entries(CARD_CORNERS)
-  .map(([card, corners]) => [card, frameTransform(corners)]));
-
 // Public card artwork contains no deal, hand or account data. Retain decoded
 // image objects for this document so incoming cards never start a cold decode.
 export const CARD_ASSET_URLS = Object.freeze([
-  "/static/hausdepp/cards-source.jpg?v=ASSET_VERSION",
-  "/static/hausdepp/tell-leaves-reference-v1.jpg?v=ASSET_VERSION",
+  "/static/hausdepp/cards-atlas.webp?v=ASSET_VERSION",
   "/static/hausdepp/card-back.png?v=ASSET_VERSION",
 ]);
 const preparedImages = new Map();
@@ -313,20 +287,13 @@ export function prepareCardAssets() {
   return preparation;
 }
 
-// The first photograph has glare across this one card. Use the same leaf/tree
-// motif from a second, unmodified licensed photograph rather than repair or
-// invent its illustration. See docs/HAUSDEPP_ASSETS.md for both source credits.
-const LEAVES_TEN_SOURCE = {
-  href: CARD_ASSET_URLS[1],
-  width: 3840,
-  height: 2887,
-  transform: frameTransform([[1913.2, 1478.9], [2390.0, 1464.3], [2397.4, 2170.4], [1945.1, 2176.9]]),
-};
+// The first photograph has glare across leaves-10; the atlas takes that card
+// from a second, unmodified licensed photograph (docs/HAUSDEPP_ASSETS.md).
 
 // Median photographed paper RGB, measured read-only on 164 evenly spaced
 // points in each rectified outer paper margin. Non-paper/dark samples were
 // excluded; leaves-10 is measured on its replacement source. Per-channel
-// gains balance the shared ivory paper while preserving zero/black ink.
+// gains (applied by scripts/build_hausdepp_cards.py) balance the ivory paper.
 export const CARD_PAPER_WHITES = {
   "acorns-A": [214, 228, 229],
   "acorns-K": [216, 230, 232],
@@ -366,21 +333,18 @@ export const CARD_PAPER_WHITES = {
   "bells-6": [205, 231, 246],
 };
 
-const CARD_PAPER_MATRICES = Object.fromEntries(Object.entries(CARD_PAPER_WHITES)
-  .map(([card, white]) => {
-    const [r, g, b] = [247, 244, 235].map((target, index) =>
-      Math.max(.9, Math.min(1.34, target / white[index])).toFixed(6));
-    return [card, `${r} 0 0 0 0 0 ${g} 0 0 0 0 0 ${b} 0 0 0 0 0 1 0`];
-  }));
 let artSequence = 0;
 
+// Pre-rendered by scripts/build_hausdepp_cards.py: exact perspective, paper
+// balance and edge-aware sharpening are baked in, so a card is one plain,
+// unfiltered image cell. Rows follow CARD_CORNERS suits, columns its ranks.
+const ATLAS_COLUMNS = 9;
+const CARD_ORDER = Object.keys(CARD_CORNERS);
+
 export function cardArt(card) {
-  const transform = CARD_TRANSFORMS[card];
-  if (!transform) return "";
-  const source = card === "leaves-10" ? LEAVES_TEN_SOURCE : {
-    href: CARD_ASSET_URLS[0], width: 3996, height: 2526, transform,
-  };
+  const index = CARD_ORDER.indexOf(card);
+  if (index < 0) return "";
+  const x = (index % ATLAS_COLUMNS) * 360, y = Math.floor(index / ATLAS_COLUMNS) * 570;
   const clip = `hd-card-paper-${++artSequence}`;
-  const balance = `${clip}-balance`;
-  return `<svg class="hd-card-art" viewBox="0 0 360 570" aria-hidden="true" focusable="false"><defs><clipPath id="${clip}"><rect x="3" y="3" width="354" height="564" rx="22"/></clipPath><filter id="${balance}" x="0" y="0" width="360" height="570" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="${CARD_PAPER_MATRICES[card]}"/></filter></defs><rect width="360" height="570" rx="24" fill="#f7f4eb"/><g filter="url(#${balance})"><g clip-path="url(#${clip})"><image decoding="sync" href="${source.href}" width="${source.width}" height="${source.height}" transform="matrix(${source.transform})"/></g></g><rect x="1" y="1" width="358" height="568" rx="23" fill="none" stroke="#e6dfd1" stroke-width="2"/></svg>`;
+  return `<svg class="hd-card-art" viewBox="0 0 360 570" aria-hidden="true" focusable="false"><defs><clipPath id="${clip}"><rect x="3" y="3" width="354" height="564" rx="22"/></clipPath></defs><rect width="360" height="570" rx="24" fill="#f7f4eb"/><g clip-path="url(#${clip})"><image decoding="sync" href="${CARD_ASSET_URLS[0]}" width="${ATLAS_COLUMNS * 360}" height="${Math.ceil(CARD_ORDER.length / ATLAS_COLUMNS) * 570}" x="${-x}" y="${-y}"/></g><rect x="1" y="1" width="358" height="568" rx="23" fill="none" stroke="#e6dfd1" stroke-width="2"/></svg>`;
 }

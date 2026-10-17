@@ -197,19 +197,19 @@ spielen, auch wenn eine Auffüllpflicht offen ist. Die Auffüllpflicht bleibt
 bestehen. Ist er bei leerem Nachziehstapel fertig, wird er übersprungen und der
 nächste noch beteiligte Spieler beginnt dort.
 
-### Pflichtauffüllen per Stapeltipp und Nachwerfen
+### Pflichtauffüllen und Nachwerfen
 
 Nach einem vollständigen Ablegen muss eine Hand unter drei Karten von oben
 aufgefüllt werden, solange Nachziehkarten vorhanden sind. **Das Auffüllen
-geschieht nicht automatisch:** Ein Tipp auf den verdeckten Stapel nimmt
-sämtliche fehlenden Karten bis zur Handgrösse drei auf einmal, oder alle noch
-verfügbaren Karten, falls weniger übrig sind. Bei drei oder mehr Handkarten ist
-kein Auffüllen erforderlich. Als freiwillige Komfortfunktion kann jedes Konto
-**Automatisch auf drei auffüllen** einschalten (Tischhilfe oder
-Kontoeinstellungen, standardmässig aus). Dann tippt das Spiel den Stapel
-einmal an, sobald die eigene Auffüllpflicht an der Reihe ist. Regeln,
-Reihenfolge und Nachwurfrecht ändern sich dadurch nicht; ein Nachwurf darf
-hinter diesem Tipp angetippt werden.
+geschieht für alle automatisch:** Sobald die eigene Auffüllpflicht an der Reihe
+ist, tippt das Spiel den verdeckten Stapel einmal an und nimmt sämtliche
+fehlenden Karten bis zur Handgrösse drei auf einmal, oder alle noch verfügbaren
+Karten, falls weniger übrig sind. Eine Einstellung dafür gibt es nicht mehr; ein
+eigener Tipp auf den Stapel bleibt als Rückfallweg möglich. Bei drei oder mehr
+Handkarten ist kein Auffüllen erforderlich. Regeln, Reihenfolge und
+Nachwurfrecht ändern sich dadurch nicht; ein Nachwurf darf hinter dem
+automatischen Auffüllen angetippt werden. Der gespeicherte Kontowert
+`hausdepp_auto_refill` aus früheren Versionen wird nicht mehr ausgewertet.
 
 **Langsames Ziehen hält Handzüge nicht auf.** Der nächste Spieler darf sofort
 legen. Der verdeckte Stapel ist aber für die älteste noch offene Auffüllpflicht
@@ -238,10 +238,11 @@ ganz rechts. **Ein Tipp auf eine Handkarte legt sie unmittelbar.** Es gibt keine
 zusätzliche Bestätigung. Weitere gleiche Karten können schnell nacheinander
 angetippt werden, solange das Nachwurfrecht noch besteht.
 
-Mit **Mehrere Karten auswählen** lassen sich stattdessen mehrere Karten desselben
-Rangs markieren und gemeinsam ausspielen. Der erste Tipp wählt alle spielbaren
-Karten dieses Rangs, jeder weitere Tipp nimmt eine einzelne Karte heraus oder
-wieder hinzu. Ausgewählte Karten heben sich an und tragen einen Haken. Die Auswahl führt keinen Zug aus;
+**Langes Halten einer spielbaren Handkarte** (rund 0,4 s; Rechtsklick oder
+Umschalt + Enter mit Tastatur) oder der Schalter **Mehrere Karten auswählen**
+markiert stattdessen alle spielbaren Karten dieses Rangs. Jeder weitere Tipp
+nimmt eine einzelne Karte heraus oder wieder hinzu. Die Auswahl gilt nur für
+diesen einen Wurf: Nach **Karten legen** legt ein Tipp wieder einzeln. Ausgewählte Karten heben sich an und tragen einen Haken. Die Auswahl führt keinen Zug aus;
 erst **Karten legen** sendet alle ausgewählten Karten als einen atomaren Zug.
 Das funktioniert auch bei gültigem Nachwerfen. Schliesst eine andere Aktion
 das Nachwurffenster, verfällt eine noch nicht gespielte Auswahl sichtbar.
@@ -263,7 +264,7 @@ Kartenanzahl. Er ist kein Nachziehstapel und lässt sich nicht aufnehmen.
 Zum gerade gespielten Rang darf der Spieler weitere gleichrangige Karten
 **nachwerfen**. Das dürfen gerade nachgezogene Karten oder zunächst
 zurückbehaltene Handkarten sein. Nachwerfen ist freiwillig. Nach einem Nachwurf
-wird erforderliches Pflichtauffüllen wieder per Stapeltipp abgeschlossen;
+wird erforderliches Pflichtauffüllen wieder automatisch abgeschlossen;
 dieser Ablauf kann sich mehrfach wiederholen. Ein Nachwurf kann die vier
 Gleichen vervollständigen und damit das erneute
 Ausspielrecht auslösen.
@@ -402,6 +403,11 @@ gleichzeitig fertig gewordener Hände. Die private Rangliste unter
 Siegzahlen teilen sich einen Rang; aktuelle Kontonamen, Rundenzahl und
 Siegquote werden angezeigt. Tischgrössen von zwei bis sechs sind filterbar.
 Computer und deaktivierte Konten erscheinen nicht in der Rangliste.
+Der Bereich **Neueste erreichte Erfolge** (`/api/hausdepp/achievements/recent`,
+nur angemeldet) listet die jüngsten Freischaltungen aktiver Konten mit
+Kontoname, Erfolg, EP, Schwierigkeit (10 EP leicht, 25 EP mittel, 50/100 EP
+schwer) und Zeitpunkt. Konto-IDs, Avatare, Quellrunden und Karten verlassen den
+Server nicht.
 
 Beim Erstellen kann der Host statt einer Einzelrunde ein **HAUSDEPP-Turnier**
 wählen. Alle zwei bis sechs Teilnehmer behalten ihre Plätze am selben Tisch.
@@ -900,6 +906,10 @@ Private standings at `/hausdepp/rangliste` count wins per human account. Equal
 win totals share a place; current account names, round counts and win rates are
 shown. Table sizes two through six can be filtered. Computers and inactive
 accounts are excluded.
+The **Latest achievements earned** section (`/api/hausdepp/achievements/recent`,
+signed in only) lists active accounts' newest unlocks with account name,
+achievement, XP, difficulty (10 XP easy, 25 XP medium, 50/100 XP hard) and time.
+Account IDs, avatars, source rounds and cards never leave the server.
 
 When creating a table, the host can choose a **HAUSDEPP tournament** instead of
 one round. The same two to six participants retain their seats. Every round
