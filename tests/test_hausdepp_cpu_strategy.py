@@ -8,7 +8,7 @@ from random import Random
 import pytest
 
 from app.hausdepp_achievements import ACHIEVEMENTS, _accumulate, _new_aggregate, _progress
-from app.hausdepp_cpu_strategy import CpuMemory, choose_cpu_action
+from app.hausdepp_cpu_strategy import CpuMemory, choose_cpu_action, slip_chance, table_tip
 from app.hausdepp_engine import apply_action, card_rank, make_deck, new_round, project_state
 from tests.hausdepp_cpu_reference import choose_reference_action
 from tests.test_hausdepp_engine import scenario
@@ -227,3 +227,38 @@ def test_prefers_a_valuable_packet_to_a_gamble_without_a_legal_card():
     others = [["acorns-9", "acorns-O", "bells-K"], ["bells-9", "bells-O", "leaves-K"]]
     move = decide_at([["hearts-6", "bells-7", "leaves-8"], *others], ["hearts-A", "acorns-A"])
     assert move["action"] == "pickup"
+
+
+def test_table_tips_explain_the_same_bargains_for_a_newer_person():
+    others = [["acorns-9", "acorns-O", "acorns-K"], ["bells-9", "bells-O", "bells-K"]]
+
+    def tip(hand, discard, *, stock=20, players=None):
+        used = {card for item in [hand, *(players or others)] for card in item} | set(discard)
+        deck = [card for card in make_deck() if card not in used][:stock]
+        return table_tip(project_state(scenario([hand, *(players or others)], discard=discard, deck=deck), "p0"))
+
+    assert tip(["hearts-7", "bells-8", "hearts-10"], ["leaves-A"]) == {"key": "tipBuyAce"}
+    assert tip(["hearts-7", "bells-8", "hearts-10"], ["leaves-K", "leaves-A"]) == {"key": "tipBuyPacket"}
+    assert tip(["hearts-U", "acorns-U", "hearts-10"], ["leaves-U", "bells-U", "leaves-A"]) == {
+        "key": "tipQuartet", "rank": "U"}
+    assert tip(["hearts-6", "bells-7", "leaves-8"], ["hearts-A", "acorns-A"]) == {"key": "tipPickupNotGamble"}
+    # No tip for an ordinary low play, without stock, or when it is not the person's turn.
+    assert tip(["hearts-7", "bells-8", "hearts-K"], ["leaves-6"]) is None
+    assert tip(["hearts-7", "bells-8", "hearts-10"], ["leaves-A"], stock=0) is None
+    waiting = scenario([["hearts-7", "bells-8", "hearts-10"], *others], discard=["leaves-A"], current="p1")
+    assert table_tip(project_state(waiting, "p0")) is None
+
+
+def test_gentle_computers_misjudge_more_often_but_never_illegally():
+    assert slip_chance(1.0) == pytest.approx(0.05)
+    assert slip_chance(0.55) > slip_chance(0.8) > slip_chance(1.0)
+    others = [["acorns-9", "acorns-O", "acorns-K"], ["bells-9", "bells-O", "bells-K"]]
+    used = {"hearts-7", "bells-8", "hearts-10", "leaves-A", *others[0], *others[1]}
+    deck = [card for card in make_deck() if card not in used][:20]
+    view = project_state(scenario([["hearts-7", "bells-8", "hearts-10"], *others], discard=["leaves-A"], deck=deck), "p0")
+    sharp = Counter(choose_cpu_action(view, skill=1.0, rng=Random(seed))["action"] for seed in range(400))
+    gentle = Counter(choose_cpu_action(view, skill=0.55, rng=Random(seed))["action"] for seed in range(400))
+    assert sharp["pickup"] > gentle["pickup"] > 200
+    assert set(sharp) | set(gentle) <= {"pickup", "play"}
+    # Without randomness the decision stays exactly reproducible.
+    assert choose_cpu_action(view) == choose_cpu_action(view, skill=0.55)

@@ -54,7 +54,10 @@ Ein neuer Tisch erhält automatisch einen von 50 Wirtshausnamen mit deinem
 aktuellen Kontonamen, etwa „Manis Gsuff“. Ein Namensfeld ist dafür nicht nötig.
 
 Zwei bis fünf, höchstens sechs Teilnehmer spielen mit 36 doppeldeutschen Karten;
-Computer sind echte Mitspieler mit eigenen verdeckten Händen. Die Serverregeln
+Computer sind echte Mitspieler mit eigenen verdeckten Händen. Sie kaufen kleine
+wertvolle Pakete statt ihre 10 zu verbrennen, spielen mal besser, mal schlechter
+und in den ersten 50 Runden neuer Konten spürbar sanfter; neuere Spieler sehen
+dazu kurze Tipps in ihrer Zugzeile. Die Serverregeln
 schützen fremde Karten und den Nachziehstapel. Ein Tipp auf den verdeckten Stapel
 zockt vor dem Ablegen. Danach füllt das Spiel für alle automatisch alle
 fehlenden Karten bis auf drei auf, sobald die eigene Auffüllung an der Reihe
