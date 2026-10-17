@@ -48,6 +48,29 @@ inspection information to predict the face-down stock.
   With no legal hand card and at most three stock cards, expected failed-gamble
   additions are weighed against a deliberate pickup. In the final duel, a one-card
   opponent is blocked when doing so leaves a real follow-up finish.
+- **Kaufen statt verbrennen:** Solange der Nachziehstapel noch Karten hat,
+  bewertet der Computer Karten nach ihrem Spielwert (10 und Ass hoch, niedrige
+  Karten als Ballast) und jede zusätzliche Handkarte als Last, die mit sinkendem
+  Stapel steigt. Ein kleines wertvolles Paket wird aufgenommen, statt eine 10
+  oder ein Ass darauf zu verbrennen; ein Paket, das eigene Paare zu Drillingen
+  oder vier Gleichen ergänzt, erhält einen Bonus. Ohne legale Handkarte wird ein
+  wertvolles Paket dem Zocken vorgezogen. Im Duell zweier Spieler zählt jede
+  zusätzliche Karte mehr: Dort verbrennt er nur keine 10 auf einem Paket aus
+  höchstens zwei Karten, solange mehr als zwölf Nachziehkarten übrig sind. Ohne
+  Nachziehstapel räumt die 10 wie bisher ab. In 3000 gepaarten Testpartien
+  (gleiche Verteilung, jede Sitzposition) gegen die vorherige Strategie verlor
+  der Computer 674-mal statt der fairen 750 (−10 %), am deutlichsten mit drei bis
+  fünf Spielern. /
+  **Buy instead of burn:** while stock remains, the computer values cards by
+  their worth (tens and aces high, low cards as ballast) and every extra hand card
+  as a burden that grows as the stock shrinks. It picks up a small valuable packet
+  rather than burning a ten or an ace on it; a packet that turns its own pairs into
+  triples or quartets earns a bonus. Without a legal hand card, a valuable packet
+  beats a gamble. Heads-up, every extra card weighs more: there it only refuses to
+  burn a ten on a packet of at most two cards while more than twelve stock cards
+  remain. With an empty stock, a ten clears as before. In 3,000 paired test games
+  (same deal, every seat) against the previous policy, it lost 674 times instead
+  of a fair 750 (−10 %), most clearly with three to five players.
 - Pro Sitz bleiben höchstens 48 eigene, bereits angenommene Entscheidungen im
   Arbeitsspeicher. Kehrt dieselbe beobachtbare Lage wieder, versucht der Computer
   einen anderen legalen Plan. Die Erinnerung bleibt über menschliche Züge erhalten

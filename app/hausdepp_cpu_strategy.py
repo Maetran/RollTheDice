@@ -112,6 +112,50 @@ def _gamble_odds(hand: list[str], discard: list[str]) -> tuple[float, float]:
             unseen["10"] / total)
 
 
+# Card worth while the stock still refills hands. A ten clears and keeps the
+# turn, an ace beats every ordinary rank; low cards are mostly ballast.
+_WORTH = {"6": -1.0, "7": -0.8, "8": -0.5, "9": -0.2, "U": 0.2, "O": 0.6, "K": 1.2, "A": 2.0, "10": 3.0}
+_REFILL_WORTH = sum(_WORTH.values()) / len(_WORTH)
+
+
+def _burden(stock: int) -> float:
+    """What one extra hand card costs: little early, a lot without stock."""
+    return 0.45 if stock > 12 else 0.8 if stock > 0 else 1.7
+
+
+def _set_bonus(counts: Counter, added: Counter) -> float:
+    """Pairs, triples and especially quartets are worth more than their cards."""
+    bonus = 0.0
+    for rank, extra in added.items():
+        before, after = counts[rank], counts[rank] + extra
+        if rank == "10":
+            continue
+        if after >= 4 > before:
+            bonus += 2.5  # a quartet clears the pile and keeps the turn
+        elif after == 3 > before:
+            bonus += 0.9
+        elif after == 2 > before:
+            bonus += 0.3
+    return bonus
+
+
+def _pickup_score(hand: list[str], cards: list[str], stock: int) -> float:
+    counts = Counter(card_rank(card) for card in hand)
+    added = Counter(card_rank(card) for card in cards)
+    return (sum(_WORTH[card_rank(card)] for card in cards) + _set_bonus(counts, added)
+            - _burden(stock) * len(cards))
+
+
+def _play_score(hand: list[str], cards: list[str], stock: int, *, clears: bool) -> float:
+    """Value of spending these cards: lost worth, plus shedding and refills."""
+    score = -sum(_WORTH[card_rank(card)] for card in cards) + _burden(stock) * len(cards)
+    refills = max(0, 3 - (len(hand) - len(cards))) if stock else 0
+    score += min(refills, stock) * (_REFILL_WORTH - _burden(stock))
+    if clears:
+        score += _burden(stock)  # the kept turn sheds another card at once
+    return score
+
+
 def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None = None) -> dict[str, Any] | None:
     """Choose a legal command; only the authoritative engine applies it."""
     if projection.get("phase") not in {"playing", "peeking"}:
@@ -186,7 +230,29 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
             if gamble_cost > len(discard):
                 preferred = {**move, "action": "pickup"}
     if "pickup" in actions:
-        choices.append({**move, "action": "pickup"})
+        pickup = {**move, "action": "pickup"}
+        choices.append(pickup)
+        pickup_score = _pickup_score(hand, discard, stock)
+        if preferred and preferred.get("action") == "play" and stock:
+            # "Buy" a small valuable packet rather than burning a ten or an ace
+            # on it, especially when it completes a set of our own.
+            cards = preferred["cards"]
+            clears = card_rank(cards[0]) == "10" or (
+                len(cards) + (streak if card_rank(cards[0]) == top else 0) >= 4)
+            # Heads-up races punish every extra card: buy only clear bargains.
+            # Heads-up races punish extra cards: there, only refuse to burn a
+            # ten on a tiny packet while plenty of stock remains.
+            duel_ten = active == 2 and card_rank(cards[0]) == "10" and len(discard) <= 2 and stock > 12
+            if (active > 2 or duel_ten) and pickup_score > _play_score(hand, cards, stock, clears=clears) + 0.25:
+                preferred = pickup
+        elif preferred and preferred.get("action") == "gamble" and not groups:
+            # Without a legal card, a good packet is worth more than a gamble
+            # that may still add the whole packet plus an unknown card.
+            success, ten = _gamble_odds(hand, discard)
+            gamble_score = (success * (_burden(stock) + ten) + (1 - success)
+                            * (_pickup_score(hand, discard, stock) + _REFILL_WORTH - _burden(stock)))
+            if pickup_score > gamble_score:
+                preferred = pickup
     if not choices:
         return None
     preferred = preferred or choices[-1]

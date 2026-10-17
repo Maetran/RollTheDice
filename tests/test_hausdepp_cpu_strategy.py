@@ -198,3 +198,32 @@ def test_tactical_policy_against_frozen_reference_on_400_paired_seat_deals():
     assert all(item["reference_losses"] == 20 for item in measurements)
     assert all(item["tactical_losses"] <= item["reference_losses"] for item in measurements)
     assert sum(item["tactical_losses"] for item in measurements) < 100
+
+
+def decide_at(hands, discard, *, stock=20):
+    used = {card for hand in hands for card in hand} | set(discard)
+    deck = [card for card in make_deck() if card not in used][:stock]
+    return choose_cpu_action(project_state(scenario(hands, discard=discard, deck=deck), "p0"))
+
+
+def test_buys_a_lone_ace_instead_of_burning_a_ten_while_stock_remains():
+    others = [["acorns-9", "acorns-O", "acorns-K"], ["bells-9", "bells-O", "bells-K"]]
+    hand = ["hearts-7", "bells-8", "hearts-10"]
+    assert decide_at([hand, *others], ["leaves-A"])["action"] == "pickup"
+    # Heads-up as well: a ten is too valuable for a single early ace.
+    assert decide_at([hand, others[0]], ["leaves-A"])["action"] == "pickup"
+    # Without stock every extra card counts: then the ten clears.
+    move = decide_at([hand, *others], ["leaves-A"], stock=0)
+    assert move["action"] == "play" and move["cards"] == ["hearts-10"]
+
+
+def test_buys_a_packet_that_completes_its_own_quartet():
+    others = [["acorns-9", "acorns-O", "acorns-K"], ["bells-9", "bells-O", "bells-K"]]
+    move = decide_at([["hearts-U", "acorns-U", "hearts-10"], *others], ["leaves-U", "bells-U", "leaves-A"])
+    assert move["action"] == "pickup"
+
+
+def test_prefers_a_valuable_packet_to_a_gamble_without_a_legal_card():
+    others = [["acorns-9", "acorns-O", "bells-K"], ["bells-9", "bells-O", "leaves-K"]]
+    move = decide_at([["hearts-6", "bells-7", "leaves-8"], *others], ["hearts-A", "acorns-A"])
+    assert move["action"] == "pickup"
