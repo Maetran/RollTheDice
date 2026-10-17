@@ -1,10 +1,10 @@
 {
-  "version": "3.4.2",
+  "version": "3.4.3",
   "bump": "patch",
   "date": "2026-10-17",
-  "previous_revision": "5fead8d83485f9ce608e7b8cb117cc33588fba02",
+  "previous_revision": "9f59852db9b1d6d1d5a4380f9497051fa705829a",
   "summary": {
-    "de": "Lesbarere Kartenzüge, plastische Stapel und kompaktere grosse Hände bei Hausdepp.",
-    "en": "More readable card plays, clearer pile depth and compact large Hausdepp hands."
+    "de": "Hausdepp: konstante Kartengrösse auf dem offenen Paket während der Spielanimationen.",
+    "en": "Hausdepp: consistent card size on the open pile throughout play animations."
   }
 }

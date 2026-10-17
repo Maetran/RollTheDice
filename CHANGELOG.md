@@ -23,6 +23,21 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.4.3 — Hausdepp: stabile Kartengrösse / stable card sizes — 2026-10-17
+
+**Deutsch:** Das offene Paket wird beim Ablegen nicht mehr vorübergehend kleiner.
+Die Animation übernimmt die tatsächlich dargestellten Kartenmasse und Positionen
+anstelle einer festen Breitenbegrenzung. Das bestehende Paket und die neu
+ankommende Karte gehen dadurch ohne Grössensprung in die dauerhafte Darstellung
+über, auch bei grossen Tablet-Karten. Die Darstellung wird auf Smartphone,
+Tablet und Desktop in beiden Ausrichtungen geprüft. Stilles Release.
+
+**English:** The open pile no longer briefly shrinks when a card is played.
+Animations use the rendered card dimensions and positions instead of a fixed
+width limit. Existing pile cards and the newly arriving card join the permanent
+view without a size jump, including large tablet cards. Presentation is checked
+on phones, tablets and desktops in both orientations. Silent release.
+
 ## 3.4.2 — Hausdepp: Karten besser verfolgen / follow the cards — 2026-10-17
 
 **Deutsch:** Kartenwürfe laufen nacheinander und mit einer kurzen Liegephase.
