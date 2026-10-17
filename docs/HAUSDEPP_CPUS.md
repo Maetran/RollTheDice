@@ -48,6 +48,63 @@ inspection information to predict the face-down stock.
   With no legal hand card and at most three stock cards, expected failed-gamble
   additions are weighed against a deliberate pickup. In the final duel, a one-card
   opponent is blocked when doing so leaves a real follow-up finish.
+- **Kaufen statt verbrennen:** Solange der Nachziehstapel noch Karten hat,
+  bewertet der Computer Karten nach ihrem Spielwert (10 und Ass hoch, niedrige
+  Karten als Ballast) und jede zusätzliche Handkarte als Last, die mit sinkendem
+  Stapel steigt. Ein kleines wertvolles Paket wird aufgenommen, statt eine 10
+  oder ein Ass darauf zu verbrennen; ein Paket, das eigene Paare zu Drillingen
+  oder vier Gleichen ergänzt, erhält einen Bonus. Ohne legale Handkarte wird ein
+  wertvolles Paket dem Zocken vorgezogen. Im Duell zweier Spieler zählt jede
+  zusätzliche Karte mehr: Dort verbrennt er nur keine 10 auf einem Paket aus
+  höchstens zwei Karten, solange mehr als zwölf Nachziehkarten übrig sind. Ohne
+  Nachziehstapel räumt die 10 wie bisher ab. In 3000 gepaarten Testpartien
+  (gleiche Verteilung, jede Sitzposition) gegen die vorherige Strategie verlor
+  der Computer 674-mal statt der fairen 750 (−10 %), am deutlichsten mit drei bis
+  fünf Spielern. /
+  **Buy instead of burn:** while stock remains, the computer values cards by
+  their worth (tens and aces high, low cards as ballast) and every extra hand card
+  as a burden that grows as the stock shrinks. It picks up a small valuable packet
+  rather than burning a ten or an ace on it; a packet that turns its own pairs into
+  triples or quartets earns a bonus. Without a legal hand card, a valuable packet
+  beats a gamble. Heads-up, every extra card weighs more: there it only refuses to
+  burn a ten on a packet of at most two cards while more than twelve stock cards
+  remain. With an empty stock, a ten clears as before. In 3,000 paired test games
+  (same deal, every seat) against the previous policy, it lost 674 times instead
+  of a fair 750 (−10 %), most clearly with three to five players.
+- **Wechselnde Stärke und sanfter Einstieg:** Die Stärke eines Tisches richtet
+  sich nach dem neuesten Menschen daran, also dem Konto mit den wenigsten
+  abgeschlossenen Hausdepp-Runden (einmal beim Tischstart gezählt). Bei 0 Runden
+  spielen Computer auf Stufe 0,55, bis 50 Runden steigt sie gleichmässig auf 1,0.
+  Jeder Computer erhält zusätzlich eine stabile Eigenheit von ±0,08. Daraus folgt
+  eine Ausrutscherquote von 5 % (volle Stärke) bis rund 30 % (sanftester Start):
+  eine etwas höhere Karte als nötig, eine übersehene Kaufgelegenheit oder ein
+  verpasster Nachwurf, Zocken statt Aufnehmen. Pflichtauffüllen, Abheben und
+  sichere Schlussketten werden nie verspielt. Die Zufallsentscheidung ist pro
+  Tisch, Sitz und Spielstand fest, damit wiederholte Berechnungen während der
+  Denkpause nicht hin- und herspringen. Gegen die vorherige Strategie verlor
+  volle Stärke 441 von 2000 gepaarten Partien (fair 500), Stufe 0,8 484 und der
+  sanfteste Start 558. /
+  **Varying strength and a gentle start:** a table's strength follows its newest
+  person, the account with the fewest completed Hausdepp rounds (counted once at
+  table start). At 0 rounds computers play at level 0.55, rising evenly to 1.0 at
+  50 rounds. Each computer also has a stable ±0.08 personality. This yields a
+  misjudgement rate from 5 % (full strength) to about 30 % (gentlest start): a
+  slightly higher card than needed, a missed bargain or follow-up, a gamble instead
+  of a pickup. Mandatory refills, cutting and guaranteed finishes are never
+  misplayed. The random judgement is fixed per table, seat and state so repeated
+  evaluations while thinking do not flip-flop. Against the previous policy, full
+  strength lost 441 of 2,000 paired games (fair 500), level 0.8 484, and the
+  gentlest start 558.
+- **Tipps für neuere Spieler:** Wer weniger als 50 Runden gespielt hat, sieht in
+  der eigenen Zugzeile kurze Tipps aus derselben Bewertung, etwa „Ass aufnehmen,
+  10 behalten“, „Paket aufnehmen, 10 behalten“, „Aufnehmen – vier Gleiche“ oder
+  „Aufnehmen statt zocken“. Sie verwenden nur die eigene Sicht und erscheinen nur,
+  wenn der Spieler selbst entscheiden kann. /
+  **Tips for newer players:** with fewer than 50 rounds, the own turn line shows
+  short tips from the same evaluation, such as “take the ace, keep your ten”,
+  “take the pile, keep your ten”, “take it – four of a kind” or “pick up instead
+  of gambling”. They use only the player's own view and appear only when that
+  player can decide.
 - Pro Sitz bleiben höchstens 48 eigene, bereits angenommene Entscheidungen im
   Arbeitsspeicher. Kehrt dieselbe beobachtbare Lage wieder, versucht der Computer
   einen anderen legalen Plan. Die Erinnerung bleibt über menschliche Züge erhalten

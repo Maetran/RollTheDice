@@ -605,8 +605,11 @@ class HausdeppPrivacyAndCpuTests(TestCase):
 
     def test_cpu_gambles_or_collects_when_no_legal_hand_card(self):
         state = scenario([["hearts-6", "hearts-7", "hearts-8"], ["acorns-6"]],
-                         discard=["leaves-A"], deck=["bells-U", "bells-6", "bells-7", "bells-8"])
+                         discard=["leaves-9"], deck=["bells-U", "bells-6", "bells-7", "bells-8"])
         self.assertEqual(choose_cpu_action(project_state(state, "p0"))["action"], "gamble")
+        # A single ace is worth buying rather than gambling against it.
+        state["discard"] = ["leaves-A"]
+        self.assertEqual(choose_cpu_action(project_state(state, "p0"))["action"], "pickup")
         state["deck"] = []
         self.assertEqual(choose_cpu_action(project_state(state, "p0"))["action"], "pickup")
         self.assertIsNone(choose_cpu_action(project_state(state, "p1")))

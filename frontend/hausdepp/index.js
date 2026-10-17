@@ -949,6 +949,11 @@ function renderState() {
   const afterthrow = actions.includes("afterthrow");
   $("hausdeppStatus").textContent = snapshot._paused ? t("paused") : s.phase === "peeking" ? t(actions.includes("peek") ? "yourPeek" : "playerPeek", { name: peeker?.name || "…" }) : s.phase === "finished" ? t("roundFinished") : mine?.finished ? t("youFinished") : actions.includes("draw") ? t("drawHint") : afterthrow ? t("afterthrowHint") : current?.id === playerId ? t("yourTurn") : t("playerTurn", { name: current?.name || "…" });
   $("hausdeppStatus").classList.toggle("is-yours", actions.length > 0);
+  // Newer players see a short tactical tip in their own turn line; the line
+  // keeps its place and highlight, so nothing on the table moves or is covered.
+  const tip = !pending && !selecting && actions.includes("pickup") && !snapshot._paused ? s.table_tip : null;
+  $("hausdeppStatus").classList.toggle("has-tip", Boolean(tip));
+  if (tip) $("hausdeppStatus").textContent = t(tip.key, { rank: t(`rank${tip.rank}`) });
   const stockAction = actions.includes("peek") ? "peek" : actions.includes("draw") ? "draw" : "gamble";
   $("hausdeppStock").disabled = pending || !actions.includes(stockAction);
   $("hausdeppStock").setAttribute("aria-label", `${t(stockAction)}, ${t("stockCount", { count: s.deck_count })}`);

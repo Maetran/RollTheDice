@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import math
 import os
 import time
 from collections import OrderedDict
+from random import Random
 from secrets import SystemRandom
 
 from .game_state import games, multiplayer_pause_reason
@@ -49,19 +51,32 @@ def cpu_action_is_due(game: dict) -> bool:
                 and _cpu_decision(game) is not None)
 
 
+def _personality(game: dict, actor_id: str) -> float:
+    """A stable per-table nudge: some computers play a little better than others."""
+    digest = hashlib.sha256(f"{game.get('_id')}:{actor_id}".encode()).digest()
+    return (int.from_bytes(digest[:2], "big") / 0xFFFF - 0.5) * 0.16
+
+
 def _cpu_choices(game: dict, memories: dict | None = None) -> list[tuple[str, dict, dict]]:
     from .hausdepp_cpu_strategy import choose_cpu_action
     from .hausdepp_engine import project_state
+    from .hausdepp_experience import table_skill
 
     state = game.get("_hausdepp")
     if not state:
         return []
     choices = []
+    base_skill = table_skill(game)
     for participant in game.get("_participants", []):
         if participant.get("is_cpu"):
             actor_id = participant["id"]
             projection = project_state(state, actor_id)
-            decision = choose_cpu_action(projection, memory=memories.get(actor_id) if memories else None)
+            skill = max(0.45, min(1.0, base_skill + _personality(game, actor_id)))
+            # Seeded by table, seat and state: repeated evaluations while the
+            # computer waits keep the same judgement instead of flip-flopping.
+            rng = Random(f"{game.get('_id')}:{actor_id}:{state.get('version')}")  # nosec B311 - game judgement, not security
+            decision = choose_cpu_action(projection, memory=memories.get(actor_id) if memories else None,
+                                         skill=skill, rng=rng)
             if decision:
                 choices.append((actor_id, projection, decision))
     return choices

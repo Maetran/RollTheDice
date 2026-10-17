@@ -398,3 +398,37 @@ test.describe('own card flights and follow-up timing', () => {
     await expect(card(page, HAND[1])).toBeEnabled();
   });
 });
+
+for (const [width, height] of [[390, 844], [320, 568], [844, 390], [768, 1024], [1440, 900]]) {
+  test(`table tip for newer players replaces only the turn line text at ${width}x${height}`, async ({ page }) => {
+    const state = await fixture(page, 'de');
+    await page.setViewportSize({ width, height });
+    const next = structuredClone(state.board), s = next._hausdepp;
+    Object.assign(s, { version: s.version + 1, discard: ['leaves-A'], hand: ['hearts-7', 'bells-8', 'hearts-10'],
+      playable_cards: ['hearts-10'], available_actions: ['play', 'pickup', 'gamble'], table_tip: null });
+    state.send(next);
+    const status = page.locator('#hausdeppStatus');
+    await expect(status).toHaveText('Du bist dran.');
+    const layout = () => page.evaluate(() => {
+      const box = node => { const rect = node.getBoundingClientRect(); return [rect.x, rect.y, rect.width, rect.height].map(Math.round); };
+      const line = document.getElementById('hausdeppStatus');
+      return { status: box(line), hand: box(document.getElementById('hausdeppHand')), pile: box(document.getElementById('hausdeppPile')),
+        clipped: line.scrollWidth > line.clientWidth + 1 };
+    });
+    const before = await layout();
+    s.version += 1; s.table_tip = { key: 'tipBuyAce' }; state.send(next);
+    await expect(status).toHaveText('Tipp: Ass aufnehmen, 10 behalten');
+    await expect(status).toHaveClass(/is-yours/);
+    if (process.env.HAUSDEPP_TIP_SCREENSHOTS === '1') {
+      await page.screenshot({ path: test.info().outputPath(`table-tip-${width}x${height}.png`) });
+    }
+    const after = await layout();
+    // Nothing moves, nothing is covered, and the short tip fits the line.
+    expect(after.hand).toEqual(before.hand);
+    expect(after.pile).toEqual(before.pile);
+    expect(after.status[3]).toBe(before.status[3]);
+    expect(after.clipped).toBe(false);
+    s.version += 1; s.table_tip = null; state.send(next);
+    await expect(status).toHaveText('Du bist dran.');
+  });
+}

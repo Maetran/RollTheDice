@@ -25,3 +25,6 @@ html[data-game="hausdepp"] body.hd-playing .is-multi-selecting .hd-hand-fan .hau
   html[data-game="hausdepp"] body.hd-playing .hd-hand-fan .hausdepp-card.is-selected { translate: 0 -5px; }
   html[data-game="hausdepp"] body.hd-playing .hd-hand-fan .hausdepp-card.is-selected::after { top: 10px; left: 6px; }
 }
+
+/* A tip for newer players replaces only the text of the own turn line. */
+.hd-turn-status.has-tip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

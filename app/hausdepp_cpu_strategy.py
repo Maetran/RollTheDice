@@ -112,8 +112,133 @@ def _gamble_odds(hand: list[str], discard: list[str]) -> tuple[float, float]:
             unseen["10"] / total)
 
 
-def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None = None) -> dict[str, Any] | None:
-    """Choose a legal command; only the authoritative engine applies it."""
+# Card worth while the stock still refills hands. A ten clears and keeps the
+# turn, an ace beats every ordinary rank; low cards are mostly ballast.
+_WORTH = {"6": -1.0, "7": -0.8, "8": -0.5, "9": -0.2, "U": 0.2, "O": 0.6, "K": 1.2, "A": 2.0, "10": 3.0}
+_REFILL_WORTH = sum(_WORTH.values()) / len(_WORTH)
+
+
+def _burden(stock: int) -> float:
+    """What one extra hand card costs: little early, a lot without stock."""
+    return 0.45 if stock > 12 else 0.8 if stock > 0 else 1.7
+
+
+def _set_bonus(counts: Counter, added: Counter) -> float:
+    """Pairs, triples and especially quartets are worth more than their cards."""
+    bonus = 0.0
+    for rank, extra in added.items():
+        before, after = counts[rank], counts[rank] + extra
+        if rank == "10":
+            continue
+        if after >= 4 > before:
+            bonus += 2.5  # a quartet clears the pile and keeps the turn
+        elif after == 3 > before:
+            bonus += 0.9
+        elif after == 2 > before:
+            bonus += 0.3
+    return bonus
+
+
+def _pickup_score(hand: list[str], cards: list[str], stock: int) -> float:
+    counts = Counter(card_rank(card) for card in hand)
+    added = Counter(card_rank(card) for card in cards)
+    return (sum(_WORTH[card_rank(card)] for card in cards) + _set_bonus(counts, added)
+            - _burden(stock) * len(cards))
+
+
+def _play_score(hand: list[str], cards: list[str], stock: int, *, clears: bool) -> float:
+    """Value of spending these cards: lost worth, plus shedding and refills."""
+    score = -sum(_WORTH[card_rank(card)] for card in cards) + _burden(stock) * len(cards)
+    refills = max(0, 3 - (len(hand) - len(cards))) if stock else 0
+    score += min(refills, stock) * (_REFILL_WORTH - _burden(stock))
+    if clears:
+        score += _burden(stock)  # the kept turn sheds another card at once
+    return score
+
+
+def _bargain(hand: list[str], discard: list[str], stock: int, active: int, cards: list[str], *,
+             top: str | None, streak: int) -> bool:
+    """Whether "buying" the packet beats spending these cards on it."""
+    if not stock or not cards:
+        return False
+    rank = card_rank(cards[0])
+    clears = rank == "10" or len(cards) + (streak if rank == top else 0) >= 4
+    # Heads-up races punish extra cards: there, only refuse to burn a ten on a
+    # tiny packet while plenty of stock remains.
+    duel_ten = active == 2 and rank == "10" and len(discard) <= 2 and stock > 12
+    return (active > 2 or duel_ten) and (
+        _pickup_score(hand, discard, stock) > _play_score(hand, cards, stock, clears=clears) + 0.25)
+
+
+def _pickup_beats_gamble(hand: list[str], discard: list[str], stock: int) -> bool:
+    """Without a legal card, a good packet beats a gamble that may add it anyway."""
+    success, ten = _gamble_odds(hand, discard)
+    gamble_score = (success * (_burden(stock) + ten) + (1 - success)
+                    * (_pickup_score(hand, discard, stock) + _REFILL_WORTH - _burden(stock)))
+    return _pickup_score(hand, discard, stock) > gamble_score
+
+
+def _top_run(discard: list[str]) -> tuple[str | None, int]:
+    top = card_rank(discard[-1]) if discard else None
+    streak = 0
+    for card in reversed(discard):
+        if card_rank(card) != top:
+            break
+        streak += 1
+    return top, streak
+
+
+def _active(projection: Mapping[str, Any]) -> int:
+    return sum(not player.get("finished") for player in projection.get("players", []))
+
+
+def table_tip(projection: Mapping[str, Any]) -> dict[str, str] | None:
+    """A short hint for a newer person, from the same view and values a computer uses."""
+    actions = projection.get("available_actions", [])
+    stock = int(projection.get("deck_count", 0))
+    if projection.get("phase") != "playing" or "pickup" not in actions or not stock:
+        return None
+    hand, discard = list(projection.get("hand", [])), list(projection.get("discard", []))
+    groups: dict[str, list[str]] = defaultdict(list)
+    for card in projection.get("playable_cards", []):
+        groups[card_rank(card)].append(card)
+    top, streak = _top_run(discard)
+    active = _active(projection)
+    counts, added = Counter(card_rank(card) for card in hand), Counter(card_rank(card) for card in discard)
+    quartet = next((rank for rank in HAUSDEPP_RANKS[:-1] if counts[rank] and counts[rank] < 4 <= counts[rank] + added[rank]),
+                   None)
+    ordinary = [rank for rank in HAUSDEPP_RANKS[:-1] if rank in groups]
+    if "play" in actions and groups:
+        cards = sorted(groups[ordinary[0]]) if ordinary else sorted(groups["10"])[:1]
+        if _bargain(hand, discard, stock, active, cards, top=top, streak=streak):
+            if quartet:
+                return {"key": "tipQuartet", "rank": quartet}
+            if not ordinary:
+                return {"key": "tipBuyAce"} if [card_rank(card) for card in discard] == ["A"] else {"key": "tipBuyPacket"}
+    elif not groups and "gamble" in actions and _pickup_beats_gamble(hand, discard, stock):
+        return {"key": "tipPickupNotGamble"}
+    return None
+
+
+def slip_chance(skill: float) -> float:
+    """How often a computer misjudges: a little always, clearly more when gentle."""
+    return 0.05 + (1 - max(0.0, min(1.0, skill))) * 0.55
+
+
+def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None = None,
+                      skill: float = 1.0, rng: Any = None) -> dict[str, Any] | None:
+    """Choose a legal command; only the authoritative engine applies it.
+
+    With an ``rng``, the computer occasionally makes human-sized misjudgements
+    (a higher card than needed, a missed bargain or follow-up, a gamble instead
+    of a pickup); lower ``skill`` makes them more frequent. Mandatory refills,
+    cutting and guaranteed finishes are never misplayed.
+    """
+    slip = slip_chance(skill) if rng is not None else 0.0
+
+    def slipped(weight: float = 1.0) -> bool:
+        return bool(slip) and rng.random() < slip * weight
+
     if projection.get("phase") not in {"playing", "peeking"}:
         return None
     actions = projection.get("available_actions", [])
@@ -130,6 +255,8 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
     for card in projection.get("playable_cards", []):
         groups[card_rank(card)].append(card)
     if "afterthrow" in actions and groups:
+        if slipped(0.5):
+            return None  # did not notice the matching card in time
         rank = next(rank for rank in HAUSDEPP_RANKS if rank in groups)
         return {**move, "action": "afterthrow", "cards": sorted(groups[rank])}
     stock = int(projection.get("deck_count", 0))
@@ -139,12 +266,7 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
             return {**move, "action": "play", "cards": sorted(groups[finish])}
 
     counts = Counter(card_rank(card) for card in hand)
-    top = card_rank(discard[-1]) if discard else None
-    streak = 0
-    for card in reversed(discard):
-        if card_rank(card) != top:
-            break
-        streak += 1
+    top, streak = _top_run(discard)
 
     # Completing four grants another turn without spending a ten. Take that
     # free reduction before comparing ordinary moves of different ranks.
@@ -164,7 +286,10 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
             choices.append({**move, "action": "play", "cards": cards})
 
     preferred = choices[0] if choices else None
-    active = sum(not player.get("finished") for player in projection.get("players", []))
+    if len(ordinary) > 1 and slipped(1.0 if stock else 0.6):
+        # A plausible misjudgement: the next higher rank instead of the lowest.
+        preferred = {**move, "action": "play", "cards": sorted(groups[ordinary[1]])}
+    active = _active(projection)
     if (not stock and active == 2 and _next_hand_count(projection) == 1
             and len(set(counts) - {"10"}) <= 2 and ordinary):
         # In the final duel, block a one-card opponent when forcing a pickup
@@ -186,7 +311,16 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
             if gamble_cost > len(discard):
                 preferred = {**move, "action": "pickup"}
     if "pickup" in actions:
-        choices.append({**move, "action": "pickup"})
+        pickup = {**move, "action": "pickup"}
+        choices.append(pickup)
+        if (preferred and preferred.get("action") == "play" and not slipped()
+                and _bargain(hand, discard, stock, active, preferred["cards"], top=top, streak=streak)):
+            # "Buy" a small valuable packet rather than burning a ten or an ace
+            # on it, especially when it completes a set of our own.
+            preferred = pickup
+        elif (preferred and preferred.get("action") == "gamble" and not groups and not slipped()
+              and _pickup_beats_gamble(hand, discard, stock)):
+            preferred = pickup
     if not choices:
         return None
     preferred = preferred or choices[-1]

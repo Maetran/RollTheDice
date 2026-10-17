@@ -108,8 +108,13 @@ for (const language of ['de', 'en']) {
       const languageForm = page.locator('#hausdeppLanguageForm');
       await languageForm.locator('select').selectOption(language);
       const savedLanguage = page.waitForResponse(r => r.url() === `${HOUSE}/api/auth/preferences/language`);
+      // Saving the language always reloads the page. Continue only on the
+      // reloaded settings page, never on the document that is going away.
+      const reloaded = page.waitForEvent('load');
       await languageForm.locator('button').click();
       expect((await savedLanguage).status()).toBe(200);
+      await reloaded;
+      await expect(page.locator('h1')).toHaveText(language === 'de' ? 'Kontoeinstellungen' : 'Account settings');
       await openSettingsRow(page, '#hausdeppChatForm');
       const chatForm = page.locator('#hausdeppChatForm');
       await chatForm.locator('input[name=enabled]').uncheck();

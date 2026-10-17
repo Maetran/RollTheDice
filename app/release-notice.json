@@ -3,29 +3,23 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: Karten fliegen beim Tippen sofort und flüssig auf den Stapel, Nachwerfen klappt zuverlässig.",
-  "summary_en": "Hausdepp: cards fly to the pile smoothly the moment you tap, and adding matching cards works reliably.",
+  "summary_de": "Hausdepp: Klügere Computer, ein sanfterer Einstieg für neue Spieler und Tipps am Tisch.",
+  "summary_en": "Hausdepp: smarter computers, a gentler start for new players and tips at the table.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp: flüssiger und schärfer",
+      "title": "Hausdepp: klügere Computer",
       "changes": [
-        "Deine Karte fliegt beim Tippen sofort und als eine einzige Karte auf das offene Paket.",
-        "Computer warten, bis deine Karte gelandet ist – so kannst du in Ruhe nachwerfen.",
-        "Karte lange halten wählt alle Karten dieses Rangs für einen Wurf.",
-        "Auffüllen auf drei geschieht jetzt für alle automatisch.",
-        "Schärfere, gleichmässigere Kartenbilder und gut sichtbare unterste Karten nach dem Abheben.",
-        "Neu auf der Rangliste: die zuletzt erreichten Erfolge aller Spieler."
+        "Computer kaufen ein einzelnes Ass oder kleine wertvolle Pakete, statt ihre 10 zu verbrennen.",
+        "Sie spielen mal besser, mal schlechter – in deinen ersten 50 Runden spürbar gnädiger.",
+        "Neu dabei? Kurze Tipps in deiner Zugzeile zeigen gute Käufe, etwa „Ass aufnehmen, 10 behalten“."
       ]
     },
     "en": {
-      "title": "Hausdepp: smoother and sharper",
+      "title": "Hausdepp: smarter computers",
       "changes": [
-        "Your card flies to the open pile the moment you tap, as one single card.",
-        "Computers wait until your card has landed, so you can add matching cards calmly.",
-        "Hold a card to select every card of that rank for one throw.",
-        "Refilling to three now happens automatically for everyone.",
-        "Sharper, more even card pictures and clearly visible bottom cards after cutting.",
-        "New on the leaderboard: everyone's most recently earned achievements."
+        "Computers buy a single ace or small valuable piles instead of burning their ten.",
+        "They play sometimes better, sometimes worse – noticeably gentler during your first 50 rounds.",
+        "New here? Short tips in your turn line point out good buys, such as “take the ace, keep your ten”."
       ]
     }
   }

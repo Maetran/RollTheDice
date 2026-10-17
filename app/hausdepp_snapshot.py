@@ -31,6 +31,12 @@ def snapshot_hausdepp(game: GameDict, viewer_id: str | None = None) -> dict:
     if projection and (paused_reason or game.get("_finished")):
         projection["available_actions"] = []
         projection["playable_cards"] = []
+    if projection:
+        from .hausdepp_cpu_strategy import table_tip
+        from .hausdepp_experience import wants_tips
+
+        # Only the viewer's own options, and only during their first rounds.
+        projection["table_tip"] = table_tip(projection) if wants_tips(game, valid_viewer) else None
     return {
         "_game_type": "hausdepp", "_name": game["_name"], "_mode": game["_mode"],
         "_players": [public_player_payload(player, connected=_player_connected(player))

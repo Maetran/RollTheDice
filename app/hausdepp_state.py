@@ -118,6 +118,10 @@ def start_hausdepp_game(game: GameDict) -> None:
         from .hausdepp_tournament import new_tournament
 
         game["_hausdepp_tournament"] = new_tournament(game["_id"], participants)
+    from .hausdepp_experience import record_table_experience
+
+    # New accounts get gentler computers and table tips during their first rounds.
+    record_table_experience(game)
     game["_started"] = True
     game["_started_at"] = datetime.now(timezone.utc).isoformat()
     game["_turn"] = {"player_id": game["_hausdepp"]["current_player_id"]}

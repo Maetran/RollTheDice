@@ -225,5 +225,7 @@ class CpuRunnerRaceTests(IsolatedAsyncioTestCase):
 
         with patch.dict(os.environ, clear=True), patch.object(runner, "_now", side_effect=lambda: now[0]):
             events, _ = await self.run_cpu(game, sleep=human_plays_then_time_passes, stop_after=2)
-        assert [(event["type"], event["player_id"]) for event in events] == [("draw", "p0"), ("play", "p2")]
+        # The next computer may play or buy the packet; only its timing matters here.
+        assert [(event["type"], event["player_id"]) for event in events][0] == ("draw", "p0")
+        assert events[1]["player_id"] == "p2" and events[1]["type"] in {"play", "pickup"}
         assert now[0] - played_at[0] == pytest.approx(1.3)
