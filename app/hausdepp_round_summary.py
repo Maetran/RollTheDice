@@ -35,8 +35,9 @@ def build_round_summary(result_id: str, participants: list[dict]) -> dict | None
             for unlock in db.scalars(select(HausdeppAchievementUnlock).where(
                     HausdeppAchievementUnlock.source_game_id == result_id,
                     HausdeppAchievementUnlock.user_id.in_(set(people.values())))
-                    .order_by(HausdeppAchievementUnlock.awarded_points.desc(), HausdeppAchievementUnlock.achievement_id)):
-                unlocks[unlock.user_id].append((unlock.achievement_id, unlock.awarded_points))
+                    .order_by(HausdeppAchievementUnlock.achievement_id)):
+                # awarded_points is the account's running total, not this award's value.
+                unlocks[unlock.user_id].append(unlock.achievement_id)
     except SQLAlchemyError:
         logger.exception("Hausdepp round summary unavailable for %s", result_id)
         return None
@@ -47,8 +48,9 @@ def build_round_summary(result_id: str, participants: list[dict]) -> dict | None
             players[player_id] = {"xp": None, "round_xp": None, "achievements": []}
             continue
         round_xp = CPU_ROUND_POINTS if facts.get("cpu_count") else ROUND_POINTS
-        achievements = [{"id": achievement_id, "points": points, "name": dict(_ACHIEVEMENTS_BY_ID[achievement_id]["name"])}
-                        for achievement_id, points in unlocks[user_id] if achievement_id in _ACHIEVEMENTS_BY_ID]
+        achievements = [{"id": achievement_id, "points": _ACHIEVEMENTS_BY_ID[achievement_id]["points"],
+                         "name": dict(_ACHIEVEMENTS_BY_ID[achievement_id]["name"])}
+                        for achievement_id in unlocks[user_id] if achievement_id in _ACHIEVEMENTS_BY_ID]
         players[player_id] = {"xp": round_xp + sum(item["points"] for item in achievements),
                               "round_xp": round_xp, "achievements": achievements}
     return {"round_id": result_id, "players": players}

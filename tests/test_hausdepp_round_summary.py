@@ -13,6 +13,7 @@ from unittest.mock import patch
 from app import main
 from app.auth import create_user
 from app.database import configure_database, session_scope, upgrade_database
+from app.hausdepp_achievements import ACHIEVEMENTS
 from app.hausdepp_round_summary import build_round_summary
 from app.models import HausdeppAchievementUnlock, HausdeppRoundCredit
 
@@ -34,8 +35,9 @@ class HausdeppRoundSummaryTests(unittest.TestCase):
                                        facts_json=json.dumps({"cpu_count": 1})))
             db.add(HausdeppRoundCredit(user_id=self.second.id, game_id="round-7", finished_at=at,
                                        facts_json=json.dumps({"cpu_count": 1})))
+            # awarded_points stores the running account total (here 412), not the award value.
             db.add(HausdeppAchievementUnlock(user_id=self.first.id, achievement_id="hausdepp_01", unlocked_at=at,
-                                             source_game_id="round-7", awarded_points=10))
+                                             source_game_id="round-7", awarded_points=412))
             db.add(HausdeppAchievementUnlock(user_id=self.first.id, achievement_id="hausdepp_02", unlocked_at=at,
                                              source_game_id="older-round", awarded_points=25))
 
@@ -54,7 +56,9 @@ class HausdeppRoundSummaryTests(unittest.TestCase):
         self.assertEqual(set(summary["players"]), {"a", "b"})
         first = summary["players"]["a"]
         self.assertEqual(first["round_xp"], 2)
-        self.assertEqual(first["xp"], 12)
+        award = next(item for item in ACHIEVEMENTS if item["id"] == "hausdepp_01")["points"]
+        self.assertEqual(first["achievements"][0]["points"], award)
+        self.assertEqual(first["xp"], 2 + award)
         self.assertEqual([item["id"] for item in first["achievements"]], ["hausdepp_01"])
         self.assertIn("de", first["achievements"][0]["name"])
         self.assertEqual(summary["players"]["b"], {"xp": 2, "round_xp": 2, "achievements": []})
