@@ -109,9 +109,11 @@ for (const preferred of ['de', 'en']) {
     await expect(page).toHaveURL(/\/hausdepp\/spiel\/[^/]+$/);
     await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'peeking');
     for (let inspected = 0; inspected < 5; inspected += 1) {
+      // The first dealer is random: a computer may cut instead of this account.
+      await expect.poll(async () => await page.locator('#hausdeppTable').getAttribute('data-phase') !== 'peeking'
+        || await page.locator('#hausdeppStock').isEnabled(), { timeout: 15000 }).toBe(true);
       const phase = await page.locator('#hausdeppTable').getAttribute('data-phase');
       if (phase !== 'peeking') break;
-      await expect(page.locator('#hausdeppStock')).toBeEnabled();
       await page.locator('#hausdeppStock').click();
       await expect.poll(() => page.locator('#hausdeppStock').isEnabled()
         .then(enabled => enabled || page.locator('#hausdeppTable').getAttribute('data-phase').then(value => value !== 'peeking'))).toBeTruthy();
