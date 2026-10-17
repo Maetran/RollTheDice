@@ -357,6 +357,8 @@ button.hd-pile:hover { background: #f3eadd18; }
 /* A flying face is the same paper as a table card: proportional corners, so
    it looks identical at every size and scale along its path. */
 .hd-deal-card.has-face { border: 0; border-radius: 6.7% / 4.2%; background: #f7f4eb; overflow: hidden; }
+/* Who received the publicly shown cut: readable, never taking input. */
+.hd-peek-caption { position: fixed; z-index: 66; margin: 0; padding: 6px 12px; transform: translateX(-50%); max-width: calc(100vw - 16px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--hd-ink, #1c1916); background: #f7f4eb; border: 1px solid var(--hd-gold, #b8913a); border-radius: 999px; box-shadow: 0 6px 16px #0c100d66; font-size: 14px; font-weight: 700; line-height: 18px; pointer-events: none; }
 .hd-shuffle-layer { position: fixed; z-index: 64; pointer-events: none; }
 .hd-shuffle-half { position: absolute; inset: 0; pointer-events: none; transform-origin: center; }
 .hd-shuffle-half .hd-card-back { position: absolute; inset: 0; width: 100%; height: 100%; border-width: 3px; pointer-events: none; }

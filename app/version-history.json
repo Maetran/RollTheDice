@@ -2231,5 +2231,12 @@
     "date": "2026-10-17",
     "bump": "minor",
     "summary": "Hausdepp: Karten fliegen beim Tippen sofort und flüssig auf den Stapel, Nachwerfen klappt zuverlässig, Auffüllen ist automatisch. / Hausdepp: cards fly to the pile smoothly the moment you tap, follow-ups work reliably, and refilling is automatic."
+  },
+  {
+    "version": "3.7.0",
+    "revision": "fe82c03f9221638386185de9a091df2f634c1e04",
+    "date": "2026-10-17",
+    "bump": "minor",
+    "summary": "Hausdepp: Klügere Computer kaufen wertvolle Pakete, spielen mal besser, mal schlechter, sind in den ersten 50 Runden gnädiger und geben neueren Spielern Tipps. / Hausdepp: smarter computers buy valuable piles, play sometimes better, sometimes worse, go easier during the first 50 rounds and give newer players tips."
   }
 ]

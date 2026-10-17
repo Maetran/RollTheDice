@@ -432,3 +432,61 @@ for (const [width, height] of [[390, 844], [320, 568], [844, 390], [768, 1024], 
     await expect(status).toHaveText('Du bist dran.');
   });
 }
+
+test.describe('public reveal of a successful cut', () => {
+  test.use({ reducedMotion: 'no-preference' });
+  for (const [width, height] of [[390, 844], [1440, 900]]) {
+    test(`everyone sees who receives the cut cards at ${width}x${height}`, async ({ page }) => {
+      const state = await fixture(page, 'de');
+      await page.setViewportSize({ width, height });
+      const remote = state.board._hausdepp.players.find(player => player.id === state.remote);
+      const peeking = structuredClone(state.board), p = peeking._hausdepp;
+      Object.assign(p, { version: p.version + 1, phase: 'peeking', hand: [], discard: [], playable_cards: [],
+        available_actions: [], peek: { player_id: state.remote, success: false, complete: false } });
+      p.players = p.players.map(player => ({ ...player, hand_count: 0 }));
+      state.send(peeking);
+      await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'peeking');
+      const dealt = structuredClone(peeking), d = dealt._hausdepp;
+      const others = d.players.filter(player => player.id !== state.remote);
+      Object.assign(d, { version: p.version + 1, phase: 'playing', hand: [...HAND], discard: ['acorns-7'],
+        current_player_id: state.self, available_actions: ['play', 'pickup', 'gamble'], playable_cards: [...HAND],
+        peek: { player_id: state.remote, success: true, complete: true, cards: ['hearts-A', 'bells-A', 'leaves-10'] },
+        last_event: { type: 'round_started' },
+        deal: { version: p.version + 1, starter: 'acorns-7',
+          sequence: [...others.map((player, index) => ({ player_id: player.id, hand_index: 0 })),
+            { player_id: state.remote, hand_index: 2 }] } });
+      d.players = d.players.map(player => ({ ...player, hand_count: 3 }));
+      state.send(dealt);
+      const reveal = page.locator('.hd-deal-card[data-motion-type="peek-reveal"]');
+      await expect(reveal).toHaveCount(3);
+      await expect(page.locator('.hd-peek-caption')).toHaveText(`${remote.name} bekommt Ass · Ass · 10`);
+      // Mid-reveal both faces are open in the table centre for everyone.
+      await page.evaluate(() => document.getAnimations().forEach(animation => { animation.currentTime = 1000; animation.pause(); }));
+      const shown = await reveal.evaluateAll(nodes => nodes.map(node => {
+        const rect = node.getBoundingClientRect();
+        return { face: Boolean(node.querySelector('svg')), opacity: Number(getComputedStyle(node).opacity),
+          x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+      }));
+      const pile = await page.locator('#hausdeppPile').boundingBox();
+      expect(shown.every(card => card.face && card.opacity > .99)).toBe(true);
+      expect(shown.every(card => Math.abs(card.y - (pile.y + pile.height / 2)) < 4)).toBe(true);
+      // Fully on screen and spread far enough that each face is distinguishable.
+      const viewport = page.viewportSize();
+      expect(shown.every(card => card.x > 0 && card.x < viewport.width)).toBe(true);
+      const xs = shown.map(card => card.x).sort((a, b) => a - b);
+      expect(Math.min(...xs.slice(1).map((x, index) => x - xs[index]))).toBeGreaterThan(30);
+      if (process.env.HAUSDEPP_REVEAL_SCREENSHOTS === '1') {
+        await page.screenshot({ path: test.info().outputPath(`peek-reveal-${width}x${height}.png`) });
+      }
+      // They end in the receiver's hand, and the deal waits for them.
+      const flights = await page.evaluate(() => [...document.querySelectorAll('.hd-deal-card')].map(node => ({
+        type: node.dataset.motionType, delay: Number(node.dataset.delay || 0) })));
+      expect(flights.filter(item => item.type === 'deal').every(item => item.delay >= 2200)).toBe(true);
+      const seat = await page.locator(`.hd-seat[data-player-id="${state.remote}"] [data-player-hand]`).boundingBox();
+      await page.evaluate(() => document.getAnimations().forEach(animation => { animation.currentTime = 2199; }));
+      const landed = await reveal.first().boundingBox();
+      expect(landed.x + landed.width / 2).toBeGreaterThanOrEqual(seat.x - 4);
+      expect(landed.x + landed.width / 2).toBeLessThanOrEqual(seat.x + seat.width + 4);
+    });
+  }
+});
