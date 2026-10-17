@@ -505,6 +505,84 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, wait
   }
 }
 
+const REVEAL_TRAVEL = 450;
+const REVEAL_HOLD = 1300;
+
+/**
+ * A successful cut is public: every seat sees the won cards rise face up from
+ * the stock to the table centre, read who receives them, and follow them into
+ * that hand before the ordinary deal begins. Returns the time it occupies.
+ */
+function revealPeek(state, { gameId, playerId, before, after, reducedMotion, peekCaption }) {
+  const cards = state.peek?.cards || [];
+  const receiver = state.peek?.player_id;
+  const stock = after.stock || before.stock;
+  const hand = after.hands.get(receiver);
+  // Between both live piles: neither is in use while the cut is shown.
+  const centre = after.pile?.rect && stock?.rect
+    ? { x: (after.pile.rect.x + stock.rect.x) / 2, y: after.pile.rect.y }
+    : after.pile?.rect || stock?.rect;
+  if (!cards.length || !stock?.rect || !hand?.rect || !centre) return 0;
+  const total = REVEAL_TRAVEL * 2 + REVEAL_HOLD;
+  const caption = document.createElement("p");
+  caption.className = "hd-peek-caption";
+  caption.setAttribute("role", "status");
+  caption.textContent = peekCaption?.(receiver, cards) || "";
+  document.body.append(caption);
+  const origin = stock.cards.at(-1)?.pose || { ...stock.rect, angle: 0 };
+  const width = origin.width, height = origin.height || width / CARD_RATIO;
+  // Every face stays readable, and the fan never leaves the screen.
+  const spread = cards.length > 1
+    ? Math.min(width * .7, Math.max(0, (innerWidth - 16 - width * 1.08) / (cards.length - 1))) : 0;
+  Object.assign(caption.style, { left: `${centre.x}px`, top: `${centre.y + height * .62}px` });
+  const register = (element, animation, reveal = null) => {
+    const flight = { animation, reveal, cue: null, element, sequenceStart: performance.now(),
+      startAt: performance.now(), endAt: performance.now() + total };
+    if (!flights.has(gameId)) flights.set(gameId, new Set());
+    flights.get(gameId).add(flight);
+    const remove = () => { element.remove(); flights.get(gameId)?.delete(flight); };
+    animation.finished.then(remove, remove);
+  };
+  const captionFrames = [{ opacity: 0 }, { opacity: 1, offset: .12 }, { opacity: 1, offset: .9 }, { opacity: 0 }];
+  if (reducedMotion || !document.body.animate) {
+    // Still say who received the cards, without any flight.
+    register(caption, caption.animate?.(captionFrames, { duration: 2600, fill: "both" })
+      || { finished: new Promise(resolve => setTimeout(resolve, 2600)) });
+    stationaryReceipt(hand.element);
+    return 0;
+  }
+  register(caption, caption.animate(captionFrames, { duration: total, fill: "both" }));
+  cards.forEach((card, index) => {
+    const offset = (index - (cards.length - 1) / 2) * spread;
+    const target = receiver === playerId ? hand.cards.find(item => item.card === card)
+      : hand.cards[index];
+    const landing = target?.pose || { ...hand.rect, width, height, angle: 0 };
+    const ghost = document.createElement("div");
+    ghost.className = "hd-deal-card has-face";
+    ghost.setAttribute("aria-hidden", "true");
+    Object.assign(ghost.dataset, { motionType: "peek-reveal", target: `hand:${receiver}` });
+    ghost.innerHTML = cardArt(card);
+    Object.assign(ghost.style, { left: `${origin.x - width / 2}px`, top: `${origin.y - height / 2}px`,
+      width: `${width}px`, height: `${height}px` });
+    document.body.append(ghost);
+    const at = (pose, angle = pose.angle || 0) =>
+      `translate(${pose.x - origin.x}px,${pose.y - origin.y}px) rotate(${angle}deg) scale(${pose.width / width},${(pose.height || pose.width / CARD_RATIO) / height})`;
+    const shown = { x: Math.min(Math.max(centre.x + offset, 8 + width * .54), innerWidth - 8 - width * .54),
+      y: centre.y, width: width * 1.08, height: height * 1.08 };
+    const rise = REVEAL_TRAVEL / total, leave = (REVEAL_TRAVEL + REVEAL_HOLD) / total;
+    const animation = ghost.animate([
+      { transform: at(origin), offset: 0, easing: "cubic-bezier(.22,.61,.36,1)" },
+      { transform: at(shown, (index - (cards.length - 1) / 2) * 4), offset: rise },
+      { transform: at(shown, (index - (cards.length - 1) / 2) * 4), offset: leave, easing: "cubic-bezier(.22,.61,.36,1)" },
+      { transform: at(landing), offset: 1 },
+    ], { duration: total, fill: "both", easing: "linear" });
+    // The real hand card appears exactly when its picture arrives.
+    const reveal = target?.element.animate?.([{ opacity: 0 }, { opacity: 0 }], { duration: total, fill: "none" });
+    register(ghost, animation, reveal);
+  });
+  return total;
+}
+
 function receivingGroup(type, source, actorId, count, state, previous, extra = {}) {
   const oldCount = previous.players.find(player => player.id === actorId)?.hand_count || 0;
   const receivedCards = state.hand.filter(card => !previous.hand.includes(card));
@@ -524,7 +602,7 @@ export function animateCardMotion(state, context, prepared) {
   if (own) cancelOwnPlay(context.gameId, [...own.keys()].filter(card => !state.hand?.includes(card)));
 }
 
-function explainAcceptedState(state, { gameId, playerId }, prepared) {
+function explainAcceptedState(state, { gameId, playerId, peekCaption }, prepared) {
   const previous = prepared?.previous;
   if (previous && state.version < previous.version) return;
   const current = copyState(state);
@@ -549,14 +627,10 @@ function explainAcceptedState(state, { gameId, playerId }, prepared) {
 
   if (previous.phase === "peeking" && state.phase === "playing" && state.deal?.version === state.version) {
     const peekCards = state.peek?.success ? state.peek.cards || [] : [];
-    if (peekCards.length) {
-      moveCards(receivingGroup("peek", "stock", state.peek.player_id, peekCards.length, receivedState, previous,
-        { cards: peekCards, receivedCards: state.peek.player_id === playerId ? peekCards : undefined,
-          face: state.peek.player_id === playerId, duration: 300, stagger: 28, staggerBudget: 90 }), options);
-    }
+    const revealed = peekCards.length ? revealPeek(state, { ...options, peekCaption }) : 0;
     const sequence = state.deal.sequence || [];
     const stagger = Math.min(32, 350 / Math.max(1, sequence.length - 1));
-    const baseDelay = peekCards.length ? 80 : 0;
+    const baseDelay = peekCards.length ? revealed + 80 : 0;
     const ownDeal = state.hand.filter(card => !peekCards.includes(card));
     let ownIndex = 0;
     for (const [index, item] of sequence.entries()) {

@@ -996,7 +996,11 @@ function renderState() {
     $("hausdeppPeek").open = true;
     if (s.phase !== "peeking") peekTimer = setTimeout(() => { if ($("hausdeppPeek")) $("hausdeppPeek").open = false; }, 4500);
   }
-  animateCardMotion(s, { gameId, playerId }, motion);
+  animateCardMotion(s, { gameId, playerId, peekCaption: (receiver, cards) => {
+    const names = cards.map(card => t(`rank${card.split("-")[1]}`)).join(" · ");
+    return receiver === playerId ? t("peekRevealSelf", { cards: names })
+      : t("peekRevealOther", { name: s.players.find(player => player.id === receiver)?.name || "…", cards: names });
+  } }, motion);
   presentShuffle(connected && !pending ? s : null, { gameId, roundNumber: tournament?.round_number || 1 });
   hausdeppBeginnerTour.update({
     eligible: !spectating && !!playerId && !snapshot._aborted && s.phase === "playing" && !mine?.finished,

@@ -311,7 +311,12 @@ Handkarte eine Rückseite sichtbar; die genaue Anzahl steht zusätzlich beim
 Namen. Kartenwerte und Farben gegnerischer Hände bleiben privat. Sehr grosse
 Hände werden dichter gefächert, ohne Karten wegzulassen.
 
-Geben und Pflichtziehen zeigen den Weg vom verdeckten Stapel zur Hand. Beim
+Erfolgreich abgehobene Karten fliegen für alle offen vom verdeckten Stapel in
+die Tischmitte. Dort steht gut eine Sekunde lang, wer sie bekommt („Liesl bekommt
+Ass · 10“), danach fliegen sie zu dieser Hand; erst dann wird ausgeteilt. Ein
+Computer wartet mit seinem ersten Zug, bis diese Vorführung vorbei ist. Bei
+reduzierter Bewegung bleibt nur die Beschriftung. Geben und Pflichtziehen zeigen
+den Weg vom verdeckten Stapel zur Hand. Beim
 Aufnehmen wandert das offene Paket zur Hand. Misslingt Zocken, geht zuerst die
 gezockte Karte vom verdeckten zum offenen Stapel und danach das ganze Paket zur
 Hand. Handkarten bewegen sich beim Legen zur Mitte. Diese Darstellung sperrt
