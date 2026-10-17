@@ -1,4 +1,4 @@
-"""Private Hausdepp XP, 100 one-time achievements and the 24-step ironic ladder.
+"""Private Hausdepp XP, 115 one-time achievements and the 24-step ironic ladder.
 
 Only validated, completed round membership can mint a credit. Database uniqueness
 makes retries and simultaneous account tabs harmless. This service never writes
