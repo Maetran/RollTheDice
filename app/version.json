@@ -1,10 +1,10 @@
 {
-  "version": "3.7.1",
-  "bump": "patch",
+  "version": "3.8.0",
+  "bump": "minor",
   "date": "2026-10-17",
-  "previous_revision": "fe82c03f9221638386185de9a091df2f634c1e04",
+  "previous_revision": "c4f7abc835f8613a150fbf6df94725a19c46fd43",
   "summary": {
-    "de": "Hausdepp: Erfolgreich abgehobene Karten fliegen für alle sichtbar mit Namen zum neuen Besitzer.",
-    "en": "Hausdepp: successfully cut cards fly visibly to their new owner, with a caption, for everyone."
+    "de": "Hausdepp: Ausführlicher Rundenabschluss, lebendige Tisch-Extras, Profilbild führt ins Profil, ruhiger Start nach App-Neustart.",
+    "en": "Hausdepp: a richer round summary, playful table extras, the avatar opens your profile and a calmer start after an app restart."
   }
 }

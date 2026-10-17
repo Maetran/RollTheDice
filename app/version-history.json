@@ -2238,5 +2238,12 @@
     "date": "2026-10-17",
     "bump": "minor",
     "summary": "Hausdepp: Klügere Computer kaufen wertvolle Pakete, spielen mal besser, mal schlechter, sind in den ersten 50 Runden gnädiger und geben neueren Spielern Tipps. / Hausdepp: smarter computers buy valuable piles, play sometimes better, sometimes worse, go easier during the first 50 rounds and give newer players tips."
+  },
+  {
+    "version": "3.7.1",
+    "revision": "c4f7abc835f8613a150fbf6df94725a19c46fd43",
+    "date": "2026-10-17",
+    "bump": "patch",
+    "summary": "Hausdepp: Erfolgreich abgehobene Karten fliegen für alle sichtbar mit Namen zum neuen Besitzer. / Hausdepp: successfully cut cards fly visibly to their new owner, with a caption, for everyone."
   }
 ]
