@@ -23,6 +23,33 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.7.0 — Hausdepp: klügere, gnädigere Computer und Tipps / smarter, kinder computers and tips — 2026-10-17
+
+**Deutsch:** Computer bewerten Karten jetzt nach ihrem Spielwert: 10 und Ass sind
+wertvoll, niedrige Karten Ballast, und jede zusätzliche Handkarte wiegt schwerer,
+je leerer der Nachziehstapel wird. Ein einzelnes Ass oder ein kleines Paket mit
+hohen Karten wird deshalb lieber gekauft, statt eine 10 darauf zu verbrennen. Ein
+Paket, das eigene Karten zu Drillingen oder vier Gleichen ergänzt, ist besonders
+attraktiv, und ohne legale Karte wird ein gutes Paket dem Zocken vorgezogen. Im
+Duell verhalten sie sich vorsichtiger. Die Computer spielen mal besser, mal
+schlechter: Jeder hat eine kleine Eigenheit, und gelegentlich unterläuft ihnen ein
+menschlicher Fehler. In den ersten 50 Runden des neuesten Menschen am Tisch spielen
+sie spürbar gnädiger und werden schrittweise stärker. Wer weniger als 50 Runden
+gespielt hat, sieht in der eigenen Zugzeile kurze Tipps wie „Ass aufnehmen, 10
+behalten“. Die Spielanleitung erklärt das Kaufen kleiner Pakete. Stilles Release.
+
+**English:** Computers now value cards by their worth: tens and aces are valuable,
+low cards are ballast, and every extra hand card weighs more as the stock empties.
+They therefore prefer to buy a single ace or a small pile of high cards rather than
+burn a ten on it. A pile that turns their cards into triples or four of a kind is
+especially attractive, and without a legal card a good pile beats a gamble.
+Heads-up, they play more cautiously. Computers play sometimes better, sometimes
+worse: each has a small personality, and now and then they make a human mistake.
+During the first 50 rounds of the newest person at the table they play noticeably
+gentler and grow stronger step by step. Players with fewer than 50 rounds see short
+tips in their own turn line, such as "take the ace, keep your ten". The rules
+explain buying small piles. Silent release.
+
 ## 3.6.0 — Hausdepp: flüssige Würfe, sicheres Nachwerfen / smooth throws, reliable follow-ups — 2026-10-17
 
 **Deutsch:** Eine getippte Handkarte fliegt sofort auf das offene Paket. Es gibt
