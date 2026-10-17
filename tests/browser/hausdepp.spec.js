@@ -170,7 +170,9 @@ async function completeActivePeek(page, traffic, { expectMotion } = {}) {
     await expect.poll(() => page.evaluate(() => window.hausdeppDealProbe.created)).toBeGreaterThan(0);
     // Later CPU plays can already be resting on the table. This helper checks
     // the initial deal; public play/burn cleanup has its own motion contracts.
-    await expect(page.locator('.hd-deal-card[data-motion-type="deal"]')).toHaveCount(0, { timeout: 1700 });
+    // A successful cut is first shown to everyone (about 2.2 s), then dealt.
+    const revealed = traffic.state.peek.success ? 2300 : 0;
+    await expect(page.locator('.hd-deal-card[data-motion-type="deal"]')).toHaveCount(0, { timeout: 1700 + revealed });
   }
 }
 
@@ -559,7 +561,8 @@ test('active bottom peek stays private, requires a designated player tap, and de
       ...window.hausdeppDealProbe, elapsed: performance.now() - window.hausdeppDealProbe.firstAt,
     }));
     expect(motion.created).toBe(traffic.state.deal.sequence.length);
-    expect(motion.elapsed).toBeLessThan(1500);
+    // The deal stays short; a successful cut is shown to everyone first.
+    expect(motion.elapsed).toBeLessThan(1500 + (traffic.state.peek.success ? 2300 : 0));
     await page.reload();
     await expect(page.locator('#hausdeppHand .hausdepp-card')).not.toHaveCount(0);
     await expect(page.locator('.hd-deal-card[data-motion-type="deal"]')).toHaveCount(0);
@@ -1011,14 +1014,25 @@ test('real pickup and labelled refill move native-proportion cards between the a
   const traffic = watchGame(page);
   const room = await createCpuTable(page, traffic);
   const viewer = traffic.state.viewer_id;
+  // Real computers may play or buy the packet first: wait until this account
+  // may pick up a non-empty packet, then measure exactly the accepted pickup.
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    await expect.poll(() => traffic.state?.current_player_id === viewer, { timeout: 15000 }).toBe(true);
+    if (traffic.state.available_actions.includes('pickup') && traffic.state.discard.length) break;
+    await playLegalHandCard(page, traffic);
+  }
+  expect(traffic.state.available_actions).toContain('pickup');
   // Measure the pickup itself, not a wait behind a computer card still landing.
   await expect(page.locator('.hd-deal-card')).toHaveCount(0, { timeout: 5000 });
   await page.evaluate(() => { window.hausdeppMotionProbe = []; window.hausdeppGhostProbe = []; });
-  const pickupCount = traffic.state.discard.length;
   const beforePickup = traffic.state.version;
-  await expect(page.locator('#hausdeppPile')).toBeEnabled();
   await page.locator('#hausdeppPile').click();
-  await expect.poll(() => traffic.state.version).toBeGreaterThan(beforePickup);
+  await expect.poll(() => traffic.messages.some(message => message.scoreboard?._hausdepp?.version > beforePickup
+    && message.scoreboard._hausdepp.last_event?.type === 'pickup'
+    && message.scoreboard._hausdepp.last_event.player_id === viewer)).toBe(true);
+  const pickupCount = traffic.messages.map(message => message.scoreboard?._hausdepp).find(state =>
+    state?.version > beforePickup && state.last_event?.type === 'pickup' && state.last_event.player_id === viewer)
+    .last_event.picked_up_count;
   const pickup = await expectMotionTransfer(page, { type: 'pickup', source: 'pile', target: `hand:${viewer}`, count: pickupCount });
   expect(pickup.reducedMotion).toBe(false);
   expect(Math.abs(pickup.to.x - pickup.from.x) + Math.abs(pickup.to.y - pickup.from.y)).toBeGreaterThan(20);
