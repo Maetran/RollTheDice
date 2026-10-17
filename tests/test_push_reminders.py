@@ -143,6 +143,16 @@ class DailyPushTestCase(unittest.TestCase):
         self.assertIsNone(claim_daily_reminder(self.player.id, self.now))
         self.assertIsNotNone(claim_daily_reminder(self.player.id, self.now + timedelta(days=1)))
 
+    def test_a_hausdepp_device_gets_its_own_reminder(self) -> None:
+        self.subscribe("hausdepp")
+        self.enable_daily()
+        reminder = claim_daily_reminder(self.player.id, self.now)
+        self.assertEqual(reminder.game_type, "hausdepp")
+        payload = reminder_payload(reminder)
+        self.assertEqual(payload["url"], "/hausdepp")
+        self.assertIn("hausdepp-icon", payload["icon"])
+        self.assertIn(payload["body"], {pair[0] for pair in REMINDER_COPY["hausdepp"]})
+
     def test_both_apps_alternate_without_two_reminders_and_all_copy_is_bilingual(self) -> None:
         self.subscribe("zdwa")
         self.subscribe("zilch", "two")

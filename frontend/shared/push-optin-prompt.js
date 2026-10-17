@@ -42,7 +42,7 @@ export function initializePushOptInPrompt({ context = "zdwa" } = {}) {
 
   const inviteMessage = status => status.subscribed
     ? t("Push ist auf diesem Gerät schon bereit. Wähle jetzt selbst aus, welche Hinweise zu dir passen: Mitspieler-Rufe für freie Plätze, tägliche Spielideen oder Versionshinweise. Mit deiner Spielerauswahl kannst du Mitspieler-Rufe auf bekannte Leute begrenzen.")
-    : t("Wenn in ZDWA oder Zilch ein Platz frei ist, bist du mit einem Tipp dabei. Erlaube Push auf diesem Gerät und wähle danach selbst: Mitspieler-Rufe, tägliche Spielideen oder Versionshinweise. Mit deiner Spielerauswahl kannst du Mitspieler-Rufe auf bekannte Leute begrenzen.");
+    : t("Wenn in einem unserer Spiele ein Platz frei ist, bist du mit einem Tipp dabei. Erlaube Push auf diesem Gerät und wähle danach selbst: Mitspieler-Rufe, tägliche Spielideen oder Versionshinweise. Mit deiner Spielerauswahl kannst du Mitspieler-Rufe auf bekannte Leute begrenzen.");
 
   async function showPrompt(status, userId) {
     if (state.promptedUserId === userId) return;

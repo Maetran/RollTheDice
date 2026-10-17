@@ -1406,8 +1406,8 @@ profiles, lobby chat, game rooms and statistics lightweight while preventing
 uploaded image markup, script payloads and metadata from being served back.
 
 **Game-start notices** use the existing private, account-bound player selection:
-when a selected account starts a public, watchable ZDWA or Zilch game, connected
-users who enabled the account setting see a short live banner in either lobby.
+when a selected account starts a public, watchable ZDWA, Zilch or Hausdepp game,
+connected users who enabled the account setting see a short live banner in the lobbies.
 It links to spectator mode unless the recipient is already in a game. These
 notices are neither push notifications nor persisted history; recipient consent,
 selection membership, room access and account status are rechecked at delivery.
@@ -1432,12 +1432,12 @@ and release notes remain separate choices.
 | | Player invitations | Daily play reminders |
 | --- | --- | --- |
 | Trigger | A seated player clicks **Notify players** in a public waiting room | The server, only after a separate opt-in |
-| Eligibility | Room still has an open seat; recipient opted in and is not already seated | Account has played neither ZDWA nor Zilch today |
+| Eligibility | Room still has an open seat; recipient opted in and is not already seated | Account has played none of the games today |
 | Timing | Any time, including after the recipient has already played | A new random time between 17:00 and 21:00, Europe/Zurich |
 | Limits | One attempt per sender per minute across both games; one dispatch per room per ten minutes | At most one reminder attempt per account per Swiss calendar day |
 | Click destination | The specific room, with normal join/rejoin checks | The selected game's lobby |
 
-A valid human roll or scoring action counts as playing; finishing a game is not
+A valid human move (a roll, a scoring action or a played card) counts as playing; finishing a game is not
 required. Login, chat, spectating and CPU actions do not count. Existing
 completed results are also checked. Activity and opt-out are checked again
 immediately before dispatch.
@@ -1445,9 +1445,9 @@ immediately before dispatch.
 Reminder schedules are stable across restarts. There is no overnight catch-up,
 and durable daily claims prevent repeat attempts after failures or preference
 changes. Each game has **32 German/English variants**: pub-table banter for
-Zilch, cheerful challenges for ZDWA. The rotation advances with reminder
-attempts, so skipped days do not skip texts. If both products are registered,
-they alternate; the chosen game's subscribed devices receive the same message.
+Zilch, cheerful challenges for ZDWA, card-table humour for Hausdepp. The rotation
+advances with reminder attempts, so skipped days do not skip texts. If several
+products are registered, they alternate; the chosen game's subscribed devices receive the same message.
 
 Invitation senders get brief in-app feedback, not a push themselves, and never
 see recipient identities. Private, full, started and Solo rooms do not send
