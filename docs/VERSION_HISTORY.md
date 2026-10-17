@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.7.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.7.1**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.7.0 | 2026-10-17 | minor | Hausdepp: Klügere Computer kaufen wertvolle Pakete, spielen mal besser, mal schlechter, sind in den ersten 50 Runden gnädiger und geben neueren Spielern Tipps. / Hausdepp: smarter computers buy valuable piles, play sometimes better, sometimes worse, go easier during the first 50 rounds and give newer players tips. | [fe82c03](https://github.com/Maetran/RollTheDice/commit/fe82c03f9221638386185de9a091df2f634c1e04) |
 | 3.6.0 | 2026-10-17 | minor | Hausdepp: Karten fliegen beim Tippen sofort und flüssig auf den Stapel, Nachwerfen klappt zuverlässig, Auffüllen ist automatisch. / Hausdepp: cards fly to the pile smoothly the moment you tap, follow-ups work reliably, and refilling is automatic. | [4d1fe4c](https://github.com/Maetran/RollTheDice/commit/4d1fe4c038eafe94535326cd833ba53bdc3f9eac) |
 | 3.5.0 | 2026-10-17 | minor | Hausdepp: Die Rangliste zeigt die neuesten erreichten Erfolge aller Konten. / Hausdepp: the leaderboard shows the latest achievements earned by every account. | [149ab51](https://github.com/Maetran/RollTheDice/commit/149ab51dfa11c8cb036b7f556381986b3789c583) |
 | 3.4.3 | 2026-10-17 | patch | Hausdepp: konstante Kartengrösse auf dem offenen Paket während der Spielanimationen. / Hausdepp: consistent card size on the open pile throughout play animations. | [96529b4](https://github.com/Maetran/RollTheDice/commit/96529b47949fb9f78eaf0957c888d2e4e23c6d03) |
