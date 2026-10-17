@@ -3,15 +3,15 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: ausgeloster Geber, sichtbare Karten vom Abheben, Auto-Auffüllen, klarere Knöpfe und ein lebendiger Tisch.",
-  "summary_en": "Hausdepp: a random dealer, visible peeked cards, auto refill, clearer controls and a livelier table.",
+  "summary_de": "Neu: Auto-Nachziehen auf drei Karten – in Spielhilfe oder Konto einschalten. Dazu ausgeloster Geber, klarere Knöpfe, lebendiger Tisch.",
+  "summary_en": "New: auto refill to three cards – switch it on in the game help or account. Plus a random dealer, clearer controls and a livelier table.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp: fairer abheben, klarer spielen",
+      "title": "Hausdepp: Auto-Nachziehen ist da",
       "changes": [
+        "Neu: Automatisch auf drei nachziehen – in der Spielhilfe oder den Kontoeinstellungen einschalten.",
         "Der erste Geber wird ausgelost, auch gegen Computer. Im Turnier gibt danach reihum der Nächste.",
         "Karten, die du beim Abheben gesehen hast, liegen jetzt gut sichtbar neben dem Stapel, solange sie noch drin sind.",
-        "Neu: Automatisch auf drei auffüllen – in der Spielhilfe oder den Kontoeinstellungen einschalten.",
         "Mehrfachauswahl: Ein Tipp wählt alle gleichen Karten, ein weiterer nimmt einzelne heraus. Am Computer stehen „Mehrere Karten auswählen“ und „n Karten legen“ direkt unter deiner Hand.",
         "Zocken, Paket und Aus dem Spiel sind gleich beschriftet, mit Anzahl darunter. Am Paket erklärt ein Hinweis das Anschauen; langes Drücken markiert keinen Text mehr.",
         "Mehr auf dem Tisch: Kronkorken, Pralinen, Würfel, Bierdeckel und mehr. Antippen lässt sie rollen, drehen oder hüpfen, und du kannst sie ein Stück verschieben.",
@@ -20,11 +20,11 @@
       ]
     },
     "en": {
-      "title": "Hausdepp: fairer cuts, clearer play",
+      "title": "Hausdepp: auto refill is here",
       "changes": [
+        "New: refill to three automatically – switch it on in the game help or account settings.",
         "The first dealer is drawn at random, also against computers. In tournaments the deal then passes clockwise.",
         "Cards you saw while lifting the deck now lie clearly beside the stock while they remain in it.",
-        "New: refill to three automatically – switch it on in the game help or account settings.",
         "Multi-select: one tap picks every matching card, another takes single cards out. On computers, “Select multiple cards” and “Play n cards” sit right below your hand.",
         "Stock, pile and out-of-play cards share one label style with the count below. A hint on the pile explains how to look through it; holding no longer selects text.",
         "More on the table: bottle caps, chocolates, a die, a beer mat and more. Tap them to roll, spin or hop, and push them around a little.",
