@@ -4,7 +4,7 @@ const fs = require('node:fs');
 
 test.use({ serviceWorkers: 'allow', viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
 
-const artwork = url => /\/static\/hausdepp\/(?:cards-atlas\.webp|card-back\.png)(?:\?|$)/.test(url);
+const artwork = url => /\/static\/hausdepp\/(?:cards-atlas\.webp|card-back\.webp)(?:\?|$)/.test(url);
 
 test.beforeAll(({ baseURL }) => {
   expect(['8000', '8001', '8051'], 'Only a disposable test server may run this regression').not.toContain(new URL(baseURL).port);
@@ -59,7 +59,7 @@ test('real worker-controlled warm reloads keep lobby card motives painted', asyn
     expect(responses.every(response => response.ok() && !response.fromServiceWorker()),
       'Public pictures use native image/HTTP caching instead of a worker fetch wrapper').toBe(true);
     const warmImages = await page.evaluate(() => performance.getEntriesByType('resource')
-      .filter(entry => /\/static\/hausdepp\/(?:cards-atlas\.webp|card-back\.png)\?v=/.test(entry.name))
+      .filter(entry => /\/static\/hausdepp\/(?:cards-atlas\.webp|card-back\.webp)\?v=/.test(entry.name))
       .map(entry => ({ url: entry.name, transfer: entry.transferSize })));
     expect(new Set(warmImages.map(image => image.url)).size).toBe(2);
     if (browserName === 'chromium') {

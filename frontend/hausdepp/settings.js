@@ -28,7 +28,7 @@ export function renderAccountSettings(root, auth, { onUserChanged } = {}) {
     ])}
     ${group('profil', 'Profil & Sprache', [
       item('Benutzername ändern', 'So sehen dich deine Mitspieler.', '<div data-username-settings></div>'),
-      item('Dein Profilbild', 'Erscheint an deinem Platz am Tisch.', '<div data-avatar-upload></div>'),
+      item('Dein Profilbild', 'Erscheint an deinem Platz am Tisch.', '<div data-avatar-upload></div>', 'id="profilbild"'),
       item('Sprache', 'Deutsch oder Englisch, auf allen Geräten.', `<p>${copy('Diese Einstellung gilt für ZDWA, Zilch und Hausdepp auf allen Geräten.')}</p><form id="hausdeppLanguageForm" class="form-stack"><label>${copy('Sprache')}<select name="language"><option value="de">Deutsch</option><option value="en">English</option></select></label><button class="primary" type="submit">${copy('Sprache speichern')}</button><p data-message role="status"></p></form>`),
     ])}
     ${group('spiel', 'Spiel', [
@@ -48,6 +48,8 @@ export function renderAccountSettings(root, auth, { onUserChanged } = {}) {
     const target = location.hash.length > 1 ? root.querySelector(`[id="${CSS.escape(decodeURIComponent(location.hash.slice(1)))}"]`) : null;
     const details = target?.closest('details.hd-settings-item') || target?.querySelector?.('details.hd-settings-item');
     if (details) details.open = true;
+    // The page renders after the browser's own jump, so bring the row into view.
+    (details || target)?.scrollIntoView?.({ block: 'start' });
   };
   openTarget();
   if (hashListener) window.removeEventListener('hashchange', hashListener);

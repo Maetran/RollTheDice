@@ -490,3 +490,68 @@ test.describe('public reveal of a successful cut', () => {
     });
   }
 });
+
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  test(`round result lists places, XP and achievements at ${width}x${height}`, async ({ page }) => {
+    const state = await fixture(page, 'de');
+    await page.setViewportSize({ width, height });
+    const done = structuredClone(state.board), s = done._hausdepp;
+    const ids = s.players.map(player => player.id);
+    const cpus = s.players.filter(player => player.is_cpu).map(player => player.id);
+    const loser = cpus[0];
+    Object.assign(done, { _finished: true, _hausdepp_round_summary: { round_id: 'r1', players: { [state.self]: {
+      xp: 37, round_xp: 2, achievements: [
+        { id: 'hausdepp_07', points: 25, name: { de: 'Saubere Hand', en: 'Clean hand' } },
+        { id: 'hausdepp_01', points: 10, name: { de: 'Erste Runde', en: 'First round' } }] } } } });
+    Object.assign(s, { version: s.version + 1, phase: 'finished', loser_id: loser, current_player_id: null,
+      finished_order: [state.self, ...ids.filter(id => id !== state.self && id !== loser)],
+      available_actions: [], playable_cards: [], hand: [] });
+    state.send(done);
+    const result = page.locator('#hausdeppResult');
+    await expect(result).toBeVisible();
+    const places = result.locator('.hd-result-place');
+    await expect(places).toHaveCount(ids.length);
+    await expect(places.first()).toContainText('1. Platz');
+    await expect(places.first()).toContainText('+37 EP');
+    await expect(places.first().locator('.hd-result-awards li')).toHaveCount(2);
+    await expect(places.last()).toHaveClass(/is-hausdepp/);
+    await expect(places.last()).toContainText('Hausdepp');
+    await expect(places.nth(1)).toContainText('Computer');
+    if (process.env.HAUSDEPP_RESULT_SCREENSHOTS === '1') {
+      await page.screenshot({ path: test.info().outputPath(`round-result-${width}x${height}.png`), fullPage: false });
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+}
+
+test('the header avatar opens the own profile picture setting, not the account overview', async ({ page }) => {
+  await fixture(page, 'de');
+  const avatar = page.locator('.hd-profile-button');
+  await expect(avatar).toHaveAttribute('href', '/hausdepp/konto/einstellungen#profilbild');
+  await expect(avatar).toHaveAccessibleName(/Profil bearbeiten/);
+  await avatar.click();
+  await expect(page).toHaveURL(/\/hausdepp\/konto\/einstellungen#profilbild$/);
+  const row = page.locator('details#profilbild');
+  await expect(row).toHaveJSProperty('open', true);
+  await expect(row.locator('[data-avatar-upload]')).toBeInViewport();
+});
+
+test('equal ranks on top of the open pile fan out so their count reads at a glance', async ({ page }) => {
+  const state = await fixture(page, 'de');
+  const next = structuredClone(state.board), s = next._hausdepp;
+  Object.assign(s, { version: s.version + 1, discard: ['leaves-6', 'hearts-U', 'bells-U', 'acorns-U'] });
+  state.send(next);
+  const faces = page.locator('#hausdeppPile .hd-pile-face[data-run-step]');
+  await expect(faces).toHaveCount(3);
+  await expect(page.locator('#hausdeppPile')).toHaveAttribute('aria-label', /3 gleiche oben/);
+  const lefts = await faces.evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().left));
+  // Older equal cards step out to the left far enough to show their corner.
+  expect(lefts[0]).toBeLessThan(lefts[1] - 10);
+  expect(lefts[1]).toBeLessThan(lefts[2] - 10);
+  if (process.env.HAUSDEPP_PILE_SCREENSHOTS === '1') {
+    const box = await page.locator('.hd-centre').boundingBox();
+    await page.screenshot({ path: test.info().outputPath('pile-run.png'), clip: box });
+  }
+  s.version += 1; s.discard = ['leaves-6', 'hearts-U']; state.send(next);
+  await expect(page.locator('#hausdeppPile .hd-pile-face[data-run-step]')).toHaveCount(0);
+});

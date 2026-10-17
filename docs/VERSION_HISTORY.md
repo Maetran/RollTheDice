@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.7.1**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.8.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.7.1 | 2026-10-17 | patch | Hausdepp: Erfolgreich abgehobene Karten fliegen für alle sichtbar mit Namen zum neuen Besitzer. / Hausdepp: successfully cut cards fly visibly to their new owner, with a caption, for everyone. | [c4f7abc](https://github.com/Maetran/RollTheDice/commit/c4f7abc835f8613a150fbf6df94725a19c46fd43) |
 | 3.7.0 | 2026-10-17 | minor | Hausdepp: Klügere Computer kaufen wertvolle Pakete, spielen mal besser, mal schlechter, sind in den ersten 50 Runden gnädiger und geben neueren Spielern Tipps. / Hausdepp: smarter computers buy valuable piles, play sometimes better, sometimes worse, go easier during the first 50 rounds and give newer players tips. | [fe82c03](https://github.com/Maetran/RollTheDice/commit/fe82c03f9221638386185de9a091df2f634c1e04) |
 | 3.6.0 | 2026-10-17 | minor | Hausdepp: Karten fliegen beim Tippen sofort und flüssig auf den Stapel, Nachwerfen klappt zuverlässig, Auffüllen ist automatisch. / Hausdepp: cards fly to the pile smoothly the moment you tap, follow-ups work reliably, and refilling is automatic. | [4d1fe4c](https://github.com/Maetran/RollTheDice/commit/4d1fe4c038eafe94535326cd833ba53bdc3f9eac) |
 | 3.5.0 | 2026-10-17 | minor | Hausdepp: Die Rangliste zeigt die neuesten erreichten Erfolge aller Konten. / Hausdepp: the leaderboard shows the latest achievements earned by every account. | [149ab51](https://github.com/Maetran/RollTheDice/commit/149ab51dfa11c8cb036b7f556381986b3789c583) |

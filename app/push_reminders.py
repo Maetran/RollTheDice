@@ -14,7 +14,7 @@ from sqlalchemy import delete, or_, select, update
 from .database import session_scope
 from .game_access import can_account_access_zilch
 from .game_activity import not_played_on
-from .game_types import ZILCH_GAME_TYPE
+from .game_types import HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE
 from .models import User, WebPushSubscription
 from .product_hosts import site_origin, zilch_url
 from .push_reminder_copy import REMINDER_COPY
@@ -121,15 +121,17 @@ def claim_daily_reminder(user_id: int, now: datetime) -> DailyReminder | None:
 
 def reminder_payload(reminder: DailyReminder) -> dict[str, object]:
     zilch = reminder.game_type == ZILCH_GAME_TYPE
+    hausdepp = reminder.game_type == HAUSDEPP_GAME_TYPE
     english = reminder.language == "en"
-    title = ("Ready for Zilch?" if zilch else "Ready for ZDWA?") if english else (
-        "Heute schon gezilcht?" if zilch else "Heute schon die Wand angezockt?"
+    title = ("Up for Hausdepp?" if hausdepp else "Ready for Zilch?" if zilch else "Ready for ZDWA?") if english else (
+        "Eine Runde Hausdepp?" if hausdepp else "Heute schon gezilcht?" if zilch else "Heute schon die Wand angezockt?"
     )
-    icon = "/static/icons/zilch-icon-192.png" if zilch else "/static/icons/icon-192.png"
+    icon = ("/static/icons/hausdepp-icon-192-v2.png" if hausdepp else
+            "/static/icons/zilch-icon-192.png" if zilch else "/static/icons/icon-192.png")
     return {
         "title": title,
         "body": REMINDER_COPY[reminder.game_type][reminder.variant][1 if english else 0],
-        "url": zilch_url("/") if zilch else f"{site_origin()}/",
+        "url": "/hausdepp" if hausdepp else zilch_url("/") if zilch else f"{site_origin()}/",
         "tag": f"daily-reminder-{reminder.day.isoformat()}",
         "icon": icon,
         "badge": icon,

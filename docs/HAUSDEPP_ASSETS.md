@@ -205,6 +205,11 @@ from the JPEG.
 ## Rückseite: generiertes Asset / Back: generated asset
 
 - Datei / File: `app/static/hausdepp/card-back.png`
+- Ausgeliefert / Served: `app/static/hausdepp/card-back.webp` (600 × 600, WebP 85, rund 170 KB statt 2,5 MB),
+  aus der PNG-Quelle verkleinert, damit ein kalter App-Start nicht minutenlang auf die Rückseite wartet. /
+  downscaled from the PNG source so a cold app start no longer waits minutes for the back. Die Kartentafel
+  wird mit WebP-Qualität 80 erzeugt (rund 2,2 MB). Beide Bilder werden auf Spiel- und Lobbyseite vorab geladen. /
+  The face atlas is encoded at WebP quality 80 (about 2.2 MB); both images are preloaded on the table and lobby pages.
 - Abmessungen / Dimensions: **1254 × 1254 Pixel**, deckende Textur / opaque texture.
 - Werkzeug / Tool: natives `image_gen.imagegen`, eingebauter Modus / native built-in mode.
 - Referenz / Reference: zweites vom Owner angehängtes Foto / the owner's second attached photograph.

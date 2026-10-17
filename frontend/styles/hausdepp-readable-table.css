@@ -16,7 +16,7 @@ html[data-game="hausdepp"] body.hd-playing #hausdeppStock.is-empty { border: 1px
 }
 .hd-stock-card {
   border: 1px solid #b6a38b;
-  background: #f3eadd url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center / 100% 100%;
+  background: #f3eadd url("/static/hausdepp/card-back.webp?v=ASSET_VERSION") center / 100% 100%;
   box-shadow: 0 1px 1px #180d0866;
 }
 .hd-stock-card:last-child { border: 4px solid #f3eadd; box-shadow: 0 3px 7px #180d0870; }
@@ -24,6 +24,8 @@ html[data-game="hausdepp"] body.hd-playing #hausdeppStock.is-empty { border: 1px
 html[data-game="hausdepp"] .hd-table .hd-centre .hd-pile-face > .hausdepp-card { width: 100%; height: 100%; transform: none; }
 .hd-pile-face:nth-last-child(3) { rotate: -3deg; }
 .hd-pile-face:nth-last-child(2) { rotate: 2deg; }
+/* Equal ranks on top fan up and to the left: each rank corner stays visible. */
+.hd-pile-face[data-run-step] { translate: calc(var(--run-step) * -12%) calc(var(--run-step) * -8%); rotate: calc(var(--run-step) * -7deg); }
 html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) > :is(.hd-card-back, .hd-pile) { margin-bottom: 24px; }
 html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(#hausdeppStockCount, #hausdeppPileCount) { color: #f0ddbd; font-weight: 650; }
 
@@ -94,3 +96,9 @@ html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom
 html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-fan .hausdepp-card:nth-child(2) { transform: translate(-6%, 19%) rotate(-4deg); }
 html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-fan .hausdepp-card:nth-child(3) { transform: translate(-12%, 38%) rotate(-8deg); }
 html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; padding: 0; border: 0; }
+
+/* Wide tables show the round result as a centred card over the table instead
+   of below the fold; the side column with chat and help stays usable. */
+@media (min-width: 1100px) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-result:not([hidden]) { position: fixed; z-index: 40; top: 92px; left: calc((100vw - 330px) / 2); transform: translateX(-50%); width: min(720px, calc(100vw - 400px)); max-height: calc(100vh - 116px); margin: 0; overflow: auto; overscroll-behavior: contain; box-shadow: 0 24px 60px #0c100d99; }
+}

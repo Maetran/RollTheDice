@@ -10,7 +10,7 @@ from app import main
 class HausdeppAssetCacheTests(unittest.IsolatedAsyncioTestCase):
     async def test_versioned_artwork_and_icons_are_public_immutable_but_private_documents_never_cache(self):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=main.app), base_url="https://hausdepp.zockdiewandan.online") as client:
-            for path in ("hausdepp/cards-atlas.webp", "hausdepp/card-back.png",
+            for path in ("hausdepp/cards-atlas.webp", "hausdepp/card-back.webp",
                          "icons/hausdepp-icon-192-v2.png", "icons/hausdepp-icon-512-v2.png"):
                 with self.subTest(path=path):
                     asset = await client.get(f"/static/{path}?v={main.STATIC_ASSET_VERSION}")

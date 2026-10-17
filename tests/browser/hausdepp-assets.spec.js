@@ -12,7 +12,7 @@ async function signIn(page) {
 }
 
 function artwork(url) {
-  return /\/static\/hausdepp\/(?:cards-atlas\.webp|card-back\.png)/.test(url);
+  return /\/static\/hausdepp\/(?:cards-atlas\.webp|card-back\.webp)/.test(url);
 }
 
 test.beforeAll(({ baseURL }) => expect(new URL(baseURL).port).not.toBe('8000'));

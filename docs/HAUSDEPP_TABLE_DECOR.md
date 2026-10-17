@@ -69,6 +69,22 @@ auf Karten, Stapeln, Namen oder Knöpfen bleiben sie nie liegen, sondern gleiten
 zurück. Im Ruhezustand steigen Bläschen im Bier, das Windlicht schimmert und
 Folie und Dose glänzen gelegentlich. Reduzierte Bewegung schaltet all das ab.
 
+### Mitspielen mit dem Tisch (3.8.0)
+
+- **Münze** (gezeichnet, ohne Bilddatei): Antippen wirft sie; sie dreht sich in der
+  Luft und landet zufällig auf Kopf (Krone) oder Zahl (1), mit kurzer Beschriftung.
+- **Würfel** (gross und klein): rollen und zeigen ein Zufallsergebnis 1–6.
+- **Bier, Tee, Limonade**: Antippen ist ein Schluck; nach vier Schlucken ist das
+  Glas leer (blasser), ein weiterer Tipp schenkt nach. Drei schnelle Tipps
+  verschütten etwas (Spritzer und Pfütze), sechs werfen das Glas um; nach kurzer
+  Pause stellt ein bewusster Tipp es leer wieder auf. Unberührtes Bier verliert
+  nach etwa zweieinhalb Minuten seine Schaumkrone.
+- **Nüsse, Chips, Flips, Süsses, Brezel, Pralinen, Jause**: werden Biss für Biss
+  verputzt (lose Stücke mit einem Biss); danach bleiben bis zur nächsten Runde nur
+  Krümel liegen.
+- Alles bleibt Dekoration: kein Spielbefehl, keine Netzwerkanfrage, kein Speichern.
+  Bei reduzierter Bewegung bleiben die Gegenstände still und deaktiviert.
+
 ## English
 
 The owner requested richer tablet/desktop table space with varying drinks,
@@ -112,6 +128,15 @@ spin, spin, roll, hop with crumbs, liquid ripple, candle flare) or a short
 squish when space is tight, and can be pushed with mouse or finger; it glides
 back instead of resting on cards, piles, names or controls. Idle bubbles,
 candle halo and foil glints stay subtle. Reduced motion turns all of it off.
+
+### Playing with the table (3.8.0)
+
+A drawn coin lands on heads or tails, dice show a random 1–6, drinks are sipped,
+emptied and topped up, spilled after three quick taps and knocked over after six
+(stand them up again after a short pause), an untouched beer goes flat, and snacks
+are eaten bite by bite until only crumbs remain for the round. Everything stays
+presentation only: no game command, request or storage; reduced motion keeps the
+objects still and disabled.
 
 ## Original generation prompt
 

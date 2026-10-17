@@ -34,7 +34,7 @@ class HausdeppAccountTests(unittest.TestCase):
         upgrade_database(main.BASE)
         self.user = create_user("Hauskonto", "test-password-123", must_change_password=False)
         self.other = create_user("Anderkonto", "test-password-123", must_change_password=False)
-        self.at = datetime(2026, 10, 16, 10, 30, tzinfo=timezone.utc)
+        self.at = datetime(2026, 10, 16, 18, 30, tzinfo=timezone.utc)  # no play-time achievement
 
     def tearDown(self):
         self.env.stop()
@@ -80,7 +80,7 @@ class HausdeppAccountTests(unittest.TestCase):
         self.assertTrue(account["scoring"]["available"])
         self.assertEqual(account["scoring"]["round_points"], 526)
         self.assertTrue(account["achievements"]["available"])
-        self.assertEqual(len(account["achievements"]["items"]), 100)
+        self.assertEqual(len(account["achievements"]["items"]), 115)
         self.assertEqual(len(account["ranks"]), 24)
 
     def test_timestamp_boundaries_reject_invalid_cursors_and_skip_corrupt_results(self):

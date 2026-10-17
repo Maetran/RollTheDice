@@ -74,6 +74,13 @@ function cardMarkup(card, { interactive = false, playable = false, committed = f
 
 // A real paper edge per remaining card makes the height change with the count.
 // Stock layers carry backs only; the packet adds only its already-public faces.
+function topRun(discard) {
+  const rank = discard.at(-1)?.split("-")[1];
+  let run = 0;
+  for (let index = discard.length - 1; index >= 0 && discard[index].split("-")[1] === rank; index -= 1) run += 1;
+  return run;
+}
+
 function renderStacks(state) {
   const stock = $("hausdeppStock"), pile = $("hausdeppPile");
   const count = Math.max(0, Math.min(36, Number(state.deck_count) || 0));
@@ -84,9 +91,15 @@ function renderStacks(state) {
   }
   pile.dataset.cardCount = String(state.discard.length);
   const edges = Math.max(0, state.discard.length - 3);
+  // Equal ranks on top fan out slightly, so their count reads at a glance.
+  const run = topRun(state.discard);
+  pile.dataset.run = String(run);
   pile.innerHTML = state.discard.length
     ? Array.from({ length: edges }, (_, index) => `<span class="hd-pile-edge" aria-hidden="true" style="--stack-layer:${state.discard.length - index - 1}"></span>`).join("") +
-      state.discard.slice(-3).map((card, index, cards) => `<span class="hd-pile-face" style="--stack-layer:${cards.length - index - 1}">${cardMarkup(card)}</span>`).join("")
+      state.discard.slice(-3).map((card, index, cards) => {
+        const depth = cards.length - index - 1;
+        return `<span class="hd-pile-face"${run > 1 && depth < run ? ` data-run-step="${depth}"` : ""} style="--stack-layer:${depth};--run-step:${depth}">${cardMarkup(card)}</span>`;
+      }).join("")
     : `<span class="hd-empty-pile">${t(state.phase === "peeking" ? "notDealt" : "tableClear")}</span>`;
 }
 
@@ -187,7 +200,7 @@ function header() {
   const identity = auth?.authenticated && auth.user;
   $("hausdeppHeader").innerHTML = `<a class="hd-brand" href="/hausdepp" aria-label="Hausdepp"><img src="/static/icons/hausdepp-icon-192-v2.png" width="36" height="36" alt=""><span>Hausdepp</span></a>
     <nav class="hd-nav" aria-label="${esc(t("navigation"))}"><a href="/hausdepp" ${page === "lobby" ? 'aria-current="page"' : ""}>${t("lobby")}</a><a href="/hausdepp/rangliste" ${page === "leaderboard" ? 'aria-current="page"' : ""}>${t("leaderboard")}</a><a href="/hausdepp/regeln" ${page === "rules" ? 'aria-current="page"' : ""}>${t("rules")}</a><a href="/hausdepp/konto" ${["account", "settings"].includes(page) ? 'aria-current="page"' : ""}>${t("account")}</a></nav>
-    <div class="hd-header-tools"><a class="hd-profile-button" href="${identity ? "/hausdepp/konto" : signInUrl()}" aria-label="${esc(identity ? t("signedInAs", { name: identity.username }) : t("signIn"))}" title="${esc(identity ? identity.username : t("signIn"))}">${identity ? avatarMarkup(identity, { size: "small", avatarKey: "header-self" }) : icon("account")}</a><label class="hd-language"><span class="hd-sr">${t("language")}</span><select data-language-switcher aria-label="${t("language")}"><option value="de">DE</option><option value="en">EN</option></select></label><button type="button" data-game-switch class="hd-switch" aria-label="${t("switch")}">${icon("switch")}<span>${t("games")}</span></button></div>`;
+    <div class="hd-header-tools"><a class="hd-profile-button" href="${identity ? "/hausdepp/konto/einstellungen#profilbild" : signInUrl()}" aria-label="${esc(identity ? t("editProfile", { name: identity.username }) : t("signIn"))}" title="${esc(identity ? t("editProfile", { name: identity.username }) : t("signIn"))}">${identity ? avatarMarkup(identity, { size: "small", avatarKey: "header-self" }) : icon("account")}</a><label class="hd-language"><span class="hd-sr">${t("language")}</span><select data-language-switcher aria-label="${t("language")}"><option value="de">DE</option><option value="en">EN</option></select></label><button type="button" data-game-switch class="hd-switch" aria-label="${t("switch")}">${icon("switch")}<span>${t("games")}</span></button></div>`;
   const language = $("hausdeppHeader").querySelector("select");
   language.value = lang();
   language.addEventListener("change", () => window.ZDWA_I18N.setLanguage(language.value));
@@ -328,7 +341,7 @@ function renderAccount() {
   void loadAccount();
 }
 
-const achievementCategories = ["participation", "community", "cut_gamble", "tens", "four", "tempo", "mishaps", "endgame", "comebacks", "style", "tournament"];
+const achievementCategories = ["participation", "community", "cut_gamble", "tens", "four", "tempo", "mishaps", "endgame", "comebacks", "style", "tournament", "habits"];
 const localized = value => typeof value === "object" && value ? value[lang()] || value.de || value.en || "" : String(value ?? "");
 const nonnegative = value => Math.max(0, Number(value) || 0);
 const pointNumber = value => new Intl.NumberFormat(lang() === "en" ? "en-GB" : "de-CH").format(Math.floor(nonnegative(value)));
@@ -936,7 +949,8 @@ function renderState() {
   renderStacks(s);
   $("hausdeppPileCount").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", s.discard.length);
   $("hausdeppPileAction").textContent = s.phase === "peeking" ? "" : t(!pending && actions.includes("pickup") && s.discard.length ? "pickup" : "pileTitle");
-  $("hausdeppPile").setAttribute("aria-label", s.discard.length ? t(!pending && actions.includes("pickup") ? "pileLabel" : "pileInspectLabel", { card: cardName(s.discard.at(-1)), count: s.discard.length }) : t("tableClear"));
+  const sameOnTop = topRun(s.discard);
+  $("hausdeppPile").setAttribute("aria-label", s.discard.length ? `${t(!pending && actions.includes("pickup") ? "pileLabel" : "pileInspectLabel", { card: cardName(s.discard.at(-1)), count: s.discard.length })}${sameOnTop > 1 ? `. ${t("pileRun", { count: sameOnTop })}` : ""}` : t("tableClear"));
   $("hausdeppBurnedCount").textContent = String(s.burned_count);
   $("hausdeppBurnedUnit").textContent = t(Number(s.burned_count) === 1 ? "cardWordOne" : "cardWord");
   const burnedStack = $("hausdeppBurnedStack");
@@ -1027,7 +1041,7 @@ function renderState() {
     }
     $("hausdeppResult").dataset.roundId = roundKey;
     const title = snapshot._aborted ? t("tournamentStopped") : tournament?.completed ? t("tournamentLoser", { name: finalLoser?.name || "…" }) : t("loser", { name: loser?.name || "…" });
-    $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p>${t(snapshot._aborted ? "tournamentStoppedHint" : tournament ? tournament.completed ? "tournamentCompleteHint" : "tournamentRoundHint" : "resultHint")}</p>${tournamentScoreboard(tournament, s.players)}<div class="hd-result-links">${tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : `<a class="hd-primary" href="/hausdepp">${t(tournament ? "newTournament" : "nextRound")} ${icon("arrow")}</a>`}<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")}</a></div><div id="hausdeppRoundProgress" hidden></div>`;
+    $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p>${t(snapshot._aborted ? "tournamentStoppedHint" : tournament ? tournament.completed ? "tournamentCompleteHint" : "tournamentRoundHint" : "resultHint")}</p>${snapshot._aborted ? "" : roundPlacements(s, snapshot._hausdepp_round_summary)}${tournamentScoreboard(tournament, s.players)}<div class="hd-result-links">${tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : `<a class="hd-primary" href="/hausdepp">${t(tournament ? "newTournament" : "nextRound")} ${icon("arrow")}</a>`}<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")}</a></div><div id="hausdeppRoundProgress" hidden></div>`;
     if (snapshot._finished && (!tournament || tournament.completed) && hasPreviousSeat()) appendRematchAction();
     $("hausdeppNextRound")?.addEventListener("click", () => command("next_round"));
     $("hausdeppEndTournament")?.addEventListener("click", () => {
@@ -1046,6 +1060,23 @@ function renderState() {
 
 function hasPreviousSeat() {
   return !spectating && snapshot?._participants?.some(player => !player.is_cpu && (player.id === playerId || player.user_id === auth?.user?.id));
+}
+
+// Everyone's place in the round just played, with what each person earned.
+function roundPlacements(s, summary) {
+  const order = [...(s.finished_order || []), ...(s.loser_id ? [s.loser_id] : [])];
+  const missing = s.players.filter(player => !order.includes(player.id)).map(player => player.id);
+  const rows = [...order, ...missing].map((id, index) => {
+    const player = s.players.find(item => item.id === id);
+    if (!player) return "";
+    const loser = id === s.loser_id;
+    const earned = summary?.players?.[id];
+    const awards = (earned?.achievements || []).map(award => `<li><span class="hd-result-award-name">${esc(award.name?.[lang()] || award.name?.de || "")}</span><small>${esc(t("experiencePoints", { points: `+${award.points}` }))}</small></li>`).join("");
+    const reward = player.is_cpu ? `<span class="hd-result-reward is-cpu">${t("computer")}</span>`
+      : earned?.xp != null ? `<span class="hd-result-reward">${esc(t("experiencePoints", { points: `+${earned.xp}` }))}</span>` : "";
+    return `<li class="hd-result-place${loser ? " is-hausdepp" : ""}${id === playerId ? " is-self" : ""}"><span class="hd-result-rank">${loser ? t("resultHausdepp") : t("resultPlace", { place: index + 1 })}</span><span class="hd-result-avatar">${seatAvatar(player, { key: `result-${player.id}` })}</span><span class="hd-result-name" translate="no">${esc(player.name)}</span>${reward}${awards ? `<ul class="hd-result-awards" aria-label="${esc(t("resultAwards"))}">${awards}</ul>` : ""}</li>`;
+  }).join("");
+  return `<ol class="hd-result-places" aria-label="${esc(t("resultPlacements"))}">${rows}</ol>`;
 }
 
 function tournamentScoreboard(tournament, players) {

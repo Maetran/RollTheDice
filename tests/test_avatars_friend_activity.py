@@ -122,3 +122,9 @@ class AvatarAndFriendActivityTestCase(unittest.TestCase):
         self.assertIsNone(_recipient_payload(game, self.friend_identity, now=utcnow()))
         stale = dict(game, _started_at=(utcnow() - timedelta(seconds=61)).isoformat())
         self.assertIsNone(_recipient_payload(stale, self.recipient_identity, now=utcnow()))
+        # Hausdepp tables are public and watchable too, with two to six seats.
+        table = dict(game, _id="hausdepp-1", _game_type="hausdepp", _mode="5", _expected=5, _hardcore=False)
+        event = _recipient_payload(table, self.recipient_identity, now=utcnow())
+        self.assertEqual(event["friend_activity"]["game_type"], "hausdepp")
+        self.assertEqual(event["friend_activity"]["mode"], "5")
+        self.assertIsNone(_recipient_payload(dict(table, _passphrase="private"), self.recipient_identity, now=utcnow()))

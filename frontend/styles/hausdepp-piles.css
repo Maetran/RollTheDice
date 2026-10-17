@@ -24,7 +24,7 @@ html[data-game="hausdepp"] .hd-table .hd-centre #hausdeppBurnedCount { font-weig
 html[data-game="hausdepp"] .hd-table .hd-centre .hd-burned > span:last-child { text-align: left; }
 .hd-burned-stack { position: relative; grid-column: 1 / -1; width: 48px; aspect-ratio: 36 / 57; margin: 8px; }
 .hd-burned-stack.is-empty { border: 1px dashed #d5b78280; border-radius: 4px; }
-.hd-burned-card { position: absolute; inset: 0; border: 2px solid #f3eadd; border-radius: 4px; background: url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center/90px; box-shadow: 0 2px 4px #180d0870; transform: translate(var(--burn-x), var(--burn-y)) rotate(var(--burn-angle)); }
+.hd-burned-card { position: absolute; inset: 0; border: 2px solid #f3eadd; border-radius: 4px; background: url("/static/hausdepp/card-back.webp?v=ASSET_VERSION") center/90px; box-shadow: 0 2px 4px #180d0870; transform: translate(var(--burn-x), var(--burn-y)) rotate(var(--burn-angle)); }
 @media (max-width: 1099px) {
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned { position: absolute; left: 4px; right: auto; top: auto; bottom: 4px; transform: none; width: 52px; max-width: 52px; gap: 1px 3px; }
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned > span { font-size: 9px; line-height: 10px; }

@@ -54,7 +54,10 @@ Ein neuer Tisch erhält automatisch einen von 50 Wirtshausnamen mit deinem
 aktuellen Kontonamen, etwa „Manis Gsuff“. Ein Namensfeld ist dafür nicht nötig.
 
 Zwei bis fünf, höchstens sechs Teilnehmer spielen mit 36 doppeldeutschen Karten;
-Computer sind echte Mitspieler mit eigenen verdeckten Händen. Sie kaufen kleine
+Computer sind echte Mitspieler mit eigenen verdeckten Händen. Gleiche Ränge oben auf dem offenen Paket
+sind leicht aufgefächert, das Rundenende zeigt Platzierungen, Runden-EP und neue
+Erfolge, und die Gegenstände am Tisch lassen sich benutzen: Münze werfen, würfeln,
+vom Bier trinken (zu wild, und es kippt um) oder die Nüsse verputzen. Sie kaufen kleine
 wertvolle Pakete statt ihre 10 zu verbrennen, spielen mal besser, mal schlechter
 und in den ersten 50 Runden neuer Konten spürbar sanfter; neuere Spieler sehen
 dazu kurze Tipps in ihrer Zugzeile. Die Serverregeln
@@ -111,7 +114,7 @@ Der private Kontobereich zeigt eigene abgeschlossene Runden, Runden als Hausdepp
 und Runden mit leerer Hand sowie einen nachladbaren Verlauf tatsächlicher
 Ergebnisse; allgemeine Einstellungen sind direkt unter
 `/hausdepp/konto/einstellungen` erreichbar und gelten für das gemeinsame Konto.
-Das Konto enthält **100 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
+Das Konto enthält **115 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
 Rangleiter. Innerhalb jeder Gruppe stehen erreichte Erfolge vor den noch offenen.
 Häufige Kartenaktionen benötigen mehrere passende abgeschlossene Runden;
 jede Runde zählt je Ziel höchstens einmal. Seltene Kunststücke bleiben direkt
@@ -122,7 +125,7 @@ auch an gemischten Tischen und für jede einzelne Turnierrunde. Jeder Erfolg
 gibt weiterhin einmalig seine vollen 10, 25, 50 oder 100 EP. Runden, Siege und
 die Anzahl bereits freigeschalteter Erfolge bleiben dabei erhalten.
 Von **Einstein** bei 0 EP geht es mit
-einem Augenzwinkern bis **Hausdepp** bei 5’000 EP. Jeder Rang hat einen eigenen
+einem Augenzwinkern bis **Hausdepp** bei 9’000 EP. Jeder Rang hat einen eigenen
 Aufstiegsspruch, etwa Newtons „Ab jetzt geht’s bergab. Ganz nach den
 Naturgesetzen.“ Der dauerhafte Rang ist vom Hausdepp einer Runde getrennt.
 Rundenpunkte und freigeschaltete Erfolge werden genau einmal gespeichert;
@@ -199,7 +202,7 @@ Tell pattern and lightning back. The rules page adds a quick start, anchors,
 examples and terminology. Round outcomes are stored separately. The private
 account area shows your completed rounds, rounds as the Hausdepp and rounds
 finished with an empty hand, plus a loadable history of actual results. General
-settings at `/hausdepp/konto/einstellungen` manage the shared account. The account includes **100 achievements
+settings at `/hausdepp/konto/einstellungen` manage the shared account. The account includes **115 achievements
 and 24 ranks**, with search, filters and the complete rank ladder. Each group
 shows earned achievements before locked ones. Common card actions require
 several qualifying completed rounds, with each round counting at most once per
@@ -209,7 +212,7 @@ rounded down per round to **2 XP**, including mixed tables and each individual
 tournament round. Achievements still grant their full 10, 25, 50 or 100 XP once each.
 Round and win counts and the number of existing unlocks are retained.
 The ironic ladder runs from **Einstein** at 0 XP to **Hausdepp**
-at 5,000 XP. Each rank has its own saying, including Newton's gravity-inspired
+at 9,000 XP. Each rank has its own saying, including Newton's gravity-inspired
 downhill greeting. The lasting title stays separate from a round's Hausdepp.
 Round points and unlocks are stored once. After a round, individual achievement
 and rank popups show the name, XP, condition and your own saved round evidence.
@@ -1406,8 +1409,8 @@ profiles, lobby chat, game rooms and statistics lightweight while preventing
 uploaded image markup, script payloads and metadata from being served back.
 
 **Game-start notices** use the existing private, account-bound player selection:
-when a selected account starts a public, watchable ZDWA or Zilch game, connected
-users who enabled the account setting see a short live banner in either lobby.
+when a selected account starts a public, watchable ZDWA, Zilch or Hausdepp game,
+connected users who enabled the account setting see a short live banner in the lobbies.
 It links to spectator mode unless the recipient is already in a game. These
 notices are neither push notifications nor persisted history; recipient consent,
 selection membership, room access and account status are rechecked at delivery.
@@ -1432,12 +1435,12 @@ and release notes remain separate choices.
 | | Player invitations | Daily play reminders |
 | --- | --- | --- |
 | Trigger | A seated player clicks **Notify players** in a public waiting room | The server, only after a separate opt-in |
-| Eligibility | Room still has an open seat; recipient opted in and is not already seated | Account has played neither ZDWA nor Zilch today |
+| Eligibility | Room still has an open seat; recipient opted in and is not already seated | Account has played none of the games today |
 | Timing | Any time, including after the recipient has already played | A new random time between 17:00 and 21:00, Europe/Zurich |
 | Limits | One attempt per sender per minute across both games; one dispatch per room per ten minutes | At most one reminder attempt per account per Swiss calendar day |
 | Click destination | The specific room, with normal join/rejoin checks | The selected game's lobby |
 
-A valid human roll or scoring action counts as playing; finishing a game is not
+A valid human move (a roll, a scoring action or a played card) counts as playing; finishing a game is not
 required. Login, chat, spectating and CPU actions do not count. Existing
 completed results are also checked. Activity and opt-out are checked again
 immediately before dispatch.
@@ -1445,9 +1448,9 @@ immediately before dispatch.
 Reminder schedules are stable across restarts. There is no overnight catch-up,
 and durable daily claims prevent repeat attempts after failures or preference
 changes. Each game has **32 German/English variants**: pub-table banter for
-Zilch, cheerful challenges for ZDWA. The rotation advances with reminder
-attempts, so skipped days do not skip texts. If both products are registered,
-they alternate; the chosen game's subscribed devices receive the same message.
+Zilch, cheerful challenges for ZDWA, card-table humour for Hausdepp. The rotation
+advances with reminder attempts, so skipped days do not skip texts. If several
+products are registered, they alternate; the chosen game's subscribed devices receive the same message.
 
 Invitation senders get brief in-app feedback, not a push themselves, and never
 see recipient identities. Private, full, started and Solo rooms do not send

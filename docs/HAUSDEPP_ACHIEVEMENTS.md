@@ -134,13 +134,13 @@ Eigene spielerische Texte ohne historische Zuschreibung. Der allgemeine Aufstieg
 | 15 | 1700 | Schlaumeier | Ein guter Tipp ist gut. Eine passende Karte wäre besser. |
 | 16 | 2000 | Besserwisser | Du hättest es vorher gewusst. Natürlich. |
 | 17 | 2300 | Stammtischgelehrter | Die Theorie sitzt. Jetzt zählt der Stammtisch. |
-| 18 | 2650 | Halbwisser | Die Hälfte wissen. Den Rest überzeugend vertreten. |
-| 19 | 3000 | Bauchspieler | Der Kopf hat Feierabend. Der Bauch übernimmt. |
-| 20 | 3400 | Denkpause | Kurz nicht nachgedacht. Schon wieder weitergekommen. |
-| 21 | 3800 | Holzkopf | Solides Holz. Beste Voraussetzungen für den Stammtisch. |
-| 22 | 4200 | Ochse | Mit ruhiger Kraft Richtung Hausdepp. |
-| 23 | 4600 | Hirni | Der Hausdepp ist zum Greifen nah. |
-| 24 | 5000 | Hausdepp | Geschafft. Mehr Hausdepp geht nicht. |
+| 18 | 2900 | Halbwisser | Die Hälfte wissen. Den Rest überzeugend vertreten. |
+| 19 | 3600 | Bauchspieler | Der Kopf hat Feierabend. Der Bauch übernimmt. |
+| 20 | 4400 | Denkpause | Kurz nicht nachgedacht. Schon wieder weitergekommen. |
+| 21 | 5300 | Holzkopf | Solides Holz. Beste Voraussetzungen für den Stammtisch. |
+| 22 | 6300 | Ochse | Mit ruhiger Kraft Richtung Hausdepp. |
+| 23 | 7500 | Hirni | Der Hausdepp ist zum Greifen nah. |
+| 24 | 9000 | Hausdepp | Geschafft. Mehr Hausdepp geht nicht. |
 
 ## English
 
@@ -274,13 +274,13 @@ Original playful copy without historical attribution. The general greeting is �
 | 15 | 1700 | Smart Aleck | Good advice is good. A playable card would be better. |
 | 16 | 2000 | Know-it-all | You knew that would happen. Of course you did. |
 | 17 | 2300 | Table Scholar | You’ve mastered the theory. Now it’s the table that counts. |
-| 18 | 2650 | Half an Expert | Know half of it. Defend the rest convincingly. |
-| 19 | 3000 | Gut Player | Your brain has clocked off. Your gut is taking over. |
-| 20 | 3400 | Brain Break | Stopped thinking for a moment. Somehow still made progress. |
-| 21 | 3800 | Blockhead | Solid wood. An excellent fit for the card table. |
-| 22 | 4200 | Ox | Steady and strong, heading straight for Hausdepp. |
-| 23 | 4600 | Goofball | Hausdepp is almost within reach. |
-| 24 | 5000 | Hausdepp | You made it. Peak Hausdepp achieved. |
+| 18 | 2900 | Half an Expert | Know half of it. Defend the rest convincingly. |
+| 19 | 3600 | Gut Player | Your brain has clocked off. Your gut is taking over. |
+| 20 | 4400 | Brain Break | Stopped thinking for a moment. Somehow still made progress. |
+| 21 | 5300 | Blockhead | Solid wood. An excellent fit for the card table. |
+| 22 | 6300 | Ox | Steady and strong, heading straight for Hausdepp. |
+| 23 | 7500 | Goofball | Hausdepp is almost within reach. |
+| 24 | 9000 | Hausdepp | You made it. Peak Hausdepp achieved. |
 
 ## Nachkalibrierung / Pacing revision
 
@@ -291,7 +291,41 @@ Common goals now require several distinct completed rounds, and tournament goals
 ## Gewichtung / Weighting
 
 - Belegte frühere Runden mit Computer erhalten ebenfalls die neue Runden-Gewichtung. Die Neuberechnung verändert keine Rundenergebnisse, Siege oder einmaligen Erfolgsfreischaltungen. / Proven earlier rounds with computers also receive the new round weighting. Recalculation changes no round outcomes, wins or one-time achievement unlocks.
-- Nur die wiederholbare Rundenbelohnung wird bei mindestens einem Computer um 75 % reduziert und je Runde abgerundet: 10 → 2 EP. Beispielsweise geben drei solche Runden 6 EP; ein dabei einmalig freigeschalteter Erfolg mit 25 EP bringt die Summe auf 31 EP. Die 100 Erfolgsbelohnungen und 24 Rangschwellen bleiben unverändert. / Only the repeatable round reward is reduced by 75% when any computer plays, then rounded down per round: 10 → 2 XP. For example, three such rounds give 6 XP; a 25-XP achievement unlocked once brings the total to 31 XP. The 100 achievement rewards and 24 rank thresholds remain unchanged.
-- Die ursprünglichen 64 Erfolge behalten ihre bestätigten 2’380 EP. Die zusätzlichen 36 geben 1’045 EP; zusammen sind einmalig 3’425 Erfolgs-EP möglich. Der Schlussrang bleibt bei 5’000 EP. Selbst alle Erfolgsbelohnungen allein ergeben noch keinen Schlussrang. / The approved original rewards remain 2,380 XP; the added 36 grant 1,045 XP, for 3,425 one-time XP in total. The final rank stays at 5,000 XP; achievement rewards alone do not reach it.
+- Nur die wiederholbare Rundenbelohnung wird bei mindestens einem Computer um 75 % reduziert und je Runde abgerundet: 10 → 2 EP. Beispielsweise geben drei solche Runden 6 EP; ein dabei einmalig freigeschalteter Erfolg mit 25 EP bringt die Summe auf 31 EP. Die Erfolgsbelohnungen und die 24 Rangschwellen bleiben davon unberührt. / Only the repeatable round reward is reduced by 75% when any computer plays, then rounded down per round: 10 → 2 XP. For example, three such rounds give 6 XP; a 25-XP achievement unlocked once brings the total to 31 XP. Achievement rewards and the 24 rank thresholds are unaffected.
+- Die ursprünglichen 64 Erfolge behalten ihre bestätigten 2’380 EP. Die zusätzlichen 36 geben 1’045 EP; zusammen sind einmalig 3’425 Erfolgs-EP möglich. Der Schlussrang lag damals bei 5’000 EP (seit 3.8.0: 115 Erfolge, 4’105 Erfolgs-EP, Schlussrang 9’000 EP). Selbst alle Erfolgsbelohnungen allein ergeben noch keinen Schlussrang. / The approved original rewards remain 2,380 XP; the added 36 grant 1,045 XP, for 3,425 one-time XP in total. The final rank was then 5,000 XP (since 3.8.0: 115 achievements, 4,105 XP, final rank 9,000 XP); achievement rewards alone do not reach it.
 - Zusätzliche Missgeschicke und Comebacks geben überwiegend 10 oder 25 EP, besondere Leistungen 50 EP. Kein neuer Erfolg gibt 100 EP. Turniere geben neben den normalen Runden keine zusätzlichen wiederholbaren EP. / New mishap/comeback feats mostly grant 10 or 25 XP, with special feats at 50; no new feat grants 100. Tournaments add no repeatable bonus to normal round XP.
 - Vergleich zum vorhandenen Quellkatalog am 16.10.2026: ZDWA hat 156 Erfolge mit 726 möglichen Marken und 12 Rängen bis 680; Zilch hat 110 Erfolge mit 481 Marken und 12 Rängen bis 440. Hausdepp verwendet bewusst eine eigene EP-Skala und eigene Speicherung. Keine Vermischung von Spielständen, Rängen oder öffentlichen Erfolgsfeeds. / Source-catalogue comparison on 2026-10-16: ZDWA has 156 achievements, 726 possible marks and 12 ranks up to 680; Zilch has 110, 481 marks and 12 ranks up to 440. Hausdepp deliberately uses its own XP scale and storage, without mixing game totals, ranks or public feeds.
+
+## Wann und wie oft / When and how often (3.8.0)
+
+**DE:** Nach ZDWA-Vorbild zählen 15 weitere Erfolge Spielzeit und Spielhäufigkeit.
+Massgeblich ist die Schweizer Ortszeit, zu der eine Runde abgeschlossen wird.
+
+| Nr. | Erfolg | Bedingung | EP |
+| --- | --- | --- | --- |
+| 101 | Bürozeit | Eine Runde werktags 07:00–17:00 | 10 |
+| 102 | Arbeitszeitbetrug I | 10 Runden werktags 07:00–17:00 | 25 |
+| 103 | Arbeitszeitbetrug II | 25 Runden werktags 07:00–17:00 | 50 |
+| 104 | Arbeitszeitbetrug Ultra Pro Max III | 50 Runden werktags 07:00–17:00 | 100 |
+| 105 | Mittagspause | 5 Runden werktags 12:00–13:30 | 10 |
+| 106 | Feierabendrunde | 10 Runden werktags 17:00–20:00 | 25 |
+| 107 | Nachteule | Eine Runde 02:00–05:00 | 25 |
+| 108 | Early Bird | 5 Runden 06:00–07:00 | 25 |
+| 109 | Wochenendspieler | 10 Runden am Samstag oder Sonntag | 25 |
+| 110 | Spielabend | 5 Runden an einem Tag | 10 |
+| 111 | Kartenmarathon | 10 Runden an einem Tag | 25 |
+| 112 | Wochenläufer | 7 Tage in Folge je eine Runde | 50 |
+| 113 | Zwei-Wochen-Lauf | 14 Tage in Folge je eine Runde | 100 |
+| 114 | Stammgast | 500 Runden | 100 |
+| 115 | Inventar mit Schlüssel | 1000 Runden | 100 |
+
+Damit sind einmalig 4’105 Erfolgs-EP möglich. Die Rangleiter bleibt bis 2’300 EP
+unverändert, damit niemand zurückfällt; darüber wird sie flacher und endet bei
+**Hausdepp mit 9’000 EP** (zuvor 5’000). Bestehende Runden werden beim nächsten
+Kontoabgleich nachträglich auch für die neuen Erfolge gewertet.
+
+**EN:** Following ZDWA, 15 more achievements count when and how often people play,
+using the Swiss local time at which a round finishes. One-time achievement XP now
+totals 4,105. The ladder is unchanged up to 2,300 XP so nobody drops a rank; above
+that it stretches and ends at **Hausdepp with 9,000 XP** (previously 5,000).
+Existing rounds also count towards the new achievements at the next account sync.

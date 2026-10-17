@@ -23,6 +23,38 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.8.0 — Hausdepp: Rundenabschluss, Tisch-Extras, neue Erfolge / round summary, table extras, new achievements — 2026-10-17
+
+**Deutsch:** Das Rundenende zeigt alle Platzierungen in der Reihenfolge, in der
+die Spieler fertig wurden, den Hausdepp zuletzt, und für jedes Konto die in dieser
+Runde verdienten EP sowie neu erreichte Erfolge; auf grossen Bildschirmen als
+mittiges Fenster. Zwei oder drei gleiche Ränge oben auf dem offenen Paket fächern
+sich leicht auf. Die Gegenstände am Tisch lassen sich benutzen: Münze werfen (Kopf
+oder Zahl), würfeln, vom Bier, Tee oder der Limonade trinken – zu wild getippt wird
+verschüttet, noch wilder kippt das Glas um –, unberührtes Bier verliert seinen
+Schaum, und Snacks werden Biss für Biss verputzt. Das Profilbild im Header führt
+direkt zur Profilbild-Einstellung. Ein kalter App-Start lädt 2,4 MB statt 5,6 MB
+Kartenbilder und zeigt keine fehlenden Rückseiten mehr. 15 neue Erfolge nach
+ZDWA-Vorbild zählen Spielzeit und Häufigkeit (Bürozeit, Arbeitszeitbetrug,
+Nachteule, Wochenende, Spielabend, Serien, 500 und 1000 Runden); die Ränge bleiben
+bis 2’300 EP gleich und reichen nun bis Hausdepp bei 9’000 EP. Hausdepp erhält
+tägliche Spielerinnerungen und Startmeldungen der Spielerauswahl; Einstellungs-
+und Hilfetexte nennen alle Spiele statt nur ZDWA und Zilch.
+
+**English:** The round end lists every place in finishing order, the Hausdepp last,
+with each account's XP for this round and newly reached achievements; on large
+screens as a centred card. Two or three equal ranks on top of the open pile fan out
+slightly. Table objects can be used: toss the coin (heads or tails), roll the dice,
+drink beer, tea or lemonade – tap too wildly and it spills, wilder still and the
+glass tips over –, an untouched beer goes flat, and snacks are eaten bite by bite.
+The header avatar opens the profile picture setting. A cold app start loads 2.4 MB
+instead of 5.6 MB of card art and no longer shows missing card backs. 15 new
+achievements following ZDWA count play time and frequency (office hours, time
+theft, night owl, weekends, card nights, streaks, 500 and 1,000 rounds); ranks
+stay the same up to 2,300 XP and now reach Hausdepp at 9,000 XP. Hausdepp gains
+daily play reminders and player-selection start notices; settings and help texts
+name all games instead of only ZDWA and Zilch.
+
 ## 3.7.1 — Hausdepp: Abheben sichtbar machen / show who wins the cut — 2026-10-17
 
 **Deutsch:** Hebt jemand nach dem Mischen erfolgreich ab (eine 10 oder Asse mit
