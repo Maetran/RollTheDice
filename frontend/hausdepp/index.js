@@ -74,6 +74,13 @@ function cardMarkup(card, { interactive = false, playable = false, committed = f
 
 // A real paper edge per remaining card makes the height change with the count.
 // Stock layers carry backs only; the packet adds only its already-public faces.
+function topRun(discard) {
+  const rank = discard.at(-1)?.split("-")[1];
+  let run = 0;
+  for (let index = discard.length - 1; index >= 0 && discard[index].split("-")[1] === rank; index -= 1) run += 1;
+  return run;
+}
+
 function renderStacks(state) {
   const stock = $("hausdeppStock"), pile = $("hausdeppPile");
   const count = Math.max(0, Math.min(36, Number(state.deck_count) || 0));
@@ -84,9 +91,15 @@ function renderStacks(state) {
   }
   pile.dataset.cardCount = String(state.discard.length);
   const edges = Math.max(0, state.discard.length - 3);
+  // Equal ranks on top fan out slightly, so their count reads at a glance.
+  const run = topRun(state.discard);
+  pile.dataset.run = String(run);
   pile.innerHTML = state.discard.length
     ? Array.from({ length: edges }, (_, index) => `<span class="hd-pile-edge" aria-hidden="true" style="--stack-layer:${state.discard.length - index - 1}"></span>`).join("") +
-      state.discard.slice(-3).map((card, index, cards) => `<span class="hd-pile-face" style="--stack-layer:${cards.length - index - 1}">${cardMarkup(card)}</span>`).join("")
+      state.discard.slice(-3).map((card, index, cards) => {
+        const depth = cards.length - index - 1;
+        return `<span class="hd-pile-face"${run > 1 && depth < run ? ` data-run-step="${depth}"` : ""} style="--stack-layer:${depth};--run-step:${depth}">${cardMarkup(card)}</span>`;
+      }).join("")
     : `<span class="hd-empty-pile">${t(state.phase === "peeking" ? "notDealt" : "tableClear")}</span>`;
 }
 
@@ -936,7 +949,8 @@ function renderState() {
   renderStacks(s);
   $("hausdeppPileCount").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", s.discard.length);
   $("hausdeppPileAction").textContent = s.phase === "peeking" ? "" : t(!pending && actions.includes("pickup") && s.discard.length ? "pickup" : "pileTitle");
-  $("hausdeppPile").setAttribute("aria-label", s.discard.length ? t(!pending && actions.includes("pickup") ? "pileLabel" : "pileInspectLabel", { card: cardName(s.discard.at(-1)), count: s.discard.length }) : t("tableClear"));
+  const sameOnTop = topRun(s.discard);
+  $("hausdeppPile").setAttribute("aria-label", s.discard.length ? `${t(!pending && actions.includes("pickup") ? "pileLabel" : "pileInspectLabel", { card: cardName(s.discard.at(-1)), count: s.discard.length })}${sameOnTop > 1 ? `. ${t("pileRun", { count: sameOnTop })}` : ""}` : t("tableClear"));
   $("hausdeppBurnedCount").textContent = String(s.burned_count);
   $("hausdeppBurnedUnit").textContent = t(Number(s.burned_count) === 1 ? "cardWordOne" : "cardWord");
   const burnedStack = $("hausdeppBurnedStack");
