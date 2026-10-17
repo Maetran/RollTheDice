@@ -16,7 +16,7 @@ html[data-game="hausdepp"] body.hd-playing #hausdeppStock.is-empty { border: 1px
 }
 .hd-stock-card {
   border: 1px solid #b6a38b;
-  background: #f3eadd url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center / 100% 100%;
+  background: #f3eadd url("/static/hausdepp/card-back.webp?v=ASSET_VERSION") center / 100% 100%;
   box-shadow: 0 1px 1px #180d0866;
 }
 .hd-stock-card:last-child { border: 4px solid #f3eadd; box-shadow: 0 3px 7px #180d0870; }

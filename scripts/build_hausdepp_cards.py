@@ -112,7 +112,7 @@ def render() -> bytes:
         face = face.filter(ImageFilter.UnsharpMask(radius=1.2, percent=round(70 + 400 * deficit), threshold=3))
         atlas.paste(face, ((index % COLUMNS) * CELL[0], (index // COLUMNS) * CELL[1]))
     buffer = io.BytesIO()
-    atlas.save(buffer, "WEBP", quality=88, method=6)
+    atlas.save(buffer, "WEBP", quality=80, method=6)
     return buffer.getvalue()
 
 

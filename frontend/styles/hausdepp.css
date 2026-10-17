@@ -308,7 +308,7 @@ a { color: inherit; text-underline-offset: 4px; }
 .hd-seat.is-finished { opacity: .65; }
 .hd-seat.is-finished .hd-icon { width: 14px; height: 14px; }
 .hd-opponent-hand { --opponent-card: 34px; --opponent-spread: 60px; --opponent-step: 12px; position: relative; flex: 0 0 auto; width: calc(var(--opponent-card) + min(calc(var(--opponent-gaps) * var(--opponent-step)),var(--opponent-spread))); height: calc(var(--opponent-card)*57/36 + 12px); margin: 2px 8px 0; }
-.hd-opponent-card { position: absolute; top: 4px; left: calc((100% - var(--opponent-card))*var(--back-position)); width: var(--opponent-card); aspect-ratio: 36 / 57; border: 2px solid #f3eadd; border-radius: 6.7% / 4.2%; background: url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center/100px; box-shadow: 0 3px 5px #180d0870; transform: rotate(var(--back-angle)); transform-origin: center bottom; z-index: var(--back-index); }
+.hd-opponent-card { position: absolute; top: 4px; left: calc((100% - var(--opponent-card))*var(--back-position)); width: var(--opponent-card); aspect-ratio: 36 / 57; border: 2px solid #f3eadd; border-radius: 6.7% / 4.2%; background: url("/static/hausdepp/card-back.webp?v=ASSET_VERSION") center/100px; box-shadow: 0 3px 5px #180d0870; transform: rotate(var(--back-angle)); transform-origin: center bottom; z-index: var(--back-index); }
 .hd-opponent-hand .hd-seat-avatar { position: absolute; top: -5px; left: -10px; width: 22px; height: 22px; margin: 0; font-size: 11px; z-index: 40; }
 .hd-opponent-hand[data-card-count="0"] .hd-seat-avatar { left: calc(50% - 11px); top: 18px; }
 .hd-centre { display: flex; justify-content: center; align-items: center; gap: clamp(26px,5vw,60px); padding: 0 20px; }
@@ -318,8 +318,8 @@ a { color: inherit; text-underline-offset: 4px; }
 .hd-stack-action:empty { display: none; }
 .hausdepp-card { position: relative; display: block; padding: 0; border: 0; flex: 0 0 auto; width: 106px; aspect-ratio: 36 / 57; background: #f7f4eb; border-radius: 6.7% / 4.2%; overflow: hidden; box-shadow: 0 5px 12px #180d0870; color: #1c1916; }
 .hd-card-art { width: 100%; height: 100%; display: block; }
-.hd-card-back { display: block; width: 106px; aspect-ratio: 36 / 57; border: 5px solid #f3eadd; border-radius: 7px; background: url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center/190px; box-shadow: 2px 2px #f3eadd, 4px 4px #745443, 6px 6px #e9dcc6, 0 7px 13px #180d0870; padding: 0; }
-button.hd-card-back:hover { background: url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center/190px; transform: translateY(-3px); }
+.hd-card-back { display: block; width: 106px; aspect-ratio: 36 / 57; border: 5px solid #f3eadd; border-radius: 7px; background: url("/static/hausdepp/card-back.webp?v=ASSET_VERSION") center/190px; box-shadow: 2px 2px #f3eadd, 4px 4px #745443, 6px 6px #e9dcc6, 0 7px 13px #180d0870; padding: 0; }
+button.hd-card-back:hover { background: url("/static/hausdepp/card-back.webp?v=ASSET_VERSION") center/190px; transform: translateY(-3px); }
 .hd-card-back.is-empty { background: none; box-shadow: none; border: 1px dashed #d5b78280; }
 .hd-pile { position: relative; width: 106px; aspect-ratio: 36 / 57; padding: 0; background: none; border: 0; border-radius: 7px; }
 button.hd-pile:hover { background: #f3eadd18; }
@@ -353,7 +353,7 @@ button.hd-pile:hover { background: #f3eadd18; }
 .hd-hand-fan .hausdepp-card:focus-visible { outline: 3px solid var(--hd-gold); outline-offset: 4px; }
 .hd-actions { display: flex; justify-content: center; align-items: center; padding: 0 20px; }
 .hd-action-guide { color: #e4cfb1; font-size: 12px; line-height: 1.5; margin: 0 auto; padding: 0 12px; max-width: 55ch; text-align: center; }
-.hd-deal-card { position: fixed; z-index: 65; pointer-events: none; border: 3px solid var(--hd-paper); border-radius: 7px; background: url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center/150px; box-shadow: 0 6px 15px #180d0870; transform-origin: center; }
+.hd-deal-card { position: fixed; z-index: 65; pointer-events: none; border: 3px solid var(--hd-paper); border-radius: 7px; background: url("/static/hausdepp/card-back.webp?v=ASSET_VERSION") center/150px; box-shadow: 0 6px 15px #180d0870; transform-origin: center; }
 /* A flying face is the same paper as a table card: proportional corners, so
    it looks identical at every size and scale along its path. */
 .hd-deal-card.has-face { border: 0; border-radius: 6.7% / 4.2%; background: #f7f4eb; overflow: hidden; }

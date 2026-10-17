@@ -265,7 +265,7 @@ export const CARD_CORNERS = {
 // image objects for this document so incoming cards never start a cold decode.
 export const CARD_ASSET_URLS = Object.freeze([
   "/static/hausdepp/cards-atlas.webp?v=ASSET_VERSION",
-  "/static/hausdepp/card-back.png?v=ASSET_VERSION",
+  "/static/hausdepp/card-back.webp?v=ASSET_VERSION",
 ]);
 const preparedImages = new Map();
 let preparation;
