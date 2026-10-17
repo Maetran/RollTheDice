@@ -3,21 +3,27 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: Karten auf dem offenen Paket behalten beim Ablegen ihre Grösse – auch auf Tablets.",
-  "summary_en": "Hausdepp: open-pile cards keep their size when a card is played, including on tablets.",
+  "summary_de": "Hausdepp: Karten fliegen beim Tippen sofort und flüssig auf den Stapel, Nachwerfen klappt zuverlässig.",
+  "summary_en": "Hausdepp: cards fly to the pile smoothly the moment you tap, and adding matching cards works reliably.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp: stabile Kartengrösse",
+      "title": "Hausdepp: flüssiger und schärfer",
       "changes": [
-        "Die Karten auf dem offenen Paket werden beim Ablegen nicht mehr kurz kleiner.",
-        "Kartenanimation und Stapel passen auf Handy, Tablet und Desktop zusammen."
+        "Deine Karte fliegt beim Tippen sofort und als eine einzige Karte auf das offene Paket.",
+        "Computer warten, bis deine Karte gelandet ist – so kannst du in Ruhe nachwerfen.",
+        "Karte lange halten wählt alle Karten dieses Rangs für einen Wurf.",
+        "Auffüllen auf drei geschieht jetzt für alle automatisch.",
+        "Schärfere, gleichmässigere Kartenbilder und gut sichtbare unterste Karten nach dem Abheben."
       ]
     },
     "en": {
-      "title": "Hausdepp: stable card sizes",
+      "title": "Hausdepp: smoother and sharper",
       "changes": [
-        "Open-pile cards no longer briefly shrink when a card is played.",
-        "Card animations and the pile match on phones, tablets and desktops."
+        "Your card flies to the open pile the moment you tap, as one single card.",
+        "Computers wait until your card has landed, so you can add matching cards calmly.",
+        "Hold a card to select every card of that rank for one throw.",
+        "Refilling to three now happens automatically for everyone.",
+        "Sharper, more even card pictures and clearly visible bottom cards after cutting."
       ]
     }
   }

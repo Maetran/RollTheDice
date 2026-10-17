@@ -32,7 +32,6 @@ export function renderAccountSettings(root, auth, { onUserChanged } = {}) {
       item('Sprache', 'Deutsch oder Englisch, auf allen Geräten.', `<p>${copy('Diese Einstellung gilt für ZDWA, Zilch und Hausdepp auf allen Geräten.')}</p><form id="hausdeppLanguageForm" class="form-stack"><label>${copy('Sprache')}<select name="language"><option value="de">Deutsch</option><option value="en">English</option></select></label><button class="primary" type="submit">${copy('Sprache speichern')}</button><p data-message role="status"></p></form>`),
     ])}
     ${group('spiel', 'Spiel', [
-      item('Automatisch auffüllen', 'Der Stapel wird für dich angetippt, wenn du ziehen musst.', `<form id="hausdeppGameForm" class="form-stack"><label><input name="autoRefill" type="checkbox"> ${copy('Nach dem Legen automatisch auf drei Karten auffüllen')}</label><p>${copy('Du kannst den Schalter auch am Tisch in der Tischhilfe umlegen. Nachwerfen bleibt möglich.')}</p><button class="primary" type="submit">${copy('Spiel-Einstellung speichern')}</button><p data-message role="status"></p></form>`, 'id="auffuellen"'),
       item('Hilfe & Neuigkeiten', 'Einsteigertouren ansehen oder neu starten.', '<div data-game-tour-settings></div>', 'id="hilfe"'),
     ])}
     ${group('mitspieler', 'Mitspieler & Chat', [
@@ -88,15 +87,6 @@ export function renderAccountSettings(root, auth, { onUserChanged } = {}) {
       await update('/api/auth/preferences/language', { preferred_language: language });
       window.ZDWA_I18N.setLanguage(language);
     }, 'Sprache gespeichert.');
-  });
-  const gameForm = root.querySelector('#hausdeppGameForm');
-  gameForm.elements.autoRefill.checked = user.preferences?.hausdepp_auto_refill === true;
-  gameForm.addEventListener('submit', event => {
-    event.preventDefault();
-    void save(gameForm, async () => {
-      const payload = await update('/api/auth/preferences/hausdepp', { hausdepp_auto_refill: gameForm.elements.autoRefill.checked });
-      user.preferences = { ...(user.preferences || {}), hausdepp_auto_refill: payload.hausdepp_auto_refill === true };
-    }, 'Spiel-Einstellung gespeichert.');
   });
   const chatForm = root.querySelector('#hausdeppChatForm');
   chatForm.elements.enabled.checked = user.preferences?.lobby_chat_enabled !== false;

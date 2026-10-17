@@ -346,11 +346,17 @@ button.hd-pile:hover { background: #f3eadd18; }
 /* Touch screens keep :hover on the last tapped card; raising it would cover its neighbours. */
 @media (hover: hover) { .hd-hand-fan .hausdepp-card:hover:not(:disabled) { z-index: 50; transform: translateY(calc(var(--fan-drop,0px) - 12px)) rotate(var(--fan-angle,0deg)); } }
 .hd-hand-fan .hausdepp-card.is-committed { opacity: .55; transform: translateY(calc(var(--fan-drop,0px) - 18px)) rotate(var(--fan-angle,0deg)); }
+/* Its picture is already flying to the pile; one card, never two. */
+.hd-hand-fan .hausdepp-card.is-launched { visibility: hidden; }
+/* Holding a card selects its rank; no text selection or system callout. */
+.hd-hand-fan .hausdepp-card { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .hd-hand-fan .hausdepp-card:focus-visible { outline: 3px solid var(--hd-gold); outline-offset: 4px; }
 .hd-actions { display: flex; justify-content: center; align-items: center; padding: 0 20px; }
 .hd-action-guide { color: #e4cfb1; font-size: 12px; line-height: 1.5; margin: 0 auto; padding: 0 12px; max-width: 55ch; text-align: center; }
 .hd-deal-card { position: fixed; z-index: 65; pointer-events: none; border: 3px solid var(--hd-paper); border-radius: 7px; background: url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center/150px; box-shadow: 0 6px 15px #180d0870; transform-origin: center; }
-.hd-deal-card.has-face { border: 0; background: var(--hd-paper); overflow: hidden; }
+/* A flying face is the same paper as a table card: proportional corners, so
+   it looks identical at every size and scale along its path. */
+.hd-deal-card.has-face { border: 0; border-radius: 6.7% / 4.2%; background: #f7f4eb; overflow: hidden; }
 .hd-shuffle-layer { position: fixed; z-index: 64; pointer-events: none; }
 .hd-shuffle-half { position: absolute; inset: 0; pointer-events: none; transform-origin: center; }
 .hd-shuffle-half .hd-card-back { position: absolute; inset: 0; width: 100%; height: 100%; border-width: 3px; pointer-events: none; }

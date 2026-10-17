@@ -202,3 +202,28 @@ class CpuRunnerRaceTests(IsolatedAsyncioTestCase):
         assert events[0]["player_id"] == "p1"
         assert clock.call_count == 1
         assert 1.25 < waits[0] <= 1.3
+
+    async def test_waiting_runner_lets_a_human_card_land_before_the_next_cpu_turn(self):
+        # p0 (computer) still owes a refill while the human p1 plays. The
+        # runner was already waiting; the next computer must not close p1's
+        # afterthrow while that card is still flying to the pile.
+        state = scenario([["hearts-6"], ["hearts-K", "acorns-K", "bells-9"], ["leaves-A", "leaves-8", "leaves-9"]],
+                         discard=["bells-U"], deck=["hearts-7", "hearts-8", "hearts-9", "acorns-6"], current="p1")
+        state["pending_refills"] = {"p0": {"player_id": "p0", "remaining": 2, "continuation": "advance", "rank": "6"}}
+        game = game_for(state, cpu_ids={"p0", "p2"})
+        now = [100.0]
+        played_at = []
+
+        async def human_plays_then_time_passes(seconds):
+            if not played_at:
+                from app.hausdepp_gameplay import apply_hausdepp_command
+
+                apply_hausdepp_command(game, "p1", {"action": "play", "cards": ["hearts-K"],
+                                                    "version": game["_hausdepp"]["version"]})
+                played_at.append(now[0])
+            now[0] += seconds
+
+        with patch.dict(os.environ, clear=True), patch.object(runner, "_now", side_effect=lambda: now[0]):
+            events, _ = await self.run_cpu(game, sleep=human_plays_then_time_passes, stop_after=2)
+        assert [(event["type"], event["player_id"]) for event in events] == [("draw", "p0"), ("play", "p2")]
+        assert now[0] - played_at[0] == pytest.approx(1.3)

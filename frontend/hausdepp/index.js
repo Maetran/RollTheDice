@@ -14,7 +14,7 @@ import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initChat, addChatMessage } from "../room/chat.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
 import { cardArt, prepareCardAssets } from "./cards.js";
-import { prepareCardMotion, animateCardMotion, resetCardMotion, presentShuffle, cancelShuffle } from "./motion.js";
+import { prepareCardMotion, animateCardMotion, resetCardMotion, presentShuffle, cancelShuffle, launchOwnPlay, launchedCards, cancelOwnPlay } from "./motion.js";
 import { createGameTour } from "../shared/game-tours.js";
 import { mountPileInspector } from "./pile-inspector.js";
 import { mountHandSelection } from "./hand-selection.js";
@@ -61,12 +61,12 @@ function cardName(card) {
   return `${t(suit)} ${t(`rank${rank}`)}`;
 }
 
-function cardMarkup(card, { interactive = false, playable = false, committed = false, selecting = false, selected = false, sameRank = false, index = 0, count = 1 } = {}) {
+function cardMarkup(card, { interactive = false, playable = false, committed = false, launched = false, selecting = false, selected = false, sameRank = false, index = 0, count = 1 } = {}) {
   const art = cardArt(card);
   const offset = index - (count - 1) / 2;
   const angle = count > 1 ? offset / Math.max((count - 1) / 2, 1) * Math.min(14, count * 3.5) : 0;
   const drop = Math.pow(Math.abs(angle) / 14, 2) * 17;
-  const attrs = `class="hausdepp-card ${playable ? "is-playable" : ""} ${committed ? "is-committed" : ""} ${selected ? "is-selected" : ""}" data-card-id="${esc(card)}" aria-label="${esc(cardName(card))}"${selecting ? ` aria-pressed="${selected}" aria-describedby="hausdeppMultiHint"` : ""}`;
+  const attrs = `class="hausdepp-card ${playable ? "is-playable" : ""} ${committed ? "is-committed" : ""} ${launched ? "is-launched" : ""} ${selected ? "is-selected" : ""}" data-card-id="${esc(card)}" aria-label="${esc(cardName(card))}"${selecting ? ` aria-pressed="${selected}" aria-describedby="hausdeppMultiHint"` : ""}`;
   return interactive
     ? `<button type="button" ${attrs} data-same-rank="${sameRank}" style="--card-index:${index};--fan-offset:${offset};--fan-angle:${angle}deg;--fan-drop:${drop}px" ${!playable || committed ? "disabled" : ""}>${art}</button>`
     : `<span ${attrs} role="img">${art}</span>`;
@@ -127,8 +127,10 @@ function renderHand(markup) {
   const container = $("hausdeppHand");
   let fan = container.firstElementChild;
   if (!fan) { container.append(next); return; }
-  syncAttributes(fan, next);
   const existing = new Map([...fan.children].map(card => [card.dataset.cardId, card]));
+  // Layout positions only (offsetLeft ignores the fan's own transforms).
+  const before = new Map([...existing].map(([id, card]) => [id, card.offsetLeft]));
+  syncAttributes(fan, next);
   const nextCards = [...next.children];
   const retained = new Set(nextCards.map(card => card.dataset.cardId));
   for (const card of [...fan.children]) if (!retained.has(card.dataset.cardId)) card.remove();
@@ -137,6 +139,16 @@ function renderHand(markup) {
     syncAttributes(card, nextCard);
     if (fan.children[index] !== card) fan.insertBefore(card, fan.children[index] || null);
   });
+  if (existing.size === nextCards.length && nextCards.every(card => existing.has(card.dataset.cardId))) return;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  // Remaining cards close or open the gap smoothly instead of jumping.
+  for (const [id, left] of before) {
+    const card = existing.get(id);
+    const shift = card.isConnected ? left - card.offsetLeft : 0;
+    if (Math.abs(shift) < 1) continue;
+    card.animate?.([{ translate: `${shift}px 0` }, { translate: "0 0" }],
+      { duration: 240, easing: "cubic-bezier(.16,1,.3,1)", composite: "add" });
+  }
 }
 
 function renderOpponents(markup) {
@@ -503,7 +515,7 @@ function renderTableShell() {
   document.body.classList.add("hd-playing");
   initializeGameViewport();
   if (spectating) document.body.classList.add("hd-spectating");
-  root.innerHTML = `<div class="hd-room-layout"><section id="hausdeppTable" class="hd-table" aria-label="${t("table")}"><div class="hd-room-heading"><div><h1 id="hausdeppRoomName">${t("defaultTable")}</h1><p id="hausdeppTournamentBanner" class="hd-tournament-banner" hidden></p></div><span id="hausdeppConnection" role="status">${t("connecting")}</span></div><div id="hausdeppPlayers" class="hd-seats"></div><div class="hd-centre"><div class="hd-stock-group"><div id="hausdeppKnownBottomCards" class="hd-known-bottom-cards" aria-hidden="true" hidden><span class="hd-known-bottom-fan"></span><span id="hausdeppKnownBottom" class="hd-known-bottom" hidden></span></div><button id="hausdeppStock" class="hd-card-back" type="button" disabled aria-label="${t("stock")}"></button><span id="hausdeppStockAction" class="hd-stack-action"></span><p id="hausdeppDrawAlert" class="hd-draw-alert" role="status" hidden>${t("mustDraw")}</p><span id="hausdeppStockCount"></span></div><div class="hd-pile-group"><button id="hausdeppPile" class="hd-pile" type="button" disabled aria-label="${t("pickup")}" aria-describedby="hausdeppPileTip"></button><span id="hausdeppPileTip" class="hd-pile-tip" role="tooltip">${t("inspectPileTip")}</span><span id="hausdeppPileAction" class="hd-stack-action"></span><span id="hausdeppPileCount"></span></div><div class="hd-burned"><div id="hausdeppBurnedStack" class="hd-burned-stack is-empty" aria-hidden="true"></div><span class="hd-stack-action">${t("outOfPlay")}</span><span class="hd-burned-meta"><span id="hausdeppBurnedCount">0</span> <span id="hausdeppBurnedUnit">${t("cardWord")}</span></span></div></div><p id="hausdeppStatus" class="hd-turn-status" role="status" aria-live="polite">${t("connecting")}</p><section class="hd-hand-region" aria-labelledby="hausdeppHandTitle"><div class="hd-hand-heading"><div class="hd-own-identity">${avatarMarkup(auth.user, { size: "small", avatarKey: "hand-self" })}<div><h2 id="hausdeppHandTitle">${t("yourHand")} <span id="hausdeppOwnPrefix" class="hd-tournament-prefix" hidden></span></h2><span class="hd-own-name" translate="no">${esc(auth.user.username)}</span></div></div><span id="hausdeppSelection"></span></div><div id="hausdeppHand" class="hd-hand"></div></section><details id="hausdeppTools" class="hd-actions"><summary aria-label="${esc(t("tableTools"))}" title="${esc(t("tableTools"))}">${icon("cards")}<span class="hd-tools-label">${t("tableTools")}</span></summary><div class="hd-game-help"><h2>${t("tableTools")}</h2><p id="hausdeppEvent" class="hd-event" aria-live="polite"></p><p class="hd-action-guide">${t("stackActions")}</p><label class="hd-auto-refill"><input id="hausdeppAutoRefill" type="checkbox"> <span>${t("autoRefill")}</span></label><p class="hd-fine">${t("autoRefillHint")}</p><p id="hausdeppAutoRefillMessage" class="hd-fine" role="status"></p><button id="hausdeppInspectPile" class="hd-secondary hd-inspect-pile" type="button" disabled>${t("inspectPile")}</button><p class="hd-inspect-hint">${t("inspectPileGesture")}</p><a class="hd-secondary" href="/hausdepp/regeln">${t("rules")} ${icon("arrow")}</a><div id="hausdeppRoomInvitation" hidden>${invitationMarkup({ id: gameId, name: t("defaultTable") }, t)}</div><button class="hd-tools-close" type="button">${t("close")}</button></div></details><p id="hausdeppActionError" class="hd-action-error" role="alert"></p><details id="hausdeppPeek" class="hd-peek" hidden><summary>${t("peekTitle")}</summary><p id="hausdeppPeekText"></p><div id="hausdeppPeekCards" class="hd-peek-cards"></div><button id="hausdeppPeekContinue" type="button" hidden>${t("peekNext")}</button></details><section id="hausdeppResult" class="hd-result" aria-live="polite" hidden></section><div id="hausdeppReactionLayer" class="hd-reaction-layer" aria-hidden="true"></div><p id="hausdeppReactionAnnouncement" class="hd-sr" role="status" aria-live="polite" aria-atomic="true"></p></section>
+  root.innerHTML = `<div class="hd-room-layout"><section id="hausdeppTable" class="hd-table" aria-label="${t("table")}"><div class="hd-room-heading"><div><h1 id="hausdeppRoomName">${t("defaultTable")}</h1><p id="hausdeppTournamentBanner" class="hd-tournament-banner" hidden></p></div><span id="hausdeppConnection" role="status">${t("connecting")}</span></div><div id="hausdeppPlayers" class="hd-seats"></div><div class="hd-centre"><div class="hd-stock-group"><div id="hausdeppKnownBottomCards" class="hd-known-bottom-cards" aria-hidden="true" hidden><span class="hd-known-bottom-fan"></span><span id="hausdeppKnownBottom" class="hd-known-bottom" hidden></span></div><button id="hausdeppStock" class="hd-card-back" type="button" disabled aria-label="${t("stock")}"></button><span id="hausdeppStockAction" class="hd-stack-action"></span><p id="hausdeppDrawAlert" class="hd-draw-alert" role="status" hidden>${t("mustDraw")}</p><span id="hausdeppStockCount"></span></div><div class="hd-pile-group"><button id="hausdeppPile" class="hd-pile" type="button" disabled aria-label="${t("pickup")}" aria-describedby="hausdeppPileTip"></button><span id="hausdeppPileTip" class="hd-pile-tip" role="tooltip">${t("inspectPileTip")}</span><span id="hausdeppPileAction" class="hd-stack-action"></span><span id="hausdeppPileCount"></span></div><div class="hd-burned"><div id="hausdeppBurnedStack" class="hd-burned-stack is-empty" aria-hidden="true"></div><span class="hd-stack-action">${t("outOfPlay")}</span><span class="hd-burned-meta"><span id="hausdeppBurnedCount">0</span> <span id="hausdeppBurnedUnit">${t("cardWord")}</span></span></div></div><p id="hausdeppStatus" class="hd-turn-status" role="status" aria-live="polite">${t("connecting")}</p><section class="hd-hand-region" aria-labelledby="hausdeppHandTitle"><div class="hd-hand-heading"><div class="hd-own-identity">${avatarMarkup(auth.user, { size: "small", avatarKey: "hand-self" })}<div><h2 id="hausdeppHandTitle">${t("yourHand")} <span id="hausdeppOwnPrefix" class="hd-tournament-prefix" hidden></span></h2><span class="hd-own-name" translate="no">${esc(auth.user.username)}</span></div></div><span id="hausdeppSelection"></span></div><div id="hausdeppHand" class="hd-hand"></div></section><details id="hausdeppTools" class="hd-actions"><summary aria-label="${esc(t("tableTools"))}" title="${esc(t("tableTools"))}">${icon("cards")}<span class="hd-tools-label">${t("tableTools")}</span></summary><div class="hd-game-help"><h2>${t("tableTools")}</h2><p id="hausdeppEvent" class="hd-event" aria-live="polite"></p><p class="hd-action-guide">${t("stackActions")}</p><button id="hausdeppInspectPile" class="hd-secondary hd-inspect-pile" type="button" disabled>${t("inspectPile")}</button><p class="hd-inspect-hint">${t("inspectPileGesture")}</p><a class="hd-secondary" href="/hausdepp/regeln">${t("rules")} ${icon("arrow")}</a><div id="hausdeppRoomInvitation" hidden>${invitationMarkup({ id: gameId, name: t("defaultTable") }, t)}</div><button class="hd-tools-close" type="button">${t("close")}</button></div></details><p id="hausdeppActionError" class="hd-action-error" role="alert"></p><details id="hausdeppPeek" class="hd-peek" hidden><summary>${t("peekTitle")}</summary><p id="hausdeppPeekText"></p><div id="hausdeppPeekCards" class="hd-peek-cards"></div><button id="hausdeppPeekContinue" type="button" hidden>${t("peekNext")}</button></details><section id="hausdeppResult" class="hd-result" aria-live="polite" hidden></section><div id="hausdeppReactionLayer" class="hd-reaction-layer" aria-hidden="true"></div><p id="hausdeppReactionAnnouncement" class="hd-sr" role="status" aria-live="polite" aria-atomic="true"></p></section>
     <aside class="hd-social"><div class="hd-social-tools"><button id="chatToggle" type="button" aria-controls="chatPanel" aria-expanded="false">${icon("chat")} <span class="hd-chat-label">${t("tableChat")}</span> <span id="chatToggleCount" hidden></span></button><div class="hd-reactions" aria-label="${t("reactions")}">${["👍", "😂", "😮", "🎉"].map(emoji => `<button type="button" data-hausdepp-reaction="${emoji}" aria-label="${esc(t("reaction", { emoji }))}">${emoji}</button>`).join("")}</div></div><section id="chatPanel" class="hd-chat-panel" aria-label="${t("tableChat")}"><div class="chat-content" hidden><div class="hd-chat-heading"><h2>${t("tableChat")}</h2><button id="chatClose" type="button">${t("close")}</button></div><div id="chatBox" class="hd-chat-messages" role="log" aria-live="polite"></div><div class="hd-chat-compose"><label class="hd-sr" for="chatInput">${t("message")}</label><input id="chatInput" type="text" maxlength="400" placeholder="${t("message")}" autocomplete="off"><button id="chatSend" type="button">${t("send")}</button></div></div></section><a class="hd-social-rules" href="/hausdepp/regeln">${t("rules")} ${icon("arrow")}</a></aside></div><button id="chatBackdrop" class="hd-chat-backdrop" type="button" aria-label="${t("close")}" hidden></button>`;
   $("hausdeppTable").insertAdjacentHTML("afterbegin", `<section id="hausdeppWaiting" class="hd-waiting" aria-labelledby="hausdeppWaitingTitle" hidden><div class="hd-waiting-heading"><h2 id="hausdeppWaitingTitle">${t("waitingHeading")}</h2><button id="hausdeppLeaveWaiting" class="hd-secondary" type="button" hidden>${t("leaveWaiting")}</button></div><p id="hausdeppLeaveWaitingError" class="hd-error" role="alert" hidden></p><p>${t("waitingBody")}</p><ul id="hausdeppWaitingSeats" class="hd-waiting-seats"></ul><p id="hausdeppWaitingCount" class="hd-waiting-count" role="status"></p>${invitationMarkup({ id: gameId, name: t("defaultTable"), waiting: true }, t)}<p class="hd-fine">${t("privateTableHint")}</p></section>`);
   if (spectating) {
@@ -528,21 +540,6 @@ function renderTableShell() {
     command(actions.includes("peek") ? "peek" : actions.includes("draw") ? "draw" : "gamble");
   });
   $("hausdeppPeekContinue").addEventListener("click", () => command("peek"));
-  const autoRefill = $("hausdeppAutoRefill");
-  autoRefill.checked = autoRefillEnabled();
-  autoRefill.disabled = spectating;
-  autoRefill.addEventListener("change", async () => {
-    const enabled = autoRefill.checked;
-    autoRefill.disabled = true;
-    $("hausdeppAutoRefillMessage").textContent = "";
-    try {
-      await saveAutoRefill(enabled);
-      renderState();
-    } catch {
-      autoRefill.checked = !enabled;
-      $("hausdeppAutoRefillMessage").textContent = t("autoRefillFailed");
-    } finally { autoRefill.disabled = false; }
-  });
   // Wide tables keep help and invitations in the side column beside chat and
   // rules; the hand area below the cards stays for playing them.
   const toolsWide = matchMedia("(min-width: 1100px)");
@@ -566,19 +563,58 @@ function renderTableShell() {
     },
   });
   $("hausdeppPile").addEventListener("click", () => command("pickup"));
+  // Holding a playable card selects all cards of its rank for one throw.
+  let hold = null, suppressClick = false;
+  const endHold = () => { if (hold) clearTimeout(hold.timer); hold = null; };
+  const startSelection = card => {
+    if (!card || handSelection.selection.enabled || !handSelection.selection.startWith(card)) return false;
+    navigator.vibrate?.(12);
+    renderState();
+    return true;
+  };
+  $("hausdeppHand").addEventListener("pointerdown", event => {
+    const button = event.target.closest("button[data-card-id]:not(:disabled)");
+    endHold();
+    suppressClick = false;
+    if (!button || event.button > 0) return;
+    hold = { x: event.clientX, y: event.clientY, timer: setTimeout(() => {
+      hold = null;
+      if (startSelection(button.dataset.cardId)) suppressClick = true;
+    }, 420) };
+  });
+  $("hausdeppHand").addEventListener("pointermove", event => {
+    if (hold && Math.hypot(event.clientX - hold.x, event.clientY - hold.y) > 10) endHold();
+  });
+  for (const type of ["pointerup", "pointercancel", "pointerleave"]) $("hausdeppHand").addEventListener(type, endHold);
+  // No browser callout or menu over a held card; right-click selects too.
+  $("hausdeppHand").addEventListener("contextmenu", event => {
+    const button = event.target.closest("button[data-card-id]");
+    if (!button) return;
+    event.preventDefault();
+    if (!button.disabled && startSelection(button.dataset.cardId)) suppressClick = false;
+  });
+  $("hausdeppHand").addEventListener("keydown", event => {
+    const button = event.target.closest("button[data-card-id]:not(:disabled)");
+    if (!button || !(event.key === "ContextMenu" || (event.key === "Enter" && event.shiftKey))) return;
+    event.preventDefault();
+    startSelection(button.dataset.cardId);
+  });
   $("hausdeppHand").addEventListener("click", event => {
     const card = event.target.closest("button[data-card-id]")?.dataset.cardId;
     const s = snapshot?._hausdepp;
+    if (suppressClick) { suppressClick = false; return; }
     if (handSelection.selection.enabled) {
       if (card && handSelection.selection.select(card)) renderState();
       return;
     }
-    if (!card || !s?.playable_cards?.includes(card) || queuedCards.includes(card) || commandInFlight?.cards?.includes(card)) return;
+    if (!card || !s?.playable_cards?.includes(card) || queuedCards.some(item => item.card === card) || commandInFlight?.cards?.includes(card)) return;
     if (pending) {
       // A follow-up card may wait behind an automatic or manual refill tap.
       const behindDraw = commandInFlight?.action === "draw" && s.available_actions.includes("afterthrow");
       if (!behindDraw && (!commandInFlight?.cards?.length || commandInFlight.cards[0].split("-")[1] !== card.split("-")[1])) return;
-      queuedCards.push(card);
+      // Remember what was possible at the tap. A queued card is never replayed
+      // later as a different action (for example as a fresh play on a new turn).
+      queuedCards.push({ card, behindDraw });
       renderState();
       return;
     }
@@ -655,17 +691,6 @@ function receiveReaction(reaction) {
   requestAnimationFrame(() => { if (!stopped) announcement.textContent = t("reactionAnnouncement", { name: reaction.from || "", emoji: reaction.emoji }); });
 }
 
-function autoRefillEnabled() {
-  return auth?.user?.preferences?.hausdepp_auto_refill === true;
-}
-
-async function saveAutoRefill(enabled) {
-  const response = await apiFetch("/api/auth/preferences/hausdepp", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hausdepp_auto_refill: enabled }) });
-  if (!response.ok) throw new Error("hausdepp_preference_failed");
-  const payload = await response.json();
-  auth.user.preferences = { ...(auth.user.preferences || {}), hausdepp_auto_refill: payload.hausdepp_auto_refill === true };
-}
-
 function command(action, cards) {
   const allowed = action === "next_round" ? snapshot?._hausdepp_tournament?.can_start_next_round : snapshot?._hausdepp?.available_actions?.includes(action);
   if (pending || tournamentEnding || !allowed) return;
@@ -678,13 +703,14 @@ function command(action, cards) {
   if (!send({ action: `hausdepp_${action}`, command_id: commandId, version: snapshot._hausdepp.version, ...(cards ? { cards } : {}) })) {
     resetCommand();
     $("hausdeppActionError").textContent = t("connectionLost");
-  }
+  } else if (["play", "afterthrow"].includes(action)) launchOwnPlay(gameId, playerId, cards);
   renderState();
   clearTimeout(pendingTimer);
   pendingTimer = setTimeout(() => { if (pending && $("hausdeppActionError")) $("hausdeppActionError").textContent = t("waitingConnection"); }, 8000);
 }
 
-function resetCommand() {
+function resetCommand({ returnToHand = false } = {}) {
+  cancelOwnPlay(gameId, null, { returnToHand, onReturned: () => { if (!stopped) renderState(); } });
   pending = false;
   commandInFlight = null;
   queuedCards.length = 0;
@@ -693,15 +719,22 @@ function resetCommand() {
 
 function completeCommand() {
   if (!commandInFlight || commandInFlight.acceptedVersion === null || snapshot?._hausdepp?.version < commandInFlight.acceptedVersion) return;
+  // Same-rank follow-ups continue only the player's own uninterrupted throw.
+  const uninterrupted = snapshot._hausdepp.version === commandInFlight.acceptedVersion;
   pending = false;
   commandInFlight = null;
   clearTimeout(pendingTimer);
   const s = snapshot._hausdepp;
   while (queuedCards.length) {
-    const card = queuedCards.shift();
+    const { card, behindDraw } = queuedCards.shift();
     if (!s.hand.includes(card) || !s.playable_cards?.includes(card)) continue;
-    const action = s.available_actions.includes("afterthrow") ? "afterthrow" : s.available_actions.includes("play") ? "play" : null;
+    // An afterthrow that is still open stays valid. A fresh play counts only
+    // right after the player's own clearance, with nobody acting in between.
+    const action = s.available_actions.includes("afterthrow") ? "afterthrow"
+      : !behindDraw && uninterrupted && s.available_actions.includes("play") ? "play" : null;
     if (action) { command(action, [card]); return; }
+    queuedCards.length = 0;
+    break;
   }
   renderState();
 }
@@ -745,8 +778,10 @@ function connect() {
     if (payload.error) {
       waitingLeaving = false;
       tournamentEnding = false;
-      resetCommand();
       const code = payload.hausdepp_error?.code || payload.error;
+      // The next player's card was accepted first: this throw arrived too late.
+      const lateThrow = commandInFlight?.action === "afterthrow" && /stale|afterthrow_expired/.test(code);
+      resetCommand({ returnToHand: true });
       if (["hausdepp_waiting_leave_not_seated", "hausdepp_waiting_already_started"].includes(code)) {
         waitingLeaving = false;
         $("hausdeppLeaveWaiting").disabled = false;
@@ -755,7 +790,7 @@ function connect() {
         output.hidden = false;
         return;
       }
-      $("hausdeppActionError").textContent = t(code.includes("stale") ? "staleAction" : "actionRejected");
+      $("hausdeppActionError").textContent = t(lateThrow ? "afterthrowLate" : code.includes("stale") ? "staleAction" : "actionRejected");
       renderState();
       if (payload.fatal) { stopped = true; socket.close(); }
     }
@@ -813,9 +848,10 @@ function renderState() {
   const selecting = handSelection.selection.enabled;
   const selected = new Set(handSelection.selection.cards);
   const oldFocus = document.activeElement?.dataset.cardId;
-  const committed = new Set([...(commandInFlight?.cards || []), ...queuedCards]);
+  const committed = new Set([...(commandInFlight?.cards || []), ...queuedCards.map(item => item.card)]);
+  const launched = launchedCards(gameId);
   const pendingRank = commandInFlight?.cards?.[0]?.split("-")[1];
-  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" data-compact="${hand.length >= 8}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: selecting ? handSelection.selection.canSelect(card) : (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card) && (!pending || card.split("-")[1] === pendingRank || (commandInFlight?.action === "draw" && actions.includes("afterthrow"))), committed: committed.has(card), selecting, selected: selected.has(card), sameRank: index > 0 && hand[index - 1].split("-")[1] === card.split("-")[1], index, count: hand.length })).join("")}</div>`);
+  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" data-compact="${hand.length >= 8}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: selecting ? handSelection.selection.canSelect(card) : (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card) && (!pending || card.split("-")[1] === pendingRank || (commandInFlight?.action === "draw" && actions.includes("afterthrow"))), committed: committed.has(card), launched: launched.has(card), selecting, selected: selected.has(card), sameRank: index > 0 && hand[index - 1].split("-")[1] === card.split("-")[1], index, count: hand.length })).join("")}</div>`);
   if (oldFocus) $("hausdeppHand").querySelector(`[data-card-id="${CSS.escape(oldFocus)}"]`)?.focus({ preventScroll: true });
   $("hausdeppSelection").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", hand.length);
   const mine = s.players.find(p => p.id === playerId);
@@ -869,8 +905,9 @@ function renderState() {
   }
   $("hausdeppKnownBottom").textContent = knownBottom.length ? t("knownBottom", { cards: knownBottom.map(card => t(`rank${card.split("-")[1]}`)).join(" · ") }) : "";
   if (knownBottom.length && !stockBlocker) $("hausdeppStock").setAttribute("aria-label", `${$("hausdeppStock").getAttribute("aria-label")}. ${t("knownBottomLabel", { cards: knownBottom.map(cardName).join(", ") })}`);
-  // Opt-in convenience: tap the stock once when the own refill is due.
-  if (autoRefillEnabled() && !pending && !spectating && actions.includes("draw") && autoRefillVersion !== s.version) {
+  // Refilling is mandatory, so the stock is tapped once for everyone as soon
+  // as the own refill is due. A manual tap remains a harmless fallback.
+  if (!pending && !spectating && actions.includes("draw") && autoRefillVersion !== s.version) {
     autoRefillVersion = s.version;
     queueMicrotask(() => { if (!pending && snapshot?._hausdepp?.available_actions?.includes("draw")) command("draw"); });
   }

@@ -176,7 +176,8 @@ test('waiting → peeking shows one brief shuffle and never blocks the actual st
   expect(await page.evaluate(() => window.__shuffleLayers.length)).toBe(1);
   await page.clock.runFor(900);
   await expect(layer).toHaveCount(0);
-  expect(fixture.commands).toEqual([]);
+  // Mandatory refills are tapped automatically; nothing else may be sent.
+  expect(fixture.commands.filter(command => command.action !== 'hausdepp_draw')).toEqual([]);
   fixture.send(peeking);
   await expect(layer).toHaveCount(0);
   expect(await page.evaluate(() => window.__shuffleLayers.length)).toBe(1);
@@ -200,7 +201,6 @@ for (const language of ['de', 'en']) {
   test(`${language}: a fresh real CPU table shuffles on its first peeking snapshot, then reload stays quiet`, async ({ page }) => {
     await realCpuTable(page, language);
     await expect.poll(() => page.evaluate(() => window.__shuffleLayers.length)).toBe(1);
-    await expect(page.locator('#hausdeppStock')).toBeEnabled();
     await page.reload();
     await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'peeking');
     await expect(page.locator('.hd-shuffle-layer')).toHaveCount(0);
@@ -299,7 +299,8 @@ test('compact discard counters remain separate from stock captions and turn mess
     });
     expect(overlap, `${width}×${height} ${urgent ? 'urgent draw' : 'normal play'}: discard count must not overlap any nearby text`).toEqual([]);
   }
-  expect(fixture.commands).toEqual([]);
+  // Mandatory refills are tapped automatically; nothing else may be sent.
+  expect(fixture.commands.filter(command => command.action !== 'hausdepp_draw')).toEqual([]);
 });
 
 async function watchPublicMotion(page) {
@@ -341,10 +342,10 @@ for (const reason of ['ten', 'four_of_a_kind']) {
     const play = motions.find(event => event.type === next._hausdepp.last_event.type);
     const burn = motions.find(event => event.type === 'burn');
     expect(play.rest).toBeGreaterThanOrEqual(300);
-    expect(burn.delay).toBeGreaterThanOrEqual(play.delay + play.duration + 80);
+    // The packet departs exactly when the played card has been read: no gap.
+    expect(burn.delay).toBeGreaterThanOrEqual(play.delay + play.duration);
     expect(burn.duration).toBeGreaterThanOrEqual(400);
     await expect(page.locator('#hausdeppBurnedCount')).toHaveText(String(next._hausdepp.burned_count));
-    await expect(page.locator('#hausdeppStock')).toBeEnabled();
     const visibleCause = await page.evaluate(type => {
       const opacity = element => Number(getComputedStyle(element).opacity);
       for (const ghost of document.querySelectorAll('.hd-deal-card')) {
@@ -360,8 +361,8 @@ for (const reason of ['ten', 'four_of_a_kind']) {
     expect(visibleCause.livePile).toBe(0);
     expect(visibleCause.burn.every(opacity => opacity === 0)).toBe(true);
     expect(visibleCause.faceUp).toBe(reason === 'ten' ? 2 : 4);
-    // A presentation never gates the next authorised action or captures taps.
-    await page.locator('#hausdeppStock').click();
+    // A presentation never gates the next authorised action: the mandatory
+    // refill is tapped automatically, exactly once, while the packet moves.
     await expect.poll(() => fixture.commands.filter(command => command.action === 'hausdepp_draw').length).toBe(1);
   });
 }
@@ -447,7 +448,8 @@ test('enabling reduced motion cancels an active public sequence and reveals the 
   await expect(page.locator('#hausdeppPile')).toHaveCSS('opacity', '0.45');
   expect(await page.locator('#hausdeppPile').evaluate(element => element.getAnimations().length)).toBe(0);
   await expect(page.locator('#hausdeppBurnedCount')).toHaveText('2');
-  expect(fixture.commands).toEqual([]);
+  // Mandatory refills are tapped automatically; nothing else may be sent.
+  expect(fixture.commands.filter(command => command.action !== 'hausdepp_draw')).toEqual([]);
 });
 
 // Freeze the real WAAPI pictures as soon as the renderer creates them. This
@@ -639,7 +641,8 @@ test.describe('stable pile geometry', () => {
             incoming: 'rapid-first-play', durable: firstDestination.faces.at(-1) });
           await expectStablePilePictures(page, testInfo, { name: 'rapid-second', before: firstDestination,
             incoming: 'rapid-second-play', durable: secondDestination });
-          expect(fixture.commands).toEqual([]);
+          // Mandatory refills are tapped automatically; nothing else may be sent.
+  expect(fixture.commands.filter(command => command.action !== 'hausdepp_draw')).toEqual([]);
         });
       });
     }
@@ -660,5 +663,6 @@ test('stable pile geometry: resizing cancels the old pictures and exposes the ne
   const current = await renderedPileGeometry(page);
   expectSamePaperGeometry(current.faces.at(-1).paper, current.control, 'resized current top card');
   expectSamePaperGeometry(current.faces.at(-1).art, current.control, 'resized current artwork');
-  expect(fixture.commands).toEqual([]);
+  // Mandatory refills are tapped automatically; nothing else may be sent.
+  expect(fixture.commands.filter(command => command.action !== 'hausdepp_draw')).toEqual([]);
 });

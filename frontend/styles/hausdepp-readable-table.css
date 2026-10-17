@@ -59,8 +59,6 @@ html[data-game="hausdepp"] body.hd-playing .hd-hand-fan > .hausdepp-card:focus-v
   html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) { --hd-pile-size: clamp(88px, calc(88px + (100dvh - 568px) * .11), 126px); }
   html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { gap: clamp(30px, 8vw, 48px); padding-bottom: 12px; }
   html[data-game="hausdepp"] body.hd-playing .hd-hand { padding-inline: 14px; }
-  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-cards { z-index: 2; width: calc(var(--hd-pile-size) * .32); right: calc(100% + 3px); }
-  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom { align-self: flex-start; max-width: 68px; font-size: 9px; }
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned { left: 0; width: 40px; max-width: 40px; }
 }
 @media (min-width: 600px) and (max-width: 1099px) and (orientation: portrait) {
@@ -72,7 +70,6 @@ html[data-game="hausdepp"] body.hd-playing .hd-hand-fan > .hausdepp-card:focus-v
   html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) { --hd-pile-size: clamp(96px, min(12vw, calc((100dvh - 150px) * .45)), 132px); }
   html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { gap: clamp(24px, 4vw, 44px); padding-bottom: 0; }
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) > :is(.hd-card-back, .hd-pile) { margin-bottom: 8px; }
-  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-cards { width: calc(var(--hd-pile-size) * .3); right: calc(100% + 2px); }
 }
 /* Short tables have room for a shallow seating arc above the two live piles.
    Keep the count's own lower line; move the piles down instead of covering a
@@ -88,3 +85,12 @@ html[data-game="hausdepp"] body.hd-playing .hd-hand-fan > .hausdepp-card:focus-v
   html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { padding-bottom: 8px; }
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) > :is(.hd-card-back, .hd-pile) { margin-bottom: 12px; }
 }
+
+/* Privately seen bottom cards peek out from under the stock as a small fan,
+   only for the player who saw them. The stock covers most of each card; the
+   visible corner carries rank and suit. No label, nothing else is covered. */
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-cards { z-index: 0; top: 4%; right: auto; left: calc(var(--hd-pile-size) * -.28); width: calc(var(--hd-pile-size) * .56); gap: 0; }
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-fan { transform: rotate(-7deg); transform-origin: 70% 90%; }
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-fan .hausdepp-card:nth-child(2) { transform: translate(-6%, 19%) rotate(-4deg); }
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-fan .hausdepp-card:nth-child(3) { transform: translate(-12%, 38%) rotate(-8deg); }
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; padding: 0; border: 0; }

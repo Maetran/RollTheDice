@@ -895,7 +895,7 @@ test('labelled UI fixture: every card of a sorted 35-card fan remains reachable 
     }));
     await page.evaluate(async () => {
       await document.fonts.ready;
-      for (const url of new Set(['/static/hausdepp/cards-source.jpg', '/static/hausdepp/card-back.png', ...[...document.querySelectorAll('svg image')].map(image => image.getAttribute('href'))])) {
+      for (const url of new Set(['/static/hausdepp/cards-atlas.webp', '/static/hausdepp/card-back.png', ...[...document.querySelectorAll('svg image')].map(image => image.getAttribute('href'))])) {
         const image = new Image(); image.src = url; await image.decode();
       }
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -1511,7 +1511,7 @@ test('capture approved Hausdepp responsive review screens', async ({ page }) => 
   const capture = async (name, { atFanEnd = false } = {}) => {
     await page.evaluate(async () => {
       await document.fonts.ready;
-      for (const url of new Set(['/static/hausdepp/cards-source.jpg', '/static/hausdepp/card-back.png', ...[...document.querySelectorAll('svg image')].map(image => image.getAttribute('href'))])) {
+      for (const url of new Set(['/static/hausdepp/cards-atlas.webp', '/static/hausdepp/card-back.png', ...[...document.querySelectorAll('svg image')].map(image => image.getAttribute('href'))])) {
         const image = new Image();
         image.src = url;
         await image.decode();
