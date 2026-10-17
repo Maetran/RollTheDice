@@ -67,7 +67,7 @@ export function mountHandSelection({ handRegion, tools, reactions, t, onChange, 
   toggle.className = "hd-multi-toggle";
   toggle.setAttribute("aria-pressed", "false");
   toggle.setAttribute("aria-controls", "hausdeppHand hausdeppMultiActions");
-  toggle.innerHTML = '<svg class="hd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h11v16H9zM5 18 2 4l9-2M12 12l2 2 4-5"/></svg>';
+  toggle.innerHTML = '<svg class="hd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h11v16H9zM5 18 2 4l9-2M12 12l2 2 4-5"/></svg><span class="hd-multi-label" aria-hidden="true"></span>';
   const hint = document.createElement("span");
   hint.id = "hausdeppMultiHint";
   hint.className = "hd-sr";
@@ -75,6 +75,7 @@ export function mountHandSelection({ handRegion, tools, reactions, t, onChange, 
   toggle.setAttribute("aria-describedby", hint.id);
   handRegion.append(toggle, hint);
 
+  // The toggle itself ends a selection, so there is no separate cancel button.
   const actions = document.createElement("div");
   actions.id = "hausdeppMultiActions";
   actions.className = "hd-multi-actions";
@@ -83,12 +84,23 @@ export function mountHandSelection({ handRegion, tools, reactions, t, onChange, 
   play.id = "hausdeppMultiPlay";
   play.className = "hd-primary";
   play.type = "button";
-  const cancel = document.createElement("button");
-  cancel.id = "hausdeppMultiCancel";
-  cancel.type = "button";
-  cancel.textContent = t("multiCancel");
-  actions.append(play, cancel);
-  tools.append(actions);
+  actions.append(play);
+
+  // Wide tables put both controls in one bar right under the hand; narrower
+  // fixed windows keep the toggle beside the hand and the play button in the
+  // bottom dock, where the reactions make room for it.
+  const bar = document.createElement("div");
+  bar.id = "hausdeppHandActions";
+  bar.className = "hd-hand-actions";
+  handRegion.append(bar);
+  const wide = matchMedia("(min-width: 1100px)");
+  const place = () => {
+    if (wide.matches) bar.append(toggle, actions);
+    else { handRegion.insertBefore(toggle, hint); tools.append(actions); }
+    reactions.hidden = selection.enabled && !wide.matches;
+  };
+  place();
+  wide.addEventListener("change", place);
 
   const notice = document.createElement("p");
   notice.id = "hausdeppMultiNotice";
@@ -99,7 +111,6 @@ export function mountHandSelection({ handRegion, tools, reactions, t, onChange, 
   handRegion.append(notice);
 
   toggle.addEventListener("click", () => { selection.toggle(); onChange(); });
-  cancel.addEventListener("click", () => { selection.cancel(); onChange(); toggle.focus({ preventScroll: true }); });
   play.addEventListener("click", onPlay);
   handRegion.addEventListener("keydown", event => {
     if (event.key === "Escape" && selection.enabled) {
@@ -117,11 +128,13 @@ export function mountHandSelection({ handRegion, tools, reactions, t, onChange, 
       const count = selection.cards.length;
       toggle.disabled = !selection.enabled && !selection.canEnable;
       toggle.setAttribute("aria-pressed", String(selection.enabled));
-      toggle.setAttribute("aria-label", t(selection.enabled ? "multiSelectActive" : "multiSelect"));
-      toggle.title = t(selection.enabled ? "multiSelectActive" : "multiSelect");
+      // One stable name; aria-pressed and the filled style carry the state.
+      toggle.setAttribute("aria-label", t("multiSelect"));
+      toggle.title = t(selection.enabled ? "multiSelectEnd" : "multiSelect");
+      toggle.querySelector(".hd-multi-label").textContent = t("multiSelect");
       handRegion.classList.toggle("is-multi-selecting", selection.enabled);
       actions.hidden = !selection.enabled;
-      reactions.hidden = selection.enabled;
+      reactions.hidden = selection.enabled && !wide.matches;
       play.textContent = t(count === 1 ? "multiPlayOne" : "multiPlay", { count });
       play.disabled = !count || context.pending || !context.action;
       notice.textContent = selection.notice ? t(selection.notice) : "";

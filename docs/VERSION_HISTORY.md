@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.4.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.4.1**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.4.0 | 2026-10-17 | minor | Hausdepp: zufälliger Geber, sichtbare Karten vom Abheben, automatisches Auffüllen, leichtere Mehrfachauswahl und aufgeräumte Kontoeinstellungen. / Hausdepp: random dealer, visible peeked cards, automatic refill, easier multi-select and tidier account settings. | [d45fd8a](https://github.com/Maetran/RollTheDice/commit/d45fd8a48fad3bee7af3ca4031e1e6c3f13e4025) |
 | 3.3.1 | 2026-10-17 | patch | ZDWA im Design 2026: Spielerkacheln mit Punkten oben am Tisch und ein Feldvorschlag, der nach Wert statt nach Rohpunkten wählt. / ZDWA in the 2026 design: player tiles with scores at the top of the table and a field suggestion that picks by value, not raw points. | [56518b1](https://github.com/Maetran/RollTheDice/commit/56518b1f9fbc35ca45b151dbc1efc4de23c58416) |
 | 3.3.0 | 2026-10-17 | minor | Hausdepp: gemeinsam neu starten, gleiche Karten zusammen spielen und zuverlässigere Kartenbilder beim PWA-Neuladen. / Hausdepp: restart together, play matching cards as one move and load artwork reliably after a PWA reload. | [33a406c](https://github.com/Maetran/RollTheDice/commit/33a406c2e9dcbc8c222a79b5f81f8b1303d18955) |
 | 3.2.0 | 2026-10-16 | minor | Hausdepp mit stärkerer CPU, festem mobilen Spielfenster und eigener Passkey-Anmeldung samt Kontoeinstellungen. / Hausdepp gains a stronger CPU, a fixed mobile game window and its own passkey sign-in and account settings. | [50142f1](https://github.com/Maetran/RollTheDice/commit/50142f17bec488a98b83fedc9753d61ee8180cd6) |

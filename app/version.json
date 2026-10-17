@@ -1,10 +1,10 @@
 {
-  "version": "3.4.0",
-  "bump": "minor",
+  "version": "3.4.1",
+  "bump": "patch",
   "date": "2026-10-17",
-  "previous_revision": "56518b1f9fbc35ca45b151dbc1efc4de23c58416",
+  "previous_revision": "d45fd8a48fad3bee7af3ca4031e1e6c3f13e4025",
   "summary": {
-    "de": "Hausdepp: zufälliger Geber, sichtbare Karten vom Abheben, automatisches Auffüllen, leichtere Mehrfachauswahl und aufgeräumte Kontoeinstellungen.",
-    "en": "Hausdepp: random dealer, visible peeked cards, automatic refill, easier multi-select and tidier account settings."
+    "de": "Hausdepp-Tisch: mehr Gegenstände und Streuteile, die auf Antippen reagieren und sich verschieben lassen; ruhigere Beschriftungen.",
+    "en": "Hausdepp table: more props and scatter pieces that react to taps and can be pushed around; calmer labels."
   }
 }

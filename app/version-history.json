@@ -2189,5 +2189,12 @@
     "date": "2026-10-17",
     "bump": "patch",
     "summary": "ZDWA im Design 2026: Spielerkacheln mit Punkten oben am Tisch und ein Feldvorschlag, der nach Wert statt nach Rohpunkten wählt. / ZDWA in the 2026 design: player tiles with scores at the top of the table and a field suggestion that picks by value, not raw points."
+  },
+  {
+    "version": "3.4.0",
+    "revision": "d45fd8a48fad3bee7af3ca4031e1e6c3f13e4025",
+    "date": "2026-10-17",
+    "bump": "minor",
+    "summary": "Hausdepp: zufälliger Geber, sichtbare Karten vom Abheben, automatisches Auffüllen, leichtere Mehrfachauswahl und aufgeräumte Kontoeinstellungen. / Hausdepp: random dealer, visible peeked cards, automatic refill, easier multi-select and tidier account settings."
   }
 ]

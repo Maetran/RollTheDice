@@ -296,17 +296,29 @@ checks cannot replace acceptance of the iPhone Home Screen dialog.
 Rechtsklick oder Umschalt+Enter auffächern; eine beschriftete Aktion steht auch
 in der Spielhilfe. Ein normaler Tipp nimmt weiterhin sofort. Ausgeschiedene
 Karten landen auf einem eigenen, mit „Aus dem Spiel“ beschrifteten Stapel.
+Zocken, Paket und Aus dem Spiel zeigen Titel und Anzahl auf gleicher Höhe; ein
+Hinweis am Paket erklärt Antippen und Halten. Beim Abheben gesehene Karten
+liegen als kleiner Fächer links neben dem Stapel. Am Computer stehen
+„Mehrere Karten auswählen“ und „n Karten legen“ direkt unter der Hand,
+„Spielhilfe und Einladen“ sitzt in der Seitenleiste.
 Tischgegenstände behalten ihren Platz, auch wenn die eigene Hand darüberwächst.
-Auf Wunsch lassen sich Dose, Würfel, Tasse oder Snacks passend zum Gegenstand
-anstupsen. Seltene automatische Gesten und alle Klickeffekte respektieren
+Jeder Gegenstand reagiert beim Antippen auf eigene Art (Kronkorken drehen sich,
+Pralinen rollen, Snacks hüpfen und krümeln, Getränke kräuseln sich) und lässt
+sich mit Maus oder Finger ein Stück über den Tisch schieben; auf Karten, Stapeln
+oder Knöpfen bleibt er nie liegen. Seltene automatische Gesten und alle Klickeffekte respektieren
 reduzierte Bewegung und beeinflussen keinen Spielzug.
 
 **English:** Inspect the open pile before picking it up with a long press,
 right-click or Shift+Enter; a labelled action is also available in table help.
 A normal tap still picks it up immediately. Cleared cards land on a separate
-pile labelled “Out of play”. Table props keep their positions as your hand grows
-over them. Nudge the can, dice, cup or snacks for object-specific movement.
-Rare automatic gestures and all tap effects respect reduced motion and never
+pile labelled “Out of play”. Stock, pile and out-of-play cards show title and count at one
+height, and a hint on the pile explains tap and hold. Cards seen while lifting
+the deck lie as a small fan left of the stock. On computers, “Select multiple
+cards” and “Play n cards” sit right below the hand and help and invitations
+live in the sidebar. Table props keep their positions as your hand grows
+over them. Every object reacts to a tap in its own way (caps spin, chocolates
+roll, snacks hop and drop crumbs, drinks ripple) and can be pushed a little with
+mouse or finger; it never comes to rest on cards, piles or buttons. Rare automatic gestures and all tap effects respect reduced motion and never
 perform a game action.
 
 ## The games
@@ -318,7 +330,9 @@ sitzen im Halbkreis, Profilbilder und Reaktionen bleiben am jeweiligen Spieler
 erkennbar. 50 urige Männer- und Frauennamen werden Computern ohne doppelte Namen
 im Tisch zugeteilt; im laufenden Turnier bleiben die Namen stabil. Grössere
 Bildschirme erhalten wechselnde, rein dekorative Tischgegenstände aus zwölf
-Varianten; auf dem Handy erscheinen sie dezenter. Dampf, Schaum und Kerzenlicht
+grossen Varianten und zehn kleinen Streuteilen wie Kronkorken, Pralinen,
+Bierdeckel mit Strichliste oder Bleistift; auch auf dem Handy liegen einige
+davon auf freiem Holz. Dampf, Schaum und Kerzenlicht
 bewegen sich geringfügig und berücksichtigen reduzierte Bewegung. Die kompakte
 Lobby-Hand rechts neben dem Titel zeigt ruhige lokale Kartenwechsel.
 Auf Mobilgeräten bilden grössere offene und verdeckte Stapel die Tischmitte.
@@ -329,8 +343,9 @@ Karten, Sitze und Hinweise getrennt und beide Stapel direkt antippbar.
 Forest green, card red, strong serif headings and button-shaped navigation give
 the game its own identity. Opponents form a semicircle; avatars and reactions
 identify their players. Computers draw unique names from a pool of 50 male and
-female names, stable during tournaments. Twelve varying props use free table
-space, more subtly on phones, with minimal steam, foam and candle motion and
+female names, stable during tournaments. Twelve large props and ten small scatter
+pieces (bottle caps, chocolates, a beer mat with tally marks, a pencil and more)
+use free table space, phones included, with minimal steam, foam and candle motion and
 reduced-motion support. A compact right-of-title lobby hand changes cards calmly.
 Larger face-up and face-down piles give the centre of the table more room on
 mobile. Their width adapts to portrait and landscape; even with six players,

@@ -10,3 +10,78 @@ html[data-game="hausdepp"] .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-gr
   html[data-game="hausdepp"] body.chat-open .hd-room-layout .hd-chat-compose input { flex: 1 1 100%; }
   html[data-game="hausdepp"] body.chat-open .hd-room-layout .hd-chat-compose button { flex: 1 1 100%; }
 }
+
+/* One caption scheme for all three piles: a short title (what it is or what
+   a tap does) above a quiet count, aligned on the same lines. */
+html[data-game="hausdepp"] .hd-table :is(.hd-centre, .hd-hand-region, .hd-seats) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+html[data-game="hausdepp"] .hd-table .hd-centre :is([id="hausdeppStockCount"], [id="hausdeppPileCount"], .hd-burned-meta) { display: block; min-height: 16px; color: #e4cfb1; font-size: 12px; font-weight: 400; line-height: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+html[data-game="hausdepp"] .hd-table .hd-centre .hd-stack-action:empty { display: block; visibility: hidden; }
+html[data-game="hausdepp"] .hd-table .hd-centre .hd-stack-action:empty::before { content: "\00a0"; }
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center; justify-content: flex-start; gap: 1px; }
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned > .hd-stack-action { text-align: center; }
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre #hausdeppBurnedCount { font-size: inherit; font-weight: 400; }
+html[data-game="hausdepp"] .hd-table .hd-centre :is([id="hausdeppStockCount"], [id="hausdeppPileCount"], .hd-burned-meta) { white-space: nowrap; }
+@media (max-width: 1099px) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned { width: 58px; max-width: 58px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned > :is(.hd-stack-action, .hd-burned-meta) { min-height: 0; font-size: 9px; line-height: 11px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned-stack { width: 28px; margin: 4px auto 3px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-cards { top: 0; gap: 4px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom { font-size: 10px; line-height: 13px; padding: 1px 4px; }
+}
+
+/* The open pile explains its long press: on hover or focus with a mouse,
+   and while a finger rests on it. */
+html[data-game="hausdepp"] .hd-table .hd-pile-group { position: relative; }
+.hd-pile-tip { position: absolute; z-index: 20; left: 50%; bottom: calc(100% + 10px); width: max-content; max-width: 210px; padding: 8px 10px; color: var(--hd-ink); background: var(--hd-paper); border: 1px solid var(--hd-border); border-radius: 6px; box-shadow: 0 6px 18px #0c100d55; font-size: 12px; font-weight: 500; line-height: 1.4; text-align: center; transform: translate(-50%, 4px); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 140ms ease-out, transform 140ms ease-out, visibility 0s linear 140ms; }
+.hd-pile-tip::after { content: ""; position: absolute; left: 50%; top: 100%; width: 10px; height: 10px; background: var(--hd-paper); border: solid var(--hd-border); border-width: 0 1px 1px 0; transform: translate(-50%, -5px) rotate(45deg); }
+@media (hover: hover) and (pointer: fine) {
+  .hd-pile:not(:disabled):is(:hover, :focus-visible) + .hd-pile-tip { opacity: 1; visibility: visible; transform: translate(-50%, 0); transition-delay: 420ms, 420ms, 0s; }
+}
+.hd-pile-group.is-holding .hd-pile-tip { opacity: 1; visibility: visible; transform: translate(-50%, 0); transition-delay: 0s; }
+@media (prefers-reduced-motion: reduce) { .hd-pile-tip { transition: none; } }
+
+/* Bottom cards you saw while cutting stay face up, tucked under the stock. */
+html[data-game="hausdepp"] .hd-table .hd-stock-group { position: relative; }
+html[data-game="hausdepp"] .hd-table .hd-stock-group > .hd-card-back { position: relative; z-index: 1; }
+.hd-known-bottom-cards { position: absolute; z-index: 0; top: 14%; right: calc(100% + 6px); display: flex; flex-direction: column; align-items: flex-end; gap: 6px; width: calc(var(--hd-pile-size, 106px) * .5); pointer-events: none; }
+.hd-known-bottom-cards[hidden] { display: none; }
+.hd-known-bottom-fan { position: relative; display: block; width: 100%; aspect-ratio: 36 / 57; transform: rotate(-9deg); }
+html[data-game="hausdepp"] .hd-table .hd-centre .hd-known-bottom-fan .hausdepp-card { position: absolute; inset: 0; width: 100%; height: 100%; box-shadow: 0 3px 8px #0c100d66; }
+.hd-known-bottom-fan .hausdepp-card:nth-child(2) { transform: translate(-18%, 6%) rotate(-8deg); }
+.hd-known-bottom-fan .hausdepp-card:nth-child(3) { transform: translate(-34%, 12%) rotate(-15deg); }
+.hd-known-bottom-cards .hd-known-bottom { position: static; transform: none; max-width: 120px; white-space: nowrap; text-align: center; font-size: 11px; line-height: 15px; }
+
+/* Wide tables: the hand's own controls sit in one bar right under the cards. */
+.hd-hand-actions { display: none; }
+.hd-multi-label { display: none; }
+@media (min-width: 1100px) {
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-region { grid-template-columns: minmax(0, 1fr); }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-heading { justify-content: center; gap: 18px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-actions { grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 10px; padding: 4px 0 8px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-actions .hd-multi-toggle { grid-column: auto; grid-row: auto; display: inline-flex; align-items: center; gap: 8px; width: auto; height: 44px; padding: 8px 14px; color: var(--hd-green); background: var(--hd-paper); font-size: 14px; font-weight: 600; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-actions .hd-multi-toggle[aria-pressed="true"] { color: var(--hd-paper); background: var(--hd-red); }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-actions .hd-multi-toggle .hd-icon { width: 20px; height: 20px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-actions .hd-multi-label { display: inline; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-actions .hd-multi-actions { display: flex; flex: 0 0 auto; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-actions .hd-multi-actions[hidden] { display: none; }
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-actions #hausdeppMultiPlay { min-width: 160px; height: 44px; padding: 8px 18px; font-size: 14px; }
+  /* Help and invitations sit in the side column like chat and rules. */
+  html[data-game="hausdepp"] .hd-social > .hd-actions { display: block; padding: 0; margin: 12px 0 0; }
+  html[data-game="hausdepp"] .hd-social > .hd-actions > summary { display: flex; width: 100%; }
+  html[data-game="hausdepp"] .hd-social > .hd-actions .hd-game-help { margin-top: 8px; }
+  /* Burned cards: same card row height as the other piles, so all titles align. */
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned { width: auto; flex: 0 0 auto; align-self: flex-start; gap: 2px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned > .hd-stack-action { font-size: 14px; white-space: nowrap; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned-stack { width: 60px; margin: calc((var(--hd-pile-size) - 60px) * 57 / 72) 8px calc((var(--hd-pile-size) - 60px) * 57 / 72 + 8px); }
+  html[data-game="hausdepp"] .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) { gap: 2px; }
+  html[data-game="hausdepp"] .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) > :is(.hd-card-back, .hd-pile) { margin-bottom: 8px; }
+  html[data-game="hausdepp"] .hd-table .hd-centre .hd-stack-action { font-size: 14px; }
+}
+
+/* Short landscape phones stack the captions below the cards; keep the
+   title and its count on two clean lines instead of on top of each other. */
+@media (max-width: 1099px) and (orientation: landscape) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) > .hd-stack-action { min-height: 0; line-height: 11px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(#hausdeppStockCount, #hausdeppPileCount) { top: calc(100% + 15px); min-height: 0; font-size: 10px; line-height: 11px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned { top: auto; bottom: 0; }
+}

@@ -23,6 +23,66 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.4.1 — Hausdepp: ein belebter Tisch / a livelier table — 2026-10-17
+
+**Deutsch:** Auf dem Hausdepp-Tisch liegt mehr: Zu den zwölf grossen
+Gegenständen kommen zehn kleine Streuteile, darunter Kronkorken, Flaschenöffner,
+Pralinen, ein einzelner Würfel, lose Nüsse, Chips und Flips, ein Bierdeckel mit
+Strichliste und ein Bleistift. Desktop zeigt pro Runde bis zu zwölf Dinge,
+Tablet bis zu acht, das Handy bis zu vier statt einem. Jeder Gegenstand
+reagiert beim Antippen eigen: Kronkorken drehen sich wie Münzen, Öffner und
+Bleistift kreiseln, Pralinen und Würfel rollen, Snacks hüpfen und krümeln,
+Getränke kräuseln ihre Oberfläche und das Windlicht flackert auf. Mit Maus oder
+Finger lassen sich Gegenstände ein Stück über den Tisch schieben; auf Karten,
+Stapeln, Namen oder Knöpfen bleiben sie nie liegen. Im Ruhezustand steigen
+Bläschen im Bier und Folie und Dose glänzen gelegentlich. Gegenstände halten den
+Platz frei, den eine wachsende Hand braucht, und liegen auf dem Handy nicht mehr
+halb unter den eigenen Karten. Im Tischgespräch am Desktop ist der Platzhalter nicht mehr abgeschnitten. Die Bilder laden als WebP rund 5 MB
+leichter. Spielregeln und Abläufe sind unverändert; reduzierte Bewegung schaltet
+alle Effekte ab.
+
+**English:** The Hausdepp table holds more: ten small scatter pieces join the
+twelve large props, among them bottle caps, an opener, chocolates, a single die,
+loose nuts, crisps and peanut puffs, a beer mat with tally marks and a pencil.
+Desktops show up to twelve things per round, tablets up to eight and phones up to
+four instead of one. Every object has its own tap reaction: caps spin like
+coins, the opener and pencil twirl, chocolates and the die roll, snacks hop and
+drop crumbs, drinks ripple and the lantern flares. Objects can be pushed a little
+with mouse or finger and never come to rest on cards, piles, names or buttons.
+At rest, bubbles rise in the beer and foil and can catch the light now and then.
+Objects keep clear of the space a growing hand needs and no longer sit half
+under your cards on phones. The desktop table chat no longer cuts off its hint. The artwork loads as WebP, about 5 MB lighter. Rules and game flow are
+unchanged; reduced motion turns every effect off.
+
+**Deutsch – klarere Bedienung:** Am Computer stehen „Mehrere Karten auswählen“
+und „n Karten legen“ jetzt als Leiste direkt unter der eigenen Hand; der
+Knopf „Abbrechen“ entfällt, weil derselbe Schalter die Mehrfachauswahl wieder
+beendet (Escape funktioniert weiterhin). „Spielhilfe und Einladen“ sitzt in der
+Seitenleiste unter dem Tischgespräch statt mitten auf dem Tisch. Zocken, Paket
+und Aus dem Spiel tragen dieselbe Beschriftung auf gleicher Höhe, mit der Anzahl
+darunter („20 zum Nachziehen“, „4 Karten“, „6 Karten“); der abgelegte Stapel
+ist grösser und sauber ausgerichtet, auch auf Handy und Tablet. Ein Hinweis am
+offenen Paket erklärt Antippen und Halten, und langes Drücken markiert keinen
+Text mehr. Karten, die man beim Abheben unten gesehen hat, liegen als kleiner
+Fächer mit „Unten: …“ links neben dem Stapel statt versteckt auf ihm. Mobil
+bleiben Schalter und Knöpfe an ihrem gewohnten Platz.
+
+**English – clearer controls:** On computers, “Select multiple cards” and
+“Play n cards” now sit as a bar right below your hand; the “Cancel” button is
+gone because the same switch ends multi-select (Escape still works). “Help and
+invitations” moved to the sidebar below the table chat instead of sitting on the
+table. Stock, pile and out-of-play cards share one label style at one height,
+with the count below (“20 to draw”, “4 cards”, “6 cards”); the discarded stack
+is larger and neatly aligned on phones and tablets too. A hint on the open pile
+explains tap and hold, and holding no longer selects text. Cards seen at the
+bottom while lifting the deck lie as a small fan marked “Bottom: …” to the left
+of the stock instead of hidden on it. On phones the switch and buttons stay
+where players know them.
+
+**Mitteilung / Notice:** Weil die Mitteilung zu 3.4.0 nicht als Push ankam,
+fasst der Hinweis dieser Version 3.4.0 und 3.4.1 zusammen. / Because the 3.4.0
+notice did not arrive as a push, this version's notice summarises 3.4.0 and 3.4.1.
+
 ## 3.4.0 — Hausdepp: Geber, Abheben und Auffüllen / dealer, peeking and refills — 2026-10-17
 
 **Deutsch:** Bei Hausdepp wird der erste Geber jedes Tisches jetzt ausgelost,
