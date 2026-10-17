@@ -77,7 +77,8 @@ for (const language of ['de', 'en']) {
         await expectNoHorizontalOverflow(page, `${language} ${name} ${mode}`);
       }
     }
-    expect(fixture.commands).toEqual([]);
+    // The due refill is tapped automatically; nothing else may be sent.
+    expect(fixture.commands.filter(command => command.action !== 'hausdepp_draw')).toEqual([]);
   });
 }
 
