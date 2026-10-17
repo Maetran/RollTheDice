@@ -101,13 +101,43 @@ function visibleRect(rect) {
 }
 
 function captureGeometry(playerId) {
+  const styles = new Map(), rotations = new Map();
+  const styleOf = element => {
+    if (!styles.has(element)) styles.set(element, getComputedStyle(element));
+    return styles.get(element);
+  };
+  const rotationOf = element => {
+    if (!element) return 0;
+    if (rotations.has(element)) return rotations.get(element);
+    const style = styleOf(element);
+    const matrix = style.transform === "none" ? null : new DOMMatrixReadOnly(style.transform);
+    const rotation = (style.rotate || "none").split(" ").at(-1);
+    const degrees = (parseFloat(rotation) || 0) * (rotation.endsWith("rad") ? 180 / Math.PI : rotation.endsWith("turn") ? 360 : 1);
+    const angle = rotationOf(element.parentElement) + degrees + (matrix ? Math.atan2(matrix.b, matrix.a) * 180 / Math.PI : 0);
+    rotations.set(element, angle);
+    return angle;
+  };
+  const cardGeometry = element => {
+    const rect = rectOf(element);
+    const style = styleOf(element);
+    // A rotated bounding box is wider than the paper. Keep its true CSS size
+    // and rendered centre separately, including rotation on a pile wrapper.
+    const width = parseFloat(style.width) || element.offsetWidth;
+    const height = parseFloat(style.height) || element.offsetHeight;
+    return { element, card: element.dataset.cardId, rect,
+      pose: rect && width > 0 && height > 0 ? { x: rect.x, y: rect.y, width, height, angle: rotationOf(element) } : null };
+  };
+  const stackGeometry = (id, selector) => {
+    const element = document.getElementById(id);
+    return { element, rect: rectOf(element), cards: [...(element?.querySelectorAll(selector) || [])].map(cardGeometry) };
+  };
   const hands = new Map();
   for (const seat of document.querySelectorAll(".hd-seat[data-player-id]")) {
     const hand = seat.querySelector("[data-player-hand]") || seat;
     hands.set(seat.dataset.playerId, {
       element: hand,
       rect: visibleRect(rectOf(hand)),
-      cards: [...hand.querySelectorAll(".hd-opponent-card")].map(element => ({ element, rect: rectOf(element) })),
+      cards: [...hand.querySelectorAll(".hd-opponent-card")].map(cardGeometry),
     });
   }
   const ownHand = document.getElementById("hausdeppHand");
@@ -115,15 +145,13 @@ function captureGeometry(playerId) {
     hands.set(playerId, {
       element: ownHand,
       rect: visibleRect(rectOf(ownHand)),
-      cards: [...ownHand.querySelectorAll("[data-card-id]")].map(element => ({
-        element, card: element.dataset.cardId, rect: rectOf(element),
-      })),
+      cards: [...ownHand.querySelectorAll("[data-card-id]")].map(cardGeometry),
     });
   }
   return {
-    stock: { element: document.getElementById("hausdeppStock"), rect: rectOf(document.getElementById("hausdeppStock")) },
-    pile: { element: document.getElementById("hausdeppPile"), rect: rectOf(document.getElementById("hausdeppPile")) },
-    burned: { element: document.getElementById("hausdeppBurnedStack"), rect: rectOf(document.getElementById("hausdeppBurnedStack")) },
+    stock: stackGeometry("hausdeppStock", ".hd-stock-card:last-child"),
+    pile: stackGeometry("hausdeppPile", ".hausdepp-card"),
+    burned: stackGeometry("hausdeppBurnedStack", ".hd-burned-card:last-child"),
     hands,
   };
 }
@@ -276,9 +304,6 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, wait
   } }));
   if (reducedMotion) { stationaryReceipt(target.element); return; }
   if (!document.body.animate) return;
-  const width = Math.max(30, Math.min(80, source.rect.width, target.rect.width,
-    group.source === "stock" || group.source === "pile" ? source.rect.width * .86 : 74));
-  const height = width / CARD_RATIO;
   const inHand = group.target.startsWith("hand:");
   const destinationId = inHand ? group.target.slice(5) : null;
   const cue = ["play", "afterthrow"].includes(group.type) ? source.element.animate?.([
@@ -291,12 +316,25 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, wait
     const ownTarget = destinationId === playerId && group.receivedCards?.[index]
       ? target.cards?.find(card => card.card === group.receivedCards[index]) : null;
     const targetCard = ownTarget || (inHand ? target.cards?.[(group.handIndex || 0) + index] : null);
-    const fromCard = group.source.startsWith("hand:") && group.cards?.[index]
-      ? source.cards?.find(card => card.card === group.cards[index]) : null;
-    const origin = group.stationary ? target.rect : fromCard?.rect || source.rect;
-    const destination = fitsHand(targetCard?.rect, target.rect) ? targetCard.rect : target.rect;
+    const cardId = group.cards?.[index];
+    const fromCard = (cardId ? source.cards?.find(card => card.card === cardId) : null)
+      // Opponent hands carry anonymous backs: use a visible back's pose without
+      // assigning any unknown rank or suit to it.
+      || (group.source.startsWith("hand:") ? source.cards?.at(-1 - index) : source.cards?.at(-1));
+    const pileCard = group.target === "pile" && cardId ? target.cards?.find(card => card.card === cardId) : null;
+    const destinationCard = targetCard || pileCard || (!inHand ? target.cards?.at(-1) : null);
+    const origin = fromCard?.pose || { ...source.rect, angle: 0 };
+    const targetPose = destinationCard?.pose;
+    let destination = group.stationary ? origin : targetPose
+      || { ...target.rect, width: inHand ? origin.width : target.rect.width,
+        height: inHand ? origin.height : target.rect.height, angle: 0 };
+    if (!group.stationary && inHand && targetPose && !fitsHand(targetCard?.rect, target.rect)) {
+      destination = { ...targetPose, x: target.rect.x, y: target.rect.y };
+    }
+    const width = origin.width;
+    const height = origin.height || width / CARD_RATIO;
     const spread = Math.min(8, Math.max(2, target.rect.width / 12));
-    const spreadOffset = targetCard ? 0 : group.showcase
+    const spreadOffset = group.stationary || destinationCard ? 0 : group.showcase
       ? (index - (group.count - 1) / 2) * Math.min(18, target.rect.width / 5)
       : (index % 3 - 1) * spread;
     const fromX = origin.x - width / 2;
@@ -320,11 +358,10 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, wait
       left: `${fromX}px`, top: `${fromY}px`, width: `${width}px`, height: `${height}px`,
     });
     document.body.append(ghost);
-    const angle = inHand ? (index % 3 - 1) * 5 : 0;
-    const destinationWidth = targetCard?.element.offsetWidth
-      || (inHand ? width : Math.min(112, target.rect.width));
-    const endScale = Math.max(.25, Math.min(1.8, destinationWidth / width));
-    const end = `translate(${toX - fromX}px,${toY - fromY}px) rotate(${angle}deg) scale(${endScale})`;
+    const start = `translate(0,0) rotate(${origin.angle || 0}deg)`;
+    // Native endpoint sizes may differ greatly (tablet packet → small cleared
+    // stack). Scaling limits would reintroduce a visible snap at either end.
+    const end = `translate(${toX - fromX}px,${toY - fromY}px) rotate(${destination.angle || 0}deg) scale(${destination.width / width},${destination.height / height})`;
     const arrival = Math.min(.9, (group.travel || duration * .9) / cardDuration);
     const fade = Math.max(arrival, 1 - (group.fade || PLAY_FADE) / cardDuration);
     const frames = group.stationary ? [
@@ -334,8 +371,8 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, wait
       { transform: end, opacity: 0, offset: 1 },
     ] : [
       // Queued ghosts must not paint at their old source while waiting.
-      { transform: "translate(0,0) rotate(0deg)", opacity: delay + index * stagger ? 0 : 1, offset: 0 },
-      { transform: "translate(0,0) rotate(0deg)", opacity: 1, offset: .01, easing: "cubic-bezier(.22,.61,.36,1)" },
+      { transform: start, opacity: delay + index * stagger ? 0 : 1, offset: 0 },
+      { transform: start, opacity: 1, offset: .01, easing: "cubic-bezier(.22,.61,.36,1)" },
       { transform: end, opacity: 1, offset: arrival },
       { transform: end, opacity: 1, offset: fade },
       { transform: end, opacity: 0, offset: 1 },

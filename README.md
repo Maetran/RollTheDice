@@ -87,7 +87,9 @@ menschliche Aktionen bleiben unmittelbar möglich. Kartenlagen machen die
 tatsächliche Grösse des Nachziehstapels und offenen Pakets erkennbar. Tablet und
 Desktop nutzen grössere Karten, auf dem Handy rücken grosse Hände und besonders
 gleiche Werte enger zusammen. Der Fächer bleibt horizontal verschiebbar; mit der
-Tastatur fokussierte Karten liegen zum Lesen und Auswählen vorne.
+Tastatur fokussierte Karten liegen zum Lesen und Auswählen vorne. Karten auf
+dem offenen Paket behalten während eines Zugs dieselbe zur Ansicht passende
+Grösse; die Animation geht ohne Grössensprung in den Stapel über.
 
 **English – follow the cards:** Played cards visibly arrive and rest briefly
 before a ten or four matching ranks clear the pile. Computers leave time to
@@ -95,7 +97,8 @@ follow these visible actions; human actions remain immediately available.
 Layered cards convey the actual stock and open-pile sizes. Tablets and desktops
 use larger cards, while large phone hands pack more tightly, especially matching
 ranks. The fan still scrolls horizontally; keyboard-focused cards move to the
-front for reading and selection.
+front for reading and selection. Open-pile cards keep the same size throughout
+a play, matching the viewport; the animation joins the pile without a size jump.
 
 Die [Regel- und Produktspezifikation](docs/HAUSDEPP.md) hält die bestätigten
 Details fest; [Karten und Quellen](docs/HAUSDEPP_ASSETS.md) dokumentiert das

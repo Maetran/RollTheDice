@@ -3,23 +3,21 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: ruhigere Kartenzüge, deutliche Stapelhöhen und ein kompakter Fächer für grosse Hände.",
-  "summary_en": "Hausdepp: clearer card plays, visible pile depth and a compact fan for large hands.",
+  "summary_de": "Hausdepp: Karten auf dem offenen Paket behalten beim Ablegen ihre Grösse – auch auf Tablets.",
+  "summary_en": "Hausdepp: open-pile cards keep their size when a card is played, including on tablets.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp: Karten besser verfolgen",
+      "title": "Hausdepp: stabile Kartengrösse",
       "changes": [
-        "Gespielte Karten bleiben kurz erkennbar, bevor eine 10 oder vier Gleiche das Paket abräumen.",
-        "Kartenlagen zeigen die tatsächliche Grösse von Nachziehstapel und offenem Paket.",
-        "Grosse Hände rücken enger zusammen; gleiche Kartenwerte bilden kompakte Gruppen."
+        "Die Karten auf dem offenen Paket werden beim Ablegen nicht mehr kurz kleiner.",
+        "Kartenanimation und Stapel passen auf Handy, Tablet und Desktop zusammen."
       ]
     },
     "en": {
-      "title": "Hausdepp: follow the cards",
+      "title": "Hausdepp: stable card sizes",
       "changes": [
-        "Played cards remain visible before a ten or four matching ranks clear the pile.",
-        "Card layers show the actual size of the stock and open pile.",
-        "Large hands pack more tightly, with compact groups of matching ranks."
+        "Open-pile cards no longer briefly shrink when a card is played.",
+        "Card animations and the pile match on phones, tablets and desktops."
       ]
     }
   }

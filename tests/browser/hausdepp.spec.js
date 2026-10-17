@@ -612,6 +612,7 @@ test('public discovery admits guests while signed-in accounts keep private play 
       data: { username, password: `${password}-final` },
     })).ok()).toBeTruthy();
     const other = await unrelated.newPage();
+    const regularTraffic = watchGame(other);
     for (const path of ['/hausdepp', '/hausdepp/regeln', '/hausdepp/konto', '/hausdepp/rangliste']) {
       const response = await other.goto(path);
       expect(response.status()).toBe(200);
@@ -621,7 +622,14 @@ test('public discovery admits guests while signed-in accounts keep private play 
     await expect(other.locator('#hausdeppCreateForm')).toBeVisible();
     await other.locator('#hausdeppCreate').click();
     await expect(other).toHaveURL(/\/hausdepp\/spiel\/[^/]+$/);
-    await expect(other.locator('#hausdeppStock')).toBeEnabled();
+    await expect.poll(() => regularTraffic.state?.viewer_id).toBeTruthy();
+    await expect(other.locator('#hausdeppTable')).toHaveAttribute('data-phase', /^(peeking|playing)$/);
+    // The random first dealer can make the computer peek or play first. Check
+    // that stock input follows this viewer's real permissions in either case.
+    await expect.poll(async () => {
+      const allowed = regularTraffic.state.available_actions.some(action => ['peek', 'draw', 'gamble'].includes(action));
+      return await other.locator('#hausdeppStock').isEnabled() === allowed;
+    }).toBe(true);
     for (const path of ['/hausdepp/spiel/not-public', '/hausdepp/spiel/not-public/zuschauen']) {
       const missing = await other.goto(path);
       expect(missing.status()).toBe(404);
