@@ -213,13 +213,14 @@ class GameTourPreferences(Base):
     zdwa_state: Mapped[str] = mapped_column(String(16), nullable=False, default="unseen", server_default="unseen")
     zilch_state: Mapped[str] = mapped_column(String(16), nullable=False, default="unseen", server_default="unseen")
     hausdepp_state: Mapped[str] = mapped_column(String(16), nullable=False, default="unseen", server_default="unseen")
+    watten_state: Mapped[str] = mapped_column(String(16), nullable=False, default="unseen", server_default="unseen")
 
     __table_args__ = tuple(
         CheckConstraint(
             f"{game}_state IN ('unseen', 'dismissed', 'started', 'completed')",
             name=f"ck_game_tour_{game}_state",
         )
-        for game in ("zdwa", "zilch", "hausdepp")
+        for game in ("zdwa", "zilch", "hausdepp", "watten")
     )
 
 

@@ -457,30 +457,51 @@ def _require_account_email() -> None:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="email_delivery_unavailable")
 
 
+def _tour_identity(request: Request, game_type=None):
+    from .watten_access import require_watten_access, watten_game_preview_enabled
+
+    if game_type == "watten" and not watten_game_preview_enabled(request):
+        raise HTTPException(status_code=404, detail="game_not_found", headers={"Cache-Control": "no-store"})
+    identity = require_user(request)
+    if game_type == "watten":
+        require_watten_access(request, identity)
+    expected = request.headers.getlist("X-Watten-Expected-Account-Id")
+    if expected and (len(expected) != 1 or not expected[0].isascii() or not expected[0].isdecimal()
+                     or expected[0] != str(identity.user_id)):
+        raise HTTPException(status_code=409, detail="watten_account_changed", headers={"Cache-Control": "no-store"})
+    return identity
+
+
 @router.get("/auth/tours")
 def auth_tours(request: Request, response: Response):
-    identity = require_user(request)
+    from .watten_access import watten_game_preview_enabled
+
+    identity = _tour_identity(request)
     response.headers["Cache-Control"] = "no-store"
     with session_scope() as db:
-        return tour_preferences(db, identity.user_id)
+        return tour_preferences(db, identity.user_id, include_watten=watten_game_preview_enabled(request))
 
 
 @router.put("/auth/tours")
 def auth_update_tours(payload: TourPreferencesRequest, request: Request, response: Response):
-    identity = require_user(request)
+    from .watten_access import watten_game_preview_enabled
+
+    identity = _tour_identity(request, payload.game_type)
     require_csrf(request, identity)
     response.headers["Cache-Control"] = "no-store"
     with session_scope() as db:
-        return update_tour_preferences(db, identity.user_id, payload)
+        return update_tour_preferences(db, identity.user_id, payload, include_watten=watten_game_preview_enabled(request))
 
 
 @router.post("/auth/tours/offer")
 def auth_claim_tour_offer(payload: TourOfferRequest, request: Request, response: Response):
-    identity = require_user(request)
+    from .watten_access import watten_game_preview_enabled
+
+    identity = _tour_identity(request, payload.game_type)
     require_csrf(request, identity)
     response.headers["Cache-Control"] = "no-store"
     with session_scope() as db:
-        return claim_tour_offer(db, identity.user_id, payload.game_type)
+        return claim_tour_offer(db, identity.user_id, payload.game_type, include_watten=watten_game_preview_enabled(request))
 
 
 @router.put("/auth/preferences")
