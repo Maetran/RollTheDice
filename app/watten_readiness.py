@@ -28,7 +28,7 @@ _UNPUBLISHED_PATHS = frozenset({
     "/sw.js", "/zilch-sw.js", "/hausdepp-sw.js", "/watten-sw.js",
 })
 _LOCAL_ACCOUNT_PATHS = frozenset({"/watten", "/watten/anmelden", "/watten/konto", "/watten/konto/einstellungen"})
-_LOCAL_GAME_DOCUMENT = re.compile(r"/watten/(?:regeln|spiel/[0-9a-f]{16}(?:/zuschauen)?)")
+_LOCAL_GAME_DOCUMENT = re.compile(r"/watten/(?:regeln|konto/(?:fortschritt|verlauf)|rangliste|spiel/[0-9a-f]{16}(?:/zuschauen)?)")
 
 
 def _local_hostname(hostname: str) -> bool:

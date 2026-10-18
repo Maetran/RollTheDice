@@ -241,6 +241,7 @@ export function hausdeppSignInUrl(returnTo = "/hausdepp", { register = false } =
 /** Only canonical local product paths, never query strings or nested handoffs. */
 export function wattenAccountReturnPath(value) {
   if (typeof value !== "string" || /[\r\n]/.test(value)) return null;
-  return ["/watten", "/watten/konto", "/watten/konto/einstellungen", "/watten/regeln"].includes(value)
+  return ["/watten", "/watten/konto", "/watten/konto/einstellungen", "/watten/konto/fortschritt",
+    "/watten/konto/verlauf", "/watten/rangliste", "/watten/regeln"].includes(value)
     || /^\/watten\/spiel\/[0-9a-f]{16}(?:\/zuschauen)?$/.test(value) ? value : null;
 }

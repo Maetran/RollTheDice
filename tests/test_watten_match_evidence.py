@@ -37,10 +37,11 @@ def deterministic_deal(monkeypatch):
 
 
 class NativeMatch:
-    def __init__(self, players=2, *, cpus=(), target=7, determination="normal", blind=False, start=True):
+    def __init__(self, players=2, *, cpus=(), target=7, determination="normal", blind=False, start=True,
+                 game_id="native-public-evidence"):
         self.numbers = count()
         self.expected = Counter()
-        self.game = new_watten_game("native-public-evidence", "Evidence", players)
+        self.game = new_watten_game(game_id, "Evidence", players)
         recipe = WattenRecipe(players, determination, blind, False, target_points=target, cpu_seats=cpus)
         configure_watten_game(self.game, recipe, SimpleNamespace(user_id=1, username="Human 1"), None)
         for index, seat in enumerate(seat for seat in range(players) if seat not in cpus):

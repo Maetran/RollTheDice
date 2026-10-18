@@ -54,6 +54,7 @@ function renderNav(auth) {
   const user = auth?.authenticated ? auth.user : null;
   nav.innerHTML = `<a href="/watten"${page === "lobby" ? " aria-current=\"page\"" : ""}>${esc(t("nav.lobby"))}</a>
     <a href="/watten/regeln"${page === "rules" ? " aria-current=\"page\"" : ""}>${esc(t("nav.rules"))}</a>
+    ${user ? `<a href="/watten/konto/fortschritt">${esc(t("nav.progress"))}</a><a href="/watten/rangliste">${esc(t("nav.ranking"))}</a>` : ""}
     ${user ? `<a href="/watten/konto/einstellungen" aria-label="${esc(t("nav.accountOf", { name: user.username }))}"><span translate="no">${esc(user.username)}</span></a>`
       : `<a href="${esc(signInUrl())}">${esc(t("nav.signIn"))}</a>`}`;
 }

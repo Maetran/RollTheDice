@@ -39,6 +39,22 @@ criteria.
 
 ## Als Nächstes: Watten / Next game: Watten
 
+**Lokaler Kontofortschritt / local account progress:** Die lokale Watten-Vorschau
+verbucht neue abgeschlossene Partien zusammen mit Ergebnis und Fortschritt in
+einer Transaktion. `/watten/konto/fortschritt`, `/watten/konto/verlauf` und
+`/watten/rangliste` zeigen ausschliesslich verbuchte XP, die eigenen Ergebnisse,
+belegte Erfolge und erklärbare Ranglisten. XP, Titelstufen und Erfolgswerte sind
+vorerst als Entwurf gekennzeichnet. Ältere Resultate bleiben sichtbar und
+erhalten beim Lesen keine nachträglichen XP. Beide lokalen Vorschauflags sind
+erforderlich; die öffentliche Watten-Domain bleibt geschlossen.
+
+New locally completed Watten matches atomically store results and progress.
+The native progress, history and leaderboard pages show stored XP, owned
+results, evidenced achievements and explicit ranking definitions. XP, title
+levels and award values remain labelled as a proposal. Reading older results
+never retrospectively grants XP. Both local preview flags are required; the
+public Watten domain remains closed.
+
 **Deutsch:** Watten ist als nächstes Spiel vorgemerkt: üblicherweise 4er
 ladinisch bis 11 Punkte («8+3 isch zmittag»), mit blindem Einschauen durch den
 Geber und den im Uhrzeigersinn nachfolgenden Spieler. Die identischen
