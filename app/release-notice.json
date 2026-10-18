@@ -1,31 +1,27 @@
 {
   "kind": "usability",
   "games": [
-    "hausdepp"
+    "hausdepp",
+    "zdwa",
+    "zilch"
   ],
-  "summary_de": "Hausdepp: Rundenabschluss mit Platzierungen und EP, Tisch-Extras zum Ausprobieren und 15 neue Erfolge.",
-  "summary_en": "Hausdepp: a round summary with places and XP, table extras to play with and 15 new achievements.",
+  "summary_de": "Konto- und Einstellungstexte sprechen jetzt von allen unseren Spielen, statt jedes einzeln aufzuzählen.",
+  "summary_en": "Account and settings texts now speak of all our games instead of listing each one.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp 3.8: Mehr los am Stammtisch",
+      "title": "3.8.1: Ein Konto für alle unsere Spiele",
       "changes": [
-        "Das Rundenende zeigt alle Platzierungen, die EP der Runde und neu erreichte Erfolge.",
-        "Münze werfen, würfeln, vom Bier trinken (nicht zu wild!) oder die Nüsse verputzen – der Tisch spielt mit.",
-        "Mehrere gleiche Karten oben auf dem Paket sind aufgefächert, so siehst du sofort, wie viele liegen.",
-        "15 neue Erfolge für Spielzeit und Treue, von „Bürozeit“ bis „Wochenläufer“; die oberen Ränge brauchen jetzt mehr EP.",
-        "Schnellerer Start der App, ohne fehlende Kartenbilder; dein Profilbild oben führt direkt zur Profilbild-Einstellung.",
-        "Tägliche Spielerinnerungen und Startmeldungen deiner Spielerauswahl gibt es jetzt auch für Hausdepp."
+        "Anmeldung, Konto und Einstellungen sagen jetzt „alle unsere Spiele“, statt ZDWA, Zilch und Hausdepp einzeln aufzuzählen.",
+        "Die Spielanleitung erklärt Profilbild, Spielerauswahl, Benutzername, Lobby-Chat und Versionshinweise für alle Spiele statt nur für zwei.",
+        "Der Hinweis zu Spielerinnerungen in den Einstellungen passt jetzt, egal wie viele Spiele du für Push angemeldet hast."
       ]
     },
     "en": {
-      "title": "Hausdepp 3.8: More going on at the table",
+      "title": "3.8.1: One account for all our games",
       "changes": [
-        "The round end shows every place, the round's XP and newly reached achievements.",
-        "Toss the coin, roll the dice, drink your beer (not too wildly!) or finish the nuts – the table plays along.",
-        "Several equal cards on top of the pile fan out, so you see at once how many are there.",
-        "15 new achievements for play time and loyalty, from “Office hours” to “Week streak”; the top ranks now need more XP.",
-        "A faster app start without missing card pictures; your avatar at the top opens your profile picture setting.",
-        "Daily play reminders and start notices from your player selection now include Hausdepp."
+        "Sign-in, account and settings now say “all our games” instead of listing ZDWA, Zilch and Hausdepp one by one.",
+        "The rules explain profile pictures, player selection, usernames, lobby chat and release notes for every game, not just two.",
+        "The play reminder note in settings now fits however many games you have registered for push."
       ]
     }
   }
