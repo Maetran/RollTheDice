@@ -121,11 +121,12 @@ for (const preferred of ['de', 'en']) {
     }
     await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
     await expect(page.locator('#hausdeppHand [data-card-id]').first()).toBeVisible();
-    // This isolated suite intentionally keeps Zilch private. Model its public
-    // rollout only for the shared chooser; House login and gameplay above used
-    // real, unmodified permissions and server state.
+    // Model the public three-game chooser explicitly: the isolated server's
+    // local Watten capability is outside this fixture. House login and gameplay
+    // above used real, unmodified permissions and server state.
+    const publicChooserAccess = { ...me.game_access, zilch_public: true, watten_preview: false };
     await page.route('**/api/auth/me', route => route.fulfill({
-      json: { ...me, game_access: { ...me.game_access, zilch_public: true } },
+      json: { ...me, game_access: publicChooserAccess, user: { ...me.user, game_access: publicChooserAccess } },
     }));
     const zilchTemplate = await readFile('app/static/zilch-lobby.html', 'utf8');
     await page.route('**/zilch', route => route.fulfill({ contentType: 'text/html', body: zilchTemplate }));
@@ -135,6 +136,7 @@ for (const preferred of ['de', 'en']) {
       await page.locator('[data-game-switch]').click();
       await expect(page.locator('#suiteGameMenu [data-game-entry="hausdepp"]')).toHaveAttribute('href', '/hausdepp');
       await expect(page.locator('#suiteGameMenu [data-game-entry]')).toHaveCount(3);
+      await expect(page.locator('#suiteGameMenu [data-game-entry="watten"]')).toHaveCount(0);
       await page.keyboard.press('Escape');
     }
     await page.goto('/hausdepp/konto');
