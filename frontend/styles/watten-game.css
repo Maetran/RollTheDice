@@ -341,3 +341,36 @@ html[lang="en"] .wt-rules-text[lang="de"], html:not([lang="en"]) .wt-rules-text[
 .wt-seat-slot .wt-seat-public-title { color: var(--wt-muted); }
 .wt-table > [data-watten-rematch] { grid-column: 1 / -1; min-width: 0; }
 .wt-rematch { overflow-wrap: anywhere; }
+
+/* Public social UI has its own stable shell; no emoji overlays on the table. */
+.wt-social { margin-block: .5rem; color: var(--wt-ink); }
+.wt-social-tools { display: flex; align-items: center; gap: .75rem; min-height: 44px; }
+.wt-social-tools > button { flex: none; }
+.wt-social-bubble { margin: 0; color: var(--wt-paper); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+[data-watten-social-unread] { border-radius: 999px; padding: .1rem .4rem; background: var(--wt-paper); color: var(--wt-ink); }
+.wt-social-backdrop { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 0; background: #08160fac; z-index: 80; touch-action: none; }
+.wt-social-drawer {
+  position: fixed; z-index: 81; inset-block-start: var(--wt-chat-top, 8px); right: max(8px, env(safe-area-inset-right));
+  width: min(32rem, calc(100vw - 16px)); height: min(38rem, var(--wt-chat-height, calc(100dvh - 16px)));
+  max-height: var(--wt-chat-height, calc(100dvh - 16px)); overflow: auto; overscroll-behavior: contain;
+  display: grid; grid-template-rows: auto auto minmax(4rem, 1fr) auto auto auto; gap: .5rem;
+  padding: .75rem; border: 1px solid var(--wt-paper-edge); border-radius: var(--wt-radius);
+  background: var(--wt-paper); color: var(--wt-ink); box-shadow: 0 8px 28px #0005;
+}
+.wt-social-drawer header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.wt-social-drawer h2 { margin: 0; font-size: 1.2rem; }
+.wt-social-drawer p { margin: 0; }
+[data-watten-social-log] { min-height: 4rem; overflow-y: auto; margin: 0; padding: .4rem .4rem .4rem 1.7rem; background: #fffdf7; border: 1px solid var(--wt-paper-edge); border-radius: 6px; }
+[data-watten-social-log] li { margin-block: .4rem; overflow-wrap: anywhere; white-space: pre-wrap; }
+[data-watten-social-log] time { font-size: .75rem; color: var(--wt-muted); }
+.wt-social-emojis { display: flex; gap: .25rem; overflow-x: auto; padding-block: .25rem; }
+.wt-social-emojis button { flex: 0 0 44px; width: 44px; height: 44px; padding: .25rem; font-size: 1.35rem; background: #fffdf7; color: var(--wt-ink); border-color: var(--wt-paper-edge); }
+[data-watten-social-form] { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; }
+.wt-social-drawer button, .wt-social-drawer input { min-height: 44px; min-width: 44px; }
+@media (max-width: 600px) {
+  .wt-social-tools > button { padding-inline: .6rem; }
+  .wt-social-drawer { width: calc(100vw - 16px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wt-social *, .wt-social-drawer, [data-watten-social-log] { animation: none; transition: none; scroll-behavior: auto; }
+}

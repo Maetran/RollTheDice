@@ -1,3 +1,30 @@
+export const WATTEN_SOCIAL_MESSAGES = {
+  de: {
+    title: "Öffentlicher Tischchat", open: "Tischchat & Emojis", close: "Schliessen", message: "Nachricht an den ganzen Tisch",
+    send: "Senden", emojis: "Öffentliche Emojis", spectator: "Zuschauer", retry: "Dieselbe Nachricht erneut versuchen", refresh: "Öffentlichen Verlauf neu laden",
+    rule: "Hausregel: Keine Kartenhinweise im öffentlichen Chat oder mit Emojis. «Gut/Schlecht/Unsicher» bleibt die separate private Partnerfunktion.",
+    offline: "Der Tischchat wartet auf die Verbindung. Dein Entwurf bleibt in dieser Seite erhalten.",
+    readOnly: "Du kannst den öffentlichen Verlauf lesen, gerade aber nichts senden.",
+    unavailable: "Der Tischchat ist gerade nicht erreichbar.", uncertain: "Die Bestätigung fehlt. Prüfe den Verlauf und versuche dieselbe Nachricht bei Bedarf erneut.",
+    review: "Der Tischchat wurde aktualisiert. Prüfe den Verlauf und sende deinen Entwurf bei Bedarf bewusst erneut.",
+    rate: "Bitte warte kurz, bevor du erneut schreibst oder ein Emoji sendest.",
+    emoji0: "Daumen hoch", emoji1: "Lachen", emoji2: "Staunen", emoji3: "Mist", emoji4: "Feiern", emoji5: "Daumen drücken",
+    emoji6: "Bitte oder Danke", emoji7: "Frech grinsen", emoji8: "Augen rollen", emoji9: "An den Kopf fassen", emoji10: "Weinen", emoji11: "Feuer",
+  },
+  en: {
+    title: "Public table chat", open: "Table chat & emojis", close: "Close", message: "Message to the whole table",
+    send: "Send", emojis: "Public emojis", spectator: "Spectator", retry: "Retry the same message", refresh: "Reload public history",
+    rule: "House rule: No card hints in public chat or emojis. Good/Bad/Unsure remains the separate private partner feature.",
+    offline: "Table chat is waiting for the connection. Your draft stays on this page.",
+    readOnly: "You can read the public history but cannot send right now.",
+    unavailable: "Table chat is unavailable right now.", uncertain: "Confirmation is missing. Check the history and retry the same message if needed.",
+    review: "Table chat has been refreshed. Check the history and deliberately resend your draft if needed.",
+    rate: "Please wait a moment before sending another message or emoji.",
+    emoji0: "Thumbs up", emoji1: "Laughing", emoji2: "Amazed", emoji3: "Crap", emoji4: "Celebrate", emoji5: "Fingers crossed",
+    emoji6: "Please or thanks", emoji7: "Cheeky grin", emoji8: "Eye roll", emoji9: "Facepalm", emoji10: "Crying", emoji11: "Fire",
+  },
+};
+
 export const WATTEN_REMATCH_MESSAGES = {
   de: {
     heading: "Neue Partie am Folgetisch", body: "Übernimm dieses Rezept und die gewünschten Computerplätze an einen neuen Tisch.",

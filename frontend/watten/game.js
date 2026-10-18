@@ -11,6 +11,7 @@ import { createMatchProgress } from "./match-progress.js";
 import { applyFavoriteToCreator, createFavorites, favoriteText, readCreatorRecipe, syncCreatorProtection } from "./favorites.js";
 import { createRematch } from "./rematch.js";
 import { loadWattenDetail } from "./api.js";
+import { createSocial } from "./social.js";
 
 // Metadata only: these preview documents neither register a worker nor
 // advertise installation; the account pages own that local experiment.
@@ -44,6 +45,7 @@ let anonymousMount = false;
 let navigating = false;
 let matchProgress = null;
 let rematch = null;
+let social = null;
 const cleanups = new Set();
 
 function errorText(code) {
@@ -348,6 +350,7 @@ function shellMarkup() {
     <div class="wt-status-bar"><p class="wt-connection" data-watten-connection role="status"></p>
       <p class="wt-flash" data-watten-flash role="alert"></p></div>
     <div class="wt-view" data-watten-view></div>
+    <div data-watten-social hidden></div>
     <dialog class="wt-dialog" data-watten-leave-dialog aria-labelledby="wattenLeaveTitle">
       <h2 id="wattenLeaveTitle">${esc(t("leave.title"))}</h2>
       <p>${esc(t("leave.body"))}</p>
@@ -396,6 +399,7 @@ function closeSocket() {
   session.socket = null;
   session.serial += 1;
   session.bound = false;
+  social?.disconnect();
   clearTimeout(session.reconnectTimer);
   clearTimeout(session.ackTimer);
   clearInFlight();
@@ -474,6 +478,8 @@ function scheduleReconnect() {
 }
 
 function onMessage(data) {
+  // Public social frames update their own bounded log, never the card view.
+  if (social?.receive(data)) return;
   if (typeof data.error === "string" || typeof data.error_code === "string") { onError(data); return; }
   if (data.capabilities && Number.isInteger(data.room_revision)) { onGreeting(data); return; }
   if (typeof data.player_id === "string" && data.game_type === "watten") {
@@ -488,6 +494,7 @@ function onMessage(data) {
     session.rejoinAttempts = 0;
     setConnection("");
     if (session.inFlight?.action === "resume") clearInFlight();
+    syncSocial();
     return;
   }
   if (typeof data.spectator_id === "string") {
@@ -496,6 +503,7 @@ function onMessage(data) {
     session.password = null;
     session.reconnectAttempts = 0;
     setConnection("");
+    syncSocial();
   }
   if (data.scoreboard) adopt(data.scoreboard, data.watten_public_call_events);
   if (data.watten_command) onAck(data.watten_command);
@@ -513,6 +521,7 @@ function onGreeting(greeting) {
 function onError(data) {
   const code = data.error_code || data.error;
   if (data.fatal) session.fatal = code;
+  if (data.fatal) social?.disconnect(true);
   if (!session.bound) {
     if (session.intent === "join" && STALE.has(code) && session.joinAttempts < 2) {
       // The visitor's join intent is current; only the room revision moved.
@@ -563,6 +572,7 @@ function onClose(event) {
   const wasBound = session.bound;
   session.socket = null;
   session.bound = false;
+  social?.disconnect(event.code === 1008 || Boolean(session.fatal));
   clearInFlight();
   session.queued = null;
   if (session.pendingDeparture) { void reconcileDeparture(); return; }
@@ -957,6 +967,12 @@ async function mountTable() {
     isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
     onAccountChanged: reloadFresh });
   cleanups.add(() => { rematch?.destroy(); rematch = null; });
+  social?.destroy();
+  social = createSocial({ gameId, escapeHtml: esc,
+    getExpectedAccountId: () => account?.id,
+    isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
+    send: payload => session.bound && latestUserId === account?.id && sendRaw(payload) });
+  cleanups.add(() => { social?.destroy(); social = null; });
   setConnection("cards");
   try { await prepareWattenCards(); } catch {
     if (gen !== generation) return;
@@ -967,6 +983,11 @@ async function mountTable() {
   }
   if (gen !== generation) return;
   await loadDetail(gen);
+}
+
+function syncSocial() {
+  social?.update({ container: app.querySelector("[data-watten-social]"),
+    bound: session.bound && socketOpen(), authorized: session.bound && (session.spectator || Boolean(session.playerId)) });
 }
 
 function openLeaveDialog() {
