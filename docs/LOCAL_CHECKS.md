@@ -2,14 +2,16 @@
 
 Vor jedem Push den fertigen Stand committen und vollständig lokal prüfen.
 Der gemeinsame Lieferweg bleibt `develop → master → prod`; ein lokaler Nachweis
-ersetzt weder die Prüfung des integrierten GitHub-Stands noch die Releasefreigabe.
+ersetzt weder die Kontrolle des integrierten GitHub-Stands noch die Releasefreigabe.
 
 ```bash
 npm run hooks:install
 npm run push:checked -- -u origin codex/my-feature
 ```
 
-Die Hook-Installation gilt für dieses Repository samt Worktrees, ohne globale
+Der stabile Launcher liegt unter `<git-common-dir>/local-checks/hooks`; ein
+älterer Worktree ohne Prüfer kann die Kontrolle nicht still umgehen. Die
+Hook-Installation gilt für dieses Repository samt Worktrees, ohne globale
 Git-Einstellungen zu verändern. Vorhandene fremde Hooks werden erhalten;
 gegebenenfalls muss deren `pre-push` den Aufruf
 `node scripts/verify-local.mjs --pre-push` mit unveränderter Standardeingabe
@@ -35,7 +37,8 @@ die passende Version bereitstellen, ohne den System-Node zu ersetzen.
 2. `npm run check:quality`: Lint, Produkt-/Versions-/Assetprüfungen, Pip-Konsistenz,
    Bandit und Abhängigkeits-Audit.
 3. Node-Tooltests und die vollständige Backend-Suite mit Coverage.
-4. Produktionsimage bauen und `tests/container_smoke.py` ohne Netzwerk,
+4. Produktionsimage für `linux/amd64` bauen (wie der Produktionsserver, auch auf
+   einem ARM-Mac) und `tests/container_smoke.py` ohne Netzwerk,
    Zugangsdaten oder persistente Daten im Container ausführen.
 5. Vier Haupt-Browser-Shards gleichzeitig, danach Benutzername, Passkeys und
    Hausdepp-Passkeys einzeln. Jeder Teil erhält seinen eigenen Server, freien
@@ -54,7 +57,14 @@ Der Nachweis liegt unter dem gemeinsamen Git-Verzeichnis in
 Commit und Tree, dieselbe frisch abgerufene Basis sowie dieselben installierten
 Node-/Python-Abhängigkeiten. Ein Commit, eine lokale Änderung, eine neue Basis
 oder eine andere Umgebung erzwingen eine neue Prüfung. Der Nachweis ist eine
-lokale Arbeitshilfe, kein kryptografischer Nachweis und kein GitHub-CI-Ersatz.
+lokale Arbeitshilfe und kein kryptografischer Nachweis. GitHub vertraut keiner
+solchen Datei aus einem PR. Nach dem Push veröffentlicht `push:checked` mit dem
+authentifizierten Repository-Eigentümer einen echten Commitstatus
+**Local verification**. Dazu prüft es den vollständigen Nachweis erneut, die
+tatsächliche Identität und den bereits vorhandenen Remote-Commit/Tree. Ein
+normaler Push benötigt anschliessend `npm run checks:publish`. `gh` muss als
+Repository-Eigentümer angemeldet sein; der Publisher erweitert keine Rechte
+und gibt keine Zugangsdaten aus.
 
 Für die Entwicklung bleiben gezielte Prüfungen verfügbar:
 
@@ -73,22 +83,31 @@ Ports; ohne Angabe werden freie Ports vergeben. `--output-dir` verlangt ein
 neues oder leeres Verzeichnis. `PLAYWRIGHT_BASE_URL` ist im isolierten Runner
 unzulässig, damit kein fremder Server benutzt wird.
 
-GitHub prüft Feature-PRs einmal und jeden neu integrierten `develop`-Commit.
-Beim unveränderten Fast-forward nach `master` darf ausschliesslich ein
-vollständig grüner GitHub-Lauf desselben Commits wiederverwendet werden.
-Die Details und der aussagekräftige Check **Quality result** stehen in
-[Deployment](DEPLOYMENT.md#entwicklung-und-releasebranches).
+GitHub führt ausschliesslich **Quality result** aus: ein schlanker Check der
+Remote-Integration und des lokalen Owner-Nachweises. Der Status enthält
+`[1, treeSHA, baseSHA, completedAtISO]`, wobei die Zeit ein UTC-String ohne
+Millisekunden ist. GitHub kontrolliert den Aussteller, maximal 24 Stunden Alter,
+den tatsächlichen Commit/Tree, die Basis und die Abstammung. Der synthetische
+PR-Merge und normale Integrations-/Release-Merges müssen genau den lokal
+geprüften Tree enthalten. Neue Quellen oder unklare Nachweise blockieren und
+müssen lokal geprüft werden. Backend-, Browser-, Container-, Lint- und Tool-Suiten
+laufen auf GitHub nicht erneut. Ein begrenztes Warten auf den unmittelbar nach
+Push veröffentlichten Status verhindert ein Rennen; Ablehnungen werden nicht
+ausgeblendet. Feature-Push und Release-Tag erzeugen keine doppelten Läufe.
 
 ## English
 
 Commit the finished changes, install the repository-local hook once with
 `npm run hooks:install`, then use `npm run push:checked -- <git push arguments>`.
-Alternatively run `npm run verify:local` followed by a normal push. Existing
+Alternatively run `npm run verify:local`, push normally, then run
+`npm run checks:publish`. The wrapper publishes automatically after a successful
+push using the authenticated repository-owner account in `gh`. Existing
 hooks are preserved. The hook refuses an unverified push immediately; the wrapper
 runs the full check before opening the push connection.
 
 The full check covers quality/security checks, Node tooling tests, backend
-coverage, a production Docker build with its offline smoke test, every browser
+coverage, a production Linux/amd64 Docker build with its offline smoke test
+(including emulation on ARM hosts), every browser
 suite and a final source/base/environment comparison. Use the Node version from
 the workflow, the development Python environment, Chromium, WebKit and a local
 Docker socket. Coordinate with any agent already running a full test pool.
@@ -102,6 +121,7 @@ owned processes and removes disposable data. Logs remain in
 A receipt in shared Git metadata authorizes only the exact clean commit, current
 `origin/develop` base and installed environment for at most 24 hours. A source,
 base or dependency change invalidates it. Focused commands remain available but
-never authorize a push. Local receipts are not trusted as GitHub evidence.
-GitHub checks feature PRs once and new integrated develop commits in full;
-unchanged master fast-forwards reuse only verified successful GitHub evidence.
+never authorize a push. Raw receipt files are not trusted by GitHub. The owner-issued commit status
+binds the verified tree, base and completion time. GitHub runs only a lightweight
+remote integration/evidence check, rejecting stale, untrusted or changed sources.
+It does not repeat the full local backend, browser, Docker, lint or tooling suites.

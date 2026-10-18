@@ -55,8 +55,8 @@ export async function verifyLocal({ cwd = process.cwd() } = {}) {
     delete dockerEnv.BUILDX_BUILDER;
     delete dockerEnv.BUILDKIT_HOST;
     dockerUsed = true;
-    await stage('image-build', 'docker', ['build', '--builder', 'default', '--tag', image, '.'], { env: dockerEnv });
-    await stage('production-image', 'docker', ['run', '--rm', '--interactive', '--network', 'none',
+    await stage('image-build', 'docker', ['build', '--builder', 'default', '--platform', 'linux/amd64', '--tag', image, '.'], { env: dockerEnv });
+    await stage('production-image', 'docker', ['run', '--platform', 'linux/amd64', '--rm', '--interactive', '--network', 'none',
       '--tmpfs', '/app/data', '--name', container, '--entrypoint', 'python', image, '-'],
     { input: readFileSync(join(initial.root, 'tests/container_smoke.py')), env: dockerEnv });
     const browserOutput = join(output, 'browser');

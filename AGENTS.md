@@ -24,7 +24,9 @@
 - Vor jedem Push den vollständigen lokalen Prüfablauf auf dem fertig
   committeten, sauberen Stand bestehen lassen: einmal `npm run hooks:install`
   pro Repository, danach `npm run push:checked -- <git-push-Argumente>`.
-  Alternativ `npm run verify:local` und anschliessend normal pushen. Der Hook
+  Alternativ `npm run verify:local`, normal pushen und danach
+  `npm run checks:publish` ausführen. Der Wrapper veröffentlicht den lokalen
+  Vollnachweis nach erfolgreichem Push automatisch als Owner-Commitstatus. Der Hook
   verlangt einen gültigen Nachweis für exakt diesen Commit, die aktuelle
   `origin/develop`-Basis und die unveränderte lokale Umgebung. Keine Hooks
   umgehen und keine Teilprüfung als Vollprüfung ausgeben. Alle Qualitäts-,

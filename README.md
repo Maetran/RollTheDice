@@ -1831,8 +1831,8 @@ npm run verify:local
 Commit changes before verification. The pre-push hook requires a complete local
 check for the exact clean commit, current `origin/develop` base and installed
 environment. A successful receipt remains valid for 24 hours; changing any of
-those inputs requires a new run. It lives in Git metadata and is never accepted
-as GitHub CI evidence. The full check runs quality/security checks, Node tooling
+those inputs requires a new run. It lives in Git metadata; the raw file is never
+accepted as GitHub CI evidence. The full check runs quality/security checks, Node tooling
 tests, backend coverage, the production Docker build and offline container smoke
 test, every browser suite and `git diff --check`. Docker must use a local socket.
 See [local checks](docs/LOCAL_CHECKS.md) for prerequisites, focused commands and
@@ -1847,26 +1847,26 @@ cleans up only this run's processes and temporary data. Filtered runs are marked
 incomplete and cannot authorize a push. `npm run check:quality` includes lint,
 dependency consistency, Bandit and the dependency vulnerability audit, matching
 the backend checks in [the quality workflow](.github/workflows/quality.yml).
-CI runs the main browser suite in four isolated shards and the username and
-passkey configurations in separate jobs. Runners install Chromium and WebKit
-for all browser engines used by the suite. Every test still runs with one worker.
+All expensive checks run locally. GitHub performs only the remote integration
+check: an owner-issued **Local verification** commit status must prove the full
+local check for the exact tree and base, and the PR or release merge must contain
+exactly those verified sources. Missing, failed, stale or untrusted evidence
+blocks the gate and requires local verification; it never launches duplicate
+backend, browser, container, lint or tooling suites on GitHub.
 
-GitHub CI checks each change once. Feature branches run only through their pull
-request, whatever its base branch. Pushes start CI only on `develop` and `master`,
-never for release tags, and `workflow_dispatch` runs a full manual check of any
-branch. A newer push cancels only the superseded run of the same pull request or
-branch. Every integrated `develop` state gets the full check. When `master` is
-fast-forwarded to a commit whose `develop` push run has already passed, the
-**Release evidence** job verifies that run and the full-check jobs are skipped.
-They are skipped, not marked green. Verification binds the exact commit, the same
-workflow file and repository, and a green **Quality result** plus every full-check
-job. It also requires all `develop` runs of that commit to be green, `develop` to
-still contain the commit, and a push without force. A new merge commit, a running,
-red or cancelled `develop` run, an older run without these jobs or any API doubt
-runs the full check instead. **Quality result** is the one meaningful check. It
-passes only after every full-check job succeeded or after verified reuse, and its
-summary links the evidence run. To benefit from reuse, push `master` only after the
-`develop` run is green, as the release process already requires.
+Feature branches run only through their pull request. Pushes start the lightweight
+**Quality result** check only on `develop` and `master`; release tags do not start
+another run. Newer commits cancel only the older run of the same PR or branch.
+A changed integration tree must be tested locally again. The same verified tree
+can pass through a normal PR merge and a master fast-forward without repeating
+the expensive suites. GitHub verifies the actual remote event, status issuer,
+commit/tree/base and ancestry; this part belongs on GitHub.
+
+`push:checked` publishes the local status automatically after a successful push.
+With a normal `git push`, follow it with `npm run checks:publish`. Publication
+requires the repository owner's authenticated `gh` account and a still-valid
+receipt; raw receipt files in a PR are never trusted. Local reports remain on
+this machine, while the status links the verified commit.
 
 **Deutsch – Qualitätsprüfung:** Einmal `npm run hooks:install` ausführen, dann
 mit `npm run push:checked -- <git-push-Argumente>` pushen. Der vollständige lokale
@@ -1882,24 +1882,24 @@ Abbruch beendet nur eigene Prozesse. Chromium, WebKit und ein lokaler Docker-Dae
 müssen bereitstehen. Bei einem fremden vollen Testpool zuerst abstimmen.
 Details und Teilbefehle stehen in [Lokale Prüfungen](docs/LOCAL_CHECKS.md).
 
-GitHub prüft jede Änderung genau einmal. Feature-Branches laufen nur über ihren
-Pull Request, unabhängig vom Zielbranch. Pushes starten die CI nur auf `develop`
-und `master`, nie für Release-Tags. `workflow_dispatch` startet eine vollständige
-manuelle Prüfung beliebiger Branches. Ein neuerer Push bricht nur den überholten
-Lauf desselben Pull Requests oder Branches ab. Jeder integrierte `develop`-Stand
-wird vollständig geprüft. Wird `master` per Fast-forward auf einen Commit gesetzt,
-dessen `develop`-Push-Lauf bereits bestanden hat, prüft der Job
-**Release evidence** diesen Lauf. Die Prüfjobs werden dann übersprungen, nicht grün
-markiert. Der Nachweis ist an den exakten Commit, dieselbe Workflow-Datei und dasselbe
-Repository gebunden. Er verlangt ein grünes **Quality result** sowie jeden grünen
-Prüfjob, ausschliesslich grüne `develop`-Läufe dieses Commits, einen Commit, der
-weiterhin in `develop` enthalten ist, und einen Push ohne Force. Ein neuer
-Merge-Commit, ein laufender, roter oder abgebrochener `develop`-Lauf, ein älterer
-Lauf ohne diese Jobs oder jeder API-Zweifel führen zur vollständigen Prüfung.
-**Quality result** ist der eine aussagekräftige Check. Er besteht nur nach allen
-erfolgreichen Prüfjobs oder nach verifizierter Wiederverwendung und verlinkt den
-Nachweislauf in der Zusammenfassung. Für die Wiederverwendung `master` erst nach
-grünem `develop`-Lauf pushen, wie es der Releaseablauf ohnehin verlangt.
+Alle aufwendigen Suiten laufen lokal. GitHub prüft nur den tatsächlichen
+Remote-Stand: Der vom Repository-Eigentümer veröffentlichte Commitstatus
+**Local verification** muss die vollständige lokale Prüfung für exakt denselben
+Tree und dieselbe Basis belegen. PR-, Integrations- und Release-Merges dürfen
+keine ungeprüften Quellen hinzufügen. Fehlende, rote, veraltete oder fremde
+Nachweise blockieren **Quality result** und verlangen eine lokale Prüfung.
+Auf GitHub werden keine vollständigen Backend-, Browser-, Container-, Lint-
+oder Tool-Suiten wiederholt.
+
+Feature-Branches laufen ausschliesslich über ihren Pull Request; Pushes lösen
+nur auf `develop` und `master` den schlanken Integrationscheck aus. Tags erzeugen
+keinen zusätzlichen Lauf. Überholte Läufe werden nur innerhalb desselben PRs
+oder Branches abgebrochen. `push:checked` veröffentlicht den lokalen Status nach
+dem Push automatisch; nach einem normalen Push ist `npm run checks:publish`
+nötig. Dazu muss `gh` als Repository-Eigentümer angemeldet sein. Lokale
+JSON-Dateien im PR gelten nicht als Nachweis; GitHub kontrolliert Aussteller,
+Frische, Commit, Tree, Basis und Abstammung selbst. Neue Integrationsquellen
+müssen zuerst wieder lokal geprüft werden.
 
 Backend tests use `pytest-xdist`: pytest automatically selects up to six workers,
 keeping tests from the same file together. This applies to Codex, the terminal,

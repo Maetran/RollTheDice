@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { checkReceipt, verifyLocal } from './verify-local.mjs';
 import { git, gitContext } from './local-checks.mjs';
+import { publishVerification } from './publish-local-verification.mjs';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -20,6 +21,7 @@ async function main() {
   const result = spawnSync('git', ['push', ...args], { stdio: 'inherit' });
   if (result.error) throw result.error;
   process.exitCode = result.status ?? 1;
+  if (result.status === 0 && !args.some(arg => ['--dry-run', '-n'].includes(arg))) publishVerification();
 }
 
 main().catch(error => { console.error(`[local] ${error.message}`); process.exitCode = 1; });

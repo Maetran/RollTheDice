@@ -225,6 +225,7 @@ export async function runLocalBrowserTests(options = {}, dependencies = {}) {
       if (interruption) { result.status = 'interrupted'; result.exitCode = interruption === 'SIGINT' ? 130 : 143; return; }
       await reservations[plan.indexOf(suite)].release();
       result.status = 'running'; result.startedAt = new Date().toISOString();
+      await save();
       const log = createWriteStream(suite.logPath, { flags: 'a' });
       log.write(`Suite ${suite.name}; port ${suite.port}; output ${suite.outputDir}\n`);
       const child = spawn(process.execPath, [cli, ...suite.args], { cwd: root, env: suite.env,

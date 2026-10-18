@@ -38,7 +38,9 @@ er veröffentlicht die Anwendung nicht.
    Branches nicht per Force-Push überschreiben. Gemeinsame Version,
    Releasehinweise und Alembic-Revisionen abstimmen. Bestehende Zuordnungen in
    `app/version-history.json` niemals umnummerieren oder überschreiben.
-3. Den vollständigen CI-Lauf für den gemeinsamen Stand bestehen lassen. Erst
+3. Den vollständigen Stand lokal prüfen und den Owner-Nachweis veröffentlichen.
+   GitHubs schlanker Check **Quality result** muss für den gemeinsamen Stand
+   bestehen; er kontrolliert Nachweis und unveränderte Integrationsquellen. Erst
    mit bewusster Releasefreigabe `develop` nach `master` übernehmen, möglichst
    per Fast-forward, sonst per normalem Merge. An dieser Grenze weder squashen
    noch rebasen: referenzierte Commit-SHAs und Release-Tags müssen erhalten bleiben.
@@ -57,15 +59,14 @@ er veröffentlicht die Anwendung nicht.
 gh run list --workflow quality.yml --branch develop --event push --commit "$(git rev-parse origin/develop)"
 ```
 
-Der `master`-Lauf desselben Commits prüft im Job **Release evidence** über die
-GitHub-API dieselben Bedingungen erneut. Er verlangt denselben Workflow und dasselbe
-Repository, ausschliesslich grüne `develop`-Läufe dieses Commits und darin jeden
-Prüfjob sowie **Quality result** grün. Ausserdem muss der Commit noch in `develop`
-enthalten sein und der Push ohne Force erfolgen. Nur dann überspringt der Lauf die
-Prüfjobs. **Quality result** nennt und verlinkt den wiederverwendeten Lauf. Fehlt
-ein Nachweis oder ist er unklar, läuft automatisch die vollständige Prüfung. Das
-gilt auch für einen neuen Merge-Commit oder einen noch laufenden `develop`-Lauf.
-Für das Deployment zählt das grüne **Quality result** des `master`-Laufs.
+Der `master`-Lauf kontrolliert im Job **Quality result** über die GitHub-API
+den tatsächlichen Release-Stand. Ein unveränderter Fast-forward nutzt den
+grünen `develop`-Nachweis desselben Commits; ein normaler Release-Merge muss
+exakt den geprüften Tree seines `develop`-Elternteils enthalten. Neue Quellen
+benötigen einen vollständigen lokalen Nachweis für den tatsächlichen Stand.
+Fehlende, rote, veraltete oder unklare Nachweise blockieren den Lauf; GitHub
+wiederholt keine schweren Suiten. Für das Deployment zählt das grüne
+**Quality result** des tatsächlichen `master`-Stands.
 
 Eine Feature-Integration ist noch kein Release. Versionsmetadaten und der
 gemeinsame Hinweis müssen zum geplanten Release passen; parallele Agenten
@@ -99,16 +100,16 @@ rebuild assets and run the relevant tests. Integrate PRs sequentially, repeat
 the check when the target changes, and never force-push shared branches.
 Coordinate versions,
 release notes, migration IDs and generated assets when integrating. A develop
-push runs CI without publishing the app. After the combined revision passes CI
-and the release is approved, promote it to `master` by fast-forward or a normal
+push runs CI without publishing the app. After the combined revision has a complete local verification and passes the
+GitHub integration/evidence gate, and the release is approved, promote it to `master` by fast-forward or a normal
 merge, preserving referenced commits and release tags. Before pushing `master`,
 confirm with the `gh run list` command above that the develop push run of the
-exact commit is green. The master run then reuses it only after **Release
-evidence** has verified the same commit, workflow and repository. That job also
-requires every full-check job and **Quality result** to be green, `develop` to
-still contain the commit and a non-forced push. Otherwise the full check runs.
-**Quality result** links the evidence and is the check that counts for the
-deployment. Verify and deploy the actual master revision, then tag the
+exact commit is green. **Quality result** verifies the actual master commit
+and its evidence. An unchanged fast-forward reuses the verified develop state;
+a normal release merge must have exactly its verified develop parent's tree.
+New sources require a complete local verification of the actual revision.
+Missing or unclear evidence blocks the gate; GitHub does not repeat the heavy
+suites. Verify and deploy the actual master revision, then tag the
 successful rollout. Bring release merges
 and master hotfixes back into develop before the next version bump, so version
 history references the actual deployed revision. An integration alone is not a
@@ -232,23 +233,49 @@ Vor einem regulären Rollout müssen folgende Bedingungen erfüllt sein:
   bestätigten `data.backup-*`-Stand außerhalb des laufenden `data/` bewahren.
 - Statische Assets sind mit `scripts/sync_static_versions.py --check` synchronisiert.
 
-Lokale Prüfung mit demselben Sicherheitsumfang wie GitHub:
+Vollständige lokale Prüfung vor jedem Push:
 
 ```bash
-npm run check:quality
-npm run test:backend
-npm run test:browser
-git diff --check
-git status --short
+npm run hooks:install
+npm run push:checked -- -u origin codex/my-feature
 ```
 
-`check:quality` enthält Lint, Produkt-/Versions-/Assetprüfungen, `pip check`,
-Bandit und den Abhängigkeits-Audit. Der GitHub-Workflow nutzt denselben Befehl.
-Seine Browserjobs verteilen die Hauptsuite auf vier isolierte Runner; die
-Benutzernamen- und Passkey-Konfigurationen laufen separat. Branches und Pull
-Requests werden geprüft, Release-Tags erzeugen keinen doppelten Lauf.
-Die Runner installieren Chromium und WebKit, da bestehende Safari-Prüfungen
-WebKit ausdrücklich starten.
+Alternativ `npm run verify:local`, danach normal pushen und
+`npm run checks:publish` ausführen. Der Prüfer verlangt einen sauberen Commit,
+eine frisch integrierte `origin/develop`-Basis und Node22 wie im Workflow. Er
+führt Qualität/Sicherheit, Tooltests, Backend mit Coverage, Produktionsbuild
+und Offline-Containerprüfung sowie alle Browser-Suiten aus. Vier Haupt-Shards
+haben eigene Server, Ports, SQLite-/JSON-Daten und Berichte mit je einem Worker;
+die drei Konto-Suiten folgen separat. Chromium, WebKit, Python-Dev-Abhängigkeiten
+und ein lokaler Docker-Daemon müssen bereitstehen. Keine fremden vollen Testpools
+parallel starten. Details: [Lokale Prüfungen](LOCAL_CHECKS.md).
+
+`push:checked` veröffentlicht nach einem erfolgreichen Push den exakten lokalen
+Vollnachweis als Commitstatus **Local verification** über den authentifizierten
+Repository-Eigentümer. Der Nachweis bindet Tree, aktuelle Basis und Abschlusszeit,
+gilt höchstens24Stunden und wird bei Änderungen erneut verlangt. Der lokale
+JSON-Nachweis allein wird von GitHub nicht akzeptiert.
+
+GitHub prüft nur noch die Remote-Integration und diesen Owner-Nachweis im Job
+**Quality result**. Der geprüfte PR-Head, der synthetische Merge und normale
+Integrations-/Release-Merges müssen denselben Tree besitzen. Basis, Abstammung,
+Aussteller und Frische werden über GitHub kontrolliert. Fehlende, fremde, rote,
+veraltete oder unklare Nachweise blockieren; neue Quellen müssen zuerst lokal
+geprüft werden. Es gibt keine erneuten vollen Backend-, Browser-, Container-,
+Lint- oder Tool-Suiten auf GitHub. Feature-Branches laufen einmal über ihren PR,
+Pushes nur aufdevelop/master, Tags nie. Überholte Läufe brechen nur innerhalb
+desselben PRs/Branches ab.
+
+**English:** Run the complete local verifier before every push; the checked-push
+wrapper publishes its result as an owner-issued **Local verification** commit
+status. A normal push requires `npm run checks:publish` afterwards. GitHub runs
+only **Quality result**, a lightweight remote integration/evidence check binding
+the actual commit/tree/base, ancestry, trusted issuer and completion time.
+Raw receipt files in a PR are not evidence. Changed sources or missing, stale,
+failed or untrusted proof block the gate and require local verification. Full
+backend, browser, container, lint and tooling suites run locally only. PRs are
+checked once; feature pushes and release tags do not create duplicate runs.
+The develop→master→production order and explicit release approval remain.
 
 ## Reverse-Proxy-Härtung
 
