@@ -79,7 +79,8 @@ class WattenReadinessMiddleware:
                 and _LOCAL_GAME_DOCUMENT.fullmatch(scope["path"])):
             from .watten_access import watten_game_preview_enabled
 
-            local_document = watten_game_preview_enabled(connection)
+            local_document = (watten_game_preview_enabled(connection)
+                              and watten_account_preview_enabled(connection))
         if not fixed_host and (not local_account_path or local_document) and (
                 not icon_path or (scope["type"] == "http" and scope["method"] in {"GET", "HEAD"}
                                   and watten_account_preview_enabled(connection))):

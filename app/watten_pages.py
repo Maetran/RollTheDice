@@ -10,6 +10,7 @@ from fastapi.responses import RedirectResponse, Response
 from .auth import resolve_session
 from .watten_access import watten_game_preview_enabled
 from .watten_pwa import account_pwa_head
+from .watten_readiness import watten_account_preview_enabled
 
 router = APIRouter()
 _STATIC = Path(__file__).resolve().parent / "static"
@@ -18,7 +19,7 @@ _GAME_ID = re.compile(r"[0-9a-f]{16}")
 
 
 def _require_preview(request: Request) -> None:
-    if not watten_game_preview_enabled(request):
+    if not (watten_game_preview_enabled(request) and watten_account_preview_enabled(request)):
         raise HTTPException(status_code=404, detail="game_not_found", headers=_HEADERS)
 
 
