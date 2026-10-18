@@ -686,10 +686,12 @@ class WattenMatchCredit(Base):
 
 
 class WattenAchievementGrant(Base):
+    """One unlock per account/generation/ID; catalog version is provenance."""
+
     __tablename__ = "watten_achievement_grants"
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     generation: Mapped[int] = mapped_column(Integer, primary_key=True)
-    catalog_version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    catalog_version: Mapped[int] = mapped_column(Integer, nullable=False)
     achievement_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     source_game_id: Mapped[str] = mapped_column(ForeignKey("watten_match_evidence.game_id"), nullable=False)
     reached_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

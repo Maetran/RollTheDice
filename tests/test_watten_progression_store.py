@@ -16,6 +16,7 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy import func, select
 from sqlalchemy.dialects import postgresql, sqlite
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.schema import CreateTable
 
 from alembic import command
@@ -250,6 +251,57 @@ def test_policy_price_change_does_not_reprice_old_credits_or_achievements(server
         credits = list(db.scalars(select(WattenMatchCredit).order_by(WattenMatchCredit.grant_sequence)))
         assert [(item.xp, item.policy_version) for item in credits] == [(10, 1), (23, 2)]
         assert all(item.policy_version == 1 for item in db.scalars(select(WattenAchievementGrant)))
+
+
+def test_catalog_change_preserves_unlock_identity_price_source_and_sequence_but_allows_new_ids(server, monkeypatch):
+    owner = runtime_tests.account("CatalogIdentity")
+    game = game_for([owner], cpus=(1,))
+
+    def existing(db):
+        return {item.achievement_id: (item.catalog_version, item.xp, item.policy_version, item.source_game_id,
+                                      as_utc(item.reached_at), item.grant_sequence)
+                for item in db.scalars(select(WattenAchievementGrant))}
+
+    with session_scope() as db:
+        row, evidence, bindings = written(db, game)
+        first = journal.store_draft_match(db, row, evidence, bindings)[0]
+        frozen = existing(db)
+    real_evaluate = journal.evaluate_draft
+
+    def later_catalog(*args, **kwargs):
+        proposal = real_evaluate(*args, **kwargs)
+        grants = tuple(replace(item, catalog_version=2, policy_version=2, xp=item.xp + 100)
+                       for item in proposal.achievements)
+        if proposal.counters.completed >= 2:
+            grants += (replace(grants[0], achievement_id="watten_new_catalog_goal", xp=47,
+                               source_game_id="new-catalog-next", reached_at=FINISHED),)
+        return replace(proposal, catalog_version=2, policy_version=2, achievements=grants)
+
+    monkeypatch.setattr(journal, "evaluate_draft", later_catalog)
+    with session_scope() as db:
+        row, evidence, bindings = written(db, game)
+        replay = journal.store_draft_match(db, row, evidence, bindings)[0]
+        assert replay.total_xp == first.total_xp and replay.grant_sequence == first.grant_sequence
+        assert existing(db) == frozen
+        second = {**game, "_id": "new-catalog-next"}
+        row, evidence, bindings = written(db, second)
+        added = journal.store_draft_match(db, row, evidence, bindings)[0]
+        assert {key: value for key, value in existing(db).items() if key in frozen} == frozen
+        assert added.new_achievement_ids == ("watten_new_catalog_goal",)
+        assert added.total_xp == first.total_xp + 10 + 47
+        assert added.grant_sequence == first.grant_sequence + 2
+        again = journal.store_draft_match(db, row, evidence, bindings)[0]
+        assert again.total_xp == added.total_xp and again.grant_sequence == added.grant_sequence
+        assert not again.new_achievement_ids
+        # The actual migrated SQLite PK also forbids a duplicate across
+        # catalog versions; the application set is not the only protection.
+        old_id = next(iter(frozen))
+        with pytest.raises(IntegrityError):
+            with db.begin_nested():
+                db.add(WattenAchievementGrant(user_id=owner[0].user_id, generation=1, achievement_id=old_id,
+                                              catalog_version=3, source_game_id=game["_id"], reached_at=FINISHED,
+                                              xp=999, policy_version=3, grant_sequence=added.grant_sequence + 1))
+                db.flush()
 
 
 def test_all_history_beyond_250_is_evaluated_without_a_silent_limit_or_per_result_query(server, monkeypatch):

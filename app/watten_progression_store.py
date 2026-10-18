@@ -4,6 +4,12 @@ The caller owns commit/rollback and authorization. Only managed completed Watten
 rows and their actual relational participants authorize a first freeze. All
 historical evaluation reads frozen private journal authority, never live game
 checkpoints. No startup synchronization, reset or cross-product XP exists here.
+
+The native caller must use one match per transaction. A general concurrent
+multi-match batch needs globally ordered prelocking or whole-transaction
+rollback/retry: per-match evidence locks plus account locks can deadlock across
+oppositely ordered batches on PostgreSQL. No general batch-concurrency proof is
+claimed by this service or by its sequential SQLite history fixture.
 """
 
 from __future__ import annotations
@@ -203,6 +209,8 @@ def store_draft_match(db, row: CompletedGame, evidence: MatchEvidence,
     No client payload, account-name lookup, foreign staff privileges or live
     checkpoint can authorize credits. The rich evidence is a trusted producer
     input whose result-v1 public core must exactly match the actual DB result.
+    Native callers use exactly one match per transaction; see the module's
+    explicit concurrent-batch locking limitation before reusing this API.
     """
     raw, bindings = _validated_source(db, row, evidence, bindings)
     _frozen, original = _freeze(db, raw, evidence, bindings)
@@ -228,12 +236,12 @@ def store_draft_match(db, row: CompletedGame, evidence: MatchEvidence,
                                     player_id=credit.player_id, finished_at=credit.finished_at, won=credit.won,
                                     cohort_json=_cohort(evidence), xp=credit.xp, policy_version=credit.policy_version,
                                     catalog_version=credit.catalog_version, grant_sequence=state.grant_sequence))
-        old_grants = {(item.catalog_version, item.achievement_id) for item in db.scalars(
+        old_grants = {item.achievement_id for item in db.scalars(
             select(WattenAchievementGrant).where(WattenAchievementGrant.user_id == state.user_id,
                                                 WattenAchievementGrant.generation == state.generation))}
         new_ids = []
         for grant in proposal.achievements:
-            if (grant.catalog_version, grant.achievement_id) in old_grants:
+            if grant.achievement_id in old_grants:
                 continue  # Never update an old price, source, policy or unlock.
             state.grant_sequence += 1
             db.add(WattenAchievementGrant(user_id=state.user_id, generation=state.generation,

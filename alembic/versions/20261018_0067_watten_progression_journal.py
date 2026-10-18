@@ -43,7 +43,7 @@ def upgrade() -> None:
     op.create_table("watten_achievement_grants",
                     sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
                     sa.Column("generation", sa.Integer(), primary_key=True),
-                    sa.Column("catalog_version", sa.Integer(), primary_key=True),
+                    sa.Column("catalog_version", sa.Integer(), nullable=False),
                     sa.Column("achievement_id", sa.String(64), primary_key=True),
                     sa.Column("source_game_id", sa.String(64), sa.ForeignKey("watten_match_evidence.game_id"), nullable=False),
                     sa.Column("reached_at", sa.DateTime(timezone=True), nullable=False),
